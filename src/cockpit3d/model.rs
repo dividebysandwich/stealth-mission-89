@@ -41,13 +41,17 @@
 //!
 //! Every mesh but the HUD glass is `Solid` (the mouse points at it); the levers, the displays
 //! and the atlas faces that are not buttons get their tooltips (`Tip`).
+//!
+//! The parts that never move or change material are drawn merged, one mesh per material (the
+//! F-16's cockpit was 550 draws, 23 materials); their own meshes stay for the mouse, on a layer
+//! no camera draws.
 
 use std::collections::HashMap;
 
-use bevy::camera::visibility::NoFrustumCulling;
+use bevy::camera::visibility::{NoFrustumCulling, RenderLayers};
 use bevy::gltf::{Gltf, GltfMaterial, GltfMesh, GltfNode};
 use bevy::light::NotShadowCaster;
-use bevy::mesh::VertexAttributeValues;
+use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 
 use super::controls::{Control, Highlight, Moving};
@@ -124,6 +128,19 @@ pub(super) struct Spawner<'a> {
     pub anchors: CockpitAnchors,
     /// The atlas faces by key (`atlas_face`).
     faces: HashMap<String, Face>,
+    /// The parts drawn merged.
+    still: Vec<StillPart>,
+}
+
+/// A part that never moves or changes material.
+#[derive(Clone)]
+struct StillPart {
+    entity: Entity,
+    mesh: Handle<Mesh>,
+    material: Handle<CockpitMaterial>,
+    /// Its place under the cockpit root.
+    at: Transform,
+    no_shadow: bool,
 }
 
 impl<'a> Spawner<'a> {
@@ -164,6 +181,7 @@ impl<'a> Spawner<'a> {
                 .into_iter()
                 .map(|(f, _)| (format!("{f:?}"), f))
                 .collect(),
+            still: Vec::new(),
         }
     }
 
@@ -186,10 +204,49 @@ impl<'a> Spawner<'a> {
             .flat_map(|n| n.children.iter().map(|c| c.id()))
             .collect();
         for n in g.nodes.iter().filter(|n| !children.contains(&n.id())) {
-            let e = self.node(commands, assets, &names, n, Transform::IDENTITY);
+            let e = self.node(commands, assets, &names, n, Transform::IDENTITY, false);
             commands.entity(root).add_child(e);
         }
+        self.merge_still(commands, root);
         true
+    }
+
+    /// The parts that never move or change material, merged into one mesh per material (and
+    /// shadow casting) under `root`; theirs are left to the mouse.
+    fn merge_still(&mut self, commands: &mut Commands, root: Entity) {
+        let mut groups: HashMap<_, Vec<usize>> = HashMap::new();
+        for (i, p) in self.still.iter().enumerate() {
+            let Some(m) = self.meshes.get(&p.mesh) else { continue };
+            let Some(kind) = mergeable(m) else { continue };
+            groups.entry((p.material.id(), p.no_shadow, kind)).or_default().push(i);
+        }
+        for parts in groups.into_values().filter(|p| p.len() > 1) {
+            let first = self.still[parts[0]].clone();
+            let mut merged = Merged::default();
+            for &i in &parts {
+                let p = &self.still[i];
+                if let Some(m) = self.meshes.get(&p.mesh) {
+                    merged.add(m, &p.at);
+                }
+            }
+            let e = commands
+                .spawn((
+                    Mesh3d(self.meshes.add(merged.mesh())),
+                    MeshMaterial3d(first.material),
+                    Transform::IDENTITY,
+                    Visibility::default(),
+                    NoFrustumCulling,
+                ))
+                .id();
+            if first.no_shadow {
+                commands.entity(e).insert(NotShadowCaster);
+            }
+            commands.entity(root).add_child(e);
+            for &i in &parts {
+                let undrawn = RenderLayers::layer(crate::camera::UNDRAWN_LAYER);
+                commands.entity(self.still[i].entity).insert(undrawn);
+            }
+        }
     }
 
     fn node(
@@ -199,6 +256,7 @@ impl<'a> Spawner<'a> {
         names: &HashMap<AssetId<GltfMaterial>, String>,
         handle: &Handle<GltfNode>,
         parent: Transform,
+        moves: bool,
     ) -> Entity {
         let Some(node) = assets.nodes.get(handle) else { return commands.spawn_empty().id() };
         let extras: serde_json::Value = node
@@ -212,6 +270,7 @@ impl<'a> Spawner<'a> {
         .then(|| self.face_half(assets, node))
         .flatten()
         .map(|half| Control::push_light(Effect::Action(crate::input::Action::MasterCaution), half));
+        let pushable = push_light.is_some();
         let e = commands
             .spawn((Name::new(node.name.clone()), node.transform, Visibility::default()))
             .id();
@@ -269,6 +328,12 @@ impl<'a> Spawner<'a> {
             ));
         }
         let no_shadow = extras["no_shadow"].as_bool() == Some(true);
+        // What moves, lights up or is shown and hidden, with all under it.
+        let moves = moves
+            || pushable
+            || ["control", "moving", "highlight", "stick", "throttle"]
+                .iter()
+                .any(|k| extras.get(k).is_some_and(|v| !v.is_null()));
 
         if let Some(mesh) = node.mesh.as_ref().and_then(|m| assets.meshes.get(m)) {
             let single = mesh.primitives.len() == 1;
@@ -286,7 +351,11 @@ impl<'a> Spawner<'a> {
                     .as_ref()
                     .and_then(|m| names.get(&m.id()))
                     .map_or("", String::as_str);
-                self.primitive(commands, target, name, prim, &extras, assets);
+                let still = self.primitive(commands, target, name, prim, &extras, assets);
+                if let Some((mesh, material)) = still.filter(|_| !moves) {
+                    let entity = target;
+                    self.still.push(StillPart { entity, mesh, material, at, no_shadow });
+                }
                 let mut t = commands.entity(target);
                 t.insert(NoFrustumCulling);
                 if name != "hud_glass" {
@@ -297,13 +366,17 @@ impl<'a> Spawner<'a> {
                 }
             }
         }
-        let kids: Vec<Entity> =
-            node.children.iter().map(|c| self.node(commands, assets, names, c, at)).collect();
+        let kids: Vec<Entity> = node
+            .children
+            .iter()
+            .map(|c| self.node(commands, assets, names, c, at, moves))
+            .collect();
         commands.entity(e).add_children(&kids);
         e
     }
 
-    /// A mesh primitive with its run-time material (by material name).
+    /// A mesh primitive with its run-time material (by material name). Its mesh and material
+    /// if neither changes while flying.
     fn primitive(
         &mut self,
         commands: &mut Commands,
@@ -312,9 +385,10 @@ impl<'a> Spawner<'a> {
         prim: &bevy::gltf::GltfPrimitive,
         extras: &serde_json::Value,
         assets: &ModelAssets,
-    ) {
+    ) -> Option<(Handle<Mesh>, Handle<CockpitMaterial>)> {
         let mut mesh = prim.mesh.clone();
         let mut ec = commands.entity(e);
+        let mut still = true;
         let material = match name {
             "swatch" => self.panel.solid.clone(),
             "atlas" => {
@@ -348,6 +422,7 @@ impl<'a> Spawner<'a> {
                 if role == CanvasRole::Left && self.left_trackcam_missing {
                     self.left_trackcam(commands, e, &prim.mesh);
                 }
+                still = false;
                 m
             }
             "trackcam" | "trackcam_left" | "trackcam_third" => {
@@ -357,6 +432,7 @@ impl<'a> Spawner<'a> {
                     _ => crate::mfd::MfdSide::Third,
                 };
                 ec.insert((TrackCamScreen(side), Visibility::Hidden));
+                still = false;
                 displays::trackcam_material(self.materials, self.tc_image)
             }
             "hud_glass" => {
@@ -374,7 +450,7 @@ impl<'a> Spawner<'a> {
                     MeshMaterial3d(m),
                     NotShadowCaster,
                 ));
-                return;
+                return None;
             }
             n if n.starts_with("label_") => {
                 let (tex, m) = displays::side_label(
@@ -384,6 +460,7 @@ impl<'a> Spawner<'a> {
                     self.images,
                 );
                 ec.insert((tex, LitMaterial(m.clone())));
+                still = false;
                 m
             }
             n => match self.mats.by_name(n) {
@@ -391,7 +468,8 @@ impl<'a> Spawner<'a> {
                 None => self.modelled(prim.material.as_ref(), assets),
             },
         };
-        commands.entity(e).insert((Mesh3d(mesh), MeshMaterial3d(material)));
+        commands.entity(e).insert((Mesh3d(mesh.clone()), MeshMaterial3d(material.clone())));
+        still.then_some((mesh, material))
     }
 
     /// The tracking camera picture 3 mm behind the left screen, from the screen's mesh.
@@ -486,6 +564,87 @@ impl<'a> Spawner<'a> {
             });
         let m = self.materials.add(cockpit_material(m));
         self.modelled.insert(h.id(), m.clone());
+        m
+    }
+}
+
+/// Which attributes a mesh that can be merged has (normals, UVs, tangents), or None.
+fn mergeable(m: &Mesh) -> Option<(bool, bool, bool)> {
+    if m.primitive_topology() != PrimitiveTopology::TriangleList {
+        return None;
+    }
+    let known = [
+        Mesh::ATTRIBUTE_POSITION.id,
+        Mesh::ATTRIBUTE_NORMAL.id,
+        Mesh::ATTRIBUTE_UV_0.id,
+        Mesh::ATTRIBUTE_TANGENT.id,
+    ];
+    if m.attributes().any(|(a, _)| !known.contains(&a.id)) {
+        return None;
+    }
+    let has = |a| m.attribute(a).is_some();
+    has(Mesh::ATTRIBUTE_POSITION).then_some((
+        has(Mesh::ATTRIBUTE_NORMAL),
+        has(Mesh::ATTRIBUTE_UV_0),
+        has(Mesh::ATTRIBUTE_TANGENT),
+    ))
+}
+
+/// Meshes of the same attributes (`mergeable`) put together in their parent's frame.
+#[derive(Default)]
+struct Merged {
+    positions: Vec<[f32; 3]>,
+    normals: Vec<[f32; 3]>,
+    uvs: Vec<[f32; 2]>,
+    tangents: Vec<[f32; 4]>,
+    indices: Vec<u32>,
+}
+
+impl Merged {
+    fn add(&mut self, m: &Mesh, at: &Transform) {
+        let Some(VertexAttributeValues::Float32x3(p)) = m.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            return;
+        };
+        let base = self.positions.len() as u32;
+        let affine = at.compute_affine();
+        let normal = affine.matrix3.inverse().transpose();
+        self.positions.extend(p.iter().map(|&v| affine.transform_point3(v.into()).to_array()));
+        if let Some(VertexAttributeValues::Float32x3(n)) = m.attribute(Mesh::ATTRIBUTE_NORMAL) {
+            let n = n.iter().map(|&v| (normal * Vec3::from(v)).normalize_or_zero().to_array());
+            self.normals.extend(n);
+        }
+        if let Some(VertexAttributeValues::Float32x2(uv)) = m.attribute(Mesh::ATTRIBUTE_UV_0) {
+            self.uvs.extend(uv);
+        }
+        if let Some(VertexAttributeValues::Float32x4(t)) = m.attribute(Mesh::ATTRIBUTE_TANGENT) {
+            self.tangents.extend(t.iter().map(|&[x, y, z, w]| {
+                let d = affine.matrix3 * Vec3::new(x, y, z);
+                let w = if affine.matrix3.determinant() < 0.0 { -w } else { w };
+                d.normalize_or_zero().extend(w).to_array()
+            }));
+        }
+        // (A mirrored part's winding is left: the glTF loader turned it for its mirroring.)
+        match m.indices() {
+            Some(Indices::U16(i)) => self.indices.extend(i.iter().map(|&i| base + i as u32)),
+            Some(Indices::U32(i)) => self.indices.extend(i.iter().map(|&i| base + i)),
+            None => self.indices.extend(base..base + p.len() as u32),
+        }
+    }
+
+    fn mesh(self) -> Mesh {
+        let mut m = Mesh::new(PrimitiveTopology::TriangleList, Default::default())
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, self.positions)
+            .with_inserted_indices(Indices::U32(self.indices));
+        if !self.normals.is_empty() {
+            m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals);
+        }
+        if !self.uvs.is_empty() {
+            m.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uvs);
+        }
+        if !self.tangents.is_empty() {
+            m.insert_attribute(Mesh::ATTRIBUTE_TANGENT, self.tangents);
+        }
         m
     }
 }
