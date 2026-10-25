@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Synthesizes the loops of other aircraft heard by the downed pilot, and of the helicopter
-flown (assets/sounds/*.flac).
+"""Synthesizes the loop of other helicopters heard around, and of the helicopter flown
+(assets/sounds/*.flac). The other jets' loop (jet.flac) is a recording.
 
-- jet.flac: a jet's roar (broadband noise peaking at a few hundred Hz) with a slow turbulent
-  swell and a faint turbine whine.
 - helicopter.flac: main rotor blade slap (4 blades at 258 rpm, 17.2 Hz), a tail rotor buzz
   and the turbine whine over a low rumble.
 - heli_rotor.flac: the flown UH-60A's rotor from inside: the blade passes' heavy thump through
@@ -73,20 +71,6 @@ def write(name, x):
          "-compression_level", "12", path],
         input=pcm, check=True)
     print(path)
-
-
-def jet():
-    t = 4.0
-    # Roar: peak around 100-400 Hz, rumble below, falling off steeply above (the air absorbs
-    # the highs of a distant jet).
-    roar = periodic_noise(t, lambda f: band(f, 45, 400, 1.2) + 0.12 * band(f, 400, 2500, 1.5) + 0.5 * band(f, 22, 90, 2.0))
-    # Crackle of the exhaust: brighter noise in short random bursts.
-    hiss = periodic_noise(t, lambda f: band(f, 1500, 6000, 2.0))
-    gate = periodic_noise(t, lambda f: (f < 30) * 1.0)
-    crackle = hiss * np.clip(gate / np.max(np.abs(gate)) * 2.0 - 0.6, 0.0, None)
-    whine = 0.6 * tone(t, 2650) + 0.3 * tone(t, 2650 * 1.5, 1.0) + 0.2 * tone(t, 5300, 2.0)
-    whine *= swell(t, 1.5, 0.4)
-    return (roar + 0.06 * crackle) * swell(t, 3.0, 0.25) + 0.015 * whine
 
 
 def helicopter():
@@ -184,7 +168,6 @@ def jet_wind():
 
 
 if __name__ == "__main__":
-    write("jet.flac", jet())
     write("helicopter.flac", helicopter())
     write("heli_rotor.flac", heli_rotor())
     write("heli_turbine.flac", heli_turbine())

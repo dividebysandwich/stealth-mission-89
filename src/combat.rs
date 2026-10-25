@@ -129,6 +129,8 @@ pub struct Combat {
     pub round_impacts: Vec<(f64, f64)>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
+    /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
+    pub sam_launches: Vec<DVec3>,
     /// Tile objects destroyed in earlier missions of a tour, still to be shown destroyed.
     pub prior_tiles: Vec<stealth_sim::TileDamage>,
     /// Campaign: the simulation's events (all pilots') since the campaign last took them
@@ -368,6 +370,7 @@ fn start_combat(
         explosions: Vec::new(),
         round_impacts: Vec::new(),
         signal_flares: Vec::new(),
+        sam_launches: Vec::new(),
         kills: Vec::new(),
         wreck: None,
         steps: 0,
@@ -611,6 +614,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.explosions.clear();
     combat.round_impacts.clear();
     combat.signal_flares.clear();
+    combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
         tiles.set(t.level as usize, t.col, t.row, t.index, t.shape);
     }
@@ -2129,6 +2133,13 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             combat.round_impacts.push((x as f64 / fine, y as f64 / fine));
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
+        SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {
+            // Launched from the ground, so its viewZ is its altitude in feet.
+            if let Some(m) = combat.sim.projectiles().get(slot).filter(|m| m.ttl != 0) {
+                let (x, y, alt) = m.map_pos();
+                combat.sam_launches.push(crate::sim_render::map_point(x, y, alt));
+            }
+        }
         // A drone that got through sets its target area on fire.
         SimEvent::DroneImpact { x, y, .. } => combat.kills.push(Kill { x, y, vehicle: false }),
         SimEvent::TileDestroyed(t) => {
