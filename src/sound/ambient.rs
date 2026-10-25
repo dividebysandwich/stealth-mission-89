@@ -9,8 +9,9 @@
 //! - Wind out of the aircraft above 300 ft, the high-altitude wind on top above 4000 ft.
 //!
 //! A sound whose time, weather or place comes or goes fades over `FADE` (real seconds); moving
-//! the view in or out of the aircraft fades the outside-only sounds over `VIEW_FADE`; the
-//! altitude bands crossfade over a span of height, so climbing through them never cuts.
+//! the view in or out of the aircraft fades the outside-only sounds over `VIEW_FADE`. Altitude
+//! takes no time: each altitude band's volume follows the height alone, crossfading across a
+//! span of height (`*_BAND`), so climbing through it never cuts.
 
 use bevy::audio::{PlaybackMode, PlaybackSettings, Volume};
 use bevy::prelude::*;
