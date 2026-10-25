@@ -121,9 +121,8 @@ const RUNWAY_Y: f32 = 0.34;
 /// The F-117A's model origin is on its flat underside, the wheels 1.65 m below it
 /// (tools/models/f117.py).
 const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
-/// The F-16's model has no landing gear: its lowest point (the intake lip, 1.25 m below the
-/// origin, tools/models/aircraft.py `f16`) is held 0.8 m above the ground.
-const F16_LIFT: f32 = 1.25 + 0.8;
+/// The F-16's wheels are 2.15 m below its model origin (tools/models/aircraft.py `F16_GROUND`).
+const F16_LIFT: f32 = 2.15 + RUNWAY_Y;
 /// A point of the F-16's builder (metres: x right, y forward, z up) in the aircraft frame: the
 /// model is centred on its length, 0.1 m ahead of the builder's origin.
 const fn f16_point(x: f32, y: f32, z: f32) -> Vec3 {

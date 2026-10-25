@@ -9,8 +9,8 @@ z up): the airframe, optional afterburner flames, the anchors for the navigation
 red / left, 151 green / right). The stores and the wreck are built the same way. Every model is
 drawn at its real size (`K` model units per metre) with one detail level: the airframe, its hot
 nozzle exits in `_exhaust` and the afterburner flames in `_s13v1` (the game flickers both), a
-missile's motor flame in `_s14v1`, the navigation lights in `_s12v1`; anticollision.py adds the
-flashing lights afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43,
+missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's), the navigation
+lights in `_s12v1`; anticollision.py adds the flashing lights afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43,
 ah1z.py) have generators of their own. The flyable F-16 (23) sets the eye, lift and exhaust in
 src/aircraft.rs: change them with its builder.
 """
@@ -44,8 +44,8 @@ BLACK = 239
 
 
 class Craft:
-    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False):
-        self.body, self.flames, self.part = body, flames, part
+    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None):
+        self.body, self.flames, self.part, self.gear = body, flames, part, gear
         # Light dots sit just outboard of the wingtips so the tip itself doesn't hide them.
         out = Vector((0.25, 0, 0))
         self.lights = {147: [Vector(red) - out], 151: [Vector(green) + out]}
@@ -148,7 +148,32 @@ def f16():
         g.add(missile(s * 4.8, -1.0, 0.2, 3.0))
     g.add(nozzle(0, -6.2, 0.3, 0.55, 1.1))
     fl = flame(0, -7.3, 0.3, 0.5, 3.2)
-    return Craft(g, (-4.8, -3.6, 0.2), (4.8, -3.6, 0.2), [(0, -6.4, 4.0)], fl)
+    return Craft(g, (-4.8, -3.6, 0.2), (4.8, -3.6, 0.2), [(0, -6.4, 4.0)], fl, gear=f16_gear())
+
+
+F16_GROUND = -2.15  # z of the ground under the wheels (`F16_LIFT` in src/aircraft.rs)
+
+
+def f16_gear():
+    """The gear down: the nose leg under the intake trunk with its door, the main legs from the
+    fuselage's sides under the wing roots with their doors outboard."""
+    g = Geo()
+    trunk = lambda y: -0.75 - 0.5 * (y + 1.0) / 3.9  # the intake trunk's underside
+    r, w = 0.23, 0.16
+    axle = (0.0, 1.75, F16_GROUND + r)
+    g.add(mklib.wheel(axle, r, w, BLACK, n=8))
+    g.add(frustum((0.0, 1.95, trunk(1.95)), (0.0, 1.8, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum((0.0, 2.6, trunk(2.6)), (0.0, 1.85, axle[2] + 0.35), 0.035, 0.035, GREY_L, n=4))
+    g.face2([(-0.28, 2.5, trunk(2.5)), (-0.28, 1.3, trunk(1.3)), (-0.33, 1.3, trunk(1.3) - 0.38),
+             (-0.33, 2.5, trunk(2.5) - 0.38)], GREY_B)
+    r, w = 0.35, 0.22
+    for s in (-1, 1):
+        axle = (s * 1.18, -2.3, F16_GROUND + r)
+        g.add(mklib.wheel(axle, r, w, BLACK, n=8))
+        g.add(frustum((s * 0.75, -2.15, -0.25), (s * 1.05, -2.3, axle[2] + 0.12), 0.08, 0.07, GREY_L, n=5))
+        g.add(frustum((s * 0.75, -1.4, -0.25), (s * 1.0, -2.2, axle[2] + 0.45), 0.04, 0.04, GREY_L, n=4))
+        g.face2([(s * 0.92, -1.3, -0.2), (s * 0.92, -3.1, -0.2), (s * 0.97, -3.1, -0.85), (s * 0.97, -1.3, -0.85)], GREY_B)
+    return g
 
 
 def twin_nacelle_fighter(L, span, flanker=False, paint=GREY_B):
@@ -668,7 +693,8 @@ def build_craft(index, craft):
     body.faces = [f for f in body.faces if f[1] != FLAME]
     lod = heli.mesh_with_lines(root, f"{root.name}_lod0", body)
     lod["max_dist"] = MAX_DIST
-    lod["radius"] = heli.radius(body)
+    gear = None if craft.gear is None else centred(craft.gear, shift)
+    lod["radius"] = heli.radius(body, *[g for g in [gear] if g is not None])
     if hot.faces:
         mklib.link_child(lod, f"{lod.name}_exhaust", mklib.faces_mesh(f"{lod.name}_exhaust", hot))
     if craft.flames is not None:
@@ -678,6 +704,13 @@ def build_craft(index, craft):
             col.objects.link(group)
         group.parent = lod
         mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", centred(craft.flames, shift)))
+    if gear is not None:
+        group = bpy.data.objects.new(f"{lod.name}_s5v1", None)
+        group["conds"] = [[5, 1]]
+        for col in lod.users_collection:
+            col.objects.link(group)
+        group.parent = lod
+        mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", gear))
     if craft.part is not None:
         part = heli.mesh_with_lines(lod, f"{lod.name}_part1", craft.part.scaled(K), tuple(shift * K))
         part["state_slot"] = 17
