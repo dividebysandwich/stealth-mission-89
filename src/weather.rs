@@ -114,8 +114,8 @@ pub struct WeatherState {
     /// `--strike ground|cloud` (test automation): a strike of that kind after 2 s, held at
     /// its peak.
     test_strike: Option<bool>,
-    /// Seconds until the thunder of each strike.
-    thunder: Vec<f32>,
+    /// Seconds until the thunder of each strike, and the strike's distance (m).
+    thunder: Vec<(f32, f32)>,
     /// Eye position last frame (Bevy metres), for the rain's relative wind.
     prev_eye: Option<DVec3>,
     rain: Option<Entity>,
@@ -128,6 +128,11 @@ pub struct WeatherState {
 }
 
 impl WeatherState {
+    /// It rains around the eye: under storm cells, and under the storm preset's stratus.
+    pub fn raining(&self) -> bool {
+        self.under_storm || (self.weather.has_storms() && self.storm > 0.5 && self.shade > 0.5)
+    }
+
     /// Haze distance scale for the world under the clouds (reduced visibility in storms).
     pub fn haze_scale(&self) -> f32 {
         let under = if self.under_storm { 1.0 } else { self.shade };
@@ -795,19 +800,17 @@ fn lightning(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<crate::lightning::BoltMaterial>>,
     bolt_materials: Query<&MeshMaterial3d<crate::lightning::BoltMaterial>>,
-    mut sounds: MessageWriter<crate::sound::PlaySound>,
+    mut thunder: MessageWriter<crate::sound::Thunder>,
     mut state: ResMut<WeatherState>,
 ) {
     let dt = time.delta_secs();
-    let len = state.thunder.len();
-    state.thunder.retain_mut(|t| {
+    state.thunder.retain_mut(|(t, distance)| {
         *t -= dt;
+        if *t <= 0.0 {
+            thunder.write(crate::sound::Thunder { distance: *distance });
+        }
         *t > 0.0
     });
-    if state.thunder.len() < len {
-        // No thunder among the game's sounds: the explosion rumble stands in.
-        sounds.write(crate::sound::PlaySound { id: 5, priority: 0 });
-    }
     // The running strikes.
     let test = state.test_strike;
     let mut flash: f32 = 0.0;
@@ -858,9 +861,11 @@ fn lightning(
             centre,
             age,
         );
-        // Thunder at the speed of sound (inaudible beyond ~25 km).
-        if s.distance < 25_000.0 {
-            state.thunder.push(s.distance / 343.0 - age);
+        // Thunder from the nearest part of the channel, at the speed of sound in the air
+        // between (inaudible beyond ~25 km).
+        let (near, alt) = nearest_on_channel(s.light_a, s.light_b, eye);
+        if near < THUNDER_RANGE {
+            state.thunder.push((near / speed_of_sound(alt) - age, near));
         }
         state.bolts.push(s);
     };
@@ -914,6 +919,25 @@ fn lightning(
             spawn(&mut state, c, &mut rng, ground, None, age);
         }
     }
+}
+
+/// Thunder is heard from strikes this close (m).
+pub const THUNDER_RANGE: f32 = 25_000.0;
+
+/// The distance (m) from `eye` to the nearest point of the channel `a`-`b`, and the mean
+/// altitude (m) of the way the sound travels.
+fn nearest_on_channel(a: DVec3, b: DVec3, eye: DVec3) -> (f32, f32) {
+    let ab = b - a;
+    let t = ((eye - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+    let p = a + ab * t;
+    (p.distance(eye) as f32, ((p.y + eye.y) * 0.5) as f32)
+}
+
+/// Speed of sound (m/s) at `alt` metres in the standard atmosphere: 15 °C at sea level,
+/// 6.5 °C colder a kilometre up to the tropopause.
+fn speed_of_sound(alt: f32) -> f32 {
+    let celsius = 15.0 - 6.5 * (alt.clamp(0.0, 11_000.0) / 1000.0);
+    331.3 * (1.0 + celsius / 273.15).sqrt()
 }
 
 /// A strike in storm cell `c` (`centre`: on the ground there instead), its channel from
@@ -995,7 +1019,7 @@ fn strike(
     }
 }
 
-/// Rain streaks around the eye (under storm cells, and under the storm preset's stratus).
+/// Rain streaks around the eye (`WeatherState::raining`).
 const DROPS: usize = 500;
 /// Half size of the rain box around the eye (metres).
 const RAIN_BOX: f32 = 30.0;
@@ -1023,10 +1047,8 @@ fn rain(
         _ => Vec3::ZERO,
     };
     state.prev_eye = eye;
-    let w = state.weather;
-    let raining = state.under_storm || (w.has_storms() && state.storm > 0.5 && state.shade > 0.5);
     let Ok((cam, cam_tf)) = eye_cams.single() else { return };
-    if !raining {
+    if !state.raining() {
         if let Some(e) = state.rain.take() {
             commands.entity(e).try_despawn();
         }

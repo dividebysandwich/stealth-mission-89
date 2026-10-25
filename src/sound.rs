@@ -22,7 +22,14 @@
 //!   aircraft's and the others'), warnings (alarms, the fire siren, the Sidewinder tones) or
 //!   effects (everything else) (`Channel`).
 //! - Inside the aircraft (the cockpit views) the engine sounds (the jet's engine and wind, the
-//!   helicopter's rotor and turbines) play through a low-pass filter (`muffle`).
+//!   helicopter's rotor and turbines), explosions, thunder and the world around (`ambient`)
+//!   play through a low-pass filter (`muffle`).
+//! - In the external views (chase, side, tactical, weapon, free) the flown aircraft's engine
+//!   falls off with its distance from the eye, and the sounds heard only inside the cockpit
+//!   (warning tones and the fire siren, the Sidewinder seeker, radar contact, camera shutter,
+//!   error buzz and speech) are not played.
+//! - Lightning's thunder (`event_thunder*.flac`, one at random) arrives after the strike at the
+//!   speed of sound (weather.rs), quieter the further away.
 //! - A jet plays `jet_engine.flac` and `jet_wind.flac`: the engine pitched with its rpm
 //!   (winding up quickly from 0 when the throttle opens, idling in the air with it closed,
 //!   running down when it closes on the ground or the fuel runs out), the wind louder with
@@ -48,13 +55,14 @@ use bevy::audio::{
 use bevy::prelude::*;
 use stealth_sim::{AircraftKind, fflags};
 
-use crate::camera::EyeCamera;
+use crate::camera::{EyeCamera, View, ViewState};
 use crate::combat::{CombatSystems, unit_position};
 use crate::flight::{Aircraft, Player};
 use crate::input::{Action, ActionEvent};
 use crate::settings::AppState;
 use crate::world::{FloatingOrigin, WorldPos, wu_to_bevy};
 
+mod ambient;
 mod muffle;
 
 use muffle::{Muffler, Pitch};
@@ -64,12 +72,14 @@ pub struct SoundPlugin;
 impl Plugin for SoundPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySound>()
+            .add_message::<Thunder>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
             .init_resource::<muffle::MuffledSounds>()
+            .init_resource::<ambient::Ambience>()
             .add_audio_source::<muffle::Muffled>()
-            .add_systems(Startup, load_bank)
-            .add_systems(OnEnter(AppState::Flight), muffle::reset)
+            .add_systems(Startup, (load_bank, ambient::load))
+            .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset))
             .add_systems(
                 Update,
                 (
@@ -83,6 +93,8 @@ impl Plugin for SoundPlugin {
                     fire_siren,
                     sidewinder_tones,
                     objective_sound,
+                    thunder,
+                    ambient::ambience,
                     remix,
                 )
                     .chain()
@@ -104,6 +116,12 @@ pub struct PlaySound {
 }
 
 pub const DIRECT: u8 = 255;
+
+/// Thunder of a lightning strike `distance` metres away, arriving now.
+#[derive(Message, Debug, Clone, Copy)]
+pub struct Thunder {
+    pub distance: f32,
+}
 
 /// Sound ids of the radar warning tones (above the effects' ids).
 pub fn rwr_id(tone: stealth_sim::RwrTone) -> u8 {
@@ -190,6 +208,13 @@ fn remix(settings: Res<crate::settings::Settings>, mut q: Query<(&Mixed, &mut Au
 /// The sounds still heard after ejecting: impact, explosion, the ejection, signal flare.
 const EJECTED_SOUNDS: [u8; 4] = [4, 5, 0x14, 0x1C];
 
+/// The sounds heard only inside the cockpit (besides the alarm tones and speech): radar contact,
+/// camera shutter, error buzz.
+const COCKPIT_SOUNDS: [u8; 3] = [7, 0x12, 0x20];
+
+/// Sound id of an explosion (through the cockpit's low-pass).
+const EXPLOSION: u8 = 5;
+
 /// The sounds that play again over themselves: a missile launch and a bomb release, one for
 /// each store however fast they go.
 const OVERLAPPING: [u8; 2] = [0x0D, 0x10];
@@ -245,6 +270,14 @@ const HELICOPTER_RANGE: f32 = 5_000.0;
 const HELICOPTER_REF: f32 = 200.0;
 const HELICOPTER_VOLUME: f32 = 0.8;
 const DISTANT_MAX: usize = 6;
+/// The flown aircraft's engine in the external views: at full volume within this distance (m)
+/// of the eye, then falling off with 1 / distance.
+const ENGINE_REF: f32 = 25.0;
+/// Thunder at full volume within this distance (m), then falling off with 1 / distance, gone at
+/// `weather::THUNDER_RANGE` (fading out over its last part).
+const THUNDER_REF: f32 = 1500.0;
+const THUNDER_VOLUME: f32 = 0.9;
+
 /// Speed of sound (m/s) for the Doppler shift, and the shift's limits.
 const SPEED_OF_SOUND: f32 = 340.0;
 const DOPPLER_RANGE: (f32, f32) = (0.75, 1.35);
@@ -255,6 +288,9 @@ const EAR_GAP: f32 = 0.2;
 struct SoundBank {
     /// Sound id -> variants (speech 43 has two).
     sfx: HashMap<u8, Vec<Handle<AudioSource>>>,
+    /// The ids of speech.
+    speech: Vec<u8>,
+    thunder: Vec<Handle<AudioSource>>,
     beacon: Option<Handle<AudioSource>>,
     siren: Option<Handle<AudioSource>>,
     /// The cannon's loop and tail.
@@ -359,10 +395,18 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     for name in names {
         let Some(stem) = name.strip_suffix(".flac") else { continue };
         let path = format!("sounds/{name}");
-        if let Some(rest) = stem.strip_prefix("sfx_").or_else(|| stem.strip_prefix("speech_")) {
+        if stem.starts_with("event_thunder") {
+            bank.thunder.push(server.load(path));
+            continue;
+        }
+        let speech = stem.strip_prefix("speech_");
+        if let Some(rest) = stem.strip_prefix("sfx_").or(speech) {
             let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
             if let Ok(id) = digits.parse::<u8>() {
                 bank.sfx.entry(id).or_default().push(server.load(path));
+                if speech.is_some() {
+                    bank.speech.push(id);
+                }
             }
         }
     }
@@ -396,6 +440,68 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     commands.insert_resource(bank);
 }
 
+/// The view is one of the external cameras (not the cockpit, nor the ejected pilot's eyes).
+fn external(view: Option<&ViewState>) -> bool {
+    view.is_some_and(|v| {
+        matches!(v.view, View::Chase | View::Side | View::Tactical | View::Weapon | View::Free)
+    })
+}
+
+/// The flown aircraft's engine volume for the view: falling off with the eye's distance in the
+/// external views.
+#[derive(bevy::ecs::system::SystemParam)]
+struct EngineDistance<'w, 's> {
+    view: Option<Res<'w, ViewState>>,
+    origin: Res<'w, FloatingOrigin>,
+    eye: Query<'w, 's, &'static GlobalTransform, With<EyeCamera>>,
+    player: Query<'w, 's, &'static WorldPos, With<Player>>,
+}
+
+impl EngineDistance<'_, '_> {
+    fn gain(&self) -> f32 {
+        if !external(self.view.as_deref()) {
+            return 1.0;
+        }
+        let (Ok(eye), Ok(pos)) = (self.eye.single(), self.player.single()) else { return 1.0 };
+        let d = (self.origin.origin + eye.translation().as_dvec3()).distance(pos.0) as f32;
+        (ENGINE_REF / d.max(1.0)).min(1.0)
+    }
+}
+
+/// Volume of thunder from `dist` metres away.
+fn thunder_volume(dist: f32) -> f32 {
+    let range = crate::weather::THUNDER_RANGE;
+    let fade = ((range - dist) / (0.3 * range)).clamp(0.0, 1.0);
+    THUNDER_VOLUME * (THUNDER_REF / dist.max(1.0)).min(1.0) * fade
+}
+
+/// Thunder arriving: one of the claps at random, as loud as its distance allows (at level 3).
+fn thunder(
+    mut commands: Commands,
+    mut heard: MessageReader<Thunder>,
+    bank: Option<Res<SoundBank>>,
+    level: Res<SoundLevel>,
+    settings: Res<crate::settings::Settings>,
+    mut muffler: Muffler,
+) {
+    let Some(bank) = bank.filter(|b| !b.thunder.is_empty() && level.0 == 3) else {
+        heard.clear();
+        return;
+    };
+    for t in heard.read() {
+        let handle = &bank.thunder[rand::random_range(0..bank.thunder.len())];
+        let Some(handle) = muffler.once(handle) else { continue };
+        debug!("thunder from {:.0} m", t.distance);
+        let mix = Mixed(Channel::Effects, thunder_volume(t.distance));
+        let playback = mix.settings(&settings, PlaybackSettings::DESPAWN);
+        commands.spawn((AudioPlayer(handle), playback, mix, ThunderClap));
+    }
+}
+
+/// A clap of thunder playing.
+#[derive(Component)]
+struct ThunderClap;
+
 /// The pilot has ejected.
 fn has_ejected(combat: Option<&crate::combat::Combat>) -> bool {
     combat.is_some_and(|c| c.sim.chute().is_some())
@@ -414,6 +520,8 @@ fn play_sounds(
     mut alarms: ResMut<Alarms>,
     real: Res<Time<Real>>,
     settings: Res<crate::settings::Settings>,
+    view: Option<Res<ViewState>>,
+    mut muffler: Muffler,
 ) {
     let now = real.elapsed_secs_f64();
     for ActionEvent(a) in actions.read() {
@@ -449,7 +557,20 @@ fn play_sounds(
         requests.clear();
         return;
     };
+    // Out in the external views the cockpit's own sounds go quiet.
+    let outside = external(view.as_deref());
+    let cockpit_only = |id: u8| {
+        ALARM_TONES.contains(&id) || COCKPIT_SOUNDS.contains(&id) || bank.speech.contains(&id)
+    };
+    if outside {
+        for (e, _) in playing.iter().filter(|(_, p)| cockpit_only(p.0)) {
+            commands.entity(e).despawn();
+        }
+    }
     for r in requests.read() {
+        if outside && cockpit_only(r.id) {
+            continue;
+        }
         if ALARM_TONES.contains(&r.id) && !alarms.sounds(r.id, now) {
             continue;
         }
@@ -469,6 +590,13 @@ fn play_sounds(
         debug!("sound {} (priority {})", r.id, r.priority);
         let mix = Mixed(Channel::of(r.id), 1.0);
         let playback = mix.settings(&settings, PlaybackSettings::DESPAWN);
+        // Explosions through the cockpit's low-pass (once the sound has loaded).
+        if r.id == EXPLOSION
+            && let Some(muffled) = muffler.once(handle)
+        {
+            commands.spawn((AudioPlayer(muffled), playback, mix, OneShot(r.id)));
+            continue;
+        }
         commands.spawn((AudioPlayer(handle.clone()), playback, mix, OneShot(r.id)));
     }
 }
@@ -635,6 +763,7 @@ fn heli_sounds(
     settings: Res<crate::settings::Settings>,
     mut loops: Query<(Entity, &HeliLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
+    distance: EngineDistance,
 ) {
     let Some(bank) = bank else { return };
     let Ok(a) = player.single() else { return };
@@ -650,7 +779,7 @@ fn heli_sounds(
         }
         return;
     }
-    let half = if level.1 { 0.5 } else { 1.0 } * Channel::Engine.gain(&settings);
+    let half = if level.1 { 0.5 } else { 1.0 } * Channel::Engine.gain(&settings) * distance.gain();
     let torque = a.torque().clamp(0.0, 1.2);
     let rotor = (
         nr.max(0.3),
@@ -689,6 +818,7 @@ fn jet_sounds(
     mut rpm: Local<f32>,
     mut loops: Query<(Entity, &JetLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
+    distance: EngineDistance,
 ) {
     let Some((engine, wind)) = bank.as_ref().and_then(|b| b.jet_loops.clone()) else { return };
     let Ok(a) = player.single() else { return };
@@ -718,7 +848,7 @@ fn jet_sounds(
     } else {
         target + (*rpm - target) * (-dt / JET_SPOOL_TAU).exp()
     };
-    let half = if level.1 { 0.5 } else { 1.0 } * Channel::Engine.gain(&settings);
+    let half = if level.1 { 0.5 } else { 1.0 } * Channel::Engine.gain(&settings) * distance.gain();
     let n = *rpm;
     // Mostly the pitch follows the rpm: the volume only fades in over the first part of the
     // start and swells a little towards full rpm.
@@ -802,6 +932,7 @@ fn fire_siren(
     siren: Query<(Entity, Option<&AudioSink>), With<FireSiren>>,
     mut alarms: ResMut<Alarms>,
     settings: Res<crate::settings::Settings>,
+    view: Option<Res<ViewState>>,
 ) {
     let on_fire = combat
         .as_deref()
@@ -817,6 +948,7 @@ fn fire_siren(
         && !alarms.fire_silenced
         && !has_ejected(combat.as_deref())
         && player.single().is_ok_and(|a| a.ended.is_none())
+        && !external(view.as_deref())
         && level.0 > 0;
     let Some(handle) = bank.as_ref().and_then(|b| b.siren.clone()).filter(|_| burning) else {
         for (e, _) in &siren {
@@ -854,7 +986,9 @@ fn sidewinder_tones(
     mut loops: Query<(Entity, &SeekerTone, Option<&mut AudioSink>)>,
     mut held: Local<((bool, bool), f32)>,
     settings: Res<crate::settings::Settings>,
+    view: Option<Res<ViewState>>,
 ) {
+    let outside = external(view.as_deref());
     // None: silent; Some(false): growl; Some(true): lock tone.
     let state = combat.as_deref().and_then(|c| {
         let sim = &c.sim;
@@ -869,6 +1003,7 @@ fn sidewinder_tones(
             && !sim.player_absent()
             && !has_ejected(Some(c))
             && player.single().is_ok_and(|a| a.ended.is_none())
+            && !outside
             && level.0 > 0;
         let t = sim.targeting();
         on.then_some((t.lock_valid, t.lock_valid && t.in_range))
@@ -1056,6 +1191,8 @@ type FlightSound = Or<(
     With<FireSiren>,
     With<CannonLoop>,
     With<DistantAircraft>,
+    With<ThunderClap>,
+    With<ambient::AmbientLoop>,
 )>;
 
 fn stop_all(mut commands: Commands, q: Query<Entity, FlightSound>) {
@@ -1083,5 +1220,16 @@ mod tests {
         assert!(a.sounds(101, 5.0), "a new tone");
         assert!(a.sounds(14, 4.0 + ALARM_REARM + 0.1), "the stall horn after a pause");
         assert!(a.sounds(103, 20.0), "a new launch");
+    }
+
+    /// Thunder is loud close by, falls off with distance and is gone at the edge of its range.
+    #[test]
+    fn thunder_falls_off() {
+        let range = crate::weather::THUNDER_RANGE;
+        assert_eq!(thunder_volume(500.0), THUNDER_VOLUME);
+        let (near, far) = (thunder_volume(3000.0), thunder_volume(6000.0));
+        assert!((near / far - 2.0).abs() < 1e-4);
+        assert!(thunder_volume(0.9 * range) < thunder_volume(0.6 * range) / 1.5);
+        assert_eq!(thunder_volume(range), 0.0);
     }
 }

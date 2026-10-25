@@ -1,6 +1,6 @@
-//! Engine sounds heard from inside the aircraft: a low-pass filter (the canopy and the helmet
-//! take the highs off), its cutoff gliding when the view moves in or out of the cockpit (or the
-//! SOUND options turn it off).
+//! Sounds heard from inside the aircraft (the engine's, the weather's and the world's around
+//! it): a low-pass filter (the canopy and the helmet take the highs off), its cutoff gliding
+//! when the view moves in or out of the cockpit (or the SOUND options turn it off).
 //!
 //! The filter runs on the audio thread over the decoded samples, so it loops the sound itself:
 //! Bevy's looping would replay the first pass as it was filtered then. The sound plays at a
@@ -57,12 +57,13 @@ impl Pitch {
     }
 }
 
-/// An engine sound through the low-pass filter, looped at its `Pitch`.
+/// A sound through the low-pass filter at its `Pitch`, looped or played once.
 #[derive(Asset, TypePath)]
 pub(super) struct Muffled {
     sound: Arc<Decoded>,
     pitch: Pitch,
     cutoff: Arc<AtomicU32>,
+    looped: bool,
 }
 
 impl Decodable for Muffled {
@@ -73,6 +74,7 @@ impl Decodable for Muffled {
         LowPass {
             sound: self.sound.clone(),
             pitch: self.pitch.clone(),
+            looped: self.looped,
             speed: f32::from_bits(self.pitch.0.load(Ordering::Relaxed)) as f64,
             pos: 0.0,
             frame: vec![0.0; channels.get() as usize],
@@ -104,6 +106,20 @@ impl Muffler<'_> {
         handle: &Handle<AudioSource>,
         speed: f32,
     ) -> Option<(Handle<Muffled>, Pitch)> {
+        self.make(handle, speed, true)
+    }
+
+    /// The filtered sound of `handle` played once (None until it has loaded).
+    pub(super) fn once(&mut self, handle: &Handle<AudioSource>) -> Option<Handle<Muffled>> {
+        self.make(handle, 1.0, false).map(|(h, _)| h)
+    }
+
+    fn make(
+        &mut self,
+        handle: &Handle<AudioSource>,
+        speed: f32,
+        looped: bool,
+    ) -> Option<(Handle<Muffled>, Pitch)> {
         let decoded = match self.sounds.decoded.get(&handle.id()) {
             Some(d) => d.clone(),
             None => {
@@ -115,19 +131,26 @@ impl Muffler<'_> {
             }
         };
         let pitch = Pitch(Arc::new(AtomicU32::new(speed.to_bits())));
-        let sound =
-            Muffled { sound: decoded, pitch: pitch.clone(), cutoff: self.sounds.cutoff.clone() };
+        let sound = Muffled {
+            sound: decoded,
+            pitch: pitch.clone(),
+            cutoff: self.sounds.cutoff.clone(),
+            looped,
+        };
         Some((self.muffled.add(sound), pitch))
     }
 }
 
-/// The cutoff for the view: muffled inside the aircraft (the cockpit views), unless the
-/// low-pass is turned off.
-fn cutoff(view: Option<&ViewState>, settings: &Settings) -> f32 {
-    let inside = view.is_some_and(|v| {
+/// The view is from inside the aircraft (the cockpit views).
+pub(super) fn inside(view: Option<&ViewState>) -> bool {
+    view.is_some_and(|v| {
         matches!(v.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear)
-    });
-    if inside && settings.engine_low_pass { INSIDE_HZ } else { OUTSIDE_HZ }
+    })
+}
+
+/// The cutoff for the view: muffled inside the aircraft, unless the low-pass is turned off.
+fn cutoff(view: Option<&ViewState>, settings: &Settings) -> f32 {
+    if inside(view) && settings.engine_low_pass { INSIDE_HZ } else { OUTSIDE_HZ }
 }
 
 /// The flight starts with the cutoff where the view is.
@@ -160,6 +183,8 @@ pub(super) fn follow_view(
 pub(super) struct LowPass {
     sound: Arc<Decoded>,
     pitch: Pitch,
+    /// Loops (else ends after the last frame).
+    looped: bool,
     speed: f64,
     /// Position (frames) in the sound.
     pos: f64,
@@ -193,27 +218,34 @@ impl LowPass {
         self.coef = [b1 / 2.0, b1, b1 / 2.0, -2.0 * cos / a0, (1.0 - alpha) / a0];
     }
 
-    /// The next sample into the filter (channels interleaved), read at the sound's speed.
-    fn input(&mut self) -> f32 {
+    /// The next sample into the filter (channels interleaved), read at the sound's speed; None
+    /// past the end of a sound played once.
+    fn input(&mut self) -> Option<f32> {
         let channel = self.channel;
         if channel == 0 {
             if self.countdown == 0 {
                 self.speed = f32::from_bits(self.pitch.0.load(Ordering::Relaxed)).max(0.0) as f64;
             }
             // Linear interpolation between the frames around the position, the last frame
-            // running into the first.
+            // running into the first (looped) or held.
             let n = self.sound.channels.get() as usize;
             let frames = self.sound.samples.len() / n;
+            if frames == 0 || (!self.looped && self.pos >= frames as f64) {
+                return None;
+            }
             let i = self.pos as usize;
             let t = (self.pos - i as f64) as f32;
-            let j = (i + 1) % frames;
+            let j = if self.looped { (i + 1) % frames } else { (i + 1).min(frames - 1) };
             for (c, out) in self.frame.iter_mut().enumerate() {
                 let (a, b) = (self.sound.samples[i * n + c], self.sound.samples[j * n + c]);
                 *out = a + (b - a) * t;
             }
-            self.pos = (self.pos + self.speed) % frames as f64;
+            self.pos += self.speed;
+            if self.looped {
+                self.pos %= frames as f64;
+            }
         }
-        self.frame[channel]
+        Some(self.frame[channel])
     }
 
     /// Filters the next sample (channels interleaved).
@@ -239,7 +271,7 @@ impl Iterator for LowPass {
     type Item = bevy::audio::Sample;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let x = self.input();
+        let x = self.input()?;
         Some(self.step(x))
     }
 }
@@ -304,6 +336,7 @@ mod tests {
             sound: Arc::new(Decoded { samples, channels, rate }),
             pitch: pitch.clone(),
             cutoff: Arc::new(AtomicU32::new(OUTSIDE_HZ.to_bits())),
+            looped: true,
         };
         (sound.decoder(), pitch)
     }
@@ -321,6 +354,14 @@ mod tests {
         assert_eq!(played.len(), once * 2 + 1000);
         assert!(played.iter().all(|x| x.is_finite() && x.abs() < 2.0));
         assert!(played[once + 500..].iter().any(|x| x.abs() > 0.01), "heard after the loop");
+    }
+
+    /// A sound played once ends after its last frame.
+    #[test]
+    fn sound_played_once_ends() {
+        let (mut f, _) = looped(vec![0.5; 1000], 1.0);
+        f.looped = false;
+        assert_eq!(f.by_ref().count(), 1000);
     }
 
     /// The pitch follows the speed set while the sound plays: a 441 Hz tone at half speed is
