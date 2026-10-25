@@ -49,7 +49,7 @@ use crate::flight::{Aircraft, Player};
 use crate::hotas::InputConfig;
 use crate::hud::{HudMode as Hud, HudState, Waypoints, map_units};
 use crate::input::Action;
-use crate::mfd::{LeftMfd, MfdCmd, MfdSide, MfdState, OsbFn, RightMfd, osb};
+use crate::mfd::{CamDir, LeftMfd, MfdCmd, MfdSide, MfdState, OsbFn, RightMfd, osb};
 use crate::settings::{AppState, Settings};
 use crate::world::{WU, WorldPos};
 
@@ -686,14 +686,19 @@ static OBJECTIVE_STEPS: &[Step] = {
             target: |_| T::Action(BayDoors),
             done: |c| c.a.bay_open || c.leg.best == Some(Store::Gun) || c.leg.over,
         },
+        // After the store's steps: the classic camera and weapons pages share the right MFD.
         Step {
-            only: photo,
+            only: all,
             phase: OBJECTIVE,
-            title: "Camera page",
-            detail: "The camera's picture: the photo counts with the target in it",
+            title: "Target camera",
+            detail: "The tracking camera, ahead: the MFD shows {name} as you close in (a photo \
+                     counts with it in the picture)",
             keys: &[CamAhead],
             target: |c| c.page_button(Page::Camera),
-            done: |c| c.page(Page::Camera).is_some() || c.leg.over,
+            done: |c| {
+                c.page(Page::Camera).is_some() && (c.mfd.modern || c.mfd.cam_dir == CamDir::Ahead)
+                    || c.leg.over
+            },
         },
         Step {
             only: ground,
@@ -1790,6 +1795,11 @@ mod tests {
                 let fires = steps.iter().any(|s| s.keys.contains(&Action::FireWeapon));
                 assert_eq!(fires, aim != Aim::Land, "{f:?} {aim:?}");
                 assert_eq!(steps.iter().any(|s| s.title.starts_with("Land at")), aim == Aim::Land);
+                // The target camera once there, after the store's page (the same MFD).
+                let at = |t: &str| steps.iter().position(|s| s.title.starts_with(t));
+                let camera = at("Target camera").unwrap_or_else(|| panic!("{f:?} {aim:?}"));
+                assert!(at("Fly to").unwrap() < camera, "{f:?} {aim:?}");
+                assert!(at("Select the").is_none_or(|s| s < camera), "{f:?} {aim:?}");
                 assert_eq!(
                     steps.iter().any(|s| s.title == "Open the weapon bay"),
                     f.bomb_bay && aim != Aim::Land,
