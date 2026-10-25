@@ -711,7 +711,14 @@ impl PanelParams<'_, '_> {
     /// The horizontal situation indicator: heading and the bearing and distance to the
     /// current waypoint.
     pub fn draw_hsi(&self, c: &mut Canvas) {
-        let Ok(a) = self.aircraft.single() else { return };
+        let Some((heading, bearing, dist)) = self.hsi_values() else { return };
+        hsi(c, heading, bearing, dist, self.waypoints.current);
+    }
+
+    /// What the HSI shows: the heading, the bearing to the current waypoint (radians, true) and
+    /// its distance (km).
+    pub fn hsi_values(&self) -> Option<(f32, Option<f32>, Option<f32>)> {
+        let a = self.aircraft.single().ok()?;
         let heading = a.euler().0;
         let wp = self.waypoints.points.get(self.waypoints.current);
         let dist = wp.zip(self.positions.single().ok()).map(|(w, p)| {
@@ -719,7 +726,7 @@ impl PanelParams<'_, '_> {
             ((w.east - e).hypot(w.north - n) * crate::world::WU / 1000.0) as f32
         });
         let bearing = wp.map(|_| crate::flight::bam(a.waypoint_bearing));
-        hsi(c, heading, bearing, dist, self.waypoints.current);
+        Some((heading, bearing, dist))
     }
 
     /// The RWR scope.
