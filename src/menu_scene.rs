@@ -1,7 +1,8 @@
 //! The scene behind the main menu: an F-117A on the apron at Tabor on one side of the screen,
 //! the control tower behind it on the other, the menu between them, on a clear full-moon night in
-//! the classic palette with the moon over the field, casting shadows. In VR the player stands on the
-//! apron, life size, with the menu's panel between the tower and the aircraft.
+//! the classic palette with the moon over the field, casting shadows, and a few aircraft circling
+//! in the distance. In VR the player stands on the apron, life size, with the menu's panel between
+//! the tower and the aircraft.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -9,7 +10,7 @@ use bevy::render::storage::ShaderBuffer;
 
 use crate::models::{ModelAssets, ModelLibrary, ModelState};
 use crate::palette::{Palette, TimeOfDay};
-use crate::palette_material::PaletteMaterial;
+use crate::palette_material::{LEVEL_AIRCRAFT, PaletteMaterial};
 use crate::settings::{AppState, Settings};
 use crate::world::{WU, WorldAnchor, WorldPos};
 
@@ -21,7 +22,14 @@ impl Plugin for MenuScenePlugin {
             .add_systems(OnExit(AppState::Menu), (despawn_scene, crate::world::unload_theater))
             .add_systems(
                 Update,
-                (spawn_aircraft, aircraft_lights, fit_view, match_overlay_msaa)
+                (
+                    spawn_aircraft,
+                    spawn_traffic,
+                    fly_traffic,
+                    aircraft_lights,
+                    fit_view,
+                    match_overlay_msaa,
+                )
                     .run_if(resource_exists::<MenuScene>),
             );
         #[cfg(feature = "xr")]
@@ -40,6 +48,10 @@ struct SceneEntity;
 /// The aircraft on the apron (its model is spawned once the models are loaded).
 #[derive(Component)]
 struct SceneAircraft;
+
+/// One of the aircraft circling in the distance (index into `TRAFFIC`).
+#[derive(Component)]
+struct Traffic(usize);
 
 #[derive(Component)]
 struct SceneCamera;
@@ -62,8 +74,9 @@ const TOWER_FALLBACK: (f64, f64) = (567_552.0, 173_056.0);
 /// The camera (metres east, up and north of the tower's foot), its heading (degrees clockwise
 /// from north) and pitch.
 const CAMERA: [f32; 5] = [-40.0, 4.5, 215.0, 146.0, 7.0];
-/// The aircraft (metres east and north of the tower's foot) and its heading (degrees).
-const AIRCRAFT: [f32; 3] = [30.0, 170.0, 300.0];
+/// The aircraft (metres east and north of the tower's foot) and its heading (degrees): turned
+/// some 50 degrees from facing the camera, its profile towards the menu.
+const AIRCRAFT: [f32; 3] = [30.0, 170.0, 250.0];
 /// The moon's azimuth (degrees clockwise from north) and elevation: between the tower and the
 /// menu.
 const MOON: [f32; 2] = [166.0, 14.0];
@@ -71,8 +84,18 @@ const MOON: [f32; 2] = [166.0, 14.0];
 /// (metres east and north of the tower's foot), facing the panel the camera's way: the aircraft 31
 /// degrees to the left, the tower 31 degrees to the right, the moon above the tower.
 const VR_STAND: [f32; 2] = [-20.0, 190.0];
-const VR_AIRCRAFT: [f32; 3] = [30.0, 170.0, 300.0];
+const VR_AIRCRAFT: [f32; 3] = [30.0, 170.0, 240.0];
 const VR_MOON: [f32; 2] = [174.0, 28.0];
+/// Aircraft circling in the distance beyond the field: model number (aircraft file), circle
+/// centre (metres east and north of the tower's foot), radius and altitude (metres), speed (m/s,
+/// positive anticlockwise) and where on the circle it starts (turns from east).
+const TRAFFIC: [(i32, [f32; 6]); 4] = [
+    (23, [500.0, -650.0, 500.0, 130.0, 90.0, 0.0]),
+    // Its wingman.
+    (23, [500.0, -650.0, 500.0, 130.0, 90.0, -0.05]),
+    (24, [1080.0, -1450.0, 900.0, 250.0, -85.0, 0.4]),
+    (23, [1500.0, -1000.0, 1100.0, 350.0, -130.0, 0.7]),
+];
 /// VR: the player's eye height over the apron (metres).
 const VR_EYE: f32 = 1.75;
 /// The classic night palette's seed (`TimeOfDay::seed`): a few steps from dusk towards night,
@@ -251,18 +274,79 @@ fn spawn_aircraft(
         .add_child(model);
 }
 
-/// The aircraft's anti-collision lights flash; its lights follow the palette's (slots 10/11).
+/// The circling aircraft, once their model file is loaded.
+fn spawn_traffic(
+    mut commands: Commands,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    existing: Query<(), With<Traffic>>,
+) {
+    if !existing.is_empty() {
+        return;
+    }
+    let file = library.load(&server, "aircraft");
+    for (i, &(model, _)) in TRAFFIC.iter().enumerate() {
+        let name = format!("aircraft_{model:03}");
+        let Some(e) = assets.spawn(&mut commands, &file, &name, LEVEL_AIRCRAFT, true) else {
+            return;
+        };
+        // Airborne with the gear up (slot 13), navigation lights on (12).
+        let mut state = ModelState::default();
+        (state.0[12], state.0[13]) = (1, 1);
+        let scale = crate::player::AIRCRAFT_MODEL_SCALE as f32;
+        commands.entity(e).insert((
+            Traffic(i),
+            SceneEntity,
+            WorldPos::default(),
+            Transform::from_scale(Vec3::splat(scale)),
+            state,
+            crate::models::LodRange(40.0),
+        ));
+    }
+}
+
+/// The circling aircraft along their circles, banked into the turn.
+fn fly_traffic(time: Res<Time>, mut q: Query<(&Traffic, &mut WorldPos, &mut Transform)>) {
+    let t = time.elapsed_secs();
+    for (traffic, mut pos, mut tf) in &mut q {
+        let [east, north, radius, alt, speed, start] = TRAFFIC[traffic.0].1;
+        let a = start * std::f32::consts::TAU + t * speed / radius;
+        pos.0 = at_tower(east + radius * a.cos(), alt, north + radius * a.sin());
+        // Flying along the circle: anticlockwise for positive speeds.
+        let (de, dn) = (-a.sin() * speed.signum(), a.cos() * speed.signum());
+        let heading = de.atan2(dn);
+        let bank = (speed * speed / (9.81 * radius)).atan() * speed.signum();
+        tf.rotation = Quat::from_rotation_y(-heading) * Quat::from_rotation_z(bank);
+    }
+}
+
+/// The aircraft's and the circling ones' anti-collision lights flash; their lights follow the
+/// palette's (slots 10/11).
 fn aircraft_lights(
     time: Res<Time>,
     palette: Option<Res<Palette>>,
     aircraft: Query<&Children, With<SceneAircraft>>,
-    mut states: Query<&mut ModelState>,
+    mut states: Query<&mut ModelState, Without<Traffic>>,
+    mut traffic: Query<(&Traffic, &mut ModelState)>,
 ) {
     let lights = palette.is_some_and(|p| p.lights_on()) as i16;
+    let t = time.elapsed_secs();
+    for (traffic, mut s) in &mut traffic {
+        let phase = (traffic.0 as f32 * 0.618).fract();
+        for (slot, v) in crate::sim_render::anticollision(t, phase, true)
+            .into_iter()
+            .chain([(10, lights), (11, lights)])
+        {
+            if s.0[slot] != v {
+                s.0[slot] = v;
+            }
+        }
+    }
     for children in &aircraft {
         let mut it = states.iter_many_mut(children);
         while let Some(mut s) = it.fetch_next() {
-            for (slot, v) in crate::sim_render::anticollision(time.elapsed_secs(), 0.0, true)
+            for (slot, v) in crate::sim_render::anticollision(t, 0.0, true)
                 .into_iter()
                 .chain([(10, lights), (11, lights)])
             {
