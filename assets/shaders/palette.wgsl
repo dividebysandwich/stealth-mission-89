@@ -80,6 +80,8 @@ struct Globals {
     // cascades (y, 0 without shadows); the cascades' far bounds.
     shadow: vec4<f32>,
     shadow_bounds: vec4<f32>,
+    // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
+    storm_haze: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -758,6 +760,29 @@ fn whiteout(rgb: vec3<f32>, dist: f32) -> vec3<f32> {
     return mix(grey, pal(CLOUD_RAMP + 2u) * (1.0 - night_dark()), w);
 }
 
+// How thick the storm haze is at the visibility distance (1 - exp(-this)).
+const STORM_HAZE_DEPTH: f32 = 2.0;
+
+// In a storm the air under the deck is hazy with rain, the more the deck covers the sky: the
+// colour seen along view direction `nd` at `dist` metres fades into grey over the part of the
+// ray below the deck's base.
+fn storm_haze(rgb: vec3<f32>, nd: vec3<f32>, dist: f32) -> vec3<f32> {
+    let s = globals.storm_haze.x;
+    if (s <= 0.0) {
+        return rgb;
+    }
+    let base = globals.clouds.x;
+    let y = view.world_position.y;
+    var path = 0.0;
+    if (y < base) {
+        path = select(dist, min(dist, (base - y) / nd.y), nd.y > 0.0);
+    } else if (nd.y < 0.0) {
+        path = max(dist - (y - base) / -nd.y, 0.0);
+    }
+    let a = s * (1.0 - exp(-STORM_HAZE_DEPTH * path / globals.storm_haze.y));
+    return mix(rgb, pal(CLOUD_RAMP + 3u) * (1.0 - night_dark()), a);
+}
+
 // --- Smoke plumes ----------------------------------------------------------------------------
 // Smoke of burning wrecks and fires (fires.rs): a column rising from the ground (local y 0..1
 // inside a unit cylinder), widening with height and leaning downwind (local +x). The noise
@@ -891,7 +916,7 @@ fn smoke_volume(in: VertexOutput, dir: vec3<f32>, modern: bool) -> vec4<f32> {
     var rgb = cloud_ramp(7.0 + (1.0 - light / alpha) * 6.5, dist, modern);
     // The fire lights the smoke above it, most at night.
     rgb += FIRE_COLOR * min(glow / alpha, 1.0) * mix(0.5, 0.15, globals.light_info.y);
-    rgb = flash(whiteout(rgb, dist), view.world_position + dir);
+    rgb = flash(whiteout(storm_haze(rgb, normalize(dir), dist), dist), view.world_position + dir);
     if (!modern) {
         // Classic: a screen door instead of blending.
         if (alpha < bayer4(vec2<u32>(in.clip_position.xy) + vec2<u32>(2u, 1u))) { discard; }
@@ -1036,7 +1061,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         if (dot(n, dir) > 0.0) { n = -n; }
         let noise = cloud_noise(in.world_position, d);
         let c = cloud_color(noise, n, d, modern) * (1.0 - night_dark());
-        return vec4<f32>(flash(whiteout(c, d), in.world_position), cover);
+        return vec4<f32>(flash(whiteout(storm_haze(c, dir / d, d), d), in.world_position), cover);
     }
 #else ifdef PALETTE_BACKGROUND
     {
@@ -1101,7 +1126,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         let bolt_d = length(to_bolt);
         let along = min(bolt_d, 60000.0);
         let sheet = pow(max(dot(normalize(dir), to_bolt / max(bolt_d, 1.0)), 0.0), 6.0) * globals.bolt_a.w * 0.25 * flash_scale();
-        bg = flash(whiteout(bg, 1e4), eye + normalize(dir) * along) + BOLT_COLOR * sheet;
+        // The ground gradient lies on the plane y = 0; the sky is far.
+        let nd = normalize(dir);
+        let haze_d = select(1e9, max(eye.y, 0.0) / -nd.y, nd.y < 0.0);
+        bg = storm_haze(bg, nd, haze_d);
+        bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
         return vec4<f32>(bg, 1.0);
     }
 #else
@@ -1169,6 +1198,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         }
         rgb = rgb * (1.0 - dark);
     }
-    return vec4<f32>(flash(whiteout(rgb, length(dir)), in.world_position), 1.0);
+    let d = length(dir);
+    return vec4<f32>(flash(whiteout(storm_haze(rgb, dir / max(d, 1e-3), d), d), in.world_position), 1.0);
 #endif
 }

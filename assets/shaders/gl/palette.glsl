@@ -29,6 +29,8 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
+    vec4 storm_haze;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -581,6 +583,29 @@ vec3 whiteout(vec3 rgb, float dist) {
     return mix(grey, pal(CLOUD_RAMP + 2u) * (1.0 - night_dark()), w);
 }
 
+// How thick the storm haze is at the visibility distance (1 - exp(-this)).
+const float STORM_HAZE_DEPTH = 2.0;
+
+// In a storm the air under the deck is hazy with rain, the more the deck covers the sky: the
+// colour seen along view direction `nd` at `dist` metres fades into grey over the part of the
+// ray below the deck's base.
+vec3 storm_haze(vec3 rgb, vec3 nd, float dist) {
+    float s = g.storm_haze.x;
+    if (s <= 0.0) {
+        return rgb;
+    }
+    float base = g.clouds.x;
+    float y = eye_pos().y;
+    float path = 0.0;
+    if (y < base) {
+        path = nd.y > 0.0 ? min(dist, (base - y) / nd.y) : dist;
+    } else if (nd.y < 0.0) {
+        path = max(dist - (y - base) / -nd.y, 0.0);
+    }
+    float a = s * (1.0 - exp(-STORM_HAZE_DEPTH * path / g.storm_haze.y));
+    return mix(rgb, pal(CLOUD_RAMP + 3u) * (1.0 - night_dark()), a);
+}
+
 const vec3 BOLT_COLOR = vec3(0.55, 0.58, 0.75);
 
 float bolt_glow(vec3 world) {
@@ -740,7 +765,7 @@ vec4 smoke_volume(vec3 dir, bool modern) {
     if (alpha < 0.01) { discard; }
     vec3 rgb = cloud_ramp(7.0 + (1.0 - light / alpha) * 6.5, dist, modern);
     rgb += FIRE_COLOR * min(glow / alpha, 1.0) * mix(0.5, 0.15, g.light_info.y);
-    rgb = flash(whiteout(rgb, dist), eye_pos() + dir);
+    rgb = flash(whiteout(storm_haze(rgb, normalize(dir), dist), dist), eye_pos() + dir);
     if (!modern) {
         if (alpha < bayer4(uvec2(gl_FragCoord.xy) + uvec2(2u, 1u))) { discard; }
         alpha = 1.0;
@@ -772,7 +797,7 @@ vec4 shade_fragment(vec3 face, float sky_px) {
     if (dot(n, dir) > 0.0) { n = -n; }
     float noise = cloud_noise(v_world, d);
     vec3 c = cloud_color(noise, n, d, modern) * (1.0 - night_dark());
-    return vec4(flash(whiteout(c, d), v_world), cover);
+    return vec4(flash(whiteout(storm_haze(c, dir / d, d), d), v_world), cover);
 #elif defined(BACKGROUND)
     if ((uint(g.light_info.w) & 2u) != 0u) {
         return vec4(pal(dir.y >= 0.0 ? 0x88u : 0x7Cu), 1.0);
@@ -833,7 +858,11 @@ vec4 shade_fragment(vec3 face, float sky_px) {
     float bolt_d = length(to_bolt);
     float along = min(bolt_d, 60000.0);
     float sheet = pow(max(dot(normalize(dir), to_bolt / max(bolt_d, 1.0)), 0.0), 6.0) * g.bolt_a.w * 0.25 * flash_scale();
-    bg = flash(whiteout(bg, 1e4), eye + normalize(dir) * along) + BOLT_COLOR * sheet;
+    // The ground gradient lies on the plane y = 0; the sky is far.
+    vec3 nd = normalize(dir);
+    float haze_d = nd.y < 0.0 ? max(eye.y, 0.0) / -nd.y : 1e9;
+    bg = storm_haze(bg, nd, haze_d);
+    bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
     return vec4(bg, 1.0);
 #else
     uint hi = (v_word >> 8u) & 0xFFu;
@@ -889,7 +918,8 @@ vec4 shade_fragment(vec3 face, float sky_px) {
         }
         rgb = rgb * (1.0 - dark);
     }
-    return vec4(flash(whiteout(rgb, length(dir)), v_world), 1.0);
+    float dl = length(dir);
+    return vec4(flash(whiteout(storm_haze(rgb, dir / max(dl, 1e-3), dl), dl), v_world), 1.0);
 #endif
 }
 

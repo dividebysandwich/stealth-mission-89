@@ -139,6 +139,12 @@ impl WeatherState {
         1.0 + ((20.0 / self.vis_km.max(1.0)).max(1.0) - 1.0) * self.storm * under
     }
 
+    /// Shader `storm_haze`: in a storm, haze in the air under the deck as thick as the deck
+    /// covers the sky (x), reaching the visibility in metres (y).
+    pub fn storm_haze(&self) -> Vec4 {
+        Vec4::new(self.storm * self.cover[1] / 100.0, (self.vis_km * 1000.0).max(1000.0), 0.0, 0.0)
+    }
+
     /// The weather of a moment of the forecast.
     fn set(&mut self, now: Now) {
         self.weather = now.weather;

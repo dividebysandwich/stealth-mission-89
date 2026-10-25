@@ -245,6 +245,8 @@ pub struct Globals {
     pub shadow: Vec4,
     /// The cascades' far bounds (metres from the eye; unused ones huge).
     pub shadow_bounds: Vec4,
+    /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
+    pub storm_haze: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -280,6 +282,7 @@ impl Default for Globals {
             moon: Vec4::ZERO,
             shadow: Vec4::ZERO,
             shadow_bounds: Vec4::ZERO,
+            storm_haze: Vec4::ZERO,
         }
     }
 }
