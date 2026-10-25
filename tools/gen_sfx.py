@@ -7,7 +7,8 @@
 - cannon_loop: the cannon firing, 100 rounds a second (20 in the loop, so it loops seamlessly):
   each round a crack over a thump, the barrels' rattle under them.
 - cannon_tail: the burst's echo and the barrels running down when the trigger is let go.
-- sfx_07_aircraft_contact: the radar's contact chime, two rising notes.
+- sfx_07_aircraft_contact: the threat warning receiver's new air contact: three quick buzzy
+  beeps, higher than its radar tones.
 - sfx_10_touchdown: the tyres touching down: a thump and a short squeal.
 - sfx_14_stall_warning: the stall horn, a buzzy tone (the game repeats it while stalled).
 - sfx_15_countermeasure: a flare or chaff cartridge: a pop and the hiss of the flare burning
@@ -21,6 +22,7 @@
 - sfx_20_eject: the canopy charge, the seat's rocket and the wind blast fading.
 - sfx_31_bay_doors: the weapon bay doors' actuators, ending in a clunk.
 - sfx_32_error_buzz: a short buzzer.
+- objective_complete: a mission objective achieved: a chime, two rising notes.
 
 Each one is scaled to the loudness (RMS) the game's mix expects of it. Mono, 44.1 kHz,
 16 bit, like the other game sounds.
@@ -192,6 +194,13 @@ def cannon_tail():
 
 
 def contact():
+    t = 0.42
+    beep = lambda: buzz(0.075, 1100, 4, phase_rng=False) * env(0.075, 0.003, 1.0)
+    x = sum(at(t, 0.11 * i, fades(beep(), 0.003, 0.01)) for i in range(3))
+    return fades(x, 0.0, 0.02)
+
+
+def objective_complete():
     t = 0.52
     note = lambda hz, d: np.sin(2 * np.pi * hz * seconds(d)) * env(d, 0.004, 0.09, 0.05)
     x = at(t, 0.0, note(880, 0.2)) + at(t, 0.18, note(1175, 0.3))
@@ -303,3 +312,4 @@ if __name__ == "__main__":
     write("sfx_20_eject.flac", eject(), -13.5)
     write("sfx_31_bay_doors.flac", bay_doors(), -20.0)
     write("sfx_32_error_buzz.flac", error_buzz(), -28.0)
+    write("objective_complete.flac", objective_complete(), -18.0)

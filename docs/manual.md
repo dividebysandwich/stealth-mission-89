@@ -398,8 +398,7 @@ ranges and your position) and **TARGET** (a close-up of the primary target's sur
 fingertip; on the desktop click one. **K** shows the kneeboard large over the view on the desktop
 and turns its pages, the last one hides it again; in VR **K** or the *Kneeboard* action (bind it
 to a controller button in the input mapping) hides or shows the board. An achieved objective is
-ticked on the BRIEF and TARGET pages and on the ORD page, and plays
-`assets/sounds/objective_complete.flac` if that file exists. In VR you can also squeeze the
+ticked on the BRIEF and TARGET pages and on the ORD page, with a chime. In VR you can also squeeze the
 grip with a hand on the board to pick it up and put it anywhere in the cockpit: it stays floating
 where you let go (until the next flight).
 
