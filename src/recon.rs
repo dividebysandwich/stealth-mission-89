@@ -70,6 +70,7 @@ pub struct ReadbackByImage;
 /// A picture to read back as Bevy's `Readback::texture` does, for glvr (`ReadbackByImage`):
 /// `ReadbackComplete` is triggered on the entity.
 #[derive(Component)]
+#[cfg_attr(not(all(feature = "glvr", target_os = "linux")), allow(dead_code))]
 pub struct ImageReadback(pub Handle<Image>);
 
 /// A recon camera (one per target while its picture is taken).
