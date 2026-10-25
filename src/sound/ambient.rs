@@ -5,24 +5,27 @@
 //! - Light rain while it rains around the eye, heavy rain on top of it under a storm cell (not
 //!   inside the clouds).
 //! - Summer by day in fair weather in Central Europe and Ukraine, fading out from 500 ft to
-//!   1000 ft.
+//!   1000 ft and as the eye moves from 50 kt to 100 kt.
 //! - Crickets around noon in the desert theaters, outside the aircraft only.
 //! - Wind out of the aircraft above 300 ft, the high-altitude wind on top above 4000 ft.
 //!
 //! A sound whose time, weather or place comes or goes fades over `FADE` (real seconds); moving
 //! the view in or out of the aircraft fades the outside-only sounds over `VIEW_FADE`. Altitude
 //! takes no time: each altitude band's volume follows the height alone, crossfading across a
-//! span of height (`*_BAND`), so climbing through it never cuts.
+//! span of height (`*_BAND`), so climbing through it never cuts; the same for the eye's speed.
+//! A sound gone quiet pauses, and goes on from where it was when it is heard again.
 
 use bevy::audio::{PlaybackMode, PlaybackSettings, Volume};
+use bevy::math::DVec3;
 use bevy::prelude::*;
 use stealth_mission::weather::Sky;
 
 use super::muffle::{self, Muffler};
 use super::{Channel, SoundLevel};
-use crate::camera::ViewState;
+use crate::camera::{EyeCamera, View, ViewState};
 use crate::flight::{Aircraft, Player};
 use crate::weather::WeatherState;
+use crate::world::FloatingOrigin;
 
 /// Fade of a sound coming into or out of its time (real seconds).
 const FADE: f32 = 60.0;
@@ -52,6 +55,13 @@ const CRICKETS_BAND: (f32, f32) = (60.0, 140.0);
 const SUMMER_BAND: (f32, f32) = (500.0, 1000.0);
 const WIND_BAND: (f32, f32) = (200.0, 400.0);
 const WIND_HIGH_BAND: (f32, f32) = (3500.0, 4500.0);
+/// The summer fades out as the eye moves faster across this band (knots).
+const SUMMER_SPEED: (f32, f32) = (50.0, 100.0);
+/// Time constant (s) smoothing the eye's speed, and the speed (m/s) beyond which a move is a
+/// jump of the view, not flight.
+const SPEED_TAU: f32 = 0.5;
+const JUMP_SPEED: f32 = 2000.0;
+const KNOTS_PER_MS: f32 = 1.943_844;
 
 /// The night crickets' hours (local time, around midnight), the summer's daylight and the
 /// desert crickets' noon.
@@ -70,9 +80,12 @@ pub(super) struct Ambience {
     view: [f32; 7],
     /// The flight has just started: the sounds start where they are.
     fresh: bool,
+    /// The eye last frame (world position and view), and its speed (knots, smoothed).
+    eye: Option<(DVec3, View)>,
+    knots: f32,
 }
 
-/// A playing ambient loop (index into `BEDS`).
+/// An ambient loop (index into `BEDS`), playing or paused while it is not heard.
 #[derive(Component)]
 pub(super) struct AmbientLoop(usize);
 
@@ -85,14 +98,17 @@ pub(super) fn load(mut ambience: ResMut<Ambience>, server: Res<AssetServer>) {
 
 pub(super) fn reset(mut ambience: ResMut<Ambience>) {
     ambience.fresh = true;
+    ambience.eye = None;
+    ambience.knots = 0.0;
 }
 
 /// What the ambient sounds follow.
 struct Around<'a> {
     /// Local time (hours, 0..24).
     hours: f32,
-    /// Height of the eye above the ground (ft).
+    /// Height of the eye above the ground (ft), and its speed (knots).
     agl: f32,
+    knots: f32,
     /// The view is out of the aircraft.
     outside: bool,
     theater: &'a str,
@@ -103,7 +119,8 @@ struct Around<'a> {
     sunny: bool,
 }
 
-/// Each sound's due: in its time and place, heard from this view, and its altitude band's gain.
+/// Each sound's due: in its time and place, heard from this view, and its gain by the eye's
+/// altitude (and speed).
 fn due(a: &Around) -> [(bool, bool, f32); 7] {
     let within = |(from, to): (f32, f32)| {
         if from <= to { (from..to).contains(&a.hours) } else { a.hours >= from || a.hours < to }
@@ -115,8 +132,12 @@ fn due(a: &Around) -> [(bool, bool, f32); 7] {
     d[CRICKETS] = (within(NOON) && DESERT_THEATERS.contains(&a.theater), a.outside, 1.0);
     d[RAIN_LIGHT] = (a.raining, true, 1.0);
     d[RAIN] = (a.raining && a.storm, true, 1.0);
-    d[SUMMER] =
-        (within(DAY) && a.sunny && SUMMER_THEATERS.contains(&a.theater), true, below(SUMMER_BAND));
+    let slow = 1.0 - smoothstep(SUMMER_SPEED.0, SUMMER_SPEED.1, a.knots);
+    d[SUMMER] = (
+        within(DAY) && a.sunny && SUMMER_THEATERS.contains(&a.theater),
+        true,
+        below(SUMMER_BAND) * slow,
+    );
     d[WIND] = (true, a.outside, above(WIND_BAND));
     d[WIND_HIGH] = (true, a.outside, above(WIND_HIGH_BAND));
     d
@@ -133,7 +154,24 @@ fn approach(v: f32, on: bool, dt: f32, secs: f32) -> f32 {
     if on { (v + step).min(1.0) } else { (v - step).max(0.0) }
 }
 
-/// Fades the ambient sounds in and out, starting and stopping their loops.
+/// The eye's speed (knots, smoothed) from its move since last frame; a change of view or a jump
+/// is not counted.
+fn eye_speed(ambience: &mut Ambience, eye: Option<(DVec3, View)>, dt: f32) -> f32 {
+    let last = std::mem::replace(&mut ambience.eye, eye);
+    if let (Some((p, view)), Some((q, last_view))) = (eye, last)
+        && view == last_view
+        && dt > 0.0
+    {
+        let speed = (p.distance(q) as f32) / dt;
+        if speed < JUMP_SPEED {
+            let k = 1.0 - (-dt / SPEED_TAU).exp();
+            ambience.knots += (speed * KNOTS_PER_MS - ambience.knots) * k;
+        }
+    }
+    ambience.knots
+}
+
+/// Fades the ambient sounds in and out, starting their loops and pausing them while silent.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn ambience(
     mut commands: Commands,
@@ -145,15 +183,25 @@ pub(super) fn ambience(
     clock: Res<crate::mfd::MissionClock>,
     player: Query<&Aircraft, With<Player>>,
     real: Res<Time<Real>>,
+    virt: Res<Time<Virtual>>,
+    origin: Res<FloatingOrigin>,
+    eye: Query<&GlobalTransform, With<EyeCamera>>,
     settings: Res<crate::settings::Settings>,
-    mut loops: Query<(Entity, &AmbientLoop, Option<&mut AudioSink>)>,
+    mut loops: Query<(&AmbientLoop, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
 ) {
     let a = player.single().ok();
+    let at = eye
+        .single()
+        .ok()
+        .zip(view.as_deref())
+        .map(|(tf, v)| (origin.origin + tf.translation().as_dvec3(), v.view));
+    let knots = eye_speed(&mut ambience, at, virt.delta_secs());
     let seconds = clock.start_seconds + clock.elapsed.unwrap_or(a.map_or(0.0, |a| a.time));
     let around = Around {
         hours: (seconds / 3600.0).rem_euclid(24.0),
         agl: weather.eye_ft - a.map_or(0.0, |a| a.ground_altitude),
+        knots,
         outside: !muffle::inside(view.as_deref()),
         theater: theater.as_ref().map_or("", |t| t.id.as_str()),
         // Under the clouds, not in them.
@@ -180,16 +228,21 @@ pub(super) fn ambience(
         ambience.view[i] = view;
         volumes[i] = BEDS[i].1 * fade * view * band * gain;
     }
+    // Silent loops pause where they are (rodio reads no samples of a paused sink).
     let mut have = [false; 7];
-    for (e, l, sink) in &mut loops {
+    for (l, sink) in &mut loops {
+        have[l.0] = true;
+        let Some(mut sink) = sink else { continue };
         let v = volumes[l.0];
         if v <= 1e-4 {
-            commands.entity(e).despawn();
+            if !sink.is_paused() {
+                sink.pause();
+            }
             continue;
         }
-        have[l.0] = true;
-        if let Some(mut sink) = sink {
-            sink.set_volume(Volume::Linear(v));
+        sink.set_volume(Volume::Linear(v));
+        if sink.is_paused() {
+            sink.play();
         }
     }
     for (i, &v) in volumes.iter().enumerate() {
@@ -221,6 +274,7 @@ mod tests {
         Around {
             hours: 12.0,
             agl: 0.0,
+            knots: 0.0,
             outside: true,
             theater: "central_europe",
             raining: false,
@@ -254,6 +308,31 @@ mod tests {
         assert_eq!(at(6000.0, true)[WIND_HIGH].2, 1.0);
         let w = at(4000.0, true)[WIND_HIGH].2;
         assert!(w > 0.3 && w < 0.7, "{w}");
+    }
+
+    /// The summer fades out as the eye speeds up from 50 to 100 kt.
+    #[test]
+    fn summer_by_speed() {
+        let summer = |knots| due(&Around { knots, ..around() })[SUMMER].2;
+        assert_eq!(summer(40.0), 1.0);
+        assert!(summer(75.0) > 0.3 && summer(75.0) < 0.7);
+        assert_eq!(summer(100.0), 0.0);
+    }
+
+    /// The eye's speed follows its moves, but not a change of view or a jump.
+    #[test]
+    fn eye_speed_skips_jumps() {
+        let mut a = Ambience::default();
+        let mut knots = 0.0;
+        for i in 0..1000 {
+            let p = DVec3::X * (i as f64 * 0.5);
+            knots = eye_speed(&mut a, Some((p, View::Chase)), 0.01);
+        }
+        assert!((knots - 50.0 * KNOTS_PER_MS).abs() < 1.0, "{knots}");
+        let before = knots;
+        let jump = eye_speed(&mut a, Some((DVec3::X * 5000.0, View::Chase)), 0.01);
+        let switch = eye_speed(&mut a, Some((DVec3::X * 5040.0, View::Cockpit)), 0.01);
+        assert_eq!((jump, switch), (before, before));
     }
 
     /// Summer in fair daylight in Central Europe and Ukraine; desert crickets at noon, outside.
