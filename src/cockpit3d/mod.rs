@@ -14,7 +14,7 @@
 //! highlights them) and pressed with the trigger, clicked with the mouse on the desktop, or by scripts (`press=Gear`).
 //! The stick and throttle are grabbed with the VR controllers (`levers`). On the desktop the
 //! mouse points at the nearest part under the cursor (`pick`), and resting on one shows its
-//! tooltip (`tooltips`).
+//! tooltip (`tooltips`). The interactive tutorial points at the part to press next (`tutorial`).
 //!
 //! VR input arrives through `Hands` (filled by the XR module, in the cockpit frame).
 
@@ -27,6 +27,7 @@ mod model;
 mod pick;
 mod shading;
 pub mod tooltips;
+mod tutorial;
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::input::mouse::AccumulatedMouseMotion;
@@ -60,11 +61,12 @@ impl Plugin for Cockpit3dPlugin {
         .init_resource::<levers::CockpitAnchors>()
         .init_resource::<pick::Shapes>()
         .init_resource::<tooltips::TipAnchor>()
+        .init_resource::<tutorial::Tutorial>()
         .add_message::<PressControl>()
         .add_message::<ConsoleButton>()
         .add_message::<ScreenClick>()
         .add_systems(Startup, (setup_materials, initial_look, model::load_models))
-        .add_systems(OnEnter(AppState::Flight), tooltips::spawn_box)
+        .add_systems(OnEnter(AppState::Flight), (tooltips::spawn_box, tutorial::spawn_overlay))
         .add_systems(
             Update,
             (
@@ -77,6 +79,9 @@ impl Plugin for Cockpit3dPlugin {
                 pick::forget_shapes,
                 tooltips::hover,
                 tooltips::place_screen,
+                tutorial::advance,
+                tutorial::glow,
+                tutorial::show,
             )
                 .chain()
                 .run_if(in_state(AppState::Flight)),

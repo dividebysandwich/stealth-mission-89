@@ -911,6 +911,7 @@ pub(crate) fn simulation_options(
     group(ui, "Simulation", |ui| {
         realism_options(ui, settings);
         crash_option(ui, settings);
+        tutorial_option(ui, settings);
         if let Some(note) = note {
             ui.label(egui::RichText::new(note).small().color(DIM));
         }
@@ -925,6 +926,22 @@ fn crash_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             "Pulls up automatically near the ground (gear up)",
             "Ground contact and collisions are not fatal",
             "Off: the ground can always be hit",
+        ],
+    )
+    .changed()
+    {
+        settings.set_changed();
+    }
+}
+
+fn tutorial_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    let s = settings.bypass_change_detection();
+    if facts(
+        ui.checkbox(&mut s.tutorial, "Interactive tutorial"),
+        &[
+            "Step by step from the takeoff to the landing, in any theater and mission",
+            "An arrow points at the cockpit part to use next, which blinks blue",
+            "The box says what to do and which keys do it",
         ],
     )
     .changed()

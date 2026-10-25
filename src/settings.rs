@@ -105,6 +105,8 @@ pub struct Settings {
     pub aircraft: crate::aircraft::AircraftKind,
     /// Tooltips over the cockpit's parts (in-flight menu; on by default).
     pub tooltips: bool,
+    /// `--tutorial`: the interactive tutorial in flight (`cockpit3d::tutorial`; off by default).
+    pub tutorial: bool,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -261,6 +263,7 @@ impl Settings {
                 .and_then(|s| crate::aircraft::AircraftKind::parse(&s))
                 .unwrap_or_default(),
             tooltips: true,
+            tutorial: has("--tutorial"),
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,

@@ -487,7 +487,7 @@ pub(super) fn throttle_tip() -> Tip {
 
 /// The tooltips' font: egui's Hack (as the menus), which has the accented letters of the
 /// keyboard layouts (Bevy's built-in font only has ASCII: "é" would show as a box).
-const FONT: &[u8] = epaint_default_fonts::HACK_REGULAR;
+pub(super) const FONT: &[u8] = epaint_default_fonts::HACK_REGULAR;
 
 /// Whether the tooltip font draws every character of `s`.
 fn drawable(s: &str) -> bool {
@@ -500,7 +500,7 @@ fn drawable(s: &str) -> bool {
 /// when an action has several keys (those of one action joined by "/", the actions' by ", "). A
 /// key whose label on the layout the font can't draw (a non-Latin layout) is named as on a US
 /// keyboard.
-fn keys_text(actions: &[Action], input: &InputConfig) -> String {
+pub(super) fn keys_text(actions: &[Action], input: &InputConfig) -> String {
     let groups = actions.iter().map(|&a| {
         input
             .keys_for(ButtonTarget::Action(a))
@@ -536,7 +536,7 @@ fn join_keys(groups: impl IntoIterator<Item = Vec<String>>) -> String {
 }
 
 /// The text broken into lines of at most `LINE_CHARS` (at spaces; a longer word on its own).
-fn wrap(text: &str) -> String {
+pub(super) fn wrap(text: &str) -> String {
     let mut out = String::new();
     let mut len = 0;
     for word in text.split(' ').filter(|w| !w.is_empty()) {

@@ -5,16 +5,17 @@
 //! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION. SAVE MISSION saves a
 //! single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded save starts
 //! with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
-//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
-//! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the engine
-//! low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
-//! bindings are the main menu's dialog (`input_dialog.rs`) over the view (in VR on the menu panel
-//! in front of the head), the menu's screen hidden until its DONE; it takes every key, Esc
-//! included. They apply at once and are saved to the preferences when the menu closes. Esc, BACK or
-//! the gamepad's B go back a page. Choose an entry with the mouse, a VR fingertip and the trigger,
-//! the arrow keys / gamepad d-pad / VR thumbstick and Enter / A / X. In VR a fingertip on the
-//! screen highlights an entry and the trigger presses it (a trigger pulled away from the screen and
-//! the cockpit controls presses the highlighted entry).
+//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the
+//! interactive tutorial, the VR cockpit size), GRAPHICS (shaders, MSAA, shadows, point lights,
+//! time of day), SOUND (volumes, the engine low-pass) and CONTROLS (head tracking, the key and
+//! joystick bindings, the key guide). The bindings are the main menu's dialog (`input_dialog.rs`)
+//! over the view (in VR on the menu panel in front of the head), the menu's screen hidden until
+//! its DONE; it takes every key, Esc included. They apply at once and are saved to the
+//! preferences when the menu closes. Esc, BACK or the gamepad's B go back a page. Choose an entry
+//! with the mouse, a VR fingertip and the trigger, the arrow keys / gamepad d-pad / VR thumbstick
+//! and Enter / A / X. In VR a fingertip on the screen highlights an entry and the trigger presses
+//! it (a trigger pulled away from the screen and the cockpit controls presses the highlighted
+//! entry).
 //!
 //! KEY GUIDE shows the key bindings and the mouse or VR controllers (`key_guide.rs`) on the
 //! screen, scrolled with the arrow keys, the mouse wheel, the gamepad d-pad or a VR thumbstick;
@@ -141,7 +142,9 @@ impl Page {
                 Open(Page::Controls),
                 Back,
             ],
-            Page::Game => &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back],
+            Page::Game => {
+                &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, Tutorial, CockpitSize, Back]
+            }
             Page::Graphics => {
                 &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
             }
@@ -232,6 +235,7 @@ enum Item {
     Avionics,
     AutoTrim,
     Tooltips,
+    Tutorial,
     CockpitSize,
     Volume(Vol),
     LowPass,
@@ -261,6 +265,7 @@ impl Item {
             Item::Avionics => "AVIONICS",
             Item::AutoTrim => "AUTO TRIM",
             Item::Tooltips => "TOOLTIPS",
+            Item::Tutorial => "INTERACTIVE TUTORIAL",
             Item::CockpitSize => "COCKPIT SIZE",
             Item::Volume(Vol::Master) => "MASTER VOLUME",
             Item::Volume(Vol::Engine) => "ENGINE",
@@ -288,6 +293,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::Tutorial => on(s.tutorial),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
             Item::LowPass => on(s.engine_low_pass),
@@ -992,6 +998,7 @@ fn navigate(
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::Tutorial => s.tutorial = !s.tutorial,
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::Bindings => {
