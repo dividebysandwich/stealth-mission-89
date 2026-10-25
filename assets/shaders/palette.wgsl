@@ -107,6 +107,11 @@ struct Vertex {
     // Palette colour of each dot in a batch of several colours (dots.rs `dot_batch_coloured`).
     @location(2) colour: u32,
 #endif
+#ifdef VERTEX_WORD
+    // Colour word of each vertex of a mesh of several colours (palette_material.rs
+    // `ATTRIBUTE_PALETTE_WORD`).
+    @location(3) word: u32,
+#endif
 };
 
 struct VertexOutput {
@@ -127,6 +132,9 @@ struct VertexOutput {
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
+#endif
+#ifdef VERTEX_WORD
+    @location(9) @interpolate(flat) word: u32,
 #endif
 };
 
@@ -173,6 +181,9 @@ fn vertex(v: Vertex) -> VertexOutput {
         | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u));
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
+#endif
+#ifdef VERTEX_WORD
+    out.word = v.word;
 #endif
     // Smoke volumes: the view ray and the sun in the plume's local space (inverse of the
     // scaled rotation m = diag(1/s^2) m^T).
@@ -967,13 +978,22 @@ struct Deriv {
     sky_px: f32,
 }
 
+// The colour word: the material's, or the vertex's.
+fn colour_word(in: VertexOutput) -> u32 {
+#ifdef VERTEX_WORD
+    return in.word;
+#else
+    return material.word;
+#endif
+}
+
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var deriv: Deriv;
     deriv.face = cross(dpdx(in.world_position), dpdy(in.world_position));
     deriv.sky_px = max(length(fwidth(normalize(in.world_position - view.world_position))), 1e-5);
     if ((u32(globals.light_info.w) & 1u) != 0u) {
-        return vec4<f32>(pal(material.word & 0xFFu), 1.0);
+        return vec4<f32>(pal(colour_word(in) & 0xFFu), 1.0);
     }
     if (flir_view()) {
         // Background: cold sky, cool ground.
@@ -1085,7 +1105,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         return vec4<f32>(bg, 1.0);
     }
 #else
-    let word = material.word;
+    let word = colour_word(in);
     let hi = (word >> 8u) & 0xFFu;
     var lo = word & 0xFFu;
 #ifdef DOT_COLOUR

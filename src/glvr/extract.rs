@@ -969,10 +969,15 @@ fn mesh_data(mesh: &Mesh) -> Option<MeshData> {
         Some(VertexAttributeValues::Uint32(c)) => Some(c.clone()),
         _ => None,
     };
+    let words = match mesh.attribute(crate::palette_material::ATTRIBUTE_PALETTE_WORD) {
+        Some(VertexAttributeValues::Uint32(w)) => Some(w.clone()),
+        _ => None,
+    };
     Some(MeshData {
         positions: positions.clone(),
         normals,
         uvs,
+        words,
         colours,
         extra: Vec::new(),
         indices: mesh.indices().cloned(),

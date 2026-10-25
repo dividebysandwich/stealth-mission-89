@@ -2,17 +2,24 @@
 //! (shader: assets/shaders/palette.wgsl). Shared state (live palette, sky/ground band tables)
 //! lives in one storage buffer referenced by all materials.
 
-use bevy::mesh::MeshVertexBufferLayoutRef;
+use bevy::mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef};
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
+    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError, VertexFormat,
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
 
 const SHADER: &str = "shaders/palette.wgsl";
 const PREPASS_SHADER: &str = "shaders/palette_prepass.wgsl";
+
+/// Colour word of each vertex of a mesh of several palette colours (a scenery block's in one
+/// draw), drawn with `Palette::per_vertex`.
+pub const ATTRIBUTE_PALETTE_WORD: MeshVertexAttribute =
+    MeshVertexAttribute::new("PaletteWord", 0x7D07_0002, VertexFormat::Uint32);
+/// `PaletteParams::word` of the material whose meshes carry their words per vertex.
+pub const WORD_PER_VERTEX: u32 = u32::MAX;
 
 pub const FLAG_BACKGROUND: u32 = 1;
 pub const FLAG_LINE: u32 = 2;
@@ -170,6 +177,13 @@ impl Material for PaletteMaterial {
             descriptor.vertex.shader_defs.push("DOT_COLOUR".into());
             if let Some(fragment) = descriptor.fragment.as_mut() {
                 fragment.shader_defs.push("DOT_COLOUR".into());
+            }
+        }
+        if layout.0.contains(ATTRIBUTE_PALETTE_WORD) {
+            attributes.push(ATTRIBUTE_PALETTE_WORD.at_shader_location(3));
+            descriptor.vertex.shader_defs.push("VERTEX_WORD".into());
+            if let Some(fragment) = descriptor.fragment.as_mut() {
+                fragment.shader_defs.push("VERTEX_WORD".into());
             }
         }
         let vertex_layout = layout.0.get_layout(&attributes)?;

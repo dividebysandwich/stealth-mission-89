@@ -123,6 +123,8 @@ pub struct MeshData {
     pub positions: Vec<[f32; 3]>,
     pub normals: Option<Vec<[f32; 3]>>,
     pub uvs: Option<Vec<[f32; 2]>>,
+    /// Colour word per vertex of a mesh of several colours (`ATTRIBUTE_PALETTE_WORD`).
+    pub words: Option<Vec<u32>>,
     /// Batched dot lights' palette colour per vertex (dots.rs `ATTRIBUTE_DOT_COLOUR`).
     pub colours: Option<Vec<u32>>,
     /// Effects' attributes: shader location, components, values.
@@ -572,6 +574,15 @@ impl Renderer {
                 gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, b, glow::STATIC_DRAW);
                 gl.enable_vertex_attrib_array(3);
                 gl.vertex_attrib_pointer_i32(3, 1, glow::UNSIGNED_INT, 0, 0);
+                buffers.push(vbo);
+            }
+            if let Some(w) = &mesh.words {
+                let vbo = gl.create_buffer().ok()?;
+                gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                let b = std::slice::from_raw_parts(w.as_ptr().cast::<u8>(), w.len() * 4);
+                gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, b, glow::STATIC_DRAW);
+                gl.enable_vertex_attrib_array(9);
+                gl.vertex_attrib_pointer_i32(9, 1, glow::UNSIGNED_INT, 0, 0);
                 buffers.push(vbo);
             }
             let (count, indexed) = match &mesh.indices {

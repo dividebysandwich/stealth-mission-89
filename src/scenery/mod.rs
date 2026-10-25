@@ -34,7 +34,9 @@ use bevy::prelude::*;
 use crate::dots::{dot_batch, dot_batch_coloured};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
-use crate::palette_material::{TAG_DOT, TAG_DOT_NEAR, TAG_WARM, dot_scale, mesh_tag};
+use crate::palette_material::{
+    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_WARM, dot_scale, mesh_tag,
+};
 use crate::settings::AppState;
 use crate::world::{ShapeHandles, Theater, WU, WorldAnchor, WorldPos, bevy_to_wu};
 use content::Tier;
@@ -63,6 +65,7 @@ impl Plugin for SceneryPlugin {
                         approach_sides,
                         clear_approaches,
                         share_parking,
+                        remap_vertex_words,
                     )
                         .run_if(resource_exists::<Scenery>),
                 )
@@ -288,7 +291,8 @@ fn layout(
     for r in fields.iter().flat_map(airfield::footprint) {
         ground.claim(r);
     }
-    let net = style.map(|s| network::Network::build(&ground, s, &theater.towns)).unwrap_or_default();
+    let net =
+        style.map(|s| network::Network::build(&ground, s, &theater.towns)).unwrap_or_default();
     (ground, net, fields)
 }
 
@@ -329,7 +333,8 @@ pub fn map_scenery(
     let cell = network::THEATER_M / n as f64;
     out.forest = (0..n * n)
         .map(|i| {
-            let p = DVec2::new(((i % n) as f64 + 0.5) * cell, ((n - 1 - i / n) as f64 + 0.5) * cell);
+            let p =
+                DVec2::new(((i % n) as f64 + 0.5) * cell, ((n - 1 - i / n) as f64 + 0.5) * cell);
             match ground.map_cover(p) {
                 Some(true) => true,
                 Some(false) => network::noise(style.seed, p, 1600.0) > style.forest + 0.05,
@@ -445,6 +450,49 @@ fn mesh(topology: PrimitiveTopology, pos: Vec<Vec3>) -> Mesh {
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
 }
 
+/// Model colour of each vertex of a mesh of several colours, for its colour words to follow
+/// the palette's remap (the detail level).
+#[derive(Component)]
+struct VertexColours(Vec<u8>);
+
+/// Triangles of several colours as one mesh, drawn with `Palette::per_vertex`, in colour order.
+fn multicolour_mesh(
+    palette: &Palette,
+    tris: std::collections::BTreeMap<u8, Vec<Vec3>>,
+) -> Option<(Mesh, VertexColours)> {
+    let n = tris.values().map(Vec::len).sum();
+    if n == 0 {
+        return None;
+    }
+    let (mut pos, mut colours) = (Vec::with_capacity(n), Vec::with_capacity(n));
+    for (c, t) in tris {
+        colours.resize(colours.len() + t.len(), c);
+        pos.extend(t);
+    }
+    let words: Vec<u32> = colours.iter().map(|&c| palette.word(c) as u32).collect();
+    let m = mesh(PrimitiveTopology::TriangleList, pos)
+        .with_inserted_attribute(ATTRIBUTE_PALETTE_WORD, words);
+    Some((m, VertexColours(colours)))
+}
+
+/// The colour words of the meshes of several colours after the palette's remap changed.
+fn remap_vertex_words(
+    palette: Res<Palette>,
+    mut remap: Local<Option<usize>>,
+    blocks: Query<(&Mesh3d, &VertexColours)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    if remap.replace(palette.remap).is_none_or(|r| r == palette.remap) {
+        return;
+    }
+    for (m, colours) in &blocks {
+        if let Some(mut mesh) = meshes.get_mut(&m.0) {
+            let words: Vec<u32> = colours.0.iter().map(|&c| palette.word(c) as u32).collect();
+            mesh.insert_attribute(ATTRIBUTE_PALETTE_WORD, words);
+        }
+    }
+}
+
 fn spawn_block(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
@@ -482,11 +530,16 @@ fn spawn_geom(
     let mut children = Vec::new();
     // Buildings and structures (main tier) are warm in the FLIR picture, trees are not.
     let solid_tag = if tier == Tier::Main { MeshTag(tag.0 | TAG_WARM) } else { tag.clone() };
-    for (c, tris) in geom.solid {
+    // All colours of the solid and of the flat geometry in one mesh each, the colour words per
+    // vertex: a block of a dozen colours was a dozen draws of a few triangles each, and the
+    // draws, not the triangles, were the Steam Frame's cost. (Colour after colour as before:
+    // where flat surfaces overlap, the later colour still wins.)
+    if let Some(m) = multicolour_mesh(palette, geom.solid) {
         let e = commands
             .spawn((
-                Mesh3d(meshes.add(mesh(PrimitiveTopology::TriangleList, tris))),
-                MeshMaterial3d(palette.material(c)),
+                Mesh3d(meshes.add(m.0)),
+                MeshMaterial3d(palette.per_vertex.clone()),
+                m.1,
                 solid_tag.clone(),
             ))
             .id();
@@ -496,12 +549,13 @@ fn spawn_geom(
         }
         children.push(e);
     }
-    for (c, tris) in geom.flat {
+    if let Some(m) = multicolour_mesh(palette, geom.flat) {
         children.push(
             commands
                 .spawn((
-                    Mesh3d(meshes.add(mesh(PrimitiveTopology::TriangleList, tris))),
-                    MeshMaterial3d(palette.material(c)),
+                    Mesh3d(meshes.add(m.0)),
+                    MeshMaterial3d(palette.per_vertex.clone()),
+                    m.1,
                     tag.clone(),
                     bevy::light::NotShadowCaster,
                 ))

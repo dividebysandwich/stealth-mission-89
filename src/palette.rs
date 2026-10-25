@@ -179,6 +179,9 @@ pub struct Palette {
     pub materials: Vec<Handle<PaletteMaterial>>,
     /// Line/dot material per model colour byte (always solid, with haze).
     pub line_materials: Vec<Handle<PaletteMaterial>>,
+    /// Polygons of several colours, each vertex with its colour word
+    /// (`ATTRIBUTE_PALETTE_WORD`).
+    pub per_vertex: Handle<PaletteMaterial>,
     pub background: Handle<PaletteMaterial>,
     pub background_flir: Handle<PaletteMaterial>,
     pub globals: Handle<ShaderBuffer>,
@@ -298,6 +301,7 @@ impl Palette {
             remap: REMAP_DETAIL_HIGH,
             materials: vec![],
             line_materials: vec![],
+            per_vertex: Handle::default(),
             background: Handle::default(),
             background_flir: Handle::default(),
             globals: globals.clone(),
@@ -310,6 +314,10 @@ impl Palette {
         palette.line_materials = (0..=255u8)
             .map(|c| materials.add(mk(0xFF00 | (palette.word(c) & 0xFF), palette.line_flags(c))))
             .collect();
+        palette.per_vertex = materials.add(PaletteMaterial {
+            params: PaletteParams { word: crate::palette_material::WORD_PER_VERTEX, ..default() },
+            globals: globals.clone(),
+        });
         palette.background = materials.add(mk(0, FLAG_BACKGROUND));
         palette.background_flir =
             materials.add(mk(0, FLAG_BACKGROUND | crate::palette_material::FLAG_FLIR));

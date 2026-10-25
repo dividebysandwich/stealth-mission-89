@@ -55,6 +55,7 @@ const uint TAG_DOT_FAR = 2147483648u;
 const float DOT_FAR_MIN = 3000.0;
 const float AIRCRAFT_NIGHT = 0.95;
 const uint CLOUD_RAMP = 0xE0u;
+const uint WORD_PER_VERTEX = 0xFFFFFFFFu;
 
 #ifdef VERTEX
 #ifndef SINGLE
@@ -69,6 +70,9 @@ flat out uint v_dot_colour;
 // Per instance: the model matrix (locations 4..7) and the mesh tag.
 layout(location = 4) in mat4 a_model;
 layout(location = 8) in uint a_tag;
+// The colour word of each vertex, with u_word WORD_PER_VERTEX (a mesh of several colours).
+layout(location = 9) in uint a_word;
+flat out uint v_word;
 out vec3 v_world;
 flat out uint v_fog;
 flat out float v_fog_f;
@@ -108,6 +112,7 @@ void main() {
     vec4 world = a_model * vec4(a_position, 1.0);
     v_world = world.xyz;
     gl_Position = u_view_proj[VIEW] * world;
+    v_word = u_word == WORD_PER_VERTEX ? a_word : u_word;
     uint tag = a_tag;
     v_warm = ((tag & (TAG_WARM | 128u)) != 0u ? 1u : 0u) | (((tag & 7u) == 5u) ? 2u : 0u)
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u);
@@ -191,6 +196,7 @@ void main() {
 #ifdef DOT
 flat in uint v_dot_colour;
 #endif
+flat in uint v_word;
 in vec3 v_world;
 flat in uint v_fog;
 flat in float v_fog_f;
@@ -830,8 +836,8 @@ vec4 shade_fragment(vec3 face, float sky_px) {
     bg = flash(whiteout(bg, 1e4), eye + normalize(dir) * along) + BOLT_COLOR * sheet;
     return vec4(bg, 1.0);
 #else
-    uint hi = (u_word >> 8u) & 0xFFu;
-    uint lo = u_word & 0xFFu;
+    uint hi = (v_word >> 8u) & 0xFFu;
+    uint lo = v_word & 0xFFu;
 #ifdef DOT
     lo = v_dot_colour;
 #endif
@@ -891,7 +897,7 @@ void main() {
     vec3 face = cross(dFdx(v_world), dFdy(v_world));
     float sky_px = max(length(fwidth(normalize(v_world - eye_pos()))), 1e-5);
     if ((uint(g.light_info.w) & 1u) != 0u) {
-        o_colour = vec4(pal(u_word & 0xFFu), 1.0);
+        o_colour = vec4(pal(v_word & 0xFFu), 1.0);
         return;
     }
     if (flir_view()) {
