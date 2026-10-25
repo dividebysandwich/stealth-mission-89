@@ -72,6 +72,8 @@ const BOB_RATE: f32 = 1.2;
 const BLINK_RATE: f32 = 1.5;
 /// Seconds the last step's box stays up.
 const LAST_STEP_SECONDS: f32 = 15.0;
+/// Seconds a threat's box stays up after it is over (no flicker as the lamps blink).
+const ALERT_HOLD: f32 = 3.0;
 /// The attack begins this near an objective (km), the landing this near the base.
 const ATTACK_KM: f32 = 25.0;
 const HOME_KM: f32 = 20.0;
@@ -379,6 +381,11 @@ struct Ctx<'a> {
     leg: LegState,
     /// The selected store (None: nothing on board).
     selected: Option<Store>,
+    /// The threat and countermeasure lamps, the flares, chaff and decoys left.
+    lights: stealth_sim::Lights,
+    stores: (i32, i32, i32),
+    /// A radar tracks the aircraft.
+    tracked: bool,
 }
 
 impl Ctx<'_> {
@@ -611,7 +618,19 @@ static OBJECTIVE_STEPS: &[Step] = {
             detail: "Flies the waypoints to {name}; any stick input takes the controls back",
             keys: &[Autopilot],
             target: |_| T::Action(Autopilot),
-            done: |c| c.a.autopilot_alt > 0.0 || c.leg.near || c.leg.over,
+            done: |c| {
+                c.a.autopilot_alt > 0.0 || c.a.damage.autopilot_failed || c.leg.near || c.leg.over
+            },
+        },
+        Step {
+            only: jets,
+            phase: OBJECTIVE,
+            title: "Autopilot out of order",
+            detail: "Avionics damage: fly by hand to {name}, the HUD's \
+                     steerpoint diamond shows the way",
+            keys: &[],
+            target: |_| T::Stick,
+            done: |c| !c.a.damage.autopilot_failed || c.leg.near || c.leg.over,
         },
         Step {
             only: all,
@@ -827,7 +846,17 @@ static RETURN_STEPS: &[Step] = {
             detail: "Flies the waypoints to {name}; any stick input takes the controls back",
             keys: &[Autopilot],
             target: |_| T::Action(Autopilot),
-            done: |c| c.a.autopilot_alt > 0.0 || c.leg.near,
+            done: |c| c.a.autopilot_alt > 0.0 || c.a.damage.autopilot_failed || c.leg.near,
+        },
+        Step {
+            only: jets,
+            phase: RETURN,
+            title: "Autopilot out of order",
+            detail: "Avionics damage: fly by hand to {name}, the HUD's \
+                     steerpoint diamond shows the way",
+            keys: &[],
+            target: |_| T::Stick,
+            done: |c| !c.a.damage.autopilot_failed || c.leg.near,
         },
         Step {
             only: all,
@@ -913,6 +942,63 @@ static RETURN_STEPS: &[Step] = {
     ]
 };
 
+const THREAT: &str = "THREAT";
+
+/// The threats, shown before the lesson's step while they last (`done`: over), the first one
+/// that applies. A stick input to evade takes the autopilot off: the lesson asks for it again
+/// afterwards.
+static ALERTS: &[Step] = {
+    use Action::*;
+    use Target as T;
+    &[
+        Step {
+            only: all,
+            phase: THREAT,
+            title: "Radar-guided missile: chaff",
+            detail: "Release chaff, then turn hard away from the missile; the ECM jams it from \
+                     far enough, a decoy draws it away",
+            keys: &[Chaff, Ecm, Decoy],
+            target: |_| T::Action(Chaff),
+            done: |c| !c.lights.rad_threat || c.lights.chaff || c.stores.1 == 0,
+        },
+        Step {
+            only: all,
+            phase: THREAT,
+            title: "Infrared missile: flares",
+            detail: "Release flares, then turn hard away from the missile; the IR jammer jams it \
+                     from far enough, a decoy draws it away",
+            keys: &[Flare, IrJammer, Decoy],
+            target: |_| T::Action(Flare),
+            done: |c| !c.lights.ir_threat || c.lights.flare || c.stores.0 == 0,
+        },
+        Step {
+            only: all,
+            phase: THREAT,
+            title: "Evade the missile",
+            detail: "Turn hard away and dive: once its smoke trail ends its motor is out and it \
+                     slows down; a decoy draws it away",
+            keys: &[Decoy],
+            target: |c| {
+                if c.stores.2 > 0 && !c.lights.decoy { T::Action(Decoy) } else { T::Stick }
+            },
+            done: |c| !c.lights.rad_threat && !c.lights.ir_threat,
+        },
+        Step {
+            only: all,
+            phase: THREAT,
+            title: "Tracked by a radar",
+            detail: "Descend, slow down, keep the wings level and the bay shut until the radar \
+                     loses you (EMV and signal bars apart); the tactical page shows its circle",
+            keys: &[ThrottleDown],
+            target: |c| match c.page_display(Page::Tactical) {
+                T::None => T::Display(CanvasRole::Rwr),
+                t => t,
+            },
+            done: |c| !c.tracked || c.leg.near,
+        },
+    ]
+};
+
 /// A step of the lesson, and its leg.
 #[derive(Clone, Copy)]
 struct Entry {
@@ -983,10 +1069,12 @@ pub(super) struct Tutorial {
     at: usize,
     /// Seconds on the step (not while the menu is open).
     dwell: f32,
+    /// The threat shown (index in `ALERTS`) and when it last applied (seconds).
+    alert: Option<(usize, f32)>,
     /// The step's phase, title and detail with their words, and what they were filled for
-    /// (the step, the store it names).
+    /// (the threat, the step, the store it names).
     texts: [String; 3],
-    filled: Option<(usize, Option<Store>)>,
+    filled: Option<(Option<usize>, usize, Option<Store>)>,
     /// What the step shows, and the cockpit part that is.
     target: Target,
     part: Option<Entity>,
@@ -996,8 +1084,12 @@ pub(super) struct Tutorial {
 }
 
 impl Tutorial {
+    /// The threat shown, else the lesson's step.
     fn current(&self) -> Option<&'static Step> {
-        self.plan.get(self.at).map(|e| e.step)
+        match self.alert {
+            Some((i, _)) => ALERTS.get(i),
+            None => self.plan.get(self.at).map(|e| e.step),
+        }
     }
 }
 
@@ -1158,7 +1250,8 @@ pub(super) fn spawn_overlay(
 }
 
 /// Moves to the first step not done (an objective's steps looked at again from its first one),
-/// says what it shows and fills its texts. The lesson is made once the flight runs.
+/// puts a threat before it while it lasts, says what that shows and fills its texts. The lesson
+/// is made once the flight runs.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn advance(
     time: Res<Time<Real>>,
@@ -1207,6 +1300,7 @@ pub(super) fn advance(
     };
     let gun = sim.has_gun() && sim.gun_ammo() > 0;
     let lock = sim.targeting();
+    let (lights, stores, tracked) = (sim.lights(), sim.stores(), sim.identification().2 > 0);
     let me = IVec2::from(map_units(pos));
     let within = |p: IVec2, km: f32| (p - me).as_vec2().length() < km * MU_PER_KM;
     let route = (!wps.points.is_empty()).then(|| route_leg(&wps));
@@ -1266,6 +1360,9 @@ pub(super) fn advance(
             dwell: if at == tutorial.at { tutorial.dwell } else { 0.0 },
             leg,
             selected,
+            lights,
+            stores,
+            tracked,
         };
         if !(e.step.done)(&ctx) {
             target = (e.step.target)(&ctx);
@@ -1273,19 +1370,30 @@ pub(super) fn advance(
         }
         at += 1;
     }
-    let best = state.and_then(|(_, s)| s.best);
+    let leg = state.map(|(_, s)| s).unwrap_or_default();
     if at != tutorial.at {
         tutorial.at = at;
         tutorial.dwell = 0.0;
     }
-    tutorial.target = target;
+
+    // A threat first, while it lasts and a moment after.
+    let ctx = Ctx { a, hud: &hud, mfd: &mfd, dwell: 0.0, leg, selected, lights, stores, tracked };
+    let now = time.elapsed_secs();
+    match ALERTS.iter().position(|s| !(s.done)(&ctx)) {
+        Some(i) => tutorial.alert = Some((i, now)),
+        None if tutorial.alert.is_some_and(|(_, t)| now - t > ALERT_HOLD) => tutorial.alert = None,
+        None => {}
+    }
+    let alert = tutorial.alert.map(|(i, _)| i);
+    tutorial.target = alert.map_or(target, |i| (ALERTS[i].target)(&ctx));
 
     // The texts, filled again when the step or its store changes.
     let Some(e) = tutorial.plan.get(at) else { return };
-    if tutorial.filled == Some((at, best)) {
+    let best = leg.best;
+    if tutorial.filled == Some((alert, at, best)) {
         return;
     }
-    tutorial.filled = Some((at, best));
+    tutorial.filled = Some((alert, at, best));
     let (objective, name, aim, class) = match e.leg {
         Leg::Objective(i) => {
             let o = &tutorial.objectives[i];
@@ -1300,7 +1408,7 @@ pub(super) fn advance(
         why: aim.map_or("", |aim| why(aim, best)),
         what: what(class),
     };
-    let s = e.step;
+    let s = alert.map_or(e.step, |i| &ALERTS[i]);
     tutorial.texts = [fill(s.phase, &words), fill(s.title, &words), fill(s.detail, &words)];
 }
 
@@ -1623,7 +1731,17 @@ mod tests {
     }
 
     fn ctx<'a>(a: &'a Aircraft, hud: &'a HudState, mfd: &'a MfdState) -> Ctx<'a> {
-        Ctx { a, hud, mfd, dwell: 0.0, leg: LegState::default(), selected: None }
+        Ctx {
+            a,
+            hud,
+            mfd,
+            dwell: 0.0,
+            leg: LegState::default(),
+            selected: None,
+            lights: default(),
+            stores: (0, 0, 0),
+            tracked: false,
+        }
     }
 
     const AIMS: [Aim; 5] = [Aim::Ground, Aim::Air, Aim::Photo, Aim::Drop, Aim::Land];
@@ -1636,7 +1754,7 @@ mod tests {
 
     #[test]
     fn every_step_says_what_to_do() {
-        for s in DEPARTURE.iter().chain(OBJECTIVE_STEPS).chain(RETURN_STEPS) {
+        for s in DEPARTURE.iter().chain(OBJECTIVE_STEPS).chain(RETURN_STEPS).chain(ALERTS) {
             assert!(!s.title.is_empty() && !s.detail.is_empty(), "{}", s.title);
         }
         // The last one stays up (until it times out), whatever the flight.
@@ -1751,6 +1869,32 @@ mod tests {
         // N1 P N2 S N3 L.
         let legs = [0, 1, 2, 3, 4, 5].map(|c| route_leg(&w(c, vec![0, 1, 3, 5])));
         assert_eq!(legs, [0, 0, 1, 1, 2, 2]);
+    }
+
+    /// The first threat that applies: a missile's countermeasure while there is some and it is
+    /// not out yet, else evading; a radar tracking only away from the objective.
+    #[test]
+    fn threats_come_first() {
+        let (a, hud, mfd) =
+            (Aircraft::new_on_runway(0.0), HudState::default(), MfdState::default());
+        let alert = |c: &Ctx| ALERTS.iter().position(|s| !(s.done)(c)).map(|i| ALERTS[i].title);
+        let mut c = ctx(&a, &hud, &mfd);
+        assert_eq!(alert(&c), None);
+        c.stores = (4, 4, 2);
+        c.lights.rad_threat = true;
+        assert_eq!(alert(&c), Some("Radar-guided missile: chaff"));
+        c.lights.chaff = true;
+        assert_eq!(alert(&c), Some("Evade the missile"));
+        assert_eq!((ALERTS[2].target)(&c), Target::Action(Action::Decoy));
+        c.lights = default();
+        c.lights.ir_threat = true;
+        c.stores.0 = 0;
+        assert_eq!(alert(&c), Some("Evade the missile"));
+        c.lights = default();
+        c.tracked = true;
+        assert_eq!(alert(&c), Some("Tracked by a radar"));
+        c.leg.near = true;
+        assert_eq!(alert(&c), None);
     }
 
     #[test]
