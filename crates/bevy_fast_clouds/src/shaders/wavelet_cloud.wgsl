@@ -40,7 +40,7 @@ struct CloudGlobals {
 struct FragOut {
     // Premultiplied colour and coverage.
     @location(0) color: vec4<f32>,
-    // View depth (world units) where the cloud turns opaque: what it hides behind it.
+    // View depth (view units) where the cloud turns opaque: what it hides behind it.
     @location(1) distance: f32,
 }
 
@@ -350,10 +350,14 @@ fn fragment(in: VsOut) -> FragOut {
     let rd = to_hull / max(length(to_hull), 1e-5);
 
     // Distance to the opaque scene along the ray (reverse infinite z: depth = near / view z).
+    // The view may be scaled (an XR rig scaled to the cockpit): view units are `scale` world
+    // units.
     let scene_depth = scene_depth_at(vec2<i32>(in.clip.xy));
     let near = view.clip_from_view[3][2];
-    let forward = -view.world_from_view[2].xyz;
-    let t_scene = select(1e9, near / scene_depth / max(dot(rd, forward), 1e-4), scene_depth > 0.0);
+    let scale = length(view.world_from_view[2].xyz);
+    let forward = -view.world_from_view[2].xyz / scale;
+    let t_scene =
+        select(1e9, near / scene_depth * scale / max(dot(rd, forward), 1e-4), scene_depth > 0.0);
 
     let hull = ray_aabb(cam, rd, vol.aabb_min, vol.aabb_max);
     var t0 = max(hull.x, length(to_hull));
@@ -442,7 +446,8 @@ fn fragment(in: VsOut) -> FragOut {
         rgb = lod_tint(vol.j_max, globals.params1.x);
     }
     var out: FragOut;
-    out.distance = min(t_opaque * dot(rd, forward), NO_CLOUD);
+    let z = min(t_opaque * dot(rd, forward) / scale, NO_CLOUD);
+    out.distance = select(z, NO_CLOUD, t_opaque >= NO_CLOUD);
 #ifdef DITHER
     out.color = vec4<f32>(rgb, 1.0);
 #else

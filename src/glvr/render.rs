@@ -160,6 +160,8 @@ pub struct EyeView {
     pub proj_y: f32,
     pub eye: Vec3,
     pub forward: Vec3,
+    /// World units per view unit (the rig's scale in VR).
+    pub scale: f32,
 }
 
 /// The eyes of `views` (local space) in the world, from the rig's tracking root `rig` (the eye
@@ -180,6 +182,7 @@ pub fn eye_views(rig: Mat4, views: &[xr::View], widen: f32) -> Vec<EyeView> {
                 proj_y: proj.y_axis.y,
                 eye: world_from_eye.w_axis.truncate(),
                 forward: -world_from_eye.z_axis.truncate().normalize(),
+                scale: world_from_eye.z_axis.truncate().length(),
             }
         })
         .collect()
@@ -197,6 +200,7 @@ pub fn camera_view(world_from_view: Mat4, fov: f32, aspect: f32, near: f32) -> E
         up: world_from_view.y_axis.truncate().normalize(),
         eye: world_from_view.w_axis.truncate(),
         forward: -world_from_view.z_axis.truncate().normalize(),
+        scale: world_from_view.z_axis.truncate().length(),
     }
 }
 
@@ -273,6 +277,8 @@ pub struct Renderer {
     /// program.
     cloud_target: Option<(glow::Texture, glow::Texture, glow::Framebuffer, (u32, u32))>,
     cloud_composite: Program,
+    /// World units per view unit of the eyes the clouds were marched for.
+    cloud_scale: f32,
     /// The offscreen views' targets by image: a depth buffer and a framebuffer (the colour
     /// texture is in `textures`).
     targets: HashMap<AssetId<Image>, (glow::Renderbuffer, glow::Framebuffer, (u32, u32))>,
@@ -474,6 +480,7 @@ impl Renderer {
             cloud_vao,
             cloud_target: None,
             cloud_composite,
+            cloud_scale: 1.0,
             targets: HashMap::new(),
             globals,
             instances,
@@ -1317,6 +1324,7 @@ impl Renderer {
         stats: &mut Stats,
     ) -> Result<bool, String> {
         let small = (size.0.div_ceil(c.scale), size.1.div_ceil(c.scale));
+        self.cloud_scale = eyes.first().map_or(1.0, |e| e.scale);
         if self.cloud_target.is_none_or(|t| t.3 != small) {
             let gl = &self.gl;
             // SAFETY: the context is current; the objects are this renderer's.
@@ -1417,7 +1425,9 @@ impl Renderer {
             gl.use_program(Some(p.program));
             gl.uniform_1_i32(gl.get_uniform_location(p.program, "u_clouds").as_ref(), 0);
             gl.uniform_1_i32(gl.get_uniform_location(p.program, "u_distance").as_ref(), 1);
-            gl.uniform_1_f32(gl.get_uniform_location(p.program, "u_near").as_ref(), NEAR);
+            // The distances are in world units, the depth in the (scaled) eyes' units.
+            let near = NEAR * self.cloud_scale;
+            gl.uniform_1_f32(gl.get_uniform_location(p.program, "u_near").as_ref(), near);
             gl.active_texture(glow::TEXTURE0);
             gl.bind_texture(glow::TEXTURE_2D_ARRAY, Some(colour));
             gl.active_texture(glow::TEXTURE1);
