@@ -169,8 +169,34 @@ pub struct CloudFrame {
 #[derive(Resource)]
 struct CloudBuffers {
     globals: UniformBuffer<CloudGlobals>,
-    volumes: StorageBuffer<Vec<GpuVolume>>,
-    spheres: StorageBuffer<Vec<Vec4>>,
+    data: CloudData,
+}
+
+/// The volumes and their spheres: storage buffers, or where there are none (WebGL2) one
+/// texture of `CLOUD_DATA_WIDTH` texels a row, the volumes (4 texels each) and from texel
+/// `SPHERE_BASE` the spheres (read back by wavelet_cloud.wgsl's `volume` and `sphere`).
+enum CloudData {
+    Storage(StorageBuffer<Vec<GpuVolume>>, StorageBuffer<Vec<Vec4>>),
+    Texture(Texture, TextureView),
+}
+
+const CLOUD_DATA_WIDTH: u32 = 1024;
+const SPHERE_BASE: u32 = 4 * MAX_VOLUMES as u32;
+const CLOUD_DATA_TEXELS: u32 = SPHERE_BASE + MAX_SPHERES as u32;
+
+fn storage_buffers(render_device: &RenderDevice) -> bool {
+    render_device.limits().max_storage_buffers_per_shader_stage > 0
+}
+
+/// A volume as `CloudData::Texture`'s 4 texels.
+fn volume_texels(v: &GpuVolume) -> [[u32; 4]; 4] {
+    let bits = |v: Vec4| v.to_array().map(f32::to_bits);
+    [
+        bits(v.aabb_min.extend(v.j_max)),
+        bits(v.aabb_max.extend(v.h_max)),
+        v.misc.to_array(),
+        bits(v.fill),
+    ]
 }
 
 pub(crate) fn build_render(app: &mut App) {
@@ -413,6 +439,10 @@ type CompositeKey = (TextureFormat, u32);
 struct CloudPipelines {
     /// Single sampled and multisampled depth.
     layouts: [BindGroupLayoutDescriptor; 2],
+    /// No storage buffers (WebGL2): the volumes in `CloudData::Texture`, the depth read as a
+    /// float texture (through `nearest`), and no cloud distance (no independent blending for its target): lights
+    /// and smoke behind the clouds show through.
+    webgl2: bool,
     shader: Handle<Shader>,
     /// Exterior LOD 0–3, then interior LOD 0–3.
     ids: HashMap<PipelineKey, [CachedRenderPipelineId; 8]>,
@@ -483,6 +513,9 @@ fn lod_shader_defs(key: &PipelineKey, j_max: u32) -> Vec<ShaderDefVal> {
     }
     defs.push(ShaderDefVal::Int("MARCH_STEPS".into(), key.steps[j_max as usize] as i32));
     defs.push(ShaderDefVal::Int("RES_SCALE".into(), key.scale as i32));
+    defs.push(ShaderDefVal::UInt("CLOUD_DATA_WIDTH".into(), CLOUD_DATA_WIDTH));
+    defs.push(ShaderDefVal::UInt("SPHERE_BASE".into(), SPHERE_BASE));
+    defs.push(ShaderDefVal::UInt("MAX_SPHERES".into(), MAX_SPHERES as u32));
     defs
 }
 
@@ -493,7 +526,10 @@ fn hull_pipeline(
     interior: bool,
     j_max: u32,
 ) -> CachedRenderPipelineId {
-    let defs = lod_shader_defs(key, j_max);
+    let mut defs = lod_shader_defs(key, j_max);
+    if pipelines.webgl2 {
+        defs.push("WEBGL2".into());
+    }
     let layout = pipelines.layouts[key.depth_multisampled as usize].clone();
     let shader = pipelines.shader.clone();
     let kind = if interior { "interior" } else { "exterior" };
@@ -514,7 +550,7 @@ fn hull_pipeline(
         fragment: Some(FragmentState {
             shader,
             shader_defs: defs,
-            targets: vec![
+            targets: [
                 Some(ColorTargetState {
                     format: CLOUD_FORMAT,
                     blend: Some(PREMULTIPLIED_OVER),
@@ -525,7 +561,8 @@ fn hull_pipeline(
                     blend: Some(NEAREST),
                     write_mask: ColorWrites::RED,
                 }),
-            ],
+            ][..if pipelines.webgl2 { 1 } else { 2 }]
+                .to_vec(),
             ..default()
         }),
         ..default()
@@ -576,26 +613,50 @@ fn init_cloud_pipeline(
     fullscreen: Res<FullscreenShader>,
     render_device: Res<RenderDevice>,
 ) {
+    let storage = storage_buffers(&render_device);
     let layout = |label: &'static str, multisampled: bool| {
-        BindGroupLayoutDescriptor::new(
-            label,
-            &BindGroupLayoutEntries::sequential(
+        let depth = if multisampled {
+            texture_depth_2d_multisampled()
+        } else if storage {
+            texture_depth_2d()
+        } else {
+            texture_2d(TextureSampleType::Float { filterable: false })
+        };
+        let entries =
+            (depth, uniform_buffer::<ViewUniform>(true), uniform_buffer::<CloudGlobals>(false));
+        let entries = if storage {
+            BindGroupLayoutEntries::sequential(
                 ShaderStages::VERTEX_FRAGMENT,
                 (
-                    if multisampled { texture_depth_2d_multisampled() } else { texture_depth_2d() },
-                    uniform_buffer::<ViewUniform>(true),
-                    uniform_buffer::<CloudGlobals>(false),
+                    entries.0,
+                    entries.1,
+                    entries.2,
                     storage_buffer_read_only::<Vec<GpuVolume>>(false),
                     storage_buffer_read_only::<Vec<Vec4>>(false),
                 ),
-            ),
-        )
+            )
+            .to_vec()
+        } else {
+            BindGroupLayoutEntries::sequential(
+                ShaderStages::VERTEX_FRAGMENT,
+                (
+                    entries.0,
+                    entries.1,
+                    entries.2,
+                    texture_2d(TextureSampleType::Uint),
+                    sampler(SamplerBindingType::NonFiltering),
+                ),
+            )
+            .to_vec()
+        };
+        BindGroupLayoutDescriptor::new(label, &entries)
     };
     commands.insert_resource(CloudPipelines {
         layouts: [
             layout("cloud_hull_bind_group_layout", false),
             layout("cloud_hull_bind_group_layout_msaa", true),
         ],
+        webgl2: !storage,
         shader: load_embedded_asset!(asset_server.as_ref(), "shaders/wavelet_cloud.wgsl"),
         ids: HashMap::new(),
         composite_layout: BindGroupLayoutDescriptor::new(
@@ -628,11 +689,30 @@ fn init_cloud_pipeline(
             ..default()
         }),
     });
-    commands.insert_resource(CloudBuffers {
-        globals: UniformBuffer::default(),
-        volumes: StorageBuffer::from(vec![GpuVolume::default()]),
-        spheres: StorageBuffer::from(vec![Vec4::ZERO]),
-    });
+    let data = if storage {
+        CloudData::Storage(
+            StorageBuffer::from(vec![GpuVolume::default()]),
+            StorageBuffer::from(vec![Vec4::ZERO]),
+        )
+    } else {
+        let texture = render_device.create_texture(&TextureDescriptor {
+            label: Some("cloud_data"),
+            size: Extent3d {
+                width: CLOUD_DATA_WIDTH,
+                height: CLOUD_DATA_TEXELS.div_ceil(CLOUD_DATA_WIDTH),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba32Uint,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&TextureViewDescriptor::default());
+        CloudData::Texture(texture, view)
+    };
+    commands.insert_resource(CloudBuffers { globals: UniformBuffer::default(), data });
 }
 
 fn queue_cloud_pipelines(
@@ -720,10 +800,35 @@ fn prepare_cloud_buffers(
     }
     buffers.globals.set(frame.globals);
     buffers.globals.write_buffer(&render_device, &render_queue);
-    buffers.volumes.set(frame.volumes.clone());
-    buffers.volumes.write_buffer(&render_device, &render_queue);
-    buffers.spheres.set(frame.spheres.clone());
-    buffers.spheres.write_buffer(&render_device, &render_queue);
+    match &mut buffers.data {
+        CloudData::Storage(volumes, spheres) => {
+            volumes.set(frame.volumes.clone());
+            volumes.write_buffer(&render_device, &render_queue);
+            spheres.set(frame.spheres.clone());
+            spheres.write_buffer(&render_device, &render_queue);
+        }
+        CloudData::Texture(texture, _) => {
+            // The volumes, the spheres after them, in whole rows.
+            let mut texels = vec![[0u32; 4]; SPHERE_BASE as usize];
+            for (i, v) in frame.volumes.iter().enumerate() {
+                texels[4 * i..4 * i + 4].copy_from_slice(&volume_texels(v));
+            }
+            texels.extend(frame.spheres.iter().map(|s| s.to_array().map(f32::to_bits)));
+            let rows = (texels.len() as u32).div_ceil(CLOUD_DATA_WIDTH);
+            texels.resize((rows * CLOUD_DATA_WIDTH) as usize, [0; 4]);
+            let bytes: Vec<u8> = texels.iter().flatten().flat_map(|w| w.to_ne_bytes()).collect();
+            render_queue.write_texture(
+                texture.as_image_copy(),
+                &bytes,
+                TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(CLOUD_DATA_WIDTH * 16),
+                    rows_per_image: None,
+                },
+                Extent3d { width: CLOUD_DATA_WIDTH, height: rows, depth_or_array_layers: 1 },
+            );
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -764,27 +869,39 @@ fn draw_cloud_hulls(
     ) else {
         return;
     };
-    let (Some(view_binding), Some(globals), Some(volumes), Some(spheres)) = (
-        view_uniforms.uniforms.binding(),
-        buffers.globals.binding(),
-        buffers.volumes.binding(),
-        buffers.spheres.binding(),
-    ) else {
+    let (Some(view_binding), Some(globals)) =
+        (view_uniforms.uniforms.binding(), buffers.globals.binding())
+    else {
         return;
     };
 
     // March into the cloud textures (the scene's depth is read here).
-    let bind_group = ctx.render_device().create_bind_group(
-        "cloud_hull_bind_group",
-        &pipeline_cache.get_bind_group_layout(&pipelines.layouts[(msaa.samples() > 1) as usize]),
-        &BindGroupEntries::sequential((
-            depth.view(),
-            view_binding.clone(),
-            globals.clone(),
-            volumes,
-            spheres,
-        )),
-    );
+    let layout =
+        pipeline_cache.get_bind_group_layout(&pipelines.layouts[(msaa.samples() > 1) as usize]);
+    let entries = (depth.view(), view_binding.clone(), globals.clone());
+    let bind_group = match &buffers.data {
+        CloudData::Storage(volumes, spheres) => {
+            let (Some(volumes), Some(spheres)) = (volumes.binding(), spheres.binding()) else {
+                return;
+            };
+            ctx.render_device().create_bind_group(
+                "cloud_hull_bind_group",
+                &layout,
+                &BindGroupEntries::sequential((entries.0, entries.1, entries.2, volumes, spheres)),
+            )
+        }
+        CloudData::Texture(_, view) => ctx.render_device().create_bind_group(
+            "cloud_hull_bind_group",
+            &layout,
+            &BindGroupEntries::sequential((
+                entries.0,
+                entries.1,
+                entries.2,
+                view,
+                &pipelines.nearest,
+            )),
+        ),
+    };
     let cleared = |view, clear| RenderPassColorAttachment {
         view,
         depth_slice: None,
@@ -797,7 +914,7 @@ fn draw_cloud_hulls(
         color_attachments: &[
             Some(cleared(&clouds.0.default_view, LinearRgba::NONE.into())),
             Some(cleared(&clouds.1.default_view, no_cloud)),
-        ],
+        ][..if pipelines.webgl2 { 1 } else { 2 }],
         depth_stencil_attachment: None,
         timestamp_writes: None,
         occlusion_query_set: None,
@@ -840,6 +957,8 @@ fn draw_cloud_hulls(
     pass.set_bind_group(0, &bind_group, &[view_offset.offset]);
     pass.set_render_pipeline(composite);
     pass.draw(0..3, 0..1);
-    pass.set_render_pipeline(depth_write);
-    pass.draw(0..3, 0..1);
+    if !pipelines.webgl2 {
+        pass.set_render_pipeline(depth_write);
+        pass.draw(0..3, 0..1);
+    }
 }

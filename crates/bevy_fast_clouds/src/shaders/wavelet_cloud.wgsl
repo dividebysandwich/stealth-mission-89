@@ -40,8 +40,11 @@ struct CloudGlobals {
 struct FragOut {
     // Premultiplied colour and coverage.
     @location(0) color: vec4<f32>,
-    // View depth (view units) where the cloud turns opaque: what it hides behind it.
+#ifndef WEBGL2
+    // View depth (view units) where the cloud turns opaque: what it hides behind it. (WebGL2
+    // can't blend it differently from the colour: left out.)
     @location(1) distance: f32,
+#endif
 }
 
 // No opaque cloud (the largest half float).
@@ -55,13 +58,55 @@ struct VsOut {
 
 #ifdef MULTISAMPLED
 @group(0) @binding(0) var depth_texture: texture_depth_multisampled_2d;
+#else ifdef WEBGL2
+// WebGL2: the depth bound as a float texture, read through a nearest sampler (GLSL can't load
+// from a depth texture, and unsampled, wgpu leaves it filtered: incomplete, reading 0).
+@group(0) @binding(0) var depth_texture: texture_2d<f32>;
+@group(0) @binding(4) var depth_sampler: sampler;
 #else
 @group(0) @binding(0) var depth_texture: texture_depth_2d;
 #endif
+
+fn depth(p: vec2<i32>) -> f32 {
+#ifdef WEBGL2
+    let size = vec2<f32>(textureDimensions(depth_texture));
+    return textureSampleLevel(depth_texture, depth_sampler, (vec2<f32>(p) + 0.5) / size, 0.0).x;
+#else
+    return textureLoad(depth_texture, p, 0);
+#endif
+}
 @group(0) @binding(1) var<uniform> view: View;
 @group(0) @binding(2) var<uniform> globals: CloudGlobals;
+#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0
 @group(0) @binding(3) var<storage, read> volumes: array<GpuVolume>;
 @group(0) @binding(4) var<storage, read> spheres: array<vec4<f32>>;
+
+fn volume(i: u32) -> GpuVolume {
+    return volumes[i];
+}
+
+fn sphere(i: u32) -> vec4<f32> {
+    return spheres[min(i, arrayLength(&spheres) - 1u)];
+}
+#else
+// No storage buffers (WebGL2): the volumes (4 texels each), then the spheres from texel
+// SPHERE_BASE, in one texture CLOUD_DATA_WIDTH texels wide (render.rs `CloudData`).
+@group(0) @binding(3) var cloud_data: texture_2d<u32>;
+
+fn texel(i: u32) -> vec4<u32> {
+    return textureLoad(cloud_data, vec2<u32>(i % #{CLOUD_DATA_WIDTH}u, i / #{CLOUD_DATA_WIDTH}u), 0);
+}
+
+fn volume(i: u32) -> GpuVolume {
+    let a = bitcast<vec4<f32>>(texel(4u * i));
+    let b = bitcast<vec4<f32>>(texel(4u * i + 1u));
+    return GpuVolume(a.xyz, a.w, b.xyz, b.w, texel(4u * i + 2u), bitcast<vec4<f32>>(texel(4u * i + 3u)));
+}
+
+fn sphere(i: u32) -> vec4<f32> {
+    return bitcast<vec4<f32>>(texel(#{SPHERE_BASE}u + min(i, #{MAX_SPHERES}u - 1u)));
+}
+#endif
 
 const PI: f32 = 3.141592653589793;
 const HALF_PI: f32 = 1.5707963267948966;
@@ -100,7 +145,7 @@ const CUBE_UNIT: array<vec3<f32>, 36> = array<vec3<f32>, 36>(
 
 @vertex
 fn vertex(@builtin(vertex_index) vid: u32, @builtin(instance_index) inst: u32) -> VsOut {
-    let vol = volumes[inst];
+    let vol = volume(inst);
     let local = CUBE_UNIT[vid];
     let world = mix(vol.aabb_min, vol.aabb_max, local);
     var out: VsOut;
@@ -168,7 +213,7 @@ fn ridge(
 
 fn sphere_occ(p: vec3<f32>, offset: u32, local: u32, count: u32) -> f32 {
     let live = select(0.0, 1.0, local < count);
-    let s = spheres[min(offset + local, arrayLength(&spheres) - 1u)];
+    let s = sphere(offset + local);
     let d = p - s.xyz;
     let x = 1.0 - sqrt(dot(d, d)) / max(s.w, 0.001);
     let t = sat(x);
@@ -262,10 +307,9 @@ fn ray_aabb(ro: vec3<f32>, rd: vec3<f32>, bmin: vec3<f32>, bmax: vec3<f32>) -> v
 // Where the ray is inside any of the volume's spheres: (first entry, last exit).
 fn sphere_span(vol: GpuVolume, ro: vec3<f32>, rd: vec3<f32>) -> vec2<f32> {
     var span = vec2<f32>(1e20, -1e20);
-    let last = arrayLength(&spheres) - 1u;
     for (var i = 0u; i < 12u; i++) {
         if (i >= vol.misc.y) { break; }
-        let s = spheres[min(vol.misc.x + i, last)];
+        let s = sphere(vol.misc.x + i);
         let oc = ro - s.xyz;
         let b = dot(oc, rd);
         let h = b * b - (dot(oc, oc) - s.w * s.w);
@@ -330,20 +374,20 @@ fn ign(p: vec2<f32>) -> f32 {
 // corners, so clouds never spread over the edges of nearer geometry.
 fn scene_depth_at(pixel: vec2<i32>) -> f32 {
     if (RES_SCALE == 1) {
-        return textureLoad(depth_texture, pixel, 0);
+        return depth(pixel);
     }
     let last = vec2<i32>(textureDimensions(depth_texture)) - 1;
     let p = pixel * RES_SCALE;
     let q = min(p + (RES_SCALE - 1), last);
     return max(
-        max(textureLoad(depth_texture, min(p, last), 0), textureLoad(depth_texture, vec2(q.x, p.y), 0)),
-        max(textureLoad(depth_texture, vec2(p.x, q.y), 0), textureLoad(depth_texture, q, 0)),
+        max(depth(min(p, last)), depth(vec2(q.x, p.y))),
+        max(depth(vec2(p.x, q.y)), depth(q)),
     );
 }
 
 @fragment
 fn fragment(in: VsOut) -> FragOut {
-    let vol = volumes[in.volume_index];
+    let vol = volume(in.volume_index);
     let cam = view.world_position;
     let interior = vol.misc.w != 0u;
     let to_hull = in.world - cam;
@@ -446,8 +490,10 @@ fn fragment(in: VsOut) -> FragOut {
         rgb = lod_tint(vol.j_max, globals.params1.x);
     }
     var out: FragOut;
+#ifndef WEBGL2
     let z = min(t_opaque * dot(rd, forward) / scale, NO_CLOUD);
     out.distance = select(z, NO_CLOUD, t_opaque >= NO_CLOUD);
+#endif
 #ifdef DITHER
     out.color = vec4<f32>(rgb, 1.0);
 #else
