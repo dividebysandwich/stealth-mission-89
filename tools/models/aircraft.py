@@ -162,10 +162,11 @@ def f16_gear():
     r, w = 0.23, 0.16
     axle = (0.0, 1.75, F16_GROUND + r)
     g.add(mklib.wheel(axle, r, w, BLACK, n=8))
-    g.add(frustum((0.0, 1.95, trunk(1.95)), (0.0, 1.8, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
-    g.add(frustum((0.0, 2.6, trunk(2.6)), (0.0, 1.85, axle[2] + 0.35), 0.035, 0.035, GREY_L, n=4))
-    g.face2([(-0.28, 2.5, trunk(2.5)), (-0.28, 1.3, trunk(1.3)), (-0.33, 1.3, trunk(1.3) - 0.38),
-             (-0.33, 2.5, trunk(2.5) - 0.38)], GREY_B)
+    # The leg leans forward down to the wheel, braced from behind.
+    g.add(frustum((0.0, 1.5, trunk(1.5)), (0.0, 1.73, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum((0.0, 0.9, trunk(0.9)), (0.0, 1.6, -1.42), 0.035, 0.035, GREY_L, n=4))
+    g.face2([(-0.28, 2.2, trunk(2.2)), (-0.28, 1.0, trunk(1.0)), (-0.33, 1.0, trunk(1.0) - 0.38),
+             (-0.33, 2.2, trunk(2.2) - 0.38)], GREY_B)
     r, w = 0.35, 0.22
     for s in (-1, 1):
         axle = (s * 1.18, -2.3, F16_GROUND + r)
