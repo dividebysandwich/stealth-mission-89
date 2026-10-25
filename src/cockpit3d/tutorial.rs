@@ -636,8 +636,9 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: all,
             phase: OBJECTIVE,
             title: "Fly to the {target}",
-            detail: "Towards {name}, until about 25 km from it: the tactical page shows the way",
-            keys: &[],
+            detail: "Towards {name}, until about 25 km from it: the tactical page shows the way. \
+                     Tip: accelerate time for the cruise (it stops by itself on a threat)",
+            keys: &[TimeAccel],
             target: |c| c.way_display(),
             done: |c| c.leg.near || c.leg.over,
         },
@@ -867,8 +868,9 @@ static RETURN_STEPS: &[Step] = {
             only: all,
             phase: RETURN,
             title: "Fly to the landing base",
-            detail: "Towards {name}, until about 20 km from it: the tactical page shows the way",
-            keys: &[],
+            detail: "Towards {name}, until about 20 km from it: the tactical page shows the way. \
+                     Tip: accelerate time for the cruise (it stops by itself on a threat)",
+            keys: &[TimeAccel],
             target: |c| c.way_display(),
             done: |c| c.leg.near,
         },
