@@ -17,8 +17,8 @@
 //! MFD pages are formats).
 //!
 //! The arrow points at the part while the view shows it; otherwise it sticks to the window's
-//! edge on the part's side, the box following it. Outside the cockpit views the box asks for the
-//! cockpit view. The blinking overlay is the part's own meshes drawn again over everything
+//! edge on the part's side. The box stays in the window's top right corner, off the cockpit
+//! parts it names; outside the cockpit views it asks for the cockpit view. The blinking overlay is the part's own meshes drawn again over everything
 //! (`OnTop`), so it hugs their shape (and shows in the GL headset too); the box and the arrow
 //! are desktop only for now.
 //!
@@ -58,9 +58,10 @@ const SKY: Color = Color::srgb(0.53, 0.81, 0.98);
 /// The arrow's size on the screen (logical pixels) and its picture's (pixels, pointing right).
 const ARROW: f32 = 56.0;
 const ARROW_IMAGE: u32 = 64;
-/// Gap between the arrow's tip and the part, and between the arrow and the box.
+/// Gap between the arrow's tip and the part.
 const GAP: f32 = 10.0;
-const BOX_GAP: f32 = 14.0;
+/// The box's distance from the window's top right corner.
+const BOX_MARGIN: f32 = 16.0;
 /// The arrow's tip stays this far inside the window.
 const EDGE: f32 = 12.0;
 /// A part this near the window's centre gets the arrow from the top left.
@@ -1271,7 +1272,8 @@ pub(super) fn spawn_overlay(
             ..default()
         },
         UiTransform::IDENTITY,
-        GlobalZIndex(9),
+        // Over the box, when the part is off the window that way.
+        GlobalZIndex(10),
         Visibility::Hidden,
         DespawnOnExit(AppState::Flight),
     ));
@@ -1293,6 +1295,8 @@ pub(super) fn spawn_overlay(
         TutorialBox,
         Node {
             position_type: PositionType::Absolute,
+            top: px(BOX_MARGIN),
+            right: px(BOX_MARGIN),
             flex_direction: FlexDirection::Column,
             row_gap: px(3.0),
             padding: UiRect::axes(px(10.0), px(7.0)),
@@ -1481,7 +1485,6 @@ pub(super) fn advance(
 /// The world bounds (min, max) of each cockpit mesh, in its own frame.
 type MeshBounds = HashMap<AssetId<Mesh>, Option<(Vec3, Vec3)>>;
 
-type BoxView = (&'static mut Node, &'static mut Visibility, &'static ComputedNode);
 type LineView = (&'static TutorialLine, &'static mut Text, &'static mut Node);
 
 /// The arrow, the box and its lines.
@@ -1493,7 +1496,7 @@ pub(super) struct Overlay<'w, 's> {
         (&'static mut Node, &'static mut Visibility, &'static mut UiTransform),
         With<TutorialArrow>,
     >,
-    boxes: Query<'w, 's, BoxView, (With<TutorialBox>, Without<TutorialArrow>)>,
+    boxes: Query<'w, 's, &'static mut Visibility, (With<TutorialBox>, Without<TutorialArrow>)>,
     lines: Query<'w, 's, LineView, (Without<TutorialBox>, Without<TutorialArrow>)>,
 }
 
@@ -1699,7 +1702,7 @@ pub(super) fn show(
             && !kneeboard.is_some_and(|k| k.overlay_shown())
             && !(tutorial.at + 1 == tutorial.plan.len() && tutorial.dwell > LAST_STEP_SECONDS)
     });
-    let (Ok((mut arrow, mut arrow_vis, mut turn)), Ok((mut node, mut box_vis, computed))) =
+    let (Ok((mut arrow, mut arrow_vis, mut turn)), Ok(mut box_vis)) =
         (overlay.arrows.single_mut(), overlay.boxes.single_mut())
     else {
         return;
@@ -1734,13 +1737,11 @@ pub(super) fn show(
         }
     }
     box_vis.set_if_neq(Visibility::Inherited);
-    let size = computed.size() * computed.inverse_scale_factor();
 
     let at = tutorial.part.filter(|_| cockpit_view).and_then(|e| parts.point(e, &mut cache));
     let Some(((camera, cam_tf), at)) = cams.single().ok().zip(at) else {
-        // Nothing to point at: the box at the top of the window.
+        // Nothing to point at: the box alone.
         arrow_vis.set_if_neq(Visibility::Hidden);
-        place(&mut node, Vec2::new((window.x - size.x) / 2.0, 70.0));
         return;
     };
     let local = cam_tf.affine().inverse().transform_point3(at);
@@ -1756,12 +1757,6 @@ pub(super) fn show(
         *turn = rotation;
     }
     arrow_vis.set_if_neq(Visibility::Inherited);
-
-    // The box behind the arrow's tail, inside the window.
-    let tail = tip - dir * (ARROW + BOX_GAP);
-    let reach = (dir.x.abs() * size.x + dir.y.abs() * size.y) / 2.0;
-    let corner = tail - dir * reach - size / 2.0;
-    place(&mut node, corner.clamp(Vec2::splat(4.0), (window - size - 4.0).max(Vec2::splat(4.0))));
 }
 
 /// Puts a node's top left corner there.
