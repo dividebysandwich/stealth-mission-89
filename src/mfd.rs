@@ -66,6 +66,10 @@ pub const HIRES: (usize, usize) = (231, 180);
 /// Texels per `HIRES` pixel on the modern screens: the layout stays 231x180, lines, rings and
 /// the map are drawn this much finer.
 pub const HIRES_SCALE: usize = 2;
+/// Texels per `CLASSIC` pixel on the 3D cockpit's classic screens: each pixel is a block, so
+/// the filtering of the magnified screen only softens the block edges instead of blurring the
+/// whole picture.
+pub const CLASSIC_SCALE: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MfdSide {
