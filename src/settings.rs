@@ -206,8 +206,9 @@ impl Settings {
         let has = |f: &str| a.iter().any(|x| x == f);
         let initial_state = if has("--viewer") {
             AppState::Viewer
-        } else if has("--connect") || has("--host") {
-            // Multiplayer test runs go through the menu (`--theater` and `--script` with them).
+        } else if has("--connect") || has("--host") || has("--load") {
+            // Multiplayer test runs and saves go through the menu (`--theater` and `--script`
+            // with them).
             AppState::Menu
         } else if has("--fly") || has("--freecam") || has("--theater") || has("--script") {
             AppState::Flight

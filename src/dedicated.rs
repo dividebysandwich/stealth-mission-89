@@ -26,7 +26,7 @@ stealth-mission-89 --dedicated [switches]
   --master <url>         the server list to be on (default https://sm-master.playspoon.com)
   --no-master            not on the server list (players join by address)
   --save <file>          the campaign file (default: campaigns/dedicated.json in the
-                         game's data directory), saved every minute and on stopping
+                         player's folder), saved every minute and on stopping
   --classic-damage       classic missile damage (default: realistic)
   --classic-guidance     classic missile guidance (default: realistic)
   --classic-time         fixed time of day (default: moving sun and moon; moonlight

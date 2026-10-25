@@ -9,7 +9,8 @@
 //! `msl<2:ViewChase` / `air<2:HudMode` = an enemy missile / an airborne aircraft within 2 km. The step `Screenshot` takes the
 //! `--screenshot` picture at that moment. `yaw=0.5` sets the rudder, `throttle=0.8` holds an
 //! absolute throttle (`collective=0.6`: a helicopter's collective), `trigger=1` / `trigger=0` holds / releases the fire button (`gun=1` / `gun=0` the gun trigger), `mark=1` / `mark=0` the lock cursor
-//! target button, `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
+//! target button, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION),
+//! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
 //! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
 //! top, 5..9 along the bottom). In a coop game `say=Hello there` sends a chat message and
@@ -187,6 +188,7 @@ fn apply(
     presses: &mut MessageWriter<crate::cockpit3d::PressControl>,
     shot: &mut Option<ResMut<crate::autoshot::ShotRequest>>,
     notices: &mut crate::player_notices::PlayerNotices,
+    menu: &mut crate::flight_menu::FlightMenu,
 ) {
     match step {
         Step::Action(name) if name == "Screenshot" => {
@@ -194,6 +196,7 @@ fn apply(
                 s.0 = true;
             }
         }
+        Step::Action(name) if name == "SaveMission" => menu.save_request = true,
         Step::Roll(r) => axes.roll = *r,
         Step::Pitch(p) => axes.pitch = *p,
         Step::Yaw(y) => axes.yaw = *y,
@@ -239,6 +242,7 @@ fn run_script(
     mfd: Res<crate::mfd::MfdState>,
     mut mfd_cmds: MessageWriter<crate::mfd::MfdCommand>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
+    mut menu: ResMut<crate::flight_menu::FlightMenu>,
 ) {
     if script.steps.is_empty() && script.conditional.is_empty() {
         return;
@@ -255,6 +259,7 @@ fn run_script(
             &mut presses,
             &mut shot,
             &mut notices,
+            &mut menu,
         );
     }
     let (e, n, _) = crate::world::bevy_to_wu(pos.0);
@@ -288,7 +293,15 @@ fn run_script(
         if hit {
             *fired = true;
             println!("script t={:.1}: condition met, {}", a.time, step_name(step));
-            apply(step, &mut script.axes, &mut actions, &mut presses, &mut shot, &mut notices);
+            apply(
+                step,
+                &mut script.axes,
+                &mut actions,
+                &mut presses,
+                &mut shot,
+                &mut notices,
+                &mut menu,
+            );
         }
     }
     if let Some(k) = script.axes.lock_pilot.take() {

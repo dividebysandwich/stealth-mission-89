@@ -519,7 +519,7 @@ fn multiplayer_window(
         w.flash_since = Some(now);
     }
     if let Some((name, label)) = w.confirm_delete.clone() {
-        let answer = crate::campaign::delete_popup(ctx, &label, escape);
+        let answer = crate::campaign::delete_popup(ctx, "CAMPAIGN", &label, escape);
         if answer == Some(true) {
             if let Err(e) = save::delete(&name) {
                 w.error = Some(format!("The save could not be deleted: {e:#}"));

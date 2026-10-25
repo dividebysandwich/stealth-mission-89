@@ -2,17 +2,19 @@
 //! a screen in front of the pilot, in the cockpit, so it works on the desktop and in VR. The
 //! simulation pauses while it is open.
 //!
-//! The main page: RESUME, OPTIONS, KEY GUIDE, END MISSION. OPTIONS has the pages of the main
-//! menu's OPTIONS window (`options.rs`) that make sense in flight: GAME (cockpit, HUD and
-//! avionics style, auto trim, tooltips, the VR cockpit size), GRAPHICS (shaders, MSAA, shadows, point
-//! lights, time of day), SOUND (volumes, the engine low-pass) and CONTROLS (head tracking, the
-//! key and joystick bindings, the key guide). The bindings are the main menu's dialog
-//! (`input_dialog.rs`) over the view (in VR on the menu panel in front of the head), the menu's
-//! screen hidden until its DONE; it takes every key, Esc included. They apply at once and are saved to the preferences when the menu closes. Esc,
-//! BACK or the gamepad's B go back a page. Choose an entry with the
-//! mouse, a VR fingertip and the trigger, the arrow keys / gamepad d-pad / VR thumbstick and
-//! Enter / A / X. In VR a fingertip on the screen highlights an entry and the trigger presses it
-//! (a trigger pulled away from the screen and the cockpit controls presses the highlighted entry).
+//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION. SAVE MISSION saves a
+//! single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded save starts
+//! with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
+//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
+//! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the engine
+//! low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
+//! bindings are the main menu's dialog (`input_dialog.rs`) over the view (in VR on the menu panel
+//! in front of the head), the menu's screen hidden until its DONE; it takes every key, Esc
+//! included. They apply at once and are saved to the preferences when the menu closes. Esc, BACK or
+//! the gamepad's B go back a page. Choose an entry with the mouse, a VR fingertip and the trigger,
+//! the arrow keys / gamepad d-pad / VR thumbstick and Enter / A / X. In VR a fingertip on the
+//! screen highlights an entry and the trigger presses it (a trigger pulled away from the screen and
+//! the cockpit controls presses the highlighted entry).
 //!
 //! KEY GUIDE shows the key bindings and the mouse or VR controllers (`key_guide.rs`) on the
 //! screen, scrolled with the arrow keys, the mouse wheel, the gamepad d-pad or a VR thumbstick;
@@ -102,6 +104,13 @@ pub struct FlightMenu {
     hover: Option<Spot>,
     /// The bindings dialog is up instead of the menu's screen (until its DONE).
     bindings: bool,
+    /// SAVE MISSION can save the flight now (`savegame.rs` says so every frame), was chosen,
+    /// and what came of it (shown beside it until the menu closes).
+    pub can_save: bool,
+    pub save_request: bool,
+    pub save_note: Option<&'static str>,
+    /// Opens the menu (pausing the flight) as soon as it can: a loaded save starts so.
+    pub open_on_start: bool,
 }
 
 /// The menu's pages: the main one, OPTIONS and its pages (as the main menu's OPTIONS window).
@@ -120,7 +129,7 @@ impl Page {
     fn items(self) -> &'static [Item] {
         use Item::*;
         match self {
-            Page::Main => &[Resume, Open(Page::Options), KeyGuide, EndMission],
+            Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission],
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
@@ -195,6 +204,7 @@ impl Vol {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Item {
     Resume,
+    SaveMission,
     /// Opens a page.
     Open(Page),
     KeyGuide,
@@ -223,6 +233,7 @@ impl Item {
     fn label(self) -> &'static str {
         match self {
             Item::Resume => "RESUME",
+            Item::SaveMission => "SAVE MISSION",
             Item::Open(p) => p.title(),
             Item::KeyGuide => "KEY GUIDE",
             Item::EndMission => "END MISSION",
@@ -269,17 +280,18 @@ impl Item {
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
             Item::Open(_) | Item::KeyGuide | Item::Bindings => ">".to_string(),
-            Item::Resume | Item::EndMission | Item::Back => String::new(),
+            Item::Resume | Item::SaveMission | Item::EndMission | Item::Back => String::new(),
         }
     }
 
     /// The cockpit size only matters in the headset, the cockpit style only for aircraft with
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop; the bindings not over the campaign's Ops screen (its egui context
-    /// is the one up then).
-    fn enabled(self, s: &Settings, ops: bool) -> bool {
+    /// is the one up then); SAVE MISSION while the flight can be saved.
+    fn enabled(self, s: &Settings, ops: bool, can_save: bool) -> bool {
         match self {
             Item::Bindings => !ops,
+            Item::SaveMission => can_save,
             Item::CockpitSize => s.vr,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
@@ -293,6 +305,7 @@ impl Item {
         !matches!(
             self,
             Item::Resume
+                | Item::SaveMission
                 | Item::Open(_)
                 | Item::KeyGuide
                 | Item::Bindings
@@ -380,6 +393,11 @@ fn toggle(
     if menu.bindings {
         return;
     }
+    if menu.open_on_start {
+        menu.open_on_start = false;
+        let pause = campaign.is_none();
+        set_open(&mut menu, true, pause, &settings, &mut time, &mut block, &sinks);
+    }
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -422,6 +440,7 @@ fn set_open(
     if open {
         menu.page = Page::Main;
         menu.cursor = 0;
+        menu.save_note = None;
         menu.mouse_armed = false;
         menu.opened_with = Some(settings.clone());
         if pause {
@@ -913,7 +932,8 @@ fn navigate(
         None => (menu.cursor, None),
     };
     let item = items[index.min(n - 1)];
-    if !item.enabled(&settings, ops) || !(select || clicked.is_some() || adjust != 0) {
+    if !item.enabled(&settings, ops, menu.can_save) || !(select || clicked.is_some() || adjust != 0)
+    {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
             match menu.page.parent() {
@@ -975,6 +995,7 @@ fn navigate(
             clear_search(&mut menu);
         }
         Item::Resume => close = true,
+        Item::SaveMission => menu.save_request = true,
         // A campaign sortie ends; the flight goes on with the campaign's board.
         Item::EndMission if !pause => {
             actions.write(ActionEvent(Action::Quit));
@@ -1165,7 +1186,7 @@ fn draw(
     for (i, item) in menu.page.items().iter().enumerate() {
         let y = TOP + ROW * i as f32;
         let mid = y + ROW / 2.0;
-        let enabled = item.enabled(&settings, ops);
+        let enabled = item.enabled(&settings, ops, menu.can_save);
         let col = if enabled { BRIGHT } else { DIM };
         if i == menu.cursor {
             c.fill_rect(24, y as i32 + 3, W as i32 - 48, ROW as i32 - 6, ROW_BG);
@@ -1175,7 +1196,10 @@ fn draw(
             _ => item.label(),
         };
         stroke_text_at(c, 48.0, mid, label, 22.0, 2.8, col, Align::Left);
-        let v = item.value(&settings);
+        let v = match item {
+            Item::SaveMission => menu.save_note.unwrap_or_default().to_string(),
+            _ => item.value(&settings),
+        };
         if !v.is_empty() {
             stroke_text_at(c, W as f32 - 48.0, mid, &v, 22.0, 2.8, col, Align::Right);
         }

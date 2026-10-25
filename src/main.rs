@@ -60,6 +60,7 @@ mod recon;
 mod recorder;
 mod rotor_blur;
 mod rwr;
+mod savegame;
 mod scenery;
 mod script;
 mod settings;
@@ -271,9 +272,11 @@ fn main() {
             player_notices::PlayerNoticesPlugin,
             chat::ChatPlugin,
             multiplayer_menu::MultiplayerMenuPlugin,
+            savegame::SaveGamePlugin,
         ));
     mission::from_args(&mut app);
     campaign::from_args(&mut app);
+    savegame::from_args(&mut app);
     if let Some(scale) = std::env::args()
         .collect::<Vec<_>>()
         .windows(2)

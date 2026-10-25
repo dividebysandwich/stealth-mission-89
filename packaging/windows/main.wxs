@@ -8,8 +8,8 @@
      the OpenXR loader statically on Windows, and finds the headset's runtime
      (SteamVR, Oculus, Windows Mixed Reality) through the registry. The game
      reads assets\ beside the executable (src/asset_path.rs), which stays
-     read-only in Program Files; pilots, settings and logs go to
-     %APPDATA%\stealth-mission-89. -->
+     read-only in Program Files; saves, pilots, campaigns, settings and logs
+     go to Documents\My Games\Stealth Mission 89 (docs/files.md). -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
     <Package Name="Stealth Mission 89"
              Manufacturer="dividebysandwich"

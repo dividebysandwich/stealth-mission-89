@@ -48,7 +48,7 @@ pub fn classic_zoom(scale: f32) -> f32 {
 }
 
 /// F2: NAV / AIR / GND.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum HudMode {
     #[default]
     Nav,
@@ -56,7 +56,7 @@ pub enum HudMode {
     Gnd,
 }
 
-#[derive(Resource, Debug, Clone, Default)]
+#[derive(Resource, Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct HudState {
     pub mode: HudMode,
     /// V: 0 = tapes, 1 = boxed digits, 2 = boxed digits + heading box.
@@ -333,7 +333,7 @@ pub struct GunLead {
     pub y: i32,
 }
 
-fn reset_hud(mut hud: ResMut<HudState>, mut msg: ResMut<HudMessages>) {
+pub(crate) fn reset_hud(mut hud: ResMut<HudState>, mut msg: ResMut<HudMessages>) {
     *hud = HudState::default();
     *msg = HudMessages::default();
 }

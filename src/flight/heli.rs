@@ -154,7 +154,7 @@ impl Rotor {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct State {
     /// Velocity (ft/s, Bevy frame).
     vel: Vec3,

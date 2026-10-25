@@ -184,7 +184,7 @@ impl FlightConstants {
 }
 
 /// Why the flight ended.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum FlightEnd {
     Crash,
     BadLanding,
@@ -192,7 +192,7 @@ pub enum FlightEnd {
 }
 
 /// Effects of combat damage on the flight model (set by the combat simulation).
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FlightDamage {
     /// ENG: thrust capped at this percentage.
     pub throttle_cap: Option<f32>,
@@ -229,7 +229,7 @@ impl FlightDamage {
 }
 
 /// The player's aircraft state.
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Aircraft {
     /// Orientation (Bevy frame: forward -Z, up Y).
     pub orientation: Quat,

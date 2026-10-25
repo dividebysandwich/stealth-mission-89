@@ -6390,7 +6390,6 @@ dependencies = [
  "bevy_fast_clouds",
  "bevy_mod_openxr",
  "bevy_mod_xr",
- "dirs",
  "embed-resource",
  "epaint_default_fonts",
  "getrandom 0.3.4",

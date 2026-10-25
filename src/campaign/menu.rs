@@ -59,11 +59,16 @@ impl CampaignWindow {
 /// How tall the list of saved campaigns grows before it scrolls.
 pub(crate) const SAVES_HEIGHT: f32 = 240.0;
 
-/// The "delete this campaign?" popup over the menu: Some(true) to delete, Some(false) to keep it
-/// (CANCEL, or `cancel` such as Escape), None while it waits.
-pub(crate) fn delete_popup(ctx: &egui::Context, label: &str, cancel: bool) -> Option<bool> {
+/// The "delete this ...?" popup over the menu (`what`: "CAMPAIGN", "SAVE"): Some(true) to
+/// delete, Some(false) to keep it (CANCEL, or `cancel` such as Escape), None while it waits.
+pub(crate) fn delete_popup(
+    ctx: &egui::Context,
+    what: &str,
+    label: &str,
+    cancel: bool,
+) -> Option<bool> {
     let mut answer = cancel.then_some(false);
-    egui::Window::new("Delete the campaign")
+    egui::Window::new(format!("Delete the {}", what.to_lowercase()))
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
@@ -71,7 +76,7 @@ pub(crate) fn delete_popup(ctx: &egui::Context, label: &str, cancel: bool) -> Op
         .order(egui::Order::Foreground)
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(18.0))
         .show(ctx, |ui| {
-            ui.label(egui::RichText::new("DELETE THIS CAMPAIGN?").heading().color(BRIGHT));
+            ui.label(egui::RichText::new(format!("DELETE THIS {what}?")).heading().color(BRIGHT));
             ui.label(egui::RichText::new(label).color(BRIGHT));
             ui.label(egui::RichText::new("Deletion is permanent").color(DIM));
             ui.add_space(8.0);
@@ -256,7 +261,7 @@ pub fn campaign_window(
         }
     });
     if let Some((name, label)) = w.confirm_delete.clone() {
-        let answer = delete_popup(ctx, &label, escape);
+        let answer = delete_popup(ctx, "CAMPAIGN", &label, escape);
         if answer == Some(true) {
             if let Err(e) = stealth_host::save::delete(&name) {
                 w.error = Some(format!("The save could not be deleted: {e:#}"));

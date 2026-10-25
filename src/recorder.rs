@@ -9,8 +9,10 @@ pub const FS: u32 = crate::combat::FS as u32;
 /// Aircraft and missiles are kept every this many frames (5 Hz).
 const CONTACT_EVERY: u32 = 3;
 
-/// The player in one sim frame.
-#[derive(Debug, Clone, Copy)]
+/// The player in one sim frame. Saved as a row of its values (15 a second make most of a saved
+/// game).
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[serde(into = "SampleRow", from = "SampleRow")]
 pub struct Sample {
     pub frame: u32,
     /// World units (x east, y north).
@@ -30,6 +32,22 @@ pub struct Sample {
     pub site: Option<usize>,
 }
 
+type SampleRow = (u32, [i32; 9], Option<usize>);
+
+impl From<Sample> for SampleRow {
+    fn from(s: Sample) -> Self {
+        let v = [s.wx, s.wy, s.alt, s.heading, s.pitch, s.roll, s.knots, s.emv, s.margin];
+        (s.frame, v, s.site)
+    }
+}
+
+impl From<SampleRow> for Sample {
+    fn from((frame, v, site): SampleRow) -> Self {
+        let [wx, wy, alt, heading, pitch, roll, knots, emv, margin] = v;
+        Self { frame, wx, wy, alt, heading, pitch, roll, knots, emv, margin, site }
+    }
+}
+
 impl Sample {
     /// Map position (x east, y south, map units).
     pub fn map(&self) -> (f32, f32) {
@@ -46,7 +64,7 @@ pub struct Contacts {
 }
 
 /// Something that happened, marked on the map where the player was.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum MarkKind {
     /// A site started tracking the player.
     Tracked(usize),
@@ -71,7 +89,7 @@ pub enum MarkKind {
     Ejected,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Mark {
     pub frame: u32,
     /// Map units (x east, y south).
@@ -81,7 +99,7 @@ pub struct Mark {
 }
 
 /// A span of frames in which a site tracked the player (`end` None: until the end).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Span {
     pub site: usize,
     pub start: u32,
@@ -95,7 +113,7 @@ impl Span {
 }
 
 /// A radar site as it was at takeoff.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SiteInfo {
     /// Map units (x east, y south).
     pub x: f32,
@@ -108,10 +126,12 @@ pub struct SiteInfo {
     pub lock: f32,
 }
 
-/// The whole flight.
-#[derive(Debug, Clone, Default)]
+/// The whole flight. A saved game keeps it without the contacts (the bulk of it: a saved
+/// flight goes on with those from the load on).
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct FlightRecord {
     pub samples: Vec<Sample>,
+    #[serde(skip)]
     pub contacts: Vec<Contacts>,
     pub marks: Vec<Mark>,
     pub spans: Vec<Span>,

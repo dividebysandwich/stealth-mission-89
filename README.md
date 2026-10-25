@@ -86,6 +86,7 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 |---|---|
 | `--mission <seed> [--theater-index N]` | fly a generated mission directly |
 | `--theater central_europe` / `--fly` | fly from the menu's defaults, skipping it |
+| `--load <save>` | fly on a single mission saved in flight (Esc, SAVE MISSION); the save's file name without `.json`, in the `saves` folder of the player's files ([docs/files.md](docs/files.md)) |
 | `--weather random\|clear\|scattered\|broken\|overcast\|storm` | the mission's weather (default: rolled from the seed, odds by theater) |
 | `--cloud-cover <percent>` | coverage of the weather's main cloud layer (default: rolled) |
 | `--modern` | modern rendering touches (smooth gradients and haze, subtle shading, MSAA) |
@@ -165,7 +166,8 @@ Test runs can use a private headless compositor (such as sway) so test windows d
 the desktop. `--script` replays timed actions, `--log-flight` / `--log-sim`
 print the state, `--time-scale` speeds runs up, and `--diag --novsync` shows the frame rate.
 Script steps `yaw=`, `throttle=` and `press=Gear` drive the rudder, an absolute throttle and the
-3D cockpit's controls; `--head-look yaw,pitch` turns the 3D cockpit view (degrees).
+3D cockpit's controls; `--head-look yaw,pitch` turns the 3D cockpit view (degrees). The step
+`SaveMission` saves the flight (its name is logged), which `--load` flies on.
 
 ### Testing on Steam Frame
 `tools/frame.sh` cross-compiles the aarch64 build on an x86-64 Linux PC, copies it to the Frame

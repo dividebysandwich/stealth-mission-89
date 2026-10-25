@@ -14,7 +14,7 @@
 //!
 //! Who runs the war ([`Role`]):
 //! * Alone (`Local`) and as a listen server (`Host`): the game holds the [`Host`]; it is saved
-//!   (`campaigns/<name>.json` in the data directory) every minute and on leaving. Only the
+//!   (`campaigns/<name>.json` in the player's folder) every minute and on leaving. Only the
 //!   campaign is saved, not the simulation: on loading, what was in the air starts again. A
 //!   listen server also serves the players who joined (`crate::net`).
 //! * A coop client (`Client`): the server runs the war; the game shows its copy of the

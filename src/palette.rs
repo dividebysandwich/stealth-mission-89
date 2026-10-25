@@ -338,27 +338,44 @@ fn step_time_of_day(
     tod.timer += time.delta_secs();
     while tod.timer >= 1.0 {
         tod.timer -= 1.0;
-        tod.ticks += 1;
-        let t = tod.ticks;
-        if t & 15 != 0 {
-            continue;
-        }
-        let target = if tod.night_mission {
-            palette.theater.night.clone()
-        } else {
-            palette.theater.day.clone()
-        };
-        let p = &mut palette.active;
-        match t & 0x30 {
-            0x00 => {
-                if t & 0x40 != 0 {
-                    p.step_towards(&target, 0x10, 0x40)
-                }
+        tick(&mut tod, &mut palette);
+    }
+}
+
+/// One second of the classic time of day: every 16 s the live palette steps towards the target.
+fn tick(tod: &mut TimeOfDay, palette: &mut Palette) {
+    tod.ticks += 1;
+    let t = tod.ticks;
+    if t & 15 != 0 {
+        return;
+    }
+    let target =
+        if tod.night_mission { palette.theater.night.clone() } else { palette.theater.day.clone() };
+    let p = &mut palette.active;
+    match t & 0x30 {
+        0x00 => {
+            if t & 0x40 != 0 {
+                p.step_towards(&target, 0x10, 0x40)
             }
-            0x10 => p.step_towards(&target, 0x60, 0x40),
-            0x20 => p.step_towards(&target, 0xA0, 0x30),
-            _ => p.step_towards(&target, 0xD0, 0x30),
         }
+        0x10 => p.step_towards(&target, 0x60, 0x40),
+        0x20 => p.step_towards(&target, 0xA0, 0x30),
+        _ => p.step_towards(&target, 0xD0, 0x30),
+    }
+}
+
+impl TimeOfDay {
+    /// What a saved game keeps: the seconds run and the part of the next one.
+    pub fn saved(&self) -> (u32, f32) {
+        (self.ticks, self.timer)
+    }
+
+    /// A saved game's time of day: the live palette run on from the start to where it was.
+    pub fn restore(&mut self, palette: &mut Palette, (ticks, timer): (u32, f32)) {
+        while self.ticks < ticks {
+            tick(self, palette);
+        }
+        self.timer = timer;
     }
 }
 
