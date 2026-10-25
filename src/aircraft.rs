@@ -123,6 +123,21 @@ const RUNWAY_Y: f32 = 0.34;
 const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
 /// The F-16's wheels are 2.15 m below its model origin (tools/models/aircraft.py `F16_GROUND`).
 const F16_LIFT: f32 = 2.15 + RUNWAY_Y;
+
+/// How far below its origin an aircraft model's gear reaches (metres, tools/models/aircraft.py
+/// `*_GROUND`, f117.py), for the models that have a landing gear.
+pub fn gear_depth(model: i32) -> Option<f32> {
+    match model {
+        3 | 26 => Some(1.65),
+        7 => Some(1.7),
+        23 => Some(F16_LIFT - RUNWAY_Y),
+        24 => Some(F117_LIFT - RUNWAY_Y),
+        _ => None,
+    }
+}
+
+/// Height of the airfields' surfaces over the ground (metres).
+pub const GEAR_GROUND: f32 = RUNWAY_Y;
 /// A point of the F-16's builder (metres: x right, y forward, z up) in the aircraft frame: the
 /// model is centred on its length, 0.1 m ahead of the builder's origin.
 const fn f16_point(x: f32, y: f32, z: f32) -> Vec3 {

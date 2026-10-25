@@ -863,18 +863,29 @@ fn sync_objects(
         let rot = prev.map_or(rot, |p| attitude(p.heading, p.pitch, p.bank).slerp(rot, alpha));
         if let Ok((mut pos, mut tf, state, _)) = q.get_mut(e) {
             pos.0 = wu_to_bevy(east, north, alt);
+            // The sim holds aircraft on the ground (and on a deck) 12 units over it: those with a
+            // gear stand on their wheels, eased down over the end of a landing.
+            if let Some(depth) = crate::aircraft::gear_depth(model) {
+                let settle =
+                    if u.speed == 0 { 1.0 } else { (1.0 - (alt - 12.0) / 48.0).clamp(0.0, 1.0) };
+                pos.0.y -= settle
+                    * (12.0 * crate::world::WU - (depth + crate::aircraft::GEAR_GROUND) as f64);
+            }
             tf.rotation = rot;
             if let Some(mut s) = state {
-                // Slots 12 (nav lights), 13 (airborne, gear up), 14 (models 1/10/15) and
-                // 18-20 (anti-collision lights, with the nav lights near home airfields).
+                // Slots 5 (on the ground or parked on a deck, gear down), 12 (nav lights), 13
+                // (airborne, gear up), 14 (models 1/10/15) and 18-20 (anti-collision lights, with
+                // the nav lights near home airfields).
                 let special = matches!(model, 1 | 10 | 15);
+                let intact = !special && u.flags & fflags::DESTROYED == 0;
                 let [s18, s19, s20] =
                     anticollision(time.elapsed_secs(), (i as f32 * 0.618).fract(), nav);
                 let v = [
+                    (5, (intact && (u.alt <= 12 || u.speed == 0)) as i16),
                     (10, lights as i16),
                     (11, lights as i16),
                     (12, nav as i16),
-                    (13, (!special && u.alt > 12 && u.flags & fflags::DESTROYED == 0) as i16),
+                    (13, (intact && u.alt > 12) as i16),
                     (14, special as i16),
                     s18,
                     s19,

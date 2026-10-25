@@ -9,10 +9,12 @@ z up): the airframe, optional afterburner flames, the anchors for the navigation
 red / left, 151 green / right). The stores and the wreck are built the same way. Every model is
 drawn at its real size (`K` model units per metre) with one detail level: the airframe, its hot
 nozzle exits in `_exhaust` and the afterburner flames in `_s13v1` (the game flickers both), a
-missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's), the navigation
-lights in `_s12v1`; anticollision.py adds the flashing lights afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43,
-ah1z.py) have generators of their own. The flyable F-16 (23) sets the eye, lift and exhaust in
-src/aircraft.rs: change them with its builder.
+missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's, F/A-18's and
+MiG-23's), the navigation lights in `_s12v1`; anticollision.py adds the flashing lights
+afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43, ah1z.py) have
+generators of their own. The flyable F-16 (23) sets the eye, lift and exhaust in
+src/aircraft.rs: change them with its builder; the gear's depth below the origin is in
+`gear_depth` there too.
 """
 
 import math
@@ -151,7 +153,35 @@ def f16():
     return Craft(g, (-4.8, -3.6, 0.2), (4.8, -3.6, 0.2), [(0, -6.4, 4.0)], fl, gear=f16_gear())
 
 
-F16_GROUND = -2.15  # z of the ground under the wheels (`F16_LIFT` in src/aircraft.rs)
+# z of the ground under the wheels (`F16_LIFT` and `gear_depth` in src/aircraft.rs).
+F16_GROUND = -2.15
+F18_GROUND = -1.65
+MIG23_GROUND = -1.7
+
+
+def tricycle(ground, nose, main, paint):
+    """The gear down: a nose leg leaning forward to its wheel (or twin wheels), braced from
+    behind, its door beside it; two main legs, braced, their doors outboard. `nose` is (y, z where
+    the leg meets the body, wheel radius, twin), `main` (y, x and z where a leg meets the body, x
+    of its wheel, wheel radius)."""
+    g = Geo()
+    y, z, r, twin = nose
+    axle = (0.0, y + 0.25, ground + r)
+    for x in (-0.13, 0.13) if twin else (0.0,):
+        g.add(mklib.wheel((x, axle[1], axle[2]), r, 0.12 if twin else 0.16, BLACK, n=8))
+    g.add(frustum((0.0, y, z), (0.0, axle[1] - 0.02, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum((0.0, y - 0.6, z), (0.0, y + 0.12, (z + axle[2]) / 2), 0.035, 0.035, GREY_L, n=4))
+    g.face2([(-0.3, y + 0.7, z), (-0.3, y - 0.5, z), (-0.34, y - 0.5, z - 0.38), (-0.34, y + 0.7, z - 0.38)], paint)
+    y, ax, az, wx, r = main
+    for s in (-1, 1):
+        axle = (s * wx, y, ground + r)
+        g.add(mklib.wheel(axle, r, 0.22, BLACK, n=8))
+        g.add(frustum((s * ax, y + 0.15, az), (s * (wx - 0.13), y, axle[2] + 0.12), 0.08, 0.07, GREY_L, n=5))
+        g.add(frustum((s * ax, y + 0.8, az), (s * (wx - 0.1), y + 0.1, axle[2] + 0.45), 0.04, 0.04, GREY_L, n=4))
+        d = s * (ax + 0.2)
+        g.face2([(d, y + 0.9, az), (d, y - 0.9, az), (d + s * 0.05, y - 0.9, az - 0.6), (d + s * 0.05, y + 0.9, az - 0.6)],
+                paint)
+    return g
 
 
 def f16_gear():
@@ -231,7 +261,8 @@ def f18(two_seat=False):
         g.add(wing((s * 1.0, -2.2, 0.75), 3.2, (s * 2.1, -4.4, 3.5), 1.4, GREY_B, t=0.05, vertical=True, mirror=False))
         g.add(missile(s * 6.3, -0.6, 0.1, 3.0))
     fl = Geo().add(flame(0.55, -7.8, 0.1, 0.45, 3.0)).add(flame(-0.55, -7.8, 0.1, 0.45, 3.0))
-    return Craft(g, (-6.3, -3.0, 0.1), (6.3, -3.0, 0.1), [(-2.1, -5.0, 3.5), (2.1, -5.0, 3.5)], fl)
+    gear = tricycle(F18_GROUND, (4.0, -0.5, 0.28, True), (-1.4, 1.3, -0.8, 1.55, 0.38), GREY_B)
+    return Craft(g, (-6.3, -3.0, 0.1), (6.3, -3.0, 0.1), [(-2.1, -5.0, 3.5), (2.1, -5.0, 3.5)], fl, gear=gear)
 
 
 def mig25():
@@ -321,7 +352,8 @@ def mig23():
     g.add(wing((0, -5.2, -0.6), 1.8, (0, -6.0, -1.6), 1.1, GREY_D, t=0.06, vertical=True, mirror=False))
     g.add(nozzle(0, -7.3, 0.15, 0.6, 0.8))
     fl = flame(0, -8.1, 0.15, 0.55, 3.0)
-    return Craft(g, (-6.2, -4.2, 0.45), (6.2, -4.2, 0.45), [(0, -6.6, 3.8)], fl)
+    gear = tricycle(MIG23_GROUND, (4.6, -0.45, 0.3, True), (-1.0, 1.2, -0.5, 1.33, 0.4), GREY_D)
+    return Craft(g, (-6.2, -4.2, 0.45), (6.2, -4.2, 0.45), [(0, -6.6, 3.8)], fl, gear=gear)
 
 
 def f5():
