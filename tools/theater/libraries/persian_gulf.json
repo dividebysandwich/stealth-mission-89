@@ -1,0 +1,195 @@
+{
+ "theater": "persian_gulf",
+ "land_rubble": 78,
+ "water_rubble": 88,
+ "kinds": {
+  "oil_tanker": 25,
+  "airbase": 32,
+  "oil_rig": 37,
+  "oil_well": 38,
+  "village": 40,
+  "depot": 42,
+  "army_hq": 43,
+  "tank_farm": 44,
+  "sa_missile": 47,
+  "sam_radar": 52,
+  "tower": 53,
+  "hangar": 54,
+  "bridge": 63,
+  "refinery": 68,
+  "missile_boat": 69,
+  "destroyer": 76,
+  "airstrip": 80,
+  "airplane": 84,
+  "nuclear_plant": 85,
+  "aegis_cruiser": 89,
+  "ss_missile": 99
+ },
+ "keep": [
+  25,
+  32,
+  37,
+  38,
+  40,
+  42,
+  43,
+  44,
+  47,
+  52,
+  53,
+  54,
+  63,
+  68,
+  69,
+  76,
+  78,
+  80,
+  84,
+  85,
+  86,
+  88,
+  89,
+  99
+ ],
+ "models": [
+  {
+   "index": 25,
+   "name": "Oil Tanker",
+   "role": null,
+   "class": 141
+  },
+  {
+   "index": 32,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 129
+  },
+  {
+   "index": 37,
+   "name": "Oil Rig",
+   "role": "OilRig",
+   "class": 137
+  },
+  {
+   "index": 38,
+   "name": "Oil Well",
+   "role": null,
+   "class": 138
+  },
+  {
+   "index": 40,
+   "name": "Village",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 42,
+   "name": "Depot",
+   "role": null,
+   "class": 134
+  },
+  {
+   "index": 43,
+   "name": "Army HQ",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 44,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 138
+  },
+  {
+   "index": 47,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 52,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 53,
+   "name": "Tower",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 54,
+   "name": "Hangar",
+   "role": null,
+   "class": 128
+  },
+  {
+   "index": 63,
+   "name": "Bridge",
+   "role": "Bridge",
+   "class": 132
+  },
+  {
+   "index": 68,
+   "name": "Refinery",
+   "role": "Refinery",
+   "class": 138
+  },
+  {
+   "index": 69,
+   "name": "Missile Boat",
+   "role": "PatrolBoat",
+   "class": 12
+  },
+  {
+   "index": 76,
+   "name": "Destroyer",
+   "role": null,
+   "class": 77
+  },
+  {
+   "index": 80,
+   "name": "Airstrip",
+   "role": "Airstrip",
+   "class": 129
+  },
+  {
+   "index": 84,
+   "name": "Airplane",
+   "role": "ParkedAircraft",
+   "class": 2
+  },
+  {
+   "index": 85,
+   "name": "Nuclear Plant",
+   "role": "NuclearPlant",
+   "class": 133
+  },
+  {
+   "index": 86,
+   "name": "Missile Boat",
+   "role": "PatrolBoat",
+   "class": 12
+  },
+  {
+   "index": 89,
+   "name": "Aegis Cruiser",
+   "role": null,
+   "class": 77
+  },
+  {
+   "index": 99,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  }
+ ],
+ "levels": {
+  "25": 2,
+  "32": 2,
+  "76": 2,
+  "80": 2,
+  "89": 2
+ }
+}

@@ -1,0 +1,132 @@
+{
+ "theater": "middle_east",
+ "land_rubble": 78,
+ "water_rubble": 88,
+ "kinds": {
+  "terrorist_camp": 9,
+  "ss_missile": 20,
+  "ship": 25,
+  "airbase": 32,
+  "depot": 42,
+  "headquarters": 43,
+  "tank_farm": 44,
+  "sa_missile": 47,
+  "sam_radar": 52,
+  "tower": 53,
+  "hangar": 54,
+  "bridge": 63,
+  "nuclear_plant": 66,
+  "destroyer": 76
+ },
+ "keep": [
+  9,
+  20,
+  25,
+  32,
+  42,
+  43,
+  44,
+  47,
+  52,
+  53,
+  54,
+  63,
+  66,
+  76,
+  78,
+  88
+ ],
+ "models": [
+  {
+   "index": 9,
+   "name": "Terrorist Camp",
+   "role": "Camp",
+   "class": 3
+  },
+  {
+   "index": 20,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  },
+  {
+   "index": 25,
+   "name": "Ship",
+   "role": "CargoShip",
+   "class": 140
+  },
+  {
+   "index": 32,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 1
+  },
+  {
+   "index": 42,
+   "name": "Depot",
+   "role": null,
+   "class": 134
+  },
+  {
+   "index": 43,
+   "name": "Headquarters",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 44,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 138
+  },
+  {
+   "index": 47,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 52,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 53,
+   "name": "Tower",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 54,
+   "name": "Hangar",
+   "role": "Hangar",
+   "class": 128
+  },
+  {
+   "index": 63,
+   "name": "Bridge",
+   "role": "Bridge",
+   "class": 4
+  },
+  {
+   "index": 66,
+   "name": "Nuclear Plant",
+   "role": "NuclearPlant",
+   "class": 5
+  },
+  {
+   "index": 76,
+   "name": "Destroyer",
+   "role": null,
+   "class": 77
+  }
+ ],
+ "levels": {
+  "9": 2,
+  "25": 2,
+  "32": 2,
+  "66": 2,
+  "76": 2
+ }
+}

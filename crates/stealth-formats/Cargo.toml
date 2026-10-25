@@ -1,0 +1,7 @@
+[package]
+name = "stealth-formats"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true

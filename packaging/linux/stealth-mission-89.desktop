@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Stealth Mission 89
+GenericName=Flight Simulator
+Comment=A remake of DOS-era 3D flight simulations
+Exec=stealth-mission-89
+Icon=stealth-mission-89
+Terminal=false
+Categories=Game;Simulation;
+Keywords=flight;simulator;stealth;F-117;VR;
+StartupWMClass=stealth-mission-89

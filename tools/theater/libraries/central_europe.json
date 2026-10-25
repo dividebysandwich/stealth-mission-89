@@ -1,0 +1,172 @@
+{
+ "theater": "central_europe",
+ "land_rubble": 73,
+ "water_rubble": 91,
+ "kinds": {
+  "airbase": 21,
+  "depot": 28,
+  "headquarters": 29,
+  "tank_farm": 30,
+  "sa_missile": 33,
+  "sam_radar": 38,
+  "tower": 39,
+  "hangar": 40,
+  "bridge": 49,
+  "patrol_boat": 53,
+  "buildings": 62,
+  "windmill": 65,
+  "oth_radar": 68,
+  "mobile_sam": 76,
+  "tank": 77,
+  "airplane": 84,
+  "pow_camp": 85,
+  "ss_missile": 86,
+  "houses": 26,
+  "houses2": 27,
+  "land": 0,
+  "sea": 20
+ },
+ "keep": [
+  0,
+  20,
+  21,
+  26,
+  27,
+  28,
+  29,
+  30,
+  33,
+  38,
+  39,
+  40,
+  49,
+  53,
+  62,
+  65,
+  68,
+  70,
+  73,
+  76,
+  77,
+  84,
+  85,
+  86,
+  91
+ ],
+ "models": [
+  {
+   "index": 21,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 129
+  },
+  {
+   "index": 28,
+   "name": "Depot",
+   "role": null,
+   "class": 6
+  },
+  {
+   "index": 29,
+   "name": "Headquarters",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 30,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 138
+  },
+  {
+   "index": 33,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 38,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 39,
+   "name": "Tower",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 40,
+   "name": "Hangar",
+   "role": "Hangar",
+   "class": 144
+  },
+  {
+   "index": 49,
+   "name": "Bridge",
+   "role": "Bridge",
+   "class": 132
+  },
+  {
+   "index": 53,
+   "name": "Patrol Boat",
+   "role": "PatrolBoat",
+   "class": 12
+  },
+  {
+   "index": 62,
+   "name": "Buildings",
+   "role": null,
+   "class": 147
+  },
+  {
+   "index": 65,
+   "name": "Windmill",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 68,
+   "name": "OTH Radar",
+   "role": "EarlyWarningRadar",
+   "class": 8
+  },
+  {
+   "index": 70,
+   "name": "Bridge",
+   "role": "Bridge",
+   "class": 132
+  },
+  {
+   "index": 76,
+   "name": "Mobile SAM",
+   "role": "MobileSam",
+   "class": 7
+  },
+  {
+   "index": 77,
+   "name": "Tank",
+   "role": null,
+   "class": 14
+  },
+  {
+   "index": 84,
+   "name": "Airplane",
+   "role": "ParkedAircraft",
+   "class": 18
+  },
+  {
+   "index": 85,
+   "name": "POW Camp",
+   "role": "Camp",
+   "class": 3
+  },
+  {
+   "index": 86,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  }
+ ]
+}

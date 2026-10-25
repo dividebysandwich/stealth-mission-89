@@ -1,0 +1,194 @@
+{
+ "theater": "libya",
+ "land_rubble": 74,
+ "water_rubble": 88,
+ "kinds": {
+  "oil_tanker": 23,
+  "airbase": 30,
+  "oil_rig": 35,
+  "village": 39,
+  "headquarters": 40,
+  "tank_farm": 41,
+  "sa_missile": 44,
+  "sam_radar": 49,
+  "tower": 50,
+  "hangar": 51,
+  "refinery": 53,
+  "missile_boat": 54,
+  "pump_station": 57,
+  "destroyer": 69,
+  "missile": 75,
+  "mobile_sam": 76,
+  "tank": 77,
+  "airplane": 80,
+  "nuclear_plant": 81,
+  "camp": 82,
+  "ss_missile": 98
+ },
+ "keep": [
+  23,
+  30,
+  35,
+  39,
+  40,
+  41,
+  44,
+  49,
+  50,
+  51,
+  53,
+  54,
+  57,
+  69,
+  74,
+  75,
+  76,
+  77,
+  80,
+  81,
+  82,
+  86,
+  88,
+  98
+ ],
+ "models": [
+  {
+   "index": 23,
+   "name": "Oil Tanker",
+   "role": null,
+   "class": 141
+  },
+  {
+   "index": 30,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 129
+  },
+  {
+   "index": 35,
+   "name": "Oil Rig",
+   "role": "OilRig",
+   "class": 138
+  },
+  {
+   "index": 39,
+   "name": "Village",
+   "role": null,
+   "class": 134
+  },
+  {
+   "index": 40,
+   "name": "Headquarters",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 41,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 138
+  },
+  {
+   "index": 44,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 49,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 50,
+   "name": "Tower",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 51,
+   "name": "Hangar",
+   "role": "Hangar",
+   "class": 128
+  },
+  {
+   "index": 53,
+   "name": "Refinery",
+   "role": "Refinery",
+   "class": 138
+  },
+  {
+   "index": 54,
+   "name": "Missile Boat",
+   "role": "PatrolBoat",
+   "class": 12
+  },
+  {
+   "index": 57,
+   "name": "Pump Station",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 69,
+   "name": "Destroyer",
+   "role": null,
+   "class": 77
+  },
+  {
+   "index": 75,
+   "name": "Missile",
+   "role": null,
+   "class": 7
+  },
+  {
+   "index": 76,
+   "name": "Mobile SAM",
+   "role": "MobileSam",
+   "class": 7
+  },
+  {
+   "index": 77,
+   "name": "Tank",
+   "role": null,
+   "class": 14
+  },
+  {
+   "index": 80,
+   "name": "Airplane",
+   "role": "ParkedAircraft",
+   "class": 2
+  },
+  {
+   "index": 81,
+   "name": "Nuclear Plant",
+   "role": "NuclearPlant",
+   "class": 133
+  },
+  {
+   "index": 82,
+   "name": "Camp",
+   "role": "Camp",
+   "class": 3
+  },
+  {
+   "index": 86,
+   "name": "Refinery",
+   "role": "Refinery",
+   "class": 138
+  },
+  {
+   "index": 98,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  }
+ ],
+ "levels": {
+  "23": 2,
+  "30": 2,
+  "69": 2,
+  "82": 2
+ }
+}

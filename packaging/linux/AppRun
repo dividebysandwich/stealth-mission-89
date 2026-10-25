@@ -1,0 +1,36 @@
+#!/bin/sh
+# The AppImage's entry point. The AppImage is read-only and has no game data, so the game
+# reads its files from a data folder: $BEVY_ASSET_ROOT if set, else the folder holding the
+# .AppImage when it has an assets/ folder (the tarball's layout), else
+# ${XDG_DATA_HOME:-~/.local/share}/stealth-mission-89. The shipped assets (shaders) are copied into it on
+# every start, so they match this build.
+HERE="$(dirname "$(readlink -f "$0")")"
+if [ -z "$BEVY_ASSET_ROOT" ]; then
+    beside="$(dirname "${APPIMAGE:-$HERE}")"
+    if [ -d "$beside/assets" ]; then
+        BEVY_ASSET_ROOT="$beside"
+    else
+        BEVY_ASSET_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/stealth-mission-89"
+    fi
+    mkdir -p "$BEVY_ASSET_ROOT/assets" && cp -rf "$HERE/usr/share/stealth-mission-89/assets/." "$BEVY_ASSET_ROOT/assets/"
+    export BEVY_ASSET_ROOT
+fi
+# The Steam Frame (SteamOS on aarch64) starts in VR: Steam launches apps there in a 2D window
+# otherwise. `--desktop` keeps the window.
+case " $* " in
+    *" --vr "*) ;;
+    *" --desktop "*) ;;
+    *)
+        if [ "$(uname -m)" = aarch64 ] && grep -qs '^ID=steamos$' /etc/os-release; then
+            set -- --vr "$@"
+        fi
+        ;;
+esac
+# Started from a launcher (Steam, a file manager, the Steam Frame), not a terminal: the log goes
+# to the data folder, stealth-mission-89-vr.log for VR starts ("Fly in VR" relaunches with --vr).
+if [ ! -t 2 ]; then
+    log=stealth-mission-89.log
+    case " $* " in *" --vr "*) log=stealth-mission-89-vr.log ;; esac
+    NO_COLOR=1 exec "$HERE/usr/bin/stealth-mission-89" "$@" > "$BEVY_ASSET_ROOT/$log" 2>&1
+fi
+exec "$HERE/usr/bin/stealth-mission-89" "$@"

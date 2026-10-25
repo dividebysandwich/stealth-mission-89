@@ -1,0 +1,30 @@
+#![enable(implicit_some)]
+// Model colours that are not drawn as their plain palette colour, and how the map displays
+// (MFD map, kneeboard, planner) reduce the palette to their 16 legend colours.
+//
+// `high` is how a colour is drawn at the highest detail level, `low` below it; both default
+// to `Solid(<the colour>)`:
+// - Solid(c): palette colour c.
+// - Hidden(c): polygons are not drawn (they only show on the maps); lines and dots in c.
+// - Checker(c): colour c with every other pixel left out.
+// - AndGround(m) / OrGround(m): the ground gradient's colour under it, AND / OR m (shading
+//   and water that take on the ground's colour band).
+// `map` is the legend colour on the map displays (default: the colour itself).
+(
+    colours: [
+        // Ground shading.
+        (colour: 34, high: AndGround(127), map: 2),
+        (colour: 38, low: Solid(120), high: AndGround(127), map: 6),
+        // Shallow water and water.
+        (colour: 49, low: Solid(252), high: OrGround(128), map: 2),
+        (colour: 57, low: Solid(108), high: AndGround(111), map: 1),
+        // Fields, built-up areas and sand: on the maps only.
+        (colour: 50, low: Hidden(120), high: Hidden(50), map: 4),
+        (colour: 52, low: Hidden(120), high: Hidden(52), map: 12),
+        (colour: 54, low: Hidden(120), high: Hidden(54), map: 6),
+    ],
+    // Shading ramps (light to dark) shown on the maps in these legend colours, spread evenly
+    // over each ramp.
+    map_shades: [7, 14, 8, 0],
+    map_ramps: [(166, 175), (224, 229), (230, 239)],
+)

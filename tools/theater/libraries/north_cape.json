@@ -1,0 +1,166 @@
+{
+ "theater": "north_cape",
+ "land_rubble": 66,
+ "water_rubble": 78,
+ "kinds": {
+  "airbase": 19,
+  "depot": 26,
+  "headquarters": 27,
+  "tank_farm": 28,
+  "sa_missile": 31,
+  "sam_radar": 36,
+  "tower": 37,
+  "hangar": 38,
+  "lpar_radar": 43,
+  "cargo_ship": 58,
+  "destroyer": 64,
+  "sub_pen": 70,
+  "typhoon": 75,
+  "krivak": 77,
+  "airplane": 80,
+  "cv_kuznetsov": 81,
+  "camp": 82,
+  "ss_missile": 93
+ },
+ "keep": [
+  19,
+  26,
+  27,
+  28,
+  31,
+  36,
+  37,
+  38,
+  43,
+  58,
+  64,
+  66,
+  70,
+  75,
+  77,
+  78,
+  80,
+  81,
+  82,
+  93
+ ],
+ "models": [
+  {
+   "index": 19,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 129
+  },
+  {
+   "index": 26,
+   "name": "Depot",
+   "role": null,
+   "class": 134
+  },
+  {
+   "index": 27,
+   "name": "Headquarters",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 28,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 138
+  },
+  {
+   "index": 31,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 36,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 37,
+   "name": "Tower",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 38,
+   "name": "Hangar",
+   "role": null,
+   "class": 128
+  },
+  {
+   "index": 43,
+   "name": "LPAR Radar",
+   "role": "EarlyWarningRadar",
+   "class": 8
+  },
+  {
+   "index": 58,
+   "name": "Cargo Ship",
+   "role": "CargoShip",
+   "class": 140
+  },
+  {
+   "index": 64,
+   "name": "Destroyer",
+   "role": null,
+   "class": 77
+  },
+  {
+   "index": 70,
+   "name": "Sub Pen",
+   "role": "SubPen",
+   "class": 11
+  },
+  {
+   "index": 75,
+   "name": "Typhoon",
+   "role": "MissileSub",
+   "class": 13
+  },
+  {
+   "index": 77,
+   "name": "Krivak",
+   "role": "Frigate",
+   "class": 12
+  },
+  {
+   "index": 80,
+   "name": "Airplane",
+   "role": "ParkedAircraft",
+   "class": 2
+  },
+  {
+   "index": 81,
+   "name": "CV Kuznetsov",
+   "role": "Carrier",
+   "class": 13
+  },
+  {
+   "index": 82,
+   "name": "Camp",
+   "role": "Camp",
+   "class": 3
+  },
+  {
+   "index": 93,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  }
+ ],
+ "levels": {
+  "19": 2,
+  "58": 2,
+  "64": 2,
+  "70": 3,
+  "77": 2,
+  "81": 2,
+  "82": 2
+ }
+}

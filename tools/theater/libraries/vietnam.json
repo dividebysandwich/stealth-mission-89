@@ -1,0 +1,122 @@
+{
+ "theater": "vietnam",
+ "land_rubble": 73,
+ "water_rubble": 91,
+ "kinds": {
+  "destroyer": 18,
+  "airbase": 21,
+  "town": 26,
+  "depot": 28,
+  "headquarters": 29,
+  "tank_farm": 30,
+  "sa_missile": 33,
+  "sam_radar": 38,
+  "hangar": 40,
+  "missile_boat": 53,
+  "bridge": 70,
+  "supply_dump": 93,
+  "ss_missile": 95
+ },
+ "keep": [
+  18,
+  21,
+  26,
+  28,
+  29,
+  30,
+  33,
+  38,
+  40,
+  53,
+  70,
+  73,
+  91,
+  93,
+  95
+ ],
+ "models": [
+  {
+   "index": 18,
+   "name": "Destroyer",
+   "role": null,
+   "class": 77
+  },
+  {
+   "index": 21,
+   "name": "Airbase",
+   "role": "Airbase",
+   "class": 1
+  },
+  {
+   "index": 26,
+   "name": "Town",
+   "role": null,
+   "class": 131
+  },
+  {
+   "index": 28,
+   "name": "Depot",
+   "role": null,
+   "class": 134
+  },
+  {
+   "index": 29,
+   "name": "Headquarters",
+   "role": "Headquarters",
+   "class": 5
+  },
+  {
+   "index": 30,
+   "name": "Tank Farm",
+   "role": "TankFarm",
+   "class": 10
+  },
+  {
+   "index": 33,
+   "name": "SA Missile",
+   "role": "SamMissile",
+   "class": 7
+  },
+  {
+   "index": 38,
+   "name": "SAM Radar",
+   "role": "SamRadar",
+   "class": 8
+  },
+  {
+   "index": 40,
+   "name": "Hangar",
+   "role": "Hangar",
+   "class": 128
+  },
+  {
+   "index": 53,
+   "name": "Missile Boat",
+   "role": "PatrolBoat",
+   "class": 12
+  },
+  {
+   "index": 70,
+   "name": "Bridge",
+   "role": "Bridge",
+   "class": 132
+  },
+  {
+   "index": 93,
+   "name": "Supply Dump",
+   "role": "SupplyDump",
+   "class": 5
+  },
+  {
+   "index": 95,
+   "name": "SS Missile",
+   "role": "SsMissile",
+   "class": 7
+  }
+ ],
+ "levels": {
+  "18": 2,
+  "21": 2,
+  "70": 2
+ }
+}

@@ -1,0 +1,260 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # The repository was cut to a fresh root without the earlier history (which held data from
+  # the original game). tools/history_denylist.txt lists that history's asset blobs by hash:
+  # an old branch merged or pushed back would bring them in, and fails here.
+  history:
+    name: history
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No blob of the old history
+        run: |
+          git rev-list --objects --all | cut -d' ' -f1 | sort -u > /tmp/objects
+          sort -u tools/history_denylist.txt > /tmp/denied
+          if comm -12 /tmp/objects /tmp/denied | grep -q .; then
+            echo "Objects from the old history are in this repository:"
+            comm -12 /tmp/objects /tmp/denied | head -20
+            exit 1
+          fi
+
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # glvr: OpenXR with our own OpenGL headset renderer too (`--gl-vr`, Linux only).
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            features: glvr
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            features: glvr
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: xr
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            features: xr
+          # Both macOS builds run on Apple Silicon; the Intel one cross-compiles.
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            features: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            features: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev \
+            libx11-dev  # the OpenXR-SDK's configure step wants Xlib headers (default backend)
+
+      # The Linux packages ship the loader beside stealth-mission-89 with its licence (Apache 2.0), for
+      # systems without the openxr package or that can't install it (SteamOS, the Steam
+      # Frame). It is named libopenxr_loader.so, the name the openxr crate opens; stealth-mission-89's
+      # RUNPATH ($ORIGIN, build.rs) makes the dynamic loader look beside it first. Built from
+      # Khronos's OpenXR-SDK (pregenerated sources): Khronos publishes no Linux build.
+      # Windows needs nothing: bevy_mod_openxr links the loader statically there.
+      - name: Build the OpenXR loader (Linux)
+        if: runner.os == 'Linux' && matrix.features != ''
+        env:
+          OPENXR_VERSION: 1.1.63
+        run: |
+          curl -fsSL -o openxr.tar.gz "https://github.com/KhronosGroup/OpenXR-SDK/archive/refs/tags/release-$OPENXR_VERSION.tar.gz"
+          tar xzf openxr.tar.gz
+          cmake -S "OpenXR-SDK-release-$OPENXR_VERSION" -B openxr-build -DCMAKE_BUILD_TYPE=Release \
+            -DDYNAMIC_LOADER=ON -DBUILD_TESTS=OFF -DBUILD_API_LAYERS=OFF -DBUILD_WITH_SYSTEM_JSONCPP=OFF
+          cmake --build openxr-build --parallel
+          mkdir -p openxr
+          cp -L openxr-build/src/loader/libopenxr_loader.so.1 openxr/libopenxr_loader.so
+          strip openxr/libopenxr_loader.so
+          cp "OpenXR-SDK-release-$OPENXR_VERSION/LICENSE" openxr/openxr-LICENSE.txt
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # Release builds drop the default `dev` feature (bevy/dynamic_linking).
+      - name: Build
+        shell: bash
+        run: |
+          cargo build --release --target ${{ matrix.target }} \
+            -p stealth-mission-89 --no-default-features \
+            ${{ matrix.features && format('--features stealth-mission-89/{0}', matrix.features) || '' }}
+
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          name="stealth-mission-89-${GITHUB_REF_NAME//\//-}-${{ matrix.target }}"
+          ext=""
+          [[ "${{ runner.os }}" == "Windows" ]] && ext=".exe"
+          mkdir -p "dist/$name"
+          cp "target/${{ matrix.target }}/release/stealth-mission-89$ext" "dist/$name/"
+          cp -r assets README.md LICENSE "dist/$name/"
+          [[ -d openxr ]] && cp openxr/* "dist/$name/"
+          cd dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a -tzip "$name.zip" "$name" > /dev/null
+            echo "file=dist/$name.zip" >> "$GITHUB_OUTPUT"
+            # The installer: Program Files, Start menu shortcuts for the desktop and VR
+            # (packaging/windows/main.wxs).
+            cd ..
+            version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -n1)
+            arch=x64
+            [[ "${{ matrix.target }}" == aarch64-* ]] && arch=arm64
+            dotnet tool install --global wix --version 5.0.2
+            wix build packaging/windows/main.wxs -arch $arch \
+              -d Version="$version" -d BinDir="target/${{ matrix.target }}/release" -d SrcDir="$GITHUB_WORKSPACE" \
+              -o "dist/$name.msi"
+          else
+            tar -czf "$name.tar.gz" "$name"
+            echo "file=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      # An AppImage per architecture: one file to download, mark executable and run, for
+      # SteamOS (Steam Deck, Steam Frame) and other desktops. It has stealth-mission-89 and the OpenXR
+      # loader in usr/bin and the shipped
+      # assets (shaders) in usr/share/stealth-mission-89; packaging/linux/AppRun picks the writable data
+      # folder the game reads. The update information lets AppImageUpdate / Gear Lever fetch
+      # the latest release's file.
+      - name: Package (AppImage)
+        if: runner.os == 'Linux'
+        env:
+          APPIMAGETOOL_VERSION: 1.9.1
+          APPIMAGE_RUNTIME_VERSION: "20251108"
+        run: |
+          ARCH=$(uname -m)
+          APPDIR=AppDir
+          mkdir -p $APPDIR/usr/bin $APPDIR/usr/share/stealth-mission-89 $APPDIR/usr/share/applications \
+            $APPDIR/usr/share/icons/hicolor/256x256/apps $APPDIR/usr/share/doc/stealth-mission-89
+          cp "target/${{ matrix.target }}/release/stealth-mission-89" $APPDIR/usr/bin/
+          strip $APPDIR/usr/bin/stealth-mission-89
+          if [[ -d openxr ]]; then
+            cp openxr/libopenxr_loader.so $APPDIR/usr/bin/
+            cp openxr/openxr-LICENSE.txt $APPDIR/usr/share/doc/stealth-mission-89/
+          fi
+          cp -r assets $APPDIR/usr/share/stealth-mission-89/
+          cp README.md LICENSE $APPDIR/usr/share/doc/stealth-mission-89/
+          cp packaging/linux/AppRun $APPDIR/
+          cp packaging/linux/stealth-mission-89.desktop $APPDIR/
+          cp packaging/linux/stealth-mission-89.desktop $APPDIR/usr/share/applications/
+          cp packaging/linux/stealth-mission-89.png $APPDIR/
+          cp packaging/linux/stealth-mission-89.png $APPDIR/usr/share/icons/hicolor/256x256/apps/
+          ln -s stealth-mission-89.png $APPDIR/.DirIcon
+
+          curl -fsSL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/$APPIMAGETOOL_VERSION/appimagetool-$ARCH.AppImage"
+          curl -fsSL -o runtime "https://github.com/AppImage/type2-runtime/releases/download/$APPIMAGE_RUNTIME_VERSION/runtime-$ARCH"
+          chmod +x appimagetool
+          # The runner has no FUSE to mount appimagetool with.
+          APPIMAGE_EXTRACT_AND_RUN=1 ARCH=$ARCH ./appimagetool --no-appstream --runtime-file runtime \
+            -u "gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|stealth-mission-89-*-$ARCH.AppImage.zsync" \
+            $APPDIR "dist/stealth-mission-89-${GITHUB_REF_NAME//\//-}-$ARCH.AppImage"
+          # appimagetool writes the .zsync in the working directory.
+          mv stealth-mission-89-*.AppImage.zsync dist/
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            ${{ steps.package.outputs.file }}
+            dist/*.msi
+            dist/*.AppImage
+            dist/*.AppImage.zsync
+          if-no-files-found: error
+
+  # The browser build (docs/web.md): the page, the wasm and the assets, zipped into one folder
+  # to unpack and serve as it is.
+  web:
+    name: wasm32 (browser)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32
+      # Trunk fetches the matching wasm-bindgen and wasm-opt itself.
+      - uses: jetli/trunk-action@v0.5.0
+        with:
+          version: latest
+      - name: Build
+        run: trunk build --release
+      - name: Package
+        id: package
+        run: |
+          name="stealth-mission-89-${GITHUB_REF_NAME//\//-}-web"
+          cp -r dist/web "dist/$name"
+          (cd dist && zip -qr "$name.zip" "$name")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: dist/${{ steps.package.outputs.name }}.zip
+          if-no-files-found: error
+
+  # The server list's master server (runs on a Linux host behind a reverse proxy).
+  master:
+    name: stealth-master
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        run: |
+          cargo test -p stealth-master -p stealth-master-proto
+          cargo build --release -p stealth-master
+          mkdir -p dist
+          tar czf "dist/stealth-master-${GITHUB_REF_NAME//\//-}-x86_64-unknown-linux-gnu.tar.gz" \
+            -C target/release stealth-master -C ../../crates/stealth-master README.md deploy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stealth-master
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, web, master]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

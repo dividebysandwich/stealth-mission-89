@@ -1,0 +1,101 @@
+[workspace]
+members = [".", "crates/bevy_fast_clouds", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+version = "0.7.0"
+
+[workspace.dependencies]
+stealth-formats = { path = "crates/stealth-formats" }
+serde = { version = "1", features = ["derive"] }
+ron = "0.12"
+anyhow = "1"
+
+[package]
+name = "stealth-mission-89"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["dev", "xr"]
+dev = ["bevy/dynamic_linking"]
+# OpenXR support (`--vr`); the loader is opened at runtime, so builds without a runtime still work.
+xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
+# `--gl-vr`: the headset drawn with our own OpenGL renderer (src/glvr), foveated on the Steam Frame.
+glvr = ["xr", "dep:glow", "dep:khronos-egl", "dep:libloading"]
+
+[dependencies]
+# trace: spans for every system and render node (timed with SM89_PROFILE, see src/profile.rs).
+bevy = { version = "0.19.1", features = ["flac", "trace"] }
+bevy_egui = "0.42"
+# The cockpit tooltips' font (egui's Hack: Bevy's built-in font has no accented letters) and the
+# check that it draws a key's label.
+epaint_default_fonts = "0.36"
+ttf-parser = "0.25"
+serde.workspace = true
+ron.workspace = true
+serde_json = "1"
+stealth-formats.workspace = true
+stealth-mission = { path = "crates/stealth-mission" }
+stealth-sim = { path = "crates/stealth-sim" }
+stealth-campaign = { path = "crates/stealth-campaign" }
+stealth-host = { path = "crates/stealth-host" }
+stealth-net = { path = "crates/stealth-net" }
+stealth-master-proto = { path = "crates/stealth-master-proto" }
+bevy_fast_clouds = { path = "crates/bevy_fast_clouds" }
+anyhow.workspace = true
+rand = "0.9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+png = "0.18"
+gilrs = "0.11"
+dirs = "6"
+# SystemTime that works in the browser build too (std's panics there).
+web-time = "1"
+bevy_mod_openxr = { version = "0.6", optional = true }
+bevy_mod_xr = { version = "0.6", optional = true }
+openxr = { version = "0.21", optional = true }
+glow = { version = "0.18", optional = true }
+khronos-egl = { version = "6", features = ["dynamic"], optional = true }
+libloading = { version = "0.8", optional = true }
+
+# The browser build: WebGPU (the shaders read storage buffers, which WebGL2 lacks) and
+# randomness from the browser.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy = { version = "0.19.1", features = ["webgpu"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window", "Location"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# Closes the console window of a game started from Explorer (src/win_console.rs); reads the
+# FreeTrack head tracking shared memory (src/headtrack.rs); names joysticks (src/hotas.rs).
+windows-sys = { version = "0.61", features = [
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Devices_HumanInterfaceDevice",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_Memory",
+] }
+
+[build-dependencies]
+# Links the icon, manifest and version (packaging/windows) into stealth-mission-89.exe.
+embed-resource = "3"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+# The browser build (Trunk.toml). Quick to build for now; for a smaller download (about a third
+# less) add opt-level = "s", lto = "fat", codegen-units = 1 and set data-wasm-opt="s" in
+# web/index.html, at about 15 minutes a build.
+[profile.wasm-release]
+inherits = "release"
+strip = true

@@ -1,0 +1,137 @@
+{
+  "roe": [
+    [
+      "Nobody may learn we were there. Avoid every aircraft and ground unit you can. Do not fire unless your own aircraft is in danger, and do not leave anything behind that could be traced to us.",
+      "This flight does not officially exist. Stay unseen, keep clear of populated areas and only use your weapons on the objectives. If you are detected, break off and come home.",
+      "We are not at war. Get in and out without being seen. Weapons are for the assigned targets and for self-defence only."
+    ],
+    [
+      "Hostilities are limited. You may engage anything that threatens you or your objectives, but keep clear of civilian areas and do not cross into neutral airspace.",
+      "We are in a limited conflict. Enemy military targets may be engaged if they get in the way. Avoid civilian casualties at all costs.",
+      "The situation is tense but not open war. Defend yourself and hit the assigned targets; leave everything else alone."
+    ],
+    [
+      "We are at war. Every enemy military target is fair game.",
+      "Full hostilities. Engage the enemy wherever you find them, but stay clear of civilian targets.",
+      "Open war. Use your weapons as you see fit against enemy forces."
+    ]
+  ],
+  "headers": [
+    "49TH FIGHTER WING - TASKING ORDER",
+    "STEALTH OPERATIONS - MISSION ORDER",
+    "TACTICAL OPERATIONS CENTER - ORDERS"
+  ],
+  "titles": [
+    [
+      "Air Combat Sortie",
+      "Air Intercept Sortie",
+      "Counter-Air Mission"
+    ],
+    [
+      "Ground Strike Sortie",
+      "Deep Strike Mission",
+      "Interdiction Mission"
+    ],
+    [
+      "Air Combat Training",
+      "Intercept Training Sortie",
+      "Practice Air Combat"
+    ],
+    [
+      "Ground Attack Training",
+      "Strike Training Sortie",
+      "Practice Strike Mission"
+    ]
+  ],
+  "labels": {
+    "primary": "PRIMARY TARGET:",
+    "secondary": "SECONDARY TARGET:",
+    "objective": "TASK:",
+    "flight_plan": "ROUTE:",
+    "roe": "ENGAGEMENT RULES:",
+    "armament": "LOADOUT:"
+  },
+  "pilot": [
+    "Pilot: {pilot}",
+    "Assigned pilot: {pilot}"
+  ],
+  "depart": [
+    "Take off from {base} at {time}.",
+    "Depart {base}, {time}.",
+    "Launch from {base} at {time}."
+  ],
+  "land": [
+    "Recover at {base}.",
+    "Land at {base}.",
+    "Return to {base}."
+  ],
+  "fuel": [
+    "Fuel needed: {fuel} lbs.",
+    "Planned fuel: {fuel} lbs."
+  ],
+  "objectives": {
+    "photo_at": [
+      "Photograph the {what} at {place}",
+      "Take pictures of the {what} at {place}",
+      "Get reconnaissance photos of the {what} at {place}"
+    ],
+    "photo": [
+      "Photograph the {what}",
+      "Take pictures of the {what}",
+      "Get reconnaissance photos of the {what}"
+    ],
+    "destroy_at": [
+      "Destroy the {what} at {place}",
+      "Knock out the {what} at {place}",
+      "Strike the {what} at {place}"
+    ],
+    "destroy": [
+      "Destroy the {what}",
+      "Knock out the {what}",
+      "Strike the {what}"
+    ],
+    "suffix_deadline": [
+      " no later than {deadline}.",
+      " by {deadline}.",
+      " before {deadline}."
+    ],
+    "suffix_unloading": [
+      " by {deadline}, while its cargo is still there.",
+      " before {deadline}, while it is being unloaded.",
+      " no later than {deadline}, before the cargo is moved."
+    ],
+    "suffix_none": [
+      "."
+    ],
+    "drop": [
+      "Drop the supplies on the beacon at {coord}. It transmits until {deadline}.",
+      "Release the cargo over the beacon at {coord} before {deadline}.",
+      "Deliver the supply pod to the beacon at {coord} by {deadline}."
+    ],
+    "airstrip": [
+      "Land at the strip at {coord} before {deadline} and take the cargo aboard.",
+      "Touch down at {coord} by {deadline} to pick up the cargo.",
+      "Make the pickup at the airstrip at {coord} before {deadline}."
+    ],
+    "route": [
+      "A transport leaves {origin} at {depart} for {place}. Shoot it down before {deadline}.",
+      "Intercept the transport flying from {origin} to {place} (takeoff {depart}) by {deadline}.",
+      "The transport takes off from {origin} at {depart}, bound for {place}. Stop it before {deadline}."
+    ],
+    "leaving": [
+      "A transport takes off from {place} at {depart}. Shoot it down.",
+      "Intercept the transport leaving {place} at {depart}.",
+      "Stop the aircraft departing {place} at {depart}."
+    ],
+    "last_seen": [
+      "The aircraft was last seen at {coord} at {depart}, heading for {place}. Shoot it down before {deadline}.",
+      "Intercept the aircraft spotted at {coord} at {depart} on its way to {place}, by {deadline}.",
+      "Track down the aircraft seen at {coord} at {depart}, bound for {place}. Stop it before {deadline}."
+    ],
+    "patrol": [
+      "Shoot down the {target} near {coord}.",
+      "Destroy the {target} operating around {coord}.",
+      "Engage the {target} near {coord}."
+    ]
+  }
+}
