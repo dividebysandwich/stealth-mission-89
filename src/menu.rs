@@ -1150,8 +1150,14 @@ fn main_screen(
                 exit.write(AppExit::Success);
             }
             ui.add_space(6.0);
+            // In the browser: which build runs (docs/web.md).
+            let renderer = match (cfg!(target_arch = "wasm32"), crate::WEBGL2) {
+                (false, _) => "",
+                (true, false) => " · WEBGPU",
+                (true, true) => " · WEBGL2",
+            };
             ui.label(
-                egui::RichText::new(concat!("VERSION ", env!("CARGO_PKG_VERSION")))
+                egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
                     .size(11.0)
                     .color(DIM),
             );
