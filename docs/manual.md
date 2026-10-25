@@ -165,10 +165,11 @@ and the autopilot to it (again after the first one), the HUD mode, the store to 
 one on board that does the most against that target: a Harpoon against a ship, a HARM against
 a radar, a Durandal against a runway, the air-to-air missile that locks the farthest against an
 aircraft, the camera for a photo, the supplies for a drop), the bay, the lock and the shot, or
-the landing it asks for; then the way home. Threats come first while they last: a missile
-locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then
+the landing it asks for; then the way home. Dangers and threats come first while they last: a
+stall (nose down, power up), a missile locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then
 evading and a decoy, chapter 6.6), a radar tracking the aircraft (descend, slow down, wings
-level, bay shut: chapter 6.5). Evading with the stick takes the autopilot off, so the lesson
+level, bay shut: chapter 6.5); a fire on board and low fuel are said for a few seconds when they
+begin. Evading with the stick takes the autopilot off, so the lesson
 asks for it again afterwards; with the autopilot damaged it says to fly by hand. A step ends however it is done (a click, a key, the
 joystick), and shows again when it is undone (the bay shut, the lock lost, the store spent);
 the steps follow the aircraft (jet or helicopter, bomb bay or pylons) and the avionics (DOS era

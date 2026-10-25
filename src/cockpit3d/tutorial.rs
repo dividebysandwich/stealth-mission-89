@@ -74,6 +74,8 @@ const BLINK_RATE: f32 = 1.5;
 const LAST_STEP_SECONDS: f32 = 15.0;
 /// Seconds a threat's box stays up after it is over (no flicker as the lamps blink).
 const ALERT_HOLD: f32 = 3.0;
+/// Seconds a warning (a lasting state: fire, low fuel) is shown each time it begins.
+const WARNING_SECONDS: f32 = 12.0;
 /// The attack begins this near an objective (km), the landing this near the base.
 const ATTACK_KM: f32 = 25.0;
 const HOME_KM: f32 = 20.0;
@@ -386,6 +388,8 @@ struct Ctx<'a> {
     stores: (i32, i32, i32),
     /// A radar tracks the aircraft.
     tracked: bool,
+    /// A fire burns on board.
+    fire: bool,
 }
 
 impl Ctx<'_> {
@@ -949,15 +953,27 @@ static RETURN_STEPS: &[Step] = {
     ]
 };
 
+const DANGER: &str = "DANGER";
 const THREAT: &str = "THREAT";
+/// A lasting state: shown for `WARNING_SECONDS` each time it begins, then the lesson again.
+const WARNING: &str = "WARNING";
 
-/// The threats, shown before the lesson's step while they last (`done`: over), the first one
-/// that applies. A stick input to evade takes the autopilot off: the lesson asks for it again
-/// afterwards.
+/// The dangers, threats and warnings, shown before the lesson's step while they last (`done`:
+/// over), the first one that applies. A stick input to evade takes the autopilot off: the
+/// lesson asks for it again afterwards.
 static ALERTS: &[Step] = {
     use Action::*;
     use Target as T;
     &[
+        Step {
+            only: all,
+            phase: DANGER,
+            title: "Stall",
+            detail: "Too slow to fly: lower the nose and add power until the STALL light goes out",
+            keys: &[PitchDown, ThrottleMax],
+            target: |_| T::Throttle,
+            done: |c| c.a.on_ground || c.a.velocity >= c.a.stall_speed,
+        },
         Step {
             only: all,
             phase: THREAT,
@@ -992,6 +1008,16 @@ static ALERTS: &[Step] = {
         },
         Step {
             only: all,
+            phase: WARNING,
+            title: "Fire on board",
+            detail: "It drains fuel while the throttle is above idle: throttle back as far as you \
+                     can and head home; with realistic damage it may blow up: be ready to eject",
+            keys: &[ThrottleIdle, Eject],
+            target: |_| T::Throttle,
+            done: |c| !c.fire,
+        },
+        Step {
+            only: all,
             phase: THREAT,
             title: "Tracked by a radar",
             detail: "Descend, slow down, keep the wings level and the bay shut until the radar \
@@ -1003,8 +1029,36 @@ static ALERTS: &[Step] = {
             },
             done: |c| !c.tracked || c.leg.near,
         },
+        Step {
+            only: all,
+            phase: WARNING,
+            title: "Low fuel",
+            detail: "Under 1,500 lb: leave what is left of the mission and head for the landing \
+                     base, the waypoints after the targets lead there",
+            keys: &[NextWaypoint],
+            target: |_| T::Action(NextWaypoint),
+            done: |c| c.a.fuel >= crate::panel::LOW_FUEL || c.a.on_ground,
+        },
     ]
 };
+
+/// The alert to show (index in `ALERTS`): the first that applies, a warning only for its first
+/// `WARNING_SECONDS`. `since`: when each alert began to apply, kept up to date.
+fn pick_alert(ctx: &Ctx, since: &mut Vec<Option<f32>>, now: f32) -> Option<usize> {
+    since.resize(ALERTS.len(), None);
+    let mut pick = None;
+    for (i, (s, since)) in ALERTS.iter().zip(since.iter_mut()).enumerate() {
+        if (s.done)(ctx) {
+            *since = None;
+            continue;
+        }
+        let begun = *since.get_or_insert(now);
+        if pick.is_none() && (s.phase != WARNING || now - begun < WARNING_SECONDS) {
+            pick = Some(i);
+        }
+    }
+    pick
+}
 
 /// A step of the lesson, and its leg.
 #[derive(Clone, Copy)]
@@ -1076,8 +1130,10 @@ pub(super) struct Tutorial {
     at: usize,
     /// Seconds on the step (not while the menu is open).
     dwell: f32,
-    /// The threat shown (index in `ALERTS`) and when it last applied (seconds).
+    /// The alert shown (index in `ALERTS`) and when it last applied, when each began to apply
+    /// (seconds).
     alert: Option<(usize, f32)>,
+    alert_since: Vec<Option<f32>>,
     /// The step's phase, title and detail with their words, and what they were filled for
     /// (the threat, the step, the store it names).
     texts: [String; 3],
@@ -1308,6 +1364,7 @@ pub(super) fn advance(
     let gun = sim.has_gun() && sim.gun_ammo() > 0;
     let lock = sim.targeting();
     let (lights, stores, tracked) = (sim.lights(), sim.stores(), sim.identification().2 > 0);
+    let fire = sim.damage_effects().bits & stealth_sim::dmg::FIRE != 0;
     let me = IVec2::from(map_units(pos));
     let within = |p: IVec2, km: f32| (p - me).as_vec2().length() < km * MU_PER_KM;
     let route = (!wps.points.is_empty()).then(|| route_leg(&wps));
@@ -1370,6 +1427,7 @@ pub(super) fn advance(
             lights,
             stores,
             tracked,
+            fire,
         };
         if !(e.step.done)(&ctx) {
             target = (e.step.target)(&ctx);
@@ -1383,10 +1441,11 @@ pub(super) fn advance(
         tutorial.dwell = 0.0;
     }
 
-    // A threat first, while it lasts and a moment after.
-    let ctx = Ctx { a, hud: &hud, mfd: &mfd, dwell: 0.0, leg, selected, lights, stores, tracked };
+    // An alert first, while it lasts and a moment after.
+    let ctx =
+        Ctx { a, hud: &hud, mfd: &mfd, dwell: 0.0, leg, selected, lights, stores, tracked, fire };
     let now = time.elapsed_secs();
-    match ALERTS.iter().position(|s| !(s.done)(&ctx)) {
+    match pick_alert(&ctx, &mut tutorial.alert_since, now) {
         Some(i) => tutorial.alert = Some((i, now)),
         None if tutorial.alert.is_some_and(|(_, t)| now - t > ALERT_HOLD) => tutorial.alert = None,
         None => {}
@@ -1754,6 +1813,7 @@ mod tests {
             lights: default(),
             stores: (0, 0, 0),
             tracked: false,
+            fire: false,
         }
     }
 
@@ -1895,24 +1955,45 @@ mod tests {
     fn threats_come_first() {
         let (a, hud, mfd) =
             (Aircraft::new_on_runway(0.0), HudState::default(), MfdState::default());
-        let alert = |c: &Ctx| ALERTS.iter().position(|s| !(s.done)(c)).map(|i| ALERTS[i].title);
+        let mut since = Vec::new();
+        let mut alert = |c: &Ctx, now: f32| pick_alert(c, &mut since, now).map(|i| &ALERTS[i]);
+        let title = |s: Option<&Step>| s.map(|s| s.title);
         let mut c = ctx(&a, &hud, &mfd);
-        assert_eq!(alert(&c), None);
+        assert_eq!(title(alert(&c, 0.0)), None);
         c.stores = (4, 4, 2);
         c.lights.rad_threat = true;
-        assert_eq!(alert(&c), Some("Radar-guided missile: chaff"));
+        assert_eq!(title(alert(&c, 0.0)), Some("Radar-guided missile: chaff"));
         c.lights.chaff = true;
-        assert_eq!(alert(&c), Some("Evade the missile"));
-        assert_eq!((ALERTS[2].target)(&c), Target::Action(Action::Decoy));
+        let evade = alert(&c, 0.0).unwrap();
+        assert_eq!(evade.title, "Evade the missile");
+        assert_eq!((evade.target)(&c), Target::Action(Action::Decoy));
         c.lights = default();
         c.lights.ir_threat = true;
         c.stores.0 = 0;
-        assert_eq!(alert(&c), Some("Evade the missile"));
+        assert_eq!(title(alert(&c, 0.0)), Some("Evade the missile"));
         c.lights = default();
         c.tracked = true;
-        assert_eq!(alert(&c), Some("Tracked by a radar"));
+        assert_eq!(title(alert(&c, 0.0)), Some("Tracked by a radar"));
         c.leg.near = true;
-        assert_eq!(alert(&c), None);
+        assert_eq!(title(alert(&c, 0.0)), None);
+        // A fire is a warning: shown when it starts, then the lesson again until another one.
+        c.fire = true;
+        assert_eq!(title(alert(&c, 1.0)), Some("Fire on board"));
+        assert_eq!(title(alert(&c, 1.0 + WARNING_SECONDS)), None);
+        c.fire = false;
+        assert_eq!(title(alert(&c, 20.0)), None);
+        c.fire = true;
+        assert_eq!(title(alert(&c, 21.0)), Some("Fire on board"));
+        // In the air: too slow is a stall, before everything; low fuel is a warning.
+        let mut flying = Aircraft::new_on_runway(0.0);
+        (flying.on_ground, flying.stall_speed, flying.velocity) = (false, 100.0, 90.0);
+        flying.fuel = crate::panel::LOW_FUEL - 1.0;
+        let mut c = ctx(&flying, &hud, &mfd);
+        c.lights.rad_threat = true;
+        assert_eq!(title(alert(&c, 30.0)), Some("Stall"));
+        flying.velocity = 200.0;
+        let c = ctx(&flying, &hud, &mfd);
+        assert_eq!(title(alert(&c, 30.0)), Some("Low fuel"));
     }
 
     #[test]
