@@ -1,4 +1,4 @@
-//! Interactive tutorial (in-flight option, any theater and mission): one step at a time, from
+//! Interactive tutorial (single missions, any theater and mission): one step at a time, from
 //! the takeoff to the landing, a box says what to do next and which keys do it, an arrow points
 //! at the cockpit part to press or look at, and that part blinks sky blue.
 //!
@@ -512,6 +512,8 @@ static STEPS: &[Step] = {
 /// Where the lesson is.
 #[derive(Resource, Default)]
 pub(super) struct Tutorial {
+    /// Switched on, in a single mission.
+    on: bool,
     /// Index in `STEPS`.
     step: usize,
     /// The step's number among the flight's steps and their count (from 1).
@@ -703,12 +705,18 @@ pub(super) fn advance(
     aircraft: Query<&Aircraft, With<Player>>,
     (hud, mfd, controls): (Res<HudState>, Res<MfdState>, Res<FlightControls>),
     combat: Option<Res<crate::combat::Combat>>,
+    (career, campaign): (
+        Option<Res<crate::career::CareerFlight>>,
+        Option<Res<crate::campaign::ActiveCampaign>>,
+    ),
 ) {
-    if !settings.tutorial {
+    let tutorial = &mut *tutorial;
+    tutorial.on =
+        settings.tutorial && crate::mission::single_mission(career.as_deref(), campaign.as_deref());
+    if !tutorial.on {
         actions.clear();
         return;
     }
-    let tutorial = &mut *tutorial;
     for ActionEvent(a) in actions.read() {
         if !tutorial.seen.contains(a) {
             tutorial.seen.push(*a);
@@ -858,7 +866,6 @@ impl Parts<'_, '_> {
 pub(super) fn glow(
     mut commands: Commands,
     time: Res<Time<Real>>,
-    settings: Res<Settings>,
     mfd: Res<MfdState>,
     mut tutorial: ResMut<Tutorial>,
     parts: Parts,
@@ -868,7 +875,7 @@ pub(super) fn glow(
     highlights: Query<(), With<Highlight>>,
 ) {
     let tutorial = &mut *tutorial;
-    tutorial.part = settings.tutorial.then(|| parts.entity(tutorial.target, &mfd)).flatten();
+    tutorial.part = tutorial.on.then(|| parts.entity(tutorial.target, &mfd)).flatten();
     // The overlays went with a rebuilt cockpit: made again.
     let gone = tutorial.glows.iter().any(|&g| !glows.contains(g));
     if tutorial.part != tutorial.glowing || gone {
@@ -968,7 +975,7 @@ pub(super) fn show(
     mut overlay: Overlay,
 ) {
     let step = tutorial.current().filter(|_| {
-        settings.tutorial
+        tutorial.on
             && !settings.vr
             && !menu.open
             && !hide.is_some_and(|h| h.0)

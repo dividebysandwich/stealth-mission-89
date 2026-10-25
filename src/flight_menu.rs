@@ -307,10 +307,12 @@ impl Item {
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
     /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
-    fn enabled(self, s: &Settings, ops: bool, can_save: bool) -> bool {
+    /// `single`: the flight is a single mission (`mission::single_mission`).
+    fn enabled(self, s: &Settings, ops: bool, can_save: bool, single: bool) -> bool {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
+            Item::Tutorial => single,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
@@ -783,13 +785,17 @@ fn navigate(
     mut block: ResMut<InputBlock>,
     mut actions: MessageWriter<ActionEvent>,
     sinks: Query<&AudioSink>,
-    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    (campaign, career): (
+        Option<Res<crate::campaign::ActiveCampaign>>,
+        Option<Res<crate::career::CareerFlight>>,
+    ),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
 ) {
     if !menu.open || menu.exiting || menu.bindings {
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let pause = campaign.is_none();
     if !mouse.pressed(MouseButton::Left) {
         menu.mouse_armed = true;
@@ -960,7 +966,8 @@ fn navigate(
         None => (menu.cursor, None),
     };
     let item = items[index.min(n - 1)];
-    if !item.enabled(&settings, ops, menu.can_save) || !(select || clicked.is_some() || adjust != 0)
+    if !item.enabled(&settings, ops, menu.can_save, single)
+        || !(select || clicked.is_some() || adjust != 0)
     {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
@@ -1138,6 +1145,7 @@ fn draw(
     settings: Res<Settings>,
     mut q: Query<(&mut CanvasTexture, &mut Visibility), With<MenuScreen>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    career: Option<Res<crate::career::CareerFlight>>,
     config: Res<crate::hotas::InputConfig>,
     time: Res<Time<Real>>,
 ) {
@@ -1148,6 +1156,7 @@ fn draw(
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let c = &mut tex.canvas;
     c.clear(BG);
     c.frame(Vec2::new(6.0, 6.0), Vec2::new(W as f32 - 7.0, H as f32 - 7.0), 3.0, DIM);
@@ -1215,7 +1224,7 @@ fn draw(
     for (i, item) in menu.page.items().iter().enumerate() {
         let y = TOP + ROW * i as f32;
         let mid = y + ROW / 2.0;
-        let enabled = item.enabled(&settings, ops, menu.can_save);
+        let enabled = item.enabled(&settings, ops, menu.can_save, single);
         let col = if enabled { BRIGHT } else { DIM };
         if i == menu.cursor {
             c.fill_rect(24, y as i32 + 3, W as i32 - 48, ROW as i32 - 6, ROW_BG);

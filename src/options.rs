@@ -2,7 +2,7 @@
 //! menu's other choices (`prefs.rs`), on four tabs:
 //!
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
-//!   interactive tutorial, the VR cockpit size and Tacview.
+//!   VR cockpit size and Tacview.
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
 //! - SOUND: the master, engine, effects and warning volumes, the engine low-pass inside the
 //!   aircraft.
@@ -173,11 +173,6 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     toggled |= facts(
         ui.checkbox(&mut s.tooltips, "Cockpit tooltips"),
         &["What a cockpit control or display is, under the mouse or a VR fingertip"],
-    )
-    .changed();
-    toggled |= facts(
-        ui.checkbox(&mut s.tutorial, "Interactive tutorial"),
-        &["Step by step from the takeoff to the landing: what to press next, and its keys"],
     )
     .changed();
     section(ui, "VR cockpit size");

@@ -105,7 +105,8 @@ pub struct Settings {
     pub aircraft: crate::aircraft::AircraftKind,
     /// Tooltips over the cockpit's parts (in-flight menu; on by default).
     pub tooltips: bool,
-    /// `--tutorial`: the interactive tutorial in flight (`cockpit3d::tutorial`; off by default).
+    /// `--tutorial`: the interactive tutorial in single missions (`cockpit3d::tutorial`; off by
+    /// default).
     pub tutorial: bool,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
