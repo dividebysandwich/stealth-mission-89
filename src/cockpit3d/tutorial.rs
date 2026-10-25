@@ -408,7 +408,7 @@ impl Ctx<'_> {
                 Page::Weapons => av.shown(Format::Sms).filter(|_| !av.sms_ord),
                 Page::Waypoints => av.shown(Format::Map).filter(|_| av.map_way),
                 Page::Tactical => av.shown(Format::Hsd),
-                Page::Map => av.shown(Format::Map),
+                Page::Map => av.shown(Format::Map).filter(|_| !av.map_way),
                 Page::Camera => av.shown(Format::Tgp),
             };
         }
@@ -424,7 +424,7 @@ impl Ctx<'_> {
     }
 
     /// The button that shows a page: with the modern avionics the format's own button when the
-    /// format shows (ORD, WPN, WAY), else the format's button.
+    /// format shows (ORD, WPN, WAY; WAY again back to the map), else the format's button.
     fn page_button(&self, page: Page) -> Target {
         if !self.mfd.modern {
             return match page {
@@ -441,7 +441,7 @@ impl Ctx<'_> {
             Page::Weapons => (Format::Sms, Some(MfdCmd::Sms(false)), MfdSide::Right),
             Page::Waypoints => (Format::Map, Some(MfdCmd::MapWay), MfdSide::Right),
             Page::Tactical => (Format::Hsd, None, MfdSide::Left),
-            Page::Map => (Format::Map, None, MfdSide::Left),
+            Page::Map => (Format::Map, Some(MfdCmd::MapWay), MfdSide::Left),
             Page::Camera => (Format::Tgp, None, MfdSide::Right),
         };
         match own {
@@ -636,7 +636,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: all,
             phase: OBJECTIVE,
             title: "Fly to the {target}",
-            detail: "Towards {name}, until about 25 km from it: the TAC page shows the way",
+            detail: "Towards {name}, until about 25 km from it: the tactical page shows the way",
             keys: &[],
             target: |c| c.way_display(),
             done: |c| c.leg.near || c.leg.over,
@@ -862,7 +862,7 @@ static RETURN_STEPS: &[Step] = {
             only: all,
             phase: RETURN,
             title: "Fly to the landing base",
-            detail: "Towards {name}, until about 20 km from it: the TAC page shows the way",
+            detail: "Towards {name}, until about 20 km from it: the tactical page shows the way",
             keys: &[],
             target: |c| c.way_display(),
             done: |c| c.leg.near,
@@ -1456,13 +1456,19 @@ impl Parts<'_, '_> {
         match target {
             Target::None => None,
             Target::Action(a) => by_action(a),
+            // The F-16 has no NAV cap: A-A again goes back to NAV.
+            Target::Effect(Effect::HudMode(0)) => find(&|e| e == Effect::HudMode(0))
+                .or_else(|| find(&|e| e == Effect::HudMode(1)))
+                .or_else(|| by_action(Action::HudMode)),
             Target::Effect(effect) => {
                 find(&|e| e == effect).or_else(|| by_action(effect.action(mfd)?))
             }
+            // The classic panel has no bezel buttons: its cap for the command's key.
             Target::Cmd(cmd) => find(&|e| {
                 matches!(e, Effect::Osb(side, slot)
                     if osb(side, slot, mfd).is_some_and(|o| o.1 == OsbFn::Cmd(cmd)))
-            }),
+            })
+            .or_else(|| by_action(crate::mfd::cmd_action(cmd))),
             Target::Display(role) => {
                 self.displays.iter().find(|(_, r)| **r == role).map(|(e, _)| e)
             }
@@ -1949,24 +1955,59 @@ mod tests {
         }
     }
 
-    /// The panel buttons the jet steps point at are in the jets' cockpits (else only the box
-    /// shows).
+    /// The controls the steps and the threats point at are in every cockpit model, whatever
+    /// the avionics (else only the box shows): the F-16's NAV is its A-A cap, the classic
+    /// panel's display caps stand for the bezel buttons.
     #[test]
     fn step_buttons_are_in_the_cockpits() {
-        use super::super::layout::{PanelLayout, PanelStyle};
-        let mfd = MfdState::default();
-        for (style, bay) in
-            [(PanelStyle::Classic, true), (PanelStyle::Modern, true), (PanelStyle::F16, false)]
-        {
-            let effects: Vec<Effect> =
-                PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap).collect();
-            let wanted: &[Action] = if bay {
-                &[Action::Flaps, Action::Autopilot, Action::BayDoors]
-            } else {
-                &[Action::Flaps, Action::Autopilot]
-            };
-            for &a in wanted {
-                assert!(effects.iter().any(|e| e.action(&mfd) == Some(a)), "{style:?}: {a:?}");
+        use super::super::controls::parse_effect;
+        use Action::*;
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/models");
+        let jet = [Flaps, Autopilot, Gear, Brakes, Ils, BayDoors];
+        let heli = [Ils];
+        let armed = [Chaff, Flare, Decoy, SelectWeapon, DesignateTarget, NearestTarget];
+        let cockpits: [(&str, &[Action], &[Action]); 5] = [
+            ("classic", &jet, &armed),
+            ("modern", &jet, &armed),
+            ("f16", &jet[..5], &armed),
+            ("ah1z", &heli, &armed),
+            ("uh60", &heli, &armed[..3]),
+        ];
+        for (model, flight, weapons) in cockpits {
+            let glb = std::fs::read(dir.join(format!("cockpit_{model}.glb"))).unwrap();
+            let len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+            let json: serde_json::Value = serde_json::from_slice(&glb[20..20 + len]).unwrap();
+            let effects: Vec<Effect> = json["nodes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|n| parse_effect(n["extras"]["control"].as_str()?))
+                .collect();
+            let osbs = effects.iter().any(|e| matches!(e, Effect::Osb(..)));
+            for modern in [false, true] {
+                let mfd = MfdState { modern, ..default() };
+                let has = |a: Action| effects.iter().any(|e| e.action(&mfd) == Some(a));
+                for &a in flight.iter().chain(weapons) {
+                    assert!(has(a), "{model}: {a:?}");
+                }
+                for mode in [0, 1, 2] {
+                    let cap = |m| effects.contains(&Effect::HudMode(m));
+                    assert!(cap(mode) || mode == 0 && cap(1), "{model}: HUD mode {mode}");
+                }
+                // Without bezel buttons, the page steps' caps.
+                if !osbs {
+                    let c = ctx(&Aircraft::new_on_runway(0.0), &HudState::default(), &mfd)
+                        .page_button(Page::Orders);
+                    let a = match c {
+                        Target::Cmd(cmd) => crate::mfd::cmd_action(cmd),
+                        Target::Action(a) => a,
+                        t => panic!("{t:?}"),
+                    };
+                    assert!(has(a), "{model}: {a:?}");
+                    for a in [Ordnance, SelectWaypoint, Maps, CamAhead] {
+                        assert!(has(a), "{model}: {a:?}");
+                    }
+                }
             }
         }
     }
