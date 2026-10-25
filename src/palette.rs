@@ -408,7 +408,7 @@ fn msaa_override() -> Option<Msaa> {
 }
 
 /// The MSAA option: 4x MSAA, 2x in VR (4x cost the Steam Frame 2 ms per frame, over its 72 Hz
-/// budget).
+/// budget). None on WebGL2.
 fn apply_msaa(
     settings: Res<Settings>,
     mut cams: Query<&mut Msaa, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
@@ -418,7 +418,8 @@ fn apply_msaa(
         return;
     }
     let on = if settings.vr { Msaa::Sample2 } else { Msaa::Sample4 };
-    let want = msaa_override().unwrap_or(if settings.msaa { on } else { Msaa::Off });
+    let want =
+        msaa_override().unwrap_or(if settings.msaa && !crate::WEBGL2 { on } else { Msaa::Off });
     for mut m in &mut cams {
         if *m != want {
             *m = want;

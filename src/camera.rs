@@ -241,6 +241,23 @@ pub struct HideOwnAircraft(pub bool);
 #[derive(Component)]
 pub struct OffscreenCamera;
 
+/// An image an `OffscreenCamera` renders into: stored `Rgba8Unorm`, drawn through an sRGB view,
+/// so it is sampled (egui, the cockpit displays) and read back as its sRGB bytes. WebGL2 has no
+/// view formats: stored sRGB.
+pub fn offscreen_target(width: u32, height: u32) -> Image {
+    use bevy::render::render_resource::TextureFormat;
+    if crate::WEBGL2 {
+        Image::new_target_texture(width, height, TextureFormat::Rgba8UnormSrgb, None)
+    } else {
+        Image::new_target_texture(
+            width,
+            height,
+            TextureFormat::Rgba8Unorm,
+            Some(TextureFormat::Rgba8UnormSrgb),
+        )
+    }
+}
+
 /// Spawns the background sphere (sky bands and ground gradient) as a child of a camera, on
 /// its own render layer so each camera only sees its own sphere.
 pub fn spawn_background(

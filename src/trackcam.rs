@@ -9,7 +9,6 @@ use bevy::camera::RenderTarget;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
-use bevy::render::render_resource::TextureFormat;
 
 use crate::camera::{View, ViewState};
 use crate::combat::{Combat, CombatSystems, map_wu, remote_motion, unit_position};
@@ -47,12 +46,7 @@ pub struct TrackCamera;
 pub struct TrackCamImage(pub Handle<Image>);
 
 fn create_image(images: &mut Assets<Image>, scale: u32) -> Handle<Image> {
-    let mut image = Image::new_target_texture(
-        77 * scale,
-        60 * scale,
-        TextureFormat::Rgba8Unorm,
-        Some(TextureFormat::Rgba8UnormSrgb),
-    );
+    let mut image = crate::camera::offscreen_target(77 * scale, 60 * scale);
     image.sampler = ImageSampler::nearest();
     images.add(image)
 }

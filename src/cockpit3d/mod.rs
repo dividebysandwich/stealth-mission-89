@@ -435,9 +435,8 @@ fn spawn_cockpit(
     let root = commands
         .spawn((
             CockpitRoot(layout.style, settings.local_lights, settings.hires_displays(), stem),
-            Transform::from_translation(settings.cockpit_eye()).with_scale(Vec3::splat(
-                1.0 / settings.aircraft.spec().cockpit_model_scale(),
-            )),
+            Transform::from_translation(settings.cockpit_eye())
+                .with_scale(Vec3::splat(1.0 / settings.aircraft.spec().cockpit_model_scale())),
             Visibility::default(),
         ))
         .id();

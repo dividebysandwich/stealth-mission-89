@@ -1,3 +1,8 @@
+/// The browser build on WebGL2 (without the `webgpu` feature, docs/web.md): the shared shader
+/// globals in a uniform buffer, MSAA off (the clouds can't read a multisampled depth buffer), one
+/// shadow cascade.
+pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu")));
+
 mod aircraft;
 mod asset_path;
 mod autoshot;

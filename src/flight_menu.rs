@@ -275,8 +275,8 @@ impl Item {
 
     /// The cockpit size only matters in the headset, the cockpit style only for aircraft with
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
-    /// only on the desktop; the bindings not over the campaign's Ops screen (its egui context
-    /// is the one up then).
+    /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
+    /// (its egui context is the one up then).
     fn enabled(self, s: &Settings, ops: bool) -> bool {
         match self {
             Item::Bindings => !ops,
@@ -284,6 +284,7 @@ impl Item {
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
+            Item::Msaa => !crate::WEBGL2,
             _ => true,
         }
     }

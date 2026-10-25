@@ -12,21 +12,23 @@ trunk serve --release        # http://127.0.0.1:8080
 trunk build --release        # dist/web: serve the folder as it is
 ```
 
-`Trunk.toml` and `web/index.html` hold the setup. The `wasm-release` profile in `Cargo.toml`
-builds quickly for now (about 2.5 minutes, a 79 MB wasm). Its comment lists the settings for a
+`Trunk.toml` and `web/index.html` hold the setup. Each build makes two games: the WebGPU one
+in `dist/web`, and the WebGL2 one in `dist/web/gl` (see below). The `wasm-release` profile in
+`Cargo.toml` builds each quickly for now (about 2.5 minutes, a 79 MB wasm). Its comment lists the settings for a
 smaller download (42 MB, 13 MB gzipped, about 15 minutes). Any static web server works, as long
 as it serves `.wasm` as `application/wasm`. CI builds the folder in the `web` job of
 `.github/workflows/build.yml` and uploads it as one zip (`stealth-mission-89-<ref>-web.zip`).
 Nothing is deployed automatically.
 
-The build also writes gzipped copies (`*.wasm.gz`, `*.js.gz`, from the hook in `Trunk.toml`). With
+The build also writes gzipped copies (`*.wasm.gz`, `*.js.gz`, from `web/post_build.sh`). With
 nginx, `gzip_static on;` sends them to browsers that take gzip, without compressing the 79 MB wasm
 on every request (about 17 MB on the wire). The hashed wasm and script names can be cached forever;
 `index.html` should not be.
 
-**Browser.** The game needs WebGPU: a current Chrome or Edge, Firefox 141 or later, or Safari 26,
-with hardware acceleration on. WebGL2 can't run it, because the palette, particle, trail and
-cloud shaders read storage buffers. Without WebGPU, the page says so.
+**Browser.** The game runs on WebGPU: a current Chrome or Edge, Firefox 141 or later, or Safari
+26, with hardware acceleration on. Without WebGPU (or without a WebGPU adapter), the page goes on
+to the WebGL2 build in `gl/`. Without WebGL2 either, the page says so. `?gl` asks for the WebGL2
+build.
 
 **Saves.** Settings, the input mapping, pilots and campaign saves are kept in the browser's
 localStorage under `sm89/…` (`crates/stealth-host/src/store.rs`). They belong to that browser
@@ -45,6 +47,33 @@ The main menu shows DOWNLOAD instead of QUIT. It opens `web/download.html`,
 which offers the desktop releases. The page links to the GitHub release of the version in
 `Cargo.toml`, which a Trunk hook writes to `version.js` at build time. So a build of a version
 that has no release yet links to files that don't exist yet.
+
+## The WebGL2 build
+
+Bevy picks WebGPU or WebGL2 when it is compiled, so there are two wasm builds: with the
+`webgpu` feature (`web/index.html`) and without it. `web/post_build.sh`, the Trunk hook, builds
+the second one into `gl/`. It runs Trunk again on `web/index.gl.html`, a copy of the page that
+it writes: marked `data-gl`, with `<base href="../">`, so the assets, the download page and the
+loading screen's picture come from the WebGPU build's directory and aren't there twice.
+`crate::WEBGL2` is true in that build.
+
+What WebGL2 lacks, and what the game does there:
+
+- **Storage buffers.** The palette, particle, trail and rotor materials share one `Globals`
+  buffer. It is bound as a uniform buffer where there are no storage buffers
+  (`palette_material.rs` `globals_bind_group!`; the shaders test
+  `AVAILABLE_STORAGE_BUFFER_BINDINGS`). The clouds' volumes and spheres go into an `Rgba32Uint`
+  texture (`bevy_fast_clouds` `CloudData::Texture`).
+- **Depth texture loads.** GLSL can't load from a depth texture. The shadow lookups use the
+  comparison sampler (classic shading's hard edged shadows become 2x2 filtered). The clouds read
+  the scene's depth as a float texture through a nearest sampler.
+- **Independent blending.** The cloud march leaves out the cloud distance, so lights and smoke
+  behind clouds show through them.
+- **Multisampled textures.** The clouds can't read a multisampled depth buffer, so MSAA is off
+  and its option hidden.
+- **Shadows and lights.** Bevy has one directional light with one cascade: the sun or moon's
+  shadows reach 300 m, and there is no fill light.
+- **View formats.** The offscreen cameras' images are stored sRGB (`camera::offscreen_target`).
 
 ## How it differs from the desktop build
 

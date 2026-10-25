@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stealth Mission 89</title>
   <link data-trunk rel="rust" href="../Cargo.toml" data-bin="stealth-mission-89"
-        data-cargo-no-default-features data-cargo-profile="wasm-release"
+        data-cargo-no-default-features data-cargo-features="webgpu" data-cargo-profile="wasm-release"
         data-wasm-opt="0" data-initializer="loader.js">
   <link data-trunk rel="copy-dir" href="../assets">
   <link data-trunk rel="copy-file" href="download.html">
@@ -67,14 +67,22 @@
     </div>
   </div>
   <script>
-    // The renderer needs WebGPU (its shaders read storage buffers, which WebGL2 lacks).
+    // The WebGPU build, else the WebGL2 build in gl/ (this page, marked data-gl, see
+    // web/post_build.sh; ?gl asks for it), else neither.
     const status = document.getElementById("status");
-    if (!navigator.gpu) {
-      document.getElementById("msg").innerHTML = "This browser has no WebGPU.<br>" +
+    const unsupported = () => {
+      document.getElementById("msg").innerHTML = "This browser has neither WebGPU nor WebGL2.<br>" +
         "Use a current Chrome, Edge, Firefox or Safari, with hardware acceleration on.";
       document.getElementById("progress").hidden = true;
       document.getElementById("links").firstElementChild.hidden = true;
-      throw new Error("no WebGPU");
+      throw new Error("no WebGPU or WebGL2");
+    };
+    if (document.documentElement.hasAttribute("data-gl")) {
+      if (!document.createElement("canvas").getContext("webgl2")) unsupported();
+    } else {
+      const gl = () => location.replace("gl/" + location.search);
+      if (!navigator.gpu || new URLSearchParams(location.search).has("gl")) gl();
+      else navigator.gpu.requestAdapter().then(a => a || gl(), gl);
     }
     // The game's audio starts before the player has touched the page, so the browser keeps it
     // suspended: resume it on the first click or key.

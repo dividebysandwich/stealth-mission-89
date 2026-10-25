@@ -24,6 +24,8 @@ dev = ["bevy/dynamic_linking"]
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 # `--gl-vr`: the headset drawn with our own OpenGL renderer (src/glvr), foveated on the Steam Frame.
 glvr = ["xr", "dep:glow", "dep:khronos-egl", "dep:libloading"]
+# The browser build on WebGPU (web/index.html); without it, on WebGL2 (web/gl/index.html).
+webgpu = ["bevy/webgpu"]
 
 [dependencies]
 # trace: spans for every system and render node (timed with SM89_PROFILE, see src/profile.rs).
@@ -59,10 +61,8 @@ glow = { version = "0.18", optional = true }
 khronos-egl = { version = "6", features = ["dynamic"], optional = true }
 libloading = { version = "0.8", optional = true }
 
-# The browser build: WebGPU (the shaders read storage buffers, which WebGL2 lacks) and
-# randomness from the browser.
+# The browser build: randomness from the browser.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy = { version = "0.19.1", features = ["webgpu"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Window", "Location"] }

@@ -156,8 +156,15 @@ fn shadow_tuning() -> Option<(usize, f32, f32, usize)> {
 
 /// The sun's shadow cascades: the first one for the cockpit. VR: only one more, to 800 m
 /// (each cascade is rendered once per eye; on the Steam Frame four cost about 3 ms more).
+/// WebGL2: Bevy has only one, to 300 m.
 fn shadow_cascades(vr: bool) -> bevy::light::CascadeShadowConfig {
-    let default = if vr { (2, 800.0, 6.0, 2048) } else { (4, 3000.0, 6.0, 2048) };
+    let default = if crate::WEBGL2 {
+        (1, 300.0, 6.0, 2048)
+    } else if vr {
+        (2, 800.0, 6.0, 2048)
+    } else {
+        (4, 3000.0, 6.0, 2048)
+    };
     let (num_cascades, maximum_distance, first_cascade_far_bound, _) =
         shadow_tuning().unwrap_or(default);
     CascadeShadowConfigBuilder {
@@ -189,11 +196,14 @@ pub fn spawn_lights(commands: &mut Commands, settings: &Settings) {
         ]),
         shadow_cascades(settings.vr),
     ));
-    commands.spawn((
-        FillLight,
-        DirectionalLight { illuminance: 0.0, shadow_maps_enabled: false, ..default() },
-        Transform::default(),
-    ));
+    // WebGL2: Bevy keeps one directional light, the first sorted (the one without shadows).
+    if !crate::WEBGL2 {
+        commands.spawn((
+            FillLight,
+            DirectionalLight { illuminance: 0.0, shadow_maps_enabled: false, ..default() },
+            Transform::default(),
+        ));
+    }
     // Only with the local lighting option: point lights put the PBR shader's clustered light
     // loop to work in every lit pixel, and on the Steam Frame (Turnip, Adreno 750) that loop
     // hangs the GPU.

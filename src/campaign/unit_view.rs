@@ -10,7 +10,6 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::render_resource::TextureFormat;
 use bevy_egui::{EguiContexts, EguiTextureHandle, egui};
 use stealth_sim::{AircraftKind, fflags, oflags};
 
@@ -213,14 +212,7 @@ pub fn follow(
     {
         let image = view
             .image
-            .get_or_insert_with(|| {
-                images.add(Image::new_target_texture(
-                    W,
-                    H,
-                    TextureFormat::Rgba8Unorm,
-                    Some(TextureFormat::Rgba8UnormSrgb),
-                ))
-            })
+            .get_or_insert_with(|| images.add(crate::camera::offscreen_target(W, H)))
             .clone();
         let cam = commands
             .spawn((

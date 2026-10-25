@@ -55,13 +55,14 @@ fn hard_shadow(i: u32, world: vec4<f32>, n: vec3<f32>, view_z: f32) -> f32 {
     if (l.w == 0.0) {
         return 1.0;
     }
-    let size = vec2<f32>(textureDimensions(view_bindings::directional_shadow_textures));
 #ifdef NO_ARRAY_TEXTURES_SUPPORT
-    let d = textureLoad(view_bindings::directional_shadow_textures, vec2<i32>(l.xy * size), 0);
+    // WebGL2 (GLSL can't load from a depth texture): the hardware's 2x2 comparison filter.
+    return textureSampleCompareLevel(view_bindings::directional_shadow_textures, view_bindings::directional_shadow_textures_comparison_sampler, l.xy, l.z);
 #else
+    let size = vec2<f32>(textureDimensions(view_bindings::directional_shadow_textures));
     let d = textureLoad(view_bindings::directional_shadow_textures, vec2<i32>(l.xy * size), i32((*light).depth_texture_base_index + ci), 0);
-#endif
     return select(0.0, 1.0, l.z >= d);
+#endif
 }
 #endif
 

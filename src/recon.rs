@@ -10,7 +10,7 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
 use bevy::render::gpu_readback::{Readback, ReadbackComplete};
-use bevy::render::render_resource::{TextureFormat, TextureUsages};
+use bevy::render::render_resource::TextureUsages;
 
 use crate::camera::{OffscreenCamera, RECON_BACKGROUND_LAYER, TRACKCAM_LOD_LAYER};
 use crate::canvas::Picture;
@@ -165,12 +165,7 @@ fn start(
         let ground = wu_to_bevy(east, north, 0.0);
         let range = if t.area_target { AREA_RANGE_M } else { RANGE_M };
         let eye = ground + bevy::math::DVec3::new(0.0, dep.sin(), dep.cos()) * range;
-        let mut image = Image::new_target_texture(
-            w as u32,
-            h as u32,
-            TextureFormat::Rgba8Unorm,
-            Some(TextureFormat::Rgba8UnormSrgb),
-        );
+        let mut image = crate::camera::offscreen_target(w as u32, h as u32);
         image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
         let image = images.add(image);
         let cam = commands
