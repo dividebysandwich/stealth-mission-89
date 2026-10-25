@@ -942,7 +942,8 @@ fn tutorial_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             &[
                 "Step by step from the takeoff to the landing, in any theater and mission",
                 "An arrow points at the cockpit part to use next, which blinks blue",
-                "The box says what to do and which keys do it",
+                "The tooltip says what to do and which hotkeys to use",
+                "Tip: enable crash protection and choose green opponents",
                 "Single missions only",
             ],
         )
