@@ -2,12 +2,19 @@
 //! the takeoff to the landing, a box says what to do next and which keys do it, an arrow points
 //! at the cockpit part to press or look at, and that part blinks sky blue.
 //!
+//! The lesson follows the mission: the departure, each objective in the route's order (the
+//! primary target, then the secondary), the return. An objective's steps lead there (the
+//! autopilot again after the first one) and through what it asks for: destroy a target with
+//! the store on board that does the most against it (a ship, a radar, a bridge...), shoot an
+//! aircraft down with the missile that locks the farthest, photograph it, drop supplies on it,
+//! or land there.
+//!
 //! A step ends when its condition holds (gear up, bay open, GND mode, a page shown...), however
 //! it was done: a click in the cockpit, a key, the HOTAS or a VR fingertip; steps already done
-//! are skipped. Only what has no state (the weapon choice, a designation) waits for its key
-//! action. The steps follow the flight: jets or helicopters, a bomb bay or pylons, armed or
-//! not, a strike or an air-to-air mission, the classic or the modern avionics (whose MFD pages
-//! are formats).
+//! are skipped. An objective's steps are looked at again from its first one every frame, so a
+//! step undone (the bay shut, the lock lost, the store spent) shows again. The steps follow the
+//! flight: jets or helicopters, a bomb bay or pylons, the classic or the modern avionics (whose
+//! MFD pages are formats).
 //!
 //! The arrow points at the part while the view shows it; otherwise it sticks to the window's
 //! edge on the part's side, the box following it. Outside the cockpit views the box asks for the
@@ -15,7 +22,8 @@
 //! (`OnTop`), so it hugs their shape (and shows in the GL headset too); the box and the arrow
 //! are desktop only for now.
 //!
-//! Every text is in `STEPS` (to translate them one day; the aviation terms stay English).
+//! Every text is in the steps, `why` and `what` (to translate them one day; the aviation terms
+//! stay English).
 
 use std::collections::HashMap;
 
@@ -26,7 +34,8 @@ use bevy::light::NotShadowCaster;
 use bevy::pbr::ExtendedMaterial;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use stealth_mission::MissionKind;
+use stealth_mission::{Mission, MissionKind};
+use stealth_sim::{SPECIAL_EQUIPMENT, SimData};
 
 use super::CockpitRoot;
 use super::controls::{Control, Highlight, press_target};
@@ -38,10 +47,11 @@ use crate::avionics::Format;
 use crate::camera::{EyeCamera, View, ViewState};
 use crate::flight::{Aircraft, Player};
 use crate::hotas::InputConfig;
-use crate::hud::{HudMode as Hud, HudState};
-use crate::input::{Action, ActionEvent, FlightControls};
+use crate::hud::{HudMode as Hud, HudState, Waypoints, map_units};
+use crate::input::Action;
 use crate::mfd::{LeftMfd, MfdCmd, MfdSide, MfdState, OsbFn, RightMfd, osb};
 use crate::settings::{AppState, Settings};
+use crate::world::{WU, WorldPos};
 
 /// Sky blue: the blinking overlay, the arrow and the box's outline.
 const SKY: Color = Color::srgb(0.53, 0.81, 0.98);
@@ -62,6 +72,15 @@ const BOB_RATE: f32 = 1.2;
 const BLINK_RATE: f32 = 1.5;
 /// Seconds the last step's box stays up.
 const LAST_STEP_SECONDS: f32 = 15.0;
+/// The attack begins this near an objective (km), the landing this near the base.
+const ATTACK_KM: f32 = 25.0;
+const HOME_KM: f32 = 20.0;
+/// Map units (32 world units) per km.
+const MU_PER_KM: f32 = (1000.0 / (32.0 * WU)) as f32;
+/// The camera's index in the weapon table (sim.json `weapons`).
+const CAMERA: i32 = 16;
+/// The `compat` row of gunfire (the simulation's rounds hitting the ground).
+const GUNFIRE: i32 = 18;
 
 /// What a step shows.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -90,43 +109,263 @@ enum Page {
     /// The classic TAC page, the modern HSD.
     Tactical,
     Map,
+    /// The tracking camera (the modern targeting pod).
+    Camera,
+}
+
+/// What an objective asks for.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Aim {
+    /// Destroy something on the ground or at sea.
+    Ground,
+    /// Shoot down aircraft: the special aircraft, a patrol, the drones.
+    Air,
+    /// Photograph it (photo recon).
+    Photo,
+    /// Drop the supplies over its radio beacon.
+    Drop,
+    /// Land there: a secret airstrip, the troops' landing zone (helicopter).
+    Land,
+}
+
+impl Aim {
+    /// What a mission target asks for (None: no target).
+    fn of(t: &stealth_mission::Target, kind: MissionKind) -> Option<Aim> {
+        use stealth_mission::{drones::DRONE_INTERCEPT, insertion::INSERT};
+        Some(match t.mission_type {
+            0 => return None,
+            1 => Aim::Photo,
+            3 => Aim::Drop,
+            4 => Aim::Land,
+            5..=8 => Aim::Air,
+            DRONE_INTERCEPT if kind == MissionKind::DroneDefense => Aim::Air,
+            INSERT => Aim::Land,
+            _ => Aim::Ground,
+        })
+    }
+}
+
+/// An objective of the mission, as the steps need it.
+#[derive(Debug, Clone)]
+struct Objective {
+    /// 0 primary, 1 secondary.
+    k: usize,
+    aim: Aim,
+    /// What it is ("Tank Farm at Sunan", "the An-72").
+    name: String,
+    /// What it is to the weapons (the `compat` column).
+    class: u8,
+    /// Where it is (map units, y south), or the flight unit to shoot down.
+    at: IVec2,
+    unit: Option<usize>,
+    /// It is over at the deadline.
+    deadline: bool,
+}
+
+/// The mission's objectives, the primary first.
+fn objectives(m: &Mission) -> Vec<Objective> {
+    [&m.primary, &m.secondary]
+        .into_iter()
+        .enumerate()
+        .filter_map(|(k, t)| {
+            let aim = Aim::of(t, m.settings.kind)?;
+            // The special aircraft is an air mission's primary.
+            let special =
+                m.special_aircraft.as_ref().filter(|_| k == 0 && (5..=8).contains(&t.mission_type));
+            let name = match special {
+                Some(s) => format!("the {}", s.plane_name),
+                None if aim == Aim::Air => "the attack drones".into(),
+                None if t.place_name.is_empty() => t.shape_name.clone(),
+                None => format!("{} at {}", t.shape_name, t.place_name),
+            };
+            Some(Objective {
+                k,
+                aim,
+                name,
+                class: t.weapon_class,
+                at: IVec2::new(t.position.x, t.position.y),
+                unit: special.map(|s| s.flight_unit),
+                deadline: t.has_deadline,
+            })
+        })
+        .collect()
+}
+
+/// A store to fire: a weapon (its index in the weapon table), or the gun.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Store {
+    Weapon(i32),
+    Gun,
+}
+
+/// The store to use on an objective: the camera, the supplies, the air-to-air missile that
+/// locks the farthest, or the weapon that does the most against the target (`compat`); else
+/// the gun when it does something (None: nothing carried fits, or a landing). `carried`: the
+/// weapons on board and their rounds.
+fn best_store(
+    aim: Aim,
+    class: u8,
+    carried: &[(i32, i32)],
+    gun: bool,
+    data: &SimData,
+) -> Option<Store> {
+    let carried = || carried.iter().filter(|&&(_, n)| n > 0).map(|&(w, _)| w);
+    let reach = |w: i32| {
+        let m = data.missile(data.weapon(w).spec as i32);
+        (data.weapon(w).spec > 0 && m.class == 7).then_some(m.lock_range)
+    };
+    let gun = gun.then_some(Store::Gun);
+    match aim {
+        Aim::Land => None,
+        Aim::Photo => carried().find(|&w| w == CAMERA).map(Store::Weapon),
+        Aim::Drop => carried().find(|&w| w == SPECIAL_EQUIPMENT).map(Store::Weapon),
+        Aim::Air => carried()
+            .filter_map(|w| Some((w, reach(w)?)))
+            .min_by_key(|&(_, r)| std::cmp::Reverse(r))
+            .map(|(w, _)| Store::Weapon(w))
+            .or(gun),
+        Aim::Ground => carried()
+            .filter(|&w| w != SPECIAL_EQUIPMENT)
+            .map(|w| (w, data.compat_cat(w, class.into())))
+            .filter(|&(_, c)| c > 0)
+            .min_by_key(|&(_, c)| std::cmp::Reverse(c))
+            .map(|(w, _)| Store::Weapon(w))
+            .or(gun.filter(|_| data.compat_cat(GUNFIRE, class.into()) > 0)),
+    }
+}
+
+/// A store's name in the steps ("Harpoon (AGM-84A)").
+fn store_name(store: Option<Store>, data: &SimData) -> String {
+    match store {
+        None => "selected weapon".into(),
+        Some(Store::Gun) => "gun".into(),
+        Some(Store::Weapon(CAMERA)) => "camera".into(),
+        Some(Store::Weapon(SPECIAL_EQUIPMENT)) => "supplies".into(),
+        Some(Store::Weapon(w)) => {
+            let t = data.weapon(w);
+            format!("{} ({})", t.long_name, t.short_name)
+        }
+    }
+}
+
+/// Why a store is the one to use (`{what}`: the target's kind).
+fn why(aim: Aim, store: Option<Store>) -> &'static str {
+    match (aim, store) {
+        (Aim::Ground, Some(Store::Weapon(_))) => {
+            "Against {what}, the weapon on board that does the most damage"
+        }
+        (Aim::Ground, Some(Store::Gun)) => {
+            "Against {what}, with nothing on board that fits: the gun"
+        }
+        (Aim::Air, Some(Store::Weapon(_))) => {
+            "Against an aircraft, the air-to-air missile on board that locks the farthest"
+        }
+        (Aim::Air, Some(Store::Gun)) => {
+            "Against an aircraft, with no missile left: the gun, close in"
+        }
+        (Aim::Photo, _) => "The camera takes the photo, with the bay open",
+        (Aim::Drop, _) => "The supplies are dropped over the radio beacon",
+        _ => "",
+    }
+}
+
+/// A target's kind by its `compat` column.
+fn what(class: u8) -> &'static str {
+    match class {
+        1 => "an airfield",
+        2 => "parked aircraft",
+        3 => "buildings",
+        4 => "a bridge",
+        5 => "a hardened building",
+        6 => "a depot",
+        7 => "missile launchers",
+        8 => "a radar",
+        9 => "an oil rig",
+        10 => "an industrial plant",
+        11 => "a submarine pen",
+        12 => "a ship",
+        13 => "a large ship",
+        14 => "tanks",
+        _ => "the target",
+    }
+}
+
+/// The part of the flight a step is in.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Leg {
+    Departure,
+    /// Index in `Tutorial::objectives`.
+    Objective(usize),
+    Return,
 }
 
 /// The flight the steps are chosen for.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 struct Flight {
     helicopter: bool,
     bomb_bay: bool,
-    /// Carries weapons (not a troop helicopter).
-    armed: bool,
-    /// An air-to-air mission (else a strike).
-    air: bool,
+    /// What the leg's objective asks for (None: the departure, the return).
+    aim: Option<Aim>,
 }
 
 /// The flights a step is for.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Only {
-    All,
-    Jets,
-    Helicopters,
-    BombBay,
-    Armed,
-    Strike,
-    AirToAir,
+fn all(_: Flight) -> bool {
+    true
+}
+fn jets(f: Flight) -> bool {
+    !f.helicopter
+}
+fn helicopters(f: Flight) -> bool {
+    f.helicopter
+}
+/// An objective a store is fired at.
+fn stores(f: Flight) -> bool {
+    f.aim.is_some_and(|a| a != Aim::Land)
+}
+fn bay(f: Flight) -> bool {
+    f.bomb_bay && stores(f)
+}
+/// An objective on the ground to lock: to destroy or to photograph.
+fn ground(f: Flight) -> bool {
+    matches!(f.aim, Some(Aim::Ground | Aim::Photo))
+}
+/// An objective needing the HUD's attack mode.
+fn attack(f: Flight) -> bool {
+    matches!(f.aim, Some(Aim::Ground | Aim::Photo | Aim::Air))
+}
+fn destroy(f: Flight) -> bool {
+    f.aim == Some(Aim::Ground)
+}
+fn air(f: Flight) -> bool {
+    f.aim == Some(Aim::Air)
+}
+fn photo(f: Flight) -> bool {
+    f.aim == Some(Aim::Photo)
+}
+fn supplies(f: Flight) -> bool {
+    f.aim == Some(Aim::Drop)
+}
+fn land_jets(f: Flight) -> bool {
+    f.aim == Some(Aim::Land) && !f.helicopter
+}
+fn land_helicopters(f: Flight) -> bool {
+    f.aim == Some(Aim::Land) && f.helicopter
 }
 
-impl Only {
-    fn fits(self, f: Flight) -> bool {
-        match self {
-            Only::All => true,
-            Only::Jets => !f.helicopter,
-            Only::Helicopters => f.helicopter,
-            Only::BombBay => f.bomb_bay,
-            Only::Armed => f.armed,
-            Only::Strike => f.armed && !f.air,
-            Only::AirToAir => f.armed && f.air,
-        }
-    }
+/// How a leg stands this frame.
+#[derive(Debug, Clone, Copy, Default)]
+struct LegState {
+    /// Its objective is done, or can no longer be (the time is up, the aircraft escaped).
+    over: bool,
+    /// Near enough to attack (to land, going home).
+    near: bool,
+    /// The current waypoint leads there; is past it (a waypoint back leads there).
+    on_route: bool,
+    past: bool,
+    /// Its target is locked (the aircraft to shoot down; any ground lock).
+    locked: bool,
+    /// The store to use there.
+    best: Option<Store>,
 }
 
 /// What the steps read.
@@ -134,22 +373,22 @@ struct Ctx<'a> {
     a: &'a Aircraft,
     hud: &'a HudState,
     mfd: &'a MfdState,
-    obj: stealth_sim::Objectives,
-    /// The trigger is held.
-    fire: bool,
-    /// Key actions since the step began.
-    seen: &'a [Action],
     /// Seconds on the step.
     dwell: f32,
+    /// The step's leg.
+    leg: LegState,
+    /// The selected store (None: nothing on board).
+    selected: Option<Store>,
 }
 
 impl Ctx<'_> {
-    fn saw(&self, any: &[Action]) -> bool {
-        self.seen.iter().any(|a| any.contains(a))
-    }
-
     fn knots(&self) -> f32 {
         self.a.velocity / 27.0
+    }
+
+    /// The leg's store is selected (or there is none to select).
+    fn best_selected(&self) -> bool {
+        self.leg.best.is_none_or(|b| self.selected == Some(b))
     }
 
     /// The MFD showing a page (None: not shown).
@@ -163,6 +402,7 @@ impl Ctx<'_> {
                 Page::Waypoints => av.shown(Format::Map).filter(|_| av.map_way),
                 Page::Tactical => av.shown(Format::Hsd),
                 Page::Map => av.shown(Format::Map),
+                Page::Camera => av.shown(Format::Tgp),
             };
         }
         let (side, shown) = match page {
@@ -171,6 +411,7 @@ impl Ctx<'_> {
             Page::Waypoints => (MfdSide::Right, m.right == RightMfd::Way),
             Page::Tactical => (MfdSide::Left, m.left == LeftMfd::Tac),
             Page::Map => (MfdSide::Left, m.left == LeftMfd::Map),
+            Page::Camera => (MfdSide::Right, m.right == RightMfd::Camera),
         };
         shown.then_some(side)
     }
@@ -185,6 +426,7 @@ impl Ctx<'_> {
                 Page::Waypoints => Target::Action(Action::SelectWaypoint),
                 Page::Tactical => Target::Effect(Effect::LeftPage(LeftMfd::Tac)),
                 Page::Map => Target::Effect(Effect::LeftPage(LeftMfd::Map)),
+                Page::Camera => Target::Action(Action::CamAhead),
             };
         }
         let (format, own, side) = match page {
@@ -193,6 +435,7 @@ impl Ctx<'_> {
             Page::Waypoints => (Format::Map, Some(MfdCmd::MapWay), MfdSide::Right),
             Page::Tactical => (Format::Hsd, None, MfdSide::Left),
             Page::Map => (Format::Map, None, MfdSide::Left),
+            Page::Camera => (Format::Tgp, None, MfdSide::Right),
         };
         match own {
             Some(cmd) if self.mfd.av.shown(format).is_some() => Target::Cmd(cmd),
@@ -210,11 +453,21 @@ impl Ctx<'_> {
             })
         })
     }
+
+    /// The display showing the way: the TAC page, else the map.
+    fn way_display(&self) -> Target {
+        match self.page_display(Page::Tactical) {
+            Target::None => self.page_display(Page::Map),
+            t => t,
+        }
+    }
 }
 
 struct Step {
-    only: Only,
+    only: fn(Flight) -> bool,
     phase: &'static str,
+    /// `{target}` (`{TARGET}`) is the leg's objective, `{name}` what it is, `{weapon}` the
+    /// store to use, `{why}` why that one, `{what}` the target's kind.
     title: &'static str,
     detail: &'static str,
     keys: &'static [Action],
@@ -224,17 +477,17 @@ struct Step {
 
 const TAKEOFF: &str = "TAKEOFF";
 const NAVIGATION: &str = "NAVIGATION";
-const ATTACK: &str = "ATTACK";
+const OBJECTIVE: &str = "{TARGET}";
 const RETURN: &str = "RETURN";
 const LANDING: &str = "LANDING";
 
-/// The lesson: a mission from the runway to the stop after landing.
-static STEPS: &[Step] = {
+/// From the runway to the first objective's route.
+static DEPARTURE: &[Step] = {
     use Action::*;
     use Target as T;
     &[
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: TAKEOFF,
             title: "Full throttle",
             detail: "The engine runs: push the throttle to full power for the takeoff run",
@@ -243,7 +496,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.set_thrust >= 95.0 || !c.a.on_ground,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: TAKEOFF,
             title: "Flaps down",
             detail: "More lift: the aircraft leaves the runway at a lower speed",
@@ -252,7 +505,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.flaps || !c.a.on_ground,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: TAKEOFF,
             title: "Rotate at about 160 knots",
             detail: "Pull the stick back gently until the aircraft leaves the runway, then climb",
@@ -261,7 +514,7 @@ static STEPS: &[Step] = {
             done: |c| !c.a.on_ground,
         },
         Step {
-            only: Only::Helicopters,
+            only: helicopters,
             phase: TAKEOFF,
             title: "Lift off",
             detail: "Raise the collective until the helicopter leaves the ground",
@@ -270,7 +523,7 @@ static STEPS: &[Step] = {
             done: |c| !c.a.on_ground,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: TAKEOFF,
             title: "Gear up",
             detail: "Once climbing: the gear out is slow and seen by the radars",
@@ -279,7 +532,7 @@ static STEPS: &[Step] = {
             done: |c| !c.a.gear_down,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: TAKEOFF,
             title: "Flaps up",
             detail: "Less drag for the climb and the cruise",
@@ -288,7 +541,7 @@ static STEPS: &[Step] = {
             done: |c| !c.a.flaps,
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: NAVIGATION,
             title: "Mission orders page",
             detail: "An MFD shows the orders: the primary and secondary targets",
@@ -297,16 +550,16 @@ static STEPS: &[Step] = {
             done: |c| c.page(Page::Orders).is_some(),
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: NAVIGATION,
             title: "Read your orders",
-            detail: "The targets to destroy and the base to land at",
+            detail: "The primary target first, then the secondary, then the base to land at",
             keys: &[],
             target: |c| c.page_display(Page::Orders),
             done: |c| c.dwell >= 8.0,
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: NAVIGATION,
             title: "Tactical page",
             detail: "The threats and the targets around the aircraft",
@@ -315,7 +568,7 @@ static STEPS: &[Step] = {
             done: |c| c.page(Page::Tactical).is_some(),
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: NAVIGATION,
             title: "Map page",
             detail: "The route, the waypoints and the enemy radars",
@@ -324,7 +577,7 @@ static STEPS: &[Step] = {
             done: |c| c.page(Page::Map).is_some(),
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: NAVIGATION,
             title: "Waypoint page",
             detail: "The current waypoint, its bearing and distance",
@@ -332,81 +585,208 @@ static STEPS: &[Step] = {
             target: |c| c.page_button(Page::Waypoints),
             done: |c| c.page(Page::Waypoints).is_some(),
         },
+    ]
+};
+
+/// An objective, from its route to the way out: looked at again from the first step every
+/// frame (`over`: done, or no longer possible, ends the steps up to the way out).
+static OBJECTIVE_STEPS: &[Step] = {
+    use Action::*;
+    use Target as T;
+    &[
         Step {
-            only: Only::Jets,
-            phase: NAVIGATION,
-            title: "Autopilot",
-            detail: "Flies to the current waypoint; any stick input takes the controls back",
+            only: all,
+            phase: OBJECTIVE,
+            title: "Waypoint to the {target}",
+            detail: "The HUD and the autopilot steer to the current waypoint: step to the one \
+                     leading to {name}",
+            keys: &[NextWaypoint, LastWaypoint],
+            target: |c| T::Action(if c.leg.past { LastWaypoint } else { NextWaypoint }),
+            done: |c| c.leg.on_route || c.leg.near || c.leg.over,
+        },
+        Step {
+            only: jets,
+            phase: OBJECTIVE,
+            title: "Autopilot to the {target}",
+            detail: "Flies the waypoints to {name}; any stick input takes the controls back",
             keys: &[Autopilot],
             target: |_| T::Action(Autopilot),
-            done: |c| c.a.autopilot_alt > 0.0,
+            done: |c| c.a.autopilot_alt > 0.0 || c.leg.near || c.leg.over,
         },
         Step {
-            only: Only::Strike,
-            phase: ATTACK,
+            only: all,
+            phase: OBJECTIVE,
+            title: "Fly to the {target}",
+            detail: "Towards {name}, until about 25 km from it: the TAC page shows the way",
+            keys: &[],
+            target: |c| c.way_display(),
+            done: |c| c.leg.near || c.leg.over,
+        },
+        Step {
+            only: ground,
+            phase: OBJECTIVE,
             title: "Air-to-ground mode",
-            detail: "GND mode: the HUD shows the ground targets and the bombing cues",
+            detail: "GND mode: the HUD shows the ground targets and the weapon cues",
             keys: &[HudMode],
             target: |_| T::Effect(Effect::HudMode(2)),
-            done: |c| c.hud.mode == Hud::Gnd,
+            done: |c| c.hud.mode == Hud::Gnd || c.leg.over,
         },
         Step {
-            only: Only::AirToAir,
-            phase: ATTACK,
+            only: air,
+            phase: OBJECTIVE,
             title: "Air-to-air mode",
-            detail: "AIR mode: the HUD shows the aircraft targets",
+            detail: "AIR mode: the HUD shows the aircraft and the missile cues",
             keys: &[HudMode],
             target: |_| T::Effect(Effect::HudMode(1)),
-            done: |c| c.hud.mode == Hud::Air,
+            done: |c| c.hud.mode == Hud::Air || c.leg.over,
         },
         Step {
-            only: Only::Armed,
-            phase: ATTACK,
+            only: stores,
+            phase: OBJECTIVE,
             title: "Weapons page",
-            detail: "The weapons on board and the selected one",
+            detail: "The stores on board and the selected one",
             keys: &[Ordnance],
             target: |c| c.page_button(Page::Weapons),
-            done: |c| c.page(Page::Weapons).is_some(),
+            done: |c| c.page(Page::Weapons).is_some() || c.best_selected() || c.leg.over,
         },
         Step {
-            only: Only::Armed,
-            phase: ATTACK,
-            title: "Select a weapon",
-            detail: "Bombs for a ground target, missiles for an aircraft; after the last, the gun",
+            only: stores,
+            phase: OBJECTIVE,
+            title: "Select the {weapon}",
+            detail: "{why}",
             keys: &[SelectWeapon],
             target: |_| T::Action(SelectWeapon),
-            done: |c| c.saw(&[SelectWeapon]),
+            done: |c| c.best_selected() || c.leg.over,
         },
         Step {
-            only: Only::BombBay,
-            phase: ATTACK,
+            only: bay,
+            phase: OBJECTIVE,
             title: "Open the weapon bay",
-            detail: "Weapons are released with open bays only; open bays are seen by the radars",
+            detail: "Stores leave through open bays only; open bays are seen by the radars",
             keys: &[BayDoors],
             target: |_| T::Action(BayDoors),
-            done: |c| c.a.bay_open,
+            done: |c| c.a.bay_open || c.leg.best == Some(Store::Gun) || c.leg.over,
         },
         Step {
-            only: Only::Armed,
-            phase: ATTACK,
-            title: "Designate the target",
-            detail: "Lock the target: steady within weapon range",
+            only: photo,
+            phase: OBJECTIVE,
+            title: "Camera page",
+            detail: "The camera's picture: the photo counts with the target in it",
+            keys: &[CamAhead],
+            target: |c| c.page_button(Page::Camera),
+            done: |c| c.page(Page::Camera).is_some() || c.leg.over,
+        },
+        Step {
+            only: ground,
+            phase: OBJECTIVE,
+            title: "Designate the {target}",
+            detail: "Lock {name}: the HUD's box frames it",
             keys: &[DesignateTarget, NearestTarget, SelectTarget],
             target: |_| T::Action(DesignateTarget),
-            done: |c| c.saw(&[DesignateTarget, NearestTarget, SelectTarget]),
+            done: |c| c.leg.locked || c.leg.over,
         },
         Step {
-            only: Only::Armed,
-            phase: ATTACK,
-            title: "Fire",
-            detail: "In range, release the selected weapon",
+            only: air,
+            phase: OBJECTIVE,
+            title: "Lock the {target}",
+            detail: "Lock {name}, the nearest aircraft first: the HUD's box frames it",
+            keys: &[NearestTarget, SelectTarget],
+            target: |_| T::Action(NearestTarget),
+            done: |c| c.leg.locked || c.leg.over,
+        },
+        Step {
+            only: destroy,
+            phase: OBJECTIVE,
+            title: "Fire the {weapon}",
+            detail: "In range (the HUD's cue), release it; again until {name} is destroyed",
             keys: &[FireWeapon],
             target: |_| T::Stick,
-            done: |c| c.fire || c.obj.primary_done || c.obj.secondary_done,
+            done: |c| c.leg.over,
         },
         Step {
-            only: Only::BombBay,
-            phase: ATTACK,
+            only: air,
+            phase: OBJECTIVE,
+            title: "Fire the {weapon}",
+            detail: "In range (the HUD's cue), launch it; again until {name} goes down",
+            keys: &[FireWeapon],
+            target: |_| T::Stick,
+            done: |c| c.leg.over,
+        },
+        Step {
+            only: photo,
+            phase: OBJECTIVE,
+            title: "Take the photo",
+            detail: "Nose on {name}, close enough (the HUD's cue): the trigger takes a frame",
+            keys: &[FireWeapon],
+            target: |_| T::Stick,
+            done: |c| c.leg.over,
+        },
+        Step {
+            only: supplies,
+            phase: OBJECTIVE,
+            title: "Drop the supplies",
+            detail: "Over the radio beacon, when the HUD says DROP SUPPLIES NOW: the trigger",
+            keys: &[FireWeapon],
+            target: |_| T::Stick,
+            done: |c| c.leg.over,
+        },
+        Step {
+            only: land_jets,
+            phase: OBJECTIVE,
+            title: "Gear down",
+            detail: "For the landing at {name}",
+            keys: &[Gear],
+            target: |_| T::Action(Gear),
+            done: |c| c.a.gear_down || c.leg.over,
+        },
+        Step {
+            only: land_jets,
+            phase: OBJECTIVE,
+            title: "Land at the {target}",
+            detail: "Touch down at {name} and stop until the cargo is unloaded",
+            keys: &[Brakes],
+            target: |_| T::Display(CanvasRole::Approach),
+            done: |c| c.leg.over,
+        },
+        Step {
+            only: land_helicopters,
+            phase: OBJECTIVE,
+            title: "Land at the {target}",
+            detail: "Set down within 500 m of {name} and stay until the troops are out",
+            keys: &[ThrottleDown],
+            target: |_| T::Throttle,
+            done: |c| c.leg.over,
+        },
+        Step {
+            only: land_jets,
+            phase: OBJECTIVE,
+            title: "Take off again",
+            detail: "Full throttle, rotate at about 160 knots and climb",
+            keys: &[ThrottleMax, PitchUp],
+            target: |_| T::Throttle,
+            done: |c| !c.a.on_ground,
+        },
+        Step {
+            only: land_helicopters,
+            phase: OBJECTIVE,
+            title: "Lift off",
+            detail: "Raise the collective: on to the next leg",
+            keys: &[ThrottleUp],
+            target: |_| T::Throttle,
+            done: |c| !c.a.on_ground,
+        },
+        Step {
+            only: land_jets,
+            phase: OBJECTIVE,
+            title: "Gear up",
+            detail: "Once climbing: the gear out is slow and seen by the radars",
+            keys: &[Gear],
+            target: |_| T::Action(Gear),
+            done: |c| !c.a.gear_down,
+        },
+        Step {
+            only: bay,
+            phase: OBJECTIVE,
             title: "Close the weapon bay",
             detail: "Back to stealth: open bays are seen by the radars",
             keys: &[BayDoors],
@@ -414,28 +794,52 @@ static STEPS: &[Step] = {
             done: |c| !c.a.bay_open,
         },
         Step {
-            only: Only::All,
-            phase: RETURN,
+            only: attack,
+            phase: OBJECTIVE,
             title: "Navigation mode",
-            detail: "NAV mode: the HUD steers to the current waypoint",
+            detail: "NAV mode: the HUD steers to the next waypoint",
             keys: &[HudMode],
             target: |_| T::Effect(Effect::HudMode(0)),
             done: |c| c.hud.mode == Hud::Nav,
         },
+    ]
+};
+
+/// From the last objective to the stop after landing (`{name}`: the landing base).
+static RETURN_STEPS: &[Step] = {
+    use Action::*;
+    use Target as T;
+    &[
         Step {
-            only: Only::All,
+            only: all,
             phase: RETURN,
-            title: "Steer to the landing base",
-            detail: "Next waypoint until the base (after both targets it is the next one)",
-            keys: &[NextWaypoint, ChangeWaypoint],
+            title: "Waypoint to the landing base",
+            detail: "The HUD and the autopilot steer to the current waypoint: step to the one \
+                     leading to {name}",
+            keys: &[NextWaypoint, LastWaypoint],
             target: |_| T::Action(NextWaypoint),
-            done: |c| {
-                c.saw(&[NextWaypoint, ChangeWaypoint, LastWaypoint])
-                    || c.obj.primary_done && c.obj.secondary_done
-            },
+            done: |c| c.leg.on_route || c.leg.near,
         },
         Step {
-            only: Only::All,
+            only: jets,
+            phase: RETURN,
+            title: "Autopilot to the landing base",
+            detail: "Flies the waypoints to {name}; any stick input takes the controls back",
+            keys: &[Autopilot],
+            target: |_| T::Action(Autopilot),
+            done: |c| c.a.autopilot_alt > 0.0 || c.leg.near,
+        },
+        Step {
+            only: all,
+            phase: RETURN,
+            title: "Fly to the landing base",
+            detail: "Towards {name}, until about 20 km from it: the TAC page shows the way",
+            keys: &[],
+            target: |c| c.way_display(),
+            done: |c| c.leg.near,
+        },
+        Step {
+            only: all,
             phase: LANDING,
             title: "ILS",
             detail: "Instrument landing system: the HUD steering bars lead to the runway",
@@ -444,7 +848,7 @@ static STEPS: &[Step] = {
             done: |c| c.mfd.ils,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: LANDING,
             title: "Reduce the throttle",
             detail: "Slow down for the approach, below 250 knots",
@@ -453,7 +857,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.set_thrust <= 60.0,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: LANDING,
             title: "Gear down",
             detail: "Three green lamps when it is down",
@@ -462,7 +866,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.gear_down,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: LANDING,
             title: "Flaps down",
             detail: "A lower approach speed",
@@ -471,7 +875,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.flaps,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: LANDING,
             title: "Touch down",
             detail: "Keep the green circle (on speed) and a gentle descent to the runway",
@@ -480,16 +884,16 @@ static STEPS: &[Step] = {
             done: |c| c.a.on_ground && c.a.has_flown,
         },
         Step {
-            only: Only::Helicopters,
+            only: helicopters,
             phase: LANDING,
             title: "Land",
-            detail: "Slow to a hover over the base, then lower the collective gently",
+            detail: "Slow to a hover over {name}, then lower the collective gently",
             keys: &[ThrottleDown],
             target: |_| T::Throttle,
             done: |c| c.a.on_ground && c.a.has_flown,
         },
         Step {
-            only: Only::Jets,
+            only: jets,
             phase: LANDING,
             title: "Brakes",
             detail: "Throttle to idle and brake to a stop",
@@ -498,7 +902,7 @@ static STEPS: &[Step] = {
             done: |c| c.a.on_ground && (c.a.brakes || c.knots() < 5.0),
         },
         Step {
-            only: Only::All,
+            only: all,
             phase: LANDING,
             title: "Mission complete",
             detail: "End of the tutorial. The in-flight menu switches it off",
@@ -509,19 +913,80 @@ static STEPS: &[Step] = {
     ]
 };
 
+/// A step of the lesson, and its leg.
+#[derive(Clone, Copy)]
+struct Entry {
+    step: &'static Step,
+    leg: Leg,
+}
+
+/// The lesson for a flight: the departure, each objective (`aims`, in the route's order), the
+/// return; only the steps for that flight.
+fn lesson(f: Flight, aims: &[Aim]) -> Vec<Entry> {
+    let part = |steps: &'static [Step], f: Flight, leg: Leg| {
+        steps.iter().filter(move |s| (s.only)(f)).map(move |step| Entry { step, leg })
+    };
+    let mut plan: Vec<Entry> = part(DEPARTURE, f, Leg::Departure).collect();
+    for (i, &aim) in aims.iter().enumerate() {
+        plan.extend(part(OBJECTIVE_STEPS, Flight { aim: Some(aim), ..f }, Leg::Objective(i)));
+    }
+    plan.extend(part(RETURN_STEPS, f, Leg::Return));
+    plan
+}
+
+/// The leg the current waypoint is on: 0 to the primary target, 1 to the secondary, 2 home.
+fn route_leg(w: &Waypoints) -> usize {
+    let a = |k: usize| w.anchors.get(k).copied().unwrap_or(k);
+    if w.current <= a(1) {
+        0
+    } else if w.current <= a(2) {
+        1
+    } else {
+        2
+    }
+}
+
+/// The words of a step's leg.
+struct Words<'a> {
+    /// The objective ("primary target"), what it is, the store to use and why.
+    target: &'a str,
+    name: &'a str,
+    weapon: String,
+    why: &'static str,
+    what: &'static str,
+}
+
+/// A step's text with its leg's words.
+fn fill(text: &str, w: &Words) -> String {
+    if !text.contains('{') {
+        return text.into();
+    }
+    text.replace("{why}", w.why)
+        .replace("{target}", w.target)
+        .replace("{TARGET}", &w.target.to_uppercase())
+        .replace("{name}", w.name)
+        .replace("{weapon}", &w.weapon)
+        .replace("{what}", w.what)
+}
+
 /// Where the lesson is.
 #[derive(Resource, Default)]
 pub(super) struct Tutorial {
     /// Switched on, in a single mission.
     on: bool,
-    /// Index in `STEPS`.
-    step: usize,
-    /// The step's number among the flight's steps and their count (from 1).
-    number: (usize, usize),
+    /// The flight's lesson (made once the flight runs), its objectives and its landing base
+    /// (map units, name).
+    plan: Vec<Entry>,
+    objectives: Vec<Objective>,
+    home: (IVec2, String),
+    /// Index in `plan`.
+    at: usize,
     /// Seconds on the step (not while the menu is open).
     dwell: f32,
-    /// Key actions since the step began (each once).
-    seen: Vec<Action>,
+    /// The step's phase, title and detail with their words, and what they were filled for
+    /// (the step, the store it names).
+    texts: [String; 3],
+    filled: Option<(usize, Option<Store>)>,
     /// What the step shows, and the cockpit part that is.
     target: Target,
     part: Option<Entity>,
@@ -532,7 +997,7 @@ pub(super) struct Tutorial {
 
 impl Tutorial {
     fn current(&self) -> Option<&'static Step> {
-        STEPS.get(self.step)
+        self.plan.get(self.at).map(|e| e.step)
     }
 }
 
@@ -692,8 +1157,8 @@ pub(super) fn spawn_overlay(
     ));
 }
 
-/// Moves on while the current step is done or not for this flight, and says what the step
-/// shows.
+/// Moves to the first step not done (an objective's steps looked at again from its first one),
+/// says what it shows and fills its texts. The lesson is made once the flight runs.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn advance(
     time: Res<Time<Real>>,
@@ -701,9 +1166,8 @@ pub(super) fn advance(
     menu: Res<crate::flight_menu::FlightMenu>,
     mission: Option<Res<crate::mission::ActiveMission>>,
     mut tutorial: ResMut<Tutorial>,
-    mut actions: MessageReader<ActionEvent>,
-    aircraft: Query<&Aircraft, With<Player>>,
-    (hud, mfd, controls): (Res<HudState>, Res<MfdState>, Res<FlightControls>),
+    aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
+    (hud, mfd, wps): (Res<HudState>, Res<MfdState>, Res<Waypoints>),
     combat: Option<Res<crate::combat::Combat>>,
     (career, campaign): (
         Option<Res<crate::career::CareerFlight>>,
@@ -713,58 +1177,131 @@ pub(super) fn advance(
     let tutorial = &mut *tutorial;
     tutorial.on =
         settings.tutorial && crate::mission::single_mission(career.as_deref(), campaign.as_deref());
-    if !tutorial.on {
-        actions.clear();
+    let (true, Ok((a, pos)), Some(combat)) = (tutorial.on, aircraft.single(), combat) else {
         return;
-    }
-    for ActionEvent(a) in actions.read() {
-        if !tutorial.seen.contains(a) {
-            tutorial.seen.push(*a);
-        }
-    }
+    };
     if !menu.open {
         tutorial.dwell += time.delta_secs();
     }
-    let spec = settings.aircraft.spec();
-    let flight = Flight {
-        helicopter: spec.helicopter,
-        bomb_bay: spec.bomb_bay,
-        armed: !spec.transport(),
-        air: mission.is_some_and(|m| {
-            matches!(
-                m.0.settings.kind,
-                MissionKind::Air | MissionKind::AirTraining | MissionKind::DroneDefense
-            )
-        }),
-    };
-    let Ok(a) = aircraft.single() else { return };
-    let obj = combat.map(|c| c.sim.objectives()).unwrap_or_default();
-    tutorial.target = Target::None;
-    while let Some(step) = tutorial.current() {
-        if step.only.fits(flight) {
-            let ctx = Ctx {
-                a,
-                hud: &hud,
-                mfd: &mfd,
-                obj,
-                fire: controls.fire,
-                seen: &tutorial.seen,
-                dwell: tutorial.dwell,
-            };
-            if !(step.done)(&ctx) {
-                tutorial.target = (step.target)(&ctx);
-                break;
-            }
-            tutorial.dwell = 0.0;
-            tutorial.seen.clear();
+    if tutorial.plan.is_empty() {
+        if let Some(m) = &mission {
+            let m = &m.0;
+            tutorial.objectives = objectives(m);
+            let p = m.landing.position;
+            tutorial.home = (IVec2::new(p.x, p.y), m.landing.name.clone());
         }
-        tutorial.step += 1;
+        let spec = settings.aircraft.spec();
+        let f = Flight { helicopter: spec.helicopter, bomb_bay: spec.bomb_bay, aim: None };
+        let aims: Vec<Aim> = tutorial.objectives.iter().map(|o| o.aim).collect();
+        tutorial.plan = lesson(f, &aims);
     }
-    let fits = |s: &&Step| s.only.fits(flight);
-    tutorial.number = (
-        STEPS[..tutorial.step.min(STEPS.len())].iter().filter(fits).count() + 1,
-        STEPS.iter().filter(fits).count(),
-    );
+
+    // How the legs stand.
+    let (sim, data) = (&combat.sim, &*combat.data);
+    let obj = sim.objectives();
+    let (carried, cur) = sim.weapon_groups();
+    let selected = if sim.gun_selected() {
+        Some(Store::Gun)
+    } else {
+        cur.map(|i| Store::Weapon(carried[i].0))
+    };
+    let gun = sim.has_gun() && sim.gun_ammo() > 0;
+    let lock = sim.targeting();
+    let me = IVec2::from(map_units(pos));
+    let within = |p: IVec2, km: f32| (p - me).as_vec2().length() < km * MU_PER_KM;
+    let route = (!wps.points.is_empty()).then(|| route_leg(&wps));
+    let leg_state = |leg: Leg| match leg {
+        Leg::Departure => LegState::default(),
+        Leg::Objective(i) => {
+            let o = &tutorial.objectives[i];
+            let done = if o.k == 0 { obj.primary_done } else { obj.secondary_done };
+            let late = o.deadline && obj.deadline > 0 && obj.tick >= obj.deadline;
+            // An aircraft to shoot down is where it flies.
+            let at =
+                o.unit.and_then(|u| sim.flights().get(u)).map_or(o.at, |u| IVec2::new(u.x, u.y));
+            LegState {
+                over: done || late || (o.unit.is_some() && obj.target_escaped),
+                near: within(at, ATTACK_KM),
+                on_route: route.is_none_or(|r| r == o.k),
+                past: route.is_some_and(|r| r > o.k),
+                locked: match o.aim {
+                    Aim::Air => o.unit.map_or(lock.air.is_some(), |u| lock.air == Some(u)),
+                    _ => lock.ground.is_some(),
+                },
+                best: best_store(o.aim, o.class, &carried, gun, data),
+            }
+        }
+        Leg::Return => LegState {
+            over: false,
+            near: a.on_ground || within(tutorial.home.0, HOME_KM),
+            on_route: route.is_none_or(|r| r == 2),
+            past: false,
+            locked: false,
+            best: None,
+        },
+    };
+
+    // An objective's steps from its first one: a step undone shows again.
+    let mut at = match tutorial.plan.get(tutorial.at).map(|e| e.leg) {
+        Some(leg @ Leg::Objective(_)) => {
+            tutorial.plan.iter().position(|e| e.leg == leg).unwrap_or(tutorial.at)
+        }
+        _ => tutorial.at,
+    };
+    let mut state: Option<(Leg, LegState)> = None;
+    let mut target = Target::None;
+    while let Some(e) = tutorial.plan.get(at) {
+        let leg = match state {
+            Some((l, s)) if l == e.leg => s,
+            _ => {
+                let s = leg_state(e.leg);
+                state = Some((e.leg, s));
+                s
+            }
+        };
+        let ctx = Ctx {
+            a,
+            hud: &hud,
+            mfd: &mfd,
+            dwell: if at == tutorial.at { tutorial.dwell } else { 0.0 },
+            leg,
+            selected,
+        };
+        if !(e.step.done)(&ctx) {
+            target = (e.step.target)(&ctx);
+            break;
+        }
+        at += 1;
+    }
+    let best = state.and_then(|(_, s)| s.best);
+    if at != tutorial.at {
+        tutorial.at = at;
+        tutorial.dwell = 0.0;
+    }
+    tutorial.target = target;
+
+    // The texts, filled again when the step or its store changes.
+    let Some(e) = tutorial.plan.get(at) else { return };
+    if tutorial.filled == Some((at, best)) {
+        return;
+    }
+    tutorial.filled = Some((at, best));
+    let (objective, name, aim, class) = match e.leg {
+        Leg::Objective(i) => {
+            let o = &tutorial.objectives[i];
+            (["primary target", "secondary target"][o.k], o.name.as_str(), Some(o.aim), o.class)
+        }
+        _ => ("landing base", tutorial.home.1.as_str(), None, 0),
+    };
+    let words = Words {
+        target: objective,
+        name,
+        weapon: store_name(best, data),
+        why: aim.map_or("", |aim| why(aim, best)),
+        what: what(class),
+    };
+    let s = e.step;
+    tutorial.texts = [fill(s.phase, &words), fill(s.title, &words), fill(s.detail, &words)];
 }
 
 /// The world bounds (min, max) of each cockpit mesh, in its own frame.
@@ -980,7 +1517,7 @@ pub(super) fn show(
             && !menu.open
             && !hide.is_some_and(|h| h.0)
             && !kneeboard.is_some_and(|k| k.overlay_shown())
-            && !(tutorial.step + 1 == STEPS.len() && tutorial.dwell > LAST_STEP_SECONDS)
+            && !(tutorial.at + 1 == tutorial.plan.len() && tutorial.dwell > LAST_STEP_SECONDS)
     });
     let (Ok((mut arrow, mut arrow_vis, mut turn)), Ok((mut node, mut box_vis, computed))) =
         (overlay.arrows.single_mut(), overlay.boxes.single_mut())
@@ -997,14 +1534,15 @@ pub(super) fn show(
         matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
 
     // The box's lines; outside the cockpit, how to get back to it.
-    let (number, count) = tutorial.number;
-    let header = format!("INTERACTIVE TUTORIAL  {number}/{count}  {}", step.phase);
+    let [phase, title, detail] = &tutorial.texts;
+    let (number, count) = (tutorial.at + 1, tutorial.plan.len());
+    let header = format!("INTERACTIVE TUTORIAL  {number}/{count}  {phase}");
     let (detail, keys) = if tutorial.part.is_some() && !cockpit_view {
         ("Switch to the cockpit view to see it", keys_text(&[Action::ViewCockpit], &input))
     } else {
-        (step.detail, keys_text(step.keys, &input))
+        (detail.as_str(), keys_text(step.keys, &input))
     };
-    let texts = [header, wrap(step.title), wrap(detail), wrap(&keys)];
+    let texts = [header, wrap(title), wrap(detail), wrap(&keys)];
     for (TutorialLine(i), mut text, mut line) in &mut overlay.lines {
         let s = &texts[*i];
         if text.0 != *s {
@@ -1085,36 +1623,152 @@ mod tests {
     }
 
     fn ctx<'a>(a: &'a Aircraft, hud: &'a HudState, mfd: &'a MfdState) -> Ctx<'a> {
-        Ctx { a, hud, mfd, obj: default(), fire: false, seen: &[], dwell: 0.0 }
+        Ctx { a, hud, mfd, dwell: 0.0, leg: LegState::default(), selected: None }
+    }
+
+    const AIMS: [Aim; 5] = [Aim::Ground, Aim::Air, Aim::Photo, Aim::Drop, Aim::Land];
+
+    fn flights() -> impl Iterator<Item = Flight> {
+        [(false, true), (false, false), (true, false)]
+            .into_iter()
+            .map(|(helicopter, bomb_bay)| Flight { helicopter, bomb_bay, aim: None })
     }
 
     #[test]
     fn every_step_says_what_to_do() {
-        for s in STEPS {
+        for s in DEPARTURE.iter().chain(OBJECTIVE_STEPS).chain(RETURN_STEPS) {
             assert!(!s.title.is_empty() && !s.detail.is_empty(), "{}", s.title);
         }
         // The last one stays up (until it times out), whatever the flight.
         let (a, hud, mfd) =
             (Aircraft::new_on_runway(0.0), HudState::default(), MfdState::default());
-        let last = STEPS.last().unwrap();
-        assert!(last.only == Only::All && !(last.done)(&ctx(&a, &hud, &mfd)));
+        for f in flights() {
+            let last = lesson(f, &AIMS).last().unwrap().step;
+            assert!(std::ptr::eq(last, RETURN_STEPS.last().unwrap()));
+            assert!(!(last.done)(&ctx(&a, &hud, &mfd)));
+        }
     }
 
-    /// Every flight takes off, flies and lands: a step for each.
+    /// Every flight takes off, flies to each objective and does what it asks for, comes back
+    /// and lands.
     #[test]
-    fn every_flight_has_a_takeoff_and_a_landing() {
-        for helicopter in [false, true] {
-            for (bomb_bay, armed, air) in
-                [(true, true, false), (false, true, true), (false, false, false)]
-            {
-                let f = Flight { helicopter, bomb_bay, armed, air };
-                let steps: Vec<_> = STEPS.iter().filter(|s| s.only.fits(f)).collect();
-                for phase in [TAKEOFF, NAVIGATION, RETURN, LANDING] {
-                    assert!(steps.iter().any(|s| s.phase == phase), "{f:?}: {phase}");
-                }
-                assert_eq!(steps.iter().any(|s| s.phase == ATTACK), armed, "{f:?}");
+    fn every_lesson_flies_each_objective() {
+        for f in flights() {
+            let plan = lesson(f, &AIMS);
+            for phase in [TAKEOFF, NAVIGATION, RETURN, LANDING] {
+                assert!(plan.iter().any(|e| e.step.phase == phase), "{f:?}: {phase}");
             }
+            for (i, aim) in AIMS.into_iter().enumerate() {
+                let steps: Vec<&Step> =
+                    plan.iter().filter(|e| e.leg == Leg::Objective(i)).map(|e| e.step).collect();
+                // The way there, then a store fired, or a landing.
+                assert!(steps[0].title.starts_with("Waypoint to"), "{f:?} {aim:?}");
+                let fires = steps.iter().any(|s| s.keys.contains(&Action::FireWeapon));
+                assert_eq!(fires, aim != Aim::Land, "{f:?} {aim:?}");
+                assert_eq!(steps.iter().any(|s| s.title.starts_with("Land at")), aim == Aim::Land);
+                assert_eq!(
+                    steps.iter().any(|s| s.title == "Open the weapon bay"),
+                    f.bomb_bay && aim != Aim::Land,
+                    "{f:?} {aim:?}"
+                );
+            }
+            // The objectives in order, each one's steps together.
+            let mut legs: Vec<Leg> = plan.iter().map(|e| e.leg).collect();
+            legs.dedup();
+            let objectives = (0..AIMS.len()).map(Leg::Objective);
+            let want: Vec<Leg> =
+                [Leg::Departure].into_iter().chain(objectives).chain([Leg::Return]).collect();
+            assert_eq!(legs, want, "{f:?}");
         }
+    }
+
+    /// A store before an objective's steps say it: the camera, the supplies, the missile that
+    /// locks the farthest, the weapon that does the most against the target, else the gun.
+    #[test]
+    fn the_store_fits_the_objective() {
+        let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+        let data = SimData::load_json(&assets.join("sim")).unwrap();
+        let best = |aim, class, carried: &[(i32, i32)], gun| {
+            best_store(aim, class, carried, gun, &data).map(|s| store_name(Some(s), &data))
+        };
+        let name = |s: &str| Some(s.to_string());
+        // HARM, Harpoon, Maverick, Sidewinders: against a ship the Harpoon, a radar the HARM.
+        let strike = [(2, 1), (4, 1), (5, 2), (0, 4)];
+        assert_eq!(best(Aim::Ground, 12, &strike, true), name("Harpoon (AGM-84A)"));
+        assert_eq!(best(Aim::Ground, 8, &strike, true), name("HARM (AGM-88A)"));
+        // A runway: the Durandal; a bridge: the Paveway.
+        let bombs = [(6, 2), (8, 2), (9, 3)];
+        assert_eq!(best(Aim::Ground, 1, &bombs, true), name("Durandal (BLU-107)"));
+        assert_eq!(best(Aim::Ground, 4, &bombs, true), name("Paveway (GBU-12)"));
+        // Spent stores do not count; nothing that fits: the gun if it does anything.
+        assert_eq!(best(Aim::Ground, 12, &[(4, 0), (6, 2)], true), name("Paveway (GBU-12)"));
+        assert_eq!(best(Aim::Ground, 12, &[(8, 2)], false), None);
+        // Aircraft: the AMRAAM before the Sidewinder, the gun once they are spent.
+        let missiles = [(0, 4), (1, 3)];
+        assert_eq!(best(Aim::Air, 0, &missiles, true), name("AMRAAM (AIM-120)"));
+        assert_eq!(best(Aim::Air, 0, &[(0, 0), (6, 2)], true), name("gun"));
+        // The camera, the supplies; a landing needs none.
+        assert_eq!(best(Aim::Photo, 3, &[(16, 1), (6, 2)], true), name("camera"));
+        assert_eq!(best(Aim::Drop, 3, &[(18, 1)], true), name("supplies"));
+        assert_eq!(best(Aim::Land, 3, &strike, true), None);
+    }
+
+    /// An air mission: the special aircraft first (shot down where it flies), then a target on
+    /// the ground.
+    #[test]
+    fn objectives_follow_the_mission() {
+        let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+        let gdata = stealth_mission::GameData::load_json(&assets.join("mission")).unwrap();
+        let settings = stealth_mission::MissionSettings {
+            theater: 0,
+            kind: MissionKind::Air,
+            ..Default::default()
+        };
+        let m = stealth_mission::generate(&gdata, &settings, stealth_mission::Seed::Srand(0x1a2b))
+            .unwrap();
+        let o = objectives(&m);
+        assert_eq!(
+            o.iter().map(|o| (o.k, o.aim)).collect::<Vec<_>>(),
+            [(0, Aim::Air), (1, Aim::Ground)]
+        );
+        let plane = &m.special_aircraft.as_ref().unwrap().plane_name;
+        assert_eq!(o[0].name, format!("the {plane}"));
+        assert!(o[0].unit.is_some() && o[1].unit.is_none());
+        assert_eq!(o[1].name, format!("{} at {}", m.secondary.shape_name, m.secondary.place_name));
+    }
+
+    /// The waypoints lead to the primary, the secondary, then home (a planned route's points
+    /// in between).
+    #[test]
+    fn the_route_has_a_leg_per_objective() {
+        let w = |current, anchors: Vec<usize>| Waypoints {
+            points: vec![crate::hud::Waypoint { east: 0.0, north: 0.0 }; 6],
+            current,
+            mission_current: 0,
+            anchors,
+        };
+        assert_eq!([0, 1, 2, 3].map(|c| route_leg(&w(c, vec![]))), [0, 0, 1, 2]);
+        // N1 P N2 S N3 L.
+        let legs = [0, 1, 2, 3, 4, 5].map(|c| route_leg(&w(c, vec![0, 1, 3, 5])));
+        assert_eq!(legs, [0, 0, 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn the_texts_name_the_objective_and_the_store() {
+        let words = Words {
+            target: "primary target",
+            name: "Missile Boat",
+            weapon: "Harpoon (AGM-84A)".into(),
+            why: why(Aim::Ground, Some(Store::Weapon(4))),
+            what: what(12),
+        };
+        assert_eq!(fill(OBJECTIVE, &words), "PRIMARY TARGET");
+        assert_eq!(fill("Select the {weapon}", &words), "Select the Harpoon (AGM-84A)");
+        assert_eq!(
+            fill("{why}", &words),
+            "Against a ship, the weapon on board that does the most damage"
+        );
+        assert_eq!(fill("Lock {name}", &words), "Lock Missile Boat");
     }
 
     /// The pages read the same with the classic and the modern avionics (the modern: formats).
@@ -1140,7 +1794,8 @@ mod tests {
             Target::Cmd(MfdCmd::Format(MfdSide::Left, Format::Map))
         );
         // Every button a modern page step points at is on the MFDs.
-        for p in [Page::Orders, Page::Weapons, Page::Waypoints, Page::Tactical, Page::Map] {
+        let pages = [Page::Orders, Page::Weapons, Page::Waypoints, Page::Tactical, Page::Map];
+        for p in pages.into_iter().chain([Page::Camera]) {
             let Target::Cmd(cmd) = button(&mfd, p) else { panic!("{p:?}") };
             let on_mfd = [MfdSide::Left, MfdSide::Right].into_iter().any(|side| {
                 (0..crate::mfd::OSB_COUNT)

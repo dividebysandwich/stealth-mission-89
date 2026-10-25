@@ -159,11 +159,17 @@ stick, the throttle or the glare shield can't be pointed at.
 *Tutorial* group or the in-flight menu), any single mission in any theater is flown step by step,
 from the takeoff to the stop after landing: a box says what to do next and which keys do it, an
 arrow points at the button, display or lever to use, which blinks blue. When the view does not
-show it, the arrow waits at the edge of the window on its side. A step ends however it is done
-(a click, a key, the joystick); the steps follow the aircraft (jet or helicopter, bomb bay or
-pylons), the mission (strike or air-to-air) and the avionics (DOS era pages or F-16 style
-formats). Career sorties, the campaign and multiplayer games fly without it (the in-flight
-menu's entry is greyed out).
+show it, the arrow waits at the edge of the window on its side. After the takeoff and the
+orders, each objective is taken in turn, the primary target then the secondary: the waypoint
+and the autopilot to it (again after the first one), the HUD mode, the store to select (the
+one on board that does the most against that target: a Harpoon against a ship, a HARM against
+a radar, a Durandal against a runway, the air-to-air missile that locks the farthest against an
+aircraft, the camera for a photo, the supplies for a drop), the bay, the lock and the shot, or
+the landing it asks for; then the way home. A step ends however it is done (a click, a key, the
+joystick), and shows again when it is undone (the bay shut, the lock lost, the store spent);
+the steps follow the aircraft (jet or helicopter, bomb bay or pylons) and the avionics (DOS era
+pages or F-16 style formats). Career sorties, the campaign and multiplayer games fly without it
+(the in-flight menu's entry is greyed out).
 
 **Head/eye tracking.** With *Head/Eye Tracking* on in OPTIONS > CONTROLS, the cockpit view follows your head
 movements, picked up by an infrared tracker (TrackIR, DelanClip, TrackHat, Grass Monkey
