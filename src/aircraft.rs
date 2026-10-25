@@ -121,8 +121,8 @@ const RUNWAY_Y: f32 = 0.34;
 /// The F-117A's model origin is on its flat underside, the wheels 1.65 m below it
 /// (tools/models/f117.py).
 const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
-/// The F-16's wheels are 2.15 m below its model origin (tools/models/aircraft.py `F16_GROUND`).
-const F16_LIFT: f32 = 2.15 + RUNWAY_Y;
+/// The F-16's wheels are 1.75 m below its model origin (tools/models/aircraft.py `F16_GROUND`).
+const F16_LIFT: f32 = 1.75 + RUNWAY_Y;
 
 /// How far below its origin an aircraft model's gear reaches (metres, tools/models/aircraft.py
 /// `*_GROUND`, f117.py), for the models that have a landing gear.
@@ -139,10 +139,10 @@ pub fn gear_depth(model: i32) -> Option<f32> {
 /// Height of the airfields' surfaces over the ground (metres).
 pub const GEAR_GROUND: f32 = RUNWAY_Y;
 /// A point of the F-16's builder (metres: x right, y forward, z up) in the aircraft frame: the
-/// model is centred on its length, 0.1 m ahead of the builder's origin.
+/// model is centred on its length, 0.09 m behind the builder's origin.
 const fn f16_point(x: f32, y: f32, z: f32) -> Vec3 {
     const K: f32 = 16.384;
-    model_point(F16_LIFT, x * K, z * K, -(y - 0.1) * K)
+    model_point(F16_LIFT, x * K, z * K, -(y + 0.09) * K)
 }
 
 /// Behind the middle, at the engines (the helicopters').
@@ -173,9 +173,9 @@ static F117: AircraftSpec = AircraftSpec {
 static F16: AircraftSpec = AircraftSpec {
     model: "aircraft_023",
     model_lift: F16_LIFT,
-    // Under the canopy bubble (y 2.4..5.6 m, z 0.85..1.35 m), eyes a little forward of its
-    // middle and level with its upper part.
-    eye: f16_point(0.0, 4.3, 1.2),
+    // Under the canopy bubble (y 2.1..5.0 m, z 0.5..1.25 m), a little ahead of the helmet in the
+    // three-view and 0.3 m under the bubble's top.
+    eye: f16_point(0.0, 3.25, 0.93),
     cockpit_view: Some(CockpitView {
         canopy_colours: &[144, 145],
         cut: (Vec3::new(-0.40, -1.15, -0.85), Vec3::new(0.40, 0.40, 0.80)),
@@ -195,7 +195,7 @@ static F16: AircraftSpec = AircraftSpec {
     hmd: Hmd::Hmcs,
     muzzle: None,
     // The nozzle.
-    exhaust: f16_point(0.0, -7.3, 0.3),
+    exhaust: f16_point(0.0, -7.2, 0.04),
     flight: FlightConstants::f16,
 };
 

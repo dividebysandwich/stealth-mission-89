@@ -131,30 +131,93 @@ def f15():
     return Craft(g, (-6.5, -4.6, 0.15), (6.5, -4.6, 0.15), [(-1.85, -8.6, 3.4), (1.85, -8.6, 3.4)], fl)
 
 
+# The F-16C from the three-view in "Aviatsiya i Vremya" 3/99 (Block 50/52): stations along y,
+# heights above the chine (the plane of the strakes, wing and stabilizers, z 0).
+# Fuselage: (y, top, chine z, chine half width, bottom, half width below the chine, the flanks'
+# shape above and below the chine: superellipse powers, under 2 hollow, over 2 boxy). Forward
+# the chine is the round nose's widest line; from the cockpit aft it is the strakes' edge,
+# then the wing root's and the stabilizer booms'.
+F16_BODY = [
+    (7.30, -0.20, -0.20, 0.00, -0.20, 0.00, 2.0, 2.0),
+    (6.96, 0.02, -0.15, 0.10, -0.31, 0.10, 2.0, 2.0),
+    (6.33, 0.24, -0.10, 0.28, -0.37, 0.28, 2.0, 2.0),
+    (5.71, 0.37, -0.06, 0.44, -0.39, 0.44, 2.0, 2.2),
+    (4.96, 0.52, -0.03, 0.55, -0.38, 0.54, 1.9, 2.4),
+    (4.46, 0.56, -0.01, 0.62, -0.36, 0.56, 1.7, 2.4),
+    (3.84, 0.58, 0.0, 0.72, -0.34, 0.56, 1.5, 2.4),
+    (3.20, 0.60, 0.0, 0.79, -0.36, 0.55, 1.4, 2.4),
+    (2.60, 0.62, 0.0, 0.88, -0.62, 0.50, 1.3, 2.6),
+    (2.00, 0.66, 0.0, 1.01, -0.80, 0.55, 1.3, 2.8),
+    (1.40, 0.74, 0.0, 1.07, -0.92, 0.66, 1.3, 3.0),
+    (0.80, 0.82, 0.0, 1.07, -0.92, 0.68, 1.4, 3.0),
+    (0.10, 0.81, 0.0, 1.07, -0.91, 0.70, 1.4, 3.0),
+    (-1.50, 0.79, 0.0, 1.07, -0.86, 0.70, 1.4, 3.0),
+    (-2.70, 0.80, 0.0, 1.07, -0.83, 0.70, 1.4, 3.0),
+    (-3.40, 0.79, 0.0, 1.05, -0.78, 0.68, 1.5, 2.8),
+    (-4.60, 0.77, 0.02, 0.86, -0.72, 0.64, 1.7, 2.6),
+    (-5.80, 0.70, 0.03, 0.70, -0.60, 0.58, 1.9, 2.4),
+    (-6.25, 0.58, 0.04, 0.58, -0.50, 0.55, 2.0, 2.0),
+]
+# The canopy's glass and the fairing behind it: (y, sill z, half width, top).
+F16_CANOPY = [(5.00, 0.50, 0.05, 0.52), (4.70, 0.53, 0.30, 0.74), (4.30, 0.55, 0.40, 0.98), (3.80, 0.57, 0.44, 1.16),
+              (3.20, 0.59, 0.45, 1.25), (2.60, 0.61, 0.44, 1.20), (2.10, 0.63, 0.40, 1.08)]
+F16_FAIRING = [(2.10, 0.63, 0.40, 1.08), (1.40, 0.70, 0.36, 0.97), (0.60, 0.76, 0.30, 0.87), (-0.20, 0.76, 0.18, 0.81)]
+# The fin's base: (y, top, half width), from the spine to the drag chute housing past the nozzle.
+F16_DORSAL = [(-1.20, 0.80, 0.12), (-2.40, 0.89, 0.20), (-3.60, 1.12, 0.23), (-6.40, 1.17, 0.21), (-7.10, 1.12, 0.15)]
+
+
+def f16_section(y, top, zc, wc, bottom, wl, pu, pl, m=4):
+    """A fuselage ring: hollow or full flanks from the spine out to the chine, a ledge in to the
+    lower flanks and round to the keel."""
+    right = []
+    for k in range(m + 1):
+        a = math.pi / 2 * (1 - k / m)
+        right.append((wc * math.cos(a) ** (2 / pu), y, zc + (top - zc) * math.sin(a) ** (2 / pu)))
+    zl = zc - 0.03 if wl < wc else zc
+    for k in range(m + 1):
+        a = math.pi / 2 * k / m
+        right.append((wl * math.cos(a) ** (2 / pl), y, zl - (zl - bottom) * math.sin(a) ** (2 / pl)))
+    left = [(-x, y, z) for x, y, z in reversed(right[1:-1])]
+    return right + left
+
+
+def f16_arch(y, sill, hw, top, n=8):
+    """An arch over a flat base (the canopy and its fairing)."""
+    return [(hw * math.cos(math.pi * k / n), y, sill + (top - sill) * math.sin(math.pi * k / n)) for k in range(n + 1)]
+
+
 def f16():
-    g = loft([(7.5, 0.25, 0.0, 0.0), (6.7, 0.25, 0.32, 0.32), (5.4, 0.3, 0.52, 0.58), (3.6, 0.35, 0.7, 0.72), (1.0, 0.3, 0.85, 0.7),
-              (-2.5, 0.3, 0.85, 0.7), (-5.2, 0.3, 0.7, 0.62), (-6.2, 0.3, 0.6, 0.58)], GREY_B, n=8, power=2.4)
-    g.add(loft([(7.5, 0.25, 0, 0), (6.7, 0.25, 0.32, 0.32), (6.1, 0.27, 0.42, 0.45)], RADOME, n=8))
-    # chin intake and its trunk
-    g.add(hexa([(-0.5, 2.9, -1.25), (0.5, 2.9, -1.25), (0.5, -1.0, -0.75), (-0.5, -1.0, -0.75),
-                (-0.5, 3.3, -0.35), (0.5, 3.3, -0.35), (0.5, -1.0, -0.2), (-0.5, -1.0, -0.2)], GREY_B))
-    g.face2([(-0.42, 3.0, -1.15), (0.42, 3.0, -1.15), (0.42, 3.25, -0.45), (-0.42, 3.25, -0.45)], BLACK)
-    g.add(canopy(5.6, 2.4, 0.85, 0.4, 0.5))
-    # strakes + wing
-    g.add(wing((0.5, 4.6, 0.25), 4.2, (1.2, 0.9, 0.2), 1.0, GREY_B, t=0.04))
-    g.add(wing((0.8, 1.0, 0.2), 4.6, (4.7, -2.4, 0.2), 1.2, GREY_B, t=0.045))
-    g.add(wing((0.6, -4.3, 0.15), 2.4, (2.9, -6.0, -0.15), 1.0, GREY_B, t=0.05))
-    g.add(wing((0, -2.8, 0.8), 3.7, (0, -5.6, 4.0), 1.2, GREY_B, t=0.05, vertical=True, mirror=False))
-    g.add(wing((0.35, -4.2, -0.4), 1.6, (0.55, -4.8, -1.1), 0.9, GREY_B, t=0.06, vertical=True))
+    rings = [f16_section(*s) for s in F16_BODY]
+    g = tube(rings, GREY_B, paints=[RADOME, RADOME] + [GREY_B] * (len(rings) - 3))
+    g.add(tube([f16_arch(*s) for s in F16_CANOPY], CANOPY))
+    g.add(tube([f16_arch(*s) for s in F16_FAIRING], GREY_B))
+    g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in F16_DORSAL], GREY_B))
+    # The chin intake: its mouth raked back from the upper lip, its trunk running into the
+    # fuselage's underside.
+    def mouth(y, zc, hw, hh, rake=0.0):
+        return [(x, y + rake * (z - zc) / hh, z) for x, _, z in ring((0, 0, zc), hw, hh, 12, 2.4)]
+    g.add(tube([mouth(3.0, -0.64, 0.60, 0.29, 0.1), mouth(2.5, -0.64, 0.62, 0.30), mouth(1.4, -0.62, 0.64, 0.28)],
+               GREY_B))
+    g.face2(mouth(2.96, -0.64, 0.53, 0.24, 0.1), BLACK)
+    # The strakes' last stretch to the wing's leading edge, the wing (straight trailing edge,
+    # tip rails), the stabilizers on their booms (10 degrees anhedral).
+    g.add(wing((1.0, 2.0, 0.0), 1.3, (1.36, 0.42, 0.0), 0.05, GREY_B, t=0.03))
+    g.add(wing((1.0, 0.69, 0.0), 4.10, (4.60, -2.19, 0.0), 1.22, GREY_B, t=0.04))
+    g.add(wing((0.6, -3.3, 0.0), 3.5, (1.05, -3.5, 0.0), 3.35, GREY_B, t=0.06, t_tip=0.04))
+    g.add(wing((1.0, -4.70, 0.02), 2.39, (2.83, -6.19, -0.30), 0.90, GREY_B, t=0.04))
     for s in (-1, 1):
-        g.add(missile(s * 4.8, -1.0, 0.2, 3.0))
-    g.add(nozzle(0, -6.2, 0.3, 0.55, 1.1))
-    fl = flame(0, -7.3, 0.3, 0.5, 3.2)
-    return Craft(g, (-4.8, -3.6, 0.2), (4.8, -3.6, 0.2), [(0, -6.4, 4.0)], fl, gear=f16_gear())
+        g.add(block(s * 4.58, s * 4.72, -1.7, -3.6, -0.05, 0.05, GREY_B))
+        g.add(missile(s * 4.66, -0.9, -0.14, 3.0))
+    # The fin on its base, the ventral fins canted out.
+    g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, GREY_B, t=0.05, vertical=True, mirror=False))
+    g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, GREY_B, t=0.05, vertical=True))
+    g.add(nozzle(0, -6.15, 0.04, 0.52, 1.05, n=12))
+    fl = flame(0, -7.2, 0.04, 0.45, 3.2)
+    return Craft(g, (-4.70, -3.3, 0.05), (4.70, -3.3, 0.05), [(0, -7.0, 3.27)], fl, gear=f16_gear())
 
 
 # z of the ground under the wheels (`F16_LIFT` and `gear_depth` in src/aircraft.rs).
-F16_GROUND = -2.15
+F16_GROUND = -1.75
 F18_GROUND = -1.65
 MIG23_GROUND = -1.7
 
@@ -186,24 +249,23 @@ def tricycle(ground, nose, main, paint):
 
 def f16_gear():
     """The gear down: the nose leg under the intake trunk with its door, the main legs from the
-    fuselage's sides under the wing roots with their doors outboard."""
+    fuselage's underside below the wing roots with their doors outboard."""
     g = Geo()
-    trunk = lambda y: -0.75 - 0.5 * (y + 1.0) / 3.9  # the intake trunk's underside
+    keel = -0.92  # the intake trunk's underside
     r, w = 0.23, 0.16
-    axle = (0.0, 1.75, F16_GROUND + r)
+    axle = (0.0, 2.40, F16_GROUND + r)
     g.add(mklib.wheel(axle, r, w, BLACK, n=8))
     # The leg leans forward down to the wheel, braced from behind.
-    g.add(frustum((0.0, 1.5, trunk(1.5)), (0.0, 1.73, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
-    g.add(frustum((0.0, 0.9, trunk(0.9)), (0.0, 1.6, -1.42), 0.035, 0.035, GREY_L, n=4))
-    g.face2([(-0.28, 2.2, trunk(2.2)), (-0.28, 1.0, trunk(1.0)), (-0.33, 1.0, trunk(1.0) - 0.38),
-             (-0.33, 2.2, trunk(2.2) - 0.38)], GREY_B)
-    r, w = 0.35, 0.22
+    g.add(frustum((0.0, 2.15, keel), (0.0, 2.38, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum((0.0, 1.55, keel), (0.0, 2.25, (keel + axle[2]) / 2), 0.035, 0.035, GREY_L, n=4))
+    g.face2([(-0.3, 2.5, keel + 0.02), (-0.3, 1.3, keel + 0.02), (-0.34, 1.3, keel - 0.36), (-0.34, 2.5, keel - 0.36)], GREY_B)
+    r, w = 0.34, 0.22
     for s in (-1, 1):
-        axle = (s * 1.18, -2.3, F16_GROUND + r)
+        axle = (s * 1.18, -1.76, F16_GROUND + r)
         g.add(mklib.wheel(axle, r, w, BLACK, n=8))
-        g.add(frustum((s * 0.75, -2.15, -0.25), (s * 1.05, -2.3, axle[2] + 0.12), 0.08, 0.07, GREY_L, n=5))
-        g.add(frustum((s * 0.75, -1.4, -0.25), (s * 1.0, -2.2, axle[2] + 0.45), 0.04, 0.04, GREY_L, n=4))
-        g.face2([(s * 0.92, -1.3, -0.2), (s * 0.92, -3.1, -0.2), (s * 0.97, -3.1, -0.85), (s * 0.97, -1.3, -0.85)], GREY_B)
+        g.add(frustum((s * 0.62, -1.6, -0.74), (s * 1.05, -1.76, axle[2] + 0.12), 0.08, 0.07, GREY_L, n=5))
+        g.add(frustum((s * 0.62, -0.9, -0.76), (s * 1.0, -1.66, axle[2] + 0.4), 0.04, 0.04, GREY_L, n=4))
+        g.face2([(s * 0.86, -0.9, -0.1), (s * 0.86, -2.7, -0.1), (s * 0.9, -2.7, -0.72), (s * 0.9, -0.9, -0.72)], GREY_B)
     return g
 
 
