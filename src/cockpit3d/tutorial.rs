@@ -609,15 +609,6 @@ static DEPARTURE: &[Step] = {
             target: |c| c.page_button(Page::Waypoints),
             done: |c| c.page(Page::Waypoints).is_some(),
         },
-        Step {
-            only: all,
-            phase: NAVIGATION,
-            title: "Weapons page",
-            detail: "The stores on board and the selected one (the HUD names it too)",
-            keys: &[Ordnance],
-            target: |c| c.page_button(Page::Weapons),
-            done: |c| c.page(Page::Weapons).is_some(),
-        },
     ]
 };
 
@@ -687,6 +678,26 @@ static OBJECTIVE_STEPS: &[Step] = {
             target: |_| T::Throttle,
             done: |c| c.knots() <= SLOW_KNOTS || c.leg.close || c.leg.over,
         },
+        // The store before the camera: the classic camera and weapons pages share the right
+        // MFD, and once the store is chosen its page is no longer asked for.
+        Step {
+            only: stores,
+            phase: OBJECTIVE,
+            title: "Weapons page",
+            detail: "The stores on board and the selected one, to choose the one for {name}",
+            keys: &[Ordnance],
+            target: |c| c.page_button(Page::Weapons),
+            done: |c| c.page(Page::Weapons).is_some() || c.best_selected() || c.leg.over,
+        },
+        Step {
+            only: stores,
+            phase: OBJECTIVE,
+            title: "Select the {weapon}",
+            detail: "{why}",
+            keys: &[SelectWeapon],
+            target: |_| T::Action(SelectWeapon),
+            done: |c| c.best_selected() || c.leg.over,
+        },
         Step {
             only: all,
             phase: OBJECTIVE,
@@ -717,16 +728,6 @@ static OBJECTIVE_STEPS: &[Step] = {
             keys: &[HudMode],
             target: |_| T::Effect(Effect::HudMode(1)),
             done: |c| c.hud.mode == Hud::Air || c.leg.over,
-        },
-        // The HUD names the selected store: no weapons page here, it would take the camera's MFD.
-        Step {
-            only: stores,
-            phase: OBJECTIVE,
-            title: "Select the {weapon}",
-            detail: "{why}",
-            keys: &[SelectWeapon],
-            target: |_| T::Action(SelectWeapon),
-            done: |c| c.best_selected() || c.leg.over,
         },
         Step {
             only: ground,
@@ -1925,8 +1926,9 @@ mod tests {
                 let fires = steps.iter().any(|s| s.keys.contains(&Action::FireWeapon));
                 assert_eq!(fires, aim != Aim::Land, "{f:?} {aim:?}");
                 assert_eq!(steps.iter().any(|s| s.title.starts_with("Land at")), aim == Aim::Land);
-                // Near (20 km): normal time, then the target camera; the run (10 km): the
-                // autopilot off, then the bay, then the shot; no weapons page (the camera's MFD).
+                // Near (30 km): normal time, then the store (its page and its choice) before the
+                // target camera (the same MFD); the run (10 km): the autopilot off, then the bay,
+                // then the shot.
                 let at = |t: &str| steps.iter().position(|s| s.title.starts_with(t));
                 let order = ["Fly to", "Normal time", "Target camera", "Close in"];
                 let order: Vec<usize> = order.iter().map(|t| at(t).unwrap()).collect();
@@ -1936,7 +1938,11 @@ mod tests {
                     assert!(at(later).is_none_or(|s| s > run), "{f:?} {aim:?}: {later}");
                 }
                 assert!(at("Autopilot off").is_some() != f.helicopter, "{f:?} {aim:?}");
-                assert!(at("Weapons page").is_none(), "{f:?} {aim:?}");
+                let store = [at("Weapons page"), at("Select the")];
+                assert!(store.iter().all(|s| s.is_some() == (aim != Aim::Land)), "{f:?} {aim:?}");
+                for s in store.into_iter().flatten() {
+                    assert!(order[1] < s && s < order[2], "{f:?} {aim:?}");
+                }
                 let slow = at("Slow down");
                 assert_eq!(slow.is_some(), run_slower(Flight { aim: Some(aim), ..f }));
                 assert!(slow.is_none_or(|s| order[1] < s && s < order[2]), "{f:?} {aim:?}");
