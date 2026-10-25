@@ -4,7 +4,8 @@
 //! - Night crickets in the late evening and at night (21:00 to 03:00) near the ground.
 //! - Light rain while it rains around the eye, heavy rain on top of it under a storm cell (not
 //!   inside the clouds).
-//! - Summer by day in fair weather in Central Europe and Ukraine.
+//! - Summer by day in fair weather in Central Europe and Ukraine, fading out from 500 ft to
+//!   1000 ft.
 //! - Crickets around noon in the desert theaters, outside the aircraft only.
 //! - Wind out of the aircraft above 300 ft, the high-altitude wind on top above 4000 ft.
 //!
@@ -48,6 +49,7 @@ const WIND_HIGH: usize = 6;
 
 /// Altitude bands (ft above the ground): each sound fades in or out across its band.
 const CRICKETS_BAND: (f32, f32) = (60.0, 140.0);
+const SUMMER_BAND: (f32, f32) = (500.0, 1000.0);
 const WIND_BAND: (f32, f32) = (200.0, 400.0);
 const WIND_HIGH_BAND: (f32, f32) = (3500.0, 4500.0);
 
@@ -113,7 +115,8 @@ fn due(a: &Around) -> [(bool, bool, f32); 7] {
     d[CRICKETS] = (within(NOON) && DESERT_THEATERS.contains(&a.theater), a.outside, 1.0);
     d[RAIN_LIGHT] = (a.raining, true, 1.0);
     d[RAIN] = (a.raining && a.storm, true, 1.0);
-    d[SUMMER] = (within(DAY) && a.sunny && SUMMER_THEATERS.contains(&a.theater), true, 1.0);
+    d[SUMMER] =
+        (within(DAY) && a.sunny && SUMMER_THEATERS.contains(&a.theater), true, below(SUMMER_BAND));
     d[WIND] = (true, a.outside, above(WIND_BAND));
     d[WIND_HIGH] = (true, a.outside, above(WIND_HIGH_BAND));
     d
@@ -261,6 +264,10 @@ mod tests {
         assert!(!d("ukraine", 10.0, false)[SUMMER].0);
         assert!(!d("ukraine", 20.0, true)[SUMMER].0);
         assert!(!d("libya", 10.0, true)[SUMMER].0);
+        let summer = |agl| due(&Around { agl, ..around() })[SUMMER].2;
+        assert_eq!(summer(500.0), 1.0);
+        assert!(summer(750.0) > 0.3 && summer(750.0) < 0.7);
+        assert_eq!(summer(1000.0), 0.0);
         assert!(d("libya", 12.0, true)[CRICKETS].0);
         assert!(!d("libya", 16.0, true)[CRICKETS].0);
         assert!(!d("korea", 12.0, true)[CRICKETS].0);
