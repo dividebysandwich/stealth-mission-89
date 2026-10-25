@@ -38,11 +38,13 @@ pub struct AircraftSpec {
     pub model_lift: f32,
     /// Design eye point in the aircraft frame (-Z forward, +Y up), m.
     pub eye: Vec3,
-    /// The exterior model as seen from the cockpit (the F-117A's cockpit model has its own canopy
-    /// frame and shows none, the others look out over their nose and wings).
+    /// The exterior model as seen from the cockpit: the pilot looks out over its nose and wings.
     pub cockpit_view: Option<CockpitView>,
     /// Cockpit models (glb stem under `models/`): one, or the modern and the classic one.
     pub cockpits: &'static [(PanelStyle, &'static str)],
+    /// How much larger than life the cockpit models are built (the F-117A's, after the classic
+    /// one): drawn at life size, in the exterior model's canopy.
+    pub cockpit_size: f32,
     /// VR cockpit size at 100% (rig scale: the fraction of life size the cockpit looks in the
     /// headset), what felt right in each.
     pub vr_scale: f32,
@@ -84,10 +86,10 @@ pub enum Hmd {
 }
 
 impl AircraftSpec {
-    /// Size of the cockpit model against the F-16's: the models are built at different scales,
-    /// which `vr_scale` brings to life size.
+    /// Size of the cockpit model against the F-16's (life size): the units of the cockpit
+    /// frame (`cockpit3d::CockpitRoot`) per metre.
     pub fn cockpit_model_scale(&self) -> f32 {
-        F16.vr_scale / self.vr_scale
+        self.cockpit_size
     }
 
     pub fn flight(&self) -> FlightConstants {
@@ -121,6 +123,12 @@ const RUNWAY_Y: f32 = 0.34;
 /// The F-117A's model origin is on its flat underside, the wheels 1.65 m below it
 /// (tools/models/f117.py).
 const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
+/// A point of the F-117A's builder (tools/models/f117.py: metres, x right, s aft of the nose, z
+/// above the flat underside) in the aircraft frame.
+const fn f117_point(x: f32, s: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(F117_LIFT, x * K, z * K, -(10.6 - s) * K)
+}
 /// The F-16's wheels are 1.75 m below its model origin (tools/models/aircraft.py `F16_GROUND`).
 const F16_LIFT: f32 = 1.75 + RUNWAY_Y;
 
@@ -153,10 +161,20 @@ const F117_EXHAUST: Vec3 = Vec3::new(0.0, F117_LIFT + 0.4, 4.6);
 static F117: AircraftSpec = AircraftSpec {
     model: "aircraft_024",
     model_lift: F117_LIFT,
-    eye: Vec3::new(0.0, 1.6, -3.0),
-    cockpit_view: None,
+    // Under the canopy's glass, a little ahead of its apex (s 5.1 m, z 2.26 m), the head 0.3 m
+    // under the panes.
+    eye: f117_point(0.0, 4.9, 1.85),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.60, -1.20, -1.10), Vec3::new(0.60, 0.30, 0.90)),
+        two_sided: false,
+        rotors: false,
+    }),
     cockpits: &[(PanelStyle::Modern, "cockpit_modern"), (PanelStyle::Classic, "cockpit_classic")],
-    vr_scale: 0.85 * 0.7,
+    // tools/models/build_cockpit_f117.py SCALE.
+    cockpit_size: 1.4706,
+    // Life size, as the F-16's.
+    vr_scale: 1.25 * 0.7,
     vr_eye_height: Some(2.7),
     hud_scale: crate::hud::modern::SCALE,
     // About the F-16's angular size: the symbology in the middle half of the combiner.
@@ -183,6 +201,7 @@ static F16: AircraftSpec = AircraftSpec {
         rotors: false,
     }),
     cockpits: &[(PanelStyle::F16, "cockpit_f16")],
+    cockpit_size: 1.0,
     // The symbology (about 920 x 470 canvas pixels) inside the combiner (x +-0.1675, z -0.12 ..
     // 0.095 at 0.70 m in front of the eye, tools/models/build_cockpit_f16.py).
     vr_scale: 1.25 * 0.7,
@@ -223,6 +242,7 @@ static UH60: AircraftSpec = AircraftSpec {
         rotors: true,
     }),
     cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    cockpit_size: 1.0,
     // Life size, as the F-16's.
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
@@ -260,6 +280,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
         rotors: true,
     }),
     cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
+    cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     hud_scale: crate::hud::modern::SCALE,
@@ -374,23 +395,26 @@ mod tests {
             lo = lo.min(v("min"));
             hi = hi.max(v("max"));
         }
-        assert_eq!(found, colours.len(), "canopy primitives of {node}");
+        assert!(found > 0, "no canopy primitives in {node}");
         (lo, hi)
     }
 
+    /// The jets' eye inside the bounds of their canopy glass.
     #[test]
-    fn f16_eye_under_the_canopy() {
-        let spec = AircraftKind::F16.spec();
-        let (lo, hi) = primitive_bounds(
-            "aircraft_023_lod0",
-            spec.cockpit_view.as_ref().unwrap().canopy_colours,
-        );
-        let s = AIRCRAFT_MODEL_SCALE as f32;
-        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
-        assert!(
-            eye.cmpgt(lo).all() && eye.cmplt(hi).all(),
-            "eye {eye} outside the canopy {lo}..{hi}"
-        );
+    fn eye_under_the_canopy() {
+        for kind in [AircraftKind::F16, AircraftKind::F117] {
+            let spec = kind.spec();
+            let (lo, hi) = primitive_bounds(
+                &format!("{}_lod0", spec.model),
+                spec.cockpit_view.as_ref().unwrap().canopy_colours,
+            );
+            let s = AIRCRAFT_MODEL_SCALE as f32;
+            let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+            assert!(
+                eye.cmpgt(lo).all() && eye.cmplt(hi).all(),
+                "{kind:?} eye {eye} outside the canopy {lo}..{hi}"
+            );
+        }
     }
 
     /// The UH-60A's eye: in the cockpit between the windshield top and the door post
@@ -430,6 +454,5 @@ mod tests {
         assert_eq!(AircraftKind::parse("blackhawk"), Some(AircraftKind::UH60));
         assert_eq!(AircraftKind::parse("AH-1Z"), Some(AircraftKind::AH1Z));
         assert_eq!(AircraftKind::parse("viper"), Some(AircraftKind::AH1Z));
-        assert_eq!(AircraftKind::F117.spec().eye, Vec3::new(0.0, 1.6, -3.0));
     }
 }

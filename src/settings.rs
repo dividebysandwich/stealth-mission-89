@@ -196,9 +196,15 @@ impl Settings {
         eye
     }
 
-    /// Scale of the VR rig (head and hand offsets) for the chosen cockpit size.
+    /// Scale of the VR rig (the head offset) for the chosen cockpit size.
     pub fn vr_rig_scale(&self) -> f32 {
         self.vr_cockpit_scale * self.aircraft.spec().vr_scale
+    }
+
+    /// Scale of the VR hand offsets: as the rig's, in the units of the cockpit frame
+    /// (`AircraftSpec::cockpit_model_scale`).
+    pub fn vr_hand_scale(&self) -> f32 {
+        self.vr_rig_scale() / self.aircraft.spec().cockpit_model_scale()
     }
 
     pub fn from_args() -> Self {

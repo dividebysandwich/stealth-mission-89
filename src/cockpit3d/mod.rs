@@ -173,7 +173,8 @@ impl Hand {
 #[derive(Component)]
 pub struct HudGlass;
 
-/// Root of the cockpit model (child of the aircraft at the design eye point), with the panel
+/// Root of the cockpit model (child of the aircraft at the design eye point, scaled to life
+/// size: `AircraftSpec::cockpit_model_scale`), with the panel
 /// layout it was built with, whether it has its lamps (local lights option), whether its MFDs
 /// are the high-resolution ones and its model (another aircraft's may share the layout).
 #[derive(Component)]
@@ -374,8 +375,13 @@ fn cockpit_lamps(
     lighting: Res<crate::lighting::LightingState>,
     mut q: Query<&mut PointLight, With<CockpitLamp>>,
 ) {
-    let lumens =
-        if settings.local_lights { 300.0 + 1500.0 * (1.0 - lighting.daylight) } else { 0.0 };
+    // As bright as in the cockpit model's size, which brings them nearer.
+    let k = settings.aircraft.spec().cockpit_model_scale();
+    let lumens = if settings.local_lights {
+        (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k)
+    } else {
+        0.0
+    };
     for mut l in &mut q {
         if l.intensity != lumens {
             l.intensity = lumens;
@@ -429,7 +435,9 @@ fn spawn_cockpit(
     let root = commands
         .spawn((
             CockpitRoot(layout.style, settings.local_lights, settings.hires_displays(), stem),
-            Transform::from_translation(settings.cockpit_eye()),
+            Transform::from_translation(settings.cockpit_eye()).with_scale(Vec3::splat(
+                1.0 / settings.aircraft.spec().cockpit_model_scale(),
+            )),
             Visibility::default(),
         ))
         .id();

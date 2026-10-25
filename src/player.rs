@@ -20,7 +20,13 @@ impl Plugin for PlayerPlugin {
         )
         .add_systems(
             Update,
-            (readout, respawn_own_model, attach_own_model, own_model_visibility)
+            (
+                readout,
+                respawn_own_model,
+                attach_own_model,
+                own_model_visibility,
+                interior_follows_eye,
+            )
                 .chain()
                 .run_if(in_state(AppState::Flight)),
         )
@@ -321,6 +327,21 @@ fn attach_own_model(
                 commands.entity(rotor).insert(OwnRotor);
                 commands.entity(interior).add_child(rotor);
             }
+        }
+    }
+}
+
+/// The own model seen from the cockpit stays round the eye where VR raises it
+/// (`Settings::cockpit_eye`).
+fn interior_follows_eye(
+    settings: Res<crate::settings::Settings>,
+    mut q: Query<&mut Transform, With<OwnModelInterior>>,
+) {
+    let spec = settings.aircraft.spec();
+    let at = Vec3::Y * spec.model_lift + settings.cockpit_eye() - spec.eye;
+    for mut tf in &mut q {
+        if tf.translation != at {
+            tf.translation = at;
         }
     }
 }

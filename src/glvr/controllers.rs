@@ -260,7 +260,7 @@ pub fn read_hands(
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
-    let offset = offset.scaled(settings.vr_rig_scale());
+    let offset = offset.scaled(settings.vr_hand_scale());
     for (hand, c) in hands.hands.iter_mut().zip(&input.controllers) {
         hand.prev_buttons = hand.buttons;
         hand.prev_trigger = hand.trigger;
