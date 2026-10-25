@@ -1,5 +1,6 @@
 //! Tooltips (desktop): with the mouse still over a cockpit control, display, instrument or
-//! warning light, a box by the cursor names it, says what it does and which keys do the same.
+//! warning light, a box by the cursor names it, reads out what an instrument shows (updated
+//! while the box is up), says what it does and which keys do the same.
 //! It follows the view: whatever comes under the cursor while the head turns, unless something
 //! in front hides it (`pick`). No tooltips when switched off (in-flight menu), outside the
 //! cockpit views, while looking around (right button held), with the menu or the kneeboard over
@@ -35,7 +36,7 @@ use crate::camera::{View, ViewState};
 use crate::hotas::{ButtonTarget, InputConfig};
 use crate::input::{Action, key_label, qwerty_key_label};
 use crate::mfd::{CamDir, LeftMfd, MfdCmd, MfdState, OsbFn, RightMfd, osb};
-use crate::panel::{LAMPS, LampId, LedId};
+use crate::panel::{LAMPS, LampId, LedId, PanelParams};
 use crate::settings::{AppState, Settings};
 
 /// Seconds the mouse rests on a part before its tooltip shows.
@@ -56,19 +57,114 @@ const VR_REACH: f32 = 0.05;
 const VR_RAISE: f32 = 0.07;
 const VR_TOWARDS_EYE: f32 = 0.04;
 
-/// Tooltip of a cockpit part (the controls' come from their effect): its name, what it does
-/// and the actions whose keys do the same.
+/// Tooltip of a cockpit part (the controls' come from their effect): its name, what it shows
+/// now (instruments), what it does and the actions whose keys do the same.
 #[derive(Component, Clone, Debug)]
 pub struct Tip {
     title: String,
+    readout: Option<Readout>,
     detail: String,
     actions: Vec<Action>,
 }
 
 impl Tip {
     pub fn new(title: impl Into<String>, detail: impl Into<String>, actions: &[Action]) -> Self {
-        Self { title: title.into(), detail: detail.into(), actions: actions.to_vec() }
+        Self {
+            title: title.into(),
+            readout: None,
+            detail: detail.into(),
+            actions: actions.to_vec(),
+        }
     }
+
+    /// The tooltip reading out what the instrument shows.
+    fn reading(self, readout: Readout) -> Self {
+        Self { readout: Some(readout), ..self }
+    }
+}
+
+/// An instrument whose tooltip reads out what it shows, as it shows it.
+#[derive(Clone, Copy, Debug)]
+enum Readout {
+    Dial(Dial),
+    Led(LedId),
+    RadarBars,
+    Attitude,
+    Hsi,
+}
+
+/// What the instrument shows now (empty without an aircraft).
+fn readout_text(readout: Readout, panel: &PanelParams) -> String {
+    let Ok(a) = panel.aircraft.single() else { return String::new() };
+    match readout {
+        Readout::Dial(dial) => dial_text(dial, panel.dial_value(dial)),
+        Readout::Led(led) => match led {
+            LedId::Chaff => panel.cm.chaff.to_string(),
+            LedId::Flares => panel.cm.flares.to_string(),
+            LedId::Decoys => panel.cm.decoys.to_string(),
+            // The fuel in lbs, not divided by 10 as on the LEDs.
+            LedId::Fuel => dial_text(Dial::Fuel, a.fuel),
+            LedId::Thrust => format!("{} %", a.thrust.max(0.0).round() as i32),
+        },
+        Readout::RadarBars => {
+            let (emv, egr, ear) = panel.gauge_values();
+            format!("EMV {emv}, EGR {egr}, EAR {ear} (0 to 99)")
+        }
+        Readout::Attitude => {
+            let (_, pitch, roll) = a.euler();
+            let bank = roll.to_degrees().round() as i32;
+            let bank = match bank {
+                0 => "wings level".to_string(),
+                1.. => format!("bank {bank}° right"),
+                _ => format!("bank {}° left", -bank),
+            };
+            format!("Pitch {}°, {bank}", signed(pitch.to_degrees().round() as i32))
+        }
+        Readout::Hsi => {
+            let Some((heading, bearing, dist)) = panel.hsi_values() else { return String::new() };
+            let degrees = |rad: f32| rad.to_degrees().rem_euclid(360.0).round() as i32 % 360;
+            let heading = format!("Heading {:03}°", degrees(heading));
+            match bearing.zip(dist) {
+                Some((bearing, km)) => format!(
+                    "{heading}, WP{}: {:03}° at {}",
+                    panel.waypoints.current,
+                    degrees(bearing),
+                    km_text(km)
+                ),
+                None => heading,
+            }
+        }
+    }
+}
+
+/// A needle instrument's value (`PanelParams::dial_value`) with its unit.
+fn dial_text(dial: Dial, value: f32) -> String {
+    let v = value.round() as i32;
+    match dial {
+        Dial::Airspeed => format!("{v} kt"),
+        Dial::Altimeter => format!("{v} ft"),
+        Dial::Aoa => format!("{value:.1}°"),
+        Dial::Vvi => format!("{} ft/min", signed(v)),
+        Dial::Rpm => format!("{v} %"),
+        Dial::Ftit => format!("{v} °C"),
+        Dial::Oil => format!("{v} psi"),
+        Dial::Nozzle => format!("{v} % open"),
+        Dial::Fuel => format!("{} lbs", v.max(0)),
+        Dial::Clock => {
+            let (h, m, s) = crate::mfd::hms(value);
+            format!("{h:02}:{m:02}:{s:02}")
+        }
+    }
+}
+
+/// A value with its sign ("+5", "-5", "0").
+fn signed(v: i32) -> String {
+    if v == 0 { "0".to_string() } else { format!("{v:+}") }
+}
+
+/// A distance as the HSI shows it (tenths under 100 km).
+fn km_text(km: f32) -> String {
+    if km < 100.0 { format!("{km:.1} km") } else { format!("{km:.0} km") }
 }
 
 /// An action's name and what it does.
@@ -232,7 +328,7 @@ fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
         Effect::CamCycle => Vec::new(),
         _ => effect.action(mfd).into_iter().collect(),
     };
-    Some(Tip { title, detail, actions })
+    Some(Tip { title, readout: None, detail, actions })
 }
 
 /// The tooltip of an instrument atlas face that is not a button (None: a plain label).
@@ -276,13 +372,16 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
             };
             (title.replace('\n', " "), detail)
         }
-        Elem::Led(led) => match led {
-            LedId::Chaff => ("Chaff".into(), "Chaff left"),
-            LedId::Flares => ("Flares".into(), "Flares left"),
-            LedId::Decoys => ("Decoys".into(), "Decoys left"),
-            LedId::Fuel => ("Fuel".into(), "Fuel in lbs divided by 10"),
-            LedId::Thrust => ("Thrust".into(), "Thrust in percent"),
-        },
+        Elem::Led(led) => {
+            let (title, detail) = match led {
+                LedId::Chaff => ("Chaff", "Chaff left"),
+                LedId::Flares => ("Flares", "Flares left"),
+                LedId::Decoys => ("Decoys", "Decoys left"),
+                LedId::Fuel => ("Fuel", "Fuel in lbs divided by 10"),
+                LedId::Thrust => ("Thrust", "Thrust in percent"),
+            };
+            return Some(Tip::new(title, detail, &[]).reading(Readout::Led(led)));
+        }
         Elem::Gauge => return Some(radar_bars()),
         Elem::GearLights => {
             ("Gear lights".into(), "A green lamp at each wheel while the gear is down")
@@ -300,7 +399,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::Fuel => ("Fuel quantity", ""),
                 Dial::Clock => ("Clock", "Local time"),
             };
-            (title.into(), detail)
+            return Some(Tip::new(title, detail, &[]).reading(Readout::Dial(dial)));
         }
         Elem::Label(..) | Elem::Hazard => return None,
     };
@@ -309,6 +408,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
 
 fn radar_bars() -> Tip {
     Tip::new("EGR / EAR", "Radar bar graph: enemy radar signal against the aircraft's EMV", &[])
+        .reading(Readout::RadarBars)
 }
 
 /// The tooltip of a live display (None: the HUD and the atlases).
@@ -332,7 +432,12 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
-    Some(Tip::new(title, detail, &[]))
+    let tip = Tip::new(title, detail, &[]);
+    Some(match role {
+        CanvasRole::Adi => tip.reading(Readout::Attitude),
+        CanvasRole::Hsi => tip.reading(Readout::Hsi),
+        _ => tip,
+    })
 }
 
 pub(super) fn stick_tip() -> Tip {
@@ -414,7 +519,7 @@ fn wrap(text: &str) -> String {
     out
 }
 
-/// The tooltip box (title, detail and keys lines).
+/// The tooltip box (title, readout, detail and keys lines).
 #[derive(Component)]
 pub(super) struct TipBox;
 
@@ -504,8 +609,9 @@ pub(super) fn spawn_box(
             DespawnOnExit(AppState::Flight),
             children![
                 line(0, 17.0, Color::srgb(1.0, 0.85, 0.3)),
-                line(1, 14.0, Color::srgb(0.85, 0.87, 0.9)),
-                line(2, 13.0, Color::srgb(0.55, 0.6, 0.65)),
+                line(1, 15.0, Color::srgb(0.6, 0.95, 0.65)),
+                line(2, 14.0, Color::srgb(0.85, 0.87, 0.9)),
+                line(3, 13.0, Color::srgb(0.55, 0.6, 0.65)),
             ],
         ))
         .id();
@@ -576,7 +682,7 @@ pub(super) fn hover(
     mut picker: Picker,
     controls: Query<(Entity, &Control, &Transform)>,
     tips: Query<&Tip>,
-    mfd: Res<MfdState>,
+    panel: PanelParams,
     input: Res<InputConfig>,
     mut state: Local<Hover>,
     (hands, mut anchor): (Res<Hands>, ResMut<TipAnchor>),
@@ -615,7 +721,7 @@ pub(super) fn hover(
     }
     let tip = pointed.and_then(|p| match p {
         Pointed::Control(e) => {
-            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &mfd))
+            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &panel.mfd))
         }
         Pointed::Tip(e) => tips.get(e).ok().cloned(),
     });
@@ -626,7 +732,13 @@ pub(super) fn hover(
     let Ok((mut node, mut vis, computed)) = boxes.single_mut() else { return };
     vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
     let (Some(tip), true) = (tip, show) else { return };
-    let texts = [wrap(&tip.title), wrap(&tip.detail), wrap(&keys_text(&tip.actions, &input))];
+    let readout = tip.readout.map_or(String::new(), |r| readout_text(r, &panel));
+    let texts = [
+        wrap(&tip.title),
+        wrap(&readout),
+        wrap(&tip.detail),
+        wrap(&keys_text(&tip.actions, &input)),
+    ];
     for (TipLine(i), mut text, mut line) in &mut lines {
         let s = &texts[*i];
         if text.0 != *s {
@@ -778,6 +890,26 @@ mod tests {
                 let effect = Effect::Osb(side, slot);
                 assert_eq!(control_tip(effect, &mfd).is_some(), osb(side, slot, &mfd).is_some());
             }
+        }
+    }
+
+    /// Instrument readouts: units, signs, the clock's time of day; the font draws them all.
+    #[test]
+    fn dial_readouts() {
+        assert_eq!(dial_text(Dial::Clock, 3725.4), "01:02:05");
+        assert_eq!(dial_text(Dial::Clock, 86400.0 + 60.0), "00:01:00");
+        assert_eq!(dial_text(Dial::Altimeter, 12449.6), "12450 ft");
+        assert_eq!(dial_text(Dial::Vvi, -1200.0), "-1200 ft/min");
+        assert_eq!(dial_text(Dial::Vvi, 0.3), "0 ft/min");
+        assert_eq!(dial_text(Dial::Vvi, 600.0), "+600 ft/min");
+        assert_eq!(dial_text(Dial::Aoa, 4.26), "4.3°");
+        assert_eq!(km_text(12.34), "12.3 km");
+        assert_eq!(km_text(123.4), "123 km");
+        assert_eq!(dial_text(Dial::Fuel, -3.0), "0 lbs");
+        use Dial::*;
+        for dial in [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock] {
+            let text = dial_text(dial, 950.0);
+            assert!(drawable(&text), "{text}");
         }
     }
 
