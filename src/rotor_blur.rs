@@ -12,7 +12,7 @@ use bevy::mesh::{Indices, MeshVertexBufferLayoutRef, PrimitiveTopology};
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
+    RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
@@ -52,13 +52,13 @@ pub struct RotorParams {
     _pad: Vec2,
 }
 
-#[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
+#[derive(Asset, TypePath, Clone, Debug)]
 pub struct RotorMaterial {
-    #[uniform(0)]
     pub(crate) params: RotorParams,
-    #[storage(1, read_only)]
     globals: Handle<ShaderBuffer>,
 }
+
+crate::palette_material::globals_bind_group!(RotorMaterial, params);
 
 impl Material for RotorMaterial {
     fn vertex_shader() -> ShaderRef {

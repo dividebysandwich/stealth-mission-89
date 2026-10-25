@@ -28,7 +28,12 @@ struct Globals {
 const NIGHT: f32 = 0.18;
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> unused: vec4<f32>;
+// Storage, or a uniform buffer where there are none (WebGL2: palette_material.rs).
+#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var<storage, read> globals: Globals;
+#else
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var<uniform> globals: Globals;
+#endif
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,

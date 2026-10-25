@@ -96,7 +96,12 @@ struct PaletteMaterial {
 };
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: PaletteMaterial;
+// Storage, or a uniform buffer where there are none (WebGL2: palette_material.rs).
+#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var<storage, read> globals: Globals;
+#else
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var<uniform> globals: Globals;
+#endif
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
@@ -422,11 +427,7 @@ fn sun_shadow(world: vec3<f32>, n: vec3<f32>, view_z: f32, hard: bool) -> f32 {
     let uv = ndc.xy * vec2<f32>(0.5, -0.5) + 0.5;
     let layer = i32((*light).depth_texture_base_index + ci);
 #ifdef NO_ARRAY_TEXTURES_SUPPORT
-    if (hard) {
-        let size = vec2<f32>(textureDimensions(directional_shadow_textures));
-        let d = textureLoad(directional_shadow_textures, vec2<i32>(uv * size), 0);
-        return select(0.0, 1.0, ndc.z >= d);
-    }
+    // WebGL2 (GLSL can't load from a depth texture): the comparison filter, hard edged or not.
     return textureSampleCompareLevel(directional_shadow_textures, directional_shadow_textures_comparison_sampler, uv, ndc.z);
 #else
     if (hard) {

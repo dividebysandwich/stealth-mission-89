@@ -292,7 +292,11 @@ impl Palette {
     ) -> Self {
         let theater = load_theater_palettes(theater);
         let remaps = remap_tables();
-        let globals = buffers.add(ShaderBuffer::from(Globals::default()));
+        // Bound as storage, or as a uniform without storage buffers (palette_material.rs
+        // `globals_bind_group!`).
+        let mut globals = ShaderBuffer::from(Globals::default());
+        globals.buffer_description.usage |= bevy::render::render_resource::BufferUsages::UNIFORM;
+        let globals = buffers.add(globals);
         let active = tod.initial(&theater);
         let mut palette = Palette {
             active,

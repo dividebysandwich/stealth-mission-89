@@ -1,12 +1,12 @@
 //! The palette material: every model polygon, line and dot is drawn with one of these
 //! (shader: assets/shaders/palette.wgsl). Shared state (live palette, sky/ground band tables)
-//! lives in one storage buffer referenced by all materials.
+//! lives in one buffer referenced by all materials (`globals_bind_group!`).
 
 use bevy::mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef};
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError, VertexFormat,
+    RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError, VertexFormat,
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
@@ -67,14 +67,102 @@ pub struct PaletteParams {
     pub _pad1: u32,
 }
 
-#[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
-#[bind_group_data(PaletteKey)]
+#[derive(Asset, TypePath, Clone, Debug)]
 pub struct PaletteMaterial {
-    #[uniform(0)]
     pub params: PaletteParams,
-    #[storage(1, read_only)]
     pub globals: Handle<ShaderBuffer>,
 }
+
+/// `AsBindGroup` for a material of a uniform (binding 0, the field named) and the shared
+/// `Globals` (binding 1, its `globals` field): a storage buffer, or a uniform buffer where
+/// there are none (the WebGL2 build). The shaders pick theirs with
+/// `#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0`. (The derive only binds a buffer asset as
+/// storage.) The third argument is the bind group data, made `From<&Self>`.
+macro_rules! globals_bind_group {
+    ($ty:ty, $params:ident) => {
+        $crate::palette_material::globals_bind_group!($ty, $params, (), |_| ());
+    };
+    ($ty:ty, $params:ident, $data:ty) => {
+        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from);
+    };
+    ($ty:ty, $params:ident, $data:ty, $make:expr) => {
+        impl bevy::render::render_resource::AsBindGroup for $ty {
+            type Data = $data;
+            type Param = bevy::ecs::system::lifetimeless::SRes<
+                bevy::render::render_asset::RenderAssets<bevy::render::storage::GpuShaderBuffer>,
+            >;
+
+            fn label() -> &'static str {
+                stringify!($ty)
+            }
+
+            fn unprepared_bind_group(
+                &self,
+                _: &bevy::render::render_resource::BindGroupLayout,
+                render_device: &bevy::render::renderer::RenderDevice,
+                buffers: &mut bevy::ecs::system::SystemParamItem<'_, '_, Self::Param>,
+                _: bool,
+            ) -> Result<
+                bevy::render::render_resource::UnpreparedBindGroup,
+                bevy::render::render_resource::AsBindGroupError,
+            > {
+                use bevy::render::render_resource::*;
+                let mut params = encase::UniformBuffer::new(Vec::new());
+                params.write(&self.$params).unwrap();
+                let params = render_device.create_buffer_with_data(&BufferInitDescriptor {
+                    label: None,
+                    usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+                    contents: params.as_ref(),
+                });
+                let globals = buffers
+                    .get(&self.globals)
+                    .ok_or(AsBindGroupError::RetryNextUpdate)?
+                    .buffer
+                    .clone();
+                Ok(UnpreparedBindGroup {
+                    bindings: BindingResources(vec![
+                        (0, OwnedBindingResource::Buffer(params)),
+                        (1, OwnedBindingResource::Buffer(globals)),
+                    ]),
+                })
+            }
+
+            #[allow(clippy::redundant_closure_call)]
+            fn bind_group_data(&self) -> Self::Data {
+                ($make)(self)
+            }
+
+            fn bind_group_layout_entries(
+                render_device: &bevy::render::renderer::RenderDevice,
+                _: bool,
+            ) -> Vec<bevy::render::render_resource::BindGroupLayoutEntry> {
+                use bevy::render::render_resource::*;
+                let globals = if render_device.limits().max_storage_buffers_per_shader_stage > 0 {
+                    BufferBindingType::Storage { read_only: true }
+                } else {
+                    BufferBindingType::Uniform
+                };
+                [BufferBindingType::Uniform, globals]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(binding, ty)| BindGroupLayoutEntry {
+                        binding: binding as u32,
+                        visibility: ShaderStages::VERTEX_FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    })
+                    .collect()
+            }
+        }
+    };
+}
+pub(crate) use globals_bind_group;
+
+globals_bind_group!(PaletteMaterial, params, PaletteKey);
 
 /// The shader variant of a material: objects (polygons, lines, dots), the background sphere,
 /// or clouds and smoke.

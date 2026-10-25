@@ -19,7 +19,7 @@ use bevy::mesh::{Indices, MeshVertexAttribute, MeshVertexBufferLayoutRef, Primit
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
+    RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
@@ -63,14 +63,14 @@ impl Plugin for TrailsPlugin {
     }
 }
 
-#[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
+#[derive(Asset, TypePath, Clone, Debug)]
 pub struct TrailMaterial {
     /// x: palette index, y: opacity.
-    #[uniform(0)]
     pub(crate) params: Vec4,
-    #[storage(1, read_only)]
     globals: Handle<ShaderBuffer>,
 }
+
+crate::palette_material::globals_bind_group!(TrailMaterial, params);
 
 impl Material for TrailMaterial {
     fn vertex_shader() -> ShaderRef {

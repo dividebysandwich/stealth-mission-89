@@ -15,7 +15,7 @@ use bevy::mesh::{
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
+    RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
@@ -73,13 +73,13 @@ impl Plugin for ExplosionsPlugin {
     }
 }
 
-#[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
+#[derive(Asset, TypePath, Clone, Debug)]
 pub struct ParticleMaterial {
-    #[uniform(0)]
     unused: Vec4,
-    #[storage(1, read_only)]
     globals: Handle<ShaderBuffer>,
 }
+
+crate::palette_material::globals_bind_group!(ParticleMaterial, unused);
 
 impl Material for ParticleMaterial {
     fn vertex_shader() -> ShaderRef {
