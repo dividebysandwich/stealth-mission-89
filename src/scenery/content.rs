@@ -12,7 +12,7 @@ use super::Scenery;
 use super::fields::{self, Farmland};
 use super::geom::{Geom, rect, ring};
 use super::network::{Building, Kind, Network, Rng, RoadKind, Roof, hash, noise};
-use super::style::Tree;
+use super::style::{Style, Tree};
 
 /// Block size (metres).
 pub const BLOCK: f64 = 1000.0;
@@ -119,6 +119,34 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier) -> Geom {
     g
 }
 
+/// What a farmland section is used for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Land {
+    Fields,
+    /// Grass with a few trees and copses.
+    Meadow,
+    /// Left to the trees (the forest noise grows them there).
+    Woods,
+}
+
+/// The use of section (sx, sy), by the noise at its centre.
+fn section_land(style: &Style, land: &Farmland, sx: i64, sy: i64) -> Land {
+    let c = (DVec2::new(sx as f64, sy as f64) + 0.5) * land.section;
+    if land.woods && noise(style.seed, c, 1600.0) > style.forest {
+        Land::Woods
+    } else if land.meadow > 0.0 && noise(style.seed ^ 0x3EAD0, c, 2600.0) < land.meadow {
+        Land::Meadow
+    } else {
+        Land::Fields
+    }
+}
+
+/// The use of the section `p` lies in.
+fn land_at(style: &Style, land: &Farmland, p: DVec2) -> Land {
+    let s = (p / land.section).floor();
+    section_land(style, land, s.x as i64, s.y as i64)
+}
+
 /// Whether a rectangle of farmland is open land away from the towns.
 fn farmland_ok(sc: &Scenery, min: DVec2, max: DVec2, r: f64) -> bool {
     let d = DVec2::splat(200.0);
@@ -140,6 +168,13 @@ fn belt_rect(sc: &Scenery, land: &Farmland, a: DVec2, b: DVec2) -> Option<(DVec2
 /// The field drawn at `p`, if any (as `farmland` draws it: the whole field or its middle).
 fn field_rect(sc: &Scenery, land: &Farmland, seed: u64, p: DVec2) -> Option<(DVec2, DVec2)> {
     let s = (p / land.section).floor();
+    if sc
+        .style
+        .as_ref()
+        .is_some_and(|st| section_land(st, land, s.x as i64, s.y as i64) != Land::Fields)
+    {
+        return None;
+    }
     let field = fields::section(land, seed, s.x as i64, s.y as i64)
         .into_iter()
         .find(|f| p.cmpge(f.min).all() && p.cmple(f.max).all())?;
@@ -177,7 +212,16 @@ fn farmland(sc: &Scenery, f: &Frame, min: DVec2, max: DVec2, g: &mut Geom) {
         if corner.x < min.x || corner.y < min.y {
             continue;
         }
-        for field in fields::section(land, style.seed, sx, sy) {
+        let kind = section_land(style, land, sx, sy);
+        if kind == Land::Woods {
+            continue;
+        }
+        let ploughed = if kind == Land::Fields {
+            fields::section(land, style.seed, sx, sy)
+        } else {
+            Vec::new()
+        };
+        for field in ploughed {
             let (mut lo, mut hi) = (field.min, field.max);
             if !farmland_ok(sc, lo, hi, 12.0) {
                 // A smaller field in the middle, short of the obstacle.
@@ -616,8 +660,17 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
             let forest = if wood { 1.0 } else { ((cover - style.forest) / 0.1).clamp(0.0, 1.0) };
             let roll = rng.f();
             let in_town = sc.net.town_at(p, 0.95).is_some();
+            // Meadows: lone trees and copses.
+            let meadow =
+                !wood && style.farmland.is_some_and(|land| land_at(style, land, p) == Land::Meadow);
+            let copse = meadow && noise(seed ^ 0xC0B5E, p, 90.0) > 0.66;
             let (tree, bush) = if in_town {
                 (roll < 0.05, false)
+            } else if meadow {
+                (
+                    roll < forest * 0.85 || roll > 0.98 || (copse && roll < 0.7),
+                    (0.96..0.98).contains(&roll),
+                )
             } else {
                 (roll < forest * 0.85 || roll > 0.995, forest > 0.0 && forest < 0.5 && roll > 0.97)
             };
@@ -662,6 +715,9 @@ fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, far: bool)
     let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
     let m = DVec2::splat(land.section);
     for (sx, sy) in fields::sections(land, min - m, max) {
+        if section_land(style, land, sx, sy) == Land::Woods {
+            continue;
+        }
         for (a, b) in fields::belts(land, style.seed, sx, sy) {
             // Only the part of the belt in this block.
             let (lo, hi) = (a.max(min - 10.0), b.min(max + 10.0));

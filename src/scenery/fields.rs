@@ -22,6 +22,10 @@ pub struct Farmland {
     /// Chance of a row of trees along a section edge, and its width (metres).
     pub belt_chance: f64,
     pub belt_width: f64,
+    /// Sections left to the woods where the forest noise grows them (else fields cover them).
+    pub woods: bool,
+    /// Noise level below which sections are left as meadows with a few trees (0: none).
+    pub meadow: f64,
 }
 
 /// The steppe in autumn: stubble and late wheat, fresh ploughland, dark harrowed soil, green
@@ -43,6 +47,8 @@ pub const STEPPE: Farmland = Farmland {
     ],
     belt_chance: 0.4,
     belt_width: 14.0,
+    woods: false,
+    meadow: 0.0,
 };
 
 /// Central Europe in early September: strips of grain stubble and fresh ploughland between
@@ -63,6 +69,8 @@ pub const MIXED: Farmland = Farmland {
     ],
     belt_chance: 0.25,
     belt_width: 8.0,
+    woods: true,
+    meadow: 0.4,
 };
 
 /// Korea in early summer: small rice paddies, newly planted (the flooded ones still show
@@ -81,6 +89,8 @@ pub const PADDY: Farmland = Farmland {
     ],
     belt_chance: 0.08,
     belt_width: 6.0,
+    woods: false,
+    meadow: 0.0,
 };
 
 /// Vietnam's lowlands in the wet season: paddies at every stage, from flooded to ripening,
@@ -98,6 +108,8 @@ pub const TROPICAL_PADDY: Farmland = Farmland {
     ],
     belt_chance: 0.15,
     belt_width: 7.0,
+    woods: false,
+    meadow: 0.0,
 };
 
 /// Cuba: big sugar cane estates, pasture and tobacco in large sections with a few tree lines.
@@ -114,6 +126,8 @@ pub const CANE: Farmland = Farmland {
     ],
     belt_chance: 0.2,
     belt_width: 10.0,
+    woods: false,
+    meadow: 0.0,
 };
 
 pub struct Field {
