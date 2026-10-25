@@ -77,8 +77,13 @@ const LAST_STEP_SECONDS: f32 = 15.0;
 const ALERT_HOLD: f32 = 3.0;
 /// Seconds a warning (a lasting state: fire, low fuel) is shown each time it begins.
 const WARNING_SECONDS: f32 = 12.0;
-/// The attack begins this near an objective (km), the landing this near the base.
-const ATTACK_KM: f32 = 25.0;
+/// Near an objective (km): normal time, the target camera and the store, with time to do it
+/// (about 50 s at 600 knots, more slowed down); then the run itself. The landing begins this
+/// near the base.
+const ATTACK_KM: f32 = 30.0;
+const RUN_KM: f32 = 10.0;
+/// The speed for a run on the ground (knots).
+const SLOW_KNOTS: f32 = 420.0;
 const HOME_KM: f32 = 20.0;
 /// Map units (32 world units) per km.
 const MU_PER_KM: f32 = (1000.0 / (32.0 * WU)) as f32;
@@ -338,6 +343,10 @@ fn ground(f: Flight) -> bool {
 fn attack(f: Flight) -> bool {
     matches!(f.aim, Some(Aim::Ground | Aim::Photo | Aim::Air))
 }
+/// A jet's run on something on the ground (not a chase, nor a landing).
+fn run_slower(f: Flight) -> bool {
+    !f.helicopter && matches!(f.aim, Some(Aim::Ground | Aim::Photo | Aim::Drop))
+}
 fn destroy(f: Flight) -> bool {
     f.aim == Some(Aim::Ground)
 }
@@ -362,8 +371,9 @@ fn land_helicopters(f: Flight) -> bool {
 struct LegState {
     /// Its objective is done, or can no longer be (the time is up, the aircraft escaped).
     over: bool,
-    /// Near enough to attack (to land, going home).
+    /// Near enough to attack (to land, going home); close enough for the run.
     near: bool,
+    close: bool,
     /// The current waypoint leads there; is past it (a waypoint back leads there).
     on_route: bool,
     past: bool,
@@ -391,6 +401,8 @@ struct Ctx<'a> {
     tracked: bool,
     /// A fire burns on board.
     fire: bool,
+    /// Time acceleration is on.
+    accel: bool,
 }
 
 impl Ctx<'_> {
@@ -597,6 +609,15 @@ static DEPARTURE: &[Step] = {
             target: |c| c.page_button(Page::Waypoints),
             done: |c| c.page(Page::Waypoints).is_some(),
         },
+        Step {
+            only: all,
+            phase: NAVIGATION,
+            title: "Weapons page",
+            detail: "The stores on board and the selected one (the HUD names it too)",
+            keys: &[Ordnance],
+            target: |c| c.page_button(Page::Weapons),
+            done: |c| c.page(Page::Weapons).is_some(),
+        },
     ]
 };
 
@@ -641,11 +662,43 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: all,
             phase: OBJECTIVE,
             title: "Fly to the {target}",
-            detail: "Towards {name}, until about 25 km from it: the tactical page shows the way. \
+            detail: "Towards {name}, until about 30 km from it: the tactical page shows the way. \
                      Tip: accelerate time for the cruise (it stops by itself on a threat)",
             keys: &[TimeAccel],
             target: |c| c.way_display(),
             done: |c| c.leg.near || c.leg.over,
+        },
+        // 30 km out: getting ready while there is time, then the run.
+        Step {
+            only: all,
+            phase: OBJECTIVE,
+            title: "Normal time",
+            detail: "{name} is near: time back to normal, to get ready for the run",
+            keys: &[TimeNormal],
+            target: |_| T::Effect(Effect::TimeToggle),
+            done: |c| !c.accel || c.leg.over,
+        },
+        Step {
+            only: run_slower,
+            phase: OBJECTIVE,
+            title: "Slow down",
+            detail: "Throttle back to about 400 knots: more time to aim, and a lower EMV",
+            keys: &[ThrottleDown],
+            target: |_| T::Throttle,
+            done: |c| c.knots() <= SLOW_KNOTS || c.leg.close || c.leg.over,
+        },
+        Step {
+            only: all,
+            phase: OBJECTIVE,
+            title: "Target camera",
+            detail: "The tracking camera, ahead: the MFD shows {name} as you close in (a photo \
+                     counts with it in the picture)",
+            keys: &[CamAhead],
+            target: |c| c.page_button(Page::Camera),
+            done: |c| {
+                c.page(Page::Camera).is_some() && (c.mfd.modern || c.mfd.cam_dir == CamDir::Ahead)
+                    || c.leg.over
+            },
         },
         Step {
             only: ground,
@@ -665,15 +718,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             target: |_| T::Effect(Effect::HudMode(1)),
             done: |c| c.hud.mode == Hud::Air || c.leg.over,
         },
-        Step {
-            only: stores,
-            phase: OBJECTIVE,
-            title: "Weapons page",
-            detail: "The stores on board and the selected one",
-            keys: &[Ordnance],
-            target: |c| c.page_button(Page::Weapons),
-            done: |c| c.page(Page::Weapons).is_some() || c.best_selected() || c.leg.over,
-        },
+        // The HUD names the selected store: no weapons page here, it would take the camera's MFD.
         Step {
             only: stores,
             phase: OBJECTIVE,
@@ -682,29 +727,6 @@ static OBJECTIVE_STEPS: &[Step] = {
             keys: &[SelectWeapon],
             target: |_| T::Action(SelectWeapon),
             done: |c| c.best_selected() || c.leg.over,
-        },
-        Step {
-            only: bay,
-            phase: OBJECTIVE,
-            title: "Open the weapon bay",
-            detail: "Stores leave through open bays only; open bays are seen by the radars",
-            keys: &[BayDoors],
-            target: |_| T::Action(BayDoors),
-            done: |c| c.a.bay_open || c.leg.best == Some(Store::Gun) || c.leg.over,
-        },
-        // After the store's steps: the classic camera and weapons pages share the right MFD.
-        Step {
-            only: all,
-            phase: OBJECTIVE,
-            title: "Target camera",
-            detail: "The tracking camera, ahead: the MFD shows {name} as you close in (a photo \
-                     counts with it in the picture)",
-            keys: &[CamAhead],
-            target: |c| c.page_button(Page::Camera),
-            done: |c| {
-                c.page(Page::Camera).is_some() && (c.mfd.modern || c.mfd.cam_dir == CamDir::Ahead)
-                    || c.leg.over
-            },
         },
         Step {
             only: ground,
@@ -723,6 +745,36 @@ static OBJECTIVE_STEPS: &[Step] = {
             keys: &[NearestTarget, SelectTarget],
             target: |_| T::Action(NearestTarget),
             done: |c| c.leg.locked || c.leg.over,
+        },
+        // 10 km out: the run itself.
+        Step {
+            only: all,
+            phase: OBJECTIVE,
+            title: "Close in",
+            detail: "On towards {name}, ready: about 10 km from it, the run (the bay, then the \
+                     shot)",
+            keys: &[],
+            target: |c| c.page_display(Page::Camera),
+            done: |c| c.leg.close || c.leg.over,
+        },
+        Step {
+            only: jets,
+            phase: OBJECTIVE,
+            title: "Autopilot off",
+            detail: "Fly the run by hand: about 8 km out the autopilot turns to the next waypoint",
+            keys: &[Autopilot],
+            target: |_| T::Action(Autopilot),
+            done: |c| c.a.autopilot_alt <= 0.0 || c.leg.over,
+        },
+        Step {
+            only: bay,
+            phase: OBJECTIVE,
+            title: "Open the weapon bay",
+            detail: "Only now: stores leave through open bays only, and open bays are seen by \
+                     the radars",
+            keys: &[BayDoors],
+            target: |_| T::Action(BayDoors),
+            done: |c| c.a.bay_open || c.leg.best == Some(Store::Gun) || c.leg.over,
         },
         Step {
             only: destroy,
@@ -1327,7 +1379,12 @@ pub(super) fn advance(
     mission: Option<Res<crate::mission::ActiveMission>>,
     mut tutorial: ResMut<Tutorial>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
-    (hud, mfd, wps): (Res<HudState>, Res<MfdState>, Res<Waypoints>),
+    (hud, mfd, wps, time_accel): (
+        Res<HudState>,
+        Res<MfdState>,
+        Res<Waypoints>,
+        Res<crate::combat::TimeAccel>,
+    ),
     combat: Option<Res<crate::combat::Combat>>,
     (career, campaign): (
         Option<Res<crate::career::CareerFlight>>,
@@ -1369,6 +1426,7 @@ pub(super) fn advance(
     let lock = sim.targeting();
     let (lights, stores, tracked) = (sim.lights(), sim.stores(), sim.identification().2 > 0);
     let fire = sim.damage_effects().bits & stealth_sim::dmg::FIRE != 0;
+    let accel = time_accel.on;
     let me = IVec2::from(map_units(pos));
     let within = |p: IVec2, km: f32| (p - me).as_vec2().length() < km * MU_PER_KM;
     let route = (!wps.points.is_empty()).then(|| route_leg(&wps));
@@ -1384,6 +1442,7 @@ pub(super) fn advance(
             LegState {
                 over: done || late || (o.unit.is_some() && obj.target_escaped),
                 near: within(at, ATTACK_KM),
+                close: within(at, RUN_KM),
                 on_route: route.is_none_or(|r| r == o.k),
                 past: route.is_some_and(|r| r > o.k),
                 locked: match o.aim {
@@ -1396,6 +1455,7 @@ pub(super) fn advance(
         Leg::Return => LegState {
             over: false,
             near: a.on_ground || within(tutorial.home.0, HOME_KM),
+            close: false,
             on_route: route.is_none_or(|r| r == 2),
             past: false,
             locked: false,
@@ -1432,6 +1492,7 @@ pub(super) fn advance(
             stores,
             tracked,
             fire,
+            accel,
         };
         if !(e.step.done)(&ctx) {
             target = (e.step.target)(&ctx);
@@ -1446,8 +1507,19 @@ pub(super) fn advance(
     }
 
     // An alert first, while it lasts and a moment after.
-    let ctx =
-        Ctx { a, hud: &hud, mfd: &mfd, dwell: 0.0, leg, selected, lights, stores, tracked, fire };
+    let ctx = Ctx {
+        a,
+        hud: &hud,
+        mfd: &mfd,
+        dwell: 0.0,
+        leg,
+        selected,
+        lights,
+        stores,
+        tracked,
+        fire,
+        accel,
+    };
     let now = time.elapsed_secs();
     match pick_alert(&ctx, &mut tutorial.alert_since, now) {
         Some(i) => tutorial.alert = Some((i, now)),
@@ -1809,6 +1881,7 @@ mod tests {
             stores: (0, 0, 0),
             tracked: false,
             fire: false,
+            accel: false,
         }
     }
 
@@ -1852,11 +1925,21 @@ mod tests {
                 let fires = steps.iter().any(|s| s.keys.contains(&Action::FireWeapon));
                 assert_eq!(fires, aim != Aim::Land, "{f:?} {aim:?}");
                 assert_eq!(steps.iter().any(|s| s.title.starts_with("Land at")), aim == Aim::Land);
-                // The target camera once there, after the store's page (the same MFD).
+                // Near (20 km): normal time, then the target camera; the run (10 km): the
+                // autopilot off, then the bay, then the shot; no weapons page (the camera's MFD).
                 let at = |t: &str| steps.iter().position(|s| s.title.starts_with(t));
-                let camera = at("Target camera").unwrap_or_else(|| panic!("{f:?} {aim:?}"));
-                assert!(at("Fly to").unwrap() < camera, "{f:?} {aim:?}");
-                assert!(at("Select the").is_none_or(|s| s < camera), "{f:?} {aim:?}");
+                let order = ["Fly to", "Normal time", "Target camera", "Close in"];
+                let order: Vec<usize> = order.iter().map(|t| at(t).unwrap()).collect();
+                assert!(order.is_sorted(), "{f:?} {aim:?}: {order:?}");
+                let run = order[3];
+                for later in ["Autopilot off", "Open the weapon bay", "Fire", "Take the", "Drop"] {
+                    assert!(at(later).is_none_or(|s| s > run), "{f:?} {aim:?}: {later}");
+                }
+                assert!(at("Autopilot off").is_some() != f.helicopter, "{f:?} {aim:?}");
+                assert!(at("Weapons page").is_none(), "{f:?} {aim:?}");
+                let slow = at("Slow down");
+                assert_eq!(slow.is_some(), run_slower(Flight { aim: Some(aim), ..f }));
+                assert!(slow.is_none_or(|s| order[1] < s && s < order[2]), "{f:?} {aim:?}");
                 assert_eq!(
                     steps.iter().any(|s| s.title == "Open the weapon bay"),
                     f.bomb_bay && aim != Aim::Land,

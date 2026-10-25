@@ -161,11 +161,14 @@ from the takeoff to the stop after landing: a box says what to do next and which
 arrow points at the button, display or lever to use, which blinks blue. When the view does not
 show it, the arrow waits at the edge of the window on its side. After the takeoff and the
 orders, each objective is taken in turn, the primary target then the secondary: the waypoint
-and the autopilot to it (again after the first one), the HUD mode, the store to select (the
-one on board that does the most against that target: a Harpoon against a ship, a HARM against
-a radar, a Durandal against a runway, the air-to-air missile that locks the farthest against an
-aircraft, the camera for a photo, the supplies for a drop), the bay, the lock and the shot, or
-the landing it asks for; then the way home. Dangers and threats come first while they last: a
+and the autopilot to it (again after the first one) and time acceleration for the cruise; about
+30 km out, time to get ready: normal time, slower (about 400 knots, for a run on the ground),
+the target camera ahead, the HUD mode, the store to select (the one on board that does the
+most against that target: a Harpoon against a ship, a HARM against a radar, a Durandal against
+a runway, the air-to-air missile that locks the farthest against an aircraft, the camera for a
+photo, the supplies for a drop) and the lock; about 10 km out, the run: the autopilot off
+(it would turn to the next waypoint about 8 km out), the bay, the shot, or the landing the
+objective asks for; then the way home. Dangers and threats come first while they last: a
 stall (nose down, power up), a missile locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then
 evading and a decoy, chapter 6.6), a radar tracking the aircraft (descend, slow down, wings
 level, bay shut: chapter 6.5); a fire on board and low fuel are said for a few seconds when they
