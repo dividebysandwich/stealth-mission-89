@@ -1,8 +1,8 @@
 // Effects for the OpenGL headset renderer (src/glvr), as their WGSL shaders: explosion
 // particles (particle.wgsl, PARTICLE), smoke trails and contrails (trail.wgsl, TRAIL), blurred
 // rotor discs (rotor.wgsl, ROTOR) and lightning channels (bolt.wgsl, BOLT). Compiled with
-// VERTEX or FRAGMENT and one of those defined; both eyes in one pass. The headset is never a
-// FLIR or recon view, so those looks are left out.
+// VERTEX or FRAGMENT and one of those defined; both eyes in one pass. The recon look is left
+// out; the tracking camera's picture (drawn offscreen) can be a FLIR view.
 
 layout(std140) uniform Globals {
     vec4 palette[256];
@@ -34,6 +34,7 @@ uniform vec3 u_eye[2];
 uniform vec3 u_right[2];
 uniform vec3 u_up[2];
 uniform mat4 u_model;
+uniform vec2 u_viewport;
 // The material's uniform, as its bytes (rotor_blur.rs `RotorParams`, the trail's and the bolt's
 // `params`).
 uniform uvec4 u_raw[2];
@@ -158,6 +159,11 @@ vec3 nvg(vec3 rgb) {
     return pow(min(c, vec3(1.0)), vec3(2.2));
 }
 
+// The tracking camera's view in FLIR, by its picture size.
+bool flir_view() {
+    return g.params.z != 0.0 && all(lessThan(abs(u_viewport - g.dots.zw), vec2(0.5)));
+}
+
 float bayer4(uvec2 p) {
     const float m[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
     return (m[(p.y & 3u) * 4u + (p.x & 3u)] + 0.5) / 16.0;
@@ -188,7 +194,12 @@ void main() {
     vec3 rgb = v_colour.rgb * (1.0 + glow * (1.0 - r) * 0.9);
     float light = mix(NIGHT, 1.0, clamp(g.light_info.y, 0.0, 1.0));
     rgb = mix(rgb * light * (0.8 + 0.35 * n + 0.15 * v_uv.y), rgb, glow);
-    rgb = nvg(rgb);
+    // FLIR: hot fire white, smoke a cool grey.
+    if (flir_view()) {
+        rgb = mix(vec3(0.12), vec3(1.0), glow);
+    } else {
+        rgb = nvg(rgb);
+    }
     if (g.params.w == 0.0) {
         if (a < bayer4(uvec2(gl_FragCoord.xy) + uvec2(1u, 3u))) { discard; }
         a = 1.0;
@@ -205,6 +216,11 @@ void main() {
     float edge = 1.0 - v_side.x * v_side.x;
     float a = clamp(v_side.y, 0.0, 1.0) * edge * params.y;
     if (a <= 0.003) { discard; }
+    // FLIR: cool grey smoke.
+    if (flir_view()) {
+        o_colour = vec4(vec3(0.12), a);
+        return;
+    }
     float light = mix(NIGHT, 1.0, clamp(g.light_info.y, 0.0, 1.0));
     o_colour = vec4(nvg(g.palette[uint(params.x) & 0xFFu].rgb * light), a);
 }
@@ -276,6 +292,11 @@ void main() {
     a = 1.0 - pow(1.0 - clamp(a, 0.0, 0.99), path);
     a *= (1.0 - smoothstep(1.0 - max(aa * 1.5, 0.008), 1.0 + aa, r)) * smoothstep(hub * 0.5, hub * 0.75, r);
     a = min(a, MAX_ALPHA) * blur;
+    // FLIR: the blades are cool.
+    if (flir_view()) {
+        o_colour = vec4(vec3(0.1), a);
+        return;
+    }
     vec3 rgb = g.palette[colour & 0xFFu].rgb;
     rgb = mix(rgb, rgb * TIP_LIGHT, tip);
     rgb = rgb * mix(1.0, 0.75, root);
