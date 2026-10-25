@@ -2,6 +2,7 @@
 //! (`muffle`), at sound level 3:
 //!
 //! - Night crickets in the late evening and at night (21:00 to 03:00) near the ground.
+//!   No crickets at all, night or desert, while the weather has storms.
 //! - Light rain while it rains around the eye, heavy rain on top of it under a storm cell (not
 //!   inside the clouds).
 //! - Summer by day in fair weather in Central Europe and Ukraine, fading out from 500 ft to
@@ -115,6 +116,8 @@ struct Around<'a> {
     raining: bool,
     /// Under a storm cell.
     storm: bool,
+    /// The weather has storms (somewhere).
+    stormy: bool,
     /// Fair weather (clear or scattered, not in a cloud's shade).
     sunny: bool,
 }
@@ -128,8 +131,9 @@ fn due(a: &Around) -> [(bool, bool, f32); 7] {
     let below = |(lo, hi): (f32, f32)| 1.0 - smoothstep(lo, hi, a.agl);
     let above = |(lo, hi): (f32, f32)| smoothstep(lo, hi, a.agl);
     let mut d = [(false, true, 1.0); 7];
-    d[NIGHT_CRICKETS] = (within(NIGHT), true, below(CRICKETS_BAND));
-    d[CRICKETS] = (within(NOON) && DESERT_THEATERS.contains(&a.theater), a.outside, 1.0);
+    d[NIGHT_CRICKETS] = (within(NIGHT) && !a.stormy, true, below(CRICKETS_BAND));
+    d[CRICKETS] =
+        (within(NOON) && !a.stormy && DESERT_THEATERS.contains(&a.theater), a.outside, 1.0);
     d[RAIN_LIGHT] = (a.raining, true, 1.0);
     d[RAIN] = (a.raining && a.storm, true, 1.0);
     let slow = 1.0 - smoothstep(SUMMER_SPEED.0, SUMMER_SPEED.1, a.knots);
@@ -207,6 +211,7 @@ pub(super) fn ambience(
         // Under the clouds, not in them.
         raining: weather.raining() && weather.whiteout < 0.5,
         storm: weather.under_storm,
+        stormy: weather.weather.has_storms(),
         sunny: matches!(weather.weather.sky, Sky::Clear | Sky::Scattered)
             && weather.shade < 0.5
             && !weather.raining(),
@@ -279,8 +284,19 @@ mod tests {
             theater: "central_europe",
             raining: false,
             storm: false,
+            stormy: false,
             sunny: true,
         }
+    }
+
+    /// Storms silence the crickets, the night's and the desert's.
+    #[test]
+    fn no_crickets_in_storms() {
+        let night = Around { hours: 23.0, stormy: true, ..around() };
+        assert!(!due(&night)[NIGHT_CRICKETS].0);
+        let desert = Around { theater: "libya", stormy: true, ..around() };
+        assert!(!due(&desert)[CRICKETS].0);
+        assert!(due(&Around { stormy: false, ..desert })[CRICKETS].0);
     }
 
     /// The night crickets sing from the late evening to about 3 am near the ground, fading out
