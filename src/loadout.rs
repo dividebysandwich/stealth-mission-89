@@ -608,7 +608,9 @@ pub fn editor(
                 ui.label(egui::RichText::new("Not on the real aircraft").small().color(AMBER));
             }
             let mut pick = lo.stores[w.selected];
-            egui::ScrollArea::vertical().max_height(size.y - 260.0).show(ui, |ui| {
+            // The column's full width: the scroll bar on its right edge, clear of the names.
+            let list = egui::ScrollArea::vertical().max_height(size.y - 260.0);
+            list.auto_shrink([false, true]).show(ui, |ui| {
                 ui.radio_value(&mut pick, None, "Empty");
                 for &wpn in hp.loads {
                     let (name, role) = WEAPONS[wpn as usize];
