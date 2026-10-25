@@ -115,10 +115,12 @@ const fn model_point(lift: f32, x: f32, y: f32, z: f32) -> Vec3 {
     Vec3::new(x * s, lift + y * s, z * s)
 }
 
+/// The airfields' ground overlays (theater detail level 2) are lifted 0.32 m and a step per
+/// overlay (world.rs): the wheels stand on them.
+const RUNWAY_Y: f32 = 0.34;
 /// The F-117A's model origin is on its flat underside, the wheels 1.65 m below it
-/// (tools/models/f117.py); raised by the gear and clear of the coplanar ground overlays (lifted
-/// up to ~0.7 m, world.rs) so the flat wings are not hidden on the runway.
-const F117_LIFT: f32 = 1.65 + 0.7;
+/// (tools/models/f117.py).
+const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
 /// The F-16's model has no landing gear: its lowest point (the intake lip, 1.25 m below the
 /// origin, tools/models/aircraft.py `f16`) is held 0.8 m above the ground.
 const F16_LIFT: f32 = 1.25 + 0.8;
