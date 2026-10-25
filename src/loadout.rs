@@ -37,6 +37,46 @@ pub const WEAPONS: [(&str, &str); 21] = [
         "Laser guided anti-armour missile: flies to where the targeting pod looks",
     ),
 ];
+/// How each weapon is used (index = weapon type), shown under its role; ranges in the HUD's km.
+/// Missiles: the longest range is the LOCK oval's (the lock range of assets/sim/units.ron,
+/// 7/8 of it against the ground, the Hellfire the pod's 8 km), the shortest the launch zone's
+/// (dlz.rs) from the given heights, level at 450 kt, with either guidance. Guided bombs (the
+/// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
+/// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
+/// a level release at 500 kt.
+const EMPLOYMENT: [&[&str]; 21] = [
+    &["Range: 1-12 km, farther head-on"],
+    &["Range: 1-38 km, farther head-on"],
+    &["Range: 9-50 km", "Launch: 5,000-20,000 ft"],
+    &["Range: 6-14 km (classic guidance: 13-14 km)", "Launch: 100-500 ft"],
+    &["Range: 6-41 km", "Launch: 2,000-5,000 ft"],
+    &["Range: 5-10 km", "Launch: 2,000-5,000 ft"],
+    &[
+        "Range: 1.5 km to 2.5 times the height, LOCK steady (14 km from 15,000 ft, 18 km from 25,000 ft)",
+        "Release: 15,000-25,000 ft",
+    ],
+    MEDIUM_RETARDED,
+    &["Range: 0.9-1.3 km short of the runway", "Release: 200-500 ft"],
+    &["Range: 5-11 km short of the target", "Release: 3,000-20,000 ft"],
+    LOW_RETARDED,
+    GUIDED_CLUSTER,
+    &["Range: 0.9-2.2 km short of the target", "Release: 100-500 ft"],
+    GUIDED_CLUSTER,
+    MEDIUM_RETARDED,
+    LOW_RETARDED,
+    &["Range: photos from 2-8 km (the shorter, the more opponents), nose on the target"],
+    &[],
+    &["Range: release on \"Drop supplies now\", within 4 km of the drop zone"],
+    &[],
+    &["Range: 4-8 km", "Launch: 2,000-3,000 ft"],
+];
+const GUIDED_CLUSTER: &[&str] = &[
+    "Range: 1.5 km to 2.5 times the height, LOCK steady (3.7 km from 3,000 ft, 6 km from 5,000 ft)",
+    "Release: 3,000-5,000 ft",
+];
+const MEDIUM_RETARDED: &[&str] =
+    &["Range: 1.1-1.6 km short of the target", "Release: 300-1,000 ft"];
+const LOW_RETARDED: &[&str] = &["Range: 0.9-1.3 km short of the target", "Release: 200-500 ft"];
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 2] = [0, 1];
 /// Rounds of each weapon a bay holds.
@@ -581,7 +621,9 @@ pub fn editor(
                         ),
                     );
                     let r = r.on_disabled_hover_text("None in stock for this mission");
-                    if facts(r, &[role]).clicked() {
+                    let mut lines = vec![role];
+                    lines.extend(EMPLOYMENT[wpn as usize]);
+                    if facts(r, &lines).clicked() {
                         pick = Some(wpn);
                     }
                 }
@@ -720,6 +762,18 @@ mod tests {
         assert_eq!(t.weapons.len(), BAY_QTY.len());
         for (w, &qty) in t.weapons.iter().zip(&BAY_QTY) {
             assert_eq!(w.bay, qty, "{}", w.name);
+        }
+    }
+
+    #[test]
+    fn missile_ranges_match_the_lock_ranges() {
+        let sim = stealth_host::theater::sim_tables().expect("sim tables");
+        for w in 0..6 {
+            let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
+            // 7/8 of it against the ground, less a little for the height.
+            let km = if w < 2 { lock } else { (lock * 0.875 - 0.5).ceil() };
+            let range = format!("-{km} km");
+            assert!(EMPLOYMENT[w][0].contains(&range), "{}: {range}", WEAPONS[w].0);
         }
     }
 
