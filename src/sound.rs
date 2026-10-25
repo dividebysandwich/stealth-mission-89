@@ -105,7 +105,8 @@ impl Plugin for SoundPlugin {
             )
             .add_systems(
                 Update,
-                (distant_aircraft, sam_launches)
+                (follow_head, distant_aircraft, sam_launches)
+                    .chain()
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
             )
@@ -1117,7 +1118,7 @@ fn distant_aircraft(
     combat: Option<Res<crate::combat::Combat>>,
     origin: Res<FloatingOrigin>,
     virt: Res<Time<Virtual>>,
-    eye: Query<(Entity, &GlobalTransform, Has<SpatialListener>), With<EyeCamera>>,
+    eye: Query<&GlobalTransform, With<EyeCamera>>,
     mut playing: Query<(
         Entity,
         &mut DistantAircraft,
@@ -1130,22 +1131,13 @@ fn distant_aircraft(
 ) {
     let gain = Channel::Engine.gain(&settings);
     let heard = level.0 == 3 && combat.as_ref().is_some_and(|c| c.end.is_none());
-    let (Some(bank), Some(combat), Ok((cam, eye_tf, listening))) =
-        (bank.filter(|_| heard), combat, eye.single())
+    let (Some(bank), Some(combat), Ok(eye_tf)) = (bank.filter(|_| heard), combat, eye.single())
     else {
         for (e, ..) in &playing {
             commands.entity(e).despawn();
         }
         return;
     };
-    if !listening {
-        // rodio's panning plays an emitter on the right louder in the left channel, so the ears
-        // are swapped to come out right.
-        commands.entity(cam).insert(SpatialListener {
-            left_ear_offset: Vec3::X * EAR_GAP / 2.0,
-            right_ear_offset: Vec3::X * EAR_GAP / -2.0,
-        });
-    }
     let ear = origin.origin + eye_tf.translation().as_dvec3();
     let sim = &combat.sim;
     // The nearest aircraft in range: (who, engine, position, distance).
@@ -1216,6 +1208,7 @@ fn distant_aircraft(
     for &(who, engine, p, dist) in heard.iter().filter(|h| !have.contains(&h.0)) {
         let Some(handle) = &bank.distant[engine as usize] else { continue };
         let Some((handle, pitch)) = muffler.looped(handle, who.pitch()) else { continue };
+        debug!("heard {who:?} ({engine:?}) {dist:.0} m away");
         commands.spawn((
             AudioPlayer(handle),
             PlaybackSettings {
@@ -1233,6 +1226,54 @@ fn distant_aircraft(
             pitch,
             DistantAircraft { who, engine, dist, doppler: 1.0 },
         ));
+    }
+}
+
+/// The ears the positioned sounds are panned for: a child of the eye camera at the head, which
+/// in VR (where the eye camera is the tracking root, not turning with the head) follows the
+/// headset's pose.
+#[derive(Component)]
+struct Ears;
+
+/// Keeps the ears on the eye camera (again after the rig is rebuilt) and at the head's pose.
+fn follow_head(
+    mut commands: Commands,
+    eye: Query<Entity, With<EyeCamera>>,
+    mut ears: Query<(Entity, &ChildOf, &mut Transform), With<Ears>>,
+    heads: Res<crate::camera::HeadPoses>,
+) {
+    let Ok(eye) = eye.single() else { return };
+    // Between the eyes, facing as the first one does (flat screen: the camera itself).
+    let head = match heads.0.as_slice() {
+        [] => Transform::IDENTITY,
+        poses => Transform::from_translation(
+            poses.iter().map(|p| p.translation).sum::<Vec3>() / poses.len() as f32,
+        )
+        .with_rotation(poses[0].rotation),
+    };
+    let mut have = false;
+    for (e, parent, mut tf) in &mut ears {
+        if parent.parent() != eye {
+            commands.entity(e).despawn();
+            continue;
+        }
+        have = true;
+        *tf = head;
+    }
+    if !have {
+        let ears = commands
+            .spawn((
+                Ears,
+                head,
+                // rodio's panning plays an emitter on the right louder in the left channel, so
+                // the ears are swapped to come out right.
+                SpatialListener {
+                    left_ear_offset: Vec3::X * EAR_GAP / 2.0,
+                    right_ear_offset: Vec3::X * EAR_GAP / -2.0,
+                },
+            ))
+            .id();
+        commands.entity(eye).add_child(ears);
     }
 }
 
