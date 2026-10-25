@@ -1,6 +1,6 @@
 # Stealth Mission 89
 
-<img width="1988" height="1411" alt="image" src="https://github.com/user-attachments/assets/bb262243-cd4e-427b-8b9a-e59e0863a1af" />
+<img width="1988" height="1411" alt="screenshot_01" src="https://github.com/user-attachments/assets/35ec91cf-0064-442b-9ea8-6f46e8a345db" />
 
 A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 
