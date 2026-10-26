@@ -1173,7 +1173,8 @@ fn distant_aircraft(
         .filter(|(_, u, _)| {
             u.flags & fflags::DESTROYED == 0
                 && (u.wx != 0 || u.wy != 0)
-                && (u.flags & fflags::AIRBORNE != 0 || u.speed > 0)
+                // Parked (speed 0, the AI never stops in the air): engines off.
+                && u.speed > 0
         })
         .filter_map(|(i, u, _)| {
             let engine = match sim.aircraft_kind(u.spec) {

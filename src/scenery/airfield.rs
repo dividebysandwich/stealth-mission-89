@@ -180,6 +180,7 @@ pub fn plan(rw: &Runway, ground: &Ground, seed: u64) -> Airfield {
             });
             a.papi.push(Papi { end, units });
         }
+        side_parking(&mut a, &ax, ground, &[(1.0, w + 40.0), (-1.0, w + 40.0)]);
         return a;
     };
     let mut main = vec![ax.at(-end, s * (w - 5.0)), ax.at(-end, s * vt)];
@@ -306,6 +307,10 @@ pub fn plan(rw: &Runway, ground: &Ground, seed: u64) -> Airfield {
             });
         }
     }
+    // No room for the apron: a parking pad behind the taxiway instead.
+    if a.parking.is_empty() {
+        side_parking(&mut a, &ax, ground, &[(s, vt + half + 15.0)]);
+    }
 
     // Fuel farm, radar and windsocks.
     let fuel = ax.at(-end * 0.55, s * (vt + 230.0));
@@ -401,6 +406,42 @@ pub fn plan(rw: &Runway, ground: &Ground, seed: u64) -> Airfield {
         });
     }
     a
+}
+
+/// A small concrete pad with four parking spots facing the runway, for an airfield without
+/// room for an apron: the first clear one of the runway sides `(side, v of its near edge)`.
+fn side_parking(a: &mut Airfield, ax: &Axes, ground: &Ground, sides: &[(f64, f64)]) {
+    let (len, depth) = (200.0, 60.0);
+    let l = a.runway.half_len;
+    let clear = |s: f64, v0: f64, uc: f64| {
+        let mut u = uc - len * 0.5;
+        while u <= uc + len * 0.5 {
+            let mut v = v0;
+            while v <= v0 + depth {
+                if !ground.is_dry_clear(ax.at(u, s * v), 6.0) {
+                    return false;
+                }
+                v += 20.0;
+            }
+            u += 25.0;
+        }
+        true
+    };
+    let Some((s, v0, uc)) = sides.iter().find_map(|&(s, v0)| {
+        [0.0, -0.3, 0.3, -0.55, 0.55].iter().map(|f| f * l).find(|&uc| clear(s, v0, uc)).map(|uc| (s, v0, uc))
+    }) else {
+        return;
+    };
+    let (u0, u1) = (uc - len * 0.5, uc + len * 0.5);
+    a.pads.push([
+        ax.at(u0, s * v0),
+        ax.at(u1, s * v0),
+        ax.at(u1, s * (v0 + depth)),
+        ax.at(u0, s * (v0 + depth)),
+    ]);
+    a.parking = (0..4)
+        .map(|k| (ax.at(u0 + 32.5 + k as f64 * 45.0, s * (v0 + depth * 0.5)), -ax.v * s))
+        .collect();
 }
 
 /// Areas to keep clear of towns, roads and trees (axis-aligned bounds, metres).

@@ -320,6 +320,7 @@ impl Sim {
                 self.msg(m);
             }
         }
+        let mut stopped = false;
         if u.flags & fflags::ROLLOUT != 0 {
             u.bank = 0;
             u.pitch = 0;
@@ -330,6 +331,7 @@ impl Sim {
                 u.speed -= cdiv(60, fs);
             } else {
                 u.flags &= 0x1C1;
+                stopped = true;
                 if i == 0 && (5..=8).contains(&self.pl.targets[0].mission_type) {
                     u.flags = 0;
                     self.pl.target_escaped = true;
@@ -356,6 +358,9 @@ impl Sim {
             u.wp = best.0;
         }
         self.flights[i] = u;
+        if stopped && u.flags & (fflags::EXISTS | fflags::AIRBORNE) == fflags::EXISTS {
+            self.park_landed(i);
+        }
         let per = (fs << 4).max(1);
         let phase = ((((i as i32) & 8) >> 3) + (i as i32 & 7) * 2) * fs;
         if self.frame % per == phase
@@ -518,6 +523,10 @@ impl Sim {
                 u.wx = wx;
                 u.wy = wy;
                 u.heading = s16(heading);
+            } else if !carrier && !self.parking.is_empty() {
+                // No apron spot left at this base: not parked on its runway instead.
+                u.flags = 0;
+                continue;
             } else if carrier {
                 // Aft on the deck's far side from the player's start (4 units to the near
                 // side, see `start_state_at`), clear of it and of each other.
@@ -536,6 +545,44 @@ impl Sim {
             u.pitch = 0;
             u.bank = 0;
         }
+    }
+
+    /// Taxies flight unit `i`, stopped at the end of its landing roll, off the runway to a free
+    /// apron spot of its base (past the two the parked base traffic takes), or into a hangar
+    /// (out of the world) when there is none. On a carrier's deck it stays.
+    fn park_landed(&mut self, i: usize) {
+        let u = self.flights[i];
+        if self.parking.is_empty() || u.alt > 12 {
+            return;
+        }
+        let o = self.obj(u.wp);
+        let mut spots: Vec<(i32, i32, i32)> = self
+            .parking
+            .iter()
+            .copied()
+            .filter(|&(x, y, _)| ((x >> 5) - o.x).abs() < 0x100 && ((y >> 5) - o.y).abs() < 0x100)
+            .collect();
+        spots.sort_by_key(|&(x, y, _)| ((x >> 5) - o.x).pow(2) + ((y >> 5) - o.y).pow(2));
+        let taken = |x: i32, y: i32| {
+            self.flights.iter().enumerate().any(|(k, f)| {
+                k != i
+                    && f.flags & fflags::EXISTS != 0
+                    && (f.wx - x).abs() < 0x40
+                    && (f.wy - y).abs() < 0x40
+            })
+        };
+        let free = spots.iter().skip(2).copied().find(|&(x, y, _)| !taken(x, y));
+        let u = &mut self.flights[i];
+        let Some((wx, wy, heading)) = free else {
+            u.flags = 0;
+            return;
+        };
+        u.wx = wx;
+        u.wy = wy;
+        u.x = wx >> 5;
+        u.y = wy >> 5;
+        u.heading = s16(heading);
+        u.speed = 0;
     }
 
     /// Every 128 frames one of the two traffic aircraft (alternating) appears on approach.
