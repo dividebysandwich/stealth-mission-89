@@ -7,7 +7,7 @@ theaters. A complete list of keys is in [keys.md](keys.md).
 <img src="images/units/ac_f117.png" width="240" alt="F-117A">
 
 The player flies an F-117A or an F-16C (chosen in the menu's *Aircraft* section). Both have four
-weapon bays (two with *Realistic weapons*), a 20 mm gun with 650 rounds, chaff, flares, decoys,
+weapon bays (two with *Realistic weapons*), a 20 mm gun with 510 rounds, chaff, flares, decoys,
 an ECM jammer and an IR jammer. The F-16C is faster (Mach 2 class at altitude), pulls 9 g and
 rolls about twice as fast, but it has no weapon bay: its stores hang outside, so radars see it as
 an F-117A with its bay doors always open (+24 EMV), and the bay door key does nothing. The F-117A
@@ -20,15 +20,18 @@ has a modern and a classic cockpit, the F-16C its own.
 3. [The cockpit](#3-the-cockpit)
 4. [MFD pages](#4-mfd-pages)
 5. [Targeting and weapons](#5-targeting-and-weapons)
-6. [Radar, detection and evasion](#6-radar-detection-and-evasion)
-7. [Keyboard shortcuts](#7-keyboard-shortcuts)
-8. [Aircraft, air defences and ships](#8-aircraft-air-defences-and-ships)
-9. [Mission planner](#9-mission-planner)
-10. [Debrief and career](#10-debrief-and-career)
-11. [Drone defense (Ukraine)](#11-drone-defense-ukraine)
-12. [Ejection and rescue](#12-ejection-and-rescue)
-13. [Multiplayer](#13-multiplayer)
-14. [Your files](#14-your-files)
+6. [Targeting pod and helmet sights](#6-targeting-pod-and-helmet-sights)
+7. [Weapon employment](#7-weapon-employment)
+8. [Radar, detection and evasion](#8-radar-detection-and-evasion)
+9. [Keyboard shortcuts](#9-keyboard-shortcuts)
+10. [Aircraft, air defences and ships](#10-aircraft-air-defences-and-ships)
+11. [Mission planner](#11-mission-planner)
+12. [Debrief and career](#12-debrief-and-career)
+13. [Dynamic campaign](#13-dynamic-campaign)
+14. [Drone defense (Ukraine)](#14-drone-defense-ukraine)
+15. [Ejection and rescue](#15-ejection-and-rescue)
+16. [Multiplayer](#16-multiplayer)
+17. [Your files](#17-your-files)
 
 ---
 
@@ -40,9 +43,9 @@ returns to it.
 | Button | Function |
 |---|---|
 | SINGLE MISSION | One mission with the options below. |
-| CAREER | Pilot records and the tour of duty, with the tour's options (chapter 10). |
-| DYNAMIC CAMPAIGN | Start or continue a dynamic campaign, with the theater, situation, opponents, aircraft and realism options. **Weather**: *changing* (the default) or *clear sky*. Changing weather turns once or twice a day of the campaign's sky, mostly fair (clear, scattered or broken cumulus, sometimes an overcast) and now and then thunderstorms; each change takes a few minutes, the clouds building up or thinning out and the light following. The Ops screen shows the weather and the next change next to the clock, the briefing the cloud layers. **The enemy fights back**: now and then it sends helicopters against the weakest friendly place on its front and raids a friendly airfield with escorted strike aircraft (more often against better opponents). Intelligence warns a few minutes ahead, and the board posts an INTERCEPT or DEFEND mission at the top. A bombed airfield launches no AI aircraft until it is repaired, but you can always take off from it. Guns and MANPADS teams destroyed stay destroyed (saves included) until they are replaced, one every 20 minutes. The war is won when the enemy holds no airfield, and lost when the friendly side holds neither an airfield nor a carrier. **Materiel and aircraft**: each side's AI fights with the war materiel its places and their cities bring in every hour and with the fighters and helicopters it has left. Every repair, AI sortie, raid and AI insertion costs materiel; aircraft shot down are gone, and new ones are bought every hour while the materiel lasts. INTERDICTION missions strike the enemy's rear: a city destroyed costs it materiel at once and its income until rebuilt. Only the AI runs short: your aircraft, bases and insertion orders never do. The **FORCES** tab shows both sides side by side: materiel, income and where it comes from, the aircraft on the ground and in the air, where the materiel went since the start, and the prices. The footer of the Ops screen shows both sides' materiel and income at all times. **CSAR**: a pilot down in enemy territory costs the friendly side materiel and a fighter until he is out (never your own next sortie). Once the parachute is down a UH-60 comes for you as in a single mission (chapter 12), in real time: picked up, the materiel and the fighter come back; captured, they stay lost. **SKIP EXTRACTION** (or END SORTIE) does not wait for it: the sortie ends and the board posts a rescue instead: any player who holds the air within 5 km of the pilot for 2 minutes gets him out. Otherwise, after 20 minutes, a rescue helicopter may still get through; if it doesn't, the pilot is captured. Either rescue gives back what he cost. **Points and ranks**: every sortie earns points: the objective's (100 to 250 by kind, once it is settled), 50 per aircraft and 20 per ground kill, and 25 for bringing the aircraft home. They earn the career's ranks over the campaign, and its medals for one sortie's points; the debrief shows them, and PLAYERS has a leaderboard of every pilot who flew in the campaign. **Packages**: objectives of two different kinds achieved at one place within 15 minutes (SEAD and STRIKE, say, or CAS and the ESCORT of an insertion) earn every sortie of the package 100 more points; the mission's details name the other missions there. Flying alone, **REQUEST AI SEAD** sends two friendly strike aircraft at one of the place's SAM sites ahead of you (15 materiel and two aircraft of the friendly side). **Opportunity**: now and then the enemy puts an AWACS up behind its front for an hour; while it flies, its patrols go up twice as often and are sent straight at you, so the board offers to shoot it down. In Ukraine the enemy also launches waves of six Geran attack drones at a friendly city or airfield (DRONE DEFENSE): the first one through destroys it. **Rules**: a campaign keeps the realism rules it was started with, whoever continues or serves it later; the realism settings apply to new campaigns. |
-| MULTIPLAYER | Coop in the dynamic campaign: join a server or host a campaign and fly in it (chapter 13). |
+| CAREER | Pilot records and the tour of duty, with the tour's options (chapter 12). |
+| DYNAMIC CAMPAIGN | A war that runs on in real time: take missions from a board, push the front forward with helicopter insertions and defend your own places until one side holds no airfield. Start a new campaign or continue a saved one (chapter 13). |
+| MULTIPLAYER | Coop in the dynamic campaign: join a server or host a campaign and fly in it (chapter 16). |
 | OPTIONS | Your own settings, saved for every later game: game, graphics, sound and controls (below). |
 | QUIT | Exit to the desktop. |
 
@@ -60,10 +63,10 @@ mission, and the summary on the right shows it. Hovering over an option shows a 
 | **Opponents** | Green, Regular, Veteran, Elite. Sets the skill of enemy pilots and SAM crews; Veteran and Elite add ships and patrols. Higher levels also increase radar sensitivity. |
 | **Start time** | The takeoff hour; night from 18:00 to 06:00. *Random*: rolled with each new mission, 06:00-08:00 by day or 18:00-20:00 by night. |
 | **Situation** | *Cold War*: covert peacetime operation, fewer enemy aircraft. *Limited War*: regional conflict, air defences on alert. *Conventional War*: full-scale war, all enemy forces active. The briefing states the exact rules of engagement. |
-| **Mission** | *Strike*: ground target (destroy, photograph or reach), with a primary and a secondary objective. *Air to air*: intercept an enemy aircraft. *Strike training* and *Air training*: practice missions. *Drone defense* (Ukraine only): stop a wave of attack drones, then bomb their launch site (chapter 11). |
+| **Mission** | *Strike*: ground target (destroy, photograph or reach), with a primary and a secondary objective. *Air to air*: intercept an enemy aircraft. *Strike training* and *Air training*: practice missions. *Drone defense* (Ukraine only): stop a wave of attack drones, then bomb their launch site (chapter 14). |
 | **Aircraft** | *F-117A* or *F-16C*: the flown aircraft. *Realistic weapons* (F-117A only): two bays instead of four, no AIM-9/AIM-120, no carrier operations. |
 | **Simulation** | The realism switches below and *Crash protection*: automatic pull-up near the ground with the gear up; ground contact and collisions are not fatal. They belong to each game (single mission, career, campaign), not to OPTIONS. |
-| **Realism** | *Damage*: *Game* features simplified weapon damage (hits add up, damaging systems, but never bring the aircraft down). *Real*: a missile hit can destroy the aircraft outright (the engine dies, it burns and breaks up within seconds: eject), otherwise it damages several systems at once and often starts a fire, which either burns out or blows the aircraft up after a while. Hits to the flight controls bend control surfaces: the aircraft rolls or pitches by itself (hold the stick against it) or wobbles. *Guidance*: *Classic* keeps the DOS era missiles. *Real*: missiles fly proportional navigation to the collision point; their motors burn for the real missile's burn time (the smoke trail ends with it) and then they glide, losing speed with every turn and turning ever more slowly as they slow down, especially up high. SAMs and the AIM-120 climb at a loft angle against distant targets and dive on them from above (pull up before firing an AIM-120 and it has less to turn); gravity speeds up a diving missile. The Hellfire flies straight for 1 s after launch: pull up before firing to lob it at a distant target. *Low level*: *Real* adds anti-aircraft guns and MANPADS (chapter 8.3). |
+| **Realism** | *Damage*: *Game* features simplified weapon damage (hits add up, damaging systems, but never bring the aircraft down). *Real*: a missile hit can destroy the aircraft outright (the engine dies, it burns and breaks up within seconds: eject), otherwise it damages several systems at once and often starts a fire, which either burns out or blows the aircraft up after a while. Hits to the flight controls bend control surfaces: the aircraft rolls or pitches by itself (hold the stick against it) or wobbles. *Guidance*: *Classic* keeps the DOS era missiles. *Real*: missiles fly proportional navigation to the collision point; their motors burn for the real missile's burn time (the smoke trail ends with it) and then they glide, losing speed with every turn and turning ever more slowly as they slow down, especially up high. SAMs and the AIM-120 climb at a loft angle against distant targets and dive on them from above (pull up before firing an AIM-120 and it has less to turn); gravity speeds up a diving missile. The Hellfire flies straight for 1 s after launch: pull up before firing to lob it at a distant target. *Low level*: *Real* adds anti-aircraft guns and MANPADS (chapter 10.3). |
 | **Weather** | Random (based on the theater's climate), Clear, Scattered, Broken, Overcast, Storm. *Random cover* off: a slider sets the coverage of the main cloud layer. Clouds block optical seekers and visual identification for both sides; radar sees through clouds. |
 
 The **mission summary** lists theater, situation, mission type, opponents, time of day and
@@ -79,7 +82,7 @@ the same pages (chapter 3.8).
 
 | Tab | Settings |
 |---|---|
-| **Game** | *Cockpit*: DOS era panel or modern panel (this manual describes the modern panel). *HUD*: the DOS era HUD, or a high-resolution F-16 style HUD in green. *Avionics*: DOS era MFD pages or F-16 style formats (chapter 4.1). *Flight model*: DOS era flight model, or an aerodynamic model with fly-by-wire: the stick commands pitch rate (up to 7 g) and roll rate; released, the nose stays where it was left and, once the flight path has caught up with it, the path is held (also in turns up to 60° of bank). Angle of attack and g limiters only act near the limits. *Auto trim*: with the stick released, the trim holds the attitude (helicopters) or trims out damaged control surfaces (jets); Alt + arrow keys trim by hand, Alt + Home centres the trim. *Cockpit tooltips*. *VR cockpit size* (chapter 3.8). *Tacview export*: each flight is saved as a Tacview recording; *Tacview real-time telemetry*: the flight is shown in Tacview while you fly it (chapter 10). |
+| **Game** | *Cockpit*: DOS era panel or modern panel (this manual describes the modern panel). *HUD*: the DOS era HUD, or a high-resolution F-16 style HUD in green. *Avionics*: DOS era MFD pages or F-16 style formats (chapter 4.1). *Flight model*: DOS era flight model, or an aerodynamic model with fly-by-wire: the stick commands pitch rate (up to 7 g) and roll rate; released, the nose stays where it was left and, once the flight path has caught up with it, the path is held (also in turns up to 60° of bank). Angle of attack and g limiters only act near the limits. *Auto trim*: with the stick released, the trim holds the attitude (helicopters) or trims out damaged control surfaces (jets); Alt + arrow keys trim by hand, Alt + Home centres the trim. *Cockpit tooltips*. *VR cockpit size* (chapter 3.8). *Tacview export*: each flight is saved as a Tacview recording; *Tacview real-time telemetry*: the flight is shown in Tacview while you fly it (chapter 12). |
 | **Graphics** | *Shaders*: flat DOS era shading or anti-aliasing, shading and haze. *Shadows*: sun shadows. *Point lights*: cockpit lamps, explosions, flares and runway lights light the scene. *Time of day*: simplified slow change of colours, or the sun and the moon moving with the mission clock: the sun is drawn in the sky (with the modern shaders it glares when you look towards it), the sky turns golden or orange around sunrise and sunset (each dawn and dusk a little different), purple and dark blue about an hour after sunset, stars come out, the moon shows the phase of the briefing date, and moonlight sets how far enemy pilots see you at night (about 2 km on a moonless night, 4 km under a full moon high in the sky, 8 km by day). The sun keeps to the equinox, rising at 06:00 and setting at 18:00, so with a random start time day missions start at dawn and night missions at dusk. With the classic time of day, *Sun and moon* still shows them in the sky. |
 | **Sound** | *Master*, *Engine* (your engine or rotor, and the aircraft heard around you), *Effects* (weapons, explosions, gear, radio) and *Warnings* (stall horn, radar and missile warnings, fire siren, Sidewinder tones) volumes. *Engine low-pass*: inside the aircraft the engine sounds are muffled. |
 | **Controls** | *Keys and joystick*: the input mapping (chapter 2). *Head/Eye Tracking* (desktop): your head turns and moves the view in the cockpit (chapter 3); below it the menu shows whether a tracker is heard. |
@@ -91,8 +94,8 @@ classic shadows and lighting.
 |---|---|
 | BACK | Back to the main menu. |
 | NEW MISSION | Generate different objectives with the same options and start time. |
-| LOAD | The missions saved in flight (SAVE MISSION, chapter 3.8), the latest first: the primary order, theater, aircraft, mission time and when it was saved (UTC). LOAD flies one on from where it was saved, with the aircraft and the realism switches it was flown with (the menu's switches change to them); the flight starts paused, the in-flight menu open. DELETE removes a save after asking. Not in career mode. The saves are in the `saves` folder of the game's folder for your files (`Documents\My Games\Stealth Mission 89` on Windows; chapter 14). |
-| PLAN ROUTE | Below the mission summary: the mission planner (chapter 9). |
+| LOAD | The missions saved in flight (SAVE MISSION, chapter 3.8), the latest first: the primary order, theater, aircraft, mission time and when it was saved (UTC). LOAD flies one on from where it was saved, with the aircraft and the realism switches it was flown with (the menu's switches change to them); the flight starts paused, the in-flight menu open. DELETE removes a save after asking. Not in career mode. The saves are in the `saves` folder of the game's folder for your files (`Documents\My Games\Stealth Mission 89` on Windows; chapter 17). |
+| PLAN ROUTE | Below the mission summary: the mission planner (chapter 11). |
 | LOADOUT | Below the mission summary: the stores on each hardpoint, seen from above. Click a bay or pylon and pick its load; *Same on both sides* loads the matching hardpoint on the other wing too. The F-117A has its two bays, and without *Realistic weapons* two more inside the wing roots (amber, not on the real aircraft); the F-16C has stations 1 (left wingtip) to 9 (right wingtip): air-to-air missiles on 1-3 and 7-9, bombs and missiles on 3-4 and 6-7, a fuel tank on 4, 5 or 6, the camera or special equipment on the centreline. Weapons out of stock for the mission are greyed out. BRIEFED restores the briefed stores, CLEAR empties every hardpoint. The briefing's armament line shows the loadout. |
 | FLY IN VR | Restart the game in the VR headset with this mission (requires an OpenXR runtime). After the mission the debrief and the menu stay in the headset, on a panel in front of you: point a controller at it, pull the trigger to click, push the thumbstick to scroll; the left menu button puts the panel in front of you again. Starting the game with `--vr` opens the menu in the headset too. |
 | FLY | Start the mission. |
@@ -147,7 +150,7 @@ customised one is kept.
 
 The view shows the head-up display (HUD) at the top and the instrument panel below it. Hold the
 **right mouse button** to look around; turn the **mouse wheel** while holding it to zoom in. **Click** a button on the panel to press it. Every button
-has a keyboard equivalent (chapter 7). Rest the mouse on a button, display, instrument or warning
+has a keyboard equivalent (chapter 9). Rest the mouse on a button, display, instrument or warning
 light and a **tooltip** names it, says what it does and shows its keys; parts hidden behind the
 stick, the throttle or the glare shield can't be pointed at.
 
@@ -189,7 +192,8 @@ The modes add their own symbols:
   waits at the HUD's edge in its direction, crossed out.
 
 In every mode a small circle with a dot marks where the targeting pod looks while the TGP page is
-up on an MFD (the classic HUD shows it and the steerpoint diamond too).
+up on an MFD, on the AH-1Z always (the classic HUD shows it and the steerpoint diamond too;
+chapter 6).
 * **AA:** the target designator box with the missile diamond once locked, the range below it;
   with an air-to-air missile selected the steering circle and dot, *SHOOT* in range, and the
   launch zone scale (maximum and minimum range, target range caret).
@@ -317,7 +321,7 @@ the hand holds the stick.
 
 Under the right MFD, right of the fuel quantity: **FUEL** (fuel in lbs divided by 10) with the
 **LOW FUEL** lamp (blinks below 1500 lbs of fuel) and **THRUST** (in percent); under them the
-**EGR/EAR radar bar graph** (described in chapter 6.2) with the **EMV** warning lamp (lit for
+**EGR/EAR radar bar graph** (described in chapter 8.2) with the **EMV** warning lamp (lit for
 2 s after each detection).
 
 ### 3.7 The F-16 cockpit
@@ -434,7 +438,7 @@ functions. The button of the active page is lit.
 <td width="50%"><img src="images/mfd_map.png" alt="MAP"><br>
 <b>MAP</b> – Top-down map of the theater with the own aircraft (triangle), the route and
 waypoints, airbases and ground objects. A scale bar is shown at the bottom left. During a radar
-sweep, the map shows the radar's coverage (chapter 6.3).</td>
+sweep, the map shows the radar's coverage (chapter 8.3).</td>
 <td width="50%"><img src="images/mfd_tac.png" alt="TAC"><br>
 <b>TAC</b> – Heading-up tactical display with a grid (spacing shown at the bottom). Own aircraft
 in blue. Other aircraft are shown as triangles pointing in their direction of flight: red at
@@ -476,7 +480,8 @@ bottom row of bezel buttons: **HSD**, **HARM**, **TGP**, **MAP** and **SMS**; th
 third MFD offers **HSI** in place of TGP. The buttons' functions are written on the display next
 to them (lit = selected); the bezel caps are blank. Choosing a format another MFD shows swaps
 the two. F3 cycles the left MFD through HSD, MAP
-and HARM; F5 / F10 bring up SMS, F6 and the camera keys the TGP, F7 the waypoint table.
+and HARM; F5 / F10 bring up SMS, the camera keys the TGP (F6 too, switching its FLIR on or
+off with each press), F7 the waypoint table.
 
 | Format | Top row buttons | Shows |
 |---|---|---|
@@ -500,19 +505,9 @@ camera keys). Z / X change the HSD range while it is the SOI. The HSD cursor sta
 point as the aircraft flies, turns or the range changes, and the HARM cursor turns with the radar
 symbols, so a turn doesn't take the cursor off its target.
 
-**Targeting pod.** The TGP follows the locked target (SLV); without one it looks ahead and down,
-or where the camera keys turn it. Every target key (B, T, the camera keys), a lock on the HSD and
-a display lock put it back to SLV on the new lock. Made the SOI, the slew controls turn the pod itself (AREA,
-slower when zoomed in); a moment after the slew stops it holds the ground point it looks at (PNT),
-wherever the aircraft flies. **Lock cursor target** then locks what is at that point (the ground
-itself if nothing is there) and the pod follows the lock again. **CZ** (cursor zero) turns the pod to
-the current steerpoint and holds it there (PNT) as the SOI, to slew on from there or lock with
-**Lock cursor target** (not in A-A, where the button is blank). **SP** (snowplow, with the pod the
-SOI) drops the locks and points the pod straight ahead of the nose and a little down, turning with
-the aircraft without holding the ground or locking anything, until you slew it (the slew starts
-from there) or press a target key. The zoom button steps AUTO, 1X .. 6X; `[` / `]` (and Z / X
-while the pod is the SOI) zoom it in and out. The HSD shows where
-the pod looks: a green diamond on its ground point with a dashed line from the aircraft.
+**Targeting pod.** The TGP format and how to work the pod (SLV, AREA, PNT, SP, CZ, zoom and
+locking with it) are in chapter 6.1. The HSD shows where the pod looks: a green diamond on its
+ground point with a dashed line from the aircraft.
 
 ### 4.2 The HSI page (F-117A third MFD)
 
@@ -541,7 +536,7 @@ shows the target (here *Gutersloh Airbase*, 0.9 km), and the GND lamp is lit.
 3. Open the bay doors (**BAY**, 8).
 4. Release with Enter (gamepad A, VR: right trigger) when **LOCK** is steady. Releases fail with *Bay closed*,
    with a bank angle above about 67°, or on the ground (*Insufficient Altitude*).
-5. Close the bay doors. Open doors increase the radar signature (chapter 6.1).
+5. Close the bay doors. Open doors increase the radar signature (chapter 8.1).
 
 **Bombing:** free-fall and retarded bombs have two release modes; CCIP is the default. Switch
 with Alt F2, the F-16's **A-G** button pressed again in AG mode, or the CCIP / CCRP button on the
@@ -577,55 +572,317 @@ With Sidewinders selected in the air-to-air HUD mode you hear the seeker: a low 
 searches, a higher growl once the locked target is in its view (the LOCK oval), and a
 steady high tone when the target is in range: fire.
 
-**Player weapons** (lock range in km):
+**Weapons**: the stores, their ranges and how to deliver each one are in chapter 7; locking
+with the targeting pod and the helmet sights in chapter 6.
 
-| Weapon | Type | Range |
+## 6. Targeting pod and helmet sights
+
+### 6.1 The targeting pod
+
+The F-16C and the F-117A carry a targeting pod (TGP) with the modern avionics; its picture is the
+**TGP** format on an MFD (chapter 4.1). With the classic avionics the TC page shows the same
+camera, pointed only by the camera keys. On the AH-1Z the pod is always working, with or without
+its format on a display. The pod's picture shows in the forward cockpit view, not while you look
+left, right or back.
+
+**Bringing it up.** The TGP button under an MFD, or a camera key: `/` `.` `,` `M` point it
+ahead, rear, right or left and pick the nearest object that way; T (nearest target) does the
+same ahead. F6 brings up the TGP and switches its thermal picture (FLIR) on or off with each
+press. B (next target) moves the pod onto the next target without bringing up the page; N
+(designate) and Shift B (clear) leave it where it looks.
+
+The format's top row: **FLIR** (black-and-white thermal picture), the **zoom** (AUTO or 1X..6X),
+**SP** (snowplow), **CZ** (cursor zero, blank in A-A) and **SOI**. Bottom left the pod's mode,
+bottom right the zoom; the cross in the middle is where the pod looks.
+
+| Mode | The pod... | How you get there |
 |---|---|---|
-| AIM-9M Sidewinder | IR air-to-air missile | 17 |
-| AIM-120A AMRAAM | Radar air-to-air missile | 32 |
-| AGM-88A HARM | Anti-radiation missile, only against radar sites | 20 |
-| Penguin 3 / AGM-84A Harpoon | Anti-ship missiles, only against ships | 32 / 60 |
-| AGM-65D Maverick | Optical air-to-ground missile | 32 |
-| GBU-12 Paveway, Mk 20 Rockeye II, CBU-72 FAE | Guided bombs | 10 |
-| Durandal, Mk 82 Snakeye, Mk 20 Rockeye, Mk 35, ISCB-1 mines | Retarded / cluster bombs | – |
-| Mk 82 LDGP, Mk 122 Fireye | Free-fall bombs | – |
-| IR/optical camera | Reconnaissance photos of the target | – |
-| Fuel tank | 1900 lb, transferred on release | – |
-| AGM-114 Hellfire (AH-1Z) | Laser guided: flies to where the targeting pod looks | 8 |
+| **SLV** (slaved) | looks at the locked target. Without a lock it looks where the camera keys turned it, about 10° below the horizon (the AH-1Z's looks where you look, chapter 6.3). | Every target key (T, B, the camera keys), every lock on a display. |
+| **AREA** | turns with the slew controls, steadied against the aircraft's motion. | Slew with the pod the SOI. |
+| **PNT** (point) | holds the ground point it looks at, wherever the aircraft flies. | A moment (0.15 s) after the slew stops, on a ground point within 40 km. Above the horizon or farther, it stays in AREA. |
+| **SP** (snowplow) | looks straight ahead and about 9° down, turning with the aircraft, holding nothing; the locks are dropped. | SP with the pod the SOI. Slew from there, or press a target key. |
 
-**Unguided bombs** leave with the aircraft's speed and direction and fall under gravity and
-air drag. Free-fall bombs keep most of their speed and land far ahead of the release point
-(about 4,000 ft ahead from 500 ft at 450 knots, 6 seconds later). Retarded and cluster bombs
-open fins or a chute: they lose their speed within seconds and fall on a short, steep arc
-(about 2,500 ft ahead, 7 seconds), landing well behind the aircraft, which is clear of the
-blast by then. Throwing a bomb in a
-climb (loft) makes it fly farther. The CCIP pipper always shows where the selected bomb would
-land if released now.
+**Finding and locking a target with the pod:**
 
-**The AH-1Z Viper** carries a 20 mm cannon in a chin turret, up to two AIM-9 Sidewinders on its
-wingtip rails and up to four launchers of four AGM-114 Hellfires on its stub wings. Its
-targeting pod is always up, with or without its MFD page: slaved, it looks at the locked
-target, or else wherever you look from the cockpit (a helmet sight: the mouse head look, or the
-headset in VR); slewed, it holds the ground point you put it on. The cannon is two entries in
-the weapon cycle (Space): first slaved to the helmet sight (**GUN HMS**: the turret points
-wherever you look), then to the targeting pod (**GUN TGP**: the turret follows the pod); the next
-press goes on to the missiles. The HUD's gun line shows which (`GUN 650 HMS` / `GUN 650 TGP`).
-The turret turns 110 degrees either side, 50 degrees down and 20 up, and the gun pipper shows
-where its rounds land.
+1. Make the TGP the **SOI** (its SOI button, or Alt S until the white frame is on it). The pod
+   only slews while its format is up and it is the SOI.
+2. Point it near the target: **CZ** turns it to the current steerpoint (on a strike that is the
+   target) and holds it there; a camera key turns it to a quarter; SP puts it ahead of the nose.
+3. **Slew** onto the target: keypad 8 / 2 / 4 / 6 (and the diagonals 7 / 9 / 1 / 3), the left VR
+   thumbstick, or the two joystick axes bound as *Sensor/cursor slew X/Y* (chapter 2). Full
+   deflection turns the pod about 28° a second at 1X, half that at each zoom step (under 1° a
+   second at 6X), so zoom in for the last bit. Beyond 3 km the response is finer around the
+   centre and a held slew starts slowly, building up to full rate within a second: tap it for
+   small corrections.
+4. **Zoom**: the zoom button steps AUTO, 1X .. 6X; `[` / `]` zoom out and in, and so do Z / X
+   while the pod is the SOI. 1X shows about 17°, each step half of that; AUTO zooms in one step
+   each time the range doubles from 500 m.
+5. **Let go.** The pod holds the point (PNT). Settled within 30 m of a vehicle, building or site
+   it locks it by itself: the HUD goes to GND and the pod to SLV, following the lock. An
+   anti-aircraft gun can't be locked; the pod just holds on it.
+6. Otherwise press **Lock cursor target** (keypad Enter, the left thumbstick click in VR, or a
+   bound button): it locks the object nearest the pod's point within about 125 m, else the
+   ground point itself (*GROUND POINT*), and the pod follows the lock (SLV). In SP it locks the
+   ground ahead of the snowplow line; in SLV the button does nothing. Under a cloud the HUD says
+   *Target obscured* and nothing is locked.
 
-The AH-1Z's **helmet-mounted display** shows on the visor wherever you look in the cockpit (it
-moves with the mouse head look or the headset): a cross at its centre (the line of sight a
-helmet-slaved gun follows), the horizon line, the locked target (a box on a ground target, a
-diamond on an aircraft; when it is off the visor, an arrow from the cross points towards it), the
-gun pipper where the turret's rounds go (whichever weapon is selected), a small diamond where the
-targeting pod looks when it is slewed or in snowplow, and the gun line (`GUN 650 HMS`). A **Hellfire** rides the pod's laser spot for its whole flight: it flies
-to the object at the spot, or the plain ground there, and turns to wherever the pod looks
-next, so keep the pod on the target until it hits. It needs a line of sight from you to the
-spot; without one it flies on to where the spot last was.
+The pod turns about 170° either side of the nose, 100° down and 29° up from the airframe. Where
+it looks shows on the HUD and the helmet visor (a small circle with a dot) and on the HSD (a green
+diamond with a dashed line from the aircraft).
 
-## 6. Radar, detection and evasion
+**Which weapons use the pod.** The **Hellfire** flies to wherever the pod looks, lock or no lock
+(chapter 7.5). The **Maverick**'s and the Hellfire's launch zones are measured to the pod's
+point when you have slewed it off the lock. The laser-guided **GBU-12** does not need the pod: it
+guides on the locked target however it was locked, as long as you can see it (chapter 7.6). Every
+other weapon uses the lock, which the pod is one way to make.
 
-### 6.1 How detection works
+### 6.2 The F-16C's helmet (HMCS)
+
+The F-16C's pilot wears a helmet-mounted cueing system (HMCS), the AH-1Z's a full helmet-mounted
+display (chapter 6.3). The F-117A and the UH-60 have neither. The symbology is drawn on the visor,
+40° wide and 30° high, wherever you look in the cockpit (also in the look left, right and rear
+views), and lies on the world like the HUD's.
+
+**Where you look** is the helmet sight:
+
+- **Desktop:** hold the right mouse button and move the mouse (up to about 150° either side);
+  the wheel zooms meanwhile.
+- **Head or eye tracking** (chapter 3): the tracker turns the view and the sight with it; Home
+  recentres.
+- **VR:** the headset.
+
+The sight is smoothed, so a trembling head does not shake it, but follows a deliberate turn
+quickly.
+
+**The HMCS shows** the horizon, the boxed airspeed (left) and altitude (right), the route's
+waypoints (the current steerpoint larger, with its number), the locked target (a box on a ground
+target, a diamond on an aircraft; off the visor an arrow points towards it), where the targeting
+pod looks, and with Sidewinders selected the seeker's circle. It has no aiming cross.
+
+**Locking an aircraft by looking at it (Sidewinder):**
+
+1. Select the **AIM-9** (Space) and the **AIR** mode (F2, or the F-16C's A-A button).
+2. Look at the aircraft. The seeker's 6° circle follows your eyes up to 40° off the nose.
+3. The seeker locks the aircraft nearest the middle of the circle by itself (no button): a
+   diamond on it, and the growl rises. It must be in sight, not behind a cloud.
+4. Keep looking at it. The steady high tone says it is in range: fire (Enter). Look away and the
+   seeker loses it as it leaves the circle.
+
+The seeker does not tell friend from foe: in multiplayer it locks other players as readily. A
+lock you made yourself (T, B, the HSD cursor) is kept: the circle then sits on that target
+instead of following your eyes, and the lock is not dropped when you look away.
+
+The helmet only aims the Sidewinder. The AIM-120 locks with the HUD keys and the HSD, ground
+targets with the target keys, the displays and the pod (6.1); the F-16C's pod does not follow the
+helmet.
+
+### 6.3 The AH-1Z's helmet (HMD)
+
+The AH-1Z's visor shows everything the HMCS does except the waypoints, and:
+
+- a **cross** where you look: the line of sight that a helmet-slaved gun follows;
+- the turret gun's **pipper** while the gun is slaved to the helmet, where its rounds go; at the
+  visor's edge it blinks, crossed out, when the target is beyond the turret's reach;
+- the gun line under the cross while the gun is selected (`GUN 510 HMS` / `GUN 510 TGP`).
+
+**The pod follows your eyes.** Without a lock the AH-1Z's pod (SLV) looks wherever you look;
+with one it looks at the lock. So:
+
+- **A Hellfire fired without a lock goes where you are looking** (and keeps following the pod,
+  so keep looking at the target until it hits).
+- **To lock a ground target by looking at it:** look at it, nudge the slew with the TGP the SOI
+  (the pod goes to AREA from your line of sight), and let go: it settles on the point and locks
+  what is there (6.1, step 5), or press **Lock cursor target**. T and B also pick targets in the
+  pod's direction.
+- **Aircraft** lock as on the F-16C: the Sidewinder's seeker follows your eyes (6.2).
+
+**The turret gun** is two entries in the weapon cycle (Space): **GUN HMS**, the turret pointing
+wherever you look, then **GUN TGP**, the turret following the pod; the next press goes on to the
+missiles. The turret turns 110° either side, 50° down and 20° up.
+
+## 7. Weapon employment
+
+### 7.1 Rules for every weapon
+
+- **HUD mode:** air-to-air weapons in AIR, all others in GND. T (nearest target) switches to
+  the selected weapon's mode by itself.
+- **Release:** the F-117A's bay doors open (*Bay closed*, except the fuel tank; the F-16C's and
+  the AH-1Z's stores hang outside), bank under 67°, and in the air (*Insufficient Altitude* on
+  the ground or the deck). At most four of your weapons fly at a time: a fifth press uses up a
+  round without firing it. Each shot comes off the bay or station with the most rounds left.
+- **Lock:** a guided air-to-ground missile is given its target at launch only while the LOCK
+  lamp is on (the target in front of you and within its range); fired without, it flies on
+  blind. The HARM only takes a radar, the Penguin and the Harpoon only a ship.
+- **Clear sky:** the Sidewinder, the Maverick, the Hellfire and the laser-guided bombs need to
+  see their target: none of them can be aimed at a target under a cloud. Radar weapons see
+  through clouds.
+- **Effect:** each weapon works better against some targets than others: a hit with too light
+  a weapon may leave the target standing (*Ineffective*). The HARM only kills radars, the
+  Durandal and the mines runways; the Maverick and the Hellfire are best against armour,
+  launchers and radars; the GBU-12 and the CBU-72 do well against nearly everything.
+
+**The launch zone.** With a missile selected and a target locked, the HUD's scale shows the
+range at which it can reach the target: a line from the shortest to the longest range with a
+caret at the target's range, and for air-to-air missiles a box for the no-escape range (the
+target can't outrun the missile even if it turns away at launch). The zone is worked out by
+flying the real missile from your present speed, altitude and pitch, so climbing, diving and
+speeding up move it. **SHOOT** blinks while the caret is in the zone, **TOO CLOSE** inside the
+shortest range. The guided bombs have no zone: their cue is *IN RNG*.
+
+**Realistic and classic guidance** (the *Guidance* switch, chapter 1). Classic missiles turn in
+fixed steps and fly until their fuel time runs out. Realistic missiles fly proportional
+navigation to the collision point, burn their motor for the real one's burn time (the smoke trail
+ends with it) and then glide, slowing with every turn; they must see the target within 30° of
+their nose to lock on. In a campaign or a coop game the server's setting applies.
+
+### 7.2 Ranges
+
+The ranges are those the LOADOUT page gives for each store (in level flight at 450 kt, ballistic
+bombs at 500 kt); a missile reaches farther from higher and faster, and an air-to-air missile
+farther head-on.
+
+| Weapon | Against | Range | Launch / release height | Carried by |
+|---|---|---|---|---|
+| AIM-9M Sidewinder | Aircraft (IR) | 1-12 km | Any | F-16C stations 1-3, 7-9; AH-1Z wingtips; F-117A* |
+| AIM-120A AMRAAM | Aircraft (radar) | 1-38 km | Any | F-16C stations 1-3, 7-9; F-117A* |
+| AGM-88A HARM | Radars | 9-50 km | 5,000-20,000 ft | F-117A, F-16C |
+| Penguin 3 | Ships | 6-14 km (classic guidance 13-14) | 100-500 ft | F-117A, F-16C stations 3, 7 |
+| AGM-84A Harpoon | Ships | 6-41 km | 2,000-5,000 ft | F-117A, F-16C stations 3, 7 |
+| AGM-65D Maverick | Ground (TV) | 5-10 km | 2,000-5,000 ft | F-117A, F-16C |
+| AGM-114 Hellfire | Ground (laser, the pod's spot) | 4-8 km | 2,000-3,000 ft | AH-1Z (16) |
+| GBU-12 Paveway | Ground (laser) | 1.5 km to 2.5 × height (14 km from 15,000 ft) | 15,000-25,000 ft | F-117A, F-16C |
+| Mk 20 Rockeye II, CBU-72 FAE | Ground (laser) | 1.5 km to 2.5 × height (3.7 km from 3,000 ft) | 3,000-5,000 ft | F-117A, F-16C |
+| Mk 82 LDGP | Ground | 5-11 km short of the target | 3,000-20,000 ft | F-117A, F-16C |
+| Mk 122 Fireye | Ground | 0.9-2.2 km short | 100-500 ft | F-117A, F-16C |
+| Mk 20 Rockeye, Mk 35 | Ground | 1.1-1.6 km short | 300-1,000 ft | F-117A, F-16C |
+| Mk 82 Snakeye, ISCB-1 mines | Ground | 0.9-1.3 km short | 200-500 ft | F-117A, F-16C |
+| BLU-107 Durandal | Runways | 0.9-1.3 km short of the runway | 200-500 ft | F-117A, F-16C |
+| IR/optical camera | Recon target | Photos from 2-8 km | Any | F-117A, F-16C centreline |
+| 20 mm gun | Air and ground | Up to 2 km (ground: 4 km) | Any | All but the real F-117A and the UH-60 |
+
+\* Not with *Realistic weapons*. On the F-16C the HARM, the Maverick and the bombs go on
+stations 3-4 and 6-7, the fuel tank on 4, 5 or 6.
+
+### 7.3 Air-to-air: Sidewinder, AMRAAM and the gun
+
+**AIM-9M Sidewinder.** Infrared: it needs to see the target (no cloud between) and locks without
+radar. Select it in AIR mode; the HUD locks the nearest aircraft within 4 km ahead by itself, T
+locks the nearest one ahead, B steps outwards. With the F-16C's or the AH-1Z's helmet, look at
+the target instead (chapter 6.2). Listen to the seeker: a low growl while it searches, a higher
+growl once it sees the locked target, a steady high tone in range. Its motor burns 5 s; fire it
+inside the launch zone.
+
+**AIM-120A AMRAAM.** Radar guided: lock with T, B, NEXT or the HSD cursor (no line of sight
+needed, clouds don't matter). It is the long-range weapon: fire from the launch zone's longest
+range inwards, the no-escape box for a sure kill against a manoeuvring target.
+
+With realistic guidance it **lofts** against distant targets: fired at a locked target beyond
+about 6 km it climbs first, at 14° for the near ones up to 34° for targets at about 19 km and
+beyond, flies the far part of the way high in thin air where it loses little speed, and dives on
+the target from above. It doesn't loft against a target well above you. **Pull up before
+firing** at long range (10-20° nose up): the missile leaves along your nose with your speed, so
+it has less climbing to do and keeps more energy for the end game; the zone on the HUD grows as
+you pull up. Its motor burns 8 s; after that the missile glides.
+
+**Gun.** Select it after the last weapon (Space) or fire it with Backspace whatever is selected,
+and hold the trigger. 510 rounds. The rounds leave at 1050 m/s plus your airspeed and drop; with
+an aircraft locked put it in the gun pipper (SHOOT flashes within 2 km, the arc around the pipper
+unwinds with range, chapter 3.1). Against the ground the pipper shows where the rounds hit within
+4 km. A round counts as a hit within 150 m of its target against green opponents, 60 m against
+elite ones.
+
+### 7.4 HARM and the anti-ship missiles
+
+**AGM-88A HARM.** Kills only radars: SAM sites and the radar of a ZSU-23-4 Shilka.
+Lock a radar on the **HARM** display (modern avionics): it shows the radars that are painting you,
+the most dangerous nearest the centre; ALL / SAM / AIR filters them. Put the cursor on one and
+press Lock cursor target: the HUD goes to GND with the site locked. T and B also lock radar sites.
+Fire from 9-50 km, from 5,000 to 20,000 ft; a high, fast launch reaches farthest. A radar must be
+on the air to show on the HARM display, so the HARM is fired at sites that are looking for you:
+fire before they see you, from beyond their missile range (chapter 10.2).
+
+**Penguin 3** and **AGM-84A Harpoon.** Ships only: lock the ship (T, B or the HSD cursor; ships
+show from far out on the HSD) and fire inside the zone. The Penguin is a short-range weapon for a
+low run, 6-14 km from 100-500 ft, its motor burning all the way. The Harpoon flies 6-41 km on its
+turbojet, from 2,000-5,000 ft. Fire from outside the ship's SAM range where you can (chapter
+10.4).
+
+### 7.5 Maverick and Hellfire
+
+**AGM-65D Maverick.** A TV guided missile against anything on the ground, best against armour,
+launchers and radars. It needs a clear view of the target. Lock it in GND mode (T, B, the HSD
+or the pod), and fire with the LOCK lamp on and the caret in the zone: 5-10 km, from 2,000-5,000
+ft. With the pod slewed off the lock the zone is measured to the pod's point, but the missile
+flies at the lock.
+
+**AGM-114 Hellfire** (AH-1Z). Laser guided: it flies to wherever the targeting pod looks, to
+the object nearest its spot (within about 100 m) or else the plain ground there, and turns
+whenever the pod moves. **Keep the pod on the target until the missile hits.** It needs your
+line of sight to the spot; behind a cloud it flies on to where the spot last was. SHOOT shows
+when the spot is in the zone, with or without a lock. Without a lock the pod follows your eyes
+(chapter 6.3), so you can fire a Hellfire just by looking at the target. Range 4-8 km, from
+2,000-3,000 ft; the pod's laser reaches 8 km.
+
+**Lobbing a Hellfire.** With realistic guidance a Hellfire fired at a distant spot flies
+straight off the rail along your nose before it turns to the spot: for 1 s at spots beyond about
+5 km, less closer in. Its motor burns only 2.5 s, after which it glides, so its range depends on
+the arc you give it. Pull the nose up before firing at a distant target: the missile climbs off
+the rail, coasts farther in the thinner air, and comes down on the target from above; from a low
+hover a level shot runs out of speed some 7 km out. The launch zone follows your nose, so raise
+it until the caret is inside the zone and SHOOT shows, then fire and keep the pod on the target.
+Closer in it flies straight for less and turns down onto the spot sooner. With
+classic guidance it pitches straight at the spot as it leaves the rail.
+
+### 7.6 Laser-guided bombs: GBU-12, Rockeye II, CBU-72
+
+The GBU-12 Paveway, the Mk 20 Rockeye II and the CBU-72 fuel-air bomb glide down to the
+**locked ground target**, steering all the way. The laser is assumed to be yours: the bomb guides
+as long as you can see the target, whichever way you locked it (T, B, N, the HSD or the pod; the
+pod's picture is not needed), and a cloud between you and the target leaves it falling blind.
+Changing the lock in flight sends the bomb to the new target.
+
+1. Lock the target in GND mode. The HUD shows the azimuth steering line and the release cue.
+2. Fly the flight path marker onto the steering line and bring the target into range: the LOCK
+   lamp lights within 5 times your height, **IN RNG** shows within 2.5 times the height (at
+   least 1.5 km).
+3. Release with the LOCK lamp steady, and keep the lock (and the target clear of clouds) until
+   the bomb hits.
+
+The GBU-12 is dropped from high up (15,000-25,000 ft: 14 km from 15,000 ft, 18 km from 25,000 ft),
+out of reach of the guns and MANPADS; the cluster bombs from 3,000-5,000 ft.
+
+### 7.7 Unguided bombs
+
+Free-fall bombs (Mk 82 LDGP, Mk 122 Fireye) and retarded and cluster bombs (Mk 82 Snakeye, Mk 20
+Rockeye, Mk 35, ISCB-1 mines, Durandal) are aimed with the bombsight, CCIP or CCRP (chapter 5).
+They leave with the aircraft's speed and direction and fall under gravity and air drag.
+Free-fall bombs keep most of their speed and land far ahead of the release point (about 4,000 ft
+ahead from 500 ft at 450 knots, 6 seconds later); the LDGP is dropped from 3,000-20,000 ft, 5-11
+km short of the target. Retarded and cluster bombs open fins or a chute: they lose their speed
+within seconds and fall on a short, steep arc (about 2,500 ft ahead, 7 seconds), landing well
+behind the aircraft, which is clear of the blast by then. They are dropped low, 200-1,000 ft,
+about 1 km short of the target (table in 7.2). Throwing a bomb in a climb (loft) makes it fly
+farther. The CCIP pipper always shows where the selected bomb would land if released now.
+
+**Durandal** and the **ISCB-1** mines are for runways: release on the runway's line, 0.9-1.3 km
+short, from 200-500 ft. A bomb that goes off close under you damages your own aircraft: don't
+release free-fall bombs low and slow.
+
+### 7.8 Camera, fuel tank and cargo
+
+**IR/optical camera.** For reconnaissance objectives: open the bay, bring up the camera page (TC
+or TGP), lock the recon target and put the nose on it (the camera looks about 10° down). The HUD's cue walks you through it
+(*SELECT CAMERA*, *OPEN BAY*, ...) and says *TARGET IN VIEW - SHOOT* when a photo counts: within
+8 km against green opponents, down to 2 km against elite ones. Each press of Enter takes a frame.
+
+**Fuel tank.** Releasing it transfers its 1,900 lb into the aircraft's tanks (no bay doors
+needed).
+
+**Special cargo.** Release on *Drop supplies now*, within 4 km of the drop zone.
+
+## 8. Radar, detection and evasion
+
+### 8.1 How detection works
 
 Each radar sweep produces a **signal** against the aircraft. The aircraft itself has an
 electromagnetic visibility (**EMV**). The aircraft is detected when **signal + EMV exceeds 100**.
@@ -644,7 +901,7 @@ electromagnetic visibility (**EMV**). The aircraft is detected when **signal + E
   half of that. Over **mountains** no radar can detect the aircraft.
 - **Height above the radar**: an aircraft high above a nearby radar is in the blind cone above
   it. Example: at 10,000 ft above the site, radars closer than about 10 km cannot see the aircraft.
-- **Aspect and radar type** (see 6.4).
+- **Aspect and radar type** (see 8.4).
 - **Difficulty**: higher opponent levels make radars more sensitive.
 
 **Consequences of detection**: the site's alert level rises, the RWR tone sounds, the EMV lamp
@@ -657,7 +914,7 @@ the aircraft.
 Enemy fighters that detect the aircraft by radar can identify it visually within about 8 km by
 day and 4 km by night (not through clouds).
 
-### 6.2 The radar bar graph (F-117A)
+### 8.2 The radar bar graph (F-117A)
 
 ![Radar bar graph](images/panel_bottom.png)
 
@@ -676,7 +933,7 @@ is low and the bars do not meet, so the aircraft is not detected.
 The classic cockpit shows the same values in a single gauge: the EMV as a red bar from the right
 (the blue remainder is the margin), with the EGR and EAR signal bars growing from the left over it.
 
-### 6.3 Radar coverage on the map
+### 8.3 Radar coverage on the map
 
 ![Radar coverage on the MAP page](images/radar_map.png)
 
@@ -689,7 +946,7 @@ Colours: ground radars dark red (weak), red (strong), yellow (detected); airborn
 (not detected) or white (detected). The picture shows an airborne radar (cyan circle); the
 aircraft (white triangle, left) is outside the circle and not detected.
 
-### 6.4 Radar types
+### 8.4 Radar types
 
 | Type | Users | Strongest signal | Weakest signal |
 |---|---|---|---|
@@ -699,7 +956,7 @@ aircraft (white triangle, left) is outside the circle and not detected.
 Ground radars sweep all around. Fighter radars only see within about 67° either side of the
 fighter's nose. The IL-76 airborne radar sees all around.
 
-### 6.5 Evading radar
+### 8.5 Evading radar
 
 - **Keep EMV low**: fly low, at moderate speed and with small bank angles. Keep the bay doors
   closed until just before release. Switch ECM on only against missiles in flight, because it
@@ -717,7 +974,7 @@ fighter's nose. The IL-76 airborne radar sees all around.
 - **Keep distance**: the signal drops with range. A site out of missile lock range can detect
   but not engage.
 
-### 6.6 Defeating missiles
+### 8.6 Defeating missiles
 
 The RAD and IR lamps show which kind of missile is in flight; MW warns of a missile.
 
@@ -739,7 +996,7 @@ With realistic guidance a missile's energy is the other way out: once its smoke 
 motor has burnt out, and a hard turn away (or a dive into thicker air while it is high up) makes
 it bleed speed until it can no longer follow.
 
-## 7. Keyboard shortcuts
+## 9. Keyboard shortcuts
 
 The input mapping (chapter 2) shows all keys and can bind them to joystick buttons.
 
@@ -778,9 +1035,9 @@ The input mapping (chapter 2) shows all keys and can bind them to joystick butto
 | **Time** | Time acceleration / normal | Shift Z / Shift X |
 | **Game** | Settings menu (pauses) / detail / sound level | Esc, Pause, Alt P, gamepad Start / Alt D / Alt V |
 | | Training / resupply / quit | Alt T / Alt R / Alt Q |
-| | Chat (multiplayer, chapter 13) | Y |
+| | Chat (multiplayer, chapter 16) | Y |
 
-## 8. Aircraft, air defences and ships
+## 10. Aircraft, air defences and ships
 
 Ranges are the values the game uses, in km. **Radar range** is the distance at which the radar
 signal reaches zero; **lock range** is the distance within which a missile is launched.
@@ -788,7 +1045,7 @@ Theaters: LB Libya, PG Persian Gulf, NC North Cape, CE Central Europe, VN Vietna
 East, DS Desert Storm, CU Cuba, KO Korea, UA Ukraine. Enemy fighters also use their guns at
 close range.
 
-### 8.1 Aircraft
+### 10.1 Aircraft
 
 | | Aircraft | Description |
 |---|---|---|
@@ -806,15 +1063,15 @@ close range.
 | <img src="images/units/ac_f14.png" width="200"> | **F-14 Tomcat** | Fighter (Iran). Doppler radar, 80 km. Armament: AIM-9 (IR rear-aspect, 12 km). Theater: PG. |
 | <img src="images/units/ac_il76.png" width="200"> | **IL-76 Mainstay** | Airborne early warning aircraft. Doppler radar, 200 km, sees all around. Armament listed: AA-10 (active radar, 64 km). Theaters: CE, NC, UA. |
 | <img src="images/units/ac_an72.png" width="200"> | **An-72 Coaler** | Transport. No radar, unarmed. All theaters; a typical air-to-air mission target. |
-| <img src="images/units/ac_mi24.png" width="200"> | **Mi-24 Hind** | Attack helicopter. Flies low, hovers, guns a low and slow player at close range; hunts a downed pilot (chapter 12). |
-| <img src="images/units/ac_uh60.png" width="200"> | **UH-60 Black Hawk** | Friendly rescue helicopter (chapter 12). |
+| <img src="images/units/ac_mi24.png" width="200"> | **Mi-24 Hind** | Attack helicopter. Flies low, hovers, guns a low and slow player at close range; hunts a downed pilot (chapter 15). |
+| <img src="images/units/ac_uh60.png" width="200"> | **UH-60 Black Hawk** | Friendly rescue helicopter (chapter 15). |
 | <img src="images/units/ac_geran2.png" width="200"> | **Geran-2** (Shahed-136) | Attack drone (Ukraine). Piston engine and pusher propeller, about 185 km/h, low. No radar, unarmed: it flies straight at its target and dives into it. Shown on the TAC display as an open delta. |
 | <img src="images/units/ac_geran3.png" width="200"> | **Geran-3** (Shahed-238) | The jet version: about 600 km/h, flies higher. Otherwise like the Geran-2. |
 | <img src="images/units/ac_f18.png" width="200"> | **F/A-18 Hornet** | Friendly fighter. No threat. LB, ME, NC, PG, CE, UA. |
 | <img src="images/units/ac_f15.png" width="200"> | **F-15 Eagle** | Friendly fighter. No threat. DS. |
 | <img src="images/units/ac_a10.png" width="200"> | **A-10 Thunderbolt II** | Friendly ground attack aircraft. No threat. DS. |
 
-### 8.2 Air defences
+### 10.2 Air defences
 
 SAM sites appear on the map as radar sites. The site model differs by theater; the SAM type
 determines radar and missile:
@@ -844,7 +1101,7 @@ determines radar and missile:
 |---|---|---|
 | <img src="images/units/oth_ce.png" width="200"> | **OTH / LPAR radar** | Over-the-horizon and large phased-array early warning radars. Doppler, 500 km. No missiles; a detection raises the theater-wide alarm. CE, UA (OTH), NC (LPAR). |
 
-### 8.3 Low-level air defences
+### 10.3 Low-level air defences
 
 With *Low level* set to *Real* in the menu's Realism section (on for new players), guns and
 shoulder-launched missiles defend the enemy's airfields, the targets and the towns.
@@ -860,7 +1117,7 @@ moonless night with the *Time of day* switch on) and a clear line of sight throu
 Bombs, missiles and the gun destroy the guns and the teams; a HARM fired at a Shilka's radar on
 the HARM page flies at the spot where it stands.
 
-### 8.4 Ships
+### 10.4 Ships
 
 Ships stand out on the open sea: they are drawn from about 25 km away and keep their detailed
 models further out than other objects. Every ship shows on the HSD, where the cursor can lock it.
@@ -881,7 +1138,7 @@ models further out than other objects. Every ship shows on the HSD, where the cu
 Only the missile boats and patrol boats carry air defences. The other ships have no air defences in
 the game.
 
-## 9. Mission planner
+## 11. Mission planner
 
 ![Mission planner](images/planner.png)
 
@@ -907,7 +1164,7 @@ In flight the INS and the autopilot follow the planned route. When a target is d
 waypoint is the point after it, so the planned way home is flown as well. The planned route also
 goes along with *Fly in VR*.
 
-## 10. Debrief and career
+## 12. Debrief and career
 
 ![Debrief](images/debrief.png)
 
@@ -933,7 +1190,7 @@ push the thumbstick) to zoom. *RESULTS* goes back to the statistics.
 **Tacview.** With *Tacview export* checked in OPTIONS > GAME, every flight is also saved as a Tacview
 recording (`.acmi`) in the game's folder for your files under `tacview` (on Windows
 `Documents\My Games\Stealth Mission 89\tacview`, on Linux `~/.local/share/stealth-mission-89/tacview`;
-chapter 14):
+chapter 17):
 your aircraft, the enemy aircraft and missiles, the radar sites and airfields. The theater is laid
 on the globe around one of its real airbases at the game's scale, so the rest of it lies only
 roughly where the real places are.
@@ -967,7 +1224,232 @@ sortie starts at its rolled time. In a tour:
 
 Single missions from the menu do not count for any pilot.
 
-## 11. Drone defense (Ukraine)
+## 13. Dynamic campaign
+
+In the dynamic campaign a whole theater is at war, and the war runs on in real time while you
+fly, plan or sit in the menu. You fly sortie after sortie from a mission board that follows the
+situation, the front moves as places change hands, and the enemy attacks your side in turn. You
+are never killed or lost for good: after every sortie you are back at the board.
+
+### 13.1 Starting a campaign
+
+DYNAMIC CAMPAIGN in the main menu lists the saved campaigns (theater and hours played) with
+CONTINUE, IN VR and DELETE, and the options for a new one:
+
+| Group | Options |
+|---|---|
+| **Campaign** | *Theater*, *Situation* (Cold War, Limited War, Conventional War: how many enemy aircraft fly) and *Opponents* (Green to Elite: the enemy's skill, and how often it attacks). |
+| **Conditions** | *Weather*: *Dynamic* or *Clear sky*. *Start time* (default 08:00). *Day and night*: a day lasts 24 h (real time), 2 h, 1 h (the default) or 30 min. |
+| **Simulation** | The realism switches (*Damage*, *Guidance*, *Air defence*) and *Crash protection* (chapter 1). |
+
+The aircraft is chosen for each sortie in its briefing. START begins the campaign and saves it at
+once. A campaign keeps the rules it was started with, whoever continues or serves it later; the
+switches only apply to new campaigns. With dynamic weather the sky changes once or twice a day of
+the campaign: mostly fair (clear, scattered or broken cumulus, sometimes an overcast), now and then
+thunderstorms; each change takes 4 to 8 minutes, the clouds building up or thinning out and the
+light following.
+
+### 13.2 The Ops screen
+
+The campaign opens on the **Ops screen**. Its header shows the score (*BLUE n RED n*: the places
+each side holds), the campaign's day and time, the weather now and the next change, and **SAVE &
+EXIT** and **OPTIONS**. The footer shows both sides' materiel and income.
+
+| Tab | Shows |
+|---|---|
+| **MISSIONS** | The mission board (13.4), the details of the selected mission, and under the board the insertions and raids under way with their countdowns, the enemy AWACS's time left and the pilots down. |
+| **WAR MAP** | The theater: airfields (squares) and cities (circles) in their side's colour, a white ring where you have fresh reconnaissance, the insertion routes, friendly aircraft and helicopters, the enemy fighters on radar, the known SAM sites, guns and MANPADS, and you. The selected mission's target is circled. Click a unit to watch it live; the wheel zooms, dragging pans. |
+| **FORCES** | Both sides side by side: places held, materiel (up to 400) and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went since the start, and the prices (13.9). |
+| **PLAYERS** | The pilots in the campaign (in coop all players, chapter 16), with what they do, their sorties, points and rank; under it the leaderboard of every pilot who flew in the campaign, and the campaign's rules. |
+| **DEBRIEF** | The last sortie's result, kills, points, medal and rank, and what happened meanwhile. |
+| **LOG** | The war's events, newest first. |
+| **CHAT** | Coop games only. |
+
+The clock does not stop for the in-flight menu. **SAVE & EXIT** saves and leaves: the war stops
+until you continue it; aircraft in the air are lost and insertions under way start again from
+their base. The campaign is also saved every minute.
+
+### 13.3 Places and the front
+
+The theater is made of **places**: cities and airfields, an airfield and the city beside it
+counting as one. Each belongs to the friendly side (blue), the enemy (red) or neither (neutral
+places never change hands). Every SAM site and radar belongs to the nearest place of its side.
+
+The **front** is the up to three enemy places nearest to your own, within 150 km (else the
+nearest one). The board offers the front places' missions, each with its **threat**: three per
+live SAM site plus one per anti-aircraft gun.
+
+**Places change hands only by helicopter insertion.** One helicopter landing within 1.5 km of
+the place's airfield (else its city) takes it. A captured place has its cities and airfield
+repaired and loses its old SAM sites for good; the new owner's guns move in, and an airfield taken
+brings its captor two fighters and two helicopters. The front and the board change at once.
+
+So the war goes: find out what defends a front place (RECON), take down its SAM sites and guns
+(SEAD, CAS), and send the helicopters in (INSERTION, ESCORT). Command itself orders a free
+insertion against a front place once it has no SAM sites and no guns left (at most every 20
+minutes).
+
+### 13.4 The mission board
+
+The board lists up to twelve missions, the urgent ones first (interceptions, defence, rescue,
+the AWACS), each with its kind, target, distance from the selected base and threat. It is
+rebuilt every minute, after every capture and as soon as a target is destroyed. A mission stays
+on the board as long as its situation lasts and is gone when it ends: the target destroyed, the
+insertion or raid over, the intelligence gathered.
+
+| Kind | Points | Offered | Achieved when |
+|---|---|---|---|
+| **RECON** | 100 | Each front place without fresh intelligence. | You photograph its main object. For an hour its defences see you at 0.7 times their range, you see them at twice yours, and the target keys pick its objects from twice as far. |
+| **SEAD** | 150 | Front places with SAM sites or radars. | At least half of the listed sites are destroyed, by anyone (AI SEAD too). |
+| **CAS** | 120 | Front places with guns and MANPADS; enemy batteries pushed forward near your bases. | You destroy at least half of the listed guns. |
+| **STRIKE** | 150 | Front places with an intact airfield. | The airfield is destroyed. It launches no aircraft until it is repaired. |
+| **INSERTION** | 150 | Front places within 300 km of a friendly base. | The insertion takes the place. Only in the UH-60 (13.6). |
+| **ESCORT** | 120 | Each friendly insertion. | You were there and the place is taken. |
+| **INTERCEPT** | 150 | Each enemy insertion. | You were there and it failed. You meet it halfway along its route. |
+| **DEFEND** | 150 | Each enemy raid on an airfield, and each drone wave (DRONE DEFENSE). | You were there and every attacker was shot down (or it gave up after an hour). |
+| **INTERDICT** | 200 | Up to two enemy places behind the front within 350 km. | The city is destroyed (*Deep strike*: the airfield, where there is no city). |
+| **ANTI-SHIP** | 150 | Up to two enemy ships near friendly places. | The ship is sunk. |
+| **CAP** | 100 | Where enemy aircraft are near a friendly place or an insertion's target; else over the friendly place nearest the front. | 10 minutes airborne within 20 km of the point; each kill there counts 5 minutes. A friendly aircraft lost there sets the clock back. |
+| **CSAR** | 150 | Each pilot down and waiting (13.8). | 2 minutes airborne within 5 km of him, or there when he is rescued; in the UH-60, land by him, wait 30 s for him to board, and land at a friendly base. |
+| **AWACS** | 250 | While the enemy AWACS is up. | It is shot down, by anyone. |
+
+"You were there" means 2 minutes in the air within 20 km of the helicopters or attackers, their
+target or the meeting point while it is going on, or an air kill. A sortie that ends while its
+insertion, raid or rescue is still going on, with you there, is settled later, and the points come
+then.
+
+The mission's details show its description, the defences (SAM sites, threat, whether your
+intelligence is fresh), the other missions it makes a package with (13.10), the base to take off
+from (any friendly airfield or carrier, bombed or not) with its distance, and the aircraft and
+stores. **REQUEST AI SEAD** sends two friendly strike aircraft against one of the place's SAM
+sites a minute later (15 materiel and two friendly fighters; one request per place at a time);
+their kills count for your SEAD. **ACCEPT MISSION** opens the briefing.
+
+### 13.5 Flying a sortie
+
+The **briefing** has two pages. ROUTE & THREATS plans the route as the mission planner does
+(chapter 11), showing only the radars friendly aircraft have found. LOADOUT chooses the aircraft
+and its stores (BRIEFED restores the mission's). TAKE OFF puts you on the chosen base's runway.
+
+| Aircraft | Suits |
+|---|---|
+| **F-117A** | RECON, STRIKE, INTERDICT, ANTI-SHIP, SEAD; CAS. Unseen deep in enemy country. |
+| **F-16C** | SEAD (HARM), CAP, DEFEND, INTERCEPT, the AWACS, ESCORT; anything else at a higher radar signature. |
+| **AH-1Z** | CAS, ESCORT, INTERCEPT of helicopters: Hellfires and the turret gun (chapters 6.3, 7.5). |
+| **UH-60** | INSERTION and CSAR only, and the only aircraft for them. |
+
+The briefing offers the aircraft you last flew if it suits the mission. You may achieve more
+than the mission you accepted: every kill counts, and objectives at the same place make a
+package.
+
+**Coming home.** Stop on a friendly runway and the ground crew comes out: **REARM & REFUEL**
+fills you up for another mission in the same sortie, **END SORTIE** ends it as landed (+25
+points). END SORTIE in the in-flight menu ends it where you are, as aborted (no landing points).
+A crash ends the sortie a few seconds later. Either way the debrief follows and you are back at
+the board.
+
+### 13.6 Insertions
+
+**ORDER INSERTION** on an INSERTION mission sends four helicopters from the friendly base nearest
+the place (within 300 km); they lift off three minutes later. Your orders cost nothing, and you
+always have helicopters for them. One insertion per place at a time, only against front places.
+The board then offers its ESCORT: fly cover for them, or lead them yourself in the UH-60 (**FLY
+THE UH-60**, which joins the insertion under way or starts one at once with your wingmen).
+
+The insertion fails when all its helicopters are shot down, or when they are still in the air
+after 90 minutes. When they come within 80 km of an enemy airfield the enemy sends a fighter
+after them. Flying the UH-60 yourself, land within 1.5 km of the place and stay on the ground for
+15 seconds; ending your sortie leaves the others flying on.
+
+### 13.7 The enemy fights back
+
+| Action | How often (green .. elite) | What happens |
+|---|---|---|
+| **Insertion** | Every 75 / 50 / 35 / 25 min, warned 5 min ahead | Four helicopters against one of the two weakest friendly places near the front (fewest SAM sites and guns). A place where its insertions failed in the last two hours counts as stronger. INTERCEPT it. |
+| **Raid** | Every 60 / 40 / 28 / 18 min, warned 2 min ahead | Two strike aircraft, escorted by two fighters that take off 90 s earlier, against one of the two friendly airfields nearest it. A hit destroys the airfield: it launches no AI aircraft until repaired, though you can still take off from it. DEFEND it. |
+| **Patrols** | Every 6 min (3 with the AWACS up) | Fighters from the airfields near the front, at most 2 to 4 in the air by the situation, sent at the insertions and raids, else at the friendly place nearest the front. |
+| **AWACS** | Every 90 min for an hour | Orbits behind the front; its patrols go up twice as often and are sent straight at you. Shoot it down (AWACS mission). |
+| **Forward batteries** | When nothing is on the board near your bases | Anti-aircraft guns 15-35 km from a friendly base near the front (at most two): a CAS mission. |
+| **Drone waves** (Ukraine) | Every 80 / 55 / 40 / 30 min, warned 3 min ahead | Six Geran drones at a friendly city or airfield; the first one through destroys it. DEFEND (DRONE DEFENSE) it (chapter 14). |
+
+Your own side defends too: an airfield scrambles one or two fighters when enemy aircraft come
+within 40 km, and Patriot batteries stand at airfields well behind the front.
+
+Everything destroyed is repaired by its owner, as long as it has the materiel: SAM sites, cities
+and ships after 45 minutes, airfields after an hour. Guns and MANPADS teams destroyed are
+replaced one per place every 20 minutes.
+
+### 13.8 Pilots down (CSAR)
+
+Ejecting over enemy country costs the friendly side 30 materiel and a fighter until you are out
+(never your own next sortie). Once the parachute is down a UH-60 comes for you as in a single
+mission (chapter 15), in real time: picked up, the materiel and the fighter come back; captured,
+they stay lost.
+
+**SKIP EXTRACTION** (or END SORTIE) does not wait for it: the sortie ends and the board posts a
+CSAR mission instead. Any player who holds the air within 5 km of the pilot for 2 minutes, or
+brings him home in the UH-60, gets him out. Otherwise, after 20 minutes, a rescue helicopter may
+still get through (four times in ten); if it doesn't, the pilot is captured. Either rescue gives
+back what he cost.
+
+### 13.9 Materiel and aircraft
+
+Each side's AI fights with the materiel its places bring in and with the aircraft it has left.
+Each side starts with 150 materiel and holds at most 400. The income per hour is 20, plus 2 per
+place, plus 3 per intact city.
+
+| Costs | Materiel |
+|---|---|
+| Insertion (AI) | 20 |
+| Raid | 15 |
+| AI SEAD (yours) | 15 |
+| AWACS sortie | 20 |
+| Patrol or scramble, per fighter | 2 |
+| Repair: airfield / ship / SAM site / city / gun | 25 / 20 / 15 / 10 / 2 |
+| New fighter / helicopter | 15 / 4 |
+
+Aircraft shot down are gone; every hour each side buys new ones while its materiel lasts
+(helicopters first). An enemy that runs out can't repair, attack or replace its losses.
+INTERDICT missions strike its income: a city destroyed costs it 20 materiel at once and its 3 an
+hour until rebuilt. An AWACS shot down costs it 60. Only the AI runs short: your aircraft, bases
+and insertion orders never do.
+
+### 13.10 Points, ranks and packages
+
+Every sortie earns points: the objective's (100 to 250 by kind, once it is settled), 50 per
+aircraft and 20 per ground kill (SAM sites, guns, MANPADS), and 25 for landing at a friendly base
+and ending the sortie there. They earn the career's ranks over the campaign, and its medals for
+one sortie's points (chapter 12); the debrief shows them.
+
+**Packages**: objectives of two different kinds achieved at one place within 15 minutes (SEAD and
+STRIKE, say, or CAS and the ESCORT of an insertion) earn every sortie of the package 100 more
+points. The mission's details name the other missions at the place. CAP, ANTI-SHIP, AWACS, CSAR
+and battery CAS have no place and make no packages.
+
+### 13.11 Winning and losing
+
+The war is won when the enemy holds no airfield, and lost when the friendly side holds neither an
+airfield nor a carrier. The end screen shows the result and every pilot's record; sorties in the
+air may still finish. Then start a new campaign from the menu (a dedicated server starts the next
+one by itself, chapter 16).
+
+A campaign continued from its save goes on where it was, except that aircraft in the air are
+back on the ground, insertions and raids under way wait to start again, and the AWACS is down.
+
+### 13.12 Tips
+
+- Clear a front place's SAM sites and guns and Command sends the helicopters in for free; or
+  order the insertion yourself and fly its escort.
+- STRIKE the enemy's airfields near the front: for an hour they send no patrols or raids.
+- The enemy goes for your weakest places. Keep the guns and SAM sites there standing, and
+  intercept its insertions: a failed one keeps it away from that place for two hours.
+- Fly RECON first on a well defended place: with fresh intelligence its defences see you later
+  and you see them sooner.
+- INTERDICT when the enemy's materiel runs high: without it, it can't repair or attack.
+- Land and REARM & REFUEL rather than ending the sortie in the air: you keep the landing points
+  and can fly the next mission at once.
+
+## 14. Drone defense (Ukraine)
 
 ![Closing in on a Geran-3](images/geran_chase.png)
 
@@ -989,14 +1471,12 @@ Paveways (with *Realistic weapons*: the Paveways and extra fuel).
 <tr>
 <td width="40%"><img src="images/mfd_map_drones.png" alt="Drones on the MAP page"><br>
 The drones (crosses) on the MAP page, on their way to Poltava.</td>
-<td width="60%"><img src="images/geran_missile.png" alt="AMRAAM hit"><br>
-An AMRAAM fired from 120 m behind hits the Geran-3.</td>
 </tr>
 </table>
 
 In Ukraine strike missions a few drones may also cross the theater; shooting them down earns points.
 
-## 12. Ejection and rescue
+## 15. Ejection and rescue
 
 ![Waiting for the rescue](images/csar.png)
 
@@ -1015,14 +1495,14 @@ on the ground your emergency beacon chirps every few seconds.
 - Wait too long (15 minutes against green opponents, 9 against elite ones) and you are captured.
 - Time acceleration (Shift-Z) runs four times faster while you wait. A dynamic campaign runs in
   real time: there the panel has **SKIP EXTRACTION** (Alt-Q) instead, which ends the sortie and
-  leaves the rescue to the mission board (DYNAMIC CAMPAIGN in chapter 1).
+  leaves the rescue to the mission board (chapter 13.8).
 
 Picked up: the mission ends like a parachute landing. Over friendly territory or the sea the
 mission ends when the parachute lands, as before.
 
-## 13. Multiplayer
+## 16. Multiplayer
 
-Up to 64 players fly the dynamic campaign together (coop: everybody is on the friendly side).
+Up to 64 players fly the dynamic campaign (chapter 13) together (coop: everybody is on the friendly side).
 One computer runs the war, the **server**: either a player's game (HOST A GAME) or a dedicated
 server without a game of its own. The others join it over UDP.
 
@@ -1065,6 +1545,8 @@ modern), flight model, avionics, HUD, shaders, shadows and lights, and picks his
 or F-16) for each sortie on the briefing's LOADOUT page.
 
 ### On the Ops screen
+
+The Ops screen and the campaign itself work as when you play alone (chapter 13). In coop:
 
 - **PLAYERS** lists everybody in the campaign: who is on the mission board, who flies what, the
   sorties flown and objectives achieved, points and rank, and each player's ping; under it the
@@ -1125,7 +1607,7 @@ stealth-mission-89 --dedicated --theater ukraine --name "Friday night ops" --por
 | `--clear-sky` | A new campaign without weather (else it changes once or twice a day). |
 | `--classic-damage`, `--classic-guidance`, `--classic-time` | Classic damage, guidance and a fixed time of day instead of the default realistic damage, realistic guidance and moving sun and moon. |
 | `--no-crashes`, `--realistic-weapons`, `--friendly-fire` | The other rules. |
-| `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's folder for your files, chapter 14). |
+| `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's folder for your files, chapter 17). |
 | `--send-rate <hz>` | How often the moving world goes to the players, 1 to 15 times a second (default 7.5). More is smoother; less leaves bandwidth for more players. |
 | `--master <url>` | The server list to be on (default `https://sm-master.playspoon.com`; reported every 30 seconds). |
 | `--no-master` | Not on the server list: players join by address. |
@@ -1152,7 +1634,7 @@ holds, the players and what they do, and the recent events with their times (UTC
 Ctrl-C stops it (it saves first). Without a terminal (a service, `--plain`) it writes the events
 as log lines; SIGTERM or Ctrl-C stops it the same way.
 
-## 14. Your files
+## 17. Your files
 
 The game keeps everything it writes for you in one folder:
 
