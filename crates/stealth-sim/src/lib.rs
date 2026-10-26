@@ -28,7 +28,7 @@ mod weapons;
 mod weather;
 
 pub use data::{
-    AircraftKind, AircraftType, MissileType, SimData, TheaterTiles, ThreatType, WeaponType,
+    AircraftKind, AircraftType, MissileType, SimData, TheaterTiles, ThreatType, Town, WeaponType,
 };
 pub use pilot::{Pilot, PilotEvent};
 pub use radar::emv;

@@ -657,24 +657,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x20f09d5e6bdc748f,
-        0x5f1daa8174b71b84,
-        0xc924f9f6a7f4ed7f,
-        0x747ff0cc2e7c41c0,
-        0x76ba5c6da728c80a,
-        0x7be9bc439bc4ea3a,
-        0x933b38c77e47a4ca,
-        0x077c8eb16c608d74,
-        0x2d61386962297636,
-        0x67db5f640138161e,
-        0xb7743e055b0f34d7,
-        0x83f1e348af5bdba7,
-        0x5b17f468d24bcee8,
-        0xa7ffb06dda1ba65c,
-        0x5604cf1ae371be0c,
-        0x4c0422ca171da895,
-        0x87f315ee2b3af774,
-        0xc3af4f86ff5a55ba,
+        0xd9bf24543d5f233a,
+        0x7b6d4a2ae1cfb981,
+        0xeec3bf253d0c4c7d,
+        0x09f04920bb214cb2,
+        0x4258152bf2562640,
+        0x04998dadc9182910,
+        0x7de762d4f272ede7,
+        0x65dafd3ac1ff5885,
+        0x3c738a2787560614,
+        0x41362b237eb95614,
+        0xd94984f61d59ebdf,
+        0xa2b0119952eada2f,
+        0xb12e4ef2a04b43cd,
+        0xc4934bb1f6ca72c9,
+        0xce882e7012472ced,
+        0x3ccc11a4ccacc22a,
+        0x64d0bc37a0417197,
+        0x993cf3b96fdc44af,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -1350,6 +1350,26 @@ fn air_defence_only_with_the_option() {
     assert!(plain.aaa_units().is_empty());
     // The same mission places the same units.
     assert_eq!(aaa_mission(d).1.aaa_units(), units);
+}
+
+/// The MANPADS teams of a town stand round its edge, none in its middle.
+#[test]
+fn town_defenders_round_the_edge() {
+    let d = data();
+    let (_, sim) = aaa_mission(d);
+    let towns = &d.sim.theaters[3].towns;
+    assert!(!towns.is_empty());
+    let dist = |u: &aaa::AaaUnit, t: &Town| ((u.x - t.x) as f64).hypot((u.y - t.y) as f64);
+    let manpads: Vec<_> =
+        sim.aaa_units().iter().filter(|u| u.kind == aaa::AaaKind::Manpads).collect();
+    let on_edge = manpads
+        .iter()
+        .filter(|u| towns.iter().any(|t| (0.75..1.1).contains(&(dist(u, t) / t.r as f64))))
+        .count();
+    assert!(on_edge > 0, "{manpads:?}");
+    for u in &manpads {
+        assert!(towns.iter().all(|t| dist(u, t) > 0.75 * t.r as f64), "in a town's middle: {u:?}");
+    }
 }
 
 #[test]

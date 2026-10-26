@@ -65,6 +65,7 @@ impl Plugin for SceneryPlugin {
                         approach_sides,
                         clear_approaches,
                         share_parking,
+                        clear_units,
                         remap_vertex_words,
                     )
                         .run_if(resource_exists::<Scenery>),
@@ -119,6 +120,14 @@ impl Scenery {
     /// Open land (not water or concrete) clear of raised objects by `r` metres.
     pub fn is_open(&self, p: DVec2, r: f64) -> bool {
         self.ground.is_free(p, r)
+    }
+
+    /// Room for a ground unit `r` metres across: dry, clear of the theater's raised objects, of
+    /// buildings and of trees.
+    pub fn unit_clear(&self, p: DVec2, r: f64) -> bool {
+        self.ground.is_dry_clear(p, r)
+            && self.net.building_clear(p, r)
+            && !content::tree_near(self, p, r * 0.75)
     }
 
     /// Where a conventional war burns (fires.rs): in and around the towns and along the roads
@@ -652,6 +661,63 @@ fn share_parking(scenery: Res<Scenery>, combat: Option<ResMut<crate::combat::Com
     if !spots.is_empty() {
         combat.sim.set_parking(spots);
     }
+}
+
+/// Room a ground unit needs (metres from its centre).
+const UNIT_ROOM: f64 = 6.0;
+/// How far a unit moves to find room (map units).
+const UNIT_SEARCH: i32 = 16;
+
+/// Keeps the air defence units out of the scenery: one placed (or moved by the campaign) in a
+/// building, a tree or the water moves to the nearest free map point with room. Not on a client,
+/// which gets the host's positions.
+fn clear_units(
+    scenery: Res<Scenery>,
+    combat: Option<ResMut<crate::combat::Combat>>,
+    link: Option<Res<crate::net::NetLink>>,
+    mut seen: Local<Vec<(i32, i32)>>,
+) {
+    let Some(mut combat) = combat else { return };
+    if link.as_deref().is_some_and(|l| l.is_client()) {
+        return;
+    }
+    let units = combat.sim.aaa_units();
+    if units.len() == seen.len() && units.iter().zip(seen.iter()).all(|(u, &s)| (u.x, u.y) == s) {
+        return;
+    }
+    let units = combat.sim.aaa_units_mut();
+    let mut taken: std::collections::HashSet<(i32, i32)> =
+        units.iter().filter(|u| !u.destroyed).map(|u| (u.x, u.y)).collect();
+    for (i, u) in units.iter_mut().enumerate() {
+        if u.destroyed || seen.get(i) == Some(&(u.x, u.y)) {
+            continue;
+        }
+        let m = stealth_sim::aaa::M_PER_MAP;
+        let room = |x: i32, y: i32| {
+            let p = DVec2::new((x as f64 + 0.5) * m, (0x8000 as f64 - y as f64 - 0.5) * m);
+            scenery.unit_clear(p, UNIT_ROOM)
+        };
+        if room(u.x, u.y) {
+            continue;
+        }
+        // The nearest free point with room, ring by ring.
+        let spot = (1..=UNIT_SEARCH).find_map(|d| {
+            let mut ring: Vec<(i32, i32)> = (-d..=d)
+                .flat_map(|dy| (-d..=d).map(move |dx| (dx, dy)))
+                .filter(|&(dx, dy)| dx.abs().max(dy.abs()) == d)
+                .collect();
+            ring.sort_by_key(|&(dx, dy)| dx * dx + dy * dy);
+            ring.into_iter()
+                .map(|(dx, dy)| ((u.x + dx).clamp(0x40, 0x7FC0), (u.y + dy).clamp(0x40, 0x7FC0)))
+                .find(|&(x, y)| !taken.contains(&(x, y)) && room(x, y))
+        });
+        if let Some(at) = spot {
+            taken.remove(&(u.x, u.y));
+            taken.insert(at);
+            (u.x, u.y) = at;
+        }
+    }
+    *seen = units.iter().map(|u| (u.x, u.y)).collect();
 }
 
 /// Builds the airfields once, then makes them follow the scenery setting (and Alt-D detail 0

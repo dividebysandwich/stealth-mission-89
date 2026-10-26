@@ -555,6 +555,9 @@ impl Sim {
             }
         }
         let war = self.roe;
+        // A town's defenders round its edge, else round the place.
+        let town = self.town_ring(x, y);
+        let around = |lo, hi| town.unwrap_or((x, y, lo, hi));
         let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
             let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
             let r = (lo + rng.random(hi - lo)) as f64;
@@ -586,11 +589,13 @@ impl Sim {
                 add(&mut rng, AaaKind::Manpads, x, y, 15, 80);
             }
             (false, false) => {
+                let (tx, ty, lo, hi) = around(15, 80);
                 for _ in 0..1 + rng.random(war + 1) {
-                    add(&mut rng, AaaKind::Manpads, x, y, 15, 80);
+                    add(&mut rng, AaaKind::Manpads, tx, ty, lo, hi);
                 }
                 if rng.random(3) < war {
-                    add(&mut rng, AaaKind::Zsu, x, y, 20, 70);
+                    let (tx, ty, lo, hi) = around(20, 70);
+                    add(&mut rng, AaaKind::Zsu, tx, ty, lo, hi);
                 }
             }
             (true, true) => {
@@ -599,7 +604,10 @@ impl Sim {
                     add(&mut rng, AaaKind::Manpads, x, y, 15, 80);
                 }
             }
-            (true, false) => add(&mut rng, AaaKind::Manpads, x, y, 15, 60),
+            (true, false) => {
+                let (tx, ty, lo, hi) = around(15, 60);
+                add(&mut rng, AaaKind::Manpads, tx, ty, lo, hi);
+            }
         }
         if self.aaa.len() > MAX_UNITS {
             self.aaa.truncate(MAX_UNITS);

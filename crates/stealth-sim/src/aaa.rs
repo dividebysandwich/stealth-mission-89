@@ -20,6 +20,8 @@ use crate::types::*;
 
 /// Metres per map unit (32 world units of 0.48828125 m).
 pub const M_PER_MAP: f64 = 15.625;
+/// A town's defenders stand round its edge: from and to these shares of its radius.
+const TOWN_RING: (f64, f64) = (0.8, 1.05);
 const M_PER_WU: f64 = M_PER_MAP / 32.0;
 const FT: f64 = 0.3048;
 const G: f64 = 9.81;
@@ -200,6 +202,24 @@ impl Sim {
         &mut self.aaa
     }
 
+    /// The town at map point (`x`, `y`): the nearest whose disc holds it.
+    pub fn town_at(&self, x: i32, y: i32) -> Option<crate::Town> {
+        let towns = self.tiles.as_ref()?.towns.iter();
+        towns
+            .filter(|t| approx(t.x - x, t.y - y) <= t.r)
+            .min_by_key(|t| approx(t.x - x, t.y - y))
+            .copied()
+    }
+
+    /// Where the defenders of a place at (`x`, `y`) in a town stand: the ring round the town's
+    /// edge (centre, inner and outer radius in map units).
+    pub(crate) fn town_ring(&self, x: i32, y: i32) -> Option<(i32, i32, i32, i32)> {
+        self.town_at(x, y).map(|t| {
+            let lo = (t.r as f64 * TOWN_RING.0) as i32;
+            (t.x, t.y, lo, ((t.r as f64 * TOWN_RING.1) as i32).max(lo + 1))
+        })
+    }
+
     pub fn aaa_shells(&self) -> &[Shell] {
         &self.aaa_shells
     }
@@ -295,8 +315,9 @@ impl Sim {
             {
                 continue;
             }
+            let (x, y, lo, hi) = self.town_ring(o.x, o.y).unwrap_or((o.x, o.y, 15, 80));
             for _ in 0..rng.random(war + 2) {
-                around(&mut rng, &mut units, o.x, o.y, AaaKind::Manpads, 15, 80);
+                around(&mut rng, &mut units, x, y, AaaKind::Manpads, lo, hi);
             }
         }
         units.truncate(MAX_UNITS);

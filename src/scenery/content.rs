@@ -641,49 +641,66 @@ fn power(net: &Network, f: &Frame, g: &mut Geom) {
     }
 }
 
+/// The tree or bush growing in tree grid cell (`gx`, `gy`), if one does: where, whether it is
+/// a bush, and the cell's random numbers to draw it with.
+fn tree_in_cell(sc: &Scenery, style: &Style, gx: i64, gy: i64) -> Option<(DVec2, bool, Rng)> {
+    let seed = style.seed;
+    let mut rng = Rng::new(hash(seed, gx, gy, 9));
+    let p = DVec2::new(
+        (gx as f64 + rng.range(0.1, 0.9)) * TREE_GRID,
+        (gy as f64 + rng.range(0.1, 0.9)) * TREE_GRID,
+    );
+    // The theater's own woods are dense, elsewhere the noise decides.
+    let wood = sc.ground.is_forest(p, 3.0);
+    let cover = noise(seed, p, 1600.0);
+    let forest = if wood { 1.0 } else { ((cover - style.forest) / 0.1).clamp(0.0, 1.0) };
+    let roll = rng.f();
+    let in_town = sc.net.town_at(p, 0.95).is_some();
+    // Meadows: lone trees and copses.
+    let meadow =
+        !wood && style.farmland.is_some_and(|land| land_at(style, land, p) == Land::Meadow);
+    let copse = meadow && noise(seed ^ 0xC0B5E, p, 90.0) > 0.66;
+    let (tree, bush) = if in_town {
+        (roll < 0.05, false)
+    } else if meadow {
+        (
+            roll < forest * 0.85 || roll > 0.98 || (copse && roll < 0.7),
+            (0.96..0.98).contains(&roll),
+        )
+    } else {
+        (roll < forest * 0.85 || roll > 0.995, forest > 0.0 && forest < 0.5 && roll > 0.97)
+    };
+    if !tree && !bush {
+        return None;
+    }
+    if !(wood || sc.ground.is_free(p, 3.0))
+        || !sc.net.road_clear(p, 4.0)
+        || !sc.net.building_clear(p, 3.0)
+        || (!wood && style.farmland.is_some_and(|land| in_field(sc, land, seed, p)))
+    {
+        return None;
+    }
+    Some((p, bush, rng))
+}
+
+/// A tree or bush (of the tree grid) within `r` metres of `p`.
+pub(super) fn tree_near(sc: &Scenery, p: DVec2, r: f64) -> bool {
+    let Some(style) = &sc.style else { return false };
+    let (lo, hi) = ((p - r) / TREE_GRID, (p + r) / TREE_GRID);
+    let cells = (lo.y.floor() as i64..=hi.y.floor() as i64)
+        .flat_map(|gy| (lo.x.floor() as i64..=hi.x.floor() as i64).map(move |gx| (gx, gy)));
+    cells.filter_map(|(gx, gy)| tree_in_cell(sc, style, gx, gy)).any(|(q, ..)| q.distance(p) < r)
+}
+
 fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
     let Some(style) = &sc.style else { return };
     let n = (BLOCK / TREE_GRID) as i64;
     let (gx0, gy0) = ((f.min.x / TREE_GRID) as i64, (f.min.y / TREE_GRID) as i64);
-    let seed = style.seed;
     for j in 0..n {
         for i in 0..n {
-            let (gx, gy) = (gx0 + i, gy0 + j);
-            let mut rng = Rng::new(hash(seed, gx, gy, 9));
-            let p = DVec2::new(
-                (gx as f64 + rng.range(0.1, 0.9)) * TREE_GRID,
-                (gy as f64 + rng.range(0.1, 0.9)) * TREE_GRID,
-            );
-            // The theater's own woods are dense, elsewhere the noise decides.
-            let wood = sc.ground.is_forest(p, 3.0);
-            let cover = noise(seed, p, 1600.0);
-            let forest = if wood { 1.0 } else { ((cover - style.forest) / 0.1).clamp(0.0, 1.0) };
-            let roll = rng.f();
-            let in_town = sc.net.town_at(p, 0.95).is_some();
-            // Meadows: lone trees and copses.
-            let meadow =
-                !wood && style.farmland.is_some_and(|land| land_at(style, land, p) == Land::Meadow);
-            let copse = meadow && noise(seed ^ 0xC0B5E, p, 90.0) > 0.66;
-            let (tree, bush) = if in_town {
-                (roll < 0.05, false)
-            } else if meadow {
-                (
-                    roll < forest * 0.85 || roll > 0.98 || (copse && roll < 0.7),
-                    (0.96..0.98).contains(&roll),
-                )
-            } else {
-                (roll < forest * 0.85 || roll > 0.995, forest > 0.0 && forest < 0.5 && roll > 0.97)
+            let Some((p, bush, mut rng)) = tree_in_cell(sc, style, gx0 + i, gy0 + j) else {
+                continue;
             };
-            if !tree && !bush {
-                continue;
-            }
-            if !(wood || sc.ground.is_free(p, 3.0))
-                || !sc.net.road_clear(p, 4.0)
-                || !sc.net.building_clear(p, 3.0)
-                || (!wood && style.farmland.is_some_and(|land| in_field(sc, land, seed, p)))
-            {
-                continue;
-            }
             let c = f.at(p, 0.0);
             if bush && far {
                 continue;

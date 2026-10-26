@@ -96,6 +96,33 @@ pub struct TheaterTiles {
     pub objects: [Vec<Vec<(i16, i16, u8)>>; 2],
     /// Theater model attribute byte per shape (bit 0x20: the model has its own wreck state).
     pub model_attr: Vec<u8>,
+    /// Remake theaters: the real towns (their defenders stand round the edge).
+    #[serde(default)]
+    pub towns: Vec<Town>,
+}
+
+/// A town: centre (map units, y south) and radius (map units).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Town {
+    pub x: i32,
+    pub y: i32,
+    pub r: i32,
+}
+
+impl Town {
+    /// A town of a theater file (metres east, north; radius in metres).
+    pub fn from_metres(x: f64, y: f64, r: f64) -> Self {
+        let map = |m: f64| (m / crate::aaa::M_PER_MAP).round() as i32;
+        Self { x: map(x), y: 0x8000 - map(y), r: map(r).max(1) }
+    }
+}
+
+/// A town of a theater file (its other fields are the scenery's).
+#[derive(Deserialize)]
+struct TownSite {
+    x: f64,
+    y: f64,
+    r: f64,
 }
 
 /// All static data the simulation needs.
@@ -214,13 +241,16 @@ struct TheaterFile {
     tiles: terrain::TileSets,
     #[serde(default)]
     model_attr: Vec<u8>,
+    #[serde(default)]
+    towns: Vec<TownSite>,
 }
 
 impl TheaterTiles {
     /// The tile data of a theater file.
     pub fn read_ron(text: &[u8]) -> Result<Self> {
         let t: TheaterFile = ron::from_str(std::str::from_utf8(text)?)?;
-        Ok(Self::from_tilesets(&t.grid, &t.tiles, &t.model_attr))
+        let towns = t.towns.iter().map(|s| Town::from_metres(s.x, s.y, s.r)).collect();
+        Ok(Self { towns, ..Self::from_tilesets(&t.grid, &t.tiles, &t.model_attr) })
     }
 
     /// A theater's tile data from its terrain (remake theaters, which the exported classic
@@ -239,7 +269,12 @@ impl TheaterTiles {
                 })
                 .unwrap_or_default()
         };
-        Self { grid: grid.clone(), objects: [level(1), level(2)], model_attr: model_attr.to_vec() }
+        Self {
+            grid: grid.clone(),
+            objects: [level(1), level(2)],
+            model_attr: model_attr.to_vec(),
+            towns: Vec::new(),
+        }
     }
 
     /// LOD1/LOD2 tile type at (col, row) (row counted north-up), -1 outside the grid.
