@@ -359,3 +359,50 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
     assert!(host.state.supply_requests.iter().all(|r| !matches!(r.state, SupplyState::Ai { .. })));
     assert!(host.state.supply_requests.is_empty());
 }
+
+/// An unmanned Patriot battery refills its empty launchers from its stockpile by itself: when
+/// the last missiles go, a resupply is ordered by itself (once), and goes on the board.
+#[test]
+fn an_empty_stockpile_orders_a_resupply() {
+    use stealth_campaign::{MissionKind, Objective};
+    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::station::SavedStock;
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.supply_requests.is_empty(), "{:?}", host.state.supply_requests);
+    let radar = (0..sim.aaa_units().len())
+        .find(|&k| sim.aaa_units()[k].kind == AaaKind::PatriotRadar && sim.aaa_blue(k))
+        .expect("a friendly Patriot battery");
+    let r = sim.aaa_units()[radar];
+    // One missile left in the stockpile, one launcher fired empty.
+    sim.restore_stocks(&[SavedStock { x: r.x, y: r.y, patriot: true, stock: 1 }]);
+    let l = sim.battery_launchers(radar)[0];
+    sim.aaa_units_mut()[l].rounds = 0;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.supply_requests.is_empty());
+    // The battery's own refill takes the last one.
+    host.refills(&mut sim, 1.0);
+    host.refills(&mut sim, stealth_sim::station::REFILL_SECONDS);
+    assert_eq!(sim.stockpile(radar), 0);
+    let ev = host.tick(&mut sim, 0.1, &[]);
+    assert!(ev.iter().any(|e| matches!(e,
+        HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) if m.contains("out of missiles"))));
+    assert_eq!(host.state.supply_requests.len(), 1);
+    let q = host.state.supply_requests[0].clone();
+    assert_eq!((q.aaa as usize, q.by, q.patriot), (radar, None, true));
+    // Once.
+    host.tick(&mut sim, 0.1, &[]);
+    assert_eq!(host.state.supply_requests.len(), 1);
+    host.state.board_at = f64::MIN;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(
+        host.state.board.iter().any(|o| o.kind == MissionKind::Resupply
+            && o.objective == Objective::Resupply { request: q.id })
+    );
+}

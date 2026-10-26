@@ -288,7 +288,7 @@ impl CampaignState {
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),
             Command::RequestResupply { aaa, x, y, patriot } => {
-                self.request_resupply(player, aaa, x, y, patriot)
+                self.request_resupply(Some(player), aaa, x, y, patriot)
             }
         }
     }

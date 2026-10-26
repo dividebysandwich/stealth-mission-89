@@ -867,7 +867,8 @@ pub struct SupplyRequest {
     pub patriot: bool,
     /// The place it is named after (the nearest).
     pub name: String,
-    pub by: PlayerId,
+    /// Who asked for it (None: ordered when the unit ran out).
+    pub by: Option<PlayerId>,
     pub posted: f64,
     pub state: SupplyState,
 }

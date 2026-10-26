@@ -1,5 +1,6 @@
 //! Resupply of the friendly air defence: a player at a Patriot battery's or Gepard's console
-//! asks for a new stockpile, and the request goes on the board for the UH-60 pilots (hover
+//! asks for a new stockpile (or the stockpile ran out and one is ordered), and the request goes
+//! on the board for the UH-60 pilots (hover
 //! low at the unit with the load). Nobody takes it for `SUPPLY_AI_WAIT`: an AI helicopter
 //! flies it from the nearest airfield, and it leaves the board.
 
@@ -8,10 +9,11 @@ use crate::tuning::*;
 use crate::{CampaignEvent, Report, WorldView};
 
 impl CampaignState {
-    /// A player at an air defence console asks for a new stockpile for its unit.
+    /// A player at an air defence console asks for a new stockpile for its unit (None: it ran
+    /// out and the request goes out by itself).
     pub(crate) fn request_resupply(
         &mut self,
-        player: PlayerId,
+        player: Option<PlayerId>,
         aaa: u32,
         x: i32,
         y: i32,
@@ -44,12 +46,38 @@ impl CampaignState {
             posted: now,
             state: SupplyState::Open { since: now },
         };
-        let who = self.player_name(player).unwrap_or("A pilot");
-        let text = format!("{who} requests resupply for the {}", r.title());
+        let text = match player {
+            Some(p) => {
+                let who = self.player_name(p).unwrap_or("A pilot");
+                format!("{who} requests resupply for the {}", r.title())
+            }
+            None => {
+                let what = if patriot { "missiles" } else { "rounds" };
+                format!("The {} is out of {what}: resupply ordered", r.title())
+            }
+        };
         self.supply_requests.push(r);
         self.note(text.clone());
         self.board_at = f64::MIN;
         Ok(vec![CampaignEvent::Message(text)])
+    }
+
+    /// An air defence unit (AAA index, where it stands, a Patriot battery or a Gepard) has used
+    /// up its stockpile: a resupply is ordered unless one is already under way (or no airfield
+    /// is left to fly it from).
+    pub fn order_resupply(
+        &mut self,
+        aaa: u32,
+        x: i32,
+        y: i32,
+        patriot: bool,
+    ) -> Vec<CampaignEvent> {
+        if self.outcome.is_some()
+            || self.supply_requests.iter().any(|r| r.aaa == aaa || (r.x, r.y) == (x, y))
+        {
+            return Vec::new();
+        }
+        self.request_resupply(None, aaa, x, y, patriot).unwrap_or_default()
     }
 
     /// The friendly airfield a resupply for (x, y) is flown from: the nearest intact one, else

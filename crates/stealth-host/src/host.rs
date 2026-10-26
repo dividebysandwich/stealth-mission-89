@@ -328,6 +328,28 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// The friendly Patriot batteries and Gepards whose stockpile ran out (their own fire, or a
+    /// player's at the console): a resupply is ordered for each.
+    fn out_of_stock(&mut self, sim: &Sim) -> Vec<CampaignEvent> {
+        use stealth_sim::aaa::AaaKind;
+        let empty: Vec<(usize, stealth_sim::aaa::AaaUnit)> = (0..sim.aaa_units().len())
+            .map(|k| (k, sim.aaa_units()[k]))
+            .filter(|(k, u)| {
+                matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard)
+                    && !u.destroyed
+                    && sim.aaa_blue(*k)
+                    // A unit placed this frame has no stock yet (not an empty one).
+                    && sim.defence().and_then(|d| d.stock.get(*k)).is_some_and(|&s| s <= 0)
+            })
+            .collect();
+        let mut events = Vec::new();
+        for (k, u) in empty {
+            let patriot = u.kind == AaaKind::PatriotRadar;
+            events.extend(self.state.order_resupply(k as u32, u.x, u.y, patriot));
+        }
+        events
+    }
+
     /// `real` seconds of wall clock: the air defence's refills (they take real time whatever
     /// the time scale), and its stockpiles noted for the save.
     pub fn refills(&mut self, sim: &mut Sim, real: f32) {
@@ -408,6 +430,8 @@ impl Host {
         }
         let view = glue::world_view(sim);
         let events = self.state.tick(dt, &view, &reports);
+        out.extend(self.apply(sim, events));
+        let events = self.out_of_stock(sim);
         out.extend(self.apply(sim, events));
         for (player, e) in ended {
             let (end, title) = glue::sortie_end(&e);

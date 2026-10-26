@@ -1801,3 +1801,20 @@ fn a_resupply_for_a_lost_unit_is_called_off() {
     assert!(c.supply_requests.is_empty());
     assert!(!c.board.iter().any(|o| o.kind == MissionKind::Resupply));
 }
+
+#[test]
+fn a_unit_out_of_stock_orders_its_resupply_once() {
+    let (mut c, view, at) = battery_view();
+    let ev = c.order_resupply(0, at.0, at.1, true);
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("out of missiles")))
+    );
+    assert_eq!(c.supply_requests[0].by, None);
+    assert!(c.order_resupply(0, at.0, at.1, true).is_empty());
+    // A player's request for it is the same one.
+    assert!(
+        c.apply(P0, Command::RequestResupply { aaa: 0, x: at.0, y: at.1, patriot: true }).is_err()
+    );
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Resupply).count(), 1);
+}
