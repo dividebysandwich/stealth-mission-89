@@ -1096,6 +1096,13 @@ mod tests {
         let (a, _) = fly_with(k(), false, level(airborne(1000.0, 500.0, 100.0)), 240.0, |_, _| {});
         println!("F-16 modern: dry max speed at 1000 ft: {:.0} kt", a.knots());
         assert!((580.0..680.0).contains(&a.knots()), "dry sea level {}", a.knots());
+        let (a, _) = fly_with(k(), false, level(airborne(36000.0, 500.0, 100.0)), 400.0, |_, _| {});
+        println!("F-16 modern: dry max speed at 36000 ft: {:.0} kt", a.knots());
+        assert!((520.0..650.0).contains(&a.knots()), "dry at altitude {}", a.knots());
+        // Half throttle is a cruise, not nearly full speed.
+        let (a, _) = fly_with(k(), false, level(airborne(10000.0, 450.0, 50.0)), 240.0, |_, _| {});
+        println!("F-16 modern: half throttle at 10000 ft: {:.0} kt", a.knots());
+        assert!((400.0..540.0).contains(&a.knots()), "half throttle {}", a.knots());
         for classic in [false, true] {
             let name = if classic { "classic" } else { "modern" };
             let (a, _) = fly_with(

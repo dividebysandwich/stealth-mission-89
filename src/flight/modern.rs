@@ -2,7 +2,9 @@
 //! control system. The airframe constants come per aircraft type (`Aero`); the F-117A's are
 //! tuned to the classic model's performance (about 560 kt at sea level, 120 kt clean stall, 7 g).
 //!
-//! - Forces: thrust along the nose (lapsing with air density), lift from the angle of attack
+//! - Forces: thrust along the nose (rising steeply over the throttle's travel like a jet
+//!   engine's with its rpm, lapsing with air density, the afterburner's gaining more with
+//!   speed), lift from the angle of attack
 //!   (linear up to the stall, falling off past it), drag (parasite, induced, gear, flaps, speed
 //!   brake, bay doors, transonic rise, the engine's ram drag at low throttle), side force from
 //!   sideslip and gravity, on a mass that lightens as fuel burns.
@@ -35,6 +37,11 @@ const RHO0: f32 = 0.002_376_9;
 const FLAP_TIME: f32 = 3.0;
 /// Dynamic pressure (psf) below which the full stick roll rate fades.
 const ROLL_Q_FULL: f32 = 150.0;
+/// Dry thrust goes with the throttle setting to this power (a turbofan's thrust rises steeply
+/// with its rpm: half throttle gives about a third of full thrust), and with the air density
+/// to this power (about a third of it left at 36,000 ft).
+const THROTTLE_CURVE: f32 = 1.5;
+const THRUST_LAPSE: f32 = 0.8;
 
 /// Airframe constants of one aircraft type.
 #[derive(Debug, Clone, Copy)]
@@ -47,8 +54,9 @@ pub struct Aero {
     /// Static thrust to reference weight at full throttle (dry: without the afterburner), and
     /// its rise per Mach (ram effect).
     pub thrust_ratio: f32,
-    /// The same with the full afterburner (0: none).
+    /// The same with the full afterburner (0: none), and the afterburner's rise per Mach.
     pub ab_thrust_ratio: f32,
+    pub ab_thrust_mach: f32,
     pub thrust_mach: f32,
     /// Lift slope (1/rad) and stall angles of attack (rad).
     pub cl_alpha: f32,
@@ -128,6 +136,7 @@ impl Aero {
         ref_weight: 47_000.0,
         thrust_ratio: 0.8,
         ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
         thrust_mach: 0.0,
         cl_alpha: 3.0,
         alpha_stall: 0.40,
@@ -160,7 +169,8 @@ impl Aero {
         dry_weight: 19_000.0,
         ref_weight: 29_000.0,
         thrust_ratio: 0.63,
-        ab_thrust_ratio: 1.07,
+        ab_thrust_ratio: 1.0,
+        ab_thrust_mach: 0.6,
         thrust_mach: 0.1,
         cl_alpha: 4.0,
         alpha_stall: 0.50,
@@ -418,11 +428,13 @@ pub(super) fn step(
     }
     cd += ae.drag_rise.cd(mach);
     cd += ae.cd_idle * (1.0 - a.thrust / 100.0).clamp(0.0, 1.0).powi(2);
-    let ab = (ae.ab_thrust_ratio - ae.thrust_ratio).max(0.0) * a.afterburner;
-    let thrust = (ae.thrust_ratio * a.thrust / 100.0 + ab)
-        * (1.0 + ae.thrust_mach * mach.min(2.0))
-        * sigma.powf(0.6)
-        / mass;
+    let dry = ae.thrust_ratio
+        * (a.thrust / 100.0).clamp(0.0, 1.0).powf(THROTTLE_CURVE)
+        * (1.0 + ae.thrust_mach * mach.min(2.0));
+    let ab = (ae.ab_thrust_ratio - ae.thrust_ratio).max(0.0)
+        * a.afterburner
+        * (1.0 + ae.ab_thrust_mach * mach.min(2.0));
+    let thrust = (dry + ab) * sigma.powf(THRUST_LAPSE) / mass;
     let lift_dir = (up - vhat * up.dot(vhat)).normalize_or(up);
     let side_dir = (right - vhat * right.dot(vhat)).normalize_or(right);
     let n_lift = per_cl * cl;
