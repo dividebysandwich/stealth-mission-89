@@ -516,7 +516,7 @@ fn read_keyboard(
                 && (m.mods == Mods::None || m.mods == mods)
         })
     };
-    controls.fire = held(Action::FireWeapon);
+    controls.fire = held(Action::FireWeapon) && !crate::fullscreen::alt_enter(&keys);
     controls.mark = held(Action::LockCursor);
     controls.yaw = yaw.clamp(-1.0, 1.0) * scale;
     controls.throttle = None;

@@ -112,7 +112,8 @@ fn debrief_ui(
     }
     let screen = ctx.content_rect();
     let width = (screen.width() - 32.0).clamp(600.0, 1100.0);
-    let mut done = keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Escape);
+    let mut done = (keys.just_pressed(KeyCode::Enter) && !crate::fullscreen::alt_enter(&keys))
+        || keys.just_pressed(KeyCode::Escape);
     egui::Window::new("Debrief")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)

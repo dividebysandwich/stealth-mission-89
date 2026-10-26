@@ -29,6 +29,7 @@ mod flight;
 mod flight_menu;
 mod font;
 mod freecam;
+mod fullscreen;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
 mod headtrack;
@@ -151,6 +152,8 @@ fn main() {
                 title: "Stealth Mission 89".into(),
                 // Wayland app id / X11 class, matching packaging/linux/stealth-mission-89.desktop.
                 name: Some("stealth-mission-89".into()),
+                // Fullscreen unless the player chose a window (Alt Enter / F11).
+                mode: fullscreen::start_mode(),
                 // `--window-size WxH` (screenshots). Otherwise 1280x768: the single mission
                 // screen needs about 760 logical pixels (Bevy's 1280x720 cut its bottom).
                 resolution: std::env::args()
@@ -225,6 +228,7 @@ fn main() {
             dots::DotsPlugin,
             canvas::CanvasPlugin,
             boss_key::BossKeyPlugin,
+            fullscreen::FullscreenPlugin,
         ))
         .add_plugins((
             menu::MenuPlugin,

@@ -802,7 +802,8 @@ fn navigate(
     if keys.just_pressed(KeyCode::ArrowRight) || pad(GamepadButton::DPadRight) {
         adjust += 1;
     }
-    if keys.any_just_pressed([KeyCode::Enter, KeyCode::NumpadEnter, KeyCode::Space])
+    if (keys.any_just_pressed([KeyCode::Enter, KeyCode::NumpadEnter, KeyCode::Space])
+        && !crate::fullscreen::alt_enter(&keys))
         || pad(GamepadButton::South)
     {
         select = true;

@@ -53,7 +53,7 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | free camera (remake): W / S forward / back, A / D left / right, Q / E down / up, Shift faster, Ctrl slower, right mouse button turns, wheel zooms; again to go back | Shift F7 |
 | View | zoom / unzoom / wide angle | Z / X / C |
 | Time | accelerate / normal | Shift Z / Shift X |
-| Misc | pause (remake: settings menu, also Esc) / boss / quit | Alt P / Alt B / Alt Q |
+| Misc | pause (remake: settings menu, also Esc) / boss / quit / fullscreen | Alt P / Alt B / Alt Q / Alt Enter, F11 |
 | | volume / detail level | Alt V / Alt D |
 | | kneeboard (remake): show, next page, hide | K |
 | | chat (remake, multiplayer): type a message, Enter sends, Esc cancels | Y |
