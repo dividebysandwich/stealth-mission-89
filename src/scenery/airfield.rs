@@ -428,7 +428,11 @@ fn side_parking(a: &mut Airfield, ax: &Axes, ground: &Ground, sides: &[(f64, f64
         true
     };
     let Some((s, v0, uc)) = sides.iter().find_map(|&(s, v0)| {
-        [0.0, -0.3, 0.3, -0.55, 0.55].iter().map(|f| f * l).find(|&uc| clear(s, v0, uc)).map(|uc| (s, v0, uc))
+        [0.0, -0.3, 0.3, -0.55, 0.55]
+            .iter()
+            .map(|f| f * l)
+            .find(|&uc| clear(s, v0, uc))
+            .map(|uc| (s, v0, uc))
     }) else {
         return;
     };

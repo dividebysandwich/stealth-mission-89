@@ -8,7 +8,8 @@
 //!
 //! Against oscillation: short dips don't count (it takes two bad two-second windows, or one
 //! very bad one, which steps down two levels), frames that build scenery or settle a change are left out, raising detail
-//! waits for 15 good seconds, and a level that failed soon after being raised to is not tried
+//! waits for 5 good seconds, the next raise 7, then 10, 15 and 20 (back to 5 after a step
+//! down), and a level that failed soon after being raised to is not tried
 //! again for a minute, then two, four... (at most ten).
 
 use bevy::prelude::*;
@@ -110,11 +111,12 @@ const HITCH: f32 = 0.25;
 /// Seconds of frames measured per verdict.
 const WINDOW: f32 = 2.0;
 /// Share of late frames in a window: bad (two in a row step down), very bad (one steps down),
-/// good (15 seconds of them step up).
+/// good (`RAISE_AFTER` seconds of them step up).
 const BAD: f32 = 0.15;
 const VERY_BAD: f32 = 0.5;
 const GOOD: f32 = 0.02;
-const RAISE_AFTER: f32 = 15.0;
+/// Good seconds before each raise in a row (the last one repeats); a step down starts over.
+const RAISE_AFTER: [f32; 5] = [5.0, 7.0, 10.0, 15.0, 20.0];
 /// Seconds after a change or a hitch before frames count again, and at the start of a flight
 /// (whose first seconds are slow anyway).
 const SETTLE: f32 = 1.5;
@@ -138,6 +140,8 @@ pub struct Governor {
     /// Seconds before frames count (`SETTLE`).
     settle: f32,
     good_for: f32,
+    /// Raises since the last step down.
+    raises: usize,
     /// Seconds since detail was raised (to `level`).
     since_raise: Option<f32>,
     /// Seconds each level must still wait before it may be raised to, and its next cooldown.
@@ -156,6 +160,7 @@ impl Default for Governor {
             prev_bad: false,
             settle: START_SETTLE,
             good_for: 0.0,
+            raises: 0,
             since_raise: None,
             cooldown: [0.0; MAX as usize + 1],
             penalty: [COOLDOWN / 2.0; MAX as usize + 1],
@@ -187,6 +192,18 @@ impl Governor {
         self.frames += 1;
         self.late += (dt > self.pace * LATE) as u32;
         self.measured += dt;
+        // Raised as soon as enough good time has passed (the window so far has no late frame).
+        let wait = RAISE_AFTER[self.raises.min(RAISE_AFTER.len() - 1)];
+        if self.late == 0
+            && self.good_for + self.measured >= wait
+            && self.level > 0
+            && self.cooldown[self.level as usize - 1] <= 0.0
+        {
+            let level = self.change(self.level - 1);
+            self.raises += 1;
+            self.since_raise = Some(0.0);
+            return Some(level);
+        }
         if self.measured < WINDOW {
             return None;
         }
@@ -205,6 +222,7 @@ impl Governor {
             }
             // Far behind (SteamVR halving the frame rate): two levels at once.
             let by = if share > VERY_BAD { 2 } else { 1 };
+            self.raises = 0;
             return Some(self.change((self.level + by).min(MAX)));
         }
         if share >= GOOD {
@@ -212,14 +230,6 @@ impl Governor {
             return None;
         }
         self.good_for += window;
-        if self.good_for >= RAISE_AFTER
-            && self.level > 0
-            && self.cooldown[self.level as usize - 1] <= 0.0
-        {
-            let level = self.change(self.level - 1);
-            self.since_raise = Some(0.0);
-            return Some(level);
-        }
         None
     }
 
@@ -353,12 +363,17 @@ mod tests {
     #[test]
     fn steps_up_after_quiet() {
         let mut g = governor();
-        run(&mut g, 6.0, 0.25);
+        // Halved frame rate until a step down to 2.
+        while g.frame(2.0 * P, false).is_none() {}
         let level = g.level;
-        assert!(level >= 1);
-        assert!(run(&mut g, 12.0, 0.0).is_empty());
-        run(&mut g, 8.0, 0.0);
+        assert_eq!(level, 2);
+        // 1.5 s settling, then 5 good seconds; the next raise 7 s after that.
+        assert!(run(&mut g, 6.3, 0.0).is_empty());
+        run(&mut g, 0.4, 0.0);
         assert_eq!(g.level, level - 1);
+        assert!(run(&mut g, 8.3, 0.0).is_empty());
+        run(&mut g, 0.4, 0.0);
+        assert_eq!(g.level, level - 2);
     }
 
     #[test]
@@ -401,7 +416,7 @@ mod tests {
             t += 1.0;
         }
         assert_eq!(g.level, 2);
-        // Down to 2, then a few probes of 1 at 15 s, 1 min, 2 min, 4 min...
+        // Down to 2, then a few probes of 1 at 5 s, 1 min, 2 min, 4 min...
         assert!(changes <= 12, "{changes} changes");
     }
 }

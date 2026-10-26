@@ -12,8 +12,8 @@ use bevy::render::storage::ShaderBuffer;
 use serde::Deserialize;
 
 use crate::palette_material::{
-    FLAG_BACKGROUND, FLAG_LINE, FLAG_NIGHT_DIM, FLAG_WATER, Globals, PaletteMaterial, PaletteParams,
-    pack16,
+    FLAG_BACKGROUND, FLAG_LINE, FLAG_NIGHT_DIM, FLAG_WATER, Globals, PaletteMaterial,
+    PaletteParams, pack16,
 };
 use crate::settings::{AppState, MissionSetup, Settings, SetupSet};
 
