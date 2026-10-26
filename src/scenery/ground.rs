@@ -238,6 +238,11 @@ impl Ground {
             && self.boxes_clear(p, r, true)
     }
 
+    /// Land at the point (not water or concrete), whatever stands on it.
+    pub fn is_land(&self, p: DVec2) -> bool {
+        !matches!(self.top(p), Some(Surface::Water | Surface::Solid))
+    }
+
     /// Not water at the point and at least `r` metres from raised geometry.
     pub fn is_dry_clear(&self, p: DVec2, r: f64) -> bool {
         self.top(p) != Some(Surface::Water) && self.boxes_clear(p, r, true)

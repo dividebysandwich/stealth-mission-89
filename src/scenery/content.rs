@@ -1,5 +1,5 @@
-//! Geometry of one scenery block: roads with street lamps, buildings, pylons and wires (main
-//! tier), and trees (detail tier near the viewpoint, far tier beyond). Everything is generated
+//! Geometry of one scenery block: the towns' and cities' paved ground, roads with street lamps,
+//! buildings, pylons and wires (main tier), and trees (detail tier near the viewpoint, far tier beyond). Everything is generated
 //! from the network and per-position hashes, so a block looks the same whenever it is streamed
 //! in, and both tree tiers place the same trees.
 
@@ -11,7 +11,9 @@ use bevy::prelude::*;
 use super::Scenery;
 use super::fields::{self, Farmland};
 use super::geom::{Geom, rect, ring};
-use super::network::{Building, Kind, Network, PowerLine, Rng, RoadKind, Roof, hash, noise};
+use super::network::{
+    Building, Kind, Network, PowerLine, Rng, RoadKind, Roof, TownKind, hash, noise, street_spacing,
+};
 use super::style::{Style, Tree};
 
 /// Block size (metres).
@@ -25,6 +27,14 @@ const BELT_Y: f32 = 0.11;
 const BELT: u8 = 0xAC;
 /// Height of road surfaces above the ground overlays (metres).
 const ROAD_Y: f32 = 0.9;
+/// The built-up ground of towns and cities: concrete in a few shades, between the fields and
+/// the roads.
+const PAVED_Y: f32 = 0.5;
+const PAVED: [u8; 4] = [0xE9, 0xEA, 0xE9, 0xE8];
+/// Paved where a town's core (1 at the centre, 0 at the edge) is above this, give or take
+/// `PAVED_RAGGED` (the edge of the paving wanders), so the outskirts' houses keep gardens.
+const PAVED_EDGE: f64 = 0.22;
+const PAVED_RAGGED: f64 = 0.3;
 const ROAD: u8 = 0xEC;
 const LAMP: u8 = 0x94;
 const WINDOW: u8 = 0x95;
@@ -99,6 +109,7 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier) -> Geom {
     let mut g = Geom::default();
     match tier {
         Tier::Main => {
+            paving(sc, &f, &mut g);
             roads(&sc.net, &f, &mut g);
             let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
             for i in sc.net.building_index.around(min, max) {
@@ -153,7 +164,7 @@ fn farmland_ok(sc: &Scenery, min: DVec2, max: DVec2, r: f64) -> bool {
     let clear_of_towns = !sc.net.town_index.around(min - d, max + d).any(|i| {
         let t = &sc.net.towns[i as usize];
         let q = t.c.clamp(min, max);
-        q.distance(t.c) < t.r * 1.1 + 60.0
+        t.near(q, 1.1, 60.0)
     });
     clear_of_towns && sc.ground.rect_free(min, max, r)
 }
@@ -241,6 +252,42 @@ fn farmland(sc: &Scenery, f: &Frame, min: DVec2, max: DVec2, g: &mut Geom) {
     }
 }
 
+/// The towns' and cities' built-up ground: squares between the streets (half a block each)
+/// paved with concrete, but for the parks and the outskirts.
+fn paving(sc: &Scenery, f: &Frame, g: &mut Geom) {
+    let scale = sc.style.as_ref().map_or(1.0, |s| s.street_scale);
+    let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
+    let mut seen = std::collections::HashSet::new();
+    for id in sc.net.town_index.around(min, max) {
+        let town = &sc.net.towns[id as usize];
+        if town.kind == TownKind::Village || !seen.insert(id) {
+            continue;
+        }
+        let cell = street_spacing(town.kind) * scale * 0.5;
+        let (u, v) = (town.u, town.u.perp());
+        let n = (town.reach() / cell).ceil() as i64;
+        for i in -n..n {
+            for j in -n..n {
+                let q = town.c + u * ((i as f64 + 0.5) * cell) + v * ((j as f64 + 0.5) * cell);
+                if !f.contains(q) {
+                    continue;
+                }
+                let edge = PAVED_EDGE + PAVED_RAGGED * (noise(id as u64 ^ 0x9A7E, q, 300.0) - 0.5);
+                if town.core(q) < edge || town.park(q) {
+                    continue;
+                }
+                let corners = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+                    .map(|(a, b)| q + u * (a * cell * 0.5) + v * (b * cell * 0.5));
+                if !corners.iter().all(|&p| sc.ground.is_land(p)) {
+                    continue;
+                }
+                let shade = PAVED[(hash(id as u64, i, j, 0x9A) % PAVED.len() as u64) as usize];
+                g.ground(shade, &corners.map(|p| f.at(p, PAVED_Y)));
+            }
+        }
+    }
+}
+
 fn roads(net: &Network, f: &Frame, g: &mut Geom) {
     let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
     let mut lamps: Vec<DVec2> = Vec::new();
@@ -266,8 +313,7 @@ fn roads(net: &Network, f: &Frame, g: &mut Geom) {
         let lit = match road.kind {
             RoadKind::Street => true,
             _ => {
-                net.town_at(mid, 1.0).is_some()
-                    || net.towns.iter().any(|t| t.c.distance(mid) < t.r + 350.0)
+                net.town_at(mid, 1.0).is_some() || net.towns.iter().any(|t| t.near(mid, 1.0, 350.0))
             }
         };
         if !lit {
