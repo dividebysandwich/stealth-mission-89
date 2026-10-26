@@ -533,9 +533,15 @@ impl Network {
         let (c, kind, u, ruined) = (town.c, town.kind, town.u, town.ruined);
         let spacing = street_spacing(kind) * style.street_scale;
         let mut rng = Rng::new(hash(style.seed, t as i64, 0, 3));
-        let streets: Vec<(DVec2, DVec2, f64)> = self
-            .roads
+        // The town's streets (with the roads' order): those with a segment near it.
+        let d = DVec2::splat(town.reach() + 1.0);
+        let mut near: Vec<u32> =
+            self.segment_index.around(c - d, c + d).map(|i| self.segments[i as usize].0).collect();
+        near.sort_unstable();
+        near.dedup();
+        let streets: Vec<(DVec2, DVec2, f64)> = near
             .iter()
+            .map(|&i| &self.roads[i as usize])
             .filter(|road| {
                 road.kind == RoadKind::Street
                     && town.near(road.pts[0], 1.0, 1.0)
@@ -757,7 +763,8 @@ impl Network {
             }
         }
         for (p, dir, seed) in sites {
-            if self.town_at(p, 1.0).is_some() || self.towns.iter().any(|t| t.near(p, 1.0, 120.0)) {
+            // Within 120 m of a town (the town index holds each to 200 m past its reach).
+            if self.town_index.at(p).iter().any(|&i| self.towns[i as usize].near(p, 1.0, 120.0)) {
                 continue;
             }
             if !ground.is_free(p, 40.0)
