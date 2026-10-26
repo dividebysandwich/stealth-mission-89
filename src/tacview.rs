@@ -375,9 +375,12 @@ impl AcmiWriter {
     }
 }
 
-/// Where recordings go.
+/// Where recordings go; none in the browser.
 fn folder() -> Option<PathBuf> {
-    stealth_host::store::path("tacview")
+    #[cfg(not(target_arch = "wasm32"))]
+    return stealth_host::store::path("tacview");
+    #[cfg(target_arch = "wasm32")]
+    None
 }
 
 /// Writes the recording of a flight; errors are logged.
