@@ -707,10 +707,16 @@ fn step_one(
 /// Classic model auto trim: the share of the remaining rotation trimmed out per second.
 const CLASSIC_TRIM_GAIN: f32 = 2.0;
 
+/// How fast a held throttle key moves the throttle (percent per second).
+const THROTTLE_RATE: f32 = 50.0;
+
 /// Thrust spool and fuel burn (engine damage caps the thrust).
 fn engine(a: &mut Aircraft, controls: &FlightControls, k: &FlightConstants, dt: f32) {
     if let Some(t) = controls.throttle {
         a.set_thrust = (t.clamp(0.0, 1.0) * 100.0).round();
+    } else if controls.throttle_rate != 0.0 {
+        a.set_thrust =
+            (a.set_thrust + controls.throttle_rate * THROTTLE_RATE * dt).clamp(0.0, 100.0);
     }
     let set = a.damage.throttle_cap.map_or(a.set_thrust, |cap| a.set_thrust.min(cap));
     a.thrust += (set - a.thrust) / k.spool_div * dt;

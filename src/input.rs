@@ -255,6 +255,9 @@ pub struct FlightControls {
     /// Helicopters: the collective moving while its keys (the throttle keys) or the gamepad
     /// triggers are held, -1 (down) .. 1 (up).
     pub collective_rate: f32,
+    /// Fixed wing: the throttle moving while a throttle key is held past `THROTTLE_HOLD_S`, -1
+    /// (down) .. 1 (up); a press alone steps it (`Action::ThrottleUp`/`Down`).
+    pub throttle_rate: f32,
     /// Trim switch held: x roll right, y nose up (-1..1).
     pub trim: Vec2,
     /// Gun trigger held.
@@ -408,6 +411,10 @@ const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
     (KeyCode::Numpad3, 1.0, -1.0),
 ];
 
+/// How long a throttle key is held before the throttle moves on its own (seconds).
+const THROTTLE_HOLD_S: f64 = 0.3;
+
+#[allow(clippy::too_many_arguments)]
 fn read_keyboard(
     keys: Res<ButtonInput<KeyCode>>,
     config: Res<crate::hotas::InputConfig>,
@@ -417,6 +424,7 @@ fn read_keyboard(
     mut actions: MessageWriter<ActionEvent>,
     block: Res<InputBlock>,
     view: Option<Res<crate::camera::ViewState>>,
+    mut throttle_since: Local<Option<f64>>,
 ) {
     let shift = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let alt = keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
@@ -457,6 +465,8 @@ fn read_keyboard(
         controls.yaw = 0.0;
         controls.throttle = None;
         controls.collective_rate = 0.0;
+        controls.throttle_rate = 0.0;
+        *throttle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
         return;
@@ -512,6 +522,10 @@ fn read_keyboard(
     controls.throttle = None;
     controls.collective_rate =
         held(Action::ThrottleUp) as i8 as f32 - held(Action::ThrottleDown) as i8 as f32;
+    let throttle = controls.collective_rate;
+    *throttle_since = (throttle != 0.0).then(|| throttle_since.unwrap_or(now));
+    controls.throttle_rate =
+        if throttle_since.is_some_and(|t| now - t >= THROTTLE_HOLD_S) { throttle } else { 0.0 };
     controls.trim = config
         .keys
         .iter()
@@ -622,6 +636,33 @@ mod tests {
         assert_eq!(stronger(-0.71, 0.06), -0.71);
         assert_eq!(stronger(-0.71, 0.9), 0.9);
         assert_eq!(stronger(0.0, 0.06), 0.06);
+    }
+
+    /// A throttle key steps the throttle when pressed and moves it on its own once held.
+    #[test]
+    fn held_throttle_key_ramps() {
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<VirtualStick>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<Time<Real>>()
+            .insert_resource(crate::hotas::InputConfig::default())
+            .add_message::<ActionEvent>()
+            .add_systems(Update, read_keyboard);
+        app.world_mut().resource_mut::<Time<Real>>().update_with_instant(std::time::Instant::now());
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::Equal);
+        app.update();
+        assert_eq!(app.world().resource::<FlightControls>().throttle_rate, 0.0);
+        let mut time = app.world_mut().resource_mut::<Time<Real>>();
+        let last = time.last_update().unwrap();
+        time.update_with_instant(last + std::time::Duration::from_millis(400));
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().clear();
+        app.update();
+        assert_eq!(app.world().resource::<FlightControls>().throttle_rate, 1.0);
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().release(KeyCode::Equal);
+        app.update();
+        assert_eq!(app.world().resource::<FlightControls>().throttle_rate, 0.0);
     }
 
     /// The rudder keys are listed with the other stick keys, not at the end.
