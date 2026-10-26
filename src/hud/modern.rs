@@ -53,8 +53,8 @@ fn small(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
     stroke_text_at(c, x, y, s, SMALL, THIN, INK, align);
 }
 
-/// Text in a box (readouts).
-fn boxed(c: &mut Canvas, x: f32, y: f32, s: &str, min_chars: usize, align: Align) {
+/// Text in a box (readouts; also the helmet's, `hmd.rs`).
+pub(crate) fn boxed(c: &mut Canvas, x: f32, y: f32, s: &str, min_chars: usize, align: Align) {
     let w = stroke_width(s, TEXT).max(stroke_width(&"0".repeat(min_chars), TEXT));
     let x0 = match align {
         Align::Left => x,
@@ -410,6 +410,12 @@ fn airspeed(c: &mut Canvas, f: &HudFrame) {
     boxed(c, x + 22.0, CY, &format!("{}", kt.round() as i32), 3, Align::Left);
 }
 
+/// The altitude readout: feet to the nearest 10, "12,340".
+pub(crate) fn altitude_text(alt: f32) -> String {
+    let a = (alt / 10.0).round() as i32 * 10;
+    if a >= 1000 { format!("{},{:03}", a / 1000, a % 1000) } else { a.to_string() }
+}
+
 /// Altitude scale (right): 0.2 pixels per foot, ticks every 100 ft, labels every 500 ft
 /// ("12,5" = 12,500), the boxed readout and the radar altitude below it when low.
 fn altitude(c: &mut Canvas, f: &HudFrame) {
@@ -441,9 +447,7 @@ fn altitude(c: &mut Canvas, f: &HudFrame) {
             INK,
         );
     }
-    let a = (alt / 10.0).round() as i32 * 10;
-    let s = if a >= 1000 { format!("{},{:03}", a / 1000, a % 1000) } else { a.to_string() };
-    boxed(c, x - 22.0, CY, &s, 6, Align::Right);
+    boxed(c, x - 22.0, CY, &altitude_text(alt), 6, Align::Right);
     if f.radar_alt < 5000.0 {
         text(
             c,

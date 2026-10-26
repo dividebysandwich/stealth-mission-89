@@ -64,6 +64,8 @@ const SCALE: f32 = 1200.0;
 const DISTANCE: f32 = 0.6;
 /// Symbols stay this many pixels inside the canvas edge.
 const MARGIN: f32 = 30.0;
+/// The speed and altitude boxes' inner edges from the centre (pixels, about 15 degrees).
+const READOUT: f32 = 320.0;
 /// Ink (any colour but the transparent 0) and pen widths.
 const INK: u8 = 15;
 const PEN: f32 = 2.4;
@@ -222,6 +224,8 @@ fn draw(
             .filter(|_| full && stores.gun_selected)
             .map(|s| format!("GUN {} {s}", stores.gun_rounds.unwrap_or(0))),
         blink: crate::hud::blink(&time),
+        knots: a.knots().max(0.0),
+        alt: a.altitude.clamp(0.0, 65535.0),
     };
     draw_visor(&mut tex.canvas, &frame);
     tex.dirty = true;
@@ -249,6 +253,9 @@ struct Frame {
     waypoints: Vec<(Vec3, usize, bool)>,
     gun_line: Option<String>,
     blink: bool,
+    /// Airspeed (knots) and altitude (feet), boxed either side of the visor's centre.
+    knots: f32,
+    alt: f32,
 }
 
 fn draw_visor(c: &mut Canvas, f: &Frame) {
@@ -314,6 +321,11 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
     if let Some(s) = &f.gun_line {
         stroke_text_at(c, centre.x, centre.y + 150.0, s, TEXT, PEN * 0.85, INK, Align::Centre);
     }
+    // Speed and altitude as on the HUD: the boxed readouts only.
+    let speed = format!("{}", f.knots.round() as i32);
+    crate::hud::modern::boxed(c, CX - READOUT, CY, &speed, 3, Align::Left);
+    let alt = crate::hud::modern::altitude_text(f.alt);
+    crate::hud::modern::boxed(c, CX + READOUT, CY, &alt, 6, Align::Right);
 }
 
 /// The horizon: the level great circle round the head's heading, as far as the visor reaches.
@@ -376,6 +388,8 @@ mod tests {
             waypoints: Vec::new(),
             gun_line: None,
             blink: true,
+            knots: 0.0,
+            alt: 0.0,
         }
     }
 
@@ -386,18 +400,33 @@ mod tests {
             .count()
     }
 
-    /// Level: the horizon runs through the reticle; looking 10 degrees down it is above it.
+    /// Level: the horizon runs through the reticle; looking 10 degrees down it is above it
+    /// (left of the speed box).
     #[test]
     fn horizon_follows_the_head() {
         let mut c = Canvas::new(WIDTH, HEIGHT);
         draw_visor(&mut c, &frame(Quat::IDENTITY));
-        assert!(ink(&c, 0, 200, CY as usize - 3, CY as usize + 3) > 300);
+        assert!(ink(&c, 0, 100, CY as usize - 3, CY as usize + 3) > 150);
         let down = Quat::from_rotation_x(-10f32.to_radians());
         let mut c = Canvas::new(WIDTH, HEIGHT);
         draw_visor(&mut c, &frame(down));
         let y = CY - SCALE * 10f32.to_radians().tan();
-        assert!(ink(&c, 0, 200, y as usize - 3, y as usize + 3) > 300);
-        assert_eq!(ink(&c, 0, 200, CY as usize - 3, CY as usize + 3), 0);
+        assert!(ink(&c, 0, 100, y as usize - 3, y as usize + 3) > 150);
+        assert_eq!(ink(&c, 0, 100, CY as usize - 3, CY as usize + 3), 0);
+    }
+
+    /// The speed and altitude boxes either side of the centre, whichever way the head looks.
+    #[test]
+    fn speed_and_altitude_boxes() {
+        let mut f = frame(Quat::from_rotation_x(-0.5));
+        f.reticle = false;
+        (f.knots, f.alt) = (350.0, 12_340.0);
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw_visor(&mut c, &f);
+        let (l, r, cy) = ((CX - READOUT) as usize, (CX + READOUT) as usize, CY as usize);
+        assert!(ink(&c, l, l + 40, cy - 8, cy + 8) > 0, "speed");
+        assert!(ink(&c, r - 60, r, cy - 8, cy + 8) > 0, "altitude");
+        assert_eq!(ink(&c, l + 80, r - 120, cy - 8, cy + 8), 0, "nothing between");
     }
 
     /// A lock and the gun pipper sit on their directions; a lock behind gets an arrow.
