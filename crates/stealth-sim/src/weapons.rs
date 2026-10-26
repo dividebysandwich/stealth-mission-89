@@ -10,12 +10,15 @@ impl Sim {
     pub(crate) fn handle_keys(&mut self, ps: &PlayerState) {
         let c = &ps.cmd;
         // HUD mode changes (F2): entering AIR clears both locks, entering GND the ground lock.
+        // Entering AIR also lets go of a held lock (a ground lock of the pod or the HSD), so
+        // the HUD picks the aircraft ahead by itself again.
         if self.pl.hud_mode != self.pl.prev_hud_mode {
             match self.pl.hud_mode {
                 HudMode::Air => {
                     self.pl.air_lock = -1;
                     self.pl.gnd_lock = -1;
                     self.pl.pilot_lock = None;
+                    self.pl.target_hold = false;
                 }
                 HudMode::Gnd => self.pl.gnd_lock = -1,
                 HudMode::Nav => {}

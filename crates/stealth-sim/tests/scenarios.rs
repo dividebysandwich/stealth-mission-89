@@ -2277,3 +2277,34 @@ fn carrier_traffic_clear_of_the_player() {
     }
     assert!(checked > 0, "no carrier traffic checked");
 }
+
+/// The HUD picks a Geran ahead for the Sidewinders by itself in AIR mode, also after a ground
+/// lock held in GND mode (entering AIR lets go of it).
+#[test]
+fn sidewinders_pick_a_drone_after_a_ground_lock() {
+    let d = data();
+    let m = drone_mission(d, 7, 0);
+    let w = m.drones.clone().unwrap();
+    let mut sim = Sim::new(&d.sim, &m);
+    sim.set_training(true);
+    let u = sim.flights()[w.first_unit];
+    let a = u.heading as u16 as f64 / 65536.0 * std::f64::consts::TAU;
+    let (px, py) = (u.x - (a.sin() * 192.0) as i32, u.y + (a.cos() * 192.0) as i32);
+    sim.set_bay(0, 0, 4);
+    sim.select_bay(0);
+    let mut p = player_at(px, py, u.alt as u16 + 500, u.heading as u16, 200);
+    // A ground point locked first (the pod, the HSD).
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.designate_at = Some((px, py - 300));
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert!(sim.targeting().ground.is_some());
+    p.hud_mode = HudMode::Air;
+    for _ in 0..5 {
+        sim.step(&p, 15);
+    }
+    let t = sim.targeting();
+    assert_eq!(t.air, Some(w.first_unit));
+    assert!(t.lock_valid && t.in_range);
+}
