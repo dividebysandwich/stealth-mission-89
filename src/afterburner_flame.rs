@@ -2,7 +2,8 @@
 //! cones behind the nozzle (`AircraftSpec::exhaust`), drawn additively while the afterburner
 //! burns. A yellow-white core with shock diamonds (fading with altitude), a sheath blue-violet
 //! at the nozzle turning orange, and the nozzle's glowing exit; brighter and longer with the
-//! afterburner's setting, longer in thinner air.
+//! afterburner's setting, longer in thinner air. With local lighting on, a flickering point light
+//! behind the nozzle lights the aircraft and what is near it.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexBufferLayoutRef, PrimitiveTopology};
@@ -32,6 +33,11 @@ const MIN_LENGTH: f32 = 0.65;
 const ALTITUDE_LENGTH: f32 = 0.4;
 /// The shock diamonds fade out by this altitude (ft).
 const DIAMONDS_ALT: f32 = 30000.0;
+/// The point light: its distance behind the nozzle (m, at the plume's full length), colour at
+/// the full setting and range (m).
+const LIGHT_AFT: f32 = 1.5;
+const LIGHT_COLOUR: Vec3 = Vec3::new(7.0, 4.0, 1.6);
+const LIGHT_RANGE: f32 = 120.0;
 
 pub struct AfterburnerFlamePlugin;
 
@@ -103,6 +109,10 @@ impl Material for FlameMaterial {
 /// The plume (a child of the player's aircraft).
 #[derive(Component)]
 struct Flame;
+
+/// The plume's point light (a child of the plume, shown with it).
+#[derive(Component)]
+struct FlameLight;
 
 /// The plume's mesh in the aircraft frame from the nozzle exit, along +z (aft): uv x along
 /// 0..1, y the layer (0 core, 1 sheath, 2 nozzle exit).
@@ -180,6 +190,12 @@ fn attach(
             Transform::from_translation(settings.aircraft.spec().exhaust),
             Visibility::Hidden,
         ))
+        .with_child((
+            FlameLight,
+            crate::lighting::LightEmitter { color: Vec3::ZERO, range: LIGHT_RANGE },
+            Transform::from_xyz(0.0, 0.0, LIGHT_AFT),
+            Visibility::Inherited,
+        ))
         .id();
     commands.entity(player).add_child(flame);
 }
@@ -196,6 +212,7 @@ fn update(
         With<Flame>,
     >,
     mut materials: ResMut<Assets<FlameMaterial>>,
+    mut lights: Query<&mut crate::lighting::LightEmitter, With<FlameLight>>,
 ) {
     let Ok(a) = player.single() else { return };
     let ab = a.afterburner.clamp(0.0, 1.0);
@@ -214,5 +231,11 @@ fn update(
             m.params =
                 Vec4::new(0.4 + 0.6 * ab.sqrt(), time.elapsed_secs() % 1000.0, diamonds, 0.0);
         }
+    }
+    // The light flickers with the flame.
+    let t = time.elapsed_secs();
+    let flicker = 0.85 + 0.1 * (t * 47.0).sin() + 0.05 * (t * 83.0).sin();
+    for mut light in &mut lights {
+        light.color = LIGHT_COLOUR * (0.5 + 0.5 * ab.sqrt()) * flicker;
     }
 }
