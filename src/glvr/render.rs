@@ -89,7 +89,7 @@ struct Programs {
 impl Programs {
     fn new(gl: &glow::Context, single: bool) -> Result<Self, String> {
         let one = if single { "#define SINGLE\n" } else { "" };
-        let effects = ["PARTICLE", "TRAIL", "ROTOR", "BOLT", "FLAME"]
+        let effects = ["PARTICLE", "TRAIL", "ROTOR", "BOLT", "FLAME", "BEAM"]
             .iter()
             .map(|d| compile(gl, EFFECTS_SHADER, &format!("{one}#define {d}")))
             .collect::<Result<Vec<_>, _>>()?;
@@ -1303,7 +1303,7 @@ impl Renderer {
                     self.use_program(p);
                     // SAFETY: the context is current.
                     unsafe {
-                        if matches!(item.effect, Effect::Bolt | Effect::Flame) {
+                        if matches!(item.effect, Effect::Bolt | Effect::Flame | Effect::Beam) {
                             self.gl.blend_func_separate(
                                 glow::SRC_ALPHA,
                                 glow::ONE,

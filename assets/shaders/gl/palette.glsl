@@ -305,6 +305,23 @@ const vec2 GLOSS_GROUND = vec2(0.15, 24.0);
 
 // The lighting options: the palette colour lit by the sun and the moon (shadow maps not yet)
 // and the local lights, with the flat face normal n.
+// A spotlight's cone: cosines of the half angles where it starts to fade and where it is dark.
+const float SPOT_INNER = 0.990;
+const float SPOT_OUTER = 0.966;
+
+// A spotlight's direction from its colour's w (lighting.rs `encode_spot`): 1 + u + 1024 v, the
+// direction folded onto an octahedron.
+vec3 spot_direction(float w) {
+    float k = w - 1.0;
+    float v = floor(k / 1024.0);
+    vec2 o = vec2(k - v * 1024.0, v) / 1023.0 * 2.0 - 1.0;
+    vec3 n = vec3(o.x, 1.0 - abs(o.x) - abs(o.y), o.y);
+    float t = max(-n.y, 0.0);
+    n.x += n.x >= 0.0 ? -t : t;
+    n.z += n.z >= 0.0 ? -t : t;
+    return normalize(n);
+}
+
 vec3 lit_surface(vec3 rgb, vec3 world, vec3 n, vec3 dir, uint flags, float dark, vec2 gloss) {
     vec3 light = g.ambient.rgb;
     vec3 spec = vec3(0.0);
@@ -328,8 +345,12 @@ vec3 lit_surface(vec3 rgb, vec3 world, vec3 n, vec3 dir, uint flags, float dark,
             vec3 to_light = p.xyz - world;
             float d = length(to_light);
             if (d < p.w) {
-                float att = (1.0 - d / p.w) * (1.0 - d / p.w);
                 vec3 l = to_light / max(d, 1e-3);
+                float att = (1.0 - d / p.w) * (1.0 - d / p.w);
+                // A spotlight (lighting.rs `encode_spot`) lights its cone only.
+                if (c.w > 0.5) {
+                    att *= smoothstep(SPOT_OUTER, SPOT_INNER, dot(-l, spot_direction(c.w)));
+                }
                 float facing = dot(n, l);
                 light += c.rgb * att * (max(facing, 0.0) * 0.7 + 0.3);
                 if (facing > 0.0) {

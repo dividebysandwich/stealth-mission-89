@@ -1,9 +1,11 @@
 //! Aircraft exterior lights: position and anti-collision lights
 //! are on around the aircraft's own airfields, where traffic has to see each other, and off
-//! elsewhere (in combat they would give the aircraft away).
+//! elsewhere (in combat they would give the aircraft away). The gear and the landing lights
+//! with it are down on the ground, on the climb out and from the final approach on (a
+//! helicopter's landing lights go with its position lights).
 
 use crate::math::approx;
-use crate::types::{GroundObject, oflags};
+use crate::types::{FlightUnit, GroundObject, oflags};
 use crate::{Sim, fflags};
 
 /// Distance from an airfield of the aircraft's own side within which its lights are on (map
@@ -20,6 +22,19 @@ pub fn near_home_airfield(objects: &[GroundObject], x: i32, y: i32, friendly: bo
     })
 }
 
+/// Altitude (ft) a departing aircraft raises its gear at: clear of the runway (12) and of a
+/// carrier's deck (140).
+pub const GEAR_UP_ALT: i32 = 300;
+
+/// Whether flight unit `u` has its gear down: on the ground (the sim holds it 12 ft up) or
+/// parked, taking off until `GEAR_UP_ALT`, and on the final approach and the rollout.
+pub fn gear_down(u: &FlightUnit) -> bool {
+    u.alt <= 12
+        || u.speed == 0
+        || u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0
+        || (u.flags & fflags::TAKEOFF != 0 && u.alt < GEAR_UP_ALT)
+}
+
 impl Sim {
     /// Whether flight unit `i` shows its lights: near an airfield of its side, and not parked
     /// (an unmanned aircraft is dark) or destroyed.
@@ -31,9 +46,24 @@ impl Sim {
             && near_home_airfield(&self.objects, u.x, u.y, self.friendly_unit(i, u.spec))
     }
 
+    /// Whether flight unit `i` has its landing lights on: its gear down, moving (not parked)
+    /// and not destroyed.
+    pub fn aircraft_landing_lights(&self, i: usize) -> bool {
+        let Some(u) = self.flights.get(i) else { return false };
+        u.flags & fflags::EXISTS != 0
+            && u.flags & fflags::DESTROYED == 0
+            && u.speed != 0
+            && gear_down(u)
+    }
+
     /// Whether the player's aircraft shows its lights (the rule of the friendly aircraft).
     pub fn player_lights(&self) -> bool {
-        near_home_airfield(&self.objects, self.pl.p.mx, self.pl.p.my, true)
+        self.friendly_lights_at(self.pl.p.mx, self.pl.p.my)
+    }
+
+    /// Whether a friendly aircraft at map point (x, y) shows its lights (another player's).
+    pub fn friendly_lights_at(&self, x: i32, y: i32) -> bool {
+        near_home_airfield(&self.objects, x, y, true)
     }
 }
 
@@ -68,5 +98,22 @@ mod tests {
         // The first three objects are not airfields.
         let first = vec![base(0x1000, 0x1000, oflags::AIRFIELD | oflags::FRIENDLY); 3];
         assert!(!near_home_airfield(&first, 0x1000, 0x1000, true));
+    }
+
+    #[test]
+    fn gear_up_after_takeoff_down_on_final() {
+        let unit = |alt, speed, flags| FlightUnit { alt, speed, flags, ..Default::default() };
+        let air = fflags::EXISTS | fflags::AIRBORNE;
+        // Parked and rolling on the runway.
+        assert!(gear_down(&unit(12, 0, fflags::EXISTS)));
+        assert!(gear_down(&unit(12, 10, air | fflags::TAKEOFF)));
+        // Climbing out (from a carrier deck too), then raised.
+        assert!(gear_down(&unit(140, 100, air | fflags::TAKEOFF)));
+        assert!(!gear_down(&unit(GEAR_UP_ALT, 400, air | fflags::TAKEOFF)));
+        assert!(!gear_down(&unit(5000, 400, air)));
+        assert!(!gear_down(&unit(2000, 400, air | fflags::RTB)));
+        // Lined up for landing and rolling out.
+        assert!(gear_down(&unit(2000, 400, air | fflags::RTB | fflags::FINAL)));
+        assert!(gear_down(&unit(140, 200, air | fflags::FINAL | fflags::ROLLOUT)));
     }
 }

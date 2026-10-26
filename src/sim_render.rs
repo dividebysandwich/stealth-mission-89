@@ -181,7 +181,7 @@ impl Falling {
 #[derive(Resource, Default)]
 struct SimVisuals {
     /// Aircraft model, its key and its spotting dot with the dot's current look.
-    aircraft: HashMap<usize, (Entity, (i32, bool), SpotDot)>,
+    aircraft: HashMap<usize, (Entity, (i32, bool), SpotDot, Entity)>,
     /// Projectile model, spec and missile dot with its current look: the motor's glow
     /// (`TRACER`), black by day (`COASTING`) or white at night (`COASTING_NIGHT`).
     proj: [Option<(Entity, i32, Option<(Entity, u8)>)>; N_PROJ],
@@ -842,6 +842,8 @@ fn sync_objects(
         With<SimObject>,
     >,
     mut explosions: ResMut<crate::explosions::Explosions>,
+    mut landing_lights: crate::landing_lights::Lights,
+    landing: Res<crate::landing_lights::LandingAssets>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
@@ -892,7 +894,7 @@ fn sync_objects(
         }
         let friendly = sim.friendly_unit(i, u.spec);
         let key = (model, friendly);
-        if vis.aircraft.get(&i).is_some_and(|&(_, k, _)| k != key) {
+        if vis.aircraft.get(&i).is_some_and(|&(_, k, ..)| k != key) {
             if let Some((e, ..)) = vis.aircraft.remove(&i) {
                 commands.entity(e).try_despawn();
             }
@@ -905,7 +907,8 @@ fn sync_objects(
             if friendly {
                 commands.entity(e).insert(crate::models::LodRange(FRIENDLY_LOD_RANGE));
             }
-            let metres = if model == HELICOPTER_MODEL || model == HIND_MODEL {
+            let helicopter = model == HELICOPTER_MODEL || model == HIND_MODEL;
+            let metres = if helicopter {
                 SPOT_HELICOPTER_METRES
             } else if model >= REMAKE_MODELS {
                 SPOT_DRONE_METRES
@@ -913,7 +916,10 @@ fn sync_objects(
                 SPOT_METRES
             };
             let dot = spawn_spot_dot(&mut commands, &assets, e, metres);
-            vis.aircraft.insert(i, (e, key, dot));
+            let scale = AIRCRAFT_MODEL_SCALE as f32;
+            let landing =
+                crate::landing_lights::spawn(&mut commands, &landing, e, scale, helicopter);
+            vis.aircraft.insert(i, (e, key, dot, landing));
         }
         seen.insert(i);
         let nav = sim.aircraft_lights(i);
@@ -924,8 +930,12 @@ fn sync_objects(
         } else {
             SPOT
         };
-        let Some((e, _, dot)) = vis.aircraft.get_mut(&i) else { continue };
+        let Some((e, _, dot, landing)) = vis.aircraft.get_mut(&i) else { continue };
         let e = *e;
+        // A helicopter has no gear to go by: its landing lights go with its position lights.
+        let helicopter = model == HELICOPTER_MODEL || model == HIND_MODEL;
+        let on = if helicopter { nav } else { sim.aircraft_landing_lights(i) };
+        crate::landing_lights::set(&mut landing_lights, *landing, on);
         spot_look(&mut commands, dot, look, |c| {
             solid_material(&mut vis.materials, &mut materials, &globals, c)
         });
@@ -945,19 +955,20 @@ fn sync_objects(
             }
             tf.rotation = rot;
             if let Some(mut s) = state {
-                // Slots 5 (on the ground or parked on a deck, gear down), 12 (nav lights), 13
-                // (airborne, gear up), 14 (models 1/10/15) and 18-20 (anti-collision lights, with
-                // the nav lights near home airfields).
+                // Slots 5 (gear down: on the ground, taking off, landing), 12 (nav lights), 13
+                // (gear up), 14 (models 1/10/15) and 18-20 (anti-collision lights, with the nav
+                // lights near home airfields).
                 let special = matches!(model, 1 | 10 | 15);
                 let intact = !special && u.flags & fflags::DESTROYED == 0;
+                let gear = stealth_sim::lights::gear_down(&u);
                 let [s18, s19, s20] =
                     anticollision(time.elapsed_secs(), (i as f32 * 0.618).fract(), nav);
                 let v = [
-                    (5, (intact && (u.alt <= 12 || u.speed == 0)) as i16),
+                    (5, (intact && gear) as i16),
                     (10, lights as i16),
                     (11, lights as i16),
                     (12, nav as i16),
-                    (13, (intact && u.alt > 12) as i16),
+                    (13, (intact && !gear) as i16),
                     (14, special as i16),
                     s18,
                     s19,
@@ -1417,7 +1428,7 @@ fn own_shadow(
 /// its dot with the dot's look.
 #[derive(Resource, Default)]
 pub struct RemoteVisuals {
-    planes: HashMap<u8, (Entity, &'static str, SpotDot, Entity)>,
+    planes: HashMap<u8, (Entity, &'static str, SpotDot, Entity, Entity)>,
     missiles: HashMap<(u8, u8), RemoteMissileVisual>,
     /// The own cannon's muzzle flash, as the others see it (external views only).
     own_muzzle: Option<Entity>,
@@ -1526,7 +1537,12 @@ fn sync_remote_pilots(
     mut materials: ResMut<Assets<PaletteMaterial>>,
     time: Res<Time>,
     mut q: Query<(&mut WorldPos, &mut Transform, Option<&mut ModelState>), With<SimObject>>,
-    mut muzzles: Query<&mut Visibility, Without<SimObject>>,
+    mut muzzles: Query<
+        &mut Visibility,
+        (Without<SimObject>, Without<crate::landing_lights::LandingLight>),
+    >,
+    mut landing_lights: crate::landing_lights::Lights,
+    landing: Res<crate::landing_lights::LandingAssets>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
@@ -1579,7 +1595,10 @@ fn sync_remote_pilots(
                 ))
                 .id();
             commands.entity(e).add_child(muzzle);
-            vis.planes.insert(p.id, (e, spec.model, dot, muzzle));
+            let scale = AIRCRAFT_MODEL_SCALE as f32;
+            let landing =
+                crate::landing_lights::spawn(&mut commands, &landing, e, scale, spec.helicopter);
+            vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
         let Some(v) = vis.planes.get_mut(&p.id) else { continue };
@@ -1592,6 +1611,14 @@ fn sync_remote_pilots(
         if let Ok(mut m) = muzzles.get_mut(v.3) {
             m.set_if_neq(if flash { Visibility::Inherited } else { Visibility::Hidden });
         }
+        // Gear down (a helicopter: near a friendly airfield), not parked.
+        let parked = p.on_ground && p.view.knots == 0;
+        let wanted = if spec.helicopter {
+            sim.friendly_lights_at(p.view.mx, p.view.my)
+        } else {
+            !p.gear_up || p.on_ground
+        };
+        crate::landing_lights::set(&mut landing_lights, v.4, wanted && !parked);
         let (pos, rot) = remote_pose(&combat, p);
         if let Ok((mut wp, mut tf, state)) = q.get_mut(v.0) {
             wp.0 = pos + (rot * Vec3::Y * spec.model_lift).as_dvec3();

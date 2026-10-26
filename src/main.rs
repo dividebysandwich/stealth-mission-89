@@ -41,6 +41,7 @@ mod input_dialog;
 mod key_guide;
 mod keyboard_layout;
 mod kneeboard;
+mod landing_lights;
 mod lighting;
 mod lightning;
 mod loadout;
@@ -258,6 +259,7 @@ fn main() {
             trails::TrailsPlugin,
             rotor_blur::RotorBlurPlugin,
             afterburner_flame::AfterburnerFlamePlugin,
+            landing_lights::LandingLightsPlugin,
             explosions::ExplosionsPlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,

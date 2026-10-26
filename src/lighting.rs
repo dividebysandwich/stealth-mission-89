@@ -12,6 +12,8 @@
 //! - Local lights: `LightEmitter` entities (missile motors, flares, impact flashes, cockpit
 //!   lamps) plus nearby runway/city dot lights. The nearest ones go to the world shader
 //!   (`Globals.lights`) and a few become Bevy `PointLight`s so they also light the cockpit.
+//!   A `Spotlight` emitter (landing lights) shines in a cone along its forward direction only
+//!   and leaves the cockpit dark.
 
 use bevy::light::CascadeShadowConfigBuilder;
 use bevy::prelude::*;
@@ -68,6 +70,24 @@ pub struct LightEmitter {
     pub color: Vec3,
     /// Range in metres (light falls to zero there).
     pub range: f32,
+}
+
+/// An emitter that shines along its forward (-z) direction in a cone (`SPOT_INNER`/`SPOT_OUTER`
+/// in palette.wgsl), not all round.
+#[derive(Component, Clone, Copy)]
+pub struct Spotlight;
+
+/// A spotlight's direction for the shader, in its colour's w (0 for a point light): the unit
+/// vector folded onto an octahedron, 10 bits per axis, as the whole number 1 + u + 1024 v
+/// (exact in an f32).
+pub fn encode_spot(dir: Vec3) -> f32 {
+    let d = dir / (dir.x.abs() + dir.y.abs() + dir.z.abs()).max(1e-6);
+    let mut o = Vec2::new(d.x, d.z);
+    if d.y < 0.0 {
+        o = (Vec2::ONE - Vec2::new(o.y, o.x).abs()) * o.signum();
+    }
+    let q = ((o * 0.5 + 0.5) * 1023.0).round();
+    1.0 + q.x + 1024.0 * q.y
 }
 
 /// What the world shader gets this frame (copied into `Globals` by `palette::update_globals`).
@@ -413,7 +433,7 @@ fn collect_local_lights(
     palette: Option<Res<Palette>>,
     mut state: ResMut<LightingState>,
     cams: Query<&GlobalTransform, With<crate::camera::EyeCamera>>,
-    emitters: Query<(&LightEmitter, &GlobalTransform, &InheritedVisibility)>,
+    emitters: Query<(&LightEmitter, &GlobalTransform, &InheritedVisibility, Has<Spotlight>)>,
     dots: Query<
         (
             &GlobalTransform,
@@ -433,14 +453,15 @@ fn collect_local_lights(
     let Ok(eye) = cams.single() else { return };
     let eye = eye.translation();
     let mut all: Vec<(f32, Vec4, Vec4)> = Vec::new();
-    for (em, tf, vis) in &emitters {
+    for (em, tf, vis, spot) in &emitters {
         if !vis.get() {
             continue;
         }
         let p = tf.translation();
         // Score: distance relative to range (bright, big lights win).
         let d = p.distance(eye);
-        all.push((d / em.range, p.extend(em.range), em.color.extend(0.0)));
+        let w = if spot { encode_spot(*tf.forward()) } else { 0.0 };
+        all.push((d / em.range, p.extend(em.range), em.color.extend(w)));
     }
     // Dot lights (runway, approach, city lights) within 600 m, only when they are lit.
     if let Some(palette) = palette.filter(|p| p.lights_on()) {
@@ -488,7 +509,8 @@ fn mirror_point_lights(
     mut q: Query<(&MirrorLight, &mut PointLight, &mut Transform)>,
 ) {
     for (m, mut light, mut tf) in &mut q {
-        match state.lights.get(m.0).filter(|_| settings.local_lights) {
+        // Not the spotlights: they shine away from the cockpit.
+        match state.lights.get(m.0).filter(|(_, c)| settings.local_lights && c.w == 0.0) {
             Some((p, c)) => {
                 tf.translation = p.truncate();
                 light.range = p.w;
@@ -501,6 +523,41 @@ fn mirror_point_lights(
                     * c.truncate().max_element();
             }
             None => light.intensity = 0.0,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// palette.wgsl `spot_direction`.
+    fn decode_spot(w: f32) -> Vec3 {
+        let k = w - 1.0;
+        let v = (k / 1024.0).floor();
+        let o = Vec2::new(k - v * 1024.0, v) / 1023.0 * 2.0 - 1.0;
+        let mut n = Vec3::new(o.x, 1.0 - o.x.abs() - o.y.abs(), o.y);
+        let t = (-n.y).max(0.0);
+        n.x += if n.x >= 0.0 { -t } else { t };
+        n.z += if n.z >= 0.0 { -t } else { t };
+        n.normalize()
+    }
+
+    #[test]
+    fn spot_directions_survive_the_packing() {
+        for dir in [
+            Vec3::NEG_Z,
+            Vec3::Y,
+            Vec3::NEG_Y,
+            Vec3::X,
+            Vec3::new(0.0, -0.05, -1.0),
+            Vec3::new(-0.3, -0.8, 0.5),
+            Vec3::new(0.7, 0.1, 0.7),
+        ] {
+            let dir = dir.normalize();
+            let w = encode_spot(dir);
+            assert!(w >= 1.0 && w == w.round(), "{w}");
+            assert!(decode_spot(w).dot(dir) > 0.99995, "{dir} -> {}", decode_spot(w));
         }
     }
 }

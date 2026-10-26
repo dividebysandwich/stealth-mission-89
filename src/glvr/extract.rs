@@ -12,6 +12,7 @@ use crate::camera::{MAIN_BACKGROUND_LAYER, MAIN_LOD_LAYER, OffscreenCamera};
 use crate::cockpit3d::CockpitMaterial;
 use crate::cockpit3d::hud_glass::{HmdMaterial, HudGlassMaterial};
 use crate::explosions::ParticleMaterial;
+use crate::landing_lights::BeamMaterial;
 use crate::lightning::BoltMaterial;
 use crate::palette::Palette;
 use crate::palette_material::{FLAG_CLOUD, FLAG_DOT, PaletteMaterial};
@@ -76,7 +77,7 @@ pub struct GlassItem {
 }
 
 /// An effect's kind (its program in render.rs): explosion particles, trails, rotor discs,
-/// lightning, the afterburner's plume.
+/// lightning, the afterburner's plume, the landing lights' beams.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Effect {
     Particle,
@@ -84,11 +85,12 @@ pub enum Effect {
     Rotor,
     Bolt,
     Flame,
+    Beam,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 5] =
-        [Effect::Particle, Effect::Trail, Effect::Rotor, Effect::Bolt, Effect::Flame];
+    pub const ALL: [Effect; 6] =
+        [Effect::Particle, Effect::Trail, Effect::Rotor, Effect::Bolt, Effect::Flame, Effect::Beam];
 
     /// The mesh's attributes besides positions, and their shader locations.
     fn attributes(self) -> &'static [(u32, MeshVertexAttribute)] {
@@ -101,7 +103,7 @@ impl Effect {
             Effect::Trail | Effect::Bolt => {
                 &[(1, crate::trails::ATTRIBUTE_TANGENT), (2, crate::trails::ATTRIBUTE_SIDE)]
             }
-            Effect::Rotor | Effect::Flame => &[(1, Mesh::ATTRIBUTE_UV_0)],
+            Effect::Rotor | Effect::Flame | Effect::Beam => &[(1, Mesh::ATTRIBUTE_UV_0)],
         }
     }
 }
@@ -223,6 +225,7 @@ type TrailQuery = (Common, &'static MeshMaterial3d<TrailMaterial>);
 type RotorQuery = (Common, &'static MeshMaterial3d<RotorMaterial>);
 type BoltQuery = (Common, &'static MeshMaterial3d<BoltMaterial>);
 type FlameQuery = (Common, &'static MeshMaterial3d<FlameMaterial>);
+type BeamQuery = (Common, &'static MeshMaterial3d<BeamMaterial>);
 
 /// What a mesh is drawn with: whether it is seen.
 struct Cull<'a> {
@@ -262,6 +265,7 @@ struct Queries {
     rotors: QueryState<RotorQuery>,
     bolts: QueryState<BoltQuery>,
     flames: QueryState<FlameQuery>,
+    beams: QueryState<BeamQuery>,
     offscreen: QueryState<OffscreenQuery, With<OffscreenCamera>>,
     egui: QueryState<EguiQuery>,
     readbacks: QueryState<(Entity, &'static crate::recon::ImageReadback)>,
@@ -306,6 +310,7 @@ impl Queries {
             rotors: world.query(),
             bolts: world.query(),
             flames: world.query(),
+            beams: world.query(),
             offscreen: world.query_filtered::<OffscreenQuery, With<OffscreenCamera>>(),
             egui: world.query(),
             readbacks: world.query(),
@@ -745,6 +750,11 @@ impl Extractor {
         for (common, material) in q.flames.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
             self.effect_item(cull, list, meshes, &common, Effect::Flame, vec4_raw(m.params));
+        }
+        let materials = world.resource::<Assets<BeamMaterial>>();
+        for (common, material) in q.beams.iter(world) {
+            let Some(m) = materials.get(&material.0) else { continue };
+            self.effect_item(cull, list, meshes, &common, Effect::Beam, vec4_raw(m.params));
         }
     }
 

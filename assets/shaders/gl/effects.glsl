@@ -1,7 +1,8 @@
 // Effects for the OpenGL headset renderer (src/glvr), as their WGSL shaders: explosion
 // particles (particle.wgsl, PARTICLE), smoke trails and contrails (trail.wgsl, TRAIL), blurred
-// rotor discs (rotor.wgsl, ROTOR), lightning channels (bolt.wgsl, BOLT) and the afterburner's
-// plume (flame.wgsl, FLAME). Compiled with
+// rotor discs (rotor.wgsl, ROTOR), lightning channels (bolt.wgsl, BOLT), the afterburner's
+// plume (flame.wgsl, FLAME) and the landing lights' beams (beam.wgsl, BEAM, on the flame's
+// vertex shader). Compiled with
 // VERTEX or FRAGMENT and one of those defined; both eyes in one pass. The recon look is left
 // out; the tracking camera's picture (drawn offscreen) can be a FLIR view.
 
@@ -36,8 +37,8 @@ uniform vec3 u_right[2];
 uniform vec3 u_up[2];
 uniform mat4 u_model;
 uniform vec2 u_viewport;
-// The material's uniform, as its bytes (rotor_blur.rs `RotorParams`, the trail's, the bolt's and
-// the flame's `params`).
+// The material's uniform, as its bytes (rotor_blur.rs `RotorParams`, the trail's, the bolt's,
+// the flame's and the beam's `params`).
 uniform uvec4 u_raw[2];
 
 vec4 raw_vec4(int i) {
@@ -73,7 +74,7 @@ flat out vec3 v_axis_u;
 flat out vec3 v_axis_v;
 flat out vec3 v_normal;
 #endif
-#ifdef FLAME
+#if defined(FLAME) || defined(BEAM)
 // x: 0 (nozzle) .. 1 (tip), y: layer (0 core, 1 sheath, 2 nozzle exit).
 layout(location = 1) in vec2 a_uv;
 out vec3 v_world;
@@ -132,7 +133,7 @@ void main() {
     v_axis_v = normalize(m * w);
     v_normal = normalize(m * n);
 #endif
-#ifdef FLAME
+#if defined(FLAME) || defined(BEAM)
     // The cones' normals point out from the axis, the disc's along it.
     vec3 n = vec3(a_position.xy, 0.0);
     if (a_uv.y > 1.5 || dot(n, n) < 1e-8) {
@@ -163,7 +164,7 @@ flat in vec3 v_axis_u;
 flat in vec3 v_axis_v;
 flat in vec3 v_normal;
 #endif
-#ifdef FLAME
+#if defined(FLAME) || defined(BEAM)
 in vec3 v_world;
 in vec3 v_normal;
 in vec2 v_uv;
@@ -293,6 +294,46 @@ void main() {
     a *= p.x;
     if (a <= 0.003) { discard; }
     o_colour = vec4(rgb, a);
+}
+#endif
+
+#ifdef BEAM
+const vec3 COLOUR = vec3(1.0, 0.95, 0.85);
+const int STEPS = 16;
+
+vec2 beam_coords(vec3 q, vec3 apex, vec3 axis, vec4 p) {
+    float along = dot(q - apex, axis);
+    return vec2(along, length(q - apex - axis * along) / (p.z + p.y * max(along, 0.0)));
+}
+
+float density(vec3 q, vec3 apex, vec3 axis, vec4 p) {
+    vec2 c = beam_coords(q, apex, axis, p);
+    if (c.x < 0.0 || c.x > p.w || c.y > 1.0) { return 0.0; }
+    return pow(1.0 - c.x / p.w, 1.5) * (1.0 - c.y * c.y);
+}
+
+void main() {
+    vec4 p = raw_vec4(0);
+    // The lamp and the beam's direction.
+    vec3 apex = u_model[3].xyz;
+    vec3 axis = -normalize(u_model[2].xyz);
+    vec3 eye = u_eye[VIEW];
+    vec3 d = normalize(v_world - eye);
+    // Only where the view ray leaves the beam (its back faces).
+    if (gl_FrontFacing) { discard; }
+    float exit_s = length(v_world - eye);
+    float chord = length(vec2(p.w, 2.0 * (p.z + p.y * p.w)));
+    float start = max(exit_s - chord, 0.0);
+    float ds = (exit_s - start) / float(STEPS);
+    float sum = 0.0;
+    for (int i = 0; i < STEPS; i++) {
+        sum += density(eye + d * (start + (float(i) + 0.5) * ds), apex, axis, p);
+    }
+    float s = clamp(dot(apex - eye, d), start, exit_s);
+    float r = length(eye + d * s - apex);
+    float a = p.x * (0.03 * sum * ds + 0.8 * exp(-r * r / 0.5));
+    if (a <= 0.003) { discard; }
+    o_colour = vec4(COLOUR, min(a, 1.0));
 }
 #endif
 

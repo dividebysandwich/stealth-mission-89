@@ -474,8 +474,12 @@ fn lit_surface(rgb: vec3<f32>, world: vec3<f32>, n: vec3<f32>, dir: vec3<f32>, c
             let to_light = p.xyz - world;
             let d = length(to_light);
             if (d < p.w) {
-                let att = (1.0 - d / p.w) * (1.0 - d / p.w);
                 let l = to_light / max(d, 1e-3);
+                var att = (1.0 - d / p.w) * (1.0 - d / p.w);
+                // A spotlight (lighting.rs `encode_spot`) lights its cone only.
+                if (c.w > 0.5) {
+                    att *= smoothstep(SPOT_OUTER, SPOT_INNER, dot(-l, spot_direction(c.w)));
+                }
                 let facing = dot(n, l);
                 light += c.rgb * att * (max(facing, 0.0) * 0.7 + 0.3);
                 // Blinn-Phong highlight in the light's own colour.
@@ -488,6 +492,23 @@ fn lit_surface(rgb: vec3<f32>, world: vec3<f32>, n: vec3<f32>, dir: vec3<f32>, c
     }
 #endif
     return rgb * light + spec;
+}
+
+// A spotlight's cone: cosines of the half angles where it starts to fade and where it is dark.
+const SPOT_INNER: f32 = 0.990;
+const SPOT_OUTER: f32 = 0.966;
+
+// A spotlight's direction from its colour's w (lighting.rs `encode_spot`): 1 + u + 1024 v, the
+// direction folded onto an octahedron.
+fn spot_direction(w: f32) -> vec3<f32> {
+    let k = w - 1.0;
+    let v = floor(k / 1024.0);
+    let o = vec2<f32>(k - v * 1024.0, v) / 1023.0 * 2.0 - 1.0;
+    var n = vec3<f32>(o.x, 1.0 - abs(o.x) - abs(o.y), o.y);
+    let t = max(-n.y, 0.0);
+    n.x += select(t, -t, n.x >= 0.0);
+    n.z += select(t, -t, n.z >= 0.0);
+    return normalize(n);
 }
 
 // Cloud texture: Perlin noise in world space. The lattice wraps every NOISE_PERIOD metres
