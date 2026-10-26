@@ -19,7 +19,8 @@
 //! The HMCS shows only the horizon, the route's waypoints (the current steerpoint larger, with
 //! its number), the lock, the targeting pod's ground point and the Sidewinder seeker's circle.
 //!
-//! The horizon, waypoints, lock, pipper and pod sight are drawn where they are in the world.
+//! The horizon, waypoints, lock, pipper and pod sight are drawn where they are in the world;
+//! the speed and altitude boxes either side of the smoothed sight.
 //!
 //! Canvas pixels are angular as on the modern HUD (`hud::modern`): (x, y) is the direction
 //! (x - CX, CY - y) / SCALE in the tangent plane one unit in front of the head.
@@ -66,6 +67,8 @@ const DISTANCE: f32 = 0.6;
 const MARGIN: f32 = 30.0;
 /// The speed and altitude boxes' inner edges from the centre (pixels, about 15 degrees).
 const READOUT: f32 = 320.0;
+/// How far the boxes follow the sight sideways and stay on the visor (pixels).
+const READOUT_SLACK: f32 = 80.0;
 /// Ink (any colour but the transparent 0) and pen widths.
 const INK: u8 = 15;
 const PEN: f32 = 2.4;
@@ -323,11 +326,16 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
     if let Some(s) = &f.gun_line {
         stroke_text_at(c, centre.x, centre.y + 150.0, s, TEXT, PEN * 0.85, INK, Align::Centre);
     }
-    // Speed and altitude as on the HUD: the boxed readouts only.
+    // Speed and altitude as on the HUD: the boxed readouts only, either side of the smoothed
+    // sight like the reticle (head tremor does not shake them), as far as the visor has room.
+    let at = centre.clamp(
+        Vec2::new(CX - READOUT_SLACK, MARGIN + 20.0),
+        Vec2::new(CX + READOUT_SLACK, HEIGHT as f32 - MARGIN - 20.0),
+    );
     let speed = format!("{}", f.knots.round() as i32);
-    crate::hud::modern::boxed(c, CX - READOUT, CY, &speed, 3, Align::Left);
+    crate::hud::modern::boxed(c, at.x - READOUT, at.y, &speed, 3, Align::Left);
     let alt = crate::hud::modern::altitude_text(f.alt);
-    crate::hud::modern::boxed(c, CX + READOUT, CY, &alt, 6, Align::Right);
+    crate::hud::modern::boxed(c, at.x + READOUT, at.y, &alt, 6, Align::Right);
 }
 
 /// The horizon: the level great circle round the head's heading, as far as the visor reaches.
