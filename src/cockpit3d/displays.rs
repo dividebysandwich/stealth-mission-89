@@ -292,7 +292,7 @@ pub(super) fn screen(
             (Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE), false)
         }
         CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
-            (Canvas::new(CLASSIC.0, CLASSIC.1), false)
+            (Canvas::scaled(CLASSIC.0, CLASSIC.1, crate::mfd::CLASSIC_SCALE), false)
         }
         CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi => {
             let r = match role {
