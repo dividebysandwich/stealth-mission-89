@@ -148,7 +148,8 @@ fn main() {
                 title: "Stealth Mission 89".into(),
                 // Wayland app id / X11 class, matching packaging/linux/stealth-mission-89.desktop.
                 name: Some("stealth-mission-89".into()),
-                // `--window-size WxH` (screenshots).
+                // `--window-size WxH` (screenshots). Otherwise 1280x768: the single mission
+                // screen needs about 760 logical pixels (Bevy's 1280x720 cut its bottom).
                 resolution: std::env::args()
                     .collect::<Vec<_>>()
                     .windows(2)
@@ -158,9 +159,10 @@ fn main() {
                             Some((a.parse::<u32>().ok()?, b.parse::<u32>().ok()?))
                         })
                     })
-                    .map_or_else(Default::default, |(w, h)| {
-                        bevy::window::WindowResolution::new(w, h)
-                    }),
+                    .map_or_else(
+                        || bevy::window::WindowResolution::new(1280, 768),
+                        |(w, h)| bevy::window::WindowResolution::new(w, h),
+                    ),
                 // --novsync: uncapped frame rate (performance measurements).
                 present_mode: if std::env::args().any(|a| a == "--novsync") {
                     bevy::window::PresentMode::AutoNoVsync
