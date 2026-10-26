@@ -12,12 +12,12 @@
 //!   helmet;
 //! - with Sidewinders selected, their seeker's circle (the seeker follows the helmet sight as
 //!   far as its gimbals turn and locks the aircraft nearest its middle);
-//! - the targeting pod's line of sight (a small diamond) when it is not slaved;
+//! - where the targeting pod looks on the ground (a small circle with a dot, as on the HUD);
 //! - the gun line (rounds and what it is slaved to) under the reticle while the gun is
 //!   selected.
 //!
 //! The HMCS shows only the horizon, the route's waypoints (the current steerpoint larger, with
-//! its number), the lock and the Sidewinder seeker's circle.
+//! its number), the lock, the targeting pod's ground point and the Sidewinder seeker's circle.
 //!
 //! The horizon, waypoints, lock, pipper and pod sight are drawn where they are in the world.
 //!
@@ -215,9 +215,10 @@ fn draw(
         seeker: combat
             .and_then(|c| c.sim.helmet_seeker())
             .map(|[e, n, u]| Vec3::new(e as f32, u as f32, -n as f32)),
-        pod: (full && mfd.av.tgp.mode != crate::avionics::TgpMode::Slaved)
-            .then_some(mfd.av.tgp.los)
-            .flatten(),
+        pod: mfd.av.tgp.los_ground.and_then(|p| {
+            let eye = pos.0 + (a.orientation * settings.cockpit_eye()).as_dvec3();
+            (p - eye).as_vec3().try_normalize()
+        }),
         waypoints,
         gun_line: stores
             .gun_slave
@@ -247,7 +248,7 @@ struct Frame {
     gun: Option<Vec3>,
     /// Where the Sidewinder seeker looks (world).
     seeker: Option<Vec3>,
-    /// The targeting pod's line of sight (world) when it is not slaved.
+    /// Where the targeting pod looks on the ground (world direction from the eye), while it is up.
     pod: Option<Vec3>,
     /// The route's waypoints (world direction, index, the current steerpoint).
     waypoints: Vec<(Vec3, usize, bool)>,
@@ -286,7 +287,8 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
         }
     }
     if let Some(p) = f.pod.and_then(|d| project(f.to_head * d)).filter(|&p| on_visor(p)) {
-        diamond(c, p, 7.0, THIN);
+        c.ring(p, 9.0, THIN, INK);
+        c.circle(p.x, p.y, 1.8, INK);
     }
     if let Some((d, air)) = f.lock {
         let d = head(d);
