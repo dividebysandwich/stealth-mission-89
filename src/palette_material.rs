@@ -37,6 +37,9 @@ pub const FLAG_DOT: u32 = 128;
 /// Line in a scenery colour (rivers, roads, shores), not a light: a moonless night darkens it
 /// like the ground (`Palette::line_flags`).
 pub const FLAG_NIGHT_DIM: u32 = 64;
+/// Polygon in a water colour (sea and lakes): a faint grid of dots low over it shows the
+/// height (the shader's `water_dots`).
+pub const FLAG_WATER: u32 = 256;
 /// Mesh tag bit of warm objects (aircraft, vehicles, buildings, fires): bright in the FLIR
 /// picture, everything else cold.
 pub const TAG_WARM: u32 = 1 << 11;

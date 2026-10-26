@@ -12,7 +12,8 @@ use bevy::render::storage::ShaderBuffer;
 use serde::Deserialize;
 
 use crate::palette_material::{
-    FLAG_BACKGROUND, FLAG_LINE, FLAG_NIGHT_DIM, Globals, PaletteMaterial, PaletteParams, pack16,
+    FLAG_BACKGROUND, FLAG_LINE, FLAG_NIGHT_DIM, FLAG_WATER, Globals, PaletteMaterial, PaletteParams,
+    pack16,
 };
 use crate::settings::{AppState, MissionSetup, Settings, SetupSet};
 
@@ -214,10 +215,29 @@ impl Palette {
         self.remaps.get(self.remap).map_or(0xFF00 | c as u16, |t| t.entries[c as usize])
     }
 
+    /// Flags of the polygon material for model colour `c`: water colours get their dots.
+    pub fn polygon_flags(&self, c: u8) -> u32 {
+        if is_water(self.word(c), &self.theater.day) { FLAG_WATER } else { 0 }
+    }
+
     /// Lights come on when the sky gets dark (red of colour 136 < 20).
     pub fn lights_on(&self) -> bool {
         self.active.colors[136][0] < 20
     }
+}
+
+/// Whether a polygon colour word shows water (blue) over the middle of the ground gradient in
+/// the day palette.
+pub fn is_water(word: u16, day: &VgaPalette) -> bool {
+    let lo = (word & 0xFF) as u8;
+    let shown = match word >> 8 {
+        0xFB => return false,
+        0xFD => 0x78 | lo,
+        0xFE => 0x78 & lo,
+        _ => lo,
+    };
+    let [r, g, b] = day.colors[shown as usize].map(i32::from);
+    b > r + 8 && b > g + 8
 }
 
 /// Parses a colour byte from a name containing `pal_NNN` (Blender may append `.001`).
@@ -314,7 +334,9 @@ impl Palette {
             params: PaletteParams { word: word as u32, flags, ..default() },
             globals: globals.clone(),
         };
-        palette.materials = (0..=255u8).map(|c| materials.add(mk(palette.word(c), 0))).collect();
+        palette.materials = (0..=255u8)
+            .map(|c| materials.add(mk(palette.word(c), palette.polygon_flags(c))))
+            .collect();
         palette.line_materials = (0..=255u8)
             .map(|c| materials.add(mk(0xFF00 | (palette.word(c) & 0xFF), palette.line_flags(c))))
             .collect();
@@ -389,10 +411,12 @@ fn apply_remap_changes(palette: Res<Palette>, mut materials: ResMut<Assets<Palet
     }
     for c in 0..=255u8 {
         let word = palette.word(c) as u32;
+        let polygon = palette.polygon_flags(c);
         if let Some(mut m) = materials.get_mut(&palette.materials[c as usize])
-            && m.params.word != word
+            && (m.params.word != word || m.params.flags != polygon)
         {
             m.params.word = word;
+            m.params.flags = polygon;
         }
         let (line, flags) = (0xFF00 | (word & 0xFF), palette.line_flags(c));
         if let Some(mut m) = materials.get_mut(&palette.line_materials[c as usize])

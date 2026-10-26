@@ -1019,6 +1019,29 @@ fn flir(rgb: vec3<f32>, warm: u32, fog_f: f32) -> vec3<f32> {
     return vec3<f32>(pow(v, 2.2));
 }
 
+// Water (palette_material.rs FLAG_WATER): a faint grid of dots pinned to the world (the
+// floating origin is handed over modulo NOISE_PERIOD, a multiple of the spacing), so the
+// height over the sea can be judged low down. They fade out with height, and in the distance
+// before they shrink into a moire.
+const FLAG_WATER: u32 = 256u;
+const WATER_GRID: f32 = 16.0;
+const WATER_DOTS_HIGH: vec2<f32> = vec2<f32>(80.0, 300.0);
+
+fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv) -> vec3<f32> {
+    let h = view.world_position.y - world.y;
+    let level = abs(normalize(deriv.face).y) > 0.95;
+    let fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
+        * (1.0 - smoothstep(0.08, 0.2, deriv.foot / WATER_GRID));
+    if (!level || fade <= 0.0) {
+        return rgb;
+    }
+    let p = (world.xz + globals.noise.xy) / WATER_GRID;
+    let d = length(fract(p) - 0.5) * WATER_GRID;
+    let r = max(0.5, deriv.foot);
+    let k = (1.0 - smoothstep(r - deriv.foot * 0.5, r + deriv.foot * 0.5, d)) * fade;
+    return mix(rgb, rgb * 1.5 + vec3<f32>(0.015), k * 0.6);
+}
+
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
 // uniform control flow, which a branch or return on a varying ends.
 struct Deriv {
@@ -1027,6 +1050,8 @@ struct Deriv {
     // Radians per pixel of the view direction (from the smooth direction: cell distances in
     // the night sky jump at cell edges).
     sky_px: f32,
+    // Metres per pixel on the surface (the water dots).
+    foot: f32,
 }
 
 // The colour word: the material's, or the vertex's.
@@ -1043,6 +1068,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var deriv: Deriv;
     deriv.face = cross(dpdx(in.world_position), dpdy(in.world_position));
     deriv.sky_px = max(length(fwidth(normalize(in.world_position - view.world_position))), 1e-5);
+    deriv.foot = length(fwidth(in.world_position));
     if ((u32(globals.light_info.w) & 1u) != 0u) {
         return vec4<f32>(pal(colour_word(in) & 0xFFu), 1.0);
     }
@@ -1202,6 +1228,9 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         } else {
             rgb = pal(select(lo, hi, ((px.x + px.y) & 1u) == 1u));
         }
+    }
+    if ((material.flags & FLAG_WATER) != 0u) {
+        rgb = water_dots(rgb, in.world_position, deriv);
     }
     // A dark night blacks out the scenery; lights (lines and dots) show, aircraft barely.
     // Lines in scenery colours (rivers, roads: material flag 64) go dark with the ground.

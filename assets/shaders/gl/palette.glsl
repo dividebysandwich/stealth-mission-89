@@ -799,7 +799,30 @@ vec4 smoke_volume(vec3 dir, bool modern) {
 }
 #endif
 
-vec4 shade_fragment(vec3 face, float sky_px) {
+// Water (palette_material.rs FLAG_WATER): a faint grid of dots pinned to the world (the
+// floating origin is handed over modulo NOISE_PERIOD, a multiple of the spacing), so the
+// height over the sea can be judged low down. They fade out with height, and in the distance
+// before they shrink into a moire.
+const uint FLAG_WATER = 256u;
+const float WATER_GRID = 16.0;
+const vec2 WATER_DOTS_HIGH = vec2(80.0, 300.0);
+
+vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot) {
+    float h = eye_pos().y - world.y;
+    bool level = abs(normalize(face).y) > 0.95;
+    float fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
+        * (1.0 - smoothstep(0.08, 0.2, foot / WATER_GRID));
+    if (!level || fade <= 0.0) {
+        return rgb;
+    }
+    vec2 p = (world.xz + g.noise.xy) / WATER_GRID;
+    float d = length(fract(p) - 0.5) * WATER_GRID;
+    float r = max(0.5, foot);
+    float k = (1.0 - smoothstep(r - foot * 0.5, r + foot * 0.5, d)) * fade;
+    return mix(rgb, rgb * 1.5 + vec3(0.015), k * 0.6);
+}
+
+vec4 shade_fragment(vec3 face, float sky_px, float foot) {
     vec3 dir = v_world - eye_pos();
     bool modern = g.params.w != 0.0;
 #if defined(CLOUD)
@@ -923,6 +946,9 @@ vec4 shade_fragment(vec3 face, float sky_px) {
     } else {
         rgb = modern ? (pal(lo) + pal(hi)) * 0.5 : pal(((px.x + px.y) & 1u) == 1u ? hi : lo);
     }
+    if ((u_flags & FLAG_WATER) != 0u) {
+        rgb = water_dots(rgb, v_world, face, foot);
+    }
     // A dark night blacks out the scenery; lights (lines and dots) show, aircraft barely.
     float dark = (is_line && (u_flags & 64u) == 0u) ? 0.0 : night_dark();
     if ((v_warm & 4u) != 0u) {
@@ -951,6 +977,7 @@ vec4 shade_fragment(vec3 face, float sky_px) {
 void main() {
     vec3 face = cross(dFdx(v_world), dFdy(v_world));
     float sky_px = max(length(fwidth(normalize(v_world - eye_pos()))), 1e-5);
+    float foot = length(fwidth(v_world));
     if ((uint(g.light_info.w) & 1u) != 0u) {
         o_colour = vec4(pal(v_word & 0xFFu), 1.0);
         return;
@@ -963,11 +990,11 @@ void main() {
             return;
         }
 #endif
-        vec4 c = shade_fragment(face, sky_px);
+        vec4 c = shade_fragment(face, sky_px, foot);
         o_colour = vec4(flir(c.rgb), c.a);
         return;
     }
-    vec4 c = shade_fragment(face, sky_px);
+    vec4 c = shade_fragment(face, sky_px, foot);
     vec3 glare = sun_glare(v_world - eye_pos());
     o_colour = vec4(nvg(c.rgb + glare * c.a), c.a);
 }

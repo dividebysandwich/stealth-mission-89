@@ -22,7 +22,7 @@ use bevy::prelude::*;
 use stealth_formats::terrain::LEVEL_UNIT;
 
 use crate::models::ModelLibrary;
-use crate::palette::{Palette, REMAP_DETAIL_HIGH, VgaPalette, index_from_name};
+use crate::palette::{Palette, REMAP_DETAIL_HIGH, VgaPalette, index_from_name, is_water};
 use crate::world::{Theater, WU};
 
 pub struct TerrainPlugin;
@@ -183,15 +183,13 @@ enum Class {
 /// Class of a flat polygon's colour word, judged like `scenery::ground` by the colour it shows
 /// over the middle of the ground gradient in the day palette.
 fn classify(word: u16, day: &VgaPalette) -> Class {
-    let lo = (word & 0xFF) as u8;
-    let shown = match word >> 8 {
-        0xFB => return Class::Overlay,
-        0xFD => 0x78 | lo,
-        0xFE => 0x78 & lo,
-        _ => lo,
-    };
-    let [r, g, b] = day.colors[shown as usize].map(i32::from);
-    if b > r + 8 && b > g + 8 { Class::Water } else { Class::Other }
+    if word >> 8 == 0xFB {
+        Class::Overlay
+    } else if is_water(word, day) {
+        Class::Water
+    } else {
+        Class::Other
+    }
 }
 
 /// A node with a mesh below a detail level node, with its transform to the model's frame.
