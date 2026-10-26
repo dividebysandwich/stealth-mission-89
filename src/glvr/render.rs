@@ -89,7 +89,7 @@ struct Programs {
 impl Programs {
     fn new(gl: &glow::Context, single: bool) -> Result<Self, String> {
         let one = if single { "#define SINGLE\n" } else { "" };
-        let effects = ["PARTICLE", "TRAIL", "ROTOR", "BOLT"]
+        let effects = ["PARTICLE", "TRAIL", "ROTOR", "BOLT", "FLAME"]
             .iter()
             .map(|d| compile(gl, EFFECTS_SHADER, &format!("{one}#define {d}")))
             .collect::<Result<Vec<_>, _>>()?;
@@ -1282,7 +1282,7 @@ impl Renderer {
                 stats.draws += 1;
             }
         }
-        // Effects, far to near: alpha blended, lightning adding its light.
+        // Effects, far to near: alpha blended, lightning and the afterburner adding their light.
         if !list.effects.is_empty() {
             let mut effects: Vec<&EffectItem> = list.effects.iter().collect();
             effects.sort_by(|a, b| {
@@ -1303,7 +1303,7 @@ impl Renderer {
                     self.use_program(p);
                     // SAFETY: the context is current.
                     unsafe {
-                        if item.effect == Effect::Bolt {
+                        if matches!(item.effect, Effect::Bolt | Effect::Flame) {
                             self.gl.blend_func_separate(
                                 glow::SRC_ALPHA,
                                 glow::ONE,

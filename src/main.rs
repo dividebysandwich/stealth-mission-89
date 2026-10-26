@@ -3,6 +3,7 @@
 /// shadow cascade.
 pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu")));
 
+mod afterburner_flame;
 mod aircraft;
 mod asset_path;
 mod autoshot;
@@ -256,6 +257,7 @@ fn main() {
             trackcam::TrackCamPlugin,
             trails::TrailsPlugin,
             rotor_blur::RotorBlurPlugin,
+            afterburner_flame::AfterburnerFlamePlugin,
             explosions::ExplosionsPlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,

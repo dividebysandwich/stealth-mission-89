@@ -1,6 +1,7 @@
 // Effects for the OpenGL headset renderer (src/glvr), as their WGSL shaders: explosion
 // particles (particle.wgsl, PARTICLE), smoke trails and contrails (trail.wgsl, TRAIL), blurred
-// rotor discs (rotor.wgsl, ROTOR) and lightning channels (bolt.wgsl, BOLT). Compiled with
+// rotor discs (rotor.wgsl, ROTOR), lightning channels (bolt.wgsl, BOLT) and the afterburner's
+// plume (flame.wgsl, FLAME). Compiled with
 // VERTEX or FRAGMENT and one of those defined; both eyes in one pass. The recon look is left
 // out; the tracking camera's picture (drawn offscreen) can be a FLIR view.
 
@@ -35,8 +36,8 @@ uniform vec3 u_right[2];
 uniform vec3 u_up[2];
 uniform mat4 u_model;
 uniform vec2 u_viewport;
-// The material's uniform, as its bytes (rotor_blur.rs `RotorParams`, the trail's and the bolt's
-// `params`).
+// The material's uniform, as its bytes (rotor_blur.rs `RotorParams`, the trail's, the bolt's and
+// the flame's `params`).
 uniform uvec4 u_raw[2];
 
 vec4 raw_vec4(int i) {
@@ -71,6 +72,13 @@ out vec2 v_uv;
 flat out vec3 v_axis_u;
 flat out vec3 v_axis_v;
 flat out vec3 v_normal;
+#endif
+#ifdef FLAME
+// x: 0 (nozzle) .. 1 (tip), y: layer (0 core, 1 sheath, 2 nozzle exit).
+layout(location = 1) in vec2 a_uv;
+out vec3 v_world;
+out vec3 v_normal;
+out vec2 v_uv;
 #endif
 
 void main() {
@@ -124,6 +132,17 @@ void main() {
     v_axis_v = normalize(m * w);
     v_normal = normalize(m * n);
 #endif
+#ifdef FLAME
+    // The cones' normals point out from the axis, the disc's along it.
+    vec3 n = vec3(a_position.xy, 0.0);
+    if (a_uv.y > 1.5 || dot(n, n) < 1e-8) {
+        n = vec3(0.0, 0.0, 1.0);
+    }
+    v_world = centre;
+    v_normal = mat3(u_model) * n;
+    v_uv = a_uv;
+    gl_Position = u_view_proj[VIEW] * vec4(centre, 1.0);
+#endif
 }
 #endif
 
@@ -143,6 +162,11 @@ in vec2 v_uv;
 flat in vec3 v_axis_u;
 flat in vec3 v_axis_v;
 flat in vec3 v_normal;
+#endif
+#ifdef FLAME
+in vec3 v_world;
+in vec3 v_normal;
+in vec2 v_uv;
 #endif
 
 // Night vision goggles (light_info.z): the picture intensified to a green phosphor one.
@@ -235,6 +259,40 @@ void main() {
     float a = (1.0 - smoothstep(0.3, 1.0, u)) * raw_vec4(0).x * v_side.y;
     if (a <= 0.003) { discard; }
     o_colour = vec4(mix(CORE * 1.6, EDGE, smoothstep(0.12, 0.7, u)), a);
+}
+#endif
+
+#ifdef FLAME
+const float TAU = 6.28318530718;
+const vec3 CORE_HOT = vec3(1.0, 0.85, 0.55);
+const vec3 CORE_TIP = vec3(1.0, 0.45, 0.12);
+const vec3 SHEATH_ROOT = vec3(0.4, 0.32, 1.0);
+const vec3 SHEATH = vec3(1.0, 0.42, 0.12);
+const vec3 EXIT = vec3(1.0, 0.62, 0.28);
+const float DIAMONDS = 3.5;
+
+void main() {
+    float t = clamp(v_uv.x, 0.0, 1.0);
+    float layer = v_uv.y;
+    vec4 p = raw_vec4(0);
+    float facing = abs(dot(normalize(v_normal), normalize(u_eye[VIEW] - v_world)));
+    float flicker = 0.85 + 0.1 * sin(p.y * 47.0 + t * 9.0) + 0.05 * sin(p.y * 83.0 - t * 21.0);
+    vec3 rgb;
+    float a;
+    if (layer > 1.5) {
+        rgb = EXIT * 1.8;
+        a = 0.9;
+    } else if (layer > 0.5) {
+        rgb = mix(SHEATH_ROOT, SHEATH, smoothstep(0.1, 0.35, t));
+        a = 0.35 * pow(facing, 1.5) * smoothstep(0.0, 0.08, t) * pow(1.0 - t, 1.5) * flicker;
+    } else {
+        float d = pow(0.5 + 0.5 * cos(TAU * t * DIAMONDS), 8.0) * (1.0 - t);
+        rgb = mix(CORE_HOT * 1.6, CORE_TIP, smoothstep(0.1, 0.9, t));
+        a = 0.7 * facing * pow(1.0 - t, 1.2) * flicker * (1.0 - 0.5 * p.z + 1.5 * p.z * d);
+    }
+    a *= p.x;
+    if (a <= 0.003) { discard; }
+    o_colour = vec4(rgb, a);
 }
 #endif
 
