@@ -186,16 +186,22 @@ pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static 
 
 /// The air defence console's model (`tools/models/build_console.py`).
 pub const CONSOLE_MODEL: &str = "cockpit_console";
+/// How much larger than shown the console's model is built (it looked too large life size).
+pub const CONSOLE_MODEL_SCALE: f32 = 1.0 / 0.95;
+/// How far below the eye the console sits in VR (m): the operator's head higher in the room.
+pub const VR_CONSOLE_DROP: f32 = 0.05;
 
-/// The cockpit shown: the aircraft's, or at an air defence console its model (life size, its
-/// origin at the operator's eye, where the camera rig's head is). Panel style, model, eye point
+/// The cockpit shown: the aircraft's, or at an air defence console its model (its origin at
+/// the operator's eye, where the camera rig's head is, in VR `VR_CONSOLE_DROP` below). Panel style, model, eye point
 /// in the aircraft frame, and the model's scale.
 fn choice(
     settings: &Settings,
     manning: Option<&crate::station::Manning>,
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
     if manning.is_some() {
-        return (layout::PanelStyle::Modern, CONSOLE_MODEL, settings.cockpit_eye(), 1.0);
+        let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
+        let eye = settings.cockpit_eye() - Vec3::Y * drop;
+        return (layout::PanelStyle::Modern, CONSOLE_MODEL, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
     (style, stem, settings.cockpit_eye(), settings.aircraft.spec().cockpit_model_scale())

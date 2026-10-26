@@ -193,6 +193,14 @@ impl RigOffset {
     pub fn scaled(&self, cockpit_scale: f32) -> Transform {
         Transform::from_scale(Vec3::splat(1.0 / cockpit_scale)) * self.0
     }
+
+    /// The offset of the hands into the cockpit frame (at a console, the frame of its model,
+    /// which sits `VR_CONSOLE_DROP` below the eye).
+    pub fn hands(&self, settings: &crate::settings::Settings, console: bool) -> Transform {
+        use crate::cockpit3d::{CONSOLE_MODEL_SCALE, VR_CONSOLE_DROP};
+        let drop = if console { VR_CONSOLE_DROP * CONSOLE_MODEL_SCALE } else { 0.0 };
+        Transform::from_translation(Vec3::Y * drop) * self.scaled(settings.vr_hand_scale(console))
+    }
 }
 
 /// The XR tracking root while a headset session exists (set by the XR module).

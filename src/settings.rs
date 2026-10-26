@@ -207,9 +207,13 @@ impl Settings {
     }
 
     /// Scale of the VR hand offsets: as the rig's, in the units of the cockpit frame
-    /// (`AircraftSpec::cockpit_model_scale`; the console's model is life size).
+    /// (`AircraftSpec::cockpit_model_scale`, `cockpit3d::CONSOLE_MODEL_SCALE`).
     pub fn vr_hand_scale(&self, console: bool) -> f32 {
-        let model = if console { 1.0 } else { self.aircraft.spec().cockpit_model_scale() };
+        let model = if console {
+            crate::cockpit3d::CONSOLE_MODEL_SCALE
+        } else {
+            self.aircraft.spec().cockpit_model_scale()
+        };
         self.vr_rig_scale(console) / model
     }
 
