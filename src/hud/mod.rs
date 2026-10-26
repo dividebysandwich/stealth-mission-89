@@ -402,7 +402,8 @@ fn update_messages(time: Res<Time>, mut msg: ResMut<HudMessages>) {
 /// How long the throttle readout stays up after the throttle last moved (seconds).
 const THROTTLE_READOUT_S: f32 = 1.0;
 
-/// The throttle readout: up while the throttle moves, and a second after.
+/// The throttle readout: up while the throttle moves, and a second after (and all the while the
+/// afterburner is on).
 fn track_throttle(
     time: Res<Time>,
     aircraft: Query<&Aircraft, With<Player>>,
@@ -419,9 +420,10 @@ fn track_throttle(
     msg.throttle = Some(t);
 }
 
-/// The throttle readout of a setting (`HudFrame::throttle`).
+/// The throttle readout of a setting (`HudFrame::throttle`): "AB" after full dry thrust while
+/// the afterburner is on.
 pub fn throttle_text(t: i32) -> String {
-    if t > 100 { "THR AB".to_string() } else { format!("THR {t}%") }
+    if t > 100 { "THR 100% AB".to_string() } else { format!("THR {t}%") }
 }
 
 /// Map units (wu >> 5, y growing southward) of a world position.
@@ -495,7 +497,8 @@ pub struct HudFrame {
     /// A turret gun's slave ("HMS" / "TGP", `Stores::gun_slave`).
     pub gun_slave: Option<&'static str>,
     pub message: Option<String>,
-    /// The throttle setting (percent; past 100 the afterburner) while it is changing.
+    /// The throttle setting (percent; past 100 the afterburner) while it is changing or the
+    /// afterburner is on.
     pub throttle: Option<i32>,
     pub accel: bool,
     pub training: bool,
@@ -627,7 +630,7 @@ impl HudParams<'_, '_> {
             throttle: self
                 .messages
                 .throttle
-                .filter(|_| self.messages.throttle_timer > 0.0)
+                .filter(|&t| self.messages.throttle_timer > 0.0 || t > 100.0)
                 .map(|t| t.round() as i32),
             accel: self.messages.accel,
             training: self.messages.training,

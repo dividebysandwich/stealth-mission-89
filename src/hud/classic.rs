@@ -354,7 +354,7 @@ fn instruments(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col:
     // G readout "1.0G" at (60,16): integer part and eighths (gees & 14) / 2.
     let g = f.gees;
     fonts.text(c, 60, 16, format!("{}.{}G", g / 16, (g.abs() & 0xE) >> 1).as_bytes(), col);
-    // Throttle "THR 85%" opposite it while it changes.
+    // Throttle "THR 85%" opposite it while it changes ("THR 100% AB" while the afterburner is on).
     if let Some(t) = f.throttle {
         fonts.text(c, 204, 16, super::throttle_text(t).as_bytes(), col);
     }
