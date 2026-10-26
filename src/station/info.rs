@@ -1,6 +1,13 @@
-//! The target data screen: the locked track as the radar's picture has it (twice a second),
-//! yellow on black with the values in yellow fields: track number, type and identity, range,
-//! altitude, speed, bearing, and the gun's time of flight and reach (a Patriot's: the PAC-3's).
+//! The target data screen, laid out as the Gepard's fire control page: the locked track as the
+//! radar's picture has it (twice a second). Labels yellow on black, values big and black on a
+//! yellow panel.
+//!
+//! * A title row (the page, the lock's state) and under it the type in a yellow bar.
+//! * Down the left the state boxes, lit when on: tracking, slewed by hand, firing, rounds
+//!   ready, refilling.
+//! * The panel: the identity and, in its four squares, bearing and time of flight; then the
+//!   track number, range, altitude and speed with their units.
+//! * At the bottom the gun's reach (a Patriot's: the PAC-3's) and whether the track is in it.
 
 use bevy::prelude::*;
 use stealth_sim::station::{GEPARD_REACH, GEPARD_V0, PATRIOT_MAX_RANGE};
@@ -11,18 +18,28 @@ use crate::canvas::{Canvas, CanvasTexture};
 use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, INFO_CANVAS};
 use crate::font::{Align, stroke_text_at};
 
-/// The title bar's height, the rows' first top and height, the label column's width, the
-/// value fields' width, the bottom bar's top.
-const TITLE_H: f32 = 26.0;
-const ROWS_TOP: f32 = 34.0;
-const ROW_H: f32 = 28.0;
-const LABEL_W: f32 = 120.0;
-const VALUE_W: f32 = 120.0;
-const STATUS_TOP: f32 = 206.0;
-/// Text heights and pen: labels, values.
-const LABEL: f32 = 7.0;
-const VALUE: f32 = 13.0;
+/// Rows: the title's, the type bar's, the state boxes' and the panel's (top, bottom), the
+/// bottom row's.
+const TITLE: (i32, i32) = (4, 22);
+const TYPE: (i32, i32) = (26, 44);
+const PANEL: (i32, i32) = (48, 208);
+const BOTTOM: (i32, i32) = (213, 235);
+/// Columns: the state boxes' right edge, the panel's left edge, the title's small box's left
+/// edge, the right edge.
+const LEFT: i32 = 52;
+const PANEL_X: i32 = 56;
+const TITLE_BOX: i32 = 266;
+const RIGHT: i32 = 316;
+/// The panel's squares: first left edge, width, step; the value rows' labels (left, right),
+/// the values' right edge.
+const SQUARES: (i32, i32, i32) = (156, 36, 40);
+const LABELS: (i32, i32) = (62, 144);
+const VALUES_RIGHT: f32 = 268.0;
+/// Text heights and pens: labels, values.
+const TEXT: f32 = 6.5;
 const PEN: f32 = 1.1;
+const VALUE: f32 = 19.0;
+const VALUE_PEN: f32 = 2.2;
 
 pub(super) fn draw(
     manning: Option<Res<Manning>>,
@@ -39,68 +56,115 @@ pub(super) fn draw(
     let cv = &mut tex.canvas;
     cv.reset_clip();
     cv.clear(BLACK);
-    let (w, h) = (INFO_CANVAS.0 as f32, INFO_CANVAS.1 as f32);
-    let lock = combat.sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
+    let sim = &combat.sim;
+    let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
     let track = lock.and_then(|l| ui.snapshots.front()?.track(l));
+    let (w, h) = (INFO_CANVAS.0 as i32, INFO_CANVAS.1 as i32);
+    cv.rect(1, 1, w - 2, h - 2, YELLOW);
 
-    // The title: the track's type and identity.
-    cv.rect(2, 2, w as i32 - 4, TITLE_H as i32 - 4, YELLOW);
-    let title = match track {
-        Some(t) => format!("{}  {}", t.name.to_ascii_uppercase(), t.side.label()),
-        None => "TARGET DATA".into(),
-    };
-    stroke_text_at(cv, w / 2.0, TITLE_H / 2.0, &title, 9.0, PEN, YELLOW, Align::Centre);
+    // The title row and the type bar.
+    framed(cv, (4, TITLE.0, TITLE_BOX - 4, TITLE.1), "TARGET DATA", false);
+    framed(
+        cv,
+        (TITLE_BOX, TITLE.0, RIGHT, TITLE.1),
+        if lock.is_some() { "TRK" } else { "---" },
+        false,
+    );
+    framed(cv, (4, TYPE.0, LEFT, TYPE.1), "AIR", false);
+    cv.fill_rect(PANEL_X, TYPE.0, RIGHT - PANEL_X, TYPE.1 - TYPE.0, YELLOW);
+    let name = track.map_or(String::new(), |t| t.name.to_ascii_uppercase());
+    framed(cv, (PANEL_X + 36, TYPE.0 + 3, RIGHT - 60, TYPE.1 - 3), &name, false);
 
-    let reach = if m.gepard { GEPARD_REACH } else { PATRIOT_MAX_RANGE } as f32;
+    // The state boxes.
+    let u = sim.aaa_units().get(m.unit).copied();
+    let units: Vec<usize> = if m.gepard { vec![m.unit] } else { sim.battery_launchers(m.unit) };
+    let states = [
+        ("TRK", lock.is_some()),
+        ("MAN", m.gepard && lock.is_none()),
+        ("FIRE", u.is_some_and(|u| u.burst > 0)),
+        ("RDY", units.iter().any(|&k| sim.aaa_units()[k].rounds > 0)),
+        ("RFL", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
+    ];
+    let step = (PANEL.1 - PANEL.0) / states.len() as i32;
+    for (i, (label, on)) in states.into_iter().enumerate() {
+        let top = PANEL.0 + i as i32 * step;
+        framed(cv, (4, top, LEFT, top + step - 4), label, on);
+    }
+
+    // The panel: identity and the squares, then the values.
+    cv.fill_rect(PANEL_X, PANEL.0, RIGHT - PANEL_X, PANEL.1 - PANEL.0, YELLOW);
+    let ident = track.map_or("", |t| t.side.label());
+    let strip = (PANEL.0 + 4, PANEL.0 + 26);
+    framed(cv, (LABELS.0, strip.0, LABELS.0 + 40, strip.1), ident, false);
     let slant = track.map(|t| t.east.hypot(t.north).hypot(t.alt));
-    let rows: [(&str, Option<String>, &str); 6] = [
-        ("TRACK", lock.map(|l| format!("{:04}", 1000 + l)), ""),
+    let squares = [
+        "BRG".to_string(),
+        track.map_or(String::new(), |t| format!("{:03.0}", t.bearing())),
+        if m.gepard { "TOF" } else { "HDG" }.to_string(),
+        if m.gepard {
+            slant.map_or(String::new(), |r| format!("{:.1}", r / GEPARD_V0 as f32))
+        } else {
+            track.map_or(String::new(), |t| format!("{:03.0}", t.heading()))
+        },
+    ];
+    let (x0, sw, sstep) = SQUARES;
+    for (i, text) in squares.iter().enumerate() {
+        let x = x0 + i as i32 * sstep;
+        framed(cv, (x, strip.0, x + sw, strip.1), text, false);
+    }
+    let rows: [(&str, Option<String>, &str); 4] = [
+        ("TRACK", lock.map(|l| format!("{:04}", 1000 + l)), "-"),
         ("RANGE", slant.map(|r| format!("{r:.0}")), "m"),
         ("ALTITUDE", track.map(|t| format!("{:.0}", t.alt)), "m"),
         ("SPEED", track.map(|t| format!("{:.0}", t.ve.hypot(t.vn))), "m/s"),
-        ("BEARING", track.map(|t| format!("{:03.0}", t.bearing())), "DEG"),
-        if m.gepard {
-            ("FLIGHT TIME", slant.map(|r| format!("{:.1}", r / GEPARD_V0 as f32)), "s")
-        } else {
-            ("HEADING", track.map(|t| format!("{:03.0}", t.heading())), "DEG")
-        },
     ];
+    let first = strip.1 + 4;
+    let row_h = (PANEL.1 - 4 - first) / rows.len() as i32;
     for (i, (label, value, unit)) in rows.into_iter().enumerate() {
-        row(cv, ROWS_TOP + i as f32 * ROW_H, label, value.as_deref(), unit);
+        let top = first + i as i32 * row_h;
+        framed(cv, (LABELS.0, top + 2, LABELS.1, top + row_h - 2), label, false);
+        let mid = (top + row_h / 2) as f32;
+        if let Some(v) = value {
+            stroke_text_at(cv, VALUES_RIGHT, mid, &v, VALUE, VALUE_PEN, BLACK, Align::Right);
+            stroke_text_at(cv, VALUES_RIGHT + 12.0, mid, unit, TEXT, PEN * 1.6, BLACK, Align::Left);
+        }
     }
 
-    // The bottom bar: in reach (lit) or not, or no lock.
-    let (text, lit) = match (lock, slant) {
-        (None, _) => ("NO LOCK", false),
-        (Some(_), None) => ("NO TRACK DATA", false),
-        (Some(_), Some(r)) if r <= reach => ("IN RANGE", true),
-        _ => ("OUT OF RANGE", false),
+    // The bottom row: in reach or not, and the reach.
+    let reach = if m.gepard { GEPARD_REACH } else { PATRIOT_MAX_RANGE } as f32;
+    let status = match (lock, slant) {
+        (None, _) => "NO LOCK",
+        (Some(_), None) => "NO TRACK DATA",
+        (Some(_), Some(r)) if r <= reach => "IN RANGE",
+        _ => "OUT OF RANGE",
     };
-    let (x, y, bw, bh) = (2, STATUS_TOP as i32, w as i32 - 4, (h - STATUS_TOP) as i32 - 3);
-    if lit {
-        cv.fill_rect(x, y, bw, bh, YELLOW);
-    } else {
-        cv.rect(x, y, bw, bh, YELLOW);
-    }
-    let col = if lit { BLACK } else { YELLOW };
-    let mid = STATUS_TOP + (h - STATUS_TOP) / 2.0;
-    stroke_text_at(cv, w / 2.0, mid, text, 9.0, PEN, col, Align::Centre);
+    let split = 156;
+    framed(cv, (4, BOTTOM.0, split - 4, BOTTOM.1), status, status == "IN RANGE");
+    cv.fill_rect(split, BOTTOM.0, RIGHT - split, BOTTOM.1 - BOTTOM.0, YELLOW);
+    let mid = (BOTTOM.0 + BOTTOM.1) as f32 / 2.0;
+    let text = format!("REACH {reach:.0} m");
+    stroke_text_at(
+        cv,
+        (split + RIGHT) as f32 / 2.0,
+        mid,
+        &text,
+        TEXT,
+        PEN * 1.6,
+        BLACK,
+        Align::Centre,
+    );
 }
 
-/// A row: the label in its frame, the value black in a yellow field (an empty field without
-/// one), the unit after it.
-fn row(cv: &mut Canvas, top: f32, label: &str, value: Option<&str>, unit: &str) {
-    let (y, rh) = (top as i32 + 2, ROW_H as i32 - 4);
-    let mid = top + ROW_H / 2.0;
-    cv.rect(2, y, LABEL_W as i32 - 4, rh, YELLOW);
-    stroke_text_at(cv, 8.0, mid, label, LABEL, PEN, YELLOW, Align::Left);
-    let x = LABEL_W as i32;
-    match value {
-        Some(v) => {
-            cv.fill_rect(x, y, VALUE_W as i32, rh, YELLOW);
-            stroke_text_at(cv, LABEL_W + VALUE_W - 6.0, mid, v, VALUE, 1.6, BLACK, Align::Right);
-        }
-        None => cv.rect(x, y, VALUE_W as i32, rh, YELLOW),
+/// A box (left, top, right, bottom) with its text in the middle: yellow framed on black, or
+/// lit (black on yellow).
+fn framed(cv: &mut Canvas, (l, t, r, b): (i32, i32, i32, i32), text: &str, lit: bool) {
+    if lit {
+        cv.fill_rect(l, t, r - l, b - t, YELLOW);
+    } else {
+        cv.fill_rect(l, t, r - l, b - t, BLACK);
+        cv.rect(l, t, r - l, b - t, YELLOW);
     }
-    stroke_text_at(cv, LABEL_W + VALUE_W + 8.0, mid, unit, LABEL, PEN, YELLOW, Align::Left);
+    let col = if lit { BLACK } else { YELLOW };
+    let (x, y) = ((l + r) as f32 / 2.0, (t + b) as f32 / 2.0);
+    stroke_text_at(cv, x, y, text, TEXT, PEN, col, Align::Centre);
 }

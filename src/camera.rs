@@ -697,7 +697,11 @@ fn update_rig(
                     * Quat::from_rotation_x(p + tracked.pitch)
                     * Quat::from_rotation_z(tracked.roll),
             );
-            *cam_tf = if settings.vr { offset.scaled(settings.vr_rig_scale(manning.is_some())) } else { offset.0 };
+            *cam_tf = if settings.vr {
+                offset.scaled(settings.vr_rig_scale(manning.is_some()))
+            } else {
+                offset.0
+            };
         }
         View::Chase => {
             // Behind and above, looking along the flight direction (camera stays in the aircraft frame).

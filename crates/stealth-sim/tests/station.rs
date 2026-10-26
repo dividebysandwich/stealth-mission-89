@@ -359,7 +359,8 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
         for _ in 0..15 * 2 {
             hold(&mut sim, f, to);
             let ev = sim.step(&idle(), 15);
-            down |= ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. }));
+            down |=
+                ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. }));
         }
         if down {
             break;

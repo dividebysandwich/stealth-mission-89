@@ -669,7 +669,8 @@ mod tests {
         let j = gltf_json(super::super::CONSOLE_MODEL);
         let materials: Vec<&str> =
             j["materials"].as_array().unwrap().iter().filter_map(|m| m["name"].as_str()).collect();
-        for m in ["screen_scope", "screen_board", "screen_eo", "screen_info", "trackcam", "label_FIRE"]
+        for m in
+            ["screen_scope", "screen_board", "screen_eo", "screen_info", "trackcam", "label_FIRE"]
         {
             assert!(materials.contains(&m), "no material {m}");
         }

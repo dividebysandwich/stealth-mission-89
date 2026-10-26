@@ -575,8 +575,8 @@ impl Sim {
         let dt = 1.0 / self.fs.max(1) as f32;
         let a = &mut self.aaa[st.unit as usize];
         let az = a.aim_az + st.slew[0] * dt;
-        a.aim_az = (az + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
-            - std::f32::consts::PI;
+        a.aim_az =
+            (az + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
         a.aim_el = (a.aim_el + st.slew[1] * dt).clamp(GEPARD_EL.0, GEPARD_EL.1);
     }
 
