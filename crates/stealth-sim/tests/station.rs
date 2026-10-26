@@ -6,7 +6,8 @@ use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{AaaKind, PATRIOT};
 use stealth_sim::ai_loadout::FighterTask;
 use stealth_sim::station::{
-    BURST, GEPARD_ROUNDS, Guidance, PATRIOT_STOCK, REFILL_SECONDS, SavedStock, StationCmd,
+    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, Guidance, PATRIOT_STOCK, REFILL_SECONDS, SavedStock,
+    StationCmd,
 };
 use stealth_sim::*;
 
@@ -291,6 +292,75 @@ fn a_gepard_burst_brings_down_a_low_raider() {
         used > (bursts - 1) * BURST && used <= bursts * BURST,
         "{used} rounds, {bursts} bursts"
     );
+}
+
+/// A manned Gepard and an unarmed enemy fighter (tag 8) by Neuburg: the Gepard, the fighter.
+fn gepard() -> (Sim, usize, usize) {
+    let mut sim = campaign();
+    let home = find(&sim, 0x401, "Neuburg");
+    let enemy = find(&sim, 0x001, "Komarno");
+    let o = sim.objects()[home];
+    let f = sim.spawn_fighter(enemy, o.x, o.y, 8, false, FighterTask::Patrol);
+    sim.set_fighter_loadout(f, Default::default());
+    sim.place_defences(o.x, o.y, true, true);
+    let g = kind_index(&sim, AaaKind::Gepard);
+    for (k, u) in sim.aaa_units_mut().iter_mut().enumerate() {
+        u.destroyed = k != g;
+    }
+    sim.station_command(ME, StationCmd::Man { unit: g as u16 }).unwrap();
+    (sim, g, f)
+}
+
+#[test]
+fn a_gepard_is_slewed_by_hand_without_a_lock() {
+    let (mut sim, g, _) = gepard();
+    sim.aaa_units_mut()[g].aim_az = 0.0;
+    sim.aaa_units_mut()[g].aim_el = 0.3;
+    // Faster than it can: limited to its traverse.
+    sim.station_command(ME, StationCmd::Slew { az: 5.0, el: 5.0 }).unwrap();
+    run(&mut sim, 1);
+    let u = sim.aaa_units()[g];
+    assert!((u.aim_az - GEPARD_TRAVERSE).abs() < 0.01, "{}", u.aim_az);
+    run(&mut sim, 3);
+    assert!(sim.aaa_units()[g].aim_el < 1.5, "stops at its limit");
+    sim.station_command(ME, StationCmd::Slew { az: 0.0, el: 0.0 }).unwrap();
+    let before = sim.aaa_units()[g];
+    run(&mut sim, 1);
+    assert_eq!(sim.aaa_units()[g].aim_az, before.aim_az);
+    assert!(sim.aaa_units()[g].rounds == GEPARD_ROUNDS, "no rounds without the trigger");
+}
+
+#[test]
+fn a_gepard_fired_by_hand_brings_down_what_it_points_at() {
+    let (mut sim, g, f) = gepard();
+    let at = sim.aaa_units()[g];
+    let to = (at.x + 0x30, at.y, 1500);
+    hold(&mut sim, f, to);
+    run(&mut sim, 1);
+    // Laid on the fighter by hand.
+    let m = stealth_sim::types::WU_METRES;
+    let p = at.metres();
+    let (east, up) = ((to.0 << 5) as f64 * m - p[0], to.2 as f64 * m - p[2]);
+    sim.aaa_units_mut()[g].aim_az = std::f32::consts::FRAC_PI_2;
+    sim.aaa_units_mut()[g].aim_el = up.atan2(east) as f32;
+    sim.station_command(ME, StationCmd::Trigger(true)).unwrap();
+    let mut down = false;
+    for _ in 0..15 * 6 {
+        hold(&mut sim, f, to);
+        let ev = sim.step(&idle(), 15);
+        if ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. })) {
+            down = true;
+            break;
+        }
+    }
+    assert!(down, "never got it");
+    sim.station_command(ME, StationCmd::Trigger(false)).unwrap();
+    run(&mut sim, 1);
+    let left = sim.aaa_units()[g].rounds;
+    assert!(left < GEPARD_ROUNDS);
+    run(&mut sim, 1);
+    assert_eq!(sim.aaa_units()[g].rounds, left, "released: no more rounds");
+    assert_eq!(sim.aaa_units()[g].burst, 0);
 }
 
 #[test]

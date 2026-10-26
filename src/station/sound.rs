@@ -42,12 +42,15 @@ pub(super) struct ConsoleLoop {
     slew: bool,
 }
 
-/// What was last heard: the battery's missiles in the air, the Gepard firing, the units
-/// refilling.
+/// A Gepard firing on: its burst heard again this often (s).
+const BURST_AGAIN: f32 = 1.4;
+
+/// What was last heard: the battery's missiles in the air, the Gepard firing (for how long),
+/// the units refilling.
 #[derive(Default)]
 pub(super) struct Heard {
     missiles: usize,
-    firing: bool,
+    firing: Option<f32>,
     refilling: Vec<bool>,
 }
 
@@ -61,6 +64,7 @@ pub(super) fn play(
     settings: Res<crate::settings::Settings>,
     mut loops: Query<(Entity, &ConsoleLoop, Option<&mut AudioSink>)>,
     mut heard: Local<Heard>,
+    time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(combat), Some(sounds)) = (manning, combat, sounds) else {
         for (e, _, _) in &loops {
@@ -82,10 +86,15 @@ pub(super) fn play(
     }
     heard.missiles = missiles;
     let firing = m.gepard && sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0);
-    if firing && !heard.firing {
-        one_shot(&sounds.burst, BURST);
-    }
-    heard.firing = firing;
+    let dt = time.delta_secs();
+    heard.firing = match heard.firing {
+        _ if !firing => None,
+        Some(t) if t + dt < BURST_AGAIN => Some(t + dt),
+        _ => {
+            one_shot(&sounds.burst, BURST);
+            Some(0.0)
+        }
+    };
     // A refill starting or done at the battery's launchers (the Gepard).
     let units: Vec<usize> = (0..sim.aaa_units().len())
         .filter(|&k| k == m.unit || (!m.gepard && sim.launcher_radar(k) == Some(m.unit)))

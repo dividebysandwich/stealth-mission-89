@@ -6,7 +6,11 @@
 //!   and history dots, refreshed twice a second (the radar's picture, not a live one).
 //! * The board (`board`): the track list (a track clicked there or on the picture is selected
 //!   on both), or the site's launchers, stocks and refills.
-//! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR.
+//! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR;
+//!   at a Gepard without a lock, where the gun points.
+//! * The hand controller (the cockpit's stick, flight controls): at a Gepard without a lock it
+//!   slews the turret; its trigger (the gun trigger or fire button) fires, with a lock bursts
+//!   at the lead, without one a stream along the barrels.
 //!
 //! The console's commands go to the simulation through the campaign (`Action::Station`, the
 //! server's on a client); what the console shows comes from the simulation's state.
@@ -39,6 +43,10 @@ impl Plugin for StationPlugin {
             Update,
             (
                 sync_manning,
+                hand_controller
+                    .after(sync_manning)
+                    .after(crate::script::ScriptSet)
+                    .before(FlightSystems),
                 seat_operator.after(FlightSystems),
                 (
                     buttons,
@@ -83,6 +91,9 @@ pub struct ConsoleUi {
     pub note: Option<(String, f32)>,
     /// Where the aircraft waited before, to put it back.
     parked: Option<(DVec3, Quat)>,
+    /// The hand controller's slew (rad/s: traverse, elevation) and trigger, as last sent.
+    pub slew: Vec2,
+    trigger: bool,
     /// `--console-fire` fired, `--console-resupply` asked.
     test_fired: bool,
     test_resupply: bool,
@@ -100,6 +111,8 @@ impl Default for ConsoleUi {
             since_snapshot: f32::MAX,
             note: None,
             parked: None,
+            slew: Vec2::ZERO,
+            trigger: false,
             test_fired: false,
             test_resupply: false,
         }
@@ -204,6 +217,48 @@ fn seat_operator(
     }
     if !matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear) {
         view.view = View::Cockpit;
+    }
+}
+
+/// Stick deflection below which the gun does not slew.
+const STICK_DEADZONE: f32 = 0.05;
+/// Steps of the slew sent (of the fastest): it is sent only when it changes.
+const SLEW_STEPS: f32 = 32.0;
+
+/// The slew rate (of the fastest) for a stick deflection: fine near the centre.
+fn slew_of(v: f32) -> f32 {
+    let a = ((v.abs() - STICK_DEADZONE) / (1.0 - STICK_DEADZONE)).clamp(0.0, 1.0);
+    (v.signum() * a * a * SLEW_STEPS).round() / SLEW_STEPS
+}
+
+/// The hand controller: the flight controls' stick slews a Gepard's turret, its triggers fire
+/// it (and never the parked aircraft's weapons).
+fn hand_controller(
+    manning: Option<Res<Manning>>,
+    mut c: Option<ResMut<ActiveCampaign>>,
+    mut controls: ResMut<crate::input::FlightControls>,
+    mut ui: ResMut<ConsoleUi>,
+) {
+    let Some(m) = manning else { return };
+    let trigger = controls.gun || controls.fire;
+    controls.gun = false;
+    controls.fire = false;
+    let Some(c) = c.as_deref_mut() else { return };
+    if !m.gepard {
+        return;
+    }
+    use stealth_sim::station::{GEPARD_ELEVATE, GEPARD_TRAVERSE};
+    let slew = Vec2::new(
+        slew_of(controls.roll) * GEPARD_TRAVERSE,
+        slew_of(controls.pitch) * GEPARD_ELEVATE,
+    );
+    if slew != ui.slew {
+        ui.slew = slew;
+        c.actions.push(Action::Station(StationCmd::Slew { az: slew.x, el: slew.y }));
+    }
+    if trigger != ui.trigger {
+        ui.trigger = trigger;
+        c.actions.push(Action::Station(StationCmd::Trigger(trigger)));
     }
 }
 

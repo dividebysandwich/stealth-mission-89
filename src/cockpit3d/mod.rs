@@ -74,6 +74,7 @@ impl Plugin for Cockpit3dPlugin {
                 sync_materials,
                 sync_shading,
                 cockpit_visibility,
+                console_stick,
                 pick::forget_shapes,
                 tooltips::hover,
                 tooltips::place_screen,
@@ -436,6 +437,20 @@ fn cockpit_visibility(
             && !hide.is_some_and(|h| h.0);
     for mut v in &mut roots {
         v.set_if_neq(if inside { Visibility::Inherited } else { Visibility::Hidden });
+    }
+}
+
+/// At an air defence console the hand controller slews a Gepard's gun (a Patriot's has none).
+fn console_stick(
+    manning: Option<Res<crate::station::Manning>>,
+    mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
+) {
+    let Some(m) = manning else { return };
+    for (stick, mut v, mut tip) in &mut q {
+        v.set_if_neq(if m.gepard { Visibility::Inherited } else { Visibility::Hidden });
+        if stick.is_added() {
+            *tip = tooltips::console_stick_tip();
+        }
     }
 }
 

@@ -220,8 +220,14 @@ mod tests {
     #[test]
     fn station_messages_survive_encoding() {
         use stealth_sim::station::{DefenceState, Guidance, Station, StationCmd};
-        let m = ToServer::Station(StationCmd::Fire { launcher: Some(3) });
-        assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        for cmd in [
+            StationCmd::Fire { launcher: Some(3) },
+            StationCmd::Slew { az: 0.5, el: -0.25 },
+            StationCmd::Trigger(true),
+        ] {
+            let m = ToServer::Station(cmd);
+            assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        }
         let defence = DefenceState {
             stations: vec![Station {
                 unit: 4,
@@ -230,6 +236,8 @@ mod tests {
                 mode: Guidance::SemiActive,
                 burst: 0,
                 due: 0.0,
+                slew: [0.5, 0.0],
+                trigger: true,
             }],
             stock: vec![8, 0, 0, 0, 640],
             refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],

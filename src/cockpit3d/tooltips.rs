@@ -480,6 +480,16 @@ pub(super) fn stick_tip() -> Tip {
     Tip::new("Side stick", "Pitch and roll", &[PitchDown, PitchUp, RollLeft, RollRight])
 }
 
+/// The air defence console's hand controller (`station`).
+pub(super) fn console_stick_tip() -> Tip {
+    use Action::*;
+    Tip::new(
+        "Hand controller",
+        "Without a lock: slews the gun and the camera; the trigger fires",
+        &[PitchDown, PitchUp, RollLeft, RollRight, FireWeapon],
+    )
+}
+
 pub(super) fn throttle_tip() -> Tip {
     use Action::*;
     Tip::new("Throttle", "Thrust", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])

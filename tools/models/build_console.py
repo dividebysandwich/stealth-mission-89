@@ -10,7 +10,8 @@
 # console: an upright panel with the camera screen (`trackcam` picture behind the `screen_eo`
 # overlay) and its buttons, a sloping desk with the air picture (`screen_scope`), the track list
 # (`screen_board`) and button columns beside them. Each is one flat surface, placed so a 65
-# degree desktop view sees them all.
+# degree desktop view sees them all. Right of the chair a pedestal with the hand controller
+# (`stick`) that slews the Gepard's turret, its trigger in front.
 #
 # Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face points
 # along its local -Y (towards the operator), local Z is up its panel.
@@ -40,6 +41,9 @@ DESK_TILT = 40.0
 EO = (0.46, 0.46 * 60.0 / 77.0)
 SCOPE = (0.28, 0.28)
 BOARD = (0.34, 0.255)
+# The hand controller's pivot, on its pedestal right of the chair (its grip GRIP_HEIGHT,
+# src/cockpit3d/levers.rs, above it).
+STICK = Vector((0.34, 0.20, -0.50))
 # Push buttons: face half size, face height over the panel, travel.
 BUTTON = (0.024, 0.011)
 HEIGHT, TRAVEL = 0.006, 0.004
@@ -64,6 +68,7 @@ def material(name, rgb=(0.1, 0.1, 0.1)):
 for name in ("panel_grey", "dark", "black", "frame", "seat", "cushion", "rubber", "metal",
              "highlight", "trackcam", "screen_scope", "screen_board", "screen_eo"):
     material(name)
+material("red", (0.6, 0.05, 0.05))
 mats = bpy.data.materials
 
 
@@ -199,6 +204,19 @@ box("seat", "seat", (0.0, -0.05, -0.80), (0.5, 0.48, 0.10))
 box("cushion", "cushion", (0.0, -0.05, -0.74), (0.46, 0.44, 0.03))
 box("seat", "seat", (0.0, -0.30, -0.42), (0.48, 0.08, 0.66))
 box("metal", "metal", (0.0, -0.05, -1.05), (0.06, 0.06, 0.40))
+
+# --- the hand controller: a pedestal from the floor, a boot on its top, the stick over the
+# pivot: a shaft and a grip leaning forward, a trigger in front, a thumb button on top
+box("dark", "dark", (STICK.x, STICK.y, (FLOOR + STICK.z - 0.03) / 2), (0.14, 0.22, STICK.z - 0.03 - FLOOR))
+box("frame", "frame", (STICK.x, STICK.y, STICK.z - 0.025), (0.15, 0.23, 0.01))
+box("rubber", "rubber", (STICK.x, STICK.y, STICK.z - 0.012), (0.06, 0.06, 0.016))
+stick = empty("stick", STICK, props={"stick": True})
+box("metal", "metal", (0.0, 0.0, 0.03), (0.016, 0.016, 0.06), parent=stick)
+lean = Euler((math.radians(-12.0), 0.0, 0.0))
+box("panel_grey", "panel_grey", (0.0, 0.008, 0.11), (0.036, 0.044, 0.11), lean, parent=stick)
+box("panel_grey", "panel_grey", (0.0, 0.016, 0.175), (0.04, 0.05, 0.03), lean, parent=stick)
+box("metal", "metal", (0.0, 0.036, 0.125), (0.012, 0.012, 0.026), lean, parent=stick)
+box("red", "red", (0.0, 0.02, 0.192), (0.014, 0.014, 0.008), parent=stick)
 
 # --- the console: the upright panel and the desk, each one flat surface, where they meet,
 # and the body down to the floor

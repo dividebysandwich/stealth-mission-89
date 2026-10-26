@@ -424,6 +424,7 @@ fn stop_combat(
 }
 
 /// Keys -> one-shot simulation commands, collected until the next frame.
+#[allow(clippy::too_many_arguments)]
 fn collect_commands(
     mut actions: MessageReader<ActionEvent>,
     mut locks: MessageReader<crate::avionics::LockRequest>,
@@ -432,6 +433,7 @@ fn collect_commands(
     mut accel: ResMut<TimeAccel>,
     settings: Res<crate::settings::Settings>,
     mut msgs: ResMut<HudMessages>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let helicopter = settings.aircraft.spec().helicopter;
     let combat = &mut *combat;
@@ -450,6 +452,8 @@ fn collect_commands(
     for ActionEvent(a) in actions.read() {
         match a {
             Action::SelectWeapon => c.next_bay = true,
+            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's.
+            Action::FireWeapon if manning.is_some() => {}
             Action::FireWeapon => c.fire = true,
             Action::Flare => c.flare = true,
             Action::Chaff => c.chaff = true,

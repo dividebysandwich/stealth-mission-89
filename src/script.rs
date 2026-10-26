@@ -32,6 +32,7 @@ impl Plugin for ScriptPlugin {
             .add_systems(
                 Update,
                 run_script
+                    .in_set(ScriptSet)
                     .before(FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
             );
@@ -40,6 +41,10 @@ impl Plugin for ScriptPlugin {
         }
     }
 }
+
+/// The script's controls are set in this set (before the flight).
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ScriptSet;
 
 enum Step {
     Action(String),

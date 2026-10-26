@@ -1,7 +1,11 @@
 //! The console's camera (the tracking camera, `trackcam`, on the radar's or the Gepard's mast):
 //! it follows the locked track where it is now (interpolated every frame like the drawn
 //! aircraft, not the radar picture's twice a second), slewing at its gimbal's rate. Colour or
-//! thermal (the FLIR of the aircraft's pod). Without a lock it holds where it looks.
+//! thermal (the FLIR of the aircraft's pod). Without a lock it holds where it looks; a
+//! Gepard's looks along the gun, slewed by hand (ahead of the simulation's steps with the
+//! hand controller, drawn to where the gun is).
+
+use std::f32::consts::{PI, TAU};
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -19,6 +23,8 @@ const SLEW_RATE: f32 = 1.6;
 const SLEW_RAMP: f32 = 0.3;
 /// The camera's height on its mast (m).
 const MAST: f64 = 6.0;
+/// How fast the camera slewed by hand is drawn to the gun's direction (1/s).
+const TO_GUN: f32 = 4.0;
 
 /// Where the console's camera looks (`trackcam` renders it).
 #[derive(Resource, Clone, Copy)]
@@ -34,6 +40,8 @@ pub struct ConsoleEo {
     /// the track: the gimbal's motor sound).
     speed: f32,
     pub slew: f32,
+    /// Slewed by hand: the gun's direction as the camera has it (azimuth, elevation).
+    manual: Option<Vec2>,
 }
 
 /// The camera points at the lock.
@@ -59,12 +67,37 @@ pub(super) fn aim(
     });
     let Some(mut eo) = eo else {
         let dir = Vec3::new((u.aim_az).sin(), 0.05, -(u.aim_az).cos()).normalize();
-        commands.insert_resource(ConsoleEo { eye, dir, zoom: 2, target, speed: 0.0, slew: 0.0 });
+        commands.insert_resource(ConsoleEo {
+            eye,
+            dir,
+            zoom: 2,
+            target,
+            speed: 0.0,
+            slew: 0.0,
+            manual: None,
+        });
         return;
     };
     let dt = time.delta_secs();
     eo.eye = eye;
     eo.target = target;
+    if m.gepard && lock.is_none() {
+        let wrap = |a: f32| (a + PI).rem_euclid(TAU) - PI;
+        let (lo, hi) = stealth_sim::station::GEPARD_EL;
+        let gun = Vec2::new(u.aim_az, u.aim_el);
+        let mut a = eo.manual.unwrap_or(gun) + ui.slew * dt;
+        let k = 1.0 - (-TO_GUN * dt).exp();
+        a.x = wrap(a.x + wrap(gun.x - a.x) * k);
+        a.y = (a.y + (gun.y - a.y) * k).clamp(lo, hi);
+        eo.manual = Some(a);
+        eo.dir = Vec3::new(a.x.sin() * a.y.cos(), a.y.sin(), -a.x.cos() * a.y.cos());
+        let rate = stealth_sim::station::GEPARD_TRAVERSE;
+        eo.speed = 0.0;
+        eo.slew = (ui.slew.length() / rate).min(1.0);
+        eo.zoom = ui.zoom.unwrap_or(2);
+        return;
+    }
+    eo.manual = None;
     if let Some(t) = target {
         let want = (t - eye).as_vec3().normalize_or(eo.dir);
         let angle = eo.dir.angle_between(want);
@@ -127,6 +160,18 @@ pub(super) fn draw(
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
     let bottom = h - 10.0;
     let Some(t) = eo.target else {
+        if m.gepard && lock.is_none() {
+            // Slewed by hand: where the gun points, and while it fires.
+            let d = eo.dir;
+            let brg = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
+            let elv = d.y.atan2(d.x.hypot(d.z)).to_degrees();
+            let text = format!("MAN B{brg:03.0} E{elv:+.0}");
+            stroke_text_at(cv, w / 2.0, bottom, &text, 7.0, 1.0, col, Align::Centre);
+            if sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0) {
+                stroke_text_at(cv, w / 2.0, 24.0, "FIRING", 7.0, 1.0, YELLOW, Align::Centre);
+            }
+            return;
+        }
         let text = if lock.is_some() { "TRACK LOST" } else { "NO LOCK" };
         stroke_text_at(
             cv,

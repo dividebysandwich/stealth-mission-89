@@ -264,7 +264,10 @@ impl Sim {
                 .aaa
                 .iter()
                 .enumerate()
-                .filter(|(_, u)| !u.destroyed && (u.tracking || u.burst > 0))
+                // A manned one too: its turret slewed by hand.
+                .filter(|&(i, u)| {
+                    !u.destroyed && (u.tracking || u.burst > 0 || self.manned_by(i).is_some())
+                })
                 .map(|(i, u)| (i as u16, u.aim_az, u.aim_el, u.burst, u.tracking))
                 .collect(),
             ai_missiles: self.ai_missiles().to_vec(),
