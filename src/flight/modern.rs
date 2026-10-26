@@ -217,7 +217,7 @@ const MAX_GROUND_PITCH: f32 = 0.22;
 /// Carrier catapult and arresting wire (g).
 const CATAPULT: f32 = 2.5;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct State {
     /// Velocity (ft/s, Bevy frame).
     vel: Vec3,

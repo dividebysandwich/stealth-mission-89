@@ -89,7 +89,7 @@ pub struct Pilot {
 pub struct CareerFlight(pub String);
 
 /// The store directory of the pilots (`stealth_host::store`).
-const PILOTS: &str = "data/pilots";
+const PILOTS: &str = "pilots";
 
 /// File key of a pilot name (letters, digits, '-').
 pub fn file_key(name: &str) -> String {

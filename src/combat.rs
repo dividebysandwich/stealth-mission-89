@@ -389,6 +389,19 @@ impl Combat {
     pub fn clear_target(&mut self) {
         self.pending.clear_target = true;
     }
+
+    /// A saved game's simulation and flight record (`savegame.rs`) in place of the ones the
+    /// mission started with: the tile objects it destroyed are drawn destroyed, and the waypoint
+    /// its mission logic chose last is no news.
+    pub fn restore(&mut self, sim: Sim, record: crate::recorder::FlightRecord) {
+        self.prev_flights = sim.flights().to_vec();
+        self.prev_proj = *sim.projectiles();
+        self.prev_remote = remote_missiles(&sim);
+        self.prior_tiles.extend_from_slice(sim.tile_damage());
+        self.sim_waypoint = sim.objectives().waypoint;
+        self.sim = sim;
+        self.record = record;
+    }
 }
 
 /// Despawns the player aircraft (with everything parented to it) when leaving the flight.

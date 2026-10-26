@@ -1,7 +1,7 @@
 //! HOTAS / joystick input: raw device buttons and axes (by platform event code, so HOTAS
 //! buttons that are not part of a standard gamepad layout work too), mapped to flight axes and
-//! actions by an `InputConfig` that the menu's input mapping dialog edits and saves as JSON in
-//! the user config directory.
+//! actions by an `InputConfig` that the menu's input mapping dialog edits and saves as JSON with
+//! this computer's settings (`config/input.json` in the player's folder).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 

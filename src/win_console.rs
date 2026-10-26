@@ -2,9 +2,10 @@
 //! shortcut or Steam. The game is a console program, so Windows gives it a console of its own
 //! then, which only it is attached to (or none at all on Windows 11 24H2 and later, through the
 //! manifest's consoleAllocationPolicy, packaging/windows/stealth-mission-89.manifest). It closes
-//! that console and writes its log to `%APPDATA%\stealth-mission-89\stealth-mission-89.log`
-//! instead, `stealth-mission-89-vr.log` for VR starts ("Fly in VR" relaunches with `--vr`), as
-//! the AppImage does on Linux. Started from a terminal, it shares the terminal's console and
+//! that console and writes its log to `stealth-mission-89.log` in the player's folder
+//! (`Documents\My Games\Stealth Mission 89`, `stealth_host::store`) instead,
+//! `stealth-mission-89-vr.log` for VR starts ("Fly in VR" relaunches with `--vr`), as the AppImage
+//! does on Linux. Started from a terminal, it shares the terminal's console and
 //! keeps writing to it.
 
 use std::os::windows::io::IntoRawHandle;
@@ -25,7 +26,7 @@ pub fn leave_explorer_console() {
         // SAFETY: nothing holds on to the console's handles yet.
         unsafe { FreeConsole() };
     }
-    let Some(dir) = dirs::data_dir().map(|d| d.join("stealth-mission-89")) else {
+    let Some(dir) = stealth_host::store::root() else {
         return;
     };
     let name = if std::env::args().any(|a| a == "--vr") {

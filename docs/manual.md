@@ -28,6 +28,7 @@ has a modern and a classic cockpit, the F-16C its own.
 11. [Drone defense (Ukraine)](#11-drone-defense-ukraine)
 12. [Ejection and rescue](#12-ejection-and-rescue)
 13. [Multiplayer](#13-multiplayer)
+14. [Your files](#14-your-files)
 
 ---
 
@@ -90,6 +91,7 @@ classic shadows and lighting.
 |---|---|
 | BACK | Back to the main menu. |
 | NEW MISSION | Generate different objectives with the same options and start time. |
+| LOAD | The missions saved in flight (SAVE MISSION, chapter 3.8), the latest first: the primary order, theater, aircraft, mission time and when it was saved (UTC). LOAD flies one on from where it was saved, with the aircraft and the realism switches it was flown with (the menu's switches change to them); the flight starts paused, the in-flight menu open. DELETE removes a save after asking. Not in career mode. The saves are in the `saves` folder of the game's folder for your files (`Documents\My Games\Stealth Mission 89` on Windows; chapter 14). |
 | PLAN ROUTE | Below the mission summary: the mission planner (chapter 9). |
 | LOADOUT | Below the mission summary: the stores on each hardpoint, seen from above. Click a bay or pylon and pick its load; *Same on both sides* loads the matching hardpoint on the other wing too. The F-117A has its two bays, and without *Realistic weapons* two more inside the wing roots (amber, not on the real aircraft); the F-16C has stations 1 (left wingtip) to 9 (right wingtip): air-to-air missiles on 1-3 and 7-9, bombs and missiles on 3-4 and 6-7, a fuel tank on 4, 5 or 6, the camera or special equipment on the centreline. Weapons out of stock for the mission are greyed out. BRIEFED restores the briefed stores, CLEAR empties every hardpoint. The briefing's armament line shows the loadout. |
 | FLY IN VR | Restart the game in the VR headset with this mission (requires an OpenXR runtime). After the mission the debrief and the menu stay in the headset, on a panel in front of you: point a controller at it, pull the trigger to click, push the thumbstick to scroll; the left menu button puts the panel in front of you again. Starting the game with `--vr` opens the menu in the headset too. |
@@ -374,6 +376,7 @@ back a page; on the first page they close the menu.
 | Entry | Function |
 |---|---|
 | Resume | Closes the menu (as does Esc again). |
+| Save mission | Single missions only (not a career sortie, a campaign or a coop game), while you are still in the aircraft: saves the flight as it is, SAVED shows beside it. The single mission screen's LOAD (chapter 1) flies it on. A save keeps the mission, the route and stores planned, the whole world (enemy aircraft, sites, missiles in the air, what is destroyed), your aircraft (position, speed, fuel, damage, stores, systems), the waypoint and the HUD mode, and the flight's record for the debrief. The MFD pages, the view, the kneeboard, fires and smoke start afresh, and a Tacview export of the flight shows the other aircraft from the load on only. Your own OPTIONS (flight model, cockpit, HUD...) are the ones set when it is loaded. |
 | Options | The pages of the main menu's OPTIONS (chapter 1) that apply in flight, below. |
 | Key guide | The keys as bound, the mouse or the VR controllers. Type to keep only the keys whose description holds the text (any case); Backspace deletes, the field's X or Esc clears it. In VR, a fingertip on the field and the trigger open a keyboard on the screen: touch a key and pull the trigger to type, DONE closes it. |
 | End mission | Ends the flight and goes to the debrief. |
@@ -925,8 +928,9 @@ detection and the radar that tracked you longest. Drag the map to pan it, turn t
 push the thumbstick) to zoom. *RESULTS* goes back to the statistics.
 
 **Tacview.** With *Tacview export* checked in OPTIONS > GAME, every flight is also saved as a Tacview
-recording (`.acmi`) in the game's data folder under `tacview` (on Linux
-`~/.local/share/stealth-mission-89/tacview`, on Windows `%APPDATA%\stealth-mission-89\tacview`):
+recording (`.acmi`) in the game's folder for your files under `tacview` (on Windows
+`Documents\My Games\Stealth Mission 89\tacview`, on Linux `~/.local/share/stealth-mission-89/tacview`;
+chapter 14):
 your aircraft, the enemy aircraft and missiles, the radar sites and airfields. The theater is laid
 on the globe around one of its real airbases at the game's scale, so the rest of it lies only
 roughly where the real places are.
@@ -1116,7 +1120,7 @@ stealth-mission-89 --dedicated --theater ukraine --name "Friday night ops" --por
 | `--clear-sky` | A new campaign without weather (else it changes once or twice a day). |
 | `--classic-damage`, `--classic-guidance`, `--classic-time` | Classic damage, guidance and a fixed time of day instead of the default realistic damage, realistic guidance and moving sun and moon. |
 | `--no-crashes`, `--realistic-weapons`, `--friendly-fire` | The other rules. |
-| `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's data directory). |
+| `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's folder for your files, chapter 14). |
 | `--send-rate <hz>` | How often the moving world goes to the players, 1 to 15 times a second (default 7.5). More is smoother; less leaves bandwidth for more players. |
 | `--master <url>` | The server list to be on (default `https://sm-master.playspoon.com`; reported every 30 seconds). |
 | `--no-master` | Not on the server list: players join by address. |
@@ -1143,3 +1147,18 @@ holds, the players and what they do, and the recent events with their times (UTC
 Ctrl-C stops it (it saves first). Without a terminal (a service, `--plain`) it writes the events
 as log lines; SIGTERM or Ctrl-C stops it the same way.
 
+## 14. Your files
+
+The game keeps everything it writes for you in one folder:
+
+| System | Folder |
+|---|---|
+| Windows | `Documents\My Games\Stealth Mission 89` |
+| macOS | `~/Library/Application Support/stealth-mission-89` |
+| Linux, Steam Deck, Steam Frame | `~/.local/share/stealth-mission-89` |
+
+In it: `saves` (single missions saved in flight), `pilots` (career), `campaigns` (dynamic
+campaigns), `config` (your options and key bindings), `tacview` (Tacview recordings) and the log
+of the last start. Copy the folder to keep your progress or to take it to another computer. With
+Steam Cloud, the saves, pilots and campaigns follow you from one computer to another, also
+between Windows, macOS and Linux; your options and bindings stay on each computer.

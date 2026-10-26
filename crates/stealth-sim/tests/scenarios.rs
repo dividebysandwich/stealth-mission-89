@@ -687,6 +687,51 @@ fn classic_state_golden() {
     assert_eq!(got, GOLDEN, "new hashes: [{}]", hex.join(", "));
 }
 
+/// A saved game (the game's single mission saves): the simulation read back from its JSON goes
+/// on exactly as the one that was saved, with the realistic options on.
+#[test]
+fn saved_state_goes_on_the_same() {
+    let d = data();
+    let opts = SimOptions {
+        realistic_damage: true,
+        realistic_guidance: true,
+        air_defence: true,
+        ..Default::default()
+    };
+    for th in [3, 8] {
+        let m = mission(d, th, 0x2345 + th as u16, 3);
+        let mut sim = Sim::with_options(&d.sim, &m, opts.clone());
+        let mut p = sim.start_state();
+        let (tx, ty) = Sim::map_to_world(m.waypoints[1].x, m.waypoints[1].y);
+        let input = |f: i32, p: &mut PlayerState| {
+            let h = stealth_sim::math::bearing((tx - p.x) >> 6, (ty - p.y) >> 6);
+            p.heading = h as u16;
+            p.altitude = (f * 20).min(2000) as u16;
+            p.velocity = 450 * 27;
+            p.on_ground = false;
+            p.gear_up = true;
+            let v = (p.velocity as i32 * 4) / 15 / 64;
+            p.x += d.sim.trig.sin_mul(h as i32, v) * 4;
+            p.y += d.sim.trig.cos_mul(h as i32, v) * 4;
+            p.cmd = Commands { fire: f % 200 == 0, flare: f % 333 == 0, ..Default::default() };
+        };
+        for f in 0..15 * 240 {
+            input(f, &mut p);
+            sim.step(&p, 15);
+        }
+        let json = serde_json::to_string(&sim).unwrap();
+        eprintln!("theater {th}: saved state {} kB", json.len() / 1024);
+        let mut loaded: Sim = serde_json::from_str(&json).unwrap();
+        assert_eq!(state_hash(&loaded), state_hash(&sim));
+        for f in 15 * 240..15 * 360 {
+            input(f, &mut p);
+            sim.step(&p, 15);
+            loaded.step(&p, 15);
+        }
+        assert_eq!(state_hash(&loaded), state_hash(&sim), "theater {th}");
+    }
+}
+
 /// Supply drop: unreachable in classic mode (spec vs class test), fixed behind `fix_classic_bugs`.
 #[test]
 fn supply_drop_fixed_and_classic() {

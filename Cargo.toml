@@ -51,7 +51,6 @@ rand = "0.9"
 image = { version = "0.25", default-features = false, features = ["png"] }
 png = "0.18"
 gilrs = "0.11"
-dirs = "6"
 # SystemTime that works in the browser build too (std's panics there).
 web-time = "1"
 bevy_mod_openxr = { version = "0.6", optional = true }

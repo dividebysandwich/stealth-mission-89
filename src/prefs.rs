@@ -1,4 +1,5 @@
-//! Saved files in the user's config directory, and the menu choices remembered between runs.
+//! This computer's settings (`config/` in the player's folder, `stealth_host::store`), and the
+//! menu choices remembered between runs.
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -8,7 +9,7 @@ use stealth_mission::{MissionKind, Sky};
 use crate::menu::MenuState;
 use crate::settings::{DEFAULT_VR_COCKPIT_SCALE, Settings, VR_COCKPIT_SCALE_RANGE};
 
-/// `<config dir>/stealth-mission-89/<name>` (`stealth_host::store`); None in the browser.
+/// `config/<name>` in the player's folder (`stealth_host::store`); None in the browser.
 pub fn config_path(name: &str) -> Option<std::path::PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
     return stealth_host::store::path(&format!("config/{name}"));

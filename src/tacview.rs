@@ -70,7 +70,7 @@ pub(crate) fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
-fn civil_from_days(z: i64) -> (i64, i64, i64) {
+pub(crate) fn civil_from_days(z: i64) -> (i64, i64, i64) {
     let z = z + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z - era * 146_097;
@@ -375,9 +375,12 @@ impl AcmiWriter {
     }
 }
 
-/// Where recordings go.
+/// Where recordings go; none in the browser.
 fn folder() -> Option<PathBuf> {
-    dirs::data_dir().map(|d| d.join("stealth-mission-89").join("tacview"))
+    #[cfg(not(target_arch = "wasm32"))]
+    return stealth_host::store::path("tacview");
+    #[cfg(target_arch = "wasm32")]
+    None
 }
 
 /// Writes the recording of a flight; errors are logged.

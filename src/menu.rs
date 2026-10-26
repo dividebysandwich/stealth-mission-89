@@ -115,6 +115,29 @@ impl MenuState {
     pub fn regenerate(&mut self) {
         self.dirty = true;
     }
+
+    /// A saved mission (`savegame.rs`) on the single mission screen: its options and number,
+    /// its route and stores, as it was generated (not generated again).
+    pub fn show_saved(
+        &mut self,
+        m: &Mission,
+        seed: u16,
+        route: crate::mission::PlannedRoute,
+        loadout: crate::loadout::PlannedLoadout,
+    ) {
+        let s = &m.settings;
+        (self.theater, self.roe, self.kind, self.opponents) =
+            (s.theater, s.roe, s.kind, s.opponents);
+        self.lockheed = s.plane == stealth_mission::Plane::Lockheed;
+        (self.weather, self.cloud_cover) = (s.weather, s.cloud_cover);
+        (self.start_hour, self.moon) = (s.start_hour, s.moon);
+        self.seed = seed;
+        self.career = None;
+        self.mission = Some(Ok(m.clone()));
+        self.route = Some(route);
+        self.loadout = Some(loadout);
+        self.dirty = false;
+    }
 }
 
 impl Default for MenuState {
@@ -136,9 +159,11 @@ impl Default for MenuState {
             start_hour: Some(8),
             moon: None,
             // `--open-mission`: start in the mission screen (screenshots), also where
-            // `--open-planner` and `--open-loadout` return to.
-            mission_screen: std::env::args()
-                .any(|a| a == "--open-mission" || a == "--open-planner" || a == "--open-loadout"),
+            // `--open-planner`, `--open-loadout` and `--open-saves` return to.
+            mission_screen: std::env::args().any(|a| {
+                ["--open-mission", "--open-planner", "--open-loadout", "--open-saves"]
+                    .contains(&a.as_str())
+            }),
             player_name: String::new(),
             server_addr: String::new(),
             server_name: String::new(),
@@ -918,7 +943,7 @@ pub(crate) fn tacview_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         ui.checkbox(&mut s.tacview, "Export"),
         &[
             "Saves each flight as a Tacview recording (.acmi)",
-            "In the game's data folder, under tacview",
+            "In the game's folder for your files, under tacview",
         ],
     )
     .changed()
@@ -1165,7 +1190,7 @@ fn main_screen(
     });
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn menu_ui(
     mut commands: Commands,
     mut contexts: EguiContexts,
@@ -1189,10 +1214,18 @@ fn menu_ui(
         ResMut<crate::campaign::CampaignWindow>,
         ResMut<crate::multiplayer_menu::MultiplayerWindow>,
         ResMut<crate::options::OptionsWindow>,
+        ResMut<crate::savegame::SavesWindow>,
     ),
 ) -> Result {
-    let (mut planner, mut career, mut loadout, mut campaign, mut multiplayer, mut options) =
-        windows;
+    let (
+        mut planner,
+        mut career,
+        mut loadout,
+        mut campaign,
+        mut multiplayer,
+        mut options,
+        mut saves,
+    ) = windows;
     // Generator data is loaded on first use.
     let Some(data) = data else {
         match MissionData::load() {
@@ -1284,7 +1317,7 @@ fn menu_ui(
             &mut exit,
         );
     }
-    if state.mission_screen && !dialogs && !planner.open && !loadout.open {
+    if state.mission_screen && !dialogs && !planner.open && !loadout.open && !saves.open {
         let width = wide_width(ctx);
         // Career sorties take their options from the career window.
         let career_mode = state.career.is_some();
@@ -1383,6 +1416,9 @@ fn menu_ui(
                     state.seed = rand::random();
                     state.dirty = true;
                 }
+                if !career_mode && facts(ui.add(big_button("LOAD")), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
+                    saves.show();
+                }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let can_fly = matches!(state.mission, Some(Ok(_)));
@@ -1434,6 +1470,7 @@ fn menu_ui(
     );
     crate::planner::planner_ui(ctx, &mut planner, &mut state);
     crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, settings.aircraft);
+    let loaded = crate::savegame::saves_ui(ctx, &mut saves);
     if before
         != (
             state.theater,
@@ -1453,6 +1490,18 @@ fn menu_ui(
     } else if realistic_before != state.realistic(settings.aircraft) {
         // Another aircraft: the same mission with or without the F-117A's limits.
         state.dirty = true;
+    }
+    // A save loaded: its mission and choices, not a new mission from them.
+    if let Some(save) = loaded {
+        crate::savegame::fly(
+            &mut commands,
+            save,
+            &mut state,
+            &mut settings,
+            &mut setup,
+            &tables.start_dir,
+        );
+        next.set(AppState::Flight);
     }
     crate::career::career_ui(ctx, &mut career, &mut state, &mut settings);
     crate::options::options_ui(ctx, &mut options, &mut settings, head.source, &mut dialog);

@@ -1,6 +1,15 @@
-//! The player's files: `config/<name>` in the user's config directory and `data/<name>` in the
-//! data directory (each under `stealth-mission-89/`), or the browser's localStorage in the
-//! browser build. Keys use `/` as separator, e.g. `data/campaigns/ce-1.json`.
+//! The player's files, all in one folder (`root`) with the same layout on every system, so that
+//! Steam Cloud can sync them with one rule per subfolder (docs/files.md):
+//!
+//! * Windows: `Documents\My Games\Stealth Mission 89` (the Documents folder wherever it was
+//!   moved, OneDrive included);
+//! * macOS: `~/Library/Application Support/stealth-mission-89`;
+//! * Linux: `$XDG_DATA_HOME/stealth-mission-89`, by default `~/.local/share/stealth-mission-89`
+//!   (where the AppImage also copies the game's assets).
+//!
+//! Keys are paths in it with `/` as separator: `config/` this computer's settings (`prefs.json`,
+//! `input.json`), `pilots/`, `campaigns/` and `saves/` the player's progress, e.g.
+//! `campaigns/ce-1.json`. The browser build keeps them in localStorage.
 
 use anyhow::Result;
 
@@ -19,14 +28,14 @@ pub fn remove(key: &str) -> Result<()> {
     imp::remove(key)
 }
 
-/// The names in directory `dir` (`data/pilots`), each with when it was last written (seconds
-/// since the Unix epoch, 0 if unknown).
+/// The names in directory `dir` (`pilots`), each with when it was last written (seconds since
+/// the Unix epoch, 0 if unknown).
 pub fn list(dir: &str) -> Vec<(String, f64)> {
     imp::list(dir)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use imp::path;
+pub use imp::{path, root};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod imp {
@@ -34,19 +43,66 @@ mod imp {
 
     use anyhow::{Context, Result};
 
-    /// Where `key` is on disk; None without a config or data directory.
+    /// The player's folder (made when first written to), found once; None without a home
+    /// directory. Windows: in `Documents\My Games`, as many games keep theirs (in the data
+    /// directory without a Documents folder); elsewhere the data directory: macOS asks the player
+    /// before a game reads Documents, Linux has no such convention.
+    pub fn root() -> Option<PathBuf> {
+        static ROOT: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+        ROOT.get_or_init(|| {
+            if cfg!(windows)
+                && let Some(d) = dirs::document_dir()
+            {
+                let root = d.join("My Games").join("Stealth Mission 89");
+                migrate(&root);
+                return Some(root);
+            }
+            let root = dirs::data_dir()?.join("stealth-mission-89");
+            migrate(&root);
+            Some(root)
+        })
+        .clone()
+    }
+
+    /// Up to 0.7 the settings were in the config directory and the pilots and campaigns in the
+    /// data directory (each under `stealth-mission-89/`, both `%APPDATA%` on Windows): copied
+    /// into the folder on the first start without its `config/` (the old files stay).
+    fn migrate(root: &std::path::Path) {
+        let config = root.join("config");
+        if config.exists() {
+            return;
+        }
+        let old = |d: Option<PathBuf>| d.map(|d| d.join("stealth-mission-89"));
+        let copy = |from: PathBuf, to: PathBuf| {
+            if from.is_file() && !to.exists() {
+                let _ = std::fs::create_dir_all(to.parent().unwrap_or(root));
+                let _ = std::fs::copy(from, to);
+            }
+        };
+        if let Some(old) = old(dirs::config_dir()) {
+            for f in ["prefs.json", "input.json"] {
+                copy(old.join(f), config.join(f));
+            }
+        }
+        if let Some(old) = old(dirs::data_dir()).filter(|d| d != root) {
+            for dir in ["pilots", "campaigns"] {
+                let Ok(files) = std::fs::read_dir(old.join(dir)) else { continue };
+                for f in files.flatten() {
+                    copy(f.path(), root.join(dir).join(f.file_name()));
+                }
+            }
+        }
+        // Once only, also with nothing to copy.
+        let _ = std::fs::create_dir_all(&config);
+    }
+
+    /// Where `key` is on disk; None without a home directory.
     pub fn path(key: &str) -> Option<PathBuf> {
-        let (base, rest) = key.split_once('/')?;
-        let dir = match base {
-            "config" => dirs::config_dir(),
-            "data" => dirs::data_dir(),
-            _ => None,
-        }?;
-        Some(rest.split('/').fold(dir.join("stealth-mission-89"), |p, s| p.join(s)))
+        Some(key.split('/').filter(|s| !s.is_empty()).fold(root()?, |p, s| p.join(s)))
     }
 
     fn need_path(key: &str) -> Result<PathBuf> {
-        path(key).with_context(|| format!("{key}: no user config or data directory"))
+        path(key).with_context(|| format!("{key}: no home directory"))
     }
 
     pub fn read(key: &str) -> Result<Option<String>> {
@@ -156,5 +212,20 @@ mod imp {
                 Some((name.to_string(), time))
             })
             .collect()
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::{path, root};
+
+    /// The keys are paths in the player's folder, `My Games` on Windows.
+    #[test]
+    fn keys_are_paths_in_the_folder() {
+        let Some(root) = root() else { return };
+        assert_eq!(path("saves/ce-1.json"), Some(root.join("saves").join("ce-1.json")));
+        assert_eq!(path("pilots"), Some(root.join("pilots")));
+        let end = if cfg!(windows) { "My Games/Stealth Mission 89" } else { "stealth-mission-89" };
+        assert!(root.ends_with(end), "{}", root.display());
     }
 }

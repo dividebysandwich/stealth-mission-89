@@ -1,4 +1,4 @@
-//! Campaign saves: `campaigns/<name>.json` in the game's data directory (`store`), or a file of
+//! Campaign saves: `campaigns/<name>.json` in the player's folder (`store`), or a file of
 //! its own (a dedicated server's).
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -10,7 +10,7 @@ use stealth_campaign::CampaignState;
 use crate::store;
 
 /// The store directory of the saves (`stealth_host::store`).
-const DIR: &str = "data/campaigns";
+const DIR: &str = "campaigns";
 
 fn file_name(name: &str) -> String {
     let safe: String =

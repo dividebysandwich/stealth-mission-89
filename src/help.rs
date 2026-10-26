@@ -26,6 +26,8 @@ Starting
   --fly                        fly from the menu's defaults, skipping the menu
     --base <name>              the airfield to start from
     --night                    a night flight
+  --load <save>                fly on a single mission saved in flight (its file name in the
+                               saves folder of the player's files, without .json)
   --campaign <name>            straight into a saved campaign, or a new one under that name
                                (--theater, --roe, --opponents, --seed, --sky-ratio, --start-hour)
   --vr                         OpenXR headset (without a runtime it runs on the desktop)
@@ -92,6 +94,7 @@ Multiplayer
 
 Testing and screenshots
   --script <steps>             replay timed actions, e.g. \"0:ThrottleMax,7:pitch=0.35,14:Gear\"
+                               (SaveMission: save the flight as the menu's SAVE MISSION)
   --log-flight / --log-sim     print the flight / simulation state
   --readout                    on-screen text readout of the flight state
   --time-scale <x>             run the game time x times faster
@@ -116,7 +119,7 @@ Testing and screenshots
   --debrief-map                open the debrief's flight map at mid-flight
   --export-maps <dir>          write every theater's map picture and exit
   --open-mission, --open-planner, --open-loadout, --open-career, --open-campaign,
-  --open-multiplayer, --open-keyboard
+  --open-multiplayer, --open-keyboard, --open-saves
                                start with that screen or window open
   --open-options <tab>         start with OPTIONS open: game, graphics, sound, controls
   --campaign-tab <tab>         board, map, players, debrief, log
