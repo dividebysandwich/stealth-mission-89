@@ -40,7 +40,9 @@ use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
-pub use controls::PressControl;
+pub use controls::{ConsoleButton, PressControl, ScreenClick};
+pub use displays::{BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, SCOPE_CANVAS};
+pub use layout::ConsoleKey;
 pub use pick::Solid;
 pub use tooltips::Tip;
 
@@ -59,6 +61,8 @@ impl Plugin for Cockpit3dPlugin {
         .init_resource::<pick::Shapes>()
         .init_resource::<tooltips::TipAnchor>()
         .add_message::<PressControl>()
+        .add_message::<ConsoleButton>()
+        .add_message::<ScreenClick>()
         .add_systems(Startup, (setup_materials, initial_look, model::load_models))
         .add_systems(OnEnter(AppState::Flight), tooltips::spawn_box)
         .add_systems(
@@ -180,12 +184,30 @@ pub struct HudGlass;
 #[derive(Component)]
 pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static str);
 
+/// The air defence console's model (`tools/models/build_console.py`).
+pub const CONSOLE_MODEL: &str = "cockpit_console";
+
+/// The cockpit shown: the aircraft's, or at an air defence console its model (life size, its
+/// origin at the operator's eye, where the camera rig's head is). Panel style, model, eye point
+/// in the aircraft frame, and the model's scale.
+fn choice(
+    settings: &Settings,
+    manning: Option<&crate::station::Manning>,
+) -> (layout::PanelStyle, &'static str, Vec3, f32) {
+    if manning.is_some() {
+        return (layout::PanelStyle::Modern, CONSOLE_MODEL, settings.cockpit_eye(), 1.0);
+    }
+    let (style, stem) = settings.cockpit();
+    (style, stem, settings.cockpit_eye(), settings.aircraft.spec().cockpit_model_scale())
+}
+
 /// Keeps the cockpit at the eye point (in VR it follows the cockpit size).
 fn follow_eye(
     settings: Res<crate::settings::Settings>,
+    manning: Option<Res<crate::station::Manning>>,
     mut roots: Query<&mut Transform, With<CockpitRoot>>,
 ) {
-    let eye = settings.cockpit_eye();
+    let eye = choice(&settings, manning.as_deref()).2;
     for mut tf in &mut roots {
         if tf.translation != eye {
             tf.translation = eye;
@@ -198,9 +220,10 @@ fn follow_eye(
 fn respawn_on_style_change(
     mut commands: Commands,
     settings: Res<Settings>,
+    manning: Option<Res<crate::station::Manning>>,
     roots: Query<(Entity, &CockpitRoot)>,
 ) {
-    let (want, stem) = settings.cockpit();
+    let (want, stem, _, _) = choice(&settings, manning.as_deref());
     for (e, root) in &roots {
         if root.0 != want
             || root.1 != settings.local_lights
@@ -282,6 +305,9 @@ fn setup_materials(mut commands: Commands, mut materials: ResMut<Assets<CockpitM
     });
 }
 
+/// How dark an air defence console's shelter is (the night darkness, 0..1).
+const SHELTER_DARK: f32 = 0.5;
+
 /// Whether the cockpit is drawn lit (otherwise flat, like the classic panel pictures).
 pub fn lighting_on(s: &Settings) -> bool {
     s.shadows || s.local_lights
@@ -315,6 +341,7 @@ fn sync_shading(
     sky: Res<crate::sky::Sky>,
     hud: Option<Res<crate::hud::HudState>>,
     lighting: Res<crate::lighting::LightingState>,
+    manning: Option<Res<crate::station::Manning>>,
     mut materials: ResMut<Assets<CockpitMaterial>>,
 ) {
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
@@ -326,6 +353,8 @@ fn sync_shading(
     // In 1/64 steps: a change re-uploads every cockpit material.
     let q = |v: f32| (v * 64.0).round() / 64.0;
     let dark = if sky.on && !nvg { q(sky.dark) } else { 0.0 };
+    // An air defence console's shelter has no windows: dark but for its screens and buttons.
+    let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };
     let night = |m: &CockpitMaterial| {
         Vec4::new(
@@ -372,11 +401,12 @@ struct CockpitLamp;
 /// Flood lamps: on with the local lighting option, brighter as it gets dark.
 fn cockpit_lamps(
     settings: Res<Settings>,
+    manning: Option<Res<crate::station::Manning>>,
     lighting: Res<crate::lighting::LightingState>,
     mut q: Query<&mut PointLight, With<CockpitLamp>>,
 ) {
     // As bright as in the cockpit model's size, which brings them nearer.
-    let k = settings.aircraft.spec().cockpit_model_scale();
+    let k = choice(&settings, manning.as_deref()).3;
     let lumens = if settings.local_lights {
         (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k)
     } else {
@@ -416,7 +446,7 @@ fn spawn_cockpit(
     mut images: ResMut<Assets<Image>>,
     fonts: Res<crate::font::Fonts>,
     tc_image: Option<Res<crate::trackcam::TrackCamImage>>,
-    settings: Res<Settings>,
+    (settings, manning): (Res<Settings>, Option<Res<crate::station::Manning>>),
     models: Res<model::CockpitModels>,
     server: Res<AssetServer>,
     assets: model::ModelAssets,
@@ -426,7 +456,7 @@ fn spawn_cockpit(
         return;
     }
     let (Ok(aircraft), Ok(head)) = (player.single(), head.single()) else { return };
-    let (style, stem) = settings.cockpit();
+    let (style, stem, eye, scale) = choice(&settings, manning.as_deref());
     let Some(file) = models.0.get(stem) else { return };
     if !server.is_loaded_with_dependencies(file) {
         return;
@@ -435,8 +465,7 @@ fn spawn_cockpit(
     let root = commands
         .spawn((
             CockpitRoot(layout.style, settings.local_lights, settings.hires_displays(), stem),
-            Transform::from_translation(settings.cockpit_eye())
-                .with_scale(Vec3::splat(1.0 / settings.aircraft.spec().cockpit_model_scale())),
+            Transform::from_translation(eye).with_scale(Vec3::splat(1.0 / scale)),
             Visibility::default(),
         ))
         .id();

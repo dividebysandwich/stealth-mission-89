@@ -12,6 +12,8 @@ use stealth_campaign::{
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
 use stealth_net::protocol::PlayerStatus;
+use stealth_sim::aaa::AaaKind;
+use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
 use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
@@ -41,8 +43,9 @@ pub struct OpsUi {
     centre: egui::Vec2,
     scale: f32,
     fitted: bool,
-    /// `--campaign-take` was done.
+    /// `--campaign-take` was done, `--campaign-man`.
     pub test_taken: bool,
+    pub test_manned: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
@@ -174,7 +177,8 @@ pub fn block_input(
     settings: Res<crate::settings::Settings>,
     mut hide: ResMut<crate::camera::HideOwnAircraft>,
 ) {
-    let want = c.screen_open() || menu.open;
+    // At an air defence console the flight's controls are off too (its buttons are clicked).
+    let want = c.screen_open() || menu.open || matches!(c.phase, super::Phase::Station { .. });
     if block.0 != want {
         block.0 = want;
     }
@@ -200,6 +204,13 @@ pub fn test_tab() -> Option<Tab> {
         "chat" => Tab::Chat,
         _ => Tab::Board,
     })
+}
+
+/// Test aid: `--campaign-man <n>` mans the n-th friendly air defence console once the
+/// campaign is up (Patriot batteries first, then the Gepards).
+pub fn test_man() -> Option<usize> {
+    let args: Vec<String> = std::env::args().collect();
+    args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?.parse().ok()
 }
 
 pub fn test_take() -> Option<usize> {
@@ -1173,8 +1184,43 @@ fn war_map(
             ui.add_space(8.0);
             ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
             ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
+            control_button(ui, c, sim, unit_view);
         });
     });
+}
+
+/// The watched unit is a friendly Patriot battery or Gepard: CONTROL mans its console.
+fn control_button(
+    ui: &mut egui::Ui,
+    c: &mut ActiveCampaign,
+    sim: &stealth_sim::Sim,
+    unit_view: &mut super::UnitView,
+) {
+    let Some(super::unit_view::UnitRef::Aaa(k)) = unit_view.target else { return };
+    let Some(u) = sim.aaa_units().get(k) else { return };
+    if !sim.aaa_blue(k) || !stealth_sim::station::mannable(u.kind) {
+        return;
+    }
+    ui.add_space(10.0);
+    section(ui, if u.kind == AaaKind::Gepard { "Gepard" } else { "Patriot battery" });
+    let manned = sim.manned_by(k).filter(|&p| p != c.me.0);
+    let why = if u.destroyed {
+        Some("Destroyed".to_string())
+    } else if c.phase == Phase::Sortie {
+        Some("Finish your sortie first".to_string())
+    } else {
+        manned.map(|p| {
+            let name = c.state().player_name(PlayerId(p)).unwrap_or("another player");
+            format!("Manned by {name}")
+        })
+    };
+    if ui.add_enabled(why.is_none(), big_button("CONTROL")).clicked() {
+        c.ui.error = None;
+        c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
+        unit_view.close();
+    }
+    let note = why.unwrap_or_else(|| "Take over its console".to_string());
+    ui.label(egui::RichText::new(note).small().color(DIM));
 }
 
 fn debrief(ui: &mut egui::Ui, c: &ActiveCampaign) {

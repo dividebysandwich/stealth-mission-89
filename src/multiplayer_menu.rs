@@ -268,7 +268,8 @@ fn multiplayer_window(
         let events = client.poll(now);
         client.flush(now);
         let addr = addr.clone();
-        for e in events {
+        let mut events = events.into_iter();
+        while let Some(e) = events.next() {
             match e {
                 ClientEvent::Connected => {
                     w.status = Some(format!("Connected to {addr}, joining..."))
@@ -278,6 +279,15 @@ fn multiplayer_window(
                     match ActiveCampaign::client(server, *st, &data, rules, id) {
                         Ok(mut c) => {
                             c.resume = resume;
+                            // What came with the welcome (the first full world state) is the
+                            // game's: lost, the client would never get it again.
+                            let rest: Vec<ClientEvent> = events.by_ref().collect();
+                            commands.queue(move |world: &mut World| {
+                                let mut inbox = world.resource_mut::<crate::net::NetInbox>();
+                                for e in rest {
+                                    inbox.route(e);
+                                }
+                            });
                             commands.insert_resource(NetLink::Client(client));
                             crate::campaign::start(&mut commands, c, &mut setup, &tables.start_dir);
                             w.open = false;

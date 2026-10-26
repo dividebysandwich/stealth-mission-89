@@ -31,8 +31,8 @@ use crate::math::{s16, view_z_f};
 use crate::types::*;
 
 /// A missile's motor and airframe: motor burn and smoke trail (s), seconds to full speed,
-/// lateral acceleration limit (g) at full lift, launched vertically, and its drag as a multiple
-/// of [`DRAG`].
+/// lateral acceleration limit (g) at full lift, launched vertically, its drag as a multiple
+/// of [`DRAG`], and the speed (wu/s) below which it is spent once burnt out.
 #[derive(Debug, Clone, Copy)]
 pub struct Profile {
     pub burn: f64,
@@ -41,19 +41,20 @@ pub struct Profile {
     pub g: f64,
     pub vertical: bool,
     pub drag: f64,
+    pub stall: f64,
 }
 
 const fn rocket(burn: f64, boost: f64, g: f64) -> Profile {
-    Profile { burn, smoke: burn, boost, g, vertical: false, drag: 1.0 }
+    Profile { burn, smoke: burn, boost, g, vertical: false, drag: 1.0, stall: MIN_SPEED }
 }
 
 const fn vertical(burn: f64, boost: f64, g: f64) -> Profile {
-    Profile { burn, smoke: burn, boost, g, vertical: true, drag: 1.0 }
+    Profile { burn, smoke: burn, boost, g, vertical: true, drag: 1.0, stall: MIN_SPEED }
 }
 
 /// Burns the whole way (a turbojet or a long sustainer); the smoke shows for `smoke` s.
 const fn cruise(smoke: f64, g: f64) -> Profile {
-    Profile { burn: 1e9, smoke, boost: 3.0, g, vertical: false, drag: 1.0 }
+    Profile { burn: 1e9, smoke, boost: 3.0, g, vertical: false, drag: 1.0, stall: MIN_SPEED }
 }
 
 /// The profile of a missile table entry; None for bombs and the other projectiles (they keep
@@ -89,6 +90,9 @@ pub fn profile(spec: i32) -> Option<Profile> {
         41 => vertical(15.0, 4.0, 25.0), // SA-21
         43 => rocket(2.0, 2.0, 30.0),    // SA-22: a booster, then the dart glides
         44 => vertical(5.0, 2.0, 30.0),  // SA-15
+        // MIM-104F PAC-3: a single pulse motor off the M903's inclined rails, then it glides,
+        // agile (hit-to-kill) but slender: 80 km at most against a target that holds its course.
+        45 => Profile { drag: PAC3_DRAG, stall: PAC3_STALL, ..rocket(PAC3_BURN, PAC3_BOOST, 40.0) },
         _ => return None,
     })
 }
@@ -107,6 +111,14 @@ fn straight_secs(spec: i32, range: Option<f64>) -> f64 {
 /// Hellfire flies straight for 1 s.
 const STRAIGHT: f64 = 0.4;
 const LOB_RANGE: f64 = 10_000.0;
+
+/// PAC-3: motor burn and seconds to full speed, drag as a multiple of [`DRAG`] (its 80 km
+/// reach).
+const PAC3_BURN: f64 = 7.0;
+const PAC3_BOOST: f64 = 6.0;
+/// Below about Mach 1.6 (wu/s) it can no longer catch a jet: spent.
+const PAC3_STALL: f64 = 1100.0;
+const PAC3_DRAG: f64 = 1.65;
 
 /// Navigation constant.
 const PN_GAIN: f64 = 4.0;
@@ -322,6 +334,17 @@ impl Sim {
     }
 }
 
+/// A campaign missile (the Patriot's) under this guidance: off its launcher at `pos` (wu:
+/// east, south, true altitude) along `dir`. No loft: the launcher's elevation is its climb, and
+/// navigation brings it down to the collision course (the loft is made for the classic
+/// game's shortened ranges).
+pub(crate) fn launch_ai(spec: i32, pos: V3, dir: V3, fs: i32) -> Projectile {
+    let (heading, pitch) = heading_pitch(dir);
+    let mut pm = Projectile { spec, ttl: 1, target: -1, heading, pitch, ..Default::default() };
+    start_flight(&mut pm, pos, mul(dir, RAIL_SPEED), fs);
+    pm
+}
+
 /// The loft angle (radians) against a target `range` wu away and `elev` radians above, for a
 /// missile with lock range `reach` (wu): none close in, growing with the range. Not worth it
 /// against a target above the loft path.
@@ -470,7 +493,7 @@ pub(crate) fn flight_step(
 
     // Back into the record.
     let speed = len(v);
-    f.stalled |= t > prof.burn && speed < MIN_SPEED;
+    f.stalled |= t > prof.burn && speed < prof.stall;
     let q = |a: f64| (a * fine).round() as i32;
     f.x = q(p[0]);
     f.y = q(p[1]);
@@ -508,7 +531,7 @@ mod tests {
     use crate::math::abs16;
     use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 
-    fn new_sim() -> Sim {
+    pub(super) fn new_sim() -> Sim {
         static D: OnceLock<(SimData, stealth_mission::Mission)> = OnceLock::new();
         let (data, m) = D.get_or_init(|| {
             let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
@@ -739,5 +762,74 @@ mod tests {
         missile(&mut sim, 0, 4, [0.0, 0.0, 5.0], [0.0, 0.0, 150.0]);
         let hit = fly(&mut sim, 0, [0.0, -50_000.0, 500.0], [0.0; 3], 60.0, |_, _| {});
         assert!(hit.is_some(), "missed");
+    }
+}
+
+#[cfg(test)]
+mod pac3 {
+    use super::*;
+
+    /// Metres per world unit (the campaign's scale).
+    const M: f64 = crate::aaa::M_PER_MAP / 32.0;
+    const FS: i32 = 15;
+
+    /// A PAC-3 off the M903's rails (38° up) at a target `range_km` away at `alt_m`, flying
+    /// at `kt` toward the battery (negative: away), weaving at `weave_g` (0: holding its
+    /// course). Seconds to the hit, or None (spent, stalled, on the ground).
+    fn shot(range_km: f64, alt_m: f64, kt: f64, weave_g: f64) -> Option<f64> {
+        let sim = super::tests::new_sim();
+        let vmax = sim.guided_vmax(45);
+        let mut tgt = [0.0, -range_km * 1000.0 / M, alt_m / M];
+        let speed = kt * 0.514 / M;
+        let el = 0.66f64;
+        let dir = [0.0, -el.cos(), el.sin()];
+        let mut pm = launch_ai(45, [0.0, 0.0, 5.0], dir, FS);
+        let dt = 1.0 / FS as f64;
+        for i in 0..150 * FS {
+            let t = i as f64 * dt;
+            // Weaving: the course swings across the line of sight.
+            let a = if weave_g > 0.0 { weave_g * GRAVITY / speed.max(1.0) } else { 0.0 };
+            let swing = if a > 0.0 { (a / 0.5) * (0.5 * t).sin() } else { 0.0 };
+            let tv = [speed * swing.sin(), speed * swing.cos(), 0.0];
+            let target = Target { p: tgt, v: tv };
+            match flight_step(&mut pm, vmax, FUSE_AAM, FS, Some(target), Some(target)) {
+                Step::Fused => return Some(t),
+                Step::Ground => return None,
+                Step::Flying => {}
+            }
+            if pm.flight.is_some_and(|f| f.stalled) || pm.ttl <= 0 {
+                return None;
+            }
+            tgt = add(tgt, mul(tv, dt));
+        }
+        None
+    }
+
+    /// Where the hit is (km from the battery) against a target flying in from `km` at 450 kt
+    /// at 12 km, weaving at `weave_g`.
+    fn intercept(km: f64, weave_g: f64) -> Option<f64> {
+        shot(km, 12000.0, 450.0, weave_g).map(|t| km - 450.0 * 0.514 * t / 1000.0)
+    }
+
+    #[test]
+    fn reaches_80_km_against_a_target_holding_course() {
+        let far = intercept(100.0, 0.0);
+        assert!(far.is_some_and(|d| (78.0..82.0).contains(&d)), "{far:?}");
+        assert_eq!(intercept(105.0, 0.0), None);
+        assert!(intercept(60.0, 0.0).is_some());
+    }
+
+    #[test]
+    fn manoeuvring_costs_reach() {
+        // Turning onto a target that holds still (from its climb off the rails) takes more
+        // turning than meeting one that comes in.
+        assert!(shot(70.0, 12000.0, 0.0, 0.0).is_some());
+        assert_eq!(shot(78.0, 12000.0, 0.0, 0.0), None);
+        // A weaving target makes it turn all the way: the harder, the shorter its reach.
+        assert!(intercept(90.0, 0.0).is_some());
+        assert_eq!(intercept(95.0, 4.0), None);
+        assert!(intercept(60.0, 4.0).is_some());
+        assert_eq!(intercept(60.0, 7.0), None);
+        assert!(intercept(50.0, 7.0).is_some());
     }
 }

@@ -139,8 +139,22 @@ pub(crate) fn update_camera(
         (&mut Camera, &mut Projection, &mut WorldPos, &mut Transform),
         With<TrackCamera>,
     >,
+    console: Option<Res<crate::station::ConsoleEo>>,
 ) {
     let Ok((mut camera, mut proj, mut pos, mut tf)) = cam.single_mut() else { return };
+    // An air defence console's camera on its mast (`station`).
+    if let Some(eo) = console {
+        let want = view.view == View::Cockpit;
+        if camera.is_active != want {
+            camera.is_active = want;
+        }
+        info.live = false;
+        aim(&mut tf, &mut pos, &mut proj, eo.dir, eo.eye, eo.zoom);
+        if sites.pod != eo.target {
+            sites.pod = eo.target;
+        }
+        return;
+    }
     let ac = player.single().ok();
     let want = mfd.camera_shown() && view.view == View::Cockpit && combat.is_some() && ac.is_some();
     if camera.is_active != want {

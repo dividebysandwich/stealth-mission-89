@@ -19,6 +19,9 @@
 //!   the screen).
 //! * `trackcam`, `trackcam_left`, `trackcam_third`: the tracking camera picture behind the
 //!   right / left / third screen.
+//! * `screen_scope`, `screen_board`, `screen_eo`: an air defence console's air picture, track
+//!   list and camera overlay (`cockpit_console.glb`, `tools/models/build_console.py`; the
+//!   camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
 //! * `hud_glass`: the HUD combiner glass (the HUD is drawn collimated through it).
 //! * `label_<TEXT>`: a side panel button label showing TEXT.
 //! * Anything else is used as modelled (base colour, roughness, metallic).
@@ -67,7 +70,8 @@ use crate::font::Fonts;
 pub struct CockpitModels(pub std::collections::HashMap<&'static str, Handle<Gltf>>);
 
 pub(super) fn load_models(mut commands: Commands, server: Res<AssetServer>) {
-    let files = crate::aircraft::cockpit_files();
+    let mut files = crate::aircraft::cockpit_files();
+    files.push(super::CONSOLE_MODEL);
     commands.insert_resource(CockpitModels(
         files.into_iter().map(|f| (f, server.load(format!("models/{f}.glb")))).collect(),
     ));
@@ -388,6 +392,22 @@ impl<'a> Spawner<'a> {
                 }
                 self.panel.atlas.clone()
             }
+            "screen_scope" | "screen_board" | "screen_eo" => {
+                let screen = match name {
+                    "screen_scope" => displays::ConsoleScreen::Scope,
+                    "screen_board" => displays::ConsoleScreen::Board,
+                    _ => displays::ConsoleScreen::Eo,
+                };
+                let role = CanvasRole::Console(screen);
+                let (tex, m) =
+                    displays::screen(role, self.layout, self.hires, self.materials, self.images);
+                ec.insert((role, displays::ConsoleCanvas(screen), tex));
+                if let Some(tip) = tooltips::display_tip(role, self.layout.style) {
+                    ec.insert(tip);
+                }
+                still = false;
+                m
+            }
             "screen_left" | "screen_right" | "screen_third" | "adi" | "approach" | "screen_rwr"
             | "hsi" | "ded" => {
                 let role = match name {
@@ -637,6 +657,49 @@ mod tests {
         let d = std::fs::read(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
         let len = u32::from_le_bytes(d[12..16].try_into().unwrap()) as usize;
         serde_json::from_slice(&d[20..20 + len]).unwrap()
+    }
+
+    /// The air defence console has its screens, the camera picture, and buttons for every
+    /// console key the station reads.
+    #[test]
+    fn console_model() {
+        use super::super::controls::parse_effect;
+        use super::super::layout::{ConsoleKey, Effect};
+        let j = gltf_json(super::super::CONSOLE_MODEL);
+        let materials: Vec<&str> =
+            j["materials"].as_array().unwrap().iter().filter_map(|m| m["name"].as_str()).collect();
+        for m in ["screen_scope", "screen_board", "screen_eo", "trackcam", "label_FIRE"] {
+            assert!(materials.contains(&m), "no material {m}");
+        }
+        let keys: Vec<ConsoleKey> = j["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|n| n["extras"]["control"].as_str())
+            .map(|c| match parse_effect(c) {
+                Some(Effect::Console(k)) => k,
+                e => panic!("{c}: {e:?}"),
+            })
+            .collect();
+        for k in [
+            ConsoleKey::Tracks,
+            ConsoleKey::Site,
+            ConsoleKey::Lock,
+            ConsoleKey::Drop,
+            ConsoleKey::Guided,
+            ConsoleKey::Semi,
+            ConsoleKey::Fire,
+            ConsoleKey::Launcher(3),
+            ConsoleKey::Refill(3),
+            ConsoleKey::Flir,
+            ConsoleKey::ZoomIn,
+            ConsoleKey::ZoomOut,
+            ConsoleKey::RangeIn,
+            ConsoleKey::RangeOut,
+            ConsoleKey::Leave,
+        ] {
+            assert!(keys.contains(&k), "no {k:?} button");
+        }
     }
 
     /// A generated panel's layout as its Blender build script reads it: every atlas face with

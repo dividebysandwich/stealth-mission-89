@@ -97,7 +97,12 @@ impl Shape {
 }
 
 /// Möller-Trumbore, both sides.
-fn ray_triangle(o: Vec3, d: Vec3, [a, b, c]: &[Vec3; 3]) -> Option<f32> {
+fn ray_triangle(o: Vec3, d: Vec3, tri: &[Vec3; 3]) -> Option<f32> {
+    ray_triangle_uv(o, d, tri).map(|(t, _, _)| t)
+}
+
+/// Möller-Trumbore, both sides: t along the ray, and the barycentric u, v of the hit.
+fn ray_triangle_uv(o: Vec3, d: Vec3, [a, b, c]: &[Vec3; 3]) -> Option<(f32, f32, f32)> {
     let (e1, e2) = (*b - *a, *c - *a);
     let p = d.cross(e2);
     let det = e1.dot(p);
@@ -116,7 +121,7 @@ fn ray_triangle(o: Vec3, d: Vec3, [a, b, c]: &[Vec3; 3]) -> Option<f32> {
         return None;
     }
     let t = e2.dot(q) * inv;
-    (t > 0.0).then_some(t)
+    (t > 0.0).then_some((t, u, v))
 }
 
 /// The cockpit meshes' triangles, read once per mesh.
@@ -160,6 +165,46 @@ impl Picker<'_, '_> {
     pub fn cursor_ray(&self) -> Option<Ray3d> {
         let Ok((camera, cam_tf)) = self.cams.single() else { return None };
         camera.viewport_to_world(cam_tf, self.cursor()?).ok()
+    }
+
+    /// The ray from the eye through a point of the cockpit frame (a fingertip), and how far the
+    /// point is along it.
+    pub fn eye_through(&self, at: Vec3) -> Option<(Ray3d, f32)> {
+        let root_tf = self.root.single().ok()?;
+        let (_, cam_tf) = self.cams.single().ok()?;
+        let (dir, len) =
+            Dir3::new_and_length(root_tf.transform_point(at) - cam_tf.translation()).ok()?;
+        Some((Ray3d::new(cam_tf.translation(), dir), len))
+    }
+
+    /// Where the ray meets a mesh: how far along it, and the texture coordinates there.
+    pub fn uv_at(&self, e: Entity, ray: Ray3d) -> Option<(f32, Vec2)> {
+        let (_, mesh, tf, _) = self.solids.get(e).ok()?;
+        let m = self.meshes.get(mesh.id())?;
+        let Some(VertexAttributeValues::Float32x3(p)) = m.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            return None;
+        };
+        let Some(VertexAttributeValues::Float32x2(uv)) = m.attribute(Mesh::ATTRIBUTE_UV_0) else {
+            return None;
+        };
+        let index: Vec<usize> = match m.indices() {
+            Some(Indices::U16(i)) => i.iter().map(|&i| i as usize).collect(),
+            Some(Indices::U32(i)) => i.iter().map(|&i| i as usize).collect(),
+            None => (0..p.len()).collect(),
+        };
+        let inv = tf.affine().inverse();
+        let (o, d) = (inv.transform_point3(ray.origin), inv.transform_vector3(*ray.direction));
+        let mut best: Option<(f32, Vec2)> = None;
+        for &[a, b, c] in index.as_chunks::<3>().0 {
+            let tri = [Vec3::from(*p.get(a)?), Vec3::from(*p.get(b)?), Vec3::from(*p.get(c)?)];
+            let Some((t, u, v)) = ray_triangle_uv(o, d, &tri) else { continue };
+            if best.is_none_or(|(bt, _)| t < bt) {
+                let at = |i: usize| Vec2::from(uv[i]);
+                best = Some((t, at(a) * (1.0 - u - v) + at(b) * u + at(c) * v));
+            }
+        }
+        best
     }
 
     /// The segment between two points of the cockpit frame as a world ray, and its length.

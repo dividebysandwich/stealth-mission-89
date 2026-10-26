@@ -70,6 +70,7 @@ impl Plugin for SceneryPlugin {
                         clear_approaches,
                         share_parking,
                         clear_units,
+                        clear_air_defence,
                         remap_vertex_words,
                     )
                         .run_if(resource_exists::<Scenery>),
@@ -113,6 +114,8 @@ pub struct Scenery {
     ground: ground::Ground,
     net: network::Network,
     airfields: Vec<airfield::Airfield>,
+    /// Where no trees grow (metres east, north; radius): round the friendly air defence.
+    clearings: Vec<(DVec2, f64)>,
 }
 
 impl Scenery {
@@ -124,6 +127,11 @@ impl Scenery {
     /// The centre of the biggest town or city (metres east, north).
     pub fn biggest_town(&self) -> Option<DVec2> {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
+    }
+
+    /// `p` lies in a clearing (no trees).
+    fn cleared(&self, p: DVec2) -> bool {
+        self.clearings.iter().any(|&(c, r)| c.distance_squared(p) < r * r)
     }
 
     /// Open land (not water or concrete) clear of raised objects by `r` metres.
@@ -293,7 +301,7 @@ fn build_scenery(
         exit.write(AppExit::Success);
     }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
-    commands.insert_resource(Scenery { style, ground, net, airfields: fields });
+    commands.insert_resource(Scenery { style, ground, net, airfields: fields, clearings: vec![] });
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the
@@ -807,6 +815,45 @@ fn clear_units(
         }
     }
     *seen = units.iter().map(|u| (u.x, u.y)).collect();
+}
+
+/// No trees round a friendly Patriot battery (its radar, launchers and the console's shelter
+/// behind the radar, `station`) or a Gepard (metres).
+const AIR_DEFENCE_CLEARING: f64 = 45.0;
+
+/// The friendly air defence stands in clearings: the trees there go (the tree blocks are built
+/// again when the clearings change, at the start and when units come or move).
+fn clear_air_defence(
+    mut commands: Commands,
+    mut scenery: ResMut<Scenery>,
+    combat: Option<Res<crate::combat::Combat>>,
+    mut blocks: ResMut<Blocks>,
+) {
+    let Some(combat) = combat else { return };
+    let sim = &combat.sim;
+    let m = stealth_sim::aaa::M_PER_MAP;
+    let want: Vec<(DVec2, f64)> = (0..sim.aaa_units().len())
+        .filter(|&k| {
+            let u = &sim.aaa_units()[k];
+            sim.aaa_blue(k) && (u.kind.patriot() || u.kind == stealth_sim::aaa::AaaKind::Gepard)
+        })
+        .map(|k| {
+            let u = &sim.aaa_units()[k];
+            let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
+            (p, AIR_DEFENCE_CLEARING)
+        })
+        .collect();
+    if want == scenery.clearings {
+        return;
+    }
+    scenery.clearings = want;
+    blocks.0.retain(|&(tier, _, _), e| {
+        let trees = group_of(tier).is_some_and(|g| std::ptr::eq(g, &TREES));
+        if trees {
+            commands.entity(*e).try_despawn();
+        }
+        !trees
+    });
 }
 
 /// Builds the airfields once, then makes them follow the scenery setting (and Alt-D detail 0

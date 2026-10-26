@@ -1,13 +1,14 @@
 #!/bin/sh
 # Exports the .blend masters to the shipped model files:
-#   tools/models/export.sh [aircraft central_europe cuba ... cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z]   (default: all files)
+#   tools/models/export.sh [aircraft central_europe cuba ... cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_console]   (default: all files)
 # The cockpits (cockpit_*) keep normals, UVs and materials (tools/models/export_cockpit.py);
 # cockpit_f16.blend is generated first by tools/models/build_cockpit_f16.py, cockpit_uh60.blend by
-# tools/models/build_cockpit_uh60.py, cockpit_ah1z.blend by tools/models/build_cockpit_ah1z.py.
+# tools/models/build_cockpit_uh60.py, cockpit_ah1z.blend by tools/models/build_cockpit_ah1z.py,
+# cockpit_console.blend by tools/models/build_console.py.
 # assets/models/ukraine.glb is assembled from central_europe.glb by tools/theater/build.sh.
 set -e
 cd "$(dirname "$0")/../.."
-for f in ${@:-aircraft central_europe cuba korea desert_storm libya middle_east north_cape persian_gulf vietnam special_targets cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z}; do
+for f in ${@:-aircraft central_europe cuba korea desert_storm libya middle_east north_cape persian_gulf vietnam special_targets cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_console}; do
     blend=assets-src/blend/$f.blend
     script=tools/models/export.py
     case $f in cockpit_*) script=tools/models/export_cockpit.py ;; esac

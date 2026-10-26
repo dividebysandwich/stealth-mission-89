@@ -28,8 +28,8 @@ use bevy::render::render_resource::{
 };
 
 use super::controls::Control;
-use super::displays::{CanvasRole, Face};
-use super::layout::{Dial, Effect, Elem, PanelStyle};
+use super::displays::{CanvasRole, ConsoleScreen, Face};
+use super::layout::{ConsoleKey, Dial, Effect, Elem, PanelStyle};
 use super::pick::{Picker, Pointed};
 use super::{CockpitRoot, Hands};
 use crate::camera::{View, ViewState};
@@ -281,6 +281,33 @@ fn cmd_text(c: MfdCmd) -> String {
     }
 }
 
+/// An air defence console button's title and what it does.
+fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
+    match k {
+        ConsoleKey::Tracks => ("TRACKS", "The track list"),
+        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and refills"),
+        ConsoleKey::Lock => ("LOCK", "Lock the selected track: the camera follows it"),
+        ConsoleKey::Drop => ("DROP", "Drop the lock (guided missiles go semi-active)"),
+        ConsoleKey::Guided => {
+            ("GUIDED", "The radar guides the next missiles: hard to decoy, one target at a time")
+        }
+        ConsoleKey::Semi => (
+            "SEMI-ACTIVE",
+            "The next missiles home on the radar's illumination: several targets, easier to decoy; \
+             guided missiles in the air go semi-active",
+        ),
+        ConsoleKey::Fire => ("FIRE", "A missile (a Gepard: a burst) at the locked track"),
+        ConsoleKey::Launcher(_) => ("LAUNCHER", "Fire from this launcher; again: the readiest"),
+        ConsoleKey::Refill(_) => ("REFILL", "Refill the empty launcher from the stockpile (4 min)"),
+        ConsoleKey::Flir => ("FLIR", "Thermal or colour camera picture"),
+        ConsoleKey::ZoomIn => ("ZOOM IN", "Camera zoom"),
+        ConsoleKey::ZoomOut => ("ZOOM OUT", "Camera zoom"),
+        ConsoleKey::RangeIn => ("RANGE -", "The air picture's range"),
+        ConsoleKey::RangeOut => ("RANGE +", "The air picture's range"),
+        ConsoleKey::Leave => ("LEAVE", "Leave the console: back to operations"),
+    }
+}
+
 /// A control's tooltip (bezel buttons: on the current page; None for a blank one).
 fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
     let (title, detail) = match effect {
@@ -306,6 +333,10 @@ fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
         Effect::TimeToggle => {
             let (title, detail) = action_text(Action::TimeAccel);
             (title, format!("On / off. {detail}"))
+        }
+        Effect::Console(k) => {
+            let (title, detail) = console_text(k);
+            (title.to_string(), detail.to_string())
         }
         Effect::Osb(side, slot) => {
             let (label, f, _) = osb(side, slot, mfd)?;
@@ -425,6 +456,15 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
             ("HSI", "Horizontal situation indicator: heading, bearing and distance to the waypoint")
         }
         CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
+        CanvasRole::Console(ConsoleScreen::Scope) => {
+            ("Air picture", "The tracks around the site, twice a second; click one to select it")
+        }
+        CanvasRole::Console(ConsoleScreen::Board) => {
+            ("Tracks / site", "Click a track to select it; the SITE tab: launchers and stocks")
+        }
+        CanvasRole::Console(ConsoleScreen::Eo) => {
+            ("Camera", "The locked track, in colour or thermal (FLIR)")
+        }
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
     let tip = Tip::new(title, detail, &[]);

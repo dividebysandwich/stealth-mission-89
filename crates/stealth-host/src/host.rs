@@ -10,10 +10,11 @@
 use serde::{Deserialize, Serialize};
 use stealth_campaign::weather::Forecast;
 use stealth_campaign::{
-    Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, FighterTask, Objective,
-    PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
+    Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceStock, FighterTask,
+    Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
 };
 use stealth_mission::{GameData, Mission};
+use stealth_sim::station::{SavedStock, StationCmd};
 use stealth_sim::{PilotEvent, PlayerState, Sim, SimEvent, oflags};
 
 use crate::glue::{self, side_of};
@@ -158,6 +159,13 @@ impl Host {
         for b in &self.state.batteries {
             sim.place_battery(b.x, b.y);
         }
+        let stocks: Vec<SavedStock> = self
+            .state
+            .defence_stock
+            .iter()
+            .map(|s| SavedStock { x: s.x, y: s.y, patriot: s.patriot, stock: s.stock })
+            .collect();
+        sim.restore_stocks(&stocks);
         sim.record_shells(true);
         let events = self.state.after_load();
         self.apply(sim, events)
@@ -203,6 +211,8 @@ impl Host {
         stores: Option<Stores>,
     ) -> Result<Vec<HostEvent>, String> {
         let events = self.state.apply(player, Command::TakeMission { offer, base, aircraft })?;
+        // Off to fly: his console is unmanned.
+        sim.leave_station(player.0);
         let out = self.apply(sim, events);
         for e in &out {
             if let HostEvent::SortieStarted { player, sortie, .. } = e {
@@ -281,6 +291,34 @@ impl Host {
         sim.end_sortie_pilot(player.0, outcome);
         let events = sim.take_pilot_events();
         self.tick(sim, 0.0, &events)
+    }
+
+    /// A player's command at an air defence console (manning one, leaving it, fighting it).
+    pub fn station(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        cmd: StationCmd,
+    ) -> Result<Vec<HostEvent>, String> {
+        if matches!(cmd, StationCmd::Man { .. }) && self.state.sortie(player).is_some() {
+            return Err("Finish your sortie first".into());
+        }
+        sim.station_command(player.0, cmd)?;
+        Ok(Vec::new())
+    }
+
+    /// `real` seconds of wall clock: the air defence's refills (they take real time whatever
+    /// the time scale), and its stockpiles noted for the save.
+    pub fn refills(&mut self, sim: &mut Sim, real: f32) {
+        sim.tick_refills(real);
+        let stocks: Vec<DefenceStock> = sim
+            .saved_stocks()
+            .into_iter()
+            .map(|s| DefenceStock { x: s.x, y: s.y, patriot: s.patriot, stock: s.stock })
+            .collect();
+        if !stocks.is_empty() && stocks != self.state.defence_stock {
+            self.state.defence_stock = stocks;
+        }
     }
 
     /// A player landed at a friendly base rearms and refuels.

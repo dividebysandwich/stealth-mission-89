@@ -52,7 +52,30 @@ pub(super) enum CanvasRole {
     Rwr,
     Hsi,
     Ded,
+    /// An air defence console's screens (`station` draws them).
+    Console(ConsoleScreen),
 }
+
+/// The screens of an air defence console.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConsoleScreen {
+    /// The air picture.
+    Scope,
+    /// The track list and the site's status.
+    Board,
+    /// The camera's overlay (over the camera picture).
+    Eo,
+}
+
+/// A console screen's canvas (on its mesh).
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ConsoleCanvas(pub ConsoleScreen);
+
+/// Console screen canvases: drawing units and texels per unit.
+pub const SCOPE_CANVAS: (usize, usize) = (320, 320);
+pub const BOARD_CANVAS: (usize, usize) = (400, 300);
+pub const EO_CANVAS: (usize, usize) = (308, 240);
+const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -277,6 +300,14 @@ pub(super) fn screen(
             let n = (r.map_or(90.0, |r| r.w) * TEXELS as f32) as usize;
             (Canvas::new(n, n), true)
         }
+        CanvasRole::Console(s) => {
+            let (w, h) = match s {
+                ConsoleScreen::Scope => SCOPE_CANVAS,
+                ConsoleScreen::Board => BOARD_CANVAS,
+                ConsoleScreen::Eo => EO_CANVAS,
+            };
+            (Canvas::scaled(w, h, CONSOLE_SCALE), s == ConsoleScreen::Eo)
+        }
         // The classic cockpit has no data entry display.
         CanvasRole::Ded => (
             if layout.ded.is_some() {
@@ -406,6 +437,7 @@ pub(super) fn update_displays(
     settings: Res<crate::settings::Settings>,
     sky: Res<crate::sky::Sky>,
     palette: Option<Res<crate::palette::Palette>>,
+    manning: Option<Res<crate::station::Manning>>,
     mut frame: Local<u32>,
 ) {
     // Instrument lighting: with continuous time of day the dials and the unlit green lamps and
@@ -413,7 +445,7 @@ pub(super) fn update_displays(
     let backlit = sky.on && palette.is_some_and(|p| p.lights_on());
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
     for (screen, mut v) in &mut tc {
-        v.set_if_neq(if d.mfd.camera_see_through(screen.0) {
+        v.set_if_neq(if d.mfd.camera_see_through(screen.0) || manning.is_some() {
             Visibility::Inherited
         } else {
             Visibility::Hidden

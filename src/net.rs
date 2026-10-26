@@ -49,6 +49,21 @@ pub struct NetInbox {
     pub chat: Vec<(String, String)>,
 }
 
+impl NetInbox {
+    /// A message from the server where it is taken in: the simulation's, chat, the campaign's.
+    pub fn route(&mut self, e: ClientEvent) {
+        match e {
+            ClientEvent::Fast { step, world, tick, pilot } => {
+                self.sim.push(SimMsg::Fast(step, world, tick, pilot))
+            }
+            ClientEvent::Slow(s) => self.sim.push(SimMsg::Slow(s)),
+            ClientEvent::Events(e) => self.sim.push(SimMsg::Events(e)),
+            ClientEvent::Chat { from, text } => self.chat.push((from, text)),
+            e => self.campaign.push(e),
+        }
+    }
+}
+
 /// Something the menu tells the player when he is back (why a coop game ended).
 #[derive(Resource, Default)]
 pub struct Notice(pub Option<String>);
@@ -72,15 +87,7 @@ fn pump_client(mut link: ResMut<NetLink>, mut inbox: ResMut<NetInbox>) {
     let NetLink::Client(client) = &mut *link else { return };
     let now = Instant::now();
     for e in client.poll(now) {
-        match e {
-            ClientEvent::Fast { step, world, tick, pilot } => {
-                inbox.sim.push(SimMsg::Fast(step, world, tick, pilot))
-            }
-            ClientEvent::Slow(s) => inbox.sim.push(SimMsg::Slow(s)),
-            ClientEvent::Events(e) => inbox.sim.push(SimMsg::Events(e)),
-            ClientEvent::Chat { from, text } => inbox.chat.push((from, text)),
-            e => inbox.campaign.push(e),
-        }
+        inbox.route(e);
     }
     // Frames piled up (the flight was still loading): the latest are enough; the slow
     // changes and events must all be kept.

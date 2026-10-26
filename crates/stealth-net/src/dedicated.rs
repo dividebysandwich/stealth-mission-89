@@ -276,6 +276,7 @@ pub fn run(cfg: Config, stop: &AtomicBool) -> Result<()> {
             events.extend(host.take_sim_events(&mut sim));
             server.after_step(&events);
             let ev = host.tick(&mut sim, dt, &events);
+            host.refills(&mut sim, dt as f32);
             server.route(&ev);
             log_events(&mut con, &ev);
             let after = host.take_sim_events(&mut sim);

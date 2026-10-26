@@ -414,12 +414,14 @@ fn respawn_own_model(
 fn own_model_visibility(
     view: Res<ViewState>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    manning: Option<Res<crate::station::Manning>>,
     mut q: Query<&mut Visibility, (With<OwnModel>, Without<OwnModelInterior>)>,
     mut interior: Query<&mut Visibility, (With<OwnModelInterior>, Without<OwnModel>)>,
 ) {
     let external =
         !matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
-    let hidden = hide.is_some_and(|h| h.0);
+    // At an air defence console the aircraft waits there unseen.
+    let hidden = hide.is_some_and(|h| h.0) || manning.is_some();
     let vis = |on: bool| if on && !hidden { Visibility::Inherited } else { Visibility::Hidden };
     for mut v in &mut q {
         v.set_if_neq(vis(external));

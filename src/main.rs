@@ -76,6 +76,7 @@ mod sim_render;
 mod sky;
 mod sound;
 mod stage;
+mod station;
 mod tacview;
 mod tacview_real_time;
 mod terrain;
@@ -276,6 +277,7 @@ fn main() {
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,
             weather::WeatherPlugin,
+            station::StationPlugin,
         ))
         .add_plugins((
             fires::FiresPlugin,

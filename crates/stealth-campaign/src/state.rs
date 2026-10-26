@@ -805,8 +805,22 @@ pub struct CampaignState {
     pub batteries: Vec<Battery>,
     #[serde(default = "never")]
     pub battery_at: f64,
+    /// The stockpiles of the friendly Patriot batteries and Gepards (the simulation's, kept
+    /// over a save).
+    #[serde(default)]
+    pub defence_stock: Vec<DefenceStock>,
     #[serde(skip)]
     pub terrain: Terrain,
+}
+
+/// A friendly air defence unit's stockpile: where (map units), a Patriot battery (else a
+/// Gepard), how much (missiles, rounds).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DefenceStock {
+    pub x: i32,
+    pub y: i32,
+    pub patriot: bool,
+    pub stock: i32,
 }
 
 fn never() -> f64 {
@@ -1020,6 +1034,7 @@ impl CampaignState {
             drones_at: 0.0,
             batteries: Vec::new(),
             battery_at: f64::MIN,
+            defence_stock: Vec::new(),
             terrain: Terrain::default(),
         };
         c.note("Campaign started");

@@ -128,7 +128,7 @@
         (id: "sa17", name: "SA-17", family: Sam, range_km: 50, mach: 4.0, g: 24, seeker: SemiActive, model: 15),
         (id: "sa22", name: "SA-22", family: Sam, range_km: 20, mach: 3.8, g: 30, seeker: Command, model: 15),
         (id: "sa15", name: "SA-15", family: Sam, range_km: 12, mach: 2.5, g: 30, seeker: Command, model: 15),
-        (id: "mim104", name: "MIM-104", family: Sam, range_km: 160, mach: 4.1, g: 30, seeker: TrackViaMissile, model: 15),
+        (id: "mim104", name: "MIM-104F PAC-3", family: Sam, range_km: 80, mach: 5.0, g: 40, seeker: TrackViaMissile, model: 15),
         (id: "fim92", name: "FIM-92", family: Sam, range_km: 8, mach: 2.2, g: 20, seeker: Ir, model: 1),
         (id: "agm114", name: "AGM-114", family: Ground, range_km: 8, mach: 1.3, g: 10, seeker: Optical, model: 10),
     ],

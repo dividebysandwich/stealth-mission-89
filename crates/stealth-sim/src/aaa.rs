@@ -30,7 +30,7 @@ const G: f64 = 9.81;
 const GUN_DISH: (i32, i32, i32) = (12, 1, 1);
 /// SA-14 (missile table index).
 pub const SA14: i32 = 0x21;
-/// The friendly side's missiles: Stinger (MANPADS) and Patriot (MIM-104).
+/// The friendly side's missiles: Stinger (MANPADS) and Patriot (MIM-104F PAC-3).
 pub const STINGER: i32 = 46;
 pub const PATRIOT: i32 = 45;
 /// Launcher of a MANPADS missile (fire and forget: no launcher radar to keep its lock).

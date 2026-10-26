@@ -855,6 +855,7 @@ fn tree_in_cell(sc: &Scenery, style: &Style, gx: i64, gy: i64) -> Option<(DVec2,
         return None;
     }
     if !(wood || sc.ground.is_free(p, 3.0))
+        || sc.cleared(p)
         || !sc.net.road_clear(p, 4.0)
         || !sc.net.building_clear(p, 3.0)
         || (!wood && style.farmland.is_some_and(|land| in_field(sc, land, seed, p)))
@@ -978,7 +979,11 @@ fn belt_tree_list(
                     let p = a
                         + dir * (k * 8.0 + row * 2.0 + rng.range(-1.5, 1.5))
                         + side * row * rng.range(2.0, 4.5);
-                    if !inside(p) || rng.chance(0.08) || !sc.net.road_clear(p, 4.0) {
+                    if !inside(p)
+                        || rng.chance(0.08)
+                        || !sc.net.road_clear(p, 4.0)
+                        || sc.cleared(p)
+                    {
                         continue;
                     }
                     let kind = if rng.chance(0.9) { Tree::Broadleaf } else { Tree::Conifer };

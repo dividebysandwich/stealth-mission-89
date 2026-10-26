@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::aaa::{AaaUnit, Shell};
 use crate::campaign::{AiMissile, CampaignFlight};
+use crate::station::DefenceState;
 use crate::types::*;
 use crate::{ENEMY_SLOTS, PILOT_SLOTS, Pilot, PlayerView, Sim};
 
@@ -194,6 +195,10 @@ pub struct WorldSlow {
     /// Shells fired since the last message (air defences at the pilots, the AI at the AI).
     pub shells: Vec<Shell>,
     pub ai_shells: Vec<Shell>,
+    /// The manned consoles and the defence's stocks, and every air defence unit's rounds
+    /// ready (when they changed; refills in whole seconds).
+    #[serde(default)]
+    pub defence: Option<(DefenceState, Vec<i32>)>,
 }
 
 /// The host's record of what a client has been sent of the slow state.
@@ -202,6 +207,7 @@ pub struct SlowBase {
     objects: Vec<(GroundObject, i32, u8, bool, bool)>,
     aaa: Vec<(AaaUnit, bool)>,
     campaign_flights: Vec<Option<CampaignFlight>>,
+    defence: Option<(DefenceState, Vec<i32>)>,
     joined: bool,
 }
 
@@ -365,6 +371,20 @@ impl Sim {
             if base.campaign_flights[i] != *f || (!base.joined && f.is_some()) {
                 base.campaign_flights[i] = *f;
                 out.campaign_flights.push((i as u16, *f));
+            }
+        }
+        if let Some(c) = c {
+            let mut d = c.defence.clone();
+            for r in &mut d.refill {
+                *r = r.ceil();
+            }
+            for s in &mut d.stations {
+                s.due = 0.0;
+            }
+            let now = Some((d, self.aaa.iter().map(|u| u.rounds).collect()));
+            if base.defence != now {
+                base.defence.clone_from(&now);
+                out.defence = now;
             }
         }
         if !base.joined {
@@ -549,6 +569,7 @@ impl Sim {
                     aim_el: old.aim_el,
                     burst: old.burst,
                     tracking: old.tracking,
+                    rounds: old.rounds,
                     ..u
                 };
                 if let Some(c) = self.campaign.as_mut() {
@@ -565,7 +586,13 @@ impl Sim {
                 c.flights[i] = f;
             }
             for s in &w.ai_shells {
-                c.shells.push(crate::campaign::AiShell { shell: *s, target: 0 });
+                c.shells.push(crate::campaign::AiShell { shell: *s, target: 0, ahead: false });
+            }
+            if let Some((d, rounds)) = &w.defence {
+                c.defence = d.clone();
+                for (u, &r) in self.aaa.iter_mut().zip(rounds) {
+                    u.rounds = r;
+                }
             }
         }
         if let Some(t) = &w.tiles {

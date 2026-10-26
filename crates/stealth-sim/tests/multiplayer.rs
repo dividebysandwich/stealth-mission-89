@@ -726,6 +726,13 @@ fn a_mirror_sees_the_friendly_air_defences() {
         .expect("enemy base");
     host.spawn_fighter(enemy, b.x, b.y, 8, false, FighterTask::Patrol);
     let cap = host.spawn_fighter(base, b.x, b.y, 9, true, FighterTask::Cap);
+    // Pilot 1 mans the battery; one launcher is empty and refilling.
+    let radar = host.aaa_units().iter().position(|u| u.kind == AaaKind::PatriotRadar).unwrap();
+    host.station_command(1, stealth_sim::station::StationCmd::Man { unit: radar as u16 }).unwrap();
+    let l = host.battery_launchers(radar)[0];
+    host.aaa_units_mut()[l].rounds = 0;
+    host.station_command(1, stealth_sim::station::StationCmd::Refill { unit: l as u16 }).unwrap();
+    host.tick_refills(10.2);
     let d = data();
     let s = MissionSettings {
         theater: 3,
@@ -767,4 +774,10 @@ fn a_mirror_sees_the_friendly_air_defences() {
         s.flights().iter().copied().filter(|u| u.flags & fflags::EXISTS != 0).collect()
     };
     assert_eq!(live(&mirror), live(&host));
+    assert_eq!(mirror.station_of(1).map(|s| s.unit as usize), Some(radar));
+    assert_eq!(mirror.manned_by(radar), Some(1));
+    let rounds = |s: &Sim| -> Vec<i32> { s.aaa_units().iter().map(|u| u.rounds).collect() };
+    assert_eq!(rounds(&mirror), rounds(&host));
+    assert_eq!(mirror.stockpile(l), host.stockpile(l));
+    assert_eq!(mirror.refill_left(l), host.refill_left(l).ceil());
 }

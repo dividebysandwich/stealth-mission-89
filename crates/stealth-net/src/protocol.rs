@@ -5,10 +5,11 @@ use stealth_campaign::{Aircraft, CampaignState, PlaceId, PlayerId, RoutePoint, S
 use stealth_host::{HostEvent, Rules, Stores};
 use stealth_sim::claims::GunHit;
 use stealth_sim::net::{PilotSnap, PilotTick, WorldFast, WorldSlow};
+use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 15;
+pub const PROTOCOL: u16 = 16;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -69,6 +70,8 @@ pub enum ToServer {
     Chat {
         text: String,
     },
+    /// At a friendly air defence console: man it, leave it, fight it.
+    Station(StationCmd),
     Bye,
 }
 
@@ -212,6 +215,36 @@ pub fn merge_commands(a: &mut Commands, b: &Commands) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The air defence consoles' commands and state go over the wire.
+    #[test]
+    fn station_messages_survive_encoding() {
+        use stealth_sim::station::{DefenceState, Guidance, Station, StationCmd};
+        let m = ToServer::Station(StationCmd::Fire { launcher: Some(3) });
+        assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        let defence = DefenceState {
+            stations: vec![Station {
+                unit: 4,
+                pilot: 1,
+                lock: Some(9),
+                mode: Guidance::SemiActive,
+                burst: 0,
+                due: 0.0,
+            }],
+            stock: vec![8, 0, 0, 0, 640],
+            refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],
+        };
+        let slow = WorldSlow {
+            aaa_len: 5,
+            defence: Some((defence.clone(), vec![0, 4, 0, 3, 640])),
+            ..Default::default()
+        };
+        let back = match decode::<ToClient>(&encode(&ToClient::Slow(slow))) {
+            Some(ToClient::Slow(s)) => s,
+            _ => panic!("the slow state does not decode"),
+        };
+        assert_eq!(back.defence, Some((defence, vec![0, 4, 0, 3, 640])));
+    }
 
     #[test]
     fn messages_survive_encoding() {

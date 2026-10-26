@@ -23,6 +23,7 @@ mod pilot;
 mod radar;
 pub mod relief;
 pub mod score;
+pub mod station;
 mod targeting;
 mod tiles;
 mod weapons;

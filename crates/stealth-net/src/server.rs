@@ -245,6 +245,7 @@ impl Server {
                 host.edit_plan(sim, p, offer, base, route)
             }
             (ToServer::EndSortie { outcome }, Some(p)) => Ok(host.end_sortie(sim, p, outcome)),
+            (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
             (ToServer::Hit(hit), Some(p)) => {
                 sim.claim_hit(p.0, hit);
                 return Vec::new();
@@ -321,8 +322,9 @@ impl Server {
         std::mem::take(&mut self.chat)
     }
 
-    /// A player gone: off the plans he was on.
+    /// A player gone: off his air defence console (the AI's again) and the plans he was on.
     fn unselect(&mut self, p: PlayerId, host: &mut Host, sim: &mut Sim) -> Vec<HostEvent> {
+        sim.leave_station(p.0);
         if !host.state.plans.iter().any(|x| x.crew.contains(&p)) {
             return Vec::new();
         }

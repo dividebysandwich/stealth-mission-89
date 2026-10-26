@@ -62,6 +62,37 @@ pub enum Effect {
     TimeToggle,
     /// An MFD bezel button (its function depends on the page, `mfd::osb`).
     Osb(MfdSide, u8),
+    /// A button of an air defence console (`station`).
+    Console(ConsoleKey),
+}
+
+/// The buttons of an air defence console (`Console(Fire)`, `Console(Launcher, 2)` in the model).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConsoleKey {
+    /// The board's tabs: the track list, the site's status.
+    Tracks,
+    Site,
+    /// Lock the selected track, drop the lock.
+    Lock,
+    Drop,
+    /// Missile guidance for the next shots.
+    Guided,
+    Semi,
+    /// A missile (Patriot) or a burst (Gepard) at the lock.
+    Fire,
+    /// Fire from this launcher next (1..3; again: the readiest).
+    Launcher(u8),
+    /// Refill this launcher (1..3; the Gepard: 1).
+    Refill(u8),
+    /// The camera: thermal / colour, zoom.
+    Flir,
+    ZoomIn,
+    ZoomOut,
+    /// The scope's range.
+    RangeIn,
+    RangeOut,
+    /// Leave the console (back to the Ops screen).
+    Leave,
 }
 
 /// A face drawn into the instrument atlas.

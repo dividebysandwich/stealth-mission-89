@@ -22,6 +22,18 @@ use crate::mfd::{CamDir, MfdCommand, MfdState, OsbFn, cmd_action, osb};
 #[derive(Message, Debug, Clone, Copy)]
 pub struct PressControl(pub Action);
 
+/// An air defence console's button was pressed.
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ConsoleButton(pub super::layout::ConsoleKey);
+
+/// A console screen was clicked (mouse) or tapped (VR fingertip and trigger) at `uv` (0..1
+/// across the screen, from its top left).
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ScreenClick {
+    pub screen: super::displays::ConsoleScreen,
+    pub uv: Vec2,
+}
+
 impl Effect {
     /// The key action a script `press=` names for this control (None: blank bezel button).
     pub(super) fn action(self, mfd: &MfdState) -> Option<Action> {
@@ -31,6 +43,7 @@ impl Effect {
             Effect::LeftPage(_) => Action::Maps,
             Effect::CamCycle => Action::CamAhead,
             Effect::TimeToggle => Action::TimeAccel,
+            Effect::Console(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
                 OsbFn::Cmd(c) => cmd_action(c),
                 OsbFn::Action(a) => a,
@@ -152,6 +165,28 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
         ("LeftPage", ["Map"]) => Effect::LeftPage(crate::mfd::LeftMfd::Map),
         ("LeftPage", ["Tac"]) => Effect::LeftPage(crate::mfd::LeftMfd::Tac),
         ("CamCycle", []) => Effect::CamCycle,
+        ("Console", [key, rest @ ..]) => {
+            use super::layout::ConsoleKey as K;
+            let n = || rest.first().and_then(|n| n.parse::<u8>().ok());
+            Effect::Console(match *key {
+                "Tracks" => K::Tracks,
+                "Site" => K::Site,
+                "Lock" => K::Lock,
+                "Drop" => K::Drop,
+                "Guided" => K::Guided,
+                "Semi" => K::Semi,
+                "Fire" => K::Fire,
+                "Launcher" => K::Launcher(n()?),
+                "Refill" => K::Refill(n()?),
+                "Flir" => K::Flir,
+                "ZoomIn" => K::ZoomIn,
+                "ZoomOut" => K::ZoomOut,
+                "RangeIn" => K::RangeIn,
+                "RangeOut" => K::RangeOut,
+                "Leave" => K::Leave,
+                _ => return None,
+            })
+        }
         ("TimeToggle", []) => Effect::TimeToggle,
         ("Osb", [side, n]) => Effect::Osb(
             match *side {
@@ -173,6 +208,7 @@ pub(super) struct Fire<'w, 's> {
     hud: Res<'w, HudState>,
     mfd: Res<'w, MfdState>,
     accel: Res<'w, crate::combat::TimeAccel>,
+    console: MessageWriter<'w, ConsoleButton>,
     _p: std::marker::PhantomData<&'s ()>,
 }
 
@@ -229,12 +265,17 @@ impl Fire<'_, '_> {
                     Action::TimeAccel
                 }));
             }
+            Effect::Console(key) => {
+                self.console.write(ConsoleButton(key));
+            }
         }
     }
 }
 
 /// Seconds a clicked control stays pushed in.
 const CLICK_SECONDS: f32 = 0.18;
+/// A VR fingertip taps a console screen this close to it (metres).
+const SCREEN_TAP: f32 = 0.025;
 
 /// Fingertip touches with the trigger, mouse clicks and script presses.
 #[allow(clippy::too_many_arguments)]
@@ -251,6 +292,8 @@ pub(super) fn interact(
     mut picker: Picker,
     menu: Res<crate::flight_menu::FlightMenu>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    screens: Query<&super::displays::ConsoleCanvas>,
+    mut clicks: MessageWriter<ScreenClick>,
 ) {
     let dt = time.delta_secs();
     // The cockpit is not there (VR, the campaign's Ops screen): nothing to touch.
@@ -309,6 +352,37 @@ pub(super) fn interact(
         {
             c.click = CLICK_SECONDS;
             fire.fire(c.effect);
+        }
+        // A console screen: where on it.
+        if let Some(Pointed::Tip(e)) = picked
+            && !menu.open
+            && let Ok(screen) = screens.get(e)
+            && let Some((_, uv)) = picker.uv_at(e, ray)
+        {
+            clicks.write(ScreenClick { screen: screen.0, uv });
+        }
+    }
+
+    // VR: a fingertip on a console screen and the trigger taps it there (seen from the eye, so
+    // where the finger shows on the picture).
+    if cockpit_view && !menu.open && !screens.is_empty() {
+        for hand in hands.hands.iter_mut() {
+            if !hand.active || hand.touching || !hand.trigger_pulled() {
+                continue;
+            }
+            let Some((ray, reach)) = picker.eye_through(hand.finger) else { continue };
+            let picked = {
+                let all: Vec<_> = controls.iter().collect();
+                picker.pick_within(ray, reach + SCREEN_TAP, &all, |_| false)
+            };
+            if let Some(Pointed::Tip(e)) = picked
+                && let Ok(screen) = screens.get(e)
+                && let Some((t, uv)) = picker.uv_at(e, ray)
+                && t > reach - SCREEN_TAP
+            {
+                hand.haptic = hand.haptic.max(0.4);
+                clicks.write(ScreenClick { screen: screen.0, uv });
+            }
         }
     }
 

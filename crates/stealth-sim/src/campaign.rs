@@ -55,16 +55,16 @@ pub const CAP_BUBBLE: i32 = 0xA00;
 pub const CAP_LEASH: i32 = 0xC80;
 pub const CAP_LINGER: i32 = 60;
 /// Patriot: how far it engages (35 km: it guards the rear, the front stays the players' and
-/// the CAPs') and its lowest target (m); seconds between a launcher's missiles and to reload
-/// its four; missiles in the air at one aircraft at most.
-const PATRIOT_REACH: i32 = 0x8C0;
+/// the CAPs') and its lowest target (m); seconds between a launcher's missiles (an empty one is
+/// refilled from the battery's stockpile, `station`); missiles in the air at one aircraft at
+/// most.
+pub const PATRIOT_REACH: i32 = 0x8C0;
 const PATRIOT_FLOOR: f64 = 60.0;
-const PATRIOT_RELOAD: i32 = 120;
-const PATRIOT_INTERVAL: i32 = 8;
+pub(crate) const PATRIOT_INTERVAL: i32 = 8;
 const PATRIOT_SALVO: usize = 2;
 pub const PATRIOT_ROUNDS: i32 = 4;
 /// A launcher fires on the track of a radar this close (1 km); its fixed elevation (rad).
-const PATRIOT_LINK: i32 = 0x40;
+pub(crate) const PATRIOT_LINK: i32 = 0x40;
 pub const PATRIOT_ELEVATION: f32 = 0.66;
 /// A missile's fuse (m) and the chance (per mille) it kills what it reaches.
 const FUSE: f64 = 25.0;
@@ -72,7 +72,7 @@ const MISSILE_PK: i32 = 700;
 /// A tracer this close to an aircraft hits it, with this chance (per mille).
 const TRACER_RADIUS: f64 = 10.0;
 const TRACER_HIT: i32 = 300;
-const MAX_SHELLS: usize = 200;
+pub(crate) const MAX_SHELLS: usize = 200;
 /// Low-level air defences in a campaign at most.
 const MAX_UNITS: usize = 400;
 /// A crashed pilot's aircraft below this (ft) leaves a burning wreck where it came down.
@@ -165,6 +165,18 @@ pub struct AiMissile {
     /// A strike aircraft's weapon: the object it flies at (`target` is then its launcher).
     #[serde(default)]
     pub ground: Option<usize>,
+    /// Fired from a manned Patriot console: how it is guided, the radar (AAA unit) guiding it,
+    /// and whether its target's countermeasures had their chance at it.
+    #[serde(default)]
+    pub guidance: Option<crate::station::Guidance>,
+    #[serde(default)]
+    pub station: Option<u16>,
+    #[serde(default)]
+    pub spoof_checked: bool,
+    /// The Patriot (PAC-3) flies the realistic missile flight (`guidance`): motor, drag, the
+    /// speed every turn costs, proportional navigation (in world units: east, south, up).
+    #[serde(default)]
+    pub flight: Option<Projectile>,
 }
 
 /// A tracer of a gun firing at an AI aircraft.
@@ -172,6 +184,9 @@ pub struct AiMissile {
 pub struct AiShell {
     pub shell: Shell,
     pub target: usize,
+    /// A manned Gepard's programmed airburst round (bursts at its time, sprays fragments).
+    #[serde(default)]
+    pub ahead: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -192,28 +207,34 @@ pub struct CampaignSim {
     /// Countermeasure and gun stores at the start (a respawn reloads them).
     pub(crate) stores_init: [i32; 4],
     pub(crate) gun_init: i32,
+    /// The friendly air defence the players man, and its stocks.
+    #[serde(default)]
+    pub(crate) defence: crate::station::DefenceState,
 }
 
 /// Metres (east, north, up) of a flight unit.
-fn flight_metres(u: &FlightUnit) -> [f64; 3] {
+pub(crate) fn flight_metres(u: &FlightUnit) -> [f64; 3] {
     [u.wx as f64 * M_PER_WU, (0x10_0000 - u.wy) as f64 * M_PER_WU, u.alt.max(0) as f64 * M_PER_WU]
 }
 
-fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+pub(crate) fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
-fn add(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+pub(crate) fn add(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 }
-fn mul(a: [f64; 3], k: f64) -> [f64; 3] {
+pub(crate) fn mul(a: [f64; 3], k: f64) -> [f64; 3] {
     [a[0] * k, a[1] * k, a[2] * k]
 }
-fn len(a: [f64; 3]) -> f64 {
+pub(crate) fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+pub(crate) fn len(a: [f64; 3]) -> f64 {
     (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt()
 }
 
 /// Radar horizon (map units) of a ground radar against a target at `alt_m` metres.
-fn horizon(alt_m: f64) -> i32 {
+pub(crate) fn horizon(alt_m: f64) -> i32 {
     (4120.0 * (alt_m.max(0.0).sqrt() + 3.2) / M_PER_MAP) as i32
 }
 
@@ -243,6 +264,7 @@ impl Sim {
             shells: Vec::new(),
             stores_init: stores,
             gun_init: gun,
+            defence: Default::default(),
         }));
         self.leave_world();
     }
@@ -571,7 +593,7 @@ impl Sim {
                 aim_el: 0.3,
                 burst: 0,
                 cooldown: 0,
-                rounds: 0,
+                rounds: if kind == AaaKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
             });
             c.aaa_blue.push(blue);
         };
@@ -688,6 +710,9 @@ impl Sim {
             let u = &mut self.aaa[k];
             u.destroyed = false;
             u.tracking = false;
+            if u.kind == AaaKind::Gepard {
+                u.rounds = crate::station::GEPARD_ROUNDS;
+            }
             u.cooldown = 0;
             u.burst = 0;
         }
@@ -1069,6 +1094,7 @@ impl Sim {
         if self.frame % fs == 0 {
             self.campaign_acquire();
         }
+        self.update_stations();
         self.campaign_guns();
         self.campaign_fighter_guns();
         self.campaign_missiles();
@@ -1217,15 +1243,17 @@ impl Sim {
             let blue = c.aaa_blue[k];
             c.aaa_target[k] = None;
             // The missile teams reload here (the classic air defence only does it while it
-            // fights a player).
+            // fights a player). Launchers are refilled from their battery's stockpile
+            // (`Sim::tick_refills`).
             if (u.kind == AaaKind::Manpads && (blue || !u.tracking)) || u.kind.patriot() {
                 let a = &mut self.aaa[k];
                 a.cooldown = (a.cooldown - fs).max(0);
-                if a.kind == AaaKind::PatriotLauncher && a.rounds == 0 && a.cooldown == 0 {
-                    a.rounds = PATRIOT_ROUNDS;
-                }
             }
             if u.destroyed || (!blue && u.tracking) || u.kind == AaaKind::PatriotLauncher {
+                continue;
+            }
+            // A player mans it: his console aims and fires.
+            if c.defence.stations.iter().any(|s| s.unit as usize == k) {
                 continue;
             }
             if u.kind == AaaKind::PatriotRadar {
@@ -1285,14 +1313,16 @@ impl Sim {
             let d = sub(pos[j], from);
             let az = d[0].atan2(d[1]);
             self.aaa[k].aim_az = az as f32;
-            let in_air = |m: &AiMissile| m.target == j && m.spec == PATRIOT && m.blue == blue;
+            let in_air = |m: &AiMissile| {
+                m.target == j && m.spec == PATRIOT && m.blue == blue && m.station.is_none()
+            };
             let salvo = c.missiles.iter().chain(&launches).filter(|m| in_air(m)).count();
             if u.rounds == 0 || u.cooldown > 0 || salvo >= PATRIOT_SALVO || rng.random(100) >= 50 {
                 continue;
             }
             let a = &mut self.aaa[k];
             a.rounds -= 1;
-            a.cooldown = if a.rounds == 0 { PATRIOT_RELOAD } else { PATRIOT_INTERVAL } * fs;
+            a.cooldown = PATRIOT_INTERVAL * fs;
             let el = PATRIOT_ELEVATION as f64;
             let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
             launches.push(self.ai_missile(PATRIOT, from, dir, j, blue));
@@ -1356,7 +1386,7 @@ impl Sim {
         self.campaign = Some(c);
     }
 
-    fn ai_missile(
+    pub(crate) fn ai_missile(
         &self,
         spec: i32,
         from: [f64; 3],
@@ -1364,6 +1394,11 @@ impl Sim {
         target: usize,
         blue: bool,
     ) -> AiMissile {
+        let flight = (spec == PATRIOT).then(|| {
+            let wu =
+                [from[0] / M_PER_WU, 0x10_0000 as f64 - from[1] / M_PER_WU, from[2] / M_PER_WU];
+            crate::guidance::launch_ai(spec, wu, [dir[0], -dir[1], dir[2]], self.fs)
+        });
         let m = self.missile(spec);
         let speed = (m.max_speed as f64 * 0.5).clamp(300.0, 1200.0);
         let turn = 0.15 + 0.08 * m.turn as f64;
@@ -1379,6 +1414,10 @@ impl Sim {
             ttl: ((range_m / speed + 3.0) * self.fs as f64) as i32,
             blue,
             ground: None,
+            guidance: None,
+            station: None,
+            spoof_checked: false,
+            flight,
         }
     }
 
@@ -1392,6 +1431,12 @@ impl Sim {
             let Some(j) = c.aaa_target[k] else { continue };
             let u = &mut self.aaa[k];
             if u.destroyed || u.kind == AaaKind::Manpads || u.kind.patriot() {
+                continue;
+            }
+            // A Gepard fires what it has (its refill comes from the stockpile).
+            let gepard = u.kind == AaaKind::Gepard;
+            if gepard && u.rounds <= 0 {
+                u.burst = 0;
                 continue;
             }
             let t = self.flights[j];
@@ -1421,6 +1466,9 @@ impl Sim {
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let dir = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
             let ttl = if flak { time } else { reach * 1.3 / v0 };
+            if gepard {
+                u.rounds = (u.rounds - 2).max(0);
+            }
             if c.shells.len() < MAX_SHELLS {
                 let shell = Shell {
                     pos: add(from, [0.0, 0.0, 1.5]),
@@ -1432,7 +1480,7 @@ impl Sim {
                 if self.record_shells {
                     self.new_ai_shells.push(shell);
                 }
-                c.shells.push(AiShell { shell, target: j });
+                c.shells.push(AiShell { shell, target: j, ahead: false });
             }
         }
         c.rng = rng;
@@ -1494,7 +1542,7 @@ impl Sim {
                     if self.record_shells {
                         self.new_ai_shells.push(shell);
                     }
-                    c.shells.push(AiShell { shell, target: f.target.unwrap_or(0) });
+                    c.shells.push(AiShell { shell, target: f.target.unwrap_or(0), ahead: false });
                 }
             }
             c.flights[i] = Some(f);
@@ -1536,6 +1584,42 @@ impl Sim {
             }
             let t = self.flights.get(m.target).copied().unwrap_or_default();
             let alive = t.flags & fflags::DESTROYED == 0 && t.flags & fflags::AIRBORNE != 0;
+            let alive = alive && !Sim::spoofed(&mut rng, m, flight_metres(&t));
+            // The Patriot: its own flight, steered while it has its target.
+            if let Some(mut pm) = m.flight {
+                let target = alive.then(|| self.unit_target(m.target));
+                let vmax = self.guided_vmax(m.spec);
+                let step = crate::guidance::flight_step(
+                    &mut pm,
+                    vmax,
+                    FUSE / M_PER_WU,
+                    self.fs,
+                    target,
+                    target,
+                );
+                let f = pm.flight.unwrap_or_default();
+                let q = |a: i32| a as f64 / ROUND_FINE as f64;
+                m.pos = [
+                    q(f.x) * M_PER_WU,
+                    (0x10_0000 as f64 - q(f.y)) * M_PER_WU,
+                    q(f.alt) * M_PER_WU,
+                ];
+                m.vel = [q(f.vx) * M_PER_WU, -q(f.vy) * M_PER_WU, q(f.vz) * M_PER_WU];
+                m.flight = Some(pm);
+                return match step {
+                    crate::guidance::Step::Fused => {
+                        let (x, y, alt) = metres_map(m.pos);
+                        pops.push((x, y, alt));
+                        if alive && rng.random(1000) < MISSILE_PK {
+                            kills.push((m.target, x, y, alt));
+                        }
+                        false
+                    }
+                    crate::guidance::Step::Ground => false,
+                    // Spent (too slow to catch anything): it falls and is gone.
+                    crate::guidance::Step::Flying => pm.ttl > 0 && !f.stalled,
+                };
+            }
             // Accelerate to speed, turn towards the target (pure pursuit), else fly on.
             let v = len(m.vel).max(1.0);
             let speed = (v + m.speed * dt * 1.5).min(m.speed);
@@ -1596,8 +1680,17 @@ impl Sim {
             let alive = t.flags & fflags::DESTROYED == 0 && t.flags & fflags::AIRBORNE != 0;
             let near = crate::aaa::closest(rel, step);
             if s.shell.flak && s.shell.ttl <= 0 {
-                bursts.push(metres_map(s.shell.pos));
-                if alive && len(sub(s.shell.pos, tp)) < 30.0 && rng.random(1000) < 400 {
+                // A programmed round bursts where its last stretch passes the target.
+                let kill = if s.ahead {
+                    let back = sub(s.shell.pos, step);
+                    let k = (-dot(rel, step) / dot(step, step).max(1e-9)).clamp(0.0, 1.0);
+                    bursts.push(metres_map(add(back, mul(step, k))));
+                    Sim::ahead_kills(&mut rng, near)
+                } else {
+                    bursts.push(metres_map(s.shell.pos));
+                    len(sub(s.shell.pos, tp)) < 30.0 && rng.random(1000) < 400
+                };
+                if alive && kill {
                     kills.push(s.target);
                 }
                 return false;
@@ -1619,7 +1712,7 @@ impl Sim {
     }
 
     /// An AI aircraft destroyed by the AI.
-    fn ai_kill(&mut self, j: usize) {
+    pub(crate) fn ai_kill(&mut self, j: usize) {
         let Some(u) = self.flights.get(j).copied() else { return };
         if u.flags & fflags::DESTROYED != 0 {
             return;
@@ -1667,13 +1760,13 @@ impl Sim {
 }
 
 /// Unit vector (east, north, up) of a heading and pitch (BAM).
-fn direction(heading: i32, pitch: i32) -> [f64; 3] {
+pub(crate) fn direction(heading: i32, pitch: i32) -> [f64; 3] {
     let (h, p) = (bam(heading), bam(pitch));
     [h.sin() * p.cos(), h.cos() * p.cos(), p.sin()]
 }
 
 /// A gun's aiming error: roughly normal, about unit spread.
-fn jitter(rng: &mut Rng) -> f64 {
+pub(crate) fn jitter(rng: &mut Rng) -> f64 {
     (0..3).map(|_| rng.random(1000) as f64 / 1000.0).sum::<f64>() * 1.15 - 1.73
 }
 
@@ -1693,6 +1786,6 @@ fn gun_envelope(kind: AaaKind) -> (f64, f64, f64) {
 }
 
 /// Metres (east, north, up) to map x, y and altitude (world units).
-fn metres_map(p: [f64; 3]) -> (i32, i32, i32) {
+pub(crate) fn metres_map(p: [f64; 3]) -> (i32, i32, i32) {
     ((p[0] / M_PER_MAP) as i32, 0x8000 - (p[1] / M_PER_MAP) as i32, (p[2] / M_PER_WU) as i32)
 }

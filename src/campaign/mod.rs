@@ -41,6 +41,7 @@ use stealth_campaign::{
 use stealth_host::{Debrief, Host, HostEvent, Rules, Stores, save};
 use stealth_mission::Mission;
 use stealth_net::protocol::{PlayerInfo, PlayerStatus, ToServer};
+use stealth_sim::station::StationCmd;
 use stealth_sim::{PlayerState, SimEvent, oflags};
 
 pub use stealth_host::glue::describe;
@@ -124,6 +125,9 @@ pub enum Phase {
     Ops,
     /// Flying a sortie.
     Sortie,
+    /// At the console of a friendly Patriot battery or Gepard (AAA unit; absent from the
+    /// simulation as on the Ops screen).
+    Station { unit: usize },
 }
 
 /// Who runs the war.
@@ -172,6 +176,8 @@ pub enum Action {
         base: u16,
         route: Vec<crate::mission::RoutePoint>,
     },
+    /// Man a friendly air defence console, leave it, or fight it.
+    Station(StationCmd),
 }
 
 /// The last sortie's debrief.
@@ -450,8 +456,9 @@ pub struct Session<'w, 's> {
     theater: Option<ResMut<'w, crate::world::Theater>>,
     view: ResMut<'w, crate::camera::ViewState>,
     /// The campaign clock: virtual time (never paused in a campaign; `--time-scale` speeds the
-    /// whole war up for tests).
+    /// whole war up for tests), and the wall clock (the air defence's refills).
     time: Res<'w, Time>,
+    real: Res<'w, Time<Real>>,
     menu: ResMut<'w, crate::flight_menu::FlightMenu>,
     link: Option<ResMut<'w, NetLink>>,
     inbox: ResMut<'w, NetInbox>,
@@ -654,12 +661,30 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             }
         }
     }
+    // Test aid: man the n-th friendly air defence console (Patriot batteries first).
+    // (A client waits for the server's units.)
+    if c.phase == Phase::Ops
+        && c.state().clock > 2.0
+        && !c.ui.test_manned
+        && let Some(n) = ops::test_man()
+    {
+        let sim = &s.combat.sim;
+        let mut units: Vec<usize> = (0..sim.aaa_units().len())
+            .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.aaa_units()[k].kind))
+            .collect();
+        units.sort_by_key(|&k| sim.aaa_units()[k].kind != stealth_sim::aaa::AaaKind::PatriotRadar);
+        if let Some(&k) = units.get(n.min(units.len().saturating_sub(1))) {
+            c.ui.test_manned = true;
+            c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
+        }
+    }
     let events = match c.role {
         Role::Client => client_frame(c, &mut s, dt),
         Role::Local | Role::Host => host_frame(c, &mut s, dt),
     };
     handle(c, &mut s, events);
     drain_sim(c, &mut s);
+    station_phase(c, &s);
     // The debrief comes up a few seconds after the end (the chute is down by then).
     if let Some(t) = c.end_timer.as_mut() {
         *t += dt;
@@ -677,6 +702,26 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     if c.save_timer > SAVE_EVERY {
         c.save_timer = 0.0;
         c.save();
+    }
+}
+
+/// At an air defence console or not, as the simulation (the server's, on a client) has it; a
+/// console whose radar or gun is lost sends the player back to the Ops screen.
+fn station_phase(c: &mut ActiveCampaign, s: &Session) {
+    let sim = &s.combat.sim;
+    let manned = sim.station_of(c.me.0).map(|st| st.unit as usize);
+    match (c.phase, manned) {
+        (Phase::Ops, Some(unit)) => c.phase = Phase::Station { unit },
+        (Phase::Station { unit }, None) => {
+            c.phase = Phase::Ops;
+            if let Some(u) = sim.aaa_units().get(unit).filter(|u| u.destroyed) {
+                c.ui.error = Some(format!("{} destroyed: back to operations", u.kind.name()));
+            }
+        }
+        (Phase::Station { unit }, Some(now)) if unit != now => {
+            c.phase = Phase::Station { unit: now }
+        }
+        _ => {}
     }
 }
 
@@ -732,6 +777,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),
+            Action::Station(cmd) => host.station(sim, me, cmd),
         };
         match result {
             Ok(ev) => {
@@ -747,6 +793,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
     // The simulation's events of this frame's steps.
     let events = std::mem::take(&mut combat.campaign_events);
     let ev = host.tick(sim, dt as f64, &events);
+    host.refills(sim, s.real.delta_secs());
     if let Some(server) = server {
         server.route(&ev);
         if combat.steps > 0 {
@@ -789,6 +836,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::SelectMission { offer, base } => ToServer::Select { offer, base },
             Action::EditPlan { offer, base, route } => ToServer::Plan { offer, base, route },
+            Action::Station(cmd) => ToServer::Station(cmd),
         };
         client.send(&msg);
     }

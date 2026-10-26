@@ -44,6 +44,7 @@
 //!   head, fading with distance, with a Doppler shift. Only at level 3.
 //! - A SAM site's launch (`launch.flac`, a recording) is heard near the site, placed and fading
 //!   like the aircraft, arriving at the speed of sound.
+//! - At an air defence console the shelter's own sounds play (`station::sound`).
 //! - With Sidewinders selected in the air-to-air HUD mode, the seeker growls (cut from a
 //!   recording of the real tones by tools/cut_sidewinder_tones.py): the low growl
 //!   (`aim9_growl.flac`) with nothing in its view, the higher one (`aim9_seen.flac`) with the
@@ -192,11 +193,11 @@ impl Channel {
 /// A sound played at a fixed volume (before its channel's gain), set again when the volumes
 /// change.
 #[derive(Component)]
-struct Mixed(Channel, f32);
+pub(crate) struct Mixed(pub(crate) Channel, pub(crate) f32);
 
 impl Mixed {
     /// The playback settings with the volume mixed in.
-    fn settings(&self, s: &crate::settings::Settings, p: PlaybackSettings) -> PlaybackSettings {
+    pub(crate) fn settings(&self, s: &crate::settings::Settings, p: PlaybackSettings) -> PlaybackSettings {
         p.with_volume(Volume::Linear(self.1 * self.0.gain(s)))
     }
 }

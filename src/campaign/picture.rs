@@ -1,6 +1,7 @@
 //! The air picture the friendly side has, for the war map and the briefing map: its own
-//! aircraft, the enemy fighters its radars see, and the enemy air defences it knows of (from
-//! recon, or because they gave themselves away by painting the player or firing).
+//! aircraft and air defences (the Patriot batteries and Gepards a player can man), the enemy
+//! fighters its radars see, and the enemy air defences it knows of (from recon, or because they
+//! gave themselves away by painting the player or firing).
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
@@ -45,12 +46,27 @@ pub struct Gun {
     pub kind: AaaKind,
 }
 
+/// A friendly air defence unit: a Patriot battery (its radar), a Gepard, a Stinger team.
+pub struct Defence {
+    /// AAA unit index.
+    pub index: usize,
+    pub x: i32,
+    pub y: i32,
+    pub kind: AaaKind,
+    /// The player at its console.
+    pub manned: Option<u8>,
+}
+
+/// Patriot reach on the map (map units).
+const PATRIOT_REACH: f32 = stealth_sim::campaign::PATRIOT_REACH as f32;
+
 #[derive(Default)]
 pub struct Picture {
     pub friendly: Vec<Aircraft>,
     pub fighters: Vec<Aircraft>,
     pub sams: Vec<SamSite>,
     pub guns: Vec<Gun>,
+    pub defences: Vec<Defence>,
     /// The player in the air.
     pub player: Option<(i32, i32)>,
 }
@@ -125,7 +141,14 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
     let reconned: Vec<(i32, i32)> =
         state.places.iter().filter(|p| p.intel(state.clock)).map(|p| (p.x, p.y)).collect();
     for (k, u) in sim.aaa_units().iter().enumerate() {
-        if u.destroyed || sim.aaa_blue(k) {
+        if u.destroyed {
+            continue;
+        }
+        if sim.aaa_blue(k) {
+            if matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::Manpads) {
+                let manned = sim.manned_by(k);
+                pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned });
+            }
             continue;
         }
         if sim.aaa_engaging(k) || reconned.iter().any(|&(x, y)| near(u.x, u.y, x, y, RECON_GUNS)) {
@@ -160,10 +183,21 @@ fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
     }
 }
 
-/// Draws the picture: known defences (with their missile reach), enemy fighters, friendly
-/// aircraft, the player.
+/// Draws the picture: friendly air defences (a battery with its missile reach), known enemy
+/// defences (with their missile reach when `rings`), enemy fighters, friendly aircraft, the
+/// player.
 pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool) {
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
+    for d in &pic.defences {
+        let c = at(d.x, d.y);
+        if d.kind == AaaKind::PatriotRadar {
+            painter.extend(reach_circle(c, PATRIOT_REACH / view.scale));
+        }
+        defence(painter, c, d.kind);
+        if d.manned.is_some() {
+            painter.circle_stroke(c, 9.0, egui::Stroke::new(1.5, GREEN));
+        }
+    }
     for s in &pic.sams {
         let c = at(s.x, s.y);
         if rings {
@@ -188,6 +222,42 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool)
     }
 }
 
+/// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
+/// a square with its two barrels, a Stinger team a ring.
+fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+    let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
+    match kind {
+        AaaKind::PatriotRadar => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
+            painter.rect_filled(r, 0.0, FRIENDLY_BLUE.gamma_multiply(0.35));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+            for dx in [-2.0, 2.0] {
+                painter.line_segment([p + egui::vec2(dx, 3.0), p + egui::vec2(dx, -3.0)], stroke);
+            }
+        }
+        AaaKind::Gepard => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(7.0, 7.0));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+            for dx in [-1.5, 1.5] {
+                painter.line_segment([p + egui::vec2(dx, -3.5), p + egui::vec2(dx, -7.5)], stroke);
+            }
+        }
+        _ => {
+            painter.circle_stroke(p, 2.5, stroke);
+        }
+    }
+}
+
+/// A friendly battery's missile reach: a faint dashed circle.
+fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
+    let n = ((r * std::f32::consts::TAU / 2.0) as usize).clamp(24, 720);
+    let pts: Vec<egui::Pos2> = (0..=n)
+        .map(|k| c + egui::Vec2::angled(k as f32 / n as f32 * std::f32::consts::TAU) * r)
+        .collect();
+    let stroke = egui::Stroke::new(1.2, FRIENDLY_BLUE.gamma_multiply(0.3));
+    egui::Shape::dashed_line(&pts, stroke, 3.0, 5.0)
+}
+
 /// The legend lines of the picture.
 pub fn legend(ui: &mut egui::Ui) {
     map_draw::legend(ui, "Friendly aircraft", |p, c0| {
@@ -201,6 +271,11 @@ pub fn legend(ui: &mut egui::Ui) {
     map_draw::legend(ui, "Enemy fighter (on radar)", |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
         aircraft(p, c0, &a, MISSILE_RED);
+    });
+    map_draw::legend(ui, "Patriot battery", |p, c0| defence(p, c0, AaaKind::PatriotRadar));
+    map_draw::legend(ui, "Gepard / Stinger", |p, c0| {
+        defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard);
+        defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads);
     });
     map_draw::legend(ui, "SAM site (known)", |p, c0| {
         p.circle_filled(c0, 3.0, MISSILE_RED);
@@ -245,6 +320,13 @@ pub fn pick(
     }
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
+    }
+    for d in &pic.defences {
+        let name = match d.kind {
+            AaaKind::PatriotRadar => "Patriot battery",
+            k => k.name_on(true),
+        };
+        consider(screen(d.x, d.y), UnitRef::Aaa(d.index), name.to_string());
     }
     best.map(|b| (b.1, b.2))
 }
