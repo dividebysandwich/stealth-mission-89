@@ -1019,27 +1019,62 @@ fn flir(rgb: vec3<f32>, warm: u32, fog_f: f32) -> vec3<f32> {
     return vec3<f32>(pow(v, 2.2));
 }
 
-// Water (palette_material.rs FLAG_WATER): a faint grid of dots pinned to the world (the
-// floating origin is handed over modulo NOISE_PERIOD, a multiple of the spacing), so the
-// height over the sea can be judged low down. They fade out with height, and in the distance
-// before they shrink into a moire.
+// Water (palette_material.rs FLAG_WATER): sparse specks of about a pixel, lighter and
+// darker, pinned to the world at random spots of a grid (the floating origin is handed over
+// modulo NOISE_PERIOD, a multiple of the spacing), so the height over the sea can be judged
+// low down. They fade out with height, and in the distance before they crowd into noise.
 const FLAG_WATER: u32 = 256u;
-const WATER_GRID: f32 = 16.0;
+const WATER_GRID: f32 = 12.0;
+// Share of the grid cells with a speck.
+const WATER_SPECKS: f32 = 0.35;
 const WATER_DOTS_HIGH: vec2<f32> = vec2<f32>(80.0, 300.0);
+// Least speck radius up close (metres); otherwise a dot light's size.
+const WATER_SPECK_M: f32 = 0.25;
 
-fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv) -> vec3<f32> {
+// A dot light's size in this view's pixels (the vertex shader's DOT_BATCH).
+fn dot_pixels() -> f32 {
+    let vp = view.viewport.zw;
+    var px = max(vp.y / 200.0 * DOT_SIZE, DOT_MIN_PIXELS);
+    if (globals.dots.x > 0.0) {
+        px = min(px, max(globals.dots.x * 0.5 * vp.y * view.clip_from_view[1][1], DOT_MIN_PIXELS));
+    }
+    return px;
+}
+
+// A ground plane offset in screen pixels, from the plane's change per pixel across and down.
+fn pixels(off: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec2<f32> {
+    let det = dx.x * dy.y - dx.y * dy.x;
+    if (abs(det) < 1e-9) {
+        return vec2<f32>(1e4);
+    }
+    return vec2<f32>(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
+}
+
+fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
     let h = view.world_position.y - world.y;
     let level = abs(normalize(deriv.face).y) > 0.95;
     let fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
-        * (1.0 - smoothstep(0.08, 0.2, deriv.foot / WATER_GRID));
+        * (1.0 - smoothstep(0.15, 0.4, deriv.foot / WATER_GRID));
     if (!level || fade <= 0.0) {
         return rgb;
     }
     let p = (world.xz + globals.noise.xy) / WATER_GRID;
-    let d = length(fract(p) - 0.5) * WATER_GRID;
-    let r = max(0.5, deriv.foot);
-    let k = (1.0 - smoothstep(r - deriv.foot * 0.5, r + deriv.foot * 0.5, d)) * fade;
-    return mix(rgb, rgb * 1.5 + vec3<f32>(0.015), k * 0.6);
+    let cell = floor(p);
+    let n = hash2(cell);
+    if (n >= WATER_SPECKS) {
+        return rgb;
+    }
+    let at = cell + vec2<f32>(hash2(cell + 17.0), hash2(cell + 43.0));
+    // Distance from the speck in screen pixels (a little world size up close).
+    let off = (p - at) * WATER_GRID;
+    let px = length(pixels(off, deriv.ground_dx, deriv.ground_dy));
+    let r = max(dot_pixels() * 0.5, WATER_SPECK_M / max(deriv.foot, 1e-3));
+    var k = 1.0 - smoothstep(r - 0.3, r + 0.3, px);
+    if (!modern) {
+        k = select(0.0, 1.0, px < r);
+    }
+    let tone = select(rgb * 0.4, rgb * 0.4 + vec3<f32>(0.4), n < WATER_SPECKS * 0.5);
+    return mix(rgb, tone, k * fade);
 }
 
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
@@ -1050,8 +1085,11 @@ struct Deriv {
     // Radians per pixel of the view direction (from the smooth direction: cell distances in
     // the night sky jump at cell edges).
     sky_px: f32,
-    // Metres per pixel on the surface (the water dots).
+    // Metres per pixel on the surface, and the ground plane's x/z change per pixel across and
+    // down the screen (the water dots).
     foot: f32,
+    ground_dx: vec2<f32>,
+    ground_dy: vec2<f32>,
 }
 
 // The colour word: the material's, or the vertex's.
@@ -1069,6 +1107,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     deriv.face = cross(dpdx(in.world_position), dpdy(in.world_position));
     deriv.sky_px = max(length(fwidth(normalize(in.world_position - view.world_position))), 1e-5);
     deriv.foot = length(fwidth(in.world_position));
+    deriv.ground_dx = dpdx(in.world_position.xz);
+    deriv.ground_dy = dpdy(in.world_position.xz);
     if ((u32(globals.light_info.w) & 1u) != 0u) {
         return vec4<f32>(pal(colour_word(in) & 0xFFu), 1.0);
     }
@@ -1230,7 +1270,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         }
     }
     if ((material.flags & FLAG_WATER) != 0u) {
-        rgb = water_dots(rgb, in.world_position, deriv);
+        rgb = water_dots(rgb, in.world_position, deriv, modern);
     }
     // A dark night blacks out the scenery; lights (lines and dots) show, aircraft barely.
     // Lines in scenery colours (rivers, roads: material flag 64) go dark with the ground.
