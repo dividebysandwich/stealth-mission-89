@@ -5,8 +5,9 @@
 //! - Forces: thrust along the nose (rising steeply over the throttle's travel like a jet
 //!   engine's with its rpm, lapsing with air density, the afterburner's gaining more with
 //!   speed), lift from the angle of attack
-//!   (linear up to the stall, falling off past it), drag (parasite, induced, gear, flaps, speed
-//!   brake, bay doors, transonic rise, the engine's ram drag at low throttle), side force from
+//!   (linear up to the stall, falling off past it), drag (parasite, induced and rising steeply
+//!   at high lift, gear, flaps, speed brake, bay doors, transonic rise, the engine's ram drag at
+//!   low throttle), side force from
 //!   sideslip and gravity, on a mass that lightens as fuel burns.
 //! - Control laws (rate command, attitude hold): the stick commands pitch rate (squared stick
 //!   shaping), at most what gives 7 g pulling or -3 g pushing, and roll rate about the flight
@@ -52,7 +53,8 @@ pub struct Aero {
     pub dry_weight: f32,
     pub ref_weight: f32,
     /// Static thrust to reference weight at full throttle (dry: without the afterburner), and
-    /// its rise per Mach (ram effect).
+    /// its change per Mach (ram effect; negative where the intake's ram drag wins, as for the
+    /// F-117A's engines at low level).
     pub thrust_ratio: f32,
     /// The same with the full afterburner (0: none), and the afterburner's rise per Mach.
     pub ab_thrust_ratio: f32,
@@ -69,8 +71,12 @@ pub struct Aero {
     pub cl_flaps: f32,
     pub alpha_flaps: f32,
     pub cd0: f32,
-    /// Induced drag factor.
+    /// Induced drag factor, and the drag added on top of it past the lift coefficient
+    /// `cl_sep` (times the excess squared: the leading edge suction lost, the flow separating),
+    /// which bleeds the energy in hard turns.
     pub cd_k: f32,
+    pub cd_sep: f32,
+    pub cl_sep: f32,
     pub cd_gear: f32,
     pub cd_flaps: f32,
     pub cd_speed_brake: f32,
@@ -137,7 +143,8 @@ impl Aero {
         thrust_ratio: 0.8,
         ab_thrust_ratio: 0.0,
         ab_thrust_mach: 0.0,
-        thrust_mach: 0.0,
+        // Full take-off thrust that falls off with the speed.
+        thrust_mach: -0.4,
         cl_alpha: 3.0,
         alpha_stall: 0.40,
         alpha_stall_neg: -0.28,
@@ -145,13 +152,15 @@ impl Aero {
         alpha_limit_neg: -0.22,
         cl_flaps: 0.45,
         alpha_flaps: 0.05,
-        cd0: 0.040,
+        cd0: 0.030,
         cd_k: 0.16,
+        cd_sep: 0.5,
+        cl_sep: 0.6,
         cd_gear: 0.025,
         cd_flaps: 0.05,
         cd_speed_brake: 0.12,
         cd_bay: 0.008,
-        cd_idle: 0.028,
+        cd_idle: 0.035,
         cy_beta: 0.8,
         drag_rise: DragRise::Subsonic,
         n_max: 7.0,
@@ -168,19 +177,21 @@ impl Aero {
         wing_loading: 90.0,
         dry_weight: 19_000.0,
         ref_weight: 29_000.0,
-        thrust_ratio: 0.63,
-        ab_thrust_ratio: 1.0,
-        ab_thrust_mach: 0.6,
-        thrust_mach: 0.1,
-        cl_alpha: 4.0,
+        thrust_ratio: 0.56,
+        ab_thrust_ratio: 0.84,
+        ab_thrust_mach: 1.15,
+        thrust_mach: 0.0,
+        cl_alpha: 4.3,
         alpha_stall: 0.50,
         alpha_stall_neg: -0.30,
         alpha_limit: 0.44,
         alpha_limit_neg: -0.25,
         cl_flaps: 0.35,
         alpha_flaps: 0.04,
-        cd0: 0.021,
+        cd0: 0.019,
         cd_k: 0.12,
+        cd_sep: 0.55,
+        cl_sep: 1.1,
         cd_gear: 0.02,
         cd_flaps: 0.04,
         cd_speed_brake: 0.10,
@@ -191,7 +202,7 @@ impl Aero {
             start: 0.85,
             peak_mach: 1.1,
             peak: 0.036,
-            supersonic: 0.0245,
+            supersonic: 0.0235,
         },
         n_max: 9.0,
         n_min: -3.0,
@@ -412,7 +423,7 @@ pub(super) fn step(
     // --- aerodynamic and thrust accelerations (g per unit of q * CL / wing loading)
     let per_cl = qbar / (ae.wing_loading * mass);
     let cl = lift_coefficient(ae, a, alpha);
-    let mut cd = ae.cd0 + ae.cd_k * cl * cl;
+    let mut cd = ae.cd0 + ae.cd_k * cl * cl + ae.cd_sep * (cl.abs() - ae.cl_sep).max(0.0).powi(2);
     if a.gear_down {
         cd += ae.cd_gear;
     }

@@ -1160,6 +1160,35 @@ mod tests {
         assert!(turned.to_degrees() > 300.0, "rolled {}", turned.to_degrees());
     }
 
+    /// Hard turns bleed the energy (a full pull from a 75 degree bank at full power, the F-16's
+    /// afterburner lit), and the F-16 doesn't leap to speed even with it.
+    #[test]
+    fn hard_turns_bleed_speed() {
+        for (name, k) in [("F-117", FlightConstants::default()), ("F-16", FlightConstants::f16())] {
+            let mut a0 = reheat(airborne(5000.0, 400.0, 100.0));
+            a0.orientation = Aircraft::from_euler(0.0, 0.0, 75f32.to_radians());
+            let (a, _) = fly_with(k.clone(), false, a0, 5.0, |_, c| c.pitch = 1.0);
+            println!("{name}: 5 s full pull from 400 kt: {:.0} kt", a.knots());
+            assert!(a.knots() < 370.0, "{name} {}", a.knots());
+        }
+        let mut t = 0.0;
+        let mut t450 = None;
+        fly_with(
+            FlightConstants::f16(),
+            false,
+            level(reheat(airborne(1000.0, 300.0, 100.0))),
+            20.0,
+            |a, _| {
+                t += 1.0 / 120.0;
+                if a.knots() >= 450.0 && t450.is_none() {
+                    t450 = Some(t);
+                }
+            },
+        );
+        println!("F-16: 300 to 450 kt with the afterburner: {t450:?} s");
+        assert!(t450.is_some_and(|t| t > 8.5), "{t450:?}");
+    }
+
     /// The throttle lever with an afterburner: dry thrust up to the detent, full dry thrust in
     /// its gap, the afterburner past it; without one the whole travel is dry thrust.
     #[test]
