@@ -304,14 +304,17 @@ fn places_change_hands_and_get_repaired() {
     assert!(o.flags & oflags::DESTROYED == 0 && o.flags & oflags::FRIENDLY != 0);
     assert_eq!(sim.object_shapes()[tabor], shape);
     // Friendly guns there now, the enemy's gone.
+    // (In the enemy's wrecks' slots.)
     sim.place_defences(o.x, o.y, true, false);
-    let n = sim.aaa_units().len();
     sim.place_defences(o.x, o.y, true, true);
-    assert!((0..n).all(|k| sim.aaa_units()[k].destroyed || {
-        let u = sim.aaa_units()[k];
-        (u.x - o.x).abs() + (u.y - o.y).abs() > 0x200
-    }));
-    assert!((n..sim.aaa_units().len()).all(|k| sim.aaa_blue(k)));
+    let near = |u: &AaaUnit| (u.x - o.x).abs() + (u.y - o.y).abs() <= 0x200;
+    let units = sim.aaa_units();
+    assert!((0..units.len()).all(|k| !near(&units[k]) || units[k].destroyed || sim.aaa_blue(k)));
+    assert!(
+        (0..units.len()).any(|k| {
+            near(&units[k]) && !units[k].destroyed && units[k].kind == AaaKind::Gepard
+        })
+    );
     // A sortie can start there.
     let st = sim.respawn_player(tabor, None);
     assert!(st.on_ground);
@@ -375,7 +378,7 @@ fn a_long_campaign_stays_bounded() {
     assert!(sim.event_log().len() < 500);
 }
 
-use stealth_sim::aaa::{AaaKind, PATRIOT, STINGER};
+use stealth_sim::aaa::{AaaKind, AaaUnit, PATRIOT, STINGER};
 use stealth_sim::ai_loadout::{AIM9, AIM120, FighterTask};
 use stealth_sim::campaign::{CAP_BUBBLE, CAP_LEASH};
 

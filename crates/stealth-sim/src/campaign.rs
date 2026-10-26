@@ -564,18 +564,30 @@ impl Sim {
     }
 
     /// Campaign: low-level air defences around a place. Enemy places get the guns and MANPADS
-    /// of `SimOptions::air_defence`; friendly ones Gepards at airfields and Stinger teams.
-    /// Replaces the other side's guns there.
+    /// of `SimOptions::air_defence`; friendly ones Gepards at airfields (a player can man them)
+    /// and Stinger teams. Replaces the other side's guns there, in the wrecks' slots (the list
+    /// does not grow with every capture until it is full and new units are cut off).
     pub fn place_defences(&mut self, x: i32, y: i32, airfield: bool, blue: bool) {
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         c.aaa_blue.resize(self.aaa.len(), false);
+        c.aaa_target.resize(self.aaa.len(), None);
         for (k, u) in self.aaa.iter_mut().enumerate() {
             if !u.destroyed && c.aaa_blue[k] != blue && approx(u.x - x, u.y - y) < 0x180 {
                 u.destroyed = true;
                 u.burst = 0;
             }
         }
+        // The wrecks here make room (not one a player still mans).
+        let mut free: Vec<usize> = (0..self.aaa.len())
+            .filter(|&k| {
+                let u = &self.aaa[k];
+                u.destroyed
+                    && approx(u.x - x, u.y - y) < 0x180
+                    && !c.defence.stations.iter().any(|s| s.unit as usize == k)
+            })
+            .rev()
+            .collect();
         let war = self.roe;
         // A town's defenders round its edge, else round the place.
         let town = self.town_ring(x, y);
@@ -583,7 +595,7 @@ impl Sim {
         let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
             let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
             let r = (lo + rng.random(hi - lo)) as f64;
-            self.aaa.push(AaaUnit {
+            let unit = AaaUnit {
                 kind,
                 x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
                 y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
@@ -594,8 +606,24 @@ impl Sim {
                 burst: 0,
                 cooldown: 0,
                 rounds: if kind == AaaKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
-            });
-            c.aaa_blue.push(blue);
+            };
+            match free.pop() {
+                Some(k) => {
+                    self.aaa[k] = unit;
+                    c.aaa_blue[k] = blue;
+                    c.aaa_target[k] = None;
+                    if let Some(s) = c.defence.stock.get_mut(k) {
+                        *s = crate::station::initial_stock(kind);
+                    }
+                    if let Some(r) = c.defence.refill.get_mut(k) {
+                        *r = 0.0;
+                    }
+                }
+                None => {
+                    self.aaa.push(unit);
+                    c.aaa_blue.push(blue);
+                }
+            }
         };
         match (blue, airfield) {
             (false, true) => {
@@ -683,13 +711,17 @@ impl Sim {
     /// before the simulation was built).
     pub fn wreck_defences(&mut self, x: i32, y: i32, blue: bool, n: usize) {
         let Some(c) = self.campaign.as_ref() else { return };
-        let mine: Vec<usize> = (0..self.aaa.len())
+        let mut mine: Vec<usize> = (0..self.aaa.len())
             .filter(|&k| c.aaa_blue.get(k).copied().unwrap_or(false) == blue)
             .filter(|&k| !self.aaa[k].kind.patriot())
             .filter(|&k| {
                 !self.aaa[k].destroyed && approx(self.aaa[k].x - x, self.aaa[k].y - y) < 0x180
             })
             .collect();
+        // A friendly airfield keeps one Gepard whatever it lost (the players' to man).
+        if blue && let Some(i) = mine.iter().position(|&k| self.aaa[k].kind == AaaKind::Gepard) {
+            mine.remove(i);
+        }
         for k in mine.into_iter().rev().take(n) {
             self.aaa[k].destroyed = true;
             self.aaa[k].burst = 0;

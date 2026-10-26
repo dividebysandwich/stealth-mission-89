@@ -257,3 +257,43 @@ fn every_theater_can_be_won() {
         assert!(left.is_empty(), "{code}: out of reach {left:?}");
     }
 }
+
+/// Every friendly airfield has a Gepard a player can man from the start, also one whose guns
+/// the campaign has lost (a save: they are wrecks until replaced).
+#[test]
+fn every_friendly_airfield_has_a_gepard_to_man() {
+    use stealth_campaign::Side;
+    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::station::StationCmd;
+    for (code, lost) in [("central_europe", 0), ("ukraine", 0), ("central_europe", 9)] {
+        let s = setup(code);
+        let data = theater::game_data().unwrap();
+        let sim_data = theater::sim_data(s.theater, code).unwrap();
+        let mut host = Host::new(s, &data, Rules::default()).unwrap();
+        for p in host.state.places.iter_mut() {
+            p.guns_lost = lost;
+        }
+        let mut sim = host.new_sim(&sim_data);
+        host.begin(&mut sim);
+        let fields: Vec<(i32, i32, String)> = host
+            .state
+            .places
+            .iter()
+            .filter(|p| p.owner == Side::Blue && p.airfield.is_some())
+            .map(|p| (p.x, p.y, p.name.clone()))
+            .collect();
+        assert!(!fields.is_empty(), "{code}");
+        for (x, y, name) in fields {
+            let gepard = (0..sim.aaa_units().len()).find(|&k| {
+                let u = sim.aaa_units()[k];
+                u.kind == AaaKind::Gepard
+                    && !u.destroyed
+                    && sim.aaa_blue(k)
+                    && (u.x - x).abs().max((u.y - y).abs()) < 0x180
+            });
+            let Some(k) = gepard else { panic!("{code}: no Gepard at {name} (lost {lost})") };
+            sim.station_command(0, StationCmd::Man { unit: k as u16 }).unwrap();
+            sim.station_command(0, StationCmd::Leave).unwrap();
+        }
+    }
+}

@@ -321,3 +321,26 @@ fn no_shot_beyond_the_pac3_reach() {
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
     assert!(e.contains("range"), "{e}");
 }
+
+#[test]
+fn captures_reuse_the_wrecks_and_a_friendly_field_keeps_its_gepard() {
+    let mut sim = campaign();
+    let home = find(&sim, 0x401, "Neuburg");
+    let o = sim.objects()[home];
+    sim.place_defences(o.x, o.y, true, true);
+    let len = sim.aaa_units().len();
+    for i in 0..60 {
+        let blue = i % 2 == 1;
+        sim.place_defences(o.x, o.y, true, blue);
+        sim.wreck_defences(o.x, o.y, blue, 10);
+        if blue {
+            let k =
+                sim.aaa_units().iter().enumerate().position(|(k, u)| {
+                    u.kind == AaaKind::Gepard && !u.destroyed && sim.aaa_blue(k)
+                });
+            assert!(k.is_some(), "capture {i}: no Gepard");
+            assert_eq!(sim.aaa_units()[k.unwrap()].rounds, GEPARD_ROUNDS);
+        }
+    }
+    assert!(sim.aaa_units().len() <= len + 12, "{} units from {len}", sim.aaa_units().len());
+}

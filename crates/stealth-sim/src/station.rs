@@ -117,7 +117,7 @@ pub struct SavedStock {
 }
 
 /// The stockpile a unit starts with.
-fn initial_stock(kind: AaaKind) -> i32 {
+pub(crate) fn initial_stock(kind: AaaKind) -> i32 {
     match kind {
         AaaKind::PatriotRadar => PATRIOT_STOCK,
         AaaKind::Gepard => GEPARD_STOCK,

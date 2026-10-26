@@ -478,6 +478,8 @@ fn spawn_model(
 #[derive(Resource, Default)]
 struct AaaVisuals {
     units: Vec<Entity>,
+    /// What each was spawned as (a unit's slot is reused for another kind on a capture).
+    kinds: Vec<stealth_sim::aaa::AaaKind>,
     tracers: Vec<Entity>,
     /// Campaign: the AI's missiles at AI aircraft (a glowing dot each).
     ai_missiles: Vec<Entity>,
@@ -515,10 +517,12 @@ fn sync_aaa(
 ) {
     let sim = &combat.sim;
     let units = sim.aaa_units();
-    if av.units.len() != units.len() {
+    let kinds: Vec<_> = units.iter().map(|u| u.kind).collect();
+    if av.units.len() != units.len() || av.kinds != kinds {
         for e in av.units.drain(..) {
             commands.entity(e).try_despawn();
         }
+        av.kinds = kinds;
         let file = library.load(&server, "aaa");
         for u in units {
             let model = AAA_MODELS + u.kind as i32;
