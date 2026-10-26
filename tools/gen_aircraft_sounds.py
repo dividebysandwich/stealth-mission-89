@@ -14,6 +14,8 @@
   winds up from 0 on start).
 - jet_wind.flac: the airflow over the canopy (louder with airspeed in the game): a broadband
   rush with a faint whistle and slow buffeting.
+- afterburner.flac: the lit afterburner over the engine (louder with its setting in the game):
+  a deep, throbbing roar, a coarser rush above it and the exhaust's crackle (sparse pops).
 
 They loop seamlessly: the noise is synthesized in the frequency domain (periodic in the loop
 length) and every tone and pulse train repeats a whole number of times per loop.
@@ -167,9 +169,32 @@ def jet_wind():
     return 1.0 * norm(rush) + 0.04 * norm(whistle) + 0.3 * norm(rumble)
 
 
+def afterburner():
+    t = 5.0
+    n = int(t * RATE)
+    # The roar: most of it below a few hundred Hz, throbbing slowly as the flame burns unevenly.
+    roar = periodic_noise(t, lambda f: band(f, 25, 260, 1.5) + 0.35 * band(f, 260, 1200, 1.2))
+    roar *= swell(t, 6.0, 0.25) * swell(t, 1.2, 0.15)
+    rush = periodic_noise(t, lambda f: band(f, 600, 4000, 1.3)) * swell(t, 3.0, 0.2)
+    # Crackle: short bursts of bright noise at random moments (the pattern loops with the file).
+    crackle = np.zeros(n)
+    burst = int(0.012 * RATE)
+    env = np.exp(-np.arange(burst) / (0.0025 * RATE))
+    for start in rng.integers(0, n, int(t * 45)):
+        amp = rng.uniform(0.3, 1.0) ** 2
+        idx = (start + np.arange(burst)) % n
+        crackle[idx] += amp * env * rng.standard_normal(burst)
+    spec = np.fft.rfft(crackle)
+    f = np.fft.rfftfreq(n, 1.0 / RATE)
+    crackle = np.fft.irfft(spec * band(np.maximum(f, 1e-3), 500, 6000, 1.0), n)
+    norm = lambda x: x / np.max(np.abs(x))
+    return 1.0 * norm(roar) + 0.3 * norm(rush) + 0.35 * norm(crackle)
+
+
 if __name__ == "__main__":
     write("helicopter.flac", helicopter())
     write("heli_rotor.flac", heli_rotor())
     write("heli_turbine.flac", heli_turbine())
     write("jet_engine.flac", jet_engine())
     write("jet_wind.flac", jet_wind())
+    write("afterburner.flac", afterburner())

@@ -44,8 +44,11 @@ pub struct Aero {
     /// Weight without fuel and the reference weight (full internal fuel), lb.
     pub dry_weight: f32,
     pub ref_weight: f32,
-    /// Static thrust to reference weight at full throttle, and its rise per Mach (ram effect).
+    /// Static thrust to reference weight at full throttle (dry: without the afterburner), and
+    /// its rise per Mach (ram effect).
     pub thrust_ratio: f32,
+    /// The same with the full afterburner (0: none).
+    pub ab_thrust_ratio: f32,
     pub thrust_mach: f32,
     /// Lift slope (1/rad) and stall angles of attack (rad).
     pub cl_alpha: f32,
@@ -124,6 +127,7 @@ impl Aero {
         dry_weight: 37_000.0,
         ref_weight: 47_000.0,
         thrust_ratio: 0.8,
+        ab_thrust_ratio: 0.0,
         thrust_mach: 0.0,
         cl_alpha: 3.0,
         alpha_stall: 0.40,
@@ -149,12 +153,14 @@ impl Aero {
         yaw_rate_max: 0.5,
     };
 
-    /// F-16C: Mach 1.2 at sea level, about Mach 1.9 at altitude, 9 g, a 240 deg/s roll rate.
+    /// F-16C: Mach 1.2 at sea level, about Mach 1.9 at altitude with the afterburner (subsonic
+    /// without: the F110's 17,000 lb of dry thrust against 29,000), 9 g, a 240 deg/s roll rate.
     pub const F16: Aero = Aero {
         wing_loading: 90.0,
         dry_weight: 19_000.0,
         ref_weight: 29_000.0,
-        thrust_ratio: 1.07,
+        thrust_ratio: 0.63,
+        ab_thrust_ratio: 1.07,
         thrust_mach: 0.1,
         cl_alpha: 4.0,
         alpha_stall: 0.50,
@@ -412,7 +418,9 @@ pub(super) fn step(
     }
     cd += ae.drag_rise.cd(mach);
     cd += ae.cd_idle * (1.0 - a.thrust / 100.0).clamp(0.0, 1.0).powi(2);
-    let thrust = ae.thrust_ratio * (1.0 + ae.thrust_mach * mach.min(2.0)) * a.thrust / 100.0
+    let ab = (ae.ab_thrust_ratio - ae.thrust_ratio).max(0.0) * a.afterburner;
+    let thrust = (ae.thrust_ratio * a.thrust / 100.0 + ab)
+        * (1.0 + ae.thrust_mach * mach.min(2.0))
         * sigma.powf(0.6)
         / mass;
     let lift_dir = (up - vhat * up.dot(vhat)).normalize_or(up);

@@ -409,12 +409,19 @@ fn track_throttle(
     mut msg: ResMut<HudMessages>,
 ) {
     let Ok(a) = aircraft.single() else { return };
-    if msg.throttle.is_some_and(|t| t != a.set_thrust) {
+    // Past 100: the afterburner's setting.
+    let t = a.set_afterburner.map_or(a.set_thrust, |l| 101.0 + l * 100.0);
+    if msg.throttle.is_some_and(|x| x != t) {
         msg.throttle_timer = THROTTLE_READOUT_S;
     } else {
         msg.throttle_timer = (msg.throttle_timer - time.delta_secs()).max(0.0);
     }
-    msg.throttle = Some(a.set_thrust);
+    msg.throttle = Some(t);
+}
+
+/// The throttle readout of a setting (`HudFrame::throttle`).
+pub fn throttle_text(t: i32) -> String {
+    if t > 100 { "THR AB".to_string() } else { format!("THR {t}%") }
 }
 
 /// Map units (wu >> 5, y growing southward) of a world position.
@@ -488,7 +495,7 @@ pub struct HudFrame {
     /// A turret gun's slave ("HMS" / "TGP", `Stores::gun_slave`).
     pub gun_slave: Option<&'static str>,
     pub message: Option<String>,
-    /// The throttle setting (percent) while it is changing.
+    /// The throttle setting (percent; past 100 the afterburner) while it is changing.
     pub throttle: Option<i32>,
     pub accel: bool,
     pub training: bool,

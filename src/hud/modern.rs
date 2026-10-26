@@ -203,7 +203,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     };
     text(c, 270.0, 392.0, mode, Align::Left);
     if let Some(t) = f.throttle {
-        text(c, 270.0, 366.0, &format!("THR {t}%"), Align::Left);
+        text(c, 270.0, 366.0, &super::throttle_text(t), Align::Left);
     }
     // A turret gun with what it is slaved to.
     let gun = |rounds: u32| match f.gun_slave {

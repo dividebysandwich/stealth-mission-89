@@ -356,7 +356,7 @@ fn instruments(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col:
     fonts.text(c, 60, 16, format!("{}.{}G", g / 16, (g.abs() & 0xE) >> 1).as_bytes(), col);
     // Throttle "THR 85%" opposite it while it changes.
     if let Some(t) = f.throttle {
-        fonts.text(c, 204, 16, format!("THR {t}%").as_bytes(), col);
+        fonts.text(c, 204, 16, super::throttle_text(t).as_bytes(), col);
     }
     // Pitch ladder: NAV mode, or steep attitudes (|pitch| - |roll|/2 > 22.5 deg).
     let steep = (f.pitch as i32).abs() - (f.roll as i32).abs() / 2 > 0x1000;

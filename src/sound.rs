@@ -33,7 +33,8 @@
 //! - A jet plays `jet_engine.flac` and `jet_wind.flac`: the engine pitched with its rpm
 //!   (winding up quickly from 0 when the throttle opens, idling in the air with it closed,
 //!   running down when it closes on the ground or the fuel runs out), the wind louder with
-//!   airspeed. Both only play at level 3.
+//!   airspeed; the lit afterburner roars over the engine (`afterburner.flac`, louder with its
+//!   setting, with a deeper thump as it lights). All only play at level 3.
 //! - A helicopter's rotor (`heli_rotor.flac`) plays at the rotor speed, louder with the torque
 //!   and in translational lift (the blade slap), over the turbines (`heli_turbine.flac`)
 //!   pitched up with the torque.
@@ -313,8 +314,9 @@ struct SoundBank {
     launch: Option<Handle<AudioSource>>,
     heli_rotor: Option<Handle<AudioSource>>,
     heli_turbine: Option<Handle<AudioSource>>,
-    /// The flown jet's engine and wind loops.
+    /// The flown jet's engine and wind loops, and its afterburner's.
     jet_loops: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
+    afterburner: Option<Handle<AudioSource>>,
     /// The Sidewinder seeker's loops, by `SeekerTone`.
     aim9: [Option<Handle<AudioSource>>; 3],
 }
@@ -416,9 +418,9 @@ struct HeliLoop(bool);
 const ROTOR_VOLUME: (f32, f32, f32) = (0.45, 0.35, 0.2);
 const TURBINE_VOLUME: f32 = 0.35;
 
-/// The flown jet's loops: engine (false) and wind (true).
+/// The flown jet's loops: engine (0), wind (1) and afterburner (2).
 #[derive(Component)]
-struct JetLoop(bool);
+struct JetLoop(usize);
 
 /// Jet engine rpm (share of full): at idle thrust, its rise per second while starting, and
 /// the time constants (s) following the thrust and running down without it.
@@ -435,6 +437,12 @@ const JET_WIND_VOLUME: f32 = 0.45;
 const JET_WIND_KNOTS: f32 = 600.0;
 /// The engine loop's playback speed at idle rpm (1 at full): an octave between them.
 const JET_IDLE_PITCH: f32 = 0.5;
+/// The afterburner's loop volume when fully lit, and the thump as it lights: its extra volume,
+/// the loop's speed then (deeper) and the seconds it dies away in.
+const AB_VOLUME: f32 = 0.6;
+const AB_THUMP: f32 = 0.8;
+const AB_THUMP_PITCH: f32 = 0.7;
+const AB_THUMP_TAU: f32 = 0.35;
 
 /// Sound id of an anti-aircraft shell burst nearby.
 pub const AIRBURST: u8 = 110;
@@ -493,6 +501,7 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.heli_rotor = optional("heli_rotor.flac");
     bank.heli_turbine = optional("heli_turbine.flac");
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
+    bank.afterburner = optional("afterburner.flac");
     bank.aim9 = AIM9_FILES.map(optional);
     commands.insert_resource(bank);
 }
@@ -873,6 +882,7 @@ fn jet_sounds(
     settings: Res<crate::settings::Settings>,
     time: Res<Time>,
     mut rpm: Local<f32>,
+    mut thump: Local<(f32, bool)>,
     mut loops: Query<(Entity, &JetLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
     distance: EngineDistance,
@@ -920,26 +930,38 @@ fn jet_sounds(
     );
     let airspeed = (a.knots() / JET_WIND_KNOTS).min(1.0);
     let wind_mix = (0.9 + 0.15 * airspeed, half * JET_WIND_VOLUME * airspeed.powf(1.5));
-    let mut have = [false; 2];
+    // The afterburner: a thump as it lights, dying away.
+    let lit = a.afterburner > 0.0;
+    if lit && !thump.1 {
+        thump.0 = 1.0;
+    }
+    thump.0 *= (-dt / AB_THUMP_TAU).exp();
+    thump.1 = lit;
+    let ab_mix = (
+        1.0 - (1.0 - AB_THUMP_PITCH) * thump.0,
+        half * AB_VOLUME * (a.afterburner.sqrt() + AB_THUMP * thump.0),
+    );
+    let afterburner = bank.as_ref().and_then(|b| b.afterburner.clone());
+    let mixes = [engine_mix, wind_mix, ab_mix];
+    // Not playing: the engine run down, the afterburner out.
+    let silent = [n < 0.01, false, !lit];
+    let mut have = [false; 3];
     for (e, l, pitch, sink) in &mut loops {
-        let (speed, volume) = if l.0 { wind_mix } else { engine_mix };
-        // The engine's loop goes once it has run down.
-        if !l.0 && n < 0.01 {
+        let (speed, volume) = mixes[l.0];
+        if silent[l.0] {
             commands.entity(e).despawn();
             continue;
         }
-        have[l.0 as usize] = true;
+        have[l.0] = true;
         pitch.set(speed);
         if let Some(mut sink) = sink {
             sink.set_volume(Volume::Linear(volume));
         }
     }
-    for (is_wind, handle) in [(false, &engine), (true, &wind)] {
-        if have[is_wind as usize] || (!is_wind && n < 0.01) {
-            continue;
-        }
-        let (speed, volume) = if is_wind { wind_mix } else { engine_mix };
-        spawn_loop(&mut commands, &mut muffler, handle, speed, volume, JetLoop(is_wind));
+    for (i, handle) in [(0, Some(engine)), (1, Some(wind)), (2, afterburner)] {
+        let Some(handle) = handle.filter(|_| !have[i] && !silent[i]) else { continue };
+        let (speed, volume) = mixes[i];
+        spawn_loop(&mut commands, &mut muffler, &handle, speed, volume, JetLoop(i));
     }
 }
 

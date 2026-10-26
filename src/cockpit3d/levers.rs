@@ -6,7 +6,9 @@
 //! centre cyclic) is moved by the hand instead: its grip follows the hand about the pivot, so it
 //! doesn't swing further than the hand holding it.
 //! Squeeze near the throttle handle and slide it along its rails: forward = more thrust; it stays where it is
-//! released, with a haptic tick every 10 %.
+//! released, with a haptic tick every 10 %. With an afterburner the lever has a detent at full dry
+//! thrust (a tick, and a gap of no change past it); further forward the afterburner lights and goes out with
+//! a rumble of its own.
 //! The controller buttons are mapped in the input mapping (`InputConfig::vr_buttons`); a trigger
 //! only counts while its hand holds the stick or throttle.
 //! The ejection handle is pulled up with either hand. A hand carrying the kneeboard grabs none.
@@ -18,7 +20,7 @@ use super::{
     BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT, BUTTON_STICK_RIGHT,
     BUTTON_STICK_UP, BUTTON_THUMB, Hands,
 };
-use crate::flight::{Aircraft, Player};
+use crate::flight::{AB_DETENT, AB_GAP, Aircraft, FlightConstants, Player};
 use crate::hotas::{ButtonTarget, InputConfig, VrHand, VrInput};
 use crate::input::{Action, ActionEvent, FlightControls};
 
@@ -108,6 +110,42 @@ pub(super) struct Grabs {
     eject: Option<(usize, f32)>,
     /// A held VR button set the wheel brakes (they come off when it is let go).
     brakes: bool,
+    /// The throttle hand's rumble playing, and seconds into it.
+    rumble: Option<(Rumble, f32)>,
+}
+
+/// A haptic pattern: (start s, end s, amplitude at start, at end) pulses.
+type Rumble = &'static [(f32, f32, f32, f32)];
+
+/// The afterburner lighting: two hard knocks and a fading rumble; going out: one soft fade.
+const RUMBLE_AB_ON: Rumble =
+    &[(0.0, 0.06, 1.0, 1.0), (0.12, 0.18, 1.0, 1.0), (0.24, 0.7, 0.8, 0.15)];
+const RUMBLE_AB_OFF: Rumble = &[(0.0, 0.25, 0.6, 0.05)];
+
+/// The rumble's amplitude `t` seconds in (None: over).
+fn rumble_at(r: Rumble, t: f32) -> Option<f32> {
+    if r.last().is_none_or(|p| t >= p.1) {
+        return None;
+    }
+    Some(
+        r.iter()
+            .find(|p| (p.0..p.1).contains(&t))
+            .map_or(0.0, |p| p.2 + (p.3 - p.2) * (t - p.0) / (p.1 - p.0)),
+    )
+}
+
+/// The afterburner stays on this far back of where it lights (hand jitter at the edge).
+const AB_HYSTERESIS: f32 = 0.015;
+
+/// Where a throttle lever position is: 0 dry thrust, 1 in the detent, 2 afterburner.
+fn throttle_zone(t: f32) -> u8 {
+    if t >= AB_DETENT + AB_GAP {
+        2
+    } else if t >= AB_DETENT {
+        1
+    } else {
+        0
+    }
 }
 
 struct StickGrab {
@@ -124,6 +162,8 @@ struct ThrottleGrab {
     t0: f32,
     /// Last 10 % detent passed (for the haptic ticks).
     notch: i32,
+    /// The lever's afterburner zone (`throttle_zone`; with an afterburner).
+    zone: u8,
 }
 
 /// Throttle detents per full travel (one haptic tick each).
@@ -189,6 +229,8 @@ pub(super) fn grab_levers(
     block: Res<crate::input::InputBlock>,
     anchors: Res<CockpitAnchors>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    k: Res<FlightConstants>,
+    time: Res<Time>,
 ) {
     // The cockpit is not there (VR, the campaign's Ops screen): nothing is held, and of the
     // mapped buttons only the in-flight menu's works.
@@ -211,7 +253,8 @@ pub(super) fn grab_levers(
         }
         return;
     }
-    let set_thrust = aircraft.single().map_or(0.0, |a| a.set_thrust / 100.0);
+    let ab = k.afterburner();
+    let set_thrust = aircraft.single().map_or(0.0, |a| a.lever(ab));
     let brakes_on = aircraft.single().is_ok_and(|a| a.brakes);
     let [left, right] = &mut hands.hands;
 
@@ -270,11 +313,28 @@ pub(super) fn grab_levers(
         && left.grip.translation.distance(handle) < GRAB_REACH
     {
         let notch = (set_thrust * THROTTLE_NOTCHES).floor() as i32;
-        grabs.throttle = Some(ThrottleGrab { p0: left.grip.translation, t0: set_thrust, notch });
+        let zone = throttle_zone(set_thrust);
+        grabs.throttle =
+            Some(ThrottleGrab { p0: left.grip.translation, t0: set_thrust, notch, zone });
         left.haptic = left.haptic.max(0.4);
     }
+    let mut rumble = None;
     if let Some(g) = &mut grabs.throttle {
-        let t = (g.t0 + anchors.throttle_travel(left.grip.translation - g.p0)).clamp(0.0, 1.0);
+        let mut t = (g.t0 + anchors.throttle_travel(left.grip.translation - g.p0)).clamp(0.0, 1.0);
+        if ab {
+            if g.zone == 2 && t >= AB_DETENT + AB_GAP - AB_HYSTERESIS {
+                t = t.max(AB_DETENT + AB_GAP);
+            }
+            let zone = throttle_zone(t);
+            match (g.zone, zone) {
+                (a, b) if a == b => {}
+                (_, 2) => rumble = Some(RUMBLE_AB_ON),
+                (2, _) => rumble = Some(RUMBLE_AB_OFF),
+                // Into the detent from either side, or through it.
+                _ => left.haptic = left.haptic.max(0.6),
+            }
+            g.zone = zone;
+        }
         // A light tick at each detent, a firm one at the idle and full stops.
         let before = set_thrust;
         if (t >= 1.0 && before < 1.0) || (t <= 0.0 && before > 0.0) {
@@ -289,6 +349,18 @@ pub(super) fn grab_levers(
             left.haptic = left.haptic.max(0.15);
         }
         controls.throttle = Some(t);
+    }
+    if let Some(r) = rumble {
+        grabs.rumble = Some((r, 0.0));
+    }
+    if let Some((r, t)) = &mut grabs.rumble {
+        match rumble_at(r, *t) {
+            Some(amp) => left.haptic = left.haptic.max(amp),
+            None => grabs.rumble = None,
+        }
+        if let Some((_, t)) = &mut grabs.rumble {
+            *t += time.delta_secs();
+        }
     }
 
     // --- sensor/cursor slew: the left thumbstick
@@ -402,6 +474,7 @@ pub(super) fn animate_levers(
     mut stick: Query<&mut Transform, (With<Stick>, Without<ThrottleLever>)>,
     mut throttle: Query<&mut Transform, With<ThrottleLever>>,
     anchors: Res<CockpitAnchors>,
+    k: Res<FlightConstants>,
 ) {
     if let Ok(mut tf) = stick.single_mut() {
         tf.rotation = Quat::from_rotation_x(controls.pitch * STICK_TILT)
@@ -409,7 +482,7 @@ pub(super) fn animate_levers(
             * Quat::from_rotation_y(-controls.yaw * STICK_TWIST);
     }
     if let (Ok(mut tf), Ok(a)) = (throttle.single_mut(), aircraft.single()) {
-        let t = controls.throttle.unwrap_or(a.set_thrust / 100.0);
+        let t = controls.throttle.unwrap_or(a.lever(k.afterburner()));
         tf.translation = anchors.throttle_handle(t);
         tf.rotation = anchors.throttle_rotation(t);
     }
@@ -418,6 +491,22 @@ pub(super) fn animate_levers(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The afterburner's rumbles: knocks with a gap between them, then a fade; over at their end.
+    #[test]
+    fn afterburner_rumbles() {
+        assert_eq!(rumble_at(RUMBLE_AB_ON, 0.03), Some(1.0));
+        assert_eq!(rumble_at(RUMBLE_AB_ON, 0.09), Some(0.0));
+        let fading = rumble_at(RUMBLE_AB_ON, 0.5).unwrap();
+        assert!(0.15 < fading && fading < 0.8, "{fading}");
+        assert_eq!(rumble_at(RUMBLE_AB_ON, 0.7), None);
+        assert!(rumble_at(RUMBLE_AB_OFF, 0.1).unwrap() < 0.6);
+        assert_eq!(rumble_at(RUMBLE_AB_OFF, 0.3), None);
+        assert_eq!(
+            [0.5, AB_DETENT + 0.01, AB_DETENT + AB_GAP, 1.0].map(throttle_zone),
+            [0, 1, 2, 2]
+        );
+    }
 
     /// A long cyclic's grip stays in the hand: moving the hand 10 cm back tilts the stick so its
     /// grip moves 10 cm back. A short side stick still goes by the controller's tilt.

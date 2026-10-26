@@ -109,7 +109,7 @@ impl SimTables {
 pub struct FlightConstants {
     /// Gravity term in the target speed: sinMul(pitch, 120) (F-15: 80).
     pub gravity_term: f32,
-    /// Thrust to knots: *720/100 (F-15: *8).
+    /// Thrust to knots: *720/100 (F-15: *8; the F-16's dry thrust, its afterburner adds more).
     pub thrust_to_knots: f32,
     pub max_knots: f32,
     /// 1 g stall speed at sea level, knots (F-15: 100).
@@ -157,11 +157,16 @@ impl Default for FlightConstants {
 }
 
 impl FlightConstants {
+    /// The engine has an afterburner.
+    pub fn afterburner(&self) -> bool {
+        self.heli.is_none() && self.aero.ab_thrust_ratio > 0.0
+    }
+
     /// F-16C: the F-15's gravity term, faster, 9 g and a quicker roll.
     pub fn f16() -> Self {
         Self {
             gravity_term: 80.0,
-            thrust_to_knots: 9.5,
+            thrust_to_knots: 7.0,
             max_knots: 1150.0,
             stall_knots: 110.0,
             fuel_div: 750.0,
@@ -237,6 +242,13 @@ pub struct Aircraft {
     pub velocity: f32,
     pub thrust: f32,
     pub set_thrust: f32,
+    /// The afterburner (`FlightConstants::afterburner`): its setting past the throttle's
+    /// detent (None: off; 0 lowest .. 1 full), and how far it is lit (0..1, it lights and
+    /// goes out over a moment). The throttle is at full dry thrust while it is set.
+    #[serde(default)]
+    pub set_afterburner: Option<f32>,
+    #[serde(default)]
+    pub afterburner: f32,
     /// World units ("feet") above sea level.
     pub altitude: f32,
     pub ground_altitude: f32,
@@ -277,6 +289,9 @@ pub struct Aircraft {
     /// attitude.
     pub auto_trim: bool,
     fuel_timer: f32,
+    /// Seconds a held throttle key has pushed against the afterburner's detent.
+    #[serde(default)]
+    detent_push: f32,
     stopped_timer: f32,
     /// Modern model state (unused by the classic one).
     modern: modern::State,
@@ -285,12 +300,42 @@ pub struct Aircraft {
 }
 
 impl Aircraft {
+    /// The throttle lever (0 idle .. 1 full) of the setting; with an afterburner (`ab`) dry
+    /// thrust takes the travel up to its detent (`AB_DETENT`), the afterburner the travel past
+    /// it and its gap.
+    pub fn lever(&self, ab: bool) -> f32 {
+        match self.set_afterburner {
+            Some(l) if ab => AB_DETENT + AB_GAP + l * (1.0 - AB_DETENT - AB_GAP),
+            _ if ab => self.set_thrust / 100.0 * AB_DETENT,
+            _ => self.set_thrust / 100.0,
+        }
+    }
+
+    /// Sets the throttle from a lever position (as `lever`): in the detent's gap it stays at
+    /// full dry thrust.
+    pub fn set_lever(&mut self, t: f32, ab: bool) {
+        let t = t.clamp(0.0, 1.0);
+        if !ab {
+            self.set_thrust = (t * 100.0).round();
+            self.set_afterburner = None;
+        } else if t <= AB_DETENT {
+            self.set_thrust = (t / AB_DETENT * 100.0).round();
+            self.set_afterburner = None;
+        } else {
+            self.set_thrust = 100.0;
+            self.set_afterburner = (t >= AB_DETENT + AB_GAP)
+                .then(|| (t - AB_DETENT - AB_GAP) / (1.0 - AB_DETENT - AB_GAP));
+        }
+    }
+
     pub fn new_on_runway(fuel: f32) -> Self {
         Self {
             orientation: Quat::IDENTITY,
             velocity: 0.0,
             thrust: 0.0,
             set_thrust: 0.0,
+            set_afterburner: None,
+            afterburner: 0.0,
             altitude: 0.0,
             ground_altitude: 0.0,
             climb_rate: 0.0,
@@ -316,6 +361,7 @@ impl Aircraft {
             stick_trim: Vec2::ZERO,
             auto_trim: false,
             fuel_timer: 0.0,
+            detent_push: 0.0,
             stopped_timer: 0.0,
             fpm: 0.0,
             modern: modern::State::default(),
@@ -410,6 +456,7 @@ fn handle_actions(
         return;
     };
     let heli = k.heli.is_some();
+    let ab = k.afterburner();
     for ActionEvent(action) in actions.read() {
         match action {
             // Helicopters: the collective moves while its keys are held
@@ -417,14 +464,26 @@ fn handle_actions(
             // parking brake.
             Action::ThrottleUp | Action::ThrottleDown | Action::Gear | Action::Autopilot
                 if heli => {}
-            // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A).
+            // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
+            // dry thrust they step through the afterburner; full power lights it at full dry
+            // thrust.
+            Action::ThrottleUp if ab && a.set_thrust >= 100.0 => {
+                a.set_afterburner = Some(a.set_afterburner.map_or(0.0, |l| (l + AB_STEP).min(1.0)))
+            }
             Action::ThrottleUp => {
                 a.set_thrust =
                     (a.set_thrust + if a.set_thrust < 10.0 { 5.0 } else { 10.0 }).min(100.0)
             }
+            Action::ThrottleDown if a.set_afterburner.is_some() => {
+                a.set_afterburner = a.set_afterburner.map(|l| l - AB_STEP).filter(|&l| l >= 0.0)
+            }
             Action::ThrottleDown => a.set_thrust = (a.set_thrust - 10.0).max(0.0),
+            Action::ThrottleMax if ab && a.set_thrust >= 100.0 => a.set_afterburner = Some(1.0),
             Action::ThrottleMax => a.set_thrust = 100.0,
-            Action::ThrottleIdle => a.set_thrust = 0.0,
+            Action::ThrottleIdle => {
+                a.set_thrust = 0.0;
+                a.set_afterburner = None;
+            }
             Action::Gear => {
                 if !a.on_ground {
                     a.gear_down = !a.gear_down;
@@ -615,7 +674,8 @@ fn step_one(
         }
 
         // --- speed, drag, stall, lift
-        let mut s = (a.thrust - pitch.sin() * k.gravity_term) * k.thrust_to_knots;
+        let thrust = a.thrust + CLASSIC_AFTERBURNER * a.afterburner;
+        let mut s = (thrust - pitch.sin() * k.gravity_term) * k.thrust_to_knots;
         let mut cs = k.stall_knots * ((a.altitude / 64.0).floor() + 1024.0) / 1024.0;
         s *= ((vz / 128.0).floor() + 1024.0) / 1024.0;
         s *= (100.0 - (a.fuel / 512.0).floor()) / 90.0;
@@ -710,15 +770,68 @@ const CLASSIC_TRIM_GAIN: f32 = 2.0;
 /// How fast a held throttle key moves the throttle (percent per second).
 const THROTTLE_RATE: f32 = 50.0;
 
+/// Throttle lever travel at the afterburner's detent (full dry thrust), and the gap past it
+/// before the afterburner lights: the detent's deadzone.
+pub const AB_DETENT: f32 = 0.82;
+pub const AB_GAP: f32 = 0.05;
+/// Seconds a held throttle key pushes at full dry thrust before it passes the detent; the
+/// afterburner setting a throttle key press steps.
+const AB_PUSH: f32 = 0.5;
+const AB_STEP: f32 = 0.25;
+/// The lowest afterburner setting's share of the afterburner's thrust.
+pub const AB_MIN: f32 = 0.3;
+/// Shares of the afterburner's thrust it gains and loses a second, lighting and going out.
+const AB_LIGHT: f32 = 1.5;
+const AB_OUT: f32 = 4.0;
+/// The full afterburner's fuel burn, in full dry thrust burns.
+const AB_FUEL: f32 = 3.0;
+/// The classic model: thrust (percent) the full afterburner adds.
+const CLASSIC_AFTERBURNER: f32 = 22.0;
+
 /// Thrust spool and fuel burn (engine damage caps the thrust).
 fn engine(a: &mut Aircraft, controls: &FlightControls, k: &FlightConstants, dt: f32) {
+    let ab = k.afterburner();
     if let Some(t) = controls.throttle {
-        a.set_thrust = (t.clamp(0.0, 1.0) * 100.0).round();
+        a.set_lever(t, ab);
+    } else if controls.throttle_rate > 0.0 && ab && a.set_thrust >= 100.0 {
+        // A held key pushes through the detent after a moment, then through the afterburner.
+        match a.set_afterburner {
+            Some(l) => {
+                let l = l + controls.throttle_rate * THROTTLE_RATE / 100.0 * dt;
+                a.set_afterburner = Some(l.min(1.0));
+            }
+            None => {
+                a.detent_push += dt;
+                if a.detent_push >= AB_PUSH {
+                    a.set_afterburner = Some(0.0);
+                }
+            }
+        }
+    } else if controls.throttle_rate < 0.0 && a.set_afterburner.is_some() {
+        let l =
+            a.set_afterburner.unwrap_or(0.0) + controls.throttle_rate * THROTTLE_RATE / 100.0 * dt;
+        a.set_afterburner = (l >= 0.0).then_some(l);
     } else if controls.throttle_rate != 0.0 {
         a.set_thrust =
             (a.set_thrust + controls.throttle_rate * THROTTLE_RATE * dt).clamp(0.0, 100.0);
     }
+    if controls.throttle_rate <= 0.0 || a.set_afterburner.is_some() {
+        a.detent_push = 0.0;
+    }
+    if !ab {
+        a.set_afterburner = None;
+    }
     let set = a.damage.throttle_cap.map_or(a.set_thrust, |cap| a.set_thrust.min(cap));
+    // The afterburner lights once the engine is at full dry thrust (not with a damaged one).
+    let burn = match a.set_afterburner {
+        Some(l) if set >= 100.0 && a.thrust >= 95.0 && a.fuel > 0.0 => AB_MIN + (1.0 - AB_MIN) * l,
+        _ => 0.0,
+    };
+    a.afterburner = if burn > a.afterburner {
+        (a.afterburner + AB_LIGHT * dt).min(burn)
+    } else {
+        (a.afterburner - AB_OUT * dt).max(burn)
+    };
     a.thrust += (set - a.thrust) / k.spool_div * dt;
     if set > a.thrust {
         a.thrust = (a.thrust + k.fs * dt).min(set);
@@ -731,10 +844,12 @@ fn engine(a: &mut Aircraft, controls: &FlightControls, k: &FlightConstants, dt: 
         if a.set_thrust != 0.0 {
             a.fuel -= (a.set_thrust * a.set_thrust / k.fuel_div).floor() + 2.0 + a.damage.fuel_leak;
         }
+        a.fuel -= (a.afterburner * AB_FUEL * 100.0 * 100.0 / k.fuel_div).floor();
     }
     if a.fuel <= 0.0 {
         a.fuel = 0.0;
         a.thrust = 0.0;
+        a.afterburner = 0.0;
     }
 }
 
@@ -966,18 +1081,40 @@ mod tests {
         }
     }
 
-    /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern), 9 g and a fast roll.
+    /// Full afterburner.
+    fn reheat(mut a: Aircraft) -> Aircraft {
+        a.set_afterburner = Some(1.0);
+        a.afterburner = 1.0;
+        a
+    }
+
+    /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern) with the afterburner,
+    /// subsonic without it; 9 g and a fast roll.
     #[test]
     fn f16_performance() {
         let k = FlightConstants::f16;
+        let (a, _) = fly_with(k(), false, level(airborne(1000.0, 500.0, 100.0)), 240.0, |_, _| {});
+        println!("F-16 modern: dry max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((580.0..680.0).contains(&a.knots()), "dry sea level {}", a.knots());
         for classic in [false, true] {
             let name = if classic { "classic" } else { "modern" };
-            let (a, _) =
-                fly_with(k(), classic, level(airborne(1000.0, 500.0, 100.0)), 240.0, |_, _| {});
+            let (a, _) = fly_with(
+                k(),
+                classic,
+                level(reheat(airborne(1000.0, 500.0, 100.0))),
+                240.0,
+                |_, _| {},
+            );
             println!("F-16 {name}: max speed at 1000 ft: {:.0} kt", a.knots());
             assert!((700.0..840.0).contains(&a.knots()), "{name} sea level {}", a.knots());
-            let (a, _) =
-                fly_with(k(), classic, level(airborne(36000.0, 600.0, 100.0)), 400.0, |_, _| {});
+            let (a, _) = fly_with(
+                k(),
+                classic,
+                level(reheat(airborne(36000.0, 600.0, 100.0))),
+                // (The full afterburner empties the tanks in about six minutes.)
+                300.0,
+                |_, _| {},
+            );
             println!("F-16 {name}: max speed at 36000 ft: {:.0} kt", a.knots());
             // The classic model's altitude gain is about +27% at 36000 ft.
             assert!(
@@ -1014,6 +1151,65 @@ mod tests {
         });
         println!("F-16 modern: rolled {:.0} deg in 1.5 s", turned.to_degrees());
         assert!(turned.to_degrees() > 300.0, "rolled {}", turned.to_degrees());
+    }
+
+    /// The throttle lever with an afterburner: dry thrust up to the detent, full dry thrust in
+    /// its gap, the afterburner past it; without one the whole travel is dry thrust.
+    #[test]
+    fn afterburner_lever() {
+        let mut a = Aircraft::new_on_runway(10000.0);
+        for (t, thrust, ab) in [
+            (0.0, 0.0, None),
+            (AB_DETENT / 2.0, 50.0, None),
+            (AB_DETENT, 100.0, None),
+            (AB_DETENT + AB_GAP / 2.0, 100.0, None),
+            (AB_DETENT + AB_GAP, 100.0, Some(0.0)),
+            (1.0, 100.0, Some(1.0)),
+        ] {
+            a.set_lever(t, true);
+            assert_eq!(a.set_thrust, thrust, "lever {t}");
+            match (a.set_afterburner, ab) {
+                (Some(x), Some(y)) => assert!((x - y).abs() < 1e-5, "lever {t}: {x}"),
+                (x, y) => assert_eq!(x, y, "lever {t}"),
+            }
+            assert!((a.lever(true) - t).abs() < 1e-5 || ab.is_none() && t > AB_DETENT);
+        }
+        a.set_lever(0.9, false);
+        assert_eq!((a.set_thrust, a.set_afterburner), (90.0, None));
+    }
+
+    /// A held throttle key stops at full dry thrust, then pushes through the detent; the lit
+    /// afterburner burns several times the fuel and speeds the F-16 up.
+    #[test]
+    fn afterburner_keys_and_fuel() {
+        let k = FlightConstants::f16;
+        let a0 = airborne(10000.0, 400.0, 90.0);
+        let mut lit_at = None;
+        let mut t = 0.0;
+        let (a, _) = fly_with(k(), false, a0.clone(), 3.0, |a, c| {
+            c.throttle_rate = 1.0;
+            t += 1.0 / 120.0;
+            if lit_at.is_none() && a.set_afterburner.is_some() {
+                lit_at = Some(t);
+            }
+        });
+        let lit_at = lit_at.expect("through the detent");
+        assert!(lit_at > 0.2 + AB_PUSH, "the detent holds the key a moment: {lit_at}");
+        assert!(a.afterburner > AB_MIN, "lit {}", a.afterburner);
+        // Back below it.
+        let (b, _) = fly_with(k(), false, a.clone(), 3.0, |_, c| c.throttle_rate = -1.0);
+        assert!(b.set_afterburner.is_none() && b.afterburner == 0.0);
+        // A minute at full dry thrust and with the full afterburner.
+        let run = |a: Aircraft| fly_with(k(), false, level(a), 60.0, |_, _| {}).0;
+        let dry = run(airborne(10000.0, 400.0, 100.0));
+        let wet = run(reheat(airborne(10000.0, 400.0, 100.0)));
+        let burnt = |x: &Aircraft| 10000.0 - x.fuel;
+        assert!(burnt(&wet) > 3.0 * burnt(&dry), "{} vs {}", burnt(&wet), burnt(&dry));
+        assert!(wet.knots() > dry.knots() + 50.0, "{} vs {}", wet.knots(), dry.knots());
+        // The F-117A has none.
+        let (c, _) =
+            fly(false, airborne(10000.0, 400.0, 100.0), 2.0, 1, |_, c| c.throttle_rate = 1.0);
+        assert!(c.set_afterburner.is_none() && c.afterburner == 0.0);
     }
 
     #[test]
