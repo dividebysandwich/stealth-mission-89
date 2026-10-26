@@ -1,7 +1,9 @@
 //! Recon photos of the mission's ground targets for the kneeboard. Once the world is there,
 //! the tile objects and scenery around each target are streamed in for a moment and an
 //! offscreen camera photographs it obliquely from the south; the picture is read back once,
-//! developed into black and white with a fixed film grain, and kept for the flight.
+//! developed into black and white with a fixed film grain, and kept for the flight. A drone
+//! wave has nothing on the ground to photograph: its picture is a file photo of a Geran-2 in
+//! flight, taken over the protected place.
 
 use std::sync::Arc;
 
@@ -15,6 +17,7 @@ use bevy::render::render_resource::TextureUsages;
 use crate::camera::{OffscreenCamera, RECON_BACKGROUND_LAYER, TRACKCAM_LOD_LAYER};
 use crate::canvas::Picture;
 use crate::mission::ActiveMission;
+use crate::models::{ModelAssets, ModelLibrary};
 use crate::scenery::SceneryBacklog;
 use crate::settings::AppState;
 use crate::world::{StreamSites, Theater, WorldPos, wu_to_bevy};
@@ -27,7 +30,7 @@ impl Plugin for ReconPlugin {
             .add_systems(OnEnter(AppState::Flight), reset)
             .add_systems(
                 Update,
-                (restart, start, shoot).chain().run_if(in_state(AppState::Flight)),
+                (restart, start, pose_drone, shoot).chain().run_if(in_state(AppState::Flight)),
             );
     }
 }
@@ -60,6 +63,16 @@ const GRAIN: f32 = 0.11;
 const VIGNETTE: f32 = 0.3;
 /// Narrowest luminance range stretched to the full scale (out of 255).
 const MIN_SPAN: f32 = 64.0;
+/// The drone photo: the Geran-2's model, the camera's height and distance south of the place
+/// (m) and its look up at the drone (from slightly below it), and the drone's distance in front of it (m), its
+/// heading relative to the camera (flying toward it and to the left) and its bank.
+const DRONE_MODEL: &str = "drones_100";
+const DRONE_CAMERA_ALT_M: f64 = 600.0;
+const DRONE_CAMERA_BACK_M: f64 = 4000.0;
+const DRONE_LOOK_UP_DEG: f32 = 12.0;
+const DRONE_DIST_M: f32 = 14.0;
+const DRONE_HEADING_DEG: f32 = -140.0;
+const DRONE_BANK_DEG: f32 = 10.0;
 
 /// Without Bevy's renderer (`--gl-vr`, glvr draws): the pictures are read back by glvr,
 /// asked for with `ImageReadback` instead of Bevy's `Readback` (whose removal needs Bevy's
@@ -96,6 +109,8 @@ struct Shot {
     /// Settled time at which to read the picture back (None while a read-back is under way).
     due: Option<f32>,
     tries: u32,
+    /// The drone photo's camera, still without its drone (the model file is loading).
+    drone: Option<Entity>,
 }
 
 impl ReconPhotos {
@@ -108,7 +123,12 @@ impl ReconPhotos {
 /// Aircraft targets (mission types 5-8) and drone waves have nothing to photograph on the
 /// ground.
 pub fn airborne(t: &stealth_mission::Target) -> bool {
-    (5..=8).contains(&t.mission_type) || t.mission_type == stealth_mission::drones::DRONE_INTERCEPT
+    (5..=8).contains(&t.mission_type) || drone_wave(t)
+}
+
+/// A drone defense mission's primary: the wave (a file photo of a drone).
+pub fn drone_wave(t: &stealth_mission::Target) -> bool {
+    t.mission_type == stealth_mission::drones::DRONE_INTERCEPT
 }
 
 fn reset(mut recon: ResMut<ReconPhotos>, mut sites: ResMut<StreamSites>) {
@@ -157,7 +177,8 @@ fn start(
     let dep = DEPRESSION_DEG.to_radians();
     for (slot, t) in [&m.0.primary, &m.0.secondary].into_iter().enumerate() {
         let p = t.position;
-        if airborne(t) || (p.x, p.y) == (0, 0) {
+        let drone = drone_wave(t);
+        if (airborne(t) && !drone) || (p.x, p.y) == (0, 0) {
             continue;
         }
         // The middle of the target's map unit, as the tracking camera aims at it.
@@ -165,7 +186,17 @@ fn start(
         let north = (0x8000 - p.y) as f64 * 32.0 - 16.0;
         let ground = wu_to_bevy(east, north, 0.0);
         let range = if t.area_target { AREA_RANGE_M } else { RANGE_M };
-        let eye = ground + bevy::math::DVec3::new(0.0, dep.sin(), dep.cos()) * range;
+        // The drone photo looks north, up at the drone, from south of the place.
+        let (eye, look) = if drone {
+            let up = DRONE_LOOK_UP_DEG.to_radians();
+            (
+                ground + bevy::math::DVec3::new(0.0, DRONE_CAMERA_ALT_M, DRONE_CAMERA_BACK_M),
+                Vec3::new(0.0, up.sin(), -up.cos()),
+            )
+        } else {
+            let eye = ground + bevy::math::DVec3::new(0.0, dep.sin(), dep.cos()) * range;
+            (eye, (ground - eye).as_vec3())
+        };
         let mut image = crate::camera::offscreen_target(w as u32, h as u32);
         image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
         let image = images.add(image);
@@ -183,14 +214,14 @@ fn start(
                 Projection::Perspective(PerspectiveProjection {
                     fov,
                     aspect_ratio: w as f32 / h as f32,
-                    near: 50.0,
+                    near: if drone { 1.0 } else { 50.0 },
                     far: 600_000.0,
                     ..default()
                 }),
                 Tonemapping::None,
                 Msaa::Off,
                 WorldPos(eye),
-                Transform::IDENTITY.looking_to((ground - eye).as_vec3(), Vec3::Y),
+                Transform::IDENTITY.looking_to(look, Vec3::Y),
                 RenderLayers::from_layers(&[0, TRACKCAM_LOD_LAYER, RECON_BACKGROUND_LAYER[slot]]),
                 DespawnOnExit(AppState::Flight),
             ))
@@ -203,9 +234,50 @@ fn start(
             RECON_BACKGROUND_LAYER[slot],
         );
         sites.points.push(ground);
-        recon.shots.push(Shot { slot, image, due: Some(SETTLE_S), tries: 0 });
+        let drone = drone.then_some(cam);
+        recon.shots.push(Shot { slot, image, due: Some(SETTLE_S), tries: 0, drone });
     }
     sites.streamed = false;
+}
+
+/// Puts the drone in front of the drone photo's camera once its model file is loaded.
+fn pose_drone(
+    mut commands: Commands,
+    mut recon: ResMut<ReconPhotos>,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+) {
+    if !recon.shots.iter().any(|s| s.drone.is_some()) {
+        return;
+    }
+    let file = library.load(&server, "drones");
+    for shot in &mut recon.shots {
+        let Some(cam) = shot.drone else { continue };
+        let Some(model) = assets.spawn(
+            &mut commands,
+            &file,
+            DRONE_MODEL,
+            crate::palette_material::LEVEL_AIRCRAFT,
+            true,
+        ) else {
+            return;
+        };
+        // Level in the world: the camera's look up taken out.
+        let rotation = Quat::from_rotation_x(-DRONE_LOOK_UP_DEG.to_radians())
+            * crate::flight::Aircraft::from_euler(
+                DRONE_HEADING_DEG.to_radians(),
+                0.0,
+                DRONE_BANK_DEG.to_radians(),
+            );
+        commands.entity(model).insert(
+            Transform::from_xyz(0.0, 0.0, -DRONE_DIST_M)
+                .with_rotation(rotation)
+                .with_scale(Vec3::splat(crate::player::AIRCRAFT_MODEL_SCALE as f32)),
+        );
+        commands.entity(cam).add_child(model);
+        shot.drone = None;
+    }
 }
 
 /// Reads the pictures back once the world around the targets has settled; when all are taken
@@ -242,8 +314,9 @@ fn shoot(
     if !recon.shots.iter().any(|s| s.due.is_some_and(|t| settled >= t)) {
         return;
     }
+    let give_up = recon.elapsed > GIVE_UP_S;
     for shot in &mut recon.shots {
-        if shot.due.is_none_or(|t| settled < t) {
+        if shot.due.is_none_or(|t| settled < t) || (shot.drone.is_some() && !give_up) {
             continue;
         }
         shot.due = None;

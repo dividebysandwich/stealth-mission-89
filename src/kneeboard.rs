@@ -517,8 +517,11 @@ pub fn wrap(text: &str, width: f32, h: f32) -> Vec<String> {
     lines
 }
 
-/// What a target is (its shape's name, else the mission type).
+/// What a target is (its shape's name, else the mission type; a drone wave's file photo).
 fn target_name(t: &stealth_mission::Target) -> String {
+    if crate::recon::drone_wave(t) {
+        return "GERAN-2 (FILE)".into();
+    }
     let name = clean_text(&t.shape_name).trim().to_ascii_uppercase();
     if name.is_empty() { t.type_name.to_ascii_uppercase() } else { name }
 }
