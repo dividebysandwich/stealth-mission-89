@@ -19,9 +19,9 @@
 //!   the screen).
 //! * `trackcam`, `trackcam_left`, `trackcam_third`: the tracking camera picture behind the
 //!   right / left / third screen.
-//! * `screen_scope`, `screen_board`, `screen_eo`: an air defence console's air picture, track
-//!   list and camera overlay (`cockpit_console.glb`, `tools/models/build_console.py`; the
-//!   camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
+//! * `screen_scope`, `screen_board`, `screen_eo`, `screen_info`: an air defence console's air
+//!   picture, track list, camera overlay and target data (`cockpit_console.glb`,
+//!   `tools/models/build_console.py`; the camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
 //! * `hud_glass`: the HUD combiner glass (the HUD is drawn collimated through it).
 //! * `label_<TEXT>`: a side panel button label showing TEXT.
 //! * Anything else is used as modelled (base colour, roughness, metallic).
@@ -392,10 +392,11 @@ impl<'a> Spawner<'a> {
                 }
                 self.panel.atlas.clone()
             }
-            "screen_scope" | "screen_board" | "screen_eo" => {
+            "screen_scope" | "screen_board" | "screen_eo" | "screen_info" => {
                 let screen = match name {
                     "screen_scope" => displays::ConsoleScreen::Scope,
                     "screen_board" => displays::ConsoleScreen::Board,
+                    "screen_info" => displays::ConsoleScreen::Info,
                     _ => displays::ConsoleScreen::Eo,
                 };
                 let role = CanvasRole::Console(screen);
@@ -668,7 +669,8 @@ mod tests {
         let j = gltf_json(super::super::CONSOLE_MODEL);
         let materials: Vec<&str> =
             j["materials"].as_array().unwrap().iter().filter_map(|m| m["name"].as_str()).collect();
-        for m in ["screen_scope", "screen_board", "screen_eo", "trackcam", "label_FIRE"] {
+        for m in ["screen_scope", "screen_board", "screen_eo", "screen_info", "trackcam", "label_FIRE"]
+        {
             assert!(materials.contains(&m), "no material {m}");
         }
         let keys: Vec<ConsoleKey> = j["nodes"]

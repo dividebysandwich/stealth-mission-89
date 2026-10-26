@@ -41,7 +41,9 @@ use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
 pub use controls::{ConsoleButton, PressControl, ScreenClick};
-pub use displays::{BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, SCOPE_CANVAS};
+pub use displays::{
+    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, INFO_CANVAS, SCOPE_CANVAS,
+};
 pub use layout::ConsoleKey;
 pub use pick::Solid;
 pub use tooltips::Tip;

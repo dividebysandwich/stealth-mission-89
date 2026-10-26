@@ -223,7 +223,7 @@ mod tests {
         for cmd in [
             StationCmd::Fire { launcher: Some(3) },
             StationCmd::Slew { az: 0.5, el: -0.25 },
-            StationCmd::Trigger(true),
+            StationCmd::Burst,
         ] {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
@@ -237,7 +237,7 @@ mod tests {
                 burst: 0,
                 due: 0.0,
                 slew: [0.5, 0.0],
-                trigger: true,
+                manual: true,
             }],
             stock: vec![8, 0, 0, 0, 640],
             refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],

@@ -331,7 +331,7 @@ fn a_gepard_is_slewed_by_hand_without_a_lock() {
 }
 
 #[test]
-fn a_gepard_fired_by_hand_brings_down_what_it_points_at() {
+fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     let (mut sim, g, f) = gepard();
     let at = sim.aaa_units()[g];
     let to = (at.x + 0x30, at.y, 1500);
@@ -343,24 +343,30 @@ fn a_gepard_fired_by_hand_brings_down_what_it_points_at() {
     let (east, up) = ((to.0 << 5) as f64 * m - p[0], to.2 as f64 * m - p[2]);
     sim.aaa_units_mut()[g].aim_az = std::f32::consts::FRAC_PI_2;
     sim.aaa_units_mut()[g].aim_el = up.atan2(east) as f32;
-    sim.station_command(ME, StationCmd::Trigger(true)).unwrap();
+    // One press, one burst: not another while it fires.
+    sim.station_command(ME, StationCmd::Burst).unwrap();
+    let e = sim.station_command(ME, StationCmd::Burst).unwrap_err();
+    assert!(e.contains("Firing"), "{e}");
+    run(&mut sim, 3);
+    assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - BURST);
+    assert_eq!(sim.aaa_units()[g].burst, 0);
+    let mut bursts = 1;
     let mut down = false;
-    for _ in 0..15 * 6 {
-        hold(&mut sim, f, to);
-        let ev = sim.step(&idle(), 15);
-        if ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. })) {
-            down = true;
+    for _ in 0..10 {
+        if sim.station_command(ME, StationCmd::Burst).is_ok() {
+            bursts += 1;
+        }
+        for _ in 0..15 * 2 {
+            hold(&mut sim, f, to);
+            let ev = sim.step(&idle(), 15);
+            down |= ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. }));
+        }
+        if down {
             break;
         }
     }
-    assert!(down, "never got it");
-    sim.station_command(ME, StationCmd::Trigger(false)).unwrap();
-    run(&mut sim, 1);
-    let left = sim.aaa_units()[g].rounds;
-    assert!(left < GEPARD_ROUNDS);
-    run(&mut sim, 1);
-    assert_eq!(sim.aaa_units()[g].rounds, left, "released: no more rounds");
-    assert_eq!(sim.aaa_units()[g].burst, 0);
+    assert!(down, "{bursts} bursts never got it");
+    assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - bursts * BURST);
 }
 
 #[test]

@@ -10,7 +10,8 @@
 # console: an upright panel with the camera screen (`trackcam` picture behind the `screen_eo`
 # overlay) and its buttons, a sloping desk with the air picture (`screen_scope`), the track list
 # (`screen_board`) and button columns beside them. Each is one flat surface, placed so a 65
-# degree desktop view sees them all. Right of the chair a pedestal with the hand controller
+# degree desktop view sees them all. Right of the camera's buttons a screen with the locked
+# target's data (`screen_info`) turned towards the operator. Right of the chair a pedestal with the hand controller
 # (`stick`) that slews the Gepard's turret, its trigger in front.
 #
 # Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face points
@@ -37,8 +38,13 @@ PANEL_Z = 0.20
 DESK_D = 0.70
 DESK_EL = -20.0
 DESK_TILT = 40.0
-# The camera screen (77:60, the tracking camera's picture), the air picture, the track list (m).
+# The camera screen (77:60, the tracking camera's picture), the air picture, the track list, the
+# target data (4:3) (m).
 EO = (0.46, 0.46 * 60.0 / 77.0)
+INFO = (0.24, 0.18)
+# The target data screen's centre and its turn towards the operator (degrees).
+INFO_AT = (0.58, PANEL_Y - 0.08, PANEL_Z)
+INFO_TURN = -30.0
 SCOPE = (0.28, 0.28)
 BOARD = (0.34, 0.255)
 # The hand controller's pivot, on its pedestal right of the chair (its grip GRIP_HEIGHT,
@@ -66,7 +72,7 @@ def material(name, rgb=(0.1, 0.1, 0.1)):
 
 # The shared cockpit materials (the game's own), the screens, the camera picture.
 for name in ("panel_grey", "dark", "black", "frame", "seat", "cushion", "rubber", "metal",
-             "highlight", "trackcam", "screen_scope", "screen_board", "screen_eo"):
+             "highlight", "trackcam", "screen_scope", "screen_board", "screen_eo", "screen_info"):
     material(name)
 material("red", (0.6, 0.05, 0.05))
 mats = bpy.data.materials
@@ -245,6 +251,11 @@ column(panel, 0.36, [
     ("Console(ZoomIn)", "ZOOM+", 0.09),
     ("Console(ZoomOut)", "ZOOM-", 0.04),
 ])
+
+# --- the target data screen in its own housing, turned towards the operator
+info = Surface(INFO_AT, Euler((0.0, 0.0, math.radians(INFO_TURN))))
+box("dark", "dark", info.at(0.0, 0.0, -0.03), (INFO[0] + 0.07, 0.06, INFO[1] + 0.07), info.rot)
+screen(info, "screen_info", 0.0, 0.0, INFO)
 
 # --- the desk: the air picture left, the track list right, button columns outside them
 screen(desk, "screen_scope", -0.18, 0.0, SCOPE)

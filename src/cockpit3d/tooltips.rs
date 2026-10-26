@@ -465,6 +465,9 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Console(ConsoleScreen::Eo) => {
             ("Camera", "The locked track, in colour or thermal (FLIR)")
         }
+        CanvasRole::Console(ConsoleScreen::Info) => {
+            ("Target data", "The locked track: range, altitude, speed, time of flight")
+        }
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
     let tip = Tip::new(title, detail, &[]);

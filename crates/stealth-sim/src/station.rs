@@ -9,8 +9,8 @@
 //!   takes [`REFILL_SECONDS`] of *real* time ([`Sim::tick_refills`], called by the host with
 //!   wall clock seconds). Unmanned, the AI starts the refills itself.
 //! * A Gepard fires bursts of [`BURST`] programmed airburst rounds, out to [`GEPARD_REACH`].
-//!   Without a lock its turret is slewed by hand ([`StationCmd::Slew`]) and its trigger fires
-//!   a stream of tracers along the barrels ([`StationCmd::Trigger`]; with a lock, bursts at it).
+//!   Without a lock its turret is slewed by hand ([`StationCmd::Slew`]) and a burst is
+//!   [`BURST`] tracers along the barrels.
 //! * A station whose radar (or Gepard) is destroyed is gone: [`Sim::station_of`] is None.
 
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,7 @@ pub const LAUNCH_INTERVAL: i32 = 2;
 pub const BURST: i32 = 25;
 const BURST_SECONDS: f64 = 1.4;
 /// A Gepard's programmed rounds: muzzle velocity (m/s), farthest burst point (m).
-const GEPARD_V0: f64 = 1175.0;
+pub const GEPARD_V0: f64 = 1175.0;
 pub const GEPARD_REACH: f64 = 2000.0;
 /// A Gepard turret's fastest slew by hand (rad/s): traverse, elevation; its elevation limits.
 pub const GEPARD_TRAVERSE: f32 = 1.0;
@@ -84,7 +84,7 @@ pub enum StationCmd {
     Fire {
         launcher: Option<u16>,
     },
-    /// Gepard: a burst at the locked track.
+    /// Gepard: a burst at the locked track (without a lock, along the barrels).
     Burst,
     /// Gepard without a lock: slew the turret at these rates (rad/s: traverse right, elevation
     /// up; limited to [`GEPARD_TRAVERSE`], [`GEPARD_ELEVATE`]).
@@ -92,8 +92,6 @@ pub enum StationCmd {
         az: f32,
         el: f32,
     },
-    /// Gepard: the trigger held (a stream along the barrels; with a lock, bursts at it).
-    Trigger(bool),
     /// Refill an empty launcher (or the Gepard) from the stockpile.
     Refill {
         unit: u16,
@@ -116,11 +114,12 @@ pub struct Station {
     pub burst: i32,
     #[serde(default)]
     pub due: f64,
-    /// Gepard: the slew by hand (rad/s, traverse and elevation) and the trigger.
+    /// Gepard: the slew by hand (rad/s, traverse and elevation), and the burst being fired is
+    /// along the barrels (there was no lock when it started).
     #[serde(default)]
     pub slew: [f32; 2],
     #[serde(default)]
-    pub trigger: bool,
+    pub manual: bool,
 }
 
 /// The friendly air defence's consoles and stocks.
@@ -287,10 +286,6 @@ impl Sim {
                     el.clamp(-GEPARD_ELEVATE, GEPARD_ELEVATE),
                 ];
             }
-            StationCmd::Trigger(on) => {
-                self.gepard_here(st)?;
-                self.defence_mut().stations[at].trigger = on;
-            }
             StationCmd::Refill { unit } => self.start_refill(st.unit as usize, unit as usize)?,
             StationCmd::RequestResupply => return Err("Resupply goes through the campaign".into()),
         }
@@ -318,7 +313,7 @@ impl Sim {
             burst: 0,
             due: 0.0,
             slew: [0.0; 2],
-            trigger: false,
+            manual: false,
         });
         Ok(())
     }
@@ -410,10 +405,12 @@ impl Sim {
         let d = self.defence_mut();
         d.stations[at].burst = n;
         d.stations[at].due = 0.0;
+        d.stations[at].manual = st.lock.is_none();
         Ok(())
     }
 
-    /// The rounds of a burst station `st` can fire at its lock now.
+    /// The rounds of a burst station `st` can fire now (at its lock, or without one along the
+    /// barrels).
     fn burst_rounds(&self, st: &Station) -> Result<i32, String> {
         self.gepard_here(*st)?;
         let u = self.aaa[st.unit as usize];
@@ -422,6 +419,9 @@ impl Sim {
         }
         if u.rounds <= 0 || self.refill_left(st.unit as usize) > 0.0 {
             return Err("Out of ammunition".into());
+        }
+        if st.lock.is_none() {
+            return Ok(BURST.min(u.rounds));
         }
         let (_, pos, vel) = self.hostile_lock(st)?;
         let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
@@ -515,7 +515,7 @@ impl Sim {
 
     /// One frame of the manned consoles: lost ones go, guided missiles follow their lock,
     /// the guns fire their bursts, the turrets and launchers point at the lock (a Gepard's
-    /// without one where it is slewed, firing while its trigger is held).
+    /// without one where it is slewed).
     pub(crate) fn update_stations(&mut self) {
         self.defence_sizes();
         let Some(c) = self.campaign.as_ref() else { return };
@@ -562,21 +562,8 @@ impl Sim {
             if gepard && lock.is_none() {
                 self.slew_frame(&st);
             }
-            if gepard && st.trigger && st.burst == 0 {
-                if lock.is_some() {
-                    // Held: burst after burst (while one can be fired).
-                    if let Ok(n) = self.burst_rounds(&st) {
-                        st.burst = n;
-                        st.due = 0.0;
-                    }
-                } else {
-                    self.stream_frame(&mut st);
-                }
-            }
             if st.burst > 0 {
                 self.burst_frame(&mut st);
-            } else if gepard && !(st.trigger && lock.is_none()) {
-                self.aaa[k].burst = 0;
             }
             keep.push(st);
         }
@@ -593,15 +580,11 @@ impl Sim {
         a.aim_el = (a.aim_el + st.slew[1] * dt).clamp(GEPARD_EL.0, GEPARD_EL.1);
     }
 
-    /// The rounds of a Gepard's trigger held without a lock due this frame: tracers along the
-    /// barrels, at the hostile aircraft nearest the line of fire (one far off it can't be hit).
-    fn stream_frame(&mut self, st: &mut Station) {
+    /// The rounds of a Gepard burst without a lock due this frame: tracers along the barrels,
+    /// at the hostile aircraft nearest the line of fire (one far off it can't be hit).
+    fn manual_frame(&mut self, st: &mut Station) {
         let k = st.unit as usize;
         let u = self.aaa[k];
-        if u.rounds <= 0 || self.refill_left(k) > 0.0 {
-            self.aaa[k].burst = 0;
-            return;
-        }
         let fs = self.fs.max(1) as f64;
         let (az, el) = (u.aim_az as f64, u.aim_el as f64);
         let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
@@ -621,14 +604,15 @@ impl Sim {
         st.due += BURST as f64 / (BURST_SECONDS * fs);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        while st.due >= 1.0 && self.aaa[k].rounds > 0 {
+        while st.due >= 1.0 && st.burst > 0 && self.aaa[k].rounds > 0 {
             st.due -= 1.0;
+            st.burst -= 1;
             self.aaa[k].rounds -= 1;
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let d = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
             // Either barrel, a little to each side of the turret.
-            let side = if self.aaa[k].rounds & 1 == 0 { 1.2 } else { -1.2 };
+            let side = if st.burst & 1 == 0 { 1.2 } else { -1.2 };
             let from = add(u.metres(), [az.cos() * side, -az.sin() * side, 1.5]);
             let shell = Shell {
                 pos: from,
@@ -644,18 +628,26 @@ impl Sim {
                 c.shells.push(AiShell { shell, target, ahead: false });
             }
         }
-        self.aaa[k].burst = 1;
+        if self.aaa[k].rounds == 0 {
+            st.burst = 0;
+        }
+        self.aaa[k].burst = st.burst;
         c.rng = rng;
         self.campaign = Some(c);
     }
 
-    /// The rounds of a Gepard burst due this frame, each laid on the lock anew.
+    /// The rounds of a Gepard burst due this frame, each laid on the lock anew (a burst
+    /// without one: along the barrels).
     fn burst_frame(&mut self, st: &mut Station) {
+        if st.manual {
+            return self.manual_frame(st);
+        }
         let k = st.unit as usize;
         let fs = self.fs.max(1) as f64;
         let target = st.lock.map(|j| j as usize).and_then(|j| self.track_alive(j).map(|t| (j, t)));
         let Some((j, (pos, vel))) = target else {
             st.burst = 0;
+            self.aaa[k].burst = 0;
             return;
         };
         st.due += BURST as f64 / (BURST_SECONDS * fs);

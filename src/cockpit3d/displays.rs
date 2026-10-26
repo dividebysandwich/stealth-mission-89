@@ -65,6 +65,8 @@ pub enum ConsoleScreen {
     Board,
     /// The camera's overlay (over the camera picture).
     Eo,
+    /// The locked target's data.
+    Info,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -75,6 +77,7 @@ pub struct ConsoleCanvas(pub ConsoleScreen);
 pub const SCOPE_CANVAS: (usize, usize) = (320, 320);
 pub const BOARD_CANVAS: (usize, usize) = (400, 300);
 pub const EO_CANVAS: (usize, usize) = (308, 240);
+pub const INFO_CANVAS: (usize, usize) = (320, 240);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -305,6 +308,7 @@ pub(super) fn screen(
                 ConsoleScreen::Scope => SCOPE_CANVAS,
                 ConsoleScreen::Board => BOARD_CANVAS,
                 ConsoleScreen::Eo => EO_CANVAS,
+                ConsoleScreen::Info => INFO_CANVAS,
             };
             (Canvas::scaled(w, h, CONSOLE_SCALE), s == ConsoleScreen::Eo)
         }

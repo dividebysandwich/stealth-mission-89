@@ -8,15 +8,17 @@
 //!   on both), or the site's launchers, stocks and refills.
 //! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR;
 //!   at a Gepard without a lock, where the gun points.
+//! * The target data (`info`): the locked track's range, altitude, speed and the like.
 //! * The hand controller (the cockpit's stick, flight controls): at a Gepard without a lock it
-//!   slews the turret; its trigger (the gun trigger or fire button) fires, with a lock bursts
-//!   at the lead, without one a stream along the barrels.
+//!   slews the turret; a press of its trigger (the gun trigger or fire button) fires a burst,
+//!   with a lock at the lead, without one along the barrels.
 //!
 //! The console's commands go to the simulation through the campaign (`Action::Station`, the
 //! server's on a client); what the console shows comes from the simulation's state.
 
 mod board;
 mod eo;
+mod info;
 mod scope;
 mod sound;
 
@@ -55,6 +57,7 @@ impl Plugin for StationPlugin {
                     scope::draw,
                     board::draw,
                     eo::draw,
+                    info::draw,
                     sound::play,
                 )
                     .chain()
@@ -91,7 +94,7 @@ pub struct ConsoleUi {
     pub note: Option<(String, f32)>,
     /// Where the aircraft waited before, to put it back.
     parked: Option<(DVec3, Quat)>,
-    /// The hand controller's slew (rad/s: traverse, elevation) and trigger, as last sent.
+    /// The hand controller's slew (rad/s: traverse, elevation) as last sent, its trigger held.
     pub slew: Vec2,
     trigger: bool,
     /// `--console-fire` fired, `--console-resupply` asked.
@@ -231,8 +234,8 @@ fn slew_of(v: f32) -> f32 {
     (v.signum() * a * a * SLEW_STEPS).round() / SLEW_STEPS
 }
 
-/// The hand controller: the flight controls' stick slews a Gepard's turret, its triggers fire
-/// it (and never the parked aircraft's weapons).
+/// The hand controller: the flight controls' stick slews a Gepard's turret, a press of its
+/// triggers fires a burst (and never the parked aircraft's weapons).
 fn hand_controller(
     manning: Option<Res<Manning>>,
     mut c: Option<ResMut<ActiveCampaign>>,
@@ -256,10 +259,10 @@ fn hand_controller(
         ui.slew = slew;
         c.actions.push(Action::Station(StationCmd::Slew { az: slew.x, el: slew.y }));
     }
-    if trigger != ui.trigger {
-        ui.trigger = trigger;
-        c.actions.push(Action::Station(StationCmd::Trigger(trigger)));
+    if trigger && !ui.trigger {
+        c.actions.push(Action::Station(StationCmd::Burst));
     }
+    ui.trigger = trigger;
 }
 
 /// The console's buttons and screen clicks.
@@ -331,7 +334,7 @@ fn buttons(
                 Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
-            ConsoleScreen::Eo => {}
+            ConsoleScreen::Eo | ConsoleScreen::Info => {}
         }
     }
     // Test aid: `--console-lock` locks the nearest hostile track once there is one (any
