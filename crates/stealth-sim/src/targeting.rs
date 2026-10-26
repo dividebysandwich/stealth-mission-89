@@ -187,7 +187,9 @@ impl Sim {
         }
         let mut best_r = 0x4B << (6 - self.night as i32);
         let mut best = -1;
-        let reselect = self.pl.air_lock & 0x80 != 0;
+        // A lock on another pilot stays as one on a flight unit does.
+        let pilot_held = self.pl.pilot_lock.is_some_and(|k| self.pilot_airborne(k));
+        let reselect = self.pl.air_lock & 0x80 != 0 && !pilot_held;
         let mut prev_r = 0;
         if reselect && self.pl.air_lock != -1 {
             let u = self
@@ -218,7 +220,25 @@ impl Sim {
                 best = j as i32;
             }
         }
-        if best != -1 {
+        // The other pilots' aircraft by the same rules (the HUD, not a radar, finds them).
+        let mut pilot = None;
+        if reselect && !self.pl.external_view {
+            for (k, p) in self.other_pilots() {
+                let (r, b) = self.range_bearing(p.mx, p.my);
+                if r < best_r
+                    && r > prev_r
+                    && self.cam_off(b) < 0x2000
+                    && self.player_sees(p.mx, p.my, p.view_z)
+                {
+                    best_r = r;
+                    pilot = Some(k);
+                }
+            }
+        }
+        if let Some(k) = pilot {
+            self.pl.air_lock = -1;
+            self.pl.pilot_lock = Some(k);
+        } else if best != -1 {
             self.pl.air_lock = best;
         }
         if self.pl.air_lock & 0x80 != 0 {

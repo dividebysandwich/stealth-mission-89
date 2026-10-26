@@ -236,6 +236,30 @@ fn a_pilot_locks_another_while_he_flies() {
     assert_eq!(sim.targeting().pilot, None);
 }
 
+/// The HUD picks another pilot's aircraft ahead as it does an enemy's (no display lock first:
+/// the F-117's Sidewinders have no radar to find him).
+#[test]
+fn the_hud_picks_another_pilot_ahead() {
+    let (mut sim, base) = two_pilots();
+    let b = sim.objects()[base];
+    let (mx, my) = (b.x + 0x1000, b.y - 0x800);
+    sim.set_pilot_loadout(1, &[(0, 4), (-1, 0), (-1, 0), (-1, 0)], 0);
+    let mut inputs =
+        vec![(0, flying(mx, my - 0x200, 5000, 0, 300)), (1, flying(mx, my, 5000, 0, 300))];
+    inputs[1].1.hud_mode = HudMode::Air;
+    for _ in 0..3 {
+        sim.step_pilots(&inputs, 15);
+    }
+    assert_eq!(sim.as_pilot(1, |s| s.targeting().pilot), Some(0));
+    // Turned away: the lock stays until the next target key.
+    inputs[1].1.heading = 0x6000;
+    sim.step_pilots(&inputs, 15);
+    assert_eq!(sim.as_pilot(1, |s| s.targeting().pilot), Some(0));
+    inputs[1].1.cmd.next_target = true;
+    sim.step_pilots(&inputs, 15);
+    assert_eq!(sim.as_pilot(1, |s| s.targeting().pilot), None);
+}
+
 #[test]
 fn a_mirror_follows_the_host() {
     let (mut host, mut inputs, _) = site_engages_pilot_one();
