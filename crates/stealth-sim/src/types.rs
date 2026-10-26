@@ -444,6 +444,10 @@ pub struct PlayerState {
     pub y: i32,
     /// True altitude in feet. viewZ is computed inside.
     pub altitude: u16,
+    /// Height above the ground under the aircraft (world units, "feet"): a helicopter's
+    /// hover over a resupply drop.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub height: u16,
     /// BAM.
     pub heading: u16,
     pub pitch: i16,
@@ -482,6 +486,10 @@ pub struct PlayerState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub helmet: Option<PodAim>,
     pub cmd: Commands,
+}
+
+fn is_zero(v: &u16) -> bool {
+    *v == 0
 }
 
 /// Where the targeting pod looks.
@@ -819,6 +827,13 @@ pub enum SimEvent {
         tag: u32,
         x: i32,
         y: i32,
+    },
+    /// Campaign: a resupply helicopter the campaign launched has set its load down at the air
+    /// defence unit (`Sim::aaa_units` index) it flew to.
+    CampaignFlightDelivered {
+        unit: usize,
+        tag: u32,
+        aaa: usize,
     },
 }
 

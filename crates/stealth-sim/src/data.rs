@@ -102,6 +102,9 @@ pub struct TheaterTiles {
     /// The mountains (`assets/theaters/<code>.relief`, read beside the tiles).
     #[serde(skip)]
     pub relief: crate::relief::Relief,
+    /// The airfields' helipads (`assets/theaters/<code>.helipads`, read beside the tiles).
+    #[serde(skip)]
+    pub helipads: Vec<(i32, i32)>,
 }
 
 /// A town: centre (map units, y south) and radius (map units).
@@ -188,6 +191,7 @@ impl SimData {
                         .with_context(|| format!("theaters/{code}.ron"))?,
                 };
                 t.relief = TheaterTiles::read_relief(&read, code);
+                t.helipads = TheaterTiles::read_helipads(&read, code);
                 Ok(t)
             })
             .collect::<Result<_>>()?;
@@ -281,6 +285,7 @@ impl TheaterTiles {
             model_attr: model_attr.to_vec(),
             towns: Vec::new(),
             relief: Default::default(),
+            helipads: Vec::new(),
         }
     }
 
@@ -292,6 +297,17 @@ impl TheaterTiles {
     ) -> crate::relief::Relief {
         let name = format!("../theaters/{}.relief", code.to_ascii_lowercase());
         read(&name).ok().and_then(crate::relief::Relief::from_bytes).unwrap_or_default()
+    }
+
+    /// A theater's helipads (`theaters/<code>.helipads` through `read`, from `assets/sim`): a
+    /// list of world unit points (x east, y south) made by the game (`--write-helipads`); none
+    /// without one.
+    pub fn read_helipads(read: impl Fn(&str) -> Result<Vec<u8>>, code: &str) -> Vec<(i32, i32)> {
+        let name = format!("../theaters/{}.helipads", code.to_ascii_lowercase());
+        read(&name)
+            .ok()
+            .and_then(|b| ron::from_str(std::str::from_utf8(&b).ok()?).ok())
+            .unwrap_or_default()
     }
 
     /// LOD1/LOD2 tile type at (col, row) (row counted north-up), -1 outside the grid.

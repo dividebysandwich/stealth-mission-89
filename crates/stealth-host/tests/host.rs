@@ -297,3 +297,65 @@ fn every_friendly_airfield_has_a_gepard_to_man() {
         }
     }
 }
+
+/// A player at a Gepard's console asks for a new stockpile; nobody takes the resupply, so after
+/// five minutes an AI helicopter flies it from the airfield, the stockpile is full again and the
+/// helicopter lands back at its base.
+#[test]
+fn an_ai_helicopter_brings_a_requested_resupply() {
+    use stealth_campaign::{MissionKind, SupplyState};
+    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::station::{GEPARD_STOCK, SavedStock, StationCmd};
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    let me = PlayerId(0);
+    let k = (0..sim.aaa_units().len())
+        .find(|&k| sim.aaa_units()[k].kind == AaaKind::Gepard && sim.aaa_blue(k))
+        .unwrap();
+    let u = sim.aaa_units()[k];
+    sim.restore_stocks(&[SavedStock { x: u.x, y: u.y, patriot: false, stock: 0 }]);
+    host.station(&mut sim, me, StationCmd::Man { unit: k as u16 }).unwrap();
+    host.station(&mut sim, me, StationCmd::RequestResupply).unwrap();
+    assert!(host.station(&mut sim, me, StationCmd::RequestResupply).is_err());
+    host.tick(&mut sim, 0.1, &[]);
+    host.state.board_at = f64::MIN;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.board.iter().any(|o| o.kind == MissionKind::Resupply));
+    let (mut launched, mut restocked, mut landed) = (false, false, false);
+    for _ in 0..15 * 1200 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut ev2 = host.take_sim_events(&mut sim);
+        ev2.extend(ev);
+        landed |= ev2.iter().any(|e| {
+            matches!(e.event, stealth_sim::SimEvent::CampaignFlightLanded { .. }) && restocked
+        });
+        let out = host.tick(&mut sim, 1.0 / 15.0, &ev2);
+        for e in &out {
+            match e {
+                HostEvent::Campaign(stealth_campaign::CampaignEvent::SupplyLaunched { .. }) => {
+                    launched = true;
+                    assert!(host.state.clock >= 300.0);
+                    assert!(!host.state.board.iter().any(|o| o.kind == MissionKind::Resupply));
+                }
+                HostEvent::Campaign(stealth_campaign::CampaignEvent::Restocked { aaa }) => {
+                    assert_eq!(*aaa as usize, k);
+                    restocked = true;
+                }
+                _ => {}
+            }
+        }
+        if landed {
+            break;
+        }
+    }
+    assert!(launched && restocked && landed, "{launched} {restocked} {landed}");
+    assert_eq!(sim.stockpile(k), GEPARD_STOCK);
+    assert!(host.state.supply_requests.iter().all(|r| !matches!(r.state, SupplyState::Ai { .. })));
+    assert!(host.state.supply_requests.is_empty());
+}

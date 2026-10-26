@@ -83,8 +83,9 @@ pub struct ConsoleUi {
     pub note: Option<(String, f32)>,
     /// Where the aircraft waited before, to put it back.
     parked: Option<(DVec3, Quat)>,
-    /// `--console-fire` fired.
+    /// `--console-fire` fired, `--console-resupply` asked.
     test_fired: bool,
+    test_resupply: bool,
 }
 
 impl Default for ConsoleUi {
@@ -100,6 +101,7 @@ impl Default for ConsoleUi {
             note: None,
             parked: None,
             test_fired: false,
+            test_resupply: false,
         }
     }
 }
@@ -271,6 +273,7 @@ fn buttons(
                 Some(board::Clicked::Launcher(l)) => {
                     ui.launcher = if ui.launcher == Some(l) { None } else { Some(l) };
                 }
+                Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
             ConsoleScreen::Eo => {}
@@ -303,6 +306,11 @@ fn buttons(
     {
         ui.test_fired = true;
         send(if m.gepard { StationCmd::Burst } else { StationCmd::Fire { launcher: None } });
+    }
+    // Test aid: `--console-resupply` asks for a new stockpile once.
+    if std::env::args().any(|a| a == "--console-resupply") && !ui.test_resupply {
+        ui.test_resupply = true;
+        send(StationCmd::RequestResupply);
     }
     // A refused command (the host's answer; a client's comes back from the server).
     if let Some(e) = c.ui.error.take() {

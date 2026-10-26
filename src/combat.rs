@@ -508,6 +508,7 @@ fn player_state(
         x: east.round() as i32,
         y: north.round() as i32,
         altitude: a.altitude.clamp(0.0, 65535.0) as u16,
+        height: (a.altitude - a.ground_altitude).clamp(0.0, 65535.0) as u16,
         heading: to_bam(h).round() as i32 as u16,
         pitch: to_bam(p).round() as i32 as i16,
         roll: to_bam(r).round() as i32 as i16,

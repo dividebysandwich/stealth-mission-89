@@ -239,7 +239,7 @@ fn dist(ax: i32, ay: i32, bx: i32, by: i32) -> i32 {
 fn kind_colour(k: MissionKind) -> egui::Color32 {
     match k {
         MissionKind::Recon => DIM,
-        MissionKind::Insertion | MissionKind::Escort => FRIENDLY_BLUE,
+        MissionKind::Insertion | MissionKind::Escort | MissionKind::Resupply => FRIENDLY_BLUE,
         MissionKind::Cap => GREEN,
         MissionKind::Intercept | MissionKind::Defend | MissionKind::Csar | MissionKind::Awacs => {
             MISSILE_RED
@@ -631,6 +631,13 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 any = true;
                 ui.label(egui::RichText::new(text).color(col));
             }
+            for r in &c.state().supply_requests {
+                if let stealth_campaign::SupplyState::Ai { .. } = r.state {
+                    any = true;
+                    let text = format!("RESUPPLY for the {}: UH-60 on the way", r.title());
+                    ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
+                }
+            }
             if let Some(a) = &c.state().awacs {
                 any = true;
                 let text = format!("ENEMY AWACS up for {:.0} min more", mins(a.until));
@@ -668,6 +675,20 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 && let Some(t) = c.state().insertion_status(insertion)
             {
                 ui.label(egui::RichText::new(t).color(BRIGHT));
+            }
+            // Nobody takes it in time: an AI helicopter does.
+            if let Objective::Resupply { request } = o.objective
+                && let Some(r) = c.state().supply_request(request)
+                && let stealth_campaign::SupplyState::Open { since } = r.state
+            {
+                let wait = stealth_campaign::tuning::SUPPLY_AI_WAIT;
+                let left = (wait - (c.state().clock - since)).max(0.0) as i32;
+                let text = format!(
+                    "An AI helicopter takes it in {}:{:02} unless a UH-60 pilot does",
+                    left / 60,
+                    left % 60
+                );
+                ui.label(egui::RichText::new(text).color(BRIGHT));
             }
             group_label(ui, c, o.id);
             ui.add_space(6.0);

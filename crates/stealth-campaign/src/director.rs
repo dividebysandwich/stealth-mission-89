@@ -10,6 +10,7 @@ use crate::{CampaignEvent, Report, WorldView};
 impl CampaignState {
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         self.sortie_report(r);
+        self.supply_report(r, ev);
         match *r {
             Report::ObjectDestroyed { object, .. } => {
                 let now = self.clock;
@@ -1227,6 +1228,10 @@ impl CampaignState {
                 0,
             );
         }
+        // Air defence units waiting for a new stockpile.
+        for (title, objective, x, y) in self.supply_offers() {
+            add(self, MissionKind::Resupply, title, objective, x, y, 0);
+        }
         let front = self.front(side);
         for &pid in &front {
             let p = self.places[pid as usize].clone();
@@ -1436,7 +1441,8 @@ impl CampaignState {
                 MissionKind::Intercept
                 | MissionKind::Defend
                 | MissionKind::Csar
-                | MissionKind::Awacs => 0,
+                | MissionKind::Awacs
+                | MissionKind::Resupply => 0,
                 MissionKind::Escort => 1,
                 MissionKind::Interdiction => 2,
                 MissionKind::Cap | MissionKind::AntiShip => 3,
@@ -1447,6 +1453,12 @@ impl CampaignState {
             keep.truncate(BOARD_SIZE);
             keep.sort_unstable();
             offers = keep.into_iter().map(|k| offers[k].clone()).collect();
+        }
+        // A resupply is flown from the nearest airfield.
+        for o in offers.iter_mut().filter(|o| o.kind == MissionKind::Resupply) {
+            if let Some(b) = self.supply_base(o.x, o.y) {
+                o.base = b;
+            }
         }
         let changed = offers != self.board;
         self.board = offers;
@@ -1494,5 +1506,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Rescue { downed } => (11, downed as i64),
         Objective::Awacs { tag } => (12, tag as i64),
         Objective::Battery { battery, .. } => (13, battery as i64),
+        Objective::Resupply { request } => (14, request as i64),
     }
 }

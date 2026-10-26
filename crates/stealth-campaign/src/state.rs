@@ -153,6 +153,9 @@ pub enum MissionKind {
     Csar,
     /// Shoot down the enemy's AWACS while it is up.
     Awacs,
+    /// Fly a new stockpile to a friendly air defence unit (a player at its console asked for
+    /// it).
+    Resupply,
 }
 
 impl MissionKind {
@@ -171,6 +174,7 @@ impl MissionKind {
             MissionKind::Interdiction => "INTERDICT",
             MissionKind::Csar => "CSAR",
             MissionKind::Awacs => "AWACS",
+            MissionKind::Resupply => "RESUPPLY",
         }
     }
 
@@ -179,11 +183,12 @@ impl MissionKind {
         self == MissionKind::Insertion
     }
 
-    /// Who may fly it: insertions only the troop helicopter, which flies nothing but them and
-    /// rescues (it picks the pilot up, the others cover it). The gunship flies the rest.
+    /// Who may fly it: insertions and resupply only the troop helicopter, which flies nothing
+    /// but them and rescues (it picks the pilot up, the others cover it). The gunship flies the
+    /// rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
         match self {
-            MissionKind::Insertion => aircraft.transport(),
+            MissionKind::Insertion | MissionKind::Resupply => aircraft.transport(),
             MissionKind::Csar => true,
             _ => !aircraft.transport(),
         }
@@ -205,7 +210,7 @@ impl MissionKind {
             MissionKind::Intercept => &[F16, AH1Z],
             MissionKind::Cas => &[AH1Z, F16, F117],
             MissionKind::Escort => &[AH1Z, F16],
-            MissionKind::Insertion | MissionKind::Csar => &[UH60],
+            MissionKind::Insertion | MissionKind::Csar | MissionKind::Resupply => &[UH60],
         }
     }
 
@@ -219,7 +224,9 @@ impl MissionKind {
     /// Why an aircraft may not fly it.
     pub fn not_flyable(self, aircraft: Aircraft) -> &'static str {
         if aircraft.transport() {
-            "The UH-60 flies insertions and rescues"
+            "The UH-60 flies insertions, rescues and resupply"
+        } else if self == MissionKind::Resupply {
+            "Resupply is flown in the UH-60"
         } else {
             "Insertions are flown in the UH-60, or ordered for the helicopter crews"
         }
@@ -228,7 +235,7 @@ impl MissionKind {
     /// Points for achieving the objective.
     pub fn points(self) -> i32 {
         match self {
-            MissionKind::Recon | MissionKind::Cap => 100,
+            MissionKind::Recon | MissionKind::Cap | MissionKind::Resupply => 100,
             MissionKind::Cas | MissionKind::Escort => 120,
             MissionKind::Sead
             | MissionKind::Strike
@@ -307,6 +314,10 @@ pub enum Objective {
     Battery {
         battery: u32,
         aaa: Vec<u32>,
+    },
+    /// Hover with a new stockpile at a friendly air defence unit (a [`SupplyRequest`]).
+    Resupply {
+        request: u32,
     },
 }
 
@@ -437,6 +448,9 @@ pub struct Progress {
     /// the friendly side until he is out.
     #[serde(default)]
     pub down: Option<((i32, i32), Loss)>,
+    /// Resupply: seconds hovering low at the air defence unit (the load goes down).
+    #[serde(default)]
+    pub hover_secs: f64,
 }
 
 impl Progress {
@@ -809,6 +823,9 @@ pub struct CampaignState {
     /// over a save).
     #[serde(default)]
     pub defence_stock: Vec<DefenceStock>,
+    /// The air defence units waiting for a new stockpile.
+    #[serde(default)]
+    pub supply_requests: Vec<SupplyRequest>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -825,6 +842,42 @@ pub struct DefenceStock {
 
 fn never() -> f64 {
     f64::MIN
+}
+
+/// Where a request for a new stockpile is.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum SupplyState {
+    /// On the board; since then nobody has flown it (an AI helicopter goes after
+    /// `SUPPLY_AI_WAIT`).
+    Open { since: f64 },
+    /// An AI helicopter (campaign tag) is on its way with it.
+    Ai { tag: u32 },
+}
+
+/// A player at an air defence console asked for a new stockpile: a helicopter brings it from
+/// the nearest airfield.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SupplyRequest {
+    pub id: u32,
+    /// The Patriot radar (its battery's stockpile) or Gepard: the simulation's AAA unit index
+    /// and where it stands (map units; a reloaded simulation finds it there again).
+    pub aaa: u32,
+    pub x: i32,
+    pub y: i32,
+    pub patriot: bool,
+    /// The place it is named after (the nearest).
+    pub name: String,
+    pub by: PlayerId,
+    pub posted: f64,
+    pub state: SupplyState,
+}
+
+impl SupplyRequest {
+    /// "Patriot battery near Wittstock".
+    pub fn title(&self) -> String {
+        let what = if self.patriot { "Patriot battery" } else { "Gepard" };
+        format!("{what} near {}", self.name)
+    }
 }
 
 /// Guns the enemy pushed forward, a short helicopter flight from the players' bases (when no
@@ -1035,6 +1088,7 @@ impl CampaignState {
             batteries: Vec::new(),
             battery_at: f64::MIN,
             defence_stock: Vec::new(),
+            supply_requests: Vec::new(),
             terrain: Terrain::default(),
         };
         c.note("Campaign started");
@@ -1230,6 +1284,10 @@ impl CampaignState {
 
     pub fn downed_pilot(&self, id: u32) -> Option<&Downed> {
         self.downed.iter().find(|d| d.id == id)
+    }
+
+    pub fn supply_request(&self, id: u32) -> Option<&SupplyRequest> {
+        self.supply_requests.iter().find(|r| r.id == id)
     }
 
     pub fn raid(&self, id: u32) -> Option<&Raid> {

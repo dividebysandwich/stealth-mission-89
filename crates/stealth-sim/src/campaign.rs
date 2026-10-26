@@ -106,6 +106,9 @@ pub enum Role {
     Strike,
     /// AWACS: orbits its goal and fights nobody.
     Awacs,
+    /// Helicopter bringing an air defence unit's stockpile up (`supply`): it flies to the
+    /// unit, hovers low beside it, then flies back to its helipad and lands.
+    Supply,
 }
 
 /// An aircraft the campaign launched.
@@ -147,6 +150,9 @@ pub struct CampaignFlight {
     /// An attack drone: it is destroyed with its target.
     #[serde(default)]
     pub kamikaze: bool,
+    /// A resupply helicopter's run.
+    #[serde(default)]
+    pub supply: Option<crate::supply::SupplyRun>,
 }
 
 /// A missile of the AI against an AI aircraft (metres, x east, y north, z up).
@@ -871,6 +877,7 @@ impl Sim {
             reported: false,
             strike: None,
             kamikaze: false,
+            supply: None,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -938,6 +945,7 @@ impl Sim {
             reported: false,
             strike: None,
             kamikaze: false,
+            supply: None,
         });
         i
     }
@@ -995,6 +1003,7 @@ impl Sim {
             reported: false,
             strike: Some(target as i32),
             kamikaze,
+            supply: None,
         });
         i
     }
@@ -1048,6 +1057,7 @@ impl Sim {
             reported: false,
             strike: None,
             kamikaze: false,
+            supply: None,
         });
         i
     }
@@ -1073,7 +1083,9 @@ impl Sim {
     /// Where a campaign fighter patrols (circling its goal) or a strike aircraft flies to,
     /// None for other aircraft.
     pub(crate) fn campaign_goal(&self, i: usize, u: &FlightUnit) -> Option<(i32, i32)> {
-        let f = self.campaign_flight(i).filter(|f| f.role != Role::Insertion)?;
+        let f = self
+            .campaign_flight(i)
+            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply))?;
         let (gx, gy) = f.goal;
         if f.role == Role::Strike {
             return Some((gx, gy));

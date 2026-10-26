@@ -28,7 +28,14 @@ const P0: PlayerId = PlayerId(0);
 fn be_there(c: &mut CampaignState, p: PlayerId, at: ObjectId) {
     let s = c.site(at).unwrap();
     let me = WorldView {
-        players: vec![PlayerPos { id: p, x: s.x, y: s.y, airborne: true, landed: false }],
+        players: vec![PlayerPos {
+            id: p,
+            x: s.x,
+            y: s.y,
+            airborne: true,
+            landed: false,
+            hover_over: None,
+        }],
         ..Default::default()
     };
     c.tick(tuning::PRESENCE_SECONDS + 1.0, &me, &[]);
@@ -890,7 +897,7 @@ fn eject_over(c: &mut CampaignState, name: &str) -> (Vec<CampaignEvent>, i32, i3
     let p = &c.places[place_named(c, name) as usize];
     let (x, y) = (p.x + 30, p.y);
     let view = WorldView {
-        players: vec![PlayerPos { id: P0, x, y, airborne: true, landed: false }],
+        players: vec![PlayerPos { id: P0, x, y, airborne: true, landed: false, hover_over: None }],
         ..Default::default()
     };
     c.tick(1.0, &view, &[]);
@@ -920,7 +927,14 @@ fn a_pilot_down_behind_the_lines_is_rescued() {
     c.apply(b, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F16 })
         .unwrap();
     let over = WorldView {
-        players: vec![PlayerPos { id: b, x: x + 0x40, y, airborne: true, landed: false }],
+        players: vec![PlayerPos {
+            id: b,
+            x: x + 0x40,
+            y,
+            airborne: true,
+            landed: false,
+            hover_over: None,
+        }],
         ..Default::default()
     };
     let mut rescued = false;
@@ -1301,7 +1315,7 @@ fn a_cap_survives_a_friendly_loss() {
     let (_, obj) = take(&mut c, P0, MissionKind::Cap);
     let Objective::Cap { x, y } = obj else { unreachable!() };
     let me = WorldView {
-        players: vec![PlayerPos { id: P0, x, y, airborne: true, landed: false }],
+        players: vec![PlayerPos { id: P0, x, y, airborne: true, landed: false, hover_over: None }],
         ..Default::default()
     };
     c.tick(300.0, &me, &[]);
@@ -1415,7 +1429,7 @@ fn the_reserve_helicopters_do_not_swell_the_pool() {
 /// Player 0 at (x, y): in the air or landed in his helicopter.
 fn heli_at(x: i32, y: i32, landed: bool) -> WorldView {
     WorldView {
-        players: vec![PlayerPos { id: P0, x, y, airborne: !landed, landed }],
+        players: vec![PlayerPos { id: P0, x, y, airborne: !landed, landed, hover_over: None }],
         ..Default::default()
     }
 }
@@ -1659,4 +1673,131 @@ fn a_forward_battery_is_offered_until_its_guns_are_down() {
     assert!(c.batteries.is_empty());
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("destroyed"))));
     assert!(!c.board.iter().any(|o| matches!(o.objective, Objective::Battery { .. })));
+}
+
+/// A friendly Patriot radar (AAA unit 0) 4 km east of Ramstein: the campaign, its view, where
+/// it stands.
+fn battery_view() -> (CampaignState, WorldView, (i32, i32)) {
+    let mut c = campaign("central_europe", 3);
+    let p = &c.places[place_named(&c, "Ramstein") as usize];
+    let (x, y) = (p.x + 0x100, p.y);
+    let view = WorldView {
+        aaa: vec![AaaView { x, y, side: Side::Blue, alive: true }],
+        ..Default::default()
+    };
+    c.tick(1.0, &view, &[]);
+    (c, view, (x, y))
+}
+
+fn request(c: &mut CampaignState, (x, y): (i32, i32)) -> Vec<CampaignEvent> {
+    c.apply(P0, Command::RequestResupply { aaa: 0, x, y, patriot: true }).unwrap()
+}
+
+#[test]
+fn nobody_takes_a_resupply_and_the_ai_flies_it() {
+    let (mut c, view, at) = battery_view();
+    request(&mut c, at);
+    assert!(
+        c.apply(P0, Command::RequestResupply { aaa: 0, x: at.0, y: at.1, patriot: true }).is_err()
+    );
+    c.tick(1.0, &view, &[]);
+    let offer = c.board.iter().find(|o| o.kind == MissionKind::Resupply).unwrap().clone();
+    assert_eq!((offer.x, offer.y), at);
+    // From the nearest airfield, in the UH-60 only.
+    assert_eq!(c.site(offer.base).unwrap().kind, SiteKind::Airfield);
+    assert!(MissionKind::Resupply.flyable_by(Aircraft::UH60));
+    assert!(!MissionKind::Resupply.flyable_by(Aircraft::F16));
+    assert!(!MissionKind::Resupply.flyable_by(Aircraft::AH1Z));
+    // Not yet: the players have five minutes.
+    let ev = c.tick(tuning::SUPPLY_AI_WAIT - 10.0, &view, &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::SupplyLaunched { .. })));
+    let ev = c.tick(11.0, &view, &[]);
+    let Some(&CampaignEvent::SupplyLaunched { from, aaa, tag, .. }) =
+        ev.iter().find(|e| matches!(e, CampaignEvent::SupplyLaunched { .. }))
+    else {
+        panic!("no AI helicopter: {ev:?}")
+    };
+    assert_eq!((from, aaa), (offer.base, 0));
+    // Off the board at once.
+    assert!(!c.board.iter().any(|o| o.kind == MissionKind::Resupply));
+    // Shot down: back on the board.
+    let lost = Report::FlightDestroyed { tag, side: Side::Blue, x: at.0, y: at.1, by: None };
+    c.tick(1.0, &view, &[lost]);
+    assert!(c.board.iter().any(|o| o.kind == MissionKind::Resupply));
+    let ev = c.tick(tuning::SUPPLY_AI_WAIT + 1.0, &view, &[]);
+    let Some(&CampaignEvent::SupplyLaunched { tag, .. }) =
+        ev.iter().find(|e| matches!(e, CampaignEvent::SupplyLaunched { .. }))
+    else {
+        panic!("no second helicopter")
+    };
+    let ev = c.tick(1.0, &view, &[Report::SupplyDelivered { tag }]);
+    assert!(ev.contains(&CampaignEvent::Restocked { aaa: 0 }));
+    assert!(c.supply_requests.is_empty());
+    // A new request is possible again.
+    request(&mut c, at);
+}
+
+#[test]
+fn a_player_delivers_a_resupply_by_hovering_at_the_unit() {
+    let (mut c, view, at) = battery_view();
+    request(&mut c, at);
+    c.tick(1.0, &view, &[]);
+    let offer = c.board.iter().find(|o| o.kind == MissionKind::Resupply).unwrap().id;
+    let take = |a| Command::TakeMission { offer, base: None, aircraft: a };
+    assert!(c.apply(P0, take(Aircraft::F16)).is_err());
+    c.apply(P0, take(Aircraft::UH60)).unwrap();
+    // While he flies it, no AI helicopter.
+    let flying = WorldView {
+        players: vec![PlayerPos {
+            id: P0,
+            x: at.0 + 0x200,
+            y: at.1,
+            airborne: true,
+            landed: false,
+            hover_over: None,
+        }],
+        ..view.clone()
+    };
+    for _ in 0..40 {
+        let ev = c.tick(10.0, &flying, &[]);
+        assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::SupplyLaunched { .. })));
+    }
+    let hover = WorldView {
+        players: vec![PlayerPos {
+            id: P0,
+            x: at.0,
+            y: at.1,
+            airborne: true,
+            landed: false,
+            hover_over: Some(0),
+        }],
+        ..view.clone()
+    };
+    let mut ev = Vec::new();
+    for _ in 0..(tuning::SUPPLY_HOVER_SECONDS as i32 + 1) {
+        ev.extend(c.tick(1.0, &hover, &[]));
+    }
+    assert!(ev.contains(&CampaignEvent::Restocked { aaa: 0 }), "{ev:?}");
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { player: P0, .. })));
+    assert!(c.supply_requests.is_empty());
+    let ev = c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
+    let Some(CampaignEvent::SortieFinished { record, .. }) =
+        ev.iter().find(|e| matches!(e, CampaignEvent::SortieFinished { .. }))
+    else {
+        panic!()
+    };
+    assert_eq!(record.result, SortieResult::Success);
+}
+
+#[test]
+fn a_resupply_for_a_lost_unit_is_called_off() {
+    let (mut c, mut view, at) = battery_view();
+    request(&mut c, at);
+    c.tick(1.0, &view, &[]);
+    assert!(c.board.iter().any(|o| o.kind == MissionKind::Resupply));
+    view.aaa[0].alive = false;
+    c.tick(1.0, &view, &[]);
+    c.tick(tuning::BOARD_REFRESH, &view, &[]);
+    assert!(c.supply_requests.is_empty());
+    assert!(!c.board.iter().any(|o| o.kind == MissionKind::Resupply));
 }

@@ -303,8 +303,29 @@ impl Host {
         if matches!(cmd, StationCmd::Man { .. }) && self.state.sortie(player).is_some() {
             return Err("Finish your sortie first".into());
         }
+        if cmd == StationCmd::RequestResupply {
+            return self.request_resupply(sim, player);
+        }
         sim.station_command(player.0, cmd)?;
         Ok(Vec::new())
+    }
+
+    /// A player at an air defence console asks for a new stockpile for its unit: the request
+    /// goes on the board.
+    fn request_resupply(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+    ) -> Result<Vec<HostEvent>, String> {
+        let k = sim.station_of(player.0).ok_or("Not at a console")?.unit as usize;
+        let u = sim.aaa_units()[k];
+        if sim.stockpile(k) >= stealth_sim::station::initial_stock(u.kind) {
+            return Err("The stockpile is full".into());
+        }
+        let patriot = u.kind == stealth_sim::aaa::AaaKind::PatriotRadar;
+        let cmd = Command::RequestResupply { aaa: k as u32, x: u.x, y: u.y, patriot };
+        let events = self.state.apply(player, cmd)?;
+        Ok(self.apply(sim, events))
     }
 
     /// `real` seconds of wall clock: the air defence's refills (they take real time whatever
@@ -357,6 +378,9 @@ impl Host {
                 }
                 SimEvent::CampaignFlightLanded { tag, x, y, .. } => {
                     reports.push(Report::FlightLanded { tag, x, y })
+                }
+                SimEvent::CampaignFlightDelivered { tag, .. } => {
+                    reports.push(Report::SupplyDelivered { tag })
                 }
                 SimEvent::ObjectiveDone { primary: true } => {
                     if let Some(Objective::Recon { object, .. }) =
@@ -454,6 +478,10 @@ impl Host {
                     sim.spawn_awacs(*from as usize, *x, *y, *tag, *side == Side::Blue);
                 }
                 CampaignEvent::Recall { tag } => sim.recall_flight(*tag),
+                CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
+                    sim.spawn_supply(*from as usize, *aaa as usize, *tag);
+                }
+                CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
                 CampaignEvent::GunRepaired { place } => {
                     if let Some(p) = self.state.place(*place) {

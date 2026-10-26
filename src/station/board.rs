@@ -1,6 +1,6 @@
 //! The console's board: the track list (the radar's picture, a track clicked there is the
 //! selected one on the air picture too) or the site's status (launchers, missiles ready,
-//! stockpile, refills; a Gepard's rounds).
+//! stockpile, refills; a Gepard's rounds) with the resupply request for a new stockpile.
 
 use bevy::prelude::*;
 use stealth_sim::Sim;
@@ -22,6 +22,9 @@ const STATUS_TOP: f32 = 278.0;
 /// The site page's rows: first and height.
 const SITE_TOP: f32 = 34.0;
 const SITE_ROW: f32 = 34.0;
+/// The site page's resupply button: top and height.
+const RESUPPLY_TOP: f32 = 238.0;
+const RESUPPLY_H: f32 = 32.0;
 /// Text height and pen.
 const TEXT: f32 = 6.0;
 const PEN: f32 = 0.9;
@@ -31,6 +34,7 @@ pub(super) enum Clicked {
     Track(usize),
     Tab(Tab),
     Launcher(usize),
+    Resupply,
 }
 
 /// The track list: the latest picture's aircraft, nearest first (missiles are not listed).
@@ -67,6 +71,9 @@ pub(super) fn click(ui: &ConsoleUi, sim: &Sim, launchers: &[usize], uv: Vec2) ->
                 return None;
             }
             rows.get(first + k as usize).and_then(|t| t.unit).map(Clicked::Track)
+        }
+        Tab::Site if (RESUPPLY_TOP..RESUPPLY_TOP + RESUPPLY_H).contains(&at.y) => {
+            Some(Clicked::Resupply)
         }
         Tab::Site => {
             let k = ((at.y - SITE_TOP) / SITE_ROW).floor();
@@ -109,6 +116,9 @@ pub(super) fn draw(
         Tab::Tracks => tracks(cv, &ui),
         Tab::Site if m.gepard => gepard(cv, sim, m.unit),
         Tab::Site => battery(cv, sim, &ui, m.unit),
+    }
+    if ui.tab == Tab::Site {
+        resupply(cv, sim, c.state(), m.unit);
     }
     // The status line: mode, lock, the last refused command.
     let st = sim.station_of(c.me.0);
@@ -308,6 +318,45 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         CYAN,
         Align::Left,
     );
+}
+
+/// The resupply button, or how the request stands: on the board (the AI's helicopter takes it
+/// after a while), or a helicopter on its way.
+fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, unit: usize) {
+    use stealth_campaign::{Objective, SupplyState};
+    let w = BOARD_CANVAS.0 as f32;
+    let request = st.supply_requests.iter().find(|r| r.aaa as usize == unit);
+    let flown_by = |id: u32| {
+        st.players
+            .iter()
+            .find(|p| {
+                p.sortie
+                    .as_ref()
+                    .is_some_and(|s| s.offer.objective == Objective::Resupply { request: id })
+            })
+            .map(|p| p.name.to_ascii_uppercase())
+    };
+    let full = sim.aaa_units().get(unit).is_some_and(|u| {
+        sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind)
+    });
+    let (text, col, button) = match request.map(|r| (r.id, r.state)) {
+        None if full => ("STOCKPILE FULL".to_string(), GREY, true),
+        None => ("REQUEST RESUPPLY".to_string(), WHITE, true),
+        Some((id, SupplyState::Open { since })) => match flown_by(id) {
+            Some(name) => (format!("RESUPPLY: {name} ON THE WAY"), CYAN, false),
+            None => {
+                let wait = stealth_campaign::tuning::SUPPLY_AI_WAIT;
+                let left = (wait - (st.clock - since)).max(0.0) as f32;
+                (format!("RESUPPLY ON THE BOARD - AI IN {}", mmss(left)), YELLOW, false)
+            }
+        },
+        Some((_, SupplyState::Ai { .. })) => ("RESUPPLY: AI UH-60 ON THE WAY".into(), CYAN, false),
+    };
+    let (a, b) = (Vec2::new(6.0, RESUPPLY_TOP), Vec2::new(w - 6.0, RESUPPLY_TOP + RESUPPLY_H));
+    if button {
+        cv.frame(a, b, 1.0, col);
+    }
+    stroke_text_at(cv, w / 2.0, RESUPPLY_TOP + RESUPPLY_H / 2.0, &text, 7.0, 1.0, col, Align::Centre);
 }
 
 fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {

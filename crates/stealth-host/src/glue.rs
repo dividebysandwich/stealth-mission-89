@@ -75,7 +75,8 @@ pub fn world_view(sim: &Sim) -> WorldView {
             // A helicopter flies low: off the ground is airborne.
             let landed = sim.pilot_landed(id);
             let airborne = if sim.pilot_helicopter(id) { !landed } else { p.alt > 50 };
-            Some(PlayerPos { id: PlayerId(id), x: p.mx, y: p.my, airborne, landed })
+            let hover_over = sim.pilot_over_unit(id).map(|k| k as u32);
+            Some(PlayerPos { id: PlayerId(id), x: p.mx, y: p.my, airborne, landed, hover_over })
         })
         .collect();
     WorldView { aaa, flights, players }
@@ -148,7 +149,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         | MissionKind::Intercept
         | MissionKind::Defend
         | MissionKind::Csar
-        | MissionKind::Awacs => [1, 0, 1, 0],
+        | MissionKind::Awacs
+        | MissionKind::Resupply => [1, 0, 1, 0],
     }
 }
 
@@ -260,6 +262,7 @@ pub fn airborne(kind: MissionKind) -> bool {
             | MissionKind::Defend
             | MissionKind::Csar
             | MissionKind::Awacs
+            | MissionKind::Resupply
     )
 }
 
@@ -318,6 +321,10 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
             format!("The city of {}: its stores and factories feed the enemy.", site(object))
         }
         Objective::AntiShip { .. } => "An enemy ship off the coast.".into(),
+        Objective::Resupply { request } => match state.supply_request(request) {
+            Some(r) => format!("The {} needs a new stockpile. {}", r.title(), describe(o.kind)),
+            None => describe(o.kind).into(),
+        },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {
             match state.insertion_status(insertion) {
                 Some(t) => format!("{t}. {}", describe(o.kind)),
@@ -359,6 +366,9 @@ pub fn describe(kind: MissionKind) -> &'static str {
         }
         MissionKind::Awacs => {
             "Shoot down the enemy AWACS: while it is up the enemy sends more patrols, and sends them at you"
+        }
+        MissionKind::Resupply => {
+            "Fly the stockpile from the airfield to the air defence unit: hover below 10 m within 50 m of it for 10 s while the load goes down"
         }
     }
 }

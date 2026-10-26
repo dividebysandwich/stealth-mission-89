@@ -80,6 +80,9 @@ pub enum StationCmd {
     Refill {
         unit: u16,
     },
+    /// Ask for a helicopter with a new stockpile (the campaign's business: it goes on the
+    /// mission board).
+    RequestResupply,
 }
 
 /// A manned console.
@@ -116,8 +119,8 @@ pub struct SavedStock {
     pub stock: i32,
 }
 
-/// The stockpile a unit starts with.
-pub(crate) fn initial_stock(kind: AaaKind) -> i32 {
+/// The stockpile a unit starts with (and a resupply brings it back to).
+pub fn initial_stock(kind: AaaKind) -> i32 {
     match kind {
         AaaKind::PatriotRadar => PATRIOT_STOCK,
         AaaKind::Gepard => GEPARD_STOCK,
@@ -255,6 +258,7 @@ impl Sim {
             StationCmd::Fire { launcher } => self.station_fire(st, launcher.map(|l| l as usize))?,
             StationCmd::Burst => self.station_burst(at)?,
             StationCmd::Refill { unit } => self.start_refill(st.unit as usize, unit as usize)?,
+            StationCmd::RequestResupply => return Err("Resupply goes through the campaign".into()),
         }
         Ok(())
     }

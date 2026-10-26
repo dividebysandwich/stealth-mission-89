@@ -24,6 +24,7 @@ mod radar;
 pub mod relief;
 pub mod score;
 pub mod station;
+pub mod supply;
 mod targeting;
 mod tiles;
 mod weapons;

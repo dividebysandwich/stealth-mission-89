@@ -226,3 +226,8 @@ pub const DRONE_WAVE: usize = 6;
 pub const DRONE_LEAD: f64 = 180.0;
 pub const DRONE_RANGE: i32 = 0x4B00;
 pub const DRONE_COST: f64 = 12.0;
+
+/// Resupply: an AI helicopter flies a request nobody has taken for this long (s), and a
+/// player's drop takes this long hovering at the unit (s).
+pub const SUPPLY_AI_WAIT: f64 = 5.0 * 60.0;
+pub const SUPPLY_HOVER_SECONDS: f64 = 10.0;

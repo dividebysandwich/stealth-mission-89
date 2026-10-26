@@ -300,8 +300,33 @@ fn build_scenery(
         }
         exit.write(AppExit::Success);
     }
+    // `--write-helipads`: save the airfields' helipads for the simulation (its resupply
+    // helicopters lift off there) and quit.
+    if std::env::args().any(|a| a == "--write-helipads") {
+        let path = stealth_host::assets::asset(&format!("theaters/{}.helipads", theater.id));
+        match std::fs::write(&path, helipads_ron(&fields)) {
+            Ok(()) => info!("helipads written to {}", path.display()),
+            Err(e) => error!("{}: {e}", path.display()),
+        }
+        exit.write(AppExit::Success);
+    }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
     commands.insert_resource(Scenery { style, ground, net, airfields: fields, clearings: vec![] });
+}
+
+/// The airfields' helipads as the simulation reads them (`TheaterTiles::read_helipads`): a RON
+/// list of world unit points, x east, y south.
+fn helipads_ron(fields: &[airfield::Airfield]) -> String {
+    let wu = network::THEATER_M / 1_048_576.0;
+    let pads: Vec<String> = fields
+        .iter()
+        .filter_map(|a| a.helipad)
+        .map(|(c, _)| {
+            let (x, y) = ((c.x / wu).round() as i32, (1_048_576.0 - c.y / wu).round() as i32);
+            format!("    ({x}, {y}),\n")
+        })
+        .collect();
+    format!("[\n{}]\n", pads.concat())
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the

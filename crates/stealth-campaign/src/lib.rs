@@ -25,6 +25,7 @@ mod director;
 mod events;
 mod missions;
 mod record;
+mod resupply;
 pub mod rng;
 mod state;
 mod supply;
@@ -73,6 +74,10 @@ pub struct PlayerPos {
     /// A helicopter stopped on the ground (anywhere).
     #[serde(default)]
     pub landed: bool,
+    /// A helicopter hovering low at a friendly air defence unit (AAA index) for a resupply
+    /// drop.
+    #[serde(default)]
+    pub hover_over: Option<u32>,
 }
 
 /// Something that happened in the simulation.
@@ -116,6 +121,10 @@ pub enum Report {
         x: i32,
         y: i32,
     },
+    /// A campaign resupply helicopter set its load down at its air defence unit.
+    SupplyDelivered {
+        tag: u32,
+    },
 }
 
 /// A player's request.
@@ -139,6 +148,9 @@ pub enum Command {
     Plan { offer: u32, base: ObjectId, route: Vec<RoutePoint> },
     /// Call in AI SEAD against the SAM sites of an offer's place.
     RequestSupport { offer: u32 },
+    /// From an air defence console: a new stockpile for its unit (AAA index, where it stands,
+    /// a Patriot battery or a Gepard).
+    RequestResupply { aaa: u32, x: i32, y: i32, patriot: bool },
 }
 
 /// What the authority has to do or show.
@@ -237,6 +249,18 @@ pub enum CampaignEvent {
         #[serde(default)]
         task: FighterTask,
     },
+    /// A resupply helicopter (tag) takes off from a base's helipad for an air defence unit
+    /// (AAA index).
+    SupplyLaunched {
+        id: u32,
+        from: ObjectId,
+        aaa: u32,
+        tag: u32,
+    },
+    /// A resupply was delivered: the air defence unit's (AAA index) stockpile is full again.
+    Restocked {
+        aaa: u32,
+    },
     /// The enemy pushes a battery of guns forward to (x, y).
     BatteryDeployed {
         id: u32,
@@ -263,6 +287,9 @@ impl CampaignState {
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),
+            Command::RequestResupply { aaa, x, y, patriot } => {
+                self.request_resupply(player, aaa, x, y, patriot)
+            }
         }
     }
 
@@ -291,6 +318,7 @@ impl CampaignState {
         self.run_awacs(&mut ev);
         self.drone_waves(&mut ev);
         self.forward_batteries(view, &mut ev);
+        self.run_resupply(view, &mut ev);
         if self.check_outcome(&mut ev) {
             return ev;
         }
@@ -339,6 +367,11 @@ impl CampaignState {
         // The batteries' guns are placed again.
         for b in &mut self.batteries {
             b.seen = false;
+        }
+        // A resupply helicopter in the air is gone: the request is back on the board.
+        let now = self.clock;
+        for r in &mut self.supply_requests {
+            r.state = SupplyState::Open { since: now };
         }
         self.board_at = f64::MIN;
         for p in &mut self.plans {

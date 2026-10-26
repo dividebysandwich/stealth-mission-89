@@ -341,6 +341,22 @@ impl CampaignState {
                     }
                     _ => p.landed_secs = 0.0,
                 }
+                // The resupply's load goes down while it hovers low at the unit.
+                if let Objective::Resupply { request } = s.offer.objective
+                    && !p.delivered
+                {
+                    let unit = self
+                        .supply_request(request)
+                        .filter(|r| matches!(r.state, SupplyState::Open { .. }))
+                        .map(|r| r.aaa);
+                    let over = view.players.iter().find(|q| q.id == id).and_then(|q| q.hover_over);
+                    if unit.is_some() && over == unit {
+                        p.hover_secs += dt;
+                        p.delivered = p.hover_secs >= SUPPLY_HOVER_SECONDS;
+                    } else {
+                        p.hover_secs = 0.0;
+                    }
+                }
                 if p.aboard
                     && !p.delivered
                     && let Some(me) = landed
@@ -407,6 +423,9 @@ impl CampaignState {
             if let Objective::Rescue { downed } = objective {
                 self.rescued(downed, ev);
             }
+            if let Objective::Resupply { request } = objective {
+                self.resupplied(request, Some(player), ev);
+            }
             self.note(format!("{title}: objective achieved"));
             ev.push(CampaignEvent::ObjectiveAchieved { player, title });
             self.package(player, ev);
@@ -450,6 +469,7 @@ impl CampaignState {
             Objective::Interdict { object, .. } => !self.site(*object).is_some_and(Site::alive),
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
+            Objective::Resupply { .. } => p.delivered,
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()
