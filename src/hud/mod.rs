@@ -165,7 +165,8 @@ pub struct Waypoint {
 pub struct Waypoints {
     pub points: Vec<Waypoint>,
     pub current: usize,
-    /// Waypoint the mission logic selected last; Shift-F8 returns to it.
+    /// Waypoint the mission logic selected or the aircraft reached last; Shift-F8 returns to
+    /// it, the WAY page shows the ones before it as passed.
     pub mission_current: usize,
     /// Index of the mission's waypoints 0..3 (midpoint, primary, secondary, landing base) in
     /// a planned route; empty: the points are the mission's own 4.
@@ -453,6 +454,7 @@ fn advance_waypoints(
     let (dx, dy) = ((wp.east / 32.0) as i32 - x, (0x8000 - (wp.north / 32.0) as i32) - y);
     if ((dx * dx + dy * dy) as f64).sqrt() < 512.0 && wps.current + 1 < wps.points.len() {
         wps.current += 1;
+        wps.mission_current = wps.current;
         msg.show(format!("Waypoint {} reached", wps.current));
     }
     if let Some(wp) = wps.target() {
