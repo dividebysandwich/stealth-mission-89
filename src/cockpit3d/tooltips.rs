@@ -339,11 +339,6 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
     let (title, detail): (String, &str) = match elem {
         Elem::Lamp(id, label) => {
             let detail = match id {
-                LampId::Mw => {
-                    let name = label.unwrap_or(LAMPS[id as usize].1).replace('\n', " ");
-                    let detail = "Lit with a missile warning; press to silence the alarms";
-                    return Some(Tip::new(name, detail, &[Action::MasterCaution]));
-                }
                 LampId::Stall => "Airspeed below stall speed (blinks)",
                 LampId::Trak => "An enemy radar tracks the aircraft",
                 LampId::Ir => "An infrared missile is in flight",

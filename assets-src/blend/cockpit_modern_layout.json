@@ -169,9 +169,9 @@
       "round": false
     },
     {
-      "control": null,
+      "control": "Action(MasterCaution)",
       "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
-      "kind": null,
+      "kind": "cap",
       "rect": [
         -168.0,
         -96.0,

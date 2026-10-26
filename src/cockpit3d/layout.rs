@@ -217,7 +217,8 @@ impl PanelLayout {
             (284.0, 123.0, 25.0, 8.0),
             (302.0, 179.0, 13.0, 7.0),
         ];
-        let caps: [(LampId, Effect); 19] = [
+        let caps: [(LampId, Effect); 20] = [
+            (Mw, E::Action(Action::MasterCaution)),
             (Nav, E::HudMode(0)),
             (Air, E::HudMode(1)),
             (Gnd, E::HudMode(2)),
@@ -376,7 +377,8 @@ impl PanelLayout {
         }
         // Warning lights over the side MFDs' inner corners: master caution, stall and the
         // threat lights left; fire, engine, flight controls and jammer / avionics damage right.
-        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-168.0, -96.0, 40.0, 14.0), None, false);
+        let mc = Some(E::Action(Action::MasterCaution));
+        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-168.0, -96.0, 40.0, 14.0), mc, false);
         put(Elem::Lamp(Stall, None), rect(-126.0, -96.0, 24.0, 14.0), None, false);
         put(Elem::Lamp(Trak, Some("TRACK")), rect(-168.0, -80.0, 20.0, 11.0), None, false);
         put(Elem::Lamp(Ir, None), rect(-146.0, -80.0, 20.0, 11.0), None, false);
@@ -703,7 +705,8 @@ impl PanelLayout {
         const CAUTION: (u8, u8) = (16, 43);
         // Left eyebrow under the glare shield: master caution, the stall warning and the
         // game's radar track and IR launch warnings.
-        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-262.0, -154.0, 50.0, 20.0), None, false);
+        let mc = Some(E::Action(Action::MasterCaution));
+        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-262.0, -154.0, 50.0, 20.0), mc, false);
         put(Elem::Lamp(Stall, None), rect(-262.0, -131.0, 50.0, 11.0), None, false);
         put(Elem::Lamp(Trak, Some("TRACK")), rect(-262.0, -117.0, 24.0, 11.0), None, false);
         put(Elem::Lamp(Ir, Some("IR")), rect(-236.0, -117.0, 24.0, 11.0), None, false);

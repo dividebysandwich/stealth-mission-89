@@ -236,8 +236,11 @@ fn atlas_scale(style: PanelStyle) -> i32 {
 /// The faces of the instrument atlas and their panel rectangles.
 pub(super) fn atlas_faces(layout: &PanelLayout) -> Vec<(Face, PxRect)> {
     let modern = layout.style != PanelStyle::Classic;
+    // The master caution is a push-light: lit in its warning colours, not a button's.
     let face_of = |p: &Placed| match p.elem {
-        Elem::Lamp(id, label) if modern && p.cap.is_some() => Face::Button(id, label),
+        Elem::Lamp(id, label) if modern && p.cap.is_some() && id != LampId::Mw => {
+            Face::Button(id, label)
+        }
         Elem::Gauge if modern => Face::LedBars,
         elem => Face::Item(elem),
     };

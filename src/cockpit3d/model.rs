@@ -36,9 +36,6 @@
 //! * `lamp` ([r, g, b], linear) and `range`: a flood lamp (with the local lights option).
 //! * `no_shadow`: casts no shadow.
 //!
-//! The master caution light (the `atlas_face` of the `Mw` lamp) is pushable as it is: pressed,
-//! it silences the alarms.
-//!
 //! Every mesh but the HUD glass is `Solid` (the mouse points at it); the levers, the displays
 //! and the atlas faces that are not buttons get their tooltips (`Tip`).
 //!
@@ -57,7 +54,7 @@ use bevy::prelude::*;
 use super::controls::{Control, Highlight, Moving};
 use super::displays::{self, CanvasRole, Face, LitMaterial, PanelMaterials, TrackCamScreen};
 use super::hud_glass::HudGlassMaterial;
-use super::layout::{Effect, PanelLayout};
+use super::layout::PanelLayout;
 use super::levers::{CockpitAnchors, Stick, ThrottleLever};
 use super::pick::Solid;
 use super::shading::{CockpitMaterial, cockpit_material};
@@ -265,19 +262,10 @@ impl<'a> Spawner<'a> {
             .and_then(|x| serde_json::from_str(&x.value).ok())
             .unwrap_or_default();
         let at = parent * node.transform;
-        let push_light = (extras.get("control").is_none()
-            && extras["atlas_face"].as_str().is_some_and(|f| f.starts_with("Item(Lamp(Mw,")))
-        .then(|| self.face_half(assets, node))
-        .flatten()
-        .map(|half| Control::push_light(Effect::Action(crate::input::Action::MasterCaution), half));
-        let pushable = push_light.is_some();
         let e = commands
             .spawn((Name::new(node.name.clone()), node.transform, Visibility::default()))
             .id();
         let mut ec = commands.entity(e);
-        if let Some(c) = push_light {
-            ec.insert(c);
-        }
         if extras.get("control").is_some() {
             match Control::from_model(&extras) {
                 Some(c) => {
@@ -330,7 +318,6 @@ impl<'a> Spawner<'a> {
         let no_shadow = extras["no_shadow"].as_bool() == Some(true);
         // What moves, lights up or is shown and hidden, with all under it.
         let moves = moves
-            || pushable
             || ["control", "moving", "highlight", "stick", "throttle"]
                 .iter()
                 .any(|k| extras.get(k).is_some_and(|v| !v.is_null()));
@@ -502,17 +489,6 @@ impl<'a> Spawner<'a> {
             ))
             .id();
         commands.entity(screen).add_child(child);
-    }
-
-    /// Half size (x, y) of a flat face object's mesh around its origin.
-    fn face_half(&self, assets: &ModelAssets, node: &GltfNode) -> Option<Vec2> {
-        let mesh = assets.meshes.get(node.mesh.as_ref()?)?;
-        let m = self.meshes.get(&mesh.primitives.first()?.mesh)?;
-        let Some(VertexAttributeValues::Float32x3(p)) = m.attribute(Mesh::ATTRIBUTE_POSITION)
-        else {
-            return None;
-        };
-        p.iter().map(|v| Vec2::new(v[0].abs(), v[1].abs())).reduce(Vec2::max)
     }
 
     /// The face's mesh with its UVs moved to the face's place in the instrument atlas.
@@ -785,6 +761,10 @@ mod tests {
             assert!(travel > 0.15, "{name}: throttle travel {travel} m");
             assert!(extras.iter().any(|x| x["kind"] == "eject"), "{name}: ejection handle");
             assert!(extras.iter().any(|x| x["control"] == "Action(Menu)"), "{name}: MENU button");
+            assert!(
+                extras.iter().any(|x| x["control"] == "Action(MasterCaution)"),
+                "{name}: master caution button"
+            );
             let keys: Vec<String> = atlas_faces(&PanelLayout::for_style(style))
                 .iter()
                 .map(|(f, _)| format!("{f:?}"))
