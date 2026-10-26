@@ -176,11 +176,18 @@ pub fn block_input(
     mut block: ResMut<crate::input::InputBlock>,
     settings: Res<crate::settings::Settings>,
     mut hide: ResMut<crate::camera::HideOwnAircraft>,
+    mut console: ResMut<crate::input::ConsoleStick>,
 ) {
-    // At an air defence console the flight's controls are off too (its buttons are clicked).
-    let want = c.screen_open() || menu.open || matches!(c.phase, super::Phase::Station { .. });
+    // At an air defence console the flight's controls are off too (its buttons are clicked),
+    // but for the stick and the triggers (its gun's).
+    let station = matches!(c.phase, super::Phase::Station { .. });
+    let want = c.screen_open() || menu.open || station;
     if block.0 != want {
         block.0 = want;
+    }
+    let stick = station && !c.screen_open() && !menu.open;
+    if console.0 != stick {
+        console.0 = stick;
     }
     // VR: the parked aircraft and its cockpit are not drawn around the Ops screen (the
     // in-flight menu's screen is in the cockpit: then it is drawn).

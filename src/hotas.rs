@@ -739,7 +739,7 @@ pub fn read_hotas(
     config: Res<InputConfig>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    block: Res<crate::input::InputBlock>,
+    (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
 ) {
     hotas.poll();
     if block.0 {
@@ -751,9 +751,16 @@ pub fn read_hotas(
                 actions.write(ActionEvent(Action::Menu));
             }
         }
-        return;
+        if !console.0 {
+            return;
+        }
     }
+    // At a console only the stick and the triggers pass.
+    let console = block.0;
     for m in &config.axes {
+        if console && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch) {
+            continue;
+        }
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
         let v = m.output(raw);
         match m.control {
@@ -785,13 +792,16 @@ pub fn read_hotas(
                     }
                     continue;
                 }
+                controls.fire |= now && a == Action::FireWeapon;
+                if console {
+                    continue;
+                }
                 if let Some(d) = a.trim_direction() {
                     if now {
                         controls.trim += d;
                     }
                     continue;
                 }
-                controls.fire |= now && a == Action::FireWeapon;
                 controls.mark |= now && a == Action::LockCursor;
                 if now && !hotas.active(&m.device, m.source, true) {
                     actions.write(ActionEvent(a));

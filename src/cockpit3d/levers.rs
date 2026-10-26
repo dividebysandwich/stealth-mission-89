@@ -241,7 +241,7 @@ pub(super) fn grab_levers(
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
     aircraft: Query<&Aircraft, With<Player>>,
-    block: Res<crate::input::InputBlock>,
+    (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
     anchors: Res<CockpitAnchors>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     k: Res<FlightConstants>,
@@ -421,8 +421,9 @@ pub(super) fn grab_levers(
                 input => (hand.held(vr_bit(input)), hand.just_pressed(vr_bit(input))),
             };
             match m.target {
-                ButtonTarget::Gun => controls.gun |= held,
-                ButtonTarget::Action(Action::FireWeapon) if held && !block.0 => {
+                // At an air defence console the trigger (fire) fires its gun, not the gun button.
+                ButtonTarget::Gun => controls.gun |= held && !block.0,
+                ButtonTarget::Action(Action::FireWeapon) if held && (!block.0 || console.0) => {
                     controls.fire = true;
                     if pressed {
                         actions.write(ActionEvent(Action::FireWeapon));
