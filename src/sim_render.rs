@@ -562,10 +562,9 @@ fn sync_aaa(
         }
     }
 
-    // Tracers: the Shilkas' shells (an S-60 shell is only seen when it bursts), also those
-    // the guns fire at AI aircraft in a campaign.
-    let shells: Vec<_> =
-        sim.aaa_shells().iter().chain(sim.ai_shells()).filter(|s| !s.flak).collect();
+    // Tracers: every gun's shells (the flak's too, until they burst), also those the guns
+    // fire at AI aircraft in a campaign, friendly and enemy.
+    let shells: Vec<_> = sim.aaa_shells().iter().chain(sim.ai_shells()).collect();
     let material = av
         .material
         .get_or_insert_with(|| {
