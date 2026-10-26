@@ -16,6 +16,9 @@
 //! The value is a comma separated list: `1` (or `on`) profiles everything every 10 seconds,
 //! `cpu` leaves out the GPU timestamps (a tiled GPU may render passes differently with them),
 //! `<n>s` reports every n seconds. E.g. `SM89_PROFILE=1`, `SM89_PROFILE=cpu,30s`.
+//!
+//! `SM89_SPIKE=<ms>` (with `SM89_PROFILE`): each frame slower than that logs its top spans
+//! (hitches: loading, switching views).
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
@@ -143,6 +146,15 @@ struct CpuStat {
 /// Time spent in each span label since the last report.
 static CPU: LazyLock<Mutex<HashMap<Arc<str>, CpuStat>>> = LazyLock::new(Default::default);
 
+/// Time spent in each span label this frame (`SM89_SPIKE`).
+static FRAME: LazyLock<Mutex<HashMap<Arc<str>, Duration>>> = LazyLock::new(Default::default);
+
+/// `SM89_SPIKE=<ms>`: frames slower than this log their top spans.
+fn spike_ms() -> Option<f32> {
+    static MS: OnceLock<Option<f32>> = OnceLock::new();
+    *MS.get_or_init(|| std::env::var("SM89_SPIKE").ok()?.parse().ok())
+}
+
 /// Per span: its report label and when it was entered.
 struct SpanTiming {
     label: Arc<str>,
@@ -209,6 +221,10 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for SpanTimer {
         let dt = start.elapsed();
         let label = t.label.clone();
         drop(ext);
+        if spike_ms().is_some() {
+            let mut f = FRAME.lock().unwrap_or_else(|e| e.into_inner());
+            *f.entry(label.clone()).or_default() += dt;
+        }
         let mut cpu = CPU.lock().unwrap_or_else(|e| e.into_inner());
         let s = cpu.entry(label).or_default();
         s.total += dt;
@@ -296,6 +312,21 @@ fn report(
     if let Some(l) = r.last_frame {
         let ms = (now - l).as_secs_f32() * 1000.0;
         r.frames.push(ms);
+        if let Some(limit) = spike_ms() {
+            let mut spans: Vec<_> =
+                std::mem::take(&mut *FRAME.lock().unwrap_or_else(|e| e.into_inner()))
+                    .into_iter()
+                    .collect();
+            if ms > limit {
+                spans.sort_by_key(|(_, t)| std::cmp::Reverse(*t));
+                let mut out = format!("spike: {ms:.1} ms frame");
+                for (label, t) in spans.iter().take(25) {
+                    let l: String = label.chars().take(110).collect();
+                    out.push_str(&format!("\n    {:8.2}  {l}", t.as_secs_f64() * 1000.0));
+                }
+                info!("{out}");
+            }
+        }
     } else {
         // Start up and loading are not part of the first report.
         CPU.lock().unwrap_or_else(|e| e.into_inner()).clear();
