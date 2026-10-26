@@ -29,7 +29,7 @@ impl Plugin for HudPlugin {
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_hud)
             .add_systems(
                 Update,
-                (hud_keys, update_messages, advance_waypoints, track_max_g)
+                (hud_keys, update_messages, track_throttle, advance_waypoints, track_max_g)
                     .after(crate::flight::FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
             );
@@ -83,6 +83,10 @@ pub struct HudMessages {
     pub accel: bool,
     /// "TRAINING".
     pub training: bool,
+    /// The throttle setting last seen (percent) and the seconds its readout stays up since it
+    /// last changed.
+    pub throttle: Option<f32>,
+    pub throttle_timer: f32,
 }
 
 /// Damage flash request: rows 0..89 are filled with colour 0x0D for one frame in the cockpit
@@ -395,6 +399,24 @@ fn update_messages(time: Res<Time>, mut msg: ResMut<HudMessages>) {
     }
 }
 
+/// How long the throttle readout stays up after the throttle last moved (seconds).
+const THROTTLE_READOUT_S: f32 = 1.0;
+
+/// The throttle readout: up while the throttle moves, and a second after.
+fn track_throttle(
+    time: Res<Time>,
+    aircraft: Query<&Aircraft, With<Player>>,
+    mut msg: ResMut<HudMessages>,
+) {
+    let Ok(a) = aircraft.single() else { return };
+    if msg.throttle.is_some_and(|t| t != a.set_thrust) {
+        msg.throttle_timer = THROTTLE_READOUT_S;
+    } else {
+        msg.throttle_timer = (msg.throttle_timer - time.delta_secs()).max(0.0);
+    }
+    msg.throttle = Some(a.set_thrust);
+}
+
 /// Map units (wu >> 5, y growing southward) of a world position.
 pub fn map_units(pos: &WorldPos) -> (i32, i32) {
     let (e, n, _) = bevy_to_wu(pos.0);
@@ -466,6 +488,8 @@ pub struct HudFrame {
     /// A turret gun's slave ("HMS" / "TGP", `Stores::gun_slave`).
     pub gun_slave: Option<&'static str>,
     pub message: Option<String>,
+    /// The throttle setting (percent) while it is changing.
+    pub throttle: Option<i32>,
     pub accel: bool,
     pub training: bool,
     /// Tracking camera selected on the right MFD: camera sight cross.
@@ -593,6 +617,11 @@ impl HudParams<'_, '_> {
             gun_selected: self.stores.gun_selected,
             gun_slave: self.stores.gun_slave,
             message: (self.messages.timer > 0.0).then(|| self.messages.text.clone()),
+            throttle: self
+                .messages
+                .throttle
+                .filter(|_| self.messages.throttle_timer > 0.0)
+                .map(|t| t.round() as i32),
             accel: self.messages.accel,
             training: self.messages.training,
             camera_sight,
