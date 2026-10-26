@@ -15,6 +15,10 @@ Windows without a Documents folder falls back to `%APPDATA%\stealth-mission-89`.
 `Application Support` because macOS asks the player's permission before a game reads Documents;
 Linux has no "My Games" convention and Documents may not exist (SteamOS).
 
+Up to 0.7 the settings were in the config directory (`~/.config/stealth-mission-89` on Linux) and
+the pilots and campaigns in the data directory (`%APPDATA%\stealth-mission-89` on Windows). The
+first start without a `config` folder copies them over; the old files are left where they were.
+
 ## Layout
 
 | Path | What | Synced by Steam Cloud |

@@ -53,11 +53,47 @@ mod imp {
             if cfg!(windows)
                 && let Some(d) = dirs::document_dir()
             {
-                return Some(d.join("My Games").join("Stealth Mission 89"));
+                let root = d.join("My Games").join("Stealth Mission 89");
+                migrate(&root);
+                return Some(root);
             }
-            Some(dirs::data_dir()?.join("stealth-mission-89"))
+            let root = dirs::data_dir()?.join("stealth-mission-89");
+            migrate(&root);
+            Some(root)
         })
         .clone()
+    }
+
+    /// Up to 0.7 the settings were in the config directory and the pilots and campaigns in the
+    /// data directory (each under `stealth-mission-89/`, both `%APPDATA%` on Windows): copied
+    /// into the folder on the first start without its `config/` (the old files stay).
+    fn migrate(root: &std::path::Path) {
+        let config = root.join("config");
+        if config.exists() {
+            return;
+        }
+        let old = |d: Option<PathBuf>| d.map(|d| d.join("stealth-mission-89"));
+        let copy = |from: PathBuf, to: PathBuf| {
+            if from.is_file() && !to.exists() {
+                let _ = std::fs::create_dir_all(to.parent().unwrap_or(root));
+                let _ = std::fs::copy(from, to);
+            }
+        };
+        if let Some(old) = old(dirs::config_dir()) {
+            for f in ["prefs.json", "input.json"] {
+                copy(old.join(f), config.join(f));
+            }
+        }
+        if let Some(old) = old(dirs::data_dir()).filter(|d| d != root) {
+            for dir in ["pilots", "campaigns"] {
+                let Ok(files) = std::fs::read_dir(old.join(dir)) else { continue };
+                for f in files.flatten() {
+                    copy(f.path(), root.join(dir).join(f.file_name()));
+                }
+            }
+        }
+        // Once only, also with nothing to copy.
+        let _ = std::fs::create_dir_all(&config);
     }
 
     /// Where `key` is on disk; None without a home directory.
