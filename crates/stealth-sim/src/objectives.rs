@@ -291,8 +291,8 @@ impl Sim {
         } else {
             self.pl.armed_landing = 1;
         }
-        // Object collision.
-        if ps.collided && !self.pl.external_view {
+        // Object collision (the pilot's eye or the aircraft, in any view).
+        if ps.collided {
             if lm != 0 && self.pl.p.alt != 0 {
                 self.sound(4, 2);
                 self.finalize(2);

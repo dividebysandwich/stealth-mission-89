@@ -17,11 +17,13 @@ mod airfield;
 
 pub use airfield::{GLIDE_PATH_DEG, PapiSite, approach_to};
 pub use network::Rng;
+pub use obstacles::Obstacle;
 mod content;
 mod fields;
 mod geom;
 mod ground;
 mod network;
+mod obstacles;
 mod style;
 
 use std::collections::HashMap;

@@ -151,6 +151,7 @@ pub struct Runway {
     pub half_width: f64,
 }
 
+#[derive(Default)]
 pub struct Ground {
     tris: Vec<FlatTri>,
     tri_index: Index,

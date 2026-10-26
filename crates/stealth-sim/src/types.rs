@@ -459,7 +459,7 @@ pub struct PlayerState {
     pub climb_rate: i32,
     /// Fuel (sim units).
     pub fuel: i32,
-    /// The renderer found the eye inside an object.
+    /// The renderer found the eye inside an object, or the aircraft in the scenery.
     pub collided: bool,
     pub hud_mode: HudMode,
     /// Right MFD shows the tracking camera.

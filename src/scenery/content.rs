@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use super::Scenery;
 use super::fields::{self, Farmland};
 use super::geom::{Geom, rect, ring};
-use super::network::{Building, Kind, Network, Rng, RoadKind, Roof, hash, noise};
+use super::network::{Building, Kind, Network, PowerLine, Rng, RoadKind, Roof, hash, noise};
 use super::style::{Style, Tree};
 
 /// Block size (metres).
@@ -577,7 +577,7 @@ fn lattice(g: &mut Geom, c: Vec3, along: Vec3, sections: &[(f32, f32)], legs: us
 }
 
 /// Conductor attachment points of a pylon (relative, `across` = horizontal unit across the line).
-fn conductors(big: bool, across: Vec3) -> Vec<Vec3> {
+pub(super) fn conductors(big: bool, across: Vec3) -> Vec<Vec3> {
     if big {
         vec![
             across * -8.5 + Vec3::Y * 23.0,
@@ -600,11 +600,7 @@ fn power(net: &Network, f: &Frame, g: &mut Geom) {
         if !f.contains(p) {
             continue;
         }
-        let dir_at = |k: usize| {
-            let a = line.pylons[k.saturating_sub(1)];
-            let b = line.pylons[(k + 1).min(line.pylons.len() - 1)];
-            (b - a).normalize_or_zero()
-        };
+        let dir_at = |k: usize| line_dir(line, k);
         let dir = dir_at(k);
         let across = dir3(dir.perp());
         let c = f.at(p, 0.0);
@@ -625,7 +621,7 @@ fn power(net: &Network, f: &Frame, g: &mut Geom) {
             let cq = f.at(q, 0.0);
             let aq = dir3(dir_at(k + 1).perp());
             let span = p.distance(q) as f32;
-            let sag = if line.big { span * 0.025 } else { 0.5 };
+            let sag = sag(line.big, span);
             for (pa, pb) in conductors(line.big, across).into_iter().zip(conductors(line.big, aq)) {
                 let (a, b) = (c + pa, cq + pb);
                 let n = if line.big { 6 } else { 2 };
@@ -639,6 +635,18 @@ fn power(net: &Network, f: &Frame, g: &mut Geom) {
             }
         }
     }
+}
+
+/// Unit ground direction of a power line at its pylon `k`.
+pub(super) fn line_dir(line: &PowerLine, k: usize) -> DVec2 {
+    let a = line.pylons[k.saturating_sub(1)];
+    let b = line.pylons[(k + 1).min(line.pylons.len() - 1)];
+    (b - a).normalize_or_zero()
+}
+
+/// How far a wire sags at mid-span (metres).
+pub(super) fn sag(big: bool, span: f32) -> f32 {
+    if big { span * 0.025 } else { 0.5 }
 }
 
 /// The tree or bush growing in tree grid cell (`gx`, `gy`), if one does: where, whether it is
@@ -680,6 +688,28 @@ fn tree_in_cell(sc: &Scenery, style: &Style, gx: i64, gy: i64) -> Option<(DVec2,
     Some((p, bush, rng))
 }
 
+/// What grows in a tree grid cell.
+enum Grows {
+    /// A bush of this radius.
+    Bush(f32),
+    /// A tree: its kind, height and turn.
+    Tree(Tree, f32, f32),
+}
+
+/// The tree or bush in tree grid cell (`gx`, `gy`), if one grows there: where, what, and the
+/// cell's random numbers left to draw it with.
+fn grid_tree(sc: &Scenery, style: &Style, gx: i64, gy: i64) -> Option<(DVec2, Grows, Rng)> {
+    let (p, bush, mut rng) = tree_in_cell(sc, style, gx, gy)?;
+    let grows = if bush {
+        Grows::Bush(rng.range(1.5, 3.0) as f32)
+    } else {
+        let h = rng.range(8.0, 18.0) as f32;
+        let phase = rng.range(0.0, 6.3) as f32;
+        Grows::Tree(style.tree(&mut rng), h, phase)
+    };
+    Some((p, grows, rng))
+}
+
 /// A tree or bush (of the tree grid) within `r` metres of `p`.
 pub(super) fn tree_near(sc: &Scenery, p: DVec2, r: f64) -> bool {
     let Some(style) = &sc.style else { return false };
@@ -695,27 +725,20 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
     let (gx0, gy0) = ((f.min.x / TREE_GRID) as i64, (f.min.y / TREE_GRID) as i64);
     for j in 0..n {
         for i in 0..n {
-            let Some((p, bush, mut rng)) = tree_in_cell(sc, style, gx0 + i, gy0 + j) else {
+            let Some((p, grows, mut rng)) = grid_tree(sc, style, gx0 + i, gy0 + j) else {
                 continue;
             };
             let c = f.at(p, 0.0);
-            if bush && far {
-                continue;
-            }
-            if bush {
-                let s = rng.range(1.5, 3.0) as f32;
-                g.spire(
+            match grows {
+                Grows::Bush(_) if far => {}
+                Grows::Bush(s) => g.spire(
                     0xAC,
                     &ring(c, s, 5, rng.range(0.0, 6.3) as f32),
                     0.0,
                     c + Vec3::Y * s * 1.2,
-                );
-                continue;
+                ),
+                Grows::Tree(kind, h, phase) => tree_at(g, &mut rng, kind, c, h, phase, far),
             }
-            let h = rng.range(8.0, 18.0) as f32;
-            let phase = rng.range(0.0, 6.3) as f32;
-            let kind = style.tree(&mut rng);
-            tree_at(g, &mut rng, kind, c, h, phase, far);
         }
     }
     if let Some(land) = style.farmland {
@@ -725,15 +748,30 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
 
 /// Two staggered rows of trees along the shelterbelts crossing a block.
 fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, far: bool) {
-    let Some(style) = &sc.style else { return };
     let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
+    belt_tree_list(sc, land, min, max, |p, kind, h, phase, rng| {
+        tree_at(g, rng, kind, f.at(p, 0.0), h, phase, far);
+    });
+}
+
+/// The shelterbelt trees standing in [`min`, `max`): where, their kind, height and turn, and
+/// the random numbers to draw them with.
+fn belt_tree_list(
+    sc: &Scenery,
+    land: &Farmland,
+    min: DVec2,
+    max: DVec2,
+    mut visit: impl FnMut(DVec2, Tree, f32, f32, &mut Rng),
+) {
+    let Some(style) = &sc.style else { return };
+    let inside = |p: DVec2| p.x >= min.x && p.y >= min.y && p.x < max.x && p.y < max.y;
     let m = DVec2::splat(land.section);
     for (sx, sy) in fields::sections(land, min - m, max) {
         if section_land(style, land, sx, sy) == Land::Woods {
             continue;
         }
         for (a, b) in fields::belts(land, style.seed, sx, sy) {
-            // Only the part of the belt in this block.
+            // Only the part of the belt in the box.
             let (lo, hi) = (a.max(min - 10.0), b.min(max + 10.0));
             if lo.x > hi.x || lo.y > hi.y || belt_rect(sc, land, a, b).is_none() {
                 continue;
@@ -753,16 +791,43 @@ fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, far: bool)
                     let p = a
                         + dir * (k * 8.0 + row * 2.0 + rng.range(-1.5, 1.5))
                         + side * row * rng.range(2.0, 4.5);
-                    if !f.contains(p) || rng.chance(0.08) || !sc.net.road_clear(p, 4.0) {
+                    if !inside(p) || rng.chance(0.08) || !sc.net.road_clear(p, 4.0) {
                         continue;
                     }
                     let kind = if rng.chance(0.9) { Tree::Broadleaf } else { Tree::Conifer };
                     let (h, phase) = (rng.range(9.0, 20.0) as f32, rng.range(0.0, 6.3) as f32);
-                    tree_at(g, &mut rng, kind, f.at(p, 0.0), h, phase, far);
+                    visit(p, kind, h, phase, &mut rng);
                 }
                 k += 1.0;
             }
         }
+    }
+}
+
+/// The trees within `r` metres of `p` (and their crowns' reach): where, the crown's radius and
+/// the height (metres). Not the bushes.
+pub(super) fn trees_near(sc: &Scenery, p: DVec2, r: f64, mut visit: impl FnMut(DVec2, f32, f32)) {
+    let Some(style) = &sc.style else { return };
+    let r = r + 8.0;
+    let (lo, hi) = ((p - r) / TREE_GRID, (p + r) / TREE_GRID);
+    for gy in lo.y.floor() as i64..=hi.y.floor() as i64 {
+        for gx in lo.x.floor() as i64..=hi.x.floor() as i64 {
+            if let Some((q, Grows::Tree(kind, h, _), _)) = grid_tree(sc, style, gx, gy) {
+                visit(q, crown(kind, h), h);
+            }
+        }
+    }
+    if let Some(land) = style.farmland {
+        belt_tree_list(sc, land, p - r, p + r, |q, kind, h, _, _| visit(q, crown(kind, h), h));
+    }
+}
+
+/// Radius of a tree's crown (`tree_at`'s near shape).
+fn crown(kind: Tree, h: f32) -> f32 {
+    h * match kind {
+        Tree::Conifer => 0.27,
+        Tree::Broadleaf => 0.33,
+        Tree::Palm => 0.38,
     }
 }
 

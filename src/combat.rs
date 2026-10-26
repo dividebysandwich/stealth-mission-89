@@ -572,11 +572,19 @@ struct StepParams<'w, 's> {
 #[derive(Resource, Default)]
 pub struct PlayerCollision(pub bool);
 
+/// How far round the aircraft's centre the scenery's buildings, trees and power lines are hit
+/// (metres): less than the half span or the rotor's radius, so tight landing spots stay usable.
+const SCENERY_REACH: f64 = 4.0;
+
 /// Tests the pilot's eye (not the camera point) against the models' plane hulls of visible tile
-/// objects.
+/// objects, and the aircraft against the generated scenery.
+#[allow(clippy::type_complexity)]
 fn detect_collision(
     mut collision: ResMut<PlayerCollision>,
     player: Query<&GlobalTransform, With<crate::camera::HeadAnchor>>,
+    aircraft: Query<&WorldPos, With<crate::flight::Player>>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
+    mut last: Local<Option<crate::scenery::Obstacle>>,
     hulls: Query<(
         &crate::models::CollisionHull,
         &crate::models::LodLevel,
@@ -587,6 +595,22 @@ fn detect_collision(
     tile_roots: Query<(), With<crate::world::TileObject>>,
 ) {
     collision.0 = false;
+    if let (Some(scenery), Ok(pos)) = (scenery, aircraft.single()) {
+        let p = pos.0;
+        let hit = scenery.obstacle(
+            bevy::math::DVec2::new(p.x, -p.z),
+            p.y + SCENERY_REACH * 0.5,
+            SCENERY_REACH,
+        );
+        if hit.is_some() && hit != *last {
+            info!("collision with scenery: {hit:?}");
+        }
+        *last = hit;
+        if hit.is_some() {
+            collision.0 = true;
+            return;
+        }
+    }
     let Ok(p) = player.single() else { return };
     let p = p.translation();
     for (hull, lod, shown, tf, vis) in &hulls {

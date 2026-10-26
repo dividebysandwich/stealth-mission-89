@@ -705,6 +705,9 @@ fighter's nose. The IL-76 airborne radar sees all around.
   closed until just before release. Switch ECM on only against missiles in flight, because it
   raises EMV.
 - **Use the terrain**: fly over mountains and hills. Avoid flying over open sea near radars.
+- **Mind the obstacles down low**: buildings, trees, pylons and power line wires are solid.
+  Flying into one ends the flight like hitting a mountain (with crash protection it throws
+  the aircraft back up).
 - **Fly the right aspect**: point the nose towards or away from **pulse** radars. Fly at right
   angles to **Doppler** radars and reduce speed.
 - **Watch the bar graph**: if the yellow and green bars approach each other, change heading,
