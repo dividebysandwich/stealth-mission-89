@@ -306,8 +306,10 @@ pub fn career_ui(
     w: &mut CareerWindow,
     state: &mut MenuState,
     settings: &mut ResMut<Settings>,
+    options: &mut crate::options::OptionsWindow,
 ) {
-    if !w.open {
+    // Hidden while OPTIONS is open over it.
+    if !w.open || options.open {
         return;
     }
     let mut close = false;
@@ -512,9 +514,14 @@ pub fn career_ui(
         });
         ui.add_space(8.0);
         ui.separator();
-        if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
-            close = true;
-        }
+        ui.horizontal(|ui| {
+            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+                close = true;
+            }
+            if ui.add(big_button("OPTIONS")).on_hover_text("Game, graphics, sound and controls").clicked() {
+                options.open = true;
+            }
+        });
     });
     if close || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         w.open = false;

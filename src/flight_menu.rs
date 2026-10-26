@@ -111,6 +111,10 @@ pub struct FlightMenu {
     pub save_note: Option<&'static str>,
     /// Opens the menu (pausing the flight) as soon as it can: a loaded save starts so.
     pub open_on_start: bool,
+    /// Opens the menu on its OPTIONS page as soon as it can (the campaign's Ops screen asks);
+    /// opened so, BACK there closes it (`options_only`).
+    pub open_options: bool,
+    options_only: bool,
 }
 
 /// The menu's pages: the main one, OPTIONS and its pages (as the main menu's OPTIONS window).
@@ -151,7 +155,11 @@ impl Page {
         }
     }
 
-    /// The page BACK and Esc go to.
+    /// The page BACK and Esc go to (None: they close the menu).
+    fn back(self, options_only: bool) -> Option<Page> {
+        self.parent().filter(|&p| !(options_only && p == Page::Main))
+    }
+
     fn parent(self) -> Option<Page> {
         match self {
             Page::Main => None,
@@ -399,6 +407,12 @@ fn toggle(
         let pause = campaign.is_none();
         set_open(&mut menu, true, pause, &settings, &mut time, &mut block, &sinks);
     }
+    if std::mem::take(&mut menu.open_options) {
+        let pause = campaign.is_none();
+        set_open(&mut menu, true, pause, &settings, &mut time, &mut block, &sinks);
+        go_to(&mut menu, Page::Options);
+        menu.options_only = true;
+    }
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -410,7 +424,7 @@ fn toggle(
     } else if pressed
         && menu.open
         && !menu.exiting
-        && let Some(parent) = menu.page.parent()
+        && let Some(parent) = menu.page.back(menu.options_only)
     {
         go_to(&mut menu, parent);
     } else if pressed && !menu.exiting {
@@ -440,6 +454,7 @@ fn set_open(
     block.0 = open;
     if open {
         menu.page = Page::Main;
+        menu.options_only = false;
         menu.cursor = 0;
         menu.save_note = None;
         menu.mouse_armed = false;
@@ -937,7 +952,7 @@ fn navigate(
     {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
-            match menu.page.parent() {
+            match menu.page.back(menu.options_only) {
                 Some(parent) => go_to(&mut menu, parent),
                 None => set_open(&mut menu, false, pause, &settings, &mut time, &mut block, &sinks),
             }
@@ -985,11 +1000,10 @@ fn navigate(
             *v = ((*v * 10.0).round() + dir).clamp(0.0, 10.0) / 10.0;
         }
         Item::Open(page) => go_to(&mut menu, page),
-        Item::Back => {
-            if let Some(parent) = menu.page.parent() {
-                go_to(&mut menu, parent);
-            }
-        }
+        Item::Back => match menu.page.back(menu.options_only) {
+            Some(parent) => go_to(&mut menu, parent),
+            None => close = true,
+        },
         Item::KeyGuide => {
             menu.guide = true;
             menu.keyboard = false;

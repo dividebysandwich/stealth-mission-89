@@ -273,8 +273,10 @@ pub fn ops_ui(
     weather: Res<crate::weather::WeatherState>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     settings: Res<crate::settings::Settings>,
+    mut menu: ResMut<crate::flight_menu::FlightMenu>,
 ) -> Result {
-    if !c.screen_open() || c.exit {
+    // On the desktop the in-flight menu (OPTIONS) is drawn in the view the screen covers.
+    if !c.screen_open() || c.exit || (menu.open && !settings.vr) {
         return Ok(());
     }
     let wx = weather.now.map(|n| weather_text(&c, &n));
@@ -400,9 +402,14 @@ pub fn ops_ui(
                             ui.label(egui::RichText::new(short).color(DIM));
                         }
                     });
-                    if ui.add(exit_button(c.role)).clicked() {
-                        c.ui.confirm_exit = true;
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.add(exit_button(c.role)).clicked() {
+                            c.ui.confirm_exit = true;
+                        }
+                        if ui.add(egui::Button::new("OPTIONS").min_size(egui::vec2(100.0, 30.0))).clicked() {
+                            menu.open_options = true;
+                        }
+                    });
                 });
             });
             ui.separator();

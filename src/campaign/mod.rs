@@ -103,7 +103,11 @@ impl Plugin for CampaignPlugin {
                 .run_if(in_state(AppState::Flight))
                 .run_if(|c: Option<Res<ActiveCampaign>>| c.is_some_and(|c| c.screen_open())),
         )
-        .add_systems(EguiPrimaryContextPass, menu::campaign_window.run_if(in_state(AppState::Menu)))
+        // Before the menu's OPTIONS window, so the Escape that closes that does not close this.
+        .add_systems(
+            EguiPrimaryContextPass,
+            menu::campaign_window.before(crate::menu::menu_ui).run_if(in_state(AppState::Menu)),
+        )
         .add_systems(OnExit(AppState::Flight), leave);
         #[cfg(feature = "xr")]
         app.add_systems(

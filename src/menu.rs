@@ -1191,7 +1191,7 @@ fn main_screen(
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-fn menu_ui(
+pub(crate) fn menu_ui(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut state: ResMut<MenuState>,
@@ -1419,6 +1419,9 @@ fn menu_ui(
                 if !career_mode && facts(ui.add(big_button("LOAD")), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
                     saves.show();
                 }
+                if facts(ui.add(big_button("OPTIONS")), &["Game, graphics, sound and controls"]).clicked() {
+                    options.open = true;
+                }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let can_fly = matches!(state.mission, Some(Ok(_)));
@@ -1503,7 +1506,7 @@ fn menu_ui(
         );
         next.set(AppState::Flight);
     }
-    crate::career::career_ui(ctx, &mut career, &mut state, &mut settings);
+    crate::career::career_ui(ctx, &mut career, &mut state, &mut settings, &mut options);
     crate::options::options_ui(ctx, &mut options, &mut settings, head.source, &mut dialog);
     crate::prefs::Prefs::save_if_changed(&state, &settings, &mut saved);
     Ok(())

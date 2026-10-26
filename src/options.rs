@@ -95,7 +95,7 @@ pub fn options_ui(
             .small()
             .color(DIM),
         );
-        if facts(ui.add(big_button("BACK")), &["Back to the main menu"]).clicked() {
+        if facts(ui.add(big_button("BACK")), &["Back to the previous screen"]).clicked() {
             back = true;
         }
     });

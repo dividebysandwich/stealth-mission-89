@@ -113,8 +113,10 @@ pub fn campaign_window(
     mut settings: ResMut<crate::settings::Settings>,
     vr: Res<crate::menu::VrAvailable>,
     mut exit: MessageWriter<AppExit>,
+    mut options: ResMut<crate::options::OptionsWindow>,
 ) -> Result {
-    if !w.open {
+    // Hidden while OPTIONS is open over it.
+    if !w.open || options.open {
         return Ok(());
     }
     let Some(data) = data else { return Ok(()) };
@@ -256,9 +258,14 @@ pub fn campaign_window(
             });
         });
         ui.separator();
-        if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
-            close = true;
-        }
+        ui.horizontal(|ui| {
+            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+                close = true;
+            }
+            if ui.add(big_button("OPTIONS")).on_hover_text("Game, graphics, sound and controls").clicked() {
+                options.open = true;
+            }
+        });
     });
     if let Some((name, label)) = w.confirm_delete.clone() {
         let answer = delete_popup(ctx, "CAMPAIGN", &label, escape);
