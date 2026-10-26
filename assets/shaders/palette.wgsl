@@ -24,6 +24,7 @@ const TAG_DOT_NEAR: u32 = 4096u;
 const TAG_DOT_SPOT: u32 = 32768u;
 // Dot only drawn from DOT_FAR_MIN metres away (palette_material.rs `TAG_DOT_FAR`).
 const TAG_DOT_FAR: u32 = 2147483648u;
+const TAG_VERTEX_HAZE: u32 = 1073741824u;
 const DOT_FAR_MIN: f32 = 3000.0;
 // Share of a moonless night's darkness on aircraft and their spotting dots: barely visible.
 const AIRCRAFT_NIGHT: f32 = 0.95;
@@ -264,7 +265,10 @@ fn vertex(v: Vertex) -> VertexOutput {
     // Per-object haze: fog = clamp((depth/512 in object units) - sizeClass, 0, 31) >> 1
     let size_class = (tag >> 3u) & 7u;
     let no_fog = (tag >> 6u) & 1u;
-    let origin = world_from_local[3].xyz;
+    var origin = world_from_local[3].xyz;
+    if ((tag & TAG_VERTEX_HAZE) != 0u && (tag & (TAG_SMOKE | TAG_DOT_SPOT | 128u)) == 0u) {
+        origin = world.xyz;
+    }
     let forward = -view.world_from_view[2].xyz;
     let depth_m = max(dot(origin - view.world_position, forward), 0.0);
     let depth_units = depth_m * max(globals.weather.x, 1.0) / (globals.params.y * level_unit(tag & 7u));

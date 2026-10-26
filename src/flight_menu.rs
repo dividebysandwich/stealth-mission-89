@@ -142,7 +142,9 @@ impl Page {
                 Back,
             ],
             Page::Game => &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back],
-            Page::Graphics => &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, Back],
+            Page::Graphics => {
+                &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
+            }
             Page::Sound => &[
                 Volume(Vol::Master),
                 Volume(Vol::Engine),
@@ -224,6 +226,7 @@ enum Item {
     Lighting,
     TimeOfDay,
     SunMoon,
+    AutoDetail,
     Cockpit,
     Hud,
     Avionics,
@@ -252,6 +255,7 @@ impl Item {
             Item::Lighting => "POINT LIGHTS",
             Item::TimeOfDay => "TIME OF DAY",
             Item::SunMoon => "SUN AND MOON",
+            Item::AutoDetail => "AUTO SCENERY DETAIL",
             Item::Cockpit => "COCKPIT",
             Item::Hud => "HUD",
             Item::Avionics => "AVIONICS",
@@ -278,6 +282,7 @@ impl Item {
             Item::Lighting => on(s.local_lights),
             Item::TimeOfDay => style(!s.continuous_time),
             Item::SunMoon => on(s.sun_moon),
+            Item::AutoDetail => on(s.vr_auto_detail),
             Item::Cockpit => style(s.classic_cockpit),
             Item::Hud => style(s.classic_hud),
             Item::Avionics => style(s.classic_avionics),
@@ -292,7 +297,7 @@ impl Item {
         }
     }
 
-    /// The cockpit size only matters in the headset, the cockpit style only for aircraft with
+    /// The cockpit size and the automatic scenery detail only matter in the headset, the cockpit style only for aircraft with
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
     /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
@@ -300,7 +305,7 @@ impl Item {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
-            Item::CockpitSize => s.vr,
+            Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
@@ -979,6 +984,7 @@ fn navigate(
         Item::Msaa => s.msaa = !s.msaa,
         Item::Shadows => s.shadows = !s.shadows,
         Item::Lighting => s.local_lights = !s.local_lights,
+        Item::AutoDetail => s.vr_auto_detail = !s.vr_auto_detail,
         Item::TimeOfDay => s.continuous_time = !s.continuous_time,
         Item::SunMoon => s.sun_moon = !s.sun_moon,
         Item::Cockpit => s.classic_cockpit = !s.classic_cockpit,

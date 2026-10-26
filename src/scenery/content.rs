@@ -1,7 +1,9 @@
 //! Geometry of one scenery block: the towns' and cities' paved ground, roads with street lamps,
-//! buildings, pylons and wires (main tier), and trees (detail tier near the viewpoint, far tier beyond). Everything is generated
-//! from the network and per-position hashes, so a block looks the same whenever it is streamed
-//! in, and both tree tiers place the same trees.
+//! buildings, pylons and wires (main tier near the viewpoint, the simpler town tier beyond), and
+//! trees (detail tier near the viewpoint, far tier beyond, the thinned distant tier furthest).
+//! Everything is generated from the network and per-position hashes, so a block looks the same
+//! whenever it is streamed in, and the tree tiers place the same trees (the distant tier a
+//! share of them).
 
 use std::f32::consts::TAU;
 
@@ -20,6 +22,9 @@ use super::style::{Style, Tree};
 pub const BLOCK: f64 = 1000.0;
 /// Block size of the farmland tier (metres).
 pub const FIELD_BLOCK: f64 = 4000.0;
+/// Block size of the coarse tiers (town, distant trees): 2x2 blocks in one mesh, a quarter of
+/// the draws.
+pub const COARSE_BLOCK: f64 = 2000.0;
 /// Heights of the fields and shelterbelt strips: above the coarsest ground overlays (sea,
 /// lakes), below the finer ones (woods, airfields) and the roads.
 const FIELD_Y: f32 = 0.08;
@@ -45,41 +50,68 @@ const WOOD: u8 = 0xCE;
 const LAMP_SPACING: f64 = 50.0;
 /// Tree grid spacing (metres).
 const TREE_GRID: f64 = 24.0;
+/// Share of the trees the distant tier draws, each that much wider, so the woods keep their
+/// cover.
+const DISTANT_TREES: f64 = 0.35;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tier {
     /// Roads, lamps, buildings, power lines.
     Main,
+    /// Main beyond its radius, in `COARSE_BLOCK` blocks: plain boxes and spires for the
+    /// buildings, no lamp posts, poles or wires, a window or none per building.
+    Town,
     /// Trees.
     Detail,
     /// Distant trees: one small 3-sided cone or double cone per tree (3-6 triangles instead
     /// of 10-30), no bushes or trunks.
     Far,
+    /// Far trees beyond the far tier, in `COARSE_BLOCK` blocks: `DISTANT_TREES` of them,
+    /// wider.
+    Distant,
     /// Farmland: fields and the shelterbelt strips, in `FIELD_BLOCK` blocks.
     Fields,
 }
 
 impl Tier {
     pub fn block_size(self) -> f64 {
-        if self == Tier::Fields { FIELD_BLOCK } else { BLOCK }
+        match self {
+            Tier::Fields => FIELD_BLOCK,
+            Tier::Town | Tier::Distant => COARSE_BLOCK,
+            _ => BLOCK,
+        }
     }
+}
+
+/// How a tree is drawn.
+#[derive(Clone, Copy, PartialEq)]
+enum TreeLod {
+    Near,
+    Far,
+    /// Far, `DISTANT_TREES` of them, wider.
+    Distant,
 }
 
 /// Block-local frame: ground metres -> Bevy (x east, y up, z south) around the block centre.
 pub(super) struct Frame {
     o: DVec2,
     min: DVec2,
+    size: f64,
 }
 
 impl Frame {
-    fn new(bx: i32, by: i32) -> Self {
-        let min = DVec2::new(bx as f64, by as f64) * BLOCK;
-        Self { o: min + DVec2::splat(BLOCK * 0.5), min }
+    fn new(bx: i32, by: i32, size: f64) -> Self {
+        let min = DVec2::new(bx as f64, by as f64) * size;
+        Self { o: min + DVec2::splat(size * 0.5), min, size }
     }
 
     /// A frame around any origin (whole-airfield meshes).
     pub(super) fn around(o: DVec2) -> Self {
-        Self { o, min: o - DVec2::splat(BLOCK * 0.5) }
+        Self { o, min: o - DVec2::splat(BLOCK * 0.5), size: BLOCK }
+    }
+
+    fn max(&self) -> DVec2 {
+        self.min + DVec2::splat(self.size)
     }
 
     pub(super) fn at(&self, p: DVec2, y: f32) -> Vec3 {
@@ -89,8 +121,8 @@ impl Frame {
     fn contains(&self, p: DVec2) -> bool {
         p.x >= self.min.x
             && p.y >= self.min.y
-            && p.x < self.min.x + BLOCK
-            && p.y < self.min.y + BLOCK
+            && p.x < self.min.x + self.size
+            && p.y < self.min.y + self.size
     }
 }
 
@@ -104,24 +136,35 @@ pub(super) fn dir3(d: DVec2) -> Vec3 {
     Vec3::new(d.x as f32, 0.0, -d.y as f32)
 }
 
-pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier) -> Geom {
-    let f = Frame::new(bx, by);
+/// Block (`bx`, `by`) of `tier`; `houses`: the share of the small buildings the town tier
+/// draws (the automatic scenery detail thins them).
+pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
+    let f = Frame::new(bx, by, tier.block_size());
     let mut g = Geom::default();
     match tier {
-        Tier::Main => {
+        Tier::Main | Tier::Town => {
+            let low = tier == Tier::Town;
             paving(sc, &f, &mut g);
-            roads(&sc.net, &f, &mut g);
-            let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
-            for i in sc.net.building_index.around(min, max) {
+            roads(&sc.net, &f, &mut g, low);
+            for i in sc.net.building_index.around(f.min, f.max()) {
                 let b = &sc.net.buildings[i as usize];
-                if f.contains(b.p) {
+                if !f.contains(b.p) {
+                    continue;
+                }
+                if low {
+                    if small(b) && (hash(b.seed, 0, 0, 7) % 1000) as f64 >= houses * 1000.0 {
+                        continue;
+                    }
+                    low_building(b, &f, &mut g);
+                } else {
                     building(b, &f, &mut g);
                 }
             }
-            power(&sc.net, &f, &mut g);
+            power(&sc.net, &f, &mut g, low);
         }
-        Tier::Detail => trees(sc, &f, &mut g, false),
-        Tier::Far => trees(sc, &f, &mut g, true),
+        Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
+        Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
+        Tier::Distant => trees(sc, &f, &mut g, TreeLod::Distant),
         Tier::Fields => {
             let min = DVec2::new(bx as f64, by as f64) * FIELD_BLOCK;
             farmland(sc, &Frame::around(min + FIELD_BLOCK * 0.5), min, min + FIELD_BLOCK, &mut g);
@@ -256,7 +299,7 @@ fn farmland(sc: &Scenery, f: &Frame, min: DVec2, max: DVec2, g: &mut Geom) {
 /// paved with concrete, but for the parks and the outskirts.
 fn paving(sc: &Scenery, f: &Frame, g: &mut Geom) {
     let scale = sc.style.as_ref().map_or(1.0, |s| s.street_scale);
-    let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
+    let (min, max) = (f.min, f.max());
     let mut seen = std::collections::HashSet::new();
     for id in sc.net.town_index.around(min, max) {
         let town = &sc.net.towns[id as usize];
@@ -288,8 +331,9 @@ fn paving(sc: &Scenery, f: &Frame, g: &mut Geom) {
     }
 }
 
-fn roads(net: &Network, f: &Frame, g: &mut Geom) {
-    let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
+/// The roads; `low`: without the lamp posts (the lamps alone).
+fn roads(net: &Network, f: &Frame, g: &mut Geom, low: bool) {
+    let (min, max) = (f.min, f.max());
     let mut lamps: Vec<DVec2> = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for id in net.segment_index.around(min, max) {
@@ -333,8 +377,10 @@ fn roads(net: &Network, f: &Frame, g: &mut Geom) {
             lamps.push(foot);
             let top = f.at(foot, 8.5);
             let head = top - dir3(dir.perp()) * sd as f32 * 1.8;
-            g.line(STEEL, f.at(foot, 0.0), top);
-            g.line(STEEL, top, head);
+            if !low {
+                g.line(STEEL, f.at(foot, 0.0), top);
+                g.line(STEEL, top, head);
+            }
             g.lamp(LAMP, head - Vec3::Y * 0.2);
         }
     }
@@ -492,6 +538,79 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
     }
 }
 
+/// Houses, sheds and barns: the town tier thins them first.
+fn small(b: &Building) -> bool {
+    matches!(b.kind, Kind::House | Kind::Shed | Kind::Barn)
+}
+
+/// A building of the town tier: its outline as a box (a gabled roof for the pitched ones),
+/// towers and tanks as prisms, masts as lines, the beacons kept; small sheds and the
+/// windsocks and signs left out; a lit window or none.
+fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
+    let c = f.at(b.p, 0.0);
+    let d = dir2(b.dir);
+    let foot = rect(c, d, b.l, b.w);
+    match b.kind {
+        Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
+            if b.l * b.w < 30.0 {
+                return;
+            }
+            match b.roof {
+                Roof::Flat => g.block(b.wall, b.roof_colour, &foot, 0.0, b.h),
+                Roof::Gable | Roof::Hip => {
+                    let rise = match b.kind {
+                        Kind::Shed => b.w * 0.18,
+                        Kind::Church => b.w * 0.6,
+                        _ => b.w * 0.42,
+                    };
+                    g.walls(b.wall, &foot, 0.0, b.h);
+                    g.gable(b.wall, b.roof_colour, &foot, b.h, rise);
+                }
+            }
+            if b.kind == Kind::Church {
+                let t = c - Vec3::new(d.x, 0.0, d.y) * (b.l * 0.5 + 3.2);
+                let tower = rect(t, d, 6.5, 6.5);
+                let th = b.h * 2.4;
+                g.walls(b.wall, &tower, 0.0, th);
+                g.spire(b.roof_colour, &tower, th, t + Vec3::Y * (th + 11.0));
+            }
+            if b.kind == Kind::Tower && b.h > 60.0 {
+                g.lamp(BEACON, c + Vec3::Y * (b.h + 1.0));
+            }
+            let mut rng = Rng::new(b.seed);
+            if matches!(b.kind, Kind::Apartment | Kind::Tower) && rng.chance(0.6) {
+                let floor = (rng.f() * (b.h / 3.0).floor().max(1.0) as f64).floor() as f32;
+                let across = Vec3::new(-d.y, 0.0, d.x);
+                g.lamp(WINDOW, c + across * (b.w * 0.5 + 0.15) + Vec3::Y * (floor * 3.0 + 1.6));
+            }
+        }
+        Kind::Ruin => g.block(SOOT, RUBBLE, &foot, 0.0, b.h * 0.4),
+        Kind::Silo | Kind::Tank => {
+            g.block(b.wall, b.roof_colour, &ring(c, b.l * 0.5, 6, 0.0), 0.0, b.h)
+        }
+        Kind::Chimney => {
+            g.walls(b.wall, &ring(c, 2.4, 4, 0.0), 0.0, b.h);
+            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
+        }
+        Kind::WaterTower => {
+            g.block(b.wall, b.roof_colour, &ring(c, 4.5, 6, 0.0), b.h - 7.0, b.h);
+            g.line(b.wall, c, c + Vec3::Y * (b.h - 7.0));
+        }
+        Kind::Mast => {
+            g.line(STEEL, c, c + Vec3::Y * b.h);
+            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
+            g.lamp(BEACON, c + Vec3::Y * (b.h * 0.5));
+        }
+        Kind::Shelter => g.block(b.wall, b.wall, &foot, 0.0, b.h * 0.8),
+        Kind::Radar => {
+            g.walls(b.wall, &rect(c, d, 6.0, 6.0), 0.0, b.h - 9.0);
+            g.spire(b.roof_colour, &ring(c, 5.0, 6, 0.0), b.h - 9.0, c + Vec3::Y * b.h);
+            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.3));
+        }
+        Kind::Windsock | Kind::Sign => {}
+    }
+}
+
 /// Wall colour of burnt-out walls and of the inside faces of ruins.
 const SOOT: u8 = 0xEB;
 const RUBBLE: u8 = 0xE8;
@@ -636,8 +755,10 @@ pub(super) fn conductors(big: bool, across: Vec3) -> Vec<Vec3> {
     }
 }
 
-fn power(net: &Network, f: &Frame, g: &mut Geom) {
-    let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
+/// Pylons and wires; `low`: the transmission lines' pylons as single lines, their wires
+/// straight, no pole lines.
+fn power(net: &Network, f: &Frame, g: &mut Geom, low: bool) {
+    let (min, max) = (f.min, f.max());
     for id in net.pylon_index.around(min, max) {
         let (li, k) = net.pylons[id as usize];
         let line = &net.lines[li as usize];
@@ -650,6 +771,15 @@ fn power(net: &Network, f: &Frame, g: &mut Geom) {
         let dir = dir_at(k);
         let across = dir3(dir.perp());
         let c = f.at(p, 0.0);
+        if low {
+            if line.big {
+                g.line(STEEL, c, c + Vec3::Y * 31.0);
+                if let Some(&q) = line.pylons.get(k + 1) {
+                    g.line(STEEL, c + Vec3::Y * 29.0, f.at(q, 29.0));
+                }
+            }
+            continue;
+        }
         if line.big {
             lattice(g, c, dir3(dir), &[(0.0, 4.0), (15.0, 1.6), (31.0, 0.8)], 4, 3);
             for (y, w) in [(23.0, 9.0), (29.0, 6.0)] {
@@ -765,15 +895,24 @@ pub(super) fn tree_near(sc: &Scenery, p: DVec2, r: f64) -> bool {
     cells.filter_map(|(gx, gy)| tree_in_cell(sc, style, gx, gy)).any(|(q, ..)| q.distance(p) < r)
 }
 
-fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
+/// The distant tier draws this tree (a fixed share of them, by position).
+fn distant_keeps(seed: u64, p: DVec2) -> bool {
+    hash(seed ^ 0xD157, p.x as i64, p.y as i64, 3) % 1000 < (DISTANT_TREES * 1000.0) as u64
+}
+
+fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, lod: TreeLod) {
     let Some(style) = &sc.style else { return };
-    let n = (BLOCK / TREE_GRID) as i64;
+    let n = (f.size / TREE_GRID) as i64;
     let (gx0, gy0) = ((f.min.x / TREE_GRID) as i64, (f.min.y / TREE_GRID) as i64);
+    let far = lod != TreeLod::Near;
     for j in 0..n {
         for i in 0..n {
             let Some((p, grows, mut rng)) = grid_tree(sc, style, gx0 + i, gy0 + j) else {
                 continue;
             };
+            if lod == TreeLod::Distant && !distant_keeps(style.seed, p) {
+                continue;
+            }
             let c = f.at(p, 0.0);
             match grows {
                 Grows::Bush(_) if far => {}
@@ -783,20 +922,22 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, far: bool) {
                     0.0,
                     c + Vec3::Y * s * 1.2,
                 ),
-                Grows::Tree(kind, h, phase) => tree_at(g, &mut rng, kind, c, h, phase, far),
+                Grows::Tree(kind, h, phase) => tree_at(g, &mut rng, kind, c, h, phase, lod),
             }
         }
     }
     if let Some(land) = style.farmland {
-        belt_trees(sc, land, f, g, far);
+        belt_trees(sc, land, f, g, lod);
     }
 }
 
 /// Two staggered rows of trees along the shelterbelts crossing a block.
-fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, far: bool) {
-    let (min, max) = (f.min, f.min + DVec2::splat(BLOCK));
-    belt_tree_list(sc, land, min, max, |p, kind, h, phase, rng| {
-        tree_at(g, rng, kind, f.at(p, 0.0), h, phase, far);
+fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, lod: TreeLod) {
+    let seed = sc.style.as_ref().map_or(0, |s| s.seed);
+    belt_tree_list(sc, land, f.min, f.max(), |p, kind, h, phase, rng| {
+        if lod != TreeLod::Distant || distant_keeps(seed, p) {
+            tree_at(g, rng, kind, f.at(p, 0.0), h, phase, lod);
+        }
     });
 }
 
@@ -878,20 +1019,23 @@ fn crown(kind: Tree, h: f32) -> f32 {
 }
 
 /// One tree of height `h` at ground point `c`, turned by `phase`.
-fn tree_at(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32, far: bool) {
+fn tree_at(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32, lod: TreeLod) {
+    let far = lod != TreeLod::Near;
+    // The distant tier's fewer trees cover as much ground.
+    let w = if lod == TreeLod::Distant { (1.0 / DISTANT_TREES).sqrt() as f32 } else { 1.0 };
     match kind {
         Tree::Conifer if far => {
             let col = rng.pick(&[0xAD, 0xAE]);
-            g.spire(col, &ring(c, h * 0.26, 3, phase), h * 0.08, c + Vec3::Y * h);
+            g.spire(col, &ring(c, h * 0.26 * w, 3, phase), h * 0.08, c + Vec3::Y * h);
         }
         Tree::Broadleaf if far => {
             let col = rng.pick(&[0xAB, 0xAC, 0xAD]);
-            let crown = ring(c, h * 0.33, 3, phase);
+            let crown = ring(c, h * 0.33 * w, 3, phase);
             g.spire(col, &crown, h * 0.58, c + Vec3::Y * h);
             g.spire(col, &crown, h * 0.58, c + Vec3::Y * h * 0.28);
         }
         Tree::Palm if far => {
-            let crown = ring(c, h * 0.3, 3, phase);
+            let crown = ring(c, h * 0.3 * w, 3, phase);
             g.spire(0xA8, &crown, h * 0.9, c + Vec3::Y * h * 1.02);
             g.spire(0xA8, &crown, h * 0.9, c + Vec3::Y * h * 0.7);
         }

@@ -30,6 +30,12 @@ impl Plugin for PlayerPlugin {
                 .chain()
                 .run_if(in_state(AppState::Flight)),
         )
+        .add_systems(
+            Update,
+            start_city
+                .run_if(in_state(AppState::Flight))
+                .run_if(resource_exists::<crate::scenery::Scenery>),
+        )
         .add_systems(OnExit(AppState::Flight), despawn_readout);
     }
 }
@@ -165,6 +171,45 @@ fn start_target() -> Option<(f32, f32, f32)> {
     let alt = it.next().flatten().unwrap_or(2000.0);
     let kts = it.next().flatten().unwrap_or(350.0);
     Some((km, alt, kts))
+}
+
+/// `--start-city km[,alt ft[,knots]]` (defaults 6 km, 1500 ft, 300 kt).
+fn start_city_arg() -> Option<(f32, f32, f32)> {
+    let args: Vec<String> = std::env::args().collect();
+    let v = args.iter().position(|a| a == "--start-city").and_then(|i| args.get(i + 1))?;
+    let mut it = v.split(',').map(|x| x.parse::<f32>().ok());
+    let km = it.next().flatten().unwrap_or(6.0);
+    let alt = it.next().flatten().unwrap_or(1500.0);
+    let kts = it.next().flatten().unwrap_or(300.0);
+    Some((km, alt, kts))
+}
+
+/// Test aid (`--start-city km[,ft[,kts]]`): once the scenery is laid out, moves the player into
+/// the air `km` south of the theater's biggest city, heading north at it, gear up.
+fn start_city(
+    mut done: Local<bool>,
+    scenery: Res<crate::scenery::Scenery>,
+    mut q: Query<(&mut Aircraft, &mut WorldPos), With<Player>>,
+) {
+    if *done {
+        return;
+    }
+    *done = true;
+    let Some((km, alt, kts)) = start_city_arg() else { return };
+    let Some(c) = scenery.biggest_town() else { return };
+    let Ok((mut a, mut pos)) = q.single_mut() else { return };
+    let wu = crate::world::WU;
+    pos.0 =
+        wu_to_bevy(c.x / wu, (c.y - km as f64 * 1000.0) / wu, crate::flight::view_z(alt) as f64);
+    a.orientation = Aircraft::from_euler(0.0, 0.0, 0.0);
+    a.altitude = alt;
+    a.on_ground = false;
+    a.has_flown = true;
+    a.gear_down = false;
+    a.velocity = kts * 27.0;
+    a.set_thrust = 60.0;
+    a.thrust = 60.0;
+    a.restart_motion();
 }
 
 #[derive(Component)]

@@ -272,8 +272,10 @@ fn apply_model_state(
     mut lod_meshes: Query<(&LodMesh, &mut bevy::camera::visibility::RenderLayers)>,
     globals: Res<ModelGlobals>,
     detail: Option<Res<crate::palette::DetailLevel>>,
+    budget: Option<Res<crate::scenery::budget::SceneryBudget>>,
 ) {
-    let reduce = detail.map_or(1.0, |d| d.lod_range());
+    // The Alt-D setting and the automatic scenery detail (VR).
+    let reduce = detail.map_or(1.0, |d| d.lod_range()) * budget.map_or(1.0, |b| b.ranges().lod);
     // Each model's levels (level, max_dist), gathered once: looking them up among all the
     // levels for each level took the Steam Frame 2.7 ms a frame.
     let mut levels: HashMap<Entity, Vec<(u32, f32)>> = HashMap::new();

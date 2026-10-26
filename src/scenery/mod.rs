@@ -14,6 +14,7 @@
 //! palette's lights come on.
 
 mod airfield;
+pub mod budget;
 
 pub use airfield::{GLIDE_PATH_DEG, PapiSite, approach_to};
 pub use network::Rng;
@@ -37,18 +38,19 @@ use crate::dots::{dot_batch, dot_batch_coloured};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
 use crate::palette_material::{
-    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_WARM, dot_scale, mesh_tag,
+    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_VERTEX_HAZE, TAG_WARM, dot_scale, mesh_tag,
 };
 use crate::settings::AppState;
 use crate::world::{ShapeHandles, Theater, WU, WorldAnchor, WorldPos, bevy_to_wu};
-use content::Tier;
+use content::{BLOCK, COARSE_BLOCK, Tier};
 use geom::Geom;
 
 pub struct SceneryPlugin;
 
 impl Plugin for SceneryPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Blocks>()
+        app.add_plugins(budget::BudgetPlugin)
+            .init_resource::<Blocks>()
             .init_resource::<SceneryBacklog>()
             .init_resource::<Airfields>()
             .init_resource::<PapiSites>()
@@ -78,31 +80,31 @@ impl Plugin for SceneryPlugin {
     }
 }
 
-/// Streaming radius per tier (metres). Far trees fill the blocks out to their radius that the
-/// detailed trees don't.
-fn radius(tier: Tier) -> f64 {
-    match tier {
-        Tier::Main => 7000.0,
-        Tier::Detail => 1000.0,
-        Tier::Far => 3500.0,
-        Tier::Fields => 24_000.0,
-    }
+/// Tiers drawing the same things at different detail: the near tiers in `BLOCK` blocks
+/// (innermost first, each out to its radius), the coarse tier in `COARSE_BLOCK` blocks beyond
+/// them. A coarse block any of whose quarters is near is built as near blocks instead.
+struct Group {
+    near: &'static [Tier],
+    coarse: Tier,
 }
 
-/// The other tree tier of a block (shown until this one is built, so trees don't blink).
-fn counterpart(tier: Tier) -> Option<Tier> {
+const TOWNS: Group = Group { near: &[Tier::Main], coarse: Tier::Town };
+const TREES: Group = Group { near: &[Tier::Detail, Tier::Far], coarse: Tier::Distant };
+
+fn group_of(tier: Tier) -> Option<&'static Group> {
     match tier {
-        Tier::Main | Tier::Fields => None,
-        Tier::Detail => Some(Tier::Far),
-        Tier::Far => Some(Tier::Detail),
+        Tier::Main | Tier::Town => Some(&TOWNS),
+        Tier::Detail | Tier::Far | Tier::Distant => Some(&TREES),
+        Tier::Fields => None,
     }
 }
 
 /// Streaming radius around the stream sites (the recon photos' targets), metres.
 const SITE_RADIUS: f64 = 1500.0;
 
-/// Blocks built per frame (nearest first).
-const BUILDS_PER_FRAME: usize = 3;
+/// Building blocks (nearest first) stops for the frame after this long (at least one a frame):
+/// a coarse block is several times the work of a near one.
+const BUILD_TIME: std::time::Duration = std::time::Duration::from_millis(3);
 
 /// The theater's scenery layout (no style and an empty network for the desert theaters).
 #[derive(Resource)]
@@ -117,6 +119,11 @@ impl Scenery {
     /// The theater has generated towns (the green theaters).
     pub fn has_towns(&self) -> bool {
         !self.net.towns.is_empty()
+    }
+
+    /// The centre of the biggest town or city (metres east, north).
+    pub fn biggest_town(&self) -> Option<DVec2> {
+        self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
     /// Open land (not water or concrete) clear of raised objects by `r` metres.
@@ -387,58 +394,113 @@ fn stream_blocks(
     mut commands: Commands,
     scenery: Res<Scenery>,
     detail: Res<DetailLevel>,
+    budget: Res<budget::SceneryBudget>,
     palette: Res<Palette>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
     sites: Res<crate::world::StreamSites>,
     mut blocks: ResMut<Blocks>,
     mut backlog: ResMut<SceneryBacklog>,
+    mut built_now: ResMut<budget::BlocksBuilt>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
+    built_now.0 = 0;
     let Ok(anchor) = anchor.single() else { return };
-    // Wanted blocks by their distance from the nearest eye.
-    let mut wanted: HashMap<(Tier, i32, i32), f64> = HashMap::new();
+    let ranges = budget.ranges();
     // Alt-D: detail 2 drops the trees, detail 0 and 1 all extra scenery.
-    let fields = scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
-    let tiers: &[Tier] = match (scenery.style.is_some(), detail.0, fields) {
-        (false, _, _) | (_, 0..=1, _) => &[],
-        (_, 2, false) => &[Tier::Main],
-        (_, 2, true) => &[Tier::Main, Tier::Fields],
-        (_, _, false) => &[Tier::Main, Tier::Detail, Tier::Far],
-        (_, _, true) => &[Tier::Main, Tier::Detail, Tier::Far, Tier::Fields],
+    let fields = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
+    let groups: &[&Group] = match (scenery.style.is_some(), detail.0) {
+        (false, _) | (_, 0..=1) => &[],
+        (_, 2) => &[&TOWNS],
+        _ => &[&TOWNS, &TREES],
     };
-    let eyes = std::iter::once((anchor.0, f64::MAX)).chain(
-        sites.points.iter().chain(&sites.follow).chain(&sites.pod).map(|&p| (p, SITE_RADIUS)),
-    );
-    for (eye, max_r) in eyes {
-        let (east, north, _) = bevy_to_wu(eye);
-        let eye = bevy::math::DVec2::new(east, north) * WU;
-        for &tier in tiers {
-            let r = radius(tier).min(max_r);
-            let size = tier.block_size();
-            let (lo, hi) =
-                (((eye - r) / size).floor().as_ivec2(), ((eye + r) / size).floor().as_ivec2());
-            for by in lo.y..=hi.y {
-                for bx in lo.x..=hi.x {
-                    let c = (bevy::math::DVec2::new(bx as f64, by as f64) + 0.5) * size;
-                    let d = c.distance(eye);
-                    let near_trees = tier == Tier::Far && d < radius(Tier::Detail) + size * 0.5;
-                    if d < r + size * 0.5 && !near_trees {
-                        let w = wanted.entry((tier, bx, by)).or_insert(d);
-                        *w = w.min(d);
-                    }
+    let ground = |p: DVec3| {
+        let (east, north, _) = bevy_to_wu(p);
+        DVec2::new(east, north) * WU
+    };
+    let centre = |bx: i32, by: i32, size: f64| (DVec2::new(bx as f64, by as f64) + 0.5) * size;
+    // Blocks of `size` within `r` of `eye` (by their centres' distance).
+    let around = |eye: DVec2, r: f64, size: f64, visit: &mut dyn FnMut(i32, i32, f64)| {
+        let (lo, hi) =
+            (((eye - r) / size).floor().as_ivec2(), ((eye + r) / size).floor().as_ivec2());
+        for by in lo.y..=hi.y {
+            for bx in lo.x..=hi.x {
+                let d = centre(bx, by, size).distance(eye);
+                if d < r + size * 0.5 {
+                    visit(bx, by, d);
                 }
             }
         }
+    };
+    // Near blocks: per group and block, the innermost tier any eye wants and the distance from
+    // the nearest eye.
+    let mut near: HashMap<(usize, i32, i32), (usize, f64)> = HashMap::new();
+    let mut wanted: HashMap<(Tier, i32, i32), f64> = HashMap::new();
+    let anchor = ground(anchor.0);
+    let eyes = std::iter::once((anchor, f64::MAX)).chain(
+        sites
+            .points
+            .iter()
+            .chain(&sites.follow)
+            .chain(&sites.pod)
+            .map(|&p| (ground(p), SITE_RADIUS)),
+    );
+    for (eye, max_r) in eyes {
+        for (gi, group) in groups.iter().enumerate() {
+            let outer = ranges.radius(*group.near.last().unwrap()).min(max_r);
+            around(eye, outer, BLOCK, &mut |bx, by, d| {
+                let ti = group
+                    .near
+                    .iter()
+                    .position(|&t| d < ranges.radius(t).min(max_r) + BLOCK * 0.5)
+                    .unwrap_or(group.near.len() - 1);
+                let e = near.entry((gi, bx, by)).or_insert((ti, d));
+                *e = (e.0.min(ti), e.1.min(d));
+            });
+        }
+        if fields {
+            let r = ranges.radius(Tier::Fields).min(max_r);
+            around(eye, r, Tier::Fields.block_size(), &mut |bx, by, d| {
+                let w = wanted.entry((Tier::Fields, bx, by)).or_insert(d);
+                *w = w.min(d);
+            });
+        }
+    }
+    // The coarse tiers around the main eye; a coarse block with a near quarter is filled up
+    // with near blocks of the outer tier.
+    for (gi, group) in groups.iter().enumerate() {
+        let r = ranges.radius(group.coarse);
+        let outer = group.near.len() - 1;
+        around(anchor, r, COARSE_BLOCK, &mut |cx, cy, d| {
+            let quarters = [(0, 0), (1, 0), (0, 1), (1, 1)].map(|(i, j)| (cx * 2 + i, cy * 2 + j));
+            if !quarters.iter().any(|&(bx, by)| near.contains_key(&(gi, bx, by))) {
+                wanted.insert((group.coarse, cx, cy), d);
+                return;
+            }
+            for (bx, by) in quarters {
+                let d = centre(bx, by, BLOCK).distance(anchor);
+                near.entry((gi, bx, by)).or_insert((outer, d));
+            }
+        });
+    }
+    for ((gi, bx, by), (ti, d)) in near {
+        wanted.insert((groups[gi].near[ti], bx, by), d);
     }
     let built: std::collections::HashSet<(Tier, i32, i32)> = blocks.0.keys().copied().collect();
+    let pending = |k: &(Tier, i32, i32)| wanted.contains_key(k) && !built.contains(k);
     blocks.0.retain(|&(tier, bx, by), e| {
-        let key = (tier, bx, by);
-        // A tree block switching tiers stays until its replacement is built.
-        let waiting = counterpart(tier).is_some_and(|other| {
-            let k = (other, bx, by);
-            !built.contains(&k) && wanted.contains_key(&k)
+        // A block whose ground another tier of its group takes over stays until that is built,
+        // so nothing blinks.
+        let waiting = group_of(tier).is_some_and(|g| {
+            if tier == g.coarse {
+                let quarters =
+                    [(0, 0), (1, 0), (0, 1), (1, 1)].map(|(i, j)| (bx * 2 + i, by * 2 + j));
+                g.near.iter().any(|&t| quarters.iter().any(|&(x, y)| pending(&(t, x, y))))
+            } else {
+                g.near.iter().any(|&t| t != tier && pending(&(t, bx, by)))
+                    || pending(&(g.coarse, bx.div_euclid(2), by.div_euclid(2)))
+            }
         });
-        let keep = waiting || wanted.contains_key(&key);
+        let keep = waiting || wanted.contains_key(&(tier, bx, by));
         if !keep {
             commands.entity(*e).try_despawn();
         }
@@ -450,10 +512,15 @@ fn stream_blocks(
         .map(|(k, d)| (d, k))
         .collect();
     wanted.sort_by(|a, b| a.0.total_cmp(&b.0));
-    backlog.0 = Some(wanted.len().saturating_sub(BUILDS_PER_FRAME));
-    for &(_, key @ (tier, bx, by)) in wanted.iter().take(BUILDS_PER_FRAME) {
-        let geom = content::build(&scenery, bx, by, tier);
-        let c = (bevy::math::DVec2::new(bx as f64, by as f64) + 0.5) * tier.block_size();
+    let start = bevy::platform::time::Instant::now();
+    let mut n = 0;
+    for &(_, key @ (tier, bx, by)) in &wanted {
+        if n > 0 && start.elapsed() >= BUILD_TIME {
+            break;
+        }
+        n += 1;
+        let geom = content::build(&scenery, bx, by, tier, ranges.houses);
+        let c = centre(bx, by, tier.block_size());
         let e = spawn_block(
             &mut commands,
             &mut meshes,
@@ -465,6 +532,8 @@ fn stream_blocks(
         );
         blocks.0.insert(key, e);
     }
+    backlog.0 = Some(wanted.len() - n);
+    built_now.0 = n as u32;
 }
 
 fn mesh(topology: PrimitiveTopology, pos: Vec<Vec3>) -> Mesh {
@@ -544,14 +613,21 @@ fn spawn_geom(
 ) -> Vec<Entity> {
     // Haze like the theater's LOD1 objects, starting a little further out (whole blocks share
     // their centre's haze level); farmland is ground and hazes like the coarse terrain levels.
+    // The coarse tiers' blocks are too big to share one haze level: theirs is per vertex.
     let tag = MeshTag(match tier {
         Tier::Fields => mesh_tag(3, 4, false),
         Tier::Main => mesh_tag(1, 6, false),
-        _ => mesh_tag(1, 5, false),
+        Tier::Town => mesh_tag(1, 6, false) | TAG_VERTEX_HAZE,
+        Tier::Distant => mesh_tag(1, 5, false) | TAG_VERTEX_HAZE,
+        Tier::Detail | Tier::Far => mesh_tag(1, 5, false),
     });
     let mut children = Vec::new();
     // Buildings and structures (main tier) are warm in the FLIR picture, trees are not.
-    let solid_tag = if tier == Tier::Main { MeshTag(tag.0 | TAG_WARM) } else { tag.clone() };
+    let solid_tag = if matches!(tier, Tier::Main | Tier::Town) {
+        MeshTag(tag.0 | TAG_WARM)
+    } else {
+        tag.clone()
+    };
     // All colours of the solid and of the flat geometry in one mesh each, the colour words per
     // vertex: a block of a dozen colours was a dozen draws of a few triangles each, and the
     // draws, not the triangles, were the Steam Frame's cost. (Colour after colour as before:
@@ -565,8 +641,8 @@ fn spawn_geom(
                 solid_tag.clone(),
             ))
             .id();
-        // Distant trees stay out of the shadow maps.
-        if tier == Tier::Far {
+        // Distant trees and towns stay out of the shadow maps.
+        if matches!(tier, Tier::Far | Tier::Distant | Tier::Town) {
             commands.entity(e).insert(bevy::light::NotShadowCaster);
         }
         children.push(e);

@@ -54,6 +54,7 @@ const uint TAG_WARM = 2048u;
 const uint TAG_DOT_NEAR = 4096u;
 const uint TAG_DOT_SPOT = 32768u;
 const uint TAG_DOT_FAR = 2147483648u;
+const uint TAG_VERTEX_HAZE = 1073741824u;
 const float DOT_FAR_MIN = 3000.0;
 const float AIRCRAFT_NIGHT = 0.95;
 const uint CLOUD_RAMP = 0xE0u;
@@ -180,6 +181,9 @@ void main() {
     uint size_class = (tag >> 3u) & 7u;
     uint no_fog = (tag >> 6u) & 1u;
     vec3 origin = a_model[3].xyz;
+    if ((tag & TAG_VERTEX_HAZE) != 0u && (tag & (TAG_SMOKE | TAG_DOT_SPOT | 128u)) == 0u) {
+        origin = world.xyz;
+    }
     float depth_m = max(dot(origin - eye, u_forward[VIEW]), 0.0);
     float depth_units = depth_m * max(g.weather.x, 1.0) / (g.params.y * level_unit(tag & 7u));
     int d = int(depth_units / 512.0) - int(size_class);

@@ -54,6 +54,9 @@ pub struct Settings {
     pub shadows: bool,
     /// Local lights: cockpit flood/display lights, explosions, plumes, runway lights.
     pub local_lights: bool,
+    /// VR: the scenery's detail follows the frame rate (`scenery::budget`), on unless
+    /// `--no-auto-detail`.
+    pub vr_auto_detail: bool,
     /// `--continuous-time`: the sun and moon move with the mission clock, the palette follows
     /// the sun, moonlight sets the enemy's night sight (sky.rs); off, the classic drift.
     pub continuous_time: bool,
@@ -229,6 +232,7 @@ impl Settings {
             vr,
             shadows: has("--shadows"),
             local_lights: has("--local-lights"),
+            vr_auto_detail: !has("--no-auto-detail"),
             continuous_time: has("--continuous-time"),
             sun_moon: has("--sun-moon"),
             classic_cockpit: has("--classic-cockpit"),

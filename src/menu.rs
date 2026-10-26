@@ -302,6 +302,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (!settings.msaa, "--no-msaa"),
         (settings.shadows, "--shadows"),
         (settings.local_lights, "--local-lights"),
+        (!settings.vr_auto_detail, "--no-auto-detail"),
         (settings.continuous_time, "--continuous-time"),
         (settings.sun_moon, "--sun-moon"),
         (settings.classic_cockpit, "--classic-cockpit"),

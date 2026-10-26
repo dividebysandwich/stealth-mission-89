@@ -509,6 +509,13 @@ const TRIM_RATE: f32 = 0.1;
 const TRIM_STICK_FREE: f32 = 0.05;
 
 impl Aircraft {
+    /// Forgets the flight models' velocity vectors, so they start again from `velocity` and
+    /// `orientation` (after moving the aircraft).
+    pub fn restart_motion(&mut self) {
+        self.modern = modern::State::default();
+        self.heli = heli::State::default();
+    }
+
     /// Moves the trim by `d` (fractions of full stick), within its limits.
     fn move_trim(&mut self, d: Vec2) {
         self.stick_trim =

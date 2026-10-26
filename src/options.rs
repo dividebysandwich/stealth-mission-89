@@ -239,6 +239,16 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         )
         .changed();
     }
+    if !crate::WEBGL2 {
+        toggled |= facts(
+            ui.checkbox(&mut s.vr_auto_detail, "Automatic scenery detail (VR)"),
+            &[
+                "In the headset, the range of towns, forests and fields shrinks while frames run late and grows back when there is time to spare",
+                "The graphics settings stay as chosen",
+            ],
+        )
+        .changed();
+    }
     // The classic time of day can still show the sun and the moon.
     if !s.continuous_time {
         ui.indent("sun_moon", |ui| {
