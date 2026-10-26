@@ -1,6 +1,6 @@
 # Stealth Mission 89
 
-<img width="1988" height="1411" alt="screenshot_01" src="https://github.com/user-attachments/assets/35ec91cf-0064-442b-9ea8-6f46e8a345db" />
+<img width="1593" height="949" alt="screenshot_01" src="https://github.com/user-attachments/assets/c8d5908d-0e43-4ea8-ab84-8e00a97883db" />
 
 A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 
@@ -13,6 +13,12 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
   <br />
   <sub>Fly together, report bugs, share missions and follow development on the <a href="https://discord.gg/zjjGeKKpC">Stealth Mission 89 Discord</a>.</sub>
 </p>
+
+## Ready for takeoff?
+To play right now, you can either:
+1. Open your [web browser](https://stealth-mission.com) (the game works best in a Chromium-based web browser) 
+2. Or install the game on your PC with one of these [installers](https://github.com/dividebysandwich/stealth-mission-89/releases) (expand the list by clicking on "Show all assets")
+   - if you use Windows: install the `.msi` file or download the `.zip` file (then extract it) 
 
 ## Features
 * **Play in the browser** right on [stealth-mission.com](https://stealth-mission.com) or **locally** [on your PC](https://github.com/dividebysandwich/stealth-mission-89/releases)
