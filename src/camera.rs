@@ -325,7 +325,7 @@ pub fn spawn_rig(
             EyeCamera,
             bevy_fast_clouds::CloudCamera,
             Projection::Perspective(PerspectiveProjection {
-                near: 0.5,
+                near: 0.05,
                 far: 600_000.0,
                 ..default()
             }),
