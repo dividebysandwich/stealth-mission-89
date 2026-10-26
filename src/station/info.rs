@@ -122,6 +122,9 @@ pub(super) fn draw(
     let row_h = (PANEL.1 - 4 - first) / rows.len() as i32;
     for (i, (label, value, unit)) in rows.into_iter().enumerate() {
         let top = first + i as i32 * row_h;
+        // A thin black line over each field (the first under the squares).
+        let y = top as f32 - 0.5;
+        cv.stroke(Vec2::new(PANEL_X as f32 + 2.0, y), Vec2::new(RIGHT as f32 - 2.0, y), 0.8, BLACK);
         framed(cv, (LABELS.0, top + 2, LABELS.1, top + row_h - 2), label, false);
         let mid = (top + row_h / 2) as f32;
         if let Some(v) = value {
