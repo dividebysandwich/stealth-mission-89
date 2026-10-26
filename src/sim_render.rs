@@ -141,6 +141,43 @@ struct Cartridge {
     alt: f32,
 }
 
+/// A destroyed aircraft's model on its way down: the sim's wreck (`Sim::wreck`, which falls
+/// straight down after a hop up) gives its height once below where it was hit; until then it
+/// drops like a stone, and it drifts on along its last course, slowing down.
+struct Falling {
+    entity: Entity,
+    /// The wreck it follows (map x, y), and its height (wu) when it was hit.
+    wreck: (i32, i32),
+    alt: f64,
+    /// From the wreck's point to the model where it was hit (Bevy metres), its velocity then
+    /// (horizontal) and attitude, and seconds since.
+    offset: DVec3,
+    vel: DVec3,
+    rot: Quat,
+    t: f32,
+}
+
+/// Seconds a falling aircraft's forward drift takes to slow down; its tumble (rad/s) and how
+/// far its nose drops (rad, at rad/s).
+const FALL_DRIFT_SECS: f64 = 1.5;
+const FALL_SPIN: f32 = 2.2;
+const FALL_NOSE_DOWN: f32 = 1.2;
+const FALL_NOSE_RATE: f32 = 0.5;
+
+impl Falling {
+    /// Where it is (Bevy metres) and its attitude, with the wreck at `w`.
+    fn pose(&self, w: &stealth_sim::Wreck) -> (DVec3, Quat) {
+        let t = self.t as f64;
+        let drop = 0.5 * 9.81 * t * t / crate::world::WU;
+        let alt = (w.alt as f64).min(self.alt - drop);
+        let drift = self.vel * FALL_DRIFT_SECS * (1.0 - (-t / FALL_DRIFT_SECS).exp());
+        let pos = map_point(w.x as f64 + 0.5, w.y as f64 + 0.5, alt) + self.offset + drift;
+        let right = self.rot * Vec3::X;
+        let nose = Quat::from_axis_angle(right, -(self.t * FALL_NOSE_RATE).min(FALL_NOSE_DOWN));
+        (pos, nose * self.rot * Quat::from_rotation_z(self.t * FALL_SPIN))
+    }
+}
+
 #[derive(Resource, Default)]
 struct SimVisuals {
     /// Aircraft model, its key and its spotting dot with the dot's current look.
@@ -154,6 +191,9 @@ struct SimVisuals {
     /// The other pilots' rounds (as many as were ever in flight at once).
     other_bullets: Vec<(Entity, Entity)>,
     wreck: Option<Entity>,
+    /// The last aircraft destroyed in the air, its own model falling with the wreck (in place
+    /// of the wreck model).
+    falling: Option<Falling>,
     chute: Option<Entity>,
     canopy: Option<Entity>,
     /// Signal flares of the downed pilot: (dot, seconds since fired, map x, map y).
@@ -815,6 +855,38 @@ fn sync_objects(
     let mut seen = HashSet::new();
     for (i, u, model) in sim.active_aircraft() {
         let model = aircraft_model(model);
+        // Just shot down in the air: its model goes on with the falling wreck.
+        let w = sim.wreck();
+        if u.flags & fflags::DESTROYED != 0
+            && w.alt > 0
+            && (w.x, w.y) == (u.x, u.y)
+            && vis.falling.as_ref().is_none_or(|f| f.wreck != (w.x, w.y))
+            && let Some((e, ..)) = vis.aircraft.remove(&i)
+        {
+            let prev = combat.prev_flights.get(i);
+            let (east, north, alt) = unit_position(prev, &u, alpha);
+            let pos = wu_to_bevy(east, north, alt);
+            let vel = prev.map_or(DVec3::ZERO, |p| {
+                let (e0, n0, a0) = unit_position(None, p, 1.0);
+                let (e1, n1, a1) = unit_position(None, &u, 1.0);
+                let v =
+                    (wu_to_bevy(e1, n1, a1) - wu_to_bevy(e0, n0, a0)) * crate::combat::FS as f64;
+                DVec3::new(v.x, 0.0, v.z)
+            });
+            let rot = q.get(e).map_or(Quat::IDENTITY, |(_, tf, ..)| tf.rotation);
+            if let Some(old) = vis.falling.take() {
+                commands.entity(old.entity).try_despawn();
+            }
+            vis.falling = Some(Falling {
+                entity: e,
+                wreck: (w.x, w.y),
+                alt: w.alt as f64,
+                offset: pos - map_point(w.x as f64 + 0.5, w.y as f64 + 0.5, w.alt as f64),
+                vel: if vel.length() < 1000.0 { vel } else { DVec3::ZERO },
+                rot,
+                t: 0.0,
+            });
+        }
         if u.flags & fflags::DESTROYED != 0 || (u.wx == 0 && u.wy == 0) {
             continue;
         }
@@ -1082,7 +1154,29 @@ fn sync_objects(
 
     // --- falling wreck (model 11) until it hits the ground
     let w = sim.wreck();
-    if w.alt > 0 && w.x != 0 {
+    // A destroyed aircraft's own model instead (while it is this wreck's).
+    if vis.falling.as_ref().is_some_and(|f| w.alt <= 0 || f.wreck != (w.x, w.y))
+        && let Some(f) = vis.falling.take()
+    {
+        let (pos, _) = f.pose(&w);
+        commands.entity(f.entity).try_despawn();
+        if f.wreck == (w.x, w.y) {
+            let ground = map_point(w.x as f64 + 0.5, w.y as f64 + 0.5, 0.0);
+            let at = DVec3::new(pos.x, ground.y, pos.z);
+            explosions.pending.push((at, crate::explosions::Blast::Crash));
+        }
+    }
+    if let Some(f) = vis.falling.as_mut() {
+        f.t += dt;
+        let (p, r) = f.pose(&w);
+        if let Ok((mut pos, mut tf, _, _)) = q.get_mut(f.entity) {
+            pos.0 = p;
+            tf.rotation = r;
+        }
+        if let Some(e) = vis.wreck.take() {
+            commands.entity(e).try_despawn();
+        }
+    } else if w.alt > 0 && w.x != 0 {
         if vis.wreck.is_none() {
             vis.wreck = spawn_model(&mut commands, &assets, &file, WRECK_MODEL, false);
         }
