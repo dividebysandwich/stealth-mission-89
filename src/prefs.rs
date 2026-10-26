@@ -68,7 +68,7 @@ pub struct Prefs {
     pub vr_cockpit_scale: f32,
     pub aircraft: crate::aircraft::AircraftKind,
     /// 0, 1: `vr_cockpit_scale` is relative to life size or to one size for every aircraft,
-    /// 2: relative to life size again.
+    /// 2: relative to the aircraft's own (`AircraftSpec::vr_scale`).
     #[serde(default)]
     pub vr_scale_version: u32,
     /// Multiplayer (`MenuState`).

@@ -45,6 +45,9 @@ pub struct AircraftSpec {
     /// How much larger than life the cockpit models are built (the F-117A's, after the classic
     /// one): drawn at life size, in the exterior model's canopy.
     pub cockpit_size: f32,
+    /// VR cockpit size at 100% (rig scale: the fraction of life size the cockpit looks in the
+    /// headset), what felt right in each.
+    pub vr_scale: f32,
     /// Height of the real aircraft's eye above the runway (m), kept in VR: the rig scale makes
     /// the world look as much smaller as the cockpit, so the cockpit is raised until the ground
     /// looks this far below (None: never raised).
@@ -170,6 +173,8 @@ static F117: AircraftSpec = AircraftSpec {
     cockpits: &[(PanelStyle::Modern, "cockpit_modern"), (PanelStyle::Classic, "cockpit_classic")],
     // tools/models/build_cockpit_f117.py SCALE.
     cockpit_size: 1.4706,
+    // Life size, as the F-16's.
+    vr_scale: 1.25 * 0.7,
     vr_eye_height: Some(2.7),
     hud_scale: crate::hud::modern::SCALE,
     // About the F-16's angular size: the symbology in the middle half of the combiner.
@@ -199,6 +204,7 @@ static F16: AircraftSpec = AircraftSpec {
     cockpit_size: 1.0,
     // The symbology (about 920 x 470 canvas pixels) inside the combiner (x +-0.1675, z -0.12 ..
     // 0.095 at 0.70 m in front of the eye, tools/models/build_cockpit_f16.py).
+    vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     hud_scale: 2080.0,
     vr_hud_scale: 2080.0,
@@ -237,6 +243,8 @@ static UH60: AircraftSpec = AircraftSpec {
     }),
     cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
     cockpit_size: 1.0,
+    // Life size, as the F-16's.
+    vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     hud_scale: crate::hud::modern::SCALE,
     vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
@@ -273,6 +281,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     }),
     cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
     cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     hud_scale: crate::hud::modern::SCALE,
     vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
