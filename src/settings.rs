@@ -99,7 +99,7 @@ pub struct Settings {
     /// `--head-tracking`: TrackIR-style head tracking through OpenTrack (desktop, `headtrack`).
     pub head_tracking: bool,
     /// `--vr-cockpit-scale <percent>`: size of the cockpit (and the world) in the headset,
-    /// 100% = the flown aircraft's `AircraftSpec::vr_scale`.
+    /// 100% = life size (tracked motion 1:1).
     pub vr_cockpit_scale: f32,
     /// `--aircraft f117|f16`: the flown aircraft.
     pub aircraft: crate::aircraft::AircraftKind,
@@ -201,7 +201,7 @@ impl Settings {
 
     /// Scale of the VR rig (the head offset) for the chosen cockpit size.
     pub fn vr_rig_scale(&self) -> f32 {
-        self.vr_cockpit_scale * self.aircraft.spec().vr_scale
+        self.vr_cockpit_scale
     }
 
     /// Scale of the VR hand offsets: as the rig's, in the units of the cockpit frame
