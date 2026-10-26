@@ -330,6 +330,7 @@ impl Host {
                 SimEvent::AaaDestroyed { unit, by } => {
                     reports.push(Report::AaaDestroyed { index: unit as u32, by: by.map(PlayerId) })
                 }
+                SimEvent::PilotDown { x, y } => reports.push(Report::PilotDown { player, x, y }),
                 SimEvent::SortieEnded(end) => ended.push((player, end)),
                 SimEvent::LandedAtBase { object } if self.state.sortie(player).is_some() => {
                     out.push(HostEvent::Landed { player, base: object })

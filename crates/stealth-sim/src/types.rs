@@ -749,6 +749,11 @@ pub enum SimEvent {
         unit: usize,
         base: usize,
     },
+    /// The pilot is down in enemy territory and a rescue is on its way (map position).
+    PilotDown {
+        x: i32,
+        y: i32,
+    },
     /// The downed pilot fired a signal flare (map position).
     SignalFlare {
         x: i32,

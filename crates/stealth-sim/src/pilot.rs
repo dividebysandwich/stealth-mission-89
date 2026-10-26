@@ -158,6 +158,9 @@ pub struct Pilot {
     /// Frames since ejection (counting from 1), 0 = not ejected.
     pub(crate) eject: i32,
     pub(crate) chute: (i32, i32, i32),
+    /// His rescue after an ejection over enemy territory.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) csar: Option<crate::csar::Csar>,
     pub(crate) landing_type: u8,
     pub(crate) log: Vec<LogEvent>,
     /// A coop client flies his own gun rounds and reports their hits (`claims`): the host's
@@ -196,6 +199,7 @@ impl SimEvent {
                 | SimEvent::FuelTransfer { .. }
                 | SimEvent::Resupplied
                 | SimEvent::Ejected { .. }
+                | SimEvent::PilotDown { .. }
                 | SimEvent::CollisionBounce
                 | SimEvent::MissionEnd(_)
                 | SimEvent::Log(_)

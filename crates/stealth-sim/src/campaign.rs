@@ -293,7 +293,7 @@ impl Sim {
         self.pl.air_lock = -1;
         self.pl.gnd_lock = -1;
         self.pl.pilot_lock = None;
-        self.csar = None;
+        self.end_csar();
         self.pl.eject = 0;
         self.pl.threat_count = 0;
         self.pl.tracking = 0;
@@ -746,12 +746,12 @@ impl Sim {
     }
 
     /// A free flight unit for a campaign aircraft (reusing finished ones).
-    fn campaign_slot(&mut self) -> usize {
+    pub(crate) fn campaign_slot(&mut self) -> usize {
         let c = self.campaign.as_ref().expect("campaign");
         let free = (self.mission_flights..self.flights.len()).find(|&i| {
             self.flights[i].flags == 0
                 && c.flights.get(i).is_none_or(Option::is_none)
-                && self.csar.as_ref().is_none_or(|s| s.rescue != i && !s.hunters.contains(&i))
+                && self.csar_of(i).is_none()
         });
         let i = free.unwrap_or_else(|| {
             self.flights.push(FlightUnit::default());

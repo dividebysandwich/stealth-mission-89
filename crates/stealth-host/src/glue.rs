@@ -124,6 +124,8 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
 pub fn sortie_end(e: &stealth_sim::MissionEnd) -> (SortieEnd, &'static str) {
     match (e.outcome, e.landing_type) {
         (0, 2) => (SortieEnd::Ejected, "Ejected"),
+        (0, 4) => (SortieEnd::Rescued, "Ejected - extracted by the rescue helicopter"),
+        (8, _) => (SortieEnd::Captured, "Ejected - captured by the enemy"),
         (0, _) => (SortieEnd::Landed, "Sortie ended on the ground"),
         (6, _) => (SortieEnd::Crashed, "Ejection failed - the pilot is recovered"),
         (7, _) => (SortieEnd::Aborted, "Sortie aborted"),

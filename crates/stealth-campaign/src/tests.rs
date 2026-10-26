@@ -901,8 +901,14 @@ fn eject_over(c: &mut CampaignState, name: &str) -> (Vec<CampaignEvent>, i32, i3
 #[test]
 fn a_pilot_down_behind_the_lines_is_rescued() {
     let mut c = campaign("central_europe", 3);
+    c.income_at = f64::MAX;
+    c.resupply_at = f64::MAX;
+    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
     let (ev, x, y) = eject_over(&mut c, "Tabor");
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("down near"))));
+    // He is missing: his worth is lost until he is out.
+    assert_eq!(c.blue.fighters, fighters - 1);
+    assert!(c.blue.materiel <= materiel - tuning::CAPTURE_COST + 0.01);
     let d = c.downed[0].clone();
     assert_eq!((d.x, d.y, d.state), (x, y, DownedState::Waiting));
     c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
@@ -926,6 +932,7 @@ fn a_pilot_down_behind_the_lines_is_rescued() {
     }
     assert!(rescued);
     assert_eq!(c.downed_pilot(d.id).unwrap().state, DownedState::Rescued);
+    assert_eq!((c.blue.materiel, c.blue.fighters), (materiel, fighters));
     // Over friendly territory: no rescue needed.
     let mut c = campaign("central_europe", 3);
     eject_over(&mut c, "Ramstein");
@@ -935,20 +942,77 @@ fn a_pilot_down_behind_the_lines_is_rescued() {
 #[test]
 fn a_pilot_nobody_rescues_is_captured() {
     let mut c = campaign("central_europe", 3);
+    c.income_at = f64::MAX;
+    c.resupply_at = f64::MAX;
+    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
     eject_over(&mut c, "Tabor");
     // No helicopter left for the campaign's own try.
     c.blue.helicopters = 0;
-    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
-    c.income_at = f64::MAX;
-    c.resupply_at = f64::MAX;
     let ev = c.tick(tuning::RESCUE_WINDOW, &WorldView::default(), &[]);
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("captured"))));
     assert_eq!(c.downed[0].state, DownedState::Captured);
+    // What he cost when he came down stays lost (and no more).
     assert!(c.blue.materiel <= materiel - tuning::CAPTURE_COST + 0.01);
-    assert!(c.blue.fighters < fighters);
+    assert!(c.blue.materiel >= materiel - tuning::CAPTURE_COST - 0.01);
+    assert_eq!(c.blue.fighters, fighters - 1);
     // The players still fly.
     let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().id;
     c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 }).unwrap();
+}
+
+/// Player 0's parachute comes down near the enemy's place `name` and the simulation sends its
+/// rescue helicopter.
+fn down_over(c: &mut CampaignState, name: &str) -> (i32, i32) {
+    c.income_at = f64::MAX;
+    c.resupply_at = f64::MAX;
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().id;
+    c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 }).unwrap();
+    let p = &c.places[place_named(c, name) as usize];
+    let (x, y) = (p.x + 30, p.y);
+    c.tick(1.0, &WorldView::default(), &[Report::PilotDown { player: P0, x, y }]);
+    (x, y)
+}
+
+#[test]
+fn an_extracted_pilot_gives_back_what_he_cost() {
+    let mut c = campaign("central_europe", 3);
+    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
+    down_over(&mut c, "Tabor");
+    assert_eq!(c.blue.fighters, fighters - 1);
+    assert!(c.blue.materiel < materiel);
+    let ev = c.apply(P0, Command::EndSortie { end: SortieEnd::Rescued }).unwrap();
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("extracted"))));
+    assert_eq!((c.blue.materiel, c.blue.fighters), (materiel, fighters));
+    assert!(c.downed.is_empty());
+    // Captured waiting for the helicopter: lost.
+    let mut c = campaign("central_europe", 3);
+    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
+    down_over(&mut c, "Tabor");
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Captured }).unwrap();
+    assert_eq!(c.blue.fighters, fighters - 1);
+    assert!(c.blue.materiel <= materiel - tuning::CAPTURE_COST + 0.01);
+    assert!(c.downed.is_empty());
+}
+
+#[test]
+fn skipping_the_extraction_leaves_the_rescue_to_the_board() {
+    let mut c = campaign("central_europe", 3);
+    let (materiel, fighters) = (c.blue.materiel, c.blue.fighters);
+    let (x, y) = down_over(&mut c, "Tabor");
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Ejected }).unwrap();
+    let d = c.downed[0].clone();
+    assert_eq!((d.x, d.y, d.state), (x, y, DownedState::Waiting));
+    // Charged once, given back by the board's rescue.
+    assert_eq!(c.blue.fighters, fighters - 1);
+    let mut ev = Vec::new();
+    c.rescued(d.id, &mut ev);
+    assert_eq!((c.blue.materiel, c.blue.fighters), (materiel, fighters));
+    // Ending the sortie from the menu (or leaving the game) skips it too.
+    let mut c = campaign("central_europe", 3);
+    down_over(&mut c, "Tabor");
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
+    assert_eq!(c.downed.len(), 1);
 }
 
 #[test]

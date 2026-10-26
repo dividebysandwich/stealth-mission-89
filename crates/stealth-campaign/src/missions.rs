@@ -64,6 +64,15 @@ impl CampaignState {
 
     pub(crate) fn end_sortie(&mut self, player: PlayerId, end: SortieEnd) -> Vec<CampaignEvent> {
         let Some(s) = self.slot_mut(player).sortie.take() else { return Vec::new() };
+        // Down waiting for the rescue helicopter, he did not wait for it (or left the game): a
+        // rescue goes on the board.
+        let down = s.progress.down;
+        let end = match end {
+            SortieEnd::Aborted | SortieEnd::Crashed | SortieEnd::Landed if down.is_some() => {
+                SortieEnd::Ejected
+            }
+            e => e,
+        };
         self.leave_plans(player);
         let mut ev = Vec::new();
         // His own insertion goes on with the wingmen (if any are left); a pilot aboard is lost
@@ -138,10 +147,15 @@ impl CampaignState {
         self.note(format!("{}: {} - {verdict}", s.offer.title, end.name()));
         self.history.push(record.clone());
         ev.extend([CampaignEvent::SortieFinished { player, record }, self.plans_changed()]);
-        if end == SortieEnd::Ejected
-            && let Some((x, y)) = s.progress.last
-        {
-            self.ejected(player, x, y, &mut ev);
+        match end {
+            SortieEnd::Ejected => {
+                if let Some((x, y)) = down.map(|d| d.0).or(s.progress.last) {
+                    self.ejected(player, x, y, down.map(|d| d.1), &mut ev);
+                }
+            }
+            SortieEnd::Rescued => self.extraction_over(player, down, true, &mut ev),
+            SortieEnd::Captured => self.extraction_over(player, down, false, &mut ev),
+            _ => {}
         }
         ev
     }

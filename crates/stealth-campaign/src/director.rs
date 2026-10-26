@@ -35,6 +35,7 @@ impl CampaignState {
                     self.board_at = f64::MIN;
                 }
             }
+            Report::PilotDown { player, x, y } => self.pilot_down(player, x, y, ev),
             Report::SiteSpotted { object } => {
                 if let Some(s) = self.site_mut(object).filter(|s| s.alive()) {
                     s.spotted = true;

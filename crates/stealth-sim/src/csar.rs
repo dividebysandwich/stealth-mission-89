@@ -76,13 +76,24 @@ pub struct Csar {
 impl Sim {
     /// The rescue after an ejection over enemy territory (None otherwise).
     pub fn csar(&self) -> Option<&Csar> {
-        self.csar.as_ref()
+        self.pl.csar.as_ref()
     }
 
-    /// Spawns a helicopter on the ground at base object `b` (appended after the other flights).
+    /// The rescue flight unit `i` belongs to (as the UH-60 or a Hind), any pilot's.
+    pub(crate) fn csar_of(&self, i: usize) -> Option<&Csar> {
+        let me = self.pl.id as usize;
+        let parked = self.parked.iter().enumerate().filter(|&(k, _)| k != me).map(|(_, p)| p);
+        std::iter::once(&self.pl)
+            .chain(parked)
+            .filter_map(|p| p.csar.as_ref())
+            .find(|c| c.rescue == i || c.hunters.contains(&i))
+    }
+
+    /// Spawns a helicopter on the ground at base object `b` (after the other flights; a
+    /// campaign reuses a free slot).
     fn spawn_helicopter(&mut self, spec: i32, b: usize) -> usize {
         let o = self.objects[b];
-        let i = self.flights.len();
+        let i = if self.campaign.is_some() { self.campaign_slot() } else { self.flights.len() };
         let mut u = FlightUnit {
             spec,
             wp: b as i32,
@@ -96,7 +107,11 @@ impl Sim {
         u.wx = u.x << 5;
         u.wy = u.y << 5;
         u.flags = fflags::EXISTS | fflags::AIRBORNE | fflags::TAKEOFF;
-        self.flights.push(u);
+        if i == self.flights.len() {
+            self.flights.push(u);
+        } else {
+            self.flights[i] = u;
+        }
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: b });
         i
     }
@@ -121,7 +136,20 @@ impl Sim {
     pub(crate) fn start_csar(&mut self) -> bool {
         let (x, y, _) = self.pl.chute;
         let cell = ((y >> 11).clamp(0, 15) * 16 + (x >> 11).clamp(0, 15)) as usize;
-        let enemy = self.grid.get(cell).is_some_and(|g| g & 3 == 0);
+        // A campaign's front moves: the side of the nearest airfield anyone holds.
+        let enemy = if self.campaign.is_some() {
+            self.objects
+                .iter()
+                .skip(3)
+                .filter(|o| {
+                    o.flags & oflags::AIRFIELD != 0
+                        && o.flags & (oflags::NEUTRAL | oflags::CARRIER) == 0
+                })
+                .min_by_key(|o| approx(o.x - x, o.y - y))
+                .is_some_and(|o| o.flags & oflags::FRIENDLY == 0)
+        } else {
+            self.grid.get(cell).is_some_and(|g| g & 3 == 0)
+        };
         let Some(base) = self.nearest_airfield(x, y, true) else { return false };
         if !enemy {
             return false;
@@ -150,7 +178,7 @@ impl Sim {
         let capture_frames = (15 - 2 * self.diff) * 60 * self.fs;
         let search = hunters.iter().map(|_| (x, y)).collect();
         let spotted = vec![false; hunters.len()];
-        self.csar = Some(Csar {
+        self.pl.csar = Some(Csar {
             pilot: (x, y),
             rescue,
             hunters,
@@ -163,15 +191,29 @@ impl Sim {
         let base_name = self.place_name(base);
         self.msg(format!("Down in enemy territory - CSAR from {base_name}"));
         self.emit(SimEvent::CancelTimeAccel);
+        self.emit(SimEvent::PilotDown { x, y });
         true
+    }
+
+    /// Campaign: the pilot's rescue is over (picked up, captured, or he did not wait for it):
+    /// its helicopters fly home.
+    pub(crate) fn end_csar(&mut self) {
+        let Some(c) = self.pl.csar.take() else { return };
+        for i in std::iter::once(c.rescue).chain(c.hunters) {
+            if let Some(u) = self.flights.get_mut(i)
+                && u.flags & fflags::DESTROYED == 0
+            {
+                u.flags |= fflags::RTB;
+            }
+        }
     }
 
     /// One frame of the rescue: signal flares, the pickup, capture.
     pub(crate) fn update_csar(&mut self, ps: &PlayerState) {
         let fs = self.fs;
-        let Some(mut c) = self.csar.take() else { return };
+        let Some(mut c) = self.pl.csar.take() else { return };
         if matches!(c.state, CsarState::Rescued | CsarState::Captured) {
-            self.csar = Some(c);
+            self.pl.csar = Some(c);
             return;
         }
         c.frames += 1;
@@ -241,7 +283,7 @@ impl Sim {
             _ => {}
         }
         let state = c.state;
-        self.csar = Some(c);
+        self.pl.csar = Some(c);
         match state {
             CsarState::Rescued => {
                 self.msg("Rescued!");
@@ -258,7 +300,7 @@ impl Sim {
 
     /// Where helicopter `i` is going: (map x, map y, height, hover there).
     fn helo_goal(&mut self, i: usize, u: &FlightUnit) -> (i32, i32, i32, bool) {
-        if let Some(c) = &self.csar {
+        if let Some(c) = self.csar_of(i).cloned() {
             if i == c.rescue {
                 let d = approx(u.x - c.pilot.0, u.y - c.pilot.1);
                 // Close in, it needs a flare to find the pilot; until then it circles (and comes in
@@ -365,6 +407,15 @@ impl Sim {
             if u.alt == 0 {
                 u.flags &= 0x1C1;
                 u.speed = 0;
+                // A campaign's rescue helicopters are done (its own come back as events).
+                if self
+                    .campaign
+                    .as_ref()
+                    .is_some_and(|c| c.flights.get(i).is_none_or(Option::is_none))
+                    && i >= self.mission_flights
+                {
+                    u = FlightUnit::default();
+                }
             }
         }
         // Hinds use their gun on a low, close player.
@@ -382,9 +433,7 @@ impl Sim {
             }
         }
         u.timer = s16(u.timer - 1);
-        if u.timer == 0
-            && self.csar.as_ref().is_none_or(|c| c.rescue != i && !c.hunters.contains(&i))
-        {
+        if u.timer == 0 && self.csar_of(i).is_none() {
             u.flags |= fflags::RTB;
         }
         self.flights[i] = u;

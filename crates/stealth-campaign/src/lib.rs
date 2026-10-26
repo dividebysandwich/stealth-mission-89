@@ -110,6 +110,12 @@ pub enum Report {
     SiteSpotted {
         object: ObjectId,
     },
+    /// A player's parachute came down in enemy territory and a rescue helicopter is on its way.
+    PilotDown {
+        player: PlayerId,
+        x: i32,
+        y: i32,
+    },
 }
 
 /// A player's request.

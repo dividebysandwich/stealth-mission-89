@@ -376,6 +376,9 @@ pub enum SortieEnd {
     Ejected,
     Crashed,
     Aborted,
+    /// Ejected and picked up by the rescue helicopter, or captured waiting for it.
+    Rescued,
+    Captured,
 }
 
 impl SortieEnd {
@@ -385,6 +388,8 @@ impl SortieEnd {
             SortieEnd::Ejected => "Ejected",
             SortieEnd::Crashed => "Shot down / crashed",
             SortieEnd::Aborted => "Aborted",
+            SortieEnd::Rescued => "Ejected - extracted",
+            SortieEnd::Captured => "Ejected - captured",
         }
     }
 }
@@ -428,6 +433,10 @@ pub struct Progress {
     pub aboard: bool,
     #[serde(default)]
     pub delivered: bool,
+    /// Down in enemy territory waiting for the rescue helicopter: where, and what it costs
+    /// the friendly side until he is out.
+    #[serde(default)]
+    pub down: Option<((i32, i32), Loss)>,
 }
 
 impl Progress {
@@ -692,6 +701,14 @@ pub enum DownedState {
     Captured,
 }
 
+/// What a pilot down in enemy territory costs the friendly side (given back when he is
+/// rescued): the materiel actually taken, and a fighter if there was one.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct Loss {
+    pub materiel: f64,
+    pub fighter: bool,
+}
+
 /// A player who ejected over enemy territory, waiting for a helicopter.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Downed {
@@ -703,6 +720,9 @@ pub struct Downed {
     pub y: i32,
     pub until: f64,
     pub state: DownedState,
+    /// What he cost (None: an older save's, charged if he is captured).
+    #[serde(default)]
+    pub lost: Option<Loss>,
 }
 
 /// How the campaign ended.

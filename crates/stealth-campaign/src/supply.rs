@@ -216,6 +216,7 @@ impl CampaignState {
         player: PlayerId,
         x: i32,
         y: i32,
+        lost: Option<Loss>,
         ev: &mut Vec<CampaignEvent>,
     ) {
         let near = self
@@ -223,9 +224,11 @@ impl CampaignState {
             .iter()
             .filter(|p| p.owner != Side::Neutral)
             .min_by_key(|p| dist(p.x - x, p.y - y));
-        let Some(near) = near.filter(|p| p.owner == Side::Red) else { return };
+        // Near an enemy place, or where the simulation sent its rescue helicopter.
+        let Some(near) = near.filter(|p| lost.is_some() || p.owner == Side::Red) else { return };
         let place = near.name.clone();
         let name = self.player_name(player).unwrap_or("A pilot").to_string();
+        let lost = lost.unwrap_or_else(|| self.lose_pilot());
         let id = self.id();
         self.downed.push(Downed {
             id,
@@ -235,6 +238,7 @@ impl CampaignState {
             y,
             until: self.clock + RESCUE_WINDOW,
             state: DownedState::Waiting,
+            lost: Some(lost),
         });
         self.board_at = f64::MIN;
         let text = format!(
@@ -255,17 +259,19 @@ impl CampaignState {
             if d.state != DownedState::Waiting || now < d.until || self.heli_rescue(d.id) {
                 continue;
             }
-            let (id, name) = (d.id, d.name.clone());
+            let (id, name, lost) = (d.id, d.name.clone(), d.lost);
             let lucky = self.blue.helicopters > 0 && self.rng.below(100) < RESCUE_AI_CHANCE;
             if lucky {
                 self.downed[k].state = DownedState::Rescued;
+                self.recover(lost);
                 let text = format!("A rescue helicopter got {name} out");
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
             } else {
                 self.downed[k].state = DownedState::Captured;
-                self.lose(Side::Blue, CAPTURE_COST);
-                self.blue.fighters = self.blue.fighters.saturating_sub(1);
+                if lost.is_none() {
+                    self.lose_pilot();
+                }
                 let text = format!("{name} was captured by the enemy");
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
@@ -295,7 +301,9 @@ impl CampaignState {
         }
         d.state = DownedState::Captured;
         let text = format!("{} was lost with the helicopter", d.name);
-        self.lose(Side::Blue, CAPTURE_COST);
+        if d.lost.is_none() {
+            self.lose(Side::Blue, CAPTURE_COST);
+        }
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         self.settle_rescue(id, false);
@@ -309,9 +317,83 @@ impl CampaignState {
         }
         d.state = DownedState::Rescued;
         let text = format!("{} rescued!", d.name);
+        let lost = d.lost;
+        self.recover(lost);
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         self.settle_rescue(id, true);
+    }
+
+    /// A pilot is down in enemy territory: the friendly side is short his worth (materiel and
+    /// a fighter) until he is rescued.
+    fn lose_pilot(&mut self) -> Loss {
+        let was = self.blue.materiel;
+        self.lose(Side::Blue, CAPTURE_COST);
+        let fighter = self.blue.fighters > 0;
+        self.blue.fighters -= fighter as u32;
+        Loss { materiel: was - self.blue.materiel, fighter }
+    }
+
+    /// A rescued pilot gives back what being down cost.
+    pub(crate) fn recover(&mut self, lost: Option<Loss>) {
+        let Some(l) = lost else { return };
+        let f = &mut self.blue;
+        let was = f.materiel;
+        f.materiel = (f.materiel + l.materiel).min(MATERIEL_MAX);
+        f.ledger.lost -= f.materiel - was;
+        f.fighters += l.fighter as u32;
+    }
+
+    /// Player `player`'s parachute came down in enemy territory and the simulation sent a
+    /// rescue helicopter: what he costs is lost until he is out.
+    pub(crate) fn pilot_down(
+        &mut self,
+        player: PlayerId,
+        x: i32,
+        y: i32,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        if self.sortie(player).is_none_or(|s| s.progress.down.is_some()) {
+            return;
+        }
+        let lost = self.lose_pilot();
+        if let Some(s) = self.slot_mut(player).sortie.as_mut() {
+            s.progress.down = Some(((x, y), lost));
+        }
+        let name = self.player_name(player).unwrap_or("A pilot").to_string();
+        let text = format!("{name} is down in enemy territory: a rescue helicopter is on its way");
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+    }
+
+    /// The simulation's rescue of `player` is over: picked up (what he cost comes back) or
+    /// captured.
+    pub(crate) fn extraction_over(
+        &mut self,
+        player: PlayerId,
+        down: Option<((i32, i32), Loss)>,
+        rescued: bool,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        let name = self.player_name(player).unwrap_or("A pilot").to_string();
+        let lost = down.map(|d| d.1);
+        let text = if rescued {
+            self.recover(lost);
+            match lost {
+                Some(l) if l.fighter => {
+                    format!("{name} extracted - {:.0} materiel and a fighter recovered", l.materiel)
+                }
+                Some(l) => format!("{name} extracted - {:.0} materiel recovered", l.materiel),
+                None => format!("{name} extracted"),
+            }
+        } else {
+            if lost.is_none() {
+                self.lose_pilot();
+            }
+            format!("{name} was captured by the enemy")
+        };
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
     }
 
     /// A rescue is over: settles the rescue sorties that already ended.

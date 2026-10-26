@@ -1,6 +1,7 @@
 //! Status panel for the downed pilot: the rescue helicopter, the Hinds, flares and time on
 //! the ground (the cockpit displays are gone with the aircraft), with buttons for the signal
-//! flare and time acceleration.
+//! flare and time acceleration. A campaign runs in real time: instead of the time buttons the
+//! pilot may skip the extraction (the sortie ends and the rescue goes on the mission board).
 //!
 //! On the desktop a 2D overlay clicked with the mouse (the keys 1, Shift-Z and Shift-X work as
 //! well); in VR a screen floating at chest height in front of the pilot, pointed at with either
@@ -54,9 +55,21 @@ enum CsarButton {
     Flare,
     Faster,
     Normal,
+    Skip,
 }
 
-const BUTTONS: [CsarButton; 3] = [CsarButton::Flare, CsarButton::Faster, CsarButton::Normal];
+/// The panel's buttons, in a campaign or not.
+fn buttons(campaign: bool) -> &'static [CsarButton] {
+    if campaign {
+        &[CsarButton::Flare, CsarButton::Skip]
+    } else {
+        &[CsarButton::Flare, CsarButton::Faster, CsarButton::Normal]
+    }
+}
+
+fn in_campaign(combat: Option<&Combat>) -> bool {
+    combat.is_some_and(|c| c.sim.campaign().is_some())
+}
 
 impl CsarButton {
     fn label(self) -> &'static str {
@@ -64,6 +77,7 @@ impl CsarButton {
             CsarButton::Flare => "SIGNAL FLARE",
             CsarButton::Faster => "FASTER",
             CsarButton::Normal => "NORMAL TIME",
+            CsarButton::Skip => "SKIP EXTRACTION",
         }
     }
 
@@ -72,6 +86,7 @@ impl CsarButton {
             CsarButton::Flare => "1",
             CsarButton::Faster => "SHIFT-Z",
             CsarButton::Normal => "SHIFT-X",
+            CsarButton::Skip => "ALT-Q",
         }
     }
 
@@ -80,13 +95,15 @@ impl CsarButton {
             CsarButton::Flare => Action::Flare,
             CsarButton::Faster => Action::TimeAccel,
             CsarButton::Normal => Action::TimeNormal,
+            // A campaign ends the sortie (`campaign.rs`).
+            CsarButton::Skip => Action::Quit,
         }
     }
 
     /// The time button of the current time rate is lit.
     fn lit(self, accel: &TimeAccel) -> bool {
         match self {
-            CsarButton::Flare => false,
+            CsarButton::Flare | CsarButton::Skip => false,
             CsarButton::Faster => accel.on,
             CsarButton::Normal => !accel.on,
         }
@@ -106,10 +123,6 @@ fn compass(x: i32, y: i32, tx: i32, ty: i32) -> &'static str {
 
 fn status(combat: &Combat) -> Option<Vec<String>> {
     let sim = &combat.sim;
-    // A campaign has no rescue: the sortie ends when the parachute is down.
-    if sim.campaign().is_some() {
-        return None;
-    }
     let (x, y, alt) = sim.chute()?;
     let Some(c) = sim.csar() else {
         return Some(vec![if alt > 0 {
@@ -162,6 +175,7 @@ fn update_panel(
     mut texts: Query<&mut Text, With<CsarText>>,
 ) {
     let text = shown_status(combat.as_deref(), &view).map(|l| l.join("\n"));
+    let campaign = in_campaign(combat.as_deref());
     match (text, panel.single()) {
         (Some(t), Ok(_)) => {
             for mut s in &mut texts {
@@ -189,7 +203,7 @@ fn update_panel(
                 .with_children(|p| {
                     p.spawn((CsarText, Text::new(t), font(18.0), TextColor(GREEN)));
                     p.spawn(Node { column_gap: px(8), ..default() }).with_children(|row| {
-                        for b in BUTTONS {
+                        for &b in buttons(campaign) {
                             row.spawn((
                                 b,
                                 Button,
@@ -285,20 +299,19 @@ const BRIGHT: u8 = 47;
 const DIM: u8 = 45;
 const HOVER_BG: u8 = 44;
 
-/// Left and right edge of button `i` (canvas pixels).
-fn button_span(i: usize) -> (f32, f32) {
-    let w = (W as f32 - BUTTON_GAP * (BUTTONS.len() + 1) as f32) / BUTTONS.len() as f32;
+/// Left and right edge of button `i` of `n` (canvas pixels).
+fn button_span(i: usize, n: usize) -> (f32, f32) {
+    let w = (W as f32 - BUTTON_GAP * (n + 1) as f32) / n as f32;
     let x0 = BUTTON_GAP + i as f32 * (w + BUTTON_GAP);
     (x0, x0 + w)
 }
 
-fn button_at(p: Vec2) -> Option<CsarButton> {
+fn button_at(p: Vec2, buttons: &[CsarButton]) -> Option<CsarButton> {
     if !(BUTTON_TOP..BUTTON_TOP + BUTTON_H).contains(&p.y) {
         return None;
     }
-    (0..BUTTONS.len())
-        .find(|&i| (button_span(i).0..button_span(i).1).contains(&p.x))
-        .map(|i| BUTTONS[i])
+    let n = buttons.len();
+    (0..n).find(|&i| (button_span(i, n).0..button_span(i, n).1).contains(&p.x)).map(|i| buttons[i])
 }
 
 fn spawn_vr_screen(
@@ -402,7 +415,7 @@ fn vr_pointer(
         .looking_to(d, Vec3::Y)
         .with_scale(Vec3::new(1.0, 1.0, t));
     lvis.set_if_neq(Visibility::Inherited);
-    let hovered = button_at(px);
+    let hovered = button_at(px, buttons(in_campaign(combat.as_deref())));
     let hand = &mut hands.hands[i];
     if hovered.is_some() && hovered != screen.hovered {
         hand.haptic = hand.haptic.max(0.1);
@@ -461,8 +474,9 @@ fn draw_vr_screen(
             Align::Left,
         );
     }
-    for (i, b) in BUTTONS.into_iter().enumerate() {
-        let (x0, x1) = button_span(i);
+    let row = buttons(in_campaign(combat.as_deref()));
+    for (i, &b) in row.iter().enumerate() {
+        let (x0, x1) = button_span(i, row.len());
         let lit = b.lit(&accel);
         if lit || screen.hovered == Some(b) {
             c.fill_rect(

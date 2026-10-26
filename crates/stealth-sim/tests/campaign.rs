@@ -787,3 +787,47 @@ fn a_forward_battery_is_enemy_guns_around_its_point() {
         assert!(d <= 0x60, "unit {k} {d} away");
     }
 }
+
+#[test]
+fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
+    let (_, mut sim) = campaign();
+    let base = find(&sim, 0x401, None);
+    sim.respawn_player(base, None);
+    // Nearest to an enemy airfield, far from the friendly ones.
+    let o = (3..sim.objects().len())
+        .map(|i| sim.objects()[i])
+        .find(|o| o.flags & 0xF0F == oflags::AIRFIELD)
+        .expect("enemy airfield");
+    let (x, y) = Sim::map_to_world(o.x + 0x80, o.y);
+    let mut ps = PlayerState {
+        x,
+        y,
+        altitude: 2000,
+        velocity: 250 * 27,
+        gear_up: true,
+        fuel: 10000,
+        on_ground: false,
+        ..Default::default()
+    };
+    ps.cmd.eject = true;
+    let mut ev = sim.step(&ps, 15);
+    ps.cmd = Commands::default();
+    ev.extend(run(&mut sim, &ps, 120));
+    assert!(ev.iter().any(|e| matches!(e, SimEvent::PilotDown { .. })), "{ev:?}");
+    assert!(!ev.iter().any(|e| matches!(e, SimEvent::SortieEnded(_))));
+    let c = sim.csar().expect("rescue on its way").clone();
+    assert!(!sim.player_absent());
+    // Skip the extraction: the sortie ends as an ejection, the helicopters go home.
+    sim.end_sortie(0);
+    let ev = sim.take_pilot_events();
+    let end = ev.iter().find_map(|e| match e.event {
+        SimEvent::SortieEnded(e) => Some(e),
+        _ => None,
+    });
+    assert_eq!(end.map(|e| (e.outcome, e.landing_type)), Some((0, 2)));
+    assert!(sim.csar().is_none());
+    for i in std::iter::once(c.rescue).chain(c.hunters) {
+        let u = sim.flights()[i];
+        assert!(u.flags & fflags::DESTROYED != 0 || u.flags & fflags::RTB != 0, "{u:?}");
+    }
+}

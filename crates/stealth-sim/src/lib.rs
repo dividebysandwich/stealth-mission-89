@@ -173,9 +173,6 @@ pub struct Sim {
     /// Attack drones of the mission (their flight units follow the mission's own).
     #[serde(default)]
     pub(crate) drones: Option<drones::Drones>,
-    /// Rescue of the pilot after an ejection over enemy territory.
-    #[serde(default)]
-    pub(crate) csar: Option<csar::Csar>,
     /// Map positions of everything destroyed on the ground (campaign damage).
     #[serde(default)]
     pub(crate) destroyed_at: Vec<(i32, i32)>,
@@ -448,6 +445,7 @@ impl Sim {
                 armed_landing: 0,
                 eject: 0,
                 chute: (0, 0, 0),
+                csar: None,
                 landing_type: 1,
                 log: Vec::new(),
                 client_rounds: false,
@@ -486,7 +484,6 @@ impl Sim {
             traffic_toggle: false,
             mission_flights: w.flights.len()
                 - m.drones.as_ref().map_or(0, |d| d.count.min(w.flights.len())),
-            csar: None,
             destroyed_at: Vec::new(),
             visual_light: None,
             aaa: Vec::new(),

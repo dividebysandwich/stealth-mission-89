@@ -182,7 +182,7 @@ impl Sim {
         }
         // Ejection: chute descent, then the rescue over enemy territory.
         if self.pl.eject != 0 {
-            if self.csar.is_some() {
+            if self.pl.csar.is_some() {
                 self.update_csar(ps);
                 return;
             }
@@ -191,8 +191,7 @@ impl Sim {
             self.pl.chute.2 += dz;
             if self.pl.chute.2 <= 0 {
                 self.pl.chute.2 = 0;
-                // A campaign has no rescue (and no capture): the sortie just ends.
-                if self.mission_tick & 7 == 0 && (self.campaign.is_some() || !self.start_csar()) {
+                if self.mission_tick & 7 == 0 && !self.start_csar() {
                     self.finalize(0);
                 }
             }

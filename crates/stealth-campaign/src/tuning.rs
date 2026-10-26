@@ -166,8 +166,8 @@ pub const DEEP_TARGETS: usize = 2;
 
 /// A pilot ejected over enemy territory waits this long for a rescue; it takes a player this
 /// long airborne within this radius of him (5 km) to cover the helicopter in. Without one the
-/// campaign's own helicopter gets him out at this chance; a captured pilot costs the friendly
-/// side this much materiel and a fighter.
+/// campaign's own helicopter gets him out at this chance. A pilot down there costs the friendly
+/// side this much materiel and a fighter until he is rescued (lost for good if captured).
 pub const RESCUE_WINDOW: f64 = 20.0 * 60.0;
 pub const RESCUE_SECONDS: f64 = 120.0;
 pub const RESCUE_RADIUS: i32 = 0x140;

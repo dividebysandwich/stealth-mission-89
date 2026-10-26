@@ -595,9 +595,11 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     if c.exit {
         return;
     }
-    // END SORTIE from the in-flight menu.
+    // END SORTIE from the in-flight menu; down waiting for the rescue helicopter, SKIP
+    // EXTRACTION (the rescue goes on the board).
     if std::mem::take(&mut s.combat.quit) && c.phase == Phase::Sortie {
-        c.actions.push(Action::EndSortie { outcome: 7 });
+        let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
+        c.actions.push(Action::EndSortie { outcome });
     }
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
@@ -853,7 +855,11 @@ fn handle(c: &mut ActiveCampaign, s: &mut Session, events: Vec<HostEvent>) {
                 s.msgs.show(debrief.title.clone());
                 // Down under the parachute: the debrief at once (the pilotless aircraft is
                 // nothing to watch); else the end stays in view a few seconds.
-                let ejected = debrief.record.end == stealth_campaign::SortieEnd::Ejected;
+                use stealth_campaign::SortieEnd;
+                let ejected = matches!(
+                    debrief.record.end,
+                    SortieEnd::Ejected | SortieEnd::Rescued | SortieEnd::Captured
+                );
                 c.debrief = Some(debrief);
                 c.landed = None;
                 c.end_timer = Some(if ejected { END_SECONDS } else { 0.0 });
