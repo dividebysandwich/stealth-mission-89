@@ -307,6 +307,11 @@ impl ActiveCampaign {
         }
     }
 
+    /// The war's authority (alone, listen server); None on a client.
+    pub fn host_mut(&mut self) -> Option<&mut Host> {
+        self.host.as_mut()
+    }
+
     /// The Ops screen (or the landing prompt) is up.
     pub fn screen_open(&self) -> bool {
         (self.phase == Phase::Ops && self.end_timer.is_none()) || self.landed.is_some()

@@ -24,7 +24,7 @@ impl Plugin for ChatPlugin {
         )
         .add_systems(
             Update,
-            (open, send, receive)
+            (history, open, send, receive)
                 .chain()
                 .run_if(in_state(AppState::Flight))
                 .run_if(resource_exists::<NetLink>),
@@ -80,6 +80,20 @@ fn type_chat(
     keys.reset_all();
 }
 
+/// The campaign's chat so far (it is kept with the campaign: from before this player joined,
+/// or before the server restarted) into the message log, once.
+fn history(mut notices: ResMut<PlayerNotices>, campaign: Option<Res<ActiveCampaign>>) {
+    if notices.seeded {
+        return;
+    }
+    let Some(c) = campaign else { return };
+    notices.seeded = true;
+    let me = c.state().player_name(c.me).map(str::to_string);
+    for m in &c.state().chat {
+        notices.earlier_chat(&m.from, &m.text, me.as_deref() == Some(m.from.as_str()));
+    }
+}
+
 /// The chat key opens the cockpit's field (not over the Ops screen or the menu, which block
 /// the keys, and not in the headset); they close it again.
 fn open(
@@ -102,7 +116,7 @@ fn open(
 fn send(
     mut notices: ResMut<PlayerNotices>,
     mut link: ResMut<NetLink>,
-    campaign: Option<Res<ActiveCampaign>>,
+    mut campaign: Option<ResMut<ActiveCampaign>>,
 ) {
     if notices.outbox.is_empty() {
         return;
@@ -118,7 +132,11 @@ fn send(
         }
         match &mut *link {
             NetLink::Client(client) => client.chat(&text),
-            NetLink::Host(server) => server.say(&name, &text),
+            NetLink::Host(server) => {
+                if let Some(host) = campaign.as_mut().and_then(|c| c.host_mut()) {
+                    server.say(&name, &text, host);
+                }
+            }
         }
         notices.chat(&name, &text, true);
     }

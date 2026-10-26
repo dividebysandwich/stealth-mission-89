@@ -97,6 +97,8 @@ pub struct PlayerNotices {
     pub outbox: Vec<String>,
     /// The Ops screen's chat field has the keyboard this frame (no other key does anything).
     pub field_focus: bool,
+    /// The campaign's chat history is in the log.
+    pub seeded: bool,
 }
 
 impl PlayerNotices {
@@ -107,6 +109,13 @@ impl PlayerNotices {
     /// A chat message (`own`: this player's).
     pub fn chat(&mut self, from: &str, text: &str, own: bool) {
         self.add(Notice { from: Some(from.to_string()), text: text.to_string(), own, age: 0.0 });
+    }
+
+    /// An earlier chat message (from the campaign's history): in the log, not on the panel.
+    pub fn earlier_chat(&mut self, from: &str, text: &str, own: bool) {
+        let mut n = Notice { from: Some(from.to_string()), text: text.to_string(), own, age: 0.0 };
+        n.age = n.life();
+        self.add(n);
     }
 
     fn add(&mut self, n: Notice) {

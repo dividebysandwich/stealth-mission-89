@@ -539,6 +539,15 @@ pub struct LogEntry {
     pub text: String,
 }
 
+/// A coop chat message, kept with the campaign (a joining player and a restarted server see
+/// it too).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChatEntry {
+    pub time: f64,
+    pub from: String,
+    pub text: String,
+}
+
 /// How a new campaign is set up.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CampaignSetup {
@@ -719,6 +728,8 @@ pub struct CampaignState {
     pub players: Vec<PlayerSlot>,
     pub history: Vec<SortieRecord>,
     pub log: Vec<LogEntry>,
+    #[serde(default)]
+    pub chat: Vec<ChatEntry>,
     pub next_id: u32,
     pub rng: Rng,
     /// When the board was last rebuilt (f64::MIN: never; JSON has no infinity), the last
@@ -965,6 +976,7 @@ impl CampaignState {
             players: vec![PlayerSlot { id: PlayerId(0), name: "Player".into(), sortie: None }],
             history: Vec::new(),
             log: Vec::new(),
+            chat: Vec::new(),
             next_id: 1,
             board_at: f64::MIN,
             patrol_at: 0.0,
@@ -1005,6 +1017,15 @@ impl CampaignState {
         if self.log.len() > LOG_SIZE {
             let extra = self.log.len() - LOG_SIZE;
             self.log.drain(..extra);
+        }
+    }
+
+    /// A coop chat message into the campaign's history (the last `LOG_SIZE` are kept).
+    pub fn add_chat(&mut self, from: &str, text: &str) {
+        self.chat.push(ChatEntry { time: self.clock, from: from.into(), text: text.into() });
+        if self.chat.len() > LOG_SIZE {
+            let extra = self.chat.len() - LOG_SIZE;
+            self.chat.drain(..extra);
         }
     }
 

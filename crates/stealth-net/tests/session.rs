@@ -361,3 +361,36 @@ fn players_plan_a_mission_together() {
     }
     assert!(w.host.state.plan(o.id).unwrap().crew.is_empty());
 }
+
+/// A chat message stays with the campaign: a player joining later finds it in his welcome.
+#[test]
+fn chat_is_kept_with_the_campaign() {
+    let mut w = world();
+    let port = w.server.port().unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let join = |w: &mut World, c: &mut Client, now: &mut Instant| {
+        for _ in 0..300 {
+            *now += Duration::from_millis(66);
+            for e in frame(w, c, None, *now) {
+                if let ClientEvent::Welcome { state, .. } = e {
+                    return state;
+                }
+            }
+        }
+        panic!("no welcome");
+    };
+    let mut now = Instant::now();
+    let mut first = Client::connect(&addr, "Maverick").unwrap();
+    join(&mut w, &mut first, &mut now);
+    first.chat("Wheels up");
+    for _ in 0..30 {
+        now += Duration::from_millis(66);
+        frame(&mut w, &mut first, None, now);
+    }
+    let kept: Vec<_> = w.host.state.chat.iter().map(|m| (&*m.from, &*m.text)).collect();
+    assert_eq!(kept, [("Maverick", "Wheels up")]);
+    let mut second = Client::connect(&addr, "Goose").unwrap();
+    let state = join(&mut w, &mut second, &mut now);
+    assert_eq!(state.chat.len(), 1);
+    assert_eq!(state.chat[0].text, "Wheels up");
+}

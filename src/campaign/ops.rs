@@ -1294,15 +1294,33 @@ fn end_screen(ui: &mut egui::Ui, c: &ActiveCampaign) {
 fn log(ui: &mut egui::Ui, c: &ActiveCampaign) {
     section(ui, "Campaign log");
     egui::ScrollArea::vertical().id_salt("log").show(ui, |ui| {
-        for e in c.state().log.iter().rev() {
-            let m = (e.time / 60.0).floor() as i64;
-            ui.horizontal(|ui| {
+        // The campaign's events and the coop chat, newest first.
+        let s = c.state();
+        let (mut log, mut chat) = (s.log.iter().rev().peekable(), s.chat.iter().rev().peekable());
+        loop {
+            let take_chat = match (log.peek(), chat.peek()) {
+                (None, None) => break,
+                (Some(l), Some(m)) => m.time >= l.time,
+                (l, _) => l.is_none(),
+            };
+            let (time, from, text) = if take_chat {
+                let m = chat.next().unwrap();
+                (m.time, Some(&m.from), &m.text)
+            } else {
+                let e = log.next().unwrap();
+                (e.time, None, &e.text)
+            };
+            let m = (time / 60.0).floor() as i64;
+            ui.horizontal_wrapped(|ui| {
                 ui.label(
                     egui::RichText::new(format!("T+{:02}:{:02}", m / 60, m % 60))
                         .monospace()
                         .color(DIM),
                 );
-                ui.label(egui::RichText::new(&e.text).color(BRIGHT));
+                if let Some(from) = from {
+                    ui.label(egui::RichText::new(format!("{from}:")).color(AMBER));
+                }
+                ui.label(egui::RichText::new(text).color(BRIGHT));
             });
         }
     });

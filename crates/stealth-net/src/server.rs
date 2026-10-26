@@ -251,7 +251,7 @@ impl Server {
             }
             (ToServer::Chat { text }, Some(p)) => {
                 let name = host.state.player_name(p).unwrap_or("?").to_string();
-                self.relay_chat(Some(conn), &name, &text);
+                self.relay_chat(Some(conn), &name, &text, host);
                 return Vec::new();
             }
             (ToServer::Rearm { stores }, Some(p)) => {
@@ -288,12 +288,14 @@ impl Server {
     }
 
     /// A chat message to every player but its sender (`from`: his connection; None for the
-    /// listen server's own player), and the log.
-    fn relay_chat(&mut self, from: Option<ConnId>, name: &str, text: &str) {
+    /// listen server's own player), the log and the campaign's chat history.
+    fn relay_chat(&mut self, from: Option<ConnId>, name: &str, text: &str, host: &mut Host) {
         let text = chat_text(text);
         if text.is_empty() {
             return;
         }
+        host.state.add_chat(name, &text);
+        self.campaign_dirty = true;
         // A listen server's log is not read.
         if self.local.is_none() {
             self.log.push(format!("{name}: {text}"));
@@ -310,8 +312,8 @@ impl Server {
     }
 
     /// The listen server's own player says something.
-    pub fn say(&mut self, name: &str, text: &str) {
-        self.relay_chat(None, name, text);
+    pub fn say(&mut self, name: &str, text: &str, host: &mut Host) {
+        self.relay_chat(None, name, text, host);
     }
 
     /// The players' chat messages since the last call (sender, text): a listen server's.
