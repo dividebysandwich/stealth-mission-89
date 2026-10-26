@@ -439,7 +439,7 @@ const JET_WIND_KNOTS: f32 = 600.0;
 const JET_IDLE_PITCH: f32 = 0.5;
 /// The afterburner's loop volume when fully lit, and the thump as it lights: its extra volume,
 /// the loop's speed then (deeper) and the seconds it dies away in.
-const AB_VOLUME: f32 = 0.6;
+const AB_VOLUME: f32 = 0.75;
 const AB_THUMP: f32 = 0.8;
 const AB_THUMP_PITCH: f32 = 0.7;
 const AB_THUMP_TAU: f32 = 0.35;

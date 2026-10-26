@@ -8,7 +8,7 @@
 //! Squeeze near the throttle handle and slide it along its rails: forward = more thrust; it stays where it is
 //! released, with a haptic tick every 10 %. With an afterburner the lever has a detent at full dry
 //! thrust (a tick, and a gap of no change past it); further forward the afterburner lights and goes out with
-//! a rumble of its own.
+//! a rumble of its own. While it burns both controllers shake, harder with its setting.
 //! The controller buttons are mapped in the input mapping (`InputConfig::vr_buttons`); a trigger
 //! only counts while its hand holds the stick or throttle.
 //! The ejection handle is pulled up with either hand. A hand carrying the kneeboard grabs none.
@@ -121,6 +121,21 @@ type Rumble = &'static [(f32, f32, f32, f32)];
 const RUMBLE_AB_ON: Rumble =
     &[(0.0, 0.06, 1.0, 1.0), (0.12, 0.18, 1.0, 1.0), (0.24, 0.7, 0.8, 0.15)];
 const RUMBLE_AB_OFF: Rumble = &[(0.0, 0.25, 0.6, 0.05)];
+/// Both controllers' shake while the afterburner burns: amplitude at its lowest and full
+/// setting, and its uneven flutter (amplitude +-, two rates in Hz).
+const AB_SHAKE: (f32, f32) = (0.2, 0.4);
+const AB_FLUTTER: (f32, f32, f32) = (0.08, 7.3, 2.9);
+
+/// The afterburner's shake `t` seconds into the flight at a setting `ab` (0 out .. 1 full).
+fn ab_shake(ab: f32, t: f32) -> f32 {
+    if ab <= 0.0 {
+        return 0.0;
+    }
+    let (amp, f1, f2) = AB_FLUTTER;
+    let flutter =
+        amp * (std::f32::consts::TAU * f1 * t).sin() * (std::f32::consts::TAU * f2 * t).cos();
+    AB_SHAKE.0 + (AB_SHAKE.1 - AB_SHAKE.0) * ab + flutter
+}
 
 /// The rumble's amplitude `t` seconds in (None: over).
 fn rumble_at(r: Rumble, t: f32) -> Option<f32> {
@@ -362,6 +377,16 @@ pub(super) fn grab_levers(
             *t += time.delta_secs();
         }
     }
+    let shake = aircraft
+        .single()
+        .ok()
+        .filter(|a| a.ended.is_none())
+        .map_or(0.0, |a| ab_shake(a.afterburner, time.elapsed_secs()));
+    if shake > 0.0 {
+        for h in [&mut *left, &mut *right] {
+            h.haptic = h.haptic.max(shake);
+        }
+    }
 
     // --- sensor/cursor slew: the left thumbstick
     if left.active && !block.0 && !left.scrolling && left.thumb.length() > SLEW_DEADZONE {
@@ -502,6 +527,9 @@ mod tests {
         assert_eq!(rumble_at(RUMBLE_AB_ON, 0.7), None);
         assert!(rumble_at(RUMBLE_AB_OFF, 0.1).unwrap() < 0.6);
         assert_eq!(rumble_at(RUMBLE_AB_OFF, 0.3), None);
+        assert_eq!(ab_shake(0.0, 1.0), 0.0);
+        let (low, full) = (ab_shake(0.01, 0.0), ab_shake(1.0, 0.0));
+        assert!(0.15 < low && low < full && full <= 0.5, "{low} {full}");
         assert_eq!(
             [0.5, AB_DETENT + 0.01, AB_DETENT + AB_GAP, 1.0].map(throttle_zone),
             [0, 1, 2, 2]
