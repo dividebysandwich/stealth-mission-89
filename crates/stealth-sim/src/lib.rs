@@ -1126,6 +1126,13 @@ impl Sim {
         &self.tile_damage
     }
 
+    /// World position (wu, y north) of the intact targetable tile object nearest world point
+    /// (`x`, `y`).
+    pub fn target_tile_near(&self, x: i32, y: i32) -> Option<(i32, i32)> {
+        let t = self.find_nearest_tile(x, y);
+        t.filter(|_| self.tile_is_intact(&t)).map(|t| (t.wx, t.wy))
+    }
+
     pub fn targeting(&self) -> TargetingState {
         self.pl.targeting
     }

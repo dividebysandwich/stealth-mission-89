@@ -1280,6 +1280,7 @@ fn update_pod(
     settings: Res<crate::settings::Settings>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
     mut designate: MessageWriter<PodDesignate>,
+    mut locks: MessageWriter<LockRequest>,
     waypoints: Res<crate::hud::Waypoints>,
 ) {
     let lock = actions.read().any(|a| a.0 == Action::LockCursor);
@@ -1330,7 +1331,28 @@ fn update_pod(
     let zoom = state.cam_zoom.unwrap_or(info.zoom.saturating_sub(1));
     let slew = if soi && shown { controls.slew } else { Vec2::ZERO };
     let tgp = &mut state.av.tgp;
+    let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
+    // Settled near a unit: the pod snaps onto it, locked as by the lock key (a gun, which
+    // cannot be locked, held in point track).
+    if slewed
+        && let TgpMode::Point(p) = tgp.mode
+        && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, ground_y))
+    {
+        match snap {
+            Snap::Object(object) => {
+                tgp.mode = TgpMode::Slaved;
+                hud.mode = HudMode::Gnd;
+                locks.write(LockRequest(ContactRef::Object(object)));
+            }
+            Snap::Tile(x, y) => {
+                designate.write(PodDesignate(x, y));
+                tgp.mode = TgpMode::Slaved;
+                hud.mode = HudMode::Gnd;
+            }
+            Snap::Gun(at) => tgp.mode = TgpMode::Point(at),
+        }
+    }
     tgp.los_ground = los.filter(|_| shown || turret);
     tgp.los = pod_direction(tgp, a.orientation, pos.0).or(looking).filter(|_| shown || turret);
     if lock && soi && tgp.mode != TgpMode::Slaved {
@@ -1347,6 +1369,52 @@ fn update_pod(
             None => tgp.mode = TgpMode::Slaved,
         }
     }
+}
+
+/// How near a unit the settled pod snaps onto it (metres, across the ground).
+const POD_SNAP: f64 = 30.0;
+
+/// What the settled pod snaps onto.
+enum Snap {
+    /// A world object, locked.
+    Object(usize),
+    /// A theater tile object at this map point, designated.
+    Tile(i32, i32),
+    /// An air defence gun (not lockable): a point track on it.
+    Gun(DVec3),
+}
+
+/// The unit nearest the pod's ground point `p` within `POD_SNAP`, friend or foe.
+fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap> {
+    use stealth_sim::oflags;
+    let centre = |x: i32, y: i32| {
+        let (e, n) = crate::combat::map_wu(x, y);
+        let mut at = crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0);
+        at.y = ground_y;
+        at
+    };
+    let flat = |q: DVec3| DVec2::new(q.x - p.x, q.z - p.z).length();
+    let objects = c.sim.objects().iter().enumerate().skip(3);
+    let objects = objects
+        .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
+        .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
+    let guns = c.sim.aaa_units().iter().filter(|u| !u.destroyed).map(|u| {
+        let at = centre(u.x, u.y);
+        (Snap::Gun(at), at)
+    });
+    let (e, n, _) = bevy_to_wu(p);
+    let tile = c.sim.target_tile_near(e as i32, n as i32).map(|(x, y)| {
+        let at = crate::world::wu_to_bevy(x as f64, y as f64, 0.0);
+        let (mx, my) = (x >> 5, 0x8000 - (y >> 5));
+        (Snap::Tile(mx, my), DVec3::new(at.x, ground_y, at.z))
+    });
+    objects
+        .chain(guns)
+        .chain(tile)
+        .map(|(r, at)| (r, flat(at)))
+        .filter(|&(_, d)| d <= POD_SNAP)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(r, _)| r)
 }
 
 /// Where the gunship's slaved pod looks: at the lock (else the helmet sight).
