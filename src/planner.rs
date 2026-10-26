@@ -76,6 +76,9 @@ pub struct Planner {
     /// texture only exists in its own context: the menu, the debrief and the campaign's Ops
     /// screen each have theirs).
     texture: Option<(String, egui::TextureHandle, Entity)>,
+    /// The map picture itself, kept for loading into the next context (rendering it again
+    /// takes seconds).
+    image: Option<(String, std::sync::Arc<egui::ColorImage>)>,
     sim: Option<SimData>,
     /// View: map centre (map units) and map units per screen point.
     centre: egui::Vec2,
@@ -123,6 +126,9 @@ pub fn prepare_map(
     app_state: Res<State<crate::settings::AppState>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     egui_context: Query<Entity, With<bevy_egui::PrimaryEguiContext>>,
+    built: Option<Res<crate::scenery::Scenery>>,
+    flight_theater: Option<Res<Theater>>,
+    mut layouts: ResMut<crate::scenery::LayoutCache>,
 ) {
     // The planner's mission, the one flown on the debrief's flight map, or the campaign's
     // theater (its war map).
@@ -147,6 +153,20 @@ pub fn prepare_map(
     if planner.sim.is_none() {
         planner.sim = stealth_host::theater::sim_tables().map_err(|e| warn!("planner: {e:#}")).ok();
     }
+    if let Some((_, image)) = planner.image.as_ref().filter(|(t, _)| *t == id) {
+        let image = image.clone();
+        let Ok(ctx) = contexts.ctx_mut() else { return };
+        let tex = ctx.load_texture(format!("planner_{id}"), image, egui::TextureOptions::LINEAR);
+        planner.texture = Some((id, tex, context));
+        return;
+    }
+    // Once the scenery layout being made (in a flight on this theater, the flight's) is there:
+    // laying it out again takes seconds.
+    let in_flight = *app_state.get() == crate::settings::AppState::Flight
+        && flight_theater.is_some_and(|t| t.id == id);
+    if layouts.making(&id) || (in_flight && built.is_none()) {
+        return;
+    }
     if planner.theater.as_ref().is_none_or(|t| t.id != id) {
         planner.theater = Some(Theater::load(&id));
         planner.gltf = Some(library.load(&server, &id));
@@ -154,10 +174,18 @@ pub fn prepare_map(
     let Some(g) = planner.gltf.as_ref().and_then(|h| assets.gltfs.get(h)) else { return };
     let models = map_models(&id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
     let Some(theater) = planner.theater.as_ref() else { return };
-    let image = render_theater(theater, &models, &assets, &library.files);
+    let image = std::sync::Arc::new(render_theater(
+        theater,
+        &models,
+        &assets,
+        &library.files,
+        &mut layouts,
+    ));
     let Ok(ctx) = contexts.ctx_mut() else { return };
-    let tex = ctx.load_texture(format!("planner_{id}"), image, egui::TextureOptions::LINEAR);
-    planner.texture = Some((id, tex, context));
+    let tex =
+        ctx.load_texture(format!("planner_{id}"), image.clone(), egui::TextureOptions::LINEAR);
+    planner.texture = Some((id.clone(), tex, context));
+    planner.image = Some((id, image));
 }
 
 /// `--export-maps`: the theaters still to write, the one loading, and where to.
@@ -197,7 +225,13 @@ pub fn export_maps(
     let Some((theater, handle)) = export.loading.as_ref() else { return };
     let Some(g) = assets.gltfs.get(handle) else { return };
     let models = map_models(&theater.id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
-    let image = render_theater(theater, &models, &assets, &library.files);
+    let image = render_theater(
+        theater,
+        &models,
+        &assets,
+        &library.files,
+        &mut crate::scenery::LayoutCache::default(),
+    );
     let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
     let path = export.dir.join(format!("{}.png", theater.id));
     let saved = image::RgbaImage::from_raw(MAP_PX as u32, MAP_PX as u32, rgba)
@@ -221,6 +255,7 @@ fn render_theater(
     models: &HashMap<u8, MapModel>,
     assets: &crate::models::ModelAssets,
     files: &HashMap<String, Handle<Gltf>>,
+    layouts: &mut crate::scenery::LayoutCache,
 ) -> egui::ColorImage {
     let mut c = Canvas::new(MAP_PX, MAP_PX);
     let px = 0x8000 as f64 / MAP_PX as f64;
@@ -234,7 +269,7 @@ fn render_theater(
     let remap = |col: u8| map16.get(col as usize).map_or(col, |w| (*w & 0xFF) as u8);
     rasterise_map(&mut c, models, theater, &to_px, (half, half, half, half), 5, &remap);
     let pal: VgaPalette = load_theater_palettes(&theater.id).day;
-    let scenery = crate::scenery::map_scenery(theater, assets, files, &pal, MAP_PX);
+    let scenery = crate::scenery::map_scenery(theater, assets, files, &pal, MAP_PX, layouts);
     let at = |p: bevy::math::DVec2| {
         let q = to_px(p.x / crate::world::WU, p.y / crate::world::WU);
         (q.x.floor() as i32, q.y.floor() as i32)

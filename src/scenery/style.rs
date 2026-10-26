@@ -18,6 +18,7 @@ pub enum Tree {
     Palm,
 }
 
+#[derive(Clone)]
 pub struct Style {
     pub seed: u64,
     /// Town candidates kept (one per 6.5 km square).

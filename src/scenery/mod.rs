@@ -28,11 +28,13 @@ mod obstacles;
 mod style;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{DVec2, DVec3};
 use bevy::mesh::{MeshTag, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 
 use crate::dots::{dot_batch, dot_batch_coloured};
 use crate::models::{ModelAssets, ModelLibrary};
@@ -53,6 +55,7 @@ impl Plugin for SceneryPlugin {
             .init_resource::<Blocks>()
             .init_resource::<SceneryBacklog>()
             .init_resource::<Airfields>()
+            .init_resource::<LayoutCache>()
             .init_resource::<PapiSites>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
@@ -78,6 +81,10 @@ impl Plugin for SceneryPlugin {
                     .chain()
                     .run_if(in_state(AppState::Flight)),
             );
+        // (In the browser the layout is made on the main thread: there it waits for the flight.)
+        if !cfg!(target_arch = "wasm32") {
+            app.add_systems(Update, prefetch_layout.run_if(in_state(AppState::Menu)));
+        }
     }
 }
 
@@ -111,9 +118,9 @@ const BUILD_TIME: std::time::Duration = std::time::Duration::from_millis(3);
 #[derive(Resource)]
 pub struct Scenery {
     style: Option<style::Style>,
-    ground: ground::Ground,
-    net: network::Network,
-    airfields: Vec<airfield::Airfield>,
+    ground: Arc<ground::Ground>,
+    net: Arc<network::Network>,
+    airfields: Arc<Vec<airfield::Airfield>>,
     /// Where no trees grow (metres east, north; radius): round the friendly air defence.
     clearings: Vec<(DVec2, f64)>,
 }
@@ -257,39 +264,40 @@ pub struct LampBatch {
     pub radius: f32,
 }
 
+/// The scenery once its layout is there: kept from an earlier flight on the theater, else made
+/// on another thread (the flight goes on meanwhile, without the generated scenery).
+#[allow(clippy::too_many_arguments)]
 fn build_scenery(
     mut commands: Commands,
     theater: Res<Theater>,
     handles: Res<ShapeHandles>,
     library: Res<ModelLibrary>,
     assets: ModelAssets,
+    mut cache: ResMut<LayoutCache>,
     mut exit: MessageWriter<AppExit>,
 ) {
-    let style = style::Style::for_theater(&theater.id, theater.index);
     // Wait until the tile streaming has loaded the theater's models.
     let loaded = assets.terrain.ready(&theater.id)
         && library.files.get("special_targets").is_some_and(|h| assets.gltfs.get(h).is_some());
     if !loaded {
         return;
     }
-    let start = bevy::platform::time::Instant::now();
-    let (ground, net, fields) = layout(
-        &theater,
-        &handles,
-        &assets,
-        &library.files,
-        style.as_ref(),
-        &assets.palette.theater.day,
-    );
-    debug!(
-        "scenery: {} airfields, {} towns, {} roads, {} buildings, {} power lines in {:.2?}",
-        fields.len(),
-        net.towns.len(),
-        net.roads.len(),
-        net.buildings.len(),
-        net.lines.len(),
-        start.elapsed()
-    );
+    let key = &theater.id;
+    cache.collect();
+    let done = cache.done.as_ref().filter(|(k, _)| k == key).map(|(_, l)| l.clone());
+    let Some(Layout { ground, net, airfields: fields }) = done else {
+        if !cache.making(key) {
+            let source = LayoutSource::gather(
+                &theater,
+                &handles,
+                &assets,
+                &library.files,
+                &assets.palette.theater.day,
+            );
+            cache.making = Some((key.clone(), make_layout(source)));
+        }
+        return;
+    };
     // `--write-relief`: save the theater's relief for the simulation and quit.
     if std::env::args().any(|a| a == "--write-relief") {
         let path = stealth_host::assets::asset(&format!("theaters/{}.relief", theater.id));
@@ -311,6 +319,7 @@ fn build_scenery(
         exit.write(AppExit::Success);
     }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
+    let style = style::Style::for_theater(&theater.id, theater.index);
     commands.insert_resource(Scenery { style, ground, net, airfields: fields, clearings: vec![] });
 }
 
@@ -330,32 +339,156 @@ fn helipads_ron(fields: &[airfield::Airfield]) -> String {
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the
-/// airfields.
-fn layout(
-    theater: &Theater,
-    handles: &ShapeHandles,
-    assets: &ModelAssets,
-    files: &HashMap<String, Handle<Gltf>>,
-    style: Option<&style::Style>,
-    day: &crate::palette::VgaPalette,
-) -> (ground::Ground, network::Network, Vec<airfield::Airfield>) {
-    let remap = &assets.palette.remaps[REMAP_DETAIL_HIGH].entries;
-    let mut ground = ground::Ground::build(theater, handles, assets, files, remap, day);
-    let fields: Vec<airfield::Airfield> = ground
-        .runways
-        .clone()
-        .iter()
-        .enumerate()
-        .map(|(i, rw)| {
-            airfield::plan(rw, &ground, network::hash(0xA1F1E1D, theater.index as i64, i as i64, 0))
-        })
-        .collect();
-    for r in fields.iter().flat_map(airfield::footprint) {
-        ground.claim(r);
+/// airfields. Shared: the flights on the same theater use the same one (see `LayoutCache`).
+#[derive(Clone)]
+pub struct Layout {
+    ground: Arc<ground::Ground>,
+    net: Arc<network::Network>,
+    airfields: Arc<Vec<airfield::Airfield>>,
+}
+
+/// What a layout is made from, taken from the theater and its loaded models; making it needs
+/// neither (it takes seconds, on another thread).
+struct LayoutSource {
+    ground: ground::GroundSource,
+    index: usize,
+    towns: Vec<crate::world::TownSite>,
+    style: Option<style::Style>,
+}
+
+impl LayoutSource {
+    fn gather(
+        theater: &Theater,
+        handles: &ShapeHandles,
+        assets: &ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+        day: &crate::palette::VgaPalette,
+    ) -> Self {
+        let remap = &assets.palette.remaps[REMAP_DETAIL_HIGH].entries;
+        Self {
+            ground: ground::GroundSource::gather(theater, handles, assets, files, remap, day),
+            index: theater.index,
+            towns: theater.towns.clone(),
+            style: style::Style::for_theater(&theater.id, theater.index),
+        }
     }
-    let net =
-        style.map(|s| network::Network::build(&ground, s, &theater.towns)).unwrap_or_default();
-    (ground, net, fields)
+
+    fn build(&self) -> Layout {
+        let mut ground = ground::Ground::build(&self.ground);
+        let fields: Vec<airfield::Airfield> = ground
+            .runways
+            .clone()
+            .iter()
+            .enumerate()
+            .map(|(i, rw)| {
+                airfield::plan(
+                    rw,
+                    &ground,
+                    network::hash(0xA1F1E1D, self.index as i64, i as i64, 0),
+                )
+            })
+            .collect();
+        for r in fields.iter().flat_map(airfield::footprint) {
+            ground.claim(r);
+        }
+        let net = self
+            .style
+            .as_ref()
+            .map(|s| network::Network::build(&ground, s, &self.towns))
+            .unwrap_or_default();
+        Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields) }
+    }
+}
+
+/// The last layout made (its theater's id), kept between flights, and one being made. (A
+/// mission's special targets don't change it: their shapes replace tile objects through
+/// `TileOverrides`, which the layout doesn't read.)
+#[derive(Resource, Default)]
+pub struct LayoutCache {
+    done: Option<(String, Layout)>,
+    making: Option<(String, Task<Layout>)>,
+}
+
+/// Makes a layout on another thread.
+fn make_layout(source: LayoutSource) -> Task<Layout> {
+    AsyncComputeTaskPool::get().spawn(async move {
+        let start = bevy::platform::time::Instant::now();
+        let layout = source.build();
+        debug!(
+            "scenery: {} airfields, {} towns, {} roads, {} buildings, {} power lines in {:.2?}",
+            layout.airfields.len(),
+            layout.net.towns.len(),
+            layout.net.roads.len(),
+            layout.net.buildings.len(),
+            layout.net.lines.len(),
+            start.elapsed()
+        );
+        layout
+    })
+}
+
+/// In the menu: the layout of the chosen mission's theater (with the campaign window open, the
+/// new campaign's) is made ahead of the flight.
+fn prefetch_layout(
+    state: Res<crate::menu::MenuState>,
+    window: Res<crate::campaign::CampaignWindow>,
+    mut cache: ResMut<LayoutCache>,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    mut theater: Local<Option<Theater>>,
+) {
+    let mission = state.mission.as_ref().and_then(|m| m.as_ref().ok());
+    let id = match mission {
+        Some(m) if !window.open => m.theater_code.to_ascii_lowercase(),
+        _ => crate::menu::THEATERS[state.theater.min(crate::menu::THEATERS.len() - 1)].0.into(),
+    };
+    cache.collect();
+    let known = |k: Option<&String>| k == Some(&id);
+    if known(cache.done.as_ref().map(|d| &d.0)) || known(cache.making.as_ref().map(|m| &m.0)) {
+        return;
+    }
+    if theater.as_ref().is_none_or(|t| t.id != id) {
+        *theater = Some(Theater::load(&id));
+    }
+    let loaded = [id.as_str(), "special_targets"]
+        .map(|f| library.load(&server, f))
+        .iter()
+        .all(|h| assets.gltfs.get(h).is_some());
+    let Some(t) = theater.as_ref().filter(|_| loaded) else { return };
+    let day = crate::palette::load_theater_palettes(&id).day;
+    let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), &assets, &library.files, &day);
+    cache.making = Some((id, make_layout(source)));
+    *theater = None;
+}
+
+impl LayoutCache {
+    /// Keeps the layout being made once it's there.
+    fn collect(&mut self) {
+        if let Some((k, task)) = &mut self.making
+            && let Some(layout) = bevy::tasks::futures::check_ready(task)
+        {
+            self.done = Some((std::mem::take(k), layout));
+            self.making = None;
+        }
+    }
+
+    /// The layout of this theater is being made.
+    pub fn making(&self, id: &str) -> bool {
+        self.making.as_ref().is_some_and(|(k, _)| k == id)
+    }
+
+    /// The layout of a theater: the kept one, or made now.
+    fn get_or_make(&mut self, key: &str, source: impl FnOnce() -> LayoutSource) -> Layout {
+        match &self.done {
+            Some((k, l)) if k == key => l.clone(),
+            _ => {
+                let l = source().build();
+                self.done = Some((key.to_string(), l.clone()));
+                l
+            }
+        }
+    }
 }
 
 /// What the map pictures show of the scenery (metres, x east, y north): the towns (centre,
@@ -369,25 +502,28 @@ pub struct MapScenery {
     pub forest: Vec<bool>,
 }
 
-/// The scenery layout of a theater for its map picture (the same one the flight builds; empty
-/// for the theaters without towns).
+/// The scenery layout of a theater for its map picture (the same one the flight builds, kept in
+/// `cache`; empty for the theaters without towns).
 pub fn map_scenery(
     theater: &Theater,
     assets: &ModelAssets,
     files: &HashMap<String, Handle<Gltf>>,
     day: &crate::palette::VgaPalette,
     n: usize,
+    cache: &mut LayoutCache,
 ) -> MapScenery {
     let Some(style) = style::Style::for_theater(&theater.id, theater.index) else {
         return MapScenery::default();
     };
-    let handles = ShapeHandles::for_map(theater);
-    let (ground, net, _) = layout(theater, &handles, assets, files, Some(&style), day);
+    let layout = cache.get_or_make(&theater.id, || {
+        LayoutSource::gather(theater, &ShapeHandles::for_map(theater), assets, files, day)
+    });
+    let (ground, net) = (&layout.ground, &layout.net);
     let mut out = MapScenery::default();
-    for r in net.roads {
+    for r in &net.roads {
         match r.kind {
-            network::RoadKind::Street => out.streets.push(r.pts),
-            _ => out.roads.push(r.pts),
+            network::RoadKind::Street => out.streets.push(r.pts.clone()),
+            _ => out.roads.push(r.pts.clone()),
         }
     }
     out.towns = net.towns.iter().map(|t| (t.c, t.r)).collect();
@@ -895,7 +1031,7 @@ fn airfields(
 ) {
     if !airfields.spawned {
         airfields.spawned = true;
-        for a in &scenery.airfields {
+        for a in scenery.airfields.iter() {
             let c = a.runway.c;
             let mut geom = airfield::build(a);
             let papi = std::mem::take(&mut geom.papi);

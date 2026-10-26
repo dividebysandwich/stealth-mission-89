@@ -154,6 +154,77 @@ pub struct Runway {
     pub half_width: f64,
 }
 
+/// A tile object of the theater as the ground sees it: its level, its place in its cell's list,
+/// its shape, and where and at what scale it stands (metres).
+struct Placed {
+    lod: usize,
+    k: usize,
+    shape: u8,
+    origin: Vec2,
+    scale: f32,
+}
+
+/// What the ground is built from: the theater's tile objects and the geometry of their shapes,
+/// taken from the theater and its loaded models (the build needs neither, so it can run on
+/// another thread).
+pub struct GroundSource {
+    shapes: HashMap<u8, ShapeGeom>,
+    objects: Vec<Placed>,
+}
+
+impl GroundSource {
+    pub fn gather(
+        theater: &Theater,
+        handles: &ShapeHandles,
+        assets: &ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+        remap: &[u16],
+        day: &VgaPalette,
+    ) -> Self {
+        let mut src = GroundSource { shapes: HashMap::new(), objects: vec![] };
+        for lod in 1..=4usize {
+            let unit = LEVEL_UNIT[lod];
+            let scale = (unit * WU) as f32;
+            let lo = if lod == 4 { -2 } else { 0 };
+            for row in lo..GRID_DIM[lod] + lo {
+                for col in lo..GRID_DIM[lod] + lo {
+                    let tile = theater.grid.tile(lod, col, row) as usize;
+                    let Some(objects) = theater.tiles.tiles.get(lod).and_then(|t| t.get(tile))
+                    else {
+                        continue;
+                    };
+                    let centre = |c: i32| (c as f64 * 4096.0 + 2048.0) * unit;
+                    for (k, o) in objects.iter().enumerate() {
+                        src.shapes.entry(o.shape).or_insert_with(|| {
+                            handles
+                                .model(o.shape as usize)
+                                .and_then(|(file, name)| {
+                                    Some(extract(
+                                        assets,
+                                        assets.gltfs.get(files.get(file)?)?,
+                                        &name,
+                                        remap,
+                                        day,
+                                    ))
+                                })
+                                .unwrap_or_default()
+                        });
+                        let origin = Vec2::new(
+                            ((centre(col) + o.x as f64 * unit) * WU) as f32,
+                            ((centre(row) + o.y as f64 * unit) * WU) as f32,
+                        );
+                        let scale = handles
+                            .model(o.shape as usize)
+                            .map_or(scale, |(_, n)| crate::models::tile_model_scale(&n, unit));
+                        src.objects.push(Placed { lod, k, shape: o.shape, origin, scale });
+                    }
+                }
+            }
+        }
+        src
+    }
+}
+
 #[derive(Default)]
 pub struct Ground {
     tris: Vec<FlatTri>,
@@ -267,15 +338,7 @@ impl Ground {
         self.add_box(r, true);
     }
 
-    pub fn build(
-        theater: &Theater,
-        handles: &ShapeHandles,
-        assets: &ModelAssets,
-        files: &HashMap<String, Handle<Gltf>>,
-        remap: &[u16],
-        day: &VgaPalette,
-    ) -> Ground {
-        let mut shapes: HashMap<u8, ShapeGeom> = HashMap::new();
+    pub fn build(src: &GroundSource) -> Ground {
         let mut g = Ground {
             tris: vec![],
             tri_index: Index::default(),
@@ -286,98 +349,56 @@ impl Ground {
             relief: vec![0.0; relief::DIM * relief::DIM],
         };
         let mut road_segments = Vec::new();
-        for lod in 1..=4usize {
-            let unit = LEVEL_UNIT[lod];
-            let scale = (unit * WU) as f32;
-            let lo = if lod == 4 { -2 } else { 0 };
-            for row in lo..GRID_DIM[lod] + lo {
-                for col in lo..GRID_DIM[lod] + lo {
-                    let tile = theater.grid.tile(lod, col, row) as usize;
-                    let Some(objects) = theater.tiles.tiles.get(lod).and_then(|t| t.get(tile))
-                    else {
-                        continue;
-                    };
-                    let centre = |c: i32| (c as f64 * 4096.0 + 2048.0) * unit;
-                    for (k, o) in objects.iter().enumerate() {
-                        let geom = shapes.entry(o.shape).or_insert_with(|| {
-                            handles
-                                .model(o.shape as usize)
-                                .and_then(|(file, name)| {
-                                    Some(extract(
-                                        assets,
-                                        assets.gltfs.get(files.get(file)?)?,
-                                        &name,
-                                        remap,
-                                        day,
-                                    ))
-                                })
-                                .unwrap_or_default()
-                        });
-                        let origin = Vec2::new(
-                            ((centre(col) + o.x as f64 * unit) * WU) as f32,
-                            ((centre(row) + o.y as f64 * unit) * WU) as f32,
-                        );
-                        let scale = handles
-                            .model(o.shape as usize)
-                            .map_or(scale, |(_, n)| crate::models::tile_model_scale(&n, unit));
-                        let place = |p: Vec2| origin + p * scale;
-                        for (j, (tri, s)) in geom.flat.iter().enumerate() {
-                            let p = tri.map(place);
-                            let id = g.tris.len() as u32;
-                            let (min, max) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
-                            g.tri_index.insert(min.as_dvec2(), max.as_dvec2(), id);
-                            let order = ((4 - lod as u32) << 28)
-                                | ((k as u32 & 0xFFF) << 16)
-                                | (j as u32 & 0xFFFF);
-                            g.tris.push(FlatTri { p, order, surface: *s });
-                            if *s == Surface::Solid {
-                                g.add_box(
-                                    Rect::from_corners(min, max).inflate(SOLID_MARGIN),
-                                    false,
-                                );
-                            }
-                        }
-                        for r in &geom.runways {
-                            let r = Rect::from_corners(place(r.min), place(r.max));
-                            let (c, size) = (r.center().as_dvec2(), r.size().as_dvec2());
-                            let along_north = size.y > size.x;
-                            let (len, width) =
-                                if along_north { (size.y, size.x) } else { (size.x, size.y) };
-                            if len >= 1200.0
-                                && len >= 6.0 * width
-                                && width <= 250.0
-                                && !g.runways.iter().any(|w| w.c.distance(c) < 50.0)
-                            {
-                                let axis = if along_north { DVec2::Y } else { DVec2::X };
-                                g.runways.push(Runway {
-                                    c,
-                                    axis,
-                                    half_len: len * 0.5,
-                                    half_width: width * 0.5,
-                                });
-                            }
-                        }
-                        if lod >= 2 {
-                            for t in &geom.solid {
-                                let t = t.map(|v| place(v.xy()).extend(v.z * scale));
-                                raise(&mut g.relief, t);
-                            }
-                        }
-                        if let Some(r) = geom.raised {
-                            g.add_box(
-                                Rect::from_corners(place(r.min), place(r.max))
-                                    .inflate(RAISED_MARGIN),
-                                true,
-                            );
-                        } else if lod >= 2 {
-                            road_segments.extend(
-                                geom.lines
-                                    .iter()
-                                    .map(|&(a, b)| (place(a).as_dvec2(), place(b).as_dvec2())),
-                            );
-                        }
-                    }
+        let none = ShapeGeom::default();
+        for &Placed { lod, k, shape, origin, scale } in &src.objects {
+            let geom = src.shapes.get(&shape).unwrap_or(&none);
+            let place = |p: Vec2| origin + p * scale;
+            for (j, (tri, s)) in geom.flat.iter().enumerate() {
+                let p = tri.map(place);
+                let id = g.tris.len() as u32;
+                let (min, max) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
+                g.tri_index.insert(min.as_dvec2(), max.as_dvec2(), id);
+                let order =
+                    ((4 - lod as u32) << 28) | ((k as u32 & 0xFFF) << 16) | (j as u32 & 0xFFFF);
+                g.tris.push(FlatTri { p, order, surface: *s });
+                if *s == Surface::Solid {
+                    g.add_box(Rect::from_corners(min, max).inflate(SOLID_MARGIN), false);
                 }
+            }
+            for r in &geom.runways {
+                let r = Rect::from_corners(place(r.min), place(r.max));
+                let (c, size) = (r.center().as_dvec2(), r.size().as_dvec2());
+                let along_north = size.y > size.x;
+                let (len, width) = if along_north { (size.y, size.x) } else { (size.x, size.y) };
+                if len >= 1200.0
+                    && len >= 6.0 * width
+                    && width <= 250.0
+                    && !g.runways.iter().any(|w| w.c.distance(c) < 50.0)
+                {
+                    let axis = if along_north { DVec2::Y } else { DVec2::X };
+                    g.runways.push(Runway {
+                        c,
+                        axis,
+                        half_len: len * 0.5,
+                        half_width: width * 0.5,
+                    });
+                }
+            }
+            if lod >= 2 {
+                for t in &geom.solid {
+                    let t = t.map(|v| place(v.xy()).extend(v.z * scale));
+                    raise(&mut g.relief, t);
+                }
+            }
+            if let Some(r) = geom.raised {
+                g.add_box(
+                    Rect::from_corners(place(r.min), place(r.max)).inflate(RAISED_MARGIN),
+                    true,
+                );
+            } else if lod >= 2 {
+                road_segments.extend(
+                    geom.lines.iter().map(|&(a, b)| (place(a).as_dvec2(), place(b).as_dvec2())),
+                );
             }
         }
         g.highways = chain(road_segments);

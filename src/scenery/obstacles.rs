@@ -183,7 +183,13 @@ mod tests {
     use super::Obstacle;
 
     fn scenery(style: Option<Style>, net: Network) -> Scenery {
-        Scenery { style, ground: Ground::default(), net, airfields: vec![], clearings: vec![] }
+        Scenery {
+            style,
+            ground: Ground::default().into(),
+            net: net.into(),
+            airfields: vec![].into(),
+            clearings: vec![],
+        }
     }
 
     #[test]
