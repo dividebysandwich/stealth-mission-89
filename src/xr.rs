@@ -367,11 +367,12 @@ fn read_hands(
     offset: Res<RigOffset>,
     settings: Res<crate::settings::Settings>,
     view: Res<ViewState>,
+    manning: Option<Res<crate::station::Manning>>,
     spaces: Query<(&HandSpace, &Transform, &OxrSpaceLocationFlags)>,
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
-    let offset = offset.scaled(settings.vr_hand_scale());
+    let offset = offset.scaled(settings.vr_hand_scale(manning.is_some()));
     for (i, hand) in hands.hands.iter_mut().enumerate() {
         let path = actions.hands[i];
         let f = |a: &openxr::Action<f32>| {

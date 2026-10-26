@@ -194,20 +194,23 @@ impl Settings {
         if self.vr
             && let Some(h) = spec.vr_eye_height
         {
-            eye.y = eye.y.max(h / self.vr_rig_scale());
+            eye.y = eye.y.max(h / self.vr_rig_scale(false));
         }
         eye
     }
 
-    /// Scale of the VR rig (the head offset) for the chosen cockpit size.
-    pub fn vr_rig_scale(&self) -> f32 {
-        self.vr_cockpit_scale * self.aircraft.spec().vr_scale
+    /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
+    /// an air defence console (a room built life size) relative to life size.
+    pub fn vr_rig_scale(&self, console: bool) -> f32 {
+        let at_100 = if console { 1.0 } else { self.aircraft.spec().vr_scale };
+        self.vr_cockpit_scale * at_100
     }
 
     /// Scale of the VR hand offsets: as the rig's, in the units of the cockpit frame
-    /// (`AircraftSpec::cockpit_model_scale`).
-    pub fn vr_hand_scale(&self) -> f32 {
-        self.vr_rig_scale() / self.aircraft.spec().cockpit_model_scale()
+    /// (`AircraftSpec::cockpit_model_scale`; the console's model is life size).
+    pub fn vr_hand_scale(&self, console: bool) -> f32 {
+        let model = if console { 1.0 } else { self.aircraft.spec().cockpit_model_scale() };
+        self.vr_rig_scale(console) / model
     }
 
     pub fn from_args() -> Self {

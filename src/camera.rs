@@ -661,6 +661,7 @@ fn update_rig(
     mut viewpoint: ResMut<crate::palette::Viewpoint>,
     combat: Option<Res<crate::combat::Combat>>,
     track: Res<crate::headtrack::HeadTrack>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let (Ok(mut head), Ok(mut cam_tf)) = (head.single_mut(), cam.single_mut()) else { return };
     // The tracked head on top of the views' own direction (none in VR).
@@ -688,7 +689,7 @@ fn update_rig(
                     * Quat::from_rotation_x(p + tracked.pitch)
                     * Quat::from_rotation_z(tracked.roll),
             );
-            *cam_tf = if settings.vr { offset.scaled(settings.vr_rig_scale()) } else { offset.0 };
+            *cam_tf = if settings.vr { offset.scaled(settings.vr_rig_scale(manning.is_some())) } else { offset.0 };
         }
         View::Chase => {
             // Behind and above, looking along the flight direction (camera stays in the aircraft frame).
