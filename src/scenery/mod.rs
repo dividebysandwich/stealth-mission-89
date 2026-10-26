@@ -248,6 +248,7 @@ fn build_scenery(
     handles: Res<ShapeHandles>,
     library: Res<ModelLibrary>,
     assets: ModelAssets,
+    mut exit: MessageWriter<AppExit>,
 ) {
     let style = style::Style::for_theater(&theater.id, theater.index);
     // Wait until the tile streaming has loaded the theater's models.
@@ -274,6 +275,16 @@ fn build_scenery(
         net.lines.len(),
         start.elapsed()
     );
+    // `--write-relief`: save the theater's relief for the simulation and quit.
+    if std::env::args().any(|a| a == "--write-relief") {
+        let path = stealth_host::assets::asset(&format!("theaters/{}.relief", theater.id));
+        let relief = stealth_sim::relief::Relief::from_metres(&ground.relief);
+        match std::fs::write(&path, relief.bytes()) {
+            Ok(()) => info!("relief written to {}", path.display()),
+            Err(e) => error!("{}: {e}", path.display()),
+        }
+        exit.write(AppExit::Success);
+    }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
     commands.insert_resource(Scenery { style, ground, net, airfields: fields });
 }

@@ -21,6 +21,7 @@ pub mod net;
 mod objectives;
 mod pilot;
 mod radar;
+pub mod relief;
 pub mod score;
 mod targeting;
 mod tiles;

@@ -2,6 +2,9 @@ use crate::Sim;
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, s16};
 use crate::types::*;
 
+/// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
+const TERRAIN_CLEARANCE: i32 = 614;
+
 impl Sim {
     pub(crate) fn update_aircraft(&mut self, present: &[usize]) {
         for &k in present {
@@ -239,8 +242,14 @@ impl Sim {
             roll_cmd = 0x400;
         }
         if ((i as i32 ^ self.frame) & 3) == 0 {
-            // Terrain contact: the world is a flat plane, objects are not tested.
-            u.flags &= !fflags::TERRAIN;
+            // Mountains ahead: climb clear of them (not the airfield traffic, nor a wreck).
+            let traffic = fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT | fflags::DESTROYED;
+            let terrain = self.terrain_ahead(&u);
+            if u.flags & traffic == 0 && terrain > 0 && u.alt < terrain + TERRAIN_CLEARANCE {
+                u.flags |= fflags::TERRAIN;
+            } else {
+                u.flags &= !fflags::TERRAIN;
+            }
         }
         if u.flags & fflags::TERRAIN != 0 {
             pitch_cmd = 0x3000;
@@ -256,7 +265,11 @@ impl Sim {
                 self.add_smoke(slot, u.x, u.y, u.alt);
             }
         }
-        if u.pitch < 0 && u.alt < 200 - self.trig.sin_mul(u.pitch, 2000) && u.flags & 0x220 == 0 {
+        let ground = self.tiles.as_ref().map_or(0, |t| t.relief.height(u.x, u.y));
+        if u.pitch < 0
+            && u.alt - ground < 200 - self.trig.sin_mul(u.pitch, 2000)
+            && u.flags & 0x220 == 0
+        {
             dp = 0x400;
         }
         u.pitch = s16(u.pitch + cdiv(clamp_q(dp, -0x400, 0x400) * 4, fs));

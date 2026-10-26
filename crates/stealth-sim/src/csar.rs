@@ -340,7 +340,14 @@ impl Sim {
             let climb = cdiv(30, fs).max(1);
             // Landing: no climb back to the cruise height against the descent below.
             let landing = hover && u.flags & fflags::RTB != 0 && d < 0x10;
-            let galt = if landing { 0 } else { galt };
+            // Cruising over the mountains as over the plain (not hovering over the pilot).
+            let galt = if landing {
+                0
+            } else if hover {
+                galt
+            } else {
+                galt + self.terrain_ahead(&u)
+            };
             u.alt += clamp_q(galt - u.alt, -climb, climb);
         }
         // Nose down with speed, banked into turns (attitude only).

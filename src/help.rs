@@ -99,6 +99,8 @@ Testing and screenshots
   --readout                    on-screen text readout of the flight state
   --time-scale <x>             run the game time x times faster
   --diag                       frame time and entity count diagnostics in the log
+  --write-relief               with --freecam --theater <id>: save the theater's mountains
+                               for the AI (assets/theaters/<id>.relief) and exit
   --screenshot <file.png>      save a screenshot and exit
     --shot-frames <n>          after n frames (default 90)
     --shot-time <s>            after s seconds of flight

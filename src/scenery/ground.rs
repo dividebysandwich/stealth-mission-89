@@ -11,6 +11,7 @@ use bevy::math::DVec2;
 use bevy::mesh::{PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use stealth_formats::terrain::{GRID_DIM, LEVEL_UNIT};
+use stealth_sim::relief;
 
 use crate::models::ModelAssets;
 use crate::palette::{VgaPalette, index_from_name};
@@ -139,6 +140,8 @@ struct ShapeGeom {
     lines: Vec<(Vec2, Vec2)>,
     /// Runway strips: long, narrow concrete rectangles.
     runways: Vec<Rect>,
+    /// The raised triangles (x east, y north, z up).
+    solid: Vec<[Vec3; 3]>,
 }
 
 /// A runway of the theater (metres, axis-aligned).
@@ -161,6 +164,9 @@ pub struct Ground {
     /// Road lines of the theater terrain (polylines, metres).
     pub highways: Vec<Vec<DVec2>>,
     pub runways: Vec<Runway>,
+    /// The highest raised ground of the coarse levels (mountains, hills) per relief cell, metres
+    /// (`stealth_sim::relief`).
+    pub relief: Vec<f32>,
 }
 
 impl Ground {
@@ -272,6 +278,7 @@ impl Ground {
             box_index: Index::default(),
             highways: vec![],
             runways: vec![],
+            relief: vec![0.0; relief::DIM * relief::DIM],
         };
         let mut road_segments = Vec::new();
         for lod in 1..=4usize {
@@ -345,6 +352,12 @@ impl Ground {
                                 });
                             }
                         }
+                        if lod >= 2 {
+                            for t in &geom.solid {
+                                let t = t.map(|v| place(v.xy()).extend(v.z * scale));
+                                raise(&mut g.relief, t);
+                            }
+                        }
                         if let Some(r) = geom.raised {
                             g.add_box(
                                 Rect::from_corners(place(r.min), place(r.max))
@@ -385,6 +398,31 @@ impl Ground {
         let id = self.boxes.len() as u32;
         self.box_index.insert(r.min.as_dvec2(), r.max.as_dvec2(), id);
         self.boxes.push((r, raised));
+    }
+}
+
+/// Relief cell size and the spacing of the points sampled inside large triangles (metres).
+const RELIEF_CELL: f32 = (super::network::THEATER_M / relief::DIM as f64) as f32;
+const RELIEF_SAMPLE: f32 = 400.0;
+
+/// Raises the relief cells under a triangle (ground metres, z up) to its height there.
+fn raise(relief: &mut [f32], t: [Vec3; 3]) {
+    let top = super::network::THEATER_M as f32;
+    let mut at = |p: Vec3| {
+        let (col, row) = ((p.x / RELIEF_CELL).floor(), ((top - p.y) / RELIEF_CELL).floor());
+        let n = relief::DIM as f32;
+        if (0.0..n).contains(&col) && (0.0..n).contains(&row) {
+            let h = &mut relief[row as usize * relief::DIM + col as usize];
+            *h = h.max(p.z);
+        }
+    };
+    let size = (t[1] - t[0]).length().max((t[2] - t[1]).length()).max((t[0] - t[2]).length());
+    let n = (size / RELIEF_SAMPLE).ceil().max(1.0) as usize;
+    for i in 0..=n {
+        for j in 0..=n - i {
+            let (a, b) = (i as f32 / n as f32, j as f32 / n as f32);
+            at(t[0] + (t[1] - t[0]) * a + (t[2] - t[0]) * b);
+        }
     }
 }
 
@@ -518,6 +556,7 @@ fn walk(
                         geom.flat.push((q, s));
                     }
                 } else {
+                    geom.solid.push(p.map(|v| Vec3::new(v.x, -v.z, v.y)));
                     for v in p {
                         let q = ground(v);
                         geom.raised = Some(

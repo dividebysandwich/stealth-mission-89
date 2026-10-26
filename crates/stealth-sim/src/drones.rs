@@ -12,6 +12,8 @@ use crate::types::*;
 const DIVE_RANGE: i32 = 0x60;
 /// Map units from the target that count as a hit.
 const IMPACT_RANGE: i32 = 0x18;
+/// How high over the mountains a drone cruises (altitude units, 150 m).
+const TERRAIN_CLEARANCE: i32 = 307;
 
 /// The drones of a mission and how they fared.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -64,9 +66,17 @@ impl Sim {
         let turn = clamp_q(s16(brg + weave - u.heading), -0x2000, 0x2000);
         u.bank = clamp_q(turn * 2, -0x1800, 0x1800);
         u.heading = s16(u.heading + clamp_q(cdiv(turn, 2 * fs), -0x100, 0x100));
-        // Level cruise, then the terminal dive.
-        u.pitch =
-            if d < DIVE_RANGE { clamp_q(-bearing(u.alt >> 6, d.max(1)), -0x2800, 0) } else { 0 };
+        // Level cruise, climbing over the mountains on the way, then the terminal dive.
+        u.pitch = if d < DIVE_RANGE {
+            clamp_q(-bearing(u.alt >> 6, d.max(1)), -0x2800, 0)
+        } else if u.alt > 0
+            && self.terrain_ahead(&u) > 0
+            && u.alt < self.terrain_ahead(&u) + TERRAIN_CLEARANCE
+        {
+            0x800
+        } else {
+            0
+        };
         let mv = cdiv(((0x8000 - u.pitch) & 0xFFFF) * u.speed >> 15, fs);
         let h = self.trig.cos_mul(u.pitch, mv);
         u.wx = u.wx.wrapping_add(self.trig.sin_mul(u.heading, h));

@@ -7,7 +7,14 @@ use stealth_sim::{SimData, TheaterTiles};
 /// Tile data of a remake theater (`assets/theaters/<code>.ron`).
 pub fn load_tiles(code: &str) -> Result<TheaterTiles> {
     let rel = format!("theaters/{}.ron", code.to_ascii_lowercase());
-    TheaterTiles::read_ron(&crate::assets::read(&rel)?).context(rel)
+    let mut tiles = TheaterTiles::read_ron(&crate::assets::read(&rel)?).context(rel)?;
+    tiles.relief = relief(code);
+    Ok(tiles)
+}
+
+/// A theater's relief (`assets/theaters/<code>.relief`; flat without one).
+pub fn relief(code: &str) -> stealth_sim::relief::Relief {
+    TheaterTiles::read_relief(|name| crate::assets::read(name.trim_start_matches("../")), code)
 }
 
 /// The simulation's tables, with the tiles of theater `index` (`code`) if they are not among

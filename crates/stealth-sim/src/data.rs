@@ -99,6 +99,9 @@ pub struct TheaterTiles {
     /// Remake theaters: the real towns (their defenders stand round the edge).
     #[serde(default)]
     pub towns: Vec<Town>,
+    /// The mountains (`assets/theaters/<code>.relief`, read beside the tiles).
+    #[serde(skip)]
+    pub relief: crate::relief::Relief,
 }
 
 /// A town: centre (map units, y south) and radius (map units).
@@ -176,13 +179,16 @@ impl SimData {
         };
         d.theaters = THEATERS
             .iter()
-            .map(|code| match read(&format!("theaters/{code}.json")) {
-                Ok(json) => {
-                    serde_json::from_slice(&json).with_context(|| format!("theaters/{code}.json"))
-                }
-                // A rebuilt theater: its tiles from the theater file.
-                Err(_) => TheaterTiles::read_ron(&read(&format!("../theaters/{code}.ron"))?)
-                    .with_context(|| format!("theaters/{code}.ron")),
+            .map(|code| {
+                let mut t: TheaterTiles = match read(&format!("theaters/{code}.json")) {
+                    Ok(json) => serde_json::from_slice(&json)
+                        .with_context(|| format!("theaters/{code}.json"))?,
+                    // A rebuilt theater: its tiles from the theater file.
+                    Err(_) => TheaterTiles::read_ron(&read(&format!("../theaters/{code}.ron"))?)
+                        .with_context(|| format!("theaters/{code}.ron"))?,
+                };
+                t.relief = TheaterTiles::read_relief(&read, code);
+                Ok(t)
             })
             .collect::<Result<_>>()?;
         Ok(d)
@@ -274,7 +280,18 @@ impl TheaterTiles {
             objects: [level(1), level(2)],
             model_attr: model_attr.to_vec(),
             towns: Vec::new(),
+            relief: Default::default(),
         }
+    }
+
+    /// A theater's relief (`theaters/<code>.relief` through `read`, from `assets/sim`): flat
+    /// without one.
+    pub fn read_relief(
+        read: impl Fn(&str) -> Result<Vec<u8>>,
+        code: &str,
+    ) -> crate::relief::Relief {
+        let name = format!("../theaters/{}.relief", code.to_ascii_lowercase());
+        read(&name).ok().and_then(crate::relief::Relief::from_bytes).unwrap_or_default()
     }
 
     /// LOD1/LOD2 tile type at (col, row) (row counted north-up), -1 outside the grid.
