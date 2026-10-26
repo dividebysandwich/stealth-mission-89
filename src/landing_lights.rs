@@ -4,7 +4,8 @@
 //! aircraft's from the cockpit. On while the gear is down and the aircraft moves: the own
 //! aircraft, the other players' and the AI aircraft taking off and landing
 //! (`stealth_sim::lights::gear_down`); a helicopter's (no gear to go by) near an airfield of its
-//! side, with its position lights. Never on a parked aircraft; dimmer by day.
+//! side, with its position lights. Never on a parked aircraft (the own one is lit standing still
+//! too); dimmer by day.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexBufferLayoutRef, PrimitiveTopology};
@@ -249,15 +250,15 @@ fn update_own(
     mut lights: Lights,
 ) {
     let Ok(a) = player.single() else { return };
-    let parked = a.on_ground && a.velocity == 0.0;
-    // A helicopter's go with its position lights.
+    // Standing still on the ground too (the pilot is in it, unlike in a parked one). A
+    // helicopter's go with its position lights.
     let wanted = if k.is_some_and(|k| k.heli.is_some()) {
         combat.is_some_and(|c| c.sim.player_lights())
     } else {
         a.gear_down
     };
     for e in &own {
-        set(&mut lights, e, wanted && !parked && a.ended.is_none());
+        set(&mut lights, e, wanted && a.ended.is_none());
     }
 }
 
