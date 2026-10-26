@@ -31,8 +31,6 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
 * **Classic modes:** DOS era flight model, cockpit, HUD and rendering, switchable on their own
 
-<img width="1842" height="1269" alt="image" src="https://github.com/user-attachments/assets/5c706024-1f8b-46f8-ad07-95373a8a8056" />
-
 See the [User Manual](docs/manual.md) for details.
 
 ## Dynamic campaign
@@ -55,8 +53,6 @@ board, alone or with up to 64 players in coop.
   medals. Packages (two kinds of objective at one place within 15 minutes) earn a bonus.
 - **Weather** changes once or twice a day, from fair skies to thunderstorms.
 - **Rules:** configurable by the host, including enemy strength, weather and realism.
-
-<img width="1615" height="938" alt="image" src="https://github.com/user-attachments/assets/731ba65f-3876-4166-9252-40cc4cfa0f4b" />
 
 ## Ukraine theater
 
@@ -106,9 +102,6 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 | `--desktop` | On the Steam Frame, the AppImage starts in VR unless this is given |
 | `--viewer [--file aircraft --model 24]` | browse the 3D models |
 | `--freecam [--at Gutersloh\|primary] [--pos x,z]` | free debug camera |
-
-<img width="1173" height="727" alt="image" src="https://github.com/user-attachments/assets/affc6127-3d83-49a2-8cde-e128e941fa64" />
-
 
 ## Controls (classic keyboard layout)
 
