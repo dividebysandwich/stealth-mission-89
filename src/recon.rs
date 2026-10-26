@@ -105,9 +105,10 @@ impl ReconPhotos {
     }
 }
 
-/// Aircraft targets (mission types 5-8) have nothing to photograph on the ground.
+/// Aircraft targets (mission types 5-8) and drone waves have nothing to photograph on the
+/// ground.
 pub fn airborne(t: &stealth_mission::Target) -> bool {
-    (5..=8).contains(&t.mission_type)
+    (5..=8).contains(&t.mission_type) || t.mission_type == stealth_mission::drones::DRONE_INTERCEPT
 }
 
 fn reset(mut recon: ResMut<ReconPhotos>, mut sites: ResMut<StreamSites>) {
