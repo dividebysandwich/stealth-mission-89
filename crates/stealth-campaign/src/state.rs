@@ -189,6 +189,33 @@ impl MissionKind {
         }
     }
 
+    /// The aircraft made for it, best first: what the briefing picks (the player may change to
+    /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets,
+    /// the air-to-air missions for the F-16, rescues for the UH-60 that picks the pilot up,
+    /// work close to the front for the gunship.
+    pub fn suited(self) -> &'static [Aircraft] {
+        use Aircraft::*;
+        match self {
+            MissionKind::Recon
+            | MissionKind::Strike
+            | MissionKind::AntiShip
+            | MissionKind::Interdiction => &[F117, F16],
+            MissionKind::Sead => &[F16, F117],
+            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
+            MissionKind::Intercept => &[F16, AH1Z],
+            MissionKind::Cas => &[AH1Z, F16, F117],
+            MissionKind::Escort => &[AH1Z, F16],
+            MissionKind::Insertion | MissionKind::Csar => &[UH60],
+        }
+    }
+
+    /// The aircraft the briefing picks: the one last flown if it is made for the mission, else
+    /// the best one for it.
+    pub fn pick(self, last: Aircraft) -> Aircraft {
+        let suited = self.suited();
+        if suited.contains(&last) { last } else { suited[0] }
+    }
+
     /// Why an aircraft may not fly it.
     pub fn not_flyable(self, aircraft: Aircraft) -> &'static str {
         if aircraft.transport() {

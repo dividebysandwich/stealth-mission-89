@@ -1395,6 +1395,38 @@ fn the_helicopter_flies_insertions_and_rescues() {
 }
 
 #[test]
+fn the_briefing_picks_an_aircraft_made_for_the_mission() {
+    use MissionKind::*;
+    let kinds = [
+        Recon,
+        Sead,
+        Cap,
+        Cas,
+        AntiShip,
+        Strike,
+        Escort,
+        Insertion,
+        Intercept,
+        Defend,
+        Interdiction,
+        Csar,
+        Awacs,
+    ];
+    let all = [Aircraft::F117, Aircraft::F16, Aircraft::UH60, Aircraft::AH1Z];
+    for k in kinds {
+        for last in all {
+            assert!(k.flyable_by(k.pick(last)), "{k:?} after {last:?}");
+        }
+    }
+    // No jet on a rescue, no helicopter deep in enemy territory.
+    assert_eq!(Csar.pick(Aircraft::F117), Aircraft::UH60);
+    assert_eq!(Interdiction.pick(Aircraft::UH60), Aircraft::F117);
+    assert_eq!(Interdiction.pick(Aircraft::AH1Z), Aircraft::F117);
+    assert_eq!(Strike.pick(Aircraft::F16), Aircraft::F16);
+    assert_eq!(Cas.pick(Aircraft::AH1Z), Aircraft::AH1Z);
+}
+
+#[test]
 fn a_player_insertion_takes_the_place_by_landing() {
     let mut c = campaign("central_europe", 3);
     let (id, target, _) = fly_insertion(&mut c);

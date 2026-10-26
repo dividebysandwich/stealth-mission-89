@@ -302,7 +302,11 @@ impl Theater {
             grid: self.grid.clone(),
             objects: [level(1), level(2)],
             model_attr: self.model_attr.clone(),
-            towns: self.towns.iter().map(|t| stealth_sim::Town::from_metres(t.x, t.y, t.r)).collect(),
+            towns: self
+                .towns
+                .iter()
+                .map(|t| stealth_sim::Town::from_metres(t.x, t.y, t.r))
+                .collect(),
         }
     }
 

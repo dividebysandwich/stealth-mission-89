@@ -518,7 +518,11 @@ pub fn career_ui(
             if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
                 close = true;
             }
-            if ui.add(big_button("OPTIONS")).on_hover_text("Game, graphics, sound and controls").clicked() {
+            if ui
+                .add(big_button("OPTIONS"))
+                .on_hover_text("Game, graphics, sound and controls")
+                .clicked()
+            {
                 options.open = true;
             }
         });

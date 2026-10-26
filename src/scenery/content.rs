@@ -663,10 +663,7 @@ fn tree_in_cell(sc: &Scenery, style: &Style, gx: i64, gy: i64) -> Option<(DVec2,
     let (tree, bush) = if in_town {
         (roll < 0.05, false)
     } else if meadow {
-        (
-            roll < forest * 0.85 || roll > 0.98 || (copse && roll < 0.7),
-            (0.96..0.98).contains(&roll),
-        )
+        (roll < forest * 0.85 || roll > 0.98 || (copse && roll < 0.7), (0.96..0.98).contains(&roll))
     } else {
         (roll < forest * 0.85 || roll > 0.995, forest > 0.0 && forest < 0.5 && roll > 0.97)
     };

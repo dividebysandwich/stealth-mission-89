@@ -406,7 +406,10 @@ pub fn ops_ui(
                         if ui.add(exit_button(c.role)).clicked() {
                             c.ui.confirm_exit = true;
                         }
-                        if ui.add(egui::Button::new("OPTIONS").min_size(egui::vec2(100.0, 30.0))).clicked() {
+                        if ui
+                            .add(egui::Button::new("OPTIONS").min_size(egui::vec2(100.0, 30.0)))
+                            .clicked()
+                        {
                             menu.open_options = true;
                         }
                     });
@@ -685,8 +688,9 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 );
                 ui.add_space(6.0);
             }
-            // The aircraft that flies it: the one last flown if it can, else the first that can.
-            let aircraft = flyable(&o, c.aircraft);
+            // The aircraft that flies it: the one last flown if it is made for it, else the best
+            // one for it.
+            let aircraft = o.kind.pick(c.aircraft);
             // From which base.
             let mut bases: Vec<(u16, String, i32)> = c
                 .state()
@@ -743,7 +747,8 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             let sortie = preview(&o, chosen, aircraft);
             let m = sortie_mission(&c.mission, c.state(), &sortie);
             let loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft));
-            ui.label(egui::RichText::new(format!("Stores: {}", loadout.summary())).color(DIM));
+            let text = format!("{} - stores: {}", kind_of(aircraft).name(), loadout.summary());
+            ui.label(egui::RichText::new(text).color(DIM));
             support_button(ui, c, &o);
             ui.add_space(10.0);
             let accept = if o.kind.ai_flown() { "FLY THE UH-60" } else { "ACCEPT MISSION" };
@@ -815,14 +820,6 @@ fn describe_offer(c: &ActiveCampaign, o: &MissionOffer) -> &'static str {
         Objective::Battery { .. } => stealth_host::glue::BATTERY_TASK,
         _ => describe(o.kind),
     }
-}
-
-/// The aircraft an offer is flown in: `last` if it may fly it, else the first that may.
-pub fn flyable(o: &MissionOffer, last: Airframe) -> Airframe {
-    [last, Airframe::F117, Airframe::F16, Airframe::UH60, Airframe::AH1Z]
-        .into_iter()
-        .find(|a| o.kind.flyable_by(*a))
-        .unwrap_or(last)
 }
 
 /// The other offers at an offer's place: flown together, they are a package.

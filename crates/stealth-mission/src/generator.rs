@@ -750,7 +750,9 @@ impl<'a> Gen<'a> {
                         x = s16(self.r.r(0x3200) + p0x - 0x1900).clamp(0x840, 0x77BF);
                         y = s16(self.r.r(0x3200) + p0y - 0x1900).clamp(0x840, 0x77BF);
                         draws += 1;
-                        if self.w.grid[((y >> 11) * 16 + (x >> 11)) as usize] & 3 == 0 || draws > 1000 {
+                        if self.w.grid[((y >> 11) * 16 + (x >> 11)) as usize] & 3 == 0
+                            || draws > 1000
+                        {
                             break;
                         }
                     }
