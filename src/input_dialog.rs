@@ -267,7 +267,7 @@ pub fn show(
                         }
                     }
                     ui.checkbox(&mut config.gamepad_defaults, "Standard gamepad layout")
-                        .on_hover_text("Left stick, right stick rudder, triggers throttle, face buttons fire / gun / weapons / bay");
+                        .on_hover_text("Left stick, right stick rudder, triggers throttle, face buttons fire / gun / weapons / bay. A button or axis bound here only does what it is bound to. Turn off if a joystick's buttons do things they aren't bound to.");
                     match &dialog.status {
                         Some(text) => ui.colored_label(AMBER, text),
                         None => ui.label(egui::RichText::new("Click BIND, then move an axis or press a button; + adds a key. Esc cancels.").color(DIM)),

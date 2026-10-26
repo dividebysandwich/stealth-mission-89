@@ -2,6 +2,7 @@
 //! keyboard "virtual stick" (also gamepad stick). Game logic only reads
 //! `FlightControls` and `ActionEvent`s, so other sources (HOTAS, VR controllers) can be added.
 
+use bevy::input::gamepad::GamepadInput;
 use bevy::prelude::*;
 
 pub struct InputPlugin;
@@ -570,15 +571,15 @@ pub fn stronger(current: f32, v: f32) -> f32 {
 
 /// Gamepad: left stick = stick, right stick X = rudder, triggers = throttle (a helicopter's
 /// collective, moving as far as they are pulled), A = fire, B = gun (unless turned off in the
-/// input mapping).
+/// input mapping). An input the mapping binds does only what it is bound to.
 fn read_gamepad(
-    gamepads: Query<&Gamepad>,
-    config: Res<crate::hotas::InputConfig>,
+    gamepads: Query<(&Gamepad, Option<&Name>)>,
+    (config, hotas): (Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
     (block, console): (Res<InputBlock>, Res<ConsoleStick>),
 ) {
-    for pad in &gamepads {
+    for (pad, _) in &gamepads {
         if pad.just_pressed(GamepadButton::Start) {
             actions.write(ActionEvent(Action::Menu));
         }
@@ -586,31 +587,43 @@ fn read_gamepad(
     if !config.gamepad_defaults || (block.0 && !console.0) {
         return;
     }
-    for pad in &gamepads {
-        let x = pad.get(GamepadAxis::LeftStickX).unwrap_or(0.0);
-        let y = pad.get(GamepadAxis::LeftStickY).unwrap_or(0.0);
+    let bound = hotas.bound_standard(&config);
+    for (pad, name) in &gamepads {
+        let ids = pad.vendor_id().zip(pad.product_id());
+        let free = |i: GamepadInput| {
+            !bound.iter().any(|&(usb, n, b)| {
+                b == i && usb == ids && name.is_none_or(|name| name.as_str() == n)
+            })
+        };
+        let axis =
+            |a: GamepadAxis| pad.get(a).filter(|_| free(GamepadInput::Axis(a))).unwrap_or(0.0);
+        let pressed = |b: GamepadButton| pad.pressed(b) && free(GamepadInput::Button(b));
+        let (x, y) = (axis(GamepadAxis::LeftStickX), axis(GamepadAxis::LeftStickY));
         if x.abs() > 0.1 || y.abs() > 0.1 {
             controls.roll = stronger(controls.roll, x);
             controls.pitch = stronger(controls.pitch, -y);
         }
         if block.0 {
             // At a console: only the stick and the triggers.
-            controls.gun |= pad.pressed(GamepadButton::East);
-            controls.fire |= pad.pressed(GamepadButton::South);
+            controls.gun |= pressed(GamepadButton::East);
+            controls.fire |= pressed(GamepadButton::South);
             continue;
         }
-        let rx = pad.get(GamepadAxis::RightStickX).unwrap_or(0.0);
+        let rx = axis(GamepadAxis::RightStickX);
         if rx.abs() > 0.15 {
             controls.yaw = rx;
         }
         let pull = |b: GamepadButton| {
+            if !free(GamepadInput::Button(b)) {
+                return 0.0;
+            }
             pad.get(b).unwrap_or(0.0).max(if pad.pressed(b) { 1.0 } else { 0.0 })
         };
         let lt = pull(GamepadButton::LeftTrigger2).max(pull(GamepadButton::LeftTrigger));
         let rt = pull(GamepadButton::RightTrigger2).max(pull(GamepadButton::RightTrigger));
         controls.collective_rate = stronger(controls.collective_rate, rt - lt);
-        controls.gun |= pad.pressed(GamepadButton::East);
-        controls.fire |= pad.pressed(GamepadButton::South);
+        controls.gun |= pressed(GamepadButton::East);
+        controls.fire |= pressed(GamepadButton::South);
         for (b, a) in [
             (GamepadButton::South, Action::FireWeapon),
             (GamepadButton::RightTrigger, Action::ThrottleUp),
@@ -618,7 +631,7 @@ fn read_gamepad(
             (GamepadButton::North, Action::SelectWeapon),
             (GamepadButton::West, Action::BayDoors),
         ] {
-            if pad.just_pressed(b) {
+            if pad.just_pressed(b) && free(GamepadInput::Button(b)) {
                 actions.write(ActionEvent(a));
             }
         }
