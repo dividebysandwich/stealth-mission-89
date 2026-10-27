@@ -184,6 +184,12 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         neutral: false,
         distance: 0,
     };
+    // The briefing's times name the generated mission's bases: the sortie's instead.
+    let bl = &mut m.briefing;
+    for l in [&mut bl.base_date_line, &mut bl.depart_line] {
+        *l = l.replace(&m.takeoff.name, &home.name);
+    }
+    bl.land_line = bl.land_line.replace(&m.landing.name, &home.name);
     m.takeoff = home.clone();
     m.landing = home;
     let target = MapPoint { x: o.x, y: o.y };
