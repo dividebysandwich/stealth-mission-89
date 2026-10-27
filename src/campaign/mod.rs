@@ -604,10 +604,17 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         return;
     }
     // END SORTIE from the in-flight menu; down waiting for the rescue helicopter, SKIP
-    // EXTRACTION (the rescue goes on the board).
-    if std::mem::take(&mut s.combat.quit) && c.phase == Phase::Sortie {
-        let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
-        c.actions.push(Action::EndSortie { outcome });
+    // EXTRACTION (the rescue goes on the board). At an air defence console: leave it, back to
+    // operations.
+    if std::mem::take(&mut s.combat.quit) {
+        match c.phase {
+            Phase::Sortie => {
+                let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
+                c.actions.push(Action::EndSortie { outcome });
+            }
+            Phase::Station { .. } => c.actions.push(Action::Station(StationCmd::Leave)),
+            _ => {}
+        }
     }
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
