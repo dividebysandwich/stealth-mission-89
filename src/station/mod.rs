@@ -387,13 +387,18 @@ fn buttons(
     }
 }
 
+/// How fast the FIRE button blinks (Hz).
+const FIRE_BLINK: f32 = 2.0;
+
 /// The console's buttons: a Gepard's without the missile battery's (launchers, guidance, the
-/// second and third reload); LOCK lit with a lock, FLIR with the thermal picture.
+/// second and third reload); LOCK lit with a lock, FLIR with the thermal picture, FIRE lit with
+/// a lock out of reach and blinking with a hostile one in reach.
 fn panel(
     manning: Option<Res<Manning>>,
     c: Option<Res<ActiveCampaign>>,
     combat: Option<Res<Combat>>,
     mfd: Res<crate::mfd::MfdState>,
+    time: Res<Time<Real>>,
     mut panel: ResMut<ConsolePanel>,
 ) {
     let (Some(m), Some(c), Some(combat)) = (manning, c, combat) else {
@@ -416,13 +421,20 @@ fn panel(
     } else {
         Vec::new()
     };
-    let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
+    let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
     let mut lit = Vec::new();
     if lock.is_some() {
         lit.push((ConsoleKey::Lock, scope::GREEN));
     }
     if mfd.flir {
         lit.push((ConsoleKey::Flir, scope::GREEN));
+    }
+    if let Some(j) = lock {
+        let engage = sim.in_reach(m.unit, j)
+            && sim.flights().get(j).is_some_and(|f| !sim.friendly_unit(j, f.spec));
+        if !engage || (time.elapsed_secs() * FIRE_BLINK).fract() < 0.5 {
+            lit.push((ConsoleKey::Fire, scope::RED));
+        }
     }
     let want = ConsolePanel { hidden, lit };
     if *panel != want {

@@ -335,6 +335,20 @@ impl Sim {
         Some((flight_metres(t), vel))
     }
 
+    /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot
+    /// radar's missiles, a Gepard's rounds (at the lead).
+    pub fn in_reach(&self, unit: usize, j: usize) -> bool {
+        let (Some(u), Some((pos, vel))) = (self.aaa.get(unit), self.track_alive(j)) else {
+            return false;
+        };
+        if u.kind == AaaKind::Gepard {
+            let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
+            time * GEPARD_V0 <= GEPARD_REACH
+        } else {
+            len(sub(pos, u.metres())) <= PATRIOT_MAX_RANGE
+        }
+    }
+
     /// A locked track the station may shoot at: alive and not friendly.
     fn hostile_lock(&self, st: &Station) -> Result<(usize, [f64; 3], [f64; 3]), String> {
         let Some(j) = st.lock.map(|j| j as usize) else { return Err("No track locked".into()) };
@@ -351,7 +365,7 @@ impl Sim {
             return Err("No missiles here".into());
         }
         let (j, pos, _) = self.hostile_lock(&st)?;
-        if len(sub(pos, self.aaa[radar].metres())) > PATRIOT_MAX_RANGE {
+        if !self.in_reach(radar, j) {
             return Err("Out of range".into());
         }
         let ready = |sim: &Sim, k: usize| {
@@ -423,9 +437,8 @@ impl Sim {
         if st.lock.is_none() {
             return Ok(BURST.min(u.rounds));
         }
-        let (_, pos, vel) = self.hostile_lock(st)?;
-        let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
-        if time * GEPARD_V0 > GEPARD_REACH {
+        let (j, _, _) = self.hostile_lock(st)?;
+        if !self.in_reach(st.unit as usize, j) {
             return Err("Out of range".into());
         }
         Ok(BURST.min(u.rounds))
