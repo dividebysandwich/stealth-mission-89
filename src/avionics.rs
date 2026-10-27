@@ -1010,9 +1010,13 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
             stroke_text_at(c, q.x, q.y, label, 9.0, 1.2, GREY, Align::Centre);
         }
     }
-    // Route: the steerpoints as small squares, the current one ringed.
+    // Route: the steerpoints as small squares, the current one ringed, and a leg from the
+    // aircraft to the current one so the route shows with every steerpoint out of range.
     let wps: Vec<Vec2> =
         p.waypoints.points.iter().map(|w| view.to_screen(w.east, w.north)).collect();
+    if let Some(&q) = wps.get(p.waypoints.current) {
+        c.stroke(o, q, 1.0, WHITE);
+    }
     for pair in wps.windows(2) {
         c.stroke(pair[0], pair[1], 1.0, WHITE);
     }
