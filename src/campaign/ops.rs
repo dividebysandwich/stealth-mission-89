@@ -25,6 +25,7 @@ pub enum Tab {
     #[default]
     Board,
     Map,
+    AirDefence,
     Forces,
     Players,
     Debrief,
@@ -40,9 +41,13 @@ pub struct OpsUi {
     /// Base chosen for the selected mission (None: the offer's).
     base: Option<u16>,
     pub error: Option<String>,
-    centre: egui::Vec2,
-    scale: f32,
+    pub(super) centre: egui::Vec2,
+    pub(super) scale: f32,
     fitted: bool,
+    /// The air defence site selected on the AIR DEFENSE tab (AAA unit), and the list scrolls
+    /// to it (picked on the map).
+    pub(super) defence: Option<usize>,
+    pub(super) defence_scroll: bool,
     /// `--campaign-take` was done, `--campaign-man`.
     pub test_taken: bool,
     pub test_manned: bool,
@@ -197,13 +202,14 @@ pub fn block_input(
     }
 }
 
-/// Test aids: `--campaign-tab board|map|forces|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
+/// Test aids: `--campaign-tab board|map|airdefense|forces|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
 /// takes the n-th mission of the board (0: the first) once the campaign is up.
 pub fn test_tab() -> Option<Tab> {
     let args: Vec<String> = std::env::args().collect();
     let t = args.iter().position(|a| a == "--campaign-tab").and_then(|i| args.get(i + 1))?;
     Some(match t.as_str() {
         "map" => Tab::Map,
+        "airdefense" => Tab::AirDefence,
         "forces" => Tab::Forces,
         "debrief" => Tab::Debrief,
         "log" => Tab::Log,
@@ -389,6 +395,7 @@ pub fn ops_ui(
                         for (tab, label) in [
                             (Tab::Board, "MISSIONS"),
                             (Tab::Map, "WAR MAP"),
+                            (Tab::AirDefence, "AIR DEFENSE"),
                             (Tab::Forces, "FORCES"),
                             (Tab::Players, "PLAYERS"),
                             (Tab::Debrief, "DEBRIEF"),
@@ -447,6 +454,13 @@ pub fn ops_ui(
                         c,
                         &combat.sim,
                         &mut unit_view,
+                        tex.as_ref(),
+                        egui::vec2(width, height),
+                    ),
+                    Tab::AirDefence => super::air_defence::tab(
+                        ui,
+                        c,
+                        &combat.sim,
                         tex.as_ref(),
                         egui::vec2(width, height),
                     ),
@@ -1075,17 +1089,7 @@ fn war_map(
             egui::vec2(size.x - legend_w, size.y),
             egui::Sense::click_and_drag(),
         );
-        if !c.ui.fitted {
-            let (lo, hi) = c.state().places.iter().fold(
-                (egui::vec2(f32::MAX, f32::MAX), egui::vec2(f32::MIN, f32::MIN)),
-                |(lo, hi), p| {
-                    let v = egui::vec2(p.x as f32, p.y as f32);
-                    (lo.min(v), hi.max(v))
-                },
-            );
-            (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
-            c.ui.fitted = true;
-        }
+        fit_map(c, rect);
         let view = MapView { rect, centre: c.ui.centre, scale: c.ui.scale };
         let (mut centre, mut scale) = (c.ui.centre, c.ui.scale);
         view.pan_zoom(ui, &resp, &mut centre, &mut scale);
@@ -1217,6 +1221,36 @@ fn war_map(
     });
 }
 
+/// The war map's view the first time: all the places in `rect`.
+pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
+    if c.ui.fitted {
+        return;
+    }
+    let (lo, hi) = c.state().places.iter().fold(
+        (egui::vec2(f32::MAX, f32::MAX), egui::vec2(f32::MIN, f32::MIN)),
+        |(lo, hi), p| {
+            let v = egui::vec2(p.x as f32, p.y as f32);
+            (lo.min(v), hi.max(v))
+        },
+    );
+    (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
+    c.ui.fitted = true;
+}
+
+/// Why this player can't man air defence unit `k`'s console now (None: they can).
+pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) -> Option<String> {
+    if sim.aaa_units().get(k).is_none_or(|u| u.destroyed) {
+        return Some("Destroyed".to_string());
+    }
+    if c.phase == Phase::Sortie {
+        return Some("Finish your sortie first".to_string());
+    }
+    sim.manned_by(k).filter(|&p| p != c.me.0).map(|p| {
+        let name = c.state().player_name(PlayerId(p)).unwrap_or("another player");
+        format!("Manned by {name}")
+    })
+}
+
 /// The watched unit is a friendly Patriot battery or Gepard: CONTROL mans its console.
 fn control_button(
     ui: &mut egui::Ui,
@@ -1231,17 +1265,7 @@ fn control_button(
     }
     ui.add_space(10.0);
     section(ui, if u.kind == AaaKind::Gepard { "Gepard" } else { "Patriot battery" });
-    let manned = sim.manned_by(k).filter(|&p| p != c.me.0);
-    let why = if u.destroyed {
-        Some("Destroyed".to_string())
-    } else if c.phase == Phase::Sortie {
-        Some("Finish your sortie first".to_string())
-    } else {
-        manned.map(|p| {
-            let name = c.state().player_name(PlayerId(p)).unwrap_or("another player");
-            format!("Manned by {name}")
-        })
-    };
+    let why = man_refusal(c, sim, k);
     if ui.add_enabled(why.is_none(), big_button("CONTROL")).clicked() {
         c.ui.error = None;
         c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));

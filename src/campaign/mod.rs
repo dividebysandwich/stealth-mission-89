@@ -22,6 +22,7 @@
 //!
 //! The Ops screen asks for things through [`Action`]s, carried out here for every role.
 
+mod air_defence;
 mod menu;
 mod ops;
 mod picture;

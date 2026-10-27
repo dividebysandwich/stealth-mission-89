@@ -159,7 +159,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
 }
 
 /// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane.
-fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
+pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
     if a.helicopter {
         painter.circle_filled(p, 3.0, col);
         painter.circle_stroke(p, 5.0, egui::Stroke::new(1.0, col));
@@ -224,7 +224,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool)
 
 /// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
 /// a square with its two barrels, a Stinger team a ring.
-fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
     let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
     match kind {
         AaaKind::PatriotRadar => {
