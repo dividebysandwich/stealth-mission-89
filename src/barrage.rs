@@ -1,7 +1,9 @@
 //! Night barrage (`Effects::barrage`): in a conventional war (ROE 2) after dark the guns of the
 //! towns and air defence sites near the aircraft fire blind into the sky, streams of tracer
-//! arcing up and burning out, and searchlights sweep the sky over the towns. Cosmetic only: the
-//! rounds hit nothing and the searchlights find nothing.
+//! arcing up and burning out, and searchlights sweep the sky over the towns. A town's guns only
+//! fire with the other side's aircraft overhead (the player or friendly aircraft over an enemy
+//! town, enemy aircraft over a friendly one; a neutral town's never). Cosmetic only: the rounds
+//! hit nothing and the searchlights find nothing.
 //!
 //! All the rounds are one line mesh rebuilt every frame (one draw); the searchlights are beam
 //! cones (landing_lights.rs `BeamMaterial` with a negative intensity: lit analytically, not
@@ -13,12 +15,14 @@ use bevy::prelude::*;
 
 use crate::combat::Combat;
 use crate::landing_lights::BeamMaterial;
+use crate::mfd::ContactKind;
 use crate::mission::ActiveMission;
 use crate::palette_material::{
     FLAG_LINE, LEVEL_AIRCRAFT, PaletteMaterial, PaletteParams, mesh_tag,
 };
 use crate::settings::{AppState, Settings};
 use crate::world::{Theater, WU, WorldAnchor, WorldPos, map_to_wu, wu_to_bevy};
+use stealth_sim::oflags;
 
 pub struct BarragePlugin;
 
@@ -37,6 +41,8 @@ impl Plugin for BarragePlugin {
 /// Guns firing at once at most (the nearest), and how far from the eye they fire (m).
 const MAX_GUNS: usize = 8;
 const GUN_RANGE: f64 = 15_000.0;
+/// A town's guns fire at aircraft of the other side within this distance (m, horizontal).
+const THREAT_RANGE: f64 = 8_000.0;
 /// Searchlights at once at most, and how far from the eye they shine (m).
 const MAX_LIGHTS: usize = 6;
 const LIGHT_RANGE: f64 = 20_000.0;
@@ -65,6 +71,8 @@ const BEAM_BRIGHTNESS: f32 = 0.6;
 /// A place guns fire from: towns (with a searchlight or two) and air defence units.
 struct Site {
     pos: DVec3,
+    /// The simulation's ground object nearest the town: its side is the town's.
+    object: Option<usize>,
     lights: u8,
     gun: Gun,
 }
@@ -134,6 +142,7 @@ fn find_sites(
     mission: Option<Res<ActiveMission>>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     theater: Option<Res<Theater>>,
+    combat: Option<Res<Combat>>,
 ) {
     if barrage.sites.is_some() {
         return;
@@ -143,7 +152,7 @@ fn find_sites(
         barrage.sites = Some(Vec::new());
         return;
     }
-    let (Some(scenery), Some(theater)) = (scenery, theater) else { return };
+    let (Some(scenery), Some(theater), Some(combat)) = (scenery, theater, combat) else { return };
     let seed = mission.as_ref().map_or(1, |m| m.0.weather.seed);
     barrage.rng = (seed as u32).wrapping_mul(0x9E37_79B9) | 1;
     let mut towns = scenery.towns();
@@ -169,11 +178,29 @@ fn find_sites(
                 _ => 0,
             };
             let gun = Gun { az: barrage.rand() * std::f32::consts::TAU, ..default() };
-            sites.push(Site { pos: wu_to_bevy(p.x / WU, p.y / WU, 0.0), lights, gun });
+            let pos = wu_to_bevy(p.x / WU, p.y / WU, 0.0);
+            let object = nearest_object(&combat, pos);
+            sites.push(Site { pos, object, lights, gun });
         }
     }
     debug!("barrage: {} gun sites", sites.len());
     barrage.sites = Some(sites);
+}
+
+/// The ground object nearest `pos` (not the first three, which are no places).
+fn nearest_object(combat: &Combat, pos: DVec3) -> Option<usize> {
+    let objects = combat.sim.objects().iter().enumerate().skip(3);
+    objects
+        .map(|(i, o)| {
+            let p = crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0);
+            (horizontal(p, pos), i)
+        })
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, i)| i)
+}
+
+fn horizontal(a: DVec3, b: DVec3) -> f64 {
+    (a.x - b.x).hypot(a.z - b.z)
 }
 
 /// How dark it is for the barrage: 0 (daylight) .. 1.
@@ -219,6 +246,7 @@ fn fire(
     settings: Res<Settings>,
     lighting: Res<crate::lighting::LightingState>,
     combat: Option<Res<Combat>>,
+    contacts: Option<Res<crate::mfd::Contacts>>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
 ) {
     let b = &mut *barrage;
@@ -238,12 +266,32 @@ fn fire(
         return;
     };
     if settings.effects.barrage && darkness(lighting.daylight) > 0.0 && dt > 0.0 {
-        // The nearest towns' guns and the air defence units' (those not destroyed).
+        // The aircraft in the air (the player's and others', friendly or not).
+        let mut air: Vec<(DVec3, bool)> = vec![(eye, true)];
+        if let Some(c) = &contacts {
+            air.extend(
+                c.list
+                    .iter()
+                    .filter(|c| matches!(c.kind, ContactKind::Aircraft | ContactKind::Drone))
+                    .map(|c| (wu_to_bevy(c.east, c.north, 0.0), c.friendly)),
+            );
+        }
+        let objects = combat.as_deref().map_or(&[][..], |c| c.sim.objects());
+        let threatened = |s: &Site| {
+            let Some(o) = s.object.and_then(|o| objects.get(o)) else { return false };
+            if o.flags & oflags::NEUTRAL != 0 && o.flags & oflags::FRIENDLY == 0 {
+                return false;
+            }
+            let friendly = o.flags & oflags::FRIENDLY != 0;
+            air.iter().any(|&(p, blue)| blue != friendly && horizontal(p, s.pos) < THREAT_RANGE)
+        };
+        // The nearest towns' guns (with the other side's aircraft overhead) and the air
+        // defence units' (those not destroyed).
         let mut guns: Vec<(f64, usize)> = sites
             .iter()
             .enumerate()
             .map(|(i, s)| (s.pos.distance(eye), i))
-            .filter(|&(d, _)| d < GUN_RANGE)
+            .filter(|&(d, i)| d < GUN_RANGE && threatened(&sites[i]))
             .collect();
         let units = combat.as_deref().map_or(&[][..], |c| c.sim.aaa_units());
         if !sites.is_empty() {
