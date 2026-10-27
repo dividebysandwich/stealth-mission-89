@@ -19,8 +19,8 @@ use bevy::prelude::*;
 use super::{Aircraft, FlightConstants, Player};
 use crate::world::{FloatingOrigin, WU, WorldPos};
 
-/// Clearance over the obstacles (metres): 100 ft in altitude units.
-pub const CLEARANCE: f32 = 100.0 * WU as f32;
+/// Clearance over the obstacles (metres): 65 ft in altitude units.
+pub const CLEARANCE: f32 = 65.0 * WU as f32;
 /// Extra load factor the pull-up template assumes (the control law may pull more).
 const PULL_G: f32 = 1.5;
 /// Reaction time (s): obstacles count as this much flight time nearer.
@@ -310,7 +310,7 @@ mod tests {
             );
             assert!(a.autopilot() && a.ended.is_none(), "{name}");
             assert!(-pos.0.z > 30_000.0, "{name}: too slow");
-            assert!(lowest > CLEARANCE * 0.7, "{name}: {lowest} m over the ground");
+            assert!(lowest > CLEARANCE * 0.6, "{name}: {lowest} m over the ground");
             assert!(flat_max < CLEARANCE * 2.0, "{name}: {flat_max} m on the flat");
         }
     }

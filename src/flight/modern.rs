@@ -383,8 +383,10 @@ const HOLD_AFTER: f32 = 1.5;
 const HOLD_LATEST: f32 = 4.0;
 const HOLD_SETTLED: f32 = 0.02;
 const HOLD_GAIN: f32 = 0.5;
-/// Terrain following: pitch rate per radian of flight path error.
-const TF_GAIN: f32 = 2.0;
+/// Terrain following: pitch rate per radian of flight path error, the flight path angle led by
+/// its rate over `TF_LEAD` seconds (damping the bobbing the path's lag behind the nose gives).
+const TF_GAIN: f32 = 3.0;
+const TF_LEAD: f32 = 0.5;
 /// Auto trim: trim (stick) per second per radian of flight path error held, and the share of
 /// the roll bias trimmed out per second with the stick released.
 const TRIM_PATH_GAIN: f32 = 0.5;
@@ -671,7 +673,9 @@ pub(super) fn step(
                 // Terrain following: the radar's flight path, pulling up to 4 g more and pushing
                 // over to -0.5 g.
                 Some(gamma_cmd) => {
-                    q_turn + ((gamma_cmd - gamma) * TF_GAIN).clamp(-1.5 * G / v, 4.0 * G / v)
+                    let gamma_dot = a_perp.y / (v * gamma.cos().max(0.1));
+                    let led = gamma + gamma_dot * TF_LEAD;
+                    q_turn + ((gamma_cmd - led) * TF_GAIN).clamp(-1.5 * G / v, 4.0 * G / v)
                 }
                 None => {
                     let gamma_cmd = ((a.autopilot_alt - vz) * 0.0005).clamp(-0.17, 0.17);
