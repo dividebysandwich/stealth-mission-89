@@ -40,7 +40,7 @@ use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
-pub use controls::{ConsoleButton, PressControl, ScreenClick};
+pub use controls::{ConsoleButton, ConsolePanel, PressControl, ScreenClick};
 pub use displays::{
     BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, INFO_CANVAS, SCOPE_CANVAS,
 };
@@ -59,6 +59,7 @@ impl Plugin for Cockpit3dPlugin {
             MaterialPlugin::<tooltips::TipScreenMaterial>::default(),
         ))
         .init_resource::<Hands>()
+        .init_resource::<ConsolePanel>()
         .init_resource::<levers::CockpitAnchors>()
         .init_resource::<pick::Shapes>()
         .init_resource::<tooltips::TipAnchor>()
@@ -80,6 +81,7 @@ impl Plugin for Cockpit3dPlugin {
                 pick::forget_shapes,
                 tooltips::hover,
                 tooltips::place_screen,
+                controls::console_panel,
             )
                 .chain()
                 .run_if(in_state(AppState::Flight)),

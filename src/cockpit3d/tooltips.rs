@@ -728,7 +728,7 @@ pub(super) fn hover(
     kneeboard: Option<Res<crate::kneeboard::Kneeboard>>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut picker: Picker,
-    controls: Query<(Entity, &Control, &Transform)>,
+    controls: Query<(Entity, &Control, &Transform), Without<super::controls::Unused>>,
     tips: Query<&Tip>,
     panel: PanelParams,
     input: Res<InputConfig>,

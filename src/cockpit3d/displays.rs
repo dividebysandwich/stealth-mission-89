@@ -353,6 +353,24 @@ pub(super) fn trackcam_material(
 }
 
 /// A side panel button label (the button's text on a green cap).
+/// A side panel button's label text, and its light's colour while lit (`ConsolePanel`).
+#[derive(Component)]
+pub(super) struct SideLabel {
+    pub text: String,
+    pub lit: Option<u8>,
+}
+
+/// Draws a side panel button's label: light text on the dark cap, dark text on the lit one.
+pub(super) fn draw_side_label(canvas: &mut Canvas, fonts: &Fonts, text: &str, lit: Option<u8>) {
+    let (back, ink) = match lit {
+        Some(c) => (c, 5),
+        None => (44, 47),
+    };
+    canvas.clear(back);
+    let w = fonts.text(&mut Canvas::new(64, 16), 0, 0, text.as_bytes(), ink);
+    fonts.text(canvas, (28 - w) / 2, 3, text.as_bytes(), ink);
+}
+
 pub(super) fn side_label(
     text: &str,
     fonts: &Fonts,
@@ -360,9 +378,7 @@ pub(super) fn side_label(
     images: &mut Assets<Image>,
 ) -> (CanvasTexture, Handle<CockpitMaterial>) {
     let mut canvas = Canvas::new(28, 11);
-    canvas.clear(44);
-    let w = fonts.text(&mut Canvas::new(64, 16), 0, 0, text.as_bytes(), 47);
-    fonts.text(&mut canvas, (28 - w) / 2, 3, text.as_bytes(), 47);
+    draw_side_label(&mut canvas, fonts, text, None);
     let tex = CanvasTexture::mipmapped(canvas, images, false);
     let m = materials.add(cockpit_material(StandardMaterial {
         base_color_texture: Some(tex.image.clone()),

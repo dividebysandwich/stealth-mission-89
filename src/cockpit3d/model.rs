@@ -461,13 +461,10 @@ impl<'a> Spawner<'a> {
                 return None;
             }
             n if n.starts_with("label_") => {
-                let (tex, m) = displays::side_label(
-                    &n["label_".len()..],
-                    self.fonts,
-                    self.materials,
-                    self.images,
-                );
-                ec.insert((tex, LitMaterial(m.clone())));
+                let text = &n["label_".len()..];
+                let (tex, m) = displays::side_label(text, self.fonts, self.materials, self.images);
+                let label = displays::SideLabel { text: text.to_string(), lit: None };
+                ec.insert((tex, label, LitMaterial(m.clone())));
                 still = false;
                 m
             }

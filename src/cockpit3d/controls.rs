@@ -26,6 +26,18 @@ pub struct PressControl(pub Action);
 #[derive(Message, Debug, Clone, Copy)]
 pub struct ConsoleButton(pub super::layout::ConsoleKey);
 
+/// What the air defence console's buttons show (`station` sets it): those not used at this
+/// site (hidden, not pressable) and those lit, with their light's colour.
+#[derive(Resource, Default, PartialEq)]
+pub struct ConsolePanel {
+    pub hidden: Vec<super::layout::ConsoleKey>,
+    pub lit: Vec<(super::layout::ConsoleKey, u8)>,
+}
+
+/// A console button `ConsolePanel` hides.
+#[derive(Component)]
+pub(super) struct Unused;
+
 /// A console screen was clicked (mouse) or tapped (VR fingertip and trigger) at `uv` (0..1
 /// across the screen, from its top left).
 #[derive(Message, Debug, Clone, Copy)]
@@ -284,7 +296,7 @@ pub(super) fn interact(
     settings: Res<crate::settings::Settings>,
     view: Res<ViewState>,
     mut hands: ResMut<Hands>,
-    mut controls: Query<(Entity, &mut Control, &Transform)>,
+    mut controls: Query<(Entity, &mut Control, &Transform), Without<Unused>>,
     mut was_touching: Local<[Option<Entity>; 2]>,
     mut fire: Fire,
     mut presses: MessageReader<PressControl>,
@@ -472,6 +484,42 @@ pub(super) fn animate(
                     *tf = t;
                 }
             }
+        }
+    }
+}
+
+/// Hides the console's unused buttons and lights its lit ones (`ConsolePanel`).
+pub(super) fn console_panel(
+    mut commands: Commands,
+    panel: Res<ConsolePanel>,
+    fonts: Res<crate::font::Fonts>,
+    controls: Query<(Entity, &Control, Has<Unused>)>,
+    mut labels: Query<(Entity, &mut super::displays::SideLabel, &mut crate::canvas::CanvasTexture)>,
+    parents: Query<&ChildOf>,
+) {
+    let key = |e: Entity| match controls.get(e).ok()?.1.effect {
+        Effect::Console(k) => Some(k),
+        _ => None,
+    };
+    for (e, c, unused) in &controls {
+        let Effect::Console(k) = c.effect else { continue };
+        let hide = panel.hidden.contains(&k);
+        if hide != unused {
+            let mut ec = commands.entity(e);
+            if hide {
+                ec.insert((Unused, Visibility::Hidden));
+            } else {
+                ec.remove::<Unused>().insert(Visibility::Inherited);
+            }
+        }
+    }
+    for (e, mut label, mut tex) in &mut labels {
+        let Some(k) = parents.iter_ancestors(e).find_map(key) else { continue };
+        let lit = panel.lit.iter().find(|(l, _)| *l == k).map(|&(_, c)| c);
+        if label.lit != lit {
+            label.lit = lit;
+            super::displays::draw_side_label(&mut tex.canvas, &fonts, &label.text, lit);
+            tex.dirty = true;
         }
     }
 }

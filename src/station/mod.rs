@@ -29,7 +29,7 @@ use stealth_sim::station::{Guidance, StationCmd};
 
 use crate::camera::{View, ViewState};
 use crate::campaign::{Action, ActiveCampaign, Phase};
-use crate::cockpit3d::{ConsoleButton, ConsoleKey, ConsoleScreen, ScreenClick};
+use crate::cockpit3d::{ConsoleButton, ConsoleKey, ConsolePanel, ConsoleScreen, ScreenClick};
 use crate::combat::Combat;
 use crate::flight::{Aircraft, FlightSystems, Player};
 use crate::settings::AppState;
@@ -52,6 +52,7 @@ impl Plugin for StationPlugin {
                 seat_operator.after(FlightSystems),
                 (
                     buttons,
+                    panel,
                     scope::snapshot,
                     eo::aim,
                     scope::draw,
@@ -383,6 +384,40 @@ fn buttons(
     // A launcher lost or gone from the battery is not chosen any more.
     if ui.launcher.is_some_and(|l| !launchers.contains(&l)) {
         ui.launcher = None;
+    }
+}
+
+/// The console's buttons: a Gepard's without the missile battery's (launchers, guidance, the
+/// second and third reload).
+fn panel(
+    manning: Option<Res<Manning>>,
+    c: Option<Res<ActiveCampaign>>,
+    combat: Option<Res<Combat>>,
+    mut panel: ResMut<ConsolePanel>,
+) {
+    let (Some(m), Some(_), Some(_)) = (manning, c, combat) else {
+        if *panel != ConsolePanel::default() {
+            *panel = ConsolePanel::default();
+        }
+        return;
+    };
+    let hidden = if m.gepard {
+        vec![
+            ConsoleKey::Guided,
+            ConsoleKey::Semi,
+            ConsoleKey::Launcher(1),
+            ConsoleKey::Launcher(2),
+            ConsoleKey::Launcher(3),
+            ConsoleKey::Refill(2),
+            ConsoleKey::Refill(3),
+        ]
+    } else {
+        Vec::new()
+    };
+    let lit = Vec::new();
+    let want = ConsolePanel { hidden, lit };
+    if *panel != want {
+        *panel = want;
     }
 }
 
