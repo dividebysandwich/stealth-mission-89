@@ -202,8 +202,9 @@ for s in (-1, 1):
     for k in range(6):
         box("black", "black", (s * (ROOM_X - 0.25), -0.75 + 0.28, -1.0 + k * 0.28), (0.42, 0.01, 0.2))
 # The dome light: a red lamp over the console (the local lights option).
-empty("lamp", (0.0, 0.25, CEILING - 0.05), props={"lamp": [0.9, 0.08, 0.05], "range": 3.0})
+empty("lamp", (0.0, 0.25, CEILING - 0.05), props={"lamp": [0.9, 0.08, 0.05], "range": 4.0})
 box("metal", "metal", (0.0, 0.25, CEILING - 0.02), (0.16, 0.16, 0.03))
+box("red", "red", (0.0, 0.25, CEILING - 0.04), (0.12, 0.12, 0.01))
 
 # --- the chair under the eye
 box("seat", "seat", (0.0, -0.05, -0.80), (0.5, 0.48, 0.10))

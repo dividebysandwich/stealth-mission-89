@@ -409,7 +409,12 @@ struct FlashQuad;
 #[derive(Component)]
 struct CockpitLamp;
 
-/// Flood lamps: on with the local lighting option, brighter as it gets dark.
+/// The air defence shelter's red dome light (lumens: the desk about 1.5 m off, see
+/// `crate::lighting::LUX_PER_UNIT`).
+const CONSOLE_LAMP_LUMENS: f32 = 30_000.0;
+
+/// Flood lamps: on with the local lighting option, brighter as it gets dark (the air defence
+/// shelter's dome light always as bright).
 fn cockpit_lamps(
     settings: Res<Settings>,
     manning: Option<Res<crate::station::Manning>>,
@@ -418,10 +423,11 @@ fn cockpit_lamps(
 ) {
     // As bright as in the cockpit model's size, which brings them nearer.
     let k = choice(&settings, manning.as_deref()).3;
-    let lumens = if settings.local_lights {
-        (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k)
-    } else {
-        0.0
+    // The air defence shelter's dome light: the closed shelter's only light, day or night.
+    let lumens = match (settings.local_lights, manning.is_some()) {
+        (false, _) => 0.0,
+        (true, true) => CONSOLE_LAMP_LUMENS / (k * k),
+        (true, false) => (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k),
     };
     for mut l in &mut q {
         if l.intensity != lumens {
