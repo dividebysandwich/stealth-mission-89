@@ -1581,13 +1581,13 @@ impl MfdParams<'_, '_> {
         out
     }
 
-    /// Current waypoint in white, the ones already passed in black (colour 5, as in the
-    /// original), the others in alternating cyans.
+    /// Passed waypoints in black (colour 5, as in the original), the unpassed current waypoint
+    /// in white, and the others in alternating cyans.
     fn way_colour(&self, i: usize) -> u8 {
-        if i == self.waypoints.current {
-            15
-        } else if i < self.waypoints.mission_current {
+        if self.waypoints.passed.get(i).copied().unwrap_or(false) {
             5
+        } else if i == self.waypoints.current {
+            15
         } else if i % 2 == 1 {
             3
         } else {

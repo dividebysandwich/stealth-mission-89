@@ -1019,6 +1019,7 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
         current: 0,
+        passed: vec![false; route.points.len()],
         mission_current: 0,
         anchors: route.anchors(),
     };
