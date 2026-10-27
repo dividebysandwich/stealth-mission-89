@@ -55,6 +55,9 @@ pub struct CockpitShading {
     /// times it).
     #[uniform(101)]
     pub flood: Vec4,
+    /// Retro output: VGA colours (x), scanlines (y) (`crate::palette::retro`).
+    #[uniform(102)]
+    pub retro: Vec4,
     /// Never darkened.
     pub bright: bool,
 }

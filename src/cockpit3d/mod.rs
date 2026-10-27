@@ -392,6 +392,7 @@ fn sync_shading(
     } else {
         Vec4::ZERO
     };
+    let retro = crate::palette::retro(&settings);
     let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials
         .iter()
@@ -401,6 +402,7 @@ fn sync_shading(
                 || m.extension.shadows != shadows
                 || m.extension.night != night(m)
                 || m.extension.flood != flood_of(m)
+                || m.extension.retro != retro
         })
         .map(|(id, _)| id)
         .collect();
@@ -411,6 +413,7 @@ fn sync_shading(
             m.extension.shadows = shadows;
             m.extension.night = night(&m);
             m.extension.flood = flood_of(&m);
+            m.extension.retro = retro;
         }
     }
 }

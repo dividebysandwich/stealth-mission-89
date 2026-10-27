@@ -28,6 +28,10 @@ pub struct Effects {
     pub vapour: bool,
     /// The northern lights over the North Cape, shooting stars, low stars twinkling.
     pub night_sky: bool,
+    /// Retro (off by default): VGA colours, 64 steps a channel, dithered (palette.wgsl).
+    pub vga: bool,
+    /// Retro (off by default, desktop): CRT scanlines (palette.wgsl).
+    pub scanlines: bool,
 }
 
 impl Default for Effects {
@@ -43,6 +47,8 @@ impl Default for Effects {
             cloud_shadows: true,
             vapour: true,
             night_sky: true,
+            vga: false,
+            scanlines: false,
         }
     }
 }
@@ -60,10 +66,12 @@ pub enum Effect {
     CloudShadows,
     Vapour,
     NightSky,
+    Vga,
+    Scanlines,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 10] = [
+    pub const ALL: [Effect; 12] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -74,6 +82,8 @@ impl Effect {
         Effect::CloudShadows,
         Effect::Vapour,
         Effect::NightSky,
+        Effect::Vga,
+        Effect::Scanlines,
     ];
 
     /// Its name on the command line.
@@ -89,6 +99,8 @@ impl Effect {
             Effect::CloudShadows => "cloud-shadows",
             Effect::Vapour => "vapour",
             Effect::NightSky => "night-sky",
+            Effect::Vga => "vga",
+            Effect::Scanlines => "scanlines",
         }
     }
 
@@ -105,6 +117,8 @@ impl Effect {
             Effect::CloudShadows => "Cloud shadows",
             Effect::Vapour => "Vapour and downwash",
             Effect::NightSky => "Night sky",
+            Effect::Vga => "VGA colours",
+            Effect::Scanlines => "Scanlines",
         }
     }
 
@@ -121,6 +135,8 @@ impl Effect {
             Effect::CloudShadows => "CLOUD SHADOWS",
             Effect::Vapour => "VAPOUR AND DUST",
             Effect::NightSky => "NIGHT SKY",
+            Effect::Vga => "VGA COLOURS",
+            Effect::Scanlines => "SCANLINES",
         }
     }
 
@@ -162,6 +178,10 @@ impl Effect {
                 "Shooting stars now and then, the stars low over the horizon twinkle",
                 "The northern lights over the North Cape",
             ],
+            Effect::Vga => &[
+                "The 1989 look with modern shading: 64 steps a colour channel, as a VGA card's, dithered",
+            ],
+            Effect::Scanlines => &["A CRT monitor's scanlines (not in VR)"],
         }
     }
 
@@ -177,6 +197,8 @@ impl Effect {
             Effect::CloudShadows => e.cloud_shadows,
             Effect::Vapour => e.vapour,
             Effect::NightSky => e.night_sky,
+            Effect::Vga => e.vga,
+            Effect::Scanlines => e.scanlines,
         }
     }
 
@@ -192,7 +214,15 @@ impl Effect {
             Effect::CloudShadows => e.cloud_shadows = on,
             Effect::Vapour => e.vapour = on,
             Effect::NightSky => e.night_sky = on,
+            Effect::Vga => e.vga = on,
+            Effect::Scanlines => e.scanlines = on,
         }
+    }
+
+    /// A retro look (OPTIONS > GRAPHICS > Retro, the in-flight GRAPHICS page), not an
+    /// atmosphere effect.
+    pub fn retro(self) -> bool {
+        matches!(self, Effect::Vga | Effect::Scanlines)
     }
 
     pub fn toggle(self, e: &mut Effects) {

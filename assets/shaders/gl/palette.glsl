@@ -36,6 +36,7 @@ layout(std140) uniform Globals {
     vec4 atmos;
     vec4 cloud_shade[8];
     vec4 sky_fx;
+    vec4 retro;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -659,6 +660,14 @@ float bayer4(uvec2 p) {
     return (m[(p.y & 3u) * 4u + (p.x & 3u)] + 0.5) / 16.0;
 }
 
+// palette.wgsl `retro`: VGA colours (the headset has no scanlines).
+vec3 retro(vec3 rgb, vec2 frag) {
+    if (g.retro.x <= 0.0) { return rgb; }
+    vec3 s = pow(max(rgb, vec3(0.0)), vec3(1.0 / 2.2));
+    vec3 q = floor(s * 63.0 + bayer4(uvec2(frag))) / 63.0;
+    return pow(min(q, vec3(1.0)), vec3(2.2));
+}
+
 // Inside a cloud everything but the cockpit fades into it; an overcast turns the day greyer.
 vec3 whiteout(vec3 rgb, float dist) {
     float gloom = g.weather.w;
@@ -1159,6 +1168,6 @@ void main() {
     }
     vec4 c = shade_fragment(face, sky_px, foot, gdx, gdy);
     vec3 glare = sun_glare(v_world - eye_pos());
-    o_colour = vec4(nvg(c.rgb + glare * c.a), c.a);
+    o_colour = vec4(retro(nvg(c.rgb + glare * c.a), gl_FragCoord.xy), c.a);
 }
 #endif

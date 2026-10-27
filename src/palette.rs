@@ -543,6 +543,7 @@ fn update_globals(
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
     g.atmos = weather.atmos(&settings, theater, lighting.daylight);
     g.cloud_shade = weather.shades;
+    g.retro = retro(&settings);
     // The northern lights over the North Cape.
     if settings.effects.night_sky {
         g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);
@@ -557,6 +558,13 @@ fn update_globals(
     let (rw, rh) = crate::recon::render_size();
     (g.sky_night.z, g.sky_night.w) = (rw as f32, rh as f32);
     buf.set_data(g);
+}
+
+/// `Globals::retro` (and the cockpit's `CockpitShading::retro`): VGA colours, scanlines (on the
+/// desktop only).
+pub fn retro(settings: &Settings) -> Vec4 {
+    let e = &settings.effects;
+    Vec4::new(e.vga as u32 as f32, (e.scanlines && !settings.vr) as u32 as f32, 0.0, 0.0)
 }
 
 /// Detail level 0..3 and the model LOD range reduction 0..3. Alt-D first halves the models'

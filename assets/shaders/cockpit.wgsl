@@ -5,7 +5,7 @@
 // COCKPIT_FULL is Bevy's full lighting (point lights, shadows).
 
 #import bevy_pbr::{
-    mesh_view_bindings::globals,
+    mesh_view_bindings::{globals, view},
     pbr_fragment::pbr_input_from_standard_material,
     pbr_functions::{alpha_discard, main_pass_post_lighting_processing},
     forward_io::{VertexOutput, FragmentOutput},
@@ -41,6 +41,26 @@
 // Night lighting (shading.rs `CockpitShading::flood`): the flood light's colour (rgb) and the
 // master caution (w = 1).
 @group(#{MATERIAL_BIND_GROUP}) @binding(101) var<uniform> flood: vec4<f32>;
+
+// Retro output (shading.rs `CockpitShading::retro`; palette.wgsl `retro`).
+@group(#{MATERIAL_BIND_GROUP}) @binding(102) var<uniform> retro_mode: vec4<f32>;
+const SCANLINE: f32 = 0.6;
+
+fn retro(rgb: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
+    var c = rgb;
+    if (retro_mode.x > 0.0) {
+        var m = array<f32, 16>(0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+        let p = vec2<u32>(frag) & vec2<u32>(3u);
+        let s = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+        let q = floor(s * 63.0 + (m[p.y * 4u + p.x] + 0.5) / 16.0) / 63.0;
+        c = pow(min(q, vec3<f32>(1.0)), vec3<f32>(2.2));
+    }
+    if (retro_mode.y > 0.0) {
+        let period = max(floor(view.viewport.w / 300.0), 2.0);
+        c *= select(1.0, SCANLINE, fract(frag.y / period) >= 0.5);
+    }
+    return c;
+}
 
 const CAUTION: vec3<f32> = vec3<f32>(0.1, 0.05, 0.0);
 
@@ -176,5 +196,6 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     out.color = vec4<f32>(out.color.rgb + flood_light(pbr_input.material.base_color.rgb), out.color.a);
     out.color = vec4<f32>(nvg(out.color.rgb, in.position), out.color.a);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
+    out.color = vec4<f32>(retro(out.color.rgb, in.position.xy), out.color.a);
     return out;
 }

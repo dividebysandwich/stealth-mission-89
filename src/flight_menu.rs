@@ -145,7 +145,19 @@ impl Page {
             ],
             Page::Game => &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back],
             Page::Graphics => {
-                &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
+                use crate::effects::Effect as E;
+                &[
+                    Shaders,
+                    Msaa,
+                    Shadows,
+                    Lighting,
+                    TimeOfDay,
+                    SunMoon,
+                    AutoDetail,
+                    Effect(E::Vga),
+                    Effect(E::Scanlines),
+                    Back,
+                ]
             }
             Page::Effects => {
                 use crate::effects::Effect as E;
@@ -333,6 +345,7 @@ impl Item {
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
             Item::Msaa => !crate::WEBGL2,
+            Item::Effect(crate::effects::Effect::Scanlines) => !s.vr,
             _ => true,
         }
     }

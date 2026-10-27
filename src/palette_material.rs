@@ -355,6 +355,9 @@ pub struct Globals {
     /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
     /// twinkling near the horizon (z).
     pub sky_fx: Vec4,
+    /// Retro output: VGA colours (x), scanlines (y; never in VR) (`Effects::vga`,
+    /// `Effects::scanlines`).
+    pub retro: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -396,6 +399,7 @@ impl Default for Globals {
             atmos: Vec4::ZERO,
             cloud_shade: [Vec4::ZERO; crate::weather::CLOUD_SHADES],
             sky_fx: Vec4::ZERO,
+            retro: Vec4::ZERO,
         }
     }
 }

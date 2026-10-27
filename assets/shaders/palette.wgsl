@@ -95,6 +95,8 @@ struct Globals {
     cloud_shade: array<vec4<f32>, 8>,
     // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
     sky_fx: vec4<f32>,
+    // Retro output: VGA colours (x), scanlines (y).
+    retro: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -862,6 +864,23 @@ fn bayer4(p: vec2<u32>) -> f32 {
     return (m[(p.y & 3u) * 4u + (p.x & 3u)] + 0.5) / 16.0;
 }
 
+// Retro output (`Globals::retro`): VGA colours, the 6-bit DAC's 64 steps per channel with a
+// 4x4 ordered dither (x); scanlines, every other line of a CRT's darker (y).
+fn retro(rgb: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
+    var c = rgb;
+    if (globals.retro.x > 0.0) {
+        let s = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+        let q = floor(s * 63.0 + bayer4(vec2<u32>(frag))) / 63.0;
+        c = pow(min(q, vec3<f32>(1.0)), vec3<f32>(2.2));
+    }
+    if (globals.retro.y > 0.0) {
+        let period = max(floor(view.viewport.w / 300.0), 2.0);
+        c *= select(1.0, SCANLINE, fract(frag.y / period) >= 0.5);
+    }
+    return c;
+}
+const SCANLINE: f32 = 0.6;
+
 // Inside a cloud: everything but the cockpit fades into it. Under an overcast or in a storm
 // the day turns greyer and dimmer.
 fn whiteout(rgb: vec3<f32>, dist: f32) -> vec3<f32> {
@@ -1272,7 +1291,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     let c = shade_fragment(in, deriv);
     let glare = sun_glare(in.world_position - view.world_position);
-    return vec4<f32>(nvg(c.rgb + glare * c.a, in.clip_position), c.a);
+    return vec4<f32>(retro(nvg(c.rgb + glare * c.a, in.clip_position), in.clip_position.xy), c.a);
 }
 
 fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
