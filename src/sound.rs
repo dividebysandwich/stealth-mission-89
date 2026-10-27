@@ -197,7 +197,11 @@ pub(crate) struct Mixed(pub(crate) Channel, pub(crate) f32);
 
 impl Mixed {
     /// The playback settings with the volume mixed in.
-    pub(crate) fn settings(&self, s: &crate::settings::Settings, p: PlaybackSettings) -> PlaybackSettings {
+    pub(crate) fn settings(
+        &self,
+        s: &crate::settings::Settings,
+        p: PlaybackSettings,
+    ) -> PlaybackSettings {
         p.with_volume(Volume::Linear(self.1 * self.0.gain(s)))
     }
 }

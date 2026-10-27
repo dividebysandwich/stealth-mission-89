@@ -979,10 +979,7 @@ fn belt_tree_list(
                     let p = a
                         + dir * (k * 8.0 + row * 2.0 + rng.range(-1.5, 1.5))
                         + side * row * rng.range(2.0, 4.5);
-                    if !inside(p)
-                        || rng.chance(0.08)
-                        || !sc.net.road_clear(p, 4.0)
-                        || sc.cleared(p)
+                    if !inside(p) || rng.chance(0.08) || !sc.net.road_clear(p, 4.0) || sc.cleared(p)
                     {
                         continue;
                     }
