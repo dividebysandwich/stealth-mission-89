@@ -243,8 +243,10 @@ fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], he
                 ui.set_width(LIST_W - 40.0);
                 entry(ui, c, sim, s, &tag(sites, i));
             });
-            let r = r.response.interact(egui::Sense::click());
-            if r.clicked() {
+            // Not `interact(click)`: the frame's response sits over the ENTER button and
+            // would take its clicks.
+            let r = r.response;
+            if r.contains_pointer() && ui.input(|i| i.pointer.primary_clicked()) {
                 c.ui.defence = Some(s.unit);
             }
             if chosen && std::mem::take(&mut c.ui.defence_scroll) {
