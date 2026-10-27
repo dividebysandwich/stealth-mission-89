@@ -705,6 +705,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     // The sky's clock.
     let day = 86_400.0 * 30.0;
     s.combat.sky_seconds = Some(((c.state().sky_hours() * 3600.0) % day) as f32);
+    s.combat.sky_ratio = c.state().setup.sky_ratio;
     // Saved now and then.
     c.save_timer += dt;
     if c.save_timer > SAVE_EVERY {

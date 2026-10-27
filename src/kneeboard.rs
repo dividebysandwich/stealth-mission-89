@@ -736,7 +736,7 @@ fn draw(
                 let (dx, dy) = ((p.x - a.x) as f64, (p.y - a.y) as f64);
                 let km = dx.hypot(dy) / 64.0;
                 let brg = dx.atan2(-dy).to_degrees().rem_euclid(360.0);
-                t += km / (CRUISE_KTS * 1.852) * 3600.0;
+                t += km / (CRUISE_KTS * 1.852) * 3600.0 * clock_res.rate as f64;
                 let label = match p.kind {
                     RouteKind::Primary => "PRI".to_string(),
                     RouteKind::Secondary => "SEC".to_string(),

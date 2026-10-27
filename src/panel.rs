@@ -763,7 +763,7 @@ impl PanelParams<'_, '_> {
         let (e, n, _) = crate::world::bevy_to_wu(p.0);
         let km = ((wp.east - e).hypot(wp.north - n) * crate::world::WU / 1000.0) as f32;
         let ms = a.knots() * 0.5144;
-        Some((km, t + if ms > 1.0 { km * 1000.0 / ms } else { 0.0 }))
+        Some((km, t + if ms > 1.0 { km * 1000.0 / ms * self.clock.rate } else { 0.0 }))
     }
 
     /// The F-16's data entry display: a CNI-style page with the radio channels (fixed), the

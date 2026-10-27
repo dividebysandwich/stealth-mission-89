@@ -865,7 +865,7 @@ pub fn draw_hsi_page(p: &MfdParams, c: &mut Canvas, fonts: &Fonts) {
         (
             "ETA",
             km.filter(|_| ms > 1.0).map_or("--:--".to_string(), |k| {
-                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms);
+                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms * p.clock.rate);
                 format!("{h:02}:{m:02}")
             }),
         ),
