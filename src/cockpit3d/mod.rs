@@ -374,7 +374,8 @@ fn sync_shading(
     let night = |m: &CockpitMaterial| {
         Vec4::new(
             if m.extension.bright { 0.0 } else { dark },
-            nvg as u32 as f32,
+            // 2: with the goggles effect (stronger grain).
+            if nvg { 1.0 + settings.effects.nvg as u32 as f32 } else { 0.0 },
             // Pictures (the tracking camera) are lit by themselves: the goggles' daylight gain,
             // the night's would wash them out.
             if m.extension.bright { 1.0 } else { daylight },

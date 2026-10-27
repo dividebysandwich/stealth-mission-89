@@ -35,6 +35,7 @@ mod freecam;
 mod fullscreen;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
+mod goggles;
 mod headtrack;
 mod help;
 mod hmd;
@@ -271,13 +272,17 @@ fn main() {
             afterburner_flame::AfterburnerFlamePlugin,
             landing_lights::LandingLightsPlugin,
             explosions::ExplosionsPlugin,
-            shake::ShakePlugin,
-            flashes::FlashesPlugin,
-            barrage::BarragePlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,
             recon::ReconPlugin,
             tacview_real_time::TacviewRealTimePlugin,
+        ))
+        // The atmosphere effects (effects.rs).
+        .add_plugins((
+            shake::ShakePlugin,
+            flashes::FlashesPlugin,
+            barrage::BarragePlugin,
+            goggles::GogglesPlugin,
         ))
         .add_plugins((
             sky::SkyPlugin,

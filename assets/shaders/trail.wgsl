@@ -83,7 +83,9 @@ fn nvg(rgb: vec3<f32>, clip: vec4<f32>) -> vec3<f32> {
     let p = vec2<u32>(clip.xy);
     var h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ u32(globals.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    let grain = select(0.06, mix(0.16, 0.05, v), globals.light_info.z > 1.5);
+    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     // Phosphor green, near white in the highlights; sRGB -> linear.
     let c = mix(vec3<f32>(0.0, 0.04, 0.01), vec3<f32>(0.3, 0.85, 0.2), v) + vec3<f32>(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3<f32>(1.0)), vec3<f32>(2.2));

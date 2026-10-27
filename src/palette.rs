@@ -519,7 +519,8 @@ fn update_globals(
     g.light_info.x = lighting.lights.len() as f32;
     g.light_info.y = lighting.daylight;
     let nvg = hud.is_some_and(|h| h.nvg);
-    g.light_info.z = nvg as u32 as f32;
+    // 2: with the goggles effect (halos round the lights, stronger grain).
+    g.light_info.z = if nvg { 1.0 + settings.effects.nvg as u32 as f32 } else { 0.0 };
     // `SM89_FLAT_SHADER=<bits>`: flat colours (measuring the fragment shader's cost): 1 all,
     // 2 the background sphere, 4 objects, 8 clouds and smoke.
     g.light_info.w =

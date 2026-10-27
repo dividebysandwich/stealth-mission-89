@@ -73,6 +73,9 @@ layout(location = 0) in vec3 a_position;
 layout(location = 2) in vec2 a_corner;
 layout(location = 3) in uint a_colour;
 flat out uint v_dot_colour;
+// The quad corner (xy, -1..1) and the dot's size over the lamp's (z: above 1 a goggles halo).
+out vec3 v_dot_uv;
+const float NVG_HALO = 3.5;
 #endif
 // Per instance: the model matrix (locations 4..7) and the mesh tag.
 layout(location = 4) in mat4 a_model;
@@ -141,6 +144,7 @@ void main() {
     // Spread by the quad corner to a constant size in pixels: in XR at most a 320x200 pixel's
     // angular size.
     v_dot_colour = u_dot_colour != 0u ? a_colour : (u_word & 0xFFu);
+    v_dot_uv = vec3(a_corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
         vec3 center = world.xyz;
         bool spot = (tag & TAG_DOT_SPOT) != 0u;
@@ -161,6 +165,11 @@ void main() {
         }
         uint tenths = (tag >> 24u) & 0x7Fu;
         px = tenths != 0u ? px * float(tenths) / 10.0 : px * float(((tag >> 8u) & 7u) + 1u);
+        bool bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
+        if (g.light_info.z > 1.5 && bright && !spot) {
+            px *= NVG_HALO;
+            v_dot_uv.z = NVG_HALO;
+        }
         v_world = center;
         gl_Position = clip + vec4(a_corner * px * 2.0 / vp * clip.w, 0.0, 0.0);
         float range = DOT_RANGE;
@@ -203,6 +212,7 @@ void main() {
 #ifdef FRAGMENT
 #ifdef DOT
 flat in uint v_dot_colour;
+in vec3 v_dot_uv;
 #endif
 flat in uint v_word;
 in vec3 v_world;
@@ -674,7 +684,9 @@ vec3 nvg(vec3 rgb) {
     uvec2 p = uvec2(gl_FragCoord.xy);
     uint h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ uint(g.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    float grain = g.light_info.z > 1.5 ? mix(0.16, 0.05, v) : 0.06;
+    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     vec3 c = mix(vec3(0.0, 0.04, 0.01), vec3(0.3, 0.85, 0.2), v) + vec3(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3(1.0)), vec3(2.2));
 }
@@ -1019,7 +1031,15 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = rgb * (1.0 - dark);
     }
     float dl = length(dir);
-    return vec4(flash(whiteout(storm_haze(rgb, dir / max(dl, 1e-3), dl), dl), v_world), 1.0);
+    float alpha = 1.0;
+#ifdef DOT
+    if (v_dot_uv.z > 1.0) {
+        float r = (length(v_dot_uv.xy) * v_dot_uv.z - 1.0) / (v_dot_uv.z - 1.0);
+        float k = clamp(1.0 - r, 0.0, 1.0);
+        alpha = r <= 0.0 ? 1.0 : 0.6 * k * k;
+    }
+#endif
+    return vec4(flash(whiteout(storm_haze(rgb, dir / max(dl, 1e-3), dl), dl), v_world), alpha);
 #endif
 }
 

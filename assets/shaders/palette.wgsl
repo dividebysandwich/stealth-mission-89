@@ -44,7 +44,8 @@ struct Globals {
     sun: vec4<f32>,
     // Ambient (rgb), lighting flags (w).
     ambient: vec4<f32>,
-    // x: local light count, y: daylight 0 (night) .. 1 (day), z: night vision goggles,
+    // x: local light count, y: daylight 0 (night) .. 1 (day), z: night vision goggles (2: with
+    // the goggles effect, halos and stronger grain),
     // w: flat colours (SM89_FLAT_SHADER bits: 1 all, 2 background, 4 objects, 8 clouds and smoke).
     light_info: vec4<f32>,
     // x: XR dot angular size in radians (0 = flat screen), y: animation clock (seconds,
@@ -148,6 +149,10 @@ struct VertexOutput {
 #ifdef VERTEX_WORD
     @location(9) @interpolate(flat) word: u32,
 #endif
+#ifdef DOT_BATCH
+    // A dot's quad corner (xy, -1..1) and its size over the lamp's (z: above 1 a goggles halo).
+    @location(10) dot_uv: vec3<f32>,
+#endif
 };
 
 // Dot lights: size relative to one 320x200 screen pixel and lower bound in pixels.
@@ -167,6 +172,9 @@ const DOT_NEAR: f32 = 0.4;
 // 16..) spans more than SPOT_PIXELS in the view, and sit that size towards the eye so its
 // model can't hide them.
 const SPOT_PIXELS: f32 = 12.0;
+// Under night vision goggles the bright lights (aircraft lights, the bigger airfield lights)
+// bloom: a halo this many times the lamp's size around it.
+const NVG_HALO: f32 = 3.5;
 
 // World units per model unit, by level code in the mesh tag (bits 0..2):
 // 0: LOD0 (0.5), 1: LOD1 (1), 2: LOD2 (4), 3: LOD3 (16), 4: LOD4 (64), 5: aircraft (1/8)
@@ -220,6 +228,7 @@ fn vertex(v: Vertex) -> VertexOutput {
     // corner to a constant size in this view's pixels (so the tracking camera's zoom doesn't
     // magnify them); in XR at most a 320x200 pixel's angular size.
 #ifdef DOT_BATCH
+    out.dot_uv = vec3<f32>(v.corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
         var center = world.xyz;
         let spot = (tag & TAG_DOT_SPOT) != 0u;
@@ -245,6 +254,14 @@ fn vertex(v: Vertex) -> VertexOutput {
             px = px * f32(tenths) / 10.0;
         } else {
             px = px * f32(((tag >> 8u) & 7u) + 1u);
+        }
+        // Only the blended dot materials (palette_material.rs `FLAG_DOT`): an opaque copy of a
+        // light would show its whole quad.
+        let bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
+        let blended = (material.flags & 128u) != 0u;
+        if (globals.light_info.z > 1.5 && bright && blended && !spot) {
+            px = px * NVG_HALO;
+            out.dot_uv.z = NVG_HALO;
         }
         out.world_position = center;
         out.clip_position = clip + vec4<f32>(corner * px * 2.0 / vp * clip.w, 0.0, 0.0);
@@ -1007,7 +1024,9 @@ fn nvg(rgb: vec3<f32>, clip: vec4<f32>) -> vec3<f32> {
     let p = vec2<u32>(clip.xy);
     var h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ u32(globals.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    let grain = select(0.06, mix(0.16, 0.05, v), globals.light_info.z > 1.5);
+    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     // Phosphor green, near white in the highlights; sRGB -> linear.
     let c = mix(vec3<f32>(0.0, 0.04, 0.01), vec3<f32>(0.3, 0.85, 0.2), v) + vec3<f32>(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3<f32>(1.0)), vec3<f32>(2.2));
@@ -1318,6 +1337,15 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         rgb = rgb * (1.0 - dark);
     }
     let d = length(dir);
-    return vec4<f32>(flash(whiteout(storm_haze(rgb, dir / max(d, 1e-3), d), d), in.world_position), 1.0);
+    var alpha = 1.0;
+#ifdef DOT_BATCH
+    // A goggles halo: the lamp solid in the middle, its bloom fading out round it.
+    if (in.dot_uv.z > 1.0) {
+        let r = (length(in.dot_uv.xy) * in.dot_uv.z - 1.0) / (in.dot_uv.z - 1.0);
+        let k = clamp(1.0 - r, 0.0, 1.0);
+        alpha = select(0.6 * k * k, 1.0, r <= 0.0);
+    }
+#endif
+    return vec4<f32>(flash(whiteout(storm_haze(rgb, dir / max(d, 1e-3), d), d), in.world_position), alpha);
 #endif
 }

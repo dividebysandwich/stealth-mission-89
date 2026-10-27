@@ -16,11 +16,13 @@ pub struct Effects {
     pub barrage: bool,
     /// The cockpit's red flood light at night and the master caution's pulse (cockpit3d).
     pub cockpit_night: bool,
+    /// Night vision goggles: halos round bright lights, the tube's edge, stronger grain.
+    pub nvg: bool,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Self { shake: true, flashes: true, barrage: true, cockpit_night: true }
+        Self { shake: true, flashes: true, barrage: true, cockpit_night: true, nvg: true }
     }
 }
 
@@ -31,11 +33,12 @@ pub enum Effect {
     Flashes,
     Barrage,
     CockpitNight,
+    Nvg,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 4] =
-        [Effect::Shake, Effect::Flashes, Effect::Barrage, Effect::CockpitNight];
+    pub const ALL: [Effect; 5] =
+        [Effect::Shake, Effect::Flashes, Effect::Barrage, Effect::CockpitNight, Effect::Nvg];
 
     /// Its name on the command line.
     pub fn name(self) -> &'static str {
@@ -44,6 +47,7 @@ impl Effect {
             Effect::Flashes => "flashes",
             Effect::Barrage => "barrage",
             Effect::CockpitNight => "cockpit-night",
+            Effect::Nvg => "nvg",
         }
     }
 
@@ -54,6 +58,7 @@ impl Effect {
             Effect::Flashes => "Combat flashes",
             Effect::Barrage => "Night barrage",
             Effect::CockpitNight => "Cockpit night lighting",
+            Effect::Nvg => "Night vision goggles",
         }
     }
 
@@ -64,6 +69,7 @@ impl Effect {
             Effect::Flashes => "COMBAT FLASHES",
             Effect::Barrage => "NIGHT BARRAGE",
             Effect::CockpitNight => "COCKPIT NIGHT LIGHT",
+            Effect::Nvg => "GOGGLES EFFECT",
         }
     }
 
@@ -85,6 +91,10 @@ impl Effect {
                 "A dim red flood light in the cockpit after dark (blue-green under the goggles)",
                 "The master caution pulses amber over the panel while a warning is on",
             ],
+            Effect::Nvg => &[
+                "Bright lights bloom into halos, the picture grains more in the dark",
+                "Desktop: the goggles' round field of view",
+            ],
         }
     }
 
@@ -94,6 +104,7 @@ impl Effect {
             Effect::Flashes => e.flashes,
             Effect::Barrage => e.barrage,
             Effect::CockpitNight => e.cockpit_night,
+            Effect::Nvg => e.nvg,
         }
     }
 
@@ -103,6 +114,7 @@ impl Effect {
             Effect::Flashes => e.flashes = on,
             Effect::Barrage => e.barrage = on,
             Effect::CockpitNight => e.cockpit_night = on,
+            Effect::Nvg => e.nvg = on,
         }
     }
 

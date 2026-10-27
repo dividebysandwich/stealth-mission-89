@@ -262,6 +262,10 @@ impl Material for PaletteMaterial {
         if layout.0.contains(Mesh::ATTRIBUTE_UV_0) {
             attributes.push(Mesh::ATTRIBUTE_UV_0.at_shader_location(1));
             descriptor.vertex.shader_defs.push("DOT_BATCH".into());
+            // The goggles' halos round the dots.
+            if let Some(fragment) = descriptor.fragment.as_mut() {
+                fragment.shader_defs.push("DOT_BATCH".into());
+            }
         }
         if layout.0.contains(crate::dots::ATTRIBUTE_DOT_COLOUR) {
             attributes.push(crate::dots::ATTRIBUTE_DOT_COLOUR.at_shader_location(2));

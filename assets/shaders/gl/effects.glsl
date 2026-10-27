@@ -179,7 +179,9 @@ vec3 nvg(vec3 rgb) {
     uvec2 p = uvec2(gl_FragCoord.xy);
     uint h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ uint(g.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    float grain = g.light_info.z > 1.5 ? mix(0.16, 0.05, v) : 0.06;
+    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     vec3 c = mix(vec3(0.0, 0.04, 0.01), vec3(0.3, 0.85, 0.2), v) + vec3(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3(1.0)), vec3(2.2));
 }

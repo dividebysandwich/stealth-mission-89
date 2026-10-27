@@ -154,6 +154,7 @@ impl Page {
                     Effect(E::Flashes),
                     Effect(E::Barrage),
                     Effect(E::CockpitNight),
+                    Effect(E::Nvg),
                     Back,
                 ]
             }
