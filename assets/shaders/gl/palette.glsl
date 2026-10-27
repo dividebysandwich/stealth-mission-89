@@ -33,6 +33,8 @@ layout(std140) uniform Globals {
     vec4 storm_haze;
     vec4 burst;
     vec4 burst_colour;
+    vec4 atmos;
+    vec4 cloud_shade[8];
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -626,6 +628,44 @@ const float STORM_HAZE_DEPTH = 2.0;
 // In a storm the air under the deck is hazy with rain, the more the deck covers the sky: the
 // colour seen along view direction `nd` at `dist` metres fades into grey over the part of the
 // ray below the deck's base.
+const float MIST_DEPTH = 1200.0;
+
+// palette.wgsl `ground_mist`.
+vec3 ground_mist(vec3 rgb, vec3 world, float dist) {
+    float s = g.atmos.x;
+    float top = g.atmos.w + g.atmos.y;
+    if (s <= 0.0 || world.y >= top) { return rgb; }
+    float eye_y = eye_pos().y;
+    float path = dist;
+    if (eye_y > top) {
+        float up = (eye_y - world.y) / max(dist, 1.0);
+        path = min(dist, (top - world.y) / max(up, 1e-3));
+    }
+    float a = s * (1.0 - exp(-path / MIST_DEPTH));
+    return mix(rgb, pal(CLOUD_RAMP) * (1.0 - night_dark()), a);
+}
+
+// palette.wgsl `cloud_shadow`.
+float cloud_shadow(vec3 world) {
+    float s = g.atmos.z;
+    vec3 sun = g.sun.xyz;
+    if (s <= 0.0 || sun.y < 0.05) { return 1.0; }
+    float shade = 0.0;
+    float base = g.clouds.x;
+    if (g.clouds.z != 0.0 && world.y < base) {
+        shade = stratus_cover(world + sun * ((base - world.y) / sun.y));
+    }
+    for (int i = 0; i < 8; i++) {
+        vec4 c = g.cloud_shade[i];
+        if (c.z <= 0.0) { break; }
+        if (world.y < c.w) {
+            vec2 p = world.xz + sun.xz * ((c.w - world.y) / sun.y);
+            shade = max(shade, 1.0 - smoothstep(0.5, 1.0, length(p - c.xy) / c.z));
+        }
+    }
+    return 1.0 - s * shade;
+}
+
 vec3 storm_haze(vec3 rgb, vec3 nd, float dist) {
     float s = g.storm_haze.x;
     if (s <= 0.0) {
@@ -965,6 +1005,10 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     // The ground gradient lies on the plane y = 0; the sky is far.
     vec3 nd = normalize(dir);
     float haze_d = nd.y < 0.0 ? max(eye.y, 0.0) / -nd.y : 1e9;
+    if (nd.y < 0.0) {
+        vec3 ground = eye + nd * haze_d;
+        bg = ground_mist(bg * cloud_shadow(ground), ground, haze_d);
+    }
     bg = storm_haze(bg, nd, haze_d);
     bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
     if (g.burst.w > 0.0) {
@@ -1031,6 +1075,9 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = rgb * (1.0 - dark);
     }
     float dl = length(dir);
+    if (!is_line) {
+        rgb = ground_mist(rgb * cloud_shadow(v_world), v_world, dl);
+    }
     float alpha = 1.0;
 #ifdef DOT
     if (v_dot_uv.z > 1.0) {

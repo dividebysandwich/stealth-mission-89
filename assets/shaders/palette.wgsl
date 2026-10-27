@@ -88,6 +88,11 @@ struct Globals {
     // colour (xyz) and reach in metres (w).
     burst: vec4<f32>,
     burst_colour: vec4<f32>,
+    // Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w, metres);
+    // cloud shadows' strength (z).
+    atmos: vec4<f32>,
+    // The nearest cumulus clouds' shadows: centre x, z, radius (0: none), base height.
+    cloud_shade: array<vec4<f32>, 8>,
 };
 
 struct PaletteMaterial {
@@ -807,6 +812,55 @@ fn whiteout(rgb: vec3<f32>, dist: f32) -> vec3<f32> {
     return mix(grey, pal(CLOUD_RAMP + 2u) * (1.0 - night_dark()), w);
 }
 
+// Ground mist's density: metres of it the view crosses for 1 - 1/e of the way into it.
+const MIST_DEPTH: f32 = 1200.0;
+
+// Ground mist (modern shading, dawn, dusk and night): a thin layer over the ground, the
+// valleys and the sea, in the horizon's haze colour. Seen from above it is barely there below
+// the aircraft and thick towards the horizon, where the view crosses a long way of it; the
+// hills stand out of it.
+fn ground_mist(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
+    let s = globals.atmos.x;
+    let top = globals.atmos.w + globals.atmos.y;
+    if (s <= 0.0 || world.y >= top) {
+        return rgb;
+    }
+    let eye_y = view.world_position.y;
+    var path = dist;
+    if (eye_y > top) {
+        let up = (eye_y - world.y) / max(dist, 1.0);
+        path = min(dist, (top - world.y) / max(up, 1e-3));
+    }
+    let a = s * (1.0 - exp(-path / MIST_DEPTH));
+    return mix(rgb, pal(CLOUD_RAMP) * (1.0 - night_dark()), a);
+}
+
+// Cloud shadows: the shade of the clouds above `world` where the sun's ray from it meets their
+// base, the stratus deck's and the nearest cumulus clouds' (round, soft edged).
+fn cloud_shadow(world: vec3<f32>) -> f32 {
+    let s = globals.atmos.z;
+    let sun = globals.sun.xyz;
+    if (s <= 0.0 || sun.y < 0.05) {
+        return 1.0;
+    }
+    var shade = 0.0;
+    let base = globals.clouds.x;
+    if (globals.clouds.z != 0.0 && world.y < base) {
+        shade = stratus_cover(world + sun * ((base - world.y) / sun.y));
+    }
+    for (var i = 0u; i < 8u; i++) {
+        let c = globals.cloud_shade[i];
+        if (c.z <= 0.0) {
+            break;
+        }
+        if (world.y < c.w) {
+            let p = world.xz + sun.xz * ((c.w - world.y) / sun.y);
+            shade = max(shade, 1.0 - smoothstep(0.5, 1.0, length(p - c.xy) / c.z));
+        }
+    }
+    return 1.0 - s * shade;
+}
+
 // How thick the storm haze is at the visibility distance (1 - exp(-this)).
 const STORM_HAZE_DEPTH: f32 = 2.0;
 
@@ -1257,6 +1311,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         // The ground gradient lies on the plane y = 0; the sky is far.
         let nd = normalize(dir);
         let haze_d = select(1e9, max(eye.y, 0.0) / -nd.y, nd.y < 0.0);
+        // The ground gradient's mist and cloud shadows, where the ray meets the ground.
+        if (nd.y < 0.0) {
+            let ground = eye + nd * haze_d;
+            bg = ground_mist(bg * cloud_shadow(ground), ground, haze_d);
+        }
         bg = storm_haze(bg, nd, haze_d);
         bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
         // A distant combat flash's halo over the sky (where the view ray passes it; one near
@@ -1337,6 +1396,9 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         rgb = rgb * (1.0 - dark);
     }
     let d = length(dir);
+    if (!is_line) {
+        rgb = ground_mist(rgb * cloud_shadow(in.world_position), in.world_position, d);
+    }
     var alpha = 1.0;
 #ifdef DOT_BATCH
     // A goggles halo: the lamp solid in the middle, its bloom fading out round it.

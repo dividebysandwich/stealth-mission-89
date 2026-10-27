@@ -487,6 +487,7 @@ fn update_globals(
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
     bursts: Res<crate::flashes::Bursts>,
+    theater: Option<Res<crate::world::Theater>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let Some(mut buf) = buffers.get_mut(&palette.globals) else { return };
@@ -539,6 +540,9 @@ fn update_globals(
     (g.bolt_a, g.bolt_b) = weather.bolt_light(origin.origin);
     g.storm_haze = weather.storm_haze();
     (g.burst, g.burst_colour) = bursts.globals(origin.origin);
+    let theater = theater.as_ref().map_or("", |t| t.id.as_str());
+    g.atmos = weather.atmos(&settings, theater, lighting.daylight);
+    g.cloud_shade = weather.shades;
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);

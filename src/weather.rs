@@ -54,7 +54,16 @@ impl Plugin for WeatherPlugin {
         )
         .add_systems(
             PostUpdate,
-            (update_weather, track_eye, follow_deck, stream_clouds, fade_clouds, lightning, rain)
+            (
+                update_weather,
+                track_eye,
+                follow_deck,
+                stream_clouds,
+                fade_clouds,
+                cloud_shades,
+                lightning,
+                rain,
+            )
                 .chain()
                 .after(bevy::transform::TransformSystems::Propagate)
                 .before(crate::lighting::LightingSystems)
@@ -118,6 +127,10 @@ pub struct WeatherState {
     thunder: Vec<(f32, f32)>,
     /// Eye position last frame (Bevy metres), for the rain's relative wind.
     prev_eye: Option<DVec3>,
+    /// The ground under the aircraft (metres), smoothed: the ground mist lies on it.
+    mist_ground: Option<f32>,
+    /// `Globals::cloud_shade` (`cloud_shades`).
+    pub shades: [Vec4; CLOUD_SHADES],
     rain: Option<Entity>,
     drops: Vec<Vec3>,
     rng: Rng,
@@ -143,6 +156,40 @@ impl WeatherState {
     /// covers the sky (x), reaching the visibility in metres (y).
     pub fn storm_haze(&self) -> Vec4 {
         Vec4::new(self.storm * self.cover[1] / 100.0, (self.vis_km * 1000.0).max(1000.0), 0.0, 0.0)
+    }
+
+    /// `Globals::atmos`: ground mist (`Effects::mist`; strength, depth and the ground it lies on,
+    /// in metres) at dawn, dusk
+    /// and night, thin in the deserts and gone in storms, more or less of it by the mission; and
+    /// the cloud shadows' strength (`Effects::cloud_shadows`) by day. Modern shading only.
+    pub fn atmos(
+        &self,
+        settings: &crate::settings::Settings,
+        theater: &str,
+        daylight: f32,
+    ) -> Vec4 {
+        if !settings.modern_shading {
+            return Vec4::ZERO;
+        }
+        let roll = |k: u64| {
+            ((self.weather.seed as u64 ^ k).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 40) as f32
+                / (1u64 << 24) as f32
+        };
+        let dry = matches!(theater, "libya" | "persian_gulf" | "middle_east" | "desert_storm");
+        let mist = if settings.effects.mist {
+            let time = ((MIST_DAYLIGHT - daylight) / 0.5).clamp(0.0, 1.0);
+            let air = if dry { 0.25 } else { 1.0 };
+            MIST_MAX * air * time * (0.3 + 0.7 * roll(0x6D15)) * (1.0 - self.storm)
+        } else {
+            0.0
+        };
+        let top = MIST_TOP.0 + (MIST_TOP.1 - MIST_TOP.0) * roll(0x7019);
+        let shadows = if settings.effects.cloud_shadows {
+            CLOUD_SHADOW * daylight.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        Vec4::new(mist, top, shadows, self.mist_ground.unwrap_or(0.0))
     }
 
     /// The weather of a moment of the forecast.
@@ -446,7 +493,14 @@ fn track_eye(
     origin: Res<FloatingOrigin>,
     eyes: Eyes,
     mut state: ResMut<WeatherState>,
+    player: Query<&crate::flight::Aircraft, With<crate::flight::Player>>,
 ) {
+    // The ground the mist lies on: under the aircraft, following it slowly over the hills.
+    if let Ok(a) = player.single() {
+        let ground = a.ground_altitude * WU as f32;
+        let k = 1.0 - (-time.delta_secs() / MIST_FOLLOW).exp();
+        state.mist_ground = Some(state.mist_ground.map_or(ground, |g| g + (ground - g) * k));
+    }
     let Some(p) = eye_position(&eyes, &origin) else { return };
     let (east, north, alt) = crate::world::bevy_to_wu(p);
     let map = ((east / 32.0) as i32, (0x8000 as f64 - north / 32.0) as i32);
@@ -552,6 +606,7 @@ fn stream_clouds(
         let e = commands
             .spawn((
                 CloudEntity,
+                CloudShade(r_m),
                 CloudVolume::new(volumes.add(volume))
                     .with_core(1.0)
                     .with_fill(state.fade(c.kind, c.rank))
@@ -564,6 +619,44 @@ fn stream_clouds(
             ))
             .id();
         state.puffs.insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy), (e, (c.x, c.y), c.rank));
+    }
+}
+
+/// A cumulus or cumulonimbus's radius (m), for its shadow (`Effects::cloud_shadows`).
+#[derive(Component)]
+struct CloudShade(f32);
+
+/// Cumulus shadows handed to the world shader at most (the nearest), and how far away (m).
+pub const CLOUD_SHADES: usize = 8;
+const SHADE_RANGE: f64 = 12_000.0;
+
+/// The nearest clouds' shadows (`Globals::cloud_shade`): their centre (x, z, render space),
+/// radius as drawn (faded clouds shrink) and base height.
+fn cloud_shades(
+    settings: Res<crate::settings::Settings>,
+    origin: Res<FloatingOrigin>,
+    eyes: Eyes,
+    clouds: Query<(&WorldPos, &CloudShade, &CloudVolume)>,
+    mut state: ResMut<WeatherState>,
+) {
+    state.shades = [Vec4::ZERO; CLOUD_SHADES];
+    let Some(eye) = eye_position(&eyes, &origin) else { return };
+    if !settings.effects.cloud_shadows || !settings.modern_shading {
+        return;
+    }
+    let mut near: Vec<(f64, Vec4)> = clouds
+        .iter()
+        .filter(|(_, _, v)| v.fill > 0.0)
+        .map(|(p, s, v)| {
+            let d = (p.0 - eye).with_y(0.0).length() - s.0 as f64;
+            let r = (p.0 - origin.origin).as_vec3();
+            (d, Vec4::new(r.x, r.z, s.0 * v.fill.min(1.0), r.y))
+        })
+        .filter(|(d, _)| *d < SHADE_RANGE)
+        .collect();
+    near.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for (slot, (_, c)) in state.shades.iter_mut().zip(near) {
+        *slot = c;
     }
 }
 
@@ -1034,6 +1127,15 @@ fn strike(
         distance: ((a + b) * 0.5).distance(eye.as_vec3()),
     }
 }
+
+/// Ground mist: strongest (share of the view it hides far away), below this daylight, its top
+/// (metres, range); the cloud shadows' darkening at full sun.
+const MIST_MAX: f32 = 0.4;
+const MIST_DAYLIGHT: f32 = 0.75;
+const MIST_TOP: (f32, f32) = (40.0, 120.0);
+/// Seconds the mist's ground takes to follow the ground under the aircraft (most of the way).
+const MIST_FOLLOW: f32 = 20.0;
+const CLOUD_SHADOW: f32 = 0.35;
 
 /// Rain streaks around the eye (`WeatherState::raining`).
 const DROPS: usize = 500;

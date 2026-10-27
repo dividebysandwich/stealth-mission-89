@@ -346,6 +346,12 @@ pub struct Globals {
     /// colour (xyz) and reach in metres (w).
     pub burst: Vec4,
     pub burst_colour: Vec4,
+    /// Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w,
+    /// metres); cloud shadows' strength (z) (`Effects::mist`, `Effects::cloud_shadows`).
+    pub atmos: Vec4,
+    /// The nearest cumulus clouds' shadows: centre x, z (render space), radius (0: none), base
+    /// height (metres) (`WeatherState::shades`).
+    pub cloud_shade: [Vec4; crate::weather::CLOUD_SHADES],
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -384,6 +390,8 @@ impl Default for Globals {
             storm_haze: Vec4::ZERO,
             burst: Vec4::ZERO,
             burst_colour: Vec4::ZERO,
+            atmos: Vec4::ZERO,
+            cloud_shade: [Vec4::ZERO; crate::weather::CLOUD_SHADES],
         }
     }
 }

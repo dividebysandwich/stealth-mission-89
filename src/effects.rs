@@ -20,6 +20,10 @@ pub struct Effects {
     pub nvg: bool,
     /// Rain falls as snow above the freezing level (weather.rs).
     pub snow: bool,
+    /// Ground mist over the low ground and the sea at dawn, dusk and night (palette.wgsl).
+    pub mist: bool,
+    /// The stratus deck's shadows on the ground (palette.wgsl).
+    pub cloud_shadows: bool,
 }
 
 impl Default for Effects {
@@ -31,6 +35,8 @@ impl Default for Effects {
             cockpit_night: true,
             nvg: true,
             snow: true,
+            mist: true,
+            cloud_shadows: true,
         }
     }
 }
@@ -44,16 +50,20 @@ pub enum Effect {
     CockpitNight,
     Nvg,
     Snow,
+    Mist,
+    CloudShadows,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 6] = [
+    pub const ALL: [Effect; 8] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
         Effect::CockpitNight,
         Effect::Nvg,
         Effect::Snow,
+        Effect::Mist,
+        Effect::CloudShadows,
     ];
 
     /// Its name on the command line.
@@ -65,6 +75,8 @@ impl Effect {
             Effect::CockpitNight => "cockpit-night",
             Effect::Nvg => "nvg",
             Effect::Snow => "snow",
+            Effect::Mist => "mist",
+            Effect::CloudShadows => "cloud-shadows",
         }
     }
 
@@ -77,6 +89,8 @@ impl Effect {
             Effect::CockpitNight => "Cockpit night lighting",
             Effect::Nvg => "Night vision goggles",
             Effect::Snow => "Snow",
+            Effect::Mist => "Ground mist",
+            Effect::CloudShadows => "Cloud shadows",
         }
     }
 
@@ -89,6 +103,8 @@ impl Effect {
             Effect::CockpitNight => "COCKPIT NIGHT LIGHT",
             Effect::Nvg => "GOGGLES EFFECT",
             Effect::Snow => "SNOW",
+            Effect::Mist => "GROUND MIST",
+            Effect::CloudShadows => "CLOUD SHADOWS",
         }
     }
 
@@ -117,6 +133,13 @@ impl Effect {
             Effect::Snow => &[
                 "Above the freezing level storms snow instead of rain: low in a northern winter, high in summer",
             ],
+            Effect::Mist => &[
+                "Modern shaders: mist lies over the low ground and the sea at dawn, dusk and night",
+                "Thin in the deserts, none in storms",
+            ],
+            Effect::CloudShadows => {
+                &["Modern shaders: a cloud deck's shadows drift over the ground below"]
+            }
         }
     }
 
@@ -128,6 +151,8 @@ impl Effect {
             Effect::CockpitNight => e.cockpit_night,
             Effect::Nvg => e.nvg,
             Effect::Snow => e.snow,
+            Effect::Mist => e.mist,
+            Effect::CloudShadows => e.cloud_shadows,
         }
     }
 
@@ -139,6 +164,8 @@ impl Effect {
             Effect::CockpitNight => e.cockpit_night = on,
             Effect::Nvg => e.nvg = on,
             Effect::Snow => e.snow = on,
+            Effect::Mist => e.mist = on,
+            Effect::CloudShadows => e.cloud_shadows = on,
         }
     }
 
