@@ -35,10 +35,11 @@ const ALTITUDE_LENGTH: f32 = 0.4;
 /// The shock diamonds fade out by this altitude (ft).
 const DIAMONDS_ALT: f32 = 30000.0;
 /// The point light: its distance behind the nozzle (m, at the plume's full length), colour at
-/// the full setting and range (m).
-const LIGHT_AFT: f32 = 1.5;
+/// the full setting and range (m). Well aft with a short range so it fades along the airframe:
+/// the tail glows, the nose stays dark.
+const LIGHT_AFT: f32 = 4.0;
 const LIGHT_COLOUR: Vec3 = Vec3::new(7.0, 4.0, 1.6);
-const LIGHT_RANGE: f32 = 120.0;
+const LIGHT_RANGE: f32 = 12.0;
 
 pub struct AfterburnerFlamePlugin;
 
