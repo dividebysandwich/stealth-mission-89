@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/bevy_fast_clouds", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
+members = [".", "crates/bevy_fast_clouds", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-i18n", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
 resolver = "3"
 
 [workspace.package]
@@ -8,6 +8,7 @@ version = "0.7.1"
 
 [workspace.dependencies]
 stealth-formats = { path = "crates/stealth-formats" }
+stealth-i18n = { path = "crates/stealth-i18n" }
 serde = { version = "1", features = ["derive"] }
 ron = "0.12"
 anyhow = "1"
@@ -44,6 +45,7 @@ stealth-sim = { path = "crates/stealth-sim" }
 stealth-campaign = { path = "crates/stealth-campaign" }
 stealth-host = { path = "crates/stealth-host" }
 stealth-net = { path = "crates/stealth-net" }
+stealth-i18n.workspace = true
 stealth-master-proto = { path = "crates/stealth-master-proto" }
 bevy_fast_clouds = { path = "crates/bevy_fast_clouds" }
 anyhow.workspace = true
@@ -64,7 +66,11 @@ libloading = { version = "0.8", optional = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
 js-sys = "0.3"
-web-sys = { version = "0.3", features = ["Window", "Location"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "Navigator"] }
+
+# The system's language, the default of the menus' (src/settings.rs).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+sys-locale = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

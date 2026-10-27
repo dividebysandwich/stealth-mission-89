@@ -48,12 +48,31 @@
   </style>
 </head>
 <body>
+  <script>
+    // The loading screen in the browser's language (the game has its own choice in OPTIONS);
+    // English for the others. Elements with data-i18n take their text from here, loader.js
+    // calls SM89_T.
+    const SM89_TEXTS = {
+      en: {
+        loading: "LOADING", downloading: "DOWNLOADING", starting: "STARTING",
+        failed: "LOADING FAILED", while: "While the game loads:", discord: "JOIN THE DISCORD",
+        download: "DOWNLOAD THE DESKTOP GAME",
+        unsupported: "This browser has neither WebGPU nor WebGL2.<br>Use a current Chrome, Edge, Firefox or Safari, with hardware acceleration on.",
+      },
+    };
+    const SM89_LANG = (navigator.language || "en").toLowerCase().split("-")[0];
+    window.SM89_T = key => (SM89_TEXTS[SM89_LANG] || SM89_TEXTS.en)[key] || SM89_TEXTS.en[key];
+    document.documentElement.lang = SM89_TEXTS[SM89_LANG] ? SM89_LANG : "en";
+    addEventListener("DOMContentLoaded", () => {
+      for (const e of document.querySelectorAll("[data-i18n]")) e.innerHTML = SM89_T(e.dataset.i18n);
+    });
+  </script>
   <canvas id="sm89" tabindex="0"></canvas>
   <div id="status">
     <h1>STEALTH MISSION 89</h1>
     <div id="msg"></div>
     <div id="progress">
-      <div class="row"><span id="phase">LOADING</span><span id="pct"></span></div>
+      <div class="row"><span id="phase" data-i18n="loading">LOADING</span><span id="pct"></span></div>
       <div id="bar" role="progressbar" aria-label="Download" aria-valuemin="0" aria-valuemax="100">
         <div id="fill"></div>
       </div>
@@ -61,9 +80,9 @@
     </div>
     <!-- Usable before the game has finished downloading. -->
     <div id="links">
-      <p>While the game loads:</p>
-      <a class="discord" href="https://discord.gg/zjjGeKKpC" target="_blank" rel="noopener">JOIN THE DISCORD</a>
-      <a class="download" href="download.html" target="_blank">DOWNLOAD THE DESKTOP GAME</a>
+      <p data-i18n="while">While the game loads:</p>
+      <a class="discord" href="https://discord.gg/zjjGeKKpC" target="_blank" rel="noopener" data-i18n="discord">JOIN THE DISCORD</a>
+      <a class="download" href="download.html" target="_blank" data-i18n="download">DOWNLOAD THE DESKTOP GAME</a>
     </div>
   </div>
   <script>
@@ -71,8 +90,7 @@
     // web/post_build.sh; ?gl asks for it), else neither.
     const status = document.getElementById("status");
     const unsupported = () => {
-      document.getElementById("msg").innerHTML = "This browser has neither WebGPU nor WebGL2.<br>" +
-        "Use a current Chrome, Edge, Firefox or Safari, with hardware acceleration on.";
+      document.getElementById("msg").innerHTML = SM89_T("unsupported");
       document.getElementById("progress").hidden = true;
       document.getElementById("links").firstElementChild.hidden = true;
       throw new Error("no WebGPU or WebGL2");

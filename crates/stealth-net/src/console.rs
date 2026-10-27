@@ -279,7 +279,7 @@ mod tests {
                     id: PlayerId(1),
                     name: "Maverick".into(),
                     status: PlayerStatus::Flying {
-                        title: "Strike Tabor".into(),
+                        title: stealth_i18n::Text::raw("Strike Tabor"),
                         aircraft: Aircraft::F16,
                     },
                     ping: 42,

@@ -1,6 +1,7 @@
 use crate::math::{abs16, approx, bearing, cdiv, s16};
 use crate::types::*;
 use crate::{Sim, ballistics};
+use stealth_i18n::text;
 
 /// The helmet-slaved Sidewinder seeker's circle: its radius round the helmet sight (rad).
 pub const HELMET_SEEKER: f64 = 6.0 * std::f64::consts::PI / 180.0;
@@ -309,7 +310,7 @@ impl Sim {
         // Nothing hostile: whatever the camera-ahead acquisition locked stays.
         let locked = if air { self.pl.air_lock >= 0 } else { self.valid_gnd().is_some() };
         if !locked {
-            self.msg("No target ahead");
+            self.msg(text!("sim-no-target-ahead"));
         }
     }
 
@@ -331,7 +332,7 @@ impl Sim {
         let y = self.pl.p.my - self.trig.cos_mul(self.pl.p.heading, d);
         let o = self.find_object_at(x, y);
         if o != -1 && !self.player_sees(self.obj(o).x, self.obj(o).y, 0) {
-            self.msg("Target obscured");
+            self.msg(text!("sim-target-obscured"));
             self.pl.pflags &= !pflags::DESIGNATE;
             return;
         }
@@ -622,12 +623,12 @@ impl Sim {
         if self.pl.photo_timer == 0 && (ps.cmd.fire || self.pl.prev_fire) {
             self.pl.photo_timer = 4;
             self.pl.photo_frames += 1;
-            self.msg(format!("Frame {}", self.pl.photo_frames));
+            self.msg(text!("sim-frame", frame = self.pl.photo_frames));
             self.sound(0x12, 2);
             self.emit(SimEvent::PhotoTaken { frame: self.pl.photo_frames });
         }
         if self.pl.photo_timer == 3 && in_view != 0 {
-            self.msg("Target photographed.");
+            self.msg(text!("sim-target-photographed"));
             if in_view & 1 != 0 && self.pl.pflags & pflags::PRIMARY_DONE == 0 {
                 self.mark_target_reached(0);
                 self.log_event(0x8A, t);
@@ -695,9 +696,9 @@ impl Sim {
             let (r, _) = self.range_bearing(o.x, o.y);
             if r < 0xC80 {
                 let b = bearing(s16(o.x - self.pl.p.mx), s16(self.pl.p.my - o.y)) / 0xB6;
-                self.msg(format!("Radio beacon bearing {b}"));
+                self.msg(text!("sim-beacon", bearing = b.to_string()));
                 if r < 0x100 && self.pl.bays.iter().any(|b| b.0 == SPECIAL_EQUIPMENT && b.1 != 0) {
-                    self.msg("Drop supplies now");
+                    self.msg(text!("sim-drop-supplies"));
                 }
             }
         }

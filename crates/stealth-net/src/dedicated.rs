@@ -292,7 +292,7 @@ pub fn run(cfg: Config, stop: &AtomicBool) -> Result<()> {
         if cfg.rotate
             && host.state.ended_for().is_some_and(|t| t >= tuning::END_SCREEN_SECONDS || paused)
         {
-            server.shutdown("The campaign is over. The next one has started: join again");
+            server.shutdown(stealth_i18n::text!("net-campaign-over"));
             drop(server);
             host = next_campaign(&cfg, &data, &mut con, &host)?;
             sim = host.new_sim(&sim_data);
@@ -313,7 +313,7 @@ pub fn run(cfg: Config, stop: &AtomicBool) -> Result<()> {
     }
     con.close();
     con.say("stopping");
-    server.shutdown("The server is shutting down");
+    server.shutdown(stealth_i18n::text!("net-shutting-down"));
     save::save_to(&cfg.save, &host.state)?;
     con.say(format!("saved to {}", cfg.save.display()));
     Ok(())
@@ -323,7 +323,7 @@ pub fn run(cfg: Config, stop: &AtomicBool) -> Result<()> {
 fn log_events(con: &mut Console, events: &[HostEvent]) {
     for e in events {
         match e {
-            HostEvent::Campaign(CampaignEvent::Message(m)) => con.say(m.clone()),
+            HostEvent::Campaign(CampaignEvent::Message(m)) => con.say(m.tr()),
             HostEvent::SortieStarted { player, sortie, .. } => {
                 con.say(format!("player {} took off: {}", player.0 + 1, sortie.offer.title))
             }

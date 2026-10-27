@@ -9,6 +9,7 @@
 
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
+use stealth_i18n::t;
 
 use stealth_sim::csar::CsarState;
 use stealth_sim::math::approx;
@@ -73,12 +74,12 @@ fn in_campaign(combat: Option<&Combat>) -> bool {
 
 impl CsarButton {
     fn label(self) -> &'static str {
-        match self {
-            CsarButton::Flare => "SIGNAL FLARE",
-            CsarButton::Faster => "FASTER",
-            CsarButton::Normal => "NORMAL TIME",
-            CsarButton::Skip => "SKIP EXTRACTION",
-        }
+        stealth_i18n::t!(match self {
+            CsarButton::Flare => "csar-flare",
+            CsarButton::Faster => "csar-faster",
+            CsarButton::Normal => "csar-normal",
+            CsarButton::Skip => "csar-skip",
+        })
     }
 
     fn key(self) -> &'static str {
@@ -125,25 +126,19 @@ fn status(combat: &Combat) -> Option<Vec<String>> {
     let sim = &combat.sim;
     let (x, y, alt) = sim.chute()?;
     let Some(c) = sim.csar() else {
-        return Some(vec![if alt > 0 {
-            "PARACHUTE DEPLOYED".into()
-        } else {
-            "ON THE GROUND".into()
-        }]);
+        return Some(vec![t!(if alt > 0 { "csar-parachute" } else { "csar-on-ground" }).into()]);
     };
-    let mut lines = vec!["DOWN IN ENEMY TERRITORY".to_string()];
+    let mut lines = vec![t!("csar-down").to_string()];
     let r = sim.flights()[c.rescue];
     let d = approx(r.x - x, r.y - y);
     lines.push(match c.state {
-        CsarState::Pickup(_) => "RESCUE   UH-60 OVERHEAD - PICKUP".into(),
+        CsarState::Pickup(_) => t!("csar-pickup").into(),
         _ if c.located => {
-            format!("RESCUE   UH-60 {:.1} KM {} - INBOUND", km(d), compass(x, y, r.x, r.y))
+            t!("csar-inbound", km = format!("{:.1}", km(d)), direction = compass(x, y, r.x, r.y))
         }
-        _ => format!(
-            "RESCUE   UH-60 {:.1} KM {} - FIRE A FLARE WHEN CLOSE",
-            km(d),
-            compass(x, y, r.x, r.y)
-        ),
+        _ => {
+            t!("csar-fire-flare", km = format!("{:.1}", km(d)), direction = compass(x, y, r.x, r.y))
+        }
     });
     let hinds: Vec<i32> = c
         .hunters
@@ -153,10 +148,11 @@ fn status(combat: &Combat) -> Option<Vec<String>> {
         .map(|u| approx(u.x - x, u.y - y))
         .collect();
     if let Some(&n) = hinds.iter().min() {
-        lines.push(format!("ENEMY    {} HIND, NEAREST {:.1} KM", hinds.len(), km(n)));
+        lines.push(t!("csar-enemy", count = hinds.len(), km = format!("{:.1}", km(n))));
     }
     let secs = c.frames / 15;
-    lines.push(format!("FLARES   {}      ON THE GROUND {}:{:02}", c.flares, secs / 60, secs % 60));
+    let time = format!("{}:{:02}", secs / 60, secs % 60);
+    lines.push(t!("csar-flares", count = c.flares, time = time));
     Some(lines)
 }
 
@@ -173,6 +169,7 @@ fn update_panel(
     view: Res<ViewState>,
     panel: Query<Entity, With<CsarPanel>>,
     mut texts: Query<&mut Text, With<CsarText>>,
+    ui_font: Res<crate::i18n::UiFont>,
 ) {
     let text = shown_status(combat.as_deref(), &view).map(|l| l.join("\n"));
     let campaign = in_campaign(combat.as_deref());
@@ -185,7 +182,7 @@ fn update_panel(
             }
         }
         (Some(t), Err(_)) => {
-            let font = |px: f32| TextFont { font_size: bevy::text::FontSize::Px(px), ..default() };
+            let font = |px: f32| ui_font.at(px);
             commands
                 .spawn((
                     CsarPanel,

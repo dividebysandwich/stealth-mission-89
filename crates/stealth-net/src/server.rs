@@ -8,6 +8,7 @@
 //! [`Server::send_frame`] sends the state.
 
 use std::collections::HashMap;
+use stealth_i18n::{Language, Text, text};
 use web_time::Instant;
 
 use stealth_campaign::{CampaignEvent, PlayerId};
@@ -344,9 +345,9 @@ impl Server {
     ) {
         let name: String = name.trim().chars().filter(|c| !c.is_control()).take(24).collect();
         let reject = if protocol != PROTOCOL {
-            Some(format!("Different game version (protocol {protocol}, server {PROTOCOL})"))
+            Some(text!("net-version", client = protocol, server = PROTOCOL))
         } else if name.is_empty() {
-            Some("No name".to_string())
+            Some(text!("net-no-name"))
         } else {
             let taken = host
                 .state
@@ -354,10 +355,12 @@ impl Server {
                 .iter()
                 .find(|p| p.name.eq_ignore_ascii_case(&name))
                 .is_some_and(|p| Some(p.id) == self.local || self.conn_of(p.id).is_some());
-            taken.then(|| format!("{name} is already playing"))
+            taken.then(|| text!("net-name-taken", name = name.as_str()))
         };
-        if let Some(reason) = reject {
-            self.send(conn, Channel::Reliable, &ToClient::Reject { reason: reason.clone() });
+        if let Some(text) = reject {
+            let reason = text.tr_in(Language::En);
+            let reject = ToClient::Reject { reason: reason.clone(), text: Some(text) };
+            self.send(conn, Channel::Reliable, &reject);
             self.net.flush(now);
             self.net.close(conn, &reason);
             return;
@@ -366,8 +369,10 @@ impl Server {
             Some(id) == self.local || self.conn_of(id).is_some() || self.grace.contains_key(&id)
         };
         let Some(id) = host.join(sim, &name, busy) else {
-            let reason = "The campaign has no room for more pilots".to_string();
-            self.send(conn, Channel::Reliable, &ToClient::Reject { reason: reason.clone() });
+            let text = text!("net-full");
+            let reason = text.tr_in(Language::En);
+            let reject = ToClient::Reject { reason: reason.clone(), text: Some(text) };
+            self.send(conn, Channel::Reliable, &reject);
             self.net.flush(now);
             self.net.close(conn, &reason);
             return;
@@ -589,11 +594,13 @@ impl Server {
     }
 
     /// The server goes down: everybody is told.
-    pub fn shutdown(&mut self, reason: &str) {
+    pub fn shutdown(&mut self, why: Text) {
         if let Some(mut m) = self.master.take() {
             m.stop();
         }
-        let m = encode(&ToClient::Shutdown(reason.to_string()));
+        let reason = why.tr_in(Language::En);
+        let reason = reason.as_str();
+        let m = encode(&ToClient::Shutdown(why));
         let conns: Vec<ConnId> = self.remotes.keys().copied().collect();
         for c in &conns {
             self.net.send(*c, Channel::Reliable, &m);

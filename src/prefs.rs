@@ -85,6 +85,8 @@ pub struct Prefs {
     pub effects_volume: f32,
     pub warning_volume: f32,
     pub engine_low_pass: bool,
+    /// None: the system's.
+    pub language: Option<stealth_i18n::Language>,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -139,6 +141,7 @@ impl Default for Prefs {
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            language: None,
         }
     }
 }
@@ -206,6 +209,7 @@ impl Prefs {
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
             engine_low_pass: s.engine_low_pass,
+            language: saved_language(s),
         }
     }
 
@@ -258,6 +262,11 @@ impl Prefs {
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
         s.engine_low_pass = self.engine_low_pass;
+        if let Some(l) = self.language
+            && crate::settings::language_arg().is_none()
+        {
+            s.language = l;
+        }
         if !std::env::args().any(|a| a == "--aircraft") {
             s.aircraft = self.aircraft;
         }
@@ -293,6 +302,7 @@ impl Prefs {
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
         self.engine_low_pass = s.engine_low_pass;
+        self.language = saved_language(s);
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.
@@ -322,6 +332,11 @@ impl Prefs {
         }
         *last = Some(now);
     }
+}
+
+/// The language to remember: not the pseudo-language of `--lang pseudo`.
+fn saved_language(s: &Settings) -> Option<stealth_i18n::Language> {
+    (s.language != stealth_i18n::Language::Pseudo).then_some(s.language)
 }
 
 #[cfg(test)]

@@ -49,6 +49,7 @@ use crate::cockpit3d::{
 use crate::font::{Align, capital, stroke_has, stroke_text_at};
 use crate::input::{Action, ActionEvent, InputBlock};
 use crate::settings::{AppState, Settings, VR_COCKPIT_SCALE_RANGE};
+use stealth_i18n::{Language, tf};
 
 pub struct FlightMenuPlugin;
 
@@ -141,7 +142,9 @@ impl Page {
                 Open(Page::Controls),
                 Back,
             ],
-            Page::Game => &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back],
+            Page::Game => {
+                &[Language, Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back]
+            }
             Page::Graphics => {
                 &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
             }
@@ -171,14 +174,14 @@ impl Page {
     }
 
     fn title(self) -> &'static str {
-        match self {
-            Page::Main => "MENU",
-            Page::Options => "OPTIONS",
-            Page::Game => "GAME",
-            Page::Graphics => "GRAPHICS",
-            Page::Sound => "SOUND",
-            Page::Controls => "CONTROLS",
-        }
+        tf!(match self {
+            Page::Main => "fm-menu",
+            Page::Options => "options-title",
+            Page::Game => "options-tab-game",
+            Page::Graphics => "options-tab-graphics",
+            Page::Sound => "options-tab-sound",
+            Page::Controls => "options-tab-controls",
+        })
     }
 }
 
@@ -220,6 +223,8 @@ enum Item {
     KeyGuide,
     EndMission,
     Back,
+    /// The language of the menus and messages (`options::language_option`).
+    Language,
     Shaders,
     Msaa,
     Shadows,
@@ -242,40 +247,47 @@ enum Item {
 
 impl Item {
     fn label(self) -> &'static str {
-        match self {
-            Item::Resume => "RESUME",
-            Item::SaveMission => "SAVE MISSION",
-            Item::Open(p) => p.title(),
-            Item::KeyGuide => "KEY GUIDE",
-            Item::EndMission => "END MISSION",
-            Item::Back => "BACK",
-            Item::Shaders => "SHADERS",
-            Item::Msaa => "ANTI-ALIASING",
-            Item::Shadows => "SHADOWS",
-            Item::Lighting => "POINT LIGHTS",
-            Item::TimeOfDay => "TIME OF DAY",
-            Item::SunMoon => "SUN AND MOON",
-            Item::AutoDetail => "AUTO SCENERY DETAIL",
-            Item::Cockpit => "COCKPIT",
-            Item::Hud => "HUD",
-            Item::Avionics => "AVIONICS",
-            Item::AutoTrim => "AUTO TRIM",
-            Item::Tooltips => "TOOLTIPS",
-            Item::CockpitSize => "COCKPIT SIZE",
-            Item::Volume(Vol::Master) => "MASTER VOLUME",
-            Item::Volume(Vol::Engine) => "ENGINE",
-            Item::Volume(Vol::Effects) => "EFFECTS",
-            Item::Volume(Vol::Warnings) => "WARNINGS",
-            Item::LowPass => "ENGINE LOW-PASS",
-            Item::HeadTracking => "HEAD TRACKING",
-            Item::Bindings => "KEYS AND JOYSTICK",
+        if let Item::Open(p) = self {
+            return p.title();
         }
+        tf!(match self {
+            Item::Resume => "fm-resume",
+            Item::SaveMission => "fm-save-mission",
+            Item::KeyGuide => "fm-key-guide",
+            Item::EndMission => "fm-end-mission",
+            Item::Back => "back",
+            Item::Language => "fm-language",
+            Item::Shaders => "fm-shaders",
+            Item::Msaa => "fm-msaa",
+            Item::Shadows => "fm-shadows",
+            Item::Lighting => "fm-point-lights",
+            Item::TimeOfDay => "fm-time-of-day",
+            Item::SunMoon => "fm-sun-moon",
+            Item::AutoDetail => "fm-auto-detail",
+            Item::Cockpit => "fm-cockpit",
+            Item::Hud => "fm-hud",
+            Item::Avionics => "fm-avionics",
+            Item::AutoTrim => "fm-auto-trim",
+            Item::Tooltips => "fm-tooltips",
+            Item::CockpitSize => "fm-cockpit-size",
+            Item::Volume(Vol::Master) => "fm-volume-master",
+            Item::Volume(Vol::Engine) => "fm-volume-engine",
+            Item::Volume(Vol::Effects) => "fm-volume-effects",
+            Item::Volume(Vol::Warnings) => "fm-volume-warnings",
+            Item::LowPass => "fm-low-pass",
+            Item::HeadTracking => "fm-head-tracking",
+            Item::Bindings => "fm-bindings",
+            Item::Open(_) => unreachable!(),
+        })
     }
 
     fn value(self, s: &Settings) -> String {
-        let style = |classic: bool| if classic { "CLASSIC" } else { "MODERN" }.to_string();
-        let on = |b: bool| if b { "ON" } else { "OFF" }.to_string();
+        let style = |classic: bool| tf!(if classic { "classic" } else { "modern" }).to_string();
+        let on = |b: bool| tf!(if b { "on" } else { "off" }).to_string();
         match self {
+            // The stroke font has no Cyrillic: Russian is named in English.
+            Item::Language if s.language.latin() => format!("< {} >", s.language.native_name()),
+            Item::Language => "< RUSSIAN >".to_string(),
             Item::Shaders => style(!s.modern_shading),
             Item::Msaa => on(s.msaa),
             Item::Shadows => on(s.shadows),
@@ -606,10 +618,10 @@ impl VKey {
     fn label(self) -> String {
         match self {
             VKey::Char(c) => c.to_string(),
-            VKey::Space => "SPACE".into(),
-            VKey::Delete => "DEL".into(),
-            VKey::Clear => "CLEAR".into(),
-            VKey::Done => "DONE".into(),
+            VKey::Space => tf!("fm-key-space").into(),
+            VKey::Delete => tf!("fm-key-delete").into(),
+            VKey::Clear => tf!("fm-key-clear").into(),
+            VKey::Done => tf!("fm-key-done").into(),
         }
     }
 }
@@ -991,6 +1003,12 @@ fn navigate(
         Item::Hud => s.classic_hud = !s.classic_hud,
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
+        Item::Language => {
+            let all = Language::ALL;
+            let i = all.iter().position(|&l| l == s.language).unwrap_or(0) as isize;
+            s.language = all[(i + dir as isize).rem_euclid(all.len() as isize) as usize];
+            stealth_i18n::set_language(s.language);
+        }
         Item::Tooltips => s.tooltips = !s.tooltips,
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
@@ -1149,7 +1167,7 @@ fn draw(
             c,
             W as f32 / 2.0,
             H as f32 / 2.0,
-            "EXITING...",
+            tf!("fm-exiting"),
             40.0,
             4.0,
             BRIGHT,
@@ -1159,7 +1177,8 @@ fn draw(
         return;
     }
     if menu.guide {
-        stroke_text_at(c, W as f32 / 2.0, 32.0, "KEY GUIDE", 22.0, 2.8, BRIGHT, Align::Centre);
+        let title = tf!("fm-key-guide");
+        stroke_text_at(c, W as f32 / 2.0, 32.0, title, 22.0, 2.8, BRIGHT, Align::Centre);
         let area = guide_area(menu.keyboard);
         let caret = crate::key_guide::caret_shown(time.elapsed_secs_f64());
         draw_search(c, &menu.search, caret, menu.hover == Some(Spot::Clear));
@@ -1170,7 +1189,8 @@ fn draw(
             crate::key_guide::filter(crate::key_guide::lines(&config, settings.vr), &menu.search);
         if lines.is_empty() {
             let mid = (area[1] + area[3]) / 2.0;
-            stroke_text_at(c, W as f32 / 2.0, mid, "NO MATCH", 18.0, 2.4, DIM, Align::Centre);
+            let none = tf!("fm-no-match");
+            stroke_text_at(c, W as f32 / 2.0, mid, none, 18.0, 2.4, DIM, Align::Centre);
         }
         let style = crate::key_guide::Style {
             size: 0.72,
@@ -1183,28 +1203,31 @@ fn draw(
         let mut scroll = menu.guide_scroll;
         crate::key_guide::draw(c, &lines, area, &mut scroll, &style);
         menu.guide_scroll = scroll;
-        let hint = match (settings.vr, menu.keyboard) {
-            (true, false) => "STICK: SCROLL    FIELD + TRIGGER: KEYBOARD    TRIGGER: BACK",
-            (true, true) => "KEY + TRIGGER: TYPE    STICK: SCROLL",
-            (false, _) => "WHEEL, ARROWS: SCROLL    ESC, CLICK: BACK",
-        };
-        stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, hint, 12.0, 1.8, DIM, Align::Centre);
+        let hint = tf!(match (settings.vr, menu.keyboard) {
+            (true, false) => "fm-hint-vr",
+            (true, true) => "fm-hint-vr-keyboard",
+            (false, _) => "fm-hint-desktop",
+        });
+        let h = fit(hint, 12.0, W as f32 - 48.0);
+        stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, hint, h, 1.8, DIM, Align::Centre);
         tex.dirty = true;
         return;
     }
     let title = match menu.page {
-        Page::Main if campaign.is_some() => "MENU  -  CAMPAIGN RUNS ON".to_string(),
-        Page::Main => "MENU  -  PAUSED".to_string(),
-        Page::Options => "OPTIONS".to_string(),
-        page => format!("OPTIONS  -  {}", page.title()),
+        Page::Main if campaign.is_some() => tf!("fm-campaign-runs").to_string(),
+        Page::Main => tf!("fm-paused").to_string(),
+        Page::Options => tf!("options-title").to_string(),
+        page => tf!("fm-options-page", page = page.title()),
     };
-    stroke_text_at(c, W as f32 / 2.0, 52.0, &title, 26.0, 3.2, BRIGHT, Align::Centre);
+    let h = fit(&title, 26.0, W as f32 - 48.0);
+    stroke_text_at(c, W as f32 / 2.0, 52.0, &title, h, 3.2, BRIGHT, Align::Centre);
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
-        Page::Game => "FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS",
+        Page::Game => tf!("fm-game-note"),
         _ => "",
     };
-    stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, note, 12.0, 1.8, DIM, Align::Centre);
+    let h = fit(note, 12.0, W as f32 - 48.0);
+    stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, note, h, 1.8, DIM, Align::Centre);
     for (i, item) in menu.page.items().iter().enumerate() {
         let y = TOP + ROW * i as f32;
         let mid = y + ROW / 2.0;
@@ -1214,19 +1237,32 @@ fn draw(
             c.fill_rect(24, y as i32 + 3, W as i32 - 48, ROW as i32 - 6, ROW_BG);
         }
         let label = match item {
-            Item::EndMission if campaign.is_some() => "END SORTIE",
+            Item::EndMission if campaign.is_some() => tf!("fm-end-sortie"),
             _ => item.label(),
         };
-        stroke_text_at(c, 48.0, mid, label, 22.0, 2.8, col, Align::Left);
         let v = match item {
             Item::SaveMission => menu.save_note.unwrap_or_default().to_string(),
             _ => item.value(&settings),
         };
-        if !v.is_empty() {
-            stroke_text_at(c, W as f32 - 48.0, mid, &v, 22.0, 2.8, col, Align::Right);
-        }
+        // The value at its size, the label smaller where both would not fit the row.
+        let right = W as f32 - 48.0;
+        let label_end = if v.is_empty() {
+            right
+        } else {
+            let h = fit(&v, 22.0, W as f32 / 2.0 - 48.0);
+            stroke_text_at(c, right, mid, &v, h, 2.8, col, Align::Right);
+            right - crate::font::stroke_width(&v, h) - 24.0
+        };
+        let h = fit(label, 22.0, label_end - 48.0);
+        stroke_text_at(c, 48.0, mid, label, h, 2.8, col, Align::Left);
     }
     tex.dirty = true;
+}
+
+/// The glyph height (at most `h`) that fits `s` in `width` pixels.
+fn fit(s: &str, h: f32, width: f32) -> f32 {
+    let w = crate::font::stroke_width(s, h);
+    if w <= width { h } else { h * width / w }
 }
 
 /// The search's VR keyboard, the key under the fingertip on a dark row.
@@ -1255,7 +1291,7 @@ fn draw_search(c: &mut Canvas, text: &str, caret: bool, clear_hover: bool) {
     c.stroke(lens + Vec2::splat(4.5), lens + Vec2::splat(9.5), 2.4, col);
     let tx = x0 + 34.0;
     if text.is_empty() {
-        stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, DIM, Align::Left);
+        stroke_text_at(c, tx, mid, tf!("fm-type-to-search"), 14.0, 2.0, DIM, Align::Left);
         return;
     }
     let end = stroke_text_at(c, tx, mid, text, 14.0, 2.0, BRIGHT, Align::Left);
@@ -1326,7 +1362,7 @@ fn vr_end_screen(
         let y = 140.0 + 42.0 * i as f32;
         stroke_text_at(&mut canvas, W as f32 / 2.0, y, l, fit(l, 20.0), 2.6, BRIGHT, Align::Centre);
     }
-    let hint = "PULL THE TRIGGER";
+    let hint = tf!("fm-pull-trigger");
     stroke_text_at(
         &mut canvas,
         W as f32 / 2.0,

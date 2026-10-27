@@ -43,70 +43,83 @@
 <body>
 <main>
   <h1>STEALTH MISSION 89</h1>
-  <p class="sub">Download version <span id="version">?</span> for your computer.
-    <a href="index.html">Back to the browser version</a></p>
+  <p class="sub"><span data-i18n="sub">Download version</span> <span id="version">?</span>
+    <span data-i18n="for">for your computer.</span>
+    <a href="index.html" data-i18n="back">Back to the browser version</a></p>
 
-  <h2>Steam Deck and Steam Frame</h2>
+  <h2 data-i18n="steam">Steam Deck and Steam Frame</h2>
   <div class="steam">
     <div class="card">
       <h3>Steam Deck</h3>
-      <div class="what">Take <b>Linux, Intel/AMD (x86-64)</b>: the AppImage.</div>
+      <div class="what" data-i18n="deck">Take <b>Linux, Intel/AMD (x86-64)</b>: the AppImage.</div>
       <a class="btn" data-file="x86_64.AppImage">AppImage, x86-64</a>
     </div>
     <div class="card">
       <h3>Steam Frame</h3>
-      <div class="what">Take <b>Linux, ARM (aarch64)</b>: the AppImage. VR included.</div>
+      <div class="what" data-i18n="frame">Take <b>Linux, ARM (aarch64)</b>: the AppImage. VR included.</div>
       <a class="btn" data-file="aarch64.AppImage">AppImage, aarch64</a>
     </div>
   </div>
-  <p class="note">In desktop mode, mark the AppImage executable (Properties &gt; Permissions, or
+  <p class="note" data-i18n="appimage">In desktop mode, mark the AppImage executable (Properties &gt; Permissions, or
     <code>chmod +x</code>) and start it, or add it to Steam as a non-Steam game.</p>
 
-  <h2>All platforms</h2>
+  <h2 data-i18n="all">All platforms</h2>
   <div class="grid">
     <div class="card" data-os="windows" data-arch="x86">
       <h3>Windows, Intel/AMD</h3>
-      <div class="what">x86-64 PCs. VR with an OpenXR runtime (SteamVR...).</div>
-      <a class="btn" data-file="x86_64-pc-windows-msvc.msi">Installer (.msi)</a>
-      <a class="btn alt" data-file="x86_64-pc-windows-msvc.zip">Portable (.zip)</a>
+      <div class="what" data-i18n="win-x86">x86-64 PCs. VR with an OpenXR runtime (SteamVR...).</div>
+      <a class="btn" data-file="x86_64-pc-windows-msvc.msi" data-i18n="msi">Installer (.msi)</a>
+      <a class="btn alt" data-file="x86_64-pc-windows-msvc.zip" data-i18n="zip">Portable (.zip)</a>
     </div>
     <div class="card" data-os="windows" data-arch="arm">
       <h3>Windows, ARM</h3>
-      <div class="what">Snapdragon and other ARM64 PCs.</div>
-      <a class="btn" data-file="aarch64-pc-windows-msvc.msi">Installer (.msi)</a>
-      <a class="btn alt" data-file="aarch64-pc-windows-msvc.zip">Portable (.zip)</a>
+      <div class="what" data-i18n="win-arm">Snapdragon and other ARM64 PCs.</div>
+      <a class="btn" data-file="aarch64-pc-windows-msvc.msi" data-i18n="msi">Installer (.msi)</a>
+      <a class="btn alt" data-file="aarch64-pc-windows-msvc.zip" data-i18n="zip">Portable (.zip)</a>
     </div>
     <div class="card" data-os="linux" data-arch="x86">
       <h3>Linux, Intel/AMD</h3>
-      <div class="what">x86-64, also the Steam Deck.</div>
+      <div class="what" data-i18n="linux-x86">x86-64, also the Steam Deck.</div>
       <a class="btn" data-file="x86_64.AppImage">AppImage</a>
-      <a class="btn alt" data-file="x86_64-unknown-linux-gnu.tar.gz">Archive (.tar.gz)</a>
+      <a class="btn alt" data-file="x86_64-unknown-linux-gnu.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="linux" data-arch="arm">
       <h3>Linux, ARM</h3>
-      <div class="what">aarch64, also the Steam Frame.</div>
+      <div class="what" data-i18n="linux-arm">aarch64, also the Steam Frame.</div>
       <a class="btn" data-file="aarch64.AppImage">AppImage</a>
-      <a class="btn alt" data-file="aarch64-unknown-linux-gnu.tar.gz">Archive (.tar.gz)</a>
+      <a class="btn alt" data-file="aarch64-unknown-linux-gnu.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="mac" data-arch="arm">
       <h3>macOS, Apple Silicon</h3>
-      <div class="what">M1 and later. No VR.</div>
-      <a class="btn" data-file="aarch64-apple-darwin.tar.gz">Archive (.tar.gz)</a>
+      <div class="what" data-i18n="mac-arm">M1 and later. No VR.</div>
+      <a class="btn" data-file="aarch64-apple-darwin.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="mac" data-arch="x86">
       <h3>macOS, Intel</h3>
-      <div class="what">Intel Macs. No VR.</div>
-      <a class="btn" data-file="x86_64-apple-darwin.tar.gz">Archive (.tar.gz)</a>
+      <div class="what" data-i18n="mac-x86">Intel Macs. No VR.</div>
+      <a class="btn" data-file="x86_64-apple-darwin.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
   </div>
 
-  <p class="note" style="margin-top: 24px">Other versions and the release notes:
-    <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases">the release on GitHub</a>.</p>
+  <p class="note" style="margin-top: 24px"><span data-i18n="other">Other versions and the release notes:</span>
+    <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases" data-i18n="github">the release on GitHub</a>.</p>
 </main>
 <script>
+  // The page in the browser's language, English for the others (data-i18n elements).
+  const TEXTS = {
+  };
+  const LANG = (navigator.language || "en").toLowerCase().split("-")[0];
+  const T = TEXTS[LANG];
+  if (T) {
+    document.documentElement.lang = LANG;
+    document.title = T.title;
+    for (const e of document.querySelectorAll("[data-i18n]")) {
+      if (T[e.dataset.i18n]) e.innerHTML = T[e.dataset.i18n];
+    }
+  }
   const REPO = "https://github.com/dividebysandwich/stealth-mission-89/releases";
   const version = window.SM89_VERSION;
-  document.getElementById("version").textContent = version || "latest";
+  document.getElementById("version").textContent = version || (T ? T.latest : "latest");
   // Release files are named stealth-mission-89-v<version>-<platform>.<ext> (.github/workflows/build.yml).
   for (const a of document.querySelectorAll("a[data-file]")) {
     a.href = version
@@ -135,7 +148,8 @@
     const card = document.querySelector(`.card[data-os="${os}"][data-arch="${arch}"]`);
     if (!card) return;
     card.classList.add("mine");
-    card.querySelector("h3").insertAdjacentHTML("beforeend", '<span class="tag">THIS COMPUTER</span>');
+    const mine = T ? T.mine : "THIS COMPUTER";
+    card.querySelector("h3").insertAdjacentHTML("beforeend", `<span class="tag">${mine}</span>`);
   })();
 </script>
 </body>

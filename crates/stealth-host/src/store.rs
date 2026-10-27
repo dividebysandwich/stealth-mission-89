@@ -46,10 +46,14 @@ mod imp {
     /// The player's folder (made when first written to), found once; None without a home
     /// directory. Windows: in `Documents\My Games`, as many games keep theirs (in the data
     /// directory without a Documents folder); elsewhere the data directory: macOS asks the player
-    /// before a game reads Documents, Linux has no such convention.
+    /// before a game reads Documents, Linux has no such convention. `SM89_HOME` replaces it
+    /// (test runs that must not touch the player's settings).
     pub fn root() -> Option<PathBuf> {
         static ROOT: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
         ROOT.get_or_init(|| {
+            if let Some(home) = std::env::var_os("SM89_HOME").filter(|h| !h.is_empty()) {
+                return Some(PathBuf::from(home));
+            }
             if cfg!(windows)
                 && let Some(d) = dirs::document_dir()
             {

@@ -1,5 +1,22 @@
 use stealth_mission::TheaterData;
 
+/// The tests read the campaign's texts in English.
+trait English {
+    fn en(&self) -> String;
+    fn contains(&self, s: &str) -> bool {
+        self.en().contains(s)
+    }
+    fn starts_with(&self, s: &str) -> bool {
+        self.en().starts_with(s)
+    }
+}
+
+impl English for stealth_i18n::Text {
+    fn en(&self) -> String {
+        self.tr_in(stealth_i18n::Language::En)
+    }
+}
+
 use super::*;
 
 fn theater(code: &str) -> TheaterData {

@@ -9,6 +9,7 @@ use super::ActiveCampaign;
 use crate::menu::{AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, group, section};
 use crate::mission::MissionData;
 use crate::settings::{AppState, MissionSetup};
+use stealth_i18n::{t, t_lines};
 
 #[derive(Resource)]
 pub struct CampaignWindow {
@@ -59,7 +60,7 @@ impl CampaignWindow {
 /// How tall the list of saved campaigns grows before it scrolls.
 pub(crate) const SAVES_HEIGHT: f32 = 240.0;
 
-/// The "delete this ...?" popup over the menu (`what`: "CAMPAIGN", "SAVE"): Some(true) to
+/// The "delete this ...?" popup over the menu (`what`: "campaign", "save"): Some(true) to
 /// delete, Some(false) to keep it (CANCEL, or `cancel` such as Escape), None while it waits.
 pub(crate) fn delete_popup(
     ctx: &egui::Context,
@@ -68,7 +69,7 @@ pub(crate) fn delete_popup(
     cancel: bool,
 ) -> Option<bool> {
     let mut answer = cancel.then_some(false);
-    egui::Window::new(format!("Delete the {}", what.to_lowercase()))
+    egui::Window::new(format!("Delete the {what}"))
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
@@ -76,28 +77,21 @@ pub(crate) fn delete_popup(
         .order(egui::Order::Foreground)
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(18.0))
         .show(ctx, |ui| {
-            ui.label(egui::RichText::new(format!("DELETE THIS {what}?")).heading().color(BRIGHT));
+            let question = t!(&format!("delete-{what}"));
+            ui.label(egui::RichText::new(question).heading().color(BRIGHT));
             ui.label(egui::RichText::new(label).color(BRIGHT));
-            ui.label(egui::RichText::new("Deletion is permanent").color(DIM));
+            ui.label(egui::RichText::new(t!("delete-permanent")).color(DIM));
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                if ui.add(big_button("DELETE").fill(super::ops::EXIT_RED)).clicked() {
+                if ui.add(big_button(t!("delete")).fill(super::ops::EXIT_RED)).clicked() {
                     answer = Some(true);
                 }
-                if ui.add(big_button("CANCEL")).clicked() {
+                if ui.add(big_button(t!("cancel"))).clicked() {
                     answer = Some(false);
                 }
             });
         });
     answer
-}
-
-fn roe_name(roe: u8) -> &'static str {
-    match roe {
-        0 => "Cold War",
-        1 => "Limited War",
-        _ => "Conventional War",
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -121,7 +115,8 @@ pub fn campaign_window(
     }
     let Some(data) = data else { return Ok(()) };
     let ctx = contexts.ctx_mut()?;
-    let (code, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
+    let code = THEATERS[state.theater.min(THEATERS.len() - 1)].0;
+    let theater = crate::i18n::theater_name(state.theater.min(THEATERS.len() - 1));
     let mut start: Option<ActiveCampaign> = None;
     let mut vr_name: Option<String> = None;
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
@@ -129,12 +124,12 @@ pub fn campaign_window(
     let mut close = escape && w.confirm_delete.is_none();
     let width = crate::menu::wide_width(ctx);
     crate::menu::menu_window(ctx, "Dynamic campaign", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("DYNAMIC CAMPAIGN").heading().color(BRIGHT));
+        ui.label(egui::RichText::new(t!("menu-campaign")).heading().color(BRIGHT));
         ui.separator();
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(210.0);
-                group(ui, "Campaign", |ui| {
+                group(ui, t!("cm-group-campaign"), |ui| {
                     crate::menu::theater_options(ui, &mut state.theater);
                     crate::menu::situation_options(ui, &mut state.roe);
                     crate::menu::opponent_options(ui, &mut state.opponents);
@@ -142,136 +137,156 @@ pub fn campaign_window(
             });
             ui.vertical(|ui| {
                 ui.set_width(210.0);
-                group(ui, "Conditions", |ui| {
-                    section(ui, "Weather");
+                group(ui, t!("group-conditions"), |ui| {
+                    section(ui, t!("section-weather"));
                     dropdown(
                         ui,
                         "campaign_weather",
                         &mut w.clear_sky,
                         [
-                            (false, "Dynamic", &["The weather changes every 10-22 hours of the sky's clock", "Clouds block line of sight for both sides"][..]),
-                            (true, "Clear sky", &["No clouds for the whole campaign"][..]),
+                            (false, t!("cm-weather-dynamic"), t_lines!("cm-weather-dynamic.facts")),
+                            (true, t!("cm-weather-clear"), t_lines!("cm-weather-clear.facts")),
                         ],
                     );
-                    section(ui, "Start time");
+                    section(ui, t!("section-start-time"));
                     ui.add(
                         egui::Slider::new(&mut w.start_hour, 0.0..=23.0)
                             .step_by(1.0)
                             .custom_formatter(|v, _| format!("{v:02.0}:00")),
                     );
-                    section(ui, "Day and night");
+                    section(ui, t!("cm-section-day-night"));
                     dropdown(
                         ui,
                         "campaign_sky_ratio",
                         &mut w.sky_ratio,
                         [
-                            (1.0, "Real time", &["A day lasts 24 hours"][..]),
-                            (12.0, "2 h / day", &["A day lasts 2 hours"][..]),
-                            (24.0, "1 h / day", &["A day lasts 1 hour"][..]),
-                            (48.0, "30 min / day", &["A day lasts 30 minutes"][..]),
+                            (1.0, t!("cm-day-real"), t_lines!("cm-day-real.facts")),
+                            (12.0, t!("cm-day-2h"), t_lines!("cm-day-2h.facts")),
+                            (24.0, t!("cm-day-1h"), t_lines!("cm-day-1h.facts")),
+                            (48.0, t!("cm-day-30min"), t_lines!("cm-day-30min.facts")),
                         ],
                     );
                 });
-                ui.label(
-                    egui::RichText::new("Conditions apply to a new campaign")
-                        .small()
-                        .color(DIM),
-                );
+                ui.label(egui::RichText::new(t!("cm-conditions-note")).small().color(DIM));
             });
             ui.vertical(|ui| {
                 ui.set_width(220.0);
-                crate::menu::simulation_options(
-                    ui,
-                    &mut settings,
-                    Some("A saved campaign keeps the rules it was started with"),
-                );
+                crate::menu::simulation_options(ui, &mut settings, Some(t!("cm-rules-note")));
             });
             ui.vertical(|ui| {
-            for line in [
-                "The war runs in real time while you play, also while the menu is open.",
-                "Fly the missions on the board: recon, SEAD, CAP, CAS, anti-ship, strike, escort.",
-                "Helicopter insertions take the enemy's cities and airfields.",
-                "You are never killed or captured: after a sortie you are back at the board.",
-            ] {
-                ui.label(egui::RichText::new(line).color(DIM));
-            }
-            ui.add_space(6.0);
-            section(ui, "New campaign");
-            ui.label(format!(
-                "{theater}  -  {}  -  opponents {}",
-                roe_name(state.roe),
-                ["green", "regular", "veteran", "elite"][state.opponents.min(3) as usize]
-            ));
-            if ui.add(big_button("START")).clicked() {
-                let secs = web_time::SystemTime::now()
-                    .duration_since(web_time::UNIX_EPOCH)
-                    .map_or(0, |d| d.as_secs());
-                let setup = CampaignSetup {
-                    theater: state.theater,
-                    theater_code: code.to_string(),
-                    roe: state.roe,
-                    opponents: state.opponents,
-                    seed: rand::random(),
-                    sky_ratio: w.sky_ratio,
-                    start_hour: w.start_hour,
-                    dynamic_weather: !w.clear_sky,
-                };
-                let rules = super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117));
-                match ActiveCampaign::new(format!("{code}-{secs}"), setup, &data, rules) {
-                    Ok(c) => start = Some(c),
-                    Err(e) => w.error = Some(format!("{e:#}")),
+                for line in t_lines!("cm-about") {
+                    ui.label(egui::RichText::new(*line).color(DIM));
                 }
-            }
-            ui.add_space(6.0);
-            section(ui, "Continue");
-            if w.saves.is_empty() {
-                ui.label(egui::RichText::new("No saved campaigns").color(DIM));
-            }
-            egui::ScrollArea::vertical().id_salt("campaign_saves").max_height(SAVES_HEIGHT).show(ui, |ui| {
-            for (name, code, hours) in w.saves.clone() {
-                let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
-                ui.horizontal(|ui| {
-                    ui.label(format!("{theater:<24} {hours:>5.1} h played"));
-                    if ui.add(big_button("CONTINUE")).clicked() {
-                        let rules = super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117));
-                        match stealth_host::save::load(&name) {
-                            Ok(Some(st)) => match ActiveCampaign::resume(name.clone(), st, &data, rules) {
-                                Ok(c) => start = Some(c),
-                                Err(e) => w.error = Some(format!("{e:#}")),
-                            },
-                            Ok(None) => w.error = Some("The save is gone".into()),
-                            Err(e) => w.error = Some(format!("The save could not be read: {e:#}")),
+                ui.add_space(6.0);
+                section(ui, t!("cm-section-new"));
+                ui.label(t!(
+                    "cm-new-line",
+                    theater = theater,
+                    situation = crate::i18n::roe_name(state.roe),
+                    opponents = crate::i18n::opponents_name(state.opponents).to_lowercase()
+                ));
+                if ui.add(big_button(t!("cm-start"))).clicked() {
+                    let secs = web_time::SystemTime::now()
+                        .duration_since(web_time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_secs());
+                    let setup = CampaignSetup {
+                        theater: state.theater,
+                        theater_code: code.to_string(),
+                        roe: state.roe,
+                        opponents: state.opponents,
+                        seed: rand::random(),
+                        sky_ratio: w.sky_ratio,
+                        start_hour: w.start_hour,
+                        dynamic_weather: !w.clear_sky,
+                    };
+                    let rules = super::rules_of(
+                        &settings,
+                        state.realistic(crate::aircraft::AircraftKind::F117),
+                    );
+                    match ActiveCampaign::new(format!("{code}-{secs}"), setup, &data, rules) {
+                        Ok(c) => start = Some(c),
+                        Err(e) => w.error = Some(format!("{e:#}")),
+                    }
+                }
+                ui.add_space(6.0);
+                section(ui, t!("cm-section-continue"));
+                if w.saves.is_empty() {
+                    ui.label(egui::RichText::new(t!("cm-no-saves")).color(DIM));
+                }
+                egui::ScrollArea::vertical()
+                    .id_salt("campaign_saves")
+                    .max_height(SAVES_HEIGHT)
+                    .show(ui, |ui| {
+                        for (name, code, hours) in w.saves.clone() {
+                            let theater = crate::i18n::theater_name_of(&code);
+                            let played = t!("cm-played", hours = format!("{hours:.1}"));
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{theater:<24} {played:>12}"));
+                                if ui.add(big_button(t!("continue"))).clicked() {
+                                    let rules = super::rules_of(
+                                        &settings,
+                                        state.realistic(crate::aircraft::AircraftKind::F117),
+                                    );
+                                    match stealth_host::save::load(&name) {
+                                        Ok(Some(st)) => match ActiveCampaign::resume(
+                                            name.clone(),
+                                            st,
+                                            &data,
+                                            rules,
+                                        ) {
+                                            Ok(c) => start = Some(c),
+                                            Err(e) => w.error = Some(format!("{e:#}")),
+                                        },
+                                        Ok(None) => w.error = Some(t!("cm-save-gone").into()),
+                                        Err(e) => {
+                                            w.error = Some(t!(
+                                                "cm-save-unreadable",
+                                                error = format!("{e:#}")
+                                            ))
+                                        }
+                                    }
+                                }
+                                if !settings.vr
+                                    && vr.0
+                                    && ui.add(big_button(t!("cm-in-vr"))).clicked()
+                                {
+                                    vr_name = Some(name.clone());
+                                }
+                                if ui
+                                    .add(big_button(t!("delete")))
+                                    .on_hover_text(t!("cm-delete.facts"))
+                                    .clicked()
+                                {
+                                    w.confirm_delete =
+                                        Some((name.clone(), format!("{theater}, {played}")));
+                                }
+                            });
                         }
-                    }
-                    if !settings.vr && vr.0 && ui.add(big_button("IN VR")).clicked() {
-                        vr_name = Some(name.clone());
-                    }
-                    if ui.add(big_button("DELETE")).on_hover_text("Delete this saved campaign").clicked() {
-                        w.confirm_delete = Some((name.clone(), format!("{theater}, {hours:.1} h played")));
-                    }
-                });
-            }
-            });
-            if let Some(e) = &w.error {
-                ui.colored_label(AMBER, e);
-            }
+                    });
+                if let Some(e) = &w.error {
+                    ui.colored_label(AMBER, e);
+                }
             });
         });
         ui.separator();
         ui.horizontal(|ui| {
-            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+            if ui.add(big_button(t!("back"))).on_hover_text(t!("menu-back-main")).clicked() {
                 close = true;
             }
-            if ui.add(big_button("OPTIONS")).on_hover_text("Game, graphics, sound and controls").clicked() {
+            if ui
+                .add(big_button(t!("menu-options")))
+                .on_hover_text(t!("menu-options.short"))
+                .clicked()
+            {
                 options.open = true;
             }
         });
     });
     if let Some((name, label)) = w.confirm_delete.clone() {
-        let answer = delete_popup(ctx, "CAMPAIGN", &label, escape);
+        let answer = delete_popup(ctx, "campaign", &label, escape);
         if answer == Some(true) {
             if let Err(e) = stealth_host::save::delete(&name) {
-                w.error = Some(format!("The save could not be deleted: {e:#}"));
+                w.error = Some(t!("cm-save-undeletable", error = format!("{e:#}")));
             }
             w.saves = stealth_host::save::list_saves();
         }
@@ -290,7 +305,7 @@ pub fn campaign_window(
             Ok(()) => {
                 exit.write(AppExit::Success);
             }
-            Err(e) => w.error = Some(format!("could not start in VR: {e}")),
+            Err(e) => w.error = Some(t!("menu-vr-failed", error = e.to_string())),
         }
     }
     if close {

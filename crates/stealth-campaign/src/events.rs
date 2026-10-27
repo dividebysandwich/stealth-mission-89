@@ -4,6 +4,7 @@
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, WorldView};
+use stealth_i18n::{Text, text};
 
 impl CampaignState {
     /// Enemy forward batteries: when no target on the board is a short helicopter flight from
@@ -20,7 +21,7 @@ impl CampaignState {
             } else if !up && b.seen {
                 let b = self.batteries.remove(k);
                 self.board_at = f64::MIN;
-                let text = format!("Enemy battery near {} destroyed", b.name);
+                let text = text!("cl-battery-destroyed", place = b.name);
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
             }
@@ -60,8 +61,7 @@ impl CampaignState {
         }
         let id = self.id();
         self.batteries.push(Battery { id, x, y, name: name.clone(), seen: false });
-        let text =
-            format!("Intelligence: the enemy has pushed a battery of guns forward near {name}");
+        let text = text!("cl-battery-intel", place = name);
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::BatteryDeployed { id, x, y });
@@ -135,7 +135,7 @@ impl CampaignState {
                 let tag = a.tag;
                 self.awacs = None;
                 self.board_at = f64::MIN;
-                self.note("The enemy AWACS turns for home");
+                self.note(text!("cl-awacs-home"));
                 ev.push(CampaignEvent::Recall { tag });
             }
             return;
@@ -166,9 +166,7 @@ impl CampaignState {
         let tag = self.id();
         self.awacs = Some(Awacs { tag, side: Side::Red, x, y, until: now + AWACS_ENDURANCE });
         self.board_at = f64::MIN;
-        let text = format!(
-            "Intelligence: an enemy AWACS goes up behind {name}; it guides the enemy's fighters until it is shot down"
-        );
+        let text = text!("cl-awacs-intel", place = name);
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::LaunchAwacs { tag, side: Side::Red, from, x, y });
@@ -187,11 +185,11 @@ impl CampaignState {
                 self.awacs_down.remove(0);
             }
             self.lose(Side::Red, AWACS_LOSS);
-            self.note("Enemy AWACS shot down");
-            ev.push(CampaignEvent::Message("Enemy AWACS shot down!".into()));
+            self.note(text!("cl-awacs-down"));
+            ev.push(CampaignEvent::Message(text!("cl-awacs-down-news")));
         } else {
-            self.note("The enemy AWACS landed");
-            ev.push(CampaignEvent::Message("The enemy AWACS has landed".into()));
+            self.note(text!("cl-awacs-landed"));
+            ev.push(CampaignEvent::Message(text!("cl-awacs-landed-news")));
         }
     }
 
@@ -250,10 +248,10 @@ impl CampaignState {
             drones: true,
             enroute_at: None,
         });
-        let text = format!(
-            "Intelligence: enemy attack drones to be launched at {} in {} min",
-            self.target_name(target),
-            (DRONE_LEAD / 60.0).round()
+        let text = text!(
+            "cl-drones-intel",
+            target = self.target_name(target),
+            mins = (DRONE_LEAD / 60.0).round() as i64
         );
         self.note(text.clone());
         self.board_at = f64::MIN;
@@ -266,34 +264,36 @@ impl CampaignState {
         &mut self,
         player: PlayerId,
         offer: u32,
-    ) -> Result<Vec<CampaignEvent>, String> {
-        let o = self.board.iter().find(|o| o.id == offer).ok_or("That mission is gone")?;
-        let place = self.objective_place(&o.objective).ok_or("No place to support")?;
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        let o =
+            self.board.iter().find(|o| o.id == offer).ok_or_else(|| text!("ce-mission-gone"))?;
+        let place =
+            self.objective_place(&o.objective).ok_or_else(|| text!("ce-no-place-support"))?;
         let p = &self.places[place as usize];
         if p.owner != Side::Red {
-            return Err("Support goes against enemy places".into());
+            return Err(text!("ce-support-enemy"));
         }
         if self.raids.iter().any(|r| r.side == Side::Blue && r.open() && r.place == place) {
-            return Err(format!("AI SEAD for {} is already on its way", p.name));
+            return Err(text!("ce-sead-under-way", place = p.name.as_str()));
         }
         let sam = p
             .defences
             .iter()
             .copied()
             .find(|&d| self.site(d).is_some_and(Site::alive))
-            .ok_or_else(|| format!("{} has no SAM site left", p.name))?;
+            .ok_or_else(|| text!("ce-no-sam", place = p.name.as_str()))?;
         let s = self.site(sam).expect("a site");
         let (sx, sy) = (s.x, s.y);
         let from = self
             .nearest_base(Side::Blue, sx, sy)
             .filter(|&b| self.site(b).is_some_and(|b| dist(b.x - sx, b.y - sy) <= RAID_RANGE))
-            .ok_or("No friendly airfield in range")?;
+            .ok_or_else(|| text!("ce-no-airfield-range"))?;
         if (self.blue.fighters as usize) < RAID_AIRCRAFT {
-            return Err("No strike aircraft left on the ground".into());
+            return Err(text!("ce-no-strike-aircraft"));
         }
         let (name, base) = (p.name.clone(), self.site(from).map(|s| s.name.clone()));
         if !self.pay(Side::Blue, SUPPORT_COST, Spend::Operations) {
-            return Err("Not enough materiel".into());
+            return Err(text!("ce-no-materiel"));
         }
         let id = self.id();
         self.raids.push(Raid {
@@ -310,11 +310,13 @@ impl CampaignState {
             drones: false,
             enroute_at: None,
         });
-        let who = self.player_name(player).unwrap_or("A pilot");
-        let text = format!(
-            "{who} called in AI SEAD on {name}: {RAID_AIRCRAFT} strike aircraft from {} in {} min",
-            base.unwrap_or_default(),
-            (SUPPORT_LEAD / 60.0).round()
+        let text = text!(
+            "cl-support",
+            who = self.who(player),
+            place = name,
+            count = RAID_AIRCRAFT,
+            base = base.unwrap_or_default(),
+            mins = (SUPPORT_LEAD / 60.0).round() as i64
         );
         self.note(text.clone());
         Ok(vec![CampaignEvent::Message(text)])

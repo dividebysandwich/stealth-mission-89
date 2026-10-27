@@ -13,8 +13,9 @@ use stealth_sim::score::{MissionReport, Outcome};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, group, section};
 use crate::mission::MissionData;
 use crate::settings::Settings;
+use stealth_i18n::t;
 
-/// Rank, abbreviation, career points needed.
+/// Rank, abbreviation, career points needed (in English: saved, and the messages' keys).
 pub const RANKS: [(&str, &str, i32); 6] = [
     ("Second Lieutenant", "2nd Lt.", 0),
     ("First Lieutenant", "1st Lt.", 300),
@@ -23,7 +24,8 @@ pub const RANKS: [(&str, &str, i32); 6] = [
     ("Lieutenant Colonel", "Lt. Col.", 3500),
     ("Colonel", "Col.", 6000),
 ];
-/// Decorations for one mission's points (the highest earned is awarded).
+/// Decorations for one mission's points (the highest earned is awarded); saved in English,
+/// shown with [`medal_name`].
 pub const MEDALS: [(&str, i32); 5] = [
     ("Air Medal", 150),
     ("Distinguished Flying Cross", 300),
@@ -31,6 +33,33 @@ pub const MEDALS: [(&str, i32); 5] = [
     ("Air Force Cross", 800),
     ("Medal of Honor", 1200),
 ];
+/// A rank's name in the player's language (`RANKS` index).
+pub fn rank_name(rank: usize) -> &'static str {
+    t!(&format!("rank-{}", rank.min(RANKS.len() - 1)))
+}
+
+/// A rank's abbreviation in the player's language.
+pub fn rank_abbreviation(rank: usize) -> &'static str {
+    t!(&format!("rank-{}.short", rank.min(RANKS.len() - 1)))
+}
+
+/// A decoration (as saved, in English) in the player's language.
+pub fn medal_name(name: &str) -> &'static str {
+    let id: String = name
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
+        .collect();
+    t!(&format!("medal-{id}"))
+}
+
+/// A sortie's outcome as saved (`Outcome::text`, English) in the player's language.
+pub fn outcome_name(text: &str) -> String {
+    match stealth_sim::score::Outcome::from_text(text) {
+        Some(o) => crate::i18n::outcome_name(o).to_string(),
+        None => text.to_string(),
+    }
+}
+
 pub const TOUR_LENGTH: u32 = 12;
 /// Points for finishing a tour.
 pub const TOUR_BONUS: i32 = 200;
@@ -120,9 +149,9 @@ impl Pilot {
         RANKS.iter().rposition(|r| self.points >= r.2).unwrap_or(0)
     }
 
-    /// Rank and name, e.g. "Capt. Smith".
+    /// Rank and name, e.g. "Capt. Smith", the rank in the player's language.
     pub fn title(&self) -> String {
-        format!("{} {}", RANKS[self.rank()].1, self.name)
+        format!("{} {}", rank_abbreviation(self.rank()), self.name)
     }
 
     pub fn load(key: &str) -> Option<Self> {
@@ -178,7 +207,7 @@ impl Pilot {
                 Some((_, k)) => *k += 1,
                 None => self.medals.push((name.to_string(), 1)),
             }
-            news.push(format!("Awarded the {name}"));
+            news.push(t!("career-awarded", medal = medal_name(name)));
         };
         if let Some(n) = &medal {
             award(n, &mut news);
@@ -189,12 +218,12 @@ impl Pilot {
         match report.outcome {
             Outcome::Crashed | Outcome::EjectionFailed => {
                 self.status = Status::Kia;
-                news.push("Killed in action".into());
+                news.push(t!("career-kia").into());
             }
             Outcome::Captured => {
                 self.status = Status::Pow;
                 award("Prisoner of War Medal", &mut news);
-                news.push("Taken prisoner: the career is over".into());
+                news.push(t!("career-captured").into());
             }
             _ => {}
         }
@@ -204,9 +233,9 @@ impl Pilot {
             if let Some(d) = damage {
                 t.damage.merge(d);
             }
-            news.push(format!("Tour of duty: sortie {} of {}", t.sortie, t.length));
+            news.push(t!("career-tour-sortie", sortie = t.sortie, length = t.length));
             if self.status == Status::Active && t.sortie >= t.length {
-                news.push(format!("Tour of duty complete: {} points (+{TOUR_BONUS})", t.points));
+                news.push(t!("career-tour-complete", points = t.points, bonus = TOUR_BONUS));
                 self.points += TOUR_BONUS;
                 self.tours_completed += 1;
                 self.tour = None;
@@ -216,7 +245,7 @@ impl Pilot {
             self.tour = None;
         }
         if self.rank() > rank {
-            news.push(format!("Promoted to {}", RANKS[self.rank()].0));
+            news.push(t!("career-promoted", rank = rank_name(self.rank())));
         }
         self.history.push(SortieRecord {
             date: m.briefing.date.clone(),
@@ -326,29 +355,29 @@ pub fn career_ui(
     }
     let width = crate::menu::wide_width(ctx);
     crate::menu::menu_window(ctx, "Career", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("PILOT RECORDS").heading().color(BRIGHT));
+        ui.label(egui::RichText::new(t!("career-title")).heading().color(BRIGHT));
         ui.separator();
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(210.0);
-                group(ui, "Tour", |ui| {
+                group(ui, t!("career-group-tour"), |ui| {
                     ui.add_enabled_ui(tour.is_none(), |ui| {
                         crate::menu::theater_options(ui, &mut state.theater);
                         crate::menu::situation_options(ui, &mut state.roe);
                         crate::menu::opponent_options(ui, &mut state.opponents);
                     });
                     if tour.is_some() {
-                        ui.label(egui::RichText::new("Set by the pilot's tour").small().color(DIM));
+                        ui.label(egui::RichText::new(t!("career-set-by-tour")).small().color(DIM));
                     }
                 });
             });
             ui.vertical(|ui| {
                 ui.set_width(210.0);
-                group(ui, "Conditions", |ui| {
+                group(ui, t!("group-conditions"), |ui| {
                     crate::menu::weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
-                group(ui, "Vehicle", |ui| {
+                group(ui, t!("group-vehicle"), |ui| {
                     let lockheed = tour.is_none().then_some(&mut state.lockheed);
                     crate::menu::vehicle_options(ui, settings, lockheed);
                 });
@@ -359,12 +388,12 @@ pub fn career_ui(
             });
             ui.vertical(|ui| {
                 ui.set_width(260.0);
-                section(ui, "Pilots");
+                section(ui, t!("career-pilots"));
                 for p in &w.pilots {
                     let status = match p.status {
-                        Status::Active => "",
-                        Status::Kia => " (KIA)",
-                        Status::Pow => " (POW)",
+                        Status::Active => String::new(),
+                        Status::Kia => format!(" ({})", t!("career-kia.short")),
+                        Status::Pow => format!(" ({})", t!("career-pow.short")),
                     };
                     let text = format!("{}{status}", p.title());
                     if ui.selectable_label(w.selected.as_deref() == Some(&p.key()), text).clicked()
@@ -372,7 +401,7 @@ pub fn career_ui(
                         w.selected = Some(p.key());
                     }
                 }
-                section(ui, "New pilot");
+                section(ui, t!("career-new-pilot"));
                 crate::text_entry::text_entry(
                     ui,
                     "new_pilot",
@@ -380,14 +409,14 @@ pub fn career_ui(
                     24,
                     crate::text_entry::Charset::Name,
                     settings.vr,
-                    "Name",
+                    t!("career-name"),
                 );
                 let name = w.new_name.trim().to_string();
                 let taken = w.pilots.iter().any(|p| p.key() == file_key(&name));
                 if ui
                     .add_enabled(
                         !name.is_empty() && !taken && name.len() <= 24,
-                        egui::Button::new("ENLIST"),
+                        egui::Button::new(t!("career-enlist")),
                     )
                     .clicked()
                 {
@@ -402,75 +431,74 @@ pub fn career_ui(
                 let Some(p) =
                     w.selected.as_ref().and_then(|k| w.pilots.iter_mut().find(|p| p.key() == *k))
                 else {
-                    ui.label(egui::RichText::new("Select or enlist a pilot").color(DIM));
+                    ui.label(egui::RichText::new(t!("career-select")).color(DIM));
                     return;
                 };
-                section(ui, "Service record");
+                section(ui, t!("career-service-record"));
                 egui::Grid::new("record").num_columns(2).spacing([14.0, 4.0]).show(ui, |ui| {
                     let rows = [
-                        ("RANK", RANKS[p.rank()].0.to_string()),
-                        ("POINTS", p.points.to_string()),
-                        ("SORTIES", p.sorties.to_string()),
-                        ("TOURS", p.tours_completed.to_string()),
+                        (t!("career-rank"), rank_name(p.rank()).to_string()),
+                        (t!("career-points"), p.points.to_string()),
+                        (t!("career-sorties"), p.sorties.to_string()),
+                        (t!("career-tours"), p.tours_completed.to_string()),
                         (
-                            "STATUS",
-                            match p.status {
-                                Status::Active => "Active duty",
-                                Status::Kia => "Killed in action",
-                                Status::Pow => "Prisoner of war",
-                            }
+                            t!("career-status"),
+                            t!(match p.status {
+                                Status::Active => "career-active",
+                                Status::Kia => "career-kia",
+                                Status::Pow => "career-pow",
+                            })
                             .to_string(),
                         ),
                     ];
                     for (k, v) in rows {
                         ui.label(egui::RichText::new(k).size(14.0).color(DIM));
-                        ui.label(
-                            egui::RichText::new(v.to_ascii_uppercase()).size(18.0).color(GREEN),
-                        );
+                        ui.label(egui::RichText::new(v.to_uppercase()).size(18.0).color(GREEN));
                         ui.end_row();
                     }
                 });
                 if !p.medals.is_empty() {
-                    section(ui, "Decorations");
+                    section(ui, t!("career-decorations"));
                     for (m, n) in &p.medals {
-                        ui.label(if *n > 1 { format!("{m} x{n}") } else { m.clone() });
+                        let m = medal_name(m);
+                        ui.label(if *n > 1 { format!("{m} x{n}") } else { m.to_string() });
                     }
                 }
-                section(ui, "Tour of duty");
+                section(ui, t!("career-tour-of-duty"));
                 match (&p.tour, p.status) {
                     (Some(t), Status::Active) => {
-                        ui.label(format!(
-                            "{}  {}  sortie {} of {}  {} points",
-                            THEATERS[t.theater].1,
-                            stealth_mission::ROE_NAMES[t.roe as usize],
-                            t.sortie + 1,
-                            t.length,
-                            t.points
+                        ui.label(t!(
+                            "career-tour-line",
+                            theater = crate::i18n::theater_name(t.theater),
+                            situation = crate::i18n::roe_name(t.roe),
+                            sortie = t.sortie + 1,
+                            length = t.length,
+                            points = t.points
                         ));
                         ui.label(
-                            egui::RichText::new(format!(
-                                "{} targets destroyed so far",
-                                t.damage.positions.len()
+                            egui::RichText::new(t!(
+                                "career-destroyed",
+                                count = t.damage.positions.len()
                             ))
                             .small()
                             .color(DIM),
                         );
-                        if ui.add(big_button("FLY NEXT SORTIE").fill(DIM)).clicked() {
+                        if ui.add(big_button(t!("career-fly-next")).fill(DIM)).clicked() {
                             state.start_career(p, t);
                             state.mission_screen = true;
                             close = true;
                         }
                     }
                     (None, Status::Active) => {
-                        ui.label(egui::RichText::new(format!(
-                            "{TOUR_LENGTH} sorties in {}, {}, against {} opponents",
-                            THEATERS[state.theater].1,
-                            stealth_mission::ROE_NAMES[state.roe as usize],
-                            stealth_mission::OPPONENT_NAMES[state.opponents as usize]
-                                .to_ascii_lowercase()
+                        ui.label(egui::RichText::new(t!(
+                            "career-new-tour",
+                            count = TOUR_LENGTH,
+                            theater = crate::i18n::theater_name(state.theater),
+                            situation = crate::i18n::roe_name(state.roe),
+                            opponents = crate::i18n::opponents_name(state.opponents).to_lowercase()
                         )))
-                        .on_hover_text("What you destroy stays destroyed for the rest of the tour");
-                        if ui.add(big_button("START TOUR").fill(DIM)).clicked() {
+                        .on_hover_text(t!("career-new-tour.facts"));
+                        if ui.add(big_button(t!("career-start-tour")).fill(DIM)).clicked() {
                             let t = Tour {
                                 theater: state.theater,
                                 roe: state.roe,
@@ -489,19 +517,19 @@ pub fn career_ui(
                         }
                     }
                     _ => {
-                        ui.label(egui::RichText::new("Retired from active duty").color(AMBER));
+                        ui.label(egui::RichText::new(t!("career-retired")).color(AMBER));
                     }
                 }
-                section(ui, "Last sorties");
+                section(ui, t!("career-last-sorties"));
                 egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
                     for s in p.history.iter().rev().take(20) {
                         ui.label(
                             egui::RichText::new(format!(
                                 "{}  {}  {:+}  {}",
                                 s.date,
-                                s.outcome,
+                                outcome_name(&s.outcome),
                                 s.points,
-                                s.medal.clone().unwrap_or_default()
+                                s.medal.as_deref().map(medal_name).unwrap_or_default()
                             ))
                             .small(),
                         );
@@ -515,12 +543,12 @@ pub fn career_ui(
         ui.add_space(8.0);
         ui.separator();
         ui.horizontal(|ui| {
-            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+            if ui.add(big_button(t!("back"))).on_hover_text(t!("menu-back-main")).clicked() {
                 close = true;
             }
             if ui
-                .add(big_button("OPTIONS"))
-                .on_hover_text("Game, graphics, sound and controls")
+                .add(big_button(t!("menu-options")))
+                .on_hover_text(t!("menu-options.short"))
                 .clicked()
             {
                 options.open = true;

@@ -13,6 +13,7 @@ use stealth_campaign::{
     Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceStock, FighterTask,
     Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
 };
+use stealth_i18n::{Text, text};
 use stealth_mission::{GameData, Mission};
 use stealth_sim::station::{SavedStock, StationCmd};
 use stealth_sim::{PilotEvent, PlayerState, Sim, SimEvent, oflags};
@@ -34,9 +35,9 @@ const PLACE_TAKEN: i32 = 30;
 pub struct Debrief {
     pub record: SortieRecord,
     /// How the flight ended.
-    pub title: String,
+    pub title: Text,
     /// What happened in the campaign meanwhile.
-    pub news: Vec<String>,
+    pub news: Vec<Text>,
 }
 
 /// What the players have to know.
@@ -209,7 +210,7 @@ impl Host {
         base: Option<u16>,
         aircraft: Aircraft,
         stores: Option<Stores>,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::TakeMission { offer, base, aircraft })?;
         // Off to fly: his console is unmanned.
         sim.leave_station(player.0);
@@ -244,7 +245,7 @@ impl Host {
         sim: &mut Sim,
         player: PlayerId,
         offer: u32,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::RequestSupport { offer })?;
         Ok(self.apply(sim, events))
     }
@@ -255,7 +256,7 @@ impl Host {
         sim: &mut Sim,
         player: PlayerId,
         place: PlaceId,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::OrderInsertion { place })?;
         Ok(self.apply(sim, events))
     }
@@ -267,7 +268,7 @@ impl Host {
         player: PlayerId,
         offer: Option<u32>,
         base: u16,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::Select { offer, base })?;
         Ok(self.apply(sim, events))
     }
@@ -280,7 +281,7 @@ impl Host {
         offer: u32,
         base: u16,
         route: Vec<RoutePoint>,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::Plan { offer, base, route })?;
         Ok(self.apply(sim, events))
     }
@@ -299,9 +300,9 @@ impl Host {
         sim: &mut Sim,
         player: PlayerId,
         cmd: StationCmd,
-    ) -> Result<Vec<HostEvent>, String> {
+    ) -> Result<Vec<HostEvent>, Text> {
         if matches!(cmd, StationCmd::Man { .. }) && self.state.sortie(player).is_some() {
-            return Err("Finish your sortie first".into());
+            return Err(text!("ce-finish-sortie"));
         }
         if cmd == StationCmd::RequestResupply {
             return self.request_resupply(sim, player);
@@ -316,11 +317,11 @@ impl Host {
         &mut self,
         sim: &mut Sim,
         player: PlayerId,
-    ) -> Result<Vec<HostEvent>, String> {
-        let k = sim.station_of(player.0).ok_or("Not at a console")?.unit as usize;
+    ) -> Result<Vec<HostEvent>, Text> {
+        let k = sim.station_of(player.0).ok_or_else(|| text!("st-not-at-a-console"))?.unit as usize;
         let u = sim.aaa_units()[k];
         if sim.stockpile(k) >= stealth_sim::station::initial_stock(u.kind) {
-            return Err("The stockpile is full".into());
+            return Err(text!("ce-stockpile-full"));
         }
         let patriot = u.kind == stealth_sim::aaa::AaaKind::PatriotRadar;
         let cmd = Command::RequestResupply { aaa: k as u32, x: u.x, y: u.y, patriot };
@@ -450,7 +451,7 @@ impl Host {
                             .collect();
                         out.push(HostEvent::SortieFinished {
                             player,
-                            debrief: Debrief { record, title: title.into(), news },
+                            debrief: Debrief { record, title: text!(title), news },
                         });
                     }
                 }

@@ -15,6 +15,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use serde::{Deserialize, Serialize};
+use stealth_i18n::t;
 use stealth_mission::Mission;
 use stealth_sim::Sim;
 
@@ -237,11 +238,11 @@ fn save(
     menu.save_note = Some(match written {
         Ok(bytes) => {
             info!("mission saved: {name} ({} kB)", bytes / 1024);
-            "SAVED"
+            stealth_i18n::tf!("fm-saved")
         }
         Err(e) => {
             warn!("saving the mission: {e:#}");
-            "NOT SAVED"
+            stealth_i18n::tf!("fm-not-saved")
         }
     });
 }
@@ -357,11 +358,11 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
     let mut load = None;
     let width = crate::menu::wide_width(ctx).min(900.0);
     menu_window(ctx, "Saved missions", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("SAVED MISSIONS").heading().color(BRIGHT));
-        ui.label(egui::RichText::new("Saved in flight from the menu: SAVE MISSION").color(DIM));
+        ui.label(egui::RichText::new(t!("saves-title")).heading().color(BRIGHT));
+        ui.label(egui::RichText::new(t!("saves-subtitle")).color(DIM));
         ui.separator();
         if w.saves.is_empty() {
-            ui.label(egui::RichText::new("No saved missions").color(DIM));
+            ui.label(egui::RichText::new(t!("saves-none")).color(DIM));
         }
         egui::ScrollArea::vertical()
             .id_salt("mission_saves")
@@ -376,37 +377,38 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
                                     let small = |ui: &mut egui::Ui, text: String| {
                                         ui.label(egui::RichText::new(text).small().color(DIM));
                                     };
+                                    let time = format!(
+                                        "{}:{:02}",
+                                        s.mission_seconds / 60,
+                                        s.mission_seconds % 60
+                                    );
                                     small(
                                         ui,
-                                        format!(
-                                            "{}  -  {}  -  mission time {}:{:02}",
-                                            s.theater,
-                                            s.aircraft.name(),
-                                            s.mission_seconds / 60,
-                                            s.mission_seconds % 60,
+                                        t!(
+                                            "saves-line",
+                                            theater = s.theater.as_str(),
+                                            aircraft = s.aircraft.name(),
+                                            time = time
                                         ),
                                     );
-                                    small(ui, format!("Saved {}", saved_at(s.saved_at)));
+                                    small(ui, t!("saves-saved-at", date = saved_at(s.saved_at)));
                                 });
                                 format!("{}, {}", s.theater, s.title)
                             }
                             None => {
-                                ui.label(
-                                    egui::RichText::new("Unreadable save (another version)")
-                                        .color(AMBER),
-                                );
+                                ui.label(egui::RichText::new(t!("saves-unreadable")).color(AMBER));
                                 name.clone()
                             }
                         };
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
-                                .add(big_button("DELETE"))
-                                .on_hover_text("Delete this save")
+                                .add(big_button(t!("delete")))
+                                .on_hover_text(t!("saves-delete.facts"))
                                 .clicked()
                             {
                                 w.confirm_delete = Some((name.clone(), label));
                             }
-                            if summary.is_some() && ui.add(big_button("LOAD")).clicked() {
+                            if summary.is_some() && ui.add(big_button(t!("menu-load"))).clicked() {
                                 load = Some(name.clone());
                             }
                         });
@@ -418,15 +420,15 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
             ui.colored_label(AMBER, e);
         }
         ui.add_space(6.0);
-        if ui.add(big_button("BACK")).on_hover_text("Back to the single mission screen").clicked() {
+        if ui.add(big_button(t!("back"))).on_hover_text(t!("saves-back.facts")).clicked() {
             close = true;
         }
     });
     if let Some((name, label)) = w.confirm_delete.clone() {
-        let answer = crate::campaign::delete_popup(ctx, "SAVE", &label, escape);
+        let answer = crate::campaign::delete_popup(ctx, "save", &label, escape);
         if answer == Some(true) {
             if let Err(e) = stealth_host::store::remove(&key(&name)) {
-                w.error = Some(format!("The save could not be deleted: {e:#}"));
+                w.error = Some(t!("cm-save-undeletable", error = format!("{e:#}")));
             }
             w.saves = list();
         }
@@ -440,7 +442,7 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
     let save = match read(&load?) {
         Ok(s) => s,
         Err(e) => {
-            w.error = Some(format!("The save could not be read: {e:#}"));
+            w.error = Some(t!("cm-save-unreadable", error = format!("{e:#}")));
             return None;
         }
     };

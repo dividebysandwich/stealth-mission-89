@@ -4,6 +4,7 @@ use crate::record::{flight_points, settle};
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, Report, WorldView};
+use stealth_i18n::{Text, text};
 
 impl CampaignState {
     pub(crate) fn take_mission(
@@ -12,22 +13,22 @@ impl CampaignState {
         offer: u32,
         base: Option<ObjectId>,
         aircraft: Aircraft,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         let Some(o) = self.board.iter().find(|o| o.id == offer).cloned() else {
-            return Err("That mission is no longer on the board".into());
+            return Err(text!("ce-off-board"));
         };
         if !o.kind.flyable_by(aircraft) {
-            return Err(o.kind.not_flyable(aircraft).into());
+            return Err(o.kind.not_flyable(aircraft));
         }
         if self.sortie(player).is_some() {
-            return Err("Already flying a sortie".into());
+            return Err(text!("ce-already-flying"));
         }
         if self.objective_met(&o.objective, &Progress::default()) {
-            return Err("That target is already destroyed".into());
+            return Err(text!("ce-target-destroyed"));
         }
         let base = base.unwrap_or(o.base);
         if !self.player_bases().contains(&base) {
-            return Err("Not a friendly base".into());
+            return Err(text!("ce-not-friendly-base"));
         }
         let mut progress = Progress { heli: aircraft.transport(), ..Progress::default() };
         let mut ev = Vec::new();
@@ -45,7 +46,7 @@ impl CampaignState {
             progress,
         };
         let from = self.site(base).map(|s| s.name.clone()).unwrap_or_default();
-        self.note(format!("{} from {from}", o.title));
+        self.note(text!("cl-sortie-from", title = o.title.clone(), base = from));
         self.slot_mut(player).sortie = Some(sortie.clone());
         self.leave_plans(player);
         match self.plans.iter_mut().find(|p| p.offer == offer) {
@@ -138,13 +139,18 @@ impl CampaignState {
             achieved_at: s.progress.achieved_at,
         };
         let verdict = match result {
-            SortieResult::Success => "objective achieved",
-            SortieResult::Failed => "objective not achieved",
-            SortieResult::Pending if raid.is_some() => "waiting for the raid",
-            SortieResult::Pending if downed.is_some() => "waiting for the rescue",
-            SortieResult::Pending => "waiting for the insertion",
+            SortieResult::Success => "cl-verdict-success",
+            SortieResult::Failed => "cl-verdict-failed",
+            SortieResult::Pending if raid.is_some() => "cl-verdict-raid",
+            SortieResult::Pending if downed.is_some() => "cl-verdict-rescue",
+            SortieResult::Pending => "cl-verdict-insertion",
         };
-        self.note(format!("{}: {} - {verdict}", s.offer.title, end.name()));
+        self.note(text!(
+            "cl-sortie-ended",
+            title = s.offer.title.clone(),
+            end = text!(end.id()),
+            verdict = text!(verdict)
+        ));
         self.history.push(record.clone());
         ev.extend([CampaignEvent::SortieFinished { player, record }, self.plans_changed()]);
         match end {
@@ -167,16 +173,16 @@ impl CampaignState {
         player: PlayerId,
         offer: Option<u32>,
         base: ObjectId,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         if let Some(offer) = offer {
             if !self.board.iter().any(|o| o.id == offer) {
-                return Err("That mission is no longer on the board".into());
+                return Err(text!("ce-off-board"));
             }
             if self.sortie(player).is_some() {
-                return Err("Already flying a sortie".into());
+                return Err(text!("ce-already-flying"));
             }
             if !self.player_bases().contains(&base) {
-                return Err("Not a friendly base".into());
+                return Err(text!("ce-not-friendly-base"));
             }
         }
         for p in &mut self.plans {
@@ -211,21 +217,21 @@ impl CampaignState {
         offer: u32,
         base: ObjectId,
         route: Vec<RoutePoint>,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         if route.len() > ROUTE_POINTS {
-            return Err("Too many route points".into());
+            return Err(text!("ce-too-many-points"));
         }
         if !self.player_bases().contains(&base) {
-            return Err("Not a friendly base".into());
+            return Err(text!("ce-not-friendly-base"));
         }
         let Some(p) = self.plans.iter_mut().find(|p| p.offer == offer) else {
-            return Err("That mission is no longer on the board".into());
+            return Err(text!("ce-off-board"));
         };
         if !p.crew.contains(&player) {
-            return Err("Not planning that mission".into());
+            return Err(text!("ce-not-planning"));
         }
         if !p.flying.is_empty() {
-            return Err("The route is locked while the mission is flown".into());
+            return Err(text!("ce-route-locked"));
         }
         if p.base != base {
             p.base = base;
@@ -394,14 +400,14 @@ impl CampaignState {
         for id in captures {
             if let Some(k) = self.insertions.iter().position(|i| i.id == id) {
                 let name = self.places[self.insertions[k].place as usize].name.clone();
-                ev.push(CampaignEvent::Message(format!("Troops are out at {name}")));
+                ev.push(CampaignEvent::Message(text!("cl-troops-out", place = name)));
                 self.capture(k, ev);
             }
         }
         for downed in boarded {
             if let Some(d) = self.downed.iter_mut().find(|d| d.id == downed) {
                 d.state = DownedState::Aboard;
-                let text = format!("{} is aboard: bring him home", d.name);
+                let text = text!("cl-aboard", pilot = d.name.as_str());
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
             }
@@ -426,7 +432,7 @@ impl CampaignState {
             if let Objective::Resupply { request } = objective {
                 self.resupplied(request, Some(player), ev);
             }
-            self.note(format!("{title}: objective achieved"));
+            self.note(text!("cl-objective", title = title.clone()));
             ev.push(CampaignEvent::ObjectiveAchieved { player, title });
             self.package(player, ev);
         }
@@ -553,7 +559,7 @@ impl CampaignState {
                 s.spotted = true;
             }
         }
-        self.note(format!("Recon photos of {name}: its defences are mapped"));
+        self.note(text!("cl-recon", place = name));
         ev.push(CampaignEvent::IntelGained { place, objects });
     }
 }

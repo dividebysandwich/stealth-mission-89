@@ -5,6 +5,7 @@ use stealth_campaign::{
     AaaView, CampaignSetup, CampaignState, FlightView, MissionKind, PlayerId, PlayerPos, Report,
     Side, Sortie, SortieEnd, WorldView,
 };
+use stealth_i18n::t;
 use stealth_mission::{GameData, Mission, MissionKind as GenKind, MissionSettings, Seed};
 use stealth_sim::{Sim, fflags, oflags};
 
@@ -121,17 +122,18 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
         .collect()
 }
 
-/// How a sortie ended, from the simulation's end record.
+/// How a sortie ended, from the simulation's end record (the message id of the debrief's
+/// title).
 pub fn sortie_end(e: &stealth_sim::MissionEnd) -> (SortieEnd, &'static str) {
     match (e.outcome, e.landing_type) {
-        (0, 2) => (SortieEnd::Ejected, "Ejected"),
-        (0, 4) => (SortieEnd::Rescued, "Ejected - extracted by the rescue helicopter"),
-        (8, _) => (SortieEnd::Captured, "Ejected - captured by the enemy"),
-        (0, _) => (SortieEnd::Landed, "Sortie ended on the ground"),
-        (6, _) => (SortieEnd::Crashed, "Ejection failed - the pilot is recovered"),
-        (7, _) => (SortieEnd::Aborted, "Sortie aborted"),
-        (5, _) => (SortieEnd::Crashed, "Bad landing"),
-        _ => (SortieEnd::Crashed, "Shot down / crashed - the pilot is recovered"),
+        (0, 2) => (SortieEnd::Ejected, "debrief-sortie-ejected"),
+        (0, 4) => (SortieEnd::Rescued, "debrief-sortie-rescued"),
+        (8, _) => (SortieEnd::Captured, "debrief-sortie-captured"),
+        (0, _) => (SortieEnd::Landed, "debrief-sortie-landed"),
+        (6, _) => (SortieEnd::Crashed, "debrief-sortie-ejection-failed"),
+        (7, _) => (SortieEnd::Aborted, "debrief-sortie-aborted"),
+        (5, _) => (SortieEnd::Crashed, "debrief-sortie-bad-landing"),
+        _ => (SortieEnd::Crashed, "debrief-sortie-crashed"),
     }
 }
 
@@ -201,7 +203,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     let (object, shape_name, area) = primary_target(state, &o.objective);
     let p = &mut m.primary;
     // "SEAD - Wittstock": the place (the kneeboard puts the kind before it).
-    p.place_name = o.title.split_once(" - ").map_or(o.title.clone(), |t| t.1.to_string());
+    p.place_name = o.title.arg_text("place").unwrap_or_else(|| o.title.tr());
     p.position = object.and_then(|k| state.site(k)).map_or(target, |s| MapPoint { x: s.x, y: s.y });
     p.mission_type = match o.kind {
         MissionKind::Recon => 1,
@@ -222,20 +224,22 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     s.place_name = String::new();
     s.special_model = None;
     let what = match o.objective {
-        stealth_campaign::Objective::Battery { .. } => BATTERY_TASK,
+        stealth_campaign::Objective::Battery { .. } => t!(BATTERY_TASK),
         _ if sortie.aircraft.transport() => describe_heli(o.kind),
         _ => describe(o.kind),
     };
-    m.briefing.title = o.title.clone();
+    // In this process's language: the briefing is built where it is shown.
+    let title = o.title.tr();
+    m.briefing.title = title.clone();
     m.briefing.primary_summary = summary(state, sortie);
     m.briefing.primary_objective = what.to_string();
     m.briefing.secondary_summary = String::new();
     m.briefing.secondary_objective = String::new();
-    m.orders.primary = o.title.to_ascii_uppercase();
+    m.orders.primary = title.to_uppercase();
     m.orders.secondary = String::new();
     m.orders.return_to = format!("RETURN TO {}", m.landing.name.to_ascii_uppercase());
     m.orders.lines = vec![
-        OrdersLine { text: o.title.clone(), color: 15 },
+        OrdersLine { text: title.clone(), color: 15 },
         OrdersLine { text: what.into(), color: 11 },
         OrdersLine { text: m.orders.return_to.clone(), color: 11 },
     ];
@@ -266,8 +270,8 @@ pub fn airborne(kind: MissionKind) -> bool {
     )
 }
 
-/// What an enemy forward battery's offer asks for.
-pub const BATTERY_TASK: &str = "Destroy the guns of the enemy battery pushed forward near our base";
+/// What an enemy forward battery's offer asks for (message id).
+pub const BATTERY_TASK: &str = "brief-battery-task";
 
 /// The world object an objective is about (None: aircraft or an area), what it is for the
 /// kneeboard, and whether it is an area target.
@@ -282,52 +286,43 @@ fn primary_target(
         | Objective::AntiShip { ship: object }
         | Objective::Strike { airfield: object, .. } => Some(object),
         Objective::Sead { ref sites, .. } => sites.first().copied(),
-        Objective::Cas { .. } => return (None, "GUNS AND MANPADS".into(), true),
-        Objective::Battery { .. } => return (None, "GUN BATTERY".into(), true),
+        Objective::Cas { .. } => return (None, t!("brief-shape-guns").into(), true),
+        Objective::Battery { .. } => return (None, t!("brief-shape-battery").into(), true),
         _ => return (None, String::new(), false),
     };
     let name = object.and_then(|k| state.site(k)).map_or(String::new(), |s| {
-        match s.kind {
-            SiteKind::Airfield => "AIRFIELD",
-            SiteKind::Carrier => "CARRIER",
-            SiteKind::City => "CITY",
-            SiteKind::Sam => "SAM SITE",
-            SiteKind::Ship => "SHIP",
-        }
+        t!(match s.kind {
+            SiteKind::Airfield => "brief-shape-airfield",
+            SiteKind::Carrier => "brief-shape-carrier",
+            SiteKind::City => "brief-shape-city",
+            SiteKind::Sam => "brief-shape-sam",
+            SiteKind::Ship => "brief-shape-ship",
+        })
         .into()
     });
     (object, name, false)
 }
 
-/// The intelligence summary of a sortie's target.
+/// The intelligence summary of a sortie's target, in this process's language.
 pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
     use stealth_campaign::Objective;
     let o = &sortie.offer;
     let site = |k: u16| state.site(k).map_or(String::new(), |s| s.name.clone());
     match o.objective {
-        Objective::Recon { object, .. } => format!("Photograph {} and its defences.", site(object)),
-        Objective::Sead { ref sites, .. } => {
-            format!("{} SAM sites and radars defend the place.", sites.len())
-        }
-        Objective::Cas { ref aaa, .. } => {
-            format!("{} guns and MANPADS teams defend the place.", aaa.len())
-        }
-        Objective::Battery { ref aaa, .. } => format!(
-            "An enemy battery pushed forward: {} guns and a MANPADS team. Destroy them.",
-            aaa.len()
-        ),
-        Objective::Strike { airfield, .. } => format!("The airfield of {}.", site(airfield)),
-        Objective::Interdict { object, .. } => {
-            format!("The city of {}: its stores and factories feed the enemy.", site(object))
-        }
-        Objective::AntiShip { .. } => "An enemy ship off the coast.".into(),
+        Objective::Recon { object, .. } => t!("brief-recon", place = site(object)),
+        Objective::Sead { ref sites, .. } => t!("brief-sead", count = sites.len()),
+        Objective::Cas { ref aaa, .. } => t!("brief-cas", count = aaa.len()),
+        Objective::Battery { ref aaa, .. } => t!("brief-battery", count = aaa.len()),
+        Objective::Strike { airfield, .. } => t!("brief-strike", place = site(airfield)),
+        Objective::Interdict { object, .. } => t!("brief-interdict", place = site(object)),
+        Objective::AntiShip { .. } => t!("brief-anti-ship").into(),
         Objective::Resupply { request } => match state.supply_request(request) {
-            Some(r) => format!("The {} needs a new stockpile. {}", r.title(), describe(o.kind)),
+            Some(r) => t!("brief-resupply", unit = r.title().tr(), task = describe(o.kind)),
             None => describe(o.kind).into(),
         },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {
             match state.insertion_status(insertion) {
-                Some(t) => format!("{t}. {}", describe(o.kind)),
+                Some(s) => t!("brief-status", status = s.tr(), task = describe(o.kind)),
                 None => describe(o.kind).into(),
             }
         }
@@ -335,53 +330,16 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
     }
 }
 
-/// What a kind of mission asks the pilot for.
+/// What a kind of mission asks the pilot for, in this process's language.
 pub fn describe(kind: MissionKind) -> &'static str {
-    match kind {
-        MissionKind::Recon => {
-            "Photograph the target: its defences are then known (spotted from twice the range, shorter radar range) for an hour"
-        }
-        MissionKind::Sead => "Destroy the SAM sites and radars defending the place",
-        MissionKind::Cap => {
-            "Hold the air over the point for 10 minutes or shoot down two enemy aircraft there; a friendly aircraft lost there starts the clock again"
-        }
-        MissionKind::Cas => "Destroy the guns and MANPADS teams around the place",
-        MissionKind::AntiShip => "Sink the enemy ship",
-        MissionKind::Strike => {
-            "Destroy the airfield: no enemy aircraft take off from it until it is repaired"
-        }
-        MissionKind::Escort => "Cover the insertion helicopters until they land",
-        MissionKind::Insertion => {
-            "Helicopters fly troops in from the nearest friendly base; one landing takes the place"
-        }
-        MissionKind::Intercept => {
-            "Shoot down the enemy's troop helicopters before they land: one landing takes the place"
-        }
-        MissionKind::Defend => "Shoot down the enemy strike aircraft before they bomb the airfield",
-        MissionKind::Interdiction => {
-            "Strike the enemy's rear: a city costs it materiel at once and its income until rebuilt, an airfield its aircraft there"
-        }
-        MissionKind::Csar => {
-            "Hold the air within 5 km of the downed pilot for 2 minutes while the helicopter picks him up"
-        }
-        MissionKind::Awacs => {
-            "Shoot down the enemy AWACS: while it is up the enemy sends more patrols, and sends them at you"
-        }
-        MissionKind::Resupply => {
-            "Fly the stockpile from the airfield to the air defence unit: hover below 10 m within 50 m of it for 10 s while the load goes down"
-        }
-    }
+    t!(&format!("brief-task-{}", kind.name().to_ascii_lowercase()))
 }
 
 /// What a kind of mission asks of the helicopter pilot (insertions and rescues).
 pub fn describe_heli(kind: MissionKind) -> &'static str {
     match kind {
-        MissionKind::Insertion => {
-            "Fly the troops in, your wingmen with you: land within 1.5 km of the target and stay on the ground for 15 s while they get out to take the place"
-        }
-        MissionKind::Csar => {
-            "Land within 200 m of the downed pilot and wait 30 s for him to board, then land him at a friendly base"
-        }
+        MissionKind::Insertion => t!("brief-task-heli-insertion"),
+        MissionKind::Csar => t!("brief-task-heli-csar"),
         k => describe(k),
     }
 }

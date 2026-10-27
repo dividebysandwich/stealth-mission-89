@@ -3,6 +3,7 @@
 //! and the drones that got through.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::text;
 
 use crate::Sim;
 use crate::math::{approx, bearing, cdiv, clamp_q, s16};
@@ -118,9 +119,9 @@ impl Sim {
             let place = self.place_name(u.wp.max(0) as usize);
             if w.nuclear {
                 w.nuclear_hit = true;
-                self.msg(format!("Drone hit {place} NPP"));
+                self.msg(text!("sim-drone-hit-npp", place = place.to_string()));
             } else {
-                self.msg(format!("Drone hit {place}"));
+                self.msg(text!("sim-drone-hit", place = place.to_string()));
             }
             self.log_event(0x0D, u.spec);
         }
@@ -151,7 +152,7 @@ impl Sim {
         if ok {
             self.mark_target_reached(0);
         } else {
-            self.msg(format!("Defense failed - {leaked} drones through"));
+            self.msg(text!("sim-defense-failed", count = leaked));
         }
     }
 }

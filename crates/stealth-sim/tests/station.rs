@@ -245,7 +245,7 @@ fn weapons_hold_on_a_friendly_track() {
     hold(&mut sim, friend, (t.x, t.y, 4000));
     sim.station_command(ME, StationCmd::Lock(Some(friend as u16))).unwrap();
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
-    assert!(e.contains("Friendly"), "{e}");
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("Friendly"), "{e}");
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn a_gepard_burst_brings_down_a_low_raider() {
     hold(&mut sim, f, (at.x + 0x200, at.y, 1500));
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let e = sim.station_command(ME, StationCmd::Burst).unwrap_err();
-    assert!(e.contains("range"), "{e}");
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
     let mut bursts = 0;
     let mut down = false;
     for _ in 0..40 {
@@ -351,7 +351,7 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     // One press, one burst: not another while it fires.
     sim.station_command(ME, StationCmd::Burst).unwrap();
     let e = sim.station_command(ME, StationCmd::Burst).unwrap_err();
-    assert!(e.contains("Firing"), "{e}");
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("Firing"), "{e}");
     run(&mut sim, 3);
     assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - BURST);
     assert_eq!(sim.aaa_units()[g].burst, 0);
@@ -428,7 +428,7 @@ fn no_shot_beyond_the_pac3_reach() {
     hold(&mut sim, f, (at.x + 5760, at.y, 16000));
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
-    assert!(e.contains("range"), "{e}");
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
 }
 
 #[test]

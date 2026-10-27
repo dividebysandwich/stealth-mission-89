@@ -4,6 +4,7 @@
 use crate::CampaignEvent;
 use crate::state::*;
 use crate::tuning::*;
+use stealth_i18n::text;
 
 /// A pilot's totals over the campaign.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -156,11 +157,12 @@ impl CampaignState {
             return;
         }
         let what: Vec<&str> = kinds.iter().map(|k| k.name()).collect();
-        let text = format!(
-            "Package over {}: {} - +{PACKAGE_BONUS} for {}",
-            self.places[place as usize].name,
-            what.join(" + "),
-            names.join(", ")
+        let text = text!(
+            "cl-package",
+            place = self.places[place as usize].name.as_str(),
+            kinds = what.join(" + "),
+            bonus = PACKAGE_BONUS as i64,
+            pilots = names.join(", ")
         );
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));

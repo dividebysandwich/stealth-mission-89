@@ -307,20 +307,21 @@ impl Weather {
     }
 
     fn layer_name(&self, kind: CloudKind) -> &'static str {
-        match kind {
-            CloudKind::Cumulus => "cumulus",
-            CloudKind::Cumulonimbus => "cumulonimbus",
-            CloudKind::Stratus if self.stratus.base_ft >= 6500 => "altostratus",
-            CloudKind::Stratus if self.stratus.cover >= 90 => "stratus",
-            CloudKind::Stratus => "stratocumulus",
-        }
+        stealth_i18n::t!(match kind {
+            CloudKind::Cumulus => "wx-cumulus",
+            CloudKind::Cumulonimbus => "wx-cumulonimbus",
+            CloudKind::Stratus if self.stratus.base_ft >= 6500 => "wx-altostratus",
+            CloudKind::Stratus if self.stratus.cover >= 90 => "wx-stratus",
+            CloudKind::Stratus => "wx-stratocumulus",
+        })
     }
 
     /// The briefing line, e.g. "Weather: broken - cumulus 55% from 3500 ft, stratocumulus
-    /// 40% 9000-11000 ft, visibility 25 km."
+    /// 40% 9000-11000 ft, visibility 25 km." (in the player's language).
     pub fn describe(&self) -> String {
+        use stealth_i18n::t;
         if !self.any() {
-            return format!("Weather: clear, visibility {} km.", self.vis_km);
+            return t!("wx-clear", vis = self.vis_km);
         }
         let mut parts = Vec::new();
         for (kind, l) in [
@@ -333,16 +334,20 @@ impl Weather {
             }
             let name = self.layer_name(kind);
             parts.push(match kind {
-                CloudKind::Stratus => format!("{name} {}% {}-{} ft", l.cover, l.base_ft, l.top_ft),
-                _ => format!("{name} {}% from {} ft", l.cover, l.base_ft),
+                CloudKind::Stratus => {
+                    t!(
+                        "wx-layer-top",
+                        name = name,
+                        cover = l.cover,
+                        base = l.base_ft,
+                        top = l.top_ft
+                    )
+                }
+                _ => t!("wx-layer", name = name, cover = l.cover, base = l.base_ft),
             });
         }
-        let preset = if self.sky == Sky::Storm {
-            "thunderstorms".to_string()
-        } else {
-            self.sky.name().to_ascii_lowercase()
-        };
-        format!("Weather: {preset} - {}, visibility {} km.", parts.join(", "), self.vis_km)
+        let preset = t!(&format!("wx-sky-{}", self.sky.name().to_ascii_lowercase()));
+        t!("wx-line", sky = preset, layers = parts.join(", "), vis = self.vis_km)
     }
 
     fn grid(kind: CloudKind) -> i32 {

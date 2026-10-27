@@ -113,6 +113,6 @@ fn goodbye(mut exit: MessageReader<AppExit>, mut link: ResMut<NetLink>) {
     }
     match &mut *link {
         NetLink::Client(client) => client.leave(),
-        NetLink::Host(server) => server.shutdown("The host left the game"),
+        NetLink::Host(server) => server.shutdown(stealth_i18n::text!("net-host-left")),
     }
 }

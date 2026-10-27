@@ -5,6 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
+use stealth_i18n::t;
 use stealth_sim::aaa::AaaKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
@@ -260,34 +261,34 @@ fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
 
 /// The legend lines of the picture.
 pub fn legend(ui: &mut egui::Ui) {
-    map_draw::legend(ui, "Friendly aircraft", |p, c0| {
+    map_draw::legend(ui, t!("pic-friendly-aircraft"), |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
         aircraft(p, c0, &a, FRIENDLY_BLUE);
     });
-    map_draw::legend(ui, "Friendly helicopter", |p, c0| {
+    map_draw::legend(ui, t!("pic-friendly-helicopter"), |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: true };
         aircraft(p, c0, &a, FRIENDLY_BLUE);
     });
-    map_draw::legend(ui, "Enemy fighter (on radar)", |p, c0| {
+    map_draw::legend(ui, t!("pic-enemy-fighter"), |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
         aircraft(p, c0, &a, MISSILE_RED);
     });
-    map_draw::legend(ui, "Patriot battery", |p, c0| defence(p, c0, AaaKind::PatriotRadar));
+    map_draw::legend(ui, t!("ops-patriot"), |p, c0| defence(p, c0, AaaKind::PatriotRadar));
     map_draw::legend(ui, "Gepard / Stinger", |p, c0| {
         defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard);
         defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads);
     });
-    map_draw::legend(ui, "SAM site (known)", |p, c0| {
+    map_draw::legend(ui, t!("pic-sam-known"), |p, c0| {
         p.circle_filled(c0, 3.0, MISSILE_RED);
     });
-    map_draw::legend(ui, "Guns / MANPADS (known)", |p, c0| {
+    map_draw::legend(ui, t!("pic-guns-known"), |p, c0| {
         gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu);
         gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads);
     });
-    map_draw::legend(ui, "Reconned", |p, c0| {
+    map_draw::legend(ui, t!("pic-reconned"), |p, c0| {
         p.circle_stroke(c0, 6.0, egui::Stroke::new(1.0, BRIGHT));
     });
-    map_draw::legend(ui, "You", |p, c0| {
+    map_draw::legend(ui, t!("pic-you"), |p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));
     });
 }
@@ -316,14 +317,18 @@ pub fn pick(
         );
     }
     for s in &pic.sams {
-        consider(screen(s.x, s.y), UnitRef::Site(s.object), format!("{} site", s.name));
+        consider(
+            screen(s.x, s.y),
+            UnitRef::Site(s.object),
+            t!("pic-site", place = s.name.as_str()),
+        );
     }
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
     }
     for d in &pic.defences {
         let name = match d.kind {
-            AaaKind::PatriotRadar => "Patriot battery",
+            AaaKind::PatriotRadar => t!("ops-patriot"),
             k => k.name_on(true),
         };
         consider(screen(d.x, d.y), UnitRef::Aaa(d.index), name.to_string());

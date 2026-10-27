@@ -113,6 +113,9 @@ pub struct Settings {
     pub warning_volume: f32,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
+    /// `--lang <code>`: the language of the menus and messages (OPTIONS; the system's by
+    /// default).
+    pub language: stealth_i18n::Language,
 }
 
 /// Default VR cockpit size.
@@ -157,6 +160,20 @@ pub fn weather_arg(args: &[String]) -> Option<stealth_mission::Sky> {
 /// `--cloud-cover <percent>`: coverage of the main cloud layer.
 pub fn cover_arg(args: &[String]) -> Option<u8> {
     get(args, "--cloud-cover").and_then(|s| s.parse::<u8>().ok()).map(|c| c.min(100))
+}
+
+/// `--lang <code>`.
+pub fn language_arg() -> Option<stealth_i18n::Language> {
+    get(&args(), "--lang").and_then(|s| stealth_i18n::Language::parse(&s))
+}
+
+/// The system's language if the game has it, else English.
+pub fn system_language() -> stealth_i18n::Language {
+    #[cfg(not(target_arch = "wasm32"))]
+    let locale = sys_locale::get_locale();
+    #[cfg(target_arch = "wasm32")]
+    let locale = web_sys::window().and_then(|w| w.navigator().language());
+    locale.and_then(|l| stealth_i18n::Language::parse(&l)).unwrap_or_default()
 }
 
 fn args() -> Vec<String> {
@@ -273,6 +290,7 @@ impl Settings {
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            language: language_arg().unwrap_or_else(system_language),
         }
     }
 }

@@ -1,0 +1,47 @@
+# The in-flight menu (src/flight_menu.rs), drawn with the flight's stroke font: capitals,
+# the accents of the Latin languages only.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAUSED
+fm-campaign-runs = MENU  -  CAMPAIGN RUNS ON
+fm-options-page = OPTIONS  -  { $page }
+fm-resume = RESUME
+fm-save-mission = SAVE MISSION
+fm-saved = SAVED
+fm-not-saved = NOT SAVED
+fm-key-guide = KEY GUIDE
+fm-end-mission = END MISSION
+fm-end-sortie = END SORTIE
+fm-exiting = EXITING...
+fm-language = LANGUAGE
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = SHADOWS
+fm-point-lights = POINT LIGHTS
+fm-time-of-day = TIME OF DAY
+fm-sun-moon = SUN AND MOON
+fm-auto-detail = AUTO SCENERY DETAIL
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONICS
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = COCKPIT SIZE
+fm-volume-master = MASTER VOLUME
+fm-volume-engine = ENGINE
+fm-volume-effects = EFFECTS
+fm-volume-warnings = WARNINGS
+fm-low-pass = ENGINE LOW-PASS
+fm-head-tracking = HEAD TRACKING
+fm-bindings = KEYS AND JOYSTICK
+fm-game-note = FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS
+fm-no-match = NO MATCH
+fm-type-to-search = TYPE TO SEARCH
+fm-hint-vr = STICK: SCROLL    FIELD + TRIGGER: KEYBOARD    TRIGGER: BACK
+fm-hint-vr-keyboard = KEY + TRIGGER: TYPE    STICK: SCROLL
+fm-hint-desktop = WHEEL, ARROWS: SCROLL    ESC, CLICK: BACK
+fm-key-space = SPACE
+fm-key-delete = DEL
+fm-key-clear = CLEAR
+fm-key-done = DONE
+fm-pull-trigger = PULL THE TRIGGER

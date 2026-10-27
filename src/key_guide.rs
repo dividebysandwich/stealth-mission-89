@@ -10,6 +10,7 @@ use crate::canvas::Canvas;
 use crate::font::{Align, stroke_has, stroke_text_at, stroke_text_keep_case};
 use crate::hotas::{ButtonTarget, InputConfig, VrHand};
 use crate::input::{Action, Mods};
+use stealth_i18n::{t, tf};
 
 /// What a row's keys are: the keys bound to these actions (" / " between them), the gun's, or
 /// a fixed text.
@@ -18,136 +19,138 @@ enum Keys {
     Gun,
 }
 
-/// The keyboard sections, by topic. Inner spaces of key texts are `_` (kept on one line).
+/// The keyboard sections, by topic (message ids of their titles and rows). Inner spaces of key
+/// texts are `_` (kept on one line).
 const SECTIONS: &[(&str, &[(Keys, &str)])] = {
     use Action::*;
     use Keys::*;
     &[
         (
-            "FLIGHT",
+            "kg-section-flight",
             &[
-                (Actions(&[PitchDown, PitchUp]), "Nose down / up"),
-                (Actions(&[RollLeft, RollRight]), "Roll left / right"),
-                (Actions(&[YawLeft, YawRight]), "Rudder left / right"),
-                (Actions(&[TrimNoseDown, TrimNoseUp]), "Trim nose down / up"),
-                (Actions(&[TrimLeft, TrimRight]), "Trim left / right"),
-                (Actions(&[TrimReset]), "Centre the trim"),
-                (Actions(&[StickSensitivity]), "Stick sensitivity (double-tap a stick key: full)"),
-                (Actions(&[ThrottleUp]), "Throttle (collective) up"),
-                (Actions(&[ThrottleDown]), "Throttle (collective) down"),
-                (Actions(&[ThrottleMax]), "Full power"),
-                (Actions(&[ThrottleIdle]), "Idle"),
-                (Actions(&[Autopilot]), "Autopilot to the waypoint"),
+                (Actions(&[PitchDown, PitchUp]), "kg-pitch-down"),
+                (Actions(&[RollLeft, RollRight]), "kg-roll-left"),
+                (Actions(&[YawLeft, YawRight]), "kg-yaw-left"),
+                (Actions(&[TrimNoseDown, TrimNoseUp]), "kg-trim-nose-down"),
+                (Actions(&[TrimLeft, TrimRight]), "kg-trim-left"),
+                (Actions(&[TrimReset]), "kg-trim-reset"),
+                (Actions(&[StickSensitivity]), "kg-stick-sensitivity"),
+                (Actions(&[ThrottleUp]), "kg-throttle-up"),
+                (Actions(&[ThrottleDown]), "kg-throttle-down"),
+                (Actions(&[ThrottleMax]), "kg-throttle-max"),
+                (Actions(&[ThrottleIdle]), "kg-throttle-idle"),
+                (Actions(&[Autopilot]), "kg-autopilot"),
             ],
         ),
         (
-            "AIRCRAFT",
+            "kg-section-aircraft",
             &[
-                (Actions(&[Gear]), "Landing gear"),
-                (Actions(&[Flaps]), "Flaps"),
-                (Actions(&[Brakes]), "Wheel brakes, speed brake"),
-                (Actions(&[BayDoors]), "Weapon bay doors"),
-                (Actions(&[MasterCaution]), "Master caution: silence the alarms"),
-                (Actions(&[Eject]), "Eject"),
+                (Actions(&[Gear]), "kg-gear"),
+                (Actions(&[Flaps]), "kg-flaps"),
+                (Actions(&[Brakes]), "kg-brakes"),
+                (Actions(&[BayDoors]), "kg-bay-doors"),
+                (Actions(&[MasterCaution]), "kg-master-caution"),
+                (Actions(&[Eject]), "kg-eject"),
             ],
         ),
         (
-            "WEAPONS",
+            "kg-section-weapons",
             &[
-                (Actions(&[SelectWeapon]), "Next weapon"),
-                (Actions(&[FireWeapon]), "Fire the selected weapon"),
-                (Gun, "Fire the gun"),
-                (Actions(&[BombMode]), "Bombing mode CCIP / CCRP"),
+                (Actions(&[SelectWeapon]), "kg-select-weapon"),
+                (Actions(&[FireWeapon]), "kg-fire-weapon"),
+                (Gun, "kg-gun"),
+                (Actions(&[BombMode]), "kg-bomb-mode"),
             ],
         ),
         (
-            "TARGETS",
+            "kg-section-targets",
             &[
-                (Actions(&[NearestTarget]), "Lock the nearest target ahead"),
-                (Actions(&[SelectTarget]), "Next target"),
-                (Actions(&[DesignateTarget]), "Designate a new target"),
-                (Actions(&[ClearTarget]), "Drop the target locks"),
-                (Actions(&[CamAhead]), "Tracking camera ahead"),
-                (Actions(&[CamRear]), "Tracking camera rear"),
-                (Actions(&[CamLeft]), "Tracking camera left"),
-                (Actions(&[CamRight]), "Tracking camera right"),
-                (Actions(&[CameraZoomIn, CameraZoomOut]), "Targeting pod / camera zoom in / out"),
-                (Actions(&[LockCursor]), "Lock the target under the cursor"),
-                (Actions(&[SwapSoi]), "Sensor of interest to the other MFD"),
+                (Actions(&[NearestTarget]), "kg-nearest-target"),
+                (Actions(&[SelectTarget]), "kg-select-target"),
+                (Actions(&[DesignateTarget]), "kg-designate-target"),
+                (Actions(&[ClearTarget]), "kg-clear-target"),
+                (Actions(&[CamAhead]), "kg-cam-ahead"),
+                (Actions(&[CamRear]), "kg-cam-rear"),
+                (Actions(&[CamLeft]), "kg-cam-left"),
+                (Actions(&[CamRight]), "kg-cam-right"),
+                (Actions(&[CameraZoomIn, CameraZoomOut]), "kg-camera-zoom-in"),
+                (Actions(&[LockCursor]), "kg-lock-cursor"),
+                (Actions(&[SwapSoi]), "kg-swap-soi"),
             ],
         ),
         (
-            "DEFENSES",
+            "kg-section-defenses",
             &[
-                (Actions(&[Flare]), "Flare (infrared missiles)"),
-                (Actions(&[Chaff]), "Chaff (radar missiles)"),
-                (Actions(&[Decoy]), "Decoy"),
-                (Actions(&[IrJammer]), "IR jammer on / off"),
-                (Actions(&[Ecm]), "Radar jammer (ECM) on / off"),
+                (Actions(&[Flare]), "kg-flare"),
+                (Actions(&[Chaff]), "kg-chaff"),
+                (Actions(&[Decoy]), "kg-decoy"),
+                (Actions(&[IrJammer]), "kg-ir-jammer"),
+                (Actions(&[Ecm]), "kg-ecm"),
             ],
         ),
         (
-            "DISPLAYS",
+            "kg-section-displays",
             &[
-                (Actions(&[HudMode]), "HUD mode NAV / AIR / GND"),
-                (Actions(&[HudDeclutter]), "HUD declutter"),
-                (Actions(&[Maps]), "Left MFD: map / tactical"),
-                (Actions(&[MapZoomIn, MapZoomOut]), "Map zoom in / out"),
-                (Actions(&[MapOrientation]), "Map north up / heading up"),
-                (Actions(&[Ordnance]), "Weapons page"),
-                (Actions(&[MissionOrders]), "Mission orders"),
-                (Actions(&[Flir]), "FLIR on / off"),
-                (Actions(&[Nvg]), "Night vision goggles"),
-                (Actions(&[Ils]), "ILS landing guidance"),
+                (Actions(&[HudMode]), "kg-hud-mode"),
+                (Actions(&[HudDeclutter]), "kg-hud-declutter"),
+                (Actions(&[Maps]), "kg-maps"),
+                (Actions(&[MapZoomIn, MapZoomOut]), "kg-map-zoom-in"),
+                (Actions(&[MapOrientation]), "kg-map-orientation"),
+                (Actions(&[Ordnance]), "kg-ordnance"),
+                (Actions(&[MissionOrders]), "kg-mission-orders"),
+                (Actions(&[Flir]), "kg-flir"),
+                (Actions(&[Nvg]), "kg-nvg"),
+                (Actions(&[Ils]), "kg-ils"),
             ],
         ),
         (
-            "NAVIGATION",
+            "kg-section-navigation",
             &[
-                (Actions(&[SelectWaypoint]), "Waypoint page"),
-                (Actions(&[ChangeWaypoint]), "Change waypoint"),
-                (Actions(&[ResetWaypoint]), "Reset waypoint"),
-                (Actions(&[LastWaypoint, NextWaypoint]), "Previous / next waypoint"),
+                (Actions(&[SelectWaypoint]), "kg-select-waypoint"),
+                (Actions(&[ChangeWaypoint]), "kg-change-waypoint"),
+                (Actions(&[ResetWaypoint]), "kg-reset-waypoint"),
+                (Actions(&[LastWaypoint, NextWaypoint]), "kg-last-waypoint"),
             ],
         ),
         (
-            "VIEWS",
+            "kg-section-views",
             &[
-                (Actions(&[ViewCockpit]), "Cockpit"),
-                (Actions(&[LookAhead]), "Look ahead"),
-                (Actions(&[LookLeft]), "Look left"),
-                (Actions(&[LookRight]), "Look right"),
-                (Actions(&[LookRear]), "Look to the rear"),
-                (Actions(&[ViewSlot]), "Slot view"),
-                (Actions(&[ViewChase]), "Chase view"),
-                (Actions(&[ViewSide]), "Side view"),
-                (Actions(&[ViewMissile]), "Missile view"),
-                (Actions(&[ViewTactical]), "Tactical view"),
-                (Actions(&[ViewInverseTactical]), "Inverse tactical view"),
-                (Actions(&[ViewFree]), "Free camera: W/S/A/D/Q/E, mouse, wheel"),
-                (Actions(&[Zoom, Unzoom]), "Zoom in / out"),
-                (Actions(&[WideAngle]), "Wide angle"),
+                (Actions(&[ViewCockpit]), "kg-view-cockpit"),
+                (Actions(&[LookAhead]), "kg-look-ahead"),
+                (Actions(&[LookLeft]), "kg-look-left"),
+                (Actions(&[LookRight]), "kg-look-right"),
+                (Actions(&[LookRear]), "kg-look-rear"),
+                (Actions(&[ViewSlot]), "kg-view-slot"),
+                (Actions(&[ViewChase]), "kg-view-chase"),
+                (Actions(&[ViewSide]), "kg-view-side"),
+                (Actions(&[ViewMissile]), "kg-view-missile"),
+                (Actions(&[ViewTactical]), "kg-view-tactical"),
+                (Actions(&[ViewInverseTactical]), "kg-view-inverse-tactical"),
+                (Actions(&[ViewFree]), "kg-view-free"),
+                (Actions(&[Zoom, Unzoom]), "kg-zoom"),
+                (Actions(&[WideAngle]), "kg-wide-angle"),
             ],
         ),
         (
-            "GAME",
+            "kg-section-game",
             &[
-                (Actions(&[Menu]), "Settings menu, pause"),
-                (Actions(&[Kneeboard]), "Kneeboard"),
-                (Actions(&[Chat]), "Chat (multiplayer)"),
-                (Actions(&[TimeAccel, TimeNormal]), "Time faster / normal"),
-                (Actions(&[Volume]), "Sound volume"),
-                (Actions(&[Detail]), "Detail level"),
-                (Actions(&[DayNight]), "Day / night"),
-                (Actions(&[Training]), "Go to training"),
-                (Actions(&[Resupply]), "Resupply"),
-                (Actions(&[Quit]), "Quit"),
+                (Actions(&[Menu]), "kg-menu"),
+                (Actions(&[Kneeboard]), "kg-kneeboard"),
+                (Actions(&[Chat]), "kg-chat"),
+                (Actions(&[TimeAccel, TimeNormal]), "kg-time-accel"),
+                (Actions(&[Volume]), "kg-volume"),
+                (Actions(&[Detail]), "kg-detail"),
+                (Actions(&[DayNight]), "kg-day-night"),
+                (Actions(&[Training]), "kg-training"),
+                (Actions(&[Resupply]), "kg-resupply"),
+                (Actions(&[Quit]), "kg-quit"),
             ],
         ),
     ]
 };
 
-/// The bindable targets by topic, in the guide's order (the CONTROLS dialog lists them so).
+/// The bindable targets by topic (titles in the player's language), in the guide's order (the
+/// CONTROLS dialog lists them so).
 pub fn groups() -> Vec<(&'static str, Vec<ButtonTarget>)> {
     SECTIONS
         .iter()
@@ -161,7 +164,7 @@ pub fn groups() -> Vec<(&'static str, Vec<ButtonTarget>)> {
                     Keys::Gun => vec![ButtonTarget::Gun],
                 })
                 .collect();
-            (*title, targets)
+            (t!(title), targets)
         })
         .collect()
 }
@@ -172,40 +175,42 @@ pub enum Line {
     Row(String, String, bool),
 }
 
-fn row(keys: &str, what: &str) -> Line {
-    Line::Row(keys.to_string(), what.to_string(), true)
+/// A row of fixed keys: its message has the keys, its `.desc` what they do.
+fn row(id: &str) -> Line {
+    Line::Row(tf!(id).to_string(), tf!(&format!("{id}.desc")).to_string(), true)
 }
 
-/// The guide for the current bindings: the mouse on the desktop, the controllers in VR.
+/// The guide for the current bindings: the mouse on the desktop, the controllers in VR. Drawn
+/// with the stroke font, so in [`stealth_i18n::flight_language`].
 pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
     let mut out = Vec::new();
     if vr {
-        out.push(Line::Heading("VR CONTROLLERS".into()));
-        out.push(row("GRIP", "Grab the stick, the throttle or the kneeboard"));
-        out.push(row("FINGERTIP", "Press switches and buttons, kneeboard tabs"));
-        out.push(row("LEFT_STICK", "Slew the sensor cursor"));
-        out.push(row("STICK", "Scroll this list (finger on the kneeboard)"));
+        out.push(Line::Heading(tf!("kg-vr-controllers").into()));
+        out.push(row("kg-vr-grip"));
+        out.push(row("kg-vr-fingertip"));
+        out.push(row("kg-vr-left-stick"));
+        out.push(row("kg-vr-stick"));
         for hand in [VrHand::Left, VrHand::Right] {
             for m in config.vr_buttons.iter().filter(|m| m.hand == hand) {
                 let side = if hand == VrHand::Left { "L" } else { "R" };
                 let keys = format!("{side}_{}", m.input.name(hand).replace(' ', "_"));
                 let what = match m.target {
-                    ButtonTarget::Gun => "Gun".to_string(),
+                    ButtonTarget::Gun => tf!("kg-gun-target").to_string(),
                     ButtonTarget::Action(a) => crate::cockpit3d::tooltips::action_text(a).0,
                 };
                 out.push(Line::Row(keys, what, true));
             }
         }
     } else {
-        out.push(Line::Heading("MOUSE".into()));
-        out.push(row("RIGHT_DRAG", "Look around (outside: orbit the camera)"));
-        out.push(row("HOLD_RIGHT, WHEEL", "Zoom the view in / out"));
-        out.push(row("LEFT_CLICK", "Press a cockpit switch or button, a kneeboard tab"));
-        out.push(row("POINT", "Tooltip of a cockpit control (menu: TOOLTIPS)"));
-        out.push(row("WHEEL", "Scroll this list"));
+        out.push(Line::Heading(tf!("kg-mouse").into()));
+        out.push(row("kg-mouse-right-drag"));
+        out.push(row("kg-mouse-hold-right"));
+        out.push(row("kg-mouse-left-click"));
+        out.push(row("kg-mouse-point"));
+        out.push(row("kg-mouse-wheel"));
     }
     for (title, rows) in SECTIONS {
-        out.push(Line::Heading((*title).into()));
+        out.push(Line::Heading(tf!(title).into()));
         for (keys, what) in *rows {
             let bound: Vec<String> = match keys {
                 Keys::Actions(actions) => {
@@ -217,9 +222,9 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
             let text = if any {
                 bound.iter().map(|k| if k.is_empty() { "-" } else { k }).collect::<Vec<_>>()
             } else {
-                vec!["UNBOUND"]
+                vec![tf!("kg-unbound")]
             };
-            out.push(Line::Row(text.join(" / "), what.to_string(), any));
+            out.push(Line::Row(text.join(" / "), tf!(what).to_string(), any));
         }
     }
     out
@@ -235,16 +240,16 @@ pub fn caret_shown(time: f64) -> bool {
     ((time / CARET_BLINK) as u64).is_multiple_of(2)
 }
 
-/// A search as matched by [`holds`]: trimmed, in small letters.
+/// A search as matched by [`holds`]: trimmed, in small letters without accents.
 pub fn search_query(search: &str) -> String {
-    search.trim().to_lowercase()
+    stealth_i18n::fold_accents(search.trim()).to_lowercase()
 }
 
-/// Whether `text` holds a [`search_query`] in any case; every text holds an empty one. Texts
-/// are searched as shown, so in the language they are shown in once the interface is
-/// translated.
+/// Whether `text` holds a [`search_query`] in any case and with or without accents ("ecran"
+/// finds "Écran"); every text holds an empty one. Texts are searched as shown, in the language
+/// they are shown in.
 pub fn holds(text: &str, query: &str) -> bool {
-    query.is_empty() || text.to_lowercase().contains(query)
+    query.is_empty() || stealth_i18n::fold_accents(text).to_lowercase().contains(query)
 }
 
 /// The rows whose description holds `search` ([`holds`]), under their headings; all of them for
@@ -389,7 +394,7 @@ pub fn draw(c: &mut Canvas, lines: &[Line], area: [f32; 4], scroll: &mut f32, st
             }
             Line::Row(keys, what, _) => {
                 let k = crate::kneeboard::wrap(keys, keys_w, text);
-                let w = crate::kneeboard::wrap(&what.to_ascii_uppercase(), text_w, text);
+                let w = crate::kneeboard::wrap(&what.to_uppercase(), text_w, text);
                 let n = k.len().max(w.len()).max(1);
                 laid.push((y, k, w));
                 y += n as f32 * line + row_gap;
@@ -535,6 +540,8 @@ mod tests {
         assert!(filter(all(), "zzz").is_empty());
         assert!(holds("Gun", ""));
         assert!(holds("Weapon bay doors", &search_query(" BAY ")));
+        assert!(holds("Écran de gauche", &search_query("ecran")));
+        assert!(holds("Ecran de gauche", &search_query("Écran")));
         assert!(caret_shown(0.0) && !caret_shown(0.6) && caret_shown(1.1));
     }
 

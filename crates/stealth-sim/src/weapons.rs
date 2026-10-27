@@ -1,6 +1,7 @@
 use crate::math::{abs16, approx, cdiv, clamp_v, s16};
 use crate::types::*;
 use crate::{PlayerView, Sim, ballistics};
+use stealth_i18n::text;
 
 /// Frames a nearest-target request waits for the HUD to switch to the weapon's mode.
 const NEAREST_WAIT: u8 = 8;
@@ -95,7 +96,7 @@ impl Sim {
                 self.pl.targeting.target_killed = false;
                 self.pl.pflags &= !pflags::DESIGNATE;
             } else {
-                self.msg("No target");
+                self.msg(text!("sim-no-target"));
             }
         }
         if let Some((x, y)) = c.designate_at {
@@ -120,7 +121,7 @@ impl Sim {
                 self.ground_point(x, y);
             }
             if !self.player_sees(self.obj(o).x, self.obj(o).y, 0) {
-                self.msg("Target obscured");
+                self.msg(text!("sim-target-obscured"));
             } else {
                 self.pl.gnd_lock = o;
                 self.pl.spi = spi;
@@ -142,7 +143,7 @@ impl Sim {
                 self.pl.target_hold = true;
                 self.pl.nearest_req = 0;
             } else {
-                self.msg("No target");
+                self.msg(text!("sim-no-target"));
             }
         }
         if let Some(k) = c.lock_pilot {
@@ -152,7 +153,7 @@ impl Sim {
                 self.pl.target_hold = true;
                 self.pl.nearest_req = 0;
             } else {
-                self.msg("No target");
+                self.msg(text!("sim-no-target"));
             }
         }
     }
@@ -280,7 +281,7 @@ impl Sim {
                 self.fire_missile();
                 self.pl.fire_cooldown = 4;
             } else if self.ccrp_solution().is_none() {
-                self.msg("No target designated");
+                self.msg(text!("sim-no-target-designated"));
             }
         }
         // CCRP: with the button held, the bomb goes when the impact point reaches the target.
@@ -338,7 +339,7 @@ impl Sim {
         }
         if self.pl.pflags & pflags::BAY_OPEN == 0 && spec != -2 {
             self.sound(0x20, 1);
-            self.msg("Bay closed");
+            self.msg(text!("sim-bay-closed"));
             return;
         }
         if self.pl.p.alt == 0
@@ -346,13 +347,13 @@ impl Sim {
                 && self.pl.p.alt == 0x80)
         {
             self.sound(0x20, 1);
-            self.msg("Insufficient Altitude");
+            self.msg(text!("sim-insufficient-altitude"));
             return;
         }
         self.pl.bays[bay].1 -= 1;
         if spec == -2 {
             self.emit(SimEvent::FuelTransfer { lbs: 0x76C });
-            self.msg("Fuel transfer");
+            self.msg(text!("sim-fuel-transfer"));
             return;
         }
         self.log_event(4, bay as i32);
@@ -442,7 +443,7 @@ impl Sim {
             }
         }
         self.pl.last_missile_slot = slot as i32;
-        self.msg(format!("{} fired", wt.long_name));
+        self.msg(text!("sim-fired", weapon = wt.long_name.clone()));
         self.sound(if mt.lock_range == 0 { 0x10 } else { 0x0D }, 2);
     }
 
@@ -497,7 +498,7 @@ impl Sim {
         self.pl.stores[kind] -= 1;
         if count <= 0 {
             self.pl.stores[kind] = 0;
-            self.msg("Stores exhausted");
+            self.msg(text!("sim-stores-exhausted"));
             return;
         }
         let slot = if kind == 3 {
@@ -523,7 +524,7 @@ impl Sim {
             };
             self.pl.cms[k] =
                 Countermeasure { x: self.pl.p.mx, y: self.pl.p.my, kind: kind as i32, ttl };
-            self.msg(format!("{name} released"));
+            self.msg(text!("sim-released", weapon = name.to_string()));
         }
         self.sound(15, 2);
     }
@@ -704,7 +705,7 @@ impl Sim {
         self.flights[j].flags |= fflags::HIT;
         self.destroy_aircraft(j);
         let n = self.ac_type(u.spec).name.clone();
-        self.msg(format!("{n} destroyed by gunfire"));
+        self.msg(text!("sim-destroyed-gunfire", target = n.to_string()));
         self.flash = Flash { x: u.x, y: u.y, alt: u.alt, timer: 0x10 };
         self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: u.alt, kind: 0x10 });
     }
@@ -736,7 +737,7 @@ impl Sim {
                     + (s16(b.alt / f - self.pl.p.view_z).abs() >> 5))
                     .abs();
                 if d < 0x20 {
-                    self.msg("Hit by gunfire");
+                    self.msg(text!("sim-hit-gunfire"));
                     if d < 0x20 / (4 - self.diff) {
                         self.player_hit(false);
                     }
@@ -780,7 +781,7 @@ impl Sim {
             if self.compat(18, o) * 6 / (self.diff + 2) > d {
                 self.destroy_ground(o);
                 let n = self.place_name(o as usize);
-                self.msg(format!("{n} destroyed by gunfire"));
+                self.msg(text!("sim-destroyed-gunfire", target = n.to_string()));
                 self.emit(SimEvent::Explosion { x: tx, y: ty, alt: 0, kind: 0x10 });
             }
         }

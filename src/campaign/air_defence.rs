@@ -4,6 +4,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::Side;
+use stealth_i18n::t;
 use stealth_sim::aaa::{AaaKind, M_PER_MAP};
 use stealth_sim::station::{GEPARD_REACH, GEPARD_ROUNDS, StationCmd, mannable};
 use stealth_sim::{Sim, fflags};
@@ -217,7 +218,7 @@ fn map(
     painter.text(
         rect.left_bottom() + egui::vec2(8.0, -8.0),
         egui::Align2::LEFT_BOTTOM,
-        "Click a site to select it - wheel: zoom, drag: pan",
+        t!("ad-map-hint"),
         egui::FontId::monospace(11.0),
         DIM,
     );
@@ -225,9 +226,9 @@ fn map(
 
 /// The sites one under the other: what each has and sees, and the way in.
 fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], height: f32) {
-    section(ui, "Air defense sites");
+    section(ui, t!("ad-sites"));
     if sites.is_empty() {
-        ui.label(egui::RichText::new("No Patriot battery or Gepard on our side").color(DIM));
+        ui.label(egui::RichText::new(t!("ad-none")).color(DIM));
         return;
     }
     egui::ScrollArea::vertical().id_salt("air_defence").max_height(height - 30.0).show(ui, |ui| {
@@ -261,10 +262,10 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     ui.horizontal(|ui| {
         let kind = if s.gepard { "GEPARD" } else { "PATRIOT" };
         ui.label(egui::RichText::new(format!("{tag} {kind}")).strong().color(FRIENDLY_BLUE));
-        ui.label(egui::RichText::new(format!("near {}", s.near)).color(DIM));
+        ui.label(egui::RichText::new(t!("ad-near", place = s.near.as_str())).color(DIM));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let why = man_refusal(c, sim, s.unit);
-            let button = egui::Button::new("ENTER").min_size(egui::vec2(80.0, 24.0));
+            let button = egui::Button::new(t!("ad-enter")).min_size(egui::vec2(80.0, 24.0));
             let r = ui.add_enabled(why.is_none(), button);
             if r.clicked() {
                 c.ui.error = None;
@@ -276,7 +277,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         });
     });
     if s.destroyed {
-        ui.label(egui::RichText::new("DESTROYED").color(MISSILE_RED));
+        ui.label(egui::RichText::new(t!("ad-destroyed")).color(MISSILE_RED));
         return;
     }
     let ammo_col = if s.ready == 0 {
@@ -288,45 +289,50 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     };
     ui.horizontal(|ui| {
         let ammo = if s.gepard {
-            format!("{} / {} rds", s.ready, s.full)
+            t!("ad-ammo-gepard", ready = s.ready, full = s.full)
         } else {
-            format!("{} / {} msl on {} launchers", s.ready, s.full, s.launchers)
+            t!("ad-ammo-patriot", ready = s.ready, full = s.full, launchers = s.launchers)
         };
         ui.label(egui::RichText::new(ammo).monospace().color(ammo_col));
-        let unit = if s.gepard { "rds" } else { "msl" };
-        ui.label(
-            egui::RichText::new(format!("- stock {} {unit}", s.stock))
-                .monospace()
-                .color(if s.stock > 0 { BRIGHT } else { MISSILE_RED }),
-        );
+        let stock = if s.gepard {
+            t!("ad-stock-gepard", count = s.stock)
+        } else {
+            t!("ad-stock-patriot", count = s.stock)
+        };
+        ui.label(egui::RichText::new(stock).monospace().color(if s.stock > 0 {
+            BRIGHT
+        } else {
+            MISSILE_RED
+        }));
         if s.reloading > 0 {
-            ui.label(egui::RichText::new("RELOADING").monospace().color(AMBER));
+            ui.label(egui::RichText::new(t!("ad-reloading")).monospace().color(AMBER));
         }
     });
     let operator = match s.manned {
-        Some(p) if p == c.me.0 => "You".to_string(),
-        Some(p) => {
-            c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or("A player").to_string()
-        }
-        None => "Unmanned (automatic)".to_string(),
+        Some(p) if p == c.me.0 => t!("ad-you").to_string(),
+        Some(p) => c
+            .state()
+            .player_name(stealth_campaign::PlayerId(p))
+            .map_or_else(|| t!("ad-a-player").to_string(), str::to_string),
+        None => t!("ad-unmanned").to_string(),
     };
-    ui.label(egui::RichText::new(format!("Operator: {operator}")).color(if s.manned.is_some() {
+    ui.label(egui::RichText::new(t!("ad-operator", who = operator)).color(if s.manned.is_some() {
         GREEN
     } else {
         DIM
     }));
     if s.enemies.is_empty() {
-        ui.label(egui::RichText::new("No enemy aircraft on radar").color(DIM));
+        ui.label(egui::RichText::new(t!("ad-no-enemy")).color(DIM));
     } else {
         let shown: Vec<String> =
             s.enemies.iter().take(3).map(|(n, km)| format!("{n} {km:.0} km")).collect();
         let more = s.enemies.len().saturating_sub(3);
         let more = if more > 0 { format!(" +{more}") } else { String::new() };
         ui.label(
-            egui::RichText::new(format!(
-                "{} hostile on radar: {}{more}",
-                s.enemies.len(),
-                shown.join(", ")
+            egui::RichText::new(t!(
+                "ad-hostile",
+                count = s.enemies.len(),
+                list = format!("{}{more}", shown.join(", "))
             ))
             .color(MISSILE_RED),
         );

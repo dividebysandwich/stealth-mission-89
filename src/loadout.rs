@@ -9,74 +9,76 @@ use stealth_mission::{Mission, Plane};
 
 use crate::aircraft::AircraftKind;
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, section};
+use stealth_i18n::{t, t_lines};
 
-/// The weapons (index = weapon type): name, what it is for.
+/// The weapons (index = weapon type): name (the real one, in every language), the message of
+/// what it is for.
 pub const WEAPONS: [(&str, &str); 21] = [
-    ("AIM-9M Sidewinder", "Air-to-air, infrared homing, short range"),
-    ("AIM-120A AMRAAM", "Air-to-air, radar homing, medium range"),
-    ("AGM-88A HARM", "Anti-radiation missile: radars and SAM sites"),
-    ("Penguin 3 ASM", "Anti-ship missile"),
-    ("AGM-84A Harpoon", "Long range anti-ship missile"),
-    ("AGM-65 Maverick", "TV guided missile: vehicles, bunkers, buildings"),
-    ("GBU-12 Paveway", "Laser guided bomb: hard targets"),
-    ("Mk 20 Rockeye", "Cluster bomb: soft and area targets"),
-    ("Durandal", "Runway cratering bomb"),
-    ("Mk 82 LDGP", "500 lb free-fall bomb"),
-    ("Mk 82 Snakeye", "500 lb retarded bomb for low releases"),
-    ("Mk 20 Rockeye II", "Cluster bomb: armour and area targets"),
-    ("Mk 122 Fireye", "Incendiary bomb"),
-    ("CBU-72 FAE", "Fuel-air explosive: area targets"),
-    ("Mk 35 incendiary", "Incendiary cluster bomb"),
-    ("ISCB-1 mines", "Area denial mines"),
-    ("IR/optical camera", "Reconnaissance photos of the target"),
-    ("1900 lb fuel tank", "Extra fuel, transferred when released"),
-    ("Special cargo", "Supplies or cargo for the mission"),
-    ("20 mm cannon", "The gun (not a store)"),
-    (
-        "AGM-114 Hellfire",
-        "Laser guided anti-armour missile: flies to where the targeting pod looks",
-    ),
+    ("AIM-9M Sidewinder", "weapon-role-0"),
+    ("AIM-120A AMRAAM", "weapon-role-1"),
+    ("AGM-88A HARM", "weapon-role-2"),
+    ("Penguin 3 ASM", "weapon-role-3"),
+    ("AGM-84A Harpoon", "weapon-role-4"),
+    ("AGM-65 Maverick", "weapon-role-5"),
+    ("GBU-12 Paveway", "weapon-role-6"),
+    ("Mk 20 Rockeye", "weapon-role-7"),
+    ("Durandal", "weapon-role-8"),
+    ("Mk 82 LDGP", "weapon-role-9"),
+    ("Mk 82 Snakeye", "weapon-role-10"),
+    ("Mk 20 Rockeye II", "weapon-role-11"),
+    ("Mk 122 Fireye", "weapon-role-12"),
+    ("CBU-72 FAE", "weapon-role-13"),
+    ("Mk 35 incendiary", "weapon-role-14"),
+    ("ISCB-1 mines", "weapon-role-15"),
+    ("IR/optical camera", "weapon-role-16"),
+    ("1900 lb fuel tank", "weapon-role-17"),
+    ("Special cargo", "weapon-role-18"),
+    ("20 mm cannon", "weapon-role-19"),
+    ("AGM-114 Hellfire", "weapon-role-20"),
 ];
-/// How each weapon is used (index = weapon type), shown under its role; ranges in the HUD's km.
+/// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
+/// under its role; ranges in the HUD's km.
 /// Missiles: the longest range is the LOCK oval's (the lock range of assets/sim/units.ron,
 /// 7/8 of it against the ground, the Hellfire the pod's 8 km), the shortest the launch zone's
 /// (dlz.rs) from the given heights, level at 450 kt, with either guidance. Guided bombs (the
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
-const EMPLOYMENT: [&[&str]; 21] = [
-    &["Range: 1-12 km, farther head-on"],
-    &["Range: 1-38 km, farther head-on"],
-    &["Range: 9-50 km", "Launch: 5,000-20,000 ft"],
-    &["Range: 6-14 km (classic guidance: 13-14 km)", "Launch: 100-500 ft"],
-    &["Range: 6-41 km", "Launch: 2,000-5,000 ft"],
-    &["Range: 5-10 km", "Launch: 2,000-5,000 ft"],
-    &[
-        "Range: 1.5 km to 2.5 times the height, LOCK steady (14 km from 15,000 ft, 18 km from 25,000 ft)",
-        "Release: 15,000-25,000 ft",
-    ],
+const EMPLOYMENT: [&str; 21] = [
+    "employment-0",
+    "employment-1",
+    "employment-2",
+    "employment-3",
+    "employment-4",
+    "employment-5",
+    "employment-6",
     MEDIUM_RETARDED,
-    &["Range: 0.9-1.3 km short of the runway", "Release: 200-500 ft"],
-    &["Range: 5-11 km short of the target", "Release: 3,000-20,000 ft"],
+    "employment-8",
+    "employment-9",
     LOW_RETARDED,
     GUIDED_CLUSTER,
-    &["Range: 0.9-2.2 km short of the target", "Release: 100-500 ft"],
+    "employment-12",
     GUIDED_CLUSTER,
     MEDIUM_RETARDED,
     LOW_RETARDED,
-    &["Range: photos from 2-8 km (the shorter, the more opponents), nose on the target"],
-    &[],
-    &["Range: release on \"Drop supplies now\", within 4 km of the drop zone"],
-    &[],
-    &["Range: 4-8 km", "Launch: 2,000-3,000 ft"],
+    "employment-16",
+    "",
+    "employment-18",
+    "",
+    "employment-20",
 ];
-const GUIDED_CLUSTER: &[&str] = &[
-    "Range: 1.5 km to 2.5 times the height, LOCK steady (3.7 km from 3,000 ft, 6 km from 5,000 ft)",
-    "Release: 3,000-5,000 ft",
-];
-const MEDIUM_RETARDED: &[&str] =
-    &["Range: 1.1-1.6 km short of the target", "Release: 300-1,000 ft"];
-const LOW_RETARDED: &[&str] = &["Range: 0.9-1.3 km short of the target", "Release: 200-500 ft"];
+const GUIDED_CLUSTER: &str = "employment-guided-cluster";
+const MEDIUM_RETARDED: &str = "employment-medium-retarded";
+const LOW_RETARDED: &str = "employment-low-retarded";
+
+/// How weapon `w` is used, in the player's language.
+fn employment(w: usize) -> &'static [&'static str] {
+    match EMPLOYMENT.get(w) {
+        Some(&id) if !id.is_empty() => t_lines!(id),
+        _ => &[],
+    }
+}
+
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 2] = [0, 1];
 /// Rounds of each weapon a bay holds.
@@ -89,6 +91,7 @@ pub const HELLFIRE: u8 = 20;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
+    /// Message id of its name.
     pub name: &'static str,
     /// Short label on the drawing.
     pub label: &'static str,
@@ -446,15 +449,15 @@ const fn pylon(
 
 /// The real F-117A: two bays, no air-to-air missiles.
 static F117_REAL: [Hardpoint; 2] = [
-    bay("Left bay", "L", -0.52, 8.85, false, 1, &NO_AIR_TO_AIR),
-    bay("Right bay", "R", 0.52, 8.85, false, 0, &NO_AIR_TO_AIR),
+    bay("hardpoint-left-bay", "L", -0.52, 8.85, false, 1, &NO_AIR_TO_AIR),
+    bay("hardpoint-right-bay", "R", 0.52, 8.85, false, 0, &NO_AIR_TO_AIR),
 ];
 /// The fantasy F-117A: two more bays, inside the wing roots.
 static F117_FANTASY: [Hardpoint; 4] = [
-    bay("Left bay", "L", -0.52, 8.85, false, 1, &ALL),
-    bay("Right bay", "R", 0.52, 8.85, false, 0, &ALL),
-    bay("Left wing bay", "LW", -3.1, 10.5, true, 3, &ALL),
-    bay("Right wing bay", "RW", 3.1, 10.5, true, 2, &ALL),
+    bay("hardpoint-left-bay", "L", -0.52, 8.85, false, 1, &ALL),
+    bay("hardpoint-right-bay", "R", 0.52, 8.85, false, 0, &ALL),
+    bay("hardpoint-left-wing-bay", "LW", -3.1, 10.5, true, 3, &ALL),
+    bay("hardpoint-right-wing-bay", "RW", 3.1, 10.5, true, 2, &ALL),
 ];
 const TIP: [u8; 2] = [0, 1];
 const WING_MID: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
@@ -462,15 +465,15 @@ const WING_INNER: [u8; 13] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
 const CENTRE: [u8; 3] = [16, 17, 18];
 /// The F-16's stations 1 (left wingtip) to 9 (right wingtip).
 static F16_STATIONS: [Hardpoint; 9] = [
-    pylon("Station 1, left wingtip", "1", -4.66, 9.70, Some(8), &TIP),
-    pylon("Station 2, left outer wing", "2", -3.88, 9.81, Some(7), &TIP),
-    pylon("Station 3, left wing", "3", -2.93, 9.43, Some(6), &WING_MID),
-    pylon("Station 4, left inner wing", "4", -1.89, 9.12, Some(5), &WING_INNER),
-    pylon("Station 5, centreline", "5", 0.00, 8.79, None, &CENTRE),
-    pylon("Station 6, right inner wing", "6", 1.89, 9.12, Some(3), &WING_INNER),
-    pylon("Station 7, right wing", "7", 2.93, 9.43, Some(2), &WING_MID),
-    pylon("Station 8, right outer wing", "8", 3.88, 9.81, Some(1), &TIP),
-    pylon("Station 9, right wingtip", "9", 4.66, 9.70, Some(0), &TIP),
+    pylon("hardpoint-station-1-left-wingtip", "1", -4.66, 9.70, Some(8), &TIP),
+    pylon("hardpoint-station-2-left-outer-wing", "2", -3.88, 9.81, Some(7), &TIP),
+    pylon("hardpoint-station-3-left-wing", "3", -2.93, 9.43, Some(6), &WING_MID),
+    pylon("hardpoint-station-4-left-inner-wing", "4", -1.89, 9.12, Some(5), &WING_INNER),
+    pylon("hardpoint-station-5-centreline", "5", 0.00, 8.79, None, &CENTRE),
+    pylon("hardpoint-station-6-right-inner-wing", "6", 1.89, 9.12, Some(3), &WING_INNER),
+    pylon("hardpoint-station-7-right-wing", "7", 2.93, 9.43, Some(2), &WING_MID),
+    pylon("hardpoint-station-8-right-outer-wing", "8", 3.88, 9.81, Some(1), &TIP),
+    pylon("hardpoint-station-9-right-wingtip", "9", 4.66, 9.70, Some(0), &TIP),
 ];
 
 /// The Tornado's wing pylons (swivelling with the sweep) carry the tanks, the fuselage's
@@ -481,14 +484,14 @@ const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 /// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
 /// fuselage's shoulder pylons fore and aft.
 static TORNADO_STATIONS: [Hardpoint; 8] = [
-    pylon("Left wing, Sidewinder rail", "1", -4.20, 9.40, Some(7), &TIP),
-    pylon("Left wing pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
-    pylon("Left shoulder, forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
-    pylon("Left shoulder, aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
-    pylon("Right shoulder, aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
-    pylon("Right shoulder, forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
-    pylon("Right wing pylon", "7", 3.90, 9.80, Some(1), &TORNADO_WING),
-    pylon("Right wing, Sidewinder rail", "8", 4.20, 9.40, Some(0), &TIP),
+    pylon("hardpoint-tornado-left-wing-rail", "1", -4.20, 9.40, Some(7), &TIP),
+    pylon("hardpoint-tornado-left-wing-pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
+    pylon("hardpoint-tornado-left-shoulder-forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
+    pylon("hardpoint-tornado-left-shoulder-aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
+    pylon("hardpoint-tornado-right-shoulder-aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
+    pylon("hardpoint-tornado-right-shoulder-forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
+    pylon("hardpoint-tornado-right-wing-pylon", "7", 3.90, 9.80, Some(1), &TORNADO_WING),
+    pylon("hardpoint-tornado-right-wing-rail", "8", 4.20, 9.40, Some(0), &TIP),
 ];
 
 /// The A-10's outer wing pylons carry the Mavericks and the bombs, the centre section's the
@@ -499,17 +502,17 @@ const A10_INNER: [u8; 11] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
 const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
 /// The A-10's eleven stations: 1 (left outer wing, the Sidewinders) to 11.
 static A10_STATIONS: [Hardpoint; 11] = [
-    pylon("Station 1, left outer wing", "1", -5.95, 8.63, Some(10), &SIDEWINDER),
-    pylon("Station 2, left wing", "2", -4.75, 8.53, Some(9), &A10_WING),
-    pylon("Station 3, left wing", "3", -3.55, 8.43, Some(8), &A10_WING),
-    pylon("Station 4, left centre wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
-    pylon("Station 5, left fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY),
-    pylon("Station 6, centreline", "6", 0.0, 8.11, None, &CENTRE),
-    pylon("Station 7, right fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY),
-    pylon("Station 8, right centre wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
-    pylon("Station 9, right wing", "9", 3.55, 8.43, Some(2), &A10_WING),
-    pylon("Station 10, right wing", "10", 4.75, 8.53, Some(1), &A10_WING),
-    pylon("Station 11, right outer wing", "11", 5.95, 8.63, Some(0), &SIDEWINDER),
+    pylon("hardpoint-a10-1-left-outer-wing", "1", -5.95, 8.63, Some(10), &SIDEWINDER),
+    pylon("hardpoint-a10-2-left-wing", "2", -4.75, 8.53, Some(9), &A10_WING),
+    pylon("hardpoint-a10-3-left-wing", "3", -3.55, 8.43, Some(8), &A10_WING),
+    pylon("hardpoint-a10-4-left-centre-wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
+    pylon("hardpoint-a10-5-left-fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY),
+    pylon("hardpoint-a10-6-centreline", "6", 0.0, 8.11, None, &CENTRE),
+    pylon("hardpoint-a10-7-right-fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY),
+    pylon("hardpoint-a10-8-right-centre-wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
+    pylon("hardpoint-a10-9-right-wing", "9", 3.55, 8.43, Some(2), &A10_WING),
+    pylon("hardpoint-a10-10-right-wing", "10", 4.75, 8.53, Some(1), &A10_WING),
+    pylon("hardpoint-a10-11-right-outer-wing", "11", 5.95, 8.63, Some(0), &SIDEWINDER),
 ];
 
 static F117_REAL_LAYOUT: Layout =
@@ -528,12 +531,12 @@ static TORNADO_LAYOUT: Layout = Layout {
 };
 /// The AH-1Z's stations 1 (left wingtip rail) to 6 (right wingtip rail).
 static AH1Z_STATIONS: [Hardpoint; 6] = [
-    pylon("Station 1, left wingtip rail", "1", -2.30, 5.6, Some(5), &SIDEWINDER),
-    pylon("Station 2, left outer pylon", "2", -1.75, 5.5, Some(4), &HELLFIRES),
-    pylon("Station 3, left inner pylon", "3", -1.05, 5.4, Some(3), &HELLFIRES),
-    pylon("Station 4, right inner pylon", "4", 1.05, 5.4, Some(2), &HELLFIRES),
-    pylon("Station 5, right outer pylon", "5", 1.75, 5.5, Some(1), &HELLFIRES),
-    pylon("Station 6, right wingtip rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
+    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.30, 5.6, Some(5), &SIDEWINDER),
+    pylon("hardpoint-station-2-left-outer-pylon", "2", -1.75, 5.5, Some(4), &HELLFIRES),
+    pylon("hardpoint-station-3-left-inner-pylon", "3", -1.05, 5.4, Some(3), &HELLFIRES),
+    pylon("hardpoint-station-4-right-inner-pylon", "4", 1.05, 5.4, Some(2), &HELLFIRES),
+    pylon("hardpoint-station-5-right-outer-pylon", "5", 1.75, 5.5, Some(1), &HELLFIRES),
+    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
 ];
 const SIDEWINDER: [u8; 1] = [0];
 const HELLFIRES: [u8; 1] = [HELLFIRE];
@@ -682,7 +685,7 @@ impl PlannedLoadout {
             }
         }
         if totals.is_empty() {
-            return "None".into();
+            return t!("loadout-none").into();
         }
         totals
             .iter()
@@ -737,7 +740,7 @@ pub fn loadout_ui(
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(12.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("LOADOUT").heading().color(BRIGHT));
+                ui.label(egui::RichText::new(t!("menu-loadout")).heading().color(BRIGHT));
                 ui.label(
                     egui::RichText::new(format!("  {}", aircraft.name().to_ascii_uppercase()))
                         .color(DIM),
@@ -748,18 +751,20 @@ pub fn loadout_ui(
             ui.separator();
             ui.horizontal(|ui| {
                 if facts(
-                    ui.add(big_button("BRIEFED")),
-                    &["The stores the mission was briefed with"],
+                    ui.add(big_button(t!("loadout-briefed"))),
+                    t_lines!("loadout-briefed.facts"),
                 )
                 .clicked()
                 {
                     *lo = PlannedLoadout::of(&m, aircraft);
                 }
-                if facts(ui.add(big_button("CLEAR")), &["Every hardpoint empty"]).clicked() {
+                if facts(ui.add(big_button(t!("loadout-clear"))), t_lines!("loadout-clear.facts"))
+                    .clicked()
+                {
                     lo.stores.iter_mut().for_each(|s| *s = None);
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add(big_button("DONE").fill(DIM)).clicked() {
+                    if ui.add(big_button(t!("loadout-done")).fill(DIM)).clicked() {
                         w.open = false;
                     }
                 });
@@ -789,19 +794,19 @@ pub fn editor(
         ui.vertical(|ui| {
             ui.set_width(side);
             let Some(hp) = lay.hardpoints.get(w.selected) else {
-                section(ui, "No hardpoints");
-                ui.label(egui::RichText::new("This aircraft carries no stores").color(DIM));
+                section(ui, t!("loadout-no-hardpoints"));
+                ui.label(egui::RichText::new(t!("loadout-no-stores")).color(DIM));
                 return;
             };
-            section(ui, hp.name);
+            section(ui, t!(hp.name));
             if hp.fantasy {
-                ui.label(egui::RichText::new("Not on the real aircraft").small().color(AMBER));
+                ui.label(egui::RichText::new(t!("loadout-fantasy")).small().color(AMBER));
             }
             let mut pick = lo.stores[w.selected];
             // The column's full width: the scroll bar on its right edge, clear of the names.
             let list = egui::ScrollArea::vertical().max_height(size.y - 260.0);
             list.auto_shrink([false, true]).show(ui, |ui| {
-                ui.radio_value(&mut pick, None, "Empty");
+                ui.radio_value(&mut pick, None, t!("loadout-empty"));
                 for &wpn in hp.loads {
                     let (name, role) = WEAPONS[wpn as usize];
                     let stock = !out_of_stock(m, wpn);
@@ -812,9 +817,9 @@ pub fn editor(
                             format!("{}x {name}", hp.rounds(wpn)),
                         ),
                     );
-                    let r = r.on_disabled_hover_text("None in stock for this mission");
-                    let mut lines = vec![role];
-                    lines.extend(EMPLOYMENT[wpn as usize]);
+                    let r = r.on_disabled_hover_text(t!("loadout-out-of-stock"));
+                    let mut lines = vec![t!(role)];
+                    lines.extend(employment(wpn as usize));
                     if facts(r, &lines).clicked() {
                         pick = Some(wpn);
                     }
@@ -822,9 +827,10 @@ pub fn editor(
             });
             if let Some(j) = hp.mirror {
                 ui.add_space(4.0);
+                let other = t!(lay.hardpoints[j].name).to_lowercase();
                 facts(
-                    ui.checkbox(mirror, "Same on both sides"),
-                    &[&format!("Loads {} too", lay.hardpoints[j].name.to_ascii_lowercase())],
+                    ui.checkbox(mirror, t!("loadout-mirror")),
+                    &[&t!("loadout-mirror.facts", station = other)],
                 );
             }
             if pick != lo.stores[w.selected] {
@@ -833,14 +839,10 @@ pub fn editor(
                     lo.stores[j] = pick;
                 }
             }
-            section(ui, "Stores");
+            section(ui, t!("loadout-stores"));
             ui.label(egui::RichText::new(lo.summary()).color(GREEN));
             if m.loadout.bays.iter().any(|b| b.weapon == 16 || b.weapon == 18) {
-                ui.label(
-                    egui::RichText::new("The mission needs its camera or special equipment")
-                        .small()
-                        .color(AMBER),
-                );
+                ui.label(egui::RichText::new(t!("loadout-needs-equipment")).small().color(AMBER));
             }
         });
     });
@@ -965,7 +967,7 @@ mod tests {
             // 7/8 of it against the ground, less a little for the height.
             let km = if w < 2 { lock } else { (lock * 0.875 - 0.5).ceil() };
             let range = format!("-{km} km");
-            assert!(EMPLOYMENT[w][0].contains(&range), "{}: {range}", WEAPONS[w].0);
+            assert!(employment(w)[0].contains(&range), "{}: {range}", WEAPONS[w].0);
         }
     }
 

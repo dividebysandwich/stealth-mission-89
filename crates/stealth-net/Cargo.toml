@@ -9,6 +9,7 @@ stealth-sim = { path = "../stealth-sim" }
 stealth-mission = { path = "../stealth-mission" }
 stealth-campaign = { path = "../stealth-campaign" }
 stealth-host = { path = "../stealth-host" }
+stealth-i18n.workspace = true
 serde.workspace = true
 anyhow.workspace = true
 ciborium = "0.2.2"
