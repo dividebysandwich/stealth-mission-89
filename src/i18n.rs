@@ -226,6 +226,29 @@ mod tests {
         }
     }
 
+    /// The texts of the languages without a font of their own (Latin, Greek, Cyrillic) are in
+    /// Hack, or egui, Bevy's text and the tooltips would draw empty boxes.
+    #[test]
+    fn hack_covers_the_texts() {
+        let hack = ttf_parser::Face::parse(epaint_default_fonts::HACK_REGULAR, 0).unwrap();
+        for l in Language::ALL.into_iter().filter(|l| !CJK.contains(l)) {
+            let dir = format!("assets/i18n/{}", l.code());
+            let Ok(files) = std::fs::read_dir(&dir) else { continue };
+            let mut missing = std::collections::BTreeSet::new();
+            for file in files {
+                let path = file.unwrap().path();
+                if path.extension().is_none_or(|e| e != "ftl") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(path).unwrap();
+                missing.extend(text.chars().filter(|&c| {
+                    !c.is_control() && !c.is_whitespace() && hack.glyph_index(c).is_none()
+                }));
+            }
+            assert!(missing.is_empty(), "{}: not in Hack: {missing:?}", l.code());
+        }
+    }
+
     /// The names of the languages are drawn by the fonts egui has in every language.
     #[test]
     fn the_options_list_is_drawable() {
