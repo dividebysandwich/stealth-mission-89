@@ -3,7 +3,8 @@
 //! while the afterburner burns. A yellow-white core with shock diamonds (fading with altitude),
 //! a sheath blue-violet at the nozzle turning orange, and the nozzle's glowing exit; brighter
 //! and longer with the afterburner's setting, longer in thinner air. With local lighting on, a
-//! flickering point light behind the nozzle lights the aircraft and what is near it.
+//! flickering point light behind the nozzle lights the aircraft and what is near it (not the
+//! cockpit).
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexBufferLayoutRef, PrimitiveTopology};
@@ -197,6 +198,8 @@ fn attach(
             flame.with_child((
                 FlameLight,
                 crate::lighting::LightEmitter { color: Vec3::ZERO, range: LIGHT_RANGE },
+                // Behind the cockpit: it would light the panel from inside.
+                crate::lighting::NotInCockpit,
                 Transform::from_xyz(0.0, 0.0, LIGHT_AFT),
                 Visibility::Inherited,
             ));

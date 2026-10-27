@@ -72,6 +72,11 @@ pub struct LightEmitter {
     pub range: f32,
 }
 
+/// An emitter that lights the world but not the cockpit (the own afterburner's plume, behind
+/// the cockpit: it would light the panel from inside).
+#[derive(Component, Clone, Copy)]
+pub struct NotInCockpit;
+
 /// An emitter that shines along its forward (-z) direction in a cone (`SPOT_INNER`/`SPOT_OUTER`
 /// in palette.wgsl), not all round.
 #[derive(Component, Clone, Copy)]
@@ -103,6 +108,8 @@ pub struct LightingState {
     pub ambient: Vec4,
     /// (position, range), (colour, 0) pairs.
     pub lights: Vec<(Vec4, Vec4)>,
+    /// Per light: it lights the world only, not the cockpit (`NotInCockpit`).
+    pub outside: Vec<bool>,
     /// Daylight 0 (night) .. 1 (day), from the sky colour.
     pub daylight: f32,
 }
@@ -442,7 +449,13 @@ fn collect_local_lights(
     palette: Option<Res<Palette>>,
     mut state: ResMut<LightingState>,
     cams: Query<&GlobalTransform, With<crate::camera::EyeCamera>>,
-    emitters: Query<(&LightEmitter, &GlobalTransform, &InheritedVisibility, Has<Spotlight>)>,
+    emitters: Query<(
+        &LightEmitter,
+        &GlobalTransform,
+        &InheritedVisibility,
+        Has<Spotlight>,
+        Has<NotInCockpit>,
+    )>,
     dots: Query<
         (
             &GlobalTransform,
@@ -456,13 +469,14 @@ fn collect_local_lights(
     lamps: Query<(&crate::scenery::LampBatch, &GlobalTransform, &InheritedVisibility)>,
 ) {
     state.lights.clear();
+    state.outside.clear();
     if !settings.local_lights {
         return;
     }
     let Ok(eye) = cams.single() else { return };
     let eye = eye.translation();
-    let mut all: Vec<(f32, Vec4, Vec4)> = Vec::new();
-    for (em, tf, vis, spot) in &emitters {
+    let mut all: Vec<(f32, Vec4, Vec4, bool)> = Vec::new();
+    for (em, tf, vis, spot, outside) in &emitters {
         if !vis.get() {
             continue;
         }
@@ -470,7 +484,7 @@ fn collect_local_lights(
         // Score: distance relative to range (bright, big lights win).
         let d = p.distance(eye);
         let w = if spot { encode_spot(*tf.forward()) } else { 0.0 };
-        all.push((d / em.range, p.extend(em.range), em.color.extend(w)));
+        all.push((d / em.range, p.extend(em.range), em.color.extend(w), outside));
     }
     // Dot lights (runway, approach, city lights) within 600 m, only when they are lit.
     if let Some(palette) = palette.filter(|p| p.lights_on()) {
@@ -489,7 +503,8 @@ fn collect_local_lights(
             let Some(m) = materials.get(&mat.0) else { continue };
             let c = palette.color((m.params.word & 0xFF) as u8).to_linear();
             let range = 25.0;
-            all.push((d / range, p.extend(range), Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8));
+            let c = Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8;
+            all.push((d / range, p.extend(range), c, false));
         }
         // Street lamps and lit windows of the extra scenery (hidden by day).
         for (batch, tf, vis) in &lamps {
@@ -502,13 +517,16 @@ fn collect_local_lights(
                 if d < 600.0 {
                     let c = palette.color(colour).to_linear();
                     let colour = Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8;
-                    all.push((d / 25.0, p.extend(25.0), colour));
+                    all.push((d / 25.0, p.extend(25.0), colour, false));
                 }
             }
         }
     }
     all.sort_by(|a, b| a.0.total_cmp(&b.0));
-    state.lights.extend(all.into_iter().take(MAX_LOCAL_LIGHTS).map(|(_, p, c)| (p, c)));
+    for (_, p, c, outside) in all.into_iter().take(MAX_LOCAL_LIGHTS) {
+        state.lights.push((p, c));
+        state.outside.push(outside);
+    }
 }
 
 /// The nearest emitters as Bevy point lights (so explosions and flares light the cockpit).
@@ -518,8 +536,9 @@ fn mirror_point_lights(
     mut q: Query<(&MirrorLight, &mut PointLight, &mut Transform)>,
 ) {
     for (m, mut light, mut tf) in &mut q {
-        // Not the spotlights: they shine away from the cockpit.
-        match state.lights.get(m.0).filter(|(_, c)| settings.local_lights && c.w == 0.0) {
+        // Not the spotlights (they shine away from the cockpit), nor what lights only the world.
+        let inside = !state.outside.get(m.0).copied().unwrap_or(false);
+        match state.lights.get(m.0).filter(|(_, c)| settings.local_lights && c.w == 0.0 && inside) {
             Some((p, c)) => {
                 tf.translation = p.truncate();
                 light.range = p.w;
