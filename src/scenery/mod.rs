@@ -841,7 +841,8 @@ fn spawn_geom(
                 .id(),
         );
     }
-    let dot_tag = tag.0 | TAG_DOT;
+    // Not with TAG_VERTEX_HAZE: its bit is in the dot size field (dots haze per dot anyway).
+    let dot_tag = (tag.0 & !TAG_VERTEX_HAZE) | TAG_DOT;
     let dots = (bevy::light::NotShadowCaster, Visibility::Hidden);
     // All lamps of the block in one mesh with per-vertex colours, so they keep their drawing
     // order (dots don't write depth: the later of two overlapping lamps is on top, e.g. a mast's
