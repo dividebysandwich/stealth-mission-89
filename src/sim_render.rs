@@ -68,7 +68,7 @@ const FLARE: u8 = 15;
 const CHAFF: u8 = 7;
 const DECOY: u8 = 13;
 const TRACER: u8 = 17;
-const ENEMY_TRACER: u8 = 41;
+pub const ENEMY_TRACER: u8 = 41;
 /// The other players' rounds: the same ammunition as ours.
 const FRIENDLY_TRACER: u8 = TRACER;
 /// A coasting missile (motor burnt out): black by day, white at night (in every flight

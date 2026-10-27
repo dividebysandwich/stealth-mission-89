@@ -12,11 +12,13 @@ pub struct Effects {
     pub shake: bool,
     /// Flak, explosions and missile launches light their surroundings (flashes.rs).
     pub flashes: bool,
+    /// Conventional war at night: tracer barrages and searchlights over the towns (barrage.rs).
+    pub barrage: bool,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Self { shake: true, flashes: true }
+        Self { shake: true, flashes: true, barrage: true }
     }
 }
 
@@ -25,16 +27,18 @@ impl Default for Effects {
 pub enum Effect {
     Shake,
     Flashes,
+    Barrage,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 2] = [Effect::Shake, Effect::Flashes];
+    pub const ALL: [Effect; 3] = [Effect::Shake, Effect::Flashes, Effect::Barrage];
 
     /// Its name on the command line.
     pub fn name(self) -> &'static str {
         match self {
             Effect::Shake => "shake",
             Effect::Flashes => "flashes",
+            Effect::Barrage => "barrage",
         }
     }
 
@@ -43,6 +47,7 @@ impl Effect {
         match self {
             Effect::Shake => "Camera shake",
             Effect::Flashes => "Combat flashes",
+            Effect::Barrage => "Night barrage",
         }
     }
 
@@ -51,6 +56,7 @@ impl Effect {
         match self {
             Effect::Shake => "CAMERA SHAKE",
             Effect::Flashes => "COMBAT FLASHES",
+            Effect::Barrage => "NIGHT BARRAGE",
         }
     }
 
@@ -64,6 +70,10 @@ impl Effect {
             Effect::Flashes => &[
                 "Flak bursts, explosions and missile launches light the clouds, the ground and the cockpit for a moment",
             ],
+            Effect::Barrage => &[
+                "Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them",
+                "Only for the look: the barrage hits nothing, the searchlights find nothing",
+            ],
         }
     }
 
@@ -71,6 +81,7 @@ impl Effect {
         match self {
             Effect::Shake => e.shake,
             Effect::Flashes => e.flashes,
+            Effect::Barrage => e.barrage,
         }
     }
 
@@ -78,6 +89,7 @@ impl Effect {
         match self {
             Effect::Shake => e.shake = on,
             Effect::Flashes => e.flashes = on,
+            Effect::Barrage => e.barrage = on,
         }
     }
 

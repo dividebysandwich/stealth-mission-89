@@ -8,6 +8,7 @@ mod aircraft;
 mod asset_path;
 mod autoshot;
 mod avionics;
+mod barrage;
 mod boss_key;
 mod camera;
 mod campaign;
@@ -272,6 +273,7 @@ fn main() {
             explosions::ExplosionsPlugin,
             shake::ShakePlugin,
             flashes::FlashesPlugin,
+            barrage::BarragePlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,
             recon::ReconPlugin,

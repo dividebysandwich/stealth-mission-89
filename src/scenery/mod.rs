@@ -137,6 +137,14 @@ impl Scenery {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
+    /// The towns and cities (not the villages): centre (metres east, north), radius and whether
+    /// it is a city.
+    pub fn towns(&self) -> Vec<(DVec2, f64, bool)> {
+        use network::TownKind::*;
+        let towns = self.net.towns.iter().filter(|t| matches!(t.kind, Town | City));
+        towns.map(|t| (t.c, t.r, matches!(t.kind, City))).collect()
+    }
+
     /// `p` lies in a clearing (no trees).
     fn cleared(&self, p: DVec2) -> bool {
         self.clearings.iter().any(|&(c, r)| c.distance_squared(p) < r * r)

@@ -312,6 +312,21 @@ float density(vec3 q, vec3 apex, vec3 axis, vec4 p) {
     return pow(1.0 - c.x / p.w, 1.5) * (1.0 - c.y * c.y);
 }
 
+// A searchlight's beam (negative intensity): beam.wgsl `searchlight`.
+float searchlight(vec3 eye, vec3 d, float exit_s, vec3 apex, vec3 axis, vec4 p) {
+    vec3 w = eye - apex;
+    float b = dot(d, axis);
+    float across = max(1.0 - b * b, 1e-4);
+    float t = clamp((dot(axis, w) - b * dot(d, w)) / across, 0.0, p.w);
+    float s = clamp(dot(apex + axis * t - eye, d), 0.0, exit_s);
+    float r = length(eye + d * s - apex - axis * t);
+    float radius = p.z + p.y * t;
+    float inside = max(1.0 - r * r / (radius * radius), 0.0);
+    float path = min(2.0 * radius * sqrt(inside) / max(sqrt(across), 0.05), p.w);
+    float lamp = length(eye + d * clamp(dot(apex - eye, d), 0.0, exit_s) - apex) / (2.0 * p.z);
+    return 0.012 * pow(1.0 - t / p.w, 1.5) * inside * path + 0.8 * exp(-lamp * lamp);
+}
+
 void main() {
     vec4 p = raw_vec4(0);
     // The lamp and the beam's direction.
@@ -322,6 +337,12 @@ void main() {
     // Only where the view ray leaves the beam (its back faces).
     if (gl_FrontFacing) { discard; }
     float exit_s = length(v_world - eye);
+    if (p.x < 0.0) {
+        float sa = -p.x * searchlight(eye, d, exit_s, apex, axis, p);
+        if (sa <= 0.003) { discard; }
+        o_colour = vec4(COLOUR, min(sa, 1.0));
+        return;
+    }
     float chord = length(vec2(p.w, 2.0 * (p.z + p.y * p.w)));
     float start = max(exit_s - chord, 0.0);
     float ds = (exit_s - start) / float(STEPS);

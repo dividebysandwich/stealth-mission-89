@@ -72,7 +72,7 @@ Cockpit and graphics
   --local-lights               cockpit lamps, explosions, flares, missile motors, runway lights
   --no-auto-detail             VR: keep full scenery detail (else it follows the frame rate)
   --effects <list>             atmosphere effects: names on, -name off, all, none
-                               (shake, flashes)
+                               (shake, flashes, barrage)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size
