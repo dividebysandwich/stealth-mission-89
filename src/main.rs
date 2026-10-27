@@ -81,6 +81,7 @@ mod tacview;
 mod tacview_real_time;
 mod terrain;
 mod text_entry;
+mod tfr;
 mod trackcam;
 mod trails;
 mod viewer;

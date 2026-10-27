@@ -205,7 +205,7 @@ def material(name, like):
 
 for n, like in (
     ("ded", "adi"), ("screen_third", "screen_right"), ("trackcam_left", "trackcam"),
-    ("trackcam_third", "trackcam"),
+    ("trackcam_third", "trackcam"), ("screen_tfr", "adi"),
 ):
     material(n, like)
 # Guard covers and red buttons (not a shared material: the game takes its colour from the model).
@@ -718,6 +718,14 @@ screen("screen_right", scr["right"], -0.004, "trackcam")
 screen("screen_third", scr["third"], -0.004, "trackcam_third")
 screen("adi", scr["adi"], PLATE, round=True)
 screen("ded", scr["ded"], PLATE + 0.0005)
+# The terrain following radar display over the left MFD: its housing stands on the wing's top
+# edge (its back on the coaming), the round screen in a bezel, two setting knobs low on it.
+x, y, w, h = scr["tfr"]
+TFR_CASE = (x - 10.0, y - 10.0, w + 20.0, TOP_WING + 3.0 - (y - 10.0))
+plane_box("dark", "dark", TFR_CASE, -0.06, PLATE)
+screen("screen_tfr", scr["tfr"], PLATE, round=True)
+for u in (TFR_CASE[0] + 6.0, TFR_CASE[0] + TFR_CASE[2] - 6.0):
+    knob(u, TFR_CASE[1] + TFR_CASE[3] - 7.0, 0.004, 0.008, "dark", offset=PLATE)
 # The data entry display's black frame.
 x, y, w, h = scr["ded"]
 frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), 0.0, PLATE + 0.004)

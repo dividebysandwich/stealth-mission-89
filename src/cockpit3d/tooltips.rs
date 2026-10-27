@@ -457,6 +457,10 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
             "Slow: red top chevron, on speed: green circle, fast: amber bottom chevron",
         ),
         CanvasRole::Rwr => ("RWR", "Radar warning receiver: the radars that see the aircraft"),
+        CanvasRole::Tfr => (
+            "Terrain following radar",
+            "Range across, angle up: the terrain and the steering template; AUTO follows it",
+        ),
         CanvasRole::Hsi => {
             ("HSI", "Horizontal situation indicator: heading, bearing and distance to the waypoint")
         }

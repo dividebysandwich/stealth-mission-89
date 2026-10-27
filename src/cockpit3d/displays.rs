@@ -51,6 +51,8 @@ pub(super) enum CanvasRole {
     Approach,
     Rwr,
     Hsi,
+    /// The Tornado's terrain following radar display (`crate::tfr`).
+    Tfr,
     Ded,
     /// An air defence console's screens (`station` draws them).
     Console(ConsoleScreen),
@@ -283,8 +285,8 @@ pub(super) fn atlas_faces(layout: &PanelLayout) -> Vec<(Face, PxRect)> {
     faces
 }
 
-/// A self-luminous screen: an MFD (`Left` / `Right` / `Third`), the attitude ball, the RWR scope, the HSI
-/// or the approach indexer, with its canvas.
+/// A self-luminous screen: an MFD (`Left` / `Right` / `Third`), the attitude ball, the RWR scope, the HSI,
+/// the terrain following radar display or the approach indexer, with its canvas.
 pub(super) fn screen(
     role: CanvasRole,
     layout: &PanelLayout,
@@ -299,10 +301,11 @@ pub(super) fn screen(
         CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
             (Canvas::scaled(CLASSIC.0, CLASSIC.1, crate::mfd::CLASSIC_SCALE), false)
         }
-        CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi => {
+        CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi | CanvasRole::Tfr => {
             let r = match role {
                 CanvasRole::Rwr => layout.rwr,
                 CanvasRole::Hsi => layout.hsi,
+                CanvasRole::Tfr => layout.tfr,
                 _ => Some(layout.adi),
             };
             let n = (r.map_or(90.0, |r| r.w) * TEXELS as f32) as usize;
@@ -494,6 +497,7 @@ pub(super) fn update_displays(
         CanvasRole::Approach,
         CanvasRole::Rwr,
         CanvasRole::Hsi,
+        CanvasRole::Tfr,
         CanvasRole::Ded,
     ] {
         if settings.vr && half(role).is_some_and(|h| h != *frame % 2) {
@@ -520,6 +524,7 @@ pub(super) fn update_displays(
             }
             CanvasRole::Rwr => d.panel.draw_rwr(&mut tex.canvas),
             CanvasRole::Hsi => d.panel.draw_hsi(&mut tex.canvas),
+            CanvasRole::Tfr => crate::tfr::draw(&mut tex.canvas, &fonts, &d.panel.radar),
             CanvasRole::Ded => d.panel.draw_ded(&mut tex.canvas, &fonts),
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);

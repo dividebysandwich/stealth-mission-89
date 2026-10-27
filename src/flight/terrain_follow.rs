@@ -3,11 +3,15 @@
 //! objects by their collision hulls, the generated buildings, trees and power lines) instead
 //! of holding an altitude, still steering to the waypoint.
 //!
-//! Every frame the radar scans the track ahead (curving with the turn) for the highest
-//! obstacle at each distance, and `command` turns the profile into a flight path angle: the
-//! lowest one from which a pull-up of `PULL_G` (after a reaction time) still clears every
-//! obstacle, the "ski toe" of real terrain following. The flight models fly it
-//! (`Aircraft::tf_gamma`).
+//! As a real terrain following radar does, it compares the terrain ahead with a `template`
+//! ("ski toe"): `CLEARANCE` under the flight path, level for the reaction distance and then
+//! curving up as a pull-up of `PULL_G`. Terrain above the template asks for a climb, terrain all
+//! below it lets the aircraft descend; `command` turns the largest difference into a flight
+//! path angle, which the flight models fly (`Aircraft::tf_gamma`).
+//!
+//! Every frame while the Tornado flies, the radar scans the track ahead (curving with the turn)
+//! for the highest obstacle at each distance (`TerrainRadar`, also for the cockpit's E-scope,
+//! `crate::tfr`), whether the autopilot follows it or not.
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
@@ -41,33 +45,58 @@ const WIDTH_GROWTH: f32 = 0.04;
 /// track (metres).
 const TREES_AHEAD: f32 = 1500.0;
 const TREE_REACH: f64 = 30.0;
+/// The radar beam's half width (rad).
+const HALF_BEAM: f32 = 0.0175;
 const G: f32 = 9.81;
 
+/// The template's height `d` metres ahead at `speed` (m/s), relative to a level flight path
+/// through the aircraft (metres): `CLEARANCE` under it for the reaction distance, then rising
+/// as the pull-up.
+pub fn template(d: f32, speed: f32) -> f32 {
+    let v = speed.max(50.0);
+    let x = (d - v * REACTION).max(0.0);
+    x * x * G * PULL_G / (2.0 * v * v) - CLEARANCE
+}
+
 /// The flight path angle (rad) to fly at `speed` (m/s) over a profile of (distance ahead,
-/// height the aircraft must climb by to clear the obstacle there with the clearance) in metres.
-/// Past the reaction distance an obstacle needs the climb the pull-up template cannot make up;
-/// nearer ones are closed in on over `CAPTURE` seconds (smoothly holding the clearance, and
-/// pulling hard only for a sudden obstacle).
+/// obstacle height relative to the aircraft) in metres: the climb that puts the template over
+/// the highest obstacle above it, or the descent towards the nearest under it. Past the
+/// reaction distance the template's own curve makes up the climb; nearer obstacles are closed
+/// in on over `CAPTURE` seconds (smoothly holding the clearance; far under it faster, which
+/// keeps a sudden obstacle from being cleared late).
 pub fn command(profile: &[(f32, f32)], speed: f32) -> f32 {
     let v = speed.max(50.0);
-    // Pull-up radius, and the distance flown before the pull-up starts.
-    let radius = v * v / (G * PULL_G);
     let lag = v * REACTION;
     profile
         .iter()
-        .map(|&(d, need)| {
+        .map(|&(d, h)| {
             let x = (d - lag).max(0.0);
-            let need = need - x * x / (2.0 * radius);
-            let urgent = (need - MARGIN).max(0.0) * (1.0 - x / (v * CAPTURE)).max(0.0);
-            ((need + urgent) / x.max(v * CAPTURE)).atan()
+            let above = h - template(d, v);
+            let urgent = (above - MARGIN).max(0.0) * (1.0 - x / (v * CAPTURE)).max(0.0);
+            ((above + urgent) / x.max(v * CAPTURE)).atan()
         })
         .fold(-MAX_DIVE, f32::max)
         .min(MAX_CLIMB)
 }
 
-/// Measures the height of what lies below (`Aircraft::radar_ground`) and, with the autopilot
-/// engaged, scans the track ahead for the terrain following command (both None unless an
-/// aircraft with the radar flies).
+/// What the terrain following radar sees, for the E-scope (`crate::tfr`).
+#[derive(Resource, Default)]
+pub struct TerrainRadar {
+    /// The radar is scanning (the Tornado in the air).
+    pub on: bool,
+    /// The autopilot follows the terrain.
+    pub following: bool,
+    /// Speed (m/s) and flight path angle (rad).
+    pub speed: f32,
+    pub gamma: f32,
+    /// The returns: distance ahead and obstacle height relative to the aircraft (metres), and
+    /// whether the beam reaches it (not in the shadow of nearer terrain).
+    pub returns: Vec<(f32, f32, bool)>,
+}
+
+/// Scans the track ahead (`TerrainRadar`), measures the height of what lies below
+/// (`Aircraft::radar_ground`) and, with the autopilot engaged, sets the terrain following
+/// command (both None unless an aircraft with the radar flies).
 #[allow(clippy::type_complexity)]
 pub(super) fn scan(
     k: Res<FlightConstants>,
@@ -82,7 +111,10 @@ pub(super) fn scan(
         &InheritedVisibility,
     )>,
     tile_roots: Query<(), With<crate::world::TileObject>>,
+    mut radar: ResMut<TerrainRadar>,
 ) {
+    radar.on = false;
+    radar.returns.clear();
     let Ok((mut a, pos)) = aircraft.single_mut() else { return };
     a.tf_gamma = None;
     a.radar_ground = None;
@@ -99,8 +131,7 @@ pub(super) fn scan(
     let (heading, _, roll) = a.euler();
     let turn_rate = G * roll.tan().clamp(-2.0, 2.0) / speed;
     let to_go = super::bam(super::bam_diff(a.waypoint_bearing, super::to_bam(heading))).abs();
-    // Without the autopilot only straight down.
-    let ahead = if following { (speed * AHEAD_SECS).max(MIN_AHEAD) } else { 0.0 };
+    let ahead = (speed * AHEAD_SECS).max(MIN_AHEAD);
 
     // The tile objects' hulls near the corridor (a circle round its middle).
     let start = Vec2::new(here.x, here.z);
@@ -140,7 +171,7 @@ pub(super) fn scan(
         if d == 0.0 {
             a.radar_ground = Some(top / WU as f32);
         }
-        profile.push((d, top + CLEARANCE - here.y));
+        profile.push((d, top - here.y));
         // On along the curving track (a positive angle turns right, north to east).
         let left = to_go - turned;
         let turn = (turn_rate * step / speed).clamp(-left, left);
@@ -149,9 +180,23 @@ pub(super) fn scan(
         p += dir * step;
         d += step;
     }
+    let gamma = command(&profile, speed);
     if following {
-        a.tf_gamma = Some(command(&profile, speed));
+        a.tf_gamma = Some(gamma);
     }
+    // The beam sees what no nearer return hides: a return above the steepest sight line so far
+    // (less the beam's half width, which still catches the ground just behind a tree).
+    let mut sight = f32::NEG_INFINITY;
+    radar.returns.extend(profile.iter().map(|&(d, h)| {
+        let angle = h.atan2(d.max(1.0));
+        let seen = angle >= sight - HALF_BEAM;
+        sight = sight.max(angle);
+        (d, h, seen)
+    }));
+    radar.on = true;
+    radar.following = following;
+    radar.speed = speed;
+    radar.gamma = path.y.clamp(-1.0, 1.0).asin();
 }
 
 /// A tile object's collision hull near the scanned corridor: its inverse transform, centre and
@@ -203,13 +248,15 @@ mod tests {
     fn command_follows_the_profile() {
         let v = 250.0;
         // Level at the clearance over flat ground: hold it.
-        let flat: Vec<_> = (0..200).map(|i| (i as f32 * 25.0, 0.0)).collect();
+        let flat: Vec<_> = (0..200).map(|i| (i as f32 * 25.0, -CLEARANCE)).collect();
         assert!(command(&flat, v).abs() < 0.01, "{}", command(&flat, v));
         // High above it: the steepest dive.
         let high: Vec<_> = flat.iter().map(|&(d, _)| (d, -1500.0)).collect();
         assert_eq!(command(&high, v), -MAX_DIVE);
         // A 300 m wall 1.5 km ahead: climbing already, a far one not yet.
-        let wall = |at: f32| flat.iter().map(move |&(d, _)| (d, if d > at { 300.0 } else { 0.0 }));
+        let wall = |at: f32| {
+            flat.iter().map(move |&(d, h)| (d, if d > at { 300.0 - CLEARANCE } else { h }))
+        };
         assert!(command(&wall(1500.0).collect::<Vec<_>>(), v) > 0.05);
         assert!(command(&wall(4900.0).collect::<Vec<_>>(), v).abs() < 0.01);
         // Right in front: a steep climb.
@@ -238,7 +285,7 @@ mod tests {
                 let mut d = 0.0;
                 while d <= (speed * AHEAD_SECS).max(MIN_AHEAD) {
                     let step = SPACING + SPACING_GROWTH * d;
-                    profile.push((d, terrain_near(n + d, step * 0.5) + CLEARANCE - y));
+                    profile.push((d, terrain_near(n + d, step * 0.5) - y));
                     d += step;
                 }
                 a.tf_gamma = Some(command(&profile, speed));

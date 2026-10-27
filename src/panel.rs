@@ -600,6 +600,7 @@ pub struct PanelParams<'w, 's> {
     pub positions: Query<'w, 's, &'static crate::world::WorldPos, With<Player>>,
     pub waypoints: Res<'w, crate::hud::Waypoints>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
+    pub radar: Res<'w, crate::flight::terrain_follow::TerrainRadar>,
     pub clock: Res<'w, MissionClock>,
     pub mission: Option<Res<'w, crate::mission::ActiveMission>>,
 }

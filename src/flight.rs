@@ -26,6 +26,7 @@ pub struct FlightPlugin;
 impl Plugin for FlightPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(FlightConstants::default())
+            .init_resource::<terrain_follow::TerrainRadar>()
             .add_systems(
                 OnEnter(crate::settings::AppState::Flight),
                 apply_settings.in_set(SetupSet::Mission),

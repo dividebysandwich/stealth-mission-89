@@ -164,6 +164,8 @@ pub struct PanelLayout {
     /// Radar warning receiver scope and horizontal situation indicator (F-16, A-10).
     pub rwr: Option<PxRect>,
     pub hsi: Option<PxRect>,
+    /// Terrain following radar display (Tornado).
+    pub tfr: Option<PxRect>,
     /// Data entry display: the up-front controls' readout (none on the classic panel).
     pub ded: Option<PxRect>,
 }
@@ -353,6 +355,7 @@ impl PanelLayout {
             ],
             rwr: None,
             hsi: None,
+            tfr: None,
             ded: None,
         }
     }
@@ -537,6 +540,7 @@ impl PanelLayout {
             ],
             rwr: None,
             hsi: None,
+            tfr: None,
             ded: Some(rect(
                 -60.0,
                 -121.5,
@@ -610,6 +614,7 @@ impl PanelLayout {
             ],
             rwr: None,
             hsi: None,
+            tfr: None,
             ded,
         }
     }
@@ -663,6 +668,8 @@ impl PanelLayout {
     ///   with FLAPS, BRAKE and AUTO left (x <= -600, centred on -700; the gear handle and the
     ///   target buttons are modelled), the caution lights and the countermeasures right (x >=
     ///   1100, centred on 1200).
+    /// - Over the left MFD, in a housing standing on the left wing's top edge: the terrain
+    ///   following radar display (`tfr`).
     ///
     /// No BAY cap: the stores hang under the fuselage and the wings.
     pub fn tornado() -> Self {
@@ -753,6 +760,7 @@ impl PanelLayout {
             ],
             rwr: None,
             hsi: None,
+            tfr: Some(rect(-284.0, -250.0, 58.0, 58.0)),
             ded: Some(rect(-46.0, -20.0, 92.0, 92.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
         }
     }
@@ -970,6 +978,7 @@ impl PanelLayout {
             ],
             rwr: Some(rect(-150.0, -106.0, 66.0, 66.0)),
             hsi: Some(rect(-56.0, 72.0, 112.0, 112.0)),
+            tfr: None,
             ded: Some(rect(-68.0, -256.0, 86.0, 86.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
         }
     }
@@ -1201,6 +1210,7 @@ impl PanelLayout {
             ],
             rwr: Some(rect(-176.0, -154.0, 76.0, 76.0)),
             hsi: Some(rect(-34.0, 44.0, 68.0, 68.0)),
+            tfr: None,
             ded: Some(rect(95.0, -152.0, DED_W, DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
         }
     }
@@ -1239,7 +1249,7 @@ mod tests {
         for l in all() {
             let mut rects: Vec<PxRect> = l.items.iter().map(|p| p.rect).collect();
             rects.push(l.adi);
-            rects.extend(l.rwr.iter().chain(&l.hsi).chain(&l.ded));
+            rects.extend(l.rwr.iter().chain(&l.hsi).chain(&l.tfr).chain(&l.ded));
             for m in &l.mfds {
                 rects.push(m.screen);
                 rects.extend(l.osbs(m).into_iter().map(|(_, r)| r));

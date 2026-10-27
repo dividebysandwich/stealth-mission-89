@@ -17,8 +17,8 @@
 //!   The object's `atlas_face` names the face (`layout`), `atlas_uv` the uv rectangle its UVs
 //!   were made for; they are moved to wherever the face is in the atlas.
 //! * `screen_left`, `screen_right`, `screen_third` (the F-117A's and the Tornado's third MFD), `adi`, `approach`,
-//!   `screen_rwr` (RWR scope), `hsi`, `ded` (data entry display): live displays (UVs 0..1 over
-//!   the screen).
+//!   `screen_rwr` (RWR scope), `hsi`, `screen_tfr` (the Tornado's terrain following radar),
+//!   `ded` (data entry display): live displays (UVs 0..1 over the screen).
 //! * `trackcam`, `trackcam_left`, `trackcam_third`: the tracking camera picture behind the
 //!   right / left / third screen.
 //! * `screen_scope`, `screen_board`, `screen_eo`, `screen_info`: an air defence console's air
@@ -412,7 +412,7 @@ impl<'a> Spawner<'a> {
                 m
             }
             "screen_left" | "screen_right" | "screen_third" | "adi" | "approach" | "screen_rwr"
-            | "hsi" | "ded" => {
+            | "hsi" | "screen_tfr" | "ded" => {
                 let role = match name {
                     "screen_left" => CanvasRole::Left,
                     "screen_right" => CanvasRole::Right,
@@ -420,6 +420,7 @@ impl<'a> Spawner<'a> {
                     "adi" => CanvasRole::Adi,
                     "screen_rwr" => CanvasRole::Rwr,
                     "hsi" => CanvasRole::Hsi,
+                    "screen_tfr" => CanvasRole::Tfr,
                     "ded" => CanvasRole::Ded,
                     _ => CanvasRole::Approach,
                 };
@@ -707,7 +708,8 @@ mod tests {
     /// A generated panel's layout as its Blender build script reads it: every atlas face with
     /// its rectangle (millimetres, x right / y down from the panel centre) and, for buttons,
     /// the control it fires; the display rectangles (the F-117A's third MFD as `third`, the
-    /// F-16's and the A-10's HSI and RWR scopes as `hsi` and `rwr`).
+    /// F-16's and the A-10's HSI and RWR scopes as `hsi` and `rwr`, the Tornado's terrain
+    /// following radar display as `tfr`).
     fn layout_json(style: PanelStyle) -> serde_json::Value {
         use super::super::displays::Face;
         use super::super::layout::Effect;
@@ -730,7 +732,7 @@ mod tests {
         for (m, key) in l.mfds.iter().zip(["left", "right", "third"]) {
             screens[key] = r(&m.screen);
         }
-        for (rect, key) in [(l.hsi, "hsi"), (l.rwr, "rwr")] {
+        for (rect, key) in [(l.hsi, "hsi"), (l.rwr, "rwr"), (l.tfr, "tfr")] {
             if let Some(rect) = rect {
                 screens[key] = r(&rect);
             }
@@ -801,9 +803,17 @@ mod tests {
                 PanelStyle::F16 | PanelStyle::A10 => {
                     vec!["screen_rwr", "hsi", "ded", "trackcam_left", "label_NEAR"]
                 }
-                PanelStyle::Modern | PanelStyle::Tornado => {
+                PanelStyle::Modern => {
                     vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
                 }
+                PanelStyle::Tornado => vec![
+                    "screen_third",
+                    "screen_tfr",
+                    "ded",
+                    "trackcam_left",
+                    "trackcam_third",
+                    "label_NEAR",
+                ],
                 PanelStyle::Uh60 | PanelStyle::Ah1z => vec!["ded", "trackcam_left", "label_NEAR"],
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
