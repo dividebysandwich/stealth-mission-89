@@ -1588,6 +1588,7 @@ fn briefing(
                                 Airframe::F117,
                                 Airframe::F16,
                                 Airframe::Tornado,
+                                Airframe::A10,
                                 Airframe::UH60,
                                 Airframe::AH1Z,
                             ]

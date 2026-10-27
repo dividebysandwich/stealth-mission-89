@@ -532,6 +532,9 @@ pub struct Airframe {
     /// The Tornado IDS (weapons outside): only its look differs from the F-16's.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub tornado: bool,
+    /// The A-10 (weapons outside): only its look differs from the F-16's.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub a10: bool,
 }
 
 /// Landing option.
@@ -570,6 +573,9 @@ pub struct SimOptions {
     /// The aircraft is the Tornado IDS: seen as one by the other pilots.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub tornado: bool,
+    /// The aircraft is the A-10: seen as one by the other pilots.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub a10: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -606,6 +612,7 @@ impl Default for SimOptions {
             helicopter: false,
             gunship: false,
             tornado: false,
+            a10: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

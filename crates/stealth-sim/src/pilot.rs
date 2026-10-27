@@ -31,6 +31,9 @@ pub struct Pilot {
     /// The aircraft is the Tornado IDS (`SimOptions::tornado` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) tornado: bool,
+    /// The aircraft is the A-10 (`SimOptions::a10` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) a10: bool,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -287,6 +290,7 @@ impl Sim {
             helicopter: p0.helicopter,
             gunship: p0.gunship,
             tornado: p0.tornado,
+            a10: p0.a10,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

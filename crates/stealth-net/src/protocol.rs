@@ -298,6 +298,7 @@ mod tests {
             helicopter: true,
             gunship: true,
             tornado: false,
+            a10: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -312,6 +313,10 @@ mod tests {
         // The Tornado's flag.
         let t = RemotePilot { helicopter: false, gunship: false, tornado: true, ..p };
         let w = WorldFast { pilots: vec![t.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![t]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![t.clone()]);
+        // The A-10's.
+        let a = RemotePilot { tornado: false, a10: true, ..t };
+        let w = WorldFast { pilots: vec![a.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![a]);
     }
 }

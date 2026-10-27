@@ -888,6 +888,7 @@ pub fn airframe_of(k: crate::aircraft::AircraftKind) -> Airframe {
         crate::aircraft::AircraftKind::UH60 => Airframe::UH60,
         crate::aircraft::AircraftKind::AH1Z => Airframe::AH1Z,
         crate::aircraft::AircraftKind::Tornado => Airframe::Tornado,
+        crate::aircraft::AircraftKind::A10 => Airframe::A10,
     }
 }
 
@@ -898,6 +899,7 @@ pub fn kind_of(a: Airframe) -> crate::aircraft::AircraftKind {
         Airframe::UH60 => crate::aircraft::AircraftKind::UH60,
         Airframe::AH1Z => crate::aircraft::AircraftKind::AH1Z,
         Airframe::Tornado => crate::aircraft::AircraftKind::Tornado,
+        Airframe::A10 => crate::aircraft::AircraftKind::A10,
     }
 }
 

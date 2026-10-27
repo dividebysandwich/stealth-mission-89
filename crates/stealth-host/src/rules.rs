@@ -69,6 +69,7 @@ impl Rules {
             Aircraft::Tornado => {
                 Airframe { external_stores: true, tornado: true, ..Airframe::default() }
             }
+            Aircraft::A10 => Airframe { external_stores: true, a10: true, ..Airframe::default() },
             Aircraft::UH60 => {
                 Airframe { external_stores: true, helicopter: true, ..Airframe::default() }
             }

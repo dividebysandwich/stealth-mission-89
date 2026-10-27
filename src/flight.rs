@@ -193,6 +193,22 @@ impl FlightConstants {
         }
     }
 
+    /// A-10C: slow (the classic model's top speed about 380 kt), 7.3 g, 10,700 lb of fuel burnt
+    /// sparingly by its turbofans.
+    pub fn a10() -> Self {
+        Self {
+            thrust_to_knots: 5.2,
+            max_knots: 450.0,
+            stall_knots: 115.0,
+            fuel_div: 1300.0,
+            fuel: 10700.0,
+            max_gees: 117.0,
+            roll_rate: 1.2,
+            aero: modern::Aero::A10,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -1160,6 +1176,32 @@ mod tests {
         println!("Tornado: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
         assert!((115.0..145.0).contains(&flaps), "flaps {flaps}");
         assert!(clean > flaps + 20.0, "clean {clean}");
+    }
+
+    /// A-10C (modern): about 380 kt low down at full throttle, no afterburner, a 1 g stall about
+    /// 120 kt clean and slower with the flaps.
+    #[test]
+    fn a10_performance() {
+        let k = FlightConstants::a10;
+        assert!(!k().afterburner());
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 300.0, 100.0), 240.0);
+        println!("A-10: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((355.0..405.0).contains(&a.knots()), "sea level {}", a.knots());
+        let a = run(airborne(20000.0, 300.0, 100.0), 300.0);
+        println!("A-10: max speed at 20000 ft: {:.0} kt", a.knots());
+        let mut slow = airborne(1000.0, 170.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("A-10: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((110.0..135.0).contains(&clean), "clean {clean}");
+        assert!(flaps < clean - 8.0, "flaps {flaps}");
+        // The classic model's top speed.
+        let c = fly_with(k(), true, level(airborne(1000.0, 300.0, 100.0)), 120.0, |_, _| {}).0;
+        println!("A-10 classic: max speed {:.0} kt", c.knots());
+        assert!((340.0..420.0).contains(&c.knots()), "classic {}", c.knots());
     }
 
     /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern) with the afterburner,

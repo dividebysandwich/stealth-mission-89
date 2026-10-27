@@ -16,6 +16,7 @@ pub enum AircraftKind {
     UH60,
     AH1Z,
     Tornado,
+    A10,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -159,6 +160,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         7 => Some(1.7),
         23 => Some(F16_LIFT - RUNWAY_Y),
         45 => Some(TORNADO_LIFT - RUNWAY_Y),
+        32 => Some(A10_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -373,11 +375,55 @@ static TORNADO: AircraftSpec = AircraftSpec {
     flight: FlightConstants::tornado,
 };
 
+/// The A-10's wheels are 2.06 m below its model origin (tools/models/aircraft.py `A10_GROUND`).
+const A10_LIFT: f32 = 2.06 + RUNWAY_Y;
+/// A point of the A-10's builder (tools/models/aircraft.py `a10`: metres, x right, y forward, z
+/// up) in the aircraft frame: the model is centred on its length, 0.13 m ahead of the builder's
+/// origin.
+const fn a10_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(A10_LIFT, x * K, z * K, -(y - 0.13) * K)
+}
+
+static A10: AircraftSpec = AircraftSpec {
+    model: "aircraft_032",
+    model_lift: A10_LIFT,
+    // Under the bubble canopy (y 3.05..6.66 m, sill z 0.95, top 1.63 m), 0.38 m under its top.
+    eye: a10_point(0.0, 4.55, 1.25),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.50, -1.15, -0.85), Vec3::new(0.50, 0.40, 0.80)),
+        two_sided: false,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::A10, "cockpit_a10")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // The F-16's, scaled to the taller combiner (x +-0.17, z -0.13 .. 0.11 at 0.70 m in front
+    // of the eye, tools/models/build_cockpit_a10.py).
+    hud_scale: 1900.0,
+    vr_hud_scale: 1900.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    // The GAU-8's muzzle under the nose.
+    muzzle: Some(a10_point(0.0, 8.36, -0.34)),
+    // Between the two engines.
+    exhaust: a10_point(0.0, -5.0, 0.80),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    flight: FlightConstants::a10,
+};
+
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 5] = [
+    pub const ALL: [AircraftKind; 6] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::Tornado,
+        AircraftKind::A10,
         AircraftKind::UH60,
         AircraftKind::AH1Z,
     ];
@@ -390,6 +436,8 @@ impl AircraftKind {
             AircraftKind::UH60
         } else if p.tornado {
             AircraftKind::Tornado
+        } else if p.a10 {
+            AircraftKind::A10
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -404,6 +452,7 @@ impl AircraftKind {
             AircraftKind::UH60 => &UH60,
             AircraftKind::AH1Z => &AH1Z,
             AircraftKind::Tornado => &TORNADO,
+            AircraftKind::A10 => &A10,
         }
     }
 
@@ -415,6 +464,7 @@ impl AircraftKind {
             AircraftKind::UH60 => "uh60",
             AircraftKind::AH1Z => "ah1z",
             AircraftKind::Tornado => "tornado",
+            AircraftKind::A10 => "a10",
         }
     }
 
@@ -427,6 +477,8 @@ impl AircraftKind {
                 || (matches!(s.as_str(), "uh60a" | "blackhawk") && *k == AircraftKind::UH60)
                 || (matches!(s.as_str(), "ah1" | "viper") && *k == AircraftKind::AH1Z)
                 || (matches!(s.as_str(), "tornadoids" | "ids") && *k == AircraftKind::Tornado)
+                || (matches!(s.as_str(), "a10c" | "warthog" | "thunderbolt")
+                    && *k == AircraftKind::A10)
         })
     }
 
@@ -437,6 +489,7 @@ impl AircraftKind {
             AircraftKind::UH60 => "UH-60A Black Hawk",
             AircraftKind::AH1Z => "AH-1Z Viper",
             AircraftKind::Tornado => "Tornado IDS",
+            AircraftKind::A10 => "A-10C Thunderbolt II",
         }
     }
 }
@@ -491,7 +544,9 @@ mod tests {
     /// The jets' eye inside the bounds of their canopy glass.
     #[test]
     fn eye_under_the_canopy() {
-        for kind in [AircraftKind::F16, AircraftKind::F117, AircraftKind::Tornado] {
+        for kind in
+            [AircraftKind::F16, AircraftKind::F117, AircraftKind::Tornado, AircraftKind::A10]
+        {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(
                 &format!("{}_lod0", spec.model),
@@ -544,6 +599,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("AH-1Z"), Some(AircraftKind::AH1Z));
         assert_eq!(AircraftKind::parse("viper"), Some(AircraftKind::AH1Z));
         assert_eq!(AircraftKind::parse("Tornado-IDS"), Some(AircraftKind::Tornado));
+        assert_eq!(AircraftKind::parse("A-10C"), Some(AircraftKind::A10));
+        assert_eq!(AircraftKind::parse("warthog"), Some(AircraftKind::A10));
     }
 
     /// The Tornado's outer wings: two parts on the slots the game sweeps them with, pivoted

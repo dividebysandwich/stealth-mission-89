@@ -930,8 +930,13 @@ mod tests {
     fn every_control_has_a_tooltip() {
         use super::super::layout::PanelLayout;
         let mfd = MfdState::default();
-        for style in [PanelStyle::Classic, PanelStyle::Modern, PanelStyle::F16, PanelStyle::Tornado]
-        {
+        for style in [
+            PanelStyle::Classic,
+            PanelStyle::Modern,
+            PanelStyle::F16,
+            PanelStyle::Tornado,
+            PanelStyle::A10,
+        ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd).unwrap_or_else(|| panic!("{effect:?}"));
                 assert!(!tip.title.is_empty() && !tip.title.contains('_'), "{effect:?}");

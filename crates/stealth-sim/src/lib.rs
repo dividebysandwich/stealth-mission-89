@@ -326,6 +326,7 @@ impl Sim {
         let helicopter = opts.helicopter;
         let gunship = opts.gunship;
         let tornado = opts.tornado;
+        let a10 = opts.a10;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -361,6 +362,7 @@ impl Sim {
                 helicopter,
                 gunship,
                 tornado,
+                a10,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,

@@ -301,6 +301,47 @@ impl Aero {
         }),
     };
 
+    /// A-10C: two TF34 turbofans (18,000 lb static, falling off steeply with speed) against
+    /// 38,000 lb with full internal fuel and the cannon's ammunition, a long straight wing (75
+    /// lb/ft^2) and a draggy airframe: about 380 kt low down, a 120 kt clean stall, 7.3 g, no
+    /// afterburner.
+    pub const A10: Aero = Aero {
+        wing_loading: 75.0,
+        dry_weight: 27_500.0,
+        ref_weight: 38_000.0,
+        thrust_ratio: 0.48,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        // High bypass turbofans: much of the static thrust is gone at speed.
+        thrust_mach: -0.6,
+        cl_alpha: 5.0,
+        alpha_stall: 0.30,
+        alpha_stall_neg: -0.22,
+        alpha_limit: 0.27,
+        alpha_limit_neg: -0.20,
+        cl_flaps: 0.5,
+        alpha_flaps: 0.03,
+        cd0: 0.046,
+        cd_k: 0.062,
+        cd_sep: 0.5,
+        cl_sep: 1.1,
+        cd_gear: 0.02,
+        cd_flaps: 0.05,
+        // The split ailerons (decelerons) open as speed brakes.
+        cd_speed_brake: 0.15,
+        cd_bay: 0.0,
+        cd_idle: 0.02,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Subsonic,
+        n_max: 7.3,
+        n_min: -3.0,
+        roll_rate: 1.9,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        swing_wing: None,
+    };
+
     /// The airframe with its swing wing (if it has one) at `at` (0 fully forward .. 1 fully
     /// back).
     pub fn swept(&self, at: f32) -> Aero {

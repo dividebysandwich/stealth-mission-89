@@ -26,7 +26,7 @@ TOLERANCE = 0.05
 # The helicopters' outlines leave the rotors (their `_part` nodes) out; the Tornado's keep its
 # outer wings, swept forward.
 AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0"),
-            ("TORNADO_OUTLINE", "aircraft_045")]
+            ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032")]
 WITH_PARTS = {"aircraft_045"}
 
 

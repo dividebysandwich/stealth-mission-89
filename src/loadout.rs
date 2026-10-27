@@ -1,6 +1,6 @@
 //! Loadout editor (otherwise the mission generator picks the stores): the stores on each
 //! hardpoint, the F-117A's bays (two real ones, two more inside the wings without realistic
-//! weapons), the F-16's nine pylon stations or the AH-1Z's six.
+//! weapons), the F-16's nine pylon stations, the A-10's eleven or the AH-1Z's six.
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -308,6 +308,73 @@ const TORNADO_OUTLINE: &[(f32, f32)] = &[
     (-0.30, 1.32),
     (-0.00, 0.56),
 ];
+/// aircraft_032 (tools/models/aircraft.py `a10`) seen from above: half span 8.78 m, length 16.44 m.
+const A10_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.10, 0.04),
+    (0.10, 0.26),
+    (0.22, 0.36),
+    (0.34, 0.70),
+    (0.64, 2.46),
+    (0.70, 7.00),
+    (2.26, 7.10),
+    (2.32, 6.56),
+    (2.56, 6.24),
+    (2.80, 6.56),
+    (2.88, 7.18),
+    (8.50, 7.64),
+    (8.78, 7.76),
+    (8.78, 9.56),
+    (8.58, 9.66),
+    (2.10, 10.06),
+    (2.06, 12.22),
+    (1.94, 12.92),
+    (1.70, 13.36),
+    (1.16, 13.36),
+    (0.90, 12.86),
+    (0.80, 11.86),
+    (0.50, 11.84),
+    (0.38, 14.24),
+    (2.82, 14.30),
+    (2.86, 14.08),
+    (2.92, 14.46),
+    (2.86, 16.00),
+    (2.86, 15.66),
+    (2.80, 15.60),
+    (0.32, 15.64),
+    (0.00, 16.44),
+    (-0.32, 15.64),
+    (-2.80, 15.60),
+    (-2.86, 15.66),
+    (-2.86, 16.00),
+    (-2.92, 14.46),
+    (-2.86, 14.08),
+    (-2.82, 14.30),
+    (-0.38, 14.24),
+    (-0.50, 11.84),
+    (-0.80, 11.86),
+    (-0.90, 12.86),
+    (-1.16, 13.36),
+    (-1.70, 13.36),
+    (-1.94, 12.92),
+    (-2.06, 12.22),
+    (-2.10, 10.06),
+    (-8.58, 9.66),
+    (-8.78, 9.56),
+    (-8.78, 7.76),
+    (-8.50, 7.64),
+    (-2.88, 7.18),
+    (-2.80, 6.56),
+    (-2.56, 6.24),
+    (-2.32, 6.56),
+    (-2.26, 7.10),
+    (-0.70, 7.00),
+    (-0.64, 2.46),
+    (-0.34, 0.70),
+    (-0.22, 0.36),
+    (-0.10, 0.26),
+    (-0.10, 0.04),
+];
 /// aircraft_023 (tools/models/aircraft.py `f16`) seen from above: half span 4.70 m, length 15.88 m.
 const F16_OUTLINE: &[(f32, f32)] = &[
     (0.00, 0.00),
@@ -424,12 +491,35 @@ static TORNADO_STATIONS: [Hardpoint; 8] = [
     pylon("Right wing, Sidewinder rail", "8", 4.20, 9.40, Some(0), &TIP),
 ];
 
+/// The A-10's outer wing pylons carry the Mavericks and the bombs, the centre section's the
+/// heavy bombs and the tanks, the fuselage's the lighter bombs; the centreline the tank, the
+/// camera or the cargo. No anti-ship or anti-radar missiles.
+const A10_WING: [u8; 11] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const A10_INNER: [u8; 11] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
+/// The A-10's eleven stations: 1 (left outer wing, the Sidewinders) to 11.
+static A10_STATIONS: [Hardpoint; 11] = [
+    pylon("Station 1, left outer wing", "1", -5.95, 8.63, Some(10), &SIDEWINDER),
+    pylon("Station 2, left wing", "2", -4.75, 8.53, Some(9), &A10_WING),
+    pylon("Station 3, left wing", "3", -3.55, 8.43, Some(8), &A10_WING),
+    pylon("Station 4, left centre wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
+    pylon("Station 5, left fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY),
+    pylon("Station 6, centreline", "6", 0.0, 8.11, None, &CENTRE),
+    pylon("Station 7, right fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY),
+    pylon("Station 8, right centre wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
+    pylon("Station 9, right wing", "9", 3.55, 8.43, Some(2), &A10_WING),
+    pylon("Station 10, right wing", "10", 4.75, 8.53, Some(1), &A10_WING),
+    pylon("Station 11, right outer wing", "11", 5.95, 8.63, Some(0), &SIDEWINDER),
+];
+
 static F117_REAL_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_REAL };
 static F117_FANTASY_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_FANTASY };
 static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
+static A10_LAYOUT: Layout =
+    Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
 static TORNADO_LAYOUT: Layout = Layout {
     outline: TORNADO_OUTLINE,
     half_span: 6.98,
@@ -461,6 +551,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F117 => &F117_FANTASY_LAYOUT,
         AircraftKind::F16 => &F16_LAYOUT,
         AircraftKind::Tornado => &TORNADO_LAYOUT,
+        AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
     }
@@ -485,8 +576,8 @@ pub struct PlannedLoadout {
 pub const LOADOUT_FILE: &str = "loadout.json";
 
 impl PlannedLoadout {
-    /// The generator's stores: in the F-117A's bays as they are, on the F-16 and the Tornado
-    /// each on the first free pair of stations that carries it, and Sidewinders on the free
+    /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado and
+    /// the A-10 each on the first free pair of stations that carries it, and Sidewinders on the free
     /// wingtips or rails; the AH-1Z full.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
@@ -507,11 +598,17 @@ impl PlannedLoadout {
                     *s = h.loads.first().copied();
                 }
             }
-            AircraftKind::F16 | AircraftKind::Tornado => {
+            AircraftKind::F16 | AircraftKind::Tornado | AircraftKind::A10 => {
                 let tornado = aircraft == AircraftKind::Tornado;
+                let a10 = aircraft == AircraftKind::A10;
                 for w in briefed.chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
+                        0 if a10 => &[0],
+                        16 | 18 if a10 => &[5],
+                        17 if a10 => &[3],
+                        5 if a10 => &[2, 1],
+                        _ if a10 => &[1, 2, 3, 4],
                         0 if tornado => &[0, 1],
                         0 => &[0, 1, 2],
                         1 if tornado => &[0],
