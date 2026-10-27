@@ -388,19 +388,21 @@ fn buttons(
 }
 
 /// The console's buttons: a Gepard's without the missile battery's (launchers, guidance, the
-/// second and third reload).
+/// second and third reload); LOCK lit with a lock, FLIR with the thermal picture.
 fn panel(
     manning: Option<Res<Manning>>,
     c: Option<Res<ActiveCampaign>>,
     combat: Option<Res<Combat>>,
+    mfd: Res<crate::mfd::MfdState>,
     mut panel: ResMut<ConsolePanel>,
 ) {
-    let (Some(m), Some(_), Some(_)) = (manning, c, combat) else {
+    let (Some(m), Some(c), Some(combat)) = (manning, c, combat) else {
         if *panel != ConsolePanel::default() {
             *panel = ConsolePanel::default();
         }
         return;
     };
+    let sim = &combat.sim;
     let hidden = if m.gepard {
         vec![
             ConsoleKey::Guided,
@@ -414,7 +416,14 @@ fn panel(
     } else {
         Vec::new()
     };
-    let lit = Vec::new();
+    let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
+    let mut lit = Vec::new();
+    if lock.is_some() {
+        lit.push((ConsoleKey::Lock, scope::GREEN));
+    }
+    if mfd.flir {
+        lit.push((ConsoleKey::Flir, scope::GREEN));
+    }
     let want = ConsolePanel { hidden, lit };
     if *panel != want {
         *panel = want;
