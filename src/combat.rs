@@ -280,15 +280,19 @@ fn start_combat(
     let external_stores = !settings.aircraft.spec().bomb_bay;
     let helicopter = settings.aircraft.spec().helicopter;
     let gunship = settings.aircraft.spec().turret;
+    let tornado = settings.aircraft == crate::aircraft::AircraftKind::Tornado;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
-        Some(c) => SimOptions { external_stores, helicopter, gunship, ..c.rules.sim_options() },
+        Some(c) => {
+            SimOptions { external_stores, helicopter, gunship, tornado, ..c.rules.sim_options() }
+        }
         None => SimOptions {
             landing,
             prior_damage,
             external_stores,
             helicopter,
             gunship,
+            tornado,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -987,6 +991,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "AH-1Z"
     } else if p.helicopter {
         "UH-60A"
+    } else if p.tornado {
+        "Tornado"
     } else if p.external_stores {
         "F-16"
     } else {

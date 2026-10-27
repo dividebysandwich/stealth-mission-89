@@ -8,10 +8,9 @@
 //! The F-117A's modern panel (`modern`) and the F-16's (`f16`) are not on that plane: their
 //! rectangles are millimetres on their own panels (x right, y down from the panel's centre).
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
-//! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py` and
-//! `build_cockpit_uh60.py` read `assets-src/blend/cockpit_modern_layout.json`,
-//! `cockpit_f16_layout.json` and `cockpit_uh60_layout.json`, which a test keeps in step with the
-//! layouts).
+//! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
+//! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py` and `build_cockpit_tornado.py` read
+//! `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps in step with the layouts).
 
 use crate::input::Action;
 use crate::mfd::{LeftMfd, MfdSide, OSB_COUNT};
@@ -26,6 +25,8 @@ pub enum PanelStyle {
     Uh60,
     /// The AH-1Z's: the UH-60A's narrowed to a tandem cockpit.
     Ah1z,
+    /// The Tornado IDS's modernised front cockpit: three MFDs across the panel.
+    Tornado,
 }
 
 /// A rectangle in panel pixels.
@@ -155,12 +156,12 @@ pub struct PanelLayout {
     pub items: Vec<Placed>,
     /// Attitude ball (square around the disc).
     pub adi: PxRect,
-    /// The MFDs: left and right, the F-117A's third.
+    /// The MFDs: left and right, the third (F-117A, Tornado).
     pub mfds: Vec<MfdUnit>,
     /// Radar warning receiver scope and horizontal situation indicator (F-16).
     pub rwr: Option<PxRect>,
     pub hsi: Option<PxRect>,
-    /// Data entry display (F-16, F-117A): the up-front controls' readout.
+    /// Data entry display: the up-front controls' readout (none on the classic panel).
     pub ded: Option<PxRect>,
 }
 
@@ -171,7 +172,7 @@ const OSB_H: f32 = 10.0;
 impl PanelStyle {
     /// The cockpit has a third MFD (`MfdSide::Third`).
     pub fn third_mfd(self) -> bool {
-        self == PanelStyle::Modern
+        matches!(self, PanelStyle::Modern | PanelStyle::Tornado)
     }
 }
 
@@ -183,6 +184,7 @@ impl PanelLayout {
             PanelStyle::F16 => Self::f16(),
             PanelStyle::Uh60 => Self::uh60(),
             PanelStyle::Ah1z => Self::ah1z(),
+            PanelStyle::Tornado => Self::tornado(),
         }
     }
 
@@ -642,6 +644,115 @@ impl PanelLayout {
         Self { style: PanelStyle::Ah1z, items, adi: rect(-34.0, 110.0, 68.0, 68.0), ..u }
     }
 
+    /// The Tornado IDS's modernised front panel (millimetres, x right and y down, life size;
+    /// `tools/models/build_cockpit_tornado.py`), after the upgrade mock-ups' three-MFD panel:
+    /// - The centre column (|x| <= 112): the centre MFD (the right MFD) high under the HUD, under
+    ///   it the up-front controls: the data entry display between two blocks of six caps (left:
+    ///   the HUD modes, LOCK, DCLT, NVG; right: ILS, MENU, VOL, TIME, STPT, ORD) over a row of
+    ///   eight keys, then fuel quantity with the fuel and thrust readouts and the EMV gauge.
+    /// - The wings (112 < |x| <= 335): the left MFD and the third one (the right MFD's place in the
+    ///   cockpit, the HSI at first), a little lower than the centre one. Under the left one the
+    ///   standby instruments (airspeed, attitude, altimeter, the AOA and vertical velocity tapes,
+    ///   the clock) and the master caution with the threat lights; under the right one the fire,
+    ///   engine, flight control and jammer / avionics damage lights and the engine instruments.
+    /// - As in the F-117A the sloped panels from the consoles up to the wings: the gear lights
+    ///   with FLAPS, BRAKE and AUTO left (x <= -600, centred on -700; the gear handle and the
+    ///   target buttons are modelled), the caution lights and the countermeasures right (x >=
+    ///   1100, centred on 1200).
+    ///
+    /// No BAY cap: the stores hang under the fuselage and the wings.
+    pub fn tornado() -> Self {
+        use Effect as E;
+        use LampId::*;
+        let m = Self::modern();
+        let mut items = Vec::new();
+        let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>, round: bool| {
+            items.push(Placed { elem, rect, cap, round })
+        };
+        // Up-front controls (black on grey as the F-16's keys): two columns of three caps either
+        // side of the data entry display, a row of eight keys under them.
+        const KEY: (u8, u8) = (5, 14);
+        let caps = [
+            (Elem::Lamp(Nav, None), Some(E::HudMode(0))),
+            (Elem::Lamp(Air, None), Some(E::HudMode(1))),
+            (Elem::Lamp(Gnd, None), Some(E::HudMode(2))),
+            (Elem::Lamp(Lock, None), Some(E::Action(Action::DesignateTarget))),
+            (Elem::Label("DCLT", KEY.0, KEY.1), Some(E::Action(Action::HudDeclutter))),
+            (Elem::Label("NVG", KEY.0, KEY.1), Some(E::Action(Action::Nvg))),
+            (Elem::Label("ILS", KEY.0, KEY.1), Some(E::Action(Action::Ils))),
+            (Elem::Label("MENU", KEY.0, KEY.1), Some(E::Action(Action::Menu))),
+            (Elem::Label("VOL", KEY.0, KEY.1), Some(E::Action(Action::Volume))),
+            (Elem::Label("TIME", KEY.0, KEY.1), Some(E::TimeToggle)),
+            (Elem::Label("STPT", KEY.0, KEY.1), Some(E::Action(Action::SelectWaypoint))),
+            (Elem::Label("ORD", KEY.0, KEY.1), Some(E::Action(Action::MissionOrders))),
+        ];
+        for (k, (elem, cap)) in caps.into_iter().enumerate() {
+            let (block, i) = (k / 6, k % 6);
+            let x = [-98.0, 54.0][block] + 24.0 * (i % 2) as f32;
+            put(elem, rect(x, -20.0 + 14.0 * (i / 2) as f32, 20.0, 12.0), cap, false);
+        }
+        for (k, label) in
+            ["COM1", "COM2", "IFF", "TCN", "IDM", "RCL", "ENTR", "CLR"].into_iter().enumerate()
+        {
+            put(
+                Elem::Label(label, KEY.0, KEY.1),
+                rect(-98.0 + 25.0 * k as f32, 26.0, 21.0, 12.0),
+                None,
+                false,
+            );
+        }
+        // Standby instruments under the left MFD: airspeed, the attitude indicator (`adi`) and
+        // the altimeter in a row with the AOA and vertical velocity tapes, the clock under them.
+        put(Elem::Dial(Dial::Airspeed), rect(-307.0, 4.0, 42.0, 42.0), None, true);
+        put(Elem::Dial(Dial::Altimeter), rect(-205.0, 4.0, 42.0, 42.0), None, true);
+        put(Elem::Dial(Dial::Aoa), rect(-157.0, 0.0, 16.0, 52.0), None, false);
+        put(Elem::Dial(Dial::Vvi), rect(-137.0, 0.0, 16.0, 52.0), None, false);
+        put(Elem::Dial(Dial::Clock), rect(-307.0, 64.0, 42.0, 42.0), None, true);
+        // Engine instruments under the right MFD, outboard of the warning lights.
+        for (k, dial) in [Dial::Rpm, Dial::Ftit, Dial::Oil, Dial::Nozzle].into_iter().enumerate() {
+            let (col, row) = ((k % 2) as f32, (k / 2) as f32);
+            put(
+                Elem::Dial(dial),
+                rect(205.0 + 48.0 * col, 4.0 + 48.0 * row, 42.0, 42.0),
+                None,
+                true,
+            );
+        }
+        // The F-117A's warning lights, its fuel group and the faces of its sloped panels: the
+        // left warning lights under the left MFD right of the clock, the right ones under the
+        // right MFD inboard of the engine instruments, the fuel quantity, readouts and EMV gauge
+        // under the up-front controls.
+        for p in &m.items {
+            let r = p.rect;
+            let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+            let (dx, dy) = match p.elem {
+                _ if cx <= -600.0 || cx >= 1100.0 => (0.0, 0.0),
+                Elem::Lamp(Bay, _) => continue,
+                _ if cy < -60.0 && cx < -100.0 => (-80.0, 166.0),
+                _ if cy < -60.0 && cx > 100.0 => (26.0, 100.0),
+                _ if (100.0..280.0).contains(&cx) && cy > 80.0 => (-184.0, -40.0),
+                _ => continue,
+            };
+            put(p.elem, rect(r.x + dx, r.y + dy, r.w, r.h), p.cap, p.round);
+        }
+
+        // The HIRES canvas' shape, 146 mm wide: the centre MFD 22 mm higher than the side ones.
+        let (w, h) = (146.0, 146.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        Self {
+            style: PanelStyle::Tornado,
+            items,
+            adi: rect(-261.0, 0.0, 52.0, 52.0),
+            mfds: vec![
+                MfdUnit { side: MfdSide::Left, screen: rect(-292.0, -146.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: rect(-73.0, -168.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Third, screen: rect(146.0, -146.0, w, h), osbs: true },
+            ],
+            rwr: None,
+            hsi: None,
+            ded: Some(rect(-46.0, -20.0, 92.0, 92.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
+        }
+    }
+
     /// The F-16C's panel (millimetres, x right and y down, unfolded), after the Block 50's:
     /// - The centre column (|x| <= 85): the up-front controls on a pedestal under the HUD
     ///   (y < -46): the round override buttons on top (COM1 = volume, MENU = menu, A-A, A-G),
@@ -889,13 +1000,14 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 5] {
+    fn all() -> [PanelLayout; 6] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
             PanelLayout::f16(),
             PanelLayout::uh60(),
             PanelLayout::ah1z(),
+            PanelLayout::tornado(),
         ]
     }
 
@@ -945,9 +1057,13 @@ mod tests {
     /// Every bezel function of every page has a button.
     #[test]
     fn bezel_buttons() {
-        for l in
-            [PanelLayout::modern(), PanelLayout::f16(), PanelLayout::uh60(), PanelLayout::ah1z()]
-        {
+        for l in [
+            PanelLayout::modern(),
+            PanelLayout::f16(),
+            PanelLayout::uh60(),
+            PanelLayout::ah1z(),
+            PanelLayout::tornado(),
+        ] {
             bezel_buttons_of(&l);
         }
     }

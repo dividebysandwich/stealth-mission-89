@@ -75,8 +75,8 @@ pub const CLASSIC_SCALE: usize = 4;
 pub enum MfdSide {
     Left,
     Right,
-    /// The F-117A's third MFD, right of its large centre display (which is the right MFD):
-    /// the HSI page (`avionics::Format::Hsi`).
+    /// The F-117A's and the Tornado's third MFD, right of the centre display (which is the right
+    /// MFD): the HSI page (`avionics::Format::Hsi`).
     Third,
 }
 

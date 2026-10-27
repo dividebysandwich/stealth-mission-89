@@ -98,6 +98,39 @@ pub struct Aero {
     pub push_rate: f32,
     /// Yaw rate limit (rad/s).
     pub yaw_rate_max: f32,
+    /// A swing wing (the Tornado's): the values above are with it fully forward.
+    pub swing_wing: Option<SwingWing>,
+}
+
+/// A swing wing swept back automatically with the Mach number (`Aircraft::wing_sweep`): it
+/// loses lift slope and gains induced drag as it goes back, and its drag rise comes later.
+#[derive(Debug, Clone, Copy)]
+pub struct SwingWing {
+    /// Leading edge sweep fully forward and fully back (rad).
+    pub forward: f32,
+    pub back: f32,
+    /// It starts back at the first Mach number, and is fully back at the second.
+    pub mach: (f32, f32),
+    /// Seconds from fully forward to fully back.
+    pub travel: f32,
+    /// Fully back: the lift slope, the induced drag factor, how much later (Mach) the drag
+    /// rise starts and peaks, and the share of the wave drag left.
+    pub cl_alpha: f32,
+    pub cd_k: f32,
+    pub drag_rise_later: f32,
+    pub wave_drag: f32,
+}
+
+impl SwingWing {
+    /// Where the schedule puts the wing (0 fully forward .. 1 fully back): fully forward with
+    /// the flaps out.
+    pub fn scheduled(&self, mach: f32, flaps: bool) -> f32 {
+        if flaps {
+            return 0.0;
+        }
+        let t = ((mach - self.mach.0) / (self.mach.1 - self.mach.0)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
 }
 
 /// Drag added near and above the speed of sound.
@@ -169,6 +202,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        swing_wing: None,
     };
 
     /// F-16C: Mach 1.2 at sea level, about Mach 1.9 at altitude with the afterburner (subsonic
@@ -210,7 +244,84 @@ impl Aero {
         pitch_rate_max: 0.6,
         push_rate: 0.6,
         yaw_rate_max: 0.6,
+        swing_wing: None,
     };
+
+    /// Tornado IDS: two RB199s (18,200 lb dry, 33,800 lb with the afterburners) against 42,000
+    /// lb with full internal fuel, a heavily loaded wing (about 150 lb/ft^2) that needs its
+    /// full-span slats and flaps for a 130 kt approach. About Mach 1.2 low down and past Mach 1.6
+    /// high with the wings fully back, 7.5 g.
+    pub const TORNADO: Aero = Aero {
+        wing_loading: 147.0,
+        dry_weight: 31_000.0,
+        ref_weight: 42_000.0,
+        thrust_ratio: 0.43,
+        ab_thrust_ratio: 0.81,
+        ab_thrust_mach: 0.6,
+        // Turbofans with a high bypass for a fighter: ram drag low down.
+        thrust_mach: -0.2,
+        cl_alpha: 4.6,
+        alpha_stall: 0.38,
+        alpha_stall_neg: -0.26,
+        alpha_limit: 0.33,
+        alpha_limit_neg: -0.22,
+        cl_flaps: 0.9,
+        alpha_flaps: 0.04,
+        cd0: 0.028,
+        cd_k: 0.10,
+        cd_sep: 0.5,
+        cl_sep: 1.0,
+        cd_gear: 0.025,
+        cd_flaps: 0.06,
+        cd_speed_brake: 0.10,
+        cd_bay: 0.0,
+        cd_idle: 0.025,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Supersonic {
+            start: 0.8,
+            peak_mach: 1.05,
+            peak: 0.06,
+            supersonic: 0.045,
+        },
+        n_max: 7.5,
+        n_min: -3.0,
+        roll_rate: 3.0,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        swing_wing: Some(SwingWing {
+            forward: 25.0 * std::f32::consts::PI / 180.0,
+            back: 67.0 * std::f32::consts::PI / 180.0,
+            mach: (0.6, 0.9),
+            travel: 6.0,
+            cl_alpha: 3.2,
+            cd_k: 0.24,
+            drag_rise_later: 0.08,
+            wave_drag: 0.65,
+        }),
+    };
+
+    /// The airframe with its swing wing (if it has one) at `at` (0 fully forward .. 1 fully
+    /// back).
+    pub fn swept(&self, at: f32) -> Aero {
+        let Some(w) = self.swing_wing else { return *self };
+        let lerp = |a: f32, b: f32| a + (b - a) * at;
+        let drag_rise = match self.drag_rise {
+            DragRise::Supersonic { start, peak_mach, peak, supersonic } => DragRise::Supersonic {
+                start: start + w.drag_rise_later * at,
+                peak_mach: peak_mach + w.drag_rise_later * at,
+                peak: peak * lerp(1.0, w.wave_drag),
+                supersonic: supersonic * lerp(1.0, w.wave_drag),
+            },
+            d => d,
+        };
+        Aero {
+            cl_alpha: lerp(self.cl_alpha, w.cl_alpha),
+            cd_k: lerp(self.cd_k, w.cd_k),
+            drag_rise,
+            ..*self
+        }
+    }
 }
 
 /// Full rudder sideslip (rad).
@@ -270,7 +381,7 @@ impl State {
 }
 
 /// (density ratio, speed of sound ft/s) at an altitude in feet.
-fn atmosphere(h: f32) -> (f32, f32) {
+pub(crate) fn atmosphere(h: f32) -> (f32, f32) {
     let h = h.clamp(0.0, 60000.0);
     if h < 36089.0 {
         let theta = 1.0 - 6.875_6e-6 * h;
@@ -333,7 +444,9 @@ pub(super) fn step(
     k: &FlightConstants,
     theater: Option<&Theater>,
 ) {
-    let ae = &k.aero;
+    // A swing wing as it is swept now.
+    let swept = k.aero.swept(a.wing_sweep);
+    let ae = &swept;
     a.time += dt;
     if a.ended.is_some() {
         return;

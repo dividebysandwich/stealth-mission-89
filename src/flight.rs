@@ -177,6 +177,22 @@ impl FlightConstants {
         }
     }
 
+    /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel.
+    pub fn tornado() -> Self {
+        Self {
+            gravity_term: 80.0,
+            thrust_to_knots: 7.0,
+            max_knots: 1150.0,
+            stall_knots: 125.0,
+            fuel_div: 750.0,
+            fuel: 11000.0,
+            max_gees: 120.0,
+            roll_rate: 1.3,
+            aero: modern::Aero::TORNADO,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -249,6 +265,9 @@ pub struct Aircraft {
     pub set_afterburner: Option<f32>,
     #[serde(default)]
     pub afterburner: f32,
+    /// A swing wing's position (`modern::SwingWing`): 0 fully forward .. 1 fully back.
+    #[serde(default)]
+    pub wing_sweep: f32,
     /// World units ("feet") above sea level.
     pub altitude: f32,
     pub ground_altitude: f32,
@@ -336,6 +355,7 @@ impl Aircraft {
             set_thrust: 0.0,
             set_afterburner: None,
             afterburner: 0.0,
+            wing_sweep: 0.0,
             altitude: 0.0,
             ground_altitude: 0.0,
             climb_rate: 0.0,
@@ -516,6 +536,19 @@ impl Aircraft {
         self.heli = heli::State::default();
     }
 
+    /// Moves a swing wing towards where its schedule puts it for the Mach number (the classic
+    /// model's as well, which only draws it).
+    fn sweep_wing(&mut self, k: &FlightConstants, dt: f32) {
+        let Some(w) = k.aero.swing_wing else { return };
+        if self.ended.is_some() {
+            return;
+        }
+        let (_, sound) = modern::atmosphere(self.altitude);
+        let target = w.scheduled(self.velocity / 16.0 / sound, self.flaps);
+        let step = dt / w.travel;
+        self.wing_sweep += (target - self.wing_sweep).clamp(-step, step);
+    }
+
     /// Moves the trim by `d` (fractions of full stick), within its limits.
     fn move_trim(&mut self, d: Vec2) {
         self.stick_trim =
@@ -572,6 +605,7 @@ fn step_flight(
             } else {
                 modern::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, theater.as_deref());
             }
+            a.sweep_wing(&k, dt);
         }
     }
 }
@@ -987,6 +1021,7 @@ mod tests {
             } else {
                 modern::step(&mut a, &mut pos, &mut tf, dt, &c, &k, None);
             }
+            a.sweep_wing(&k, dt);
         }
         let (e, n, _) = bevy_to_wu(pos.0);
         (a, e.hypot(n))
@@ -1093,6 +1128,38 @@ mod tests {
         a.set_afterburner = Some(1.0);
         a.afterburner = 1.0;
         a
+    }
+
+    /// Tornado IDS (modern, the wings sweeping): subsonic low down without the afterburners,
+    /// about Mach 1.2 with them, past Mach 1.6 high up; a 1 g stall about 130 kt with the slats
+    /// and flaps out, a good deal faster clean.
+    #[test]
+    fn tornado_performance() {
+        let k = FlightConstants::tornado;
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 500.0, 100.0), 240.0);
+        println!(
+            "Tornado: dry max speed at 1000 ft: {:.0} kt, sweep {:.2}",
+            a.knots(),
+            a.wing_sweep
+        );
+        assert!((560.0..680.0).contains(&a.knots()), "dry sea level {}", a.knots());
+        let a = run(reheat(airborne(1000.0, 500.0, 100.0)), 240.0);
+        println!("Tornado: max speed at 1000 ft: {:.0} kt, sweep {:.2}", a.knots(), a.wing_sweep);
+        assert!((700.0..840.0).contains(&a.knots()), "sea level {}", a.knots());
+        assert!(a.wing_sweep > 0.99, "swept back {}", a.wing_sweep);
+        let a = run(reheat(airborne(36000.0, 600.0, 100.0)), 300.0);
+        println!("Tornado: max speed at 36000 ft: {:.0} kt", a.knots());
+        assert!(a.knots() > 920.0, "at altitude {}", a.knots());
+        // The stall speeds the warnings use, at 1 g.
+        let mut slow = airborne(1000.0, 180.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("Tornado: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((115.0..145.0).contains(&flaps), "flaps {flaps}");
+        assert!(clean > flaps + 20.0, "clean {clean}");
     }
 
     /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern) with the afterburner,
@@ -1253,6 +1320,40 @@ mod tests {
         let (c, _) =
             fly(false, airborne(10000.0, 400.0, 100.0), 2.0, 1, |_, c| c.throttle_rate = 1.0);
         assert!(c.set_afterburner.is_none() && c.afterburner == 0.0);
+    }
+
+    /// The Tornado's wings go back as it speeds up and forward as it slows down or lowers the
+    /// flaps, taking their time; swept back it is faster at full throttle.
+    #[test]
+    fn tornado_wings_sweep_with_speed() {
+        let k = FlightConstants::tornado;
+        let slow = fly_with(k(), false, level(airborne(5000.0, 300.0, 70.0)), 10.0, |_, _| {}).0;
+        assert_eq!(slow.wing_sweep, 0.0);
+        let mut fast = airborne(5000.0, 600.0, 100.0);
+        let (a, _) = fly_with(k(), false, level(fast.clone()), 2.0, |_, _| {});
+        assert!(a.wing_sweep > 0.2 && a.wing_sweep < 0.5, "moving back: {}", a.wing_sweep);
+        let (a, _) = fly_with(k(), false, level(fast.clone()), 10.0, |_, _| {});
+        assert!(a.wing_sweep > 0.95, "back: {}", a.wing_sweep);
+        // Fully forward again with the flaps, whatever the speed.
+        let mut b = a.clone();
+        b.flaps = true;
+        let (b, _) = fly_with(k(), false, b, 8.0, |_, _| {});
+        assert_eq!(b.wing_sweep, 0.0);
+        // With the wings held forward it is slower at full throttle low down.
+        fast.velocity = 500.0 * 27.0;
+        let swept = fly_with(k(), false, level(reheat(fast.clone())), 60.0, |_, _| {}).0;
+        let mut held = FlightConstants::tornado();
+        held.aero.swing_wing.as_mut().unwrap().mach = (5.0, 6.0);
+        let forward = fly_with(held, false, level(reheat(fast)), 60.0, |_, _| {}).0;
+        assert!(
+            swept.knots() > forward.knots() + 20.0,
+            "swept {} vs forward {}",
+            swept.knots(),
+            forward.knots()
+        );
+        // The classic model draws them too.
+        let (c, _) = fly_with(k(), true, level(airborne(5000.0, 600.0, 100.0)), 10.0, |_, _| {});
+        assert!(c.wing_sweep > 0.95, "classic: {}", c.wing_sweep);
     }
 
     #[test]

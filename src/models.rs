@@ -38,7 +38,8 @@ impl Plugin for ModelsPlugin {
 /// Per-instance state table read by conditional geometry and articulated parts
 /// (the word array passed to the model renderer). Known slots: 1 = destroyed variant,
 /// 10 = night lights on, 12 = aircraft navigation lights on, 16 = radar antenna angle,
-/// 17 = rotor angle, 18/19/20 = aircraft anti-collision lights lit (`sim_render::anticollision`).
+/// 17 = rotor angle, 18/19/20 = aircraft anti-collision lights lit (`sim_render::anticollision`),
+/// 21/22 = a swing wing's right and left outer wing swept back (`aircraft::WING_SLOTS`).
 /// Angles use a 16-bit binary angle (0x10000 = 360 degrees).
 #[derive(Component, Debug, Clone)]
 pub struct ModelState(pub [i16; 32]);

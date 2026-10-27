@@ -297,6 +297,7 @@ mod tests {
             external_stores: true,
             helicopter: true,
             gunship: true,
+            tornado: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -307,6 +308,10 @@ mod tests {
         };
         let w = WorldFast { pilots: vec![p.clone()], ..Default::default() };
         let back = decode::<WorldFast>(&encode(&w)).unwrap();
-        assert_eq!(back.pilots, vec![p]);
+        assert_eq!(back.pilots, vec![p.clone()]);
+        // The Tornado's flag.
+        let t = RemotePilot { helicopter: false, gunship: false, tornado: true, ..p };
+        let w = WorldFast { pilots: vec![t.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![t]);
     }
 }

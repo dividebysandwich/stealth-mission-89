@@ -37,6 +37,7 @@ pub enum Aircraft {
     F16,
     UH60,
     AH1Z,
+    Tornado,
 }
 
 impl Aircraft {
@@ -46,6 +47,7 @@ impl Aircraft {
             Aircraft::F16 => "F-16",
             Aircraft::UH60 => "UH-60",
             Aircraft::AH1Z => "AH-1Z",
+            Aircraft::Tornado => "Tornado",
         }
     }
 
@@ -195,20 +197,20 @@ impl MissionKind {
     }
 
     /// The aircraft made for it, best first: what the briefing picks (the player may change to
-    /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets,
-    /// the air-to-air missions for the F-16, rescues for the UH-60 that picks the pilot up,
-    /// work close to the front for the gunship.
+    /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets
+    /// (low-level interdiction the Tornado's), the air-to-air missions for the F-16, rescues for
+    /// the UH-60 that picks the pilot up, work close to the front for the gunship.
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
-            MissionKind::Recon
-            | MissionKind::Strike
-            | MissionKind::AntiShip
-            | MissionKind::Interdiction => &[F117, F16],
-            MissionKind::Sead => &[F16, F117],
+            MissionKind::Recon | MissionKind::Strike | MissionKind::AntiShip => {
+                &[F117, F16, Tornado]
+            }
+            MissionKind::Interdiction => &[F117, Tornado, F16],
+            MissionKind::Sead => &[F16, Tornado, F117],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
             MissionKind::Intercept => &[F16, AH1Z],
-            MissionKind::Cas => &[AH1Z, F16, F117],
+            MissionKind::Cas => &[AH1Z, F16, Tornado, F117],
             MissionKind::Escort => &[AH1Z, F16],
             MissionKind::Insertion | MissionKind::Csar | MissionKind::Resupply => &[UH60],
         }

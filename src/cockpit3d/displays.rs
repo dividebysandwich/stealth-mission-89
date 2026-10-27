@@ -255,7 +255,11 @@ pub(super) fn panel_materials(
 fn atlas_scale(style: PanelStyle) -> i32 {
     match style {
         PanelStyle::Classic => TEXELS,
-        PanelStyle::Modern | PanelStyle::F16 | PanelStyle::Uh60 | PanelStyle::Ah1z => MM_TEXELS,
+        PanelStyle::Modern
+        | PanelStyle::F16
+        | PanelStyle::Uh60
+        | PanelStyle::Ah1z
+        | PanelStyle::Tornado => MM_TEXELS,
     }
 }
 
@@ -648,6 +652,7 @@ mod tests {
             PanelStyle::F16,
             PanelStyle::Uh60,
             PanelStyle::Ah1z,
+            PanelStyle::Tornado,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

@@ -1269,7 +1269,7 @@ fn sim_missile_model(combat: &Combat, spec: i32) -> i32 {
 
 /// Lights (slots 10/11) for the world and the own aircraft, the antenna angles (15/16) and the
 /// own aircraft's (model 24) gear (5/6), brakes (7), bay doors (8), navigation (12) and
-/// anti-collision lights (18-20, the AI aircraft's rule).
+/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22).
 #[allow(clippy::type_complexity)]
 fn world_model_state(
     time: Res<Time>,
@@ -1285,7 +1285,7 @@ fn world_model_state(
     )>,
     mut own: Query<
         &mut ModelState,
-        (Or<(With<OwnModel>, With<OwnLights>, With<crate::player::OwnRotor>)>, Without<TileObject>),
+        (Or<(With<OwnModel>, With<OwnLights>, With<crate::player::OwnPart>)>, Without<TileObject>),
     >,
     player: Query<&Aircraft, With<Player>>,
     flight: Option<Res<crate::flight::FlightConstants>>,
@@ -1329,13 +1329,24 @@ fn world_model_state(
     let [s18, s19, s20] = anticollision(time.elapsed_secs(), 0.0, nav);
     // A helicopter's rotors turn with its rotor speed: its angle less the global spin added to
     // every model's.
-    let rotor = flight.is_some_and(|k| k.heli.is_some()).then(|| {
+    let rotor = flight.as_ref().is_some_and(|k| k.heli.is_some()).then(|| {
         let bam = (a.rotor_angle() / std::f32::consts::TAU * 65536.0) as i32 as u16 as i16;
         bam.wrapping_sub(globals.angles[2])
     });
+    // A swing wing's outer wings, swept as the flight model has them.
+    let wings = flight
+        .as_ref()
+        .and_then(|k| k.aero.swing_wing)
+        .map(|w| crate::aircraft::wing_slot_values(a.wing_sweep, w.forward, w.back));
     for mut s in &mut own {
         if let Some(r) = rotor {
             s.0[17] = r;
+        }
+        if let Some((r, l)) = wings {
+            let (sr, sl) = crate::aircraft::WING_SLOTS;
+            if (s.0[sr], s.0[sl]) != (r, l) {
+                (s.0[sr], s.0[sl]) = (r, l);
+            }
         }
         let v = [
             (5, (c072 != 0) as i16),
@@ -1640,6 +1651,18 @@ fn sync_remote_pilots(
                 if v.iter().any(|&(k, x)| s.0[k] != x) {
                     for (k, x) in v {
                         s.0[k] = x;
+                    }
+                }
+                // A swing wing where his schedule puts it for his speed (forward with the
+                // gear down: his flaps are out).
+                if let Some(w) = spec.swing_wing.then(|| spec.flight().aero.swing_wing).flatten() {
+                    let (_, sound) = crate::flight::modern::atmosphere(p.view.alt as f32);
+                    let mach = p.view.knots as f32 * 27.0 / 16.0 / sound;
+                    let at = w.scheduled(mach, !p.gear_up || p.on_ground);
+                    let (r, l) = crate::aircraft::wing_slot_values(at, w.forward, w.back);
+                    let (sr, sl) = crate::aircraft::WING_SLOTS;
+                    if (s.0[sr], s.0[sl]) != (r, l) {
+                        (s.0[sr], s.0[sl]) = (r, l);
                     }
                 }
             }

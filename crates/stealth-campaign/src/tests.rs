@@ -1490,7 +1490,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Csar,
         Awacs,
     ];
-    let all = [Aircraft::F117, Aircraft::F16, Aircraft::UH60, Aircraft::AH1Z];
+    let all = [Aircraft::F117, Aircraft::F16, Aircraft::UH60, Aircraft::AH1Z, Aircraft::Tornado];
     for k in kinds {
         for last in all {
             assert!(k.flyable_by(k.pick(last)), "{k:?} after {last:?}");
@@ -1502,6 +1502,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Interdiction.pick(Aircraft::AH1Z), Aircraft::F117);
     assert_eq!(Strike.pick(Aircraft::F16), Aircraft::F16);
     assert_eq!(Cas.pick(Aircraft::AH1Z), Aircraft::AH1Z);
+    assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
 }
 
 #[test]

@@ -23,8 +23,11 @@ SCALE = 512000.0 / 1048576.0 / 8.0
 # Grid cell (m) and outline tolerance (m).
 CELL = 0.02
 TOLERANCE = 0.05
-# The helicopters' outlines leave the rotors (their `_part` nodes) out.
-AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0")]
+# The helicopters' outlines leave the rotors (their `_part` nodes) out; the Tornado's keep its
+# outer wings, swept forward.
+AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0"),
+            ("TORNADO_OUTLINE", "aircraft_045")]
+WITH_PARTS = {"aircraft_045"}
 
 
 def accessor(js, binary, i):
@@ -39,8 +42,9 @@ def accessor(js, binary, i):
     return np.array(out, dtype=float)
 
 
-def triangles(js, binary, node):
-    """Triangles (n, 3, 3) of a node and its children (not rotors), in model units."""
+def triangles(js, binary, node, parts=False):
+    """Triangles (n, 3, 3) of a node and its children (not rotors, unless `parts`), in model
+    units."""
     n = js["nodes"][node]
     tris = []
     if "mesh" in n:
@@ -51,9 +55,9 @@ def triangles(js, binary, node):
             idx = accessor(js, binary, p["indices"]).astype(int).ravel() if "indices" in p else np.arange(len(pos))
             tris.append(pos[idx].reshape(-1, 3, 3))
     for c in n.get("children", []):
-        if "_part" in js["nodes"][c].get("name", ""):
+        if "_part" in js["nodes"][c].get("name", "") and not parts:
             continue
-        tris.extend(triangles(js, binary, c))
+        tris.extend(triangles(js, binary, c, parts))
     t = n.get("translation", [0, 0, 0])
     return [x + np.array(t) for x in tris]
 
@@ -141,7 +145,7 @@ def close(mask, r):
 
 def outline(js, binary, name):
     node = next(i for i, n in enumerate(js["nodes"]) if n.get("name") == name)
-    tris = np.concatenate(triangles(js, binary, node))
+    tris = np.concatenate(triangles(js, binary, node, name in WITH_PARTS))
     mask, lo = fill(tris)
     mask = close(np.pad(mask, 12), 5)[12:-12, 12:-12]
     # Model -Z forward: metres aft of the nose; x right.

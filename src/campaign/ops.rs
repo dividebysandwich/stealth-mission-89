@@ -1584,10 +1584,15 @@ fn briefing(
                     BriefPage::Loadout => {
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new("AIRCRAFT").color(DIM));
-                            let flyable =
-                                [Airframe::F117, Airframe::F16, Airframe::UH60, Airframe::AH1Z]
-                                    .into_iter()
-                                    .filter(|a| o.kind.flyable_by(*a));
+                            let flyable = [
+                                Airframe::F117,
+                                Airframe::F16,
+                                Airframe::Tornado,
+                                Airframe::UH60,
+                                Airframe::AH1Z,
+                            ]
+                            .into_iter()
+                            .filter(|a| o.kind.flyable_by(*a));
                             for a in flyable {
                                 let label = kind_of(a).name();
                                 if ui.selectable_label(b.aircraft == a, label).clicked()

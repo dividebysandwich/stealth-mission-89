@@ -270,10 +270,10 @@ pub struct OwnModelInterior;
 #[derive(Component)]
 pub struct OwnLights;
 
-/// The own helicopter's rotors as seen from the cockpit (inside `OwnModelInterior`), turning
-/// with the rotor speed like the exterior model's.
+/// The own aircraft's articulated parts as seen from the cockpit (inside `OwnModelInterior`),
+/// moving like the exterior model's: a helicopter's rotors, the swing wings.
 #[derive(Component)]
-pub struct OwnRotor;
+pub struct OwnPart;
 
 fn attach_own_model(
     mut commands: Commands,
@@ -359,18 +359,18 @@ fn attach_own_model(
             }
         });
     }
-    if view.rotors {
+    if view.parts {
         for part in ["_part1", "_part2"] {
             let name = format!("{}_lod0{part}", spec.model);
-            if let Some(rotor) = assets.spawn(
+            if let Some(part) = assets.spawn(
                 &mut commands,
                 &file,
                 &name,
                 crate::palette_material::LEVEL_AIRCRAFT,
                 true,
             ) {
-                commands.entity(rotor).insert(OwnRotor);
-                commands.entity(interior).add_child(rotor);
+                commands.entity(part).insert(OwnPart);
+                commands.entity(interior).add_child(part);
             }
         }
     }

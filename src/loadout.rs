@@ -246,6 +246,68 @@ const UH60_OUTLINE: &[(f32, f32)] = &[
     (-0.92, 0.57),
     (-0.55, 0.22),
 ];
+/// aircraft_045 (tools/models/aircraft.py `tornado`, the wings forward) seen from above: half
+/// span 6.98 m, length 17.04 m.
+const TORNADO_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.00, 0.56),
+    (0.30, 1.32),
+    (0.50, 2.56),
+    (0.66, 5.34),
+    (0.70, 5.40),
+    (1.40, 5.40),
+    (1.40, 6.36),
+    (2.34, 8.68),
+    (3.58, 9.26),
+    (3.80, 9.26),
+    (3.82, 8.96),
+    (3.96, 8.96),
+    (4.00, 9.46),
+    (6.68, 10.70),
+    (6.98, 10.76),
+    (6.98, 11.64),
+    (6.90, 11.74),
+    (1.76, 10.60),
+    (1.76, 9.96),
+    (1.30, 9.94),
+    (1.14, 12.58),
+    (3.42, 14.50),
+    (3.42, 15.74),
+    (0.78, 15.68),
+    (0.58, 17.04),
+    (0.50, 17.04),
+    (0.36, 15.96),
+    (0.02, 15.94),
+    (0.00, 16.22),
+    (-0.02, 15.94),
+    (-0.36, 15.96),
+    (-0.50, 17.04),
+    (-0.58, 17.04),
+    (-0.78, 15.68),
+    (-3.42, 15.74),
+    (-3.42, 14.50),
+    (-1.14, 12.58),
+    (-1.30, 9.94),
+    (-1.76, 9.96),
+    (-1.76, 10.60),
+    (-6.90, 11.74),
+    (-6.98, 11.64),
+    (-6.98, 10.76),
+    (-6.68, 10.70),
+    (-4.00, 9.46),
+    (-3.96, 8.96),
+    (-3.82, 8.96),
+    (-3.80, 9.26),
+    (-3.58, 9.26),
+    (-2.34, 8.68),
+    (-1.40, 6.36),
+    (-1.40, 5.40),
+    (-0.70, 5.40),
+    (-0.66, 5.34),
+    (-0.50, 2.56),
+    (-0.30, 1.32),
+    (-0.00, 0.56),
+];
 /// aircraft_023 (tools/models/aircraft.py `f16`) seen from above: half span 4.70 m, length 15.88 m.
 const F16_OUTLINE: &[(f32, f32)] = &[
     (0.00, 0.00),
@@ -344,12 +406,36 @@ static F16_STATIONS: [Hardpoint; 9] = [
     pylon("Station 9, right wingtip", "9", 4.66, 9.70, Some(0), &TIP),
 ];
 
+/// The Tornado's wing pylons (swivelling with the sweep) carry the tanks, the fuselage's
+/// forward shoulder pylons the heavy stores and the camera; its Sidewinders go on the wing
+/// pylons' rails.
+const TORNADO_WING: [u8; 15] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0];
+const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18];
+/// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
+/// fuselage's shoulder pylons fore and aft.
+static TORNADO_STATIONS: [Hardpoint; 8] = [
+    pylon("Left wing, Sidewinder rail", "1", -4.20, 9.40, Some(7), &TIP),
+    pylon("Left wing pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
+    pylon("Left shoulder, forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
+    pylon("Left shoulder, aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
+    pylon("Right shoulder, aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
+    pylon("Right shoulder, forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
+    pylon("Right wing pylon", "7", 3.90, 9.80, Some(1), &TORNADO_WING),
+    pylon("Right wing, Sidewinder rail", "8", 4.20, 9.40, Some(0), &TIP),
+];
+
 static F117_REAL_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_REAL };
 static F117_FANTASY_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_FANTASY };
 static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
+static TORNADO_LAYOUT: Layout = Layout {
+    outline: TORNADO_OUTLINE,
+    half_span: 6.98,
+    length: 17.04,
+    hardpoints: &TORNADO_STATIONS,
+};
 /// The AH-1Z's stations 1 (left wingtip rail) to 6 (right wingtip rail).
 static AH1Z_STATIONS: [Hardpoint; 6] = [
     pylon("Station 1, left wingtip rail", "1", -2.30, 5.6, Some(5), &SIDEWINDER),
@@ -374,6 +460,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F117 if realistic => &F117_REAL_LAYOUT,
         AircraftKind::F117 => &F117_FANTASY_LAYOUT,
         AircraftKind::F16 => &F16_LAYOUT,
+        AircraftKind::Tornado => &TORNADO_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
     }
@@ -398,9 +485,9 @@ pub struct PlannedLoadout {
 pub const LOADOUT_FILE: &str = "loadout.json";
 
 impl PlannedLoadout {
-    /// The generator's stores: in the F-117A's bays as they are, on the F-16 each on the
-    /// first free pair of stations that carries it, and Sidewinders on the free wingtips; the
-    /// AH-1Z full.
+    /// The generator's stores: in the F-117A's bays as they are, on the F-16 and the Tornado
+    /// each on the first free pair of stations that carries it, and Sidewinders on the free
+    /// wingtips or rails; the AH-1Z full.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
         let lay = layout(aircraft, realistic);
@@ -420,14 +507,20 @@ impl PlannedLoadout {
                     *s = h.loads.first().copied();
                 }
             }
-            AircraftKind::F16 => {
+            AircraftKind::F16 | AircraftKind::Tornado => {
+                let tornado = aircraft == AircraftKind::Tornado;
                 for w in briefed.chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
+                        0 if tornado => &[0, 1],
                         0 => &[0, 1, 2],
+                        1 if tornado => &[0],
                         1 => &[1, 0, 2],
+                        16 | 18 if tornado => &[2],
                         16 | 18 => &[4],
+                        17 if tornado => &[1],
                         17 => &[4, 3],
+                        _ if tornado => &[2, 3, 1],
                         _ => &[2, 3],
                     };
                     if w == 0 && stores.contains(&Some(0)) {
@@ -819,7 +912,7 @@ mod tests {
     #[test]
     fn the_editor_draws_every_aircraft() {
         let m = mission(7, false);
-        for a in [AircraftKind::F117, AircraftKind::F16, AircraftKind::UH60, AircraftKind::AH1Z] {
+        for a in AircraftKind::ALL {
             let mut lo = PlannedLoadout::of(&m, a);
             let mut w = LoadoutWindow::opened(true);
             let ctx = egui::Context::default();

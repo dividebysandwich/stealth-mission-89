@@ -12,9 +12,10 @@ nozzle exits in `_exhaust` and the afterburner flames in `_s13v1` (the game flic
 missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's, F/A-18's and
 MiG-23's), the navigation lights in `_s12v1`; anticollision.py adds the flashing lights
 afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43, ah1z.py) have
-generators of their own. The flyable F-16 (23) sets the eye, lift and exhaust in
-src/aircraft.rs: change them with its builder; the gear's depth below the origin is in
-`gear_depth` there too.
+generators of their own. The flyable F-16 (23) and Tornado (45) set the eye, lift and exhaust
+in src/aircraft.rs: change them with their builders; the gear's depth below the origin is in
+`gear_depth` there too. The Tornado's outer wings are parts (`_part1` right, `_part2` left)
+turning about their pivots with state slots 21 and 22 (the sweep).
 """
 
 import math
@@ -46,8 +47,10 @@ BLACK = 239
 
 
 class Craft:
-    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None):
-        self.body, self.flames, self.part, self.gear = body, flames, part, gear
+    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None, parts=()):
+        # `parts`: (geometry about its pivot, pivot, state slot) of parts turning about their
+        # up axis (the Tornado's outer wings).
+        self.body, self.flames, self.part, self.gear, self.parts = body, flames, part, gear, parts
         # Light dots sit just outboard of the wingtips so the tip itself doesn't hide them.
         out = Vector((0.25, 0, 0))
         self.lights = {147: [Vector(red) - out], 151: [Vector(green) + out]}
@@ -267,6 +270,97 @@ def f16_gear():
         g.add(frustum((s * 0.62, -0.9, -0.76), (s * 1.0, -1.66, axle[2] + 0.4), 0.04, 0.04, GREY_L, n=4))
         g.face2([(s * 0.86, -0.9, -0.1), (s * 0.86, -2.7, -0.1), (s * 0.9, -2.7, -0.72), (s * 0.9, -0.9, -0.72)], GREY_B)
     return g
+
+
+# The Tornado IDS from its three-view (16.72 m long with the nose probe, 13.91 m span at 25
+# degrees of sweep, 8.60 m at 67): stations along y, heights above the fuselage datum (z 0,
+# the intakes' middle a little below it, the wings' plane 0.3 m above). Fuselage rings as the
+# F-16's (`f16_section`): the slim nose and cockpit, widening over the two RB199s side by side.
+TORNADO_BODY = [
+    (7.83, -0.22, -0.24, 0.00, -0.26, 0.00, 2.0, 2.0),
+    (7.50, -0.04, -0.24, 0.18, -0.44, 0.18, 2.0, 2.0),
+    (7.00, 0.12, -0.22, 0.32, -0.56, 0.32, 2.0, 2.0),
+    (6.40, 0.26, -0.20, 0.42, -0.66, 0.42, 2.0, 2.0),
+    (5.90, 0.40, -0.18, 0.50, -0.72, 0.50, 1.9, 2.2),
+    (5.30, 0.50, -0.12, 0.56, -0.76, 0.56, 1.7, 2.4),
+    (4.50, 0.52, -0.08, 0.62, -0.78, 0.60, 1.5, 2.6),
+    (3.60, 0.53, -0.04, 0.66, -0.80, 0.64, 1.4, 2.8),
+    (2.80, 0.55, 0.0, 0.70, -0.80, 0.68, 1.4, 2.8),
+    (1.80, 0.62, 0.0, 0.76, -0.80, 0.74, 1.4, 3.0),
+    (1.20, 0.80, 0.0, 0.80, -0.80, 0.78, 1.5, 3.0),
+    (0.00, 1.02, 0.0, 0.90, -0.80, 0.88, 1.6, 3.0),
+    (-1.50, 1.08, 0.0, 1.10, -0.80, 1.06, 1.8, 3.0),
+    (-3.00, 1.10, 0.0, 1.16, -0.78, 1.12, 2.0, 3.0),
+    (-4.50, 1.06, 0.0, 1.16, -0.74, 1.12, 2.2, 3.0),
+    (-6.00, 0.86, 0.0, 1.08, -0.66, 1.04, 2.4, 2.8),
+    (-6.90, 0.62, -0.05, 1.00, -0.60, 0.98, 2.5, 2.6),
+]
+# The tandem canopy's glass (pilot ahead, navigator behind) and its fairing into the spine:
+# (y, sill z, half width, top).
+TORNADO_CANOPY = [(5.95, 0.50, 0.10, 0.56), (5.60, 0.50, 0.38, 0.92), (5.10, 0.50, 0.46, 1.18),
+                  (4.40, 0.52, 0.48, 1.30), (3.40, 0.54, 0.49, 1.32), (2.60, 0.56, 0.48, 1.30),
+                  (1.90, 0.60, 0.44, 1.22), (1.40, 0.66, 0.38, 1.12)]
+TORNADO_FAIRING = [(1.40, 0.66, 0.38, 1.12), (0.60, 0.85, 0.40, 1.12), (0.00, 0.95, 0.42, 1.10)]
+# The fin's base along the spine: (y, top, half width).
+TORNADO_DORSAL = [(-1.40, 1.08, 0.16), (-2.60, 1.22, 0.22), (-3.60, 1.36, 0.25), (-7.20, 1.36, 0.22),
+                  (-7.60, 1.20, 0.15)]
+# The outer wing's pivot in the glove (x, y; the wings' plane z), its sweep in the model
+# (fully forward, 25 degrees at the leading edge) and the game's sweep slots: right, left
+# (src/aircraft.rs `TORNADO_*`).
+TORNADO_PIVOT = (1.55, -0.65)
+TORNADO_WING_Z = 0.30
+TORNADO_WING_SLOTS = (21, 22)
+TORNADO_GROUND = -1.90
+
+
+def tornado_wing():
+    """The right outer wing, swept fully forward, about its pivot (the left one mirrored): its
+    root slides into the glove and the fuselage's side as it sweeps back."""
+    px, py = TORNADO_PIVOT
+    z = TORNADO_WING_Z
+    g = wing((1.75, -0.05, z), 2.20, (6.95, -2.45, z), 0.95, GREY, t=0.045, t_tip=0.035, mirror=False)
+    # The swivelling pylon under it, the tip's fairing.
+    g.add(pylon(3.9, -0.6, -2.0, z - 0.05, z - 0.40, w=0.08))
+    g.add(block(6.93, 7.00, -2.40, -3.30, z - 0.03, z + 0.03, GREY))
+    return g.transformed(lambda p: Vector((p.x - px, p.y - py, p.z - z)))
+
+
+def tornado():
+    rings = [f16_section(*s) for s in TORNADO_BODY]
+    g = tube(rings, GREY, paints=[RADOME] * 4 + [GREY] * (len(rings) - 5))
+    # The nose probe.
+    g.add(frustum((0, 7.83, -0.24), (0, 8.36, -0.24), 0.04, 0.015, GREY_L, n=4))
+    g.add(tube([f16_arch(*s) for s in TORNADO_CANOPY], CANOPY))
+    g.add(tube([f16_arch(*s) for s in TORNADO_FAIRING], GREY))
+    g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in TORNADO_DORSAL],
+               GREY))
+    for s in (-1, 1):
+        # The intakes under the gloves, their trunks running back into the engine bay.
+        g.add(box_intake(s * 1.05, 2.95, 1.5, -0.25, 0.36, 0.52, slant=0.5))
+        g.add(loft([(1.5, -0.25, 0.36, 0.52), (-1.0, -0.22, 0.30, 0.50), (-3.6, -0.20, 0.12, 0.45)], GREY, n=8,
+                   power=2.8, x=s * 1.05))
+        # The engines' nozzles side by side, glowing.
+        g.add(nozzle(s * 0.55, -6.75, -0.15, 0.42, 0.6, n=10))
+    # The fixed gloves (thicker than the outer wings sliding into them), the tailerons with
+    # a little anhedral, the fin on its dorsal fairing.
+    g.add(wing((1.05, 2.90, TORNADO_WING_Z), 4.50, (2.35, -0.25, TORNADO_WING_Z), 1.35, GREY, t=0.08))
+    g.add(wing((1.00, -4.10, -0.05), 3.25, (3.43, -6.15, -0.15), 1.25, GREY, t=0.045, t_tip=0.035))
+    g.add(wing((0, -3.60, 1.30), 4.00, (0, -6.30, 4.15), 1.85, GREY, t=0.05, vertical=True, mirror=False))
+    fl = Geo().add(flame(0.55, -7.35, -0.15, 0.38, 3.0)).add(flame(-0.55, -7.35, -0.15, 0.38, 3.0))
+    right = tornado_wing()
+    px, py = TORNADO_PIVOT
+    parts = [(right, (px, py, TORNADO_WING_Z), TORNADO_WING_SLOTS[0]),
+             (right.mirrored(), (-px, py, TORNADO_WING_Z), TORNADO_WING_SLOTS[1])]
+    # The navigation lights on the gloves' tips (the outer wings move), the white one on the
+    # fin's tip.
+    return Craft(g, (-2.40, -0.70, TORNADO_WING_Z), (2.40, -0.70, TORNADO_WING_Z), [(0, -8.10, 4.15)], fl,
+                 gear=tornado_gear(), parts=parts)
+
+
+def tornado_gear():
+    """The gear down: twin nose wheels under the cockpit, the main legs from the fuselage's
+    underside below the gloves, their wheels outboard."""
+    return tricycle(TORNADO_GROUND, (3.85, -0.78, 0.25, True), (-1.18, 0.95, -0.62, 1.55, 0.42), GREY)
 
 
 def twin_nacelle_fighter(L, span, flanker=False, paint=GREY_B):
@@ -751,6 +845,7 @@ BUILDERS = {
     29: ef111,
     30: c5,
     32: a10,
+    45: tornado,
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.
@@ -767,7 +862,8 @@ def fresh_root(index):
     if root is None:
         root = bpy.data.objects.new(name, None)
         bpy.context.scene.collection.objects.link(root)
-        root["attr"] = 0x82
+        # The stores' attributes; the aircraft's (45, the Tornado) the F-16's.
+        root["attr"] = 0x83 if index in BUILDERS else 0x82
     for c in list(root.children):
         mklib.delete_tree(c)
     root["lod_dists"] = [MAX_DIST]
@@ -788,6 +884,7 @@ def build_craft(index, craft):
     body.faces = [f for f in body.faces if f[1] != FLAME]
     lod = heli.mesh_with_lines(root, f"{root.name}_lod0", body)
     lod["max_dist"] = MAX_DIST
+    print(f"{root.name}: centred {shift.y:+.4f} m along y")
     gear = None if craft.gear is None else centred(craft.gear, shift)
     lod["radius"] = heli.radius(body, *[g for g in [gear] if g is not None])
     if hot.faces:
@@ -809,6 +906,10 @@ def build_craft(index, craft):
     if craft.part is not None:
         part = heli.mesh_with_lines(lod, f"{lod.name}_part1", craft.part.scaled(K), tuple(shift * K))
         part["state_slot"] = 17
+        part["axis"] = 0
+    for k, (geo, pivot, slot) in enumerate(craft.parts):
+        part = heli.mesh_with_lines(lod, f"{lod.name}_part{k + 1}", geo.scaled(K), tuple((Vector(pivot) + shift) * K))
+        part["state_slot"] = slot
         part["axis"] = 0
     heli.lights(lod, 12, {c: [(p + shift) * K for p in pts] for c, pts in craft.lights.items()})
     return lod

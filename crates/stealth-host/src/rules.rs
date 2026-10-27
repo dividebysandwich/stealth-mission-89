@@ -66,6 +66,9 @@ impl Rules {
         match aircraft {
             Aircraft::F117 => Airframe { lockheed: self.realistic_weapons, ..Airframe::default() },
             Aircraft::F16 => Airframe { external_stores: true, ..Airframe::default() },
+            Aircraft::Tornado => {
+                Airframe { external_stores: true, tornado: true, ..Airframe::default() }
+            }
             Aircraft::UH60 => {
                 Airframe { external_stores: true, helicopter: true, ..Airframe::default() }
             }

@@ -529,6 +529,9 @@ pub struct Airframe {
     /// An attack helicopter (`SimOptions::gunship`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gunship: bool,
+    /// The Tornado IDS (weapons outside): only its look differs from the F-16's.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tornado: bool,
 }
 
 /// Landing option.
@@ -564,6 +567,9 @@ pub struct SimOptions {
     /// targeting pod, flies no insertions and carries no troops.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gunship: bool,
+    /// The aircraft is the Tornado IDS: seen as one by the other pilots.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tornado: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -599,6 +605,7 @@ impl Default for SimOptions {
             external_stores: false,
             helicopter: false,
             gunship: false,
+            tornado: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,
