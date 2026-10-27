@@ -296,10 +296,11 @@ TORNADO_BODY = [
     (-6.90, 0.62, -0.05, 1.00, -0.60, 0.98, 2.5, 2.6),
 ]
 # The tandem canopy's glass (pilot ahead, navigator behind) and its fairing into the spine:
-# (y, sill z, half width, top).
-TORNADO_CANOPY = [(5.95, 0.50, 0.10, 0.56), (5.60, 0.50, 0.38, 0.92), (5.10, 0.50, 0.46, 1.18),
-                  (4.40, 0.52, 0.48, 1.30), (3.40, 0.54, 0.49, 1.32), (2.60, 0.56, 0.48, 1.30),
-                  (1.90, 0.60, 0.44, 1.22), (1.40, 0.66, 0.38, 1.12)]
+# (y, sill z, half width, top). The windscreen starts low on the nose and rises in a long
+# shallow ramp (about 23 degrees) to the pilot's head.
+TORNADO_CANOPY = [(6.15, 0.33, 0.06, 0.36), (5.70, 0.44, 0.30, 0.62), (5.20, 0.49, 0.40, 0.86),
+                  (4.70, 0.51, 0.45, 1.08), (4.10, 0.52, 0.47, 1.24), (3.40, 0.54, 0.48, 1.30),
+                  (2.60, 0.56, 0.48, 1.30), (1.90, 0.60, 0.44, 1.22), (1.40, 0.66, 0.38, 1.12)]
 TORNADO_FAIRING = [(1.40, 0.66, 0.38, 1.12), (0.60, 0.85, 0.40, 1.12), (0.00, 0.95, 0.42, 1.10)]
 # The fin's base along the spine: (y, top, half width).
 TORNADO_DORSAL = [(-1.40, 1.08, 0.16), (-2.60, 1.22, 0.22), (-3.60, 1.36, 0.25), (-7.20, 1.36, 0.22),
