@@ -38,6 +38,10 @@ GREY_L = Ramp(224, 234)
 GREY = Ramp(226, 236)
 GREY_D = Ramp(229, 239)
 GREY_B = Ramp(225, 235)
+# The flyable jets' paint, darker: modern shading lights the ramp's sunlit end again.
+F16_GREY = Ramp(231, 237)
+TORNADO_GREY = Ramp(232, 238)
+A10_GREY = Ramp(233, 239)
 CANOPY = Ramp(144, 145)
 DARK = Ramp(235, 239)
 RADOME = Ramp(230, 236)
@@ -191,29 +195,29 @@ def f16_arch(y, sill, hw, top, n=8):
 
 def f16():
     rings = [f16_section(*s) for s in F16_BODY]
-    g = tube(rings, GREY_B, paints=[RADOME, RADOME] + [GREY_B] * (len(rings) - 3))
+    g = tube(rings, F16_GREY, paints=[RADOME, RADOME] + [F16_GREY] * (len(rings) - 3))
     g.add(tube([f16_arch(*s) for s in F16_CANOPY], CANOPY))
-    g.add(tube([f16_arch(*s) for s in F16_FAIRING], GREY_B))
-    g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in F16_DORSAL], GREY_B))
+    g.add(tube([f16_arch(*s) for s in F16_FAIRING], F16_GREY))
+    g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in F16_DORSAL], F16_GREY))
     # The chin intake: its mouth raked back from the upper lip, its trunk running into the
     # fuselage's underside.
     def mouth(y, zc, hw, hh, rake=0.0):
         return [(x, y + rake * (z - zc) / hh, z) for x, _, z in ring((0, 0, zc), hw, hh, 12, 2.4)]
     g.add(tube([mouth(3.0, -0.64, 0.60, 0.29, 0.1), mouth(2.5, -0.64, 0.62, 0.30), mouth(1.4, -0.62, 0.64, 0.28)],
-               GREY_B))
+               F16_GREY))
     g.face2(mouth(2.96, -0.64, 0.53, 0.24, 0.1), BLACK)
     # The strakes' last stretch to the wing's leading edge, the wing (straight trailing edge,
     # tip rails), the stabilizers on their booms (10 degrees anhedral).
-    g.add(wing((1.0, 2.0, 0.0), 1.3, (1.36, 0.42, 0.0), 0.05, GREY_B, t=0.03))
-    g.add(wing((1.0, 0.69, 0.0), 4.10, (4.60, -2.19, 0.0), 1.22, GREY_B, t=0.04))
-    g.add(wing((0.6, -3.3, 0.0), 3.5, (1.05, -3.5, 0.0), 3.35, GREY_B, t=0.06, t_tip=0.04))
-    g.add(wing((1.0, -4.70, 0.02), 2.39, (2.83, -6.19, -0.30), 0.90, GREY_B, t=0.04))
+    g.add(wing((1.0, 2.0, 0.0), 1.3, (1.36, 0.42, 0.0), 0.05, F16_GREY, t=0.03))
+    g.add(wing((1.0, 0.69, 0.0), 4.10, (4.60, -2.19, 0.0), 1.22, F16_GREY, t=0.04))
+    g.add(wing((0.6, -3.3, 0.0), 3.5, (1.05, -3.5, 0.0), 3.35, F16_GREY, t=0.06, t_tip=0.04))
+    g.add(wing((1.0, -4.70, 0.02), 2.39, (2.83, -6.19, -0.30), 0.90, F16_GREY, t=0.04))
     for s in (-1, 1):
-        g.add(block(s * 4.58, s * 4.72, -1.7, -3.6, -0.05, 0.05, GREY_B))
+        g.add(block(s * 4.58, s * 4.72, -1.7, -3.6, -0.05, 0.05, F16_GREY))
         g.add(missile(s * 4.66, -0.9, -0.14, 3.0))
     # The fin on its base, the ventral fins canted out.
-    g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, GREY_B, t=0.05, vertical=True, mirror=False))
-    g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, GREY_B, t=0.05, vertical=True))
+    g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, F16_GREY, t=0.05, vertical=True, mirror=False))
+    g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, F16_GREY, t=0.05, vertical=True))
     g.add(nozzle(0, -6.15, 0.04, 0.52, 1.05, n=12))
     fl = flame(0, -7.2, 0.04, 0.45, 3.2)
     return Craft(g, (-4.70, -3.3, 0.05), (4.70, -3.3, 0.05), [(0, -7.0, 3.27)], fl, gear=f16_gear())
@@ -261,14 +265,14 @@ def f16_gear():
     # The leg leans forward down to the wheel, braced from behind.
     g.add(frustum((0.0, 2.15, keel), (0.0, 2.38, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
     g.add(frustum((0.0, 1.55, keel), (0.0, 2.25, (keel + axle[2]) / 2), 0.035, 0.035, GREY_L, n=4))
-    g.face2([(-0.3, 2.5, keel + 0.02), (-0.3, 1.3, keel + 0.02), (-0.34, 1.3, keel - 0.36), (-0.34, 2.5, keel - 0.36)], GREY_B)
+    g.face2([(-0.3, 2.5, keel + 0.02), (-0.3, 1.3, keel + 0.02), (-0.34, 1.3, keel - 0.36), (-0.34, 2.5, keel - 0.36)], F16_GREY)
     r, w = 0.34, 0.22
     for s in (-1, 1):
         axle = (s * 1.18, -1.76, F16_GROUND + r)
         g.add(mklib.wheel(axle, r, w, BLACK, n=8))
         g.add(frustum((s * 0.62, -1.6, -0.74), (s * 1.05, -1.76, axle[2] + 0.12), 0.08, 0.07, GREY_L, n=5))
         g.add(frustum((s * 0.62, -0.9, -0.76), (s * 1.0, -1.66, axle[2] + 0.4), 0.04, 0.04, GREY_L, n=4))
-        g.face2([(s * 0.86, -0.9, -0.1), (s * 0.86, -2.7, -0.1), (s * 0.9, -2.7, -0.72), (s * 0.9, -0.9, -0.72)], GREY_B)
+        g.face2([(s * 0.86, -0.9, -0.1), (s * 0.86, -2.7, -0.1), (s * 0.9, -2.7, -0.72), (s * 0.9, -0.9, -0.72)], F16_GREY)
     return g
 
 
@@ -319,34 +323,34 @@ def tornado_wing():
     root slides into the glove and the fuselage's side as it sweeps back."""
     px, py = TORNADO_PIVOT
     z = TORNADO_WING_Z
-    g = wing((1.75, -0.05, z), 2.20, (6.95, -2.45, z), 0.95, GREY, t=0.045, t_tip=0.035, mirror=False)
+    g = wing((1.75, -0.05, z), 2.20, (6.95, -2.45, z), 0.95, TORNADO_GREY, t=0.045, t_tip=0.035, mirror=False)
     # The swivelling pylon under it, the tip's fairing.
-    g.add(pylon(3.9, -0.6, -2.0, z - 0.05, z - 0.40, w=0.08))
-    g.add(block(6.93, 7.00, -2.40, -3.30, z - 0.03, z + 0.03, GREY))
+    g.add(pylon(3.9, -0.6, -2.0, z - 0.05, z - 0.40, w=0.08, paint=TORNADO_GREY))
+    g.add(block(6.93, 7.00, -2.40, -3.30, z - 0.03, z + 0.03, TORNADO_GREY))
     return g.transformed(lambda p: Vector((p.x - px, p.y - py, p.z - z)))
 
 
 def tornado():
     rings = [f16_section(*s) for s in TORNADO_BODY]
-    g = tube(rings, GREY, paints=[RADOME] * 4 + [GREY] * (len(rings) - 5))
+    g = tube(rings, TORNADO_GREY, paints=[RADOME] * 4 + [TORNADO_GREY] * (len(rings) - 5))
     # The nose probe.
     g.add(frustum((0, 7.83, -0.24), (0, 8.36, -0.24), 0.04, 0.015, GREY_L, n=4))
     g.add(tube([f16_arch(*s) for s in TORNADO_CANOPY], CANOPY))
-    g.add(tube([f16_arch(*s) for s in TORNADO_FAIRING], GREY))
+    g.add(tube([f16_arch(*s) for s in TORNADO_FAIRING], TORNADO_GREY))
     g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in TORNADO_DORSAL],
-               GREY))
+               TORNADO_GREY))
     for s in (-1, 1):
         # The intakes under the gloves, their trunks running back into the engine bay.
-        g.add(box_intake(s * 1.05, 2.95, 1.5, -0.25, 0.36, 0.52, slant=0.5))
-        g.add(loft([(1.5, -0.25, 0.36, 0.52), (-1.0, -0.22, 0.30, 0.50), (-3.6, -0.20, 0.12, 0.45)], GREY, n=8,
+        g.add(box_intake(s * 1.05, 2.95, 1.5, -0.25, 0.36, 0.52, slant=0.5, paint=TORNADO_GREY))
+        g.add(loft([(1.5, -0.25, 0.36, 0.52), (-1.0, -0.22, 0.30, 0.50), (-3.6, -0.20, 0.12, 0.45)], TORNADO_GREY, n=8,
                    power=2.8, x=s * 1.05))
         # The engines' nozzles side by side, glowing.
         g.add(nozzle(s * 0.55, -6.75, -0.15, 0.42, 0.6, n=10))
     # The fixed gloves (thicker than the outer wings sliding into them), the tailerons with
     # a little anhedral, the fin on its dorsal fairing.
-    g.add(wing((1.05, 2.90, TORNADO_WING_Z), 4.50, (2.35, -0.25, TORNADO_WING_Z), 1.35, GREY, t=0.08))
-    g.add(wing((1.00, -4.10, -0.05), 3.25, (3.43, -6.15, -0.15), 1.25, GREY, t=0.045, t_tip=0.035))
-    g.add(wing((0, -3.60, 1.30), 4.00, (0, -6.30, 4.15), 1.85, GREY, t=0.05, vertical=True, mirror=False))
+    g.add(wing((1.05, 2.90, TORNADO_WING_Z), 4.50, (2.35, -0.25, TORNADO_WING_Z), 1.35, TORNADO_GREY, t=0.08))
+    g.add(wing((1.00, -4.10, -0.05), 3.25, (3.43, -6.15, -0.15), 1.25, TORNADO_GREY, t=0.045, t_tip=0.035))
+    g.add(wing((0, -3.60, 1.30), 4.00, (0, -6.30, 4.15), 1.85, TORNADO_GREY, t=0.05, vertical=True, mirror=False))
     fl = Geo().add(flame(0.55, -7.35, -0.15, 0.38, 3.0)).add(flame(-0.55, -7.35, -0.15, 0.38, 3.0))
     right = tornado_wing()
     px, py = TORNADO_PIVOT
@@ -361,7 +365,7 @@ def tornado():
 def tornado_gear():
     """The gear down: twin nose wheels under the cockpit, the main legs from the fuselage's
     underside below the gloves, their wheels outboard."""
-    return tricycle(TORNADO_GROUND, (3.85, -0.78, 0.25, True), (-1.18, 0.95, -0.62, 1.55, 0.42), GREY)
+    return tricycle(TORNADO_GROUND, (3.85, -0.78, 0.25, True), (-1.18, 0.95, -0.62, 1.55, 0.42), TORNADO_GREY)
 
 
 def twin_nacelle_fighter(L, span, flanker=False, paint=GREY_B):
@@ -659,7 +663,7 @@ def a10_wing_chord(x):
 
 
 def a10():
-    p = GREY_D
+    p = A10_GREY
     rings = [f16_section(*s) for s in A10_BODY]
     g = tube(rings, p)
     g.add(tube([[(hw, y, sill), (tw, y, top), (-tw, y, top), (-hw, y, sill)] for y, sill, hw, tw, top in A10_WINDSCREEN],
@@ -729,7 +733,7 @@ def a10_gear():
     g.add(mklib.wheel(axle, r, 0.18, BLACK, n=8))
     g.add(frustum((0.30, 5.15, -0.54), (0.30, 5.08, axle[2] + 0.1), 0.07, 0.06, GREY_L, n=5))
     g.add(frustum((0.30, 4.40, -0.54), (0.30, 5.00, (axle[2] - 0.54) / 2), 0.035, 0.035, GREY_L, n=4))
-    g.face2([(0.05, 5.70, -0.54), (0.05, 4.20, -0.54), (0.05, 4.20, -0.92), (0.05, 5.70, -0.92)], GREY_D)
+    g.face2([(0.05, 5.70, -0.54), (0.05, 4.20, -0.54), (0.05, 4.20, -0.92), (0.05, 5.70, -0.92)], A10_GREY)
     r = 0.47
     for s in (-1, 1):
         axle = (s * A10_POD_X, -0.42, A10_GROUND + r)
