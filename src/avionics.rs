@@ -1321,9 +1321,11 @@ fn update_pod(
     };
     let ground_y = crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y;
     // CZ: point track on the current steerpoint, the pod the SOI to slew on from there.
+    let mut cz = false;
     if std::mem::take(&mut state.av.tgp.cz)
         && let Some(wp) = waypoints.target()
     {
+        cz = true;
         let p = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64);
         state.av.tgp.mode = TgpMode::Point(p);
         state.av.tgp.idle = 0.0;
@@ -1337,9 +1339,9 @@ fn update_pod(
     let tgp = &mut state.av.tgp;
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
-    // Settled near a unit: the pod snaps onto it, locked as by the lock key (a gun, which
-    // cannot be locked, held in point track).
-    if slewed
+    // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
+    // by the lock key (a gun, which cannot be locked, held in point track).
+    if (slewed || cz)
         && let TgpMode::Point(p) = tgp.mode
         && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, ground_y))
     {
