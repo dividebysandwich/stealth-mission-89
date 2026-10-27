@@ -1075,13 +1075,13 @@ pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
 /// What the download has that the browser build has not (`web_gateway`), with the reason.
 #[cfg(target_arch = "wasm32")]
 const DOWNLOAD_GIVES: [(&str, &str); 7] = [
-    ("VR", "Fly in a headset through OpenXR (SteamVR, Monado), the Steam Frame included"),
-    ("HOTAS", "Every button and axis of your joysticks, throttles and pedals"),
-    ("Better multiplayer", "Straight to the server, without the browser's relay hop: less lag"),
-    ("Host your own server", "Host a coop campaign, or run a dedicated server, listed or private"),
+    ("VR", "Fly in VR on any OpenXR-compatible headset and the Steam Frame"),
+    ("HOTAS", "Full support for gamepads, joysticks, throttles and pedals"),
+    ("Better multiplayer", "Direct UDP connection to servers for less lag"),
+    ("Host your own server", "Host a coop campaign, or run a dedicated server"),
     ("Head tracking", "TrackIR-style trackers through OpenTrack"),
     ("Tacview", "Flight recordings and real-time telemetry"),
-    ("Native speed", "Higher frame rates, saves in a folder instead of the browser's storage"),
+    ("Yours to keep", "If the website goes down you still have your own copy"),
 ];
 
 /// The browser build's first screen: play in the browser or download the desktop game, beside
