@@ -3,7 +3,7 @@
 //! aircraft, not the radar picture's twice a second), slewing at its gimbal's rate. Colour or
 //! thermal (the FLIR of the aircraft's pod). Without a lock it holds where it looks; a
 //! Gepard's looks along the gun, slewed by hand (ahead of the simulation's steps with the
-//! hand controller, drawn to where the gun is).
+//! hand controller, drawn to where the gun is), each aircraft in reach marked with its lead.
 
 use std::f32::consts::{PI, TAU};
 
@@ -12,11 +12,11 @@ use bevy::prelude::*;
 
 use super::scope::{GREEN, RED, WHITE, YELLOW};
 use super::{ConsoleUi, Manning};
-use crate::canvas::CanvasTexture;
+use crate::canvas::{Canvas, CanvasTexture};
 use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, EO_CANVAS};
 use crate::combat::{Combat, unit_position};
 use crate::font::{Align, stroke_text_at};
-use crate::world::wu_to_bevy;
+use crate::world::{WU, wu_to_bevy};
 
 /// The gimbal's fastest slew (rad/s) and how long it takes to get to it (s).
 const SLEW_RATE: f32 = 1.6;
@@ -165,6 +165,7 @@ pub(super) fn draw(
             let d = eo.dir;
             let brg = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
             let elv = d.y.atan2(d.x.hypot(d.z)).to_degrees();
+            leads(cv, &combat, m.unit, &eo, col);
             let text = format!("MAN B{brg:03.0} E{elv:+.0}");
             stroke_text_at(cv, w / 2.0, bottom, &text, 7.0, 1.0, col, Align::Centre);
             if sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0) {
@@ -234,5 +235,58 @@ pub(super) fn draw(
         let reach = stealth_sim::station::GEPARD_REACH as f32;
         let (text, c2) = if range <= reach { ("IN RANGE", YELLOW) } else { ("OUT OF RANGE", RED) };
         stroke_text_at(cv, w / 2.0, 24.0, text, 7.0, 1.0, c2, Align::Centre);
+    }
+}
+
+/// Each aircraft in the picture within reach of the hand-fired rounds: a line from it to its
+/// lead, where the barrels must point for a burst to meet it (the simulation's lead, the
+/// shells' drop included).
+fn leads(cv: &mut Canvas, combat: &Combat, unit: usize, eo: &ConsoleEo, col: u8) {
+    use stealth_sim::station::{GEPARD_V0, MANUAL_RANGE};
+    let sim = &combat.sim;
+    let Some(gun) = sim.aaa_units().get(unit).map(|u| u.metres()) else { return };
+    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    // The camera's projection (`trackcam`): f = 256 << zoom over its 77 pixels' width,
+    // vertically 0.75 f.
+    let f = (256u32 << eo.zoom.min(6)) as f32 * w / 77.0;
+    let up = if eo.dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
+    let right = eo.dir.cross(up).normalize();
+    let up = right.cross(eo.dir);
+    let screen = |v: Vec3| {
+        let z = v.dot(eo.dir);
+        let p = Vec2::new(w / 2.0 + v.dot(right) / z * f, h / 2.0 - v.dot(up) / z * f * 0.75);
+        (z > 0.0 && p.x.abs() < 2.0 * w && p.y.abs() < 2.0 * h).then_some(p)
+    };
+    let shown = |p: Vec2| p.x >= 0.0 && p.x < w && p.y >= 0.0 && p.y < h;
+    for (i, u) in sim.flights().iter().enumerate() {
+        // Drawn where it is shown, led from where the simulation has it (the rounds fly there).
+        let Some((pos, vel)) = sim.track_alive(i) else { continue };
+        let (e, n, z) = unit_position(combat.prev_flights.get(i), u, combat.alpha);
+        // Its velocity over the last simulation step (the AI flies slower than its nominal
+        // speed in a bank), else the nominal one.
+        let vel = combat
+            .prev_flights
+            .get(i)
+            .filter(|p| {
+                p.flags == u.flags && (p.wx - u.wx).abs() < 0x400 && (p.wy - u.wy).abs() < 0x400
+            })
+            .map_or(vel, |p| {
+                let k = WU * crate::combat::FS as f64;
+                [(u.wx - p.wx) as f64 * k, (p.wy - u.wy) as f64 * k, (u.alt - p.alt) as f64 * k]
+            });
+        let (az, el, time) = stealth_sim::aaa::lead(gun, pos, vel, GEPARD_V0);
+        if time * GEPARD_V0 > MANUAL_RANGE {
+            continue;
+        }
+        let (az, el) = (az as f32, el as f32);
+        let aim = Vec3::new(az.sin() * el.cos(), el.sin(), -az.cos() * el.cos());
+        let (Some(p), Some(q)) = (screen((wu_to_bevy(e, n, z) - eo.eye).as_vec3()), screen(aim))
+        else {
+            continue;
+        };
+        if shown(p) || shown(q) {
+            cv.dashed(p, q, 3.0, 3.0, 1.0, col);
+            cv.ring(q, 5.0, 1.2, col);
+        }
     }
 }
