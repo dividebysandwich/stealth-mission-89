@@ -61,6 +61,7 @@ struct Program {
     emissive: Option<glow::UniformLocation>,
     cutoff: Option<glow::UniformLocation>,
     night: Option<glow::UniformLocation>,
+    flood: Option<glow::UniformLocation>,
     local: Option<glow::UniformLocation>,
     tint: Option<glow::UniformLocation>,
     proj: Option<glow::UniformLocation>,
@@ -355,6 +356,7 @@ fn compile(gl: &glow::Context, shader: &str, defines: &str) -> Result<Program, S
             emissive: at("u_emissive"),
             cutoff: at("u_cutoff"),
             night: at("u_night"),
+            flood: at("u_flood"),
             local: at("u_local"),
             tint: at("u_tint"),
             proj: at("u_proj"),
@@ -1715,6 +1717,7 @@ impl Renderer {
             gl.uniform_1_u32(p.flags.as_ref(), flags);
             gl.uniform_1_f32(p.cutoff.as_ref(), item.cutoff);
             gl.uniform_4_f32_slice(p.night.as_ref(), &item.night.to_array());
+            gl.uniform_4_f32_slice(p.flood.as_ref(), &item.flood.to_array());
             gl.active_texture(glow::TEXTURE0);
             gl.bind_texture(glow::TEXTURE_2D, base_tex);
             gl.active_texture(glow::TEXTURE1);

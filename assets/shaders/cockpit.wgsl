@@ -38,6 +38,17 @@
 // x: darkness of a night without moonlight 0..1, y: night vision goggles, z: daylight 0..1,
 // w: classic shaders (shading.rs `CockpitShading::night`).
 @group(#{MATERIAL_BIND_GROUP}) @binding(100) var<uniform> night: vec4<f32>;
+// Night lighting (shading.rs `CockpitShading::flood`): the flood light's colour (rgb) and the
+// master caution (w = 1).
+@group(#{MATERIAL_BIND_GROUP}) @binding(101) var<uniform> flood: vec4<f32>;
+
+const CAUTION: vec3<f32> = vec3<f32>(0.1, 0.05, 0.0);
+
+// The flood light and the master caution's amber pulse on a surface of colour `base`.
+fn flood_light(base: vec3<f32>) -> vec3<f32> {
+    let pulse = flood.w * max(sin(globals.time * 6.2831853 * 1.5), 0.0);
+    return base * (flood.rgb + CAUTION * pulse);
+}
 
 #ifdef COCKPIT_SHADOWS
 // Classic shaders: a hard edged shadow (the nearest shadow map texel), like the world's
@@ -160,6 +171,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         out.color = pbr_input.material.base_color;
     }
 #endif
+    out.color = vec4<f32>(out.color.rgb + flood_light(pbr_input.material.base_color.rgb), out.color.a);
     out.color = vec4<f32>(nvg(out.color.rgb, in.position), out.color.a);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
     return out;

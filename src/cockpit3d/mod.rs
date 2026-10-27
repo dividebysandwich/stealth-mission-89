@@ -355,6 +355,7 @@ fn sync_shading(
     manning: Option<Res<crate::station::Manning>>,
     mut materials: ResMut<Assets<CockpitMaterial>>,
     bursts: Res<crate::flashes::Bursts>,
+    warnings: Option<Res<crate::panel::Warnings>>,
 ) {
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
     // Steam Frame it costs about 10 ms of GPU time.
@@ -380,6 +381,17 @@ fn sync_shading(
             !settings.modern_shading as u32 as f32,
         )
     };
+    // Night lighting: a red flood light (blue-green under the goggles) as the daylight goes,
+    // in 1/16 steps; the master caution's pulse while a warning is on.
+    let flood = if settings.effects.cockpit_night && manning.is_none() {
+        let k = q16(((FLOOD_DUSK - lighting.daylight) / FLOOD_DUSK).clamp(0.0, 1.0));
+        let colour = if nvg { FLOOD_NVG } else { FLOOD_RED };
+        let caution = warnings.as_ref().is_some_and(|w| w.caution()) && k > 0.0;
+        (colour * k).extend(caution as u32 as f32)
+    } else {
+        Vec4::ZERO
+    };
+    let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials
         .iter()
         .filter(|(_, m)| {
@@ -387,6 +399,7 @@ fn sync_shading(
                 || m.extension.full != full
                 || m.extension.shadows != shadows
                 || m.extension.night != night(m)
+                || m.extension.flood != flood_of(m)
         })
         .map(|(id, _)| id)
         .collect();
@@ -396,8 +409,20 @@ fn sync_shading(
             m.extension.full = full;
             m.extension.shadows = shadows;
             m.extension.night = night(&m);
+            m.extension.flood = flood_of(&m);
         }
     }
+}
+
+/// The cockpit's night flood light: full below this daylight's share of it, red (linear,
+/// added to what the surfaces reflect), and the blue-green the goggles tolerate.
+const FLOOD_DUSK: f32 = 0.3;
+const FLOOD_RED: Vec3 = Vec3::new(0.15, 0.02, 0.01);
+const FLOOD_NVG: Vec3 = Vec3::new(0.004, 0.025, 0.018);
+
+/// In 1/16 steps: a change re-uploads every cockpit material.
+fn q16(v: f32) -> f32 {
+    (v * 16.0).round() / 16.0
 }
 
 #[derive(Component)]

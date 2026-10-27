@@ -149,7 +149,13 @@ impl Page {
             }
             Page::Effects => {
                 use crate::effects::Effect as E;
-                &[Effect(E::Shake), Effect(E::Flashes), Effect(E::Barrage), Back]
+                &[
+                    Effect(E::Shake),
+                    Effect(E::Flashes),
+                    Effect(E::Barrage),
+                    Effect(E::CockpitNight),
+                    Back,
+                ]
             }
             Page::Sound => &[
                 Volume(Vol::Master),

@@ -14,11 +14,13 @@ pub struct Effects {
     pub flashes: bool,
     /// Conventional war at night: tracer barrages and searchlights over the towns (barrage.rs).
     pub barrage: bool,
+    /// The cockpit's red flood light at night and the master caution's pulse (cockpit3d).
+    pub cockpit_night: bool,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Self { shake: true, flashes: true, barrage: true }
+        Self { shake: true, flashes: true, barrage: true, cockpit_night: true }
     }
 }
 
@@ -28,10 +30,12 @@ pub enum Effect {
     Shake,
     Flashes,
     Barrage,
+    CockpitNight,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 3] = [Effect::Shake, Effect::Flashes, Effect::Barrage];
+    pub const ALL: [Effect; 4] =
+        [Effect::Shake, Effect::Flashes, Effect::Barrage, Effect::CockpitNight];
 
     /// Its name on the command line.
     pub fn name(self) -> &'static str {
@@ -39,6 +43,7 @@ impl Effect {
             Effect::Shake => "shake",
             Effect::Flashes => "flashes",
             Effect::Barrage => "barrage",
+            Effect::CockpitNight => "cockpit-night",
         }
     }
 
@@ -48,6 +53,7 @@ impl Effect {
             Effect::Shake => "Camera shake",
             Effect::Flashes => "Combat flashes",
             Effect::Barrage => "Night barrage",
+            Effect::CockpitNight => "Cockpit night lighting",
         }
     }
 
@@ -57,6 +63,7 @@ impl Effect {
             Effect::Shake => "CAMERA SHAKE",
             Effect::Flashes => "COMBAT FLASHES",
             Effect::Barrage => "NIGHT BARRAGE",
+            Effect::CockpitNight => "COCKPIT NIGHT LIGHT",
         }
     }
 
@@ -74,6 +81,10 @@ impl Effect {
                 "Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them",
                 "Only for the look: the barrage hits nothing, the searchlights find nothing",
             ],
+            Effect::CockpitNight => &[
+                "A dim red flood light in the cockpit after dark (blue-green under the goggles)",
+                "The master caution pulses amber over the panel while a warning is on",
+            ],
         }
     }
 
@@ -82,6 +93,7 @@ impl Effect {
             Effect::Shake => e.shake,
             Effect::Flashes => e.flashes,
             Effect::Barrage => e.barrage,
+            Effect::CockpitNight => e.cockpit_night,
         }
     }
 
@@ -90,6 +102,7 @@ impl Effect {
             Effect::Shake => e.shake = on,
             Effect::Flashes => e.flashes = on,
             Effect::Barrage => e.barrage = on,
+            Effect::CockpitNight => e.cockpit_night = on,
         }
     }
 

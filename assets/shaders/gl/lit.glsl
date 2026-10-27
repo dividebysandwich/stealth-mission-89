@@ -42,6 +42,8 @@ uniform uint u_flags;
 uniform float u_cutoff;
 // x: darkness of a night without moonlight (cockpit3d/shading.rs `CockpitShading::night`)
 uniform vec4 u_night;
+// The night flood light (rgb) and the master caution (w) (`CockpitShading::flood`).
+uniform vec4 u_flood;
 uniform sampler2D u_base_tex;
 uniform sampler2D u_emissive_tex;
 
@@ -125,6 +127,9 @@ void main() {
     }
     if ((u_flags & 8u) == 0u) {
         rgb += base.rgb * burst_glow(v_world);
+        // The flood light and the master caution's amber pulse (cockpit.wgsl `flood_light`).
+        float pulse = u_flood.w * max(sin(g.dots.y * 6.2831853 * 1.5), 0.0);
+        rgb += base.rgb * (u_flood.rgb + vec3(0.1, 0.05, 0.0) * pulse);
     }
     o_colour = vec4(rgb, base.a);
 }

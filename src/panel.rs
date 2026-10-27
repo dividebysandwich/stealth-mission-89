@@ -76,6 +76,20 @@ pub struct Warnings {
     pub emv_warning: bool,
 }
 
+impl Warnings {
+    /// A missile warning or damage: what the master caution is for.
+    pub fn caution(&self) -> bool {
+        self.missile_warning
+            || self.engine
+            || self.fire_control
+            || self.jammer
+            || self.fire
+            || self.fuel
+            || self.bay_doors
+            || self.avionics
+    }
+}
+
 fn reset_panel(mut cm: ResMut<Countermeasures>, mut emv: ResMut<Emv>, mut w: ResMut<Warnings>) {
     *cm = Countermeasures::default();
     *emv = Emv::default();
