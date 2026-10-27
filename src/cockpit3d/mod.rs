@@ -712,9 +712,17 @@ fn mouse_look(
     }
 }
 
-/// `--head-look yaw,pitch` (degrees): initial free look (screenshots of the cockpit).
-fn initial_look(mut look: ResMut<HeadLook>) {
+/// `--head-look yaw,pitch` (degrees): initial free look, `--magnify x` the view narrowed as
+/// with the mouse wheel (screenshots of the cockpit).
+fn initial_look(mut look: ResMut<HeadLook>, mut state: ResMut<ViewState>) {
     let args: Vec<String> = std::env::args().collect();
+    if let Some(m) = args
+        .iter()
+        .position(|a| a == "--magnify")
+        .and_then(|i| args.get(i + 1)?.parse::<f32>().ok())
+    {
+        state.magnify = m.clamp(1.0, MAX_MAGNIFY);
+    }
     if let Some(v) = args.iter().position(|a| a == "--head-look").and_then(|i| args.get(i + 1)) {
         let mut it = v.split(',').map(|x| x.parse::<f32>().unwrap_or(0.0).to_radians());
         look.yaw = it.next().unwrap_or(0.0);
