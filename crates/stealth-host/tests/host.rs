@@ -407,8 +407,8 @@ fn an_empty_stockpile_orders_a_resupply() {
     );
 }
 
-/// A sortie's briefing names the base it flies from and back to (an airfield or a carrier), and
-/// plans the fuel for its own route, in every theater.
+/// A sortie's briefing names the base it flies from and back to (an airfield or a carrier), leaves
+/// now and plans the fuel for its own route, in every theater.
 #[test]
 fn a_sortie_briefs_its_own_base_and_fuel() {
     use stealth_campaign::{Progress, SiteKind, Sortie, WorldView};
@@ -456,6 +456,12 @@ fn a_sortie_briefs_its_own_base_and_fuel() {
                 assert_eq!(m.fuel_lbs, 12 * m.route_length, "{what}");
                 assert!(b.fuel_line.contains(&m.fuel_lbs.to_string()), "{what}: {:?}", b.fuel_line);
                 assert_eq!((p[3].x, p[3].y), (site.x, site.y), "{what}: lands at home");
+                let secs = (host.state.sky_hours().rem_euclid(24.0) * 3600.0) as i32;
+                let now = format!("{:02}:{:02}", secs / 3600, secs / 60 % 60);
+                assert_eq!(m.time.depart, now, "{what}");
+                assert!(b.depart_line.contains(&now), "{what}: {:?}", b.depart_line);
+                let start = m.time.base_hour as i32 * 3600 + m.time.tod_ticks * 2;
+                assert!((secs - start).abs() <= 1, "{what}: starts at {start} s, now {secs} s");
             }
         }
     }

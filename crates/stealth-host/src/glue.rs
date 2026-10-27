@@ -190,6 +190,13 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         *l = l.replace(&m.takeoff.name, &home.name);
     }
     bl.land_line = bl.land_line.replace(&m.landing.name, &home.name);
+    // It leaves now (the campaign's clock), not at the generated mission's time.
+    let secs = (state.sky_hours().rem_euclid(24.0) * 3600.0) as i32;
+    let depart = format!("{:02}:{:02}", secs / 3600, secs / 60 % 60);
+    bl.depart_line = bl.depart_line.replace(&m.time.depart, &depart);
+    m.time.base_hour = (secs / 3600) as u8;
+    m.time.tod_ticks = secs % 3600 / 2;
+    m.time.depart = depart;
     m.takeoff = home.clone();
     m.landing = home;
     let target = MapPoint { x: o.x, y: o.y };
