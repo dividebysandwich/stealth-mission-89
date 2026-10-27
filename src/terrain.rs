@@ -41,7 +41,7 @@ impl Plugin for TerrainPlugin {
 #[derive(Resource, Default)]
 pub struct RefinedTerrain {
     files: HashSet<String>,
-    pub surfaces: HashMap<String, Arc<Vec<[Vec3; 3]>>>,
+    pub surfaces: HashMap<String, Arc<crate::models::Surface>>,
 }
 
 impl RefinedTerrain {
@@ -153,7 +153,9 @@ fn refine(
                 let surface = mountain(&mut geo, levels, &|c| materials.contains_key(&c));
                 let inv = node.transform.to_matrix().inverse();
                 let local = surface.iter().map(|t| t.map(|p| inv.transform_point3(p))).collect();
-                refined.surfaces.insert(node.name.clone(), Arc::new(local));
+                refined
+                    .surfaces
+                    .insert(node.name.clone(), Arc::new(crate::models::Surface::new(local)));
                 mountains += 1;
                 changed = true;
             }

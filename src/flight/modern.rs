@@ -383,6 +383,8 @@ const HOLD_AFTER: f32 = 1.5;
 const HOLD_LATEST: f32 = 4.0;
 const HOLD_SETTLED: f32 = 0.02;
 const HOLD_GAIN: f32 = 0.5;
+/// Terrain following: pitch rate per radian of flight path error.
+const TF_GAIN: f32 = 2.0;
 /// Auto trim: trim (stick) per second per radian of flight path error held, and the share of
 /// the roll bias trimmed out per second with the stick released.
 const TRIM_PATH_GAIN: f32 = 0.5;
@@ -665,11 +667,22 @@ pub(super) fn step(
             let e = bam(bam_diff(a.waypoint_bearing, to_bam(heading)));
             let bank = (e * 1.5).clamp(-0.52, 0.52);
             p_cmd = ((bank - roll) * 2.0).clamp(-0.5, 0.5);
-            let gamma_cmd = ((a.autopilot_alt - vz) * 0.0005).clamp(-0.17, 0.17);
-            q_cmd = q_turn + ((gamma_cmd - gamma) * 0.8).clamp(-0.5 * G / v, 2.0 * G / v);
+            q_cmd = match a.tf_gamma {
+                // Terrain following: the radar's flight path, pulling up to 4 g more and pushing
+                // over to -0.5 g.
+                Some(gamma_cmd) => {
+                    q_turn + ((gamma_cmd - gamma) * TF_GAIN).clamp(-1.5 * G / v, 4.0 * G / v)
+                }
+                None => {
+                    let gamma_cmd = ((a.autopilot_alt - vz) * 0.0005).clamp(-0.17, 0.17);
+                    q_turn + ((gamma_cmd - gamma) * 0.8).clamp(-0.5 * G / v, 2.0 * G / v)
+                }
+            };
         }
-        // Crash protection: wings level and pull when the ground is less than 3 s away.
+        // Crash protection: wings level and pull when the ground is less than 3 s away (not
+        // while terrain following, which flies lower and clears the ground itself).
         if k.landing == 0
+            && !a.terrain_following()
             && !a.gear_down
             && vel.y < 0.0
             && a.altitude - a.ground_altitude + vel.y * 3.0 < 150.0

@@ -363,7 +363,7 @@ fn log_flight(q: Query<(&Aircraft, &crate::world::WorldPos), With<Player>>, mut 
         *last = t;
         let (h, p, r) = a.euler();
         println!(
-            "t={t:3} kts={:5.1} alt={:6.0} hdg={:5.1} pitch={:+5.1} roll={:+6.1} g={:.2} thr={:3.0} climb={:+6.0} stall={:5.1} ground={} map={:?} ended={:?}",
+            "t={t:3} kts={:5.1} alt={:6.0} hdg={:5.1} pitch={:+5.1} roll={:+6.1} g={:.2} thr={:3.0} climb={:+6.0} stall={:5.1} ground={} map={:?} ended={:?}{}",
             a.knots(),
             a.altitude,
             h.to_degrees(),
@@ -375,7 +375,10 @@ fn log_flight(q: Query<(&Aircraft, &crate::world::WorldPos), With<Player>>, mut 
             a.stall_speed / 27.0,
             a.on_ground as u8,
             crate::hud::map_units(pos),
-            a.ended
+            a.ended,
+            // The terrain following radar: the height of what lies below, the command.
+            a.radar_ground.map_or(String::new(), |g| format!(" radar_ground={g:.0}"))
+                + &a.tf_gamma.map_or(String::new(), |g| format!(" tf={:+.1}", g.to_degrees()))
         );
     }
 }

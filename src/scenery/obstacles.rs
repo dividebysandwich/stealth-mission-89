@@ -77,7 +77,79 @@ fn building_hit(b: &Building, p: DVec2, h: f64, r: f64) -> bool {
     }
 }
 
+/// The top of the building's solid parts within `r` of `p` (metres up), None if none reach.
+fn building_top(b: &Building, p: DVec2, r: f64) -> Option<f64> {
+    let (l, w, bh) = (b.l as f64, b.w as f64, b.h as f64);
+    let round = |radius: f64, top: f64| (p.distance(b.p) - radius < r).then_some(top);
+    let boxed = |top: f64| (rect_dist(p, b.p, b.dir, l, w) < r).then_some(top);
+    match b.kind {
+        Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
+            let rise = match (b.roof, b.kind) {
+                (Roof::Flat, _) => 0.0,
+                (_, Kind::Shed) => w * 0.18,
+                (_, Kind::Church) => w * 0.6,
+                _ => w * 0.42,
+            };
+            let tower = (b.kind == Kind::Church)
+                .then(|| {
+                    let t = b.p - b.dir * (l * 0.5 + 3.2);
+                    (rect_dist(p, t, b.dir, 6.5, 6.5) < r).then_some(bh * 2.4 + 11.0)
+                })
+                .flatten();
+            match (tower, boxed(bh + rise)) {
+                (Some(a), Some(b)) => Some(a.max(b)),
+                (a, b) => a.or(b),
+            }
+        }
+        Kind::Ruin | Kind::Shelter => boxed(bh),
+        Kind::Silo => round(l * 0.5, bh + 2.5),
+        Kind::Chimney => round(2.4, bh),
+        Kind::Tank => round(l * 0.5, bh),
+        Kind::WaterTower => round(4.5, bh + 2.0),
+        Kind::Mast => round(1.2, bh),
+        Kind::Radar => round(5.6, bh),
+        Kind::Windsock | Kind::Sign => None,
+    }
+}
+
 impl Scenery {
+    /// The highest generated obstacle within `r` metres of ground point `p` (metres up, 0 for
+    /// none), for the terrain following radar: the power lines' wires counted at the pylons'
+    /// height, the trees only within `tree_r` (they are many and low).
+    pub fn top_near(&self, p: DVec2, r: f64, tree_r: f64) -> f64 {
+        let near = DVec2::splat(r + 80.0);
+        let buildings = self
+            .net
+            .building_index
+            .around(p - near, p + near)
+            .map(|i| &self.net.buildings[i as usize]);
+        let airfields = self
+            .airfields
+            .iter()
+            .filter(|a| a.runway.c.distance(p) < a.runway.half_len + 3000.0 + r)
+            .flat_map(|a| a.buildings.iter());
+        let mut top =
+            buildings.chain(airfields).filter_map(|b| building_top(b, p, r)).fold(0.0, f64::max);
+        content::trees_near(self, p, tree_r, |q, crown, h| {
+            if q.distance(p) < tree_r + crown as f64 * 0.7 {
+                top = top.max(h as f64);
+            }
+        });
+        let span = DVec2::splat(MAX_SPAN + r);
+        for id in self.net.pylon_index.around(p - span, p + span) {
+            let (li, k) = self.net.pylons[id as usize];
+            let line = &self.net.lines[li as usize];
+            let k = k as usize;
+            let height = if line.big { 31.0 } else { 9.0 };
+            let c = line.pylons[k];
+            let next = line.pylons.get(k + 1).copied().unwrap_or(c);
+            if dist_to_segment(p, c, next) < r + 12.0 {
+                top = top.max(height);
+            }
+        }
+        top
+    }
+
     /// What a sphere of radius `r` at ground point `p`, `h` metres up, is inside of.
     pub fn obstacle(&self, p: DVec2, h: f64, r: f64) -> Option<Obstacle> {
         // Nothing generated stands taller than the masts.

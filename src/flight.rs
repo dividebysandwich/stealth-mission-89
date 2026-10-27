@@ -19,6 +19,7 @@ use crate::world::{Theater, WorldPos, bevy_to_wu, wu_to_bevy};
 
 pub mod heli;
 pub mod modern;
+pub mod terrain_follow;
 
 pub struct FlightPlugin;
 
@@ -31,7 +32,7 @@ impl Plugin for FlightPlugin {
             )
             .add_systems(
                 Update,
-                (handle_actions, step_flight)
+                (handle_actions, terrain_follow::scan, step_flight)
                     .chain()
                     .in_set(FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -133,6 +134,8 @@ pub struct FlightConstants {
     pub aero: modern::Aero,
     /// Helicopters: the rotor, flown by the helicopter model (`heli`) instead.
     pub heli: Option<heli::Rotor>,
+    /// The autopilot follows the terrain (`terrain_follow`) instead of holding the altitude.
+    pub terrain_following: bool,
 }
 
 impl Default for FlightConstants {
@@ -152,6 +155,7 @@ impl Default for FlightConstants {
             roll_rate: 1.0,
             aero: modern::Aero::F117,
             heli: None,
+            terrain_following: false,
         }
     }
 }
@@ -177,7 +181,8 @@ impl FlightConstants {
         }
     }
 
-    /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel.
+    /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel; the
+    /// autopilot follows the terrain.
     pub fn tornado() -> Self {
         Self {
             gravity_term: 80.0,
@@ -189,6 +194,7 @@ impl FlightConstants {
             max_gees: 120.0,
             roll_rate: 1.3,
             aero: modern::Aero::TORNADO,
+            terrain_following: true,
             ..default()
         }
     }
@@ -300,6 +306,14 @@ pub struct Aircraft {
     pub bay_open: bool,
     /// Autopilot target altitude (viewZ), 0 = off.
     pub autopilot_alt: f32,
+    /// The terrain following radar's flight path angle command (rad) while the autopilot
+    /// follows the terrain, flown instead of the altitude hold.
+    #[serde(skip)]
+    pub tf_gamma: Option<f32>,
+    /// The terrain following radar's height of what lies below (altitude units), mountains
+    /// and objects included (`ground_altitude` is the flat ground's).
+    #[serde(skip)]
+    pub radar_ground: Option<f32>,
     pub on_ground: bool,
     pub in_landing_corridor: bool,
     /// Has been airborne since the start (landing only counts afterwards).
@@ -383,6 +397,8 @@ impl Aircraft {
             brakes: false,
             bay_open: false,
             autopilot_alt: 0.0,
+            tf_gamma: None,
+            radar_ground: None,
             on_ground: true,
             in_landing_corridor: true,
             has_flown: false,
@@ -432,6 +448,11 @@ impl Aircraft {
     /// Autopilot engaged?
     pub fn autopilot(&self) -> bool {
         self.autopilot_alt > 0.0
+    }
+
+    /// The autopilot follows the terrain (the terrain following radar has a command).
+    pub fn terrain_following(&self) -> bool {
+        self.autopilot() && self.tf_gamma.is_some()
     }
 
     /// Direction of flight (Bevy frame, unit vector): the modern model's velocity, or for the
@@ -669,8 +690,16 @@ fn step_one(
         if a.autopilot() {
             let e = bam_diff(a.waypoint_bearing, head_b).clamp(-5120.0, 5120.0) * 2.0;
             roll_input = ((e - roll_b) / 64.0).clamp(-24.0, 24.0);
-            let t = ((a.autopilot_alt - vz) * 16.0 - a.trim).clamp(-5120.0, 3072.0);
-            pitch_input = ((t - pitch_b) / 128.0).clamp(-8.0, 8.0);
+            let t = match a.tf_gamma {
+                // Terrain following: the nose where it puts the flight path on the command.
+                Some(g) => {
+                    let path = to_bam(a.path_dir().y.clamp(-1.0, 1.0).asin());
+                    (pitch_b + to_bam(g) - path).clamp(-8192.0, 8192.0)
+                }
+                None => ((a.autopilot_alt - vz) * 16.0 - a.trim).clamp(-5120.0, 3072.0),
+            };
+            let gain = if a.tf_gamma.is_some() { 24.0 } else { 8.0 };
+            pitch_input = ((t - pitch_b) / 128.0).clamp(-gain, gain);
         }
 
         // --- turbulence (stronger below 500 ft and with the gear down)
@@ -704,11 +733,13 @@ fn step_one(
 
         // --- auto pull-up ("barometric altimeter"; the no-crash and easy skills, here
         // crash protection only, so the ground can always be hit otherwise)
+        // (Not while terrain following, which flies lower and clears the ground itself.)
         if !a.gear_down
             && pitch_input <= 0.0
             && a.velocity > a.stall_speed
             && k.landing == 0
             && roll_b.abs() < 12288.0
+            && !a.terrain_following()
         {
             let kk = ((a.trim - pitch_b) / 8.0 - vz + 200.0) / 8.0;
             if kk > 0.0 {
@@ -1043,7 +1074,7 @@ mod tests {
         (a, e.hypot(n))
     }
 
-    fn airborne(alt: f32, kts: f32, thrust: f32) -> Aircraft {
+    pub(super) fn airborne(alt: f32, kts: f32, thrust: f32) -> Aircraft {
         let mut a = Aircraft::new_on_runway(10000.0);
         a.altitude = alt;
         a.on_ground = false;

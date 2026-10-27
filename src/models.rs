@@ -106,7 +106,50 @@ pub struct CollisionHull {
     pub planes: Vec<[f32; 4]>,
     pub radius: f32,
     /// Refined mountain surface (terrain.rs), used instead of the planes: inside when below it.
-    pub surface: Option<std::sync::Arc<Vec<[Vec3; 3]>>>,
+    pub surface: Option<std::sync::Arc<Surface>>,
+}
+
+/// A refined mountain surface (model units): its triangles, indexed by a grid over the xz
+/// plane.
+pub struct Surface {
+    pub tris: Vec<[Vec3; 3]>,
+    min: Vec2,
+    cell: f32,
+    dim: usize,
+    cells: Vec<Vec<u32>>,
+}
+
+impl Surface {
+    pub fn new(tris: Vec<[Vec3; 3]>) -> Self {
+        let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+        for v in tris.iter().flatten() {
+            (min, max) = (min.min(v.xz()), max.max(v.xz()));
+        }
+        // About one triangle per cell, at most 64 x 64 cells.
+        let dim = ((tris.len() as f32).sqrt().ceil() as usize).clamp(1, 64);
+        let cell = ((max - min).max_element() / dim as f32).max(1e-3);
+        let mut cells = vec![vec![]; dim * dim];
+        let at = |p: Vec2| ((p - min) / cell).as_uvec2().min(UVec2::splat(dim as u32 - 1));
+        for (i, t) in tris.iter().enumerate() {
+            let lo = at(t[0].xz().min(t[1].xz()).min(t[2].xz()));
+            let hi = at(t[0].xz().max(t[1].xz()).max(t[2].xz()));
+            for y in lo.y..=hi.y {
+                for x in lo.x..=hi.x {
+                    cells[y as usize * dim + x as usize].push(i as u32);
+                }
+            }
+        }
+        Self { tris, min, cell, dim, cells }
+    }
+
+    /// The triangles that may lie over `q` (xz).
+    fn over(&self, q: Vec2) -> impl Iterator<Item = &[Vec3; 3]> {
+        let c = ((q - self.min) / self.cell).floor();
+        let inside = c.x >= 0.0 && c.y >= 0.0 && c.x < self.dim as f32 && c.y < self.dim as f32;
+        let ids =
+            if inside { &self.cells[c.y as usize * self.dim + c.x as usize][..] } else { &[] };
+        ids.iter().map(|&i| &self.tris[i as usize])
+    }
 }
 
 impl CollisionHull {
@@ -115,23 +158,60 @@ impl CollisionHull {
             return false;
         }
         if let Some(surface) = &self.surface {
-            return p.y >= 0.0 && surface.iter().any(|t| below(t, p));
+            return p.y >= 0.0 && surface.over(p.xz()).any(|t| below(t, p));
         }
         self.planes.iter().all(|n| n[0] * p.x + n[1] * p.y + n[2] * p.z + n[3] < 0.0)
     }
+
+    /// The highest point inside along the line `o + t * up` (model units, `up` the world's up
+    /// in model space): the largest such `t`, None if the line misses.
+    pub fn top(&self, o: Vec3, up: Vec3) -> Option<f32> {
+        if let Some(surface) = &self.surface {
+            // The surface is a height field over the model's xz plane.
+            if up.y.abs() < 1e-6 {
+                return None;
+            }
+            let q = o.xz();
+            return surface
+                .over(q)
+                .filter_map(|t| height_over(t, q))
+                .filter(|&y| y >= 0.0)
+                .map(|y| (y - o.y) / up.y)
+                .reduce(f32::max);
+        }
+        let (mut lo, mut hi) = (f32::NEG_INFINITY, f32::INFINITY);
+        for n in &self.planes {
+            let a = n[0] * up.x + n[1] * up.y + n[2] * up.z;
+            let b = n[0] * o.x + n[1] * o.y + n[2] * o.z + n[3];
+            if a.abs() < 1e-9 {
+                if b >= 0.0 {
+                    return None;
+                }
+            } else if a > 0.0 {
+                hi = hi.min(-b / a);
+            } else {
+                lo = lo.max(-b / a);
+            }
+        }
+        (hi > lo && hi.is_finite()).then_some(hi)
+    }
+}
+
+/// The height of triangle `t` over `q` (xz), if `q` lies under it.
+fn height_over(t: &[Vec3; 3], q: Vec2) -> Option<f32> {
+    let [a, b, c] = t.map(|v| v.xz());
+    let area = (b - a).perp_dot(c - a);
+    if area.abs() < 1e-6 {
+        return None;
+    }
+    let (u, v) = ((q - a).perp_dot(c - a) / area, (b - a).perp_dot(q - a) / area);
+    let w = 1.0 - u - v;
+    (u >= 0.0 && v >= 0.0 && w >= 0.0).then(|| t[0].y * w + t[1].y * u + t[2].y * v)
 }
 
 /// Whether `p` lies under triangle `t` (seen from above).
 fn below(t: &[Vec3; 3], p: Vec3) -> bool {
-    let [a, b, c] = t.map(|v| v.xz());
-    let q = p.xz();
-    let area = (b - a).perp_dot(c - a);
-    if area.abs() < 1e-6 {
-        return false;
-    }
-    let (u, v) = ((q - a).perp_dot(c - a) / area, (b - a).perp_dot(q - a) / area);
-    let w = 1.0 - u - v;
-    u >= 0.0 && v >= 0.0 && w >= 0.0 && p.y < t[0].y * w + t[1].y * u + t[2].y * v
+    height_over(t, p.xz()).is_some_and(|y| p.y < y)
 }
 
 /// Geometry drawn only when all `(slot, value)` conditions hold in the root's `ModelState`.
@@ -484,7 +564,7 @@ impl ModelAssets<'_> {
                 let mut radius = extras["radius"].as_f64().unwrap_or(0.0) as f32;
                 let surface = self.terrain.surfaces.get(name).cloned();
                 if let Some(s) = &surface {
-                    radius = s.iter().flatten().map(|v| v.length()).fold(radius, f32::max);
+                    radius = s.tris.iter().flatten().map(|v| v.length()).fold(radius, f32::max);
                 }
                 e.insert(CollisionHull { planes, radius, surface });
             }
@@ -765,5 +845,11 @@ mod tests {
         assert!(!mountain.contains(bevy::math::Vec3::new(0.0, 400.0, 0.0)));
         let airbase = hull("central_europe_021_lod0");
         assert!(!airbase.contains(bevy::math::Vec3::new(0.0, 2.0, 0.0)));
+        // The top over the mountain's centre is inside it, just above it is not.
+        let up = bevy::math::Vec3::Y;
+        let top = mountain.top(bevy::math::Vec3::ZERO, up).expect("over the mountain");
+        assert!(top > 10.0 && top < 400.0, "{top}");
+        assert!(mountain.contains(up * (top - 1.0)) && !mountain.contains(up * (top + 1.0)));
+        assert_eq!(mountain.top(bevy::math::Vec3::new(1e5, 0.0, 0.0), up), None);
     }
 }

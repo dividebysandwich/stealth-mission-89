@@ -172,7 +172,9 @@ pub fn action_text(a: Action) -> (String, &'static str) {
     use Action::*;
     let (title, detail) = match a {
         Gear => ("Landing gear", "Gear up / down (the lever shows the position)"),
-        Autopilot => ("Autopilot", "Flies to the current waypoint"),
+        Autopilot => {
+            ("Autopilot", "Flies to the current waypoint (Tornado: following the terrain)")
+        }
         BayDoors => ("Weapon bay doors", "Open / close; weapons are released with open bays only"),
         Flaps => ("Flaps", "More lift, about 20 % lower stall speed"),
         Brakes => ("Brakes", "Wheel brakes on the ground, speed brake in the air"),

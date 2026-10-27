@@ -514,6 +514,8 @@ pub struct HudFrame {
     pub aoa: f32,
     /// Height above the ground, feet.
     pub radar_alt: f32,
+    /// The autopilot follows the terrain ("TF" under the radar altitude).
+    pub terrain_following: bool,
     /// Current waypoint: (number, km, seconds to go at the current speed) and its direction
     /// from the cockpit eye (Bevy frame, not normalised).
     pub steerpoint: Option<(usize, f32, f32)>,
@@ -645,7 +647,8 @@ impl HudParams<'_, '_> {
             path_dir: path,
             mach: knots * 1.6878 / sound,
             aoa: (-body.y).atan2(-body.z).to_degrees(),
-            radar_alt: (a.altitude - a.ground_altitude).max(0.0),
+            radar_alt: (a.altitude - a.radar_ground.unwrap_or(0.0).max(a.ground_altitude)).max(0.0),
+            terrain_following: a.terrain_following(),
             steerpoint: steer.map(|s| s.0),
             steerpoint_dir: steer.map(|s| s.1),
             tgp_dir: self
