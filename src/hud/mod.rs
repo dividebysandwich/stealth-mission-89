@@ -165,8 +165,11 @@ pub struct Waypoint {
 pub struct Waypoints {
     pub points: Vec<Waypoint>,
     pub current: usize,
-    /// Waypoint the mission logic selected or the aircraft reached last; Shift-F8 returns to
-    /// it, the WAY page shows the ones before it as passed.
+    /// Whether each route point has actually been reached. Kept separate from `current` so
+    /// selecting or repositioning another point cannot make it inherit a passed colour.
+    pub passed: Vec<bool>,
+    /// Waypoint selected by the mission logic; Shift-F8 returns to it. Actual passage is
+    /// tracked separately in `passed`.
     pub mission_current: usize,
     /// Index of the mission's waypoints 0..3 (midpoint, primary, secondary, landing base) in
     /// a planned route; empty: the points are the mission's own 4.
@@ -441,8 +444,7 @@ fn waypoint_bearing(pos: &WorldPos, wp: Waypoint) -> u16 {
     to_bam((dx as f32).atan2(dy_north as f32)) as i32 as u16
 }
 
-/// "Waypoint n reached" when within 0x200 map units; the autopilot steers to
-/// the current waypoint.
+/// A waypoint is reached within 0x200 map units. The autopilot then steers to the next one.
 fn advance_waypoints(
     mut q: Query<(&WorldPos, &mut Aircraft), With<Player>>,
     mut wps: ResMut<Waypoints>,
@@ -451,11 +453,22 @@ fn advance_waypoints(
     let Ok((pos, mut a)) = q.single_mut() else { return };
     let Some(wp) = wps.target() else { return };
     let (x, y) = map_units(pos);
-    let (dx, dy) = ((wp.east / 32.0) as i32 - x, (0x8000 - (wp.north / 32.0) as i32) - y);
-    if ((dx * dx + dy * dy) as f64).sqrt() < 512.0 && wps.current + 1 < wps.points.len() {
-        wps.current += 1;
-        wps.mission_current = wps.current;
-        msg.show(format!("Waypoint {} reached", wps.current));
+    let (dx, dy) =
+        ((wp.east / 32.0) as i64 - x as i64, (0x8000 - (wp.north / 32.0) as i32 - y) as i64);
+    if dx * dx + dy * dy < 512 * 512 {
+        let reached = wps.current;
+        let point_count = wps.points.len();
+        if wps.passed.len() < point_count {
+            wps.passed.resize(point_count, false);
+        }
+        if !wps.passed[reached] {
+            wps.passed[reached] = true;
+            msg.show(format!("Waypoint {} reached", reached + 1));
+        }
+        if reached + 1 < point_count {
+            wps.current = reached + 1;
+            wps.mission_current = wps.current;
+        }
     }
     if let Some(wp) = wps.target() {
         a.waypoint_bearing = waypoint_bearing(pos, wp) as f32;
@@ -679,6 +692,7 @@ mod route_tests {
         Waypoints {
             points: vec![Waypoint { east: 0.0, north: 0.0 }; n],
             current: 0,
+            passed: vec![false; n],
             mission_current: 0,
             anchors,
         }
