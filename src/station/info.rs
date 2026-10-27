@@ -1,4 +1,5 @@
-//! The target data screen, laid out as the Gepard's fire control page: the locked track as the
+//! A Gepard's target data screen (a Patriot's shows the radar signal, `signal`), laid out as
+//! its fire control page: the locked track as the
 //! radar's picture has it (twice a second). Labels yellow on black, values big and black on a
 //! yellow panel.
 //!
@@ -49,6 +50,9 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
+    if !m.gepard {
+        return;
+    }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {
         return;
     };

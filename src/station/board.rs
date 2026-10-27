@@ -336,9 +336,10 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
             })
             .map(|p| p.name.to_ascii_uppercase())
     };
-    let full = sim.aaa_units().get(unit).is_some_and(|u| {
-        sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind)
-    });
+    let full = sim
+        .aaa_units()
+        .get(unit)
+        .is_some_and(|u| sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind));
     let (text, col, button) = match request.map(|r| (r.id, r.state)) {
         None if full => ("STOCKPILE FULL".to_string(), GREY, true),
         None => ("REQUEST RESUPPLY".to_string(), WHITE, true),
@@ -356,7 +357,16 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
     if button {
         cv.frame(a, b, 1.0, col);
     }
-    stroke_text_at(cv, w / 2.0, RESUPPLY_TOP + RESUPPLY_H / 2.0, &text, 7.0, 1.0, col, Align::Centre);
+    stroke_text_at(
+        cv,
+        w / 2.0,
+        RESUPPLY_TOP + RESUPPLY_H / 2.0,
+        &text,
+        7.0,
+        1.0,
+        col,
+        Align::Centre,
+    );
 }
 
 fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {

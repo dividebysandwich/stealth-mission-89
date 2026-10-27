@@ -8,7 +8,9 @@
 //!   on both), or the site's launchers, stocks and refills.
 //! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR;
 //!   at a Gepard without a lock, where the gun points.
-//! * The target data (`info`): the locked track's range, altitude, speed and the like.
+//! * The target data (`info`): at a Gepard the locked track's range, altitude, speed and the
+//!   like; at a Patriot battery the radar's signal (`signal`): the A-scope, the lock's Doppler
+//!   spectrum and angle error.
 //! * The hand controller (the cockpit's stick, flight controls): at a Gepard without a lock it
 //!   slews the turret; a press of its trigger (the gun trigger or fire button) fires a burst,
 //!   with a lock at the lead, without one along the barrels.
@@ -20,6 +22,7 @@ mod board;
 mod eo;
 mod info;
 mod scope;
+mod signal;
 mod sound;
 
 use bevy::math::DVec3;
@@ -60,6 +63,7 @@ impl Plugin for StationPlugin {
                     board::draw,
                     eo::draw,
                     info::draw,
+                    signal::draw,
                     sound::play,
                 )
                     .chain()
