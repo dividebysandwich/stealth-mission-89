@@ -638,10 +638,12 @@ fn draw(
     config: Res<InputConfig>,
     settings: Res<Settings>,
     orders: Res<crate::mfd::MissionOrders>,
+    loadout: Option<Res<crate::loadout::PlannedLoadout>>,
     mut ticked: Local<[Option<TickedPhoto>; 2]>,
 ) {
     kb.timer += time.delta_secs();
-    if recon.is_changed() || orders.is_changed() {
+    if recon.is_changed() || orders.is_changed() || loadout.as_ref().is_some_and(|l| l.is_changed())
+    {
         kb.dirty = true;
     }
     let visible = !kb.hidden || kb.overlay;
@@ -712,7 +714,12 @@ fn draw(
             );
             w.para(&b.fuel_line, WHITE);
             w.heading("ARMAMENT");
-            w.para(&b.armament.join(", "), WHITE);
+            // The stores flown (the campaign's or chosen in the loadout), else the briefed ones.
+            let stores = match loadout.as_deref() {
+                Some(l) if l.mission == crate::mission::PlannedRoute::key(m) => l.summary(),
+                _ => b.armament.join(", "),
+            };
+            w.para(&stores, WHITE);
             w.heading("RULES OF ENGAGEMENT");
             w.para(&b.roe_text, GREY);
         }
