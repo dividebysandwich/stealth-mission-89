@@ -1566,6 +1566,74 @@ fn launch_zone_predicts_maverick_hits() {
     }
 }
 
+/// Anti-ship store `w` (3 Penguin, 4 Harpoon) fired level from 1000 ft at a ship `range` map
+/// units northeast, locked on the display: the launch zone at the shot and whether it hit.
+fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool) {
+    let d = data();
+    let (m, mut sim, ship) = (0..8)
+        .flat_map(|th| (0..8u16).map(move |k| (th, k)))
+        .find_map(|(th, k)| {
+            let m = mission(d, th, 0x1234 + k, 1);
+            let opts = SimOptions { realistic_guidance: guided, ..Default::default() };
+            let sim = Sim::with_options(&d.sim, &m, opts);
+            let ship = (3..sim.objects().len()).find(|&i| sim.object_is_ship(i))?;
+            Some((m, sim, ship))
+        })
+        .expect("a mission with a ship");
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 2)]);
+    {
+        let o = &mut sim.objects_mut()[ship];
+        let diag = (range as f64 / std::f64::consts::SQRT_2).round() as i32;
+        o.x = mx + diag;
+        o.y = my - diag;
+        o.flags = 0;
+    }
+    let mut p = player_at(mx, my, 1000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_object = Some(ship as u16);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    let zone = sim.launch_zone().expect("launch zone");
+    p.cmd.fire = true;
+    let mut hit = false;
+    for _ in 0..15 * 240 {
+        for e in sim.step(&p, 15) {
+            if let SimEvent::Message(s) = e {
+                hit |= s.contains("hit by");
+            }
+        }
+        p.cmd = Commands::default();
+    }
+    (zone, hit)
+}
+
+#[test]
+fn launch_zone_predicts_anti_ship_hits() {
+    for guided in [false, true] {
+        for w in [3, 4] {
+            let mut hits = 0;
+            for range in (1..=12).map(|k| k * 100) {
+                let (z, hit) = ship_shot(guided, w, range);
+                assert!(z.at_lock && z.zone.is_some(), "guided {guided} w {w}: {z:?}");
+                assert!((z.range - range).abs() <= range / 10 + 2, "{z:?}");
+                // Classic missiles fired from close in may dive into the water by the ship and
+                // hit it with the blast, which the zone does not count on.
+                assert!(
+                    z.in_zone() == hit || (!guided && hit && z.too_close()),
+                    "guided {guided} w {w} range {range}: {z:?} hit {hit}"
+                );
+                hits += hit as i32;
+            }
+            assert!(hits > 3, "guided {guided} w {w}: {hits} hits");
+        }
+    }
+}
+
 /// Air-to-air store `w` fired from 5000 ft at a slow An-72 `range` map units northeast, flying
 /// straight on `heading` (classic guidance does not steer for a bearing of exactly north): the
 /// launch zone at the shot and whether it shot the An-72 down.
