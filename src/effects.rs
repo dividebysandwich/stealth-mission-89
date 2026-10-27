@@ -26,6 +26,8 @@ pub struct Effects {
     pub cloud_shadows: bool,
     /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
     pub vapour: bool,
+    /// The northern lights over the North Cape, shooting stars, low stars twinkling.
+    pub night_sky: bool,
 }
 
 impl Default for Effects {
@@ -40,6 +42,7 @@ impl Default for Effects {
             mist: true,
             cloud_shadows: true,
             vapour: true,
+            night_sky: true,
         }
     }
 }
@@ -56,10 +59,11 @@ pub enum Effect {
     Mist,
     CloudShadows,
     Vapour,
+    NightSky,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 9] = [
+    pub const ALL: [Effect; 10] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -69,6 +73,7 @@ impl Effect {
         Effect::Mist,
         Effect::CloudShadows,
         Effect::Vapour,
+        Effect::NightSky,
     ];
 
     /// Its name on the command line.
@@ -83,6 +88,7 @@ impl Effect {
             Effect::Mist => "mist",
             Effect::CloudShadows => "cloud-shadows",
             Effect::Vapour => "vapour",
+            Effect::NightSky => "night-sky",
         }
     }
 
@@ -98,6 +104,7 @@ impl Effect {
             Effect::Mist => "Ground mist",
             Effect::CloudShadows => "Cloud shadows",
             Effect::Vapour => "Vapour and downwash",
+            Effect::NightSky => "Night sky",
         }
     }
 
@@ -113,6 +120,7 @@ impl Effect {
             Effect::Mist => "GROUND MIST",
             Effect::CloudShadows => "CLOUD SHADOWS",
             Effect::Vapour => "VAPOUR AND DUST",
+            Effect::NightSky => "NIGHT SKY",
         }
     }
 
@@ -150,6 +158,10 @@ impl Effect {
                 "Pulling hard, vapour trails from the wingtips",
                 "A helicopter hovering low whips up dust, or spray over water",
             ],
+            Effect::NightSky => &[
+                "Shooting stars now and then, the stars low over the horizon twinkle",
+                "The northern lights over the North Cape",
+            ],
         }
     }
 
@@ -164,6 +176,7 @@ impl Effect {
             Effect::Mist => e.mist,
             Effect::CloudShadows => e.cloud_shadows,
             Effect::Vapour => e.vapour,
+            Effect::NightSky => e.night_sky,
         }
     }
 
@@ -178,6 +191,7 @@ impl Effect {
             Effect::Mist => e.mist = on,
             Effect::CloudShadows => e.cloud_shadows = on,
             Effect::Vapour => e.vapour = on,
+            Effect::NightSky => e.night_sky = on,
         }
     }
 

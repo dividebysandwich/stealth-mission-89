@@ -35,6 +35,7 @@ layout(std140) uniform Globals {
     vec4 burst_colour;
     vec4 atmos;
     vec4 cloud_shade[8];
+    vec4 sky_fx;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -527,6 +528,47 @@ float hash2(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
+// palette.wgsl `aurora` and `meteor`.
+vec3 aurora(vec3 nd) {
+    float s = g.sky_fx.x;
+    if (s <= 0.0 || nd.y <= 0.0) { return vec3(0.0); }
+    float az = atan(nd.x, -nd.z);
+    float north = exp(-az * az / 1.2);
+    float t = g.dots.y;
+    float above = asin(nd.y) - (0.18 + 0.06 * sin(az * 3.0 + t * 0.05) + 0.03 * sin(az * 7.0 - t * 0.08));
+    if (above < -0.03 || north < 0.01) { return vec3(0.0); }
+    float height = 0.25 + 0.08 * sin(az * 5.0 + t * 0.03);
+    float curtain = smoothstep(-0.03, 0.01, above) * exp(-max(above, 0.0) / height * 2.2);
+    float rays = 0.6 + 0.4 * sin(az * 90.0 + 3.0 * sin(az * 11.0 + t * 0.2) + t * 0.4) * (0.4 + 0.6 * sin(az * 23.0 - t * 0.15));
+    vec3 c = mix(vec3(0.02, 0.28, 0.11), vec3(0.18, 0.02, 0.07), smoothstep(0.08, 0.3, above));
+    return c * curtain * rays * north * s;
+}
+
+const float METEOR_PERIOD = 7.0;
+const float METEOR_LIFE = 0.7;
+float meteor(vec3 nd, float px) {
+    if (g.sky_fx.y <= 0.0 || nd.y <= 0.0) { return 0.0; }
+    float t = g.dots.y;
+    float k = floor(t / METEOR_PERIOD);
+    float p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
+    if (p > 1.0 || hash2(vec2(k, 3.7)) > 0.5) { return 0.0; }
+    float az = hash2(vec2(k, 1.1)) * 6.2831853;
+    float el = 0.35 + 0.6 * hash2(vec2(k, 2.3));
+    vec3 start = vec3(cos(el) * sin(az), sin(el), -cos(el) * cos(az));
+    vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), start));
+    vec3 up = cross(start, east);
+    float a = hash2(vec2(k, 5.9)) * 6.2831853;
+    vec3 dir = normalize(cos(a) * east - (0.6 + 0.4 * abs(sin(a))) * up) * 0.25;
+    vec3 head = normalize(start + dir * p);
+    vec3 tail = normalize(start + dir * max(p - 0.35, 0.0));
+    vec3 ab = head - tail;
+    float along = clamp(dot(nd - tail, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+    float d = length(nd - tail - ab * along);
+    float w = max(px * 0.8, 0.0006);
+    return (1.0 - smoothstep(w * 0.5, w * 1.5, d)) * along * (1.0 - 0.6 * p);
+}
+
+
 // Continuous time of day: the sun, stars and the moon over the sky colour (`nd` normalised).
 vec3 night_sky(vec3 bg_in, vec3 nd, float px) {
     vec3 bg = bg_in;
@@ -547,9 +589,12 @@ vec3 night_sky(vec3 bg_in, vec3 nd, float px) {
             float r = max(STAR_CELL * 0.03, px * 0.55);
             float core = d < r ? 1.0 : 0.0;
             float mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            float low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+            mag *= max(1.0 + g.sky_fx.z * low * 0.7 * sin(g.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
             float alt_fade = smoothstep(0.0, 0.15, nd.y);
             bg += vec3(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
         }
+        bg += (aurora(nd) + vec3(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
     }
     vec3 sun = normalize(g.sky_sun.xyz);
     if (sun.y > -SUN_RADIUS) {

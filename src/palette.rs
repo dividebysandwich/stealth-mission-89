@@ -543,6 +543,10 @@ fn update_globals(
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
     g.atmos = weather.atmos(&settings, theater, lighting.daylight);
     g.cloud_shade = weather.shades;
+    // The northern lights over the North Cape.
+    if settings.effects.night_sky {
+        g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);
+    }
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);

@@ -93,6 +93,8 @@ struct Globals {
     atmos: vec4<f32>,
     // The nearest cumulus clouds' shadows: centre x, z, radius (0: none), base height.
     cloud_shade: array<vec4<f32>, 8>,
+    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
+    sky_fx: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -699,6 +701,59 @@ fn hash2(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
 }
 
+// Night sky extras (`Globals::sky_fx`). The northern lights: curtains of green, red at their
+// tops, hanging over the northern sky with rays running through them, slowly moving.
+fn aurora(nd: vec3<f32>) -> vec3<f32> {
+    let s = globals.sky_fx.x;
+    if (s <= 0.0 || nd.y <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let az = atan2(nd.x, -nd.z);
+    let north = exp(-az * az / 1.2);
+    let t = globals.dots.y;
+    let above = asin(nd.y) - (0.18 + 0.06 * sin(az * 3.0 + t * 0.05) + 0.03 * sin(az * 7.0 - t * 0.08));
+    if (above < -0.03 || north < 0.01) {
+        return vec3<f32>(0.0);
+    }
+    let height = 0.25 + 0.08 * sin(az * 5.0 + t * 0.03);
+    let curtain = smoothstep(-0.03, 0.01, above) * exp(-max(above, 0.0) / height * 2.2);
+    let rays = 0.6 + 0.4 * sin(az * 90.0 + 3.0 * sin(az * 11.0 + t * 0.2) + t * 0.4) * (0.4 + 0.6 * sin(az * 23.0 - t * 0.15));
+    let c = mix(vec3<f32>(0.02, 0.28, 0.11), vec3<f32>(0.18, 0.02, 0.07), smoothstep(0.08, 0.3, above));
+    return c * curtain * rays * north * s;
+}
+
+// A shooting star now and then (`Globals::sky_fx` y): a short bright streak across the sky,
+// placed and timed by the clock.
+const METEOR_PERIOD: f32 = 7.0;
+const METEOR_LIFE: f32 = 0.7;
+fn meteor(nd: vec3<f32>, px: f32) -> f32 {
+    if (globals.sky_fx.y <= 0.0 || nd.y <= 0.0) {
+        return 0.0;
+    }
+    let t = globals.dots.y;
+    let k = floor(t / METEOR_PERIOD);
+    let p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
+    if (p > 1.0 || hash2(vec2<f32>(k, 3.7)) > 0.5) {
+        return 0.0;
+    }
+    let az = hash2(vec2<f32>(k, 1.1)) * 6.2831853;
+    let el = 0.35 + 0.6 * hash2(vec2<f32>(k, 2.3));
+    let start = vec3<f32>(cos(el) * sin(az), sin(el), -cos(el) * cos(az));
+    let east = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), start));
+    let up = cross(start, east);
+    let a = hash2(vec2<f32>(k, 5.9)) * 6.2831853;
+    // Falling, mostly: the streak heads downwards.
+    let dir = normalize(cos(a) * east - (0.6 + 0.4 * abs(sin(a))) * up) * 0.25;
+    let head = normalize(start + dir * p);
+    let tail = normalize(start + dir * max(p - 0.35, 0.0));
+    let ab = head - tail;
+    let along = clamp(dot(nd - tail, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+    let d = length(nd - tail - ab * along);
+    let w = max(px * 0.8, 0.0006);
+    return (1.0 - smoothstep(w * 0.5, w * 1.5, d)) * along * (1.0 - 0.6 * p);
+}
+
+
 // Continuous time of day: the sun, stars and the moon over the sky colour (`nd` normalised, above the
 // horizon). The moon is lit from the true sun direction, so its phase shows by itself. `px`:
 // radians per pixel (`Deriv`).
@@ -724,11 +779,15 @@ fn night_sky(bg_in: vec3<f32>, nd: vec3<f32>, px: f32) -> vec3<f32> {
             // view moves, so the stars twinkle.
             let r = max(STAR_CELL * 0.03, px * 0.55);
             let core = select(0.0, 1.0, d < r);
-            let mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            var mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            // Low stars twinkle (through more air), each at its own pace.
+            let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+            mag *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
             // Fainter towards the horizon (haze).
             let alt_fade = smoothstep(0.0, 0.15, nd.y);
             bg += vec3<f32>(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
         }
+        bg += (aurora(nd) + vec3<f32>(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
     }
     // The sun's disc, a soft edge against the sky.
     let sun = normalize(globals.sky_sun.xyz);

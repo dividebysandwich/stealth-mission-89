@@ -352,6 +352,9 @@ pub struct Globals {
     /// The nearest cumulus clouds' shadows: centre x, z (render space), radius (0: none), base
     /// height (metres) (`WeatherState::shades`).
     pub cloud_shade: [Vec4; crate::weather::CLOUD_SHADES],
+    /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
+    /// twinkling near the horizon (z).
+    pub sky_fx: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -392,6 +395,7 @@ impl Default for Globals {
             burst_colour: Vec4::ZERO,
             atmos: Vec4::ZERO,
             cloud_shade: [Vec4::ZERO; crate::weather::CLOUD_SHADES],
+            sky_fx: Vec4::ZERO,
         }
     }
 }
