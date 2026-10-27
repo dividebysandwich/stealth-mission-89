@@ -6,8 +6,8 @@ use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{AaaKind, PATRIOT};
 use stealth_sim::ai_loadout::FighterTask;
 use stealth_sim::station::{
-    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, Guidance, PATRIOT_STOCK, REFILL_SECONDS, SavedStock,
-    StationCmd,
+    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, PATRIOT_STOCK, REFILL_SECONDS,
+    SavedStock, StationCmd,
 };
 use stealth_sim::*;
 
@@ -335,7 +335,12 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     let (mut sim, g, f) = gepard();
     let at = sim.aaa_units()[g];
     let to = (at.x + 0x30, at.y, 1500);
-    hold(&mut sim, f, to);
+    // Held all but still (no lead; at a standstill the AI would scramble it).
+    let stop = |sim: &mut Sim| {
+        hold(sim, f, to);
+        sim.flights_mut()[f].speed = 1;
+    };
+    stop(&mut sim);
     run(&mut sim, 1);
     // Laid on the fighter by hand.
     let m = stealth_sim::types::WU_METRES;
@@ -357,7 +362,7 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
             bursts += 1;
         }
         for _ in 0..15 * 2 {
-            hold(&mut sim, f, to);
+            stop(&mut sim);
             let ev = sim.step(&idle(), 15);
             down |=
                 ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. }));
@@ -368,6 +373,33 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     }
     assert!(down, "{bursts} bursts never got it");
     assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - bursts * BURST);
+}
+
+#[test]
+fn a_gepard_laid_by_hand_on_the_lead_brings_down_a_moving_raider() {
+    let (mut sim, g, f) = gepard();
+    let at = sim.aaa_units()[g];
+    let mut down = false;
+    for _ in 0..10 {
+        // Flying past northward at 350 kt: laid where the console's camera draws its lead
+        // (its velocity over a step, as the camera has it).
+        hold(&mut sim, f, (at.x + 0x30, at.y + 0x10, 1500));
+        (sim.flights_mut()[f].heading, sim.flights_mut()[f].speed) = (0, 350);
+        let (before, _) = sim.track_alive(f).expect("airborne");
+        sim.step(&idle(), 15);
+        let (pos, _) = sim.track_alive(f).expect("airborne");
+        let vel = [0, 1, 2].map(|k| (pos[k] - before[k]) * 15.0);
+        let (az, el, _) = stealth_sim::aaa::lead(at.metres(), pos, vel, GEPARD_V0);
+        sim.aaa_units_mut()[g].aim_az = az as f32;
+        sim.aaa_units_mut()[g].aim_el = el as f32;
+        sim.station_command(ME, StationCmd::Burst).unwrap();
+        let ev = run(&mut sim, 3);
+        if ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. })) {
+            down = true;
+            break;
+        }
+    }
+    assert!(down, "never got it");
 }
 
 #[test]

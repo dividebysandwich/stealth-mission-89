@@ -48,7 +48,7 @@ pub const GEPARD_ELEVATE: f32 = 0.8;
 pub const GEPARD_EL: (f32, f32) = (-0.08, 1.48);
 /// Hand-fired rounds self-destruct this far out (m); a round passes close to an aircraft no
 /// more than this far off its line of fire (rad).
-const MANUAL_RANGE: f64 = 4000.0;
+pub const MANUAL_RANGE: f64 = 4000.0;
 const MANUAL_CONE: f64 = 0.05;
 /// An airburst round's fragments kill within this (m) with this chance (per mille).
 const AHEAD_RADIUS: f64 = 8.0;
@@ -326,7 +326,7 @@ impl Sim {
     }
 
     /// Flight unit `j` in the air: its position (m) and velocity (m/s).
-    fn track_alive(&self, j: usize) -> Option<([f64; 3], [f64; 3])> {
+    pub fn track_alive(&self, j: usize) -> Option<([f64; 3], [f64; 3])> {
         let t = self.flights.get(j)?;
         if t.flags & fflags::DESTROYED != 0 || t.flags & fflags::AIRBORNE == 0 {
             return None;
@@ -581,7 +581,8 @@ impl Sim {
     }
 
     /// The rounds of a Gepard burst without a lock due this frame: tracers along the barrels,
-    /// at the hostile aircraft nearest the line of fire (one far off it can't be hit).
+    /// at the hostile aircraft whose lead is nearest the line of fire (one far off it can't be
+    /// hit).
     fn manual_frame(&mut self, st: &mut Station) {
         let k = st.unit as usize;
         let u = self.aaa[k];
@@ -590,13 +591,14 @@ impl Sim {
         let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
         let target = (0..self.flights.len())
             .filter_map(|j| {
-                let (pos, _) = self.track_alive(j)?;
+                let (pos, vel) = self.track_alive(j)?;
                 if self.friendly_unit(j, self.flights[j].spec) {
                     return None;
                 }
-                let d = sub(pos, u.metres());
-                let r = len(d);
-                let off = (crate::campaign::dot(d, dir) / r.max(1.0)).clamp(-1.0, 1.0).acos();
+                let r = len(sub(pos, u.metres()));
+                let (az, el, _) = lead(u.metres(), pos, vel, GEPARD_V0);
+                let to = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
+                let off = crate::campaign::dot(to, dir).clamp(-1.0, 1.0).acos();
                 (r < MANUAL_RANGE && off < MANUAL_CONE).then_some((j, off))
             })
             .min_by(|a, b| a.1.total_cmp(&b.1))
