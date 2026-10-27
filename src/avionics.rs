@@ -316,7 +316,7 @@ pub fn pod_step(
         let range = ground_distance(origin, dir, ground_y);
         let slew = slew_gain(slew, range, tgp.held);
         tgp.held += dt;
-        let rate = POD_RATE / (1u32 << zoom.min(6)) as f32 * dt;
+        let rate = POD_RATE / crate::mfd::cam_magnification(zoom) * dt;
         let on_ground = range.filter(|&r| r <= POD_RANGE).map(|r| origin + dir.as_dvec3() * r);
         let moved = match on_ground {
             Some(p) => {
@@ -1856,6 +1856,14 @@ mod tests {
         assert_eq!(cam_zoom_label(s.cam_zoom), "1X");
         cam_zoom(&mut s, MfdCmd::CamZoom(-1), 4);
         assert_eq!(s.cam_zoom, Some(0));
+        let labels: Vec<_> = (0..=CAM_ZOOM_MAX).map(|z| cam_zoom_label(Some(z))).collect();
+        assert_eq!(labels, ["1X", "2X", "4X", "6X", "10X", "15X", "20X"]);
+        // By range (map units): 1X close in, 20X at the last step.
+        use crate::combat::camera_zoom;
+        assert_eq!(
+            [camera_zoom(10), camera_zoom(64), camera_zoom(100), camera_zoom(5000)],
+            [0, 2, 3, 6]
+        );
     }
 
     #[test]

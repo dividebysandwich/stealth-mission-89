@@ -71,7 +71,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[CamRear]), "Tracking camera rear"),
                 (Actions(&[CamLeft]), "Tracking camera left"),
                 (Actions(&[CamRight]), "Tracking camera right"),
-                (Actions(&[CameraZoomIn, CameraZoomOut]), "Camera zoom in / out"),
+                (Actions(&[CameraZoomIn, CameraZoomOut]), "Targeting pod / camera zoom in / out"),
                 (Actions(&[LockCursor]), "Lock the target under the cursor"),
                 (Actions(&[SwapSoi]), "Sensor of interest to the other MFD"),
             ],

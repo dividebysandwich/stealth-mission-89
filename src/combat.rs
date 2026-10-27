@@ -1036,15 +1036,11 @@ fn on_hud(p: Option<(i32, i32)>) -> Option<(i32, i32)> {
     p.filter(|&(x, y)| (0..320).contains(&x) && (0..91).contains(&y))
 }
 
-/// Tracking-camera zoom shift (focal 256 << z) for a range in map units.
-/// ASSUMED: the target stays a few pixels to a
-/// quarter of the MFD wide, i.e. zoom up one step per doubling of the range beyond 2 km.
+/// Tracking-camera zoom step (`mfd::CAM_ZOOMS`) for a range in map units.
+/// ASSUMED: the target stays a few pixels to a quarter of the MFD wide, i.e. the magnification
+/// grows with the range beyond 1 km, up to the last step.
 pub fn camera_zoom(range: i32) -> u8 {
-    let mut z = 0u8;
-    while z < 6 && range >= (32 << z) {
-        z += 1;
-    }
-    z
+    crate::mfd::cam_zoom_for(range as f32 / 16.0)
 }
 
 /// Sim frames between launch zone searches (flying the missiles out takes a while).

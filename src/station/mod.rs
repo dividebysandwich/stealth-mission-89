@@ -91,7 +91,7 @@ pub struct ConsoleUi {
     pub range_km: f32,
     /// The launcher to fire from next (AAA unit; None: the readiest).
     pub launcher: Option<usize>,
-    /// The camera's zoom (0..6; None: set from the range on a new lock).
+    /// The camera's zoom step (`mfd::CAM_ZOOMS`; None: 4X, set from the range on a new lock).
     pub zoom: Option<u8>,
     /// The radar's picture: the latest and earlier ones, newest first.
     pub snapshots: std::collections::VecDeque<scope::Snapshot>,
@@ -280,14 +280,24 @@ fn buttons(
     mut ui: ResMut<ConsoleUi>,
     mut keys: MessageReader<ConsoleButton>,
     mut clicks: MessageReader<ScreenClick>,
+    mut actions: MessageReader<crate::input::ActionEvent>,
     mut mfd: ResMut<crate::mfd::MfdState>,
     time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(c), Some(combat)) = (manning, c.as_deref_mut(), combat) else {
         keys.clear();
         clicks.clear();
+        actions.clear();
         return;
     };
+    // The bound camera zoom controls work the console's camera too.
+    for crate::input::ActionEvent(a) in actions.read() {
+        match a {
+            crate::input::Action::CameraZoomIn => zoom_step(&mut ui, 1),
+            crate::input::Action::CameraZoomOut => zoom_step(&mut ui, -1),
+            _ => {}
+        }
+    }
     let sim = &combat.sim;
     let launchers = if m.gepard { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let mut send = |cmd: StationCmd| c.actions.push(Action::Station(cmd));
@@ -317,8 +327,8 @@ fn buttons(
                 }
             }
             ConsoleKey::Flir => mfd.flir = !mfd.flir,
-            ConsoleKey::ZoomIn => ui.zoom = Some(ui.zoom.unwrap_or(2).saturating_add(1).min(6)),
-            ConsoleKey::ZoomOut => ui.zoom = Some(ui.zoom.unwrap_or(2).saturating_sub(1)),
+            ConsoleKey::ZoomIn => zoom_step(&mut ui, 1),
+            ConsoleKey::ZoomOut => zoom_step(&mut ui, -1),
             ConsoleKey::RangeIn => step_range(&mut ui, -1),
             ConsoleKey::RangeOut => step_range(&mut ui, 1),
             ConsoleKey::Leave => send(StationCmd::Leave),
@@ -445,6 +455,12 @@ fn panel(
     if *panel != want {
         *panel = want;
     }
+}
+
+fn zoom_step(ui: &mut ConsoleUi, d: i32) {
+    use crate::mfd::{CAM_ZOOM_DEFAULT, CAM_ZOOM_MAX};
+    let z = ui.zoom.unwrap_or(CAM_ZOOM_DEFAULT) as i32 + d;
+    ui.zoom = Some(z.clamp(0, CAM_ZOOM_MAX as i32) as u8);
 }
 
 fn step_range(ui: &mut ConsoleUi, d: i32) {

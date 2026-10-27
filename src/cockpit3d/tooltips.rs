@@ -274,7 +274,7 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::HarmFilter => "HARM threat filter: all, SAM, air".into(),
         MfdCmd::CamZoom(1..) => "Camera zoom in".into(),
         MfdCmd::CamZoom(..=0) => "Camera zoom out".into(),
-        MfdCmd::CamZoomCycle => "Camera zoom: auto, 1X to 6X".into(),
+        MfdCmd::CamZoomCycle => "Camera zoom: auto, 1X to 20X".into(),
         MfdCmd::TgpSp => "Targeting pod snowplow: locks dropped, fixed ahead".into(),
         MfdCmd::TgpSlave => "Targeting pod back to slaved".into(),
         MfdCmd::TgpCz => "Cursor zero: targeting pod to the current steerpoint".into(),

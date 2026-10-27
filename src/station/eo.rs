@@ -32,7 +32,7 @@ pub struct ConsoleEo {
     /// The camera (Bevy world) and its direction.
     pub eye: DVec3,
     pub dir: Vec3,
-    /// Zoom shift (focal length 256 << zoom).
+    /// Zoom step (`mfd::CAM_ZOOMS`).
     pub zoom: u8,
     /// The locked track (Bevy world), while it is there.
     pub target: Option<DVec3>,
@@ -70,7 +70,7 @@ pub(super) fn aim(
         commands.insert_resource(ConsoleEo {
             eye,
             dir,
-            zoom: 2,
+            zoom: crate::mfd::CAM_ZOOM_DEFAULT,
             target,
             speed: 0.0,
             slew: 0.0,
@@ -94,7 +94,7 @@ pub(super) fn aim(
         let rate = stealth_sim::station::GEPARD_TRAVERSE;
         eo.speed = 0.0;
         eo.slew = (ui.slew.length() / rate).min(1.0);
-        eo.zoom = ui.zoom.unwrap_or(2);
+        eo.zoom = ui.zoom.unwrap_or(crate::mfd::CAM_ZOOM_DEFAULT);
         return;
     }
     eo.manual = None;
@@ -113,13 +113,13 @@ pub(super) fn aim(
         // A new lock: zoomed to see an aircraft well (the operator's zoom after that).
         if ui.zoom.is_none() {
             let range = (t - eye).length() as f32;
-            ui.zoom = Some((range * 0.6 / 256.0).max(1.0).log2().round().clamp(0.0, 6.0) as u8);
+            ui.zoom = Some(crate::mfd::cam_zoom_for(range * 0.6 / 256.0));
         }
     } else {
         eo.speed = 0.0;
         eo.slew = 0.0;
     }
-    eo.zoom = ui.zoom.unwrap_or(2);
+    eo.zoom = ui.zoom.unwrap_or(crate::mfd::CAM_ZOOM_DEFAULT);
 }
 
 /// The camera's overlay: the reticle, the lock, the picture's mode.
@@ -155,7 +155,16 @@ pub(super) fn draw(
         col,
         Align::Left,
     );
-    stroke_text_at(cv, w - 8.0, 10.0, &format!("Z{}", eo.zoom + 1), 7.0, 1.0, col, Align::Right);
+    stroke_text_at(
+        cv,
+        w - 8.0,
+        10.0,
+        crate::mfd::cam_zoom_label(Some(eo.zoom)),
+        7.0,
+        1.0,
+        col,
+        Align::Right,
+    );
     let sim = &combat.sim;
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
     let bottom = h - 10.0;
@@ -246,9 +255,9 @@ fn leads(cv: &mut Canvas, combat: &Combat, unit: usize, eo: &ConsoleEo, col: u8)
     let sim = &combat.sim;
     let Some(gun) = sim.aaa_units().get(unit).map(|u| u.metres()) else { return };
     let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
-    // The camera's projection (`trackcam`): f = 256 << zoom over its 77 pixels' width,
+    // The camera's projection (`trackcam`): f = 256 times the zoom over its 77 pixels' width,
     // vertically 0.75 f.
-    let f = (256u32 << eo.zoom.min(6)) as f32 * w / 77.0;
+    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / 77.0;
     let up = if eo.dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
     let right = eo.dir.cross(up).normalize();
     let up = right.cross(eo.dir);

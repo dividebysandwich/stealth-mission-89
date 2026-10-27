@@ -310,12 +310,27 @@ pub fn bomb_mode_label(ccrp: bool) -> &'static str {
     if ccrp { "CCRP" } else { "CCIP" }
 }
 
-/// Tracking camera zoom steps (as the camera page shows them: step + 1).
-pub const CAM_ZOOM_MAX: u8 = 5;
+/// Targeting pod / tracking camera magnification of each zoom step (air defence cameras too).
+pub const CAM_ZOOMS: [u8; 7] = [1, 2, 4, 6, 10, 15, 20];
+const CAM_ZOOM_LABELS: [&str; 7] = ["1X", "2X", "4X", "6X", "10X", "15X", "20X"];
+/// The highest zoom step.
+pub const CAM_ZOOM_MAX: u8 = CAM_ZOOMS.len() as u8 - 1;
+/// The zoom step AUTO holds with nothing locked (4X).
+pub const CAM_ZOOM_DEFAULT: u8 = 2;
+
+/// Magnification of a zoom step.
+pub fn cam_magnification(z: u8) -> f32 {
+    CAM_ZOOMS[z.min(CAM_ZOOM_MAX) as usize] as f32
+}
+
+/// The highest zoom step magnifying at most `m` times (1X below).
+pub fn cam_zoom_for(m: f32) -> u8 {
+    CAM_ZOOMS.iter().rposition(|&z| z as f32 <= m).unwrap_or(0) as u8
+}
 
 /// Label of a camera zoom setting.
 pub fn cam_zoom_label(z: Option<u8>) -> &'static str {
-    z.and_then(|z| ["1X", "2X", "3X", "4X", "5X", "6X"].get(z as usize).copied()).unwrap_or("AUTO")
+    z.and_then(|z| CAM_ZOOM_LABELS.get(z as usize).copied()).unwrap_or("AUTO")
 }
 
 /// Applies a camera zoom command (`auto`: the zoom step the range gives now).
@@ -473,7 +488,7 @@ pub struct TrackCam {
     pub name: [String; 2],
     pub range_km: Option<f32>,
     pub bearing: Option<i32>,
-    /// Zoom factor shown as "3X" (0 = hidden).
+    /// Zoom step + 1, shown as "4X" (0 = hidden).
     pub zoom: u8,
 }
 
@@ -1463,7 +1478,9 @@ impl MfdParams<'_, '_> {
             fonts.text(c, 16, 51, format!("BRG {b}").as_bytes(), text);
         }
         if self.cam.zoom > 0 {
-            fonts.text(c, 67, 53, format!("{}X", self.cam.zoom).as_bytes(), text);
+            // Right aligned where "2X" ends.
+            let s = cam_zoom_label(Some(self.cam.zoom - 1)).as_bytes();
+            fonts.text(c, 67 + fonts.width(b"2X") - fonts.width(s), 53, s, text);
         }
     }
 
@@ -1823,8 +1840,8 @@ impl MfdParams<'_, '_> {
             text2(c, fonts, 6, c.h as i32 - 14, &format!("BRG {b}"), text);
         }
         if self.cam.zoom > 0 {
-            let s = format!("{}X", self.cam.zoom);
-            text2(c, fonts, w - 6 - 2 * fonts.width(s.as_bytes()), c.h as i32 - 14, &s, text);
+            let s = cam_zoom_label(Some(self.cam.zoom - 1));
+            text2(c, fonts, w - 6 - 2 * fonts.width(s.as_bytes()), c.h as i32 - 14, s, text);
             if self.state.cam_zoom.is_none() {
                 text2(c, fonts, w - 6 - 2 * fonts.width(b"AUTO"), c.h as i32 - 28, "AUTO", text);
             }

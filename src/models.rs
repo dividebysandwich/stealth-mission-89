@@ -199,7 +199,7 @@ fn parse_conds(name: &str) -> Vec<(usize, i16)> {
 }
 
 /// Distances used for the LOD choice. While the tracking camera is live, its own distance is
-/// divided by the zoom magnification (focal 256 << z vs. 256 for the main view), so zoomed-in
+/// divided by the zoom magnification (focal 256 times it vs. 256 for the main view), so zoomed-in
 /// targets get the detail of their on-screen size instead of disappearing past the last level.
 /// The recon cameras and the campaign's unit view share the tracking camera's levels: the
 /// nearest of them counts.
@@ -216,8 +216,7 @@ fn update_camera_distance(
     let Some((_, cam)) = cameras.iter().find(|(c, _)| c.is_active) else { return };
     let cam = cam.translation();
     let zoomed = track.iter().find(|(c, _)| c.is_active).zip(track_info).map(|((_, t), info)| {
-        let z = info.zoom.saturating_sub(1).min(6);
-        (t.translation(), (1u32 << z) as f32)
+        (t.translation(), crate::mfd::cam_magnification(info.zoom.saturating_sub(1)))
     });
     let views: Vec<(Vec3, f32)> = zoomed
         .into_iter()
