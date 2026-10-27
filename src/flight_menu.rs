@@ -155,6 +155,7 @@ impl Page {
                     Effect(E::Barrage),
                     Effect(E::CockpitNight),
                     Effect(E::Nvg),
+                    Effect(E::Snow),
                     Back,
                 ]
             }

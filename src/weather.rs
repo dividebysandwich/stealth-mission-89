@@ -1039,10 +1039,16 @@ fn strike(
 const DROPS: usize = 500;
 /// Half size of the rain box around the eye (metres).
 const RAIN_BOX: f32 = 30.0;
+/// Snowflakes' fall (m/s); the colour words of rain (cloud grey) and snow (white, every flight
+/// palette's 15).
+const SNOW_FALL: f32 = 1.2;
+const RAIN_WORD: u32 = 0xFFE4;
+const SNOW_WORD: u32 = 0xFF0F;
 
 /// Rain: streaks in a box around the eye, drawn along the wind the eye sees (falling rain
 /// plus the aircraft's own speed), on the main view's layer only. The box is world aligned:
-/// it is a child of the eye camera, counter-rotated.
+/// it is a child of the eye camera, counter-rotated. Above the freezing level (`Effects::snow`)
+/// it snows: slow white flakes, streaking only with the aircraft's speed.
 #[allow(clippy::too_many_arguments)]
 fn rain(
     mut commands: Commands,
@@ -1053,10 +1059,13 @@ fn rain(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     palette: Res<Palette>,
-    mut tfs: Query<(&mut Transform, &Mesh3d)>,
+    mut tfs: Query<(&mut Transform, &Mesh3d, &MeshMaterial3d<PaletteMaterial>)>,
     mut state: ResMut<WeatherState>,
+    settings: Res<crate::settings::Settings>,
+    sky: Res<crate::sky::Sky>,
 ) {
     let eye = eye_position(&eyes, &origin);
+    let snow = settings.effects.snow && eye.is_some_and(|p| p.y as f32 > sky.freezing_level());
     let dt = time.delta_secs().max(1e-4);
     let eye_vel = match (eye, state.prev_eye) {
         (Some(p), Some(q)) if (p - q).length() < 2000.0 => ((p - q) / dt as f64).as_vec3(),
@@ -1081,10 +1090,18 @@ fn rain(
             .collect();
         state.drops = drops;
     }
-    // Wind relative to the eye: rain falls at 9 m/s.
-    let wind = Vec3::new(0.0, -9.0, 0.0) - eye_vel;
-    let streak = wind * 0.012 + wind.normalize_or_zero() * 0.4;
-    let width = 0.012;
+    // Wind relative to the eye: rain falls at 9 m/s, snow drifts down.
+    let fall = if snow { SNOW_FALL } else { 9.0 };
+    let wind = Vec3::new(0.0, -fall, 0.0) - eye_vel;
+    let (streak, width) = if snow {
+        (wind * 0.004 + wind.normalize_or_zero() * 0.05, 0.02)
+    } else {
+        (wind * 0.012 + wind.normalize_or_zero() * 0.4, 0.012)
+    };
+    // Snow is no light: a dark night darkens it with the ground.
+    use crate::palette_material::{FLAG_LINE, FLAG_NIGHT_DIM};
+    let (word, flags) =
+        if snow { (SNOW_WORD, FLAG_LINE | FLAG_NIGHT_DIM) } else { (RAIN_WORD, FLAG_LINE) };
     let mut pos = Vec::with_capacity(DROPS * 4);
     for d in state.drops.iter_mut() {
         *d += wind * dt;
@@ -1097,10 +1114,17 @@ fn rain(
     let rot = cam_tf.compute_transform().rotation.inverse();
     match state.rain {
         Some(e) => {
-            if let Ok((mut tf, mesh)) = tfs.get_mut(e) {
+            if let Ok((mut tf, mesh, material)) = tfs.get_mut(e) {
                 tf.rotation = rot;
                 if let Some(mut m) = meshes.get_mut(&mesh.0) {
                     m.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+                }
+                if materials
+                    .get(&material.0)
+                    .is_some_and(|m| m.params.word != word || m.params.flags != flags)
+                    && let Some(mut m) = materials.get_mut(&material.0)
+                {
+                    (m.params.word, m.params.flags) = (word, flags);
                 }
             }
         }
@@ -1119,11 +1143,7 @@ fn rain(
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
             .with_inserted_indices(bevy::mesh::Indices::U32(indices));
             let material = materials.add(PaletteMaterial {
-                params: PaletteParams {
-                    word: 0xFFE4,
-                    flags: crate::palette_material::FLAG_LINE,
-                    ..default()
-                },
+                params: PaletteParams { word, flags, ..default() },
                 globals: palette.globals.clone(),
             });
             let e = commands

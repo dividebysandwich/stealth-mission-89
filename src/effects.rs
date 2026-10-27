@@ -18,11 +18,20 @@ pub struct Effects {
     pub cockpit_night: bool,
     /// Night vision goggles: halos round bright lights, the tube's edge, stronger grain.
     pub nvg: bool,
+    /// Rain falls as snow above the freezing level (weather.rs).
+    pub snow: bool,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Self { shake: true, flashes: true, barrage: true, cockpit_night: true, nvg: true }
+        Self {
+            shake: true,
+            flashes: true,
+            barrage: true,
+            cockpit_night: true,
+            nvg: true,
+            snow: true,
+        }
     }
 }
 
@@ -34,11 +43,18 @@ pub enum Effect {
     Barrage,
     CockpitNight,
     Nvg,
+    Snow,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 5] =
-        [Effect::Shake, Effect::Flashes, Effect::Barrage, Effect::CockpitNight, Effect::Nvg];
+    pub const ALL: [Effect; 6] = [
+        Effect::Shake,
+        Effect::Flashes,
+        Effect::Barrage,
+        Effect::CockpitNight,
+        Effect::Nvg,
+        Effect::Snow,
+    ];
 
     /// Its name on the command line.
     pub fn name(self) -> &'static str {
@@ -48,6 +64,7 @@ impl Effect {
             Effect::Barrage => "barrage",
             Effect::CockpitNight => "cockpit-night",
             Effect::Nvg => "nvg",
+            Effect::Snow => "snow",
         }
     }
 
@@ -59,6 +76,7 @@ impl Effect {
             Effect::Barrage => "Night barrage",
             Effect::CockpitNight => "Cockpit night lighting",
             Effect::Nvg => "Night vision goggles",
+            Effect::Snow => "Snow",
         }
     }
 
@@ -70,6 +88,7 @@ impl Effect {
             Effect::Barrage => "NIGHT BARRAGE",
             Effect::CockpitNight => "COCKPIT NIGHT LIGHT",
             Effect::Nvg => "GOGGLES EFFECT",
+            Effect::Snow => "SNOW",
         }
     }
 
@@ -95,6 +114,9 @@ impl Effect {
                 "Bright lights bloom into halos, the picture grains more in the dark",
                 "Desktop: the goggles' round field of view",
             ],
+            Effect::Snow => &[
+                "Above the freezing level storms snow instead of rain: low in a northern winter, high in summer",
+            ],
         }
     }
 
@@ -105,6 +127,7 @@ impl Effect {
             Effect::Barrage => e.barrage,
             Effect::CockpitNight => e.cockpit_night,
             Effect::Nvg => e.nvg,
+            Effect::Snow => e.snow,
         }
     }
 
@@ -115,6 +138,7 @@ impl Effect {
             Effect::Barrage => e.barrage = on,
             Effect::CockpitNight => e.cockpit_night = on,
             Effect::Nvg => e.nvg = on,
+            Effect::Snow => e.snow = on,
         }
     }
 
