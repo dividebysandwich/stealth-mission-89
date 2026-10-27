@@ -115,6 +115,14 @@ const SITE_RADIUS: f64 = 1500.0;
 /// a coarse block is several times the work of a near one.
 const BUILD_TIME: std::time::Duration = std::time::Duration::from_millis(3);
 
+/// What the ground is at a point (`Scenery::surface`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Surface {
+    Water,
+    Concrete,
+    Land,
+}
+
 /// The theater's scenery layout (no style and an empty network for the desert theaters).
 #[derive(Resource)]
 pub struct Scenery {
@@ -135,6 +143,17 @@ impl Scenery {
     /// The centre of the biggest town or city (metres east, north).
     pub fn biggest_town(&self) -> Option<DVec2> {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
+    }
+
+    /// What the ground is at `p` (metres east, north): water, concrete or land.
+    pub fn surface(&self, p: DVec2) -> Surface {
+        if !self.ground.is_dry_clear(p, 0.0) {
+            Surface::Water
+        } else if self.ground.is_land(p) {
+            Surface::Land
+        } else {
+            Surface::Concrete
+        }
     }
 
     /// The towns and cities (not the villages): centre (metres east, north), radius and whether

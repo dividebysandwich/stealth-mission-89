@@ -24,6 +24,8 @@ pub struct Effects {
     pub mist: bool,
     /// The stratus deck's shadows on the ground (palette.wgsl).
     pub cloud_shadows: bool,
+    /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
+    pub vapour: bool,
 }
 
 impl Default for Effects {
@@ -37,6 +39,7 @@ impl Default for Effects {
             snow: true,
             mist: true,
             cloud_shadows: true,
+            vapour: true,
         }
     }
 }
@@ -52,10 +55,11 @@ pub enum Effect {
     Snow,
     Mist,
     CloudShadows,
+    Vapour,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 8] = [
+    pub const ALL: [Effect; 9] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -64,6 +68,7 @@ impl Effect {
         Effect::Snow,
         Effect::Mist,
         Effect::CloudShadows,
+        Effect::Vapour,
     ];
 
     /// Its name on the command line.
@@ -77,6 +82,7 @@ impl Effect {
             Effect::Snow => "snow",
             Effect::Mist => "mist",
             Effect::CloudShadows => "cloud-shadows",
+            Effect::Vapour => "vapour",
         }
     }
 
@@ -91,6 +97,7 @@ impl Effect {
             Effect::Snow => "Snow",
             Effect::Mist => "Ground mist",
             Effect::CloudShadows => "Cloud shadows",
+            Effect::Vapour => "Vapour and downwash",
         }
     }
 
@@ -105,6 +112,7 @@ impl Effect {
             Effect::Snow => "SNOW",
             Effect::Mist => "GROUND MIST",
             Effect::CloudShadows => "CLOUD SHADOWS",
+            Effect::Vapour => "VAPOUR AND DUST",
         }
     }
 
@@ -137,9 +145,11 @@ impl Effect {
                 "Modern shaders: mist lies over the low ground and the sea at dawn, dusk and night",
                 "Thin in the deserts, none in storms",
             ],
-            Effect::CloudShadows => {
-                &["Modern shaders: a cloud deck's shadows drift over the ground below"]
-            }
+            Effect::CloudShadows => &["Modern shaders: the clouds' shadows on the ground below"],
+            Effect::Vapour => &[
+                "Pulling hard, vapour trails from the wingtips",
+                "A helicopter hovering low whips up dust, or spray over water",
+            ],
         }
     }
 
@@ -153,6 +163,7 @@ impl Effect {
             Effect::Snow => e.snow,
             Effect::Mist => e.mist,
             Effect::CloudShadows => e.cloud_shadows,
+            Effect::Vapour => e.vapour,
         }
     }
 
@@ -166,6 +177,7 @@ impl Effect {
             Effect::Snow => e.snow = on,
             Effect::Mist => e.mist = on,
             Effect::CloudShadows => e.cloud_shadows = on,
+            Effect::Vapour => e.vapour = on,
         }
     }
 

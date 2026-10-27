@@ -73,7 +73,7 @@ Cockpit and graphics
   --no-auto-detail             VR: keep full scenery detail (else it follows the frame rate)
   --effects <list>             atmosphere effects: names on, -name off, all, none
                                (shake, flashes, barrage, cockpit-night, nvg, snow, mist,
-                               cloud-shadows)
+                               cloud-shadows, vapour)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size

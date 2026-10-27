@@ -9,6 +9,8 @@
 //! * The damaged player aircraft trails smoke: grey, black when badly hit or on fire. It fades
 //!   in behind the smoke puffs of [`crate::explosions`] and hangs in the air for a minute.
 //! * So do the other pilots' (coop) missiles and damaged aircraft.
+//! * Pulling hard (`Effects::vapour`) the player's wingtips trail short vortices of vapour,
+//!   sooner in moist air than over the deserts.
 
 use std::collections::HashMap;
 
@@ -178,6 +180,35 @@ const HEAVY_DAMAGE_SMOKE: Style = Style {
     fade_in: 4.0,
 };
 
+/// Wingtip vortices: thin, short lived.
+const VORTEX: Style = Style {
+    colour: 15,
+    opacity: 0.35,
+    width: (0.2, 0.8),
+    grow: 1.0,
+    fade_after: 0.1,
+    fade: 0.4,
+    spacing: 8.0,
+    head_alpha: 0.0,
+    fade_in: 0.0,
+};
+/// G load (g) from which the wingtips trail vortices: moist air, the deserts' dry air.
+const VORTEX_G: (f32, f32) = (4.5, 6.5);
+
+/// The wingtips (aircraft frame, metres) of the flown jet (none for helicopters); a swing
+/// wing's at its sweep `sweep` (0 forward .. 1 back).
+fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]> {
+    use crate::aircraft::AircraftKind::*;
+    let (x, z) = match kind {
+        F117 => (6.6, 3.5),
+        F16 => (4.7, 1.5),
+        A10 => (8.7, 0.5),
+        Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
+        UH60 | AH1Z => return None,
+    };
+    Some([Vec3::new(-x, 0.0, z), Vec3::new(x, 0.0, z)])
+}
+
 /// Contrail emitters: left and right of the exhaust (aircraft frame, metres).
 const ENGINES: [Vec3; 2] = [Vec3::new(-3.0, 0.0, 0.0), Vec3::new(3.0, 0.0, 0.0)];
 /// The AI aircraft's exhaust: behind the aircraft centre (aircraft frame, metres).
@@ -191,6 +222,8 @@ enum Source {
     Aircraft(usize, usize),
     /// Player engine.
     Player(usize),
+    /// Player wingtip vortex.
+    Vortex(usize),
     /// Damaged player aircraft (heavy smoke).
     PlayerSmoke(bool),
     /// Another pilot's missile: (pilot, slot) and spec.
@@ -311,6 +344,7 @@ fn update_trails(
     player: Query<(&Aircraft, &WorldPos), With<Player>>,
     settings: Res<crate::settings::Settings>,
     mut visibility: Query<&mut Visibility>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let trails = &mut *trails;
     let sim = &combat.sim;
@@ -319,6 +353,21 @@ fn update_trails(
 
     // Emitter positions this frame.
     let mut emitters: Vec<(Source, &'static Style, DVec3)> = Vec::new();
+    // Wingtip vortices pulling hard (sooner in moist air).
+    if let Ok((a, pos)) = player.single()
+        && settings.effects.vapour
+        && !a.on_ground
+        && a.ended.is_none()
+        && let Some(tips) = wingtips(settings.aircraft, a.wing_sweep)
+    {
+        let dry = theater.as_ref().is_some_and(|t| crate::weather::dry_theater(&t.id));
+        let from = if dry { VORTEX_G.1 } else { VORTEX_G.0 };
+        if a.gees / 16.0 >= from {
+            for (k, &o) in tips.iter().enumerate() {
+                emitters.push((Source::Vortex(k), &VORTEX, pos.0 + (a.orientation * o).as_dvec3()));
+            }
+        }
+    }
     let projs = sim.projectiles();
     for s in 0..N_PROJ {
         let m = projs[s];

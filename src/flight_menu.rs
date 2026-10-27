@@ -158,6 +158,7 @@ impl Page {
                     Effect(E::Snow),
                     Effect(E::Mist),
                     Effect(E::CloudShadows),
+                    Effect(E::Vapour),
                     Back,
                 ]
             }

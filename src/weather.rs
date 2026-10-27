@@ -175,7 +175,7 @@ impl WeatherState {
             ((self.weather.seed as u64 ^ k).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 40) as f32
                 / (1u64 << 24) as f32
         };
-        let dry = matches!(theater, "libya" | "persian_gulf" | "middle_east" | "desert_storm");
+        let dry = dry_theater(theater);
         let mist = if settings.effects.mist {
             let time = ((MIST_DAYLIGHT - daylight) / 0.5).clamp(0.0, 1.0);
             let air = if dry { 0.25 } else { 1.0 };
@@ -1126,6 +1126,11 @@ fn strike(
         light: 0.0,
         distance: ((a + b) * 0.5).distance(eye.as_vec3()),
     }
+}
+
+/// The desert theaters: dry air (thin mist, vapour only pulling harder).
+pub fn dry_theater(id: &str) -> bool {
+    matches!(id, "libya" | "persian_gulf" | "middle_east" | "desert_storm")
 }
 
 /// Ground mist: strongest (share of the view it hides far away), below this daylight, its top
