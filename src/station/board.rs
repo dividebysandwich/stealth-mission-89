@@ -231,7 +231,7 @@ fn refill_bar(cv: &mut Canvas, x: f32, y: f32, left: f32) {
         cv,
         x + w + 6.0,
         y,
-        &format!("REFILL {}", mmss(left)),
+        &format!("RELOAD {}", mmss(left)),
         TEXT,
         PEN,
         YELLOW,
@@ -273,7 +273,7 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         if left > 0.0 {
             refill_bar(cv, 154.0, mid, left);
         } else if u.rounds == 0 {
-            stroke_text_at(cv, 154.0, mid, "EMPTY - REFILL", TEXT, PEN, RED, Align::Left);
+            stroke_text_at(cv, 154.0, mid, "EMPTY - RELOAD", TEXT, PEN, RED, Align::Left);
         } else if u.cooldown > 0 {
             stroke_text_at(cv, 154.0, mid, "LAUNCHED", TEXT, PEN, GREY, Align::Left);
         } else {
@@ -386,7 +386,7 @@ fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {
     if left > 0.0 {
         refill_bar(cv, 96.0, y + 62.0, left);
     } else if u.rounds == 0 {
-        stroke_text_at(cv, 96.0, y + 62.0, "EMPTY - REFILL", TEXT, PEN, RED, Align::Left);
+        stroke_text_at(cv, 96.0, y + 62.0, "EMPTY - RELOAD", TEXT, PEN, RED, Align::Left);
     } else if u.burst > 0 {
         stroke_text_at(cv, 96.0, y + 62.0, "FIRING", TEXT, PEN, YELLOW, Align::Left);
     }

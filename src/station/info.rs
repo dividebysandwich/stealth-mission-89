@@ -83,7 +83,7 @@ pub(super) fn draw(
         ("MAN", m.gepard && lock.is_none()),
         ("FIRE", u.is_some_and(|u| u.burst > 0)),
         ("RDY", units.iter().any(|&k| sim.aaa_units()[k].rounds > 0)),
-        ("RFL", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
+        ("RLD", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
     ];
     let step = (PANEL.1 - PANEL.0) / states.len() as i32;
     for (i, (label, on)) in states.into_iter().enumerate() {

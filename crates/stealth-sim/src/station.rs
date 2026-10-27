@@ -436,13 +436,13 @@ impl Sim {
         let Some(u) = self.aaa.get(k).copied() else { return Err("No such unit".into()) };
         let ours = k == station || self.battery_launchers(station).contains(&k);
         if !ours || full_load(u.kind) == 0 {
-            return Err("Nothing to refill there".into());
+            return Err("Nothing to reload there".into());
         }
         if u.destroyed {
             return Err("Destroyed".into());
         }
         if self.refill_left(k) > 0.0 {
-            return Err("Already refilling".into());
+            return Err("Already reloading".into());
         }
         if u.rounds > 0 {
             return Err("Not empty yet".into());

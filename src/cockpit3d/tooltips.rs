@@ -285,7 +285,7 @@ fn cmd_text(c: MfdCmd) -> String {
 fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
     match k {
         ConsoleKey::Tracks => ("TRACKS", "The track list"),
-        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and refills"),
+        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and reloads"),
         ConsoleKey::Lock => ("LOCK", "Lock the selected track: the camera follows it"),
         ConsoleKey::Drop => ("DROP", "Drop the lock (guided missiles go semi-active)"),
         ConsoleKey::Guided => {
@@ -298,7 +298,7 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ),
         ConsoleKey::Fire => ("FIRE", "A missile (a Gepard: a burst) at the locked track"),
         ConsoleKey::Launcher(_) => ("LAUNCHER", "Fire from this launcher; again: the readiest"),
-        ConsoleKey::Refill(_) => ("REFILL", "Refill the empty launcher from the stockpile (4 min)"),
+        ConsoleKey::Refill(_) => ("RELOAD", "Reload the empty launcher from the stockpile (4 min)"),
         ConsoleKey::Flir => ("FLIR", "Thermal or colour camera picture"),
         ConsoleKey::ZoomIn => ("ZOOM IN", "Camera zoom"),
         ConsoleKey::ZoomOut => ("ZOOM OUT", "Camera zoom"),

@@ -245,7 +245,7 @@ column(panel, -0.44, [("Console(Leave)", "LEAVE", 0.16)])
 for k in (1, 2, 3):
     v = 0.06 - (k - 1) * 0.05
     column(panel, -0.44, [(f"Console(Launcher, {k})", f"L{k}", v)])
-    column(panel, -0.34, [(f"Console(Refill, {k})", f"RFL{k}", v)])
+    column(panel, -0.34, [(f"Console(Refill, {k})", f"RLD{k}", v)])
 column(panel, 0.36, [
     ("Console(Flir)", "FLIR", 0.16),
     ("Console(ZoomIn)", "ZOOM+", 0.09),
