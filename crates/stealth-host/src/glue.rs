@@ -203,6 +203,17 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         _ => target,
     };
     m.waypoints = [mid, target, then, MapPoint { x: bx, y: by }];
+    // The fuel planned for that route (as for the drone missions), not the generated one's.
+    let mut at = (bx, by);
+    let mut length = 0.0;
+    for p in &m.waypoints {
+        length += ((p.x - at.0) as f64).hypot((p.y - at.1) as f64);
+        at = (p.x, p.y);
+    }
+    m.route_length = (length / 64.0) as i16;
+    let old_fuel = m.fuel_lbs.to_string();
+    m.fuel_lbs = 12 * m.route_length;
+    m.briefing.fuel_line = m.briefing.fuel_line.replace(&old_fuel, &m.fuel_lbs.to_string());
     // The targets are the campaign's: nothing of the generated strike mission's stays.
     let (object, shape_name, area) = primary_target(state, &o.objective);
     let p = &mut m.primary;
