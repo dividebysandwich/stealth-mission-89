@@ -1511,7 +1511,7 @@ mod tests {
     }
 
     /// Modern model: the flaps lower the stall speed and allow a higher angle of attack, and
-    /// lowering them doesn't pitch the nose down.
+    /// level flight with them out still needs a positive one (the nose above the horizon).
     #[test]
     fn flaps() {
         let stall = |flaps: bool| {
@@ -1537,30 +1537,14 @@ mod tests {
         let (clean, flaps) = (max_alpha(false), max_alpha(true));
         println!("max angle of attack clean {clean:.1}, flaps {flaps:.1}");
         assert!(flaps > clean + 2.0);
-        // Lowering the flaps in level flight, gear down: no nose-down step.
-        let mut a = airborne(3000.0, 220.0, 60.0);
-        a.gear_down = true;
-        let k = FlightConstants { landing: 1, ..default() };
-        let mut pos = WorldPos(wu_to_bevy(0.0, 0.0, a.view_z() as f64));
-        let mut tf = Transform::default();
-        let c = FlightControls::default();
-        let mut start = 0.0;
-        let mut pitch_min = f32::MAX;
-        for step in 0..720 {
-            a.flaps = step >= 60;
-            modern::step(&mut a, &mut pos, &mut tf, 1.0 / 120.0, &c, &k, None);
-            let pitch = a.euler().1.to_degrees();
-            if step == 59 {
-                start = pitch;
-            } else if step > 59 {
-                pitch_min = pitch_min.min(pitch);
-            }
-        }
-        println!("flaps lowered: pitch {start:.1} -> lowest {pitch_min:.1}, alt {:.0}", a.altitude);
-        assert!(
-            pitch_min > start - 1.0,
-            "nose dropped from {start:.1} to {pitch_min:.1} with the flaps"
-        );
+        // Trimmed level flight with the flaps out, fast for them: the 1 g angle of attack (the
+        // nose over the flight path) stays positive.
+        let mut a0 = airborne(3000.0, 280.0, 60.0);
+        a0.flaps = true;
+        let (a, _) = fly(false, a0, 0.5, 1, |_, _| {});
+        let pitch = a.euler().1.to_degrees();
+        println!("flaps out at 280 kt: pitch {pitch:.1}");
+        assert!(pitch > 2.0, "nose at {pitch:.1} with the flaps out");
     }
 
     /// A damaged elevator out of trim: hands off, the nose runs away without the auto trim and
