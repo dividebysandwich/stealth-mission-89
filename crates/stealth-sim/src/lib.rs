@@ -72,6 +72,9 @@ pub struct PlayerView {
     /// Climb rate (ft/s).
     #[serde(default)]
     pub climb: i32,
+    /// Height above the ground (ft).
+    #[serde(default)]
+    pub height: i32,
 }
 
 /// The complete simulation state.
@@ -743,6 +746,7 @@ impl Sim {
             velocity: ps.velocity as i32,
             knots: ps.velocity as i32 / 27,
             climb: ps.climb_rate,
+            height: ps.height as i32,
         };
         let keep = pflags::BAY_OPEN
             | pflags::ECM

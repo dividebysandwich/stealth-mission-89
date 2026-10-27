@@ -78,6 +78,7 @@ fn the_absent_player_is_left_alone() {
         x,
         y,
         altitude: 3000,
+        height: 3000,
         velocity: 400 * 27,
         gear_up: true,
         fuel: 10000,
@@ -106,7 +107,7 @@ fn a_crash_ends_the_sortie_not_the_simulation() {
     let o = sim.objects()[base];
     let (x, y) = Sim::map_to_world(o.x + 0x200, o.y);
     let ps = PlayerState { x, y, velocity: 200 * 27, fuel: 10000, ..Default::default() };
-    let airborne = PlayerState { altitude: 500, on_ground: false, ..ps.clone() };
+    let airborne = PlayerState { altitude: 500, height: 500, on_ground: false, ..ps.clone() };
     run(&mut sim, &airborne, 2);
     let ps = PlayerState { on_ground: true, ..ps };
     let ev = run(&mut sim, &ps, 2);
@@ -132,6 +133,7 @@ fn a_safe_landing_keeps_the_sortie_going() {
     let air = PlayerState {
         x: st.x + 0x8000,
         altitude: 800,
+        height: 800,
         on_ground: false,
         velocity: 250 * 27,
         gear_up: true,
@@ -337,6 +339,7 @@ fn intelligence_shortens_detection() {
         x,
         y,
         altitude: 5000,
+        height: 5000,
         velocity: 400 * 27,
         gear_up: true,
         fuel: 10000,
@@ -579,6 +582,7 @@ fn a_friendly_fighter_leaves_the_player_alone() {
         x,
         y,
         altitude: 3000,
+        height: 3000,
         velocity: 400 * 27,
         gear_up: true,
         on_ground: false,
@@ -806,6 +810,7 @@ fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
         x,
         y,
         altitude: 2000,
+        height: 2000,
         velocity: 250 * 27,
         gear_up: true,
         fuel: 10000,

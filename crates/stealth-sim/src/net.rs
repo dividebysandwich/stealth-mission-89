@@ -138,6 +138,8 @@ impl From<RemoteWire> for RemotePilot {
                 velocity,
                 knots,
                 climb,
+                // Not sent: no low-level cover from the radars.
+                height: alt,
             },
             gear_up: bit(0),
             on_ground: bit(1),

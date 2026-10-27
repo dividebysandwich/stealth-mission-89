@@ -378,6 +378,7 @@ impl Sim {
                 px: t.p.mx,
                 py: t.p.my,
                 view_z: t.p.view_z,
+                height: t.p.height,
                 heading: t.p.heading,
                 velocity: t.p.velocity,
                 diff: self.diff,

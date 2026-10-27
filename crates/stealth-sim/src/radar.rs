@@ -34,6 +34,8 @@ pub struct DetectCtx<'a> {
     pub px: i32,
     pub py: i32,
     pub view_z: i32,
+    /// Height above the ground (ft).
+    pub height: i32,
     pub heading: i32,
     pub velocity: i32,
     pub diff: i32,
@@ -82,8 +84,17 @@ pub fn detect(
     if c.lockheed {
         score >>= 1;
     }
+    // Ground radars (site altitude 0) lose a target below LOW_LEVEL_FT in the ground clutter.
+    if salt == 0 && c.height < LOW_LEVEL_FT {
+        let h = c.height.max(0);
+        score = score * h * h / (LOW_LEVEL_FT * LOW_LEVEL_FT);
+    }
     (score, brg, rng)
 }
+
+/// Height above the ground (ft) below which ground radars start losing a target: their
+/// signal falls with the square of the height, to none on the ground.
+pub const LOW_LEVEL_FT: i32 = 100;
 
 /// RWR tone when a radar detects the player.
 fn detected_tone(doppler: bool) -> RwrTone {
@@ -96,6 +107,7 @@ impl Sim {
             px: self.pl.p.mx,
             py: self.pl.p.my,
             view_z: self.pl.p.view_z,
+            height: self.pl.p.height,
             heading: self.pl.p.heading,
             velocity: self.pl.p.velocity,
             diff: self.diff,
@@ -725,6 +737,7 @@ mod tests {
             px: 0x4000,
             py: 0x4000,
             view_z: 0,
+            height: 1000,
             heading,
             velocity: vel,
             diff: 1,
@@ -769,6 +782,20 @@ mod tests {
         assert_eq!(detect(0x4000, 0x3000, 0, -1, Some((200, 3, 0)), &c).0, 0);
     }
 
+    /// Ground radars lose a target below LOW_LEVEL_FT; airborne ones don't.
+    #[test]
+    fn detect_low_level() {
+        let grid = vec![8u8; 256];
+        let mut c = ctx(&grid, 0x4000, 400 * 27);
+        let at = |c: &DetectCtx, salt| detect(0x4000, 0x4000 - 1, salt, 1, Some((200, 3, 0)), c).0;
+        assert_eq!(at(&c, 0), 72);
+        c.height = 50;
+        assert_eq!(at(&c, 0), 18);
+        assert_eq!(at(&c, 500), 72);
+        c.height = 0;
+        assert_eq!(at(&c, 0), 0);
+    }
+
     /// Doppler vs pulse aspect (reference values).
     #[test]
     fn detect_doppler_aspect() {
@@ -803,6 +830,7 @@ mod tests {
                 px,
                 py,
                 view_z: vz,
+                height: vz,
                 heading: h,
                 velocity: v,
                 diff: d,

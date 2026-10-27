@@ -55,6 +55,7 @@ fn player_at(mx: i32, my: i32, alt: u16, heading: u16, knots: u16) -> PlayerStat
         x,
         y,
         altitude: alt,
+        height: alt,
         heading,
         velocity: knots * 27,
         gear_up: true,
@@ -583,6 +584,7 @@ fn ten_minute_mission(d: &Data, th: usize, k: u16, opp: u8, opts: SimOptions) ->
         p.heading = h as u16;
         alt = (alt + 20).min(if f < 15 * 400 { 3000 } else { 300 });
         p.altitude = alt as u16;
+        p.height = p.altitude;
         p.velocity = 450 * 27;
         p.on_ground = false;
         p.gear_up = true;
@@ -657,24 +659,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x91b553731e8a12f1,
-        0xd490243896951d61,
-        0x683ca768ab7b2bf6,
-        0xbc9d220473f3e7d9,
-        0xb0e7956bf37c68d7,
-        0xdb4654251ffa3161,
-        0xb364b138af8e6278,
-        0x98359c6665a7395a,
-        0xbd3c37b906890f2b,
-        0x0c9097e5458bce99,
-        0x6dc04720b70c5e0f,
-        0x28e8a314b8aeac40,
-        0x76e22c8d76cd85d4,
-        0x2499c175e29ea72b,
-        0x6da99e86215b9754,
-        0xc6c0efe01bf3b268,
-        0xd3119ace816b08d6,
-        0xaf209e6fac730575,
+        0xef700e3919e2179c,
+        0x7ec6ea6cb7b30624,
+        0xba400c9391cd47a7,
+        0xeab9ed46e8248330,
+        0x2308a62fa99551ac,
+        0x57120ce2c20a5afe,
+        0xb4e80878d78c992f,
+        0x0057c29d1c55aebd,
+        0x420c0a2108cc1b96,
+        0xf35e977e6918822a,
+        0x9c8ecb4f60e09ffc,
+        0x23d082cfe19b261d,
+        0xaa1f9e0b1f598697,
+        0x7c8bf10e68feeb02,
+        0x00d17fb95dad6823,
+        0xa2d684c2a047166f,
+        0x27949e0b4f06c6f7,
+        0xedbf8f40fc079f6a,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -707,6 +709,7 @@ fn saved_state_goes_on_the_same() {
             let h = stealth_sim::math::bearing((tx - p.x) >> 6, (ty - p.y) >> 6);
             p.heading = h as u16;
             p.altitude = (f * 20).min(2000) as u16;
+            p.height = p.altitude;
             p.velocity = 450 * 27;
             p.on_ground = false;
             p.gear_up = true;
@@ -1791,6 +1794,7 @@ fn hellfire_follows_the_pod() {
         place(&mut sim, first, mx + 100, my - 100);
         place(&mut sim, second, mx + 110, my - 88);
         p.altitude = 500;
+        p.height = p.altitude;
         let pod =
             |x: i32, y: i32| Some(PodAim { heading: 0x2000, pitch: -0x400, ground: Some((x, y)) });
         p.pod = pod(mx + 100, my - 100);
@@ -1831,6 +1835,7 @@ fn hellfire_shot(guided: bool, range: i32) -> (Option<dlz::LaunchZone>, bool) {
         o.flags = 0;
     }
     p.altitude = 500;
+    p.height = p.altitude;
     p.hud_mode = HudMode::Gnd;
     p.pod = Some(PodAim { heading: 0x2000, pitch: -0x100, ground: Some((tx, ty)) });
     sim.step(&p, 15);
@@ -1881,6 +1886,7 @@ fn guided_hellfire_flies_straight_off_the_rail() {
         o.flags = 0;
     }
     p.altitude = 500;
+    p.height = p.altitude;
     p.hud_mode = HudMode::Gnd;
     p.pod = Some(PodAim { heading: 0x4000, pitch: -0x100, ground: Some((tx, ty)) });
     sim.step(&p, 15);
@@ -1918,6 +1924,7 @@ fn pod_designates_a_ground_point() {
         ob.flags = 0;
     }
     p.altitude = 500;
+    p.height = p.altitude;
     p.hud_mode = HudMode::Gnd;
     let (x, y) = (mx + 150, my - 150);
     p.pod = Some(PodAim { heading: 0x2000, pitch: -0x100, ground: Some((x, y)) });
@@ -1947,6 +1954,7 @@ fn pod_designates_a_ground_point() {
 fn launch_zone_follows_the_slewed_pod() {
     let (mut sim, mx, my, mut p) = helicopter(true, true);
     p.altitude = 500;
+    p.height = p.altitude;
     p.hud_mode = HudMode::Gnd;
     let pod =
         |x: i32, y: i32| Some(PodAim { heading: 0x2000, pitch: -0x100, ground: Some((x, y)) });
