@@ -40,7 +40,8 @@ use crate::dots::{dot_batch, dot_batch_coloured};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
 use crate::palette_material::{
-    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_VERTEX_HAZE, TAG_WARM, dot_scale, mesh_tag,
+    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_VERTEX_HAZE, TAG_WARM, dot_size_tenths,
+    mesh_tag,
 };
 use crate::settings::AppState;
 use crate::world::{ShapeHandles, Theater, WU, WorldAnchor, WorldPos, bevy_to_wu};
@@ -232,8 +233,8 @@ struct ApproachSide(Vec3);
 #[derive(Component)]
 struct ApproachChecked;
 
-/// Approach flashers are drawn this many times the size of other lights.
-const STROBE_DOT_SCALE: u32 = 3;
+/// Approach flashers are drawn this many tenths of the size of other lights.
+const STROBE_DOT_TENTHS: u32 = 15;
 
 /// A PAPI light unit (a one-dot batch at its transform; data from `geom::PapiLight`).
 #[derive(Component)]
@@ -246,9 +247,9 @@ struct Papi {
 /// approach axis (about ±30°).
 const PAPI_RANGE: f32 = 10_000.0;
 const PAPI_COS_SPREAD: f32 = 0.87;
-/// PAPI lights are drawn this many times the size of other lights, so the colours read on a
+/// PAPI lights are drawn this many tenths of the size of other lights, so the colours read on a
 /// long final.
-const PAPI_DOT_SCALE: u32 = 3;
+const PAPI_DOT_TENTHS: u32 = 15;
 
 /// Root of a streamed block.
 #[derive(Component)]
@@ -871,7 +872,7 @@ fn spawn_geom(
                     Mesh3d(m),
                     MeshMaterial3d(palette.line_material(airfield::STROBE)),
                     dots.clone(),
-                    MeshTag(dot_tag | dot_scale(STROBE_DOT_SCALE)),
+                    MeshTag(dot_tag | dot_size_tenths(STROBE_DOT_TENTHS)),
                     Strobe(phase),
                 ))
                 .id(),
@@ -1061,7 +1062,7 @@ fn airfields(
                     .spawn((
                         Mesh3d(meshes.add(dot_batch(&[Vec3::ZERO]))),
                         MeshMaterial3d(palette.line_material(airfield::PAPI_LOW)),
-                        MeshTag(mesh_tag(1, 6, false) | TAG_DOT | dot_scale(PAPI_DOT_SCALE)),
+                        MeshTag(mesh_tag(1, 6, false) | TAG_DOT | dot_size_tenths(PAPI_DOT_TENTHS)),
                         Transform::from_translation(l.pos),
                         bevy::light::NotShadowCaster,
                         Papi { toward: l.toward, angle: l.angle },

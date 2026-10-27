@@ -627,7 +627,7 @@ fn spawn_dot(
     spawn_dot_scaled(commands, assets, material, offsets, 0)
 }
 
-/// [`spawn_dot`] with more mesh tag bits (`dot_scale`, `dot_size_tenths`, `TAG_DOT_FAR`).
+/// [`spawn_dot`] with more mesh tag bits (`dot_size_tenths`, `TAG_DOT_FAR`).
 fn spawn_dot_scaled(
     commands: &mut Commands,
     assets: &ModelAssets,
