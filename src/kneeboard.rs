@@ -217,23 +217,25 @@ fn spawn(
                 fog_enabled: false,
                 ..default()
             });
-            let board = commands
-                .spawn((
-                    Board,
-                    crate::cockpit3d::Solid,
-                    crate::cockpit3d::Tip::new(
-                        "Kneeboard",
-                        "Maps, mission notes and the key guide",
-                        &[crate::input::Action::Kneeboard],
-                    ),
-                    tex,
-                    Mesh3d(meshes.add(Rectangle::new(SIZE.x, SIZE.y))),
-                    MeshMaterial3d(material),
-                    Transform::default(),
-                    NotShadowCaster,
-                ))
-                .id();
-            commands.entity(root).add_child(board);
+            // Only if the cockpit still stands when the commands apply (it can be rebuilt
+            // the frame this runs), or the board would be left without one.
+            let board = (
+                Board,
+                crate::cockpit3d::Solid,
+                crate::cockpit3d::Tip::new(
+                    "Kneeboard",
+                    "Maps, mission notes and the key guide",
+                    &[crate::input::Action::Kneeboard],
+                ),
+                tex,
+                Mesh3d(meshes.add(Rectangle::new(SIZE.x, SIZE.y))),
+                MeshMaterial3d(material),
+                Transform::default(),
+                NotShadowCaster,
+            );
+            commands.entity(root).queue_silenced(move |mut root: EntityWorldMut| {
+                root.with_child(board);
+            });
             kb.dirty = true;
             image
         }

@@ -304,29 +304,28 @@ fn cockpit_panel(
         let image = images.add(image(&Canvas::new(W, PITCH)));
         let front = material(&mut materials, Some(image.clone()));
         let back = material(&mut materials, None);
-        let parts = [
-            commands
-                .spawn((
+        // Spawned only if the cockpit still stands when the commands apply: it can be
+        // rebuilt (or go with the aircraft) the frame this runs.
+        commands.entity(root).queue_silenced(move |mut root: EntityWorldMut| {
+            root.with_children(|c| {
+                c.spawn((
                     Panel(None, image),
                     Mesh3d(quad.clone()),
                     MeshMaterial3d(front),
                     Transform::default(),
                     Visibility::Hidden,
                     NotShadowCaster,
-                ))
-                .id(),
-            commands
-                .spawn((
+                ));
+                c.spawn((
                     Back,
                     Mesh3d(quad),
                     MeshMaterial3d(back),
                     Transform::default(),
                     Visibility::Hidden,
                     NotShadowCaster,
-                ))
-                .id(),
-        ];
-        commands.entity(root).add_children(&parts);
+                ));
+            });
+        });
         return;
     }
     let shown = notices.shown();
