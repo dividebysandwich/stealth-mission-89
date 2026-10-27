@@ -23,6 +23,7 @@ mod debrief;
 #[cfg(not(target_arch = "wasm32"))]
 mod dedicated;
 mod dots;
+mod effects;
 mod explosions;
 mod fires;
 mod flight;
@@ -72,6 +73,7 @@ mod savegame;
 mod scenery;
 mod script;
 mod settings;
+mod shake;
 mod sim_render;
 mod sky;
 mod sound;
@@ -267,6 +269,7 @@ fn main() {
             afterburner_flame::AfterburnerFlamePlugin,
             landing_lights::LandingLightsPlugin,
             explosions::ExplosionsPlugin,
+            shake::ShakePlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,
             recon::ReconPlugin,

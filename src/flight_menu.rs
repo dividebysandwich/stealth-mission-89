@@ -125,6 +125,7 @@ enum Page {
     Options,
     Game,
     Graphics,
+    Effects,
     Sound,
     Controls,
 }
@@ -137,6 +138,7 @@ impl Page {
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
+                Open(Page::Effects),
                 Open(Page::Sound),
                 Open(Page::Controls),
                 Back,
@@ -145,6 +147,7 @@ impl Page {
             Page::Graphics => {
                 &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
             }
+            Page::Effects => &[Effect(crate::effects::Effect::Shake), Back],
             Page::Sound => &[
                 Volume(Vol::Master),
                 Volume(Vol::Engine),
@@ -176,6 +179,7 @@ impl Page {
             Page::Options => "OPTIONS",
             Page::Game => "GAME",
             Page::Graphics => "GRAPHICS",
+            Page::Effects => "EFFECTS",
             Page::Sound => "SOUND",
             Page::Controls => "CONTROLS",
         }
@@ -233,6 +237,8 @@ enum Item {
     AutoTrim,
     Tooltips,
     CockpitSize,
+    /// An atmosphere effect's switch.
+    Effect(crate::effects::Effect),
     Volume(Vol),
     LowPass,
     HeadTracking,
@@ -262,6 +268,7 @@ impl Item {
             Item::AutoTrim => "AUTO TRIM",
             Item::Tooltips => "TOOLTIPS",
             Item::CockpitSize => "COCKPIT SIZE",
+            Item::Effect(e) => e.menu_label(),
             Item::Volume(Vol::Master) => "MASTER VOLUME",
             Item::Volume(Vol::Engine) => "ENGINE",
             Item::Volume(Vol::Effects) => "EFFECTS",
@@ -288,6 +295,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
             Item::LowPass => on(s.engine_low_pass),
@@ -992,6 +1000,7 @@ fn navigate(
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::Bindings => {

@@ -85,6 +85,7 @@ pub struct Prefs {
     pub effects_volume: f32,
     pub warning_volume: f32,
     pub engine_low_pass: bool,
+    pub effects: crate::effects::Effects,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -139,6 +140,7 @@ impl Default for Prefs {
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            effects: Default::default(),
         }
     }
 }
@@ -206,6 +208,7 @@ impl Prefs {
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
             engine_low_pass: s.engine_low_pass,
+            effects: s.effects,
         }
     }
 
@@ -258,6 +261,9 @@ impl Prefs {
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
         s.engine_low_pass = self.engine_low_pass;
+        if !std::env::args().any(|a| a == "--effects") {
+            s.effects = self.effects;
+        }
         if !std::env::args().any(|a| a == "--aircraft") {
             s.aircraft = self.aircraft;
         }
@@ -293,6 +299,7 @@ impl Prefs {
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
         self.engine_low_pass = s.engine_low_pass;
+        self.effects = s.effects;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

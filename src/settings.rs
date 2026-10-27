@@ -113,6 +113,8 @@ pub struct Settings {
     pub warning_volume: f32,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
+    /// The atmosphere effects' switches (`--effects`).
+    pub effects: crate::effects::Effects,
 }
 
 /// Default VR cockpit size.
@@ -273,6 +275,8 @@ impl Settings {
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            effects: get(&a, "--effects")
+                .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
         }
     }
 }
