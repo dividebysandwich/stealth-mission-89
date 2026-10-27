@@ -43,8 +43,8 @@ const VR_TRAVEL: f32 = 0.004;
 
 /// Held levels: the gun firing, the stall buffet at its worst, the ground roll at speed.
 const GUN: f32 = 0.35;
-const BUFFET: f32 = 0.45;
-const GROUND: f32 = 0.18;
+const BUFFET: f32 = 0.22;
+const GROUND: f32 = 0.09;
 /// The buffet starts this far above the stall speed (ratio) and is full at it.
 const BUFFET_FROM: f32 = 1.2;
 /// Knots at which the ground roll's rumble is full.
