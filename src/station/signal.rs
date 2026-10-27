@@ -47,6 +47,7 @@ const BOTTOM_Y: f32 = 228.0;
 const TEXT: f32 = 6.0;
 const PEN: f32 = 1.0;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw(
     manning: Option<Res<Manning>>,
     combat: Option<Res<crate::combat::Combat>>,
