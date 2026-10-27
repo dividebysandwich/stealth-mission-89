@@ -338,6 +338,10 @@ pub struct Globals {
     pub shadow_bounds: Vec4,
     /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     pub storm_haze: Vec4,
+    /// Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
+    /// colour (xyz) and reach in metres (w).
+    pub burst: Vec4,
+    pub burst_colour: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -374,6 +378,8 @@ impl Default for Globals {
             shadow: Vec4::ZERO,
             shadow_bounds: Vec4::ZERO,
             storm_haze: Vec4::ZERO,
+            burst: Vec4::ZERO,
+            burst_colour: Vec4::ZERO,
         }
     }
 }

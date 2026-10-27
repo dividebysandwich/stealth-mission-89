@@ -71,6 +71,8 @@ Cockpit and graphics
   --shadows                    sun shadows
   --local-lights               cockpit lamps, explosions, flares, missile motors, runway lights
   --no-auto-detail             VR: keep full scenery detail (else it follows the frame rate)
+  --effects <list>             atmosphere effects: names on, -name off, all, none
+                               (shake, flashes)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size
@@ -118,6 +120,7 @@ Testing and screenshots
                                staged camera: front, behind, side, high, missile, drone
   --damage <bits,hits>         start damaged
   --strike <ground|cloud>      a frozen lightning strike early in the flight
+  --flak <m>                   a flak burst that far ahead every 1.5 s
   --tod-seed <n>               the palette's time of day fade (0..15)
   --sky-golden <base[,intensity[,warmth]]>, --sky-hours <h>, --sky-phase <0..1>
                                sky test looks

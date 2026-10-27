@@ -26,6 +26,7 @@ mod dots;
 mod effects;
 mod explosions;
 mod fires;
+mod flashes;
 mod flight;
 mod flight_menu;
 mod font;
@@ -270,6 +271,7 @@ fn main() {
             landing_lights::LandingLightsPlugin,
             explosions::ExplosionsPlugin,
             shake::ShakePlugin,
+            flashes::FlashesPlugin,
             flight_menu::FlightMenuPlugin,
             kneeboard::KneeboardPlugin,
             recon::ReconPlugin,

@@ -303,6 +303,7 @@ fn update_sun(
     mut ambient: ResMut<GlobalAmbientLight>,
     weather: Res<crate::weather::WeatherState>,
     scene: Option<Res<crate::menu_scene::MenuScene>>,
+    bursts: Res<crate::flashes::Bursts>,
 ) {
     // The scene behind the menu always has them.
     let shadows_on = settings.shadows || scene.is_some();
@@ -425,6 +426,14 @@ fn update_sun(
         }
         None => 600.0 + 800.0 * daylight + flash,
     };
+    // So does a combat flash near the aircraft, in its colour (flashes.rs).
+    if let Some((.., colour, _)) = bursts.light.filter(|_| bursts.cockpit > 0.0) {
+        let burst = 6000.0 * bursts.cockpit * (1.0 - 0.7 * daylight.clamp(0.0, 1.0));
+        let base = Vec3::new(0.8, 0.85, 1.0) * ambient.brightness;
+        ambient.brightness += burst;
+        let c = (base + colour * burst) / ambient.brightness.max(1e-3);
+        ambient.color = Color::linear_rgb(c.x, c.y, c.z);
+    }
 }
 
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]

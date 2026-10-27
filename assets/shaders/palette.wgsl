@@ -83,6 +83,10 @@ struct Globals {
     shadow_bounds: vec4<f32>,
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     storm_haze: vec4<f32>,
+    // Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
+    // colour (xyz) and reach in metres (w).
+    burst: vec4<f32>,
+    burst_colour: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -974,9 +978,22 @@ fn flash_scale() -> f32 {
     return mix(1.0, 0.3, globals.light_info.y);
 }
 
-// Lightning: the far-reaching flash over everything plus the channel's local light.
+// Light of the current combat flash (a flak burst, an explosion, a launch) at a point: as a
+// lightning channel's, from a point.
+fn burst_glow(world: vec3<f32>) -> vec3<f32> {
+    let i = globals.burst.w;
+    if (i <= 0.0) { return vec3<f32>(0.0); }
+    let d = length(world - globals.burst.xyz);
+    let reach = globals.burst_colour.w;
+    let core = d / (reach * 0.06);
+    let halo = d / (reach * 0.3);
+    return globals.burst_colour.rgb * i * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
+// Lightning: the far-reaching flash over everything plus the channel's local light; and the
+// combat flash's light.
 fn flash(rgb: vec3<f32>, world: vec3<f32>) -> vec3<f32> {
-    return rgb + BOLT_COLOR * (globals.weather.y + bolt_glow(world)) * flash_scale();
+    return rgb + (BOLT_COLOR * (globals.weather.y + bolt_glow(world)) + burst_glow(world)) * flash_scale();
 }
 
 // Night vision goggles (light_info.z): the image intensified to a green phosphor picture,
@@ -1223,6 +1240,13 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         let haze_d = select(1e9, max(eye.y, 0.0) / -nd.y, nd.y < 0.0);
         bg = storm_haze(bg, nd, haze_d);
         bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
+        // A distant combat flash's halo over the sky (where the view ray passes it; one near
+        // the eye lights what is around it, not the sky).
+        if (globals.burst.w > 0.0) {
+            let burst_d = length(globals.burst.xyz - eye);
+            let far = smoothstep(0.5, 2.0, burst_d / globals.burst_colour.w);
+            bg += burst_glow(eye + nd * burst_d) * flash_scale() * far;
+        }
         return vec4<f32>(bg, 1.0);
     }
 #else

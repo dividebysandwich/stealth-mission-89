@@ -10,11 +10,13 @@ use serde::{Deserialize, Serialize};
 pub struct Effects {
     /// Camera shake and airframe buffet (shake.rs).
     pub shake: bool,
+    /// Flak, explosions and missile launches light their surroundings (flashes.rs).
+    pub flashes: bool,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Self { shake: true }
+        Self { shake: true, flashes: true }
     }
 }
 
@@ -22,15 +24,17 @@ impl Default for Effects {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Effect {
     Shake,
+    Flashes,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 1] = [Effect::Shake];
+    pub const ALL: [Effect; 2] = [Effect::Shake, Effect::Flashes];
 
     /// Its name on the command line.
     pub fn name(self) -> &'static str {
         match self {
             Effect::Shake => "shake",
+            Effect::Flashes => "flashes",
         }
     }
 
@@ -38,6 +42,7 @@ impl Effect {
     pub fn label(self) -> &'static str {
         match self {
             Effect::Shake => "Camera shake",
+            Effect::Flashes => "Combat flashes",
         }
     }
 
@@ -45,6 +50,7 @@ impl Effect {
     pub fn menu_label(self) -> &'static str {
         match self {
             Effect::Shake => "CAMERA SHAKE",
+            Effect::Flashes => "COMBAT FLASHES",
         }
     }
 
@@ -55,18 +61,23 @@ impl Effect {
                 "The view shakes with the gun, nearby blasts, stall buffet, touchdowns and the runway",
                 "VR: the cockpit vibrates, your head stays still",
             ],
+            Effect::Flashes => &[
+                "Flak bursts, explosions and missile launches light the clouds, the ground and the cockpit for a moment",
+            ],
         }
     }
 
     pub fn get(self, e: &Effects) -> bool {
         match self {
             Effect::Shake => e.shake,
+            Effect::Flashes => e.flashes,
         }
     }
 
     pub fn set(self, e: &mut Effects, on: bool) {
         match self {
             Effect::Shake => e.shake = on,
+            Effect::Flashes => e.flashes = on,
         }
     }
 

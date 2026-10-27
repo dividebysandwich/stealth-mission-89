@@ -354,6 +354,7 @@ fn sync_shading(
     lighting: Res<crate::lighting::LightingState>,
     manning: Option<Res<crate::station::Manning>>,
     mut materials: ResMut<Assets<CockpitMaterial>>,
+    bursts: Res<crate::flashes::Bursts>,
 ) {
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
     // Steam Frame it costs about 10 ms of GPU time.
@@ -363,7 +364,9 @@ fn sync_shading(
     let nvg = hud.is_some_and(|h| h.nvg);
     // In 1/64 steps: a change re-uploads every cockpit material.
     let q = |v: f32| (v * 64.0).round() / 64.0;
-    let dark = if sky.on && !nvg { q(sky.dark) } else { 0.0 };
+    // A combat flash nearby lifts the darkness for a moment (in quarter steps: few re-uploads).
+    let lift = (bursts.cockpit.min(1.0) * 4.0).round() / 4.0;
+    let dark = if sky.on && !nvg { q(sky.dark * (1.0 - lift)) } else { 0.0 };
     // An air defence console's shelter has no windows: dark but for its screens and buttons.
     let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };

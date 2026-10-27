@@ -26,6 +26,9 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    vec4 storm_haze;
+    vec4 burst;
+    vec4 burst_colour;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -80,6 +83,17 @@ vec3 sky_light(vec3 n) {
     return min(sun_moon(n) / max(sun_moon(vec3(0.0, 1.0, 0.0)), vec3(1e-4)), vec3(SKY_LIGHT_MAX));
 }
 
+// A combat flash's light (palette.glsl `burst_glow`), brighter by night.
+vec3 burst_glow(vec3 world) {
+    float i = g.burst.w;
+    if (i <= 0.0) { return vec3(0.0); }
+    float d = length(world - g.burst.xyz);
+    float reach = g.burst_colour.w;
+    float core = d / (reach * 0.06);
+    float halo = d / (reach * 0.3);
+    return g.burst_colour.rgb * i * mix(1.0, 0.3, g.light_info.y) * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
 void main() {
     vec4 base = u_base;
     if ((u_flags & 1u) != 0u) {
@@ -108,6 +122,9 @@ void main() {
             n = -n;
         }
         rgb = base.rgb * sky_light(n) * (1.0 - dark) + e;
+    }
+    if ((u_flags & 8u) == 0u) {
+        rgb += base.rgb * burst_glow(v_world);
     }
     o_colour = vec4(rgb, base.a);
 }

@@ -31,6 +31,8 @@ layout(std140) uniform Globals {
     vec4 shadow_bounds;
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     vec4 storm_haze;
+    vec4 burst;
+    vec4 burst_colour;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -650,8 +652,18 @@ float flash_scale() {
     return mix(1.0, 0.3, g.light_info.y);
 }
 
+vec3 burst_glow(vec3 world) {
+    float i = g.burst.w;
+    if (i <= 0.0) { return vec3(0.0); }
+    float d = length(world - g.burst.xyz);
+    float reach = g.burst_colour.w;
+    float core = d / (reach * 0.06);
+    float halo = d / (reach * 0.3);
+    return g.burst_colour.rgb * i * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
 vec3 flash(vec3 rgb, vec3 world) {
-    return rgb + BOLT_COLOR * (g.weather.y + bolt_glow(world)) * flash_scale();
+    return rgb + (BOLT_COLOR * (g.weather.y + bolt_glow(world)) + burst_glow(world)) * flash_scale();
 }
 
 vec3 nvg(vec3 rgb) {
@@ -943,6 +955,11 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     float haze_d = nd.y < 0.0 ? max(eye.y, 0.0) / -nd.y : 1e9;
     bg = storm_haze(bg, nd, haze_d);
     bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
+    if (g.burst.w > 0.0) {
+        float burst_d = length(g.burst.xyz - eye);
+        float far = smoothstep(0.5, 2.0, burst_d / g.burst_colour.w);
+        bg += burst_glow(eye + nd * burst_d) * flash_scale() * far;
+    }
     return vec4(bg, 1.0);
 #else
     uint hi = (v_word >> 8u) & 0xFFu;

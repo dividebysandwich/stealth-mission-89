@@ -486,6 +486,7 @@ fn update_globals(
     images: Res<Assets<Image>>,
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
+    bursts: Res<crate::flashes::Bursts>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let Some(mut buf) = buffers.get_mut(&palette.globals) else { return };
@@ -536,6 +537,7 @@ fn update_globals(
     (g.clouds, g.weather, g.noise, g.stratus) = weather.globals(origin.origin);
     (g.bolt_a, g.bolt_b) = weather.bolt_light(origin.origin);
     g.storm_haze = weather.storm_haze();
+    (g.burst, g.burst_colour) = bursts.globals(origin.origin);
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);

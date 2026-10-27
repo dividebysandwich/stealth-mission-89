@@ -619,13 +619,23 @@ fn shade_clouds(
     mut shading: ResMut<CloudShading>,
     mut render: ResMut<CloudRenderSettings>,
     sky: Res<crate::sky::Sky>,
+    bursts: Res<crate::flashes::Bursts>,
 ) {
     let nvg = hud.is_some_and(|h| h.nvg);
     // A night without moonlight blacks the clouds out too (but for the goggles).
     let lit = if nvg || !sky.on { 1.0 } else { 1.0 - sky.dark };
     let tint = |c: Vec3| if nvg { nvg_color(c, lighting.daylight) } else { c };
     let flash_scale = 1.0 + (0.3 - 1.0) * lighting.daylight.clamp(0.0, 1.0);
-    let (line_a, line_b) = state.bolt_light(origin.origin);
+    let (mut line_a, mut line_b) = state.bolt_light(origin.origin);
+    let mut line_color = BOLT_COLOR * flash_scale;
+    // While no lightning uses it, a combat flash lights the clouds near it (flashes.rs).
+    if line_a.w <= 0.0
+        && let Some((p, i, colour, reach)) = bursts.light
+    {
+        let p = (p - origin.origin).as_vec3();
+        (line_a, line_b) = (p.extend(i), p.extend(reach));
+        line_color = tint(colour) * flash_scale;
+    }
     let linear = |i: u8| {
         let c = palette.color(i).to_linear();
         Vec3::new(c.red, c.green, c.blue)
@@ -649,7 +659,7 @@ fn shade_clouds(
         flash: BOLT_COLOR * state.flash * flash_scale,
         line_a,
         line_b,
-        line_color: BOLT_COLOR * flash_scale,
+        line_color,
         // Inside a cloud everything fades into it (`whiteout` in palette.wgsl).
         fog: tint(linear(CLOUD_RAMP + 2) * lit).extend(state.whiteout),
     };

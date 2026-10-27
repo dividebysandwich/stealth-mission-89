@@ -147,7 +147,10 @@ impl Page {
             Page::Graphics => {
                 &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
             }
-            Page::Effects => &[Effect(crate::effects::Effect::Shake), Back],
+            Page::Effects => {
+                use crate::effects::Effect as E;
+                &[Effect(E::Shake), Effect(E::Flashes), Back]
+            }
             Page::Sound => &[
                 Volume(Vol::Master),
                 Volume(Vol::Engine),
