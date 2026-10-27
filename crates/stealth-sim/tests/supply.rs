@@ -134,8 +134,8 @@ fn a_player_hovers_low_and_close_to_deliver() {
     };
     sim.step(&at(14), 15);
     assert_eq!(sim.pilot_over_unit(0), Some(radar));
-    // 20 m up is too high.
-    sim.step(&at(41), 15);
+    // 40 m up is too high.
+    sim.step(&at(82), 15);
     assert_eq!(sim.pilot_over_unit(0), None);
     // 80 m off is too far.
     let far = PlayerState { x: (a.x << 5) + 16 + 164, ..at(14) };

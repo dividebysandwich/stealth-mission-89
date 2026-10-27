@@ -368,7 +368,7 @@ pub fn describe(kind: MissionKind) -> &'static str {
             "Shoot down the enemy AWACS: while it is up the enemy sends more patrols, and sends them at you"
         }
         MissionKind::Resupply => {
-            "Fly the stockpile from the airfield to the air defence unit: hover below 10 m within 50 m of it for 10 s while the load goes down"
+            "Fly the stockpile from the airfield to the air defence unit: hover below 30 m within 50 m of it for 10 s while the load goes down"
         }
     }
 }

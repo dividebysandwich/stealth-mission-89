@@ -23,7 +23,7 @@ use crate::types::*;
 /// A drop counts within this distance of the unit (m), this low over the ground (m), after
 /// this long (s).
 pub const DROP_RADIUS: f64 = 50.0;
-pub const HOVER_MAX: f64 = 10.0;
+pub const HOVER_MAX: f64 = 30.0;
 pub const HOVER_SECONDS: i32 = 10;
 /// Metres per world unit.
 const M_PER_WU: f64 = M_PER_MAP / 32.0;
