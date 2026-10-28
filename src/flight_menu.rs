@@ -31,7 +31,7 @@
 //! SORTIE ends the sortie: the campaign's debrief and mission board come up in the flight.
 //!
 //! In VR the end-of-mission overlay (a 2D overlay on the desktop) is a screen floating in front of
-//! the head, also in the outside views.
+//! the head, also in the outside views, drawn over the cockpit.
 
 use bevy::audio::{AudioSink, AudioSinkPlayback};
 use bevy::input::ButtonState;
@@ -1375,7 +1375,7 @@ fn vr_end_screen(
     cams: Query<(&ChildOf, &Transform), With<Camera>>,
     screens: Query<(), With<EndScreen>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<crate::cockpit3d::tooltips::TipScreenMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     if !settings.vr || menu.exiting || !screens.is_empty() {
@@ -1426,12 +1426,19 @@ fn vr_end_screen(
     if let Some(mut img) = images.get_mut(&tex.image) {
         img.sampler = bevy::image::ImageSampler::linear();
     }
-    let material = materials.add(StandardMaterial {
-        base_color_texture: Some(tex.image.clone()),
-        unlit: true,
-        cull_mode: None,
-        fog_enabled: false,
-        ..default()
+    // Drawn over everything, the cockpit in front of it included (as a VR tooltip): last of
+    // the transparent things, without the depth test.
+    let material = materials.add(bevy::pbr::ExtendedMaterial {
+        base: StandardMaterial {
+            base_color_texture: Some(tex.image.clone()),
+            alpha_mode: AlphaMode::Blend,
+            depth_bias: 1000.0,
+            unlit: true,
+            cull_mode: None,
+            fog_enabled: false,
+            ..default()
+        },
+        extension: crate::cockpit3d::tooltips::OnTop {},
     });
     let screen = commands
         .spawn((
