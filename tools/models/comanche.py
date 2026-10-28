@@ -60,8 +60,8 @@ RED, GREEN = 147, 151
 # of the flat side (the chine), the roof shoulder and the dorsal line, then the half widths at
 # those heights. The lower facet (quads 0/8) slopes in from the chine to the belly; the bay doors
 # are cut in it. Over the cockpits the upper edge is the canopy sill, well inside the chine, so the
-# side (quads 1/7) is a shoulder sloping up to the narrow canopy. Behind the canopy the side stands
-# upright, leaning out a little up to the upper edge, the widest point of the fuselage.
+# side (quads 1/7) is a shoulder sloping up to the narrow canopy, and it runs on behind the canopy
+# to the tail boom, the engine deck's sides leaning in above it.
 STATIONS = [
     # y      zb    zl    zu    zs    zt     wb    wl    wu    ws    wt
     (4.40, 0.90, 1.00, 1.20, 1.40, 1.46, 0.20, 0.40, 0.36, 0.20, 0.10),  # inside the round nose
@@ -71,10 +71,10 @@ STATIONS = [
     (2.48, 0.62, 1.31, 1.47, 2.51, 2.51, 0.37, 0.88, 0.70, 0.27, 0.14),  # pilot canopy bow
     (1.84, 0.62, 1.38, 1.60, 2.56, 2.56, 0.40, 0.95, 0.76, 0.28, 0.14),  # gunner canopy bow
     (0.82, 0.70, 1.37, 1.90, 2.60, 2.60, 0.48, 1.10, 0.78, 0.29, 0.15),  # canopy aft
-    (0.55, 0.72, 1.37, 1.88, 2.80, 2.97, 0.48, 1.12, 1.17, 0.66, 0.44),  # engine deck
-    (-1.35, 0.73, 1.37, 1.72, 2.80, 2.96, 0.50, 1.12, 1.16, 0.68, 0.44),
-    (-1.70, 0.74, 1.37, 1.68, 2.56, 2.70, 0.50, 1.12, 1.14, 0.62, 0.38),
-    (-3.05, 0.84, 1.35, 1.56, 1.90, 2.00, 0.40, 1.00, 0.96, 0.50, 0.26),
+    (0.40, 0.72, 1.37, 1.86, 2.72, 2.97, 0.48, 1.12, 0.82, 0.50, 0.30),  # engine deck
+    (-1.35, 0.73, 1.37, 1.68, 2.70, 2.96, 0.50, 1.12, 0.84, 0.52, 0.30),
+    (-1.70, 0.74, 1.37, 1.65, 2.50, 2.70, 0.50, 1.12, 0.80, 0.48, 0.28),
+    (-3.05, 0.84, 1.35, 1.58, 1.90, 2.00, 0.40, 1.00, 0.72, 0.50, 0.26),
     (-3.70, 0.82, 1.38, 1.50, 1.84, 1.92, 0.28, 0.72, 0.70, 0.40, 0.20),  # tail boom
     (-5.25, 0.74, 1.30, 1.42, 1.66, 1.72, 0.20, 0.52, 0.50, 0.32, 0.15),
     (-6.15, 0.70, 1.22, 1.38, 1.64, 1.70, 0.18, 0.44, 0.42, 0.27, 0.13),
