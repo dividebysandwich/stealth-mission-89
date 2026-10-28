@@ -584,36 +584,8 @@ pub fn build(a: &Airfield) -> Geom {
         }
     }
 
-    // Helipad: square pad, white H and touchdown circle, green perimeter lights.
     if let Some((c, d)) = a.helipad {
-        let (dx, dy) = (d, d.perp());
-        let corner = |x: f64, y: f64| c + dx * x + dy * y;
-        g.ground(
-            PAD,
-            &[corner(-14.0, -14.0), corner(14.0, -14.0), corner(14.0, 14.0), corner(-14.0, 14.0)]
-                .map(|p| f.at(p, PAD_Y + 0.03)),
-        );
-        let y = PAD_Y + 0.08;
-        for (p, q) in
-            [((-4.0, -5.0), (4.0, -5.0)), ((-4.0, 5.0), (4.0, 5.0)), ((0.0, -5.0), (0.0, 5.0))]
-        {
-            g.line(WHITE, f.at(corner(p.0, p.1), y), f.at(corner(q.0, q.1), y));
-        }
-        for i in 0..16 {
-            let (a0, a1) = (
-                i as f64 / 16.0 * std::f64::consts::TAU,
-                (i + 1) as f64 / 16.0 * std::f64::consts::TAU,
-            );
-            g.line(
-                WHITE,
-                f.at(c + DVec2::from_angle(a0) * 10.0, y),
-                f.at(c + DVec2::from_angle(a1) * 10.0, y),
-            );
-        }
-        for i in 0..8 {
-            let p = c + DVec2::from_angle(i as f64 / 8.0 * std::f64::consts::TAU) * 14.5;
-            g.lamp(GREEN, f.at(p, PAD_Y + 0.4));
-        }
+        helipad(&mut g, &f, c, d);
     }
     for &p in &a.floods {
         g.line(STRUCTURE, f.at(p, 0.0), f.at(p, 22.0));
@@ -624,6 +596,39 @@ pub fn build(a: &Airfield) -> Geom {
         building(b, &f, &mut g);
     }
     g
+}
+
+/// A helipad at `c` (metres east, north) facing `d`: square pad, white H and touchdown circle,
+/// green perimeter lights (an airfield's, or a new air defence site's in the field).
+pub(super) fn helipad(g: &mut Geom, f: &Frame, c: DVec2, d: DVec2) {
+    let (dx, dy) = (d, d.perp());
+    let corner = |x: f64, y: f64| c + dx * x + dy * y;
+    g.ground(
+        PAD,
+        &[corner(-14.0, -14.0), corner(14.0, -14.0), corner(14.0, 14.0), corner(-14.0, 14.0)]
+            .map(|p| f.at(p, PAD_Y + 0.03)),
+    );
+    let y = PAD_Y + 0.08;
+    for (p, q) in
+        [((-4.0, -5.0), (4.0, -5.0)), ((-4.0, 5.0), (4.0, 5.0)), ((0.0, -5.0), (0.0, 5.0))]
+    {
+        g.line(WHITE, f.at(corner(p.0, p.1), y), f.at(corner(q.0, q.1), y));
+    }
+    for i in 0..16 {
+        let (a0, a1) = (
+            i as f64 / 16.0 * std::f64::consts::TAU,
+            (i + 1) as f64 / 16.0 * std::f64::consts::TAU,
+        );
+        g.line(
+            WHITE,
+            f.at(c + DVec2::from_angle(a0) * 10.0, y),
+            f.at(c + DVec2::from_angle(a1) * 10.0, y),
+        );
+    }
+    for i in 0..8 {
+        let p = c + DVec2::from_angle(i as f64 / 8.0 * std::f64::consts::TAU) * 14.5;
+        g.lamp(GREEN, f.at(p, PAD_Y + 0.4));
+    }
 }
 
 /// The approach lighting beyond one runway end (`end` -1 or 1), around the runway centre like

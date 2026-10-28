@@ -122,7 +122,8 @@ impl Scenery {
             .net
             .building_index
             .around(p - near, p + near)
-            .map(|i| &self.net.buildings[i as usize]);
+            .map(|i| &self.net.buildings[i as usize])
+            .filter(|b| !self.cleared(b.p));
         let airfields = self
             .airfields
             .iter()
@@ -161,7 +162,8 @@ impl Scenery {
             .net
             .building_index
             .around(p - near, p + near)
-            .map(|i| &self.net.buildings[i as usize]);
+            .map(|i| &self.net.buildings[i as usize])
+            .filter(|b| !self.cleared(b.p));
         let airfields = self
             .airfields
             .iter()
