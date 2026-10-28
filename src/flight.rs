@@ -570,8 +570,10 @@ fn handle_actions(
             Action::Brakes => a.brakes = !a.brakes,
             // Bay doors (8) are run by the combat simulation, which mirrors them into `bay_open`.
             Action::Autopilot if !a.damage.autopilot_failed => {
-                // Holds the current altitude, at least 500 ft.
-                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(500.0) };
+                // Holds the altitude it was engaged at (terrain following: at least 500 ft, where
+                // the radar has no command). Above 0, which is off.
+                let floor = if k.terrain_following { 500.0 } else { 1.0 };
+                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(floor) };
             }
             _ => {}
         }
@@ -1110,6 +1112,18 @@ mod tests {
         a.autopilot_alt = a.view_z();
         a.waypoint_bearing = 0.0;
         a
+    }
+
+    /// The autopilot holds a low altitude (both models; the classic one's sits some 50 ft under
+    /// at any altitude).
+    #[test]
+    fn autopilot_holds_a_low_altitude() {
+        for (classic, within) in [(false, 10.0), (true, 60.0)] {
+            let (a, _) = fly(classic, level(airborne(200.0, 400.0, 70.0)), 60.0, 1, |_, _| {});
+            println!("classic {classic}: 200 ft held: {:.0} ft {:.0} kt", a.altitude, a.knots());
+            assert!(a.autopilot() && a.ended.is_none(), "classic {classic}");
+            assert!((a.altitude - 200.0).abs() < within, "classic {classic}: {}", a.altitude);
+        }
     }
 
     #[test]

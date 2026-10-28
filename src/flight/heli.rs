@@ -18,9 +18,9 @@
 //!   raising the collective needs left pedal. Past the torque limit the rotor speed droops. Out
 //!   of fuel, the rotor keeps turning only in a descent with the collective down.
 //! - Autopilot (`Aircraft::autopilot`): flies to the waypoint at the speed it was engaged at
-//!   (within `AP_KNOTS`) and holds the altitude with the collective, at least `AP_CLEARANCE`
-//!   over the ground below; slow, it turns on the pedals before it picks up speed. The cyclic,
-//!   the collective keys or the lever moved take it out.
+//!   (within `AP_KNOTS`) and holds the altitude it was engaged at with the collective; slow, it
+//!   turns on the pedals before it picks up speed. The cyclic, the collective keys or the lever
+//!   moved take it out.
 //! - Ground: wheels anywhere flat; touching down too hard, too fast or tilted is a crash (none
 //!   with the "no crashes" landing skill). A helicopter needs no runway: the base it lands at is
 //!   its whole airfield (`landing_corridor`).
@@ -32,7 +32,7 @@ use bevy::prelude::*;
 
 use super::{
     Aircraft, FlightConstants, FlightControls, FlightEnd, Theater, WorldPos, bam, bevy_to_wu,
-    ground_contact, stick_released, view_z, wu_to_bevy,
+    ground_contact, stick_released, wu_to_bevy,
 };
 
 const G: f32 = 32.174;
@@ -248,22 +248,22 @@ const WHEEL_YAW_GRIP: f32 = 2.0;
 pub const COLLECTIVE_RATE: f32 = 40.0;
 
 /// Autopilot: the slowest it flies to the waypoint, and how far under the retreating blade
-/// stall it stays (knots); the least height over the ground below (ft).
+/// stall it stays (knots).
 const AP_KNOTS: (f32, f32) = (80.0, 30.0);
-const AP_CLEARANCE: f32 = 150.0;
 /// Cyclic deflection and collective lever travel that take the autopilot out.
 const AP_STICK: f32 = 0.06;
 const AP_LEVER: f32 = 0.05;
 
-/// Engages the autopilot (airborne only): it holds the altitude, at least `AP_CLEARANCE` over
-/// the ground, and the speed (within `AP_KNOTS`).
+/// Engages the autopilot (airborne only): it holds the altitude and the speed (within
+/// `AP_KNOTS`).
 pub(super) fn engage_autopilot(a: &mut Aircraft, r: &Rotor) {
     if a.on_ground || !a.heli.init {
         return;
     }
     let knots =
         (a.heli.vel.with_y(0.0).length() / KNOT).clamp(AP_KNOTS.0, r.stall_knots.0 - AP_KNOTS.1);
-    a.autopilot_alt = a.view_z().max(view_z(a.ground_altitude + AP_CLEARANCE));
+    // Above 0, which is off.
+    a.autopilot_alt = a.view_z().max(1.0);
     a.heli.ap = Some(Autopilot { speed: knots * KNOT, lever: None, pitch: 0.0, pedal: 0.0 });
 }
 
@@ -303,10 +303,8 @@ fn autopilot(a: &mut Aircraft, ap: &mut Autopilot, dt: f32) -> (f32, f32, f32, f
     ap.pedal = (ap.pedal + 0.6 * yaw_err * dt).clamp(-0.6, 0.6);
     let pedal = ap.pedal + yaw_err + (1.0 - fast) * rates.y;
 
-    // Collective: the climb rate towards the altitude (over the ground below), the collective
-    // integrating it.
-    let target = a.autopilot_alt.max(view_z(a.ground_altitude + AP_CLEARANCE));
-    let climb = (0.25 * (target - a.view_z())).clamp(-15.0, 15.0);
+    // Collective: the climb rate towards the altitude, the collective integrating it.
+    let climb = (0.25 * (a.autopilot_alt - a.view_z())).clamp(-15.0, 15.0);
     let err = climb - vel.y;
     a.set_thrust = (a.set_thrust + 1.0 * err * dt).clamp(0.0, 100.0);
     let c = (a.set_thrust / 100.0 + 0.015 * err).clamp(0.0, 1.0);
@@ -1050,6 +1048,23 @@ mod tests {
                 assert!((a.knots() - want).abs() < 5.0, "{name} {case}: {} kt", a.knots());
             }
         }
+    }
+
+    /// Engaged low it holds that altitude, not climbing to a floor.
+    #[test]
+    fn autopilot_holds_a_low_altitude() {
+        let k = FlightConstants::rah66();
+        let r = k.heli.unwrap();
+        let mut a0 = hovering(60.0);
+        a0.set_thrust = r.hover_collective() * 100.0;
+        a0.gear_down = false;
+        let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+        engage_autopilot(&mut a, &r);
+        let mut worst = 0.0f32;
+        let (a, _) = fly_as(k, a, 60.0, 1, |a, _| worst = worst.max((a.altitude - 60.0).abs()));
+        println!("engaged at 60 ft: {:.0} kt alt {:.0} (worst {worst:.0})", a.knots(), a.altitude);
+        assert!(a.autopilot() && a.ended.is_none());
+        assert!(worst < 20.0 && (a.altitude - 60.0).abs() < 5.0, "alt {}", a.altitude);
     }
 
     /// The cyclic or the collective takes the autopilot out; on the ground it does not engage.
