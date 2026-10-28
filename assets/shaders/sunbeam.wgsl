@@ -47,9 +47,7 @@ fn vertex(v: Vertex) -> VertexOutput {
 }
 
 // Light scattered per metre of the beam crossed.
-const DENSITY: f32 = 1.0 / 300.0;
-// Brightness of a thick beam in full sun.
-const GAIN: f32 = 1.5;
+const DENSITY: f32 = 1.0 / 600.0;
 
 @fragment
 fn fragment(in: VertexOutput, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
@@ -105,10 +103,10 @@ fn fragment(in: VertexOutput, @builtin(front_facing) front: bool) -> @location(0
     let fall = smoothstep(0.0, 0.06 * len, along) * exp(-1.2 * along / len)
         * (1.0 - smoothstep(0.8 * len, len, along));
     // Forward scattering: towards the sun (up the beam) brighter.
-    let towards = 0.5 + 0.5 * pow(max(dot(d, -in.axis), 0.0), 4.0);
+    let towards = 0.35 + 0.65 * pow(max(dot(d, -in.axis), 0.0), 4.0);
     let haze = exp(-length(mid - eye) / material.params.y);
     let light = 1.0 - exp(-(t.y - t.x) * across * DENSITY);
-    let alpha = GAIN * material.params.x * light * fall * towards * haze;
+    let alpha = material.params.x * light * fall * towards * haze;
     if (alpha < 0.002) {
         discard;
     }
