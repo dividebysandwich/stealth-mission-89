@@ -50,8 +50,9 @@ const HOOK_FEET: f32 = 50.0;
 const HOOK_KNOTS: f32 = 15.0;
 /// The four strops meet this far above the crate's top (metres).
 const APEX: f32 = 2.0;
-/// The crates of a base stand this far apart in their row (metres).
-const ROW_SPACING: f64 = 6.0;
+/// The crates of a base stand this far apart in their row (metres): well clear of each other's
+/// hook reach, so hovering over one never picks its neighbour.
+const ROW_SPACING: f64 = 30.0;
 /// Physics step (s); the swing's damping (1/s, relative to the hook), the air's drag and the
 /// ground's friction (1/s).
 const STEP: f64 = 1.0 / 120.0;
