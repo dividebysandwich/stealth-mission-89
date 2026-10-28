@@ -286,6 +286,9 @@ pub fn spawn_crate(
     let mut g = Geom::default();
     let foot = geom::rect(Vec3::ZERO, Vec2::NEG_Y, l, w);
     g.block(CRATE_PAINT, CRATE_PAINT + 1, &foot, -h * 0.5, h * 0.5);
+    // Its floor too (a block stands on the ground; a crate is seen from below in the air).
+    let floor: Vec<Vec3> = foot.iter().map(|p| *p - Vec3::Y * h * 0.5).collect();
+    g.face(CRATE_PAINT + 2, &floor, Vec3::NEG_Y);
     // Two straps round it, a little proud of the faces.
     for t in [-0.3, 0.3] {
         let z = -t * l;
