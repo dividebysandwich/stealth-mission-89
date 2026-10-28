@@ -107,6 +107,8 @@ pub struct Settings {
     pub tooltips: bool,
     /// Name labels over the other players' aircraft in multiplayer (on by default).
     pub player_labels: bool,
+    /// Their size (1: 100%).
+    pub player_label_size: f32,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -126,6 +128,10 @@ pub struct Settings {
 pub const DEFAULT_VR_COCKPIT_SCALE: f32 = 1.0;
 /// Range of the VR cockpit size.
 pub const VR_COCKPIT_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.7..=1.5;
+
+/// Default and range of the player labels' size.
+pub const DEFAULT_PLAYER_LABEL_SIZE: f32 = 0.5;
+pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
 
 /// What the next flight looks like (filled by the menu or command-line flags).
 #[derive(Resource, Debug, Clone)]
@@ -276,6 +282,7 @@ impl Settings {
                 .unwrap_or_default(),
             tooltips: true,
             player_labels: true,
+            player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,

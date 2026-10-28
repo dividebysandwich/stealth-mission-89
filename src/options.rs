@@ -19,7 +19,7 @@ use bevy_egui::egui;
 use crate::menu::{
     AMBER, BRIGHT, DIM, GREEN, big_button, facts, menu_window, section, slide_switch,
 };
-use crate::settings::{Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 #[derive(Resource, Default)]
 pub struct OptionsWindow {
@@ -204,6 +204,19 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         &["Multiplayer: the other pilots' names over their aircraft, however far away"],
     )
     .changed();
+    let mut percent = s.player_label_size * 100.0;
+    let range = PLAYER_LABEL_SIZE_RANGE.start() * 100.0..=PLAYER_LABEL_SIZE_RANGE.end() * 100.0;
+    ui.indent("label_size", |ui| {
+        let slider = egui::Slider::new(&mut percent, range).step_by(10.0).fixed_decimals(0);
+        let resp = facts(
+            ui.add_enabled(s.player_labels, slider.suffix("%")),
+            &["Size of the player labels", "50%: the default"],
+        );
+        if resp.changed() {
+            s.player_label_size = percent / 100.0;
+            toggled = true;
+        }
+    });
     section(ui, "VR cockpit size");
     let mut percent = s.vr_cockpit_scale * 100.0;
     let range = VR_COCKPIT_SCALE_RANGE.start() * 100.0..=VR_COCKPIT_SCALE_RANGE.end() * 100.0;

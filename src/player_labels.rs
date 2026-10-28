@@ -1,7 +1,7 @@
 //! Multiplayer: the other pilots' names over their aircraft, so a wingman is found however far
 //! away (on the screen and in the headset alike). Each name is a small sign facing the eye,
 //! kept the same size on the screen at any distance and lifted above the aircraft (and above
-//! its far-away dot). Switched off with the GAME options' player labels.
+//! its far-away dot). Switched off, and sized, with the GAME options' player labels.
 
 use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilitySystems};
 use bevy::image::ImageSampler;
@@ -24,7 +24,8 @@ const GLYPH: f32 = 40.0;
 const PEN: f32 = 5.0;
 const OUTLINE: f32 = 13.0;
 const PAD: f32 = 10.0;
-/// The canvas's height seen from the eye (radians): the same on the screen at any distance.
+/// The canvas's height seen from the eye (radians) at 100% size: the same on the screen at any
+/// distance.
 const ANGLE: f32 = 0.03;
 /// The label's middle above the aircraft's: metres, and label heights (clearing the dot).
 const LIFT: f32 = 6.0;
@@ -134,13 +135,16 @@ fn labels(
             *label = Label { id: p.id, name, aspect };
         }
         let (pos, _) = crate::sim_render::remote_pose(&combat, p);
-        let height = (pos - eye).length() as f32 * ANGLE;
+        let height = (pos - eye).length() as f32 * ANGLE * settings.player_label_size;
         let at = pos + DVec3::Y * (LIFT + height * LIFT_HEIGHTS) as f64;
         let rel = (at - origin.origin).as_vec3();
         // Its front (+Z) towards the eye, upright.
         let away = (at - eye).as_vec3();
-        let mut t = Transform::from_translation(rel)
-            .with_scale(Vec3::new(height * label.aspect, height, 1.0));
+        let mut t = Transform::from_translation(rel).with_scale(Vec3::new(
+            height * label.aspect,
+            height,
+            1.0,
+        ));
         if away.length_squared() > 1e-6 {
             t = t.looking_to(away, Vec3::Y);
         }

@@ -49,7 +49,7 @@ use crate::cockpit3d::{
 };
 use crate::font::{Align, capital, stroke_has, stroke_text_at};
 use crate::input::{Action, ActionEvent, InputBlock};
-use crate::settings::{AppState, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 pub struct FlightMenuPlugin;
 
@@ -145,7 +145,17 @@ impl Page {
                 Open(Page::Sound),
                 Open(Page::Controls),
             ],
-            Page::Game => &[Back, Cockpit, Hud, Avionics, AutoTrim, Tooltips, PlayerLabels, CockpitSize],
+            Page::Game => &[
+                Back,
+                Cockpit,
+                Hud,
+                Avionics,
+                AutoTrim,
+                Tooltips,
+                PlayerLabels,
+                LabelSize,
+                CockpitSize,
+            ],
             Page::Graphics => {
                 use crate::effects::Effect as E;
                 &[
@@ -266,6 +276,7 @@ enum Item {
     AutoTrim,
     Tooltips,
     PlayerLabels,
+    LabelSize,
     CockpitSize,
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
@@ -298,6 +309,7 @@ impl Item {
             Item::AutoTrim => "AUTO TRIM",
             Item::Tooltips => "TOOLTIPS",
             Item::PlayerLabels => "PLAYER LABELS",
+            Item::LabelSize => "LABEL SIZE",
             Item::CockpitSize => "COCKPIT SIZE",
             Item::Effect(e) => e.menu_label(),
             Item::Volume(Vol::Master) => "MASTER VOLUME",
@@ -327,6 +339,7 @@ impl Item {
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
             Item::PlayerLabels => on(s.player_labels),
+            Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
@@ -337,7 +350,8 @@ impl Item {
         }
     }
 
-    /// The cockpit size and the automatic scenery detail only matter in the headset, the cockpit style only for aircraft with
+    /// The cockpit size and the automatic scenery detail only matter in the headset, the label
+    /// size only with the player labels on, the cockpit style only for aircraft with
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
     /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
@@ -346,6 +360,7 @@ impl Item {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
             Item::CockpitSize | Item::AutoDetail => s.vr,
+            Item::LabelSize => s.player_labels,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
@@ -1075,6 +1090,10 @@ fn navigate(
         Item::CockpitSize => {
             s.vr_cockpit_scale = (s.vr_cockpit_scale + 0.05 * dir)
                 .clamp(*VR_COCKPIT_SCALE_RANGE.start(), *VR_COCKPIT_SCALE_RANGE.end());
+        }
+        Item::LabelSize => {
+            s.player_label_size = (s.player_label_size + 0.1 * dir)
+                .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
         }
         Item::Volume(v) => {
             let v = v.get(s);
