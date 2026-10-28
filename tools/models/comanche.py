@@ -107,10 +107,14 @@ RADOME = (3.80, 4.58, 0.64, 0.34)
 # Gear: main wheel axles (x, y, z) and radius, width; the tail wheel.
 MAIN_WHEEL, MAIN_R, MAIN_W = (1.10, 1.30, 0.28), 0.28, 0.16
 TAIL_WHEEL, TAIL_R = (0.0, -5.40, 0.18), 0.18
-# Bay doors: hinge at the chine and the lower edge at the belly corner (x, z), fore and aft
-# ends; the open angles of the variants (degrees, swung up and out).
-BAY_HINGE, BAY_EDGE, BAY_Y = (1.12, 1.37), (0.49, 0.72), (0.70, -1.40)
-BAY_ANGLES = (0, 70, 135)
+# Bay doors: a thick piece of the body, the lower side from the chine to the belly corner and a
+# strip of the belly, hinged at the chine. The hinge, the belly corner and the strip's inner edge
+# (x, z), fore and aft ends, thickness; the open angles of the variants (degrees, swung up and out,
+# open to about 10 degrees below level, with the belly strip turned down at the outer end like a
+# lip).
+BAY_HINGE, BAY_EDGE, BAY_LIP = (1.12, 1.37), (0.49, 0.71), (0.30, 0.71)
+BAY_Y, BAY_T = (0.70, -1.40), 0.07
+BAY_ANGLES = (0, 70, 124)
 # Tail: the fin's sections (leading edge y, trailing edge y, z, half thickness) from the top of
 # the boom, over the shroud, to the tip; the stabiliser's leading edge, chords, half span and
 # height; the end plates' bottom and top (leading edge y, trailing edge y, z, half span).
@@ -251,39 +255,52 @@ def tail(level):
     return g
 
 
-def door_frame(sx, angle):
-    """A bay door's hinge point, its unit vector from the hinge to the lower edge and its inner
-    normal, swung `angle` degrees up and out (`sx` -1 left, 1 right)."""
-    (hx, hz), (ex, ez) = BAY_HINGE, BAY_EDGE
-    u = Vector((ex - hx, 0, ez - hz)).normalized()
-    inward = Vector((u.z, 0, -u.x))  # u turned 90 degrees towards the inside (up and in)
+def door_section(sx, angle):
+    """A bay door's cross-section swung `angle` degrees up and out (`sx` -1 left, 1 right): the
+    outer skin (hinge, belly corner, lip edge) and the inner face behind it, as (x, z) Vectors, and
+    the inner normals of the side and the belly strip."""
+    hinge, edge, lip = (Vector((x, 0, z)) for x, z in (BAY_HINGE, BAY_EDGE, BAY_LIP))
+    # Normals pointing into the body: the side's up and in, the belly strip's up.
+    n1 = (edge - hinge).normalized()
+    n1 = Vector((n1.z, 0, -n1.x))
+    n2 = Vector((0, 0, 1))
+    outer = [hinge, edge, lip]
+    inner = [hinge + n1 * BAY_T, edge + (n1 + n2) * (BAY_T / (1 + n1.dot(n2))), lip + n2 * BAY_T]
     a = math.radians(angle)
-    # Right side, seen from the front: turning u from down-and-in through straight down to
-    # level outwards.
+    # Right side, seen from the front: turning about the hinge from down-and-in through straight
+    # down to up and out.
     rot = lambda v: Vector((v.x * math.cos(a) - v.z * math.sin(a), 0, v.x * math.sin(a) + v.z * math.cos(a)))
-    u, inward = rot(u), rot(inward)
-    hinge = Vector((hx, 0, hz))
-    width = (Vector((ex, 0, ez)) - Vector((hx, 0, hz))).length
-    m = lambda v: Vector((sx * v.x, v.y, v.z))
-    return m(hinge), m(u), m(inward), width
+    m = lambda v: Vector((sx * v.x, 0, v.z))
+    swing = lambda p: m(hinge + rot(p - hinge))
+    return [swing(p) for p in outer], [swing(p) for p in inner], m(rot(n1)), m(rot(n2))
 
 
 def door(sx, angle):
     g = Geo()
-    hinge, u, inward, width = door_frame(sx, angle)
-    out = -inward * 0.012
     y0, y1 = BAY_Y
-    pts = [hinge + Vector((0, y0, 0)), hinge + Vector((0, y1, 0)), hinge + u * width + Vector((0, y1, 0)), hinge + u * width + Vector((0, y0, 0))]
+    at = lambda p, y: p + Vector((0, y, 0))
+    outer, inner, n1, n2 = door_section(sx, 0)
+    # Seams of the shut door, or the dark bay of the open one, just outside the skin.
+    out = [outer[0] - n1 * 0.015, outer[1] - (n1 + n2) * 0.015, outer[2] - n2 * 0.015]
     if angle == 0:
-        for a, b in zip(pts, pts[1:] + pts[:1]):
-            g.line(a + out, b + out, SEAM)
+        loop = [at(p, y0) for p in out] + [at(p, y1) for p in reversed(out)]
+        for p, q in zip(loop, loop[1:] + loop[:1]):
+            g.line(p, q, SEAM)
         return g
-    # The door (painted outside, the inside darker) and the dark bay behind it.
-    g.face([p + out for p in pts], BODY, hinge + inward)
-    g.face([p + out * 0.5 for p in pts], DARK, hinge - inward * 2)
-    h0, u0, inward0, _ = door_frame(sx, 0)
-    bay = [h0 + Vector((0, y0, 0)), h0 + Vector((0, y1, 0)), h0 + u0 * width + Vector((0, y1, 0)), h0 + u0 * width + Vector((0, y0, 0))]
-    g.face([p - inward0 * 0.01 for p in bay], DARK, h0 + inward0)
+    for k in range(2):
+        g.face([at(out[k], y0), at(out[k + 1], y0), at(out[k + 1], y1), at(out[k], y1)], DARK, at(inner[k], 0))
+    # The door: the skin outside, the inner face darker, the hinge and lip edges and the ends.
+    outer, inner, _, _ = door_section(sx, angle)
+    for k in range(2):
+        o0, o1, i0, i1 = outer[k], outer[k + 1], inner[k], inner[k + 1]
+        g.face([at(o0, y0), at(o1, y0), at(o1, y1), at(o0, y1)], BODY, at((i0 + i1) / 2, (y0 + y1) / 2))
+        g.face([at(i0, y0), at(i1, y0), at(i1, y1), at(i0, y1)], DARK, at((o0 + o1) / 2, (y0 + y1) / 2))
+        for y, other in ((y0, y1), (y1, y0)):
+            g.face([at(o0, y), at(o1, y), at(i1, y), at(i0, y)], BODY, at((o0 + i1) / 2, other))
+    for k in (0, 2):
+        o, i = outer[k], inner[k]
+        mid = at(sum(outer, Vector()) / 3, (y0 + y1) / 2)
+        g.face([at(o, y0), at(i, y0), at(i, y1), at(o, y1)], BODY, mid)
     return g
 
 
@@ -312,18 +329,26 @@ def stinger(p, level):
 
 
 def stores(sx, angle, kind, level):
-    """The stores on a door: `kind` 0 three Hellfires, 1 six Stingers."""
+    """The stores hanging on rails under a door's inner face: `kind` 0 three Hellfires, 1 six
+    Stingers."""
     g = Geo()
-    hinge, u, inward, width = door_frame(sx, angle)
+    _, inner, n1, _ = door_section(sx, angle)
     nose_y = BAY_Y[0] - 0.20
-    if kind == 0:
-        for s in (0.17, 0.45, 0.73):
-            c = hinge + u * width * s + inward * 0.13
+    # The inner face looks down once the door is open.
+    down = n1
+    for s, r, gap, length in ([(s, 0.089, 0.05, 1.63) for s in (0.2, 0.5, 0.8)] if kind == 0
+                               else [(0.12 + 0.152 * k, 0.035, 0.03, 1.52) for k in range(6)]):
+        top = inner[0] + (inner[1] - inner[0]) * s
+        c = top + down * (r + gap)
+        if kind == 0:
             g.add(hellfire((c.x, nose_y, c.z), level))
-    else:
-        for k in range(6):
-            c = hinge + u * width * (0.12 + 0.152 * k) + inward * 0.07
+        else:
             g.add(stinger((c.x, nose_y - 0.05, c.z), level))
+        if level == 0:
+            # The launcher rail from the door down to the store.
+            y0, y1 = nose_y - 0.25, nose_y - length + 0.25
+            g.face2([top + Vector((0, y0, 0)), top + Vector((0, y1, 0)), top + down * gap + Vector((0, y1, 0)),
+                     top + down * gap + Vector((0, y0, 0))], METAL)
     return g
 
 
