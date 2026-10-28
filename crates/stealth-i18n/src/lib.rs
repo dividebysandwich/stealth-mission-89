@@ -424,6 +424,21 @@ pub fn tr(id: &str) -> &'static str {
     tr_in(language(), id)
 }
 
+/// A language's line in the OPTIONS list: its own name, then its name in the player's
+/// language in parentheses ("Deutsch (German)"), kept for the rest of the run.
+pub fn list_name(l: Language) -> &'static str {
+    static CACHE: LazyLock<RwLock<HashMap<(Language, Language), &'static str>>> =
+        LazyLock::new(Default::default);
+    let current = language();
+    if let Some(s) = CACHE.read().unwrap().get(&(current, l)) {
+        return s;
+    }
+    let name = tr_in(current, &format!("lang-name-{}", l.code()));
+    let s: &'static str = Box::leak(format!("{} ({name})", l.native_name()).into_boxed_str());
+    CACHE.write().unwrap().insert((current, l), s);
+    s
+}
+
 /// A message of several lines (the facts under a menu choice), one string per line, kept for
 /// the rest of the run.
 pub fn tr_lines_in(l: Language, id: &str) -> &'static [&'static str] {

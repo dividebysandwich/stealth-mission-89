@@ -154,3 +154,36 @@ effect-vga = VGA colours
 effect-scanlines = Scanlines
     .facts =
         A CRT monitor's scanlines (not in VR)
+
+## LANGUAGE NAMES
+
+lang-name-en = engleză
+lang-name-bg = bulgară
+lang-name-zh-Hans = chineză (simplificată)
+lang-name-hr = croată
+lang-name-cs = cehă
+lang-name-da = daneză
+lang-name-nl = olandeză
+lang-name-et = estonă
+lang-name-fi = finlandeză
+lang-name-fr = franceză
+lang-name-de = germană
+lang-name-el = greacă
+lang-name-hu = maghiară
+lang-name-id = indoneziană
+lang-name-ga = irlandeză
+lang-name-it = italiană
+lang-name-ja = japoneză
+lang-name-ko = coreeană
+lang-name-lv = letonă
+lang-name-lt = lituaniană
+lang-name-mt = malteză
+lang-name-pl = poloneză
+lang-name-pt-BR = portugheză (Brazilia)
+lang-name-ro = română
+lang-name-ru = rusă
+lang-name-sk = slovacă
+lang-name-sl = slovenă
+lang-name-es = spaniolă
+lang-name-sv = suedeză
+lang-name-uk = ucraineană

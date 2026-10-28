@@ -252,15 +252,26 @@ mod tests {
     /// The names of the languages are drawn by the fonts egui has in every language.
     #[test]
     fn the_options_list_is_drawable() {
-        for l in Language::ALL {
-            let text = l.native_name();
-            let drawn = |bytes: &[u8]| {
-                let face = ttf_parser::Face::parse(bytes, 0).unwrap();
-                text.chars().all(|c| face.glyph_index(c).is_some())
-            };
-            let fonts = std::iter::once(epaint_default_fonts::HACK_REGULAR)
-                .chain(CJK.into_iter().filter_map(cjk_font));
-            assert!(fonts.into_iter().any(drawn), "{}: {text}", l.code());
+        for current in Language::ALL {
+            for l in Language::ALL {
+                let name = stealth_i18n::tr_in(current, &format!("lang-name-{}", l.code()));
+                let text = format!("{} ({name})", l.native_name());
+                let faces: Vec<_> = std::iter::once(epaint_default_fonts::HACK_REGULAR)
+                    .chain(CJK.into_iter().filter_map(cjk_font))
+                    .map(|bytes| ttf_parser::Face::parse(bytes, 0).unwrap())
+                    .collect();
+                // egui falls back from a font to the next one for each character.
+                let missing: Vec<char> = text
+                    .chars()
+                    .filter(|&c| !faces.iter().any(|f| f.glyph_index(c).is_some()))
+                    .collect();
+                assert!(
+                    missing.is_empty(),
+                    "{} in {}: {text} {missing:?}",
+                    l.code(),
+                    current.code()
+                );
+            }
         }
     }
 }

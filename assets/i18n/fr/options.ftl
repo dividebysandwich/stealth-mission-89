@@ -154,3 +154,36 @@ effect-vga = Couleurs VGA
 effect-scanlines = Lignes de balayage
     .facts =
         Les lignes de balayage d'un moniteur cathodique (pas en VR)
+
+## LANGUAGE NAMES
+
+lang-name-en = anglais
+lang-name-bg = bulgare
+lang-name-zh-Hans = chinois (simplifié)
+lang-name-hr = croate
+lang-name-cs = tchèque
+lang-name-da = danois
+lang-name-nl = néerlandais
+lang-name-et = estonien
+lang-name-fi = finnois
+lang-name-fr = français
+lang-name-de = allemand
+lang-name-el = grec
+lang-name-hu = hongrois
+lang-name-id = indonésien
+lang-name-ga = irlandais
+lang-name-it = italien
+lang-name-ja = japonais
+lang-name-ko = coréen
+lang-name-lv = letton
+lang-name-lt = lituanien
+lang-name-mt = maltais
+lang-name-pl = polonais
+lang-name-pt-BR = portugais (Brésil)
+lang-name-ro = roumain
+lang-name-ru = russe
+lang-name-sk = slovaque
+lang-name-sl = slovène
+lang-name-es = espagnol
+lang-name-sv = suédois
+lang-name-uk = ukrainien

@@ -15,7 +15,7 @@
 
 use bevy::prelude::*;
 use bevy_egui::egui;
-use stealth_i18n::{Language, t, t_lines};
+use stealth_i18n::{Language, list_name, t, t_lines};
 
 use crate::menu::{
     AMBER, BRIGHT, DIM, GREEN, big_button, facts, menu_window, section, slide_switch,
@@ -115,7 +115,7 @@ fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str); N]) -> 
 pub fn language_option(ui: &mut egui::Ui, settings: &mut SettingsMut) -> bool {
     section(ui, t!("options-section-language"));
     let mut lang = settings.language;
-    let options = Language::ALL.map(|l| (l, l.native_name(), t_lines!("language.facts")));
+    let options = Language::ALL.map(|l| (l, list_name(l), t_lines!("language.facts")));
     crate::menu::dropdown(ui, "language", &mut lang, options);
     if lang == settings.language {
         return false;
