@@ -1,0 +1,117 @@
+# An treoir eochracha (src/key_guide.rs): leathanach EOCHRACHA an kneeboard agus TREOIR EOCHRACHA
+# an roghchláir eitilte, tarraingthe leis an gcló stróc; ceannteidil na rannán ar liostaí
+# dialóg RIALUITHE freisin. Sna heochracha, ionadaíonn "_" spás (fanann na focail ar an líne chéanna).
+
+kg-vr-controllers = RIALTÓIRÍ VR
+kg-vr-grip = GRIP
+    .desc = Greim a fháil ar an stick, ar an throttle nó ar an kneeboard
+kg-vr-fingertip = BARR_MÉIRE
+    .desc = Brúigh lasca agus cnaipí, cluaisíní an kneeboard
+kg-vr-left-stick = STICK_CLÉ
+    .desc = Bog cúrsóir an braiteora
+kg-vr-stick = STICK
+    .desc = Scrollaigh an liosta seo (méar ar an kneeboard)
+kg-gun-target = Gunna
+kg-mouse = LUCH
+kg-mouse-right-drag = TARRAING_DEIS
+    .desc = Féach timpeall (lasmuigh: fithisigh an ceamara)
+kg-mouse-hold-right = COIMEÁD_DEIS, RUIDEOG
+    .desc = Súmáil an radharc isteach / amach
+kg-mouse-left-click = CLICEÁIL_CHLÉ
+    .desc = Brúigh lasc nó cnaipe cockpit, cluaisín kneeboard
+kg-mouse-point = POINTEÁIL
+    .desc = Leid uirlise ar rialú cockpit (roghchlár: LEIDEANNA UIRLISE)
+kg-mouse-wheel = RUIDEOG
+    .desc = Scrollaigh an liosta seo
+kg-unbound = GAN_CEANGAL
+
+## Rannáin
+
+kg-section-flight = EITILT
+kg-section-aircraft = AERÁRTHACH
+kg-section-weapons = AIRM
+kg-section-targets = SPRIOCANNA
+kg-section-defenses = COSAINTÍ
+kg-section-displays = SCÁILEÁIN
+kg-section-navigation = LOINGSEOIREACHT
+kg-section-views = RADHARCANNA
+kg-section-game = CLUICHE
+
+## Sraitheanna
+
+kg-pitch-down = Srón síos / suas
+kg-roll-left = Roll ar chlé / ar dheis
+kg-yaw-left = Rudar ar chlé / ar dheis
+kg-trim-nose-down = Trim srón síos / suas
+kg-trim-left = Trim ar chlé / ar dheis
+kg-trim-reset = Trim a lárú
+kg-stick-sensitivity = Íogaireacht an stick (dhá bhrú ar eochair stick: uasmhéid)
+kg-throttle-up = Throttle (collective) suas
+kg-throttle-down = Throttle (collective) síos
+kg-throttle-max = Lánchumhacht
+kg-throttle-idle = Díomhaoin
+kg-autopilot = Uathphíolóta go dtí an waypoint
+kg-gear = Gear tuirlingthe
+kg-flaps = Flaps
+kg-brakes = Coscáin rotha, speed brake
+kg-bay-doors = Doirse chlós na n-arm
+kg-master-caution = Master caution: ciúnaigh na hatharthaí
+kg-eject = Díbirt
+kg-select-weapon = An chéad arm eile
+kg-fire-weapon = Lámhach an t-arm roghnaithe
+kg-gun = Lámhach an gunna
+kg-bomb-mode = Mód buamála CCIP / CCRP
+kg-nearest-target = Glasáil ar an sprioc is gaire chun tosaigh
+kg-select-target = An chéad sprioc eile
+kg-designate-target = Sprioc nua a ainmniú
+kg-clear-target = Scaoil na glasálacha spriocanna
+kg-cam-ahead = Ceamara rianaithe chun tosaigh
+kg-cam-rear = Ceamara rianaithe chun deiridh
+kg-cam-left = Ceamara rianaithe ar chlé
+kg-cam-right = Ceamara rianaithe ar dheis
+kg-camera-zoom-in = Súmáil an cheamara isteach / amach
+kg-lock-cursor = Glasáil ar an sprioc faoin gcúrsóir
+kg-swap-soi = An braiteoir spéise (SOI) chuig an MFD eile
+kg-flare = Flare (diúracáin infridhearga)
+kg-chaff = Chaff (diúracáin radair)
+kg-decoy = Decoy
+kg-ir-jammer = Brúchtóir IR ar / as
+kg-ecm = Brúchtóir radair (ECM) ar / as
+kg-hud-mode = Mód HUD NAV / AIR / GND
+kg-hud-declutter = Declutter HUD
+kg-maps = MFD clé: léarscáil / tactúil
+kg-map-zoom-in = Súmáil na léarscáile isteach / amach
+kg-map-orientation = Léarscáil an tuaisceart suas / ceann suas
+kg-ordnance = Leathanach na n-arm
+kg-mission-orders = Orduithe an mhisin
+kg-flir = FLIR ar / as
+kg-nvg = Gloiní amhairc oíche
+kg-ils = Treoir tuirlingthe ILS
+kg-select-waypoint = Leathanach na waypoints
+kg-change-waypoint = Athraigh waypoint
+kg-reset-waypoint = Athshocraigh waypoint
+kg-last-waypoint = An waypoint roimhe / ina dhiaidh
+kg-view-cockpit = Cockpit
+kg-look-ahead = Féach chun tosaigh
+kg-look-left = Féach ar chlé
+kg-look-right = Féach ar dheis
+kg-look-rear = Féach chun deiridh
+kg-view-slot = Radharc slot
+kg-view-chase = Radharc chase
+kg-view-side = Radharc taoibh
+kg-view-missile = Radharc diúracáin
+kg-view-tactical = Radharc tactúil
+kg-view-inverse-tactical = Radharc tactúil droim ar ais
+kg-view-free = Ceamara saor: W/S/A/D/Q/E, luch, ruideog
+kg-zoom = Súmáil isteach / amach
+kg-wide-angle = Uillinn leathan
+kg-menu = Roghchlár socruithe, sos
+kg-kneeboard = Kneeboard
+kg-chat = Comhrá (illúinteoir)
+kg-time-accel = Am níos tapúla / gnáth
+kg-volume = Airde fuaime
+kg-detail = Leibhéal mionsonraí
+kg-day-night = Lá / oíche
+kg-training = Téigh chuig an oiliúint
+kg-resupply = Athsholáthar
+kg-quit = Scoir

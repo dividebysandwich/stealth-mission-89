@@ -1,0 +1,62 @@
+# Simulācijas HUD ziņojumi (crates/stealth-sim). Zīmēti ar lidojuma fontiem: lielie burti,
+# bez garumzīmēm (latīņu valodām; pārējie redz angļu valodu). Vienību, ieroču un vietu nosaukumi
+# tiek nodoti nemainīti.
+
+sim-missile-launch = Raķetes palaišana
+sim-no-flares = Signālraķešu vairs nav
+sim-hind-spotted = Hind jūs pamanīja
+sim-rescue-lost = Glābšanas helikopters zaudēts
+sim-rescued = Izglābts!
+sim-captured = Sagūstīts
+sim-aircraft-destroyed-eject = Lidmašīna iznīcināta - katapultējieties
+sim-fire-out = Ugunsgrēks nodzēsts
+sim-aircraft-exploded = Lidmašīna eksplodēja
+sim-equipment-delivered = Aprīkojums piegādāts
+sim-bad-drop = Neveiksmīga nomešana
+sim-secondary-target = Papildmērķis
+sim-primary-target = Galvenais mērķis
+sim-troops-inserted = Karaspēks izsēdināts
+sim-time-expired = Laiks beidzies
+sim-cargo-delivered = Krava piegādāta
+sim-safe-landing = Droša nosēšanās
+sim-no-target-ahead = Priekšā nav mērķa
+sim-target-obscured = Mērķis aizsegts
+sim-target-photographed = Mērķis nofotografēts.
+sim-drop-supplies = Nometiet krājumus tagad
+sim-no-target = Nav mērķa
+sim-no-target-designated = Mērķis nav norādīts
+sim-bay-closed = Nodalījums aizvērts
+sim-insufficient-altitude = Nepietiekams augstums
+sim-fuel-transfer = Degvielas pārsūknēšana
+sim-stores-exhausted = Bruņojums izlietots
+sim-hit-gunfire = Trāpījums no ložmetēju uguns
+sim-hit-aaa = Trāpījums no AAA
+sim-hit-flak = Trāpījums no zenītuguns
+sim-destroyed = Iznīcināts: { $target }
+sim-landing = { $base } - nosēžas { $aircraft }
+sim-on-final = { $base } - { $aircraft } uz gala taisnes
+sim-taking-off = { $base } - paceļas { $aircraft }
+sim-shot-down = Notriekts: { $target }
+sim-csar-down = Notriekts ienaidnieka teritorijā - CSAR no { $base }
+sim-flare-left = Signālraķete - atlikušas { $count }
+sim-drone-hit-npp = Drons trāpīja kodolrūpnīcai: { $place }
+sim-drone-hit = Drons trāpīja: { $place }
+sim-defense-failed = Aizsardzība neizdevās - cauri izlauzās { $count } droni
+sim-hit-by = Trāpījums: { $weapon }
+sim-target-hit-by = Mērķim { $target } trāpīja: { $weapon }
+sim-ineffective = Neefektīvs
+sim-impact = Trāpījums: { $weapon }
+# Beigu atstarpe ir klasiskās spēles.
+sim-misses = Garām: { $weapon }{" "}
+sim-destroyed-by = { $target } iznīcināts ar: { $weapon }
+sim-ground-impact = Trāpījums zemē: { $weapon }
+sim-detected = Atklāts: { $target }
+sim-radar-id = { $site } - radara identifikācija
+sim-firing = { $site } šauj: { $missile }
+sim-visual-id = Vizuālā identifikācija - { $aircraft }
+sim-fired-by = { $missile } palaidis: { $launcher }
+sim-frame = Kadrs { $frame }
+sim-beacon = Radiobākas azimuts { $bearing }
+sim-fired = Palaists: { $weapon }
+sim-released = Nomests: { $weapon }
+sim-destroyed-gunfire = { $target } iznīcināts ar lielgabalu uguni

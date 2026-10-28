@@ -1,0 +1,62 @@
+# Il-messaġġi HUD tas-simulazzjoni (crates/stealth-sim). Miktuba bil-fonts tat-titjira: bil-kapitali,
+# mingħajr aċċenti (lingwi Latini; l-oħrajn jaraw l-Ingliż). L-ismijiet tal-unitajiet, tal-armi u
+# tal-postijiet jiġu mgħoddija kif inhuma.
+
+sim-missile-launch = Missila tnieda
+sim-no-flares = M'hemmx flares ta' sinjal
+sim-hind-spotted = Hind rak
+sim-rescue-lost = Ħelikopter tas-salvataġġ intilef
+sim-rescued = Salvat!
+sim-captured = Maqbud
+sim-aircraft-destroyed-eject = Inġenju meqrud - Ejetta
+sim-fire-out = Nar maqtugħ
+sim-aircraft-exploded = L-inġenju faqqa'
+sim-equipment-delivered = Tagħmir ikkunsinnat
+sim-bad-drop = Xaljar ħażin
+sim-secondary-target = Mira sekond.
+sim-primary-target = Mira primarja
+sim-troops-inserted = Truppi mwaqqfa
+sim-time-expired = Ħin skadut
+sim-cargo-delivered = Merkanzija kkunsinnata
+sim-safe-landing = Inżul sikur
+sim-no-target-ahead = L-ebda mira quddiem
+sim-target-obscured = Mira mistura
+sim-target-photographed = Mira ritrattata.
+sim-drop-supplies = Xaljar il-provvisti issa
+sim-no-target = L-ebda mira
+sim-no-target-designated = L-ebda mira ddeżinjata
+sim-bay-closed = Bay magħluq
+sim-insufficient-altitude = Altitudni insuffiċjenti
+sim-fuel-transfer = Trasferiment ta' fuel
+sim-stores-exhausted = Armi mistekkija
+sim-hit-gunfire = Milqut minn nar tal-kanun
+sim-hit-aaa = Milqut minn AAA
+sim-hit-flak = Milqut minn flak
+sim-destroyed = { $target } meqrud
+sim-landing = { $base } - { $aircraft } qed jinżel
+sim-on-final = { $base } - { $aircraft } fuq final
+sim-taking-off = { $base } - { $aircraft } qed iqum
+sim-shot-down = { $target } imwaqqa'
+sim-csar-down = Imwaqqa' fit-territorju tal-għadu - CSAR minn { $base }
+sim-flare-left = Flare ta' sinjal - { $count } fadal
+sim-drone-hit-npp = Drone laqat NPP { $place }
+sim-drone-hit = Drone laqat { $place }
+sim-defense-failed = Difiża falliet - { $count } drones għaddew
+sim-hit-by = Milqut minn { $weapon }
+sim-target-hit-by = { $target } milqut minn { $weapon }
+sim-ineffective = Ineffettiv
+sim-impact = Impatt ta' { $weapon }
+# The trailing space is the classic game's.
+sim-misses = { $weapon } jaħlaq{" "}
+sim-destroyed-by = { $target } meqrud minn { $weapon }
+sim-ground-impact = Impatt ta' { $weapon } fl-art
+sim-detected = { $target } skopert
+sim-radar-id = { $site } - Radar ID
+sim-firing = { $site } qed isparra { $missile }
+sim-visual-id = Visual ID - { $aircraft }
+sim-fired-by = { $missile } sparat minn { $launcher }
+sim-frame = Frame { $frame }
+sim-beacon = Beacon tar-radju bearing { $bearing }
+sim-fired = { $weapon } sparat
+sim-released = { $weapon } meħlus
+sim-destroyed-gunfire = { $target } meqrud mill-kanun

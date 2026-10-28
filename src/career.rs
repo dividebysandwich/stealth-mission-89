@@ -120,10 +120,10 @@ pub struct CareerFlight(pub String);
 /// The store directory of the pilots (`stealth_host::store`).
 const PILOTS: &str = "pilots";
 
-/// File key of a pilot name (letters, digits, '-').
+/// File key of a pilot name (letters of any script, digits, '-').
 pub fn file_key(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
+        .flat_map(|c| if c.is_alphanumeric() { c.to_lowercase().collect() } else { vec!['-'] })
         .collect()
 }
 
@@ -563,6 +563,15 @@ pub fn career_ui(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Pilots named in other scripts keep files of their own.
+    #[test]
+    fn pilot_file_keys_keep_every_script() {
+        assert_eq!(file_key("Ace Pilot"), "ace-pilot");
+        assert_ne!(file_key("王小明"), file_key("李四"));
+        assert_ne!(file_key("田中"), file_key("김민수"));
+        assert_eq!(file_key("Ольга"), "ольга");
+    }
 
     fn mission() -> Mission {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/mission");

@@ -1,0 +1,47 @@
+# Meniul din zbor (src/flight_menu.rs), desenat cu fontul vectorial al zborului: majuscule,
+# doar diacriticele limbilor latine.
+
+fm-menu = MENIU
+fm-paused = MENIU  -  PAUZĂ
+fm-campaign-runs = MENIU  -  CAMPANIA CONTINUĂ
+fm-options-page = OPȚIUNI  -  { $page }
+fm-resume = CONTINUĂ
+fm-save-mission = SALVEAZĂ MISIUNEA
+fm-saved = SALVATĂ
+fm-not-saved = NESALVATĂ
+fm-key-guide = GHIDUL TASTELOR
+fm-end-mission = ÎNCHEIE MISIUNEA
+fm-end-sortie = ÎNCHEIE ZBORUL
+fm-exiting = IEȘIRE...
+fm-language = LIMBA
+fm-shaders = SHADERE
+fm-msaa = ANTI-ALIASING
+fm-shadows = UMBRE
+fm-point-lights = LUMINI PUNCTUALE
+fm-time-of-day = ORA ZILEI
+fm-sun-moon = SOARE ȘI LUNĂ
+fm-auto-detail = DETALII AUTO PEISAJ
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONICĂ
+fm-auto-trim = TRIM AUTO
+fm-tooltips = TOOLTIP-URI
+fm-cockpit-size = DIMENSIUNEA COCKPITULUI
+fm-volume-master = VOLUM GENERAL
+fm-volume-engine = MOTOR
+fm-volume-effects = EFECTE
+fm-volume-warnings = ALARME
+fm-low-pass = FILTRU TRECE-JOS MOTOR
+fm-head-tracking = URMĂRIREA CAPULUI
+fm-bindings = TASTE ȘI JOYSTICK
+fm-game-note = MODEL DE ZBOR, TACVIEW: OPȚIUNILE MENIULUI PRINCIPAL
+fm-no-match = NICIUN REZULTAT
+fm-type-to-search = SCRIEȚI PENTRU A CĂUTA
+fm-hint-vr = STICK: DERULARE    CÂMP + TRĂGACI: TASTATURĂ    TRĂGACI: ÎNAPOI
+fm-hint-vr-keyboard = TASTĂ + TRĂGACI: SCRIERE    STICK: DERULARE
+fm-hint-desktop = ROTIȚĂ, SĂGEȚI: DERULARE    ESC, CLIC: ÎNAPOI
+fm-key-space = SPAȚIU
+fm-key-delete = DEL
+fm-key-clear = ȘTERGE
+fm-key-done = GATA
+fm-pull-trigger = APĂSAȚI PE TRĂGACI

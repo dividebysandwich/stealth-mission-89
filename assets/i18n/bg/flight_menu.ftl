@@ -1,0 +1,47 @@
+# Менюто по време на полет (src/flight_menu.rs), изчертано с щриховия шрифт на полета: главни
+# букви, само акцентите на латинските езици.
+
+fm-menu = МЕНЮ
+fm-paused = МЕНЮ  -  ПАУЗА
+fm-campaign-runs = МЕНЮ  -  КАМПАНИЯТА ПРОДЪЛЖАВА
+fm-options-page = ОПЦИИ  -  { $page }
+fm-resume = ПРОДЪЛЖАВАНЕ
+fm-save-mission = ЗАПАЗВАНЕ НА МИСИЯТА
+fm-saved = ЗАПАЗЕНА
+fm-not-saved = НЕ Е ЗАПАЗЕНА
+fm-key-guide = ПЪТЕВОДИТЕЛ ЗА КЛАВИШИТЕ
+fm-end-mission = КРАЙ НА МИСИЯТА
+fm-end-sortie = КРАЙ НА ПОЛЕТА
+fm-exiting = ИЗЛИЗАНЕ...
+fm-language = ЕЗИК
+fm-shaders = ШЕЙДЪРИ
+fm-msaa = ИЗГЛАЖДАНЕ
+fm-shadows = СЕНКИ
+fm-point-lights = ТОЧКОВИ СВЕТЛИНИ
+fm-time-of-day = ВРЕМЕ НА ДЕНОНОЩИЕТО
+fm-sun-moon = СЛЪНЦЕ И ЛУНА
+fm-auto-detail = АВТ. ДЕТАЙЛНОСТ НА ОКОЛНОСТТА
+fm-cockpit = КАБИНА
+fm-hud = HUD
+fm-avionics = АВИОНИКА
+fm-auto-trim = АВТОМАТИЧЕН ТРИМ
+fm-tooltips = ПОДСКАЗКИ
+fm-cockpit-size = РАЗМЕР НА КАБИНАТА
+fm-volume-master = ОБЩА СИЛА НА ЗВУКА
+fm-volume-engine = ДВИГАТЕЛ
+fm-volume-effects = ЕФЕКТИ
+fm-volume-warnings = ПРЕДУПРЕЖДЕНИЯ
+fm-low-pass = НИСКОЧЕСТОТЕН ФИЛТЪР НА ДВИГАТЕЛЯ
+fm-head-tracking = ПРОСЛЕДЯВАНЕ НА ГЛАВАТА
+fm-bindings = КЛАВИШИ И ДЖОЙСТИК
+fm-game-note = МОДЕЛ НА ПОЛЕТА, TACVIEW: ОПЦИИТЕ НА ГЛАВНОТО МЕНЮ
+fm-no-match = НЯМА СЪВПАДЕНИЯ
+fm-type-to-search = ПИШЕТЕ ЗА ТЪРСЕНЕ
+fm-hint-vr = STICK: ПРЕВЪРТАНЕ    ПОЛЕ + СПУСЪК: КЛАВИАТУРА    СПУСЪК: НАЗАД
+fm-hint-vr-keyboard = КЛАВИШ + СПУСЪК: ПИШЕТЕ    STICK: ПРЕВЪРТАНЕ
+fm-hint-desktop = КОЛЕЛО, СТРЕЛКИ: ПРЕВЪРТАНЕ    ESC, КЛИК: НАЗАД
+fm-key-space = ИНТЕРВАЛ
+fm-key-delete = DEL
+fm-key-clear = ИЗЧИСТВАНЕ
+fm-key-done = ГОТОВО
+fm-pull-trigger = НАТИСНЕТЕ СПУСЪКА

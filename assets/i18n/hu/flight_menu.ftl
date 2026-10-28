@@ -1,0 +1,47 @@
+# A repülés közbeni menü (src/flight_menu.rs), a repülés vonalas betűtípusával rajzolva:
+# csupa nagybetű, csak a latin nyelvek ékezeteivel.
+
+fm-menu = MENÜ
+fm-paused = MENÜ  -  SZÜNET
+fm-campaign-runs = MENÜ  -  A KAMPÁNY FUT
+fm-options-page = BEÁLLÍTÁSOK  -  { $page }
+fm-resume = FOLYTATÁS
+fm-save-mission = KÜLDETÉS MENTÉSE
+fm-saved = MENTVE
+fm-not-saved = NINCS MENTVE
+fm-key-guide = BILLENTYŰ-ÚTMUTATÓ
+fm-end-mission = KÜLDETÉS BEFEJEZÉSE
+fm-end-sortie = BEVETÉS BEFEJEZÉSE
+fm-exiting = KILÉPÉS...
+fm-language = NYELV
+fm-shaders = SHADEREK
+fm-msaa = ÉLSIMÍTÁS
+fm-shadows = ÁRNYÉKOK
+fm-point-lights = PONTFÉNYEK
+fm-time-of-day = NAPSZAK
+fm-sun-moon = NAP ÉS HOLD
+fm-auto-detail = AUTOMATIKUS TÁJDETAIL
+fm-cockpit = PILÓTAFÜLKE
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTOMATIKUS TRIM
+fm-tooltips = TOOLTIPEK
+fm-cockpit-size = PILÓTAFÜLKE MÉRETE
+fm-volume-master = FŐ HANGERŐ
+fm-volume-engine = HAJTÓMŰ
+fm-volume-effects = EFFEKTEK
+fm-volume-warnings = FIGYELMEZTETÉSEK
+fm-low-pass = HAJTÓMŰ ALULÁTERESZTŐ
+fm-head-tracking = FEJKÖVETÉS
+fm-bindings = BILLENTYŰK ÉS JOYSTICK
+fm-game-note = REPÜLÉSI MODELL, TACVIEW: A FŐMENÜ BEÁLLÍTÁSAI
+fm-no-match = NINCS TALÁLAT
+fm-type-to-search = ÍRJON A KERESÉSHEZ
+fm-hint-vr = STICK: GÖRGETÉS    MEZŐ + RAVASZ: BILLENTYŰZET    RAVASZ: VISSZA
+fm-hint-vr-keyboard = BILLENTYŰ + RAVASZ: ÍRÁS    STICK: GÖRGETÉS
+fm-hint-desktop = GÖRGŐ, NYILAK: GÖRGETÉS    ESC, KATTINTÁS: VISSZA
+fm-key-space = SZÓKÖZ
+fm-key-delete = DEL
+fm-key-clear = TÖRLÉS
+fm-key-done = KÉSZ
+fm-pull-trigger = HÚZZA MEG A RAVASZT

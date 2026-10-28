@@ -1,0 +1,117 @@
+# キーガイド（src/key_guide.rs）：ニーボードのキーページと、飛行中メニューのキーガイド。
+# ストロークフォントで描画。セクション名は操作ダイアログの一覧の見出しにも使われます。
+# キーのテキスト："_" は空白の代わり（語が1行に収まります）。
+
+kg-vr-controllers = VRコントローラー
+kg-vr-grip = グリップ
+    .desc = スティック、スロットル、ニーボードをつかむ
+kg-vr-fingertip = 指先
+    .desc = スイッチとボタン、ニーボードのタブを押す
+kg-vr-left-stick = 左スティック
+    .desc = センサーカーソルを動かす
+kg-vr-stick = スティック
+    .desc = この一覧をスクロール（ニーボード上に指があるとき）
+kg-gun-target = 機関砲
+kg-mouse = マウス
+kg-mouse-right-drag = 右ドラッグ
+    .desc = 周囲を見回す（機外：カメラを回す）
+kg-mouse-hold-right = 右ボタン長押し, ホイール
+    .desc = 視点のズームイン / アウト
+kg-mouse-left-click = 左クリック
+    .desc = コックピットのスイッチやボタン、ニーボードのタブを押す
+kg-mouse-point = ポイント
+    .desc = コックピットの操作部のツールチップ（メニュー：ツールチップ）
+kg-mouse-wheel = ホイール
+    .desc = この一覧をスクロール
+kg-unbound = 未割り当て
+
+## Sections
+
+kg-section-flight = 飛行
+kg-section-aircraft = 機体
+kg-section-weapons = 兵装
+kg-section-targets = 目標
+kg-section-defenses = 防御
+kg-section-displays = ディスプレイ
+kg-section-navigation = ナビゲーション
+kg-section-views = 視点
+kg-section-game = ゲーム
+
+## Rows
+
+kg-pitch-down = 機首下げ / 上げ
+kg-roll-left = 左 / 右ロール
+kg-yaw-left = 左 / 右ラダー
+kg-trim-nose-down = トリム機首下げ / 上げ
+kg-trim-left = トリム左 / 右
+kg-trim-reset = トリムをセンターに戻す
+kg-stick-sensitivity = スティック感度（スティックキーをダブルタップ：最大）
+kg-throttle-up = スロットル（コレクティブ）増
+kg-throttle-down = スロットル（コレクティブ）減
+kg-throttle-max = フルパワー
+kg-throttle-idle = アイドル
+kg-autopilot = ウェイポイントへオートパイロット
+kg-gear = 降着装置
+kg-flaps = フラップ
+kg-brakes = ホイールブレーキ、スピードブレーキ
+kg-bay-doors = 兵装ベイ扉
+kg-master-caution = マスターコーション：警報を止める
+kg-eject = 脱出
+kg-select-weapon = 次の兵装
+kg-fire-weapon = 選択した兵装を発射
+kg-gun = 機関砲を撃つ
+kg-bomb-mode = 爆撃モード CCIP / CCRP
+kg-nearest-target = 前方の最寄り目標をロック
+kg-select-target = 次の目標
+kg-designate-target = 新しい目標を指定
+kg-clear-target = 目標ロックを解除
+kg-cam-ahead = トラッキングカメラ前方
+kg-cam-rear = トラッキングカメラ後方
+kg-cam-left = トラッキングカメラ左
+kg-cam-right = トラッキングカメラ右
+kg-camera-zoom-in = カメラのズームイン / アウト
+kg-lock-cursor = カーソル下の目標をロック
+kg-swap-soi = SOI をもう一方の MFD へ
+kg-flare = フレア（赤外線ミサイル用）
+kg-chaff = チャフ（レーダーミサイル用）
+kg-decoy = デコイ
+kg-ir-jammer = IRジャマー オン / オフ
+kg-ecm = レーダージャマー（ECM）オン / オフ
+kg-hud-mode = HUDモード NAV / AIR / GND
+kg-hud-declutter = HUDデクラッター
+kg-maps = 左 MFD：マップ / 戦術
+kg-map-zoom-in = マップのズームイン / アウト
+kg-map-orientation = マップ 北が上 / 進行方向が上
+kg-ordnance = 兵装ページ
+kg-mission-orders = ミッション命令
+kg-flir = FLIR オン / オフ
+kg-nvg = 暗視ゴーグル
+kg-ils = ILS 着陸誘導
+kg-select-waypoint = ウェイポイントページ
+kg-change-waypoint = ウェイポイント変更
+kg-reset-waypoint = ウェイポイントリセット
+kg-last-waypoint = 前 / 次のウェイポイント
+kg-view-cockpit = コックピット
+kg-look-ahead = 前方を見る
+kg-look-left = 左を見る
+kg-look-right = 右を見る
+kg-look-rear = 後方を見る
+kg-view-slot = スロット視点
+kg-view-chase = チェイス視点
+kg-view-side = サイド視点
+kg-view-missile = ミサイル視点
+kg-view-tactical = 戦術視点
+kg-view-inverse-tactical = 逆戦術視点
+kg-view-free = フリーカメラ：W/S/A/D/Q/E、マウス、ホイール
+kg-zoom = ズームイン / アウト
+kg-wide-angle = 広角
+kg-menu = 設定メニュー、一時停止
+kg-kneeboard = ニーボード
+kg-chat = チャット（マルチプレイヤー）
+kg-time-accel = 時間加速 / 通常
+kg-volume = 音量
+kg-detail = ディテールレベル
+kg-day-night = 昼 / 夜
+kg-training = 訓練へ移動
+kg-resupply = 補給
+kg-quit = 終了

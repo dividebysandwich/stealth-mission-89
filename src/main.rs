@@ -229,7 +229,7 @@ fn main() {
         .insert_resource(menu_state)
         .insert_resource(MissionSetup::from_args())
         .insert_resource(flight::SimTables::load())
-        .init_resource::<i18n::UiFont>()
+        .add_plugins(i18n::I18nPlugin)
         .add_plugins(settings::configure)
         .add_plugins((
             palette::PalettePlugin,

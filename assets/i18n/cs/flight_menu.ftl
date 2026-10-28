@@ -1,0 +1,47 @@
+# Nabídka za letu (src/flight_menu.rs), kreslená vektorovým písmem letu: velká písmena,
+# pouze s diakritikou latinkových jazyků.
+
+fm-menu = NABÍDKA
+fm-paused = NABÍDKA  -  PAUZA
+fm-campaign-runs = NABÍDKA  -  KAMPAŇ POKRAČUJE
+fm-options-page = NASTAVENÍ  -  { $page }
+fm-resume = POKRAČOVAT
+fm-save-mission = ULOŽIT MISI
+fm-saved = ULOŽENO
+fm-not-saved = NEULOŽENO
+fm-key-guide = PŘEHLED KLÁVES
+fm-end-mission = UKONČIT MISI
+fm-end-sortie = UKONČIT BOJOVÝ LET
+fm-exiting = UKONČOVÁNÍ...
+fm-language = JAZYK
+fm-shaders = SHADERY
+fm-msaa = VYHLAZOVÁNÍ HRAN
+fm-shadows = STÍNY
+fm-point-lights = BODOVÁ SVĚTLA
+fm-time-of-day = DENNÍ DOBA
+fm-sun-moon = SLUNCE A MĚSÍC
+fm-auto-detail = AUTO DETAIL KRAJINY
+fm-cockpit = KOKPIT
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPY
+fm-cockpit-size = VELIKOST KOKPITU
+fm-volume-master = CELKOVÁ HLASITOST
+fm-volume-engine = MOTOR
+fm-volume-effects = EFEKTY
+fm-volume-warnings = VAROVÁNÍ
+fm-low-pass = DOLNÍ PROPUST MOTORU
+fm-head-tracking = SLEDOVÁNÍ HLAVY
+fm-bindings = KLÁVESY A JOYSTICK
+fm-game-note = LETOVÝ MODEL, TACVIEW: NASTAVENÍ V HLAVNÍ NABÍDCE
+fm-no-match = ŽÁDNÁ SHODA
+fm-type-to-search = PSANÍM VYHLEDÁVEJTE
+fm-hint-vr = STICK: POSUN    POLE + SPOUŠŤ: KLÁVESNICE    SPOUŠŤ: ZPĚT
+fm-hint-vr-keyboard = KLÁVESA + SPOUŠŤ: PSÁT    STICK: POSUN
+fm-hint-desktop = KOLEČKO, ŠIPKY: POSUN    ESC, KLIK: ZPĚT
+fm-key-space = MEZERNÍK
+fm-key-delete = DEL
+fm-key-clear = SMAZAT
+fm-key-done = HOTOVO
+fm-pull-trigger = STISKNĚTE SPOUŠŤ

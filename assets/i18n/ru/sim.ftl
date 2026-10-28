@@ -1,0 +1,62 @@
+# Сообщения HUD симуляции. Шрифты полёта выводят их заглавными буквами без диакритики
+# (латинские языки; остальные видят английский текст). Названия подразделений, оружия и мест
+# передаются как есть.
+
+sim-missile-launch = Пуск ракеты
+sim-no-flares = Сигнальных ракет не осталось
+sim-hind-spotted = Вас обнаружил Hind
+sim-rescue-lost = Спасательный вертолёт потерян
+sim-rescued = Спасён!
+sim-captured = В плену
+sim-aircraft-destroyed-eject = Самолёт уничтожен - Катапультируйтесь
+sim-fire-out = Пожар потушен
+sim-aircraft-exploded = Самолёт взорвался
+sim-equipment-delivered = Груз доставлен
+sim-bad-drop = Неточный сброс
+sim-secondary-target = Запасная цель
+sim-primary-target = Основная цель
+sim-troops-inserted = Войска высажены
+sim-time-expired = Время вышло
+sim-cargo-delivered = Груз доставлен
+sim-safe-landing = Успешная посадка
+sim-no-target-ahead = Впереди нет цели
+sim-target-obscured = Цель закрыта
+sim-target-photographed = Цель сфотографирована.
+sim-drop-supplies = Сбрасывайте груз
+sim-no-target = Нет цели
+sim-no-target-designated = Цель не назначена
+sim-bay-closed = Отсек закрыт
+sim-insufficient-altitude = Недостаточная высота
+sim-fuel-transfer = Перекачка топлива
+sim-stores-exhausted = Подвеска израсходована
+sim-hit-gunfire = Попадание из пушки
+sim-hit-aaa = Попадание AAA
+sim-hit-flak = Попадание зенитного огня
+sim-destroyed = { $target } уничтожен
+sim-landing = { $base } - { $aircraft } на посадке
+sim-on-final = { $base } - { $aircraft } на посадочной прямой
+sim-taking-off = { $base } - { $aircraft } на взлёте
+sim-shot-down = { $target } сбит
+sim-csar-down = На территории противника - CSAR с базы { $base }
+sim-flare-left = Сигнальная ракета - осталось { $count }
+sim-drone-hit-npp = Дрон поразил АЭС { $place }
+sim-drone-hit = Дрон поразил { $place }
+sim-defense-failed = Оборона прорвана - прорвалось дронов: { $count }
+sim-hit-by = Попадание: { $weapon }
+sim-target-hit-by = { $target } - попадание: { $weapon }
+sim-ineffective = Без эффекта
+sim-impact = Попадание { $weapon }
+# Пробел в конце взят из классической игры.
+sim-misses = { $weapon } мимо{" "}
+sim-destroyed-by = { $target } уничтожен: { $weapon }
+sim-ground-impact = { $weapon } - удар о землю
+sim-detected = { $target } обнаружен
+sim-radar-id = { $site } - опознание РЛС
+sim-firing = { $site } пускает { $missile }
+sim-visual-id = Визуальное опознание - { $aircraft }
+sim-fired-by = { $missile } пущена: { $launcher }
+sim-frame = Кадр { $frame }
+sim-beacon = Радиомаяк, пеленг { $bearing }
+sim-fired = { $weapon } - пуск
+sim-released = { $weapon } - сброс
+sim-destroyed-gunfire = { $target } уничтожен из пушки

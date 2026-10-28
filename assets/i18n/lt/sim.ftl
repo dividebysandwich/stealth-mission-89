@@ -1,0 +1,62 @@
+# Simuliacijos HUD pranešimai (crates/stealth-sim). Piešiami skrydžio šriftais: didžiosiomis
+# raidėmis, be diakritikų (lotyniškos kalbos; kitos mato anglišką tekstą). Dalinių, ginklų ir
+# vietovių pavadinimai perduodami nepakitę.
+
+sim-missile-launch = Raketos paleidimas
+sim-no-flares = Signalinių raketų nebėra
+sim-hind-spotted = Hind jus pastebėjo
+sim-rescue-lost = Gelbėjimo sraigtasparnis prarastas
+sim-rescued = Išgelbėtas!
+sim-captured = Paimtas į nelaisvę
+sim-aircraft-destroyed-eject = Orlaivis sunaikintas - katapultuokitės
+sim-fire-out = Gaisras užgesintas
+sim-aircraft-exploded = Orlaivis sprogo
+sim-equipment-delivered = Įranga pristatyta
+sim-bad-drop = Nesėkmingas numetimas
+sim-secondary-target = Antr. taikinys
+sim-primary-target = Pagrindinis taikinys
+sim-troops-inserted = Kariai išlaipinti
+sim-time-expired = Laikas baigėsi
+sim-cargo-delivered = Krovinys pristatytas
+sim-safe-landing = Saugus tūpimas
+sim-no-target-ahead = Priekyje taikinio nėra
+sim-target-obscured = Taikinys užstotas
+sim-target-photographed = Taikinys nufotografuotas.
+sim-drop-supplies = Numeskite atsargas dabar
+sim-no-target = Nėra taikinio
+sim-no-target-designated = Taikinys nenurodytas
+sim-bay-closed = Skyrius uždarytas
+sim-insufficient-altitude = Per mažas aukštis
+sim-fuel-transfer = Kuro perpylimas
+sim-stores-exhausted = Ginkluotė išnaudota
+sim-hit-gunfire = Pataikė šaudmenys
+sim-hit-aaa = Pataikė AAA
+sim-hit-flak = Pataikė zenitinė ugnis
+sim-destroyed = Sunaikinta: { $target }
+sim-landing = { $base } - { $aircraft } leidžiasi
+sim-on-final = { $base } - { $aircraft } galutiniame posūkyje
+sim-taking-off = { $base } - { $aircraft } kyla
+sim-shot-down = Numuštas: { $target }
+sim-csar-down = Numuštas priešo teritorijoje - CSAR iš { $base }
+sim-flare-left = Signalinė raketa - liko { $count }
+sim-drone-hit-npp = Dronas pataikė į { $place } AE
+sim-drone-hit = Dronas pataikė: { $place }
+sim-defense-failed = Gynyba nepavyko - prasiveržė dronų: { $count }
+sim-hit-by = Pataikė: { $weapon }
+sim-target-hit-by = { $target }: pataikė { $weapon }
+sim-ineffective = Neveiksminga
+sim-impact = { $weapon }: smūgis
+# Galinis tarpas yra klasikinio žaidimo.
+sim-misses = { $weapon }: prašovė{" "}
+sim-destroyed-by = { $target } sunaikintas: { $weapon }
+sim-ground-impact = { $weapon }: smūgis į žemę
+sim-detected = Aptikta: { $target }
+sim-radar-id = { $site } - radaro identifikacija
+sim-firing = { $site } šauna: { $missile }
+sim-visual-id = Vizualus ID - { $aircraft }
+sim-fired-by = { $missile } paleido { $launcher }
+sim-frame = Kadras { $frame }
+sim-beacon = Radijo švyturys, kursas { $bearing }
+sim-fired = Paleista: { $weapon }
+sim-released = Numesta: { $weapon }
+sim-destroyed-gunfire = { $target } sunaikintas šaudmenimis

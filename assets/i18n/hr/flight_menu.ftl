@@ -1,0 +1,47 @@
+# Izbornik tijekom leta (src/flight_menu.rs), iscrtan vektorskim fontom leta: velika slova,
+# samo naglasci latiničnih jezika.
+
+fm-menu = IZBORNIK
+fm-paused = IZBORNIK  -  PAUZA
+fm-campaign-runs = IZBORNIK  -  KAMPANJA TRAJE
+fm-options-page = OPCIJE  -  { $page }
+fm-resume = NASTAVI
+fm-save-mission = SPREMI MISIJU
+fm-saved = SPREMLJENO
+fm-not-saved = NIJE SPREMLJENO
+fm-key-guide = VODIČ KROZ TIPKE
+fm-end-mission = ZAVRŠI MISIJU
+fm-end-sortie = ZAVRŠI BORBENI LET
+fm-exiting = IZLAZAK...
+fm-language = JEZIK
+fm-shaders = SHADERI
+fm-msaa = IZGLAĐIVANJE RUBOVA
+fm-shadows = SJENE
+fm-point-lights = TOČKASTA SVJETLA
+fm-time-of-day = DOBA DANA
+fm-sun-moon = SUNCE I MJESEC
+fm-auto-detail = AUTO DETALJI OKOLIŠA
+fm-cockpit = KOKPIT
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPI
+fm-cockpit-size = VELIČINA KOKPITA
+fm-volume-master = GLAVNA GLASNOĆA
+fm-volume-engine = MOTOR
+fm-volume-effects = EFEKTI
+fm-volume-warnings = UPOZORENJA
+fm-low-pass = NISKI PROPUST MOTORA
+fm-head-tracking = PRAĆENJE GLAVE
+fm-bindings = TIPKE I JOYSTICK
+fm-game-note = MODEL LETA, TACVIEW: OPCIJE GLAVNOG IZBORNIKA
+fm-no-match = NEMA REZULTATA
+fm-type-to-search = UTIPKAJTE ZA PRETRAGU
+fm-hint-vr = STICK: POMICANJE    POLJE + OKIDAČ: TIPKOVNICA    OKIDAČ: NAZAD
+fm-hint-vr-keyboard = TIPKA + OKIDAČ: UNOS    STICK: POMICANJE
+fm-hint-desktop = KOTAČIĆ, STRELICE: POMICANJE    ESC, KLIK: NAZAD
+fm-key-space = RAZMAK
+fm-key-delete = DEL
+fm-key-clear = BRIŠI
+fm-key-done = OK
+fm-pull-trigger = POVUCITE OKIDAČ

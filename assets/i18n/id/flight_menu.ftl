@@ -1,0 +1,47 @@
+# Menu dalam penerbangan (src/flight_menu.rs), digambar dengan font garis penerbangan: huruf
+# kapital, aksen bahasa Latin saja.
+
+fm-menu = MENU
+fm-paused = MENU  -  JEDA
+fm-campaign-runs = MENU  -  KAMPANYE TERUS BERJALAN
+fm-options-page = OPSI  -  { $page }
+fm-resume = LANJUTKAN
+fm-save-mission = SIMPAN MISI
+fm-saved = TERSIMPAN
+fm-not-saved = BELUM TERSIMPAN
+fm-key-guide = PANDUAN TOMBOL
+fm-end-mission = AKHIRI MISI
+fm-end-sortie = AKHIRI SORTIE
+fm-exiting = KELUAR...
+fm-language = BAHASA
+fm-shaders = SHADER
+fm-msaa = ANTI-ALIASING
+fm-shadows = BAYANGAN
+fm-point-lights = LAMPU TITIK
+fm-time-of-day = WAKTU HARI
+fm-sun-moon = MATAHARI DAN BULAN
+fm-auto-detail = DETAIL PEMANDANGAN OTOMATIS
+fm-cockpit = KOKPIT
+fm-hud = HUD
+fm-avionics = AVIONIK
+fm-auto-trim = TRIM OTOMATIS
+fm-tooltips = TOOLTIP
+fm-cockpit-size = UKURAN KOKPIT
+fm-volume-master = VOLUME UTAMA
+fm-volume-engine = MESIN
+fm-volume-effects = EFEK
+fm-volume-warnings = PERINGATAN
+fm-low-pass = LOW-PASS MESIN
+fm-head-tracking = PELACAKAN KEPALA
+fm-bindings = TOMBOL DAN JOYSTICK
+fm-game-note = MODEL PENERBANGAN, TACVIEW: OPSI MENU UTAMA
+fm-no-match = TIDAK ADA HASIL
+fm-type-to-search = KETIK UNTUK MENCARI
+fm-hint-vr = STICK: GULIR    KOLOM + PEMICU: KEYBOARD    PEMICU: KEMBALI
+fm-hint-vr-keyboard = TOMBOL + PEMICU: KETIK    STICK: GULIR
+fm-hint-desktop = RODA, PANAH: GULIR    ESC, KLIK: KEMBALI
+fm-key-space = SPASI
+fm-key-delete = HAPUS
+fm-key-clear = BERSIHKAN
+fm-key-done = SELESAI
+fm-pull-trigger = TARIK PEMICU

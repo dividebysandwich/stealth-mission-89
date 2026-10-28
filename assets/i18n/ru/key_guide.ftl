@@ -1,0 +1,117 @@
+# Справка по клавишам (src/key_guide.rs): страница KEYS наколенного планшета и СПРАВКА ПО
+# КЛАВИШАМ в меню полёта, рисуется векторным шрифтом; заголовки разделов также озаглавливают
+# списки окна УПРАВЛЕНИЕ. В названиях клавиш "_" заменяет пробел (слова остаются на одной строке).
+
+kg-vr-controllers = VR-КОНТРОЛЛЕРЫ
+kg-vr-grip = ХВАТ
+    .desc = Взять ручку управления, РУД или наколенный планшет
+kg-vr-fingertip = КОНЧИК_ПАЛЬЦА
+    .desc = Нажимать переключатели и кнопки, вкладки планшета
+kg-vr-left-stick = ЛЕВЫЙ_СТИК
+    .desc = Перемещать курсор датчика
+kg-vr-stick = СТИК
+    .desc = Прокрутить этот список (палец на планшете)
+kg-gun-target = Пушка
+kg-mouse = МЫШЬ
+kg-mouse-right-drag = ПРАВАЯ_ПРОТЯЖКА
+    .desc = Осмотреться (снаружи: облёт камерой)
+kg-mouse-hold-right = УДЕРЖ._ПРАВУЮ, КОЛЕСО
+    .desc = Приблизить / отдалить вид
+kg-mouse-left-click = ЛЕВЫЙ_ЩЕЛЧОК
+    .desc = Нажать переключатель или кнопку кабины, вкладку планшета
+kg-mouse-point = НАВЕСТИ
+    .desc = Подсказка органа управления кабины (меню: ПОДСКАЗКИ)
+kg-mouse-wheel = КОЛЕСО
+    .desc = Прокрутить этот список
+kg-unbound = НЕ_НАЗНАЧЕНО
+
+## Разделы
+
+kg-section-flight = ПОЛЁТ
+kg-section-aircraft = ЛЕТАТЕЛЬНЫЙ АППАРАТ
+kg-section-weapons = ОРУЖИЕ
+kg-section-targets = ЦЕЛИ
+kg-section-defenses = ЗАЩИТА
+kg-section-displays = ДИСПЛЕИ
+kg-section-navigation = НАВИГАЦИЯ
+kg-section-views = ВИДЫ
+kg-section-game = ИГРА
+
+## Строки
+
+kg-pitch-down = Нос вниз / вверх
+kg-roll-left = Крен влево / вправо
+kg-yaw-left = Педали влево / вправо
+kg-trim-nose-down = Триммер на пикирование / кабрирование
+kg-trim-left = Триммер влево / вправо
+kg-trim-reset = Триммер в нейтраль
+kg-stick-sensitivity = Чувствительность ручки (двойное нажатие клавиши ручки: максимум)
+kg-throttle-up = РУД (шаг-газ) больше
+kg-throttle-down = РУД (шаг-газ) меньше
+kg-throttle-max = Полная мощность
+kg-throttle-idle = Малый газ
+kg-autopilot = Автопилот на ППМ
+kg-gear = Шасси
+kg-flaps = Закрылки
+kg-brakes = Тормоза колёс, воздушный тормоз
+kg-bay-doors = Створки бомбоотсеков
+kg-master-caution = Master caution: отключить сигнализацию
+kg-eject = Катапультирование
+kg-select-weapon = Следующее оружие
+kg-fire-weapon = Применить выбранное оружие
+kg-gun = Огонь из пушки
+kg-bomb-mode = Режим бомбометания CCIP / CCRP
+kg-nearest-target = Захват ближайшей цели впереди
+kg-select-target = Следующая цель
+kg-designate-target = Назначить новую цель
+kg-clear-target = Сбросить захваты целей
+kg-cam-ahead = Следящая камера вперёд
+kg-cam-rear = Следящая камера назад
+kg-cam-left = Следящая камера влево
+kg-cam-right = Следящая камера вправо
+kg-camera-zoom-in = Зум камеры больше / меньше
+kg-lock-cursor = Захват цели под курсором
+kg-swap-soi = Активный датчик (SOI) на другой MFD
+kg-flare = Тепловая ловушка (ИК-ракеты)
+kg-chaff = Дипольные отражатели (радиолокационные ракеты)
+kg-decoy = Ложная цель
+kg-ir-jammer = ИК-помеха вкл. / выкл.
+kg-ecm = Радиопомеха (ECM) вкл. / выкл.
+kg-hud-mode = Режим HUD NAV / AIR / GND
+kg-hud-declutter = Разгрузка HUD
+kg-maps = Левый MFD: карта / тактика
+kg-map-zoom-in = Масштаб карты больше / меньше
+kg-map-orientation = Карта: север вверху / курс вверху
+kg-ordnance = Страница оружия
+kg-mission-orders = Боевой приказ
+kg-flir = FLIR вкл. / выкл.
+kg-nvg = Очки ночного видения
+kg-ils = Заход на посадку по ILS
+kg-select-waypoint = Страница ППМ
+kg-change-waypoint = Сменить ППМ
+kg-reset-waypoint = Сбросить ППМ
+kg-last-waypoint = Предыдущий / следующий ППМ
+kg-view-cockpit = Кабина
+kg-look-ahead = Смотреть вперёд
+kg-look-left = Смотреть влево
+kg-look-right = Смотреть вправо
+kg-look-rear = Смотреть назад
+kg-view-slot = Вид ведомого
+kg-view-chase = Вид сзади
+kg-view-side = Вид сбоку
+kg-view-missile = Вид с ракеты
+kg-view-tactical = Тактический вид
+kg-view-inverse-tactical = Обратный тактический вид
+kg-view-free = Свободная камера: W/S/A/D/Q/E, мышь, колесо
+kg-zoom = Зум больше / меньше
+kg-wide-angle = Широкий угол
+kg-menu = Меню настроек, пауза
+kg-kneeboard = Наколенный планшет
+kg-chat = Чат (мультиплеер)
+kg-time-accel = Ускорение времени / норма
+kg-volume = Громкость звука
+kg-detail = Уровень детализации
+kg-day-night = День / ночь
+kg-training = Перейти к тренировке
+kg-resupply = Пополнение запасов
+kg-quit = Выход

@@ -1,0 +1,47 @@
+# Il menu in volo (src/flight_menu.rs), disegnato con il font vettoriale del volo: maiuscole,
+# solo gli accenti delle lingue latine.
+
+fm-menu = MENU
+fm-paused = MENU  -  IN PAUSA
+fm-campaign-runs = MENU  -  LA CAMPAGNA CONTINUA
+fm-options-page = OPZIONI  -  { $page }
+fm-resume = RIPRENDERE
+fm-save-mission = SALVARE LA MISSIONE
+fm-saved = SALVATA
+fm-not-saved = NON SALVATA
+fm-key-guide = GUIDA AI TASTI
+fm-end-mission = TERMINARE LA MISSIONE
+fm-end-sortie = TERMINARE LA SORTITA
+fm-exiting = USCITA IN CORSO...
+fm-language = LINGUA
+fm-shaders = SHADER
+fm-msaa = ANTIALIASING
+fm-shadows = OMBRE
+fm-point-lights = LUCI PUNTIFORMI
+fm-time-of-day = ORA DEL GIORNO
+fm-sun-moon = SOLE E LUNA
+fm-auto-detail = DETTAGLIO AUTO SCENARIO
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONICA
+fm-auto-trim = TRIM AUTO
+fm-tooltips = TOOLTIP
+fm-cockpit-size = DIMENSIONE COCKPIT
+fm-volume-master = VOLUME GENERALE
+fm-volume-engine = MOTORE
+fm-volume-effects = EFFETTI
+fm-volume-warnings = ALLARMI
+fm-low-pass = PASSA-BASSO MOTORE
+fm-head-tracking = TRACCIAMENTO TESTA
+fm-bindings = TASTI E JOYSTICK
+fm-game-note = MODELLO DI VOLO, TACVIEW: OPZIONI DEL MENU PRINCIPALE
+fm-no-match = NESSUN RISULTATO
+fm-type-to-search = DIGITARE PER CERCARE
+fm-hint-vr = STICK: SCORRERE    CAMPO + GRILLETTO: TASTIERA    GRILLETTO: INDIETRO
+fm-hint-vr-keyboard = TASTO + GRILLETTO: DIGITARE    STICK: SCORRERE
+fm-hint-desktop = ROTELLINA, FRECCE: SCORRERE    ESC, CLIC: INDIETRO
+fm-key-space = SPAZIO
+fm-key-delete = CANC
+fm-key-clear = CANCELLARE
+fm-key-done = FATTO
+fm-pull-trigger = PREMERE IL GRILLETTO

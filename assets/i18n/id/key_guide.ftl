@@ -1,0 +1,118 @@
+# Panduan tombol (src/key_guide.rs): halaman TOMBOL pada kneeboard dan PANDUAN TOMBOL pada menu
+# dalam penerbangan, digambar dengan font garis; judul bagian juga menjadi kepala daftar pada
+# jendela KONTROL.
+# Teks tombol: "_" menggantikan spasi (kata-katanya tetap dalam satu baris).
+
+kg-vr-controllers = KONTROLER VR
+kg-vr-grip = GRIP
+    .desc = Pegang stick, throttle atau kneeboard
+kg-vr-fingertip = UJUNG_JARI
+    .desc = Tekan saklar dan tombol, tab kneeboard
+kg-vr-left-stick = STICK_KIRI
+    .desc = Geser kursor sensor
+kg-vr-stick = STICK
+    .desc = Gulir daftar ini (jari di kneeboard)
+kg-gun-target = Kanon
+kg-mouse = MOUSE
+kg-mouse-right-drag = SERET_KANAN
+    .desc = Melihat sekeliling (di luar: memutar kamera)
+kg-mouse-hold-right = TAHAN_KANAN, RODA
+    .desc = Zoom in / out pandangan
+kg-mouse-left-click = KLIK_KIRI
+    .desc = Tekan saklar atau tombol kokpit, tab kneeboard
+kg-mouse-point = ARAHKAN
+    .desc = Tooltip sebuah kontrol kokpit (menu: TOOLTIP)
+kg-mouse-wheel = RODA
+    .desc = Gulir daftar ini
+kg-unbound = BELUM_DIATUR
+
+## Bagian
+
+kg-section-flight = PENERBANGAN
+kg-section-aircraft = PESAWAT
+kg-section-weapons = SENJATA
+kg-section-targets = SASARAN
+kg-section-defenses = PERTAHANAN
+kg-section-displays = LAYAR
+kg-section-navigation = NAVIGASI
+kg-section-views = PANDANGAN
+kg-section-game = GAME
+
+## Baris
+
+kg-pitch-down = Hidung turun / naik
+kg-roll-left = Roll kiri / kanan
+kg-yaw-left = Rudder kiri / kanan
+kg-trim-nose-down = Trim hidung turun / naik
+kg-trim-left = Trim kiri / kanan
+kg-trim-reset = Pusatkan trim
+kg-stick-sensitivity = Sensitivitas stick (ketuk dua kali tombol stick: penuh)
+kg-throttle-up = Throttle (collective) naik
+kg-throttle-down = Throttle (collective) turun
+kg-throttle-max = Daya penuh
+kg-throttle-idle = Idle
+kg-autopilot = Autopilot ke waypoint
+kg-gear = Roda pendarat
+kg-flaps = Flap
+kg-brakes = Rem roda, speed brake
+kg-bay-doors = Pintu bay senjata
+kg-master-caution = Master caution: bungkam alarm
+kg-eject = Eject
+kg-select-weapon = Senjata berikutnya
+kg-fire-weapon = Tembakkan senjata terpilih
+kg-gun = Tembakkan kanon
+kg-bomb-mode = Mode pengeboman CCIP / CCRP
+kg-nearest-target = Kunci sasaran terdekat di depan
+kg-select-target = Sasaran berikutnya
+kg-designate-target = Tunjuk sasaran baru
+kg-clear-target = Lepas semua kunci sasaran
+kg-cam-ahead = Tracking camera ke depan
+kg-cam-rear = Tracking camera ke belakang
+kg-cam-left = Tracking camera ke kiri
+kg-cam-right = Tracking camera ke kanan
+kg-camera-zoom-in = Zoom in / out kamera
+kg-lock-cursor = Kunci sasaran di bawah kursor
+kg-swap-soi = Sensor of interest (SOI) ke MFD lain
+kg-flare = Flare (rudal inframerah)
+kg-chaff = Chaff (rudal radar)
+kg-decoy = Decoy
+kg-ir-jammer = IR jammer hidup / mati
+kg-ecm = Radar jammer (ECM) hidup / mati
+kg-hud-mode = Mode HUD NAV / AIR / GND
+kg-hud-declutter = Declutter HUD
+kg-maps = MFD kiri: peta / taktis
+kg-map-zoom-in = Zoom in / out peta
+kg-map-orientation = Peta utara di atas / heading di atas
+kg-ordnance = Halaman senjata
+kg-mission-orders = Perintah misi
+kg-flir = FLIR hidup / mati
+kg-nvg = Kacamata penglihatan malam
+kg-ils = Pemandu pendaratan ILS
+kg-select-waypoint = Halaman waypoint
+kg-change-waypoint = Ganti waypoint
+kg-reset-waypoint = Reset waypoint
+kg-last-waypoint = Waypoint sebelumnya / berikutnya
+kg-view-cockpit = Kokpit
+kg-look-ahead = Lihat ke depan
+kg-look-left = Lihat ke kiri
+kg-look-right = Lihat ke kanan
+kg-look-rear = Lihat ke belakang
+kg-view-slot = Pandangan slot
+kg-view-chase = Pandangan chase
+kg-view-side = Pandangan samping
+kg-view-missile = Pandangan rudal
+kg-view-tactical = Pandangan taktis
+kg-view-inverse-tactical = Pandangan taktis terbalik
+kg-view-free = Kamera bebas: W/S/A/D/Q/E, mouse, roda
+kg-zoom = Zoom in / out
+kg-wide-angle = Sudut lebar
+kg-menu = Menu pengaturan, jeda
+kg-kneeboard = Kneeboard
+kg-chat = Chat (multiplayer)
+kg-time-accel = Waktu lebih cepat / normal
+kg-volume = Volume suara
+kg-detail = Tingkat detail
+kg-day-night = Siang / malam
+kg-training = Menuju latihan
+kg-resupply = Resupply
+kg-quit = Keluar

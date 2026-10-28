@@ -1,0 +1,62 @@
+# HUD poruke simulacije (crates/stealth-sim). Crtaju se fontovima leta: velikim slovima,
+# bez dijakritika (latinični jezici; ostali vide engleski). Nazivi jedinica, oružja i mjesta
+# prosljeđuju se onakvi kakvi jesu.
+
+sim-missile-launch = Lansiran projektil
+sim-no-flares = Nema više signalnih raketa
+sim-hind-spotted = Hind vas je uočio
+sim-rescue-lost = Spasilački helikopter izgubljen
+sim-rescued = Spašeni ste!
+sim-captured = Zarobljeni ste
+sim-aircraft-destroyed-eject = Zrakoplov uništen - katapultirajte se
+sim-fire-out = Požar ugašen
+sim-aircraft-exploded = Zrakoplov je eksplodirao
+sim-equipment-delivered = Oprema isporučena
+sim-bad-drop = Loše odbacivanje
+sim-secondary-target = Sporedni cilj
+sim-primary-target = Glavni cilj
+sim-troops-inserted = Postrojbe iskrcane
+sim-time-expired = Vrijeme isteklo
+sim-cargo-delivered = Teret isporučen
+sim-safe-landing = Sigurno slijetanje
+sim-no-target-ahead = Nema cilja ispred
+sim-target-obscured = Cilj zaklonjen
+sim-target-photographed = Cilj fotografiran.
+sim-drop-supplies = Odbacite zalihe sada
+sim-no-target = Nema cilja
+sim-no-target-designated = Cilj nije označen
+sim-bay-closed = Spremnik zatvoren
+sim-insufficient-altitude = Nedovoljna visina
+sim-fuel-transfer = Prijenos goriva
+sim-stores-exhausted = Naoružanje potrošeno
+sim-hit-gunfire = Pogođeni paljbom
+sim-hit-aaa = Pogođeni protuzračnom paljbom
+sim-hit-flak = Pogođeni flakom
+sim-destroyed = Uništeno: { $target }
+sim-landing = { $base } - { $aircraft } slijeće
+sim-on-final = { $base } - { $aircraft } na finalu
+sim-taking-off = { $base } - { $aircraft } polijeće
+sim-shot-down = Oboreno: { $target }
+sim-csar-down = Pali ste na neprijateljskom području - CSAR iz baze { $base }
+sim-flare-left = Signalna raketa - preostalo: { $count }
+sim-drone-hit-npp = Dron je pogodio nuklearnu elektranu: { $place }
+sim-drone-hit = Dron je pogodio: { $place }
+sim-defense-failed = Obrana probijena - dronova prošlo: { $count }
+sim-hit-by = Pogođeni: { $weapon }
+sim-target-hit-by = { $target } pogođen: { $weapon }
+sim-ineffective = Bez učinka
+sim-impact = Udar: { $weapon }
+# Završni razmak preuzet je iz klasične igre.
+sim-misses = Promašaj: { $weapon }{" "}
+sim-destroyed-by = { $target } uništen: { $weapon }
+sim-ground-impact = Udar u tlo: { $weapon }
+sim-detected = Otkriven: { $target }
+sim-radar-id = { $site } - radarska ID
+sim-firing = { $site } ispaljuje: { $missile }
+sim-visual-id = Vizualna ID - { $aircraft }
+sim-fired-by = { $missile } ispalio: { $launcher }
+sim-frame = Snimka { $frame }
+sim-beacon = Radio-far, smjer { $bearing }
+sim-fired = Ispaljeno: { $weapon }
+sim-released = Odbačeno: { $weapon }
+sim-destroyed-gunfire = { $target } uništen paljbom

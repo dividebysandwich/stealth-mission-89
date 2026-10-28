@@ -1,0 +1,117 @@
+# Přehled kláves (src/key_guide.rs): karta KEYS kneeboardu a PŘEHLED KLÁVES v nabídce za letu,
+# kreslené vektorovým písmem; názvy sekcí jsou i nadpisy seznamů v dialogu OVLÁDÁNÍ.
+# Texty kláves: "_" zastupuje mezeru (slova zůstanou na jednom řádku).
+
+kg-vr-controllers = OVLADAČE VR
+kg-vr-grip = GRIP
+    .desc = Uchopit páku, plyn nebo kneeboard
+kg-vr-fingertip = ŠPIČKA_PRSTU
+    .desc = Stisknout spínače a tlačítka, karty kneeboardu
+kg-vr-left-stick = LEVÝ_STICK
+    .desc = Posouvat kurzor senzoru
+kg-vr-stick = STICK
+    .desc = Posouvat tento seznam (prst na kneeboardu)
+kg-gun-target = Kanón
+kg-mouse = MYŠ
+kg-mouse-right-drag = TAŽENÍ_PRAVÝM
+    .desc = Rozhlížet se (venku: otáčet kameru kolem letounu)
+kg-mouse-hold-right = PRAVÉ_DRŽET, KOLEČKO
+    .desc = Přiblížit / oddálit pohled
+kg-mouse-left-click = LEVÝ_KLIK
+    .desc = Stisknout spínač nebo tlačítko kokpitu, kartu kneeboardu
+kg-mouse-point = UKAZOVAT
+    .desc = Tooltip ovladače kokpitu (nabídka: TOOLTIPY)
+kg-mouse-wheel = KOLEČKO
+    .desc = Posouvat tento seznam
+kg-unbound = NEPŘIŘAZENO
+
+## Sekce
+
+kg-section-flight = LET
+kg-section-aircraft = LETOUN
+kg-section-weapons = ZBRANĚ
+kg-section-targets = CÍLE
+kg-section-defenses = OBRANA
+kg-section-displays = DISPLEJE
+kg-section-navigation = NAVIGACE
+kg-section-views = POHLEDY
+kg-section-game = HRA
+
+## Řádky
+
+kg-pitch-down = Příď dolů / nahoru
+kg-roll-left = Klonění vlevo / vpravo
+kg-yaw-left = Směrovka vlevo / vpravo
+kg-trim-nose-down = Trim příď dolů / nahoru
+kg-trim-left = Trim vlevo / vpravo
+kg-trim-reset = Vystředit trim
+kg-stick-sensitivity = Citlivost páky (dvojitý stisk klávesy páky: plná)
+kg-throttle-up = Plyn (kolektiv) víc
+kg-throttle-down = Plyn (kolektiv) míň
+kg-throttle-max = Plný výkon
+kg-throttle-idle = Volnoběh
+kg-autopilot = Autopilot k waypointu
+kg-gear = Podvozek
+kg-flaps = Vztlakové klapky
+kg-brakes = Brzdy kol, brzdicí štít
+kg-bay-doors = Dveře zbraňových šachet
+kg-master-caution = Master caution: ztlumit alarmy
+kg-eject = Katapultáž
+kg-select-weapon = Další zbraň
+kg-fire-weapon = Odpálit vybranou zbraň
+kg-gun = Střílet z kanónu
+kg-bomb-mode = Režim bombardování CCIP / CCRP
+kg-nearest-target = Zaměřit nejbližší cíl před sebou
+kg-select-target = Další cíl
+kg-designate-target = Označit nový cíl
+kg-clear-target = Zrušit zaměření cílů
+kg-cam-ahead = Sledovací kamera vpřed
+kg-cam-rear = Sledovací kamera vzad
+kg-cam-left = Sledovací kamera vlevo
+kg-cam-right = Sledovací kamera vpravo
+kg-camera-zoom-in = Zoom kamery přiblížit / oddálit
+kg-lock-cursor = Zaměřit cíl pod kurzorem
+kg-swap-soi = Sensor of interest na druhé MFD
+kg-flare = Světlice (infračervené střely)
+kg-chaff = Chaff (radarové střely)
+kg-decoy = Návnada
+kg-ir-jammer = IR rušička zap / vyp
+kg-ecm = Radarová rušička (ECM) zap / vyp
+kg-hud-mode = Režim HUD NAV / AIR / GND
+kg-hud-declutter = Odlehčení HUD
+kg-maps = Levé MFD: mapa / taktická
+kg-map-zoom-in = Zoom mapy přiblížit / oddálit
+kg-map-orientation = Mapa sever nahoře / kurz nahoře
+kg-ordnance = Stránka zbraní
+kg-mission-orders = Rozkazy mise
+kg-flir = FLIR zap / vyp
+kg-nvg = Noktovizor
+kg-ils = Naváděcí systém ILS pro přistání
+kg-select-waypoint = Stránka waypointů
+kg-change-waypoint = Změnit waypoint
+kg-reset-waypoint = Obnovit waypoint
+kg-last-waypoint = Předchozí / další waypoint
+kg-view-cockpit = Kokpit
+kg-look-ahead = Pohled vpřed
+kg-look-left = Pohled vlevo
+kg-look-right = Pohled vpravo
+kg-look-rear = Pohled vzad
+kg-view-slot = Pohled křídelníka
+kg-view-chase = Pohled zezadu
+kg-view-side = Pohled ze strany
+kg-view-missile = Pohled ze střely
+kg-view-tactical = Taktický pohled
+kg-view-inverse-tactical = Obrácený taktický pohled
+kg-view-free = Volná kamera: W/S/A/D/Q/E, myš, kolečko
+kg-zoom = Přiblížit / oddálit
+kg-wide-angle = Širokoúhlý pohled
+kg-menu = Nabídka nastavení, pauza
+kg-kneeboard = Kneeboard
+kg-chat = Chat (multiplayer)
+kg-time-accel = Čas rychleji / normálně
+kg-volume = Hlasitost zvuku
+kg-detail = Úroveň detailu
+kg-day-night = Den / noc
+kg-training = Přejít na trénink
+kg-resupply = Doplnit zásoby
+kg-quit = Konec

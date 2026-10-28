@@ -1,0 +1,108 @@
+# Okno NASTAVENÍ (src/options.rs) a jeho stránky v nabídce za letu.
+
+options-title = NASTAVENÍ
+options-tab-game = HRA
+options-tab-graphics = GRAFIKA
+options-tab-sound = ZVUK
+options-tab-controls = OVLÁDÁNÍ
+options-footer = Uloženo pro další lety; přepínače realismu se volí při každé hře
+
+## HRA
+
+options-section-language = Jazyk
+options-section-classic-modern = Klasický / Moderní
+options-cockpit = Kokpit
+    .facts =
+        Moderní: displeje ve vysokém rozlišení s tlačítky na rámečku
+        Klasický: rozložení přístrojové desky z éry DOSu a displeje 77x60 (F-117A)
+options-hud = HUD
+    .facts =
+        Moderní: zelený HUD ve vysokém rozlišení ve stylu F-16 s režimy NAV, AA a AG
+        Klasický: HUD z éry DOSu
+options-avionics = Avionika
+    .facts =
+        Moderní: stránky MFD ve stylu F-16 na obou MFD (situace, HARM, zaměřovací kontejner, mapa, výzbroj) s pohyblivým kurzorem
+        Klasický: mapa a TAC vlevo, kamera, WAY, WPN a ORD vpravo
+options-flight-model = Letový model
+    .facts =
+        Moderní: aerodynamický letový model s elektrickým řízením: páka zadává rychlost klopení a klonění; po uvolnění zůstane příď na místě a dráha letu se drží
+        Klasický: letový model z éry DOSu
+options-section-flying = Pilotování
+options-auto-trim = Automatický trim
+    .facts =
+        Při uvolněné páce trim drží polohu, ve které jste ji nechali
+        Vrtulníky: příď už nestoupá s rychlostí; stíhačky: vyvažuje poškozená kormidla
+        Ruční trim: Alt + šipky, Alt + Home jej vystředí
+options-tooltips = Tooltipy kokpitu
+    .facts = Co je ovladač nebo displej kokpitu, pod myší nebo špičkou prstu ve VR
+options-section-vr-size = Velikost kokpitu ve VR
+options-vr-size =
+    .facts =
+        Velikost kokpitu (a světa) v headsetu
+        100 %: skutečná velikost
+
+## GRAFIKA
+
+options-section-rendering = Vykreslování
+options-shaders = Shadery
+    .facts =
+        Moderní: jemné směrové stínování, plynulá dálková mlha
+        Klasický: ploché stínování
+options-shadows = Stíny
+    .facts =
+        Moderní: sluneční stíny v kokpitu i ve světě (zatěžuje GPU)
+        Klasický: bez stínů
+options-point-lights = Bodová světla
+    .facts =
+        Moderní: osvětlení kokpitu a displejů; scénu osvětlují výbuchy, plameny a dráhová světla
+        Klasický: pouze světlo slunce a oblohy
+options-time-of-day = Denní doba
+    .facts =
+        Moderní: slunce a měsíc se pohybují podle hodin mise, obloha tmavne a světlá se se sluncem; v noci hvězdy a fáze měsíce
+        Moderní: měsíční svit určuje, jak daleko vás v noci vidí nepřátelští piloti (2 km za bezměsíčné noci, 4 km za úplňku)
+        Klasický: pomalá změna barev a pevné slunce
+options-msaa = Vyhlazování hran (MSAA)
+    .facts =
+        Hladké hrany: 4x MSAA, ve VR 2x (zatěžuje GPU)
+        Vypnuto: ostré hrany pixelů
+options-auto-detail = Automatický detail krajiny (VR)
+    .facts =
+        V headsetu se dohled měst, lesů a polí zkracuje, když snímky zaostávají, a vrací se, když je čas nazbyt
+        Nastavení grafiky zůstává, jak jste je zvolili
+options-sun-moon = Slunce a měsíc
+    .facts =
+        Ve dne slunce na obloze, v noci měsíc a hvězdy
+        Měsíc ukazuje fázi podle mise
+
+## ZVUK
+
+options-section-volume = Hlasitost
+options-volume-master = Celková
+    .facts = Všechny zvuky
+options-volume-engine = Motor
+    .facts = Váš motor nebo rotor a letouny slyšené kolem vás
+options-volume-effects = Efekty
+    .facts = Zbraně, výbuchy, podvozek, rádio a vše ostatní
+options-volume-warnings = Varování
+    .facts = Houkačka přetažení, varování radaru a střel, siréna požáru, tóny Sidewinderu
+options-section-cockpit = Kokpit
+options-low-pass = Dolní propust motoru
+    .facts =
+        Uvnitř letounu zní motor tlumeně (kabina a helma ubírají výšky)
+        Vypnuto: stejně jako venku
+
+## OVLÁDÁNÍ
+
+options-section-bindings = Přiřazení
+options-keys-joystick = KLÁVESY A JOYSTICK
+    .facts =
+        Klávesy mapy, osy a tlačítka joysticku a HOTAS
+        Uloženo pro další lety
+options-section-head-tracking = Sledování hlavy / očí
+options-head-tracking = Sledování hlavy / očí
+    .facts =
+        Hlava otáčí a posouvá pohled v kokpitu (na PC; ve VR to dělá headset)
+        Program pro sledování (OpenTrack...): výstup FreeTrack nebo UDP na 127.0.0.1 port 4242
+        Home: aktuální poloha hlavy se stane středem
+options-tracking = Sledování ({ $source })
+options-no-tracker = Žádný tracker neodpovídá: spusťte program pro sledování

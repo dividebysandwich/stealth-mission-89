@@ -1,0 +1,118 @@
+# Пътеводителят за клавишите (src/key_guide.rs): страницата КЛАВИШИ на планшета и ПЪТЕВОДИТЕЛЯТ
+# ЗА КЛАВИШИТЕ в менюто по време на полет, изчертани с щриховия шрифт; заглавията на разделите
+# озаглавяват и списъците в диалога УПРАВЛЕНИЕ. В текстовете на клавишите "_" заменя интервал
+# (думите остават на един ред).
+
+kg-vr-controllers = VR КОНТРОЛЕРИ
+kg-vr-grip = GRIP
+    .desc = Хващане на ръчката, газовете или планшета
+kg-vr-fingertip = ВРЪХЧЕ_НА_ПРЪСТА
+    .desc = Натискане на превключватели и бутони, раздели на планшета
+kg-vr-left-stick = ЛЯВ_STICK
+    .desc = Преместване на курсора на сензора
+kg-vr-stick = STICK
+    .desc = Превъртане на този списък (пръст върху планшета)
+kg-gun-target = Оръдие
+kg-mouse = МИШКА
+kg-mouse-right-drag = ДЕСЕН_БУТОН_ВЛАЧЕНЕ
+    .desc = Оглеждане наоколо (отвън: въртене на камерата)
+kg-mouse-hold-right = ДЕСЕН_БУТОН_ДРЪЖТЕ, КОЛЕЛО
+    .desc = Приближаване / отдалечаване на гледката
+kg-mouse-left-click = ЛЯВ_КЛИК
+    .desc = Натискане на превключвател или бутон в кабината, раздел на планшета
+kg-mouse-point = СОЧЕНЕ
+    .desc = Подсказка за орган на кабината (меню: ПОДСКАЗКИ)
+kg-mouse-wheel = КОЛЕЛО
+    .desc = Превъртане на този списък
+kg-unbound = НЕНАЗНАЧЕН
+
+## Раздели
+
+kg-section-flight = ПОЛЕТ
+kg-section-aircraft = САМОЛЕТ
+kg-section-weapons = ОРЪЖИЕ
+kg-section-targets = ЦЕЛИ
+kg-section-defenses = ЗАЩИТА
+kg-section-displays = ДИСПЛЕИ
+kg-section-navigation = НАВИГАЦИЯ
+kg-section-views = ГЛЕДКИ
+kg-section-game = ИГРА
+
+## Редове
+
+kg-pitch-down = Нос надолу / нагоре
+kg-roll-left = Крен наляво / надясно
+kg-yaw-left = Педали наляво / надясно
+kg-trim-nose-down = Трим нос надолу / нагоре
+kg-trim-left = Трим наляво / надясно
+kg-trim-reset = Центриране на трима
+kg-stick-sensitivity = Чувствителност на ръчката (двойно натискане на клавиш: максимум)
+kg-throttle-up = Газ (колектив) нагоре
+kg-throttle-down = Газ (колектив) надолу
+kg-throttle-max = Пълна мощност
+kg-throttle-idle = Малък газ
+kg-autopilot = Автопилот към waypoint
+kg-gear = Колесник
+kg-flaps = Закрилки
+kg-brakes = Колесни спирачки, въздушна спирачка
+kg-bay-doors = Люкове на оръжейните отсеци
+kg-master-caution = Master caution: заглушаване на алармите
+kg-eject = Катапултиране
+kg-select-weapon = Следващо оръжие
+kg-fire-weapon = Стрелба с избраното оръжие
+kg-gun = Стрелба с оръдието
+kg-bomb-mode = Режим на бомбардиране CCIP / CCRP
+kg-nearest-target = Захват на най-близката цел отпред
+kg-select-target = Следваща цел
+kg-designate-target = Означаване на нова цел
+kg-clear-target = Освобождаване на захватите
+kg-cam-ahead = Следяща камера напред
+kg-cam-rear = Следяща камера назад
+kg-cam-left = Следяща камера наляво
+kg-cam-right = Следяща камера надясно
+kg-camera-zoom-in = Приближаване / отдалечаване на камерата
+kg-lock-cursor = Захват на целта под курсора
+kg-swap-soi = Сензор от интерес към другия MFD
+kg-flare = Топлинен капан (инфрачервени ракети)
+kg-chaff = Chaff (радарни ракети)
+kg-decoy = Примамка
+kg-ir-jammer = IR заглушител вкл. / изкл.
+kg-ecm = Радарен заглушител (ECM) вкл. / изкл.
+kg-hud-mode = Режим на HUD NAV / AIR / GND
+kg-hud-declutter = Облекчаване на HUD
+kg-maps = Ляв MFD: карта / тактика
+kg-map-zoom-in = Приближаване / отдалечаване на картата
+kg-map-orientation = Карта с север нагоре / с курса нагоре
+kg-ordnance = Страница на оръжията
+kg-mission-orders = Заповеди за мисията
+kg-flir = FLIR вкл. / изкл.
+kg-nvg = Очила за нощно виждане
+kg-ils = ILS насочване при кацане
+kg-select-waypoint = Страница на waypoint
+kg-change-waypoint = Смяна на waypoint
+kg-reset-waypoint = Нулиране на waypoint
+kg-last-waypoint = Предишен / следващ waypoint
+kg-view-cockpit = Кабина
+kg-look-ahead = Поглед напред
+kg-look-left = Поглед наляво
+kg-look-right = Поглед надясно
+kg-look-rear = Поглед назад
+kg-view-slot = Гледка от позицията
+kg-view-chase = Гледка отзад
+kg-view-side = Гледка отстрани
+kg-view-missile = Гледка от ракетата
+kg-view-tactical = Тактическа гледка
+kg-view-inverse-tactical = Обратна тактическа гледка
+kg-view-free = Свободна камера: W/S/A/D/Q/E, мишка, колело
+kg-zoom = Приближаване / отдалечаване
+kg-wide-angle = Широк ъгъл
+kg-menu = Меню с настройки, пауза
+kg-kneeboard = Kneeboard
+kg-chat = Чат (много играчи)
+kg-time-accel = Ускорено / нормално време
+kg-volume = Сила на звука
+kg-detail = Ниво на детайлност
+kg-day-night = Ден / нощ
+kg-training = Към тренировката
+kg-resupply = Презареждане
+kg-quit = Изход

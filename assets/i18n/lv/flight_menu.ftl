@@ -1,0 +1,47 @@
+# Lidojuma izvēlne (src/flight_menu.rs), zīmēta ar lidojuma kontūru fontu: lielie burti,
+# tikai latīņu valodu burti ar diakritiskajām zīmēm.
+
+fm-menu = IZVĒLNE
+fm-paused = IZVĒLNE  -  PAUZE
+fm-campaign-runs = IZVĒLNE  -  KAMPAŅA TURPINĀS
+fm-options-page = OPCIJAS  -  { $page }
+fm-resume = TURPINĀT
+fm-save-mission = SAGLABĀT MISIJU
+fm-saved = SAGLABĀTA
+fm-not-saved = NAV SAGLABĀTA
+fm-key-guide = TAUSTIŅU ĪSCEĻVEDIS
+fm-end-mission = BEIGT MISIJU
+fm-end-sortie = BEIGT LIDOJUMU
+fm-exiting = IZIET...
+fm-language = VALODA
+fm-shaders = SHADERS
+fm-msaa = KROPĻOJUMU MAZINĀŠANA
+fm-shadows = ĒNAS
+fm-point-lights = PUNKTVEIDA GAISMAS
+fm-time-of-day = DIENNAKTS LAIKS
+fm-sun-moon = SAULE UN MĒNESS
+fm-auto-detail = AUTO AINAVAS DETALIZĀCIJA
+fm-cockpit = KABĪNE
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = KABĪNES IZMĒRS
+fm-volume-master = KOPĒJAIS SKAĻUMS
+fm-volume-engine = DZINĒJS
+fm-volume-effects = EFEKTI
+fm-volume-warnings = BRĪDINĀJUMI
+fm-low-pass = DZINĒJA ZEMFREKVENČU FILTRS
+fm-head-tracking = GALVAS IZSEKOŠANA
+fm-bindings = TAUSTIŅI UN JOYSTICK
+fm-game-note = LIDOJUMA MODELIS, TACVIEW: GALVENĀS IZVĒLNES OPCIJAS
+fm-no-match = NAV ATBILSTĪBU
+fm-type-to-search = RAKSTIET, LAI MEKLĒTU
+fm-hint-vr = STICK: RITINĀT    LAUKS + SPRŪDS: TASTATŪRA    SPRŪDS: ATPAKAĻ
+fm-hint-vr-keyboard = TAUSTIŅŠ + SPRŪDS: RAKSTĪT    STICK: RITINĀT
+fm-hint-desktop = RITENĪTIS, BULTIŅAS: RITINĀT    ESC, KLIKŠĶIS: ATPAKAĻ
+fm-key-space = ATSTARPE
+fm-key-delete = DZĒST
+fm-key-clear = NOTĪRĪT
+fm-key-done = GATAVS
+fm-pull-trigger = NOVELCIET SPRŪDU

@@ -1,0 +1,62 @@
+# Sporočila HUD-a simulacije (crates/stealth-sim). Narisana s pisavami leta: z velikimi
+# črkami, brez strešic (latinične jezike; drugi vidijo angleščino). Imena enot, orožja
+# in krajev se posredujejo take, kot so.
+
+sim-missile-launch = Izstrelitev izstrelka
+sim-no-flares = Ni več signalnih raket
+sim-hind-spotted = Hind vas je opazil
+sim-rescue-lost = Reševalni helikopter izgubljen
+sim-rescued = Rešeni!
+sim-captured = Ujeti
+sim-aircraft-destroyed-eject = Letalo uničeno - Katapultirajte se
+sim-fire-out = Požar pogašen
+sim-aircraft-exploded = Letalo je eksplodiralo
+sim-equipment-delivered = Oprema dostavljena
+sim-bad-drop = Slab odmet
+sim-secondary-target = Drugotni cilj
+sim-primary-target = Glavni cilj
+sim-troops-inserted = Enote izkrcane
+sim-time-expired = Čas potekel
+sim-cargo-delivered = Tovor dostavljen
+sim-safe-landing = Varen pristanek
+sim-no-target-ahead = Ni cilja pred vami
+sim-target-obscured = Cilj zakrit
+sim-target-photographed = Cilj fotografiran.
+sim-drop-supplies = Odvrzite zaloge zdaj
+sim-no-target = Ni cilja
+sim-no-target-designated = Cilj ni označen
+sim-bay-closed = Bombnik zaprt
+sim-insufficient-altitude = Premajhna višina
+sim-fuel-transfer = Pretakanje goriva
+sim-stores-exhausted = Oborožitev porabljena
+sim-hit-gunfire = Zadet s streli
+sim-hit-aaa = Zadet od AAA
+sim-hit-flak = Zadet od flaka
+sim-destroyed = { $target } uničen
+sim-landing = { $base } - { $aircraft } pristaja
+sim-on-final = { $base } - { $aircraft } na zaključnem delu
+sim-taking-off = { $base } - { $aircraft } vzleta
+sim-shot-down = { $target } sestreljen
+sim-csar-down = Sestreljeni na sovražnem ozemlju - CSAR iz { $base }
+sim-flare-left = Signalna raketa - še { $count }
+sim-drone-hit-npp = Dron je zadel NPP { $place }
+sim-drone-hit = Dron je zadel { $place }
+sim-defense-failed = Obramba ni uspela - { $count } dronov se je prebilo
+sim-hit-by = Zadet od { $weapon }
+sim-target-hit-by = { $target } zadet od { $weapon }
+sim-ineffective = Neučinkovito
+sim-impact = Zadetek { $weapon }
+# Presledek na koncu je iz klasične igre.
+sim-misses = { $weapon } zgreši{" "}
+sim-destroyed-by = { $target } uničen z { $weapon }
+sim-ground-impact = Zadetek { $weapon } v tla
+sim-detected = { $target } zaznan
+sim-radar-id = { $site } - radarska identifikacija
+sim-firing = { $site } strelja z { $missile }
+sim-visual-id = Vizualna identifikacija - { $aircraft }
+sim-fired-by = { $missile } izstreljen z { $launcher }
+sim-frame = Sličica { $frame }
+sim-beacon = Smer radijskega svetilnika { $bearing }
+sim-fired = { $weapon } izstreljen
+sim-released = { $weapon } izpuščen
+sim-destroyed-gunfire = { $target } uničen s streli

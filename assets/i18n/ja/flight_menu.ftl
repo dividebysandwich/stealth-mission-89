@@ -1,0 +1,47 @@
+# 飛行中メニュー（src/flight_menu.rs）。飛行用のストロークフォントで描画：大文字、
+# ラテン系言語のアクセントのみ（日本語は飛行中は英語で表示されます）。
+
+fm-menu = メニュー
+fm-paused = メニュー  -  一時停止中
+fm-campaign-runs = メニュー  -  キャンペーン進行中
+fm-options-page = オプション  -  { $page }
+fm-resume = 再開
+fm-save-mission = ミッションを保存
+fm-saved = 保存しました
+fm-not-saved = 未保存
+fm-key-guide = キーガイド
+fm-end-mission = ミッション終了
+fm-end-sortie = 出撃終了
+fm-exiting = 終了中...
+fm-language = 言語
+fm-shaders = シェーダー
+fm-msaa = アンチエイリアス
+fm-shadows = 影
+fm-point-lights = ポイントライト
+fm-time-of-day = 時刻
+fm-sun-moon = 太陽と月
+fm-auto-detail = 地形ディテール自動調整
+fm-cockpit = コックピット
+fm-hud = HUD
+fm-avionics = アビオニクス
+fm-auto-trim = オートトリム
+fm-tooltips = ツールチップ
+fm-cockpit-size = コックピットのサイズ
+fm-volume-master = マスター音量
+fm-volume-engine = エンジン
+fm-volume-effects = 効果音
+fm-volume-warnings = 警告音
+fm-low-pass = エンジンローパス
+fm-head-tracking = ヘッドトラッキング
+fm-bindings = キーとジョイスティック
+fm-game-note = 飛行モデル、TACVIEW：メインメニューのオプション
+fm-no-match = 該当なし
+fm-type-to-search = 入力して検索
+fm-hint-vr = スティック：スクロール    入力欄 + トリガー：キーボード    トリガー：戻る
+fm-hint-vr-keyboard = キー + トリガー：入力    スティック：スクロール
+fm-hint-desktop = ホイール、矢印キー：スクロール    ESC、クリック：戻る
+fm-key-space = スペース
+fm-key-delete = DEL
+fm-key-clear = クリア
+fm-key-done = 完了
+fm-pull-trigger = トリガーを引いてください

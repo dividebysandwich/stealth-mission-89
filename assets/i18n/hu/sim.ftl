@@ -1,0 +1,62 @@
+# A szimuláció HUD-üzenetei (crates/stealth-sim). A repülési betűtípusokkal, ékezet nélküli
+# nagybetűkkel jelennek meg (a latin nyelveknél; a többi nyelvnél az angol látszik). Az egység-,
+# fegyver- és helynevek változatlanul kerülnek be.
+
+sim-missile-launch = Rakétaindítás
+sim-no-flares = Nincs több jelzőfáklya
+sim-hind-spotted = Egy Hind észrevett
+sim-rescue-lost = A mentőhelikopter elveszett
+sim-rescued = Kimentve!
+sim-captured = Fogságba esett
+sim-aircraft-destroyed-eject = A gép megsemmisült - Katapultálj
+sim-fire-out = A tűz kialudt
+sim-aircraft-exploded = A gép felrobbant
+sim-equipment-delivered = Felszerelés leszállítva
+sim-bad-drop = Rossz ledobás
+sim-secondary-target = Másodl. célpont
+sim-primary-target = Elsődleges célpont
+sim-troops-inserted = Csapatok beszállítva
+sim-time-expired = Az idő lejárt
+sim-cargo-delivered = Rakomány leszállítva
+sim-safe-landing = Biztonságos leszállás
+sim-no-target-ahead = Nincs célpont előtted
+sim-target-obscured = A célpont takarásban
+sim-target-photographed = Célpont lefényképezve.
+sim-drop-supplies = Dobd le az ellátmányt
+sim-no-target = Nincs célpont
+sim-no-target-designated = Nincs kijelölt célpont
+sim-bay-closed = A rekesz zárva
+sim-insufficient-altitude = Nincs elég magasság
+sim-fuel-transfer = Üzemanyag-átfejtés
+sim-stores-exhausted = A fegyverzet elfogyott
+sim-hit-gunfire = Géppuskatűz találta el
+sim-hit-aaa = AAA találat
+sim-hit-flak = Flak találat
+sim-destroyed = Megsemmisítve: { $target }
+sim-landing = { $base } - leszáll: { $aircraft }
+sim-on-final = { $base } - egyenesben: { $aircraft }
+sim-taking-off = { $base } - felszáll: { $aircraft }
+sim-shot-down = Lelőve: { $target }
+sim-csar-down = Az ellenséges területen - CSAR innen: { $base }
+sim-flare-left = Jelzőfáklya - még { $count }
+sim-drone-hit-npp = Drón találat: { $place } atomerőmű
+sim-drone-hit = Drón találat: { $place }
+sim-defense-failed = A védelem megbukott - { $count } drón átjutott
+sim-hit-by = Találat: { $weapon }
+sim-target-hit-by = { $target } találat: { $weapon }
+sim-ineffective = Hatástalan
+sim-impact = { $weapon } becsapódás
+# A záró szóköz a klasszikus játéké.
+sim-misses = { $weapon } célt téveszt{" "}
+sim-destroyed-by = { $target } megsemmisítve: { $weapon }
+sim-ground-impact = { $weapon } földbecsapódás
+sim-detected = Észlelve: { $target }
+sim-radar-id = { $site } - Radaros azonosítás
+sim-firing = { $site } tüzel: { $missile }
+sim-visual-id = Vizuális azonosítás - { $aircraft }
+sim-fired-by = { $missile } kilőve: { $launcher }
+sim-frame = { $frame }. kocka
+sim-beacon = Rádiójeladó iránya: { $bearing }
+sim-fired = { $weapon } kilőve
+sim-released = { $weapon } kioldva
+sim-destroyed-gunfire = { $target } megsemmisítve gépágyútűzzel

@@ -1,7 +1,10 @@
 //! The game's names in the player's language (the messages are in `assets/i18n`, the
 //! translation system in `crates/stealth-i18n`).
 
-use stealth_i18n::{t, tr, tr_lines};
+use std::sync::Arc;
+
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use stealth_i18n::{Language, language, t, tr, tr_lines};
 use stealth_mission::{MissionKind, Sky};
 
 use crate::aircraft::AircraftKind;
@@ -94,34 +97,147 @@ pub fn rating_name(rating: &str) -> &'static str {
     tr(&format!("rating-{}", rating.to_ascii_lowercase()))
 }
 
-/// The font of the 2D overlays (the end of mission, the downed pilot's panel): egui's Hack, as
-/// the menus and tooltips, which has the translations' letters (Bevy's built-in font has ASCII
-/// only).
+/// The languages with a font of their own besides Hack, which only draws the Latin, Greek and
+/// Cyrillic letters: the Han characters, kana and hangul come from subsets of Noto Sans CJK
+/// (SIL Open Font License, see `assets/fonts/README.md`).
+pub const CJK: [Language; 3] = [Language::Zh, Language::Ja, Language::Ko];
+
+/// A CJK language's font: a subset of Noto Sans CJK with the national standard's common
+/// characters and the language's texts (`tools/i18n_fonts.py` makes it).
+pub fn cjk_font(l: Language) -> Option<&'static [u8]> {
+    match l {
+        Language::Zh => Some(include_bytes!("../assets/fonts/NotoSansSC-Subset.otf")),
+        Language::Ja => Some(include_bytes!("../assets/fonts/NotoSansJP-Subset.otf")),
+        Language::Ko => Some(include_bytes!("../assets/fonts/NotoSansKR-Subset.otf")),
+        _ => None,
+    }
+}
+
+/// egui's fonts for language `l`: Hack, then the CJK fonts, `l`'s first (the same Han
+/// characters are drawn differently in Chinese, Japanese and Korean). The others stay behind it
+/// for the OPTIONS list, which names every language in itself.
+fn egui_fonts(l: Language) -> egui::FontDefinitions {
+    let mut defs = egui::FontDefinitions::default();
+    let mut order = CJK;
+    order.sort_by_key(|&c| c != l);
+    for c in order {
+        let Some(bytes) = cjk_font(c) else { continue };
+        let name = format!("cjk-{}", c.code());
+        defs.font_data.insert(name.clone(), Arc::new(egui::FontData::from_static(bytes)));
+        for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
+            if let Some(f) = defs.families.get_mut(&family) {
+                f.push(name.clone());
+            }
+        }
+    }
+    defs
+}
+
+/// Gives egui the fonts of the language when it changes.
+fn apply_egui_fonts(
+    mut contexts: EguiContexts,
+    mut applied: bevy::prelude::Local<Option<Language>>,
+) {
+    let l = language();
+    if *applied == Some(l) {
+        return;
+    }
+    let Ok(ctx) = contexts.ctx_mut() else { return };
+    ctx.set_fonts(egui_fonts(l));
+    *applied = Some(l);
+}
+
+/// Sets up the fonts: `UiFont` and egui's.
+pub struct I18nPlugin;
+
+impl bevy::prelude::Plugin for I18nPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.init_resource::<UiFont>().add_systems(EguiPrimaryContextPass, apply_egui_fonts);
+    }
+}
+
+/// The font of the 2D overlays and the tooltips (the end of mission, the downed pilot's
+/// panel): egui's Hack, which has the translations' letters (Bevy's built-in font has ASCII
+/// only), or the CJK language's.
 #[derive(bevy::prelude::Resource, Clone)]
-pub struct UiFont(pub bevy::prelude::Handle<bevy::prelude::Font>);
+pub struct UiFont {
+    latin: bevy::prelude::Handle<bevy::prelude::Font>,
+    cjk: Vec<(Language, bevy::prelude::Handle<bevy::prelude::Font>)>,
+}
 
 impl bevy::prelude::FromWorld for UiFont {
     fn from_world(world: &mut bevy::prelude::World) -> Self {
-        // Without text rendering (glvr's own renderer), Bevy's default handle.
-        let font = world
-            .get_resource_mut::<bevy::prelude::Assets<bevy::prelude::Font>>()
-            .map(|mut fonts| {
-                fonts.add(bevy::prelude::Font::from_bytes(
-                    epaint_default_fonts::HACK_REGULAR.to_vec(),
-                ))
+        // Without text rendering (glvr's own renderer), Bevy's default handles.
+        let Some(mut fonts) =
+            world.get_resource_mut::<bevy::prelude::Assets<bevy::prelude::Font>>()
+        else {
+            return UiFont { latin: Default::default(), cjk: Vec::new() };
+        };
+        let latin =
+            fonts.add(bevy::prelude::Font::from_bytes(epaint_default_fonts::HACK_REGULAR.to_vec()));
+        let cjk = CJK
+            .into_iter()
+            .filter_map(|l| {
+                let bytes = cjk_font(l)?;
+                Some((l, fonts.add(bevy::prelude::Font::from_bytes(bytes.to_vec()))))
             })
-            .unwrap_or_default();
-        UiFont(font)
+            .collect();
+        UiFont { latin, cjk }
     }
 }
 
 impl UiFont {
+    /// The font of the current language.
+    pub fn handle(&self) -> bevy::prelude::Handle<bevy::prelude::Font> {
+        let l = language();
+        self.cjk.iter().find(|(c, _)| *c == l).map_or(&self.latin, |(_, h)| h).clone()
+    }
+
     /// The font at `px` pixels.
     pub fn at(&self, px: f32) -> bevy::prelude::TextFont {
         bevy::prelude::TextFont {
-            font: self.0.clone().into(),
+            font: self.handle().into(),
             font_size: bevy::text::FontSize::Px(px),
             ..Default::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every character of the CJK languages' texts is in their font, or the player would see an
+    /// empty box (`python tools/i18n_fonts.py` makes the fonts again).
+    #[test]
+    fn cjk_fonts_cover_the_texts() {
+        for l in CJK {
+            let bytes = cjk_font(l).expect("a font");
+            let face = ttf_parser::Face::parse(bytes, 0).expect("a font file");
+            let dir = format!("assets/i18n/{}", l.code());
+            let mut missing = std::collections::BTreeSet::new();
+            for file in std::fs::read_dir(&dir).expect("the language's texts") {
+                let text = std::fs::read_to_string(file.unwrap().path()).unwrap();
+                missing.extend(text.chars().filter(|&c| {
+                    !c.is_control() && !c.is_whitespace() && face.glyph_index(c).is_none()
+                }));
+            }
+            assert!(missing.is_empty(), "{}: not in the font: {missing:?}", l.code());
+        }
+    }
+
+    /// The names of the languages are drawn by the fonts egui has in every language.
+    #[test]
+    fn the_options_list_is_drawable() {
+        for l in Language::ALL {
+            let text = l.native_name();
+            let drawn = |bytes: &[u8]| {
+                let face = ttf_parser::Face::parse(bytes, 0).unwrap();
+                text.chars().all(|c| face.glyph_index(c).is_some())
+            };
+            let fonts = std::iter::once(epaint_default_fonts::HACK_REGULAR)
+                .chain(CJK.into_iter().filter_map(cjk_font));
+            assert!(fonts.into_iter().any(drawn), "{}: {text}", l.code());
         }
     }
 }

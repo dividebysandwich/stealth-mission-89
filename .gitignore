@@ -14,3 +14,4 @@ __pycache__/
 # The browser build (Trunk.toml)
 /dist
 /web/index.gl.html
+/assets/fonts/source/

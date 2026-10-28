@@ -1,0 +1,47 @@
+# Het vluchtmenu (src/flight_menu.rs), getekend met het lijnlettertype van de vlucht: hoofdletters,
+# alleen de accenten van de Latijnse talen.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAUZE
+fm-campaign-runs = MENU  -  DE CAMPAGNE LOOPT DOOR
+fm-options-page = OPTIES  -  { $page }
+fm-resume = HERVATTEN
+fm-save-mission = MISSIE OPSLAAN
+fm-saved = OPGESLAGEN
+fm-not-saved = NIET OPGESLAGEN
+fm-key-guide = TOETSENGIDS
+fm-end-mission = MISSIE BEËINDIGEN
+fm-end-sortie = VLUCHT BEËINDIGEN
+fm-exiting = AFSLUITEN...
+fm-language = TAAL
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = SCHADUWEN
+fm-point-lights = PUNTLICHTEN
+fm-time-of-day = TIJDSTIP VAN DE DAG
+fm-sun-moon = ZON EN MAAN
+fm-auto-detail = AUTO LANDSCHAPSDETAIL
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONICA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = COCKPITGROOTTE
+fm-volume-master = ALGEMEEN VOLUME
+fm-volume-engine = MOTOR
+fm-volume-effects = EFFECTEN
+fm-volume-warnings = WAARSCHUWINGEN
+fm-low-pass = LAAGDOORLAAT MOTOR
+fm-head-tracking = HOOFDTRACKING
+fm-bindings = TOETSEN EN JOYSTICK
+fm-game-note = VLIEGMODEL, TACVIEW: OPTIES IN HET HOOFDMENU
+fm-no-match = GEEN RESULTAAT
+fm-type-to-search = TYP OM TE ZOEKEN
+fm-hint-vr = STICK: SCROLLEN    VELD + TRIGGER: TOETSENBORD    TRIGGER: TERUG
+fm-hint-vr-keyboard = TOETS + TRIGGER: TYPEN    STICK: SCROLLEN
+fm-hint-desktop = WIEL, PIJLTJES: SCROLLEN    ESC, KLIK: TERUG
+fm-key-space = SPATIE
+fm-key-delete = DEL
+fm-key-clear = WISSEN
+fm-key-done = OK
+fm-pull-trigger = HAAL DE TRIGGER OVER

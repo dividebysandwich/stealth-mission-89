@@ -1,0 +1,47 @@
+# Meniu skrydžio metu (src/flight_menu.rs), piešiamas skrydžio linijiniu šriftu: didžiosios raidės,
+# tik lotyniškų kalbų diakritikai.
+
+fm-menu = MENIU
+fm-paused = MENIU  -  PAUZĖ
+fm-campaign-runs = MENIU  -  KAMPANIJA TĘSIASI
+fm-options-page = NUSTATYMAI  -  { $page }
+fm-resume = TĘSTI
+fm-save-mission = IŠSAUGOTI MISIJĄ
+fm-saved = IŠSAUGOTA
+fm-not-saved = NEIŠSAUGOTA
+fm-key-guide = KLAVIŠŲ VADOVAS
+fm-end-mission = BAIGTI MISIJĄ
+fm-end-sortie = BAIGTI SKRYDĮ
+fm-exiting = IŠEINAMA...
+fm-language = KALBA
+fm-shaders = ŠEIDERIAI
+fm-msaa = ANTIALIASINGAS
+fm-shadows = ŠEŠĖLIAI
+fm-point-lights = TAŠKINIAI ŠVIESTUVAI
+fm-time-of-day = PAROS LAIKAS
+fm-sun-moon = SAULĖ IR MĖNULIS
+fm-auto-detail = AUTOM. APLINKOS DETALUMAS
+fm-cockpit = KABINA
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTOM. TRIM
+fm-tooltips = PAAIŠKINIMAI
+fm-cockpit-size = KABINOS DYDIS
+fm-volume-master = BENDRAS GARSAS
+fm-volume-engine = VARIKLIS
+fm-volume-effects = EFEKTAI
+fm-volume-warnings = ĮSPĖJIMAI
+fm-low-pass = VARIKLIO ŽEMŲ DAŽNIŲ FILTRAS
+fm-head-tracking = GALVOS SEKIMAS
+fm-bindings = KLAVIŠAI IR JOYSTICK
+fm-game-note = SKRYDŽIO MODELIS, TACVIEW: PAGRINDINIO MENIU NUSTATYMUOSE
+fm-no-match = NIEKO NERASTA
+fm-type-to-search = RAŠYKITE PAIEŠKAI
+fm-hint-vr = STICK: SLINKTI    LAUKAS + AKTYVIKLIS: KLAVIATŪRA    AKTYVIKLIS: ATGAL
+fm-hint-vr-keyboard = KLAVIŠAS + AKTYVIKLIS: RAŠYTI    STICK: SLINKTI
+fm-hint-desktop = RATUKAS, RODYKLĖS: SLINKTI    ESC, SPUSTELĖJIMAS: ATGAL
+fm-key-space = ATSTARPA
+fm-key-delete = DEL
+fm-key-clear = IŠVALYTI
+fm-key-done = GERAI
+fm-pull-trigger = PASPAUSKITE AKTYVIKLĮ

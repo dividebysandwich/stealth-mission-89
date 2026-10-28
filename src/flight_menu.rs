@@ -285,9 +285,9 @@ impl Item {
         let style = |classic: bool| tf!(if classic { "classic" } else { "modern" }).to_string();
         let on = |b: bool| tf!(if b { "on" } else { "off" }).to_string();
         match self {
-            // The stroke font has no Cyrillic: Russian is named in English.
+            // The stroke font has no Cyrillic or Chinese: they are named in English.
             Item::Language if s.language.latin() => format!("< {} >", s.language.native_name()),
-            Item::Language => "< RUSSIAN >".to_string(),
+            Item::Language => format!("< {} >", s.language.english_name()),
             Item::Shaders => style(!s.modern_shading),
             Item::Msaa => on(s.msaa),
             Item::Shadows => on(s.shadows),

@@ -1,0 +1,47 @@
+# Menu w locie (src/flight_menu.rs), rysowane wektorową czcionką lotu: wielkie litery,
+# tylko znaki diakrytyczne języków łacińskich.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAUZA
+fm-campaign-runs = MENU  -  KAMPANIA TRWA
+fm-options-page = OPCJE  -  { $page }
+fm-resume = WZNOWIĆ
+fm-save-mission = ZAPISAĆ MISJĘ
+fm-saved = ZAPISANO
+fm-not-saved = NIE ZAPISANO
+fm-key-guide = LISTA KLAWISZY
+fm-end-mission = ZAKOŃCZYĆ MISJĘ
+fm-end-sortie = ZAKOŃCZYĆ LOT BOJOWY
+fm-exiting = WYCHODZENIE...
+fm-language = JĘZYK
+fm-shaders = SHADERY
+fm-msaa = WYGŁADZANIE KRAWĘDZI
+fm-shadows = CIENIE
+fm-point-lights = ŚWIATŁA PUNKTOWE
+fm-time-of-day = PORA DNIA
+fm-sun-moon = SŁOŃCE I KSIĘŻYC
+fm-auto-detail = AUTOM. SZCZEGÓŁOWOŚĆ SCENERII
+fm-cockpit = KOKPIT
+fm-hud = HUD
+fm-avionics = AWIONIKA
+fm-auto-trim = AUTOM. TRYM
+fm-tooltips = TOOLTIPY
+fm-cockpit-size = ROZMIAR KOKPITU
+fm-volume-master = GŁOŚNOŚĆ OGÓLNA
+fm-volume-engine = SILNIK
+fm-volume-effects = EFEKTY
+fm-volume-warnings = OSTRZEŻENIA
+fm-low-pass = FILTR DOLNOPRZEPUSTOWY SILNIKA
+fm-head-tracking = ŚLEDZENIE GŁOWY
+fm-bindings = KLAWISZE I JOYSTICK
+fm-game-note = MODEL LOTU, TACVIEW: OPCJE MENU GŁÓWNEGO
+fm-no-match = BRAK WYNIKÓW
+fm-type-to-search = PISAĆ, ABY WYSZUKAĆ
+fm-hint-vr = GAŁKA: PRZEWIJANIE    POLE + SPUST: KLAWIATURA    SPUST: WSTECZ
+fm-hint-vr-keyboard = KLAWISZ + SPUST: PISANIE    GAŁKA: PRZEWIJANIE
+fm-hint-desktop = KÓŁKO, STRZAŁKI: PRZEWIJANIE    ESC, KLIK: WSTECZ
+fm-key-space = SPACJA
+fm-key-delete = USUŃ
+fm-key-clear = WYCZYŚĆ
+fm-key-done = GOTOWE
+fm-pull-trigger = NACISNĄĆ SPUST

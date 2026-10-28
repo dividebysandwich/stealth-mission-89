@@ -1,0 +1,62 @@
+# Teachtaireachtaí HUD an insamhalta (crates/stealth-sim). Tarraingthe leis na clónna eitilte: i
+# gcaipitil, gan síntí fada (na teangacha Laidineacha; féachann na cinn eile ar an mBéarla). Cuirtear
+# ainmneacha aonad, arm agus áit ar aghaidh mar atá.
+
+sim-missile-launch = Diúracán scaoilte
+sim-no-flares = Níl solas seolta ar bith fágtha
+sim-hind-spotted = Chonaic Hind thú
+sim-rescue-lost = Cailleadh héileacaptar tarrthála
+sim-rescued = Tarrtháilte!
+sim-captured = Gafa
+sim-aircraft-destroyed-eject = Aerárthach scriosta - Eject
+sim-fire-out = Tine curtha as
+sim-aircraft-exploded = Phléasc an t-aerárthach
+sim-equipment-delivered = Trealamh seachadta
+sim-bad-drop = Titim lochtach
+sim-secondary-target = Sprioc thán.
+sim-primary-target = Príomhsprioc
+sim-troops-inserted = Trúpaí curtha i dtír
+sim-time-expired = Am caite
+sim-cargo-delivered = Lasta seachadta
+sim-safe-landing = Tuirlingt shábháilte
+sim-no-target-ahead = Níl sprioc romhat
+sim-target-obscured = Sprioc ceilte
+sim-target-photographed = Sprioc grianghrafadh.
+sim-drop-supplies = Scaoil na soláthairtí anois
+sim-no-target = Gan sprioc
+sim-no-target-designated = Níor ainmníodh sprioc
+sim-bay-closed = Bá dúnta
+sim-insufficient-altitude = Airde easnamhach
+sim-fuel-transfer = Aistriú breosla
+sim-stores-exhausted = Stoic ídithe
+sim-hit-gunfire = Buailte ag tine ghunnaí
+sim-hit-aaa = Buailte ag AAA
+sim-hit-flak = Buailte ag flak
+sim-destroyed = Scriosadh: { $target }
+sim-landing = { $base } - { $aircraft } ag tuirlingt
+sim-on-final = { $base } - { $aircraft } ar an gcéim dheiridh
+sim-taking-off = { $base } - { $aircraft } ag éirí de thalamh
+sim-shot-down = Lámhachadh anuas: { $target }
+sim-csar-down = Anuas i dterritóir an namhad - CSAR ó { $base }
+sim-flare-left = Solas seolta - { $count } fágtha
+sim-drone-hit-npp = Bhuail drón an t-ionad núicléach: { $place }
+sim-drone-hit = Bhuail drón: { $place }
+sim-defense-failed = Theip ar an gcosaint - { $count } drón tríd
+sim-hit-by = Buailte ag { $weapon }
+sim-target-hit-by = { $target } buailte ag { $weapon }
+sim-ineffective = Gan éifeacht
+sim-impact = Bualadh: { $weapon }
+# Is ón gcluiche clasaiceach an spás ag an deireadh.
+sim-misses = { $weapon } ar strae{" "}
+sim-destroyed-by = { $target } scriosta ag { $weapon }
+sim-ground-impact = { $weapon } bualadh ar an talamh
+sim-detected = Braitheadh: { $target }
+sim-radar-id = { $site } - ID radair
+sim-firing = { $site } ag scaoileadh { $missile }
+sim-visual-id = ID amhairc - { $aircraft }
+sim-fired-by = { $missile } scaoilte ag { $launcher }
+sim-frame = Fráma { $frame }
+sim-beacon = Beacón raidió: treo { $bearing }
+sim-fired = { $weapon } scaoilte
+sim-released = { $weapon } scaoilte anuas
+sim-destroyed-gunfire = { $target } scriosta ag tine ghunnaí

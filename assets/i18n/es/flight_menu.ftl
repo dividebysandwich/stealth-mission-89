@@ -1,0 +1,47 @@
+# El menú en vuelo (src/flight_menu.rs), dibujado con la fuente vectorial del vuelo: mayúsculas,
+# solo los acentos de las lenguas latinas.
+
+fm-menu = MENÚ
+fm-paused = MENÚ  -  PAUSA
+fm-campaign-runs = MENÚ  -  LA CAMPAÑA CONTINÚA
+fm-options-page = OPCIONES  -  { $page }
+fm-resume = REANUDAR
+fm-save-mission = GUARDAR MISIÓN
+fm-saved = GUARDADA
+fm-not-saved = NO GUARDADA
+fm-key-guide = GUÍA DE TECLAS
+fm-end-mission = TERMINAR MISIÓN
+fm-end-sortie = TERMINAR SALIDA
+fm-exiting = SALIENDO...
+fm-language = IDIOMA
+fm-shaders = SHADERS
+fm-msaa = ANTIALIASING
+fm-shadows = SOMBRAS
+fm-point-lights = LUCES PUNTUALES
+fm-time-of-day = HORA DEL DÍA
+fm-sun-moon = SOL Y LUNA
+fm-auto-detail = DETALLE AUTO DEL PAISAJE
+fm-cockpit = CABINA
+fm-hud = HUD
+fm-avionics = AVIÓNICA
+fm-auto-trim = TRIM AUTO
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = TAMAÑO DE LA CABINA
+fm-volume-master = VOLUMEN GENERAL
+fm-volume-engine = MOTOR
+fm-volume-effects = EFECTOS
+fm-volume-warnings = ALARMAS
+fm-low-pass = PASO BAJO DEL MOTOR
+fm-head-tracking = SEGUIMIENTO DE CABEZA
+fm-bindings = TECLAS Y JOYSTICK
+fm-game-note = MODELO DE VUELO, TACVIEW: OPCIONES DEL MENÚ PRINCIPAL
+fm-no-match = SIN RESULTADOS
+fm-type-to-search = ESCRIBIR PARA BUSCAR
+fm-hint-vr = STICK: DESPLAZAR    CAMPO + GATILLO: TECLADO    GATILLO: VOLVER
+fm-hint-vr-keyboard = TECLA + GATILLO: ESCRIBIR    STICK: DESPLAZAR
+fm-hint-desktop = RUEDA, FLECHAS: DESPLAZAR    ESC, CLIC: VOLVER
+fm-key-space = ESPACIO
+fm-key-delete = SUPR
+fm-key-clear = BORRAR
+fm-key-done = HECHO
+fm-pull-trigger = APRETAR EL GATILLO

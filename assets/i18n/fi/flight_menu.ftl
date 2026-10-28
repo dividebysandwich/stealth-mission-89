@@ -1,0 +1,47 @@
+# Lennon aikainen valikko (src/flight_menu.rs), piirretty lennon viivafontilla: isot kirjaimet,
+# vain latinalaisten kielten aksentit.
+
+fm-menu = VALIKKO
+fm-paused = VALIKKO  -  TAUOLLA
+fm-campaign-runs = VALIKKO  -  KAMPANJA JATKUU
+fm-options-page = ASETUKSET  -  { $page }
+fm-resume = JATKA
+fm-save-mission = TALLENNA TEHTÄVÄ
+fm-saved = TALLENNETTU
+fm-not-saved = EI TALLENNETTU
+fm-key-guide = NÄPPÄINOPAS
+fm-end-mission = LOPETA TEHTÄVÄ
+fm-end-sortie = LOPETA LENTO
+fm-exiting = POISTUTAAN...
+fm-language = KIELI
+fm-shaders = SHADERIT
+fm-msaa = REUNANPEHMENNYS
+fm-shadows = VARJOT
+fm-point-lights = PISTEVALOT
+fm-time-of-day = VUOROKAUDENAIKA
+fm-sun-moon = AURINKO JA KUU
+fm-auto-detail = MAISEMAN AUTOM. YKSITYISKOHDAT
+fm-cockpit = OHJAAMO
+fm-hud = HUD
+fm-avionics = AVIONIIKKA
+fm-auto-trim = AUTOTRIMMI
+fm-tooltips = TYÖKALUVIHJEET
+fm-cockpit-size = OHJAAMON KOKO
+fm-volume-master = PÄÄVOIMAKKUUS
+fm-volume-engine = MOOTTORI
+fm-volume-effects = EFEKTIT
+fm-volume-warnings = VAROITUKSET
+fm-low-pass = MOOTTORIN ALIPÄÄSTÖ
+fm-head-tracking = PÄÄNSEURANTA
+fm-bindings = NÄPPÄIMET JA OHJAUSSAUVA
+fm-game-note = LENTOMALLI, TACVIEW: PÄÄVALIKON ASETUKSET
+fm-no-match = EI TULOKSIA
+fm-type-to-search = KIRJOITA HAKUSANA
+fm-hint-vr = SAUVA: SELAA    KENTTÄ + LIPAISIN: NÄPPÄIMISTÖ    LIPAISIN: TAKAISIN
+fm-hint-vr-keyboard = NÄPPÄIN + LIPAISIN: KIRJOITA    SAUVA: SELAA
+fm-hint-desktop = HIIREN RULLA, NUOLET: SELAA    ESC, KLIKKAUS: TAKAISIN
+fm-key-space = VÄLI
+fm-key-delete = POISTA
+fm-key-clear = TYHJENNÄ
+fm-key-done = VALMIS
+fm-pull-trigger = PAINA LIPAISINTA

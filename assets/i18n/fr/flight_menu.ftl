@@ -1,0 +1,47 @@
+# Le menu en vol (src/flight_menu.rs), dessiné avec la police vectorielle du vol : majuscules,
+# accents des langues latines seulement.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAUSE
+fm-campaign-runs = MENU  -  LA CAMPAGNE CONTINUE
+fm-options-page = OPTIONS  -  { $page }
+fm-resume = REPRENDRE
+fm-save-mission = ENREGISTRER LA MISSION
+fm-saved = ENREGISTRÉE
+fm-not-saved = NON ENREGISTRÉE
+fm-key-guide = GUIDE DES TOUCHES
+fm-end-mission = TERMINER LA MISSION
+fm-end-sortie = TERMINER LA SORTIE
+fm-exiting = SORTIE EN COURS...
+fm-language = LANGUE
+fm-shaders = SHADERS
+fm-msaa = ANTICRÉNELAGE
+fm-shadows = OMBRES
+fm-point-lights = LUMIÈRES PONCTUELLES
+fm-time-of-day = HEURE DU JOUR
+fm-sun-moon = SOLEIL ET LUNE
+fm-auto-detail = DÉTAIL AUTO DU DÉCOR
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONIQUE
+fm-auto-trim = TRIM AUTO
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = TAILLE DU COCKPIT
+fm-volume-master = VOLUME GÉNÉRAL
+fm-volume-engine = MOTEUR
+fm-volume-effects = EFFETS
+fm-volume-warnings = ALARMES
+fm-low-pass = PASSE-BAS MOTEUR
+fm-head-tracking = SUIVI DE LA TÊTE
+fm-bindings = TOUCHES ET JOYSTICK
+fm-game-note = MODÈLE DE VOL, TACVIEW : OPTIONS DU MENU PRINCIPAL
+fm-no-match = AUCUN RÉSULTAT
+fm-type-to-search = TAPEZ POUR CHERCHER
+fm-hint-vr = STICK : DÉFILER    CHAMP + GÂCHETTE : CLAVIER    GÂCHETTE : RETOUR
+fm-hint-vr-keyboard = TOUCHE + GÂCHETTE : TAPER    STICK : DÉFILER
+fm-hint-desktop = MOLETTE, FLÈCHES : DÉFILER    ÉCHAP, CLIC : RETOUR
+fm-key-space = ESPACE
+fm-key-delete = SUPPR
+fm-key-clear = EFFACER
+fm-key-done = OK
+fm-pull-trigger = APPUYEZ SUR LA GÂCHETTE

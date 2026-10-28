@@ -1,0 +1,47 @@
+# Flyvemenuen (src/flight_menu.rs), tegnet med flyvningens stregskrift: versaler,
+# kun de latinske sprogs accenter.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAUSE
+fm-campaign-runs = MENU  -  KAMPAGNEN FORTSÆTTER
+fm-options-page = INDSTILLINGER  -  { $page }
+fm-resume = FORTSÆT
+fm-save-mission = GEM MISSION
+fm-saved = GEMT
+fm-not-saved = IKKE GEMT
+fm-key-guide = TASTEGUIDE
+fm-end-mission = AFSLUT MISSION
+fm-end-sortie = AFSLUT FLYVNING
+fm-exiting = AFSLUTTER...
+fm-language = SPROG
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = SKYGGER
+fm-point-lights = PUNKTLYS
+fm-time-of-day = TIDSPUNKT PÅ DAGEN
+fm-sun-moon = SOL OG MÅNE
+fm-auto-detail = AUTO LANDSKABSDETALJE
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONIK
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = COCKPITSTØRRELSE
+fm-volume-master = SAMLET LYDSTYRKE
+fm-volume-engine = MOTOR
+fm-volume-effects = EFFEKTER
+fm-volume-warnings = ADVARSLER
+fm-low-pass = LAVPAS MOTOR
+fm-head-tracking = HOVEDSPORING
+fm-bindings = TASTER OG JOYSTICK
+fm-game-note = FLYMODEL, TACVIEW: INDSTILLINGER I HOVEDMENUEN
+fm-no-match = INGEN TRÆF
+fm-type-to-search = SKRIV FOR AT SØGE
+fm-hint-vr = STICK: RULLE    FELT + UDLØSER: TASTATUR    UDLØSER: TILBAGE
+fm-hint-vr-keyboard = TAST + UDLØSER: SKRIV    STICK: RULLE
+fm-hint-desktop = HJUL, PILE: RULLE    ESC, KLIK: TILBAGE
+fm-key-space = MELLEMRUM
+fm-key-delete = SLET
+fm-key-clear = RYD
+fm-key-done = OK
+fm-pull-trigger = TRÆK I UDLØSEREN

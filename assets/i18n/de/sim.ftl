@@ -1,0 +1,62 @@
+# Die HUD-Meldungen der Simulation (crates/stealth-sim). Mit den Flugschriften gezeichnet: in Großbuchstaben,
+# ohne Umlaute (lateinische Sprachen; die anderen sehen das Englische). Einheiten-, Waffen- und Ortsnamen
+# werden unverändert übergeben.
+
+sim-missile-launch = Raketenstart
+sim-no-flares = Keine Signalfackeln mehr
+sim-hind-spotted = Ein Hind hat Sie entdeckt
+sim-rescue-lost = Rettungshubschrauber verloren
+sim-rescued = Gerettet!
+sim-captured = Gefangen genommen
+sim-aircraft-destroyed-eject = Flugzeug zerstört - Aussteigen
+sim-fire-out = Feuer gelöscht
+sim-aircraft-exploded = Flugzeug explodiert
+sim-equipment-delivered = Material abgeliefert
+sim-bad-drop = Abwurf verfehlt
+sim-secondary-target = Sekundärziel
+sim-primary-target = Primärziel
+sim-troops-inserted = Truppen abgesetzt
+sim-time-expired = Zeit abgelaufen
+sim-cargo-delivered = Fracht abgeliefert
+sim-safe-landing = Sichere Landung
+sim-no-target-ahead = Kein Ziel voraus
+sim-target-obscured = Ziel verdeckt
+sim-target-photographed = Ziel fotografiert.
+sim-drop-supplies = Nachschub jetzt abwerfen
+sim-no-target = Kein Ziel
+sim-no-target-designated = Kein Ziel markiert
+sim-bay-closed = Schacht geschlossen
+sim-insufficient-altitude = Zu geringe Höhe
+sim-fuel-transfer = Treibstoffumpumpen
+sim-stores-exhausted = Außenlasten verbraucht
+sim-hit-gunfire = Von Geschützfeuer getroffen
+sim-hit-aaa = Von AAA getroffen
+sim-hit-flak = Von Flak getroffen
+sim-destroyed = { $target } zerstört
+sim-landing = { $base } - { $aircraft } landet
+sim-on-final = { $base } - { $aircraft } im Endanflug
+sim-taking-off = { $base } - { $aircraft } startet
+sim-shot-down = { $target } abgeschossen
+sim-csar-down = Am Boden in Feindgebiet - CSAR von { $base }
+sim-flare-left = Signalfackel - noch { $count }
+sim-drone-hit-npp = Drohne trifft KKW { $place }
+sim-drone-hit = Drohne trifft { $place }
+sim-defense-failed = Abwehr gescheitert - { $count } Drohnen durch
+sim-hit-by = Getroffen von { $weapon }
+sim-target-hit-by = { $target } getroffen von { $weapon }
+sim-ineffective = Wirkungslos
+sim-impact = { $weapon } Einschlag
+# Das Leerzeichen am Ende stammt aus dem klassischen Spiel.
+sim-misses = { $weapon } verfehlt{" "}
+sim-destroyed-by = { $target } zerstört von { $weapon }
+sim-ground-impact = { $weapon } Bodeneinschlag
+sim-detected = { $target } entdeckt
+sim-radar-id = { $site } - Radar-ID
+sim-firing = { $site } feuert { $missile }
+sim-visual-id = Sicht-ID - { $aircraft }
+sim-fired-by = { $missile } abgefeuert von { $launcher }
+sim-frame = Bild { $frame }
+sim-beacon = Funkfeuer Peilung { $bearing }
+sim-fired = { $weapon } abgefeuert
+sim-released = { $weapon } ausgeklinkt
+sim-destroyed-gunfire = { $target } durch Bordkanone zerstört

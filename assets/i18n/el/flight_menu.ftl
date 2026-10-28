@@ -1,0 +1,47 @@
+# Το μενού πτήσης (src/flight_menu.rs), σχεδιασμένο με τη γραμματοσειρά γραμμών της πτήσης:
+# κεφαλαία, μόνο με τους τόνους των λατινικών γλωσσών.
+
+fm-menu = ΜΕΝΟΥ
+fm-paused = ΜΕΝΟΥ  -  ΠΑΥΣΗ
+fm-campaign-runs = ΜΕΝΟΥ  -  Η ΕΚΣΤΡΑΤΕΙΑ ΣΥΝΕΧΙΖΕΤΑΙ
+fm-options-page = ΕΠΙΛΟΓΕΣ  -  { $page }
+fm-resume = ΕΠΑΝΑΛΗΨΗ
+fm-save-mission = ΑΠΟΘΗΚΕΥΣΗ ΑΠΟΣΤΟΛΗΣ
+fm-saved = ΑΠΟΘΗΚΕΥΤΗΚΕ
+fm-not-saved = ΔΕΝ ΑΠΟΘΗΚΕΥΤΗΚΕ
+fm-key-guide = ΟΔΗΓΟΣ ΠΛΗΚΤΡΩΝ
+fm-end-mission = ΤΕΛΟΣ ΑΠΟΣΤΟΛΗΣ
+fm-end-sortie = ΤΕΛΟΣ ΕΞΟΡΜΗΣΗΣ
+fm-exiting = ΕΞΟΔΟΣ...
+fm-language = ΓΛΩΣΣΑ
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = ΣΚΙΕΣ
+fm-point-lights = ΣΗΜΕΙΑΚΑ ΦΩΤΑ
+fm-time-of-day = ΩΡΑ ΗΜΕΡΑΣ
+fm-sun-moon = ΗΛΙΟΣ ΚΑΙ ΣΕΛΗΝΗ
+fm-auto-detail = ΑΥΤΟΜΑΤΗ ΛΕΠΤΟΜΕΡΕΙΑ ΤΟΠΙΟΥ
+fm-cockpit = ΠΙΛΟΤΗΡΙΟ
+fm-hud = HUD
+fm-avionics = ΗΛΕΚΤΡΟΝΙΚΑ ΠΤΗΣΗΣ
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = ΜΕΓΕΘΟΣ ΠΙΛΟΤΗΡΙΟΥ
+fm-volume-master = ΓΕΝΙΚΗ ΕΝΤΑΣΗ
+fm-volume-engine = ΚΙΝΗΤΗΡΑΣ
+fm-volume-effects = ΕΦΕ
+fm-volume-warnings = ΠΡΟΕΙΔΟΠΟΙΗΣΕΙΣ
+fm-low-pass = ΦΙΛΤΡΟ ΧΑΜΗΛΩΝ ΚΙΝΗΤΗΡΑ
+fm-head-tracking = ΠΑΡΑΚΟΛΟΥΘΗΣΗ ΚΕΦΑΛΙΟΥ
+fm-bindings = ΠΛΗΚΤΡΑ ΚΑΙ JOYSTICK
+fm-game-note = ΜΟΝΤΕΛΟ ΠΤΗΣΗΣ, TACVIEW: ΕΠΙΛΟΓΕΣ ΤΟΥ ΚΥΡΙΟΥ ΜΕΝΟΥ
+fm-no-match = ΚΑΝΕΝΑ ΑΠΟΤΕΛΕΣΜΑ
+fm-type-to-search = ΠΛΗΚΤΡΟΛΟΓΗΣΤΕ ΓΙΑ ΑΝΑΖΗΤΗΣΗ
+fm-hint-vr = STICK: ΚΥΛΙΣΗ    ΠΕΔΙΟ + ΣΙΑΓΩΝΑ: ΠΛΗΚΤΡΟΛΟΓΙΟ    ΣΙΑΓΩΝΑ: ΠΙΣΩ
+fm-hint-vr-keyboard = ΠΛΗΚΤΡΟ + ΣΙΑΓΩΝΑ: ΠΛΗΚΤΡΟΛΟΓΗΣΗ    STICK: ΚΥΛΙΣΗ
+fm-hint-desktop = ΡΟΔΕΛΑ, ΒΕΛΗ: ΚΥΛΙΣΗ    ESC, ΚΛΙΚ: ΠΙΣΩ
+fm-key-space = ΚΕΝΟ
+fm-key-delete = DEL
+fm-key-clear = ΚΑΘΑΡΙΣΜΟΣ
+fm-key-done = OK
+fm-pull-trigger = ΠΑΤΗΣΤΕ ΤΗ ΣΙΑΓΩΝΑ

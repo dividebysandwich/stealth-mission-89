@@ -1,0 +1,47 @@
+# Меню полёта (src/flight_menu.rs), рисуется векторным шрифтом полёта: только заглавные
+# буквы латиницы; для русского языка игра показывает эти тексты на английском.
+
+fm-menu = МЕНЮ
+fm-paused = МЕНЮ  -  ПАУЗА
+fm-campaign-runs = МЕНЮ  -  КАМПАНИЯ ИДЁТ
+fm-options-page = НАСТРОЙКИ  -  { $page }
+fm-resume = ПРОДОЛЖИТЬ
+fm-save-mission = СОХРАНИТЬ МИССИЮ
+fm-saved = СОХРАНЕНО
+fm-not-saved = НЕ СОХРАНЕНО
+fm-key-guide = СПРАВКА ПО КЛАВИШАМ
+fm-end-mission = ЗАВЕРШИТЬ МИССИЮ
+fm-end-sortie = ЗАВЕРШИТЬ ВЫЛЕТ
+fm-exiting = ВЫХОД...
+fm-language = ЯЗЫК
+fm-shaders = ШЕЙДЕРЫ
+fm-msaa = СГЛАЖИВАНИЕ
+fm-shadows = ТЕНИ
+fm-point-lights = ТОЧЕЧНЫЙ СВЕТ
+fm-time-of-day = ВРЕМЯ СУТОК
+fm-sun-moon = СОЛНЦЕ И ЛУНА
+fm-auto-detail = АВТОДЕТАЛИЗАЦИЯ МЕСТНОСТИ
+fm-cockpit = КАБИНА
+fm-hud = HUD
+fm-avionics = АВИОНИКА
+fm-auto-trim = АВТОТРИММЕР
+fm-tooltips = ПОДСКАЗКИ
+fm-cockpit-size = РАЗМЕР КАБИНЫ
+fm-volume-master = ОБЩАЯ ГРОМКОСТЬ
+fm-volume-engine = ДВИГАТЕЛЬ
+fm-volume-effects = ЭФФЕКТЫ
+fm-volume-warnings = СИГНАЛИЗАЦИЯ
+fm-low-pass = ФНЧ ДВИГАТЕЛЯ
+fm-head-tracking = ТРЕКИНГ ГОЛОВЫ
+fm-bindings = КЛАВИШИ И ДЖОЙСТИК
+fm-game-note = МОДЕЛЬ ПОЛЁТА, TACVIEW: НАСТРОЙКИ ГЛАВНОГО МЕНЮ
+fm-no-match = НИЧЕГО НЕ НАЙДЕНО
+fm-type-to-search = ВВЕДИТЕ ДЛЯ ПОИСКА
+fm-hint-vr = СТИК: ПРОКРУТКА    ПОЛЕ + КУРОК: КЛАВИАТУРА    КУРОК: НАЗАД
+fm-hint-vr-keyboard = КЛАВИША + КУРОК: ВВОД    СТИК: ПРОКРУТКА
+fm-hint-desktop = КОЛЕСО, СТРЕЛКИ: ПРОКРУТКА    ESC, ЩЕЛЧОК: НАЗАД
+fm-key-space = ПРОБЕЛ
+fm-key-delete = DEL
+fm-key-clear = ОЧИСТИТЬ
+fm-key-done = ГОТОВО
+fm-pull-trigger = НАЖМИТЕ КУРОК

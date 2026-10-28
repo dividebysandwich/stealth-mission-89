@@ -1,0 +1,47 @@
+# 비행 중 메뉴 (src/flight_menu.rs). 비행용 선형 글꼴로 그려지며, 대문자와 라틴 계열
+# 언어의 악센트만 지원합니다.
+
+fm-menu = 메뉴
+fm-paused = 메뉴  -  일시 정지
+fm-campaign-runs = 메뉴  -  캠페인 진행 중
+fm-options-page = 옵션  -  { $page }
+fm-resume = 계속하기
+fm-save-mission = 임무 저장
+fm-saved = 저장됨
+fm-not-saved = 저장 안 됨
+fm-key-guide = 키 가이드
+fm-end-mission = 임무 종료
+fm-end-sortie = 출격 종료
+fm-exiting = 종료 중...
+fm-language = 언어
+fm-shaders = 셰이더
+fm-msaa = 안티앨리어싱
+fm-shadows = 그림자
+fm-point-lights = 점광원
+fm-time-of-day = 시간대
+fm-sun-moon = 태양과 달
+fm-auto-detail = 지형 디테일 자동
+fm-cockpit = 조종석
+fm-hud = HUD
+fm-avionics = 항전
+fm-auto-trim = 자동 트림
+fm-tooltips = 툴팁
+fm-cockpit-size = 조종석 크기
+fm-volume-master = 마스터 볼륨
+fm-volume-engine = 엔진
+fm-volume-effects = 효과음
+fm-volume-warnings = 경고음
+fm-low-pass = 엔진 로패스
+fm-head-tracking = 헤드 트래킹
+fm-bindings = 키와 조이스틱
+fm-game-note = 비행 모델, TACVIEW: 메인 메뉴의 옵션
+fm-no-match = 일치 없음
+fm-type-to-search = 입력하여 검색
+fm-hint-vr = 스틱: 스크롤    칸 + 트리거: 키보드    트리거: 뒤로
+fm-hint-vr-keyboard = 키 + 트리거: 입력    스틱: 스크롤
+fm-hint-desktop = 휠, 방향키: 스크롤    ESC, 클릭: 뒤로
+fm-key-space = 스페이스
+fm-key-delete = DEL
+fm-key-clear = 지우기
+fm-key-done = 완료
+fm-pull-trigger = 트리거를 당기세요

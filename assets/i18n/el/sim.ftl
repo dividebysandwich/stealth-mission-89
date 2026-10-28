@@ -1,0 +1,62 @@
+# Τα μηνύματα HUD της προσομοίωσης (crates/stealth-sim). Σχεδιάζονται με τις γραμματοσειρές
+# της πτήσης: με κεφαλαία, χωρίς τόνους (λατινικές γλώσσες· οι υπόλοιπες βλέπουν τα αγγλικά).
+# Τα ονόματα μονάδων, όπλων και τόπων περνούν όπως είναι.
+
+sim-missile-launch = Εκτόξευση πυραύλου
+sim-no-flares = Δεν απέμειναν φωτοβολίδες σήματος
+sim-hind-spotted = Ένα Hind σας εντόπισε
+sim-rescue-lost = Το ελικόπτερο διάσωσης χάθηκε
+sim-rescued = Διασώθηκε!
+sim-captured = Αιχμαλωτίστηκε
+sim-aircraft-destroyed-eject = Το αεροσκάφος καταστράφηκε - Εκτιναχθείτε
+sim-fire-out = Η φωτιά έσβησε
+sim-aircraft-exploded = Το αεροσκάφος εξερράγη
+sim-equipment-delivered = Ο εξοπλισμός παραδόθηκε
+sim-bad-drop = Αποτυχημένη ρίψη
+sim-secondary-target = Δευτερ. στόχος
+sim-primary-target = Κύριος στόχος
+sim-troops-inserted = Τα στρατεύματα αποβιβάστηκαν
+sim-time-expired = Ο χρόνος έληξε
+sim-cargo-delivered = Το φορτίο παραδόθηκε
+sim-safe-landing = Ασφαλής προσγείωση
+sim-no-target-ahead = Κανένας στόχος μπροστά
+sim-target-obscured = Ο στόχος καλύπτεται
+sim-target-photographed = Ο στόχος φωτογραφήθηκε.
+sim-drop-supplies = Ρίξτε τα εφόδια τώρα
+sim-no-target = Κανένας στόχος
+sim-no-target-designated = Δεν έχει υποδειχθεί στόχος
+sim-bay-closed = Το καμπαρτίνο είναι κλειστό
+sim-insufficient-altitude = Ανεπαρκές ύψος
+sim-fuel-transfer = Μεταφορά καυσίμου
+sim-stores-exhausted = Τα φορτία εξαντλήθηκαν
+sim-hit-gunfire = Πλήγμα από πυρά
+sim-hit-aaa = Πλήγμα από AAA
+sim-hit-flak = Πλήγμα από flak
+sim-destroyed = { $target } καταστράφηκε
+sim-landing = { $base } - { $aircraft } προσγειώνεται
+sim-on-final = { $base } - { $aircraft } στον τελικό
+sim-taking-off = { $base } - { $aircraft } απογειώνεται
+sim-shot-down = { $target } καταρρίφθηκε
+sim-csar-down = Κάτω σε εχθρικό έδαφος - CSAR από { $base }
+sim-flare-left = Φωτοβολίδα σήματος - απομένουν { $count }
+sim-drone-hit-npp = Το drone έπληξε τον πυρηνικό σταθμό { $place }
+sim-drone-hit = Το drone έπληξε: { $place }
+sim-defense-failed = Η άμυνα διαρράγη - πέρασαν { $count } drones
+sim-hit-by = Πλήγμα από { $weapon }
+sim-target-hit-by = { $target } χτυπήθηκε από { $weapon }
+sim-ineffective = Αναποτελεσματικό
+sim-impact = Πρόσκρουση { $weapon }
+# Το κενό στο τέλος είναι του κλασικού παιχνιδιού.
+sim-misses = { $weapon } αστοχεί{" "}
+sim-destroyed-by = { $target } καταστράφηκε από { $weapon }
+sim-ground-impact = { $weapon } πρόσκρουση στο έδαφος
+sim-detected = { $target } εντοπίστηκε
+sim-radar-id = { $site } - Ταυτοποίηση radar
+sim-firing = { $site } εκτοξεύει { $missile }
+sim-visual-id = Οπτική ταυτοποίηση - { $aircraft }
+sim-fired-by = { $missile } εκτοξεύτηκε από { $launcher }
+sim-frame = Καρέ { $frame }
+sim-beacon = Ραδιοφάρος στις { $bearing }
+sim-fired = { $weapon } εκτοξεύτηκε
+sim-released = { $weapon } απελευθερώθηκε
+sim-destroyed-gunfire = { $target } καταστράφηκε από πυρά πυροβόλου

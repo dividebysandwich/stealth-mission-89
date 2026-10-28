@@ -1,0 +1,47 @@
+# Flygmenyn (src/flight_menu.rs), ritad med flygningens streckfont: versaler,
+# endast de latinska språkens diakritiska tecken.
+
+fm-menu = MENY
+fm-paused = MENY  -  PAUS
+fm-campaign-runs = MENY  -  KAMPANJEN FORTSÄTTER
+fm-options-page = ALTERNATIV  -  { $page }
+fm-resume = ÅTERUPPTA
+fm-save-mission = SPARA UPPDRAG
+fm-saved = SPARAT
+fm-not-saved = INTE SPARAT
+fm-key-guide = TANGENTGUIDE
+fm-end-mission = AVSLUTA UPPDRAGET
+fm-end-sortie = AVSLUTA FLYGNINGEN
+fm-exiting = AVSLUTAR...
+fm-language = SPRÅK
+fm-shaders = SHADERS
+fm-msaa = KANTUTJÄMNING
+fm-shadows = SKUGGOR
+fm-point-lights = PUNKTLJUS
+fm-time-of-day = TID PÅ DYGNET
+fm-sun-moon = SOL OCH MÅNE
+fm-auto-detail = AUTO TERRÄNGDETALJ
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONIK
+fm-auto-trim = AUTOTRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = COCKPITSTORLEK
+fm-volume-master = HUVUDVOLYM
+fm-volume-engine = MOTOR
+fm-volume-effects = EFFEKTER
+fm-volume-warnings = VARNINGAR
+fm-low-pass = LÅGPASS MOTOR
+fm-head-tracking = HUVUDSPÅRNING
+fm-bindings = TANGENTER OCH JOYSTICK
+fm-game-note = FLYGMODELL, TACVIEW: ALTERNATIV I HUVUDMENYN
+fm-no-match = INGEN TRÄFF
+fm-type-to-search = SKRIV FÖR ATT SÖKA
+fm-hint-vr = STICK: RULLA    FÄLT + AVTRYCKARE: TANGENTBORD    AVTRYCKARE: TILLBAKA
+fm-hint-vr-keyboard = TANGENT + AVTRYCKARE: SKRIV    STICK: RULLA
+fm-hint-desktop = HJUL, PILAR: RULLA    ESC, KLICK: TILLBAKA
+fm-key-space = MELLANSLAG
+fm-key-delete = DEL
+fm-key-clear = RENSA
+fm-key-done = KLAR
+fm-pull-trigger = TRYCK PÅ AVTRYCKAREN

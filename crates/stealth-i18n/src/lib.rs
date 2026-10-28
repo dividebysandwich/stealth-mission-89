@@ -37,6 +37,57 @@ const FILES: &[(&str, &str, &str)] = include!(concat!(env!("OUT_DIR"), "/ftl.rs"
 pub enum Language {
     #[default]
     En,
+    Fr,
+    De,
+    Es,
+    It,
+    Pl,
+    PtBr,
+    Ru,
+    /// Simplified Chinese.
+    Zh,
+    /// Japanese.
+    Ja,
+    /// Korean.
+    Ko,
+    /// Ukrainian.
+    Uk,
+    /// Czech.
+    Cs,
+    /// Dutch.
+    Nl,
+    /// Swedish.
+    Sv,
+    /// Finnish.
+    Fi,
+    /// Hungarian.
+    Hu,
+    /// Indonesian.
+    Id,
+    /// Danish.
+    Da,
+    /// Bulgarian.
+    Bg,
+    /// Croatian.
+    Hr,
+    /// Estonian.
+    Et,
+    /// Greek.
+    El,
+    /// Romanian.
+    Ro,
+    /// Slovenian.
+    Sl,
+    /// Slovak.
+    Sk,
+    /// Lithuanian.
+    Lt,
+    /// Latvian.
+    Lv,
+    /// Maltese.
+    Mt,
+    /// Irish.
+    Ga,
     /// `--lang pseudo`: English with accents and 30% longer, to see the untranslated texts and
     /// the ones that do not fit.
     Pseudo,
@@ -44,12 +95,70 @@ pub enum Language {
 
 impl Language {
     /// The languages offered in OPTIONS, in this order.
-    pub const ALL: [Language; 1] = [
+    pub const ALL: [Language; 30] = [
         Language::En,
+        Language::Bg,
+        Language::Zh,
+        Language::Hr,
+        Language::Cs,
+        Language::Da,
+        Language::Nl,
+        Language::Et,
+        Language::Fi,
+        Language::Fr,
+        Language::De,
+        Language::El,
+        Language::Hu,
+        Language::Id,
+        Language::Ga,
+        Language::It,
+        Language::Ja,
+        Language::Ko,
+        Language::Lv,
+        Language::Lt,
+        Language::Mt,
+        Language::Pl,
+        Language::PtBr,
+        Language::Ro,
+        Language::Ru,
+        Language::Sk,
+        Language::Sl,
+        Language::Es,
+        Language::Sv,
+        Language::Uk,
     ];
 
-    const EVERY: [Language; 2] = [
+    const EVERY: [Language; 31] = [
         Language::En,
+        Language::Fr,
+        Language::De,
+        Language::Es,
+        Language::It,
+        Language::Pl,
+        Language::PtBr,
+        Language::Ru,
+        Language::Zh,
+        Language::Ja,
+        Language::Ko,
+        Language::Uk,
+        Language::Cs,
+        Language::Nl,
+        Language::Sv,
+        Language::Fi,
+        Language::Hu,
+        Language::Id,
+        Language::Da,
+        Language::Bg,
+        Language::Hr,
+        Language::Et,
+        Language::El,
+        Language::Ro,
+        Language::Sl,
+        Language::Sk,
+        Language::Lt,
+        Language::Lv,
+        Language::Mt,
+        Language::Ga,
         Language::Pseudo,
     ];
 
@@ -57,6 +166,35 @@ impl Language {
     pub fn code(self) -> &'static str {
         match self {
             Language::En => "en",
+            Language::Fr => "fr",
+            Language::De => "de",
+            Language::Es => "es",
+            Language::It => "it",
+            Language::Pl => "pl",
+            Language::PtBr => "pt-BR",
+            Language::Ru => "ru",
+            Language::Zh => "zh-Hans",
+            Language::Ja => "ja",
+            Language::Ko => "ko",
+            Language::Uk => "uk",
+            Language::Cs => "cs",
+            Language::Nl => "nl",
+            Language::Sv => "sv",
+            Language::Fi => "fi",
+            Language::Hu => "hu",
+            Language::Id => "id",
+            Language::Da => "da",
+            Language::Bg => "bg",
+            Language::Hr => "hr",
+            Language::Et => "et",
+            Language::El => "el",
+            Language::Ro => "ro",
+            Language::Sl => "sl",
+            Language::Sk => "sk",
+            Language::Lt => "lt",
+            Language::Lv => "lv",
+            Language::Mt => "mt",
+            Language::Ga => "ga",
             Language::Pseudo => "pseudo",
         }
     }
@@ -65,6 +203,35 @@ impl Language {
     pub fn native_name(self) -> &'static str {
         match self {
             Language::En => "English",
+            Language::Fr => "Français",
+            Language::De => "Deutsch",
+            Language::Es => "Español",
+            Language::It => "Italiano",
+            Language::Pl => "Polski",
+            Language::PtBr => "Português (Brasil)",
+            Language::Ru => "Русский",
+            Language::Zh => "简体中文",
+            Language::Ja => "日本語",
+            Language::Ko => "한국어",
+            Language::Uk => "Українська",
+            Language::Cs => "Čeština",
+            Language::Nl => "Nederlands",
+            Language::Sv => "Svenska",
+            Language::Fi => "Suomi",
+            Language::Hu => "Magyar",
+            Language::Id => "Bahasa Indonesia",
+            Language::Da => "Dansk",
+            Language::Bg => "Български",
+            Language::Hr => "Hrvatski",
+            Language::Et => "Eesti",
+            Language::El => "Ελληνικά",
+            Language::Ro => "Română",
+            Language::Sl => "Slovenščina",
+            Language::Sk => "Slovenčina",
+            Language::Lt => "Lietuvių",
+            Language::Lv => "Latviešu",
+            Language::Mt => "Malti",
+            Language::Ga => "Gaeilge",
             Language::Pseudo => "Ƥşḗŭḓǿ",
         }
     }
@@ -83,8 +250,31 @@ impl Language {
     /// Written in the Latin alphabet: the flight font (ASCII capitals) can show its words
     /// without their accents. The others' HUD and display messages stay in English.
     pub fn latin(self) -> bool {
-        let _ = self;
-        true
+        !matches!(
+            self,
+            Language::Ru
+                | Language::Zh
+                | Language::Ja
+                | Language::Ko
+                | Language::Uk
+                | Language::Bg
+                | Language::El
+        )
+    }
+
+    /// The language's name in English, in capitals: what the flight fonts, which cannot draw
+    /// its own name, show instead.
+    pub fn english_name(self) -> &'static str {
+        match self {
+            Language::Ru => "RUSSIAN",
+            Language::Zh => "CHINESE",
+            Language::Ja => "JAPANESE",
+            Language::Ko => "KOREAN",
+            Language::Uk => "UKRAINIAN",
+            Language::Bg => "BULGARIAN",
+            Language::El => "GREEK",
+            _ => "",
+        }
     }
 
     fn index(self) -> usize {
@@ -161,7 +351,8 @@ fn build(l: Language) -> Bundle {
 }
 
 fn bundle(l: Language) -> &'static Bundle {
-    static BUNDLES: [OnceLock<Bundle>; 9] = [const { OnceLock::new() }; 9];
+    static BUNDLES: [OnceLock<Bundle>; Language::EVERY.len()] =
+        [const { OnceLock::new() }; Language::EVERY.len()];
     BUNDLES[l.index()].get_or_init(|| build(l))
 }
 

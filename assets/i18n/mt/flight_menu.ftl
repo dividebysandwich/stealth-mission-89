@@ -1,0 +1,47 @@
+# Il-menu waqt it-titjira (src/flight_menu.rs), miġbud bil-font vettorjali tat-titjira: kapitali,
+# l-aċċenti tal-lingwi Latini biss.
+
+fm-menu = MENU
+fm-paused = MENU  -  PAWŻA
+fm-campaign-runs = MENU  -  IL-KAMPANJA TIMXI
+fm-options-page = OPZJONIJIET  -  { $page }
+fm-resume = KOMPLI
+fm-save-mission = AĦŻEN IL-MISSJONI
+fm-saved = MAĦŻUNA
+fm-not-saved = MHIEX MAĦŻUNA
+fm-key-guide = GWIDA TAT-TASTI
+fm-end-mission = ITTERMINA L-MISSJONI
+fm-end-sortie = ITTERMINA T-TITJIRA
+fm-exiting = QED TAGĦLAQ...
+fm-language = LINGWA
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = DELLIJIET
+fm-point-lights = DAWLIET PUNTWALI
+fm-time-of-day = ĦIN TAL-JUM
+fm-sun-moon = XEMX U QAMAR
+fm-auto-detail = DETALL AWTOMATIKU TAX-XENA
+fm-cockpit = KOKPIT
+fm-hud = HUD
+fm-avionics = AVJONIKA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = DAQS TAL-KOKPIT
+fm-volume-master = VOLUM ĠENERALI
+fm-volume-engine = MUTUR
+fm-volume-effects = EFFETTI
+fm-volume-warnings = ALLARMI
+fm-low-pass = FILTRU LOW-PASS TAL-MUTUR
+fm-head-tracking = TRACKING TAR-RAS
+fm-bindings = TASTI U JOYSTICK
+fm-game-note = MODELL TAT-TITJIRA, TACVIEW: OPZJONIJIET TAL-MENU PRINĊIPALI
+fm-no-match = XEJN LI JAQBEL
+fm-type-to-search = ITTAJPJA U FITTEX
+fm-hint-vr = STICK: SKROLLJA    KAMP + TRIGGER: TASTIERA    TRIGGER: LURA
+fm-hint-vr-keyboard = TASTA + TRIGGER: ITTAJPJA    STICK: SKROLLJA
+fm-hint-desktop = ROTELLA, FRIEĊEL: SKROLLJA    ESC, KLIKK: LURA
+fm-key-space = SPAZJU
+fm-key-delete = DEL
+fm-key-clear = IMSAĦ
+fm-key-done = OK
+fm-pull-trigger = IĠBED IT-TRIGGER

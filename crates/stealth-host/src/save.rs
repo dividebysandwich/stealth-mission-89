@@ -14,7 +14,7 @@ const DIR: &str = "campaigns";
 
 fn file_name(name: &str) -> String {
     let safe: String =
-        name.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' }).collect();
+        name.chars().map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' }).collect();
     format!("{safe}.json")
 }
 

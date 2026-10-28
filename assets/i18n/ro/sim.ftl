@@ -1,0 +1,62 @@
+# Mesajele HUD ale simulării. Desenate cu fonturile zborului: cu majuscule, fără diacritice
+# (limbile latine; celelalte văd engleza). Denumirile de unități, arme și locuri sunt
+# transmise ca atare.
+
+sim-missile-launch = Lansare de rachetă
+sim-no-flares = Nicio rachetă de semnalizare rămasă
+sim-hind-spotted = Un Hind v-a reperat
+sim-rescue-lost = Elicopter de salvare pierdut
+sim-rescued = Salvat!
+sim-captured = Capturat
+sim-aircraft-destroyed-eject = Aeronavă distrusă - Ejectați
+sim-fire-out = Incendiu stins
+sim-aircraft-exploded = Aeronava a explodat
+sim-equipment-delivered = Echipament livrat
+sim-bad-drop = Lansare ratată
+sim-secondary-target = Țintă secund.
+sim-primary-target = Țintă principală
+sim-troops-inserted = Trupe debarcate
+sim-time-expired = Timp expirat
+sim-cargo-delivered = Marfă livrată
+sim-safe-landing = Aterizare reușită
+sim-no-target-ahead = Nicio țintă în față
+sim-target-obscured = Țintă mascată
+sim-target-photographed = Țintă fotografiată.
+sim-drop-supplies = Lansați proviziile acum
+sim-no-target = Nicio țintă
+sim-no-target-designated = Nicio țintă desemnată
+sim-bay-closed = Soută închisă
+sim-insufficient-altitude = Altitudine insuficientă
+sim-fuel-transfer = Transfer de combustibil
+sim-stores-exhausted = Armament epuizat
+sim-hit-gunfire = Lovit de focul tunurilor
+sim-hit-aaa = Lovit de AAA
+sim-hit-flak = Lovit de flak
+sim-destroyed = { $target } distrus
+sim-landing = { $base } - { $aircraft } aterizează
+sim-on-final = { $base } - { $aircraft } în final
+sim-taking-off = { $base } - { $aircraft } decolează
+sim-shot-down = { $target } doborât
+sim-csar-down = Pe sol în teritoriu inamic - CSAR de la { $base }
+sim-flare-left = Rachetă de semnalizare - mai rămân { $count }
+sim-drone-hit-npp = Dronă lovește centrala nucleară { $place }
+sim-drone-hit = Dronă lovește { $place }
+sim-defense-failed = Apărare străpunsă - { $count } drone au trecut
+sim-hit-by = Lovit de { $weapon }
+sim-target-hit-by = { $target } lovit de { $weapon }
+sim-ineffective = Ineficient
+sim-impact = Impact { $weapon }
+# Spațiul final este cel al jocului clasic.
+sim-misses = { $weapon } ratează{" "}
+sim-destroyed-by = { $target } distrus de { $weapon }
+sim-ground-impact = { $weapon } impact la sol
+sim-detected = { $target } detectat
+sim-radar-id = { $site } - ID radar
+sim-firing = { $site } lansează { $missile }
+sim-visual-id = ID vizual - { $aircraft }
+sim-fired-by = { $missile } lansată de { $launcher }
+sim-frame = Cadrul { $frame }
+sim-beacon = Radiofar la relevmentul { $bearing }
+sim-fired = { $weapon } tras
+sim-released = { $weapon } lansat
+sim-destroyed-gunfire = { $target } distrus de focul tunului

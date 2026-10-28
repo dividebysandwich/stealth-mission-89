@@ -1,0 +1,47 @@
+# An roghchlár eitilte (src/flight_menu.rs), tarraingthe leis an gcló stróc eitilte: ceannlitreacha,
+# agus fidilí na dteangacha Laidineacha amháin.
+
+fm-menu = ROGHCHLÁR
+fm-paused = ROGHCHLÁR  -  FOSTAITHE
+fm-campaign-runs = ROGHCHLÁR  -  LEANANN AN TOGRA AR AGHAIDH
+fm-options-page = ROGHANNA  -  { $page }
+fm-resume = ATHSHEACHAIN
+fm-save-mission = SÁBHÁIL AN MISEAN
+fm-saved = SÁBHÁILTE
+fm-not-saved = GAN SÁBHÁIL
+fm-key-guide = TREOIR EOCHRACHA
+fm-end-mission = CRÍOCHNAIGH AN MISEAN
+fm-end-sortie = CRÍOCHNAIGH AN EITILT
+fm-exiting = AG SCOIRT...
+fm-language = TEANGA
+fm-shaders = SHADERS
+fm-msaa = FRITH-AILIASÚ
+fm-shadows = SCÁTHANNA
+fm-point-lights = SOILSE PHOINTE
+fm-time-of-day = AM DEN LÁ
+fm-sun-moon = GRIAN AGUS GEALACH
+fm-auto-detail = UATH-MHIONSONRAÍ TÍRDHREACHA
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONICS
+fm-auto-trim = UATH-TRIM
+fm-tooltips = LEIDEANNA UIRLISE
+fm-cockpit-size = MÉID AN CHOCKPIT
+fm-volume-master = PRÍOMH-AIRDE
+fm-volume-engine = INNEALL
+fm-volume-effects = ÉIFEACHTAÍ
+fm-volume-warnings = RABHAIDH
+fm-low-pass = ÍSEALPHÁS INNILL
+fm-head-tracking = RIANÚ CINN
+fm-bindings = EOCHRACHA AGUS JOYSTICK
+fm-game-note = SAMHAIL EITILTE, TACVIEW: ROGHANNA AN PHRÍOMHROGHCHLÁIR
+fm-no-match = GAN TORTHAÍ
+fm-type-to-search = CLÓSCRÍOBH CHUN CUARDACH
+fm-hint-vr = STICK: SCROLLAIGH    RÉIMSE + TRIGEAR: MÉARCHLÁR    TRIGEAR: AR AIS
+fm-hint-vr-keyboard = EOCHAIR + TRIGEAR: CLÓSCRÍOBH    STICK: SCROLLAIGH
+fm-hint-desktop = RUIDEOG, SAIGHDEANNA: SCROLLAIGH    ESC, CLICEÁIL: AR AIS
+fm-key-space = SPÁS
+fm-key-delete = DEL
+fm-key-clear = GLAN
+fm-key-done = DÉANTA
+fm-pull-trigger = TARRAING AN TRIGEAR

@@ -1,0 +1,62 @@
+# Повідомлення симуляції на HUD (crates/stealth-sim). Малюються польотними шрифтами:
+# великими літерами (для нелатинських мов гра показує англійську). Назви одиниць,
+# зброї та місць передаються як є.
+
+sim-missile-launch = Пуск ракети
+sim-no-flares = Сигнальних ракет немає
+sim-hind-spotted = Hind помітив вас
+sim-rescue-lost = Рятувальний гелікоптер втрачено
+sim-rescued = Врятовано!
+sim-captured = Потрапили в полон
+sim-aircraft-destroyed-eject = Літак знищено - катапультуйтесь
+sim-fire-out = Пожежу загашено
+sim-aircraft-exploded = Літак вибухнув
+sim-equipment-delivered = Обладнання доставлено
+sim-bad-drop = Невдале скидання
+sim-secondary-target = Дод. ціль
+sim-primary-target = Основна ціль
+sim-troops-inserted = Десант висаджено
+sim-time-expired = Час вичерпано
+sim-cargo-delivered = Вантаж доставлено
+sim-safe-landing = Успішна посадка
+sim-no-target-ahead = Цілі попереду немає
+sim-target-obscured = Ціль закрита
+sim-target-photographed = Ціль сфотографовано.
+sim-drop-supplies = Скидайте припаси
+sim-no-target = Цілі немає
+sim-no-target-designated = Ціль не позначено
+sim-bay-closed = Відсік закрито
+sim-insufficient-altitude = Недостатня висота
+sim-fuel-transfer = Передача палива
+sim-stores-exhausted = Підвіски вичерпано
+sim-hit-gunfire = Влучання зі стрілецької зброї
+sim-hit-aaa = Влучання зенітної артилерії (AAA)
+sim-hit-flak = Влучання зенітного вогню (flak)
+sim-destroyed = { $target } знищено
+sim-landing = { $base } - { $aircraft } на посадці
+sim-on-final = { $base } - { $aircraft } на фінальній прямій
+sim-taking-off = { $base } - { $aircraft } злітає
+sim-shot-down = { $target } збито
+sim-csar-down = На землі на ворожій території - CSAR з { $base }
+sim-flare-left = Сигнальна ракета - залишилось { $count }
+sim-drone-hit-npp = Дрон влучив в АЕС: { $place }
+sim-drone-hit = Дрон влучив: { $place }
+sim-defense-failed = Оборону прорвано - дронів прорвалось: { $count }
+sim-hit-by = Влучання: { $weapon }
+sim-target-hit-by = { $target } уражено: { $weapon }
+sim-ineffective = Безрезультатно
+sim-impact = Влучання: { $weapon }
+# Кінцевий пробіл успадковано від класичної гри.
+sim-misses = { $weapon } - промах{" "}
+sim-destroyed-by = { $target } знищено: { $weapon }
+sim-ground-impact = { $weapon } - влучання в землю
+sim-detected = { $target } виявлено
+sim-radar-id = { $site } - Radar ID
+sim-firing = { $site } веде вогонь: { $missile }
+sim-visual-id = Візуальна ідентифікація - { $aircraft }
+sim-fired-by = { $missile } запущено: { $launcher }
+sim-frame = Кадр { $frame }
+sim-beacon = Радіомаяк, пеленг { $bearing }
+sim-fired = { $weapon } - пуск
+sim-released = { $weapon } - скидання
+sim-destroyed-gunfire = { $target } знищено гарматним вогнем

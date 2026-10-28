@@ -113,7 +113,7 @@ pub struct RestoreFlight(Option<Box<SavedFlight>>);
 
 fn key(name: &str) -> String {
     let safe: String =
-        name.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' }).collect();
+        name.chars().map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' }).collect();
     format!("{DIR}/{safe}.json")
 }
 

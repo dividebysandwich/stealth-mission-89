@@ -1,6 +1,6 @@
 # Translations
 
-The game's texts, one folder per language (`en`),
+The game's texts, one folder per language (`en`, `fr`, `de`, `es`, `it`, `pl`, `pt-BR`, `ru`, `zh-Hans`, `ja`, `ko`),
 in [Fluent](https://projectfluent.org/fluent/guide/) files. They are built into the game
 (`crates/stealth-i18n`): no file is read at run time.
 
@@ -28,11 +28,14 @@ description is translated.
 
 ## Fonts
 
-- Menus, tooltips, the 2D overlays: egui's Hack (Latin, Greek, Cyrillic; no CJK).
+- Menus, tooltips, the 2D overlays: egui's Hack (Latin, Greek, Cyrillic), then a subset of
+  Noto Sans CJK for the Chinese, Japanese and Korean texts and the players' names
+  (`assets/fonts`, `tools/i18n_fonts.py`; run it when a CJK text gains a character, the
+  test `cjk_fonts_cover_the_texts` tells).
 - The HUD and displays: a 3x5 pixel font, ASCII capitals only: messages there are shown in
   capitals without accents (`stealth_i18n::ascii_upper`).
 - The in-flight menu, the kneeboard, the key guide: a stroke font with the accents of the
-  Latin languages. A language in another alphabet (Russian) shows these in English
+  Latin languages. A language in another script (Russian, Chinese) shows these in English
   (`stealth_i18n::flight_language`, the `tf!` macro).
 
 ## Fluent in short

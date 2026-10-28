@@ -1,0 +1,62 @@
+# HUD съобщенията на симулацията (crates/stealth-sim). Рисуват се с полетните шрифтове: играта
+# ги показва на английски (кирилицата не се поддържа там). Имената на части, оръжия и места
+# се предават непроменени.
+
+sim-missile-launch = Пуск на ракета
+sim-no-flares = Няма повече сигнални ракети
+sim-hind-spotted = Hind ви засече
+sim-rescue-lost = Спасителният хеликоптер е загубен
+sim-rescued = Спасен!
+sim-captured = Заловен
+sim-aircraft-destroyed-eject = Самолетът е унищожен - Катапултирайте
+sim-fire-out = Пожарът е угасен
+sim-aircraft-exploded = Самолетът експлодира
+sim-equipment-delivered = Оборудването е доставено
+sim-bad-drop = Лошо пускане
+sim-secondary-target = Втор. цел
+sim-primary-target = Основна цел
+sim-troops-inserted = Войските са десантирани
+sim-time-expired = Времето изтече
+sim-cargo-delivered = Товарът е доставен
+sim-safe-landing = Безопасно кацане
+sim-no-target-ahead = Няма цел напред
+sim-target-obscured = Целта е закрита
+sim-target-photographed = Целта е сфотографирана.
+sim-drop-supplies = Пускайте припасите сега
+sim-no-target = Няма цел
+sim-no-target-designated = Няма определена цел
+sim-bay-closed = Отсекът е затворен
+sim-insufficient-altitude = Недостатъчна височина
+sim-fuel-transfer = Прехвърляне на гориво
+sim-stores-exhausted = Въоръжението е изчерпано
+sim-hit-gunfire = Поразен от оръдеен огън
+sim-hit-aaa = Поразен от AAA
+sim-hit-flak = Поразен от флак
+sim-destroyed = { $target } унищожен
+sim-landing = { $base } - { $aircraft } каца
+sim-on-final = { $base } - { $aircraft } на финал
+sim-taking-off = { $base } - { $aircraft } излита
+sim-shot-down = { $target } свален
+sim-csar-down = Свален във вражеска територия - CSAR от { $base }
+sim-flare-left = Сигнална ракета - остават { $count }
+sim-drone-hit-npp = Дрон порази ядрена централа { $place }
+sim-drone-hit = Дрон порази { $place }
+sim-defense-failed = Отбраната пропадна - { $count } дрона стигнаха целта
+sim-hit-by = Поразен от { $weapon }
+sim-target-hit-by = { $target } поразен от { $weapon }
+sim-ineffective = Неефективно
+sim-impact = Попадение на { $weapon }
+# Крайният интервал е от класическата игра.
+sim-misses = { $weapon } пропуска{" "}
+sim-destroyed-by = { $target } унищожен от { $weapon }
+sim-ground-impact = { $weapon } удря земята
+sim-detected = { $target } засечен
+sim-radar-id = { $site } - Радарна идентификация
+sim-firing = { $site } стреля с { $missile }
+sim-visual-id = Визуална идентификация - { $aircraft }
+sim-fired-by = { $missile } пусната от { $launcher }
+sim-frame = Кадър { $frame }
+sim-beacon = Радиомаяк по пеленг { $bearing }
+sim-fired = { $weapon } пуснат
+sim-released = { $weapon } освободен
+sim-destroyed-gunfire = { $target } унищожен от оръдеен огън

@@ -596,13 +596,12 @@ pub(super) struct TipAnchor(Option<Vec3>);
 pub(super) fn spawn_box(
     mut commands: Commands,
     settings: Res<Settings>,
-    mut fonts: ResMut<Assets<Font>>,
+    ui_font: Res<crate::i18n::UiFont>,
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TipScreenMaterial>>,
-    mut font: Local<Option<Handle<Font>>>,
 ) {
-    let font = font.get_or_insert_with(|| fonts.add(Font::from_bytes(FONT.to_vec()))).clone();
+    let font = ui_font.handle();
     let k = if settings.vr { VR_SCALE } else { 1.0 };
     let line = |i: usize, size: f32, color: Color| {
         (
@@ -687,11 +686,13 @@ pub(super) struct Hover {
     resting: f32,
     /// Seconds since a tooltip was up.
     since_shown: f32,
+    /// The language the lines' font was set for.
+    font_for: Option<stealth_i18n::Language>,
 }
 
 impl Default for Hover {
     fn default() -> Self {
-        Self { pointed: None, resting: 0.0, since_shown: f32::INFINITY }
+        Self { pointed: None, resting: 0.0, since_shown: f32::INFINITY, font_for: None }
     }
 }
 
@@ -711,9 +712,9 @@ pub(super) fn hover(
     panel: PanelParams,
     input: Res<InputConfig>,
     mut state: Local<Hover>,
-    (hands, mut anchor): (Res<Hands>, ResMut<TipAnchor>),
+    (hands, mut anchor, ui_font): (Res<Hands>, ResMut<TipAnchor>, Res<crate::i18n::UiFont>),
     mut boxes: Query<(&mut Node, &mut Visibility, &ComputedNode), With<TipBox>>,
-    mut lines: Query<(&TipLine, &mut Text, &mut Node), Without<TipBox>>,
+    mut lines: Query<(&TipLine, &mut Text, &mut Node, &mut TextFont), Without<TipBox>>,
 ) {
     let dt = time.delta_secs();
     let cockpit_view =
@@ -765,7 +766,13 @@ pub(super) fn hover(
         wrap(&tip.detail),
         wrap(&keys_text(&tip.actions, &input)),
     ];
-    for (TipLine(i), mut text, mut line) in &mut lines {
+    let language = stealth_i18n::language();
+    let new_font = state.font_for != Some(language);
+    state.font_for = Some(language);
+    for (TipLine(i), mut text, mut line, mut text_font) in &mut lines {
+        if new_font {
+            text_font.font = ui_font.handle().into();
+        }
         let s = &texts[*i];
         if text.0 != *s {
             text.0.clone_from(s);

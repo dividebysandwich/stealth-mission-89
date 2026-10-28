@@ -1,0 +1,47 @@
+# Lennusisene menüü (src/flight_menu.rs), joonistatud lennu joonfondiga: suurtähed,
+# ainult ladina keelte diakriitikud.
+
+fm-menu = MENÜÜ
+fm-paused = MENÜÜ  -  PAUS
+fm-campaign-runs = MENÜÜ  -  KAMPAANIA KESTAB
+fm-options-page = SEADED  -  { $page }
+fm-resume = JÄTKA
+fm-save-mission = SALVESTA MISSIOON
+fm-saved = SALVESTATUD
+fm-not-saved = POLE SALVESTATUD
+fm-key-guide = KLAHVIJUHEND
+fm-end-mission = LÕPETA MISSIOON
+fm-end-sortie = LÕPETA LEND
+fm-exiting = VÄLJUMINE...
+fm-language = KEEL
+fm-shaders = SHADERS
+fm-msaa = ANTI-ALIASING
+fm-shadows = VARJUD
+fm-point-lights = PUNKTVALGUSTID
+fm-time-of-day = KELLAAEG
+fm-sun-moon = PÄIKE JA KUU
+fm-auto-detail = AUTOMAATNE MAASTIKU DETAILSUS
+fm-cockpit = COCKPIT
+fm-hud = HUD
+fm-avionics = AVIONIKA
+fm-auto-trim = AUTO TRIM
+fm-tooltips = TOOLTIPS
+fm-cockpit-size = COCKPITI SUURUS
+fm-volume-master = ÜLDHELITUGEVUS
+fm-volume-engine = MOOTOR
+fm-volume-effects = EFEKTID
+fm-volume-warnings = HOIATUSED
+fm-low-pass = MOOTORI MADALPÄÄS
+fm-head-tracking = PEA JÄLGIMINE
+fm-bindings = KLAHVID JA JOYSTICK
+fm-game-note = LENNUMUDEL, TACVIEW: PEAMENÜÜ SEADED
+fm-no-match = TULEMUSI POLE
+fm-type-to-search = OTSIMISEKS TIPI
+fm-hint-vr = STICK: KERI    VÄLI + TRIGER: KLAVIATUUR    TRIGER: TAGASI
+fm-hint-vr-keyboard = KLAHV + TRIGER: TIPI    STICK: KERI
+fm-hint-desktop = RATAS, NOOLED: KERI    ESC, KLÕPS: TAGASI
+fm-key-space = TÜHIK
+fm-key-delete = DEL
+fm-key-clear = TÜHJENDA
+fm-key-done = VALMIS
+fm-pull-trigger = TÕMBA TRIGERIT
