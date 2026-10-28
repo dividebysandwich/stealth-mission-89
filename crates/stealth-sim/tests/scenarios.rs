@@ -270,6 +270,43 @@ fn stealthy_player_not_detected() {
     assert_eq!(sim.site_alert(3), 0);
 }
 
+/// Whether a site of type `ty` `km` north of a pilot crossing in front of it at `alt` ft and
+/// `knots` (its doors opened or not) raises its alert within 20 s.
+fn site_sees(opts: &SimOptions, ty: i32, km: f32, alt: u16, knots: u16, doors: bool) -> bool {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::with_options(&d.sim, &m, opts.clone());
+    let (mx, my) = sandbox(&mut sim, &m);
+    place_site(&mut sim, 3, ty, mx, my - (64.0 * km) as i32);
+    let mut p = player_at(mx, my, alt, 0x4000, knots);
+    p.cmd.toggle_bay = doors;
+    for _ in 0..15 * 20 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    sim.site_alert(3) > 0
+}
+
+/// The RAH-66 is all but invisible to radars slow or hovering, and seen about as an F-117A is
+/// near its top speed: an SA-2 sees neither hovering at 6000 ft 12 km away, both at 180 kt;
+/// with the doors open an SA-13 sees the F-117A low down at any speed, the RAH-66 only fast.
+#[test]
+fn comanche_hides_when_slow() {
+    let comanche =
+        SimOptions { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    let f117 = SimOptions::default();
+    assert!(site_sees(&f117, 1, 12.0, 6000, 0, false));
+    assert!(!site_sees(&comanche, 1, 12.0, 6000, 0, false));
+    assert!(!site_sees(&comanche, 1, 12.0, 6000, 100, false));
+    assert!(site_sees(&comanche, 1, 12.0, 6000, 180, false));
+    for knots in [0, 60] {
+        assert!(site_sees(&f117, 7, 5.0, 300, knots, true));
+        assert!(!site_sees(&comanche, 7, 5.0, 300, knots, true), "{knots} kt");
+        assert!(!site_sees(&comanche, 7, 1.0, 300, knots, true), "{knots} kt, 1 km");
+    }
+    assert!(site_sees(&comanche, 7, 5.0, 300, 180, true));
+}
+
 /// Run until a site missile is in the air and locked.
 fn engaged(d: &Data, ty: i32) -> (Sim, PlayerState) {
     let m = mission(d, 3, 0x1234, 1);
