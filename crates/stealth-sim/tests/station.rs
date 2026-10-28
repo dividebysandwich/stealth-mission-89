@@ -162,6 +162,30 @@ fn going_semi_active_or_changing_the_lock_releases_guided_missiles() {
 }
 
 #[test]
+fn missiles_meet_a_banked_target() {
+    // The fighter patrols in a gentle bank, slower than its speed says: the missile steers
+    // for (and its fuse expects) where it really goes.
+    for (dx, dy) in [(0x880, -0x80), (0x980, 0), (0xA80, 0x80), (0xB80, 0x100)] {
+        let (mut sim, radar, f) = battery();
+        let at = sim.aaa_units()[radar];
+        hold(&mut sim, f, (at.x + dx, at.y + dy, 3700));
+        sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+        run(&mut sim, 1);
+        sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+        sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+        let mut fused = false;
+        for _ in 0..15 * 90 {
+            let ev = sim.step(&idle(), 15);
+            fused |= ev.iter().any(|e| matches!(e, SimEvent::Explosion { kind: -6, .. }));
+            if sim.ai_missiles().iter().all(|m| m.station.is_none()) {
+                break;
+            }
+        }
+        assert!(fused, "the missile at the fighter ({dx}, {dy}) map units off went past it");
+    }
+}
+
+#[test]
 fn a_launcher_refills_from_the_stockpile_in_real_time() {
     let (mut sim, radar, _) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();

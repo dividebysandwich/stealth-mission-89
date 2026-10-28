@@ -17,6 +17,8 @@ impl Sim {
             *b = Bullet::default();
         }
         let nf = self.flights.len();
+        self.flight_vel.clear();
+        self.flight_vel.resize(nf, [0.0; 3]);
         for i in 0..nf {
             if self.flights[i].flags & fflags::EXISTS == 0 {
                 self.flights[i].mode = 0;
@@ -33,6 +35,7 @@ impl Sim {
                 self.activate(k as usize);
             }
             let alive = self.flights[i].flags & fflags::DESTROYED == 0;
+            let was = self.flights[i];
             match kind {
                 crate::AircraftKind::Drone if alive => self.fly_drone(i),
                 crate::AircraftKind::Helicopter if alive && self.supply_run(i).is_some() => {
@@ -41,6 +44,13 @@ impl Sim {
                 crate::AircraftKind::Helicopter if alive => self.fly_helo(i),
                 _ => self.fly(i),
             }
+            let u = self.flights[i];
+            let fs = self.fs.max(1) as f32;
+            self.flight_vel[i] = [
+                u.wx.wrapping_sub(was.wx) as f32 * fs,
+                u.wy.wrapping_sub(was.wy) as f32 * fs,
+                (u.alt - was.alt) as f32 * fs,
+            ];
         }
     }
 

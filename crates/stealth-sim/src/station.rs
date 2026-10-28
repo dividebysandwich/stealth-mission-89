@@ -18,8 +18,8 @@ use serde::{Deserialize, Serialize};
 use crate::Sim;
 use crate::aaa::{AaaKind, PATRIOT, Shell, lead};
 use crate::campaign::{
-    AiShell, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add, flight_metres,
-    jitter, len, mul, sub,
+    AiShell, M_PER_WU, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add,
+    flight_metres, jitter, len, mul, sub,
 };
 use crate::math::approx;
 use crate::types::*;
@@ -331,8 +331,8 @@ impl Sim {
         if t.flags & fflags::DESTROYED != 0 || t.flags & fflags::AIRBORNE == 0 {
             return None;
         }
-        let vel = mul(crate::campaign::direction(t.heading, t.pitch), t.speed as f64 * 0.514);
-        Some((flight_metres(t), vel))
+        let v = mul(self.flight_velocity(j), M_PER_WU);
+        Some((flight_metres(t), [v[0], -v[1], v[2]]))
     }
 
     /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot

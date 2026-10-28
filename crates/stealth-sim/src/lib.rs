@@ -119,6 +119,10 @@ pub struct Sim {
     pub(crate) proj_pilot: [u8; ENEMY_SLOTS],
     #[serde(default)]
     pub(crate) flight_pilot: Vec<u8>,
+    /// Each flight unit's velocity over its last frame (wu/s: east, south, up), as it really
+    /// moved ([`Sim::flight_velocity`]).
+    #[serde(skip)]
+    pub(crate) flight_vel: Vec<[f32; 3]>,
     #[serde(default)]
     pub(crate) site_pilot: Vec<u8>,
     #[serde(default)]
@@ -355,6 +359,7 @@ impl Sim {
             parked: vec![Pilot::default()],
             proj_pilot: [0; ENEMY_SLOTS],
             flight_pilot: Vec::new(),
+            flight_vel: Vec::new(),
             site_pilot: Vec::new(),
             aaa_pilot: Vec::new(),
             alarm_pilot: 0,

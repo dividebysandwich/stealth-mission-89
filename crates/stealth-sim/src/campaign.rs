@@ -27,7 +27,7 @@ use crate::rng::Rng;
 use crate::types::*;
 use crate::{AircraftKind, ENEMY_SLOTS, Sim};
 
-const M_PER_WU: f64 = M_PER_MAP / 32.0;
+pub(crate) const M_PER_WU: f64 = M_PER_MAP / 32.0;
 const G: f64 = 9.81;
 /// Detection range factor of a site with recon intelligence against it (tenths).
 pub const INTEL_DETECTION: i32 = 7;
