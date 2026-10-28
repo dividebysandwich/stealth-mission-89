@@ -668,12 +668,13 @@ for u in (10.0, 34.0, 58.0):
 # Fire handles: a red T handle under each light.
 for x in (-150.0, -38.0, 74.0):
     panel_box("red", "red", (x + 18.0, -145.0, 40.0, 3.0), 0.010, 0.0, PLATE)
-# Jettison button over the left MFD, the fire extinguisher discharge switch under its red guard
-# over the right one.
-mesh_object("red", cylinder_mesh("red", 0.008, 0.008, "red", n=12), point(-240.0, -111.0), rotation(-240.0, -111.0))
-mesh_object("dark", cylinder_mesh("dark", 0.011, 0.003, "dark", n=12), point(-240.0, -111.0), rotation(-240.0, -111.0))
-toggle(250.0, -111.0)
-mesh_object("red", box_mesh("red", (0.014, 0.012, 0.022), "red", (0.0, -0.006, -0.002)), point(250.0, -111.0), rotation(250.0, -111.0))
+# Jettison button outboard of the left MFD, the fire extinguisher discharge switch under its red
+# guard outboard of the right one (on the wings' strips between the wells and the rims, clear of
+# the bezels).
+mesh_object("red", cylinder_mesh("red", 0.006, 0.008, "red", n=12), point(-381.0, -80.0), rotation(-381.0, -80.0))
+mesh_object("dark", cylinder_mesh("dark", 0.008, 0.003, "dark", n=12), point(-381.0, -80.0), rotation(-381.0, -80.0))
+toggle(381.0, -80.0)
+mesh_object("red", box_mesh("red", (0.014, 0.012, 0.022), "red", (0.0, -0.006, -0.002)), point(381.0, -80.0), rotation(381.0, -80.0))
 # Downlock override: a red button on the stripes.
 x, y, w, h = faces["Item(Hazard)"]
 mesh_object("red", cylinder_mesh("red", 0.006, 0.010, "red", n=KNOB), point(x + w / 2, y + h / 2, PLATE + 0.001), rotation(x, y))

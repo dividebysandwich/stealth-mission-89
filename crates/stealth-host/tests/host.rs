@@ -406,3 +406,64 @@ fn an_empty_stockpile_orders_a_resupply() {
             && o.objective == Objective::Resupply { request: q.id })
     );
 }
+
+/// A sortie's briefing names the base it flies from and back to (an airfield or a carrier), leaves
+/// now and plans the fuel for its own route, in every theater.
+#[test]
+fn a_sortie_briefs_its_own_base_and_fuel() {
+    use stealth_campaign::{Progress, SiteKind, Sortie, WorldView};
+    let data = theater::game_data().unwrap();
+    let mut carriers = 0;
+    for code in theater::codes() {
+        let mut host = Host::new(setup(&code), &data, Rules::default()).unwrap();
+        host.state.tick(0.1, &WorldView::default(), &[]);
+        let generated = &host.mission;
+        for base in host.state.player_bases() {
+            let site = host.state.site(base).unwrap();
+            carriers += (site.kind == SiteKind::Carrier) as usize;
+            for offer in &host.state.board {
+                let s = Sortie {
+                    id: 1,
+                    base,
+                    offer: offer.clone(),
+                    aircraft: Default::default(),
+                    started: 0.0,
+                    progress: Progress::default(),
+                };
+                let m = stealth_host::glue::sortie_mission(generated, &host.state, &s);
+                let b = &m.briefing;
+                let what = format!("{code} {} from {}", offer.title, site.name);
+                assert_eq!(
+                    (m.takeoff.name.as_str(), m.landing.name.as_str()),
+                    (&*site.name, &*site.name)
+                );
+                for l in [&b.base_date_line, &b.depart_line, &b.land_line] {
+                    assert!(l.contains(&site.name), "{what}: {l:?}");
+                    for old in [&generated.takeoff.name, &generated.landing.name] {
+                        assert!(*old == site.name || !l.contains(old.as_str()), "{what}: {l:?}");
+                    }
+                }
+                let p = &m.waypoints;
+                let km =
+                    |a: (i32, i32), b: (i32, i32)| ((a.0 - b.0) as f64).hypot((a.1 - b.1) as f64);
+                let mut length = 0.0;
+                let mut at = (site.x, site.y);
+                for w in p {
+                    length += km(at, (w.x, w.y));
+                    at = (w.x, w.y);
+                }
+                assert_eq!(m.route_length, (length / 64.0) as i16, "{what}");
+                assert_eq!(m.fuel_lbs, 12 * m.route_length, "{what}");
+                assert!(b.fuel_line.contains(&m.fuel_lbs.to_string()), "{what}: {:?}", b.fuel_line);
+                assert_eq!((p[3].x, p[3].y), (site.x, site.y), "{what}: lands at home");
+                let secs = (host.state.sky_hours().rem_euclid(24.0) * 3600.0) as i32;
+                let now = format!("{:02}:{:02}", secs / 3600, secs / 60 % 60);
+                assert_eq!(m.time.depart, now, "{what}");
+                assert!(b.depart_line.contains(&now), "{what}: {:?}", b.depart_line);
+                let start = m.time.base_hour as i32 * 3600 + m.time.tod_ticks * 2;
+                assert!((secs - start).abs() <= 1, "{what}: starts at {start} s, now {secs} s");
+            }
+        }
+    }
+    assert!(carriers > 0, "no carrier sorties tested");
+}

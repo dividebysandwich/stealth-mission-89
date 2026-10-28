@@ -354,6 +354,8 @@ fn sync_shading(
     lighting: Res<crate::lighting::LightingState>,
     manning: Option<Res<crate::station::Manning>>,
     mut materials: ResMut<Assets<CockpitMaterial>>,
+    bursts: Res<crate::flashes::Bursts>,
+    warnings: Option<Res<crate::panel::Warnings>>,
 ) {
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
     // Steam Frame it costs about 10 ms of GPU time.
@@ -363,20 +365,35 @@ fn sync_shading(
     let nvg = hud.is_some_and(|h| h.nvg);
     // In 1/64 steps: a change re-uploads every cockpit material.
     let q = |v: f32| (v * 64.0).round() / 64.0;
-    let dark = if sky.on && !nvg { q(sky.dark) } else { 0.0 };
+    // A combat flash nearby lifts the darkness for a moment (in quarter steps: few re-uploads).
+    let lift = (bursts.cockpit.min(1.0) * 4.0).round() / 4.0;
+    let dark = if sky.on && !nvg { q(sky.dark * (1.0 - lift)) } else { 0.0 };
     // An air defence console's shelter has no windows: dark but for its screens and buttons.
     let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };
     let night = |m: &CockpitMaterial| {
         Vec4::new(
             if m.extension.bright { 0.0 } else { dark },
-            nvg as u32 as f32,
+            // 2: with the goggles effect (stronger grain).
+            if nvg { 1.0 + settings.effects.nvg as u32 as f32 } else { 0.0 },
             // Pictures (the tracking camera) are lit by themselves: the goggles' daylight gain,
             // the night's would wash them out.
             if m.extension.bright { 1.0 } else { daylight },
             !settings.modern_shading as u32 as f32,
         )
     };
+    // Night lighting: a red flood light (blue-green under the goggles) as the daylight goes,
+    // in 1/16 steps; the master caution's pulse while a warning is on.
+    let flood = if settings.effects.cockpit_night && manning.is_none() {
+        let k = q16(((FLOOD_DUSK - lighting.daylight) / FLOOD_DUSK).clamp(0.0, 1.0));
+        let colour = if nvg { FLOOD_NVG } else { FLOOD_RED };
+        let caution = warnings.as_ref().is_some_and(|w| w.caution()) && k > 0.0;
+        (colour * k).extend(caution as u32 as f32)
+    } else {
+        Vec4::ZERO
+    };
+    let retro = crate::palette::retro(&settings);
+    let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials
         .iter()
         .filter(|(_, m)| {
@@ -384,6 +401,8 @@ fn sync_shading(
                 || m.extension.full != full
                 || m.extension.shadows != shadows
                 || m.extension.night != night(m)
+                || m.extension.flood != flood_of(m)
+                || m.extension.retro != retro
         })
         .map(|(id, _)| id)
         .collect();
@@ -393,8 +412,21 @@ fn sync_shading(
             m.extension.full = full;
             m.extension.shadows = shadows;
             m.extension.night = night(&m);
+            m.extension.flood = flood_of(&m);
+            m.extension.retro = retro;
         }
     }
+}
+
+/// The cockpit's night flood light: full below this daylight's share of it, red (linear,
+/// added to what the surfaces reflect), and the blue-green the goggles tolerate.
+const FLOOD_DUSK: f32 = 0.3;
+const FLOOD_RED: Vec3 = Vec3::new(0.15, 0.02, 0.01);
+const FLOOD_NVG: Vec3 = Vec3::new(0.004, 0.025, 0.018);
+
+/// In 1/16 steps: a change re-uploads every cockpit material.
+fn q16(v: f32) -> f32 {
+    (v * 16.0).round() / 16.0
 }
 
 #[derive(Component)]

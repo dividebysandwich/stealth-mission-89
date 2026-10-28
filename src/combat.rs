@@ -138,8 +138,10 @@ pub struct Combat {
     /// Campaign: the simulation's events (all pilots') since the campaign last took them
     /// (`campaign/mod.rs`).
     pub campaign_events: Vec<stealth_sim::PilotEvent>,
-    /// Campaign: the sky's clock (seconds of the day), replacing the mission clock.
+    /// Campaign: the sky's clock (seconds of the day), replacing the mission clock, and its
+    /// seconds per second.
     pub sky_seconds: Option<f32>,
+    pub sky_ratio: f32,
     /// Things destroyed on the ground in the steps of this frame (they burn, fires.rs).
     pub kills: Vec<Kill>,
     /// Map position of the falling wreck (it burns where it lands).
@@ -345,6 +347,7 @@ fn start_combat(
     *clock = MissionClock {
         start_seconds: m.time.base_hour as f32 * 3600.0 + m.time.tod_ticks as f32 * 2.0,
         elapsed: Some(0.0),
+        rate: 1.0,
     };
     // The route from the mission planner, else the mission's own waypoints.
     let route =
@@ -364,6 +367,7 @@ fn start_combat(
         prior_tiles,
         campaign_events: Vec::new(),
         sky_seconds: None,
+        sky_ratio: 1.0,
         prev_flights: sim.flights().to_vec(),
         prev_proj: *sim.projectiles(),
         prev_remote: remote_missiles(&sim),
@@ -1319,7 +1323,9 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
     msgs.training = sim.invulnerable();
     msgs.accel = accel.on;
     match combat.sky_seconds {
-        Some(s) => *clock = MissionClock { start_seconds: 0.0, elapsed: Some(s) },
+        Some(s) => {
+            *clock = MissionClock { start_seconds: 0.0, elapsed: Some(s), rate: combat.sky_ratio }
+        }
         None => clock.elapsed = Some(sim.mission_tick() as f32),
     }
 

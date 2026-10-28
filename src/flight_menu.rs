@@ -126,6 +126,7 @@ enum Page {
     Options,
     Game,
     Graphics,
+    Effects,
     Sound,
     Controls,
 }
@@ -138,6 +139,7 @@ impl Page {
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
+                Open(Page::Effects),
                 Open(Page::Sound),
                 Open(Page::Controls),
                 Back,
@@ -146,7 +148,35 @@ impl Page {
                 &[Language, Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back]
             }
             Page::Graphics => {
-                &[Shaders, Msaa, Shadows, Lighting, TimeOfDay, SunMoon, AutoDetail, Back]
+                use crate::effects::Effect as E;
+                &[
+                    Shaders,
+                    Msaa,
+                    Shadows,
+                    Lighting,
+                    TimeOfDay,
+                    SunMoon,
+                    AutoDetail,
+                    Effect(E::Vga),
+                    Effect(E::Scanlines),
+                    Back,
+                ]
+            }
+            Page::Effects => {
+                use crate::effects::Effect as E;
+                &[
+                    Effect(E::Shake),
+                    Effect(E::Flashes),
+                    Effect(E::Barrage),
+                    Effect(E::CockpitNight),
+                    Effect(E::Nvg),
+                    Effect(E::Snow),
+                    Effect(E::Mist),
+                    Effect(E::CloudShadows),
+                    Effect(E::Vapour),
+                    Effect(E::NightSky),
+                    Back,
+                ]
             }
             Page::Sound => &[
                 Volume(Vol::Master),
@@ -179,6 +209,7 @@ impl Page {
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
             Page::Graphics => "options-tab-graphics",
+            Page::Effects => "fm-effects",
             Page::Sound => "options-tab-sound",
             Page::Controls => "options-tab-controls",
         })
@@ -238,6 +269,8 @@ enum Item {
     AutoTrim,
     Tooltips,
     CockpitSize,
+    /// An atmosphere effect's switch.
+    Effect(crate::effects::Effect),
     Volume(Vol),
     LowPass,
     HeadTracking,
@@ -249,6 +282,9 @@ impl Item {
     fn label(self) -> &'static str {
         if let Item::Open(p) = self {
             return p.title();
+        }
+        if let Item::Effect(e) = self {
+            return e.menu_label();
         }
         tf!(match self {
             Item::Resume => "fm-resume",
@@ -277,7 +313,7 @@ impl Item {
             Item::LowPass => "fm-low-pass",
             Item::HeadTracking => "fm-head-tracking",
             Item::Bindings => "fm-bindings",
-            Item::Open(_) => unreachable!(),
+            Item::Open(_) | Item::Effect(_) => unreachable!(),
         })
     }
 
@@ -300,6 +336,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
             Item::LowPass => on(s.engine_low_pass),
@@ -322,6 +359,7 @@ impl Item {
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
             Item::Msaa => !crate::WEBGL2,
+            Item::Effect(crate::effects::Effect::Scanlines) => !s.vr,
             _ => true,
         }
     }
@@ -1010,6 +1048,7 @@ fn navigate(
             stealth_i18n::set_language(s.language);
         }
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::Bindings => {

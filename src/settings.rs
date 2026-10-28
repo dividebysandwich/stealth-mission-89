@@ -116,6 +116,8 @@ pub struct Settings {
     /// `--lang <code>`: the language of the menus and messages (OPTIONS; the system's by
     /// default).
     pub language: stealth_i18n::Language,
+    /// The atmosphere effects' switches (`--effects`).
+    pub effects: crate::effects::Effects,
 }
 
 /// Default VR cockpit size.
@@ -291,6 +293,8 @@ impl Settings {
             warning_volume: 1.0,
             engine_low_pass: true,
             language: language_arg().unwrap_or_else(system_language),
+            effects: get(&a, "--effects")
+                .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
         }
     }
 }

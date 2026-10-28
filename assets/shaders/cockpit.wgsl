@@ -5,7 +5,7 @@
 // COCKPIT_FULL is Bevy's full lighting (point lights, shadows).
 
 #import bevy_pbr::{
-    mesh_view_bindings::globals,
+    mesh_view_bindings::{globals, view},
     pbr_fragment::pbr_input_from_standard_material,
     pbr_functions::{alpha_discard, main_pass_post_lighting_processing},
     forward_io::{VertexOutput, FragmentOutput},
@@ -38,6 +38,37 @@
 // x: darkness of a night without moonlight 0..1, y: night vision goggles, z: daylight 0..1,
 // w: classic shaders (shading.rs `CockpitShading::night`).
 @group(#{MATERIAL_BIND_GROUP}) @binding(100) var<uniform> night: vec4<f32>;
+// Night lighting (shading.rs `CockpitShading::flood`): the flood light's colour (rgb) and the
+// master caution (w = 1).
+@group(#{MATERIAL_BIND_GROUP}) @binding(101) var<uniform> flood: vec4<f32>;
+
+// Retro output (shading.rs `CockpitShading::retro`; palette.wgsl `retro`).
+@group(#{MATERIAL_BIND_GROUP}) @binding(102) var<uniform> retro_mode: vec4<f32>;
+const SCANLINE: f32 = 0.6;
+
+fn retro(rgb: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
+    var c = rgb;
+    if (retro_mode.x > 0.0) {
+        var m = array<f32, 16>(0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+        let p = vec2<u32>(frag) & vec2<u32>(3u);
+        let s = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+        let q = floor(s * 63.0 + (m[p.y * 4u + p.x] + 0.5) / 16.0) / 63.0;
+        c = pow(min(q, vec3<f32>(1.0)), vec3<f32>(2.2));
+    }
+    if (retro_mode.y > 0.0) {
+        let period = max(floor(view.viewport.w / 300.0), 2.0);
+        c *= select(1.0, SCANLINE, fract(frag.y / period) >= 0.5);
+    }
+    return c;
+}
+
+const CAUTION: vec3<f32> = vec3<f32>(0.1, 0.05, 0.0);
+
+// The flood light and the master caution's amber pulse on a surface of colour `base`.
+fn flood_light(base: vec3<f32>) -> vec3<f32> {
+    let pulse = flood.w * max(sin(globals.time * 6.2831853 * 1.5), 0.0);
+    return base * (flood.rgb + CAUTION * pulse);
+}
 
 #ifdef COCKPIT_SHADOWS
 // Classic shaders: a hard edged shadow (the nearest shadow map texel), like the world's
@@ -125,7 +156,9 @@ fn nvg(rgb: vec3<f32>, frag: vec4<f32>) -> vec3<f32> {
     let p = vec2<u32>(frag.xy);
     var h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ u32(globals.time * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    let grain = select(0.06, mix(0.16, 0.05, v), night.y > 1.5);
+    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     let c = mix(vec3<f32>(0.0, 0.04, 0.01), vec3<f32>(0.3, 0.85, 0.2), v) + vec3<f32>(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3<f32>(1.0)), vec3<f32>(2.2));
 }
@@ -160,7 +193,9 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         out.color = pbr_input.material.base_color;
     }
 #endif
+    out.color = vec4<f32>(out.color.rgb + flood_light(pbr_input.material.base_color.rgb), out.color.a);
     out.color = vec4<f32>(nvg(out.color.rgb, in.position), out.color.a);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
+    out.color = vec4<f32>(retro(out.color.rgb, in.position.xy), out.color.a);
     return out;
 }

@@ -87,6 +87,7 @@ pub struct Prefs {
     pub engine_low_pass: bool,
     /// None: the system's.
     pub language: Option<stealth_i18n::Language>,
+    pub effects: crate::effects::Effects,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -142,6 +143,7 @@ impl Default for Prefs {
             warning_volume: 1.0,
             engine_low_pass: true,
             language: None,
+            effects: Default::default(),
         }
     }
 }
@@ -210,6 +212,7 @@ impl Prefs {
             warning_volume: s.warning_volume,
             engine_low_pass: s.engine_low_pass,
             language: saved_language(s),
+            effects: s.effects,
         }
     }
 
@@ -267,6 +270,9 @@ impl Prefs {
         {
             s.language = l;
         }
+        if !std::env::args().any(|a| a == "--effects") {
+            s.effects = self.effects;
+        }
         if !std::env::args().any(|a| a == "--aircraft") {
             s.aircraft = self.aircraft;
         }
@@ -303,6 +309,7 @@ impl Prefs {
         self.warning_volume = s.warning_volume;
         self.engine_low_pass = s.engine_low_pass;
         self.language = saved_language(s);
+        self.effects = s.effects;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

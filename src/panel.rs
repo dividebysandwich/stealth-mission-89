@@ -76,6 +76,20 @@ pub struct Warnings {
     pub emv_warning: bool,
 }
 
+impl Warnings {
+    /// A missile warning or damage: what the master caution is for.
+    pub fn caution(&self) -> bool {
+        self.missile_warning
+            || self.engine
+            || self.fire_control
+            || self.jammer
+            || self.fire
+            || self.fuel
+            || self.bay_doors
+            || self.avionics
+    }
+}
+
 fn reset_panel(mut cm: ResMut<Countermeasures>, mut emv: ResMut<Emv>, mut w: ResMut<Warnings>) {
     *cm = Countermeasures::default();
     *emv = Emv::default();
@@ -763,7 +777,7 @@ impl PanelParams<'_, '_> {
         let (e, n, _) = crate::world::bevy_to_wu(p.0);
         let km = ((wp.east - e).hypot(wp.north - n) * crate::world::WU / 1000.0) as f32;
         let ms = a.knots() * 0.5144;
-        Some((km, t + if ms > 1.0 { km * 1000.0 / ms } else { 0.0 }))
+        Some((km, t + if ms > 1.0 { km * 1000.0 / ms * self.clock.rate } else { 0.0 }))
     }
 
     /// The F-16's data entry display: a CNI-style page with the radio channels (fixed), the

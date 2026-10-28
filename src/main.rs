@@ -8,6 +8,7 @@ mod aircraft;
 mod asset_path;
 mod autoshot;
 mod avionics;
+mod barrage;
 mod boss_key;
 mod camera;
 mod campaign;
@@ -23,8 +24,10 @@ mod debrief;
 #[cfg(not(target_arch = "wasm32"))]
 mod dedicated;
 mod dots;
+mod effects;
 mod explosions;
 mod fires;
+mod flashes;
 mod flight;
 mod flight_menu;
 mod font;
@@ -32,6 +35,7 @@ mod freecam;
 mod fullscreen;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
+mod goggles;
 mod headtrack;
 mod help;
 mod hmd;
@@ -73,6 +77,7 @@ mod savegame;
 mod scenery;
 mod script;
 mod settings;
+mod shake;
 mod sim_render;
 mod sky;
 mod sound;
@@ -278,6 +283,13 @@ fn main() {
             kneeboard::KneeboardPlugin,
             recon::ReconPlugin,
             tacview_real_time::TacviewRealTimePlugin,
+        ))
+        // The atmosphere effects (effects.rs).
+        .add_plugins((
+            shake::ShakePlugin,
+            flashes::FlashesPlugin,
+            barrage::BarragePlugin,
+            goggles::GogglesPlugin,
         ))
         .add_plugins((
             sky::SkyPlugin,

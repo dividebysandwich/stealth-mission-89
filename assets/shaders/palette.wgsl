@@ -44,7 +44,8 @@ struct Globals {
     sun: vec4<f32>,
     // Ambient (rgb), lighting flags (w).
     ambient: vec4<f32>,
-    // x: local light count, y: daylight 0 (night) .. 1 (day), z: night vision goggles,
+    // x: local light count, y: daylight 0 (night) .. 1 (day), z: night vision goggles (2: with
+    // the goggles effect, halos and stronger grain),
     // w: flat colours (SM89_FLAT_SHADER bits: 1 all, 2 background, 4 objects, 8 clouds and smoke).
     light_info: vec4<f32>,
     // x: XR dot angular size in radians (0 = flat screen), y: animation clock (seconds,
@@ -83,6 +84,19 @@ struct Globals {
     shadow_bounds: vec4<f32>,
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     storm_haze: vec4<f32>,
+    // Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
+    // colour (xyz) and reach in metres (w).
+    burst: vec4<f32>,
+    burst_colour: vec4<f32>,
+    // Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w, metres);
+    // cloud shadows' strength (z).
+    atmos: vec4<f32>,
+    // The nearest cumulus clouds' shadows: centre x, z, radius (0: none), base height.
+    cloud_shade: array<vec4<f32>, 8>,
+    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
+    sky_fx: vec4<f32>,
+    // Retro output: VGA colours (x), scanlines (y).
+    retro: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -144,6 +158,10 @@ struct VertexOutput {
 #ifdef VERTEX_WORD
     @location(9) @interpolate(flat) word: u32,
 #endif
+#ifdef DOT_BATCH
+    // A dot's quad corner (xy, -1..1) and its size over the lamp's (z: above 1 a goggles halo).
+    @location(10) dot_uv: vec3<f32>,
+#endif
 };
 
 // Dot lights: size relative to one 320x200 screen pixel and lower bound in pixels.
@@ -163,6 +181,9 @@ const DOT_NEAR: f32 = 0.4;
 // 16..) spans more than SPOT_PIXELS in the view, and sit that size towards the eye so its
 // model can't hide them.
 const SPOT_PIXELS: f32 = 12.0;
+// Under night vision goggles the bright lights (aircraft lights, the bigger airfield lights)
+// bloom: a halo this many times the lamp's size around it.
+const NVG_HALO: f32 = 3.5;
 
 // World units per model unit, by level code in the mesh tag (bits 0..2):
 // 0: LOD0 (0.5), 1: LOD1 (1), 2: LOD2 (4), 3: LOD3 (16), 4: LOD4 (64), 5: aircraft (1/8)
@@ -216,6 +237,7 @@ fn vertex(v: Vertex) -> VertexOutput {
     // corner to a constant size in this view's pixels (so the tracking camera's zoom doesn't
     // magnify them); in XR at most a 320x200 pixel's angular size.
 #ifdef DOT_BATCH
+    out.dot_uv = vec3<f32>(v.corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
         var center = world.xyz;
         let spot = (tag & TAG_DOT_SPOT) != 0u;
@@ -241,6 +263,14 @@ fn vertex(v: Vertex) -> VertexOutput {
             px = px * f32(tenths) / 10.0;
         } else {
             px = px * f32(((tag >> 8u) & 7u) + 1u);
+        }
+        // Only the blended dot materials (palette_material.rs `FLAG_DOT`): an opaque copy of a
+        // light would show its whole quad.
+        let bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
+        let blended = (material.flags & 128u) != 0u;
+        if (globals.light_info.z > 1.5 && bright && blended && !spot) {
+            px = px * NVG_HALO;
+            out.dot_uv.z = NVG_HALO;
         }
         out.world_position = center;
         out.clip_position = clip + vec4<f32>(corner * px * 2.0 / vp * clip.w, 0.0, 0.0);
@@ -673,6 +703,59 @@ fn hash2(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
 }
 
+// Night sky extras (`Globals::sky_fx`). The northern lights: curtains of green, red at their
+// tops, hanging over the northern sky with rays running through them, slowly moving.
+fn aurora(nd: vec3<f32>) -> vec3<f32> {
+    let s = globals.sky_fx.x;
+    if (s <= 0.0 || nd.y <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let az = atan2(nd.x, -nd.z);
+    let north = exp(-az * az / 1.2);
+    let t = globals.dots.y;
+    let above = asin(nd.y) - (0.18 + 0.06 * sin(az * 3.0 + t * 0.05) + 0.03 * sin(az * 7.0 - t * 0.08));
+    if (above < -0.03 || north < 0.01) {
+        return vec3<f32>(0.0);
+    }
+    let height = 0.25 + 0.08 * sin(az * 5.0 + t * 0.03);
+    let curtain = smoothstep(-0.03, 0.01, above) * exp(-max(above, 0.0) / height * 2.2);
+    let rays = 0.6 + 0.4 * sin(az * 90.0 + 3.0 * sin(az * 11.0 + t * 0.2) + t * 0.4) * (0.4 + 0.6 * sin(az * 23.0 - t * 0.15));
+    let c = mix(vec3<f32>(0.02, 0.28, 0.11), vec3<f32>(0.18, 0.02, 0.07), smoothstep(0.08, 0.3, above));
+    return c * curtain * rays * north * s;
+}
+
+// A shooting star now and then (`Globals::sky_fx` y): a short bright streak across the sky,
+// placed and timed by the clock.
+const METEOR_PERIOD: f32 = 7.0;
+const METEOR_LIFE: f32 = 0.7;
+fn meteor(nd: vec3<f32>, px: f32) -> f32 {
+    if (globals.sky_fx.y <= 0.0 || nd.y <= 0.0) {
+        return 0.0;
+    }
+    let t = globals.dots.y;
+    let k = floor(t / METEOR_PERIOD);
+    let p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
+    if (p > 1.0 || hash2(vec2<f32>(k, 3.7)) > 0.5) {
+        return 0.0;
+    }
+    let az = hash2(vec2<f32>(k, 1.1)) * 6.2831853;
+    let el = 0.35 + 0.6 * hash2(vec2<f32>(k, 2.3));
+    let start = vec3<f32>(cos(el) * sin(az), sin(el), -cos(el) * cos(az));
+    let east = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), start));
+    let up = cross(start, east);
+    let a = hash2(vec2<f32>(k, 5.9)) * 6.2831853;
+    // Falling, mostly: the streak heads downwards.
+    let dir = normalize(cos(a) * east - (0.6 + 0.4 * abs(sin(a))) * up) * 0.25;
+    let head = normalize(start + dir * p);
+    let tail = normalize(start + dir * max(p - 0.35, 0.0));
+    let ab = head - tail;
+    let along = clamp(dot(nd - tail, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+    let d = length(nd - tail - ab * along);
+    let w = max(px * 0.8, 0.0006);
+    return (1.0 - smoothstep(w * 0.5, w * 1.5, d)) * along * (1.0 - 0.6 * p);
+}
+
+
 // Continuous time of day: the sun, stars and the moon over the sky colour (`nd` normalised, above the
 // horizon). The moon is lit from the true sun direction, so its phase shows by itself. `px`:
 // radians per pixel (`Deriv`).
@@ -698,11 +781,15 @@ fn night_sky(bg_in: vec3<f32>, nd: vec3<f32>, px: f32) -> vec3<f32> {
             // view moves, so the stars twinkle.
             let r = max(STAR_CELL * 0.03, px * 0.55);
             let core = select(0.0, 1.0, d < r);
-            let mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            var mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            // Low stars twinkle (through more air), each at its own pace.
+            let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+            mag *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
             // Fainter towards the horizon (haze).
             let alt_fade = smoothstep(0.0, 0.15, nd.y);
             bg += vec3<f32>(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
         }
+        bg += (aurora(nd) + vec3<f32>(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
     }
     // The sun's disc, a soft edge against the sky.
     let sun = normalize(globals.sky_sun.xyz);
@@ -777,6 +864,23 @@ fn bayer4(p: vec2<u32>) -> f32 {
     return (m[(p.y & 3u) * 4u + (p.x & 3u)] + 0.5) / 16.0;
 }
 
+// Retro output (`Globals::retro`): VGA colours, the 6-bit DAC's 64 steps per channel with a
+// 4x4 ordered dither (x); scanlines, every other line of a CRT's darker (y).
+fn retro(rgb: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
+    var c = rgb;
+    if (globals.retro.x > 0.0) {
+        let s = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+        let q = floor(s * 63.0 + bayer4(vec2<u32>(frag))) / 63.0;
+        c = pow(min(q, vec3<f32>(1.0)), vec3<f32>(2.2));
+    }
+    if (globals.retro.y > 0.0) {
+        let period = max(floor(view.viewport.w / 300.0), 2.0);
+        c *= select(1.0, SCANLINE, fract(frag.y / period) >= 0.5);
+    }
+    return c;
+}
+const SCANLINE: f32 = 0.6;
+
 // Inside a cloud: everything but the cockpit fades into it. Under an overcast or in a storm
 // the day turns greyer and dimmer.
 fn whiteout(rgb: vec3<f32>, dist: f32) -> vec3<f32> {
@@ -784,6 +888,55 @@ fn whiteout(rgb: vec3<f32>, dist: f32) -> vec3<f32> {
     let grey = mix(rgb, vec3<f32>(dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.4 * g) * (1.0 - 0.3 * g);
     let w = globals.clouds.w * smoothstep(3.0, 60.0, dist);
     return mix(grey, pal(CLOUD_RAMP + 2u) * (1.0 - night_dark()), w);
+}
+
+// Ground mist's density: metres of it the view crosses for 1 - 1/e of the way into it.
+const MIST_DEPTH: f32 = 1200.0;
+
+// Ground mist (modern shading, dawn, dusk and night): a thin layer over the ground, the
+// valleys and the sea, in the horizon's haze colour. Seen from above it is barely there below
+// the aircraft and thick towards the horizon, where the view crosses a long way of it; the
+// hills stand out of it.
+fn ground_mist(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
+    let s = globals.atmos.x;
+    let top = globals.atmos.w + globals.atmos.y;
+    if (s <= 0.0 || world.y >= top) {
+        return rgb;
+    }
+    let eye_y = view.world_position.y;
+    var path = dist;
+    if (eye_y > top) {
+        let up = (eye_y - world.y) / max(dist, 1.0);
+        path = min(dist, (top - world.y) / max(up, 1e-3));
+    }
+    let a = s * (1.0 - exp(-path / MIST_DEPTH));
+    return mix(rgb, pal(CLOUD_RAMP) * (1.0 - night_dark()), a);
+}
+
+// Cloud shadows: the shade of the clouds above `world` where the sun's ray from it meets their
+// base, the stratus deck's and the nearest cumulus clouds' (round, soft edged).
+fn cloud_shadow(world: vec3<f32>) -> f32 {
+    let s = globals.atmos.z;
+    let sun = globals.sun.xyz;
+    if (s <= 0.0 || sun.y < 0.05) {
+        return 1.0;
+    }
+    var shade = 0.0;
+    let base = globals.clouds.x;
+    if (globals.clouds.z != 0.0 && world.y < base) {
+        shade = stratus_cover(world + sun * ((base - world.y) / sun.y));
+    }
+    for (var i = 0u; i < 8u; i++) {
+        let c = globals.cloud_shade[i];
+        if (c.z <= 0.0) {
+            break;
+        }
+        if (world.y < c.w) {
+            let p = world.xz + sun.xz * ((c.w - world.y) / sun.y);
+            shade = max(shade, 1.0 - smoothstep(0.5, 1.0, length(p - c.xy) / c.z));
+        }
+    }
+    return 1.0 - s * shade;
 }
 
 // How thick the storm haze is at the visibility distance (1 - exp(-this)).
@@ -974,9 +1127,22 @@ fn flash_scale() -> f32 {
     return mix(1.0, 0.3, globals.light_info.y);
 }
 
-// Lightning: the far-reaching flash over everything plus the channel's local light.
+// Light of the current combat flash (a flak burst, an explosion, a launch) at a point: as a
+// lightning channel's, from a point.
+fn burst_glow(world: vec3<f32>) -> vec3<f32> {
+    let i = globals.burst.w;
+    if (i <= 0.0) { return vec3<f32>(0.0); }
+    let d = length(world - globals.burst.xyz);
+    let reach = globals.burst_colour.w;
+    let core = d / (reach * 0.06);
+    let halo = d / (reach * 0.3);
+    return globals.burst_colour.rgb * i * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
+// Lightning: the far-reaching flash over everything plus the channel's local light; and the
+// combat flash's light.
 fn flash(rgb: vec3<f32>, world: vec3<f32>) -> vec3<f32> {
-    return rgb + BOLT_COLOR * (globals.weather.y + bolt_glow(world)) * flash_scale();
+    return rgb + (BOLT_COLOR * (globals.weather.y + bolt_glow(world)) + burst_glow(world)) * flash_scale();
 }
 
 // Night vision goggles (light_info.z): the image intensified to a green phosphor picture,
@@ -990,7 +1156,9 @@ fn nvg(rgb: vec3<f32>, clip: vec4<f32>) -> vec3<f32> {
     let p = vec2<u32>(clip.xy);
     var h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ u32(globals.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    let grain = select(0.06, mix(0.16, 0.05, v), globals.light_info.z > 1.5);
+    v = clamp(v + (f32(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     // Phosphor green, near white in the highlights; sRGB -> linear.
     let c = mix(vec3<f32>(0.0, 0.04, 0.01), vec3<f32>(0.3, 0.85, 0.2), v) + vec3<f32>(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3<f32>(1.0)), vec3<f32>(2.2));
@@ -1123,7 +1291,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     let c = shade_fragment(in, deriv);
     let glare = sun_glare(in.world_position - view.world_position);
-    return vec4<f32>(nvg(c.rgb + glare * c.a, in.clip_position), c.a);
+    return vec4<f32>(retro(nvg(c.rgb + glare * c.a, in.clip_position), in.clip_position.xy), c.a);
 }
 
 fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
@@ -1221,8 +1389,20 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         // The ground gradient lies on the plane y = 0; the sky is far.
         let nd = normalize(dir);
         let haze_d = select(1e9, max(eye.y, 0.0) / -nd.y, nd.y < 0.0);
+        // The ground gradient's mist and cloud shadows, where the ray meets the ground.
+        if (nd.y < 0.0) {
+            let ground = eye + nd * haze_d;
+            bg = ground_mist(bg * cloud_shadow(ground), ground, haze_d);
+        }
         bg = storm_haze(bg, nd, haze_d);
         bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
+        // A distant combat flash's halo over the sky (where the view ray passes it; one near
+        // the eye lights what is around it, not the sky).
+        if (globals.burst.w > 0.0) {
+            let burst_d = length(globals.burst.xyz - eye);
+            let far = smoothstep(0.5, 2.0, burst_d / globals.burst_colour.w);
+            bg += burst_glow(eye + nd * burst_d) * flash_scale() * far;
+        }
         return vec4<f32>(bg, 1.0);
     }
 #else
@@ -1294,6 +1474,18 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         rgb = rgb * (1.0 - dark);
     }
     let d = length(dir);
-    return vec4<f32>(flash(whiteout(storm_haze(rgb, dir / max(d, 1e-3), d), d), in.world_position), 1.0);
+    if (!is_line) {
+        rgb = ground_mist(rgb * cloud_shadow(in.world_position), in.world_position, d);
+    }
+    var alpha = 1.0;
+#ifdef DOT_BATCH
+    // A goggles halo: the lamp solid in the middle, its bloom fading out round it.
+    if (in.dot_uv.z > 1.0) {
+        let r = (length(in.dot_uv.xy) * in.dot_uv.z - 1.0) / (in.dot_uv.z - 1.0);
+        let k = clamp(1.0 - r, 0.0, 1.0);
+        alpha = select(0.6 * k * k, 1.0, r <= 0.0);
+    }
+#endif
+    return vec4<f32>(flash(whiteout(storm_haze(rgb, dir / max(d, 1e-3), d), d), in.world_position), alpha);
 #endif
 }

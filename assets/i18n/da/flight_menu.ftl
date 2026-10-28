@@ -45,3 +45,17 @@ fm-key-delete = SLET
 fm-key-clear = RYD
 fm-key-done = OK
 fm-pull-trigger = TRÆK I UDLØSEREN
+
+fm-effects = EFFECTS
+fm-effect-shake = CAMERA SHAKE
+fm-effect-flashes = COMBAT FLASHES
+fm-effect-barrage = NIGHT BARRAGE
+fm-effect-cockpit-night = COCKPIT NIGHT LIGHT
+fm-effect-nvg = GOGGLES EFFECT
+fm-effect-snow = SNOW
+fm-effect-mist = GROUND MIST
+fm-effect-cloud-shadows = CLOUD SHADOWS
+fm-effect-vapour = VAPOUR AND DUST
+fm-effect-night-sky = NIGHT SKY
+fm-effect-vga = VGA COLOURS
+fm-effect-scanlines = SCANLINES

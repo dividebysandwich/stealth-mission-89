@@ -106,3 +106,51 @@ options-head-tracking = Suivi de la tête et des yeux
         Origine : la position actuelle de la tête devient le centre
 options-tracking = Suivi actif ({ $source })
 options-no-tracker = Aucun suivi détecté : lancez le programme de suivi
+
+## EFFECTS
+
+options-section-effects = Effets
+options-section-retro = Rétro
+effect-shake = Secousses de la caméra
+    .facts =
+        La vue tremble avec le canon, les explosions proches, le buffeting de décrochage, les posés et la piste
+        VR : le cockpit vibre, votre tête reste immobile
+effect-flashes = Éclairs de combat
+    .facts =
+        Les tirs de DCA, explosions et départs de missiles éclairent un instant les nuages, le sol et le cockpit
+effect-barrage = Barrage nocturne
+    .facts =
+        Guerre conventionnelle de nuit : les canons des villes tirent des traçantes à l'aveugle vers le ciel, des projecteurs balaient le ciel
+        Pour l'ambiance seulement : le barrage ne touche rien, les projecteurs ne trouvent rien
+effect-cockpit-night = Éclairage nocturne du cockpit
+    .facts =
+        Un faible éclairage rouge dans le cockpit à la nuit tombée (bleu-vert sous les jumelles)
+        Le voyant d'alerte générale pulse en ambre sur le tableau tant qu'une alarme est active
+effect-nvg = Jumelles de vision nocturne
+    .facts =
+        Les lumières vives forment des halos, l'image est plus granuleuse dans l'obscurité
+        Bureau : le champ de vision rond des jumelles
+effect-snow = Neige
+    .facts =
+        Au-dessus de l'isotherme zéro, les orages donnent de la neige au lieu de la pluie : bas en hiver nordique, haut en été
+effect-mist = Brume au sol
+    .facts =
+        Shaders modernes : de la brume couvre les basses terres et la mer à l'aube, au crépuscule et la nuit
+        Fine dans les déserts, absente par orage
+effect-cloud-shadows = Ombres des nuages
+    .facts =
+        Shaders modernes : les ombres des nuages sur le sol en dessous
+effect-vapour = Vapeur et souffle du rotor
+    .facts =
+        En virage serré, de la vapeur se forme aux bouts d'aile
+        Un hélicoptère en vol stationnaire bas soulève de la poussière, ou des embruns au-dessus de l'eau
+effect-night-sky = Ciel nocturne
+    .facts =
+        Des étoiles filantes de temps en temps, les étoiles basses sur l'horizon scintillent
+        Les aurores boréales au-dessus du Cap Nord
+effect-vga = Couleurs VGA
+    .facts =
+        Le look de 1989 avec l'ombrage moderne : 64 niveaux par canal de couleur, comme une carte VGA, tramés
+effect-scanlines = Lignes de balayage
+    .facts =
+        Les lignes de balayage d'un moniteur cathodique (pas en VR)

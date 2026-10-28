@@ -50,6 +50,14 @@ pub struct CockpitShading {
     /// z: daylight 0..1 (their gain), w: classic shaders (hard edged shadows).
     #[uniform(100)]
     pub night: Vec4,
+    /// Night lighting (`Effects::cockpit_night`): the flood light's colour (rgb, linear, added
+    /// to what the surface reflects) and the master caution (w = 1: its amber pulse; the shader
+    /// times it).
+    #[uniform(101)]
+    pub flood: Vec4,
+    /// Retro output: VGA colours (x), scanlines (y) (`crate::palette::retro`).
+    #[uniform(102)]
+    pub retro: Vec4,
     /// Never darkened.
     pub bright: bool,
 }

@@ -16,8 +16,9 @@
 //!   to 60 degrees. The angle of attack and load factor limiters only act near the limits.
 //!   Turns are coordinated (sideslip held at 0, or set by the rudder). The pitch rate follows its
 //!   command like an airframe (second order, slightly underdamped), roll and yaw with short lags.
-//! - Flaps extend over a few seconds and add lift and stall margin (a higher angle of attack
-//!   limit), so the aircraft flies slower; they don't move the nose by themselves.
+//! - Flaps extend over a few seconds and add lift (a steeper lift slope) and stall margin (a
+//!   higher angle of attack limit), so the aircraft flies slower with its nose still above the
+//!   flight path; they don't move the nose by themselves.
 //! - Ground: rolling friction, wheel brakes, nosewheel steering, rotation above about 0.8 of the
 //!   stall speed, carrier catapult and arresting wire; ground contact, landing and crash rules
 //!   are the classic model's.
@@ -67,7 +68,8 @@ pub struct Aero {
     /// Angle of attack limiter of the control system (rad).
     pub alpha_limit: f32,
     pub alpha_limit_neg: f32,
-    /// Lift added by the fully extended flaps, and the stall / limiter angles they add (rad).
+    /// Lift added by the fully extended flaps at their stall angle, and the stall / limiter
+    /// angles they add (rad).
     pub cl_flaps: f32,
     pub alpha_flaps: f32,
     pub cd0: f32,
@@ -436,8 +438,11 @@ pub(crate) fn atmosphere(h: f32) -> (f32, f32) {
     }
 }
 
-fn cl_zero(ae: &Aero, a: &Aircraft) -> f32 {
-    ae.cl_flaps * a.modern.flap_pos
+/// Lift slope (1/rad): the flaps steepen it, adding `cl_flaps` at their stall angle, so the
+/// lift still starts from 0 at 0 angle of attack (level flight with them out needs some, the
+/// nose above the flight path, not below it).
+fn cl_slope(ae: &Aero, a: &Aircraft) -> f32 {
+    ae.cl_alpha + ae.cl_flaps / (ae.alpha_stall + ae.alpha_flaps) * a.modern.flap_pos
 }
 
 fn alpha_stall(ae: &Aero, a: &Aircraft) -> f32 {
@@ -452,9 +457,9 @@ fn alpha_limit(ae: &Aero, a: &Aircraft) -> f32 {
 
 /// Lift coefficient: linear to the stall, then falling off to 60% of the peak.
 fn lift_coefficient(ae: &Aero, a: &Aircraft, alpha: f32) -> f32 {
-    let c0 = cl_zero(ae, a);
+    let slope = cl_slope(ae, a);
     let (hi, lo) = (alpha_stall(ae, a), ae.alpha_stall_neg);
-    let peak = |s: f32| c0 + ae.cl_alpha * s;
+    let peak = |s: f32| slope * s;
     if alpha > hi {
         let p = peak(hi);
         (p - (alpha - hi) * 2.0).max(0.6 * p)
@@ -515,7 +520,7 @@ pub(super) fn step(
                     neutral_load(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin(), roll)
                         .max(0.0);
                 let alpha =
-                    ((n0 / per_cl - cl_zero(ae, a)) / ae.cl_alpha).clamp(0.0, alpha_limit(ae, a));
+                    (n0 / per_cl / cl_slope(ae, a)).clamp(0.0, alpha_limit(ae, a));
                 a.orientation = (a.orientation * Quat::from_rotation_x(alpha)).normalize();
             }
             a.modern.hold = Some(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin());
@@ -614,7 +619,7 @@ pub(super) fn step(
     accel.y -= G;
 
     // Stall speed at the current load (velocity units) for the warnings.
-    let cl_avail = cl_zero(ae, a) + ae.cl_alpha * alpha_limit(ae, a);
+    let cl_avail = cl_slope(ae, a) * alpha_limit(ae, a);
     let load = (a.gees / 16.0).max(1.0);
     a.stall_speed = (2.0 * load * ae.wing_loading * mass / (RHO0 * sigma * cl_avail)).sqrt() * 16.0;
 
@@ -700,12 +705,12 @@ pub(super) fn step(
         // Limiters: the angle of attack stays within the limiter angles and the angles that give
         // the load factor limits (corrected towards them near the limits only).
         let lo_n = if per_cl > 1e-3 {
-            (ae.n_min / per_cl - cl_zero(ae, a)) / ae.cl_alpha
+            ae.n_min / per_cl / cl_slope(ae, a)
         } else {
             ae.alpha_limit_neg
         };
         let hi_n = if per_cl > 1e-3 {
-            (ae.n_max / per_cl - cl_zero(ae, a)) / ae.cl_alpha
+            ae.n_max / per_cl / cl_slope(ae, a)
         } else {
             alpha_limit(ae, a)
         };

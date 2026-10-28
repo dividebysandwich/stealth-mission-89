@@ -106,3 +106,51 @@ options-head-tracking = Трекинг головы и глаз
         Home: текущее положение головы становится центром
 options-tracking = Трекинг ({ $source })
 options-no-tracker = Трекер не обнаружен: запустите программу трекинга
+
+## EFFECTS
+
+options-section-effects = Effects
+options-section-retro = Retro
+effect-shake = Camera shake
+    .facts =
+        The view shakes with the gun, nearby blasts, stall buffet, touchdowns and the runway
+        VR: the cockpit vibrates, your head stays still
+effect-flashes = Combat flashes
+    .facts =
+        Flak bursts, explosions and missile launches light the clouds, the ground and the cockpit for a moment
+effect-barrage = Night barrage
+    .facts =
+        Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them
+        Only for the look: the barrage hits nothing, the searchlights find nothing
+effect-cockpit-night = Cockpit night lighting
+    .facts =
+        A dim red flood light in the cockpit after dark (blue-green under the goggles)
+        The master caution pulses amber over the panel while a warning is on
+effect-nvg = Night vision goggles
+    .facts =
+        Bright lights bloom into halos, the picture grains more in the dark
+        Desktop: the goggles' round field of view
+effect-snow = Snow
+    .facts =
+        Above the freezing level storms snow instead of rain: low in a northern winter, high in summer
+effect-mist = Ground mist
+    .facts =
+        Modern shaders: mist lies over the low ground and the sea at dawn, dusk and night
+        Thin in the deserts, none in storms
+effect-cloud-shadows = Cloud shadows
+    .facts =
+        Modern shaders: the clouds' shadows on the ground below
+effect-vapour = Vapour and downwash
+    .facts =
+        Pulling hard, vapour trails from the wingtips
+        A helicopter hovering low whips up dust, or spray over water
+effect-night-sky = Night sky
+    .facts =
+        Shooting stars now and then, the stars low over the horizon twinkle
+        The northern lights over the North Cape
+effect-vga = VGA colours
+    .facts =
+        The 1989 look with modern shading: 64 steps a colour channel, as a VGA card's, dithered
+effect-scanlines = Scanlines
+    .facts =
+        A CRT monitor's scanlines (not in VR)

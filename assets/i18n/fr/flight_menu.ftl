@@ -45,3 +45,17 @@ fm-key-delete = SUPPR
 fm-key-clear = EFFACER
 fm-key-done = OK
 fm-pull-trigger = APPUYEZ SUR LA GÂCHETTE
+
+fm-effects = EFFETS
+fm-effect-shake = SECOUSSES CAMERA
+fm-effect-flashes = ECLAIRS DE COMBAT
+fm-effect-barrage = BARRAGE NOCTURNE
+fm-effect-cockpit-night = ECLAIRAGE NUIT COCKPIT
+fm-effect-nvg = EFFET JUMELLES
+fm-effect-snow = NEIGE
+fm-effect-mist = BRUME AU SOL
+fm-effect-cloud-shadows = OMBRES DES NUAGES
+fm-effect-vapour = VAPEUR ET POUSSIERE
+fm-effect-night-sky = CIEL NOCTURNE
+fm-effect-vga = COULEURS VGA
+fm-effect-scanlines = LIGNES DE BALAYAGE

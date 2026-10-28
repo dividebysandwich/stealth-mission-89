@@ -578,11 +578,13 @@ pub enum ContactRef {
 pub struct MissionClock {
     pub start_seconds: f32,
     pub elapsed: Option<f32>,
+    /// Clock seconds per second flown (a campaign's sky runs faster): for the ETAs.
+    pub rate: f32,
 }
 
 impl Default for MissionClock {
     fn default() -> Self {
-        Self { start_seconds: 18.0 * 3600.0, elapsed: None }
+        Self { start_seconds: 18.0 * 3600.0, elapsed: None, rate: 1.0 }
     }
 }
 
@@ -1539,7 +1541,7 @@ impl MfdParams<'_, '_> {
         for wp in self.waypoints.points.iter().take(4) {
             let km = ((wp.east - e).hypot(wp.north - n) * WU / 1000.0).round();
             let minutes = (km / kmh * 60.0).round();
-            eta += minutes * 60.0;
+            eta += minutes * 60.0 * self.clock.rate as f64;
             out.push((km, minutes, eta));
             (e, n) = (wp.east, wp.north);
         }

@@ -173,7 +173,17 @@ fn toggle(
     mut actions: MessageReader<ActionEvent>,
     mut kb: ResMut<Kneeboard>,
     settings: Res<Settings>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
+    // No kneeboard at a Patriot or Gepard console.
+    if manning.is_some() {
+        actions.clear();
+        if kb.overlay {
+            kb.overlay = false;
+            kb.page = Page::Brief;
+        }
+        return;
+    }
     for _ in actions.read().filter(|a| a.0 == Action::Kneeboard) {
         if settings.vr {
             kb.hidden = !kb.hidden;
@@ -285,8 +295,10 @@ fn carry(
     mut hands: ResMut<Hands>,
     mut boards: Query<&mut Transform, With<Board>>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Ok(mut t) = boards.single_mut() else { return };
+    let hidden = kb.hidden || manning.is_some();
     // The cockpit is not there (VR, the campaign's Ops screen): the board is let go and stays.
     if hide.is_some_and(|h| h.0) {
         if kb.held.take().is_some() {
@@ -304,12 +316,12 @@ fn carry(
     );
     if let Some((i, _)) = kb.held {
         let h = &mut hands.hands[i];
-        if kb.hidden || !h.active || h.squeeze < 0.4 {
+        if hidden || !h.active || h.squeeze < 0.4 {
             kb.held = None;
             kb.placed = Some(*t);
             h.haptic = h.haptic.max(0.2);
         }
-    } else if !kb.hidden {
+    } else if !hidden {
         let local_from_cockpit = rest.compute_affine().inverse();
         if let Some((i, h)) = hands.hands.iter_mut().enumerate().find(|(_, h)| {
             h.active
@@ -364,7 +376,9 @@ fn interact(
         (With<Overlay>, Without<Board>),
     >,
     menu: Res<crate::flight_menu::FlightMenu>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
+    let hidden = kb.hidden || manning.is_some();
     let mut pick: Option<usize> = None;
     // The canvas pixel under the mouse, on the overlay or on the board in the cockpit.
     let mut pointed: Option<Vec2> = None;
@@ -382,9 +396,9 @@ fn interact(
         }
     }
     let Ok((gtf, tf, mut vis)) = boards.single_mut() else { return };
-    vis.set_if_neq(if kb.hidden { Visibility::Hidden } else { Visibility::Inherited });
+    vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
     let mut scroll = 0.0;
-    if !kb.hidden && !menu.open {
+    if !hidden && !menu.open {
         let inv = gtf.affine().inverse();
         if !settings.vr
             && !kb.overlay
@@ -625,10 +639,12 @@ fn draw(
     config: Res<InputConfig>,
     settings: Res<Settings>,
     orders: Res<crate::mfd::MissionOrders>,
+    loadout: Option<Res<crate::loadout::PlannedLoadout>>,
     mut ticked: Local<[Option<TickedPhoto>; 2]>,
 ) {
     kb.timer += time.delta_secs();
-    if recon.is_changed() || orders.is_changed() {
+    if recon.is_changed() || orders.is_changed() || loadout.as_ref().is_some_and(|l| l.is_changed())
+    {
         kb.dirty = true;
     }
     let visible = !kb.hidden || kb.overlay;
@@ -707,7 +723,12 @@ fn draw(
             );
             w.para(&b.fuel_line, WHITE);
             w.heading(tf!("kb-armament"));
-            w.para(&b.armament.join(", "), WHITE);
+            // The stores flown (the campaign's or chosen in the loadout), else the briefed ones.
+            let stores = match loadout.as_deref() {
+                Some(l) if l.mission == crate::mission::PlannedRoute::key(m) => l.summary(),
+                _ => b.armament.join(", "),
+            };
+            w.para(&stores, WHITE);
             w.heading(tf!("kb-roe"));
             w.para(&b.roe_text, GREY);
         }
@@ -724,7 +745,7 @@ fn draw(
                 let (dx, dy) = ((p.x - a.x) as f64, (p.y - a.y) as f64);
                 let km = dx.hypot(dy) / 64.0;
                 let brg = dx.atan2(-dy).to_degrees().rem_euclid(360.0);
-                t += km / (CRUISE_KTS * 1.852) * 3600.0;
+                t += km / (CRUISE_KTS * 1.852) * 3600.0 * clock_res.rate as f64;
                 let label = match p.kind {
                     RouteKind::Primary => "PRI".to_string(),
                     RouteKind::Secondary => "SEC".to_string(),

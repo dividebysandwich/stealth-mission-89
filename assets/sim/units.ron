@@ -71,7 +71,7 @@
         (id: "a6", name: "A-6", nato: "Intruder", mach: 0.85, radius_km: 1080, agility: 2, radar: "friendly", model: 27),
         (id: "mig21", name: "MiG-21", nato: "Fishbed", mach: 2.05, radius_km: 370, agility: 3, radar: "spin_scan", model: 28),
         (id: "ef111", name: "EF-111", nato: "Raven", mach: 2.15, radius_km: 1495, agility: 2, radar: "friendly", model: 29),
-        (id: "c5", name: "C-5", nato: "Galaxy", mach: 0.79, radius_km: 2220, agility: 1, radar: "none", model: 30),
+        (id: "c5", name: "C-5", nato: "Galaxy", mach: 0.79, radius_km: 2220, agility: 1, radar: "friendly", model: 30),
         (id: "a10", name: "A-10", nato: "Warthog", mach: 0.56, radius_km: 460, agility: 2, radar: "friendly", model: 32),
         (id: "geran2", name: "Geran-2", nato: "Shahed", kmh: 185, radius_km: 2000, agility: 1, radar: "none", model: 100, kind: Drone),
         (id: "geran3", name: "Geran-3", nato: "Shahed", kmh: 600, radius_km: 1500, agility: 1, radar: "none", model: 101, kind: Drone),

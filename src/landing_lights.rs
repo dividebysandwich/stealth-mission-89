@@ -140,15 +140,21 @@ struct OwnLandingLight;
 
 /// The beam cone from the lamp along -z, closed at both ends: uv x 0 (lamp) .. 1 (far end).
 fn beam_mesh() -> Mesh {
-    let end = BEAM_LENGTH * BEAM_ANGLE.to_radians().tan();
+    cone_mesh(BEAM_LENGTH, BEAM_ANGLE, LAMP_RADIUS)
+}
+
+/// A beam cone `length` metres long with a half angle of `angle` degrees from a lamp of radius
+/// `lamp` (`BeamMaterial::params` must say the same).
+pub fn cone_mesh(length: f32, angle: f32, lamp: f32) -> Mesh {
+    let end = length * angle.to_radians().tan();
     let mut pos = Vec::new();
     let mut uv = Vec::new();
     for r in 0..=RINGS {
         let t = r as f32 / RINGS as f32;
-        let radius = LAMP_RADIUS + (end - LAMP_RADIUS) * t;
+        let radius = lamp + (end - lamp) * t;
         for s in 0..=SIDES {
             let a = s as f32 / SIDES as f32 * std::f32::consts::TAU;
-            pos.push([radius * a.cos(), radius * a.sin(), -BEAM_LENGTH * t]);
+            pos.push([radius * a.cos(), radius * a.sin(), -length * t]);
             uv.push([t, 0.0]);
         }
     }
@@ -162,10 +168,10 @@ fn beam_mesh() -> Mesh {
     }
     // Closed at both ends, all faces wound counterclockwise seen from outside (the shader draws
     // the back faces, where the view leaves it).
-    for (ring, z) in [(0, 0.0), (RINGS as u32, -BEAM_LENGTH)] {
+    for (ring, z) in [(0, 0.0), (RINGS as u32, -length)] {
         let centre = pos.len() as u32;
         pos.push([0.0, 0.0, z]);
-        uv.push([-z / BEAM_LENGTH, 0.0]);
+        uv.push([-z / length, 0.0]);
         for s in 0..SIDES as u32 {
             let (a, b) = (ring * row + s, ring * row + s + 1);
             idx.extend_from_slice(&if z == 0.0 { [centre, a, b] } else { [centre, b, a] });

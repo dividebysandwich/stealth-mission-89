@@ -865,7 +865,7 @@ pub fn draw_hsi_page(p: &MfdParams, c: &mut Canvas, fonts: &Fonts) {
         (
             "ETA",
             km.filter(|_| ms > 1.0).map_or("--:--".to_string(), |k| {
-                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms);
+                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms * p.clock.rate);
                 format!("{h:02}:{m:02}")
             }),
         ),
@@ -1010,9 +1010,13 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
             stroke_text_at(c, q.x, q.y, label, 9.0, 1.2, GREY, Align::Centre);
         }
     }
-    // Route: the steerpoints as small squares, the current one ringed.
+    // Route: the steerpoints as small squares, the current one ringed, and a leg from the
+    // aircraft to the current one so the route shows with every steerpoint out of range.
     let wps: Vec<Vec2> =
         p.waypoints.points.iter().map(|w| view.to_screen(w.east, w.north)).collect();
+    if let Some(&q) = wps.get(p.waypoints.current) {
+        c.stroke(o, q, 1.0, WHITE);
+    }
     for pair in wps.windows(2) {
         c.stroke(pair[0], pair[1], 1.0, WHITE);
     }
@@ -1317,9 +1321,11 @@ fn update_pod(
     };
     let ground_y = crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y;
     // CZ: point track on the current steerpoint, the pod the SOI to slew on from there.
+    let mut cz = false;
     if std::mem::take(&mut state.av.tgp.cz)
         && let Some(wp) = waypoints.target()
     {
+        cz = true;
         let p = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64);
         state.av.tgp.mode = TgpMode::Point(p);
         state.av.tgp.idle = 0.0;
@@ -1333,9 +1339,9 @@ fn update_pod(
     let tgp = &mut state.av.tgp;
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
-    // Settled near a unit: the pod snaps onto it, locked as by the lock key (a gun, which
-    // cannot be locked, held in point track).
-    if slewed
+    // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
+    // by the lock key (a gun, which cannot be locked, held in point track).
+    if (slewed || cz)
         && let TgpMode::Point(p) = tgp.mode
         && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, ground_y))
     {

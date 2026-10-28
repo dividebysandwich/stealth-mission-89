@@ -208,6 +208,16 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             .changed();
         });
     }
+    for (title, retro) in [(t!("options-section-effects"), false), (t!("options-section-retro"), true)] {
+        section(ui, title);
+        for e in crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro) {
+            let mut on = e.get(&s.effects);
+            if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
+                e.set(&mut s.effects, on);
+                toggled = true;
+            }
+        }
+    }
     if toggled {
         settings.set_changed();
     }
