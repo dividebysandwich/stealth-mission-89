@@ -529,9 +529,16 @@ fn handle_actions(
     for ActionEvent(action) in actions.read() {
         match action {
             // Helicopters: the collective moves while its keys are held
-            // (`FlightControls::collective_rate`); fixed gear unless it retracts, no autopilot,
-            // the brakes are the parking brake.
-            Action::ThrottleUp | Action::ThrottleDown | Action::Autopilot if heli => {}
+            // (`FlightControls::collective_rate`); fixed gear unless it retracts, the brakes are
+            // the parking brake; the autopilot holds the speed as well.
+            Action::ThrottleUp | Action::ThrottleDown if heli => {}
+            Action::Autopilot if heli && a.autopilot() => a.autopilot_alt = 0.0,
+            Action::Autopilot
+                if !a.damage.autopilot_failed
+                    && let Some(r) = &k.heli =>
+            {
+                heli::engage_autopilot(&mut a, r)
+            }
             Action::Gear if k.heli.is_some_and(|r| r.retract_gear.is_none()) => {}
             // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
             // dry thrust they step through the afterburner; full power lights it at full dry

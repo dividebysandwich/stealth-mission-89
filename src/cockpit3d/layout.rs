@@ -634,13 +634,13 @@ impl PanelLayout {
     /// vertical velocity tapes left of them, the engine gauges right of them, the standby
     /// attitude indicator between the groups under them. The CDU, the cautions and the
     /// countermeasures stay on the console (here the pedestal between the knees). No gear
-    /// lights (skids) and no AUTO cap.
+    /// lights (skids); the AUTO cap under BAY.
     pub fn ah1z() -> Self {
         let u = Self::uh60();
         let items = u
             .items
             .iter()
-            .filter(|p| !matches!(p.elem, Elem::GearLights | Elem::Lamp(LampId::Auto, _)))
+            .filter(|p| !matches!(p.elem, Elem::GearLights))
             .map(|p| {
                 let r = p.rect;
                 let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
@@ -654,6 +654,7 @@ impl PanelLayout {
                     Elem::Dial(Dial::Ftit) => at(280.0, -10.0),
                     Elem::Dial(Dial::Oil) => at(330.0, -60.0),
                     Elem::Dial(Dial::Nozzle) => at(330.0, -10.0),
+                    Elem::Lamp(LampId::Auto, _) => at(-180.0, 128.0),
                     _ => r,
                 };
                 Placed { rect, ..*p }
@@ -1043,7 +1044,7 @@ impl PanelLayout {
         }
         put(Elem::Hazard, rect(182.0, -134.0, 30.0, 28.0), None);
         // On the pedestal, between the standby attitude display and the keyboard: the flight
-        // control keys in a column.
+        // control keys in a column, the autopilot's (lit while engaged) at its foot.
         for (k, (label, cap)) in [
             ("DCLT", E::Action(Action::HudDeclutter)),
             ("NVG", E::Action(Action::Nvg)),
@@ -1054,8 +1055,13 @@ impl PanelLayout {
         .into_iter()
         .enumerate()
         {
-            put(key(label), rect(-121.0, 128.0 + 22.0 * k as f32, 40.0, 16.0), Some(cap));
+            put(key(label), rect(-121.0, 128.0 + 18.0 * k as f32, 40.0, 16.0), Some(cap));
         }
+        put(
+            Elem::Lamp(LampId::Auto, None),
+            rect(-121.0, 218.0, 40.0, 16.0),
+            Some(E::Action(Action::Autopilot)),
+        );
         // Under the standby attitude display: the countermeasures.
         let adi = rect(-206.0, 120.0, 64.0, 64.0);
         for (k, (label, action)) in
