@@ -147,24 +147,6 @@ impl Scenery {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
-    /// Where the cargo crates of a base line up: beside its runway a little ahead of `start`
-    /// (where its aircraft start, facing `forward`; metres east, north), on the far side from
-    /// the apron, and the runway's direction (None: no runway near).
-    pub fn crate_row(&self, start: DVec2, forward: DVec2) -> Option<(DVec2, DVec2)> {
-        let a = self
-            .airfields
-            .iter()
-            .filter(|a| a.runway.c.distance(start) < CRATE_ROW_RANGE)
-            .min_by(|a, b| a.runway.c.distance(start).total_cmp(&b.runway.c.distance(start)))?;
-        let rw = &a.runway;
-        let side = rw.axis.perp();
-        let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
-        let away = if apron.dot(side) > 0.0 { -1.0 } else { 1.0 };
-        let ahead = (start + forward * CRATE_ROW_AHEAD - rw.c).dot(rw.axis);
-        let along = ahead.clamp(-rw.half_len * 0.8, rw.half_len * 0.8);
-        Some((rw.c + rw.axis * along + side * away * (rw.half_width + CRATE_ROW_OUT), rw.axis))
-    }
-
     /// What the ground is at `p` (metres east, north): water, concrete or land.
     pub fn surface(&self, p: DVec2) -> Surface {
         if !self.ground.is_dry_clear(p, 0.0) {
@@ -262,12 +244,6 @@ pub struct SceneryBacklog(pub Option<usize>);
 /// Where the ILS camera looks on an approach to each runway end (see `trackcam.rs`).
 #[derive(Resource, Default)]
 pub struct PapiSites(pub Vec<airfield::PapiSite>);
-
-/// The cargo crates line up beside the runway of an airfield this close to where its aircraft
-/// start, this far ahead of them and this far out from the runway's edge (metres).
-const CRATE_ROW_RANGE: f64 = 4000.0;
-const CRATE_ROW_AHEAD: f64 = 150.0;
-const CRATE_ROW_OUT: f64 = 35.0;
 
 /// A cargo crate for a new air defence site (metres: length, width, height), olive with dark
 /// straps.
@@ -403,13 +379,15 @@ fn build_scenery(
         }
         exit.write(AppExit::Success);
     }
-    // `--write-helipads`: save the airfields' helipads for the simulation (its resupply
-    // helicopters lift off there) and quit.
+    // `--write-helipads`: save the airfields' helipads and runways for the simulation (its
+    // resupply helicopters lift off there, and hook their crates beside the runways) and quit.
     if std::env::args().any(|a| a == "--write-helipads") {
-        let path = stealth_host::assets::asset(&format!("theaters/{}.helipads", theater.id));
-        match std::fs::write(&path, helipads_ron(&fields)) {
-            Ok(()) => info!("helipads written to {}", path.display()),
-            Err(e) => error!("{}: {e}", path.display()),
+        for (ext, ron) in [("helipads", helipads_ron(&fields)), ("runways", runways_ron(&fields))] {
+            let path = stealth_host::assets::asset(&format!("theaters/{}.{ext}", theater.id));
+            match std::fs::write(&path, ron) {
+                Ok(()) => info!("{ext} written to {}", path.display()),
+                Err(e) => error!("{}: {e}", path.display()),
+            }
         }
         exit.write(AppExit::Success);
     }
@@ -431,6 +409,30 @@ fn helipads_ron(fields: &[airfield::Airfield]) -> String {
         })
         .collect();
     format!("[\n{}]\n", pads.concat())
+}
+
+/// The airfields' runways as the simulation reads them (`TheaterTiles::read_runways`): a RON
+/// list of `stealth_sim::Runway`, metres east and north, `out` pointing away from the apron.
+fn runways_ron(fields: &[airfield::Airfield]) -> String {
+    let p = |v: DVec2| format!("({:.3}, {:.3})", v.x, v.y);
+    let runways: Vec<String> = fields
+        .iter()
+        .map(|a| {
+            let rw = &a.runway;
+            let side = rw.axis.perp();
+            let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
+            let out = if apron.dot(side) > 0.0 { -side } else { side };
+            format!(
+                "    (c: {}, axis: {}, half_len: {:.3}, half_width: {:.3}, out: {}),\n",
+                p(rw.c),
+                p(rw.axis),
+                rw.half_len,
+                rw.half_width,
+                p(out)
+            )
+        })
+        .collect();
+    format!("[\n{}]\n", runways.concat())
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the

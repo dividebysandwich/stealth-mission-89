@@ -309,6 +309,7 @@ impl Theater {
                 .collect(),
             relief: stealth_host::theater::relief(&self.id),
             helipads: stealth_host::theater::helipads(&self.id),
+            runways: stealth_host::theater::runways(&self.id),
         }
     }
 

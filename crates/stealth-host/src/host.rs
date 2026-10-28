@@ -562,11 +562,15 @@ impl Host {
                 }
                 CampaignEvent::Recall { tag } => sim.recall_flight(*tag),
                 CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
-                    sim.spawn_supply(*from as usize, *aaa as usize, *tag);
+                    let (at, _) = crate::cargo::supply_crate(sim, *from as usize, *tag);
+                    let pickup = Some(crate::cargo::world_units(at));
+                    sim.spawn_supply(*from as usize, *aaa as usize, pickup, *tag);
                 }
                 CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
-                CampaignEvent::CargoLaunched { from, x, y, tag, .. } => {
-                    sim.spawn_cargo(*from as usize, *x, *y, *tag);
+                CampaignEvent::CargoLaunched { id, from, x, y, tag } => {
+                    let (pickup, drop) =
+                        crate::cargo::cargo_run(sim, &self.state, *id, *tag, *x, *y);
+                    sim.spawn_cargo(*from as usize, pickup, drop, *tag);
                 }
                 CampaignEvent::SiteBuilt { x, y, patriot, .. } => {
                     if *patriot {

@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{AaaKind, M_PER_MAP};
 use stealth_sim::station::{PATRIOT_STOCK, SavedStock};
-use stealth_sim::supply::{DROP_RADIUS, HOVER_MAX};
+use stealth_sim::supply::{DROP_RADIUS, HOOK_ALT, HOVER_MAX, SET_ALT, SupplyRun};
 use stealth_sim::*;
 
 struct Data {
@@ -59,6 +59,60 @@ fn idle() -> PlayerState {
     PlayerState { on_ground: true, fuel: 10000, ..Default::default() }
 }
 
+/// Metres between a flight unit and a point (world units).
+fn metres_at(u: &FlightUnit, p: (i32, i32)) -> f64 {
+    ((u.wx - p.0) as f64).hypot((u.wy - p.1) as f64) * M_PER_MAP / 32.0
+}
+
+/// Flies helicopter `i` (tag `tag`) until it is back on its pad: it hooks its crate low over
+/// `pickup` and holds there while it is lifted, and carries it until it is delivered. Returns
+/// the helicopter at the delivery and where it landed (map units).
+fn sling_run(sim: &mut Sim, i: usize, tag: u32, pickup: (i32, i32)) -> (FlightUnit, (i32, i32)) {
+    let run = |sim: &Sim| sim.campaign_flight(i).and_then(|f| f.supply);
+    let (mut hooked, mut lifted, mut delivered) = (None, None, None);
+    for frame in 0..15 * 900 {
+        let ev = sim.step(&idle(), 15);
+        let u = sim.flights()[i];
+        if let Some(r) = run(sim) {
+            if r.hooked && hooked.is_none() {
+                // Over the crate, the hook in reach of it.
+                assert!(metres_at(&u, pickup) < 8.0, "{}", metres_at(&u, pickup));
+                assert!(u.alt <= HOOK_ALT + 2, "{}", u.alt);
+                hooked = Some(frame);
+            }
+            if r.pickup.is_none() && hooked.is_some() && lifted.is_none() {
+                // It held the spot while the crate came up.
+                assert!(metres_at(&u, pickup) < 8.0, "{}", metres_at(&u, pickup));
+                lifted = Some(frame);
+            }
+            if lifted.is_some() && !r.delivered {
+                assert!(r.hooked, "the crate hangs under it on the way");
+            }
+        }
+        for e in ev {
+            match e {
+                SimEvent::CampaignFlightDelivered { tag: t, .. } if t == tag => {
+                    let r: SupplyRun = run(sim).expect("run");
+                    assert!(r.set_down && !r.hooked, "{r:?}");
+                    // Hovering low enough for the crate on its rope to stand on the ground.
+                    assert!(u.alt > 0 && u.alt <= SET_ALT, "{}", u.alt);
+                    assert!(metres_at(&u, r.drop) < 8.0, "{}", metres_at(&u, r.drop));
+                    delivered = Some((frame, u));
+                }
+                SimEvent::CampaignFlightLanded { tag: t, x, y, .. } if t == tag => {
+                    let (hooked, lifted) = (hooked.expect("hooked"), lifted.expect("lifted"));
+                    assert!(lifted - hooked >= 15 * 3, "{hooked} {lifted}");
+                    let (at, u) = delivered.expect("delivered");
+                    assert!(at > lifted + 15 * 10, "it flew there with the crate");
+                    return (u, (x, y));
+                }
+                _ => {}
+            }
+        }
+    }
+    panic!("never landed: hooked {hooked:?}, lifted {lifted:?}, delivered {delivered:?}");
+}
+
 /// Metres between a flight unit and the middle of an AAA unit.
 fn metres_to(u: &FlightUnit, a: &stealth_sim::aaa::AaaUnit) -> f64 {
     let (cx, cy) = ((a.x << 5) + 16, (a.y << 5) + 16);
@@ -66,44 +120,47 @@ fn metres_to(u: &FlightUnit, a: &stealth_sim::aaa::AaaUnit) -> f64 {
 }
 
 #[test]
-fn the_ai_helicopter_hovers_at_the_battery_and_lands_back_on_its_pad() {
+fn the_ai_helicopter_slings_a_crate_to_the_battery_and_lands_back_on_its_pad() {
     let (mut sim, home, radar) = battery();
     let pad = sim.helipad(home);
     let o = sim.objects()[home];
     // The airfield's own helipad (from the theater's scenery), not the spot beside it.
     assert_ne!(pad, ((o.x + 6) << 5, o.y << 5));
-    let i = sim.spawn_supply(home, radar, 42);
+    // Its crate 500 m from the pad.
+    let pickup = (pad.0 + 1024, pad.1);
+    let i = sim.spawn_supply(home, radar, Some(pickup), 42);
     let a = sim.aaa_units()[radar];
-    let (mut delivered, mut landed) = (None, None);
-    let mut last = sim.flights()[i];
-    for frame in 0..15 * 900 {
-        let ev = sim.step(&idle(), 15);
-        for e in ev {
-            match e {
-                SimEvent::CampaignFlightDelivered { tag: 42, aaa, .. } => {
-                    let u = sim.flights()[i];
-                    assert_eq!(aaa, radar);
-                    assert!(metres_to(&u, &a) <= DROP_RADIUS, "{}", metres_to(&u, &a));
-                    assert!(u.alt as f64 * M_PER_MAP / 32.0 <= HOVER_MAX, "{}", u.alt);
-                    delivered = Some(frame);
-                }
-                SimEvent::CampaignFlightLanded { tag: 42, x, y, .. } => landed = Some((x, y)),
-                _ => {}
-            }
-        }
-        if landed.is_some() {
-            break;
-        }
-        last = sim.flights()[i];
-    }
-    let delivered = delivered.expect("delivered");
-    assert!(delivered > 15 * 10, "it flew there first");
-    let (x, y) = landed.expect("landed");
+    let (u, (x, y)) = sling_run(&mut sim, i, 42, pickup);
+    assert!(metres_to(&u, &a) <= DROP_RADIUS, "{}", metres_to(&u, &a));
+    assert!(u.alt as f64 * M_PER_MAP / 32.0 <= HOVER_MAX, "{}", u.alt);
     assert!((x - (pad.0 >> 5)).abs() <= 1 && (y - (pad.1 >> 5)).abs() <= 1, "{x},{y} {pad:?}");
-    assert!(last.alt < 10, "{}", last.alt);
     // Landed: gone, its slot free.
     assert!(sim.campaign_flight(i).is_none());
     assert_eq!(sim.flights()[i].flags, 0);
+}
+
+#[test]
+fn the_ai_helicopter_without_a_crate_hovers_at_the_battery() {
+    let (mut sim, home, radar) = battery();
+    let i = sim.spawn_supply(home, radar, None, 42);
+    let a = sim.aaa_units()[radar];
+    let mut delivered = false;
+    for _ in 0..15 * 900 {
+        for e in sim.step(&idle(), 15) {
+            if let SimEvent::CampaignFlightDelivered { tag: 42, aaa, .. } = e {
+                let u = sim.flights()[i];
+                assert_eq!(aaa, radar);
+                assert!(metres_to(&u, &a) <= DROP_RADIUS, "{}", metres_to(&u, &a));
+                delivered = true;
+            }
+        }
+        if delivered {
+            break;
+        }
+    }
+    assert!(delivered);
+    let r = sim.campaign_flight(i).and_then(|f| f.supply).unwrap();
+    assert!(!r.hooked && !r.set_down, "{r:?}");
 }
 
 #[test]
@@ -144,36 +201,17 @@ fn a_player_hovers_low_and_close_to_deliver() {
 }
 
 #[test]
-fn a_cargo_helicopter_lands_on_a_new_sites_helipad_and_flies_home() {
+fn a_cargo_helicopter_slings_its_crate_to_a_new_sites_helipad_and_flies_home() {
     let (mut sim, home, _) = battery();
     let pad = sim.helipad(home);
     let o = sim.objects()[home];
-    // A new site's helipad 6 km west of the airfield (map units).
+    // A new site's helipad 6 km west of the airfield (map units), the crate set down 9 m off it.
     let (px, py) = (o.x - 0x180, o.y + 0x20);
-    let at = ((px << 5) + 16, (py << 5) + 16);
-    let i = sim.spawn_cargo(home, px, py, 43);
-    let (mut delivered, mut landed) = (false, None);
-    for _ in 0..15 * 900 {
-        for e in sim.step(&idle(), 15) {
-            match e {
-                SimEvent::CampaignFlightDelivered { tag: 43, aaa, .. } => {
-                    let u = sim.flights()[i];
-                    assert_eq!(aaa, usize::MAX);
-                    let m = ((u.wx - at.0) as f64).hypot((u.wy - at.1) as f64) * M_PER_MAP / 32.0;
-                    assert!(m <= DROP_RADIUS, "{m}");
-                    assert_eq!(u.alt, 0, "down on the pad");
-                    delivered = true;
-                }
-                SimEvent::CampaignFlightLanded { tag: 43, x, y, .. } => landed = Some((x, y)),
-                _ => {}
-            }
-        }
-        if landed.is_some() {
-            break;
-        }
-    }
-    assert!(delivered);
-    let (x, y) = landed.expect("landed at home");
+    let drop = ((px << 5) + 16 + 18, (py << 5) + 16);
+    let pickup = (pad.0, pad.1 - 1024);
+    let i = sim.spawn_cargo(home, Some(pickup), drop, 43);
+    let (u, (x, y)) = sling_run(&mut sim, i, 43, pickup);
+    assert!(metres_at(&u, drop) < 8.0);
     assert!((x - (pad.0 >> 5)).abs() <= 1 && (y - (pad.1 >> 5)).abs() <= 1, "{x},{y} {pad:?}");
 }
 

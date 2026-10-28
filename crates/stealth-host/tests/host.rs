@@ -519,7 +519,20 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
         ev2.extend(ev);
         for e in host.tick(&mut sim, 1.0 / 15.0, &ev2) {
             match e {
-                HostEvent::Campaign(CampaignEvent::CargoLaunched { .. }) => launched = true,
+                HostEvent::Campaign(CampaignEvent::CargoLaunched { id, tag, .. }) => {
+                    // It goes for its crate where the clients draw it, beside the runway.
+                    let run = (0..sim.flights().len())
+                        .filter_map(|i| sim.campaign_flight(i))
+                        .find(|f| f.tag == tag)
+                        .and_then(|f| f.supply)
+                        .expect("its run");
+                    let leg = host.state.deployment(id).unwrap().ai[0].0;
+                    let (home, _) =
+                        stealth_host::cargo::crate_home(&sim, &host.state, id, leg).unwrap();
+                    assert_eq!(run.pickup, Some(stealth_host::cargo::world_units(home)));
+                    assert!(!sim.runways().is_empty());
+                    launched = true;
+                }
                 HostEvent::Campaign(CampaignEvent::SiteBuilt { .. }) => built = true,
                 _ => {}
             }
