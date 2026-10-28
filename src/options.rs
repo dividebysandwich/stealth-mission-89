@@ -115,7 +115,11 @@ fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str); N]) -> 
 pub fn language_option(ui: &mut egui::Ui, settings: &mut SettingsMut) -> bool {
     section(ui, t!("options-section-language"));
     let mut lang = settings.language;
-    let options = Language::ALL.map(|l| (l, list_name(l), t_lines!("language.facts")));
+    // Alphabetical by the language's own name, accents ignored; the other scripts follow the
+    // Latin one.
+    let mut languages = Language::ALL;
+    languages.sort_by_cached_key(|l| stealth_i18n::fold_accents(l.native_name()).to_lowercase());
+    let options = languages.map(|l| (l, list_name(l), t_lines!("language.facts")));
     crate::menu::dropdown(ui, "language", &mut lang, options);
     if lang == settings.language {
         return false;
