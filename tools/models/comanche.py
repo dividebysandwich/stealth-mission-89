@@ -4,10 +4,10 @@
     tools/models/export.sh aircraft
 
 A faceted stealth fuselage with a sharp chine all round: the pilot in front and the gunner
-behind under a flat-panelled tandem canopy, a sensor turret on the nose and the three-barrel gun
-under the chin, the engines buried under a raised deck with the exhaust slots along the top of
-the tail boom, the five-blade main rotor with the Longbow radome above the hub, and a shrouded
-fan in the tail under a fin with a T-tail stabiliser and end plates. Proportions are taken from
+behind under a flat-panelled tandem canopy, a round, sharp-rimmed nose with the sensor
+turret on top and the three-barrel gun under the chin, the engines buried under a raised deck
+with the exhaust slots along the top of the tail boom, the five-blade main rotor with the Longbow
+radome above the hub, and a shrouded fan in the tail under a fin with a T-tail stabiliser and end plates. Proportions are taken from
 a three-view drawing (fuselage 13.2 m, rotor 11.9 m, hub 3.4 m above the ground, radome top
 4.6 m, wheelbase 6.7 m, main wheel track 2.2 m). The origin is on the ground under the rotor
 mast, so the wheels touch at z 0.
@@ -60,19 +60,20 @@ RED, GREEN = 147, 151
 # of the flat side (the chine), the roof shoulder and the dorsal line, then the half widths at
 # those heights. The lower facet (quads 0/8) slopes in from the chine to the belly; the bay doors
 # are cut in it. Over the cockpits the upper edge is the canopy sill, well inside the chine, so the
-# side (quads 1/7) is a shoulder sloping up to the narrow canopy.
+# side (quads 1/7) is a shoulder sloping up to the narrow canopy. Behind the canopy the side stands
+# upright, leaning out a little up to the upper edge, the widest point of the fuselage.
 STATIONS = [
     # y      zb    zl    zu    zs    zt     wb    wl    wu    ws    wt
-    (4.96, 0.98, 1.08, 1.18, 1.28, 1.32, 0.16, 0.30, 0.30, 0.22, 0.10),
-    (4.62, 0.86, 1.02, 1.30, 1.52, 1.58, 0.26, 0.48, 0.48, 0.34, 0.16),
+    (4.40, 0.90, 1.00, 1.20, 1.40, 1.46, 0.20, 0.40, 0.36, 0.20, 0.10),  # inside the round nose
+    (4.15, 0.80, 1.06, 1.32, 1.56, 1.62, 0.28, 0.54, 0.50, 0.30, 0.15),
     (3.55, 0.72, 1.14, 1.80, 1.80, 1.80, 0.32, 0.66, 0.32, 0.32, 0.16),  # windshield base
     (3.25, 0.69, 1.19, 1.48, 2.05, 2.05, 0.33, 0.71, 0.66, 0.302, 0.151),  # quarter panes' front
-    (2.48, 0.62, 1.31, 1.47, 2.51, 2.51, 0.37, 0.84, 0.70, 0.27, 0.14),  # pilot canopy bow
-    (1.84, 0.62, 1.38, 1.60, 2.56, 2.56, 0.40, 0.90, 0.76, 0.28, 0.14),  # gunner canopy bow
-    (0.82, 0.70, 1.37, 1.90, 2.60, 2.60, 0.46, 1.06, 0.78, 0.29, 0.15),  # canopy aft
-    (0.30, 0.72, 1.37, 1.70, 2.78, 2.98, 0.48, 1.16, 1.14, 0.66, 0.42),  # engine deck
-    (-1.05, 0.73, 1.36, 1.74, 2.82, 3.01, 0.50, 1.20, 1.17, 0.70, 0.44),
-    (-1.70, 0.74, 1.36, 1.70, 2.42, 2.56, 0.50, 1.18, 1.15, 0.62, 0.36),
+    (2.48, 0.62, 1.31, 1.47, 2.51, 2.51, 0.37, 0.88, 0.70, 0.27, 0.14),  # pilot canopy bow
+    (1.84, 0.62, 1.38, 1.60, 2.56, 2.56, 0.40, 0.95, 0.76, 0.28, 0.14),  # gunner canopy bow
+    (0.82, 0.70, 1.37, 1.90, 2.60, 2.60, 0.48, 1.10, 0.78, 0.29, 0.15),  # canopy aft
+    (0.55, 0.72, 1.37, 1.88, 2.80, 2.97, 0.48, 1.12, 1.17, 0.66, 0.44),  # engine deck
+    (-1.35, 0.73, 1.37, 1.72, 2.80, 2.96, 0.50, 1.12, 1.16, 0.68, 0.44),
+    (-1.70, 0.74, 1.37, 1.68, 2.56, 2.70, 0.50, 1.12, 1.14, 0.62, 0.38),
     (-3.05, 0.84, 1.35, 1.56, 1.90, 2.00, 0.40, 1.00, 0.96, 0.50, 0.26),
     (-3.70, 0.82, 1.38, 1.50, 1.84, 1.92, 0.28, 0.72, 0.70, 0.40, 0.20),  # tail boom
     (-5.25, 0.74, 1.30, 1.42, 1.66, 1.72, 0.20, 0.52, 0.50, 0.32, 0.15),
@@ -92,6 +93,8 @@ GLAZED = [((2, 3), (3, 5)), ((2, 3), (2, 2)), ((2, 3), (6, 6))] + [
 # far forward of the sill.
 LEAN = {2.48: 0.23, 1.84: 0.08, 0.82: 0.05}
 FRAME = 0.06
+# The windshield and the quarter panes beside it (the first three of GLAZED) have slim posts.
+FRONT_FRAME = 0.035
 
 MAST = (0.0, 0.0, 3.39)
 ROTOR_R, ROTOR_CHORD = 5.95, 0.32
@@ -106,7 +109,7 @@ MAIN_WHEEL, MAIN_R, MAIN_W = (1.10, 1.30, 0.28), 0.28, 0.16
 TAIL_WHEEL, TAIL_R = (0.0, -5.40, 0.18), 0.18
 # Bay doors: hinge at the chine and the lower edge at the belly corner (x, z), fore and aft
 # ends; the open angles of the variants (degrees, swung up and out).
-BAY_HINGE, BAY_EDGE, BAY_Y = (1.15, 1.37), (0.49, 0.72), (0.70, -1.40)
+BAY_HINGE, BAY_EDGE, BAY_Y = (1.12, 1.37), (0.49, 0.72), (0.70, -1.40)
 BAY_ANGLES = (0, 70, 135)
 # Tail: the fin's sections (leading edge y, trailing edge y, z, half thickness) from the top of
 # the boom, over the shroud, to the tip; the stabiliser's leading edge, chords, half span and
@@ -117,6 +120,11 @@ STAB_Y, STAB_ROOT_CHORD, STAB_TIP_CHORD, STAB_SPAN, STAB_Z = -7.25, 1.03, 1.00, 
 PLATE = ((-7.25, -7.85, 3.00, 1.58), (-7.30, -8.40, 3.80, 1.29))
 # Sensor turret on the nose, gun turret and muzzle under the chin.
 TURRET, MUZZLE = (0.0, 4.02, 0.60), (0.0, 4.75, 0.56)
+# The round nose jutting out of the fuselage: a sharp rim with the underside curving back under it
+# and a cone above it up to the sensor turret's base. Its centre (y), then (z, radius) from the
+# bottom to the top.
+DRUM_Y = 4.34
+DRUM = [(0.83, 0.24), (0.87, 0.38), (0.97, 0.52), (1.12, 0.58), (1.48, 0.33)]
 
 
 def interp(y):
@@ -169,14 +177,17 @@ def upper_deck(level):
 
 
 def nose(level):
-    """The sensor turret on top of the nose and the chin gun with its three barrels."""
+    """The round drum at the front, the sensor turret on top of the nose and the chin gun with
+    its three barrels."""
     g = Geo()
-    g.add(mklib.block(-0.22, 0.22, 4.30, 4.86, 1.48, 1.78, SENSOR, taper=0.05, taper_y=0.08))
+    n = (16, 10, 8)[level]
+    g.add(mklib.tube([mklib.ring((0.0, DRUM_Y, z), r, r, n, axis=(0, 0, 1)) for z, r in DRUM], BODY))
+    g.add(mklib.block(-0.20, 0.20, 4.04, 4.64, 1.46, 1.71, SENSOR, taper=0.04, taper_y=0.06))
     if level == 0:
-        g.face([(-0.15, 4.865, 1.54), (0.15, 4.865, 1.54), (0.15, 4.865, 1.70), (-0.15, 4.865, 1.70)], DARK, (0, 4.5, 1.6))
+        g.face([(-0.13, 4.645, 1.52), (0.13, 4.645, 1.52), (0.13, 4.645, 1.62), (-0.13, 4.645, 1.62)], DARK, (0, 4.3, 1.57))
     x, y, z = TURRET
     n = 8 if level == 0 else 6
-    g.add(frustum((x, y, z + 0.14), (x, y, z - 0.10), 0.22, 0.16, METAL, n=n))
+    g.add(frustum((x, y, z + 0.20), (x, y, z - 0.10), 0.22, 0.16, METAL, n=n))
     mx, my, mz = MUZZLE
     if level == 0:
         for k in range(3):
@@ -415,12 +426,12 @@ def fuselage(stations):
             if (i, k) not in glazed:
                 k1 = (k + 1) % m
                 g.face([a[k], a[k1], b[k1], b[k]], BODY, mid)
-    for (i0, i1), (k0, k1) in GLAZED:
+    for pane_no, ((i0, i1), (k0, k1)) in enumerate(GLAZED):
         outline = ([rings[i0][k] for k in range(k0, k1 + 2)] + [rings[i][k1 + 1] for i in range(i0 + 1, i1 + 2)]
                    + [rings[i1 + 1][k] for k in range(k1, k0 - 1, -1)] + [rings[i][k0] for i in range(i1, i0, -1)])
         outline = corners(outline)
         centre = Vector((0, sum(p.y for p in outline) / len(outline), 1.3))
-        pane = inset(outline, FRAME)
+        pane = inset(outline, FRONT_FRAME if pane_no < 3 else FRAME)
         n = len(outline)
         for j in range(n):
             g.face([outline[j], outline[(j + 1) % n], pane[(j + 1) % n], pane[j]], DARK, centre)
