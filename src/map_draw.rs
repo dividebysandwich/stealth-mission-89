@@ -14,6 +14,7 @@ use crate::menu::DIM;
 pub const MISSILE_RED: egui::Color32 = egui::Color32::from_rgb(255, 70, 50);
 pub const UAV_PINK: egui::Color32 = egui::Color32::from_rgb(255, 120, 200);
 pub const FRIENDLY_BLUE: egui::Color32 = egui::Color32::from_rgb(90, 160, 255);
+pub const ENGAGE_YELLOW: egui::Color32 = egui::Color32::from_rgb(255, 220, 40);
 
 /// A view of the map: map units (x east, y south) around `centre`, `scale` map units per
 /// screen point, drawn into `rect`.
@@ -104,6 +105,12 @@ pub fn missile_circle(c: egui::Pos2, r: f32, alpha: f32) -> Vec<egui::Shape> {
     )
 }
 
+/// Where a unit opens fire: a thin yellow circle.
+pub fn engagement_circle(c: egui::Pos2, r: f32, alpha: f32) -> egui::Shape {
+    let stroke = egui::Stroke::new(1.2, ENGAGE_YELLOW.gamma_multiply(alpha * 0.9));
+    egui::Shape::circle_stroke(c, r, stroke)
+}
+
 /// A site: a red dot with its name once zoomed in far enough.
 pub fn site(painter: &egui::Painter, view: &MapView, c: egui::Pos2, name: &str, alpha: f32) {
     painter.circle_filled(c, 3.0, MISSILE_RED.gamma_multiply(alpha));
@@ -171,6 +178,8 @@ pub enum Layer {
     PulseRadar,
     DopplerRadar,
     MissileRange,
+    /// Where a unit opens fire.
+    EngagementRange,
     Drones,
 }
 

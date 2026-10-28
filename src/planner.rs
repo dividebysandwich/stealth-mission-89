@@ -320,6 +320,8 @@ struct Ring {
     y: f32,
     detect: f32,
     launch: f32,
+    /// Where it opens fire on the player: inside both its detection and its missile range.
+    engage: f32,
     name: String,
     active: bool,
     /// Doppler radar (solid detection circle; pulse radars dotted).
@@ -364,11 +366,13 @@ fn threat_rings(
             } else {
                 0.0
             };
+            let launch = missile.lock_range as f32 * PER_KM as f32;
             Some(Ring {
                 x: x as f32,
                 y: y as f32,
                 detect: detect * PER_KM as f32,
-                launch: missile.lock_range as f32 * PER_KM as f32,
+                launch,
+                engage: (detect * PER_KM as f32).min(launch),
                 name: t.name.clone(),
                 active: o.flags & (F::OFF_THE_AIR | F::UNDER_REPAIR) == 0,
                 doppler: t.flags & 1 != 0,
@@ -491,7 +495,7 @@ pub fn route_panel(
         .as_ref()
         .map(|s| threat_rings(m, s, planner.profile, known))
         .unwrap_or_default();
-    let mut layers = MapLayers::of(ui.ctx(), "route", &[]);
+    let mut layers = MapLayers::of(ui.ctx(), "route", &[Layer::EngagementRange]);
     ui.allocate_ui(size, |ui| {
     ui.horizontal_top(|ui| {
         let side = 300.0;
@@ -588,6 +592,9 @@ fn map_view(
         let alpha = if ring.active { 1.0 } else { 0.35 };
         if layers.shows(Layer::MissileRange) {
             painter.extend(missile_circle(c, ring.launch / scale, alpha));
+        }
+        if ring.engage > 0.0 && layers.shows(Layer::EngagementRange) {
+            painter.add(map_draw::engagement_circle(c, ring.engage / scale, alpha));
         }
         let detection = if ring.doppler { Layer::DopplerRadar } else { Layer::PulseRadar };
         if ring.detect > 0.0 && layers.shows(detection) {
@@ -715,6 +722,7 @@ fn map_view(
         layer_legend(ui, layers, Legend::Pulse, "Pulse radar detection range");
         layer_legend(ui, layers, Legend::Doppler, "Doppler radar detection range");
         layer_legend(ui, layers, Legend::Missile, "Missile range");
+        layer_legend(ui, layers, Legend::Engage, "Engagement range");
         if m.drones.is_some() {
             layer_legend(ui, layers, Legend::Drone, "Enemy UAV");
         }
@@ -797,6 +805,7 @@ enum Legend {
     Pulse,
     Doppler,
     Missile,
+    Engage,
     Drone,
 }
 
@@ -811,6 +820,7 @@ fn layer_legend(ui: &mut egui::Ui, layers: &mut MapLayers, symbol: Legend, text:
         Legend::Pulse => Layer::PulseRadar,
         Legend::Doppler => Layer::DopplerRadar,
         Legend::Missile => Layer::MissileRange,
+        Legend::Engage => Layer::EngagementRange,
         Legend::Drone => Layer::Drones,
     };
     layers.legend(ui, layer, text, |painter, c| symbol.draw(painter, c));
@@ -822,6 +832,9 @@ impl Legend {
             Legend::Pulse => painter.extend(detection_circle(c, 6.0, false, 1.0)),
             Legend::Doppler => painter.extend(detection_circle(c, 6.0, true, 1.0)),
             Legend::Missile => painter.extend(missile_circle(c, 6.0, 1.0)),
+            Legend::Engage => {
+                painter.add(map_draw::engagement_circle(c, 6.0, 1.0));
+            }
             Legend::Drone => drone_cross(painter, c),
         }
     }

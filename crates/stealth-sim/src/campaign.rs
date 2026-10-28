@@ -568,6 +568,13 @@ impl Sim {
         self.campaign.as_ref().is_some_and(|c| c.intel.get(i).copied().unwrap_or(false))
     }
 
+    /// How far enemy SAM site `i` launches at the friendly aircraft (map units): its missile's
+    /// lock range, less once reconned (`campaign_acquire`).
+    pub fn site_engage_reach(&self, i: usize) -> i32 {
+        let o = self.objects[i];
+        (self.site_lock_range(o.unit_type) << 6) * self.detection_tenths(i) / 10
+    }
+
     /// Detection range factor of site `i` in tenths (10 = as built).
     pub(crate) fn detection_tenths(&self, i: usize) -> i32 {
         if self.has_intel(i) { INTEL_DETECTION } else { 10 }
@@ -1831,6 +1838,11 @@ fn gun_envelope(kind: AaaKind) -> (f64, f64, f64) {
         AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
         AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
     }
+}
+
+/// How far a gun or a MANPADS team engages (map units).
+pub fn gun_reach(kind: AaaKind) -> f32 {
+    (gun_envelope(kind).1 / M_PER_MAP) as f32
 }
 
 /// Metres (east, north, up) to map x, y and altitude (world units).

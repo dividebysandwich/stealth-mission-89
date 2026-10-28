@@ -33,8 +33,9 @@ pub struct SamSite {
     pub x: i32,
     pub y: i32,
     pub name: String,
-    /// Missile reach (map units).
+    /// Missile reach and how far it launches at the friendly aircraft (map units).
     pub reach: f32,
+    pub engage: f32,
     pub reconned: bool,
 }
 
@@ -133,6 +134,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
                 y: o.y,
                 name: sim.threat_name(o.unit_type).to_string(),
                 reach: (sim.site_lock_range(o.unit_type) * 64) as f32,
+                engage: sim.site_engage_reach(i) as f32,
                 reconned,
             });
         }
@@ -207,6 +209,9 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
         if layers.shows(Layer::MissileRange) {
             painter.extend(map_draw::missile_circle(c, s.reach / view.scale, 0.7));
         }
+        if layers.shows(Layer::EngagementRange) {
+            painter.add(map_draw::engagement_circle(c, s.engage / view.scale, 0.8));
+        }
         if !layers.shows(Layer::Sams) {
             continue;
         }
@@ -215,9 +220,14 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
             painter.circle_stroke(c, 6.0, egui::Stroke::new(1.0, BRIGHT));
         }
     }
-    if layers.shows(Layer::Guns) {
-        for g in &pic.guns {
-            gun(painter, at(g.x, g.y), g.kind);
+    for g in &pic.guns {
+        let c = at(g.x, g.y);
+        if layers.shows(Layer::EngagementRange) {
+            let reach = stealth_sim::campaign::gun_reach(g.kind);
+            painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
+        }
+        if layers.shows(Layer::Guns) {
+            gun(painter, c, g.kind);
         }
     }
     if layers.shows(Layer::EnemyFighters) {
@@ -304,6 +314,10 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
         layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
             p.extend(map_draw::missile_circle(c0, 6.0, 1.0));
+        });
+        // (The route editor has its own line for the engagement range.)
+        layers.legend(ui, Layer::EngagementRange, "Engagement range", |p, c0| {
+            p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
         });
     }
     layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {

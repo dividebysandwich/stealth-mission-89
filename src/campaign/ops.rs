@@ -1084,7 +1084,7 @@ fn war_map(
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
-    let mut layers = MapLayers::of(ui.ctx(), "war", &[Layer::MissileRange]);
+    let mut layers = MapLayers::of(ui.ctx(), "war", &[Layer::MissileRange, Layer::EngagementRange]);
     ui.horizontal_top(|ui| {
         let (rect, resp) = ui.allocate_exact_size(
             egui::vec2(size.x - legend_w, size.y),
