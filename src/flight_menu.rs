@@ -145,7 +145,7 @@ impl Page {
                 Open(Page::Sound),
                 Open(Page::Controls),
             ],
-            Page::Game => &[Back, Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize],
+            Page::Game => &[Back, Cockpit, Hud, Avionics, AutoTrim, Tooltips, PlayerLabels, CockpitSize],
             Page::Graphics => {
                 use crate::effects::Effect as E;
                 &[
@@ -265,6 +265,7 @@ enum Item {
     Avionics,
     AutoTrim,
     Tooltips,
+    PlayerLabels,
     CockpitSize,
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
@@ -296,6 +297,7 @@ impl Item {
             Item::Avionics => "AVIONICS",
             Item::AutoTrim => "AUTO TRIM",
             Item::Tooltips => "TOOLTIPS",
+            Item::PlayerLabels => "PLAYER LABELS",
             Item::CockpitSize => "COCKPIT SIZE",
             Item::Effect(e) => e.menu_label(),
             Item::Volume(Vol::Master) => "MASTER VOLUME",
@@ -324,6 +326,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::PlayerLabels => on(s.player_labels),
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
@@ -1061,6 +1064,7 @@ fn navigate(
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::HeadTracking => s.head_tracking = !s.head_tracking,

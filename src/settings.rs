@@ -105,6 +105,8 @@ pub struct Settings {
     pub aircraft: crate::aircraft::AircraftKind,
     /// Tooltips over the cockpit's parts (in-flight menu; on by default).
     pub tooltips: bool,
+    /// Name labels over the other players' aircraft in multiplayer (on by default).
+    pub player_labels: bool,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -273,6 +275,7 @@ impl Settings {
                 .and_then(|s| crate::aircraft::AircraftKind::parse(&s))
                 .unwrap_or_default(),
             tooltips: true,
+            player_labels: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,

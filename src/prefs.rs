@@ -80,6 +80,7 @@ pub struct Prefs {
     /// None: on (the default before it could be chosen).
     pub list_public: Option<bool>,
     pub tooltips: bool,
+    pub player_labels: bool,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
@@ -137,6 +138,7 @@ impl Default for Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: true,
+            player_labels: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
@@ -207,6 +209,7 @@ impl Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: s.tooltips,
+            player_labels: s.player_labels,
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
@@ -261,6 +264,7 @@ impl Prefs {
         s.classic_avionics |= self.classic_avionics;
         s.classic_flight |= self.classic_flight;
         s.tooltips = self.tooltips;
+        s.player_labels = self.player_labels;
         let volume = |v: f32| v.clamp(0.0, 1.0);
         s.master_volume = volume(self.master_volume);
         s.engine_volume = volume(self.engine_volume);
@@ -298,6 +302,7 @@ impl Prefs {
         self.classic_flight = s.classic_flight;
         self.auto_trim = s.auto_trim;
         self.tooltips = s.tooltips;
+        self.player_labels = s.player_labels;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;
@@ -384,7 +389,7 @@ mod tests {
     #[test]
     fn tooltips_default_to_on() {
         let p: Prefs = serde_json::from_str("{}").unwrap();
-        assert!(p.tooltips);
+        assert!(p.tooltips && p.player_labels);
         let p: Prefs = serde_json::from_str(r#"{"tooltips": false}"#).unwrap();
         assert!(!p.tooltips);
     }

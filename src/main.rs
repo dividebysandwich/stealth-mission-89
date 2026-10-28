@@ -67,6 +67,7 @@ mod palette_material;
 mod panel;
 mod planner;
 mod player;
+mod player_labels;
 mod player_notices;
 mod prefs;
 mod profile;
@@ -306,6 +307,7 @@ fn main() {
             stage::StagePlugin,
             campaign::CampaignPlugin,
             net::NetPlugin,
+            player_labels::PlayerLabelsPlugin,
             player_notices::PlayerNoticesPlugin,
             chat::ChatPlugin,
             multiplayer_menu::MultiplayerMenuPlugin,
