@@ -36,6 +36,7 @@ layout(std140) uniform Globals {
     vec4 atmos;
     vec4 shadow_grid;
     vec4 shadow_far;
+    // Night sky extras (x, y, z); desert specks (w).
     vec4 sky_fx;
     vec4 retro;
     vec4 shadow_cells[144];
@@ -942,6 +943,9 @@ const float WATER_SPECKS = 0.35;
 const vec2 WATER_DOTS_HIGH = vec2(80.0, 300.0);
 // Least speck radius up close (metres); otherwise a dot light's size.
 const float WATER_SPECK_M = 0.25;
+// The desert's specks (linear): the sand darkened to brown, and pale sand to mix in.
+const vec3 SAND_DARK = vec3(0.5, 0.4, 0.3);
+const vec3 SAND_LIGHT = vec3(0.85, 0.7, 0.45);
 
 // A dot light's size in this view's pixels (the vertex shader's DOT).
 float dot_pixels() {
@@ -962,19 +966,19 @@ vec2 pixels(vec2 off, vec2 dx, vec2 dy) {
     return vec2(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
 }
 
-vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
-    float h = eye_pos().y - world.y;
-    bool level = abs(normalize(face).y) > 0.95;
+// Specks pinned to the ground plane at `xz`, seen from `h` metres above it: their weight 0..1
+// (x) and whether the one here is a light one (y).
+vec2 specks(vec2 xz, float h, float foot, vec2 gdx, vec2 gdy, bool modern) {
     float fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
         * (1.0 - smoothstep(0.15, 0.4, foot / WATER_GRID));
-    if (!level || fade <= 0.0) {
-        return rgb;
+    if (fade <= 0.0) {
+        return vec2(0.0);
     }
-    vec2 p = (world.xz + g.noise.xy) / WATER_GRID;
+    vec2 p = (xz + g.noise.xy) / WATER_GRID;
     vec2 cell = floor(p);
     float n = hash2(cell);
     if (n >= WATER_SPECKS) {
-        return rgb;
+        return vec2(0.0);
     }
     vec2 at = cell + vec2(hash2(cell + 17.0), hash2(cell + 43.0));
     // Distance from the speck in screen pixels (a little world size up close).
@@ -982,8 +986,24 @@ vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy,
     float px = length(pixels(off, gdx, gdy));
     float r = max(dot_pixels() * 0.5, WATER_SPECK_M / max(foot, 1e-3));
     float k = modern ? 1.0 - smoothstep(r - 0.3, r + 0.3, px) : (px < r ? 1.0 : 0.0);
-    vec3 tone = n < WATER_SPECKS * 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
-    return mix(rgb, tone, k * fade);
+    return vec2(k * fade, n < WATER_SPECKS * 0.5 ? 1.0 : 0.0);
+}
+
+vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    if (abs(normalize(face).y) <= 0.95) {
+        return rgb;
+    }
+    vec2 s = specks(world.xz, eye_pos().y - world.y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
+    return mix(rgb, tone, s.x);
+}
+
+// The desert theaters' ground gradient (g.sky_fx.w): the water's specks in earth colours, a
+// darker brown and a pale sand, on the ground plane at `xz`.
+vec3 sand_dots(vec3 rgb, vec2 xz, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    vec2 s = specks(xz, eye_pos().y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? mix(rgb, SAND_LIGHT, 0.5) : rgb * SAND_DARK;
+    return mix(rgb, tone, s.x);
 }
 
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
@@ -1028,6 +1048,9 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         bg = pal(band(dir).x);
     }
     vec3 eye = eye_pos();
+    if (g.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
+        bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), foot, gdx, gdy, modern);
+    }
     bool ground_lit = false;
 #ifdef LIT
     uint flags = uint(g.ambient.w);
@@ -1164,6 +1187,15 @@ void main() {
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);
     vec2 gdy = dFdy(v_world.xz);
+#ifdef BACKGROUND
+    // The background sphere: the ground plane (y = 0) where the view ray meets it (the
+    // desert's specks).
+    vec3 ray = v_world - eye_pos();
+    vec3 ground = eye_pos() + ray * (eye_pos().y / max(-ray.y, 1e-4));
+    foot = length(fwidth(ground));
+    gdx = dFdx(ground.xz);
+    gdy = dFdy(ground.xz);
+#endif
     if ((uint(g.light_info.w) & 1u) != 0u) {
         o_colour = vec4(pal(v_word & 0xFFu), 1.0);
         return;

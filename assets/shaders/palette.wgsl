@@ -96,7 +96,8 @@ struct Globals {
     // shade past the grid (z).
     shadow_grid: vec4<f32>,
     shadow_far: vec4<f32>,
-    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
+    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z); desert
+    // specks (w).
     sky_fx: vec4<f32>,
     // Retro output: VGA colours (x), scanlines (y).
     retro: vec4<f32>,
@@ -1219,6 +1220,9 @@ const WATER_SPECKS: f32 = 0.35;
 const WATER_DOTS_HIGH: vec2<f32> = vec2<f32>(80.0, 300.0);
 // Least speck radius up close (metres); otherwise a dot light's size.
 const WATER_SPECK_M: f32 = 0.25;
+// The desert's specks (linear): the sand darkened to brown, and pale sand to mix in.
+const SAND_DARK: vec3<f32> = vec3<f32>(0.5, 0.4, 0.3);
+const SAND_LIGHT: vec3<f32> = vec3<f32>(0.85, 0.7, 0.45);
 
 // A dot light's size in this view's pixels (the vertex shader's DOT_BATCH).
 fn dot_pixels() -> f32 {
@@ -1239,19 +1243,19 @@ fn pixels(off: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
 }
 
-fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
-    let h = view.world_position.y - world.y;
-    let level = abs(normalize(deriv.face).y) > 0.95;
+// Specks pinned to the ground plane at `xz`, seen from `h` metres above it: their weight 0..1
+// (x) and whether the one here is a light one (y).
+fn specks(xz: vec2<f32>, h: f32, deriv: Deriv, modern: bool) -> vec2<f32> {
     let fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
         * (1.0 - smoothstep(0.15, 0.4, deriv.foot / WATER_GRID));
-    if (!level || fade <= 0.0) {
-        return rgb;
+    if (fade <= 0.0) {
+        return vec2<f32>(0.0);
     }
-    let p = (world.xz + globals.noise.xy) / WATER_GRID;
+    let p = (xz + globals.noise.xy) / WATER_GRID;
     let cell = floor(p);
     let n = hash2(cell);
     if (n >= WATER_SPECKS) {
-        return rgb;
+        return vec2<f32>(0.0);
     }
     let at = cell + vec2<f32>(hash2(cell + 17.0), hash2(cell + 43.0));
     // Distance from the speck in screen pixels (a little world size up close).
@@ -1262,8 +1266,24 @@ fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> v
     if (!modern) {
         k = select(0.0, 1.0, px < r);
     }
-    let tone = select(rgb * 0.4, rgb * 0.4 + vec3<f32>(0.4), n < WATER_SPECKS * 0.5);
-    return mix(rgb, tone, k * fade);
+    return vec2<f32>(k * fade, select(0.0, 1.0, n < WATER_SPECKS * 0.5));
+}
+
+fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
+    if (abs(normalize(deriv.face).y) <= 0.95) {
+        return rgb;
+    }
+    let s = specks(world.xz, view.world_position.y - world.y, deriv, modern);
+    let tone = select(rgb * 0.4, rgb * 0.4 + vec3<f32>(0.4), s.y > 0.5);
+    return mix(rgb, tone, s.x);
+}
+
+// The desert theaters' ground gradient (globals.sky_fx.w): the water's specks in earth
+// colours, a darker brown and a pale sand, on the ground plane at `xz`.
+fn sand_dots(rgb: vec3<f32>, xz: vec2<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
+    let s = specks(xz, view.world_position.y, deriv, modern);
+    let tone = select(rgb * SAND_DARK, mix(rgb, SAND_LIGHT, 0.5), s.y > 0.5);
+    return mix(rgb, tone, s.x);
 }
 
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
@@ -1298,6 +1318,15 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     deriv.foot = length(fwidth(in.world_position));
     deriv.ground_dx = dpdx(in.world_position.xz);
     deriv.ground_dy = dpdy(in.world_position.xz);
+#ifdef PALETTE_BACKGROUND
+    // The background sphere: the ground plane (y = 0) where the view ray meets it (the
+    // desert's specks).
+    let ray = in.world_position - view.world_position;
+    let ground = view.world_position + ray * (view.world_position.y / max(-ray.y, 1e-4));
+    deriv.foot = length(fwidth(ground));
+    deriv.ground_dx = dpdx(ground.xz);
+    deriv.ground_dy = dpdy(ground.xz);
+#endif
     if ((u32(globals.light_info.w) & 1u) != 0u) {
         return vec4<f32>(pal(colour_word(in) & 0xFFu), 1.0);
     }
@@ -1362,9 +1391,12 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         } else {
             bg = pal(band(dir).x);
         }
+        let eye = view.world_position;
+        if (globals.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
+            bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), deriv, modern);
+        }
         // Lighting options: the ground gradient is lit like flat ground where the view ray
         // meets the ground plane (y = 0), so it takes shadows and local lights.
-        let eye = view.world_position;
         var ground_lit = false;
 #ifdef PALETTE_LIT
         let flags = u32(globals.ambient.w);

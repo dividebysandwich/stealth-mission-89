@@ -355,7 +355,7 @@ pub struct Globals {
     pub shadow_grid: Vec4,
     pub shadow_far: Vec4,
     /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
-    /// twinkling near the horizon (z).
+    /// twinkling near the horizon (z); specks on the desert theaters' ground gradient (w).
     pub sky_fx: Vec4,
     /// Retro output: VGA colours (x), scanlines (y; never in VR) (`Effects::vga`,
     /// `Effects::scanlines`).

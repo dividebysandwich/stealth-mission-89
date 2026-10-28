@@ -550,6 +550,8 @@ fn update_globals(
     if settings.effects.night_sky {
         g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);
     }
+    // Specks on the open desert to judge the height by, as over water.
+    g.sky_fx.w = crate::weather::dry_theater(theater) as u32 as f32;
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);
