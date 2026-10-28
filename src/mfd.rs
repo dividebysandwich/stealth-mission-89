@@ -719,6 +719,8 @@ fn mfd_keys(
 
 /// Keypad slew speed of a waypoint being edited, in map pixels per second.
 const WAYPOINT_SLEW_PX: f64 = 30.0;
+/// The theater's side, in map units (a waypoint stays on the map).
+const MAP_SIZE: f64 = 0x8000 as f64;
 
 /// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
 /// course line follows it); the mode ends when the page is left.
@@ -726,6 +728,7 @@ fn edit_waypoints(
     mut actions: MessageReader<ActionEvent>,
     state: Res<MfdState>,
     controls: Res<crate::input::FlightControls>,
+    block: Res<crate::input::InputBlock>,
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     aircraft: Query<&Aircraft, With<Player>>,
@@ -737,7 +740,8 @@ fn edit_waypoints(
     if wps.editing && !way && !pressed {
         wps.editing = false;
     }
-    if !wps.editing || !way {
+    // The menu reads the keys while it is open.
+    if !wps.editing || !way || block.0 {
         return;
     }
     // As in the original, keypad 9 and 3 select the last and next waypoint, and only 8, 2, 4
@@ -758,8 +762,11 @@ fn edit_waypoints(
             .fold(Vec2::ZERO, |a, (_, x, y)| a + Vec2::new(*x, *y))
             .clamp(Vec2::splat(-1.0), Vec2::ONE)
     };
+    if controls.slew == Vec2::ZERO {
+        return;
+    }
     let slew = controls.slew - keypad(|_| true) + keypad(|d| d.x == 0.0 || d.y == 0.0);
-    if slew.length_squared() < 1e-6 {
+    if slew == Vec2::ZERO {
         return;
     }
     let Some(wp) = wps.points.get(wps.current).copied() else { return };
@@ -770,11 +777,10 @@ fn edit_waypoints(
     let (sx, sy) = (slew.x as f64, -slew.y as f64);
     let (s, c) = rot.sin_cos();
     let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
-    let theater = 32768.0;
-    let x = (wp.east / 32.0 + dx).clamp(0.0, theater);
-    let y = (0x8000 as f64 - wp.north / 32.0 + dy).clamp(0.0, theater);
+    let x = (wp.east / 32.0 + dx).clamp(0.0, MAP_SIZE);
+    let y = (MAP_SIZE - wp.north / 32.0 + dy).clamp(0.0, MAP_SIZE);
     let i = wps.current;
-    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (0x8000 as f64 - y) * 32.0 };
+    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (MAP_SIZE - y) * 32.0 };
 }
 
 fn apply_with_zoom(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd, auto_zoom: u8) {
@@ -1413,8 +1419,7 @@ impl MfdParams<'_, '_> {
                 .points
                 .iter()
                 .map(|w| {
-                    let p =
-                        map_to_screen(centre, zoom, w.east / 32.0, 0x8000 as f64 - w.north / 32.0);
+                    let p = map_to_screen(centre, zoom, w.east / 32.0, MAP_SIZE - w.north / 32.0);
                     (p.x as i32, p.y as i32)
                 })
                 .collect();
@@ -1708,9 +1713,10 @@ impl MfdParams<'_, '_> {
         }
     }
 
-    /// WAY page background: red while the waypoints are being edited (F8).
+    /// WAY page background: red while the waypoints are being edited (F8). Colour 42 is the
+    /// original's dark red (the classic HUD's night bars use it); 41 is its bright red.
     fn way_background(&self) -> u8 {
-        if self.waypoints.editing { 41 } else { 1 }
+        if self.waypoints.editing { 42 } else { 1 }
     }
 
     /// WAY page.
@@ -1720,7 +1726,8 @@ impl MfdParams<'_, '_> {
         let (hh, mm, ss) = hms(t);
         mfd_text(c, fonts, 2, 0, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
         if let Some((a, pos)) = ac {
-            for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+            let legs = self.legs(t, a, pos);
+            for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
                 let (eh, em, _) = hms(eta as f32);
                 let colour = self.way_colour(i);
                 mfd_text(
@@ -1741,7 +1748,7 @@ impl MfdParams<'_, '_> {
                 );
             }
             // Fuel bar (y 54..57).
-            for (l, r, colour) in self.fuel_spans(a, &self.legs(t, a, pos)) {
+            for (l, r, colour) in self.fuel_spans(a, &legs) {
                 let (x0, x1) = (1 + (l * 75.0).round() as i32, 1 + (r * 75.0).round() as i32);
                 c.fill_rect(x0, 54, x1 - x0, 4, colour);
             }
@@ -2022,7 +2029,8 @@ impl MfdParams<'_, '_> {
         text2(c, fonts, 6, 26, "WP    KM   MIN   ETA", 7);
         c.hline(4, c.w as i32 - 5, 38, 7);
         let Some((a, pos)) = ac else { return };
-        for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+        let legs = self.legs(t, a, pos);
+        for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
             let (eh, em, _) = hms(eta as f32);
             let y = 44 + 16 * i as i32;
             if i == self.waypoints.current {
@@ -2040,7 +2048,7 @@ impl MfdParams<'_, '_> {
         // Fuel bar.
         text2(c, fonts, 6, 156, "FUEL", 15);
         let (x0, w) = (46, c.w as i32 - 52);
-        for (l, r, colour) in self.fuel_spans(a, &self.legs(t, a, pos)) {
+        for (l, r, colour) in self.fuel_spans(a, &legs) {
             let (a0, a1) = ((l * w as f32).round() as i32, (r * w as f32).round() as i32);
             c.fill_rect(x0 + a0, 155, a1 - a0, 12, colour);
         }

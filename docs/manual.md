@@ -453,8 +453,12 @@ each press also picks the nearest object in that direction. The last bottom butt
 (AUTO by range, then 1X..6X; also `[` / `]`).</td>
 <td><img src="images/mfd_way.png" alt="WAY"><br>
 <b>WAY</b> – Mission time and waypoint table: distance (km), flight time (minutes) and ETA for
-each waypoint; fuel bar at the bottom. WP- / WP+ (PgUp / PgDn) select the waypoint, RST
-(Shift F8) resets it to its original position.</td>
+each waypoint; fuel bar at the bottom (reserve in green at the left, the fuel each waypoint
+needs in white for the selected one and blue for the others, the fuel already used in black at
+the right). While it is up, the MAP shows the flight plan. WP- / WP+ (PgUp / PgDn) select the
+waypoint. F8 puts the page in edit mode (red): keypad 8 / 2 / 4 / 6 move the selected waypoint
+over the MAP and keypad 9 / 3 select the last / next one; F7 leaves it. RST (Shift F8) puts all
+the waypoints back to their original positions.</td>
 </tr>
 <tr>
 <td><img src="images/mfd_wpn.png" alt="WPN"><br>

@@ -105,7 +105,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
             "NAVIGATION",
             &[
                 (Actions(&[SelectWaypoint]), "Waypoint page"),
-                (Actions(&[ChangeWaypoint]), "Edit waypoints (keypad 2468 move, 9 3 select)"),
+                (Actions(&[ChangeWaypoint]), "Edit waypoints (keypad)"),
                 (Actions(&[ResetWaypoint]), "Reset waypoints"),
                 (Actions(&[LastWaypoint, NextWaypoint]), "Previous / next waypoint"),
             ],

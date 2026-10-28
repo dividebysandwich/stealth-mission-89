@@ -285,7 +285,6 @@ fn restore(
     (wps.current, wps.mission_current) = (save.waypoint.0.min(last), save.waypoint.1.min(last));
     wps.passed = save.passed_waypoints;
     wps.passed.resize(point_count, false);
-    wps.passed.truncate(point_count);
     if save.waypoint_positions.len() == point_count {
         for (p, &(east, north)) in wps.points.iter_mut().zip(&save.waypoint_positions) {
             *p = crate::hud::Waypoint { east, north };

@@ -731,6 +731,15 @@ mod route_tests {
         let w = wps(6, vec![0, 1, 3, 5]);
         assert_eq!([1, 2, 3].map(|k| w.for_mission_waypoint(k)), [1, 2, 4]);
     }
+
+    #[test]
+    fn a_planned_route_starts_unedited_with_nothing_passed() {
+        let w = wps(4, vec![]);
+        assert_eq!(w.passed, [false; 4]);
+        assert_eq!(w.initial.len(), 4);
+        assert!(!w.editing);
+        assert_eq!((w.current, w.mission_current), (0, 0));
+    }
 }
 
 #[cfg(test)]
