@@ -2,9 +2,10 @@
 //! a screen in front of the pilot, in the cockpit, so it works on the desktop and in VR. The
 //! simulation pauses while it is open.
 //!
-//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION. SAVE MISSION saves a
-//! single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded save starts
-//! with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
+//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION (set apart below a line);
+//! RESUME and every page's BACK are a button with an arrow in the top-left corner. SAVE MISSION
+//! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
+//! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
 //! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
 //! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the engine
 //! low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
@@ -131,22 +132,24 @@ enum Page {
 }
 
 impl Page {
+    /// The entries, the first one (RESUME, BACK) in the top-left corner (`item_rects`).
     fn items(self) -> &'static [Item] {
         use Item::*;
         match self {
             Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission],
             Page::Options => &[
+                Back,
                 Open(Page::Game),
                 Open(Page::Graphics),
                 Open(Page::Effects),
                 Open(Page::Sound),
                 Open(Page::Controls),
-                Back,
             ],
-            Page::Game => &[Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize, Back],
+            Page::Game => &[Back, Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize],
             Page::Graphics => {
                 use crate::effects::Effect as E;
                 &[
+                    Back,
                     Shaders,
                     Msaa,
                     Shadows,
@@ -156,12 +159,12 @@ impl Page {
                     AutoDetail,
                     Effect(E::Vga),
                     Effect(E::Scanlines),
-                    Back,
                 ]
             }
             Page::Effects => {
                 use crate::effects::Effect as E;
                 &[
+                    Back,
                     Effect(E::Shake),
                     Effect(E::Flashes),
                     Effect(E::Barrage),
@@ -172,18 +175,17 @@ impl Page {
                     Effect(E::CloudShadows),
                     Effect(E::Vapour),
                     Effect(E::NightSky),
-                    Back,
                 ]
             }
             Page::Sound => &[
+                Back,
                 Volume(Vol::Master),
                 Volume(Vol::Engine),
                 Volume(Vol::Effects),
                 Volume(Vol::Warnings),
                 LowPass,
-                Back,
             ],
-            Page::Controls => &[HeadTracking, Bindings, KeyGuide, Back],
+            Page::Controls => &[Back, HeadTracking, Bindings, KeyGuide],
         }
     }
 
@@ -371,9 +373,14 @@ const POSITION: Vec3 = Vec3::new(0.0, -0.02, -0.52);
 /// Canvas pixels.
 const W: usize = 768;
 const H: usize = 512;
-/// Rows of the entries.
-const TOP: f32 = 104.0;
+/// Rows of the entries, under the title.
+const TOP: f32 = 116.0;
 const ROW: f32 = 33.0;
+const TITLE_Y: f32 = 80.0;
+/// BACK and RESUME in the top-left corner (x0, y0, x1, y1).
+const CORNER: [f32; 4] = [16.0, 14.0, 216.0, 48.0];
+/// The space above END MISSION, a line in its middle.
+const END_GAP: f32 = 22.0;
 /// The key guide's area, below its search field.
 const GUIDE: [f32; 4] = [24.0, 100.0, W as f32 - 24.0, H as f32 - 40.0];
 /// The key guide's search field (x0, y0, x1, y1) and its clear button at the right end.
@@ -525,10 +532,16 @@ fn save_options(menu: &mut FlightMenu, s: &Settings) {
     }
 }
 
-/// Shows a page, the first entry highlighted (on the way back the entry that opened the page).
+/// Shows a page, the first entry after BACK highlighted (on the way back the entry that opened
+/// the page).
 fn go_to(menu: &mut FlightMenu, page: Page) {
     let from = menu.page;
-    menu.cursor = page.items().iter().position(|&i| i == Item::Open(from)).unwrap_or(0);
+    let items = page.items();
+    menu.cursor = items
+        .iter()
+        .position(|&i| i == Item::Open(from))
+        .or_else(|| items.iter().position(|&i| i != Item::Back))
+        .unwrap_or(0);
     menu.page = page;
 }
 
@@ -611,11 +624,29 @@ fn to_canvas(local: Vec3) -> Option<Vec2> {
         .then(|| Vec2::new(u * W as f32, v * H as f32))
 }
 
-/// Entry of `n` under a canvas pixel, and whether the pixel is on the right half (values:
+/// Where the entries of a page are (x0, y0, x1, y1): BACK and RESUME (which goes back to the
+/// flight) in the top-left corner, the others in rows, END MISSION set apart below a line.
+fn item_rects(page: Page) -> Vec<[f32; 4]> {
+    let mut y = TOP;
+    page.items()
+        .iter()
+        .map(|item| match item {
+            Item::Back | Item::Resume => CORNER,
+            _ => {
+                if *item == Item::EndMission {
+                    y += END_GAP;
+                }
+                y += ROW;
+                [24.0, y - ROW, W as f32 - 24.0, y]
+            }
+        })
+        .collect()
+}
+
+/// Entry of a page under a canvas pixel, and whether the pixel is on the right half (values:
 /// larger).
-fn item_at(p: Vec2, n: usize) -> Option<(usize, bool)> {
-    let i = ((p.y - TOP) / ROW).floor();
-    (p.y >= TOP && (i as usize) < n).then(|| (i as usize, p.x > W as f32 / 2.0))
+fn item_at(p: Vec2, page: Page) -> Option<(usize, bool)> {
+    item_rects(page).iter().position(|&r| inside(p, r)).map(|i| (i, p.x > W as f32 / 2.0))
 }
 
 /// The key guide's area, above the VR keyboard while it is open.
@@ -932,7 +963,7 @@ fn navigate(
 
     // Pointing: the mouse hovers and clicks, a fingertip touches and the trigger presses.
     let mut clicked: Option<(usize, bool)> = None;
-    if let Some(hit) = pointer.and_then(|p| item_at(p, n)) {
+    if let Some(hit) = pointer.and_then(|p| item_at(p, menu.page)) {
         menu.cursor = hit.0;
         if click {
             clicked = Some(hit);
@@ -949,8 +980,10 @@ fn navigate(
             let d = inv.transform_vector3(*ray.direction);
             if d.z.abs() > 1e-6 {
                 let t = -o.z / d.z;
-                if let Some(hit) =
-                    (t > 0.0).then(|| to_canvas(o + d * t)).flatten().and_then(|p| item_at(p, n))
+                if let Some(hit) = (t > 0.0)
+                    .then(|| to_canvas(o + d * t))
+                    .flatten()
+                    .and_then(|p| item_at(p, menu.page))
                 {
                     menu.cursor = hit.0;
                     if click {
@@ -966,7 +999,7 @@ fn navigate(
             let hit = (l.z < TOUCH_FRONT && l.z > -TOUCH_BEHIND)
                 .then(|| to_canvas(l))
                 .flatten()
-                .and_then(|p| item_at(p, n));
+                .and_then(|p| item_at(p, menu.page));
             if let Some(hit) = hit {
                 if menu.cursor != hit.0 {
                     hand.haptic = hand.haptic.max(0.1);
@@ -1235,20 +1268,35 @@ fn draw(
         Page::Options => "OPTIONS".to_string(),
         page => format!("OPTIONS  -  {}", page.title()),
     };
-    stroke_text_at(c, W as f32 / 2.0, 52.0, &title, 26.0, 3.2, BRIGHT, Align::Centre);
+    stroke_text_at(c, W as f32 / 2.0, TITLE_Y, &title, 26.0, 3.2, BRIGHT, Align::Centre);
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
         Page::Game => "FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS",
         _ => "",
     };
     stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, note, 12.0, 1.8, DIM, Align::Centre);
-    for (i, item) in menu.page.items().iter().enumerate() {
-        let y = TOP + ROW * i as f32;
-        let mid = y + ROW / 2.0;
+    for (i, (item, [x0, y0, x1, y1])) in
+        menu.page.items().iter().zip(item_rects(menu.page)).enumerate()
+    {
+        let mid = (y0 + y1) / 2.0;
         let enabled = item.enabled(&settings, ops, menu.can_save);
         let col = if enabled { BRIGHT } else { DIM };
+        let (x, w) = (x0 as i32, (x1 - x0) as i32);
         if i == menu.cursor {
-            c.fill_rect(24, y as i32 + 3, W as i32 - 48, ROW as i32 - 6, ROW_BG);
+            c.fill_rect(x, y0 as i32 + 3, w, (y1 - y0) as i32 - 6, ROW_BG);
+        }
+        if matches!(item, Item::Back | Item::Resume) {
+            // A button with an arrow pointing back.
+            c.rect(x, y0 as i32 + 3, w, (y1 - y0) as i32 - 6, DIM);
+            let (tip, tail) = (Vec2::new(x0 + 14.0, mid), Vec2::new(x0 + 42.0, mid));
+            c.stroke(tip, tail, 3.0, col);
+            c.stroke(tip, tip + Vec2::new(9.0, -9.0), 3.0, col);
+            c.stroke(tip, tip + Vec2::new(9.0, 9.0), 3.0, col);
+            stroke_text_at(c, x0 + 56.0, mid, item.label(), 20.0, 2.6, col, Align::Left);
+            continue;
+        }
+        if *item == Item::EndMission {
+            c.hline(x + 24, x + w - 24, (y0 - END_GAP / 2.0) as i32, DIM);
         }
         let label = match item {
             Item::EndMission if campaign.is_some() => "END SORTIE",
