@@ -464,7 +464,17 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Hsi => {
             ("HSI", "Horizontal situation indicator: heading, bearing and distance to the waypoint")
         }
+        CanvasRole::Ded if style == PanelStyle::Rah66 => {
+            ("Scratchpad", "Keyboard display: radio, steerpoint, target, time and fuel")
+        }
         CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
+        CanvasRole::Lmpd => (
+            "Left MPD",
+            "Warnings (red), cautions (amber), advisories (green); new ones flash until the master caution",
+        ),
+        CanvasRole::Rmpd => {
+            ("Right MPD", "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow")
+        }
         CanvasRole::Console(ConsoleScreen::Scope) => {
             ("Air picture", "The tracks around the site, twice a second; click one to select it")
         }
@@ -942,6 +952,7 @@ mod tests {
             PanelStyle::F16,
             PanelStyle::Tornado,
             PanelStyle::A10,
+            PanelStyle::Rah66,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd).unwrap_or_else(|| panic!("{effect:?}"));

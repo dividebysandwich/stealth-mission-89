@@ -353,7 +353,7 @@ static RAH66: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
+    cockpits: &[(PanelStyle::Rah66, "cockpit_rah66")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,

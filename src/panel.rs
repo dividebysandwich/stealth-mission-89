@@ -20,7 +20,12 @@ impl Plugin for PanelPlugin {
         app.init_resource::<Emv>()
             .init_resource::<Countermeasures>()
             .init_resource::<Warnings>()
-            .add_systems(OnEnter(crate::settings::AppState::Flight), reset_panel);
+            .init_resource::<crate::mpd::WcaAck>()
+            .add_systems(OnEnter(crate::settings::AppState::Flight), reset_panel)
+            .add_systems(
+                Update,
+                crate::mpd::acknowledge.run_if(in_state(crate::settings::AppState::Flight)),
+            );
     }
 }
 
@@ -617,6 +622,8 @@ pub struct PanelParams<'w, 's> {
     pub radar: Res<'w, crate::flight::terrain_follow::TerrainRadar>,
     pub clock: Res<'w, MissionClock>,
     pub mission: Option<Res<'w, crate::mission::ActiveMission>>,
+    /// The RAH-66's warnings the master caution has acknowledged (`mpd`).
+    pub wca: Res<'w, crate::mpd::WcaAck>,
 }
 
 /// Fuel (lbs) below which the low-fuel light blinks.
@@ -838,6 +845,24 @@ impl PanelParams<'_, '_> {
                 DED_SCALE,
             );
         }
+    }
+
+    /// The RAH-66's left multipurpose display: the warning, caution and advisory list.
+    pub fn draw_wca(&self, c: &mut Canvas, fonts: &Fonts) {
+        let a = self.aircraft.single().ok();
+        let list = crate::mpd::alerts(&self.warnings, a, &self.cm);
+        let blink = crate::hud::blink(&self.time);
+        crate::mpd::draw_alerts(c, fonts, &list, &self.wca.0, blink, &self.cm);
+    }
+
+    /// The RAH-66's right multipurpose display: the engine page.
+    pub fn draw_engines(&self, c: &mut Canvas, fonts: &Fonts) {
+        let Ok(a) = self.aircraft.single() else {
+            c.clear(5);
+            return;
+        };
+        let r = crate::mpd::engine_readings(a, self.warnings.engine, self.warnings.fire);
+        crate::mpd::draw_engines(c, fonts, &r);
     }
 
     /// What a needle instrument shows (`draw_dial`'s units).

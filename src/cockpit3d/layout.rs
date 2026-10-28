@@ -30,6 +30,9 @@ pub enum PanelStyle {
     Tornado,
     /// The A-10C's: two MFDs either side of the large attitude indicator.
     A10,
+    /// The RAH-66's glass cockpit: two large MFDs side by side, a portrait multipurpose display
+    /// outboard of each (warnings left, engines right), the keyboard under them.
+    Rah66,
 }
 
 /// A rectangle in panel pixels.
@@ -168,6 +171,8 @@ pub struct PanelLayout {
     pub tfr: Option<PxRect>,
     /// Data entry display: the up-front controls' readout (none on the classic panel).
     pub ded: Option<PxRect>,
+    /// The RAH-66's portrait multipurpose displays, left (warnings) and right (engines).
+    pub mpds: Option<(PxRect, PxRect)>,
 }
 
 /// Bezel button cap size (millimetres).
@@ -191,6 +196,7 @@ impl PanelLayout {
             PanelStyle::Ah1z => Self::ah1z(),
             PanelStyle::Tornado => Self::tornado(),
             PanelStyle::A10 => Self::a10(),
+            PanelStyle::Rah66 => Self::rah66(),
         }
     }
 
@@ -357,6 +363,7 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded: None,
+            mpds: None,
         }
     }
 
@@ -547,6 +554,7 @@ impl PanelLayout {
                 DED_W,
                 DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32,
             )),
+            mpds: None,
         }
     }
 
@@ -616,6 +624,7 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded,
+            mpds: None,
         }
     }
 
@@ -762,6 +771,7 @@ impl PanelLayout {
             hsi: None,
             tfr: Some(rect(-284.0, -250.0, 58.0, 58.0)),
             ded: Some(rect(-46.0, -20.0, 92.0, 92.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
+            mpds: None,
         }
     }
 
@@ -980,6 +990,125 @@ impl PanelLayout {
             hsi: Some(rect(-56.0, 72.0, 112.0, 112.0)),
             tfr: None,
             ded: Some(rect(-68.0, -256.0, 86.0, 86.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
+            mpds: None,
+        }
+    }
+
+    /// The RAH-66's panel (millimetres, x right and y down from the centre), after the
+    /// mock-up's: the two large MFDs side by side in the middle (the monochrome one left, the
+    /// colour one right), a portrait multipurpose display low outboard of each (`mpds`: the
+    /// warnings left, the engines right), the keyboard with its scratchpad (the `ded`) under
+    /// them. No dials and no warning lights but the master caution: the landing gear and parking
+    /// brake keys top left, the HUD modes and the master caution top centre, the jammers, the
+    /// laser and the emergency panel top right; the flight control keys under the MFDs, the
+    /// countermeasures under the left display, the standby attitude display (a screen) left of
+    /// the keyboard.
+    pub fn rah66() -> Self {
+        use Effect as E;
+        let mut items = Vec::new();
+        let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>| {
+            items.push(Placed { elem, rect, cap, round: false })
+        };
+        // Black on grey keys.
+        const KEY: (u8, u8) = (5, 14);
+        let key = |label| Elem::Label(label, KEY.0, KEY.1);
+        // Top left: the landing gear panel.
+        put(key("LDG\nGEAR"), rect(-212.0, -132.0, 40.0, 24.0), Some(E::Action(Action::Gear)));
+        put(key("PARK\nBRAKE"), rect(-166.0, -132.0, 40.0, 24.0), Some(E::Action(Action::Brakes)));
+        // Top centre: the HUD modes, the master caution.
+        for (k, label) in ["NAV", "A-A", "A-G"].into_iter().enumerate() {
+            put(
+                key(label),
+                rect(-104.0 + 32.0 * k as f32, -128.0, 28.0, 16.0),
+                Some(E::HudMode(k as u8)),
+            );
+        }
+        put(
+            Elem::Lamp(LampId::Mw, Some("MASTER\nCAUTION")),
+            rect(16.0, -134.0, 56.0, 28.0),
+            Some(E::Action(Action::MasterCaution)),
+        );
+        // Top right: the jammers and the laser, the emergency panel's stripes.
+        for (k, (label, action)) in
+            [("ECM", Action::Ecm), ("IRJ", Action::IrJammer), ("LASE", Action::DesignateTarget)]
+                .into_iter()
+                .enumerate()
+        {
+            put(
+                key(label),
+                rect(84.0 + 32.0 * k as f32, -128.0, 28.0, 16.0),
+                Some(E::Action(action)),
+            );
+        }
+        put(Elem::Hazard, rect(182.0, -134.0, 30.0, 28.0), None);
+        // Under the MFDs: the flight control panel.
+        for (k, (label, cap)) in [
+            ("DCLT", E::Action(Action::HudDeclutter)),
+            ("NVG", E::Action(Action::Nvg)),
+            ("MENU", E::Action(Action::Menu)),
+            ("VOL", E::Action(Action::Volume)),
+            ("TIME", E::TimeToggle),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(key(label), rect(-112.0 + 46.0 * k as f32, 96.0, 40.0, 16.0), Some(cap));
+        }
+        // Under the left display: the countermeasures.
+        for (k, (label, action)) in
+            [("CHAFF", Action::Chaff), ("FLARE", Action::Flare), ("DECOY", Action::Decoy)]
+                .into_iter()
+                .enumerate()
+        {
+            put(
+                key(label),
+                rect(-340.0 + 35.0 * k as f32, 108.0, 30.0, 16.0),
+                Some(E::Action(action)),
+            );
+        }
+        // The keyboard under the scratchpad (the A-10's and the F-16's keys that work).
+        let ded = rect(-60.0, 122.0, 120.0, 120.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32);
+        const KEYS: [(&str, Option<Effect>); 12] = [
+            ("1\nT-ILS", Some(E::Action(Action::Ils))),
+            ("2", None),
+            ("3", None),
+            ("4\nSTPT", Some(E::Action(Action::SelectWaypoint))),
+            ("5", None),
+            ("6", None),
+            ("7\nMARK", Some(E::Action(Action::DesignateTarget))),
+            ("8", None),
+            ("9", None),
+            ("CLR", None),
+            ("0", None),
+            ("ENT", None),
+        ];
+        for (k, (label, cap)) in KEYS.into_iter().enumerate() {
+            put(
+                key(label),
+                rect(
+                    -56.0 + 38.0 * (k % 3) as f32,
+                    ded.y + ded.h + 6.0 + 16.0 * (k / 3) as f32,
+                    34.0,
+                    13.0,
+                ),
+                cap,
+            );
+        }
+        // The HIRES canvas' shape, 200 mm wide (8 inches); the displays 100 by 140 mm.
+        let (w, h) = (200.0, 200.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        Self {
+            style: PanelStyle::Rah66,
+            items,
+            adi: rect(-212.0, 120.0, 64.0, 64.0),
+            mfds: vec![
+                MfdUnit { side: MfdSide::Left, screen: rect(-212.0, -76.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: rect(12.0, -76.0, w, h), osbs: true },
+            ],
+            rwr: None,
+            hsi: None,
+            tfr: None,
+            ded: Some(ded),
+            mpds: Some((rect(-340.0, -44.0, 100.0, 140.0), rect(240.0, -44.0, 100.0, 140.0))),
         }
     }
 
@@ -1212,6 +1341,7 @@ impl PanelLayout {
             hsi: Some(rect(-34.0, 44.0, 68.0, 68.0)),
             tfr: None,
             ded: Some(rect(95.0, -152.0, DED_W, DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
+            mpds: None,
         }
     }
 }
@@ -1231,7 +1361,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 7] {
+    fn all() -> [PanelLayout; 8] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -1240,6 +1370,7 @@ mod tests {
             PanelLayout::ah1z(),
             PanelLayout::tornado(),
             PanelLayout::a10(),
+            PanelLayout::rah66(),
         ]
     }
 
@@ -1250,6 +1381,7 @@ mod tests {
             let mut rects: Vec<PxRect> = l.items.iter().map(|p| p.rect).collect();
             rects.push(l.adi);
             rects.extend(l.rwr.iter().chain(&l.hsi).chain(&l.tfr).chain(&l.ded));
+            rects.extend(l.mpds.iter().flat_map(|&(a, b)| [a, b]));
             for m in &l.mfds {
                 rects.push(m.screen);
                 rects.extend(l.osbs(m).into_iter().map(|(_, r)| r));
@@ -1296,6 +1428,7 @@ mod tests {
             PanelLayout::ah1z(),
             PanelLayout::tornado(),
             PanelLayout::a10(),
+            PanelLayout::rah66(),
         ] {
             bezel_buttons_of(&l);
         }

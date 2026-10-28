@@ -442,6 +442,12 @@ impl Aircraft {
         self.heli.torque
     }
 
+    /// A helicopter's rotor speed and torque (fractions of 100%), for tests of what shows them.
+    #[cfg(test)]
+    pub fn set_rotor(&mut self, nr: f32, torque: f32) {
+        (self.heli.nr, self.heli.torque) = (nr, torque);
+    }
+
     /// Translational lift 0..1 (helicopters): the blade slap in the rotor sound.
     pub fn translational_lift(&self) -> f32 {
         self.heli.etl

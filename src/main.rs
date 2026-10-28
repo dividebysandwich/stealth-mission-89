@@ -56,6 +56,7 @@ mod menu_scene;
 mod mfd;
 mod mission;
 mod models;
+mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
