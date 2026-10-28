@@ -33,6 +33,7 @@ mod flight_menu;
 mod font;
 mod freecam;
 mod fullscreen;
+mod gif_recorder;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
 mod goggles;
@@ -239,6 +240,7 @@ fn main() {
             canvas::CanvasPlugin,
             boss_key::BossKeyPlugin,
             fullscreen::FullscreenPlugin,
+            gif_recorder::GifRecorderPlugin,
         ))
         .add_plugins((
             menu::MenuPlugin,

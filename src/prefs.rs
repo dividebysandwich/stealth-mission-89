@@ -86,6 +86,8 @@ pub struct Prefs {
     pub warning_volume: f32,
     pub engine_low_pass: bool,
     pub effects: crate::effects::Effects,
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -141,6 +143,8 @@ impl Default for Prefs {
             warning_volume: 1.0,
             engine_low_pass: true,
             effects: Default::default(),
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }
@@ -209,6 +213,8 @@ impl Prefs {
             warning_volume: s.warning_volume,
             engine_low_pass: s.engine_low_pass,
             effects: s.effects,
+            gif_scale: s.gif_scale,
+            gif_fps: s.gif_fps,
         }
     }
 
@@ -261,6 +267,8 @@ impl Prefs {
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
         s.engine_low_pass = self.engine_low_pass;
+        s.gif_scale = self.gif_scale.clamp(1, 100);
+        s.gif_fps = self.gif_fps.clamp(1, 50);
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -300,6 +308,8 @@ impl Prefs {
         self.warning_volume = s.warning_volume;
         self.engine_low_pass = s.engine_low_pass;
         self.effects = s.effects;
+        self.gif_scale = s.gif_scale;
+        self.gif_fps = s.gif_fps;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

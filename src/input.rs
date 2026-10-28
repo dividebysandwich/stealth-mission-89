@@ -147,6 +147,8 @@ pub enum Action {
     TrimReset,
     /// Master caution: silences the alarms sounding.
     MasterCaution,
+    /// Starts / stops recording an animated GIF (`gif_recorder`), in any screen.
+    RecordGif,
 }
 
 impl Action {
@@ -383,6 +385,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
+        (None, K::F12, RecordGif),
     ]
 };
 
@@ -447,8 +450,8 @@ fn read_keyboard(
     let camera_key = |k: KeyCode| free && crate::camera::FREE_KEYS.contains(&k);
     for m in &config.keys {
         let crate::hotas::ButtonTarget::Action(action) = m.target else { continue };
-        // The stick keys are held, read below.
-        if (block.0 && action != Action::Menu)
+        // The stick keys are held, read below. The menu and recording keys work in the menu.
+        if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
             || camera_key(m.key)
         {

@@ -191,6 +191,42 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         settings.set_changed();
     }
     crate::menu::tacview_options(ui, settings);
+    gif_options(ui, settings);
+}
+
+/// The GIF recording's size (with the resolution it gives) and frame rate.
+fn gif_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    // The browser build writes no files.
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
+    section(ui, "GIF recording");
+    let s = settings.bypass_change_detection();
+    let before = (s.gif_scale, s.gif_fps);
+    let window = ui.ctx().content_rect().size() * ui.ctx().pixels_per_point();
+    let size =
+        crate::gif_recorder::gif_size(UVec2::new(window.x as u32, window.y as u32), s.gif_scale);
+    ui.horizontal(|ui| {
+        ui.label(format!("{:<6}", "SIZE"));
+        ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
+            crate::menu::dropdown(ui, "gif_scale", &mut s.gif_scale, crate::gif_recorder::SCALES)
+        });
+        ui.colored_label(GREEN, format!("{} x {}", size.x, size.y));
+    });
+    ui.horizontal(|ui| {
+        ui.label(format!("{:<6}", "RATE"));
+        ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
+            crate::menu::dropdown(ui, "gif_fps", &mut s.gif_fps, crate::gif_recorder::FRAME_RATES)
+        });
+    });
+    ui.label(
+        egui::RichText::new("F12 (unless rebound) starts and stops; saved in your Pictures folder")
+            .small()
+            .color(DIM),
+    );
+    if (s.gif_scale, s.gif_fps) != before {
+        settings.set_changed();
+    }
 }
 
 fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {

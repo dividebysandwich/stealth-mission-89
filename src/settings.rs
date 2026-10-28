@@ -115,6 +115,9 @@ pub struct Settings {
     pub engine_low_pass: bool,
     /// The atmosphere effects' switches (`--effects`).
     pub effects: crate::effects::Effects,
+    /// GIF recording (`gif_recorder`): percent of the window's size, frames per second.
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 /// Default VR cockpit size.
@@ -277,6 +280,8 @@ impl Settings {
             engine_low_pass: true,
             effects: get(&a, "--effects")
                 .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }

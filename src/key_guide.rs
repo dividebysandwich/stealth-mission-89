@@ -135,6 +135,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[Menu]), "Settings menu, pause"),
                 (Actions(&[Kneeboard]), "Kneeboard"),
                 (Actions(&[Chat]), "Chat (multiplayer)"),
+                (Actions(&[RecordGif]), "Record a GIF: start / stop"),
                 (Actions(&[TimeAccel, TimeNormal]), "Time faster / normal"),
                 (Actions(&[Volume]), "Sound volume"),
                 (Actions(&[Detail]), "Detail level"),
