@@ -1026,7 +1026,7 @@ The input mapping (chapter 2) shows all keys and can bind them to joystick butto
 | | Map zoom in / out, north up / heading up | Alt Z / Alt X / Alt F3 |
 | | Night vision goggles | F4 |
 | | Weapons page / FLIR / ILS / mission orders | F5 / F6 / F9 / F10 |
-| **Navigation** | Waypoint page / change waypoint / reset waypoint | F7 / F8 / Shift F8 |
+| **Navigation** | Waypoint page / edit waypoints / reset waypoints | F7 / F8 / Shift F8 |
 | | Kneeboard: show, next page, hide (chapter 3.9) | K |
 | | Previous / next waypoint | PgUp / PgDn |
 | **Views** | Cockpit | F1 |
