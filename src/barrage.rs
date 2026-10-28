@@ -2,8 +2,9 @@
 //! towns and air defence sites near the aircraft fire blind into the sky, streams of tracer
 //! arcing up and burning out, and searchlights sweep the sky over the towns. A town's guns only
 //! fire with the other side's aircraft overhead (the player or friendly aircraft over an enemy
-//! town, enemy aircraft over a friendly one; a neutral town's never). Cosmetic only: the rounds
-//! hit nothing and the searchlights find nothing.
+//! town, enemy aircraft over a friendly one; a neutral town's never), and the air defence guns
+//! likewise by their side. Cosmetic only: the rounds hit nothing and the searchlights find
+//! nothing.
 //!
 //! All the rounds are one line mesh rebuilt every frame (one draw); the searchlights are beam
 //! cones (landing_lights.rs `BeamMaterial` with a negative intensity: lit analytically, not
@@ -22,6 +23,7 @@ use crate::palette_material::{
 };
 use crate::settings::{AppState, Settings};
 use crate::world::{Theater, WU, WorldAnchor, WorldPos, map_to_wu, wu_to_bevy};
+use stealth_sim::aaa::AaaKind;
 use stealth_sim::oflags;
 
 pub struct BarragePlugin;
@@ -277,16 +279,19 @@ fn fire(
             );
         }
         let objects = combat.as_deref().map_or(&[][..], |c| c.sim.objects());
+        // Aircraft of the other side than `friendly` near `at`.
+        let threat = |at: DVec3, friendly: bool| {
+            air.iter().any(|&(p, blue)| blue != friendly && horizontal(p, at) < THREAT_RANGE)
+        };
         let threatened = |s: &Site| {
             let Some(o) = s.object.and_then(|o| objects.get(o)) else { return false };
             if o.flags & oflags::NEUTRAL != 0 && o.flags & oflags::FRIENDLY == 0 {
                 return false;
             }
-            let friendly = o.flags & oflags::FRIENDLY != 0;
-            air.iter().any(|&(p, blue)| blue != friendly && horizontal(p, s.pos) < THREAT_RANGE)
+            threat(s.pos, o.flags & oflags::FRIENDLY != 0)
         };
-        // The nearest towns' guns (with the other side's aircraft overhead) and the air
-        // defence units' (those not destroyed).
+        // The nearest towns' guns and the air defence units' (the guns not destroyed), with the
+        // other side's aircraft overhead.
         let mut guns: Vec<(f64, usize)> = sites
             .iter()
             .enumerate()
@@ -298,7 +303,9 @@ fn fire(
             b.units.resize(units.len(), Gun::default());
             for (i, u) in units.iter().enumerate() {
                 let p = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
-                if !u.destroyed && p.distance(eye) < GUN_RANGE {
+                let gun = matches!(u.kind, AaaKind::Zsu | AaaKind::S60 | AaaKind::Gepard);
+                let blue = combat.as_deref().is_some_and(|c| c.sim.aaa_blue(i));
+                if gun && !u.destroyed && p.distance(eye) < GUN_RANGE && threat(p, blue) {
                     guns.push((p.distance(eye), sites.len() + i));
                 }
             }
@@ -383,8 +390,10 @@ fn draw(
     if shown && let Some(mut m) = meshes.get_mut(&*mesh) {
         let mut v: Vec<Vec3> = Vec::with_capacity(b.rounds.len() * 2);
         for r in &b.rounds {
+            // Never back past the muzzle (into the ground).
+            let streak = STREAK.min(r.age.max(0.0) as f64);
             v.push((r.pos - eye).as_vec3());
-            v.push((r.pos - r.vel * STREAK - eye).as_vec3());
+            v.push((r.pos - r.vel * streak - eye).as_vec3());
         }
         m.insert_attribute(Mesh::ATTRIBUTE_POSITION, v);
     }
