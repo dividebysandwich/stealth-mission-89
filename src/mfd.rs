@@ -722,11 +722,32 @@ const WAYPOINT_SLEW_PX: f64 = 30.0;
 /// The theater's side, in map units (a waypoint stays on the map).
 const MAP_SIZE: f64 = 0x8000 as f64;
 
+/// The WAY page is up (with the modern avionics: the MAP showing the waypoint table).
+fn way_shown(state: &MfdState) -> bool {
+    if state.modern {
+        state.av.map_way && state.av.shown(crate::avionics::Format::Map).is_some()
+    } else {
+        state.right == RightMfd::Way
+    }
+}
+
+/// The slew keys move the selected waypoint: the WAY page is in edit mode and, with the modern
+/// avionics, the sensor of interest (else the keys would also move the SOI's cursor or pod).
+pub(crate) fn editing_waypoints(state: &MfdState, wps: &Waypoints) -> bool {
+    wps.editing
+        && if state.modern {
+            state.av.soi_format() == Some(crate::avionics::Format::Map)
+        } else {
+            way_shown(state)
+        }
+}
+
 /// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
-/// course line follows it); the mode ends when the page is left.
+/// course line follows it); the mode ends when the page is left. With the modern avionics F8
+/// makes the page the SOI, and the keys move the waypoint only while it is.
 fn edit_waypoints(
     mut actions: MessageReader<ActionEvent>,
-    state: Res<MfdState>,
+    mut state: ResMut<MfdState>,
     controls: Res<crate::input::FlightControls>,
     block: Res<crate::input::InputBlock>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -736,12 +757,14 @@ fn edit_waypoints(
 ) {
     // The page switches on the key press itself; give it this frame to show.
     let pressed = actions.read().any(|a| a.0 == Action::ChangeWaypoint);
-    let way = if state.modern { state.av.map_way } else { state.right == RightMfd::Way };
-    if wps.editing && !way && !pressed {
+    if pressed && state.modern && way_shown(&state) {
+        state.av.soi = Some(crate::avionics::Format::Map);
+    }
+    if wps.editing && !way_shown(&state) && !pressed {
         wps.editing = false;
     }
     // The menu reads the keys while it is open.
-    if !wps.editing || !way || block.0 {
+    if !editing_waypoints(&state, &wps) || block.0 {
         return;
     }
     // As in the original, keypad 9 and 3 select the last and next waypoint, and only 8, 2, 4

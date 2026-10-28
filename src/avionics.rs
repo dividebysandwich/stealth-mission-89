@@ -456,7 +456,13 @@ impl AvionicsState {
 
     /// The sensor of interest if it is on an MFD.
     pub fn soi_format(&self) -> Option<Format> {
-        self.soi.filter(|&f| self.shown(f).is_some())
+        self.soi.filter(|&f| self.shown(f).is_some() && self.soi_capable(f))
+    }
+
+    /// Formats that can be the SOI: those with a cursor or a pod, and the MAP while it shows
+    /// the waypoint table (the slew keys then move the waypoint being edited).
+    pub fn soi_capable(&self, f: Format) -> bool {
+        f.soi_capable() || f == Format::Map && self.map_way
     }
 
     /// Puts a format on an MFD; the MFD showing the new one gets this one's format.
@@ -479,7 +485,7 @@ impl AvionicsState {
     /// The SOI stays on a displayed format that can be one.
     fn fix_soi(&mut self) {
         if self.soi_format().is_none() {
-            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|f| f.soi_capable());
+            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|&f| self.soi_capable(f));
         }
     }
 }
@@ -496,7 +502,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         }
         MfdCmd::Soi(side) => {
             let f = av.format(side);
-            if f.soi_capable() {
+            if av.soi_capable(f) {
                 av.soi = Some(f);
             }
         }
@@ -507,7 +513,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             let at = sides.iter().position(|&s| s == side).unwrap_or(0);
             let next = (1..sides.len())
                 .map(|k| av.format(sides[(at + k) % sides.len()]))
-                .find(|f| f.soi_capable());
+                .find(|&f| av.soi_capable(f));
             if let Some(f) = next {
                 av.soi = Some(f);
             }
@@ -535,6 +541,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::ToggleOrient => state.map_heading_up = !state.map_heading_up,
         MfdCmd::MapWay => {
             av.map_way = !av.map_way;
+            av.fix_soi();
             raster.invalidate();
         }
         MfdCmd::Sms(ord) => {
@@ -640,6 +647,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Map, 0) if av.map_way => ("WP-", Action(A::LastWaypoint), false),
         (Format::Map, 1) if av.map_way => ("WP+", Action(A::NextWaypoint), false),
         (Format::Map, 2) if av.map_way => ("RST", Action(A::ResetWaypoint), false),
+        (Format::Map, 4) if av.map_way => soi,
         (Format::Map, 0) => {
             (if s.map_heading_up { "HUP" } else { "NUP" }, Cmd(MfdCmd::ToggleOrient), false)
         }
@@ -1335,7 +1343,12 @@ fn update_pod(
     }
     let soi = state.av.soi_format() == Some(Format::Tgp);
     let zoom = state.cam_zoom.unwrap_or(info.zoom.saturating_sub(1));
-    let slew = if soi && shown { controls.slew } else { Vec2::ZERO };
+    // Not while the slew keys move a waypoint (the classic avionics have no SOI).
+    let slew = if soi && shown && !crate::mfd::editing_waypoints(&state, &waypoints) {
+        controls.slew
+    } else {
+        Vec2::ZERO
+    };
     let tgp = &mut state.av.tgp;
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
@@ -1700,6 +1713,23 @@ mod tests {
         // Not on a format without a cursor.
         s.av.select(MfdSide::Right, Format::Sms);
         apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+    }
+
+    /// The MAP can be the SOI while it shows the waypoint table, and loses it with the table.
+    #[test]
+    fn way_page_soi() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.select(MfdSide::Right, Format::Map);
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd), "not the map itself");
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), None);
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), Some("SOI"));
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Map));
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
         assert_eq!(s.av.soi_format(), Some(Format::Hsd));
     }
 
