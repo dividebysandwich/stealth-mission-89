@@ -104,6 +104,7 @@ impl CampaignState {
                 || !self.places.iter().all(|p| clear(p.x, p.y, BATTERY_CLEAR))
                 || !bases.iter().all(|&(bx, by)| clear(bx, by, BATTERY_NEAR))
                 || !self.batteries.iter().all(|o| clear(o.x, o.y, 2 * BATTERY_CLEAR))
+                || !self.deployments.iter().all(|d| clear(d.x, d.y, BATTERY_CLEAR))
             {
                 continue;
             }

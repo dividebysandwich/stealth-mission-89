@@ -256,7 +256,13 @@ impl CampaignState {
             .flat_map(|d| {
                 d.open_legs().map(move |leg| {
                     (
-                        format!("Logistics - {} ({}/{})", d.title(), leg + 1, d.loads),
+                        format!(
+                            "{} {}/{} - {}",
+                            if d.patriot { "Patriot" } else { "Gepard" },
+                            leg + 1,
+                            d.loads,
+                            d.name
+                        ),
                         Objective::Logistics { site: d.id, leg },
                         d.x,
                         d.y,
