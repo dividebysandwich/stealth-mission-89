@@ -187,3 +187,10 @@ lang-name-sl = Σλοβενικά
 lang-name-es = Ισπανικά
 lang-name-sv = Σουηδικά
 lang-name-uk = Ουκρανικά
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Γλώσσα του προγράμματος περιήγησης: { $language }. Θέλετε να παίξετε σε αυτή τη γλώσσα;
+language-offer-yes = Ναι
+language-offer-no = Όχι
+language-offer-never = Να μην εμφανιστεί ξανά

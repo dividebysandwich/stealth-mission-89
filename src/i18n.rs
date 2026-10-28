@@ -153,7 +153,94 @@ pub struct I18nPlugin;
 impl bevy::prelude::Plugin for I18nPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.init_resource::<UiFont>().add_systems(EguiPrimaryContextPass, apply_egui_fonts);
+        #[cfg(target_arch = "wasm32")]
+        if let Some(offer) = language_offer() {
+            use bevy::prelude::*;
+            app.insert_resource(offer).add_systems(
+                EguiPrimaryContextPass,
+                language_offer_ui
+                    .run_if(resource_exists::<LanguageOffer>)
+                    .run_if(in_state(crate::settings::AppState::Menu)),
+            );
+        }
     }
+}
+
+/// `config/<this>` (the browser's local storage): true once the player has answered Yes or
+/// ticked "Do not ask again".
+#[cfg(target_arch = "wasm32")]
+const OFFER_SETTLED: &str = "language-offer.json";
+
+/// The browser build's offer to play in the browser's language, in that language.
+#[cfg(target_arch = "wasm32")]
+#[derive(bevy::prelude::Resource)]
+struct LanguageOffer {
+    language: Language,
+    never: bool,
+}
+
+/// The offer for this visit: the browser's language is one of the game's, the player has not
+/// chosen another language than English (OPTIONS, `--lang`) and has not settled the offer.
+#[cfg(target_arch = "wasm32")]
+fn language_offer() -> Option<LanguageOffer> {
+    let language = crate::settings::browser_language()?;
+    let chosen = crate::prefs::Prefs::load().language.is_some_and(|l| l != Language::En);
+    if chosen
+        || crate::settings::language_arg().is_some()
+        || crate::prefs::load_json::<bool>(OFFER_SETTLED) == Some(true)
+    {
+        return None;
+    }
+    Some(LanguageOffer { language, never: false })
+}
+
+/// The window of the offer, over the menu. Yes switches the game to the language (the
+/// preferences keep it); No keeps English, and the offer comes back on the next visit unless the
+/// box is ticked.
+#[cfg(target_arch = "wasm32")]
+fn language_offer_ui(
+    mut commands: bevy::prelude::Commands,
+    mut contexts: EguiContexts,
+    mut offer: bevy::prelude::ResMut<LanguageOffer>,
+    mut settings: bevy::prelude::ResMut<crate::settings::Settings>,
+) -> bevy::prelude::Result {
+    use crate::menu::{BRIGHT, big_button, menu_window};
+    let ctx = contexts.ctx_mut()?;
+    let l = offer.language;
+    let mut answer = None;
+    menu_window(ctx, "language-offer", 460.0).order(egui::Order::Foreground).show(ctx, |ui| {
+        ui.label(egui::RichText::new(stealth_i18n::t_in!(
+            l,
+            "language-offer-question",
+            language = l.native_name()
+        ))
+        .color(BRIGHT));
+        ui.add_space(10.0);
+        ui.horizontal(|ui| {
+            for (id, yes) in [("language-offer-yes", true), ("language-offer-no", false)] {
+                if ui.add(big_button(stealth_i18n::tr_in(l, id)).min_size(egui::vec2(120.0, 40.0)))
+                    .clicked()
+                {
+                    answer = Some(yes);
+                }
+            }
+        });
+        ui.add_space(6.0);
+        ui.checkbox(&mut offer.never, stealth_i18n::tr_in(l, "language-offer-never"));
+    });
+    let Some(yes) = answer else { return Ok(()) };
+    if yes {
+        settings.language = l;
+        stealth_i18n::set_language(l);
+    }
+    // A Yes is not asked again either, even if the player goes back to English in OPTIONS.
+    if (yes || offer.never)
+        && let Err(e) = crate::prefs::save_json(OFFER_SETTLED, &true)
+    {
+        bevy::log::warn!("saving {OFFER_SETTLED}: {e}");
+    }
+    commands.remove_resource::<LanguageOffer>();
+    Ok(())
 }
 
 /// The font of the 2D overlays and the tooltips (the end of mission, the downed pilot's

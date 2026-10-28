@@ -187,3 +187,10 @@ lang-name-sl = Slóivéinis
 lang-name-es = Spáinnis
 lang-name-sv = Sualainnis
 lang-name-uk = Úcráinis
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Teanga an bhrabhsálaí: { $language }. An bhfuil tú ag iarraidh imirt sa teanga seo?
+language-offer-yes = Tá
+language-offer-no = Níl
+language-offer-never = Ná fiafraigh arís

@@ -187,3 +187,10 @@ lang-name-sl = Sloven
 lang-name-es = Spanjol
 lang-name-sv = Svediż
 lang-name-uk = Ukrain
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Il-lingwa tal-browser: { $language }. Tixtieq tilgħab f'din il-lingwa?
+language-offer-yes = Iva
+language-offer-no = Le
+language-offer-never = Tistaqsinix aktar

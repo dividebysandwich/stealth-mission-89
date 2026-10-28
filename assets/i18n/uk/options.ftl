@@ -187,3 +187,10 @@ lang-name-sl = словенська
 lang-name-es = іспанська
 lang-name-sv = шведська
 lang-name-uk = українська
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Мова браузера: { $language }. Грати цією мовою?
+language-offer-yes = Так
+language-offer-no = Ні
+language-offer-never = Більше не питати

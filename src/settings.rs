@@ -169,13 +169,23 @@ pub fn language_arg() -> Option<stealth_i18n::Language> {
     get(&args(), "--lang").and_then(|s| stealth_i18n::Language::parse(&s))
 }
 
-/// The system's language if the game has it, else English.
+/// The system's language if the game has it, else English. The browser build starts in English
+/// and offers the browser's language (`i18n::language_offer`).
 pub fn system_language() -> stealth_i18n::Language {
     #[cfg(not(target_arch = "wasm32"))]
-    let locale = sys_locale::get_locale();
+    return sys_locale::get_locale()
+        .and_then(|l| stealth_i18n::Language::parse(&l))
+        .unwrap_or_default();
     #[cfg(target_arch = "wasm32")]
-    let locale = web_sys::window().and_then(|w| w.navigator().language());
-    locale.and_then(|l| stealth_i18n::Language::parse(&l)).unwrap_or_default()
+    stealth_i18n::Language::default()
+}
+
+/// The browser's language if the game has it and it is not English.
+#[cfg(target_arch = "wasm32")]
+pub fn browser_language() -> Option<stealth_i18n::Language> {
+    use stealth_i18n::Language;
+    let locale = web_sys::window()?.navigator().language()?;
+    Language::parse(&locale).filter(|&l| l != Language::En && l != Language::Pseudo)
 }
 
 fn args() -> Vec<String> {

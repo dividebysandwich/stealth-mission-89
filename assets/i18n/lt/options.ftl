@@ -187,3 +187,10 @@ lang-name-sl = slovėnų
 lang-name-es = ispanų
 lang-name-sv = švedų
 lang-name-uk = ukrainiečių
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Naršyklės kalba: { $language }. Ar žaisti šia kalba?
+language-offer-yes = Taip
+language-offer-no = Ne
+language-offer-never = Daugiau nebeklausti

@@ -187,3 +187,10 @@ lang-name-sl = Slowenisch
 lang-name-es = Spanisch
 lang-name-sv = Schwedisch
 lang-name-uk = Ukrainisch
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Browsersprache: { $language }. Das Spiel in dieser Sprache spielen?
+language-offer-yes = Ja
+language-offer-no = Nein
+language-offer-never = Nicht mehr fragen

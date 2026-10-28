@@ -187,3 +187,10 @@ lang-name-sl = sloveeni
 lang-name-es = hispaania
 lang-name-sv = rootsi
 lang-name-uk = ukraina
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Brauseri keel: { $language }. Kas mängida selles keeles?
+language-offer-yes = Jah
+language-offer-no = Ei
+language-offer-never = Ära küsi enam

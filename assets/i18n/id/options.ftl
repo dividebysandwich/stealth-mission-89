@@ -187,3 +187,10 @@ lang-name-sl = Slovenia
 lang-name-es = Spanyol
 lang-name-sv = Swedia
 lang-name-uk = Ukraina
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = Bahasa peramban: { $language }. Mainkan game dalam bahasa ini?
+language-offer-yes = Ya
+language-offer-no = Tidak
+language-offer-never = Jangan tanya lagi
