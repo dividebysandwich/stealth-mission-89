@@ -2,7 +2,9 @@
 //! axes and buttons to the flight controls and every action, picks what the VR controller buttons do, and saves the
 //! mapping as JSON. A search field at its top keeps only the axes and actions whose name holds
 //! the typed text, and the VR inputs whose name or action does (as the key guide's search; Esc
-//! or its X clears it); in VR it types with the virtual keyboard (`text_entry.rs`).
+//! or its X clears it); in VR it types with the virtual keyboard (`text_entry.rs`). The field
+//! takes the keyboard once clicked; until then a key or a joystick button pressed jumps to the
+//! row it is bound to and highlights it.
 
 use std::collections::{HashMap, HashSet};
 
@@ -27,6 +29,9 @@ pub struct InputDialog {
     saved: Option<InputConfig>,
     /// The search field's text.
     search: String,
+    /// The row a pressed key or joystick button jumped to (highlighted), and whether it is still
+    /// to be scrolled into view.
+    jump: Option<(ButtonTarget, bool)>,
 }
 
 impl InputDialog {
@@ -36,6 +41,53 @@ impl InputDialog {
         self.capture = None;
         self.status = None;
         self.search.clear();
+        self.jump = None;
+    }
+
+    /// Jumps to the row a key or joystick button pressed this frame is bound to (none while a
+    /// key is being captured or the search field or another control has the keyboard).
+    fn jump_to_pressed(
+        &mut self,
+        ctx: &egui::Context,
+        config: &InputConfig,
+        hotas: &Hotas,
+        keys: &ButtonInput<KeyCode>,
+    ) {
+        if self.capture.is_some() || ctx.memory(|m| m.focused().is_some()) {
+            return;
+        }
+        let key = pressed_key(keys).map(|(mods, key)| {
+            let target = config.keys.iter().find(|m| m.mods == mods && m.key == key);
+            (target.map(|m| m.target), crate::input::key_label(mods, key))
+        });
+        let button = || {
+            if let Some(m) = config.buttons.iter().find(|m| hotas.just_pressed(&m.device, m.source))
+            {
+                return Some((Some(m.target), binding_label(&m.device, &m.source.label())));
+            }
+            hotas.devices().into_iter().find_map(|d| {
+                let code = d.just_pressed().next()?;
+                Some((None, binding_label(&d.key, &Source::Button(code).label())))
+            })
+        };
+        let Some((target, label)) = key.or_else(button) else { return };
+        match target {
+            Some(target) => {
+                if !holds(&Binding::Key(target).name(), &search_query(&self.search)) {
+                    self.search.clear();
+                }
+                self.status = Some(format!(
+                    "{} -> {}",
+                    label,
+                    Binding::Key(target).name().to_ascii_uppercase()
+                ));
+                self.jump = Some((target, true));
+            }
+            None => {
+                self.status = Some(format!("{label} IS NOT BOUND"));
+                self.jump = None;
+            }
+        }
     }
 }
 
@@ -209,6 +261,7 @@ pub fn show(
         // Keep polling while nothing else redraws the window.
         ctx.request_repaint();
     }
+    dialog.jump_to_pressed(ctx, config, hotas, keys);
 
     let value = |control| {
         config
@@ -354,7 +407,9 @@ pub fn show(
                                 ui.end_row();
                             }
                             let key = Binding::Key(target);
-                            ui.label(key.name());
+                            // Behind the row it jumped to: a highlight, set once the row is laid out.
+                            let highlight = ui.painter().add(egui::Shape::Noop);
+                            let name = ui.label(key.name());
                             let capturing_key = dialog.capture.as_ref().is_some_and(|c| c.what == key);
                             let labels: Vec<String> = config.keys_for(target).map(|m| m.label()).collect();
                             let text = match (capturing_key, labels.is_empty()) {
@@ -378,7 +433,16 @@ pub fn show(
                                 Some(m) => ui.label(binding_label(&m.device, &m.source.label())),
                                 None => ui.label(egui::RichText::new(if capturing { "PRESS A BUTTON..." } else { "-" }).color(DIM)),
                             };
-                            row_buttons(ui, what, capturing, &mut start, || config.buttons.retain(|m| m.target != target));
+                            let buttons = row_buttons(ui, what, capturing, &mut start, || config.buttons.retain(|m| m.target != target));
+                            if let Some((jumped, scroll)) = &mut dialog.jump
+                                && *jumped == target
+                            {
+                                let rect = name.rect.union(buttons.rect).expand(3.0);
+                                ui.painter().set(highlight, egui::Shape::rect_filled(rect, 2.0, AMBER.gamma_multiply(0.25)));
+                                if std::mem::take(scroll) {
+                                    ui.scroll_to_rect(rect, Some(egui::Align::Center));
+                                }
+                            }
                             ui.end_row();
                         }
                     });
@@ -392,6 +456,7 @@ pub fn show(
 
     if let Some(what) = start {
         dialog.status = None;
+        dialog.jump = None;
         dialog.capture = Some(Capture::new(what, hotas));
     }
     if dialog.saved.as_ref() != Some(config) {
@@ -410,8 +475,8 @@ pub fn show(
 
 /// The search field across the dialog, as the key guide's: inside its frame a magnifier, the
 /// text with a slowly blinking `_` caret as a console's (a hint while empty) and an X clearing
-/// it; in VR clicking it opens the virtual keyboard under it. It has the keyboard whenever
-/// nothing else has, so typing searches at once, but never while a key is being captured.
+/// it; in VR clicking it opens the virtual keyboard under it. It has the keyboard once clicked
+/// (until Esc), never while a key is being captured.
 fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: bool) {
     /// The magnifier's and the X's squares.
     const ICON: f32 = 22.0;
@@ -488,10 +553,9 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
     if vr {
         virtual_keyboard(ui, NAME, id, search, SEARCH_MAX, Charset::Text, clicked.inner);
     }
-    if capturing {
+    // Esc (which also clears the search) gives the keyboard back to the jump to a row.
+    if capturing || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
         ui.memory_mut(|m| m.surrender_focus(id));
-    } else if ui.memory(|m| m.focused().is_none()) {
-        ui.memory_mut(|m| m.request_focus(id));
     }
 }
 
@@ -578,7 +642,7 @@ fn row_buttons(
     capturing: bool,
     start: &mut Option<Binding>,
     clear: impl FnOnce(),
-) {
+) -> egui::Response {
     ui.horizontal(|ui| {
         let bind =
             egui::Button::new(if capturing { "WAITING" } else { "BIND" }).selected(capturing);
@@ -588,7 +652,8 @@ fn row_buttons(
         if ui.button("CLEAR").clicked() {
             clear();
         }
-    });
+    })
+    .response
 }
 
 /// Mapped axis outputs, for the preview.

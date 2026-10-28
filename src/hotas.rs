@@ -502,6 +502,11 @@ impl Device {
             Source::AxisNegative(c) => axes.get(&c).is_some_and(|v| *v < -0.5),
         }
     }
+
+    /// The buttons pressed since the last poll.
+    pub fn just_pressed(&self) -> impl Iterator<Item = u32> + '_ {
+        self.buttons.difference(&self.prev_buttons).copied()
+    }
 }
 
 /// The inputs the standard gamepad layout uses (`crate::input::read_gamepad`), as gilrs and
@@ -717,6 +722,11 @@ impl Hotas {
 
     fn active(&self, device: &str, source: Source, prev: bool) -> bool {
         self.mapped(device).any(|d| d.active(source, prev))
+    }
+
+    /// A mapping's input went active since the last poll.
+    pub fn just_pressed(&self, device: &str, source: Source) -> bool {
+        self.active(device, source, false) && !self.active(device, source, true)
     }
 
     /// The standard gamepad layout's inputs that the mapping binds (see `bound_standard`).
