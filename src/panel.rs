@@ -637,7 +637,7 @@ pub struct PanelParams<'w, 's> {
 }
 
 /// Fuel (lbs) below which the low-fuel light blinks.
-const LOW_FUEL: f32 = 1500.0;
+pub(crate) const LOW_FUEL: f32 = 1500.0;
 
 impl PanelParams<'_, '_> {
     /// Which lamps are lit, indexed by `LampId`.

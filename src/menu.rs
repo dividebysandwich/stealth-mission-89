@@ -956,6 +956,27 @@ fn crash_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
 }
 
+/// The interactive tutorial: single missions only (a career or campaign pilot knows the cockpit).
+fn tutorial_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    group(ui, "Tutorial", |ui| {
+        let s = settings.bypass_change_detection();
+        if facts(
+            ui.checkbox(&mut s.tutorial, "Interactive tutorial"),
+            &[
+                "Step by step from the takeoff to the landing, in any theater and mission",
+                "An arrow points at the cockpit part to use next, which blinks blue",
+                "The tooltip says what to do and which hotkeys to use",
+                "Tip: enable crash protection and choose green opponents",
+                "Single missions only",
+            ],
+        )
+        .changed()
+        {
+            settings.set_changed();
+        }
+    });
+}
+
 pub(crate) fn tacview_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     // The browser build writes no files and cannot listen for Tacview.
     if cfg!(target_arch = "wasm32") {
@@ -1454,6 +1475,7 @@ pub(crate) fn menu_ui(
                     ui.vertical(|ui| {
                         ui.set_width(220.0);
                         simulation_options(ui, &mut settings, None);
+                        tutorial_option(ui, &mut settings);
                     });
                 }
                 // Mission summary in big type, the full briefing below in small type.

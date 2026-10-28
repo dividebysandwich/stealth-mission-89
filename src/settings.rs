@@ -105,6 +105,9 @@ pub struct Settings {
     pub aircraft: crate::aircraft::AircraftKind,
     /// Tooltips over the cockpit's parts (in-flight menu; on by default).
     pub tooltips: bool,
+    /// `--tutorial`: the interactive tutorial in single missions (`cockpit3d::tutorial`; off by
+    /// default).
+    pub tutorial: bool,
     /// Name labels over the other players' aircraft in multiplayer (on by default).
     pub player_labels: bool,
     /// Their size (1: 100%).
@@ -281,6 +284,7 @@ impl Settings {
                 .and_then(|s| crate::aircraft::AircraftKind::parse(&s))
                 .unwrap_or_default(),
             tooltips: true,
+            tutorial: has("--tutorial"),
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,

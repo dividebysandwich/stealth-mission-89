@@ -66,6 +66,7 @@ mission, and the summary on the right shows it. Hovering over an option shows a 
 | **Mission** | *Strike*: ground target (destroy, photograph or reach), with a primary and a secondary objective. *Air to air*: intercept an enemy aircraft. *Strike training* and *Air training*: practice missions. *Drone defense* (Ukraine only): stop a wave of attack drones, then bomb their launch site (chapter 14). |
 | **Aircraft** | *F-117A* or *F-16C*: the flown aircraft. *Realistic weapons* (F-117A only): two bays instead of four, no AIM-9/AIM-120, no carrier operations. |
 | **Simulation** | The realism switches below and *Crash protection*: automatic pull-up near the ground with the gear up; ground contact and collisions are not fatal. They belong to each game (single mission, career, campaign), not to OPTIONS. |
+| **Tutorial** | *Interactive tutorial* (chapter 3): single missions only. |
 | **Realism** | *Damage*: *Game* features simplified weapon damage (hits add up, damaging systems, but never bring the aircraft down). *Real*: a missile hit can destroy the aircraft outright (the engine dies, it burns and breaks up within seconds: eject), otherwise it damages several systems at once and often starts a fire, which either burns out or blows the aircraft up after a while. Hits to the flight controls bend control surfaces: the aircraft rolls or pitches by itself (hold the stick against it) or wobbles. *Guidance*: *Classic* keeps the DOS era missiles. *Real*: missiles fly proportional navigation to the collision point; their motors burn for the real missile's burn time (the smoke trail ends with it) and then they glide, losing speed with every turn and turning ever more slowly as they slow down, especially up high. SAMs and the AIM-120 climb at a loft angle against distant targets and dive on them from above (pull up before firing an AIM-120 and it has less to turn); gravity speeds up a diving missile. The Hellfire flies straight for 1 s after launch: pull up before firing to lob it at a distant target. *Low level*: *Real* adds anti-aircraft guns and MANPADS (chapter 10.3). |
 | **Weather** | Random (based on the theater's climate), Clear, Scattered, Broken, Overcast, Storm. *Random cover* off: a slider sets the coverage of the main cloud layer. Clouds block optical seekers and visual identification for both sides; radar sees through clouds. |
 
@@ -153,6 +154,30 @@ The view shows the head-up display (HUD) at the top and the instrument panel bel
 has a keyboard equivalent (chapter 9). Rest the mouse on a button, display, instrument or warning
 light and a **tooltip** names it, says what it does and shows its keys; parts hidden behind the
 stick, the throttle or the glare shield can't be pointed at.
+
+**Interactive tutorial.** With *Interactive tutorial* on (the single mission screen's
+*Tutorial* group or the in-flight menu), any single mission in any theater is flown step by step,
+from the takeoff to the stop after landing: a box says what to do next and which keys do it, an
+arrow points at the button, display or lever to use, which blinks blue. When the view does not
+show it, the arrow waits at the edge of the window on its side. After the takeoff and the
+orders, each objective is taken in turn, the primary target then the secondary: the waypoint
+and the autopilot to it (again after the first one) and time acceleration for the cruise; about
+30 km out, time to get ready: normal time, slower (about 400 knots, for a run on the ground),
+the weapons page and the store to select (the one on board that does the most against that
+target: a Harpoon against a ship, a HARM against a radar, a Durandal against a runway, the
+air-to-air missile that locks the farthest against an aircraft, the camera for a photo, the
+supplies for a drop), the target camera ahead, the HUD mode and the lock; about 10 km out, the run: the autopilot off
+(it would turn to the next waypoint about 8 km out), the bay, the shot, or the landing the
+objective asks for; then the way home. Dangers and threats come first while they last: a
+stall (nose down, power up), a missile locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then
+evading and a decoy, chapter 6.6), a radar tracking the aircraft (descend, slow down, wings
+level, bay shut: chapter 6.5); a fire on board and low fuel are said for a few seconds when they
+begin. Evading with the stick takes the autopilot off, so the lesson
+asks for it again afterwards; with the autopilot damaged it says to fly by hand. A step ends however it is done (a click, a key, the
+joystick), and shows again when it is undone (the bay shut, the lock lost, the store spent);
+the steps follow the aircraft (jet or helicopter, bomb bay or pylons) and the avionics (DOS era
+pages or F-16 style formats). Career sorties, the campaign and multiplayer games fly without it
+(the in-flight menu's entry is greyed out).
 
 **Head/eye tracking.** With *Head/Eye Tracking* on in OPTIONS > CONTROLS, the cockpit view follows your head
 movements, picked up by an infrared tracker (TrackIR, DelanClip, TrackHat, Grass Monkey
@@ -387,7 +412,7 @@ back a page; on the first page they close the menu.
 
 | Page | Entries |
 |---|---|
-| Game | *Cockpit* (modern or classic panel, F-117A only), *HUD*, *Avionics*, *Auto trim*, *Tooltips*, *Cockpit size*: VR only, the size of the cockpit in the headset (70–150 %; at the default 100 % the F-117A's cockpit looks 60 % and the F-16C's 87 % of life size, which felt right); left / right or the < > halves. The world looks smaller by as much, so in the F-117A the cockpit is raised in VR until the runway looks as far below as from the real one (2.7 m). The flight model and Tacview are chosen in the main menu. |
+| Game | *Cockpit* (modern or classic panel, F-117A only), *HUD*, *Avionics*, *Auto trim*, *Tooltips*, *Interactive tutorial* (single missions only), *Cockpit size*: VR only, the size of the cockpit in the headset (70–150 %; at the default 100 % the F-117A's cockpit looks 60 % and the F-16C's 87 % of life size, which felt right); left / right or the < > halves. The world looks smaller by as much, so in the F-117A the cockpit is raised in VR until the runway looks as far below as from the real one (2.7 m). The flight model and Tacview are chosen in the main menu. |
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
 | Sound | The *Master*, *Engine*, *Effects* and *Warnings* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |
 | Controls | *Head tracking* (desktop), *Keys and joystick*: the input mapping (chapter 2) over the view, in VR on a panel in front of you (point a controller, the trigger clicks); DONE returns to the menu. The key guide. |

@@ -6,7 +6,8 @@
 //! RESUME and every page's BACK are a button with an arrow in the top-left corner. SAVE MISSION
 //! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
 //! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
-//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
+//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the interactive tutorial,
+//! the VR cockpit
 //! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the engine
 //! low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
 //! bindings are the main menu's dialog (`input_dialog.rs`) over the view (in VR on the menu panel
@@ -152,6 +153,7 @@ impl Page {
                 Avionics,
                 AutoTrim,
                 Tooltips,
+                Tutorial,
                 PlayerLabels,
                 LabelSize,
                 CockpitSize,
@@ -275,6 +277,7 @@ enum Item {
     Avionics,
     AutoTrim,
     Tooltips,
+    Tutorial,
     PlayerLabels,
     LabelSize,
     CockpitSize,
@@ -308,6 +311,7 @@ impl Item {
             Item::Avionics => "AVIONICS",
             Item::AutoTrim => "AUTO TRIM",
             Item::Tooltips => "TOOLTIPS",
+            Item::Tutorial => "INTERACTIVE TUTORIAL",
             Item::PlayerLabels => "PLAYER LABELS",
             Item::LabelSize => "LABEL SIZE",
             Item::CockpitSize => "COCKPIT SIZE",
@@ -338,6 +342,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::Tutorial => on(s.tutorial),
             Item::PlayerLabels => on(s.player_labels),
             Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
             Item::Effect(e) => on(e.get(&s.effects)),
@@ -355,10 +360,12 @@ impl Item {
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
     /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
-    fn enabled(self, s: &Settings, ops: bool, can_save: bool) -> bool {
+    /// `single`: the flight is a single mission (`mission::single_mission`).
+    fn enabled(self, s: &Settings, ops: bool, can_save: bool, single: bool) -> bool {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
+            Item::Tutorial => single,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
@@ -862,13 +869,17 @@ fn navigate(
     mut block: ResMut<InputBlock>,
     mut actions: MessageWriter<ActionEvent>,
     sinks: Query<&AudioSink>,
-    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    (campaign, career): (
+        Option<Res<crate::campaign::ActiveCampaign>>,
+        Option<Res<crate::career::CareerFlight>>,
+    ),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
 ) {
     if !menu.open || menu.exiting || menu.bindings {
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let pause = campaign.is_none();
     if !mouse.pressed(MouseButton::Left) {
         menu.mouse_armed = true;
@@ -1041,7 +1052,8 @@ fn navigate(
         None => (menu.cursor, None),
     };
     let item = items[index.min(n - 1)];
-    if !item.enabled(&settings, ops, menu.can_save) || !(select || clicked.is_some() || adjust != 0)
+    if !item.enabled(&settings, ops, menu.can_save, single)
+        || !(select || clicked.is_some() || adjust != 0)
     {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
@@ -1079,6 +1091,7 @@ fn navigate(
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::Tutorial => s.tutorial = !s.tutorial,
         Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
@@ -1224,6 +1237,7 @@ fn draw(
     settings: Res<Settings>,
     mut q: Query<(&mut CanvasTexture, &mut Visibility), With<MenuScreen>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    career: Option<Res<crate::career::CareerFlight>>,
     config: Res<crate::hotas::InputConfig>,
     time: Res<Time<Real>>,
 ) {
@@ -1234,6 +1248,7 @@ fn draw(
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let c = &mut tex.canvas;
     c.clear(BG);
     c.frame(Vec2::new(6.0, 6.0), Vec2::new(W as f32 - 7.0, H as f32 - 7.0), 3.0, DIM);
@@ -1302,7 +1317,7 @@ fn draw(
         menu.page.items().iter().zip(item_rects(menu.page)).enumerate()
     {
         let mid = (y0 + y1) / 2.0;
-        let enabled = item.enabled(&settings, ops, menu.can_save);
+        let enabled = item.enabled(&settings, ops, menu.can_save, single);
         let col = if enabled { BRIGHT } else { DIM };
         let (x, w) = (x0 as i32, (x1 - x0) as i32);
         if i == menu.cursor {

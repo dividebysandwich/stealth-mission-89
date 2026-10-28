@@ -147,6 +147,11 @@ impl Control {
         self.touched
     }
 
+    /// The centre of its face, in the frame of `tf` (its own transform).
+    pub(super) fn face_centre(&self, tf: &Transform) -> Vec3 {
+        tf.translation + tf.rotation * Vec3::Z * self.height
+    }
+
     /// Where the ray o + t d (cockpit frame, `tf` the control's) goes through the face
     /// rectangle: t.
     pub(super) fn face_hit(&self, tf: &Transform, o: Vec3, d: Vec3) -> Option<f32> {
@@ -284,6 +289,23 @@ impl Fire<'_, '_> {
     }
 }
 
+/// The control a key action presses: panel caps and bezel buttons before the side panel
+/// duplicates; of two bezel buttons with the same key action (MAP / TAC), the one not selected.
+pub(super) fn press_target<'a>(
+    controls: impl Iterator<Item = (Entity, &'a Control)>,
+    a: Action,
+    mfd: &MfdState,
+) -> Option<Entity> {
+    let rank = |c: &Control| {
+        let lit = matches!(c.effect, Effect::Osb(side, slot) if osb(side, slot, mfd).is_some_and(|o| o.2));
+        (!matches!(c.kind, Kind::Cap | Kind::Osb), lit)
+    };
+    controls
+        .filter(|(_, c)| c.effect.action(mfd) == Some(a))
+        .min_by_key(|(_, c)| rank(c))
+        .map(|(e, _)| e)
+}
+
 /// Seconds a clicked control stays pushed in.
 const CLICK_SECONDS: f32 = 0.18;
 /// A VR fingertip taps a console screen this close to it (metres).
@@ -327,17 +349,9 @@ pub(super) fn interact(
     // With the menu open only the MENU button works (it closes the menu again).
     let usable = |c: &Control| !menu.open || c.effect == Effect::Action(Action::Menu);
     for PressControl(a) in presses.read() {
-        // Panel caps and bezel buttons before the side panel duplicates; of two bezel buttons
-        // with the same key action (MAP / TAC), the one not selected.
-        let mfd = fire.mfd.clone();
-        let rank = |c: &Control| {
-            let lit = matches!(c.effect, Effect::Osb(side, slot) if osb(side, slot, &mfd).is_some_and(|o| o.2));
-            (!matches!(c.kind, Kind::Cap | Kind::Osb), lit)
-        };
-        if let Some((_, mut c, _)) = controls
-            .iter_mut()
-            .filter(|(_, c, _)| c.effect.action(&mfd) == Some(*a))
-            .min_by_key(|(_, c, _)| rank(c))
+        let found = press_target(controls.iter().map(|(e, c, _)| (e, c)), *a, &fire.mfd);
+        if let Some(e) = found
+            && let Ok((_, mut c, _)) = controls.get_mut(e)
         {
             c.click = CLICK_SECONDS;
             fire.fire(c.effect);
