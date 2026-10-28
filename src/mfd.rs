@@ -1381,6 +1381,32 @@ impl MfdParams<'_, '_> {
                 prev = Some(p);
             }
         }
+        // With the WAY page up (F7, F8): the flight plan, green from waypoint to waypoint and
+        // white from the aircraft to the selected one; it follows a waypoint being moved.
+        if self.state.right == RightMfd::Way {
+            let pts: Vec<(i32, i32)> = self
+                .waypoints
+                .points
+                .iter()
+                .map(|w| {
+                    let p =
+                        map_to_screen(centre, zoom, w.east / 32.0, 0x8000 as f64 - w.north / 32.0);
+                    (p.x as i32, p.y as i32)
+                })
+                .collect();
+            for pair in pts.windows(2) {
+                c.line(pair[0].0, pair[0].1, pair[1].0, pair[1].1, 10);
+            }
+            if let (Some((_, pos)), Some(&(wx, wy))) = (ac, pts.get(self.waypoints.current)) {
+                let (x, y) = map_units(pos);
+                let p = map_to_screen(centre, zoom, x as f64, y as f64);
+                c.line(p.x as i32, p.y as i32, wx, wy, 15);
+            }
+            for (i, &(x, y)) in pts.iter().enumerate() {
+                let colour = if i == self.waypoints.current { 15 } else { 19 };
+                c.fill_rect(x - 1, y - 1, 3, 3, colour);
+            }
+        }
         // Own aircraft: white chevron.
         if let Some((_, pos)) = ac {
             let (x, y) = map_units(pos);
