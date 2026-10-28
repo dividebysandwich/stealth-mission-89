@@ -1,5 +1,8 @@
 //! Theater map drawing shared by the mission planner and the debrief: the view's projection,
-//! the map picture and the threat and airfield symbols.
+//! the map picture, the threat and airfield symbols, and the layers a player can hide (the
+//! checkboxes of a map's legend lines).
+
+use std::collections::{BTreeSet, HashSet};
 
 use bevy_egui::egui;
 
@@ -149,4 +152,112 @@ pub fn legend(ui: &mut egui::Ui, text: &str, draw: impl FnOnce(&egui::Painter, e
         draw(&ui.painter_at(rect.expand(1.0)), rect.center());
         ui.label(egui::RichText::new(text).small().color(crate::menu::BRIGHT));
     });
+}
+
+/// What a map shows, each a layer the player can hide.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Layer {
+    Airfields,
+    Cities,
+    Insertions,
+    FriendlyAircraft,
+    FriendlyHelicopters,
+    EnemyFighters,
+    Patriots,
+    PatriotReach,
+    Gepards,
+    Sams,
+    Guns,
+    PulseRadar,
+    DopplerRadar,
+    MissileRange,
+    Drones,
+}
+
+/// The layers a map hides, and the air defence types (by name) it hides altogether.
+#[derive(Clone, Debug, Default)]
+pub struct MapLayers {
+    hidden: HashSet<Layer>,
+    hidden_types: BTreeSet<String>,
+    /// The map's LAYERS panel is open.
+    pub panel: bool,
+}
+
+impl MapLayers {
+    pub fn shows(&self, layer: Layer) -> bool {
+        !self.hidden.contains(&layer)
+    }
+
+    pub fn shows_type(&self, name: &str) -> bool {
+        !self.hidden_types.contains(name)
+    }
+
+    fn id(map: &str) -> egui::Id {
+        egui::Id::new(("map_layers", map))
+    }
+
+    /// The layers of map `map`, kept in egui's memory for the session: at first all shown but
+    /// `off`.
+    pub fn of(ctx: &egui::Context, map: &str, off: &[Layer]) -> Self {
+        ctx.data_mut(|d| {
+            d.get_temp_mut_or_insert_with(Self::id(map), || Self {
+                hidden: off.iter().copied().collect(),
+                ..Default::default()
+            })
+            .clone()
+        })
+    }
+
+    pub fn keep(self, ctx: &egui::Context, map: &str) {
+        ctx.data_mut(|d| d.insert_temp(Self::id(map), self));
+    }
+
+    /// A legend line with its layer's checkbox in front (clicking the text toggles it too).
+    pub fn legend(
+        &mut self,
+        ui: &mut egui::Ui,
+        layer: Layer,
+        text: &str,
+        draw: impl FnOnce(&egui::Painter, egui::Pos2),
+    ) {
+        let mut on = self.shows(layer);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            ui.checkbox(&mut on, "");
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 14.0), egui::Sense::hover());
+            draw(&ui.painter_at(rect.expand(1.0)), rect.center());
+            let col = if on { crate::menu::BRIGHT } else { DIM };
+            let label = egui::Label::new(egui::RichText::new(text).small().color(col))
+                .sense(egui::Sense::click());
+            if ui.add(label).clicked() {
+                on = !on;
+            }
+        });
+        if on {
+            self.hidden.remove(&layer);
+        } else {
+            self.hidden.insert(layer);
+        }
+    }
+
+    /// A checkbox per air defence type (folded away under `title`).
+    pub fn types(&mut self, ui: &mut egui::Ui, title: &str, types: BTreeSet<&str>) {
+        if types.is_empty() {
+            return;
+        }
+        egui::CollapsingHeader::new(egui::RichText::new(title).small().color(crate::menu::BRIGHT))
+            .id_salt(title)
+            .show(ui, |ui| {
+                for name in types {
+                    let mut on = self.shows_type(name);
+                    if ui.checkbox(&mut on, egui::RichText::new(name).small()).changed() {
+                        if on {
+                            self.hidden_types.remove(name);
+                        } else {
+                            self.hidden_types.insert(name.to_string());
+                        }
+                    }
+                }
+            });
+    }
 }

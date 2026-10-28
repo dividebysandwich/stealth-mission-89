@@ -16,7 +16,7 @@ use stealth_sim::aaa::AaaKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
-use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView};
 use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, section};
 use crate::settings::AppState;
 
@@ -1084,6 +1084,7 @@ fn war_map(
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
+    let mut layers = MapLayers::of(ui.ctx(), "war", &[Layer::MissileRange]);
     ui.horizontal_top(|ui| {
         let (rect, resp) = ui.allocate_exact_size(
             egui::vec2(size.x - legend_w, size.y),
@@ -1101,7 +1102,7 @@ fn war_map(
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
         let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
         // Insertion routes.
-        for ins in &st.insertions {
+        for ins in st.insertions.iter().filter(|_| layers.shows(Layer::Insertions)) {
             if !matches!(ins.state, InsertionState::Pending { .. } | InsertionState::Enroute) {
                 continue;
             }
@@ -1116,7 +1117,7 @@ fn war_map(
             }
         }
         // The places.
-        for p in &st.places {
+        for p in st.places.iter().filter(|p| shows_place(&layers, p)) {
             let col = match p.owner {
                 Side::Blue => FRIENDLY_BLUE,
                 Side::Red => MISSILE_RED,
@@ -1146,7 +1147,7 @@ fn war_map(
         }
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
-        super::picture::draw(&painter, &view, &pic, false);
+        super::picture::draw(&painter, &view, &pic, &layers);
         // Test aid: `--campaign-watch` watches the first friendly aircraft.
         if std::env::args().any(|a| a == "--campaign-watch")
             && unit_view.target.is_none()
@@ -1184,40 +1185,45 @@ fn war_map(
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
             section(ui, "Legend");
-            map_draw::legend(ui, "Friendly airfield", |p, c0| {
-                p.rect_stroke(
-                    egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0)),
-                    0.0,
+            place_legend(ui, &mut layers);
+            layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
+                p.extend(egui::Shape::dashed_line(
+                    &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
                     egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                    egui::StrokeKind::Middle,
-                );
+                    6.0,
+                    4.0,
+                ));
             });
-            map_draw::legend(ui, "Enemy airfield", |p, c0| {
-                p.rect_stroke(
-                    egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0)),
-                    0.0,
-                    egui::Stroke::new(1.5, MISSILE_RED),
-                    egui::StrokeKind::Middle,
-                );
-            });
-            map_draw::legend(ui, "Friendly / enemy city", |p, c0| {
-                p.circle_stroke(
-                    c0 - egui::vec2(4.0, 0.0),
-                    3.5,
-                    egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                );
-                p.circle_stroke(
-                    c0 + egui::vec2(5.0, 0.0),
-                    3.5,
-                    egui::Stroke::new(1.5, MISSILE_RED),
-                );
-            });
-            super::picture::legend(ui);
+            super::picture::legend(ui, &mut layers, Some(&pic));
             ui.add_space(8.0);
             ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
             ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
             control_button(ui, c, sim, unit_view);
         });
+    });
+    layers.keep(ui.ctx(), "war");
+}
+
+/// A place on the map is shown: its layer (airfields, cities) is.
+fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
+    layers.shows(if p.airfield.is_some() { Layer::Airfields } else { Layer::Cities })
+}
+
+/// The places' legend lines, with their layers' checkboxes.
+fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
+    layers.legend(ui, Layer::Airfields, "Friendly / enemy airfield", |p, c0| {
+        for (dx, col) in [(-4.5, FRIENDLY_BLUE), (5.0, MISSILE_RED)] {
+            p.rect_stroke(
+                egui::Rect::from_center_size(c0 + egui::vec2(dx, 0.0), egui::vec2(7.0, 7.0)),
+                0.0,
+                egui::Stroke::new(1.5, col),
+                egui::StrokeKind::Middle,
+            );
+        }
+    });
+    layers.legend(ui, Layer::Cities, "Friendly / enemy city", |p, c0| {
+        p.circle_stroke(c0 - egui::vec2(4.0, 0.0), 3.5, egui::Stroke::new(1.5, FRIENDLY_BLUE));
+        p.circle_stroke(c0 + egui::vec2(5.0, 0.0), 3.5, egui::Stroke::new(1.5, MISSILE_RED));
     });
 }
 
@@ -1708,8 +1714,8 @@ fn route_editor(
     // The SAM sites are the editor's own rings.
     let mut pic = super::picture::picture(st, &sim);
     pic.sams.clear();
-    let overlay = |painter: &egui::Painter, view: &MapView| {
-        for p in &st.places {
+    let draw = |painter: &egui::Painter, view: &MapView, layers: &MapLayers| {
+        for p in st.places.iter().filter(|p| shows_place(layers, p)) {
             let col = match p.owner {
                 Side::Blue => FRIENDLY_BLUE,
                 Side::Red => MISSILE_RED,
@@ -1730,7 +1736,11 @@ fn route_editor(
                 col,
             );
         }
-        super::picture::draw(painter, view, &pic, false);
+        super::picture::draw(painter, view, &pic, layers);
+    };
+    let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
+        place_legend(ui, layers);
+        super::picture::legend(ui, layers, None);
     };
     crate::planner::route_panel(
         ui,
@@ -1738,7 +1748,7 @@ fn route_editor(
         m,
         route,
         &known,
-        Some(&overlay),
+        Some(crate::planner::Overlay { draw: &draw, legend: &legend }),
         size,
         !locked,
         |ui| {
