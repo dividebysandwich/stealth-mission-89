@@ -82,6 +82,7 @@ mod sky;
 mod sound;
 mod stage;
 mod station;
+mod sunbeams;
 mod tacview;
 mod tacview_real_time;
 mod terrain;
@@ -283,6 +284,7 @@ fn main() {
             flashes::FlashesPlugin,
             barrage::BarragePlugin,
             goggles::GogglesPlugin,
+            sunbeams::SunbeamsPlugin,
         ))
         .add_plugins((
             sky::SkyPlugin,

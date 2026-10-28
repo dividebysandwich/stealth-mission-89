@@ -195,6 +195,22 @@ impl WeatherState {
         Vec4::new(mist, top, shadows, self.mist_ground.unwrap_or(0.0))
     }
 
+    /// The stratus deck as drawn: its coverage (percent) and field threshold 0..1 (covered
+    /// where `Weather::stratus_field` reaches it).
+    pub fn drawn_deck(&self) -> (f32, f32) {
+        (self.cover[1], self.stratus_threshold)
+    }
+
+    /// Storm cells built up, 0..1.
+    pub fn storm(&self) -> f32 {
+        self.storm
+    }
+
+    /// The ground under the aircraft (metres), as the mist lies on it.
+    pub fn ground_m(&self) -> f32 {
+        self.mist_ground.unwrap_or(0.0)
+    }
+
     /// The weather of a moment of the forecast.
     fn set(&mut self, now: Now) {
         self.weather = now.weather;
