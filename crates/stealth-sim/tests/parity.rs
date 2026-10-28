@@ -125,6 +125,7 @@ fn scripted(sim: &mut Sim, m: &Mission, seed: u32, frames: usize, trace: &mut St
         p.heading = h as u16;
         alt = (alt + 20).min(if f < frames * 2 / 3 { 3000 } else { 300 });
         p.altitude = alt as u16;
+        p.height = alt as u16;
         p.velocity = 450 * 27;
         p.on_ground = false;
         p.gear_up = true;
@@ -271,34 +272,34 @@ fn campaign_run() -> u64 {
 #[test]
 fn single_player_parity() {
     const GOLDEN: &[u64] = &[
-        0x75d323757b600099,
-        0x8cd94c2493d44bfa,
-        0xed0f46babccae8b9,
-        0x9dc4adad296112ca,
-        0x17b48872f6b7fb43,
-        0xd9589cb9ebd620d3,
-        0xf008822ad3944d8f,
-        0x2b15949d97eae06f,
-        0xa8151a3f09b4ebc1,
-        0xe0b41d6a4c0dc53b,
-        0x66a8745821657dad,
-        0x6126484b3d975a53,
-        0x8f18ce379bcd021b,
-        0xd4680c13d828adba,
-        0xd48020729e0490a3,
-        0x1d6ff06a7a75e5c8,
-        0x87c10b0e6b70647c,
-        0x3e08d53a630f1aec,
-        0x42a5a8cf53ce794c,
-        0x55a52241cbbea825,
-        0xb07ef7b469f7274d,
-        0xcf698fe55e943fe3,
-        0x43e021b9ab3ffe6c,
-        0xdf6c4596b50461be,
-        0x6992f00458d6b417,
-        0x45c07d32bea1b809,
-        0xf1ea9400bc82c911,
-        0x73555c4474926277,
+        0xfaf86ffd70ca2aad,
+        0xab06b00865a47428,
+        0x07cb6bda362b5253,
+        0xdc17849ec9fb6814,
+        0xde051393e14a7c30,
+        0x09c422ed7b5ec098,
+        0x4acc16ff694e5f5a,
+        0x28790f4cc9f7f070,
+        0x43ef40ea0b0c5e8a,
+        0x0eeb375e11f4df7c,
+        0xa714ba74e1db4431,
+        0x0fff03a3ae4807eb,
+        0x6d84a2dbd0590a9d,
+        0x7c63dae594e7abab,
+        0xf7e8630ce26776f6,
+        0xd259893765c2a149,
+        0x946e6c682538b69a,
+        0x533dc3416c37eb94,
+        0x7bc79435029129b7,
+        0x070355396f6cfaec,
+        0xcf2e6f2cdd939b39,
+        0x1597fa1417ab90a2,
+        0xf0eb40f259764733,
+        0xadcb467980b782b6,
+        0x2e61491d7d66e1d2,
+        0xb491e7019304c349,
+        0xad8bcd948951508a,
+        0xeab0dc24fe45ce76,
     ];
     let mut got = missions();
     got.push(campaign_run());

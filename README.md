@@ -1,6 +1,6 @@
 # Stealth Mission 89
 
-<img width="1593" height="949" alt="screenshot_01" src="https://github.com/user-attachments/assets/c8d5908d-0e43-4ea8-ab84-8e00a97883db" />
+<img width="1200" height="766" alt="Stealth Mission 89 screenshots" src="frontpage.gif" />
 
 A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 
@@ -22,7 +22,7 @@ To play right now, you can either:
 
 ## Features
 * **Play in the browser** right on [stealth-mission.com](https://stealth-mission.com) or **locally** [on your PC](https://github.com/dividebysandwich/stealth-mission-89/releases)
-* **Dynamic realtime campaign:** a living war with materiel and dynamic missions, strikes, CSAR, CAP, escort, etc.
+* **Dynamic realtime campaign:** a living war with materiel and dynamic missions, strikes, CSAR, CAP, escort, resupply etc.
 * **Career mode:** pilot records, tours of duty, ranks and medals
 * **Multiplayer:** coop campaigns for up to 64 players, hosted in-game or on a **dedicated server**
 * **Live map** of every public server's campaign on the [server list](https://sm-master.playspoon.com)
@@ -33,7 +33,9 @@ To play right now, you can either:
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
-* **F-117A, F-16C, UH-60A and AH-1Z**, each with its own cockpit and flight model
+* **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar)
+* **Flyable Helicopters:** UH-60A (Logistics and Insertions), AH-1Z (with HMD), RAH-66 Comanche (stealth, internal bays)
+* **Controllable Air Defenses:** Gepard (manual and radar-guided), Patriot (radar)
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
 * **Classic modes:** DOS era flight model, cockpit, HUD and rendering, switchable on their own
 
@@ -65,13 +67,8 @@ board, alone or with up to 64 players in coop.
 Eastern Ukraine, Crimea and southern Russia (about 31-42.6 E, 44-52 N), with the front line of 2026
 from the Sumy and Kharkiv border areas through Kupiansk, Lyman, Kostiantynivka, Pokrovsk and
 Huliaipole to the Dnipro and down the river to Kherson. You fly from Ukrainian bases (Myrhorod,
-Poltava, Dnipro, ...) against the occupied areas, Crimea and the Russian bases behind them; the
+Poltava, Dnipro, ...) against the occupied areas, Crimea and various Russian bases; the
 missions follow Central Europe's rules (`--theater ukraine`).
-- Real towns and cities: Soviet panel-block districts with private houses around them; towns at
-  and behind the front lie in ruins, and the Donbas mining towns have their slag heaps.
-- The steppe is farmland: autumn fields (stubble, ploughland, winter wheat) with shelterbelts.
-- The Zaporizhzhia, South Ukraine, Rostov, Kursk and Novovoronezh nuclear power plants.
-- Fires and smoke burn along the whole front line and in the ruined towns.
 
 ## Running
 ```sh
@@ -92,7 +89,7 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 | `--weather random\|clear\|scattered\|broken\|overcast\|storm` | the mission's weather (default: rolled from the seed, odds by theater) |
 | `--cloud-cover <percent>` | coverage of the weather's main cloud layer (default: rolled) |
 | `--modern` | modern rendering touches (smooth gradients and haze, subtle shading, MSAA) |
-| `--aircraft f117\|f16\|uh60\|ah1z` | the aircraft to fly: the F-117A (default), the F-16C, which has its own cockpit (with an RWR scope instead of the radar bar graph) and flight model, the UH-60A Black Hawk helicopter (cyclic and collective; the throttle controls move the collective; its missions are insertions: land near the targets), or the AH-1Z Viper attack helicopter (a turret gun and Hellfires that follow the targeting pod, AIM-9s; it flies the normal missions) |
+| `--aircraft f117\|f16\|uh60\|ah1z\|rah66` | the aircraft to fly: the F-117A (default), the F-16C, which has its own cockpit (with an RWR scope instead of the radar bar graph) and flight model, the UH-60A Black Hawk helicopter (cyclic and collective; the throttle controls move the collective; its missions are insertions: land near the targets), the AH-1Z Viper attack helicopter (a turret gun and Hellfires that follow the targeting pod, AIM-9s; it flies the normal missions), or the RAH-66 Comanche stealth helicopter (Hellfires or Stingers in bays whose doors open as it fires, retractable wheels, nearly invisible to radar when slow or hovering) |
 | `--classic-avionics` | DOS era MFD pages instead of the F-16 style formats (HSD, HARM, targeting pod, map, stores on either MFD, with a slewable cursor) |
 | `--classic-hud` | DOS era low-resolution HUD instead of the green F-16 style one |
 | `--classic-cockpit` | DOS era panel arrangement with 77x60 displays, instead of the modern panel (high-resolution map and displays, labelled MFD bezel buttons); F-117A only |

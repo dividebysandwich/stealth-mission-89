@@ -359,3 +359,190 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
     assert!(host.state.supply_requests.iter().all(|r| !matches!(r.state, SupplyState::Ai { .. })));
     assert!(host.state.supply_requests.is_empty());
 }
+
+/// An unmanned Patriot battery refills its empty launchers from its stockpile by itself: when
+/// the last missiles go, a resupply is ordered by itself (once), and goes on the board.
+#[test]
+fn an_empty_stockpile_orders_a_resupply() {
+    use stealth_campaign::{MissionKind, Objective};
+    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::station::SavedStock;
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.supply_requests.is_empty(), "{:?}", host.state.supply_requests);
+    let radar = (0..sim.aaa_units().len())
+        .find(|&k| sim.aaa_units()[k].kind == AaaKind::PatriotRadar && sim.aaa_blue(k))
+        .expect("a friendly Patriot battery");
+    let r = sim.aaa_units()[radar];
+    // One missile left in the stockpile, one launcher fired empty.
+    sim.restore_stocks(&[SavedStock { x: r.x, y: r.y, patriot: true, stock: 1 }]);
+    let l = sim.battery_launchers(radar)[0];
+    sim.aaa_units_mut()[l].rounds = 0;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.supply_requests.is_empty());
+    // The battery's own refill takes the last one.
+    host.refills(&mut sim, 1.0);
+    host.refills(&mut sim, stealth_sim::station::REFILL_SECONDS);
+    assert_eq!(sim.stockpile(radar), 0);
+    let ev = host.tick(&mut sim, 0.1, &[]);
+    assert!(ev.iter().any(|e| matches!(e,
+        HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) if m.contains("out of missiles"))));
+    assert_eq!(host.state.supply_requests.len(), 1);
+    let q = host.state.supply_requests[0].clone();
+    assert_eq!((q.aaa as usize, q.by, q.patriot), (radar, None, true));
+    // Once.
+    host.tick(&mut sim, 0.1, &[]);
+    assert_eq!(host.state.supply_requests.len(), 1);
+    host.state.board_at = f64::MIN;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(
+        host.state.board.iter().any(|o| o.kind == MissionKind::Resupply
+            && o.objective == Objective::Resupply { request: q.id })
+    );
+}
+
+/// A sortie's briefing names the base it flies from and back to (an airfield or a carrier), leaves
+/// now and plans the fuel for its own route, in every theater.
+#[test]
+fn a_sortie_briefs_its_own_base_and_fuel() {
+    use stealth_campaign::{Progress, SiteKind, Sortie, WorldView};
+    let data = theater::game_data().unwrap();
+    let mut carriers = 0;
+    for code in theater::codes() {
+        let mut host = Host::new(setup(&code), &data, Rules::default()).unwrap();
+        host.state.tick(0.1, &WorldView::default(), &[]);
+        let generated = &host.mission;
+        for base in host.state.player_bases() {
+            let site = host.state.site(base).unwrap();
+            carriers += (site.kind == SiteKind::Carrier) as usize;
+            for offer in &host.state.board {
+                let s = Sortie {
+                    id: 1,
+                    base,
+                    offer: offer.clone(),
+                    aircraft: Default::default(),
+                    started: 0.0,
+                    progress: Progress::default(),
+                };
+                let m = stealth_host::glue::sortie_mission(generated, &host.state, &s);
+                let b = &m.briefing;
+                let what = format!("{code} {} from {}", offer.title, site.name);
+                assert_eq!(
+                    (m.takeoff.name.as_str(), m.landing.name.as_str()),
+                    (&*site.name, &*site.name)
+                );
+                for l in [&b.base_date_line, &b.depart_line, &b.land_line] {
+                    assert!(l.contains(&site.name), "{what}: {l:?}");
+                    for old in [&generated.takeoff.name, &generated.landing.name] {
+                        assert!(*old == site.name || !l.contains(old.as_str()), "{what}: {l:?}");
+                    }
+                }
+                let p = &m.waypoints;
+                let km =
+                    |a: (i32, i32), b: (i32, i32)| ((a.0 - b.0) as f64).hypot((a.1 - b.1) as f64);
+                let mut length = 0.0;
+                let mut at = (site.x, site.y);
+                for w in p {
+                    length += km(at, (w.x, w.y));
+                    at = (w.x, w.y);
+                }
+                assert_eq!(m.route_length, (length / 64.0) as i16, "{what}");
+                assert_eq!(m.fuel_lbs, 12 * m.route_length, "{what}");
+                assert!(b.fuel_line.contains(&m.fuel_lbs.to_string()), "{what}: {:?}", b.fuel_line);
+                assert_eq!((p[3].x, p[3].y), (site.x, site.y), "{what}: lands at home");
+                let secs = (host.state.sky_hours().rem_euclid(24.0) * 3600.0) as i32;
+                let now = format!("{:02}:{:02}", secs / 3600, secs / 60 % 60);
+                assert_eq!(m.time.depart, now, "{what}");
+                assert!(b.depart_line.contains(&now), "{what}: {:?}", b.depart_line);
+                let start = m.time.base_hour as i32 * 3600 + m.time.tod_ticks * 2;
+                assert!((secs - start).abs() <= 1, "{what}: starts at {start} s, now {secs} s");
+            }
+        }
+    }
+    assert!(carriers > 0, "no carrier sorties tested");
+}
+
+/// A player designates a Gepard site near a friendly airfield; nobody flies its cargo, so an AI
+/// helicopter lands it on the helipad, and a friendly Gepard stands beside the pad.
+#[test]
+fn an_ai_helicopter_supplies_a_designated_gepard_site() {
+    use stealth_campaign::{CampaignEvent, MissionKind, Side};
+    use stealth_sim::aaa::AaaKind;
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    let me = PlayerId(0);
+    let aaa = stealth_host::glue::world_view(&sim).aaa;
+    let base = host
+        .state
+        .places
+        .iter()
+        .find(|p| p.owner == Side::Blue && p.airfield.is_some())
+        .map(|p| (p.x, p.y))
+        .unwrap();
+    let (x, y) = (1..60)
+        .flat_map(|r| (0..16).map(move |k| (r, k)))
+        .map(|(r, k)| {
+            let t = k as f64 / 16.0 * std::f64::consts::TAU;
+            (
+                base.0 + (t.cos() * r as f64 * 32.0) as i32,
+                base.1 + (t.sin() * r as f64 * 32.0) as i32,
+            )
+        })
+        .find(|&(x, y)| host.state.deploy_refusal(x, y, false, &aaa).is_none())
+        .expect("a free spot");
+    // Not on a unit.
+    let u = sim.aaa_units().iter().find(|u| !u.destroyed).copied().unwrap();
+    assert!(host.designate_site(&mut sim, me, u.x, u.y + 3, false).is_err());
+    host.designate_site(&mut sim, me, x, y, false).unwrap();
+    host.state.board_at = f64::MIN;
+    host.tick(&mut sim, 0.1, &[]);
+    assert!(host.state.board.iter().any(|o| o.kind == MissionKind::Logistics));
+    // Nobody took it for long enough.
+    host.state.deployments[0].open_since = -1e9;
+    let n = sim.aaa_units().len();
+    let (mut launched, mut built) = (false, false);
+    for _ in 0..15 * 1200 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut ev2 = host.take_sim_events(&mut sim);
+        ev2.extend(ev);
+        for e in host.tick(&mut sim, 1.0 / 15.0, &ev2) {
+            match e {
+                HostEvent::Campaign(CampaignEvent::CargoLaunched { .. }) => launched = true,
+                HostEvent::Campaign(CampaignEvent::SiteBuilt { .. }) => built = true,
+                _ => {}
+            }
+        }
+        if built {
+            break;
+        }
+    }
+    assert!(launched && built, "{launched} {built}");
+    let spot = host.state.deployments[0].unit_at();
+    let k = (n..sim.aaa_units().len())
+        .find(|&k| (sim.aaa_units()[k].x, sim.aaa_units()[k].y) == spot)
+        .expect("the new unit");
+    let g = sim.aaa_units()[k];
+    assert_eq!(g.kind, AaaKind::Gepard);
+    assert!(sim.aaa_blue(k));
+    assert!(!host.state.board.iter().any(|o| o.kind == MissionKind::Logistics));
+    // A new simulation (a loaded save) has it again.
+    let mut again = host.new_sim(&sim_data);
+    let mut host2 = Host::resume(host.state.clone(), &data, Rules::default()).unwrap();
+    host2.begin(&mut again);
+    assert!((0..again.aaa_units().len()).any(|k| {
+        let u = again.aaa_units()[k];
+        u.kind == AaaKind::Gepard && again.aaa_blue(k) && (u.x, u.y) == (g.x, g.y)
+    }));
+}

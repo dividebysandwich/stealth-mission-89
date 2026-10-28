@@ -136,8 +136,10 @@ pub struct Combat {
     /// Campaign: the simulation's events (all pilots') since the campaign last took them
     /// (`campaign/mod.rs`).
     pub campaign_events: Vec<stealth_sim::PilotEvent>,
-    /// Campaign: the sky's clock (seconds of the day), replacing the mission clock.
+    /// Campaign: the sky's clock (seconds of the day), replacing the mission clock, and its
+    /// seconds per second.
     pub sky_seconds: Option<f32>,
+    pub sky_ratio: f32,
     /// Things destroyed on the ground in the steps of this frame (they burn, fires.rs).
     pub kills: Vec<Kill>,
     /// Map position of the falling wreck (it burns where it lands).
@@ -280,15 +282,29 @@ fn start_combat(
     let external_stores = !settings.aircraft.spec().bomb_bay;
     let helicopter = settings.aircraft.spec().helicopter;
     let gunship = settings.aircraft.spec().turret;
+    let tornado = settings.aircraft == crate::aircraft::AircraftKind::Tornado;
+    let a10 = settings.aircraft == crate::aircraft::AircraftKind::A10;
+    let comanche = settings.aircraft == crate::aircraft::AircraftKind::RAH66;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
-        Some(c) => SimOptions { external_stores, helicopter, gunship, ..c.rules.sim_options() },
+        Some(c) => SimOptions {
+            external_stores,
+            helicopter,
+            gunship,
+            tornado,
+            a10,
+            comanche,
+            ..c.rules.sim_options()
+        },
         None => SimOptions {
             landing,
             prior_damage,
             external_stores,
             helicopter,
             gunship,
+            tornado,
+            a10,
+            comanche,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -332,25 +348,25 @@ fn start_combat(
     *clock = MissionClock {
         start_seconds: m.time.base_hour as f32 * 3600.0 + m.time.tod_ticks as f32 * 2.0,
         elapsed: Some(0.0),
+        rate: 1.0,
     };
     // The route from the mission planner, else the mission's own waypoints.
     let route =
         route.filter(|r| r.fits(m)).map(|r| r.clone()).unwrap_or_else(|| PlannedRoute::of(m));
-    *wps = Waypoints {
-        points: route
+    *wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     let names = m.world.names.clone();
     commands.insert_resource(Combat {
         prior_tiles,
         campaign_events: Vec::new(),
         sky_seconds: None,
+        sky_ratio: 1.0,
         prev_flights: sim.flights().to_vec(),
         prev_proj: *sim.projectiles(),
         prev_remote: remote_missiles(&sim),
@@ -424,6 +440,7 @@ fn stop_combat(
 }
 
 /// Keys -> one-shot simulation commands, collected until the next frame.
+#[allow(clippy::too_many_arguments)]
 fn collect_commands(
     mut actions: MessageReader<ActionEvent>,
     mut locks: MessageReader<crate::avionics::LockRequest>,
@@ -432,6 +449,7 @@ fn collect_commands(
     mut accel: ResMut<TimeAccel>,
     settings: Res<crate::settings::Settings>,
     mut msgs: ResMut<HudMessages>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let helicopter = settings.aircraft.spec().helicopter;
     let combat = &mut *combat;
@@ -450,6 +468,8 @@ fn collect_commands(
     for ActionEvent(a) in actions.read() {
         match a {
             Action::SelectWeapon => c.next_bay = true,
+            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's.
+            Action::FireWeapon if manning.is_some() => {}
             Action::FireWeapon => c.fire = true,
             Action::Flare => c.flare = true,
             Action::Chaff => c.chaff = true,
@@ -577,13 +597,15 @@ pub struct PlayerCollision(pub bool);
 /// (metres): less than the half span or the rotor's radius, so tight landing spots stay usable.
 const SCENERY_REACH: f64 = 4.0;
 
-/// Tests the pilot's eye (not the camera point) against the models' plane hulls of visible tile
-/// objects, and the aircraft against the generated scenery.
+/// Tests the pilot's eye (not the camera point, which the free and weapon views fly about)
+/// against the models' plane hulls of visible tile objects, and the aircraft against the
+/// generated scenery.
 #[allow(clippy::type_complexity)]
 fn detect_collision(
     mut collision: ResMut<PlayerCollision>,
-    player: Query<&GlobalTransform, With<crate::camera::HeadAnchor>>,
-    aircraft: Query<&WorldPos, With<crate::flight::Player>>,
+    settings: Res<crate::settings::Settings>,
+    origin: Res<crate::world::FloatingOrigin>,
+    aircraft: Query<(&Aircraft, &WorldPos), With<crate::flight::Player>>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     mut last: Local<Option<crate::scenery::Obstacle>>,
     hulls: Query<(
@@ -596,7 +618,8 @@ fn detect_collision(
     tile_roots: Query<(), With<crate::world::TileObject>>,
 ) {
     collision.0 = false;
-    if let (Some(scenery), Ok(pos)) = (scenery, aircraft.single()) {
+    let Ok((a, pos)) = aircraft.single() else { return };
+    if let Some(scenery) = scenery {
         let p = pos.0;
         let hit = scenery.obstacle(
             bevy::math::DVec2::new(p.x, -p.z),
@@ -612,8 +635,7 @@ fn detect_collision(
             return;
         }
     }
-    let Ok(p) = player.single() else { return };
-    let p = p.translation();
+    let p = (pos.0 - origin.origin).as_vec3() + a.orientation * settings.cockpit_eye();
     for (hull, lod, shown, tf, vis) in &hulls {
         if !vis.get() || !shown.main || !tile_roots.contains(lod.root) {
             continue;
@@ -977,10 +999,16 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
     let r = std::f64::consts::TAU / 65536.0;
     let (h, pitch) = ((v.heading as u16) as f64 * r, (v.pitch as i16) as f64 * r);
     let dir = DVec3::new(h.sin() * pitch.cos(), pitch.sin(), -h.cos() * pitch.cos());
-    let name = if p.gunship {
+    let name = if p.comanche {
+        "RAH-66"
+    } else if p.gunship {
         "AH-1Z"
     } else if p.helicopter {
         "UH-60A"
+    } else if p.tornado {
+        "Tornado"
+    } else if p.a10 {
+        "A-10"
     } else if p.external_stores {
         "F-16"
     } else {
@@ -1030,15 +1058,11 @@ fn on_hud(p: Option<(i32, i32)>) -> Option<(i32, i32)> {
     p.filter(|&(x, y)| (0..320).contains(&x) && (0..91).contains(&y))
 }
 
-/// Tracking-camera zoom shift (focal 256 << z) for a range in map units.
-/// ASSUMED: the target stays a few pixels to a
-/// quarter of the MFD wide, i.e. zoom up one step per doubling of the range beyond 2 km.
+/// Tracking-camera zoom step (`mfd::CAM_ZOOMS`) for a range in map units.
+/// ASSUMED: the target stays a few pixels to a quarter of the MFD wide, i.e. the magnification
+/// grows with the range beyond 1 km, up to the last step.
 pub fn camera_zoom(range: i32) -> u8 {
-    let mut z = 0u8;
-    while z < 6 && range >= (32 << z) {
-        z += 1;
-    }
-    z
+    crate::mfd::cam_zoom_for(range as f32 / 16.0)
 }
 
 /// Sim frames between launch zone searches (flying the missiles out takes a while).
@@ -1294,7 +1318,9 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
     msgs.training = sim.invulnerable();
     msgs.accel = accel.on;
     match combat.sky_seconds {
-        Some(s) => *clock = MissionClock { start_seconds: 0.0, elapsed: Some(s) },
+        Some(s) => {
+            *clock = MissionClock { start_seconds: 0.0, elapsed: Some(s), rate: combat.sky_ratio }
+        }
         None => clock.elapsed = Some(sim.mission_tick() as f32),
     }
 
@@ -1524,6 +1550,16 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         })
         .collect();
     emitters.heard = heard;
+    emitters.pulse = sim.radar_arc().filter(|a| a.frames_left > 0).map(|a| {
+        let source = if a.source >= 0 {
+            stealth_sim::EmitterSource::Site(a.source as usize)
+        } else {
+            stealth_sim::EmitterSource::Aircraft((-1 - a.source) as usize)
+        };
+        // The sweeps colour the arc yellow (sites) or white (aircraft) when the signature and
+        // the signal pass 100.
+        (source, a.frames_left, matches!(a.colour, 15 | 17))
+    });
     let done = [o.primary_done, o.secondary_done];
     for (k, t) in sim.target_slots().iter().enumerate() {
         if done[k] || !matches!(t.mission_type, 1..=3 | 9) {

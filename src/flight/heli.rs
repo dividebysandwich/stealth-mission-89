@@ -17,6 +17,10 @@
 //!   right (the rotor turns anticlockwise seen from above) beyond the tail rotor's rigging, so
 //!   raising the collective needs left pedal. Past the torque limit the rotor speed droops. Out
 //!   of fuel, the rotor keeps turning only in a descent with the collective down.
+//! - Autopilot (`Aircraft::autopilot`): flies to the waypoint at the speed it was engaged at
+//!   (within `AP_KNOTS`) and holds the altitude it was engaged at with the collective; slow, it
+//!   turns on the pedals before it picks up speed. The cyclic, the collective keys or the lever
+//!   moved take it out.
 //! - Ground: wheels anywhere flat; touching down too hard, too fast or tilted is a crash (none
 //!   with the "no crashes" landing skill). A helicopter needs no runway: the base it lands at is
 //!   its whole airfield (`landing_corridor`).
@@ -27,7 +31,7 @@
 use bevy::prelude::*;
 
 use super::{
-    Aircraft, FlightConstants, FlightControls, FlightEnd, Theater, WorldPos, bevy_to_wu,
+    Aircraft, FlightConstants, FlightControls, FlightEnd, Theater, WorldPos, bam, bevy_to_wu,
     ground_contact, stick_released, wu_to_bevy,
 };
 
@@ -93,6 +97,9 @@ pub struct Rotor {
     pub max_sink: f32,
     pub max_tilt: f32,
     pub max_knots: f32,
+    /// Retractable wheels (else fixed gear): lowered they add this fraction to the fore-aft
+    /// drag, and touching down with them up wrecks the helicopter.
+    pub retract_gear: Option<f32>,
 }
 
 impl Rotor {
@@ -127,6 +134,7 @@ impl Rotor {
         max_sink: 15.0,
         max_tilt: 0.26,
         max_knots: 45.0,
+        retract_gear: None,
     };
 
     /// AH-1Z: lighter and more powerful for its size, quicker on the cyclic and pedals, a
@@ -146,6 +154,19 @@ impl Rotor {
         rotor_lag: 1.2,
         fuel_burn: 0.3,
         ..Rotor::UH60
+    };
+
+    /// RAH-66: the AH-1Z's power on a slimmer, smoother airframe with its wheels tucked away and
+    /// a five-blade bearingless rotor that stalls later (the level speed tops out near 195 kt),
+    /// but heavier on the cyclic: it rolls and pitches more slowly. The shrouded fan keeps the
+    /// pedals as quick.
+    pub const RAH66: Rotor = Rotor {
+        pitch_accel: 2.6,
+        roll_accel: 5.6,
+        stall_knots: (190.0, 240.0),
+        drag: Vec3::new(2.6e-4, 0.0, 3.3e-5),
+        retract_gear: Some(0.12),
+        ..Rotor::AH1Z
     };
 
     /// Collective that hovers out of ground effect, in still air.
@@ -171,6 +192,20 @@ pub(super) struct State {
     /// Auto trim: the pitch and bank (rad) the cyclic was released at.
     trim_hold: (Option<f32>, Option<f32>),
     init: bool,
+    /// The autopilot's, while it is engaged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ap: Option<Autopilot>,
+}
+
+/// The autopilot's speed and the integrators of its pitch attitude and pedals.
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
+struct Autopilot {
+    /// Speed it flies at (ft/s).
+    speed: f32,
+    /// The collective lever where it was engaged (none on the keys).
+    lever: Option<f32>,
+    pitch: f32,
+    pedal: f32,
 }
 
 impl State {
@@ -212,6 +247,70 @@ const WHEEL_YAW_GRIP: f32 = 2.0;
 /// Collective travel per second with the keys held (percent).
 pub const COLLECTIVE_RATE: f32 = 40.0;
 
+/// Autopilot: the slowest it flies to the waypoint, and how far under the retreating blade
+/// stall it stays (knots).
+const AP_KNOTS: (f32, f32) = (80.0, 30.0);
+/// Cyclic deflection and collective lever travel that take the autopilot out.
+const AP_STICK: f32 = 0.06;
+const AP_LEVER: f32 = 0.05;
+
+/// Engages the autopilot (airborne only): it holds the altitude and the speed (within
+/// `AP_KNOTS`).
+pub(super) fn engage_autopilot(a: &mut Aircraft, r: &Rotor) {
+    if a.on_ground || !a.heli.init {
+        return;
+    }
+    let knots =
+        (a.heli.vel.with_y(0.0).length() / KNOT).clamp(AP_KNOTS.0, r.stall_knots.0 - AP_KNOTS.1);
+    // Above 0, which is off.
+    a.autopilot_alt = a.view_z().max(1.0);
+    a.heli.ap = Some(Autopilot { speed: knots * KNOT, lever: None, pitch: 0.0, pedal: 0.0 });
+}
+
+/// The autopilot's cyclic (roll, pitch) and pedals, and its collective into `set_thrust` (0..1
+/// returned): towards the waypoint's bearing at its speed, at its altitude.
+fn autopilot(a: &mut Aircraft, ap: &mut Autopilot, dt: f32) -> (f32, f32, f32, f32) {
+    let (h, p, b) = a.euler();
+    let rates = a.heli.rates;
+    let vel = a.heli.vel;
+    let vb = a.orientation.inverse() * vel;
+    let fwd = Vec3::new(h.sin(), 0.0, -h.cos());
+    let along = vel.dot(fwd);
+    let across = vel.dot(Vec3::new(h.cos(), 0.0, h.sin()));
+    let e = (bam(a.waypoint_bearing) - h + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
+        - std::f32::consts::PI;
+    // Turns by bank at speed, on the pedals slow.
+    let fast = smoothstep(25.0, 50.0, along / KNOT);
+    // Slow and off the bearing, it turns before it picks up speed.
+    let speed = ap.speed * fast.max((1.0 - e.abs() / 0.5).clamp(0.0, 1.0));
+
+    // Pitch: the attitude for the speed (its integrator the trim attitude), the cyclic onto it
+    // (the stick trim takes out what holds it there, against flapback).
+    let err = along - speed;
+    ap.pitch = (ap.pitch + 0.0015 * err * dt).clamp(-0.25, 0.1);
+    let pitch_cmd = (ap.pitch + 0.006 * err).clamp(-0.3, 0.15);
+    a.move_trim(Vec2::new(0.0, 0.8 * (pitch_cmd - p) * dt));
+    let pitch = a.stick_trim.y + 3.0 * (pitch_cmd - p) - 1.0 * rates.x;
+
+    // Roll: banked towards the bearing at speed (up to 25 degrees), slow the drift sideways
+    // stopped.
+    let bank_cmd = (1.5 * e).clamp(-0.44, 0.44) * fast - 0.01 * across * (1.0 - fast);
+    a.move_trim(Vec2::new(0.8 * (bank_cmd - b) * dt, 0.0));
+    let roll = a.stick_trim.x + 3.0 * (bank_cmd - b) + 0.5 * rates.z;
+
+    // Pedals: onto the bearing slow, the sideslip out at speed; the integrator takes the torque.
+    let yaw_err = (1.0 - fast) * (2.0 * e).clamp(-1.0, 1.0) + fast * 0.04 * vb.x;
+    ap.pedal = (ap.pedal + 0.6 * yaw_err * dt).clamp(-0.6, 0.6);
+    let pedal = ap.pedal + yaw_err + (1.0 - fast) * rates.y;
+
+    // Collective: the climb rate towards the altitude, the collective integrating it.
+    let climb = (0.25 * (a.autopilot_alt - a.view_z())).clamp(-15.0, 15.0);
+    let err = climb - vel.y;
+    a.set_thrust = (a.set_thrust + 1.0 * err * dt).clamp(0.0, 100.0);
+    let c = (a.set_thrust / 100.0 + 0.015 * err).clamp(0.0, 1.0);
+    (roll, pitch, pedal, c)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn step(
     a: &mut Aircraft,
@@ -237,13 +336,40 @@ pub(super) fn step(
             a.set_thrust = (r.hover_collective() * 100.0).round();
         }
     }
-    let c = collective(a, controls, dt);
+    // --- autopilot: the cyclic, the collective keys or the lever moved take it out
+    if let Some(ap) = &mut a.heli.ap {
+        let lever = controls.throttle.map(|t| t.clamp(0.0, 1.0));
+        if ap.lever.is_none() {
+            ap.lever = lever;
+        }
+        let moved = lever.zip(ap.lever).is_some_and(|(l, l0)| (l - l0).abs() > AP_LEVER);
+        if controls.roll.abs() > AP_STICK
+            || controls.pitch.abs() > AP_STICK
+            || controls.collective_rate != 0.0
+            || moved
+            || a.on_ground
+            || a.damage.autopilot_failed
+            || !a.autopilot()
+        {
+            a.autopilot_alt = 0.0;
+        }
+    }
+    if !a.autopilot() {
+        a.heli.ap = None;
+    }
+    let mut ap = a.heli.ap;
+    let flown = ap.as_mut().map(|ap| autopilot(a, ap, dt));
+    a.heli.ap = ap;
+    let c = match flown {
+        Some((.., c)) => c,
+        None => collective(a, controls, dt),
+    };
 
     // --- controls (damaged controls add their bias, jitter while flying)
     // Auto trim: with the cyclic released, the trim takes out the pitch and roll rates, so the
     // attitude stays where it was left (against flapback at speed).
     let (roll_free, pitch_free) = stick_released(controls);
-    if a.auto_trim && !a.on_ground {
+    if a.auto_trim && !a.on_ground && flown.is_none() {
         let (_, p, b) = a.euler();
         let rates = a.heli.rates;
         let hold = &mut a.heli.trim_hold;
@@ -261,9 +387,18 @@ pub(super) fn step(
         a.heli.trim_hold.0 = None;
     }
     let (bias_roll, bias_pitch) = a.damage.control_bias(a.time);
-    let mut roll = (controls.roll + bias_roll + a.stick_trim.x).clamp(-1.0, 1.0);
-    let mut pitch = (controls.pitch + bias_pitch + a.stick_trim.y).clamp(-1.0, 1.0);
-    let pedal = controls.yaw.clamp(-1.0, 1.0);
+    let (roll, pitch, pedal) = match flown {
+        Some((roll, pitch, pedal, _)) => {
+            (roll + bias_roll, pitch + bias_pitch, pedal + controls.yaw)
+        }
+        None => (
+            controls.roll + bias_roll + a.stick_trim.x,
+            controls.pitch + bias_pitch + a.stick_trim.y,
+            controls.yaw,
+        ),
+    };
+    let (mut roll, mut pitch, pedal) =
+        (roll.clamp(-1.0, 1.0), pitch.clamp(-1.0, 1.0), pedal.clamp(-1.0, 1.0));
     if a.damage.stick_jitter > 0.0 && !a.on_ground {
         let j = a.damage.stick_jitter / 126.0;
         roll += rand::random_range(-j..j);
@@ -315,7 +450,8 @@ pub(super) fn step(
     let mut accel_body = Vec3::Y * thrust * G;
     // Drag along the body's side and fore-aft axes.
     accel_body.x -= r.drag_linear * vb.x + r.drag.x * vb.x * vb.x.abs();
-    accel_body.z -= r.drag_linear * vb.z + r.drag.z * vb.z * vb.z.abs();
+    let gear_drag = 1.0 + r.retract_gear.filter(|_| a.gear_down).unwrap_or(0.0);
+    accel_body.z -= r.drag_linear * vb.z + r.drag.z * gear_drag * vb.z * vb.z.abs();
     // The inflow: air flowing down through the disc costs thrust, up through it adds some. It
     // damps climbs and descents, and at speed the disc tilted forward meets the air from above:
     // pitching forward sinks unless the collective comes up (a flare lifts).
@@ -409,9 +545,15 @@ pub(super) fn step(
     tf.rotation = a.orientation;
 }
 
-/// A hard, fast or tilted touchdown wrecks the helicopter (not with the "no crashes" skill).
+/// A hard, fast or tilted touchdown, or one with the retractable wheels up, wrecks the
+/// helicopter (not with the "no crashes" skill).
 fn touchdown(a: &mut Aircraft, k: &FlightConstants, r: &Rotor, vel: Vec3, roll: f32) {
     if k.landing == 0 && !a.damage.fragile {
+        return;
+    }
+    if r.retract_gear.is_some() && !a.gear_down {
+        a.ended = Some(FlightEnd::Crash);
+        info!("helicopter crash: touched down with the wheels up");
         return;
     }
     let f = if k.landing >= 2 { 0.75 } else { 1.0 };
@@ -787,5 +929,200 @@ mod tests {
         );
         assert!(fast.knots() > 160.0 && fast.climb_rate > 0.0);
         assert!(faster.knots() < 230.0 && faster.climb_rate < 0.0);
+    }
+
+    /// Full collective with the nose held `deg` down from 120 kt, the wheels up: the speed and
+    /// climb rate after a minute.
+    fn full_collective(k: FlightConstants, deg: f32) -> Aircraft {
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 120.0 * 27.0;
+        a0.gear_down = false;
+        fly_as(k, a0, 60.0, 1, |a, c| {
+            pilot(a, c, 0.0);
+            let (_, p, _) = a.euler();
+            c.pitch = (-8.0 * (p + deg.to_radians()) - 1.0 * a.heli.rates.x).clamp(-1.0, 1.0);
+            c.throttle = Some(1.0);
+        })
+        .0
+    }
+
+    /// The bank after `secs` of full right cyclic from level flight at 120 kt.
+    fn bank_after(k: FlightConstants, secs: f32) -> f32 {
+        let hc = k.heli.unwrap().hover_collective();
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 120.0 * 27.0;
+        let (a, _) = fly_as(k, a0, secs, 1, |_, c| {
+            c.throttle = Some(hc);
+            c.roll = 1.0;
+        });
+        a.euler().2.abs()
+    }
+
+    #[test]
+    fn rah66_outruns_the_ah1z_but_turns_slower() {
+        let r = Rotor::RAH66;
+        let hc = r.hover_collective();
+        let (a, _) = fly_as(FlightConstants::rah66(), hovering(200.0), 10.0, 1, |a, c| {
+            c.throttle = Some(hc);
+            pilot(a, c, 0.0);
+        });
+        assert!((0.45..0.6).contains(&hc), "hover collective {hc}");
+        assert!(a.climb_rate.abs() < 2.0, "climb {}", a.climb_rate);
+        // 14 degrees nose down both still climb, the Comanche over 10 kt faster (level near 192 kt
+        // against the AH-1Z's 178); 16 degrees down it sinks, short of 215 kt.
+        let (viper, comanche) = (
+            full_collective(FlightConstants::ah1z(), 14.0),
+            full_collective(FlightConstants::rah66(), 14.0),
+        );
+        let top = full_collective(FlightConstants::rah66(), 16.0);
+        println!(
+            "14 deg: AH-1Z {:.0} kt climb {:.1}, RAH-66 {:.0} kt climb {:.1}; 16 deg: RAH-66 {:.0} kt climb {:.1}",
+            viper.knots(),
+            viper.climb_rate,
+            comanche.knots(),
+            comanche.climb_rate,
+            top.knots(),
+            top.climb_rate
+        );
+        assert!(comanche.knots() > viper.knots() + 10.0 && comanche.climb_rate > 0.0);
+        assert!(top.knots() < 215.0 && top.climb_rate < 0.0);
+        // Half a second of full cyclic banks it a fifth less than the AH-1Z.
+        let (viper, comanche) =
+            (bank_after(FlightConstants::ah1z(), 0.5), bank_after(FlightConstants::rah66(), 0.5));
+        println!(
+            "bank after 0.5 s: AH-1Z {:.1} deg, RAH-66 {:.1} deg",
+            viper.to_degrees(),
+            comanche.to_degrees()
+        );
+        assert!(comanche < viper * 0.9);
+    }
+
+    /// The autopilot, engaged in a hover with the waypoint off to the right and in cruise with
+    /// it behind: turns onto it, flies at its speed and holds the altitude.
+    #[test]
+    fn autopilot_flies_to_the_waypoint() {
+        for (name, k) in [
+            ("UH-60A", FlightConstants::uh60()),
+            ("AH-1Z", FlightConstants::ah1z()),
+            ("RAH-66", FlightConstants::rah66()),
+        ] {
+            let r = k.heli.unwrap();
+            for (case, knots, bearing) in [("hover", 0.0, 90.0f32), ("cruise", 120.0, 200.0)] {
+                let mut a0 = hovering(500.0);
+                a0.velocity = knots * 27.0;
+                a0.set_thrust = r.hover_collective() * 100.0;
+                a0.gear_down = false;
+                a0.waypoint_bearing = bearing / 360.0 * 65536.0;
+                // A step to start the model, then the autopilot.
+                let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+                engage_autopilot(&mut a, &r);
+                let mut worst = 0.0f32;
+                let mut t = 0.0;
+                let (a, _) = fly_as(k.clone(), a, 90.0, 1, |a, _| {
+                    t += 1.0 / 120.0;
+                    if t > 1.0 && t % 10.0 < 1.0 / 120.0 {
+                        let (h, p, b) = a.euler();
+                        println!(
+                            "  {name} {case} t {t:.0}: hdg {:.0} pitch {:.1} bank {:.1} {:.0} kt alt {:.0} coll {:.0}",
+                            h.to_degrees(),
+                            p.to_degrees(),
+                            b.to_degrees(),
+                            a.knots(),
+                            a.altitude,
+                            a.set_thrust
+                        );
+                    }
+                    worst = worst.max((a.altitude - 500.0).abs());
+                });
+                let (h, ..) = a.euler();
+                let off = (h.to_degrees() - bearing + 540.0).rem_euclid(360.0) - 180.0;
+                println!(
+                    "{name} {case}: heading off {off:.1}, {:.0} kt, alt {:.0} (worst {worst:.0})",
+                    a.knots(),
+                    a.altitude
+                );
+                assert!(a.autopilot() && a.ended.is_none(), "{name} {case}");
+                assert!(off.abs() < 3.0, "{name} {case}: heading off {off}");
+                assert!(worst < 60.0 && (a.altitude - 500.0).abs() < 10.0, "{name} {case}: alt");
+                let want = knots.clamp(AP_KNOTS.0, r.stall_knots.0 - AP_KNOTS.1);
+                assert!((a.knots() - want).abs() < 5.0, "{name} {case}: {} kt", a.knots());
+            }
+        }
+    }
+
+    /// Engaged low it holds that altitude, not climbing to a floor.
+    #[test]
+    fn autopilot_holds_a_low_altitude() {
+        let k = FlightConstants::rah66();
+        let r = k.heli.unwrap();
+        let mut a0 = hovering(60.0);
+        a0.set_thrust = r.hover_collective() * 100.0;
+        a0.gear_down = false;
+        let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+        engage_autopilot(&mut a, &r);
+        let mut worst = 0.0f32;
+        let (a, _) = fly_as(k, a, 60.0, 1, |a, _| worst = worst.max((a.altitude - 60.0).abs()));
+        println!("engaged at 60 ft: {:.0} kt alt {:.0} (worst {worst:.0})", a.knots(), a.altitude);
+        assert!(a.autopilot() && a.ended.is_none());
+        assert!(worst < 20.0 && (a.altitude - 60.0).abs() < 5.0, "alt {}", a.altitude);
+    }
+
+    /// The cyclic or the collective takes the autopilot out; on the ground it does not engage.
+    #[test]
+    fn autopilot_disengages() {
+        let k = FlightConstants::uh60();
+        let r = k.heli.unwrap();
+        let engaged = || {
+            let (mut a, _) = fly_as(k.clone(), hovering(500.0), 0.01, 1, |_, _| {});
+            engage_autopilot(&mut a, &r);
+            assert!(a.autopilot());
+            a
+        };
+        let (a, _) = fly_as(k.clone(), engaged(), 1.0, 1, |_, c| c.pitch = 0.3);
+        assert!(!a.autopilot(), "cyclic");
+        let (a, _) = fly_as(k.clone(), engaged(), 1.0, 1, |_, c| c.collective_rate = 1.0);
+        assert!(!a.autopilot(), "collective keys");
+        let mut lever = 0.6;
+        let (a, _) = fly_as(k.clone(), engaged(), 2.0, 1, |_, c| {
+            c.throttle = Some(lever);
+            lever += 0.001;
+        });
+        assert!(!a.autopilot(), "lever");
+        // Held still, the lever leaves it in.
+        let (a, _) = fly_as(k.clone(), engaged(), 2.0, 1, |_, c| c.throttle = Some(0.3));
+        assert!(a.autopilot(), "lever held");
+        let mut a = Aircraft::new_on_runway(2400.0);
+        a.heli = State::turning();
+        let (mut a, _) = fly_as(k.clone(), a, 0.01, 1, |_, _| {});
+        engage_autopilot(&mut a, &r);
+        assert!(!a.autopilot(), "on the ground");
+    }
+
+    /// The Comanche's wheels: lowered they slow it, a touchdown without them wrecks it.
+    #[test]
+    fn rah66_lands_on_its_wheels() {
+        let k = FlightConstants::rah66();
+        let hc = Rotor::RAH66.hover_collective();
+        let land = |gear: bool| {
+            let mut a0 = hovering(20.0);
+            a0.gear_down = gear;
+            fly_as(k.clone(), a0, 20.0, 1, |a, c| {
+                let hold = hc - 0.04 + (-4.0 - a.climb_rate) * 0.05;
+                c.throttle = Some(if a.on_ground { 0.0 } else { hold.clamp(0.0, 1.0) });
+                pilot(a, c, 0.0);
+            })
+            .0
+        };
+        let (down, up) = (land(true), land(false));
+        assert!(down.on_ground && down.ended.is_none(), "{:?}", down.ended);
+        assert_eq!(up.ended, Some(FlightEnd::Crash));
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 150.0 * 27.0;
+        let coast = |gear: bool| {
+            let mut a = a0.clone();
+            a.gear_down = gear;
+            fly_as(k.clone(), a, 5.0, 1, |_, c| c.throttle = Some(hc)).0.knots()
+        };
+        assert!(coast(true) < coast(false));
     }
 }

@@ -486,6 +486,8 @@ fn update_globals(
     images: Res<Assets<Image>>,
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
+    bursts: Res<crate::flashes::Bursts>,
+    theater: Option<Res<crate::world::Theater>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let Some(mut buf) = buffers.get_mut(&palette.globals) else { return };
@@ -518,7 +520,8 @@ fn update_globals(
     g.light_info.x = lighting.lights.len() as f32;
     g.light_info.y = lighting.daylight;
     let nvg = hud.is_some_and(|h| h.nvg);
-    g.light_info.z = nvg as u32 as f32;
+    // 2: with the goggles effect (halos round the lights, stronger grain).
+    g.light_info.z = if nvg { 1.0 + settings.effects.nvg as u32 as f32 } else { 0.0 };
     // `SM89_FLAT_SHADER=<bits>`: flat colours (measuring the fragment shader's cost): 1 all,
     // 2 the background sphere, 4 objects, 8 clouds and smoke.
     g.light_info.w =
@@ -536,6 +539,19 @@ fn update_globals(
     (g.clouds, g.weather, g.noise, g.stratus) = weather.globals(origin.origin);
     (g.bolt_a, g.bolt_b) = weather.bolt_light(origin.origin);
     g.storm_haze = weather.storm_haze();
+    (g.burst, g.burst_colour) = bursts.globals(origin.origin);
+    let theater = theater.as_ref().map_or("", |t| t.id.as_str());
+    g.atmos = weather.atmos(&settings, theater, lighting.daylight);
+    let sh = &weather.shadows;
+    (g.shadow_grid, g.shadow_far) = (sh.grid, sh.far);
+    (g.shadow_cells, g.shadow_clouds) = (sh.cells, sh.clouds);
+    g.retro = retro(&settings);
+    // The northern lights over the North Cape.
+    if settings.effects.night_sky {
+        g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);
+    }
+    // Specks on the open desert to judge the height by, as over water.
+    g.sky_fx.w = crate::weather::dry_theater(theater) as u32 as f32;
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);
@@ -546,6 +562,13 @@ fn update_globals(
     let (rw, rh) = crate::recon::render_size();
     (g.sky_night.z, g.sky_night.w) = (rw as f32, rh as f32);
     buf.set_data(g);
+}
+
+/// `Globals::retro` (and the cockpit's `CockpitShading::retro`): VGA colours, scanlines (on the
+/// desktop only).
+pub fn retro(settings: &Settings) -> Vec4 {
+    let e = &settings.effects;
+    Vec4::new(e.vga as u32 as f32, (e.scanlines && !settings.vr) as u32 as f32, 0.0, 0.0)
 }
 
 /// Detail level 0..3 and the model LOD range reduction 0..3. Alt-D first halves the models'

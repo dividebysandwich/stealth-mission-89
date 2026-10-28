@@ -52,7 +52,7 @@ impl Plugin for MfdPlugin {
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_mfd)
             .add_systems(
                 Update,
-                (mfd_keys, (build_map_geometry, render_map).chain())
+                (mfd_keys, edit_waypoints, (build_map_geometry, render_map).chain())
                     .chain()
                     .after(crate::flight::FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -66,13 +66,17 @@ pub const HIRES: (usize, usize) = (231, 180);
 /// Texels per `HIRES` pixel on the modern screens: the layout stays 231x180, lines, rings and
 /// the map are drawn this much finer.
 pub const HIRES_SCALE: usize = 2;
+/// Texels per `CLASSIC` pixel on the 3D cockpit's classic screens: each pixel is a block, so
+/// the filtering of the magnified screen only softens the block edges instead of blurring the
+/// whole picture.
+pub const CLASSIC_SCALE: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MfdSide {
     Left,
     Right,
-    /// The F-117A's third MFD, right of its large centre display (which is the right MFD):
-    /// the HSI page (`avionics::Format::Hsi`).
+    /// The F-117A's and the Tornado's third MFD, right of the centre display (which is the right
+    /// MFD): the HSI page (`avionics::Format::Hsi`).
     Third,
 }
 
@@ -306,12 +310,27 @@ pub fn bomb_mode_label(ccrp: bool) -> &'static str {
     if ccrp { "CCRP" } else { "CCIP" }
 }
 
-/// Tracking camera zoom steps (as the camera page shows them: step + 1).
-pub const CAM_ZOOM_MAX: u8 = 5;
+/// Targeting pod / tracking camera magnification of each zoom step (air defence cameras too).
+pub const CAM_ZOOMS: [u8; 7] = [1, 2, 4, 6, 10, 15, 20];
+const CAM_ZOOM_LABELS: [&str; 7] = ["1X", "2X", "4X", "6X", "10X", "15X", "20X"];
+/// The highest zoom step.
+pub const CAM_ZOOM_MAX: u8 = CAM_ZOOMS.len() as u8 - 1;
+/// The zoom step AUTO holds with nothing locked (4X).
+pub const CAM_ZOOM_DEFAULT: u8 = 2;
+
+/// Magnification of a zoom step.
+pub fn cam_magnification(z: u8) -> f32 {
+    CAM_ZOOMS[z.min(CAM_ZOOM_MAX) as usize] as f32
+}
+
+/// The highest zoom step magnifying at most `m` times (1X below).
+pub fn cam_zoom_for(m: f32) -> u8 {
+    CAM_ZOOMS.iter().rposition(|&z| z as f32 <= m).unwrap_or(0) as u8
+}
 
 /// Label of a camera zoom setting.
 pub fn cam_zoom_label(z: Option<u8>) -> &'static str {
-    z.and_then(|z| ["1X", "2X", "3X", "4X", "5X", "6X"].get(z as usize).copied()).unwrap_or("AUTO")
+    z.and_then(|z| CAM_ZOOM_LABELS.get(z as usize).copied()).unwrap_or("AUTO")
 }
 
 /// Applies a camera zoom command (`auto`: the zoom step the range gives now).
@@ -449,13 +468,46 @@ impl MissionOrders {
         *self = Self { lines, done: [false; 2] };
     }
 
-    /// Rows to tick: the first line in each achieved objective's colour.
-    fn ticked(&self) -> impl Iterator<Item = usize> + '_ {
-        [(17, self.done[0]), (41, self.done[1])]
+    /// The lines word-wrapped to `width` characters: (colour, text, ticked) rows, `ticked` on
+    /// the first row of each achieved objective's first line.
+    fn rows(&self, width: usize) -> Vec<(u8, String, bool)> {
+        let ticked: Vec<usize> = [(17, self.done[0]), (41, self.done[1])]
             .into_iter()
             .filter(|o| o.1)
             .filter_map(|(c, _)| self.lines.iter().position(|l| l.0 == c))
+            .collect();
+        let mut rows = Vec::new();
+        for (i, (colour, line)) in self.lines.iter().enumerate() {
+            for (k, row) in wrap(line, width).into_iter().enumerate() {
+                rows.push((*colour, row, k == 0 && ticked.contains(&i)));
+            }
+        }
+        rows
     }
+}
+
+/// `s` broken at spaces into rows of at most `width` characters (longer words split).
+fn wrap(s: &str, width: usize) -> Vec<String> {
+    let mut rows: Vec<String> = Vec::new();
+    let mut row = String::new();
+    for word in s.split_whitespace() {
+        let mut word: Vec<char> = word.chars().collect();
+        let n = row.chars().count();
+        if n > 0 && n + 1 + word.len() > width {
+            rows.push(std::mem::take(&mut row));
+        }
+        while word.len() > width {
+            rows.push(word.drain(..width).collect());
+        }
+        if !row.is_empty() {
+            row.push(' ');
+        }
+        row.extend(word);
+    }
+    if !row.is_empty() || rows.is_empty() {
+        rows.push(row);
+    }
+    rows
 }
 
 /// Tracking camera information (right MFD TC page), filled from the combat simulation's
@@ -469,7 +521,7 @@ pub struct TrackCam {
     pub name: [String; 2],
     pub range_km: Option<f32>,
     pub bearing: Option<i32>,
-    /// Zoom factor shown as "3X" (0 = hidden).
+    /// Zoom step + 1, shown as "4X" (0 = hidden).
     pub zoom: u8,
 }
 
@@ -559,11 +611,13 @@ pub enum ContactRef {
 pub struct MissionClock {
     pub start_seconds: f32,
     pub elapsed: Option<f32>,
+    /// Clock seconds per second flown (a campaign's sky runs faster): for the ETAs.
+    pub rate: f32,
 }
 
 impl Default for MissionClock {
     fn default() -> Self {
-        Self { start_seconds: 18.0 * 3600.0, elapsed: None }
+        Self { start_seconds: 18.0 * 3600.0, elapsed: None, rate: 1.0 }
     }
 }
 
@@ -661,6 +715,95 @@ fn mfd_keys(
     for MfdCommand(cmd) in commands.read() {
         apply_with_zoom(&mut state, &mut raster, *cmd, auto_zoom);
     }
+}
+
+/// Keypad slew speed of a waypoint being edited, in map pixels per second.
+const WAYPOINT_SLEW_PX: f64 = 30.0;
+/// The theater's side, in map units (a waypoint stays on the map).
+const MAP_SIZE: f64 = 0x8000 as f64;
+
+/// The WAY page is up (with the modern avionics: the MAP showing the waypoint table).
+fn way_shown(state: &MfdState) -> bool {
+    if state.modern {
+        state.av.map_way && state.av.shown(crate::avionics::Format::Map).is_some()
+    } else {
+        state.right == RightMfd::Way
+    }
+}
+
+/// The slew keys move the selected waypoint: the WAY page is in edit mode and, with the modern
+/// avionics, the sensor of interest (else the keys would also move the SOI's cursor or pod).
+pub(crate) fn editing_waypoints(state: &MfdState, wps: &Waypoints) -> bool {
+    wps.editing
+        && if state.modern {
+            state.av.soi_format() == Some(crate::avionics::Format::Map)
+        } else {
+            way_shown(state)
+        }
+}
+
+/// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
+/// course line follows it); the mode ends when the page is left. With the modern avionics F8
+/// makes the page the SOI, and the keys move the waypoint only while it is.
+fn edit_waypoints(
+    mut actions: MessageReader<ActionEvent>,
+    mut state: ResMut<MfdState>,
+    controls: Res<crate::input::FlightControls>,
+    block: Res<crate::input::InputBlock>,
+    keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    aircraft: Query<&Aircraft, With<Player>>,
+    mut wps: ResMut<Waypoints>,
+) {
+    // The page switches on the key press itself; give it this frame to show.
+    let pressed = actions.read().any(|a| a.0 == Action::ChangeWaypoint);
+    if pressed && state.modern && way_shown(&state) {
+        state.av.soi = Some(crate::avionics::Format::Map);
+    }
+    if wps.editing && !way_shown(&state) && !pressed {
+        wps.editing = false;
+    }
+    // The menu reads the keys while it is open.
+    if !editing_waypoints(&state, &wps) || block.0 {
+        return;
+    }
+    // As in the original, keypad 9 and 3 select the last and next waypoint, and only 8, 2, 4
+    // and 6 move it: the diagonals do not.
+    let n = wps.points.len();
+    if n > 0 {
+        if keys.just_pressed(KeyCode::Numpad9) {
+            wps.current = (wps.current + n - 1) % n;
+        }
+        if keys.just_pressed(KeyCode::Numpad3) {
+            wps.current = (wps.current + 1) % n;
+        }
+    }
+    let keypad = |keep: fn(Vec2) -> bool| {
+        crate::input::SLEW_KEYS
+            .iter()
+            .filter(|(k, x, y)| keys.pressed(*k) && keep(Vec2::new(*x, *y)))
+            .fold(Vec2::ZERO, |a, (_, x, y)| a + Vec2::new(*x, *y))
+            .clamp(Vec2::splat(-1.0), Vec2::ONE)
+    };
+    if controls.slew == Vec2::ZERO {
+        return;
+    }
+    let slew = controls.slew - keypad(|_| true) + keypad(|d| d.x == 0.0 || d.y == 0.0);
+    if slew == Vec2::ZERO {
+        return;
+    }
+    let Some(wp) = wps.points.get(wps.current).copied() else { return };
+    let h = aircraft.single().map_or(0.0, |a| a.euler().0 as f64);
+    let rot = if state.map_heading_up { h } else { 0.0 };
+    // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
+    let step = WAYPOINT_SLEW_PX * hires_scale(state.map_zoom) * time.delta_secs() as f64;
+    let (sx, sy) = (slew.x as f64, -slew.y as f64);
+    let (s, c) = rot.sin_cos();
+    let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
+    let x = (wp.east / 32.0 + dx).clamp(0.0, MAP_SIZE);
+    let y = (MAP_SIZE - wp.north / 32.0 + dy).clamp(0.0, MAP_SIZE);
+    let i = wps.current;
+    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (MAP_SIZE - y) * 32.0 };
 }
 
 fn apply_with_zoom(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd, auto_zoom: u8) {
@@ -1177,6 +1320,7 @@ pub struct MfdParams<'w, 's> {
     pub time: Res<'w, Time>,
     pub palette: Option<Res<'w, Palette>>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
+    pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
@@ -1288,6 +1432,31 @@ impl MfdParams<'_, '_> {
                     c.line(q.0, q.1, p.0, p.1, arc.colour);
                 }
                 prev = Some(p);
+            }
+        }
+        // With the WAY page up (F7, F8): the flight plan, green from waypoint to waypoint and
+        // white from the aircraft to the selected one; it follows a waypoint being moved.
+        if self.state.right == RightMfd::Way {
+            let pts: Vec<(i32, i32)> = self
+                .waypoints
+                .points
+                .iter()
+                .map(|w| {
+                    let p = map_to_screen(centre, zoom, w.east / 32.0, MAP_SIZE - w.north / 32.0);
+                    (p.x as i32, p.y as i32)
+                })
+                .collect();
+            for pair in pts.windows(2) {
+                c.line(pair[0].0, pair[0].1, pair[1].0, pair[1].1, 10);
+            }
+            if let (Some((_, pos)), Some(&(wx, wy))) = (ac, pts.get(self.waypoints.current)) {
+                let (x, y) = map_units(pos);
+                let p = map_to_screen(centre, zoom, x as f64, y as f64);
+                c.line(p.x as i32, p.y as i32, wx, wy, 15);
+            }
+            for (i, &(x, y)) in pts.iter().enumerate() {
+                let colour = if i == self.waypoints.current { 15 } else { 19 };
+                c.fill_rect(x - 1, y - 1, 3, 3, colour);
             }
         }
         // Own aircraft: white chevron.
@@ -1459,7 +1628,9 @@ impl MfdParams<'_, '_> {
             fonts.text(c, 16, 51, format!("BRG {b}").as_bytes(), text);
         }
         if self.cam.zoom > 0 {
-            fonts.text(c, 67, 53, format!("{}X", self.cam.zoom).as_bytes(), text);
+            // Right aligned where "2X" ends.
+            let s = cam_zoom_label(Some(self.cam.zoom - 1)).as_bytes();
+            fonts.text(c, 67 + fonts.width(b"2X") - fonts.width(s), 53, s, text);
         }
     }
 
@@ -1509,24 +1680,59 @@ impl MfdParams<'_, '_> {
     }
 
     /// Waypoint legs from the aircraft: (km, minutes, ETA seconds) at the current speed (at
-    /// least 360 kt), ETA accumulated.
+    /// least 360 kt), ETA accumulated. The legs run through the waypoints not yet passed; the
+    /// passed ones show 0.
     fn legs(&self, t: f32, a: &Aircraft, pos: &WorldPos) -> Vec<(f64, f64, f64)> {
         let (mut e, mut n, _) = bevy_to_wu(pos.0);
         let kmh = (a.knots().max(360.0) * 1.852) as f64;
         let mut eta = t as f64;
         let mut out = Vec::new();
-        for wp in self.waypoints.points.iter().take(4) {
+        for (i, wp) in self.waypoints.points.iter().take(4).enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) {
+                out.push((0.0, 0.0, t as f64));
+                continue;
+            }
             let km = ((wp.east - e).hypot(wp.north - n) * WU / 1000.0).round();
             let minutes = (km / kmh * 60.0).round();
-            eta += minutes * 60.0;
+            eta += minutes * 60.0 * self.clock.rate as f64;
             out.push((km, minutes, eta));
             (e, n) = (wp.east, wp.north);
         }
         out
     }
 
+    /// The WAY page's fuel bar, as (left, right, colour) spans of the bar (0..1): reserve in
+    /// green at the left, then the fuel each waypoint still needs at the current throttle (the
+    /// selected one white, the others blue; the farthest at the left), and the fuel already
+    /// consumed in black at the right.
+    fn fuel_spans(&self, a: &Aircraft, legs: &[(f64, f64, f64)]) -> Vec<(f32, f32, u8)> {
+        let fuel_div = self.constants.as_ref().map_or(1000.0, |k| k.fuel_div);
+        // Burn every 2 s: set^2 / fuel_div + 2.
+        let per_minute = ((a.set_thrust * a.set_thrust / fuel_div).floor() + 2.0) * 30.0;
+        let left = (a.fuel / FULL_FUEL).clamp(0.0, 1.0);
+        let mut spans = vec![(left, 1.0, 5)];
+        let mut x = left;
+        for (i, &(_, minutes, _)) in legs.iter().enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) || x <= 0.0 {
+                continue;
+            }
+            let l = (x - minutes as f32 * per_minute / FULL_FUEL).max(0.0);
+            let colour = if i == self.waypoints.current { 15 } else { self.way_colour(i) };
+            spans.push((l, x, colour));
+            x = l;
+        }
+        if x > 0.0 {
+            spans.push((0.0, x, 47));
+        }
+        spans
+    }
+
+    /// Passed waypoints in black (colour 5, as in the original), the unpassed current waypoint
+    /// in white, and the others in alternating cyans.
     fn way_colour(&self, i: usize) -> u8 {
-        if i == self.waypoints.current {
+        if self.waypoints.passed.get(i).copied().unwrap_or(false) {
+            5
+        } else if i == self.waypoints.current {
             15
         } else if i % 2 == 1 {
             3
@@ -1535,14 +1741,21 @@ impl MfdParams<'_, '_> {
         }
     }
 
+    /// WAY page background: red while the waypoints are being edited (F8). Colour 42 is the
+    /// original's dark red (the classic HUD's night bars use it); 41 is its bright red.
+    fn way_background(&self) -> u8 {
+        if self.waypoints.editing { 42 } else { 1 }
+    }
+
     /// WAY page.
     fn draw_way(&self, c: &mut Canvas, fonts: &Fonts, ac: Option<(&Aircraft, &WorldPos)>) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         mfd_text(c, fonts, 2, 0, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
         if let Some((a, pos)) = ac {
-            for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+            let legs = self.legs(t, a, pos);
+            for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
                 let (eh, em, _) = hms(eta as f32);
                 let colour = self.way_colour(i);
                 mfd_text(
@@ -1562,10 +1775,11 @@ impl MfdParams<'_, '_> {
                     colour,
                 );
             }
-            // Fuel bar (y 54..57): remaining fuel in green.
-            let w = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * 75.0).round() as i32;
-            c.fill_rect(1, 54, 75, 4, 0);
-            c.fill_rect(1, 54, w, 4, 47);
+            // Fuel bar (y 54..57).
+            for (l, r, colour) in self.fuel_spans(a, &legs) {
+                let (x0, x1) = (1 + (l * 75.0).round() as i32, 1 + (r * 75.0).round() as i32);
+                c.fill_rect(x0, 54, x1 - x0, 4, colour);
+            }
         }
     }
 
@@ -1591,17 +1805,19 @@ impl MfdParams<'_, '_> {
     /// ORD page.
     fn draw_ord(&self, c: &mut Canvas, fonts: &Fonts) {
         c.clear(0);
-        for (row, (colour, line)) in self.orders.lines.iter().enumerate().take(10) {
+        // 18 characters of 4 px after the 4 px tick margin.
+        let rows = self.orders.rows((c.w - 4) / 4);
+        for (row, (colour, line, ticked)) in rows.iter().enumerate().take(c.h / 6) {
+            let y = 6 * row as i32;
             // Colour-change byte + text.
             let mut s = vec![ink(*colour)];
             s.extend(upper(line));
-            fonts.text(c, 4, 6 * row as i32, &s, 15);
-        }
-        // Achieved objectives: a tick in the margin.
-        for row in self.orders.ticked().filter(|&r| r < 10) {
-            let y = 6 * row as i32;
-            c.line(0, y + 2, 1, y + 3, 15);
-            c.line(1, y + 3, 3, y, 15);
+            fonts.text(c, 4, y, &s, 15);
+            // Achieved objectives: a tick in the margin.
+            if *ticked {
+                c.line(0, y + 2, 1, y + 3, 15);
+                c.line(1, y + 3, 3, y, 15);
+            }
         }
     }
 
@@ -1663,18 +1879,19 @@ impl MfdParams<'_, '_> {
                 prev = Some(p);
             }
         }
-        // Route: aircraft -> current waypoint -> the rest; waypoints ringed, the current one larger.
+        // Route: green from waypoint to waypoint, white from the aircraft to the selected one;
+        // waypoints ringed, the selected one larger.
         let wps: Vec<Vec2> = self.waypoints.points.iter().map(|w| to(w.east, w.north)).collect();
         let me = view.to_screen(px, py);
+        for pair in wps.windows(2) {
+            c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 10);
+        }
         if let Some(&first) = wps.get(self.waypoints.current) {
-            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 11);
-            for pair in wps[self.waypoints.current..].windows(2) {
-                c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 11);
-            }
+            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 15);
         }
         for (i, p) in wps.iter().enumerate() {
             let current = i == self.waypoints.current;
-            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 11 });
+            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 19 });
         }
         // Airbases.
         if let Some(t) = &self.theater {
@@ -1819,8 +2036,8 @@ impl MfdParams<'_, '_> {
             text2(c, fonts, 6, c.h as i32 - 14, &format!("BRG {b}"), text);
         }
         if self.cam.zoom > 0 {
-            let s = format!("{}X", self.cam.zoom);
-            text2(c, fonts, w - 6 - 2 * fonts.width(s.as_bytes()), c.h as i32 - 14, &s, text);
+            let s = cam_zoom_label(Some(self.cam.zoom - 1));
+            text2(c, fonts, w - 6 - 2 * fonts.width(s.as_bytes()), c.h as i32 - 14, s, text);
             if self.state.cam_zoom.is_none() {
                 text2(c, fonts, w - 6 - 2 * fonts.width(b"AUTO"), c.h as i32 - 28, "AUTO", text);
             }
@@ -1833,14 +2050,15 @@ impl MfdParams<'_, '_> {
         fonts: &Fonts,
         ac: Option<(&Aircraft, &WorldPos)>,
     ) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         text2(c, fonts, 6, 4, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
         text2(c, fonts, 6, 26, "WP    KM   MIN   ETA", 7);
         c.hline(4, c.w as i32 - 5, 38, 7);
         let Some((a, pos)) = ac else { return };
-        for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+        let legs = self.legs(t, a, pos);
+        for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
             let (eh, em, _) = hms(eta as f32);
             let y = 44 + 16 * i as i32;
             if i == self.waypoints.current {
@@ -1855,12 +2073,13 @@ impl MfdParams<'_, '_> {
                 self.way_colour(i),
             );
         }
-        // Fuel bar: remaining fuel in green.
+        // Fuel bar.
         text2(c, fonts, 6, 156, "FUEL", 15);
         let (x0, w) = (46, c.w as i32 - 52);
-        let fill = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * w as f32).round() as i32;
-        c.fill_rect(x0, 155, w, 12, 0);
-        c.fill_rect(x0, 155, fill, 12, 47);
+        for (l, r, colour) in self.fuel_spans(a, &legs) {
+            let (a0, a1) = ((l * w as f32).round() as i32, (r * w as f32).round() as i32);
+            c.fill_rect(x0 + a0, 155, a1 - a0, 12, colour);
+        }
         c.rect(x0 - 1, 154, w + 2, 14, 7);
     }
 
@@ -1898,17 +2117,31 @@ impl MfdParams<'_, '_> {
         }
     }
 
+    /// The modern ORD page; the modern avionics draw it with the stroke font at full texel
+    /// resolution.
     pub(crate) fn draw_ord_hires(&self, c: &mut Canvas, fonts: &Fonts) {
         c.clear(0);
-        for (row, (colour, line)) in self.orders.lines.iter().enumerate().take(13) {
-            let mut s = vec![ink(*colour)];
-            s.extend(upper(line));
-            fonts.text_scaled(c, 6, 6 + 13 * row as i32, &s, 15, 2);
-        }
-        for row in self.orders.ticked().filter(|&r| r < 13) {
-            let y = 6 + 13 * row as i32;
-            c.stroke(Vec2::new(0.5, y as f32 + 5.0), Vec2::new(2.0, y as f32 + 8.0), 1.2, 15);
-            c.stroke(Vec2::new(2.0, y as f32 + 8.0), Vec2::new(5.0, y as f32 + 1.0), 1.2, 15);
+        let (x0, w) = (8.0, c.w as f32 - 10.0);
+        let (glyph, advance, pitch) =
+            if self.state.modern { (9.0, 9.0, 13.0) } else { (10.0, 8.0, 13.0) };
+        let width = ((w + 2.0) / advance) as usize;
+        let rows = self.orders.rows(width);
+        for (row, (colour, line, ticked)) in
+            rows.iter().enumerate().take(((c.h as f32 - 6.0) / pitch) as usize)
+        {
+            let y = 6.0 + pitch * row as f32;
+            if self.state.modern {
+                crate::font::stroke_text(c, x0, y, line, glyph, 1.0, *colour);
+            } else {
+                let mut s = vec![ink(*colour)];
+                s.extend(upper(line));
+                fonts.text_scaled(c, x0 as i32, y as i32, &s, 15, 2);
+            }
+            if *ticked {
+                let d = glyph / 10.0;
+                c.stroke(Vec2::new(0.5, y + 5.0 * d), Vec2::new(2.5, y + 8.0 * d), 1.2, 15);
+                c.stroke(Vec2::new(2.5, y + 8.0 * d), Vec2::new(6.0, y + d), 1.2, 15);
+            }
         }
     }
 }
@@ -2006,6 +2239,20 @@ fn tac_icon(c: &mut Canvas, icon: TacIcon, x: i32, y: i32, hires: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn orders_wrap() {
+        assert_eq!(wrap("Destroy launch site", 18), ["Destroy launch", "site"]);
+        assert_eq!(wrap("Return to", 18), ["Return to"]);
+        assert_eq!(wrap("ABCDEFGHIJ", 4), ["ABCD", "EFGH", "IJ"]);
+        assert_eq!(wrap("", 18), [""]);
+        let mut o = MissionOrders::default();
+        o.set(vec![(17, "Strike the SS missile at".into()), (41, "Shoot down".into())]);
+        o.done = [true, true];
+        let rows = o.rows(18);
+        let ticks: Vec<bool> = rows.iter().map(|r| r.2).collect();
+        assert_eq!(ticks, [true, false, true]);
+    }
 
     #[test]
     fn map_view_round_trip() {

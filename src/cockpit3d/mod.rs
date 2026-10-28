@@ -41,8 +41,10 @@ use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
-pub use controls::{ConsoleButton, PressControl, ScreenClick};
-pub use displays::{BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, SCOPE_CANVAS};
+pub use controls::{ConsoleButton, ConsolePanel, PressControl, ScreenClick};
+pub use displays::{
+    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, INFO_CANVAS, SCOPE_CANVAS,
+};
 pub use layout::ConsoleKey;
 pub use pick::Solid;
 pub use tooltips::Tip;
@@ -58,6 +60,7 @@ impl Plugin for Cockpit3dPlugin {
             MaterialPlugin::<tooltips::TipScreenMaterial>::default(),
         ))
         .init_resource::<Hands>()
+        .init_resource::<ConsolePanel>()
         .init_resource::<levers::CockpitAnchors>()
         .init_resource::<pick::Shapes>()
         .init_resource::<tooltips::TipAnchor>()
@@ -76,12 +79,14 @@ impl Plugin for Cockpit3dPlugin {
                 sync_materials,
                 sync_shading,
                 cockpit_visibility,
+                console_stick,
                 pick::forget_shapes,
                 tooltips::hover,
                 tooltips::place_screen,
                 tutorial::advance,
                 tutorial::glow,
                 tutorial::show,
+                controls::console_panel,
             )
                 .chain()
                 .run_if(in_state(AppState::Flight)),
@@ -191,16 +196,22 @@ pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static 
 
 /// The air defence console's model (`tools/models/build_console.py`).
 pub const CONSOLE_MODEL: &str = "cockpit_console";
+/// How much larger than shown the console's model is built (it looked too large life size).
+pub const CONSOLE_MODEL_SCALE: f32 = 1.0 / 0.95;
+/// How far below the eye the console sits in VR (m): the operator's head higher in the room.
+pub const VR_CONSOLE_DROP: f32 = 0.05;
 
-/// The cockpit shown: the aircraft's, or at an air defence console its model (life size, its
-/// origin at the operator's eye, where the camera rig's head is). Panel style, model, eye point
+/// The cockpit shown: the aircraft's, or at an air defence console its model (its origin at
+/// the operator's eye, where the camera rig's head is, in VR `VR_CONSOLE_DROP` below). Panel style, model, eye point
 /// in the aircraft frame, and the model's scale.
 fn choice(
     settings: &Settings,
     manning: Option<&crate::station::Manning>,
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
     if manning.is_some() {
-        return (layout::PanelStyle::Modern, CONSOLE_MODEL, settings.cockpit_eye(), 1.0);
+        let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
+        let eye = settings.cockpit_eye() - Vec3::Y * drop;
+        return (layout::PanelStyle::Modern, CONSOLE_MODEL, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
     (style, stem, settings.cockpit_eye(), settings.aircraft.spec().cockpit_model_scale())
@@ -348,6 +359,8 @@ fn sync_shading(
     lighting: Res<crate::lighting::LightingState>,
     manning: Option<Res<crate::station::Manning>>,
     mut materials: ResMut<Assets<CockpitMaterial>>,
+    bursts: Res<crate::flashes::Bursts>,
+    warnings: Option<Res<crate::panel::Warnings>>,
 ) {
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
     // Steam Frame it costs about 10 ms of GPU time.
@@ -357,20 +370,35 @@ fn sync_shading(
     let nvg = hud.is_some_and(|h| h.nvg);
     // In 1/64 steps: a change re-uploads every cockpit material.
     let q = |v: f32| (v * 64.0).round() / 64.0;
-    let dark = if sky.on && !nvg { q(sky.dark) } else { 0.0 };
+    // A combat flash nearby lifts the darkness for a moment (in quarter steps: few re-uploads).
+    let lift = (bursts.cockpit.min(1.0) * 4.0).round() / 4.0;
+    let dark = if sky.on && !nvg { q(sky.dark * (1.0 - lift)) } else { 0.0 };
     // An air defence console's shelter has no windows: dark but for its screens and buttons.
     let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };
     let night = |m: &CockpitMaterial| {
         Vec4::new(
             if m.extension.bright { 0.0 } else { dark },
-            nvg as u32 as f32,
+            // 2: with the goggles effect (stronger grain).
+            if nvg { 1.0 + settings.effects.nvg as u32 as f32 } else { 0.0 },
             // Pictures (the tracking camera) are lit by themselves: the goggles' daylight gain,
             // the night's would wash them out.
             if m.extension.bright { 1.0 } else { daylight },
             !settings.modern_shading as u32 as f32,
         )
     };
+    // Night lighting: a red flood light (blue-green under the goggles) as the daylight goes,
+    // in 1/16 steps; the master caution's pulse while a warning is on.
+    let flood = if settings.effects.cockpit_night && manning.is_none() {
+        let k = q16(((FLOOD_DUSK - lighting.daylight) / FLOOD_DUSK).clamp(0.0, 1.0));
+        let colour = if nvg { FLOOD_NVG } else { FLOOD_RED };
+        let caution = warnings.as_ref().is_some_and(|w| w.caution()) && k > 0.0;
+        (colour * k).extend(caution as u32 as f32)
+    } else {
+        Vec4::ZERO
+    };
+    let retro = crate::palette::retro(&settings);
+    let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials
         .iter()
         .filter(|(_, m)| {
@@ -378,6 +406,8 @@ fn sync_shading(
                 || m.extension.full != full
                 || m.extension.shadows != shadows
                 || m.extension.night != night(m)
+                || m.extension.flood != flood_of(m)
+                || m.extension.retro != retro
         })
         .map(|(id, _)| id)
         .collect();
@@ -387,8 +417,21 @@ fn sync_shading(
             m.extension.full = full;
             m.extension.shadows = shadows;
             m.extension.night = night(&m);
+            m.extension.flood = flood_of(&m);
+            m.extension.retro = retro;
         }
     }
+}
+
+/// The cockpit's night flood light: full below this daylight's share of it, red (linear,
+/// added to what the surfaces reflect), and the blue-green the goggles tolerate.
+const FLOOD_DUSK: f32 = 0.3;
+const FLOOD_RED: Vec3 = Vec3::new(0.15, 0.02, 0.01);
+const FLOOD_NVG: Vec3 = Vec3::new(0.004, 0.025, 0.018);
+
+/// In 1/16 steps: a change re-uploads every cockpit material.
+fn q16(v: f32) -> f32 {
+    (v * 16.0).round() / 16.0
 }
 
 #[derive(Component)]
@@ -403,7 +446,12 @@ struct FlashQuad;
 #[derive(Component)]
 struct CockpitLamp;
 
-/// Flood lamps: on with the local lighting option, brighter as it gets dark.
+/// The air defence shelter's red dome light (lumens: the desk about 1.5 m off, see
+/// `crate::lighting::LUX_PER_UNIT`).
+const CONSOLE_LAMP_LUMENS: f32 = 30_000.0;
+
+/// Flood lamps: on with the local lighting option, brighter as it gets dark (the air defence
+/// shelter's dome light always as bright).
 fn cockpit_lamps(
     settings: Res<Settings>,
     manning: Option<Res<crate::station::Manning>>,
@@ -412,10 +460,11 @@ fn cockpit_lamps(
 ) {
     // As bright as in the cockpit model's size, which brings them nearer.
     let k = choice(&settings, manning.as_deref()).3;
-    let lumens = if settings.local_lights {
-        (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k)
-    } else {
-        0.0
+    // The air defence shelter's dome light: the closed shelter's only light, day or night.
+    let lumens = match (settings.local_lights, manning.is_some()) {
+        (false, _) => 0.0,
+        (true, true) => CONSOLE_LAMP_LUMENS / (k * k),
+        (true, false) => (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k),
     };
     for mut l in &mut q {
         if l.intensity != lumens {
@@ -435,6 +484,20 @@ fn cockpit_visibility(
             && !hide.is_some_and(|h| h.0);
     for mut v in &mut roots {
         v.set_if_neq(if inside { Visibility::Inherited } else { Visibility::Hidden });
+    }
+}
+
+/// At an air defence console the hand controller slews a Gepard's gun (a Patriot's has none).
+fn console_stick(
+    manning: Option<Res<crate::station::Manning>>,
+    mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
+) {
+    let Some(m) = manning else { return };
+    for (stick, mut v, mut tip) in &mut q {
+        v.set_if_neq(if m.gepard { Visibility::Inherited } else { Visibility::Hidden });
+        if stick.is_added() {
+            *tip = tooltips::console_stick_tip();
+        }
     }
 }
 
@@ -686,9 +749,17 @@ fn mouse_look(
     }
 }
 
-/// `--head-look yaw,pitch` (degrees): initial free look (screenshots of the cockpit).
-fn initial_look(mut look: ResMut<HeadLook>) {
+/// `--head-look yaw,pitch` (degrees): initial free look, `--magnify x` the view narrowed as
+/// with the mouse wheel (screenshots of the cockpit).
+fn initial_look(mut look: ResMut<HeadLook>, mut state: ResMut<ViewState>) {
     let args: Vec<String> = std::env::args().collect();
+    if let Some(m) = args
+        .iter()
+        .position(|a| a == "--magnify")
+        .and_then(|i| args.get(i + 1)?.parse::<f32>().ok())
+    {
+        state.magnify = m.clamp(1.0, MAX_MAGNIFY);
+    }
     if let Some(v) = args.iter().position(|a| a == "--head-look").and_then(|i| args.get(i + 1)) {
         let mut it = v.split(',').map(|x| x.parse::<f32>().unwrap_or(0.0).to_radians());
         look.yaw = it.next().unwrap_or(0.0);

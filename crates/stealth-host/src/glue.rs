@@ -150,7 +150,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         | MissionKind::Defend
         | MissionKind::Csar
         | MissionKind::Awacs
-        | MissionKind::Resupply => [1, 0, 1, 0],
+        | MissionKind::Resupply
+        | MissionKind::Logistics => [1, 0, 1, 0],
     }
 }
 
@@ -184,6 +185,19 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         neutral: false,
         distance: 0,
     };
+    // The briefing's times name the generated mission's bases: the sortie's instead.
+    let bl = &mut m.briefing;
+    for l in [&mut bl.base_date_line, &mut bl.depart_line] {
+        *l = l.replace(&m.takeoff.name, &home.name);
+    }
+    bl.land_line = bl.land_line.replace(&m.landing.name, &home.name);
+    // It leaves now (the campaign's clock), not at the generated mission's time.
+    let secs = (state.sky_hours().rem_euclid(24.0) * 3600.0) as i32;
+    let depart = format!("{:02}:{:02}", secs / 3600, secs / 60 % 60);
+    bl.depart_line = bl.depart_line.replace(&m.time.depart, &depart);
+    m.time.base_hour = (secs / 3600) as u8;
+    m.time.tod_ticks = secs % 3600 / 2;
+    m.time.depart = depart;
     m.takeoff = home.clone();
     m.landing = home;
     let target = MapPoint { x: o.x, y: o.y };
@@ -197,6 +211,17 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         _ => target,
     };
     m.waypoints = [mid, target, then, MapPoint { x: bx, y: by }];
+    // The fuel planned for that route (as for the drone missions), not the generated one's.
+    let mut at = (bx, by);
+    let mut length = 0.0;
+    for p in &m.waypoints {
+        length += ((p.x - at.0) as f64).hypot((p.y - at.1) as f64);
+        at = (p.x, p.y);
+    }
+    m.route_length = (length / 64.0) as i16;
+    let old_fuel = m.fuel_lbs.to_string();
+    m.fuel_lbs = 12 * m.route_length;
+    m.briefing.fuel_line = m.briefing.fuel_line.replace(&old_fuel, &m.fuel_lbs.to_string());
     // The targets are the campaign's: nothing of the generated strike mission's stays.
     let (object, shape_name, area) = primary_target(state, &o.objective);
     let p = &mut m.primary;
@@ -263,6 +288,7 @@ pub fn airborne(kind: MissionKind) -> bool {
             | MissionKind::Csar
             | MissionKind::Awacs
             | MissionKind::Resupply
+            | MissionKind::Logistics
     )
 }
 
@@ -325,6 +351,16 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
             Some(r) => format!("The {} needs a new stockpile. {}", r.title(), describe(o.kind)),
             None => describe(o.kind).into(),
         },
+        Objective::Logistics { site, leg } => match state.deployment(site) {
+            Some(d) => format!(
+                "Cargo {} of {} for the new {}. {}",
+                leg + 1,
+                d.loads,
+                d.title(),
+                describe(o.kind)
+            ),
+            None => describe(o.kind).into(),
+        },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {
             match state.insertion_status(insertion) {
                 Some(t) => format!("{t}. {}", describe(o.kind)),
@@ -368,7 +404,10 @@ pub fn describe(kind: MissionKind) -> &'static str {
             "Shoot down the enemy AWACS: while it is up the enemy sends more patrols, and sends them at you"
         }
         MissionKind::Resupply => {
-            "Fly the stockpile from the airfield to the air defence unit: hover below 10 m within 50 m of it for 10 s while the load goes down"
+            "Fly the stockpile from the airfield to the air defence unit: hover below 30 m within 50 m of it for 10 s while the load goes down"
+        }
+        MissionKind::Logistics => {
+            "Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad"
         }
     }
 }

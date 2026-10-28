@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use stealth_mission::{MissionKind, Sky};
 
 use crate::menu::MenuState;
-use crate::settings::{DEFAULT_VR_COCKPIT_SCALE, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{
+    DEFAULT_PLAYER_LABEL_SIZE, DEFAULT_VR_COCKPIT_SCALE, PLAYER_LABEL_SIZE_RANGE, Settings,
+    VR_COCKPIT_SCALE_RANGE,
+};
 
 /// `config/<name>` in the player's folder (`stealth_host::store`); None in the browser.
 pub fn config_path(name: &str) -> Option<std::path::PathBuf> {
@@ -81,11 +84,16 @@ pub struct Prefs {
     pub list_public: Option<bool>,
     pub tooltips: bool,
     pub tutorial: bool,
+    pub player_labels: bool,
+    pub player_label_size: f32,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
     pub engine_low_pass: bool,
+    pub effects: crate::effects::Effects,
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -136,11 +144,16 @@ impl Default for Prefs {
             list_public: Some(menu.list_public),
             tooltips: true,
             tutorial: false,
+            player_labels: true,
+            player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            effects: Default::default(),
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }
@@ -204,11 +217,16 @@ impl Prefs {
             list_public: Some(menu.list_public),
             tooltips: s.tooltips,
             tutorial: s.tutorial,
+            player_labels: s.player_labels,
+            player_label_size: s.player_label_size,
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
             engine_low_pass: s.engine_low_pass,
+            effects: s.effects,
+            gif_scale: s.gif_scale,
+            gif_fps: s.gif_fps,
         }
     }
 
@@ -256,12 +274,21 @@ impl Prefs {
         s.classic_flight |= self.classic_flight;
         s.tooltips = self.tooltips;
         s.tutorial |= self.tutorial;
+        s.player_labels = self.player_labels;
+        s.player_label_size = self
+            .player_label_size
+            .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
         let volume = |v: f32| v.clamp(0.0, 1.0);
         s.master_volume = volume(self.master_volume);
         s.engine_volume = volume(self.engine_volume);
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
         s.engine_low_pass = self.engine_low_pass;
+        s.gif_scale = self.gif_scale.clamp(1, 100);
+        s.gif_fps = self.gif_fps.clamp(1, 50);
+        if !std::env::args().any(|a| a == "--effects") {
+            s.effects = self.effects;
+        }
         if !std::env::args().any(|a| a == "--aircraft") {
             s.aircraft = self.aircraft;
         }
@@ -289,6 +316,8 @@ impl Prefs {
         self.auto_trim = s.auto_trim;
         self.tooltips = s.tooltips;
         self.tutorial = s.tutorial;
+        self.player_labels = s.player_labels;
+        self.player_label_size = s.player_label_size;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;
@@ -298,6 +327,9 @@ impl Prefs {
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
         self.engine_low_pass = s.engine_low_pass;
+        self.effects = s.effects;
+        self.gif_scale = s.gif_scale;
+        self.gif_fps = s.gif_fps;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.
@@ -372,7 +404,7 @@ mod tests {
     #[test]
     fn tooltips_default_to_on() {
         let p: Prefs = serde_json::from_str("{}").unwrap();
-        assert!(p.tooltips);
+        assert!(p.tooltips && p.player_labels && p.player_label_size == DEFAULT_PLAYER_LABEL_SIZE);
         let p: Prefs = serde_json::from_str(r#"{"tooltips": false}"#).unwrap();
         assert!(!p.tooltips);
     }

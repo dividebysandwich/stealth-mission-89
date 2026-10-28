@@ -68,7 +68,7 @@ const FLARE: u8 = 15;
 const CHAFF: u8 = 7;
 const DECOY: u8 = 13;
 const TRACER: u8 = 17;
-const ENEMY_TRACER: u8 = 41;
+pub const ENEMY_TRACER: u8 = 41;
 /// The other players' rounds: the same ammunition as ours.
 const FRIENDLY_TRACER: u8 = TRACER;
 /// A coasting missile (motor burnt out): black by day, white at night (in every flight
@@ -562,10 +562,9 @@ fn sync_aaa(
         }
     }
 
-    // Tracers: the Shilkas' shells (an S-60 shell is only seen when it bursts), also those
-    // the guns fire at AI aircraft in a campaign.
-    let shells: Vec<_> =
-        sim.aaa_shells().iter().chain(sim.ai_shells()).filter(|s| !s.flak).collect();
+    // Tracers: every gun's shells (the flak's too, until they burst), also those the guns
+    // fire at AI aircraft in a campaign, friendly and enemy.
+    let shells: Vec<_> = sim.aaa_shells().iter().chain(sim.ai_shells()).collect();
     let material = av
         .material
         .get_or_insert_with(|| {
@@ -628,7 +627,7 @@ fn spawn_dot(
     spawn_dot_scaled(commands, assets, material, offsets, 0)
 }
 
-/// [`spawn_dot`] with more mesh tag bits (`dot_scale`, `dot_size_tenths`, `TAG_DOT_FAR`).
+/// [`spawn_dot`] with more mesh tag bits (`dot_size_tenths`, `TAG_DOT_FAR`).
 fn spawn_dot_scaled(
     commands: &mut Commands,
     assets: &ModelAssets,
@@ -1270,7 +1269,7 @@ fn sim_missile_model(combat: &Combat, spec: i32) -> i32 {
 
 /// Lights (slots 10/11) for the world and the own aircraft, the antenna angles (15/16) and the
 /// own aircraft's (model 24) gear (5/6), brakes (7), bay doors (8), navigation (12) and
-/// anti-collision lights (18-20, the AI aircraft's rule).
+/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22).
 #[allow(clippy::type_complexity)]
 fn world_model_state(
     time: Res<Time>,
@@ -1286,7 +1285,7 @@ fn world_model_state(
     )>,
     mut own: Query<
         &mut ModelState,
-        (Or<(With<OwnModel>, With<OwnLights>, With<crate::player::OwnRotor>)>, Without<TileObject>),
+        (Or<(With<OwnModel>, With<OwnLights>, With<crate::player::OwnPart>)>, Without<TileObject>),
     >,
     player: Query<&Aircraft, With<Player>>,
     flight: Option<Res<crate::flight::FlightConstants>>,
@@ -1319,6 +1318,20 @@ fn world_model_state(
         }
     }
     let door = combat.as_ref().map_or(0, |c| c.sim.bay_door_anim()) as i16;
+    // The RAH-66's doors show what is left on them (slots 23 left, 24 right): 0 Hellfires,
+    // 1 Stingers, 2 none.
+    let door_stores = |i: usize| {
+        combat.as_ref().and_then(|c| c.sim.bays().0.get(i).copied()).map_or(2, |(w, n)| {
+            if n <= 0 || w < 0 {
+                2
+            } else if w == crate::loadout::STINGER as i32 {
+                1
+            } else {
+                0
+            }
+        })
+    };
+    let (left_stores, right_stores) = (door_stores(0), door_stores(1));
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1330,13 +1343,24 @@ fn world_model_state(
     let [s18, s19, s20] = anticollision(time.elapsed_secs(), 0.0, nav);
     // A helicopter's rotors turn with its rotor speed: its angle less the global spin added to
     // every model's.
-    let rotor = flight.is_some_and(|k| k.heli.is_some()).then(|| {
+    let rotor = flight.as_ref().is_some_and(|k| k.heli.is_some()).then(|| {
         let bam = (a.rotor_angle() / std::f32::consts::TAU * 65536.0) as i32 as u16 as i16;
         bam.wrapping_sub(globals.angles[2])
     });
+    // A swing wing's outer wings, swept as the flight model has them.
+    let wings = flight
+        .as_ref()
+        .and_then(|k| k.aero.swing_wing)
+        .map(|w| crate::aircraft::wing_slot_values(a.wing_sweep, w.forward, w.back));
     for mut s in &mut own {
         if let Some(r) = rotor {
             s.0[17] = r;
+        }
+        if let Some((r, l)) = wings {
+            let (sr, sl) = crate::aircraft::WING_SLOTS;
+            if (s.0[sr], s.0[sl]) != (r, l) {
+                (s.0[sr], s.0[sl]) = (r, l);
+            }
         }
         let v = [
             (5, (c072 != 0) as i16),
@@ -1349,6 +1373,8 @@ fn world_model_state(
             s18,
             s19,
             s20,
+            (23, left_stores),
+            (24, right_stores),
         ];
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
@@ -1641,6 +1667,18 @@ fn sync_remote_pilots(
                 if v.iter().any(|&(k, x)| s.0[k] != x) {
                     for (k, x) in v {
                         s.0[k] = x;
+                    }
+                }
+                // A swing wing where his schedule puts it for his speed (forward with the
+                // gear down: his flaps are out).
+                if let Some(w) = spec.swing_wing.then(|| spec.flight().aero.swing_wing).flatten() {
+                    let (_, sound) = crate::flight::modern::atmosphere(p.view.alt as f32);
+                    let mach = p.view.knots as f32 * 27.0 / 16.0 / sound;
+                    let at = w.scheduled(mach, !p.gear_up || p.on_ground);
+                    let (r, l) = crate::aircraft::wing_slot_values(at, w.forward, w.back);
+                    let (sr, sl) = crate::aircraft::WING_SLOTS;
+                    if (s.0[sr], s.0[sl]) != (r, l) {
+                        (s.0[sr], s.0[sl]) = (r, l);
                     }
                 }
             }

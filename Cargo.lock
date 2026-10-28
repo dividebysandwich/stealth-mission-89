@@ -2305,6 +2305,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "combine"
 version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3324,6 +3330,16 @@ dependencies = [
  "r-efi 6.0.0",
  "rand_core 0.10.1",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "gif"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
+dependencies = [
+ "color_quant",
+ "weezl",
 ]
 
 [[package]]
@@ -6319,7 +6335,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stealth-campaign"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "serde",
@@ -6329,14 +6345,14 @@ dependencies = [
 
 [[package]]
 name = "stealth-formats"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "stealth-host"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "dirs",
@@ -6353,7 +6369,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-master"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -6364,14 +6380,14 @@ dependencies = [
 
 [[package]]
 name = "stealth-master-proto"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "stealth-mission"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "ron",
@@ -6382,7 +6398,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-mission-89"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "bevy",
@@ -6390,9 +6406,11 @@ dependencies = [
  "bevy_fast_clouds",
  "bevy_mod_openxr",
  "bevy_mod_xr",
+ "dirs",
  "embed-resource",
  "epaint_default_fonts",
  "getrandom 0.3.4",
+ "gif",
  "gilrs",
  "glow 0.18.0",
  "image",
@@ -6421,7 +6439,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-net"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "ciborium",
@@ -6446,7 +6464,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-sim"
-version = "0.7.1"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "ron",

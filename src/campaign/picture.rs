@@ -8,7 +8,7 @@ use stealth_campaign::{CampaignState, Side, SiteKind};
 use stealth_sim::aaa::AaaKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
-use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView};
 use crate::menu::{BRIGHT, GREEN};
 
 /// Radar cover: friendly places (ground radars), friendly aircraft, the player (map units).
@@ -33,8 +33,9 @@ pub struct SamSite {
     pub x: i32,
     pub y: i32,
     pub name: String,
-    /// Missile reach (map units).
+    /// Missile reach and how far it launches at the friendly aircraft (map units).
     pub reach: f32,
+    pub engage: f32,
     pub reconned: bool,
 }
 
@@ -133,6 +134,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
                 y: o.y,
                 name: sim.threat_name(o.unit_type).to_string(),
                 reach: (sim.site_lock_range(o.unit_type) * 64) as f32,
+                engage: sim.site_engage_reach(i) as f32,
                 reconned,
             });
         }
@@ -159,7 +161,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
 }
 
 /// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane.
-fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
+pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
     if a.helicopter {
         painter.circle_filled(p, 3.0, col);
         painter.circle_stroke(p, 5.0, egui::Stroke::new(1.0, col));
@@ -183,25 +185,35 @@ fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
     }
 }
 
-/// Draws the picture: friendly air defences (a battery with its missile reach), known enemy
-/// defences (with their missile reach when `rings`), enemy fighters, friendly aircraft, the
-/// player.
-pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool) {
+/// Draws the picture's shown `layers`: friendly air defences (a battery with its missile
+/// reach), known enemy defences (with their missile reach), enemy fighters, friendly aircraft,
+/// the player.
+pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &MapLayers) {
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     for d in &pic.defences {
         let c = at(d.x, d.y);
-        if d.kind == AaaKind::PatriotRadar {
+        let patriot = d.kind == AaaKind::PatriotRadar;
+        if patriot && layers.shows(Layer::PatriotReach) {
             painter.extend(reach_circle(c, PATRIOT_REACH / view.scale));
+        }
+        if !layers.shows(if patriot { Layer::Patriots } else { Layer::Gepards }) {
+            continue;
         }
         defence(painter, c, d.kind);
         if d.manned.is_some() {
             painter.circle_stroke(c, 9.0, egui::Stroke::new(1.5, GREEN));
         }
     }
-    for s in &pic.sams {
+    for s in pic.sams.iter().filter(|s| layers.shows_type(&s.name)) {
         let c = at(s.x, s.y);
-        if rings {
+        if layers.shows(Layer::MissileRange) {
             painter.extend(map_draw::missile_circle(c, s.reach / view.scale, 0.7));
+        }
+        if layers.shows(Layer::EngagementRange) {
+            painter.add(map_draw::engagement_circle(c, s.engage / view.scale, 0.8));
+        }
+        if !layers.shows(Layer::Sams) {
+            continue;
         }
         map_draw::site(painter, view, c, &s.name, 1.0);
         if s.reconned {
@@ -209,13 +221,25 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool)
         }
     }
     for g in &pic.guns {
-        gun(painter, at(g.x, g.y), g.kind);
+        let c = at(g.x, g.y);
+        if layers.shows(Layer::EngagementRange) {
+            let reach = stealth_sim::campaign::gun_reach(g.kind);
+            painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
+        }
+        if layers.shows(Layer::Guns) {
+            gun(painter, c, g.kind);
+        }
     }
-    for a in &pic.fighters {
-        aircraft(painter, at(a.x, a.y), a, MISSILE_RED);
+    if layers.shows(Layer::EnemyFighters) {
+        for a in &pic.fighters {
+            aircraft(painter, at(a.x, a.y), a, MISSILE_RED);
+        }
     }
     for a in &pic.friendly {
-        aircraft(painter, at(a.x, a.y), a, FRIENDLY_BLUE);
+        let layer = if a.helicopter { Layer::FriendlyHelicopters } else { Layer::FriendlyAircraft };
+        if layers.shows(layer) {
+            aircraft(painter, at(a.x, a.y), a, FRIENDLY_BLUE);
+        }
     }
     if let Some((x, y)) = pic.player {
         painter.circle_stroke(at(x, y), 6.0, egui::Stroke::new(2.0, GREEN));
@@ -224,7 +248,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, rings: bool)
 
 /// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
 /// a square with its two barrels, a Stinger team a ring.
-fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
     let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
     match kind {
         AaaKind::PatriotRadar => {
@@ -258,36 +282,59 @@ fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
     egui::Shape::dashed_line(&pts, stroke, 3.0, 5.0)
 }
 
-/// The legend lines of the picture.
-pub fn legend(ui: &mut egui::Ui) {
-    map_draw::legend(ui, "Friendly aircraft", |p, c0| {
+/// The legend lines of the picture, with their layers' checkboxes; the SAM sites' (and a
+/// checkbox per SAM type) only with `pic`.
+pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) {
+    layers.legend(ui, Layer::FriendlyAircraft, "Friendly aircraft", |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
         aircraft(p, c0, &a, FRIENDLY_BLUE);
     });
-    map_draw::legend(ui, "Friendly helicopter", |p, c0| {
+    layers.legend(ui, Layer::FriendlyHelicopters, "Friendly helicopter", |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: true };
         aircraft(p, c0, &a, FRIENDLY_BLUE);
     });
-    map_draw::legend(ui, "Enemy fighter (on radar)", |p, c0| {
+    layers.legend(ui, Layer::EnemyFighters, "Enemy fighter (on radar)", |p, c0| {
         let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
         aircraft(p, c0, &a, MISSILE_RED);
     });
-    map_draw::legend(ui, "Patriot battery", |p, c0| defence(p, c0, AaaKind::PatriotRadar));
-    map_draw::legend(ui, "Gepard / Stinger", |p, c0| {
+    layers.legend(ui, Layer::Patriots, "Patriot battery", |p, c0| {
+        defence(p, c0, AaaKind::PatriotRadar)
+    });
+    layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
+        p.extend(reach_circle(c0, 6.0));
+    });
+    layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
         defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard);
         defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads);
     });
-    map_draw::legend(ui, "SAM site (known)", |p, c0| {
-        p.circle_filled(c0, 3.0, MISSILE_RED);
-    });
-    map_draw::legend(ui, "Guns / MANPADS (known)", |p, c0| {
+    if let Some(pic) = pic {
+        layers.legend(ui, Layer::Sams, "SAM site (known)", |p, c0| {
+            p.circle_filled(c0, 3.0, MISSILE_RED);
+        });
+        layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
+        layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
+            p.extend(map_draw::missile_circle(c0, 6.0, 1.0));
+        });
+        // (The route editor has its own line for the engagement range.)
+        layers.legend(ui, Layer::EngagementRange, "Engagement range", |p, c0| {
+            p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
+        });
+    }
+    layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
         gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu);
         gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads);
     });
-    map_draw::legend(ui, "Reconned", |p, c0| {
+    // Not layers: lined up with the lines with a checkbox.
+    let unchecked = |ui: &mut egui::Ui, text, draw: &dyn Fn(&egui::Painter, egui::Pos2)| {
+        ui.horizontal(|ui| {
+            ui.add_space(ui.spacing().icon_width);
+            map_draw::legend(ui, text, draw);
+        });
+    };
+    unchecked(ui, "Reconned", &|p, c0| {
         p.circle_stroke(c0, 6.0, egui::Stroke::new(1.0, BRIGHT));
     });
-    map_draw::legend(ui, "You", |p, c0| {
+    unchecked(ui, "You", &|p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));
     });
 }

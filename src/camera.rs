@@ -193,6 +193,14 @@ impl RigOffset {
     pub fn scaled(&self, cockpit_scale: f32) -> Transform {
         Transform::from_scale(Vec3::splat(1.0 / cockpit_scale)) * self.0
     }
+
+    /// The offset of the hands into the cockpit frame (at a console, the frame of its model,
+    /// which sits `VR_CONSOLE_DROP` below the eye).
+    pub fn hands(&self, settings: &crate::settings::Settings, console: bool) -> Transform {
+        use crate::cockpit3d::{CONSOLE_MODEL_SCALE, VR_CONSOLE_DROP};
+        let drop = if console { VR_CONSOLE_DROP * CONSOLE_MODEL_SCALE } else { 0.0 };
+        Transform::from_translation(Vec3::Y * drop) * self.scaled(settings.vr_hand_scale(console))
+    }
 }
 
 /// The XR tracking root while a headset session exists (set by the XR module).
@@ -661,6 +669,7 @@ fn update_rig(
     mut viewpoint: ResMut<crate::palette::Viewpoint>,
     combat: Option<Res<crate::combat::Combat>>,
     track: Res<crate::headtrack::HeadTrack>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let (Ok(mut head), Ok(mut cam_tf)) = (head.single_mut(), cam.single_mut()) else { return };
     // The tracked head on top of the views' own direction (none in VR).
@@ -688,7 +697,11 @@ fn update_rig(
                     * Quat::from_rotation_x(p + tracked.pitch)
                     * Quat::from_rotation_z(tracked.roll),
             );
-            *cam_tf = if settings.vr { offset.scaled(settings.vr_rig_scale()) } else { offset.0 };
+            *cam_tf = if settings.vr {
+                offset.scaled(settings.vr_rig_scale(manning.is_some()))
+            } else {
+                offset.0
+            };
         }
         View::Chase => {
             // Behind and above, looking along the flight direction (camera stays in the aircraft frame).

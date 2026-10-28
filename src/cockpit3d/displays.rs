@@ -51,6 +51,12 @@ pub(super) enum CanvasRole {
     Approach,
     Rwr,
     Hsi,
+    /// The Tornado's terrain following radar display (`crate::tfr`).
+    Tfr,
+    /// The RAH-66's multipurpose displays: threats and warnings (left), engines (right)
+    /// (`crate::mpd`).
+    Lmpd,
+    Rmpd,
     Ded,
     /// An air defence console's screens (`station` draws them).
     Console(ConsoleScreen),
@@ -65,6 +71,8 @@ pub enum ConsoleScreen {
     Board,
     /// The camera's overlay (over the camera picture).
     Eo,
+    /// The locked target's data.
+    Info,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -75,6 +83,7 @@ pub struct ConsoleCanvas(pub ConsoleScreen);
 pub const SCOPE_CANVAS: (usize, usize) = (320, 320);
 pub const BOARD_CANVAS: (usize, usize) = (400, 300);
 pub const EO_CANVAS: (usize, usize) = (308, 240);
+pub const INFO_CANVAS: (usize, usize) = (320, 240);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -252,7 +261,13 @@ pub(super) fn panel_materials(
 fn atlas_scale(style: PanelStyle) -> i32 {
     match style {
         PanelStyle::Classic => TEXELS,
-        PanelStyle::Modern | PanelStyle::F16 | PanelStyle::Uh60 | PanelStyle::Ah1z => MM_TEXELS,
+        PanelStyle::Modern
+        | PanelStyle::F16
+        | PanelStyle::Uh60
+        | PanelStyle::Ah1z
+        | PanelStyle::Tornado
+        | PanelStyle::A10
+        | PanelStyle::Rah66 => MM_TEXELS,
     }
 }
 
@@ -275,8 +290,8 @@ pub(super) fn atlas_faces(layout: &PanelLayout) -> Vec<(Face, PxRect)> {
     faces
 }
 
-/// A self-luminous screen: an MFD (`Left` / `Right` / `Third`), the attitude ball, the RWR scope, the HSI
-/// or the approach indexer, with its canvas.
+/// A self-luminous screen: an MFD (`Left` / `Right` / `Third`), the attitude ball, the RWR scope, the HSI,
+/// the terrain following radar display or the approach indexer, with its canvas.
 pub(super) fn screen(
     role: CanvasRole,
     layout: &PanelLayout,
@@ -289,12 +304,13 @@ pub(super) fn screen(
             (Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE), false)
         }
         CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
-            (Canvas::new(CLASSIC.0, CLASSIC.1), false)
+            (Canvas::scaled(CLASSIC.0, CLASSIC.1, crate::mfd::CLASSIC_SCALE), false)
         }
-        CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi => {
+        CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi | CanvasRole::Tfr => {
             let r = match role {
                 CanvasRole::Rwr => layout.rwr,
                 CanvasRole::Hsi => layout.hsi,
+                CanvasRole::Tfr => layout.tfr,
                 _ => Some(layout.adi),
             };
             let n = (r.map_or(90.0, |r| r.w) * TEXELS as f32) as usize;
@@ -305,9 +321,20 @@ pub(super) fn screen(
                 ConsoleScreen::Scope => SCOPE_CANVAS,
                 ConsoleScreen::Board => BOARD_CANVAS,
                 ConsoleScreen::Eo => EO_CANVAS,
+                ConsoleScreen::Info => INFO_CANVAS,
             };
             (Canvas::scaled(w, h, CONSOLE_SCALE), s == ConsoleScreen::Eo)
         }
+        // Only the RAH-66 has the multipurpose displays.
+        CanvasRole::Lmpd | CanvasRole::Rmpd => (
+            if layout.mpds.is_some() {
+                let (w, h) = crate::mpd::MPD_CANVAS;
+                Canvas::scaled(w, h, crate::mpd::MPD_SCALE)
+            } else {
+                Canvas::new(8, 8)
+            },
+            false,
+        ),
         // The classic cockpit has no data entry display.
         CanvasRole::Ded => (
             if layout.ded.is_some() {
@@ -349,6 +376,24 @@ pub(super) fn trackcam_material(
 }
 
 /// A side panel button label (the button's text on a green cap).
+/// A side panel button's label text, and its light's colour while lit (`ConsolePanel`).
+#[derive(Component)]
+pub(super) struct SideLabel {
+    pub text: String,
+    pub lit: Option<u8>,
+}
+
+/// Draws a side panel button's label: light text on the dark cap, dark text on the lit one.
+pub(super) fn draw_side_label(canvas: &mut Canvas, fonts: &Fonts, text: &str, lit: Option<u8>) {
+    let (back, ink) = match lit {
+        Some(c) => (c, 5),
+        None => (44, 47),
+    };
+    canvas.clear(back);
+    let w = fonts.text(&mut Canvas::new(64, 16), 0, 0, text.as_bytes(), ink);
+    fonts.text(canvas, (28 - w) / 2, 3, text.as_bytes(), ink);
+}
+
 pub(super) fn side_label(
     text: &str,
     fonts: &Fonts,
@@ -356,9 +401,7 @@ pub(super) fn side_label(
     images: &mut Assets<Image>,
 ) -> (CanvasTexture, Handle<CockpitMaterial>) {
     let mut canvas = Canvas::new(28, 11);
-    canvas.clear(44);
-    let w = fonts.text(&mut Canvas::new(64, 16), 0, 0, text.as_bytes(), 47);
-    fonts.text(&mut canvas, (28 - w) / 2, 3, text.as_bytes(), 47);
+    draw_side_label(&mut canvas, fonts, text, None);
     let tex = CanvasTexture::mipmapped(canvas, images, false);
     let m = materials.add(cockpit_material(StandardMaterial {
         base_color_texture: Some(tex.image.clone()),
@@ -457,7 +500,11 @@ pub(super) fn update_displays(
     *frame = frame.wrapping_add(1);
     let half = |r: CanvasRole| match r {
         CanvasRole::Hud | CanvasRole::Adi => None,
-        CanvasRole::Left | CanvasRole::Third | CanvasRole::Rwr | CanvasRole::Ded => Some(0),
+        CanvasRole::Left
+        | CanvasRole::Third
+        | CanvasRole::Rwr
+        | CanvasRole::Ded
+        | CanvasRole::Lmpd => Some(0),
         _ => Some(1),
     };
     for role in [
@@ -469,7 +516,10 @@ pub(super) fn update_displays(
         CanvasRole::Approach,
         CanvasRole::Rwr,
         CanvasRole::Hsi,
+        CanvasRole::Tfr,
         CanvasRole::Ded,
+        CanvasRole::Lmpd,
+        CanvasRole::Rmpd,
     ] {
         if settings.vr && half(role).is_some_and(|h| h != *frame % 2) {
             continue;
@@ -495,7 +545,10 @@ pub(super) fn update_displays(
             }
             CanvasRole::Rwr => d.panel.draw_rwr(&mut tex.canvas),
             CanvasRole::Hsi => d.panel.draw_hsi(&mut tex.canvas),
+            CanvasRole::Tfr => crate::tfr::draw(&mut tex.canvas, &fonts, &d.panel.radar),
             CanvasRole::Ded => d.panel.draw_ded(&mut tex.canvas, &fonts),
+            CanvasRole::Lmpd => d.panel.draw_lmpd(&mut tex.canvas, &fonts),
+            CanvasRole::Rmpd => d.panel.draw_engines(&mut tex.canvas, &fonts),
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);
                 if let Some(frame) = d.hud.frame(d.mfd.state.camera_shown()) {
@@ -628,6 +681,9 @@ mod tests {
             PanelStyle::F16,
             PanelStyle::Uh60,
             PanelStyle::Ah1z,
+            PanelStyle::Tornado,
+            PanelStyle::A10,
+            PanelStyle::Rah66,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

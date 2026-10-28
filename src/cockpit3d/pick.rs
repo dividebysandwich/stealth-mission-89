@@ -147,6 +147,9 @@ pub(super) struct Picker<'w, 's> {
     tips: Query<'w, 's, (), With<super::tooltips::Tip>>,
     windows: Query<'w, 's, &'static Window>,
     cams: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<EyeCamera>>,
+    /// VR: the headset's eye cameras, children of the tracking root (the `EyeCamera`).
+    eye_roots: Query<'w, 's, (), With<EyeCamera>>,
+    headset: Query<'w, 's, (&'static GlobalTransform, &'static ChildOf), With<Camera3d>>,
     root: Query<'w, 's, &'static GlobalTransform, With<CockpitRoot>>,
 }
 
@@ -171,10 +174,24 @@ impl Picker<'_, '_> {
     /// point is along it.
     pub fn eye_through(&self, at: Vec3) -> Option<(Ray3d, f32)> {
         let root_tf = self.root.single().ok()?;
-        let (_, cam_tf) = self.cams.single().ok()?;
-        let (dir, len) =
-            Dir3::new_and_length(root_tf.transform_point(at) - cam_tf.translation()).ok()?;
-        Some((Ray3d::new(cam_tf.translation(), dir), len))
+        let eye = self.eye()?;
+        let (dir, len) = Dir3::new_and_length(root_tf.transform_point(at) - eye).ok()?;
+        Some((Ray3d::new(eye, dir), len))
+    }
+
+    /// The eye (world): the eye camera, in VR (where the eye camera is the tracking root)
+    /// halfway between the headset's eye cameras.
+    fn eye(&self) -> Option<Vec3> {
+        if let Ok((_, tf)) = self.cams.single() {
+            return Some(tf.translation());
+        }
+        let eyes: Vec<Vec3> = self
+            .headset
+            .iter()
+            .filter(|(_, p)| self.eye_roots.contains(p.parent()))
+            .map(|(tf, _)| tf.translation())
+            .collect();
+        (!eyes.is_empty()).then(|| eyes.iter().sum::<Vec3>() / eyes.len() as f32)
     }
 
     /// Where the ray meets a mesh: how far along it, and the texture coordinates there.

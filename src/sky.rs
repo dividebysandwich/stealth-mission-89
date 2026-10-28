@@ -97,6 +97,13 @@ impl Sky {
         (night + (255.0 - night) * self.day).round().clamp(0.0, 255.0) as u8
     }
 
+    /// Height of the freezing level (m): low in a northern winter, high in summer and nearer
+    /// the equator (rain falls as snow above it, weather.rs).
+    pub fn freezing_level(&self) -> f32 {
+        let s = self.summer as f32;
+        if self.lat.abs() > 40.0 { 300.0 + 3700.0 * s } else { 2500.0 + 2000.0 * s }
+    }
+
     /// The moon's phase `hours` into the mission date.
     pub fn phase_at(&self, hours: f64) -> f64 {
         match self.chosen {
@@ -342,15 +349,21 @@ fn reset_sky(
     setup: Res<MissionSetup>,
     mission: Option<Res<crate::mission::ActiveMission>>,
 ) {
-    let (_, lat0) = crate::world::geo_origin(&setup.theater);
-    let date =
-        mission.as_ref().and_then(|m| crate::tacview::parse_briefing_date(&m.0.briefing.date));
-    let days = date.map_or(0.0, |(y, mo, d)| crate::tacview::days_from_civil(y, mo, d) as f64);
-    let chosen = mission.and_then(|m| m.0.settings.moon).map(|e| (e % 8) as f64 / 8.0);
-    // The middle of the theater, 256 km north of its corner.
-    let lat = lat0 + 256.0 / 111.2;
-    let summer = date.map_or(1.0, |_| season(days, lat));
-    *sky = Sky { lat, days, summer, chosen, ..default() };
+    *sky = Sky::of(&setup.theater, mission.as_ref().map(|m| &m.0));
+}
+
+impl Sky {
+    /// The sky of a mission on theater `theater` (its date and latitude), before the clock runs.
+    pub fn of(theater: &str, mission: Option<&stealth_mission::Mission>) -> Self {
+        let (_, lat0) = crate::world::geo_origin(theater);
+        let date = mission.and_then(|m| crate::tacview::parse_briefing_date(&m.briefing.date));
+        let days = date.map_or(0.0, |(y, mo, d)| crate::tacview::days_from_civil(y, mo, d) as f64);
+        let chosen = mission.and_then(|m| m.settings.moon).map(|e| (e % 8) as f64 / 8.0);
+        // The middle of the theater, 256 km north of its corner.
+        let lat = lat0 + 256.0 / 111.2;
+        let summer = date.map_or(1.0, |_| season(days, lat));
+        Sky { lat, days, summer, chosen, ..default() }
+    }
 }
 
 /// The sun and the moon in the classic time of day: by day the sun at the classic light

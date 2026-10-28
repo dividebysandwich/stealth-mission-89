@@ -31,6 +31,16 @@ layout(std140) uniform Globals {
     vec4 shadow_bounds;
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     vec4 storm_haze;
+    vec4 burst;
+    vec4 burst_colour;
+    vec4 atmos;
+    vec4 shadow_grid;
+    vec4 shadow_far;
+    // Night sky extras (x, y, z); desert specks (w).
+    vec4 sky_fx;
+    vec4 retro;
+    vec4 shadow_cells[144];
+    vec4 shadow_clouds[112];
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -71,6 +81,9 @@ layout(location = 0) in vec3 a_position;
 layout(location = 2) in vec2 a_corner;
 layout(location = 3) in uint a_colour;
 flat out uint v_dot_colour;
+// The quad corner (xy, -1..1) and the dot's size over the lamp's (z: above 1 a goggles halo).
+out vec3 v_dot_uv;
+const float NVG_HALO = 3.5;
 #endif
 // Per instance: the model matrix (locations 4..7) and the mesh tag.
 layout(location = 4) in mat4 a_model;
@@ -139,6 +152,7 @@ void main() {
     // Spread by the quad corner to a constant size in pixels: in XR at most a 320x200 pixel's
     // angular size.
     v_dot_colour = u_dot_colour != 0u ? a_colour : (u_word & 0xFFu);
+    v_dot_uv = vec3(a_corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
         vec3 center = world.xyz;
         bool spot = (tag & TAG_DOT_SPOT) != 0u;
@@ -159,6 +173,11 @@ void main() {
         }
         uint tenths = (tag >> 24u) & 0x7Fu;
         px = tenths != 0u ? px * float(tenths) / 10.0 : px * float(((tag >> 8u) & 7u) + 1u);
+        bool bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
+        if (g.light_info.z > 1.5 && bright && !spot) {
+            px *= NVG_HALO;
+            v_dot_uv.z = NVG_HALO;
+        }
         v_world = center;
         gl_Position = clip + vec4(a_corner * px * 2.0 / vp * clip.w, 0.0, 0.0);
         float range = DOT_RANGE;
@@ -201,6 +220,7 @@ void main() {
 #ifdef FRAGMENT
 #ifdef DOT
 flat in uint v_dot_colour;
+in vec3 v_dot_uv;
 #endif
 flat in uint v_word;
 in vec3 v_world;
@@ -513,6 +533,47 @@ float hash2(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
+// palette.wgsl `aurora` and `meteor`.
+vec3 aurora(vec3 nd) {
+    float s = g.sky_fx.x;
+    if (s <= 0.0 || nd.y <= 0.0) { return vec3(0.0); }
+    float az = atan(nd.x, -nd.z);
+    float north = exp(-az * az / 1.2);
+    float t = g.dots.y;
+    float above = asin(nd.y) - (0.18 + 0.06 * sin(az * 3.0 + t * 0.05) + 0.03 * sin(az * 7.0 - t * 0.08));
+    if (above < -0.03 || north < 0.01) { return vec3(0.0); }
+    float height = 0.25 + 0.08 * sin(az * 5.0 + t * 0.03);
+    float curtain = smoothstep(-0.03, 0.01, above) * exp(-max(above, 0.0) / height * 2.2);
+    float rays = 0.6 + 0.4 * sin(az * 90.0 + 3.0 * sin(az * 11.0 + t * 0.2) + t * 0.4) * (0.4 + 0.6 * sin(az * 23.0 - t * 0.15));
+    vec3 c = mix(vec3(0.02, 0.28, 0.11), vec3(0.18, 0.02, 0.07), smoothstep(0.08, 0.3, above));
+    return c * curtain * rays * north * s;
+}
+
+const float METEOR_PERIOD = 7.0;
+const float METEOR_LIFE = 0.7;
+float meteor(vec3 nd, float px) {
+    if (g.sky_fx.y <= 0.0 || nd.y <= 0.0) { return 0.0; }
+    float t = g.dots.y;
+    float k = floor(t / METEOR_PERIOD);
+    float p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
+    if (p > 1.0 || hash2(vec2(k, 3.7)) > 0.5) { return 0.0; }
+    float az = hash2(vec2(k, 1.1)) * 6.2831853;
+    float el = 0.35 + 0.6 * hash2(vec2(k, 2.3));
+    vec3 start = vec3(cos(el) * sin(az), sin(el), -cos(el) * cos(az));
+    vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), start));
+    vec3 up = cross(start, east);
+    float a = hash2(vec2(k, 5.9)) * 6.2831853;
+    vec3 dir = normalize(cos(a) * east - (0.6 + 0.4 * abs(sin(a))) * up) * 0.25;
+    vec3 head = normalize(start + dir * p);
+    vec3 tail = normalize(start + dir * max(p - 0.35, 0.0));
+    vec3 ab = head - tail;
+    float along = clamp(dot(nd - tail, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+    float d = length(nd - tail - ab * along);
+    float w = max(px * 0.8, 0.0006);
+    return (1.0 - smoothstep(w * 0.5, w * 1.5, d)) * along * (1.0 - 0.6 * p);
+}
+
+
 // Continuous time of day: the sun, stars and the moon over the sky colour (`nd` normalised).
 vec3 night_sky(vec3 bg_in, vec3 nd, float px) {
     vec3 bg = bg_in;
@@ -533,9 +594,12 @@ vec3 night_sky(vec3 bg_in, vec3 nd, float px) {
             float r = max(STAR_CELL * 0.03, px * 0.55);
             float core = d < r ? 1.0 : 0.0;
             float mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
+            float low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+            mag *= max(1.0 + g.sky_fx.z * low * 0.7 * sin(g.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
             float alt_fade = smoothstep(0.0, 0.15, nd.y);
             bg += vec3(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
         }
+        bg += (aurora(nd) + vec3(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
     }
     vec3 sun = normalize(g.sky_sun.xyz);
     if (sun.y > -SUN_RADIUS) {
@@ -600,6 +664,14 @@ float bayer4(uvec2 p) {
     return (m[(p.y & 3u) * 4u + (p.x & 3u)] + 0.5) / 16.0;
 }
 
+// palette.wgsl `retro`: VGA colours (the headset has no scanlines).
+vec3 retro(vec3 rgb, vec2 frag) {
+    if (g.retro.x <= 0.0) { return rgb; }
+    vec3 s = pow(max(rgb, vec3(0.0)), vec3(1.0 / 2.2));
+    vec3 q = floor(s * 63.0 + bayer4(uvec2(frag))) / 63.0;
+    return pow(min(q, vec3(1.0)), vec3(2.2));
+}
+
 // Inside a cloud everything but the cockpit fades into it; an overcast turns the day greyer.
 vec3 whiteout(vec3 rgb, float dist) {
     float gloom = g.weather.w;
@@ -614,6 +686,55 @@ const float STORM_HAZE_DEPTH = 2.0;
 // In a storm the air under the deck is hazy with rain, the more the deck covers the sky: the
 // colour seen along view direction `nd` at `dist` metres fades into grey over the part of the
 // ray below the deck's base.
+const float MIST_DEPTH = 1200.0;
+
+// palette.wgsl `ground_mist`.
+vec3 ground_mist(vec3 rgb, vec3 world, float dist) {
+    float s = g.atmos.x;
+    float top = g.atmos.w + g.atmos.y;
+    if (s <= 0.0 || world.y >= top) { return rgb; }
+    float eye_y = eye_pos().y;
+    float path = dist;
+    if (eye_y > top) {
+        float up = (eye_y - world.y) / max(dist, 1.0);
+        path = min(dist, (top - world.y) / max(up, 1e-3));
+    }
+    float a = s * (1.0 - exp(-path / MIST_DEPTH));
+    return mix(rgb, pal(CLOUD_RAMP) * (1.0 - night_dark()), a);
+}
+
+// palette.wgsl `cloud_shadow`.
+const float SHADOW_GRID = 12.0;
+
+float cloud_shadow(vec3 world) {
+    float s = g.atmos.z;
+    vec3 sun = g.sun.xyz;
+    if (s <= 0.0 || sun.y < 0.05) { return 1.0; }
+    float shade = 0.0;
+    float base = g.clouds.x;
+    if (g.clouds.z != 0.0 && world.y < base) {
+        shade = g.shadow_far.y * stratus_cover(world + sun * ((base - world.y) / sun.y));
+    }
+    vec4 grid = g.shadow_grid;
+    if (g.shadow_far.x > 0.0 && world.y < grid.w) {
+        vec2 p = world.xz + sun.xz * ((grid.w - world.y) / sun.y);
+        vec2 q = (p - grid.xy) / grid.z;
+        float local = 0.0;
+        if (all(greaterThanEqual(q, vec2(0.0))) && all(lessThan(q, vec2(SHADOW_GRID)))) {
+            vec4 cell = g.shadow_cells[int(q.y) * int(SHADOW_GRID) + int(q.x)];
+            for (int k = 0; k < 4; k++) {
+                float n = cell[k];
+                if (n < 0.5) { break; }
+                vec4 c = g.shadow_clouds[int(n) - 1];
+                local = max(local, c.w * (1.0 - smoothstep(0.45, 1.0, length(p - c.xy) / c.z)));
+            }
+        }
+        vec2 off = abs(q - vec2(SHADOW_GRID * 0.5)) / (SHADOW_GRID * 0.5);
+        shade = max(shade, mix(local, g.shadow_far.z, smoothstep(0.75, 1.0, max(off.x, off.y))));
+    }
+    return 1.0 - s * shade;
+}
+
 vec3 storm_haze(vec3 rgb, vec3 nd, float dist) {
     float s = g.storm_haze.x;
     if (s <= 0.0) {
@@ -650,8 +771,18 @@ float flash_scale() {
     return mix(1.0, 0.3, g.light_info.y);
 }
 
+vec3 burst_glow(vec3 world) {
+    float i = g.burst.w;
+    if (i <= 0.0) { return vec3(0.0); }
+    float d = length(world - g.burst.xyz);
+    float reach = g.burst_colour.w;
+    float core = d / (reach * 0.06);
+    float halo = d / (reach * 0.3);
+    return g.burst_colour.rgb * i * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
 vec3 flash(vec3 rgb, vec3 world) {
-    return rgb + BOLT_COLOR * (g.weather.y + bolt_glow(world)) * flash_scale();
+    return rgb + (BOLT_COLOR * (g.weather.y + bolt_glow(world)) + burst_glow(world)) * flash_scale();
 }
 
 vec3 nvg(vec3 rgb) {
@@ -662,7 +793,9 @@ vec3 nvg(vec3 rgb) {
     uvec2 p = uvec2(gl_FragCoord.xy);
     uint h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ uint(g.dots.y * 60.0) * 0x9e3779b9u;
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
-    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * 0.06, 0.0, 1.0);
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    float grain = g.light_info.z > 1.5 ? mix(0.16, 0.05, v) : 0.06;
+    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
     vec3 c = mix(vec3(0.0, 0.04, 0.01), vec3(0.3, 0.85, 0.2), v) + vec3(0.5, 0.15, 0.4) * v * v * v;
     return pow(min(c, vec3(1.0)), vec3(2.2));
 }
@@ -810,6 +943,9 @@ const float WATER_SPECKS = 0.35;
 const vec2 WATER_DOTS_HIGH = vec2(80.0, 300.0);
 // Least speck radius up close (metres); otherwise a dot light's size.
 const float WATER_SPECK_M = 0.25;
+// The desert's specks (linear): the sand darkened to brown, and pale sand to mix in.
+const vec3 SAND_DARK = vec3(0.5, 0.4, 0.3);
+const vec3 SAND_LIGHT = vec3(0.85, 0.7, 0.45);
 
 // A dot light's size in this view's pixels (the vertex shader's DOT).
 float dot_pixels() {
@@ -830,19 +966,19 @@ vec2 pixels(vec2 off, vec2 dx, vec2 dy) {
     return vec2(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
 }
 
-vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
-    float h = eye_pos().y - world.y;
-    bool level = abs(normalize(face).y) > 0.95;
+// Specks pinned to the ground plane at `xz`, seen from `h` metres above it: their weight 0..1
+// (x) and whether the one here is a light one (y).
+vec2 specks(vec2 xz, float h, float foot, vec2 gdx, vec2 gdy, bool modern) {
     float fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
         * (1.0 - smoothstep(0.15, 0.4, foot / WATER_GRID));
-    if (!level || fade <= 0.0) {
-        return rgb;
+    if (fade <= 0.0) {
+        return vec2(0.0);
     }
-    vec2 p = (world.xz + g.noise.xy) / WATER_GRID;
+    vec2 p = (xz + g.noise.xy) / WATER_GRID;
     vec2 cell = floor(p);
     float n = hash2(cell);
     if (n >= WATER_SPECKS) {
-        return rgb;
+        return vec2(0.0);
     }
     vec2 at = cell + vec2(hash2(cell + 17.0), hash2(cell + 43.0));
     // Distance from the speck in screen pixels (a little world size up close).
@@ -850,8 +986,24 @@ vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy,
     float px = length(pixels(off, gdx, gdy));
     float r = max(dot_pixels() * 0.5, WATER_SPECK_M / max(foot, 1e-3));
     float k = modern ? 1.0 - smoothstep(r - 0.3, r + 0.3, px) : (px < r ? 1.0 : 0.0);
-    vec3 tone = n < WATER_SPECKS * 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
-    return mix(rgb, tone, k * fade);
+    return vec2(k * fade, n < WATER_SPECKS * 0.5 ? 1.0 : 0.0);
+}
+
+vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    if (abs(normalize(face).y) <= 0.95) {
+        return rgb;
+    }
+    vec2 s = specks(world.xz, eye_pos().y - world.y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
+    return mix(rgb, tone, s.x);
+}
+
+// The desert theaters' ground gradient (g.sky_fx.w): the water's specks in earth colours, a
+// darker brown and a pale sand, on the ground plane at `xz`.
+vec3 sand_dots(vec3 rgb, vec2 xz, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    vec2 s = specks(xz, eye_pos().y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? mix(rgb, SAND_LIGHT, 0.5) : rgb * SAND_DARK;
+    return mix(rgb, tone, s.x);
 }
 
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
@@ -896,6 +1048,9 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         bg = pal(band(dir).x);
     }
     vec3 eye = eye_pos();
+    if (g.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
+        bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), foot, gdx, gdy, modern);
+    }
     bool ground_lit = false;
 #ifdef LIT
     uint flags = uint(g.ambient.w);
@@ -941,8 +1096,17 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     // The ground gradient lies on the plane y = 0; the sky is far.
     vec3 nd = normalize(dir);
     float haze_d = nd.y < 0.0 ? max(eye.y, 0.0) / -nd.y : 1e9;
+    if (nd.y < 0.0) {
+        vec3 ground = eye + nd * haze_d;
+        bg = ground_mist(bg * cloud_shadow(ground), ground, haze_d);
+    }
     bg = storm_haze(bg, nd, haze_d);
     bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
+    if (g.burst.w > 0.0) {
+        float burst_d = length(g.burst.xyz - eye);
+        float far = smoothstep(0.5, 2.0, burst_d / g.burst_colour.w);
+        bg += burst_glow(eye + nd * burst_d) * flash_scale() * far;
+    }
     return vec4(bg, 1.0);
 #else
     uint hi = (v_word >> 8u) & 0xFFu;
@@ -1002,7 +1166,18 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = rgb * (1.0 - dark);
     }
     float dl = length(dir);
-    return vec4(flash(whiteout(storm_haze(rgb, dir / max(dl, 1e-3), dl), dl), v_world), 1.0);
+    if (!is_line) {
+        rgb = ground_mist(rgb * cloud_shadow(v_world), v_world, dl);
+    }
+    float alpha = 1.0;
+#ifdef DOT
+    if (v_dot_uv.z > 1.0) {
+        float r = (length(v_dot_uv.xy) * v_dot_uv.z - 1.0) / (v_dot_uv.z - 1.0);
+        float k = clamp(1.0 - r, 0.0, 1.0);
+        alpha = r <= 0.0 ? 1.0 : 0.6 * k * k;
+    }
+#endif
+    return vec4(flash(whiteout(storm_haze(rgb, dir / max(dl, 1e-3), dl), dl), v_world), alpha);
 #endif
 }
 
@@ -1012,6 +1187,15 @@ void main() {
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);
     vec2 gdy = dFdy(v_world.xz);
+#ifdef BACKGROUND
+    // The background sphere: the ground plane (y = 0) where the view ray meets it (the
+    // desert's specks).
+    vec3 ray = v_world - eye_pos();
+    vec3 ground = eye_pos() + ray * (eye_pos().y / max(-ray.y, 1e-4));
+    foot = length(fwidth(ground));
+    gdx = dFdx(ground.xz);
+    gdy = dFdy(ground.xz);
+#endif
     if ((uint(g.light_info.w) & 1u) != 0u) {
         o_colour = vec4(pal(v_word & 0xFFu), 1.0);
         return;
@@ -1030,6 +1214,6 @@ void main() {
     }
     vec4 c = shade_fragment(face, sky_px, foot, gdx, gdy);
     vec3 glare = sun_glare(v_world - eye_pos());
-    o_colour = vec4(nvg(c.rgb + glare * c.a), c.a);
+    o_colour = vec4(retro(nvg(c.rgb + glare * c.a), gl_FragCoord.xy), c.a);
 }
 #endif

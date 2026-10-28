@@ -16,8 +16,9 @@
 //!   to 60 degrees. The angle of attack and load factor limiters only act near the limits.
 //!   Turns are coordinated (sideslip held at 0, or set by the rudder). The pitch rate follows its
 //!   command like an airframe (second order, slightly underdamped), roll and yaw with short lags.
-//! - Flaps extend over a few seconds and add lift and stall margin (a higher angle of attack
-//!   limit), so the aircraft flies slower; they don't move the nose by themselves.
+//! - Flaps extend over a few seconds and add lift (a steeper lift slope) and stall margin (a
+//!   higher angle of attack limit), so the aircraft flies slower with its nose still above the
+//!   flight path; they don't move the nose by themselves.
 //! - Ground: rolling friction, wheel brakes, nosewheel steering, rotation above about 0.8 of the
 //!   stall speed, carrier catapult and arresting wire; ground contact, landing and crash rules
 //!   are the classic model's.
@@ -67,7 +68,8 @@ pub struct Aero {
     /// Angle of attack limiter of the control system (rad).
     pub alpha_limit: f32,
     pub alpha_limit_neg: f32,
-    /// Lift added by the fully extended flaps, and the stall / limiter angles they add (rad).
+    /// Lift added by the fully extended flaps at their stall angle, and the stall / limiter
+    /// angles they add (rad).
     pub cl_flaps: f32,
     pub alpha_flaps: f32,
     pub cd0: f32,
@@ -98,6 +100,39 @@ pub struct Aero {
     pub push_rate: f32,
     /// Yaw rate limit (rad/s).
     pub yaw_rate_max: f32,
+    /// A swing wing (the Tornado's): the values above are with it fully forward.
+    pub swing_wing: Option<SwingWing>,
+}
+
+/// A swing wing swept back automatically with the Mach number (`Aircraft::wing_sweep`): it
+/// loses lift slope and gains induced drag as it goes back, and its drag rise comes later.
+#[derive(Debug, Clone, Copy)]
+pub struct SwingWing {
+    /// Leading edge sweep fully forward and fully back (rad).
+    pub forward: f32,
+    pub back: f32,
+    /// It starts back at the first Mach number, and is fully back at the second.
+    pub mach: (f32, f32),
+    /// Seconds from fully forward to fully back.
+    pub travel: f32,
+    /// Fully back: the lift slope, the induced drag factor, how much later (Mach) the drag
+    /// rise starts and peaks, and the share of the wave drag left.
+    pub cl_alpha: f32,
+    pub cd_k: f32,
+    pub drag_rise_later: f32,
+    pub wave_drag: f32,
+}
+
+impl SwingWing {
+    /// Where the schedule puts the wing (0 fully forward .. 1 fully back): fully forward with
+    /// the flaps out.
+    pub fn scheduled(&self, mach: f32, flaps: bool) -> f32 {
+        if flaps {
+            return 0.0;
+        }
+        let t = ((mach - self.mach.0) / (self.mach.1 - self.mach.0)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
 }
 
 /// Drag added near and above the speed of sound.
@@ -169,6 +204,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        swing_wing: None,
     };
 
     /// F-16C: Mach 1.2 at sea level, about Mach 1.9 at altitude with the afterburner (subsonic
@@ -210,7 +246,125 @@ impl Aero {
         pitch_rate_max: 0.6,
         push_rate: 0.6,
         yaw_rate_max: 0.6,
+        swing_wing: None,
     };
+
+    /// Tornado IDS: two RB199s (18,200 lb dry, 33,800 lb with the afterburners) against 42,000
+    /// lb with full internal fuel, a heavily loaded wing (about 150 lb/ft^2) that needs its
+    /// full-span slats and flaps for a 130 kt approach. About Mach 1.2 low down and past Mach 1.6
+    /// high with the wings fully back, 7.5 g.
+    pub const TORNADO: Aero = Aero {
+        wing_loading: 147.0,
+        dry_weight: 31_000.0,
+        ref_weight: 42_000.0,
+        thrust_ratio: 0.43,
+        ab_thrust_ratio: 0.81,
+        ab_thrust_mach: 0.6,
+        // Turbofans with a high bypass for a fighter: ram drag low down.
+        thrust_mach: -0.2,
+        cl_alpha: 4.6,
+        alpha_stall: 0.38,
+        alpha_stall_neg: -0.26,
+        alpha_limit: 0.33,
+        alpha_limit_neg: -0.22,
+        cl_flaps: 0.9,
+        alpha_flaps: 0.04,
+        cd0: 0.028,
+        cd_k: 0.10,
+        cd_sep: 0.5,
+        cl_sep: 1.0,
+        cd_gear: 0.025,
+        cd_flaps: 0.06,
+        cd_speed_brake: 0.10,
+        cd_bay: 0.0,
+        cd_idle: 0.025,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Supersonic {
+            start: 0.8,
+            peak_mach: 1.05,
+            peak: 0.06,
+            supersonic: 0.045,
+        },
+        n_max: 7.5,
+        n_min: -3.0,
+        roll_rate: 3.0,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        swing_wing: Some(SwingWing {
+            forward: 25.0 * std::f32::consts::PI / 180.0,
+            back: 67.0 * std::f32::consts::PI / 180.0,
+            mach: (0.6, 0.9),
+            travel: 6.0,
+            cl_alpha: 3.2,
+            cd_k: 0.24,
+            drag_rise_later: 0.08,
+            wave_drag: 0.65,
+        }),
+    };
+
+    /// A-10C: two TF34 turbofans (18,000 lb static, falling off steeply with speed) against
+    /// 38,000 lb with full internal fuel and the cannon's ammunition, a long straight wing (75
+    /// lb/ft^2) and a draggy airframe: about 380 kt low down, a 120 kt clean stall, 7.3 g, no
+    /// afterburner.
+    pub const A10: Aero = Aero {
+        wing_loading: 75.0,
+        dry_weight: 27_500.0,
+        ref_weight: 38_000.0,
+        thrust_ratio: 0.48,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        // High bypass turbofans: much of the static thrust is gone at speed.
+        thrust_mach: -0.6,
+        cl_alpha: 5.0,
+        alpha_stall: 0.30,
+        alpha_stall_neg: -0.22,
+        alpha_limit: 0.27,
+        alpha_limit_neg: -0.20,
+        cl_flaps: 0.5,
+        alpha_flaps: 0.03,
+        cd0: 0.046,
+        cd_k: 0.062,
+        cd_sep: 0.5,
+        cl_sep: 1.1,
+        cd_gear: 0.02,
+        cd_flaps: 0.05,
+        // The split ailerons (decelerons) open as speed brakes.
+        cd_speed_brake: 0.15,
+        cd_bay: 0.0,
+        cd_idle: 0.02,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Subsonic,
+        n_max: 7.3,
+        n_min: -3.0,
+        roll_rate: 1.9,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        swing_wing: None,
+    };
+
+    /// The airframe with its swing wing (if it has one) at `at` (0 fully forward .. 1 fully
+    /// back).
+    pub fn swept(&self, at: f32) -> Aero {
+        let Some(w) = self.swing_wing else { return *self };
+        let lerp = |a: f32, b: f32| a + (b - a) * at;
+        let drag_rise = match self.drag_rise {
+            DragRise::Supersonic { start, peak_mach, peak, supersonic } => DragRise::Supersonic {
+                start: start + w.drag_rise_later * at,
+                peak_mach: peak_mach + w.drag_rise_later * at,
+                peak: peak * lerp(1.0, w.wave_drag),
+                supersonic: supersonic * lerp(1.0, w.wave_drag),
+            },
+            d => d,
+        };
+        Aero {
+            cl_alpha: lerp(self.cl_alpha, w.cl_alpha),
+            cd_k: lerp(self.cd_k, w.cd_k),
+            drag_rise,
+            ..*self
+        }
+    }
 }
 
 /// Full rudder sideslip (rad).
@@ -231,6 +385,10 @@ const HOLD_AFTER: f32 = 1.5;
 const HOLD_LATEST: f32 = 4.0;
 const HOLD_SETTLED: f32 = 0.02;
 const HOLD_GAIN: f32 = 0.5;
+/// Terrain following: pitch rate per radian of flight path error, the flight path angle led by
+/// its rate over `TF_LEAD` seconds (damping the bobbing the path's lag behind the nose gives).
+const TF_GAIN: f32 = 3.0;
+const TF_LEAD: f32 = 0.5;
 /// Auto trim: trim (stick) per second per radian of flight path error held, and the share of
 /// the roll bias trimmed out per second with the stick released.
 const TRIM_PATH_GAIN: f32 = 0.5;
@@ -270,7 +428,7 @@ impl State {
 }
 
 /// (density ratio, speed of sound ft/s) at an altitude in feet.
-fn atmosphere(h: f32) -> (f32, f32) {
+pub(crate) fn atmosphere(h: f32) -> (f32, f32) {
     let h = h.clamp(0.0, 60000.0);
     if h < 36089.0 {
         let theta = 1.0 - 6.875_6e-6 * h;
@@ -280,8 +438,11 @@ fn atmosphere(h: f32) -> (f32, f32) {
     }
 }
 
-fn cl_zero(ae: &Aero, a: &Aircraft) -> f32 {
-    ae.cl_flaps * a.modern.flap_pos
+/// Lift slope (1/rad): the flaps steepen it, adding `cl_flaps` at their stall angle, so the
+/// lift still starts from 0 at 0 angle of attack (level flight with them out needs some, the
+/// nose above the flight path, not below it).
+fn cl_slope(ae: &Aero, a: &Aircraft) -> f32 {
+    ae.cl_alpha + ae.cl_flaps / (ae.alpha_stall + ae.alpha_flaps) * a.modern.flap_pos
 }
 
 fn alpha_stall(ae: &Aero, a: &Aircraft) -> f32 {
@@ -296,9 +457,9 @@ fn alpha_limit(ae: &Aero, a: &Aircraft) -> f32 {
 
 /// Lift coefficient: linear to the stall, then falling off to 60% of the peak.
 fn lift_coefficient(ae: &Aero, a: &Aircraft, alpha: f32) -> f32 {
-    let c0 = cl_zero(ae, a);
+    let slope = cl_slope(ae, a);
     let (hi, lo) = (alpha_stall(ae, a), ae.alpha_stall_neg);
-    let peak = |s: f32| c0 + ae.cl_alpha * s;
+    let peak = |s: f32| slope * s;
     if alpha > hi {
         let p = peak(hi);
         (p - (alpha - hi) * 2.0).max(0.6 * p)
@@ -333,7 +494,9 @@ pub(super) fn step(
     k: &FlightConstants,
     theater: Option<&Theater>,
 ) {
-    let ae = &k.aero;
+    // A swing wing as it is swept now.
+    let swept = k.aero.swept(a.wing_sweep);
+    let ae = &swept;
     a.time += dt;
     if a.ended.is_some() {
         return;
@@ -357,7 +520,7 @@ pub(super) fn step(
                     neutral_load(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin(), roll)
                         .max(0.0);
                 let alpha =
-                    ((n0 / per_cl - cl_zero(ae, a)) / ae.cl_alpha).clamp(0.0, alpha_limit(ae, a));
+                    (n0 / per_cl / cl_slope(ae, a)).clamp(0.0, alpha_limit(ae, a));
                 a.orientation = (a.orientation * Quat::from_rotation_x(alpha)).normalize();
             }
             a.modern.hold = Some(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin());
@@ -456,7 +619,7 @@ pub(super) fn step(
     accel.y -= G;
 
     // Stall speed at the current load (velocity units) for the warnings.
-    let cl_avail = cl_zero(ae, a) + ae.cl_alpha * alpha_limit(ae, a);
+    let cl_avail = cl_slope(ae, a) * alpha_limit(ae, a);
     let load = (a.gees / 16.0).max(1.0);
     a.stall_speed = (2.0 * load * ae.wing_loading * mass / (RHO0 * sigma * cl_avail)).sqrt() * 16.0;
 
@@ -511,11 +674,24 @@ pub(super) fn step(
             let e = bam(bam_diff(a.waypoint_bearing, to_bam(heading)));
             let bank = (e * 1.5).clamp(-0.52, 0.52);
             p_cmd = ((bank - roll) * 2.0).clamp(-0.5, 0.5);
-            let gamma_cmd = ((a.autopilot_alt - vz) * 0.0005).clamp(-0.17, 0.17);
-            q_cmd = q_turn + ((gamma_cmd - gamma) * 0.8).clamp(-0.5 * G / v, 2.0 * G / v);
+            q_cmd = match a.tf_gamma {
+                // Terrain following: the radar's flight path, pulling up to 4 g more and pushing
+                // over to -0.5 g.
+                Some(gamma_cmd) => {
+                    let gamma_dot = a_perp.y / (v * gamma.cos().max(0.1));
+                    let led = gamma + gamma_dot * TF_LEAD;
+                    q_turn + ((gamma_cmd - led) * TF_GAIN).clamp(-1.5 * G / v, 4.0 * G / v)
+                }
+                None => {
+                    let gamma_cmd = ((a.autopilot_alt - vz) * 0.0005).clamp(-0.17, 0.17);
+                    q_turn + ((gamma_cmd - gamma) * 0.8).clamp(-0.5 * G / v, 2.0 * G / v)
+                }
+            };
         }
-        // Crash protection: wings level and pull when the ground is less than 3 s away.
+        // Crash protection: wings level and pull when the ground is less than 3 s away (not
+        // while terrain following, which flies lower and clears the ground itself).
         if k.landing == 0
+            && !a.terrain_following()
             && !a.gear_down
             && vel.y < 0.0
             && a.altitude - a.ground_altitude + vel.y * 3.0 < 150.0
@@ -529,12 +705,12 @@ pub(super) fn step(
         // Limiters: the angle of attack stays within the limiter angles and the angles that give
         // the load factor limits (corrected towards them near the limits only).
         let lo_n = if per_cl > 1e-3 {
-            (ae.n_min / per_cl - cl_zero(ae, a)) / ae.cl_alpha
+            ae.n_min / per_cl / cl_slope(ae, a)
         } else {
             ae.alpha_limit_neg
         };
         let hi_n = if per_cl > 1e-3 {
-            (ae.n_max / per_cl - cl_zero(ae, a)) / ae.cl_alpha
+            ae.n_max / per_cl / cl_slope(ae, a)
         } else {
             alpha_limit(ae, a)
         };

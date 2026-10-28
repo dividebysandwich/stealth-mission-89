@@ -44,6 +44,12 @@ pub struct RemotePilot {
     /// A helicopter (UH-60A), an attack helicopter (AH-1Z).
     pub helicopter: bool,
     pub gunship: bool,
+    /// The Tornado IDS (with `external_stores`).
+    pub tornado: bool,
+    /// The A-10 (with `external_stores`).
+    pub a10: bool,
+    /// The RAH-66 (with `helicopter` and `gunship`).
+    pub comanche: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -60,7 +66,8 @@ pub struct RemotePilot {
 
 /// [`RemotePilot`] as a sequence without field names: id, view (wx, wy, mx, my, alt, view_z,
 /// heading, pitch, roll, velocity, knots, climb), flags (gear up, on the ground, F-117A as it
-/// was, external stores, gun firing, burning, damage smoke in two bits, helicopter, gunship),
+/// was, external stores, gun firing, burning, damage smoke in two bits, helicopter, gunship, Tornado,
+/// A-10),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim.
 
 #[derive(Serialize, Deserialize)]
@@ -85,7 +92,10 @@ impl From<RemotePilot> for RemoteWire {
                 .fold(0u16, |f, (k, &b)| f | (b as u16) << k)
                 | (p.smoke.min(3) as u16) << 6
                 | (p.helicopter as u16) << 8
-                | (p.gunship as u16) << 9;
+                | (p.gunship as u16) << 9
+                | (p.tornado as u16) << 10
+                | (p.a10 as u16) << 11
+                | (p.comanche as u16) << 12;
         RemoteWire(
             p.id,
             [
@@ -131,6 +141,8 @@ impl From<RemoteWire> for RemotePilot {
                 velocity,
                 knots,
                 climb,
+                // Not sent: no low-level cover from the radars.
+                height: alt,
             },
             gear_up: bit(0),
             on_ground: bit(1),
@@ -142,6 +154,9 @@ impl From<RemoteWire> for RemotePilot {
             smoke: (flags >> 6) as u8 & 3,
             helicopter: bit(8),
             gunship: bit(9),
+            tornado: bit(10),
+            a10: bit(11),
+            comanche: bit(12),
             gun_aim,
             chute,
             missiles,
@@ -264,7 +279,10 @@ impl Sim {
                 .aaa
                 .iter()
                 .enumerate()
-                .filter(|(_, u)| !u.destroyed && (u.tracking || u.burst > 0))
+                // A manned one too: its turret slewed by hand.
+                .filter(|&(i, u)| {
+                    !u.destroyed && (u.tracking || u.burst > 0 || self.manned_by(i).is_some())
+                })
                 .map(|(i, u)| (i as u16, u.aim_az, u.aim_el, u.burst, u.tracking))
                 .collect(),
             ai_missiles: self.ai_missiles().to_vec(),
@@ -297,6 +315,9 @@ impl Sim {
                     external_stores: p.external_stores,
                     helicopter: p.helicopter,
                     gunship: p.gunship,
+                    tornado: p.tornado,
+                    a10: p.a10,
+                    comanche: p.comanche,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

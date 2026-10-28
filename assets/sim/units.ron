@@ -71,7 +71,7 @@
         (id: "a6", name: "A-6", nato: "Intruder", mach: 0.85, radius_km: 1080, agility: 2, radar: "friendly", model: 27),
         (id: "mig21", name: "MiG-21", nato: "Fishbed", mach: 2.05, radius_km: 370, agility: 3, radar: "spin_scan", model: 28),
         (id: "ef111", name: "EF-111", nato: "Raven", mach: 2.15, radius_km: 1495, agility: 2, radar: "friendly", model: 29),
-        (id: "c5", name: "C-5", nato: "Galaxy", mach: 0.79, radius_km: 2220, agility: 1, radar: "none", model: 30),
+        (id: "c5", name: "C-5", nato: "Galaxy", mach: 0.79, radius_km: 2220, agility: 1, radar: "friendly", model: 30),
         (id: "a10", name: "A-10", nato: "Warthog", mach: 0.56, radius_km: 460, agility: 2, radar: "friendly", model: 32),
         (id: "geran2", name: "Geran-2", nato: "Shahed", kmh: 185, radius_km: 2000, agility: 1, radar: "none", model: 100, kind: Drone),
         (id: "geran3", name: "Geran-3", nato: "Shahed", kmh: 600, radius_km: 1500, agility: 1, radar: "none", model: 101, kind: Drone),
@@ -131,6 +131,7 @@
         (id: "mim104", name: "MIM-104F PAC-3", family: Sam, range_km: 80, mach: 5.0, g: 40, seeker: TrackViaMissile, model: 15),
         (id: "fim92", name: "FIM-92", family: Sam, range_km: 8, mach: 2.2, g: 20, seeker: Ir, model: 1),
         (id: "agm114", name: "AGM-114", family: Ground, range_km: 8, mach: 1.3, g: 10, seeker: Optical, model: 10),
+        (id: "fim92_air", name: "FIM-92", family: Air, range_km: 4.8, mach: 2.2, g: 25, seeker: PlayerAam, model: 1),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -184,6 +185,7 @@
         (id: "hellfire", short: "AGM-114", long: "Hellfire", missile: "agm114", picture: 16, bay: 4,
             effect: {"shelter": 2, "aircraft": 4, "building": 2, "bridge": 1, "bunker": 2, "depot": 3, "launcher": 5,
                      "radar": 5, "rig": 2, "industry": 2, "small_ship": 4, "large_ship": 1, "armour": 8}),
+        (id: "stinger", short: "FIM-92", long: "Stinger", missile: "fim92_air", picture: 0, bay: 6),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

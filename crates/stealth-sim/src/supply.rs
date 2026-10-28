@@ -23,7 +23,7 @@ use crate::types::*;
 /// A drop counts within this distance of the unit (m), this low over the ground (m), after
 /// this long (s).
 pub const DROP_RADIUS: f64 = 50.0;
-pub const HOVER_MAX: f64 = 10.0;
+pub const HOVER_MAX: f64 = 30.0;
 pub const HOVER_SECONDS: i32 = 10;
 /// Metres per world unit.
 const M_PER_WU: f64 = M_PER_MAP / 32.0;
@@ -40,10 +40,14 @@ const THERE: f64 = 8.0;
 /// A helipad this close to the airfield (world units, about 4 km) is the airfield's.
 const PAD_RANGE: f64 = 8192.0;
 
+/// A cargo run's "unit": it lands its load on a helipad (the run's drop) instead.
+pub const NO_UNIT: u16 = u16::MAX;
+
 /// A resupply helicopter's run (world units, x east, y south).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SupplyRun {
-    /// The air defence unit (`Sim::aaa_units` index).
+    /// The air defence unit (`Sim::aaa_units` index; `NO_UNIT`: cargo for a new site's
+    /// helipad).
     pub unit: u16,
     /// Where it hovers for the drop, and the helipad it came from (and lands on).
     pub drop: (i32, i32),
@@ -77,13 +81,28 @@ impl Sim {
     /// Campaign: a friendly UH-60 lifts off from the helipad of base `from` with a load for AAA
     /// unit `unit`. Returns its flight unit.
     pub fn spawn_supply(&mut self, from: usize, unit: usize, tag: u32) -> usize {
-        let i = self.campaign_slot();
         let pad = self.helipad(from);
         let at = self.aaa.get(unit).map_or(pad, unit_centre);
         // It hovers beside the unit, on its way in.
         let (dx, dy) = ((pad.0 - at.0) as f64, (pad.1 - at.1) as f64);
         let d = dx.hypot(dy).max(1.0);
         let drop = (at.0 + (dx / d * STANDOFF) as i32, at.1 + (dy / d * STANDOFF) as i32);
+        self.launch_supply(from, unit as u16, drop, tag)
+    }
+
+    /// Campaign: a friendly UH-60 lifts off from the helipad of base `from` with a load of cargo
+    /// for the helipad of a new air defence site at map point (`x`, `y` south), lands there to
+    /// set it down and flies back. Returns its flight unit.
+    pub fn spawn_cargo(&mut self, from: usize, x: i32, y: i32, tag: u32) -> usize {
+        self.launch_supply(from, NO_UNIT, ((x << 5) + 16, (y << 5) + 16), tag)
+    }
+
+    /// A resupply or cargo helicopter off the pad of base `from` towards its drop (world
+    /// units) for AAA unit `unit` (`NO_UNIT`: a helipad).
+    fn launch_supply(&mut self, from: usize, unit: u16, drop: (i32, i32), tag: u32) -> usize {
+        let i = self.campaign_slot();
+        let pad = self.helipad(from);
+        let at = drop;
         let mut u = FlightUnit {
             spec: BLACKHAWK,
             wp: from as i32,
@@ -118,7 +137,7 @@ impl Sim {
             reported: false,
             strike: None,
             kamikaze: false,
-            supply: Some(SupplyRun { unit: unit as u16, drop, pad, hover: 0, delivered: false }),
+            supply: Some(SupplyRun { unit, drop, pad, hover: 0, delivered: false }),
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -165,9 +184,10 @@ impl Sim {
             // Height: cruising over the mountains, down near the goal (onto the pad at home).
             let galt = if d > SLOW_DOWN / 2.0 {
                 CRUISE_ALT + self.terrain_ahead(&u)
-            } else if run.delivered && d < 2.0 * THERE {
+            } else if d < 2.0 * THERE && (run.delivered || run.unit == NO_UNIT) {
+                // Onto the pad at home, or onto the new site's with its cargo.
                 0
-            } else if run.delivered {
+            } else if run.delivered || run.unit == NO_UNIT {
                 LIFT_ALT
             } else {
                 HOVER_ALT
@@ -185,22 +205,30 @@ impl Sim {
         u.pitch = -(u.speed * 0x600 / max.max(1));
         u.bank = clamp_q(s16(bearing(dx, s16(-dy)) - u.heading) * 2, -0x1800, 0x1800)
             * (u.speed > 20) as i32;
-        // The drop: low and close to the unit for long enough.
+        // The drop: low and close to the unit (on a new site's helipad) for long enough.
         let unit = run.unit as usize;
         if !run.delivered {
-            let near = self.aaa.get(unit).filter(|a| !a.destroyed).is_some_and(|a| {
-                let c = unit_centre(a);
+            let near_point = |c: (i32, i32)| {
                 let m = ((u.wx - c.0) as f64).hypot((u.wy - c.1) as f64) * M_PER_WU;
                 m <= DROP_RADIUS && u.alt as f64 * M_PER_WU <= HOVER_MAX
-            });
+            };
+            let near = if run.unit == NO_UNIT {
+                near_point(run.drop) && u.alt == 0
+            } else {
+                self.aaa
+                    .get(unit)
+                    .filter(|a| !a.destroyed)
+                    .is_some_and(|a| near_point(unit_centre(a)))
+            };
             run.hover = if near { run.hover + 1 } else { 0 };
             if run.hover >= HOVER_SECONDS * fs {
                 run.delivered = true;
                 let tag = self.campaign_flight(i).map_or(0, |f| f.tag);
-                self.emit(SimEvent::CampaignFlightDelivered { unit: i, tag, aaa: unit });
+                let aaa = if run.unit == NO_UNIT { usize::MAX } else { unit };
+                self.emit(SimEvent::CampaignFlightDelivered { unit: i, tag, aaa });
             }
             // The unit is gone: home with the load.
-            if self.aaa.get(unit).is_none_or(|a| a.destroyed) {
+            if run.unit != NO_UNIT && self.aaa.get(unit).is_none_or(|a| a.destroyed) {
                 run.delivered = true;
             }
         } else if d < 2.0 * THERE && u.alt == 0 {

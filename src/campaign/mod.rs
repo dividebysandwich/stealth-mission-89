@@ -22,6 +22,8 @@
 //!
 //! The Ops screen asks for things through [`Action`]s, carried out here for every role.
 
+mod air_defence;
+mod designate;
 mod menu;
 mod ops;
 mod picture;
@@ -35,8 +37,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 use stealth_campaign::{
-    Aircraft as Airframe, CampaignEvent, CampaignSetup, CampaignState, PlaceId, PlayerId, Side,
-    Sortie,
+    Aircraft as Airframe, CampaignEvent, CampaignSetup, CampaignState, MissionKind, PlaceId,
+    PlayerId, Side, Sortie,
 };
 use stealth_host::{Debrief, Host, HostEvent, Rules, Stores, save};
 use stealth_mission::Mission;
@@ -157,6 +159,26 @@ pub enum Action {
     /// Call in AI SEAD for an offer's place.
     RequestSupport {
         offer: u32,
+    },
+    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
+    /// (x, y), map units.
+    DesignateSite {
+        x: i32,
+        y: i32,
+        patriot: bool,
+    },
+    /// The crate of load `leg` of new site `id` hooked under the helicopter (see `sling.rs`).
+    HookCrate {
+        id: u32,
+        leg: u8,
+    },
+    /// It is set down at (`east`, `north`) metres from the site's helipad, heading `heading`.
+    DropCrate {
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
     },
     /// The sortie ends (the simulation's outcome codes: 0 landed and done, 7 aborted).
     EndSortie {
@@ -603,10 +625,17 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         return;
     }
     // END SORTIE from the in-flight menu; down waiting for the rescue helicopter, SKIP
-    // EXTRACTION (the rescue goes on the board).
-    if std::mem::take(&mut s.combat.quit) && c.phase == Phase::Sortie {
-        let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
-        c.actions.push(Action::EndSortie { outcome });
+    // EXTRACTION (the rescue goes on the board). At an air defence console: leave it, back to
+    // operations.
+    if std::mem::take(&mut s.combat.quit) {
+        match c.phase {
+            Phase::Sortie => {
+                let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
+                c.actions.push(Action::EndSortie { outcome });
+            }
+            Phase::Station { .. } => c.actions.push(Action::Station(StationCmd::Leave)),
+            _ => {}
+        }
     }
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
@@ -637,17 +666,23 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     // Test aid: take a mission of the board at once.
     if c.phase == Phase::Ops
         && c.state().clock > 2.0
+        && !c.ui.test_taken
         && let Some(n) = ops::test_take()
-        && !std::mem::replace(&mut c.ui.test_taken, true)
     {
-        let flown: Vec<u32> = c
+        let flown: Vec<(u32, MissionKind)> = c
             .state()
             .board
             .iter()
             .filter(|o| o.kind.flyable_by(c.aircraft))
-            .map(|o| o.id)
+            .map(|o| (o.id, o.kind))
             .collect();
-        if let Some(&offer) = flown.get(n.min(flown.len().saturating_sub(1))) {
+        // A kind of mission (`logistics`) waits for its first offer.
+        let pick = match n {
+            ops::TestTake::Index(n) => flown.get(n.min(flown.len().saturating_sub(1))),
+            ops::TestTake::Kind(k) => flown.iter().find(|o| o.1.name().eq_ignore_ascii_case(&k)),
+        };
+        c.ui.test_taken = pick.is_some() || flown.is_empty();
+        if let Some(&(offer, _)) = pick {
             let loadout = briefed_loadout(c, offer, None, c.aircraft);
             if let Some(loadout) = loadout {
                 let aircraft = c.aircraft;
@@ -697,6 +732,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     // The sky's clock.
     let day = 86_400.0 * 30.0;
     s.combat.sky_seconds = Some(((c.state().sky_hours() * 3600.0) % day) as f32);
+    s.combat.sky_ratio = c.state().setup.sky_ratio;
     // Saved now and then.
     c.save_timer += dt;
     if c.save_timer > SAVE_EVERY {
@@ -768,6 +804,11 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
+            Action::DesignateSite { x, y, patriot } => host.designate_site(sim, me, x, y, patriot),
+            Action::HookCrate { id, leg } => host.hook_crate(sim, me, id, leg),
+            Action::DropCrate { id, leg, east, north, heading } => {
+                host.drop_crate(sim, me, id, leg, east, north, heading)
+            }
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Rearm { loadout } => {
                 host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
@@ -822,6 +863,11 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
+            Action::DesignateSite { x, y, patriot } => ToServer::DesignateSite { x, y, patriot },
+            Action::HookCrate { id, leg } => ToServer::HookCrate { id, leg },
+            Action::DropCrate { id, leg, east, north, heading } => {
+                ToServer::DropCrate { id, leg, east, north, heading }
+            }
             Action::EndSortie { outcome } => ToServer::EndSortie { outcome },
             Action::Rearm { loadout } => {
                 s.msgs.show("Rearmed and refuelled");
@@ -879,6 +925,9 @@ pub fn airframe_of(k: crate::aircraft::AircraftKind) -> Airframe {
         crate::aircraft::AircraftKind::F16 => Airframe::F16,
         crate::aircraft::AircraftKind::UH60 => Airframe::UH60,
         crate::aircraft::AircraftKind::AH1Z => Airframe::AH1Z,
+        crate::aircraft::AircraftKind::Tornado => Airframe::Tornado,
+        crate::aircraft::AircraftKind::A10 => Airframe::A10,
+        crate::aircraft::AircraftKind::RAH66 => Airframe::RAH66,
     }
 }
 
@@ -888,6 +937,9 @@ pub fn kind_of(a: Airframe) -> crate::aircraft::AircraftKind {
         Airframe::F16 => crate::aircraft::AircraftKind::F16,
         Airframe::UH60 => crate::aircraft::AircraftKind::UH60,
         Airframe::AH1Z => crate::aircraft::AircraftKind::AH1Z,
+        Airframe::Tornado => crate::aircraft::AircraftKind::Tornado,
+        Airframe::A10 => crate::aircraft::AircraftKind::A10,
+        Airframe::RAH66 => crate::aircraft::AircraftKind::RAH66,
     }
 }
 
@@ -960,16 +1012,14 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
         .filter(|l| l.fits(&m, aircraft))
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(&m, aircraft));
     let route = c.take_route.take().filter(|r| r.fits(&m)).unwrap_or_else(|| PlannedRoute::of(&m));
-    *s.wps = Waypoints {
-        points: route
+    *s.wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     s.orders.set(
         m.orders.lines.iter().map(|l| (l.color, crate::mission::clean_text(&l.text))).collect(),
     );

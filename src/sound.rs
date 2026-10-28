@@ -197,7 +197,11 @@ pub(crate) struct Mixed(pub(crate) Channel, pub(crate) f32);
 
 impl Mixed {
     /// The playback settings with the volume mixed in.
-    pub(crate) fn settings(&self, s: &crate::settings::Settings, p: PlaybackSettings) -> PlaybackSettings {
+    pub(crate) fn settings(
+        &self,
+        s: &crate::settings::Settings,
+        p: PlaybackSettings,
+    ) -> PlaybackSettings {
         p.with_volume(Volume::Linear(self.1 * self.0.gain(s)))
     }
 }
@@ -406,9 +410,6 @@ const SEEKER_VOLUME: f32 = 0.3;
 /// How long (real seconds) the seeker has to see or lose the target before its sound changes,
 /// so the target at the edge of the seeker's view doesn't chop it.
 const SEEKER_HOLD: f32 = 0.15;
-
-/// Missile table index of the AIM-9 the player carries.
-const AIM9_SPEC: i16 = 23;
 
 /// The flown helicopter's loops: rotor (false) and turbines (true).
 #[derive(Component)]
@@ -1074,7 +1075,10 @@ fn sidewinder_tones(
         let sim = &c.sim;
         let (groups, cur) = sim.weapon_groups();
         let (w, rounds) = *groups.get(cur?)?;
-        let aim9 = sim.weapon_types().get(w.max(0) as usize).is_some_and(|t| t.spec == AIM9_SPEC);
+        let aim9 = sim
+            .weapon_types()
+            .get(w.max(0) as usize)
+            .is_some_and(|t| stealth_sim::ir_aam(t.spec as i32));
         let on = aim9
             && rounds > 0
             && !sim.gun_selected()

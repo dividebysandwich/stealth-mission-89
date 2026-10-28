@@ -63,6 +63,7 @@ impl Plugin for ExplosionsPlugin {
                 (
                     spawn_blasts.run_if(resource_exists::<Combat>),
                     damage_trail.run_if(resource_exists::<Combat>),
+                    downwash,
                     simulate,
                 )
                     .chain()
@@ -440,6 +441,60 @@ fn spawn_blasts(
             let life = p.range(5.0, 8.0);
             p.puff(pos, Vec3::Y * 2.0, life, (r, r * 3.0), PuffLook::Smoke(shade), 0.3, 1.5, 0.75);
         }
+    }
+}
+
+/// Rotor downwash (`Effects::vapour`): below this height (m) a helicopter's rotor whips up the
+/// ground, strongest touching it; puffs a second at full strength; the ring's radius (m).
+const DOWNWASH_HEIGHT: f32 = 25.0;
+const DOWNWASH_RATE: f32 = 40.0;
+const DOWNWASH_RADIUS: f32 = 7.0;
+
+/// A hovering helicopter's downwash: a ring of dust thrown out over land (sand coloured in
+/// the deserts, that is the dust's colour everywhere), spray over water, a faint haze over
+/// concrete.
+#[allow(clippy::too_many_arguments)]
+fn downwash(
+    mut p: ResMut<Particles>,
+    mut owed: Local<f32>,
+    time: Res<Time>,
+    settings: Res<crate::settings::Settings>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
+    player: Query<(&crate::flight::Aircraft, &crate::world::WorldPos), With<crate::flight::Player>>,
+) {
+    use crate::scenery::Surface;
+    let Ok((a, pos)) = player.single() else { return };
+    let wu = crate::world::WU as f32;
+    let height = (a.altitude - a.ground_altitude) * wu;
+    let k = (1.0 - height / DOWNWASH_HEIGHT).clamp(0.0, 1.0)
+        * ((a.rotor_speed() - 0.6) / 0.4).clamp(0.0, 1.0);
+    if !settings.effects.vapour
+        || !settings.aircraft.spec().helicopter
+        || a.ended.is_some()
+        || k <= 0.0
+    {
+        *owed = 0.0;
+        return;
+    }
+    *owed += DOWNWASH_RATE * k * time.delta_secs();
+    let ground = a.ground_altitude as f64 * crate::world::WU;
+    while *owed >= 1.0 {
+        *owed -= 1.0;
+        let angle = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(angle.cos(), 0.0, angle.sin());
+        let r = DOWNWASH_RADIUS * p.range(0.6, 1.3);
+        let at = DVec3::new(pos.0.x, ground + 0.5, pos.0.z) + (out * r).as_dvec3();
+        let surface = scenery
+            .as_ref()
+            .map_or(Surface::Land, |s| s.surface(bevy::math::DVec2::new(at.x, -at.z)));
+        let (look, opacity) = match surface {
+            Surface::Water => (PuffLook::Smoke(1.0), 0.45),
+            Surface::Concrete => (PuffLook::Smoke(0.8), 0.15),
+            Surface::Land => (PuffLook::Dust, 0.4),
+        };
+        let vel = out * p.range(6.0, 11.0) + Vec3::Y * p.range(0.5, 2.0);
+        let life = p.range(1.0, 1.8);
+        p.puff(at, vel, life, (1.5, 5.0), look, 1.5, 0.3, opacity * k);
     }
 }
 

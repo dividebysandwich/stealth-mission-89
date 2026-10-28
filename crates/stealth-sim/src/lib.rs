@@ -72,6 +72,9 @@ pub struct PlayerView {
     /// Climb rate (ft/s).
     #[serde(default)]
     pub climb: i32,
+    /// Height above the ground (ft).
+    #[serde(default)]
+    pub height: i32,
 }
 
 /// The complete simulation state.
@@ -116,6 +119,10 @@ pub struct Sim {
     pub(crate) proj_pilot: [u8; ENEMY_SLOTS],
     #[serde(default)]
     pub(crate) flight_pilot: Vec<u8>,
+    /// Each flight unit's velocity over its last frame (wu/s: east, south, up), as it really
+    /// moved ([`Sim::flight_velocity`]).
+    #[serde(skip)]
+    pub(crate) flight_vel: Vec<[f32; 3]>,
     #[serde(default)]
     pub(crate) site_pilot: Vec<u8>,
     #[serde(default)]
@@ -325,6 +332,9 @@ impl Sim {
         let external_stores = opts.external_stores;
         let helicopter = opts.helicopter;
         let gunship = opts.gunship;
+        let tornado = opts.tornado;
+        let a10 = opts.a10;
+        let comanche = opts.comanche;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -349,6 +359,7 @@ impl Sim {
             parked: vec![Pilot::default()],
             proj_pilot: [0; ENEMY_SLOTS],
             flight_pilot: Vec::new(),
+            flight_vel: Vec::new(),
             site_pilot: Vec::new(),
             aaa_pilot: Vec::new(),
             alarm_pilot: 0,
@@ -359,6 +370,9 @@ impl Sim {
                 external_stores,
                 helicopter,
                 gunship,
+                tornado,
+                a10,
+                comanche,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
@@ -377,6 +391,8 @@ impl Sim {
                 irj_heat: 0,
                 door_anim: 0,
                 bay_req: false,
+                bay_pending: false,
+                bay_close: 0,
                 bays,
                 cur_bay: 0,
                 gun_selected: false,
@@ -739,6 +755,7 @@ impl Sim {
             velocity: ps.velocity as i32,
             knots: ps.velocity as i32 / 27,
             climb: ps.climb_rate,
+            height: ps.height as i32,
         };
         let keep = pflags::BAY_OPEN
             | pflags::ECM

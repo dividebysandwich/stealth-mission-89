@@ -420,7 +420,8 @@ pub(crate) fn altitude_text(alt: f32) -> String {
 }
 
 /// Altitude scale (right): 0.2 pixels per foot, ticks every 100 ft, labels every 500 ft
-/// ("12,5" = 12,500), the boxed readout and the radar altitude below it when low.
+/// ("12,5" = 12,500), the boxed readout and the radar altitude below it when low, "TF" under
+/// that while the autopilot follows the terrain.
 fn altitude(c: &mut Canvas, f: &HudFrame) {
     let alt = f.alt.max(0) as f32;
     let (x, half) = (980.0, 120.0);
@@ -459,6 +460,10 @@ fn altitude(c: &mut Canvas, f: &HudFrame) {
             &format!("R {:05}", (f.radar_alt / 10.0).round() as i32 * 10),
             Align::Right,
         );
+    }
+    // Terrain following under it.
+    if f.terrain_following {
+        text(c, x - 22.0, CY + 64.0, "TF", Align::Right);
     }
     // Climb rate (feet per minute) above the readout.
     let vvi = (f.climb as f32 * 60.0 / 10.0).round() as i32 * 10;

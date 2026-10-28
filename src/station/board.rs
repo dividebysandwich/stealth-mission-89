@@ -231,7 +231,7 @@ fn refill_bar(cv: &mut Canvas, x: f32, y: f32, left: f32) {
         cv,
         x + w + 6.0,
         y,
-        &format!("REFILL {}", mmss(left)),
+        &format!("RELOAD {}", mmss(left)),
         TEXT,
         PEN,
         YELLOW,
@@ -273,7 +273,7 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         if left > 0.0 {
             refill_bar(cv, 154.0, mid, left);
         } else if u.rounds == 0 {
-            stroke_text_at(cv, 154.0, mid, "EMPTY - REFILL", TEXT, PEN, RED, Align::Left);
+            stroke_text_at(cv, 154.0, mid, "EMPTY - RELOAD", TEXT, PEN, RED, Align::Left);
         } else if u.cooldown > 0 {
             stroke_text_at(cv, 154.0, mid, "LAUNCHED", TEXT, PEN, GREY, Align::Left);
         } else {
@@ -336,9 +336,10 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
             })
             .map(|p| p.name.to_ascii_uppercase())
     };
-    let full = sim.aaa_units().get(unit).is_some_and(|u| {
-        sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind)
-    });
+    let full = sim
+        .aaa_units()
+        .get(unit)
+        .is_some_and(|u| sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind));
     let (text, col, button) = match request.map(|r| (r.id, r.state)) {
         None if full => ("STOCKPILE FULL".to_string(), GREY, true),
         None => ("REQUEST RESUPPLY".to_string(), WHITE, true),
@@ -356,7 +357,16 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
     if button {
         cv.frame(a, b, 1.0, col);
     }
-    stroke_text_at(cv, w / 2.0, RESUPPLY_TOP + RESUPPLY_H / 2.0, &text, 7.0, 1.0, col, Align::Centre);
+    stroke_text_at(
+        cv,
+        w / 2.0,
+        RESUPPLY_TOP + RESUPPLY_H / 2.0,
+        &text,
+        7.0,
+        1.0,
+        col,
+        Align::Centre,
+    );
 }
 
 fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {
@@ -386,7 +396,7 @@ fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {
     if left > 0.0 {
         refill_bar(cv, 96.0, y + 62.0, left);
     } else if u.rounds == 0 {
-        stroke_text_at(cv, 96.0, y + 62.0, "EMPTY - REFILL", TEXT, PEN, RED, Align::Left);
+        stroke_text_at(cv, 96.0, y + 62.0, "EMPTY - RELOAD", TEXT, PEN, RED, Align::Left);
     } else if u.burst > 0 {
         stroke_text_at(cv, 96.0, y + 62.0, "FIRING", TEXT, PEN, YELLOW, Align::Left);
     }

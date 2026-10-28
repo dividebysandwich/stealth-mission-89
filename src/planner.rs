@@ -1,6 +1,7 @@
 //! Mission planner: the theater map with the enemy's radar and missile coverage, and the route
 //! to fly. The targets and the landing base are fixed; the player adds, moves and removes
-//! navigation points between them.
+//! navigation points between them. The map's LAYERS panel hides and shows what it draws (the
+//! radar types, their rings, the campaign's units).
 
 use std::collections::HashMap;
 
@@ -13,7 +14,9 @@ use stealth_mission::world::flags as F;
 use stealth_sim::SimData;
 
 use crate::canvas::Canvas;
-use crate::map_draw::{self, MapView, UAV_PINK, drone_cross, missile_circle};
+use crate::map_draw::{
+    self, Layer, MapLayers, MapView, MapWeather, UAV_PINK, drone_cross, missile_circle,
+};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, section};
 use crate::mfd::{MapModel, map_models, rasterise_map};
 use crate::mission::{PlannedRoute, RouteKind, RoutePoint};
@@ -76,6 +79,9 @@ pub struct Planner {
     /// texture only exists in its own context: the menu, the debrief and the campaign's Ops
     /// screen each have theirs).
     texture: Option<(String, egui::TextureHandle, Entity)>,
+    /// The map picture itself, kept for loading into the next context (rendering it again
+    /// takes seconds).
+    image: Option<(String, std::sync::Arc<egui::ColorImage>)>,
     sim: Option<SimData>,
     /// View: map centre (map units) and map units per screen point.
     centre: egui::Vec2,
@@ -123,6 +129,9 @@ pub fn prepare_map(
     app_state: Res<State<crate::settings::AppState>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     egui_context: Query<Entity, With<bevy_egui::PrimaryEguiContext>>,
+    built: Option<Res<crate::scenery::Scenery>>,
+    flight_theater: Option<Res<Theater>>,
+    mut layouts: ResMut<crate::scenery::LayoutCache>,
 ) {
     // The planner's mission, the one flown on the debrief's flight map, or the campaign's
     // theater (its war map).
@@ -147,6 +156,20 @@ pub fn prepare_map(
     if planner.sim.is_none() {
         planner.sim = stealth_host::theater::sim_tables().map_err(|e| warn!("planner: {e:#}")).ok();
     }
+    if let Some((_, image)) = planner.image.as_ref().filter(|(t, _)| *t == id) {
+        let image = image.clone();
+        let Ok(ctx) = contexts.ctx_mut() else { return };
+        let tex = ctx.load_texture(format!("planner_{id}"), image, egui::TextureOptions::LINEAR);
+        planner.texture = Some((id, tex, context));
+        return;
+    }
+    // Once the scenery layout being made (in a flight on this theater, the flight's) is there:
+    // laying it out again takes seconds.
+    let in_flight = *app_state.get() == crate::settings::AppState::Flight
+        && flight_theater.is_some_and(|t| t.id == id);
+    if layouts.making(&id) || (in_flight && built.is_none()) {
+        return;
+    }
     if planner.theater.as_ref().is_none_or(|t| t.id != id) {
         planner.theater = Some(Theater::load(&id));
         planner.gltf = Some(library.load(&server, &id));
@@ -154,10 +177,18 @@ pub fn prepare_map(
     let Some(g) = planner.gltf.as_ref().and_then(|h| assets.gltfs.get(h)) else { return };
     let models = map_models(&id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
     let Some(theater) = planner.theater.as_ref() else { return };
-    let image = render_theater(theater, &models, &assets, &library.files);
+    let image = std::sync::Arc::new(render_theater(
+        theater,
+        &models,
+        &assets,
+        &library.files,
+        &mut layouts,
+    ));
     let Ok(ctx) = contexts.ctx_mut() else { return };
-    let tex = ctx.load_texture(format!("planner_{id}"), image, egui::TextureOptions::LINEAR);
-    planner.texture = Some((id, tex, context));
+    let tex =
+        ctx.load_texture(format!("planner_{id}"), image.clone(), egui::TextureOptions::LINEAR);
+    planner.texture = Some((id.clone(), tex, context));
+    planner.image = Some((id, image));
 }
 
 /// `--export-maps`: the theaters still to write, the one loading, and where to.
@@ -197,7 +228,13 @@ pub fn export_maps(
     let Some((theater, handle)) = export.loading.as_ref() else { return };
     let Some(g) = assets.gltfs.get(handle) else { return };
     let models = map_models(&theater.id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
-    let image = render_theater(theater, &models, &assets, &library.files);
+    let image = render_theater(
+        theater,
+        &models,
+        &assets,
+        &library.files,
+        &mut crate::scenery::LayoutCache::default(),
+    );
     let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
     let path = export.dir.join(format!("{}.png", theater.id));
     let saved = image::RgbaImage::from_raw(MAP_PX as u32, MAP_PX as u32, rgba)
@@ -221,6 +258,7 @@ fn render_theater(
     models: &HashMap<u8, MapModel>,
     assets: &crate::models::ModelAssets,
     files: &HashMap<String, Handle<Gltf>>,
+    layouts: &mut crate::scenery::LayoutCache,
 ) -> egui::ColorImage {
     let mut c = Canvas::new(MAP_PX, MAP_PX);
     let px = 0x8000 as f64 / MAP_PX as f64;
@@ -234,7 +272,7 @@ fn render_theater(
     let remap = |col: u8| map16.get(col as usize).map_or(col, |w| (*w & 0xFF) as u8);
     rasterise_map(&mut c, models, theater, &to_px, (half, half, half, half), 5, &remap);
     let pal: VgaPalette = load_theater_palettes(&theater.id).day;
-    let scenery = crate::scenery::map_scenery(theater, assets, files, &pal, MAP_PX);
+    let scenery = crate::scenery::map_scenery(theater, assets, files, &pal, MAP_PX, layouts);
     let at = |p: bevy::math::DVec2| {
         let q = to_px(p.x / crate::world::WU, p.y / crate::world::WU);
         (q.x.floor() as i32, q.y.floor() as i32)
@@ -284,6 +322,8 @@ struct Ring {
     y: f32,
     detect: f32,
     launch: f32,
+    /// Where it opens fire on the player: inside both its detection and its missile range.
+    engage: f32,
     name: String,
     active: bool,
     /// Doppler radar (solid detection circle; pulse radars dotted).
@@ -328,11 +368,13 @@ fn threat_rings(
             } else {
                 0.0
             };
+            let launch = missile.lock_range as f32 * PER_KM as f32;
             Some(Ring {
                 x: x as f32,
                 y: y as f32,
                 detect: detect * PER_KM as f32,
-                launch: missile.lock_range as f32 * PER_KM as f32,
+                launch,
+                engage: (detect * PER_KM as f32).min(launch),
                 name: t.name.clone(),
                 active: o.flags & (F::OFF_THE_AIR | F::UNDER_REPAIR) == 0,
                 doppler: t.flags & 1 != 0,
@@ -412,7 +454,7 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
             ui.label(egui::RichText::new("MISSION PLANNER").heading().color(BRIGHT));
             ui.separator();
             let size = ui.available_size();
-            route_panel(ui, planner, &m, route, &|_| true, None, size, true, |ui| {
+            route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
                 ui.add_space(12.0);
                 if ui.add(big_button("DONE").fill(DIM)).clicked() {
                     open = false;
@@ -425,12 +467,18 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
     }
 }
 
-/// Drawn over the route editor's map instead of the mission's airfields.
-pub type MapOverlay<'a> = Option<&'a dyn Fn(&egui::Painter, &MapView)>;
+/// Drawn over the route editor's map instead of the mission's airfields, with the legend lines
+/// (and layer checkboxes) of what it draws.
+pub struct Overlay<'a> {
+    pub draw: &'a dyn Fn(&egui::Painter, &MapView, &MapLayers),
+    pub legend: &'a dyn Fn(&mut egui::Ui, &mut MapLayers),
+}
+pub type MapOverlay<'a> = Option<Overlay<'a>>;
 
 /// The route editor: the map with the known radars' coverage, the route's legs and its
 /// exposure (the menu's planner, the campaign's briefing). `known`: the radar sites (world
 /// object indices) to show; `overlay`: drawn over the map instead of the mission's airfields;
+/// the legend's lines hide and show the map's layers and the radar types;
 /// `editable`: the route can be changed (else only looked at); `buttons`: below the side column.
 #[allow(clippy::too_many_arguments)]
 pub fn route_panel(
@@ -440,6 +488,7 @@ pub fn route_panel(
     route: &mut PlannedRoute,
     known: &dyn Fn(usize) -> bool,
     overlay: MapOverlay,
+    weather: Option<MapWeather>,
     size: egui::Vec2,
     editable: bool,
     buttons: impl FnOnce(&mut egui::Ui),
@@ -449,11 +498,18 @@ pub fn route_panel(
         .as_ref()
         .map(|s| threat_rings(m, s, planner.profile, known))
         .unwrap_or_default();
+    let off = [&[Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
+    let mut layers = MapLayers::of(ui.ctx(), "route", &off);
+    // The mission's weather, unless the caller's (a campaign's changes).
+    let weather = weather.unwrap_or_else(|| {
+        let sky = crate::sky::Sky::of(&m.theater_code.to_ascii_lowercase(), Some(m));
+        MapWeather::new(m.weather, sky.freezing_level())
+    });
     ui.allocate_ui(size, |ui| {
     ui.horizontal_top(|ui| {
         let side = 300.0;
         let map_size = egui::vec2(ui.available_width() - side - 12.0, ui.available_height() - 8.0);
-        map_view(ui, planner, m, route, &rings, overlay, map_size, editable);
+        map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), &weather, map_size, editable);
         ui.vertical(|ui| {
             ui.set_width(side);
             section(ui, "Route");
@@ -503,6 +559,7 @@ pub fn route_panel(
         });
     });
     });
+    layers.keep(ui.ctx(), "route");
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -512,7 +569,9 @@ fn map_view(
     m: &Mission,
     route: &mut PlannedRoute,
     rings: &[Ring],
-    overlay: MapOverlay,
+    layers: &mut MapLayers,
+    overlay: Option<&Overlay>,
+    weather: &MapWeather,
     size: egui::Vec2,
     editable: bool,
 ) {
@@ -536,24 +595,34 @@ fn map_view(
     let painter = painter.with_clip_rect(rect);
 
     map_draw::picture(&painter, &view, planner.texture.as_ref().map(|(_, t, _)| t));
+    map_draw::weather(&painter, &view, "route", weather, layers);
     // Threat coverage: filled radar detection circles (solid Doppler, dotted pulse), dashed
     // missile range circles; dim when off the air.
-    for ring in rings {
+    for ring in rings.iter().filter(|r| layers.shows_type(&r.name)) {
         let c = to_screen(ring.x, ring.y);
         let alpha = if ring.active { 1.0 } else { 0.35 };
-        painter.extend(missile_circle(c, ring.launch / scale, alpha));
-        if ring.detect > 0.0 {
+        if layers.shows(Layer::MissileRange) {
+            painter.extend(missile_circle(c, ring.launch / scale, alpha));
+        }
+        if ring.engage > 0.0 && layers.shows(Layer::EngagementRange) {
+            painter.add(map_draw::engagement_circle(c, ring.engage / scale, alpha));
+        }
+        let detection = if ring.doppler { Layer::DopplerRadar } else { Layer::PulseRadar };
+        if ring.detect > 0.0 && layers.shows(detection) {
             painter.extend(detection_circle(c, ring.detect / scale, ring.doppler, alpha));
         }
-        let tag = if ring.doppler { "D" } else { "P" };
-        map_draw::site(&painter, &view, c, &format!("{} {tag}", ring.name), alpha);
+        if layers.shows(Layer::Sams) {
+            let tag = if ring.doppler { "D" } else { "P" };
+            map_draw::site(&painter, &view, c, &format!("{} {tag}", ring.name), alpha);
+        }
     }
     match overlay {
-        Some(draw) => draw(&painter, &view),
-        None => map_draw::airfields(&painter, &view, m),
+        Some(o) => (o.draw)(&painter, &view, layers),
+        None if layers.shows(Layer::Airfields) => map_draw::airfields(&painter, &view, m),
+        None => {}
     }
     // Drones on their way (drone defense).
-    if let Some(d) = &m.drones {
+    if let Some(d) = m.drones.as_ref().filter(|_| layers.shows(Layer::Drones)) {
         let t = &m.world.objects[d.target as usize];
         for f in m.world.flights.iter().skip(d.first_unit).take(d.count) {
             let p = to_screen(f.x as u16 as f32, f.y as u16 as f32);
@@ -656,6 +725,71 @@ fn map_view(
     {
         route.points.remove(i);
     }
+    layers_panel(ui, rect, layers, |ui, layers| {
+        layers.legend(ui, Layer::Sams, "Radar / SAM site", |p, c| {
+            p.circle_filled(c, 3.0, map_draw::MISSILE_RED);
+        });
+        layers.types(ui, "Radar types", rings.iter().map(|r| r.name.as_str()).collect());
+        layer_legend(ui, layers, Legend::Pulse, "Pulse radar detection range");
+        layer_legend(ui, layers, Legend::Doppler, "Doppler radar detection range");
+        layer_legend(ui, layers, Legend::Missile, "Missile range");
+        layer_legend(ui, layers, Legend::Engage, "Engagement range");
+        if m.drones.is_some() {
+            layer_legend(ui, layers, Legend::Drone, "Enemy UAV");
+        }
+        match overlay {
+            Some(o) => (o.legend)(ui, layers),
+            None => layers.legend(ui, Layer::Airfields, "Airfield", |p, c| {
+                p.rect_stroke(
+                    egui::Rect::from_center_size(c, egui::vec2(8.0, 8.0)),
+                    0.0,
+                    egui::Stroke::new(1.5, map_draw::FRIENDLY_BLUE),
+                    egui::StrokeKind::Middle,
+                );
+            }),
+        }
+        map_draw::weather_legend(ui, layers, weather.snow);
+    });
+}
+
+/// The map's LAYERS button in its top-right corner, opening a panel over the map with the
+/// checkboxes `lines` draws.
+fn layers_panel(
+    ui: &mut egui::Ui,
+    map: egui::Rect,
+    layers: &mut MapLayers,
+    lines: impl FnOnce(&mut egui::Ui, &mut MapLayers),
+) {
+    const WIDTH: f32 = 280.0;
+    let area = egui::Rect::from_min_max(
+        egui::pos2(map.right() - WIDTH - 8.0, map.top() + 8.0),
+        egui::pos2(map.right() - 8.0, map.bottom() - 8.0),
+    );
+    ui.scope_builder(
+        egui::UiBuilder::new().max_rect(area).layout(egui::Layout::top_down(egui::Align::Max)),
+        |ui| {
+            let text = if layers.panel { "LAYERS  ^" } else { "LAYERS  v" };
+            if ui
+                .add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel))
+                .clicked()
+            {
+                layers.panel = !layers.panel;
+            }
+            if !layers.panel {
+                return;
+            }
+            egui::Frame::new()
+                .fill(egui::Color32::from_black_alpha(220))
+                .stroke(egui::Stroke::new(1.0, DIM))
+                .inner_margin(6.0)
+                .show(ui, |ui| {
+                    ui.set_width(WIDTH - 14.0);
+                    ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| lines(ui, layers));
+                    });
+                });
+        },
+    );
 }
 
 /// A radar's detection circle: filled, its edge solid for a Doppler radar, dotted for a pulse
@@ -683,15 +817,37 @@ enum Legend {
     Pulse,
     Doppler,
     Missile,
+    Engage,
     Drone,
 }
 
 /// A map legend line: the symbol as drawn on the map, then its meaning.
 fn legend(ui: &mut egui::Ui, symbol: Legend, text: &str) {
-    map_draw::legend(ui, text, |painter, c| match symbol {
-        Legend::Pulse => painter.extend(detection_circle(c, 6.0, false, 1.0)),
-        Legend::Doppler => painter.extend(detection_circle(c, 6.0, true, 1.0)),
-        Legend::Missile => painter.extend(missile_circle(c, 6.0, 1.0)),
-        Legend::Drone => drone_cross(painter, c),
-    });
+    map_draw::legend(ui, text, |painter, c| symbol.draw(painter, c));
+}
+
+/// A legend line with its layer's checkbox, in the LAYERS panel.
+fn layer_legend(ui: &mut egui::Ui, layers: &mut MapLayers, symbol: Legend, text: &str) {
+    let layer = match symbol {
+        Legend::Pulse => Layer::PulseRadar,
+        Legend::Doppler => Layer::DopplerRadar,
+        Legend::Missile => Layer::MissileRange,
+        Legend::Engage => Layer::EngagementRange,
+        Legend::Drone => Layer::Drones,
+    };
+    layers.legend(ui, layer, text, |painter, c| symbol.draw(painter, c));
+}
+
+impl Legend {
+    fn draw(self, painter: &egui::Painter, c: egui::Pos2) {
+        match self {
+            Legend::Pulse => painter.extend(detection_circle(c, 6.0, false, 1.0)),
+            Legend::Doppler => painter.extend(detection_circle(c, 6.0, true, 1.0)),
+            Legend::Missile => painter.extend(missile_circle(c, 6.0, 1.0)),
+            Legend::Engage => {
+                painter.add(map_draw::engagement_circle(c, 6.0, 1.0));
+            }
+            Legend::Drone => drone_cross(painter, c),
+        }
+    }
 }

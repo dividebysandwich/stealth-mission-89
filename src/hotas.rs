@@ -5,6 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+use bevy::input::gamepad::GamepadInput;
 use bevy::platform::cell::SyncCell;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -299,8 +300,9 @@ pub struct InputConfig {
 /// the bombsight mode key. 4: the stick keys (the arrows) became bindable. 5: the rudder keys
 /// (Q / E); the VR thumbsticks as a HOTAS (the right one targets only). 6: the trim keys
 /// (Alt + arrows, Alt + Home). 7: the master caution key (Alt + C). 8: the free view key
-/// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors).
-const VERSION: u32 = 9;
+/// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
+/// recording key (F12).
+const VERSION: u32 = 10;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -465,6 +467,10 @@ pub struct Device {
     /// The key by the platform's name, as older mappings named a device with a product name.
     alias: String,
     usb_id: Option<(u16, u16)>,
+    /// The standard gamepad layout's inputs and their raw codes, as Bevy's gamepad layer sees
+    /// the device (through gilrs' mapping: an SDL one, else gilrs' fallback Xbox layout, which
+    /// makes every HOTAS a gamepad there).
+    standard: Vec<(u32, GamepadInput)>,
     pub axes: BTreeMap<u32, f32>,
     pub buttons: BTreeSet<u32>,
     prev_buttons: BTreeSet<u32>,
@@ -478,7 +484,14 @@ impl Device {
         let product = usb_id.and_then(|(v, p)| windows_hid::product(v, p));
         #[cfg(not(windows))]
         let product = None;
-        Self { name: pad.name().to_string(), product, usb_id, ..default() }
+        let buttons = STANDARD_BUTTONS
+            .iter()
+            .filter_map(|&(g, b)| Some((pad.button_code(g)?.into_u32(), GamepadInput::Button(b))));
+        let axes = STANDARD_AXES
+            .iter()
+            .filter_map(|&(g, a)| Some((pad.axis_code(g)?.into_u32(), GamepadInput::Axis(a))));
+        let standard = buttons.chain(axes).collect();
+        Self { name: pad.name().to_string(), product, usb_id, standard, ..default() }
     }
 
     fn active(&self, source: Source, prev: bool) -> bool {
@@ -490,7 +503,30 @@ impl Device {
             Source::AxisNegative(c) => axes.get(&c).is_some_and(|v| *v < -0.5),
         }
     }
+
+    /// The buttons pressed since the last poll.
+    pub fn just_pressed(&self) -> impl Iterator<Item = u32> + '_ {
+        self.buttons.difference(&self.prev_buttons).copied()
+    }
 }
+
+/// The inputs the standard gamepad layout uses (`crate::input::read_gamepad`), as gilrs and
+/// Bevy name them.
+const STANDARD_BUTTONS: [(gilrs::Button, GamepadButton); 8] = [
+    (gilrs::Button::South, GamepadButton::South),
+    (gilrs::Button::East, GamepadButton::East),
+    (gilrs::Button::North, GamepadButton::North),
+    (gilrs::Button::West, GamepadButton::West),
+    (gilrs::Button::LeftTrigger, GamepadButton::LeftTrigger),
+    (gilrs::Button::RightTrigger, GamepadButton::RightTrigger),
+    (gilrs::Button::LeftTrigger2, GamepadButton::LeftTrigger2),
+    (gilrs::Button::RightTrigger2, GamepadButton::RightTrigger2),
+];
+const STANDARD_AXES: [(gilrs::Axis, GamepadAxis); 3] = [
+    (gilrs::Axis::LeftStickX, GamepadAxis::LeftStickX),
+    (gilrs::Axis::LeftStickY, GamepadAxis::LeftStickY),
+    (gilrs::Axis::RightStickX, GamepadAxis::RightStickX),
+];
 
 /// Sets each device's `key`; devices of the same model are numbered in connection order.
 fn assign_keys(devices: &mut HashMap<gilrs::GamepadId, Device>) {
@@ -657,8 +693,8 @@ impl Hotas {
         if let Some(g) = &mut gilrs {
             let ids: Vec<_> = g.gamepads().map(|(id, _)| id).collect();
             for id in ids {
-                raw_mapping(g, id);
                 devices.insert(id, Device::new(g.gamepad(id)));
+                raw_mapping(g, id);
             }
         }
         assign_keys(&mut devices);
@@ -675,15 +711,9 @@ impl Hotas {
         v
     }
 
-    /// The device a mapping names, by key (or alias) or (older mappings) by a name no other
-    /// device has.
+    /// The device a mapping names (see `mapped`).
     fn mapped<'a>(&'a self, device: &'a str) -> impl Iterator<Item = &'a Device> {
-        let by_key = self.devices.values().find(|d| d.key == device || d.alias == device);
-        let by_name = || {
-            let mut named = self.devices.values().filter(|d| d.name == device);
-            named.next().filter(|_| named.next().is_none())
-        };
-        by_key.or_else(by_name).into_iter()
+        mapped(self.devices.values(), device)
     }
 
     /// Current raw value of a device axis (None until it has moved).
@@ -693,6 +723,16 @@ impl Hotas {
 
     fn active(&self, device: &str, source: Source, prev: bool) -> bool {
         self.mapped(device).any(|d| d.active(source, prev))
+    }
+
+    /// A mapping's input went active since the last poll.
+    pub fn just_pressed(&self, device: &str, source: Source) -> bool {
+        self.active(device, source, false) && !self.active(device, source, true)
+    }
+
+    /// The standard gamepad layout's inputs that the mapping binds (see `bound_standard`).
+    pub fn bound_standard<'a>(&'a self, config: &'a InputConfig) -> Vec<BoundStandard<'a>> {
+        bound_standard(self.devices.values(), config)
     }
 
     fn poll(&mut self) {
@@ -705,8 +745,8 @@ impl Hotas {
         while let Some(ev) = g.next_event() {
             use gilrs::EventType as E;
             if matches!(ev.event, E::Connected) {
-                raw_mapping(g, ev.id);
                 self.devices.entry(ev.id).or_insert_with(|| Device::new(g.gamepad(ev.id)));
+                raw_mapping(g, ev.id);
                 assign_keys(&mut self.devices);
                 info!("joystick connected: {}", self.devices[&ev.id].key);
                 continue;
@@ -733,13 +773,54 @@ impl Hotas {
     }
 }
 
+/// A standard gamepad layout input the mapping binds, with its device's USB ids and name.
+pub type BoundStandard<'a> = (Option<(u16, u16)>, &'a str, GamepadInput);
+
+/// The device a mapping names, by key (or alias) or (older mappings) by a name no other device
+/// has.
+fn mapped<'a>(
+    devices: impl Iterator<Item = &'a Device> + Clone,
+    device: &'a str,
+) -> impl Iterator<Item = &'a Device> {
+    let by_key = devices.clone().find(|d| d.key == device || d.alias == device);
+    let by_name = || {
+        let mut named = devices.filter(|d| d.name == device);
+        named.next().filter(|_| named.next().is_none())
+    };
+    by_key.or_else(by_name).into_iter()
+}
+
+/// The standard gamepad layout's inputs that the mapping binds, with their device's USB ids and
+/// name: those only do what they are bound to (a Windows joystick's buttons 0 to 3 are the
+/// layout's X, A, B and Y, its axes 3 and 4 the triggers).
+fn bound_standard<'a>(
+    devices: impl Iterator<Item = &'a Device> + Clone,
+    config: &'a InputConfig,
+) -> Vec<BoundStandard<'a>> {
+    let buttons = config.buttons.iter().map(|m| match m.source {
+        Source::Button(c) | Source::AxisPositive(c) | Source::AxisNegative(c) => (&m.device, c),
+    });
+    let axes = config.axes.iter().map(|m| (&m.device, m.code));
+    let mut out = Vec::new();
+    for (device, code) in buttons.chain(axes) {
+        for d in mapped(devices.clone(), device) {
+            for &(c, input) in &d.standard {
+                if c == code {
+                    out.push((d.usb_id, d.name.as_str(), input));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Reads the joysticks and applies the mapping (after the keyboard and gamepad, overriding them).
 pub fn read_hotas(
     mut hotas: ResMut<Hotas>,
     config: Res<InputConfig>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    block: Res<crate::input::InputBlock>,
+    (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
 ) {
     hotas.poll();
     if block.0 {
@@ -751,9 +832,16 @@ pub fn read_hotas(
                 actions.write(ActionEvent(Action::Menu));
             }
         }
-        return;
+        if !console.0 {
+            return;
+        }
     }
+    // At a console only the stick and the triggers pass.
+    let console = block.0;
     for m in &config.axes {
+        if console && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch) {
+            continue;
+        }
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
         let v = m.output(raw);
         match m.control {
@@ -785,13 +873,16 @@ pub fn read_hotas(
                     }
                     continue;
                 }
+                controls.fire |= now && a == Action::FireWeapon;
+                if console {
+                    continue;
+                }
                 if let Some(d) = a.trim_direction() {
                     if now {
                         controls.trim += d;
                     }
                     continue;
                 }
-                controls.fire |= now && a == Action::FireWeapon;
                 controls.mark |= now && a == Action::LockCursor;
                 if now && !hotas.active(&m.device, m.source, true) {
                     actions.write(ActionEvent(a));
@@ -968,5 +1059,48 @@ mod tests {
         let t = AxisMapping { control: AxisControl::Throttle, invert: true, ..m };
         assert_eq!(t.output(-1.0), 1.0);
         assert_eq!(t.output(1.0), 0.0);
+    }
+
+    /// A Windows joystick's buttons 2 and 3 are the standard layout's B and Y (gilrs' fallback
+    /// Xbox layout): bound, they no longer also fire the gun and select weapons; button 1 (A)
+    /// and the other device keep the layout.
+    #[test]
+    fn bound_inputs_leave_the_standard_layout() {
+        let stick = Device {
+            name: "SideWinder Force Feedback 2 Joystick".into(),
+            key: "SideWinder Force Feedback 2 Joystick [045e:001b]".into(),
+            usb_id: Some((0x045e, 0x001b)),
+            standard: vec![
+                (1, GamepadInput::Button(GamepadButton::South)),
+                (2, GamepadInput::Button(GamepadButton::East)),
+                (3, GamepadInput::Button(GamepadButton::North)),
+                (10, GamepadInput::Axis(GamepadAxis::LeftStickX)),
+            ],
+            ..default()
+        };
+        let pad = Device { name: "Xbox".into(), key: "Xbox".into(), ..stick.clone() };
+        let mut c = InputConfig::default();
+        let device = stick.key.clone();
+        c.bind_button(
+            ButtonTarget::Action(Action::NearestTarget),
+            device.clone(),
+            Source::Button(2),
+        );
+        c.bind_button(
+            ButtonTarget::Action(Action::SelectTarget),
+            device.clone(),
+            Source::Button(3),
+        );
+        c.bind_axis(AxisControl::Roll, device, 10);
+        let bound: Vec<GamepadInput> =
+            bound_standard([&stick, &pad].into_iter(), &c).into_iter().map(|b| b.2).collect();
+        assert_eq!(
+            bound,
+            [
+                GamepadInput::Button(GamepadButton::East),
+                GamepadInput::Button(GamepadButton::North),
+                GamepadInput::Axis(GamepadAxis::LeftStickX),
+            ]
+        );
     }
 }

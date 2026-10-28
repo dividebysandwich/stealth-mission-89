@@ -134,6 +134,7 @@ fn a_player_joins_flies_and_returns() {
     let mut ps = start.expect("sortie started");
     ps.on_ground = false;
     ps.altitude = 2000;
+    ps.height = ps.altitude;
     ps.velocity = 300 * 27;
     ps.gear_up = true;
     let mut roster = None;
@@ -237,6 +238,7 @@ fn sixty_four_pilots_fit_in_a_frame() {
             x,
             y,
             altitude: 3000 + id as u16 * 50,
+            height: 3000 + id as u16 * 50,
             heading: id as u16 * 1000,
             velocity: 400 * 27,
             gear_up: true,

@@ -262,6 +262,10 @@ impl Material for PaletteMaterial {
         if layout.0.contains(Mesh::ATTRIBUTE_UV_0) {
             attributes.push(Mesh::ATTRIBUTE_UV_0.at_shader_location(1));
             descriptor.vertex.shader_defs.push("DOT_BATCH".into());
+            // The goggles' halos round the dots.
+            if let Some(fragment) = descriptor.fragment.as_mut() {
+                fragment.shader_defs.push("DOT_BATCH".into());
+            }
         }
         if layout.0.contains(crate::dots::ATTRIBUTE_DOT_COLOUR) {
             attributes.push(crate::dots::ATTRIBUTE_DOT_COLOUR.at_shader_location(2));
@@ -338,6 +342,27 @@ pub struct Globals {
     pub shadow_bounds: Vec4,
     /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     pub storm_haze: Vec4,
+    /// Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
+    /// colour (xyz) and reach in metres (w).
+    pub burst: Vec4,
+    pub burst_colour: Vec4,
+    /// Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w,
+    /// metres); cloud shadows' strength (z) (`Effects::mist`, `Effects::cloud_shadows`).
+    pub atmos: Vec4,
+    /// Cloud shadows (`weather::CloudShadows`): the grid's corner x, z, square size and the
+    /// cumulus base height; cumulus shadows on (x), the stratus shadows' strength (y), the
+    /// average shade past the grid (z).
+    pub shadow_grid: Vec4,
+    pub shadow_far: Vec4,
+    /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
+    /// twinkling near the horizon (z); specks on the desert theaters' ground gradient (w).
+    pub sky_fx: Vec4,
+    /// Retro output: VGA colours (x), scanlines (y; never in VR) (`Effects::vga`,
+    /// `Effects::scanlines`).
+    pub retro: Vec4,
+    /// The cloud shadow grid's squares (up to four cloud numbers each) and the cloud discs.
+    pub shadow_cells: [Vec4; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
+    pub shadow_clouds: [Vec4; crate::weather::SHADOW_CLOUDS],
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -374,6 +399,15 @@ impl Default for Globals {
             shadow: Vec4::ZERO,
             shadow_bounds: Vec4::ZERO,
             storm_haze: Vec4::ZERO,
+            burst: Vec4::ZERO,
+            burst_colour: Vec4::ZERO,
+            atmos: Vec4::ZERO,
+            shadow_grid: Vec4::ZERO,
+            shadow_far: Vec4::new(0.0, 1.0, 0.0, 0.0),
+            sky_fx: Vec4::ZERO,
+            retro: Vec4::ZERO,
+            shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
+            shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
         }
     }
 }
@@ -390,7 +424,7 @@ pub fn pack16(v: [f32; 16]) -> [Vec4; 4] {
 
 /// Mesh tag layout for per-object haze: bits 0..2 level code (0..4 = LOD0..4, 5 = aircraft),
 /// bits 3..5 size class (model attr & 7), bit 6 = no haze, bit 7 = dot billboard (`TAG_DOT`),
-/// bits 8..10 dot size multiplier (`dot_scale`), bit 12 short-range dot (`TAG_DOT_NEAR`).
+/// bits 8..10 dot size multiplier, bit 12 short-range dot (`TAG_DOT_NEAR`).
 pub fn mesh_tag(level: u32, size_class: u32, no_fog: bool) -> u32 {
     (level & 7) | ((size_class & 7) << 3) | ((no_fog as u32) << 6)
 }
@@ -399,13 +433,8 @@ pub const LEVEL_AIRCRAFT: u32 = 5;
 /// Mesh tag bit of dot lights: the shader expands the unit quad around the object origin to a
 /// constant pixel size in each view.
 pub const TAG_DOT: u32 = 1 << 7;
-/// Dot size multiplier minus one (0..7) in mesh tag bits 8..10.
-pub fn dot_scale(scale: u32) -> u32 {
-    (scale.clamp(1, 8) - 1) << 8
-}
-
-/// Dot size in tenths of the plain dot's (1..127) in mesh tag bits 24..30, for sizes the
-/// multiplier of [`dot_scale`] can't give; overrides it.
+/// Dot size in tenths of the plain dot's (1..127) in mesh tag bits 24..30; overrides the
+/// multiplier in bits 8..10.
 pub fn dot_size_tenths(tenths: u32) -> u32 {
     tenths.clamp(1, 127) << 24
 }

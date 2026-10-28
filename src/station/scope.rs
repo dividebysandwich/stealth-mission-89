@@ -17,7 +17,7 @@ const PERIOD: f32 = 0.5;
 /// Earlier pictures kept (the history dots).
 const HISTORY: usize = 6;
 /// Tracks this far out at most (m).
-const RADAR_REACH: f64 = 160_000.0;
+pub const RADAR_REACH: f64 = 160_000.0;
 /// Heading lines: this long a flight (s).
 const LEADER_SECONDS: f32 = 60.0;
 

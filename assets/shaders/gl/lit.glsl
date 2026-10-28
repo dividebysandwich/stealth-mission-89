@@ -26,6 +26,16 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    vec4 storm_haze;
+    vec4 burst;
+    vec4 burst_colour;
+    vec4 atmos;
+    vec4 shadow_grid;
+    vec4 shadow_far;
+    vec4 sky_fx;
+    vec4 retro;
+    vec4 shadow_cells[144];
+    vec4 shadow_clouds[112];
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -39,6 +49,8 @@ uniform uint u_flags;
 uniform float u_cutoff;
 // x: darkness of a night without moonlight (cockpit3d/shading.rs `CockpitShading::night`)
 uniform vec4 u_night;
+// The night flood light (rgb) and the master caution (w) (`CockpitShading::flood`).
+uniform vec4 u_flood;
 uniform sampler2D u_base_tex;
 uniform sampler2D u_emissive_tex;
 
@@ -80,6 +92,17 @@ vec3 sky_light(vec3 n) {
     return min(sun_moon(n) / max(sun_moon(vec3(0.0, 1.0, 0.0)), vec3(1e-4)), vec3(SKY_LIGHT_MAX));
 }
 
+// A combat flash's light (palette.glsl `burst_glow`), brighter by night.
+vec3 burst_glow(vec3 world) {
+    float i = g.burst.w;
+    if (i <= 0.0) { return vec3(0.0); }
+    float d = length(world - g.burst.xyz);
+    float reach = g.burst_colour.w;
+    float core = d / (reach * 0.06);
+    float halo = d / (reach * 0.3);
+    return g.burst_colour.rgb * i * mix(1.0, 0.3, g.light_info.y) * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
+}
+
 void main() {
     vec4 base = u_base;
     if ((u_flags & 1u) != 0u) {
@@ -108,6 +131,20 @@ void main() {
             n = -n;
         }
         rgb = base.rgb * sky_light(n) * (1.0 - dark) + e;
+    }
+    if ((u_flags & 8u) == 0u) {
+        rgb += base.rgb * burst_glow(v_world);
+        // The flood light and the master caution's amber pulse (cockpit.wgsl `flood_light`).
+        float pulse = u_flood.w * max(sin(g.dots.y * 6.2831853 * 1.5), 0.0);
+        rgb += base.rgb * (u_flood.rgb + vec3(0.1, 0.05, 0.0) * pulse);
+    }
+    // VGA colours (palette.glsl `retro`).
+    if (g.retro.x > 0.0) {
+        uvec2 p = uvec2(gl_FragCoord.xy) & 3u;
+        float m[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+        vec3 s = pow(max(rgb, vec3(0.0)), vec3(1.0 / 2.2));
+        vec3 q = floor(s * 63.0 + (m[p.y * 4u + p.x] + 0.5) / 16.0) / 63.0;
+        rgb = pow(min(q, vec3(1.0)), vec3(2.2));
     }
     o_colour = vec4(rgb, base.a);
 }

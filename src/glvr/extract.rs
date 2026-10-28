@@ -60,8 +60,10 @@ pub struct LitItem {
     /// lit.glsl's `u_flags` bits 2.. (unlit 4, never darkened 8, alpha mask 16).
     pub flags: u32,
     pub cutoff: f32,
-    /// The cockpit's night darkness (`CockpitShading::night`), zero for others.
+    /// The cockpit's night darkness (`CockpitShading::night`) and flood light
+    /// (`CockpitShading::flood`), zero for others.
     pub night: Vec4,
+    pub flood: Vec4,
     pub blend: bool,
     pub double_sided: bool,
 }
@@ -766,20 +768,25 @@ impl Extractor {
         for (common, material) in q.cockpit.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
             let bright = if m.extension.bright { 8 } else { 0 };
-            let lit = Lit { m: &m.base, night: m.extension.night, flags: bright };
+            let lit = Lit {
+                m: &m.base,
+                night: m.extension.night,
+                flood: m.extension.flood,
+                flags: bright,
+            };
             self.lit_item(cull, list, meshes, images, &common, lit);
         }
         let materials = world.resource::<Assets<StandardMaterial>>();
         for (common, material) in q.standard.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
-            let lit = Lit { m, night: Vec4::ZERO, flags: 0 };
+            let lit = Lit { m, night: Vec4::ZERO, flood: Vec4::ZERO, flags: 0 };
             self.lit_item(cull, list, meshes, images, &common, lit);
         }
         // The cockpit tooltip's screen (VR), drawn over everything.
         let materials = world.resource::<Assets<crate::cockpit3d::tooltips::TipScreenMaterial>>();
         for (common, material) in q.tips.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
-            let lit = Lit { m: &m.base, night: Vec4::ZERO, flags: ON_TOP };
+            let lit = Lit { m: &m.base, night: Vec4::ZERO, flood: Vec4::ZERO, flags: ON_TOP };
             self.lit_item(cull, list, meshes, images, &common, lit);
         }
         let materials = world.resource::<Assets<HudGlassMaterial>>();
@@ -885,6 +892,7 @@ impl Extractor {
             flags: lit.flags | if m.unlit { 4 } else { 0 } | if mask { 16 } else { 0 },
             cutoff,
             night: lit.night,
+            flood: lit.flood,
             blend,
             double_sided: m.double_sided || m.cull_mode.is_none(),
         });
@@ -895,6 +903,7 @@ impl Extractor {
 struct Lit<'a> {
     m: &'a StandardMaterial,
     night: Vec4,
+    flood: Vec4,
     flags: u32,
 }
 

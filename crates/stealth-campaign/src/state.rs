@@ -37,6 +37,9 @@ pub enum Aircraft {
     F16,
     UH60,
     AH1Z,
+    Tornado,
+    A10,
+    RAH66,
 }
 
 impl Aircraft {
@@ -46,11 +49,14 @@ impl Aircraft {
             Aircraft::F16 => "F-16",
             Aircraft::UH60 => "UH-60",
             Aircraft::AH1Z => "AH-1Z",
+            Aircraft::Tornado => "Tornado",
+            Aircraft::A10 => "A-10",
+            Aircraft::RAH66 => "RAH-66",
         }
     }
 
     pub fn helicopter(self) -> bool {
-        matches!(self, Aircraft::UH60 | Aircraft::AH1Z)
+        matches!(self, Aircraft::UH60 | Aircraft::AH1Z | Aircraft::RAH66)
     }
 
     /// The troop helicopter: flies insertions and picks downed pilots up.
@@ -156,6 +162,8 @@ pub enum MissionKind {
     /// Fly a new stockpile to a friendly air defence unit (a player at its console asked for
     /// it).
     Resupply,
+    /// Fly a load of cargo to the helipad of a new air defence site a player designated.
+    Logistics,
 }
 
 impl MissionKind {
@@ -175,6 +183,7 @@ impl MissionKind {
             MissionKind::Csar => "CSAR",
             MissionKind::Awacs => "AWACS",
             MissionKind::Resupply => "RESUPPLY",
+            MissionKind::Logistics => "LOGISTICS",
         }
     }
 
@@ -183,34 +192,38 @@ impl MissionKind {
         self == MissionKind::Insertion
     }
 
-    /// Who may fly it: insertions and resupply only the troop helicopter, which flies nothing
-    /// but them and rescues (it picks the pilot up, the others cover it). The gunship flies the
-    /// rest.
+    /// Who may fly it: insertions, resupply and logistics only the troop helicopter, which
+    /// flies nothing but them and rescues (it picks the pilot up, the others cover it). The
+    /// gunship flies the rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
         match self {
-            MissionKind::Insertion | MissionKind::Resupply => aircraft.transport(),
+            MissionKind::Insertion | MissionKind::Resupply | MissionKind::Logistics => {
+                aircraft.transport()
+            }
             MissionKind::Csar => true,
             _ => !aircraft.transport(),
         }
     }
 
     /// The aircraft made for it, best first: what the briefing picks (the player may change to
-    /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets,
-    /// the air-to-air missions for the F-16, rescues for the UH-60 that picks the pilot up,
-    /// work close to the front for the gunship.
+    /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets
+    /// (low-level interdiction the Tornado's, close support the A-10's), the air-to-air missions for the F-16, rescues for
+    /// the UH-60 that picks the pilot up, work close to the front for the gunships.
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
-            MissionKind::Recon
-            | MissionKind::Strike
-            | MissionKind::AntiShip
-            | MissionKind::Interdiction => &[F117, F16],
-            MissionKind::Sead => &[F16, F117],
+            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10],
+            MissionKind::AntiShip => &[F117, F16, Tornado],
+            MissionKind::Interdiction => &[F117, Tornado, F16, A10],
+            MissionKind::Sead => &[F16, Tornado, F117],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
-            MissionKind::Intercept => &[F16, AH1Z],
-            MissionKind::Cas => &[AH1Z, F16, F117],
-            MissionKind::Escort => &[AH1Z, F16],
-            MissionKind::Insertion | MissionKind::Csar | MissionKind::Resupply => &[UH60],
+            MissionKind::Intercept => &[F16, AH1Z, RAH66],
+            MissionKind::Cas => &[A10, AH1Z, RAH66, F16, Tornado, F117],
+            MissionKind::Escort => &[AH1Z, RAH66, F16, A10],
+            MissionKind::Insertion
+            | MissionKind::Csar
+            | MissionKind::Resupply
+            | MissionKind::Logistics => &[UH60],
         }
     }
 
@@ -224,9 +237,11 @@ impl MissionKind {
     /// Why an aircraft may not fly it.
     pub fn not_flyable(self, aircraft: Aircraft) -> &'static str {
         if aircraft.transport() {
-            "The UH-60 flies insertions, rescues and resupply"
+            "The UH-60 flies insertions, rescues, resupply and logistics"
         } else if self == MissionKind::Resupply {
             "Resupply is flown in the UH-60"
+        } else if self == MissionKind::Logistics {
+            "Logistics is flown in the UH-60"
         } else {
             "Insertions are flown in the UH-60, or ordered for the helicopter crews"
         }
@@ -235,7 +250,10 @@ impl MissionKind {
     /// Points for achieving the objective.
     pub fn points(self) -> i32 {
         match self {
-            MissionKind::Recon | MissionKind::Cap | MissionKind::Resupply => 100,
+            MissionKind::Recon
+            | MissionKind::Cap
+            | MissionKind::Resupply
+            | MissionKind::Logistics => 100,
             MissionKind::Cas | MissionKind::Escort => 120,
             MissionKind::Sead
             | MissionKind::Strike
@@ -318,6 +336,12 @@ pub enum Objective {
     /// Hover with a new stockpile at a friendly air defence unit (a [`SupplyRequest`]).
     Resupply {
         request: u32,
+    },
+    /// Land one load of cargo on the helipad of a new air defence site (a [`Deployment`]; its
+    /// loads are numbered).
+    Logistics {
+        site: u32,
+        leg: u8,
     },
 }
 
@@ -826,6 +850,9 @@ pub struct CampaignState {
     /// The air defence units waiting for a new stockpile.
     #[serde(default)]
     pub supply_requests: Vec<SupplyRequest>,
+    /// The new air defence sites the players designated: waiting for their cargo, or built.
+    #[serde(default)]
+    pub deployments: Vec<Deployment>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -867,7 +894,8 @@ pub struct SupplyRequest {
     pub patriot: bool,
     /// The place it is named after (the nearest).
     pub name: String,
-    pub by: PlayerId,
+    /// Who asked for it (None: ordered when the unit ran out).
+    pub by: Option<PlayerId>,
     pub posted: f64,
     pub state: SupplyState,
 }
@@ -877,6 +905,121 @@ impl SupplyRequest {
     pub fn title(&self) -> String {
         let what = if self.patriot { "Patriot battery" } else { "Gepard" };
         format!("{what} near {}", self.name)
+    }
+}
+
+/// A new air defence site a player designated on the map: a helipad where it goes, and
+/// helicopters bring its loads of cargo from the nearest airfield (one for a Gepard, three for a
+/// Patriot battery). Not supplied in time, the helipad is gone; supplied, the unit stands beside
+/// the pad.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Deployment {
+    pub id: u32,
+    /// The helipad (map units); the unit stands [`DEPLOY_UNIT_OFFSET`] north of it.
+    pub x: i32,
+    pub y: i32,
+    pub patriot: bool,
+    /// The place it is named after (the nearest).
+    pub name: String,
+    pub by: Option<PlayerId>,
+    pub posted: f64,
+    /// Not supplied by then, it is called off.
+    pub expires: f64,
+    /// Loads it needs, the ones delivered, and the ones AI helicopters (tags) are bringing.
+    pub loads: u8,
+    pub delivered: Vec<u8>,
+    pub ai: Vec<(u8, u32)>,
+    /// Since then nobody has flown an open load (an AI helicopter goes after
+    /// `DEPLOY_AI_WAIT`).
+    pub open_since: f64,
+    /// Every load is in: the unit was placed, and its guns or launchers have been seen standing.
+    pub built: bool,
+    pub seen: bool,
+    /// The base its cargo is flown from, and where each load's crate is (by leg).
+    #[serde(default)]
+    pub base: Option<ObjectId>,
+    #[serde(default)]
+    pub crates: Vec<CrateState>,
+}
+
+/// Where a load of cargo for a new site is: in a crate beside the runway of its base, slung
+/// under a player's helicopter, or set down at the helipad. (A crate an AI helicopter is
+/// bringing is at its base, in [`Deployment::ai`].)
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub enum CrateState {
+    #[default]
+    AtBase,
+    Carried(PlayerId),
+    /// Metres east and north of the helipad, and its heading (radians, clockwise from north).
+    Delivered {
+        east: f32,
+        north: f32,
+        heading: f32,
+    },
+}
+
+impl Deployment {
+    /// "Patriot site near Wittstock".
+    pub fn title(&self) -> String {
+        let what = if self.patriot { "Patriot site" } else { "Gepard site" };
+        format!("{what} near {}", self.name)
+    }
+
+    /// Where its unit stands (map units): beside the helipad.
+    pub fn unit_at(&self) -> (i32, i32) {
+        (self.x, self.y - DEPLOY_UNIT_OFFSET)
+    }
+
+    /// The loads nobody has brought or is bringing by AI helicopter or under his own.
+    pub fn open_legs(&self) -> impl Iterator<Item = u8> + '_ {
+        (0..self.loads).filter(|&l| {
+            !self.delivered.contains(&l)
+                && !self.ai.iter().any(|(a, _)| *a == l)
+                && self.crate_state(l) == CrateState::AtBase
+        })
+    }
+
+    /// Where load `leg`'s crate is.
+    pub fn crate_state(&self, leg: u8) -> CrateState {
+        match self.crates.get(leg as usize) {
+            Some(&c) => c,
+            None if self.delivered.contains(&leg) => crate_slot(leg),
+            None => CrateState::AtBase,
+        }
+    }
+
+    /// A crate standing at its base, ready to be hooked: not taken by an AI helicopter.
+    pub fn crate_waiting(&self, leg: u8) -> bool {
+        !self.built
+            && !self.ai.iter().any(|(a, _)| *a == leg)
+            && self.crate_state(leg) == CrateState::AtBase
+    }
+
+    /// Load `leg`'s crate is now there (the crates of a save from before they were kept are
+    /// placed first).
+    pub fn set_crate(&mut self, leg: u8, c: CrateState) {
+        while self.crates.len() < self.loads as usize {
+            let l = self.crates.len() as u8;
+            self.crates.push(self.crate_state(l));
+        }
+        if let Some(s) = self.crates.get_mut(leg as usize) {
+            *s = c;
+        }
+    }
+
+    /// The player's crate, if he carries one of this site's.
+    pub fn carried_by(&self, player: PlayerId) -> Option<u8> {
+        (0..self.loads).find(|&l| self.crate_state(l) == CrateState::Carried(player))
+    }
+}
+
+/// Where an AI helicopter sets down load `leg`: on a ring around the helipad.
+pub fn crate_slot(leg: u8) -> CrateState {
+    let t = leg as f32 * 2.4 + 0.8;
+    CrateState::Delivered {
+        east: t.sin() * CRATE_SLOT_METRES,
+        north: t.cos() * CRATE_SLOT_METRES,
+        heading: t,
     }
 }
 
@@ -1089,6 +1232,7 @@ impl CampaignState {
             battery_at: f64::MIN,
             defence_stock: Vec::new(),
             supply_requests: Vec::new(),
+            deployments: Vec::new(),
             terrain: Terrain::default(),
         };
         c.note("Campaign started");
@@ -1288,6 +1432,10 @@ impl CampaignState {
 
     pub fn supply_request(&self, id: u32) -> Option<&SupplyRequest> {
         self.supply_requests.iter().find(|r| r.id == id)
+    }
+
+    pub fn deployment(&self, id: u32) -> Option<&Deployment> {
+        self.deployments.iter().find(|d| d.id == id)
     }
 
     pub fn raid(&self, id: u32) -> Option<&Raid> {

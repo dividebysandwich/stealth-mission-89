@@ -236,9 +236,18 @@ impl Sim {
     /// Flight unit `j` as a target (at the altitude it is drawn at).
     pub(crate) fn unit_target(&self, j: usize) -> Target {
         let u = self.flights[j];
-        Target {
-            p: [u.wx as f64, u.wy as f64, u.alt as f64],
-            v: mul(direction(u.heading, u.pitch), u.speed as f64),
+        Target { p: [u.wx as f64, u.wy as f64, u.alt as f64], v: self.flight_velocity(j) }
+    }
+
+    /// Flight unit `j`'s velocity (wu/s: east, south, up) as it moved over the last frame: a
+    /// banked AI aircraft flies slower than its speed, a diving one faster. Along its nose at
+    /// its speed when that frame is unknown or was a jump (put down on a runway).
+    pub(crate) fn flight_velocity(&self, j: usize) -> V3 {
+        let u = self.flights[j];
+        let nose = mul(direction(u.heading, u.pitch), u.speed as f64);
+        match self.flight_vel.get(j).map(|v| v.map(f64::from)) {
+            Some(v) if len(v) <= 2.0 * u.speed as f64 + 50.0 => v,
+            _ => nose,
         }
     }
 

@@ -9,7 +9,7 @@ use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 17;
+pub const PROTOCOL: u16 = 19;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -44,6 +44,26 @@ pub enum ToServer {
     /// Call in AI SEAD for an offer's place.
     RequestSupport {
         offer: u32,
+    },
+    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
+    /// (x, y), map units.
+    DesignateSite {
+        x: i32,
+        y: i32,
+        patriot: bool,
+    },
+    /// The crate of load `leg` of new site `id` hooked under his helicopter.
+    HookCrate {
+        id: u32,
+        leg: u8,
+    },
+    /// It is set down at (`east`, `north`) metres from the site's helipad, heading `heading`.
+    DropCrate {
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
     },
     /// Plan a mission of the board with the others on it, from a base (None: plan none).
     Select {
@@ -220,8 +240,14 @@ mod tests {
     #[test]
     fn station_messages_survive_encoding() {
         use stealth_sim::station::{DefenceState, Guidance, Station, StationCmd};
-        let m = ToServer::Station(StationCmd::Fire { launcher: Some(3) });
-        assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        for cmd in [
+            StationCmd::Fire { launcher: Some(3) },
+            StationCmd::Slew { az: 0.5, el: -0.25 },
+            StationCmd::Burst,
+        ] {
+            let m = ToServer::Station(cmd);
+            assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        }
         let defence = DefenceState {
             stations: vec![Station {
                 unit: 4,
@@ -230,6 +256,8 @@ mod tests {
                 mode: Guidance::SemiActive,
                 burst: 0,
                 due: 0.0,
+                slew: [0.5, 0.0],
+                manual: true,
             }],
             stock: vec![8, 0, 0, 0, 640],
             refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],
@@ -289,6 +317,9 @@ mod tests {
             external_stores: true,
             helicopter: true,
             gunship: true,
+            tornado: false,
+            a10: false,
+            comanche: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -299,6 +330,18 @@ mod tests {
         };
         let w = WorldFast { pilots: vec![p.clone()], ..Default::default() };
         let back = decode::<WorldFast>(&encode(&w)).unwrap();
-        assert_eq!(back.pilots, vec![p]);
+        assert_eq!(back.pilots, vec![p.clone()]);
+        // The Tornado's flag.
+        let t = RemotePilot { helicopter: false, gunship: false, tornado: true, ..p };
+        let w = WorldFast { pilots: vec![t.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![t.clone()]);
+        // The A-10's.
+        let a = RemotePilot { tornado: false, a10: true, ..t };
+        let w = WorldFast { pilots: vec![a.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![a.clone()]);
+        // The RAH-66's.
+        let c = RemotePilot { a10: false, helicopter: true, gunship: true, comanche: true, ..a };
+        let w = WorldFast { pilots: vec![c.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![c]);
     }
 }

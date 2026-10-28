@@ -172,7 +172,9 @@ pub fn action_text(a: Action) -> (String, &'static str) {
     use Action::*;
     let (title, detail) = match a {
         Gear => ("Landing gear", "Gear up / down (the lever shows the position)"),
-        Autopilot => ("Autopilot", "Flies to the current waypoint"),
+        Autopilot => {
+            ("Autopilot", "Flies to the current waypoint (Tornado: following the terrain)")
+        }
         BayDoors => ("Weapon bay doors", "Open / close; weapons are released with open bays only"),
         Flaps => ("Flaps", "More lift, about 20 % lower stall speed"),
         Brakes => ("Brakes", "Wheel brakes on the ground, speed brake in the air"),
@@ -205,8 +207,8 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Ecm => ("ECM", "Radar jammer on / off (lit when on)"),
         IrJammer => ("IR jammer", "On / off; switches itself off after 20 s and must cool down"),
         SelectWaypoint => ("Waypoints", "Waypoint page"),
-        ChangeWaypoint => ("Change waypoint", ""),
-        ResetWaypoint => ("Reset waypoint", ""),
+        ChangeWaypoint => ("Edit waypoints", "The keypad moves the selected waypoint"),
+        ResetWaypoint => ("Reset waypoints", "All waypoints back to their planned positions"),
         LastWaypoint => ("Previous waypoint", ""),
         NextWaypoint => ("Next waypoint", ""),
         Menu => ("Settings menu", "Opens or closes the in-flight menu"),
@@ -274,7 +276,7 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::HarmFilter => "HARM threat filter: all, SAM, air".into(),
         MfdCmd::CamZoom(1..) => "Camera zoom in".into(),
         MfdCmd::CamZoom(..=0) => "Camera zoom out".into(),
-        MfdCmd::CamZoomCycle => "Camera zoom: auto, 1X to 6X".into(),
+        MfdCmd::CamZoomCycle => "Camera zoom: auto, 1X to 20X".into(),
         MfdCmd::TgpSp => "Targeting pod snowplow: locks dropped, fixed ahead".into(),
         MfdCmd::TgpSlave => "Targeting pod back to slaved".into(),
         MfdCmd::TgpCz => "Cursor zero: targeting pod to the current steerpoint".into(),
@@ -285,7 +287,7 @@ fn cmd_text(c: MfdCmd) -> String {
 fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
     match k {
         ConsoleKey::Tracks => ("TRACKS", "The track list"),
-        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and refills"),
+        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and reloads"),
         ConsoleKey::Lock => ("LOCK", "Lock the selected track: the camera follows it"),
         ConsoleKey::Drop => ("DROP", "Drop the lock (guided missiles go semi-active)"),
         ConsoleKey::Guided => {
@@ -298,7 +300,7 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ),
         ConsoleKey::Fire => ("FIRE", "A missile (a Gepard: a burst) at the locked track"),
         ConsoleKey::Launcher(_) => ("LAUNCHER", "Fire from this launcher; again: the readiest"),
-        ConsoleKey::Refill(_) => ("REFILL", "Refill the empty launcher from the stockpile (4 min)"),
+        ConsoleKey::Refill(_) => ("RELOAD", "Reload the empty launcher from the stockpile (4 min)"),
         ConsoleKey::Flir => ("FLIR", "Thermal or colour camera picture"),
         ConsoleKey::ZoomIn => ("ZOOM IN", "Camera zoom"),
         ConsoleKey::ZoomOut => ("ZOOM OUT", "Camera zoom"),
@@ -444,6 +446,9 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Right if style == PanelStyle::Modern => {
             ("Centre display", "The right MFD's pages")
         }
+        CanvasRole::Right if style == PanelStyle::Tornado => {
+            ("Centre MFD", "The right MFD's pages")
+        }
         CanvasRole::Right => ("Right MFD", "Multifunction display"),
         CanvasRole::Third => ("Third MFD", "Starts on the HSI page"),
         CanvasRole::Adi => ("Attitude indicator", "Pitch and bank"),
@@ -452,10 +457,24 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
             "Slow: red top chevron, on speed: green circle, fast: amber bottom chevron",
         ),
         CanvasRole::Rwr => ("RWR", "Radar warning receiver: the radars that see the aircraft"),
+        CanvasRole::Tfr => (
+            "Terrain following radar",
+            "Range across, angle up: the terrain and the steering template; AUTO follows it",
+        ),
         CanvasRole::Hsi => {
             ("HSI", "Horizontal situation indicator: heading, bearing and distance to the waypoint")
         }
+        CanvasRole::Ded if style == PanelStyle::Rah66 => {
+            ("Scratchpad", "Keyboard display: radio, steerpoint, target, time and fuel")
+        }
         CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
+        CanvasRole::Lmpd => (
+            "Left MPD",
+            "Threats: radars at their range and bearing, missile envelopes, our radar return (inside the dashed ring: unseen) and its last 30 s; warnings (red), cautions (amber), advisories (green) flash until the master caution",
+        ),
+        CanvasRole::Rmpd => {
+            ("Right MPD", "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow")
+        }
         CanvasRole::Console(ConsoleScreen::Scope) => {
             ("Air picture", "The tracks around the site, twice a second; click one to select it")
         }
@@ -464,6 +483,9 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         }
         CanvasRole::Console(ConsoleScreen::Eo) => {
             ("Camera", "The locked track, in colour or thermal (FLIR)")
+        }
+        CanvasRole::Console(ConsoleScreen::Info) => {
+            ("Target data", "The locked track: range, altitude, speed, time of flight")
         }
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
@@ -478,6 +500,16 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
 pub(super) fn stick_tip() -> Tip {
     use Action::*;
     Tip::new("Side stick", "Pitch and roll", &[PitchDown, PitchUp, RollLeft, RollRight])
+}
+
+/// The air defence console's hand controller (`station`).
+pub(super) fn console_stick_tip() -> Tip {
+    use Action::*;
+    Tip::new(
+        "Hand controller",
+        "Without a lock: slews the gun and the camera; the trigger fires",
+        &[PitchDown, PitchUp, RollLeft, RollRight, FireWeapon],
+    )
 }
 
 pub(super) fn throttle_tip() -> Tip {
@@ -715,7 +747,7 @@ pub(super) fn hover(
     kneeboard: Option<Res<crate::kneeboard::Kneeboard>>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut picker: Picker,
-    controls: Query<(Entity, &Control, &Transform)>,
+    controls: Query<(Entity, &Control, &Transform), Without<super::controls::Unused>>,
     tips: Query<&Tip>,
     panel: PanelParams,
     input: Res<InputConfig>,
@@ -914,7 +946,14 @@ mod tests {
     fn every_control_has_a_tooltip() {
         use super::super::layout::PanelLayout;
         let mfd = MfdState::default();
-        for style in [PanelStyle::Classic, PanelStyle::Modern, PanelStyle::F16] {
+        for style in [
+            PanelStyle::Classic,
+            PanelStyle::Modern,
+            PanelStyle::F16,
+            PanelStyle::Tornado,
+            PanelStyle::A10,
+            PanelStyle::Rah66,
+        ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd).unwrap_or_else(|| panic!("{effect:?}"));
                 assert!(!tip.title.is_empty() && !tip.title.contains('_'), "{effect:?}");

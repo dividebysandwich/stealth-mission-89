@@ -148,7 +148,8 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
             roads(&sc.net, &f, &mut g, low);
             for i in sc.net.building_index.around(f.min, f.max()) {
                 let b = &sc.net.buildings[i as usize];
-                if !f.contains(b.p) {
+                // Not in a clearing (round the friendly air defence and its new sites).
+                if !f.contains(b.p) || sc.cleared(b.p) {
                     continue;
                 }
                 if low {
@@ -979,10 +980,7 @@ fn belt_tree_list(
                     let p = a
                         + dir * (k * 8.0 + row * 2.0 + rng.range(-1.5, 1.5))
                         + side * row * rng.range(2.0, 4.5);
-                    if !inside(p)
-                        || rng.chance(0.08)
-                        || !sc.net.road_clear(p, 4.0)
-                        || sc.cleared(p)
+                    if !inside(p) || rng.chance(0.08) || !sc.net.road_clear(p, 4.0) || sc.cleared(p)
                     {
                         continue;
                     }

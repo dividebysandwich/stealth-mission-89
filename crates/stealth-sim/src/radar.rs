@@ -2,6 +2,9 @@ use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, u16v};
 use crate::types::*;
 use crate::{ENEMY_SLOTS, Sim};
 
+/// What the gear down (legs and open wells) adds to the EMV of every aircraft.
+pub const GEAR_DOWN_EMV: i32 = 12;
+
 /// Pure EMV function.
 /// `flags` = player flags, `view_z` = compressed altitude, `velocity` = knots*27.
 pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockheed: bool) -> i32 {
@@ -15,8 +18,9 @@ pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockhee
         bearing(u16v(((view_z & 0xFFFF) / 3) * (diff + 1)), 0x800)
     };
     let mut e = hi8s(b) + ((velocity & 0xFFFF) >> 10) + (r >> 1);
-    if lockheed && flags & 0xFFFF == 0 {
-        e += 20;
+    // Lockheed mode keeps its own gear-down term (only with nothing else set).
+    if flags & pflags::GEAR_UP == 0 {
+        e += if lockheed && flags & 0xFFFF == 0 { 20 } else { GEAR_DOWN_EMV };
     }
     if flags & pflags::BAY_OPEN != 0 {
         e += 24;
@@ -27,6 +31,14 @@ pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockhee
     e
 }
 
+/// The RAH-66's radar signature against the usual one (the F-117A's), in 32nds: 1 hovering
+/// (its faceted, shrouded airframe and bearingless rotor return almost nothing a radar can tell
+/// from the clutter), rising with its speed to the F-117A's 32 at 180 kt and faster.
+pub fn comanche_signature(velocity: i32) -> i32 {
+    let knots = (velocity / 27).clamp(0, 180);
+    1 + 31 * knots / 180
+}
+
 /// Inputs of [`detect`] that describe the player and the game settings.
 #[derive(Debug, Clone, Copy)]
 pub struct DetectCtx<'a> {
@@ -34,10 +46,14 @@ pub struct DetectCtx<'a> {
     pub px: i32,
     pub py: i32,
     pub view_z: i32,
+    /// Height above the ground (ft).
+    pub height: i32,
     pub heading: i32,
     pub velocity: i32,
     pub diff: i32,
     pub lockheed: bool,
+    /// The RAH-66: the return falls with its speed ([`comanche_signature`]).
+    pub comanche: bool,
     /// Theater terrain grid (16 x 16 cells, 256 bytes).
     pub grid: &'a [u8],
 }
@@ -82,8 +98,20 @@ pub fn detect(
     if c.lockheed {
         score >>= 1;
     }
+    if c.comanche {
+        score = score * comanche_signature(c.velocity) / 32;
+    }
+    // Ground radars (site altitude 0) lose a target below LOW_LEVEL_FT in the ground clutter.
+    if salt == 0 && c.height < LOW_LEVEL_FT {
+        let h = c.height.max(0);
+        score = score * h * h / (LOW_LEVEL_FT * LOW_LEVEL_FT);
+    }
     (score, brg, rng)
 }
+
+/// Height above the ground (ft) below which ground radars start losing a target: their
+/// signal falls with the square of the height, to none on the ground.
+pub const LOW_LEVEL_FT: i32 = 100;
 
 /// RWR tone when a radar detects the player.
 fn detected_tone(doppler: bool) -> RwrTone {
@@ -96,10 +124,12 @@ impl Sim {
             px: self.pl.p.mx,
             py: self.pl.p.my,
             view_z: self.pl.p.view_z,
+            height: self.pl.p.height,
             heading: self.pl.p.heading,
             velocity: self.pl.p.velocity,
             diff: self.diff,
             lockheed: self.pl.lockheed,
+            comanche: self.pl.comanche,
             grid: &self.grid,
         }
     }
@@ -136,14 +166,19 @@ impl Sim {
     }
 
     pub(crate) fn compute_emv(&mut self) {
-        self.pl.emv = emv(
-            self.pl.p.view_z,
-            self.pl.p.velocity,
-            self.pl.p.roll,
-            self.pl.pflags,
-            self.diff,
-            self.pl.lockheed,
-        );
+        let p = &self.pl.p;
+        self.pl.emv = if self.pl.comanche {
+            // The RAH-66's height, speed and bank show a third as much hovering, fully at
+            // 180 kt; its open doors, its gear and the jammer as much as anybody's.
+            let loud = pflags::BAY_OPEN | pflags::ECM;
+            let quiet = (self.pl.pflags & !loud) | pflags::GEAR_UP;
+            let base = emv(p.view_z, p.velocity, p.roll, quiet, self.diff, false);
+            let scale = 15 + comanche_signature(p.velocity);
+            let loud = self.pl.pflags & (loud | pflags::GEAR_UP);
+            base * scale / 47 + emv(0, 0, 0, loud, self.diff, false)
+        } else {
+            emv(p.view_z, p.velocity, p.roll, self.pl.pflags, self.diff, self.pl.lockheed)
+        };
     }
 
     /// Raise the theater alarm: note where the player (or decoy) is and put the sites on alert.
@@ -712,12 +747,31 @@ mod tests {
         // Bank 90 deg folds to +32, inverted counts as level.
         assert_eq!(emv(0, 0, 0x4000, 1, 0, false), 32);
         assert_eq!(emv(0, 0, -0x8000, 1, 0, false), 0);
-        // Bays +24, ECM +16, Lockheed gear-down (+20) only when the whole flag word is 0.
+        // Bays +24, ECM +16, gear down +12 (Lockheed: +20 when the whole flag word is 0).
         assert_eq!(emv(0, 0, 0, 1 | 4 | 0x10, 0, false), 40);
+        assert_eq!(emv(0, 0, 0, 0, 0, false), GEAR_DOWN_EMV);
+        assert_eq!(emv(0, 0, 0, 4, 0, false), 24 + GEAR_DOWN_EMV);
+        assert_eq!(emv(0, 0, 0, 4, 3, true), 9 + 24 + GEAR_DOWN_EMV);
         assert_eq!(emv(0, 0, 0, 0, 3, true), 9 + 20);
         assert_eq!(emv(0, 0, 0, 1, 3, true), 9);
         // Altitude term: 1000 ft Regular -> 12.
         assert_eq!(emv(1000, 0, 0, 1, 1, false), 12);
+    }
+
+    #[test]
+    fn comanche_signature_rises_with_speed() {
+        assert_eq!(comanche_signature(0), 1);
+        assert_eq!(comanche_signature(90 * 27), 16);
+        assert_eq!(comanche_signature(180 * 27), 32);
+        assert_eq!(comanche_signature(400 * 27), 32);
+        // The return: a 32nd hovering, all of it at 180 kt.
+        let grid = vec![8u8; 256];
+        let score = |vel: i32, comanche: bool| {
+            let c = DetectCtx { comanche, ..ctx(&grid, 0x4000, vel) };
+            detect(0x4000, 0x4000 - 1, 0, 1, Some((200, 3, 0)), &c).0
+        };
+        assert_eq!(score(0, true), score(0, false) / 32);
+        assert_eq!(score(180 * 27, true), score(180 * 27, false));
     }
 
     fn ctx(grid: &[u8], heading: i32, vel: i32) -> DetectCtx<'_> {
@@ -725,10 +779,12 @@ mod tests {
             px: 0x4000,
             py: 0x4000,
             view_z: 0,
+            height: 1000,
             heading,
             velocity: vel,
             diff: 1,
             lockheed: false,
+            comanche: false,
             grid,
         }
     }
@@ -769,6 +825,20 @@ mod tests {
         assert_eq!(detect(0x4000, 0x3000, 0, -1, Some((200, 3, 0)), &c).0, 0);
     }
 
+    /// Ground radars lose a target below LOW_LEVEL_FT; airborne ones don't.
+    #[test]
+    fn detect_low_level() {
+        let grid = vec![8u8; 256];
+        let mut c = ctx(&grid, 0x4000, 400 * 27);
+        let at = |c: &DetectCtx, salt| detect(0x4000, 0x4000 - 1, salt, 1, Some((200, 3, 0)), c).0;
+        assert_eq!(at(&c, 0), 72);
+        c.height = 50;
+        assert_eq!(at(&c, 0), 18);
+        assert_eq!(at(&c, 500), 72);
+        c.height = 0;
+        assert_eq!(at(&c, 0), 0);
+    }
+
     /// Doppler vs pulse aspect (reference values).
     #[test]
     fn detect_doppler_aspect() {
@@ -803,10 +873,12 @@ mod tests {
                 px,
                 py,
                 view_z: vz,
+                height: vz,
                 heading: h,
                 velocity: v,
                 diff: d,
                 lockheed: l,
+                comanche: false,
                 grid: &grid,
             };
             assert_eq!(detect(sx, sy, salt, typ, Some(th), &c), want);

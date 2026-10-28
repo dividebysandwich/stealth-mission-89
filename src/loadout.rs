@@ -1,6 +1,6 @@
 //! Loadout editor (otherwise the mission generator picks the stores): the stores on each
 //! hardpoint, the F-117A's bays (two real ones, two more inside the wings without realistic
-//! weapons), the F-16's nine pylon stations or the AH-1Z's six.
+//! weapons), the F-16's nine pylon stations, the A-10's eleven or the AH-1Z's six.
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -11,7 +11,7 @@ use crate::aircraft::AircraftKind;
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, section};
 
 /// The weapons (index = weapon type): name, what it is for.
-pub const WEAPONS: [(&str, &str); 21] = [
+pub const WEAPONS: [(&str, &str); 22] = [
     ("AIM-9M Sidewinder", "Air-to-air, infrared homing, short range"),
     ("AIM-120A AMRAAM", "Air-to-air, radar homing, medium range"),
     ("AGM-88A HARM", "Anti-radiation missile: radars and SAM sites"),
@@ -36,6 +36,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
         "AGM-114 Hellfire",
         "Laser guided anti-armour missile: flies to where the targeting pod looks",
     ),
+    ("FIM-92 Stinger", "Air-to-air, infrared homing, very short range"),
 ];
 /// How each weapon is used (index = weapon type), shown under its role; ranges in the HUD's km.
 /// Missiles: the longest range is the LOCK oval's (the lock range of assets/sim/units.ron,
@@ -44,7 +45,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
-const EMPLOYMENT: [&[&str]; 21] = [
+const EMPLOYMENT: [&[&str]; 22] = [
     &["Range: 1-12 km, farther head-on"],
     &["Range: 1-38 km, farther head-on"],
     &["Range: 9-50 km", "Launch: 5,000-20,000 ft"],
@@ -69,6 +70,7 @@ const EMPLOYMENT: [&[&str]; 21] = [
     &["Range: release on \"Drop supplies now\", within 4 km of the drop zone"],
     &[],
     &["Range: 4-8 km", "Launch: 2,000-3,000 ft"],
+    &["Range: 1-6 km, farther head-on"],
 ];
 const GUIDED_CLUSTER: &[&str] = &[
     "Range: 1.5 km to 2.5 times the height, LOCK steady (3.7 km from 3,000 ft, 6 km from 5,000 ft)",
@@ -78,14 +80,15 @@ const MEDIUM_RETARDED: &[&str] =
     &["Range: 1.1-1.6 km short of the target", "Release: 300-1,000 ft"];
 const LOW_RETARDED: &[&str] = &["Range: 0.9-1.3 km short of the target", "Release: 200-500 ft"];
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
-const AIR_TO_AIR: [u8; 2] = [0, 1];
+const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 21] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4];
+const BAY_QTY: [u8; 22] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
-/// the Hellfires).
-const PYLON_QTY: [u8; 21] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4];
-/// The Hellfire's weapon type.
+/// the Hellfires, a twin launcher for the Stingers).
+const PYLON_QTY: [u8; 22] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2];
+/// The Hellfire's and the Stinger's weapon types.
 pub const HELLFIRE: u8 = 20;
+pub const STINGER: u8 = 21;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -100,10 +103,15 @@ pub struct Hardpoint {
     /// The same station on the other side.
     pub mirror: Option<usize>,
     pub loads: &'static [u8],
+    /// Rounds of a weapon here other than a bay's or a pylon's usual (weapon, rounds).
+    pub qty: &'static [(u8, u8)],
 }
 
 impl Hardpoint {
     pub fn rounds(&self, w: u8) -> u8 {
+        if let Some(&(_, n)) = self.qty.iter().find(|q| q.0 == w) {
+            return n;
+        }
         let t = if self.bay { &BAY_QTY } else { &PYLON_QTY };
         t.get(w as usize).copied().unwrap_or(0)
     }
@@ -150,6 +158,52 @@ const F117_OUTLINE: &[(f32, f32)] = &[
     (-5.88, 17.14),
     (-6.48, 16.48),
     (-6.48, 14.96),
+];
+/// aircraft_046 (tools/models/comanche.py) seen from above, without its rotors, the bay doors shut:
+/// half span (the tail's end plates) 1.58 m, length 13.44 m.
+const RAH66_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.32, 0.08),
+    (0.56, 0.44),
+    (0.56, 0.96),
+    (0.86, 2.36),
+    (0.96, 3.30),
+    (1.16, 3.34),
+    (1.16, 3.84),
+    (1.08, 3.86),
+    (1.10, 6.74),
+    (1.00, 7.88),
+    (0.70, 8.60),
+    (0.44, 10.98),
+    (0.26, 11.06),
+    (0.26, 12.12),
+    (1.44, 12.10),
+    (1.58, 12.16),
+    (1.58, 12.78),
+    (1.30, 13.28),
+    (1.24, 13.10),
+    (0.06, 13.16),
+    (0.00, 13.44),
+    (-0.06, 13.16),
+    (-1.24, 13.10),
+    (-1.30, 13.28),
+    (-1.58, 12.78),
+    (-1.58, 12.16),
+    (-1.44, 12.10),
+    (-0.26, 12.12),
+    (-0.26, 11.06),
+    (-0.44, 10.98),
+    (-0.70, 8.60),
+    (-1.00, 7.88),
+    (-1.10, 6.74),
+    (-1.08, 3.86),
+    (-1.16, 3.84),
+    (-1.16, 3.34),
+    (-0.96, 3.30),
+    (-0.86, 2.36),
+    (-0.56, 0.96),
+    (-0.56, 0.44),
+    (-0.32, 0.08),
 ];
 /// aircraft_043 (tools/models/ah1z.py) seen from above, without its rotors: half span (the
 /// wingtip rails) 2.32 m, length 15.16 m.
@@ -246,6 +300,135 @@ const UH60_OUTLINE: &[(f32, f32)] = &[
     (-0.92, 0.57),
     (-0.55, 0.22),
 ];
+/// aircraft_045 (tools/models/aircraft.py `tornado`, the wings forward) seen from above: half
+/// span 6.98 m, length 17.04 m.
+const TORNADO_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.00, 0.56),
+    (0.30, 1.32),
+    (0.50, 2.56),
+    (0.66, 5.34),
+    (0.70, 5.40),
+    (1.40, 5.40),
+    (1.40, 6.36),
+    (2.34, 8.68),
+    (3.58, 9.26),
+    (3.80, 9.26),
+    (3.82, 8.96),
+    (3.96, 8.96),
+    (4.00, 9.46),
+    (6.68, 10.70),
+    (6.98, 10.76),
+    (6.98, 11.64),
+    (6.90, 11.74),
+    (1.76, 10.60),
+    (1.76, 9.96),
+    (1.30, 9.94),
+    (1.14, 12.58),
+    (3.42, 14.50),
+    (3.42, 15.74),
+    (0.78, 15.68),
+    (0.58, 17.04),
+    (0.50, 17.04),
+    (0.36, 15.96),
+    (0.02, 15.94),
+    (0.00, 16.22),
+    (-0.02, 15.94),
+    (-0.36, 15.96),
+    (-0.50, 17.04),
+    (-0.58, 17.04),
+    (-0.78, 15.68),
+    (-3.42, 15.74),
+    (-3.42, 14.50),
+    (-1.14, 12.58),
+    (-1.30, 9.94),
+    (-1.76, 9.96),
+    (-1.76, 10.60),
+    (-6.90, 11.74),
+    (-6.98, 11.64),
+    (-6.98, 10.76),
+    (-6.68, 10.70),
+    (-4.00, 9.46),
+    (-3.96, 8.96),
+    (-3.82, 8.96),
+    (-3.80, 9.26),
+    (-3.58, 9.26),
+    (-2.34, 8.68),
+    (-1.40, 6.36),
+    (-1.40, 5.40),
+    (-0.70, 5.40),
+    (-0.66, 5.34),
+    (-0.50, 2.56),
+    (-0.30, 1.32),
+    (-0.00, 0.56),
+];
+/// aircraft_032 (tools/models/aircraft.py `a10`) seen from above: half span 8.78 m, length 16.44 m.
+const A10_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.10, 0.04),
+    (0.10, 0.26),
+    (0.22, 0.36),
+    (0.34, 0.70),
+    (0.64, 2.46),
+    (0.70, 7.00),
+    (2.26, 7.10),
+    (2.32, 6.56),
+    (2.56, 6.24),
+    (2.80, 6.56),
+    (2.88, 7.18),
+    (8.50, 7.64),
+    (8.78, 7.76),
+    (8.78, 9.56),
+    (8.58, 9.66),
+    (2.10, 10.06),
+    (2.06, 12.22),
+    (1.94, 12.92),
+    (1.70, 13.36),
+    (1.16, 13.36),
+    (0.90, 12.86),
+    (0.80, 11.86),
+    (0.50, 11.84),
+    (0.38, 14.24),
+    (2.82, 14.30),
+    (2.86, 14.08),
+    (2.92, 14.46),
+    (2.86, 16.00),
+    (2.86, 15.66),
+    (2.80, 15.60),
+    (0.32, 15.64),
+    (0.00, 16.44),
+    (-0.32, 15.64),
+    (-2.80, 15.60),
+    (-2.86, 15.66),
+    (-2.86, 16.00),
+    (-2.92, 14.46),
+    (-2.86, 14.08),
+    (-2.82, 14.30),
+    (-0.38, 14.24),
+    (-0.50, 11.84),
+    (-0.80, 11.86),
+    (-0.90, 12.86),
+    (-1.16, 13.36),
+    (-1.70, 13.36),
+    (-1.94, 12.92),
+    (-2.06, 12.22),
+    (-2.10, 10.06),
+    (-8.58, 9.66),
+    (-8.78, 9.56),
+    (-8.78, 7.76),
+    (-8.50, 7.64),
+    (-2.88, 7.18),
+    (-2.80, 6.56),
+    (-2.56, 6.24),
+    (-2.32, 6.56),
+    (-2.26, 7.10),
+    (-0.70, 7.00),
+    (-0.64, 2.46),
+    (-0.34, 0.70),
+    (-0.22, 0.36),
+    (-0.10, 0.26),
+    (-0.10, 0.04),
+];
 /// aircraft_023 (tools/models/aircraft.py `f16`) seen from above: half span 4.70 m, length 15.88 m.
 const F16_OUTLINE: &[(f32, f32)] = &[
     (0.00, 0.00),
@@ -301,7 +484,16 @@ const fn bay(
     mirror: usize,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: true, fantasy, mirror: Some(mirror), loads }
+    Hardpoint {
+        name,
+        label,
+        pos: (x, y),
+        bay: true,
+        fantasy,
+        mirror: Some(mirror),
+        loads,
+        qty: &[],
+    }
 }
 
 const fn pylon(
@@ -312,7 +504,7 @@ const fn pylon(
     mirror: Option<usize>,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads }
+    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads, qty: &[] }
 }
 
 /// The real F-117A: two bays, no air-to-air missiles.
@@ -344,12 +536,59 @@ static F16_STATIONS: [Hardpoint; 9] = [
     pylon("Station 9, right wingtip", "9", 4.66, 9.70, Some(0), &TIP),
 ];
 
+/// The Tornado's wing pylons (swivelling with the sweep) carry the tanks, the fuselage's
+/// forward shoulder pylons the heavy stores and the camera; its Sidewinders go on the wing
+/// pylons' rails.
+const TORNADO_WING: [u8; 15] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0];
+const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18];
+/// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
+/// fuselage's shoulder pylons fore and aft.
+static TORNADO_STATIONS: [Hardpoint; 8] = [
+    pylon("Left wing, Sidewinder rail", "1", -4.20, 9.40, Some(7), &TIP),
+    pylon("Left wing pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
+    pylon("Left shoulder, forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
+    pylon("Left shoulder, aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
+    pylon("Right shoulder, aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
+    pylon("Right shoulder, forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
+    pylon("Right wing pylon", "7", 3.90, 9.80, Some(1), &TORNADO_WING),
+    pylon("Right wing, Sidewinder rail", "8", 4.20, 9.40, Some(0), &TIP),
+];
+
+/// The A-10's outer wing pylons carry the Mavericks and the bombs, the centre section's the
+/// heavy bombs and the tanks, the fuselage's the lighter bombs; the centreline the tank, the
+/// camera or the cargo. No anti-ship or anti-radar missiles.
+const A10_WING: [u8; 11] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const A10_INNER: [u8; 11] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
+/// The A-10's eleven stations: 1 (left outer wing, the Sidewinders) to 11.
+static A10_STATIONS: [Hardpoint; 11] = [
+    pylon("Station 1, left outer wing", "1", -5.95, 8.63, Some(10), &SIDEWINDER),
+    pylon("Station 2, left wing", "2", -4.75, 8.53, Some(9), &A10_WING),
+    pylon("Station 3, left wing", "3", -3.55, 8.43, Some(8), &A10_WING),
+    pylon("Station 4, left centre wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
+    pylon("Station 5, left fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY),
+    pylon("Station 6, centreline", "6", 0.0, 8.11, None, &CENTRE),
+    pylon("Station 7, right fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY),
+    pylon("Station 8, right centre wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
+    pylon("Station 9, right wing", "9", 3.55, 8.43, Some(2), &A10_WING),
+    pylon("Station 10, right wing", "10", 4.75, 8.53, Some(1), &A10_WING),
+    pylon("Station 11, right outer wing", "11", 5.95, 8.63, Some(0), &SIDEWINDER),
+];
+
 static F117_REAL_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_REAL };
 static F117_FANTASY_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_FANTASY };
 static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
+static A10_LAYOUT: Layout =
+    Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
+static TORNADO_LAYOUT: Layout = Layout {
+    outline: TORNADO_OUTLINE,
+    half_span: 6.98,
+    length: 17.04,
+    hardpoints: &TORNADO_STATIONS,
+};
 /// The AH-1Z's stations 1 (left wingtip rail) to 6 (right wingtip rail).
 static AH1Z_STATIONS: [Hardpoint; 6] = [
     pylon("Station 1, left wingtip rail", "1", -2.30, 5.6, Some(5), &SIDEWINDER),
@@ -364,6 +603,26 @@ const HELLFIRES: [u8; 1] = [HELLFIRE];
 
 static AH1Z_LAYOUT: Layout =
     Layout { outline: AH1Z_OUTLINE, half_span: 2.32, length: 15.16, hardpoints: &AH1Z_STATIONS };
+/// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires or six
+/// Stingers on its inside.
+static RAH66_STATIONS: [Hardpoint; 2] =
+    [door("Left bay door", "L", -1.0, 1), door("Right bay door", "R", 1.0, 0)];
+
+const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) -> Hardpoint {
+    Hardpoint {
+        name,
+        label,
+        pos: (x, 5.3),
+        bay: true,
+        fantasy: false,
+        mirror: Some(mirror),
+        loads: &[HELLFIRE, STINGER],
+        qty: &[(HELLFIRE, 3), (STINGER, 6)],
+    }
+}
+
+static RAH66_LAYOUT: Layout =
+    Layout { outline: RAH66_OUTLINE, half_span: 1.58, length: 13.44, hardpoints: &RAH66_STATIONS };
 /// The UH-60A carries troops, no stores.
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
@@ -374,8 +633,11 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F117 if realistic => &F117_REAL_LAYOUT,
         AircraftKind::F117 => &F117_FANTASY_LAYOUT,
         AircraftKind::F16 => &F16_LAYOUT,
+        AircraftKind::Tornado => &TORNADO_LAYOUT,
+        AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
+        AircraftKind::RAH66 => &RAH66_LAYOUT,
     }
 }
 
@@ -398,9 +660,9 @@ pub struct PlannedLoadout {
 pub const LOADOUT_FILE: &str = "loadout.json";
 
 impl PlannedLoadout {
-    /// The generator's stores: in the F-117A's bays as they are, on the F-16 each on the
-    /// first free pair of stations that carries it, and Sidewinders on the free wingtips; the
-    /// AH-1Z full.
+    /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado and
+    /// the A-10 each on the first free pair of stations that carries it, and Sidewinders on the free
+    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
         let lay = layout(aircraft, realistic);
@@ -415,19 +677,31 @@ impl PlannedLoadout {
             AircraftKind::UH60 => {}
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z => {
+            AircraftKind::AH1Z | AircraftKind::RAH66 => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }
             }
-            AircraftKind::F16 => {
+            AircraftKind::F16 | AircraftKind::Tornado | AircraftKind::A10 => {
+                let tornado = aircraft == AircraftKind::Tornado;
+                let a10 = aircraft == AircraftKind::A10;
                 for w in briefed.chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
+                        0 if a10 => &[0],
+                        16 | 18 if a10 => &[5],
+                        17 if a10 => &[3],
+                        5 if a10 => &[2, 1],
+                        _ if a10 => &[1, 2, 3, 4],
+                        0 if tornado => &[0, 1],
                         0 => &[0, 1, 2],
+                        1 if tornado => &[0],
                         1 => &[1, 0, 2],
+                        16 | 18 if tornado => &[2],
                         16 | 18 => &[4],
+                        17 if tornado => &[1],
                         17 => &[4, 3],
+                        _ if tornado => &[2, 3, 1],
                         _ => &[2, 3],
                     };
                     if w == 0 && stores.contains(&Some(0)) {
@@ -770,10 +1044,11 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in 0..6 {
+        for w in [0, 1, 2, 3, 4, 5, STINGER as usize] {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
-            let km = if w < 2 { lock } else { (lock * 0.875 - 0.5).ceil() };
+            let km =
+                if AIR_TO_AIR.contains(&(w as u8)) { lock } else { (lock * 0.875 - 0.5).ceil() };
             let range = format!("-{km} km");
             assert!(EMPLOYMENT[w][0].contains(&range), "{}: {range}", WEAPONS[w].0);
         }
@@ -819,7 +1094,7 @@ mod tests {
     #[test]
     fn the_editor_draws_every_aircraft() {
         let m = mission(7, false);
-        for a in [AircraftKind::F117, AircraftKind::F16, AircraftKind::UH60, AircraftKind::AH1Z] {
+        for a in AircraftKind::ALL {
             let mut lo = PlannedLoadout::of(&m, a);
             let mut w = LoadoutWindow::opened(true);
             let ctx = egui::Context::default();

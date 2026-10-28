@@ -257,10 +257,11 @@ pub fn read_hands(
     offset: Res<RigOffset>,
     settings: Res<crate::settings::Settings>,
     view: Res<ViewState>,
+    manning: Option<Res<crate::station::Manning>>,
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
-    let offset = offset.scaled(settings.vr_hand_scale());
+    let offset = offset.hands(&settings, manning.is_some());
     for (hand, c) in hands.hands.iter_mut().zip(&input.controllers) {
         hand.prev_buttons = hand.buttons;
         hand.prev_trigger = hand.trigger;

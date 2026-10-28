@@ -282,7 +282,7 @@ fn own_rotor_blur(
     flight: Option<Res<crate::flight::FlightConstants>>,
     own: Query<
         (Entity, Option<&RotorBlur>),
-        Or<(With<crate::player::OwnModel>, With<crate::player::OwnRotor>)>,
+        Or<(With<crate::player::OwnModel>, With<crate::player::OwnPart>)>,
     >,
 ) {
     if !flight.is_some_and(|k| k.heli.is_some()) {

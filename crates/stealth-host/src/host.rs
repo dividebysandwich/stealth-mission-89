@@ -159,6 +159,15 @@ impl Host {
         for b in &self.state.batteries {
             sim.place_battery(b.x, b.y);
         }
+        // The new sites the players supplied stand again.
+        for d in self.state.deployments.iter().filter(|d| d.built) {
+            let (x, y) = d.unit_at();
+            if d.patriot {
+                sim.place_patriot(x, y);
+            } else {
+                sim.place_gepard(x, y);
+            }
+        }
         let stocks: Vec<SavedStock> = self
             .state
             .defence_stock
@@ -260,6 +269,56 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// A player designates a new air defence site with its helipad at (x, y): clear of the
+    /// units on the ground, its cargo goes on the board.
+    pub fn designate_site(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        x: i32,
+        y: i32,
+        patriot: bool,
+    ) -> Result<Vec<HostEvent>, String> {
+        if let Some(why) = self.state.deploy_refusal(x, y, patriot, &glue::world_view(sim).aaa) {
+            return Err(why);
+        }
+        let events = self.state.apply(player, Command::DesignateSite { x, y, patriot })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player hooked the crate of load `leg` of new site `id` under his helicopter (his
+    /// client saw the hover; near its base, it counts).
+    pub fn hook_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+    ) -> Result<Vec<HostEvent>, String> {
+        if let Some(why) = self.state.hook_refusal(player, id, leg, &glue::world_view(sim)) {
+            return Err(why);
+        }
+        let events = self.state.apply(player, Command::HookCrate { id, leg })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player set his crate down at (`east`, `north`) metres from its site's helipad.
+    #[allow(clippy::too_many_arguments)]
+    pub fn drop_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
+    ) -> Result<Vec<HostEvent>, String> {
+        let events =
+            self.state.apply(player, Command::DropCrate { id, leg, east, north, heading })?;
+        Ok(self.apply(sim, events))
+    }
+
     /// A player joins the plan of an offer from a base, or leaves the plans (None).
     pub fn select(
         &mut self,
@@ -326,6 +385,28 @@ impl Host {
         let cmd = Command::RequestResupply { aaa: k as u32, x: u.x, y: u.y, patriot };
         let events = self.state.apply(player, cmd)?;
         Ok(self.apply(sim, events))
+    }
+
+    /// The friendly Patriot batteries and Gepards whose stockpile ran out (their own fire, or a
+    /// player's at the console): a resupply is ordered for each.
+    fn out_of_stock(&mut self, sim: &Sim) -> Vec<CampaignEvent> {
+        use stealth_sim::aaa::AaaKind;
+        let empty: Vec<(usize, stealth_sim::aaa::AaaUnit)> = (0..sim.aaa_units().len())
+            .map(|k| (k, sim.aaa_units()[k]))
+            .filter(|(k, u)| {
+                matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard)
+                    && !u.destroyed
+                    && sim.aaa_blue(*k)
+                    // A unit placed this frame has no stock yet (not an empty one).
+                    && sim.defence().and_then(|d| d.stock.get(*k)).is_some_and(|&s| s <= 0)
+            })
+            .collect();
+        let mut events = Vec::new();
+        for (k, u) in empty {
+            let patriot = u.kind == AaaKind::PatriotRadar;
+            events.extend(self.state.order_resupply(k as u32, u.x, u.y, patriot));
+        }
+        events
     }
 
     /// `real` seconds of wall clock: the air defence's refills (they take real time whatever
@@ -409,6 +490,8 @@ impl Host {
         let view = glue::world_view(sim);
         let events = self.state.tick(dt, &view, &reports);
         out.extend(self.apply(sim, events));
+        let events = self.out_of_stock(sim);
+        out.extend(self.apply(sim, events));
         for (player, e) in ended {
             let (end, title) = glue::sortie_end(&e);
             let started = self.state.sortie(player).map_or(self.state.clock, |s| s.started);
@@ -482,6 +565,16 @@ impl Host {
                     sim.spawn_supply(*from as usize, *aaa as usize, *tag);
                 }
                 CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
+                CampaignEvent::CargoLaunched { from, x, y, tag, .. } => {
+                    sim.spawn_cargo(*from as usize, *x, *y, *tag);
+                }
+                CampaignEvent::SiteBuilt { x, y, patriot, .. } => {
+                    if *patriot {
+                        sim.place_patriot(*x, *y);
+                    } else {
+                        sim.place_gepard(*x, *y);
+                    }
+                }
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
                 CampaignEvent::GunRepaired { place } => {
                     if let Some(p) = self.state.place(*place) {

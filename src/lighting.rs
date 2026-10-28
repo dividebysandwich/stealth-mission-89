@@ -72,6 +72,11 @@ pub struct LightEmitter {
     pub range: f32,
 }
 
+/// An emitter that lights the world but not the cockpit (the own afterburner's plume, behind
+/// the cockpit: it would light the panel from inside).
+#[derive(Component, Clone, Copy)]
+pub struct NotInCockpit;
+
 /// An emitter that shines along its forward (-z) direction in a cone (`SPOT_INNER`/`SPOT_OUTER`
 /// in palette.wgsl), not all round.
 #[derive(Component, Clone, Copy)]
@@ -103,6 +108,8 @@ pub struct LightingState {
     pub ambient: Vec4,
     /// (position, range), (colour, 0) pairs.
     pub lights: Vec<(Vec4, Vec4)>,
+    /// Per light: it lights the world only, not the cockpit (`NotInCockpit`).
+    pub outside: Vec<bool>,
     /// Daylight 0 (night) .. 1 (day), from the sky colour.
     pub daylight: f32,
 }
@@ -303,6 +310,7 @@ fn update_sun(
     mut ambient: ResMut<GlobalAmbientLight>,
     weather: Res<crate::weather::WeatherState>,
     scene: Option<Res<crate::menu_scene::MenuScene>>,
+    bursts: Res<crate::flashes::Bursts>,
 ) {
     // The scene behind the menu always has them.
     let shadows_on = settings.shadows || scene.is_some();
@@ -313,8 +321,10 @@ fn update_sun(
     let daylight = ((lum - 0.02) / 0.25).clamp(0.0, 1.0);
     state.daylight = daylight;
     // World shader: ambient + sun keeps sunlit faces near the classic brightness and
-    // darkens shadowed ones. Under an overcast the sun is hidden.
-    let shade = weather.shade.max(weather.whiteout);
+    // darkens shadowed ones. Under a full overcast the sun is hidden from the world (a broken
+    // deck's shadows are the shader's); the cockpit is in the shade of the clouds over it.
+    let shade = weather.world_shade.max(weather.whiteout);
+    let cockpit_shade = weather.shade.max(weather.whiteout);
     // The balance balance, also for classic shaders with shadows (the classic one leaves
     // shadows faint, the more so with the sun low).
     let balance = (settings.modern_shading || shadows_on).then(modern_balance);
@@ -374,7 +384,7 @@ fn update_sun(
     let sun_light = (
         dir,
         match balance {
-            Some(b) => b.cockpit_sun * daylight * (1.0 - 0.85 * shade),
+            Some(b) => b.cockpit_sun * daylight * (1.0 - 0.85 * cockpit_shade),
             // A little light at night.
             None => LUX_PER_UNIT * (0.15 + 0.85 * daylight) * daylight.max(0.05),
         },
@@ -425,6 +435,14 @@ fn update_sun(
         }
         None => 600.0 + 800.0 * daylight + flash,
     };
+    // So does a combat flash near the aircraft, in its colour (flashes.rs).
+    if let Some((.., colour, _)) = bursts.light.filter(|_| bursts.cockpit > 0.0) {
+        let burst = 6000.0 * bursts.cockpit * (1.0 - 0.7 * daylight.clamp(0.0, 1.0));
+        let base = Vec3::new(0.8, 0.85, 1.0) * ambient.brightness;
+        ambient.brightness += burst;
+        let c = (base + colour * burst) / ambient.brightness.max(1e-3);
+        ambient.color = Color::linear_rgb(c.x, c.y, c.z);
+    }
 }
 
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
@@ -433,7 +451,13 @@ fn collect_local_lights(
     palette: Option<Res<Palette>>,
     mut state: ResMut<LightingState>,
     cams: Query<&GlobalTransform, With<crate::camera::EyeCamera>>,
-    emitters: Query<(&LightEmitter, &GlobalTransform, &InheritedVisibility, Has<Spotlight>)>,
+    emitters: Query<(
+        &LightEmitter,
+        &GlobalTransform,
+        &InheritedVisibility,
+        Has<Spotlight>,
+        Has<NotInCockpit>,
+    )>,
     dots: Query<
         (
             &GlobalTransform,
@@ -447,13 +471,14 @@ fn collect_local_lights(
     lamps: Query<(&crate::scenery::LampBatch, &GlobalTransform, &InheritedVisibility)>,
 ) {
     state.lights.clear();
+    state.outside.clear();
     if !settings.local_lights {
         return;
     }
     let Ok(eye) = cams.single() else { return };
     let eye = eye.translation();
-    let mut all: Vec<(f32, Vec4, Vec4)> = Vec::new();
-    for (em, tf, vis, spot) in &emitters {
+    let mut all: Vec<(f32, Vec4, Vec4, bool)> = Vec::new();
+    for (em, tf, vis, spot, outside) in &emitters {
         if !vis.get() {
             continue;
         }
@@ -461,7 +486,7 @@ fn collect_local_lights(
         // Score: distance relative to range (bright, big lights win).
         let d = p.distance(eye);
         let w = if spot { encode_spot(*tf.forward()) } else { 0.0 };
-        all.push((d / em.range, p.extend(em.range), em.color.extend(w)));
+        all.push((d / em.range, p.extend(em.range), em.color.extend(w), outside));
     }
     // Dot lights (runway, approach, city lights) within 600 m, only when they are lit.
     if let Some(palette) = palette.filter(|p| p.lights_on()) {
@@ -480,7 +505,8 @@ fn collect_local_lights(
             let Some(m) = materials.get(&mat.0) else { continue };
             let c = palette.color((m.params.word & 0xFF) as u8).to_linear();
             let range = 25.0;
-            all.push((d / range, p.extend(range), Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8));
+            let c = Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8;
+            all.push((d / range, p.extend(range), c, false));
         }
         // Street lamps and lit windows of the extra scenery (hidden by day).
         for (batch, tf, vis) in &lamps {
@@ -493,13 +519,16 @@ fn collect_local_lights(
                 if d < 600.0 {
                     let c = palette.color(colour).to_linear();
                     let colour = Vec4::new(c.red, c.green, c.blue, 0.0) * 0.8;
-                    all.push((d / 25.0, p.extend(25.0), colour));
+                    all.push((d / 25.0, p.extend(25.0), colour, false));
                 }
             }
         }
     }
     all.sort_by(|a, b| a.0.total_cmp(&b.0));
-    state.lights.extend(all.into_iter().take(MAX_LOCAL_LIGHTS).map(|(_, p, c)| (p, c)));
+    for (_, p, c, outside) in all.into_iter().take(MAX_LOCAL_LIGHTS) {
+        state.lights.push((p, c));
+        state.outside.push(outside);
+    }
 }
 
 /// The nearest emitters as Bevy point lights (so explosions and flares light the cockpit).
@@ -509,8 +538,9 @@ fn mirror_point_lights(
     mut q: Query<(&MirrorLight, &mut PointLight, &mut Transform)>,
 ) {
     for (m, mut light, mut tf) in &mut q {
-        // Not the spotlights: they shine away from the cockpit.
-        match state.lights.get(m.0).filter(|(_, c)| settings.local_lights && c.w == 0.0) {
+        // Not the spotlights (they shine away from the cockpit), nor what lights only the world.
+        let inside = !state.outside.get(m.0).copied().unwrap_or(false);
+        match state.lights.get(m.0).filter(|(_, c)| settings.local_lights && c.w == 0.0 && inside) {
             Some((p, c)) => {
                 tf.translation = p.truncate();
                 light.range = p.w;

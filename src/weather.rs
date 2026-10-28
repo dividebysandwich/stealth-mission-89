@@ -54,7 +54,16 @@ impl Plugin for WeatherPlugin {
         )
         .add_systems(
             PostUpdate,
-            (update_weather, track_eye, follow_deck, stream_clouds, fade_clouds, lightning, rain)
+            (
+                update_weather,
+                track_eye,
+                follow_deck,
+                stream_clouds,
+                fade_clouds,
+                cloud_shadows,
+                lightning,
+                rain,
+            )
                 .chain()
                 .after(bevy::transform::TransformSystems::Propagate)
                 .before(crate::lighting::LightingSystems)
@@ -97,6 +106,9 @@ pub struct WeatherState {
     pub eye_ft: f32,
     /// In the shade of a cloud (under covered stratus or a storm cell), 0..1, eased.
     pub shade: f32,
+    /// The sun hidden from the whole world (under a full overcast or a storm cell), 0..1,
+    /// eased: under a broken deck its gaps are sunlit (the cloud shadows shade the rest).
+    pub world_shade: f32,
     /// How grey and dim the day is under the clouds, 0..1, eased.
     gloom: f32,
     /// Under (or in) a storm cell: rain, turbulence, close lightning.
@@ -118,6 +130,10 @@ pub struct WeatherState {
     thunder: Vec<(f32, f32)>,
     /// Eye position last frame (Bevy metres), for the rain's relative wind.
     prev_eye: Option<DVec3>,
+    /// The ground under the aircraft (metres), smoothed: the ground mist lies on it.
+    mist_ground: Option<f32>,
+    /// `Globals::shadow_*` (`cloud_shadows`).
+    pub shadows: CloudShadows,
     rain: Option<Entity>,
     drops: Vec<Vec3>,
     rng: Rng,
@@ -143,6 +159,56 @@ impl WeatherState {
     /// covers the sky (x), reaching the visibility in metres (y).
     pub fn storm_haze(&self) -> Vec4 {
         Vec4::new(self.storm * self.cover[1] / 100.0, (self.vis_km * 1000.0).max(1000.0), 0.0, 0.0)
+    }
+
+    /// `Globals::atmos`: ground mist (`Effects::mist`; strength, depth and the ground it lies on,
+    /// in metres) at dawn, dusk
+    /// and night, thin in the deserts and gone in storms, more or less of it by the mission; and
+    /// the cloud shadows' strength (`Effects::cloud_shadows`) by day. Modern shading only.
+    pub fn atmos(
+        &self,
+        settings: &crate::settings::Settings,
+        theater: &str,
+        daylight: f32,
+    ) -> Vec4 {
+        if !settings.modern_shading {
+            return Vec4::ZERO;
+        }
+        let roll = |k: u64| {
+            ((self.weather.seed as u64 ^ k).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 40) as f32
+                / (1u64 << 24) as f32
+        };
+        let dry = dry_theater(theater);
+        let mist = if settings.effects.mist {
+            let time = ((MIST_DAYLIGHT - daylight) / 0.5).clamp(0.0, 1.0);
+            let air = if dry { 0.25 } else { 1.0 };
+            MIST_MAX * air * time * (0.3 + 0.7 * roll(0x6D15)) * (1.0 - self.storm)
+        } else {
+            0.0
+        };
+        let top = MIST_TOP.0 + (MIST_TOP.1 - MIST_TOP.0) * roll(0x7019);
+        let shadows = if settings.effects.cloud_shadows {
+            CLOUD_SHADOW * daylight.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        Vec4::new(mist, top, shadows, self.mist_ground.unwrap_or(0.0))
+    }
+
+    /// The stratus deck as drawn: its coverage (percent) and field threshold 0..1 (covered
+    /// where `Weather::stratus_field` reaches it).
+    pub fn drawn_deck(&self) -> (f32, f32) {
+        (self.cover[1], self.stratus_threshold)
+    }
+
+    /// Storm cells built up, 0..1.
+    pub fn storm(&self) -> f32 {
+        self.storm
+    }
+
+    /// The ground under the aircraft (metres), as the mist lies on it.
+    pub fn ground_m(&self) -> f32 {
+        self.mist_ground.unwrap_or(0.0)
     }
 
     /// The weather of a moment of the forecast.
@@ -446,7 +512,14 @@ fn track_eye(
     origin: Res<FloatingOrigin>,
     eyes: Eyes,
     mut state: ResMut<WeatherState>,
+    player: Query<&crate::flight::Aircraft, With<crate::flight::Player>>,
 ) {
+    // The ground the mist lies on: under the aircraft, following it slowly over the hills.
+    if let Ok(a) = player.single() {
+        let ground = a.ground_altitude * WU as f32;
+        let k = 1.0 - (-time.delta_secs() / MIST_FOLLOW).exp();
+        state.mist_ground = Some(state.mist_ground.map_or(ground, |g| g + (ground - g) * k));
+    }
     let Some(p) = eye_position(&eyes, &origin) else { return };
     let (east, north, alt) = crate::world::bevy_to_wu(p);
     let map = ((east / 32.0) as i32, (0x8000 as f64 - north / 32.0) as i32);
@@ -469,9 +542,11 @@ fn track_eye(
     };
     let shade = if state.under_storm { 1.0 } else { deck };
     state.shade += (shade - state.shade) * (dt * 0.5).min(1.0);
-    // Grey days: under a deck as far as it covers the sky, and in storms.
+    let world = if state.under_storm { 1.0 } else { deck * overcast_share(state.cover[1]) };
+    state.world_shade += (world - state.world_shade) * (dt * 0.5).min(1.0);
+    // Grey days: under a deck the more it covers the sky (a broken one barely), and in storms.
     let overcast = if ft < w.stratus.top_ft as f32 { state.cover[1] / 100.0 } else { 0.0 };
-    let gloom = (0.8 * overcast + 0.6 * state.storm).min(1.0);
+    let gloom = (0.8 * overcast * overcast + 0.6 * state.storm).min(1.0);
     state.gloom += (gloom - state.gloom) * (dt * 0.3).min(1.0);
 }
 
@@ -552,6 +627,7 @@ fn stream_clouds(
         let e = commands
             .spawn((
                 CloudEntity,
+                CloudShade { r: r_m, storm: c.kind == CloudKind::Cumulonimbus },
                 CloudVolume::new(volumes.add(volume))
                     .with_core(1.0)
                     .with_fill(state.fade(c.kind, c.rank))
@@ -565,6 +641,126 @@ fn stream_clouds(
             .id();
         state.puffs.insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy), (e, (c.x, c.y), c.rank));
     }
+}
+
+/// A cumulus or cumulonimbus's radius (m), for its shadow (`Effects::cloud_shadows`).
+#[derive(Component)]
+struct CloudShade {
+    r: f32,
+    storm: bool,
+}
+
+/// Cloud shadows (`Effects::cloud_shadows`): a grid of `SHADOW_GRID` x `SHADOW_GRID` squares
+/// `SHADOW_CELL` metres wide where the sun sees the clouds above the ground round the eye, each
+/// listing up to four of `SHADOW_CLOUDS` cloud discs; past it the shade fades to the layers'
+/// average (palette.wgsl `cloud_shadow`).
+pub const SHADOW_GRID: usize = 12;
+pub const SHADOW_CLOUDS: usize = 112;
+const SHADOW_CELL: f32 = 3000.0;
+/// How far the grid is moved towards the sun from above the eye at most (m; a low sun).
+const SHADOW_REACH: f32 = 12_000.0;
+/// Darkness of a cumulus's shadow (a storm tower's: 1).
+const CUMULUS_SHADE: f32 = 0.85;
+
+/// The shader's cloud shadow data (`Globals::shadow_*`).
+#[derive(Clone, Copy)]
+pub struct CloudShadows {
+    /// The grid's corner x, z (render space), square size (m), the cumulus base height the
+    /// discs are projected to (render space).
+    pub grid: Vec4,
+    /// Cumulus shadows on (x), stratus shadows' strength (y), the average shade past the grid
+    /// (z).
+    pub far: Vec4,
+    /// Per square: up to four cloud numbers (1-based, 0 = none).
+    pub cells: [Vec4; SHADOW_GRID * SHADOW_GRID],
+    /// Discs: centre x, z where the sun sees them from the base height, radius, darkness.
+    pub clouds: [Vec4; SHADOW_CLOUDS],
+}
+
+impl Default for CloudShadows {
+    fn default() -> Self {
+        Self {
+            grid: Vec4::ZERO,
+            far: Vec4::new(0.0, 1.0, 0.0, 0.0),
+            cells: [Vec4::ZERO; SHADOW_GRID * SHADOW_GRID],
+            clouds: [Vec4::ZERO; SHADOW_CLOUDS],
+        }
+    }
+}
+
+/// How fully a deck of `cover` percent overcasts the sky: below it the sun is hidden
+/// everywhere, not only under its sheet.
+fn overcast_share(cover: f32) -> f32 {
+    smoothstep(80.0, 98.0, cover)
+}
+
+/// The clouds' shadows round the eye (`WeatherState::shadows`).
+fn cloud_shadows(
+    settings: Res<crate::settings::Settings>,
+    origin: Res<FloatingOrigin>,
+    eyes: Eyes,
+    lighting: Res<crate::lighting::LightingState>,
+    clouds: Query<(&WorldPos, &CloudShade, &CloudVolume)>,
+    mut state: ResMut<WeatherState>,
+) {
+    let mut sh = CloudShadows::default();
+    // A full overcast hides the sun everywhere (`world_shade`), not in patches.
+    sh.far.y = 1.0 - overcast_share(state.cover[1]);
+    let sun = lighting.sun.truncate();
+    let eye = eye_position(&eyes, &origin);
+    let w = state.weather;
+    let layer = if w.cumulus.present() { w.cumulus } else { w.cumulonimbus };
+    let (Some(eye), true) = (eye, layer.present() && sun.y >= 0.05) else {
+        state.shadows = sh;
+        return;
+    };
+    if !settings.effects.cloud_shadows || !settings.modern_shading {
+        state.shadows = sh;
+        return;
+    }
+    let base = (layer.base_ft as f64 * WU - origin.origin.y) as f32;
+    let slope = Vec2::new(sun.x, sun.z) / sun.y;
+    // Centred where the ground under the eye sees the clouds.
+    let ground = state.mist_ground.unwrap_or(0.0) - origin.origin.y as f32;
+    let e = (eye - origin.origin).as_vec3();
+    let centre = Vec2::new(e.x, e.z) + (slope * (base - ground)).clamp_length_max(SHADOW_REACH);
+    let half = SHADOW_CELL * SHADOW_GRID as f32 / 2.0;
+    let corner = centre - half;
+    sh.grid = Vec4::new(corner.x, corner.y, SHADOW_CELL, base);
+    let mut near: Vec<(f32, Vec4)> = clouds
+        .iter()
+        .filter(|(_, _, v)| v.fill > 0.0)
+        .map(|(p, s, v)| {
+            let r = (p.0 - origin.origin).as_vec3();
+            // Where the sun sees it from the base height: one projection for all of them.
+            let c = Vec2::new(r.x, r.z) - slope * (r.y - base);
+            let dark = if s.storm { 1.0 } else { CUMULUS_SHADE };
+            (c.distance(centre), Vec4::new(c.x, c.y, s.r * v.fill.min(1.0), dark))
+        })
+        .filter(|(d, c)| *d - c.z < half * std::f32::consts::SQRT_2)
+        .collect();
+    near.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let last = SHADOW_GRID as i32 - 1;
+    for (i, (_, c)) in near.into_iter().take(SHADOW_CLOUDS).enumerate() {
+        sh.clouds[i] = c;
+        let square = |v: f32| ((v - c.z) / SHADOW_CELL).floor() as i32;
+        let (x0, y0) = (square(c.x - corner.x), square(c.y - corner.y));
+        let (x1, y1) = (square(c.x - corner.x + 2.0 * c.z), square(c.y - corner.y + 2.0 * c.z));
+        for gy in y0.max(0)..=y1.min(last) {
+            for gx in x0.max(0)..=x1.min(last) {
+                let cell = &mut sh.cells[gy as usize * SHADOW_GRID + gx as usize];
+                if let Some(k) = (0..4).find(|&k| cell[k] == 0.0) {
+                    cell[k] = (i + 1) as f32;
+                }
+            }
+        }
+    }
+    // The average shade: the share of the ground under the discs (about 0.35 of a square's
+    // width across), soft edged.
+    let share = |cover: f32| cover / 100.0 * std::f32::consts::PI * 0.35 * 0.35 * 0.7;
+    sh.far.x = 1.0;
+    sh.far.z = (share(state.cover[0]) * CUMULUS_SHADE + share(state.cover[2])).min(1.0);
+    state.shadows = sh;
 }
 
 /// Storm cells are dark, and so is everything under a storm sky.
@@ -619,13 +815,23 @@ fn shade_clouds(
     mut shading: ResMut<CloudShading>,
     mut render: ResMut<CloudRenderSettings>,
     sky: Res<crate::sky::Sky>,
+    bursts: Res<crate::flashes::Bursts>,
 ) {
     let nvg = hud.is_some_and(|h| h.nvg);
     // A night without moonlight blacks the clouds out too (but for the goggles).
     let lit = if nvg || !sky.on { 1.0 } else { 1.0 - sky.dark };
     let tint = |c: Vec3| if nvg { nvg_color(c, lighting.daylight) } else { c };
     let flash_scale = 1.0 + (0.3 - 1.0) * lighting.daylight.clamp(0.0, 1.0);
-    let (line_a, line_b) = state.bolt_light(origin.origin);
+    let (mut line_a, mut line_b) = state.bolt_light(origin.origin);
+    let mut line_color = BOLT_COLOR * flash_scale;
+    // While no lightning uses it, a combat flash lights the clouds near it (flashes.rs).
+    if line_a.w <= 0.0
+        && let Some((p, i, colour, reach)) = bursts.light
+    {
+        let p = (p - origin.origin).as_vec3();
+        (line_a, line_b) = (p.extend(i), p.extend(reach));
+        line_color = tint(colour) * flash_scale;
+    }
     let linear = |i: u8| {
         let c = palette.color(i).to_linear();
         Vec3::new(c.red, c.green, c.blue)
@@ -649,7 +855,7 @@ fn shade_clouds(
         flash: BOLT_COLOR * state.flash * flash_scale,
         line_a,
         line_b,
-        line_color: BOLT_COLOR * flash_scale,
+        line_color,
         // Inside a cloud everything fades into it (`whiteout` in palette.wgsl).
         fog: tint(linear(CLOUD_RAMP + 2) * lit).extend(state.whiteout),
     };
@@ -1025,14 +1231,34 @@ fn strike(
     }
 }
 
+/// The desert theaters: dry air (thin mist, vapour only pulling harder).
+pub fn dry_theater(id: &str) -> bool {
+    matches!(id, "libya" | "persian_gulf" | "middle_east" | "desert_storm")
+}
+
+/// Ground mist: strongest (share of the view it hides far away), below this daylight, its top
+/// (metres, range); the cloud shadows' darkening at full sun.
+const MIST_MAX: f32 = 0.4;
+const MIST_DAYLIGHT: f32 = 0.75;
+const MIST_TOP: (f32, f32) = (40.0, 120.0);
+/// Seconds the mist's ground takes to follow the ground under the aircraft (most of the way).
+const MIST_FOLLOW: f32 = 20.0;
+const CLOUD_SHADOW: f32 = 0.55;
+
 /// Rain streaks around the eye (`WeatherState::raining`).
 const DROPS: usize = 500;
 /// Half size of the rain box around the eye (metres).
 const RAIN_BOX: f32 = 30.0;
+/// Snowflakes' fall (m/s); the colour words of rain (cloud grey) and snow (white, every flight
+/// palette's 15).
+const SNOW_FALL: f32 = 1.2;
+const RAIN_WORD: u32 = 0xFFE4;
+const SNOW_WORD: u32 = 0xFF0F;
 
 /// Rain: streaks in a box around the eye, drawn along the wind the eye sees (falling rain
 /// plus the aircraft's own speed), on the main view's layer only. The box is world aligned:
-/// it is a child of the eye camera, counter-rotated.
+/// it is a child of the eye camera, counter-rotated. Above the freezing level (`Effects::snow`)
+/// it snows: slow white flakes, streaking only with the aircraft's speed.
 #[allow(clippy::too_many_arguments)]
 fn rain(
     mut commands: Commands,
@@ -1043,10 +1269,13 @@ fn rain(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     palette: Res<Palette>,
-    mut tfs: Query<(&mut Transform, &Mesh3d)>,
+    mut tfs: Query<(&mut Transform, &Mesh3d, &MeshMaterial3d<PaletteMaterial>)>,
     mut state: ResMut<WeatherState>,
+    settings: Res<crate::settings::Settings>,
+    sky: Res<crate::sky::Sky>,
 ) {
     let eye = eye_position(&eyes, &origin);
+    let snow = settings.effects.snow && eye.is_some_and(|p| p.y as f32 > sky.freezing_level());
     let dt = time.delta_secs().max(1e-4);
     let eye_vel = match (eye, state.prev_eye) {
         (Some(p), Some(q)) if (p - q).length() < 2000.0 => ((p - q) / dt as f64).as_vec3(),
@@ -1071,10 +1300,18 @@ fn rain(
             .collect();
         state.drops = drops;
     }
-    // Wind relative to the eye: rain falls at 9 m/s.
-    let wind = Vec3::new(0.0, -9.0, 0.0) - eye_vel;
-    let streak = wind * 0.012 + wind.normalize_or_zero() * 0.4;
-    let width = 0.012;
+    // Wind relative to the eye: rain falls at 9 m/s, snow drifts down.
+    let fall = if snow { SNOW_FALL } else { 9.0 };
+    let wind = Vec3::new(0.0, -fall, 0.0) - eye_vel;
+    let (streak, width) = if snow {
+        (wind * 0.004 + wind.normalize_or_zero() * 0.05, 0.02)
+    } else {
+        (wind * 0.012 + wind.normalize_or_zero() * 0.4, 0.012)
+    };
+    // Snow is no light: a dark night darkens it with the ground.
+    use crate::palette_material::{FLAG_LINE, FLAG_NIGHT_DIM};
+    let (word, flags) =
+        if snow { (SNOW_WORD, FLAG_LINE | FLAG_NIGHT_DIM) } else { (RAIN_WORD, FLAG_LINE) };
     let mut pos = Vec::with_capacity(DROPS * 4);
     for d in state.drops.iter_mut() {
         *d += wind * dt;
@@ -1087,10 +1324,17 @@ fn rain(
     let rot = cam_tf.compute_transform().rotation.inverse();
     match state.rain {
         Some(e) => {
-            if let Ok((mut tf, mesh)) = tfs.get_mut(e) {
+            if let Ok((mut tf, mesh, material)) = tfs.get_mut(e) {
                 tf.rotation = rot;
                 if let Some(mut m) = meshes.get_mut(&mesh.0) {
                     m.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+                }
+                if materials
+                    .get(&material.0)
+                    .is_some_and(|m| m.params.word != word || m.params.flags != flags)
+                    && let Some(mut m) = materials.get_mut(&material.0)
+                {
+                    (m.params.word, m.params.flags) = (word, flags);
                 }
             }
         }
@@ -1109,11 +1353,7 @@ fn rain(
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
             .with_inserted_indices(bevy::mesh::Indices::U32(indices));
             let material = materials.add(PaletteMaterial {
-                params: PaletteParams {
-                    word: 0xFFE4,
-                    flags: crate::palette_material::FLAG_LINE,
-                    ..default()
-                },
+                params: PaletteParams { word, flags, ..default() },
                 globals: palette.globals.clone(),
             });
             let e = commands

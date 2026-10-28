@@ -2,7 +2,7 @@
 //! menu's other choices (`prefs.rs`), on four tabs:
 //!
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
-//!   VR cockpit size and Tacview.
+//!   player labels, the VR cockpit size and Tacview.
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
 //! - SOUND: the master, engine, effects and warning volumes, the engine low-pass inside the
 //!   aircraft.
@@ -19,12 +19,14 @@ use bevy_egui::egui;
 use crate::menu::{
     AMBER, BRIGHT, DIM, GREEN, big_button, facts, menu_window, section, slide_switch,
 };
-use crate::settings::{Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 #[derive(Resource, Default)]
 pub struct OptionsWindow {
     pub open: bool,
     tab: Tab,
+    /// The largest tab's size: every tab gets it, so the window keeps its size across tabs.
+    body: egui::Vec2,
 }
 
 impl OptionsWindow {
@@ -36,7 +38,7 @@ impl OptionsWindow {
         };
         let name = args.get(i + 1).map_or("", |s| s.as_str()).to_ascii_uppercase();
         let tab = Tab::ALL.iter().find(|(_, n)| *n == name).map_or(Tab::Game, |t| t.0);
-        Self { open: true, tab }
+        Self { open: true, tab, ..default() }
     }
 }
 
@@ -72,7 +74,7 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    menu_window(ctx, "Options", 460.0).show(ctx, |ui| {
+    menu_window(ctx, "Options", 500.0).show(ctx, |ui| {
         ui.label(egui::RichText::new("OPTIONS").heading().color(BRIGHT));
         ui.horizontal(|ui| {
             for (tab, name) in Tab::ALL {
@@ -80,12 +82,19 @@ pub fn options_ui(
             }
         });
         ui.separator();
-        match w.tab {
-            Tab::Game => game_options(ui, settings),
-            Tab::Graphics => graphics_options(ui, settings),
-            Tab::Sound => sound_options(ui, settings),
-            Tab::Controls => control_options(ui, settings, head, dialog),
+        // The other tabs are laid out unseen for their size.
+        for (tab, _) in Tab::ALL.into_iter().filter(|t| t.0 != w.tab) {
+            let builder =
+                egui::UiBuilder::new().id_salt(("measure", tab as u8)).invisible().sizing_pass();
+            let mut hidden = ui.new_child(builder);
+            tab_options(&mut hidden, tab, settings, head, dialog);
+            w.body = w.body.max(hidden.min_rect().size());
         }
+        let shown = ui.scope(|ui| {
+            ui.set_min_size(w.body);
+            tab_options(ui, w.tab, settings, head, dialog);
+        });
+        w.body = w.body.max(shown.response.rect.size());
         ui.add_space(8.0);
         ui.separator();
         ui.label(
@@ -101,6 +110,21 @@ pub fn options_ui(
     });
     if back {
         w.open = false;
+    }
+}
+
+fn tab_options(
+    ui: &mut egui::Ui,
+    tab: Tab,
+    settings: &mut SettingsMut,
+    head: Option<crate::headtrack::Source>,
+    dialog: &mut crate::input_dialog::InputDialog,
+) {
+    match tab {
+        Tab::Game => game_options(ui, settings),
+        Tab::Graphics => graphics_options(ui, settings),
+        Tab::Sound => sound_options(ui, settings),
+        Tab::Controls => control_options(ui, settings, head, dialog),
     }
 }
 
@@ -175,6 +199,24 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         &["What a cockpit control or display is, under the mouse or a VR fingertip"],
     )
     .changed();
+    toggled |= facts(
+        ui.checkbox(&mut s.player_labels, "Player labels"),
+        &["Multiplayer: the other pilots' names over their aircraft, however far away"],
+    )
+    .changed();
+    let mut percent = s.player_label_size * 100.0;
+    let range = PLAYER_LABEL_SIZE_RANGE.start() * 100.0..=PLAYER_LABEL_SIZE_RANGE.end() * 100.0;
+    ui.indent("label_size", |ui| {
+        let slider = egui::Slider::new(&mut percent, range).step_by(10.0).fixed_decimals(0);
+        let resp = facts(
+            ui.add_enabled(s.player_labels, slider.suffix("%")),
+            &["Size of the player labels", "50%: the default"],
+        );
+        if resp.changed() {
+            s.player_label_size = percent / 100.0;
+            toggled = true;
+        }
+    });
     section(ui, "VR cockpit size");
     let mut percent = s.vr_cockpit_scale * 100.0;
     let range = VR_COCKPIT_SCALE_RANGE.start() * 100.0..=VR_COCKPIT_SCALE_RANGE.end() * 100.0;
@@ -191,6 +233,42 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         settings.set_changed();
     }
     crate::menu::tacview_options(ui, settings);
+    gif_options(ui, settings);
+}
+
+/// The GIF recording's size (with the resolution it gives) and frame rate.
+fn gif_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    // The browser build writes no files.
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
+    section(ui, "GIF recording");
+    let s = settings.bypass_change_detection();
+    let before = (s.gif_scale, s.gif_fps);
+    let window = ui.ctx().content_rect().size() * ui.ctx().pixels_per_point();
+    let size =
+        crate::gif_recorder::gif_size(UVec2::new(window.x as u32, window.y as u32), s.gif_scale);
+    ui.horizontal(|ui| {
+        ui.label(format!("{:<6}", "SIZE"));
+        ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
+            crate::menu::dropdown(ui, "gif_scale", &mut s.gif_scale, crate::gif_recorder::SCALES)
+        });
+        ui.colored_label(GREEN, format!("{} x {}", size.x, size.y));
+    });
+    ui.horizontal(|ui| {
+        ui.label(format!("{:<6}", "RATE"));
+        ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
+            crate::menu::dropdown(ui, "gif_fps", &mut s.gif_fps, crate::gif_recorder::FRAME_RATES)
+        });
+    });
+    ui.label(
+        egui::RichText::new("F12 (unless rebound) starts and stops; saved in your Pictures folder")
+            .small()
+            .color(DIM),
+    );
+    if (s.gif_scale, s.gif_fps) != before {
+        settings.set_changed();
+    }
 }
 
 fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
@@ -260,6 +338,24 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
                 ],
             )
             .changed();
+        });
+    }
+    for (title, retro) in [("Effects", false), ("Retro", true)] {
+        section(ui, title);
+        // Two columns: the effects are many.
+        let column = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
+        egui::Grid::new(title).num_columns(2).min_col_width(column).show(ui, |ui| {
+            let list = crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro);
+            for (i, e) in list.enumerate() {
+                let mut on = e.get(&s.effects);
+                if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
+                    e.set(&mut s.effects, on);
+                    toggled = true;
+                }
+                if i % 2 == 1 {
+                    ui.end_row();
+                }
+            }
         });
     }
     if toggled {

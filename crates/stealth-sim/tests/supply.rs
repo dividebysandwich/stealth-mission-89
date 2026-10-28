@@ -134,11 +134,56 @@ fn a_player_hovers_low_and_close_to_deliver() {
     };
     sim.step(&at(14), 15);
     assert_eq!(sim.pilot_over_unit(0), Some(radar));
-    // 20 m up is too high.
-    sim.step(&at(41), 15);
+    // 40 m up is too high.
+    sim.step(&at(82), 15);
     assert_eq!(sim.pilot_over_unit(0), None);
     // 80 m off is too far.
     let far = PlayerState { x: (a.x << 5) + 16 + 164, ..at(14) };
     sim.step(&far, 15);
     assert_eq!(sim.pilot_over_unit(0), None);
+}
+
+#[test]
+fn a_cargo_helicopter_lands_on_a_new_sites_helipad_and_flies_home() {
+    let (mut sim, home, _) = battery();
+    let pad = sim.helipad(home);
+    let o = sim.objects()[home];
+    // A new site's helipad 6 km west of the airfield (map units).
+    let (px, py) = (o.x - 0x180, o.y + 0x20);
+    let at = ((px << 5) + 16, (py << 5) + 16);
+    let i = sim.spawn_cargo(home, px, py, 43);
+    let (mut delivered, mut landed) = (false, None);
+    for _ in 0..15 * 900 {
+        for e in sim.step(&idle(), 15) {
+            match e {
+                SimEvent::CampaignFlightDelivered { tag: 43, aaa, .. } => {
+                    let u = sim.flights()[i];
+                    assert_eq!(aaa, usize::MAX);
+                    let m = ((u.wx - at.0) as f64).hypot((u.wy - at.1) as f64) * M_PER_MAP / 32.0;
+                    assert!(m <= DROP_RADIUS, "{m}");
+                    assert_eq!(u.alt, 0, "down on the pad");
+                    delivered = true;
+                }
+                SimEvent::CampaignFlightLanded { tag: 43, x, y, .. } => landed = Some((x, y)),
+                _ => {}
+            }
+        }
+        if landed.is_some() {
+            break;
+        }
+    }
+    assert!(delivered);
+    let (x, y) = landed.expect("landed at home");
+    assert!((x - (pad.0 >> 5)).abs() <= 1 && (y - (pad.1 >> 5)).abs() <= 1, "{x},{y} {pad:?}");
+}
+
+#[test]
+fn a_new_gepard_is_friendly() {
+    let (mut sim, home, _) = battery();
+    let o = sim.objects()[home];
+    let n = sim.aaa_units().len();
+    sim.place_gepard(o.x - 0x180, o.y);
+    assert_eq!(sim.aaa_units().len(), n + 1);
+    assert_eq!(sim.aaa_units()[n].kind, AaaKind::Gepard);
+    assert!(sim.aaa_blue(n));
 }

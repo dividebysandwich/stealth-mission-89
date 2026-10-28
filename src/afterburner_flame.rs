@@ -1,9 +1,10 @@
-//! The flown jet's afterburner plume (shader: assets/shaders/flame.wgsl): translucent nested
-//! cones behind the nozzle (`AircraftSpec::exhaust`), drawn additively while the afterburner
-//! burns. A yellow-white core with shock diamonds (fading with altitude), a sheath blue-violet
-//! at the nozzle turning orange, and the nozzle's glowing exit; brighter and longer with the
-//! afterburner's setting, longer in thinner air. With local lighting on, a flickering point light
-//! behind the nozzle lights the aircraft and what is near it.
+//! The flown jet's afterburner plumes (shader: assets/shaders/flame.wgsl): translucent nested
+//! cones behind each nozzle (`AircraftSpec::nozzles`, sized to their radius), drawn additively
+//! while the afterburner burns. A yellow-white core with shock diamonds (fading with altitude),
+//! a sheath blue-violet at the nozzle turning orange, and the nozzle's glowing exit; brighter
+//! and longer with the afterburner's setting, longer in thinner air. With local lighting on, a
+//! flickering point light behind the nozzle lights the aircraft and what is near it (not the
+//! cockpit).
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexBufferLayoutRef, PrimitiveTopology};
@@ -23,7 +24,7 @@ const SHADER: &str = "shaders/flame.wgsl";
 const SIDES: usize = 16;
 const RINGS: usize = 12;
 /// The core's and the sheath's length (m) and radius at the nozzle, the nozzle exit's radius
-/// (the F-16's: tools/models/aircraft.py).
+/// (the F-16's: tools/models/aircraft.py; other nozzles scale the plume across).
 const CORE: (f32, f32) = (2.8, 0.4);
 const SHEATH: (f32, f32) = (6.0, 0.46);
 const EXIT: f32 = 0.45;
@@ -34,10 +35,11 @@ const ALTITUDE_LENGTH: f32 = 0.4;
 /// The shock diamonds fade out by this altitude (ft).
 const DIAMONDS_ALT: f32 = 30000.0;
 /// The point light: its distance behind the nozzle (m, at the plume's full length), colour at
-/// the full setting and range (m).
-const LIGHT_AFT: f32 = 1.5;
+/// the full setting and range (m). Well aft with a short range so it fades along the airframe:
+/// the tail glows, the nose stays dark.
+const LIGHT_AFT: f32 = 4.0;
 const LIGHT_COLOUR: Vec3 = Vec3::new(7.0, 4.0, 1.6);
-const LIGHT_RANGE: f32 = 120.0;
+const LIGHT_RANGE: f32 = 12.0;
 
 pub struct AfterburnerFlamePlugin;
 
@@ -106,11 +108,11 @@ impl Material for FlameMaterial {
     }
 }
 
-/// The plume (a child of the player's aircraft).
+/// A plume (a child of the player's aircraft), behind the nozzle of this index.
 #[derive(Component)]
-struct Flame;
+struct Flame(usize);
 
-/// The plume's point light (a child of the plume, shown with it).
+/// The first plume's point light (a child of the plume, shown with it).
 #[derive(Component)]
 struct FlameLight;
 
@@ -161,7 +163,8 @@ fn flame_mesh() -> Mesh {
         .with_inserted_indices(Indices::U32(idx))
 }
 
-/// The plume on a jet with an afterburner; none on any other.
+/// A plume per nozzle on a jet with an afterburner; none on any other. Each lit nozzle is a
+/// light of its own on a twin-engined jet: the first plume's light stands for both.
 fn attach(
     mut commands: Commands,
     player: Query<Entity, With<Player>>,
@@ -171,62 +174,71 @@ fn attach(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<FlameMaterial>>,
 ) {
-    let wanted = k.is_some_and(|k| k.afterburner());
-    if !wanted {
+    let nozzles = settings.aircraft.spec().nozzles;
+    let wanted = if k.is_some_and(|k| k.afterburner()) { nozzles.len() } else { 0 };
+    // Another aircraft (a campaign sortie): its own plumes.
+    if flames.iter().len() != wanted {
         for e in &flames {
             commands.entity(e).despawn();
         }
+    } else {
         return;
     }
     let Ok(player) = player.single() else { return };
-    if !flames.is_empty() {
-        return;
-    }
-    let flame = commands
-        .spawn((
-            Flame,
-            Mesh3d(meshes.add(flame_mesh())),
-            MeshMaterial3d(materials.add(FlameMaterial { params: Vec4::ZERO })),
-            Transform::from_translation(settings.aircraft.spec().exhaust),
+    let mesh = meshes.add(flame_mesh());
+    let material = materials.add(FlameMaterial { params: Vec4::ZERO });
+    for (i, &at) in nozzles.iter().enumerate().take(wanted) {
+        let mut flame = commands.spawn((
+            Flame(i),
+            Mesh3d(mesh.clone()),
+            MeshMaterial3d(material.clone()),
+            Transform::from_translation(at),
             Visibility::Hidden,
-        ))
-        .with_child((
-            FlameLight,
-            crate::lighting::LightEmitter { color: Vec3::ZERO, range: LIGHT_RANGE },
-            Transform::from_xyz(0.0, 0.0, LIGHT_AFT),
-            Visibility::Inherited,
-        ))
-        .id();
-    commands.entity(player).add_child(flame);
+        ));
+        if i == 0 {
+            flame.with_child((
+                FlameLight,
+                crate::lighting::LightEmitter { color: Vec3::ZERO, range: LIGHT_RANGE },
+                // Behind the cockpit: it would light the panel from inside.
+                crate::lighting::NotInCockpit,
+                Transform::from_xyz(0.0, 0.0, LIGHT_AFT),
+                Visibility::Inherited,
+            ));
+        }
+        let flame = flame.id();
+        commands.entity(player).add_child(flame);
+    }
 }
 
-/// The plume's brightness, length and shock diamonds with the afterburner, shown while it
+/// The plumes' brightness, length and shock diamonds with the afterburner, shown while it
 /// burns (not with the own aircraft hidden or after the flight's end).
 fn update(
     time: Res<Time>,
     player: Query<&Aircraft, With<Player>>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     settings: Res<crate::settings::Settings>,
-    mut flames: Query<
-        (&mut Transform, &mut Visibility, &MeshMaterial3d<FlameMaterial>),
-        With<Flame>,
-    >,
+    mut flames: Query<(&Flame, &mut Transform, &mut Visibility, &MeshMaterial3d<FlameMaterial>)>,
     mut materials: ResMut<Assets<FlameMaterial>>,
     mut lights: Query<&mut crate::lighting::LightEmitter, With<FlameLight>>,
 ) {
     let Ok(a) = player.single() else { return };
     let ab = a.afterburner.clamp(0.0, 1.0);
     let on = ab > 0.0 && a.ended.is_none() && !hide.is_some_and(|h| h.0);
-    for (mut tf, mut vis, material) in &mut flames {
-        vis.set_if_neq(if on { Visibility::Inherited } else { Visibility::Hidden });
-        if !on {
-            continue;
-        }
+    let spec = settings.aircraft.spec();
+    let width = spec.nozzle_radius / EXIT;
+    // The plumes share their material.
+    let mut set = false;
+    for (flame, mut tf, mut vis, material) in &mut flames {
+        let at = spec.nozzles.get(flame.0);
+        let shown = on && at.is_some();
+        vis.set_if_neq(if shown { Visibility::Inherited } else { Visibility::Hidden });
+        let Some(&at) = at.filter(|_| shown) else { continue };
         let high = (a.altitude / 40000.0).clamp(0.0, 1.0);
         let length = (MIN_LENGTH + (1.0 - MIN_LENGTH) * ab) * (1.0 + ALTITUDE_LENGTH * high);
-        tf.translation = settings.aircraft.spec().exhaust;
-        tf.scale = Vec3::new(1.0, 1.0, length);
-        if let Some(mut m) = materials.get_mut(&material.0) {
+        tf.translation = at;
+        tf.scale = Vec3::new(width, width, length);
+        if !set && let Some(mut m) = materials.get_mut(&material.0) {
+            set = true;
             let diamonds = (1.0 - a.altitude / DIAMONDS_ALT).clamp(0.0, 1.0);
             m.params =
                 Vec4::new(0.4 + 0.6 * ab.sqrt(), time.elapsed_secs() % 1000.0, diamonds, 0.0);

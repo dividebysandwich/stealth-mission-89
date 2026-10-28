@@ -292,7 +292,7 @@ fn ignite(combat: Res<Combat>, mut fires: ResMut<Fires>) {
 }
 
 /// Theater object names that are not towns (for the theaters without generated towns).
-fn is_town_name(name: &str) -> bool {
+pub(crate) fn is_town_name(name: &str) -> bool {
     const NOT: [&str; 46] = [
         "air",
         "hangar",

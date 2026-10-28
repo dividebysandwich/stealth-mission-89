@@ -478,8 +478,14 @@ each press also picks the nearest object in that direction. The last bottom butt
 (AUTO by range, then 1X..6X; also `[` / `]`).</td>
 <td><img src="images/mfd_way.png" alt="WAY"><br>
 <b>WAY</b> – Mission time and waypoint table: distance (km), flight time (minutes) and ETA for
-each waypoint; fuel bar at the bottom. WP- / WP+ (PgUp / PgDn) select the waypoint, RST
-(Shift F8) resets it to its original position.</td>
+each waypoint; fuel bar at the bottom (reserve in green at the left, the fuel each waypoint
+needs in white for the selected one and blue for the others, the fuel already used in black at
+the right). While it is up, the MAP shows the flight plan. WP- / WP+ (PgUp / PgDn) select the
+waypoint. F8 puts the page in edit mode (red): keypad 8 / 2 / 4 / 6 move the selected waypoint
+over the MAP and keypad 9 / 3 select the last / next one; F7 leaves it. With the modern
+avionics F8 also makes the table the SOI, and the keypad moves the waypoint only while it is. RST (Shift F8) puts all
+the waypoints back to their original positions. The distances run from the aircraft through the
+waypoints not yet passed.</td>
 </tr>
 <tr>
 <td><img src="images/mfd_wpn.png" alt="WPN"><br>
@@ -513,7 +519,7 @@ off with each press), F7 the waypoint table.
 | HSD | DEP / CEN, RNG-, range, RNG+, SOI | Horizontal situation display, heading up: range rings (the range in km is the outer ring), the route with the current steerpoint ringed, SAM sites with their missile's reach as red threat rings, hostile (red) and friendly (green) aircraft, ships (hull symbols, red or green; armed ones with their threat ring), missiles, the mission targets (cyan diamonds); the locked target is boxed. |
 | HARM | ALL / SAM / AIR, SOI | The radars painting the aircraft, like the RWR: at their bearing, the most dangerous nearest the centre (chapter 3.7). |
 | TGP | FLIR, zoom, SP, CZ, SOI | The targeting pod (tracking camera), see below. The pod's mode (SLV / AREA / PNT / SP) is shown bottom left, the zoom bottom right (AUTO: by range). |
-| MAP | NUP / HUP, ZM-, ZM+, WAY | The moving map in muted colours; WAY switches to the waypoint table (WP-, WP+, RST). |
+| MAP | NUP / HUP, ZM-, ZM+, WAY | The moving map in muted colours; WAY switches to the waypoint table (WP-, WP+, RST, SOI): while it is the SOI, the keypad moves the waypoint being edited (F8). |
 | SMS | WPN, ORD, SEL, CCIP / CCRP | Stores (WPN) and mission orders (ORD); on WPN the bombsight mode. |
 | HSI | WP-, WP+ | Horizontal situation indicator (chapter 4.2). |
 
@@ -1047,7 +1053,7 @@ The input mapping (chapter 2) shows all keys and can bind them to joystick butto
 | | Map zoom in / out, north up / heading up | Alt Z / Alt X / Alt F3 |
 | | Night vision goggles | F4 |
 | | Weapons page / FLIR / ILS / mission orders | F5 / F6 / F9 / F10 |
-| **Navigation** | Waypoint page / change waypoint / reset waypoint | F7 / F8 / Shift F8 |
+| **Navigation** | Waypoint page / edit waypoints / reset waypoints | F7 / F8 / Shift F8 |
 | | Kneeboard: show, next page, hide (chapter 3.9) | K |
 | | Previous / next waypoint | PgUp / PgDn |
 | **Views** | Cockpit | F1 |

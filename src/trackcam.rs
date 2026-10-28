@@ -1,6 +1,6 @@
 //! Right-MFD tracking camera: a second 3D camera at the aircraft looking at the locked target,
 //! or along the camera direction keys (`/ , . m`) with the photo lens depression, rendered into
-//! a small texture with the classic focal length `256 << zoom` over the 77x60 MFD rectangle.
+//! a small texture with the focal length 256 times the zoom over the 77x60 MFD rectangle.
 //! The cockpit shows the texture behind the right MFD screen (the page's text is drawn over it);
 //! it is rendered at the screen's resolution (2x the MFD's pixels for the classic panel, 6x for the
 //! modern one's 231x180 display).
@@ -51,9 +51,10 @@ fn create_image(images: &mut Assets<Image>, scale: u32) -> Handle<Image> {
     images.add(image)
 }
 
-/// Projection for zoom shift z: f = 256 << z pixels, vertical 0.75 f, 77x60 viewport.
+/// Projection for zoom step z: f = 256 times its magnification in pixels, vertical 0.75 f,
+/// 77x60 viewport.
 fn projection(z: u8) -> PerspectiveProjection {
-    let f = (256u32 << z.min(6)) as f32;
+    let f = 256.0 * crate::mfd::cam_magnification(z);
     let half_h = 30.0 / (0.75 * f);
     let half_w = 38.5 / f;
     PerspectiveProjection {
@@ -191,7 +192,7 @@ pub(crate) fn update_camera(
                     name: ["ILS".into(), format!("RWY {:02}", v.runway)],
                     range_km: Some(v.range_m / 1000.0),
                     bearing: None,
-                    zoom: magnification.log2().round().clamp(0.0, 6.0) as u8 + 1,
+                    zoom: crate::mfd::cam_zoom_for(magnification) + 1,
                 };
                 return site(&mut sites, None);
             }
@@ -203,10 +204,16 @@ pub(crate) fn update_camera(
         && let Some(dir) = crate::avionics::pod_direction(&mfd.av.tgp, a.orientation, eye)
     {
         let range_m = mfd.av.tgp.los_ground.map(|g| (g - eye).length() as f32);
-        let zoom = mfd.cam_zoom.unwrap_or_else(|| {
-            range_m.map_or(0, |r| {
-                crate::combat::camera_zoom((r / (32.0 * crate::world::WU as f32)) as i32)
-            })
+        // AUTO: by the range to a point track or the lock the pod follows (combat set its
+        // zoom), else 4X.
+        let targeted = match mfd.av.tgp.mode {
+            crate::avionics::TgpMode::Point(_) => true,
+            crate::avionics::TgpMode::Slaved => info.zoom > 0,
+            _ => false,
+        };
+        let zoom = mfd.cam_zoom.unwrap_or_else(|| match range_m.filter(|_| targeted) {
+            Some(r) => crate::combat::camera_zoom((r / (32.0 * crate::world::WU as f32)) as i32),
+            None => crate::mfd::CAM_ZOOM_DEFAULT,
         });
         *info = TrackCam {
             live: true,
@@ -257,15 +264,17 @@ pub(crate) fn update_camera(
             Vec3::new(yaw.sin() * p.cos(), p.sin(), -yaw.cos() * p.cos())
         }
     };
-    // A manual zoom.
+    // A manual zoom; AUTO with nothing locked: 4X.
     if let Some(z) = mfd.cam_zoom {
         info.zoom = z + 1;
+    } else if target.is_none() {
+        info.zoom = crate::mfd::CAM_ZOOM_DEFAULT + 1;
     }
     aim(&mut tf, &mut pos, &mut proj, dir, eye, info.zoom.saturating_sub(1));
     site(&mut sites, look);
 }
 
-/// Points the camera from `eye` along `dir` with zoom shift `z`.
+/// Points the camera from `eye` along `dir` with zoom step `z`.
 fn aim(
     tf: &mut Transform,
     pos: &mut WorldPos,

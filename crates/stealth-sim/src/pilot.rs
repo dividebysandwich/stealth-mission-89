@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 use crate::types::*;
 use crate::{ENEMY_SLOTS, N_PROJ, PILOT_SLOTS, PlayerView, Sim, tiles};
 
+fn is_zero(v: &i32) -> bool {
+    *v == 0
+}
+
 fn none_unloading(v: &[i32; 2]) -> bool {
     *v == [0, 0]
 }
@@ -28,6 +32,15 @@ pub struct Pilot {
     /// The helicopter is a gunship (`SimOptions::gunship` for pilot 0): a turret cannon.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) gunship: bool,
+    /// The aircraft is the Tornado IDS (`SimOptions::tornado` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) tornado: bool,
+    /// The aircraft is the A-10 (`SimOptions::a10` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) a10: bool,
+    /// The aircraft is the RAH-66 (`SimOptions::comanche` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) comanche: bool,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -65,6 +78,13 @@ pub struct Pilot {
     pub(crate) irj_heat: i32,
     pub(crate) door_anim: i32,
     pub(crate) bay_req: bool,
+    /// The RAH-66's doors: a missile fired with them shut waits for them to open.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) bay_pending: bool,
+    /// The RAH-66's doors opened by a launch: frames until they shut again (0: they stay as
+    /// the pilot set them).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub(crate) bay_close: i32,
     /// Bays or pylon stations (weapon type, count; type -1 empty).
     pub(crate) bays: Vec<(i32, i32)>,
     /// Selected station: the first one carrying the selected weapon.
@@ -283,6 +303,9 @@ impl Sim {
             external_stores: p0.external_stores,
             helicopter: p0.helicopter,
             gunship: p0.gunship,
+            tornado: p0.tornado,
+            a10: p0.a10,
+            comanche: p0.comanche,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

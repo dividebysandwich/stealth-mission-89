@@ -316,7 +316,7 @@ pub fn pod_step(
         let range = ground_distance(origin, dir, ground_y);
         let slew = slew_gain(slew, range, tgp.held);
         tgp.held += dt;
-        let rate = POD_RATE / (1u32 << zoom.min(6)) as f32 * dt;
+        let rate = POD_RATE / crate::mfd::cam_magnification(zoom) * dt;
         let on_ground = range.filter(|&r| r <= POD_RANGE).map(|r| origin + dir.as_dvec3() * r);
         let moved = match on_ground {
             Some(p) => {
@@ -456,7 +456,13 @@ impl AvionicsState {
 
     /// The sensor of interest if it is on an MFD.
     pub fn soi_format(&self) -> Option<Format> {
-        self.soi.filter(|&f| self.shown(f).is_some())
+        self.soi.filter(|&f| self.shown(f).is_some() && self.soi_capable(f))
+    }
+
+    /// Formats that can be the SOI: those with a cursor or a pod, and the MAP while it shows
+    /// the waypoint table (the slew keys then move the waypoint being edited).
+    pub fn soi_capable(&self, f: Format) -> bool {
+        f.soi_capable() || f == Format::Map && self.map_way
     }
 
     /// Puts a format on an MFD; the MFD showing the new one gets this one's format.
@@ -479,7 +485,7 @@ impl AvionicsState {
     /// The SOI stays on a displayed format that can be one.
     fn fix_soi(&mut self) {
         if self.soi_format().is_none() {
-            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|f| f.soi_capable());
+            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|&f| self.soi_capable(f));
         }
     }
 }
@@ -496,7 +502,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         }
         MfdCmd::Soi(side) => {
             let f = av.format(side);
-            if f.soi_capable() {
+            if av.soi_capable(f) {
                 av.soi = Some(f);
             }
         }
@@ -507,7 +513,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             let at = sides.iter().position(|&s| s == side).unwrap_or(0);
             let next = (1..sides.len())
                 .map(|k| av.format(sides[(at + k) % sides.len()]))
-                .find(|f| f.soi_capable());
+                .find(|&f| av.soi_capable(f));
             if let Some(f) = next {
                 av.soi = Some(f);
             }
@@ -535,6 +541,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::ToggleOrient => state.map_heading_up = !state.map_heading_up,
         MfdCmd::MapWay => {
             av.map_way = !av.map_way;
+            av.fix_soi();
             raster.invalidate();
         }
         MfdCmd::Sms(ord) => {
@@ -640,6 +647,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Map, 0) if av.map_way => ("WP-", Action(A::LastWaypoint), false),
         (Format::Map, 1) if av.map_way => ("WP+", Action(A::NextWaypoint), false),
         (Format::Map, 2) if av.map_way => ("RST", Action(A::ResetWaypoint), false),
+        (Format::Map, 4) if av.map_way => soi,
         (Format::Map, 0) => {
             (if s.map_heading_up { "HUP" } else { "NUP" }, Cmd(MfdCmd::ToggleOrient), false)
         }
@@ -865,7 +873,7 @@ pub fn draw_hsi_page(p: &MfdParams, c: &mut Canvas, fonts: &Fonts) {
         (
             "ETA",
             km.filter(|_| ms > 1.0).map_or("--:--".to_string(), |k| {
-                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms);
+                let (h, m, _) = crate::mfd::hms(t + k * 1000.0 / ms * p.clock.rate);
                 format!("{h:02}:{m:02}")
             }),
         ),
@@ -1010,9 +1018,13 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
             stroke_text_at(c, q.x, q.y, label, 9.0, 1.2, GREY, Align::Centre);
         }
     }
-    // Route: the steerpoints as small squares, the current one ringed.
+    // Route: the steerpoints as small squares, the current one ringed, and a leg from the
+    // aircraft to the current one so the route shows with every steerpoint out of range.
     let wps: Vec<Vec2> =
         p.waypoints.points.iter().map(|w| view.to_screen(w.east, w.north)).collect();
+    if let Some(&q) = wps.get(p.waypoints.current) {
+        c.stroke(o, q, 1.0, WHITE);
+    }
     for pair in wps.windows(2) {
         c.stroke(pair[0], pair[1], 1.0, WHITE);
     }
@@ -1317,9 +1329,11 @@ fn update_pod(
     };
     let ground_y = crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y;
     // CZ: point track on the current steerpoint, the pod the SOI to slew on from there.
+    let mut cz = false;
     if std::mem::take(&mut state.av.tgp.cz)
         && let Some(wp) = waypoints.target()
     {
+        cz = true;
         let p = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64);
         state.av.tgp.mode = TgpMode::Point(p);
         state.av.tgp.idle = 0.0;
@@ -1329,13 +1343,18 @@ fn update_pod(
     }
     let soi = state.av.soi_format() == Some(Format::Tgp);
     let zoom = state.cam_zoom.unwrap_or(info.zoom.saturating_sub(1));
-    let slew = if soi && shown { controls.slew } else { Vec2::ZERO };
+    // Not while the slew keys move a waypoint (the classic avionics have no SOI).
+    let slew = if soi && shown && !crate::mfd::editing_waypoints(&state, &waypoints) {
+        controls.slew
+    } else {
+        Vec2::ZERO
+    };
     let tgp = &mut state.av.tgp;
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
-    // Settled near a unit: the pod snaps onto it, locked as by the lock key (a gun, which
-    // cannot be locked, held in point track).
-    if slewed
+    // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
+    // by the lock key (a gun, which cannot be locked, held in point track).
+    if (slewed || cz)
         && let TgpMode::Point(p) = tgp.mode
         && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, ground_y))
     {
@@ -1697,6 +1716,23 @@ mod tests {
         assert_eq!(s.av.soi_format(), Some(Format::Hsd));
     }
 
+    /// The MAP can be the SOI while it shows the waypoint table, and loses it with the table.
+    #[test]
+    fn way_page_soi() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.select(MfdSide::Right, Format::Map);
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd), "not the map itself");
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), None);
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), Some("SOI"));
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Map));
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+    }
+
     #[test]
     fn every_button_on_every_format() {
         for side in [MfdSide::Left, MfdSide::Third] {
@@ -1856,6 +1892,14 @@ mod tests {
         assert_eq!(cam_zoom_label(s.cam_zoom), "1X");
         cam_zoom(&mut s, MfdCmd::CamZoom(-1), 4);
         assert_eq!(s.cam_zoom, Some(0));
+        let labels: Vec<_> = (0..=CAM_ZOOM_MAX).map(|z| cam_zoom_label(Some(z))).collect();
+        assert_eq!(labels, ["1X", "2X", "4X", "6X", "10X", "15X", "20X"]);
+        // By range (map units): 1X close in, 20X at the last step.
+        use crate::combat::camera_zoom;
+        assert_eq!(
+            [camera_zoom(10), camera_zoom(64), camera_zoom(100), camera_zoom(5000)],
+            [0, 2, 3, 6]
+        );
     }
 
     #[test]

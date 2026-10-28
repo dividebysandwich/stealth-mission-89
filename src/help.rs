@@ -37,6 +37,7 @@ Starting
                                the view of it
     --lights                   with its lights
     --no-label                 without the model label
+    --slots <slot=value,...>   state slots held, e.g. 5=1,8=2 (gear down, bay doors open)
   --freecam                    free debug camera
     --at <place>               at a place by name, or primary / secondary (the targets)
     --pos <x,z>                at a ground position in metres
@@ -45,7 +46,7 @@ Starting
                                view direction (default 0, -15)
 
 Aircraft and rules
-  --aircraft f117|f16|uh60|ah1z
+  --aircraft f117|f16|tornado|a10|uh60|ah1z|rah66
                                the flown aircraft (default f117)
   --lockheed                   realistic weapons: the real F-117A's 2 bays, no air-to-air
                                missiles, no carrier operations
@@ -71,6 +72,10 @@ Cockpit and graphics
   --shadows                    sun shadows
   --local-lights               cockpit lamps, explosions, flares, missile motors, runway lights
   --no-auto-detail             VR: keep full scenery detail (else it follows the frame rate)
+  --effects <list>             atmosphere effects: names on, -name off, all, none
+                               (shake, flashes, barrage, cockpit-night, nvg, snow, mist,
+                               cloud-shadows, sunbeams, vapour, night-sky; retro, off by
+                               default: vga, scanlines)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size
@@ -118,6 +123,7 @@ Testing and screenshots
                                staged camera: front, behind, side, high, missile, drone
   --damage <bits,hits>         start damaged
   --strike <ground|cloud>      a frozen lightning strike early in the flight
+  --flak <m>                   a flak burst that far ahead every 1.5 s
   --tod-seed <n>               the palette's time of day fade (0..15)
   --sky-golden <base[,intensity[,warmth]]>, --sky-hours <h>, --sky-phase <0..1>
                                sky test looks
@@ -133,6 +139,8 @@ Testing and screenshots
                                open the first mission's briefing on that page
   --campaign-insert            order an insertion against the nearest enemy place
   --campaign-watch             watch the first friendly aircraft
+  --campaign-designate gepard|patriot
+                               designate a new air defence site near the parked base
 
   -h, --help                   this list
 ";

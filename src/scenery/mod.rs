@@ -28,17 +28,20 @@ mod obstacles;
 mod style;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{DVec2, DVec3};
 use bevy::mesh::{MeshTag, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 
 use crate::dots::{dot_batch, dot_batch_coloured};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
 use crate::palette_material::{
-    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_VERTEX_HAZE, TAG_WARM, dot_scale, mesh_tag,
+    ATTRIBUTE_PALETTE_WORD, TAG_DOT, TAG_DOT_NEAR, TAG_VERTEX_HAZE, TAG_WARM, dot_size_tenths,
+    mesh_tag,
 };
 use crate::settings::AppState;
 use crate::world::{ShapeHandles, Theater, WU, WorldAnchor, WorldPos, bevy_to_wu};
@@ -53,6 +56,7 @@ impl Plugin for SceneryPlugin {
             .init_resource::<Blocks>()
             .init_resource::<SceneryBacklog>()
             .init_resource::<Airfields>()
+            .init_resource::<LayoutCache>()
             .init_resource::<PapiSites>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
@@ -71,6 +75,7 @@ impl Plugin for SceneryPlugin {
                         share_parking,
                         clear_units,
                         clear_air_defence,
+                        deployment_pads,
                         remap_vertex_words,
                     )
                         .run_if(resource_exists::<Scenery>),
@@ -78,6 +83,10 @@ impl Plugin for SceneryPlugin {
                     .chain()
                     .run_if(in_state(AppState::Flight)),
             );
+        // (In the browser the layout is made on the main thread: there it waits for the flight.)
+        if !cfg!(target_arch = "wasm32") {
+            app.add_systems(Update, prefetch_layout.run_if(in_state(AppState::Menu)));
+        }
     }
 }
 
@@ -107,14 +116,23 @@ const SITE_RADIUS: f64 = 1500.0;
 /// a coarse block is several times the work of a near one.
 const BUILD_TIME: std::time::Duration = std::time::Duration::from_millis(3);
 
+/// What the ground is at a point (`Scenery::surface`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Surface {
+    Water,
+    Concrete,
+    Land,
+}
+
 /// The theater's scenery layout (no style and an empty network for the desert theaters).
 #[derive(Resource)]
 pub struct Scenery {
     style: Option<style::Style>,
-    ground: ground::Ground,
-    net: network::Network,
-    airfields: Vec<airfield::Airfield>,
-    /// Where no trees grow (metres east, north; radius): round the friendly air defence.
+    ground: Arc<ground::Ground>,
+    net: Arc<network::Network>,
+    airfields: Arc<Vec<airfield::Airfield>>,
+    /// Where no trees grow and no generated buildings stand (metres east, north; radius):
+    /// round the friendly air defence and the helipads of its new sites.
     clearings: Vec<(DVec2, f64)>,
 }
 
@@ -129,7 +147,44 @@ impl Scenery {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
-    /// `p` lies in a clearing (no trees).
+    /// Where the cargo crates of a base line up: beside its runway a little ahead of `start`
+    /// (where its aircraft start, facing `forward`; metres east, north), on the far side from
+    /// the apron, and the runway's direction (None: no runway near).
+    pub fn crate_row(&self, start: DVec2, forward: DVec2) -> Option<(DVec2, DVec2)> {
+        let a = self
+            .airfields
+            .iter()
+            .filter(|a| a.runway.c.distance(start) < CRATE_ROW_RANGE)
+            .min_by(|a, b| a.runway.c.distance(start).total_cmp(&b.runway.c.distance(start)))?;
+        let rw = &a.runway;
+        let side = rw.axis.perp();
+        let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
+        let away = if apron.dot(side) > 0.0 { -1.0 } else { 1.0 };
+        let ahead = (start + forward * CRATE_ROW_AHEAD - rw.c).dot(rw.axis);
+        let along = ahead.clamp(-rw.half_len * 0.8, rw.half_len * 0.8);
+        Some((rw.c + rw.axis * along + side * away * (rw.half_width + CRATE_ROW_OUT), rw.axis))
+    }
+
+    /// What the ground is at `p` (metres east, north): water, concrete or land.
+    pub fn surface(&self, p: DVec2) -> Surface {
+        if !self.ground.is_dry_clear(p, 0.0) {
+            Surface::Water
+        } else if self.ground.is_land(p) {
+            Surface::Land
+        } else {
+            Surface::Concrete
+        }
+    }
+
+    /// The towns and cities (not the villages): centre (metres east, north), radius and whether
+    /// it is a city.
+    pub fn towns(&self) -> Vec<(DVec2, f64, bool)> {
+        use network::TownKind::*;
+        let towns = self.net.towns.iter().filter(|t| matches!(t.kind, Town | City));
+        towns.map(|t| (t.c, t.r, matches!(t.kind, City))).collect()
+    }
+
+    /// `p` lies in a clearing (no trees, no generated buildings).
     fn cleared(&self, p: DVec2) -> bool {
         self.clearings.iter().any(|&(c, r)| c.distance_squared(p) < r * r)
     }
@@ -142,9 +197,12 @@ impl Scenery {
     /// Room for a ground unit `r` metres across: dry, clear of the theater's raised objects, of
     /// buildings and of trees.
     pub fn unit_clear(&self, p: DVec2, r: f64) -> bool {
-        self.ground.is_dry_clear(p, r)
-            && self.net.building_clear(p, r)
-            && !content::tree_near(self, p, r * 0.75)
+        let d = DVec2::splat(r + 60.0);
+        let building = self.net.building_index.around(p - d, p + d).any(|i| {
+            let b = &self.net.buildings[i as usize];
+            !self.cleared(b.p) && b.p.distance(p) < b.radius() + r
+        });
+        self.ground.is_dry_clear(p, r) && !building && !content::tree_near(self, p, r * 0.75)
     }
 
     /// Where a conventional war burns (fires.rs): in and around the towns and along the roads
@@ -205,11 +263,55 @@ pub struct SceneryBacklog(pub Option<usize>);
 #[derive(Resource, Default)]
 pub struct PapiSites(pub Vec<airfield::PapiSite>);
 
+/// The cargo crates line up beside the runway of an airfield this close to where its aircraft
+/// start, this far ahead of them and this far out from the runway's edge (metres).
+const CRATE_ROW_RANGE: f64 = 4000.0;
+const CRATE_ROW_AHEAD: f64 = 150.0;
+const CRATE_ROW_OUT: f64 = 35.0;
+
+/// A cargo crate for a new air defence site (metres: length, width, height), olive with dark
+/// straps.
+pub const CRATE_SIZE: Vec3 = Vec3::new(2.4, 1.6, 1.4);
+const CRATE_PAINT: u8 = 0xA7;
+const CRATE_STRAP: u8 = 0xAC;
+
+/// A cargo crate centred on its entity (its length along -z, forward), to be placed with
+/// `WorldPos` and turned with its `Transform`.
+pub fn spawn_crate(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    palette: &Palette,
+) -> Entity {
+    let (l, w, h) = (CRATE_SIZE.x, CRATE_SIZE.y, CRATE_SIZE.z);
+    let mut g = Geom::default();
+    let foot = geom::rect(Vec3::ZERO, Vec2::NEG_Y, l, w);
+    g.block(CRATE_PAINT, CRATE_PAINT + 1, &foot, -h * 0.5, h * 0.5);
+    // Its floor too (a block stands on the ground; a crate is seen from below in the air).
+    let floor: Vec<Vec3> = foot.iter().map(|p| *p - Vec3::Y * h * 0.5).collect();
+    g.face(CRATE_PAINT + 2, &floor, Vec3::NEG_Y);
+    // Two straps round it, a little proud of the faces.
+    for t in [-0.3, 0.3] {
+        let z = -t * l;
+        let (x, y) = (w * 0.5 + 0.02, h * 0.5 + 0.02);
+        let ring =
+            [Vec3::new(-x, -y, z), Vec3::new(x, -y, z), Vec3::new(x, y, z), Vec3::new(-x, y, z)];
+        for k in 0..4 {
+            g.line(CRATE_STRAP, ring[k], ring[(k + 1) % 4]);
+        }
+    }
+    let root = commands.spawn((WorldPos::default(), Transform::default(), Visibility::Hidden)).id();
+    let children = spawn_geom(commands, meshes, palette, g, Tier::Main, 0);
+    commands.entity(root).add_children(&children);
+    root
+}
+
 /// Root entities of the airfields (built whole, shown with the scenery setting).
 #[derive(Resource, Default)]
 struct Airfields {
     spawned: bool,
     roots: Vec<Entity>,
+    /// The new air defence sites' helipads (campaign map point).
+    pads: Vec<((i32, i32), Entity)>,
 }
 
 /// A batch of approach flashers lit in its turn of the sequence.
@@ -225,8 +327,8 @@ struct ApproachSide(Vec3);
 #[derive(Component)]
 struct ApproachChecked;
 
-/// Approach flashers are drawn this many times the size of other lights.
-const STROBE_DOT_SCALE: u32 = 3;
+/// Approach flashers are drawn this many tenths of the size of other lights.
+const STROBE_DOT_TENTHS: u32 = 15;
 
 /// A PAPI light unit (a one-dot batch at its transform; data from `geom::PapiLight`).
 #[derive(Component)]
@@ -239,9 +341,9 @@ struct Papi {
 /// approach axis (about ±30°).
 const PAPI_RANGE: f32 = 10_000.0;
 const PAPI_COS_SPREAD: f32 = 0.87;
-/// PAPI lights are drawn this many times the size of other lights, so the colours read on a
+/// PAPI lights are drawn this many tenths of the size of other lights, so the colours read on a
 /// long final.
-const PAPI_DOT_SCALE: u32 = 3;
+const PAPI_DOT_TENTHS: u32 = 15;
 
 /// Root of a streamed block.
 #[derive(Component)]
@@ -257,39 +359,40 @@ pub struct LampBatch {
     pub radius: f32,
 }
 
+/// The scenery once its layout is there: kept from an earlier flight on the theater, else made
+/// on another thread (the flight goes on meanwhile, without the generated scenery).
+#[allow(clippy::too_many_arguments)]
 fn build_scenery(
     mut commands: Commands,
     theater: Res<Theater>,
     handles: Res<ShapeHandles>,
     library: Res<ModelLibrary>,
     assets: ModelAssets,
+    mut cache: ResMut<LayoutCache>,
     mut exit: MessageWriter<AppExit>,
 ) {
-    let style = style::Style::for_theater(&theater.id, theater.index);
     // Wait until the tile streaming has loaded the theater's models.
     let loaded = assets.terrain.ready(&theater.id)
         && library.files.get("special_targets").is_some_and(|h| assets.gltfs.get(h).is_some());
     if !loaded {
         return;
     }
-    let start = bevy::platform::time::Instant::now();
-    let (ground, net, fields) = layout(
-        &theater,
-        &handles,
-        &assets,
-        &library.files,
-        style.as_ref(),
-        &assets.palette.theater.day,
-    );
-    debug!(
-        "scenery: {} airfields, {} towns, {} roads, {} buildings, {} power lines in {:.2?}",
-        fields.len(),
-        net.towns.len(),
-        net.roads.len(),
-        net.buildings.len(),
-        net.lines.len(),
-        start.elapsed()
-    );
+    let key = &theater.id;
+    cache.collect();
+    let done = cache.done.as_ref().filter(|(k, _)| k == key).map(|(_, l)| l.clone());
+    let Some(Layout { ground, net, airfields: fields }) = done else {
+        if !cache.making(key) {
+            let source = LayoutSource::gather(
+                &theater,
+                &handles,
+                &assets,
+                &library.files,
+                &assets.palette.theater.day,
+            );
+            cache.making = Some((key.clone(), make_layout(source)));
+        }
+        return;
+    };
     // `--write-relief`: save the theater's relief for the simulation and quit.
     if std::env::args().any(|a| a == "--write-relief") {
         let path = stealth_host::assets::asset(&format!("theaters/{}.relief", theater.id));
@@ -311,6 +414,7 @@ fn build_scenery(
         exit.write(AppExit::Success);
     }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
+    let style = style::Style::for_theater(&theater.id, theater.index);
     commands.insert_resource(Scenery { style, ground, net, airfields: fields, clearings: vec![] });
 }
 
@@ -330,32 +434,156 @@ fn helipads_ron(fields: &[airfield::Airfield]) -> String {
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the
-/// airfields.
-fn layout(
-    theater: &Theater,
-    handles: &ShapeHandles,
-    assets: &ModelAssets,
-    files: &HashMap<String, Handle<Gltf>>,
-    style: Option<&style::Style>,
-    day: &crate::palette::VgaPalette,
-) -> (ground::Ground, network::Network, Vec<airfield::Airfield>) {
-    let remap = &assets.palette.remaps[REMAP_DETAIL_HIGH].entries;
-    let mut ground = ground::Ground::build(theater, handles, assets, files, remap, day);
-    let fields: Vec<airfield::Airfield> = ground
-        .runways
-        .clone()
-        .iter()
-        .enumerate()
-        .map(|(i, rw)| {
-            airfield::plan(rw, &ground, network::hash(0xA1F1E1D, theater.index as i64, i as i64, 0))
-        })
-        .collect();
-    for r in fields.iter().flat_map(airfield::footprint) {
-        ground.claim(r);
+/// airfields. Shared: the flights on the same theater use the same one (see `LayoutCache`).
+#[derive(Clone)]
+pub struct Layout {
+    ground: Arc<ground::Ground>,
+    net: Arc<network::Network>,
+    airfields: Arc<Vec<airfield::Airfield>>,
+}
+
+/// What a layout is made from, taken from the theater and its loaded models; making it needs
+/// neither (it takes seconds, on another thread).
+struct LayoutSource {
+    ground: ground::GroundSource,
+    index: usize,
+    towns: Vec<crate::world::TownSite>,
+    style: Option<style::Style>,
+}
+
+impl LayoutSource {
+    fn gather(
+        theater: &Theater,
+        handles: &ShapeHandles,
+        assets: &ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+        day: &crate::palette::VgaPalette,
+    ) -> Self {
+        let remap = &assets.palette.remaps[REMAP_DETAIL_HIGH].entries;
+        Self {
+            ground: ground::GroundSource::gather(theater, handles, assets, files, remap, day),
+            index: theater.index,
+            towns: theater.towns.clone(),
+            style: style::Style::for_theater(&theater.id, theater.index),
+        }
     }
-    let net =
-        style.map(|s| network::Network::build(&ground, s, &theater.towns)).unwrap_or_default();
-    (ground, net, fields)
+
+    fn build(&self) -> Layout {
+        let mut ground = ground::Ground::build(&self.ground);
+        let fields: Vec<airfield::Airfield> = ground
+            .runways
+            .clone()
+            .iter()
+            .enumerate()
+            .map(|(i, rw)| {
+                airfield::plan(
+                    rw,
+                    &ground,
+                    network::hash(0xA1F1E1D, self.index as i64, i as i64, 0),
+                )
+            })
+            .collect();
+        for r in fields.iter().flat_map(airfield::footprint) {
+            ground.claim(r);
+        }
+        let net = self
+            .style
+            .as_ref()
+            .map(|s| network::Network::build(&ground, s, &self.towns))
+            .unwrap_or_default();
+        Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields) }
+    }
+}
+
+/// The last layout made (its theater's id), kept between flights, and one being made. (A
+/// mission's special targets don't change it: their shapes replace tile objects through
+/// `TileOverrides`, which the layout doesn't read.)
+#[derive(Resource, Default)]
+pub struct LayoutCache {
+    done: Option<(String, Layout)>,
+    making: Option<(String, Task<Layout>)>,
+}
+
+/// Makes a layout on another thread.
+fn make_layout(source: LayoutSource) -> Task<Layout> {
+    AsyncComputeTaskPool::get().spawn(async move {
+        let start = bevy::platform::time::Instant::now();
+        let layout = source.build();
+        debug!(
+            "scenery: {} airfields, {} towns, {} roads, {} buildings, {} power lines in {:.2?}",
+            layout.airfields.len(),
+            layout.net.towns.len(),
+            layout.net.roads.len(),
+            layout.net.buildings.len(),
+            layout.net.lines.len(),
+            start.elapsed()
+        );
+        layout
+    })
+}
+
+/// In the menu: the layout of the chosen mission's theater (with the campaign window open, the
+/// new campaign's) is made ahead of the flight.
+fn prefetch_layout(
+    state: Res<crate::menu::MenuState>,
+    window: Res<crate::campaign::CampaignWindow>,
+    mut cache: ResMut<LayoutCache>,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    mut theater: Local<Option<Theater>>,
+) {
+    let mission = state.mission.as_ref().and_then(|m| m.as_ref().ok());
+    let id = match mission {
+        Some(m) if !window.open => m.theater_code.to_ascii_lowercase(),
+        _ => crate::menu::THEATERS[state.theater.min(crate::menu::THEATERS.len() - 1)].0.into(),
+    };
+    cache.collect();
+    let known = |k: Option<&String>| k == Some(&id);
+    if known(cache.done.as_ref().map(|d| &d.0)) || known(cache.making.as_ref().map(|m| &m.0)) {
+        return;
+    }
+    if theater.as_ref().is_none_or(|t| t.id != id) {
+        *theater = Some(Theater::load(&id));
+    }
+    let loaded = [id.as_str(), "special_targets"]
+        .map(|f| library.load(&server, f))
+        .iter()
+        .all(|h| assets.gltfs.get(h).is_some());
+    let Some(t) = theater.as_ref().filter(|_| loaded) else { return };
+    let day = crate::palette::load_theater_palettes(&id).day;
+    let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), &assets, &library.files, &day);
+    cache.making = Some((id, make_layout(source)));
+    *theater = None;
+}
+
+impl LayoutCache {
+    /// Keeps the layout being made once it's there.
+    fn collect(&mut self) {
+        if let Some((k, task)) = &mut self.making
+            && let Some(layout) = bevy::tasks::futures::check_ready(task)
+        {
+            self.done = Some((std::mem::take(k), layout));
+            self.making = None;
+        }
+    }
+
+    /// The layout of this theater is being made.
+    pub fn making(&self, id: &str) -> bool {
+        self.making.as_ref().is_some_and(|(k, _)| k == id)
+    }
+
+    /// The layout of a theater: the kept one, or made now.
+    fn get_or_make(&mut self, key: &str, source: impl FnOnce() -> LayoutSource) -> Layout {
+        match &self.done {
+            Some((k, l)) if k == key => l.clone(),
+            _ => {
+                let l = source().build();
+                self.done = Some((key.to_string(), l.clone()));
+                l
+            }
+        }
+    }
 }
 
 /// What the map pictures show of the scenery (metres, x east, y north): the towns (centre,
@@ -369,25 +597,28 @@ pub struct MapScenery {
     pub forest: Vec<bool>,
 }
 
-/// The scenery layout of a theater for its map picture (the same one the flight builds; empty
-/// for the theaters without towns).
+/// The scenery layout of a theater for its map picture (the same one the flight builds, kept in
+/// `cache`; empty for the theaters without towns).
 pub fn map_scenery(
     theater: &Theater,
     assets: &ModelAssets,
     files: &HashMap<String, Handle<Gltf>>,
     day: &crate::palette::VgaPalette,
     n: usize,
+    cache: &mut LayoutCache,
 ) -> MapScenery {
     let Some(style) = style::Style::for_theater(&theater.id, theater.index) else {
         return MapScenery::default();
     };
-    let handles = ShapeHandles::for_map(theater);
-    let (ground, net, _) = layout(theater, &handles, assets, files, Some(&style), day);
+    let layout = cache.get_or_make(&theater.id, || {
+        LayoutSource::gather(theater, &ShapeHandles::for_map(theater), assets, files, day)
+    });
+    let (ground, net) = (&layout.ground, &layout.net);
     let mut out = MapScenery::default();
-    for r in net.roads {
+    for r in &net.roads {
         match r.kind {
-            network::RoadKind::Street => out.streets.push(r.pts),
-            _ => out.roads.push(r.pts),
+            network::RoadKind::Street => out.streets.push(r.pts.clone()),
+            _ => out.roads.push(r.pts.clone()),
         }
     }
     out.towns = net.towns.iter().map(|t| (t.c, t.r)).collect();
@@ -415,7 +646,8 @@ fn cleanup(
 ) {
     backlog.0 = None;
     airfields.spawned = false;
-    for e in blocks.0.drain().map(|(_, e)| e).chain(airfields.roots.drain(..)) {
+    let pads: Vec<Entity> = airfields.pads.drain(..).map(|(_, e)| e).collect();
+    for e in blocks.0.drain().map(|(_, e)| e).chain(airfields.roots.drain(..)).chain(pads) {
         commands.entity(e).try_despawn();
     }
     commands.remove_resource::<Scenery>();
@@ -705,7 +937,8 @@ fn spawn_geom(
                 .id(),
         );
     }
-    let dot_tag = tag.0 | TAG_DOT;
+    // Not with TAG_VERTEX_HAZE: its bit is in the dot size field (dots haze per dot anyway).
+    let dot_tag = (tag.0 & !TAG_VERTEX_HAZE) | TAG_DOT;
     let dots = (bevy::light::NotShadowCaster, Visibility::Hidden);
     // All lamps of the block in one mesh with per-vertex colours, so they keep their drawing
     // order (dots don't write depth: the later of two overlapping lamps is on top, e.g. a mast's
@@ -734,7 +967,7 @@ fn spawn_geom(
                     Mesh3d(m),
                     MeshMaterial3d(palette.line_material(airfield::STROBE)),
                     dots.clone(),
-                    MeshTag(dot_tag | dot_scale(STROBE_DOT_SCALE)),
+                    MeshTag(dot_tag | dot_size_tenths(STROBE_DOT_TENTHS)),
                     Strobe(phase),
                 ))
                 .id(),
@@ -846,17 +1079,33 @@ fn clear_units(
 /// behind the radar, `station`) or a Gepard (metres).
 const AIR_DEFENCE_CLEARING: f64 = 45.0;
 
-/// The friendly air defence stands in clearings: the trees there go (the tree blocks are built
-/// again when the clearings change, at the start and when units come or move).
+/// No trees or buildings round a new air defence site's helipad and the unit beside it
+/// (metres).
+const DEPLOYMENT_CLEARING: f64 = 90.0;
+
+/// A campaign map point (x east, y south) in metres east, north.
+pub fn map_metres(x: i32, y: i32) -> DVec2 {
+    let m = stealth_sim::aaa::M_PER_MAP;
+    DVec2::new((x as f64 + 0.5) * m, (0x8000 as f64 - y as f64 - 0.5) * m)
+}
+
+/// The friendly air defence and the helipads of its new sites stand in clearings: the trees and
+/// buildings there go (the tree blocks are built again when the clearings change, at the start
+/// and when units or sites come or move; the town blocks a changed clearing touches too).
 fn clear_air_defence(
     mut commands: Commands,
     mut scenery: ResMut<Scenery>,
     combat: Option<Res<crate::combat::Combat>>,
+    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     mut blocks: ResMut<Blocks>,
 ) {
     let Some(combat) = combat else { return };
     let sim = &combat.sim;
     let m = stealth_sim::aaa::M_PER_MAP;
+    let pads = campaign.iter().flat_map(|c| &c.state().deployments).map(|d| {
+        let at = map_metres(d.x, d.y - stealth_campaign::tuning::DEPLOY_UNIT_OFFSET / 2);
+        (at, DEPLOYMENT_CLEARING)
+    });
     let want: Vec<(DVec2, f64)> = (0..sim.aaa_units().len())
         .filter(|&k| {
             let u = &sim.aaa_units()[k];
@@ -867,18 +1116,80 @@ fn clear_air_defence(
             let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
             (p, AIR_DEFENCE_CLEARING)
         })
+        .chain(pads)
         .collect();
     if want == scenery.clearings {
         return;
     }
+    let changed: Vec<(DVec2, f64)> = want
+        .iter()
+        .filter(|c| !scenery.clearings.contains(c))
+        .chain(scenery.clearings.iter().filter(|c| !want.contains(c)))
+        .copied()
+        .collect();
     scenery.clearings = want;
-    blocks.0.retain(|&(tier, _, _), e| {
-        let trees = group_of(tier).is_some_and(|g| std::ptr::eq(g, &TREES));
-        if trees {
+    blocks.0.retain(|&(tier, bx, by), e| {
+        let gone = match group_of(tier) {
+            Some(g) if std::ptr::eq(g, &TREES) => true,
+            // The buildings of a town block a clearing came to or left.
+            Some(g) if std::ptr::eq(g, &TOWNS) => {
+                let size = tier.block_size();
+                let min = DVec2::new(bx as f64, by as f64) * size;
+                changed.iter().any(|&(c, r)| {
+                    let near = c.clamp(min, min + DVec2::splat(size));
+                    near.distance_squared(c) < r * r
+                })
+            }
+            _ => false,
+        };
+        if gone {
             commands.entity(*e).try_despawn();
         }
-        !trees
+        !gone
     });
+}
+
+/// The helipads of the new air defence sites (the campaign's: a client's copy has them too),
+/// built when a site is designated and gone with it.
+fn deployment_pads(
+    mut commands: Commands,
+    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    palette: Res<Palette>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut airfields: ResMut<Airfields>,
+) {
+    // Built, the site's unit stands there and its helipad is gone.
+    let want: Vec<(i32, i32)> = campaign
+        .iter()
+        .flat_map(|c| &c.state().deployments)
+        .filter(|d| !d.built)
+        .map(|d| (d.x, d.y))
+        .collect();
+    airfields.pads.retain(|(at, e)| {
+        let keep = want.contains(at);
+        if !keep {
+            commands.entity(*e).try_despawn();
+        }
+        keep
+    });
+    for at in want {
+        if airfields.pads.iter().any(|(p, _)| *p == at) {
+            continue;
+        }
+        let c = map_metres(at.0, at.1);
+        let mut geom = geom::Geom::default();
+        airfield::helipad(&mut geom, &content::Frame::around(c), c, DVec2::Y);
+        let e = spawn_block(
+            &mut commands,
+            &mut meshes,
+            &palette,
+            geom,
+            DVec3::new(c.x, 0.0, -c.y),
+            Tier::Main,
+            TAG_DOT_NEAR,
+        );
+        airfields.pads.push((at, e));
+    }
 }
 
 /// Builds the airfields once, then makes them follow the scenery setting (and Alt-D detail 0
@@ -895,7 +1206,7 @@ fn airfields(
 ) {
     if !airfields.spawned {
         airfields.spawned = true;
-        for a in &scenery.airfields {
+        for a in scenery.airfields.iter() {
             let c = a.runway.c;
             let mut geom = airfield::build(a);
             let papi = std::mem::take(&mut geom.papi);
@@ -924,7 +1235,7 @@ fn airfields(
                     .spawn((
                         Mesh3d(meshes.add(dot_batch(&[Vec3::ZERO]))),
                         MeshMaterial3d(palette.line_material(airfield::PAPI_LOW)),
-                        MeshTag(mesh_tag(1, 6, false) | TAG_DOT | dot_scale(PAPI_DOT_SCALE)),
+                        MeshTag(mesh_tag(1, 6, false) | TAG_DOT | dot_size_tenths(PAPI_DOT_TENTHS)),
                         Transform::from_translation(l.pos),
                         bevy::light::NotShadowCaster,
                         Papi { toward: l.toward, angle: l.angle },

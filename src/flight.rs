@@ -19,19 +19,21 @@ use crate::world::{Theater, WorldPos, bevy_to_wu, wu_to_bevy};
 
 pub mod heli;
 pub mod modern;
+pub mod terrain_follow;
 
 pub struct FlightPlugin;
 
 impl Plugin for FlightPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(FlightConstants::default())
+            .init_resource::<terrain_follow::TerrainRadar>()
             .add_systems(
                 OnEnter(crate::settings::AppState::Flight),
                 apply_settings.in_set(SetupSet::Mission),
             )
             .add_systems(
                 Update,
-                (handle_actions, step_flight)
+                (handle_actions, terrain_follow::scan, step_flight)
                     .chain()
                     .in_set(FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -133,6 +135,8 @@ pub struct FlightConstants {
     pub aero: modern::Aero,
     /// Helicopters: the rotor, flown by the helicopter model (`heli`) instead.
     pub heli: Option<heli::Rotor>,
+    /// The autopilot follows the terrain (`terrain_follow`) instead of holding the altitude.
+    pub terrain_following: bool,
 }
 
 impl Default for FlightConstants {
@@ -152,6 +156,7 @@ impl Default for FlightConstants {
             roll_rate: 1.0,
             aero: modern::Aero::F117,
             heli: None,
+            terrain_following: false,
         }
     }
 }
@@ -177,6 +182,40 @@ impl FlightConstants {
         }
     }
 
+    /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel; the
+    /// autopilot follows the terrain.
+    pub fn tornado() -> Self {
+        Self {
+            gravity_term: 80.0,
+            thrust_to_knots: 7.0,
+            max_knots: 1150.0,
+            stall_knots: 125.0,
+            fuel_div: 750.0,
+            fuel: 11000.0,
+            max_gees: 120.0,
+            roll_rate: 1.3,
+            aero: modern::Aero::TORNADO,
+            terrain_following: true,
+            ..default()
+        }
+    }
+
+    /// A-10C: slow (the classic model's top speed about 380 kt), 7.3 g, 10,700 lb of fuel burnt
+    /// sparingly by its turbofans.
+    pub fn a10() -> Self {
+        Self {
+            thrust_to_knots: 5.2,
+            max_knots: 450.0,
+            stall_knots: 115.0,
+            fuel_div: 1300.0,
+            fuel: 10700.0,
+            max_gees: 117.0,
+            roll_rate: 1.2,
+            aero: modern::Aero::A10,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -185,6 +224,11 @@ impl FlightConstants {
     /// AH-1Z: the helicopter model; 2600 lb of fuel.
     pub fn ah1z() -> Self {
         Self { fuel: 2600.0, heli: Some(heli::Rotor::AH1Z), ..default() }
+    }
+
+    /// RAH-66: the helicopter model; 2600 lb of fuel.
+    pub fn rah66() -> Self {
+        Self { fuel: 2600.0, heli: Some(heli::Rotor::RAH66), ..default() }
     }
 }
 
@@ -249,6 +293,9 @@ pub struct Aircraft {
     pub set_afterburner: Option<f32>,
     #[serde(default)]
     pub afterburner: f32,
+    /// A swing wing's position (`modern::SwingWing`): 0 fully forward .. 1 fully back.
+    #[serde(default)]
+    pub wing_sweep: f32,
     /// World units ("feet") above sea level.
     pub altitude: f32,
     pub ground_altitude: f32,
@@ -265,6 +312,14 @@ pub struct Aircraft {
     pub bay_open: bool,
     /// Autopilot target altitude (viewZ), 0 = off.
     pub autopilot_alt: f32,
+    /// The terrain following radar's flight path angle command (rad) while the autopilot
+    /// follows the terrain, flown instead of the altitude hold.
+    #[serde(skip)]
+    pub tf_gamma: Option<f32>,
+    /// The terrain following radar's height of what lies below (altitude units), mountains
+    /// and objects included (`ground_altitude` is the flat ground's).
+    #[serde(skip)]
+    pub radar_ground: Option<f32>,
     pub on_ground: bool,
     pub in_landing_corridor: bool,
     /// Has been airborne since the start (landing only counts afterwards).
@@ -336,6 +391,7 @@ impl Aircraft {
             set_thrust: 0.0,
             set_afterburner: None,
             afterburner: 0.0,
+            wing_sweep: 0.0,
             altitude: 0.0,
             ground_altitude: 0.0,
             climb_rate: 0.0,
@@ -347,6 +403,8 @@ impl Aircraft {
             brakes: false,
             bay_open: false,
             autopilot_alt: 0.0,
+            tf_gamma: None,
+            radar_ground: None,
             on_ground: true,
             in_landing_corridor: true,
             has_flown: false,
@@ -384,6 +442,12 @@ impl Aircraft {
         self.heli.torque
     }
 
+    /// A helicopter's rotor speed and torque (fractions of 100%), for tests of what shows them.
+    #[cfg(test)]
+    pub fn set_rotor(&mut self, nr: f32, torque: f32) {
+        (self.heli.nr, self.heli.torque) = (nr, torque);
+    }
+
     /// Translational lift 0..1 (helicopters): the blade slap in the rotor sound.
     pub fn translational_lift(&self) -> f32 {
         self.heli.etl
@@ -396,6 +460,11 @@ impl Aircraft {
     /// Autopilot engaged?
     pub fn autopilot(&self) -> bool {
         self.autopilot_alt > 0.0
+    }
+
+    /// The autopilot follows the terrain (the terrain following radar has a command).
+    pub fn terrain_following(&self) -> bool {
+        self.autopilot() && self.tf_gamma.is_some()
     }
 
     /// Direction of flight (Bevy frame, unit vector): the modern model's velocity, or for the
@@ -460,10 +529,17 @@ fn handle_actions(
     for ActionEvent(action) in actions.read() {
         match action {
             // Helicopters: the collective moves while its keys are held
-            // (`FlightControls::collective_rate`); fixed gear, no autopilot, the brakes are the
-            // parking brake.
-            Action::ThrottleUp | Action::ThrottleDown | Action::Gear | Action::Autopilot
-                if heli => {}
+            // (`FlightControls::collective_rate`); fixed gear unless it retracts, the brakes are
+            // the parking brake; the autopilot holds the speed as well.
+            Action::ThrottleUp | Action::ThrottleDown if heli => {}
+            Action::Autopilot if heli && a.autopilot() => a.autopilot_alt = 0.0,
+            Action::Autopilot
+                if !a.damage.autopilot_failed
+                    && let Some(r) = &k.heli =>
+            {
+                heli::engage_autopilot(&mut a, r)
+            }
+            Action::Gear if k.heli.is_some_and(|r| r.retract_gear.is_none()) => {}
             // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
             // dry thrust they step through the afterburner; full power lights it at full dry
             // thrust.
@@ -494,8 +570,10 @@ fn handle_actions(
             Action::Brakes => a.brakes = !a.brakes,
             // Bay doors (8) are run by the combat simulation, which mirrors them into `bay_open`.
             Action::Autopilot if !a.damage.autopilot_failed => {
-                // Holds the current altitude, at least 500 ft.
-                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(500.0) };
+                // Holds the altitude it was engaged at (terrain following: at least 500 ft, where
+                // the radar has no command). Above 0, which is off.
+                let floor = if k.terrain_following { 500.0 } else { 1.0 };
+                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(floor) };
             }
             _ => {}
         }
@@ -514,6 +592,19 @@ impl Aircraft {
     pub fn restart_motion(&mut self) {
         self.modern = modern::State::default();
         self.heli = heli::State::default();
+    }
+
+    /// Moves a swing wing towards where its schedule puts it for the Mach number (the classic
+    /// model's as well, which only draws it).
+    fn sweep_wing(&mut self, k: &FlightConstants, dt: f32) {
+        let Some(w) = k.aero.swing_wing else { return };
+        if self.ended.is_some() {
+            return;
+        }
+        let (_, sound) = modern::atmosphere(self.altitude);
+        let target = w.scheduled(self.velocity / 16.0 / sound, self.flaps);
+        let step = dt / w.travel;
+        self.wing_sweep += (target - self.wing_sweep).clamp(-step, step);
     }
 
     /// Moves the trim by `d` (fractions of full stick), within its limits.
@@ -572,6 +663,7 @@ fn step_flight(
             } else {
                 modern::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, theater.as_deref());
             }
+            a.sweep_wing(&k, dt);
         }
     }
 }
@@ -619,8 +711,16 @@ fn step_one(
         if a.autopilot() {
             let e = bam_diff(a.waypoint_bearing, head_b).clamp(-5120.0, 5120.0) * 2.0;
             roll_input = ((e - roll_b) / 64.0).clamp(-24.0, 24.0);
-            let t = ((a.autopilot_alt - vz) * 16.0 - a.trim).clamp(-5120.0, 3072.0);
-            pitch_input = ((t - pitch_b) / 128.0).clamp(-8.0, 8.0);
+            let t = match a.tf_gamma {
+                // Terrain following: the nose where it puts the flight path on the command.
+                Some(g) => {
+                    let path = to_bam(a.path_dir().y.clamp(-1.0, 1.0).asin());
+                    (pitch_b + to_bam(g) - path).clamp(-8192.0, 8192.0)
+                }
+                None => ((a.autopilot_alt - vz) * 16.0 - a.trim).clamp(-5120.0, 3072.0),
+            };
+            let gain = if a.tf_gamma.is_some() { 24.0 } else { 8.0 };
+            pitch_input = ((t - pitch_b) / 128.0).clamp(-gain, gain);
         }
 
         // --- turbulence (stronger below 500 ft and with the gear down)
@@ -654,11 +754,13 @@ fn step_one(
 
         // --- auto pull-up ("barometric altimeter"; the no-crash and easy skills, here
         // crash protection only, so the ground can always be hit otherwise)
+        // (Not while terrain following, which flies lower and clears the ground itself.)
         if !a.gear_down
             && pitch_input <= 0.0
             && a.velocity > a.stall_speed
             && k.landing == 0
             && roll_b.abs() < 12288.0
+            && !a.terrain_following()
         {
             let kk = ((a.trim - pitch_b) / 8.0 - vz + 200.0) / 8.0;
             if kk > 0.0 {
@@ -987,12 +1089,13 @@ mod tests {
             } else {
                 modern::step(&mut a, &mut pos, &mut tf, dt, &c, &k, None);
             }
+            a.sweep_wing(&k, dt);
         }
         let (e, n, _) = bevy_to_wu(pos.0);
         (a, e.hypot(n))
     }
 
-    fn airborne(alt: f32, kts: f32, thrust: f32) -> Aircraft {
+    pub(super) fn airborne(alt: f32, kts: f32, thrust: f32) -> Aircraft {
         let mut a = Aircraft::new_on_runway(10000.0);
         a.altitude = alt;
         a.on_ground = false;
@@ -1009,6 +1112,18 @@ mod tests {
         a.autopilot_alt = a.view_z();
         a.waypoint_bearing = 0.0;
         a
+    }
+
+    /// The autopilot holds a low altitude (both models; the classic one's sits some 50 ft under
+    /// at any altitude).
+    #[test]
+    fn autopilot_holds_a_low_altitude() {
+        for (classic, within) in [(false, 10.0), (true, 60.0)] {
+            let (a, _) = fly(classic, level(airborne(200.0, 400.0, 70.0)), 60.0, 1, |_, _| {});
+            println!("classic {classic}: 200 ft held: {:.0} ft {:.0} kt", a.altitude, a.knots());
+            assert!(a.autopilot() && a.ended.is_none(), "classic {classic}");
+            assert!((a.altitude - 200.0).abs() < within, "classic {classic}: {}", a.altitude);
+        }
     }
 
     #[test]
@@ -1093,6 +1208,64 @@ mod tests {
         a.set_afterburner = Some(1.0);
         a.afterburner = 1.0;
         a
+    }
+
+    /// Tornado IDS (modern, the wings sweeping): subsonic low down without the afterburners,
+    /// about Mach 1.2 with them, past Mach 1.6 high up; a 1 g stall about 130 kt with the slats
+    /// and flaps out, a good deal faster clean.
+    #[test]
+    fn tornado_performance() {
+        let k = FlightConstants::tornado;
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 500.0, 100.0), 240.0);
+        println!(
+            "Tornado: dry max speed at 1000 ft: {:.0} kt, sweep {:.2}",
+            a.knots(),
+            a.wing_sweep
+        );
+        assert!((560.0..680.0).contains(&a.knots()), "dry sea level {}", a.knots());
+        let a = run(reheat(airborne(1000.0, 500.0, 100.0)), 240.0);
+        println!("Tornado: max speed at 1000 ft: {:.0} kt, sweep {:.2}", a.knots(), a.wing_sweep);
+        assert!((700.0..840.0).contains(&a.knots()), "sea level {}", a.knots());
+        assert!(a.wing_sweep > 0.99, "swept back {}", a.wing_sweep);
+        let a = run(reheat(airborne(36000.0, 600.0, 100.0)), 300.0);
+        println!("Tornado: max speed at 36000 ft: {:.0} kt", a.knots());
+        assert!(a.knots() > 920.0, "at altitude {}", a.knots());
+        // The stall speeds the warnings use, at 1 g.
+        let mut slow = airborne(1000.0, 180.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("Tornado: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((115.0..145.0).contains(&flaps), "flaps {flaps}");
+        assert!(clean > flaps + 20.0, "clean {clean}");
+    }
+
+    /// A-10C (modern): about 380 kt low down at full throttle, no afterburner, a 1 g stall about
+    /// 120 kt clean and slower with the flaps.
+    #[test]
+    fn a10_performance() {
+        let k = FlightConstants::a10;
+        assert!(!k().afterburner());
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 300.0, 100.0), 240.0);
+        println!("A-10: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((355.0..405.0).contains(&a.knots()), "sea level {}", a.knots());
+        let a = run(airborne(20000.0, 300.0, 100.0), 300.0);
+        println!("A-10: max speed at 20000 ft: {:.0} kt", a.knots());
+        let mut slow = airborne(1000.0, 170.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("A-10: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((110.0..135.0).contains(&clean), "clean {clean}");
+        assert!(flaps < clean - 8.0, "flaps {flaps}");
+        // The classic model's top speed.
+        let c = fly_with(k(), true, level(airborne(1000.0, 300.0, 100.0)), 120.0, |_, _| {}).0;
+        println!("A-10 classic: max speed {:.0} kt", c.knots());
+        assert!((340.0..420.0).contains(&c.knots()), "classic {}", c.knots());
     }
 
     /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern) with the afterburner,
@@ -1255,6 +1428,40 @@ mod tests {
         assert!(c.set_afterburner.is_none() && c.afterburner == 0.0);
     }
 
+    /// The Tornado's wings go back as it speeds up and forward as it slows down or lowers the
+    /// flaps, taking their time; swept back it is faster at full throttle.
+    #[test]
+    fn tornado_wings_sweep_with_speed() {
+        let k = FlightConstants::tornado;
+        let slow = fly_with(k(), false, level(airborne(5000.0, 300.0, 70.0)), 10.0, |_, _| {}).0;
+        assert_eq!(slow.wing_sweep, 0.0);
+        let mut fast = airborne(5000.0, 600.0, 100.0);
+        let (a, _) = fly_with(k(), false, level(fast.clone()), 2.0, |_, _| {});
+        assert!(a.wing_sweep > 0.2 && a.wing_sweep < 0.5, "moving back: {}", a.wing_sweep);
+        let (a, _) = fly_with(k(), false, level(fast.clone()), 10.0, |_, _| {});
+        assert!(a.wing_sweep > 0.95, "back: {}", a.wing_sweep);
+        // Fully forward again with the flaps, whatever the speed.
+        let mut b = a.clone();
+        b.flaps = true;
+        let (b, _) = fly_with(k(), false, b, 8.0, |_, _| {});
+        assert_eq!(b.wing_sweep, 0.0);
+        // With the wings held forward it is slower at full throttle low down.
+        fast.velocity = 500.0 * 27.0;
+        let swept = fly_with(k(), false, level(reheat(fast.clone())), 60.0, |_, _| {}).0;
+        let mut held = FlightConstants::tornado();
+        held.aero.swing_wing.as_mut().unwrap().mach = (5.0, 6.0);
+        let forward = fly_with(held, false, level(reheat(fast)), 60.0, |_, _| {}).0;
+        assert!(
+            swept.knots() > forward.knots() + 20.0,
+            "swept {} vs forward {}",
+            swept.knots(),
+            forward.knots()
+        );
+        // The classic model draws them too.
+        let (c, _) = fly_with(k(), true, level(airborne(5000.0, 600.0, 100.0)), 10.0, |_, _| {});
+        assert!(c.wing_sweep > 0.95, "classic: {}", c.wing_sweep);
+    }
+
     #[test]
     fn brakes() {
         for classic in [true, false] {
@@ -1336,7 +1543,7 @@ mod tests {
     }
 
     /// Modern model: the flaps lower the stall speed and allow a higher angle of attack, and
-    /// lowering them doesn't pitch the nose down.
+    /// level flight with them out still needs a positive one (the nose above the horizon).
     #[test]
     fn flaps() {
         let stall = |flaps: bool| {
@@ -1362,30 +1569,14 @@ mod tests {
         let (clean, flaps) = (max_alpha(false), max_alpha(true));
         println!("max angle of attack clean {clean:.1}, flaps {flaps:.1}");
         assert!(flaps > clean + 2.0);
-        // Lowering the flaps in level flight, gear down: no nose-down step.
-        let mut a = airborne(3000.0, 220.0, 60.0);
-        a.gear_down = true;
-        let k = FlightConstants { landing: 1, ..default() };
-        let mut pos = WorldPos(wu_to_bevy(0.0, 0.0, a.view_z() as f64));
-        let mut tf = Transform::default();
-        let c = FlightControls::default();
-        let mut start = 0.0;
-        let mut pitch_min = f32::MAX;
-        for step in 0..720 {
-            a.flaps = step >= 60;
-            modern::step(&mut a, &mut pos, &mut tf, 1.0 / 120.0, &c, &k, None);
-            let pitch = a.euler().1.to_degrees();
-            if step == 59 {
-                start = pitch;
-            } else if step > 59 {
-                pitch_min = pitch_min.min(pitch);
-            }
-        }
-        println!("flaps lowered: pitch {start:.1} -> lowest {pitch_min:.1}, alt {:.0}", a.altitude);
-        assert!(
-            pitch_min > start - 1.0,
-            "nose dropped from {start:.1} to {pitch_min:.1} with the flaps"
-        );
+        // Trimmed level flight with the flaps out, fast for them: the 1 g angle of attack (the
+        // nose over the flight path) stays positive.
+        let mut a0 = airborne(3000.0, 280.0, 60.0);
+        a0.flaps = true;
+        let (a, _) = fly(false, a0, 0.5, 1, |_, _| {});
+        let pitch = a.euler().1.to_degrees();
+        println!("flaps out at 280 kt: pitch {pitch:.1}");
+        assert!(pitch > 2.0, "nose at {pitch:.1} with the flaps out");
     }
 
     /// A damaged elevator out of trim: hands off, the nose runs away without the auto trim and

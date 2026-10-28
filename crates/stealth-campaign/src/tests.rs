@@ -1490,7 +1490,15 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Csar,
         Awacs,
     ];
-    let all = [Aircraft::F117, Aircraft::F16, Aircraft::UH60, Aircraft::AH1Z];
+    let all = [
+        Aircraft::F117,
+        Aircraft::F16,
+        Aircraft::UH60,
+        Aircraft::AH1Z,
+        Aircraft::Tornado,
+        Aircraft::A10,
+        Aircraft::RAH66,
+    ];
     for k in kinds {
         for last in all {
             assert!(k.flyable_by(k.pick(last)), "{k:?} after {last:?}");
@@ -1502,6 +1510,11 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Interdiction.pick(Aircraft::AH1Z), Aircraft::F117);
     assert_eq!(Strike.pick(Aircraft::F16), Aircraft::F16);
     assert_eq!(Cas.pick(Aircraft::AH1Z), Aircraft::AH1Z);
+    assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
+    assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
+    assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);
+    assert_eq!(Escort.pick(Aircraft::RAH66), Aircraft::RAH66);
+    assert_eq!(Interdiction.pick(Aircraft::RAH66), Aircraft::F117);
 }
 
 #[test]
@@ -1800,4 +1813,300 @@ fn a_resupply_for_a_lost_unit_is_called_off() {
     c.tick(tuning::BOARD_REFRESH, &view, &[]);
     assert!(c.supply_requests.is_empty());
     assert!(!c.board.iter().any(|o| o.kind == MissionKind::Resupply));
+}
+
+#[test]
+fn a_unit_out_of_stock_orders_its_resupply_once() {
+    let (mut c, view, at) = battery_view();
+    let ev = c.order_resupply(0, at.0, at.1, true);
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("out of missiles")))
+    );
+    assert_eq!(c.supply_requests[0].by, None);
+    assert!(c.order_resupply(0, at.0, at.1, true).is_empty());
+    // A player's request for it is the same one.
+    assert!(
+        c.apply(P0, Command::RequestResupply { aaa: 0, x: at.0, y: at.1, patriot: true }).is_err()
+    );
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Resupply).count(), 1);
+}
+
+/// The nearest spot to Ramstein where a new site may go.
+fn deploy_spot(c: &CampaignState, patriot: bool, aaa: &[AaaView]) -> (i32, i32) {
+    let p = &c.places[place_named(c, "Ramstein") as usize];
+    (1..40)
+        .flat_map(|r| (0..16).map(move |k| (r, k)))
+        .map(|(r, k)| {
+            let t = k as f64 / 16.0 * std::f64::consts::TAU;
+            (p.x + (t.cos() * r as f64 * 32.0) as i32, p.y + (t.sin() * r as f64 * 32.0) as i32)
+        })
+        .find(|&(x, y)| c.deploy_refusal(x, y, patriot, aaa).is_none())
+        .expect("a free spot")
+}
+
+fn designate(c: &mut CampaignState, (x, y): (i32, i32), patriot: bool) -> Result<u32, String> {
+    c.apply(P0, Command::DesignateSite { x, y, patriot })?;
+    Ok(c.deployments.last().unwrap().id)
+}
+
+fn landed_at(x: i32, y: i32) -> WorldView {
+    WorldView {
+        players: vec![PlayerPos { id: P0, x, y, airborne: false, landed: true, hover_over: None }],
+        ..Default::default()
+    }
+}
+
+fn flying_at(x: i32, y: i32) -> WorldView {
+    WorldView {
+        players: vec![PlayerPos { id: P0, x, y, airborne: true, landed: false, hover_over: None }],
+        ..Default::default()
+    }
+}
+
+#[test]
+fn new_sites_keep_clear_of_places_units_and_the_enemy() {
+    let c = campaign("central_europe", 3);
+    let ramstein = &c.places[place_named(&c, "Ramstein") as usize];
+    let why = c.deploy_refusal(ramstein.x, ramstein.y, false, &[]).unwrap();
+    assert!(why.contains("Too close"), "{why}");
+    let enemy = c.places.iter().find(|p| p.owner == Side::Red).unwrap();
+    let off = (enemy.x + 0x100, enemy.y + 0x100);
+    let why = c.deploy_refusal(off.0, off.1, false, &[]).unwrap();
+    assert!(why.contains("friendly territory") || why.contains("Too close"), "{why}");
+    let at = deploy_spot(&c, true, &[]);
+    let gun = [AaaView { x: at.0 + 4, y: at.1, side: Side::Blue, alive: true }];
+    assert!(c.deploy_refusal(at.0, at.1, true, &gun).unwrap().contains("units"));
+    // A wreck is no unit.
+    let wreck = [AaaView { alive: false, ..gun[0] }];
+    assert!(c.deploy_refusal(at.0, at.1, true, &wreck).is_none());
+}
+
+#[test]
+fn only_three_sites_wait_for_cargo_at_once() {
+    let mut c = campaign("central_europe", 3);
+    for _ in 0..tuning::DEPLOY_OPEN_MAX {
+        let at = deploy_spot(&c, false, &[]);
+        designate(&mut c, at, false).unwrap();
+    }
+    let p = &c.places[place_named(&c, "Ramstein") as usize];
+    let why = c.deploy_refusal(p.x + 0x400, p.y + 0x400, false, &[]).unwrap();
+    assert!(why.contains("waiting"), "{why}");
+}
+
+#[test]
+fn a_gepard_site_is_built_by_one_load_of_cargo() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, false, &[]);
+    let id = designate(&mut c, at, false).unwrap();
+    // Not twice in one place.
+    assert!(designate(&mut c, at, false).is_err());
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offers: Vec<_> = c.board.iter().filter(|o| o.kind == MissionKind::Logistics).collect();
+    assert_eq!(offers.len(), 1);
+    let offer = offers[0].clone();
+    assert_eq!((offer.x, offer.y), at);
+    assert_eq!(c.site(offer.base).unwrap().kind, SiteKind::Airfield);
+    let take = |a| Command::TakeMission { offer: offer.id, base: None, aircraft: a };
+    assert!(c.apply(P0, take(Aircraft::F16)).is_err());
+    c.apply(P0, take(Aircraft::UH60)).unwrap();
+    // Landed at the pad without the cargo: nothing.
+    let mut ev = Vec::new();
+    for _ in 0..30 {
+        ev.extend(c.tick(1.0, &landed_at(at.0, at.1), &[]));
+    }
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { .. })));
+    // Hooked at the base, set down by the pad.
+    let base = c.site(offer.base).unwrap();
+    let over_base = flying_at(base.x, base.y);
+    let far = flying_at(base.x + 0x200, base.y);
+    assert_eq!(c.hook_refusal(P0, id, 0, &far).unwrap(), "Too far from the cargo");
+    assert_eq!(c.hook_refusal(P0, id, 0, &over_base), None);
+    c.apply(P0, Command::HookCrate { id, leg: 0 }).unwrap();
+    assert_eq!(c.deployment(id).unwrap().crate_state(0), CrateState::Carried(P0));
+    c.tick(1.0, &over_base, &[]);
+    assert!(c.hook_refusal(P0, id, 0, &over_base).is_some());
+    let drop = |east| Command::DropCrate { id, leg: 0, east, north: 3.0, heading: 0.0 };
+    assert!(c.apply(P0, drop(400.0)).is_err());
+    ev.extend(c.apply(P0, drop(5.0)).unwrap());
+    ev.extend(c.tick(1.0, &flying_at(at.0, at.1), &[]));
+    let unit = (at.0, at.1 - tuning::DEPLOY_UNIT_OFFSET);
+    assert!(
+        ev.contains(&CampaignEvent::SiteBuilt { id, x: unit.0, y: unit.1, patriot: false }),
+        "{ev:?}"
+    );
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { player: P0, .. })));
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    assert!(!c.board.iter().any(|o| o.kind == MissionKind::Logistics));
+    // It stands, then it is destroyed: the site is gone.
+    let mut gun = WorldView {
+        aaa: vec![AaaView { x: unit.0, y: unit.1, side: Side::Blue, alive: true }],
+        ..Default::default()
+    };
+    c.tick(1.0, &gun, &[]);
+    assert!(c.deployment(id).is_some_and(|d| d.built && d.seen));
+    gun.aaa[0].alive = false;
+    c.tick(1.0, &gun, &[]);
+    assert!(c.deployments.is_empty());
+}
+
+#[test]
+fn a_patriot_site_takes_three_loads_and_the_ai_brings_the_untaken_ones() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, true, &[]);
+    let id = designate(&mut c, at, true).unwrap();
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Logistics).count(), 3);
+    let mut built = false;
+    for n in 1..=3 {
+        let ev = c.tick(tuning::DEPLOY_AI_WAIT + 1.0, &WorldView::default(), &[]);
+        let Some(&CampaignEvent::CargoLaunched { tag, x, y, .. }) =
+            ev.iter().find(|e| matches!(e, CampaignEvent::CargoLaunched { .. }))
+        else {
+            panic!("no cargo helicopter: {ev:?}")
+        };
+        assert_eq!((x, y), at);
+        assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Logistics).count(), 3 - n);
+        let ev = c.tick(1.0, &WorldView::default(), &[Report::SupplyDelivered { tag }]);
+        assert_eq!(c.deployment(id).unwrap().delivered.len(), n);
+        built = ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { patriot: true, .. }));
+        assert_eq!(built, n == 3);
+    }
+    assert!(built);
+}
+
+#[test]
+fn a_site_not_supplied_in_a_day_loses_its_helipad() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, true, &[]);
+    designate(&mut c, at, true).unwrap();
+    // Lost cargo helicopters don't bring it: the loads stay open.
+    let mut t = 0.0;
+    while t < tuning::DEPLOY_TIMEOUT - 3600.0 {
+        let ev = c.tick(600.0, &WorldView::default(), &[]);
+        let lost: Vec<Report> = ev
+            .iter()
+            .filter_map(|e| match *e {
+                CampaignEvent::CargoLaunched { tag, .. } => {
+                    Some(Report::FlightDestroyed { tag, side: Side::Blue, x: 0, y: 0, by: None })
+                }
+                _ => None,
+            })
+            .collect();
+        c.tick(1.0, &WorldView::default(), &lost);
+        t += 601.0;
+    }
+    assert_eq!(c.deployments.len(), 1);
+    let ev = c.tick(3600.0, &WorldView::default(), &[]);
+    assert!(c.deployments.is_empty());
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("helipad"))));
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    assert!(!c.board.iter().any(|o| o.kind == MissionKind::Logistics));
+}
+
+#[test]
+fn deployments_save_and_load() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, false, &[]);
+    designate(&mut c, at, false).unwrap();
+    let json = serde_json::to_string(&c).unwrap();
+    let back: CampaignState = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.deployments, c.deployments);
+}
+
+/// A Patriot site on the board with P0 on its first load's sortie, over the crates' base.
+fn patriot_sortie() -> (CampaignState, u32, WorldView) {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, true, &[]);
+    let id = designate(&mut c, at, true).unwrap();
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offer = c.board.iter().find(|o| o.kind == MissionKind::Logistics).unwrap().clone();
+    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::UH60 })
+        .unwrap();
+    let b = c.site(c.deployment(id).unwrap().base.unwrap()).unwrap();
+    let view = flying_at(b.x, b.y);
+    (c, id, view)
+}
+
+#[test]
+fn a_crate_in_the_air_is_back_at_its_base_after_a_reload_and_set_down_ones_stay() {
+    let (mut c, id, view) = patriot_sortie();
+    assert_eq!(c.deployment(id).unwrap().crates, vec![CrateState::AtBase; 3]);
+    c.apply(P0, Command::HookCrate { id, leg: 1 }).unwrap();
+    c.apply(P0, Command::DropCrate { id, leg: 1, east: 4.0, north: -6.0, heading: 1.0 }).unwrap();
+    // Not his sortie's load, but it is in.
+    assert_eq!(c.deployment(id).unwrap().delivered, vec![1]);
+    c.apply(P0, Command::HookCrate { id, leg: 2 }).unwrap();
+    // Taken: not on the board, and no AI helicopter brings it.
+    c.tick(tuning::BOARD_REFRESH, &view, &[]);
+    let legs: Vec<_> = c
+        .board
+        .iter()
+        .filter_map(|o| match o.objective {
+            Objective::Logistics { leg, .. } => Some(leg),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(legs, vec![0]);
+    let ev = c.tick(tuning::DEPLOY_AI_WAIT + 1.0, &view, &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::CargoLaunched { .. })), "{ev:?}");
+    let json = serde_json::to_string(&c).unwrap();
+    let mut back: CampaignState = serde_json::from_str(&json).unwrap();
+    back.after_load();
+    let d = back.deployment(id).unwrap();
+    assert_eq!(
+        d.crates,
+        vec![
+            CrateState::AtBase,
+            CrateState::Delivered { east: 4.0, north: -6.0, heading: 1.0 },
+            CrateState::AtBase
+        ]
+    );
+}
+
+#[test]
+fn a_crate_goes_back_when_its_helicopter_is_gone() {
+    let (mut c, id, view) = patriot_sortie();
+    c.apply(P0, Command::HookCrate { id, leg: 0 }).unwrap();
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.deployment(id).unwrap().crate_state(0), CrateState::Carried(P0));
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.deployment(id).unwrap().crate_state(0), CrateState::AtBase);
+}
+
+#[test]
+fn the_last_crate_builds_the_site_and_its_crates_go() {
+    let (mut c, id, _) = patriot_sortie();
+    let mut ev = Vec::new();
+    for leg in 0..3 {
+        c.apply(P0, Command::HookCrate { id, leg }).unwrap();
+        let drop = Command::DropCrate { id, leg, east: leg as f32 * 5.0, north: 0.0, heading: 0.0 };
+        ev.extend(c.apply(P0, drop).unwrap());
+    }
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { patriot: true, .. })));
+    let d = c.deployment(id).unwrap();
+    assert!(d.built && d.crates.is_empty());
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { player: P0, .. })));
+}
+
+#[test]
+fn a_save_from_before_the_crates_places_them() {
+    let (mut c, id, _) = patriot_sortie();
+    let ev = c.tick(tuning::DEPLOY_AI_WAIT + 1.0, &WorldView::default(), &[]);
+    let Some(&CampaignEvent::CargoLaunched { tag, .. }) =
+        ev.iter().find(|e| matches!(e, CampaignEvent::CargoLaunched { .. }))
+    else {
+        panic!("no cargo helicopter: {ev:?}")
+    };
+    c.tick(1.0, &WorldView::default(), &[Report::SupplyDelivered { tag }]);
+    let leg = c.deployment(id).unwrap().delivered[0];
+    let d = c.deployments.iter_mut().find(|d| d.id == id).unwrap();
+    d.crates.clear();
+    d.base = None;
+    c.after_load();
+    let d = c.deployment(id).unwrap();
+    assert!(d.base.is_some());
+    assert_eq!(d.crates.len(), 3);
+    assert_eq!(d.crates[leg as usize], crate_slot(leg));
 }

@@ -84,6 +84,8 @@ pub struct MenuState {
     pub moon: Option<u8>,
     /// The mission screen (single mission or career sortie) instead of the main menu.
     pub mission_screen: bool,
+    /// The browser build: the first screen (play here, or download the desktop game) is up.
+    web_gateway: bool,
     /// Multiplayer: the player's name, the last server joined ("host[:port]"), and how this
     /// game serves (name, empty: "<player>'s campaign"; port, players).
     pub player_name: String,
@@ -164,6 +166,7 @@ impl Default for MenuState {
                 ["--open-mission", "--open-planner", "--open-loadout", "--open-saves"]
                     .contains(&a.as_str())
             }),
+            web_gateway: cfg!(target_arch = "wasm32"),
             player_name: String::new(),
             server_addr: String::new(),
             server_name: String::new(),
@@ -196,7 +199,7 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft and their notes.
-const AIRCRAFT: [(AircraftKind, &[&str]); 4] = [
+const AIRCRAFT: [(AircraftKind, &[&str]); 7] = [
     (
         AircraftKind::F117,
         &["Stealth attack aircraft", "Subsonic, 7 g", "Modern and classic cockpit"],
@@ -206,12 +209,32 @@ const AIRCRAFT: [(AircraftKind, &[&str]); 4] = [
         &["Multirole fighter", "Mach 2 class, 9 g, quick roll", "F-16 cockpit with RWR"],
     ),
     (
+        AircraftKind::Tornado,
+        &[
+            "Low-level strike aircraft",
+            "Swing wings sweep with speed",
+            "Modern cockpit, three MFDs",
+        ],
+    ),
+    (
+        AircraftKind::A10,
+        &["Close air support aircraft", "Slow and rugged, 30 mm cannon", "A-10C cockpit, two MFDs"],
+    ),
+    (
         AircraftKind::UH60,
         &["Utility helicopter", "Inserts troops: land near the target", "Cyclic and collective"],
     ),
     (
         AircraftKind::AH1Z,
         &["Attack helicopter", "Turret gun, Hellfires, AIM-9", "Gun and Hellfires follow the pod"],
+    ),
+    (
+        AircraftKind::RAH66,
+        &[
+            "Stealth scout helicopter",
+            "Bays: Hellfires or Stingers",
+            "Hard to see on radar, slow or hovering",
+        ],
     ),
 ];
 
@@ -1090,6 +1113,60 @@ pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
     (ctx.content_rect().width() - 32.0).clamp(600.0, 1400.0)
 }
 
+/// What the download has that the browser build has not (`web_gateway`), with the reason.
+#[cfg(target_arch = "wasm32")]
+const DOWNLOAD_GIVES: [(&str, &str); 7] = [
+    ("VR", "Fly in VR on any OpenXR-compatible headset and the Steam Frame"),
+    ("HOTAS", "Full support for gamepads, joysticks, throttles and pedals"),
+    ("Better multiplayer", "Direct UDP connection to servers for less lag"),
+    ("Host your own server", "Host a coop campaign, or run a dedicated server"),
+    ("Head tracking", "TrackIR-style trackers through OpenTrack"),
+    ("Tacview", "Flight recordings and real-time telemetry"),
+    ("Yours to keep", "If the website goes down you still have your own copy"),
+];
+
+/// The browser build's first screen: play in the browser or download the desktop game, beside
+/// what the download version adds.
+#[cfg(target_arch = "wasm32")]
+fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
+    let wide = |text: &str| big_button(text).min_size(egui::vec2(300.0, 50.0));
+    let width = (ctx.content_rect().width() - 32.0).clamp(600.0, 820.0);
+    menu_window(ctx, "Stealth Mission 89", width).show(ctx, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("STEALTH MISSION 89").heading().color(BRIGHT));
+            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+        });
+        ui.add_space(14.0);
+        ui.horizontal_top(|ui| {
+            ui.vertical(|ui| {
+                ui.set_width(300.0);
+                if ui.add(wide("PLAY IN BROWSER")).clicked() {
+                    state.web_gateway = false;
+                }
+                ui.label(egui::RichText::new("Right here, nothing to install").color(DIM));
+                ui.add_space(14.0);
+                if ui.add(wide("DOWNLOAD")).clicked() {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
+                }
+                ui.label(
+                    egui::RichText::new("Windows, Linux and macOS, Steam Deck and Steam Frame")
+                        .color(DIM),
+                );
+            });
+            ui.add_space(16.0);
+            ui.vertical(|ui| {
+                group(ui, "The download version", |ui| {
+                    for (what, why) in DOWNLOAD_GIVES {
+                        ui.label(egui::RichText::new(format!("> {what}")).color(GREEN));
+                        ui.label(egui::RichText::new(why).size(14.0).color(DIM));
+                        ui.add_space(2.0);
+                    }
+                });
+            });
+        });
+    });
+}
+
 /// The top level: what to play.
 fn main_screen(
     ctx: &egui::Context,
@@ -1328,7 +1405,13 @@ pub(crate) fn menu_ui(
     let realistic_before = state.realistic(settings.aircraft);
     // One window at a time: the open dialog replaces the screen it was opened from.
     let dialogs = dialog.open || options.open || career.open || campaign.open || multiplayer.open;
-    if !state.mission_screen && !dialogs {
+    // The browser build first asks whether to play here or download (never up on the desktop).
+    let gateway = state.web_gateway && !state.mission_screen && !dialogs;
+    #[cfg(target_arch = "wasm32")]
+    if gateway {
+        web_gateway(ctx, &mut state);
+    }
+    if !state.mission_screen && !dialogs && !gateway {
         main_screen(
             ctx,
             &mut state,

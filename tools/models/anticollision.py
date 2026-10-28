@@ -42,6 +42,7 @@ LIGHTS = {
     21: [(SINGLE, "fin")],  # F-15
     22: TWIN_RED,  # Su-27
     23: [(SINGLE, "fin")],  # F-16
+    45: [(BEACON, "top", 0), (BEACON, "bottom", 0)],  # Tornado IDS: spine and belly beacons
     26: [(SINGLE, "fin")],  # F/A-18
     27: [(BEACON, "top", -32), (BEACON, "bottom", 0)],  # A-6
     28: FIGHTER_RED,  # MiG-21

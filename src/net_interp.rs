@@ -187,6 +187,7 @@ pub fn blend(a: &PlayerView, b: &PlayerView, k: f64) -> PlayerView {
         velocity: lerp(a.velocity, b.velocity),
         knots: lerp(a.knots, b.knots),
         climb: lerp(a.climb, b.climb),
+        height: lerp(a.height, b.height),
     }
 }
 

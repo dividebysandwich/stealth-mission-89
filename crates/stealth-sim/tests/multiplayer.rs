@@ -54,6 +54,7 @@ fn flying(mx: i32, my: i32, alt: u16, heading: u16, knots: u16) -> PlayerState {
         x,
         y,
         altitude: alt,
+        height: alt,
         heading,
         velocity: knots * 27,
         gear_up: true,

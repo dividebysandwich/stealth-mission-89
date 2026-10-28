@@ -15,6 +15,9 @@ pub enum AircraftKind {
     F16,
     UH60,
     AH1Z,
+    Tornado,
+    A10,
+    RAH66,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -27,8 +30,8 @@ pub struct CockpitView {
     pub cut: (Vec3, Vec3),
     /// Also drawn from inside (back faces): a cabin without an interior model of its own.
     pub two_sided: bool,
-    /// The rotors (the model's articulated parts) are drawn too, overhead.
-    pub rotors: bool,
+    /// The model's articulated parts are drawn too: the rotors overhead, the swing wings.
+    pub parts: bool,
 }
 
 pub struct AircraftSpec {
@@ -63,7 +66,7 @@ pub struct AircraftSpec {
     /// Flown by the helicopter flight model (`flight::heli`): lands anywhere flat, no ejection
     /// seat, and no gun unless it has a turret.
     pub helicopter: bool,
-    /// A turret cannon aimed with the targeting pod, and no troops (the AH-1Z).
+    /// A turret cannon aimed with the targeting pod, and no troops (the AH-1Z, the RAH-66).
     pub turret: bool,
     /// A helmet-mounted display (`hmd.rs`).
     pub hmd: Hmd,
@@ -72,7 +75,25 @@ pub struct AircraftSpec {
     /// Where the damage smoke and fire come out, the contrails either side of it (aircraft
     /// frame, m).
     pub exhaust: Vec3,
+    /// The afterburning engines' nozzle exits (aircraft frame, m) and their radius (m), where
+    /// the afterburner plumes start (`afterburner_flame.rs`).
+    pub nozzles: &'static [Vec3],
+    pub nozzle_radius: f32,
+    /// A swing wing (`flight::modern::SwingWing`): the model's outer wings are parts turning
+    /// about their pivots with state slots `WING_SLOTS`, drawn at the forward sweep.
+    pub swing_wing: bool,
     flight: fn() -> FlightConstants,
+}
+
+/// The model state slots of a swing wing's right and left outer wing: their angle back from
+/// the forward sweep (16-bit binary angle; the left one negative).
+pub const WING_SLOTS: (usize, usize) = (21, 22);
+
+/// The state slot values of a swing wing at `at` (0 fully forward .. 1 fully back, the
+/// leading edge from `forward` to `back` rad).
+pub fn wing_slot_values(at: f32, forward: f32, back: f32) -> (i16, i16) {
+    let bam = ((back - forward) * at.clamp(0.0, 1.0) / std::f32::consts::TAU * 65536.0) as i16;
+    (bam, -bam)
 }
 
 /// A helmet-mounted display's symbology (`hmd.rs`).
@@ -139,6 +160,8 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         3 | 26 => Some(1.65),
         7 => Some(1.7),
         23 => Some(F16_LIFT - RUNWAY_Y),
+        45 => Some(TORNADO_LIFT - RUNWAY_Y),
+        32 => Some(A10_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -168,7 +191,7 @@ static F117: AircraftSpec = AircraftSpec {
         canopy_colours: &[144, 145],
         cut: (Vec3::new(-0.60, -1.20, -1.10), Vec3::new(0.60, 0.30, 0.90)),
         two_sided: false,
-        rotors: false,
+        parts: false,
     }),
     cockpits: &[(PanelStyle::Modern, "cockpit_modern"), (PanelStyle::Classic, "cockpit_classic")],
     // tools/models/build_cockpit_f117.py SCALE.
@@ -185,6 +208,9 @@ static F117: AircraftSpec = AircraftSpec {
     hmd: Hmd::None,
     muzzle: None,
     exhaust: F117_EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
     flight: FlightConstants::default,
 };
 
@@ -198,7 +224,7 @@ static F16: AircraftSpec = AircraftSpec {
         canopy_colours: &[144, 145],
         cut: (Vec3::new(-0.40, -1.15, -0.85), Vec3::new(0.40, 0.40, 0.80)),
         two_sided: false,
-        rotors: false,
+        parts: false,
     }),
     cockpits: &[(PanelStyle::F16, "cockpit_f16")],
     cockpit_size: 1.0,
@@ -215,6 +241,9 @@ static F16: AircraftSpec = AircraftSpec {
     muzzle: None,
     // The nozzle.
     exhaust: f16_point(0.0, -7.2, 0.04),
+    nozzles: &[f16_point(0.0, -7.2, 0.04)],
+    nozzle_radius: 0.45,
+    swing_wing: false,
     flight: FlightConstants::f16,
 };
 
@@ -239,7 +268,7 @@ static UH60: AircraftSpec = AircraftSpec {
         canopy_colours: &[144, 145],
         cut: (Vec3::ZERO, Vec3::ZERO),
         two_sided: true,
-        rotors: true,
+        parts: true,
     }),
     cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
     cockpit_size: 1.0,
@@ -254,6 +283,9 @@ static UH60: AircraftSpec = AircraftSpec {
     hmd: Hmd::None,
     muzzle: None,
     exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
     flight: FlightConstants::uh60,
 };
 
@@ -277,7 +309,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
         canopy_colours: &[144, 145],
         cut: (Vec3::ZERO, Vec3::ZERO),
         two_sided: true,
-        rotors: true,
+        parts: true,
     }),
     cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
     cockpit_size: 1.0,
@@ -292,19 +324,166 @@ static AH1Z: AircraftSpec = AircraftSpec {
     // The chin turret's barrels.
     muzzle: Some(ah1z_point(0.0, 5.30, 0.58)),
     exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
     flight: FlightConstants::ah1z,
 };
 
+/// A point of the RAH-66 model (tools/models/comanche.py, as `ah1z_point`) in the aircraft frame.
+const fn rah66_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.38;
+    model_point(RAH66_LIFT, x * K, z * K, -y * K)
+}
+
+/// The RAH-66's model origin is on the ground under its wheels; clear of the ground overlays.
+const RAH66_LIFT: f32 = 0.05;
+
+static RAH66: AircraftSpec = AircraftSpec {
+    model: "aircraft_046",
+    model_lift: RAH66_LIFT,
+    // The pilot's (front) seat: behind the windshield's bow (y 2.48 at the sill, 2.71 at the
+    // roof) and ahead of the gunner's (y 1.84), the head under the flat roof (z 2.51), the sills
+    // (z 1.47) at the elbows.
+    eye: rah66_point(0.0, 2.10, 2.06),
+    cockpit_view: Some(CockpitView {
+        // The canopy: open from inside; the hull drawn from inside round the tandem cockpits.
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Rah66, "cockpit_rah66")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: crate::hud::modern::SCALE,
+    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    bomb_bay: true,
+    helicopter: true,
+    turret: true,
+    hmd: Hmd::Full,
+    // The chin turret's barrels.
+    muzzle: Some(rah66_point(0.0, 4.75, 0.56)),
+    exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    flight: FlightConstants::rah66,
+};
+
+/// The Tornado's wheels are 1.90 m below its model origin (tools/models/aircraft.py
+/// `TORNADO_GROUND`).
+const TORNADO_LIFT: f32 = 1.90 + RUNWAY_Y;
+/// A point of the Tornado's builder (tools/models/aircraft.py `tornado`: metres, x right, y
+/// forward, z up) in the aircraft frame: the model is centred on its length, 0.105 m ahead of
+/// the builder's origin.
+const fn tornado_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(TORNADO_LIFT, x * K, z * K, -(y - 0.105) * K)
+}
+
+static TORNADO: AircraftSpec = AircraftSpec {
+    model: "aircraft_045",
+    model_lift: TORNADO_LIFT,
+    // The pilot's (front) seat under the canopy (y 1.4..5.95 m, sill z 0.5, top 1.32 m), 0.3 m
+    // under its top and ahead of the navigator's.
+    eye: tornado_point(0.0, 4.25, 1.00),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.45, -1.15, -0.85), Vec3::new(0.45, 0.40, 0.80)),
+        two_sided: false,
+        // The outer wings.
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Tornado, "cockpit_tornado")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // As the F-16's: the symbology (about 920 x 470 canvas pixels) inside the combiner of the
+    // same angular size (x +-0.18, z -0.105 .. 0.095 at 0.80 m in front of the eye,
+    // tools/models/build_cockpit_tornado.py).
+    hud_scale: 2080.0,
+    vr_hud_scale: 2080.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    muzzle: None,
+    // Between the two nozzles.
+    exhaust: tornado_point(0.0, -7.35, -0.15),
+    nozzles: &[tornado_point(0.55, -7.35, -0.15), tornado_point(-0.55, -7.35, -0.15)],
+    nozzle_radius: 0.38,
+    swing_wing: true,
+    flight: FlightConstants::tornado,
+};
+
+/// The A-10's wheels are 2.06 m below its model origin (tools/models/aircraft.py `A10_GROUND`).
+const A10_LIFT: f32 = 2.06 + RUNWAY_Y;
+/// A point of the A-10's builder (tools/models/aircraft.py `a10`: metres, x right, y forward, z
+/// up) in the aircraft frame: the model is centred on its length, 0.13 m ahead of the builder's
+/// origin.
+const fn a10_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(A10_LIFT, x * K, z * K, -(y - 0.13) * K)
+}
+
+static A10: AircraftSpec = AircraftSpec {
+    model: "aircraft_032",
+    model_lift: A10_LIFT,
+    // Under the bubble canopy (y 3.05..6.66 m, sill z 0.95, top 1.63 m), 0.38 m under its top.
+    eye: a10_point(0.0, 4.55, 1.25),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.50, -1.15, -0.85), Vec3::new(0.50, 0.40, 0.80)),
+        two_sided: false,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::A10, "cockpit_a10")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // The F-16's, scaled to the taller combiner (x +-0.17, z -0.13 .. 0.11 at 0.70 m in front
+    // of the eye, tools/models/build_cockpit_a10.py).
+    hud_scale: 1900.0,
+    vr_hud_scale: 1900.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    // The GAU-8's muzzle under the nose.
+    muzzle: Some(a10_point(0.0, 8.36, -0.34)),
+    // Between the two engines.
+    exhaust: a10_point(0.0, -5.0, 0.80),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    flight: FlightConstants::a10,
+};
+
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 4] =
-        [AircraftKind::F117, AircraftKind::F16, AircraftKind::UH60, AircraftKind::AH1Z];
+    pub const ALL: [AircraftKind; 7] = [
+        AircraftKind::F117,
+        AircraftKind::F16,
+        AircraftKind::Tornado,
+        AircraftKind::A10,
+        AircraftKind::UH60,
+        AircraftKind::AH1Z,
+        AircraftKind::RAH66,
+    ];
 
     /// What another pilot flies.
     pub fn of_remote(p: &stealth_sim::net::RemotePilot) -> Self {
-        if p.gunship {
+        if p.comanche {
+            AircraftKind::RAH66
+        } else if p.gunship {
             AircraftKind::AH1Z
         } else if p.helicopter {
             AircraftKind::UH60
+        } else if p.tornado {
+            AircraftKind::Tornado
+        } else if p.a10 {
+            AircraftKind::A10
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -318,6 +497,9 @@ impl AircraftKind {
             AircraftKind::F16 => &F16,
             AircraftKind::UH60 => &UH60,
             AircraftKind::AH1Z => &AH1Z,
+            AircraftKind::Tornado => &TORNADO,
+            AircraftKind::A10 => &A10,
+            AircraftKind::RAH66 => &RAH66,
         }
     }
 
@@ -328,6 +510,9 @@ impl AircraftKind {
             AircraftKind::F16 => "f16",
             AircraftKind::UH60 => "uh60",
             AircraftKind::AH1Z => "ah1z",
+            AircraftKind::Tornado => "tornado",
+            AircraftKind::A10 => "a10",
+            AircraftKind::RAH66 => "rah66",
         }
     }
 
@@ -339,6 +524,10 @@ impl AircraftKind {
                 || (s == "f16c" && *k == AircraftKind::F16)
                 || (matches!(s.as_str(), "uh60a" | "blackhawk") && *k == AircraftKind::UH60)
                 || (matches!(s.as_str(), "ah1" | "viper") && *k == AircraftKind::AH1Z)
+                || (matches!(s.as_str(), "comanche" | "rah66a") && *k == AircraftKind::RAH66)
+                || (matches!(s.as_str(), "tornadoids" | "ids") && *k == AircraftKind::Tornado)
+                || (matches!(s.as_str(), "a10c" | "warthog" | "thunderbolt")
+                    && *k == AircraftKind::A10)
         })
     }
 
@@ -348,6 +537,9 @@ impl AircraftKind {
             AircraftKind::F16 => "F-16C Fighting Falcon",
             AircraftKind::UH60 => "UH-60A Black Hawk",
             AircraftKind::AH1Z => "AH-1Z Viper",
+            AircraftKind::Tornado => "Tornado IDS",
+            AircraftKind::A10 => "A-10C Thunderbolt II",
+            AircraftKind::RAH66 => "RAH-66 Comanche",
         }
     }
 }
@@ -402,7 +594,9 @@ mod tests {
     /// The jets' eye inside the bounds of their canopy glass.
     #[test]
     fn eye_under_the_canopy() {
-        for kind in [AircraftKind::F16, AircraftKind::F117] {
+        for kind in
+            [AircraftKind::F16, AircraftKind::F117, AircraftKind::Tornado, AircraftKind::A10]
+        {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(
                 &format!("{}_lod0", spec.model),
@@ -443,6 +637,19 @@ mod tests {
         assert!(x.abs() < 0.3, "eye {x} m to the side");
     }
 
+    /// The RAH-66's eye: in the pilot's front cockpit between the windshield's bow and the
+    /// gunner's (tools/models/comanche.py STATIONS), under the flat roof, above the sills.
+    #[test]
+    fn rah66_eye_in_the_cockpit() {
+        let spec = AircraftKind::RAH66.spec();
+        let s = AIRCRAFT_MODEL_SCALE as f32 * 16.38;
+        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (eye.x, -eye.z, eye.y);
+        assert!((1.84..2.48).contains(&y), "eye {y} m from the mast");
+        assert!((1.60..2.40).contains(&z), "eye {z} m high");
+        assert!(x.abs() < 0.3, "eye {x} m to the side");
+    }
+
     #[test]
     fn names_round_trip() {
         for k in AircraftKind::ALL {
@@ -454,5 +661,38 @@ mod tests {
         assert_eq!(AircraftKind::parse("blackhawk"), Some(AircraftKind::UH60));
         assert_eq!(AircraftKind::parse("AH-1Z"), Some(AircraftKind::AH1Z));
         assert_eq!(AircraftKind::parse("viper"), Some(AircraftKind::AH1Z));
+        assert_eq!(AircraftKind::parse("Tornado-IDS"), Some(AircraftKind::Tornado));
+        assert_eq!(AircraftKind::parse("A-10C"), Some(AircraftKind::A10));
+        assert_eq!(AircraftKind::parse("warthog"), Some(AircraftKind::A10));
+        assert_eq!(AircraftKind::parse("RAH-66"), Some(AircraftKind::RAH66));
+        assert_eq!(AircraftKind::parse("Comanche"), Some(AircraftKind::RAH66));
+    }
+
+    /// The Tornado's outer wings: two parts on the slots the game sweeps them with, pivoted
+    /// either side of the centreline in the gloves.
+    #[test]
+    fn tornado_wings_are_parts() {
+        let path = crate::asset_path::asset("models/aircraft.glb");
+        let data = std::fs::read(&path).unwrap();
+        let len = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+        let j: serde_json::Value = serde_json::from_slice(&data[20..20 + len]).unwrap();
+        let node = |name: &str| {
+            j["nodes"].as_array().unwrap().iter().find(|n| n["name"] == name).unwrap().clone()
+        };
+        let model = AircraftKind::Tornado.spec().model;
+        for (part, slot, side) in [("_part1", WING_SLOTS.0, 1.0), ("_part2", WING_SLOTS.1, -1.0)] {
+            let n = node(&format!("{model}_lod0{part}"));
+            assert_eq!(n["extras"]["state_slot"].as_u64(), Some(slot as u64), "{part}");
+            assert_eq!(n["extras"]["axis"].as_u64(), Some(0), "{part}");
+            let x = n["translation"][0].as_f64().unwrap() as f32 / 16.384;
+            assert!(x * side > 1.0 && x * side < 2.0, "{part} pivot {x} m out");
+        }
+        // Swept back, the right wing turns its tip aft (the model turns a part by minus its
+        // slot angle about up, -Z forward).
+        let (r, l) = wing_slot_values(1.0, 25f32.to_radians(), 67f32.to_radians());
+        assert_eq!(r, -l);
+        let angle = -(r as u16 as f32) / 65536.0 * std::f32::consts::TAU;
+        let tip = Quat::from_rotation_y(angle) * Vec3::X;
+        assert!(tip.z > 0.6 && (angle.to_degrees() + 42.0).abs() < 0.1, "{tip} {angle}");
     }
 }

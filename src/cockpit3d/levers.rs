@@ -1,10 +1,11 @@
-//! Side stick (right console) and throttle (left console).
+//! Stick (right console, or a centre stick between the knees) and throttle (left console).
 //!
 //! VR: squeeze the grip near the stick to take it. Tilting the controller (relative to how it
 //! was held when grabbed) deflects pitch (tilt back = nose up) and roll; twisting it about the
-//! stick's axis is the rudder. Letting go re-centres the stick. A long stick (a helicopter's
-//! centre cyclic) is moved by the hand instead: its grip follows the hand about the pivot, so it
-//! doesn't swing further than the hand holding it.
+//! stick's axis is the rudder. Letting go re-centres the stick. A centre stick between the knees
+//! (the UH-60A's cyclic, the Tornado's) is moved by the hand instead: its grip follows the hand
+//! about the pivot, so it doesn't swing further than the hand holding it; so, more and more, does
+//! a long side stick.
 //! Squeeze near the throttle handle and slide it along its rails: forward = more thrust; it stays where it is
 //! released, with a haptic tick every 10 %. With an afterburner the lever has a detent at full dry
 //! thrust (a tick, and a gap of no change past it); further forward the afterburner lights and goes out with
@@ -29,8 +30,11 @@ const SLEW_DEADZONE: f32 = 0.15;
 /// Grip centre above the pivot, unless the model says (the stick's `grip`).
 const GRIP_HEIGHT: f32 = 0.11;
 /// Grip heights over which pitch and roll go from the controller's tilt (a short side stick) to
-/// the hand's position about the pivot (a long cyclic).
+/// the hand's position about the pivot (a long one).
 const LONG_STICK: (f32, f32) = (0.2, 0.5);
+/// A stick pivoting this close to the centreline (cockpit frame) is a centre stick: always moved
+/// by the hand's position.
+const CENTRE_STICK: f32 = 0.05;
 /// Full deflection (radians).
 const STICK_TILT: f32 = 0.35;
 const STICK_TWIST: f32 = 0.45;
@@ -112,6 +116,8 @@ pub(super) struct Grabs {
     brakes: bool,
     /// The throttle hand's rumble playing, and seconds into it.
     rumble: Option<(Rumble, f32)>,
+    /// The stick's stall buffet: seconds left of the current knock or gap, and its amplitude.
+    buffet: (f32, f32),
 }
 
 /// A haptic pattern: (start s, end s, amplitude at start, at end) pulses.
@@ -135,6 +141,34 @@ fn ab_shake(ab: f32, t: f32) -> f32 {
     let flutter =
         amp * (std::f32::consts::TAU * f1 * t).sin() * (std::f32::consts::TAU * f2 * t).cos();
     AB_SHAKE.0 + (AB_SHAKE.1 - AB_SHAKE.0) * ab + flutter
+}
+
+/// The stall buffet's depth (`shake::stall_buffet`) at which the stick's rumble is full.
+const BUFFET_DEEP: f32 = 2.0;
+/// Knock length (s) and the gap between knocks (s, shortening as the stall deepens).
+const BUFFET_KNOCK: (f32, f32) = (0.03, 0.09);
+const BUFFET_GAP: (f32, f32) = (0.05, 0.35);
+
+/// The stick's stall buffet: irregular knocks of random length, strength and spacing, sparse and
+/// light at the edge of the buffet and a hard, near-constant hammering deep in the stall. `state`
+/// is `Grabs::buffet`; `rng` draws in 0..1.
+fn stall_rumble(depth: f32, dt: f32, state: &mut (f32, f32), mut rng: impl FnMut() -> f32) -> f32 {
+    if depth <= 0.0 {
+        *state = (0.0, 0.0);
+        return 0.0;
+    }
+    let d = (depth / BUFFET_DEEP).min(1.0);
+    state.0 -= dt;
+    if state.0 <= 0.0 {
+        if rng() < 0.35 + 0.5 * d {
+            state.0 = BUFFET_KNOCK.0 + (BUFFET_KNOCK.1 - BUFFET_KNOCK.0) * rng();
+            state.1 = (0.15 + 0.85 * d) * (0.5 + 0.5 * rng());
+        } else {
+            state.0 = (BUFFET_GAP.0 + (BUFFET_GAP.1 - BUFFET_GAP.0) * rng()) * (1.0 - 0.7 * d);
+            state.1 = 0.0;
+        }
+    }
+    state.1
 }
 
 /// The rumble's amplitude `t` seconds in (None: over).
@@ -212,8 +246,12 @@ fn stick_angles_moved(p0: Vec3, p: Vec3) -> (f32, f32) {
     (p.z.atan2(p.y) - p0.z.atan2(p0.y), p.x.atan2(p.y) - p0.x.atan2(p0.y))
 }
 
-/// How much the hand's position (rather than the controller's tilt) moves a stick this long.
-fn stick_follow(grip_height: f32) -> f32 {
+/// How much the hand's position (rather than the controller's tilt) moves a stick: fully a
+/// centre stick, a side stick by its length.
+fn stick_follow(pivot: Vec3, grip_height: f32) -> f32 {
+    if pivot.x.abs() < CENTRE_STICK {
+        return 1.0;
+    }
     ((grip_height - LONG_STICK.0) / (LONG_STICK.1 - LONG_STICK.0)).clamp(0.0, 1.0)
 }
 
@@ -241,7 +279,7 @@ pub(super) fn grab_levers(
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
     aircraft: Query<&Aircraft, With<Player>>,
-    block: Res<crate::input::InputBlock>,
+    (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
     anchors: Res<CockpitAnchors>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     k: Res<FlightConstants>,
@@ -295,7 +333,7 @@ pub(super) fn grab_levers(
         let delta = right.grip.rotation * g.rot0.inverse();
         let (tp, tr) = stick_angles(delta);
         let (mp, mr) = stick_angles_moved(g.p0, right.grip.translation - anchors.stick_pivot);
-        let w = stick_follow(anchors.grip_height);
+        let w = stick_follow(anchors.stick_pivot, anchors.grip_height);
         let (p, r) = (tp + (mp - tp) * w, tr + (mr - tr) * w);
         controls.pitch = (p / STICK_TILT).clamp(-1.0, 1.0);
         controls.roll = (r / STICK_TILT).clamp(-1.0, 1.0);
@@ -377,6 +415,14 @@ pub(super) fn grab_levers(
             *t += time.delta_secs();
         }
     }
+    // The stall buffet shakes the hand on the stick.
+    let depth = aircraft
+        .single()
+        .ok()
+        .filter(|a| a.ended.is_none() && grabs.stick.is_some())
+        .map_or(0.0, crate::shake::stall_buffet);
+    let buffet = stall_rumble(depth, time.delta_secs(), &mut grabs.buffet, rand::random::<f32>);
+    right.haptic = right.haptic.max(buffet);
     let shake = aircraft
         .single()
         .ok()
@@ -421,8 +467,9 @@ pub(super) fn grab_levers(
                 input => (hand.held(vr_bit(input)), hand.just_pressed(vr_bit(input))),
             };
             match m.target {
-                ButtonTarget::Gun => controls.gun |= held,
-                ButtonTarget::Action(Action::FireWeapon) if held && !block.0 => {
+                // At an air defence console the trigger (fire) fires its gun, not the gun button.
+                ButtonTarget::Gun => controls.gun |= held && !block.0,
+                ButtonTarget::Action(Action::FireWeapon) if held && (!block.0 || console.0) => {
                     controls.fire = true;
                     if pressed {
                         actions.write(ActionEvent(Action::FireWeapon));
@@ -517,6 +564,31 @@ pub(super) fn animate_levers(
 mod tests {
     use super::*;
 
+    /// The stall buffet: nothing outside it, knocks with gaps at its edge, and on average harder
+    /// and more often the deeper the stall.
+    #[test]
+    fn stall_buffet_rumble() {
+        let mut seed = 12345u32;
+        let mut rng = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed as f32 / u32::MAX as f32
+        };
+        let mut state = (0.0, 0.0);
+        assert_eq!(stall_rumble(0.0, 0.011, &mut state, &mut rng), 0.0);
+        let mut mean = |depth: f32| {
+            let mut state = (0.0, 0.0);
+            let amps: Vec<f32> =
+                (0..2000).map(|_| stall_rumble(depth, 0.011, &mut state, &mut rng)).collect();
+            assert!(amps.contains(&0.0) || depth >= BUFFET_DEEP);
+            assert!(amps.iter().all(|&a| a <= 1.0));
+            amps.iter().sum::<f32>() / amps.len() as f32
+        };
+        let (edge, stall, deep) = (mean(0.3), mean(1.0), mean(2.0));
+        assert!(edge > 0.0 && edge < stall && stall < deep, "{edge} {stall} {deep}");
+    }
+
     /// The afterburner's rumbles: knocks with a gap between them, then a fade; over at their end.
     #[test]
     fn afterburner_rumbles() {
@@ -536,13 +608,19 @@ mod tests {
         );
     }
 
-    /// A long cyclic's grip stays in the hand: moving the hand 10 cm back tilts the stick so its
-    /// grip moves 10 cm back. A short side stick still goes by the controller's tilt.
+    /// A centre stick's grip stays in the hand, however short (the Tornado's, 0.39 m): moving
+    /// the hand 10 cm back tilts the stick so its grip moves 10 cm back, and moving it sideways
+    /// rolls. A short side stick still goes by the controller's tilt, a long one by the hand.
     #[test]
-    fn long_stick_follows_the_hand() {
-        let height = 0.59;
-        assert_eq!(stick_follow(height), 1.0);
-        assert_eq!(stick_follow(0.11), 0.0);
+    fn centre_stick_follows_the_hand() {
+        let side = Vec3::new(0.28, -0.66, -0.22);
+        assert_eq!(stick_follow(side, 0.11), 0.0);
+        assert_eq!(stick_follow(side, 0.59), 1.0);
+        let centre = Vec3::new(0.0, -0.99, -0.32);
+        for height in [0.39, 0.59] {
+            assert_eq!(stick_follow(centre, height), 1.0, "{height}");
+        }
+        let height = 0.39;
         let p0 = Vec3::Y * height;
         let (pitch, roll) = stick_angles_moved(p0, p0 + Vec3::new(0.0, 0.0, 0.10));
         let grip = Quat::from_rotation_x(pitch) * p0;

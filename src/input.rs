@@ -2,6 +2,7 @@
 //! keyboard "virtual stick" (also gamepad stick). Game logic only reads
 //! `FlightControls` and `ActionEvent`s, so other sources (HOTAS, VR controllers) can be added.
 
+use bevy::input::gamepad::GamepadInput;
 use bevy::prelude::*;
 
 pub struct InputPlugin;
@@ -11,6 +12,7 @@ impl Plugin for InputPlugin {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
             .add_message::<ActionEvent>()
             .add_plugins(crate::hotas::build)
             .add_systems(
@@ -26,6 +28,11 @@ impl Plugin for InputPlugin {
 /// While set (the in-flight menu is open), keys, buttons and sticks only open and close the menu.
 #[derive(Resource, Default)]
 pub struct InputBlock(pub bool);
+
+/// At an air defence console (the input blocked): the stick and the gun and fire triggers still
+/// pass, they slew and fire its gun (`station`).
+#[derive(Resource, Default)]
+pub struct ConsoleStick(pub bool);
 
 /// Keyboard, gamepad and joystick reading (other input sources run after it and override).
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -140,6 +147,8 @@ pub enum Action {
     TrimReset,
     /// Master caution: silences the alarms sounding.
     MasterCaution,
+    /// Starts / stops recording an animated GIF (`gif_recorder`), in any screen.
+    RecordGif,
 }
 
 impl Action {
@@ -376,6 +385,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
+        (None, K::F12, RecordGif),
     ]
 };
 
@@ -399,7 +409,7 @@ impl Default for VirtualStick {
 const DOUBLE_TAP_S: f64 = 5.0 / 18.2;
 
 /// Keyboard sensor/cursor slew (fixed): the numeric keypad.
-const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
+pub(crate) const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
     // (key, x, y); up = cursor up.
     (KeyCode::Numpad8, 0.0, 1.0),
     (KeyCode::Numpad2, 0.0, -1.0),
@@ -422,7 +432,7 @@ fn read_keyboard(
     mut stick: ResMut<VirtualStick>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    block: Res<InputBlock>,
+    (block, console): (Res<InputBlock>, Res<ConsoleStick>),
     view: Option<Res<crate::camera::ViewState>>,
     mut throttle_since: Local<Option<f64>>,
 ) {
@@ -440,8 +450,8 @@ fn read_keyboard(
     let camera_key = |k: KeyCode| free && crate::camera::FREE_KEYS.contains(&k);
     for m in &config.keys {
         let crate::hotas::ButtonTarget::Action(action) = m.target else { continue };
-        // The stick keys are held, read below.
-        if (block.0 && action != Action::Menu)
+        // The stick keys are held, read below. The menu and recording keys work in the menu.
+        if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
             || camera_key(m.key)
         {
@@ -455,7 +465,7 @@ fn read_keyboard(
         }
     }
 
-    if block.0 {
+    if block.0 && !console.0 {
         // The menu reads the arrow keys.
         controls.roll = 0.0;
         controls.pitch = 0.0;
@@ -544,6 +554,16 @@ fn read_keyboard(
         }
     }
     controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
+    if block.0 {
+        // At a console: only the stick and the triggers.
+        controls.mark = false;
+        controls.yaw = 0.0;
+        controls.collective_rate = 0.0;
+        controls.throttle_rate = 0.0;
+        *throttle_since = None;
+        controls.trim = Vec2::ZERO;
+        controls.slew = Vec2::ZERO;
+    }
 }
 
 /// The larger of two deflections: an analog stick resting a little off centre does not cancel
@@ -554,41 +574,59 @@ pub fn stronger(current: f32, v: f32) -> f32 {
 
 /// Gamepad: left stick = stick, right stick X = rudder, triggers = throttle (a helicopter's
 /// collective, moving as far as they are pulled), A = fire, B = gun (unless turned off in the
-/// input mapping).
+/// input mapping). An input the mapping binds does only what it is bound to.
 fn read_gamepad(
-    gamepads: Query<&Gamepad>,
-    config: Res<crate::hotas::InputConfig>,
+    gamepads: Query<(&Gamepad, Option<&Name>)>,
+    (config, hotas): (Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    block: Res<InputBlock>,
+    (block, console): (Res<InputBlock>, Res<ConsoleStick>),
 ) {
-    for pad in &gamepads {
+    for (pad, _) in &gamepads {
         if pad.just_pressed(GamepadButton::Start) {
             actions.write(ActionEvent(Action::Menu));
         }
     }
-    if !config.gamepad_defaults || block.0 {
+    if !config.gamepad_defaults || (block.0 && !console.0) {
         return;
     }
-    for pad in &gamepads {
-        let x = pad.get(GamepadAxis::LeftStickX).unwrap_or(0.0);
-        let y = pad.get(GamepadAxis::LeftStickY).unwrap_or(0.0);
+    let bound = hotas.bound_standard(&config);
+    for (pad, name) in &gamepads {
+        let ids = pad.vendor_id().zip(pad.product_id());
+        let free = |i: GamepadInput| {
+            !bound.iter().any(|&(usb, n, b)| {
+                b == i && usb == ids && name.is_none_or(|name| name.as_str() == n)
+            })
+        };
+        let axis =
+            |a: GamepadAxis| pad.get(a).filter(|_| free(GamepadInput::Axis(a))).unwrap_or(0.0);
+        let pressed = |b: GamepadButton| pad.pressed(b) && free(GamepadInput::Button(b));
+        let (x, y) = (axis(GamepadAxis::LeftStickX), axis(GamepadAxis::LeftStickY));
         if x.abs() > 0.1 || y.abs() > 0.1 {
             controls.roll = stronger(controls.roll, x);
             controls.pitch = stronger(controls.pitch, -y);
         }
-        let rx = pad.get(GamepadAxis::RightStickX).unwrap_or(0.0);
+        if block.0 {
+            // At a console: only the stick and the triggers.
+            controls.gun |= pressed(GamepadButton::East);
+            controls.fire |= pressed(GamepadButton::South);
+            continue;
+        }
+        let rx = axis(GamepadAxis::RightStickX);
         if rx.abs() > 0.15 {
             controls.yaw = rx;
         }
         let pull = |b: GamepadButton| {
+            if !free(GamepadInput::Button(b)) {
+                return 0.0;
+            }
             pad.get(b).unwrap_or(0.0).max(if pad.pressed(b) { 1.0 } else { 0.0 })
         };
         let lt = pull(GamepadButton::LeftTrigger2).max(pull(GamepadButton::LeftTrigger));
         let rt = pull(GamepadButton::RightTrigger2).max(pull(GamepadButton::RightTrigger));
         controls.collective_rate = stronger(controls.collective_rate, rt - lt);
-        controls.gun |= pad.pressed(GamepadButton::East);
-        controls.fire |= pad.pressed(GamepadButton::South);
+        controls.gun |= pressed(GamepadButton::East);
+        controls.fire |= pressed(GamepadButton::South);
         for (b, a) in [
             (GamepadButton::South, Action::FireWeapon),
             (GamepadButton::RightTrigger, Action::ThrottleUp),
@@ -596,7 +634,7 @@ fn read_gamepad(
             (GamepadButton::North, Action::SelectWeapon),
             (GamepadButton::West, Action::BayDoors),
         ] {
-            if pad.just_pressed(b) {
+            if pad.just_pressed(b) && free(GamepadInput::Button(b)) {
                 actions.write(ActionEvent(a));
             }
         }
@@ -615,6 +653,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
             .insert_resource(crate::hotas::InputConfig::default())
@@ -638,6 +677,39 @@ mod tests {
         assert_eq!(stronger(0.0, 0.06), 0.06);
     }
 
+    /// At an air defence console the stick keys and the fire key still pass the block (they
+    /// slew and fire its gun); the throttle and the actions do not.
+    #[test]
+    fn a_console_passes_the_stick_and_the_trigger() {
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<VirtualStick>()
+            .insert_resource(InputBlock(true))
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<Time<Real>>()
+            .insert_resource(crate::hotas::InputConfig::default())
+            .add_message::<ActionEvent>()
+            .add_systems(Update, read_keyboard);
+        let press = |app: &mut App| {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            for k in [KeyCode::ArrowRight, KeyCode::Enter, KeyCode::Equal] {
+                keys.press(k);
+            }
+            app.update();
+            app.world().resource::<FlightControls>().clone()
+        };
+        let c = press(&mut app);
+        assert!(c.roll == 0.0 && !c.fire, "blocked: {c:?}");
+        app.world_mut().resource_mut::<ConsoleStick>().0 = true;
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().clear();
+        let c = press(&mut app);
+        assert!(c.roll > 0.5 && c.fire, "at a console: {c:?}");
+        assert_eq!(c.collective_rate, 0.0, "no throttle");
+        let events = app.world().resource::<Messages<ActionEvent>>();
+        assert!(events.iter_current_update_messages().next().is_none(), "no actions");
+    }
+
     /// A throttle key steps the throttle when pressed and moves it on its own once held.
     #[test]
     fn held_throttle_key_ramps() {
@@ -645,6 +717,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
             .insert_resource(crate::hotas::InputConfig::default())
@@ -695,6 +768,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
             .insert_resource(config)

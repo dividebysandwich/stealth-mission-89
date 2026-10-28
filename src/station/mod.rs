@@ -6,14 +6,23 @@
 //!   and history dots, refreshed twice a second (the radar's picture, not a live one).
 //! * The board (`board`): the track list (a track clicked there or on the picture is selected
 //!   on both), or the site's launchers, stocks and refills.
-//! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR.
+//! * The camera (`eo`): the locked track live (not at the picture's rate), in colour or FLIR;
+//!   at a Gepard without a lock, where the gun points.
+//! * The target data (`info`): at a Gepard the locked track's range, altitude, speed and the
+//!   like; at a Patriot battery the radar's signal (`signal`): the A-scope, the lock's Doppler
+//!   spectrum and angle error.
+//! * The hand controller (the cockpit's stick, flight controls): at a Gepard without a lock it
+//!   slews the turret; a press of its trigger (the gun trigger or fire button) fires a burst,
+//!   with a lock at the lead, without one along the barrels.
 //!
 //! The console's commands go to the simulation through the campaign (`Action::Station`, the
 //! server's on a client); what the console shows comes from the simulation's state.
 
 mod board;
 mod eo;
+mod info;
 mod scope;
+mod signal;
 mod sound;
 
 use bevy::math::DVec3;
@@ -23,13 +32,14 @@ use stealth_sim::station::{Guidance, StationCmd};
 
 use crate::camera::{View, ViewState};
 use crate::campaign::{Action, ActiveCampaign, Phase};
-use crate::cockpit3d::{ConsoleButton, ConsoleKey, ConsoleScreen, ScreenClick};
+use crate::cockpit3d::{ConsoleButton, ConsoleKey, ConsolePanel, ConsoleScreen, ScreenClick};
 use crate::combat::Combat;
 use crate::flight::{Aircraft, FlightSystems, Player};
 use crate::settings::AppState;
 use crate::world::WorldPos;
 
 pub use eo::ConsoleEo;
+pub use scope::RADAR_REACH;
 
 pub struct StationPlugin;
 
@@ -39,14 +49,21 @@ impl Plugin for StationPlugin {
             Update,
             (
                 sync_manning,
+                hand_controller
+                    .after(sync_manning)
+                    .after(crate::script::ScriptSet)
+                    .before(FlightSystems),
                 seat_operator.after(FlightSystems),
                 (
                     buttons,
+                    panel,
                     scope::snapshot,
                     eo::aim,
                     scope::draw,
                     board::draw,
                     eo::draw,
+                    info::draw,
+                    signal::draw,
                     sound::play,
                 )
                     .chain()
@@ -74,7 +91,7 @@ pub struct ConsoleUi {
     pub range_km: f32,
     /// The launcher to fire from next (AAA unit; None: the readiest).
     pub launcher: Option<usize>,
-    /// The camera's zoom (0..6; None: set from the range on a new lock).
+    /// The camera's zoom step (`mfd::CAM_ZOOMS`; None: 4X, set from the range on a new lock).
     pub zoom: Option<u8>,
     /// The radar's picture: the latest and earlier ones, newest first.
     pub snapshots: std::collections::VecDeque<scope::Snapshot>,
@@ -83,6 +100,9 @@ pub struct ConsoleUi {
     pub note: Option<(String, f32)>,
     /// Where the aircraft waited before, to put it back.
     parked: Option<(DVec3, Quat)>,
+    /// The hand controller's slew (rad/s: traverse, elevation) as last sent, its trigger held.
+    pub slew: Vec2,
+    trigger: bool,
     /// `--console-fire` fired, `--console-resupply` asked.
     test_fired: bool,
     test_resupply: bool,
@@ -100,6 +120,8 @@ impl Default for ConsoleUi {
             since_snapshot: f32::MAX,
             note: None,
             parked: None,
+            slew: Vec2::ZERO,
+            trigger: false,
             test_fired: false,
             test_resupply: false,
         }
@@ -207,6 +229,48 @@ fn seat_operator(
     }
 }
 
+/// Stick deflection below which the gun does not slew.
+const STICK_DEADZONE: f32 = 0.05;
+/// Steps of the slew sent (of the fastest): it is sent only when it changes.
+const SLEW_STEPS: f32 = 32.0;
+
+/// The slew rate (of the fastest) for a stick deflection: fine near the centre.
+fn slew_of(v: f32) -> f32 {
+    let a = ((v.abs() - STICK_DEADZONE) / (1.0 - STICK_DEADZONE)).clamp(0.0, 1.0);
+    (v.signum() * a * a * SLEW_STEPS).round() / SLEW_STEPS
+}
+
+/// The hand controller: the flight controls' stick slews a Gepard's turret, a press of its
+/// triggers fires a burst (and never the parked aircraft's weapons).
+fn hand_controller(
+    manning: Option<Res<Manning>>,
+    mut c: Option<ResMut<ActiveCampaign>>,
+    mut controls: ResMut<crate::input::FlightControls>,
+    mut ui: ResMut<ConsoleUi>,
+) {
+    let Some(m) = manning else { return };
+    let trigger = controls.gun || controls.fire;
+    controls.gun = false;
+    controls.fire = false;
+    let Some(c) = c.as_deref_mut() else { return };
+    if !m.gepard {
+        return;
+    }
+    use stealth_sim::station::{GEPARD_ELEVATE, GEPARD_TRAVERSE};
+    let slew = Vec2::new(
+        slew_of(controls.roll) * GEPARD_TRAVERSE,
+        slew_of(controls.pitch) * GEPARD_ELEVATE,
+    );
+    if slew != ui.slew {
+        ui.slew = slew;
+        c.actions.push(Action::Station(StationCmd::Slew { az: slew.x, el: slew.y }));
+    }
+    if trigger && !ui.trigger {
+        c.actions.push(Action::Station(StationCmd::Burst));
+    }
+    ui.trigger = trigger;
+}
+
 /// The console's buttons and screen clicks.
 #[allow(clippy::too_many_arguments)]
 fn buttons(
@@ -216,14 +280,24 @@ fn buttons(
     mut ui: ResMut<ConsoleUi>,
     mut keys: MessageReader<ConsoleButton>,
     mut clicks: MessageReader<ScreenClick>,
+    mut actions: MessageReader<crate::input::ActionEvent>,
     mut mfd: ResMut<crate::mfd::MfdState>,
     time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(c), Some(combat)) = (manning, c.as_deref_mut(), combat) else {
         keys.clear();
         clicks.clear();
+        actions.clear();
         return;
     };
+    // The bound camera zoom controls work the console's camera too.
+    for crate::input::ActionEvent(a) in actions.read() {
+        match a {
+            crate::input::Action::CameraZoomIn => zoom_step(&mut ui, 1),
+            crate::input::Action::CameraZoomOut => zoom_step(&mut ui, -1),
+            _ => {}
+        }
+    }
     let sim = &combat.sim;
     let launchers = if m.gepard { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let mut send = |cmd: StationCmd| c.actions.push(Action::Station(cmd));
@@ -253,8 +327,8 @@ fn buttons(
                 }
             }
             ConsoleKey::Flir => mfd.flir = !mfd.flir,
-            ConsoleKey::ZoomIn => ui.zoom = Some(ui.zoom.unwrap_or(2).saturating_add(1).min(6)),
-            ConsoleKey::ZoomOut => ui.zoom = Some(ui.zoom.unwrap_or(2).saturating_sub(1)),
+            ConsoleKey::ZoomIn => zoom_step(&mut ui, 1),
+            ConsoleKey::ZoomOut => zoom_step(&mut ui, -1),
             ConsoleKey::RangeIn => step_range(&mut ui, -1),
             ConsoleKey::RangeOut => step_range(&mut ui, 1),
             ConsoleKey::Leave => send(StationCmd::Leave),
@@ -276,7 +350,7 @@ fn buttons(
                 Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
-            ConsoleScreen::Eo => {}
+            ConsoleScreen::Eo | ConsoleScreen::Info => {}
         }
     }
     // Test aid: `--console-lock` locks the nearest hostile track once there is one (any
@@ -326,6 +400,67 @@ fn buttons(
     if ui.launcher.is_some_and(|l| !launchers.contains(&l)) {
         ui.launcher = None;
     }
+}
+
+/// How fast the FIRE button blinks (Hz).
+const FIRE_BLINK: f32 = 2.0;
+
+/// The console's buttons: a Gepard's without the missile battery's (launchers, guidance, the
+/// second and third reload); LOCK lit with a lock, FLIR with the thermal picture, FIRE lit with
+/// a lock out of reach and blinking with a hostile one in reach.
+fn panel(
+    manning: Option<Res<Manning>>,
+    c: Option<Res<ActiveCampaign>>,
+    combat: Option<Res<Combat>>,
+    mfd: Res<crate::mfd::MfdState>,
+    time: Res<Time<Real>>,
+    mut panel: ResMut<ConsolePanel>,
+) {
+    let (Some(m), Some(c), Some(combat)) = (manning, c, combat) else {
+        if *panel != ConsolePanel::default() {
+            *panel = ConsolePanel::default();
+        }
+        return;
+    };
+    let sim = &combat.sim;
+    let hidden = if m.gepard {
+        vec![
+            ConsoleKey::Guided,
+            ConsoleKey::Semi,
+            ConsoleKey::Launcher(1),
+            ConsoleKey::Launcher(2),
+            ConsoleKey::Launcher(3),
+            ConsoleKey::Refill(2),
+            ConsoleKey::Refill(3),
+        ]
+    } else {
+        Vec::new()
+    };
+    let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
+    let mut lit = Vec::new();
+    if lock.is_some() {
+        lit.push((ConsoleKey::Lock, scope::GREEN));
+    }
+    if mfd.flir {
+        lit.push((ConsoleKey::Flir, scope::GREEN));
+    }
+    if let Some(j) = lock {
+        let engage = sim.in_reach(m.unit, j)
+            && sim.flights().get(j).is_some_and(|f| !sim.friendly_unit(j, f.spec));
+        if !engage || (time.elapsed_secs() * FIRE_BLINK).fract() < 0.5 {
+            lit.push((ConsoleKey::Fire, scope::RED));
+        }
+    }
+    let want = ConsolePanel { hidden, lit };
+    if *panel != want {
+        *panel = want;
+    }
+}
+
+fn zoom_step(ui: &mut ConsoleUi, d: i32) {
+    use crate::mfd::{CAM_ZOOM_DEFAULT, CAM_ZOOM_MAX};
+    let z = ui.zoom.unwrap_or(CAM_ZOOM_DEFAULT) as i32 + d;
+    ui.zoom = Some(z.clamp(0, CAM_ZOOM_MAX as i32) as u8);
 }
 
 fn step_range(ui: &mut ConsoleUi, d: i32) {

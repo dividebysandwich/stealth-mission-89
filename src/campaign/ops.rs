@@ -16,7 +16,7 @@ use stealth_sim::aaa::AaaKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
-use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, MapWeather};
 use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, section};
 use crate::settings::AppState;
 
@@ -25,6 +25,7 @@ pub enum Tab {
     #[default]
     Board,
     Map,
+    AirDefence,
     Forces,
     Players,
     Debrief,
@@ -40,9 +41,17 @@ pub struct OpsUi {
     /// Base chosen for the selected mission (None: the offer's).
     base: Option<u16>,
     pub error: Option<String>,
-    centre: egui::Vec2,
-    scale: f32,
+    pub(super) centre: egui::Vec2,
+    pub(super) scale: f32,
     fitted: bool,
+    /// The air defence site selected on the AIR DEFENSE tab (AAA unit), and the list scrolls
+    /// to it (picked on the map).
+    pub(super) defence: Option<usize>,
+    pub(super) defence_scroll: bool,
+    /// A new air defence site is being designated on the map (a Patriot battery or a Gepard),
+    /// and `--campaign-designate` was done.
+    pub(super) designate: Option<bool>,
+    pub(super) test_designated: bool,
     /// `--campaign-take` was done, `--campaign-man`.
     pub test_taken: bool,
     pub test_manned: bool,
@@ -176,11 +185,18 @@ pub fn block_input(
     mut block: ResMut<crate::input::InputBlock>,
     settings: Res<crate::settings::Settings>,
     mut hide: ResMut<crate::camera::HideOwnAircraft>,
+    mut console: ResMut<crate::input::ConsoleStick>,
 ) {
-    // At an air defence console the flight's controls are off too (its buttons are clicked).
-    let want = c.screen_open() || menu.open || matches!(c.phase, super::Phase::Station { .. });
+    // At an air defence console the flight's controls are off too (its buttons are clicked),
+    // but for the stick and the triggers (its gun's).
+    let station = matches!(c.phase, super::Phase::Station { .. });
+    let want = c.screen_open() || menu.open || station;
     if block.0 != want {
         block.0 = want;
+    }
+    let stick = station && !c.screen_open() && !menu.open;
+    if console.0 != stick {
+        console.0 = stick;
     }
     // VR: the parked aircraft and its cockpit are not drawn around the Ops screen (the
     // in-flight menu's screen is in the cockpit: then it is drawn).
@@ -190,13 +206,14 @@ pub fn block_input(
     }
 }
 
-/// Test aids: `--campaign-tab board|map|forces|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
+/// Test aids: `--campaign-tab board|map|airdefense|forces|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
 /// takes the n-th mission of the board (0: the first) once the campaign is up.
 pub fn test_tab() -> Option<Tab> {
     let args: Vec<String> = std::env::args().collect();
     let t = args.iter().position(|a| a == "--campaign-tab").and_then(|i| args.get(i + 1))?;
     Some(match t.as_str() {
         "map" => Tab::Map,
+        "airdefense" => Tab::AirDefence,
         "forces" => Tab::Forces,
         "debrief" => Tab::Debrief,
         "log" => Tab::Log,
@@ -213,9 +230,16 @@ pub fn test_man() -> Option<usize> {
     args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?.parse().ok()
 }
 
-pub fn test_take() -> Option<usize> {
+/// `--campaign-take <n>`: the n-th mission of the board, or the first of a kind (`logistics`).
+pub enum TestTake {
+    Index(usize),
+    Kind(String),
+}
+
+pub fn test_take() -> Option<TestTake> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|a| a == "--campaign-take").and_then(|i| args.get(i + 1))?.parse().ok()
+    let a = args.iter().position(|a| a == "--campaign-take").and_then(|i| args.get(i + 1))?;
+    Some(a.parse().map_or_else(|_| TestTake::Kind(a.clone()), TestTake::Index))
 }
 
 fn test_accept() -> Option<BriefPage> {
@@ -239,7 +263,10 @@ fn dist(ax: i32, ay: i32, bx: i32, by: i32) -> i32 {
 fn kind_colour(k: MissionKind) -> egui::Color32 {
     match k {
         MissionKind::Recon => DIM,
-        MissionKind::Insertion | MissionKind::Escort | MissionKind::Resupply => FRIENDLY_BLUE,
+        MissionKind::Insertion
+        | MissionKind::Escort
+        | MissionKind::Resupply
+        | MissionKind::Logistics => FRIENDLY_BLUE,
         MissionKind::Cap => GREEN,
         MissionKind::Intercept | MissionKind::Defend | MissionKind::Csar | MissionKind::Awacs => {
             MISSILE_RED
@@ -282,15 +309,20 @@ pub fn ops_ui(
     mut next: ResMut<NextState<AppState>>,
     mut unit_view: ResMut<super::UnitView>,
     weather: Res<crate::weather::WeatherState>,
+    sky: Res<crate::sky::Sky>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     settings: Res<crate::settings::Settings>,
     mut menu: ResMut<crate::flight_menu::FlightMenu>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
 ) -> Result {
     // On the desktop the in-flight menu (OPTIONS) is drawn in the view the screen covers.
     if !c.screen_open() || c.exit || (menu.open && !settings.vr) {
         return Ok(());
     }
     let wx = weather.now.map(|n| weather_text(&c, &n));
+    // The maps' weather: the forecast's now (a clear sky without changing weather).
+    let map_wx =
+        MapWeather::new(weather.now.map(|n| n.weather).unwrap_or_default(), sky.freezing_level());
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
     crate::menu::apply_ui_zoom(ctx);
     if ctx.global_style().visuals.window_fill != BG {
@@ -348,9 +380,10 @@ pub fn ops_ui(
     }
     if c.ui.briefing.is_some() {
         let line = wx.as_ref().map(|w| w.1.as_str());
-        briefing(ctx, c, &combat.sim, &mut planner, line, egui::vec2(width, height));
+        briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx, egui::vec2(width, height));
         return Ok(());
     }
+    super::designate::test_aid(c, &combat.sim, scenery.as_deref());
     let mut leave = false;
     egui::Window::new("Ops")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -382,6 +415,7 @@ pub fn ops_ui(
                         for (tab, label) in [
                             (Tab::Board, "MISSIONS"),
                             (Tab::Map, "WAR MAP"),
+                            (Tab::AirDefence, "AIR DEFENSE"),
                             (Tab::Forces, "FORCES"),
                             (Tab::Players, "PLAYERS"),
                             (Tab::Debrief, "DEBRIEF"),
@@ -441,6 +475,16 @@ pub fn ops_ui(
                         &combat.sim,
                         &mut unit_view,
                         tex.as_ref(),
+                        &map_wx,
+                        scenery.as_deref(),
+                        egui::vec2(width, height),
+                    ),
+                    Tab::AirDefence => super::air_defence::tab(
+                        ui,
+                        c,
+                        &combat.sim,
+                        tex.as_ref(),
+                        scenery.as_deref(),
                         egui::vec2(width, height),
                     ),
                     Tab::Forces => forces(ui, c),
@@ -638,6 +682,16 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
                 }
             }
+            for d in c.state().deployments.iter().filter(|d| !d.ai.is_empty()) {
+                any = true;
+                let n = d.ai.len();
+                let text = format!(
+                    "LOGISTICS for the {}: {n} UH-60{} on the way",
+                    d.title(),
+                    if n > 1 { "s" } else { "" }
+                );
+                ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
+            }
             if let Some(a) = &c.state().awacs {
                 any = true;
                 let text = format!("ENEMY AWACS up for {:.0} min more", mins(a.until));
@@ -689,6 +743,29 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     left % 60
                 );
                 ui.label(egui::RichText::new(text).color(BRIGHT));
+            }
+            // The site's cargo so far, how long its helipad waits, the AI's turn.
+            if let Objective::Logistics { site, .. } = o.objective
+                && let Some(d) = c.state().deployment(site)
+            {
+                let now = c.state().clock;
+                let left = (d.expires - now).max(0.0) as i32;
+                let text = format!(
+                    "Cargo {} of {} in - the helipad waits {}:{:02} h more",
+                    d.delivered.len(),
+                    d.loads,
+                    left / 3600,
+                    left / 60 % 60
+                );
+                ui.label(egui::RichText::new(text).color(BRIGHT));
+                let wait = stealth_campaign::tuning::DEPLOY_AI_WAIT;
+                let ai = (wait - (now - d.open_since)).max(0.0) as i32;
+                let text = format!(
+                    "An AI helicopter takes a load in {}:{:02} unless a UH-60 pilot does",
+                    ai / 60,
+                    ai % 60
+                );
+                ui.label(egui::RichText::new(text).color(DIM));
             }
             group_label(ui, c, o.id);
             ui.add_space(6.0);
@@ -1054,43 +1131,40 @@ fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
 }
 
 /// The war map: who holds which place, the insertions, the aircraft in the air.
+#[allow(clippy::too_many_arguments)]
 fn war_map(
     ui: &mut egui::Ui,
     c: &mut ActiveCampaign,
     sim: &stealth_sim::Sim,
     unit_view: &mut super::UnitView,
     tex: Option<&egui::TextureHandle>,
+    weather: &MapWeather,
+    scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
+    let off =
+        [&[Layer::MissileRange, Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
+    let mut layers = MapLayers::of(ui.ctx(), "war", &off);
     ui.horizontal_top(|ui| {
         let (rect, resp) = ui.allocate_exact_size(
             egui::vec2(size.x - legend_w, size.y),
             egui::Sense::click_and_drag(),
         );
-        if !c.ui.fitted {
-            let (lo, hi) = c.state().places.iter().fold(
-                (egui::vec2(f32::MAX, f32::MAX), egui::vec2(f32::MIN, f32::MIN)),
-                |(lo, hi), p| {
-                    let v = egui::vec2(p.x as f32, p.y as f32);
-                    (lo.min(v), hi.max(v))
-                },
-            );
-            (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
-            c.ui.fitted = true;
-        }
+        fit_map(c, rect);
         let view = MapView { rect, centre: c.ui.centre, scale: c.ui.scale };
         let (mut centre, mut scale) = (c.ui.centre, c.ui.scale);
         view.pan_zoom(ui, &resp, &mut centre, &mut scale);
         (c.ui.centre, c.ui.scale) = (centre, scale);
         let painter = ui.painter_at(rect);
         map_draw::picture(&painter, &view, tex);
+        map_draw::weather(&painter, &view, "war", weather, &layers);
         let (parked, selected) = (c.parked, c.ui.selected);
         let test_taken = &mut c.ui.test_taken;
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
         let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
         // Insertion routes.
-        for ins in &st.insertions {
+        for ins in st.insertions.iter().filter(|_| layers.shows(Layer::Insertions)) {
             if !matches!(ins.state, InsertionState::Pending { .. } | InsertionState::Enroute) {
                 continue;
             }
@@ -1105,7 +1179,7 @@ fn war_map(
             }
         }
         // The places.
-        for p in &st.places {
+        for p in st.places.iter().filter(|p| shows_place(&layers, p)) {
             let col = match p.owner {
                 Side::Blue => FRIENDLY_BLUE,
                 Side::Red => MISSILE_RED,
@@ -1135,7 +1209,7 @@ fn war_map(
         }
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
-        super::picture::draw(&painter, &view, &pic, false);
+        super::picture::draw(&painter, &view, &pic, &layers);
         // Test aid: `--campaign-watch` watches the first friendly aircraft.
         if std::env::args().any(|a| a == "--campaign-watch")
             && unit_view.target.is_none()
@@ -1145,8 +1219,11 @@ fn war_map(
             let unit = super::unit_view::UnitRef::Flight { index: a.unit, spec: a.spec };
             unit_view.watch(unit, sim.aircraft_name(a.spec));
         }
+        super::designate::waiting(&painter, &view, st);
+        let designating = c.ui.designate.is_some();
         // A unit under the pointer: its name; a click watches it live.
-        if let Some(pos) = resp.hover_pos()
+        if !designating
+            && let Some(pos) = resp.hover_pos()
             && let Some((unit, name)) = super::picture::pick(&view, &pic, &sim, pos)
         {
             ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
@@ -1170,44 +1247,83 @@ fn war_map(
         if let Some(o) = selected.and_then(|id| st.board.iter().find(|o| o.id == id)) {
             painter.circle_stroke(at(o.x, o.y), 14.0, egui::Stroke::new(2.0, kind_colour(o.kind)));
         }
+        super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
             section(ui, "Legend");
-            map_draw::legend(ui, "Friendly airfield", |p, c0| {
-                p.rect_stroke(
-                    egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0)),
-                    0.0,
+            place_legend(ui, &mut layers);
+            layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
+                p.extend(egui::Shape::dashed_line(
+                    &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
                     egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                    egui::StrokeKind::Middle,
-                );
+                    6.0,
+                    4.0,
+                ));
             });
-            map_draw::legend(ui, "Enemy airfield", |p, c0| {
-                p.rect_stroke(
-                    egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0)),
-                    0.0,
-                    egui::Stroke::new(1.5, MISSILE_RED),
-                    egui::StrokeKind::Middle,
-                );
-            });
-            map_draw::legend(ui, "Friendly / enemy city", |p, c0| {
-                p.circle_stroke(
-                    c0 - egui::vec2(4.0, 0.0),
-                    3.5,
-                    egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                );
-                p.circle_stroke(
-                    c0 + egui::vec2(5.0, 0.0),
-                    3.5,
-                    egui::Stroke::new(1.5, MISSILE_RED),
-                );
-            });
-            super::picture::legend(ui);
+            super::picture::legend(ui, &mut layers, Some(&pic));
+            map_draw::weather_legend(ui, &mut layers, weather.snow);
             ui.add_space(8.0);
             ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
             ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
             control_button(ui, c, sim, unit_view);
+            ui.add_space(10.0);
+            super::designate::buttons(ui, c);
         });
     });
+    layers.keep(ui.ctx(), "war");
+}
+
+/// A place on the map is shown: its layer (airfields, cities) is.
+fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
+    layers.shows(if p.airfield.is_some() { Layer::Airfields } else { Layer::Cities })
+}
+
+/// The places' legend lines, with their layers' checkboxes.
+fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
+    layers.legend(ui, Layer::Airfields, "Friendly / enemy airfield", |p, c0| {
+        for (dx, col) in [(-4.5, FRIENDLY_BLUE), (5.0, MISSILE_RED)] {
+            p.rect_stroke(
+                egui::Rect::from_center_size(c0 + egui::vec2(dx, 0.0), egui::vec2(7.0, 7.0)),
+                0.0,
+                egui::Stroke::new(1.5, col),
+                egui::StrokeKind::Middle,
+            );
+        }
+    });
+    layers.legend(ui, Layer::Cities, "Friendly / enemy city", |p, c0| {
+        p.circle_stroke(c0 - egui::vec2(4.0, 0.0), 3.5, egui::Stroke::new(1.5, FRIENDLY_BLUE));
+        p.circle_stroke(c0 + egui::vec2(5.0, 0.0), 3.5, egui::Stroke::new(1.5, MISSILE_RED));
+    });
+}
+
+/// The war map's view the first time: all the places in `rect`.
+pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
+    if c.ui.fitted {
+        return;
+    }
+    let (lo, hi) = c.state().places.iter().fold(
+        (egui::vec2(f32::MAX, f32::MAX), egui::vec2(f32::MIN, f32::MIN)),
+        |(lo, hi), p| {
+            let v = egui::vec2(p.x as f32, p.y as f32);
+            (lo.min(v), hi.max(v))
+        },
+    );
+    (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
+    c.ui.fitted = true;
+}
+
+/// Why this player can't man air defence unit `k`'s console now (None: they can).
+pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) -> Option<String> {
+    if sim.aaa_units().get(k).is_none_or(|u| u.destroyed) {
+        return Some("Destroyed".to_string());
+    }
+    if c.phase == Phase::Sortie {
+        return Some("Finish your sortie first".to_string());
+    }
+    sim.manned_by(k).filter(|&p| p != c.me.0).map(|p| {
+        let name = c.state().player_name(PlayerId(p)).unwrap_or("another player");
+        format!("Manned by {name}")
+    })
 }
 
 /// The watched unit is a friendly Patriot battery or Gepard: CONTROL mans its console.
@@ -1224,17 +1340,7 @@ fn control_button(
     }
     ui.add_space(10.0);
     section(ui, if u.kind == AaaKind::Gepard { "Gepard" } else { "Patriot battery" });
-    let manned = sim.manned_by(k).filter(|&p| p != c.me.0);
-    let why = if u.destroyed {
-        Some("Destroyed".to_string())
-    } else if c.phase == Phase::Sortie {
-        Some("Finish your sortie first".to_string())
-    } else {
-        manned.map(|p| {
-            let name = c.state().player_name(PlayerId(p)).unwrap_or("another player");
-            format!("Manned by {name}")
-        })
-    };
+    let why = man_refusal(c, sim, k);
     if ui.add_enabled(why.is_none(), big_button("CONTROL")).clicked() {
         c.ui.error = None;
         c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
@@ -1471,6 +1577,7 @@ fn briefing(
     sim: &stealth_sim::Sim,
     planner: &mut crate::planner::Planner,
     weather: Option<&str>,
+    map_wx: &MapWeather,
     size: egui::Vec2,
 ) {
     let Some(mut b) = c.ui.briefing.take() else { return };
@@ -1547,16 +1654,24 @@ fn briefing(
                             planner,
                             &m,
                             &mut b,
+                            map_wx,
                             egui::vec2(size.x, height),
                         )
                     }
                     BriefPage::Loadout => {
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new("AIRCRAFT").color(DIM));
-                            let flyable =
-                                [Airframe::F117, Airframe::F16, Airframe::UH60, Airframe::AH1Z]
-                                    .into_iter()
-                                    .filter(|a| o.kind.flyable_by(*a));
+                            let flyable = [
+                                Airframe::F117,
+                                Airframe::F16,
+                                Airframe::Tornado,
+                                Airframe::A10,
+                                Airframe::UH60,
+                                Airframe::AH1Z,
+                                Airframe::RAH66,
+                            ]
+                            .into_iter()
+                            .filter(|a| o.kind.flyable_by(*a));
                             for a in flyable {
                                 let label = kind_of(a).name();
                                 if ui.selectable_label(b.aircraft == a, label).clicked()
@@ -1645,6 +1760,7 @@ fn route_editor(
     planner: &mut crate::planner::Planner,
     m: &stealth_mission::Mission,
     b: &mut Briefing,
+    weather: &MapWeather,
     size: egui::Vec2,
 ) -> Option<Vec<crate::mission::RoutePoint>> {
     let now = ui.input(|i| i.time);
@@ -1671,8 +1787,8 @@ fn route_editor(
     // The SAM sites are the editor's own rings.
     let mut pic = super::picture::picture(st, &sim);
     pic.sams.clear();
-    let overlay = |painter: &egui::Painter, view: &MapView| {
-        for p in &st.places {
+    let draw = |painter: &egui::Painter, view: &MapView, layers: &MapLayers| {
+        for p in st.places.iter().filter(|p| shows_place(layers, p)) {
             let col = match p.owner {
                 Side::Blue => FRIENDLY_BLUE,
                 Side::Red => MISSILE_RED,
@@ -1693,7 +1809,11 @@ fn route_editor(
                 col,
             );
         }
-        super::picture::draw(painter, view, &pic, false);
+        super::picture::draw(painter, view, &pic, layers);
+    };
+    let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
+        place_legend(ui, layers);
+        super::picture::legend(ui, layers, None);
     };
     crate::planner::route_panel(
         ui,
@@ -1701,7 +1821,8 @@ fn route_editor(
         m,
         route,
         &known,
-        Some(&overlay),
+        Some(crate::planner::Overlay { draw: &draw, legend: &legend }),
+        Some(*weather),
         size,
         !locked,
         |ui| {

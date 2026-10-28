@@ -8,6 +8,7 @@ mod aircraft;
 mod asset_path;
 mod autoshot;
 mod avionics;
+mod barrage;
 mod boss_key;
 mod camera;
 mod campaign;
@@ -23,15 +24,19 @@ mod debrief;
 #[cfg(not(target_arch = "wasm32"))]
 mod dedicated;
 mod dots;
+mod effects;
 mod explosions;
 mod fires;
+mod flashes;
 mod flight;
 mod flight_menu;
 mod font;
 mod freecam;
 mod fullscreen;
+mod gif_recorder;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
+mod goggles;
 mod headtrack;
 mod help;
 mod hmd;
@@ -52,6 +57,7 @@ mod menu_scene;
 mod mfd;
 mod mission;
 mod models;
+mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
@@ -61,6 +67,7 @@ mod palette_material;
 mod panel;
 mod planner;
 mod player;
+mod player_labels;
 mod player_notices;
 mod prefs;
 mod profile;
@@ -72,15 +79,19 @@ mod savegame;
 mod scenery;
 mod script;
 mod settings;
+mod shake;
 mod sim_render;
 mod sky;
+mod sling;
 mod sound;
 mod stage;
 mod station;
+mod sunbeams;
 mod tacview;
 mod tacview_real_time;
 mod terrain;
 mod text_entry;
+mod tfr;
 mod trackcam;
 mod trails;
 mod viewer;
@@ -230,6 +241,7 @@ fn main() {
             canvas::CanvasPlugin,
             boss_key::BossKeyPlugin,
             fullscreen::FullscreenPlugin,
+            gif_recorder::GifRecorderPlugin,
         ))
         .add_plugins((
             menu::MenuPlugin,
@@ -271,11 +283,20 @@ fn main() {
             recon::ReconPlugin,
             tacview_real_time::TacviewRealTimePlugin,
         ))
+        // The atmosphere effects (effects.rs).
+        .add_plugins((
+            shake::ShakePlugin,
+            flashes::FlashesPlugin,
+            barrage::BarragePlugin,
+            goggles::GogglesPlugin,
+            sunbeams::SunbeamsPlugin,
+        ))
         .add_plugins((
             sky::SkyPlugin,
             lighting::LightingPlugin,
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,
+            sling::SlingPlugin,
             weather::WeatherPlugin,
             station::StationPlugin,
         ))
@@ -286,6 +307,7 @@ fn main() {
             stage::StagePlugin,
             campaign::CampaignPlugin,
             net::NetPlugin,
+            player_labels::PlayerLabelsPlugin,
             player_notices::PlayerNoticesPlugin,
             chat::ChatPlugin,
             multiplayer_menu::MultiplayerMenuPlugin,

@@ -108,6 +108,10 @@ pub struct Settings {
     /// `--tutorial`: the interactive tutorial in single missions (`cockpit3d::tutorial`; off by
     /// default).
     pub tutorial: bool,
+    /// Name labels over the other players' aircraft in multiplayer (on by default).
+    pub player_labels: bool,
+    /// Their size (1: 100%).
+    pub player_label_size: f32,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -116,12 +120,21 @@ pub struct Settings {
     pub warning_volume: f32,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
+    /// The atmosphere effects' switches (`--effects`).
+    pub effects: crate::effects::Effects,
+    /// GIF recording (`gif_recorder`): percent of the window's size, frames per second.
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 /// Default VR cockpit size.
 pub const DEFAULT_VR_COCKPIT_SCALE: f32 = 1.0;
 /// Range of the VR cockpit size.
 pub const VR_COCKPIT_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.7..=1.5;
+
+/// Default and range of the player labels' size.
+pub const DEFAULT_PLAYER_LABEL_SIZE: f32 = 0.5;
+pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
 
 /// What the next flight looks like (filled by the menu or command-line flags).
 #[derive(Resource, Debug, Clone)]
@@ -197,20 +210,27 @@ impl Settings {
         if self.vr
             && let Some(h) = spec.vr_eye_height
         {
-            eye.y = eye.y.max(h / self.vr_rig_scale());
+            eye.y = eye.y.max(h / self.vr_rig_scale(false));
         }
         eye
     }
 
-    /// Scale of the VR rig (the head offset) for the chosen cockpit size.
-    pub fn vr_rig_scale(&self) -> f32 {
-        self.vr_cockpit_scale * self.aircraft.spec().vr_scale
+    /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
+    /// an air defence console (a room built life size) relative to life size.
+    pub fn vr_rig_scale(&self, console: bool) -> f32 {
+        let at_100 = if console { 1.0 } else { self.aircraft.spec().vr_scale };
+        self.vr_cockpit_scale * at_100
     }
 
     /// Scale of the VR hand offsets: as the rig's, in the units of the cockpit frame
-    /// (`AircraftSpec::cockpit_model_scale`).
-    pub fn vr_hand_scale(&self) -> f32 {
-        self.vr_rig_scale() / self.aircraft.spec().cockpit_model_scale()
+    /// (`AircraftSpec::cockpit_model_scale`, `cockpit3d::CONSOLE_MODEL_SCALE`).
+    pub fn vr_hand_scale(&self, console: bool) -> f32 {
+        let model = if console {
+            crate::cockpit3d::CONSOLE_MODEL_SCALE
+        } else {
+            self.aircraft.spec().cockpit_model_scale()
+        };
+        self.vr_rig_scale(console) / model
     }
 
     pub fn from_args() -> Self {
@@ -265,11 +285,17 @@ impl Settings {
                 .unwrap_or_default(),
             tooltips: true,
             tutorial: has("--tutorial"),
+            player_labels: true,
+            player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
             engine_low_pass: true,
+            effects: get(&a, "--effects")
+                .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }
