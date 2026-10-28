@@ -80,6 +80,7 @@ mod settings;
 mod shake;
 mod sim_render;
 mod sky;
+mod sling;
 mod sound;
 mod stage;
 mod station;
@@ -292,6 +293,7 @@ fn main() {
             lighting::LightingPlugin,
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,
+            sling::SlingPlugin,
             weather::WeatherPlugin,
             station::StationPlugin,
         ))

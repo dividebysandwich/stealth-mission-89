@@ -147,6 +147,24 @@ impl Scenery {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
+    /// Where the cargo crates of a base line up: beside its runway a little ahead of `start`
+    /// (where its aircraft start, facing `forward`; metres east, north), on the far side from
+    /// the apron, and the runway's direction (None: no runway near).
+    pub fn crate_row(&self, start: DVec2, forward: DVec2) -> Option<(DVec2, DVec2)> {
+        let a = self
+            .airfields
+            .iter()
+            .filter(|a| a.runway.c.distance(start) < CRATE_ROW_RANGE)
+            .min_by(|a, b| a.runway.c.distance(start).total_cmp(&b.runway.c.distance(start)))?;
+        let rw = &a.runway;
+        let side = rw.axis.perp();
+        let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
+        let away = if apron.dot(side) > 0.0 { -1.0 } else { 1.0 };
+        let ahead = (start + forward * CRATE_ROW_AHEAD - rw.c).dot(rw.axis);
+        let along = ahead.clamp(-rw.half_len * 0.8, rw.half_len * 0.8);
+        Some((rw.c + rw.axis * along + side * away * (rw.half_width + CRATE_ROW_OUT), rw.axis))
+    }
+
     /// What the ground is at `p` (metres east, north): water, concrete or land.
     pub fn surface(&self, p: DVec2) -> Surface {
         if !self.ground.is_dry_clear(p, 0.0) {
@@ -244,6 +262,45 @@ pub struct SceneryBacklog(pub Option<usize>);
 /// Where the ILS camera looks on an approach to each runway end (see `trackcam.rs`).
 #[derive(Resource, Default)]
 pub struct PapiSites(pub Vec<airfield::PapiSite>);
+
+/// The cargo crates line up beside the runway of an airfield this close to where its aircraft
+/// start, this far ahead of them and this far out from the runway's edge (metres).
+const CRATE_ROW_RANGE: f64 = 4000.0;
+const CRATE_ROW_AHEAD: f64 = 150.0;
+const CRATE_ROW_OUT: f64 = 35.0;
+
+/// A cargo crate for a new air defence site (metres: length, width, height), olive with dark
+/// straps.
+pub const CRATE_SIZE: Vec3 = Vec3::new(2.4, 1.6, 1.4);
+const CRATE_PAINT: u8 = 0xA7;
+const CRATE_STRAP: u8 = 0xAC;
+
+/// A cargo crate centred on its entity (its length along -z, forward), to be placed with
+/// `WorldPos` and turned with its `Transform`.
+pub fn spawn_crate(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    palette: &Palette,
+) -> Entity {
+    let (l, w, h) = (CRATE_SIZE.x, CRATE_SIZE.y, CRATE_SIZE.z);
+    let mut g = Geom::default();
+    let foot = geom::rect(Vec3::ZERO, Vec2::NEG_Y, l, w);
+    g.block(CRATE_PAINT, CRATE_PAINT + 1, &foot, -h * 0.5, h * 0.5);
+    // Two straps round it, a little proud of the faces.
+    for t in [-0.3, 0.3] {
+        let z = -t * l;
+        let (x, y) = (w * 0.5 + 0.02, h * 0.5 + 0.02);
+        let ring =
+            [Vec3::new(-x, -y, z), Vec3::new(x, -y, z), Vec3::new(x, y, z), Vec3::new(-x, y, z)];
+        for k in 0..4 {
+            g.line(CRATE_STRAP, ring[k], ring[(k + 1) % 4]);
+        }
+    }
+    let root = commands.spawn((WorldPos::default(), Transform::default(), Visibility::Hidden)).id();
+    let children = spawn_geom(commands, meshes, palette, g, Tier::Main, 0);
+    commands.entity(root).add_children(&children);
+    root
+}
 
 /// Root entities of the airfields (built whole, shown with the scenery setting).
 #[derive(Resource, Default)]
@@ -1024,7 +1081,7 @@ const AIR_DEFENCE_CLEARING: f64 = 45.0;
 const DEPLOYMENT_CLEARING: f64 = 90.0;
 
 /// A campaign map point (x east, y south) in metres east, north.
-fn map_metres(x: i32, y: i32) -> DVec2 {
+pub fn map_metres(x: i32, y: i32) -> DVec2 {
     let m = stealth_sim::aaa::M_PER_MAP;
     DVec2::new((x as f64 + 0.5) * m, (0x8000 as f64 - y as f64 - 0.5) * m)
 }
@@ -1098,8 +1155,13 @@ fn deployment_pads(
     mut meshes: ResMut<Assets<Mesh>>,
     mut airfields: ResMut<Airfields>,
 ) {
-    let want: Vec<(i32, i32)> =
-        campaign.iter().flat_map(|c| &c.state().deployments).map(|d| (d.x, d.y)).collect();
+    // Built, the site's unit stands there and its helipad is gone.
+    let want: Vec<(i32, i32)> = campaign
+        .iter()
+        .flat_map(|c| &c.state().deployments)
+        .filter(|d| !d.built)
+        .map(|d| (d.x, d.y))
+        .collect();
     airfields.pads.retain(|(at, e)| {
         let keep = want.contains(at);
         if !keep {
