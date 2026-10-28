@@ -378,8 +378,8 @@ yz = [(t.y + 0.01, t.z - 0.01), (HOOD_Y, glare_top - 0.02), (HOOD_Y, glare_top -
 prism("black", "black", yz, u0 / 1000, u1 / 1000)
 
 # --- MFDs: a housing standing BEZEL out of the panel round each screen, the screen recessed in
-# it; ten labelled push buttons above and below, five dummy ones each side with ridges between
-# them and rocker switches at the corners (as the F-16's).
+# it; twenty labelled push buttons round it with ridges between them and rocker switches at the
+# corners (as the F-16's).
 scr = layout["screens"]
 faces = {f["key"]: f["rect"] for f in layout["faces"]}
 for key in ("left", "right"):
@@ -394,10 +394,9 @@ for key in ("left", "right"):
     for k in range(1, 5):
         for by in (y - 16.5, y + h + 6.5):
             panel_box("black", "black", (x + w * k / 5 - 1.0, by - 4.0, 2.0, 8.0), 0.003, base=BEZEL)
-    for k in range(5):
-        by = y + h * (k + 0.5) / 5
-        for bx in (x - 10.0, x + w + 10.0):
-            panel_box("dark", "dark", (bx - 5.0, by - 6.0, 10.0, 12.0), 0.005, base=BEZEL)
+    for k in range(1, 5):
+        for bx in (x - 9.0, x + w + 9.0):
+            panel_box("black", "black", (bx - 4.0, y + h * k / 5 - 1.0, 8.0, 2.0), 0.003, base=BEZEL)
     for bx in (x - 10.0, x + w + 10.0):
         for by in (y - 16.0, y + h + 16.0):
             panel_box("dark", "dark", (bx - 4.5, by - 6.5, 9.0, 13.0), 0.003, base=BEZEL)

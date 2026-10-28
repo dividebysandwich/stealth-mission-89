@@ -711,7 +711,7 @@ knob(365.0, 180.0, 0.007, 0.010, "dark", offset=PLATE)
 toggle(365.0, 212.0, PLATE)
 # MFD bezels: a housing standing out of the well to the bezel's face (BEZEL off the panel), the
 # screen back in a black recess; twenty push buttons round the screen with ridges between them
-# and rocker switches at the corners (the game uses the top and bottom rows).
+# and rocker switches at the corners.
 BEZEL = 0.006
 for key in ("left", "right"):
     x, y, w, h = scr[key]
@@ -723,10 +723,6 @@ for key in ("left", "right"):
     for k in range(1, 5):
         for by in (y - 16.5, y + h + 6.5):
             panel_box("black", "black", (x + w * k / 5 - 1.0, by - 4.0, 2.0, 8.0), 0.003, 0.0, BEZEL)
-    for k in range(5):
-        by = y + h * (k + 0.5) / 5
-        for bx in (x - 9.0, x + w + 9.0):
-            panel_box("dark", "dark", (bx - 5.0, by - 6.0, 10.0, 12.0), 0.005, 0.0, BEZEL)
     for k in range(1, 5):
         for bx in (x - 9.0, x + w + 9.0):
             panel_box("black", "black", (bx - 4.0, y + h * k / 5 - 1.0, 8.0, 2.0), 0.003, 0.0, BEZEL)

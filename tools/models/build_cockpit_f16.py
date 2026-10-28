@@ -589,9 +589,8 @@ for s_ in (-1, 1):
     panel_box("dark", "dark", (s_ * (WING - 6.0) - 6.0, TOP + BEVEL, 12.0, WING_BOTTOM - TOP - BEVEL), 0.007)
     panel_box("dark", "dark", (HINGE if s_ > 0 else -WING, WING_BOTTOM - 6.0, WING - HINGE, 6.0), 0.007)
 # MFDs: a housing standing out of the well to the bezel's face (BEZEL off the panel), the
-# screen back in a black recess; twenty push buttons round it with ridges between them (the
-# game uses the top and bottom rows; the side buttons are fixed) and the rocker switches (GAIN,
-# SYM, BRT, CON) at its corners.
+# screen back in a black recess; twenty push buttons round it with ridges between them and the
+# rocker switches (GAIN, SYM, BRT, CON) at its corners.
 BEZEL = 0.006
 
 
@@ -611,10 +610,6 @@ for key in ("left", "right"):
     frame("dark", (wx - 3.0, wy - 3.0, ww + 6.0, wh + 6.0), hole, -0.03, BEZEL - 0.002)
     frame("black", (wx + 1.0, wy + 1.0, ww - 2.0, wh - 2.0), hole, BEZEL - 0.002, BEZEL)
     frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), -0.006, BEZEL - 0.001)
-    for k in range(5):
-        by = y + h * (k + 0.5) / 5
-        for bx in (x - 9.0, x + w + 9.0):
-            panel_box("dark", "dark", (bx - 5.0, by - 6.0, 10.0, 12.0), 0.005, 0.0, BEZEL)
     for k in range(1, 5):
         for bx in (x - 9.0, x + w + 9.0):
             panel_box("black", "black", (bx - 4.0, y + h * k / 5 - 1.0, 8.0, 2.0), 0.003, 0.0, BEZEL)

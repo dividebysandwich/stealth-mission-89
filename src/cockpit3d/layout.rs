@@ -175,9 +175,11 @@ pub struct PanelLayout {
     pub mpds: Option<(PxRect, PxRect)>,
 }
 
-/// Bezel button cap size (millimetres).
+/// Bezel button cap size (millimetres; turned on end down the sides).
 const OSB_W: f32 = 12.0;
 const OSB_H: f32 = 10.0;
+/// The side buttons' centres off the screen's edges.
+const OSB_SIDE: f32 = 9.0;
 
 impl PanelStyle {
     /// The cockpit has a third MFD (`MfdSide::Third`).
@@ -200,19 +202,30 @@ impl PanelLayout {
         }
     }
 
-    /// Bezel buttons of an MFD: (slot, cap rectangle); 0..5 above the screen, 5..10 below.
+    /// Bezel buttons of an MFD: (slot, cap rectangle); 0..5 above the screen, 5..10 below,
+    /// 10..15 down its left edge and 15..20 down its right one (`mfd::osb_edge`).
     pub fn osbs(&self, unit: &MfdUnit) -> Vec<(u8, PxRect)> {
+        use crate::mfd::OsbEdge;
         if !unit.osbs {
             return Vec::new();
         }
         let s = unit.screen;
-        let (w, h) = (OSB_W, OSB_H);
         (0..OSB_COUNT)
             .map(|slot| {
-                let col = (slot % 5) as f32;
-                let cx = s.x + s.w * (col + 0.5) / 5.0;
-                let y = if slot < 5 { s.y - h - 1.5 } else { s.y + s.h + 1.5 };
-                (slot, rect(cx - w / 2.0, y, w, h))
+                let (edge, k) = crate::mfd::osb_edge(slot);
+                let k = k as f32 + 0.5;
+                let (cx, cy) = (s.x + s.w * k / 5.0, s.y + s.h * k / 5.0);
+                let r = match edge {
+                    OsbEdge::Top => rect(cx - OSB_W / 2.0, s.y - OSB_H - 1.5, OSB_W, OSB_H),
+                    OsbEdge::Bottom => rect(cx - OSB_W / 2.0, s.y + s.h + 1.5, OSB_W, OSB_H),
+                    OsbEdge::Left => {
+                        rect(s.x - OSB_SIDE - OSB_H / 2.0, cy - OSB_W / 2.0, OSB_H, OSB_W)
+                    }
+                    OsbEdge::Right => {
+                        rect(s.x + s.w + OSB_SIDE - OSB_H / 2.0, cy - OSB_W / 2.0, OSB_H, OSB_W)
+                    }
+                };
+                (slot, r)
             })
             .collect()
     }
@@ -531,10 +544,11 @@ impl PanelLayout {
             false,
         );
 
-        // The HIRES canvas' shape: the side MFDs 120 mm wide, the centre display 180.
+        // The HIRES canvas' shape: the side MFDs 120 mm wide, the centre display 160 (its side
+        // buttons inside the centre column).
         let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
         let left = rect(-245.0, -38.0, 120.0, 120.0 * hires);
-        let centre = rect(-90.0, -12.0, 180.0, 180.0 * hires);
+        let centre = rect(-80.0, -12.0, 160.0, 160.0 * hires);
         let third = rect(125.0, -38.0, 120.0, 120.0 * hires);
         Self {
             style: PanelStyle::Modern,
@@ -1110,14 +1124,14 @@ impl PanelLayout {
             items,
             adi,
             mfds: vec![
-                MfdUnit { side: MfdSide::Left, screen: rect(-212.0, -76.0, w, h), osbs: true },
-                MfdUnit { side: MfdSide::Right, screen: rect(12.0, -76.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Left, screen: rect(-218.0, -76.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: rect(18.0, -76.0, w, h), osbs: true },
             ],
             rwr: None,
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            mpds: Some((rect(-375.0, -44.0, 100.0, 140.0), rect(275.0, -44.0, 100.0, 140.0))),
+            mpds: Some((rect(-378.0, -44.0, 100.0, 140.0), rect(278.0, -44.0, 100.0, 140.0))),
         }
     }
 
@@ -1424,6 +1438,29 @@ mod tests {
             LampId::Tc,
         ] {
             assert!(!modern.contains(&id), "{id:?} is a bezel button in the modern panel");
+        }
+    }
+
+    /// The modern panels' MFDs have all twenty bezel buttons, the side ones outside the
+    /// screen's left and right edges, top to bottom.
+    #[test]
+    fn side_bezel_buttons() {
+        for l in all().into_iter().filter(|l| l.style != PanelStyle::Classic) {
+            for m in &l.mfds {
+                let caps = l.osbs(m);
+                assert_eq!(caps.len(), OSB_COUNT as usize, "{:?}", l.style);
+                let s = m.screen;
+                for (edge, range) in [(-1.0, 10..15), (1.0, 15..20)] {
+                    let side = &caps[range];
+                    for (a, b) in side.iter().zip(&side[1..]) {
+                        assert!(a.1.y + a.1.h <= b.1.y);
+                    }
+                    for (_, r) in side {
+                        assert!(if edge < 0.0 { r.x + r.w < s.x } else { r.x > s.x + s.w });
+                        assert!(r.y >= s.y && r.y + r.h <= s.y + s.h);
+                    }
+                }
+            }
         }
     }
 

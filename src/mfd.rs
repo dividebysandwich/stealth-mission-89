@@ -240,8 +240,24 @@ pub enum OsbFn {
     Readout,
 }
 
-/// Bezel buttons per MFD: 0..5 along the top, 5..10 along the bottom (left to right).
-pub const OSB_COUNT: u8 = 10;
+/// Bezel buttons per MFD: 0..5 along the top, 5..10 along the bottom (left to right), 10..15
+/// down the left edge and 15..20 down the right one (top to bottom).
+pub const OSB_COUNT: u8 = 20;
+
+/// The edge of the display a bezel button is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OsbEdge {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+/// A bezel button's edge and its place along it (0..5, left to right or top to bottom).
+pub fn osb_edge(slot: u8) -> (OsbEdge, u8) {
+    let edge = [OsbEdge::Top, OsbEdge::Bottom, OsbEdge::Left, OsbEdge::Right][slot as usize / 5];
+    (edge, slot % 5)
+}
 
 /// Label, function and lit state of a bezel button on the current page (None = blank).
 pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {

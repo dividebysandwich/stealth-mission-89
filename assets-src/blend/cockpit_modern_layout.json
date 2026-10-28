@@ -901,11 +901,131 @@
       "round": false
     },
     {
+      "control": "Osb(Left, 10)",
+      "key": "Osb(Left, 10)",
+      "kind": "osb",
+      "rect": [
+        -259.0,
+        -34.64935302734375,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 11)",
+      "key": "Osb(Left, 11)",
+      "kind": "osb",
+      "rect": [
+        -259.0,
+        -15.948053359985352,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 12)",
+      "key": "Osb(Left, 12)",
+      "kind": "osb",
+      "rect": [
+        -259.0,
+        2.753246307373047,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 13)",
+      "key": "Osb(Left, 13)",
+      "kind": "osb",
+      "rect": [
+        -259.0,
+        21.454544067382812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 14)",
+      "key": "Osb(Left, 14)",
+      "kind": "osb",
+      "rect": [
+        -259.0,
+        40.15583801269531,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 15)",
+      "key": "Osb(Left, 15)",
+      "kind": "osb",
+      "rect": [
+        -121.0,
+        -34.64935302734375,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 16)",
+      "key": "Osb(Left, 16)",
+      "kind": "osb",
+      "rect": [
+        -121.0,
+        -15.948053359985352,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 17)",
+      "key": "Osb(Left, 17)",
+      "kind": "osb",
+      "rect": [
+        -121.0,
+        2.753246307373047,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 18)",
+      "key": "Osb(Left, 18)",
+      "kind": "osb",
+      "rect": [
+        -121.0,
+        21.454544067382812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 19)",
+      "key": "Osb(Left, 19)",
+      "kind": "osb",
+      "rect": [
+        -121.0,
+        40.15583801269531,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
       "control": "Osb(Right, 0)",
       "key": "Osb(Right, 0)",
       "kind": "osb",
       "rect": [
-        -78.0,
+        -70.0,
         -23.5,
         12.0,
         10.0
@@ -917,7 +1037,7 @@
       "key": "Osb(Right, 1)",
       "kind": "osb",
       "rect": [
-        -42.0,
+        -38.0,
         -23.5,
         12.0,
         10.0
@@ -941,7 +1061,7 @@
       "key": "Osb(Right, 3)",
       "kind": "osb",
       "rect": [
-        30.0,
+        26.0,
         -23.5,
         12.0,
         10.0
@@ -953,7 +1073,7 @@
       "key": "Osb(Right, 4)",
       "kind": "osb",
       "rect": [
-        66.0,
+        58.0,
         -23.5,
         12.0,
         10.0
@@ -965,8 +1085,8 @@
       "key": "Osb(Right, 5)",
       "kind": "osb",
       "rect": [
-        -78.0,
-        129.75973510742188,
+        -70.0,
+        114.17532348632812,
         12.0,
         10.0
       ],
@@ -977,8 +1097,8 @@
       "key": "Osb(Right, 6)",
       "kind": "osb",
       "rect": [
-        -42.0,
-        129.75973510742188,
+        -38.0,
+        114.17532348632812,
         12.0,
         10.0
       ],
@@ -990,7 +1110,7 @@
       "kind": "osb",
       "rect": [
         -6.0,
-        129.75973510742188,
+        114.17532348632812,
         12.0,
         10.0
       ],
@@ -1001,8 +1121,8 @@
       "key": "Osb(Right, 8)",
       "kind": "osb",
       "rect": [
-        30.0,
-        129.75973510742188,
+        26.0,
+        114.17532348632812,
         12.0,
         10.0
       ],
@@ -1013,10 +1133,130 @@
       "key": "Osb(Right, 9)",
       "kind": "osb",
       "rect": [
-        66.0,
-        129.75973510742188,
+        58.0,
+        114.17532348632812,
         12.0,
         10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 10)",
+      "key": "Osb(Right, 10)",
+      "kind": "osb",
+      "rect": [
+        -94.0,
+        -5.532467842102051,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 11)",
+      "key": "Osb(Right, 11)",
+      "kind": "osb",
+      "rect": [
+        -94.0,
+        19.40259552001953,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 12)",
+      "key": "Osb(Right, 12)",
+      "kind": "osb",
+      "rect": [
+        -94.0,
+        44.3376579284668,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 13)",
+      "key": "Osb(Right, 13)",
+      "kind": "osb",
+      "rect": [
+        -94.0,
+        69.2727279663086,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 14)",
+      "key": "Osb(Right, 14)",
+      "kind": "osb",
+      "rect": [
+        -94.0,
+        94.2077865600586,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 15)",
+      "key": "Osb(Right, 15)",
+      "kind": "osb",
+      "rect": [
+        84.0,
+        -5.532467842102051,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 16)",
+      "key": "Osb(Right, 16)",
+      "kind": "osb",
+      "rect": [
+        84.0,
+        19.40259552001953,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 17)",
+      "key": "Osb(Right, 17)",
+      "kind": "osb",
+      "rect": [
+        84.0,
+        44.3376579284668,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 18)",
+      "key": "Osb(Right, 18)",
+      "kind": "osb",
+      "rect": [
+        84.0,
+        69.2727279663086,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 19)",
+      "key": "Osb(Right, 19)",
+      "kind": "osb",
+      "rect": [
+        84.0,
+        94.2077865600586,
+        10.0,
+        12.0
       ],
       "round": false
     },
@@ -1139,6 +1379,126 @@
         10.0
       ],
       "round": false
+    },
+    {
+      "control": "Osb(Third, 10)",
+      "key": "Osb(Third, 10)",
+      "kind": "osb",
+      "rect": [
+        111.0,
+        -34.64935302734375,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 11)",
+      "key": "Osb(Third, 11)",
+      "kind": "osb",
+      "rect": [
+        111.0,
+        -15.948053359985352,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 12)",
+      "key": "Osb(Third, 12)",
+      "kind": "osb",
+      "rect": [
+        111.0,
+        2.753246307373047,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 13)",
+      "key": "Osb(Third, 13)",
+      "kind": "osb",
+      "rect": [
+        111.0,
+        21.454544067382812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 14)",
+      "key": "Osb(Third, 14)",
+      "kind": "osb",
+      "rect": [
+        111.0,
+        40.15583801269531,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 15)",
+      "key": "Osb(Third, 15)",
+      "kind": "osb",
+      "rect": [
+        249.0,
+        -34.64935302734375,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 16)",
+      "key": "Osb(Third, 16)",
+      "kind": "osb",
+      "rect": [
+        249.0,
+        -15.948053359985352,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 17)",
+      "key": "Osb(Third, 17)",
+      "kind": "osb",
+      "rect": [
+        249.0,
+        2.753246307373047,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 18)",
+      "key": "Osb(Third, 18)",
+      "kind": "osb",
+      "rect": [
+        249.0,
+        21.454544067382812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 19)",
+      "key": "Osb(Third, 19)",
+      "kind": "osb",
+      "rect": [
+        249.0,
+        40.15583801269531,
+        10.0,
+        12.0
+      ],
+      "round": false
     }
   ],
   "screens": {
@@ -1161,10 +1521,10 @@
       93.5064926147461
     ],
     "right": [
-      -90.0,
+      -80.0,
       -12.0,
-      180.0,
-      140.25973510742188
+      160.0,
+      124.67532348632812
     ],
     "third": [
       125.0,

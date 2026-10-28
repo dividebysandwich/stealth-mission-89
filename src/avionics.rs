@@ -23,7 +23,7 @@ use bevy::prelude::*;
 use crate::canvas::Canvas;
 use crate::cockpit::CockpitArt;
 use crate::flight::{Aircraft, Player};
-use crate::font::{Align, Fonts, stroke_text_at, upper};
+use crate::font::{Align, Fonts, stroke_text, stroke_text_at, upper};
 use crate::hud::{HudMode, HudState};
 use crate::input::{Action, ActionEvent, FlightControls};
 use crate::mfd::{
@@ -607,13 +607,14 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
 }
 
 /// Label, function and lit state of a bezel button with the modern avionics: the formats along
-/// the bottom, the format's own functions along the top (SOI top right).
+/// the bottom, the format's own functions along the top (SOI top right); the side rows (10..20)
+/// are free.
 pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
     use crate::input::Action as A;
     use OsbFn::*;
     let av = &s.av;
     let f = av.format(side);
-    if slot >= 5 {
+    if (5..10).contains(&slot) {
         let g = formats(side)[slot as usize - 5];
         return Some((g.label(), Cmd(MfdCmd::Format(side, g)), f == g));
     }
@@ -724,25 +725,49 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
             }
         }
     }
-    draw_labels(c, fonts, side, s);
+    draw_labels(c, side, s);
     if soi {
         c.frame(Vec2::splat(1.0), Vec2::new(c.w as f32 - 2.0, c.h as f32 - 2.0), 2.0, WHITE);
     }
 }
 
-/// The bezel button labels next to their buttons: lit ones inverted.
-fn draw_labels(c: &mut Canvas, fonts: &Fonts, side: MfdSide, s: &MfdState) {
+/// Glyph height of the bezel labels (the stroke font, sharp at the canvas' resolution).
+const LABEL_GLYPH: f32 = 7.0;
+
+/// The bezel button labels next to their buttons: lit ones inverted. The top and bottom ones
+/// in the label bands, centred over their buttons; the side ones against the edges, kept
+/// between the bands.
+fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
+    use crate::mfd::OsbEdge;
+    let h = LABEL_GLYPH as i32;
     for slot in 0..crate::mfd::OSB_COUNT {
         let Some((label, _, lit)) = osb(side, slot, s) else { continue };
-        let col = (slot % 5) as i32;
-        let text = upper(label);
-        let w = 2 * fonts.width(&text) - 2;
-        let x = (c.w as i32 * (2 * col + 1)) / 10 - w / 2;
-        let y = if slot < 5 { 3 } else { c.h as i32 - 13 };
+        let (edge, k) = crate::mfd::osb_edge(slot);
+        let k = k as i32;
+        let w = crate::font::stroke_width(label, LABEL_GLYPH).ceil() as i32;
+        // Vertical middles: of the label bands, and of the side buttons (clear of the bands).
+        let row = ((c.h as i32 * (2 * k + 1)) / 10)
+            .clamp(BAND + 2 + h / 2, c.h as i32 - BAND - 2 - h / 2);
+        let col = (c.w as i32 * (2 * k + 1)) / 10 - w / 2;
+        let (x, mid) = match edge {
+            OsbEdge::Top => (col, BAND / 2),
+            OsbEdge::Bottom => (col, c.h as i32 - BAND / 2),
+            OsbEdge::Left => (4, row),
+            OsbEdge::Right => (c.w as i32 - 4 - w, row),
+        };
+        let y = mid - h / 2;
         if lit {
-            c.fill_rect(x - 2, y - 2, w + 4, 14, GREEN);
+            c.fill_rect(x - 2, y - 2, w + 4, h + 4, GREEN);
         }
-        fonts.text_scaled(c, x, y, &text, if lit { BLACK } else { GREEN }, 2);
+        stroke_text(
+            c,
+            x as f32,
+            y as f32,
+            label,
+            LABEL_GLYPH,
+            1.0,
+            if lit { BLACK } else { GREEN },
+        );
     }
 }
 

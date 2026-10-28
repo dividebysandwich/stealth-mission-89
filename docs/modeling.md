@@ -568,7 +568,7 @@ control_Action_Autopilot_        Empty   control "Action(Autopilot)", kind "cap"
 
 | Property | Type | Meaning |
 |---|---|---|
-| `control` | string | What it does: `Action(<name>)` (any action from `src/input.rs`, e.g. `Action(Gear)`, `Action(Chaff)`), `HudMode(0/1/2)`, `LeftPage(Map)` / `LeftPage(Tac)`, `CamCycle`, `TimeToggle`, `Osb(Left, 3)` (MFD bezel button; sides `Left`, `Right`, `Third`). |
+| `control` | string | What it does: `Action(<name>)` (any action from `src/input.rs`, e.g. `Action(Gear)`, `Action(Chaff)`), `HudMode(0/1/2)`, `LeftPage(Map)` / `LeftPage(Tac)`, `CamCycle`, `TimeToggle`, `Osb(Left, 3)` (MFD bezel button; sides `Left`, `Right`, `Third`; slots 0..4 along the top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right). |
 | `kind` | string | `cap` (push button), `osb` (MFD bezel button), `side` (side panel button), `gear` (gear lever), `eject` (ejection handle, pulled up). |
 | `half` | float array [2] | Half width and half height of the touch face, metres. |
 | `height` | float | Face height above the Empty's origin along +Z, metres. |
