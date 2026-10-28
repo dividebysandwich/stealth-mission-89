@@ -165,14 +165,36 @@ pub struct Waypoint {
 pub struct Waypoints {
     pub points: Vec<Waypoint>,
     pub current: usize,
-    /// Waypoint the mission logic selected last; Shift-F8 returns to it.
+    /// Whether each route point has actually been reached. Kept separate from `current` so
+    /// selecting or repositioning another point cannot make it inherit a passed colour.
+    pub passed: Vec<bool>,
+    /// Waypoint selected by the mission logic; Shift-F8 returns to it. Actual passage is
+    /// tracked separately in `passed`.
     pub mission_current: usize,
     /// Index of the mission's waypoints 0..3 (midpoint, primary, secondary, landing base) in
     /// a planned route; empty: the points are the mission's own 4.
     pub anchors: Vec<usize>,
+    /// The route's points as planned: Shift-F8 puts the waypoints back to them.
+    pub initial: Vec<Waypoint>,
+    /// F8: the WAY page is in edit mode (shown in red) and the keypad moves the selected
+    /// waypoint over the map. F7 leaves it.
+    pub editing: bool,
 }
 
 impl Waypoints {
+    /// The waypoints of a route about to be flown: none passed, the first selected.
+    pub fn planned(points: Vec<Waypoint>, anchors: Vec<usize>) -> Self {
+        Self {
+            passed: vec![false; points.len()],
+            initial: points.clone(),
+            points,
+            current: 0,
+            mission_current: 0,
+            anchors,
+            editing: false,
+        }
+    }
+
     /// Point to fly to when the mission logic selects its waypoint `w` (1 primary next after
     /// the secondary, 2 secondary next after the primary, 3 home): with a planned route, the
     /// points after the target just done are flown in order.
@@ -371,14 +393,21 @@ fn hud_keys(
             }
             Action::HudDeclutter => hud.declutter = (hud.declutter + 1) % 3,
             Action::Nvg => hud.nvg = !hud.nvg,
-            // INS: PgUp / PgDn step through the waypoints, F8 changes to the next one, Shift-F8
-            // returns to the mission's current waypoint (F7 shows the WAY page, see mfd.rs).
-            // Weapon selection (Space) is done by the combat simulation.
+            // INS: PgUp / PgDn step through the waypoints. F7 shows the WAY page; F8 puts it in
+            // edit mode, where the keypad moves the selected waypoint over the map (see
+            // `mfd::edit_waypoints`). Shift-F8 puts every waypoint back to its planned place
+            // and returns to the mission's current one. Weapon selection (Space) is done by
+            // the combat simulation.
+            Action::SelectWaypoint => wps.editing = false,
+            Action::ChangeWaypoint => wps.editing = true,
             Action::LastWaypoint if n > 0 => wps.current = (wps.current + n - 1) % n,
-            Action::NextWaypoint | Action::ChangeWaypoint if n > 0 => {
-                wps.current = (wps.current + 1) % n
+            Action::NextWaypoint if n > 0 => wps.current = (wps.current + 1) % n,
+            Action::ResetWaypoint if n > 0 => {
+                if wps.initial.len() == n {
+                    wps.points = wps.initial.clone();
+                }
+                wps.current = wps.mission_current.min(n - 1);
             }
-            Action::ResetWaypoint if n > 0 => wps.current = wps.mission_current.min(n - 1),
             _ => {}
         }
     }
@@ -440,8 +469,7 @@ fn waypoint_bearing(pos: &WorldPos, wp: Waypoint) -> u16 {
     to_bam((dx as f32).atan2(dy_north as f32)) as i32 as u16
 }
 
-/// "Waypoint n reached" when within 0x200 map units; the autopilot steers to
-/// the current waypoint.
+/// A waypoint is reached within 0x200 map units. The autopilot then steers to the next one.
 fn advance_waypoints(
     mut q: Query<(&WorldPos, &mut Aircraft), With<Player>>,
     mut wps: ResMut<Waypoints>,
@@ -450,10 +478,22 @@ fn advance_waypoints(
     let Ok((pos, mut a)) = q.single_mut() else { return };
     let Some(wp) = wps.target() else { return };
     let (x, y) = map_units(pos);
-    let (dx, dy) = ((wp.east / 32.0) as i32 - x, (0x8000 - (wp.north / 32.0) as i32) - y);
-    if ((dx * dx + dy * dy) as f64).sqrt() < 512.0 && wps.current + 1 < wps.points.len() {
-        wps.current += 1;
-        msg.show(format!("Waypoint {} reached", wps.current));
+    let (dx, dy) =
+        ((wp.east / 32.0) as i64 - x as i64, (0x8000 - (wp.north / 32.0) as i32 - y) as i64);
+    if dx * dx + dy * dy < 512 * 512 {
+        let reached = wps.current;
+        let point_count = wps.points.len();
+        if wps.passed.len() < point_count {
+            wps.passed.resize(point_count, false);
+        }
+        if !wps.passed[reached] {
+            wps.passed[reached] = true;
+            msg.show(format!("Waypoint {} reached", reached + 1));
+        }
+        if reached + 1 < point_count {
+            wps.current = reached + 1;
+            wps.mission_current = wps.current;
+        }
     }
     if let Some(wp) = wps.target() {
         a.waypoint_bearing = waypoint_bearing(pos, wp) as f32;
@@ -677,12 +717,7 @@ mod route_tests {
     use super::*;
 
     fn wps(n: usize, anchors: Vec<usize>) -> Waypoints {
-        Waypoints {
-            points: vec![Waypoint { east: 0.0, north: 0.0 }; n],
-            current: 0,
-            mission_current: 0,
-            anchors,
-        }
+        Waypoints::planned(vec![Waypoint { east: 0.0, north: 0.0 }; n], anchors)
     }
 
     #[test]
@@ -695,6 +730,15 @@ mod route_tests {
         // N1 P N2 S N3 L: after the primary the planned N2, after both targets N3.
         let w = wps(6, vec![0, 1, 3, 5]);
         assert_eq!([1, 2, 3].map(|k| w.for_mission_waypoint(k)), [1, 2, 4]);
+    }
+
+    #[test]
+    fn a_planned_route_starts_unedited_with_nothing_passed() {
+        let w = wps(4, vec![]);
+        assert_eq!(w.passed, [false; 4]);
+        assert_eq!(w.initial.len(), 4);
+        assert!(!w.editing);
+        assert_eq!((w.current, w.mission_current), (0, 0));
     }
 }
 

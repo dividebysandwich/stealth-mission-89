@@ -1012,16 +1012,14 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
         .filter(|l| l.fits(&m, aircraft))
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(&m, aircraft));
     let route = c.take_route.take().filter(|r| r.fits(&m)).unwrap_or_else(|| PlannedRoute::of(&m));
-    *s.wps = Waypoints {
-        points: route
+    *s.wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     s.orders.set(
         m.orders.lines.iter().map(|l| (l.color, crate::mission::clean_text(&l.text))).collect(),
     );
