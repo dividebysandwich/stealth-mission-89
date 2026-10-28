@@ -286,6 +286,39 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// A player hooked the crate of load `leg` of new site `id` under his helicopter (his
+    /// client saw the hover; near its base, it counts).
+    pub fn hook_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+    ) -> Result<Vec<HostEvent>, String> {
+        if let Some(why) = self.state.hook_refusal(player, id, leg, &glue::world_view(sim)) {
+            return Err(why);
+        }
+        let events = self.state.apply(player, Command::HookCrate { id, leg })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player set his crate down at (`east`, `north`) metres from its site's helipad.
+    #[allow(clippy::too_many_arguments)]
+    pub fn drop_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
+    ) -> Result<Vec<HostEvent>, String> {
+        let events =
+            self.state.apply(player, Command::DropCrate { id, leg, east, north, heading })?;
+        Ok(self.apply(sim, events))
+    }
+
     /// A player joins the plan of an offer from a base, or leaves the plans (None).
     pub fn select(
         &mut self,

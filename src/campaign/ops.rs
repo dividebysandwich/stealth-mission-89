@@ -230,9 +230,16 @@ pub fn test_man() -> Option<usize> {
     args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?.parse().ok()
 }
 
-pub fn test_take() -> Option<usize> {
+/// `--campaign-take <n>`: the n-th mission of the board, or the first of a kind (`logistics`).
+pub enum TestTake {
+    Index(usize),
+    Kind(String),
+}
+
+pub fn test_take() -> Option<TestTake> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|a| a == "--campaign-take").and_then(|i| args.get(i + 1))?.parse().ok()
+    let a = args.iter().position(|a| a == "--campaign-take").and_then(|i| args.get(i + 1))?;
+    Some(a.parse().map_or_else(|_| TestTake::Kind(a.clone()), TestTake::Index))
 }
 
 fn test_accept() -> Option<BriefPage> {

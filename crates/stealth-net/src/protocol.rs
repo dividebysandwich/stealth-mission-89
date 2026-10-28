@@ -9,7 +9,7 @@ use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 18;
+pub const PROTOCOL: u16 = 19;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -51,6 +51,19 @@ pub enum ToServer {
         x: i32,
         y: i32,
         patriot: bool,
+    },
+    /// The crate of load `leg` of new site `id` hooked under his helicopter.
+    HookCrate {
+        id: u32,
+        leg: u8,
+    },
+    /// It is set down at (`east`, `north`) metres from the site's helipad, heading `heading`.
+    DropCrate {
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
     },
     /// Plan a mission of the board with the others on it, from a base (None: plan none).
     Select {
