@@ -23,6 +23,7 @@
 //! The Ops screen asks for things through [`Action`]s, carried out here for every role.
 
 mod air_defence;
+mod designate;
 mod menu;
 mod ops;
 mod picture;
@@ -158,6 +159,13 @@ pub enum Action {
     /// Call in AI SEAD for an offer's place.
     RequestSupport {
         offer: u32,
+    },
+    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
+    /// (x, y), map units.
+    DesignateSite {
+        x: i32,
+        y: i32,
+        patriot: bool,
     },
     /// The sortie ends (the simulation's outcome codes: 0 landed and done, 7 aborted).
     EndSortie {
@@ -777,6 +785,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
+            Action::DesignateSite { x, y, patriot } => host.designate_site(sim, me, x, y, patriot),
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Rearm { loadout } => {
                 host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
@@ -831,6 +840,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
+            Action::DesignateSite { x, y, patriot } => ToServer::DesignateSite { x, y, patriot },
             Action::EndSortie { outcome } => ToServer::EndSortie { outcome },
             Action::Rearm { loadout } => {
                 s.msgs.show("Rearmed and refuelled");

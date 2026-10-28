@@ -48,6 +48,10 @@ pub struct OpsUi {
     /// to it (picked on the map).
     pub(super) defence: Option<usize>,
     pub(super) defence_scroll: bool,
+    /// A new air defence site is being designated on the map (a Patriot battery or a Gepard),
+    /// and `--campaign-designate` was done.
+    pub(super) designate: Option<bool>,
+    pub(super) test_designated: bool,
     /// `--campaign-take` was done, `--campaign-man`.
     pub test_taken: bool,
     pub test_manned: bool,
@@ -252,7 +256,10 @@ fn dist(ax: i32, ay: i32, bx: i32, by: i32) -> i32 {
 fn kind_colour(k: MissionKind) -> egui::Color32 {
     match k {
         MissionKind::Recon => DIM,
-        MissionKind::Insertion | MissionKind::Escort | MissionKind::Resupply => FRIENDLY_BLUE,
+        MissionKind::Insertion
+        | MissionKind::Escort
+        | MissionKind::Resupply
+        | MissionKind::Logistics => FRIENDLY_BLUE,
         MissionKind::Cap => GREEN,
         MissionKind::Intercept | MissionKind::Defend | MissionKind::Csar | MissionKind::Awacs => {
             MISSILE_RED
@@ -299,6 +306,7 @@ pub fn ops_ui(
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     settings: Res<crate::settings::Settings>,
     mut menu: ResMut<crate::flight_menu::FlightMenu>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
 ) -> Result {
     // On the desktop the in-flight menu (OPTIONS) is drawn in the view the screen covers.
     if !c.screen_open() || c.exit || (menu.open && !settings.vr) {
@@ -368,6 +376,7 @@ pub fn ops_ui(
         briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx, egui::vec2(width, height));
         return Ok(());
     }
+    super::designate::test_aid(c, &combat.sim, scenery.as_deref());
     let mut leave = false;
     egui::Window::new("Ops")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -460,6 +469,7 @@ pub fn ops_ui(
                         &mut unit_view,
                         tex.as_ref(),
                         &map_wx,
+                        scenery.as_deref(),
                         egui::vec2(width, height),
                     ),
                     Tab::AirDefence => super::air_defence::tab(
@@ -467,6 +477,7 @@ pub fn ops_ui(
                         c,
                         &combat.sim,
                         tex.as_ref(),
+                        scenery.as_deref(),
                         egui::vec2(width, height),
                     ),
                     Tab::Forces => forces(ui, c),
@@ -664,6 +675,16 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
                 }
             }
+            for d in c.state().deployments.iter().filter(|d| !d.ai.is_empty()) {
+                any = true;
+                let n = d.ai.len();
+                let text = format!(
+                    "LOGISTICS for the {}: {n} UH-60{} on the way",
+                    d.title(),
+                    if n > 1 { "s" } else { "" }
+                );
+                ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
+            }
             if let Some(a) = &c.state().awacs {
                 any = true;
                 let text = format!("ENEMY AWACS up for {:.0} min more", mins(a.until));
@@ -715,6 +736,29 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     left % 60
                 );
                 ui.label(egui::RichText::new(text).color(BRIGHT));
+            }
+            // The site's cargo so far, how long its helipad waits, the AI's turn.
+            if let Objective::Logistics { site, .. } = o.objective
+                && let Some(d) = c.state().deployment(site)
+            {
+                let now = c.state().clock;
+                let left = (d.expires - now).max(0.0) as i32;
+                let text = format!(
+                    "Cargo {} of {} in - the helipad waits {}:{:02} h more",
+                    d.delivered.len(),
+                    d.loads,
+                    left / 3600,
+                    left / 60 % 60
+                );
+                ui.label(egui::RichText::new(text).color(BRIGHT));
+                let wait = stealth_campaign::tuning::DEPLOY_AI_WAIT;
+                let ai = (wait - (now - d.open_since)).max(0.0) as i32;
+                let text = format!(
+                    "An AI helicopter takes a load in {}:{:02} unless a UH-60 pilot does",
+                    ai / 60,
+                    ai % 60
+                );
+                ui.label(egui::RichText::new(text).color(DIM));
             }
             group_label(ui, c, o.id);
             ui.add_space(6.0);
@@ -1080,6 +1124,7 @@ fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
 }
 
 /// The war map: who holds which place, the insertions, the aircraft in the air.
+#[allow(clippy::too_many_arguments)]
 fn war_map(
     ui: &mut egui::Ui,
     c: &mut ActiveCampaign,
@@ -1087,6 +1132,7 @@ fn war_map(
     unit_view: &mut super::UnitView,
     tex: Option<&egui::TextureHandle>,
     weather: &MapWeather,
+    scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
@@ -1166,8 +1212,11 @@ fn war_map(
             let unit = super::unit_view::UnitRef::Flight { index: a.unit, spec: a.spec };
             unit_view.watch(unit, sim.aircraft_name(a.spec));
         }
+        super::designate::waiting(&painter, &view, st);
+        let designating = c.ui.designate.is_some();
         // A unit under the pointer: its name; a click watches it live.
-        if let Some(pos) = resp.hover_pos()
+        if !designating
+            && let Some(pos) = resp.hover_pos()
             && let Some((unit, name)) = super::picture::pick(&view, &pic, &sim, pos)
         {
             ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
@@ -1191,6 +1240,7 @@ fn war_map(
         if let Some(o) = selected.and_then(|id| st.board.iter().find(|o| o.id == id)) {
             painter.circle_stroke(at(o.x, o.y), 14.0, egui::Stroke::new(2.0, kind_colour(o.kind)));
         }
+        super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
             section(ui, "Legend");
@@ -1209,6 +1259,8 @@ fn war_map(
             ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
             ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
             control_button(ui, c, sim, unit_view);
+            ui.add_space(10.0);
+            super::designate::buttons(ui, c);
         });
     });
     layers.keep(ui.ctx(), "war");

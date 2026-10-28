@@ -139,6 +139,8 @@ Testing and screenshots
                                open the first mission's briefing on that page
   --campaign-insert            order an insertion against the nearest enemy place
   --campaign-watch             watch the first friendly aircraft
+  --campaign-designate gepard|patriot
+                               designate a new air defence site near the parked base
 
   -h, --help                   this list
 ";
