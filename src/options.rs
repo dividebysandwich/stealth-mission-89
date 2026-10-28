@@ -25,6 +25,8 @@ use crate::settings::{Settings, VR_COCKPIT_SCALE_RANGE};
 pub struct OptionsWindow {
     pub open: bool,
     tab: Tab,
+    /// The largest tab's size: every tab gets it, so the window keeps its size across tabs.
+    body: egui::Vec2,
 }
 
 impl OptionsWindow {
@@ -36,7 +38,7 @@ impl OptionsWindow {
         };
         let name = args.get(i + 1).map_or("", |s| s.as_str()).to_ascii_uppercase();
         let tab = Tab::ALL.iter().find(|(_, n)| *n == name).map_or(Tab::Game, |t| t.0);
-        Self { open: true, tab }
+        Self { open: true, tab, ..default() }
     }
 }
 
@@ -80,12 +82,19 @@ pub fn options_ui(
             }
         });
         ui.separator();
-        match w.tab {
-            Tab::Game => game_options(ui, settings),
-            Tab::Graphics => graphics_options(ui, settings),
-            Tab::Sound => sound_options(ui, settings),
-            Tab::Controls => control_options(ui, settings, head, dialog),
+        // The other tabs are laid out unseen for their size.
+        for (tab, _) in Tab::ALL.into_iter().filter(|t| t.0 != w.tab) {
+            let builder =
+                egui::UiBuilder::new().id_salt(("measure", tab as u8)).invisible().sizing_pass();
+            let mut hidden = ui.new_child(builder);
+            tab_options(&mut hidden, tab, settings, head, dialog);
+            w.body = w.body.max(hidden.min_rect().size());
         }
+        let shown = ui.scope(|ui| {
+            ui.set_min_size(w.body);
+            tab_options(ui, w.tab, settings, head, dialog);
+        });
+        w.body = w.body.max(shown.response.rect.size());
         ui.add_space(8.0);
         ui.separator();
         ui.label(
@@ -101,6 +110,21 @@ pub fn options_ui(
     });
     if back {
         w.open = false;
+    }
+}
+
+fn tab_options(
+    ui: &mut egui::Ui,
+    tab: Tab,
+    settings: &mut SettingsMut,
+    head: Option<crate::headtrack::Source>,
+    dialog: &mut crate::input_dialog::InputDialog,
+) {
+    match tab {
+        Tab::Game => game_options(ui, settings),
+        Tab::Graphics => graphics_options(ui, settings),
+        Tab::Sound => sound_options(ui, settings),
+        Tab::Controls => control_options(ui, settings, head, dialog),
     }
 }
 
