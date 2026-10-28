@@ -1956,18 +1956,30 @@ impl MfdParams<'_, '_> {
         }
     }
 
+    /// The modern ORD page; the modern avionics draw it with the stroke font at full texel
+    /// resolution.
     pub(crate) fn draw_ord_hires(&self, c: &mut Canvas, fonts: &Fonts) {
         c.clear(0);
-        // 28 characters of 8 px after the tick margin.
-        let rows = self.orders.rows((c.w - 6) / 8);
-        for (row, (colour, line, ticked)) in rows.iter().enumerate().take((c.h - 6) / 13) {
-            let y = 6 + 13 * row as i32;
-            let mut s = vec![ink(*colour)];
-            s.extend(upper(line));
-            fonts.text_scaled(c, 6, y, &s, 15, 2);
+        let (x0, w) = (8.0, c.w as f32 - 10.0);
+        let (glyph, advance, pitch) =
+            if self.state.modern { (9.0, 9.0, 13.0) } else { (10.0, 8.0, 13.0) };
+        let width = ((w + 2.0) / advance) as usize;
+        let rows = self.orders.rows(width);
+        for (row, (colour, line, ticked)) in
+            rows.iter().enumerate().take(((c.h as f32 - 6.0) / pitch) as usize)
+        {
+            let y = 6.0 + pitch * row as f32;
+            if self.state.modern {
+                crate::font::stroke_text(c, x0, y, line, glyph, 1.0, *colour);
+            } else {
+                let mut s = vec![ink(*colour)];
+                s.extend(upper(line));
+                fonts.text_scaled(c, x0 as i32, y as i32, &s, 15, 2);
+            }
             if *ticked {
-                c.stroke(Vec2::new(0.5, y as f32 + 5.0), Vec2::new(2.0, y as f32 + 8.0), 1.2, 15);
-                c.stroke(Vec2::new(2.0, y as f32 + 8.0), Vec2::new(5.0, y as f32 + 1.0), 1.2, 15);
+                let d = glyph / 10.0;
+                c.stroke(Vec2::new(0.5, y + 5.0 * d), Vec2::new(2.5, y + 8.0 * d), 1.2, 15);
+                c.stroke(Vec2::new(2.5, y + 8.0 * d), Vec2::new(6.0, y + d), 1.2, 15);
             }
         }
     }
