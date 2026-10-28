@@ -92,7 +92,10 @@ fn setup(
             s.split(',')
                 .filter_map(|kv| {
                     let (k, v) = kv.split_once('=')?;
-                    Some((k.trim().parse().ok().filter(|&k: &usize| k < 32)?, v.trim().parse().ok()?))
+                    Some((
+                        k.trim().parse().ok().filter(|&k: &usize| k < 32)?,
+                        v.trim().parse().ok()?,
+                    ))
                 })
                 .collect()
         })
