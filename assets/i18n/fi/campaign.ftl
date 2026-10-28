@@ -259,3 +259,5 @@ brief-task-resupply = Lennä varasto lentokentältä ilmatorjuntayksikölle: lei
 brief-task-heli-insertion = Lennä joukot perille, siipimiehesi mukanasi: laskeudu 1,5 km:n sisään kohteesta ja pysy maassa 15 s, kun he nousevat ulos valtaamaan paikan
 brief-task-heli-csar = Laskeudu 200 m:n sisään alasammutusta lentäjästä ja odota 30 s hänen nousuaan kyytiin, vie hänet sitten omalle tukikohdalle
 brief-task-drones = Ammu alas hyökkäysdroonit ennen kuin ne syöksyvät kohteeseen: yksikin läpi päässyt tuhoaa sen
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Θέση 8, δεξιά πτέρυγα κέν
 hardpoint-a10-9-right-wing = Θέση 9, δεξιά πτέρυγα
 hardpoint-a10-10-right-wing = Θέση 10, δεξιά πτέρυγα
 hardpoint-a10-11-right-outer-wing = Θέση 11, δεξιά πτέρυγα εξωτερικά
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

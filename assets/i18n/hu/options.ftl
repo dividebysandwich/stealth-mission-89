@@ -194,3 +194,6 @@ language-offer-question = A böngésző nyelve: { $language }. Ezen a nyelven sz
 language-offer-yes = Igen
 language-offer-no = Nem
 language-offer-never = Ne kérdezd újra
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

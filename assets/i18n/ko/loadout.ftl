@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = 스테이션 8, 오른쪽 중앙 날개
 hardpoint-a10-9-right-wing = 스테이션 9, 오른쪽 날개
 hardpoint-a10-10-right-wing = 스테이션 10, 오른쪽 날개
 hardpoint-a10-11-right-outer-wing = 스테이션 11, 오른쪽 바깥 날개
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

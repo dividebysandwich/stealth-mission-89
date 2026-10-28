@@ -66,6 +66,17 @@ fn reset(mut shake: ResMut<Shake>) {
     *shake = Shake { on_ground: true, ..default() };
 }
 
+/// How deep into the stall buffet the aircraft is: 0 at `BUFFET_FROM` times the stall speed, 1
+/// at the stall speed and on past it below (the VR stick's rumble keeps growing; the view's
+/// buffet is full at 1). 0 on the ground or without a stall speed (helicopters).
+pub fn stall_buffet(a: &Aircraft) -> f32 {
+    if a.on_ground || a.stall_speed <= 0.0 {
+        return 0.0;
+    }
+    let r = a.velocity / a.stall_speed;
+    ((BUFFET_FROM - r) / (BUFFET_FROM - 1.0)).max(0.0)
+}
+
 /// A blast's trauma at `d` metres: its strength, halved at its reach.
 fn blast_trauma(kind: i32, d: f64) -> f32 {
     let (strength, reach) = match kind {
@@ -132,9 +143,8 @@ fn shake(
         }
         let kts = a.velocity / 27.0;
         held = held.max(GROUND * (kts / GROUND_KNOTS).min(1.0));
-    } else if a.stall_speed > 0.0 {
-        let r = a.velocity / a.stall_speed;
-        let b = ((BUFFET_FROM - r) / (BUFFET_FROM - 1.0)).clamp(0.0, 1.0);
+    } else {
+        let b = stall_buffet(a).min(1.0);
         held = held.max(BUFFET * b * b);
     }
     s.on_ground = a.on_ground;

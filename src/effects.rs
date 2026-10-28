@@ -23,8 +23,10 @@ pub struct Effects {
     pub snow: bool,
     /// Ground mist over the low ground and the sea at dawn, dusk and night (palette.wgsl).
     pub mist: bool,
-    /// The stratus deck's shadows on the ground (palette.wgsl).
+    /// The clouds' shadows on the ground (palette.wgsl).
     pub cloud_shadows: bool,
+    /// Shafts of sunlight through the gaps of a broken deck (sunbeams.rs).
+    pub sunbeams: bool,
     /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
     pub vapour: bool,
     /// The northern lights over the North Cape, shooting stars, low stars twinkling.
@@ -46,6 +48,7 @@ impl Default for Effects {
             snow: true,
             mist: true,
             cloud_shadows: true,
+            sunbeams: true,
             vapour: true,
             night_sky: true,
             vga: false,
@@ -65,6 +68,7 @@ pub enum Effect {
     Snow,
     Mist,
     CloudShadows,
+    Sunbeams,
     Vapour,
     NightSky,
     Vga,
@@ -72,7 +76,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const ALL: [Effect; 12] = [
+    pub const ALL: [Effect; 13] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -81,6 +85,7 @@ impl Effect {
         Effect::Snow,
         Effect::Mist,
         Effect::CloudShadows,
+        Effect::Sunbeams,
         Effect::Vapour,
         Effect::NightSky,
         Effect::Vga,
@@ -98,6 +103,7 @@ impl Effect {
             Effect::Snow => "snow",
             Effect::Mist => "mist",
             Effect::CloudShadows => "cloud-shadows",
+            Effect::Sunbeams => "sunbeams",
             Effect::Vapour => "vapour",
             Effect::NightSky => "night-sky",
             Effect::Vga => "vga",
@@ -130,6 +136,7 @@ impl Effect {
             Effect::Snow => e.snow,
             Effect::Mist => e.mist,
             Effect::CloudShadows => e.cloud_shadows,
+            Effect::Sunbeams => e.sunbeams,
             Effect::Vapour => e.vapour,
             Effect::NightSky => e.night_sky,
             Effect::Vga => e.vga,
@@ -147,6 +154,7 @@ impl Effect {
             Effect::Snow => e.snow = on,
             Effect::Mist => e.mist = on,
             Effect::CloudShadows => e.cloud_shadows = on,
+            Effect::Sunbeams => e.sunbeams = on,
             Effect::Vapour => e.vapour = on,
             Effect::NightSky => e.night_sky = on,
             Effect::Vga => e.vga = on,

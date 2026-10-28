@@ -259,3 +259,5 @@ brief-task-resupply = Eitil an stoc ón aerfort go dtí an t-aonad aerchosanta: 
 brief-task-heli-insertion = Eitil na trúpaí isteach, do chúltacaithe leat: tuirling laistigh de 1.5 km den sprioc agus fan ar an talamh ar feadh 15 s fad a thagann siad amach chun an áit a ghabháil
 brief-task-heli-csar = Tuirling laistigh de 200 m den phíolóta anuas agus fan 30 s go dtéann sé ar bord, ansin tuirling é ag bunáit chairdiúil
 brief-task-drones = Lámhach anuas na drónanna ionsaithe sula n-eitlíonn siad isteach sa sprioc: scriosann ceann amháin a théann tríd é
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

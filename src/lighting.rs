@@ -321,8 +321,10 @@ fn update_sun(
     let daylight = ((lum - 0.02) / 0.25).clamp(0.0, 1.0);
     state.daylight = daylight;
     // World shader: ambient + sun keeps sunlit faces near the classic brightness and
-    // darkens shadowed ones. Under an overcast the sun is hidden.
-    let shade = weather.shade.max(weather.whiteout);
+    // darkens shadowed ones. Under a full overcast the sun is hidden from the world (a broken
+    // deck's shadows are the shader's); the cockpit is in the shade of the clouds over it.
+    let shade = weather.world_shade.max(weather.whiteout);
+    let cockpit_shade = weather.shade.max(weather.whiteout);
     // The balance balance, also for classic shaders with shadows (the classic one leaves
     // shadows faint, the more so with the sun low).
     let balance = (settings.modern_shading || shadows_on).then(modern_balance);
@@ -382,7 +384,7 @@ fn update_sun(
     let sun_light = (
         dir,
         match balance {
-            Some(b) => b.cockpit_sun * daylight * (1.0 - 0.85 * shade),
+            Some(b) => b.cockpit_sun * daylight * (1.0 - 0.85 * cockpit_shade),
             // A little light at night.
             None => LUX_PER_UNIT * (0.15 + 0.85 * daylight) * daylight.max(0.05),
         },

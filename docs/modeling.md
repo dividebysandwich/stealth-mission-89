@@ -302,6 +302,7 @@ information. The name is what counts.
 | 15, 16 | Everything (global) | Continuously turning angles for radar antennas (16 is the usual one). |
 | 17 | Aircraft | Rotor and propeller angle. |
 | 21, 22 | AAA units | Turret azimuth, gun elevation (aimed at the target). |
+| 23, 24 | The player's RAH-66 | The stores on the left and right bay door: 0 three Hellfires, 1 six Stingers, 2 none (with slot 8 for the door's angle). |
 
 Slots 15-17 and 21-22 are angles for [rotating parts](#rotating-parts), not values to test.
 

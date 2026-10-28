@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stanica 8, stred pravého krídla
 hardpoint-a10-9-right-wing = Stanica 9, pravé krídlo
 hardpoint-a10-10-right-wing = Stanica 10, pravé krídlo
 hardpoint-a10-11-right-outer-wing = Stanica 11, pravé vonkajšie krídlo
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

@@ -259,3 +259,5 @@ brief-task-resupply = Ġorr l-istokk mill-ajrudrom lejn l-unità tad-difiża tal
 brief-task-heli-insertion = Ġorr it-truppi, il-wingmen miegħek: inżel fi 1.5 km mill-mira u ibqa' fl-art għal 15 s waqt li joħorġu biex jieħdu l-post
 brief-task-heli-csar = Inżel fi 200 m mill-pilota mwaqqa' u stenna 30 s biex jitla' a bord, imbagħad inżlu f'bażi ħabiba
 brief-task-drones = Waqqa' d-drones tal-attakk qabel ma jaqbżu fuq il-mira: wieħed li jgħaddi jeqridha
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

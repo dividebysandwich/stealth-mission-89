@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = ステーション 8、右翼中央
 hardpoint-a10-9-right-wing = ステーション 9、右翼
 hardpoint-a10-10-right-wing = ステーション 10、右翼
 hardpoint-a10-11-right-outer-wing = ステーション 11、右翼外側
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

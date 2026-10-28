@@ -194,3 +194,6 @@ language-offer-question = Naršyklės kalba: { $language }. Ar žaisti šia kalb
 language-offer-yes = Taip
 language-offer-no = Ne
 language-offer-never = Daugiau nebeklausti
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

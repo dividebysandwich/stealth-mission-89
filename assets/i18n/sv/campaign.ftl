@@ -259,3 +259,5 @@ brief-task-resupply = Flyg lagret från flygfältet till luftvärnsenheten: hovr
 brief-task-heli-insertion = Flyg in trupperna med dina vingmän: landa inom 1,5 km från målet och stå kvar på marken i 15 s medan de stiger ut för att inta platsen
 brief-task-heli-csar = Landa inom 200 m från den nedskjutne piloten och vänta 30 s tills han är ombord, landa sedan honom vid en egen bas
 brief-task-drones = Skjut ned attackdrönarna innan de störtdyker mot målet: en som tar sig igenom förstör det
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

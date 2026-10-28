@@ -475,7 +475,7 @@ impl CampaignState {
             Objective::Interdict { object, .. } => !self.site(*object).is_some_and(Site::alive),
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
-            Objective::Resupply { .. } => p.delivered,
+            Objective::Resupply { .. } | Objective::Logistics { .. } => p.delivered,
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()

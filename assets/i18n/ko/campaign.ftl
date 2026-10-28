@@ -259,3 +259,5 @@ brief-task-resupply = 비행장에서 방공 부대까지 비축 물자를 수�
 brief-task-heli-insertion = 윙맨과 함께 병력을 수송하십시오. 표적 1.5 km 이내에 착륙해 15초간 지상에 머무르면 병력이 내려 지역을 점령합니다
 brief-task-heli-csar = 추락한 조종사 200 m 이내에 착륙해 30초간 탑승을 기다린 뒤, 아군 기지에 내려 주십시오
 brief-task-drones = 공격 드론이 표적에 돌입하기 전에 격추하십시오. 한 대라도 돌파하면 표적이 파괴됩니다
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

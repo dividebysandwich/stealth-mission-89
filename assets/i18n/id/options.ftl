@@ -194,3 +194,6 @@ language-offer-question = Bahasa peramban: { $language }. Mainkan game dalam bah
 language-offer-yes = Ya
 language-offer-no = Tidak
 language-offer-never = Jangan tanya lagi
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

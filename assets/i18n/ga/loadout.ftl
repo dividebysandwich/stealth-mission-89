@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stáisiún 8, sciathán deas láir
 hardpoint-a10-9-right-wing = Stáisiún 9, sciathán deas
 hardpoint-a10-10-right-wing = Stáisiún 10, sciathán deas
 hardpoint-a10-11-right-outer-wing = Stáisiún 11, sciathán deas seachtrach
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

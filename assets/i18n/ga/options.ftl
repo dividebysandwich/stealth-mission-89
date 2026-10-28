@@ -194,3 +194,6 @@ language-offer-question = Teanga an bhrabhsálaí: { $language }. An bhfuil tú 
 language-offer-yes = Tá
 language-offer-no = Níl
 language-offer-never = Ná fiafraigh arís
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

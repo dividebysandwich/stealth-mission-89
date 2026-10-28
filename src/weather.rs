@@ -60,7 +60,7 @@ impl Plugin for WeatherPlugin {
                 follow_deck,
                 stream_clouds,
                 fade_clouds,
-                cloud_shades,
+                cloud_shadows,
                 lightning,
                 rain,
             )
@@ -106,6 +106,9 @@ pub struct WeatherState {
     pub eye_ft: f32,
     /// In the shade of a cloud (under covered stratus or a storm cell), 0..1, eased.
     pub shade: f32,
+    /// The sun hidden from the whole world (under a full overcast or a storm cell), 0..1,
+    /// eased: under a broken deck its gaps are sunlit (the cloud shadows shade the rest).
+    pub world_shade: f32,
     /// How grey and dim the day is under the clouds, 0..1, eased.
     gloom: f32,
     /// Under (or in) a storm cell: rain, turbulence, close lightning.
@@ -129,8 +132,8 @@ pub struct WeatherState {
     prev_eye: Option<DVec3>,
     /// The ground under the aircraft (metres), smoothed: the ground mist lies on it.
     mist_ground: Option<f32>,
-    /// `Globals::cloud_shade` (`cloud_shades`).
-    pub shades: [Vec4; CLOUD_SHADES],
+    /// `Globals::shadow_*` (`cloud_shadows`).
+    pub shadows: CloudShadows,
     rain: Option<Entity>,
     drops: Vec<Vec3>,
     rng: Rng,
@@ -190,6 +193,22 @@ impl WeatherState {
             0.0
         };
         Vec4::new(mist, top, shadows, self.mist_ground.unwrap_or(0.0))
+    }
+
+    /// The stratus deck as drawn: its coverage (percent) and field threshold 0..1 (covered
+    /// where `Weather::stratus_field` reaches it).
+    pub fn drawn_deck(&self) -> (f32, f32) {
+        (self.cover[1], self.stratus_threshold)
+    }
+
+    /// Storm cells built up, 0..1.
+    pub fn storm(&self) -> f32 {
+        self.storm
+    }
+
+    /// The ground under the aircraft (metres), as the mist lies on it.
+    pub fn ground_m(&self) -> f32 {
+        self.mist_ground.unwrap_or(0.0)
     }
 
     /// The weather of a moment of the forecast.
@@ -523,9 +542,11 @@ fn track_eye(
     };
     let shade = if state.under_storm { 1.0 } else { deck };
     state.shade += (shade - state.shade) * (dt * 0.5).min(1.0);
-    // Grey days: under a deck as far as it covers the sky, and in storms.
+    let world = if state.under_storm { 1.0 } else { deck * overcast_share(state.cover[1]) };
+    state.world_shade += (world - state.world_shade) * (dt * 0.5).min(1.0);
+    // Grey days: under a deck the more it covers the sky (a broken one barely), and in storms.
     let overcast = if ft < w.stratus.top_ft as f32 { state.cover[1] / 100.0 } else { 0.0 };
-    let gloom = (0.8 * overcast + 0.6 * state.storm).min(1.0);
+    let gloom = (0.8 * overcast * overcast + 0.6 * state.storm).min(1.0);
     state.gloom += (gloom - state.gloom) * (dt * 0.3).min(1.0);
 }
 
@@ -606,7 +627,7 @@ fn stream_clouds(
         let e = commands
             .spawn((
                 CloudEntity,
-                CloudShade(r_m),
+                CloudShade { r: r_m, storm: c.kind == CloudKind::Cumulonimbus },
                 CloudVolume::new(volumes.add(volume))
                     .with_core(1.0)
                     .with_fill(state.fade(c.kind, c.rank))
@@ -624,40 +645,122 @@ fn stream_clouds(
 
 /// A cumulus or cumulonimbus's radius (m), for its shadow (`Effects::cloud_shadows`).
 #[derive(Component)]
-struct CloudShade(f32);
+struct CloudShade {
+    r: f32,
+    storm: bool,
+}
 
-/// Cumulus shadows handed to the world shader at most (the nearest), and how far away (m).
-pub const CLOUD_SHADES: usize = 8;
-const SHADE_RANGE: f64 = 12_000.0;
+/// Cloud shadows (`Effects::cloud_shadows`): a grid of `SHADOW_GRID` x `SHADOW_GRID` squares
+/// `SHADOW_CELL` metres wide where the sun sees the clouds above the ground round the eye, each
+/// listing up to four of `SHADOW_CLOUDS` cloud discs; past it the shade fades to the layers'
+/// average (palette.wgsl `cloud_shadow`).
+pub const SHADOW_GRID: usize = 12;
+pub const SHADOW_CLOUDS: usize = 112;
+const SHADOW_CELL: f32 = 3000.0;
+/// How far the grid is moved towards the sun from above the eye at most (m; a low sun).
+const SHADOW_REACH: f32 = 12_000.0;
+/// Darkness of a cumulus's shadow (a storm tower's: 1).
+const CUMULUS_SHADE: f32 = 0.85;
 
-/// The nearest clouds' shadows (`Globals::cloud_shade`): their centre (x, z, render space),
-/// radius as drawn (faded clouds shrink) and base height.
-fn cloud_shades(
+/// The shader's cloud shadow data (`Globals::shadow_*`).
+#[derive(Clone, Copy)]
+pub struct CloudShadows {
+    /// The grid's corner x, z (render space), square size (m), the cumulus base height the
+    /// discs are projected to (render space).
+    pub grid: Vec4,
+    /// Cumulus shadows on (x), stratus shadows' strength (y), the average shade past the grid
+    /// (z).
+    pub far: Vec4,
+    /// Per square: up to four cloud numbers (1-based, 0 = none).
+    pub cells: [Vec4; SHADOW_GRID * SHADOW_GRID],
+    /// Discs: centre x, z where the sun sees them from the base height, radius, darkness.
+    pub clouds: [Vec4; SHADOW_CLOUDS],
+}
+
+impl Default for CloudShadows {
+    fn default() -> Self {
+        Self {
+            grid: Vec4::ZERO,
+            far: Vec4::new(0.0, 1.0, 0.0, 0.0),
+            cells: [Vec4::ZERO; SHADOW_GRID * SHADOW_GRID],
+            clouds: [Vec4::ZERO; SHADOW_CLOUDS],
+        }
+    }
+}
+
+/// How fully a deck of `cover` percent overcasts the sky: below it the sun is hidden
+/// everywhere, not only under its sheet.
+fn overcast_share(cover: f32) -> f32 {
+    smoothstep(80.0, 98.0, cover)
+}
+
+/// The clouds' shadows round the eye (`WeatherState::shadows`).
+fn cloud_shadows(
     settings: Res<crate::settings::Settings>,
     origin: Res<FloatingOrigin>,
     eyes: Eyes,
+    lighting: Res<crate::lighting::LightingState>,
     clouds: Query<(&WorldPos, &CloudShade, &CloudVolume)>,
     mut state: ResMut<WeatherState>,
 ) {
-    state.shades = [Vec4::ZERO; CLOUD_SHADES];
-    let Some(eye) = eye_position(&eyes, &origin) else { return };
+    let mut sh = CloudShadows::default();
+    // A full overcast hides the sun everywhere (`world_shade`), not in patches.
+    sh.far.y = 1.0 - overcast_share(state.cover[1]);
+    let sun = lighting.sun.truncate();
+    let eye = eye_position(&eyes, &origin);
+    let w = state.weather;
+    let layer = if w.cumulus.present() { w.cumulus } else { w.cumulonimbus };
+    let (Some(eye), true) = (eye, layer.present() && sun.y >= 0.05) else {
+        state.shadows = sh;
+        return;
+    };
     if !settings.effects.cloud_shadows || !settings.modern_shading {
+        state.shadows = sh;
         return;
     }
-    let mut near: Vec<(f64, Vec4)> = clouds
+    let base = (layer.base_ft as f64 * WU - origin.origin.y) as f32;
+    let slope = Vec2::new(sun.x, sun.z) / sun.y;
+    // Centred where the ground under the eye sees the clouds.
+    let ground = state.mist_ground.unwrap_or(0.0) - origin.origin.y as f32;
+    let e = (eye - origin.origin).as_vec3();
+    let centre = Vec2::new(e.x, e.z) + (slope * (base - ground)).clamp_length_max(SHADOW_REACH);
+    let half = SHADOW_CELL * SHADOW_GRID as f32 / 2.0;
+    let corner = centre - half;
+    sh.grid = Vec4::new(corner.x, corner.y, SHADOW_CELL, base);
+    let mut near: Vec<(f32, Vec4)> = clouds
         .iter()
         .filter(|(_, _, v)| v.fill > 0.0)
         .map(|(p, s, v)| {
-            let d = (p.0 - eye).with_y(0.0).length() - s.0 as f64;
             let r = (p.0 - origin.origin).as_vec3();
-            (d, Vec4::new(r.x, r.z, s.0 * v.fill.min(1.0), r.y))
+            // Where the sun sees it from the base height: one projection for all of them.
+            let c = Vec2::new(r.x, r.z) - slope * (r.y - base);
+            let dark = if s.storm { 1.0 } else { CUMULUS_SHADE };
+            (c.distance(centre), Vec4::new(c.x, c.y, s.r * v.fill.min(1.0), dark))
         })
-        .filter(|(d, _)| *d < SHADE_RANGE)
+        .filter(|(d, c)| *d - c.z < half * std::f32::consts::SQRT_2)
         .collect();
     near.sort_by(|a, b| a.0.total_cmp(&b.0));
-    for (slot, (_, c)) in state.shades.iter_mut().zip(near) {
-        *slot = c;
+    let last = SHADOW_GRID as i32 - 1;
+    for (i, (_, c)) in near.into_iter().take(SHADOW_CLOUDS).enumerate() {
+        sh.clouds[i] = c;
+        let square = |v: f32| ((v - c.z) / SHADOW_CELL).floor() as i32;
+        let (x0, y0) = (square(c.x - corner.x), square(c.y - corner.y));
+        let (x1, y1) = (square(c.x - corner.x + 2.0 * c.z), square(c.y - corner.y + 2.0 * c.z));
+        for gy in y0.max(0)..=y1.min(last) {
+            for gx in x0.max(0)..=x1.min(last) {
+                let cell = &mut sh.cells[gy as usize * SHADOW_GRID + gx as usize];
+                if let Some(k) = (0..4).find(|&k| cell[k] == 0.0) {
+                    cell[k] = (i + 1) as f32;
+                }
+            }
+        }
     }
+    // The average shade: the share of the ground under the discs (about 0.35 of a square's
+    // width across), soft edged.
+    let share = |cover: f32| cover / 100.0 * std::f32::consts::PI * 0.35 * 0.35 * 0.7;
+    sh.far.x = 1.0;
+    sh.far.z = (share(state.cover[0]) * CUMULUS_SHADE + share(state.cover[2])).min(1.0);
+    state.shadows = sh;
 }
 
 /// Storm cells are dark, and so is everything under a storm sky.
@@ -1140,7 +1243,7 @@ const MIST_DAYLIGHT: f32 = 0.75;
 const MIST_TOP: (f32, f32) = (40.0, 120.0);
 /// Seconds the mist's ground takes to follow the ground under the aircraft (most of the way).
 const MIST_FOLLOW: f32 = 20.0;
-const CLOUD_SHADOW: f32 = 0.35;
+const CLOUD_SHADOW: f32 = 0.55;
 
 /// Rain streaks around the eye (`WeatherState::raining`).
 const DROPS: usize = 500;

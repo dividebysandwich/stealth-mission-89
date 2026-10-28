@@ -194,3 +194,6 @@ language-offer-question = 브라우저 언어: { $language }. 이 언어로 플�
 language-offer-yes = 예
 language-offer-no = 아니요
 language-offer-never = 다시 묻지 않기
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

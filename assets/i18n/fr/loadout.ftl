@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Station 8, aile droite centrale
 hardpoint-a10-9-right-wing = Station 9, aile droite
 hardpoint-a10-10-right-wing = Station 10, aile droite
 hardpoint-a10-11-right-outer-wing = Station 11, aile droite extérieure
+weapon-role-21 = Air-air, guidage infrarouge, très courte portée
+employment-21 = Portée : 1-6 km, plus loin de face

@@ -14,9 +14,9 @@ pub fn view_z_feet(v: i32) -> i32 {
     }
 }
 
-/// Seekers that need to see their target: IR, TV/IR AGM, laser-guided bomb, AIM-9.
+/// Seekers that need to see their target: IR, TV/IR AGM, laser-guided bomb, AIM-9, Stinger.
 pub fn optical_seeker(spec: i32, cls: i32) -> bool {
-    cls <= 0 || cls == 6 || cls == 28 || spec == 23
+    cls <= 0 || cls == 6 || cls == 28 || crate::types::ir_aam(spec)
 }
 
 impl Sim {

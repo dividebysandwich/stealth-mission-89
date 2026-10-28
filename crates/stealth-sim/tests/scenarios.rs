@@ -280,6 +280,43 @@ fn stealthy_player_not_detected() {
     assert_eq!(sim.site_alert(3), 0);
 }
 
+/// Whether a site of type `ty` `km` north of a pilot crossing in front of it at `alt` ft and
+/// `knots` (its doors opened or not) raises its alert within 20 s.
+fn site_sees(opts: &SimOptions, ty: i32, km: f32, alt: u16, knots: u16, doors: bool) -> bool {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::with_options(&d.sim, &m, opts.clone());
+    let (mx, my) = sandbox(&mut sim, &m);
+    place_site(&mut sim, 3, ty, mx, my - (64.0 * km) as i32);
+    let mut p = player_at(mx, my, alt, 0x4000, knots);
+    p.cmd.toggle_bay = doors;
+    for _ in 0..15 * 20 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    sim.site_alert(3) > 0
+}
+
+/// The RAH-66 is all but invisible to radars slow or hovering, and seen about as an F-117A is
+/// near its top speed: an SA-2 sees neither hovering at 6000 ft 12 km away, both at 180 kt;
+/// with the doors open an SA-13 sees the F-117A low down at any speed, the RAH-66 only fast.
+#[test]
+fn comanche_hides_when_slow() {
+    let comanche =
+        SimOptions { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    let f117 = SimOptions::default();
+    assert!(site_sees(&f117, 1, 12.0, 6000, 0, false));
+    assert!(!site_sees(&comanche, 1, 12.0, 6000, 0, false));
+    assert!(!site_sees(&comanche, 1, 12.0, 6000, 100, false));
+    assert!(site_sees(&comanche, 1, 12.0, 6000, 180, false));
+    for knots in [0, 60] {
+        assert!(site_sees(&f117, 7, 5.0, 300, knots, true));
+        assert!(!site_sees(&comanche, 7, 5.0, 300, knots, true), "{knots} kt");
+        assert!(!site_sees(&comanche, 7, 1.0, 300, knots, true), "{knots} kt, 1 km");
+    }
+    assert!(site_sees(&comanche, 7, 5.0, 300, 180, true));
+}
+
 /// Run until a site missile is in the air and locked.
 fn engaged(d: &Data, ty: i32) -> (Sim, PlayerState) {
     let m = mission(d, 3, 0x1234, 1);
@@ -681,24 +718,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xa3b1bdbb186698f0,
-        0x038b580b0db073de,
-        0x1e73366a06e8db3d,
-        0x3089a683a20e5bac,
-        0xddb325011740e210,
-        0xf36debb0cb9697ea,
-        0xf7e55263e17a6a03,
-        0x0c6fb39876434f29,
-        0xaed36e9892e553ea,
-        0x9b60e682af2076b6,
-        0x76bb8eef4dea9a40,
-        0x19d7ccf76b8b0889,
-        0xd311a37d18eca163,
-        0xc51de03ed33aef1e,
-        0x4fe73469619a0cef,
-        0x59dbf3646c602635,
-        0x3731406f6a5737d3,
-        0xc9a833d6997f9c2e,
+        0xc78a9fafbd661ae8,
+        0xa15d0f1769d18811,
+        0x59b57bbe9f20d517,
+        0x625d60d005d2bb76,
+        0xcd0503f61276f1d2,
+        0x810ec650b438f587,
+        0x71451069ff1e983c,
+        0xc15895d347722155,
+        0xb3816704e70b9a84,
+        0x29df14a4a4fef498,
+        0x056dca768cdb2ec6,
+        0xfc7b52faabf7d693,
+        0x1774eb4b9852a017,
+        0x111f150533c029dd,
+        0x0d496fef34d2594f,
+        0x48f947ba1a2fd347,
+        0x6873bcef368fbd8f,
+        0xc70eb46110231072,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -1912,6 +1949,45 @@ fn hellfire_follows_the_pod() {
     }
 }
 
+/// The RAH-66 carries its Hellfires in bays: fired with the doors shut, the missile waits for them
+/// to open, then they shut again a few seconds after the last launch.
+#[test]
+fn comanche_doors_open_to_fire() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(20, 3), (20, 3)]);
+    let o = &mut sim.objects_mut()[5];
+    (o.x, o.y, o.flags) = (mx + 100, my - 100, 0);
+    let mut p = player_at(mx, my, 500, 0x2000, 0);
+    p.pod = Some(PodAim { heading: 0x2000, pitch: -0x400, ground: Some((mx + 100, my - 100)) });
+    sim.step(&p, 15);
+    assert!(!sim.bay_doors_open());
+    let flying = |sim: &Sim| (8..12).filter(|&s| sim.projectiles()[s].ttl != 0).count();
+    p.cmd.fire = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert_eq!(flying(&sim), 0, "waits for the doors");
+    let mut frames = 0;
+    while flying(&sim) == 0 && frames < 15 {
+        sim.step(&p, 15);
+        frames += 1;
+    }
+    assert!(flying(&sim) == 1 && sim.bay_doors_open(), "fired after {frames} frames");
+    // Open while it fires, shut some 4 s after the launch.
+    for _ in 0..15 * 3 {
+        sim.step(&p, 15);
+    }
+    assert!(sim.bay_doors_open());
+    for _ in 0..15 * 2 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.bay_door_anim(), 0, "shut again");
+}
+
 /// A Hellfire fired from the AH-1Z 500 ft up at a target `range` map units northeast, the pod's
 /// spot on it: the launch zone at the shot and whether it hit.
 fn hellfire_shot(guided: bool, range: i32) -> (Option<dlz::LaunchZone>, bool) {
@@ -2405,4 +2481,42 @@ fn sidewinders_pick_a_drone_after_a_ground_lock() {
     let t = sim.targeting();
     assert_eq!(t.air, Some(w.first_unit));
     assert!(t.lock_valid && t.in_range);
+}
+
+/// Patrolling fighters know nothing of a player no radar has seen: over 20 minutes they do
+/// not close on a RAH-66 hovering low in enemy territory (they used to steer for its bearing).
+#[test]
+fn patrols_ignore_an_unseen_player() {
+    let d = data();
+    let opts = SimOptions { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    let (mut closing, mut n) = (0i64, 0i64);
+    for (th, seed) in [(0usize, 0x4321u16), (1, 0x55), (3, 0x1234), (7, 0x22), (9, 0x99)] {
+        let m = mission(d, th, seed, 3);
+        let mut sim = Sim::with_options(&d.sim, &m, opts.clone());
+        let (mx, my) = enemy_cell(&m);
+        let p = player_at(mx, my, 60, 0, 0);
+        let mut last = vec![None; sim.flights().len()];
+        for f in 0..15 * 1200 {
+            sim.step(&p, 15);
+            assert_eq!(sim.alarm_state().0, 0, "theater {th}: the player was seen");
+            if f % 150 != 0 {
+                continue;
+            }
+            for (k, u) in sim.flights().iter().enumerate() {
+                let patrol = u.flags & (fflags::EXISTS | fflags::AIRBORNE | fflags::DESTROYED)
+                    == fflags::EXISTS | fflags::AIRBORNE
+                    && u.mode == 3
+                    && u.alt > 1000
+                    && !sim.friendly_aircraft(u.spec);
+                let r = ((mx - u.x) as f64).hypot((my - u.y) as f64) as i64;
+                if let (true, Some(l)) = (patrol, last[k]) {
+                    closing += l - r;
+                    n += 1;
+                }
+                last[k] = patrol.then_some(r);
+            }
+        }
+    }
+    let mean = closing / n.max(1);
+    assert!(n > 500 && mean < 25, "{n} samples, closing {mean} units per 10 s");
 }

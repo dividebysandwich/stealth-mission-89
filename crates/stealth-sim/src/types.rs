@@ -509,6 +509,15 @@ pub const TURRET_DEPRESSION: i32 = 9102;
 pub const TURRET_ELEVATION: i32 = 3641;
 /// The Hellfire's missile table entry.
 pub const HELLFIRE_SPEC: i32 = 47;
+/// The AIM-9's and the air-launched Stinger's missile table entries.
+pub const AIM9_SPEC: i32 = 23;
+pub const STINGER_SPEC: i32 = 48;
+
+/// An infrared air-to-air missile the player fires (the AIM-9 or the Stinger): its seeker
+/// growls, follows the helmet sight and needs to see the target.
+pub fn ir_aam(spec: i32) -> bool {
+    spec == AIM9_SPEC || spec == STINGER_SPEC
+}
 /// An object this close to the Hellfire's laser spot (map units) is what it homes on.
 pub const HELLFIRE_SPOT_RADIUS: i32 = 6;
 /// An object this close to a point designated with the targeting pod (map units) is locked;
@@ -535,6 +544,10 @@ pub struct Airframe {
     /// The A-10 (weapons outside): only its look differs from the F-16's.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub a10: bool,
+    /// The RAH-66 (a gunship with its missiles in bays): doors that open as it fires, and a
+    /// radar signature that fades with its speed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub comanche: bool,
 }
 
 /// Landing option.
@@ -576,6 +589,10 @@ pub struct SimOptions {
     /// The aircraft is the A-10: seen as one by the other pilots.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub a10: bool,
+    /// The aircraft is the RAH-66 (with `helicopter` and `gunship`): its bay doors open as it
+    /// fires, its radar signature fades with its speed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub comanche: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -613,6 +630,7 @@ impl Default for SimOptions {
             gunship: false,
             tornado: false,
             a10: false,
+            comanche: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,
@@ -843,7 +861,8 @@ pub enum SimEvent {
         y: i32,
     },
     /// Campaign: a resupply helicopter the campaign launched has set its load down at the air
-    /// defence unit (`Sim::aaa_units` index) it flew to.
+    /// defence unit (`Sim::aaa_units` index) it flew to; a cargo helicopter on a new site's
+    /// helipad (`aaa` is `usize::MAX`).
     CampaignFlightDelivered {
         unit: usize,
         tag: u32,

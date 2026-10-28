@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Postaja 8, desno srednje krilo
 hardpoint-a10-9-right-wing = Postaja 9, desno krilo
 hardpoint-a10-10-right-wing = Postaja 10, desno krilo
 hardpoint-a10-11-right-outer-wing = Postaja 11, desno zunanje krilo
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

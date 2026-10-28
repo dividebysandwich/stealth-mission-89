@@ -259,3 +259,5 @@ brief-task-resupply = Portare la scorta dall'aeroporto all'unità di difesa aere
 brief-task-heli-insertion = Portare le truppe insieme ai gregari: atterrare entro 1,5 km dall'obiettivo e restare a terra 15 s mentre sbarcano per conquistare il luogo
 brief-task-heli-csar = Atterrare entro 200 m dal pilota abbattuto, attendere 30 s che salga a bordo, poi sbarcarlo in una base amica
 brief-task-drones = Abbattere i droni d'attacco prima che si tuffino sull'obiettivo: anche uno solo che passa lo distrugge
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

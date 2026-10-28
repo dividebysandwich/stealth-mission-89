@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Asema 8, oikea keskisiipi
 hardpoint-a10-9-right-wing = Asema 9, oikea siipi
 hardpoint-a10-10-right-wing = Asema 10, oikea siipi
 hardpoint-a10-11-right-outer-wing = Asema 11, oikea ulkosiipi
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

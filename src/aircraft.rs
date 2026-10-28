@@ -17,6 +17,7 @@ pub enum AircraftKind {
     AH1Z,
     Tornado,
     A10,
+    RAH66,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -65,7 +66,7 @@ pub struct AircraftSpec {
     /// Flown by the helicopter flight model (`flight::heli`): lands anywhere flat, no ejection
     /// seat, and no gun unless it has a turret.
     pub helicopter: bool,
-    /// A turret cannon aimed with the targeting pod, and no troops (the AH-1Z).
+    /// A turret cannon aimed with the targeting pod, and no troops (the AH-1Z, the RAH-66).
     pub turret: bool,
     /// A helmet-mounted display (`hmd.rs`).
     pub hmd: Hmd,
@@ -329,6 +330,48 @@ static AH1Z: AircraftSpec = AircraftSpec {
     flight: FlightConstants::ah1z,
 };
 
+/// A point of the RAH-66 model (tools/models/comanche.py, as `ah1z_point`) in the aircraft frame.
+const fn rah66_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.38;
+    model_point(RAH66_LIFT, x * K, z * K, -y * K)
+}
+
+/// The RAH-66's model origin is on the ground under its wheels; clear of the ground overlays.
+const RAH66_LIFT: f32 = 0.05;
+
+static RAH66: AircraftSpec = AircraftSpec {
+    model: "aircraft_046",
+    model_lift: RAH66_LIFT,
+    // The pilot's (front) seat: behind the windshield's bow (y 2.48 at the sill, 2.71 at the
+    // roof) and ahead of the gunner's (y 1.84), the head under the flat roof (z 2.51), the sills
+    // (z 1.47) at the elbows.
+    eye: rah66_point(0.0, 2.10, 2.06),
+    cockpit_view: Some(CockpitView {
+        // The canopy: open from inside; the hull drawn from inside round the tandem cockpits.
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Rah66, "cockpit_rah66")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: crate::hud::modern::SCALE,
+    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    bomb_bay: true,
+    helicopter: true,
+    turret: true,
+    hmd: Hmd::Full,
+    // The chin turret's barrels.
+    muzzle: Some(rah66_point(0.0, 4.75, 0.56)),
+    exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    flight: FlightConstants::rah66,
+};
+
 /// The Tornado's wheels are 1.90 m below its model origin (tools/models/aircraft.py
 /// `TORNADO_GROUND`).
 const TORNADO_LIFT: f32 = 1.90 + RUNWAY_Y;
@@ -419,18 +462,21 @@ static A10: AircraftSpec = AircraftSpec {
 };
 
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 6] = [
+    pub const ALL: [AircraftKind; 7] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::Tornado,
         AircraftKind::A10,
         AircraftKind::UH60,
         AircraftKind::AH1Z,
+        AircraftKind::RAH66,
     ];
 
     /// What another pilot flies.
     pub fn of_remote(p: &stealth_sim::net::RemotePilot) -> Self {
-        if p.gunship {
+        if p.comanche {
+            AircraftKind::RAH66
+        } else if p.gunship {
             AircraftKind::AH1Z
         } else if p.helicopter {
             AircraftKind::UH60
@@ -453,6 +499,7 @@ impl AircraftKind {
             AircraftKind::AH1Z => &AH1Z,
             AircraftKind::Tornado => &TORNADO,
             AircraftKind::A10 => &A10,
+            AircraftKind::RAH66 => &RAH66,
         }
     }
 
@@ -465,6 +512,7 @@ impl AircraftKind {
             AircraftKind::AH1Z => "ah1z",
             AircraftKind::Tornado => "tornado",
             AircraftKind::A10 => "a10",
+            AircraftKind::RAH66 => "rah66",
         }
     }
 
@@ -476,6 +524,7 @@ impl AircraftKind {
                 || (s == "f16c" && *k == AircraftKind::F16)
                 || (matches!(s.as_str(), "uh60a" | "blackhawk") && *k == AircraftKind::UH60)
                 || (matches!(s.as_str(), "ah1" | "viper") && *k == AircraftKind::AH1Z)
+                || (matches!(s.as_str(), "comanche" | "rah66a") && *k == AircraftKind::RAH66)
                 || (matches!(s.as_str(), "tornadoids" | "ids") && *k == AircraftKind::Tornado)
                 || (matches!(s.as_str(), "a10c" | "warthog" | "thunderbolt")
                     && *k == AircraftKind::A10)
@@ -490,6 +539,7 @@ impl AircraftKind {
             AircraftKind::AH1Z => "AH-1Z Viper",
             AircraftKind::Tornado => "Tornado IDS",
             AircraftKind::A10 => "A-10C Thunderbolt II",
+            AircraftKind::RAH66 => "RAH-66 Comanche",
         }
     }
 }
@@ -587,6 +637,19 @@ mod tests {
         assert!(x.abs() < 0.3, "eye {x} m to the side");
     }
 
+    /// The RAH-66's eye: in the pilot's front cockpit between the windshield's bow and the
+    /// gunner's (tools/models/comanche.py STATIONS), under the flat roof, above the sills.
+    #[test]
+    fn rah66_eye_in_the_cockpit() {
+        let spec = AircraftKind::RAH66.spec();
+        let s = AIRCRAFT_MODEL_SCALE as f32 * 16.38;
+        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (eye.x, -eye.z, eye.y);
+        assert!((1.84..2.48).contains(&y), "eye {y} m from the mast");
+        assert!((1.60..2.40).contains(&z), "eye {z} m high");
+        assert!(x.abs() < 0.3, "eye {x} m to the side");
+    }
+
     #[test]
     fn names_round_trip() {
         for k in AircraftKind::ALL {
@@ -601,6 +664,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("Tornado-IDS"), Some(AircraftKind::Tornado));
         assert_eq!(AircraftKind::parse("A-10C"), Some(AircraftKind::A10));
         assert_eq!(AircraftKind::parse("warthog"), Some(AircraftKind::A10));
+        assert_eq!(AircraftKind::parse("RAH-66"), Some(AircraftKind::RAH66));
+        assert_eq!(AircraftKind::parse("Comanche"), Some(AircraftKind::RAH66));
     }
 
     /// The Tornado's outer wings: two parts on the slots the game sweeps them with, pivoted

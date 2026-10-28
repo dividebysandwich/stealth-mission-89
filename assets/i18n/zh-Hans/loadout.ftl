@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = 8 号挂点，右中翼
 hardpoint-a10-9-right-wing = 9 号挂点，右翼
 hardpoint-a10-10-right-wing = 10 号挂点，右翼
 hardpoint-a10-11-right-outer-wing = 11 号挂点，右外翼
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

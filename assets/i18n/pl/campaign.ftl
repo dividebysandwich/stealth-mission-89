@@ -274,3 +274,5 @@ brief-task-resupply = Przetransportuj zapas z lotniska do jednostki obrony powie
 brief-task-heli-insertion = Przewieź żołnierzy razem ze skrzydłowymi: wyląduj w odległości do 1,5 km od celu i pozostań na ziemi przez 15 s, aż wysiądą, by zająć miejsce
 brief-task-heli-csar = Wyląduj w odległości do 200 m od zestrzelonego pilota, odczekaj 30 s, aż wejdzie na pokład, a potem wyląduj z nim w sojuszniczej bazie
 brief-task-drones = Zestrzel drony szturmowe, zanim zanurkują w cel: jeden, który się przedrze, niszczy go
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

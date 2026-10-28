@@ -152,7 +152,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         | MissionKind::Defend
         | MissionKind::Csar
         | MissionKind::Awacs
-        | MissionKind::Resupply => [1, 0, 1, 0],
+        | MissionKind::Resupply
+        | MissionKind::Logistics => [1, 0, 1, 0],
     }
 }
 
@@ -291,6 +292,7 @@ pub fn airborne(kind: MissionKind) -> bool {
             | MissionKind::Csar
             | MissionKind::Awacs
             | MissionKind::Resupply
+            | MissionKind::Logistics
     )
 }
 
@@ -342,6 +344,16 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         Objective::AntiShip { .. } => t!("brief-anti-ship").into(),
         Objective::Resupply { request } => match state.supply_request(request) {
             Some(r) => t!("brief-resupply", unit = r.title().tr(), task = describe(o.kind)),
+            None => describe(o.kind).into(),
+        },
+        Objective::Logistics { site, leg } => match state.deployment(site) {
+            Some(d) => format!(
+                "Cargo {} of {} for the new {}. {}",
+                leg + 1,
+                d.loads,
+                d.title(),
+                describe(o.kind)
+            ),
             None => describe(o.kind).into(),
         },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {

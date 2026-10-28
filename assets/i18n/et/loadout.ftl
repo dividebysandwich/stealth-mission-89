@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Station 8, parem keskosa tiib
 hardpoint-a10-9-right-wing = Station 9, parem tiib
 hardpoint-a10-10-right-wing = Station 10, parem tiib
 hardpoint-a10-11-right-outer-wing = Station 11, parem välistiib
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

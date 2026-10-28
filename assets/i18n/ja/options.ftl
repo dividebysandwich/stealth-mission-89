@@ -194,3 +194,6 @@ language-offer-question = ブラウザの言語：{ $language }。この言語�
 language-offer-yes = はい
 language-offer-no = いいえ
 language-offer-never = 今後は確認しない
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

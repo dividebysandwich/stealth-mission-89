@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stacija 8, labais vidējais spārns
 hardpoint-a10-9-right-wing = Stacija 9, labais spārns
 hardpoint-a10-10-right-wing = Stacija 10, labais spārns
 hardpoint-a10-11-right-outer-wing = Stacija 11, labais ārējais spārns
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

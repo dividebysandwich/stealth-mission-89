@@ -148,7 +148,8 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
             roads(&sc.net, &f, &mut g, low);
             for i in sc.net.building_index.around(f.min, f.max()) {
                 let b = &sc.net.buildings[i as usize];
-                if !f.contains(b.p) {
+                // Not in a clearing (round the friendly air defence and its new sites).
+                if !f.contains(b.p) || sc.cleared(b.p) {
                     continue;
                 }
                 if low {

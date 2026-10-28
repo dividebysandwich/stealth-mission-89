@@ -258,3 +258,5 @@ brief-task-resupply = 将库存从机场运送到防空单位：在距其 50 m �
 brief-task-heli-insertion = 运送部队，僚机随行：在目标 1.5 km 内着陆，并在地面停留 15 秒，让他们下机夺取该地
 brief-task-heli-csar = 在被击落飞行员 200 m 内着陆，等待 30 秒让他登机，然后将其送到友军基地
 brief-task-drones = 在攻击无人机俯冲撞击目标前将其击落：只要有一架突防，目标即被摧毁
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

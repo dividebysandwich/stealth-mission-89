@@ -79,6 +79,10 @@ impl Rules {
                 gunship: true,
                 ..Airframe::default()
             },
+            // Missiles in its bays: the doors open as it fires.
+            Aircraft::RAH66 => {
+                Airframe { helicopter: true, gunship: true, comanche: true, ..Airframe::default() }
+            }
         }
     }
 }

@@ -400,3 +400,8 @@ summary-weather-value = { $sky }  視程 { $vis } km
 summary-fuel-value = { $fuel } lbs
 summary-armament = 兵装：{ $stores }
 summary-intelligence = 情報
+aircraft-rah66 =
+    .facts =
+        Stealth scout helicopter
+        Bays: Hellfires or Stingers
+        Hard to see on radar, slow or hovering

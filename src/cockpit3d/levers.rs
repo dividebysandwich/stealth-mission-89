@@ -116,6 +116,8 @@ pub(super) struct Grabs {
     brakes: bool,
     /// The throttle hand's rumble playing, and seconds into it.
     rumble: Option<(Rumble, f32)>,
+    /// The stick's stall buffet: seconds left of the current knock or gap, and its amplitude.
+    buffet: (f32, f32),
 }
 
 /// A haptic pattern: (start s, end s, amplitude at start, at end) pulses.
@@ -139,6 +141,34 @@ fn ab_shake(ab: f32, t: f32) -> f32 {
     let flutter =
         amp * (std::f32::consts::TAU * f1 * t).sin() * (std::f32::consts::TAU * f2 * t).cos();
     AB_SHAKE.0 + (AB_SHAKE.1 - AB_SHAKE.0) * ab + flutter
+}
+
+/// The stall buffet's depth (`shake::stall_buffet`) at which the stick's rumble is full.
+const BUFFET_DEEP: f32 = 2.0;
+/// Knock length (s) and the gap between knocks (s, shortening as the stall deepens).
+const BUFFET_KNOCK: (f32, f32) = (0.03, 0.09);
+const BUFFET_GAP: (f32, f32) = (0.05, 0.35);
+
+/// The stick's stall buffet: irregular knocks of random length, strength and spacing, sparse and
+/// light at the edge of the buffet and a hard, near-constant hammering deep in the stall. `state`
+/// is `Grabs::buffet`; `rng` draws in 0..1.
+fn stall_rumble(depth: f32, dt: f32, state: &mut (f32, f32), mut rng: impl FnMut() -> f32) -> f32 {
+    if depth <= 0.0 {
+        *state = (0.0, 0.0);
+        return 0.0;
+    }
+    let d = (depth / BUFFET_DEEP).min(1.0);
+    state.0 -= dt;
+    if state.0 <= 0.0 {
+        if rng() < 0.35 + 0.5 * d {
+            state.0 = BUFFET_KNOCK.0 + (BUFFET_KNOCK.1 - BUFFET_KNOCK.0) * rng();
+            state.1 = (0.15 + 0.85 * d) * (0.5 + 0.5 * rng());
+        } else {
+            state.0 = (BUFFET_GAP.0 + (BUFFET_GAP.1 - BUFFET_GAP.0) * rng()) * (1.0 - 0.7 * d);
+            state.1 = 0.0;
+        }
+    }
+    state.1
 }
 
 /// The rumble's amplitude `t` seconds in (None: over).
@@ -385,6 +415,14 @@ pub(super) fn grab_levers(
             *t += time.delta_secs();
         }
     }
+    // The stall buffet shakes the hand on the stick.
+    let depth = aircraft
+        .single()
+        .ok()
+        .filter(|a| a.ended.is_none() && grabs.stick.is_some())
+        .map_or(0.0, crate::shake::stall_buffet);
+    let buffet = stall_rumble(depth, time.delta_secs(), &mut grabs.buffet, rand::random::<f32>);
+    right.haptic = right.haptic.max(buffet);
     let shake = aircraft
         .single()
         .ok()
@@ -525,6 +563,31 @@ pub(super) fn animate_levers(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The stall buffet: nothing outside it, knocks with gaps at its edge, and on average harder
+    /// and more often the deeper the stall.
+    #[test]
+    fn stall_buffet_rumble() {
+        let mut seed = 12345u32;
+        let mut rng = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed as f32 / u32::MAX as f32
+        };
+        let mut state = (0.0, 0.0);
+        assert_eq!(stall_rumble(0.0, 0.011, &mut state, &mut rng), 0.0);
+        let mut mean = |depth: f32| {
+            let mut state = (0.0, 0.0);
+            let amps: Vec<f32> =
+                (0..2000).map(|_| stall_rumble(depth, 0.011, &mut state, &mut rng)).collect();
+            assert!(amps.contains(&0.0) || depth >= BUFFET_DEEP);
+            assert!(amps.iter().all(|&a| a <= 1.0));
+            amps.iter().sum::<f32>() / amps.len() as f32
+        };
+        let (edge, stall, deep) = (mean(0.3), mean(1.0), mean(2.0));
+        assert!(edge > 0.0 && edge < stall && stall < deep, "{edge} {stall} {deep}");
+    }
 
     /// The afterburner's rumbles: knocks with a gap between them, then a fade; over at their end.
     #[test]

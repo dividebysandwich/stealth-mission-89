@@ -1,7 +1,7 @@
 //! The scene behind the main menu: an F-117A on the apron at Tabor on one side of the screen,
 //! the control tower behind it on the other, the menu between them, on a clear full-moon night in
-//! the classic palette with the moon over the field, casting shadows, and a few aircraft circling
-//! in the distance. In VR the player stands on the apron, life size, with the menu's panel between
+//! the classic palette with the moon over the field, casting shadows, an RAH-66 hovering on the
+//! menu's right and a few aircraft circling in the distance. In VR the player stands on the apron, life size, with the menu's panel between
 //! the tower and the aircraft.
 
 use bevy::math::DVec3;
@@ -24,6 +24,8 @@ impl Plugin for MenuScenePlugin {
                 Update,
                 (
                     spawn_aircraft,
+                    spawn_heli,
+                    hover_heli,
                     spawn_traffic,
                     fly_traffic,
                     aircraft_lights,
@@ -48,6 +50,10 @@ struct SceneEntity;
 /// The aircraft on the apron (its model is spawned once the models are loaded).
 #[derive(Component)]
 struct SceneAircraft;
+
+/// The RAH-66 hovering over the apron (its model is spawned once the models are loaded).
+#[derive(Component)]
+struct SceneHeli;
 
 /// One of the aircraft circling in the distance (index into `TRAFFIC`).
 #[derive(Component)]
@@ -77,6 +83,18 @@ const CAMERA: [f32; 5] = [-40.0, 4.5, 215.0, 146.0, 7.0];
 /// The aircraft (metres east and north of the tower's foot) and its heading (degrees): turned
 /// some 50 degrees from facing the camera, its profile towards the menu.
 const AIRCRAFT: [f32; 3] = [30.0, 170.0, 250.0];
+/// The RAH-66 hovering on the menu's right (metres east, up and north of the tower's foot) and
+/// its heading (degrees): nose to the left of the camera, so it shows its profile.
+const HELI: [f32; 4] = [-19.0, 12.0, 147.0, 75.0];
+const VR_HELI: [f32; 4] = [-10.0, 7.0, 157.0, 70.0];
+/// Its hover, as a pilot holds it: drifts (metres, periods in seconds) to the side, fore and aft,
+/// up and down, and in heading (degrees), each two waves out of step.
+const HELI_SIDE: [[f32; 2]; 2] = [[0.7, 7.3], [0.12, 3.1]];
+const HELI_FORE: [[f32; 2]; 2] = [[0.5, 8.9], [0.1, 3.7]];
+const HELI_UP: [[f32; 2]; 2] = [[0.3, 5.3], [0.08, 2.3]];
+const HELI_YAW: [[f32; 2]; 2] = [[2.5, 11.3], [0.8, 4.1]];
+/// Its hover attitude, nose up (radians).
+const HELI_PITCH: f32 = 0.03;
 /// The moon's azimuth (degrees clockwise from north) and elevation: between the tower and the
 /// menu.
 const MOON: [f32; 2] = [166.0, 14.0];
@@ -274,6 +292,75 @@ fn spawn_aircraft(
         .add_child(model);
 }
 
+/// The RAH-66 over the apron, gear up and lights on, once its model file is loaded (its rotors
+/// turn with every model's).
+fn spawn_heli(
+    mut commands: Commands,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    existing: Query<(), With<SceneHeli>>,
+) {
+    if !existing.is_empty() {
+        return;
+    }
+    let spec = crate::aircraft::AircraftKind::RAH66.spec();
+    let file = library.load(&server, "aircraft");
+    let Some(model) = assets.spawn(&mut commands, &file, spec.model, LEVEL_AIRCRAFT, true) else {
+        return;
+    };
+    let scale = crate::player::AIRCRAFT_MODEL_SCALE as f32;
+    // Navigation lights on (12).
+    let mut state = ModelState::default();
+    state.0[12] = 1;
+    commands.entity(model).insert((
+        Transform::from_xyz(0.0, spec.model_lift, 0.0).with_scale(Vec3::splat(scale)),
+        state,
+    ));
+    commands
+        .spawn((
+            SceneHeli,
+            SceneEntity,
+            WorldPos::default(),
+            Transform::default(),
+            Visibility::default(),
+        ))
+        .add_child(model);
+}
+
+/// The RAH-66 sways in its hover as a pilot holding it: it drifts a little and comes back, tilted
+/// the way it accelerates (a bank for each sideways correction, the nose down to move forward).
+fn hover_heli(
+    time: Res<Time>,
+    settings: Res<Settings>,
+    mut q: Query<(&mut WorldPos, &mut Transform), With<SceneHeli>>,
+) {
+    let t = time.elapsed_secs();
+    let [east, up, north, heading] = if settings.vr { VR_HELI } else { HELI };
+    // A drift's offset and acceleration (m/s^2).
+    let drift = |waves: [[f32; 2]; 2], phase: f32| {
+        waves.iter().enumerate().fold((0.0, 0.0), |(x, acc), (i, &[amp, period])| {
+            let w = std::f32::consts::TAU / period;
+            let s = amp * (w * t + phase + i as f32 * 2.1).sin();
+            (x + s, acc - w * w * s)
+        })
+    };
+    let (side, side_acc) = drift(HELI_SIDE, 0.0);
+    let (fore, fore_acc) = drift(HELI_FORE, 1.3);
+    let (rise, _) = drift(HELI_UP, 0.7);
+    let (yaw, _) = drift(HELI_YAW, 2.9);
+    let h = heading.to_radians();
+    let (dir, right) = (Vec2::new(h.sin(), h.cos()), Vec2::new(h.cos(), -h.sin()));
+    let off = dir * fore + right * side;
+    for (mut pos, mut tf) in &mut q {
+        pos.0 = at_tower(east + off.x, up + rise, north + off.y);
+        // The rotor's tilt makes the acceleration: bank = sideways / g, pitch = -forward / g.
+        tf.rotation = Quat::from_rotation_y(-(h + yaw.to_radians()))
+            * Quat::from_rotation_x(HELI_PITCH - fore_acc / 9.81)
+            * Quat::from_rotation_z(-side_acc / 9.81);
+    }
+}
+
 /// The circling aircraft, once their model file is loaded.
 fn spawn_traffic(
     mut commands: Commands,
@@ -323,10 +410,11 @@ fn fly_traffic(time: Res<Time>, mut q: Query<(&Traffic, &mut WorldPos, &mut Tran
 
 /// The aircraft's and the circling ones' anti-collision lights flash; their lights follow the
 /// palette's (slots 10/11).
+#[allow(clippy::type_complexity)]
 fn aircraft_lights(
     time: Res<Time>,
     palette: Option<Res<Palette>>,
-    aircraft: Query<&Children, With<SceneAircraft>>,
+    aircraft: Query<&Children, Or<(With<SceneAircraft>, With<SceneHeli>)>>,
     mut states: Query<&mut ModelState, Without<Traffic>>,
     mut traffic: Query<(&Traffic, &mut ModelState)>,
 ) {

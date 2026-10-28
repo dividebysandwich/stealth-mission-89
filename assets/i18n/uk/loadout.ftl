@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Станція 8, середина прав�
 hardpoint-a10-9-right-wing = Станція 9, праве крило
 hardpoint-a10-10-right-wing = Станція 10, праве крило
 hardpoint-a10-11-right-outer-wing = Станція 11, зовнішня частина правого крила
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

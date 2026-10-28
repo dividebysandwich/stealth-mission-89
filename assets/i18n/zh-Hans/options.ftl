@@ -194,3 +194,6 @@ language-offer-question = 浏览器语言：{ $language }。要使用该语言�
 language-offer-yes = 是
 language-offer-no = 否
 language-offer-never = 不再询问
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

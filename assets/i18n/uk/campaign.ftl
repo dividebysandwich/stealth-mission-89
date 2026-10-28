@@ -259,3 +259,5 @@ brief-task-resupply = Доставте запас з аеродрому до п�
 brief-task-heli-insertion = Доставте десант, ваші ведені летять з вами: сядьте в радіусі 1,5 км від цілі та залишайтеся на землі 15 с, поки десант виходить, щоб захопити місце
 brief-task-heli-csar = Сядьте в радіусі 200 м від збитого пілота та зачекайте 30 с, поки він сяде на борт, потім висадіть його на дружній базі
 brief-task-drones = Зіб'йте ударні дрони, доки вони не вдарили по цілі: один, що прорвався, знищує її
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

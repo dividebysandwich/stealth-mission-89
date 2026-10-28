@@ -62,6 +62,11 @@ impl Sim {
         k
     }
 
+    /// The defences have reported the player (or a hit) at least once: `ref_*` hold where.
+    fn ref_known(&self) -> bool {
+        (self.ref_x, self.ref_y) != (0, 0)
+    }
+
     fn fly(&mut self, i: usize) {
         let fs = self.fs;
         let nf = self.flights.len();
@@ -133,21 +138,23 @@ impl Sim {
                     && u.flags & fflags::ALERTED_PATROL == 0
                     && n > 1
                 {
-                    let pb = bearing(px - u.x, u.y - py);
-                    let mut best = 0x7FFF;
-                    for _ in 0..8 {
+                    // A new station: of a few enemy places, the one nearest where the
+                    // defences last reported the player, else nearest the flight (it stays
+                    // on its own patch of sky). The pilots know nothing of a player nobody
+                    // has seen; the better they are, the more places they weigh.
+                    let (ax, ay) =
+                        if self.ref_known() { (self.ref_x, self.ref_y) } else { (u.x, u.y) };
+                    let mut best = i32::MAX;
+                    for _ in 0..2 + 2 * self.diff {
                         let tt = (self.rng.random(n) + 1).min(n - 1);
                         let o = self.objects[tt as usize];
                         if o.flags & oflags::FRIENDLY != 0 {
                             continue;
                         }
-                        let d = abs16(s16(bearing(o.x - u.x, u.y - o.y) - pb));
+                        let d = approx(o.x - ax, o.y - ay);
                         if d < best {
                             best = d;
                             u.wp = tt;
-                            if (4 - self.diff) << 12 > best {
-                                break;
-                            }
                         }
                     }
                     if (approx(px - u.x, py - u.y) & 0xFFC0) > 0x5780 && i != 0 {
@@ -161,7 +168,11 @@ impl Sim {
                 let o = self.obj(u.wp);
                 x = o.x;
                 y = o.y;
-                z = clamp_q(pz + 1000, 5000, 20000);
+                z = if self.ref_known() {
+                    clamp_q(self.ref_alt + 1000, 5000, 20000)
+                } else {
+                    clamp_q(u.alt, 6000, 16000)
+                };
             }
             if u.flags & fflags::CONTACT != 0 {
                 x = px;

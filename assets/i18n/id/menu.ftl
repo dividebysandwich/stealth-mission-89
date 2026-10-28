@@ -400,3 +400,8 @@ summary-weather-value = { $sky }  jarak pandang { $vis } km
 summary-fuel-value = { $fuel } lbs
 summary-armament = Persenjataan: { $stores }
 summary-intelligence = INTELIJEN
+aircraft-rah66 =
+    .facts =
+        Stealth scout helicopter
+        Bays: Hellfires or Stingers
+        Hard to see on radar, slow or hovering

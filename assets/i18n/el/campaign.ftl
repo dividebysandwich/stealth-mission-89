@@ -259,3 +259,5 @@ brief-task-resupply = Μεταφέρετε το απόθεμα από το αε�
 brief-task-heli-insertion = Μεταφέρετε τα στρατεύματα, με τους συμπτέρους σας: προσγειωθείτε σε απόσταση 1,5 km από τον στόχο και μείνετε στο έδαφος 15 s όσο αποβιβάζονται για να καταλάβουν τον τόπο
 brief-task-heli-csar = Προσγειωθείτε σε απόσταση 200 m από τον καταρριφθέντα πιλότο και περιμένετε 30 s να επιβιβαστεί, και μετά αποβιβάστε τον σε φίλια βάση
 brief-task-drones = Καταρρίψτε τα drones επίθεσης πριν εκραγούν πάνω στον στόχο: ένα που θα περάσει τον καταστρέφει
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

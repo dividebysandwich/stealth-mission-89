@@ -259,3 +259,5 @@ brief-task-resupply = Told át a készletet a repülőtérről a légvédelmi eg
 brief-task-heli-insertion = Told be a csapatokat, a szárnysegédeiddel együtt: szállj le 1,5 km-en belül a célponttól, és maradj a földön 15 másodpercig, amíg kiszállnak és elfoglalják a helyet
 brief-task-heli-csar = Szállj le 200 m-en belül a lelőtt pilótától, és várj 30 másodpercet, amíg felszáll, majd tedd le egy baráti bázison
 brief-task-drones = Lődd le a támadó drónokat, mielőtt a célpontba csapódnak: ha egy átjut, megsemmisíti
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

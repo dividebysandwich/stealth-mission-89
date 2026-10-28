@@ -259,3 +259,5 @@ brief-task-resupply = Vii varu lennuväljalt õhutõrjeüksuseni: hõlju alla 30
 brief-task-heli-insertion = Vii väed kohale, tiivamehed sinuga: maandu 1,5 km raadiuses sihtmärgist ja ole maas 15 s, kuni nad välja astuvad ja koha võtavad
 brief-task-heli-csar = Maandu 200 m raadiuses maha lastud piloodist ja oota 30 s, kuni ta pardale tuleb, seejärel maanda ta oma baasis
 brief-task-drones = Tulista alla ründedroonid enne, kui need sihtmärgile sööstavad: üks läbipääsenu hävitab selle
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

@@ -141,6 +141,7 @@ struct Track {
     emv: i32,
     on_ground: bool,
     lockheed: bool,
+    comanche: bool,
 }
 
 /// What the AAA does to the player in one frame.
@@ -345,6 +346,7 @@ impl Sim {
                     emv: self.pl.emv,
                     on_ground: self.pl.on_ground,
                     lockheed: self.pl.lockheed,
+                    comanche: self.pl.comanche,
                 }
             })
             .collect();
@@ -384,6 +386,7 @@ impl Sim {
                 velocity: t.p.velocity,
                 diff: self.diff,
                 lockheed: t.lockheed,
+                comanche: t.comanche,
                 grid: &self.grid,
             };
             let from = u.metres();

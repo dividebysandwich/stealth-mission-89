@@ -13,7 +13,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 21] = [
+pub const WEAPONS: [(&str, &str); 22] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -35,6 +35,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
     ("Special cargo", "weapon-role-18"),
     ("20 mm cannon", "weapon-role-19"),
     ("AGM-114 Hellfire", "weapon-role-20"),
+    ("FIM-92 Stinger", "weapon-role-21"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -44,7 +45,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
-const EMPLOYMENT: [&str; 21] = [
+const EMPLOYMENT: [&str; 22] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -66,6 +67,7 @@ const EMPLOYMENT: [&str; 21] = [
     "employment-18",
     "",
     "employment-20",
+    "employment-21",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -80,14 +82,15 @@ fn employment(w: usize) -> &'static [&'static str] {
 }
 
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
-const AIR_TO_AIR: [u8; 2] = [0, 1];
+const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 21] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4];
+const BAY_QTY: [u8; 22] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
-/// the Hellfires).
-const PYLON_QTY: [u8; 21] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4];
-/// The Hellfire's weapon type.
+/// the Hellfires, a twin launcher for the Stingers).
+const PYLON_QTY: [u8; 22] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2];
+/// The Hellfire's and the Stinger's weapon types.
 pub const HELLFIRE: u8 = 20;
+pub const STINGER: u8 = 21;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -103,10 +106,15 @@ pub struct Hardpoint {
     /// The same station on the other side.
     pub mirror: Option<usize>,
     pub loads: &'static [u8],
+    /// Rounds of a weapon here other than a bay's or a pylon's usual (weapon, rounds).
+    pub qty: &'static [(u8, u8)],
 }
 
 impl Hardpoint {
     pub fn rounds(&self, w: u8) -> u8 {
+        if let Some(&(_, n)) = self.qty.iter().find(|q| q.0 == w) {
+            return n;
+        }
         let t = if self.bay { &BAY_QTY } else { &PYLON_QTY };
         t.get(w as usize).copied().unwrap_or(0)
     }
@@ -153,6 +161,52 @@ const F117_OUTLINE: &[(f32, f32)] = &[
     (-5.88, 17.14),
     (-6.48, 16.48),
     (-6.48, 14.96),
+];
+/// aircraft_046 (tools/models/comanche.py) seen from above, without its rotors, the bay doors shut:
+/// half span (the tail's end plates) 1.58 m, length 13.44 m.
+const RAH66_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.32, 0.08),
+    (0.56, 0.44),
+    (0.56, 0.96),
+    (0.86, 2.36),
+    (0.96, 3.30),
+    (1.16, 3.34),
+    (1.16, 3.84),
+    (1.08, 3.86),
+    (1.10, 6.74),
+    (1.00, 7.88),
+    (0.70, 8.60),
+    (0.44, 10.98),
+    (0.26, 11.06),
+    (0.26, 12.12),
+    (1.44, 12.10),
+    (1.58, 12.16),
+    (1.58, 12.78),
+    (1.30, 13.28),
+    (1.24, 13.10),
+    (0.06, 13.16),
+    (0.00, 13.44),
+    (-0.06, 13.16),
+    (-1.24, 13.10),
+    (-1.30, 13.28),
+    (-1.58, 12.78),
+    (-1.58, 12.16),
+    (-1.44, 12.10),
+    (-0.26, 12.12),
+    (-0.26, 11.06),
+    (-0.44, 10.98),
+    (-0.70, 8.60),
+    (-1.00, 7.88),
+    (-1.10, 6.74),
+    (-1.08, 3.86),
+    (-1.16, 3.84),
+    (-1.16, 3.34),
+    (-0.96, 3.30),
+    (-0.86, 2.36),
+    (-0.56, 0.96),
+    (-0.56, 0.44),
+    (-0.32, 0.08),
 ];
 /// aircraft_043 (tools/models/ah1z.py) seen from above, without its rotors: half span (the
 /// wingtip rails) 2.32 m, length 15.16 m.
@@ -433,7 +487,16 @@ const fn bay(
     mirror: usize,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: true, fantasy, mirror: Some(mirror), loads }
+    Hardpoint {
+        name,
+        label,
+        pos: (x, y),
+        bay: true,
+        fantasy,
+        mirror: Some(mirror),
+        loads,
+        qty: &[],
+    }
 }
 
 const fn pylon(
@@ -444,7 +507,7 @@ const fn pylon(
     mirror: Option<usize>,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads }
+    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads, qty: &[] }
 }
 
 /// The real F-117A: two bays, no air-to-air missiles.
@@ -543,6 +606,26 @@ const HELLFIRES: [u8; 1] = [HELLFIRE];
 
 static AH1Z_LAYOUT: Layout =
     Layout { outline: AH1Z_OUTLINE, half_span: 2.32, length: 15.16, hardpoints: &AH1Z_STATIONS };
+/// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires or six
+/// Stingers on its inside.
+static RAH66_STATIONS: [Hardpoint; 2] =
+    [door("Left bay door", "L", -1.0, 1), door("Right bay door", "R", 1.0, 0)];
+
+const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) -> Hardpoint {
+    Hardpoint {
+        name,
+        label,
+        pos: (x, 5.3),
+        bay: true,
+        fantasy: false,
+        mirror: Some(mirror),
+        loads: &[HELLFIRE, STINGER],
+        qty: &[(HELLFIRE, 3), (STINGER, 6)],
+    }
+}
+
+static RAH66_LAYOUT: Layout =
+    Layout { outline: RAH66_OUTLINE, half_span: 1.58, length: 13.44, hardpoints: &RAH66_STATIONS };
 /// The UH-60A carries troops, no stores.
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
@@ -557,6 +640,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
+        AircraftKind::RAH66 => &RAH66_LAYOUT,
     }
 }
 
@@ -581,7 +665,7 @@ pub const LOADOUT_FILE: &str = "loadout.json";
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado and
     /// the A-10 each on the first free pair of stations that carries it, and Sidewinders on the free
-    /// wingtips or rails; the AH-1Z full.
+    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
         let lay = layout(aircraft, realistic);
@@ -596,7 +680,7 @@ impl PlannedLoadout {
             AircraftKind::UH60 => {}
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z => {
+            AircraftKind::AH1Z | AircraftKind::RAH66 => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }
@@ -962,10 +1046,11 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in 0..6 {
+        for w in [0, 1, 2, 3, 4, 5, STINGER as usize] {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
-            let km = if w < 2 { lock } else { (lock * 0.875 - 0.5).ceil() };
+            let km =
+                if AIR_TO_AIR.contains(&(w as u8)) { lock } else { (lock * 0.875 - 0.5).ceil() };
             let range = format!("-{km} km");
             assert!(employment(w)[0].contains(&range), "{}: {range}", WEAPONS[w].0);
         }

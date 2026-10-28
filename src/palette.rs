@@ -542,7 +542,9 @@ fn update_globals(
     (g.burst, g.burst_colour) = bursts.globals(origin.origin);
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
     g.atmos = weather.atmos(&settings, theater, lighting.daylight);
-    g.cloud_shade = weather.shades;
+    let sh = &weather.shadows;
+    (g.shadow_grid, g.shadow_far) = (sh.grid, sh.far);
+    (g.shadow_cells, g.shadow_clouds) = (sh.cells, sh.clouds);
     g.retro = retro(&settings);
     // The northern lights over the North Cape.
     if settings.effects.night_sky {

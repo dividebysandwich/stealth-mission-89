@@ -194,3 +194,6 @@ language-offer-question = Pārlūka valoda: { $language }. Vai spēlēt šajā v
 language-offer-yes = Jā
 language-offer-no = Nē
 language-offer-never = Vairs nejautāt
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

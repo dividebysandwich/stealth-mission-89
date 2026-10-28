@@ -194,3 +194,6 @@ language-offer-question = Γλώσσα του προγράμματος περι�
 language-offer-yes = Ναι
 language-offer-no = Όχι
 language-offer-never = Να μην εμφανιστεί ξανά
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

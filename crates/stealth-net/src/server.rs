@@ -241,6 +241,13 @@ impl Server {
             }
             (ToServer::OrderInsertion { place }, Some(p)) => host.order_insertion(sim, p, place),
             (ToServer::RequestSupport { offer }, Some(p)) => host.request_support(sim, p, offer),
+            (ToServer::DesignateSite { x, y, patriot }, Some(p)) => {
+                host.designate_site(sim, p, x, y, patriot)
+            }
+            (ToServer::HookCrate { id, leg }, Some(p)) => host.hook_crate(sim, p, id, leg),
+            (ToServer::DropCrate { id, leg, east, north, heading }, Some(p)) => {
+                host.drop_crate(sim, p, id, leg, east, north, heading)
+            }
             (ToServer::Select { offer, base }, Some(p)) => host.select(sim, p, offer, base),
             (ToServer::Plan { offer, base, route }, Some(p)) => {
                 host.edit_plan(sim, p, offer, base, route)

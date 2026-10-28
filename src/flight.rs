@@ -225,6 +225,11 @@ impl FlightConstants {
     pub fn ah1z() -> Self {
         Self { fuel: 2600.0, heli: Some(heli::Rotor::AH1Z), ..default() }
     }
+
+    /// RAH-66: the helicopter model; 2600 lb of fuel.
+    pub fn rah66() -> Self {
+        Self { fuel: 2600.0, heli: Some(heli::Rotor::RAH66), ..default() }
+    }
 }
 
 /// Why the flight ended.
@@ -437,6 +442,12 @@ impl Aircraft {
         self.heli.torque
     }
 
+    /// A helicopter's rotor speed and torque (fractions of 100%), for tests of what shows them.
+    #[cfg(test)]
+    pub fn set_rotor(&mut self, nr: f32, torque: f32) {
+        (self.heli.nr, self.heli.torque) = (nr, torque);
+    }
+
     /// Translational lift 0..1 (helicopters): the blade slap in the rotor sound.
     pub fn translational_lift(&self) -> f32 {
         self.heli.etl
@@ -518,10 +529,17 @@ fn handle_actions(
     for ActionEvent(action) in actions.read() {
         match action {
             // Helicopters: the collective moves while its keys are held
-            // (`FlightControls::collective_rate`); fixed gear, no autopilot, the brakes are the
-            // parking brake.
-            Action::ThrottleUp | Action::ThrottleDown | Action::Gear | Action::Autopilot
-                if heli => {}
+            // (`FlightControls::collective_rate`); fixed gear unless it retracts, the brakes are
+            // the parking brake; the autopilot holds the speed as well.
+            Action::ThrottleUp | Action::ThrottleDown if heli => {}
+            Action::Autopilot if heli && a.autopilot() => a.autopilot_alt = 0.0,
+            Action::Autopilot
+                if !a.damage.autopilot_failed
+                    && let Some(r) = &k.heli =>
+            {
+                heli::engage_autopilot(&mut a, r)
+            }
+            Action::Gear if k.heli.is_some_and(|r| r.retract_gear.is_none()) => {}
             // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
             // dry thrust they step through the afterburner; full power lights it at full dry
             // thrust.
@@ -552,8 +570,10 @@ fn handle_actions(
             Action::Brakes => a.brakes = !a.brakes,
             // Bay doors (8) are run by the combat simulation, which mirrors them into `bay_open`.
             Action::Autopilot if !a.damage.autopilot_failed => {
-                // Holds the current altitude, at least 500 ft.
-                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(500.0) };
+                // Holds the altitude it was engaged at (terrain following: at least 500 ft, where
+                // the radar has no command). Above 0, which is off.
+                let floor = if k.terrain_following { 500.0 } else { 1.0 };
+                a.autopilot_alt = if a.autopilot() { 0.0 } else { a.view_z().max(floor) };
             }
             _ => {}
         }
@@ -1092,6 +1112,18 @@ mod tests {
         a.autopilot_alt = a.view_z();
         a.waypoint_bearing = 0.0;
         a
+    }
+
+    /// The autopilot holds a low altitude (both models; the classic one's sits some 50 ft under
+    /// at any altitude).
+    #[test]
+    fn autopilot_holds_a_low_altitude() {
+        for (classic, within) in [(false, 10.0), (true, 60.0)] {
+            let (a, _) = fly(classic, level(airborne(200.0, 400.0, 70.0)), 60.0, 1, |_, _| {});
+            println!("classic {classic}: 200 ft held: {:.0} ft {:.0} kt", a.altitude, a.knots());
+            assert!(a.autopilot() && a.ended.is_none(), "classic {classic}");
+            assert!((a.altitude - 200.0).abs() < within, "classic {classic}: {}", a.altitude);
+        }
     }
 
     #[test]

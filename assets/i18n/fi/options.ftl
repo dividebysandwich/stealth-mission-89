@@ -194,3 +194,6 @@ language-offer-question = Selaimen kieli: { $language }. Pelataanko peliä täll
 language-offer-yes = Kyllä
 language-offer-no = Ei
 language-offer-never = Älä kysy uudelleen
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

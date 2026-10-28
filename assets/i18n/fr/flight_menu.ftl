@@ -59,3 +59,4 @@ fm-effect-vapour = VAPEUR ET POUSSIERE
 fm-effect-night-sky = CIEL NOCTURNE
 fm-effect-vga = COULEURS VGA
 fm-effect-scanlines = LIGNES DE BALAYAGE
+fm-effect-sunbeams = RAYONS DE SOLEIL

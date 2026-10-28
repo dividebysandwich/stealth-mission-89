@@ -194,3 +194,6 @@ language-offer-question = Langue du navigateur : { $language }. Jouer dans cette
 language-offer-yes = Oui
 language-offer-no = Non
 language-offer-never = Ne plus me demander
+effect-sunbeams = Rayons de soleil
+    .facts =
+        Des rayons de soleil passent entre les trouées d'une couverture nuageuse fragmentée

@@ -200,13 +200,14 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft.
-const AIRCRAFT: [AircraftKind; 6] = [
+const AIRCRAFT: [AircraftKind; 7] = [
     AircraftKind::F117,
     AircraftKind::F16,
     AircraftKind::Tornado,
     AircraftKind::A10,
     AircraftKind::UH60,
     AircraftKind::AH1Z,
+    AircraftKind::RAH66,
 ];
 
 /// The flag a relaunch into VR takes: the headset drawn as this game draws it (`--gl-vr`, glvr's

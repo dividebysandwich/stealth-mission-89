@@ -386,6 +386,7 @@ impl Sim {
             gunship: self.pl.gunship,
             tornado: self.pl.tornado,
             a10: self.pl.a10,
+            comanche: self.pl.comanche,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -399,7 +400,8 @@ impl Sim {
         objective: Option<(i32, usize)>,
         airframe: Airframe,
     ) -> PlayerState {
-        let Airframe { lockheed, external_stores, helicopter, gunship, tornado, a10 } = airframe;
+        let Airframe { lockheed, external_stores, helicopter, gunship, tornado, a10, comanche } =
+            airframe;
         if self.campaign.is_none() {
             return self.start_state();
         }
@@ -417,6 +419,7 @@ impl Sim {
         self.pl.gunship = gunship;
         self.pl.tornado = tornado;
         self.pl.a10 = a10;
+        self.pl.comanche = comanche;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;
@@ -567,6 +570,13 @@ impl Sim {
 
     pub fn has_intel(&self, i: usize) -> bool {
         self.campaign.as_ref().is_some_and(|c| c.intel.get(i).copied().unwrap_or(false))
+    }
+
+    /// How far enemy SAM site `i` launches at the friendly aircraft (map units): its missile's
+    /// lock range, less once reconned (`campaign_acquire`).
+    pub fn site_engage_reach(&self, i: usize) -> i32 {
+        let o = self.objects[i];
+        (self.site_lock_range(o.unit_type) << 6) * self.detection_tenths(i) / 10
     }
 
     /// Detection range factor of site `i` in tenths (10 = as built).
@@ -794,6 +804,30 @@ impl Sim {
         }
     }
 
+    /// Campaign: a friendly Gepard at (x, y) (a new site the players supplied).
+    pub fn place_gepard(&mut self, x: i32, y: i32) {
+        let Some(mut c) = self.campaign.take() else { return };
+        if self.aaa.len() < MAX_UNITS {
+            c.aaa_blue.resize(self.aaa.len(), false);
+            let facing = c.rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
+            self.aaa.push(AaaUnit {
+                kind: AaaKind::Gepard,
+                x: x.clamp(0x40, 0x7FC0),
+                y: y.clamp(0x40, 0x7FC0),
+                aim_az: facing,
+                aim_el: 0.3,
+                rounds: crate::station::GEPARD_ROUNDS,
+                ..Default::default()
+            });
+            c.aaa_blue.resize(self.aaa.len(), true);
+            c.aaa_target.resize(self.aaa.len(), None);
+        }
+        self.campaign = Some(c);
+        if self.aaa_rng.is_none() {
+            self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
     /// Campaign: SAM site `i` fired at an aircraft lately (it gave itself away).
     pub fn site_engaging(&self, i: usize) -> bool {
         self.campaign.as_ref().is_some_and(|c| c.site_cool.get(i).is_some_and(|&t| t > 0))
@@ -964,6 +998,12 @@ impl Sim {
         let home = c.flights[i].map_or(0, |f| f.home);
         self.flights[i].flags |= fflags::RTB;
         self.flights[i].wp = home;
+        // A resupply or cargo helicopter flies back to its pad with the load.
+        if let Some(Some(f)) = self.campaign.as_mut().map(|c| &mut c.flights[i])
+            && let Some(run) = f.supply.as_mut()
+        {
+            run.delivered = true;
+        }
     }
 
     fn spawn_strike(
@@ -1832,6 +1872,11 @@ fn gun_envelope(kind: AaaKind) -> (f64, f64, f64) {
         AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
         AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
     }
+}
+
+/// How far a gun or a MANPADS team engages (map units).
+pub fn gun_reach(kind: AaaKind) -> f32 {
+    (gun_envelope(kind).1 / M_PER_MAP) as f32
 }
 
 /// Metres (east, north, up) to map x, y and altitude (world units).

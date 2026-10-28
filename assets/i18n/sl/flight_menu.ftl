@@ -59,3 +59,4 @@ fm-effect-vapour = VAPOUR AND DUST
 fm-effect-night-sky = NIGHT SKY
 fm-effect-vga = VGA COLOURS
 fm-effect-scanlines = SCANLINES
+fm-effect-sunbeams = SUNBEAMS

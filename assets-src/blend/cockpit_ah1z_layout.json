@@ -553,6 +553,18 @@
       "round": false
     },
     {
+      "control": "Action(Autopilot)",
+      "key": "Button(Auto, None)",
+      "kind": "cap",
+      "rect": [
+        -180.0,
+        128.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": null,
       "key": "Item(Lamp(Fuel, None))",
       "kind": null,

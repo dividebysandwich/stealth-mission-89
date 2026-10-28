@@ -194,3 +194,6 @@ language-offer-question = Browsersprache: { $language }. Das Spiel in dieser Spr
 language-offer-yes = Ja
 language-offer-no = Nein
 language-offer-never = Nicht mehr fragen
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

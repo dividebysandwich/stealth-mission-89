@@ -34,9 +34,12 @@ layout(std140) uniform Globals {
     vec4 burst;
     vec4 burst_colour;
     vec4 atmos;
-    vec4 cloud_shade[8];
+    vec4 shadow_grid;
+    vec4 shadow_far;
     vec4 sky_fx;
     vec4 retro;
+    vec4 shadow_cells[144];
+    vec4 shadow_clouds[112];
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -700,6 +703,8 @@ vec3 ground_mist(vec3 rgb, vec3 world, float dist) {
 }
 
 // palette.wgsl `cloud_shadow`.
+const float SHADOW_GRID = 12.0;
+
 float cloud_shadow(vec3 world) {
     float s = g.atmos.z;
     vec3 sun = g.sun.xyz;
@@ -707,15 +712,24 @@ float cloud_shadow(vec3 world) {
     float shade = 0.0;
     float base = g.clouds.x;
     if (g.clouds.z != 0.0 && world.y < base) {
-        shade = stratus_cover(world + sun * ((base - world.y) / sun.y));
+        shade = g.shadow_far.y * stratus_cover(world + sun * ((base - world.y) / sun.y));
     }
-    for (int i = 0; i < 8; i++) {
-        vec4 c = g.cloud_shade[i];
-        if (c.z <= 0.0) { break; }
-        if (world.y < c.w) {
-            vec2 p = world.xz + sun.xz * ((c.w - world.y) / sun.y);
-            shade = max(shade, 1.0 - smoothstep(0.5, 1.0, length(p - c.xy) / c.z));
+    vec4 grid = g.shadow_grid;
+    if (g.shadow_far.x > 0.0 && world.y < grid.w) {
+        vec2 p = world.xz + sun.xz * ((grid.w - world.y) / sun.y);
+        vec2 q = (p - grid.xy) / grid.z;
+        float local = 0.0;
+        if (all(greaterThanEqual(q, vec2(0.0))) && all(lessThan(q, vec2(SHADOW_GRID)))) {
+            vec4 cell = g.shadow_cells[int(q.y) * int(SHADOW_GRID) + int(q.x)];
+            for (int k = 0; k < 4; k++) {
+                float n = cell[k];
+                if (n < 0.5) { break; }
+                vec4 c = g.shadow_clouds[int(n) - 1];
+                local = max(local, c.w * (1.0 - smoothstep(0.45, 1.0, length(p - c.xy) / c.z)));
+            }
         }
+        vec2 off = abs(q - vec2(SHADOW_GRID * 0.5)) / (SHADOW_GRID * 0.5);
+        shade = max(shade, mix(local, g.shadow_far.z, smoothstep(0.75, 1.0, max(off.x, off.y))));
     }
     return 1.0 - s * shade;
 }

@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Station 8, höger mittvinge
 hardpoint-a10-9-right-wing = Station 9, höger vinge
 hardpoint-a10-10-right-wing = Station 10, höger vinge
 hardpoint-a10-11-right-outer-wing = Station 11, höger yttervinge
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

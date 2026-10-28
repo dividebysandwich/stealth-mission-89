@@ -160,6 +160,15 @@ impl Host {
         for b in &self.state.batteries {
             sim.place_battery(b.x, b.y);
         }
+        // The new sites the players supplied stand again.
+        for d in self.state.deployments.iter().filter(|d| d.built) {
+            let (x, y) = d.unit_at();
+            if d.patriot {
+                sim.place_patriot(x, y);
+            } else {
+                sim.place_gepard(x, y);
+            }
+        }
         let stocks: Vec<SavedStock> = self
             .state
             .defence_stock
@@ -258,6 +267,56 @@ impl Host {
         place: PlaceId,
     ) -> Result<Vec<HostEvent>, Text> {
         let events = self.state.apply(player, Command::OrderInsertion { place })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player designates a new air defence site with its helipad at (x, y): clear of the
+    /// units on the ground, its cargo goes on the board.
+    pub fn designate_site(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        x: i32,
+        y: i32,
+        patriot: bool,
+    ) -> Result<Vec<HostEvent>, Text> {
+        if let Some(why) = self.state.deploy_refusal(x, y, patriot, &glue::world_view(sim).aaa) {
+            return Err(Text::raw(why));
+        }
+        let events = self.state.apply(player, Command::DesignateSite { x, y, patriot })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player hooked the crate of load `leg` of new site `id` under his helicopter (his
+    /// client saw the hover; near its base, it counts).
+    pub fn hook_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+    ) -> Result<Vec<HostEvent>, Text> {
+        if let Some(why) = self.state.hook_refusal(player, id, leg, &glue::world_view(sim)) {
+            return Err(Text::raw(why));
+        }
+        let events = self.state.apply(player, Command::HookCrate { id, leg })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player set his crate down at (`east`, `north`) metres from its site's helipad.
+    #[allow(clippy::too_many_arguments)]
+    pub fn drop_crate(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let events =
+            self.state.apply(player, Command::DropCrate { id, leg, east, north, heading })?;
         Ok(self.apply(sim, events))
     }
 
@@ -507,6 +566,16 @@ impl Host {
                     sim.spawn_supply(*from as usize, *aaa as usize, *tag);
                 }
                 CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
+                CampaignEvent::CargoLaunched { from, x, y, tag, .. } => {
+                    sim.spawn_cargo(*from as usize, *x, *y, *tag);
+                }
+                CampaignEvent::SiteBuilt { x, y, patriot, .. } => {
+                    if *patriot {
+                        sim.place_patriot(*x, *y);
+                    } else {
+                        sim.place_gepard(*x, *y);
+                    }
+                }
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
                 CampaignEvent::GunRepaired { place } => {
                     if let Some(p) = self.state.place(*place) {

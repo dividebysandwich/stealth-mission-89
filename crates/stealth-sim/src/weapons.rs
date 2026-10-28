@@ -5,6 +5,8 @@ use stealth_i18n::text;
 
 /// Frames a nearest-target request waits for the HUD to switch to the weapon's mode.
 const NEAREST_WAIT: u8 = 8;
+/// Seconds the RAH-66's doors stay open after the last launch they opened for.
+const BAY_AUTO_CLOSE: i32 = 4;
 
 impl Sim {
     /// Key handling for this frame's commands.
@@ -43,6 +45,9 @@ impl Sim {
         }
         if c.toggle_bay && self.pl.damage & dmg::BD == 0 && !self.pl.external_stores {
             self.pl.bay_req = !self.pl.bay_req;
+            // Set by hand, the RAH-66's doors stay as they are.
+            self.pl.bay_close = 0;
+            self.pl.bay_pending = false;
             self.sound(0x1F, 1);
         }
         if c.next_bay {
@@ -254,6 +259,15 @@ impl Sim {
         if self.pl.damage & dmg::BD != 0 {
             self.pl.bay_req = true;
             self.pl.door_anim = 2;
+            self.pl.bay_close = 0;
+        }
+        // The RAH-66's doors shut again a while after they opened for a launch.
+        if self.pl.bay_close > 0 && !self.pl.bay_pending {
+            self.pl.bay_close -= 1;
+            if self.pl.bay_close == 0 {
+                self.pl.bay_req = false;
+                self.sound(0x1F, 1);
+            }
         }
         if self.pl.bay_req {
             if self.pl.door_anim == 2 {
@@ -276,6 +290,13 @@ impl Sim {
         let ccrp = ps.ccrp
             && self.pl.hud_mode == HudMode::Gnd
             && ballistics::drag(self.selected_spec(), self.opts.fix_classic_bugs).is_some();
+        // The RAH-66's missile waiting for its doors goes as soon as they are open.
+        if self.pl.bay_pending && self.pl.pflags & pflags::BAY_OPEN != 0 {
+            self.pl.bay_pending = false;
+            if self.pl.eject == 0 {
+                self.fire_missile();
+            }
+        }
         if ps.cmd.fire && self.pl.fire_cooldown == 0 && self.pl.eject == 0 {
             if !ccrp {
                 self.fire_missile();
@@ -338,9 +359,22 @@ impl Sim {
             return;
         }
         if self.pl.pflags & pflags::BAY_OPEN == 0 && spec != -2 {
+            // The RAH-66 opens its doors and fires as they are open.
+            if self.pl.comanche {
+                if !self.pl.bay_req {
+                    self.pl.bay_req = true;
+                    self.pl.bay_close = BAY_AUTO_CLOSE * self.fs;
+                    self.sound(0x1F, 1);
+                }
+                self.pl.bay_pending = true;
+                return;
+            }
             self.sound(0x20, 1);
             self.msg(text!("sim-bay-closed"));
             return;
+        }
+        if self.pl.comanche && self.pl.bay_close > 0 {
+            self.pl.bay_close = BAY_AUTO_CLOSE * self.fs;
         }
         if self.pl.p.alt == 0
             || (self.obj(self.pl.nearest_base).flags & oflags::CARRIER != 0

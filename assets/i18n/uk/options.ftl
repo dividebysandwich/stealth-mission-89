@@ -194,3 +194,6 @@ language-offer-question = Мова браузера: { $language }. Грати �
 language-offer-yes = Так
 language-offer-no = Ні
 language-offer-never = Більше не питати
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

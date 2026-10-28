@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stazzjon 8, ġewnaħ ċentrali tal-lemin
 hardpoint-a10-9-right-wing = Stazzjon 9, ġewnaħ tal-lemin
 hardpoint-a10-10-right-wing = Stazzjon 10, ġewnaħ tal-lemin
 hardpoint-a10-11-right-outer-wing = Stazzjon 11, ġewnaħ ta' barra tal-lemin
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

@@ -412,7 +412,7 @@ impl<'a> Spawner<'a> {
                 m
             }
             "screen_left" | "screen_right" | "screen_third" | "adi" | "approach" | "screen_rwr"
-            | "hsi" | "screen_tfr" | "ded" => {
+            | "hsi" | "screen_tfr" | "ded" | "screen_lmpd" | "screen_rmpd" => {
                 let role = match name {
                     "screen_left" => CanvasRole::Left,
                     "screen_right" => CanvasRole::Right,
@@ -422,6 +422,8 @@ impl<'a> Spawner<'a> {
                     "hsi" => CanvasRole::Hsi,
                     "screen_tfr" => CanvasRole::Tfr,
                     "ded" => CanvasRole::Ded,
+                    "screen_lmpd" => CanvasRole::Lmpd,
+                    "screen_rmpd" => CanvasRole::Rmpd,
                     _ => CanvasRole::Approach,
                 };
                 let (tex, m) =
@@ -709,7 +711,8 @@ mod tests {
     /// its rectangle (millimetres, x right / y down from the panel centre) and, for buttons,
     /// the control it fires; the display rectangles (the F-117A's third MFD as `third`, the
     /// F-16's and the A-10's HSI and RWR scopes as `hsi` and `rwr`, the Tornado's terrain
-    /// following radar display as `tfr`).
+    /// following radar display as `tfr`, the RAH-66's multipurpose displays as `lmpd` and
+    /// `rmpd`).
     fn layout_json(style: PanelStyle) -> serde_json::Value {
         use super::super::displays::Face;
         use super::super::layout::Effect;
@@ -732,7 +735,13 @@ mod tests {
         for (m, key) in l.mfds.iter().zip(["left", "right", "third"]) {
             screens[key] = r(&m.screen);
         }
-        for (rect, key) in [(l.hsi, "hsi"), (l.rwr, "rwr"), (l.tfr, "tfr")] {
+        for (rect, key) in [
+            (l.hsi, "hsi"),
+            (l.rwr, "rwr"),
+            (l.tfr, "tfr"),
+            (l.mpds.map(|m| m.0), "lmpd"),
+            (l.mpds.map(|m| m.1), "rmpd"),
+        ] {
             if let Some(rect) = rect {
                 screens[key] = r(&rect);
             }
@@ -752,6 +761,7 @@ mod tests {
             (PanelStyle::Ah1z, "cockpit_ah1z", "build_cockpit_ah1z"),
             (PanelStyle::Tornado, "cockpit_tornado", "build_cockpit_tornado"),
             (PanelStyle::A10, "cockpit_a10", "build_cockpit_a10"),
+            (PanelStyle::Rah66, "cockpit_rah66", "build_cockpit_rah66"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -778,6 +788,7 @@ mod tests {
             ("cockpit_ah1z", PanelStyle::Ah1z),
             ("cockpit_tornado", PanelStyle::Tornado),
             ("cockpit_a10", PanelStyle::A10),
+            ("cockpit_rah66", PanelStyle::Rah66),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -815,6 +826,9 @@ mod tests {
                     "label_NEAR",
                 ],
                 PanelStyle::Uh60 | PanelStyle::Ah1z => vec!["ded", "trackcam_left", "label_NEAR"],
+                PanelStyle::Rah66 => {
+                    vec!["ded", "trackcam_left", "label_NEAR", "screen_lmpd", "screen_rmpd"]
+                }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
             for m in required {

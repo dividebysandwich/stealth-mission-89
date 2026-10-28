@@ -149,7 +149,7 @@ ck-resupply = RAVITO
 
 ## Commandes refusées
 
-ce-uh60-only = Le UH-60 vole les insertions, les sauvetages et les ravitaillements
+ce-uh60-only = Le UH-60 vole les insertions, les sauvetages, les ravitaillements et la logistique
 ce-resupply-uh60 = Le ravitaillement se vole en UH-60
 ce-insertion-uh60 = Les insertions se volent en UH-60, ou s'ordonnent aux équipages d'hélicoptères
 ce-no-place = Lieu inconnu
@@ -258,3 +258,5 @@ brief-task-resupply = Amener le stock de l'aérodrome à l'unité de défense a�
 brief-task-heli-insertion = Amener les troupes avec vos ailiers : se poser à moins de 1,5 km de l'objectif et rester au sol 15 s pendant qu'elles débarquent pour prendre le lieu
 brief-task-heli-csar = Se poser à moins de 200 m du pilote abattu, attendre 30 s qu'il embarque, puis le déposer sur une base amie
 brief-task-drones = Abattre les drones d'attaque avant qu'ils plongent sur l'objectif : un seul qui passe le détruit
+ce-logistics-uh60 = La logistique se vole en UH-60
+brief-task-logistics = Accrocher une caisse de fret à côté de la piste de l'aérodrome (stationnaire au-dessus, sous 50 ft) et l'amener à l'hélistation du nouveau site : la poser à moins de 90 m de l'aire

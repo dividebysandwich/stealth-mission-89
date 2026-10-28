@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Точка 8, правое крыло, це�
 hardpoint-a10-9-right-wing = Точка 9, правое крыло
 hardpoint-a10-10-right-wing = Точка 10, правое крыло
 hardpoint-a10-11-right-outer-wing = Точка 11, правое крыло, внешняя
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

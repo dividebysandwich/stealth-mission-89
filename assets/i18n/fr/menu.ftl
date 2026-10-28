@@ -400,3 +400,8 @@ summary-weather-value = { $sky }  vis. { $vis } km
 summary-fuel-value = { $fuel } lb
 summary-armament = Armement : { $stores }
 summary-intelligence = RENSEIGNEMENT
+aircraft-rah66 =
+    .facts =
+        Hélicoptère d'éclairage furtif
+        Soutes : Hellfire ou Stinger
+        Difficile à voir au radar, lent ou en stationnaire

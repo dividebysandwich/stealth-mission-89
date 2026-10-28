@@ -334,8 +334,8 @@ mod tests {
         let t = shipped();
         assert_eq!(t.threats.len(), 27);
         assert_eq!(t.aircraft.len(), 33);
-        assert_eq!(t.missiles.len(), 48);
-        assert_eq!((t.weapons.len(), t.compat.len()), (21, 21));
+        assert_eq!(t.missiles.len(), 49);
+        assert_eq!((t.weapons.len(), t.compat.len()), (22, 22));
         assert!(
             t.threats
                 .iter()

@@ -194,3 +194,6 @@ language-offer-question = Język przeglądarki: { $language }. Grać w tym języ
 language-offer-yes = Tak
 language-offer-no = Nie
 language-offer-never = Nie pytaj ponownie
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

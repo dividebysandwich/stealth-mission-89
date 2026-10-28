@@ -259,3 +259,5 @@ brief-task-resupply = Vlieg de voorraad van het vliegveld naar de luchtverdedigi
 brief-task-heli-insertion = Vlieg de troepen in, met je wingmen: land binnen 1,5 km van het doel en blijf 15 s op de grond terwijl ze uitstappen om de plaats in te nemen
 brief-task-heli-csar = Land binnen 200 m van de neergehaalde piloot en wacht 30 s tot hij aan boord is, en land hem dan op een bevriende basis
 brief-task-drones = Schiet de aanvalsdrones neer voordat ze op het doel duiken: een enkele die doorkomt, vernietigt het
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

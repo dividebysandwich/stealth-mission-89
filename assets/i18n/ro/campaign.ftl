@@ -259,3 +259,5 @@ brief-task-resupply = Duceți stocul de la aerodrom la unitatea de apărare anti
 brief-task-heli-insertion = Duceți trupele, cu aripașii alături: aterizați la mai puțin de 1,5 km de țintă și rămâneți la sol 15 s cât timp ele coboară să ia locul
 brief-task-heli-csar = Aterizați la mai puțin de 200 m de pilotul doborât și așteptați 30 s să urce la bord, apoi duceți-l la o bază prietenă
 brief-task-drones = Doborâți dronele de atac înainte să se arunce asupra țintei: una care trece o distruge
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

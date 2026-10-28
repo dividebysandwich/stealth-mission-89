@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stotis 8, dešinysis vidurinis sparnas
 hardpoint-a10-9-right-wing = Stotis 9, dešinysis sparnas
 hardpoint-a10-10-right-wing = Stotis 10, dešinysis sparnas
 hardpoint-a10-11-right-outer-wing = Stotis 11, dešinysis išorinis sparnas
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

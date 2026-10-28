@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stazione 8, ala destra centrale
 hardpoint-a10-9-right-wing = Stazione 9, ala destra
 hardpoint-a10-10-right-wing = Stazione 10, ala destra
 hardpoint-a10-11-right-outer-wing = Stazione 11, ala destra esterna
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

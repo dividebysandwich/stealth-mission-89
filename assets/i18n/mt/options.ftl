@@ -194,3 +194,6 @@ language-offer-question = Il-lingwa tal-browser: { $language }. Tixtieq tilgħab
 language-offer-yes = Iva
 language-offer-no = Le
 language-offer-never = Tistaqsinix aktar
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

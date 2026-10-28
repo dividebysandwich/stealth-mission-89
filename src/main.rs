@@ -57,6 +57,7 @@ mod menu_scene;
 mod mfd;
 mod mission;
 mod models;
+mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
@@ -80,9 +81,11 @@ mod settings;
 mod shake;
 mod sim_render;
 mod sky;
+mod sling;
 mod sound;
 mod stage;
 mod station;
+mod sunbeams;
 mod tacview;
 mod tacview_real_time;
 mod terrain;
@@ -290,12 +293,14 @@ fn main() {
             flashes::FlashesPlugin,
             barrage::BarragePlugin,
             goggles::GogglesPlugin,
+            sunbeams::SunbeamsPlugin,
         ))
         .add_plugins((
             sky::SkyPlugin,
             lighting::LightingPlugin,
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,
+            sling::SlingPlugin,
             weather::WeatherPlugin,
             station::StationPlugin,
         ))

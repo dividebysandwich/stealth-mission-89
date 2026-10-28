@@ -114,6 +114,7 @@ pub(super) fn tab(
     c: &mut ActiveCampaign,
     sim: &Sim,
     tex: Option<&egui::TextureHandle>,
+    scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
     let sites = sites(c, sim);
@@ -121,10 +122,12 @@ pub(super) fn tab(
         c.ui.defence = None;
     }
     ui.horizontal_top(|ui| {
-        map(ui, c, sim, &sites, tex, egui::vec2(size.x - LIST_W, size.y));
+        map(ui, c, sim, &sites, tex, scenery, egui::vec2(size.x - LIST_W, size.y));
         ui.vertical(|ui| {
             ui.set_width(LIST_W - 12.0);
-            list(ui, c, sim, &sites, size.y);
+            super::designate::buttons(ui, c);
+            ui.add_space(6.0);
+            list(ui, c, sim, &sites, size.y - 80.0);
         });
     });
 }
@@ -137,6 +140,7 @@ fn map(
     sim: &Sim,
     sites: &[Site],
     tex: Option<&egui::TextureHandle>,
+    scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
     let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
@@ -208,7 +212,10 @@ fn map(
             hovered = Some(s.unit);
         }
     }
-    if let Some(u) = hovered {
+    super::designate::waiting(&painter, &view, c.state());
+    let designating = c.ui.designate.is_some();
+    super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
+    if let Some(u) = hovered.filter(|_| !designating) {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
         if resp.clicked() {
             c.ui.defence = Some(u);

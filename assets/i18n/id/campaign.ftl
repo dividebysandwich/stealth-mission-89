@@ -259,3 +259,5 @@ brief-task-resupply = Terbangkan persediaan dari pangkalan udara ke unit pertaha
 brief-task-heli-insertion = Terbangkan pasukan, bersama wingman Anda: mendarat dalam jarak 1,5 km dari target dan tetap di darat selama 15 dtk sementara mereka turun untuk merebut tempat ini
 brief-task-heli-csar = Mendarat dalam jarak 200 m dari pilot yang jatuh dan tunggu 30 dtk sampai ia naik, lalu daratkan di pangkalan kawan
 brief-task-drones = Tembak jatuh drone serang sebelum menukik ke target: satu yang lolos menghancurkannya
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

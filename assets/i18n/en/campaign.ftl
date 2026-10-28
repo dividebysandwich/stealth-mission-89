@@ -150,7 +150,7 @@ ck-resupply = RESUPPLY
 
 ## Refused commands
 
-ce-uh60-only = The UH-60 flies insertions, rescues and resupply
+ce-uh60-only = The UH-60 flies insertions, rescues, resupply and logistics
 ce-resupply-uh60 = Resupply is flown in the UH-60
 ce-insertion-uh60 = Insertions are flown in the UH-60, or ordered for the helicopter crews
 ce-no-place = No such place
@@ -259,3 +259,5 @@ brief-task-resupply = Fly the stockpile from the airfield to the air defence uni
 brief-task-heli-insertion = Fly the troops in, your wingmen with you: land within 1.5 km of the target and stay on the ground for 15 s while they get out to take the place
 brief-task-heli-csar = Land within 200 m of the downed pilot and wait 30 s for him to board, then land him at a friendly base
 brief-task-drones = Shoot down the attack drones before they dive into the target: one getting through destroys it
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

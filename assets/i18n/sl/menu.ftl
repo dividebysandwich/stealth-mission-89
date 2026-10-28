@@ -400,3 +400,8 @@ summary-weather-value = { $sky }  vid. { $vis } km
 summary-fuel-value = { $fuel } lb
 summary-armament = Oborožitev: { $stores }
 summary-intelligence = OBVEŠČEVALNI PODATKI
+aircraft-rah66 =
+    .facts =
+        Stealth scout helicopter
+        Bays: Hellfires or Stingers
+        Hard to see on radar, slow or hovering

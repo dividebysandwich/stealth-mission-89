@@ -194,3 +194,6 @@ language-offer-question = Jazyk prehliadača: { $language }. Chcete hrať v tomt
 language-offer-yes = Áno
 language-offer-no = Nie
 language-offer-never = Viac sa nepýtať
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

@@ -9,7 +9,7 @@ use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 18;
+pub const PROTOCOL: u16 = 20;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -44,6 +44,26 @@ pub enum ToServer {
     /// Call in AI SEAD for an offer's place.
     RequestSupport {
         offer: u32,
+    },
+    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
+    /// (x, y), map units.
+    DesignateSite {
+        x: i32,
+        y: i32,
+        patriot: bool,
+    },
+    /// The crate of load `leg` of new site `id` hooked under his helicopter.
+    HookCrate {
+        id: u32,
+        leg: u8,
+    },
+    /// It is set down at (`east`, `north`) metres from the site's helipad, heading `heading`.
+    DropCrate {
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
     },
     /// Plan a mission of the board with the others on it, from a base (None: plan none).
     Select {
@@ -309,6 +329,7 @@ mod tests {
             gunship: true,
             tornado: false,
             a10: false,
+            comanche: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -327,6 +348,10 @@ mod tests {
         // The A-10's.
         let a = RemotePilot { tornado: false, a10: true, ..t };
         let w = WorldFast { pilots: vec![a.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![a]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![a.clone()]);
+        // The RAH-66's.
+        let c = RemotePilot { a10: false, helicopter: true, gunship: true, comanche: true, ..a };
+        let w = WorldFast { pilots: vec![c.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![c]);
     }
 }

@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = 8. állomás, jobb középső szárny
 hardpoint-a10-9-right-wing = 9. állomás, jobb szárny
 hardpoint-a10-10-right-wing = 10. állomás, jobb szárny
 hardpoint-a10-11-right-outer-wing = 11. állomás, jobb külső szárny
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on

@@ -259,3 +259,5 @@ brief-task-resupply = Nugabenkite atsargas iš aerodromo į priešlėktuvinės g
 brief-task-heli-insertion = Nuskraidinkite karius kartu su sparnuočiais: nusileiskite ne toliau kaip 1,5 km nuo taikinio ir 15 s išbūkite ant žemės, kol jie išlipa užimti vietovės
 brief-task-heli-csar = Nusileiskite ne toliau kaip 200 m nuo numušto piloto ir palaukite 30 s, kol jis įlips, tada nuleiskite jį draugiškoje bazėje
 brief-task-drones = Numuškite atakos dronus, kol jie nesidaužė į taikinį: vienas prasiveržęs sunaikina jį
+ce-logistics-uh60 = Logistics is flown in the UH-60
+brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad

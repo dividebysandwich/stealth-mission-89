@@ -144,3 +144,5 @@ hardpoint-a10-8-right-centre-wing = Stația 8, aripa dreaptă centrală
 hardpoint-a10-9-right-wing = Stația 9, aripa dreaptă
 hardpoint-a10-10-right-wing = Stația 10, aripa dreaptă
 hardpoint-a10-11-right-outer-wing = Stația 11, aripa dreaptă exterioară
+weapon-role-21 = Air-to-air, infrared homing, very short range
+employment-21 = Range: 1-6 km, farther head-on
