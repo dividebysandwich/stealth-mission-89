@@ -726,6 +726,7 @@ fn edit_waypoints(
     mut actions: MessageReader<ActionEvent>,
     state: Res<MfdState>,
     controls: Res<crate::input::FlightControls>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     aircraft: Query<&Aircraft, With<Player>>,
     mut wps: ResMut<Waypoints>,
@@ -736,7 +737,29 @@ fn edit_waypoints(
     if wps.editing && !way && !pressed {
         wps.editing = false;
     }
-    if !wps.editing || !way || controls.slew == Vec2::ZERO {
+    if !wps.editing || !way {
+        return;
+    }
+    // As in the original, keypad 9 and 3 select the last and next waypoint, and only 8, 2, 4
+    // and 6 move it: the diagonals do not.
+    let n = wps.points.len();
+    if n > 0 {
+        if keys.just_pressed(KeyCode::Numpad9) {
+            wps.current = (wps.current + n - 1) % n;
+        }
+        if keys.just_pressed(KeyCode::Numpad3) {
+            wps.current = (wps.current + 1) % n;
+        }
+    }
+    let keypad = |keep: fn(Vec2) -> bool| {
+        crate::input::SLEW_KEYS
+            .iter()
+            .filter(|(k, x, y)| keys.pressed(*k) && keep(Vec2::new(*x, *y)))
+            .fold(Vec2::ZERO, |a, (_, x, y)| a + Vec2::new(*x, *y))
+            .clamp(Vec2::splat(-1.0), Vec2::ONE)
+    };
+    let slew = controls.slew - keypad(|_| true) + keypad(|d| d.x == 0.0 || d.y == 0.0);
+    if slew.length_squared() < 1e-6 {
         return;
     }
     let Some(wp) = wps.points.get(wps.current).copied() else { return };
@@ -744,7 +767,7 @@ fn edit_waypoints(
     let rot = if state.map_heading_up { h } else { 0.0 };
     // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
     let step = WAYPOINT_SLEW_PX * hires_scale(state.map_zoom) * time.delta_secs() as f64;
-    let (sx, sy) = (controls.slew.x as f64, -controls.slew.y as f64);
+    let (sx, sy) = (slew.x as f64, -slew.y as f64);
     let (s, c) = rot.sin_cos();
     let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
     let theater = 32768.0;
@@ -1268,6 +1291,7 @@ pub struct MfdParams<'w, 's> {
     pub time: Res<'w, Time>,
     pub palette: Option<Res<'w, Palette>>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
+    pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
@@ -1644,6 +1668,32 @@ impl MfdParams<'_, '_> {
         out
     }
 
+    /// The WAY page's fuel bar, as (left, right, colour) spans of the bar (0..1): reserve in
+    /// green at the left, then the fuel each waypoint still needs at the current throttle (the
+    /// selected one white, the others blue; the farthest at the left), and the fuel already
+    /// consumed in black at the right.
+    fn fuel_spans(&self, a: &Aircraft, legs: &[(f64, f64, f64)]) -> Vec<(f32, f32, u8)> {
+        let fuel_div = self.constants.as_ref().map_or(1000.0, |k| k.fuel_div);
+        // Burn every 2 s: set^2 / fuel_div + 2.
+        let per_minute = ((a.set_thrust * a.set_thrust / fuel_div).floor() + 2.0) * 30.0;
+        let left = (a.fuel / FULL_FUEL).clamp(0.0, 1.0);
+        let mut spans = vec![(left, 1.0, 5)];
+        let mut x = left;
+        for (i, &(_, minutes, _)) in legs.iter().enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) || x <= 0.0 {
+                continue;
+            }
+            let l = (x - minutes as f32 * per_minute / FULL_FUEL).max(0.0);
+            let colour = if i == self.waypoints.current { 15 } else { self.way_colour(i) };
+            spans.push((l, x, colour));
+            x = l;
+        }
+        if x > 0.0 {
+            spans.push((0.0, x, 47));
+        }
+        spans
+    }
+
     /// Passed waypoints in black (colour 5, as in the original), the unpassed current waypoint
     /// in white, and the others in alternating cyans.
     fn way_colour(&self, i: usize) -> u8 {
@@ -1690,10 +1740,11 @@ impl MfdParams<'_, '_> {
                     colour,
                 );
             }
-            // Fuel bar (y 54..57): remaining fuel in green.
-            let w = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * 75.0).round() as i32;
-            c.fill_rect(1, 54, 75, 4, 0);
-            c.fill_rect(1, 54, w, 4, 47);
+            // Fuel bar (y 54..57).
+            for (l, r, colour) in self.fuel_spans(a, &self.legs(t, a, pos)) {
+                let (x0, x1) = (1 + (l * 75.0).round() as i32, 1 + (r * 75.0).round() as i32);
+                c.fill_rect(x0, 54, x1 - x0, 4, colour);
+            }
         }
     }
 
@@ -1793,18 +1844,19 @@ impl MfdParams<'_, '_> {
                 prev = Some(p);
             }
         }
-        // Route: aircraft -> current waypoint -> the rest; waypoints ringed, the current one larger.
+        // Route: green from waypoint to waypoint, white from the aircraft to the selected one;
+        // waypoints ringed, the selected one larger.
         let wps: Vec<Vec2> = self.waypoints.points.iter().map(|w| to(w.east, w.north)).collect();
         let me = view.to_screen(px, py);
+        for pair in wps.windows(2) {
+            c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 10);
+        }
         if let Some(&first) = wps.get(self.waypoints.current) {
-            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 11);
-            for pair in wps[self.waypoints.current..].windows(2) {
-                c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 11);
-            }
+            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 15);
         }
         for (i, p) in wps.iter().enumerate() {
             let current = i == self.waypoints.current;
-            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 11 });
+            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 19 });
         }
         // Airbases.
         if let Some(t) = &self.theater {
@@ -1985,12 +2037,13 @@ impl MfdParams<'_, '_> {
                 self.way_colour(i),
             );
         }
-        // Fuel bar: remaining fuel in green.
+        // Fuel bar.
         text2(c, fonts, 6, 156, "FUEL", 15);
         let (x0, w) = (46, c.w as i32 - 52);
-        let fill = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * w as f32).round() as i32;
-        c.fill_rect(x0, 155, w, 12, 0);
-        c.fill_rect(x0, 155, fill, 12, 47);
+        for (l, r, colour) in self.fuel_spans(a, &self.legs(t, a, pos)) {
+            let (a0, a1) = ((l * w as f32).round() as i32, (r * w as f32).round() as i32);
+            c.fill_rect(x0 + a0, 155, a1 - a0, 12, colour);
+        }
         c.rect(x0 - 1, 154, w + 2, 14, 7);
     }
 

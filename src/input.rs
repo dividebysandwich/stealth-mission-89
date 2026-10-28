@@ -406,7 +406,7 @@ impl Default for VirtualStick {
 const DOUBLE_TAP_S: f64 = 5.0 / 18.2;
 
 /// Keyboard sensor/cursor slew (fixed): the numeric keypad.
-const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
+pub(crate) const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
     // (key, x, y); up = cursor up.
     (KeyCode::Numpad8, 0.0, 1.0),
     (KeyCode::Numpad2, 0.0, -1.0),
