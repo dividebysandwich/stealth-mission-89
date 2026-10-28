@@ -509,6 +509,15 @@ pub const TURRET_DEPRESSION: i32 = 9102;
 pub const TURRET_ELEVATION: i32 = 3641;
 /// The Hellfire's missile table entry.
 pub const HELLFIRE_SPEC: i32 = 47;
+/// The AIM-9's and the air-launched Stinger's missile table entries.
+pub const AIM9_SPEC: i32 = 23;
+pub const STINGER_SPEC: i32 = 48;
+
+/// An infrared air-to-air missile the player fires (the AIM-9 or the Stinger): its seeker
+/// growls, follows the helmet sight and needs to see the target.
+pub fn ir_aam(spec: i32) -> bool {
+    spec == AIM9_SPEC || spec == STINGER_SPEC
+}
 /// An object this close to the Hellfire's laser spot (map units) is what it homes on.
 pub const HELLFIRE_SPOT_RADIUS: i32 = 6;
 /// An object this close to a point designated with the targeting pod (map units) is locked;

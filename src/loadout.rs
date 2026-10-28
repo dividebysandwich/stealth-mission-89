@@ -11,7 +11,7 @@ use crate::aircraft::AircraftKind;
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, section};
 
 /// The weapons (index = weapon type): name, what it is for.
-pub const WEAPONS: [(&str, &str); 21] = [
+pub const WEAPONS: [(&str, &str); 22] = [
     ("AIM-9M Sidewinder", "Air-to-air, infrared homing, short range"),
     ("AIM-120A AMRAAM", "Air-to-air, radar homing, medium range"),
     ("AGM-88A HARM", "Anti-radiation missile: radars and SAM sites"),
@@ -36,6 +36,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
         "AGM-114 Hellfire",
         "Laser guided anti-armour missile: flies to where the targeting pod looks",
     ),
+    ("FIM-92 Stinger", "Air-to-air, infrared homing, very short range"),
 ];
 /// How each weapon is used (index = weapon type), shown under its role; ranges in the HUD's km.
 /// Missiles: the longest range is the LOCK oval's (the lock range of assets/sim/units.ron,
@@ -44,7 +45,7 @@ pub const WEAPONS: [(&str, &str); 21] = [
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
-const EMPLOYMENT: [&[&str]; 21] = [
+const EMPLOYMENT: [&[&str]; 22] = [
     &["Range: 1-12 km, farther head-on"],
     &["Range: 1-38 km, farther head-on"],
     &["Range: 9-50 km", "Launch: 5,000-20,000 ft"],
@@ -69,6 +70,7 @@ const EMPLOYMENT: [&[&str]; 21] = [
     &["Range: release on \"Drop supplies now\", within 4 km of the drop zone"],
     &[],
     &["Range: 4-8 km", "Launch: 2,000-3,000 ft"],
+    &["Range: 1-6 km, farther head-on"],
 ];
 const GUIDED_CLUSTER: &[&str] = &[
     "Range: 1.5 km to 2.5 times the height, LOCK steady (3.7 km from 3,000 ft, 6 km from 5,000 ft)",
@@ -78,14 +80,15 @@ const MEDIUM_RETARDED: &[&str] =
     &["Range: 1.1-1.6 km short of the target", "Release: 300-1,000 ft"];
 const LOW_RETARDED: &[&str] = &["Range: 0.9-1.3 km short of the target", "Release: 200-500 ft"];
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
-const AIR_TO_AIR: [u8; 2] = [0, 1];
+const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 21] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4];
+const BAY_QTY: [u8; 22] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
-/// the Hellfires).
-const PYLON_QTY: [u8; 21] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4];
-/// The Hellfire's weapon type.
+/// the Hellfires, a twin launcher for the Stingers).
+const PYLON_QTY: [u8; 22] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2];
+/// The Hellfire's and the Stinger's weapon types.
 pub const HELLFIRE: u8 = 20;
+pub const STINGER: u8 = 21;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -100,10 +103,15 @@ pub struct Hardpoint {
     /// The same station on the other side.
     pub mirror: Option<usize>,
     pub loads: &'static [u8],
+    /// Rounds of a weapon here other than a bay's or a pylon's usual (weapon, rounds).
+    pub qty: &'static [(u8, u8)],
 }
 
 impl Hardpoint {
     pub fn rounds(&self, w: u8) -> u8 {
+        if let Some(&(_, n)) = self.qty.iter().find(|q| q.0 == w) {
+            return n;
+        }
         let t = if self.bay { &BAY_QTY } else { &PYLON_QTY };
         t.get(w as usize).copied().unwrap_or(0)
     }
@@ -430,7 +438,16 @@ const fn bay(
     mirror: usize,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: true, fantasy, mirror: Some(mirror), loads }
+    Hardpoint {
+        name,
+        label,
+        pos: (x, y),
+        bay: true,
+        fantasy,
+        mirror: Some(mirror),
+        loads,
+        qty: &[],
+    }
 }
 
 const fn pylon(
@@ -441,7 +458,7 @@ const fn pylon(
     mirror: Option<usize>,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads }
+    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads, qty: &[] }
 }
 
 /// The real F-117A: two bays, no air-to-air missiles.
@@ -960,10 +977,11 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in 0..6 {
+        for w in [0, 1, 2, 3, 4, 5, STINGER as usize] {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
-            let km = if w < 2 { lock } else { (lock * 0.875 - 0.5).ceil() };
+            let km =
+                if AIR_TO_AIR.contains(&(w as u8)) { lock } else { (lock * 0.875 - 0.5).ceil() };
             let range = format!("-{km} km");
             assert!(EMPLOYMENT[w][0].contains(&range), "{}: {range}", WEAPONS[w].0);
         }
