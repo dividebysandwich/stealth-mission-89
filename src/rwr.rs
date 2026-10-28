@@ -47,6 +47,10 @@ pub struct Emitters {
     pub list: Vec<EmitterView>,
     /// Mission second each radar's signal was last heard (see [`HEARD_SIGNAL`]).
     pub heard: HashMap<EmitterSource, i32>,
+    /// The radar whose pulse last registered at the player (`stealth_sim::Sim::radar_arc`), with
+    /// the simulation frames its display has left (set anew by every pulse) and whether it saw
+    /// the player (signature and signal past the full scale).
+    pub pulse: Option<(EmitterSource, i32, bool)>,
 }
 
 /// RWR symbol of a radar type ("SA-10" -> "10", "SA-N-6" -> "N6") or an aircraft type

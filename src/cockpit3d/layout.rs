@@ -996,13 +996,14 @@ impl PanelLayout {
 
     /// The RAH-66's panel (millimetres, x right and y down from the centre), after the
     /// mock-up's: the two large MFDs side by side in the middle (the monochrome one left, the
-    /// colour one right), a portrait multipurpose display low outboard of each (`mpds`: the
-    /// warnings left, the engines right), the keyboard with its scratchpad (the `ded`) under
-    /// them. No dials and no warning lights but the master caution: the landing gear and parking
-    /// brake keys top left, the HUD modes and the master caution top centre, the jammers, the
-    /// laser and the emergency panel top right; the flight control keys under the MFDs, the
-    /// countermeasures under the left display, the standby attitude display (a screen) left of
-    /// the keyboard.
+    /// colour one right), a portrait multipurpose display outboard of each, centred between the
+    /// MFD bezels and the panel's ends at +-420 mm (`mpds`: the threats and warnings left, the
+    /// engines right), the keyboard with its scratchpad (the `ded`) under them. No dials and no
+    /// warning lights but the master caution: the landing gear and parking brake keys top left,
+    /// the HUD modes and the master caution top centre, the jammers, the laser and the emergency
+    /// panel top right; on the pedestal the standby attitude display (a screen) with the
+    /// countermeasures under it, and the flight control keys in a column between it and the
+    /// keyboard.
     pub fn rah66() -> Self {
         use Effect as E;
         let mut items = Vec::new();
@@ -1041,7 +1042,8 @@ impl PanelLayout {
             );
         }
         put(Elem::Hazard, rect(182.0, -134.0, 30.0, 28.0), None);
-        // Under the MFDs: the flight control panel.
+        // On the pedestal, between the standby attitude display and the keyboard: the flight
+        // control keys in a column.
         for (k, (label, cap)) in [
             ("DCLT", E::Action(Action::HudDeclutter)),
             ("NVG", E::Action(Action::Nvg)),
@@ -1052,9 +1054,10 @@ impl PanelLayout {
         .into_iter()
         .enumerate()
         {
-            put(key(label), rect(-112.0 + 46.0 * k as f32, 96.0, 40.0, 16.0), Some(cap));
+            put(key(label), rect(-121.0, 128.0 + 22.0 * k as f32, 40.0, 16.0), Some(cap));
         }
-        // Under the left display: the countermeasures.
+        // Under the standby attitude display: the countermeasures.
+        let adi = rect(-206.0, 120.0, 64.0, 64.0);
         for (k, (label, action)) in
             [("CHAFF", Action::Chaff), ("FLARE", Action::Flare), ("DECOY", Action::Decoy)]
                 .into_iter()
@@ -1062,7 +1065,7 @@ impl PanelLayout {
         {
             put(
                 key(label),
-                rect(-340.0 + 35.0 * k as f32, 108.0, 30.0, 16.0),
+                rect(adi.x + adi.w / 2.0 - 46.0 + 32.0 * k as f32, 196.0, 28.0, 16.0),
                 Some(E::Action(action)),
             );
         }
@@ -1099,7 +1102,7 @@ impl PanelLayout {
         Self {
             style: PanelStyle::Rah66,
             items,
-            adi: rect(-212.0, 120.0, 64.0, 64.0),
+            adi,
             mfds: vec![
                 MfdUnit { side: MfdSide::Left, screen: rect(-212.0, -76.0, w, h), osbs: true },
                 MfdUnit { side: MfdSide::Right, screen: rect(12.0, -76.0, w, h), osbs: true },
@@ -1108,7 +1111,7 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            mpds: Some((rect(-340.0, -44.0, 100.0, 140.0), rect(240.0, -44.0, 100.0, 140.0))),
+            mpds: Some((rect(-375.0, -44.0, 100.0, 140.0), rect(275.0, -44.0, 100.0, 140.0))),
         }
     }
 

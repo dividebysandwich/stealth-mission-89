@@ -470,7 +470,7 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
         CanvasRole::Lmpd => (
             "Left MPD",
-            "Warnings (red), cautions (amber), advisories (green); new ones flash until the master caution",
+            "Threats: radars at their range and bearing, missile envelopes, our radar return (inside the dashed ring: unseen) and its last 30 s; warnings (red), cautions (amber), advisories (green) flash until the master caution",
         ),
         CanvasRole::Rmpd => {
             ("Right MPD", "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow")

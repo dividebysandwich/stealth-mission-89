@@ -21,10 +21,12 @@ impl Plugin for PanelPlugin {
             .init_resource::<Countermeasures>()
             .init_resource::<Warnings>()
             .init_resource::<crate::mpd::WcaAck>()
+            .init_resource::<crate::mpd::ThreatHistory>()
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_panel)
             .add_systems(
                 Update,
-                crate::mpd::acknowledge.run_if(in_state(crate::settings::AppState::Flight)),
+                (crate::mpd::acknowledge, crate::mpd::sample_threats)
+                    .run_if(in_state(crate::settings::AppState::Flight)),
             );
     }
 }
@@ -95,10 +97,16 @@ impl Warnings {
     }
 }
 
-fn reset_panel(mut cm: ResMut<Countermeasures>, mut emv: ResMut<Emv>, mut w: ResMut<Warnings>) {
+fn reset_panel(
+    mut cm: ResMut<Countermeasures>,
+    mut emv: ResMut<Emv>,
+    mut w: ResMut<Warnings>,
+    mut threats: ResMut<crate::mpd::ThreatHistory>,
+) {
     *cm = Countermeasures::default();
     *emv = Emv::default();
     *w = Warnings::default();
+    *threats = default();
 }
 
 /// The approach indexer's canvas (a 5:14 strip: chevron, circle, chevron).
@@ -624,6 +632,8 @@ pub struct PanelParams<'w, 's> {
     pub mission: Option<Res<'w, crate::mission::ActiveMission>>,
     /// The RAH-66's warnings the master caution has acknowledged (`mpd`).
     pub wca: Res<'w, crate::mpd::WcaAck>,
+    /// The RAH-66's threat page's strip chart (`mpd`).
+    pub threats: Res<'w, crate::mpd::ThreatHistory>,
 }
 
 /// Fuel (lbs) below which the low-fuel light blinks.
@@ -847,12 +857,22 @@ impl PanelParams<'_, '_> {
         }
     }
 
-    /// The RAH-66's left multipurpose display: the warning, caution and advisory list.
-    pub fn draw_wca(&self, c: &mut Canvas, fonts: &Fonts) {
+    /// The RAH-66's left multipurpose display: the threat picture over the warning, caution and
+    /// advisory list.
+    pub fn draw_lmpd(&self, c: &mut Canvas, fonts: &Fonts) {
         let a = self.aircraft.single().ok();
         let list = crate::mpd::alerts(&self.warnings, a, &self.cm);
         let blink = crate::hud::blink(&self.time);
-        crate::mpd::draw_alerts(c, fonts, &list, &self.wca.0, blink, &self.cm);
+        let threats = crate::mpd::Threats {
+            emitters: &self.emitters.list,
+            emv: &self.emv,
+            history: &self.threats,
+            bay_open: a.is_some_and(|a| a.bay_open),
+            gear_down: a.is_some_and(|a| a.gear_down),
+            pitch: a.map_or(0.0, |a| a.euler().1),
+            roll: a.map_or(0.0, |a| a.euler().2),
+        };
+        crate::mpd::draw_left(c, fonts, &threats, &list, &self.wca.0, blink, &self.cm);
     }
 
     /// The RAH-66's right multipurpose display: the engine page.

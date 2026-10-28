@@ -13,9 +13,9 @@
 # on its arm from a pivot left of the seat), the five target buttons (on the left console), the
 # HUD glass, the approach indexer and the flood lamps. Built here: a wide panel under a low
 # glareshield with the two large MFDs side by side, the portrait multipurpose displays low
-# outboard of them, the key rows over and under them; the pedestal between the knees with the
-# keyboard and its scratchpad and the standby attitude display; the side consoles, the floor and
-# the pedals. The canopy and its frames are the helicopter's own fuselage, drawn round the
+# outboard of them, the key rows over them; the pedestal between the knees with the keyboard and
+# its scratchpad, the standby attitude display with the countermeasure keys under it and the
+# flight control keys between them; the side consoles, the floor and the pedals. The canopy and its frames are the helicopter's own fuselage, drawn round the
 # cockpit from inside (tools/models/comanche.py, src/aircraft.rs); the gunner sits behind.
 #
 # Blender frame: eye at the origin (on the cabin's centre line), x right, y forward, z up, metres.
@@ -431,7 +431,7 @@ for key in ("left", "right"):
 screen("screen_left", scr["left"], BEZEL - 0.008, "trackcam_left")
 screen("screen_right", scr["right"], BEZEL - 0.008, "trackcam")
 
-# --- MPDs: portrait, low outboard of the MFDs, in plain bezels as thick (no buttons), the screen
+# --- MPDs: portrait, low outboard of the MFDs (centred between their bezels and the panel's ends), in plain bezels as thick (no buttons), the screen
 # recessed as the MFDs'.
 for key in ("lmpd", "rmpd"):
     x, y, w, h = scr[key]
@@ -449,8 +449,8 @@ plates = [
     ("dark", (-216.0, -136.0, 88.0, 32.0)),  # gear and brake
     ("dark", (-108.0, -138.0, 184.0, 36.0)),  # HUD modes, master caution
     ("dark", (80.0, -138.0, 136.0, 36.0)),  # jammers, laser, emergency
-    ("dark", (-116.0, 94.0, 232.0, 20.0)),  # flight control keys
-    ("dark", (-344.0, 106.0, 108.0, 20.0)),  # countermeasures
+    ("dark", (-125.0, 124.0, 48.0, 112.0)),  # flight control keys
+    ("dark", (-224.0, 192.0, 100.0, 24.0)),  # countermeasures
     ("dark", (x - 6.0, y - 6.0, w + 12.0, h + 12.0)),  # standby attitude display
     ("black", (-66.0, 116.0, 132.0, 128.0)),  # scratchpad and keyboard
 ]

@@ -53,7 +53,8 @@ pub(super) enum CanvasRole {
     Hsi,
     /// The Tornado's terrain following radar display (`crate::tfr`).
     Tfr,
-    /// The RAH-66's multipurpose displays: warnings (left), engines (right) (`crate::mpd`).
+    /// The RAH-66's multipurpose displays: threats and warnings (left), engines (right)
+    /// (`crate::mpd`).
     Lmpd,
     Rmpd,
     Ded,
@@ -546,7 +547,7 @@ pub(super) fn update_displays(
             CanvasRole::Hsi => d.panel.draw_hsi(&mut tex.canvas),
             CanvasRole::Tfr => crate::tfr::draw(&mut tex.canvas, &fonts, &d.panel.radar),
             CanvasRole::Ded => d.panel.draw_ded(&mut tex.canvas, &fonts),
-            CanvasRole::Lmpd => d.panel.draw_wca(&mut tex.canvas, &fonts),
+            CanvasRole::Lmpd => d.panel.draw_lmpd(&mut tex.canvas, &fonts),
             CanvasRole::Rmpd => d.panel.draw_engines(&mut tex.canvas, &fonts),
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);

@@ -2,6 +2,9 @@ use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, u16v};
 use crate::types::*;
 use crate::{ENEMY_SLOTS, Sim};
 
+/// What the gear down (legs and open wells) adds to the EMV of every aircraft.
+pub const GEAR_DOWN_EMV: i32 = 12;
+
 /// Pure EMV function.
 /// `flags` = player flags, `view_z` = compressed altitude, `velocity` = knots*27.
 pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockheed: bool) -> i32 {
@@ -15,8 +18,9 @@ pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockhee
         bearing(u16v(((view_z & 0xFFFF) / 3) * (diff + 1)), 0x800)
     };
     let mut e = hi8s(b) + ((velocity & 0xFFFF) >> 10) + (r >> 1);
-    if lockheed && flags & 0xFFFF == 0 {
-        e += 20;
+    // Lockheed mode keeps its own gear-down term (only with nothing else set).
+    if flags & pflags::GEAR_UP == 0 {
+        e += if lockheed && flags & 0xFFFF == 0 { 20 } else { GEAR_DOWN_EMV };
     }
     if flags & pflags::BAY_OPEN != 0 {
         e += 24;
@@ -165,11 +169,13 @@ impl Sim {
         let p = &self.pl.p;
         self.pl.emv = if self.pl.comanche {
             // The RAH-66's height, speed and bank show a third as much hovering, fully at
-            // 180 kt; its open doors and the jammer as much as anybody's.
+            // 180 kt; its open doors, its gear and the jammer as much as anybody's.
             let loud = pflags::BAY_OPEN | pflags::ECM;
-            let base = emv(p.view_z, p.velocity, p.roll, self.pl.pflags & !loud, self.diff, false);
+            let quiet = (self.pl.pflags & !loud) | pflags::GEAR_UP;
+            let base = emv(p.view_z, p.velocity, p.roll, quiet, self.diff, false);
             let scale = 15 + comanche_signature(p.velocity);
-            base * scale / 47 + emv(0, 0, 0, self.pl.pflags & loud, self.diff, false)
+            let loud = self.pl.pflags & (loud | pflags::GEAR_UP);
+            base * scale / 47 + emv(0, 0, 0, loud, self.diff, false)
         } else {
             emv(p.view_z, p.velocity, p.roll, self.pl.pflags, self.diff, self.pl.lockheed)
         };
@@ -741,8 +747,11 @@ mod tests {
         // Bank 90 deg folds to +32, inverted counts as level.
         assert_eq!(emv(0, 0, 0x4000, 1, 0, false), 32);
         assert_eq!(emv(0, 0, -0x8000, 1, 0, false), 0);
-        // Bays +24, ECM +16, Lockheed gear-down (+20) only when the whole flag word is 0.
+        // Bays +24, ECM +16, gear down +12 (Lockheed: +20 when the whole flag word is 0).
         assert_eq!(emv(0, 0, 0, 1 | 4 | 0x10, 0, false), 40);
+        assert_eq!(emv(0, 0, 0, 0, 0, false), GEAR_DOWN_EMV);
+        assert_eq!(emv(0, 0, 0, 4, 0, false), 24 + GEAR_DOWN_EMV);
+        assert_eq!(emv(0, 0, 0, 4, 3, true), 9 + 24 + GEAR_DOWN_EMV);
         assert_eq!(emv(0, 0, 0, 0, 3, true), 9 + 20);
         assert_eq!(emv(0, 0, 0, 1, 3, true), 9);
         // Altitude term: 1000 ft Regular -> 12.

@@ -1552,6 +1552,16 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         })
         .collect();
     emitters.heard = heard;
+    emitters.pulse = sim.radar_arc().filter(|a| a.frames_left > 0).map(|a| {
+        let source = if a.source >= 0 {
+            stealth_sim::EmitterSource::Site(a.source as usize)
+        } else {
+            stealth_sim::EmitterSource::Aircraft((-1 - a.source) as usize)
+        };
+        // The sweeps colour the arc yellow (sites) or white (aircraft) when the signature and
+        // the signal pass 100.
+        (source, a.frames_left, matches!(a.colour, 15 | 17))
+    });
     let done = [o.primary_done, o.secondary_done];
     for (k, t) in sim.target_slots().iter().enumerate() {
         if done[k] || !matches!(t.mission_type, 1..=3 | 9) {

@@ -1,6 +1,21 @@
-//! The RAH-66's multipurpose displays, the portrait screens outboard of its MFDs: the warning,
-//! caution and advisory list on the left one, the engine page (digital readouts over bar graphs)
-//! on the right one. New warnings and cautions flash until the master caution is pressed.
+//! The RAH-66's multipurpose displays, the portrait screens outboard of its MFDs: the threat
+//! picture over the warning, caution and advisory list on the left one, the engine page (digital
+//! readouts over bar graphs) on the right one. New warnings and cautions flash until the master
+//! caution is pressed.
+//!
+//! The threat picture is a search radar scope turned round, after the air defence consoles':
+//! the radars painting the helicopter at their range and bearing (heading up), the one whose
+//! pulse just hit flashing white with a ring going out from it, the trackers' missile envelopes
+//! and their beams to the centre. In the centre the helicopter's own radar return: a bloom that
+//! grows with its signature (`Emv::emv`), wide abeam and narrow fore and aft, larger and a little
+//! changed in detail with the gear down or the weapon bay doors open, swelling where its belly
+//! and top show when it banks or pitches; inside the dotted ring where the strongest signal
+//! at it would see it, red for a moment when a pulse does. Under the scope the last 30 seconds
+//! of both as a strip chart: the signature filled, the detection line over it, red where it
+//! crossed.
+
+use std::collections::VecDeque;
+use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
@@ -8,18 +23,23 @@ use crate::canvas::Canvas;
 use crate::flight::Aircraft;
 use crate::font::Fonts;
 use crate::input::{Action, ActionEvent};
-use crate::panel::{Countermeasures, Warnings};
+use crate::panel::{Countermeasures, Emv, Warnings};
+use crate::rwr::{EmitterView, Emitters};
+use stealth_sim::EmitterSource;
 
 /// The displays' canvas: drawing units and texels per unit (the screens are 100 by 140 mm).
 pub const MPD_CANVAS: (usize, usize) = (128, 180);
 pub const MPD_SCALE: usize = 3;
 
 const BLACK: u8 = 5;
+const NAVY: u8 = 2;
+const DIM: u8 = 4;
 const DARK: u8 = 8;
 const GREY: u8 = 7;
 const GREEN: u8 = 10;
 const CYAN: u8 = 11;
 const RED: u8 = 13;
+const DEEP_RED: u8 = 16;
 const WHITE: u8 = 15;
 const AMBER: u8 = 18;
 
@@ -139,12 +159,80 @@ pub(crate) fn acknowledge(
     }
 }
 
-/// The left display: the list under its title, warnings red, cautions amber, advisories
-/// green; unacknowledged warnings and cautions flash (`blink`), inverted. The countermeasures
-/// left at the foot.
-pub fn draw_alerts(
+/// The threat page's strip chart: the signature and the strongest radar signal at the helicopter
+/// (fractions of the gauge's full scale), one sample every `SAMPLE_S` seconds, oldest first;
+/// and the radar whose pulse hit last, with the seconds since and whether it saw the helicopter.
+#[derive(Resource, Debug, Default)]
+pub struct ThreatHistory {
+    pub samples: VecDeque<(f32, f32)>,
+    clock: f32,
+    pub pulse: Option<(EmitterSource, f32, bool)>,
+    /// The pulse display's frames left last time (a rise is a new pulse).
+    pulse_frames: i32,
+}
+
+/// Seconds between the chart's samples and how many it keeps (30 seconds, a sample per texel
+/// column of the chart).
+const SAMPLE_S: f32 = 30.0 / HISTORY as f32;
+const HISTORY: usize = 360;
+/// Seconds a radar flashes after its pulse hits, and the bloom stays red after one saw us.
+const PULSE_S: f32 = 0.8;
+const DETECT_S: f32 = 1.5;
+/// The scope's ranges (km): the shortest that holds the farthest radar.
+const RANGES: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
+
+pub(crate) fn sample_threats(
+    time: Res<Time>,
+    emv: Res<Emv>,
+    emitters: Res<Emitters>,
+    mut h: ResMut<ThreatHistory>,
+) {
+    let dt = time.delta_secs();
+    if let Some((_, age, _)) = &mut h.pulse {
+        *age += dt;
+    }
+    match emitters.pulse {
+        Some((source, frames, detects)) => {
+            let new = frames > h.pulse_frames || h.pulse.is_none_or(|p| p.0 != source);
+            if new {
+                h.pulse = Some((source, 0.0, detects));
+            }
+            h.pulse_frames = frames;
+        }
+        None => h.pulse_frames = 0,
+    }
+    h.clock += dt;
+    while h.clock >= SAMPLE_S {
+        h.clock -= SAMPLE_S;
+        if h.samples.len() == HISTORY {
+            h.samples.pop_front();
+        }
+        h.samples.push_back((emv.emv, emv.egr.max(emv.ear)));
+    }
+}
+
+/// What the threat picture shows.
+pub struct Threats<'a> {
+    /// The radars painting the helicopter, most dangerous first.
+    pub emitters: &'a [EmitterView],
+    pub emv: &'a Emv,
+    pub history: &'a ThreatHistory,
+    /// The weapon bay doors are open (the signature's jump; broad lobes abeam, where they open).
+    pub bay_open: bool,
+    pub gear_down: bool,
+    /// Pitch and roll (radians, nose up and right wing down positive).
+    pub pitch: f32,
+    pub roll: f32,
+}
+
+/// The left display: the threat picture (`draw_threats`) on top, the warning list
+/// under it (warnings red, cautions amber, advisories green; unacknowledged warnings and
+/// cautions flash (`blink`), inverted), the countermeasures left at the foot.
+#[allow(clippy::too_many_arguments)]
+pub fn draw_left(
     c: &mut Canvas,
     fonts: &Fonts,
+    threats: &Threats,
     list: &[(Level, &'static str)],
     acked: &[&'static str],
     blink: bool,
@@ -152,15 +240,17 @@ pub fn draw_alerts(
 ) {
     let (w, h) = (c.w as i32, c.h as i32);
     c.clear(BLACK);
-    title(c, fonts, "WCA");
-    let mut y = 20;
-    let mut last = None;
-    for &(level, text) in list.iter().take(16) {
-        if last.is_some_and(|l| l != level) {
-            c.hline(6, w - 7, y + 1, DARK);
-            y += 4;
+    draw_threats(c, fonts, threats, blink);
+    // The list: as many as fit, the last line counting the rest.
+    c.hline(4, w - 5, 128, GREY);
+    const ROWS: usize = 4;
+    let mut y = 131;
+    for (k, &(level, text)) in list.iter().enumerate().take(ROWS) {
+        if k == ROWS - 1 && list.len() > ROWS {
+            let more = format!("+{} MORE", list.len() - k);
+            fonts.text(c, 8, y, more.as_bytes(), GREY);
+            break;
         }
-        last = Some(level);
         let colour = match level {
             Level::Warning => RED,
             Level::Caution => AMBER,
@@ -168,12 +258,12 @@ pub fn draw_alerts(
         };
         let flash = level != Level::Advisory && !acked.contains(&text);
         if flash && blink {
-            c.fill_rect(4, y - 1, w - 8, 9, colour);
+            c.fill_rect(4, y - 1, w - 8, 7, colour);
             fonts.text(c, 8, y, text.as_bytes(), BLACK);
         } else {
             fonts.text(c, 8, y, text.as_bytes(), colour);
         }
-        y += 10;
+        y += 7;
     }
     if list.is_empty() {
         fonts.text(c, 8, y, b"NO WARNINGS", GREY);
@@ -182,6 +272,210 @@ pub fn draw_alerts(
     c.hline(4, w - 5, h - 22, GREY);
     let line = format!("CHF {:>2}  FLR {:>2}  DCY {}", cm.chaff, cm.flares, cm.decoys);
     fonts.text(c, 6, h - 16, line.as_bytes(), CYAN);
+}
+
+/// The scope (centred at the top) and the strip chart under it.
+fn draw_threats(c: &mut Canvas, fonts: &Fonts, th: &Threats, blink: bool) {
+    let w = c.w as f32;
+    let centre = Vec2::new(w / 2.0, 55.0);
+    let r = 48.0;
+    // Where a bearing (radians clockwise from the nose) and a fraction of the radius land.
+    let at = |b: f32, f: f32| centre + Vec2::new(b.sin(), -b.cos()) * r * f;
+    let far = th.emitters.iter().map(|e| e.range_km).fold(0.0, f32::max);
+    let range = RANGES.into_iter().find(|&k| far <= k * 0.95).unwrap_or(RANGES[4]);
+    // Range rings, the bearing ticks every 30 degrees, the nose mark.
+    for k in 1..=3 {
+        c.ring(centre, r * k as f32 / 3.0, 0.4, if k == 3 { GREY } else { DARK });
+    }
+    for k in 0..12 {
+        let b = k as f32 * TAU / 12.0;
+        let inner = if k % 3 == 0 { 0.9 } else { 0.95 };
+        c.stroke(at(b, inner), at(b, 1.0), 0.4, GREY);
+    }
+    c.triangle([at(0.0, 1.02), at(-0.05, 1.1), at(0.05, 1.1)], WHITE);
+    // The bloom: our return, filled dim under the contacts; the dotted ring is the size at
+    // which the strongest signal at us would see it.
+    let (emv, signal) = (th.emv.emv, th.emv.egr.max(th.emv.ear));
+    let size = |v: f32| (2.5 + v.clamp(0.0, 1.0) * 18.0) * r / 40.0;
+    let base = size(emv);
+    let detected = th.history.pulse.is_some_and(|(_, age, detects)| detects && age < DETECT_S);
+    let pts: Vec<Vec2> = (0..=48)
+        .map(|i| {
+            let a = i as f32 * TAU / 48.0;
+            centre + Vec2::new(a.sin(), -a.cos()) * (base * lobes(a, th)).min(r)
+        })
+        .collect();
+    let (fill, line) = if detected { (DEEP_RED, RED) } else { (NAVY, CYAN) };
+    for p in pts.windows(2) {
+        c.triangle([centre, p[0], p[1]], fill);
+    }
+    c.polyline(&pts, 0.5, line);
+    if signal > 0.0 {
+        let limit = size(1.0 - signal);
+        let n = 36;
+        for i in (0..n).step_by(2) {
+            let (a0, a1) = (i as f32 * TAU / n as f32, (i as f32 + 0.6) * TAU / n as f32);
+            c.arc(centre, limit, a0, a1, 0.4, line);
+        }
+    }
+    // The trackers' missile envelopes (inside the scope) and their beams at the helicopter.
+    let place = |e: &EmitterView| (e.range_km / range).min(1.0);
+    for e in th.emitters.iter().filter(|e| e.tracking || e.launch) {
+        let p = at(e.rel_bearing, place(e));
+        let col = if e.launch { RED } else { AMBER };
+        ring_inside(c, p, e.lock_range_km / range * r, centre, r, col);
+        c.dashed(p, centre, 2.0, 2.0, 0.4, col);
+    }
+    // The helicopter.
+    c.stroke(centre + Vec2::new(0.0, -2.5), centre + Vec2::new(0.0, 2.5), 0.6, WHITE);
+    c.stroke(centre + Vec2::new(-2.0, -0.5), centre + Vec2::new(2.0, -0.5), 0.6, WHITE);
+    // The radars: a strobe on the rim at each one's bearing (longer the more dangerous), its
+    // symbol at its range (on the rim when out of range), green when heard lately; the one whose
+    // pulse just hit white, a ring going out from it and its beam to the centre.
+    for e in th.emitters.iter().rev() {
+        let len = 0.04 + 0.12 * (e.priority as f32 / 520.0).clamp(0.0, 1.0);
+        let pulse = th
+            .history
+            .pulse
+            .filter(|&(source, age, _)| source == e.source && age < PULSE_S)
+            .map(|p| p.1 / PULSE_S);
+        let col = if pulse.is_some() {
+            WHITE
+        } else if e.launch {
+            if blink { RED } else { WHITE }
+        } else if e.tracking {
+            AMBER
+        } else if e.heard {
+            GREEN
+        } else {
+            DIM
+        };
+        c.stroke(at(e.rel_bearing, 1.0), at(e.rel_bearing, 1.0 - len), 0.6, col);
+        let p = at(e.rel_bearing, place(e));
+        if let Some(f) = pulse {
+            c.ring(p, 3.5 + 9.0 * f, 0.5, if f < 0.5 { WHITE } else { GREY });
+            c.stroke(p, centre, 0.5, if f < 0.5 { WHITE } else { GREY });
+        }
+        let s = if pulse.is_some() { 3.2 } else { 2.6 };
+        if e.air {
+            c.polyline(
+                &[p + Vec2::new(-s, s * 0.6), p + Vec2::new(0.0, -s), p + Vec2::new(s, s * 0.6)],
+                0.5,
+                col,
+            );
+        } else {
+            let d = [Vec2::new(0.0, -s), Vec2::new(s, 0.0), Vec2::new(0.0, s), Vec2::new(-s, 0.0)];
+            c.polyline(&[p + d[0], p + d[1], p + d[2], p + d[3], p + d[0]], 0.5, col);
+        }
+        if e.tracking || e.launch || e.heard || pulse.is_some() {
+            fonts.text(c, p.x as i32 + 3, p.y as i32 - 6, e.label.as_bytes(), col);
+        }
+    }
+    // The corners: the range, the radars heard, our signature and the strongest signal.
+    let (wi, top, bottom) = (c.w as i32, 3, 92);
+    fonts.text(c, 4, top, format!("{range:.0}KM").as_bytes(), GREY);
+    let n = format!("{} RDR", th.emitters.len());
+    fonts.text(c, wi - 4 - fonts.width(n.as_bytes()), top, n.as_bytes(), GREY);
+    let pct = |v: f32| (v.clamp(0.0, 1.0) * 99.0).round() as i32;
+    fonts.text(c, 4, bottom, b"RCS", CYAN);
+    let v = format!("{:>2}", pct(emv));
+    let x = fonts.text(c, 4, bottom + 7, v.as_bytes(), if detected { RED } else { CYAN });
+    if th.bay_open {
+        fonts.text(c, x + 3, bottom + 7, b"BAY", AMBER);
+    }
+    let sig = b"SIG";
+    fonts.text(c, wi - 4 - fonts.width(sig), bottom, sig, AMBER);
+    let v = format!("{:>2}", pct(signal));
+    fonts.text(c, wi - 4 - fonts.width(v.as_bytes()), bottom + 7, v.as_bytes(), AMBER);
+    strip_chart(c, th.history, 4, 107, wi - 8, 18);
+}
+
+/// The bloom's radius at bearing `a` (radians clockwise from the nose) in its base size. The
+/// airframe's: broad abeam, narrow fore and aft, with small spikes where its edges are aligned.
+/// The gear down and the open bays make it larger through the signature, and both add detail: small spikes beside the nose and the tail for the gear, either side of
+/// the beam for the bays. Banked, the belly and the top swell it abeam (a little more towards
+/// the low side); pitched, fore and aft (a little more where the belly faces), never past the
+/// beam. Nearly symmetrical, and steady while those stay.
+fn lobes(a: f32, th: &Threats) -> f32 {
+    let lobe = |dir: f32, width: f32| {
+        let d = ((a - dir + TAU / 2.0).rem_euclid(TAU) - TAU / 2.0) / width;
+        (-d * d).exp()
+    };
+    let q = TAU / 4.0;
+    let mut k = 0.65 + 0.55 * a.sin().powi(2);
+    for dir in [0.7, -0.7, 2.45, -2.45] {
+        k += 0.15 * lobe(dir, 0.08);
+    }
+    for dir in [0.0, q, -q, 2.0 * q] {
+        k += 0.08 * lobe(dir, 0.12);
+    }
+    if th.bay_open {
+        for dir in [q - 0.3, q + 0.3, -q - 0.3, -q + 0.3] {
+            k += 0.12 * lobe(dir, 0.1);
+        }
+    }
+    if th.gear_down {
+        for dir in [0.35, -0.35, 2.0 * q - 0.35, 0.35 - 2.0 * q] {
+            k += 0.1 * lobe(dir, 0.12);
+        }
+    }
+    // The top shows to the other side about as much as the belly does.
+    let bank = (th.roll.sin().abs() * 1.6).min(0.9) * 0.4;
+    let (low, high) = if th.roll > 0.0 { (-q, q) } else { (q, -q) };
+    k += bank * (lobe(low, 0.6) + 0.85 * lobe(high, 0.6));
+    let pitch = (th.pitch.sin().abs() * 1.6).min(0.9) * 0.3;
+    let (belly, top) = if th.pitch > 0.0 { (0.0, 2.0 * q) } else { (2.0 * q, 0.0) };
+    k += pitch * (lobe(belly, 0.6) + 0.85 * lobe(top, 0.6));
+    k
+}
+
+/// A ring of radius `r` about `p`, only where it lies inside the scope (`centre`, `scope`).
+fn ring_inside(c: &mut Canvas, p: Vec2, r: f32, centre: Vec2, scope: f32, col: u8) {
+    let n = ((r * 0.8) as usize).clamp(16, 96);
+    let pt = |i: usize| p + Vec2::from_angle(i as f32 * TAU / n as f32) * r;
+    for i in 0..n {
+        let (a, b) = (pt(i), pt(i + 1));
+        if i % 2 == 0 && a.distance(centre) < scope && b.distance(centre) < scope {
+            c.stroke(a, b, 0.4, col);
+        }
+    }
+}
+
+/// The last 30 seconds right aligned in the box (x, y, w, h), drawn in texels (one sample per
+/// texel column): the signature filled from the bottom, the detection line (where the signal
+/// would see it) over it; columns past the line red.
+fn strip_chart(c: &mut Canvas, h: &ThreatHistory, x: i32, y: i32, w: i32, ht: i32) {
+    c.rect(x, y, w, ht, DARK);
+    let k = c.scale as i32;
+    let pw = c.pw();
+    let (x0, cols) = ((x + 1) * k, (w - 2) * k);
+    let (bottom, rows) = ((y + ht - 1) * k - 1, (ht - 2) * k);
+    let mut put = |tx: i32, ty: i32, col: u8| c.px[ty as usize * pw + tx as usize] = col;
+    let level = |v: f32| (v.clamp(0.0, 1.0) * rows as f32).round() as i32;
+    let n = h.samples.len() as i32;
+    for (i, &(emv, signal)) in h.samples.iter().enumerate() {
+        // The newest at the right edge.
+        let tx = x0 + cols - (n - i as i32);
+        if tx < x0 {
+            continue;
+        }
+        let e = level(emv);
+        let crossed = signal > 0.0 && emv + signal > 1.0;
+        for d in 0..e {
+            put(tx, bottom - d, if crossed { RED } else { DIM });
+        }
+        if e > 0 {
+            for d in e - 2..e {
+                put(tx, bottom - d.max(0), if crossed { RED } else { CYAN });
+            }
+        }
+        if signal > 0.0 {
+            let l = level(1.0 - signal).min(rows - 1);
+            for d in l - 1..=l {
+                put(tx, bottom - d.max(0), AMBER);
+            }
+        }
+    }
 }
 
 /// The right display: rotor speed and the engines' torque as bar graphs with their readouts
