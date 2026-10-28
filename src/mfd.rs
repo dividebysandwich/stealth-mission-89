@@ -1680,13 +1680,18 @@ impl MfdParams<'_, '_> {
     }
 
     /// Waypoint legs from the aircraft: (km, minutes, ETA seconds) at the current speed (at
-    /// least 360 kt), ETA accumulated.
+    /// least 360 kt), ETA accumulated. The legs run through the waypoints not yet passed; the
+    /// passed ones show 0.
     fn legs(&self, t: f32, a: &Aircraft, pos: &WorldPos) -> Vec<(f64, f64, f64)> {
         let (mut e, mut n, _) = bevy_to_wu(pos.0);
         let kmh = (a.knots().max(360.0) * 1.852) as f64;
         let mut eta = t as f64;
         let mut out = Vec::new();
-        for wp in self.waypoints.points.iter().take(4) {
+        for (i, wp) in self.waypoints.points.iter().take(4).enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) {
+                out.push((0.0, 0.0, t as f64));
+                continue;
+            }
             let km = ((wp.east - e).hypot(wp.north - n) * WU / 1000.0).round();
             let minutes = (km / kmh * 60.0).round();
             eta += minutes * 60.0 * self.clock.rate as f64;

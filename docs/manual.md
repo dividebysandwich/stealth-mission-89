@@ -459,7 +459,8 @@ the right). While it is up, the MAP shows the flight plan. WP- / WP+ (PgUp / PgD
 waypoint. F8 puts the page in edit mode (red): keypad 8 / 2 / 4 / 6 move the selected waypoint
 over the MAP and keypad 9 / 3 select the last / next one; F7 leaves it. With the modern
 avionics F8 also makes the table the SOI, and the keypad moves the waypoint only while it is. RST (Shift F8) puts all
-the waypoints back to their original positions.</td>
+the waypoints back to their original positions. The distances run from the aircraft through the
+waypoints not yet passed.</td>
 </tr>
 <tr>
 <td><img src="images/mfd_wpn.png" alt="WPN"><br>
