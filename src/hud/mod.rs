@@ -174,9 +174,27 @@ pub struct Waypoints {
     /// Index of the mission's waypoints 0..3 (midpoint, primary, secondary, landing base) in
     /// a planned route; empty: the points are the mission's own 4.
     pub anchors: Vec<usize>,
+    /// The route's points as planned: Shift-F8 puts the waypoints back to them.
+    pub initial: Vec<Waypoint>,
+    /// F8: the WAY page is in edit mode (shown in red) and the keypad moves the selected
+    /// waypoint over the map. F7 leaves it.
+    pub editing: bool,
 }
 
 impl Waypoints {
+    /// The waypoints of a route about to be flown: none passed, the first selected.
+    pub fn planned(points: Vec<Waypoint>, anchors: Vec<usize>) -> Self {
+        Self {
+            passed: vec![false; points.len()],
+            initial: points.clone(),
+            points,
+            current: 0,
+            mission_current: 0,
+            anchors,
+            editing: false,
+        }
+    }
+
     /// Point to fly to when the mission logic selects its waypoint `w` (1 primary next after
     /// the secondary, 2 secondary next after the primary, 3 home): with a planned route, the
     /// points after the target just done are flown in order.
@@ -375,14 +393,21 @@ fn hud_keys(
             }
             Action::HudDeclutter => hud.declutter = (hud.declutter + 1) % 3,
             Action::Nvg => hud.nvg = !hud.nvg,
-            // INS: PgUp / PgDn step through the waypoints, F8 changes to the next one, Shift-F8
-            // returns to the mission's current waypoint (F7 shows the WAY page, see mfd.rs).
-            // Weapon selection (Space) is done by the combat simulation.
+            // INS: PgUp / PgDn step through the waypoints. F7 shows the WAY page; F8 puts it in
+            // edit mode, where the keypad moves the selected waypoint over the map (see
+            // `mfd::edit_waypoints`). Shift-F8 puts every waypoint back to its planned place
+            // and returns to the mission's current one. Weapon selection (Space) is done by
+            // the combat simulation.
+            Action::SelectWaypoint => wps.editing = false,
+            Action::ChangeWaypoint => wps.editing = true,
             Action::LastWaypoint if n > 0 => wps.current = (wps.current + n - 1) % n,
-            Action::NextWaypoint | Action::ChangeWaypoint if n > 0 => {
-                wps.current = (wps.current + 1) % n
+            Action::NextWaypoint if n > 0 => wps.current = (wps.current + 1) % n,
+            Action::ResetWaypoint if n > 0 => {
+                if wps.initial.len() == n {
+                    wps.points = wps.initial.clone();
+                }
+                wps.current = wps.mission_current.min(n - 1);
             }
-            Action::ResetWaypoint if n > 0 => wps.current = wps.mission_current.min(n - 1),
             _ => {}
         }
     }
@@ -692,13 +717,7 @@ mod route_tests {
     use super::*;
 
     fn wps(n: usize, anchors: Vec<usize>) -> Waypoints {
-        Waypoints {
-            points: vec![Waypoint { east: 0.0, north: 0.0 }; n],
-            current: 0,
-            passed: vec![false; n],
-            mission_current: 0,
-            anchors,
-        }
+        Waypoints::planned(vec![Waypoint { east: 0.0, north: 0.0 }; n], anchors)
     }
 
     #[test]

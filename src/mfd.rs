@@ -52,7 +52,7 @@ impl Plugin for MfdPlugin {
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_mfd)
             .add_systems(
                 Update,
-                (mfd_keys, (build_map_geometry, render_map).chain())
+                (mfd_keys, edit_waypoints, (build_map_geometry, render_map).chain())
                     .chain()
                     .after(crate::flight::FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -715,6 +715,43 @@ fn mfd_keys(
     for MfdCommand(cmd) in commands.read() {
         apply_with_zoom(&mut state, &mut raster, *cmd, auto_zoom);
     }
+}
+
+/// Keypad slew speed of a waypoint being edited, in map pixels per second.
+const WAYPOINT_SLEW_PX: f64 = 30.0;
+
+/// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
+/// course line follows it); the mode ends when the page is left.
+fn edit_waypoints(
+    mut actions: MessageReader<ActionEvent>,
+    state: Res<MfdState>,
+    controls: Res<crate::input::FlightControls>,
+    time: Res<Time>,
+    aircraft: Query<&Aircraft, With<Player>>,
+    mut wps: ResMut<Waypoints>,
+) {
+    // The page switches on the key press itself; give it this frame to show.
+    let pressed = actions.read().any(|a| a.0 == Action::ChangeWaypoint);
+    let way = if state.modern { state.av.map_way } else { state.right == RightMfd::Way };
+    if wps.editing && !way && !pressed {
+        wps.editing = false;
+    }
+    if !wps.editing || !way || controls.slew == Vec2::ZERO {
+        return;
+    }
+    let Some(wp) = wps.points.get(wps.current).copied() else { return };
+    let h = aircraft.single().map_or(0.0, |a| a.euler().0 as f64);
+    let rot = if state.map_heading_up { h } else { 0.0 };
+    // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
+    let step = WAYPOINT_SLEW_PX * hires_scale(state.map_zoom) * time.delta_secs() as f64;
+    let (sx, sy) = (controls.slew.x as f64, -controls.slew.y as f64);
+    let (s, c) = rot.sin_cos();
+    let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
+    let theater = 32768.0;
+    let x = (wp.east / 32.0 + dx).clamp(0.0, theater);
+    let y = (0x8000 as f64 - wp.north / 32.0 + dy).clamp(0.0, theater);
+    let i = wps.current;
+    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (0x8000 as f64 - y) * 32.0 };
 }
 
 fn apply_with_zoom(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd, auto_zoom: u8) {
@@ -1595,9 +1632,14 @@ impl MfdParams<'_, '_> {
         }
     }
 
+    /// WAY page background: red while the waypoints are being edited (F8).
+    fn way_background(&self) -> u8 {
+        if self.waypoints.editing { 41 } else { 1 }
+    }
+
     /// WAY page.
     fn draw_way(&self, c: &mut Canvas, fonts: &Fonts, ac: Option<(&Aircraft, &WorldPos)>) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         mfd_text(c, fonts, 2, 0, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
@@ -1895,7 +1937,7 @@ impl MfdParams<'_, '_> {
         fonts: &Fonts,
         ac: Option<(&Aircraft, &WorldPos)>,
     ) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         text2(c, fonts, 6, 4, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);

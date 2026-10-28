@@ -353,17 +353,14 @@ fn start_combat(
     // The route from the mission planner, else the mission's own waypoints.
     let route =
         route.filter(|r| r.fits(m)).map(|r| r.clone()).unwrap_or_else(|| PlannedRoute::of(m));
-    *wps = Waypoints {
-        points: route
+    *wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        passed: vec![false; route.points.len()],
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     let names = m.world.names.clone();
     commands.insert_resource(Combat {
         prior_tiles,
