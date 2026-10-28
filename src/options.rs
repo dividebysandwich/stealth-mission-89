@@ -74,7 +74,7 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    menu_window(ctx, "Options", 460.0).show(ctx, |ui| {
+    menu_window(ctx, "Options", 500.0).show(ctx, |ui| {
         ui.label(egui::RichText::new("OPTIONS").heading().color(BRIGHT));
         ui.horizontal(|ui| {
             for (tab, name) in Tab::ALL {
@@ -324,13 +324,21 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
     for (title, retro) in [("Effects", false), ("Retro", true)] {
         section(ui, title);
-        for e in crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro) {
-            let mut on = e.get(&s.effects);
-            if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
-                e.set(&mut s.effects, on);
-                toggled = true;
+        // Two columns: the effects are many.
+        let column = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
+        egui::Grid::new(title).num_columns(2).min_col_width(column).show(ui, |ui| {
+            let list = crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro);
+            for (i, e) in list.enumerate() {
+                let mut on = e.get(&s.effects);
+                if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
+                    e.set(&mut s.effects, on);
+                    toggled = true;
+                }
+                if i % 2 == 1 {
+                    ui.end_row();
+                }
             }
-        }
+        });
     }
     if toggled {
         settings.set_changed();
