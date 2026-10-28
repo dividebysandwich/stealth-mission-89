@@ -22,7 +22,7 @@ To play right now, you can either:
 
 ## Features
 * **Play in the browser** right on [stealth-mission.com](https://stealth-mission.com) or **locally** [on your PC](https://github.com/dividebysandwich/stealth-mission-89/releases)
-* **Dynamic realtime campaign:** a living war with materiel and dynamic missions, strikes, CSAR, CAP, escort, etc.
+* **Dynamic realtime campaign:** a living war with materiel and dynamic missions, strikes, CSAR, CAP, escort, resupply etc.
 * **Career mode:** pilot records, tours of duty, ranks and medals
 * **Multiplayer:** coop campaigns for up to 64 players, hosted in-game or on a **dedicated server**
 * **Live map** of every public server's campaign on the [server list](https://sm-master.playspoon.com)
@@ -33,7 +33,9 @@ To play right now, you can either:
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
-* **F-117A, F-16C, UH-60A and AH-1Z**, each with its own cockpit and flight model
+* **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar)
+* **Flyable Helicopters:** UH-60A (Logistics and Insertions), AH-1Z (with HMD)
+* **Controllable Air Defenses:** Gepard (manual and radar-guided), Patriot (radar)
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
 * **Classic modes:** DOS era flight model, cockpit, HUD and rendering, switchable on their own
 
@@ -65,13 +67,8 @@ board, alone or with up to 64 players in coop.
 Eastern Ukraine, Crimea and southern Russia (about 31-42.6 E, 44-52 N), with the front line of 2026
 from the Sumy and Kharkiv border areas through Kupiansk, Lyman, Kostiantynivka, Pokrovsk and
 Huliaipole to the Dnipro and down the river to Kherson. You fly from Ukrainian bases (Myrhorod,
-Poltava, Dnipro, ...) against the occupied areas, Crimea and the Russian bases behind them; the
+Poltava, Dnipro, ...) against the occupied areas, Crimea and various Russian bases; the
 missions follow Central Europe's rules (`--theater ukraine`).
-- Real towns and cities: Soviet panel-block districts with private houses around them; towns at
-  and behind the front lie in ruins, and the Donbas mining towns have their slag heaps.
-- The steppe is farmland: autumn fields (stubble, ploughland, winter wheat) with shelterbelts.
-- The Zaporizhzhia, South Ukraine, Rostov, Kursk and Novovoronezh nuclear power plants.
-- Fires and smoke burn along the whole front line and in the ruined towns.
 
 ## Running
 ```sh
