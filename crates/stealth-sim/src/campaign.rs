@@ -803,6 +803,30 @@ impl Sim {
         }
     }
 
+    /// Campaign: a friendly Gepard at (x, y) (a new site the players supplied).
+    pub fn place_gepard(&mut self, x: i32, y: i32) {
+        let Some(mut c) = self.campaign.take() else { return };
+        if self.aaa.len() < MAX_UNITS {
+            c.aaa_blue.resize(self.aaa.len(), false);
+            let facing = c.rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
+            self.aaa.push(AaaUnit {
+                kind: AaaKind::Gepard,
+                x: x.clamp(0x40, 0x7FC0),
+                y: y.clamp(0x40, 0x7FC0),
+                aim_az: facing,
+                aim_el: 0.3,
+                rounds: crate::station::GEPARD_ROUNDS,
+                ..Default::default()
+            });
+            c.aaa_blue.resize(self.aaa.len(), true);
+            c.aaa_target.resize(self.aaa.len(), None);
+        }
+        self.campaign = Some(c);
+        if self.aaa_rng.is_none() {
+            self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
     /// Campaign: SAM site `i` fired at an aircraft lately (it gave itself away).
     pub fn site_engaging(&self, i: usize) -> bool {
         self.campaign.as_ref().is_some_and(|c| c.site_cool.get(i).is_some_and(|&t| t > 0))
@@ -973,6 +997,12 @@ impl Sim {
         let home = c.flights[i].map_or(0, |f| f.home);
         self.flights[i].flags |= fflags::RTB;
         self.flights[i].wp = home;
+        // A resupply or cargo helicopter flies back to its pad with the load.
+        if let Some(Some(f)) = self.campaign.as_mut().map(|c| &mut c.flights[i])
+            && let Some(run) = f.supply.as_mut()
+        {
+            run.delivered = true;
+        }
     }
 
     fn spawn_strike(

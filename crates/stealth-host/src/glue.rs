@@ -150,7 +150,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         | MissionKind::Defend
         | MissionKind::Csar
         | MissionKind::Awacs
-        | MissionKind::Resupply => [1, 0, 1, 0],
+        | MissionKind::Resupply
+        | MissionKind::Logistics => [1, 0, 1, 0],
     }
 }
 
@@ -287,6 +288,7 @@ pub fn airborne(kind: MissionKind) -> bool {
             | MissionKind::Csar
             | MissionKind::Awacs
             | MissionKind::Resupply
+            | MissionKind::Logistics
     )
 }
 
@@ -349,6 +351,16 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
             Some(r) => format!("The {} needs a new stockpile. {}", r.title(), describe(o.kind)),
             None => describe(o.kind).into(),
         },
+        Objective::Logistics { site, leg } => match state.deployment(site) {
+            Some(d) => format!(
+                "Cargo {} of {} for the new {}. {}",
+                leg + 1,
+                d.loads,
+                d.title(),
+                describe(o.kind)
+            ),
+            None => describe(o.kind).into(),
+        },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {
             match state.insertion_status(insertion) {
                 Some(t) => format!("{t}. {}", describe(o.kind)),
@@ -393,6 +405,9 @@ pub fn describe(kind: MissionKind) -> &'static str {
         }
         MissionKind::Resupply => {
             "Fly the stockpile from the airfield to the air defence unit: hover below 30 m within 50 m of it for 10 s while the load goes down"
+        }
+        MissionKind::Logistics => {
+            "Fly the cargo from the airfield to the new site's helipad: land on the pad and stay down for 10 s while it is unloaded"
         }
     }
 }

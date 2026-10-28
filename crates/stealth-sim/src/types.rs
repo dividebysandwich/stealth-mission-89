@@ -861,7 +861,8 @@ pub enum SimEvent {
         y: i32,
     },
     /// Campaign: a resupply helicopter the campaign launched has set its load down at the air
-    /// defence unit (`Sim::aaa_units` index) it flew to.
+    /// defence unit (`Sim::aaa_units` index) it flew to; a cargo helicopter on a new site's
+    /// helipad (`aaa` is `usize::MAX`).
     CampaignFlightDelivered {
         unit: usize,
         tag: u32,

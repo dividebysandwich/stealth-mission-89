@@ -324,6 +324,11 @@ impl CampaignState {
                         .downed_pilot(downed)
                         .filter(|d| d.state == DownedState::Waiting)
                         .map(|d| (d.x, d.y, BOARD_RADIUS, BOARD_SECONDS)),
+                    // The cargo comes out on the new site's helipad.
+                    Objective::Logistics { site, .. } if !p.delivered => self
+                        .deployment(site)
+                        .filter(|d| !d.built)
+                        .map(|d| (d.x, d.y, LOGISTICS_RADIUS, LOGISTICS_SECONDS)),
                     _ => None,
                 };
                 match (zone, landed) {
@@ -335,6 +340,7 @@ impl CampaignState {
                                     p.aboard = true;
                                     boarded.push(downed);
                                 }
+                                Objective::Logistics { .. } => p.delivered = true,
                                 _ => captures.extend(p.insertion),
                             }
                         }
@@ -426,6 +432,9 @@ impl CampaignState {
             if let Objective::Resupply { request } = objective {
                 self.resupplied(request, Some(player), ev);
             }
+            if let Objective::Logistics { site, leg } = objective {
+                self.logistics_delivered(site, leg, Some(player), ev);
+            }
             self.note(format!("{title}: objective achieved"));
             ev.push(CampaignEvent::ObjectiveAchieved { player, title });
             self.package(player, ev);
@@ -469,7 +478,7 @@ impl CampaignState {
             Objective::Interdict { object, .. } => !self.site(*object).is_some_and(Site::alive),
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
-            Objective::Resupply { .. } => p.delivered,
+            Objective::Resupply { .. } | Objective::Logistics { .. } => p.delivered,
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()

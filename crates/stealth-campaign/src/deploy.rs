@@ -1,0 +1,268 @@
+//! New friendly air defence sites: a player designates a spot on the map for a Gepard or a
+//! Patriot battery, a helipad goes there, and logistics missions go on the board for the UH-60
+//! pilots (land the cargo from the nearest airfield on the pad). A load nobody takes for
+//! `DEPLOY_AI_WAIT` goes by AI helicopter. All loads in within `DEPLOY_TIMEOUT`, the unit
+//! stands beside the pad; else the helipad is gone.
+
+use crate::state::*;
+use crate::tuning::*;
+use crate::{AaaView, CampaignEvent, Report, WorldView};
+
+/// The ground a site takes (map units from its unit).
+pub fn footprint(patriot: bool) -> i32 {
+    if patriot { DEPLOY_FOOTPRINT_PATRIOT } else { DEPLOY_FOOTPRINT_GEPARD }
+}
+
+impl CampaignState {
+    /// Why a new site may not go to (x, y) (the helipad; a Patriot battery or a Gepard), None
+    /// if it may: on land in friendly territory, clear of the towns, airfields and other world
+    /// objects, and of the units on the ground (`aaa`, the simulation's air defence).
+    pub fn deploy_refusal(&self, x: i32, y: i32, patriot: bool, aaa: &[AaaView]) -> Option<String> {
+        if self.outcome.is_some() {
+            return Some("The war is over".into());
+        }
+        if !(0x200..0x7E00).contains(&x) || !(0x200..0x7E00).contains(&y) {
+            return Some("Too close to the edge of the map".into());
+        }
+        let open = self.deployments.iter().filter(|d| !d.built).count();
+        if open >= DEPLOY_OPEN_MAX {
+            return Some(format!("{DEPLOY_OPEN_MAX} sites are waiting for their cargo already"));
+        }
+        let foot = footprint(patriot);
+        let wet = |x: i32, y: i32| self.terrain.is_water(x, y) == Some(true);
+        let ring = (0..8).map(|k| {
+            let t = k as f64 * std::f64::consts::FRAC_PI_4;
+            (x + (t.cos() * foot as f64) as i32, y + (t.sin() * foot as f64) as i32)
+        });
+        if wet(x, y) || ring.into_iter().any(|(px, py)| wet(px, py)) {
+            return Some("Not on dry land".into());
+        }
+        let near = |px: i32, py: i32, d: i32| dist(px - x, py - y) < d;
+        let nearest = self.places.iter().min_by_key(|p| dist(p.x - x, p.y - y));
+        if nearest.is_none_or(|p| p.owner != Side::Blue) {
+            return Some("Not in friendly territory".into());
+        }
+        if let Some(p) = self.places.iter().find(|p| near(p.x, p.y, DEPLOY_PLACE_CLEAR + foot)) {
+            let what = if p.airfield.is_some() { "airfield" } else { "town" };
+            return Some(format!("Too close to the {what} of {}", p.name));
+        }
+        if self.sites.iter().any(|s| !s.removed && near(s.x, s.y, DEPLOY_SITE_CLEAR + foot)) {
+            return Some("Too close to a city, an airfield or a site".into());
+        }
+        let (ux, uy) = (x, y - DEPLOY_UNIT_OFFSET);
+        let unit_near = |px: i32, py: i32, d: i32| dist(px - ux, py - uy) < d;
+        if aaa.iter().any(|a| a.alive && unit_near(a.x, a.y, foot + 8)) {
+            return Some("Too close to units on the ground".into());
+        }
+        if self.batteries.iter().any(|b| unit_near(b.x, b.y, BATTERY_RADIUS + foot)) {
+            return Some("Too close to an enemy battery".into());
+        }
+        if self.deployments.iter().any(|d| near(d.x, d.y, footprint(d.patriot) + foot)) {
+            return Some("Too close to another new site".into());
+        }
+        if self.supply_base(x, y).is_none() {
+            return Some("No friendly airfield to fly the cargo from".into());
+        }
+        None
+    }
+
+    /// A player designates a new site at (x, y): its helipad goes there and its loads go on the
+    /// board. (The host has checked the units on the ground.)
+    pub(crate) fn designate(
+        &mut self,
+        player: PlayerId,
+        x: i32,
+        y: i32,
+        patriot: bool,
+    ) -> Result<Vec<CampaignEvent>, String> {
+        if let Some(why) = self.deploy_refusal(x, y, patriot, &[]) {
+            return Err(why);
+        }
+        let name = self
+            .places
+            .iter()
+            .min_by_key(|p| dist(p.x - x, p.y - y))
+            .map_or(String::new(), |p| p.name.clone());
+        let id = self.id();
+        let now = self.clock;
+        let d = Deployment {
+            id,
+            x,
+            y,
+            patriot,
+            name,
+            by: Some(player),
+            posted: now,
+            expires: now + DEPLOY_TIMEOUT,
+            loads: if patriot { DEPLOY_LOADS_PATRIOT } else { DEPLOY_LOADS_GEPARD },
+            delivered: Vec::new(),
+            ai: Vec::new(),
+            open_since: now,
+            built: false,
+            seen: false,
+        };
+        let who = self.player_name(player).unwrap_or("A pilot");
+        let loads = if d.loads == 1 { "1 load".to_string() } else { format!("{} loads", d.loads) };
+        let text = format!("{who} designates a new {}: {loads} of cargo needed", d.title());
+        self.deployments.push(d);
+        self.note(text.clone());
+        self.board_at = f64::MIN;
+        Ok(vec![CampaignEvent::Message(text)])
+    }
+
+    /// Every tick: sites not supplied in time are called off, built ones whose units are all
+    /// gone are dropped, loads nobody flew for long enough get an AI helicopter.
+    pub(crate) fn run_deployments(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
+        let now = self.clock;
+        let flown: Vec<(u32, u8)> = self
+            .players
+            .iter()
+            .filter_map(|p| match p.sortie.as_ref()?.offer.objective {
+                Objective::Logistics { site, leg } => Some((site, leg)),
+                _ => None,
+            })
+            .collect();
+        for k in (0..self.deployments.len()).rev() {
+            let d = &self.deployments[k];
+            if d.built {
+                let (ux, uy) = d.unit_at();
+                let r = footprint(d.patriot);
+                let up = self.guns_within(view, ux, uy, Side::Blue, r).next().is_some();
+                if up && !d.seen {
+                    self.deployments[k].seen = true;
+                } else if !up && d.seen {
+                    let d = self.deployments.remove(k);
+                    let text = format!("The {} is destroyed", d.title());
+                    self.note(text.clone());
+                    ev.push(CampaignEvent::Message(text));
+                }
+                continue;
+            }
+            if now >= d.expires {
+                // Its AI helicopters fly home with the cargo.
+                let d = self.deployments.remove(k);
+                for &(_, tag) in &d.ai {
+                    ev.push(CampaignEvent::Recall { tag });
+                }
+                self.board_at = f64::MIN;
+                let text = format!("The {} was not supplied in time: helipad removed", d.title());
+                self.note(text.clone());
+                ev.push(CampaignEvent::Message(text));
+                continue;
+            }
+            let id = d.id;
+            let leg = d.open_legs().find(|l| !flown.contains(&(id, *l)));
+            let Some(leg) = leg else {
+                self.deployments[k].open_since = now;
+                continue;
+            };
+            if now - d.open_since < DEPLOY_AI_WAIT {
+                continue;
+            }
+            let (x, y) = (d.x, d.y);
+            let Some(from) = self.supply_base(x, y) else { continue };
+            let tag = self.id();
+            let d = &mut self.deployments[k];
+            d.ai.push((leg, tag));
+            d.open_since = now;
+            let title = d.title();
+            let base = self.site(from).map_or(String::new(), |s| s.name.clone());
+            let text = format!("A UH-60 takes a load of cargo for the {title} from {base}");
+            self.note(text.clone());
+            self.board_at = f64::MIN;
+            ev.push(CampaignEvent::Message(text));
+            ev.push(CampaignEvent::CargoLaunched { id, from, x, y, tag });
+        }
+    }
+
+    /// A campaign aircraft delivered, was shot down or landed: if it was a cargo helicopter,
+    /// its load is in, or back on the board.
+    pub(crate) fn cargo_report(&mut self, r: &Report, ev: &mut Vec<CampaignEvent>) {
+        let (tag, delivered) = match *r {
+            Report::SupplyDelivered { tag } => (tag, true),
+            Report::FlightDestroyed { tag, .. } | Report::FlightLanded { tag, .. } => (tag, false),
+            _ => return,
+        };
+        let now = self.clock;
+        let Some(d) = self.deployments.iter_mut().find(|d| d.ai.iter().any(|a| a.1 == tag)) else {
+            return;
+        };
+        let k = d.ai.iter().position(|a| a.1 == tag).expect("found");
+        let (leg, _) = d.ai.remove(k);
+        let id = d.id;
+        if delivered {
+            self.logistics_delivered(id, leg, None, ev);
+            return;
+        }
+        d.open_since = now;
+        let text = format!("Cargo helicopter for the {} lost - back on the board", d.title());
+        self.note(text.clone());
+        self.board_at = f64::MIN;
+        ev.push(CampaignEvent::Message(text));
+    }
+
+    /// A load for site `id` is in (by a player, else by the AI); with the last one the site is
+    /// built.
+    pub(crate) fn logistics_delivered(
+        &mut self,
+        id: u32,
+        leg: u8,
+        by: Option<PlayerId>,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        let who =
+            by.and_then(|p| self.player_name(p)).map(|n| format!(" by {n}")).unwrap_or_default();
+        self.board_at = f64::MIN;
+        let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && !d.built) else { return };
+        // Someone else brought this one already: it counts for the next.
+        let leg = if d.delivered.contains(&leg) {
+            match (0..d.loads).find(|l| !d.delivered.contains(l)) {
+                Some(l) => l,
+                None => return,
+            }
+        } else {
+            leg
+        };
+        d.delivered.push(leg);
+        // A player beat its AI helicopter to it: that one flies home.
+        for &(_, tag) in d.ai.iter().filter(|a| a.0 == leg) {
+            ev.push(CampaignEvent::Recall { tag });
+        }
+        d.ai.retain(|a| a.0 != leg);
+        let (done, loads) = (d.delivered.len(), d.loads as usize);
+        if done < loads {
+            let text = format!("Cargo {done} of {loads} for the {} delivered{who}", d.title());
+            self.note(text.clone());
+            ev.push(CampaignEvent::Message(text));
+            return;
+        }
+        d.built = true;
+        let ((x, y), patriot, title) = (d.unit_at(), d.patriot, d.title());
+        for (_, tag) in std::mem::take(&mut d.ai) {
+            ev.push(CampaignEvent::Recall { tag });
+        }
+        let text = format!("The {title} is supplied{who} and ready for action");
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+        ev.push(CampaignEvent::SiteBuilt { id, x, y, patriot });
+    }
+
+    /// The board's logistics offers: the loads of the sites waiting for cargo that no AI
+    /// helicopter is bringing.
+    pub(crate) fn logistics_offers(&self) -> Vec<(String, Objective, i32, i32)> {
+        self.deployments
+            .iter()
+            .filter(|d| !d.built)
+            .flat_map(|d| {
+                d.open_legs().map(move |leg| {
+                    (
+                        format!("Logistics - {} ({}/{})", d.title(), leg + 1, d.loads),
+                        Objective::Logistics { site: d.id, leg },
+                        d.x,
+                        d.y,
+                    )
+                })
+            })
+            .collect()
+    }
+}

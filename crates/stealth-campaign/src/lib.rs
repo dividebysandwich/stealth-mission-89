@@ -21,6 +21,7 @@
 //! state is plain serialisable data with its own random stream: the same seed, commands and
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
+mod deploy;
 mod director;
 mod events;
 mod missions;
@@ -34,6 +35,7 @@ pub mod weather;
 
 use serde::{Deserialize, Serialize};
 
+pub use deploy::footprint;
 pub use record::PilotRecord;
 pub use state::*;
 
@@ -151,6 +153,9 @@ pub enum Command {
     /// From an air defence console: a new stockpile for its unit (AAA index, where it stands,
     /// a Patriot battery or a Gepard).
     RequestResupply { aaa: u32, x: i32, y: i32, patriot: bool },
+    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
+    /// (x, y): its cargo goes on the board.
+    DesignateSite { x: i32, y: i32, patriot: bool },
 }
 
 /// What the authority has to do or show.
@@ -261,6 +266,23 @@ pub enum CampaignEvent {
     Restocked {
         aaa: u32,
     },
+    /// A cargo helicopter (tag) takes off from a base's helipad for the helipad of a new site
+    /// (deployment `id`) at (x, y).
+    CargoLaunched {
+        id: u32,
+        from: ObjectId,
+        x: i32,
+        y: i32,
+        tag: u32,
+    },
+    /// A new site (deployment `id`) has all its cargo: a Patriot battery or a Gepard stands at
+    /// (x, y).
+    SiteBuilt {
+        id: u32,
+        x: i32,
+        y: i32,
+        patriot: bool,
+    },
     /// The enemy pushes a battery of guns forward to (x, y).
     BatteryDeployed {
         id: u32,
@@ -290,6 +312,7 @@ impl CampaignState {
             Command::RequestResupply { aaa, x, y, patriot } => {
                 self.request_resupply(Some(player), aaa, x, y, patriot)
             }
+            Command::DesignateSite { x, y, patriot } => self.designate(player, x, y, patriot),
         }
     }
 
@@ -319,6 +342,7 @@ impl CampaignState {
         self.drone_waves(&mut ev);
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
+        self.run_deployments(view, &mut ev);
         if self.check_outcome(&mut ev) {
             return ev;
         }
@@ -372,6 +396,12 @@ impl CampaignState {
         let now = self.clock;
         for r in &mut self.supply_requests {
             r.state = SupplyState::Open { since: now };
+        }
+        // So are the cargo helicopters: their loads are open again.
+        for d in &mut self.deployments {
+            d.ai.clear();
+            d.open_since = now;
+            d.seen = false;
         }
         self.board_at = f64::MIN;
         for p in &mut self.plans {
