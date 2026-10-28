@@ -14,7 +14,9 @@ use stealth_mission::world::flags as F;
 use stealth_sim::SimData;
 
 use crate::canvas::Canvas;
-use crate::map_draw::{self, Layer, MapLayers, MapView, UAV_PINK, drone_cross, missile_circle};
+use crate::map_draw::{
+    self, Layer, MapLayers, MapView, MapWeather, UAV_PINK, drone_cross, missile_circle,
+};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, section};
 use crate::mfd::{MapModel, map_models, rasterise_map};
 use crate::mission::{PlannedRoute, RouteKind, RoutePoint};
@@ -452,7 +454,7 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
             ui.label(egui::RichText::new("MISSION PLANNER").heading().color(BRIGHT));
             ui.separator();
             let size = ui.available_size();
-            route_panel(ui, planner, &m, route, &|_| true, None, size, true, |ui| {
+            route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
                 ui.add_space(12.0);
                 if ui.add(big_button("DONE").fill(DIM)).clicked() {
                     open = false;
@@ -486,6 +488,7 @@ pub fn route_panel(
     route: &mut PlannedRoute,
     known: &dyn Fn(usize) -> bool,
     overlay: MapOverlay,
+    weather: Option<MapWeather>,
     size: egui::Vec2,
     editable: bool,
     buttons: impl FnOnce(&mut egui::Ui),
@@ -495,12 +498,18 @@ pub fn route_panel(
         .as_ref()
         .map(|s| threat_rings(m, s, planner.profile, known))
         .unwrap_or_default();
-    let mut layers = MapLayers::of(ui.ctx(), "route", &[Layer::EngagementRange]);
+    let off = [&[Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
+    let mut layers = MapLayers::of(ui.ctx(), "route", &off);
+    // The mission's weather, unless the caller's (a campaign's changes).
+    let weather = weather.unwrap_or_else(|| {
+        let sky = crate::sky::Sky::of(&m.theater_code.to_ascii_lowercase(), Some(m));
+        MapWeather::new(m.weather, sky.freezing_level())
+    });
     ui.allocate_ui(size, |ui| {
     ui.horizontal_top(|ui| {
         let side = 300.0;
         let map_size = egui::vec2(ui.available_width() - side - 12.0, ui.available_height() - 8.0);
-        map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), map_size, editable);
+        map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), &weather, map_size, editable);
         ui.vertical(|ui| {
             ui.set_width(side);
             section(ui, "Route");
@@ -562,6 +571,7 @@ fn map_view(
     rings: &[Ring],
     layers: &mut MapLayers,
     overlay: Option<&Overlay>,
+    weather: &MapWeather,
     size: egui::Vec2,
     editable: bool,
 ) {
@@ -585,6 +595,7 @@ fn map_view(
     let painter = painter.with_clip_rect(rect);
 
     map_draw::picture(&painter, &view, planner.texture.as_ref().map(|(_, t, _)| t));
+    map_draw::weather(&painter, &view, "route", weather, layers);
     // Threat coverage: filled radar detection circles (solid Doppler, dotted pulse), dashed
     // missile range circles; dim when off the air.
     for ring in rings.iter().filter(|r| layers.shows_type(&r.name)) {
@@ -737,6 +748,7 @@ fn map_view(
                 );
             }),
         }
+        map_draw::weather_legend(ui, layers, weather.snow);
     });
 }
 

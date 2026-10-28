@@ -16,7 +16,7 @@ use stealth_sim::aaa::AaaKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
-use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, MapWeather};
 use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, section};
 use crate::settings::AppState;
 
@@ -295,6 +295,7 @@ pub fn ops_ui(
     mut next: ResMut<NextState<AppState>>,
     mut unit_view: ResMut<super::UnitView>,
     weather: Res<crate::weather::WeatherState>,
+    sky: Res<crate::sky::Sky>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     settings: Res<crate::settings::Settings>,
     mut menu: ResMut<crate::flight_menu::FlightMenu>,
@@ -304,6 +305,9 @@ pub fn ops_ui(
         return Ok(());
     }
     let wx = weather.now.map(|n| weather_text(&c, &n));
+    // The maps' weather: the forecast's now (a clear sky without changing weather).
+    let map_wx =
+        MapWeather::new(weather.now.map(|n| n.weather).unwrap_or_default(), sky.freezing_level());
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
     crate::menu::apply_ui_zoom(ctx);
     if ctx.global_style().visuals.window_fill != BG {
@@ -361,7 +365,7 @@ pub fn ops_ui(
     }
     if c.ui.briefing.is_some() {
         let line = wx.as_ref().map(|w| w.1.as_str());
-        briefing(ctx, c, &combat.sim, &mut planner, line, egui::vec2(width, height));
+        briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx, egui::vec2(width, height));
         return Ok(());
     }
     let mut leave = false;
@@ -455,6 +459,7 @@ pub fn ops_ui(
                         &combat.sim,
                         &mut unit_view,
                         tex.as_ref(),
+                        &map_wx,
                         egui::vec2(width, height),
                     ),
                     Tab::AirDefence => super::air_defence::tab(
@@ -1081,10 +1086,13 @@ fn war_map(
     sim: &stealth_sim::Sim,
     unit_view: &mut super::UnitView,
     tex: Option<&egui::TextureHandle>,
+    weather: &MapWeather,
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
-    let mut layers = MapLayers::of(ui.ctx(), "war", &[Layer::MissileRange, Layer::EngagementRange]);
+    let off =
+        [&[Layer::MissileRange, Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
+    let mut layers = MapLayers::of(ui.ctx(), "war", &off);
     ui.horizontal_top(|ui| {
         let (rect, resp) = ui.allocate_exact_size(
             egui::vec2(size.x - legend_w, size.y),
@@ -1097,6 +1105,7 @@ fn war_map(
         (c.ui.centre, c.ui.scale) = (centre, scale);
         let painter = ui.painter_at(rect);
         map_draw::picture(&painter, &view, tex);
+        map_draw::weather(&painter, &view, "war", weather, &layers);
         let (parked, selected) = (c.parked, c.ui.selected);
         let test_taken = &mut c.ui.test_taken;
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
@@ -1195,6 +1204,7 @@ fn war_map(
                 ));
             });
             super::picture::legend(ui, &mut layers, Some(&pic));
+            map_draw::weather_legend(ui, &mut layers, weather.snow);
             ui.add_space(8.0);
             ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
             ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
@@ -1508,6 +1518,7 @@ fn briefing(
     sim: &stealth_sim::Sim,
     planner: &mut crate::planner::Planner,
     weather: Option<&str>,
+    map_wx: &MapWeather,
     size: egui::Vec2,
 ) {
     let Some(mut b) = c.ui.briefing.take() else { return };
@@ -1584,6 +1595,7 @@ fn briefing(
                             planner,
                             &m,
                             &mut b,
+                            map_wx,
                             egui::vec2(size.x, height),
                         )
                     }
@@ -1688,6 +1700,7 @@ fn route_editor(
     planner: &mut crate::planner::Planner,
     m: &stealth_mission::Mission,
     b: &mut Briefing,
+    weather: &MapWeather,
     size: egui::Vec2,
 ) -> Option<Vec<crate::mission::RoutePoint>> {
     let now = ui.input(|i| i.time);
@@ -1749,6 +1762,7 @@ fn route_editor(
         route,
         &known,
         Some(crate::planner::Overlay { draw: &draw, legend: &legend }),
+        Some(*weather),
         size,
         !locked,
         |ui| {
