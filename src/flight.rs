@@ -225,6 +225,11 @@ impl FlightConstants {
     pub fn ah1z() -> Self {
         Self { fuel: 2600.0, heli: Some(heli::Rotor::AH1Z), ..default() }
     }
+
+    /// RAH-66: the helicopter model; 2600 lb of fuel.
+    pub fn rah66() -> Self {
+        Self { fuel: 2600.0, heli: Some(heli::Rotor::RAH66), ..default() }
+    }
 }
 
 /// Why the flight ended.
@@ -518,10 +523,10 @@ fn handle_actions(
     for ActionEvent(action) in actions.read() {
         match action {
             // Helicopters: the collective moves while its keys are held
-            // (`FlightControls::collective_rate`); fixed gear, no autopilot, the brakes are the
-            // parking brake.
-            Action::ThrottleUp | Action::ThrottleDown | Action::Gear | Action::Autopilot
-                if heli => {}
+            // (`FlightControls::collective_rate`); fixed gear unless it retracts, no autopilot,
+            // the brakes are the parking brake.
+            Action::ThrottleUp | Action::ThrottleDown | Action::Autopilot if heli => {}
+            Action::Gear if k.heli.is_some_and(|r| r.retract_gear.is_none()) => {}
             // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
             // dry thrust they step through the afterburner; full power lights it at full dry
             // thrust.

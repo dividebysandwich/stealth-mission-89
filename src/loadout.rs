@@ -159,6 +159,50 @@ const F117_OUTLINE: &[(f32, f32)] = &[
     (-6.48, 16.48),
     (-6.48, 14.96),
 ];
+/// aircraft_046 (tools/models/comanche.py) seen from above, without its rotors, the bay doors shut:
+/// half span (the tail's end plates) 1.58 m, length 13.48 m.
+const RAH66_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.28, 0.00),
+    (0.46, 0.32),
+    (0.92, 3.38),
+    (1.16, 3.40),
+    (1.16, 3.90),
+    (1.04, 3.92),
+    (1.16, 4.86),
+    (1.16, 6.74),
+    (1.00, 7.94),
+    (0.70, 8.64),
+    (0.44, 11.02),
+    (0.26, 11.10),
+    (0.26, 12.18),
+    (1.58, 12.20),
+    (1.58, 12.82),
+    (1.30, 13.34),
+    (1.24, 13.16),
+    (0.12, 13.20),
+    (0.04, 13.24),
+    (0.00, 13.48),
+    (-0.04, 13.24),
+    (-0.12, 13.20),
+    (-1.24, 13.16),
+    (-1.30, 13.34),
+    (-1.58, 12.82),
+    (-1.58, 12.20),
+    (-0.26, 12.18),
+    (-0.26, 11.10),
+    (-0.44, 11.02),
+    (-0.70, 8.64),
+    (-1.00, 7.94),
+    (-1.16, 6.74),
+    (-1.16, 4.86),
+    (-1.04, 3.92),
+    (-1.16, 3.90),
+    (-1.16, 3.40),
+    (-0.92, 3.38),
+    (-0.46, 0.32),
+    (-0.28, 0.00),
+];
 /// aircraft_043 (tools/models/ah1z.py) seen from above, without its rotors: half span (the
 /// wingtip rails) 2.32 m, length 15.16 m.
 const AH1Z_OUTLINE: &[(f32, f32)] = &[
@@ -557,6 +601,26 @@ const HELLFIRES: [u8; 1] = [HELLFIRE];
 
 static AH1Z_LAYOUT: Layout =
     Layout { outline: AH1Z_OUTLINE, half_span: 2.32, length: 15.16, hardpoints: &AH1Z_STATIONS };
+/// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires or six
+/// Stingers on its inside.
+static RAH66_STATIONS: [Hardpoint; 2] =
+    [door("Left bay door", "L", -1.0, 1), door("Right bay door", "R", 1.0, 0)];
+
+const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) -> Hardpoint {
+    Hardpoint {
+        name,
+        label,
+        pos: (x, 5.3),
+        bay: true,
+        fantasy: false,
+        mirror: Some(mirror),
+        loads: &[HELLFIRE, STINGER],
+        qty: &[(HELLFIRE, 3), (STINGER, 6)],
+    }
+}
+
+static RAH66_LAYOUT: Layout =
+    Layout { outline: RAH66_OUTLINE, half_span: 1.58, length: 13.48, hardpoints: &RAH66_STATIONS };
 /// The UH-60A carries troops, no stores.
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
@@ -571,6 +635,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
+        AircraftKind::RAH66 => &RAH66_LAYOUT,
     }
 }
 
@@ -595,7 +660,7 @@ pub const LOADOUT_FILE: &str = "loadout.json";
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado and
     /// the A-10 each on the first free pair of stations that carries it, and Sidewinders on the free
-    /// wingtips or rails; the AH-1Z full.
+    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
         let lay = layout(aircraft, realistic);
@@ -610,7 +675,7 @@ impl PlannedLoadout {
             AircraftKind::UH60 => {}
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z => {
+            AircraftKind::AH1Z | AircraftKind::RAH66 => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }

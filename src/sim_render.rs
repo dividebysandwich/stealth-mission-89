@@ -1318,6 +1318,20 @@ fn world_model_state(
         }
     }
     let door = combat.as_ref().map_or(0, |c| c.sim.bay_door_anim()) as i16;
+    // The RAH-66's doors show what is left on them (slots 23 left, 24 right): 0 Hellfires,
+    // 1 Stingers, 2 none.
+    let door_stores = |i: usize| {
+        combat.as_ref().and_then(|c| c.sim.bays().0.get(i).copied()).map_or(2, |(w, n)| {
+            if n <= 0 || w < 0 {
+                2
+            } else if w == crate::loadout::STINGER as i32 {
+                1
+            } else {
+                0
+            }
+        })
+    };
+    let (left_stores, right_stores) = (door_stores(0), door_stores(1));
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1359,6 +1373,8 @@ fn world_model_state(
             s18,
             s19,
             s20,
+            (23, left_stores),
+            (24, right_stores),
         ];
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {

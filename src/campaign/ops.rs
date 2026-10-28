@@ -1609,6 +1609,7 @@ fn briefing(
                                 Airframe::A10,
                                 Airframe::UH60,
                                 Airframe::AH1Z,
+                                Airframe::RAH66,
                             ]
                             .into_iter()
                             .filter(|a| o.kind.flyable_by(*a));

@@ -39,6 +39,7 @@ pub enum Aircraft {
     AH1Z,
     Tornado,
     A10,
+    RAH66,
 }
 
 impl Aircraft {
@@ -50,11 +51,12 @@ impl Aircraft {
             Aircraft::AH1Z => "AH-1Z",
             Aircraft::Tornado => "Tornado",
             Aircraft::A10 => "A-10",
+            Aircraft::RAH66 => "RAH-66",
         }
     }
 
     pub fn helicopter(self) -> bool {
-        matches!(self, Aircraft::UH60 | Aircraft::AH1Z)
+        matches!(self, Aircraft::UH60 | Aircraft::AH1Z | Aircraft::RAH66)
     }
 
     /// The troop helicopter: flies insertions and picks downed pilots up.
@@ -201,7 +203,7 @@ impl MissionKind {
     /// The aircraft made for it, best first: what the briefing picks (the player may change to
     /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets
     /// (low-level interdiction the Tornado's, close support the A-10's), the air-to-air missions for the F-16, rescues for
-    /// the UH-60 that picks the pilot up, work close to the front for the gunship.
+    /// the UH-60 that picks the pilot up, work close to the front for the gunships.
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
@@ -210,9 +212,9 @@ impl MissionKind {
             MissionKind::Interdiction => &[F117, Tornado, F16, A10],
             MissionKind::Sead => &[F16, Tornado, F117],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
-            MissionKind::Intercept => &[F16, AH1Z],
-            MissionKind::Cas => &[A10, AH1Z, F16, Tornado, F117],
-            MissionKind::Escort => &[AH1Z, F16, A10],
+            MissionKind::Intercept => &[F16, AH1Z, RAH66],
+            MissionKind::Cas => &[A10, AH1Z, RAH66, F16, Tornado, F117],
+            MissionKind::Escort => &[AH1Z, RAH66, F16, A10],
             MissionKind::Insertion | MissionKind::Csar | MissionKind::Resupply => &[UH60],
         }
     }

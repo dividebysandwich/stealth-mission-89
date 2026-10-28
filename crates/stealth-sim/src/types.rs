@@ -544,6 +544,10 @@ pub struct Airframe {
     /// The A-10 (weapons outside): only its look differs from the F-16's.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub a10: bool,
+    /// The RAH-66 (a gunship with its missiles in bays): doors that open as it fires, and a
+    /// radar signature that fades with its speed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub comanche: bool,
 }
 
 /// Landing option.
@@ -585,6 +589,10 @@ pub struct SimOptions {
     /// The aircraft is the A-10: seen as one by the other pilots.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub a10: bool,
+    /// The aircraft is the RAH-66 (with `helicopter` and `gunship`): its bay doors open as it
+    /// fires, its radar signature fades with its speed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub comanche: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -622,6 +630,7 @@ impl Default for SimOptions {
             gunship: false,
             tornado: false,
             a10: false,
+            comanche: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

@@ -1890,6 +1890,45 @@ fn hellfire_follows_the_pod() {
     }
 }
 
+/// The RAH-66 carries its Hellfires in bays: fired with the doors shut, the missile waits for them
+/// to open, then they shut again a few seconds after the last launch.
+#[test]
+fn comanche_doors_open_to_fire() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(20, 3), (20, 3)]);
+    let o = &mut sim.objects_mut()[5];
+    (o.x, o.y, o.flags) = (mx + 100, my - 100, 0);
+    let mut p = player_at(mx, my, 500, 0x2000, 0);
+    p.pod = Some(PodAim { heading: 0x2000, pitch: -0x400, ground: Some((mx + 100, my - 100)) });
+    sim.step(&p, 15);
+    assert!(!sim.bay_doors_open());
+    let flying = |sim: &Sim| (8..12).filter(|&s| sim.projectiles()[s].ttl != 0).count();
+    p.cmd.fire = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert_eq!(flying(&sim), 0, "waits for the doors");
+    let mut frames = 0;
+    while flying(&sim) == 0 && frames < 15 {
+        sim.step(&p, 15);
+        frames += 1;
+    }
+    assert!(flying(&sim) == 1 && sim.bay_doors_open(), "fired after {frames} frames");
+    // Open while it fires, shut some 4 s after the launch.
+    for _ in 0..15 * 3 {
+        sim.step(&p, 15);
+    }
+    assert!(sim.bay_doors_open());
+    for _ in 0..15 * 2 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.bay_door_anim(), 0, "shut again");
+}
+
 /// A Hellfire fired from the AH-1Z 500 ft up at a target `range` map units northeast, the pod's
 /// spot on it: the launch zone at the shot and whether it hit.
 fn hellfire_shot(guided: bool, range: i32) -> (Option<dlz::LaunchZone>, bool) {

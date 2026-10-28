@@ -284,6 +284,7 @@ fn start_combat(
     let gunship = settings.aircraft.spec().turret;
     let tornado = settings.aircraft == crate::aircraft::AircraftKind::Tornado;
     let a10 = settings.aircraft == crate::aircraft::AircraftKind::A10;
+    let comanche = settings.aircraft == crate::aircraft::AircraftKind::RAH66;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -292,6 +293,7 @@ fn start_combat(
             gunship,
             tornado,
             a10,
+            comanche,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -302,6 +304,7 @@ fn start_combat(
             gunship,
             tornado,
             a10,
+            comanche,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -998,7 +1001,9 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
     let r = std::f64::consts::TAU / 65536.0;
     let (h, pitch) = ((v.heading as u16) as f64 * r, (v.pitch as i16) as f64 * r);
     let dir = DVec3::new(h.sin() * pitch.cos(), pitch.sin(), -h.cos() * pitch.cos());
-    let name = if p.gunship {
+    let name = if p.comanche {
+        "RAH-66"
+    } else if p.gunship {
         "AH-1Z"
     } else if p.helicopter {
         "UH-60A"

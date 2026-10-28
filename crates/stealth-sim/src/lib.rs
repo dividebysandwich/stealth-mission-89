@@ -330,6 +330,7 @@ impl Sim {
         let gunship = opts.gunship;
         let tornado = opts.tornado;
         let a10 = opts.a10;
+        let comanche = opts.comanche;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -366,6 +367,7 @@ impl Sim {
                 gunship,
                 tornado,
                 a10,
+                comanche,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
@@ -384,6 +386,8 @@ impl Sim {
                 irj_heat: 0,
                 door_anim: 0,
                 bay_req: false,
+                bay_pending: false,
+                bay_close: 0,
                 bays,
                 cur_bay: 0,
                 gun_selected: false,

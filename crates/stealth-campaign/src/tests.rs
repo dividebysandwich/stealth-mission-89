@@ -1497,6 +1497,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::AH1Z,
         Aircraft::Tornado,
         Aircraft::A10,
+        Aircraft::RAH66,
     ];
     for k in kinds {
         for last in all {
@@ -1512,6 +1513,8 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
     assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
     assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);
+    assert_eq!(Escort.pick(Aircraft::RAH66), Aircraft::RAH66);
+    assert_eq!(Interdiction.pick(Aircraft::RAH66), Aircraft::F117);
 }
 
 #[test]

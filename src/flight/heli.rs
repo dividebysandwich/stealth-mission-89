@@ -93,6 +93,9 @@ pub struct Rotor {
     pub max_sink: f32,
     pub max_tilt: f32,
     pub max_knots: f32,
+    /// Retractable wheels (else fixed gear): lowered they add this fraction to the fore-aft
+    /// drag, and touching down with them up wrecks the helicopter.
+    pub retract_gear: Option<f32>,
 }
 
 impl Rotor {
@@ -127,6 +130,7 @@ impl Rotor {
         max_sink: 15.0,
         max_tilt: 0.26,
         max_knots: 45.0,
+        retract_gear: None,
     };
 
     /// AH-1Z: lighter and more powerful for its size, quicker on the cyclic and pedals, a
@@ -146,6 +150,19 @@ impl Rotor {
         rotor_lag: 1.2,
         fuel_burn: 0.3,
         ..Rotor::UH60
+    };
+
+    /// RAH-66: the AH-1Z's power on a slimmer, smoother airframe with its wheels tucked away and
+    /// a five-blade bearingless rotor that stalls later (the level speed tops out near 195 kt),
+    /// but heavier on the cyclic: it rolls and pitches more slowly. The shrouded fan keeps the
+    /// pedals as quick.
+    pub const RAH66: Rotor = Rotor {
+        pitch_accel: 2.6,
+        roll_accel: 5.6,
+        stall_knots: (190.0, 240.0),
+        drag: Vec3::new(2.6e-4, 0.0, 3.3e-5),
+        retract_gear: Some(0.12),
+        ..Rotor::AH1Z
     };
 
     /// Collective that hovers out of ground effect, in still air.
@@ -315,7 +332,8 @@ pub(super) fn step(
     let mut accel_body = Vec3::Y * thrust * G;
     // Drag along the body's side and fore-aft axes.
     accel_body.x -= r.drag_linear * vb.x + r.drag.x * vb.x * vb.x.abs();
-    accel_body.z -= r.drag_linear * vb.z + r.drag.z * vb.z * vb.z.abs();
+    let gear_drag = 1.0 + r.retract_gear.filter(|_| a.gear_down).unwrap_or(0.0);
+    accel_body.z -= r.drag_linear * vb.z + r.drag.z * gear_drag * vb.z * vb.z.abs();
     // The inflow: air flowing down through the disc costs thrust, up through it adds some. It
     // damps climbs and descents, and at speed the disc tilted forward meets the air from above:
     // pitching forward sinks unless the collective comes up (a flare lifts).
@@ -409,9 +427,15 @@ pub(super) fn step(
     tf.rotation = a.orientation;
 }
 
-/// A hard, fast or tilted touchdown wrecks the helicopter (not with the "no crashes" skill).
+/// A hard, fast or tilted touchdown, or one with the retractable wheels up, wrecks the
+/// helicopter (not with the "no crashes" skill).
 fn touchdown(a: &mut Aircraft, k: &FlightConstants, r: &Rotor, vel: Vec3, roll: f32) {
     if k.landing == 0 && !a.damage.fragile {
+        return;
+    }
+    if r.retract_gear.is_some() && !a.gear_down {
+        a.ended = Some(FlightEnd::Crash);
+        info!("helicopter crash: touched down with the wheels up");
         return;
     }
     let f = if k.landing >= 2 { 0.75 } else { 1.0 };
@@ -787,5 +811,99 @@ mod tests {
         );
         assert!(fast.knots() > 160.0 && fast.climb_rate > 0.0);
         assert!(faster.knots() < 230.0 && faster.climb_rate < 0.0);
+    }
+
+    /// Full collective with the nose held `deg` down from 120 kt, the wheels up: the speed and
+    /// climb rate after a minute.
+    fn full_collective(k: FlightConstants, deg: f32) -> Aircraft {
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 120.0 * 27.0;
+        a0.gear_down = false;
+        fly_as(k, a0, 60.0, 1, |a, c| {
+            pilot(a, c, 0.0);
+            let (_, p, _) = a.euler();
+            c.pitch = (-8.0 * (p + deg.to_radians()) - 1.0 * a.heli.rates.x).clamp(-1.0, 1.0);
+            c.throttle = Some(1.0);
+        })
+        .0
+    }
+
+    /// The bank after `secs` of full right cyclic from level flight at 120 kt.
+    fn bank_after(k: FlightConstants, secs: f32) -> f32 {
+        let hc = k.heli.unwrap().hover_collective();
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 120.0 * 27.0;
+        let (a, _) = fly_as(k, a0, secs, 1, |_, c| {
+            c.throttle = Some(hc);
+            c.roll = 1.0;
+        });
+        a.euler().2.abs()
+    }
+
+    #[test]
+    fn rah66_outruns_the_ah1z_but_turns_slower() {
+        let r = Rotor::RAH66;
+        let hc = r.hover_collective();
+        let (a, _) = fly_as(FlightConstants::rah66(), hovering(200.0), 10.0, 1, |a, c| {
+            c.throttle = Some(hc);
+            pilot(a, c, 0.0);
+        });
+        assert!((0.45..0.6).contains(&hc), "hover collective {hc}");
+        assert!(a.climb_rate.abs() < 2.0, "climb {}", a.climb_rate);
+        // 14 degrees nose down both still climb, the Comanche over 10 kt faster (level near 192 kt
+        // against the AH-1Z's 178); 16 degrees down it sinks, short of 215 kt.
+        let (viper, comanche) = (
+            full_collective(FlightConstants::ah1z(), 14.0),
+            full_collective(FlightConstants::rah66(), 14.0),
+        );
+        let top = full_collective(FlightConstants::rah66(), 16.0);
+        println!(
+            "14 deg: AH-1Z {:.0} kt climb {:.1}, RAH-66 {:.0} kt climb {:.1}; 16 deg: RAH-66 {:.0} kt climb {:.1}",
+            viper.knots(),
+            viper.climb_rate,
+            comanche.knots(),
+            comanche.climb_rate,
+            top.knots(),
+            top.climb_rate
+        );
+        assert!(comanche.knots() > viper.knots() + 10.0 && comanche.climb_rate > 0.0);
+        assert!(top.knots() < 215.0 && top.climb_rate < 0.0);
+        // Half a second of full cyclic banks it a fifth less than the AH-1Z.
+        let (viper, comanche) =
+            (bank_after(FlightConstants::ah1z(), 0.5), bank_after(FlightConstants::rah66(), 0.5));
+        println!(
+            "bank after 0.5 s: AH-1Z {:.1} deg, RAH-66 {:.1} deg",
+            viper.to_degrees(),
+            comanche.to_degrees()
+        );
+        assert!(comanche < viper * 0.9);
+    }
+
+    /// The Comanche's wheels: lowered they slow it, a touchdown without them wrecks it.
+    #[test]
+    fn rah66_lands_on_its_wheels() {
+        let k = FlightConstants::rah66();
+        let hc = Rotor::RAH66.hover_collective();
+        let land = |gear: bool| {
+            let mut a0 = hovering(20.0);
+            a0.gear_down = gear;
+            fly_as(k.clone(), a0, 20.0, 1, |a, c| {
+                let hold = hc - 0.04 + (-4.0 - a.climb_rate) * 0.05;
+                c.throttle = Some(if a.on_ground { 0.0 } else { hold.clamp(0.0, 1.0) });
+                pilot(a, c, 0.0);
+            })
+            .0
+        };
+        let (down, up) = (land(true), land(false));
+        assert!(down.on_ground && down.ended.is_none(), "{:?}", down.ended);
+        assert_eq!(up.ended, Some(FlightEnd::Crash));
+        let mut a0 = hovering(3000.0);
+        a0.velocity = 150.0 * 27.0;
+        let coast = |gear: bool| {
+            let mut a = a0.clone();
+            a.gear_down = gear;
+            fly_as(k.clone(), a, 5.0, 1, |_, c| c.throttle = Some(hc)).0.knots()
+        };
+        assert!(coast(true) < coast(false));
     }
 }

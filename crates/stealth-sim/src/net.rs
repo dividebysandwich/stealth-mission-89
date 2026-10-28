@@ -48,6 +48,8 @@ pub struct RemotePilot {
     pub tornado: bool,
     /// The A-10 (with `external_stores`).
     pub a10: bool,
+    /// The RAH-66 (with `helicopter` and `gunship`).
+    pub comanche: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -92,7 +94,8 @@ impl From<RemotePilot> for RemoteWire {
                 | (p.helicopter as u16) << 8
                 | (p.gunship as u16) << 9
                 | (p.tornado as u16) << 10
-                | (p.a10 as u16) << 11;
+                | (p.a10 as u16) << 11
+                | (p.comanche as u16) << 12;
         RemoteWire(
             p.id,
             [
@@ -153,6 +156,7 @@ impl From<RemoteWire> for RemotePilot {
             gunship: bit(9),
             tornado: bit(10),
             a10: bit(11),
+            comanche: bit(12),
             gun_aim,
             chute,
             missiles,
@@ -313,6 +317,7 @@ impl Sim {
                     gunship: p.gunship,
                     tornado: p.tornado,
                     a10: p.a10,
+                    comanche: p.comanche,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,
