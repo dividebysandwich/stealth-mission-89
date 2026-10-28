@@ -37,6 +37,7 @@ Starting
                                the view of it
     --lights                   with its lights
     --no-label                 without the model label
+    --slots <slot=value,...>   state slots held, e.g. 5=1,8=2 (gear down, bay doors open)
   --freecam                    free debug camera
     --at <place>               at a place by name, or primary / secondary (the targets)
     --pos <x,z>                at a ground position in metres

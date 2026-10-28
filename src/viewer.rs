@@ -1,5 +1,6 @@
-//! `--viewer [--file aircraft] [--model N] [--yaw deg] [--pitch deg] [--distance d] [--no-label]`:
-//! browse every model.
+//! `--viewer [--file aircraft] [--model N] [--yaw deg] [--pitch deg] [--distance d] [--no-label]
+//! [--slots slot=value,...]`: browse every model (`--slots` holds state slots, e.g. `5=1,8=2` for
+//! the gear down and the bay doors open).
 //! PgUp/PgDn model, Tab file, drag orbit, wheel zoom, P palette, R day/night remap table,
 //! L lights (state slots 10/12, flashing 18-20), D destroyed variant (slot 1), A animate parts.
 
@@ -39,6 +40,8 @@ struct ViewerState {
     lights: bool,
     destroyed: bool,
     animate: bool,
+    /// State slots held at a value (`--slots`).
+    slots: Vec<(usize, i16)>,
 }
 
 #[derive(Component)]
@@ -84,6 +87,16 @@ fn setup(
     }
     state.lights = args.iter().any(|a| a == "--lights");
     state.destroyed = args.iter().any(|a| a == "--destroyed");
+    state.slots = arg("--slots")
+        .map(|s| {
+            s.split(',')
+                .filter_map(|kv| {
+                    let (k, v) = kv.split_once('=')?;
+                    Some((k.trim().parse().ok().filter(|&k: &usize| k < 32)?, v.trim().parse().ok()?))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     state.files = files;
     state.dirty = true;
     state.palettes = vec![
@@ -142,6 +155,9 @@ fn navigate(
             let a = (time.elapsed_secs() * 20000.0) as i32 as i16;
             m.0[16] = a;
             m.0[17] = a.wrapping_mul(4);
+        }
+        for &(k, v) in &state.slots {
+            m.0[k] = v;
         }
     }
     if state.files.is_empty() {
