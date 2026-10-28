@@ -468,13 +468,46 @@ impl MissionOrders {
         *self = Self { lines, done: [false; 2] };
     }
 
-    /// Rows to tick: the first line in each achieved objective's colour.
-    fn ticked(&self) -> impl Iterator<Item = usize> + '_ {
-        [(17, self.done[0]), (41, self.done[1])]
+    /// The lines word-wrapped to `width` characters: (colour, text, ticked) rows, `ticked` on
+    /// the first row of each achieved objective's first line.
+    fn rows(&self, width: usize) -> Vec<(u8, String, bool)> {
+        let ticked: Vec<usize> = [(17, self.done[0]), (41, self.done[1])]
             .into_iter()
             .filter(|o| o.1)
             .filter_map(|(c, _)| self.lines.iter().position(|l| l.0 == c))
+            .collect();
+        let mut rows = Vec::new();
+        for (i, (colour, line)) in self.lines.iter().enumerate() {
+            for (k, row) in wrap(line, width).into_iter().enumerate() {
+                rows.push((*colour, row, k == 0 && ticked.contains(&i)));
+            }
+        }
+        rows
     }
+}
+
+/// `s` broken at spaces into rows of at most `width` characters (longer words split).
+fn wrap(s: &str, width: usize) -> Vec<String> {
+    let mut rows: Vec<String> = Vec::new();
+    let mut row = String::new();
+    for word in s.split_whitespace() {
+        let mut word: Vec<char> = word.chars().collect();
+        let n = row.chars().count();
+        if n > 0 && n + 1 + word.len() > width {
+            rows.push(std::mem::take(&mut row));
+        }
+        while word.len() > width {
+            rows.push(word.drain(..width).collect());
+        }
+        if !row.is_empty() {
+            row.push(' ');
+        }
+        row.extend(word);
+    }
+    if !row.is_empty() || rows.is_empty() {
+        rows.push(row);
+    }
+    rows
 }
 
 /// Tracking camera information (right MFD TC page), filled from the combat simulation's
@@ -1614,17 +1647,19 @@ impl MfdParams<'_, '_> {
     /// ORD page.
     fn draw_ord(&self, c: &mut Canvas, fonts: &Fonts) {
         c.clear(0);
-        for (row, (colour, line)) in self.orders.lines.iter().enumerate().take(10) {
+        // 18 characters of 4 px after the 4 px tick margin.
+        let rows = self.orders.rows((c.w - 4) / 4);
+        for (row, (colour, line, ticked)) in rows.iter().enumerate().take(c.h / 6) {
+            let y = 6 * row as i32;
             // Colour-change byte + text.
             let mut s = vec![ink(*colour)];
             s.extend(upper(line));
-            fonts.text(c, 4, 6 * row as i32, &s, 15);
-        }
-        // Achieved objectives: a tick in the margin.
-        for row in self.orders.ticked().filter(|&r| r < 10) {
-            let y = 6 * row as i32;
-            c.line(0, y + 2, 1, y + 3, 15);
-            c.line(1, y + 3, 3, y, 15);
+            fonts.text(c, 4, y, &s, 15);
+            // Achieved objectives: a tick in the margin.
+            if *ticked {
+                c.line(0, y + 2, 1, y + 3, 15);
+                c.line(1, y + 3, 3, y, 15);
+            }
         }
     }
 
@@ -1923,15 +1958,17 @@ impl MfdParams<'_, '_> {
 
     pub(crate) fn draw_ord_hires(&self, c: &mut Canvas, fonts: &Fonts) {
         c.clear(0);
-        for (row, (colour, line)) in self.orders.lines.iter().enumerate().take(13) {
+        // 28 characters of 8 px after the tick margin.
+        let rows = self.orders.rows((c.w - 6) / 8);
+        for (row, (colour, line, ticked)) in rows.iter().enumerate().take((c.h - 6) / 13) {
+            let y = 6 + 13 * row as i32;
             let mut s = vec![ink(*colour)];
             s.extend(upper(line));
-            fonts.text_scaled(c, 6, 6 + 13 * row as i32, &s, 15, 2);
-        }
-        for row in self.orders.ticked().filter(|&r| r < 13) {
-            let y = 6 + 13 * row as i32;
-            c.stroke(Vec2::new(0.5, y as f32 + 5.0), Vec2::new(2.0, y as f32 + 8.0), 1.2, 15);
-            c.stroke(Vec2::new(2.0, y as f32 + 8.0), Vec2::new(5.0, y as f32 + 1.0), 1.2, 15);
+            fonts.text_scaled(c, 6, y, &s, 15, 2);
+            if *ticked {
+                c.stroke(Vec2::new(0.5, y as f32 + 5.0), Vec2::new(2.0, y as f32 + 8.0), 1.2, 15);
+                c.stroke(Vec2::new(2.0, y as f32 + 8.0), Vec2::new(5.0, y as f32 + 1.0), 1.2, 15);
+            }
         }
     }
 }
@@ -2029,6 +2066,20 @@ fn tac_icon(c: &mut Canvas, icon: TacIcon, x: i32, y: i32, hires: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn orders_wrap() {
+        assert_eq!(wrap("Destroy launch site", 18), ["Destroy launch", "site"]);
+        assert_eq!(wrap("Return to", 18), ["Return to"]);
+        assert_eq!(wrap("ABCDEFGHIJ", 4), ["ABCD", "EFGH", "IJ"]);
+        assert_eq!(wrap("", 18), [""]);
+        let mut o = MissionOrders::default();
+        o.set(vec![(17, "Strike the SS missile at".into()), (41, "Shoot down".into())]);
+        o.done = [true, true];
+        let rows = o.rows(18);
+        let ticks: Vec<bool> = rows.iter().map(|r| r.2).collect();
+        assert_eq!(ticks, [true, false, true]);
+    }
 
     #[test]
     fn map_view_round_trip() {
