@@ -15,6 +15,7 @@ pub mod console;
 pub mod dedicated;
 pub mod master;
 pub mod protocol;
+mod reports;
 pub mod server;
 pub mod transport;
 #[cfg(target_arch = "wasm32")]

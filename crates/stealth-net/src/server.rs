@@ -13,9 +13,10 @@ use web_time::Instant;
 use stealth_campaign::{CampaignEvent, PlayerId};
 use stealth_host::{Host, HostEvent};
 use stealth_sim::net::{RemotePilot, SlowBase, WorldFast};
-use stealth_sim::{Commands, PilotEvent, PlayerState, Sim, SimEvent};
+use stealth_sim::{PilotEvent, PlayerState, Sim, SimEvent};
 
 use crate::protocol::*;
+use crate::reports::Reports;
 use crate::transport::{Channel, ConnId, Endpoint, NetEvent};
 
 /// Seconds between full campaign updates (the board, the places, the log) and rosters.
@@ -37,11 +38,8 @@ struct Remote {
     conn: ConnId,
     player: Option<PlayerId>,
     base: SlowBase,
-    /// The latest report of his flight model, and the commands since the last step.
-    state: Option<PlayerState>,
-    fresh: bool,
-    pending: Commands,
-    last_seq: Option<u32>,
+    /// His flight model's reports and their commands, played out one a step.
+    reports: Reports,
     events: Vec<SimEvent>,
     /// His own state as last sent (a hash), how often it is still to go, messages since.
     snap_hash: u64,
@@ -150,10 +148,7 @@ impl Server {
                             conn,
                             player: None,
                             base: SlowBase::default(),
-                            state: None,
-                            fresh: false,
-                            pending: Commands::default(),
-                            last_seq: None,
+                            reports: Reports::default(),
                             events: Vec::new(),
                             snap_hash: 0,
                             snap_repeat: 0,
@@ -221,18 +216,9 @@ impl Server {
             (ToServer::Input { seq, state, recent }, Some(p)) => {
                 // His client flies his gun rounds.
                 sim.set_client_rounds(p.0, true);
-                let Some(r) = self.remotes.get_mut(&conn) else { return Vec::new() };
-                if r.last_seq.is_some_and(|l| seq.wrapping_sub(l) as i32 <= 0) {
-                    return Vec::new();
+                if let Some(r) = self.remotes.get_mut(&conn) {
+                    r.reports.received(seq, state, &recent);
                 }
-                for (s, c) in recent.iter().chain(std::iter::once(&(seq, state.cmd.clone()))) {
-                    if r.last_seq.is_none_or(|l| s.wrapping_sub(l) as i32 > 0) {
-                        merge_commands(&mut r.pending, c);
-                    }
-                }
-                r.last_seq = Some(seq);
-                r.state = Some(state);
-                r.fresh = true;
                 return Vec::new();
             }
             (ToServer::TakeMission { offer, base, aircraft, stores }, Some(p)) => {
@@ -412,14 +398,10 @@ impl Server {
     pub fn inputs(&mut self) -> Vec<(u8, PlayerState)> {
         let mut out = Vec::new();
         for r in self.remotes.values_mut() {
-            let (Some(p), Some(s)) = (r.player, r.state.as_ref()) else { continue };
-            if !r.fresh && r.pending == Commands::default() {
-                continue;
+            let Some(p) = r.player else { continue };
+            if let Some(ps) = r.reports.step() {
+                out.push((p.0, ps));
             }
-            r.fresh = false;
-            let mut ps = s.clone();
-            ps.cmd = std::mem::take(&mut r.pending);
-            out.push((p.0, ps));
         }
         out
     }
