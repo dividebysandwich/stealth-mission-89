@@ -19,7 +19,7 @@ use bevy::gltf::{Gltf, GltfMaterial, GltfMesh, GltfNode};
 use bevy::math::DVec2;
 use bevy::mesh::{PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
-use stealth_formats::terrain::LEVEL_UNIT;
+use stealth_formats::terrain::{GRID_DIM, LEVEL_UNIT};
 
 use crate::models::ModelLibrary;
 use crate::palette::{Palette, REMAP_DETAIL_HIGH, VgaPalette, index_from_name, is_water};
@@ -59,6 +59,8 @@ const COAST_AMPLITUDE: f64 = 2.6;
 const COAST_TAPER: f64 = 3.0;
 /// A coastline point moves at most this fraction of the way across its polygon.
 const COAST_ROOM: f64 = 0.45;
+/// A coastline stops this far (metres) short of the theater's objects, on land or afloat.
+const COAST_CLEAR_M: f64 = 120.0;
 /// Mountain midpoint offsets per subdivision level, as a fraction of the edge length.
 const MOUNTAIN_AMPLITUDE: [f32; 3] = [0.07, 0.045, 0.03];
 /// Smallest mountain (ground extent in metres at its finest detail level) and the size from
@@ -116,6 +118,8 @@ fn refine(
         }
     }
 
+    let (objects, placed) = placements(&theater);
+
     let mut done: HashSet<AssetId<GltfMesh>> = HashSet::new();
     let (mut coasts, mut mountains) = (0, 0);
     for shape in 0..theater.model_count() {
@@ -137,7 +141,28 @@ fn refine(
             }
             let mut geo = Geometry::read(&parts, &gltf_meshes, &meshes, &colours);
             let mut changed = false;
-            if coast(&mut geo, &class) {
+            // The objects around each placement of the shape, in this level's frame, with the
+            // clearance in model units.
+            let clear = || {
+                let inv = node.transform.to_matrix().inverse();
+                let mut out = Vec::new();
+                for &(o, m) in placed.get(&shape).into_iter().flatten() {
+                    let reach = 4096.0 * m;
+                    for &p in &objects {
+                        let d = p - o;
+                        if d.abs().max_element() < reach {
+                            let v = inv.transform_point3(Vec3::new(
+                                (d.x / m) as f32,
+                                0.0,
+                                (-d.y / m) as f32,
+                            ));
+                            out.push((q(v), COAST_CLEAR_M / m));
+                        }
+                    }
+                }
+                out
+            };
+            if coast(&mut geo, &class, &clear) {
                 coasts += 1;
                 changed = true;
             }
@@ -192,6 +217,36 @@ fn classify(word: u16, day: &VgaPalette) -> Class {
     } else {
         Class::Other
     }
+}
+
+/// Ground positions (metres east, north) of the theater's objects on the two finest levels,
+/// and where each shape is placed (metres) with its model unit in metres.
+#[allow(clippy::type_complexity)]
+fn placements(theater: &Theater) -> (Vec<DVec2>, HashMap<usize, Vec<(DVec2, f64)>>) {
+    let (mut objects, mut placed) = (Vec::new(), HashMap::<usize, Vec<_>>::new());
+    for lod in 1..=4usize {
+        let unit = LEVEL_UNIT[lod];
+        let lo = if lod == 4 { -2 } else { 0 };
+        let centre = |c: i32| (c as f64 * 4096.0 + 2048.0) * unit;
+        for row in lo..GRID_DIM[lod] + lo {
+            for col in lo..GRID_DIM[lod] + lo {
+                let tile = theater.grid.tile(lod, col, row) as usize;
+                for o in
+                    theater.tiles.tiles.get(lod).and_then(|t| t.get(tile)).into_iter().flatten()
+                {
+                    let p = DVec2::new(
+                        (centre(col) + o.x as f64 * unit) * WU,
+                        (centre(row) + o.y as f64 * unit) * WU,
+                    );
+                    if lod <= 2 {
+                        objects.push(p);
+                    }
+                    placed.entry(o.shape as usize).or_default().push((p, unit * WU));
+                }
+            }
+        }
+    }
+    (objects, placed)
 }
 
 /// A node with a mesh below a detail level node, with its transform to the model's frame.
@@ -435,7 +490,11 @@ fn q(p: Vec3) -> DVec2 {
 }
 
 /// Refines the shorelines of a detail level; false when it has none.
-fn coast(geo: &mut Geometry, class: &dyn Fn(u8) -> Class) -> bool {
+fn coast(
+    geo: &mut Geometry,
+    class: &dyn Fn(u8) -> Class,
+    clear: &dyn Fn() -> Vec<(DVec2, f64)>,
+) -> bool {
     let mut flats: Vec<Flat> = Vec::new();
     for (pi, prim) in geo.prims.iter().enumerate() {
         let c = class(prim.colour);
@@ -525,6 +584,8 @@ fn coast(geo: &mut Geometry, class: &dyn Fn(u8) -> Class) -> bool {
         return false;
     }
 
+    let clear = clear();
+
     // Offsets along the active lines.
     for line in lines.iter_mut().filter(|l| l.active) {
         let seed = mix((line.off * 4.0).round() as i64 as u64
@@ -558,8 +619,9 @@ fn coast(geo: &mut Geometry, class: &dyn Fn(u8) -> Class) -> bool {
                 let taper = (gap / (spacing * COAST_TAPER)).min(1.0);
                 let taper = taper * taper * (3.0 - 2.0 * taper);
                 let mut off = fbm(seed, t / spacing) * COAST_AMPLITUDE * spacing * taper;
-                // Room on the side it moves to: across the polygons on that side and within
-                // the model's outline.
+                // Room: across the polygons on either side (a shore moves no further than the
+                // land or water beyond it is wide, so a river doesn't balloon) and within the
+                // model's outline.
                 let p = line.at(t);
                 let dir = line.n * off.signum();
                 let mut room = [
@@ -572,10 +634,8 @@ fn coast(geo: &mut Geometry, class: &dyn Fn(u8) -> Class) -> bool {
                 .filter(|r| r.is_finite() && *r > 0.0)
                 .fold(f64::MAX, f64::min);
                 for &(fi, side) in &line.edges {
-                    if side != off.signum() {
-                        continue;
-                    }
                     let f = &flats[fi];
+                    let dir = dir * side * off.signum();
                     let span =
                         f.p.iter()
                             .filter(|v| (line.n.dot(q(**v)) - line.off).abs() < 0.05)
@@ -588,6 +648,14 @@ fn coast(geo: &mut Geometry, class: &dyn Fn(u8) -> Class) -> bool {
                         if let Some(r) = ray_segment(p, dir, q(f.p[e]), q(f.p[(e + 1) % 3])) {
                             room = room.min(r);
                         }
+                    }
+                }
+                // Short of the objects the shore would move onto, between this point and its
+                // neighbours (the shore runs straight between them).
+                for &(o, r) in &clear {
+                    let h = (line.n.dot(o) - line.off) * off.signum();
+                    if h > 0.0 && (line.d.dot(o) - t).abs() < spacing {
+                        room = room.min((h - r).max(0.0) / COAST_ROOM);
                     }
                 }
                 off = off.signum() * off.abs().min(room * COAST_ROOM);
