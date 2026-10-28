@@ -349,15 +349,20 @@ pub struct Globals {
     /// Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w,
     /// metres); cloud shadows' strength (z) (`Effects::mist`, `Effects::cloud_shadows`).
     pub atmos: Vec4,
-    /// The nearest cumulus clouds' shadows: centre x, z (render space), radius (0: none), base
-    /// height (metres) (`WeatherState::shades`).
-    pub cloud_shade: [Vec4; crate::weather::CLOUD_SHADES],
+    /// Cloud shadows (`weather::CloudShadows`): the grid's corner x, z, square size and the
+    /// cumulus base height; cumulus shadows on (x), the stratus shadows' strength (y), the
+    /// average shade past the grid (z).
+    pub shadow_grid: Vec4,
+    pub shadow_far: Vec4,
     /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
     /// twinkling near the horizon (z).
     pub sky_fx: Vec4,
     /// Retro output: VGA colours (x), scanlines (y; never in VR) (`Effects::vga`,
     /// `Effects::scanlines`).
     pub retro: Vec4,
+    /// The cloud shadow grid's squares (up to four cloud numbers each) and the cloud discs.
+    pub shadow_cells: [Vec4; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
+    pub shadow_clouds: [Vec4; crate::weather::SHADOW_CLOUDS],
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -397,9 +402,12 @@ impl Default for Globals {
             burst: Vec4::ZERO,
             burst_colour: Vec4::ZERO,
             atmos: Vec4::ZERO,
-            cloud_shade: [Vec4::ZERO; crate::weather::CLOUD_SHADES],
+            shadow_grid: Vec4::ZERO,
+            shadow_far: Vec4::new(0.0, 1.0, 0.0, 0.0),
             sky_fx: Vec4::ZERO,
             retro: Vec4::ZERO,
+            shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
+            shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
         }
     }
 }

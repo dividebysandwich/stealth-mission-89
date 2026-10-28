@@ -30,9 +30,12 @@ layout(std140) uniform Globals {
     vec4 burst;
     vec4 burst_colour;
     vec4 atmos;
-    vec4 cloud_shade[8];
+    vec4 shadow_grid;
+    vec4 shadow_far;
     vec4 sky_fx;
     vec4 retro;
+    vec4 shadow_cells[144];
+    vec4 shadow_clouds[112];
 } g;
 
 uniform mat4 u_view_proj[2];

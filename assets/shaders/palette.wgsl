@@ -91,12 +91,19 @@ struct Globals {
     // Ground mist's strength 0..1 (x), depth (y, metres) and the ground it lies on (w, metres);
     // cloud shadows' strength (z).
     atmos: vec4<f32>,
-    // The nearest cumulus clouds' shadows: centre x, z, radius (0: none), base height.
-    cloud_shade: array<vec4<f32>, 8>,
+    // Cloud shadows (weather.rs `CloudShadows`): the grid's corner x, z, square size and the
+    // cumulus base height; cumulus shadows on (x), stratus shadows' strength (y), the average
+    // shade past the grid (z).
+    shadow_grid: vec4<f32>,
+    shadow_far: vec4<f32>,
     // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
     sky_fx: vec4<f32>,
     // Retro output: VGA colours (x), scanlines (y).
     retro: vec4<f32>,
+    // The shadow grid's squares (up to four cloud numbers, 0: none) and the cloud discs
+    // (centre x, z where the sun sees them from the base height, radius, darkness).
+    shadow_cells: array<vec4<f32>, 144>,
+    shadow_clouds: array<vec4<f32>, 112>,
 };
 
 struct PaletteMaterial {
@@ -913,8 +920,12 @@ fn ground_mist(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
     return mix(rgb, pal(CLOUD_RAMP) * (1.0 - night_dark()), a);
 }
 
+const SHADOW_GRID: f32 = 12.0;
+
 // Cloud shadows: the shade of the clouds above `world` where the sun's ray from it meets their
-// base, the stratus deck's and the nearest cumulus clouds' (round, soft edged).
+// base: the stratus deck's (unless a full overcast hides the sun everywhere), and the cumulus
+// and storm towers' (round, soft edged) from the grid of them round the eye, fading to their
+// average shade past it.
 fn cloud_shadow(world: vec3<f32>) -> f32 {
     let s = globals.atmos.z;
     let sun = globals.sun.xyz;
@@ -924,17 +935,27 @@ fn cloud_shadow(world: vec3<f32>) -> f32 {
     var shade = 0.0;
     let base = globals.clouds.x;
     if (globals.clouds.z != 0.0 && world.y < base) {
-        shade = stratus_cover(world + sun * ((base - world.y) / sun.y));
+        shade = globals.shadow_far.y * stratus_cover(world + sun * ((base - world.y) / sun.y));
     }
-    for (var i = 0u; i < 8u; i++) {
-        let c = globals.cloud_shade[i];
-        if (c.z <= 0.0) {
-            break;
+    let g = globals.shadow_grid;
+    if (globals.shadow_far.x > 0.0 && world.y < g.w) {
+        let p = world.xz + sun.xz * ((g.w - world.y) / sun.y);
+        let q = (p - g.xy) / g.z;
+        var local = 0.0;
+        if (all(q >= vec2<f32>(0.0)) && all(q < vec2<f32>(SHADOW_GRID))) {
+            let cell = globals.shadow_cells[u32(q.y) * u32(SHADOW_GRID) + u32(q.x)];
+            for (var k = 0u; k < 4u; k++) {
+                let n = cell[k];
+                if (n < 0.5) {
+                    break;
+                }
+                let c = globals.shadow_clouds[u32(n) - 1u];
+                local = max(local, c.w * (1.0 - smoothstep(0.45, 1.0, length(p - c.xy) / c.z)));
+            }
         }
-        if (world.y < c.w) {
-            let p = world.xz + sun.xz * ((c.w - world.y) / sun.y);
-            shade = max(shade, 1.0 - smoothstep(0.5, 1.0, length(p - c.xy) / c.z));
-        }
+        let off = abs(q - vec2<f32>(SHADOW_GRID * 0.5)) / (SHADOW_GRID * 0.5);
+        let edge = max(off.x, off.y);
+        shade = max(shade, mix(local, globals.shadow_far.z, smoothstep(0.75, 1.0, edge)));
     }
     return 1.0 - s * shade;
 }
