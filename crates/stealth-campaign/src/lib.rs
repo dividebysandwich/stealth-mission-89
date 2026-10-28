@@ -156,6 +156,11 @@ pub enum Command {
     /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
     /// (x, y): its cargo goes on the board.
     DesignateSite { x: i32, y: i32, patriot: bool },
+    /// Hook the crate of load `leg` of new site `id` under the helicopter (the host checked
+    /// where it is with [`CampaignState::hook_refusal`]).
+    HookCrate { id: u32, leg: u8 },
+    /// Set it down at (`east`, `north`) metres from the site's helipad, heading `heading`.
+    DropCrate { id: u32, leg: u8, east: f32, north: f32, heading: f32 },
 }
 
 /// What the authority has to do or show.
@@ -283,6 +288,20 @@ pub enum CampaignEvent {
         y: i32,
         patriot: bool,
     },
+    /// A player hooked the crate of load `leg` of new site `id`.
+    CrateHooked {
+        id: u32,
+        leg: u8,
+        player: PlayerId,
+    },
+    /// It was set down by the site's helipad.
+    CrateDropped {
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
+    },
     /// The enemy pushes a battery of guns forward to (x, y).
     BatteryDeployed {
         id: u32,
@@ -313,6 +332,10 @@ impl CampaignState {
                 self.request_resupply(Some(player), aaa, x, y, patriot)
             }
             Command::DesignateSite { x, y, patriot } => self.designate(player, x, y, patriot),
+            Command::HookCrate { id, leg } => self.hook_crate(player, id, leg),
+            Command::DropCrate { id, leg, east, north, heading } => {
+                self.drop_crate(player, id, leg, east, north, heading)
+            }
         }
     }
 
@@ -397,11 +420,27 @@ impl CampaignState {
         for r in &mut self.supply_requests {
             r.state = SupplyState::Open { since: now };
         }
-        // So are the cargo helicopters: their loads are open again.
-        for d in &mut self.deployments {
+        // So are the cargo helicopters: their loads are open again, and the crates slung under
+        // the players' are back at their bases.
+        let bases: Vec<Option<ObjectId>> = self
+            .deployments
+            .iter()
+            .map(|d| d.base.or_else(|| self.supply_base(d.x, d.y)))
+            .collect();
+        for (d, base) in self.deployments.iter_mut().zip(bases) {
             d.ai.clear();
             d.open_since = now;
             d.seen = false;
+            d.base = base;
+            if !d.built {
+                for leg in 0..d.loads {
+                    let c = match d.crate_state(leg) {
+                        CrateState::Carried(_) => CrateState::AtBase,
+                        c => c,
+                    };
+                    d.set_crate(leg, c);
+                }
+            }
         }
         self.board_at = f64::MIN;
         for p in &mut self.plans {

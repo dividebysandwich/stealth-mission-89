@@ -407,7 +407,7 @@ pub fn describe(kind: MissionKind) -> &'static str {
             "Fly the stockpile from the airfield to the air defence unit: hover below 30 m within 50 m of it for 10 s while the load goes down"
         }
         MissionKind::Logistics => {
-            "Fly the cargo from the airfield to the new site's helipad: land on the pad and stay down for 10 s while it is unloaded"
+            "Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad"
         }
     }
 }

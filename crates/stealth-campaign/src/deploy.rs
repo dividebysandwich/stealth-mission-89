@@ -85,6 +85,7 @@ impl CampaignState {
             .map_or(String::new(), |p| p.name.clone());
         let id = self.id();
         let now = self.clock;
+        let loads = if patriot { DEPLOY_LOADS_PATRIOT } else { DEPLOY_LOADS_GEPARD };
         let d = Deployment {
             id,
             x,
@@ -94,12 +95,14 @@ impl CampaignState {
             by: Some(player),
             posted: now,
             expires: now + DEPLOY_TIMEOUT,
-            loads: if patriot { DEPLOY_LOADS_PATRIOT } else { DEPLOY_LOADS_GEPARD },
+            loads,
             delivered: Vec::new(),
             ai: Vec::new(),
             open_since: now,
             built: false,
             seen: false,
+            base: self.supply_base(x, y),
+            crates: vec![CrateState::AtBase; loads as usize],
         };
         let who = self.player_name(player).unwrap_or("A pilot");
         let loads = if d.loads == 1 { "1 load".to_string() } else { format!("{} loads", d.loads) };
@@ -122,6 +125,25 @@ impl CampaignState {
                 _ => None,
             })
             .collect();
+        // A crate whose helicopter is gone (the sortie is over, the player left) is back at its
+        // base.
+        let flying: Vec<PlayerId> = self
+            .players
+            .iter()
+            .filter(|p| p.sortie.is_some())
+            .map(|p| p.id)
+            .filter(|id| view.players.iter().any(|p| p.id == *id))
+            .collect();
+        for d in &mut self.deployments {
+            for leg in 0..d.loads {
+                if let CrateState::Carried(p) = d.crate_state(leg)
+                    && !flying.contains(&p)
+                {
+                    d.set_crate(leg, CrateState::AtBase);
+                    self.board_at = f64::MIN;
+                }
+            }
+        }
         for k in (0..self.deployments.len()).rev() {
             let d = &self.deployments[k];
             if d.built {
@@ -191,6 +213,7 @@ impl CampaignState {
         let (leg, _) = d.ai.remove(k);
         let id = d.id;
         if delivered {
+            d.set_crate(leg, crate_slot(leg));
             self.logistics_delivered(id, leg, None, ev);
             return;
         }
@@ -237,6 +260,7 @@ impl CampaignState {
             return;
         }
         d.built = true;
+        d.crates.clear();
         let ((x, y), patriot, title) = (d.unit_at(), d.patriot, d.title());
         for (_, tag) in std::mem::take(&mut d.ai) {
             ev.push(CampaignEvent::Recall { tag });
@@ -245,6 +269,93 @@ impl CampaignState {
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::SiteBuilt { id, x, y, patriot });
+    }
+
+    /// Why the player may not hook load `leg` of site `id` now, None if he may: in a
+    /// helicopter on a sortie near the crate's base (`view`, where the players are), not carrying
+    /// one already, and the crate still waiting there.
+    pub fn hook_refusal(
+        &self,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+        view: &WorldView,
+    ) -> Option<String> {
+        let Some(d) = self.deployment(id).filter(|d| leg < d.loads) else {
+            return Some("No such cargo".into());
+        };
+        if !d.crate_waiting(leg) {
+            return Some("That cargo is taken".into());
+        }
+        let heli = self
+            .players
+            .iter()
+            .find(|p| p.id == player)
+            .and_then(|p| p.sortie.as_ref())
+            .is_some_and(|s| s.progress.heli);
+        if !heli {
+            return Some("Cargo is flown on a helicopter sortie".into());
+        }
+        if self.deployments.iter().any(|d| d.carried_by(player).is_some()) {
+            return Some("Already carrying cargo".into());
+        }
+        let base = d.base.or_else(|| self.supply_base(d.x, d.y)).and_then(|b| self.site(b));
+        let me = view.players.iter().find(|p| p.id == player);
+        match (base, me) {
+            (Some(b), Some(me)) if dist(me.x - b.x, me.y - b.y) <= CRATE_HOOK_RANGE => None,
+            _ => Some("Too far from the cargo".into()),
+        }
+    }
+
+    /// The player hooked load `leg` of site `id` under his helicopter.
+    pub(crate) fn hook_crate(
+        &mut self,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+    ) -> Result<Vec<CampaignEvent>, String> {
+        let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && leg < d.loads) else {
+            return Err("No such cargo".into());
+        };
+        if !d.crate_waiting(leg) {
+            return Err("That cargo is taken".into());
+        }
+        d.set_crate(leg, CrateState::Carried(player));
+        self.board_at = f64::MIN;
+        Ok(vec![CampaignEvent::CrateHooked { id, leg, player }])
+    }
+
+    /// The player set load `leg` of site `id` down at (`east`, `north`) metres from its
+    /// helipad: it is delivered (and his sortie's objective is met, if it was this site's).
+    pub(crate) fn drop_crate(
+        &mut self,
+        player: PlayerId,
+        id: u32,
+        leg: u8,
+        east: f32,
+        north: f32,
+        heading: f32,
+    ) -> Result<Vec<CampaignEvent>, String> {
+        let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && leg < d.loads) else {
+            return Err("No such cargo".into());
+        };
+        if d.crate_state(leg) != CrateState::Carried(player) {
+            return Err("Not carrying that cargo".into());
+        }
+        let off = east.hypot(north);
+        if off.is_nan() || off > CRATE_DROP_METRES * 1.1 {
+            return Err("Too far from the helipad".into());
+        }
+        d.set_crate(leg, CrateState::Delivered { east, north, heading });
+        let mut ev = vec![CampaignEvent::CrateDropped { id, leg, east, north, heading }];
+        self.logistics_delivered(id, leg, Some(player), &mut ev);
+        if let Some(s) =
+            self.players.iter_mut().find(|p| p.id == player).and_then(|p| p.sortie.as_mut())
+            && matches!(s.offer.objective, Objective::Logistics { site, .. } if site == id)
+        {
+            s.progress.delivered = true;
+        }
+        Ok(ev)
     }
 
     /// The board's logistics offers: the loads of the sites waiting for cargo that no AI

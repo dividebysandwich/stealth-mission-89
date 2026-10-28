@@ -935,6 +935,27 @@ pub struct Deployment {
     /// Every load is in: the unit was placed, and its guns or launchers have been seen standing.
     pub built: bool,
     pub seen: bool,
+    /// The base its cargo is flown from, and where each load's crate is (by leg).
+    #[serde(default)]
+    pub base: Option<ObjectId>,
+    #[serde(default)]
+    pub crates: Vec<CrateState>,
+}
+
+/// Where a load of cargo for a new site is: in a crate beside the runway of its base, slung
+/// under a player's helicopter, or set down at the helipad. (A crate an AI helicopter is
+/// bringing is at its base, in [`Deployment::ai`].)
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub enum CrateState {
+    #[default]
+    AtBase,
+    Carried(PlayerId),
+    /// Metres east and north of the helipad, and its heading (radians, clockwise from north).
+    Delivered {
+        east: f32,
+        north: f32,
+        heading: f32,
+    },
 }
 
 impl Deployment {
@@ -949,10 +970,56 @@ impl Deployment {
         (self.x, self.y - DEPLOY_UNIT_OFFSET)
     }
 
-    /// The loads nobody has brought or is bringing by AI helicopter.
+    /// The loads nobody has brought or is bringing by AI helicopter or under his own.
     pub fn open_legs(&self) -> impl Iterator<Item = u8> + '_ {
-        (0..self.loads)
-            .filter(|l| !self.delivered.contains(l) && !self.ai.iter().any(|(a, _)| a == l))
+        (0..self.loads).filter(|&l| {
+            !self.delivered.contains(&l)
+                && !self.ai.iter().any(|(a, _)| *a == l)
+                && self.crate_state(l) == CrateState::AtBase
+        })
+    }
+
+    /// Where load `leg`'s crate is.
+    pub fn crate_state(&self, leg: u8) -> CrateState {
+        match self.crates.get(leg as usize) {
+            Some(&c) => c,
+            None if self.delivered.contains(&leg) => crate_slot(leg),
+            None => CrateState::AtBase,
+        }
+    }
+
+    /// A crate standing at its base, ready to be hooked: not taken by an AI helicopter.
+    pub fn crate_waiting(&self, leg: u8) -> bool {
+        !self.built
+            && !self.ai.iter().any(|(a, _)| *a == leg)
+            && self.crate_state(leg) == CrateState::AtBase
+    }
+
+    /// Load `leg`'s crate is now there (the crates of a save from before they were kept are
+    /// placed first).
+    pub fn set_crate(&mut self, leg: u8, c: CrateState) {
+        while self.crates.len() < self.loads as usize {
+            let l = self.crates.len() as u8;
+            self.crates.push(self.crate_state(l));
+        }
+        if let Some(s) = self.crates.get_mut(leg as usize) {
+            *s = c;
+        }
+    }
+
+    /// The player's crate, if he carries one of this site's.
+    pub fn carried_by(&self, player: PlayerId) -> Option<u8> {
+        (0..self.loads).find(|&l| self.crate_state(l) == CrateState::Carried(player))
+    }
+}
+
+/// Where an AI helicopter sets down load `leg`: on a ring around the helipad.
+pub fn crate_slot(leg: u8) -> CrateState {
+    let t = leg as f32 * 2.4 + 0.8;
+    CrateState::Delivered {
+        east: t.sin() * CRATE_SLOT_METRES,
+        north: t.cos() * CRATE_SLOT_METRES,
+        heading: t,
     }
 }
 

@@ -248,7 +248,12 @@ pub const DEPLOY_FOOTPRINT_PATRIOT: i32 = 0x30;
 /// Map units: a site keeps this far from a place (its town or airfield) and from a world object.
 pub const DEPLOY_PLACE_CLEAR: i32 = 0x80;
 pub const DEPLOY_SITE_CLEAR: i32 = 0x40;
-/// A load is in when the helicopter is landed this close to the helipad (map units, about 90 m)
-/// for this long (s).
+/// A load is in when its crate is set down this close to the helipad (map units, about 90 m;
+/// and in metres).
 pub const LOGISTICS_RADIUS: i32 = 6;
-pub const LOGISTICS_SECONDS: f64 = 10.0;
+pub const CRATE_DROP_METRES: f32 = 90.0;
+/// A crate is hooked by a helicopter this close to its base (map units, about 3 km: the client
+/// saw the hover).
+pub const CRATE_HOOK_RANGE: i32 = 0xC0;
+/// Metres from the helipad where the AI's loads are set down.
+pub const CRATE_SLOT_METRES: f32 = 9.0;
