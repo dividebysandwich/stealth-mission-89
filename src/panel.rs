@@ -691,6 +691,12 @@ impl PanelParams<'_, '_> {
         lit
     }
 
+    /// The modern cockpits' master caution light: an unacknowledged warning or caution.
+    pub fn master_caution(&self) -> bool {
+        let list = crate::mpd::alerts(&self.warnings, self.aircraft.single().ok(), &self.cm);
+        crate::mpd::master_caution(&list, &self.wca.0)
+    }
+
     /// Label of a lamp; the camera direction lamp shows the direction on the camera page.
     pub fn lamp_label(&self, id: LampId) -> &'static str {
         if id == LampId::CamDir && self.mfd.right == RightMfd::Camera {

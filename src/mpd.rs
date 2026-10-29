@@ -140,6 +140,11 @@ pub fn alerts(
     v
 }
 
+/// The master caution light: lit while a warning or caution of `list` is not acknowledged.
+pub fn master_caution(list: &[(Level, &'static str)], acked: &[&'static str]) -> bool {
+    list.iter().any(|e| e.0 != Level::Advisory && !acked.contains(&e.1))
+}
+
 /// The warnings and cautions the master caution has acknowledged (they stop flashing); one
 /// that clears and comes back flashes again.
 #[derive(Resource, Debug, Default)]
@@ -607,5 +612,19 @@ mod tests {
         let texts: Vec<_> = list.iter().map(|e| e.1).collect();
         assert_eq!(texts, ["ENG 1 FIRE", "LOW FUEL", "RADAR TRACK", "GEAR UP"]);
         assert!(list.windows(2).all(|p| p[0].0 <= p[1].0));
+    }
+
+    #[test]
+    fn master_caution_until_acknowledged() {
+        let mut a = hovering();
+        a.gear_down = false;
+        let cm = Countermeasures::default();
+        // Advisories alone leave it dark; a launch lights it until acknowledged.
+        assert!(!master_caution(&alerts(&Warnings::default(), Some(&a), &cm), &[]));
+        let w = Warnings { radar_missile: true, ..default() };
+        let list = alerts(&w, Some(&a), &cm);
+        assert!(master_caution(&list, &[]));
+        let acked: Vec<_> = list.iter().map(|e| e.1).collect();
+        assert!(!master_caution(&list, &acked));
     }
 }

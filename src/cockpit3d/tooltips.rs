@@ -179,7 +179,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Flaps => ("Flaps", "More lift, about 20 % lower stall speed"),
         Brakes => ("Brakes", "Wheel brakes on the ground, speed brake in the air"),
         Eject => ("Ejection handle", "Eject"),
-        MasterCaution => ("Master caution", "Silences the alarms: fire, stall and radar warnings"),
+        MasterCaution => (
+            "Master caution",
+            "Lit by new warnings and cautions; acknowledges them and silences the alarms",
+        ),
         HudMode => ("HUD mode", "NAV, AIR, GND"),
         BombMode => ("Bombing mode", "CCIP / CCRP"),
         HudDeclutter => ("HUD declutter", ""),

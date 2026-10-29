@@ -570,12 +570,18 @@ pub(super) fn update_displays(
     let (c, glow) = (&mut a.canvas, &mut g.canvas);
     glow.px.fill(0);
     let lit = d.panel.lamp_states();
+    // A labelled MW lamp is the modern cockpits' master caution, not the MWS damage light.
+    let master_caution = d.panel.master_caution();
     let (emv, egr, ear) = d.panel.gauge_values();
     let (k, t) = (info.texels, TEXT_SCALE);
     for &(face, r) in &info.faces {
         let glows = match face {
             Face::Item(Elem::Lamp(id, label)) => {
-                let on = lit[id as usize];
+                let on = if id == LampId::Mw && label.is_some() {
+                    master_caution
+                } else {
+                    lit[id as usize]
+                };
                 let style = LAMPS[id as usize].2;
                 draw_lamp(
                     c,
