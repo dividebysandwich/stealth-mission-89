@@ -698,7 +698,8 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     }
     // Test aid: `--campaign-drones` puts a drone command center at the friendly place nearest
     // the enemy's air defences and mans it (a host's or a single player's campaign);
-    // `--campaign-drones front` 8 km short of the nearest enemy air defence unit.
+    // `--campaign-drones front` 8 km short of the nearest enemy air defence unit;
+    // `--campaign-drones front <n>` puts n of them there, side by side (one for each player).
     if c.phase == Phase::Ops
         && c.state().clock > 2.0
         && !c.ui.test_manned
@@ -732,14 +733,76 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
                 }),
             (p, _) => p.map(|(x, y)| (x + 0x30, y - 0x30)),
         };
+        let count: usize = std::env::args()
+            .skip_while(|a| a != "--campaign-drones")
+            .nth(2)
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(1);
         if let Some((x, y)) = place {
-            sim.place_drone_center(x, y);
-            let k = sim.aaa_units().len() - 1;
+            for i in 0..count.max(1) as i32 {
+                sim.place_drone_center(x + i * 0x20, y);
+            }
+            let k = sim.aaa_units().len() - count.max(1);
             c.ui.test_manned = true;
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
         }
     }
-    // Test aid: man the n-th friendly air defence console (Patriot batteries first).
+    // Test aid: `--campaign-geran <n> [km]` (with `--campaign-drones`): once an interceptor is
+    // up and level, a raid of n enemy Geran-2s km (2) ahead of its nose at its height, from the
+    // enemy place nearest there and flying at the friendly place behind the interceptor.
+    if matches!(c.phase, Phase::Station { .. })
+        && c.ui.test_manned
+        && !c.ui.test_geran
+        && c.role != Role::Client
+        && let Some(n) = std::env::args()
+            .skip_while(|a| a != "--campaign-geran")
+            .nth(1)
+            .and_then(|n| n.parse::<u32>().ok())
+        && let Some(u) = s.combat.sim.uavs().iter().find(|u| {
+            u.kind == stealth_sim::uav::UavKind::Interceptor
+                && u.mode == stealth_sim::uav::UavMode::Auto
+                && u.pos[2] > 150.0
+                && u.pitch.abs() < 0.1
+        })
+    {
+        c.ui.test_geran = true;
+        let km: f64 = std::env::args()
+            .skip_while(|a| a != "--campaign-geran")
+            .nth(2)
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(2.0);
+        // Map units along the interceptor's nose (y runs south).
+        let (x0, y0) = u.map();
+        let ahead = |m: f64| {
+            let d = m / stealth_sim::aaa::M_PER_MAP;
+            (x0 + (u.heading.sin() * d) as i32, y0 - (u.heading.cos() * d) as i32)
+        };
+        let st = c.state();
+        let nearest = |side: stealth_campaign::Side, (x, y): (i32, i32)| {
+            st.places
+                .iter()
+                .filter(|p| p.owner == side && !p.members.is_empty())
+                .min_by_key(|p| stealth_campaign::dist(p.x - x, p.y - y))
+                .map(|p| p.airfield.unwrap_or(p.members[0]) as usize)
+        };
+        let (start, behind) = (ahead(km * 1000.0), ahead(-10_000.0));
+        let alt = (u.pos[2] * 32.0 / stealth_sim::aaa::M_PER_MAP) as i32;
+        if let Some(from) = nearest(stealth_campaign::Side::Red, start)
+            && let Some(to) = nearest(stealth_campaign::Side::Blue, behind)
+        {
+            let sim = &mut s.combat.sim;
+            for i in 0..n {
+                let j = sim.spawn_drone(from, to, 0xF000 + i, false);
+                let (x, y) = (start.0 + 0x8 * i as i32, start.1);
+                let f = &mut sim.flights_mut()[j];
+                (f.wx, f.wy) = (x << 5, y << 5);
+                (f.x, f.y) = (x, y);
+                f.alt = alt;
+            }
+        }
+    }
+    // Test aid: man the n-th friendly air defence console (Patriot batteries first), or with
+    // `--campaign-man drone` the first drone command center nobody mans.
     // (A client waits for the server's units.)
     if c.phase == Phase::Ops
         && c.state().clock > 2.0
@@ -747,10 +810,17 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         && let Some(n) = ops::test_man()
     {
         let sim = &s.combat.sim;
+        let drones = n == usize::MAX;
         let mut units: Vec<usize> = (0..sim.aaa_units().len())
             .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.aaa_units()[k].kind))
+            .filter(|&k| {
+                !drones
+                    || sim.aaa_units()[k].kind == stealth_sim::aaa::AaaKind::DroneCenter
+                        && sim.manned_by(k).is_none()
+            })
             .collect();
         units.sort_by_key(|&k| sim.aaa_units()[k].kind != stealth_sim::aaa::AaaKind::PatriotRadar);
+        let n = if drones { 0 } else { n };
         if let Some(&k) = units.get(n.min(units.len().saturating_sub(1))) {
             c.ui.test_manned = true;
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));

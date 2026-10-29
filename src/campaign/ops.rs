@@ -52,9 +52,10 @@ pub struct OpsUi {
     /// center), and `--campaign-designate` was done.
     pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
-    /// `--campaign-take` was done, `--campaign-man`.
+    /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
     pub test_taken: bool,
     pub test_manned: bool,
+    pub test_geran: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
@@ -224,10 +225,11 @@ pub fn test_tab() -> Option<Tab> {
 }
 
 /// Test aid: `--campaign-man <n>` mans the n-th friendly air defence console once the
-/// campaign is up (Patriot batteries first, then the Gepards).
+/// campaign is up (Patriot batteries first, then the Gepards); `drone` is `usize::MAX`.
 pub fn test_man() -> Option<usize> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?.parse().ok()
+    let a = args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?;
+    if a == "drone" { Some(usize::MAX) } else { a.parse().ok() }
 }
 
 /// `--campaign-take <n>`: the n-th mission of the board, or the first of a kind (`logistics`).

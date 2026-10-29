@@ -821,13 +821,15 @@ fn panel(
 /// air defence, an attack drone (once the drones found one) to terminate on the nearest found,
 /// an interceptor to loiter at the nearest enemy aircraft's height 3 km towards it (else 3 km
 /// north); each launched is selected. `--drone-main` puts its camera on the main screen,
-/// `--drone-manual` flies it by hand (once it is off the rail).
+/// `--drone-manual` flies it by hand (once it is off the rail), `--drone-flir` turns its camera
+/// to FLIR.
 fn test_aid(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
     mut c: Option<ResMut<ActiveCampaign>>,
     mut ui: ResMut<DroneUi>,
     mut manual: Local<Vec<u16>>,
+    mut mfd: ResMut<crate::mfd::MfdState>,
 ) {
     let arg = |name: &str| std::env::args().skip_while(|a| a != name).nth(1);
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c.as_deref_mut()) else { return };
@@ -923,6 +925,9 @@ fn test_aid(
         if std::env::args().any(|a| a == "--drone-forward") {
             ui.on_main = true;
             ui.cam_mut(u.id).forward = true;
+        }
+        if std::env::args().any(|a| a == "--drone-flir") {
+            mfd.flir = true;
         }
     }
 }

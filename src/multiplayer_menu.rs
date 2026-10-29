@@ -456,7 +456,12 @@ fn multiplayer_window(
                                 theater_code: code.to_string(),
                                 roe: state.roe,
                                 opponents: state.opponents,
-                                seed: rand::random(),
+                                // Test aid: `--host --seed <n>`.
+                                seed: std::env::args()
+                                    .skip_while(|a| a != "--seed")
+                                    .nth(1)
+                                    .and_then(|s| s.parse().ok())
+                                    .unwrap_or_else(rand::random),
                                 sky_ratio: w.sky_ratio,
                                 start_hour: w.start_hour,
                                 dynamic_weather: !w.clear_sky,
