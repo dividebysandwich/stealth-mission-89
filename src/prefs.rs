@@ -89,6 +89,8 @@ pub struct Prefs {
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
+    pub rwr_volume: f32,
+    pub rwr_tones: crate::sound::RwrTones,
     pub engine_low_pass: bool,
     pub effects: crate::effects::Effects,
     pub gif_scale: u8,
@@ -148,6 +150,8 @@ impl Default for Prefs {
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
+            rwr_volume: 1.0,
+            rwr_tones: Default::default(),
             engine_low_pass: true,
             effects: Default::default(),
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
@@ -220,6 +224,8 @@ impl Prefs {
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
+            rwr_volume: s.rwr_volume,
+            rwr_tones: s.rwr_tones,
             engine_low_pass: s.engine_low_pass,
             effects: s.effects,
             gif_scale: s.gif_scale,
@@ -279,6 +285,8 @@ impl Prefs {
         s.engine_volume = volume(self.engine_volume);
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
+        s.rwr_volume = volume(self.rwr_volume);
+        s.rwr_tones = self.rwr_tones;
         s.engine_low_pass = self.engine_low_pass;
         s.gif_scale = self.gif_scale.clamp(1, 100);
         s.gif_fps = self.gif_fps.clamp(1, 50);
@@ -321,6 +329,8 @@ impl Prefs {
         self.engine_volume = s.engine_volume;
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
+        self.rwr_volume = s.rwr_volume;
+        self.rwr_tones = s.rwr_tones;
         self.engine_low_pass = s.engine_low_pass;
         self.effects = s.effects;
         self.gif_scale = s.gif_scale;
@@ -386,6 +396,8 @@ mod tests {
         let mut s = Settings::from_args();
         s.engine_volume = 0.4;
         s.engine_low_pass = false;
+        s.rwr_volume = 0.5;
+        s.rwr_tones = crate::sound::RwrTones::Detect;
         s.classic_hud = true;
         let p: Prefs =
             serde_json::from_str(&serde_json::to_string(&Prefs::options(&s)).unwrap()).unwrap();
@@ -394,6 +406,7 @@ mod tests {
         assert_eq!(Prefs::options(&back), Prefs::options(&s));
         let old: Prefs = serde_json::from_str("{}").unwrap();
         assert_eq!((old.master_volume, old.engine_low_pass), (1.0, true));
+        assert_eq!((old.rwr_volume, old.rwr_tones), (1.0, crate::sound::RwrTones::All));
     }
 
     #[test]

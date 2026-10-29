@@ -4,8 +4,8 @@
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
 //!   player labels, the VR cockpit size and Tacview.
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
-//! - SOUND: the master, engine, effects and warning volumes, the engine low-pass inside the
-//!   aircraft.
+//! - SOUND: the master, engine, effects, warning and radar warning volumes, which radar warning
+//!   tones sound, the engine low-pass inside the aircraft.
 //! - CONTROLS: the key and joystick bindings (the CONTROLS dialog, `input_dialog.rs`) and head
 //!   tracking.
 //!
@@ -380,6 +380,11 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             "Warnings",
             &["Stall horn, radar and missile warnings, the fire siren, the Sidewinder tones"][..],
         ),
+        (
+            &mut s.rwr_volume,
+            "RWR",
+            &["The radar warning tones, as a part of the warnings' volume"][..],
+        ),
     ] {
         let mut percent = (*v * 100.0).round();
         ui.horizontal(|ui| {
@@ -395,6 +400,18 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             }
         });
     }
+    section(ui, "Radar warning tones");
+    let tones = s.rwr_tones;
+    ui.scope(|ui| {
+        ui.set_width(220.0);
+        crate::menu::dropdown(
+            ui,
+            "rwr_tones",
+            &mut s.rwr_tones,
+            crate::sound::RwrTones::ALL.map(|t| (t, t.name(), t.facts())),
+        );
+    });
+    changed |= s.rwr_tones != tones;
     section(ui, "Cockpit");
     changed |= facts(
         ui.checkbox(&mut s.engine_low_pass, "Engine low-pass"),

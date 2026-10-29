@@ -115,6 +115,9 @@ pub struct Settings {
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
+    /// The radar warning tones: their volume (a part of the warnings') and which sound.
+    pub rwr_volume: f32,
+    pub rwr_tones: crate::sound::RwrTones,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
     /// The atmosphere effects' switches (`--effects`).
@@ -287,6 +290,8 @@ impl Settings {
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
+            rwr_volume: 1.0,
+            rwr_tones: Default::default(),
             engine_low_pass: true,
             effects: get(&a, "--effects")
                 .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),

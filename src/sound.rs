@@ -154,6 +154,76 @@ const RWR_FILES: [(stealth_sim::RwrTone, &str); 5] = {
     ]
 };
 
+/// Which radar warning tones sound (`Settings::rwr_tones`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub enum RwrTones {
+    /// Every tone: a radar painting, each sweep that detects, missile launches.
+    #[default]
+    All,
+    /// A detection once (until the radars have let go for a while) and missile launches.
+    Detect,
+    /// Missile launches only.
+    Launch,
+    Off,
+}
+
+impl RwrTones {
+    pub const ALL: [RwrTones; 4] =
+        [RwrTones::All, RwrTones::Detect, RwrTones::Launch, RwrTones::Off];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            RwrTones::All => "ALL",
+            RwrTones::Detect => "DETECT ONLY",
+            RwrTones::Launch => "LAUNCH ONLY",
+            RwrTones::Off => "OFF",
+        }
+    }
+
+    pub fn facts(self) -> &'static [&'static str] {
+        match self {
+            RwrTones::All => {
+                &["A radar painting you, every sweep that detects you, missile launches"]
+            }
+            RwrTones::Detect => &[
+                "One tone when a radar detects you (again after the radars let go for a while)",
+                "And missile launches",
+            ],
+            RwrTones::Launch => &["Only missiles launched at you"],
+            RwrTones::Off => &["No radar warning tones (the lights and displays still warn)"],
+        }
+    }
+
+    /// The next (`dir` 1) or previous (-1) choice, wrapping.
+    pub fn step(self, dir: i32) -> Self {
+        let i = Self::ALL.iter().position(|&t| t == self).unwrap_or(0) as i32;
+        Self::ALL[(i + dir).rem_euclid(Self::ALL.len() as i32) as usize]
+    }
+}
+
+/// The radar warning tones' sound ids: painted, detected (Doppler, pulse), launches.
+const RWR_PAINTED: u8 = 100;
+const RWR_DETECTED: [u8; 2] = [101, 102];
+
+/// Seconds without a detecting sweep before a detection sounds again in `RwrTones::Detect`.
+const DETECT_REARM: f64 = 10.0;
+
+/// Whether the tones setting lets radar warning tone `id` sound; `last_detected` is when a
+/// detecting sweep last asked for its tone (real seconds).
+fn rwr_sounds(tones: RwrTones, id: u8, now: f64, last_detected: &mut Option<f64>) -> bool {
+    let detected = RWR_DETECTED.contains(&id);
+    let fresh = last_detected.is_none_or(|t| now - t > DETECT_REARM);
+    if detected {
+        *last_detected = Some(now);
+    }
+    match tones {
+        RwrTones::All => true,
+        RwrTones::Detect => id != RWR_PAINTED && (!detected || fresh),
+        RwrTones::Launch => id != RWR_PAINTED && !detected,
+        RwrTones::Off => false,
+    }
+}
+
 /// Alt-V sound level (3 = all sounds .. 0 = none); `engine_half` = level 3 with the engine
 /// at half volume.
 #[derive(Resource)]
@@ -171,12 +241,20 @@ pub enum Channel {
     Engine,
     Effects,
     Warnings,
+    /// The radar warning tones (also under the warnings' volume).
+    Rwr,
 }
 
 impl Channel {
     /// The channel of an effect by id.
     fn of(id: u8) -> Self {
-        if ALARM_TONES.contains(&id) { Channel::Warnings } else { Channel::Effects }
+        if RWR_IDS.contains(&id) {
+            Channel::Rwr
+        } else if ALARM_TONES.contains(&id) {
+            Channel::Warnings
+        } else {
+            Channel::Effects
+        }
     }
 
     /// The channel's volume: the master volume times its own.
@@ -186,6 +264,7 @@ impl Channel {
                 Channel::Engine => s.engine_volume,
                 Channel::Effects => s.effects_volume,
                 Channel::Warnings => s.warning_volume,
+                Channel::Rwr => s.warning_volume * s.rwr_volume,
             }
     }
 }
@@ -236,6 +315,9 @@ const SIREN_VOLUME: f32 = 0.35;
 
 /// The alarm tones the master caution silences: the stall horn and the radar warning tones.
 const ALARM_TONES: [u8; 6] = [14, 100, 101, 102, 103, 104];
+
+/// The radar warning tones' ids (`rwr_id`).
+const RWR_IDS: std::ops::RangeInclusive<u8> = 100..=104;
 
 /// Seconds an alarm tone silenced by the master caution has to pause to sound again.
 const ALARM_REARM: f64 = 5.0;
@@ -586,6 +668,7 @@ fn play_sounds(
     playing: Query<(Entity, &OneShot)>,
     mut silenced: Local<bool>,
     mut alarms: ResMut<Alarms>,
+    mut last_detected: Local<Option<f64>>,
     real: Res<Time<Real>>,
     settings: Res<crate::settings::Settings>,
     view: Option<Res<ViewState>>,
@@ -637,6 +720,10 @@ fn play_sounds(
     }
     for r in requests.read() {
         if outside && cockpit_only(r.id) {
+            continue;
+        }
+        if RWR_IDS.contains(&r.id) && !rwr_sounds(settings.rwr_tones, r.id, now, &mut last_detected)
+        {
             continue;
         }
         if ALARM_TONES.contains(&r.id) && !alarms.sounds(r.id, now) {
@@ -1400,6 +1487,24 @@ fn stop_all(mut commands: Commands, q: Query<Entity, FlightSound>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Detect only: one tone per detection, again after the radars let go; no painted tone.
+    #[test]
+    fn rwr_detect_only() {
+        let mut last = None;
+        let detect = |id, t, last: &mut _| rwr_sounds(RwrTones::Detect, id, t, last);
+        assert!(!detect(100, 0.0, &mut last));
+        assert!(detect(101, 1.0, &mut last));
+        assert!(!detect(102, 4.0, &mut last));
+        assert!(!detect(101, 12.0, &mut last));
+        assert!(detect(103, 13.0, &mut last));
+        assert!(detect(101, 30.0, &mut last));
+        assert!(!rwr_sounds(RwrTones::Launch, 101, 60.0, &mut last));
+        assert!(rwr_sounds(RwrTones::Launch, 104, 60.0, &mut last));
+        assert!(!rwr_sounds(RwrTones::Off, 104, 60.0, &mut last));
+        assert_eq!(RwrTones::Off.step(1), RwrTones::All);
+        assert_eq!(RwrTones::All.step(-1), RwrTones::Off);
+    }
 
     /// The master caution silences the tones sounding while they repeat; a tone that pauses,
     /// or one not heard before, sounds again.

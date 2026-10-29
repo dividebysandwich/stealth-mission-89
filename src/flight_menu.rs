@@ -193,6 +193,8 @@ impl Page {
                 Volume(Vol::Engine),
                 Volume(Vol::Effects),
                 Volume(Vol::Warnings),
+                Volume(Vol::Rwr),
+                RwrTones,
                 LowPass,
             ],
             Page::Controls => &[Back, HeadTracking, Bindings, KeyGuide],
@@ -232,6 +234,7 @@ enum Vol {
     Engine,
     Effects,
     Warnings,
+    Rwr,
 }
 
 impl Vol {
@@ -241,6 +244,7 @@ impl Vol {
             Vol::Engine => s.engine_volume,
             Vol::Effects => s.effects_volume,
             Vol::Warnings => s.warning_volume,
+            Vol::Rwr => s.rwr_volume,
         }
     }
 
@@ -250,6 +254,7 @@ impl Vol {
             Vol::Engine => &mut s.engine_volume,
             Vol::Effects => &mut s.effects_volume,
             Vol::Warnings => &mut s.warning_volume,
+            Vol::Rwr => &mut s.rwr_volume,
         }
     }
 }
@@ -281,6 +286,8 @@ enum Item {
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
     Volume(Vol),
+    /// Which radar warning tones sound.
+    RwrTones,
     LowPass,
     HeadTracking,
     /// The key and joystick bindings dialog (`input_dialog.rs`).
@@ -316,6 +323,8 @@ impl Item {
             Item::Volume(Vol::Engine) => "ENGINE",
             Item::Volume(Vol::Effects) => "EFFECTS",
             Item::Volume(Vol::Warnings) => "WARNINGS",
+            Item::Volume(Vol::Rwr) => "RWR VOLUME",
+            Item::RwrTones => "RWR TONES",
             Item::LowPass => "ENGINE LOW-PASS",
             Item::HeadTracking => "HEAD TRACKING",
             Item::Bindings => "KEYS AND JOYSTICK",
@@ -343,6 +352,7 @@ impl Item {
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
+            Item::RwrTones => format!("< {} >", s.rwr_tones.name()),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
             Item::Open(_) | Item::KeyGuide | Item::Bindings => ">".to_string(),
@@ -1082,6 +1092,7 @@ fn navigate(
         Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
+        Item::RwrTones => s.rwr_tones = s.rwr_tones.step(dir as i32),
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::Bindings => {
             menu.bindings = true;
