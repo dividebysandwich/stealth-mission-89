@@ -30,8 +30,6 @@ use crate::world::wu_to_bevy;
 const SLAVE_REACH: f64 = 12_000.0;
 const AHEAD: f64 = 3.0;
 const AHEAD_MIN: f64 = 2500.0;
-/// Flown by hand, the camera looks this far under the nose (rad).
-const NOSE_DOWN: f64 = 0.12;
 /// The camera under the drone (m).
 const BELOW: f64 = 0.4;
 /// An interceptor's view marks the enemy aircraft this close (m).
@@ -66,8 +64,8 @@ fn drawn(combat: &Combat, u: &Uav) -> Uav {
     d
 }
 
-/// The view ahead (Bevy world): the camera's direction, `NOSE_DOWN` under the nose, and its
-/// up, both turned with the drone's heading, pitch and bank.
+/// The view ahead (Bevy world): the camera's direction, along the nose, and its up, both turned
+/// with the drone's heading, pitch and bank.
 fn forward_view(u: &Uav) -> (Vec3, Vec3) {
     let (sh, ch, sp, cp) = (u.heading.sin(), u.heading.cos(), u.pitch.sin(), u.pitch.cos());
     let (sb, cb) = (u.bank.sin(), u.bank.cos());
@@ -76,10 +74,8 @@ fn forward_view(u: &Uav) -> (Vec3, Vec3) {
     let right0 = DVec3::new(ch, -sh, 0.0);
     let up0 = DVec3::new(-sh * sp, -ch * sp, cp);
     let up = up0 * cb + right0 * sb;
-    let (sd, cd) = (NOSE_DOWN.sin(), NOSE_DOWN.cos());
-    let (dir, up) = (nose * cd - up * sd, up * cd + nose * sd);
     let bevy = |v: DVec3| Vec3::new(v.x as f32, v.z as f32, -v.y as f32);
-    (bevy(dir), bevy(up))
+    (bevy(nose), bevy(up))
 }
 
 /// A map point on the ground (Bevy world; the middle of its map unit, where the units stand).
@@ -327,10 +323,9 @@ fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
     // The lock cone round the nose.
     let o = Vec2::new(w / 2.0, h / 2.0);
     let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
-    let nose = o - Vec2::new(0.0, (NOSE_DOWN as f32).tan() * f);
     let r = (stealth_sim::uav::LOCK_CONE as f32).tan() * f;
     if u.lock.is_none() {
-        cv.ring(nose, r, 0.8, GREY);
+        cv.ring(o, r, 0.8, GREY);
     }
     for j in sim.interceptor_targets() {
         let t = sim.flights()[j];
@@ -590,11 +585,11 @@ fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
 }
 
 /// The forward FLIR's overlay: the horizon and its pitch steps where they are in the picture
-/// (the camera rolls and pitches with the drone), the drone's symbol on its nose line.
+/// (the camera rolls and pitches with the drone), the flight path marker where it is going (on
+/// the nose, the middle, but for an interceptor sinking or sliding).
 fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let o = Vec2::new(w / 2.0, h / 2.0);
-    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
     let project = projection(eo);
     // A direction (Bevy world) at a heading and an elevation (rad).
     let at = |hdg: f64, el: f64| {
@@ -619,9 +614,18 @@ fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
             stroke_text_at(cv, l.x, l.y, &format!("{deg:.0}"), 5.0, 0.8, col, Align::Left);
         }
     }
-    // The drone, fixed at the camera's centre line through its nose.
-    let nose = o - Vec2::new(0.0, (NOSE_DOWN as f32).tan() * f);
-    cv.stroke(nose - Vec2::new(16.0, 0.0), nose - Vec2::new(5.0, 0.0), 1.4, YELLOW);
-    cv.stroke(nose + Vec2::new(5.0, 0.0), nose + Vec2::new(16.0, 0.0), 1.4, YELLOW);
-    cv.ring(nose, 4.0, 1.2, YELLOW);
+    // Its way (east, north, up): a winged drone's along its nose.
+    let way = if u.vel.iter().any(|&v| v != 0.0) {
+        u.vel
+    } else {
+        [u.heading.sin() * u.pitch.cos(), u.heading.cos() * u.pitch.cos(), u.pitch.sin()]
+    };
+    let way = Vec3::new(way[0] as f32, way[2] as f32, -way[1] as f32);
+    // Held inside the picture.
+    let p =
+        project(way).map_or(o, |p| p.clamp(Vec2::new(30.0, 10.0), Vec2::new(w - 30.0, h - 10.0)));
+    cv.stroke(p - Vec2::new(16.0, 0.0), p - Vec2::new(5.0, 0.0), 1.4, YELLOW);
+    cv.stroke(p + Vec2::new(5.0, 0.0), p + Vec2::new(16.0, 0.0), 1.4, YELLOW);
+    cv.stroke(p - Vec2::new(0.0, 5.0), p - Vec2::new(0.0, 10.0), 1.4, YELLOW);
+    cv.ring(p, 4.0, 1.2, YELLOW);
 }
