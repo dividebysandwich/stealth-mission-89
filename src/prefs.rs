@@ -93,11 +93,16 @@ pub struct Prefs {
     pub rwr_tones: crate::sound::RwrTones,
     pub engine_low_pass: bool,
     pub effects: crate::effects::Effects,
+    /// 0: saved before the Steam Frame's default effects (`Effects::HEAVY_EFFECTS_OFF`), 1:
+    /// after.
+    #[serde(default)]
+    pub effects_version: u32,
     pub gif_scale: u8,
     pub gif_fps: u8,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
+const EFFECTS_VERSION: u32 = 1;
 
 impl Default for Prefs {
     fn default() -> Self {
@@ -154,6 +159,7 @@ impl Default for Prefs {
             rwr_tones: Default::default(),
             engine_low_pass: true,
             effects: Default::default(),
+            effects_version: EFFECTS_VERSION,
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
@@ -169,11 +175,20 @@ impl Prefs {
         p
     }
 
-    /// A VR cockpit size saved before the sizes were the aircraft's own goes back to 100%.
+    /// A VR cockpit size saved before the sizes were the aircraft's own goes back to 100%; the
+    /// Steam Frame's effects saved before their own defaults take those up.
     fn migrate(&mut self) {
         if self.vr_scale_version < VR_SCALE_VERSION {
             self.vr_cockpit_scale = DEFAULT_VR_COCKPIT_SCALE;
             self.vr_scale_version = VR_SCALE_VERSION;
+        }
+        if self.effects_version < EFFECTS_VERSION {
+            if crate::effects::HEAVY_EFFECTS_OFF {
+                self.effects.mist = false;
+                self.effects.cloud_shadows = false;
+                self.effects.vapour = false;
+            }
+            self.effects_version = EFFECTS_VERSION;
         }
     }
 
@@ -228,6 +243,7 @@ impl Prefs {
             rwr_tones: s.rwr_tones,
             engine_low_pass: s.engine_low_pass,
             effects: s.effects,
+            effects_version: EFFECTS_VERSION,
             gif_scale: s.gif_scale,
             gif_fps: s.gif_fps,
         }
