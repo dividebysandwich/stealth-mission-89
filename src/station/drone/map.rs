@@ -259,6 +259,10 @@ const FOREST_GRID: usize = 1024;
 const TOWN: u8 = DARK;
 const STREET: u8 = GREY;
 const ROAD: u8 = GREY;
+/// Contour line steps (metres), their colours.
+const CONTOURS: [f32; 4] = [100.0, 200.0, 500.0, 1000.0];
+const CONTOUR: u8 = DARK;
+const CONTOUR_MAJOR: u8 = GREY;
 
 /// Makes the map's details once the flight's scenery is laid out (it shares the layout).
 pub(super) fn detail(
@@ -299,6 +303,8 @@ pub(super) struct Terrain {
     theater: String,
     /// It has the towns, roads and woods.
     detailed: bool,
+    /// The theater's relief (`stealth_host::theater::relief`).
+    relief: Option<(String, stealth_sim::relief::Relief)>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -571,6 +577,11 @@ fn ground(
             c => c,
         };
         crate::mfd::rasterise_map(&mut c, raster.models(), theater, &to_px, visible, zoom, &remap);
+        let relief = match t.relief.take() {
+            Some(r) if r.0 == theater.id => r,
+            _ => (theater.id.clone(), stealth_host::theater::relief(&theater.id)),
+        };
+        heights(&mut c, &relief.1, (centre, scale));
         if let Some(d) = detail {
             scenery(&mut c, &d.scenery, &to_px, (centre, scale));
         }
@@ -580,6 +591,7 @@ fn ground(
             scale,
             theater: theater.id.clone(),
             detailed: detail.is_some(),
+            relief: Some(relief),
         };
     }
     let Some(src) = &t.canvas else { return };
@@ -588,6 +600,49 @@ fn ground(
     let sx = (bw / 2.0 + off.x - MAP_W as f64 / 2.0).round() as i32;
     let sy = (bh / 2.0 + off.y - BAR_Y as f64 / 2.0).round() as i32;
     cv.blit(src, sx, sy, MAP_W as i32, BAR_Y as i32, MAP_X0 as i32, 0, None, None);
+}
+
+/// The relief over the terrain: the slopes turned from the light (north west) shaded (ordered
+/// dither), contour lines every `CONTOURS` step at least 1.5 pixels of height apart, every fifth
+/// brighter.
+fn heights(c: &mut Canvas, relief: &stealth_sim::relief::Relief, (centre, scale): (DVec2, f64)) {
+    const BAYER: [[f32; 4]; 4] = [
+        [0.0, 8.0, 2.0, 10.0],
+        [12.0, 4.0, 14.0, 6.0],
+        [3.0, 11.0, 1.0, 9.0],
+        [15.0, 7.0, 13.0, 5.0],
+    ];
+    if relief.bytes().iter().all(|&b| b == 0) {
+        return;
+    }
+    let (w, h) = (c.w, c.h);
+    let half = DVec2::new(w as f64, h as f64) / 2.0;
+    let at = |x: usize, y: usize| {
+        let m = centre + (DVec2::new(x as f64, y as f64) - half) * scale;
+        relief.smooth_m(m.x, m.y)
+    };
+    let z: Vec<f32> = (0..w * h).map(|i| at(i % w, i / w)).collect();
+    let px_m = (scale * M_PER_MAP) as f32;
+    let step =
+        CONTOURS.into_iter().find(|&s| s >= px_m * 1.5).unwrap_or(CONTOURS[CONTOURS.len() - 1]);
+    let band = |h: f32| (h / step).floor() as i32;
+    for y in 0..h - 1 {
+        for x in 0..w - 1 {
+            let (here, east, south) = (z[y * w + x], z[y * w + x + 1], z[(y + 1) * w + x]);
+            let b = band(here);
+            if b != band(east) || b != band(south) {
+                let top = b.max(band(east)).max(band(south));
+                c.set(x as i32, y as i32, if top % 5 == 0 { CONTOUR_MAJOR } else { CONTOUR });
+                continue;
+            }
+            // Slope towards the light (metres a metre): its shade.
+            let (gx, gy) = ((east - here) / px_m, (south - here) / px_m);
+            let shade = (-(gx + gy) * std::f32::consts::FRAC_1_SQRT_2 * 1.5).min(0.75);
+            if shade * 16.0 > BAYER[y % 4][x % 4] + 0.5 {
+                c.set(x as i32, y as i32, BLACK);
+            }
+        }
+    }
 }
 
 /// The towns, roads and woods over the terrain: woods darkened (every other pixel), towns
