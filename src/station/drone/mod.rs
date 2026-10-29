@@ -71,6 +71,10 @@ const THROTTLE_KEYS: f32 = 0.5;
 /// The stick a drone is flown by eases to where it is held this fast (of full, a second): the
 /// arrow keys roll and pitch it in and out smoothly.
 const STICK_EASE: f32 = 6.0;
+/// A drone flown by hand: stick deflection below this is centred, and this much of the rest is
+/// cubic (fine near the centre, the full rate at full deflection).
+const STICK_DEADZONE: f32 = 0.06;
+const STICK_EXPO: f32 = 0.7;
 /// ALT+ and ALT- move a waypoint this much (m), within these heights.
 const ALT_STEP: f32 = 100.0;
 const ALT_RANGE: (f32, f32) = (100.0, 5000.0);
@@ -240,6 +244,12 @@ fn selected<'a>(ui: &DroneUi, uavs: &'a [Uav]) -> Option<&'a Uav> {
     uavs.iter().find(|u| u.id == id)
 }
 
+/// A drone's stick deflection with the dead zone taken out (no step at its edge) and the expo.
+fn expo(v: f32) -> f32 {
+    let a = ((v.abs() - STICK_DEADZONE) / (1.0 - STICK_DEADZONE)).clamp(0.0, 1.0);
+    v.signum() * ((1.0 - STICK_EXPO) * a + STICK_EXPO * a * a * a)
+}
+
 /// The stick and the throttle: a drone flown by hand follows them, else the stick slews the
 /// selected drone's camera over the ground.
 fn stick(
@@ -266,7 +276,8 @@ fn stick(
     let forward = forward(&ui, u);
     if u.mode == UavMode::Manual {
         let step = STICK_EASE * dt;
-        for (e, v) in ui.eased.iter_mut().zip([roll, pitch, dead(controls.yaw)]) {
+        let axes = [controls.roll, controls.pitch, controls.yaw].map(expo);
+        for (e, v) in ui.eased.iter_mut().zip(axes) {
             *e += (v - *e).clamp(-step, step);
         }
         let [roll, pitch, yaw] = ui.eased;
