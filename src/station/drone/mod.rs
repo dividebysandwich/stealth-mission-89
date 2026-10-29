@@ -30,7 +30,7 @@ use stealth_sim::aaa::M_PER_MAP;
 use stealth_sim::station::StationCmd;
 use stealth_sim::uav::{MAX_WAYPOINTS, Uav, UavKind, UavMode, UavWp, WpKind, route_refusal};
 
-use super::{Manning, PipShown};
+use super::Manning;
 use crate::campaign::{Action, ActiveCampaign};
 use crate::cockpit3d::{
     ConsoleButton, ConsoleKey, ConsolePanel, ConsoleScreen, DragPhase, ScreenDrag,
@@ -40,7 +40,7 @@ use crate::flight::FlightSystems;
 use crate::settings::AppState;
 
 pub(super) fn build(app: &mut App) {
-    app.init_resource::<DroneUi>().init_resource::<PipShown>().add_systems(
+    app.init_resource::<DroneUi>().add_systems(
         Update,
         (
             reset.after(super::sync_manning),
@@ -122,8 +122,6 @@ pub struct DroneUi {
     /// The map's centre (map units, x east, y south) and zoom step (`ZOOMS_KM`).
     pub centre: DVec2,
     pub zoom: usize,
-    /// The camera is on the main screen (else in the map's picture in picture).
-    pub on_main: bool,
     drag: Option<Drag>,
     /// A drone's route as edited here and not yet sent.
     pub edit: Option<(u16, Vec<UavWp>)>,
@@ -153,7 +151,6 @@ impl Default for DroneUi {
             wp: None,
             centre: DVec2::splat(0x4000 as f64),
             zoom: 3,
-            on_main: false,
             drag: None,
             edit: None,
             cams: Vec::new(),
@@ -217,19 +214,11 @@ pub fn center_uavs(combat: &Combat, m: &Manning) -> Vec<Uav> {
 }
 
 /// A fresh console for each manning of a drone command center.
-fn reset(
-    manning: Option<Res<Manning>>,
-    mut ui: ResMut<DroneUi>,
-    mut pip: ResMut<PipShown>,
-    mut was: Local<Option<usize>>,
-) {
+fn reset(manning: Option<Res<Manning>>, mut ui: ResMut<DroneUi>, mut was: Local<Option<usize>>) {
     let now = manning.as_deref().filter(|m| m.drones()).map(|m| m.unit);
     if now != *was {
         *ui = DroneUi::default();
         *was = now;
-    }
-    if now.is_none() && pip.0 {
-        pip.0 = false;
     }
 }
 
@@ -353,7 +342,6 @@ fn input(
     // A drone gone: no longer selected, its camera and edits forgotten.
     if ui.selected.is_some() && selected(&ui, &uavs).is_none() {
         ui.selected = None;
-        ui.on_main = false;
         if ui.plan.is_none() {
             ui.wp = None;
         }
@@ -371,7 +359,6 @@ fn input(
                     Some(u) => {
                         send(StationCmd::Manual { uav: u.id, on });
                         if on {
-                            ui.on_main = true;
                             ui.cam_mut(u.id).forward = true;
                         }
                     }
@@ -417,8 +404,6 @@ fn input(
                     {
                         select(&mut ui, &uavs, u.id, &mut send);
                     }
-                } else if map::in_pip(at) && ui.selected.is_some() && !ui.on_main {
-                    ui.on_main = true;
                 } else if map::in_map(at) {
                     let route = ui.route(&uavs).map(<[UavWp]>::to_vec).unwrap_or_default();
                     match map::waypoint_at(&ui, &route, at) {
@@ -514,7 +499,6 @@ fn toggle_view(ui: &mut DroneUi, uavs: &[Uav], mfd: &mut crate::mfd::MfdState) {
     cam.forward = !cam.forward;
     if cam.forward {
         mfd.flir = true;
-        ui.on_main = true;
     }
 }
 
@@ -537,7 +521,6 @@ fn select(ui: &mut DroneUi, uavs: &[Uav], id: u16, send: &mut impl FnMut(Station
     }
     ui.selected = Some(id);
     ui.wp = None;
-    ui.on_main = false;
     ui.edit = None;
 }
 
@@ -645,19 +628,11 @@ fn press(
                 ui.centre = DVec2::new(x as f64, y as f64);
             }
         }
-        B::Main => {
-            if ui.selected.is_some() {
-                ui.on_main = !ui.on_main;
-            } else {
-                ui.say("Select a drone first");
-            }
-        }
         B::Manual => match selected(ui, uavs) {
             Some(u) => {
                 let on = u.mode != UavMode::Manual;
                 send(StationCmd::Manual { uav: u.id, on });
                 if on {
-                    ui.on_main = true;
                     ui.cam_mut(u.id).forward = true;
                 }
             }
@@ -793,7 +768,6 @@ fn panel(
     ui: Res<DroneUi>,
     mfd: Res<crate::mfd::MfdState>,
     mut panel: ResMut<ConsolePanel>,
-    mut pip: ResMut<PipShown>,
 ) {
     let (Some(m), Some(combat)) = (manning, combat) else { return };
     if !m.drones() {
@@ -821,19 +795,14 @@ fn panel(
     if *panel != want {
         *panel = want;
     }
-    let shown = u.is_some() && !ui.on_main;
-    if pip.0 != shown {
-        pip.0 = shown;
-    }
 }
 
 /// Test aids: `--drone-launch stork|fp2|int[,..]` launches drones in turn once the console is up
 /// (each when the rail is ready): a surveillance drone to loiter 4.5 km short of the nearest enemy
 /// air defence, an attack drone (once the drones found one) to terminate on the nearest found,
 /// an interceptor to loiter at the nearest enemy aircraft's height 3 km towards it (else 3 km
-/// north); each launched is selected. `--drone-main` puts its camera on the main screen,
-/// `--drone-manual` flies it by hand (once it is off the rail), `--drone-flir` turns its camera
-/// to FLIR.
+/// north); each launched is selected. `--drone-manual` flies it by hand (once it is off the rail),
+/// `--drone-forward` turns its camera ahead, `--drone-flir` to FLIR.
 fn test_aid(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
@@ -928,13 +897,7 @@ fn test_aid(
         ui.selected = Some(u.id);
         let (x, y) = u.map();
         ui.centre = DVec2::new(x as f64, y as f64);
-        ui.on_main = std::env::args().any(|a| a == "--drone-main");
-        if std::env::args().any(|a| a == "--drone-manual") {
-            ui.on_main = true;
-            ui.cam_mut(u.id).forward = true;
-        }
-        if std::env::args().any(|a| a == "--drone-forward") {
-            ui.on_main = true;
+        if std::env::args().any(|a| a == "--drone-manual" || a == "--drone-forward") {
             ui.cam_mut(u.id).forward = true;
         }
         if std::env::args().any(|a| a == "--drone-flir") {

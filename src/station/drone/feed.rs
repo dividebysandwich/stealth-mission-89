@@ -219,7 +219,7 @@ pub(super) fn draw(
     let cam = ui.cam(u.id);
     let forward = super::forward(&ui, u);
     let col = if mfd.flir { WHITE } else { GREEN };
-    let picture = ui.on_main && eo.is_some();
+    let picture = eo.is_some();
     if picture {
         cv.clear(TRANSPARENT);
     } else {

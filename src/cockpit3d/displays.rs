@@ -117,11 +117,6 @@ pub(super) struct InstrumentAtlas {
 #[derive(Component)]
 pub(super) struct TrackCamScreen(pub MfdSide);
 
-/// The drone command center's picture in picture: the tracking camera's picture again, behind a
-/// corner of the map (shown while `station::drone` has it shown).
-#[derive(Component)]
-pub(super) struct TrackCamPip;
-
 /// Texels between atlas faces, so the atlas' mip levels (`ATLAS_MIPS`) don't blend neighbours.
 const ATLAS_GAP: i32 = 4;
 /// Mip levels of the instrument atlas: the full size, half and quarter.
@@ -494,8 +489,7 @@ pub(super) fn update_displays(
     roles: Query<(Entity, &CanvasRole)>,
     mut texes: Query<&mut CanvasTexture>,
     atlas: Query<&InstrumentAtlas>,
-    mut tc: Query<(&TrackCamScreen, &mut Visibility, Has<TrackCamPip>)>,
-    pip: Option<Res<crate::station::PipShown>>,
+    mut tc: Query<(&TrackCamScreen, &mut Visibility)>,
     settings: Res<crate::settings::Settings>,
     sky: Res<crate::sky::Sky>,
     palette: Option<Res<crate::palette::Palette>>,
@@ -506,11 +500,8 @@ pub(super) fn update_displays(
     // buttons glow once it is night (the darkness of a moonless night leaves them lit).
     let backlit = sky.on && palette.is_some_and(|p| p.lights_on());
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
-    for (screen, mut v, is_pip) in &mut tc {
-        let pip_off = is_pip && !pip.as_deref().is_some_and(|p| p.0);
-        v.set_if_neq(if pip_off {
-            Visibility::Hidden
-        } else if d.mfd.camera_see_through(screen.0) || manning.is_some() {
+    for (screen, mut v) in &mut tc {
+        v.set_if_neq(if d.mfd.camera_see_through(screen.0) || manning.is_some() {
             Visibility::Inherited
         } else {
             Visibility::Hidden

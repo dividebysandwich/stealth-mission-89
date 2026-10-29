@@ -115,7 +115,7 @@ pub(super) struct Spawner<'a> {
     pub layout: &'a PanelLayout,
     pub fonts: &'a Fonts,
     pub tc_image: Option<&'a crate::trackcam::TrackCamImage>,
-    /// The drone command center's wide camera picture (`trackcam_wide`, `trackcam_pip`).
+    /// The drone command center's wide camera picture (`trackcam_wide`).
     pub tc_wide: Option<crate::trackcam::TrackCamImage>,
     pub classic_hud: bool,
     pub local_lights: bool,
@@ -447,12 +447,10 @@ impl<'a> Spawner<'a> {
                 still = false;
                 m
             }
+            // The drone command center's former picture in picture: the camera is always on
+            // the main screen now.
             "trackcam_pip" => {
-                ec.insert((
-                    TrackCamScreen(crate::mfd::MfdSide::Right),
-                    displays::TrackCamPip,
-                    Visibility::Hidden,
-                ));
+                ec.insert(Visibility::Hidden);
                 still = false;
                 displays::trackcam_material(self.materials, self.tc_wide.as_ref())
             }

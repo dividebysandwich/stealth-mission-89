@@ -1,7 +1,7 @@
 //! The ground control station: the wide map screen on the drone command center's desk. Left
 //! the drone list (or the launch plan), right the map: the terrain (the moving map's, north
-//! up), the friendly units, the known contacts, the drones and the selected one's route, the
-//! picture in picture in its top right corner and a row of buttons along its bottom. Redrawn
+//! up), the friendly units, the known contacts, the drones and the selected one's route and a
+//! row of buttons along its bottom. Redrawn
 //! ten times a second; the terrain only when the view leaves what was drawn of it. The
 //! aircraft and drones in the air show with their heights (the enemy's red), for the
 //! interceptors.
@@ -29,9 +29,6 @@ const BAR_Y: f32 = 222.0;
 const BAR_H: f32 = 18.0;
 /// The panning cross's buttons.
 const PAD: f32 = 18.0;
-/// The picture in picture (`tools/models/build_console_drone.py`, the camera's wide shape):
-/// x, y, w, h.
-pub const PIP: [f32; 4] = [480.0, 6.0, 154.0, 65.0];
 /// The list's rows.
 const ROW_Y: f32 = 34.0;
 const ROW_H: f32 = 34.0;
@@ -51,7 +48,6 @@ pub enum Button {
     Up,
     Down,
     Centre,
-    Main,
     Manual,
     View,
     Type,
@@ -83,11 +79,6 @@ pub fn to_map(ui: &DroneUi, at: Vec2) -> DVec2 {
 
 pub fn in_map(at: Vec2) -> bool {
     at.x >= MAP_X0 && at.y < BAR_Y
-}
-
-pub fn in_pip(at: Vec2) -> bool {
-    let [x, y, w, h] = PIP;
-    at.x >= x && at.x < x + w && at.y >= y && at.y < y + h
 }
 
 /// The list's row at a canvas point (drone index in the list).
@@ -124,7 +115,6 @@ pub fn buttons(ui: &DroneUi, uavs: &[Uav]) -> Vec<(Button, [f32; 4], &'static st
         Some((Button::AltUp, 32.0, "ALT+", wp)),
         Some((Button::AltDown, 32.0, "ALT-", wp)),
         None,
-        Some((Button::Main, 40.0, "MAIN", flying)),
         Some((Button::Manual, 46.0, "MANUAL", flying)),
         Some((Button::View, 32.0, "FWD", flying)),
     ];
@@ -313,7 +303,6 @@ pub(super) fn draw(
     combat: Option<Res<Combat>>,
     c: Option<Res<crate::campaign::ActiveCampaign>>,
     ui: Res<super::DroneUi>,
-    pip: Res<crate::station::PipShown>,
     theater: Option<Res<crate::world::Theater>>,
     raster: Res<crate::mfd::MapRaster>,
     palette: Option<Res<crate::palette::Palette>>,
@@ -488,22 +477,6 @@ pub(super) fn draw(
         stroke_text_at(cv, MAP_X0 + 5.0, BAR_Y - 8.0, note, 6.0, 0.9, YELLOW, Align::Left);
     }
     cv.reset_clip();
-    // The picture in picture: clear where the camera's picture shows through, framed.
-    let [x, y, w, h] = PIP;
-    let sel = super::selected(&ui, &uavs);
-    if pip.0 {
-        cv.fill_rect(x as i32, y as i32, w as i32, h as i32, TRANSPARENT);
-        if let Some(u) = sel {
-            let cam = ui.cam(u.id);
-            let text = format!("{} {}", u.label(), crate::mfd::cam_zoom_label(Some(cam.zoom)));
-            stroke_text_at(cv, x + 4.0, y + h - 6.0, &text, 5.0, 0.8, WHITE, Align::Left);
-        }
-        cv.frame(Vec2::new(x - 1.0, y - 1.0), Vec2::new(x + w, y + h), 1.0, WHITE);
-    } else if sel.is_some() && ui.on_main {
-        cv.fill_rect(x as i32, y as i32, w as i32, 20, BLACK);
-        cv.frame(Vec2::new(x - 1.0, y - 1.0), Vec2::new(x + w, y + 20.0), 1.0, GREY);
-        stroke_text_at(cv, x + w / 2.0, y + 10.0, "CAMERA ON MAIN", 5.0, 0.8, GREY, Align::Centre);
-    }
     sidebar(cv, sim, &m, &ui, &uavs);
     // The buttons.
     for (b, [bx, by, bw, bh], label, on) in buttons(&ui, &uavs) {

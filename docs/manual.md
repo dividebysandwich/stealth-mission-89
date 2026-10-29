@@ -1519,7 +1519,7 @@ the AIR DEFENSE tab, **ENTER** takes you to its console, **LEAVE** back to the O
 
 The desk screen is the ground control station: the drone list on the left, the map with the
 drones, their routes, friendly units and the enemy air defences your drones have found. The
-large screen shows the selected drone's camera after you press **MAIN**. The screen at the top
+large screen shows the selected drone's camera. The screen at the top
 right shows each drone's battery.
 
 **Launching a drone**:
@@ -1532,7 +1532,7 @@ right shows each drone's battery.
    15 seconds later.
 
 Click a drone or its row to select it. **NEXT** makes the selected waypoint the next one,
-**MAIN** shows its camera on the large screen, **FWD** switches between the gimbaled camera and
+**FWD** switches between the gimbaled camera and
 the forward flight camera. **MANUAL** (or **MAN** on the panel) flies it with the stick and
 throttle; **AUTO** sends it back on its route. The panel's **FLIR**, **ZOOM**, **TRACK** (hold
 the camera on the point under its crosshair) and **SLAVE** (back to the next waypoint) work the

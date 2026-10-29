@@ -102,11 +102,6 @@ impl Manning {
     }
 }
 
-/// The drone command center's picture in picture is shown (its camera's picture behind the
-/// map's corner; `cockpit3d` shows the quad).
-#[derive(Resource, Default)]
-pub struct PipShown(pub bool);
-
 /// What the console shows (the player's own choices; the lock is the simulation's).
 #[derive(Resource)]
 pub struct ConsoleUi {
