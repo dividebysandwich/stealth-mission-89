@@ -38,7 +38,7 @@ page). Each has its own cockpit.
 | <img src="images/units/fly_f16.png" width="200"> | **F-16C Fighting Falcon** | Multirole fighter: Mach 2 class, 9 g, rolls twice as fast as the F-117A, with an RWR and a helmet sight (chapter 6.2). Its stores hang outside, so radars see it as an F-117A with its bay doors always open (+24 EMV). SEAD with HARMs, air-to-air. |
 | <img src="images/units/fly_a10.png" width="200"> | **A-10C Thunderbolt II** | Close air support: slow and rugged, a 30 mm cannon and eleven stations for Mavericks, bombs and Sidewinders. |
 | <img src="images/units/fly_tornado.png" width="200"> | **Tornado IDS** | Low-level strike aircraft with swing wings that sweep back with speed. Its **terrain following radar** flies it at 65 ft over hills, buildings, trees and power lines with the autopilot engaged (key 7), still steering to the waypoint; the cockpit's E-scope shows the terrain ahead. Three MFDs. |
-| <img src="images/units/fly_uh60.png" width="200"> | **UH-60 Black Hawk** | Unarmed utility helicopter for transport: it inserts troops (land near the target), rescues downed pilots (CSAR: land beside the pilot) and carries cargo on a sling (hover low over a crate to hook it, set it down by the helipad of a new air defence site). In a campaign it is the only aircraft for INSERTION and CSAR missions. |
+| <img src="images/units/fly_uh60.png" width="200"> | **UH-60 Black Hawk** | Unarmed utility helicopter for transport: it inserts troops (land near the target), rescues downed pilots (CSAR: land beside the pilot) and carries cargo on a sling (hover low over a crate to hook it, set it down by the helipad of a new air defence site). In a campaign it is the only aircraft for INSERTION, CSAR, LOGISTICS and RESUPPLY missions (chapter 13.13). |
 | <img src="images/units/fly_ah1z.png" width="200"> | **AH-1Z Viper** | Attack helicopter: turret gun, 16 Hellfires and Sidewinders on the wingtips. Its helmet display (chapter 6.3) points the targeting pod, gun and Hellfires wherever you look. |
 | <img src="images/units/fly_rah66.png" width="200"> | **RAH-66 Comanche** | Stealth scout helicopter: radars barely see it hovering or flying slowly, and it shows a larger signature as it speeds up. Its weapons ride inside on the bay doors (three Hellfires or six Stingers per door), which open only to fire. |
 
@@ -1261,6 +1261,8 @@ insertion or raid over, the intelligence gathered.
 | **CAP** | 100 | Where enemy aircraft are near a friendly place or an insertion's target; else over the friendly place nearest the front. | 10 minutes airborne within 20 km of the point; each kill there counts 5 minutes. A friendly aircraft lost there sets the clock back. |
 | **CSAR** | 150 | Each pilot down and waiting (13.8). | 2 minutes airborne within 5 km of him, or there when he is rescued; in the UH-60, land by him, wait 30 s for him to board, and land at a friendly base. |
 | **AWACS** | 250 | While the enemy AWACS is up. | It is shot down, by anyone. |
+| **LOGISTICS** | 100 | Each cargo load for a new air defence site. | You set its crate down by the site's helipad. Only in the UH-60 (13.13). |
+| **RESUPPLY** | 100 | Each air defence site that ran out or asked for a resupply. | You hover at the unit for 10 s. Only in the UH-60 (13.13). |
 
 "You were there" means 2 minutes in the air within 20 km of the helicopters or attackers, their
 target or the meeting point while it is going on, or an air kill. A sortie that ends while its
@@ -1285,7 +1287,7 @@ and its stores (BRIEFED restores the mission's). TAKE OFF puts you on the chosen
 | **F-117A** | RECON, STRIKE, INTERDICT, ANTI-SHIP, SEAD; CAS. Unseen deep in enemy country. |
 | **F-16C** | SEAD (HARM), CAP, DEFEND, INTERCEPT, the AWACS, ESCORT; anything else at a higher radar signature. |
 | **AH-1Z** | CAS, ESCORT, INTERCEPT of helicopters: Hellfires and the turret gun (chapters 6.3, 7.5). |
-| **UH-60** | INSERTION and CSAR only, and the only aircraft for them. |
+| **UH-60** | INSERTION, CSAR, LOGISTICS and RESUPPLY only, and the only aircraft for them. |
 
 The briefing offers the aircraft you last flew if it suits the mission. You may achieve more
 than the mission you accepted: every kill counts, and objectives at the same place make a
@@ -1385,22 +1387,133 @@ one by itself, chapter 16).
 A campaign continued from its save goes on where it was, except that aircraft in the air are
 back on the ground, insertions and raids under way wait to start again, and the AWACS is down.
 
-### 13.12 Drone warfare
+### 13.12 Air defence operations
+
+Your side can build its own air defence: **Gepard** anti-aircraft guns, **Patriot** batteries
+and **drone command centers** (13.14). A player designates the spot, UH-60 pilots fly in the
+cargo (13.13), and anyone can man the finished site.
+
+| Site | Cargo loads | Armament |
+|---|---|---|
+| **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 2 km. 640 rounds ready, 640 in stock. |
+| **Patriot** | 3 | A radar with launchers of four missiles each, out to 80 km. 8 missiles in stock. |
+| **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (13.14). |
+
+**Designating a site**
+
+1. On the Ops screen's WAR MAP or AIR DEFENSE tab, press **GEPARD**, **PATRIOT** or **DRONES**
+   under *New site*.
+2. Move the pointer over the map. A green circle shows where the site may go; a red one names
+   the reason it can't (not friendly territory, water, too close to a town, airfield, site or
+   other units, no open ground, no friendly airfield to fly the cargo from).
+3. Click to designate it. Right click or Esc cancels.
+
+A helipad appears with the loads delivered and the time left (`PATRIOT 1/3 23:41`). All loads
+must arrive within 24 hours, or the helipad is gone. At most three sites can wait for cargo at
+once. Once the last load is in, the unit stands beside the pad.
+
+**Manning a site**
+
+The AIR DEFENSE tab lists your side's sites: who mans each one (*auto* when nobody does), the
+aircraft on its radar, what is ready and its stock. **ENTER** takes you to its console,
+**LEAVE** back to the Ops screen. Unmanned Patriots and Gepards fight on their own.
+
+![The Patriot console](images/patriot_console.png)
+
+The Patriot and Gepard consoles share one layout:
+
+* **Camera** (top): the tracking camera on the radar's or the Gepard's mast, following the
+  lock. **FLIR** switches colour / thermal, **ZOOM+** / **ZOOM-** zoom.
+* **Air picture** (bottom left): the tracks around the site, north up, friendly and hostile
+  symbols with their type and a heading line. **RNG+** / **RNG-** set its range.
+* **Board** (bottom right): **TRACKS** lists the radar's tracks (click one to select it);
+  **SITE** shows the launchers, missiles ready, the stock, reloads and **REQUEST RESUPPLY**.
+* **Engaging**: select a track, **LOCK** it (**DROP** lets go), then **FIRE**.
+* **Signal monitor / target data** (top right): see below.
+
+**Patriot.** Missiles go out to 80 km. **GUIDED** missiles are steered by the radar (hard to
+decoy, one target at a time); **SEMI** missiles home on the radar's illumination (several targets
+at once, easier to decoy). **L1**-**L3** pick the launcher to fire from; **RLD1**-**RLD3**
+reload an empty one from the stock (4 minutes).
+
+<table>
+<tr>
+<td width="50%"><img src="images/patriot_radar_signal.png" alt="Patriot radar signal monitor"></td>
+<td>The Patriot's <b>radar signal monitor</b> shows what the radar receives:
+<ul>
+<li>Top: the echo strength against range, with the lock's echo standing out of the noise.</li>
+<li>Bottom left: the locked target's Doppler spectrum: its speed line, engine or rotor
+modulation beside it.</li>
+<li>Bottom middle: the lock's angle error in the beam (it wanders more on a weak echo).</li>
+<li>Right: signal to noise, range, closing (CLOS) or opening (OPEN) speed, Doppler shift,
+guidance mode and the battery's missiles in the air.</li>
+</ul></td>
+</tr>
+</table>
+
+![The Gepard console](images/gepard_console.png)
+
+**Gepard.** It fires bursts of airburst rounds out to 2 km. Without a lock the stick slews the
+turret by hand and the camera looks along the guns, marking each aircraft in reach with its
+lead. **RLD1** refills the guns from the stock.
+
+<table>
+<tr>
+<td width="50%"><img src="images/gepard_target_data.png" alt="Gepard target data display"></td>
+<td>The Gepard's <b>target data display</b> shows the locked track:
+<ul>
+<li>Top: the type, friend or foe, the bearing and the shells' time of flight.</li>
+<li>Middle: the track number, range, altitude and speed.</li>
+<li>Left: the state lamps: tracking (TRK), slewed by hand (MAN), firing, rounds ready (RDY),
+refilling (RLD).</li>
+<li>Bottom: whether the target is in reach (2,000 m).</li>
+</ul></td>
+</tr>
+</table>
+
+### 13.13 Logistics
+
+UH-60 pilots keep the air defence going: they fly the cargo for new sites and the resupplies for
+existing ones. Both are missions on the board (UH-60 only, 100 points). If no player takes one,
+an AI helicopter flies it.
+
+**Cargo for a new site (LOGISTICS, sling load)**
+
+Each load of a designated site (13.12) is a **LOGISTICS** mission (`PATRIOT 2/3 - <site>`). Its
+crate waits beside the runway of the nearest friendly airfield; after 30 minutes without a
+player, an AI UH-60 brings it.
+
+1. Take the mission and take off in the UH-60 from the crate's airfield.
+2. Hover low over the crate: below 50 ft, slower than 15 kt, within 8 m of it. *Cargo hooked*:
+   the winch lifts it on its rope under the helicopter.
+3. Fly to the helipad. The crate swings on the rope: accelerate and turn gently, slow down
+   early, and let the swing settle before you set it down.
+4. Lower the crate onto the ground within 90 m of the helipad. *Cargo set down*: the load is
+   delivered.
+
+Any UH-60 can hook any waiting crate, and other players see it hanging under your helicopter.
+
+**Resupply (RESUPPLY)**
+
+A site that runs out of stock orders a resupply by itself; at a Patriot or Gepard console you
+can also press **REQUEST RESUPPLY** on the SITE page. It becomes a **RESUPPLY** mission:
+
+1. Take the mission and fly the UH-60 to the unit.
+2. Hover within 50 m of it, under 100 ft and slower than 15 kt, for 10 seconds.
+3. The load goes down and the site's stock is full again.
+
+After 5 minutes without a player, an AI helicopter flies it from the nearest airfield.
+
+### 13.14 Drone warfare
 
 Players can build drone command centers and fly drones from their console, much like they man
 the Patriot and Gepard sites. A center launches three types of drones, up to 5 in the air at
 once. Waypoints are placed and moved by clicking on the map, also while the drone is flying;
 some drone types have their own special waypoints. Any drone can be flown by hand at any time.
 
-**Building a center**: on the Ops screen's WAR MAP or AIR DEFENSE tab, press **DRONES** under
-*New site* and click open, friendly ground away from towns, airfields and other sites (right
-click cancels). A helipad goes there and a logistics mission appears on the board: in a UH-60,
-hook the cargo crate beside the nearest airfield's runway and set it down by the pad (if nobody
-takes it for 30 minutes, an AI helicopter flies it). The center is built when the cargo arrives, if that's within 24 hours.
-It starts with 4 Storks, 8 FP-2s and 6 interceptors. When it runs out, a resupply is ordered.
-
-**Manning it**: the AIR DEFENSE tab lists the center with its operator, the drones in the air
-(UP) and its stock. **ENTER** takes you to the console; **LEAVE** returns to the Ops screen.
+**Building and manning a center**: designate a DRONES site (13.12) and fly in its one load (13.13).
+It starts with 4 Storks, 8 FP-2s and 6 interceptors and orders a resupply when it runs out. On
+the AIR DEFENSE tab, **ENTER** takes you to its console, **LEAVE** back to the Ops screen.
 
 ![The drone command center's console](images/drone_console.png)
 
@@ -1458,7 +1571,7 @@ line reports it. Once locked, it steers itself; just open the throttle and let i
 loses the lock beyond 1.5 km. It cannot tell friend from foe, so keep it away from friendly
 aircraft. A crash into the ground also sets off its warhead, friendly units nearby included.
 
-### 13.13 Tips
+### 13.15 Tips
 
 - Clear a front place's SAM sites and guns and Command sends the helicopters in for free; or
   order the insertion yourself and fly its escort.
