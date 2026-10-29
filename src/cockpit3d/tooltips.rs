@@ -235,6 +235,22 @@ pub fn action_text(a: Action) -> (String, &'static str) {
     (title.to_string(), detail)
 }
 
+/// The tooltip's title of a bezel button: its label, but for the classic cockpit's waypoint
+/// editing buttons, which are arrows with no label to show.
+fn osb_title(label: &str, f: OsbFn, style: PanelStyle) -> String {
+    if style != PanelStyle::Classic {
+        return label.to_string();
+    }
+    match f {
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, 1)) => "Move waypoint up".into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, ..=-1)) => "Move waypoint down".into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..=-1, _)) => "Move waypoint left".into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => "Move waypoint right".into(),
+        OsbFn::Action(Action::ResetWaypoint) => "Reset waypoints".into(),
+        _ => label.to_string(),
+    }
+}
+
 /// What a display command does.
 fn cmd_text(c: MfdCmd) -> String {
     use crate::avionics::Format;
@@ -274,6 +290,10 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::HsdRange(..=0) => "HSD range down".into(),
         MfdCmd::HsdCentre => "HSD centred / depressed".into(),
         MfdCmd::MapWay => "Waypoints on the map".into(),
+        MfdCmd::WaypointNudge(0, 1) => "Move the selected waypoint up".into(),
+        MfdCmd::WaypointNudge(0, ..=-1) => "Move the selected waypoint down".into(),
+        MfdCmd::WaypointNudge(..=-1, _) => "Move the selected waypoint left".into(),
+        MfdCmd::WaypointNudge(..) => "Move the selected waypoint right".into(),
         MfdCmd::Sms(true) => "Mission orders".into(),
         MfdCmd::Sms(false) => "Weapon list".into(),
         MfdCmd::HarmFilter => "HARM threat filter: all, SAM, air".into(),
@@ -323,7 +343,7 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
 }
 
 /// A control's tooltip (bezel buttons: on the current page; None for a blank one).
-fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
+fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip> {
     let (title, detail) = match effect {
         Effect::Action(a) => {
             let (title, detail) = action_text(a);
@@ -363,7 +383,7 @@ fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
                 // The only readout: the HSD's range between its RNG- and RNG+ buttons.
                 OsbFn::Readout => "HSD range in km".to_string(),
             };
-            (label.to_string(), detail)
+            (osb_title(label, f, style), detail)
         }
     };
     // The key a script `press=` names; both time keys; none for the camera cycle (one key per
@@ -441,7 +461,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
             };
             return Some(Tip::new(title, detail, &[]).reading(Readout::Dial(dial)));
         }
-        Elem::Label(..) | Elem::Hazard => return None,
+        Elem::Label(..) | Elem::Arrow(..) | Elem::Hazard => return None,
     };
     Some(Tip::new(title, detail, &[]))
 }
@@ -778,7 +798,7 @@ pub(super) fn hover(
     panel: PanelParams,
     input: Res<InputConfig>,
     mut state: Local<Hover>,
-    (hands, mut anchor): (Res<Hands>, ResMut<TipAnchor>),
+    (hands, mut anchor, root): (Res<Hands>, ResMut<TipAnchor>, Query<&CockpitRoot>),
     mut boxes: Query<(&mut Node, &mut Visibility, &ComputedNode), With<TipBox>>,
     mut lines: Query<(&TipLine, &mut Text, &mut Node), Without<TipBox>>,
 ) {
@@ -812,9 +832,10 @@ pub(super) fn hover(
         state.pointed = pointed;
         state.resting = 0.0;
     }
+    let style = root.single().map_or(PanelStyle::Classic, |r| r.0);
     let tip = pointed.and_then(|p| match p {
         Pointed::Control(e) => {
-            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &panel.mfd))
+            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &panel.mfd, style))
         }
         Pointed::Tip(e) => tips.get(e).ok().cloned(),
     });
@@ -981,14 +1002,14 @@ mod tests {
             PanelStyle::Rah66,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
-                let tip = control_tip(effect, &mfd).unwrap_or_else(|| panic!("{effect:?}"));
+                let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
                 assert!(!tip.title.is_empty() && !tip.title.contains('_'), "{effect:?}");
             }
         }
         for side in [crate::mfd::MfdSide::Left, crate::mfd::MfdSide::Right] {
             for slot in 0..crate::mfd::OSB_COUNT {
                 let effect = Effect::Osb(side, slot);
-                assert_eq!(control_tip(effect, &mfd).is_some(), osb(side, slot, &mfd).is_some());
+                assert_eq!(control_tip(effect, &mfd, PanelStyle::Classic).is_some(), osb(side, slot, &mfd).is_some());
             }
         }
     }

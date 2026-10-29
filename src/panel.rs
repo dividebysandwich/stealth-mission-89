@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use crate::canvas::Canvas;
 use crate::cockpit::sprites::led_digit;
-use crate::cockpit3d::layout::Dial;
+use crate::cockpit3d::layout::{Arrow, Dial};
 use crate::flight::{Aircraft, Player};
 use crate::font::{Fonts, upper};
 use crate::hud::{HudMode, HudState};
@@ -254,6 +254,27 @@ pub fn draw_lamp(
 pub fn draw_label(c: &mut Canvas, fonts: &Fonts, r: [i32; 4], label: &str, fg: u8, bg: u8, k: i32) {
     c.fill_rect(r[0], r[1], r[2], r[3], bg);
     text_in(c, fonts, r, label, fg, k);
+}
+
+/// An arrow glyph centred in the rectangle: a triangle pointing up, down, left or right, or the
+/// return arrow (a head pointing left on a shaft with a hook up at its tail).
+pub fn draw_arrow(c: &mut Canvas, r: [i32; 4], arrow: Arrow, fg: u8, bg: u8) {
+    c.fill_rect(r[0], r[1], r[2], r[3], bg);
+    let centre = Vec2::new(r[0] as f32 + r[2] as f32 / 2.0, r[1] as f32 + r[3] as f32 / 2.0);
+    let half = r[2].min(r[3]) as f32 * 0.32;
+    let p = |x: f32, y: f32| centre + Vec2::new(x, y) * half;
+    match arrow {
+        Arrow::Up => c.triangle([p(0.0, -1.0), p(-1.0, 0.8), p(1.0, 0.8)], fg),
+        Arrow::Down => c.triangle([p(0.0, 1.0), p(-1.0, -0.8), p(1.0, -0.8)], fg),
+        Arrow::Left => c.triangle([p(-1.0, 0.0), p(0.8, -1.0), p(0.8, 1.0)], fg),
+        Arrow::Right => c.triangle([p(1.0, 0.0), p(-0.8, -1.0), p(-0.8, 1.0)], fg),
+        Arrow::Return => {
+            c.triangle([p(-1.0, 0.1), p(-0.2, -0.5), p(-0.2, 0.7)], fg);
+            let w = half * 0.35;
+            c.stroke(p(-0.3, 0.1), p(0.8, 0.1), w, fg);
+            c.stroke(p(0.8, 0.1), p(0.8, -0.7), w, fg);
+        }
+    }
 }
 
 /// Centred text at up to `k` times the font size, smaller if it does not fit with a margin.

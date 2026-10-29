@@ -121,6 +121,8 @@ pub enum Elem {
     Gauge,
     /// Text (lines separated by '\n'), foreground and background colour.
     Label(&'static str, u8, u8),
+    /// An arrow glyph, foreground and background colour.
+    Arrow(Arrow, u8, u8),
     /// Yellow and black warning stripes.
     Hazard,
     /// Landing gear lights: an aircraft outline with a green lamp at each wheel, lit with the
@@ -128,6 +130,16 @@ pub enum Elem {
     GearLights,
     /// A round needle instrument (F-16).
     Dial(Dial),
+}
+
+/// The glyphs of `Elem::Arrow`: the four directions and the arrow back (reset).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Arrow {
+    Up,
+    Down,
+    Left,
+    Right,
+    Return,
 }
 
 /// The F-16's needle instruments: flight instruments round the attitude indicator and HSI (the
@@ -373,6 +385,26 @@ impl PanelLayout {
                 round: false,
             });
         }
+        // The WAY page's waypoint editing buttons (up, down, left, right and return arrows down
+        // the left edge of the right MFD, MOV at the bottom of its right edge): their faces only, the
+        // controls are in the model. Their rectangles stand clear of the others.
+        for (k, arrow) in [Arrow::Up, Arrow::Down, Arrow::Left, Arrow::Right, Arrow::Return]
+            .into_iter()
+            .enumerate()
+        {
+            items.push(Placed {
+                elem: Elem::Arrow(arrow, 47, 22),
+                rect: rect(155.0, 104.0 + 15.0 * k as f32, 12.0, 14.0),
+                cap: None,
+                round: false,
+            });
+        }
+        items.push(Placed {
+            elem: Elem::Label("MOV", 47, 22),
+            rect: rect(249.0, 150.0, 12.0, 14.0),
+            cap: None,
+            round: false,
+        });
         Self {
             style: PanelStyle::Classic,
             items,
