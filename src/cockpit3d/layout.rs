@@ -73,7 +73,8 @@ pub enum Effect {
     Console(ConsoleKey),
 }
 
-/// The buttons of an air defence console (`Console(Fire)`, `Console(Launcher, 2)` in the model).
+/// The buttons of an air defence console or the drone command center's (`Console(Fire)`,
+/// `Console(Launcher, 2)` in the model).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConsoleKey {
     /// The board's tabs: the track list, the site's status.
@@ -100,6 +101,14 @@ pub enum ConsoleKey {
     RangeOut,
     /// Leave the console (back to the Ops screen).
     Leave,
+    /// Drone command center: the drone on its route again, flown by hand; its camera held on
+    /// the ground point at its crosshair, back ahead and down.
+    Auto,
+    Manual,
+    Track,
+    Slave,
+    /// Drone command center: the camera between the TGP and the forward-looking FLIR.
+    View,
 }
 
 /// A face drawn into the instrument atlas.

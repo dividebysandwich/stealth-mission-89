@@ -81,14 +81,14 @@ pub(super) fn play(
         one_shot(&sounds.launch, LAUNCH);
     }
     heard.missiles = missiles;
-    let firing = m.gepard && sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0);
+    let firing = m.gepard() && sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0);
     if firing && !heard.firing {
         one_shot(&sounds.burst, BURST);
     }
     heard.firing = firing;
     // A refill starting or done at the battery's launchers (the Gepard).
     let units: Vec<usize> = (0..sim.aaa_units().len())
-        .filter(|&k| k == m.unit || (!m.gepard && sim.launcher_radar(k) == Some(m.unit)))
+        .filter(|&k| k == m.unit || (!m.gepard() && sim.launcher_radar(k) == Some(m.unit)))
         .collect();
     let now: Vec<bool> = units.iter().map(|&k| sim.refill_left(k) > 0.0).collect();
     if heard.refilling.len() == now.len() && heard.refilling != now {

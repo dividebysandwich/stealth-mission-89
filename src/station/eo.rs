@@ -38,10 +38,13 @@ pub struct ConsoleEo {
     pub target: Option<DVec3>,
     /// The slew's speed now (0..1 of the fastest), and while it is still slewing (0 once on
     /// the track: the gimbal's motor sound).
-    speed: f32,
+    pub(super) speed: f32,
     pub slew: f32,
     /// Slewed by hand: the gun's direction as the camera has it (azimuth, elevation).
-    manual: Option<Vec2>,
+    pub(super) manual: Option<Vec2>,
+    /// Nothing shows the picture (a drone command center without a drone selected): it is not
+    /// rendered.
+    pub idle: bool,
 }
 
 /// The camera points at the lock.
@@ -55,6 +58,10 @@ pub(super) fn aim(
     time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
+    // A drone command center's camera is on its drone (`drone::feed`).
+    if m.drones() {
+        return;
+    }
     let sim = &combat.sim;
     let Some(u) = sim.aaa_units().get(m.unit) else { return };
     let eye =
@@ -75,13 +82,14 @@ pub(super) fn aim(
             speed: 0.0,
             slew: 0.0,
             manual: None,
+            idle: false,
         });
         return;
     };
     let dt = time.delta_secs();
     eo.eye = eye;
     eo.target = target;
-    if m.gepard && lock.is_none() {
+    if m.gepard() && lock.is_none() {
         let wrap = |a: f32| (a + PI).rem_euclid(TAU) - PI;
         let (lo, hi) = stealth_sim::station::GEPARD_EL;
         let gun = Vec2::new(u.aim_az, u.aim_el);
@@ -132,6 +140,9 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c), Some(eo)) = (manning, combat, c, eo) else { return };
+    if m.drones() {
+        return;
+    }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Eo) else {
         return;
     };
@@ -169,7 +180,7 @@ pub(super) fn draw(
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
     let bottom = h - 10.0;
     let Some(t) = eo.target else {
-        if m.gepard && lock.is_none() {
+        if m.gepard() && lock.is_none() {
             // Slewed by hand: where the gun points, and while it fires.
             let d = eo.dir;
             let brg = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
@@ -240,7 +251,7 @@ pub(super) fn draw(
         col,
         Align::Centre,
     );
-    if m.gepard {
+    if m.gepard() {
         let reach = stealth_sim::station::GEPARD_REACH as f32;
         let (text, c2) = if range <= reach { ("IN RANGE", YELLOW) } else { ("OUT OF RANGE", RED) };
         stroke_text_at(cv, w / 2.0, 24.0, text, 7.0, 1.0, c2, Align::Centre);

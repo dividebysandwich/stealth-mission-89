@@ -140,21 +140,28 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             });
         }
     }
-    // Guns and MANPADS: around reconned places, or engaging.
+    // Guns and MANPADS: around reconned places, engaging, or found by a command center's drones.
     let reconned: Vec<(i32, i32)> =
         state.places.iter().filter(|p| p.intel(state.clock)).map(|p| (p.x, p.y)).collect();
+    let found = |k: usize| sim.uav_known().contains(&stealth_sim::uav::Seen::Aaa(k as u16));
     for (k, u) in sim.aaa_units().iter().enumerate() {
         if u.destroyed {
             continue;
         }
         if sim.aaa_blue(k) {
-            if matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::Manpads) {
+            if matches!(
+                u.kind,
+                AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::Manpads | AaaKind::DroneCenter
+            ) {
                 let manned = sim.manned_by(k);
                 pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned });
             }
             continue;
         }
-        if sim.aaa_engaging(k) || reconned.iter().any(|&(x, y)| near(u.x, u.y, x, y, RECON_GUNS)) {
+        if sim.aaa_engaging(k)
+            || found(k)
+            || reconned.iter().any(|&(x, y)| near(u.x, u.y, x, y, RECON_GUNS))
+        {
             pic.guns.push(Gun { index: k, x: u.x, y: u.y, kind: u.kind });
         }
     }
@@ -279,6 +286,9 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: 
         let sym = match kind {
             AaaKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
             AaaKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
+            AaaKind::DroneCenter => {
+                Symbol::new(Affiliation::Friend, Dimension::Installation, Icon::Uav)
+            }
             _ => sym(Icon::AirDefenceMissile).echelon(Echelon::Team),
         };
         sym.draw(painter, p, k, 1.0);
@@ -300,6 +310,13 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: 
             for dx in [-1.5, 1.5] {
                 painter.line_segment([p + egui::vec2(dx, -3.5), p + egui::vec2(dx, -7.5)], stroke);
             }
+        }
+        // A drone command center: a square with a drone's wings in it.
+        AaaKind::DroneCenter => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([p + egui::vec2(-3.5, -1.5), p + egui::vec2(0.0, 1.5)], stroke);
+            painter.line_segment([p + egui::vec2(0.0, 1.5), p + egui::vec2(3.5, -1.5)], stroke);
         }
         _ => {
             painter.circle_stroke(p, 2.5, stroke);

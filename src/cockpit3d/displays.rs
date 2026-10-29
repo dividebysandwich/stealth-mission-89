@@ -62,7 +62,7 @@ pub(super) enum CanvasRole {
     Console(ConsoleScreen),
 }
 
-/// The screens of an air defence console.
+/// The screens of an air defence console (and the drone command center's).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConsoleScreen {
     /// The air picture.
@@ -71,8 +71,11 @@ pub enum ConsoleScreen {
     Board,
     /// The camera's overlay (over the camera picture).
     Eo,
-    /// The locked target's data.
+    /// The locked target's data (the drone command center's drone list).
     Info,
+    /// The drone command center's ground control station map (its picture in picture shows
+    /// through it).
+    Map,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -84,6 +87,7 @@ pub const SCOPE_CANVAS: (usize, usize) = (320, 320);
 pub const BOARD_CANVAS: (usize, usize) = (400, 300);
 pub const EO_CANVAS: (usize, usize) = (308, 240);
 pub const INFO_CANVAS: (usize, usize) = (320, 240);
+pub const MAP_CANVAS: (usize, usize) = (640, 244);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -108,6 +112,11 @@ pub(super) struct InstrumentAtlas {
 /// The tracking camera picture behind an MFD screen.
 #[derive(Component)]
 pub(super) struct TrackCamScreen(pub MfdSide);
+
+/// The drone command center's picture in picture: the tracking camera's picture again, behind a
+/// corner of the map (shown while `station::drone` has it shown).
+#[derive(Component)]
+pub(super) struct TrackCamPip;
 
 /// Texels between atlas faces, so the atlas' mip levels (`ATLAS_MIPS`) don't blend neighbours.
 const ATLAS_GAP: i32 = 4;
@@ -322,8 +331,12 @@ pub(super) fn screen(
                 ConsoleScreen::Board => BOARD_CANVAS,
                 ConsoleScreen::Eo => EO_CANVAS,
                 ConsoleScreen::Info => INFO_CANVAS,
+                ConsoleScreen::Map => MAP_CANVAS,
             };
-            (Canvas::scaled(w, h, CONSOLE_SCALE), s == ConsoleScreen::Eo)
+            (
+                Canvas::scaled(w, h, CONSOLE_SCALE),
+                matches!(s, ConsoleScreen::Eo | ConsoleScreen::Map),
+            )
         }
         // Only the RAH-66 has the multipurpose displays.
         CanvasRole::Lmpd | CanvasRole::Rmpd => (
@@ -476,7 +489,8 @@ pub(super) fn update_displays(
     roles: Query<(Entity, &CanvasRole)>,
     mut texes: Query<&mut CanvasTexture>,
     atlas: Query<&InstrumentAtlas>,
-    mut tc: Query<(&TrackCamScreen, &mut Visibility)>,
+    mut tc: Query<(&TrackCamScreen, &mut Visibility, Has<TrackCamPip>)>,
+    pip: Option<Res<crate::station::PipShown>>,
     settings: Res<crate::settings::Settings>,
     sky: Res<crate::sky::Sky>,
     palette: Option<Res<crate::palette::Palette>>,
@@ -487,8 +501,11 @@ pub(super) fn update_displays(
     // buttons glow once it is night (the darkness of a moonless night leaves them lit).
     let backlit = sky.on && palette.is_some_and(|p| p.lights_on());
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
-    for (screen, mut v) in &mut tc {
-        v.set_if_neq(if d.mfd.camera_see_through(screen.0) || manning.is_some() {
+    for (screen, mut v, is_pip) in &mut tc {
+        let pip_off = is_pip && !pip.as_deref().is_some_and(|p| p.0);
+        v.set_if_neq(if pip_off {
+            Visibility::Hidden
+        } else if d.mfd.camera_see_through(screen.0) || manning.is_some() {
             Visibility::Inherited
         } else {
             Visibility::Hidden

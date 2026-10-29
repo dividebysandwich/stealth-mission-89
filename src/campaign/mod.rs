@@ -26,7 +26,7 @@ mod air_defence;
 mod designate;
 mod menu;
 mod ops;
-mod picture;
+pub(crate) mod picture;
 pub mod unit_view;
 
 pub use menu::CampaignWindow;
@@ -694,6 +694,49 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
                     route: None,
                 });
             }
+        }
+    }
+    // Test aid: `--campaign-drones` puts a drone command center at the friendly place nearest
+    // the enemy's air defences and mans it (a host's or a single player's campaign);
+    // `--campaign-drones front` 8 km short of the nearest enemy air defence unit.
+    if c.phase == Phase::Ops
+        && c.state().clock > 2.0
+        && !c.ui.test_manned
+        && c.role != Role::Client
+        && std::env::args().any(|a| a == "--campaign-drones")
+    {
+        let sim = &mut s.combat.sim;
+        let st = c.state();
+        let enemy: Vec<(i32, i32)> = (0..sim.aaa_units().len())
+            .filter(|&k| !sim.aaa_blue(k) && !sim.aaa_units()[k].destroyed)
+            .map(|k| (sim.aaa_units()[k].x, sim.aaa_units()[k].y))
+            .collect();
+        let gap = |p: &stealth_campaign::Place| {
+            enemy.iter().map(|&(x, y)| stealth_campaign::dist(p.x - x, p.y - y)).min().unwrap_or(0)
+        };
+        let place = st
+            .places
+            .iter()
+            .filter(|p| p.owner == stealth_campaign::Side::Blue)
+            .min_by_key(|p| gap(p))
+            .map(|p| (p.x, p.y));
+        let front = std::env::args().skip_while(|a| a != "--campaign-drones").nth(1);
+        let place = match (place, front.as_deref()) {
+            (Some((px, py)), Some("front")) => enemy
+                .iter()
+                .min_by_key(|&&(x, y)| stealth_campaign::dist(px - x, py - y))
+                .map(|&(x, y)| {
+                    let d = ((px - x) as f64).hypot((py - y) as f64).max(1.0);
+                    let k = 8000.0 / stealth_sim::aaa::M_PER_MAP / d;
+                    (x + ((px - x) as f64 * k) as i32, y + ((py - y) as f64 * k) as i32)
+                }),
+            (p, _) => p.map(|(x, y)| (x + 0x30, y - 0x30)),
+        };
+        if let Some((x, y)) = place {
+            sim.place_drone_center(x, y);
+            let k = sim.aaa_units().len() - 1;
+            c.ui.test_manned = true;
+            c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
         }
     }
     // Test aid: man the n-th friendly air defence console (Patriot batteries first).

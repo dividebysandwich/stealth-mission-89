@@ -145,7 +145,7 @@ pub(crate) fn update_camera(
     let Ok((mut camera, mut proj, mut pos, mut tf)) = cam.single_mut() else { return };
     // An air defence console's camera on its mast (`station`).
     if let Some(eo) = console {
-        let want = view.view == View::Cockpit;
+        let want = view.view == View::Cockpit && !eo.idle;
         if camera.is_active != want {
             camera.is_active = want;
         }

@@ -142,6 +142,10 @@ Testing and screenshots
   --campaign-watch             watch the first friendly aircraft
   --campaign-designate gepard|patriot|drones
                                designate a new air defence site near the parked base
+  --campaign-drones            put a drone command center near the front and man it
+  --drone-launch stork|fp2     at it, launch a drone at the nearest enemy air defence
+  --drone-main, --drone-manual its camera on the main screen, flown by hand
+  --drone-forward              its forward-looking FLIR on the main screen
 
   -h, --help                   this list
 ";

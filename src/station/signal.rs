@@ -17,7 +17,7 @@ use stealth_sim::station::Guidance;
 use stealth_sim::{AircraftKind, Sim};
 
 use super::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
-use super::{ConsoleUi, Manning};
+use super::{ConsoleUi, Manning, StationKind};
 use crate::canvas::{Canvas, CanvasTexture};
 use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, INFO_CANVAS};
 use crate::font::{Align, stroke_text_at};
@@ -59,7 +59,7 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
-    if m.gepard {
+    if m.kind != StationKind::Patriot {
         return;
     }
     *since += time.delta_secs();

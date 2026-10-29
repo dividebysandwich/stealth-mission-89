@@ -114,7 +114,7 @@ pub(super) fn draw(
     cv.stroke(Vec2::new(0.0, TABS_H), Vec2::new(w, TABS_H), 1.0, GREEN);
     match ui.tab {
         Tab::Tracks => tracks(cv, &ui),
-        Tab::Site if m.gepard => gepard(cv, sim, m.unit),
+        Tab::Site if m.gepard() => gepard(cv, sim, m.unit),
         Tab::Site => battery(cv, sim, &ui, m.unit),
     }
     if ui.tab == Tab::Site {
@@ -124,7 +124,7 @@ pub(super) fn draw(
     let st = sim.station_of(c.me.0);
     cv.stroke(Vec2::new(0.0, STATUS_TOP), Vec2::new(w, STATUS_TOP), 1.0, GREEN);
     let y = STATUS_TOP + 11.0;
-    if !m.gepard {
+    if !m.gepard() {
         let (mode, col) = match st.map(|s| s.mode) {
             Some(Guidance::SemiActive) => ("SEMI-ACTIVE", YELLOW),
             _ => ("GUIDED", CYAN),

@@ -264,6 +264,8 @@ pub struct FlightControls {
     /// Helicopters: the collective moving while its keys (the throttle keys) or the gamepad
     /// triggers are held, -1 (down) .. 1 (up).
     pub collective_rate: f32,
+    /// At a console: the throttle keys held, -1 (back) .. 1 (forward) (a drone flown by hand).
+    pub console_throttle: f32,
     /// Fixed wing: the throttle moving while a throttle key is held past `THROTTLE_HOLD_S`, -1
     /// (down) .. 1 (up); a press alone steps it (`Action::ThrottleUp`/`Down`).
     pub throttle_rate: f32,
@@ -555,7 +557,8 @@ fn read_keyboard(
     }
     controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
     if block.0 {
-        // At a console: only the stick and the triggers.
+        // At a console: only the stick, the triggers and the throttle keys (a drone's).
+        controls.console_throttle = controls.collective_rate;
         controls.mark = false;
         controls.yaw = 0.0;
         controls.collective_rate = 0.0;

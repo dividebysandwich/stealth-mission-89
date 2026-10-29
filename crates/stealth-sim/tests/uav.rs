@@ -175,15 +175,16 @@ fn an_fp2_dives_into_its_terminate_point_and_destroys_the_unit_there() {
 }
 
 #[test]
-fn a_stork_finds_a_hidden_sam_site_that_never_fires_at_it() {
+fn a_stork_finds_a_hidden_sam_site_that_never_finds_it() {
     let (mut sim, k, site, radar) = center();
     let s = sim.objects()[site];
     sim.objects_mut()[site].unit_type = radar;
-    // The center 20 km off the site's west: the Stork loiters 2 km short of it.
+    // The center 20 km off the site's west: the Stork circles 4 km short of it (never closer
+    // than 3 km, where the site can't find it).
     let c = sim.aaa_units()[k];
     let d = (20_000.0 / M_PER_MAP) as i32;
     (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (s.x - d, s.y);
-    let at = (s.x - (2000.0 / M_PER_MAP) as i32, s.y);
+    let at = (s.x - (4000.0 / M_PER_MAP) as i32, s.y);
     launch(&mut sim, UavKind::Stork, vec![wp(at, 800.0, WpKind::Loiter)]).unwrap();
     assert!(!sim.uav_known().contains(&Seen::Object(site as u16)));
     let f = sim.uavs()[0].flight as usize;
@@ -268,4 +269,69 @@ fn an_fp2_terminating_on_a_sam_site_destroys_it() {
     assert!(sim.uavs().is_empty());
     assert!(sim.objects()[site].flags & oflags::DESTROYED != 0);
     assert!(ev.iter().any(|e| matches!(e, SimEvent::GroundDestroyed { .. })));
+}
+
+#[test]
+fn guns_beyond_two_km_never_find_a_drone() {
+    let (mut sim, k, _, _) = center();
+    let guns = off(&sim, k, 6000.0, 0.0);
+    for (dx, kind) in [(0, AaaKind::Zsu), (8, AaaKind::S60), (-8, AaaKind::Manpads)] {
+        sim.aaa_units_mut().push(AaaUnit { kind, x: guns.0 + dx, y: guns.1, ..Default::default() });
+    }
+    // Circling 3.5 km short of them (2.6 km at the closest): in the S-60's and the MANPADS'
+    // reach, but they never find it.
+    let at = off(&sim, k, 2500.0, 0.0);
+    launch(&mut sim, UavKind::Stork, vec![wp(at, 500.0, WpKind::Loiter)]).unwrap();
+    let f = sim.uavs()[0].flight as usize;
+    run(&mut sim, 600);
+    assert_eq!(sim.uavs().len(), 1, "shot down");
+    assert!(sim.ai_missiles().iter().all(|m| m.target != f));
+}
+
+#[test]
+fn a_sam_site_finds_a_drone_within_two_km() {
+    let (mut sim, k, site, radar) = center();
+    let s = sim.objects()[site];
+    sim.objects_mut()[site].unit_type = radar;
+    let d = (6000.0 / M_PER_MAP) as i32;
+    (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (s.x - d, s.y);
+    launch(&mut sim, UavKind::Stork, vec![wp((s.x, s.y), 800.0, WpKind::Loiter)]).unwrap();
+    let f = sim.uavs()[0].flight as usize;
+    let mut fired = false;
+    for _ in 0..600 {
+        run(&mut sim, 1);
+        fired |= sim.ai_missiles().iter().any(|m| m.target == f);
+        if fired || sim.uavs().is_empty() {
+            break;
+        }
+    }
+    assert!(fired || sim.uavs().is_empty(), "the SAM site never engaged it");
+}
+
+/// Balance check (`cargo test -p stealth-sim --test uav strike_odds -- --ignored --nocapture`):
+/// how often an FP-2 gets through to a ZSU-23-4 with a second one and a MANPADS team beside it,
+/// from 20 directions.
+#[test]
+#[ignore]
+fn strike_odds() {
+    let mut hits = 0;
+    let n = 20;
+    for t in 0..n {
+        let (mut sim, k, _, _) = center();
+        let a = t as f64 * 0.31;
+        let at = off(&sim, k, 6000.0 * a.cos(), 6000.0 * a.sin());
+        for (dx, kind) in [(0, AaaKind::Zsu), (10, AaaKind::Zsu), (-10, AaaKind::Manpads)] {
+            sim.aaa_units_mut().push(AaaUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
+        }
+        let target = sim.aaa_units().len() - 3;
+        launch(&mut sim, UavKind::Fp2, vec![wp(at, 300.0, WpKind::Terminate)]).unwrap();
+        for _ in 0..400 {
+            run(&mut sim, 1);
+            if sim.uavs().is_empty() {
+                break;
+            }
+        }
+        hits += sim.aaa_units()[target].destroyed as i32;
+    }
+    eprintln!("{hits}/{n} got through");
 }

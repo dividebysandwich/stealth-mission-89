@@ -15,10 +15,13 @@
 //!   slews the turret; a press of its trigger (the gun trigger or fire button) fires a burst,
 //!   with a lock at the lead, without one along the barrels.
 //!
+//! A drone command center's console (`cockpit_drone.glb`) is its own (`drone`).
+//!
 //! The console's commands go to the simulation through the campaign (`Action::Station`, the
 //! server's on a client); what the console shows comes from the simulation's state.
 
 mod board;
+mod drone;
 mod eo;
 mod info;
 mod scope;
@@ -45,6 +48,7 @@ pub struct StationPlugin;
 
 impl Plugin for StationPlugin {
     fn build(&self, app: &mut App) {
+        drone::build(app);
         app.init_resource::<ConsoleUi>().add_systems(Startup, sound::load).add_systems(
             Update,
             (
@@ -74,12 +78,34 @@ impl Plugin for StationPlugin {
     }
 }
 
-/// The player mans this AAA unit's console (a Patriot radar or a Gepard).
+/// The player mans this AAA unit's console (a Patriot radar, a Gepard, a drone command center).
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct Manning {
     pub unit: usize,
-    pub gepard: bool,
+    pub kind: StationKind,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StationKind {
+    Patriot,
+    Gepard,
+    Drones,
+}
+
+impl Manning {
+    pub fn gepard(&self) -> bool {
+        self.kind == StationKind::Gepard
+    }
+
+    pub fn drones(&self) -> bool {
+        self.kind == StationKind::Drones
+    }
+}
+
+/// The drone command center's picture in picture is shown (its camera's picture behind the
+/// map's corner; `cockpit3d` shows the quad).
+#[derive(Resource, Default)]
+pub struct PipShown(pub bool);
 
 /// What the console shows (the player's own choices; the lock is the simulation's).
 #[derive(Resource)]
@@ -153,9 +179,12 @@ fn sync_manning(
 ) {
     let want = match (c.as_deref().map(|c| c.phase), combat.as_deref()) {
         (Some(Phase::Station { unit }), Some(combat)) => {
-            let gepard =
-                combat.sim.aaa_units().get(unit).is_some_and(|u| u.kind == AaaKind::Gepard);
-            Some(Manning { unit, gepard })
+            let kind = match combat.sim.aaa_units().get(unit).map(|u| u.kind) {
+                Some(AaaKind::Gepard) => StationKind::Gepard,
+                Some(AaaKind::DroneCenter) => StationKind::Drones,
+                _ => StationKind::Patriot,
+            };
+            Some(Manning { unit, kind })
         }
         _ => None,
     };
@@ -173,7 +202,7 @@ fn sync_manning(
             // Test aid: `--console-tab site` opens the site's page.
             let site = std::env::args().skip_while(|a| a != "--console-tab").nth(1);
             *ui = ConsoleUi {
-                range_km: if m.gepard { 10.0 } else { 40.0 },
+                range_km: if m.gepard() { 10.0 } else { 40.0 },
                 tab: if site.as_deref() == Some("site") { Tab::Site } else { Tab::Tracks },
                 parked,
                 ..Default::default()
@@ -253,7 +282,7 @@ fn hand_controller(
     controls.gun = false;
     controls.fire = false;
     let Some(c) = c.as_deref_mut() else { return };
-    if !m.gepard {
+    if !m.gepard() {
         return;
     }
     use stealth_sim::station::{GEPARD_ELEVATE, GEPARD_TRAVERSE};
@@ -299,7 +328,7 @@ fn buttons(
         }
     }
     let sim = &combat.sim;
-    let launchers = if m.gepard { vec![m.unit] } else { sim.battery_launchers(m.unit) };
+    let launchers = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let mut send = |cmd: StationCmd| c.actions.push(Action::Station(cmd));
     for ConsoleButton(k) in keys.read() {
         match *k {
@@ -315,7 +344,7 @@ fn buttons(
             ConsoleKey::Drop => send(StationCmd::Lock(None)),
             ConsoleKey::Guided => send(StationCmd::Mode(Guidance::Guided)),
             ConsoleKey::Semi => send(StationCmd::Mode(Guidance::SemiActive)),
-            ConsoleKey::Fire if m.gepard => send(StationCmd::Burst),
+            ConsoleKey::Fire if m.gepard() => send(StationCmd::Burst),
             ConsoleKey::Fire => send(StationCmd::Fire { launcher: ui.launcher.map(|l| l as u16) }),
             ConsoleKey::Launcher(n) => {
                 let l = launchers.get(n.saturating_sub(1) as usize).copied();
@@ -332,6 +361,12 @@ fn buttons(
             ConsoleKey::RangeIn => step_range(&mut ui, -1),
             ConsoleKey::RangeOut => step_range(&mut ui, 1),
             ConsoleKey::Leave => send(StationCmd::Leave),
+            // The drone command center's (`drone`).
+            ConsoleKey::Auto
+            | ConsoleKey::Manual
+            | ConsoleKey::Track
+            | ConsoleKey::Slave
+            | ConsoleKey::View => {}
         }
     }
     for click in clicks.read() {
@@ -350,7 +385,7 @@ fn buttons(
                 Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
-            ConsoleScreen::Eo | ConsoleScreen::Info => {}
+            ConsoleScreen::Eo | ConsoleScreen::Info | ConsoleScreen::Map => {}
         }
     }
     // Test aid: `--console-lock` locks the nearest hostile track once there is one (any
@@ -379,7 +414,7 @@ fn buttons(
         && sim.station_of(c.me.0).is_some_and(|s| s.lock.is_some())
     {
         ui.test_fired = true;
-        send(if m.gepard { StationCmd::Burst } else { StationCmd::Fire { launcher: None } });
+        send(if m.gepard() { StationCmd::Burst } else { StationCmd::Fire { launcher: None } });
     }
     // Test aid: `--console-resupply` asks for a new stockpile once.
     if std::env::args().any(|a| a == "--console-resupply") && !ui.test_resupply {
@@ -422,8 +457,12 @@ fn panel(
         }
         return;
     };
+    // The drone command center lights its own (`drone`).
+    if m.drones() {
+        return;
+    }
     let sim = &combat.sim;
-    let hidden = if m.gepard {
+    let hidden = if m.gepard() {
         vec![
             ConsoleKey::Guided,
             ConsoleKey::Semi,

@@ -514,6 +514,7 @@ fn sync_aaa(
         (&mut WorldPos, &mut Transform, Option<&mut ModelState>, &mut Visibility),
         With<SimObject>,
     >,
+    console: Option<Res<crate::station::ConsoleEo>>,
 ) {
     let sim = &combat.sim;
     let units = sim.aaa_units();
@@ -539,6 +540,8 @@ fn sync_aaa(
         }
     }
     let eye = player.single().map_or(DVec3::ZERO, |p| p.0);
+    // A drone command center's camera sees the MANPADS teams near its drone.
+    let camera = console.as_deref().filter(|c| !c.idle).map(|c| c.eye);
     for (i, (u, &e)) in units.iter().zip(&av.units).enumerate() {
         let Ok((mut pos, mut tf, state, mut vis)) = q.get_mut(e) else { continue };
         let at = map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
@@ -546,8 +549,9 @@ fn sync_aaa(
         // Each unit stands at its own heading (golden-angle spread).
         let heading = (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);
         tf.rotation = Quat::from_rotation_y(-heading);
-        let hidden =
-            u.kind == stealth_sim::aaa::AaaKind::Manpads && at.distance(eye) > MANPADS_RANGE;
+        let hidden = u.kind == stealth_sim::aaa::AaaKind::Manpads
+            && at.distance(eye) > MANPADS_RANGE
+            && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
         vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;

@@ -8,8 +8,9 @@
 //!   without either ends in a circle round its last point.
 //! * Taken over (**manual**), it follows the console's stick and throttle: bank and pitch as the
 //!   stick is held, speed by the throttle.
-//! * Its battery runs down with the throttle; empty, it glides down and is lost. Enemy guns and
-//!   MANPADS teams shoot at the drones; the SAM radars don't see them.
+//! * Its battery runs down with the throttle; empty, it glides down and is lost. The enemy's
+//!   air defences (guns, MANPADS teams, SAM sites) find a drone only within [`DETECT_RANGE`]:
+//!   its radar cross section is tiny.
 //!
 //! The drone's own state is kept in metres and radians ([`Uav::pos`]) and written to its flight
 //! unit each frame, which draws it, sends it to the clients and lets the guns aim at it.
@@ -22,6 +23,12 @@ use crate::campaign::{CampaignFlight, M_PER_WU, Role};
 use crate::station::Station;
 use crate::types::*;
 
+/// The enemy's air defences find a drone this close (m), and only then shoot at it.
+pub const DETECT_RANGE: f64 = 2000.0;
+/// Of the shells and missiles that would bring down an aircraft, this many per mille bring down
+/// a drone (small, a little engine for the infrared seekers).
+pub const SHELL_HIT: i32 = 15;
+pub const MISSILE_HIT: i32 = 300;
 /// Drones of a center in the air at once.
 pub const MAX_AIRBORNE: usize = 5;
 /// Waypoints a route may have.
@@ -173,9 +180,9 @@ pub struct UavWp {
 }
 
 impl UavWp {
-    /// Metres east, north.
+    /// Metres east, north (the middle of its map unit, where a unit there stands).
     pub fn metres(&self) -> [f64; 2] {
-        [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP]
+        [(self.x as f64 + 0.5) * M_PER_MAP, (0x8000 as f64 - self.y as f64 - 0.5) * M_PER_MAP]
     }
 }
 

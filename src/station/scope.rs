@@ -123,6 +123,9 @@ pub(super) fn snapshot(
     time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(combat)) = (manning, combat) else { return };
+    if m.drones() {
+        return;
+    }
     ui.since_snapshot += time.delta_secs();
     if ui.since_snapshot < PERIOD {
         return;
@@ -259,12 +262,12 @@ pub(super) fn draw(
     }
     let w = SCOPE_CANVAS.0 as f32;
     stroke_text_at(cv, 6.0, 8.0, &format!("{:.0} KM", ui.range_km), 7.0, 1.0, GREEN, Align::Left);
-    let title = if m.gepard { "GEPARD" } else { "PATRIOT" };
+    let title = if m.gepard() { "GEPARD" } else { "PATRIOT" };
     stroke_text_at(cv, w - 6.0, 8.0, title, 7.0, 1.0, GREEN, Align::Right);
     // The site and, for a battery, its launchers.
     cv.frame(centre - Vec2::splat(3.0), centre + Vec2::splat(3.0), 1.0, WHITE);
     if let Some(site) = sim.aaa_units().get(m.unit).map(|u| u.metres()) {
-        if !m.gepard {
+        if !m.gepard() {
             for l in sim.battery_launchers(m.unit) {
                 let u = sim.aaa_units()[l];
                 let p = u.metres();
@@ -280,13 +283,13 @@ pub(super) fn draw(
             }
         }
         // The battery's missile reach, the Gepard's.
-        if !m.gepard {
+        if !m.gepard() {
             let reach = stealth_sim::station::PATRIOT_MAX_RANGE as f32 * k;
             if reach < r {
                 cv.ring(centre, reach, 0.6, GREY);
             }
         }
-        if m.gepard {
+        if m.gepard() {
             let reach = stealth_sim::station::GEPARD_REACH as f32 * k;
             if reach > 4.0 {
                 cv.ring(centre, reach, 0.6, GREY);

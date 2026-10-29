@@ -75,6 +75,7 @@ pub struct CockpitModels(pub std::collections::HashMap<&'static str, Handle<Gltf
 pub(super) fn load_models(mut commands: Commands, server: Res<AssetServer>) {
     let mut files = crate::aircraft::cockpit_files();
     files.push(super::CONSOLE_MODEL);
+    files.push(super::DRONE_CONSOLE_MODEL);
     commands.insert_resource(CockpitModels(
         files.into_iter().map(|f| (f, server.load(format!("models/{f}.glb")))).collect(),
     ));
@@ -396,11 +397,12 @@ impl<'a> Spawner<'a> {
                 }
                 self.panel.atlas.clone()
             }
-            "screen_scope" | "screen_board" | "screen_eo" | "screen_info" => {
+            "screen_scope" | "screen_board" | "screen_eo" | "screen_info" | "screen_map" => {
                 let screen = match name {
                     "screen_scope" => displays::ConsoleScreen::Scope,
                     "screen_board" => displays::ConsoleScreen::Board,
                     "screen_info" => displays::ConsoleScreen::Info,
+                    "screen_map" => displays::ConsoleScreen::Map,
                     _ => displays::ConsoleScreen::Eo,
                 };
                 let role = CanvasRole::Console(screen);
@@ -439,6 +441,15 @@ impl<'a> Spawner<'a> {
                 }
                 still = false;
                 m
+            }
+            "trackcam_pip" => {
+                ec.insert((
+                    TrackCamScreen(crate::mfd::MfdSide::Right),
+                    displays::TrackCamPip,
+                    Visibility::Hidden,
+                ));
+                still = false;
+                displays::trackcam_material(self.materials, self.tc_image)
             }
             "trackcam" | "trackcam_left" | "trackcam_third" => {
                 let side = match name {

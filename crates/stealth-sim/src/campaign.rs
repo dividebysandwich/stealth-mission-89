@@ -1302,13 +1302,10 @@ impl Sim {
         let sides: Vec<Option<bool>> = (0..self.flights.len()).map(|i| self.ai_side(i)).collect();
         let pos: Vec<[f64; 3]> = self.flights.iter().map(flight_metres).collect();
         let xy: Vec<(i32, i32)> = self.flights.iter().map(|u| (u.x, u.y)).collect();
-        // How close a SAM site engages each low flyer: helicopters, strike aircraft in and out
-        // (a command center's small drones not at all).
+        // How close a SAM site engages each low flyer: helicopters, strike aircraft in and out.
         let low: Vec<Option<i32>> = (0..self.flights.len())
             .map(|i| {
-                if self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav) {
-                    Some(0)
-                } else if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
+                if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
                     Some(HELO_SAM_REACH)
                 } else if self
                     .campaign_flight(i)
@@ -1320,6 +1317,12 @@ impl Sim {
                 }
             })
             .collect();
+        // A command center's small drones (their radar cross section tiny, their engines quiet):
+        // every air defence finds them only this close (map units).
+        let unseen: Vec<bool> = (0..self.flights.len())
+            .map(|i| self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav))
+            .collect();
+        let drone_reach = (crate::uav::DETECT_RANGE / M_PER_MAP) as i32;
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
@@ -1327,7 +1330,10 @@ impl Sim {
             (0..sides.len())
                 .filter(|&j| sides[j] == Some(blue) && pos[j][2] > min_alt)
                 .map(|j| (j, approx(xy[j].0 - x, xy[j].1 - y)))
-                .filter(|&(j, d)| d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l)))
+                .filter(|&(j, d)| {
+                    let reach = if unseen[j] { reach.min(drone_reach) } else { reach };
+                    d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l))
+                })
                 .min_by_key(|&(_, d)| d)
         };
         let mut launches: Vec<AiMissile> = Vec::new();
@@ -1772,7 +1778,8 @@ impl Sim {
         for (x, y, alt) in pops {
             self.emit(SimEvent::Explosion { x, y, alt, kind: -6 });
         }
-        for (j, ..) in kills {
+        let kills: Vec<usize> = kills.into_iter().map(|k| k.0).collect();
+        for j in self.small_survive(kills, crate::uav::MISSILE_HIT) {
             self.ai_kill(j);
         }
         for g in ground_hits {
@@ -1826,9 +1833,25 @@ impl Sim {
         for (x, y, alt) in bursts {
             self.emit(SimEvent::Flak { x, y, alt });
         }
-        for j in kills {
+        for j in self.small_survive(kills, crate::uav::SHELL_HIT) {
             self.ai_kill(j);
         }
+    }
+
+    /// The AI's kills that stand: a command center's drone, a small target, is brought down
+    /// only `per_mille` of the times an aircraft would be.
+    fn small_survive(&mut self, kills: Vec<usize>, per_mille: i32) -> Vec<usize> {
+        let small: Vec<bool> = kills
+            .iter()
+            .map(|&j| self.campaign_flight(j).is_some_and(|f| f.role == Role::Uav))
+            .collect();
+        let Some(c) = self.campaign.as_mut() else { return kills };
+        kills
+            .into_iter()
+            .zip(small)
+            .filter(|&(_, small)| !small || c.rng.random(1000) < per_mille)
+            .map(|(j, _)| j)
+            .collect()
     }
 
     /// An AI aircraft destroyed by the AI.

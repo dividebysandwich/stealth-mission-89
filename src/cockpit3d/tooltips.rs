@@ -310,6 +310,15 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::RangeIn => ("RANGE -", "The air picture's range"),
         ConsoleKey::RangeOut => ("RANGE +", "The air picture's range"),
         ConsoleKey::Leave => ("LEAVE", "Leave the console: back to operations"),
+        ConsoleKey::Auto => ("AUTO", "The selected drone flies its route again"),
+        ConsoleKey::Manual => {
+            ("MANUAL", "Fly the selected drone by hand: the stick and the throttle")
+        }
+        ConsoleKey::Track => ("TRACK", "Hold the drone's camera on the ground at its crosshair"),
+        ConsoleKey::Slave => ("SLAVE", "The drone's camera back to its waypoint (ahead and down)"),
+        ConsoleKey::View => {
+            ("FWD", "The drone's camera: its TGP, or the FLIR looking ahead to fly it by")
+        }
     }
 }
 
@@ -484,12 +493,21 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Console(ConsoleScreen::Board) => {
             ("Tracks / site", "Click a track to select it; the SITE tab: launchers and stocks")
         }
-        CanvasRole::Console(ConsoleScreen::Eo) => {
-            ("Camera", "The locked track, in colour or thermal (FLIR)")
-        }
-        CanvasRole::Console(ConsoleScreen::Info) => {
-            ("Target data", "The locked track: range, altitude, speed, time of flight")
-        }
+        CanvasRole::Console(ConsoleScreen::Eo) => (
+            "Camera",
+            "The locked track (a drone command center: the selected drone's camera), in colour or \
+             thermal (FLIR)",
+        ),
+        CanvasRole::Console(ConsoleScreen::Info) => (
+            "Target data",
+            "The locked track: range, altitude, speed, time of flight (a drone command center: \
+             its drones in the air and their batteries)",
+        ),
+        CanvasRole::Console(ConsoleScreen::Map) => (
+            "Ground control station",
+            "The drones and the contacts: drag to pan, click a drone to select it, drag its \
+             waypoints; NEW DRONE plans a launch",
+        ),
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
     let tip = Tip::new(title, detail, &[]);

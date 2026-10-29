@@ -839,7 +839,9 @@ pub fn read_hotas(
     // At a console only the stick and the triggers pass.
     let console = block.0;
     for m in &config.axes {
-        if console && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch) {
+        if console
+            && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch | AxisControl::Throttle)
+        {
             continue;
         }
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };

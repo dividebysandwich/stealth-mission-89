@@ -50,7 +50,7 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
-    if !m.gepard {
+    if !m.gepard() {
         return;
     }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {
@@ -81,10 +81,10 @@ pub(super) fn draw(
 
     // The state boxes.
     let u = sim.aaa_units().get(m.unit).copied();
-    let units: Vec<usize> = if m.gepard { vec![m.unit] } else { sim.battery_launchers(m.unit) };
+    let units: Vec<usize> = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let states = [
         ("TRK", lock.is_some()),
-        ("MAN", m.gepard && lock.is_none()),
+        ("MAN", m.gepard() && lock.is_none()),
         ("FIRE", u.is_some_and(|u| u.burst > 0)),
         ("RDY", units.iter().any(|&k| sim.aaa_units()[k].rounds > 0)),
         ("RLD", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
@@ -104,8 +104,8 @@ pub(super) fn draw(
     let squares = [
         "BRG".to_string(),
         track.map_or(String::new(), |t| format!("{:03.0}", t.bearing())),
-        if m.gepard { "TOF" } else { "HDG" }.to_string(),
-        if m.gepard {
+        if m.gepard() { "TOF" } else { "HDG" }.to_string(),
+        if m.gepard() {
             slant.map_or(String::new(), |r| format!("{:.1}", r / GEPARD_V0 as f32))
         } else {
             track.map_or(String::new(), |t| format!("{:03.0}", t.heading()))
@@ -138,7 +138,7 @@ pub(super) fn draw(
     }
 
     // The bottom row: in reach or not, and the reach.
-    let reach = if m.gepard { GEPARD_REACH } else { PATRIOT_MAX_RANGE } as f32;
+    let reach = if m.gepard() { GEPARD_REACH } else { PATRIOT_MAX_RANGE } as f32;
     let status = match (lock, slant) {
         (None, _) => "NO LOCK",
         (Some(_), None) => "NO TRACK DATA",
