@@ -80,7 +80,7 @@ Cockpit and graphics
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size
   --novsync                    uncapped frame rate
-  --ui-zoom <f>                interface scale
+  --ui-zoom <f>                interface scale (default: fit the window)
 
 Tacview
   --tacview                    save the flight as a Tacview ACMI file when it ends

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Stealth Mission 89</title>
   <link data-trunk rel="rust" href="../Cargo.toml" data-bin="stealth-mission-89"
         data-cargo-no-default-features data-cargo-features="webgpu" data-cargo-profile="wasm-release"
@@ -14,9 +14,11 @@
   <!-- window.SM89_WASM_GZ, the download's gzipped size, written when the page is built (Trunk.toml). -->
   <script src="version.js"></script>
   <style>
-    html, body { margin: 0; height: 100%; background: #000; color: #4f4; overflow: hidden;
-                 font: 16px/1.5 monospace; }
-    #sm89 { display: block; width: 100%; height: 100%; outline: none; }
+    /* dvh: a phone's own toolbars come and go without the page scrolling under them. */
+    html, body { margin: 0; height: 100%; height: 100dvh; background: #000; color: #4f4;
+                 overflow: hidden; font: 16px/1.5 monospace; }
+    /* The game takes the touches: no browser pinch zoom or scrolling over it. */
+    #sm89 { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
     #status { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
               justify-content: center; text-align: center; padding: 16px; box-sizing: border-box;
               color: #8f8;
