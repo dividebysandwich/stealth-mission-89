@@ -332,7 +332,8 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     } else {
         GREEN
     };
-    ui.horizontal(|ui| {
+    // Wrapped: the drone center's stock line is wider than the card.
+    ui.horizontal_wrapped(|ui| {
         let ammo = if s.kind == AaaKind::Gepard {
             format!("{} / {} rds", s.ready, s.full)
         } else if s.kind == AaaKind::DroneCenter {
