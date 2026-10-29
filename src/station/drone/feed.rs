@@ -220,7 +220,14 @@ pub(super) fn draw(
         }
     }
     ladders(cv, u, col);
-    hsi(cv, u, col);
+    // Flying by the forward view: a heading tape on top and the waypoint at the bottom; else
+    // the HSI.
+    if cam.forward {
+        heading_tape(cv, u, col);
+        waypoint_line(cv, u);
+    } else {
+        hsi(cv, u, col);
+    }
 }
 
 /// The TGP's overlay: the crosshair, the zoom, the range to the ground point, brackets on the
@@ -312,6 +319,63 @@ fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
     stroke_text_at(cv, 22.0, bottom + 9.0, "KT", 5.0, 0.8, col, Align::Centre);
     tape(cv, w - 40.0, w - 4.0, true, u.pos[2] as f32, 2.5, 25.0, 100.0);
     stroke_text_at(cv, w - 22.0, bottom + 9.0, "M", 5.0, 0.8, col, Align::Centre);
+}
+
+/// The bearing (rad) and distance (km) to the next waypoint.
+fn to_waypoint(u: &Uav) -> Option<(f32, f64)> {
+    let m = u.target()?.metres();
+    let (de, dn) = (m[0] - u.pos[0], m[1] - u.pos[1]);
+    Some((de.atan2(dn) as f32, de.hypot(dn) / 1000.0))
+}
+
+/// The heading tape across the top: ticks every 5 degrees, numbers every 10 (the cardinal
+/// points by letter), the heading boxed at the middle, the next waypoint's bearing marked.
+fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
+    let w = EO_CANVAS.0 as f32;
+    let (y, half, per_deg) = (40.0, 80.0, 2.0);
+    let c = w / 2.0;
+    let hdg = u.heading.to_degrees().rem_euclid(360.0) as f32;
+    cv.stroke(Vec2::new(c - half, y), Vec2::new(c + half, y), 1.0, col);
+    let lo = ((hdg - half / per_deg) / 5.0).ceil() as i32;
+    let hi = ((hdg + half / per_deg) / 5.0).floor() as i32;
+    for k in lo..=hi {
+        let deg = k * 5;
+        let x = c + (deg as f32 - hdg) * per_deg;
+        let major = deg % 10 == 0;
+        cv.stroke(Vec2::new(x, y), Vec2::new(x, y + if major { 5.0 } else { 3.0 }), 1.0, col);
+        if major && (x - c).abs() > 14.0 {
+            let d = deg.rem_euclid(360);
+            let label = match d {
+                0 => "N".to_string(),
+                90 => "E".to_string(),
+                180 => "S".to_string(),
+                270 => "W".to_string(),
+                _ => format!("{:02}", d / 10),
+            };
+            stroke_text_at(cv, x, y + 11.0, &label, 5.0, 0.8, col, Align::Centre);
+        }
+    }
+    // The next waypoint's bearing: a mark on the tape (at its edge when off it).
+    if let Some((brg, _)) = to_waypoint(u) {
+        let off = ((brg.to_degrees() - hdg + 540.0).rem_euclid(360.0) - 180.0) * per_deg;
+        let x = c + off.clamp(-half, half);
+        cv.triangle(
+            [Vec2::new(x, y - 1.0), Vec2::new(x - 4.0, y - 7.0), Vec2::new(x + 4.0, y - 7.0)],
+            CYAN,
+        );
+    }
+    cv.fill_rect(c as i32 - 13, y as i32 + 6, 26, 11, BLACK);
+    cv.frame(Vec2::new(c - 13.0, y + 6.0), Vec2::new(c + 13.0, y + 17.0), 1.0, col);
+    stroke_text_at(cv, c, y + 11.5, &format!("{hdg:03.0}"), 6.0, 0.9, col, Align::Centre);
+}
+
+/// The next waypoint at the bottom: its number and kind, bearing and distance.
+fn waypoint_line(cv: &mut Canvas, u: &Uav) {
+    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (Some(wp), Some((brg, km))) = (u.target(), to_waypoint(u)) else { return };
+    let deg = brg.to_degrees().rem_euclid(360.0);
+    let text = format!("WP{} {} {deg:03.0} {km:.1}KM", u.next + 1, wp.kind.name());
+    stroke_text_at(cv, w / 2.0, h - 10.0, &text, 6.0, 0.9, CYAN, Align::Centre);
 }
 
 /// The HSI at the bottom: the compass rose turning with the heading, the lubber line, the
