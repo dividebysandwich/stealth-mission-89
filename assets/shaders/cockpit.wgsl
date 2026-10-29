@@ -71,9 +71,9 @@ fn flood_light(base: vec3<f32>) -> vec3<f32> {
 }
 
 #ifdef COCKPIT_SHADOWS
-// Classic shaders: a hard edged shadow (the nearest shadow map texel), like the world's
-// (palette.wgsl `sun_shadow`).
-fn hard_shadow(i: u32, world: vec4<f32>, n: vec3<f32>, view_z: f32) -> f32 {
+// One shadow map sample, like the world's (palette.wgsl `sun_shadow`): classic shaders hard
+// edged (the nearest texel), modern (`hard` false, VR) the hardware's 2x2 comparison filter.
+fn one_shadow(i: u32, world: vec4<f32>, n: vec3<f32>, view_z: f32, hard: bool) -> f32 {
     let light = &view_bindings::lights.directional_lights[i];
     let ci = shadows::get_cascade_index(i, view_z);
     if (ci >= (*light).num_cascades) {
@@ -90,8 +90,12 @@ fn hard_shadow(i: u32, world: vec4<f32>, n: vec3<f32>, view_z: f32) -> f32 {
     // WebGL2 (GLSL can't load from a depth texture): the hardware's 2x2 comparison filter.
     return textureSampleCompareLevel(view_bindings::directional_shadow_textures, view_bindings::directional_shadow_textures_comparison_sampler, l.xy, l.z);
 #else
+    let layer = i32((*light).depth_texture_base_index + ci);
+    if (!hard) {
+        return textureSampleCompareLevel(view_bindings::directional_shadow_textures, view_bindings::directional_shadow_textures_comparison_sampler, l.xy, layer, l.z);
+    }
     let size = vec2<f32>(textureDimensions(view_bindings::directional_shadow_textures));
-    let d = textureLoad(view_bindings::directional_shadow_textures, vec2<i32>(l.xy * size), i32((*light).depth_texture_base_index + ci), 0);
+    let d = textureLoad(view_bindings::directional_shadow_textures, vec2<i32>(l.xy * size), layer, 0);
     return select(0.0, 1.0, l.z >= d);
 #endif
 }
@@ -130,11 +134,15 @@ fn simple_lighting(in: PbrInput) -> vec4<f32> {
                 && (view_bindings::lights.directional_lights[i].flags & DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT) != 0u
                 && dot(in.N, view_bindings::lights.directional_lights[i].direction_to_light) > 0.0) {
             let view_z = (view_bindings::view.view_from_world * in.world_position).z;
+#ifdef COCKPIT_ONE_SAMPLE
+            shadow = one_shadow(i, in.world_position, in.world_normal, view_z, night.w != 0.0);
+#else
             if (night.w != 0.0) {
-                shadow = hard_shadow(i, in.world_position, in.world_normal, view_z);
+                shadow = one_shadow(i, in.world_position, in.world_normal, view_z, true);
             } else {
                 shadow = shadows::fetch_directional_shadow(i, in.world_position, in.world_normal, view_z, in.frag_coord.xy);
             }
+#endif
         }
 #endif
         direct += lighting::directional_light(i, &input, true) * shadow;

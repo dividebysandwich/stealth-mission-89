@@ -411,6 +411,7 @@ fn sync_shading(
             m.extension.unlit != m.base.unlit
                 || m.extension.full != full
                 || m.extension.shadows != shadows
+                || m.extension.one_sample != settings.vr
                 || m.extension.night != night(m)
                 || m.extension.flood != flood_of(m)
                 || m.extension.retro != retro
@@ -422,6 +423,7 @@ fn sync_shading(
             m.extension.unlit = m.base.unlit;
             m.extension.full = full;
             m.extension.shadows = shadows;
+            m.extension.one_sample = settings.vr;
             m.extension.night = night(&m);
             m.extension.flood = flood_of(&m);
             m.extension.retro = retro;

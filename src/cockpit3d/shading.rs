@@ -45,6 +45,10 @@ pub struct CockpitShading {
     pub full: bool,
     /// Shadows are on (without local lights: the directional lights' shadow maps only).
     pub shadows: bool,
+    /// VR: the modern shaders' shadow is one sample with the hardware's 2x2 comparison filter,
+    /// as the world's (palette.wgsl `sun_shadow`), not Bevy's filtered and blended lookup, which
+    /// costs the Steam Frame too much over the cockpit's share of the view.
+    pub one_sample: bool,
     /// x: darkness of a night without moonlight 0..1 (`crate::sky::Sky::dark`): everything
     /// but the emissive parts and the cockpit lamps' light goes dark; y: night vision goggles,
     /// z: daylight 0..1 (their gain), w: classic shaders (hard edged shadows).
@@ -68,11 +72,12 @@ pub struct CockpitShadingKey {
     unlit: bool,
     full: bool,
     shadows: bool,
+    one_sample: bool,
 }
 
 impl From<&CockpitShading> for CockpitShadingKey {
     fn from(s: &CockpitShading) -> Self {
-        Self { unlit: s.unlit, full: s.full, shadows: s.shadows }
+        Self { unlit: s.unlit, full: s.full, shadows: s.shadows, one_sample: s.one_sample }
     }
 }
 
@@ -97,6 +102,9 @@ impl MaterialExtension for CockpitShading {
                 fragment.shader_defs.push("COCKPIT_SIMPLE_LIT".into());
                 if k.shadows {
                     fragment.shader_defs.push("COCKPIT_SHADOWS".into());
+                    if k.one_sample {
+                        fragment.shader_defs.push("COCKPIT_ONE_SAMPLE".into());
+                    }
                 }
             }
         }
