@@ -275,16 +275,15 @@ pub fn spawn_background(
     palette: &crate::palette::Palette,
     layer: usize,
 ) -> Entity {
+    // Seen from inside: invert the winding so back-face culling keeps the inner side.
+    let mesh = meshes.add(
+        Mesh::from(Sphere::new(BACKGROUND_RADIUS).mesh().uv(64, 64))
+            .with_inverted_winding()
+            .expect("sphere mesh has indices"),
+    );
     let sphere = commands
         .spawn((
-            // Seen from inside: invert the winding so back-face culling keeps the inner side.
-            Mesh3d(
-                meshes.add(
-                    Mesh::from(Sphere::new(BACKGROUND_RADIUS).mesh().uv(64, 64))
-                        .with_inverted_winding()
-                        .expect("sphere mesh has indices"),
-                ),
-            ),
+            Mesh3d(mesh.clone()),
             MeshMaterial3d(palette.background.clone()),
             Transform::default(),
             bevy::camera::visibility::NoFrustumCulling,
@@ -292,6 +291,22 @@ pub fn spawn_background(
             bevy::light::NotShadowCaster,
         ))
         .id();
+    // Its twins in every sky variant, shrunk to a speck behind the eye (clipped, no pixels):
+    // drawn so each variant's pipeline is compiled before the sky switches to it.
+    for twin in &palette.background_twins {
+        let speck = commands
+            .spawn((
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(twin.clone()),
+                Transform::from_xyz(0.0, 0.0, BACKGROUND_RADIUS * 0.01)
+                    .with_scale(Vec3::splat(1e-4)),
+                bevy::camera::visibility::NoFrustumCulling,
+                bevy::camera::visibility::RenderLayers::layer(layer),
+                bevy::light::NotShadowCaster,
+            ))
+            .id();
+        commands.entity(sphere).add_child(speck);
+    }
     commands.entity(camera).add_child(sphere);
     sphere
 }

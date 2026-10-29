@@ -29,6 +29,10 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    // The key light's cascades (palette.wgsl; unused here: no sun shadows).
+    mat4 shadow_cascades[4];
+    vec4 shadow_texel;
+    vec4 shadow_light;
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     vec4 storm_haze;
     vec4 burst;

@@ -26,6 +26,9 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    mat4 shadow_cascades[4];
+    vec4 shadow_texel;
+    vec4 shadow_light;
     vec4 storm_haze;
     vec4 burst;
     vec4 burst_colour;

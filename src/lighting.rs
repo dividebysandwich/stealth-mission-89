@@ -427,7 +427,8 @@ fn update_sun(
         // Bevy sorts the directional lights without shadow maps (the fill light) first.
         if shadows {
             let n = config.bounds.len().min(4);
-            state.shadow = Vec4::new(fill.iter().len() as f32, n as f32, 0.0, 0.0);
+            // The rest of it is the cascades' (palette.rs `shadow_cascades`).
+            state.shadow = Vec4::new(0.0, n as f32, 0.0, 0.0);
             let mut b = [f32::MAX; 4];
             b[..n].copy_from_slice(&config.bounds[..n]);
             state.shadow_bounds = Vec4::from_array(b);

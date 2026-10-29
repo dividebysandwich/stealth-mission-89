@@ -33,7 +33,13 @@ impl Plugin for PalettePlugin {
             )
             .add_systems(
                 PostUpdate,
-                (apply_remap_changes, update_globals.after(crate::lighting::LightingSystems))
+                (
+                    apply_remap_changes,
+                    // After the shadow cascades are built (and shared by the headset's eyes).
+                    update_globals
+                        .after(crate::lighting::LightingSystems)
+                        .after(bevy::light::SimulationLightSystems::UpdateLightFrusta),
+                )
                     .run_if(resource_exists::<Palette>),
             )
             .add_systems(PostUpdate, (apply_msaa, crate::palette_material::sync_lighting));
@@ -185,6 +191,9 @@ pub struct Palette {
     pub per_vertex: Handle<PaletteMaterial>,
     pub background: Handle<PaletteMaterial>,
     pub background_flir: Handle<PaletteMaterial>,
+    /// The background in each sky variant (`palette_material::SKY_VARIANTS`), drawn by
+    /// invisible twins of the spheres so all of them stay compiled.
+    pub background_twins: Vec<Handle<PaletteMaterial>>,
     pub globals: Handle<ShaderBuffer>,
 }
 
@@ -328,6 +337,7 @@ impl Palette {
             per_vertex: Handle::default(),
             background: Handle::default(),
             background_flir: Handle::default(),
+            background_twins: vec![],
             globals: globals.clone(),
         };
         let mk = |word: u16, flags: u32| PaletteMaterial {
@@ -347,6 +357,10 @@ impl Palette {
         palette.background = materials.add(mk(0, FLAG_BACKGROUND));
         palette.background_flir =
             materials.add(mk(0, FLAG_BACKGROUND | crate::palette_material::FLAG_FLIR));
+        palette.background_twins = crate::palette_material::SKY_VARIANTS
+            .iter()
+            .map(|_| materials.add(mk(0, FLAG_BACKGROUND)))
+            .collect();
         palette
     }
 }
@@ -490,6 +504,7 @@ fn update_globals(
     images: Res<Assets<Image>>,
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
+    (shadow_lights, world_cameras): (ShadowLights, WorldCameras),
     bursts: Res<crate::flashes::Bursts>,
     theater: Option<Res<crate::world::Theater>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
@@ -520,6 +535,7 @@ fn update_globals(
     g.sun = lighting.sun;
     g.moon = lighting.moon;
     (g.shadow, g.shadow_bounds) = (lighting.shadow, lighting.shadow_bounds);
+    shadow_cascades(&mut g, &shadow_lights, &world_cameras);
     g.ambient = lighting.ambient;
     g.light_info.x = lighting.lights.len() as f32;
     g.light_info.y = lighting.daylight;
@@ -571,6 +587,46 @@ fn update_globals(
     let (rw, rh) = crate::recon::render_size();
     (g.sky_night.z, g.sky_night.w) = (rw as f32, rh as f32);
     buf.set_data(g);
+}
+
+type ShadowLights<'w, 's> = Query<
+    'w,
+    's,
+    (&'static DirectionalLight, &'static GlobalTransform, &'static bevy::light::Cascades),
+>;
+type WorldCameras<'w, 's> = Query<
+    'w,
+    's,
+    (Entity, &'static Camera),
+    (With<Camera3d>, Without<crate::camera::OffscreenCamera>),
+>;
+
+/// The key light's shadow cascades as Bevy built them this frame for the camera drawing the
+/// world (`Globals::shadow_cascades`): the headset's eyes share one set (xr.rs
+/// `share_eye_cascades`), the offscreen cameras have none (lighting.rs). None yet: no shadows.
+fn shadow_cascades(g: &mut Globals, lights: &ShadowLights, cameras: &WorldCameras) {
+    let Some((light, transform, cascades)) = lights.iter().find(|(l, ..)| l.shadow_maps_enabled)
+    else {
+        return;
+    };
+    let set = cameras
+        .iter()
+        .filter(|(_, c)| c.is_active)
+        .find_map(|(e, _)| cascades.cascades.get(&e).filter(|c| !c.is_empty()));
+    let Some(set) = set else {
+        g.shadow.y = 0.0;
+        return;
+    };
+    let n = set.len().min(4);
+    g.shadow.y = g.shadow.y.min(n as f32);
+    // As Bevy hands them to its shaders (the normal bias for a texel's diagonal).
+    g.shadow.z = light.shadow_normal_bias * std::f32::consts::SQRT_2;
+    g.shadow.w = light.shadow_depth_bias;
+    for (i, c) in set.iter().take(n).enumerate() {
+        g.shadow_cascades[i] = c.clip_from_world;
+        g.shadow_texel[i] = c.texel_size;
+    }
+    g.shadow_light = transform.back().extend(0.0);
 }
 
 /// `Globals::retro` (and the cockpit's `CockpitShading::retro`): VGA colours, scanlines (on the
