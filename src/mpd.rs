@@ -128,8 +128,8 @@ pub fn alerts(
     add(w.jammer, Caution, "JAMMERS FAIL");
     add(w.missile_warning, Caution, "MWS FAIL");
     add(w.bay_doors, Caution, "BAY DOORS JAMMED");
-    add(w.tracked, Caution, "RADAR TRACK");
-    add(w.emv_warning, Caution, "DETECTED");
+    add(w.tracked, Caution, RADAR_TRACK);
+    add(w.emv_warning, Caution, DETECTED);
     add(a.is_some_and(|a| a.bay_open) && !w.bay_doors, Advisory, "BAY DOORS OPEN");
     add(a.is_some_and(|a| a.gear_down && !a.on_ground), Advisory, "GEAR DOWN");
     add(a.is_some_and(|a| !a.gear_down), Advisory, "GEAR UP");
@@ -140,9 +140,16 @@ pub fn alerts(
     v
 }
 
-/// The master caution light: lit while a warning or caution of `list` is not acknowledged.
+/// The cautions of being seen by radar: on the list, but they leave the master caution dark.
+const RADAR_TRACK: &str = "RADAR TRACK";
+const DETECTED: &str = "DETECTED";
+
+/// The master caution light: lit while a warning or caution of `list` is not acknowledged (but
+/// for a radar track or a detection).
 pub fn master_caution(list: &[(Level, &'static str)], acked: &[&'static str]) -> bool {
-    list.iter().any(|e| e.0 != Level::Advisory && !acked.contains(&e.1))
+    list.iter().any(|e| {
+        e.0 != Level::Advisory && ![RADAR_TRACK, DETECTED].contains(&e.1) && !acked.contains(&e.1)
+    })
 }
 
 /// The warnings and cautions the master caution has acknowledged (they stop flashing); one
@@ -619,8 +626,11 @@ mod tests {
         let mut a = hovering();
         a.gear_down = false;
         let cm = Countermeasures::default();
-        // Advisories alone leave it dark; a launch lights it until acknowledged.
+        // Advisories, a radar track and a detection leave it dark; a launch lights it until
+        // acknowledged.
         assert!(!master_caution(&alerts(&Warnings::default(), Some(&a), &cm), &[]));
+        let seen = Warnings { tracked: true, emv_warning: true, ..default() };
+        assert!(!master_caution(&alerts(&seen, Some(&a), &cm), &[]));
         let w = Warnings { radar_missile: true, ..default() };
         let list = alerts(&w, Some(&a), &cm);
         assert!(master_caution(&list, &[]));
