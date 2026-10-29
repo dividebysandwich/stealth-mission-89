@@ -503,6 +503,11 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
             "The locked track: range, altitude, speed, time of flight (a drone command center: \
              its drones in the air and their batteries)",
         ),
+        CanvasRole::Console(ConsoleScreen::Feed) => (
+            "Drone camera",
+            "The selected drone's camera: its TGP (the stick slews it) or the forward FLIR, its \
+             speed, height and heading",
+        ),
         CanvasRole::Console(ConsoleScreen::Map) => (
             "Ground control station",
             "The drones and the contacts: drag to pan, click a drone to select it, drag its \

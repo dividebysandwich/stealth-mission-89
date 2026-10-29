@@ -45,6 +45,8 @@ pub struct ConsoleEo {
     /// Nothing shows the picture (a drone command center without a drone selected): it is not
     /// rendered.
     pub idle: bool,
+    /// The drone command center's wide picture (`trackcam::WIDE`).
+    pub wide: bool,
 }
 
 /// The camera points at the lock.
@@ -83,6 +85,7 @@ pub(super) fn aim(
             slew: 0.0,
             manual: None,
             idle: false,
+            wide: false,
         });
         return;
     };

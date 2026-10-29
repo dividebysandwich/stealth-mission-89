@@ -27,8 +27,9 @@ const BAR_Y: f32 = 222.0;
 const BAR_H: f32 = 18.0;
 /// The panning cross's buttons.
 const PAD: f32 = 18.0;
-/// The picture in picture (`tools/models/build_console_drone.py`): x, y, w, h.
-pub const PIP: [f32; 4] = [480.0, 6.0, 154.0, 120.0];
+/// The picture in picture (`tools/models/build_console_drone.py`, the camera's wide shape):
+/// x, y, w, h.
+pub const PIP: [f32; 4] = [480.0, 6.0, 154.0, 65.0];
 /// The list's rows.
 const ROW_Y: f32 = 34.0;
 const ROW_H: f32 = 34.0;

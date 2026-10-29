@@ -385,7 +385,7 @@ fn buttons(
                 Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
-            ConsoleScreen::Eo | ConsoleScreen::Info | ConsoleScreen::Map => {}
+            ConsoleScreen::Eo | ConsoleScreen::Info | ConsoleScreen::Map | ConsoleScreen::Feed => {}
         }
     }
     // Test aid: `--console-lock` locks the nearest hostile track once there is one (any

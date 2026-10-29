@@ -115,6 +115,8 @@ pub(super) struct Spawner<'a> {
     pub layout: &'a PanelLayout,
     pub fonts: &'a Fonts,
     pub tc_image: Option<&'a crate::trackcam::TrackCamImage>,
+    /// The drone command center's wide camera picture (`trackcam_wide`, `trackcam_pip`).
+    pub tc_wide: Option<crate::trackcam::TrackCamImage>,
     pub classic_hud: bool,
     pub local_lights: bool,
     /// High-resolution MFD canvases.
@@ -171,6 +173,7 @@ impl<'a> Spawner<'a> {
             layout,
             fonts,
             tc_image,
+            tc_wide: None,
             classic_hud,
             local_lights,
             hires,
@@ -397,12 +400,14 @@ impl<'a> Spawner<'a> {
                 }
                 self.panel.atlas.clone()
             }
-            "screen_scope" | "screen_board" | "screen_eo" | "screen_info" | "screen_map" => {
+            "screen_scope" | "screen_board" | "screen_eo" | "screen_info" | "screen_map"
+            | "screen_feed" => {
                 let screen = match name {
                     "screen_scope" => displays::ConsoleScreen::Scope,
                     "screen_board" => displays::ConsoleScreen::Board,
                     "screen_info" => displays::ConsoleScreen::Info,
                     "screen_map" => displays::ConsoleScreen::Map,
+                    "screen_feed" => displays::ConsoleScreen::Feed,
                     _ => displays::ConsoleScreen::Eo,
                 };
                 let role = CanvasRole::Console(screen);
@@ -449,7 +454,12 @@ impl<'a> Spawner<'a> {
                     Visibility::Hidden,
                 ));
                 still = false;
-                displays::trackcam_material(self.materials, self.tc_image)
+                displays::trackcam_material(self.materials, self.tc_wide.as_ref())
+            }
+            "trackcam_wide" => {
+                ec.insert((TrackCamScreen(crate::mfd::MfdSide::Right), Visibility::Hidden));
+                still = false;
+                displays::trackcam_material(self.materials, self.tc_wide.as_ref())
             }
             "trackcam" | "trackcam_left" | "trackcam_third" => {
                 let side = match name {

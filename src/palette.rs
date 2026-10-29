@@ -482,7 +482,11 @@ fn update_globals(
     origin: Res<crate::world::FloatingOrigin>,
     hud: Option<Res<crate::hud::HudState>>,
     mfd: Option<Res<crate::mfd::MfdState>>,
-    trackcam: Option<Res<crate::trackcam::TrackCamImage>>,
+    (trackcam, wide, console): (
+        Option<Res<crate::trackcam::TrackCamImage>>,
+        Option<Res<crate::trackcam::TrackCamWide>>,
+        Option<Res<crate::station::ConsoleEo>>,
+    ),
     images: Res<Assets<Image>>,
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
@@ -529,7 +533,12 @@ fn update_globals(
             as f32;
     g.dots.x = if settings.vr { crate::dots::XR_ANGLE } else { 0.0 };
     g.dots.y = time.elapsed_secs_wrapped() % 3600.0;
-    if let Some(img) = trackcam.and_then(|t| images.get(&t.0)) {
+    // The tracking camera's picture (the FLIR view): the drone command center's wide one there.
+    let shown = match (console.is_some_and(|c| c.wide), wide) {
+        (true, Some(w)) => Some(w.0.clone()),
+        _ => trackcam.map(|t| t.0.clone()),
+    };
+    if let Some(img) = shown.and_then(|h| images.get(&h)) {
         (g.dots.z, g.dots.w) = (img.width() as f32, img.height() as f32);
     }
     for (i, (p, c)) in lighting.lights.iter().enumerate() {

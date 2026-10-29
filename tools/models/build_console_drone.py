@@ -6,11 +6,11 @@
 # what the game binds to.
 #
 # Built: the shelter and the chair of the air defence console (tools/models/console_lib.py), the
-# console: an upright panel with the drone's camera (`trackcam` behind the `screen_eo` overlay),
-# the buttons that fly it beside it, the drone list (`screen_info`) in its own housing turned
+# console: an upright panel with the drone's camera across it as wide as the map
+# (`trackcam_wide` behind the `screen_feed` overlay), the drone list (`screen_info`) in its own housing turned
 # towards the operator, and on the sloping desk one wide ground control station map
 # (`screen_map`) with the camera's picture-in-picture (`trackcam_pip`) behind its top right
-# corner. Right of the chair the stick on its pedestal, left of it the throttle quadrant
+# corner and the buttons that fly the drone either side of it. Right of the chair the stick on its pedestal, left of it the throttle quadrant
 # (`throttle` at idle, the `throttle_full` anchor ahead of it).
 #
 # Blender frame: eye at the origin, x right, y forward, z up, metres.
@@ -41,26 +41,27 @@ PANEL_Z = 0.20
 DESK_D = 0.70
 DESK_EL = -20.0
 DESK_TILT = 40.0
-# The camera screen (77:60, the tracking camera's picture), its centre right of the eye; the
-# drone list (4:3).
-EO = (0.46, 0.46 * 60.0 / 77.0)
-EO_U = -0.06
-INFO = (0.24, 0.18)
-INFO_AT = (0.58, PANEL_Y - 0.08, PANEL_Z)
-INFO_TURN = -30.0
 # The map (src/cockpit3d/displays.rs MAP_CANVAS, 640 x 244 canvas pixels) and the picture in
-# picture in its top right corner (`drone::PIP`: 154 x 120 pixels, 6 in from the edges).
+# picture in its top right corner (`drone::PIP`: 154 x 65 pixels, 6 in from the edges).
 MAP = (0.84, 0.84 * 244.0 / 640.0)
 MAP_PX = MAP[0] / 640.0
-PIP = (154 * MAP_PX, 120 * MAP_PX)
-PIP_AT = (MAP[0] / 2 - (6 + 77) * MAP_PX, MAP[1] / 2 - (6 + 60) * MAP_PX)
+PIP = (154 * MAP_PX, 65 * MAP_PX)
+PIP_AT = (MAP[0] / 2 - (6 + 77) * MAP_PX, MAP[1] / 2 - (6 + 32.5) * MAP_PX)
+# The camera screen as wide as the map, the shape of its picture (`trackcam::WIDE`, 180:76);
+# the drone list (4:3) right of it.
+FEED = (MAP[0], MAP[0] * 76.0 / 180.0)
+INFO = (0.24, 0.18)
+INFO_AT = (0.64, PANEL_Y - 0.10, PANEL_Z)
+INFO_TURN = -32.0
+# The button columns either side of the map.
+BUTTONS_U = 0.50
 # The stick's pivot right of the chair, the throttle's handle at idle left of it and how far
 # forward it goes to full (its grip GRIP_HEIGHT, src/cockpit3d/levers.rs, above the stick's).
 STICK = Vector((0.34, 0.20, -0.50))
 THROTTLE = Vector((-0.34, 0.12, -0.44))
 THROTTLE_TRAVEL = 0.16
 
-lib.setup(("screen_eo", "screen_info", "screen_map", "trackcam_pip"))
+lib.setup(("screen_feed", "screen_info", "screen_map", "trackcam_wide", "trackcam_pip"))
 
 # --- the bunker's room, the chair under the eye, the stick right of it
 lib.shelter(ROOM_X, ROOM_BACK, ROOM_FRONT, FLOOR, CEILING, WALL)
@@ -96,21 +97,8 @@ front = desk.at(0.0, -0.23, -0.02)
 box("black", "black", (0.0, front.y + 0.12, (front.z + FLOOR) / 2), (1.5, 0.24, front.z - FLOOR))
 box("frame", "frame", desk.at(0.0, -0.235, 0.0), (1.52, 0.03, 0.03), desk.rot)
 
-# --- the drone's camera; the flying buttons left of it, the camera's right of it
-screen(panel, "screen_eo", EO_U, 0.0, EO, behind="trackcam")
-column(panel, -0.46, [
-    ("Console(Leave)", "LEAVE", 0.16),
-    ("Console(Auto)", "AUTO", 0.04),
-    ("Console(Manual)", "MAN", -0.01),
-])
-column(panel, 0.26, [
-    ("Console(Flir)", "FLIR", 0.16),
-    ("Console(ZoomIn)", "ZOOM+", 0.09),
-    ("Console(ZoomOut)", "ZOOM-", 0.04),
-    ("Console(Track)", "TRACK", -0.03),
-    ("Console(Slave)", "SLAVE", -0.08),
-    ("Console(View)", "FWD", -0.15),
-])
+# --- the drone's camera across the panel
+screen(panel, "screen_feed", 0.0, 0.02, FEED, behind="trackcam_wide")
 
 # --- the drone list in its own housing, turned towards the operator
 info = Surface(INFO_AT, Euler((0.0, 0.0, math.radians(INFO_TURN))))
@@ -120,6 +108,20 @@ screen(info, "screen_info", 0.0, 0.0, INFO)
 # --- the desk: the ground control station map across it, the picture in picture behind its
 # corner (the map's canvas is clear there)
 screen(desk, "screen_map", 0.0, 0.0, MAP)
+# The flying buttons left of it, the camera's right of it.
+column(desk, -BUTTONS_U, [
+    ("Console(Leave)", "LEAVE", 0.14),
+    ("Console(Auto)", "AUTO", 0.05),
+    ("Console(Manual)", "MAN", 0.0),
+    ("Console(View)", "FWD", -0.08),
+])
+column(desk, BUTTONS_U, [
+    ("Console(Flir)", "FLIR", 0.14),
+    ("Console(ZoomIn)", "ZOOM+", 0.06),
+    ("Console(ZoomOut)", "ZOOM-", 0.01),
+    ("Console(Track)", "TRACK", -0.07),
+    ("Console(Slave)", "SLAVE", -0.12),
+])
 mesh_object("trackcam_pip", quad_mesh("trackcam_pip", PIP[0], PIP[1], "trackcam_pip"),
             desk.at(PIP_AT[0], PIP_AT[1], 0.009), desk.rot, props={"no_shadow": True})
 

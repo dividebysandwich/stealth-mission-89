@@ -15,7 +15,7 @@ use super::super::eo::ConsoleEo;
 use super::super::scope::{BLACK, CYAN, GREEN, GREY, RED, WHITE, YELLOW};
 use super::{DroneUi, center_uavs, selected};
 use crate::canvas::{Canvas, CanvasTexture, TRANSPARENT};
-use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, EO_CANVAS};
+use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, FEED_CANVAS};
 use crate::combat::{Combat, unit_position};
 use crate::font::{Align, stroke_text_at};
 use crate::station::Manning;
@@ -121,6 +121,7 @@ pub(super) fn aim(
             slew: 0.0,
             manual: None,
             idle,
+            wide: true,
         }),
     }
 }
@@ -163,13 +164,13 @@ pub(super) fn draw(
     if !m.drones() {
         return;
     }
-    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Eo) else {
+    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Feed) else {
         return;
     };
     tex.dirty = true;
     let cv = &mut tex.canvas;
     cv.reset_clip();
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let uavs = center_uavs(&combat, &m);
     let Some(u) = selected(&ui, &uavs) else {
         cv.clear(BLACK);
@@ -233,7 +234,7 @@ pub(super) fn draw(
 /// The TGP's overlay: the crosshair, the zoom, the range to the ground point, brackets on the
 /// enemy air defences the drone sees.
 fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let o = Vec2::new(w / 2.0, h / 2.0);
     for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
         cv.stroke(o + d * 6.0, o + d * 22.0, 1.2, col);
@@ -266,7 +267,7 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
 /// The ladders: the speed (knots) on the left, the height (m) on the right, the value boxed at
 /// the middle.
 fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let (top, bottom) = (30.0, h - 30.0);
     let mid = (top + bottom) / 2.0;
     let half = (bottom - top) / 2.0;
@@ -331,7 +332,7 @@ fn to_waypoint(u: &Uav) -> Option<(f32, f64)> {
 /// The heading tape across the top: ticks every 5 degrees, numbers every 10 (the cardinal
 /// points by letter), the heading boxed at the middle, the next waypoint's bearing marked.
 fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
-    let w = EO_CANVAS.0 as f32;
+    let w = FEED_CANVAS.0 as f32;
     let (y, half, per_deg) = (40.0, 80.0, 2.0);
     let c = w / 2.0;
     let hdg = u.heading.to_degrees().rem_euclid(360.0) as f32;
@@ -371,7 +372,7 @@ fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
 
 /// The next waypoint at the bottom: its number and kind, bearing and distance.
 fn waypoint_line(cv: &mut Canvas, u: &Uav) {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let (Some(wp), Some((brg, km))) = (u.target(), to_waypoint(u)) else { return };
     let deg = brg.to_degrees().rem_euclid(360.0);
     let text = format!("WP{} {} {deg:03.0} {km:.1}KM", u.next + 1, wp.kind.name());
@@ -381,7 +382,7 @@ fn waypoint_line(cv: &mut Canvas, u: &Uav) {
 /// The HSI at the bottom: the compass rose turning with the heading, the lubber line, the
 /// course to the next waypoint and its distance.
 fn hsi(cv: &mut Canvas, u: &Uav, col: u8) {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let r = 26.0;
     let c = Vec2::new(w / 2.0, h - r - 6.0);
     let (bx0, bx1) = (c.x - 92.0, c.x + 92.0);
@@ -455,19 +456,18 @@ fn hsi(cv: &mut Canvas, u: &Uav, col: u8) {
     }
 }
 
-/// The camera's projection (`trackcam`: f = 256 times the zoom over its 77 pixels' width,
-/// vertically 0.75 f): a direction from the camera to the screen.
+/// The camera's projection (`trackcam::WIDE`: f = 256 times the zoom over its width in
+/// pixels, square pixels): a direction from the camera to the screen.
 fn projection(eo: &ConsoleEo) -> impl Fn(Vec3) -> Option<Vec2> {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
-    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / 77.0;
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
+    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
     let dir = eo.dir;
     let up = if dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
     let right = dir.cross(up).normalize();
     let up = right.cross(dir);
     move |v: Vec3| {
         let z = v.dot(dir);
-        (z > 0.0)
-            .then(|| Vec2::new(w / 2.0 + v.dot(right) / z * f, h / 2.0 - v.dot(up) / z * f * 0.75))
+        (z > 0.0).then(|| Vec2::new(w / 2.0 + v.dot(right) / z * f, h / 2.0 - v.dot(up) / z * f))
     }
 }
 
@@ -485,9 +485,9 @@ fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
 /// The forward FLIR's overlay: the horizon (banked, pitched) with its pitch steps and the
 /// drone's symbol on its nose line, the heading.
 fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
-    let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let o = Vec2::new(w / 2.0, h / 2.0);
-    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / 77.0 * 0.75;
+    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
     // The camera looks NOSE_DOWN under the nose: level flight puts the horizon above centre.
     let cam_pitch = (u.pitch - NOSE_DOWN) as f32;
     let horizon = o + Vec2::new(0.0, cam_pitch.tan() * f);

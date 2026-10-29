@@ -76,6 +76,8 @@ pub enum ConsoleScreen {
     /// The drone command center's ground control station map (its picture in picture shows
     /// through it).
     Map,
+    /// The drone command center's camera overlay (over its wide picture).
+    Feed,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -88,6 +90,8 @@ pub const BOARD_CANVAS: (usize, usize) = (400, 300);
 pub const EO_CANVAS: (usize, usize) = (308, 240);
 pub const INFO_CANVAS: (usize, usize) = (320, 240);
 pub const MAP_CANVAS: (usize, usize) = (640, 244);
+/// The shape of `trackcam::WIDE`.
+pub const FEED_CANVAS: (usize, usize) = (640, 270);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -332,10 +336,11 @@ pub(super) fn screen(
                 ConsoleScreen::Eo => EO_CANVAS,
                 ConsoleScreen::Info => INFO_CANVAS,
                 ConsoleScreen::Map => MAP_CANVAS,
+                ConsoleScreen::Feed => FEED_CANVAS,
             };
             (
                 Canvas::scaled(w, h, CONSOLE_SCALE),
-                matches!(s, ConsoleScreen::Eo | ConsoleScreen::Map),
+                matches!(s, ConsoleScreen::Eo | ConsoleScreen::Map | ConsoleScreen::Feed),
             )
         }
         // Only the RAH-66 has the multipurpose displays.

@@ -43,7 +43,8 @@ use crate::settings::{AppState, Settings};
 
 pub use controls::{ConsoleButton, ConsolePanel, DragPhase, PressControl, ScreenClick, ScreenDrag};
 pub use displays::{
-    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, INFO_CANVAS, MAP_CANVAS, SCOPE_CANVAS,
+    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, FEED_CANVAS, INFO_CANVAS, MAP_CANVAS,
+    SCOPE_CANVAS,
 };
 pub use layout::ConsoleKey;
 pub use pick::Solid;
@@ -523,7 +524,10 @@ fn spawn_cockpit(
     mut hud_materials: ResMut<Assets<hud_glass::HudGlassMaterial>>,
     mut images: ResMut<Assets<Image>>,
     fonts: Res<crate::font::Fonts>,
-    tc_image: Option<Res<crate::trackcam::TrackCamImage>>,
+    (tc_image, tc_wide): (
+        Option<Res<crate::trackcam::TrackCamImage>>,
+        Option<Res<crate::trackcam::TrackCamWide>>,
+    ),
     (settings, manning): (Res<Settings>, Option<Res<crate::station::Manning>>),
     models: Res<model::CockpitModels>,
     server: Res<AssetServer>,
@@ -570,6 +574,7 @@ fn spawn_cockpit(
         &mut hud_materials,
         &mut images,
     );
+    spawner.tc_wide = tc_wide.map(|w| crate::trackcam::TrackCamImage(w.0.clone()));
     spawner.spawn(&mut commands, &assets, file, root);
     *anchors = spawner.anchors;
 
