@@ -34,6 +34,7 @@ pub const GEPARD_STOCK: i32 = 640;
 /// A drone command center's stockpile: surveillance drones, attack drones.
 pub const STORK_STOCK: i32 = 4;
 pub const FP2_STOCK: i32 = 8;
+pub const INTERCEPTOR_STOCK: i32 = 6;
 /// Real seconds to refill a launcher (or a Gepard).
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
@@ -164,6 +165,9 @@ pub struct DefenceState {
     /// Per AAA unit: a drone command center's attack drones.
     #[serde(default)]
     pub stock2: Vec<i32>,
+    /// Per AAA unit: a drone command center's interceptor drones.
+    #[serde(default)]
+    pub stock3: Vec<i32>,
     /// Per AAA unit: real seconds left of a launcher's or Gepard's refill (0: none).
     pub refill: Vec<f32>,
     /// The drone command centers' drones in the air, the last one's number, and what the
@@ -177,7 +181,8 @@ pub struct DefenceState {
 }
 
 /// A stockpile to keep over a save: where, the unit that keeps it (a Patriot radar, a Gepard,
-/// a drone command center), how much (and a drone command center's attack drones).
+/// a drone command center), how much (and a drone command center's attack and interceptor
+/// drones).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SavedStock {
     pub x: i32,
@@ -185,6 +190,13 @@ pub struct SavedStock {
     pub kind: AaaKind,
     pub stock: i32,
     pub stock2: i32,
+    /// -1: not saved (a save from before the interceptors), the unit keeps its stockpile.
+    #[serde(default = "unsaved")]
+    pub stock3: i32,
+}
+
+fn unsaved() -> i32 {
+    -1
 }
 
 /// The stockpile a unit starts with (and a resupply brings it back to).
@@ -200,6 +212,11 @@ pub fn initial_stock(kind: AaaKind) -> i32 {
 /// The second stockpile a unit starts with: a drone command center's attack drones.
 pub fn initial_stock2(kind: AaaKind) -> i32 {
     if kind == AaaKind::DroneCenter { FP2_STOCK } else { 0 }
+}
+
+/// The third stockpile a unit starts with: a drone command center's interceptor drones.
+pub fn initial_stock3(kind: AaaKind) -> i32 {
+    if kind == AaaKind::DroneCenter { INTERCEPTOR_STOCK } else { 0 }
 }
 
 /// A unit's load when full.
@@ -295,6 +312,10 @@ impl Sim {
         d.stock2.truncate(n);
         for k in d.stock2.len()..n {
             d.stock2.push(initial_stock2(self.aaa[k].kind));
+        }
+        d.stock3.truncate(n);
+        for k in d.stock3.len()..n {
+            d.stock3.push(initial_stock3(self.aaa[k].kind));
         }
         d.refill.resize(n, 0.0);
     }
@@ -817,6 +838,7 @@ impl Sim {
                     kind: u.kind,
                     stock: d.stock.get(k).copied().unwrap_or(0),
                     stock2: d.stock2.get(k).copied().unwrap_or(0),
+                    stock3: d.stock3.get(k).copied().unwrap_or(0),
                 }
             })
             .collect()
@@ -837,6 +859,9 @@ impl Sim {
                 let d = self.defence_mut();
                 d.stock[k] = s.stock;
                 d.stock2[k] = s.stock2;
+                if s.stock3 >= 0 {
+                    d.stock3[k] = s.stock3;
+                }
             }
         }
     }

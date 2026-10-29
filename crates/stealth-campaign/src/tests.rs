@@ -1979,10 +1979,11 @@ fn a_drone_command_center_takes_one_load() {
 fn saves_from_before_the_drones_say_patriot() {
     let old = r#"{"x":1,"y":2,"patriot":true,"stock":5}"#;
     let s: DefenceStock = serde_json::from_str(old).unwrap();
-    assert_eq!((s.kind, s.stock, s.stock2), (DefenceKind::Patriot, 5, 0));
+    assert_eq!((s.kind, s.stock, s.stock2, s.stock3), (DefenceKind::Patriot, 5, 0, -1));
     let old = r#"{"x":1,"y":2,"patriot":false,"stock":5}"#;
     assert_eq!(serde_json::from_str::<DefenceStock>(old).unwrap().kind, DefenceKind::Gepard);
-    let new = DefenceStock { x: 1, y: 2, kind: DefenceKind::Drones, stock: 3, stock2: 7 };
+    let new =
+        DefenceStock { x: 1, y: 2, kind: DefenceKind::Drones, stock: 3, stock2: 7, stock3: 2 };
     let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&new).unwrap()).unwrap();
     assert_eq!(back, new);
 }

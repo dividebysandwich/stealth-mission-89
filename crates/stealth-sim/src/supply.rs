@@ -20,7 +20,7 @@ use crate::ai_loadout::{AiLoadout, FighterTask};
 use crate::campaign::{CampaignFlight, Role};
 use crate::csar::BLACKHAWK;
 use crate::math::{bearing, cdiv, clamp_q, s16};
-use crate::station::{initial_stock, initial_stock2, mannable};
+use crate::station::{initial_stock, initial_stock2, initial_stock3, mannable};
 use crate::types::*;
 
 /// A drop counts within this distance of the unit (m), this low over the ground (m), after
@@ -350,5 +350,6 @@ impl Sim {
         let d = &mut self.campaign.as_mut().expect("campaign").defence;
         d.stock[k] = d.stock[k].max(initial_stock(kind));
         d.stock2[k] = d.stock2[k].max(initial_stock2(kind));
+        d.stock3[k] = d.stock3[k].max(initial_stock3(kind));
     }
 }

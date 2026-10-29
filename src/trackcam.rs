@@ -189,7 +189,7 @@ pub(crate) fn update_camera(
             camera.is_active = want;
         }
         info.live = false;
-        aim(&mut tf, &mut pos, &mut proj, eo.dir, eo.eye, eo.zoom, eo.wide);
+        aim(&mut tf, &mut pos, &mut proj, eo.dir, eo.up, eo.eye, eo.zoom, eo.wide);
         if sites.pod != eo.target {
             sites.pod = eo.target;
         }
@@ -269,7 +269,7 @@ pub(crate) fn update_camera(
             bearing: None,
             zoom: zoom + 1,
         };
-        aim(&mut tf, &mut pos, &mut proj, dir, eye, zoom, false);
+        aim(&mut tf, &mut pos, &mut proj, dir, None, eye, zoom, false);
         return site(&mut sites, mfd.av.tgp.los_ground);
     }
     let sim = &combat.sim;
@@ -309,21 +309,23 @@ pub(crate) fn update_camera(
     } else if target.is_none() {
         info.zoom = crate::mfd::CAM_ZOOM_DEFAULT + 1;
     }
-    aim(&mut tf, &mut pos, &mut proj, dir, eye, info.zoom.saturating_sub(1), false);
+    aim(&mut tf, &mut pos, &mut proj, dir, None, eye, info.zoom.saturating_sub(1), false);
     site(&mut sites, look);
 }
 
-/// Points the camera from `eye` along `dir` with zoom step `z`.
+/// Points the camera from `eye` along `dir` (rolled to put `up` at the top) with zoom step `z`.
+#[allow(clippy::too_many_arguments)]
 fn aim(
     tf: &mut Transform,
     pos: &mut WorldPos,
     proj: &mut Projection,
     dir: Vec3,
+    up: Option<Vec3>,
     eye: bevy::math::DVec3,
     z: u8,
     wide: bool,
 ) {
-    let up = if dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
+    let up = up.unwrap_or(if dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y });
     tf.rotation = Transform::IDENTITY.looking_to(dir, up).rotation;
     if pos.0 != eye {
         pos.0 = eye;

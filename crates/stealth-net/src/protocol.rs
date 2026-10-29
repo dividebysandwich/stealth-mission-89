@@ -253,6 +253,7 @@ mod tests {
             StationCmd::Slew { az: 0.5, el: -0.25 },
             StationCmd::Burst,
             StationCmd::Launch { kind: UavKind::Fp2, route: route.clone() },
+            StationCmd::Launch { kind: UavKind::Interceptor, route: route.clone() },
             StationCmd::Route { uav: 4, route },
             StationCmd::Next { uav: 4, wp: 1 },
             StationCmd::Manual { uav: 2, on: true },
@@ -263,6 +264,7 @@ mod tests {
         }
         let defence = DefenceState {
             stock2: vec![0, 3],
+            stock3: vec![0, 6],
             stations: vec![Station {
                 unit: 4,
                 pilot: 1,

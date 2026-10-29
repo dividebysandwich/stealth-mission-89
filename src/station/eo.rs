@@ -32,6 +32,9 @@ pub struct ConsoleEo {
     /// The camera (Bevy world) and its direction.
     pub eye: DVec3,
     pub dir: Vec3,
+    /// The picture's up (None: as level as the direction allows): a drone's camera rolls with
+    /// it.
+    pub up: Option<Vec3>,
     /// Zoom step (`mfd::CAM_ZOOMS`).
     pub zoom: u8,
     /// The locked track (Bevy world), while it is there.
@@ -79,6 +82,7 @@ pub(super) fn aim(
         commands.insert_resource(ConsoleEo {
             eye,
             dir,
+            up: None,
             zoom: crate::mfd::CAM_ZOOM_DEFAULT,
             target,
             speed: 0.0,

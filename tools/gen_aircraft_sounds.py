@@ -17,12 +17,19 @@
 - afterburner.flac: the lit afterburner over the engine (louder with its setting in the game):
   a deep, throbbing roar, a coarser rush above it and the exhaust's crackle (sparse pops),
   soft-clipped to be loud.
+- interceptor.flac: a drone command center's quadrotor interceptor heard around, at its hover
+  throttle (20%; the game plays it up to two octaves higher at full throttle, so it keeps
+  below about 6 kHz): four slightly detuned motors, each a buzz at its rotation with the
+  three-bladed propeller's blade passes, wavering as the controller trims them, over the
+  propellers' wash.
 
 They loop seamlessly: the noise is synthesized in the frequency domain (periodic in the loop
 length) and every tone and pulse train repeats a whole number of times per loop.
 Mono, 44.1 kHz, 16 bit, like the other game sounds.
 
-    python3 tools/gen_aircraft_sounds.py      (needs numpy and ffmpeg)
+    python3 tools/gen_aircraft_sounds.py [file.flac ...]      (needs numpy and ffmpeg)
+
+Without arguments every loop is written, else only those named.
 """
 
 import os
@@ -195,10 +202,41 @@ def afterburner():
     return np.tanh(2.5 * mix / np.max(np.abs(mix)))
 
 
+def interceptor():
+    t = 3.0
+    rng_q = np.random.default_rng(105)
+    n = int(t * RATE)
+    norm = lambda x: x / np.max(np.abs(x))
+    motors = np.zeros(n)
+    # Four motors at about 56 000 rpm (small props at hover throttle), a few Hz apart: they
+    # beat.
+    for hz in (924.0, 942.0, 966.0, 988.0):
+        cycles = round(hz * t)
+        rot = lambda h: np.sin(2 * np.pi * cycles * h * np.arange(n) / n + rng_q.uniform(0, 2 * np.pi))
+        # The rotation's harmonics falling off, the blade passes (3x) strongest.
+        buzz = sum(rot(h) / h for h in range(1, 7)) + 1.6 * rot(3) + 0.8 * rot(6)
+        # The flight controller trims each motor many times a second.
+        wobble = 1.0 + 0.25 * norm(periodic_noise(t, lambda f: band(f, 3, 18, 2.0)))
+        motors += buzz * wobble
+    # The propellers' wash: a hiss pulsing with the blade passes.
+    wash = periodic_noise(t, lambda f: band(f, 1200, 5000, 2.0)) * (1.0 + 0.4 * tone(t, 3 * 956.0))
+    mix = 1.0 * norm(motors) + 0.25 * norm(wash)
+    # Soft clipping: the small motors' harsh edge.
+    return np.tanh(1.8 * mix / np.max(np.abs(mix)))
+
+
+LOOPS = {
+    "helicopter.flac": helicopter,
+    "heli_rotor.flac": heli_rotor,
+    "heli_turbine.flac": heli_turbine,
+    "jet_engine.flac": jet_engine,
+    "jet_wind.flac": jet_wind,
+    "afterburner.flac": afterburner,
+    "interceptor.flac": interceptor,
+}
+
 if __name__ == "__main__":
-    write("helicopter.flac", helicopter())
-    write("heli_rotor.flac", heli_rotor())
-    write("heli_turbine.flac", heli_turbine())
-    write("jet_engine.flac", jet_engine())
-    write("jet_wind.flac", jet_wind())
-    write("afterburner.flac", afterburner())
+    import sys
+
+    for name in sys.argv[1:] or LOOPS:
+        write(name, LOOPS[name]())

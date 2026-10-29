@@ -210,6 +210,7 @@ fn a_launcher_refills_from_the_stockpile_in_real_time() {
         kind: AaaKind::PatriotRadar,
         stock: 2,
         stock2: 0,
+        stock3: 0,
     }]);
     let l2 = sim.battery_launchers(radar)[1];
     sim.aaa_units_mut()[l2].rounds = 0;

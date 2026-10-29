@@ -8,12 +8,16 @@
 //!   drone or its row to select it, drag its waypoints (or move the selected one with the left
 //!   VR stick), give a waypoint another type, make it the next one. NEW DRONE plans a launch:
 //!   the type, the waypoints (a click on a contact puts the route's end on it: an attack
-//!   drone's terminate point, a surveillance drone's loiter point), then LAUNCH.
+//!   drone's terminate point, a surveillance drone's loiter point), then LAUNCH. ALT+ and ALT-
+//!   set the selected waypoint's height. The map shows the aircraft and drones in the air with
+//!   their heights, to put an interceptor where it will meet one.
 //! * The selected drone's camera (`feed`): in the map's picture in picture, on the main screen
 //!   with MAIN (one camera, `trackcam`: one place at a time). Its TGP: the stick slews it over
 //!   the ground (TRACK holds it on a point, SLAVE puts it back on the next waypoint), brackets
 //!   on the enemy air defences the drone sees. Flown by hand (MAN, the map's MANUAL): the main
-//!   screen shows the view ahead with a flight display, the stick and throttle fly it.
+//!   screen shows the view ahead with a flight display, the stick and throttle fly it. An
+//!   interceptor has only the view ahead: it marks the aircraft in front and the one it locked
+//!   on to (the drone then steers itself, the throttle closes in).
 //! * The drone list (`list`, the screen top right): each drone's battery.
 
 mod feed;
@@ -64,6 +68,12 @@ const ZOOM_REPEAT: f32 = 0.35;
 const FLY_PERIOD: f32 = 0.06;
 /// The keyboard's throttle keys move it this fast (of full, a second).
 const THROTTLE_KEYS: f32 = 0.5;
+/// The stick a drone is flown by eases to where it is held this fast (of full, a second): the
+/// arrow keys roll and pitch it in and out smoothly.
+const STICK_EASE: f32 = 6.0;
+/// ALT+ and ALT- move a waypoint this much (m), within these heights.
+const ALT_STEP: f32 = 100.0;
+const ALT_RANGE: (f32, f32) = (100.0, 5000.0);
 
 /// A drone being planned: its type and route.
 #[derive(Debug, Clone, PartialEq)]
@@ -117,6 +127,8 @@ pub struct DroneUi {
     /// The throttle (0..1) for a drone flown by hand.
     pub throttle: f32,
     fly: (f32, [f32; 3]),
+    /// The stick (roll, pitch) as eased to where it is held.
+    eased: [f32; 2],
     /// A message (a refused command) and how long it shows yet (s).
     pub note: Option<(String, f32)>,
     /// The map was put on the center, the right stick's zoom repeat, a waypoint moved by the
@@ -143,6 +155,7 @@ impl Default for DroneUi {
             cams: Vec::new(),
             throttle: 0.5,
             fly: (0.0, [0.0; 3]),
+            eased: [0.0; 2],
             note: None,
             placed: false,
             zoom_wait: 0.0,
@@ -216,6 +229,11 @@ fn reset(
     }
 }
 
+/// Drone `u`'s camera looks ahead (an interceptor's always does).
+pub fn forward(ui: &DroneUi, u: &Uav) -> bool {
+    ui.cam(u.id).forward || !u.kind.tgp()
+}
+
 /// The selected drone (if it is still in the air).
 fn selected<'a>(ui: &DroneUi, uavs: &'a [Uav]) -> Option<&'a Uav> {
     let id = ui.selected?;
@@ -245,11 +263,18 @@ fn stick(
     let Some(u) = selected(&ui, &uavs) else { return };
     let dead = |v: f32| if v.abs() < 0.04 { 0.0 } else { v };
     let (roll, pitch) = (dead(controls.roll), dead(controls.pitch));
-    let forward = ui.cam(u.id).forward;
+    let forward = forward(&ui, u);
     if u.mode == UavMode::Manual {
+        let step = STICK_EASE * dt;
+        for (e, v) in ui.eased.iter_mut().zip([roll, pitch]) {
+            *e += (v - *e).clamp(-step, step);
+        }
+        let [roll, pitch] = ui.eased;
         ui.fly.0 -= dt;
         let want = [roll, pitch, ui.throttle];
-        let changed = want.iter().zip(ui.fly.1).any(|(a, b)| (a - b).abs() > 0.01);
+        // Let go, exactly 0 goes out (a sliver of a rate left would creep on).
+        let changed =
+            want.iter().zip(ui.fly.1).any(|(&a, b)| (a - b).abs() > 0.01 || (a == 0.0 && b != 0.0));
         if changed && ui.fly.0 <= 0.0 {
             ui.fly = (FLY_PERIOD, want);
             c.actions.push(Action::Station(StationCmd::Fly {
@@ -261,6 +286,7 @@ fn stick(
         }
         return;
     }
+    ui.eased = [0.0; 2];
     // The TGP: the stick moves the point it holds across the picture (finer zoomed in).
     if (roll == 0.0 && pitch == 0.0) || forward {
         return;
@@ -340,7 +366,7 @@ fn input(
                     None => ui.say("Select a drone first"),
                 }
             }
-            ConsoleKey::View => toggle_view(&mut ui, &mut mfd),
+            ConsoleKey::View => toggle_view(&mut ui, &uavs, &mut mfd),
             ConsoleKey::Track => {
                 if let Some(u) = selected(&ui, &uavs) {
                     let cam = ui.cam(u.id);
@@ -370,7 +396,7 @@ fn input(
                 ui.drag = None;
                 if let Some(b) = map::button_at(&ui, &uavs, at) {
                     if b == map::Button::View {
-                        toggle_view(&mut ui, &mut mfd);
+                        toggle_view(&mut ui, &uavs, &mut mfd);
                     }
                     press(&mut ui, sim, &m, &uavs, b, &mut send);
                 } else if let Some(row) = map::row_at(at) {
@@ -463,11 +489,15 @@ fn input(
 
 /// The selected drone's camera between its TGP and the forward-looking FLIR (thermal), on the
 /// main screen.
-fn toggle_view(ui: &mut DroneUi, mfd: &mut crate::mfd::MfdState) {
+fn toggle_view(ui: &mut DroneUi, uavs: &[Uav], mfd: &mut crate::mfd::MfdState) {
     let Some(id) = ui.selected else {
         ui.say("Select a drone first");
         return;
     };
+    if selected(ui, uavs).is_some_and(|u| !u.kind.tgp()) {
+        ui.say("An interceptor only looks ahead");
+        return;
+    }
     let cam = ui.cam_mut(id);
     cam.forward = !cam.forward;
     if cam.forward {
@@ -559,10 +589,11 @@ fn click_map(
         let (x, y) = contact.unwrap_or((p.x as i32, p.y as i32));
         let kind = match (contact, plan.kind) {
             (Some(_), UavKind::Fp2) => WpKind::Terminate,
-            (Some(_), UavKind::Stork) => WpKind::Loiter,
+            (Some(_), _) => WpKind::Loiter,
             (None, _) => WpKind::Nav,
         };
-        let alt = plan.kind.perf().altitude as f32;
+        // As high as the last one (the type's height for the first).
+        let alt = plan.route.last().map_or(plan.kind.perf().altitude as f32, |w| w.alt);
         plan.route.push(UavWp { x, y, alt, kind });
         ui.wp = Some(plan.route.len() - 1);
         return;
@@ -630,9 +661,16 @@ fn press(
             }
         }
         B::Delete => wp_delete(ui, uavs, send),
+        B::AltUp | B::AltDown => {
+            let d = if b == B::AltUp { ALT_STEP } else { -ALT_STEP };
+            wp_alt(ui, uavs, d, send);
+        }
         B::NewDrone => {
-            let [stork, _] = sim.uav_stock(m.unit);
-            let kind = if stork > 0 { UavKind::Stork } else { UavKind::Fp2 };
+            let stock = sim.uav_stock(m.unit);
+            let kind = [UavKind::Stork, UavKind::Fp2, UavKind::Interceptor]
+                .into_iter()
+                .find(|k| stock[k.stock_index()] > 0)
+                .unwrap_or(UavKind::Stork);
             ui.plan = Some(Plan { kind, route: Vec::new() });
             ui.wp = None;
             ui.edit = None;
@@ -640,9 +678,10 @@ fn press(
         B::Kind(kind) => {
             if let Some(p) = ui.plan.as_mut() {
                 p.kind = kind;
-                // A surveillance drone loiters where an attack drone would terminate.
+                // A surveillance drone or an interceptor loiters where an attack drone would
+                // terminate.
                 for w in &mut p.route {
-                    if kind == UavKind::Stork && w.kind == WpKind::Terminate {
+                    if kind != UavKind::Fp2 && w.kind == WpKind::Terminate {
                         w.kind = WpKind::Loiter;
                     }
                     w.alt = kind.perf().altitude as f32;
@@ -690,6 +729,18 @@ fn wp_type(ui: &mut DroneUi, uavs: &[Uav], send: &mut impl FnMut(StationCmd)) {
         route.truncate(i + 1);
         ui.say("The route ends there now");
     }
+    set_route(ui, uavs, route, send);
+}
+
+/// The selected waypoint's height moved by `d` (m).
+fn wp_alt(ui: &mut DroneUi, uavs: &[Uav], d: f32, send: &mut impl FnMut(StationCmd)) {
+    let Some(i) = ui.wp else {
+        ui.say("Select a waypoint first");
+        return;
+    };
+    let mut route = ui.route(uavs).map(<[UavWp]>::to_vec).unwrap_or_default();
+    let Some(w) = route.get_mut(i) else { return };
+    w.alt = ((w.alt / ALT_STEP).round() * ALT_STEP + d).clamp(ALT_RANGE.0, ALT_RANGE.1);
     set_route(ui, uavs, route, send);
 }
 
@@ -751,7 +802,7 @@ fn panel(
     if u.is_some_and(|u| ui.cam(u.id).track.is_some()) {
         lit.push((ConsoleKey::Track, GREEN));
     }
-    if u.is_some_and(|u| ui.cam(u.id).forward) {
+    if u.is_some_and(|u| forward(&ui, u)) {
         lit.push((ConsoleKey::View, GREEN));
     }
     let want = ConsolePanel { hidden: Vec::new(), lit };
@@ -764,16 +815,18 @@ fn panel(
     }
 }
 
-/// Test aids: `--drone-launch stork|fp2[,..]` launches drones in turn once the console is up
+/// Test aids: `--drone-launch stork|fp2|int[,..]` launches drones in turn once the console is up
 /// (each when the rail is ready): a surveillance drone to loiter 4.5 km short of the nearest enemy
-/// air defence, an attack drone (once the drones found one) to terminate on the nearest found;
-/// each launched is selected. `--drone-main` puts its camera on the main screen,
-/// `--drone-manual` flies it by hand.
+/// air defence, an attack drone (once the drones found one) to terminate on the nearest found,
+/// an interceptor to loiter at the nearest enemy aircraft's height 3 km towards it (else 3 km
+/// north); each launched is selected. `--drone-main` puts its camera on the main screen,
+/// `--drone-manual` flies it by hand (once it is off the rail).
 fn test_aid(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
     mut c: Option<ResMut<ActiveCampaign>>,
     mut ui: ResMut<DroneUi>,
+    mut manual: Local<Vec<u16>>,
 ) {
     let arg = |name: &str| std::env::args().skip_while(|a| a != name).nth(1);
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c.as_deref_mut()) else { return };
@@ -783,8 +836,14 @@ fn test_aid(
     let Some(list) = arg("--drone-launch") else { return };
     let sim = &combat.sim;
     let uavs = center_uavs(&combat, &m);
-    let kinds: Vec<UavKind> =
-        list.split(',').map(|k| if k == "fp2" { UavKind::Fp2 } else { UavKind::Stork }).collect();
+    let kinds: Vec<UavKind> = list
+        .split(',')
+        .map(|k| match k {
+            "fp2" => UavKind::Fp2,
+            "int" => UavKind::Interceptor,
+            _ => UavKind::Stork,
+        })
+        .collect();
     let launched = ui.tested as usize;
     if let Some(&kind) = kinds.get(launched)
         && sim.uav_rail_wait(m.unit) == 0
@@ -792,7 +851,15 @@ fn test_aid(
     {
         let Some(home) = sim.aaa_units().get(m.unit).map(|u| (u.x, u.y)) else { return };
         let dist = |p: (i32, i32)| ((p.0 - home.0) as f64).hypot((p.1 - home.1) as f64);
+        let air = || {
+            sim.enemy_aircraft()
+                .map(|j| sim.flights()[j])
+                .min_by(|a, b| dist((a.x, a.y)).total_cmp(&dist((b.x, b.y))))
+        };
         let target = match kind {
+            UavKind::Interceptor => {
+                Some(air().map_or((home.0, home.1 - (3000.0 / M_PER_MAP) as i32), |f| (f.x, f.y)))
+            }
             UavKind::Fp2 => sim
                 .uav_known()
                 .iter()
@@ -807,12 +874,20 @@ fn test_aid(
                 .min_by(|a, b| dist(*a).total_cmp(&dist(*b))),
         };
         let Some(t) = target else { return };
-        let alt = kind.perf().altitude as f32;
+        let alt = match (kind, air()) {
+            (UavKind::Interceptor, Some(f)) => (f.alt as f64 * crate::world::WU) as f32,
+            _ => kind.perf().altitude as f32,
+        };
         let route = match kind {
             UavKind::Fp2 => vec![UavWp { x: t.0, y: t.1, alt, kind: WpKind::Terminate }],
-            UavKind::Stork => {
+            UavKind::Stork | UavKind::Interceptor => {
+                // How much of the way back from the target: 4.5 km of it, an interceptor's
+                // all but 3 km from the center.
                 let d = dist(t).max(1.0);
-                let short = (4500.0 / M_PER_MAP / d).min(1.0);
+                let short = match kind {
+                    UavKind::Stork => (4500.0 / M_PER_MAP / d).min(1.0),
+                    _ => 1.0 - (3000.0 / M_PER_MAP / d).min(1.0),
+                };
                 let x = t.0 - ((t.0 - home.0) as f64 * short) as i32;
                 let y = t.1 - ((t.1 - home.1) as f64 * short) as i32;
                 vec![UavWp { x, y, alt, kind: WpKind::Loiter }]
@@ -820,6 +895,14 @@ fn test_aid(
         };
         ui.tested += 1;
         c.actions.push(Action::Station(StationCmd::Launch { kind, route }));
+    }
+    if std::env::args().any(|a| a == "--drone-manual")
+        && let Some(u) = selected(&ui, &uavs)
+        && u.mode == UavMode::Auto
+        && !manual.contains(&u.id)
+    {
+        manual.push(u.id);
+        c.actions.push(Action::Station(StationCmd::Manual { uav: u.id, on: true }));
     }
     // The newest one launched is selected (once).
     if let Some(u) = uavs.last()
@@ -833,7 +916,6 @@ fn test_aid(
         ui.centre = DVec2::new(x as f64, y as f64);
         ui.on_main = std::env::args().any(|a| a == "--drone-main");
         if std::env::args().any(|a| a == "--drone-manual") {
-            c.actions.push(Action::Station(StationCmd::Manual { uav: u.id, on: true }));
             ui.on_main = true;
             ui.cam_mut(u.id).forward = true;
         }

@@ -346,8 +346,8 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         let stock = match s.kind {
             AaaKind::Gepard => format!("- stock {} rds", s.stock),
             AaaKind::DroneCenter => {
-                let [stork, fp2] = sim.uav_stock(s.unit);
-                format!("- stock {stork} Stork {fp2} FP-2")
+                let [stork, fp2, int] = sim.uav_stock(s.unit);
+                format!("- stock {stork} Stork {fp2} FP-2 {int} interceptors")
             }
             _ => format!("- stock {} msl", s.stock),
         };

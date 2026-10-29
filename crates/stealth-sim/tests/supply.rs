@@ -173,6 +173,7 @@ fn a_delivery_fills_the_stockpile() {
         kind: AaaKind::PatriotRadar,
         stock: 1,
         stock2: 0,
+        stock3: 0,
     }]);
     assert_eq!(sim.stockpile(radar), 1);
     sim.restock(radar);

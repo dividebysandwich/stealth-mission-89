@@ -39,9 +39,12 @@
 //!   and in translational lift (the blade slap), over the turbines (`heli_turbine.flac`)
 //!   pitched up with the torque.
 //! - The other aircraft are heard around, the AI's and the other players': jets and the Geran-3
-//!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording) and
-//!   helicopters (`helicopter.flac`), placed by direction with stereo panning that follows the
-//!   head, fading with distance, with a Doppler shift. Only at level 3.
+//!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording),
+//!   helicopters (`helicopter.flac`) and a drone command center's quadrotor interceptors
+//!   (`interceptor.flac`, as at 20% throttle, its motors two octaves up at full throttle),
+//!   placed by direction with stereo
+//!   panning that follows the head, fading with distance, with a Doppler shift. Only at
+//!   level 3.
 //! - A SAM site's launch (`launch.flac`, a recording) is heard near the site, placed and fading
 //!   like the aircraft, arriving at the speed of sound.
 //! - At an air defence console the shelter's own sounds play (`station::sound`).
@@ -366,6 +369,9 @@ const PROPELLER_VOLUME: f32 = 0.8;
 const HELICOPTER_RANGE: f32 = 5_000.0;
 const HELICOPTER_REF: f32 = 200.0;
 const HELICOPTER_VOLUME: f32 = 0.8;
+const QUAD_RANGE: f32 = 2_000.0;
+const QUAD_REF: f32 = 60.0;
+const QUAD_VOLUME: f32 = 0.7;
 const DISTANT_MAX: usize = 6;
 /// A SAM launch: heard up to this range (m), at full volume within the reference distance (m).
 const LAUNCH_RANGE: f32 = 10_000.0;
@@ -397,7 +403,7 @@ struct SoundBank {
     /// The cannon's loop and tail.
     cannon: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
-    distant: [Option<Handle<AudioSource>>; 3],
+    distant: [Option<Handle<AudioSource>>; 4],
     launch: Option<Handle<AudioSource>>,
     heli_rotor: Option<Handle<AudioSource>>,
     heli_turbine: Option<Handle<AudioSource>>,
@@ -433,6 +439,8 @@ enum Engine {
     Jet,
     Propeller,
     Helicopter,
+    /// A quadrotor interceptor.
+    Quad,
 }
 
 impl Engine {
@@ -442,11 +450,12 @@ impl Engine {
             Engine::Jet => (JET_RANGE, JET_REF, JET_VOLUME),
             Engine::Propeller => (PROPELLER_RANGE, PROPELLER_REF, PROPELLER_VOLUME),
             Engine::Helicopter => (HELICOPTER_RANGE, HELICOPTER_REF, HELICOPTER_VOLUME),
+            Engine::Quad => (QUAD_RANGE, QUAD_REF, QUAD_VOLUME),
         }
     }
 }
 
-const DISTANT_FILES: [&str; 3] = ["jet.flac", "engine.flac", "helicopter.flac"];
+const DISTANT_FILES: [&str; 4] = ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac"];
 
 /// Another aircraft heard: an AI flight unit or another player.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -471,6 +480,8 @@ impl Heard {
 struct DistantAircraft {
     who: Heard,
     engine: Engine,
+    /// The engine's own pitch (an interceptor's motors with its speed).
+    rev: f32,
     /// Distance (m) last frame, and the current Doppler factor.
     dist: f32,
     doppler: f32,
@@ -1254,12 +1265,12 @@ fn distant_aircraft(
     };
     let ear = origin.origin + eye_tf.translation().as_dvec3();
     let sim = &combat.sim;
-    // The nearest aircraft in range: (who, engine, position, distance).
-    let in_range = |who, engine: Engine, p: bevy::math::DVec3| {
+    // The nearest aircraft in range: (who, engine, position, distance, the engine's pitch).
+    let in_range = |who, engine: Engine, p: bevy::math::DVec3, rev: f32| {
         let d = (p - ear).length() as f32;
-        (d < engine.reach().0).then_some((who, engine, p, d))
+        (d < engine.reach().0).then_some((who, engine, p, d, rev))
     };
-    let mut heard: Vec<(Heard, Engine, bevy::math::DVec3, f32)> = sim
+    let mut heard: Vec<(Heard, Engine, bevy::math::DVec3, f32, f32)> = sim
         .active_aircraft()
         .into_iter()
         .filter(|(_, u, _)| {
@@ -1269,16 +1280,29 @@ fn distant_aircraft(
                 && u.speed > 0
         })
         .filter_map(|(i, u, _)| {
+            let quad =
+                sim.uav_of_flight(i).filter(|d| d.kind == stealth_sim::uav::UavKind::Interceptor);
             let engine = match sim.aircraft_kind(u.spec) {
                 AircraftKind::Plane => Engine::Jet,
                 AircraftKind::Helicopter => Engine::Helicopter,
                 AircraftKind::Drone if u.spec == stealth_mission::drones::GERAN3 as i32 => {
                     Engine::Jet
                 }
+                AircraftKind::Drone if quad.is_some() => Engine::Quad,
                 AircraftKind::Drone => Engine::Propeller,
             };
+            // An interceptor's motors spin up with the throttle (the loop is at its hover
+            // throttle, 20%; two octaves up at full), and stop with its battery flat.
+            let rev = match quad {
+                Some(d) if d.battery <= 0.0 => return None,
+                Some(d) => {
+                    let hover = d.kind.perf().hover;
+                    4f32.powf(((d.throttle() - hover) / (1.0 - hover)) as f32)
+                }
+                None => 1.0,
+            };
             let (east, north, alt) = unit_position(combat.prev_flights.get(i), &u, combat.alpha);
-            in_range(Heard::Unit(i), engine, wu_to_bevy(east, north, alt))
+            in_range(Heard::Unit(i), engine, wu_to_bevy(east, north, alt), rev)
         })
         .collect();
     let me = sim.active_pilot();
@@ -1289,7 +1313,7 @@ fn distant_aircraft(
         }
         let engine = if p.helicopter { Engine::Helicopter } else { Engine::Jet };
         let at = wu_to_bevy(v.wx as f64, v.wy as f64, v.alt as f64);
-        heard.extend(in_range(Heard::Pilot(p.id), engine, at));
+        heard.extend(in_range(Heard::Pilot(p.id), engine, at, 1.0));
     }
     heard.sort_by(|a, b| a.3.total_cmp(&b.3));
     heard.truncate(DISTANT_MAX);
@@ -1297,7 +1321,8 @@ fn distant_aircraft(
     let dt = virt.delta_secs();
     let mut have = Vec::new();
     for (e, mut d, mut pos, pitch, sink) in &mut playing {
-        let Some(&(_, engine, p, dist)) = heard.iter().find(|h| h.0 == d.who && h.1 == d.engine)
+        let Some(&(_, engine, p, dist, rev)) =
+            heard.iter().find(|h| h.0 == d.who && h.1 == d.engine)
         else {
             commands.entity(e).despawn();
             continue;
@@ -1311,7 +1336,8 @@ fn distant_aircraft(
             d.doppler += (target - d.doppler) * (dt * 4.0).min(1.0);
         }
         d.dist = dist;
-        pitch.set(d.who.pitch() * d.doppler);
+        d.rev += (rev - d.rev) * (dt * 3.0).min(1.0);
+        pitch.set(d.who.pitch() * d.rev * d.doppler);
         let Some(mut sink) = sink else { continue };
         if virt.is_paused() {
             sink.pause();
@@ -1320,9 +1346,9 @@ fn distant_aircraft(
         sink.play();
         sink.set_volume(Volume::Linear(heard_volume(engine.reach(), dist) * gain));
     }
-    for &(who, engine, p, dist) in heard.iter().filter(|h| !have.contains(&h.0)) {
+    for &(who, engine, p, dist, rev) in heard.iter().filter(|h| !have.contains(&h.0)) {
         let Some(handle) = &bank.distant[engine as usize] else { continue };
-        let Some((handle, pitch)) = muffler.looped(handle, who.pitch()) else { continue };
+        let Some((handle, pitch)) = muffler.looped(handle, who.pitch() * rev) else { continue };
         debug!("heard {who:?} ({engine:?}) {dist:.0} m away");
         commands.spawn((
             AudioPlayer(handle),
@@ -1339,7 +1365,7 @@ fn distant_aircraft(
             WorldPos(p),
             Transform::from_translation((p - origin.origin).as_vec3()),
             pitch,
-            DistantAircraft { who, engine, dist, doppler: 1.0 },
+            DistantAircraft { who, engine, rev, dist, doppler: 1.0 },
         ));
     }
 }

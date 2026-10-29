@@ -2,13 +2,15 @@
 //! the drone list (or the launch plan), right the map: the terrain (the moving map's, north
 //! up), the friendly units, the known contacts, the drones and the selected one's route, the
 //! picture in picture in its top right corner and a row of buttons along its bottom. Redrawn
-//! ten times a second; the terrain only when the view leaves what was drawn of it.
+//! ten times a second; the terrain only when the view leaves what was drawn of it. The
+//! aircraft and drones in the air show with their heights (the enemy's red), for the
+//! interceptors.
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
-use stealth_sim::Sim;
 use stealth_sim::aaa::{AaaKind, M_PER_MAP};
 use stealth_sim::uav::{STORK_SENSOR, Uav, UavKind, UavMode, UavWp, WpKind};
+use stealth_sim::{Sim, fflags};
 
 use super::super::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
 use super::{DroneUi, ZOOMS_KM, center_uavs};
@@ -55,6 +57,8 @@ pub enum Button {
     Type,
     Next,
     Delete,
+    AltUp,
+    AltDown,
     NewDrone,
     Kind(UavKind),
     Launch,
@@ -117,6 +121,8 @@ pub fn buttons(ui: &DroneUi, uavs: &[Uav]) -> Vec<(Button, [f32; 4], &'static st
         Some((Button::Type, 36.0, "TYPE", wp)),
         Some((Button::Next, 36.0, "NEXT", wp && flying)),
         Some((Button::Delete, 32.0, "DEL", wp)),
+        Some((Button::AltUp, 32.0, "ALT+", wp)),
+        Some((Button::AltDown, 32.0, "ALT-", wp)),
         None,
         Some((Button::Main, 40.0, "MAIN", flying)),
         Some((Button::Manual, 46.0, "MANUAL", flying)),
@@ -136,9 +142,13 @@ pub fn buttons(ui: &DroneUi, uavs: &[Uav]) -> Vec<(Button, [f32; 4], &'static st
         None => out.push((Button::NewDrone, [4.0, 208.0, SIDEBAR - 8.0, 26.0], "NEW DRONE", true)),
         Some(p) => {
             let w = (SIDEBAR - 12.0) / 2.0;
-            for (k, kind, label) in [(0.0, UavKind::Stork, "STORK"), (1.0, UavKind::Fp2, "FP-2")] {
+            let kw = (SIDEBAR - 16.0) / 3.0;
+            for (k, kind) in
+                [UavKind::Stork, UavKind::Fp2, UavKind::Interceptor].into_iter().enumerate()
+            {
                 let on = p.kind != kind;
-                out.push((Button::Kind(kind), [4.0 + k * (w + 4.0), 150.0, w, 22.0], label, on));
+                let at = [4.0 + k as f32 * (kw + 4.0), 150.0, kw, 22.0];
+                out.push((Button::Kind(kind), at, kind.short(), on));
             }
             let ok = stealth_sim::uav::route_refusal(p.kind, &p.route).is_none();
             out.push((Button::Launch, [4.0, 206.0, w, 28.0], "LAUNCH", ok));
@@ -368,6 +378,7 @@ pub(super) fn draw(
             stroke_text_at(cv, p.x + 7.0, p.y - 4.0, &k.name, 5.0, 0.8, RED, Align::Left);
         }
     }
+    aircraft(cv, sim, &ui);
     // The drones: a Stork's sensor ring, each one's way to its next waypoint, its symbol.
     for u in &uavs {
         let at = drone_map(sim, u);
@@ -431,8 +442,8 @@ pub(super) fn draw(
             };
             waypoint(cv, &ui, q, w, kind, col);
             let label = match w.kind {
-                WpKind::Nav => format!("{}", i + 1),
-                WpKind::Loiter => format!("{} LOITER", i + 1),
+                WpKind::Nav => format!("{} {:.0}M", i + 1, w.alt),
+                WpKind::Loiter => format!("{} LOITER {:.0}M", i + 1, w.alt),
                 WpKind::Terminate => format!("{} TERM", i + 1),
             };
             stroke_text_at(cv, q.x + 7.0, q.y + 9.0, &label, 5.0, 0.8, col, Align::Left);
@@ -447,8 +458,15 @@ pub(super) fn draw(
         let chosen = ui.selected == Some(u.id);
         let col = if chosen { WHITE } else { BLUE };
         drone(cv, p, u.heading as f32, u.kind, col);
-        let label = u.label();
+        let label = format!("{} {:.0}M", u.label(), u.pos[2]);
         stroke_text_at(cv, p.x + 8.0, p.y - 6.0, &label, 5.0, 0.8, col, Align::Left);
+        // An interceptor's lock: a line to its target.
+        if let Some(j) = u.lock
+            && let Some(f) = sim.flights().get(j as usize)
+        {
+            let q = to_screen(&ui, f.wx as f64 / 32.0, f.wy as f64 / 32.0);
+            cv.stroke(p, q, 1.2, RED);
+        }
         if chosen {
             cv.ring(p, 10.0, 1.0, WHITE);
         }
@@ -486,10 +504,7 @@ pub(super) fn draw(
         let col = if on { GREEN } else { DARK };
         cv.fill_rect(bx as i32, by as i32, bw as i32, bh as i32, BLACK);
         cv.frame(Vec2::new(bx, by), Vec2::new(bx + bw, by + bh), 1.0, col);
-        let lit = match &ui.plan {
-            Some(p) => matches!(label, "STORK" | "FP-2") && !on && p.kind.name() == label,
-            None => false,
-        };
+        let lit = ui.plan.as_ref().is_some_and(|p| b == Button::Kind(p.kind));
         let col = if lit { WHITE } else { col };
         stroke_text_at(cv, bx + bw / 2.0, by + bh / 2.0, label, 6.0, 0.9, col, Align::Centre);
         // The panning cross's arrows.
@@ -665,7 +680,7 @@ fn waypoint(cv: &mut Canvas, ui: &DroneUi, q: Vec2, w: &UavWp, kind: UavKind, co
 }
 
 /// A drone: an arrowhead along its heading (a surveillance drone's open, an attack drone's
-/// filled).
+/// filled, an interceptor's a slim dart with a cross bar).
 fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
     let f = Vec2::new(heading.sin(), -heading.cos());
     let r = Vec2::new(-f.y, f.x);
@@ -673,13 +688,56 @@ fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
     match kind {
         UavKind::Fp2 => cv.triangle([a, b, c], col),
         UavKind::Stork => cv.polyline(&[a, b, p - f * 1.5, c, a], 1.2, col),
+        UavKind::Interceptor => {
+            cv.triangle([a, p - f * 4.0 + r * 2.5, p - f * 4.0 - r * 2.5], col);
+            cv.stroke(p - f * 2.0 + r * 5.0, p - f * 2.0 - r * 5.0, 1.2, col);
+        }
+    }
+}
+
+/// The aircraft and drones in the air (not the center's own drones): the enemy's red, the
+/// friendly side's blue, each along its heading with its height.
+fn aircraft(cv: &mut Canvas, sim: &Sim, ui: &DroneUi) {
+    for (j, f) in sim.flights().iter().enumerate() {
+        let flying = f.flags & (fflags::EXISTS | fflags::AIRBORNE)
+            == fflags::EXISTS | fflags::AIRBORNE
+            && f.flags & fflags::DESTROYED == 0
+            && f.speed > 0;
+        if !flying || sim.uav_of_flight(j).is_some() {
+            continue;
+        }
+        let col = if sim.friendly_unit(j, f.spec) { BLUE } else { RED };
+        let p = to_screen(ui, f.wx as f64 / 32.0, f.wy as f64 / 32.0);
+        if !in_map(p) {
+            continue;
+        }
+        let h = f.heading as f32 / 65536.0 * std::f32::consts::TAU;
+        let d = Vec2::new(h.sin(), -h.cos());
+        // A diamond with a stalk along its heading.
+        let s = 4.0;
+        let pts = [
+            p + Vec2::new(0.0, -s),
+            p + Vec2::new(s, 0.0),
+            p + Vec2::new(0.0, s),
+            p + Vec2::new(-s, 0.0),
+            p + Vec2::new(0.0, -s),
+        ];
+        cv.polyline(&pts, 1.0, col);
+        cv.stroke(p + d * s, p + d * (s + 6.0), 1.0, col);
+        let m = (f.alt.max(0) as f64 * crate::world::WU).round();
+        let label = if ui.zoom <= 4 {
+            format!("{} {m:.0}M", sim.aircraft_name(f.spec).to_uppercase())
+        } else {
+            format!("{m:.0}M")
+        };
+        stroke_text_at(cv, p.x + 7.0, p.y + 7.0, &label, 5.0, 0.8, col, Align::Left);
     }
 }
 
 /// The list: the drones in the air (or the launch being planned), the stock and the rail.
 fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) {
     cv.stroke(Vec2::new(SIDEBAR, 0.0), Vec2::new(SIDEBAR, CANVAS.1 as f32), 1.0, DARK);
-    let [stork, fp2] = sim.uav_stock(m.unit);
+    let [stork, fp2, int] = sim.uav_stock(m.unit);
     let n = uavs.len();
     let max = stealth_sim::uav::MAX_AIRBORNE;
     stroke_text_at(cv, 6.0, 9.0, &format!("DRONES {n}/{max}"), 7.0, 1.0, WHITE, Align::Left);
@@ -687,8 +745,8 @@ fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) 
     let (rail, col) =
         if wait > 0 { (format!("RAIL {wait} S"), YELLOW) } else { ("RAIL RDY".into(), GREEN) };
     stroke_text_at(cv, SIDEBAR - 6.0, 9.0, &rail, 5.0, 0.8, col, Align::Right);
-    let stock = format!("STOCK STK {stork}  FP2 {fp2}");
-    let col = if stork > 0 || fp2 > 0 { GREY } else { RED };
+    let stock = format!("STOCK STK {stork} FP2 {fp2} INT {int}");
+    let col = if stork + fp2 + int > 0 { GREY } else { RED };
     stroke_text_at(cv, 6.0, 23.0, &stock, 5.0, 0.8, col, Align::Left);
     if let Some(p) = &ui.plan {
         plan(cv, p);
@@ -702,6 +760,7 @@ fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) 
         }
         let col = if chosen { WHITE } else { BLUE };
         let mode = match u.mode {
+            _ if u.lock.is_some() => "LOCK",
             UavMode::Auto => u.target().map_or("AUTO", |w| match w.kind {
                 WpKind::Loiter => "LOITER",
                 WpKind::Terminate => "ATTACK",
@@ -711,6 +770,7 @@ fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) 
         };
         stroke_text_at(cv, 6.0, y + 8.0, &u.label(), 6.0, 0.9, col, Align::Left);
         let mcol = match u.mode {
+            _ if u.lock.is_some() => RED,
             UavMode::Manual => YELLOW,
             UavMode::Dive => RED,
             _ => GREEN,
@@ -719,12 +779,11 @@ fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) 
         let bat = (u.battery * 100.0).round() as i32;
         let end = u.endurance() as i32;
         let line = format!(
-            "{:>4}M {:>3}KT {:>3}% {}:{:02}",
+            "{:>4}M {:>3}KT {:>3}% {}",
             u.pos[2].round() as i32,
             (u.speed / 0.514).round() as i32,
             bat,
-            end / 3600,
-            end / 60 % 60
+            duration(end)
         );
         let bcol = if bat < 20 {
             RED
@@ -753,8 +812,13 @@ fn plan(cv: &mut Canvas, p: &super::Plan) {
         YELLOW,
         Align::Left,
     );
+    let time = if perf.endurance < 3600.0 {
+        format!("{:.0} MIN", perf.endurance / 60.0)
+    } else {
+        format!("{:.1} H", perf.endurance / 3600.0)
+    };
     let lines = [
-        format!("{} KT  {:.1} H", (perf.cruise / 0.514).round(), perf.endurance / 3600.0),
+        format!("{} KT  {time}", (perf.cruise / 0.514).round()),
         format!("{} WAYPOINTS", p.route.len()),
         match stealth_sim::uav::route_refusal(p.kind, &p.route) {
             Some(why) => why.to_uppercase(),
@@ -766,9 +830,20 @@ fn plan(cv: &mut Canvas, p: &super::Plan) {
         stroke_text_at(cv, 6.0, ROW_Y + 24.0 + i as f32 * 12.0, l, 5.0, 0.8, col, Align::Left);
     }
     let hint = match p.kind {
-        UavKind::Stork => "END ON A LOITER POINT",
-        UavKind::Fp2 => "END ON A TERMINATE POINT",
+        UavKind::Stork => ["END ON A LOITER POINT", ""],
+        UavKind::Fp2 => ["END ON A TERMINATE POINT", "(OR LOITER: SURVEY)"],
+        UavKind::Interceptor => ["LOITER IN THEIR PATH", "AT THEIR HEIGHT (ALT+/-)"],
     };
-    stroke_text_at(cv, 6.0, ROW_Y + 72.0, hint, 5.0, 0.8, GREY, Align::Left);
-    stroke_text_at(cv, 6.0, ROW_Y + 84.0, "(OR LOITER: SURVEY)", 5.0, 0.8, GREY, Align::Left);
+    for (i, l) in hint.iter().enumerate() {
+        stroke_text_at(cv, 6.0, ROW_Y + 72.0 + i as f32 * 12.0, l, 5.0, 0.8, GREY, Align::Left);
+    }
+}
+
+/// "1:05" (h:mm), "4:30" under an hour (m:ss).
+pub fn duration(s: i32) -> String {
+    if s < 3600 {
+        format!("{}:{:02}", s / 60, s % 60)
+    } else {
+        format!("{}:{:02}", s / 3600, s / 60 % 60)
+    }
 }

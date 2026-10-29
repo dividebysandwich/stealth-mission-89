@@ -1181,7 +1181,7 @@ impl Sim {
     }
 
     /// Side of an airborne aircraft (None for wrecks, parked and traffic).
-    fn ai_side(&self, i: usize) -> Option<bool> {
+    pub(crate) fn ai_side(&self, i: usize) -> Option<bool> {
         let u = self.flights.get(i)?;
         if u.flags & (fflags::EXISTS | fflags::AIRBORNE) != fflags::EXISTS | fflags::AIRBORNE
             || u.flags & fflags::DESTROYED != 0

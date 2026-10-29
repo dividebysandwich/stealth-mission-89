@@ -1,11 +1,12 @@
 """Builds the remake's own aircraft models (Geran-2 / Geran-3 attack drones, the Mi-24 Hind
-from mi24.py, the drone command center's FP-2 attack drone and Stork-100 surveillance drone) in
-Blender:
+from mi24.py, the drone command center's FP-2 attack drone, Stork-100 surveillance drone and
+quadrotor interceptor) in Blender:
 
     blender -b --factory-startup --python-exit-code 1 --python tools/models/drones.py -- assets/models/drones.glb
 
-Nodes follow aircraft.glb's conventions: a root `drones_NNN` with `attr`, a `_lod0` mesh and a
-spinning `_part1` (state slot 17; axis 2 = fore-aft, the Geran-2's pusher propeller). Model
+Nodes follow aircraft.glb's conventions: a root `drones_NNN` with `attr`, a `_lod0` mesh and
+spinning `_part1`.. (state slot 17; axis 2 = fore-aft, the Geran-2's pusher propeller, the
+interceptor's four). Model
 space: x right, y forward, z up, aircraft model units (WU / 8 m).
 """
 
@@ -31,6 +32,7 @@ HIND = 102
 # The drone command center's FP-2 and Stork-100 (crates/stealth-sim/src/uav.rs).
 FP2 = 103
 STORK = 104
+INTERCEPTOR = 105
 
 # Model units per metre (a unit is WU / 8).
 K = 8.0 * 1_048_576 / 512_000
@@ -183,6 +185,58 @@ def stork():
     return g.scaled(K), prop.scaled(K), (0, -0.66 * K, 0.04 * K)
 
 
+# ----------------------------------------------------------------------------------- Interceptor
+
+INT_GREY = Ramp(0xE1, 0xE7)
+MOTOR = Ramp(0xEC, 0xEF)
+# The turquoise propellers.
+INT_PROP = 11
+
+
+def about_y(geo, a, paint):
+    """`geo` rolled by `a` about the fore-aft axis (x towards z), shaded again with `paint`."""
+    c, s = math.cos(a), math.sin(a)
+    return geo.transformed(lambda p: mklib.Vector((p.x * c - p.z * s, p.y, p.x * s + p.z * c))).recolour(paint)
+
+
+def interceptor():
+    """A 3D-printed quadrotor interceptor, about 0.62 m long: a bullet nose on a round body
+    tapering to the tail (the antenna lead out of it), four cropped delta wings in an X on its
+    rear half, a nacelle at each tip with a cone ahead and the motor behind, turning a
+    three-bladed pusher propeller (metres; scaled to model units)."""
+    g = Geo()
+    body = [(0.34, 0.0, 0.004, 0.004), (0.33, 0.0, 0.024, 0.024), (0.31, 0.0, 0.038, 0.038), (0.27, 0.0, 0.05, 0.05),
+            (0.21, 0.0, 0.056, 0.056), (0.14, 0.0, 0.057, 0.057), (0.0, 0.0, 0.055, 0.055), (-0.12, 0.0, 0.045, 0.045),
+            (-0.22, 0.0, 0.028, 0.028), (-0.28, 0.0, 0.012, 0.012)]
+    g.add(loft(body, INT_GREY, n=12))
+    # The seam between the nose cone and the body.
+    for k in range(12):
+        a0, a1 = 2 * math.pi * k / 12, 2 * math.pi * (k + 1) / 12
+        r = 0.0575
+        g.line((r * math.cos(a0), 0.14, r * math.sin(a0)), (r * math.cos(a1), 0.14, r * math.sin(a1)), 0xEF)
+    g.line((0, -0.28, 0), (0.0, -0.36, -0.02), 0xEF)
+    tip = 0.19
+    wing = mklib.wing((0, 0.02, 0), 0.24, (tip, -0.11, 0), 0.13, INT_GREY, t=0.07, mirror=False, peak=0.3)
+    nacelle = Geo()
+    nacelle.add(frustum((tip, -0.02, 0), (tip, -0.08, 0), 0.003, 0.021, INT_GREY, n=10))
+    nacelle.add(frustum((tip, -0.08, 0), (tip, -0.2, 0), 0.021, 0.021, INT_GREY, n=10))
+    motor = frustum((tip, -0.2, 0), (tip, -0.238, 0), 0.019, 0.017, MOTOR, n=10)
+    props = []
+    for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4):
+        g.add(about_y(wing, a, INT_GREY))
+        g.add(about_y(nacelle, a, INT_GREY))
+        g.add(about_y(motor, a, MOTOR))
+        prop = Geo()
+        # Three blades about 0.13 m across round the hub (the part origin).
+        for k in range(3):
+            b = 2 * math.pi * k / 3 + a
+            c, s = math.cos(b), math.sin(b)
+            prop.face2([(c * 0.006, 0, s * 0.006), (c * 0.065 - s * 0.012, 0.004, s * 0.065 + c * 0.012),
+                        (c * 0.065, -0.004, s * 0.065), (c * 0.006 - s * 0.01, 0.002, s * 0.006 + c * 0.01)], INT_PROP)
+        props.append((prop.scaled(K), (tip * math.cos(a) * K, -0.245 * K, tip * math.sin(a) * K)))
+    return g.scaled(K), props
+
+
 def model(index, geo, prop=None, prop_at=None):
     name = "drones_%03d" % index
     root = empty(name)
@@ -197,8 +251,10 @@ def model(index, geo, prop=None, prop_at=None):
         lo = bpy.data.objects.new(ln, mklib.lines_mesh(ln, segs, c))
         bpy.context.scene.collection.objects.link(lo)
         lo.parent = lod
-    if prop is not None:
-        part = mesh_obj(name + "_lod0_part1", prop, lod, prop_at)
+    # One propeller, or a list of (propeller, hub).
+    props = prop if isinstance(prop, list) else [] if prop is None else [(prop, prop_at)]
+    for k, (p, at) in enumerate(props, 1):
+        part = mesh_obj("%s_lod0_part%d" % (name, k), p, lod, at)
         part["state_slot"] = 17
         part["axis"] = 2
 
@@ -214,6 +270,7 @@ def main():
     mi24.build("drones_%03d" % HIND)
     model(FP2, *fp2())
     model(STORK, *stork())
+    model(INTERCEPTOR, *interceptor())
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

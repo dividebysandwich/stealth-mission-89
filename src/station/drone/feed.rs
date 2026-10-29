@@ -3,7 +3,11 @@
 //! ahead and down when that is far), tracking, at the point the stick put it on. Brackets mark
 //! the enemy air defences the drone sees (a surveillance drone all within its sensor's reach,
 //! an attack drone those within 2 km). Flown by hand it looks ahead, under a flight display.
-//! Without a drone selected the camera rests.
+//! An interceptor only looks ahead: diamonds mark the aircraft in its view within `AIR_MARKS` m
+//! (their range and how far above or below; the friendly side's blue, as it would lock on to
+//! them too), a box the one it locked on to.
+//! The view ahead is fixed to the airframe: it pitches and rolls with the drone. Without a
+//! drone selected the camera rests.
 
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
@@ -30,13 +34,52 @@ const AHEAD_MIN: f64 = 2500.0;
 const NOSE_DOWN: f64 = 0.12;
 /// The camera under the drone (m).
 const BELOW: f64 = 0.4;
+/// An interceptor's view marks the enemy aircraft this close (m).
+const AIR_MARKS: f64 = 4000.0;
 
-/// The drone's position as drawn (Bevy world) and its heading and pitch (rad).
-fn drone_pose(combat: &Combat, u: &Uav) -> Option<(DVec3, f64, f64)> {
+/// The drone's position as drawn (Bevy world).
+fn drone_eye(combat: &Combat, u: &Uav) -> Option<DVec3> {
     let i = u.flight as usize;
     let f = combat.sim.flights().get(i)?;
     let (e, n, z) = unit_position(combat.prev_flights.get(i), f, combat.alpha);
-    Some((wu_to_bevy(e, n, z) - DVec3::Y * BELOW, u.heading, u.pitch))
+    Some(wu_to_bevy(e, n, z) - DVec3::Y * BELOW)
+}
+
+/// Drone `u` as drawn: its attitude carried on smoothly between the simulation's frames (from
+/// its flight unit's last frame to this one), as its position is.
+fn drawn(combat: &Combat, u: &Uav) -> Uav {
+    let i = u.flight as usize;
+    let (Some(p), Some(c)) = (combat.prev_flights.get(i), combat.sim.flights().get(i)) else {
+        return u.clone();
+    };
+    let t = combat.alpha as f64;
+    let r = std::f64::consts::TAU / 65536.0;
+    // From last frame's angle by the (shortest) way to this one's.
+    let lerp = |a: i32, b: i32| {
+        let d = (b.wrapping_sub(a) as u16 as i16) as f64;
+        (a as i16) as f64 * r + d * t * r
+    };
+    let mut d = u.clone();
+    d.heading = lerp(p.heading, c.heading);
+    d.pitch = lerp(p.pitch, c.pitch);
+    d.bank = lerp(p.bank, c.bank);
+    d
+}
+
+/// The view ahead (Bevy world): the camera's direction, `NOSE_DOWN` under the nose, and its
+/// up, both turned with the drone's heading, pitch and bank.
+fn forward_view(u: &Uav) -> (Vec3, Vec3) {
+    let (sh, ch, sp, cp) = (u.heading.sin(), u.heading.cos(), u.pitch.sin(), u.pitch.cos());
+    let (sb, cb) = (u.bank.sin(), u.bank.cos());
+    // East, north, up.
+    let nose = DVec3::new(sh * cp, ch * cp, sp);
+    let right0 = DVec3::new(ch, -sh, 0.0);
+    let up0 = DVec3::new(-sh * sp, -ch * sp, cp);
+    let up = up0 * cb + right0 * sb;
+    let (sd, cd) = (NOSE_DOWN.sin(), NOSE_DOWN.cos());
+    let (dir, up) = (nose * cd - up * sd, up * cd + nose * sd);
+    let bevy = |v: DVec3| Vec3::new(v.x as f32, v.z as f32, -v.y as f32);
+    (bevy(dir), bevy(up))
 }
 
 /// A map point on the ground (Bevy world; the middle of its map unit, where the units stand).
@@ -73,31 +116,26 @@ pub(super) fn aim(
     }
     let uavs = center_uavs(&combat, &m);
     let u = selected(&ui, &uavs).cloned();
-    let pose = u.as_ref().and_then(|u| drone_pose(&combat, u));
-    let (eye, dir, zoom, target, idle) = match (u, pose) {
-        (Some(u), Some((eye, heading, pitch))) => {
+    let pose = u.as_ref().and_then(|u| drone_eye(&combat, u));
+    let (eye, dir, up, zoom, target, idle) = match (u, pose) {
+        (Some(u), Some(eye)) => {
             let cam = ui.cam(u.id);
-            if cam.forward {
-                let p = pitch - NOSE_DOWN;
-                let dir = Vec3::new(
-                    (heading.sin() * p.cos()) as f32,
-                    p.sin() as f32,
-                    (-heading.cos() * p.cos()) as f32,
-                );
-                (eye, dir, 0, None, false)
+            if super::forward(&ui, &u) {
+                let (dir, up) = forward_view(&drawn(&combat, &u));
+                (eye, dir, Some(up), 0, None, false)
             } else {
                 let look = cam.track.unwrap_or_else(|| slaved(&u));
                 ui.cam_mut(u.id).look = Some(look);
                 let at = ground(look);
                 let dir = (at - eye).as_vec3().normalize_or(Vec3::NEG_Y);
-                (eye, dir, cam.zoom, Some(at), false)
+                (eye, dir, None, cam.zoom, Some(at), false)
             }
         }
         _ => {
             let at = combat.sim.aaa_units().get(m.unit).map_or(DVec3::ZERO, |u| {
                 crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0)
             });
-            (at + DVec3::Y * 5.0, Vec3::NEG_Z, crate::mfd::CAM_ZOOM_DEFAULT, None, true)
+            (at + DVec3::Y * 5.0, Vec3::NEG_Z, None, crate::mfd::CAM_ZOOM_DEFAULT, None, true)
         }
     };
     // The camera's picture is shown in the corner of the map or on the main screen.
@@ -107,6 +145,7 @@ pub(super) fn aim(
         Some(mut eo) => {
             eo.eye = eye;
             eo.dir = dir;
+            eo.up = up;
             eo.zoom = zoom;
             eo.target = target;
             eo.slew = if idle { 0.0 } else { slew };
@@ -115,6 +154,7 @@ pub(super) fn aim(
         None => commands.insert_resource(ConsoleEo {
             eye,
             dir,
+            up,
             zoom,
             target,
             speed: 0.0,
@@ -172,7 +212,8 @@ pub(super) fn draw(
     cv.reset_clip();
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let uavs = center_uavs(&combat, &m);
-    let Some(u) = selected(&ui, &uavs) else {
+    let smooth = selected(&ui, &uavs).map(|u| drawn(&combat, u));
+    let Some(u) = smooth.as_ref() else {
         cv.clear(BLACK);
         stroke_text_at(cv, w / 2.0, h / 2.0 - 8.0, "NO FEED", 9.0, 1.2, GREEN, Align::Centre);
         let hint = "SELECT A DRONE ON THE MAP";
@@ -180,6 +221,7 @@ pub(super) fn draw(
         return;
     };
     let cam = ui.cam(u.id);
+    let forward = super::forward(&ui, u);
     let col = if mfd.flir { WHITE } else { GREEN };
     let picture = ui.on_main && eo.is_some();
     if picture {
@@ -190,13 +232,13 @@ pub(super) fn draw(
     }
     // The top line: the drone, the camera, the mode; the battery under it.
     let sensor = if mfd.flir { "FLIR" } else { "TV" };
-    let left = if cam.forward {
+    let left = if forward {
         format!("{} FWD {sensor}", u.label())
     } else {
         format!("{} TGP {sensor}", u.label())
     };
     stroke_text_at(cv, 46.0, 9.0, &left, 6.0, 0.9, col, Align::Left);
-    let mode = match (u.mode, cam.forward) {
+    let mode = match (u.mode, forward) {
         (UavMode::Manual, _) => format!("MANUAL THR {:.0}%", u.ctrl[2] * 100.0),
         (m, true) => m.name().to_string(),
         (m, false) => {
@@ -208,14 +250,25 @@ pub(super) fn draw(
     let bat = (u.battery * 100.0).round() as i32;
     let end = u.endurance() as i32;
     let bcol = if bat < 20 { RED } else { col };
-    let battery = format!("BAT {bat}% {}:{:02}", end / 3600, end / 60 % 60);
+    let battery = format!("BAT {bat}% {}", super::map::duration(end));
     stroke_text_at(cv, 46.0, 20.0, &battery, 5.0, 0.8, bcol, Align::Left);
     if u.mode == UavMode::Dive {
         stroke_text_at(cv, w / 2.0, 32.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
     }
+    if let Some(j) = u.lock {
+        let name = combat.sim.flights().get(j as usize).map(|f| combat.sim.aircraft_name(f.spec));
+        let text = format!("LOCK {}", name.unwrap_or_default().to_uppercase());
+        stroke_text_at(cv, w / 2.0, 58.0, &text, 7.0, 1.0, RED, Align::Centre);
+        if u.mode == UavMode::Manual {
+            stroke_text_at(cv, w / 2.0, 70.0, "THROTTLE UP", 5.0, 0.8, RED, Align::Centre);
+        }
+    }
     if let Some(eo) = eo.filter(|_| picture) {
-        if cam.forward {
+        if forward {
             horizon(cv, u, &eo, col);
+            if !u.kind.tgp() {
+                air(cv, &combat, u, &eo);
+            }
         } else {
             tgp(cv, &combat.sim, u, &eo, col);
         }
@@ -223,7 +276,7 @@ pub(super) fn draw(
     ladders(cv, u, col);
     // Flying by the forward view: a heading tape on top and the waypoint at the bottom; else
     // the HSI.
-    if cam.forward {
+    if forward {
         heading_tape(cv, u, col);
         waypoint_line(cv, u);
     } else {
@@ -261,6 +314,60 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
         }
         bracket(cv, p, 7.0, RED);
         stroke_text_at(cv, p.x, p.y - 12.0, &name, 5.0, 0.8, RED, Align::Centre);
+    }
+}
+
+/// The interceptor's view: a diamond on each aircraft ahead within `AIR_MARKS` (its range in
+/// km, how many metres above or below; yellow the enemy's, blue the friendly side's), a box on
+/// the one it is locked on to, and the circle within which it locks on.
+fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
+    let project = projection(eo);
+    let sim = &combat.sim;
+    // The lock cone round the nose.
+    let o = Vec2::new(w / 2.0, h / 2.0);
+    let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
+    let nose = o - Vec2::new(0.0, (NOSE_DOWN as f32).tan() * f);
+    let r = (stealth_sim::uav::LOCK_CONE as f32).tan() * f;
+    if u.lock.is_none() {
+        cv.ring(nose, r, 0.8, GREY);
+    }
+    for j in sim.interceptor_targets() {
+        let t = sim.flights()[j];
+        let (e, n, z) = unit_position(combat.prev_flights.get(j), &t, combat.alpha);
+        let at = wu_to_bevy(e, n, z);
+        let d = at - eo.eye;
+        let range = d.length();
+        if range > AIR_MARKS {
+            continue;
+        }
+        let Some(p) = project(d.as_vec3()) else { continue };
+        if p.x < 46.0 || p.y < 4.0 || p.x > w - 46.0 || p.y > h - 4.0 {
+            continue;
+        }
+        let locked = u.lock == Some(j as u16);
+        let col = if locked {
+            RED
+        } else if sim.friendly_unit(j, t.spec) {
+            CYAN
+        } else {
+            YELLOW
+        };
+        if locked {
+            cv.frame(p - Vec2::splat(9.0), p + Vec2::splat(9.0), 1.4, RED);
+        }
+        let s = 5.0;
+        let pts = [
+            p + Vec2::new(0.0, -s),
+            p + Vec2::new(s, 0.0),
+            p + Vec2::new(0.0, s),
+            p + Vec2::new(-s, 0.0),
+            p + Vec2::new(0.0, -s),
+        ];
+        cv.polyline(&pts, 1.0, col);
+        let above = (t.alt.max(0) as f64 * crate::world::WU - u.pos[2]).round();
+        let text = format!("{:.1} {above:+.0}M", range / 1000.0);
+        stroke_text_at(cv, p.x, p.y + 13.0, &text, 5.0, 0.8, col, Align::Centre);
     }
 }
 
@@ -462,7 +569,7 @@ fn projection(eo: &ConsoleEo) -> impl Fn(Vec3) -> Option<Vec2> {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
     let dir = eo.dir;
-    let up = if dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
+    let up = eo.up.unwrap_or(if dir.y.abs() > 0.99 { Vec3::NEG_Z } else { Vec3::Y });
     let right = dir.cross(up).normalize();
     let up = right.cross(dir);
     move |v: Vec3| {
@@ -482,34 +589,34 @@ fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
     }
 }
 
-/// The forward FLIR's overlay: the horizon (banked, pitched) with its pitch steps and the
-/// drone's symbol on its nose line, the heading.
+/// The forward FLIR's overlay: the horizon and its pitch steps where they are in the picture
+/// (the camera rolls and pitches with the drone), the drone's symbol on its nose line.
 fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let o = Vec2::new(w / 2.0, h / 2.0);
     let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
-    // The camera looks NOSE_DOWN under the nose: level flight puts the horizon above centre.
-    let cam_pitch = (u.pitch - NOSE_DOWN) as f32;
-    let horizon = o + Vec2::new(0.0, cam_pitch.tan() * f);
-    let bank = u.bank as f32;
-    let along = Vec2::new(bank.cos(), -bank.sin());
-    cv.stroke(horizon - along * 90.0, horizon - along * 20.0, 1.2, col);
-    cv.stroke(horizon + along * 20.0, horizon + along * 90.0, 1.2, col);
-    // Pitch steps of 10 degrees.
-    for deg in [-20.0f32, -10.0, 10.0, 20.0] {
-        let p = horizon + Vec2::new(-along.y, along.x) * (-(deg.to_radians().tan()) * f);
-        if (p - o).length() < h / 2.0 - 30.0 {
-            cv.dashed(p - along * 24.0, p + along * 24.0, 3.0, 3.0, 0.8, col);
-            stroke_text_at(
-                cv,
-                p.x + along.x * 30.0,
-                p.y,
-                &format!("{deg:.0}"),
-                5.0,
-                0.8,
-                col,
-                Align::Left,
-            );
+    let project = projection(eo);
+    // A direction (Bevy world) at a heading and an elevation (rad).
+    let at = |hdg: f64, el: f64| {
+        Vec3::new((hdg.sin() * el.cos()) as f32, el.sin() as f32, (-hdg.cos() * el.cos()) as f32)
+    };
+    // Along the way it looks (straight up or down: along its nose).
+    let (hdg, span) = (u.heading, 0.3);
+    for deg in [0.0f64, -20.0, -10.0, 10.0, 20.0] {
+        let el = deg.to_radians();
+        let (Some(a), Some(c), Some(b)) =
+            (project(at(hdg - span, el)), project(at(hdg, el)), project(at(hdg + span, el)))
+        else {
+            continue;
+        };
+        let along = (b - a).normalize_or(Vec2::X);
+        if deg == 0.0 {
+            cv.stroke(c - along * 90.0, c - along * 20.0, 1.2, col);
+            cv.stroke(c + along * 20.0, c + along * 90.0, 1.2, col);
+        } else if (c - o).length() < h / 2.0 - 30.0 {
+            cv.dashed(c - along * 24.0, c + along * 24.0, 3.0, 3.0, 0.8, col);
+            let l = c + along * 30.0;
+            stroke_text_at(cv, l.x, l.y, &format!("{deg:.0}"), 5.0, 0.8, col, Align::Left);
         }
     }
     // The drone, fixed at the camera's centre line through its nose.

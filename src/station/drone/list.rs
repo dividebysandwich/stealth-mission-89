@@ -52,6 +52,7 @@ pub(super) fn draw(
         let col = if chosen { WHITE } else { CYAN };
         stroke_text_at(cv, 8.0, y + 6.0, &u.label(), 7.0, 1.0, col, Align::Left);
         let (mode, mcol) = match u.mode {
+            _ if u.lock.is_some() => ("LOCK", RED),
             UavMode::Manual => ("MANUAL", YELLOW),
             UavMode::Dive => ("DIVE", RED),
             m => (m.name(), GREEN),
@@ -73,16 +74,16 @@ pub(super) fn draw(
             cv.fill_rect(x0 as i32 + 2, by as i32 - 3, (fill - x0 - 2.0) as i32, 7, bcol);
         }
         let end = u.endurance() as i32;
-        let text = format!("{:.0}% {}:{:02}", charge * 100.0, end / 3600, end / 60 % 60);
+        let text = format!("{:.0}% {}", charge * 100.0, super::map::duration(end));
         stroke_text_at(cv, w - 8.0, by, &text, 6.0, 0.9, bcol, Align::Right);
     }
     if uavs.is_empty() {
         stroke_text_at(cv, w / 2.0, 70.0, "NONE", 7.0, 1.0, GREY, Align::Centre);
     }
-    let [stork, fp2] = sim.uav_stock(m.unit);
+    let [stork, fp2, int] = sim.uav_stock(m.unit);
     let wait = sim.uav_rail_wait(m.unit);
     let rail = if wait > 0 { format!("RAIL {wait} S") } else { "RAIL READY".into() };
-    let stock = format!("STOCK: STORK {stork}  FP-2 {fp2}  {rail}");
-    let col = if stork + fp2 > 0 { GREY } else { RED };
+    let stock = format!("STOCK: STK {stork} FP-2 {fp2} INT {int}  {rail}");
+    let col = if stork + fp2 + int > 0 { GREY } else { RED };
     stroke_text_at(cv, 8.0, h - 10.0, &stock, 6.0, 0.9, col, Align::Left);
 }

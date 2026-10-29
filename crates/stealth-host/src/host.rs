@@ -174,6 +174,7 @@ impl Host {
                 kind: glue::station_unit(s.kind),
                 stock: s.stock,
                 stock2: s.stock2,
+                stock3: s.stock3,
             })
             .collect();
         sim.restore_stocks(&stocks);
@@ -387,6 +388,10 @@ impl Host {
                 d.stock2.get(k).copied().unwrap_or(0),
                 stealth_sim::station::initial_stock2(u.kind),
             )
+            && full(
+                d.stock3.get(k).copied().unwrap_or(0),
+                stealth_sim::station::initial_stock3(u.kind),
+            )
         {
             return Err("The stockpile is full".into());
         }
@@ -397,7 +402,7 @@ impl Host {
     }
 
     /// The friendly Patriot batteries, Gepards and drone command centers whose stockpile ran
-    /// out (their own fire, or a player's at the console; a drone command center out of either
+    /// out (their own fire, or a player's at the console; a drone command center out of any
     /// kind of drone): a resupply is ordered for each.
     fn out_of_stock(&mut self, sim: &Sim) -> Vec<CampaignEvent> {
         use stealth_sim::aaa::AaaKind;
@@ -411,7 +416,9 @@ impl Host {
                     && sim.aaa_blue(*k)
                     && match u.kind {
                         AaaKind::PatriotRadar | AaaKind::Gepard => empty(&d.stock),
-                        AaaKind::DroneCenter => empty(&d.stock) || empty(&d.stock2),
+                        AaaKind::DroneCenter => {
+                            empty(&d.stock) || empty(&d.stock2) || empty(&d.stock3)
+                        }
                         _ => false,
                     }
             })
@@ -438,6 +445,7 @@ impl Host {
                     kind: glue::defence_kind(s.kind)?,
                     stock: s.stock,
                     stock2: s.stock2,
+                    stock3: s.stock3,
                 })
             })
             .collect();

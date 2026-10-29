@@ -1,14 +1,23 @@
 //! Campaign: the drones of a drone command center, flown from its console. A center launches
 //! up to [`MAX_AIRBORNE`] at a time off its rail: **Stork-100** surveillance drones, whose
-//! sensor finds every enemy air defence unit and SAM site within [`STORK_SENSOR`] of them, and
-//! **FP-2** attack drones, which dive into a ground point and blow up there.
+//! sensor finds every enemy air defence unit and SAM site within [`STORK_SENSOR`] of them,
+//! **FP-2** attack drones, which dive into a ground point and blow up there, and
+//! **interceptors**, small quadrotors as fast as 600 km/h with a battery for minutes, which
+//! lock on to an aircraft or drone in front of them within [`LOCK_RANGE`] (whoever's: they
+//! can't tell friend from foe) and fly it down while the pilot opens the throttle. Into the
+//! ground, an interceptor's warhead goes off too, wrecking whatever stands there, friendly or
+//! not.
 //!
 //! * A drone flies its route by itself (**auto**): through its nav points, round a **loiter**
 //!   point on a wide circle, or into a **terminate** point (FP-2 only) in a steep dive. A route
 //!   without either ends in a circle round its last point.
-//! * Taken over (**manual**), it follows the console's stick and throttle: bank and pitch as the
-//!   stick is held, speed by the throttle.
-//! * Its battery runs down with the throttle; empty, it glides down and is lost. The enemy's
+//! * Taken over (**manual**), it follows the console's stick and throttle: the stick rolls and
+//!   pitches it (released, it keeps its attitude), the throttle sets its speed. An interceptor
+//!   turns its nose almost at once; its flight path swings round after it with at most
+//!   [`TURN_G`].
+//! * Its battery runs down with the throttle; empty, it glides down (an interceptor, without
+//!   wings, drops) and is lost. An interceptor under [`Perf::hover`] throttle can't hold its
+//!   height. The enemy's
 //!   air defences (guns, MANPADS teams, SAM sites) find a drone only within [`DETECT_RANGE`]:
 //!   its radar cross section is tiny.
 //!
@@ -19,7 +28,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Sim;
 use crate::aaa::{AaaKind, M_PER_MAP};
-use crate::campaign::{CampaignFlight, M_PER_WU, Role};
+use crate::campaign::{CampaignFlight, M_PER_WU, Role, add, dot, flight_metres, len, mul, sub};
 use crate::station::Station;
 use crate::types::*;
 
@@ -54,14 +63,38 @@ const CLEARANCE: f64 = 120.0;
 /// An FP-2's warhead goes off this close to its terminate point (m).
 const FUSE: f64 = 10.0;
 /// An FP-2's warhead destroys the air defence units this close (map units, about 60 m; as
-/// `aaa_damage` does a bomb's).
+/// `aaa_damage` does a bomb's), an interceptor's smaller one about 30 m.
 const BLAST: f64 = 4.0;
+const QUAD_BLAST: f64 = 2.0;
 /// A battery this low (fraction) glides down.
 const EMPTY: f32 = 0.0;
+/// An interceptor locks on to an enemy aircraft this close (m) and this far off its nose (rad,
+/// its camera's view), and lets go of it further than `LOCK_BREAK` (m).
+pub const LOCK_RANGE: f64 = 500.0;
+pub const LOCK_CONE: f64 = 0.35;
+const LOCK_BREAK: f64 = 1500.0;
+/// An interceptor's flight path follows its nose this quickly (1/s), with this many g at most;
+/// with too little throttle it sinks up to `SINK` m/s.
+pub const TURN_G: f64 = 20.0;
+const RESPONSE: f64 = 2.5;
+const SINK: f64 = 30.0;
+/// The stick's roll and pitch rates at full deflection (rad/s): a winged drone's, an
+/// interceptor's (which also turns its nose this fast at a locked target).
+const ROLL_RATE: f64 = 0.8;
+const PITCH_RATE: f64 = 0.4;
+const QUAD_ROLL_RATE: f64 = 4.0;
+const QUAD_PITCH_RATE: f64 = 3.0;
+/// The steepest climb or dive an interceptor's nose holds (rad).
+const QUAD_PITCH: f64 = 1.45;
+/// An interceptor's warhead goes off this close to its target (m).
+const INTERCEPT_FUSE: f64 = 6.0;
+/// An interceptor with a flat battery falls at this speed (m/s).
+const FALL: f64 = 45.0;
 
 /// The aircraft types (assets/sim/units.ron).
 pub const FP2_SPEC: i32 = 33;
 pub const STORK_SPEC: i32 = 34;
+pub const INTERCEPTOR_SPEC: i32 = 35;
 
 /// What a drone is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -71,6 +104,8 @@ pub enum UavKind {
     Stork,
     /// FP-2: fast, short endurance, a warhead.
     Fp2,
+    /// A quadrotor interceptor: very fast, minutes of battery, a warhead against aircraft.
+    Interceptor,
 }
 
 /// How a drone flies (m, m/s, rad, s).
@@ -83,12 +118,31 @@ pub struct Perf {
     /// Fastest climb and sink (m/s), steepest bank.
     pub climb: f64,
     pub bank: f64,
-    /// Seconds of flight at cruise on a full battery.
+    /// Seconds of flight at cruise on a full battery (an interceptor: at `hover` throttle).
     pub endurance: f64,
     /// The circle round a loiter point.
     pub loiter_radius: f64,
     /// The height a new waypoint gets (m over the ground).
     pub altitude: f64,
+    /// How quickly it banks, pitches and speeds up (1: a winged drone); the steepest pitch
+    /// flown by hand (rad).
+    pub agility: f64,
+    pub pitch: f64,
+    /// An interceptor: the throttle that just holds it up (it sinks under it), its battery
+    /// drains with the throttle. 0: a winged drone, its battery drains with its speed.
+    pub hover: f64,
+}
+
+impl Perf {
+    /// The speed a throttle (0..1) flies.
+    pub fn throttle_speed(&self, t: f64) -> f64 {
+        self.stall * 1.1 + (self.max - self.stall * 1.1) * t
+    }
+
+    /// The throttle that flies a speed.
+    pub fn speed_throttle(&self, v: f64) -> f64 {
+        ((v - self.stall * 1.1) / (self.max - self.stall * 1.1)).clamp(0.0, 1.0)
+    }
 }
 
 impl UavKind {
@@ -104,6 +158,9 @@ impl UavKind {
                 endurance: 2.5 * 3600.0,
                 loiter_radius: 900.0,
                 altitude: 800.0,
+                agility: 1.0,
+                pitch: 0.45,
+                hover: 0.0,
             },
             UavKind::Fp2 => Perf {
                 cruise: 50.0,
@@ -115,6 +172,24 @@ impl UavKind {
                 endurance: 1.2 * 3600.0,
                 loiter_radius: 600.0,
                 altitude: 300.0,
+                agility: 1.0,
+                pitch: 0.45,
+                hover: 0.0,
+            },
+            // Its cruise is the speed of its hover throttle (`Perf::throttle_speed`).
+            UavKind::Interceptor => Perf {
+                cruise: 55.3,
+                max: 600.0 / 3.6,
+                stall: 25.0,
+                dive: 170.0,
+                climb: 25.0,
+                bank: 1.2,
+                endurance: 8.0 * 60.0,
+                loiter_radius: 400.0,
+                altitude: 500.0,
+                agility: 4.0,
+                pitch: 1.0,
+                hover: 0.2,
             },
         }
     }
@@ -124,6 +199,15 @@ impl UavKind {
         match self {
             UavKind::Stork => "STORK",
             UavKind::Fp2 => "FP-2",
+            UavKind::Interceptor => "INTERCEPTOR",
+        }
+    }
+
+    /// "STORK", "FP-2", "INT" (where space is short).
+    pub fn short(self) -> &'static str {
+        match self {
+            UavKind::Interceptor => "INT",
+            k => k.name(),
         }
     }
 
@@ -131,14 +215,31 @@ impl UavKind {
         match self {
             UavKind::Stork => STORK_SPEC,
             UavKind::Fp2 => FP2_SPEC,
+            UavKind::Interceptor => INTERCEPTOR_SPEC,
         }
     }
 
-    /// The camera sees the enemy's air defences this far.
+    /// Its stockpile at a center (`DefenceState::stock`, `stock2`, `stock3`).
+    pub fn stock_index(self) -> usize {
+        match self {
+            UavKind::Stork => 0,
+            UavKind::Fp2 => 1,
+            UavKind::Interceptor => 2,
+        }
+    }
+
+    /// It has a TGP (an interceptor only looks ahead).
+    pub fn tgp(self) -> bool {
+        self != UavKind::Interceptor
+    }
+
+    /// The camera sees the enemy's air defences this far (an interceptor's never looks for
+    /// them).
     pub fn sensor(self) -> f64 {
         match self {
             UavKind::Stork => STORK_SENSOR,
             UavKind::Fp2 => FP2_SENSOR,
+            UavKind::Interceptor => 0.0,
         }
     }
 }
@@ -236,6 +337,13 @@ pub struct Uav {
     pub ctrl: [f32; 3],
     /// Seconds left of the climb out after the rail.
     pub climb_out: f32,
+    /// An interceptor: the enemy aircraft (flight unit) it is locked on to.
+    #[serde(default)]
+    pub lock: Option<u16>,
+    /// An interceptor: its velocity (m/s: east, north, up), which follows its nose (`heading`,
+    /// `pitch` and `bank` are its attitude).
+    #[serde(default)]
+    pub vel: [f64; 3],
 }
 
 impl Uav {
@@ -244,6 +352,7 @@ impl Uav {
         match self.kind {
             UavKind::Stork => format!("STK-{}", self.id),
             UavKind::Fp2 => format!("FP2-{}", self.id),
+            UavKind::Interceptor => format!("INT-{}", self.id),
         }
     }
 
@@ -255,9 +364,23 @@ impl Uav {
     /// Battery drain per second at the speed it flies (full battery: 1).
     pub fn drain(&self) -> f64 {
         let p = self.kind.perf();
+        if p.hover > 0.0 {
+            // The motors' power follows the throttle (the hover throttle's lasts `endurance`).
+            return self.throttle().max(0.05) / p.hover / p.endurance;
+        }
         // Power grows with the cube of the speed over the cruise's, a third of it to spare.
         let r = (self.speed / p.cruise).max(0.5);
         (0.35 + 0.65 * r * r * r) / p.endurance
+    }
+
+    /// The throttle it flies at (0..1): the stick's flown by hand, else the one for its speed
+    /// (an interceptor's at least its hover throttle).
+    pub fn throttle(&self) -> f64 {
+        let p = self.kind.perf();
+        match self.mode {
+            UavMode::Manual => self.ctrl[2] as f64,
+            _ => p.speed_throttle(self.speed).max(p.hover),
+        }
     }
 
     /// Seconds of flight left at this drain.
@@ -289,7 +412,7 @@ pub fn route_refusal(kind: UavKind, route: &[UavWp]) -> Option<&'static str> {
     if route.iter().any(|w| !(0..0x8000).contains(&w.x) || !(0..0x8000).contains(&w.y)) {
         return Some("Waypoint off the map");
     }
-    if kind == UavKind::Stork && route.iter().any(|w| w.kind == WpKind::Terminate) {
+    if kind != UavKind::Fp2 && route.iter().any(|w| w.kind == WpKind::Terminate) {
         return Some("Only attack drones terminate");
     }
     if route[..route.len() - 1].iter().any(|w| w.kind.last()) {
@@ -312,6 +435,91 @@ fn sbam(a: f64) -> i32 {
 fn wrap(a: f64) -> f64 {
     use std::f64::consts::{PI, TAU};
     (a + PI).rem_euclid(TAU) - PI
+}
+
+/// Where an interceptor at `pos` flying `speed` meets a target at `tp` moving `tv` (m, m/s);
+/// the target itself when it can't catch it.
+fn intercept(pos: [f64; 3], speed: f64, tp: [f64; 3], tv: [f64; 3]) -> [f64; 3] {
+    let r = sub(tp, pos);
+    // |r + tv t| = speed t
+    let (a, b, c) = (dot(tv, tv) - speed * speed, 2.0 * dot(r, tv), dot(r, r));
+    let t = if a.abs() < 1e-6 {
+        (b < 0.0).then(|| -c / b)
+    } else {
+        let disc = b * b - 4.0 * a * c;
+        (disc >= 0.0)
+            .then(|| {
+                let q = disc.sqrt();
+                [(-b - q) / (2.0 * a), (-b + q) / (2.0 * a)]
+                    .into_iter()
+                    .filter(|t| *t > 0.0)
+                    .fold(f64::INFINITY, f64::min)
+            })
+            .filter(|t| t.is_finite())
+    };
+    match t {
+        Some(t) => add(tp, mul(tv, t.min(20.0))),
+        None => tp,
+    }
+}
+
+/// A drone's nose, right wing and top (unit vectors: east, north, up) from its heading, pitch
+/// and bank.
+fn axes(u: &Uav) -> ([f64; 3], [f64; 3], [f64; 3]) {
+    let (sh, ch, sp, cp) = (u.heading.sin(), u.heading.cos(), u.pitch.sin(), u.pitch.cos());
+    let f = [sh * cp, ch * cp, sp];
+    let (r0, u0) = ([ch, -sh, 0.0], [-sh * sp, -ch * sp, cp]);
+    let (sb, cb) = (u.bank.sin(), u.bank.cos());
+    (f, sub(mul(r0, cb), mul(u0, sb)), add(mul(u0, cb), mul(r0, sb)))
+}
+
+/// A drone's heading, pitch and bank from its nose and top (its pitch at most `QUAD_PITCH`).
+fn set_attitude(u: &mut Uav, f: [f64; 3], up: [f64; 3]) {
+    u.heading = f[0].atan2(f[1]);
+    u.pitch = f[2].clamp(-1.0, 1.0).asin().clamp(-QUAD_PITCH, QUAD_PITCH);
+    let (sh, ch, sp, cp) = (u.heading.sin(), u.heading.cos(), u.pitch.sin(), u.pitch.cos());
+    u.bank = dot(up, [ch, -sh, 0.0]).atan2(dot(up, [-sh * sp, -ch * sp, cp]));
+}
+
+/// An interceptor's stick: rolled about its nose and pitched about its wings at these rates
+/// (rad/s), the nose drifting round with the bank as the X wings lift.
+fn body_rates(u: &mut Uav, roll: f64, pitch: f64, dt: f64) {
+    let (f, _, up) = axes(u);
+    let (sa, ca) = ((pitch * dt).sin(), (pitch * dt).cos());
+    let (f, up) = (add(mul(f, ca), mul(up, sa)), sub(mul(up, ca), mul(f, sa)));
+    // The right wing: nose cross top.
+    let r = [f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0]];
+    let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
+    set_attitude(u, f, add(mul(up, cb), mul(r, sb)));
+    u.heading = wrap(u.heading + 9.81 * u.bank.sin() / u.speed.max(20.0) * dt);
+}
+
+/// An interceptor turns its nose towards direction `want` (m: east, north, up) by at most
+/// `max` (rad), banked into the turn.
+fn steer_along(u: &mut Uav, want: [f64; 3], max: f64, dt: f64) {
+    let l = len(want);
+    if l < 1e-6 {
+        return;
+    }
+    let w = want.map(|c| c / l);
+    let d = [u.heading.sin() * u.pitch.cos(), u.heading.cos() * u.pitch.cos(), u.pitch.sin()];
+    let cos = dot(d, w).clamp(-1.0, 1.0);
+    let angle = cos.acos();
+    let new = if angle <= max {
+        w
+    } else {
+        // Rotated `max` from d towards w.
+        let perp = sub(w, mul(d, cos));
+        let pl = len(perp).max(1e-9);
+        let (c, s) = (max.cos(), max.sin());
+        [0, 1, 2].map(|k| d[k] * c + perp[k] / pl * s)
+    };
+    let heading = new[0].atan2(new[1]);
+    let turn = wrap(heading - u.heading) / dt;
+    let bank = (turn * u.speed / 9.81).atan().clamp(-1.4, 1.4);
+    u.bank += (bank - u.bank).clamp(-4.0 * dt, 4.0 * dt);
+    u.heading = heading;
+    u.pitch = new[2].clamp(-1.0, 1.0).asin();
 }
 
 impl Sim {
@@ -349,10 +557,10 @@ impl Sim {
         self.uavs().iter().filter(move |u| u.center as usize == center)
     }
 
-    /// A center's drones in stock: surveillance, attack.
-    pub fn uav_stock(&self, center: usize) -> [i32; 2] {
-        let Some(d) = self.defence() else { return [0; 2] };
-        [d.stock.get(center).copied().unwrap_or(0), d.stock2.get(center).copied().unwrap_or(0)]
+    /// A center's drones in stock: surveillance, attack, interceptors.
+    pub fn uav_stock(&self, center: usize) -> [i32; 3] {
+        let Some(d) = self.defence() else { return [0; 3] };
+        [&d.stock, &d.stock2, &d.stock3].map(|s| s.get(center).copied().unwrap_or(0))
     }
 
     /// Why station `st` can't launch a `kind` drone on `route` now (None: it can).
@@ -364,7 +572,7 @@ impl Sim {
         if self.uavs_of(k).count() >= MAX_AIRBORNE {
             return Some(format!("{MAX_AIRBORNE} drones are in the air already"));
         }
-        let stock = self.uav_stock(k)[(kind == UavKind::Fp2) as usize];
+        let stock = self.uav_stock(k)[kind.stock_index()];
         if stock <= 0 {
             return Some(format!("No {} left: request resupply", kind.name()));
         }
@@ -428,8 +636,7 @@ impl Sim {
                     (UavMode::Dive | UavMode::Launch, _) => return Err("Not now".into()),
                     (_, true) => {
                         u.mode = UavMode::Manual;
-                        let p = u.kind.perf();
-                        let t = ((u.speed - p.stall) / (p.max - p.stall)).clamp(0.0, 1.0);
+                        let t = u.kind.perf().speed_throttle(u.speed);
                         u.ctrl = [0.0, 0.0, t as f32];
                     }
                     (_, false) => u.mode = UavMode::Auto,
@@ -478,7 +685,11 @@ impl Sim {
         });
         let d = &mut c.defence;
         d.uav_serial += 1;
-        let stock = if kind == UavKind::Fp2 { &mut d.stock2 } else { &mut d.stock };
+        let stock = match kind {
+            UavKind::Stork => &mut d.stock,
+            UavKind::Fp2 => &mut d.stock2,
+            UavKind::Interceptor => &mut d.stock3,
+        };
         stock[k] -= 1;
         let p = kind.perf();
         let uav = Uav {
@@ -497,6 +708,8 @@ impl Sim {
             speed: p.stall * 1.3,
             ctrl: [0.0; 3],
             climb_out: CLIMB_OUT,
+            lock: None,
+            vel: [0.0; 3],
         };
         d.uavs.push(uav);
         let n = d.uavs.len() - 1;
@@ -541,6 +754,7 @@ impl Sim {
         let dt = 1.0 / self.fs.max(1) as f64;
         let mut u = self.defence().expect("campaign").uavs[n].clone();
         let p = u.kind.perf();
+        let ag = p.agility;
         let ground = self.uav_ground(u.pos, u.heading);
         // What it steers for: a heading, a height, a speed (or the stick's bank and pitch).
         let mut steer: Option<(f64, f64, f64)> = None;
@@ -571,11 +785,45 @@ impl Sim {
             }
             UavMode::Manual => {}
         }
-        if u.battery <= EMPTY {
+        // An interceptor locked on: its target's position and velocity (m, m/s).
+        let chase = u
+            .lock
+            .filter(|_| u.battery > EMPTY && u.mode != UavMode::Launch)
+            .map(|j| self.air_target(j as usize));
+        let from = u.pos;
+        let quad = p.hover > 0.0;
+        if quad && len(u.vel) < 1e-6 {
+            u.vel = mul(axes(&u).0, u.speed);
+        }
+        // Flown along a direction (heading and pitch set directly), not by its bank.
+        let mut direct = false;
+        // An interceptor's speed along its nose and its throttle (None: its motors stopped).
+        let mut thrust: Option<(f64, f64)> = None;
+        if u.battery <= EMPTY && quad {
+            // No wings: it tumbles and drops.
+            u.bank = wrap(u.bank + 1.5 * dt);
+            u.pitch += (-1.3 - u.pitch).clamp(-dt, dt);
+            direct = true;
+        } else if u.battery <= EMPTY {
             // Gliding down, wings level.
             u.bank -= u.bank * (2.0 * dt).min(1.0);
             u.pitch = (-0.08_f64).max(u.pitch - 0.2 * dt);
             u.speed += ((p.stall * 1.1) - u.speed) * (0.3 * dt).min(1.0);
+        } else if let Some((tp, tv)) = chase {
+            // The nose at where the target will be, leading the flight path round (past it by
+            // as much as the path still has to swing).
+            let aim = intercept(u.pos, u.speed, tp, tv);
+            let to = sub(aim, u.pos);
+            let w = mul(to, 1.0 / len(to).max(1e-6));
+            let want = sub(mul(w, 2.0 * u.speed.max(20.0)), u.vel);
+            steer_along(&mut u, want, QUAD_ROLL_RATE * dt, dt);
+            direct = true;
+            // At the throttle's speed (auto: its cruise, holding itself up).
+            let t = match u.mode {
+                UavMode::Manual => u.ctrl[2] as f64,
+                _ => p.hover,
+            };
+            thrust = Some((p.throttle_speed(t), t));
         } else if let Some(t) = dive_at {
             // Straight at the point, speeding up.
             let d = [t[0] - u.pos[0], t[1] - u.pos[1], t[2] - u.pos[2]];
@@ -589,38 +837,99 @@ impl Sim {
         } else if let Some((want_h, want_alt, want_v)) = steer {
             let turn = wrap(want_h - u.heading);
             let bank = (turn * 1.5).clamp(-p.bank, p.bank);
-            u.bank += (bank - u.bank).clamp(-0.6 * dt, 0.6 * dt);
+            u.bank += (bank - u.bank).clamp(-0.6 * ag * dt, 0.6 * ag * dt);
             let climb = ((want_alt - u.pos[2]) * 0.15).clamp(-p.climb, p.climb);
             let pitch = (climb / u.speed.max(1.0)).clamp(-0.5, 0.5).asin();
-            u.pitch += (pitch - u.pitch).clamp(-0.3 * dt, 0.3 * dt);
-            u.speed += (want_v - u.speed).clamp(-3.0 * dt, 3.0 * dt);
-        } else {
-            // The stick sets bank and pitch, the throttle the speed.
+            u.pitch += (pitch - u.pitch).clamp(-0.3 * ag * dt, 0.3 * ag * dt);
+            if quad {
+                thrust = Some((want_v, p.speed_throttle(want_v).max(p.hover)));
+            } else {
+                u.speed += (want_v - u.speed).clamp(-3.0 * dt, 3.0 * dt);
+            }
+        } else if quad {
+            // The stick rolls and pitches it (held where it is let go), the throttle drives it
+            // along its nose.
             let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
-            u.bank += (roll * p.bank * 1.2 - u.bank).clamp(-1.0 * dt, 1.0 * dt);
-            u.pitch += (pitch * 0.45 - u.pitch).clamp(-0.6 * dt, 0.6 * dt);
-            let want_v = p.stall * 1.1 + (p.max - p.stall * 1.1) * throttle;
+            body_rates(&mut u, roll * QUAD_ROLL_RATE, pitch * QUAD_PITCH_RATE, dt);
+            direct = true;
+            thrust = Some((p.throttle_speed(throttle), throttle));
+        } else {
+            // The stick rolls and pitches it (held where it is let go), the throttle sets the
+            // speed.
+            let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
+            let max_bank = p.bank * 1.2;
+            u.bank = (u.bank + roll * ROLL_RATE * dt).clamp(-max_bank, max_bank);
+            u.pitch = (u.pitch + pitch * PITCH_RATE * dt).clamp(-p.pitch, p.pitch);
+            let want_v = p.throttle_speed(throttle);
             // Nose down picks up speed, nose up loses it.
             let v = want_v - u.pitch.sin() * 40.0;
             u.speed += (v.clamp(p.stall, p.dive) - u.speed).clamp(-4.0 * dt, 4.0 * dt);
         }
-        // A coordinated turn: the bank turns the heading.
-        u.heading = wrap(u.heading + 9.81 * u.bank.tan() / u.speed.max(1.0) * dt);
-        let h = u.speed * u.pitch.cos() * dt;
-        u.pos[0] += u.heading.sin() * h;
-        u.pos[1] += u.heading.cos() * h;
-        u.pos[2] += u.speed * u.pitch.sin() * dt;
+        if !direct {
+            // A coordinated turn: the bank turns the heading.
+            u.heading = wrap(u.heading + 9.81 * u.bank.tan() / u.speed.max(1.0) * dt);
+        }
+        if quad {
+            // Its flight path follows the nose (with too little throttle, sinking), as hard as
+            // `TURN_G` lets it; with the motors stopped it falls.
+            let acc = match thrust {
+                Some((v, t)) => {
+                    let mut want = mul(axes(&u).0, v);
+                    if t < p.hover {
+                        want[2] = want[2].min(-SINK * (p.hover - t) / p.hover);
+                    }
+                    let a = mul(sub(want, u.vel), RESPONSE);
+                    let max = TURN_G * 9.81;
+                    mul(a, (max / len(a).max(1e-9)).min(1.0))
+                }
+                None => sub([0.0, 0.0, -9.81], mul(u.vel, len(u.vel) * 9.81 / (FALL * FALL))),
+            };
+            u.vel = add(u.vel, mul(acc, dt));
+            u.pos = add(u.pos, mul(u.vel, dt));
+            u.speed = len(u.vel);
+        } else {
+            let h = u.speed * u.pitch.cos() * dt;
+            u.pos[0] += u.heading.sin() * h;
+            u.pos[1] += u.heading.cos() * h;
+            u.pos[2] += u.speed * u.pitch.sin() * dt;
+        }
         let on_target = dive_at.is_some_and(|t| {
             let d = [t[0] - u.pos[0], t[1] - u.pos[1], t[2] - u.pos[2]];
             (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() < FUSE
         });
+        // The interceptor's warhead: where its way and the target's pass closest this frame.
+        let hit = chase.and_then(|(tp, tv)| {
+            let step = sub(sub(u.pos, from), mul(tv, dt));
+            (crate::aaa::closest(sub(from, tp), step) < INTERCEPT_FUSE).then_some(u.lock?)
+        });
         let crashed = u.pos[2] <= 0.0 || u.pos[2] < ground - 50.0;
         self.defence_mut().uavs[n] = u;
-        if on_target || crashed {
+        if let Some(j) = hit {
+            self.uav_intercept(n, j as usize);
+        } else if on_target || crashed {
             self.uav_impact(n);
         } else {
             self.write_uav_flight(n);
         }
+    }
+
+    /// Flight unit `j` as an interceptor's target: where it is and how it moves (m, m/s: east,
+    /// north, up).
+    fn air_target(&self, j: usize) -> ([f64; 3], [f64; 3]) {
+        let v = self.flight_velocity(j);
+        (flight_metres(&self.flights[j]), [v[0] * M_PER_WU, -v[1] * M_PER_WU, v[2] * M_PER_WU])
+    }
+
+    /// The enemy aircraft and drones in the air (flight units).
+    pub fn enemy_aircraft(&self) -> impl Iterator<Item = usize> + '_ {
+        (0..self.flights.len()).filter(|&j| self.ai_side(j) == Some(false))
+    }
+
+    /// What an interceptor locks on to: the aircraft and drones in the air of either side (not
+    /// the command centers' own drones).
+    pub fn interceptor_targets(&self) -> impl Iterator<Item = usize> + '_ {
+        (0..self.flights.len())
+            .filter(|&j| self.ai_side(j).is_some() && self.uav_of_flight(j).is_none())
     }
 
     /// Auto: the heading, height and speed to its waypoint (and on to the next one past it);
@@ -663,8 +972,9 @@ impl Sim {
         }
     }
 
-    /// Drone `n` hit the ground: an FP-2 blows up (the guns and SAM sites there with it), a
-    /// Stork breaks up. Either way it is gone.
+    /// Drone `n` hit the ground: an FP-2 blows up (the enemy's guns and SAM sites there with
+    /// it), an interceptor too (whatever stands there, friendly or not), a Stork breaks up.
+    /// Either way it is gone.
     fn uav_impact(&mut self, n: usize) {
         let u = self.defence_mut().uavs.remove(n);
         let i = u.flight as usize;
@@ -675,17 +985,7 @@ impl Sim {
         self.flights[i].flags = 0;
         if u.kind == UavKind::Fp2 {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -6 });
-            // The guns and launchers there (also with nobody flying, when `aaa_damage` sleeps).
-            for k in 0..self.aaa.len() {
-                let a = self.aaa[k];
-                if !a.destroyed && ((a.x - x) as f64).hypot((a.y - y) as f64) < BLAST {
-                    self.aaa[k].destroyed = true;
-                    self.aaa[k].burst = 0;
-                    self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
-                    self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
-                    self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
-                }
-            }
+            self.uav_blast_units(x, y, BLAST);
             let o = self.find_object_at(x, y);
             if o > 2 {
                 let ob = self.obj(o);
@@ -695,14 +995,114 @@ impl Sim {
                 }
             }
             self.msg(format!("{} impact", u.label()));
+        } else if u.kind == UavKind::Interceptor {
+            self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -6 });
+            self.uav_blast_units(x, y, QUAD_BLAST);
+            // The building, vehicle or site there (the nearest tile object, as a bomb's).
+            let o = self.find_object_at(x, y);
+            if o != -1 && self.obj(o).flags & oflags::DESTROYED == 0 {
+                let t = self.pl.last_tile;
+                let (tx, ty) = t.map_or((self.obj(o).x, self.obj(o).y), |t| t.map_pos());
+                if self.tile_is_intact(&t)
+                    && (crate::math::approx(tx - x, ty - y) as f64) < QUAD_BLAST
+                {
+                    let name = self.place_name(o as usize);
+                    self.destroy_ground(o);
+                    self.msg(format!("{name} destroyed by {}", u.label()));
+                }
+            }
+            self.msg(format!("{} impact", u.label()));
         } else {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -1 });
             self.msg(format!("{} lost", u.label()));
         }
     }
 
+    /// A warhead at map point (x, y): the air defence units of either side within `r` map units
+    /// (also with nobody flying, when `aaa_damage` sleeps).
+    fn uav_blast_units(&mut self, x: i32, y: i32, r: f64) {
+        for k in 0..self.aaa.len() {
+            let a = self.aaa[k];
+            if !a.destroyed && ((a.x - x) as f64).hypot((a.y - y) as f64) < r {
+                self.aaa[k].destroyed = true;
+                self.aaa[k].burst = 0;
+                self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
+                self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
+                self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
+            }
+        }
+    }
+
+    /// Interceptor `n` hit flight unit `j`: both are gone.
+    fn uav_intercept(&mut self, n: usize, j: usize) {
+        let u = self.defence_mut().uavs.remove(n);
+        let i = u.flight as usize;
+        if let Some(Some(f)) = self.campaign.as_mut().and_then(|c| c.flights.get_mut(i)) {
+            f.reported = true;
+        }
+        self.flights[i].flags = 0;
+        let (x, y) = u.map();
+        let alt = (u.pos[2] / M_PER_WU) as i32;
+        self.emit(SimEvent::Explosion { x, y, alt, kind: -6 });
+        let name = self.ac_type(self.flights[j].spec).name.clone();
+        self.msg(format!("{} hit {name}", u.label()));
+        self.ai_kill(j);
+    }
+
+    /// The interceptors' locks: one without finds the nearest aircraft or drone (of either side)
+    /// within `LOCK_RANGE` and `LOCK_CONE` of its nose; a lock goes when its target is gone or
+    /// further than `LOCK_BREAK`.
+    fn uav_locks(&mut self) {
+        let targets: Vec<(usize, [f64; 3])> =
+            self.interceptor_targets().map(|j| (j, flight_metres(&self.flights[j]))).collect();
+        let mut news = Vec::new();
+        for (n, u) in self.uavs().iter().enumerate() {
+            if u.kind != UavKind::Interceptor {
+                continue;
+            }
+            let lock = if u.battery <= EMPTY || u.mode == UavMode::Launch {
+                None
+            } else if let Some(j) = u.lock {
+                targets
+                    .iter()
+                    .find(|e| e.0 == j as usize)
+                    .filter(|e| len(sub(e.1, u.pos)) < LOCK_BREAK)
+                    .map(|_| j)
+            } else {
+                let nose = [
+                    u.heading.sin() * u.pitch.cos(),
+                    u.heading.cos() * u.pitch.cos(),
+                    u.pitch.sin(),
+                ];
+                targets
+                    .iter()
+                    .map(|&(j, p)| (j, sub(p, u.pos)))
+                    .map(|(j, r)| (j, len(r), dot(r, nose)))
+                    .filter(|&(_, d, along)| d < LOCK_RANGE && along > d * LOCK_CONE.cos())
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .map(|(j, ..)| j as u16)
+            };
+            if lock != u.lock {
+                news.push((n, lock));
+            }
+        }
+        for (n, lock) in news {
+            let label = self.uavs()[n].label();
+            match lock {
+                Some(j) => {
+                    let name = self.ac_type(self.flights[j as usize].spec).name.clone();
+                    self.msg(format!("{label} locked on {name}"));
+                }
+                None if self.uavs()[n].battery > EMPTY => self.msg(format!("{label} lost lock")),
+                None => {}
+            }
+            self.defence_mut().uavs[n].lock = lock;
+        }
+    }
+
     /// Once a frame: drones shot down or whose center is gone are lost, the batteries run down,
-    /// and once a second the drones look for the enemy's air defences.
+    /// the interceptors lock on, and once a second the drones look for the enemy's air
+    /// defences.
     pub(crate) fn update_uavs(&mut self) {
         let Some(d) = self.defence() else { return };
         if d.uavs.is_empty() && d.uav_known.is_empty() {
@@ -725,6 +1125,7 @@ impl Sim {
             u.battery = (u.battery as f64 - drain).max(0.0) as f32;
             n += 1;
         }
+        self.uav_locks();
         if self.frame % self.fs.max(1) == 0 {
             self.uav_look();
         }
