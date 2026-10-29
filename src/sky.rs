@@ -391,6 +391,7 @@ fn update_sky(
     mut sky: ResMut<Sky>,
     palette: Option<ResMut<Palette>>,
     combat: Option<ResMut<crate::combat::Combat>>,
+    weather: Option<Res<crate::weather::WeatherState>>,
 ) {
     let on = settings.continuous_time;
     sky.campaign = combat.as_ref().is_some_and(|c| c.sky_seconds.is_some());
@@ -417,6 +418,8 @@ fn update_sky(
     let elev = (sun.y as f64).asin().to_degrees();
     let lit = illumination(phase);
     let moonlight = lit * smoothstep(0.0, 0.25, moon.y as f64);
+    // Under a full overcast no moonlight reaches the ground: a dark night.
+    let ground_moon = moonlight * (1.0 - weather.map_or(0.0, |w| w.world_shade) as f64);
     let day = smoothstep(-12.0, 6.0, elev);
     *sky = Sky {
         on,
@@ -425,7 +428,7 @@ fn update_sky(
         moonlight: moonlight as f32,
         stars: ((1.0 - smoothstep(-14.0, -4.0, elev)) * (1.0 - 0.6 * moonlight)) as f32,
         day: day as f32,
-        dark: darkness(elev, moonlight) as f32,
+        dark: darkness(elev, ground_moon) as f32,
         glow: horizon_glow(elev, sky.lat, sky.summer) as f32,
         ..sky.clone()
     };
@@ -438,7 +441,7 @@ fn update_sky(
             sky.golden = Some((look, golden(&palette.theater, &look)));
         }
         let Some((_, gold)) = &sky.golden else { return };
-        let p = blend(&palette.theater, gold, elev, moonlight);
+        let p = blend(&palette.theater, gold, elev, ground_moon);
         if p.colors != palette.active.colors {
             palette.active = p;
         }

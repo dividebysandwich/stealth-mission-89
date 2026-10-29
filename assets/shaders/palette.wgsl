@@ -923,13 +923,14 @@ fn ground_mist(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
 
 const SHADOW_GRID: f32 = 12.0;
 
-// Cloud shadows: the shade of the clouds above `world` where the sun's ray from it meets their
-// base: the stratus deck's (unless a full overcast hides the sun everywhere), and the cumulus
-// and storm towers' (round, soft edged) from the grid of them round the eye, fading to their
-// average shade past it.
+// Cloud shadows: the shade of the clouds above `world` where the key light's ray from it meets
+// their base (the sun's, or the moon's when it is the brighter): the stratus deck's (unless a
+// full overcast hides it everywhere), and the cumulus and storm towers' (round, soft edged)
+// from the grid of them round the eye, fading to their average shade past it.
 fn cloud_shadow(world: vec3<f32>) -> f32 {
     let s = globals.atmos.z;
-    let sun = globals.sun.xyz;
+    let moon_key = (u32(globals.ambient.w) & LIGHT_MOON_KEY) != 0u;
+    let sun = select(globals.sun.xyz, globals.moon.xyz, moon_key);
     if (s <= 0.0 || sun.y < 0.05) {
         return 1.0;
     }

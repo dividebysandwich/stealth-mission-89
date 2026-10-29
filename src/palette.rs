@@ -541,7 +541,7 @@ fn update_globals(
     g.storm_haze = weather.storm_haze();
     (g.burst, g.burst_colour) = bursts.globals(origin.origin);
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
-    g.atmos = weather.atmos(&settings, theater, lighting.daylight);
+    g.atmos = weather.atmos(&settings, theater, lighting.daylight, lighting.moonlit);
     let sh = &weather.shadows;
     (g.shadow_grid, g.shadow_far) = (sh.grid, sh.far);
     (g.shadow_cells, g.shadow_clouds) = (sh.cells, sh.clouds);

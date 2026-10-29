@@ -112,6 +112,17 @@ pub struct LightingState {
     pub outside: Vec<bool>,
     /// Daylight 0 (night) .. 1 (day), from the sky colour.
     pub daylight: f32,
+    /// The moon's light on the ground as a share of a full moon's high up, 0..1: none by day
+    /// or under a full overcast.
+    pub moonlit: f32,
+}
+
+impl LightingState {
+    /// Direction to the light that casts the shadows: the sun, or the moon when it is the
+    /// brighter.
+    pub fn key_light(&self) -> Vec3 {
+        if self.moon.w > self.sun.w { self.moon.truncate() } else { self.sun.truncate() }
+    }
 }
 
 /// The directional light with the shadow maps: the sun, or the moon when it is the brighter.
@@ -351,11 +362,12 @@ fn update_sun(
     };
     state.sun = dir.extend(strength);
     // Modern shading or shadows: the moon lights the night (`Sky::moonlight` fades it out as
-    // it sets).
-    let moon_strength = match balance.filter(|_| celestial.on) {
-        Some(b) => b.moon * celestial.moonlight * (1.0 - daylight) * (1.0 - 0.85 * shade),
+    // it sets); a full overcast hides it altogether (a broken deck's shadows are the shader's).
+    state.moonlit = match balance.filter(|_| celestial.on) {
+        Some(_) => celestial.moonlight * (1.0 - daylight) * (1.0 - shade),
         None => 0.0,
     };
+    let moon_strength = balance.map_or(0.0, |b| b.moon * state.moonlit);
     let m = celestial.moon.normalize_or(Vec3::Y);
     let moon_dir = Vec3::new(m.x, m.y.max(0.08), m.z).normalize();
     state.moon = moon_dir.extend(moon_strength);

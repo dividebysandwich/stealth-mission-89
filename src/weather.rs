@@ -164,12 +164,14 @@ impl WeatherState {
     /// `Globals::atmos`: ground mist (`Effects::mist`; strength, depth and the ground it lies on,
     /// in metres) at dawn, dusk
     /// and night, thin in the deserts and gone in storms, more or less of it by the mission; and
-    /// the cloud shadows' strength (`Effects::cloud_shadows`) by day. Modern shading only.
+    /// the cloud shadows' strength (`Effects::cloud_shadows`) by day and by moonlight
+    /// (`moonlit`, `LightingState::moonlit`). Modern shading only.
     pub fn atmos(
         &self,
         settings: &crate::settings::Settings,
         theater: &str,
         daylight: f32,
+        moonlit: f32,
     ) -> Vec4 {
         if !settings.modern_shading {
             return Vec4::ZERO;
@@ -188,7 +190,7 @@ impl WeatherState {
         };
         let top = MIST_TOP.0 + (MIST_TOP.1 - MIST_TOP.0) * roll(0x7019);
         let shadows = if settings.effects.cloud_shadows {
-            CLOUD_SHADOW * daylight.clamp(0.0, 1.0)
+            CLOUD_SHADOW * daylight.max(moonlit).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -704,9 +706,10 @@ fn cloud_shadows(
     mut state: ResMut<WeatherState>,
 ) {
     let mut sh = CloudShadows::default();
-    // A full overcast hides the sun everywhere (`world_shade`), not in patches.
+    // A full overcast hides the sun and the moon everywhere (`world_shade`), not in patches.
     sh.far.y = 1.0 - overcast_share(state.cover[1]);
-    let sun = lighting.sun.truncate();
+    // By night the moon casts them.
+    let sun = lighting.key_light();
     let eye = eye_position(&eyes, &origin);
     let w = state.weather;
     let layer = if w.cumulus.present() { w.cumulus } else { w.cumulonimbus };
