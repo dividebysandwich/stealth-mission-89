@@ -836,11 +836,14 @@ pub fn read_hotas(
             return;
         }
     }
-    // At a console only the stick and the triggers pass.
+    // At a console only the stick, the rudder and the triggers pass.
     let console = block.0;
     for m in &config.axes {
         if console
-            && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch | AxisControl::Throttle)
+            && !matches!(
+                m.control,
+                AxisControl::Roll | AxisControl::Pitch | AxisControl::Yaw | AxisControl::Throttle
+            )
         {
             continue;
         }

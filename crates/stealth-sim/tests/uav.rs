@@ -220,7 +220,7 @@ fn a_drone_flown_by_hand_turns_with_the_stick() {
     run(&mut sim, 10);
     sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
     let h0 = sim.uavs()[0].heading;
-    let fly = StationCmd::Fly { uav: id, roll: 1.0, pitch: 0.0, throttle: 1.0 };
+    let fly = StationCmd::Fly { uav: id, roll: 1.0, pitch: 0.0, yaw: 0.0, throttle: 1.0 };
     sim.station_command(ME, fly).unwrap();
     run(&mut sim, 3);
     let h1 = sim.uavs()[0].heading;
@@ -326,7 +326,12 @@ fn fly(sim: &mut Sim, id: u16, pitch: f32, throttle: f32) {
 }
 
 fn stick(sim: &mut Sim, id: u16, roll: f32, pitch: f32, throttle: f32) {
-    sim.station_command(ME, StationCmd::Fly { uav: id, roll, pitch, throttle }).unwrap();
+    sim.station_command(ME, StationCmd::Fly { uav: id, roll, pitch, yaw: 0.0, throttle }).unwrap();
+}
+
+fn rudder(sim: &mut Sim, id: u16, yaw: f32, throttle: f32) {
+    let fly = StationCmd::Fly { uav: id, roll: 0.0, pitch: 0.0, yaw, throttle };
+    sim.station_command(ME, fly).unwrap();
 }
 
 /// `n` frames (15 a second).
@@ -393,6 +398,49 @@ fn an_interceptor_turns_its_nose_at_once_and_its_course_after_it() {
     let u = &sim.uavs()[0];
     assert!(angle(nose(u), u.vel) < 0.15, "course {} rad off the nose", angle(nose(u), u.vel));
     assert!(u.bank.abs() > 1.0, "bank {}", u.bank);
+}
+
+#[test]
+fn an_interceptor_yaws_as_fast_as_it_pitches() {
+    let (mut sim, _, id) = interceptor();
+    run(&mut sim, 10);
+    let u0 = sim.uavs()[0].clone();
+    // Half a second of full rudder: the nose 1.5 rad round, as far as the stick pitches it.
+    rudder(&mut sim, id, 1.0, 1.0);
+    frames(&mut sim, 7);
+    rudder(&mut sim, id, 0.0, 1.0);
+    frames(&mut sim, 1);
+    let u = sim.uavs()[0].clone();
+    let turned = angle(nose(&u0), nose(&u));
+    assert!((1.3..1.7).contains(&turned), "nose turned {turned} rad");
+    assert!(wrap(u.heading - u0.heading) > 0.0, "turned left");
+    // Let go, it holds its attitude.
+    run(&mut sim, 2);
+    assert!(angle(nose(&u), nose(&sim.uavs()[0])) < 0.05);
+}
+
+#[test]
+fn a_winged_drone_s_rudder_skids_its_nose_round() {
+    let heading = |yaw: f32| {
+        let (mut sim, k, _, _) = center();
+        let at = off(&sim, k, 5000.0, 0.0);
+        launch(&mut sim, UavKind::Fp2, vec![wp(at, 300.0, WpKind::Loiter)]).unwrap();
+        let id = sim.uavs()[0].id;
+        run(&mut sim, 10);
+        sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
+        let t = sim.uavs()[0].ctrl[2];
+        rudder(&mut sim, id, yaw, t);
+        run(&mut sim, 2);
+        sim.uavs()[0].heading
+    };
+    // Full left rudder for 2 s: 0.3 rad further left than without.
+    let skid = wrap(heading(-1.0) - heading(0.0));
+    assert!((-0.35..-0.25).contains(&skid), "{skid}");
+}
+
+/// A heading difference in -pi..pi.
+fn wrap(a: f64) -> f64 {
+    (a + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI
 }
 
 #[test]

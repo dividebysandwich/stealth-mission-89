@@ -78,12 +78,14 @@ const LOCK_BREAK: f64 = 1500.0;
 pub const TURN_G: f64 = 20.0;
 const RESPONSE: f64 = 2.5;
 const SINK: f64 = 30.0;
-/// The stick's roll and pitch rates at full deflection (rad/s): a winged drone's, an
-/// interceptor's (which also turns its nose this fast at a locked target).
+/// The stick's roll and pitch rates and the rudder's yaw rate at full deflection (rad/s): a
+/// winged drone's, an interceptor's (which also turns its nose this fast at a locked target).
 const ROLL_RATE: f64 = 0.8;
 const PITCH_RATE: f64 = 0.4;
+const YAW_RATE: f64 = 0.15;
 const QUAD_ROLL_RATE: f64 = 4.0;
 const QUAD_PITCH_RATE: f64 = 3.0;
+const QUAD_YAW_RATE: f64 = 3.0;
 /// The steepest climb or dive an interceptor's nose holds (rad).
 const QUAD_PITCH: f64 = 1.45;
 /// An interceptor's warhead goes off this close to its target (m).
@@ -335,6 +337,9 @@ pub struct Uav {
     pub speed: f64,
     /// Manual: the stick (roll right, pitch up, -1..1) and the throttle (0..1).
     pub ctrl: [f32; 3],
+    /// Manual: the rudder (nose right, -1..1).
+    #[serde(default)]
+    pub yaw: f32,
     /// Seconds left of the climb out after the rail.
     pub climb_out: f32,
     /// An interceptor: the enemy aircraft (flight unit) it is locked on to.
@@ -481,14 +486,20 @@ fn set_attitude(u: &mut Uav, f: [f64; 3], up: [f64; 3]) {
     u.bank = dot(up, [ch, -sh, 0.0]).atan2(dot(up, [-sh * sp, -ch * sp, cp]));
 }
 
-/// An interceptor's stick: rolled about its nose and pitched about its wings at these rates
-/// (rad/s), the nose drifting round with the bank as the X wings lift.
-fn body_rates(u: &mut Uav, roll: f64, pitch: f64, dt: f64) {
+/// An interceptor's stick and rudder: rolled about its nose, pitched about its wings and yawed
+/// about its top at these rates (rad/s), the nose drifting round with the bank as the X wings
+/// lift.
+fn body_rates(u: &mut Uav, roll: f64, pitch: f64, yaw: f64, dt: f64) {
     let (f, _, up) = axes(u);
     let (sa, ca) = ((pitch * dt).sin(), (pitch * dt).cos());
     let (f, up) = (add(mul(f, ca), mul(up, sa)), sub(mul(up, ca), mul(f, sa)));
     // The right wing: nose cross top.
-    let r = [f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0]];
+    let right = |f: [f64; 3]| {
+        [f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0]]
+    };
+    let (sy, cy) = ((yaw * dt).sin(), (yaw * dt).cos());
+    let f = add(mul(f, cy), mul(right(f), sy));
+    let r = right(f);
     let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
     set_attitude(u, f, add(mul(up, cb), mul(r, sb)));
     u.heading = wrap(u.heading + 9.81 * u.bank.sin() / u.speed.max(20.0) * dt);
@@ -638,17 +649,19 @@ impl Sim {
                         u.mode = UavMode::Manual;
                         let t = u.kind.perf().speed_throttle(u.speed);
                         u.ctrl = [0.0, 0.0, t as f32];
+                        u.yaw = 0.0;
                     }
                     (_, false) => u.mode = UavMode::Auto,
                 }
             }
-            C::Fly { uav, roll, pitch, throttle } => {
+            C::Fly { uav, roll, pitch, yaw, throttle } => {
                 let k = self.station_uav(st, uav)?;
                 let u = &mut self.defence_mut().uavs[k];
                 if u.mode != UavMode::Manual {
                     return Err("Not in manual".into());
                 }
                 u.ctrl = [roll.clamp(-1.0, 1.0), pitch.clamp(-1.0, 1.0), throttle.clamp(0.0, 1.0)];
+                u.yaw = yaw.clamp(-1.0, 1.0);
             }
             _ => return Err("Not a drone command".into()),
         }
@@ -707,6 +720,7 @@ impl Sim {
             bank: 0.0,
             speed: p.stall * 1.3,
             ctrl: [0.0; 3],
+            yaw: 0.0,
             climb_out: CLIMB_OUT,
             lock: None,
             vel: [0.0; 3],
@@ -847,16 +861,18 @@ impl Sim {
                 u.speed += (want_v - u.speed).clamp(-3.0 * dt, 3.0 * dt);
             }
         } else if quad {
-            // The stick rolls and pitches it (held where it is let go), the throttle drives it
-            // along its nose.
+            // The stick rolls and pitches it and the rudder yaws it (held where they are let
+            // go), the throttle drives it along its nose.
             let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
-            body_rates(&mut u, roll * QUAD_ROLL_RATE, pitch * QUAD_PITCH_RATE, dt);
+            let yaw = u.yaw as f64 * QUAD_YAW_RATE;
+            body_rates(&mut u, roll * QUAD_ROLL_RATE, pitch * QUAD_PITCH_RATE, yaw, dt);
             direct = true;
             thrust = Some((p.throttle_speed(throttle), throttle));
         } else {
-            // The stick rolls and pitches it (held where it is let go), the throttle sets the
-            // speed.
+            // The stick rolls and pitches it (held where it is let go), the rudder skids the
+            // nose round, the throttle sets the speed.
             let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
+            u.heading = wrap(u.heading + u.yaw as f64 * YAW_RATE * dt);
             let max_bank = p.bank * 1.2;
             u.bank = (u.bank + roll * ROLL_RATE * dt).clamp(-max_bank, max_bank);
             u.pitch = (u.pitch + pitch * PITCH_RATE * dt).clamp(-p.pitch, p.pitch);

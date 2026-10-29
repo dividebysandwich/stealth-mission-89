@@ -257,7 +257,7 @@ mod tests {
             StationCmd::Route { uav: 4, route },
             StationCmd::Next { uav: 4, wp: 1 },
             StationCmd::Manual { uav: 2, on: true },
-            StationCmd::Fly { uav: 2, roll: -0.5, pitch: 0.25, throttle: 0.75 },
+            StationCmd::Fly { uav: 2, roll: -0.5, pitch: 0.25, yaw: 0.5, throttle: 0.75 },
         ] {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));

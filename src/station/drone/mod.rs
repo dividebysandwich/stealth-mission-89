@@ -126,9 +126,9 @@ pub struct DroneUi {
     pub cams: Vec<(u16, Cam)>,
     /// The throttle (0..1) for a drone flown by hand.
     pub throttle: f32,
-    fly: (f32, [f32; 3]),
-    /// The stick (roll, pitch) as eased to where it is held.
-    eased: [f32; 2],
+    fly: (f32, [f32; 4]),
+    /// The stick (roll, pitch) and the rudder as eased to where they are held.
+    eased: [f32; 3],
     /// A message (a refused command) and how long it shows yet (s).
     pub note: Option<(String, f32)>,
     /// The map was put on the center, the right stick's zoom repeat, a waypoint moved by the
@@ -154,8 +154,8 @@ impl Default for DroneUi {
             edit: None,
             cams: Vec::new(),
             throttle: 0.5,
-            fly: (0.0, [0.0; 3]),
-            eased: [0.0; 2],
+            fly: (0.0, [0.0; 4]),
+            eased: [0.0; 3],
             note: None,
             placed: false,
             zoom_wait: 0.0,
@@ -266,12 +266,12 @@ fn stick(
     let forward = forward(&ui, u);
     if u.mode == UavMode::Manual {
         let step = STICK_EASE * dt;
-        for (e, v) in ui.eased.iter_mut().zip([roll, pitch]) {
+        for (e, v) in ui.eased.iter_mut().zip([roll, pitch, dead(controls.yaw)]) {
             *e += (v - *e).clamp(-step, step);
         }
-        let [roll, pitch] = ui.eased;
+        let [roll, pitch, yaw] = ui.eased;
         ui.fly.0 -= dt;
-        let want = [roll, pitch, ui.throttle];
+        let want = [roll, pitch, yaw, ui.throttle];
         // Let go, exactly 0 goes out (a sliver of a rate left would creep on).
         let changed =
             want.iter().zip(ui.fly.1).any(|(&a, b)| (a - b).abs() > 0.01 || (a == 0.0 && b != 0.0));
@@ -281,12 +281,13 @@ fn stick(
                 uav: u.id,
                 roll,
                 pitch,
+                yaw,
                 throttle: ui.throttle,
             }));
         }
         return;
     }
-    ui.eased = [0.0; 2];
+    ui.eased = [0.0; 3];
     // The TGP: the stick moves the point it holds across the picture (finer zoomed in).
     if (roll == 0.0 && pitch == 0.0) || forward {
         return;

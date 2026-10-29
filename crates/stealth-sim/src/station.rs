@@ -125,11 +125,13 @@ pub enum StationCmd {
         uav: u16,
         on: bool,
     },
-    /// Flying by hand: the stick (roll right, pitch up, -1..1) and throttle (0..1).
+    /// Flying by hand: the stick (roll right, pitch up, -1..1), the rudder (nose right, -1..1)
+    /// and throttle (0..1).
     Fly {
         uav: u16,
         roll: f32,
         pitch: f32,
+        yaw: f32,
         throttle: f32,
     },
 }

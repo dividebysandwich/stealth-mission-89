@@ -557,10 +557,10 @@ fn read_keyboard(
     }
     controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
     if block.0 {
-        // At a console: only the stick, the triggers and the throttle keys (a drone's).
+        // At a console: only the stick, the rudder and the triggers and the throttle keys (a
+        // drone's).
         controls.console_throttle = controls.collective_rate;
         controls.mark = false;
-        controls.yaw = 0.0;
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
         *throttle_since = None;
@@ -609,15 +609,15 @@ fn read_gamepad(
             controls.roll = stronger(controls.roll, x);
             controls.pitch = stronger(controls.pitch, -y);
         }
-        if block.0 {
-            // At a console: only the stick and the triggers.
-            controls.gun |= pressed(GamepadButton::East);
-            controls.fire |= pressed(GamepadButton::South);
-            continue;
-        }
         let rx = axis(GamepadAxis::RightStickX);
         if rx.abs() > 0.15 {
             controls.yaw = rx;
+        }
+        if block.0 {
+            // At a console: only the stick, the rudder and the triggers.
+            controls.gun |= pressed(GamepadButton::East);
+            controls.fire |= pressed(GamepadButton::South);
+            continue;
         }
         let pull = |b: GamepadButton| {
             if !free(GamepadInput::Button(b)) {
