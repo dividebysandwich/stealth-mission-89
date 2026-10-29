@@ -1186,7 +1186,9 @@ fn war_map(
                 Side::Neutral => DIM,
             };
             let c0 = at(p.x, p.y);
-            if p.airfield.is_some() {
+            if map_draw::app6() {
+                map_draw::app6_place(&painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
+            } else if p.airfield.is_some() {
                 let r = egui::Rect::from_center_size(c0, egui::vec2(10.0, 10.0));
                 painter.rect_filled(r, 0.0, col.gamma_multiply(0.5));
                 painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
@@ -1195,7 +1197,7 @@ fn war_map(
                 painter.circle_stroke(c0, 5.0, egui::Stroke::new(1.5, col));
             }
             if p.intel(st.clock) {
-                painter.circle_stroke(c0, 10.0, egui::Stroke::new(1.0, BRIGHT));
+                painter.circle_stroke(c0, map_draw::halo(10.0), egui::Stroke::new(1.0, BRIGHT));
             }
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
                 painter.text(
@@ -1251,6 +1253,7 @@ fn war_map(
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
             section(ui, "Legend");
+            map_draw::symbology_switch(ui);
             place_legend(ui, &mut layers);
             layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
                 p.extend(egui::Shape::dashed_line(
@@ -1280,6 +1283,19 @@ fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
 
 /// The places' legend lines, with their layers' checkboxes.
 fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
+    if map_draw::app6() {
+        use crate::app6::Affiliation::{Friend, Hostile};
+        for (layer, text, airfield) in [
+            (Layer::Airfields, "Friendly / enemy airfield", true),
+            (Layer::Cities, "Friendly / enemy city", false),
+        ] {
+            layers.legend(ui, layer, text, |p, c0| {
+                map_draw::app6_place(p, c0 + egui::vec2(-7.5, 1.0), Friend, airfield, 0.65);
+                map_draw::app6_place(p, c0 + egui::vec2(7.5, 1.0), Hostile, airfield, 0.65);
+            });
+        }
+        return;
+    }
     layers.legend(ui, Layer::Airfields, "Friendly / enemy airfield", |p, c0| {
         for (dx, col) in [(-4.5, FRIENDLY_BLUE), (5.0, MISSILE_RED)] {
             p.rect_stroke(
@@ -1294,6 +1310,15 @@ fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
         p.circle_stroke(c0 - egui::vec2(4.0, 0.0), 3.5, egui::Stroke::new(1.5, FRIENDLY_BLUE));
         p.circle_stroke(c0 + egui::vec2(5.0, 0.0), 3.5, egui::Stroke::new(1.5, MISSILE_RED));
     });
+}
+
+/// A side as an APP-6 affiliation.
+fn affiliation(side: Side) -> crate::app6::Affiliation {
+    match side {
+        Side::Blue => crate::app6::Affiliation::Friend,
+        Side::Red => crate::app6::Affiliation::Hostile,
+        Side::Neutral => crate::app6::Affiliation::Neutral,
+    }
 }
 
 /// The war map's view the first time: all the places in `rect`.
@@ -1795,7 +1820,9 @@ fn route_editor(
                 Side::Neutral => DIM,
             };
             let c0 = view.to_screen(p.x as f32, p.y as f32);
-            if p.airfield.is_some() {
+            if map_draw::app6() {
+                map_draw::app6_place(painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
+            } else if p.airfield.is_some() {
                 let r = egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0));
                 painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
             } else {

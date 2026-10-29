@@ -540,6 +540,7 @@ pub fn route_panel(
             ui.label(egui::RichText::new(format!("{detect:.0} km of the route detected")).color(if detect > 0.0 { AMBER } else { GREEN }));
             ui.label(egui::RichText::new("Radar coverage assumes 480kt level flight, bay doors closed.").small().color(DIM));
             section(ui, "Map");
+            map_draw::symbology_switch(ui);
             legend(ui, Legend::Pulse, "Pulse radar (P) detection range");
             legend(ui, Legend::Doppler, "Doppler radar (D) detection range");
             legend(ui, Legend::Missile, "Missile range");
@@ -727,7 +728,7 @@ fn map_view(
     }
     layers_panel(ui, rect, layers, |ui, layers| {
         layers.legend(ui, Layer::Sams, "Radar / SAM site", |p, c| {
-            p.circle_filled(c, 3.0, map_draw::MISSILE_RED);
+            map_draw::site_symbol(p, c, 1.0);
         });
         layers.types(ui, "Radar types", rings.iter().map(|r| r.name.as_str()).collect());
         layer_legend(ui, layers, Legend::Pulse, "Pulse radar detection range");
@@ -740,6 +741,10 @@ fn map_view(
         match overlay {
             Some(o) => (o.legend)(ui, layers),
             None => layers.legend(ui, Layer::Airfields, "Airfield", |p, c| {
+                if map_draw::app6() {
+                    let side = crate::app6::Affiliation::Friend;
+                    return map_draw::app6_place(p, c + egui::vec2(0.0, 1.0), side, true, 0.8);
+                }
                 p.rect_stroke(
                     egui::Rect::from_center_size(c, egui::vec2(8.0, 8.0)),
                     0.0,

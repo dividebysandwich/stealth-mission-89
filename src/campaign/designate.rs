@@ -19,10 +19,13 @@ const GROUND_ROOM: f64 = 60.0;
 /// The NEW GEPARD SITE / NEW PATRIOT SITE buttons (the one active again: cancel).
 pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
     section(ui, "New site");
+    // Framed buttons sharing the column's width, the one being designated lit.
     ui.horizontal(|ui| {
+        let w = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
         for (patriot, label) in [(false, "GEPARD"), (true, "PATRIOT")] {
             let on = c.ui.designate == Some(patriot);
-            if ui.selectable_label(on, label).clicked() {
+            let button = egui::Button::new(label).min_size(egui::vec2(w, 30.0)).selected(on);
+            if ui.add(button).clicked() {
                 c.ui.designate = if on { None } else { Some(patriot) };
                 c.ui.error = None;
             }

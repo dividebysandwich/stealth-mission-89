@@ -5,6 +5,7 @@ pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu"
 
 mod afterburner_flame;
 mod aircraft;
+mod app6;
 mod asset_path;
 mod autoshot;
 mod avionics;

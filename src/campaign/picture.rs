@@ -8,7 +8,8 @@ use stealth_campaign::{CampaignState, Side, SiteKind};
 use stealth_sim::aaa::AaaKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
-use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView};
+use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, app6};
 use crate::menu::{BRIGHT, GREEN};
 
 /// Radar cover: friendly places (ground radars), friendly aircraft, the player (map units).
@@ -160,8 +161,20 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
     pic
 }
 
-/// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane.
+/// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane (APP-6:
+/// a fixed or rotary wing air track, heading `None` for the legend's).
 pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
+    if app6() {
+        let side = if col == MISSILE_RED { Affiliation::Hostile } else { Affiliation::Friend };
+        let icon = if a.helicopter { Icon::RotaryWing } else { Icon::FixedWing };
+        let mut sym = Symbol::new(side, Dimension::Air, icon);
+        if a.unit != usize::MAX {
+            sym = sym.heading(a.heading as f32 / 65536.0 * std::f32::consts::TAU);
+        }
+        // Dimmed colours (the air defence map's friendly aircraft) dim the symbol.
+        sym.draw(painter, p, 0.8, col.a() as f32 / 255.0);
+        return;
+    }
     if a.helicopter {
         painter.circle_filled(p, 3.0, col);
         painter.circle_stroke(p, 5.0, egui::Stroke::new(1.0, col));
@@ -174,8 +187,19 @@ pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col
     painter.add(egui::Shape::convex_polygon(pts, col, egui::Stroke::NONE));
 }
 
-/// A gun: a small cross (a ring for MANPADS).
-fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+/// A gun: a small cross (a ring for MANPADS); APP-6: a hostile air defence gun or missile
+/// unit, `k` its size.
+fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: f32) {
+    if app6() {
+        let icon =
+            if kind == AaaKind::Manpads { Icon::AirDefenceMissile } else { Icon::AirDefenceGun };
+        let mut sym = Symbol::new(Affiliation::Hostile, Dimension::Ground, icon);
+        if kind == AaaKind::Manpads {
+            sym = sym.echelon(Echelon::Team);
+        }
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
     let stroke = egui::Stroke::new(1.5, MISSILE_RED);
     if kind == AaaKind::Manpads {
         painter.circle_stroke(p, 2.5, stroke);
@@ -199,9 +223,9 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
         if !layers.shows(if patriot { Layer::Patriots } else { Layer::Gepards }) {
             continue;
         }
-        defence(painter, c, d.kind);
+        defence(painter, c, d.kind, 0.8);
         if d.manned.is_some() {
-            painter.circle_stroke(c, 9.0, egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(c, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
         }
     }
     for s in pic.sams.iter().filter(|s| layers.shows_type(&s.name)) {
@@ -217,7 +241,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
         }
         map_draw::site(painter, view, c, &s.name, 1.0);
         if s.reconned {
-            painter.circle_stroke(c, 6.0, egui::Stroke::new(1.0, BRIGHT));
+            painter.circle_stroke(c, map_draw::halo(6.0), egui::Stroke::new(1.0, BRIGHT));
         }
     }
     for g in &pic.guns {
@@ -227,7 +251,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
             painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
         }
         if layers.shows(Layer::Guns) {
-            gun(painter, c, g.kind);
+            gun(painter, c, g.kind, 0.7);
         }
     }
     if layers.shows(Layer::EnemyFighters) {
@@ -247,8 +271,19 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
 }
 
 /// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
-/// a square with its two barrels, a Stinger team a ring.
-pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+/// a square with its two barrels, a Stinger team a ring. APP-6: a friendly air defence missile
+/// battery, a tracked air defence gun, a missile team; `k` its size.
+pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: f32) {
+    if app6() {
+        let sym = |icon| Symbol::new(Affiliation::Friend, Dimension::Ground, icon);
+        let sym = match kind {
+            AaaKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
+            AaaKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
+            _ => sym(Icon::AirDefenceMissile).echelon(Echelon::Team),
+        };
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
     let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
     match kind {
         AaaKind::PatriotRadar => {
@@ -285,31 +320,35 @@ fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
 /// The legend lines of the picture, with their layers' checkboxes; the SAM sites' (and a
 /// checkbox per SAM type) only with `pic`.
 pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) {
+    // (No unit: no heading staff on the APP-6 symbol.)
+    let a = |helicopter| Aircraft { unit: usize::MAX, spec: 0, x: 0, y: 0, heading: 0, helicopter };
     layers.legend(ui, Layer::FriendlyAircraft, "Friendly aircraft", |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
-        aircraft(p, c0, &a, FRIENDLY_BLUE);
+        aircraft(p, c0, &a(false), FRIENDLY_BLUE);
     });
     layers.legend(ui, Layer::FriendlyHelicopters, "Friendly helicopter", |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: true };
-        aircraft(p, c0, &a, FRIENDLY_BLUE);
+        aircraft(p, c0, &a(true), FRIENDLY_BLUE);
     });
     layers.legend(ui, Layer::EnemyFighters, "Enemy fighter (on radar)", |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
-        aircraft(p, c0, &a, MISSILE_RED);
+        aircraft(p, c0, &a(false), MISSILE_RED);
     });
     layers.legend(ui, Layer::Patriots, "Patriot battery", |p, c0| {
-        defence(p, c0, AaaKind::PatriotRadar)
+        defence(p, c0, AaaKind::PatriotRadar, 0.8)
     });
     layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
         p.extend(reach_circle(c0, 6.0));
     });
     layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
-        defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard);
-        defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads);
+        if app6() {
+            defence(p, c0 - egui::vec2(7.5, 0.0), AaaKind::Gepard, 0.65);
+            defence(p, c0 + egui::vec2(7.5, 1.0), AaaKind::Manpads, 0.65);
+        } else {
+            defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard, 1.0);
+            defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads, 1.0);
+        }
     });
     if let Some(pic) = pic {
         layers.legend(ui, Layer::Sams, "SAM site (known)", |p, c0| {
-            p.circle_filled(c0, 3.0, MISSILE_RED);
+            map_draw::site_symbol(p, c0, 1.0);
         });
         layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
         layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
@@ -321,8 +360,13 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         });
     }
     layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
-        gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu);
-        gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads);
+        if app6() {
+            gun(p, c0 - egui::vec2(7.5, 0.0), AaaKind::Zsu, 0.65);
+            gun(p, c0 + egui::vec2(7.5, 1.0), AaaKind::Manpads, 0.65);
+        } else {
+            gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu, 1.0);
+            gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads, 1.0);
+        }
     });
     // Not layers: lined up with the lines with a checkbox.
     let unchecked = |ui: &mut egui::Ui, text, draw: &dyn Fn(&egui::Painter, egui::Pos2)| {
@@ -332,7 +376,7 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         });
     };
     unchecked(ui, "Reconned", &|p, c0| {
-        p.circle_stroke(c0, 6.0, egui::Stroke::new(1.0, BRIGHT));
+        p.circle_stroke(c0, if app6() { 7.5 } else { 6.0 }, egui::Stroke::new(1.0, BRIGHT));
     });
     unchecked(ui, "You", &|p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));

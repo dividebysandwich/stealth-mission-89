@@ -126,7 +126,8 @@ pub(super) fn tab(
             ui.set_width(LIST_W - 12.0);
             super::designate::buttons(ui, c);
             ui.add_space(6.0);
-            list(ui, c, sim, &sites, size.y - 80.0);
+            map_draw::symbology_switch(ui);
+            list(ui, c, sim, &sites, size.y - 104.0);
         });
     });
 }
@@ -190,17 +191,17 @@ fn map(
         if s.destroyed {
             painter.circle_stroke(p, 5.0, egui::Stroke::new(1.5, DIM));
         } else {
-            super::picture::defence(&painter, p, kind);
+            super::picture::defence(&painter, p, kind, 0.8);
         }
         if s.manned.is_some() {
-            painter.circle_stroke(p, 9.0, egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(p, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
         }
         // Named unless another's name is there already (crowded sites: the list has them).
         if !named.iter().any(|q: &egui::Pos2| q.distance(p) < 16.0) {
             named.push(p);
             let col = if s.destroyed { DIM } else { BRIGHT };
             painter.text(
-                p + egui::vec2(8.0, -6.0),
+                p + if map_draw::app6() { egui::vec2(10.0, -8.0) } else { egui::vec2(8.0, -6.0) },
                 egui::Align2::LEFT_BOTTOM,
                 tag(sites, i),
                 egui::FontId::monospace(11.0),

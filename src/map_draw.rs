@@ -1,8 +1,11 @@
 //! Theater map drawing shared by the mission planner and the debrief: the view's projection,
 //! the map picture, the threat and airfield symbols, the weather, and the layers a player can
-//! hide (the checkboxes of a map's legend lines).
+//! hide (the checkboxes of a map's legend lines), and the symbology they draw units in (the
+//! game's own symbols or APP-6).
 
 use std::collections::{BTreeSet, HashSet};
+use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use bevy_egui::egui;
 
@@ -10,6 +13,7 @@ use stealth_mission::weather::{CloudKind, STORM_CELL};
 use stealth_mission::world::flags as F;
 use stealth_mission::{Mission, Weather};
 
+use crate::app6::{self, Affiliation, Dimension, Icon};
 use crate::menu::DIM;
 
 pub const MISSILE_RED: egui::Color32 = egui::Color32::from_rgb(255, 70, 50);
@@ -71,6 +75,59 @@ impl MapView {
     }
 }
 
+/// The maps' symbology (`maps.json` in the player's config): APP-6 or, by default, the game's
+/// own symbols.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone, Copy, PartialEq)]
+#[serde(default)]
+struct MapPrefs {
+    app6: bool,
+}
+
+const PREFS_FILE: &str = "maps.json";
+
+static APP6: LazyLock<AtomicBool> = LazyLock::new(|| {
+    AtomicBool::new(crate::prefs::load_json::<MapPrefs>(PREFS_FILE).unwrap_or_default().app6)
+});
+
+/// The maps draw units in APP-6.
+pub fn app6() -> bool {
+    APP6.load(Ordering::Relaxed)
+}
+
+/// The maps' SYMBOLS switch: CLASSIC or APP-6, for every map (and kept between runs).
+pub fn symbology_switch(ui: &mut egui::Ui) {
+    let mut on = app6();
+    ui.horizontal(|ui| {
+        ui.label(egui::RichText::new("Symbols").small().color(crate::menu::BRIGHT));
+        ui.selectable_value(&mut on, false, egui::RichText::new("CLASSIC").small());
+        ui.selectable_value(&mut on, true, egui::RichText::new("APP-6").small());
+    });
+    if on != app6() {
+        APP6.store(on, Ordering::Relaxed);
+        if let Err(e) = crate::prefs::save_json(PREFS_FILE, &MapPrefs { app6: on }) {
+            bevy::log::warn!("{PREFS_FILE}: {e:#}");
+        }
+    }
+}
+
+/// How far out a ring around a unit's symbol goes (a ring of `r` around the game's own).
+pub fn halo(r: f32) -> f32 {
+    if app6() { r + 6.0 } else { r }
+}
+
+/// A place in APP-6: an installation (an airfield with its aircraft), its frame by owner, `k`
+/// its size.
+pub fn app6_place(
+    painter: &egui::Painter,
+    c: egui::Pos2,
+    side: Affiliation,
+    airfield: bool,
+    k: f32,
+) {
+    let icon = if airfield { Icon::FixedWing } else { Icon::None };
+    app6::Symbol::new(side, Dimension::Installation, icon).draw(painter, c, k, 1.0);
+}
+
 /// The map picture (the whole theater), or a note while it is being prepared.
 pub fn picture(painter: &egui::Painter, view: &MapView, tex: Option<&egui::TextureHandle>) {
     painter.rect_filled(view.rect, 0.0, egui::Color32::BLACK);
@@ -119,12 +176,14 @@ pub fn engagement_circle(c: egui::Pos2, r: f32, alpha: f32) -> egui::Shape {
     egui::Shape::circle_stroke(c, r, stroke)
 }
 
-/// A site: a red dot with its name once zoomed in far enough.
+/// A site: a red dot (APP-6: a hostile air defence missile unit) with its name once zoomed in
+/// far enough.
 pub fn site(painter: &egui::Painter, view: &MapView, c: egui::Pos2, name: &str, alpha: f32) {
-    painter.circle_filled(c, 3.0, MISSILE_RED.gamma_multiply(alpha));
+    site_symbol(painter, c, alpha);
     if 1.0 / view.scale > 0.02 {
+        let off = if app6() { egui::vec2(9.0, -8.0) } else { egui::vec2(5.0, -5.0) };
         painter.text(
-            c + egui::vec2(5.0, -5.0),
+            c + off,
             egui::Align2::LEFT_BOTTOM,
             name,
             egui::FontId::monospace(11.0),
@@ -133,10 +192,31 @@ pub fn site(painter: &egui::Painter, view: &MapView, c: egui::Pos2, name: &str, 
     }
 }
 
+/// A site's symbol, without its name.
+pub fn site_symbol(painter: &egui::Painter, c: egui::Pos2, alpha: f32) {
+    if app6() {
+        app6::Symbol::new(Affiliation::Hostile, Dimension::Ground, Icon::AirDefenceMissile)
+            .draw(painter, c, 0.8, alpha);
+    } else {
+        painter.circle_filled(c, 3.0, MISSILE_RED.gamma_multiply(alpha));
+    }
+}
+
 /// The mission's airfields: blue friendly, dim neutral, red hostile squares.
 pub fn airfields(painter: &egui::Painter, view: &MapView, m: &Mission) {
     for o in m.world.objects.iter().filter(|o| o.flags & F::AIRFIELD != 0) {
         let p = view.to_screen(o.x as u16 as f32, o.y as u16 as f32);
+        if app6() {
+            let side = if o.flags & F::FRIENDLY != 0 {
+                Affiliation::Friend
+            } else if o.flags & F::NEUTRAL != 0 {
+                Affiliation::Neutral
+            } else {
+                Affiliation::Hostile
+            };
+            app6_place(painter, p, side, true, 0.9);
+            continue;
+        }
         let colour = if o.flags & F::FRIENDLY != 0 {
             FRIENDLY_BLUE
         } else if o.flags & F::NEUTRAL != 0 {
@@ -153,8 +233,13 @@ pub fn airfields(painter: &egui::Painter, view: &MapView, m: &Mission) {
     }
 }
 
-/// A drone on the map: a pink cross.
+/// A drone on the map: a pink cross (APP-6: a hostile UAV).
 pub fn drone_cross(painter: &egui::Painter, p: egui::Pos2) {
+    if app6() {
+        app6::Symbol::new(Affiliation::Hostile, Dimension::Air, Icon::Uav)
+            .draw(painter, p, 0.8, 1.0);
+        return;
+    }
     let stroke = egui::Stroke::new(1.5, UAV_PINK);
     painter.line_segment([p + egui::vec2(-4.0, -4.0), p + egui::vec2(4.0, 4.0)], stroke);
     painter.line_segment([p + egui::vec2(-4.0, 4.0), p + egui::vec2(4.0, -4.0)], stroke);
@@ -163,10 +248,15 @@ pub fn drone_cross(painter: &egui::Painter, p: egui::Pos2) {
 /// A legend line: a symbol drawn by `draw` into a small box, then its meaning.
 pub fn legend(ui: &mut egui::Ui, text: &str, draw: impl FnOnce(&egui::Painter, egui::Pos2)) {
     ui.horizontal(|ui| {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 14.0), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(legend_box(), egui::Sense::hover());
         draw(&ui.painter_at(rect.expand(1.0)), rect.center());
         ui.label(egui::RichText::new(text).small().color(crate::menu::BRIGHT));
     });
+}
+
+/// A legend line's symbol box: wider for the APP-6 frames.
+fn legend_box() -> egui::Vec2 {
+    if app6() { egui::vec2(30.0, 16.0) } else { egui::vec2(18.0, 14.0) }
 }
 
 /// What a map shows, each a layer the player can hide.
@@ -248,7 +338,7 @@ impl MapLayers {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             ui.checkbox(&mut on, "");
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 14.0), egui::Sense::hover());
+            let (rect, _) = ui.allocate_exact_size(legend_box(), egui::Sense::hover());
             draw(&ui.painter_at(rect.expand(1.0)), rect.center());
             let col = if on { crate::menu::BRIGHT } else { DIM };
             let label = egui::Label::new(egui::RichText::new(text).small().color(col))
@@ -519,4 +609,16 @@ pub fn weather_legend(ui: &mut egui::Ui, layers: &mut MapLayers, snow: bool) {
         }
     });
     layers.legend(ui, Layer::Thunderstorms, "Thunderstorm cell", lightning);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_start_in_the_classic_symbols() {
+        assert!(!MapPrefs::default().app6);
+        let p: MapPrefs = serde_json::from_str("{}").unwrap();
+        assert!(!p.app6);
+    }
 }
