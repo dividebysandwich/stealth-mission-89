@@ -280,6 +280,7 @@ pub(super) fn grab_levers(
     mut actions: MessageWriter<ActionEvent>,
     aircraft: Query<&Aircraft, With<Player>>,
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
+    console_throttle: Res<crate::input::ConsoleThrottle>,
     anchors: Res<CockpitAnchors>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     k: Res<FlightConstants>,
@@ -307,7 +308,8 @@ pub(super) fn grab_levers(
         return;
     }
     let ab = k.afterburner();
-    let set_thrust = aircraft.single().map_or(0.0, |a| a.lever(ab));
+    let set_thrust =
+        console_throttle.0.unwrap_or_else(|| aircraft.single().map_or(0.0, |a| a.lever(ab)));
     let brakes_on = aircraft.single().is_ok_and(|a| a.brakes);
     let [left, right] = &mut hands.hands;
 
@@ -542,6 +544,7 @@ pub(super) fn grab_levers(
 /// Stick and throttle follow the controls (whatever the input source).
 pub(super) fn animate_levers(
     controls: Res<FlightControls>,
+    console_throttle: Res<crate::input::ConsoleThrottle>,
     aircraft: Query<&Aircraft, With<Player>>,
     mut stick: Query<&mut Transform, (With<Stick>, Without<ThrottleLever>)>,
     mut throttle: Query<&mut Transform, With<ThrottleLever>>,
@@ -554,7 +557,7 @@ pub(super) fn animate_levers(
             * Quat::from_rotation_y(-controls.yaw * STICK_TWIST);
     }
     if let (Ok(mut tf), Ok(a)) = (throttle.single_mut(), aircraft.single()) {
-        let t = controls.throttle.unwrap_or(a.lever(k.afterburner()));
+        let t = controls.throttle.or(console_throttle.0).unwrap_or(a.lever(k.afterburner()));
         tf.translation = anchors.throttle_handle(t);
         tf.rotation = anchors.throttle_rotation(t);
     }

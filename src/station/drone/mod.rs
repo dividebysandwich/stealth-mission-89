@@ -214,11 +214,21 @@ pub fn center_uavs(combat: &Combat, m: &Manning) -> Vec<Uav> {
 }
 
 /// A fresh console for each manning of a drone command center.
-fn reset(manning: Option<Res<Manning>>, mut ui: ResMut<DroneUi>, mut was: Local<Option<usize>>) {
+fn reset(
+    manning: Option<Res<Manning>>,
+    mut ui: ResMut<DroneUi>,
+    mut throttle: ResMut<crate::input::ConsoleThrottle>,
+    mut was: Local<Option<usize>>,
+) {
     let now = manning.as_deref().filter(|m| m.drones()).map(|m| m.unit);
     if now != *was {
         *ui = DroneUi::default();
         *was = now;
+    }
+    // The throttle lever is the drone's while manned.
+    let lever = now.map(|_| ui.throttle);
+    if throttle.0 != lever {
+        throttle.0 = lever;
     }
 }
 

@@ -13,6 +13,7 @@ impl Plugin for InputPlugin {
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
             .init_resource::<ConsoleStick>()
+            .init_resource::<ConsoleThrottle>()
             .add_message::<ActionEvent>()
             .add_plugins(crate::hotas::build)
             .add_systems(
@@ -33,6 +34,11 @@ pub struct InputBlock(pub bool);
 /// pass, they slew and fire its gun (`station`).
 #[derive(Resource, Default)]
 pub struct ConsoleStick(pub bool);
+
+/// At a console with a throttle (the drone command center's): where it is set (0..1). The
+/// throttle lever shows and is grabbed from it, not from the parked aircraft's.
+#[derive(Resource, Default)]
+pub struct ConsoleThrottle(pub Option<f32>);
 
 /// Keyboard, gamepad and joystick reading (other input sources run after it and override).
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
