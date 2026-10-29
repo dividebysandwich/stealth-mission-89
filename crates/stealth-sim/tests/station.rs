@@ -204,7 +204,13 @@ fn a_launcher_refills_from_the_stockpile_in_real_time() {
     assert_eq!(sim.stockpile(l), PATRIOT_STOCK - 4);
     // Short of missiles: what there is.
     let at = sim.aaa_units()[radar];
-    sim.restore_stocks(&[SavedStock { x: at.x, y: at.y, patriot: true, stock: 2 }]);
+    sim.restore_stocks(&[SavedStock {
+        x: at.x,
+        y: at.y,
+        kind: AaaKind::PatriotRadar,
+        stock: 2,
+        stock2: 0,
+    }]);
     let l2 = sim.battery_launchers(radar)[1];
     sim.aaa_units_mut()[l2].rounds = 0;
     sim.station_command(ME, StationCmd::Refill { unit: l2 as u16 }).unwrap();

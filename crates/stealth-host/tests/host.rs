@@ -319,7 +319,13 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
         .find(|&k| sim.aaa_units()[k].kind == AaaKind::Gepard && sim.aaa_blue(k))
         .unwrap();
     let u = sim.aaa_units()[k];
-    sim.restore_stocks(&[SavedStock { x: u.x, y: u.y, patriot: false, stock: 0 }]);
+    sim.restore_stocks(&[SavedStock {
+        x: u.x,
+        y: u.y,
+        kind: AaaKind::Gepard,
+        stock: 0,
+        stock2: 0,
+    }]);
     host.station(&mut sim, me, StationCmd::Man { unit: k as u16 }).unwrap();
     host.station(&mut sim, me, StationCmd::RequestResupply).unwrap();
     assert!(host.station(&mut sim, me, StationCmd::RequestResupply).is_err());
@@ -381,7 +387,13 @@ fn an_empty_stockpile_orders_a_resupply() {
         .expect("a friendly Patriot battery");
     let r = sim.aaa_units()[radar];
     // One missile left in the stockpile, one launcher fired empty.
-    sim.restore_stocks(&[SavedStock { x: r.x, y: r.y, patriot: true, stock: 1 }]);
+    sim.restore_stocks(&[SavedStock {
+        x: r.x,
+        y: r.y,
+        kind: AaaKind::PatriotRadar,
+        stock: 1,
+        stock2: 0,
+    }]);
     let l = sim.battery_launchers(radar)[0];
     sim.aaa_units_mut()[l].rounds = 0;
     host.tick(&mut sim, 0.1, &[]);
@@ -395,7 +407,10 @@ fn an_empty_stockpile_orders_a_resupply() {
         HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) if m.contains("out of missiles"))));
     assert_eq!(host.state.supply_requests.len(), 1);
     let q = host.state.supply_requests[0].clone();
-    assert_eq!((q.aaa as usize, q.by, q.patriot), (radar, None, true));
+    assert_eq!(
+        (q.aaa as usize, q.by, q.kind),
+        (radar, None, stealth_campaign::DefenceKind::Patriot)
+    );
     // Once.
     host.tick(&mut sim, 0.1, &[]);
     assert_eq!(host.state.supply_requests.len(), 1);
@@ -500,12 +515,17 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
                 base.1 + (t.sin() * r as f64 * 32.0) as i32,
             )
         })
-        .find(|&(x, y)| host.state.deploy_refusal(x, y, false, &aaa).is_none())
+        .find(|&(x, y)| {
+            host.state.deploy_refusal(x, y, stealth_campaign::DefenceKind::Gepard, &aaa).is_none()
+        })
         .expect("a free spot");
     // Not on a unit.
     let u = sim.aaa_units().iter().find(|u| !u.destroyed).copied().unwrap();
-    assert!(host.designate_site(&mut sim, me, u.x, u.y + 3, false).is_err());
-    host.designate_site(&mut sim, me, x, y, false).unwrap();
+    assert!(
+        host.designate_site(&mut sim, me, u.x, u.y + 3, stealth_campaign::DefenceKind::Gepard)
+            .is_err()
+    );
+    host.designate_site(&mut sim, me, x, y, stealth_campaign::DefenceKind::Gepard).unwrap();
     host.state.board_at = f64::MIN;
     host.tick(&mut sim, 0.1, &[]);
     assert!(host.state.board.iter().any(|o| o.kind == MissionKind::Logistics));

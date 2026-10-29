@@ -29,6 +29,9 @@ pub const PATRIOT_STOCK: i32 = 8;
 /// A Gepard's rounds ready, and in its stockpile.
 pub const GEPARD_ROUNDS: i32 = 640;
 pub const GEPARD_STOCK: i32 = 640;
+/// A drone command center's stockpile: surveillance drones, attack drones.
+pub const STORK_STOCK: i32 = 4;
+pub const FP2_STOCK: i32 = 8;
 /// Real seconds to refill a launcher (or a Gepard).
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
@@ -126,19 +129,25 @@ pub struct Station {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DefenceState {
     pub stations: Vec<Station>,
-    /// Per AAA unit: the stockpile at a Patriot radar (its battery's) or a Gepard.
+    /// Per AAA unit: the stockpile at a Patriot radar (its battery's) or a Gepard; a drone
+    /// command center's surveillance drones.
     pub stock: Vec<i32>,
+    /// Per AAA unit: a drone command center's attack drones.
+    #[serde(default)]
+    pub stock2: Vec<i32>,
     /// Per AAA unit: real seconds left of a launcher's or Gepard's refill (0: none).
     pub refill: Vec<f32>,
 }
 
-/// A stockpile to keep over a save: where, a Patriot battery (else a Gepard), how much.
+/// A stockpile to keep over a save: where, the unit that keeps it (a Patriot radar, a Gepard,
+/// a drone command center), how much (and a drone command center's attack drones).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SavedStock {
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    pub kind: AaaKind,
     pub stock: i32,
+    pub stock2: i32,
 }
 
 /// The stockpile a unit starts with (and a resupply brings it back to).
@@ -146,8 +155,14 @@ pub fn initial_stock(kind: AaaKind) -> i32 {
     match kind {
         AaaKind::PatriotRadar => PATRIOT_STOCK,
         AaaKind::Gepard => GEPARD_STOCK,
+        AaaKind::DroneCenter => STORK_STOCK,
         _ => 0,
     }
+}
+
+/// The second stockpile a unit starts with: a drone command center's attack drones.
+pub fn initial_stock2(kind: AaaKind) -> i32 {
+    if kind == AaaKind::DroneCenter { FP2_STOCK } else { 0 }
 }
 
 /// A unit's load when full.
@@ -161,7 +176,7 @@ fn full_load(kind: AaaKind) -> i32 {
 
 /// A unit a player can man.
 pub fn mannable(kind: AaaKind) -> bool {
-    matches!(kind, AaaKind::PatriotRadar | AaaKind::Gepard)
+    matches!(kind, AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::DroneCenter)
 }
 
 impl Sim {
@@ -240,6 +255,10 @@ impl Sim {
         for k in d.stock.len()..n {
             d.stock.push(initial_stock(self.aaa[k].kind));
         }
+        d.stock2.truncate(n);
+        for k in d.stock2.len()..n {
+            d.stock2.push(initial_stock2(self.aaa[k].kind));
+        }
         d.refill.resize(n, 0.0);
     }
 
@@ -295,7 +314,10 @@ impl Sim {
     fn man_station(&mut self, pilot: u8, unit: usize) -> Result<(), String> {
         let Some(u) = self.aaa.get(unit).copied() else { return Err("No such unit".into()) };
         if !mannable(u.kind) || !self.aaa_blue(unit) {
-            return Err("Only friendly Patriot batteries and Gepards can be manned".into());
+            return Err(
+                "Only friendly Patriot batteries, Gepards and drone command centers can be manned"
+                    .into(),
+            );
         }
         if u.destroyed {
             return Err(format!("The {} is destroyed", u.kind.name()));
@@ -738,8 +760,9 @@ impl Sim {
                 SavedStock {
                     x: u.x,
                     y: u.y,
-                    patriot: u.kind == AaaKind::PatriotRadar,
+                    kind: u.kind,
                     stock: d.stock.get(k).copied().unwrap_or(0),
+                    stock2: d.stock2.get(k).copied().unwrap_or(0),
                 }
             })
             .collect()
@@ -750,15 +773,16 @@ impl Sim {
         self.defence_sizes();
         let mut taken = vec![false; self.aaa.len()];
         for s in saved {
-            let kind = if s.patriot { AaaKind::PatriotRadar } else { AaaKind::Gepard };
             let best = (0..self.aaa.len())
-                .filter(|&k| !taken[k] && self.aaa[k].kind == kind && self.aaa_blue(k))
+                .filter(|&k| !taken[k] && self.aaa[k].kind == s.kind && self.aaa_blue(k))
                 .map(|k| (k, approx(self.aaa[k].x - s.x, self.aaa[k].y - s.y)))
                 .filter(|&(_, d)| d < 0x180)
                 .min_by_key(|&(_, d)| d);
             if let Some((k, _)) = best {
                 taken[k] = true;
-                self.defence_mut().stock[k] = s.stock;
+                let d = self.defence_mut();
+                d.stock[k] = s.stock;
+                d.stock2[k] = s.stock2;
             }
         }
     }

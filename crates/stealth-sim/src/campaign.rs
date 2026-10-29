@@ -733,7 +733,7 @@ impl Sim {
         let Some(c) = self.campaign.as_ref() else { return };
         let mut mine: Vec<usize> = (0..self.aaa.len())
             .filter(|&k| c.aaa_blue.get(k).copied().unwrap_or(false) == blue)
-            .filter(|&k| !self.aaa[k].kind.patriot())
+            .filter(|&k| !self.aaa[k].kind.unarmed())
             .filter(|&k| {
                 !self.aaa[k].destroyed && approx(self.aaa[k].x - x, self.aaa[k].y - y) < 0x180
             })
@@ -754,7 +754,7 @@ impl Sim {
         let k = (0..self.aaa.len()).find(|&k| {
             let u = &self.aaa[k];
             c.aaa_blue.get(k).copied().unwrap_or(false) == blue
-                && !u.kind.patriot()
+                && !u.kind.unarmed()
                 && u.destroyed
                 && approx(u.x - x, u.y - y) < 0x180
         });
@@ -816,6 +816,29 @@ impl Sim {
                 aim_az: facing,
                 aim_el: 0.3,
                 rounds: crate::station::GEPARD_ROUNDS,
+                ..Default::default()
+            });
+            c.aaa_blue.resize(self.aaa.len(), true);
+            c.aaa_target.resize(self.aaa.len(), None);
+        }
+        self.campaign = Some(c);
+        if self.aaa_rng.is_none() {
+            self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
+    /// Campaign: a friendly drone command center at (x, y) (a new site the players supplied),
+    /// its launch ramp facing a random way.
+    pub fn place_drone_center(&mut self, x: i32, y: i32) {
+        let Some(mut c) = self.campaign.take() else { return };
+        if self.aaa.len() < MAX_UNITS {
+            c.aaa_blue.resize(self.aaa.len(), false);
+            let facing = c.rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
+            self.aaa.push(AaaUnit {
+                kind: AaaKind::DroneCenter,
+                x: x.clamp(0x40, 0x7FC0),
+                y: y.clamp(0x40, 0x7FC0),
+                aim_az: facing,
                 ..Default::default()
             });
             c.aaa_blue.resize(self.aaa.len(), true);
@@ -1333,11 +1356,14 @@ impl Sim {
             // The missile teams reload here (the classic air defence only does it while it
             // fights a player). Launchers are refilled from their battery's stockpile
             // (`Sim::tick_refills`).
-            if (u.kind == AaaKind::Manpads && (blue || !u.tracking)) || u.kind.patriot() {
+            if (u.kind == AaaKind::Manpads && (blue || !u.tracking)) || u.kind.unarmed() {
                 let a = &mut self.aaa[k];
                 a.cooldown = (a.cooldown - fs).max(0);
             }
-            if u.destroyed || (!blue && u.tracking) || u.kind == AaaKind::PatriotLauncher {
+            if u.destroyed
+                || (!blue && u.tracking)
+                || matches!(u.kind, AaaKind::PatriotLauncher | AaaKind::DroneCenter)
+            {
                 continue;
             }
             // A player mans it: his console aims and fires.
@@ -1518,7 +1544,7 @@ impl Sim {
         for k in 0..self.aaa.len() {
             let Some(j) = c.aaa_target[k] else { continue };
             let u = &mut self.aaa[k];
-            if u.destroyed || u.kind == AaaKind::Manpads || u.kind.patriot() {
+            if u.destroyed || u.kind == AaaKind::Manpads || u.kind.unarmed() {
                 continue;
             }
             // A Gepard fires what it has (its refill comes from the stockpile).
@@ -1869,7 +1895,7 @@ fn gun_envelope(kind: AaaKind) -> (f64, f64, f64) {
         AaaKind::S60 => (1000.0, 6000.0, 4500.0),
         AaaKind::Manpads => (0.0, 5000.0, 3500.0),
         AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
-        AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
+        AaaKind::PatriotLauncher | AaaKind::PatriotRadar | AaaKind::DroneCenter => (0.0, 0.0, 0.0),
     }
 }
 

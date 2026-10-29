@@ -48,9 +48,9 @@ pub struct OpsUi {
     /// to it (picked on the map).
     pub(super) defence: Option<usize>,
     pub(super) defence_scroll: bool,
-    /// A new air defence site is being designated on the map (a Patriot battery or a Gepard),
-    /// and `--campaign-designate` was done.
-    pub(super) designate: Option<bool>,
+    /// A new site is being designated on the map (a Patriot battery, a Gepard, a drone command
+    /// center), and `--campaign-designate` was done.
+    pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
     /// `--campaign-take` was done, `--campaign-man`.
     pub test_taken: bool,
@@ -1364,7 +1364,14 @@ fn control_button(
         return;
     }
     ui.add_space(10.0);
-    section(ui, if u.kind == AaaKind::Gepard { "Gepard" } else { "Patriot battery" });
+    section(
+        ui,
+        match u.kind {
+            AaaKind::Gepard => "Gepard",
+            AaaKind::DroneCenter => "Drone command center",
+            _ => "Patriot battery",
+        },
+    );
     let why = man_refusal(c, sim, k);
     if ui.add_enabled(why.is_none(), big_button("CONTROL")).clicked() {
         c.ui.error = None;

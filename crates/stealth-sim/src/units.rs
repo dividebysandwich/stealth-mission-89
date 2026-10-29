@@ -333,7 +333,7 @@ mod tests {
     fn units_build_the_tables() {
         let t = shipped();
         assert_eq!(t.threats.len(), 27);
-        assert_eq!(t.aircraft.len(), 33);
+        assert_eq!(t.aircraft.len(), 35);
         assert_eq!(t.missiles.len(), 49);
         assert_eq!((t.weapons.len(), t.compat.len()), (22, 22));
         assert!(
@@ -342,7 +342,11 @@ mod tests {
                 .skip(1)
                 .all(|r| (50..=500).contains(&r.lethality) && (2..=8).contains(&r.tier))
         );
-        assert!(t.aircraft.iter().all(|a| (100..=900).contains(&a.max_speed)));
+        // The command center's small drones are slower than anything else.
+        assert!(t.aircraft.iter().all(|a| {
+            let low = if a.kind == AircraftKind::Drone { 50 } else { 100 };
+            (low..=900).contains(&a.max_speed)
+        }));
         assert!(
             t.missiles
                 .iter()

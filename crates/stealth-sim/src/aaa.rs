@@ -51,6 +51,9 @@ pub enum AaaKind {
     PatriotRadar,
     /// Gepard: two 35 mm guns, search and tracking radar.
     Gepard,
+    /// Drone command center: a bunker with a launch ramp, flies surveillance and attack drones
+    /// (no gun of its own).
+    DroneCenter,
 }
 
 impl AaaKind {
@@ -62,6 +65,7 @@ impl AaaKind {
             AaaKind::PatriotLauncher => "Patriot",
             AaaKind::PatriotRadar => "Patriot radar",
             AaaKind::Gepard => "Gepard",
+            AaaKind::DroneCenter => "Drone command center",
         }
     }
 
@@ -78,6 +82,11 @@ impl AaaKind {
         matches!(self, AaaKind::PatriotLauncher | AaaKind::PatriotRadar)
     }
 
+    /// No gun and no MANPADS of its own: a Patriot launcher or radar, a drone command center.
+    pub fn unarmed(self) -> bool {
+        self.patriot() || self == AaaKind::DroneCenter
+    }
+
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
     fn gun(self) -> (f64, f64, f64) {
         match self {
@@ -85,7 +94,9 @@ impl AaaKind {
             AaaKind::S60 => (1000.0, 6000.0, 4500.0),
             AaaKind::Manpads => (0.0, 5000.0, 3500.0),
             AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
-            AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
+            AaaKind::PatriotLauncher | AaaKind::PatriotRadar | AaaKind::DroneCenter => {
+                (0.0, 0.0, 0.0)
+            }
         }
     }
 }
@@ -362,7 +373,7 @@ impl Sim {
         let mut rwr: Vec<(usize, RwrTone)> = Vec::new();
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
-            if u.destroyed || self.aaa_blue(i) || u.kind.patriot() || u.kind == AaaKind::Gepard {
+            if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == AaaKind::Gepard {
                 continue;
             }
             u.cooldown = (u.cooldown - 1).max(0);
@@ -468,7 +479,10 @@ impl Sim {
                         });
                     }
                 }
-                AaaKind::PatriotLauncher | AaaKind::PatriotRadar | AaaKind::Gepard => {}
+                AaaKind::PatriotLauncher
+                | AaaKind::PatriotRadar
+                | AaaKind::Gepard
+                | AaaKind::DroneCenter => {}
             }
         }
         self.aaa = units;

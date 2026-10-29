@@ -857,14 +857,71 @@ pub struct CampaignState {
     pub terrain: Terrain,
 }
 
-/// A friendly air defence unit's stockpile: where (map units), a Patriot battery (else a
-/// Gepard), how much (missiles, rounds).
+/// What a friendly site the players build and man is: a Gepard, a Patriot battery or a drone
+/// command center.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+pub enum DefenceKind {
+    #[default]
+    Gepard,
+    Patriot,
+    Drones,
+}
+
+impl DefenceKind {
+    /// "Patriot battery".
+    pub fn name(self) -> &'static str {
+        match self {
+            DefenceKind::Gepard => "Gepard",
+            DefenceKind::Patriot => "Patriot battery",
+            DefenceKind::Drones => "drone command center",
+        }
+    }
+
+    /// "Patriot" (the board's titles).
+    pub fn short(self) -> &'static str {
+        match self {
+            DefenceKind::Gepard => "Gepard",
+            DefenceKind::Patriot => "Patriot",
+            DefenceKind::Drones => "Drones",
+        }
+    }
+}
+
+/// Saves from before the drone command center say `"patriot": true` or `false`.
+impl<'de> Deserialize<'de> for DefenceKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        enum Named {
+            Gepard,
+            Patriot,
+            Drones,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Patriot(bool),
+            Kind(Named),
+        }
+        Ok(match Either::deserialize(d)? {
+            Either::Patriot(true) | Either::Kind(Named::Patriot) => DefenceKind::Patriot,
+            Either::Patriot(false) | Either::Kind(Named::Gepard) => DefenceKind::Gepard,
+            Either::Kind(Named::Drones) => DefenceKind::Drones,
+        })
+    }
+}
+
+/// A friendly air defence unit's stockpile: where (map units), what it is, how much
+/// (missiles, rounds; a drone command center's surveillance drones, and its attack drones in
+/// `stock2`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefenceStock {
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     pub stock: i32,
+    #[serde(default)]
+    pub stock2: i32,
 }
 
 fn never() -> f64 {
@@ -891,7 +948,8 @@ pub struct SupplyRequest {
     pub aaa: u32,
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     /// The place it is named after (the nearest).
     pub name: String,
     /// Who asked for it (None: ordered when the unit ran out).
@@ -903,8 +961,7 @@ pub struct SupplyRequest {
 impl SupplyRequest {
     /// "Patriot battery near Wittstock".
     pub fn title(&self) -> String {
-        let what = if self.patriot { "Patriot battery" } else { "Gepard" };
-        format!("{what} near {}", self.name)
+        format!("{} near {}", self.kind.name(), self.name)
     }
 }
 
@@ -918,7 +975,8 @@ pub struct Deployment {
     /// The helipad (map units); the unit stands [`DEPLOY_UNIT_OFFSET`] north of it.
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     /// The place it is named after (the nearest).
     pub name: String,
     pub by: Option<PlayerId>,
@@ -961,7 +1019,11 @@ pub enum CrateState {
 impl Deployment {
     /// "Patriot site near Wittstock".
     pub fn title(&self) -> String {
-        let what = if self.patriot { "Patriot site" } else { "Gepard site" };
+        let what = match self.kind {
+            DefenceKind::Gepard => "Gepard site",
+            DefenceKind::Patriot => "Patriot site",
+            DefenceKind::Drones => "Drone command center",
+        };
         format!("{what} near {}", self.name)
     }
 

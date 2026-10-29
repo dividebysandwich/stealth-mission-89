@@ -1,7 +1,9 @@
 //! The coop messages and their encoding (CBOR, LZ4-compressed when large).
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use stealth_campaign::{Aircraft, CampaignState, PlaceId, PlayerId, RoutePoint, Sortie};
+use stealth_campaign::{
+    Aircraft, CampaignState, DefenceKind, PlaceId, PlayerId, RoutePoint, Sortie,
+};
 use stealth_host::{HostEvent, Rules, Stores};
 use stealth_sim::claims::GunHit;
 use stealth_sim::net::{PilotSnap, PilotTick, WorldFast, WorldSlow};
@@ -45,12 +47,13 @@ pub enum ToServer {
     RequestSupport {
         offer: u32,
     },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y), map units.
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y), map units.
     DesignateSite {
         x: i32,
         y: i32,
-        patriot: bool,
+        #[serde(alias = "patriot")]
+        kind: DefenceKind,
     },
     /// The crate of load `leg` of new site `id` hooked under his helicopter.
     HookCrate {
@@ -249,6 +252,7 @@ mod tests {
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
         }
         let defence = DefenceState {
+            stock2: vec![0, 3],
             stations: vec![Station {
                 unit: 4,
                 pilot: 1,

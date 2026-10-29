@@ -35,7 +35,7 @@ pub mod weather;
 
 use serde::{Deserialize, Serialize};
 
-pub use deploy::footprint;
+pub use deploy::{footprint, loads};
 pub use record::PilotRecord;
 pub use state::*;
 
@@ -151,11 +151,11 @@ pub enum Command {
     /// Call in AI SEAD against the SAM sites of an offer's place.
     RequestSupport { offer: u32 },
     /// From an air defence console: a new stockpile for its unit (AAA index, where it stands,
-    /// a Patriot battery or a Gepard).
-    RequestResupply { aaa: u32, x: i32, y: i32, patriot: bool },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y): its cargo goes on the board.
-    DesignateSite { x: i32, y: i32, patriot: bool },
+    /// what it is).
+    RequestResupply { aaa: u32, x: i32, y: i32, kind: DefenceKind },
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y): its cargo goes on the board.
+    DesignateSite { x: i32, y: i32, kind: DefenceKind },
     /// Hook the crate of load `leg` of new site `id` under the helicopter (the host checked
     /// where it is with [`CampaignState::hook_refusal`]).
     HookCrate { id: u32, leg: u8 },
@@ -280,13 +280,12 @@ pub enum CampaignEvent {
         y: i32,
         tag: u32,
     },
-    /// A new site (deployment `id`) has all its cargo: a Patriot battery or a Gepard stands at
-    /// (x, y).
+    /// A new site (deployment `id`) has all its cargo: its unit stands at (x, y).
     SiteBuilt {
         id: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     },
     /// A player hooked the crate of load `leg` of new site `id`.
     CrateHooked {
@@ -328,10 +327,10 @@ impl CampaignState {
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),
-            Command::RequestResupply { aaa, x, y, patriot } => {
-                self.request_resupply(Some(player), aaa, x, y, patriot)
+            Command::RequestResupply { aaa, x, y, kind } => {
+                self.request_resupply(Some(player), aaa, x, y, kind)
             }
-            Command::DesignateSite { x, y, patriot } => self.designate(player, x, y, patriot),
+            Command::DesignateSite { x, y, kind } => self.designate(player, x, y, kind),
             Command::HookCrate { id, leg } => self.hook_crate(player, id, leg),
             Command::DropCrate { id, leg, east, north, heading } => {
                 self.drop_crate(player, id, leg, east, north, heading)

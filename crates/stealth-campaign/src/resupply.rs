@@ -17,7 +17,7 @@ impl CampaignState {
         aaa: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Result<Vec<CampaignEvent>, String> {
         if let Some(r) = self.supply_requests.iter().find(|r| r.aaa == aaa) {
             return Err(match r.state {
@@ -40,7 +40,7 @@ impl CampaignState {
             aaa,
             x,
             y,
-            patriot,
+            kind,
             name,
             by: player,
             posted: now,
@@ -52,7 +52,11 @@ impl CampaignState {
                 format!("{who} requests resupply for the {}", r.title())
             }
             None => {
-                let what = if patriot { "missiles" } else { "rounds" };
+                let what = match kind {
+                    DefenceKind::Gepard => "rounds",
+                    DefenceKind::Patriot => "missiles",
+                    DefenceKind::Drones => "drones",
+                };
                 format!("The {} is out of {what}: resupply ordered", r.title())
             }
         };
@@ -62,7 +66,7 @@ impl CampaignState {
         Ok(vec![CampaignEvent::Message(text)])
     }
 
-    /// An air defence unit (AAA index, where it stands, a Patriot battery or a Gepard) has used
+    /// An air defence unit (AAA index, where it stands, what it is) has used
     /// up its stockpile: a resupply is ordered unless one is already under way (or no airfield
     /// is left to fly it from).
     pub fn order_resupply(
@@ -70,14 +74,14 @@ impl CampaignState {
         aaa: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Vec<CampaignEvent> {
         if self.outcome.is_some()
             || self.supply_requests.iter().any(|r| r.aaa == aaa || (r.x, r.y) == (x, y))
         {
             return Vec::new();
         }
-        self.request_resupply(None, aaa, x, y, patriot).unwrap_or_default()
+        self.request_resupply(None, aaa, x, y, kind).unwrap_or_default()
     }
 
     /// The friendly airfield a resupply for (x, y) is flown from: the nearest intact one, else

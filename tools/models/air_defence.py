@@ -1,5 +1,5 @@
 """Builds the remake's low-level air defences (ZSU-23-4 Shilka, S-60 gun, MANPADS team, and the
-friendly Patriot launcher and radar and the Gepard) in Blender, for the air defence option and
+friendly Patriot launcher and radar, the Gepard and the drone command center) in Blender, for the air defence option and
 the campaign (crates/stealth-sim/src/aaa.rs):
 
     blender -b --factory-startup --python-exit-code 1 --python tools/models/air_defence.py -- assets/models/aaa.glb
@@ -32,6 +32,7 @@ MANPADS = 112
 PATRIOT_LN = 113
 PATRIOT_RADAR = 114
 GEPARD = 115
+DRONES = 116
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -44,6 +45,8 @@ RUBBER = Ramp(0xED, 0xEF)
 BURNT = Ramp(0xEC, 0xEF)
 SKIN = Ramp(0xC2, 0xC5)
 GLASS = 0x0B
+CONCRETE = Ramp(0xE3, 0xEA)
+EARTH = Ramp(0xA4, 0xA9)
 
 TURRET_SLOT, GUN_SLOT, RADAR_SLOT = 21, 22, 16
 
@@ -454,6 +457,98 @@ def gepard():
     far(lod1, "aaa_115", [(-1.6, 1.6, -3.5, 3.5, 0.2, 1.6), (-1.8, 1.8, -1.6, 1.8, 1.6, 2.8)])
 
 
+# ----------------------------------------------------------------------- drone command center
+
+# The launch rail (crates/stealth-sim/src/uav.rs RAMP_*): its rear end where a drone sits, metres
+# forward of the bunker's centre and up, its length and its rise (radians).
+RAMP_Y = 7.0
+RAMP_Z = 1.3
+RAMP_LEN = 7.0
+RAMP_RISE = 0.21
+
+
+def bunker(paint=CONCRETE, earth=EARTH, door=STEEL):
+    """An earth-covered concrete bunker, 9 x 7 m, its blast door and wing walls to the front
+    (+y), the vents and the antenna mast on the mound."""
+    g = Geo()
+    # The mound: earth heaped over the roof and against the sides and back.
+    g.add(mklib.hexa(
+        [(-7.5, -7.0, 0.0), (7.5, -7.0, 0.0), (7.5, 3.4, 0.0), (-7.5, 3.4, 0.0),
+         (-4.6, -4.2, 3.4), (4.6, -4.2, 3.4), (4.6, 2.6, 3.4), (-4.6, 2.6, 3.4)],
+        earth,
+    ))
+    # The front wall with its blast door, the wing walls splaying out to the ramp.
+    g.add(block(-4.6, 4.6, 2.5, 3.6, 0.0, 3.1, paint))
+    g.add(block(-1.1, 1.1, 3.6, 3.75, 0.0, 2.2, door))
+    g.add(block(-1.3, 1.3, 3.6, 3.7, 2.2, 2.4, paint))
+    g.add(block(2.0, 3.2, 3.6, 3.65, 1.7, 1.9, GLASS))
+    for sx in (-1, 1):
+        # A wall 0.5 m thick from the front wall's corner out to the side, falling to the front.
+        a, b = sorted((sx * 4.6, sx * 5.1))
+        c, d = sorted((sx * 6.3, sx * 6.8))
+        g.add(mklib.hexa(
+            [(a, 3.2, 0.0), (b, 3.2, 0.0), (d, 6.0, 0.0), (c, 6.0, 0.0),
+             (a, 3.2, 3.1), (b, 3.2, 3.1), (d, 6.0, 0.6), (c, 6.0, 0.6)],
+            paint,
+        ))
+    # Vents on the mound, a generator set to the side.
+    for x in (-2.5, 2.5):
+        g.add(frustum((x, -1.0, 3.3), (x, -1.0, 4.1), 0.25, 0.25, STEEL, n=6))
+        g.add(frustum((x, -1.0, 4.1), (x, -1.0, 4.3), 0.4, 0.1, STEEL, n=6))
+    g.add(block(7.0, 8.4, 0.5, 2.6, 0.0, 1.5, OLIVE))
+    g.add(block(7.15, 8.25, 2.6, 2.65, 0.3, 1.2, OLIVE_DARK))
+    return g
+
+
+def antenna(paint=STEEL):
+    """The mast on the mound: a lattice-like pole, the datalink dish and two whips."""
+    g = Geo()
+    g.add(frustum((0, 0, 0), (0, 0, 9.0), 0.16, 0.07, paint, n=6))
+    for z in (2.5, 5.0, 7.5):
+        g.add(block(-0.35, 0.35, -0.04, 0.04, z, z + 0.08, paint))
+    # The datalink dish facing forward, and the whips either side.
+    g.add(frustum((0, 0.1, 8.0), (0, 0.45, 8.0), 0.15, 0.6, OLIVE_DARK, n=10))
+    for sx in (-1, 1):
+        g.add(frustum((sx * 0.35, 0, 7.5), (sx * 0.35, 0, 10.5), 0.03, 0.015, paint, n=4))
+    return g
+
+
+def ramp(paint=STEEL, legs=OLIVE_DARK):
+    """The pneumatic launch rail: a beam rising RAMP_RISE over RAMP_LEN on an A-frame, the
+    cylinder under it and the cradle at its rear end (its origin)."""
+    rail = Geo()
+    rail.add(block(-0.12, 0.12, -0.3, RAMP_LEN, -0.22, 0.0, paint))
+    for sx in (-1, 1):
+        rail.add(block(sx * 0.2 - 0.04, sx * 0.2 + 0.04, -0.3, RAMP_LEN, -0.05, 0.06, paint))
+    rail.add(block(-0.3, 0.3, 0.0, 0.8, 0.0, 0.12, OLIVE_DARK))
+    rail.add(frustum((0, 0.3, -0.38), (0, RAMP_LEN - 1.2, -0.38), 0.13, 0.13, OLIVE, n=8))
+    g = rail.rotated_x(RAMP_RISE).transformed(lambda p: p + mklib.v3((0, RAMP_Y, RAMP_Z)))
+    # The A-frame at the front, a trestle at the back, the compressor beside it.
+    top = RAMP_Z + (RAMP_LEN - 1.0) * math.sin(RAMP_RISE) - 0.2
+    yf = RAMP_Y + (RAMP_LEN - 1.0) * math.cos(RAMP_RISE)
+    for sx in (-1, 1):
+        g.add(frustum((sx * 1.3, yf, 0.0), (sx * 0.1, yf, top), 0.07, 0.06, legs, n=4))
+        g.add(frustum((sx * 0.9, RAMP_Y + 0.5, 0.0), (sx * 0.1, RAMP_Y + 0.5, RAMP_Z - 0.1), 0.07, 0.06, legs, n=4))
+    g.add(block(-1.5, 1.5, yf - 0.05, yf + 0.05, 0.4, 0.5, legs))
+    g.add(block(1.2, 2.2, RAMP_Y - 0.5, RAMP_Y + 0.9, 0.0, 0.9, OLIVE))
+    return g
+
+
+def drone_center():
+    root, lod0, lod1 = levels(DRONES, 24000)
+    g = bunker()
+    g.add(antenna().transformed(lambda p: p + mklib.v3((0, -2.5, 3.4))))
+    g.add(ramp())
+    mesh_obj("aaa_116_lod0_s1v0", g, lod0)
+    # Wrecked: the door blown in, the mast down across the mound, the rail fallen off its legs.
+    w = bunker(BURNT, EARTH, BURNT)
+    w.add(block(-1.1, 1.1, 3.7, 3.8, 0.0, 2.2, 0x00))
+    w.add(antenna(BURNT).rotated_x(-1.35).transformed(lambda p: p + mklib.v3((0.5, -2.5, 3.6))))
+    w.add(ramp(BURNT, BURNT).rotated_z(0.25).rotated_x(-0.12).transformed(lambda p: p + mklib.v3((0.8, -0.6, -0.6))))
+    mesh_obj("aaa_116_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_116", [(-6.5, 6.5, -6.0, 3.6, 0.0, 2.6), (-0.4, 0.4, RAMP_Y, RAMP_Y + RAMP_LEN, 0.5, 2.6)])
+
+
 # -------------------------------------------------------------------------------------- common
 
 
@@ -495,6 +590,7 @@ def main():
     patriot_launcher()
     patriot_radar()
     gepard()
+    drone_center()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

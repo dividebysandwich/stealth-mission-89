@@ -160,12 +160,12 @@ pub enum Action {
     RequestSupport {
         offer: u32,
     },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y), map units.
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y), map units.
     DesignateSite {
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: stealth_campaign::DefenceKind,
     },
     /// The crate of load `leg` of new site `id` hooked under the helicopter (see `sling.rs`).
     HookCrate {
@@ -804,7 +804,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
-            Action::DesignateSite { x, y, patriot } => host.designate_site(sim, me, x, y, patriot),
+            Action::DesignateSite { x, y, kind } => host.designate_site(sim, me, x, y, kind),
             Action::HookCrate { id, leg } => host.hook_crate(sim, me, id, leg),
             Action::DropCrate { id, leg, east, north, heading } => {
                 host.drop_crate(sim, me, id, leg, east, north, heading)
@@ -863,7 +863,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
-            Action::DesignateSite { x, y, patriot } => ToServer::DesignateSite { x, y, patriot },
+            Action::DesignateSite { x, y, kind } => ToServer::DesignateSite { x, y, kind },
             Action::HookCrate { id, leg } => ToServer::HookCrate { id, leg },
             Action::DropCrate { id, leg, east, north, heading } => {
                 ToServer::DropCrate { id, leg, east, north, heading }

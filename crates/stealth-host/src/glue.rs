@@ -432,3 +432,36 @@ pub fn default_base(state: &CampaignState) -> Option<usize> {
         front.first().and_then(|&p| state.place(p)).map_or((0x4000, 0x4000), |p| (p.x, p.y));
     state.nearest_player_base(x, y).map(|b| b as usize)
 }
+
+/// The kind of player site a mannable unit is (a Patriot battery: its radar).
+pub fn defence_kind(kind: stealth_sim::aaa::AaaKind) -> Option<stealth_campaign::DefenceKind> {
+    use stealth_campaign::DefenceKind;
+    use stealth_sim::aaa::AaaKind;
+    match kind {
+        AaaKind::Gepard => Some(DefenceKind::Gepard),
+        AaaKind::PatriotRadar => Some(DefenceKind::Patriot),
+        AaaKind::DroneCenter => Some(DefenceKind::Drones),
+        _ => None,
+    }
+}
+
+/// The unit that keeps a site's stockpile (a Patriot battery's radar).
+pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::AaaKind {
+    use stealth_campaign::DefenceKind;
+    use stealth_sim::aaa::AaaKind;
+    match kind {
+        DefenceKind::Gepard => AaaKind::Gepard,
+        DefenceKind::Patriot => AaaKind::PatriotRadar,
+        DefenceKind::Drones => AaaKind::DroneCenter,
+    }
+}
+
+/// A new site the players supplied stands at (x, y).
+pub fn place_site(sim: &mut Sim, kind: stealth_campaign::DefenceKind, x: i32, y: i32) {
+    use stealth_campaign::DefenceKind;
+    match kind {
+        DefenceKind::Gepard => sim.place_gepard(x, y),
+        DefenceKind::Patriot => sim.place_patriot(x, y),
+        DefenceKind::Drones => sim.place_drone_center(x, y),
+    }
+}

@@ -1111,7 +1111,7 @@ fn clear_air_defence(
     let want: Vec<(DVec2, f64)> = (0..sim.aaa_units().len())
         .filter(|&k| {
             let u = &sim.aaa_units()[k];
-            sim.aaa_blue(k) && (u.kind.patriot() || u.kind == stealth_sim::aaa::AaaKind::Gepard)
+            sim.aaa_blue(k) && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
             let u = &sim.aaa_units()[k];

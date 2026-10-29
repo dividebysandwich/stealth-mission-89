@@ -167,7 +167,13 @@ fn the_ai_helicopter_without_a_crate_hovers_at_the_battery() {
 fn a_delivery_fills_the_stockpile() {
     let (mut sim, _, radar) = battery();
     let a = sim.aaa_units()[radar];
-    sim.restore_stocks(&[SavedStock { x: a.x, y: a.y, patriot: true, stock: 1 }]);
+    sim.restore_stocks(&[SavedStock {
+        x: a.x,
+        y: a.y,
+        kind: AaaKind::PatriotRadar,
+        stock: 1,
+        stock2: 0,
+    }]);
     assert_eq!(sim.stockpile(radar), 1);
     sim.restock(radar);
     assert_eq!(sim.stockpile(radar), PATRIOT_STOCK);

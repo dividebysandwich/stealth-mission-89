@@ -1,5 +1,5 @@
-//! New friendly air defence sites: a player designates a spot on the map for a Gepard or a
-//! Patriot battery, a helipad goes there, and logistics missions go on the board for the UH-60
+//! New friendly air defence sites: a player designates a spot on the map for a Gepard, a
+//! Patriot battery or a drone command center, a helipad goes there, and logistics missions go on the board for the UH-60
 //! pilots (land the cargo from the nearest airfield on the pad). A load nobody takes for
 //! `DEPLOY_AI_WAIT` goes by AI helicopter. All loads in within `DEPLOY_TIMEOUT`, the unit
 //! stands beside the pad; else the helipad is gone.
@@ -9,15 +9,34 @@ use crate::tuning::*;
 use crate::{AaaView, CampaignEvent, Report, WorldView};
 
 /// The ground a site takes (map units from its unit).
-pub fn footprint(patriot: bool) -> i32 {
-    if patriot { DEPLOY_FOOTPRINT_PATRIOT } else { DEPLOY_FOOTPRINT_GEPARD }
+pub fn footprint(kind: DefenceKind) -> i32 {
+    match kind {
+        DefenceKind::Gepard => DEPLOY_FOOTPRINT_GEPARD,
+        DefenceKind::Patriot => DEPLOY_FOOTPRINT_PATRIOT,
+        DefenceKind::Drones => DEPLOY_FOOTPRINT_DRONES,
+    }
+}
+
+/// The loads of cargo a site needs.
+pub fn loads(kind: DefenceKind) -> u8 {
+    match kind {
+        DefenceKind::Gepard => DEPLOY_LOADS_GEPARD,
+        DefenceKind::Patriot => DEPLOY_LOADS_PATRIOT,
+        DefenceKind::Drones => DEPLOY_LOADS_DRONES,
+    }
 }
 
 impl CampaignState {
-    /// Why a new site may not go to (x, y) (the helipad; a Patriot battery or a Gepard), None
+    /// Why a new site may not go to (x, y) (the helipad; a site of `kind`), None
     /// if it may: on land in friendly territory, clear of the towns, airfields and other world
     /// objects, and of the units on the ground (`aaa`, the simulation's air defence).
-    pub fn deploy_refusal(&self, x: i32, y: i32, patriot: bool, aaa: &[AaaView]) -> Option<String> {
+    pub fn deploy_refusal(
+        &self,
+        x: i32,
+        y: i32,
+        kind: DefenceKind,
+        aaa: &[AaaView],
+    ) -> Option<String> {
         if self.outcome.is_some() {
             return Some("The war is over".into());
         }
@@ -28,7 +47,7 @@ impl CampaignState {
         if open >= DEPLOY_OPEN_MAX {
             return Some(format!("{DEPLOY_OPEN_MAX} sites are waiting for their cargo already"));
         }
-        let foot = footprint(patriot);
+        let foot = footprint(kind);
         let wet = |x: i32, y: i32| self.terrain.is_water(x, y) == Some(true);
         let ring = (0..8).map(|k| {
             let t = k as f64 * std::f64::consts::FRAC_PI_4;
@@ -57,7 +76,7 @@ impl CampaignState {
         if self.batteries.iter().any(|b| unit_near(b.x, b.y, BATTERY_RADIUS + foot)) {
             return Some("Too close to an enemy battery".into());
         }
-        if self.deployments.iter().any(|d| near(d.x, d.y, footprint(d.patriot) + foot)) {
+        if self.deployments.iter().any(|d| near(d.x, d.y, footprint(d.kind) + foot)) {
             return Some("Too close to another new site".into());
         }
         if self.supply_base(x, y).is_none() {
@@ -73,9 +92,9 @@ impl CampaignState {
         player: PlayerId,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Result<Vec<CampaignEvent>, String> {
-        if let Some(why) = self.deploy_refusal(x, y, patriot, &[]) {
+        if let Some(why) = self.deploy_refusal(x, y, kind, &[]) {
             return Err(why);
         }
         let name = self
@@ -85,12 +104,12 @@ impl CampaignState {
             .map_or(String::new(), |p| p.name.clone());
         let id = self.id();
         let now = self.clock;
-        let loads = if patriot { DEPLOY_LOADS_PATRIOT } else { DEPLOY_LOADS_GEPARD };
+        let loads = loads(kind);
         let d = Deployment {
             id,
             x,
             y,
-            patriot,
+            kind,
             name,
             by: Some(player),
             posted: now,
@@ -148,7 +167,7 @@ impl CampaignState {
             let d = &self.deployments[k];
             if d.built {
                 let (ux, uy) = d.unit_at();
-                let r = footprint(d.patriot);
+                let r = footprint(d.kind);
                 let up = self.guns_within(view, ux, uy, Side::Blue, r).next().is_some();
                 if up && !d.seen {
                     self.deployments[k].seen = true;
@@ -261,14 +280,14 @@ impl CampaignState {
         }
         d.built = true;
         d.crates.clear();
-        let ((x, y), patriot, title) = (d.unit_at(), d.patriot, d.title());
+        let ((x, y), kind, title) = (d.unit_at(), d.kind, d.title());
         for (_, tag) in std::mem::take(&mut d.ai) {
             ev.push(CampaignEvent::Recall { tag });
         }
         let text = format!("The {title} is supplied{who} and ready for action");
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
-        ev.push(CampaignEvent::SiteBuilt { id, x, y, patriot });
+        ev.push(CampaignEvent::SiteBuilt { id, x, y, kind });
     }
 
     /// Why the player may not hook load `leg` of site `id` now, None if he may: in a
@@ -367,13 +386,7 @@ impl CampaignState {
             .flat_map(|d| {
                 d.open_legs().map(move |leg| {
                     (
-                        format!(
-                            "{} {}/{} - {}",
-                            if d.patriot { "Patriot" } else { "Gepard" },
-                            leg + 1,
-                            d.loads,
-                            d.name
-                        ),
+                        format!("{} {}/{} - {}", d.kind.short(), leg + 1, d.loads, d.name),
                         Objective::Logistics { site: d.id, leg },
                         d.x,
                         d.y,
