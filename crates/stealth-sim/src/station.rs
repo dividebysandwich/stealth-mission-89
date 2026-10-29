@@ -11,6 +11,7 @@
 //! * A Gepard fires bursts of [`BURST`] programmed airburst rounds, out to [`GEPARD_REACH`].
 //!   Without a lock its turret is slewed by hand ([`StationCmd::Slew`]) and a burst is
 //!   [`BURST`] tracers along the barrels.
+//! * A drone command center launches and flies drones (`uav.rs`).
 //! * A station whose radar (or Gepard) is destroyed is gone: [`Sim::station_of`] is None.
 
 use serde::{Deserialize, Serialize};
@@ -23,6 +24,7 @@ use crate::campaign::{
 };
 use crate::math::approx;
 use crate::types::*;
+use crate::uav::{Seen, Uav, UavKind, UavMode, UavWp};
 
 /// Missiles in a Patriot battery's stockpile, beyond those on its launchers.
 pub const PATRIOT_STOCK: i32 = 8;
@@ -73,9 +75,9 @@ pub enum Guidance {
 }
 
 /// What a player at a console does.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum StationCmd {
-    /// Man a friendly Patriot radar or Gepard (AAA unit).
+    /// Man a friendly Patriot radar, Gepard or drone command center (AAA unit).
     Man {
         unit: u16,
     },
@@ -102,6 +104,33 @@ pub enum StationCmd {
     /// Ask for a helicopter with a new stockpile (the campaign's business: it goes on the
     /// mission board).
     RequestResupply,
+    /// Drone command center: a drone off the rail to fly a route.
+    Launch {
+        kind: UavKind,
+        route: Vec<UavWp>,
+    },
+    /// A drone's new route (its id at the center).
+    Route {
+        uav: u16,
+        route: Vec<UavWp>,
+    },
+    /// A drone flies to waypoint `wp` next.
+    Next {
+        uav: u16,
+        wp: u16,
+    },
+    /// A drone flown by hand, or back on its route.
+    Manual {
+        uav: u16,
+        on: bool,
+    },
+    /// Flying by hand: the stick (roll right, pitch up, -1..1) and throttle (0..1).
+    Fly {
+        uav: u16,
+        roll: f32,
+        pitch: f32,
+        throttle: f32,
+    },
 }
 
 /// A manned console.
@@ -137,6 +166,14 @@ pub struct DefenceState {
     pub stock2: Vec<i32>,
     /// Per AAA unit: real seconds left of a launcher's or Gepard's refill (0: none).
     pub refill: Vec<f32>,
+    /// The drone command centers' drones in the air, the last one's number, and what the
+    /// drones have found.
+    #[serde(default)]
+    pub uavs: Vec<Uav>,
+    #[serde(default)]
+    pub uav_serial: u16,
+    #[serde(default)]
+    pub uav_known: Vec<Seen>,
 }
 
 /// A stockpile to keep over a save: where, the unit that keeps it (a Patriot radar, a Gepard,
@@ -185,7 +222,7 @@ impl Sim {
         self.campaign.as_ref().map(|c| &c.defence)
     }
 
-    fn defence_mut(&mut self) -> &mut DefenceState {
+    pub(crate) fn defence_mut(&mut self) -> &mut DefenceState {
         &mut self.campaign.as_mut().expect("campaign").defence
     }
 
@@ -281,6 +318,7 @@ impl Sim {
             StationCmd::Man { .. } => unreachable!(),
             StationCmd::Leave => {
                 self.defence_mut().stations.remove(at);
+                self.uavs_unmanned(st.unit);
             }
             StationCmd::Lock(t) => {
                 if let Some(t) = t
@@ -307,6 +345,11 @@ impl Sim {
             }
             StationCmd::Refill { unit } => self.start_refill(st.unit as usize, unit as usize)?,
             StationCmd::RequestResupply => return Err("Resupply goes through the campaign".into()),
+            cmd @ (StationCmd::Launch { .. }
+            | StationCmd::Route { .. }
+            | StationCmd::Next { .. }
+            | StationCmd::Manual { .. }
+            | StationCmd::Fly { .. }) => self.uav_command(&st, cmd)?,
         }
         Ok(())
     }
@@ -342,8 +385,19 @@ impl Sim {
 
     /// Pilot `pilot` leaves his console (a sortie, a disconnect).
     pub fn leave_station(&mut self, pilot: u8) {
+        let Some(unit) = self.station_of(pilot).map(|s| s.unit) else { return };
         if let Some(c) = self.campaign.as_mut() {
             c.defence.stations.retain(|s| s.pilot != pilot);
+        }
+        self.uavs_unmanned(unit);
+    }
+
+    /// Nobody mans drone center `unit` any more: the drones flown by hand go on by themselves.
+    fn uavs_unmanned(&mut self, unit: u16) {
+        for u in self.defence_mut().uavs.iter_mut().filter(|u| u.center == unit) {
+            if u.mode == UavMode::Manual {
+                u.mode = UavMode::Auto;
+            }
         }
     }
 

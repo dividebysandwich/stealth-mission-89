@@ -37,6 +37,9 @@ impl Sim {
             let alive = self.flights[i].flags & fflags::DESTROYED == 0;
             let was = self.flights[i];
             match kind {
+                crate::AircraftKind::Drone if alive && self.uav_of_flight(i).is_some() => {
+                    self.fly_uav(i)
+                }
                 crate::AircraftKind::Drone if alive => self.fly_drone(i),
                 crate::AircraftKind::Helicopter if alive && self.supply_run(i).is_some() => {
                     self.fly_supply(i)

@@ -109,6 +109,8 @@ pub enum Role {
     /// Helicopter bringing an air defence unit's stockpile up (`supply`): it flies to the
     /// unit, hovers low beside it, then flies back to its helipad and lands.
     Supply,
+    /// A drone command center's drone (`uav.rs` flies it).
+    Uav,
 }
 
 /// An aircraft the campaign launched.
@@ -1152,7 +1154,7 @@ impl Sim {
     pub(crate) fn campaign_goal(&self, i: usize, u: &FlightUnit) -> Option<(i32, i32)> {
         let f = self
             .campaign_flight(i)
-            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply))?;
+            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
         let (gx, gy) = f.goal;
         if f.role == Role::Strike {
             return Some((gx, gy));
@@ -1206,6 +1208,7 @@ impl Sim {
             self.campaign_acquire();
         }
         self.update_stations();
+        self.update_uavs();
         self.campaign_guns();
         self.campaign_fighter_guns();
         self.campaign_missiles();
@@ -1299,10 +1302,13 @@ impl Sim {
         let sides: Vec<Option<bool>> = (0..self.flights.len()).map(|i| self.ai_side(i)).collect();
         let pos: Vec<[f64; 3]> = self.flights.iter().map(flight_metres).collect();
         let xy: Vec<(i32, i32)> = self.flights.iter().map(|u| (u.x, u.y)).collect();
-        // How close a SAM site engages each low flyer: helicopters, strike aircraft in and out.
+        // How close a SAM site engages each low flyer: helicopters, strike aircraft in and out
+        // (a command center's small drones not at all).
         let low: Vec<Option<i32>> = (0..self.flights.len())
             .map(|i| {
-                if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
+                if self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav) {
+                    Some(0)
+                } else if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
                     Some(HELO_SAM_REACH)
                 } else if self
                     .campaign_flight(i)

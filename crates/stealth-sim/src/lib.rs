@@ -27,6 +27,7 @@ pub mod station;
 pub mod supply;
 mod targeting;
 mod tiles;
+pub mod uav;
 mod weapons;
 mod weather;
 

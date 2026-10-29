@@ -243,10 +243,20 @@ mod tests {
     #[test]
     fn station_messages_survive_encoding() {
         use stealth_sim::station::{DefenceState, Guidance, Station, StationCmd};
+        use stealth_sim::uav::{UavKind, UavWp, WpKind};
+        let route = vec![
+            UavWp { x: 0x1000, y: 0x2000, alt: 800.0, kind: WpKind::Nav },
+            UavWp { x: 0x1100, y: 0x2040, alt: 300.0, kind: WpKind::Terminate },
+        ];
         for cmd in [
             StationCmd::Fire { launcher: Some(3) },
             StationCmd::Slew { az: 0.5, el: -0.25 },
             StationCmd::Burst,
+            StationCmd::Launch { kind: UavKind::Fp2, route: route.clone() },
+            StationCmd::Route { uav: 4, route },
+            StationCmd::Next { uav: 4, wp: 1 },
+            StationCmd::Manual { uav: 2, on: true },
+            StationCmd::Fly { uav: 2, roll: -0.5, pitch: 0.25, throttle: 0.75 },
         ] {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
@@ -265,6 +275,9 @@ mod tests {
             }],
             stock: vec![8, 0, 0, 0, 640],
             refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],
+            uavs: Vec::new(),
+            uav_serial: 3,
+            uav_known: vec![stealth_sim::uav::Seen::Aaa(2), stealth_sim::uav::Seen::Object(40)],
         };
         let slow = WorldSlow {
             aaa_len: 5,

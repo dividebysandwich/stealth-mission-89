@@ -101,6 +101,12 @@ impl AaaKind {
     }
 }
 
+/// The way air defence unit `k` stands (rad, clockwise from north): each its own, spread by the
+/// golden angle. A drone command center's rail points this way.
+pub fn unit_heading(k: usize) -> f32 {
+    (k as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct AaaUnit {
     pub kind: AaaKind,

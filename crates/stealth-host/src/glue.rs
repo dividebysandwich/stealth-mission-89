@@ -84,8 +84,17 @@ pub fn world_view(sim: &Sim) -> WorldView {
 
 /// Enemy SAM sites a friendly aircraft detects now: their radar painted a player (his RWR)
 /// or they fire at friendly aircraft, or a friendly aircraft is within their radar's range and
-/// above its horizon (its RWR picks the radar up).
+/// above its horizon (its RWR picks the radar up), or a drone of a command center found it
+/// (the drones carry cameras, not RWRs).
 pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
+    let found: Vec<usize> = sim
+        .uav_known()
+        .iter()
+        .filter_map(|s| match *s {
+            stealth_sim::uav::Seen::Object(o) => Some(o as usize),
+            stealth_sim::uav::Seen::Aaa(_) => None,
+        })
+        .collect();
     let eyes: Vec<(i32, i32, f64)> = sim
         .flights()
         .iter()
@@ -95,7 +104,7 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
                 && u.flags & fflags::DESTROYED == 0
                 && u.speed > 0
         })
-        .filter(|(i, u)| sim.friendly_unit(*i, u.spec))
+        .filter(|(i, u)| sim.friendly_unit(*i, u.spec) && sim.uav_of_flight(*i).is_none())
         .map(|(_, u)| (u.x, u.y, u.alt.max(0) as f64 * WU))
         .collect();
     let objects = sim.objects();
@@ -116,7 +125,7 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
                 let horizon = 4120.0 * (alt.sqrt() + 3.2) / 15.625;
                 ((x - o.x) as f64).hypot((y - o.y) as f64) < range.min(horizon)
             });
-            (rwr || seen).then_some(Report::SiteSpotted { object: s.object })
+            (rwr || seen || found.contains(&i)).then_some(Report::SiteSpotted { object: s.object })
         })
         .collect()
 }

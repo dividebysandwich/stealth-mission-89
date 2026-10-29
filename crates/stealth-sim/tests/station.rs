@@ -440,8 +440,8 @@ fn one_launcher_fires_its_missiles_within_seconds() {
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let l = sim.battery_launchers(radar)[0];
     let fire = StationCmd::Fire { launcher: Some(l as u16) };
-    sim.station_command(ME, fire).unwrap();
-    assert!(sim.station_command(ME, fire).is_err(), "not at once");
+    sim.station_command(ME, fire.clone()).unwrap();
+    assert!(sim.station_command(ME, fire.clone()).is_err(), "not at once");
     run(&mut sim, 3);
     sim.station_command(ME, fire).unwrap();
     assert_eq!(sim.aaa_units()[l].rounds, 2);
