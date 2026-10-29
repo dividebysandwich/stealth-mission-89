@@ -519,8 +519,10 @@ fn handle_actions(
     mut actions: MessageReader<ActionEvent>,
     mut q: Query<&mut Aircraft, With<Player>>,
     k: Res<FlightConstants>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
-    let Ok(mut a) = q.single_mut() else {
+    // At a console the controls are the console's, not the parked aircraft's.
+    let (Ok(mut a), None) = (q.single_mut(), manning) else {
         actions.clear();
         return;
     };
@@ -642,8 +644,12 @@ fn step_flight(
     tables: Res<SimTables>,
     settings: Res<Settings>,
     theater: Option<Res<Theater>>,
+    manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(&mut Aircraft, &mut WorldPos, &mut Transform), With<Player>>,
 ) {
+    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun).
+    let parked = FlightControls::default();
+    let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.
     let total = time.delta_secs().min(1.0);
     let max_dt = if settings.classic_flight && k.heli.is_none() { 1.0 / 60.0 } else { 1.0 / 120.0 };
@@ -657,11 +663,11 @@ fn step_flight(
                 a.move_trim(controls.trim.clamp(Vec2::NEG_ONE, Vec2::ONE) * TRIM_RATE * dt);
             }
             if let Some(r) = &k.heli {
-                heli::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, r, theater.as_deref());
+                heli::step(&mut a, &mut pos, &mut tf, dt, controls, &k, r, theater.as_deref());
             } else if settings.classic_flight {
-                step_one(&mut a, &mut pos, &mut tf, dt, &controls, &k, &tables, theater.as_deref());
+                step_one(&mut a, &mut pos, &mut tf, dt, controls, &k, &tables, theater.as_deref());
             } else {
-                modern::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, theater.as_deref());
+                modern::step(&mut a, &mut pos, &mut tf, dt, controls, &k, theater.as_deref());
             }
             a.sweep_wing(&k, dt);
         }
