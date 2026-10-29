@@ -28,7 +28,8 @@ mod pick;
 mod shading;
 pub mod tooltips;
 
-use bevy::camera::visibility::NoFrustumCulling;
+use bevy::app::{HierarchyPropagatePlugin, Propagate, PropagateSet};
+use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilitySystems};
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions};
@@ -57,7 +58,12 @@ impl Plugin for Cockpit3dPlugin {
             MaterialPlugin::<hud_glass::HmdMaterial>::default(),
             MaterialPlugin::<shading::CockpitMaterial>::default(),
             MaterialPlugin::<tooltips::TipScreenMaterial>::default(),
+            HierarchyPropagatePlugin::<RenderLayers>::new(PostUpdate),
         ))
+        .configure_sets(
+            PostUpdate,
+            PropagateSet::<RenderLayers>::default().before(VisibilitySystems::CheckVisibility),
+        )
         .init_resource::<Hands>()
         .init_resource::<ConsolePanel>()
         .init_resource::<levers::CockpitAnchors>()
@@ -530,6 +536,10 @@ fn spawn_cockpit(
             CockpitRoot(layout.style, settings.local_lights, settings.hires_displays(), stem),
             Transform::from_translation(eye).with_scale(Vec3::splat(1.0 / scale)),
             Visibility::default(),
+            // Only the eye cameras: the targeting pod's (an air defence console's EO camera on
+            // its mast), the recon and the unit view cameras never see the cockpit, the
+            // console room or the hands, nor are lit by its lamps.
+            Propagate(eye_only()),
         ))
         .id();
     commands.entity(aircraft).add_child(root);
@@ -588,9 +598,15 @@ fn spawn_cockpit(
             Visibility::Hidden,
             NoFrustumCulling,
             bevy::light::NotShadowCaster,
+            eye_only(),
         ))
         .id();
     commands.entity(head).add_child(flash);
+}
+
+/// The render layers of the cockpit: the eye cameras' only.
+fn eye_only() -> RenderLayers {
+    RenderLayers::layer(crate::camera::MAIN_LOD_LAYER)
 }
 
 /// Palm boxes following the VR controllers (the fingertip is the palm's front).

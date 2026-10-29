@@ -1402,6 +1402,7 @@ fn own_shadow(
     mut shadow: Query<(&mut WorldPos, &mut Transform, &mut Visibility), With<OwnShadow>>,
     settings: Res<crate::settings::Settings>,
     view: Res<crate::camera::ViewState>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Ok((a, pos)) = player.single() else { return };
     let Ok((mut spos, mut tf, mut vis)) = shadow.single_mut() else {
@@ -1441,8 +1442,11 @@ fn own_shadow(
             | crate::camera::View::Weapon
             | crate::camera::View::Free
     );
-    let show =
-        a.altitude < 1000.0 && !assets.palette.lights_on() && !(settings.shadows && external);
+    // At an air defence console the aircraft waits unseen (`player::own_model_visibility`).
+    let show = a.altitude < 1000.0
+        && !assets.palette.lights_on()
+        && !(settings.shadows && external)
+        && manning.is_none();
     vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
     if show {
         let (e, n, _) = crate::world::bevy_to_wu(pos.0);

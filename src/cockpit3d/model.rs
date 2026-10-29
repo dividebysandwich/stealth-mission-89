@@ -50,6 +50,7 @@
 
 use std::collections::HashMap;
 
+use bevy::app::Propagate;
 use bevy::camera::visibility::{NoFrustumCulling, RenderLayers};
 use bevy::gltf::{Gltf, GltfMaterial, GltfMesh, GltfNode};
 use bevy::light::NotShadowCaster;
@@ -246,8 +247,9 @@ impl<'a> Spawner<'a> {
             }
             commands.entity(root).add_child(e);
             for &i in &parts {
+                // Over the cockpit root's own layers (`Propagate`).
                 let undrawn = RenderLayers::layer(crate::camera::UNDRAWN_LAYER);
-                commands.entity(self.still[i].entity).insert(undrawn);
+                commands.entity(self.still[i].entity).insert(Propagate(undrawn));
             }
         }
     }
