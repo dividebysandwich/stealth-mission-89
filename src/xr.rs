@@ -120,6 +120,23 @@ impl Plugin for XrPlugin {
                 detach_root.before(crate::combat::FlightTeardown),
             )
             .init_resource::<Recenter>();
+        // Both eyes share one set of sun shadow maps (`share_eye_cascades`).
+        if shared_shadows() {
+            app.add_systems(
+                PostUpdate,
+                share_eye_cascades
+                    .after(bevy::light::SimulationLightSystems::UpdateDirectionalLightCascades)
+                    .before(bevy::light::SimulationLightSystems::UpdateLightFrusta),
+            );
+            if let Some(render) = app.get_sub_app_mut(bevy::render::RenderApp) {
+                render.add_systems(
+                    bevy::render::Render,
+                    skip_follower_shadow_passes
+                        .in_set(bevy::render::RenderSystems::CreateViews)
+                        .after(bevy::pbr::prepare_lights),
+                );
+            }
+        }
     }
 
     /// Before any schedule runs: a game started straight into the flight (`--fly`,
@@ -526,4 +543,122 @@ pub(crate) fn detach_root(
         }
     }
     commands.entity(r).remove::<(ChildOf, EyeCamera)>().insert(Transform::IDENTITY);
+}
+
+/// Whether the eyes share their sun shadow maps (`SM89_SHARED_SHADOWS=0`: each its own, as
+/// Bevy does).
+fn shared_shadows() -> bool {
+    std::env::var("SM89_SHARED_SHADOWS").map_or(true, |v| v != "0")
+}
+
+/// Gives both eyes the same shadow cascades, each covering the slices of both eyes' views, so
+/// the eye drawn first renders the shadow maps and the other one reuses them
+/// (`skip_follower_shadow_passes`): Bevy renders each cascade once per view, into the same
+/// layers of one texture, just before that view's own passes.
+///
+/// As Bevy's cascades (bevy_light `calculate_cascade`): a light-aligned square, its side the
+/// slices' largest extent rounded up to whole metres (here the widest distance between any of
+/// the two eyes' slice corners, which only changes with the eyes' separation, so it stays
+/// put as the head turns), its centre snapped to whole texels so the shadows don't shimmer.
+fn share_eye_cascades(
+    map: Res<bevy::light::DirectionalLightShadowMap>,
+    eyes: Query<(Entity, &GlobalTransform, &Projection, &Camera), With<XrCamera>>,
+    mut lights: Query<(
+        &GlobalTransform,
+        &bevy::light::DirectionalLight,
+        &bevy::light::CascadeShadowConfig,
+        &mut bevy::light::Cascades,
+    )>,
+) {
+    use bevy::math::Vec3A;
+    let eyes: Vec<_> = eyes.iter().filter(|(.., c)| c.is_active).collect();
+    if eyes.len() != 2 {
+        return;
+    }
+    let size = map.size as f32;
+    for (transform, light, config, mut cascades) in &mut lights {
+        if !light.shadow_maps_enabled {
+            continue;
+        }
+        let world_from_light = Mat4::from_quat(transform.rotation());
+        let light_from_world = world_from_light.transpose();
+        let first_from_world = eyes[0].1.to_matrix().inverse();
+        let overlap = 1.0 - config.overlap_proportion;
+        let near = std::iter::once(config.minimum_distance)
+            .chain(config.bounds.iter().map(|b| overlap * b));
+        let mut shared = Vec::new();
+        for (near, &far) in near.zip(&config.bounds) {
+            // The slice corners of both eyes: in the first eye's frame (for the size: precise,
+            // and fixed while the eyes don't move apart) and in the light's.
+            let mut local = Vec::with_capacity(16);
+            let mut lit = Vec::with_capacity(16);
+            for (_, eye, projection, _) in &eyes {
+                let world_from_eye = eye.to_matrix();
+                for c in projection.get_frustum_corners(-near, -far) {
+                    let w = world_from_eye.transform_point3a(c);
+                    local.push(first_from_world.transform_point3a(w));
+                    lit.push(light_from_world.transform_point3a(w));
+                }
+            }
+            let mut widest = 0f32;
+            for (i, a) in local.iter().enumerate() {
+                for b in &local[i + 1..] {
+                    widest = widest.max(a.distance_squared(*b));
+                }
+            }
+            let diameter = widest.sqrt().ceil();
+            let (min, max) =
+                lit.iter().fold((Vec3A::splat(f32::MAX), Vec3A::splat(f32::MIN)), |(lo, hi), p| {
+                    (lo.min(*p), hi.max(*p))
+                });
+            let texel = diameter / size;
+            let centre = Vec3A::new(
+                (0.5 * (min.x + max.x) / texel).floor() * texel,
+                (0.5 * (min.y + max.y) / texel).floor() * texel,
+                max.z,
+            );
+            let t = world_from_light.transpose();
+            let cascade_from_world =
+                Mat4::from_cols(t.x_axis, t.y_axis, t.z_axis, (-centre).extend(1.0));
+            let world_from_cascade = Mat4::from_cols(
+                world_from_light.x_axis,
+                world_from_light.y_axis,
+                world_from_light.z_axis,
+                world_from_light * centre.extend(1.0),
+            );
+            let clip_from_cascade = Mat4::from_cols(
+                Vec4::new(2.0 / diameter, 0.0, 0.0, 0.0),
+                Vec4::new(0.0, 2.0 / diameter, 0.0, 0.0),
+                Vec4::new(0.0, 0.0, (max.z - min.z).recip(), 0.0),
+                Vec4::new(0.0, 0.0, 1.0, 1.0),
+            );
+            shared.push(bevy::light::cascade::Cascade {
+                world_from_cascade,
+                clip_from_cascade,
+                clip_from_world: clip_from_cascade * cascade_from_world,
+                texel_size: texel,
+            });
+        }
+        for (e, ..) in &eyes {
+            if cascades.cascades.contains_key(e) {
+                cascades.cascades.insert(*e, shared.clone());
+            }
+        }
+    }
+}
+
+/// Render world: drops the sun shadow passes of every headset eye after the first drawn (their
+/// cascades are the first one's, `share_eye_cascades`). Without its phase a shadow view's pass
+/// isn't begun at all, so the shared texture layers keep the first eye's maps.
+fn skip_follower_shadow_passes(
+    sorted: Res<bevy::render::camera::SortedCameras>,
+    eyes: Query<&bevy::render::sync_world::MainEntity, With<XrCamera>>,
+    mut phases: ResMut<bevy::render::render_phase::ViewBinnedRenderPhases<bevy::pbr::Shadow>>,
+) {
+    let mut drawn: Vec<_> = sorted.0.iter().filter_map(|c| eyes.get(c.entity).ok()).collect();
+    if drawn.len() < 2 {
+        return;
+    }
+    let followers = drawn.split_off(1);
+    phases.retain(|view, _| !followers.contains(&&view.auxiliary_entity));
 }
