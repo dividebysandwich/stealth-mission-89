@@ -6,7 +6,10 @@
 use bevy_egui::egui;
 use stealth_campaign::Side;
 use stealth_sim::aaa::{AaaKind, M_PER_MAP};
-use stealth_sim::station::{GEPARD_REACH, GEPARD_ROUNDS, StationCmd, mannable};
+use stealth_sim::station::{
+    FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, GEPARD_STOCK, INTERCEPTOR_STOCK, PATRIOT_STOCK,
+    STORK_STOCK, StationCmd, mannable,
+};
 use stealth_sim::{Sim, fflags};
 
 use super::ops::{fit_map, man_refusal};
@@ -16,6 +19,11 @@ use crate::menu::{AMBER, BRIGHT, DIM, GREEN, section};
 
 /// The list's width (points).
 const LIST_W: f32 = 430.0;
+/// A card's field name, ready count, stock bar and stock count widths (points).
+const KEY_W: f32 = 52.0;
+const BAR_W: f32 = 120.0;
+const NUM_W: f32 = 80.0;
+const STOCK_W: f32 = 32.0;
 /// Patriot and Gepard reach on the map (map units).
 const PATRIOT_REACH: f32 = stealth_sim::campaign::PATRIOT_REACH as f32;
 const GEPARD_MAP_REACH: f32 = (GEPARD_REACH / M_PER_MAP) as f32;
@@ -325,68 +333,107 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         ui.label(egui::RichText::new("DESTROYED").color(MISSILE_RED));
         return;
     }
-    let ammo_col = if s.ready == 0 {
-        MISSILE_RED
-    } else if s.ready * 2 < s.full {
+    let drones = s.kind == AaaKind::DroneCenter;
+    let ammo_col = if drones || s.ready * 2 >= s.full {
+        GREEN
+    } else if s.ready > 0 {
         AMBER
     } else {
-        GREEN
+        MISSILE_RED
     };
-    // Wrapped: the drone center's stock line is wider than the card.
-    ui.horizontal_wrapped(|ui| {
-        let ammo = if s.kind == AaaKind::Gepard {
-            format!("{} / {} rds", s.ready, s.full)
-        } else if s.kind == AaaKind::DroneCenter {
-            format!("{} / {} drones up", s.ready, s.full)
-        } else {
-            format!("{} / {} msl on {} launchers", s.ready, s.full, s.launchers)
+    let stock_col = |n: i32| if n > 0 { BRIGHT } else { MISSILE_RED };
+    ui.horizontal(|ui| {
+        key(ui, "OP");
+        let operator = match s.manned {
+            Some(p) if p == c.me.0 => egui::RichText::new("You").color(GREEN),
+            Some(p) => egui::RichText::new(
+                c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or("A player"),
+            )
+            .color(GREEN),
+            None => egui::RichText::new("auto").color(DIM),
         };
-        let drones = s.kind == AaaKind::DroneCenter;
-        let ammo_col = if drones { GREEN } else { ammo_col };
-        ui.label(egui::RichText::new(ammo).monospace().color(ammo_col));
-        let stock = match s.kind {
-            AaaKind::Gepard => format!("- stock {} rds", s.stock),
-            AaaKind::DroneCenter => {
-                let [stork, fp2, int] = sim.uav_stock(s.unit);
-                format!("- stock {stork} Stork {fp2} FP-2 {int} interceptors")
+        value(ui, operator, NUM_W);
+        key(ui, "RDR");
+        match s.enemies.first() {
+            None => {
+                ui.label(egui::RichText::new("clear").monospace().color(DIM));
             }
-            _ => format!("- stock {} msl", s.stock),
-        };
-        ui.label(egui::RichText::new(stock).monospace().color(if s.stock > 0 {
-            BRIGHT
-        } else {
-            MISSILE_RED
-        }));
-        if s.reloading > 0 {
-            ui.label(egui::RichText::new("RELOADING").monospace().color(AMBER));
+            Some((_, km)) => {
+                let text = format!("{} - {km:.0} km", s.enemies.len());
+                let list: Vec<String> =
+                    s.enemies.iter().map(|(n, km)| format!("{n} {km:.0} km")).collect();
+                ui.label(egui::RichText::new(text).monospace().color(MISSILE_RED))
+                    .on_hover_text(list.join("\n"));
+            }
         }
     });
-    let operator = match s.manned {
-        Some(p) if p == c.me.0 => "You".to_string(),
-        Some(p) => {
-            c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or("A player").to_string()
+    ui.horizontal(|ui| {
+        key(ui, if drones { "UP" } else { "READY" });
+        let ready = if s.kind != AaaKind::Gepard && !drones {
+            format!("{}/{} {}L", s.ready, s.full, s.launchers)
+        } else {
+            format!("{}/{}", s.ready, s.full)
+        };
+        let col = if s.reloading > 0 { AMBER } else { ammo_col };
+        let r = value(ui, egui::RichText::new(ready).color(col), NUM_W);
+        if s.reloading > 0 {
+            r.on_hover_text(format!("{} reloading", s.reloading));
         }
-        None => "Unmanned (automatic)".to_string(),
-    };
-    ui.label(egui::RichText::new(format!("Operator: {operator}")).color(if s.manned.is_some() {
-        GREEN
-    } else {
-        DIM
-    }));
-    if s.enemies.is_empty() {
-        ui.label(egui::RichText::new("No enemy aircraft on radar").color(DIM));
-    } else {
-        let shown: Vec<String> =
-            s.enemies.iter().take(3).map(|(n, km)| format!("{n} {km:.0} km")).collect();
-        let more = s.enemies.len().saturating_sub(3);
-        let more = if more > 0 { format!(" +{more}") } else { String::new() };
-        ui.label(
-            egui::RichText::new(format!(
-                "{} hostile on radar: {}{more}",
-                s.enemies.len(),
-                shown.join(", ")
-            ))
-            .color(MISSILE_RED),
-        );
-    }
+        key(ui, "STOCK");
+        if drones {
+            // One short bar for each kind of drone (Stork, FP-2, interceptor), together as
+            // wide as the others' bar and number.
+            let w = BAR_W + STOCK_W + ui.spacing().item_spacing.x;
+            let layout = egui::Layout::left_to_right(egui::Align::Center);
+            ui.allocate_ui_with_layout(egui::vec2(w, 16.0), layout, |ui| {
+                ui.set_min_width(w);
+                ui.spacing_mut().item_spacing.x = 2.0;
+                let stock = sim.uav_stock(s.unit);
+                let full = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK];
+                let names = [("S", "Stork"), ("F", "FP-2"), ("I", "Interceptors")];
+                for ((n, full), (short, name)) in stock.into_iter().zip(full).zip(names) {
+                    let r = ui.label(egui::RichText::new(short).monospace().color(DIM));
+                    r.on_hover_text(name);
+                    // Room for the letter, the one-digit count and the gaps.
+                    bar(ui, n, full, w / 3.0 - 30.0, stock_col(n));
+                    value(ui, egui::RichText::new(n.to_string()).color(stock_col(n)), 12.0);
+                    ui.add_space(4.0);
+                }
+            });
+        } else {
+            let full = if s.kind == AaaKind::Gepard { GEPARD_STOCK } else { PATRIOT_STOCK };
+            bar(ui, s.stock, full, BAR_W, stock_col(s.stock));
+            value(ui, egui::RichText::new(s.stock.to_string()).color(stock_col(s.stock)), STOCK_W);
+        }
+    });
+}
+
+/// A field's name, in a fixed width so the fields line up from card to card.
+fn key(ui: &mut egui::Ui, text: &str) {
+    value(ui, egui::RichText::new(text).color(DIM), KEY_W);
+}
+
+/// A monospace value in a fixed width.
+fn value(ui: &mut egui::Ui, text: egui::RichText, w: f32) -> egui::Response {
+    let layout = egui::Layout::left_to_right(egui::Align::Center);
+    ui.allocate_ui_with_layout(egui::vec2(w, 16.0), layout, |ui| {
+        ui.set_min_width(w);
+        ui.add(egui::Label::new(text.monospace()).truncate());
+    })
+    .response
+}
+
+/// A bar `n` of `full` filled.
+fn bar(ui: &mut egui::Ui, n: i32, full: i32, w: f32, col: egui::Color32) {
+    let (r, _) = ui.allocate_exact_size(egui::vec2(w, 10.0), egui::Sense::hover());
+    let frac = (n as f32 / full.max(1) as f32).clamp(0.0, 1.0);
+    let p = ui.painter();
+    p.rect_filled(r, 0.0, col.gamma_multiply(0.12));
+    p.rect_filled(egui::Rect::from_min_size(r.min, egui::vec2(w * frac, r.height())), 0.0, col);
+    p.rect_stroke(
+        r,
+        0.0,
+        egui::Stroke::new(1.0, col.gamma_multiply(0.5)),
+        egui::StrokeKind::Inside,
+    );
 }
