@@ -4,6 +4,14 @@ use crate::types::*;
 
 /// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
 const TERRAIN_CLEARANCE: i32 = 614;
+/// Base traffic: its oval circuit around the base (map units: half its width east-west, half
+/// its length along the runway; 4 x 6 km), the height it flies it at (altitude units, 730 m),
+/// how long it flies it (seconds, about two laps) and rests on the ground before the next
+/// (seconds).
+const CIRCUIT: (i32, i32) = (0x100, 0x180);
+const CIRCUIT_ALT: i32 = 1500;
+const CIRCUIT_S: i32 = 520;
+const TRAFFIC_REST_S: i32 = 180;
 
 impl Sim {
     pub(crate) fn update_aircraft(&mut self, present: &[usize]) {
@@ -101,6 +109,17 @@ impl Sim {
                 tz = approx(u.x - tx, u.y - ty) + 2000;
             }
             mode = 2;
+        } else if self.is_traffic(i) {
+            // Base traffic: clockwise round its circuit, for a point an eighth of the way ahead
+            // (the oval stretched to a circle).
+            let b = self.obj(u.wp);
+            let east = clamp_q(u.x - b.x, -0x2000, 0x2000) * CIRCUIT.1 / CIRCUIT.0;
+            let north = clamp_q(b.y - u.y, -0x3000, 0x3000);
+            let a = s16(bearing(east, north) + 0x2000);
+            tx = b.x + self.trig.sin_mul(a, CIRCUIT.0);
+            ty = b.y - self.trig.cos_mul(a, CIRCUIT.1);
+            tz = CIRCUIT_ALT;
+            mode = 3;
         } else if self.alarm_timer != 0
             && (u.flags & 0x140 == 0 || self.alarm_timer > self.alarm_recent())
             // A friendly fighter (a campaign CAP) never goes for the player, nor does a
@@ -364,12 +383,19 @@ impl Sim {
                     self.pl.target_escaped = true;
                 }
             }
+            // Base traffic down: off the runway until its next circuit (`spawn_traffic`).
             if self.is_traffic(i) && u.speed < 100 {
-                u.flags = (u.flags & 0x1C1) | 0x406;
+                u.flags = 0;
+                u.timer = (TRAFFIC_REST_S * fs).min(0x7FFF);
+                self.flights[i] = u;
+                return;
             }
         }
         u.timer = s16(u.timer - 1);
-        if u.timer == 0 {
+        if u.timer == 0 && self.is_traffic(i) {
+            // Base traffic: its circuits flown, it lands.
+            u.flags |= fflags::RTB;
+        } else if u.timer == 0 {
             u.flags |= fflags::RTB;
             let mut best = (u.wp, 0x7FFF);
             let friendly = self.campaign_flight(i).is_some_and(|f| f.blue);
@@ -531,11 +557,14 @@ impl Sim {
             .filter(|&(x, y, _)| ((x >> 5) - o.x).abs() < 0x100 && ((y >> 5) - o.y).abs() < 0x100)
             .collect();
         spots.sort_by_key(|&(x, y, _)| ((x >> 5) - o.x).pow(2) + ((y >> 5) - o.y).pow(2));
-        for (k, spec) in [(t0, s1), (t1, s2)] {
+        // The second up half a circuit after the first.
+        let wait = (CIRCUIT_S / 2 * self.fs).min(0x7FFF);
+        for (k, spec, rest) in [(t0, s1, 0), (t1, s2, wait)] {
             let u = &mut self.flights[k];
             u.flags = 0;
             u.spec = spec;
             u.wp = b;
+            u.timer = rest;
         }
         for (n, k) in [t2, t3].into_iter().enumerate() {
             let u = &mut self.flights[k];
@@ -612,7 +641,8 @@ impl Sim {
         u.speed = 0;
     }
 
-    /// Every 128 frames one of the two traffic aircraft (alternating) appears on approach.
+    /// Every 128 frames one of the two traffic aircraft (alternating) not up nor resting
+    /// appears on its circuit, on the downwind leg east of the base.
     pub(crate) fn spawn_traffic(&mut self) {
         let Some([t0, t1, ..]) = self.traffic_slots() else { return };
         if self.traffic_base < 0 {
@@ -623,21 +653,26 @@ impl Sim {
         if self.flights[k].flags & fflags::EXISTS != 0 {
             return;
         }
+        let fs = self.fs;
         let o = self.obj(self.traffic_base);
-        let ns = self.ns;
         let u = &mut self.flights[k];
-        u.flags = 0x207;
-        u.alt = 1000;
+        // Resting (frames left; this slot comes up every 256).
+        if u.timer > 0 {
+            u.timer = (u.timer - 256).max(0);
+            return;
+        }
+        u.flags = fflags::EXISTS | fflags::AIRBORNE;
+        u.alt = CIRCUIT_ALT;
         u.speed = 250;
         u.wp = self.traffic_base;
-        u.wx = o.x << 5;
-        u.wy = (o.y << 5) + 0x3000 * ns;
-        u.x = (u.wx >> 5) & 0xFFFF;
-        u.y = (u.wy >> 5) & 0xFFFF;
-        u.heading = if ns == 1 { 0 } else { s16(0x8000) };
+        u.x = o.x + CIRCUIT.0;
+        u.y = o.y;
+        u.wx = u.x << 5;
+        u.wy = u.y << 5;
+        u.heading = s16(0x8000);
         u.pitch = 0;
         u.bank = 0;
-        u.timer = 0x7FFF;
+        u.timer = (CIRCUIT_S * fs).min(0x7FFF);
     }
 
     /// New smoke puff; ages all others by 1.

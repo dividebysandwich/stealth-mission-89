@@ -308,7 +308,12 @@ fn a_mirror_follows_the_host() {
         assert_eq!(mirror.targeting(), targeting);
         assert_eq!(mirror.damage_effects(), damage);
         assert_eq!(mirror.stores(), stores);
-        assert_eq!(mirror.flights(), host.flights());
+        // The mirror gets the flights that exist (base traffic resting keeps its timer).
+        let live = |s: &Sim| -> Vec<FlightUnit> {
+            let on = |u: &&FlightUnit| u.flags & fflags::EXISTS != 0;
+            s.flights().iter().map(|u| Some(u).filter(on).copied().unwrap_or_default()).collect()
+        };
+        assert_eq!(live(&mirror), live(&host));
         assert_eq!(mirror.objects()[1..], host.objects()[1..]);
         let enemy = |s: &Sim| -> Vec<_> {
             s.active_projectiles().into_iter().filter(|p| p.0 < 8).collect()
