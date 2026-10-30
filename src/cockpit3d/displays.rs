@@ -509,8 +509,8 @@ pub(super) fn update_displays(
         });
     }
     // VR (72 Hz, the Steam Frame's CPU short of time): the HUD and the ADI, which move with
-    // the aircraft's attitude, every frame; the other screens every other frame, half of them
-    // each (all of them took the Frame 2.7 ms a frame).
+    // the aircraft's attitude, every frame; the other screens and the instrument atlas every
+    // other frame, half of them each (all of them took the Frame 2.7 ms a frame).
     *frame = frame.wrapping_add(1);
     let half = |r: CanvasRole| match r {
         CanvasRole::Hud | CanvasRole::Adi => None,
@@ -578,6 +578,9 @@ pub(super) fn update_displays(
         tex.dirty = true;
     }
 
+    if settings.vr && *frame % 2 != 1 {
+        return;
+    }
     let (Some(a), Some(g)) = (find(CanvasRole::Atlas), find(CanvasRole::Glow)) else { return };
     let Ok(info) = atlas.get(a) else { return };
     let Ok([mut a, mut g]) = texes.get_many_mut([a, g]) else { return };
