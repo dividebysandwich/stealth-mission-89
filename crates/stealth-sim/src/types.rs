@@ -489,10 +489,21 @@ pub struct PlayerState {
     /// slaved to the helmet, and the Sidewinder seeker in the air-to-air mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub helmet: Option<PodAim>,
+    /// Free-fall and retarded bombs released per press (the SMS page's ripple; 0 and 1: one).
+    /// In CCRP the stick is centred on the target.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub ripple: u8,
+    /// Ground distance between a ripple's bombs (ft).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub ripple_ft: u16,
     pub cmd: Commands,
 }
 
 fn is_zero(v: &u16) -> bool {
+    *v == 0
+}
+
+fn is_zero_u8(v: &u8) -> bool {
     *v == 0
 }
 

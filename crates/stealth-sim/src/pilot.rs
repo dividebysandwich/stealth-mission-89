@@ -113,6 +113,9 @@ pub struct Pilot {
     /// frame (None: no CCRP solution).
     #[serde(default)]
     pub(crate) ccrp_last: Option<f64>,
+    /// A ripple under way (or done with the button still held).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) ripple: Option<RippleRun>,
     pub(crate) prev_hud_mode: HudMode,
     pub(crate) hud_mode: HudMode,
     pub(crate) camera_mfd: bool,
@@ -430,4 +433,15 @@ impl Sim {
             .min()
             .map_or(current, |(_, k)| k as u8)
     }
+}
+
+/// A ripple of bombs: the rest go at their spacing while the fire button stays held.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub(crate) struct RippleRun {
+    /// Bombs still to go (0: done, waiting for the button to be let go).
+    pub left: i32,
+    /// Ground distance between them (ft).
+    pub spacing_ft: f64,
+    /// Ground distance flown since the last one (ft).
+    pub run_ft: f64,
 }

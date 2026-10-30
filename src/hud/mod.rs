@@ -106,6 +106,8 @@ impl HudMessages {
 pub struct Bay {
     /// Classic weapon name, e.g. "Incendiary".
     pub name: String,
+    /// Designation, e.g. "Mk 82" (the modern SMS page).
+    pub short: String,
     pub count: u32,
     /// Index of the weapon's side view picture (WPN page).
     pub picture: usize,
@@ -113,6 +115,8 @@ pub struct Bay {
     pub air_to_air: bool,
     /// Lock range of the weapon's missile (km), 0 for unguided stores.
     pub range_km: f32,
+    /// A free-fall or retarded bomb: released by the SMS page's ripple program.
+    pub bomb: bool,
 }
 
 /// Weapon stores (mirrored from the combat simulation every frame; defaults to a typical load).
@@ -126,16 +130,21 @@ pub struct Stores {
     /// What a turret gun is slaved to ("HMS": the helmet sight, "TGP": the targeting pod);
     /// None for a fixed gun.
     pub gun_slave: Option<&'static str>,
+    /// The stations in order: the index in `bays` of the weapon each carries (None empty) and
+    /// its rounds.
+    pub stations: Vec<(Option<usize>, u32)>,
 }
 
 impl Default for Stores {
     fn default() -> Self {
         let bay = |name: &str, count, picture, air_to_air| Bay {
             name: name.into(),
+            short: name.into(),
             count,
             picture,
             air_to_air,
             range_km: 0.0,
+            bomb: false,
         };
         Self {
             bays: vec![
@@ -148,6 +157,7 @@ impl Default for Stores {
             gun_rounds: Some(650),
             gun_selected: false,
             gun_slave: None,
+            stations: vec![(Some(0), 2), (Some(1), 2), (Some(2), 2), (Some(3), 4)],
         }
     }
 }

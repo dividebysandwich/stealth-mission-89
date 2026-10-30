@@ -4,7 +4,8 @@
 //! - Formats: HSD (horizontal situation display: route, threat rings, air and ground contacts),
 //!   HARM (the radars painting the aircraft, placed by danger like the RWR), TGP (the tracking
 //!   camera), MAP (the moving map in muted colours, or the waypoint table) and SMS (stores: the
-//!   WPN and ORD pages); on the F-117A's third MFD also HSI (`draw_hsi_page`). The bottom bezel
+//!   inventory by station with the bomb release program, ripple count and spacing, and the
+//!   ORD page); on the F-117A's third MFD also HSI (`draw_hsi_page`). The bottom bezel
 //!   buttons pick the format; picking one another MFD shows swaps the two. The top buttons are the format's own, the top right one makes the
 //!   format the sensor of interest (SOI). The buttons' functions are drawn on the display next
 //!   to them, like the real ones.
@@ -155,6 +156,10 @@ pub struct AvionicsState {
     pub map_way: bool,
     /// SMS shows the mission orders (else the weapons).
     pub sms_ord: bool,
+    /// Free-fall and retarded bombs per release (1..=`RIPPLE_MAX`).
+    pub ripple: u8,
+    /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
+    pub ripple_spacing: usize,
     /// Right format before ILS was switched on.
     pub before_ils: Option<Format>,
     pub tgp: TgpState,
@@ -399,6 +404,8 @@ impl Default for AvionicsState {
             harm_filter: HarmFilter::All,
             map_way: false,
             sms_ord: true,
+            ripple: 1,
+            ripple_spacing: 3,
             before_ils: None,
             tgp: default(),
             helmet: None,
@@ -407,6 +414,14 @@ impl Default for AvionicsState {
     }
 }
 
+/// Most bombs a ripple releases (the simulation flies four of the player's stores at a time).
+pub const RIPPLE_MAX: u8 = 4;
+const RIPPLE_LABELS: [&str; RIPPLE_MAX as usize] = ["RP 1", "RP 2", "RP 3", "RP 4"];
+/// Ripple spacings (ft between the bombs' impacts).
+pub const RIPPLE_SPACING_FT: [u16; 9] = [25, 50, 75, 100, 150, 200, 300, 400, 500];
+const SPACING_LABELS: [&str; 9] =
+    ["25FT", "50FT", "75FT", "100FT", "150FT", "200FT", "300FT", "400FT", "500FT"];
+
 /// Seconds "lock cursor target" is held before the zoomed window shows.
 const MARK_HOLD: f32 = 0.3;
 
@@ -414,6 +429,11 @@ impl AvionicsState {
     /// The zoomed window around the SOI's cursor is up.
     pub fn zoom_window(&self) -> bool {
         self.mark_held >= MARK_HOLD
+    }
+
+    /// The ripple's spacing (ft).
+    pub fn ripple_ft(&self) -> u16 {
+        RIPPLE_SPACING_FT[self.ripple_spacing.min(RIPPLE_SPACING_FT.len() - 1)]
     }
 }
 
@@ -551,6 +571,14 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             av.sms_ord = ord;
             av.show(Format::Sms);
         }
+        MfdCmd::Ripple(d) => {
+            av.ripple = (av.ripple as i32 + d as i32).clamp(1, RIPPLE_MAX as i32) as u8;
+        }
+        MfdCmd::RippleSpacing(d) => {
+            av.ripple_spacing = (av.ripple_spacing as i32 + d as i32)
+                .clamp(0, RIPPLE_SPACING_FT.len() as i32 - 1)
+                as usize;
+        }
         MfdCmd::HarmFilter => {
             av.harm_filter = match av.harm_filter {
                 HarmFilter::All => HarmFilter::Sam,
@@ -664,6 +692,17 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Sms, 3) if !av.sms_ord => {
             (crate::mfd::bomb_mode_label(s.ccrp), Action(A::BombMode), false)
         }
+        // The release program down the sides: ripple count on the left, spacing on the right.
+        (Format::Sms, 10) if !av.sms_ord => ("RP+", Cmd(MfdCmd::Ripple(1)), false),
+        (Format::Sms, 11) if !av.sms_ord => {
+            (RIPPLE_LABELS[(av.ripple.clamp(1, RIPPLE_MAX) - 1) as usize], Readout, false)
+        }
+        (Format::Sms, 12) if !av.sms_ord => ("RP-", Cmd(MfdCmd::Ripple(-1)), false),
+        (Format::Sms, 15) if !av.sms_ord => ("SPC+", Cmd(MfdCmd::RippleSpacing(1)), false),
+        (Format::Sms, 16) if !av.sms_ord => {
+            (SPACING_LABELS[av.ripple_spacing.min(SPACING_LABELS.len() - 1)], Readout, false)
+        }
+        (Format::Sms, 17) if !av.sms_ord => ("SPC-", Cmd(MfdCmd::RippleSpacing(-1)), false),
         (Format::Hsi, 0) => ("WP-", Action(A::LastWaypoint), false),
         (Format::Hsi, 1) => ("WP+", Action(A::NextWaypoint), false),
         _ => return None,
@@ -697,6 +736,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Hsd => draw_hsd(p, c, ac, soi),
         Format::Harm => draw_harm(p, c, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
+        Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
             let mut page = Canvas::scaled(c.w, c.h - 2 * BAND as usize, c.scale);
@@ -704,8 +744,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
                 Format::Tgp => p.draw_camera_hires(&mut page, fonts),
                 Format::Map if av.map_way => p.draw_way_hires(&mut page, fonts, ac),
                 Format::Map => p.draw_map_hires(&mut page, art, fonts, ac, true),
-                _ if av.sms_ord => p.draw_ord_hires(&mut page, fonts),
-                _ => p.draw_wpn_hires(&mut page, art, fonts),
+                _ => p.draw_ord_hires(&mut page, fonts),
             }
             // See-through around the pod picture, black elsewhere.
             c.clear(if f == Format::Tgp && p.cam.live { 0 } else { BLACK });
@@ -771,6 +810,96 @@ fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
             1.0,
             if lit { BLACK } else { GREEN },
         );
+    }
+}
+
+/// The SMS inventory (F-16 style): the master mode, the selected weapon and its rounds, the
+/// bombs' release program (single, or the stick a ripple lays down; the ripple's count and
+/// spacing by their side buttons) and the stations with what each carries, the selected weapon's
+/// highlighted; the gun last.
+fn draw_sms(p: &MfdParams, c: &mut Canvas) {
+    c.clear(BLACK);
+    let s = &p.state;
+    let st = &p.stores;
+    let (w, h) = (c.w as f32, c.h as f32);
+    let mid = w / 2.0;
+    let sel = st.bays.get(st.selected).filter(|_| !st.gun_selected);
+    let master = if s.air {
+        "A-A"
+    } else if s.ground {
+        "A-G"
+    } else {
+        "NAV"
+    };
+    let mut y = BAND as f32 + 6.0;
+    stroke_text_at(c, mid, y, master, 8.0, 1.2, GREEN, Align::Centre);
+    y += 14.0;
+    let weapon = match (sel, st.gun_rounds) {
+        (Some(b), _) => format!("{} {}", b.count, b.short),
+        (None, Some(n)) if st.gun_selected => match st.gun_slave {
+            Some(slave) => format!("GUN {n} {slave}"),
+            None => format!("GUN {n}"),
+        },
+        _ => "NO STORES".to_string(),
+    };
+    stroke_text_at(c, mid, y, &weapon, 11.0, 1.5, WHITE, Align::Centre);
+    y += 20.0;
+    // The release program, for bombs (its count and spacing by their buttons): single, or
+    // the length of the stick the ripple lays down.
+    if let Some(b) = sel.filter(|b| b.bomb) {
+        let n = (s.av.ripple as u32).clamp(1, b.count.max(1));
+        let line = if n > 1 {
+            format!("STICK {}FT", (n - 1) * s.av.ripple_ft() as u32)
+        } else {
+            "SGL".to_string()
+        };
+        stroke_text_at(c, mid, y, &line, 8.0, 1.2, CYAN, Align::Centre);
+    }
+    y += 16.0;
+    c.stroke(Vec2::new(44.0, y), Vec2::new(w - 44.0, y), 1.0, DARK);
+    y += 6.0;
+    // The stations, then the gun: in two columns when there are more than six.
+    let mut rows: Vec<(String, String, bool, bool)> = st
+        .stations
+        .iter()
+        .enumerate()
+        .map(|(k, &(g, n))| match g.and_then(|g| st.bays.get(g).map(|b| (g, b))) {
+            Some((g, b)) => (
+                format!("{}", k + 1),
+                format!("{n} {}", b.short),
+                g == st.selected && !st.gun_selected,
+                n == 0,
+            ),
+            None => (format!("{}", k + 1), "----".to_string(), false, true),
+        })
+        .collect();
+    if let Some(n) = st.gun_rounds {
+        rows.push(("GUN".to_string(), n.to_string(), st.gun_selected, n == 0));
+    }
+    let cols = if rows.len() > 6 { 2 } else { 1 };
+    let per_col = rows.len().div_ceil(cols).max(1);
+    let pitch = ((h - BAND as f32 - 4.0 - y) / per_col as f32).min(14.0);
+    let glyph = (pitch - 5.0).min(if cols == 2 { 6.5 } else { 8.0 });
+    let (left, right, gap) = (46.0, w - 46.0, 8.0);
+    let col_w = (right - left - gap * (cols - 1) as f32) / cols as f32;
+    for (i, (label, text, lit, empty)) in rows.iter().enumerate() {
+        let x0 = left + (i / per_col) as f32 * (col_w + gap);
+        let x1 = x0 + col_w;
+        // The row's vertical middle.
+        let ry = y + (i % per_col) as f32 * pitch + glyph / 2.0;
+        if *lit {
+            let top = (ry - (pitch - 1.0) / 2.0).round() as i32;
+            c.fill_rect(x0 as i32 - 2, top, col_w as i32 + 4, pitch as i32 - 1, GREEN);
+        }
+        let col = if *lit {
+            BLACK
+        } else if *empty {
+            GREY
+        } else {
+            GREEN
+        };
+        stroke_text_at(c, x0, ry, label, glyph, 1.2, col, Align::Left);
+        stroke_text_at(c, x1, ry, text, glyph, 1.2, col, Align::Right);
     }
 }
 

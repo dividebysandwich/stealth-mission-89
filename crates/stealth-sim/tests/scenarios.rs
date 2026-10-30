@@ -1203,6 +1203,89 @@ fn ccrp_releases_at_the_release_point() {
     }
 }
 
+/// Flies level north at 450 knots and 500 ft with `w` x4 loaded and the bay open, the fire
+/// button pressed on frame 5 and held until `hold` frames; `setup` adjusts the report (bombing
+/// mode, ripple, pod). Returns the bombs' impact points (map units) and the release frames.
+fn bomb_run(
+    w: i32,
+    hold: i32,
+    target: (i32, i32),
+    setup: impl Fn(&mut PlayerState),
+) -> (Vec<(f64, f64)>, Vec<i32>) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 4)]);
+    let knots = 450u16;
+    let mut p = player_at(mx, my, 500, 0, knots);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    let (tx, ty) = (mx + target.0, my + target.1);
+    setup(&mut p);
+    if let Some(pod) = p.pod.as_mut() {
+        pod.ground = Some((tx, ty));
+    }
+    let t = 5;
+    {
+        let o = &mut sim.objects_mut()[t];
+        o.x = tx;
+        o.y = ty;
+        o.flags = 0;
+    }
+    if p.pod.is_none() {
+        p.cmd.lock_object = Some(t as u16);
+    }
+    let step = knots as f64 * 27.0 / 16.0 / 15.0;
+    let mut y = p.y as f64;
+    let mut released = Vec::new();
+    let mut left = 4;
+    for f in 0..15 * 40 {
+        p.cmd.fire = f == 5;
+        p.cmd.trigger = (5..hold).contains(&f);
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        let now = sim.weapon_groups().0[0].1;
+        for _ in now..left {
+            released.push(f);
+        }
+        left = now;
+        if f > hold && (8..12).all(|s| sim.projectiles()[s].ttl == 0) {
+            break;
+        }
+        y += step;
+        p.y = y as i32;
+    }
+    let hits = (8..12)
+        .filter(|&s| sim.projectiles()[s].fall.is_some())
+        .map(|s| {
+            let (x, y, _) = sim.projectiles()[s].map_pos();
+            (x - tx as f64 - 0.5, y - ty as f64 - 0.5)
+        })
+        .collect();
+    (hits, released)
+}
+
+/// CCIP ripple: the press releases the first bomb, the rest follow at the spacing while the
+/// button is held; let go, the ripple stops.
+#[test]
+fn ccip_ripple_while_held() {
+    let ripple = |p: &mut PlayerState| {
+        p.ripple = 4;
+        p.ripple_ft = 300;
+    };
+    let (_, released) = bomb_run(9, 15 * 40, (0, -400), ripple);
+    assert_eq!(released.len(), 4, "{released:?}");
+    assert_eq!(released[0], 5);
+    // 300 ft at 450 knots (760 ft/s): about 6 frames apart.
+    for k in 1..4 {
+        assert!((5..=7).contains(&(released[k] - released[k - 1])), "{released:?}");
+    }
+    let (_, released) = bomb_run(9, 13, (0, -400), ripple);
+    assert_eq!(released.len(), 2, "{released:?}");
+}
+
 /// An SA-2 site 10 km north of a slow, high player with open bays fires until a hit; returns
 /// the simulation after the first hit (None: no hit in 4 minutes).
 fn sa2_hit(opts: SimOptions) -> Option<(Sim, PlayerState)> {

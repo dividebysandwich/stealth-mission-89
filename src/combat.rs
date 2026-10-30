@@ -559,6 +559,8 @@ fn player_state(
         external_view: !is_cockpit_view(view.view),
         hud_visible: view.view == View::Cockpit,
         ccrp: hud.ccrp,
+        ripple: mfd.ripple().0,
+        ripple_ft: mfd.ripple().1,
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         cmd: SimCommands { gun, trigger, ..cmd },
@@ -1297,6 +1299,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             let wt = &data.weapons[(w.max(0) as usize).min(data.weapons.len() - 1)];
             Bay {
                 name: wt.long_name.clone(),
+                short: wt.short_name.clone(),
                 count: count.max(0) as u32,
                 picture: wt.picture.max(0) as usize,
                 air_to_air: wt.spec > 0 && data.missile(wt.spec as i32).class == 7,
@@ -1305,6 +1308,8 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 } else {
                     0.0
                 },
+                bomb: stealth_sim::ballistics::drag(wt.spec as i32, sim.opts.fix_classic_bugs)
+                    .is_some(),
             }
         })
         .collect();
@@ -1312,7 +1317,14 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
     let gun_selected = sim.gun_selected();
     let gun_slave =
         settings.aircraft.spec().turret.then_some(if sim.gun_on_pod() { "TGP" } else { "HMS" });
+    let stations: Vec<(Option<usize>, u32)> = sim
+        .bays()
+        .0
+        .iter()
+        .map(|&(w, n)| (groups.iter().position(|g| g.0 == w && w >= 0), n.max(0) as u32))
+        .collect();
     if stores.selected != cur
+        || stores.stations != stations
         || stores.gun_selected != gun_selected
         || stores.gun_slave != gun_slave
         || stores.gun_rounds != gun
@@ -1324,6 +1336,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         stores.gun_rounds = gun;
         stores.gun_selected = gun_selected;
         stores.gun_slave = gun_slave;
+        stores.stations = stations;
     }
 
     // Waypoints: the mission logic switches to the next one when an objective is done.

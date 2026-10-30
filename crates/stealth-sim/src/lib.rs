@@ -418,6 +418,7 @@ impl Sim {
                 fire_cooldown: 0,
                 prev_fire: false,
                 ccrp_last: None,
+                ripple: None,
                 prev_hud_mode: HudMode::Nav,
                 hud_mode: HudMode::Nav,
                 camera_mfd: false,

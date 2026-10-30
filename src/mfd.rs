@@ -134,6 +134,8 @@ pub struct MfdState {
     pub ccrp: bool,
     /// The HUD is in A-A, mirrored from the HUD (the targeting pod's CZ is off).
     pub air: bool,
+    /// The HUD is in A-G, mirrored from the HUD (the SMS page's master mode).
+    pub ground: bool,
 }
 
 impl Default for MfdState {
@@ -154,6 +156,7 @@ impl Default for MfdState {
             av: default(),
             ccrp: false,
             air: false,
+            ground: false,
         }
     }
 }
@@ -179,6 +182,16 @@ impl MfdState {
             self.av.shown(crate::avionics::Format::Map).is_some() && !self.av.map_way
         } else {
             self.left == LeftMfd::Map
+        }
+    }
+
+    /// The SMS page's ripple for the simulation: bombs per release and their spacing (ft);
+    /// (0, 0) for single bombs and with the classic avionics.
+    pub fn ripple(&self) -> (u8, u16) {
+        if self.modern && self.av.ripple > 1 {
+            (self.av.ripple, self.av.ripple_ft())
+        } else {
+            (0, 0)
         }
     }
 
@@ -215,6 +228,10 @@ pub enum MfdCmd {
     MapWay,
     /// SMS page: the ORD (true) or WPN page.
     Sms(bool),
+    /// SMS page: bombs per release up / down.
+    Ripple(i8),
+    /// SMS page: the ripple's spacing up / down.
+    RippleSpacing(i8),
     HarmFilter,
     /// Tracking camera zoom step in / out, the next step round (auto, 1X..6X).
     CamZoom(i8),
@@ -404,7 +421,7 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::TgpCz => Action::SelectWaypoint,
         MfdCmd::MapWay => Action::SelectWaypoint,
         MfdCmd::Sms(true) => Action::MissionOrders,
-        MfdCmd::Sms(false) => Action::Ordnance,
+        MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) => Action::Ordnance,
     }
 }
 
@@ -672,6 +689,10 @@ fn mfd_keys(
     let air = hud.mode == crate::hud::HudMode::Air;
     if state.air != air {
         state.air = air;
+    }
+    let ground = hud.mode == crate::hud::HudMode::Gnd;
+    if state.ground != ground {
+        state.ground = ground;
     }
     if state.hires != settings.hires_displays() || state.modern == settings.classic_avionics {
         state.hires = settings.hires_displays();
