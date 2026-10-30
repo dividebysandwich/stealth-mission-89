@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py` and `build_cockpit_av8b.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py` and `build_cockpit_oh58.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -35,6 +35,9 @@ pub enum PanelStyle {
     Rah66,
     /// The AV-8B Night Attack's: two MFDs either side of the up-front controller.
     Av8b,
+    /// The OH-58D's: side by side, one wide panel with two large MFDs either side of the
+    /// standby instruments, the CDU down the pedestal.
+    Oh58,
 }
 
 /// A rectangle in panel pixels.
@@ -225,6 +228,7 @@ impl PanelLayout {
             PanelStyle::A10 => Self::a10(),
             PanelStyle::Rah66 => Self::rah66(),
             PanelStyle::Av8b => Self::av8b(),
+            PanelStyle::Oh58 => Self::oh58(),
         }
     }
 
@@ -1421,6 +1425,113 @@ impl PanelLayout {
         }
     }
 
+    /// The OH-58D's panel (millimetres, x right and y down, life size;
+    /// `tools/models/build_cockpit_oh58.py`), the F-117A's faces rearranged after the OH-58D's
+    /// one wide panel under a deep glareshield, spanning both seats, its origin on the cabin's
+    /// centre line (the pilot sits in the right seat, about x 360):
+    /// - Two large MFDs (200 mm, as the RAH-66's) left and right of the centre column, the right
+    ///   one in front of the pilot.
+    /// - The centre column (|x| < 178): the data entry display on top with FLAPS, BRAKE, AUTO and
+    ///   BAY left of it; under it the standby airspeed indicator, attitude indicator and altimeter,
+    ///   the AOA and vertical velocity tapes and the clock; right of them a vertical strip of the
+    ///   warning lights over the engine instruments.
+    /// - Outboard of the right MFD (x > 422): fuel quantity, the fuel and thrust readouts, the EMV
+    ///   gauge.
+    /// - The console down the pedestal between the seats (x >= 1500, centred on x 2000, y growing
+    ///   aft down it): the up-front display's two rows of caps over the CDU's keyboard, the
+    ///   caution lights, the countermeasures (the target buttons, modelled, behind them).
+    ///
+    /// No gear lights (skids).
+    pub fn oh58() -> Self {
+        let m = Self::modern();
+        let items = m.items.iter().filter(|p| !matches!(p.elem, Elem::GearLights)).map(|p| {
+            let r = p.rect;
+            let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
+            let by = |dx: f32, dy: f32| rect(r.x + dx, r.y + dy, r.w, r.h);
+            let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+            use LampId::*;
+            let rect = match p.elem {
+                // The standby instruments under the data entry display.
+                Elem::Dial(Dial::Airspeed) => at(-110.0, -40.0),
+                Elem::Dial(Dial::Altimeter) => at(16.0, -40.0),
+                Elem::Dial(Dial::Aoa) => at(-110.0, 12.0),
+                Elem::Dial(Dial::Vvi) => at(-88.0, 12.0),
+                Elem::Dial(Dial::Clock) => at(16.0, 12.0),
+                // The engine instruments under the warning strip.
+                Elem::Dial(Dial::Rpm) => at(68.0, -22.0),
+                Elem::Dial(Dial::Ftit) => at(116.0, -22.0),
+                Elem::Dial(Dial::Oil) => at(68.0, 26.0),
+                Elem::Dial(Dial::Nozzle) => at(116.0, 26.0),
+                // The warning strip: two columns right of the data entry display.
+                Elem::Lamp(Mw, _) => at(68.0, -104.0),
+                Elem::Lamp(Stall, _) => at(68.0, -88.0),
+                Elem::Lamp(Trak, _) => at(68.0, -72.0),
+                Elem::Lamp(Ir, _) => at(68.0, -59.0),
+                Elem::Lamp(Rad, _) => at(68.0, -46.0),
+                Elem::Lamp(Fire, _) => at(114.0, -104.0),
+                Elem::Lamp(Eng, _) => at(114.0, -88.0),
+                Elem::Lamp(Fc, _) => at(114.0, -72.0),
+                Elem::Lamp(Jam, _) => at(114.0, -59.0),
+                Elem::Lamp(Av, _) => at(114.0, -46.0),
+                // FLAPS, BRAKE, AUTO and BAY left of the data entry display.
+                Elem::Lamp(Flaps, _) => at(-168.0, -104.0),
+                Elem::Lamp(Brake, _) => at(-126.0, -104.0),
+                Elem::Lamp(Auto, _) => at(-168.0, -86.0),
+                Elem::Lamp(Bay, _) => at(-126.0, -86.0),
+                // Fuel, the engine readouts and the EMV gauge outboard of the right MFD.
+                Elem::Dial(Dial::Fuel) => at(436.0, -84.0),
+                Elem::Lamp(LowFuel, _) => at(484.0, -70.0),
+                Elem::Led(LedId::Fuel) => at(436.0, -34.0),
+                Elem::Label("FUEL", ..) => at(470.0, -34.0),
+                Elem::Led(LedId::Thrust) => at(436.0, -16.0),
+                Elem::Label("THRUST", ..) => at(470.0, -16.0),
+                Elem::Label("EGR\nEAR", ..) => at(436.0, 2.0),
+                Elem::Gauge => at(460.0, 2.0),
+                Elem::Label("EMV", ..) => at(436.0, 20.0),
+                Elem::Lamp(EmvWarn, _) => at(460.0, 20.0),
+                // The caution lights and countermeasures down the console, behind the CDU.
+                _ if cx >= 1100.0 => by(818.0, 110.0),
+                // The up-front display's caps to the console's top, two rows.
+                _ if cx.abs() < 80.0 && cy < -100.0 => by(2000.0, -5.0),
+                _ if cx.abs() < 80.0 && cy < -50.0 => by(2000.0, -55.0),
+                _ => r,
+            };
+            Placed { rect, ..*p }
+        });
+        // The CDU's keyboard under the caps (its letters and digits; the caps above work).
+        let keys = [
+            "1", "2", "3", "A", "B", "C", "4", "5", "6", "D", "E", "F", "7", "8", "9", "CLR", "0",
+            "ENT",
+        ];
+        let keyboard = keys.into_iter().enumerate().map(|(k, label)| Placed {
+            elem: Elem::Label(label, 5, 14),
+            rect: rect(1931.0 + 24.0 * (k % 6) as f32, -102.0 + 16.0 * (k / 6) as f32, 20.0, 13.0),
+            cap: None,
+            round: false,
+        });
+        let items = items.chain(keyboard).collect();
+        let (w, h) = (200.0, 200.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        Self {
+            style: PanelStyle::Oh58,
+            items,
+            adi: rect(-60.0, -40.0, 68.0, 68.0),
+            mfds: vec![
+                MfdUnit { side: MfdSide::Left, screen: rect(-400.0, -80.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: rect(200.0, -80.0, w, h), osbs: true },
+            ],
+            rwr: None,
+            hsi: None,
+            tfr: None,
+            ded: Some(rect(
+                -60.0,
+                -104.0,
+                DED_W,
+                DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32,
+            )),
+            mpds: None,
+        }
+    }
+
     /// The F-16C's panel (millimetres, x right and y down, unfolded), after the Block 50's:
     /// - The centre column (|x| <= 85): the up-front controls on a pedestal under the HUD
     ///   (y < -46): the round override buttons on top (COM1 = volume, MENU = menu, A-A, A-G),
@@ -1670,7 +1781,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 9] {
+    fn all() -> [PanelLayout; 10] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -1681,6 +1792,7 @@ mod tests {
             PanelLayout::a10(),
             PanelLayout::rah66(),
             PanelLayout::av8b(),
+            PanelLayout::oh58(),
         ]
     }
 
@@ -1763,6 +1875,7 @@ mod tests {
             PanelLayout::a10(),
             PanelLayout::rah66(),
             PanelLayout::av8b(),
+            PanelLayout::oh58(),
         ] {
             bezel_buttons_of(&l);
         }
