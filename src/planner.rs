@@ -129,6 +129,23 @@ impl Planner {
         self.texture.as_ref().filter(|(t, ..)| t == id).map(|(_, t, _)| t)
     }
 
+    /// The map picture of theater `id` in `view` (or a note while it is being prepared) and,
+    /// closer up, the part in view drawn at the screen's resolution over it: every zoomable map
+    /// (the planner's, the debrief's, the campaign's war and air defence maps).
+    pub fn draw_map(&mut self, painter: &egui::Painter, view: &MapView, id: &str) {
+        map_draw::picture(painter, view, self.map_texture(id));
+        if self.map_texture(id).is_some()
+            && let Some((tex, region)) = self.detail(painter.ctx(), view)
+        {
+            let screen = egui::Rect::from_min_max(
+                view.to_screen(region.min.x, region.min.y),
+                view.to_screen(region.max.x, region.max.y),
+            );
+            let uv = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
+            painter.image(tex, screen, uv, egui::Color32::WHITE);
+        }
+    }
+
     /// The part of the map in `view` drawn at the screen's resolution, to draw over the map
     /// picture: its texture and the map units it covers. Drawn on another thread, one drawing
     /// at a time, each for the view of the moment it starts: while the view moves (a zoom, a
@@ -768,15 +785,7 @@ fn map_view(
     let to_map = |p: egui::Pos2| view.to_map(p);
     let painter = painter.with_clip_rect(rect);
 
-    map_draw::picture(&painter, &view, planner.texture.as_ref().map(|(_, t, _)| t));
-    if let Some((tex, region)) = planner.detail(ui.ctx(), &view) {
-        let screen = egui::Rect::from_min_max(
-            view.to_screen(region.min.x, region.min.y),
-            view.to_screen(region.max.x, region.max.y),
-        );
-        let uv = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
-        painter.image(tex, screen, uv, egui::Color32::WHITE);
-    }
+    planner.draw_map(&painter, &view, &m.theater_code.to_ascii_lowercase());
     map_draw::weather(&painter, &view, "route", weather, layers);
     // Threat coverage: filled radar detection circles (solid Doppler, dotted pulse), dashed
     // missile range circles; dim when off the air.

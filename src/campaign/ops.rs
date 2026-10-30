@@ -364,7 +364,6 @@ pub fn ops_ui(
         return Ok(());
     }
     let theater = c.mission.theater_name.clone();
-    let tex = planner.map_texture(&c.mission.theater_code.to_ascii_lowercase()).cloned();
     let screen = ctx.content_rect();
     let width = (screen.width() - 32.0).clamp(640.0, 1200.0);
     let height = (screen.height() - 190.0).clamp(240.0, 700.0);
@@ -477,7 +476,7 @@ pub fn ops_ui(
                         c,
                         &combat.sim,
                         &mut unit_view,
-                        tex.as_ref(),
+                        &mut planner,
                         &map_wx,
                         scenery.as_deref(),
                         egui::vec2(width, height),
@@ -486,7 +485,7 @@ pub fn ops_ui(
                         ui,
                         c,
                         &combat.sim,
-                        tex.as_ref(),
+                        &mut planner,
                         scenery.as_deref(),
                         egui::vec2(width, height),
                     ),
@@ -1143,7 +1142,7 @@ fn war_map(
     c: &mut ActiveCampaign,
     sim: &stealth_sim::Sim,
     unit_view: &mut super::UnitView,
-    tex: Option<&egui::TextureHandle>,
+    planner: &mut crate::planner::Planner,
     weather: &MapWeather,
     scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
@@ -1163,7 +1162,7 @@ fn war_map(
         view.pan_zoom(ui, &resp, &mut centre, &mut scale);
         (c.ui.centre, c.ui.scale) = (centre, scale);
         let painter = ui.painter_at(rect);
-        map_draw::picture(&painter, &view, tex);
+        planner.draw_map(&painter, &view, &c.mission.theater_code.to_ascii_lowercase());
         map_draw::weather(&painter, &view, "war", weather, &layers);
         let (parked, selected) = (c.parked, c.ui.selected);
         let test_taken = &mut c.ui.test_taken;
