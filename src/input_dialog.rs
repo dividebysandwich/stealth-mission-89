@@ -474,8 +474,8 @@ pub fn show(
 }
 
 /// The search field across the dialog, as the key guide's: inside its frame a magnifier, the
-/// text with a slowly blinking `_` caret as a console's (a hint while empty) and an X clearing
-/// it; in VR clicking it opens the virtual keyboard under it. It has the keyboard once clicked
+/// text with a slowly blinking `_` caret as a console's while it has the keyboard (a hint while
+/// empty without it) and an X clearing it; in VR clicking it opens the virtual keyboard under it. It has the keyboard once clicked
 /// (until Esc), never while a key is being captured.
 fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: bool) {
     /// The magnifier's and the X's squares.
@@ -500,6 +500,8 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
             );
             // Up to the X's square at the right end, kept while empty so the field stays put.
             let width = ui.available_width() - ICON - ui.spacing().item_spacing.x;
+            // The hint makes way for the caret once the field has the keyboard.
+            let hint = if ui.memory(|m| m.has_focus(id)) { "" } else { "TYPE TO SEARCH" };
             let out = ui
                 .scope(|ui| {
                     // The field's own caret is hidden: the `_` is drawn instead.
@@ -508,7 +510,7 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
                         .id(id)
                         .frame(egui::Frame::NONE)
                         .char_limit(SEARCH_MAX)
-                        .hint_text(egui::RichText::new("TYPE TO SEARCH").color(DIM))
+                        .hint_text(egui::RichText::new(hint).color(DIM))
                         .text_color(BRIGHT)
                         .font(font.clone())
                         .desired_width(width)
@@ -516,7 +518,6 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
                 })
                 .inner;
             if out.response.has_focus()
-                && !search.is_empty()
                 && caret_shown(ui.input(|i| i.time))
                 && let Some(cursor) = out.cursor_range
             {
