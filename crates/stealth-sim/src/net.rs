@@ -293,7 +293,7 @@ impl Sim {
                         && (u.tracking
                             || u.burst > 0
                             || self.manned_by(i).is_some()
-                            || u.kind.armour() && self.ground_busy(i))
+                            || u.kind.mobile() && self.ground_busy(i))
                 })
                 .map(|(i, u)| (i as u16, u.aim_az, u.aim_el, u.burst, u.tracking))
                 .collect(),
@@ -383,7 +383,7 @@ impl Sim {
         base.aaa.truncate(self.units.len());
         for (i, u) in self.units.iter().enumerate() {
             // The aim, the burst and the tracking go with the fast state.
-            let mut still = GroundUnit {
+            let still = GroundUnit {
                 aim_az: 0.0,
                 aim_el: 0.0,
                 burst: 0,
@@ -431,14 +431,7 @@ impl Sim {
                 base.defence.clone_from(&now);
                 out.defence = now;
             }
-            let mut g = c.ground.clone();
-            g.reload.clear();
-            g.rng = None;
-            for v in &mut g.convoys {
-                v.along = 0.0;
-                v.mode = Default::default();
-            }
-            let now = Some(g);
+            let now = Some(c.ground.for_clients());
             if base.ground != now {
                 base.ground.clone_from(&now);
                 out.ground = now;

@@ -85,71 +85,157 @@ pub struct GroundState {
     pub seen_red: Vec<bool>,
     /// Per unit: frames until its gun may fire at a ground target again.
     pub reload: Vec<i32>,
+    /// Per unit: rounds left of the burst it is firing, and at whom.
+    #[serde(default)]
+    pub burst: Vec<u8>,
+    #[serde(default)]
+    pub target: Vec<u16>,
+    /// Per unit: the damage of the hits it took (percent; 100 or more: knocked out, or about
+    /// to be as the round lands).
+    #[serde(default)]
+    pub damage: Vec<u8>,
+    /// The rounds on their way that knock out a vehicle as they land: unit, frames to go.
+    #[serde(default)]
+    pub landing: Vec<(u16, u16)>,
     pub rng: Option<Rng>,
     /// Road march speed (m/s), 0: [`CONVOY_SPEED`] (a test aid).
     pub speed: f32,
 }
 
-/// A ground gun's shot at another ground unit.
-struct Shot {
-    /// Reach (m), seconds to reload, chance to hit at point blank and at full reach, chance
-    /// that a hit kills.
-    reach: f64,
-    reload: f64,
-    hit: (f64, f64),
-    kill: f64,
-    missile: bool,
+impl GroundState {
+    /// What the clients are sent of it: who sees whom, the convoys' routes (they drive with
+    /// the moving world), without the guns' and the damage's bookkeeping.
+    pub(crate) fn for_clients(&self) -> GroundState {
+        let mut g = GroundState {
+            convoys: self.convoys.clone(),
+            convoy_of: self.convoy_of.clone(),
+            seen_blue: self.seen_blue.clone(),
+            seen_red: self.seen_red.clone(),
+            speed: self.speed,
+            ..Default::default()
+        };
+        for v in &mut g.convoys {
+            v.along = 0.0;
+            v.mode = Default::default();
+        }
+        g
+    }
 }
 
-/// How unit kind `a` fights ground unit kind `b`, if it does.
-fn shot(a: GroundKind, b: GroundKind) -> Option<Shot> {
-    let soft = !b.armour() && !matches!(b, GroundKind::Zsu | GroundKind::Gepard);
-    let kill = |tank: f64, ifv: f64, light: f64, other: f64| {
-        if b.tank() {
-            tank
-        } else if b.carrier() {
-            ifv
-        } else if soft {
-            other
-        } else {
-            light
+/// A ground vehicle's gun firing at the ground.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GroundGun {
+    /// A tank's main gun (120 or 125 mm).
+    Tank,
+    /// An infantry fighting vehicle's autocannon (25 or 30 mm).
+    Cannon,
+    /// An air defence gun's (23 or 35 mm).
+    Flak,
+}
+
+impl GroundGun {
+    /// Muzzle velocity (m/s; the rounds fly flat over these ranges).
+    pub fn speed(self) -> f64 {
+        match self {
+            GroundGun::Tank => 1650.0,
+            GroundGun::Cannon => 1100.0,
+            GroundGun::Flak => 1000.0,
         }
-    };
+    }
+
+    /// Seconds a round flies `d` metres.
+    pub fn flight_time(self, d: f64) -> f64 {
+        d / self.speed()
+    }
+}
+
+/// A ground gun's fire at another ground unit.
+struct Shot {
+    gun: GroundGun,
+    /// Reach (m).
+    reach: f64,
+    /// Rounds a burst (fewest, most), seconds between its rounds, seconds between bursts.
+    rounds: (i32, i32),
+    interval: f64,
+    reload: f64,
+    /// Chance a round hits at point blank and at full reach.
+    hit: (f64, f64),
+    /// Damage a hit does (percent, least and most), and the chance that it knocks the
+    /// vehicle out at once (a tank round into another tank).
+    damage: (i32, i32),
+    knockout: f64,
+}
+
+/// How unit kind `a` fights ground unit kind `b`, if it does. A tank round knocks out an
+/// infantry fighting vehicle with a hit and another tank with one or two; it takes about a
+/// dozen autocannon hits on an infantry fighting vehicle and 20 to 30 on a tank.
+fn shot(a: GroundKind, b: GroundKind) -> Option<Shot> {
+    let light = matches!(b, GroundKind::Zsu | GroundKind::Gepard);
     if a.tank() {
-        let k = kill(0.5, 0.8, 0.9, 0.9);
+        // The T-90's autoloader is a little slower than the Leopard's loader.
+        let reload = if a == GroundKind::T90 { 7.5 } else { 6.0 };
+        let (damage, knockout) = if b.tank() { ((55, 75), 0.35) } else { ((100, 100), 0.0) };
         return Some(Shot {
+            gun: GroundGun::Tank,
             reach: 3000.0,
-            reload: 9.0,
-            hit: (0.6, 0.15),
-            kill: k,
-            missile: false,
+            rounds: (1, 1),
+            interval: 0.0,
+            reload,
+            hit: (0.9, 0.5),
+            damage,
+            knockout,
         });
     }
     if a.carrier() {
-        if b.tank() {
-            // TOW or Konkurs.
-            return Some(Shot {
-                reach: 3500.0,
-                reload: 30.0,
-                hit: (0.7, 0.4),
-                kill: 0.6,
-                missile: true,
-            });
-        }
-        let k = kill(0.0, 0.35, 0.6, 0.7);
-        return Some(Shot { reach: 2000.0, reload: 5.0, hit: (0.4, 0.1), kill: k, missile: false });
+        // Bursts of 3 to 5 at the low rate (M242 Bushmaster, 2A42).
+        let damage = if b.tank() {
+            (3, 5)
+        } else if b.carrier() {
+            (6, 11)
+        } else if light {
+            (20, 35)
+        } else {
+            (35, 60)
+        };
+        return Some(Shot {
+            gun: GroundGun::Cannon,
+            reach: 2000.0,
+            rounds: (3, 5),
+            interval: if a == GroundKind::Bradley { 0.3 } else { 0.25 },
+            reload: 3.0,
+            hit: (0.6, 0.2),
+            damage,
+            knockout: 0.0,
+        });
     }
     if matches!(a, GroundKind::Zsu | GroundKind::Gepard) && !b.tank() {
-        let k = kill(0.0, 0.25, 0.5, 0.6);
+        let damage = if b.carrier() {
+            (4, 8)
+        } else if light {
+            (15, 30)
+        } else {
+            (30, 50)
+        };
         return Some(Shot {
+            gun: GroundGun::Flak,
             reach: 1500.0,
-            reload: 4.0,
-            hit: (0.4, 0.15),
-            kill: k,
-            missile: false,
+            rounds: (4, 8),
+            interval: if a == GroundKind::Zsu { 0.1 } else { 0.12 },
+            reload: 3.5,
+            hit: (0.5, 0.15),
+            damage,
+            knockout: 0.0,
         });
     }
     None
+}
+
+/// The damage (percent) of one of `s`'s hits.
+fn hit_damage(s: &Shot, rng: &mut Rng) -> i32 {
+    if s.knockout > 0.0 && (rng.random(1000) as f64) < s.knockout * 1000.0 {
+        return 100;
+    }
+    s.damage.0 + rng.random(s.damage.1 - s.damage.0 + 1)
 }
 
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
@@ -228,11 +314,14 @@ impl Sim {
         })
     }
 
-    /// Unit `k` is on the move or reloading after a shot at a ground target (its turret
-    /// matters).
+    /// Unit `k` is on the move, or firing or reloading after a shot at a ground target (its
+    /// turret matters).
     pub(crate) fn ground_busy(&self, k: usize) -> bool {
         self.unit_moving(k)
-            || self.ground().is_some_and(|g| g.reload.get(k).is_some_and(|&r| r > self.fs))
+            || self.ground().is_some_and(|g| {
+                g.reload.get(k).is_some_and(|&r| r > self.fs)
+                    || g.burst.get(k).is_some_and(|&b| b > 0)
+            })
     }
 
     /// The convoys' road march speed (m/s).
@@ -353,6 +442,15 @@ impl Sim {
         g.seen_blue.resize(n, false);
         g.seen_red.resize(n, false);
         g.reload.resize(n, 0);
+        g.burst.resize(n, 0);
+        g.target.resize(n, 0);
+        g.damage.resize(n, 0);
+        // A wreck's damage is done with (a unit put back in its place starts whole).
+        for (d, u) in g.damage.iter_mut().zip(&self.units) {
+            if u.destroyed {
+                *d = 0;
+            }
+        }
         let fs = self.fs.max(1);
         let look = self.frame % fs == fs / 2;
         let mut convoys = std::mem::take(&mut g.convoys);
@@ -442,7 +540,7 @@ impl Sim {
             !b.destroyed
                 && self.aaa_blue(j) != blue
                 && shot(a.kind, b.kind).is_some_and(|s| {
-                    s.kill > 0.0 && dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE)
+                    dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE)
                 })
                 && self.unit_seen_by(j, blue)
         })
@@ -515,54 +613,51 @@ impl Sim {
         }
     }
 
-    /// The ground guns fire at the enemy's ground units they see.
+    /// The ground guns fire at the enemy's ground units they see, a round at a time (bursts
+    /// for the autocannons); the rounds that knock a vehicle out do so as they land.
     fn ground_fire(&mut self, rng: &mut Rng) {
         let fs = self.fs.max(1) as f64;
         let n = self.units.len();
         let credit = self.credit.take();
+        self.ground_landings();
         for i in 0..n {
             let a = self.units[i];
+            let Some(c) = self.campaign.as_mut() else { break };
+            let g = &mut c.ground;
             if a.destroyed
                 || !(a.kind.armour() || matches!(a.kind, GroundKind::Zsu | GroundKind::Gepard))
             {
+                g.burst[i] = 0;
                 continue;
             }
-            let Some(c) = self.campaign.as_mut() else { break };
-            let reload = &mut c.ground.reload[i];
-            if *reload > 0 {
-                *reload -= 1;
+            if g.reload[i] > 0 {
+                g.reload[i] -= 1;
                 continue;
             }
             // An air defence gun busy with an aircraft has no time for the ground.
             let busy = c.aaa_target.get(i).copied().flatten().is_some() || a.burst > 0;
             if busy || self.manned_by(i).is_some() {
+                if let Some(c) = self.campaign.as_mut() {
+                    c.ground.burst[i] = 0;
+                }
                 continue;
             }
-            let blue = self.aaa_blue(i);
             let m = a.metres();
             let me = [m[0], m[1]];
-            let mut best: Option<(f64, usize)> = None;
-            for j in 0..n {
-                let b = &self.units[j];
-                if b.destroyed || self.aaa_blue(j) == blue || !self.unit_seen_by(j, blue) {
-                    continue;
-                }
-                let Some(s) = shot(a.kind, b.kind) else { continue };
-                let mb = b.metres();
-                let d = dist(me, [mb[0], mb[1]]);
-                if d > s.reach || s.kill <= 0.0 {
-                    continue;
-                }
-                // Tanks first for the tanks and the missiles, the nearest otherwise.
-                let score =
-                    if b.kind.tank() == (a.kind.tank() || s.missile) { d } else { d * 1.5 + 500.0 };
-                if best.is_none_or(|(sc, _)| score < sc) {
-                    best = Some((score, j));
+            // A burst keeps on at its target while it can.
+            let mut aim = None;
+            if let Some(c) = self.campaign.as_ref()
+                && c.ground.burst[i] > 0
+            {
+                let j = c.ground.target[i] as usize;
+                if j < n && self.ground_target_ok(i, j, me) {
+                    aim = Some(j);
                 }
             }
-            let Some((_, j)) = best else {
+            let Some(j) = aim.or_else(|| self.ground_pick(i, me)) else {
                 if let Some(c) = self.campaign.as_mut() {
                     c.ground.reload[i] = fs as i32;
+                    c.ground.burst[i] = 0;
                 }
                 continue;
             };
@@ -573,23 +668,108 @@ impl Sim {
             let k = d / s.reach;
             let p_hit = s.hit.0 + (s.hit.1 - s.hit.0) * k;
             let hit = (rng.random(1000) as f64) < p_hit * 1000.0;
-            let kill = hit && (rng.random(1000) as f64) < s.kill * 1000.0;
             self.units[i].aim_az = (mb[0] - me[0]).atan2(mb[1] - me[1]) as f32;
             self.units[i].aim_el = 0.01;
-            let jitter = 0.7 + rng.random(600) as f64 / 1000.0;
-            if let Some(c) = self.campaign.as_mut() {
-                c.ground.reload[i] = (s.reload * jitter * fs) as i32;
+            let Some(c) = self.campaign.as_mut() else { break };
+            let g = &mut c.ground;
+            if g.burst[i] == 0 || g.target[i] as usize != j {
+                g.burst[i] = (s.rounds.0 + rng.random(s.rounds.1 - s.rounds.0 + 1)) as u8;
+                g.target[i] = j as u16;
             }
-            self.emit(SimEvent::GroundShot { from: i, to: j, hit, missile: s.missile });
-            // The client draws the blast from the shot (an explosion event here would hit the
-            // vehicles around it).
-            if kill {
-                self.units[j].destroyed = true;
-                self.units[j].burst = 0;
-                self.emit(SimEvent::AaaDestroyed { unit: j, by: None });
+            g.burst[i] -= 1;
+            // Frames to wait before the next round (it fires on the frame after).
+            g.reload[i] = if g.burst[i] > 0 {
+                (s.interval * fs).round().max(1.0) as i32 - 1
+            } else {
+                let jitter = 0.8 + rng.random(400) as f64 / 1000.0;
+                (s.reload * jitter * fs) as i32 - 1
+            };
+            let mut kill = false;
+            let mut miss = (0, 0);
+            if hit {
+                let before = g.damage[j] as i32;
+                let after = (before + hit_damage(&s, rng)).min(255);
+                g.damage[j] = after as u8;
+                kill = before < 100 && after >= 100;
+                if kill {
+                    let frames = (s.gun.flight_time(d) * fs).round().max(1.0) as u16;
+                    g.landing.push((j as u16, frames));
+                }
+            } else {
+                // Mostly short (the dirt kicked up in front of it), some over or wide.
+                let along = if rng.random(10) < 7 {
+                    -(8 + rng.random(40))
+                } else {
+                    10 + rng.random(50)
+                } as f64;
+                let wide = (rng.random(25) - 12) as f64;
+                let (dx, dy) = ((mb[0] - me[0]) / d.max(1.0), (mb[1] - me[1]) / d.max(1.0));
+                miss = (
+                    (dx * along + dy * wide).round() as i16,
+                    (dy * along - dx * wide).round() as i16,
+                );
             }
+            self.emit(SimEvent::GroundShot { from: i, to: j, gun: s.gun, hit, kill, miss });
         }
         self.credit = credit;
+    }
+
+    /// Unit `i` (at `me`) can fire at ground unit `j`: an enemy its side sees, in its gun's
+    /// reach, not knocked out yet.
+    fn ground_target_ok(&self, i: usize, j: usize, me: [f64; 2]) -> bool {
+        let (a, b) = (&self.units[i], &self.units[j]);
+        let blue = self.aaa_blue(i);
+        if b.destroyed || self.aaa_blue(j) == blue || !self.unit_seen_by(j, blue) {
+            return false;
+        }
+        if self.ground().is_some_and(|g| g.damage.get(j).is_some_and(|&d| d >= 100)) {
+            return false;
+        }
+        let Some(s) = shot(a.kind, b.kind) else { return false };
+        let mb = b.metres();
+        dist(me, [mb[0], mb[1]]) <= s.reach
+    }
+
+    /// The enemy ground unit that unit `i` (at `me`) fires at next: tanks first for the
+    /// tanks, the nearest otherwise.
+    fn ground_pick(&self, i: usize, me: [f64; 2]) -> Option<usize> {
+        let a = self.units[i];
+        let mut best: Option<(f64, usize)> = None;
+        for j in 0..self.units.len() {
+            if !self.ground_target_ok(i, j, me) {
+                continue;
+            }
+            let b = &self.units[j];
+            let mb = b.metres();
+            let d = dist(me, [mb[0], mb[1]]);
+            let score = if b.kind.tank() == a.kind.tank() { d } else { d * 1.5 + 500.0 };
+            if best.is_none_or(|(sc, _)| score < sc) {
+                best = Some((score, j));
+            }
+        }
+        best.map(|(_, j)| j)
+    }
+
+    /// The rounds that knock out a vehicle land: it is a wreck now.
+    fn ground_landings(&mut self) {
+        let Some(c) = self.campaign.as_mut() else { return };
+        let mut done = Vec::new();
+        c.ground.landing.retain_mut(|(k, frames)| {
+            *frames = frames.saturating_sub(1);
+            if *frames == 0 {
+                done.push(*k as usize);
+            }
+            *frames > 0
+        });
+        for k in done {
+            if self.units.get(k).is_some_and(|u| !u.destroyed) {
+                self.units[k].destroyed = true;
+                self.units[k].burst = 0;
+                // The client draws the blast from the shot (an explosion event here would hit
+                // the vehicles around it).
+                self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
+            }
+        }
     }
 }
 
@@ -613,8 +793,37 @@ mod tests {
     #[test]
     fn tanks_fight_armour_and_guns_leave_tanks_alone() {
         assert!(shot(GroundKind::T90, GroundKind::Leopard2).is_some());
-        assert!(shot(GroundKind::Bmp2, GroundKind::Leopard2).unwrap().missile);
+        assert_eq!(shot(GroundKind::Bmp2, GroundKind::Leopard2).unwrap().gun, GroundGun::Cannon);
         assert!(shot(GroundKind::Zsu, GroundKind::Leopard2).is_none());
         assert!(shot(GroundKind::S60, GroundKind::Bradley).is_none());
+    }
+
+    /// Hits it takes to knock out a `b` with `a`'s gun, on average.
+    fn hits_to_kill(a: GroundKind, b: GroundKind) -> f64 {
+        let s = shot(a, b).unwrap();
+        let mut rng = Rng::new(7);
+        let tries = 2000;
+        let mut hits = 0;
+        for _ in 0..tries {
+            let mut d = 0;
+            while d < 100 {
+                d += hit_damage(&s, &mut rng);
+                hits += 1;
+            }
+        }
+        hits as f64 / tries as f64
+    }
+
+    #[test]
+    fn hits_to_knock_out() {
+        use GroundKind::*;
+        assert_eq!(hits_to_kill(T90, Bradley), 1.0);
+        assert_eq!(hits_to_kill(Leopard2, Bmp2), 1.0);
+        let tank = hits_to_kill(Leopard2, T90);
+        assert!((1.2..=1.8).contains(&tank), "{tank}");
+        let ifv = hits_to_kill(Bradley, Bmp2);
+        assert!((10.5..=13.5).contains(&ifv), "{ifv}");
+        let on_tank = hits_to_kill(Bmp2, Leopard2);
+        assert!((20.0..=30.0).contains(&on_tank), "{on_tank}");
     }
 }

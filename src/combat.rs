@@ -2217,7 +2217,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             combat.round_impacts.push((x as f64 / fine, y as f64 / fine));
         }
         // Armour firing: the muzzle flash, then a blast on the target, or a strike beside it.
-        SimEvent::GroundShot { from, to, hit, missile } => {
+        SimEvent::GroundShot { from, to, hit, kill, miss, .. } => {
             let units = combat.sim.units();
             let (Some(a), Some(b)) = (units.get(from).copied(), units.get(to).copied()) else {
                 return;
@@ -2225,14 +2225,13 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             let (ax, ay) = a.map_xy();
             combat.explosions.push((ax.round() as i32, ay.round() as i32, 6, -1));
             let (bx, by) = b.map_xy();
-            if hit && (b.destroyed || missile) {
+            if kill {
                 combat.explosions.push((bx.round() as i32, by.round() as i32, 0, 0x10));
             } else if hit {
                 combat.round_impacts.push((bx, by));
             } else {
-                // Short or wide by a few tens of metres.
-                let off = ((from * 7 + to * 3) % 5) as f64 - 2.0;
-                combat.round_impacts.push((bx + off, by + 2.5 - off.abs()));
+                let m = stealth_sim::aaa::M_PER_MAP;
+                combat.round_impacts.push((bx + miss.0 as f64 / m, by - miss.1 as f64 / m));
             }
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),

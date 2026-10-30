@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 
 use stealth_mission::{GameData, Mission, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::GroundKind;
+use stealth_sim::ground::GroundGun;
 use stealth_sim::*;
 
 struct Data {
@@ -130,8 +131,65 @@ fn opposing_columns_halt_and_fight() {
             assert_ne!(sim.aaa_blue(from), sim.aaa_blue(to));
         }
     }
+    // A tank fires a round every 5 to 9 s; the autocannons fire bursts a few tenths apart.
+    let mut last: Vec<Option<usize>> = vec![None; sim.units().len()];
+    let mut frame = 0;
+    let ps = idle();
+    let (_, mut again) = campaign();
+    again.spawn_convoy(1, true, &blue, &[(X, Y), (X + 30 * KM, Y)]);
+    again.spawn_convoy(2, false, &red, &[(X + 12 * KM, Y), (X - 20 * KM, Y)]);
+    for _ in 0..600 * 15 {
+        for e in again.step(&ps, 15) {
+            if let SimEvent::GroundShot { from, gun, kill, hit, .. } = e {
+                assert!(!kill || hit);
+                if let Some(t) = last[from] {
+                    let gap = frame - t;
+                    match gun {
+                        GroundGun::Tank => assert!((70..=140).contains(&gap), "{gap} frames"),
+                        _ => assert!(gap >= 1),
+                    }
+                }
+                last[from] = Some(frame);
+            }
+        }
+        frame += 1;
+    }
     // They stopped to fight: neither got anywhere near the other's start.
     assert!(metres(&sim, 0)[0] < metres(&sim, 4)[0] + 100.0);
+}
+
+/// Two infantry fighting vehicles 1.5 km apart fire bursts of 3 to 5 at each other, a dozen
+/// hits or so to knock one out.
+#[test]
+fn infantry_fighting_vehicles_fire_bursts() {
+    let (_, mut sim) = campaign();
+    sim.spawn_convoy(1, true, &[GroundKind::Bradley], &[(X, Y), (X + KM, Y)]);
+    sim.spawn_convoy(2, false, &[GroundKind::Bmp2], &[(X + 3 * KM / 2, Y), (X + 3 * KM, Y)]);
+    sim.end_convoy(1);
+    sim.end_convoy(2);
+    let ps = idle();
+    let mut rounds: Vec<(usize, i32, bool)> = Vec::new();
+    for frame in 0..300 * 15 {
+        for e in sim.step(&ps, 15) {
+            if let SimEvent::GroundShot { from, gun, hit, .. } = e {
+                assert_eq!(gun, GroundGun::Cannon);
+                rounds.push((from, frame, hit));
+            }
+        }
+        if sim.units().iter().any(|u| u.destroyed) {
+            break;
+        }
+    }
+    let loser = (0..2).find(|&k| sim.units()[k].destroyed).expect("one knocked out");
+    let hits = rounds.iter().filter(|r| r.0 != loser && r.2).count();
+    assert!((8..=16).contains(&hits), "{hits} hits");
+    // Bursts: rounds 4 or 5 frames apart, then a pause of seconds.
+    let mine: Vec<i32> = rounds.iter().filter(|r| r.0 != loser).map(|r| r.1).collect();
+    let gaps: Vec<i32> = mine.windows(2).map(|w| w[1] - w[0]).collect();
+    assert!(gaps.iter().all(|&g| (3..=5).contains(&g) || g >= 30), "{gaps:?}");
+    let pauses = gaps.iter().filter(|&&g| g >= 30).count();
+    let per_burst = mine.len() as f64 / (pauses + 1) as f64;
+    assert!((3.0..=5.0).contains(&per_burst), "{per_burst}");
 }
 
 #[test]

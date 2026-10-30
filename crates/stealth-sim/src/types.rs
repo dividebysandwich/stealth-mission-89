@@ -857,13 +857,17 @@ pub enum SimEvent {
         unit: usize,
         by: Option<u8>,
     },
-    /// Campaign: ground unit `from` fired at ground unit `to` (`Sim::units` indices), a gun
-    /// or a guided missile, and hit it or not.
+    /// Campaign: ground unit `from` fired a round of its gun at ground unit `to` (`Sim::units`
+    /// indices). It lands `miss` metres (east, north) from it ((0, 0) when it hits) after
+    /// [`crate::ground::GroundGun::flight_time`]; `kill`: the hit that knocks it out (as it
+    /// lands).
     GroundShot {
         from: usize,
         to: usize,
+        gun: crate::ground::GroundGun,
         hit: bool,
-        missile: bool,
+        kill: bool,
+        miss: (i16, i16),
     },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {
