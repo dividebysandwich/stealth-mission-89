@@ -466,7 +466,8 @@ impl Renderer {
         unsafe { clip_control(LOWER_LEFT, ZERO_TO_ONE) };
         let eyes = Programs::new(&gl, false)?;
         let single = Programs::new(&gl, true)?;
-        let lit = compile(&gl, LIT_SHADER, "")?;
+        let lit_defines = format!("#define MIP_BIAS {:.3}", crate::camera::VR_MIP_BIAS);
+        let lit = compile(&gl, LIT_SHADER, &lit_defines)?;
         let glass = compile(&gl, GLASS_SHADER, "")?;
         let egui = Self::egui_setup(&gl)?;
         let cloud_composite = compile(&gl, CLOUDS_SHADER, "#define COMPOSITE")?;
