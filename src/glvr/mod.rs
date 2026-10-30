@@ -82,6 +82,12 @@ impl Plugin for GlVrPlugin {
                 ]),
             ))
             .id();
+        world.spawn((
+            crate::camera::XrHead,
+            Transform::IDENTITY,
+            Visibility::default(),
+            ChildOf(root),
+        ));
         world.insert_resource(crate::camera::XrRoot(Some(root)));
     }
 }
@@ -168,6 +174,7 @@ fn run(app: &mut App) -> Result<AppExit, String> {
                     })
                     .collect();
                 let heads = input.eyes.clone();
+                set_head(app.world_mut(), &heads);
                 app.world_mut().resource_mut::<crate::camera::HeadPoses>().0 = heads;
                 eyes = Some(e);
             }
@@ -202,6 +209,16 @@ fn run(app: &mut App) -> Result<AppExit, String> {
             last_log = Instant::now();
             (updates, update_time, extract_time) = (0, Duration::ZERO, Duration::ZERO);
         }
+    }
+}
+
+/// Puts the head (`XrHead`) between the eyes `eyes`, facing as the first.
+fn set_head(world: &mut World, eyes: &[Transform]) {
+    let Some(first) = eyes.first() else { return };
+    let middle = eyes.iter().map(|e| e.translation).sum::<Vec3>() / eyes.len() as f32;
+    let mut heads = world.query_filtered::<&mut Transform, With<crate::camera::XrHead>>();
+    for mut head in heads.iter_mut(world) {
+        *head = Transform::from_translation(middle).with_rotation(first.rotation);
     }
 }
 

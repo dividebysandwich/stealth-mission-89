@@ -210,6 +210,11 @@ pub struct XrRoot(pub Option<Entity>);
 #[derive(Component)]
 pub struct EyeCamera;
 
+/// The headset (between the eyes) under the tracking root, where it has no eye cameras of its
+/// own to follow it (`--gl-vr`): what the helmet display hangs on.
+#[derive(Component)]
+pub struct XrHead;
+
 /// Radius of the background sphere carrying the sky and ground gradient (inside the far plane).
 const BACKGROUND_RADIUS: f32 = 590_000.0;
 

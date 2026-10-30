@@ -30,7 +30,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use crate::aircraft::Hmd;
-use crate::camera::{EyeCamera, View, ViewState};
+use crate::camera::{EyeCamera, View, ViewState, XrHead};
 use crate::canvas::{Canvas, CanvasTexture, CanvasUpload};
 use crate::cockpit3d::hud_glass::HmdMaterial;
 use crate::flight::{Aircraft, Player};
@@ -82,14 +82,16 @@ struct Visor;
 type Eyes<'w, 's> =
     Query<'w, 's, (Entity, Has<Camera3d>, Option<&'static Children>), With<EyeCamera>>;
 
-/// The camera turning with the head: the eye camera, or in VR (where the eye camera is the
-/// tracking root) its first headset camera.
-fn head_camera(eyes: &Eyes, cameras: &Query<(), With<Camera3d>>) -> Option<Entity> {
+/// What turns with the head in VR: the headset cameras, or glvr's head.
+type Heads<'w, 's> = Query<'w, 's, (), Or<(With<Camera3d>, With<XrHead>)>>;
+
+/// The entity turning with the head: in VR (where the eye camera is the tracking root) its
+/// head (`XrHead`, `--gl-vr`, whose root is a camera itself) or first headset camera, else the
+/// eye camera.
+fn head_camera(eyes: &Eyes, heads: &Heads) -> Option<Entity> {
     let (e, camera, children) = eyes.iter().next()?;
-    if camera {
-        return Some(e);
-    }
-    children?.iter().find(|&c| cameras.contains(c))
+    let head = children.and_then(|c| c.iter().find(|&c| heads.contains(c)));
+    head.or(camera.then_some(e))
 }
 
 /// Spawns the visor on the head camera of an aircraft with a helmet-mounted display (and moves
@@ -100,13 +102,13 @@ fn attach(
     settings: Res<Settings>,
     view: Res<ViewState>,
     eyes: Eyes,
-    cameras: Query<(), With<Camera3d>>,
+    heads: Heads,
     mut visors: Query<(Entity, Option<&ChildOf>, &mut Visibility), With<Visor>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<HmdMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let head = head_camera(&eyes, &cameras).filter(|_| settings.aircraft.spec().hmd != Hmd::None);
+    let head = head_camera(&eyes, &heads).filter(|_| settings.aircraft.spec().hmd != Hmd::None);
     let Some(head) = head else {
         for (e, ..) in &visors {
             commands.entity(e).try_despawn();
