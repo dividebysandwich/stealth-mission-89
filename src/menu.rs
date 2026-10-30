@@ -413,14 +413,21 @@ fn despawn_menu_camera(mut commands: Commands, q: Query<Entity, With<MenuCamera>
     }
 }
 
-// 80s military terminal: green phosphor on black.
-pub(crate) const BG: egui::Color32 = egui::Color32::from_rgb(4, 12, 6);
-const FIELD: egui::Color32 = egui::Color32::from_rgb(8, 28, 13);
-const HOVER: egui::Color32 = egui::Color32::from_rgb(18, 70, 32);
-pub(crate) const GREEN: egui::Color32 = egui::Color32::from_rgb(64, 255, 110);
-pub(crate) const DIM: egui::Color32 = egui::Color32::from_rgb(30, 130, 60);
-pub(crate) const BRIGHT: egui::Color32 = egui::Color32::from_rgb(190, 255, 205);
+// 80s military terminal: green phosphor on black, the in-flight menu's greens
+// (`flight_menu::colours`).
+pub(crate) const BG: egui::Color32 = egui::Color32::from_rgb(5, 18, 13);
+pub(crate) const FIELD: egui::Color32 = egui::Color32::from_rgb(9, 29, 21);
+const HOVER: egui::Color32 = egui::Color32::from_rgb(16, 69, 47);
+/// Frames of fields, buttons and groups.
+pub(crate) const FRAME: egui::Color32 = egui::Color32::from_rgb(19, 84, 56);
+pub(crate) const GREEN: egui::Color32 = egui::Color32::from_rgb(108, 251, 174);
+pub(crate) const DIM: egui::Color32 = egui::Color32::from_rgb(27, 136, 82);
+pub(crate) const BRIGHT: egui::Color32 = egui::Color32::from_rgb(183, 255, 216);
 pub(crate) const AMBER: egui::Color32 = egui::Color32::from_rgb(255, 176, 0);
+/// The panels' glowing edge; a lit button's fill from top to bottom.
+const EDGE: egui::Color32 = egui::Color32::from_rgb(61, 231, 140);
+const LIT_TOP: egui::Color32 = egui::Color32::from_rgb(31, 156, 91);
+const LIT_BOTTOM: egui::Color32 = egui::Color32::from_rgb(23, 111, 70);
 
 /// Hover facts per theater ([`THEATERS`] order).
 const THEATER_FACTS: [&[&str]; 10] = [
@@ -605,19 +612,19 @@ pub(crate) fn apply_terminal_style(style: &mut egui::Style) {
     v.panel_fill = BG;
     v.extreme_bg_color = egui::Color32::BLACK;
     v.faint_bg_color = FIELD;
-    v.window_stroke = Stroke::new(2.0, GREEN);
+    v.window_stroke = Stroke::new(2.0, EDGE);
     v.window_corner_radius = CornerRadius::ZERO;
     v.menu_corner_radius = CornerRadius::ZERO;
     v.window_shadow = Shadow::NONE;
     v.popup_shadow = Shadow::NONE;
-    v.selection.bg_fill = DIM;
+    v.selection.bg_fill = LIT_BOTTOM;
     v.selection.stroke = Stroke::new(1.0, BRIGHT);
     for (w, bg, fg, edge) in [
-        (&mut v.widgets.noninteractive, BG, GREEN, DIM),
-        (&mut v.widgets.inactive, FIELD, GREEN, DIM),
-        (&mut v.widgets.hovered, HOVER, BRIGHT, BRIGHT),
-        (&mut v.widgets.active, DIM, BRIGHT, BRIGHT),
-        (&mut v.widgets.open, FIELD, GREEN, DIM),
+        (&mut v.widgets.noninteractive, BG, GREEN, FRAME),
+        (&mut v.widgets.inactive, FIELD, GREEN, FRAME),
+        (&mut v.widgets.hovered, HOVER, BRIGHT, EDGE),
+        (&mut v.widgets.active, LIT_BOTTOM, BRIGHT, EDGE),
+        (&mut v.widgets.open, FIELD, GREEN, FRAME),
     ] {
         w.bg_fill = bg;
         w.weak_bg_fill = bg;
@@ -653,7 +660,7 @@ pub(crate) fn section(ui: &mut egui::Ui, title: &str) {
 /// A framed group of sections under a bright title, filling the column.
 pub(crate) fn group<R>(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
     let r = egui::Frame::new()
-        .stroke(egui::Stroke::new(1.0, DIM))
+        .stroke(egui::Stroke::new(1.0, FRAME))
         .inner_margin(8.0)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -835,10 +842,413 @@ fn two_way_switch(
     resp
 }
 
-pub(crate) fn big_button(text: &str) -> egui::Button<'static> {
-    // The grow atoms centre the label; otherwise it follows the parent layout's alignment.
-    let label = (egui::Atom::grow(), egui::RichText::new(text).size(22.0), egui::Atom::grow());
-    egui::Button::new(label).min_size(egui::vec2(170.0, 50.0))
+pub(crate) fn big_button(text: &str) -> BigButton {
+    BigButton {
+        text: text.to_string(),
+        min_size: egui::vec2(170.0, 50.0),
+        fill: None,
+        primary: false,
+        icon: None,
+    }
+}
+
+/// The icon font's family in egui (`add_icon_font`).
+static ICON_FAMILY: std::sync::LazyLock<egui::FontFamily> =
+    std::sync::LazyLock::new(|| egui::FontFamily::Name("lucide".into()));
+
+/// Whether `ctx` has the icon font yet (`add_icon_font`): painting with it before would panic.
+fn has_icon_font(ctx: &egui::Context) -> bool {
+    ctx.fonts(|f| f.definitions().families.contains_key(&*ICON_FAMILY))
+}
+
+/// Gives `ctx` the in-flight menu's icon font, from its next pass on (`BigButton::icon`,
+/// `icon_text`).
+pub(crate) fn add_icon_font(ctx: &egui::Context) {
+    use egui::epaint::text::{FontInsert, FontPriority, InsertFontFamily};
+    if has_icon_font(ctx) {
+        return;
+    }
+    let Some(bytes) = *crate::flight_menu::ICON_FONT else { return };
+    ctx.add_font(FontInsert::new(
+        "lucide",
+        egui::FontData::from_static(bytes),
+        vec![InsertFontFamily { family: ICON_FAMILY.clone(), priority: FontPriority::Highest }],
+    ));
+}
+
+/// A small button's text after its icon (as `BigButton::icon`), in the text's size and colour;
+/// the text alone before the icon font is added.
+pub(crate) fn icon_text(
+    ui: &egui::Ui,
+    icon: char,
+    text: impl Into<egui::RichText>,
+) -> egui::WidgetText {
+    let text = text.into();
+    if !has_icon_font(ui.ctx()) {
+        return text.into();
+    }
+    let mut job = egui::text::LayoutJob::default();
+    job.append(&icon.to_string(), 0.0, egui::TextFormat::default());
+    let font = egui::FontSelection::Style(egui::TextStyle::Button);
+    text.append_to(&mut job, ui.style(), font, egui::Align::Center);
+    let Some(format) = job.sections.get(1).map(|s| s.format.clone()) else { return job.into() };
+    job.sections[1].leading_space = 6.0;
+    job.sections[0].format = egui::TextFormat {
+        font_id: egui::FontId::new(format.font_id.size, ICON_FAMILY.clone()),
+        ..format
+    };
+    job.into()
+}
+
+/// Lucide icons (code points) of the menus' buttons, one per button name: the same everywhere
+/// (the in-flight menu's too).
+pub(crate) mod icon {
+    pub(crate) const SINGLE_MISSION: char = '\u{e0ac}'; // crosshair
+    pub(crate) const CAREER: char = '\u{e36f}'; // medal
+    pub(crate) const CAMPAIGN: char = '\u{e110}'; // map
+    pub(crate) const MULTIPLAYER: char = '\u{e1a4}'; // users
+    pub(crate) const OPTIONS: char = '\u{e29a}'; // sliders-horizontal
+    pub(crate) const QUIT: char = '\u{e140}'; // power
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) const BROWSER: char = '\u{e0e8}'; // globe
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) const DOWNLOAD: char = '\u{e0b2}'; // download
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) const DISCORD: char = '\u{e116}'; // message-circle
+    pub(crate) const BACK: char = '\u{e048}'; // arrow-left
+    /// NEW MISSION, NEW SORTIE.
+    pub(crate) const NEW_MISSION: char = '\u{e2c5}'; // dices
+    pub(crate) const LOAD: char = '\u{e247}'; // folder-open
+    /// FLY, FLY NEXT SORTIE, TAKE OFF.
+    pub(crate) const FLY: char = '\u{e3ce}'; // plane-takeoff
+    /// FLY IN VR, IN VR.
+    pub(crate) const VR: char = '\u{e656}'; // rectangle-goggles
+    pub(crate) const DELETE: char = '\u{e18e}'; // trash-2
+    pub(crate) const CANCEL: char = '\u{e1b2}'; // x
+    /// START, START TOUR, PLAY.
+    pub(crate) const START: char = '\u{e13c}'; // play
+    pub(crate) const PAUSE: char = '\u{e12e}'; // pause
+    pub(crate) const CONTINUE: char = '\u{e073}'; // chevrons-right
+    pub(crate) const REARM: char = '\u{e2af}'; // fuel
+    /// END SORTIE, END MISSION.
+    pub(crate) const END_SORTIE: char = '\u{e10e}'; // log-out
+    /// SAVE & EXIT, SAVE MISSION.
+    pub(crate) const SAVE: char = '\u{e14d}'; // save
+    pub(crate) const DISCONNECT: char = '\u{e45d}'; // unplug
+    /// ORDER INSERTION, FLY THE UH-60.
+    pub(crate) const HELICOPTER: char = '\u{e69d}'; // helicopter
+    pub(crate) const ACCEPT: char = '\u{e07c}'; // circle-check
+    /// CONTROL, ENTER: man an air defence station.
+    pub(crate) const CONTROL: char = '\u{e497}'; // radar
+    pub(crate) const SEND: char = '\u{e152}'; // send
+    pub(crate) const BRIEFED: char = '\u{e086}'; // clipboard-list
+    pub(crate) const RESULTS: char = '\u{e106}'; // list
+    pub(crate) const FLIGHT_MAP: char = CAMPAIGN;
+    /// CLEAR, CLEAR ALL.
+    pub(crate) const CLEAR: char = '\u{e28f}'; // eraser
+    pub(crate) const DONE: char = '\u{e06c}'; // check
+    /// RESET, DEFAULTS, DEFAULT KEYS.
+    pub(crate) const RESET: char = '\u{e148}'; // rotate-ccw
+    /// HOST, HOST NEW, HOST A GAME.
+    pub(crate) const HOST: char = '\u{e153}'; // server
+    /// JOIN, CONNECT.
+    pub(crate) const JOIN: char = '\u{e10d}'; // log-in
+    pub(crate) const REFRESH: char = '\u{e145}'; // refresh-cw
+    pub(crate) const ENLIST: char = '\u{e1a2}'; // user-plus
+    /// KEYS AND JOYSTICK, the in-flight menu's CONTROLS.
+    pub(crate) const KEYS: char = '\u{e355}'; // joystick
+    pub(crate) const PLAN_ROUTE: char = '\u{e53e}'; // route
+    pub(crate) const LOADOUT: char = '\u{e2ff}'; // bomb
+}
+
+/// A framed button that lights up (a green gradient, a glowing frame) under the mouse, as the
+/// in-flight menu's highlighted row; a primary one (FLY, CONTINUE) is always lit.
+pub(crate) struct BigButton {
+    text: String,
+    min_size: egui::Vec2,
+    /// A flat colour of its own instead (a red DELETE).
+    fill: Option<egui::Color32>,
+    primary: bool,
+    /// A Lucide icon before the label.
+    icon: Option<char>,
+}
+
+impl BigButton {
+    pub(crate) fn icon(mut self, icon: char) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
+    pub(crate) fn min_size(mut self, size: egui::Vec2) -> Self {
+        self.min_size = size;
+        self
+    }
+
+    pub(crate) fn fill(mut self, fill: egui::Color32) -> Self {
+        self.fill = Some(fill);
+        self
+    }
+
+    pub(crate) fn primary(mut self) -> Self {
+        self.primary = true;
+        self
+    }
+}
+
+impl egui::Widget for BigButton {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        const SIZE: f32 = 22.0;
+        // Between the icon and the label.
+        const GAP: f32 = 12.0;
+        let font = egui::FontId::monospace(SIZE);
+        let galley =
+            ui.painter().layout_no_wrap(self.text.clone(), font, egui::Color32::PLACEHOLDER);
+        let padding = ui.spacing().button_padding;
+        // Before its font is added (the first pass) there is no icon.
+        let icon = self.icon.filter(|_| has_icon_font(ui.ctx())).map(|icon| {
+            let font = egui::FontId::new(SIZE, ICON_FAMILY.clone());
+            ui.painter().layout_no_wrap(icon.to_string(), font, egui::Color32::PLACEHOLDER)
+        });
+        let lead = icon.as_ref().map_or(0.0, |g| g.size().x + GAP);
+        let size = (galley.size() + 2.0 * padding + egui::vec2(lead, 0.0)).max(self.min_size);
+        let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
+        let enabled = ui.is_enabled();
+        resp.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, &self.text)
+        });
+        if !ui.is_rect_visible(rect) {
+            return resp;
+        }
+        let p = ui.painter();
+        let hovered = enabled && resp.hovered();
+        let pressed = hovered && resp.is_pointer_button_down_on();
+        let text = match self.fill {
+            _ if !enabled => DIM,
+            Some(fill) => {
+                let fill =
+                    if hovered { fill.lerp_to_gamma(egui::Color32::WHITE, 0.15) } else { fill };
+                p.rect_filled(rect, 0.0, fill);
+                let edge = if hovered { BRIGHT } else { FRAME };
+                p.rect_stroke(rect, 0.0, egui::Stroke::new(1.0, edge), egui::StrokeKind::Inside);
+                BRIGHT
+            }
+            None if self.primary || hovered => {
+                let (top, bottom) =
+                    if pressed { (LIT_BOTTOM, LIT_TOP) } else { (LIT_TOP, LIT_BOTTOM) };
+                let mut mesh = egui::Mesh::default();
+                for (corner, colour) in [
+                    (rect.left_top(), top),
+                    (rect.right_top(), top),
+                    (rect.right_bottom(), bottom),
+                    (rect.left_bottom(), bottom),
+                ] {
+                    mesh.colored_vertex(corner, colour);
+                }
+                mesh.add_triangle(0, 1, 2);
+                mesh.add_triangle(0, 2, 3);
+                p.add(mesh);
+                let glow = EDGE.gamma_multiply(if hovered { 0.45 } else { 0.25 });
+                p.rect_stroke(rect, 0.0, egui::Stroke::new(4.0, glow), egui::StrokeKind::Outside);
+                p.rect_stroke(rect, 0.0, egui::Stroke::new(1.5, EDGE), egui::StrokeKind::Inside);
+                BRIGHT
+            }
+            None => {
+                p.rect_filled(rect, 0.0, FIELD);
+                p.rect_stroke(rect, 0.0, egui::Stroke::new(1.0, FRAME), egui::StrokeKind::Inside);
+                GREEN
+            }
+        };
+        // The icon then the label, centred together.
+        let left = rect.center().x - (lead + galley.size().x) / 2.0;
+        if let Some(icon) = icon {
+            let at = egui::pos2(left, rect.center().y - icon.size().y / 2.0);
+            p.galley(at, icon, text);
+        }
+        let at = egui::pos2(left + lead, rect.center().y - galley.size().y / 2.0);
+        p.galley(at, galley, text);
+        resp
+    }
+}
+
+/// A window drawn as a terminal panel, as the in-flight menu's screen: cut corners and a
+/// glowing edge, the title in a slanted tab at the top-left (after two slanted marks), a dim
+/// note at the top-right, a stepped rule under them.
+pub(crate) struct Panel<'a> {
+    title: &'a str,
+    /// After the title, in the tab (a career sortie's tour).
+    after: Option<egui::RichText>,
+    note: String,
+}
+
+/// Space between a panel's edge and its contents, how far its corners are cut, how far in its
+/// edge is (room for the glow, inside the window).
+const PANEL_MARGIN: f32 = 16.0;
+const PANEL_CUT: f32 = 16.0;
+const PANEL_INSET: f32 = 3.0;
+
+/// Where a panel's header put the logo, the right end of the title and the header's row.
+type Head = (egui::Rect, f32, egui::Rect);
+
+impl<'a> Panel<'a> {
+    pub(crate) fn new(title: &'a str) -> Self {
+        Self { title, after: None, note: String::new() }
+    }
+
+    pub(crate) fn after(mut self, text: egui::RichText) -> Self {
+        self.after = Some(text);
+        self
+    }
+
+    pub(crate) fn note(mut self, note: impl Into<String>) -> Self {
+        self.note = note.into();
+        self
+    }
+
+    /// Shows `window` (its frame replaced) with the header and `add` on the panel, painted
+    /// behind them at the window's size.
+    pub(crate) fn window<R>(
+        self,
+        window: egui::Window<'_>,
+        ctx: &egui::Context,
+        add: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> Option<egui::InnerResponse<Option<R>>> {
+        let mut back = None;
+        let frame = egui::Frame::new().inner_margin(PANEL_MARGIN);
+        let (title, after) = (self.title, self.after);
+        let r = window.frame(frame).show(ctx, |ui| {
+            let shape = ui.painter().add(egui::Shape::Noop);
+            back = Some((shape, header(ui, title, after)));
+            add(ui)
+        })?;
+        // The note and the marks at the right of the window as it came out (contents wider
+        // than the window's width widen it).
+        if let Some((shape, head)) = back {
+            let painter = ctx.layer_painter(r.response.layer_id);
+            let note = painter.layout_no_wrap(self.note, egui::FontId::monospace(15.0), DIM);
+            painter.set(shape, panel_shapes(r.response.rect, head, note));
+        }
+        Some(r)
+    }
+}
+
+/// A panel's header row: the room for the logo, the title, `after` it.
+fn header(ui: &mut egui::Ui, title: &str, after: Option<egui::RichText>) -> Head {
+    let row = ui.horizontal(|ui| {
+        let (logo, _) = ui.allocate_exact_size(egui::vec2(30.0, 24.0), egui::Sense::hover());
+        let mut end = ui.label(egui::RichText::new(title).heading().color(BRIGHT)).rect.right();
+        if let Some(after) = after {
+            end = ui.label(after).rect.right();
+        }
+        (logo, end)
+    });
+    ui.add_space(12.0);
+    let (logo, end) = row.inner;
+    (logo, end, row.response.rect)
+}
+
+/// Two slanted bars in `rect`, leaning right (`lean` > 0) or left.
+fn slashes(rect: egui::Rect, lean: f32, colour: egui::Color32) -> [egui::Shape; 2] {
+    let w = rect.width() * 0.3;
+    std::array::from_fn(|i| {
+        let x = if lean > 0.0 { rect.left() } else { rect.left() - lean } + i as f32 * w * 1.6;
+        let (b, t) = (rect.bottom(), rect.top());
+        egui::Shape::convex_polygon(
+            vec![
+                egui::pos2(x, b),
+                egui::pos2(x + w, b),
+                egui::pos2(x + w + lean, t),
+                egui::pos2(x + lean, t),
+            ],
+            colour,
+            egui::Stroke::NONE,
+        )
+    })
+}
+
+/// A panel's background, tab, note, marks, rule and edge in the window's `rect`.
+fn panel_shapes(
+    rect: egui::Rect,
+    (logo, end, row): Head,
+    note: std::sync::Arc<egui::Galley>,
+) -> egui::Shape {
+    use egui::{Shape, Stroke, pos2};
+    let rule = row.bottom() + 6.0;
+    let marks = egui::Rect::from_min_max(
+        pos2(rect.right() - PANEL_MARGIN - 30.0, row.center().y - 9.0),
+        pos2(rect.right() - PANEL_MARGIN, row.center().y + 9.0),
+    );
+    let r = rect.shrink(PANEL_INSET);
+    let k = PANEL_CUT;
+    let outline = vec![
+        pos2(r.left() + k, r.top()),
+        pos2(r.right() - k, r.top()),
+        pos2(r.right(), r.top() + k),
+        pos2(r.right(), r.bottom() - k),
+        pos2(r.right() - k, r.bottom()),
+        pos2(r.left() + k, r.bottom()),
+        pos2(r.left(), r.bottom() - k),
+        pos2(r.left(), r.top() + k),
+    ];
+    let slant = 18.0;
+    let tab = end + 24.0 + slant;
+    let line = Stroke::new(1.5, DIM);
+    // The rule steps up past the tab, where there is room.
+    let step = (r.right() - 190.0).max(tab + 30.0);
+    let rule_line = if step + 40.0 < r.right() {
+        vec![
+            pos2(r.left(), rule),
+            pos2(step, rule),
+            pos2(step + 10.0, rule - 10.0),
+            pos2(r.right(), rule - 10.0),
+        ]
+    } else {
+        vec![pos2(r.left(), rule), pos2(r.right(), rule)]
+    };
+    let mut shapes = vec![
+        Shape::convex_polygon(outline.clone(), BG, Stroke::NONE),
+        Shape::convex_polygon(
+            vec![
+                pos2(r.left() + k, r.top()),
+                pos2(tab, r.top()),
+                pos2(tab - slant, rule),
+                pos2(r.left(), rule),
+                pos2(r.left(), r.top() + k),
+            ],
+            FIELD,
+            Stroke::NONE,
+        ),
+        Shape::line_segment([pos2(tab, r.top()), pos2(tab - slant, rule)], line),
+        Shape::line(rule_line, line),
+    ];
+    shapes.extend(slashes(logo.shrink2(egui::vec2(0.0, 2.0)), 10.0, GREEN));
+    // Each where there is room right of the tab.
+    if tab + 10.0 < marks.left() {
+        shapes.extend(slashes(marks, -9.0, GREEN));
+    }
+    let at = pos2(marks.left() - 10.0 - note.size().x, row.center().y - note.size().y / 2.0);
+    if tab + 16.0 < at.x {
+        shapes.push(Shape::galley(at, note, DIM));
+    }
+    shapes.push(Shape::closed_line(outline.clone(), Stroke::new(6.0, EDGE.gamma_multiply(0.22))));
+    shapes.push(Shape::closed_line(outline, Stroke::new(2.0, EDGE)));
+    Shape::Vec(shapes)
+}
+
+/// The rule above a panel's buttons, stepping up towards the right as the in-flight menu's
+/// footer.
+pub(crate) fn footer_rule(ui: &mut egui::Ui) {
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 14.0), egui::Sense::hover());
+    let (y, step) = (rect.bottom() - 2.0, rect.right() - 190.0);
+    ui.painter().line(
+        vec![
+            egui::pos2(rect.left(), y),
+            egui::pos2(step, y),
+            egui::pos2(step + 10.0, y - 10.0),
+            egui::pos2(rect.right(), y - 10.0),
+        ],
+        egui::Stroke::new(1.5, DIM),
+    );
 }
 
 type SettingsMut<'a> = ResMut<'a, crate::settings::Settings>;
@@ -1137,40 +1547,39 @@ const DOWNLOAD_GIVES: [(&str, &str); 7] = [
 fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
     let wide = |text: &str| big_button(text).min_size(egui::vec2(300.0, 50.0));
     let width = (ctx.content_rect().width() - 32.0).clamp(600.0, 820.0);
-    menu_window(ctx, "Stealth Mission 89", width).show(ctx, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("STEALTH MISSION 89").heading().color(BRIGHT));
-            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
-        });
-        ui.add_space(14.0);
-        ui.horizontal_top(|ui| {
-            ui.vertical(|ui| {
-                ui.set_width(300.0);
-                if ui.add(wide("PLAY IN BROWSER")).clicked() {
-                    state.web_gateway = false;
-                }
-                ui.label(egui::RichText::new("Right here, nothing to install").color(DIM));
-                ui.add_space(14.0);
-                if ui.add(wide("DOWNLOAD")).clicked() {
-                    ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
-                }
-                ui.label(
-                    egui::RichText::new("Windows, Linux and macOS, Steam Deck and Steam Frame")
-                        .color(DIM),
-                );
-            });
-            ui.add_space(16.0);
-            ui.vertical(|ui| {
-                group(ui, "The download version", |ui| {
-                    for (what, why) in DOWNLOAD_GIVES {
-                        ui.label(egui::RichText::new(format!("> {what}")).color(GREEN));
-                        ui.label(egui::RichText::new(why).size(14.0).color(DIM));
-                        ui.add_space(2.0);
+    Panel::new("STEALTH MISSION 89").note("MISSION PLANNING SYSTEM").window(
+        menu_window(ctx, "Stealth Mission 89", width),
+        ctx,
+        |ui| {
+            ui.horizontal_top(|ui| {
+                ui.vertical(|ui| {
+                    ui.set_width(300.0);
+                    if ui.add(wide("PLAY IN BROWSER").icon(icon::BROWSER)).clicked() {
+                        state.web_gateway = false;
                     }
+                    ui.label(egui::RichText::new("Right here, nothing to install").color(DIM));
+                    ui.add_space(14.0);
+                    if ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)).clicked() {
+                        ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
+                    }
+                    ui.label(
+                        egui::RichText::new("Windows, Linux and macOS, Steam Deck and Steam Frame")
+                            .color(DIM),
+                    );
+                });
+                ui.add_space(16.0);
+                ui.vertical(|ui| {
+                    group(ui, "The download version", |ui| {
+                        for (what, why) in DOWNLOAD_GIVES {
+                            ui.label(egui::RichText::new(format!("> {what}")).color(GREEN));
+                            ui.label(egui::RichText::new(why).size(14.0).color(DIM));
+                            ui.add_space(2.0);
+                        }
+                    });
                 });
             });
-        });
-    });
+        },
+    );
 }
 
 /// The top level: what to play.
@@ -1184,115 +1593,123 @@ fn main_screen(
     exit: &mut MessageWriter<AppExit>,
 ) {
     let wide = |text: &str| big_button(text).min_size(egui::vec2(360.0, 50.0));
-    menu_window(ctx, "Stealth Mission 89", 420.0).show(ctx, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("STEALTH MISSION 89").heading().color(BRIGHT));
-            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
-            ui.add_space(10.0);
-            if facts(
-                ui.add(wide("SINGLE MISSION")),
-                &[
-                    "One mission in the theater of your choice",
-                    "Choose the options, plan the route and the loadout",
-                ],
-            )
-            .clicked()
-            {
-                // Leaves career mode; the same mission again if the options are the same.
-                state.career = None;
-                state.dirty = true;
-                state.mission_screen = true;
-            }
-            if facts(
-                ui.add(wide("CAREER")),
-                &[
-                    "Pilot records: rank, decorations, sorties",
-                    "Tour of duty: 12 sorties in one theater",
-                    "What you destroy stays destroyed",
-                ],
-            )
-            .clicked()
-            {
-                career.show();
-            }
-            if facts(
-                ui.add(wide("DYNAMIC CAMPAIGN")),
-                &[
-                    "Dynamic campaign in real time",
-                    "Take the enemy's cities and airfields",
-                    "Missions from the live situation",
-                ],
-            )
-            .clicked()
-            {
-                campaign.show();
-            }
-            // Browsers only join, through the master server's relay (docs/web.md).
-            let how = if cfg!(target_arch = "wasm32") {
-                "Join a server on the public list"
-            } else {
-                "Join a server, or host a campaign and fly in it"
-            };
-            if facts(ui.add(wide("MULTIPLAYER")), &["Coop in the dynamic campaign", how]).clicked()
-            {
-                multiplayer.show();
-            }
-            if facts(
-                ui.add(wide("OPTIONS")),
-                &[
-                    "Game: cockpit, HUD and avionics style, auto trim",
-                    "Graphics, sound volumes, key and joystick bindings",
-                    "Saved for the next flights",
-                ],
-            )
-            .clicked()
-            {
-                options.open = true;
-            }
-            // The browser build: the desktop game is a download (web/download.html).
-            #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DOWNLOAD")),
-                &[
-                    "The desktop game for Windows, Linux and macOS",
-                    "With VR and multiplayer",
-                    "Steam Deck and Steam Frame: the Linux AppImage",
-                ],
-            )
-            .clicked()
-            {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
-            }
-            #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DISCORD")),
-                &["Fly together, report bugs and share missions", "Follow development"],
-            )
-            .clicked()
-            {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
-            }
-            ui.add_space(10.0);
-            // In the browser the tab is closed instead.
-            if !cfg!(target_arch = "wasm32")
-                && facts(ui.add(wide("QUIT")), &["Exit to the desktop"]).clicked()
-            {
-                exit.write(AppExit::Success);
-            }
-            ui.add_space(6.0);
-            // In the browser: which build runs (docs/web.md).
-            let renderer = match (cfg!(target_arch = "wasm32"), crate::WEBGL2) {
-                (false, _) => "",
-                (true, false) => " · WEBGPU",
-                (true, true) => " · WEBGL2",
-            };
-            ui.label(
-                egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
-                    .size(11.0)
-                    .color(DIM),
-            );
-        });
-    });
+    Panel::new("STEALTH MISSION 89").window(
+        menu_window(ctx, "Stealth Mission 89", 420.0),
+        ctx,
+        |ui| {
+            ui.vertical_centered(|ui| {
+                ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+                ui.add_space(10.0);
+                if facts(
+                    ui.add(wide("SINGLE MISSION").icon(icon::SINGLE_MISSION)),
+                    &[
+                        "One mission in the theater of your choice",
+                        "Choose the options, plan the route and the loadout",
+                    ],
+                )
+                .clicked()
+                {
+                    // Leaves career mode; the same mission again if the options are the same.
+                    state.career = None;
+                    state.dirty = true;
+                    state.mission_screen = true;
+                }
+                if facts(
+                    ui.add(wide("CAREER").icon(icon::CAREER)),
+                    &[
+                        "Pilot records: rank, decorations, sorties",
+                        "Tour of duty: 12 sorties in one theater",
+                        "What you destroy stays destroyed",
+                    ],
+                )
+                .clicked()
+                {
+                    career.show();
+                }
+                if facts(
+                    ui.add(wide("DYNAMIC CAMPAIGN").icon(icon::CAMPAIGN)),
+                    &[
+                        "Dynamic campaign in real time",
+                        "Take the enemy's cities and airfields",
+                        "Missions from the live situation",
+                    ],
+                )
+                .clicked()
+                {
+                    campaign.show();
+                }
+                // Browsers only join, through the master server's relay (docs/web.md).
+                let how = if cfg!(target_arch = "wasm32") {
+                    "Join a server on the public list"
+                } else {
+                    "Join a server, or host a campaign and fly in it"
+                };
+                if facts(
+                    ui.add(wide("MULTIPLAYER").icon(icon::MULTIPLAYER)),
+                    &["Coop in the dynamic campaign", how],
+                )
+                .clicked()
+                {
+                    multiplayer.show();
+                }
+                if facts(
+                    ui.add(wide("OPTIONS").icon(icon::OPTIONS)),
+                    &[
+                        "Game: cockpit, HUD and avionics style, auto trim",
+                        "Graphics, sound volumes, key and joystick bindings",
+                        "Saved for the next flights",
+                    ],
+                )
+                .clicked()
+                {
+                    options.open = true;
+                }
+                // The browser build: the desktop game is a download (web/download.html).
+                #[cfg(target_arch = "wasm32")]
+                if facts(
+                    ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)),
+                    &[
+                        "The desktop game for Windows, Linux and macOS",
+                        "With VR and multiplayer",
+                        "Steam Deck and Steam Frame: the Linux AppImage",
+                    ],
+                )
+                .clicked()
+                {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
+                }
+                #[cfg(target_arch = "wasm32")]
+                if facts(
+                    ui.add(wide("DISCORD").icon(icon::DISCORD)),
+                    &["Fly together, report bugs and share missions", "Follow development"],
+                )
+                .clicked()
+                {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
+                }
+                ui.add_space(10.0);
+                // In the browser the tab is closed instead.
+                if !cfg!(target_arch = "wasm32")
+                    && facts(ui.add(wide("QUIT").icon(icon::QUIT)), &["Exit to the desktop"])
+                        .clicked()
+                {
+                    exit.write(AppExit::Success);
+                }
+                ui.add_space(6.0);
+                // In the browser: which build runs (docs/web.md).
+                let renderer = match (cfg!(target_arch = "wasm32"), crate::WEBGL2) {
+                    (false, _) => "",
+                    (true, false) => " · WEBGPU",
+                    (true, true) => " · WEBGL2",
+                };
+                ui.label(
+                    egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
+                        .size(11.0)
+                        .color(DIM),
+                );
+            });
+        },
+    );
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -1393,6 +1810,7 @@ pub(crate) fn menu_ui(
 
     let ctx = contexts.ctx_mut()?;
     apply_ui_zoom(ctx);
+    add_icon_font(ctx);
     // Both themes, so the system light/dark preference does not matter.
     if ctx.global_style().visuals.window_fill != BG {
         ctx.all_styles_mut(apply_terminal_style);
@@ -1433,19 +1851,22 @@ pub(crate) fn menu_ui(
         // Career sorties take their options from the career window.
         let career_mode = state.career.is_some();
         let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-        menu_window(ctx, "Single mission", width).show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(if career_mode { "CAREER SORTIE" } else { "SINGLE MISSION" }).heading().color(BRIGHT));
-                if let Some(p) = state.career.as_deref().and_then(crate::career::Pilot::load)
-                    && let Some(t) = &p.tour
-                {
-                    ui.label(egui::RichText::new(format!("  {}  //  TOUR SORTIE {} OF {}", p.title().to_ascii_uppercase(), t.sortie + 1, t.length)).color(AMBER));
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new(format!("MISSION PLANNING SYSTEM  //  MSN {:05}", state.seed)).color(DIM));
-                });
-            });
-            ui.separator();
+        let mut panel = Panel::new(if career_mode { "CAREER SORTIE" } else { "SINGLE MISSION" })
+            .note(format!("MISSION PLANNING SYSTEM  //  MSN {:05}", state.seed));
+        if let Some(p) = state.career.as_deref().and_then(crate::career::Pilot::load)
+            && let Some(t) = &p.tour
+        {
+            panel = panel.after(
+                egui::RichText::new(format!(
+                    "  {}  //  TOUR SORTIE {} OF {}",
+                    p.title().to_ascii_uppercase(),
+                    t.sortie + 1,
+                    t.length
+                ))
+                .color(AMBER),
+            );
+        }
+        panel.window(menu_window(ctx, "Single mission", width), ctx, |ui| {
             ui.horizontal_top(|ui| {
                 if !career_mode {
                     // Options: three narrow columns.
@@ -1494,11 +1915,11 @@ pub(crate) fn menu_ui(
                                 mission_summary(ui, &state, m);
                                 ui.add_space(6.0);
                                 ui.horizontal(|ui| {
-                                    let plan = ui.button(egui::RichText::new("PLAN ROUTE").size(16.0));
+                                    let plan = ui.button(icon_text(ui, icon::PLAN_ROUTE, egui::RichText::new("PLAN ROUTE").size(16.0)));
                                     if facts(plan, &["The theater map with the enemy radar and SAM coverage", "Add, move and remove navigation points", "Targets and the landing base stay fixed"]).clicked() {
                                         planner.open = true;
                                     }
-                                    let arm = ui.button(egui::RichText::new("LOADOUT").size(16.0));
+                                    let arm = ui.button(icon_text(ui, icon::LOADOUT, egui::RichText::new("LOADOUT").size(16.0)));
                                     if facts(arm, &["Choose the stores on each bay or pylon", "Starts with the briefed weapons"]).clicked() {
                                         loadout.open = true;
                                     }
@@ -1515,28 +1936,28 @@ pub(crate) fn menu_ui(
                 });
             });
             ui.add_space(6.0);
-            ui.separator();
-            ui.add_space(6.0);
+            footer_rule(ui);
+            ui.add_space(8.0);
             ui.horizontal(|ui| {
                 let to = if career_mode { "Back to the pilot records" } else { "Back to the main menu" };
-                if facts(ui.add(big_button("BACK")), &[to]).clicked() {
+                if facts(ui.add(big_button("BACK").icon(icon::BACK)), &[to]).clicked() {
                     back = true;
                 }
                 let new = if career_mode { "NEW SORTIE" } else { "NEW MISSION" };
-                if facts(ui.add(big_button(new)), &["Rolls different objectives", "Keeps all the options and the start time"]).clicked() {
+                if facts(ui.add(big_button(new).icon(icon::NEW_MISSION)), &["Rolls different objectives", "Keeps all the options and the start time"]).clicked() {
                     state.seed = rand::random();
                     state.dirty = true;
                 }
-                if !career_mode && facts(ui.add(big_button("LOAD")), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
+                if !career_mode && facts(ui.add(big_button("LOAD").icon(icon::LOAD)), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
                     saves.show();
                 }
-                if facts(ui.add(big_button("OPTIONS")), &["Game, graphics, sound and controls"]).clicked() {
+                if facts(ui.add(big_button("OPTIONS").icon(icon::OPTIONS)), &["Game, graphics, sound and controls"]).clicked() {
                     options.open = true;
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let can_fly = matches!(state.mission, Some(Ok(_)));
-                    let fly = ui.add_enabled(can_fly, big_button("FLY").fill(DIM));
+                    let fly = ui.add_enabled(can_fly, big_button("FLY").icon(icon::FLY).primary());
                     if facts(fly, &["Take off on the briefed mission"]).clicked()
                         && let Some(Ok(m)) = &state.mission
                     {
@@ -1553,7 +1974,7 @@ pub(crate) fn menu_ui(
                     // Already in VR: "Fly" flies in the headset. No VR in the browser.
                     if !settings.vr && !cfg!(target_arch = "wasm32") {
                         let vr_button = ui
-                            .add_enabled(can_fly && vr.0, big_button("FLY IN VR"))
+                            .add_enabled(can_fly && vr.0, big_button("FLY IN VR").icon(icon::VR))
                             .on_disabled_hover_text(if vr.0 { "Generate a mission first" } else { "No OpenXR runtime (Monado, WiVRn, SteamVR) is active" });
                         if facts(vr_button, &["Restarts the game in the VR headset", "Flies this exact mission"]).clicked() {
                             match relaunch_in_vr(&state, &settings) {

@@ -2,8 +2,12 @@
 //! a screen in front of the pilot, in the cockpit, so it works on the desktop and in VR. The
 //! simulation pauses while it is open.
 //!
-//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION (set apart below a line);
-//! RESUME and every page's BACK are a button with an arrow in the top-left corner. SAVE MISSION
+//! The screen is a panel with cut corners in its own greens (not the flight palette): the page's
+//! title in a tab at the top, the entries in framed rows (on the main page and OPTIONS with a
+//! Lucide icon each), the highlighted one lit up, every page's BACK the ESC BACK button in the
+//! footer.
+//!
+//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION (set apart). SAVE MISSION
 //! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
 //! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
 //! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
@@ -42,12 +46,12 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use crate::camera::{EyeCamera, View, ViewState};
-use crate::canvas::{Canvas, CanvasTexture};
+use crate::canvas::{Canvas, CanvasTexture, TRANSPARENT};
 use crate::cockpit3d::{
     BUTTON_PRIMARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT, BUTTON_STICK_RIGHT, BUTTON_STICK_UP,
     CockpitRoot, Hands,
 };
-use crate::font::{Align, capital, stroke_has, stroke_text_at};
+use crate::font::{Align, capital, stroke_has, stroke_text_at, stroke_width};
 use crate::input::{Action, ActionEvent, InputBlock};
 use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
@@ -132,21 +136,20 @@ enum Page {
 }
 
 impl Page {
-    /// The entries, the first one (RESUME, BACK) in the top-left corner (`item_rects`).
+    /// The entries in rows, then BACK (the footer's button, `item_rects`).
     fn items(self) -> &'static [Item] {
         use Item::*;
         match self {
-            Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission],
+            Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission, Back],
             Page::Options => &[
-                Back,
                 Open(Page::Game),
                 Open(Page::Graphics),
                 Open(Page::Effects),
                 Open(Page::Sound),
                 Open(Page::Controls),
+                Back,
             ],
             Page::Game => &[
-                Back,
                 Cockpit,
                 Hud,
                 Avionics,
@@ -155,11 +158,11 @@ impl Page {
                 PlayerLabels,
                 LabelSize,
                 CockpitSize,
+                Back,
             ],
             Page::Graphics => {
                 use crate::effects::Effect as E;
                 &[
-                    Back,
                     Shaders,
                     Msaa,
                     Shadows,
@@ -169,12 +172,12 @@ impl Page {
                     AutoDetail,
                     Effect(E::Vga),
                     Effect(E::Scanlines),
+                    Back,
                 ]
             }
             Page::Effects => {
                 use crate::effects::Effect as E;
                 &[
-                    Back,
                     Effect(E::Shake),
                     Effect(E::Flashes),
                     Effect(E::Barrage),
@@ -185,10 +188,10 @@ impl Page {
                     Effect(E::CloudShadows),
                     Effect(E::Vapour),
                     Effect(E::NightSky),
+                    Back,
                 ]
             }
             Page::Sound => &[
-                Back,
                 Volume(Vol::Master),
                 Volume(Vol::Engine),
                 Volume(Vol::Effects),
@@ -196,8 +199,9 @@ impl Page {
                 Volume(Vol::Rwr),
                 RwrTones,
                 LowPass,
+                Back,
             ],
-            Page::Controls => &[Back, HeadTracking, Bindings, KeyGuide],
+            Page::Controls => &[HeadTracking, Bindings, KeyGuide, Back],
         }
     }
 
@@ -355,8 +359,14 @@ impl Item {
             Item::RwrTones => format!("< {} >", s.rwr_tones.name()),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
-            Item::Open(_) | Item::KeyGuide | Item::Bindings => ">".to_string(),
-            Item::Resume | Item::SaveMission | Item::EndMission | Item::Back => String::new(),
+            // The pages get a chevron instead (`draw`).
+            Item::Open(_)
+            | Item::KeyGuide
+            | Item::Bindings
+            | Item::Resume
+            | Item::SaveMission
+            | Item::EndMission
+            | Item::Back => String::new(),
         }
     }
 
@@ -398,37 +408,100 @@ impl Item {
 /// Screen size (metres) and its distance in front of and height relative to the eye.
 const SIZE: Vec2 = Vec2::new(0.42, 0.28);
 const POSITION: Vec3 = Vec3::new(0.0, -0.02, -0.52);
-/// Canvas pixels.
+/// Canvas size (drawing units) and texels per unit.
 const W: usize = 768;
 const H: usize = 512;
-/// Rows of the entries, under the title.
-const TOP: f32 = 116.0;
-const ROW: f32 = 33.0;
-const TITLE_Y: f32 = 80.0;
-/// BACK and RESUME in the top-left corner (x0, y0, x1, y1).
-const CORNER: [f32; 4] = [16.0, 14.0, 216.0, 48.0];
-/// The space above END MISSION, a line in its middle.
-const END_GAP: f32 = 22.0;
+const SCALE: usize = 2;
+/// The panel's edge (inset from the canvas, room for its glow) and its cut corners.
+const EDGE: f32 = 5.0;
+const CUT: f32 = 22.0;
+/// The bottom of the title's tab and how far its right side slants; the header's line steps
+/// up this far towards the right, as the footer's.
+const HEADER_Y: f32 = 64.0;
+const SLANT: f32 = 22.0;
+const STEP: f32 = 12.0;
+/// The footer's line (its left part), the BACK button below it (x0, y0, x1, y1).
+const FOOT_Y: f32 = 448.0;
+const BACK: [f32; 4] = [W as f32 - 176.0, 456.0, W as f32 - 30.0, 490.0];
+/// The rows of the entries: between these heights, at most this far apart, this far between
+/// two; the space above END MISSION.
+const TOP: f32 = 86.0;
+const BOTTOM: f32 = 420.0;
+const MAX_PITCH: f32 = 60.0;
+const ROW_GAP: f32 = 5.0;
+const END_GAP: f32 = 14.0;
+/// Left and right ends of the rows.
+const ROW_X: [f32; 2] = [24.0, W as f32 - 24.0];
 /// The key guide's area, below its search field.
-const GUIDE: [f32; 4] = [24.0, 100.0, W as f32 - 24.0, H as f32 - 40.0];
+const GUIDE: [f32; 4] = [24.0, 122.0, W as f32 - 24.0, FOOT_Y - 24.0];
 /// The key guide's search field (x0, y0, x1, y1) and its clear button at the right end.
-const SEARCH: [f32; 4] = [24.0, 56.0, W as f32 - 24.0, 86.0];
+const SEARCH: [f32; 4] = [24.0, 80.0, W as f32 - 24.0, 110.0];
 const CLEAR: [f32; 4] = [SEARCH[2] - 32.0, SEARCH[1], SEARCH[2], SEARCH[3]];
 /// The search's VR keyboard: its keys' size and spacing, the top of its five rows (at the
-/// bottom of the guide, above the hint).
+/// bottom of the guide, above the footer).
 const KEY_W: f32 = 64.0;
 const KEY_H: f32 = 34.0;
 const KEY_GAP: f32 = 6.0;
 const KEYBOARD_TOP: f32 = GUIDE[3] - 5.0 * (KEY_H + KEY_GAP);
-/// Palette colours: background, bright and dim green (the panel's lamp greens), dark row.
+/// Flight palette colours of the VR end screen: background, bright and dim green (the panel's
+/// lamp greens).
 const BG: u8 = 5;
 const BRIGHT: u8 = 47;
 const DIM: u8 = 45;
-const ROW_BG: u8 = 44;
 /// A VR fingertip touches the screen from this far in front of it to this far behind it
 /// (metres; a finger easily passes through the plane).
 const TOUCH_FRONT: f32 = 0.05;
 const TOUCH_BEHIND: f32 = 0.10;
+
+/// The menu screen's colours (its own palette, `colours`): a ramp from near black to a pale
+/// mint, by percent.
+mod ink {
+    /// The colour `pct` percent up the ramp.
+    pub const fn shade(pct: u8) -> u8 {
+        1 + (pct as u16 * 99 / 100) as u8
+    }
+    pub const PANEL: u8 = shade(10);
+    pub const TAB: u8 = shade(18);
+    pub const ROW: u8 = shade(15);
+    /// The rows' frames, the icons' separators.
+    pub const FRAME: u8 = shade(34);
+    /// The header's and footer's lines, the slanted marks.
+    pub const LINE: u8 = shade(50);
+    pub const GLOW: u8 = shade(30);
+    /// The highlighted row: its fill from top to bottom, its frame's glow.
+    pub const LIT_TOP: u8 = shade(56);
+    pub const LIT_BOTTOM: u8 = shade(42);
+    pub const LIT_GLOW: u8 = shade(46);
+    pub const EDGE: u8 = shade(76);
+    pub const NOTE: u8 = shade(60);
+    pub const TEXT: u8 = shade(88);
+    pub const LIT_TEXT: u8 = shade(97);
+    pub const OFF: u8 = shade(38);
+}
+
+/// The ramp of `ink`: index 0 see-through, 1 to 100 through these colours (8-bit sRGB).
+fn colours() -> std::sync::Arc<[u32; 256]> {
+    const STOPS: [(f32, [f32; 3]); 8] = [
+        (0.0, [2.0, 8.0, 6.0]),
+        (0.12, [6.0, 21.0, 15.0]),
+        (0.2, [10.0, 34.0, 25.0]),
+        (0.35, [20.0, 90.0, 60.0]),
+        (0.55, [30.0, 154.0, 90.0]),
+        (0.75, [58.0, 230.0, 138.0]),
+        (0.9, [116.0, 255.0, 180.0]),
+        (1.0, [212.0, 255.0, 232.0]),
+    ];
+    let mut lut = [0u32; 256];
+    for (i, v) in lut.iter_mut().enumerate().skip(1) {
+        let t = ((i - 1) as f32 / 99.0).min(1.0);
+        let k = STOPS.windows(2).position(|s| t <= s[1].0).unwrap_or(STOPS.len() - 2);
+        let ((t0, a), (t1, b)) = (STOPS[k], STOPS[k + 1]);
+        let f = (t - t0) / (t1 - t0);
+        let [r, g, b] = std::array::from_fn(|c| (a[c] + (b[c] - a[c]) * f).round() as u8);
+        *v = u32::from_le_bytes([r, g, b, 255]);
+    }
+    std::sync::Arc::new(lut)
+}
 
 #[derive(Component)]
 struct MenuScreen;
@@ -588,7 +661,9 @@ fn spawn_screen(
     if !screens.is_empty() {
         return;
     }
-    let tex = CanvasTexture::new(Canvas::new(W, H), &mut images, false);
+    // See-through past the cut corners.
+    let mut tex = CanvasTexture::new(Canvas::scaled(W, H, SCALE), &mut images, true);
+    tex.colours = Some(colours());
     if let Some(mut img) = images.get_mut(&tex.image) {
         img.sampler = bevy::image::ImageSampler::linear();
     }
@@ -625,6 +700,7 @@ fn spawn_screen(
     }
     let material = materials.add(StandardMaterial {
         base_color_texture: Some(tex.image.clone()),
+        alpha_mode: AlphaMode::Mask(0.5),
         unlit: true,
         cull_mode: None,
         fog_enabled: false,
@@ -652,20 +728,24 @@ fn to_canvas(local: Vec3) -> Option<Vec2> {
         .then(|| Vec2::new(u * W as f32, v * H as f32))
 }
 
-/// Where the entries of a page are (x0, y0, x1, y1): BACK and RESUME (which goes back to the
-/// flight) in the top-left corner, the others in rows, END MISSION set apart below a line.
+/// Where the entries of a page are (x0, y0, x1, y1): BACK the footer's button, the others in
+/// rows as tall as fit (up to `MAX_PITCH` apart), END MISSION set apart.
 fn item_rects(page: Page) -> Vec<[f32; 4]> {
+    let items = page.items();
+    let rows = items.iter().filter(|&&i| i != Item::Back).count().max(1) as f32;
+    let gap = if items.contains(&Item::EndMission) { END_GAP } else { 0.0 };
+    let pitch = ((BOTTOM - TOP - gap) / rows).min(MAX_PITCH);
     let mut y = TOP;
-    page.items()
+    items
         .iter()
         .map(|item| match item {
-            Item::Back | Item::Resume => CORNER,
+            Item::Back => BACK,
             _ => {
                 if *item == Item::EndMission {
                     y += END_GAP;
                 }
-                y += ROW;
-                [24.0, y - ROW, W as f32 - 24.0, y]
+                y += pitch;
+                [ROW_X[0], y - pitch, ROW_X[1], y - ROW_GAP]
             }
         })
         .collect()
@@ -1222,6 +1302,7 @@ fn bindings_ui(
     // The overlay's context comes up a frame after the dialog opens.
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
     crate::menu::apply_ui_zoom(ctx);
+    crate::menu::add_icon_font(ctx);
     if ctx.global_style().visuals.window_fill != crate::menu::BG {
         ctx.all_styles_mut(crate::menu::apply_terminal_style);
     }
@@ -1246,24 +1327,24 @@ fn draw(
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
     let c = &mut tex.canvas;
-    c.clear(BG);
-    c.frame(Vec2::new(6.0, 6.0), Vec2::new(W as f32 - 7.0, H as f32 - 7.0), 3.0, DIM);
+    c.clear(TRANSPARENT);
+    // The key on the footer's BACK (in VR an arrow).
+    let key = if settings.vr { "<" } else { "ESC" };
+    let main_title = if campaign.is_some() { "MENU" } else { "PAUSE" };
     if menu.exiting {
-        stroke_text_at(
-            c,
-            W as f32 / 2.0,
-            H as f32 / 2.0,
-            "EXITING...",
-            40.0,
-            4.0,
-            BRIGHT,
-            Align::Centre,
-        );
+        draw_frame(c, "", main_title, "", None);
+        let mid = (TOP + BOTTOM) / 2.0;
+        stroke_text_at(c, W as f32 / 2.0, mid, "EXITING...", 36.0, 4.0, ink::TEXT, Align::Centre);
         tex.dirty = true;
         return;
     }
     if menu.guide {
-        stroke_text_at(c, W as f32 / 2.0, 32.0, "KEY GUIDE", 22.0, 2.8, BRIGHT, Align::Centre);
+        let hint = match (settings.vr, menu.keyboard) {
+            (true, false) => "STICK: SCROLL   FIELD + TRIGGER: KEYBOARD",
+            (true, true) => "KEY + TRIGGER: TYPE   STICK: SCROLL",
+            (false, _) => "WHEEL, ARROWS: SCROLL",
+        };
+        draw_frame(c, "", "KEY GUIDE", hint, Some((key, false)));
         let area = guide_area(menu.keyboard);
         let caret = crate::key_guide::caret_shown(time.elapsed_secs_f64());
         draw_search(c, &menu.search, caret, menu.hover == Some(Spot::Clear));
@@ -1274,112 +1355,358 @@ fn draw(
             crate::key_guide::filter(crate::key_guide::lines(&config, settings.vr), &menu.search);
         if lines.is_empty() {
             let mid = (area[1] + area[3]) / 2.0;
-            stroke_text_at(c, W as f32 / 2.0, mid, "NO MATCH", 18.0, 2.4, DIM, Align::Centre);
+            stroke_text_at(c, W as f32 / 2.0, mid, "NO MATCH", 18.0, 2.4, ink::OFF, Align::Centre);
         }
         let style = crate::key_guide::Style {
             size: 0.72,
-            heading: BRIGHT,
-            bar: ROW_BG,
-            keys: BRIGHT,
-            text: 46,
-            dim: DIM,
+            heading: ink::LIT_TEXT,
+            bar: ink::TAB,
+            keys: ink::TEXT,
+            text: ink::shade(74),
+            dim: ink::OFF,
         };
         let mut scroll = menu.guide_scroll;
         crate::key_guide::draw(c, &lines, area, &mut scroll, &style);
         menu.guide_scroll = scroll;
-        let hint = match (settings.vr, menu.keyboard) {
-            (true, false) => "STICK: SCROLL    FIELD + TRIGGER: KEYBOARD    TRIGGER: BACK",
-            (true, true) => "KEY + TRIGGER: TYPE    STICK: SCROLL",
-            (false, _) => "WHEEL, ARROWS: SCROLL    ESC, CLICK: BACK",
-        };
-        stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, hint, 12.0, 1.8, DIM, Align::Centre);
         tex.dirty = true;
         return;
     }
-    let title = match menu.page {
-        Page::Main if campaign.is_some() => "MENU  -  CAMPAIGN RUNS ON".to_string(),
-        Page::Main => "MENU  -  PAUSED".to_string(),
-        Page::Options => "OPTIONS".to_string(),
-        page => format!("OPTIONS  -  {}", page.title()),
+    let (crumb, title) = match menu.page {
+        Page::Main => ("", main_title),
+        Page::Options => ("", "OPTIONS"),
+        page => ("OPTIONS >", page.title()),
     };
-    stroke_text_at(c, W as f32 / 2.0, TITLE_Y, &title, 26.0, 3.2, BRIGHT, Align::Centre);
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
+        Page::Main if campaign.is_some() => "CAMPAIGN RUNS ON",
         Page::Game => "FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS",
         _ => "",
     };
-    stroke_text_at(c, W as f32 / 2.0, H as f32 - 22.0, note, 12.0, 1.8, DIM, Align::Centre);
-    for (i, (item, [x0, y0, x1, y1])) in
-        menu.page.items().iter().zip(item_rects(menu.page)).enumerate()
-    {
-        let mid = (y0 + y1) / 2.0;
-        let enabled = item.enabled(&settings, ops, menu.can_save);
-        let col = if enabled { BRIGHT } else { DIM };
-        let (x, w) = (x0 as i32, (x1 - x0) as i32);
-        if i == menu.cursor {
-            c.fill_rect(x, y0 as i32 + 3, w, (y1 - y0) as i32 - 6, ROW_BG);
-        }
-        if matches!(item, Item::Back | Item::Resume) {
-            // A button with an arrow pointing back.
-            c.rect(x, y0 as i32 + 3, w, (y1 - y0) as i32 - 6, DIM);
-            let (tip, tail) = (Vec2::new(x0 + 14.0, mid), Vec2::new(x0 + 42.0, mid));
-            c.stroke(tip, tail, 3.0, col);
-            c.stroke(tip, tip + Vec2::new(9.0, -9.0), 3.0, col);
-            c.stroke(tip, tip + Vec2::new(9.0, 9.0), 3.0, col);
-            stroke_text_at(c, x0 + 56.0, mid, item.label(), 20.0, 2.6, col, Align::Left);
+    let items = menu.page.items();
+    let back_lit = items.get(menu.cursor) == Some(&Item::Back);
+    draw_frame(c, crumb, title, note, Some((key, back_lit)));
+    // The main page's entries and the pages of OPTIONS have an icon and a chevron.
+    let icons = matches!(menu.page, Page::Main | Page::Options);
+    for (i, (item, r)) in items.iter().zip(item_rects(menu.page)).enumerate() {
+        if *item == Item::Back {
             continue;
         }
-        if *item == Item::EndMission {
-            c.hline(x + 24, x + w - 24, (y0 - END_GAP / 2.0) as i32, DIM);
+        let [x0, y0, x1, y1] = r;
+        let (h, mid) = (y1 - y0, (y0 + y1) / 2.0);
+        let lit = i == menu.cursor;
+        draw_row(c, r, lit);
+        let col = if !item.enabled(&settings, ops, menu.can_save) {
+            ink::OFF
+        } else if lit {
+            ink::LIT_TEXT
+        } else {
+            ink::TEXT
+        };
+        let mut x = x0 + 20.0;
+        if icons {
+            let cell = (h * 1.3).round();
+            let line = if lit { ink::LIT_GLOW } else { ink::FRAME };
+            c.stroke(Vec2::new(x0 + cell, y0 + 1.0), Vec2::new(x0 + cell, y1 - 1.0), 1.2, line);
+            draw_icon(c, *item, Vec2::new(x0 + cell / 2.0, mid), h * 0.3, col);
+            x = x0 + cell + 26.0;
         }
+        let size = (h * 0.6).min(20.0);
+        let pen = size * 0.14;
         let label = match item {
             Item::EndMission if campaign.is_some() => "END SORTIE",
             _ => item.label(),
         };
-        stroke_text_at(c, 48.0, mid, label, 22.0, 2.8, col, Align::Left);
+        stroke_text_at(c, x, mid, label, size, pen, col, Align::Left);
+        let mut right = x1 - 18.0;
+        if icons || matches!(item, Item::KeyGuide | Item::Bindings) {
+            let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));
+            let arms = [tip + Vec2::new(-0.65 * s, -s), tip, tip + Vec2::new(-0.65 * s, s)];
+            c.polyline(&arms, pen.max(1.8), col);
+            right = x1 - 48.0;
+        }
         let v = match item {
             Item::SaveMission => menu.save_note.unwrap_or_default().to_string(),
             _ => item.value(&settings),
         };
         if !v.is_empty() {
-            stroke_text_at(c, W as f32 - 48.0, mid, &v, 22.0, 2.8, col, Align::Right);
+            stroke_text_at(c, right, mid, &v, size, pen, col, Align::Right);
         }
     }
     tex.dirty = true;
 }
 
-/// The search's VR keyboard, the key under the fingertip on a dark row.
+/// The panel's outline `inset` units inside its edge, its corners cut.
+fn outline(inset: f32) -> [Vec2; 8] {
+    let (l, t) = (EDGE + inset, EDGE + inset);
+    let (r, b) = (W as f32 - EDGE - inset, H as f32 - EDGE - inset);
+    let k = CUT - inset * 0.41;
+    [(l + k, t), (r - k, t), (r, t + k), (r, b - k), (r - k, b), (l + k, b), (l, b - k), (l, t + k)]
+        .map(|(x, y)| Vec2::new(x, y))
+}
+
+/// A convex polygon, filled.
+fn fill_poly(c: &mut Canvas, pts: &[Vec2], col: u8) {
+    for i in 1..pts.len().saturating_sub(1) {
+        c.triangle([pts[0], pts[i], pts[i + 1]], col);
+    }
+}
+
+/// A slanted bar from its bottom-left corner: `w` wide, `h` tall, its top `lean` to the right
+/// (to the left if negative).
+fn slash(c: &mut Canvas, at: Vec2, w: f32, h: f32, lean: f32, col: u8) {
+    let quad = [Vec2::ZERO, Vec2::new(w, 0.0), Vec2::new(w + lean, -h), Vec2::new(lean, -h)];
+    fill_poly(c, &quad.map(|p| at + p), col);
+}
+
+/// A rectangle filled from `top` at its top to `bottom` at its bottom (palette ramp indices).
+fn fill_gradient(c: &mut Canvas, [x0, y0, x1, y1]: [f32; 4], top: u8, bottom: u8) {
+    let (ya, yb) = (y0.round() as i32, y1.round() as i32);
+    let (xa, w) = (x0.round() as i32, (x1 - x0).round() as i32);
+    for y in ya..yb {
+        let t = (y - ya) as f32 / (yb - ya - 1).max(1) as f32;
+        c.fill_rect(xa, y, w, 1, (top as f32 + (bottom as f32 - top as f32) * t).round() as u8);
+    }
+}
+
+/// The panel: its frame and glow, the title in the tab at the top-left (after `crumb`, small),
+/// the game's name at the top-right, `note` and the BACK button (its key, whether it is
+/// highlighted) in the footer.
+fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option<(&str, bool)>) {
+    const TITLE: f32 = 28.0;
+    const CRUMB: f32 = 14.0;
+    let panel = outline(0.0);
+    fill_poly(c, &panel, ink::PANEL);
+    let tx = 76.0;
+    let crumb_w = if crumb.is_empty() { 0.0 } else { stroke_width(crumb, CRUMB) + 16.0 };
+    let tab = tx + crumb_w + stroke_width(title, TITLE) + 34.0 + SLANT;
+    let tab_shape = [
+        Vec2::new(EDGE + CUT, EDGE),
+        Vec2::new(tab, EDGE),
+        Vec2::new(tab - SLANT, HEADER_Y),
+        Vec2::new(EDGE, HEADER_Y),
+        Vec2::new(EDGE, EDGE + CUT),
+    ];
+    fill_poly(c, &tab_shape, ink::TAB);
+    c.stroke(tab_shape[1], tab_shape[2], 1.6, ink::LINE);
+    let step = W as f32 - 200.0;
+    c.polyline(
+        &[
+            Vec2::new(EDGE, HEADER_Y),
+            Vec2::new(step, HEADER_Y),
+            Vec2::new(step + STEP, HEADER_Y - STEP),
+            Vec2::new(W as f32 - EDGE, HEADER_Y - STEP),
+        ],
+        1.6,
+        ink::LINE,
+    );
+    for i in 0..2 {
+        slash(c, Vec2::new(24.0 + 16.0 * i as f32, 50.0), 9.0, 28.0, 12.0, ink::TEXT);
+    }
+    let mid = (EDGE + HEADER_Y) / 2.0 + 1.0;
+    if !crumb.is_empty() {
+        let y = mid + (TITLE - CRUMB) / 2.0;
+        stroke_text_at(c, tx, y, crumb, CRUMB, 1.8, ink::NOTE, Align::Left);
+    }
+    stroke_text_at(c, tx + crumb_w, mid, title, TITLE, 3.4, ink::LIT_TEXT, Align::Left);
+    stroke_text_at(
+        c,
+        W as f32 - 72.0,
+        26.0,
+        "STEALTH MISSION 89",
+        11.0,
+        1.6,
+        ink::TEXT,
+        Align::Right,
+    );
+    for i in 0..2 {
+        slash(c, Vec2::new(W as f32 - 48.0 + 14.0 * i as f32, 36.0), 9.0, 22.0, -12.0, ink::TEXT);
+    }
+
+    let step = W as f32 - 210.0;
+    c.polyline(
+        &[
+            Vec2::new(22.0, FOOT_Y),
+            Vec2::new(step, FOOT_Y),
+            Vec2::new(step + STEP, FOOT_Y - STEP),
+            Vec2::new(W as f32 - 22.0, FOOT_Y - STEP),
+        ],
+        1.6,
+        ink::LINE,
+    );
+    for i in 0..3 {
+        slash(c, Vec2::new(24.0 + 14.0 * i as f32, 492.0), 8.0, 18.0, 10.0, ink::LINE);
+    }
+    stroke_text_at(c, 90.0, 483.0, note, 11.0, 1.6, ink::NOTE, Align::Left);
+    if let Some((key, lit)) = back {
+        let [x0, y0, _, y1] = BACK;
+        if lit {
+            draw_row(c, BACK, true);
+        }
+        let col = if lit { ink::LIT_TEXT } else { ink::TEXT };
+        let mid = (y0 + y1) / 2.0;
+        let (k0, k1) = (x0 + 6.0, x0 + 56.0);
+        c.frame(Vec2::new(k0, y0 + 4.0), Vec2::new(k1, y1 - 4.0), 1.6, col);
+        stroke_text_at(c, (k0 + k1) / 2.0, mid, key, 13.0, 1.8, col, Align::Centre);
+        stroke_text_at(c, k1 + 14.0, mid, "BACK", 17.0, 2.3, col, Align::Left);
+    }
+
+    let mut edge = panel.to_vec();
+    edge.push(panel[0]);
+    c.polyline(&edge, 6.0, ink::GLOW);
+    c.polyline(&edge, 2.4, ink::EDGE);
+}
+
+/// An entry's framed row, lit up (a gradient, a glowing frame) while highlighted.
+fn draw_row(c: &mut Canvas, r: [f32; 4], lit: bool) {
+    let [x0, y0, x1, y1] = r;
+    let (a, b) = (Vec2::new(x0, y0), Vec2::new(x1, y1));
+    if lit {
+        fill_gradient(c, r, ink::LIT_TOP, ink::LIT_BOTTOM);
+        c.frame(a, b, 5.0, ink::shade(24));
+        c.frame(a, b, 3.0, ink::LIT_GLOW);
+        c.frame(a, b, 1.6, ink::EDGE);
+    } else {
+        fill_gradient(c, r, ink::ROW, ink::ROW);
+        c.frame(a, b, 1.2, ink::FRAME);
+    }
+}
+
+/// The menus' icons: Lucide's font (`assets/fonts/lucide.ttf`, ISC licence, beside it), also
+/// the egui menus' (`crate::menu::add_icon_font`).
+pub(crate) static ICON_FONT: std::sync::LazyLock<Option<&'static [u8]>> =
+    std::sync::LazyLock::new(|| {
+        let bytes = crate::asset_path::read("fonts/lucide.ttf")
+            .map_err(|e| warn!("menu icons: {e:#}"))
+            .ok()?;
+        Some(Box::leak(bytes.into_boxed_slice()))
+    });
+
+/// Its glyph outlines, for this menu's canvas.
+static ICONS: std::sync::LazyLock<Option<ttf_parser::Face<'static>>> =
+    std::sync::LazyLock::new(|| ttf_parser::Face::parse((*ICON_FONT)?, 0).ok());
+
+/// The Lucide icon (its code point) of an entry of the main page or of OPTIONS, those of the
+/// menus' buttons of the same name (`crate::menu::icon`).
+fn icon(item: Item) -> Option<char> {
+    use crate::menu::icon;
+    Some(match item {
+        Item::Resume => '\u{e13c}', // play
+        Item::SaveMission => icon::SAVE,
+        Item::Open(Page::Options) => icon::OPTIONS,
+        Item::KeyGuide => '\u{e05f}', // book-open
+        Item::EndMission => icon::END_SORTIE,
+        Item::Open(Page::Game) => '\u{e1de}',     // plane
+        Item::Open(Page::Graphics) => '\u{e11d}', // monitor
+        Item::Open(Page::Effects) => '\u{e412}',  // sparkles
+        Item::Open(Page::Sound) => '\u{e1ab}',    // volume-2
+        Item::Open(Page::Controls) => icon::KEYS,
+        _ => return None,
+    })
+}
+
+/// A glyph's outline as closed polylines (its curves in short segments), in font units.
+#[derive(Default)]
+struct Outline(Vec<Vec<Vec2>>);
+
+impl Outline {
+    /// Segments per curve.
+    const STEPS: usize = 8;
+
+    fn last(&self) -> Vec2 {
+        self.0.last().and_then(|c| c.last()).copied().unwrap_or_default()
+    }
+
+    fn push(&mut self, p: Vec2) {
+        if let Some(c) = self.0.last_mut() {
+            c.push(p);
+        }
+    }
+}
+
+impl ttf_parser::OutlineBuilder for Outline {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.push(vec![Vec2::new(x, y)]);
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.push(Vec2::new(x, y));
+    }
+
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        let (p0, p1, p2) = (self.last(), Vec2::new(x1, y1), Vec2::new(x, y));
+        for i in 1..=Self::STEPS {
+            let t = i as f32 / Self::STEPS as f32;
+            self.push(p0.lerp(p1, t).lerp(p1.lerp(p2, t), t));
+        }
+    }
+
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        let (p0, p1, p2, p3) = (self.last(), Vec2::new(x1, y1), Vec2::new(x2, y2), Vec2::new(x, y));
+        for i in 1..=Self::STEPS {
+            let t = i as f32 / Self::STEPS as f32;
+            let (a, b, c) = (p0.lerp(p1, t), p1.lerp(p2, t), p2.lerp(p3, t));
+            self.push(a.lerp(b, t).lerp(b.lerp(c, t), t));
+        }
+    }
+
+    fn close(&mut self) {}
+}
+
+/// The icon of an entry of the main page or of OPTIONS centred on `o`, the font's em `2 r`
+/// wide (the same stroke for every icon), its edges blended into the colour under it (the
+/// menu's colours are a ramp).
+fn draw_icon(c: &mut Canvas, item: Item, o: Vec2, r: f32, col: u8) {
+    let Some(face) = ICONS.as_ref() else { return };
+    let Some(id) = icon(item).and_then(|ch| face.glyph_index(ch)) else { return };
+    let mut outline = Outline::default();
+    let Some(b) = face.outline_glyph(id, &mut outline) else { return };
+    let k = 2.0 * r / face.units_per_em() as f32;
+    let mid = Vec2::new((b.x_min + b.x_max) as f32, (b.y_min + b.y_max) as f32) / 2.0;
+    // Font units point up.
+    let contours: Vec<Vec<Vec2>> = outline
+        .0
+        .into_iter()
+        .map(|c| c.into_iter().map(|p| o + (p - mid) * Vec2::new(k, -k)).collect())
+        .collect();
+    c.fill_contours(&contours, |under, share| {
+        (under as f32 + (col as f32 - under as f32) * share).round() as u8
+    });
+}
+
+/// The search's VR keyboard, the key under the fingertip lit up.
 fn draw_keyboard(c: &mut Canvas, hover: Option<Spot>) {
     for (key, [x0, y0, x1, y1]) in keyboard_keys() {
         let (x, y, w, h) = (x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32);
-        if hover == Some(Spot::Key(key)) {
-            c.fill_rect(x, y, w, h, ROW_BG);
-        }
-        c.rect(x, y, w, h, if key == VKey::Done { BRIGHT } else { DIM });
+        let lit = hover == Some(Spot::Key(key));
+        c.fill_rect(x, y, w, h, if lit { ink::LIT_BOTTOM } else { ink::ROW });
+        c.rect(x, y, w, h, if key == VKey::Done || lit { ink::EDGE } else { ink::FRAME });
         let centre = Vec2::new((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        stroke_text_at(c, centre.x, centre.y, &key.label(), 14.0, 2.0, BRIGHT, Align::Centre);
+        let col = if lit { ink::LIT_TEXT } else { ink::TEXT };
+        stroke_text_at(c, centre.x, centre.y, &key.label(), 14.0, 2.0, col, Align::Centre);
     }
 }
 
 /// The key guide's search field: a magnifier, the text and its `_` caret while `caret` (a hint
-/// while empty), the clear button's X while there is text (on a dark square under the mouse or
-/// a fingertip).
+/// while empty), the clear button's X while there is text (lit up under the mouse or a
+/// fingertip).
 fn draw_search(c: &mut Canvas, text: &str, caret: bool, clear_hover: bool) {
     let [x0, y0, x1, y1] = SEARCH;
     let mid = (y0 + y1) / 2.0;
-    let col = if text.is_empty() { DIM } else { BRIGHT };
-    c.rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, col);
+    let col = if text.is_empty() { ink::NOTE } else { ink::TEXT };
+    let (x, y, w, h) = (x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32);
+    c.fill_rect(x, y, w, h, ink::ROW);
+    c.rect(x, y, w, h, if text.is_empty() { ink::FRAME } else { ink::EDGE });
     let lens = Vec2::new(x0 + 15.0, mid - 2.0);
     c.ring(lens, 6.0, 2.0, col);
     c.stroke(lens + Vec2::splat(4.5), lens + Vec2::splat(9.5), 2.4, col);
     let tx = x0 + 34.0;
     if text.is_empty() {
-        stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, DIM, Align::Left);
+        stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, ink::NOTE, Align::Left);
         return;
     }
-    let end = stroke_text_at(c, tx, mid, text, 14.0, 2.0, BRIGHT, Align::Left);
+    let end = stroke_text_at(c, tx, mid, text, 14.0, 2.0, ink::TEXT, Align::Left);
     if caret {
-        stroke_text_at(c, end, mid, "_", 14.0, 2.0, BRIGHT, Align::Left);
+        stroke_text_at(c, end, mid, "_", 14.0, 2.0, ink::TEXT, Align::Left);
     }
     let [bx0, by0, bx1, by1] = CLEAR;
     if clear_hover {
@@ -1388,12 +1715,12 @@ fn draw_search(c: &mut Canvas, text: &str, caret: bool, clear_hover: bool) {
             by0 as i32 + 3,
             (bx1 - bx0) as i32 - 6,
             (by1 - by0) as i32 - 6,
-            ROW_BG,
+            ink::LIT_BOTTOM,
         );
     }
     let (cx, r) = ((bx0 + bx1) / 2.0, 6.0);
-    c.stroke(Vec2::new(cx - r, mid - r), Vec2::new(cx + r, mid + r), 2.4, BRIGHT);
-    c.stroke(Vec2::new(cx - r, mid + r), Vec2::new(cx + r, mid - r), 2.4, BRIGHT);
+    c.stroke(Vec2::new(cx - r, mid - r), Vec2::new(cx + r, mid + r), 2.4, ink::LIT_TEXT);
+    c.stroke(Vec2::new(cx - r, mid + r), Vec2::new(cx + r, mid - r), 2.4, ink::LIT_TEXT);
 }
 
 /// VR: the end-of-mission overlay on a screen in front of the head (a child of the XR tracking

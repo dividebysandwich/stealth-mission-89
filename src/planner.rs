@@ -17,7 +17,7 @@ use crate::canvas::Canvas;
 use crate::map_draw::{
     self, Layer, MapLayers, MapView, MapWeather, UAV_PINK, drone_cross, missile_circle,
 };
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, section};
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, icon, section};
 use crate::mfd::{MapModel, map_models, rasterise_map};
 use crate::mission::{PlannedRoute, RouteKind, RoutePoint};
 use crate::models::ModelLibrary;
@@ -443,24 +443,22 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
         (screen.height() - 32.0).clamp(400.0, 1000.0),
     );
     let mut open = true;
-    egui::Window::new("Mission planner")
+    let window = egui::Window::new("Mission planner")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
-        .fixed_size(size)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(12.0))
-        .show(ctx, |ui| {
-            ui.label(egui::RichText::new("MISSION PLANNER").heading().color(BRIGHT));
-            ui.separator();
-            let size = ui.available_size();
-            route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
-                ui.add_space(12.0);
-                if ui.add(big_button("DONE").fill(DIM)).clicked() {
-                    open = false;
-                }
-            });
+        .fixed_size(size);
+    let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
+    crate::menu::Panel::new("MISSION PLANNER").note(note).window(window, ctx, |ui| {
+        let size = ui.available_size();
+        route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
+            ui.add_space(12.0);
+            if ui.add(big_button("DONE").icon(icon::DONE).primary()).clicked() {
+                open = false;
+            }
         });
+    });
     if !open || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         planner.open = false;
         planner.drag = None;
@@ -553,7 +551,7 @@ pub fn route_panel(
             if editable {
                 ui.label(egui::RichText::new("Drag a point to move it, the map to pan. Click a leg to add a point, right click to remove it. Wheel: zoom.").small().color(DIM));
                 ui.add_space(12.0);
-                if ui.add(big_button("RESET")).clicked() {
+                if ui.add(big_button("RESET").icon(icon::RESET)).clicked() {
                     *route = PlannedRoute::of(m);
                 }
             } else {

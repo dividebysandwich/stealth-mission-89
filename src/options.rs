@@ -17,7 +17,8 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::menu::{
-    AMBER, BRIGHT, DIM, GREEN, big_button, facts, menu_window, section, slide_switch,
+    AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, menu_window, section,
+    slide_switch,
 };
 use crate::settings::{PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
@@ -74,8 +75,7 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    menu_window(ctx, "Options", 500.0).show(ctx, |ui| {
-        ui.label(egui::RichText::new("OPTIONS").heading().color(BRIGHT));
+    Panel::new("OPTIONS").window(menu_window(ctx, "Options", 500.0), ctx, |ui| {
         ui.horizontal(|ui| {
             for (tab, name) in Tab::ALL {
                 ui.selectable_value(&mut w.tab, tab, egui::RichText::new(name).size(16.0));
@@ -95,8 +95,8 @@ pub fn options_ui(
             tab_options(ui, w.tab, settings, head, dialog);
         });
         w.body = w.body.max(shown.response.rect.size());
-        ui.add_space(8.0);
-        ui.separator();
+        ui.add_space(4.0);
+        footer_rule(ui);
         ui.label(
             egui::RichText::new(
                 "Saved for the next flights; the realism switches are chosen with each game",
@@ -104,7 +104,9 @@ pub fn options_ui(
             .small()
             .color(DIM),
         );
-        if facts(ui.add(big_button("BACK")), &["Back to the previous screen"]).clicked() {
+        if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the previous screen"])
+            .clicked()
+        {
             back = true;
         }
     });
@@ -434,7 +436,7 @@ fn control_options(
 ) {
     section(ui, "Bindings");
     if facts(
-        ui.add(big_button("KEYS AND JOYSTICK").min_size(egui::vec2(300.0, 44.0))),
+        ui.add(big_button("KEYS AND JOYSTICK").icon(icon::KEYS).min_size(egui::vec2(300.0, 44.0))),
         &["Map keys, joystick and HOTAS axes and buttons", "Saved for the next flights"],
     )
     .clicked()

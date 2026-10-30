@@ -6,7 +6,7 @@ use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 use stealth_sim::score::MissionReport;
 
 use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
-use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, section};
+use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, icon, section};
 use crate::mission::clean_text;
 use crate::recorder::{FlightRecord, MarkKind, Sample};
 use crate::settings::AppState;
@@ -107,6 +107,7 @@ fn debrief_ui(
     let r = &d.report;
     let ctx = contexts.ctx_mut()?;
     crate::menu::apply_ui_zoom(ctx);
+    crate::menu::add_icon_font(ctx);
     if ctx.global_style().visuals.window_fill != BG {
         ctx.all_styles_mut(apply_terminal_style);
     }
@@ -114,27 +115,18 @@ fn debrief_ui(
     let width = (screen.width() - 32.0).clamp(600.0, 1100.0);
     let mut done = (keys.just_pressed(KeyCode::Enter) && !crate::fullscreen::alt_enter(&keys))
         || keys.just_pressed(KeyCode::Escape);
-    egui::Window::new("Debrief")
+    let window = egui::Window::new("Debrief")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
         .min_width(width)
-        .max_width(width)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(16.0))
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("MISSION DEBRIEF").heading().color(BRIGHT));
-                if let Some(m) = &d.mission {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(
-                            egui::RichText::new(clean_text(&m.briefing.title).to_ascii_uppercase())
-                                .color(DIM),
-                        );
-                    });
-                }
-            });
-            ui.separator();
+        .max_width(width);
+    let note = d.mission.as_ref().map(|m| clean_text(&m.briefing.title).to_ascii_uppercase());
+    crate::menu::Panel::new("MISSION DEBRIEF").note(note.unwrap_or_default()).window(
+        window,
+        ctx,
+        |ui| {
             ui.label(
                 egui::RichText::new(d.title.to_ascii_uppercase())
                     .size(24.0)
@@ -150,17 +142,23 @@ fn debrief_ui(
                 summary(ui, &d, width);
             }
             ui.add_space(6.0);
-            ui.separator();
+            crate::menu::footer_rule(ui);
+            ui.add_space(8.0);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                done |= ui.add(big_button("CONTINUE").fill(DIM)).clicked();
+                done |= ui.add(big_button("CONTINUE").icon(icon::CONTINUE).primary()).clicked();
                 if !d.record.samples.is_empty() {
-                    let label = if map.open { "RESULTS" } else { "FLIGHT MAP" };
-                    if ui.add(big_button(label)).clicked() {
+                    let (label, mark) = if map.open {
+                        ("RESULTS", icon::RESULTS)
+                    } else {
+                        ("FLIGHT MAP", icon::FLIGHT_MAP)
+                    };
+                    if ui.add(big_button(label).icon(mark)).clicked() {
                         map.open = !map.open;
                     }
                 }
             });
-        });
+        },
+    );
     if done {
         next.set(AppState::Menu);
     }
@@ -442,8 +440,9 @@ fn flight_map(
         });
     });
     ui.horizontal(|ui| {
-        let label = if map.playing { "PAUSE" } else { "PLAY" };
-        if ui.add(big_button(label)).clicked() {
+        let (label, mark) =
+            if map.playing { ("PAUSE", icon::PAUSE) } else { ("PLAY", icon::START) };
+        if ui.add(big_button(label).icon(mark)).clicked() {
             if map.frame >= last as f32 {
                 map.frame = 0.0;
             }

@@ -17,7 +17,10 @@ use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
 use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, MapWeather};
-use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, section};
+use crate::menu::{
+    AMBER, BG, BRIGHT, DIM, GREEN, Panel, apply_terminal_style, big_button, footer_rule, icon,
+    icon_text, section,
+};
 use crate::settings::AppState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -252,7 +255,7 @@ fn test_accept() -> Option<BriefPage> {
 }
 
 /// Background of an unselected mission row.
-const ROW: egui::Color32 = egui::Color32::from_rgb(10, 34, 18);
+const ROW: egui::Color32 = egui::Color32::from_rgb(9, 29, 21);
 
 /// Map units to km.
 fn km(d: i32) -> f32 {
@@ -328,6 +331,7 @@ pub fn ops_ui(
         MapWeather::new(weather.now.map(|n| n.weather).unwrap_or_default(), sky.freezing_level());
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
     crate::menu::apply_ui_zoom(ctx);
+    crate::menu::add_icon_font(ctx);
     if ctx.global_style().visuals.window_fill != BG {
         ctx.all_styles_mut(apply_terminal_style);
     }
@@ -337,37 +341,33 @@ pub fn ops_ui(
         && let Some(base) = c.landed
     {
         let name = combat.sim.place_name(base);
-        egui::Window::new("Landed")
+        let window = egui::Window::new("Landed")
             .anchor(egui::Align2::CENTER_BOTTOM, egui::vec2(0.0, -40.0))
             .collapsible(false)
             .resizable(false)
-            .title_bar(false)
-            .show(ctx, |ui| {
-                ui.label(
-                    egui::RichText::new(format!("LANDED AT {}", name.to_ascii_uppercase()))
-                        .heading()
-                        .color(BRIGHT),
-                );
-                ui.label(egui::RichText::new("The ground crew is ready").color(DIM));
-                ui.horizontal(|ui| {
-                    if ui.add(big_button("REARM & REFUEL")).clicked() {
-                        if let Some(loadout) = loadout.as_deref().cloned() {
-                            c.actions.push(Action::Rearm { loadout });
-                        }
+            .title_bar(false);
+        let title = format!("LANDED AT {}", name.to_ascii_uppercase());
+        Panel::new(&title).window(window, ctx, |ui| {
+            ui.label(egui::RichText::new("The ground crew is ready").color(DIM));
+            ui.horizontal(|ui| {
+                if ui.add(big_button("REARM & REFUEL").icon(icon::REARM)).clicked() {
+                    if let Some(loadout) = loadout.as_deref().cloned() {
+                        c.actions.push(Action::Rearm { loadout });
                     }
-                    if ui.add(big_button("END SORTIE").fill(DIM)).clicked() {
-                        c.actions.push(Action::EndSortie { outcome: 0 });
-                        c.landed = None;
-                    }
-                });
+                }
+                if ui.add(big_button("END SORTIE").icon(icon::END_SORTIE).primary()).clicked() {
+                    c.actions.push(Action::EndSortie { outcome: 0 });
+                    c.landed = None;
+                }
             });
+        });
         return Ok(());
     }
     let theater = c.mission.theater_name.clone();
     let tex = planner.map_texture(&c.mission.theater_code.to_ascii_lowercase()).cloned();
     let screen = ctx.content_rect();
     let width = (screen.width() - 32.0).clamp(640.0, 1200.0);
-    let height = (screen.height() - 190.0).clamp(240.0, 700.0);
+    let height = (screen.height() - 210.0).clamp(240.0, 700.0);
     // Test aid: `--campaign-accept map|loadout` opens the first mission's briefing.
     if let Some(page) = test_accept()
         && !std::mem::replace(&mut c.ui.test_taken, true)
@@ -388,174 +388,170 @@ pub fn ops_ui(
     }
     super::designate::test_aid(c, &combat.sim, scenery.as_deref());
     let mut leave = false;
-    egui::Window::new("Ops")
+    let window = egui::Window::new("Ops")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
         .min_width(width)
-        .max_width(width)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(14.0))
-        .show(ctx, |ui| {
-            ui.horizontal_top(|ui| {
-                ui.vertical(|ui| {
-                    // The right side's clock, score and button keep their room.
-                    ui.set_max_width((width - 380.0).max(240.0));
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(egui::RichText::new("DYNAMIC CAMPAIGN").heading().color(BRIGHT));
-                        ui.label(egui::RichText::new(theater.to_ascii_uppercase()).color(DIM));
-                        if let Some(server) = &c.server {
-                            ui.label(
-                                egui::RichText::new(format!("ON {}", server.to_ascii_uppercase()))
-                                    .color(FRIENDLY_BLUE),
-                            );
-                        } else if c.role == Role::Host {
-                            ui.label(egui::RichText::new("SERVING").color(FRIENDLY_BLUE));
+        .max_width(width);
+    let server = match (&c.server, c.role) {
+        (Some(server), _) => Some(format!("ON {}", server.to_ascii_uppercase())),
+        (None, Role::Host) => Some("SERVING".to_string()),
+        _ => None,
+    };
+    let mut panel = Panel::new("DYNAMIC CAMPAIGN").note(theater.to_ascii_uppercase());
+    if let Some(server) = server {
+        panel = panel.after(egui::RichText::new(format!("  {server}")).color(FRIENDLY_BLUE));
+    }
+    panel.window(window, ctx, |ui| {
+        ui.horizontal_top(|ui| {
+            ui.vertical(|ui| {
+                // The right side's clock, score and button keep their room.
+                ui.set_max_width((width - 380.0).max(240.0));
+                ui.horizontal(|ui| {
+                    for (tab, label) in [
+                        (Tab::Board, "MISSIONS"),
+                        (Tab::Map, "WAR MAP"),
+                        (Tab::AirDefence, "AIR DEFENSE"),
+                        (Tab::Forces, "FORCES"),
+                        (Tab::Players, "PLAYERS"),
+                        (Tab::Debrief, "DEBRIEF"),
+                        (Tab::Log, "LOG"),
+                        (Tab::Chat, "CHAT"),
+                    ] {
+                        if tab == Tab::Chat && c.role == Role::Local {
+                            continue;
                         }
-                    });
-                    ui.add_space(4.0);
-                    ui.horizontal(|ui| {
-                        for (tab, label) in [
-                            (Tab::Board, "MISSIONS"),
-                            (Tab::Map, "WAR MAP"),
-                            (Tab::AirDefence, "AIR DEFENSE"),
-                            (Tab::Forces, "FORCES"),
-                            (Tab::Players, "PLAYERS"),
-                            (Tab::Debrief, "DEBRIEF"),
-                            (Tab::Log, "LOG"),
-                            (Tab::Chat, "CHAT"),
-                        ] {
-                            if tab == Tab::Chat && c.role == Role::Local {
-                                continue;
-                            }
-                            if ui.selectable_label(c.ui.tab == tab, label).clicked() {
-                                c.ui.tab = tab;
-                            }
+                        if ui.selectable_label(c.ui.tab == tab, label).clicked() {
+                            c.ui.tab = tab;
                         }
-                    });
-                });
-                // Top right: the clock and the score, the way out under them.
-                ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            egui::RichText::new(format!("BLUE {}", c.state().held(Side::Blue)))
-                                .color(FRIENDLY_BLUE),
-                        );
-                        ui.label(
-                            egui::RichText::new(format!("RED {}", c.state().held(Side::Red)))
-                                .color(MISSILE_RED),
-                        );
-                        ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
-                        if let Some((short, _)) = &wx {
-                            ui.label(egui::RichText::new(short).color(DIM));
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        if ui.add(exit_button(c.role)).clicked() {
-                            c.ui.confirm_exit = true;
-                        }
-                        if ui
-                            .add(egui::Button::new("OPTIONS").min_size(egui::vec2(100.0, 30.0)))
-                            .clicked()
-                        {
-                            menu.open_options = true;
-                        }
-                    });
+                    }
                 });
             });
-            ui.separator();
-            ui.allocate_ui(egui::vec2(width, height), |ui| {
-                ui.set_min_height(height);
-                if c.state().outcome.is_some() {
-                    end_screen(ui, c);
-                    return;
-                }
-                match c.ui.tab {
-                    Tab::Board => board(ui, c, width),
-                    Tab::Map => war_map(
-                        ui,
-                        c,
-                        &combat.sim,
-                        &mut unit_view,
-                        tex.as_ref(),
-                        &map_wx,
-                        scenery.as_deref(),
-                        egui::vec2(width, height),
-                    ),
-                    Tab::AirDefence => super::air_defence::tab(
-                        ui,
-                        c,
-                        &combat.sim,
-                        tex.as_ref(),
-                        scenery.as_deref(),
-                        egui::vec2(width, height),
-                    ),
-                    Tab::Forces => forces(ui, c),
-                    Tab::Players => players(ui, c),
-                    Tab::Debrief => debrief(ui, c),
-                    Tab::Log => log(ui, c),
-                    Tab::Chat => chat(ui, c, &mut notices, settings.vr),
-                }
-            });
-            ui.separator();
-            ui.horizontal(|ui| {
-                if let Some(e) = &c.ui.error {
-                    ui.colored_label(AMBER, e);
-                } else {
-                    supply_line(ui, c);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if c.state().outcome.is_some() {
-                        ui.label(egui::RichText::new("The war is over").color(DIM));
-                    } else {
-                        ui.add(egui::Spinner::new().color(GREEN));
-                        ui.label(egui::RichText::new("War simulation running").color(DIM));
+            // Top right: the clock and the score, the way out under them.
+            ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("BLUE {}", c.state().held(Side::Blue)))
+                            .color(FRIENDLY_BLUE),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("RED {}", c.state().held(Side::Red)))
+                            .color(MISSILE_RED),
+                    );
+                    ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
+                    if let Some((short, _)) = &wx {
+                        ui.label(egui::RichText::new(short).color(DIM));
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui.add(exit_button(ui, c.role)).clicked() {
+                        c.ui.confirm_exit = true;
+                    }
+                    if ui
+                        .add(
+                            egui::Button::new(icon_text(ui, icon::OPTIONS, "OPTIONS"))
+                                .min_size(egui::vec2(100.0, 30.0)),
+                        )
+                        .clicked()
+                    {
+                        menu.open_options = true;
                     }
                 });
             });
         });
+        ui.separator();
+        ui.allocate_ui(egui::vec2(width, height), |ui| {
+            ui.set_min_height(height);
+            if c.state().outcome.is_some() {
+                end_screen(ui, c);
+                return;
+            }
+            match c.ui.tab {
+                Tab::Board => board(ui, c, width),
+                Tab::Map => war_map(
+                    ui,
+                    c,
+                    &combat.sim,
+                    &mut unit_view,
+                    tex.as_ref(),
+                    &map_wx,
+                    scenery.as_deref(),
+                    egui::vec2(width, height),
+                ),
+                Tab::AirDefence => super::air_defence::tab(
+                    ui,
+                    c,
+                    &combat.sim,
+                    tex.as_ref(),
+                    scenery.as_deref(),
+                    egui::vec2(width, height),
+                ),
+                Tab::Forces => forces(ui, c),
+                Tab::Players => players(ui, c),
+                Tab::Debrief => debrief(ui, c),
+                Tab::Log => log(ui, c),
+                Tab::Chat => chat(ui, c, &mut notices, settings.vr),
+            }
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            if let Some(e) = &c.ui.error {
+                ui.colored_label(AMBER, e);
+            } else {
+                supply_line(ui, c);
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if c.state().outcome.is_some() {
+                    ui.label(egui::RichText::new("The war is over").color(DIM));
+                } else {
+                    ui.add(egui::Spinner::new().color(GREEN));
+                    ui.label(egui::RichText::new("War simulation running").color(DIM));
+                }
+            });
+        });
+    });
     if c.ui.confirm_exit {
-        egui::Window::new("Leave the campaign")
+        let window = egui::Window::new("Leave the campaign")
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .collapsible(false)
             .resizable(false)
             .title_bar(false)
-            .order(egui::Order::Foreground)
-            .frame(egui::Frame::window(&ctx.global_style()).inner_margin(18.0))
-            .show(ctx, |ui| {
-                let (title, text, button) = match c.role {
-                    Role::Local => (
-                        "SAVE AND LEAVE THE CAMPAIGN?",
-                        "The war stops until you continue it. Aircraft in the air are lost; \
+            .order(egui::Order::Foreground);
+        let (title, text, button) = match c.role {
+            Role::Local => (
+                "SAVE AND LEAVE THE CAMPAIGN?",
+                "The war stops until you continue it. Aircraft in the air are lost; \
                          insertions under way start again from their base.",
-                        "SAVE & EXIT",
-                    ),
-                    Role::Host => (
-                        "SAVE AND STOP SERVING THE CAMPAIGN?",
-                        "The players who joined are disconnected and the war stops until you \
+                "SAVE & EXIT",
+            ),
+            Role::Host => (
+                "SAVE AND STOP SERVING THE CAMPAIGN?",
+                "The players who joined are disconnected and the war stops until you \
                          continue it. Aircraft in the air are lost; insertions under way start \
                          again from their base.",
-                        "SAVE & EXIT",
-                    ),
-                    Role::Client => (
-                        "DISCONNECT FROM THE SERVER?",
-                        "The campaign goes on on the server; nothing is saved here. Your sortie \
+                "SAVE & EXIT",
+            ),
+            Role::Client => (
+                "DISCONNECT FROM THE SERVER?",
+                "The campaign goes on on the server; nothing is saved here. Your sortie \
                          ends.",
-                        "DISCONNECT",
-                    ),
-                };
-                ui.label(egui::RichText::new(title).heading().color(BRIGHT));
-                ui.label(egui::RichText::new(text).color(DIM));
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    if ui.add(big_button(button).fill(EXIT_RED)).clicked() {
-                        leave = true;
-                    }
-                    if ui.add(big_button("CANCEL")).clicked() {
-                        c.ui.confirm_exit = false;
-                    }
-                });
+                "DISCONNECT",
+            ),
+        };
+        Panel::new(title).window(window, ctx, |ui| {
+            ui.label(egui::RichText::new(text).color(DIM));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.add(big_button(button).icon(exit_icon(c.role)).fill(EXIT_RED)).clicked() {
+                    leave = true;
+                }
+                if ui.add(big_button("CANCEL").icon(icon::CANCEL)).clicked() {
+                    c.ui.confirm_exit = false;
+                }
             });
+        });
     }
     if leave {
         c.ui.confirm_exit = false;
@@ -787,7 +783,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             package_info(ui, c, &o);
             if o.kind.ai_flown() {
                 ui.add_space(10.0);
-                if ui.add(big_button("ORDER INSERTION")).clicked()
+                if ui.add(big_button("ORDER INSERTION").icon(icon::HELICOPTER)).clicked()
                     && let Objective::Insertion { place } = o.objective
                 {
                     c.ui.error = None;
@@ -863,8 +859,12 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             ui.label(egui::RichText::new(text).color(DIM));
             support_button(ui, c, &o);
             ui.add_space(10.0);
-            let accept = if o.kind.ai_flown() { "FLY THE UH-60" } else { "ACCEPT MISSION" };
-            if ui.add(big_button(accept).fill(DIM)).clicked() {
+            let (accept, mark) = if o.kind.ai_flown() {
+                ("FLY THE UH-60", icon::HELICOPTER)
+            } else {
+                ("ACCEPT MISSION", icon::ACCEPT)
+            };
+            if ui.add(big_button(accept).icon(mark).primary()).clicked() {
                 c.ui.error = None;
                 if c.role != Role::Local {
                     c.actions.push(Action::SelectMission { offer: Some(o.id), base: chosen });
@@ -1420,7 +1420,7 @@ fn control_button(
         },
     );
     let why = man_refusal(c, sim, k);
-    if ui.add_enabled(why.is_none(), big_button("CONTROL")).clicked() {
+    if ui.add_enabled(why.is_none(), big_button("CONTROL").icon(icon::CONTROL)).clicked() {
         c.ui.error = None;
         c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
         unit_view.close();
@@ -1633,7 +1633,7 @@ fn chat(
             send = true;
             resp.request_focus();
         }
-        if ui.add(big_button("SEND")).clicked() {
+        if ui.add(big_button("SEND").icon(icon::SEND)).clicked() {
             send = true;
         }
     };
@@ -1674,22 +1674,17 @@ fn briefing(
     let mut back = false;
     let mut take_off = false;
     let mut edit = None;
-    egui::Window::new("Briefing")
+    let window = egui::Window::new("Briefing")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
         .min_width(size.x)
-        .max_width(size.x)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(14.0))
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("MISSION BRIEFING").heading().color(BRIGHT));
-                ui.label(egui::RichText::new(o.kind.name()).color(kind_colour(o.kind)));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
-                });
-            });
+        .max_width(size.x);
+    Panel::new("MISSION BRIEFING")
+        .after(egui::RichText::new(format!("  {}", o.kind.name())).color(kind_colour(o.kind)))
+        .note(clock_text(c))
+        .window(window, ctx, |ui| {
             ui.label(egui::RichText::new(&o.title).size(20.0).color(BRIGHT));
             ui.label(egui::RichText::new(describe_offer(c, &o)).color(DIM));
             let d = km(dist(m.takeoff.position.x, m.takeoff.position.y, o.x, o.y));
@@ -1771,7 +1766,7 @@ fn briefing(
                             height - 30.0,
                         );
                         ui.horizontal(|ui| {
-                            if ui.add(big_button("BRIEFED")).clicked() {
+                            if ui.add(big_button("BRIEFED").icon(icon::BRIEFED)).clicked() {
                                 b.loadout =
                                     crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
                             }
@@ -1779,14 +1774,15 @@ fn briefing(
                     }
                 }
             });
-            ui.separator();
+            footer_rule(ui);
+            ui.add_space(6.0);
             ui.horizontal(|ui| {
-                back = ui.add(big_button("BACK")).clicked();
+                back = ui.add(big_button("BACK").icon(icon::BACK)).clicked();
                 if let Some(e) = &c.ui.error {
                     ui.colored_label(AMBER, e);
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    take_off = ui.add(big_button("TAKE OFF").fill(DIM)).clicked();
+                    take_off = ui.add(big_button("TAKE OFF").icon(icon::FLY).primary()).clicked();
                     ui.add(egui::Spinner::new().color(GREEN));
                     ui.label(egui::RichText::new("War simulation running").color(DIM));
                 });
@@ -1931,9 +1927,15 @@ fn route_editor(
 /// The red way out: SAVE & EXIT, or DISCONNECT from a server.
 pub(crate) const EXIT_RED: egui::Color32 = egui::Color32::from_rgb(150, 24, 20);
 
-fn exit_button(role: Role) -> egui::Button<'static> {
+/// SAVE & EXIT's icon, or DISCONNECT's.
+fn exit_icon(role: Role) -> char {
+    if role == Role::Client { icon::DISCONNECT } else { icon::SAVE }
+}
+
+fn exit_button(ui: &egui::Ui, role: Role) -> egui::Button<'static> {
     let label = if role == Role::Client { "DISCONNECT" } else { "SAVE & EXIT" };
-    egui::Button::new(egui::RichText::new(label).strong().color(egui::Color32::WHITE))
+    let text = egui::RichText::new(label).strong().color(egui::Color32::WHITE);
+    egui::Button::new(icon_text(ui, exit_icon(role), text))
         .fill(EXIT_RED)
         .stroke(egui::Stroke::new(1.0, MISSILE_RED))
         .min_size(egui::vec2(150.0, 30.0))

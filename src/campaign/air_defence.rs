@@ -15,7 +15,7 @@ use stealth_sim::{Sim, fflags};
 use super::ops::{fit_map, man_refusal};
 use super::{Action, ActiveCampaign};
 use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, section};
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon, icon_text, section};
 
 /// The list's width (points).
 const LIST_W: f32 = 430.0;
@@ -318,7 +318,8 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         ui.label(egui::RichText::new(format!("near {}", s.near)).color(DIM));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let why = man_refusal(c, sim, s.unit);
-            let button = egui::Button::new("ENTER").min_size(egui::vec2(80.0, 24.0));
+            let button = egui::Button::new(icon_text(ui, icon::CONTROL, "ENTER"))
+                .min_size(egui::vec2(80.0, 24.0));
             let r = ui.add_enabled(why.is_none(), button);
             if r.clicked() {
                 c.ui.error = None;

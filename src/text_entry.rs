@@ -93,7 +93,7 @@ struct Keyboard {
 pub const ROWS: [&str; 4] = ["1234567890", "QWERTYUIOP", "ASDFGHJKL'", "ZXCVBNM.-_"];
 const ADDRESS_ROW: &str = ":[]";
 const KEY: egui::Vec2 = egui::vec2(46.0, 42.0);
-const KEY_FILL: egui::Color32 = egui::Color32::from_rgb(8, 28, 13);
+const KEY_FILL: egui::Color32 = crate::menu::FIELD;
 
 fn key(ui: &mut egui::Ui, label: &str, width: f32, lit: bool) -> bool {
     key_enabled(ui, label, width, lit, true)

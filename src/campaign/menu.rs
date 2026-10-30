@@ -6,7 +6,9 @@ use bevy_egui::{EguiContexts, egui};
 use stealth_campaign::CampaignSetup;
 
 use super::ActiveCampaign;
-use crate::menu::{AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, group, section};
+use crate::menu::{
+    AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, group, icon, section,
+};
 use crate::mission::MissionData;
 use crate::settings::{AppState, MissionSetup};
 
@@ -68,27 +70,27 @@ pub(crate) fn delete_popup(
     cancel: bool,
 ) -> Option<bool> {
     let mut answer = cancel.then_some(false);
-    egui::Window::new(format!("Delete the {}", what.to_lowercase()))
+    let window = egui::Window::new(format!("Delete the {}", what.to_lowercase()))
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
-        .order(egui::Order::Foreground)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(18.0))
-        .show(ctx, |ui| {
-            ui.label(egui::RichText::new(format!("DELETE THIS {what}?")).heading().color(BRIGHT));
-            ui.label(egui::RichText::new(label).color(BRIGHT));
-            ui.label(egui::RichText::new("Deletion is permanent").color(DIM));
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui.add(big_button("DELETE").fill(super::ops::EXIT_RED)).clicked() {
-                    answer = Some(true);
-                }
-                if ui.add(big_button("CANCEL")).clicked() {
-                    answer = Some(false);
-                }
-            });
+        .order(egui::Order::Foreground);
+    let title = format!("DELETE THIS {what}?");
+    crate::menu::Panel::new(&title).window(window, ctx, |ui| {
+        ui.label(egui::RichText::new(label).color(BRIGHT));
+        ui.label(egui::RichText::new("Deletion is permanent").color(DIM));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if ui.add(big_button("DELETE").icon(icon::DELETE).fill(super::ops::EXIT_RED)).clicked()
+            {
+                answer = Some(true);
+            }
+            if ui.add(big_button("CANCEL").icon(icon::CANCEL)).clicked() {
+                answer = Some(false);
+            }
         });
+    });
     answer
 }
 
@@ -128,9 +130,8 @@ pub fn campaign_window(
     // Escape cancels the delete confirmation first, then closes the window.
     let mut close = escape && w.confirm_delete.is_none();
     let width = crate::menu::wide_width(ctx);
-    crate::menu::menu_window(ctx, "Dynamic campaign", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("DYNAMIC CAMPAIGN").heading().color(BRIGHT));
-        ui.separator();
+    let window = crate::menu::menu_window(ctx, "Dynamic campaign", width);
+    crate::menu::Panel::new("DYNAMIC CAMPAIGN").note("REAL-TIME THEATER WAR").window(window, ctx, |ui| {
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(210.0);
@@ -202,7 +203,7 @@ pub fn campaign_window(
                 roe_name(state.roe),
                 ["green", "regular", "veteran", "elite"][state.opponents.min(3) as usize]
             ));
-            if ui.add(big_button("START")).clicked() {
+            if ui.add(big_button("START").icon(icon::START)).clicked() {
                 let secs = web_time::SystemTime::now()
                     .duration_since(web_time::UNIX_EPOCH)
                     .map_or(0, |d| d.as_secs());
@@ -232,7 +233,7 @@ pub fn campaign_window(
                 let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
                 ui.horizontal(|ui| {
                     ui.label(format!("{theater:<24} {hours:>5.1} h played"));
-                    if ui.add(big_button("CONTINUE")).clicked() {
+                    if ui.add(big_button("CONTINUE").icon(icon::CONTINUE)).clicked() {
                         let rules = super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117));
                         match stealth_host::save::load(&name) {
                             Ok(Some(st)) => match ActiveCampaign::resume(name.clone(), st, &data, rules) {
@@ -243,10 +244,10 @@ pub fn campaign_window(
                             Err(e) => w.error = Some(format!("The save could not be read: {e:#}")),
                         }
                     }
-                    if !settings.vr && vr.0 && ui.add(big_button("IN VR")).clicked() {
+                    if !settings.vr && vr.0 && ui.add(big_button("IN VR").icon(icon::VR)).clicked() {
                         vr_name = Some(name.clone());
                     }
-                    if ui.add(big_button("DELETE")).on_hover_text("Delete this saved campaign").clicked() {
+                    if ui.add(big_button("DELETE").icon(icon::DELETE)).on_hover_text("Delete this saved campaign").clicked() {
                         w.confirm_delete = Some((name.clone(), format!("{theater}, {hours:.1} h played")));
                     }
                 });
@@ -257,12 +258,13 @@ pub fn campaign_window(
             }
             });
         });
-        ui.separator();
+        crate::menu::footer_rule(ui);
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+            if ui.add(big_button("BACK").icon(icon::BACK)).on_hover_text("Back to the main menu").clicked() {
                 close = true;
             }
-            if ui.add(big_button("OPTIONS")).on_hover_text("Game, graphics, sound and controls").clicked() {
+            if ui.add(big_button("OPTIONS").icon(icon::OPTIONS)).on_hover_text("Game, graphics, sound and controls").clicked() {
                 options.open = true;
             }
         });

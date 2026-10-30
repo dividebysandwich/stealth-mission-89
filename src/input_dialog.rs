@@ -17,7 +17,7 @@ use crate::hotas::{
 };
 use crate::input::{Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN};
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon, icon_text};
 use crate::text_entry::{Charset, virtual_keyboard};
 
 #[derive(Resource, Default)]
@@ -282,26 +282,27 @@ pub fn show(
     let screen = ctx.content_rect();
     let mut open = true;
     let mut start: Option<Binding> = None;
-    egui::Window::new("INPUT MAPPING")
+    let window = egui::Window::new("INPUT MAPPING")
         .order(egui::Order::Foreground)
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
-        .fixed_size(egui::vec2((screen.width() - 80.0).clamp(560.0, 980.0), (screen.height() - 120.0).max(300.0)))
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(16.0))
-        .show(ctx, |ui| {
+        .fixed_size(egui::vec2(
+            (screen.width() - 80.0).clamp(560.0, 980.0),
+            (screen.height() - 120.0).max(300.0),
+        ));
+    crate::menu::Panel::new("INPUT MAPPING").note("KEYS, JOYSTICKS AND GAMEPADS").window(window, ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("INPUT MAPPING").heading().color(BRIGHT));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("DONE").clicked() {
+                    if ui.button(icon_text(ui, icon::DONE, "DONE")).clicked() {
                         open = false;
                     }
-                    if ui.button("CLEAR ALL").clicked() {
+                    if ui.button(icon_text(ui, icon::CLEAR, "CLEAR ALL")).clicked() {
                         config.axes.clear();
                         config.buttons.clear();
                     }
-                    if ui.button("DEFAULT KEYS").clicked() {
+                    if ui.button(icon_text(ui, icon::RESET, "DEFAULT KEYS")).clicked() {
                         config.keys = default_key_mappings();
                     }
                 });
@@ -423,7 +424,7 @@ pub fn show(
                                 if ui.add(add).on_hover_text("Add a key (it is taken from any other action)").clicked() && !capturing_key {
                                     start = Some(key);
                                 }
-                                if ui.button("CLEAR").clicked() {
+                                if ui.button(icon_text(ui, icon::CLEAR, "CLEAR")).clicked() {
                                     config.keys.retain(|m| m.target != target);
                                 }
                             });
@@ -590,7 +591,7 @@ fn vr_rows(config: &InputConfig, query: &str) -> Vec<VrInput> {
 fn vr_buttons(ui: &mut egui::Ui, config: &mut InputConfig, inputs: &[VrInput]) {
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new("[ VR CONTROLLERS ]").color(AMBER).size(14.0));
-        if ui.button("DEFAULTS").clicked() {
+        if ui.button(icon_text(ui, icon::RESET, "DEFAULTS")).clicked() {
             config.vr_buttons = default_vr_buttons();
         }
     });
@@ -649,7 +650,7 @@ fn row_buttons(
         if ui.add(bind).clicked() && !capturing {
             *start = Some(what);
         }
-        if ui.button("CLEAR").clicked() {
+        if ui.button(icon_text(ui, icon::CLEAR, "CLEAR")).clicked() {
             clear();
         }
     })
@@ -723,7 +724,7 @@ fn preview(ui: &mut egui::Ui, s: Stick) {
     let depth = |p: Vec3| (view * p).z;
 
     // Fixed ground grid as the reference.
-    let grid = egui::Stroke::new(1.0, egui::Color32::from_rgb(14, 50, 24));
+    let grid = egui::Stroke::new(1.0, egui::Color32::from_rgb(12, 50, 34));
     for i in -4..=4 {
         let x = i as f32 * 1.5;
         painter.line_segment(
@@ -754,7 +755,7 @@ fn preview(ui: &mut egui::Ui, s: Stick) {
         let n = (f[1] - f[0]).cross(f[2] - f[0]).normalize_or_zero();
         let lit = n.dot(light).abs();
         let g = (20.0 + 70.0 * lit) as u8;
-        let fill = egui::Color32::from_rgb(g / 4, g, g / 3);
+        let fill = egui::Color32::from_rgb(g / 5, g, g * 2 / 3);
         painter.add(egui::Shape::convex_polygon(
             f.iter().map(|p| project(*p)).collect(),
             fill,

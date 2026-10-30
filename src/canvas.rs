@@ -709,6 +709,75 @@ impl Canvas {
         let (p, q) = (a.min(b), a.max(b));
         self.polyline(&[p, Vec2::new(q.x, p.y), q, Vec2::new(p.x, q.y), p], w, c);
     }
+
+    /// Fills the shape outlined by closed `contours` (non-zero winding, so a glyph's holes stay
+    /// open), each texel it covers set to `ink(the colour under it, the share covered)`: the
+    /// edges anti-aliased where the palette ramps between the two colours.
+    pub fn fill_contours(&mut self, contours: &[Vec<Vec2>], ink: impl Fn(u8, f32) -> u8) {
+        // Sub-scanlines per texel row.
+        const SUB: usize = 4;
+        let s = self.scale as f32;
+        let edges: Vec<(Vec2, Vec2)> = contours
+            .iter()
+            .flat_map(|c| c.iter().zip(c.iter().cycle().skip(1)).map(|(&a, &b)| (a * s, b * s)))
+            .filter(|(a, b)| a.y != b.y)
+            .collect();
+        let Some((lo, hi)) = edges
+            .iter()
+            .map(|&(a, b)| (a.min(b), a.max(b)))
+            .reduce(|(l0, h0), (l1, h1)| (l0.min(l1), h0.max(h1)))
+        else {
+            return;
+        };
+        let si = self.scale as i32;
+        let [x0, y0, x1, y1] = self.clip;
+        let left = (lo.x.floor() as i32).max(x0 * si);
+        let right = (hi.x.ceil() as i32).min((x1 + 1) * si);
+        let top = (lo.y.floor() as i32).max(y0 * si);
+        let bottom = (hi.y.ceil() as i32).min((y1 + 1) * si);
+        if left >= right {
+            return;
+        }
+        let pw = self.pw();
+        let mut cover = vec![0.0f32; (right - left) as usize];
+        let mut xs: Vec<(f32, i32)> = Vec::new();
+        for y in top..bottom {
+            cover.fill(0.0);
+            for k in 0..SUB {
+                let sy = y as f32 + (k as f32 + 0.5) / SUB as f32;
+                xs.clear();
+                for &(a, b) in &edges {
+                    let (p, q, dir) = if a.y < b.y { (a, b, 1) } else { (b, a, -1) };
+                    if sy >= p.y && sy < q.y {
+                        xs.push((p.x + (sy - p.y) / (q.y - p.y) * (q.x - p.x), dir));
+                    }
+                }
+                xs.sort_by(|a, b| a.0.total_cmp(&b.0));
+                let mut winding = 0;
+                for pair in xs.windows(2) {
+                    winding += pair[0].1;
+                    if winding == 0 {
+                        continue;
+                    }
+                    // The span's share of each texel it crosses.
+                    let (a, b) = (pair[0].0.max(left as f32), pair[1].0.min(right as f32));
+                    let mut x = a.floor();
+                    while x < b {
+                        let share = (b.min(x + 1.0) - a.max(x)) / SUB as f32;
+                        cover[(x as i32 - left) as usize] += share;
+                        x += 1.0;
+                    }
+                }
+            }
+            let row = y as usize * pw;
+            for (i, &k) in cover.iter().enumerate() {
+                if k > 0.01 {
+                    let px = &mut self.px[row + left as usize + i];
+                    *px = ink(*px, k.min(1.0));
+                }
+            }
+        }
+    }
 }
 
 /// Liang-Barsky clip of segment a-b to the box lo..hi.
@@ -750,6 +819,9 @@ pub struct CanvasTexture {
     pub mask: Option<Vec<bool>>,
     /// Pictures laid over the canvas at these texels (photos on the kneeboard).
     pub pictures: Vec<(UVec2, Arc<Picture>)>,
+    /// Colours of its own (8-bit sRGB RGBA words, in memory order) instead of the live palette:
+    /// the in-flight menu keeps its greens at every time of day.
+    pub colours: Option<Arc<[u32; 256]>>,
     pub dirty: bool,
     /// Mip levels of the texture (1: none; the others are built from the canvas on every upload).
     mips: usize,
@@ -799,6 +871,7 @@ impl CanvasTexture {
             transparent,
             mask: None,
             pictures: Vec::new(),
+            colours: None,
             dirty: true,
             mips,
             coverage,
@@ -1000,6 +1073,18 @@ fn first_level(
     let pw = ct.canvas.pw();
     let first = rows.start * pw;
     let px = &ct.canvas.px[first..rows.end * pw];
+    let own_see;
+    let (lut, see_lut) = match &ct.colours {
+        Some(own) => {
+            own_see = {
+                let mut l = **own;
+                l[TRANSPARENT as usize] = 0;
+                l
+            };
+            (&**own, &own_see)
+        }
+        None => (lut, see_lut),
+    };
     if ct.coverage {
         for (o, &c) in out.iter_mut().zip(px) {
             *o = if c == TRANSPARENT { 0 } else { 255 };
