@@ -23,10 +23,22 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// Asks for foveation before anything starts (the environment is read when Zink makes its
-/// Vulkan instance): the line to log.
+/// Mesa's GL version caps, which Steam's gamescope session sets (4.3) for games launched from it:
+/// Mesa then refuses the 4.5 core context glvr needs.
+const GL_VERSION_OVERRIDES: [&str; 2] = ["MESA_GL_VERSION_OVERRIDE", "MESA_GLSL_VERSION_OVERRIDE"];
+
+/// Asks for foveation and drops Mesa's GL version caps before anything starts (the environment
+/// is read when Zink makes its Vulkan instance and EGL its context): the line to log.
 pub fn before_start() -> String {
-    foveation::enable()
+    let mut line = foveation::enable();
+    for key in GL_VERSION_OVERRIDES {
+        if let Some(value) = std::env::var_os(key) {
+            // SAFETY: called first in `main`, before any other thread starts.
+            unsafe { std::env::remove_var(key) };
+            line += &format!("; dropped {key}={}", value.to_string_lossy());
+        }
+    }
+    line
 }
 
 /// Meshes and images changed or gone since the renderer last looked.
