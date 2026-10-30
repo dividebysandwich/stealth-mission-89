@@ -435,20 +435,25 @@ pub fn adi_ball(c: &mut Canvas, pitch: f32, roll: f32) {
     // Same sense as the classic ball (`adi`): the horizon sits at -h along `down`, so nose up
     // moves it towards the ground side.
     let h = -pitch.clamp(-1.5, 1.5).to_degrees() * k;
-    for py in 0..c.h {
-        for px in 0..c.w {
-            let d = Vec2::new(px as f32 + 0.5, py as f32 + 0.5) - centre;
-            let len = d.length();
-            let colour = if len > r {
-                0
-            } else if len > ring {
-                5
-            } else if d.dot(down) > -h {
-                6
-            } else {
-                9
-            };
-            c.set(px as i32, py as i32, colour);
+    // Row by row: clear outside the ball, the rim, then sky and ground inside the ring.
+    let pw = c.pw();
+    for (py, row) in c.px.chunks_exact_mut(pw).enumerate() {
+        let dy = py as f32 + 0.5 - centre.y;
+        // The texels whose centres are within q of the ball's centre on this row.
+        let span = |q: f32| {
+            let h = q * q - dy * dy;
+            let h = if h >= 0.0 { h.sqrt() } else { -1.0 };
+            let a = (centre.x - h - 0.5).ceil().max(0.0) as usize;
+            let b = ((centre.x + h - 0.5).floor() + 1.0).clamp(0.0, pw as f32) as usize;
+            a..b.max(a)
+        };
+        row.fill(0);
+        row[span(r)].fill(5);
+        let inside = span(ring);
+        let start = inside.start;
+        for (x, t) in row[inside].iter_mut().enumerate() {
+            let dx = (start + x) as f32 + 0.5 - centre.x;
+            *t = if dx * down.x + dy * down.y > -h { 6 } else { 9 };
         }
     }
     let w = (n / 110.0).max(1.0);
