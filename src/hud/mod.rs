@@ -115,8 +115,6 @@ pub struct Bay {
     pub air_to_air: bool,
     /// Lock range of the weapon's missile (km), 0 for unguided stores.
     pub range_km: f32,
-    /// A free-fall or retarded bomb: released by the SMS page's ripple program.
-    pub bomb: bool,
 }
 
 /// Weapon stores (mirrored from the combat simulation every frame; defaults to a typical load).
@@ -144,7 +142,6 @@ impl Default for Stores {
             picture,
             air_to_air,
             range_km: 0.0,
-            bomb: false,
         };
         Self {
             bays: vec![

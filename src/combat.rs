@@ -1308,8 +1308,6 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 } else {
                     0.0
                 },
-                bomb: stealth_sim::ballistics::drag(wt.spec as i32, sim.opts.fix_classic_bugs)
-                    .is_some(),
             }
         })
         .collect();

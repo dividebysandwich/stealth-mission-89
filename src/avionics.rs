@@ -813,10 +813,9 @@ fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
     }
 }
 
-/// The SMS inventory (F-16 style): the master mode, the selected weapon and its rounds, the
-/// bombs' release program (single, or the stick a ripple lays down; the ripple's count and
-/// spacing by their side buttons) and the stations with what each carries, the selected weapon's
-/// highlighted; the gun last.
+/// The SMS inventory (F-16 style): the master mode, the selected weapon and its rounds, and
+/// the stations with what each carries, the selected weapon's highlighted; the bombs' ripple
+/// count and spacing by their side buttons.
 fn draw_sms(p: &MfdParams, c: &mut Canvas) {
     c.clear(BLACK);
     let s = &p.state;
@@ -843,27 +842,14 @@ fn draw_sms(p: &MfdParams, c: &mut Canvas) {
         _ => "NO STORES".to_string(),
     };
     stroke_text_at(c, mid, y, &weapon, 11.0, 1.5, WHITE, Align::Centre);
-    y += 20.0;
-    // The release program, for bombs (its count and spacing by their buttons): single, or
-    // the length of the stick the ripple lays down.
-    if let Some(b) = sel.filter(|b| b.bomb) {
-        let n = (s.av.ripple as u32).clamp(1, b.count.max(1));
-        let line = if n > 1 {
-            format!("STICK {}FT", (n - 1) * s.av.ripple_ft() as u32)
-        } else {
-            "SGL".to_string()
-        };
-        stroke_text_at(c, mid, y, &line, 8.0, 1.2, CYAN, Align::Centre);
-    }
     y += 16.0;
     c.stroke(Vec2::new(44.0, y), Vec2::new(w - 44.0, y), 1.0, DARK);
     y += 6.0;
-    // The stations, then the gun: in two columns when there are more than six.
-    let mut rows: Vec<(String, String, bool, bool)> = st
-        .stations
-        .iter()
-        .enumerate()
-        .map(|(k, &(g, n))| match g.and_then(|g| st.bays.get(g).map(|b| (g, b))) {
+    // The stations in mirrored pairs from the wingtips in (the first and the last on the top
+    // row, numbers outboard), a centreline station between them, then the gun.
+    let cell = |k: usize| {
+        let (g, n) = st.stations[k];
+        match g.and_then(|g| st.bays.get(g).map(|b| (g, b))) {
             Some((g, b)) => (
                 format!("{}", k + 1),
                 format!("{n} {}", b.short),
@@ -871,35 +857,52 @@ fn draw_sms(p: &MfdParams, c: &mut Canvas) {
                 n == 0,
             ),
             None => (format!("{}", k + 1), "----".to_string(), false, true),
-        })
-        .collect();
-    if let Some(n) = st.gun_rounds {
-        rows.push(("GUN".to_string(), n.to_string(), st.gun_selected, n == 0));
-    }
-    let cols = if rows.len() > 6 { 2 } else { 1 };
-    let per_col = rows.len().div_ceil(cols).max(1);
-    let pitch = ((h - BAND as f32 - 4.0 - y) / per_col as f32).min(14.0);
-    let glyph = (pitch - 5.0).min(if cols == 2 { 6.5 } else { 8.0 });
-    let (left, right, gap) = (46.0, w - 46.0, 8.0);
-    let col_w = (right - left - gap * (cols - 1) as f32) / cols as f32;
-    for (i, (label, text, lit, empty)) in rows.iter().enumerate() {
-        let x0 = left + (i / per_col) as f32 * (col_w + gap);
-        let x1 = x0 + col_w;
-        // The row's vertical middle.
-        let ry = y + (i % per_col) as f32 * pitch + glyph / 2.0;
-        if *lit {
-            let top = (ry - (pitch - 1.0) / 2.0).round() as i32;
-            c.fill_rect(x0 as i32 - 2, top, col_w as i32 + 4, pitch as i32 - 1, GREEN);
         }
-        let col = if *lit {
-            BLACK
-        } else if *empty {
-            GREY
-        } else {
-            GREEN
-        };
-        stroke_text_at(c, x0, ry, label, glyph, 1.2, col, Align::Left);
-        stroke_text_at(c, x1, ry, text, glyph, 1.2, col, Align::Right);
+    };
+    let n = st.stations.len();
+    // Each row: (left, centre, right).
+    type Cell = (String, String, bool, bool);
+    let mut rows: Vec<[Option<Cell>; 3]> =
+        (0..n / 2).map(|k| [Some(cell(k)), None, Some(cell(n - 1 - k))]).collect();
+    if n % 2 == 1 {
+        rows.push([None, Some(cell(n / 2)), None]);
+    }
+    if let Some(r) = st.gun_rounds {
+        rows.push([None, Some(("GUN".to_string(), r.to_string(), st.gun_selected, r == 0)), None]);
+    }
+    let pitch = ((h - BAND as f32 - 4.0 - y) / rows.len().max(1) as f32).min(14.0);
+    let glyph = (pitch - 5.0).min(6.5);
+    let (left, right, gap) = (46.0, w - 46.0, 14.0);
+    let col_w = (right - left - gap) / 2.0;
+    for (i, row) in rows.iter().enumerate() {
+        // The row's vertical middle.
+        let ry = y + i as f32 * pitch + glyph / 2.0;
+        for (slot, cell) in row.iter().enumerate() {
+            let Some((label, text, lit, empty)) = cell else { continue };
+            let x0 = match slot {
+                0 => left,
+                1 => mid - col_w / 2.0,
+                _ => right - col_w,
+            };
+            let x1 = x0 + col_w;
+            if *lit {
+                let top = (ry - (pitch - 1.0) / 2.0).round() as i32;
+                c.fill_rect(x0 as i32 - 2, top, col_w as i32 + 4, pitch as i32 - 1, GREEN);
+            }
+            let col = if *lit {
+                BLACK
+            } else if *empty {
+                GREY
+            } else {
+                GREEN
+            };
+            // The number outboard: on the right in the right-hand column.
+            let (outer, inner) = if slot == 2 { (x1, x0) } else { (x0, x1) };
+            let (oa, ia) =
+                if slot == 2 { (Align::Right, Align::Left) } else { (Align::Left, Align::Right) };
+            stroke_text_at(c, outer, ry, label, glyph, 1.2, col, oa);
+            stroke_text_at(c, inner, ry, text, glyph, 1.2, col, ia);
+        }
     }
 }
 
