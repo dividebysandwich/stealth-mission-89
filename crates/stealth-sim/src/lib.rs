@@ -200,6 +200,7 @@ pub struct Sim {
     pub(crate) aaa_shells: Vec<aaa::Shell>,
     /// Where shells came down on the ground (metres east, north) and if they were flak, since
     /// [`Sim::take_shell_impacts`] (only drawn).
+    #[serde(skip)]
     pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
