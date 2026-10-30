@@ -24,6 +24,7 @@
 mod deploy;
 mod director;
 mod events;
+pub mod ground;
 mod missions;
 mod record;
 mod resupply;

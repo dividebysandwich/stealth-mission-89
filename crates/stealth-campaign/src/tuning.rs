@@ -260,3 +260,6 @@ pub const CRATE_DROP_METRES: f32 = 90.0;
 pub const CRATE_HOOK_RANGE: i32 = 0xC0;
 /// Metres from the helipad where the AI's loads are set down.
 pub const CRATE_SLOT_METRES: f32 = 9.0;
+
+/// Convoys: the longest drive to an enemy place (map units, 120 km: some 100 min on the road).
+pub const CONVOY_MAX_ROUTE: i32 = 0x1E00;

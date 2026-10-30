@@ -1107,15 +1107,37 @@ pub struct Battery {
     pub seen: bool,
 }
 
-/// The theater's land and water, for putting things on land: the host's (a coop client's
-/// state has none), not saved and not compared.
+/// The theater's land and water, for putting things on land, and its relief (the relief
+/// file's bytes) for the convoys' routes: the host's (a coop client's state has none), not
+/// saved and not compared.
 #[derive(Clone, Default)]
-pub struct Terrain(pub Option<std::sync::Arc<stealth_mission::TheaterData>>);
+pub struct Terrain(
+    pub Option<std::sync::Arc<stealth_mission::TheaterData>>,
+    pub Option<std::sync::Arc<Vec<u8>>>,
+    std::sync::Arc<std::sync::OnceLock<crate::ground::GroundGrid>>,
+);
 
 impl Terrain {
+    pub fn new(
+        world: Option<std::sync::Arc<stealth_mission::TheaterData>>,
+        relief: Option<std::sync::Arc<Vec<u8>>>,
+    ) -> Self {
+        Self(world, relief, Default::default())
+    }
+
     /// Water at a map point; None without the theater's terrain.
     pub fn is_water(&self, x: i32, y: i32) -> Option<bool> {
         self.0.as_ref().map(|t| t.is_water(x, y))
+    }
+
+    /// Where vehicles can drive (built the first time it is asked for); None without the
+    /// theater's terrain.
+    pub fn ground(&self) -> Option<&crate::ground::GroundGrid> {
+        let world = self.0.as_ref()?;
+        Some(self.2.get_or_init(|| {
+            let water = world.water_grid(crate::ground::DIM);
+            crate::ground::GroundGrid::build(&water, self.1.as_deref().map(Vec::as_slice))
+        }))
     }
 }
 

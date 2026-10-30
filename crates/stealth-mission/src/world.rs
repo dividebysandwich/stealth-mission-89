@@ -245,6 +245,79 @@ impl TheaterData {
         top.is_some_and(|(_, water)| water)
     }
 
+    /// [`TheaterData::is_water`] at the centre of each cell of a `dim` x `dim` grid over the
+    /// theater (row 0 at the north edge, map y south), drawn triangle by triangle: much faster
+    /// than asking cell by cell.
+    pub fn water_grid(&self, dim: usize) -> Vec<bool> {
+        let mut top: Vec<Option<((usize, usize, usize), bool)>> = vec![None; dim * dim];
+        if self.ground.is_empty() {
+            return vec![false; dim * dim];
+        }
+        // World units per cell (north up).
+        let cell_wu = 1_048_576.0 / dim as f64;
+        for lv in 1..=4usize {
+            let unit = [0.0, 1.0, 4.0, 16.0, 64.0][lv];
+            let gs = self.grid_size[lv] as i32;
+            for r in 0..gs {
+                for c in 0..gs {
+                    let cell = self.lookup(lv, c, r);
+                    if cell == -1 {
+                        continue;
+                    }
+                    let (cx, cy) =
+                        ((c as f64 * 4096.0 + 2048.0) * unit, (r as f64 * 4096.0 + 2048.0) * unit);
+                    for (k, &(ox, oy, sh)) in self.tile_objects(lv, cell).iter().enumerate() {
+                        let Some(tris) = self.ground.get(sh as usize) else { continue };
+                        let world = |x: f32, y: f32| {
+                            ((x as f64 + ox as f64) * unit + cx, (y as f64 + oy as f64) * unit + cy)
+                        };
+                        for (j, t) in tris.iter().enumerate() {
+                            let order = (4 - lv, k, j);
+                            let pts = [world(t[0], t[1]), world(t[2], t[3]), world(t[4], t[5])];
+                            let lo = |i: usize| {
+                                pts.iter()
+                                    .map(|p| if i == 0 { p.0 } else { p.1 })
+                                    .fold(f64::MAX, f64::min)
+                            };
+                            let hi = |i: usize| {
+                                pts.iter()
+                                    .map(|p| if i == 0 { p.0 } else { p.1 })
+                                    .fold(f64::MIN, f64::max)
+                            };
+                            // Columns east, world rows north (grid rows count from the north).
+                            let span = |a: f64, b: f64| {
+                                let first = ((a / cell_wu) - 0.5).ceil().max(0.0) as usize;
+                                let last = ((b / cell_wu) - 0.5).floor().min(dim as f64 - 1.0);
+                                (first, last)
+                            };
+                            let (c0, c1) = span(lo(0), hi(0));
+                            let (n0, n1) = span(lo(1), hi(1));
+                            if c1 < 0.0 || n1 < 0.0 {
+                                continue;
+                            }
+                            for n in n0..=n1 as usize {
+                                for e in c0..=c1 as usize {
+                                    let (wx, wy) =
+                                        ((e as f64 + 0.5) * cell_wu, (n as f64 + 0.5) * cell_wu);
+                                    let (px, py) = (
+                                        (wx - cx) / unit - ox as f64,
+                                        (wy - cy) / unit - oy as f64,
+                                    );
+                                    let slot = &mut top[(dim - 1 - n) * dim + e];
+                                    if slot.is_some_and(|(o, _)| o > order) || !inside(t, px, py) {
+                                        continue;
+                                    }
+                                    *slot = Some((order, t[6] != 0.0));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        top.into_iter().map(|t| t.is_some_and(|(_, w)| w)).collect()
+    }
+
     /// Scan the enemy tiles once and bucket the objects by shape, keeping the scan order of
     /// the random object search. The territory bits of the grid are never changed
     /// by the generator, so the lists are valid for every mission of the theater.

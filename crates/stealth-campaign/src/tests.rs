@@ -7,6 +7,12 @@ fn theater(code: &str) -> TheaterData {
     TheaterData::from_json(&std::fs::read(path).expect("theater file")).expect("theater")
 }
 
+/// The theater's relief file's bytes.
+fn relief(code: &str) -> Option<std::sync::Arc<Vec<u8>>> {
+    let path = format!("{}/../../assets/theaters/{code}.relief", env!("CARGO_MANIFEST_DIR"));
+    std::fs::read(path).ok().map(std::sync::Arc::new)
+}
+
 fn campaign(code: &str, index: usize) -> CampaignState {
     let t = theater(code);
     let setup = CampaignSetup {
@@ -1592,7 +1598,7 @@ fn a_helicopter_rescue_lands_by_the_pilot_and_brings_him_home() {
 /// A campaign that knows the theater's land and water (the host's).
 fn campaign_on_terrain(code: &str, index: usize) -> CampaignState {
     let mut c = campaign(code, index);
-    c.terrain = Terrain(Some(std::sync::Arc::new(theater(code))));
+    c.terrain = Terrain::new(Some(std::sync::Arc::new(theater(code))), relief(code));
     c
 }
 
@@ -2151,4 +2157,88 @@ fn a_save_from_before_the_crates_places_them() {
     assert!(d.base.is_some());
     assert_eq!(d.crates.len(), 3);
     assert_eq!(d.crates[leg as usize], crate_slot(leg));
+}
+
+/// Convoy routes in every theater: from every place to the enemy places in reach, never over
+/// mountains or wide water (checked every 100 m), and each theater with some. `GROUND_PGM=<dir>`
+/// writes each theater's grid (black blocked, grey fords, white land).
+#[test]
+fn convoy_routes_stay_on_passable_ground() {
+    let codes = [
+        "libya",
+        "persian_gulf",
+        "north_cape",
+        "central_europe",
+        "vietnam",
+        "middle_east",
+        "desert_storm",
+        "cuba",
+        "korea",
+        "ukraine",
+    ];
+    for (index, code) in codes.iter().enumerate() {
+        let c = campaign_on_terrain(code, index);
+        let t0 = std::time::Instant::now();
+        let g = c.terrain.ground().expect("grid");
+        let built = t0.elapsed();
+        if let Ok(dir) = std::env::var("GROUND_PGM") {
+            let d = ground::DIM;
+            let mut out = format!("P5 {d} {d} 255\n").into_bytes();
+            for r in 0..d as i32 {
+                for col in 0..d as i32 {
+                    let (x, y) = (col * ground::CELL + 8, r * ground::CELL + 8);
+                    out.push(if g.dry(x, y) {
+                        255
+                    } else if g.passable(x, y) {
+                        128
+                    } else {
+                        0
+                    });
+                }
+            }
+            std::fs::write(format!("{dir}/{code}.pgm"), out).unwrap();
+        }
+        let (mut pairs, mut routes) = (0, 0);
+        let t1 = std::time::Instant::now();
+        for a in &c.places {
+            for b in &c.places {
+                if a.owner == b.owner || a.owner == Side::Neutral || b.owner == Side::Neutral {
+                    continue;
+                }
+                if dist(a.x - b.x, a.y - b.y) > tuning::CONVOY_MAX_ROUTE {
+                    continue;
+                }
+                pairs += 1;
+                let Some(r) = g.route((a.x, a.y), (b.x, b.y), tuning::CONVOY_MAX_ROUTE) else {
+                    continue;
+                };
+                routes += 1;
+                for w in r.windows(2) {
+                    let n = (dist(w[1].0 - w[0].0, w[1].1 - w[0].1) / 6).max(1);
+                    // The ends are the places' centres (a town may stand on a hill).
+                    let inner = r.len() > 2 || n > 2;
+                    for k in 0..=n {
+                        let (x, y) = (
+                            w[0].0 + (w[1].0 - w[0].0) * k / n,
+                            w[0].1 + (w[1].1 - w[0].1) * k / n,
+                        );
+                        let end = (w[0] == r[0] && k * 6 < 0x60)
+                            || (w[1] == *r.last().unwrap() && (n - k) * 6 < 0x60);
+                        if inner && !end {
+                            assert!(
+                                g.passable(x, y),
+                                "{code}: {} to {} crosses ({x}, {y})",
+                                a.name,
+                                b.name
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        eprintln!(
+            "{code}: grid {built:?}, {routes} of {pairs} pairs in reach have a route ({:?})",
+            t1.elapsed()
+        );
+    }
 }

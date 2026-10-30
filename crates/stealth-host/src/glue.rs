@@ -37,7 +37,12 @@ pub fn base_mission(setup: &CampaignSetup, data: &GameData) -> anyhow::Result<Mi
 
 /// The theater's land and water, for the campaign to put its forward batteries on land.
 pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terrain {
-    stealth_campaign::Terrain(data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new))
+    let relief = crate::theater::relief(&setup.theater_code.to_ascii_lowercase());
+    let relief = (!relief.bytes().is_empty()).then(|| std::sync::Arc::new(relief.bytes().to_vec()));
+    stealth_campaign::Terrain::new(
+        data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new),
+        relief,
+    )
 }
 
 /// What the simulation shows the campaign.

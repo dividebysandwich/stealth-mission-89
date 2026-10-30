@@ -116,3 +116,24 @@ fn ukraine_drone_defense() {
     let w = generate(&data, &s, Seed::Srand(5)).unwrap().drones.unwrap();
     assert!(!w.defend && (1..=3).contains(&w.count));
 }
+
+#[test]
+fn the_water_grid_agrees_with_the_point_test() {
+    let data = data();
+    for (i, th) in data.theaters.iter().enumerate() {
+        let dim = 512;
+        let grid = th.water_grid(dim);
+        let step = 0x8000 / dim as i32;
+        let (mut wet, mut checked) = (0, 0);
+        for r in (0..dim).step_by(7) {
+            for c in (0..dim).step_by(5) {
+                let (x, y) = (c as i32 * step + step / 2, r as i32 * step + step / 2);
+                let w = th.is_water(x, y);
+                assert_eq!(grid[r * dim + c], w, "theater {i} at ({x}, {y})");
+                wet += w as i32;
+                checked += 1;
+            }
+        }
+        assert!(i != 3 || wet > 0, "no water in Central Europe of {checked}");
+    }
+}
