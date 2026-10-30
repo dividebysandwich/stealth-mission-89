@@ -1009,7 +1009,10 @@ mod tests {
         for side in [crate::mfd::MfdSide::Left, crate::mfd::MfdSide::Right] {
             for slot in 0..crate::mfd::OSB_COUNT {
                 let effect = Effect::Osb(side, slot);
-                assert_eq!(control_tip(effect, &mfd, PanelStyle::Classic).is_some(), osb(side, slot, &mfd).is_some());
+                assert_eq!(
+                    control_tip(effect, &mfd, PanelStyle::Classic).is_some(),
+                    osb(side, slot, &mfd).is_some()
+                );
             }
         }
     }
