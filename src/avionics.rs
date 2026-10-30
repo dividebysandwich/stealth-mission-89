@@ -1458,7 +1458,7 @@ fn update_pod(
     mut hud: ResMut<HudState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     camera: Query<&Transform, With<crate::trackcam::TrackCamera>>,
-    eyes: Query<&GlobalTransform, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
+    eyes: HelmetEyes,
     view: Res<crate::camera::ViewState>,
     settings: Res<crate::settings::Settings>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
@@ -1655,12 +1655,18 @@ fn slaved_sight(combat: Option<&crate::combat::Combat>, eye: DVec3) -> Option<Ve
     })
 }
 
+/// What the helmet sight looks along: the eye cameras, and glvr's head (`--gl-vr`, whose only
+/// camera is the tracking root, fixed in the cockpit).
+type HelmetEyes<'w, 's> = Query<
+    'w,
+    's,
+    (&'static GlobalTransform, Has<crate::camera::XrHead>),
+    (Or<(With<Camera3d>, With<crate::camera::XrHead>)>, Without<crate::camera::OffscreenCamera>),
+>;
+
 /// Where the pilot looks from the cockpit (the helmet sight: the eye camera, the headset in
 /// VR). None in the outside views.
-fn helmet_sight(
-    eyes: &Query<&GlobalTransform, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
-    view: crate::camera::View,
-) -> Option<Vec3> {
+fn helmet_sight(eyes: &HelmetEyes, view: crate::camera::View) -> Option<Vec3> {
     let cockpit = matches!(
         view,
         crate::camera::View::Cockpit
@@ -1668,7 +1674,9 @@ fn helmet_sight(
             | crate::camera::View::LookRight
             | crate::camera::View::LookRear
     );
-    let sum: Vec3 = eyes.iter().map(|t| t.forward().as_vec3()).sum();
+    let head = eyes.iter().any(|(_, head)| head);
+    let sum: Vec3 =
+        eyes.iter().filter(|&(_, h)| h == head).map(|(t, _)| t.forward().as_vec3()).sum();
     sum.try_normalize().filter(|_| cockpit)
 }
 
