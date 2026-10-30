@@ -319,24 +319,6 @@ impl Canvas {
 
 /// Thick strokes for the high-resolution displays (sub-pixel endpoints, round pens).
 impl Canvas {
-    /// Round pen of width `w` stamped at (x, y).
-    fn dot(&mut self, x: f32, y: f32, w: f32, c: u8) {
-        let s = self.scale as f32;
-        let (x, y, w) = (x * s, y * s, w * s);
-        let r = w * 0.5;
-        let (x0, x1) = ((x - r).round() as i32, (x + r).round() as i32);
-        let (y0, y1) = ((y - r).round() as i32, (y + r).round() as i32);
-        let rr = r * r + 0.25;
-        for yy in y0..=y1 {
-            for xx in x0..=x1 {
-                let (dx, dy) = (xx as f32 + 0.5 - x, yy as f32 + 0.5 - y);
-                if dx * dx + dy * dy <= rr {
-                    self.set_texel(xx, yy, c);
-                }
-            }
-        }
-    }
-
     /// Line of width `w` from a to b.
     pub fn stroke(&mut self, a: Vec2, b: Vec2, w: f32, c: u8) {
         let [x0, y0, x1, y1] = self.clip;
@@ -360,11 +342,66 @@ impl Canvas {
         } else {
             (a, b)
         };
-        let len = a.distance(b);
-        let steps = (len / (w * 0.35).max(0.5)).ceil().max(1.0) as i32;
-        for i in 0..=steps {
-            let p = a.lerp(b, i as f32 / steps as f32);
-            self.dot(p.x, p.y, w, c);
+        self.capsule(a, b, w, c);
+    }
+
+    /// Every texel whose centre is within the pen's reach of the segment a-b: row by row, the
+    /// span where the row crosses the capsule (one span, the capsule being convex).
+    fn capsule(&mut self, a: Vec2, b: Vec2, w: f32, c: u8) {
+        let s = self.scale as f32;
+        let (a, b) = (a * s, b * s);
+        let r = w * s * 0.5;
+        // As far as a round pen of width w reaches: half a texel past its radius.
+        let rr = r * r + 0.25;
+        let reach = rr.sqrt();
+        let si = self.scale as i32;
+        let [x0, y0, x1, y1] = self.clip;
+        let (tx0, ty0, tx1, ty1) = (x0 * si, y0 * si, (x1 + 1) * si - 1, (y1 + 1) * si - 1);
+        let top = ((a.y.min(b.y) - reach - 0.5).floor() as i32).max(ty0);
+        let bottom = ((a.y.max(b.y) + reach - 0.5).ceil() as i32).min(ty1);
+        let d = b - a;
+        let l2 = d.length_squared();
+        let span = reach * l2.sqrt();
+        let pw = self.pw();
+        for y in top..=bottom {
+            let qy = y as f32 + 0.5;
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            // The round ends.
+            for p in [a, b] {
+                let h = rr - (qy - p.y) * (qy - p.y);
+                if h >= 0.0 {
+                    let h = h.sqrt();
+                    (lo, hi) = (lo.min(p.x - h), hi.max(p.x + h));
+                }
+            }
+            // The band between them: within reach of the line, projecting inside the segment.
+            if l2 > 1e-6 {
+                let dy = qy - a.y;
+                let (mut l, mut h) = (f32::NEG_INFINITY, f32::INFINITY);
+                // |d.x * dy - d.y * (qx - a.x)| <= span
+                if d.y.abs() > 1e-6 {
+                    let (e0, e1) = ((d.x * dy - span) / d.y, (d.x * dy + span) / d.y);
+                    (l, h) = (l.max(a.x + e0.min(e1)), h.min(a.x + e0.max(e1)));
+                } else if (d.x * dy).abs() > span {
+                    h = l;
+                }
+                // 0 <= d.x * (qx - a.x) + d.y * dy <= l2
+                if d.x.abs() > 1e-6 {
+                    let (e0, e1) = (-d.y * dy / d.x, (l2 - d.y * dy) / d.x);
+                    (l, h) = (l.max(a.x + e0.min(e1)), h.min(a.x + e0.max(e1)));
+                } else if !(0.0..=l2).contains(&(d.y * dy)) {
+                    h = l;
+                }
+                if l <= h {
+                    (lo, hi) = (lo.min(l), hi.max(h));
+                }
+            }
+            let x0 = ((lo - 0.5).ceil() as i32).max(tx0);
+            let x1 = ((hi - 0.5).floor() as i32).min(tx1);
+            if x0 <= x1 {
+                let row = y as usize * pw;
+                self.px[row + x0 as usize..=row + x1 as usize].fill(c);
+            }
         }
     }
 
@@ -397,7 +434,12 @@ impl Canvas {
 
     /// Arc from angle a0 to a1 (radians, 0 = right, positive = clockwise on screen).
     pub fn arc(&mut self, centre: Vec2, r: f32, a0: f32, a1: f32, w: f32, c: u8) {
-        let steps = ((r * (a1 - a0).abs() / 3.0) as i32).clamp(8, 256);
+        if !self.ring_shows(centre, r, w) {
+            return;
+        }
+        // About 3 pixel chords, at least 8 a turn.
+        let turn = (a1 - a0).abs() / std::f32::consts::TAU;
+        let steps = ((r * (a1 - a0).abs() / 3.0).max(8.0 * turn).ceil() as i32).clamp(1, 256);
         let mut prev = centre + Vec2::new(a0.cos(), a0.sin()) * r;
         for i in 1..=steps {
             let t = a0 + (a1 - a0) * i as f32 / steps as f32;
@@ -405,6 +447,28 @@ impl Canvas {
             self.stroke(prev, p, w, c);
             prev = p;
         }
+    }
+
+    /// Whether a circle of radius r and pen width w crosses the clip rectangle (threat rings
+    /// far larger than the screen, or wholly off it, are skipped).
+    pub fn ring_shows(&self, centre: Vec2, r: f32, w: f32) -> bool {
+        let (lo, hi) = self.clip_box(w);
+        let near = centre.clamp(lo, hi).distance(centre);
+        let far = (centre - lo).abs().max((centre - hi).abs()).length();
+        near <= r + w && far >= r - w
+    }
+
+    /// Whether a point is within the clip rectangle grown by `pad`.
+    pub fn shows(&self, p: Vec2, pad: f32) -> bool {
+        let (lo, hi) = self.clip_box(pad);
+        p.cmpge(lo).all() && p.cmple(hi).all()
+    }
+
+    /// The clip rectangle (drawing units, its far edges inclusive of their pixels) grown by
+    /// `pad`.
+    fn clip_box(&self, pad: f32) -> (Vec2, Vec2) {
+        let [x0, y0, x1, y1] = self.clip;
+        (Vec2::new(x0 as f32, y0 as f32) - pad, Vec2::new((x1 + 1) as f32, (y1 + 1) as f32) + pad)
     }
 
     /// Rectangle outline (corners a, b) of width w.
@@ -456,6 +520,8 @@ pub struct CanvasTexture {
     pub dirty: bool,
     /// Mip levels of the texture (1: none; the others are built from the canvas on every upload).
     mips: usize,
+    /// One channel, the ink's coverage (`coverage`).
+    coverage: bool,
     /// The pixels, transparency and pictures last uploaded: a redraw that changed nothing (most
     /// frames for the instrument atlas) skips the conversion and the texture upload.
     shown: Option<(Vec<u8>, bool, Placed)>,
@@ -473,26 +539,36 @@ impl CanvasTexture {
 
 impl CanvasTexture {
     pub fn new(canvas: Canvas, images: &mut Assets<Image>, transparent: bool) -> Self {
-        let mut image = Image::new_fill(
-            Extent3d {
-                width: canvas.pw() as u32,
-                height: canvas.ph() as u32,
-                depth_or_array_layers: 1,
-            },
-            TextureDimension::D2,
-            &[0, 0, 0, 0],
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::default(),
-        );
+        let mut image = blank(&canvas, TextureFormat::Rgba8UnormSrgb);
         image.sampler = ImageSampler::nearest();
+        Self::with_image(canvas, images.add(image), transparent, 1, false)
+    }
+
+    /// A one-channel texture of where the canvas is inked (any index but 0), linear filtered:
+    /// the modern HUD and the helmet display, drawn in one colour, upload a quarter of the
+    /// bytes of a palette picture every frame.
+    pub fn coverage(canvas: Canvas, images: &mut Assets<Image>) -> Self {
+        let mut image = blank(&canvas, TextureFormat::R8Unorm);
+        image.sampler = ImageSampler::linear();
+        Self::with_image(canvas, images.add(image), true, 1, true)
+    }
+
+    fn with_image(
+        canvas: Canvas,
+        image: Handle<Image>,
+        transparent: bool,
+        mips: usize,
+        coverage: bool,
+    ) -> Self {
         Self {
             canvas,
-            image: images.add(image),
+            image,
             transparent,
             mask: None,
             pictures: Vec::new(),
             dirty: true,
-            mips: 1,
+            mips,
+            coverage,
             shown: None,
         }
     }
@@ -511,32 +587,27 @@ impl CanvasTexture {
         transparent: bool,
         max_levels: usize,
     ) -> Self {
-        let (w, h) = (canvas.pw(), canvas.ph());
-        let levels = mip_sizes(w, h, max_levels);
-        let mut image = Image::new_fill(
-            Extent3d { width: w as u32, height: h as u32, depth_or_array_layers: 1 },
-            TextureDimension::D2,
-            &[0, 0, 0, 0],
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::default(),
-        );
+        let levels = mip_sizes(canvas.pw(), canvas.ph(), max_levels);
+        let mut image = blank(&canvas, TextureFormat::Rgba8UnormSrgb);
         image.texture_descriptor.mip_level_count = levels.len() as u32;
         image.data = Some(vec![0; levels.iter().map(|(w, h)| w * h * 4).sum()]);
         image.sampler = ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
             anisotropy_clamp: 16,
             ..bevy::image::ImageSamplerDescriptor::linear()
         });
-        Self {
-            canvas,
-            image: images.add(image),
-            transparent,
-            mask: None,
-            pictures: Vec::new(),
-            dirty: true,
-            mips: levels.len(),
-            shown: None,
-        }
+        Self::with_image(canvas, images.add(image), transparent, levels.len(), false)
     }
+}
+
+/// A zeroed texture the canvas' size, RGBA or (`R8Unorm`) one channel.
+fn blank(canvas: &Canvas, format: TextureFormat) -> Image {
+    let size = Extent3d {
+        width: canvas.pw() as u32,
+        height: canvas.ph() as u32,
+        depth_or_array_layers: 1,
+    };
+    let pixel = if format == TextureFormat::R8Unorm { &[0][..] } else { &[0, 0, 0, 0] };
+    Image::new_fill(size, TextureDimension::D2, pixel, format, RenderAssetUsages::default())
 }
 
 /// Mip level sizes down to 1x1, at most `max` of them.
@@ -555,24 +626,31 @@ fn build_mips(data: &mut [u8], w: usize, h: usize, levels: usize) {
     for pair in mip_sizes(w, h, levels).windows(2) {
         let ((sw, sh), (dw, dh)) = (pair[0], pair[1]);
         let (src, dst) = data[start..].split_at_mut(sw * sh * 4);
-        for y in 0..dh {
-            for x in 0..dw {
-                let mut sum = [0u32; 4];
-                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                    let (sx, sy) = ((2 * x + dx).min(sw - 1), (2 * y + dy).min(sh - 1));
-                    let i = (sy * sw + sx) * 4;
-                    for (k, v) in sum.iter_mut().enumerate() {
-                        *v += src[i + k] as u32;
-                    }
-                }
-                let o = (y * dw + x) * 4;
-                for k in 0..4 {
-                    dst[o + k] = ((sum[k] + 2) / 4) as u8;
-                }
+        let src = src.as_chunks::<4>().0;
+        let dst = &mut dst.as_chunks_mut::<4>().0[..dw * dh];
+        for (y, out) in dst.chunks_exact_mut(dw).enumerate() {
+            let rows = [(2 * y).min(sh - 1), (2 * y + 1).min(sh - 1)].map(|r| &src[r * sw..][..sw]);
+            for (x, o) in out.iter_mut().enumerate() {
+                let (c0, c1) = ((2 * x).min(sw - 1), (2 * x + 1).min(sw - 1));
+                *o = average([rows[0][c0], rows[0][c1], rows[1][c0], rows[1][c1]]);
             }
         }
         start += sw * sh * 4;
     }
+}
+
+/// The rounded average of four RGBA texels, channel by channel: two channels at a time in the
+/// halves of a u32 (four bytes' sum fits in 16 bits).
+#[inline]
+fn average(px: [[u8; 4]; 4]) -> [u8; 4] {
+    const LOW: u32 = 0x00ff_00ff;
+    let (mut even, mut odd) = (0x0002_0002, 0x0002_0002);
+    for p in px {
+        let p = u32::from_le_bytes(p);
+        even += p & LOW;
+        odd += (p >> 8) & LOW;
+    }
+    (((even >> 2) & LOW) | (((odd >> 2) & LOW) << 8)).to_le_bytes()
 }
 
 /// Copies the drawn canvases into their textures (PostUpdate): canvases drawn in PostUpdate
@@ -618,6 +696,13 @@ fn upload_canvases(
         }
         let Some(mut img) = images.get_mut(&ct.image) else { continue };
         let Some(data) = img.data.as_mut() else { continue };
+        if ct.coverage {
+            for (o, &c) in data.iter_mut().zip(&ct.canvas.px) {
+                *o = if c == TRANSPARENT { 0 } else { 255 };
+            }
+            remember(ct, placed);
+            continue;
+        }
         let base = ct.canvas.px.len() * 4;
         let out = data[..base].as_chunks_mut::<4>().0.iter_mut().zip(&ct.canvas.px);
         match (&ct.mask, ct.transparent) {
@@ -653,13 +738,18 @@ fn upload_canvases(
                 data[base..].to_vec(),
             ));
         }
-        match &mut ct.shown {
-            Some((px, t, pics)) => {
-                px.clone_from(&ct.canvas.px);
-                *t = ct.transparent;
-                *pics = placed;
-            }
-            None => ct.shown = Some((ct.canvas.px.clone(), ct.transparent, placed)),
+        remember(ct, placed);
+    }
+}
+
+/// Keeps what was uploaded, to skip uploading it again unchanged.
+fn remember(ct: &mut CanvasTexture, placed: Placed) {
+    match &mut ct.shown {
+        Some((px, t, pics)) => {
+            px.clone_from(&ct.canvas.px);
+            *t = ct.transparent;
+            *pics = placed;
         }
+        None => ct.shown = Some((ct.canvas.px.clone(), ct.transparent, placed)),
     }
 }

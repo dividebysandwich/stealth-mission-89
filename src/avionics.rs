@@ -1180,13 +1180,18 @@ fn threat_ring(c: &mut Canvas, centre: Vec2, r: f32, doppler: bool, colour: u8) 
         c.ring(centre, r, 1.0, colour);
         return;
     }
-    // Dots about 2 px long, 5 px apart.
+    if !c.ring_shows(centre, r, 1.0) {
+        return;
+    }
+    // Dots about 2 px long, 5 px apart (those on the screen).
     let n = ((r * std::f32::consts::TAU / 5.0) as i32).clamp(12, 720);
     let step = std::f32::consts::TAU / n as f32;
     let dot = (2.0 / r.max(1.0)).min(step * 0.5);
     for i in 0..n {
         let a = i as f32 * step;
-        c.arc(centre, r, a, a + dot, 1.0, colour);
+        if c.shows(centre + Vec2::from_angle(a) * r, 3.0) {
+            c.arc(centre, r, a, a + dot, 1.0, colour);
+        }
     }
 }
 
