@@ -18,7 +18,8 @@ use crate::cockpit::{CockpitArt, Displays};
 use crate::font::Fonts;
 use crate::mfd::{CLASSIC, HIRES, MfdSide, osb};
 use crate::panel::{
-    BUTTON, GREEN, LAMPS, LampId, draw_gauge, draw_label, draw_lamp, draw_led, draw_led_bars,
+    BUTTON, GREEN, LAMPS, LampId, draw_arrow, draw_gauge, draw_label, draw_lamp, draw_led,
+    draw_led_bars,
 };
 
 /// Emissive strength of the displays and lit lights when the cockpit is lit.
@@ -638,6 +639,10 @@ pub(super) fn update_displays(
             }
             Face::Item(Elem::Label(text, fg, bg)) => {
                 draw_label(c, &fonts, r, text, fg, bg, t);
+                true
+            }
+            Face::Item(Elem::Arrow(arrow, fg, bg)) => {
+                draw_arrow(c, r, arrow, fg, bg);
                 true
             }
             Face::Item(Elem::Hazard) => {

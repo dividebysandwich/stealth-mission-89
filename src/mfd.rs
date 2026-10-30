@@ -52,7 +52,12 @@ impl Plugin for MfdPlugin {
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_mfd)
             .add_systems(
                 Update,
-                (mfd_keys, edit_waypoints, (build_map_geometry, render_map).chain())
+                (
+                    mfd_keys,
+                    edit_waypoints,
+                    show_way_editing,
+                    (build_map_geometry, render_map).chain(),
+                )
                     .chain()
                     .after(crate::flight::FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -136,6 +141,8 @@ pub struct MfdState {
     pub air: bool,
     /// The HUD is in A-G, mirrored from the HUD (the SMS page's master mode).
     pub ground: bool,
+    /// The WAY page is in edit mode (F8), mirrored from the waypoints for the editing buttons.
+    pub way_editing: bool,
 }
 
 impl Default for MfdState {
@@ -157,6 +164,7 @@ impl Default for MfdState {
             ccrp: false,
             air: false,
             ground: false,
+            way_editing: false,
         }
     }
 }
@@ -242,6 +250,9 @@ pub enum MfdCmd {
     TgpSlave,
     /// Targeting pod cursor zero: point track on the current steerpoint.
     TgpCz,
+    /// WAY page: nudges the selected waypoint one step over the map (screen x right, y up), as
+    /// the keypad does (`edit_waypoints`).
+    WaypointNudge(i8, i8),
 }
 
 /// Sent by the cockpit's bezel buttons.
@@ -313,15 +324,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
             ][slot as usize - 5];
             (label, cmd(MfdCmd::Cam(dir)), s.cam_dir == dir)
         }
-        (MfdSide::Right, 5) if s.right == RightMfd::Way => {
-            ("WP-", Action(crate::input::Action::LastWaypoint), false)
-        }
-        (MfdSide::Right, 6) if s.right == RightMfd::Way => {
-            ("WP+", Action(crate::input::Action::NextWaypoint), false)
-        }
-        (MfdSide::Right, 7) if s.right == RightMfd::Way => {
-            ("RST", Action(crate::input::Action::ResetWaypoint), false)
-        }
+        (MfdSide::Right, 10..=16 | 19) if s.right == RightMfd::Way => return way_osb(slot, s),
         (MfdSide::Right, 5) if s.right == RightMfd::Wpn => {
             ("SEL", Action(crate::input::Action::SelectWeapon), false)
         }
@@ -334,6 +337,26 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         // The third MFD's HSI page: the steerpoint.
         (MfdSide::Third, 0) => ("WP-", Action(crate::input::Action::LastWaypoint), false),
         (MfdSide::Third, 1) => ("WP+", Action(crate::input::Action::NextWaypoint), false),
+        _ => return None,
+    })
+}
+
+/// The WAY page's side buttons: the left edge slews the selected waypoint (up, down, left,
+/// right) and resets the waypoints; the top of the right edge selects the next and the previous
+/// one, the bottom of it is F8 (edit mode, lit while it is on). The slew and reset buttons work
+/// in edit mode only.
+pub fn way_osb(slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
+    use OsbFn::*;
+    Some(match slot {
+        10..=14 if !s.way_editing => return None,
+        10 => ("UP", Cmd(MfdCmd::WaypointNudge(0, 1)), false),
+        11 => ("DN", Cmd(MfdCmd::WaypointNudge(0, -1)), false),
+        12 => ("LFT", Cmd(MfdCmd::WaypointNudge(-1, 0)), false),
+        13 => ("RGT", Cmd(MfdCmd::WaypointNudge(1, 0)), false),
+        14 => ("RST", Action(crate::input::Action::ResetWaypoint), false),
+        15 => ("WP+", Action(crate::input::Action::NextWaypoint), false),
+        16 => ("WP-", Action(crate::input::Action::LastWaypoint), false),
+        19 => ("MOV", Action(crate::input::Action::ChangeWaypoint), s.way_editing),
         _ => return None,
     })
 }
@@ -420,6 +443,8 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::TgpSlave => Action::SelectTarget,
         MfdCmd::TgpCz => Action::SelectWaypoint,
         MfdCmd::MapWay => Action::SelectWaypoint,
+        // The keypad slew is no action: the mode it works in.
+        MfdCmd::WaypointNudge(..) => Action::ChangeWaypoint,
         MfdCmd::Sms(true) => Action::MissionOrders,
         MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) => Action::Ordnance,
     }
@@ -756,6 +781,8 @@ fn mfd_keys(
 
 /// Keypad slew speed of a waypoint being edited, in map pixels per second.
 const WAYPOINT_SLEW_PX: f64 = 30.0;
+/// A click on a bezel slew button moves the waypoint this far, in map pixels.
+const WAYPOINT_NUDGE_PX: f64 = 5.0;
 /// The theater's side, in map units (a waypoint stays on the map).
 const MAP_SIZE: f64 = 0x8000 as f64;
 
@@ -779,11 +806,28 @@ pub(crate) fn editing_waypoints(state: &MfdState, wps: &Waypoints) -> bool {
         }
 }
 
+/// Moves the selected waypoint by `d` map pixels (x right, y up on the screen); `heading` turns
+/// the screen direction on a heading-up map.
+fn move_waypoint(wps: &mut Waypoints, state: &MfdState, heading: f64, d: Vec2, px: f64) {
+    let Some(wp) = wps.points.get(wps.current).copied() else { return };
+    let rot = if state.map_heading_up { heading } else { 0.0 };
+    // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
+    let step = px * hires_scale(state.map_zoom);
+    let (sx, sy) = (d.x as f64, -d.y as f64);
+    let (s, c) = rot.sin_cos();
+    let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
+    let x = (wp.east / 32.0 + dx).clamp(0.0, MAP_SIZE);
+    let y = (MAP_SIZE - wp.north / 32.0 + dy).clamp(0.0, MAP_SIZE);
+    let i = wps.current;
+    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (MAP_SIZE - y) * 32.0 };
+}
+
 /// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
 /// course line follows it); the mode ends when the page is left. With the modern avionics F8
 /// makes the page the SOI, and the keys move the waypoint only while it is.
 fn edit_waypoints(
     mut actions: MessageReader<ActionEvent>,
+    mut commands: MessageReader<MfdCommand>,
     mut state: ResMut<MfdState>,
     controls: Res<crate::input::FlightControls>,
     block: Res<crate::input::InputBlock>,
@@ -799,6 +843,15 @@ fn edit_waypoints(
     }
     if wps.editing && !way_shown(&state) && !pressed {
         wps.editing = false;
+    }
+    // The bezel slew buttons (in edit mode only): one step a click.
+    let heading = aircraft.single().map_or(0.0, |a| a.euler().0 as f64);
+    for MfdCommand(cmd) in commands.read() {
+        let MfdCmd::WaypointNudge(x, y) = *cmd else { continue };
+        if !wps.editing || !way_shown(&state) || block.0 {
+            continue;
+        }
+        move_waypoint(&mut wps, &state, heading, Vec2::new(x as f32, y as f32), WAYPOINT_NUDGE_PX);
     }
     // The menu reads the keys while it is open.
     if !editing_waypoints(&state, &wps) || block.0 {
@@ -829,18 +882,15 @@ fn edit_waypoints(
     if slew == Vec2::ZERO {
         return;
     }
-    let Some(wp) = wps.points.get(wps.current).copied() else { return };
-    let h = aircraft.single().map_or(0.0, |a| a.euler().0 as f64);
-    let rot = if state.map_heading_up { h } else { 0.0 };
-    // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
-    let step = WAYPOINT_SLEW_PX * hires_scale(state.map_zoom) * time.delta_secs() as f64;
-    let (sx, sy) = (slew.x as f64, -slew.y as f64);
-    let (s, c) = rot.sin_cos();
-    let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
-    let x = (wp.east / 32.0 + dx).clamp(0.0, MAP_SIZE);
-    let y = (MAP_SIZE - wp.north / 32.0 + dy).clamp(0.0, MAP_SIZE);
-    let i = wps.current;
-    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (MAP_SIZE - y) * 32.0 };
+    let px = WAYPOINT_SLEW_PX * time.delta_secs() as f64;
+    move_waypoint(&mut wps, &state, heading, slew, px);
+}
+
+/// Tells the displays whether the waypoints are being edited (their buttons' state).
+fn show_way_editing(wps: Res<Waypoints>, mut state: ResMut<MfdState>) {
+    if state.way_editing != wps.editing {
+        state.way_editing = wps.editing;
+    }
 }
 
 fn apply_with_zoom(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd, auto_zoom: u8) {
@@ -2289,6 +2339,67 @@ mod tests {
         let rows = o.rows(18);
         let ticks: Vec<bool> = rows.iter().map(|r| r.2).collect();
         assert_eq!(ticks, [true, false, true]);
+    }
+
+    #[test]
+    fn way_page_edit_buttons() {
+        let labels = |s: &MfdState| -> Vec<Option<&str>> {
+            [10, 11, 12, 13, 14, 15, 16, 19]
+                .map(|i| osb(MfdSide::Right, i, s).map(|o| o.0))
+                .to_vec()
+        };
+        let mut way = MfdState { right: RightMfd::Way, ..default() };
+        // The page up: the next / previous waypoint and the edit mode buttons.
+        assert_eq!(
+            labels(&way),
+            [None, None, None, None, None, Some("WP+"), Some("WP-"), Some("MOV")]
+        );
+        // In edit mode (F8): the slew and reset buttons too, and MOV is lit.
+        way.way_editing = true;
+        assert_eq!(
+            labels(&way),
+            [
+                Some("UP"),
+                Some("DN"),
+                Some("LFT"),
+                Some("RGT"),
+                Some("RST"),
+                Some("WP+"),
+                Some("WP-"),
+                Some("MOV")
+            ]
+        );
+        assert!(osb(MfdSide::Right, 19, &way).is_some_and(|o| o.2));
+        // The bottom row has no waypoint buttons: they are on the sides.
+        assert!((5..10).all(|i| osb(MfdSide::Right, i, &way).is_none()));
+        // Only on the WAY page.
+        assert!(labels(&MfdState::default()).iter().all(Option::is_none));
+        assert_eq!(osb(MfdSide::Right, 17, &way).map(|o| o.0), None);
+        // The same with the modern MAP in WAY mode.
+        let mut s = MfdState { modern: true, way_editing: true, ..default() };
+        s.av.select(MfdSide::Right, crate::avionics::Format::Map);
+        assert!(labels(&s).iter().all(Option::is_none));
+        apply(&mut s, &mut MapRaster::default(), MfdCmd::MapWay);
+        assert_eq!(labels(&s), labels(&way));
+        assert!((0..3).all(|i| osb(MfdSide::Right, i, &s).is_none()));
+    }
+
+    #[test]
+    fn waypoint_moves_over_the_map() {
+        let mut wps =
+            Waypoints::planned(vec![crate::hud::Waypoint { east: 1e5, north: 1e5 }], vec![]);
+        let mut s = MfdState { map_zoom: 5, ..default() };
+        // North up: up is north, right is east, whatever the heading.
+        move_waypoint(&mut wps, &s, 1.0, Vec2::new(1.0, 1.0), 5.0);
+        let step = 5.0 * hires_scale(5) * 32.0;
+        assert!((wps.points[0].east - (1e5 + step)).abs() < 1e-6);
+        assert!((wps.points[0].north - (1e5 + step)).abs() < 1e-6);
+        // Heading up with the aircraft heading east: up is east.
+        s.map_heading_up = true;
+        let before = wps.points[0];
+        move_waypoint(&mut wps, &s, std::f64::consts::FRAC_PI_2, Vec2::new(0.0, 1.0), 5.0);
+        assert!((wps.points[0].east - before.east - step).abs() < 1e-6);
+        assert!((wps.points[0].north - before.north).abs() < 1e-6);
     }
 
     #[test]

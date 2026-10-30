@@ -607,6 +607,8 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::TgpCz => av.tgp.cz = true,
         // Applied before (`mfd::cam_zoom`).
         MfdCmd::CamZoom(_) | MfdCmd::CamZoomCycle => {}
+        // Moves the waypoint (`mfd::edit_waypoints`).
+        MfdCmd::WaypointNudge(..) => {}
         MfdCmd::Ils => {
             state.ils = !state.ils;
             if state.ils {
@@ -639,7 +641,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
 
 /// Label, function and lit state of a bezel button with the modern avionics: the formats along
 /// the bottom, the format's own functions along the top (SOI top right); the side rows (10..20)
-/// are free.
+/// are free but for the waypoint table's.
 pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
     use crate::input::Action as A;
     use OsbFn::*;
@@ -676,10 +678,10 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Tgp, 2) => ("SP", Cmd(MfdCmd::TgpSp), av.tgp.mode == TgpMode::Snowplow),
         // CZ: the pod to the current steerpoint, not in A-A.
         (Format::Tgp, 3) if !s.air => ("CZ", Cmd(MfdCmd::TgpCz), false),
-        (Format::Map, 0) if av.map_way => ("WP-", Action(A::LastWaypoint), false),
-        (Format::Map, 1) if av.map_way => ("WP+", Action(A::NextWaypoint), false),
-        (Format::Map, 2) if av.map_way => ("RST", Action(A::ResetWaypoint), false),
+        // The waypoint table: the top row has no map functions, the side ones are its own.
+        (Format::Map, 0..=2) if av.map_way => return None,
         (Format::Map, 4) if av.map_way => soi,
+        (Format::Map, 10..=16 | 19) if av.map_way => return crate::mfd::way_osb(slot, s),
         (Format::Map, 0) => {
             (if s.map_heading_up { "HUP" } else { "NUP" }, Cmd(MfdCmd::ToggleOrient), false)
         }

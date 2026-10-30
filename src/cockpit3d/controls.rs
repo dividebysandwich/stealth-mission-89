@@ -16,7 +16,7 @@ use crate::camera::{View, ViewState};
 use crate::flight::{Aircraft, Player};
 use crate::hud::{HudMode, HudState};
 use crate::input::{Action, ActionEvent};
-use crate::mfd::{CamDir, MfdCommand, MfdState, OsbFn, cmd_action, osb};
+use crate::mfd::{CamDir, MfdCmd, MfdCommand, MfdState, OsbFn, cmd_action, osb};
 
 /// Presses the 3D-cockpit control bound to an action (scripts).
 #[derive(Message, Debug, Clone, Copy)]
@@ -78,6 +78,8 @@ impl Effect {
             Effect::TimeToggle => Action::TimeAccel,
             Effect::Console(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
+                // The slew buttons have no key action (F8 is the MOV button's).
+                OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => return None,
                 OsbFn::Cmd(c) => cmd_action(c),
                 OsbFn::Action(a) => a,
                 OsbFn::Readout => return None,
