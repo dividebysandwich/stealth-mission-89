@@ -4,9 +4,12 @@
 //! radar types, their rings, the campaign's units).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::gltf::Gltf;
+use bevy::math::DVec2;
 use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 use bevy_egui::{EguiContexts, egui};
 
 use stealth_mission::Mission;
@@ -26,6 +29,12 @@ use crate::world::Theater;
 
 /// Side of the rendered theater map (pixels; 32 map units, 500 m, each).
 const MAP_PX: usize = 1024;
+/// The whole theater (map units).
+const THEATER: egui::Rect =
+    egui::Rect { min: egui::Pos2::ZERO, max: egui::pos2(0x8000 as f32, 0x8000 as f32) };
+/// Closer than this (map units per screen pixel), the part of the map in view is drawn at the
+/// screen's resolution: the map picture's pixels blur.
+const DETAIL_BELOW: f32 = 24.0;
 /// Map legend colours of the scenery: the built-up area of a town, its streets, the roads.
 const MAP_TOWN: u8 = 8;
 /// The map legend's open land.
@@ -72,9 +81,14 @@ impl Profile {
 #[derive(Resource, Default)]
 pub struct Planner {
     pub open: bool,
-    /// Theater whose map is being prepared or shown.
+    /// Theater whose map is being prepared.
     theater: Option<Theater>,
     gltf: Option<Handle<Gltf>>,
+    /// What the map picture was drawn from, for drawing the part in view closer up.
+    source: Option<Arc<MapSource>>,
+    /// The part of the map in view drawn at the screen's resolution, and the one being drawn.
+    detail: Option<MapDetail>,
+    drawing: Option<(DetailKey, Task<egui::ColorImage>)>,
     /// The map picture: theater, texture, and the egui context (camera) it was loaded into (a
     /// texture only exists in its own context: the menu, the debrief and the campaign's Ops
     /// screen each have theirs).
@@ -114,6 +128,113 @@ impl Planner {
     pub fn map_texture(&self, id: &str) -> Option<&egui::TextureHandle> {
         self.texture.as_ref().filter(|(t, ..)| t == id).map(|(_, t, _)| t)
     }
+
+    /// The part of the map in `view` drawn at the screen's resolution, to draw over the map
+    /// picture: its texture and the map units it covers. Drawn on another thread, one drawing
+    /// at a time, each for the view of the moment it starts: while the view moves (a zoom, a
+    /// pan), it follows as fast as they are drawn. While far out, none.
+    fn detail(
+        &mut self,
+        ctx: &egui::Context,
+        view: &MapView,
+    ) -> Option<(egui::TextureId, egui::Rect)> {
+        let id = self.texture.as_ref()?.0.clone();
+        if self.source.as_ref().is_none_or(|s| s.theater.id != id) {
+            return None;
+        }
+        // Map units per screen pixel, and the theater's part in view.
+        let px = view.scale / ctx.pixels_per_point();
+        let seen = egui::Rect::from_min_max(
+            view.to_map(view.rect.min).to_pos2(),
+            view.to_map(view.rect.max).to_pos2(),
+        )
+        .intersect(THEATER);
+        // (To a map unit: the drawn region's float rounding.)
+        let fits = |k: &DetailKey| {
+            k.id == id && k.region.contains_rect(seen.shrink(1.0)) && (k.px / px - 1.0).abs() < 0.1
+        };
+        if let Some((_, task)) = &mut self.drawing
+            && let Some(image) = bevy::tasks::futures::check_ready(task)
+            && let Some((key, _)) = self.drawing.take()
+        {
+            match &mut self.detail {
+                // A drawing for a view since left, the shown one back in view: kept.
+                Some(d) if d.ctx == *ctx && fits(&d.key) && !fits(&key) => {}
+                // (Into the texture already there: a new one each drawing would churn.)
+                Some(d) if d.ctx == *ctx => {
+                    d.texture.set(image, egui::TextureOptions::LINEAR);
+                    d.key = key;
+                }
+                _ => {
+                    let texture =
+                        ctx.load_texture("planner_detail", image, egui::TextureOptions::LINEAR);
+                    self.detail = Some(MapDetail { key, texture, ctx: ctx.clone() });
+                }
+            }
+        }
+        let current = self.detail.as_ref().is_some_and(|d| d.ctx == *ctx && fits(&d.key));
+        // A drawing under way is let finish, even for a view already left: cancelling it for
+        // each new view, nothing would be drawn till the view stops. The next one starts from
+        // the view of then.
+        if px < DETAIL_BELOW
+            && seen.is_positive()
+            && !current
+            && self.drawing.is_none()
+            && let Some(source) = self.source.clone()
+        {
+            // With a margin round the view: panning a little needs no new drawing.
+            let region = seen.expand2(seen.size() * 0.2).intersect(THEATER);
+            let side = ctx.input(|i| i.max_texture_side) as f32;
+            let scale = px.max(region.width().max(region.height()) / side);
+            // (Not over the texture size limit, whatever the float rounding.)
+            let side_px = |l: f32| (l / scale).ceil().min(side);
+            let (w, h) = (side_px(region.width()), side_px(region.height()));
+            let region = egui::Rect::from_min_size(region.min, egui::vec2(w, h) * scale);
+            let (w, h) = (w as usize, h as usize);
+            let task = AsyncComputeTaskPool::get().spawn(async move {
+                let start = bevy::platform::time::Instant::now();
+                let image = source.render(region, w, h);
+                debug!("planner: map detail {w}x{h} in {:.2?}", start.elapsed());
+                image
+            });
+            self.drawing = Some((DetailKey { id: id.clone(), region, px }, task));
+        }
+        // Each frame till it is drawn: shown the frame it is (and the next one started).
+        if self.drawing.is_some() {
+            ctx.request_repaint();
+        }
+        // Much finer than the screen, it would shimmer: the map picture is enough.
+        self.detail
+            .as_ref()
+            .filter(|d| d.key.id == id && d.ctx == *ctx && px < d.key.px * 2.0)
+            .map(|d| (d.texture.id(), d.key.region))
+    }
+}
+
+/// What a theater's map pictures are drawn from (gathering it, the scenery's layout above all,
+/// takes seconds; drawing from it, a fraction of one).
+struct MapSource {
+    theater: Theater,
+    models: HashMap<u8, MapModel>,
+    scenery: crate::scenery::MapScenery,
+    /// The day palette (the MFD map's colours), and the map16 remap of its indices.
+    pal: VgaPalette,
+    remap: Vec<u8>,
+}
+
+/// A part of the map drawn closer up: the theater, the map units it covers, and the map units
+/// per screen pixel of the view it was drawn for.
+struct DetailKey {
+    id: String,
+    region: egui::Rect,
+    px: f32,
+}
+
+/// A part of the map drawn closer up, and the egui context its texture lives in.
+struct MapDetail {
+    key: DetailKey,
+    texture: egui::TextureHandle,
+    ctx: egui::Context,
 }
 
 /// Prepares the map texture of the menu's theater while the planner is open.
@@ -176,19 +297,18 @@ pub fn prepare_map(
     }
     let Some(g) = planner.gltf.as_ref().and_then(|h| assets.gltfs.get(h)) else { return };
     let models = map_models(&id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
-    let Some(theater) = planner.theater.as_ref() else { return };
-    let image = std::sync::Arc::new(render_theater(
-        theater,
-        &models,
-        &assets,
-        &library.files,
-        &mut layouts,
-    ));
+    let Some(theater) = planner.theater.take() else { return };
+    let source = MapSource::new(theater, models, &assets, &library.files, &mut layouts);
+    let image = Arc::new(source.render(THEATER, MAP_PX, MAP_PX));
     let Ok(ctx) = contexts.ctx_mut() else { return };
     let tex =
         ctx.load_texture(format!("planner_{id}"), image.clone(), egui::TextureOptions::LINEAR);
     planner.texture = Some((id.clone(), tex, context));
     planner.image = Some((id, image));
+    // The previous theater's part drawn closer up goes with its source.
+    planner.source = Some(Arc::new(source));
+    planner.detail = None;
+    planner.drawing = None;
 }
 
 /// `--export-maps`: the theaters still to write, the one loading, and where to.
@@ -225,18 +345,20 @@ pub fn export_maps(
         };
         export.loading = Some((Theater::load(id), library.load(&server, id)));
     }
-    let Some((theater, handle)) = export.loading.as_ref() else { return };
+    let Some((_, handle)) = export.loading.as_ref() else { return };
     let Some(g) = assets.gltfs.get(handle) else { return };
+    let Some((theater, _)) = export.loading.take() else { return };
     let models = map_models(&theater.id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
-    let image = render_theater(
+    let path = export.dir.join(format!("{}.png", theater.id));
+    let source = MapSource::new(
         theater,
-        &models,
+        models,
         &assets,
         &library.files,
         &mut crate::scenery::LayoutCache::default(),
     );
+    let image = source.render(THEATER, MAP_PX, MAP_PX);
     let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
-    let path = export.dir.join(format!("{}.png", theater.id));
     let saved = image::RgbaImage::from_raw(MAP_PX as u32, MAP_PX as u32, rgba)
         .map(|i| {
             image::imageops::resize(&i, EXPORT_PX, EXPORT_PX, image::imageops::FilterType::Triangle)
@@ -247,72 +369,120 @@ pub fn export_maps(
         Ok(()) => info!("map picture {}", path.display()),
         Err(e) => error!("map picture {}: {e}", path.display()),
     }
-    export.loading = None;
     export.next += 1;
 }
 
-/// The whole theater top-down in the day palette (the MFD map's colours), with the scenery's
-/// towns and roads.
-fn render_theater(
-    theater: &Theater,
-    models: &HashMap<u8, MapModel>,
-    assets: &crate::models::ModelAssets,
-    files: &HashMap<String, Handle<Gltf>>,
-    layouts: &mut crate::scenery::LayoutCache,
-) -> egui::ColorImage {
-    let mut c = Canvas::new(MAP_PX, MAP_PX);
-    let px = 0x8000 as f64 / MAP_PX as f64;
-    let half = 0x4000 as f64 * 32.0;
-    let to_px = |east: f64, north: f64| {
-        Vec2::new((east / 32.0 / px) as f32, ((0x8000 as f64 - north / 32.0) / px) as f32)
-    };
-    let remaps = crate::palette::remap_tables();
-    let map16 =
-        remaps.iter().find(|t| t.name == "map16").map(|t| t.entries.clone()).unwrap_or_default();
-    let remap = |col: u8| map16.get(col as usize).map_or(col, |w| (*w & 0xFF) as u8);
-    rasterise_map(&mut c, models, theater, &to_px, (half, half, half, half), 5, &remap);
-    let pal: VgaPalette = load_theater_palettes(&theater.id).day;
-    let scenery = crate::scenery::map_scenery(theater, assets, files, &pal, MAP_PX, layouts);
-    let at = |p: bevy::math::DVec2| {
-        let q = to_px(p.x / crate::world::WU, p.y / crate::world::WU);
-        (q.x.floor() as i32, q.y.floor() as i32)
-    };
-    let px_m = px * 32.0 * crate::world::WU;
-    for &(centre, r) in &scenery.towns {
-        let (x, y) = at(centre);
-        let rp = (r / px_m).max(1.2) as f32;
-        let n = rp.ceil() as i32;
-        for dy in -n..=n {
-            for dx in -n..=n {
-                if ((dx * dx + dy * dy) as f32) <= rp * rp {
-                    c.set(x + dx, y + dy, MAP_TOWN);
+impl MapSource {
+    fn new(
+        theater: Theater,
+        models: HashMap<u8, MapModel>,
+        assets: &crate::models::ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+        layouts: &mut crate::scenery::LayoutCache,
+    ) -> Self {
+        let remaps = crate::palette::remap_tables();
+        let map16 =
+            remaps.iter().find(|t| t.name == "map16").map(|t| &t.entries[..]).unwrap_or(&[]);
+        let remap =
+            (0..=255u8).map(|c| map16.get(c as usize).map_or(c, |w| (*w & 0xFF) as u8)).collect();
+        let pal: VgaPalette = load_theater_palettes(&theater.id).day;
+        let scenery = crate::scenery::map_scenery(&theater, assets, files, &pal, MAP_PX, layouts);
+        Self { theater, models, scenery, pal, remap }
+    }
+
+    /// The map picture of `region` (map units) on `w` x `h` square pixels: the theater top-down
+    /// in the day palette, with the scenery's towns and roads.
+    fn render(&self, region: egui::Rect, w: usize, h: usize) -> egui::ColorImage {
+        let mut c = Canvas::new(w, h);
+        // Map units per pixel.
+        let px = region.width() as f64 / w as f64;
+        let (x0, y0) = (region.min.x as f64, region.min.y as f64);
+        let to_px = |east: f64, north: f64| {
+            Vec2::new(
+                ((east / 32.0 - x0) / px) as f32,
+                ((0x8000 as f64 - north / 32.0 - y0) / px) as f32,
+            )
+        };
+        // The MFD's zoom of this scale, 2^(10 - zoom) map units a pixel (the whole theater on
+        // MAP_PX pixels: 5): closer, its finer tiles too.
+        let zoom = (10.0 - px.log2()).floor().clamp(5.0, 9.0) as i32;
+        let centre = region.center();
+        let visible = (
+            centre.x as f64 * 32.0,
+            (0x8000 as f64 - centre.y as f64) * 32.0,
+            region.width() as f64 * 16.0,
+            region.height() as f64 * 16.0,
+        );
+        let remap = |col: u8| self.remap[col as usize];
+        rasterise_map(&mut c, &self.models, &self.theater, &to_px, visible, zoom, &remap);
+        let at = |p: DVec2| {
+            let q = to_px(p.x / crate::world::WU, p.y / crate::world::WU);
+            (q.x.floor() as i32, q.y.floor() as i32)
+        };
+        let (cw, ch) = (w as i32, h as i32);
+        let px_m = px * 32.0 * crate::world::WU;
+        for &(centre, r) in &self.scenery.towns {
+            let (x, y) = at(centre);
+            let rp = (r / px_m).max(1.2) as f32;
+            let n = rp.ceil() as i32;
+            if x + n < 0 || y + n < 0 || x - n >= cw || y - n >= ch {
+                continue;
+            }
+            for dy in -n..=n {
+                for dx in -n..=n {
+                    if ((dx * dx + dy * dy) as f32) <= rp * rp {
+                        c.set(x + dx, y + dy, MAP_TOWN);
+                    }
                 }
             }
         }
-    }
-    for (lines, colour) in [(&scenery.streets, MAP_STREET), (&scenery.roads, MAP_ROAD)] {
-        for pts in lines {
-            for w in pts.windows(2) {
-                let ((x0, y0), (x1, y1)) = (at(w[0]), at(w[1]));
-                c.line(x0, y0, x1, y1, colour);
+        for (lines, colour) in
+            [(&self.scenery.streets, MAP_STREET), (&self.scenery.roads, MAP_ROAD)]
+        {
+            for pts in lines {
+                for seg in pts.windows(2) {
+                    let ((x0, y0), (x1, y1)) = (at(seg[0]), at(seg[1]));
+                    // Off the picture (the line would still be walked pixel by pixel).
+                    if x0.max(x1) < 0 || y0.max(y1) < 0 || x0.min(x1) >= cw || y0.min(y1) >= ch {
+                        continue;
+                    }
+                    c.line(x0, y0, x1, y1, colour);
+                }
             }
         }
+        // Woods: the land's own colour, darker. The forest grid (MAP_PX cells a side) is
+        // blended between its cells' centres: closer up, its edges don't show its cells.
+        let forest = &self.scenery.forest;
+        let has_forest = forest.len() == MAP_PX * MAP_PX;
+        let cell = 0x8000 as f64 / MAP_PX as f64;
+        let wooded = |k: usize| {
+            let gx = (x0 + ((k % w) as f64 + 0.5) * px) / cell - 0.5;
+            let gy = (y0 + ((k / w) as f64 + 0.5) * px) / cell - 0.5;
+            let (fx, fy) = (gx - gx.floor(), gy - gy.floor());
+            let at = |dx: f64, dy: f64| {
+                let i = ((gx.floor() + dx) as i64).clamp(0, MAP_PX as i64 - 1) as usize;
+                let j = ((gy.floor() + dy) as i64).clamp(0, MAP_PX as i64 - 1) as usize;
+                forest[j * MAP_PX + i] as u8 as f64
+            };
+            let top = at(0.0, 0.0) * (1.0 - fx) + at(1.0, 0.0) * fx;
+            let bottom = at(0.0, 1.0) * (1.0 - fx) + at(1.0, 1.0) * fx;
+            top * (1.0 - fy) + bottom * fy > 0.5
+        };
+        let rgba: Vec<u8> =
+            c.px.iter()
+                .enumerate()
+                .flat_map(|(k, &i)| {
+                    let [r, g, b] = self.pal.colors.get(i as usize).copied().unwrap_or([0, 0, 0]);
+                    let [r, g, b] = [r * 4 + r / 16, g * 4 + g / 16, b * 4 + b / 16];
+                    if i == MAP_LAND && has_forest && wooded(k) {
+                        [r * 3 / 5, g * 3 / 5, b * 3 / 5, 255]
+                    } else {
+                        [r, g, b, 255]
+                    }
+                })
+                .collect();
+        egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba)
     }
-    // Woods: the land's own colour, darker.
-    let rgba: Vec<u8> =
-        c.px.iter()
-            .enumerate()
-            .flat_map(|(k, &i)| {
-                let [r, g, b] = pal.colors.get(i as usize).copied().unwrap_or([0, 0, 0]);
-                let [r, g, b] = [r * 4 + r / 16, g * 4 + g / 16, b * 4 + b / 16];
-                if i == MAP_LAND && scenery.forest.get(k) == Some(&true) {
-                    [r * 3 / 5, g * 3 / 5, b * 3 / 5, 255]
-                } else {
-                    [r, g, b, 255]
-                }
-            })
-            .collect();
-    egui::ColorImage::from_rgba_unmultiplied([MAP_PX, MAP_PX], &rgba)
 }
 
 /// A site's coverage: where it detects the player flying the profile, and its missile range
@@ -599,6 +769,14 @@ fn map_view(
     let painter = painter.with_clip_rect(rect);
 
     map_draw::picture(&painter, &view, planner.texture.as_ref().map(|(_, t, _)| t));
+    if let Some((tex, region)) = planner.detail(ui.ctx(), &view) {
+        let screen = egui::Rect::from_min_max(
+            view.to_screen(region.min.x, region.min.y),
+            view.to_screen(region.max.x, region.max.y),
+        );
+        let uv = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
+        painter.image(tex, screen, uv, egui::Color32::WHITE);
+    }
     map_draw::weather(&painter, &view, "route", weather, layers);
     // Threat coverage: filled radar detection circles (solid Doppler, dotted pulse), dashed
     // missile range circles; dim when off the air.
