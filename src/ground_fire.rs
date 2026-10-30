@@ -71,6 +71,7 @@ pub fn ground_fire(
     drawn: Res<DrawnUnits>,
     mut rounds: ResMut<GroundRounds>,
     mut ex: ResMut<Explosions>,
+    mut reports: MessageWriter<crate::sound::GunReport>,
     time: Res<Time>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     palette: Option<Res<crate::palette::Palette>>,
@@ -97,6 +98,7 @@ pub fn ground_fire(
         };
         let c = calibre(s.gun, ua.kind);
         ex.pending.push((from, Blast::Muzzle(c, dir)));
+        reports.write(crate::sound::GunReport { at: from, calibre: c });
         let d = from.distance(to);
         rounds.live.push(Round {
             from,

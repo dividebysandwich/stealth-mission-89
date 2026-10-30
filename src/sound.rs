@@ -22,7 +22,8 @@
 //!   aircraft's and the others'), warnings (alarms, the fire siren, the Sidewinder tones) or
 //!   effects (everything else) (`Channel`).
 //! - Inside the aircraft (the cockpit views) the engine sounds (the jet's engine and wind, the
-//!   helicopter's rotor and turbines), the other aircraft, SAM launches, explosions, thunder
+//!   helicopter's rotor and turbines), the other aircraft, SAM launches, vehicles' guns
+//!   (`tank_gun`, `autocannon` and their `_far` variants), explosions, thunder
 //!   and the world around (`ambient`) play through a low-pass filter (`muffle`).
 //! - In the external views (chase, side, tactical, weapon, free) the flown aircraft's engine
 //!   falls off with its distance from the eye, and the sounds heard only inside the cockpit
@@ -81,6 +82,7 @@ impl Plugin for SoundPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySound>()
             .add_message::<Thunder>()
+            .add_message::<GunReport>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
             .init_resource::<muffle::MuffledSounds>()
@@ -110,7 +112,7 @@ impl Plugin for SoundPlugin {
             )
             .add_systems(
                 Update,
-                (follow_head, distant_aircraft, sam_launches)
+                (follow_head, distant_aircraft, sam_launches, gun_reports)
                     .chain()
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
@@ -127,6 +129,13 @@ pub struct PlaySound {
 }
 
 pub const DIRECT: u8 = 255;
+
+/// A vehicle's gun fired a round at `at` (Bevy world).
+#[derive(Message, Debug, Clone, Copy)]
+pub struct GunReport {
+    pub at: bevy::math::DVec3,
+    pub calibre: crate::explosions::Calibre,
+}
 
 /// Thunder of a lightning strike `distance` metres away, arriving now.
 #[derive(Message, Debug, Clone, Copy)]
@@ -377,6 +386,12 @@ const DISTANT_MAX: usize = 6;
 const LAUNCH_RANGE: f32 = 10_000.0;
 const LAUNCH_REF: f32 = 400.0;
 const LAUNCH_VOLUME: f32 = 1.0;
+/// A tank's gun and an autocannon's round (the Shilka's lighter): heard up to this range (m),
+/// at full volume within the reference distance (m); beyond `GUN_FAR` (m) the distant sound.
+const TANK_GUN: (f32, f32, f32) = (12_000.0, 150.0, 1.0);
+const AUTOCANNON: (f32, f32, f32) = (5_000.0, 50.0, 0.6);
+const LIGHT_GUN: (f32, f32, f32) = (3_000.0, 30.0, 0.35);
+const GUN_FAR: f32 = 800.0;
 /// The flown aircraft's engine in the external views: at full volume within this distance (m)
 /// of the eye, then falling off with 1 / distance.
 const ENGINE_REF: f32 = 25.0;
@@ -405,6 +420,8 @@ struct SoundBank {
     /// The other aircraft's loops, by `Engine`.
     distant: [Option<Handle<AudioSource>>; 4],
     launch: Option<Handle<AudioSource>>,
+    /// The vehicles' guns, near and far: the tank's, the autocannon's.
+    guns: [Option<(Handle<AudioSource>, Handle<AudioSource>)>; 2],
     heli_rotor: Option<Handle<AudioSource>>,
     heli_turbine: Option<Handle<AudioSource>>,
     /// The flown jet's engine and wind loops, and its afterburner's.
@@ -490,6 +507,10 @@ struct DistantAircraft {
 /// A SAM launch playing.
 #[derive(Component)]
 struct LaunchSound;
+
+/// A vehicle's gun report playing.
+#[derive(Component)]
+struct GunSound;
 
 /// A Sidewinder seeker loop: 0 the search growl, 1 the growl with the target in the seeker,
 /// 2 the lock tone.
@@ -593,6 +614,10 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.cannon = optional("cannon_loop.flac").zip(optional("cannon_tail.flac"));
     bank.distant = DISTANT_FILES.map(optional);
     bank.launch = optional("launch.flac");
+    bank.guns = [
+        optional("tank_gun.flac").zip(optional("tank_gun_far.flac")),
+        optional("autocannon.flac").zip(optional("autocannon_far.flac")),
+    ];
     bank.heli_rotor = optional("heli_rotor.flac");
     bank.heli_turbine = optional("heli_turbine.flac");
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
@@ -1484,6 +1509,80 @@ fn sam_launches(
     }
 }
 
+/// The vehicles' guns firing: each round heard when its sound gets here (the far sound beyond
+/// `GUN_FAR`), as loud as its distance allows, from where it was fired.
+#[allow(clippy::too_many_arguments)]
+fn gun_reports(
+    mut commands: Commands,
+    mut fired: MessageReader<GunReport>,
+    bank: Option<Res<SoundBank>>,
+    level: Res<SoundLevel>,
+    origin: Res<FloatingOrigin>,
+    virt: Res<Time<Virtual>>,
+    eye: Query<&GlobalTransform, With<EyeCamera>>,
+    settings: Res<crate::settings::Settings>,
+    mut muffler: Muffler,
+    // Reports on their way: seconds until heard, position (Bevy world), calibre.
+    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre)>>,
+) {
+    use crate::explosions::Calibre;
+    let (Some(bank), Ok(eye_tf)) = (bank.filter(|_| level.0 >= 1), eye.single()) else {
+        fired.clear();
+        coming.clear();
+        return;
+    };
+    let ear = origin.origin + eye_tf.translation().as_dvec3();
+    let reach = |c: Calibre| match c {
+        Calibre::Tank => TANK_GUN,
+        Calibre::Cannon => AUTOCANNON,
+        Calibre::Small => LIGHT_GUN,
+    };
+    for g in fired.read() {
+        let d = (g.at - ear).length() as f32;
+        // Only so many rounds on their way at once (a few columns firing bursts).
+        if d < reach(g.calibre).0 && coming.len() < 48 {
+            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre));
+        }
+    }
+    let dt = virt.delta_secs();
+    for c in coming.iter_mut() {
+        c.0 -= dt;
+    }
+    let mut i = 0;
+    while i < coming.len() {
+        if coming[i].0 > 0.0 {
+            i += 1;
+            continue;
+        }
+        let (_, p, calibre) = coming.swap_remove(i);
+        let dist = (p - ear).length() as f32;
+        let Some((near, far)) = bank.guns[(calibre != Calibre::Tank) as usize].as_ref() else {
+            continue;
+        };
+        let Some(muffled) = muffler.once(if dist > GUN_FAR { far } else { near }) else {
+            continue;
+        };
+        let (range, ..) = reach(calibre);
+        // The Shilka's 23 mm: the autocannon's report, smaller and quicker.
+        let speed = if calibre == Calibre::Small { 1.3 } else { rand::random_range(0.95..1.05) };
+        commands.spawn((
+            AudioPlayer(muffled),
+            PlaybackSettings {
+                volume: Volume::Linear(
+                    heard_volume(reach(calibre), dist) * Channel::Effects.gain(&settings),
+                ),
+                speed,
+                spatial: true,
+                spatial_scale: Some(SpatialScale::new(1.0 / range)),
+                ..PlaybackSettings::DESPAWN
+            },
+            WorldPos(p),
+            Transform::from_translation((p - origin.origin).as_vec3()),
+            GunSound,
+        ));
+    }
+}
+
 /// Volume of a sound with reach (range, reference distance, volume) heard `dist` metres away,
 /// fading out over the last quarter of the range.
 fn heard_volume((range, reference, volume): (f32, f32, f32), dist: f32) -> f32 {
@@ -1500,6 +1599,7 @@ type FlightSound = Or<(
     With<CannonLoop>,
     With<DistantAircraft>,
     With<LaunchSound>,
+    With<GunSound>,
     With<ThunderClap>,
     With<ambient::AmbientLoop>,
 )>;
