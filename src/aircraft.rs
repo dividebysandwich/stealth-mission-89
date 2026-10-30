@@ -120,6 +120,11 @@ pub enum Hmd {
 }
 
 impl AircraftSpec {
+    /// The exterior model's number (`model`: "aircraft_NNN").
+    pub fn model_number(&self) -> i32 {
+        self.model.trim_start_matches("aircraft_").parse().unwrap_or(-1)
+    }
+
     /// Size of the cockpit model against the F-16's (life size): the units of the cockpit
     /// frame (`cockpit3d::CockpitRoot`) per metre.
     pub fn cockpit_model_scale(&self) -> f32 {
@@ -178,6 +183,27 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
+    }
+}
+
+/// Where an aircraft model's landing light is (metres from its model origin, -Z forward): on
+/// the nose gear's leg just under the body, a helicopter's under its nose (the builders in
+/// tools/models), else a little under and ahead of the origin.
+pub fn landing_light(model: i32) -> Vec3 {
+    match model {
+        3 | 26 => Vec3::new(0.0, -0.62, -4.0),
+        7 => Vec3::new(0.0, -0.57, -4.6),
+        23 => f16_point(0.0, 2.20, -1.04) - Vec3::Y * F16_LIFT,
+        24 => f117_point(0.0, 4.80, -0.12) - Vec3::Y * F117_LIFT,
+        25 => uh60_point(0.0, 3.0, 0.53) - Vec3::Y * UH60_LIFT,
+        32 => a10_point(0.30, 5.10, -0.66) - Vec3::Y * A10_LIFT,
+        43 => ah1z_point(0.0, 2.5, 0.70) - Vec3::Y * AH1Z_LIFT,
+        45 => tornado_point(0.0, 3.85, -0.90) - Vec3::Y * TORNADO_LIFT,
+        46 => rah66_point(0.0, 2.5, 0.57) - Vec3::Y * RAH66_LIFT,
+        47 => harrier_point(0.0, 2.30, -0.78) - Vec3::Y * HARRIER_LIFT,
+        // The Hind (tools/models/mi24.py, its origin on the ground).
+        102 => Vec3::new(0.0, 0.92, -3.6),
+        _ => Vec3::new(0.0, -1.0, -4.0),
     }
 }
 

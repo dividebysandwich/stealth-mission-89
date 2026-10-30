@@ -23,10 +23,8 @@ use crate::lighting::{LightEmitter, LightingState, Spotlight};
 
 const SHADER: &str = "shaders/beam.wgsl";
 
-/// The lamp: ahead of and below the aircraft's origin (m), tilted down (degrees; a helicopter's
-/// more, to light where it sets down).
-const AHEAD: f32 = 4.0;
-const BELOW: f32 = 1.0;
+/// The lamp (where: `aircraft::landing_light`) tilted down (degrees; a helicopter's more, to
+/// light where it sets down).
 const TILT: f32 = 3.0;
 const HELICOPTER_TILT: f32 = 20.0;
 /// Colour at night and range (m) of the spotlight.
@@ -183,11 +181,13 @@ pub fn cone_mesh(length: f32, angle: f32, lamp: f32) -> Mesh {
         .with_inserted_indices(Indices::U32(idx))
 }
 
-/// A landing light, off, on aircraft entity `parent` (scaled by `scale`); its lamp.
+/// A landing light, off, at `at` (metres) on aircraft entity `parent` (scaled by `scale`); its
+/// lamp.
 pub fn spawn(
     commands: &mut Commands,
     assets: &LandingAssets,
     parent: Entity,
+    at: Vec3,
     scale: f32,
     helicopter: bool,
 ) -> Entity {
@@ -198,7 +198,7 @@ pub fn spawn(
             LightEmitter { color: COLOUR, range: RANGE },
             Spotlight,
             Transform {
-                translation: Vec3::new(0.0, -BELOW, -AHEAD) / scale,
+                translation: at / scale,
                 rotation: Quat::from_rotation_x(-tilt.to_radians()),
                 scale: Vec3::splat(1.0 / scale),
             },
@@ -243,8 +243,10 @@ fn attach_own(
     if !own.is_empty() {
         return;
     }
-    let helicopter = settings.aircraft.spec().helicopter;
-    let lamp = spawn(&mut commands, &assets, player, 1.0, helicopter);
+    // The player's entity is on the ground under the model's origin.
+    let spec = settings.aircraft.spec();
+    let at = crate::aircraft::landing_light(spec.model_number()) + Vec3::Y * spec.model_lift;
+    let lamp = spawn(&mut commands, &assets, player, at, 1.0, spec.helicopter);
     commands.entity(lamp).insert(OwnLandingLight);
 }
 

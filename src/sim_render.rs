@@ -1001,8 +1001,9 @@ fn sync_objects(
             };
             let dot = spawn_spot_dot(&mut commands, &assets, e, metres);
             let scale = AIRCRAFT_MODEL_SCALE as f32;
+            let at = crate::aircraft::landing_light(model);
             let landing =
-                crate::landing_lights::spawn(&mut commands, &landing, e, scale, helicopter);
+                crate::landing_lights::spawn(&mut commands, &landing, e, at, scale, helicopter);
             vis.aircraft.insert(i, (e, key, dot, landing));
         }
         seen.insert(i);
@@ -1721,8 +1722,15 @@ fn sync_remote_pilots(
                 .id();
             commands.entity(e).add_child(muzzle);
             let scale = AIRCRAFT_MODEL_SCALE as f32;
-            let landing =
-                crate::landing_lights::spawn(&mut commands, &landing, e, scale, spec.helicopter);
+            let at = crate::aircraft::landing_light(spec.model_number());
+            let landing = crate::landing_lights::spawn(
+                &mut commands,
+                &landing,
+                e,
+                at,
+                scale,
+                spec.helicopter,
+            );
             vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
