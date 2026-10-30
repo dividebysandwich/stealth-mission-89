@@ -14,7 +14,7 @@ use bevy::prelude::*;
 
 use super::CockpitRoot;
 use super::controls::Control;
-use crate::camera::EyeCamera;
+use crate::camera::{EyeCamera, XrHead};
 
 /// A cockpit mesh the mouse can point at; it hides what is behind it.
 #[derive(Component)]
@@ -147,9 +147,15 @@ pub(super) struct Picker<'w, 's> {
     tips: Query<'w, 's, (), With<super::tooltips::Tip>>,
     windows: Query<'w, 's, &'static Window>,
     cams: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<EyeCamera>>,
-    /// VR: the headset's eye cameras, children of the tracking root (the `EyeCamera`).
+    /// VR: the headset's eye cameras (or glvr's head), children of the tracking root (the
+    /// `EyeCamera`).
     eye_roots: Query<'w, 's, (), With<EyeCamera>>,
-    headset: Query<'w, 's, (&'static GlobalTransform, &'static ChildOf), With<Camera3d>>,
+    headset: Query<
+        'w,
+        's,
+        (&'static GlobalTransform, &'static ChildOf),
+        Or<(With<Camera3d>, With<XrHead>)>,
+    >,
     root: Query<'w, 's, &'static GlobalTransform, With<CockpitRoot>>,
 }
 
@@ -179,19 +185,20 @@ impl Picker<'_, '_> {
         Some((Ray3d::new(eye, dir), len))
     }
 
-    /// The eye (world): the eye camera, in VR (where the eye camera is the tracking root)
-    /// halfway between the headset's eye cameras.
+    /// The eye (world): in VR (where the eye camera is the tracking root) halfway between the
+    /// headset's eye cameras, or glvr's head (whose root is a camera itself); else the eye
+    /// camera.
     fn eye(&self) -> Option<Vec3> {
-        if let Ok((_, tf)) = self.cams.single() {
-            return Some(tf.translation());
-        }
         let eyes: Vec<Vec3> = self
             .headset
             .iter()
             .filter(|(_, p)| self.eye_roots.contains(p.parent()))
             .map(|(tf, _)| tf.translation())
             .collect();
-        (!eyes.is_empty()).then(|| eyes.iter().sum::<Vec3>() / eyes.len() as f32)
+        if !eyes.is_empty() {
+            return Some(eyes.iter().sum::<Vec3>() / eyes.len() as f32);
+        }
+        self.cams.single().ok().map(|(_, tf)| tf.translation())
     }
 
     /// Where the ray meets a mesh: how far along it, and the texture coordinates there.
