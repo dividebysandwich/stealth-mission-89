@@ -279,14 +279,12 @@ fn render_thread(
             renderer.apply(msg);
         }
         // The image drawn last frame is shown in this one, with the poses it was drawn with,
-        // once this frame's is drawn: by then the GPU is done with it (waiting for it right
-        // after drawing it held up the next frame's drawing; at the start of the next frame
-        // it still took 4 ms, the GPU shared with the compositor).
-        let shown = drawn.take();
-        let Some(list) = &list else {
-            show(&mut headset, &renderer, &frame, shown)?;
-            continue;
-        };
+        // before this frame's is drawn (waiting for it right after drawing it held up the next
+        // frame's drawing). Released after the next image's drawing was queued, it was only
+        // ready once that was done too: in a heavy scene it missed the compositor, which showed
+        // the frame before again (a stutter on every head turn, ~40% of frames reprojected).
+        show(&mut headset, &renderer, &frame, drawn.take())?;
+        let Some(list) = &list else { continue };
         let (chain, image) = headset.acquire()?;
         renderer.draw(list, &frame.views, image, headset.size, headset.srgb)?;
         if shot.is_some_and(|at| started.elapsed().as_secs_f32() >= at) {
@@ -296,7 +294,6 @@ fn render_thread(
             }
         }
         let fence = renderer.fence();
-        show(&mut headset, &renderer, &frame, shown)?;
         drawn = Some((chain, frame.views.clone(), fence));
         for r in renderer.readouts.drain(..) {
             let _ = readouts.send(r);
