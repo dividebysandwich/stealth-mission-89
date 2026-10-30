@@ -392,13 +392,15 @@ impl Sim {
                 rounds: 0,
                 ..*u
             };
-            // A convoy's vehicles drive with the fast state (sent in full when they join).
+            // A convoy's vehicles drive with the fast state (sent in full when they join, and
+            // where they are now when something else changed: a wreck stays where it was hit).
+            let mut now = (still, self.aaa_blue(i));
             if let Some(b) = base.aaa.get(i).filter(|b| self.unit_moving(i) && b.0.kind == u.kind) {
-                still.x = b.0.x;
-                still.y = b.0.y;
-                still.fine = b.0.fine;
+                let driven = GroundUnit { x: b.0.x, y: b.0.y, fine: b.0.fine, ..still };
+                if (driven, now.1) == *b {
+                    now.0 = driven;
+                }
             }
-            let now = (still, self.aaa_blue(i));
             if base.aaa.get(i) != Some(&now) {
                 if i < base.aaa.len() {
                     base.aaa[i] = now;

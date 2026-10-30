@@ -184,6 +184,16 @@ fn a_client_mirrors_the_convoys() {
         );
     }
     assert!(client.unit_moving(0));
+    // A vehicle knocked out on the march: its wreck stays where it was hit, on the client too.
+    host.units_mut()[1].destroyed = true;
+    for _ in 0..3 {
+        run(&mut host, 1);
+        client.apply_world_slow(&host.world_slow(&mut base));
+        client.apply_world_fast(&host.world_fast());
+    }
+    assert!(client.units()[1].destroyed);
+    assert_eq!(client.units()[1].fine, host.units()[1].fine);
+    assert_eq!(client.units()[0].fine, host.units()[0].fine);
 }
 
 fn sim_mirror(_host: &mut Sim, client: &mut Sim) {
