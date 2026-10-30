@@ -40,6 +40,8 @@ const LONG_STICK: (f32, f32) = (0.2, 0.5);
 const CENTRE_STICK: f32 = 0.05;
 /// Full deflection (radians).
 const STICK_TILT: f32 = 0.35;
+/// A centre stick's grip travel to full deflection (m): less than `STICK_TILT` swings a long one.
+const CENTRE_STICK_TRAVEL: f32 = 0.08;
 const STICK_TWIST: f32 = 0.45;
 /// Rudder deadzone (fraction of full twist); a haptic tick on leaving and re-entering it.
 const TWIST_DEADZONE: f32 = 0.15;
@@ -316,6 +318,14 @@ fn stick_follow(pivot: Vec3, grip_height: f32) -> f32 {
     ((grip_height - LONG_STICK.0) / (LONG_STICK.1 - LONG_STICK.0)).clamp(0.0, 1.0)
 }
 
+/// A stick's full deflection (radians): a centre stick's by its grip's travel.
+fn stick_tilt(pivot: Vec3, grip_height: f32) -> f32 {
+    if pivot.x.abs() < CENTRE_STICK {
+        return (CENTRE_STICK_TRAVEL / grip_height.max(0.01)).atan().min(STICK_TILT);
+    }
+    STICK_TILT
+}
+
 /// `Hand::buttons` bit of a controller input (the trigger is analog).
 fn vr_bit(input: VrInput) -> u8 {
     match input {
@@ -402,8 +412,9 @@ pub(super) fn grab_levers(
         let (mp, mr) = stick_angles_moved(g.p0, right.grip.translation - anchors.stick_pivot);
         let w = stick_follow(anchors.stick_pivot, anchors.grip_height);
         let (p, r) = (tp + (mp - tp) * w, tr + (mr - tr) * w);
-        controls.pitch = (p / STICK_TILT).clamp(-1.0, 1.0);
-        controls.roll = (r / STICK_TILT).clamp(-1.0, 1.0);
+        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
+        controls.pitch = (p / tilt).clamp(-1.0, 1.0);
+        controls.roll = (r / tilt).clamp(-1.0, 1.0);
         // Twisting clockwise (seen from above) = nose right.
         let twist = twist_about(delta, Vec3::Y);
         let yaw = -twist / STICK_TWIST;
@@ -653,8 +664,9 @@ pub(super) fn animate_levers(
     k: Res<FlightConstants>,
 ) {
     if let Ok(mut tf) = stick.single_mut() {
-        tf.rotation = Quat::from_rotation_x(controls.pitch * STICK_TILT)
-            * Quat::from_rotation_z(-controls.roll * STICK_TILT)
+        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
+        tf.rotation = Quat::from_rotation_x(controls.pitch * tilt)
+            * Quat::from_rotation_z(-controls.roll * tilt)
             * Quat::from_rotation_y(-controls.yaw * STICK_TWIST);
     }
     if let (Ok(mut tf), Ok(a)) = (throttle.single_mut(), aircraft.single()) {
@@ -763,5 +775,9 @@ mod tests {
         assert!(roll.abs() < 1e-6);
         let (_, roll) = stick_angles_moved(p0, p0 + Vec3::X * 0.05);
         assert!(roll > 0.0, "hand right = roll right");
+        // Full deflection with the grip 8 cm off centre; a side stick keeps its throw.
+        let (pitch, _) = stick_angles_moved(p0, p0 + Vec3::new(0.0, 0.0, CENTRE_STICK_TRAVEL));
+        assert!((pitch / stick_tilt(centre, height) - 1.0).abs() < 0.05, "{pitch}");
+        assert_eq!(stick_tilt(side, 0.11), STICK_TILT);
     }
 }
