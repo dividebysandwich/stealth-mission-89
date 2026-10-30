@@ -694,8 +694,7 @@ pub(super) fn step(
                 let n0 =
                     neutral_load(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin(), roll)
                         .max(0.0);
-                let alpha =
-                    (n0 / per_cl / cl_slope(ae, a)).clamp(0.0, alpha_limit(ae, a));
+                let alpha = (n0 / per_cl / cl_slope(ae, a)).clamp(0.0, alpha_limit(ae, a));
                 a.orientation = (a.orientation * Quat::from_rotation_x(alpha)).normalize();
             }
             a.modern.hold = Some(a.modern.vel.normalize_or_zero().y.clamp(-1.0, 1.0).asin());
@@ -902,16 +901,10 @@ pub(super) fn step(
         q_cmd += pitch_fault * ae.pitch_rate_max;
         // Limiters: the angle of attack stays within the limiter angles and the angles that give
         // the load factor limits (corrected towards them near the limits only).
-        let lo_n = if per_cl > 1e-3 {
-            ae.n_min / per_cl / cl_slope(ae, a)
-        } else {
-            ae.alpha_limit_neg
-        };
-        let hi_n = if per_cl > 1e-3 {
-            ae.n_max / per_cl / cl_slope(ae, a)
-        } else {
-            alpha_limit(ae, a)
-        };
+        let lo_n =
+            if per_cl > 1e-3 { ae.n_min / per_cl / cl_slope(ae, a) } else { ae.alpha_limit_neg };
+        let hi_n =
+            if per_cl > 1e-3 { ae.n_max / per_cl / cl_slope(ae, a) } else { alpha_limit(ae, a) };
         let hi = alpha_limit(ae, a).min(hi_n);
         let lo = ae.alpha_limit_neg.max(lo_n).min(hi);
         q_cmd = q_cmd.min(q_path + (hi - alpha) / TAU_LIMIT).max(q_path + (lo - alpha) / TAU_LIMIT);

@@ -778,9 +778,7 @@ fn layers_panel(
         egui::UiBuilder::new().max_rect(area).layout(egui::Layout::top_down(egui::Align::Max)),
     );
     let text = if layers.panel { "LAYERS  ^" } else { "LAYERS  v" };
-    if ui
-        .add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel))
-        .clicked()
+    if ui.add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel)).clicked()
     {
         layers.panel = !layers.panel;
     }
