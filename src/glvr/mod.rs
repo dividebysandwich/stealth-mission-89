@@ -312,11 +312,16 @@ fn render_thread(
         }
         if last_log.elapsed() >= Duration::from_secs(5) {
             let n = frames.max(1);
+            // (GPU times only with SM89_GL_TIMER=1.)
+            let gpu_text = if gpu_frames > 0 {
+                format!(", GPU {:.2} ms", gpu / gpu_frames as f32)
+            } else {
+                String::new()
+            };
             info!(
-                "glvr: {:.1} fps, draw {:.2} ms, GPU {:.2} ms, {} draws ({} culled, {} distinct world meshes) a frame",
+                "glvr: {:.1} fps, draw {:.2} ms{gpu_text}, {} draws ({} culled, {} distinct world meshes) a frame",
                 frames as f32 / last_log.elapsed().as_secs_f32(),
                 draw_time.as_secs_f32() * 1000.0 / n as f32,
-                gpu / gpu_frames.max(1) as f32,
                 draws / n as u64,
                 culled / n as u64,
                 distinct / n as u64,

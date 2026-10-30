@@ -267,6 +267,13 @@ fn groups<'a>(items: impl Iterator<Item = &'a Item>, instances: &mut Vec<u32>) -
 /// Frames of GPU timestamps in flight: read back this many frames after they were taken.
 const TIMERS: usize = 4;
 
+/// `SM89_GL_TIMER=1`: GPU timestamps around each frame's pass, for the log's GPU time. Off by
+/// default: on the Steam Frame (Zink on Turnip) the CP's writes into their query pools fault
+/// (kernel "gpu fault ... source=CP" every few seconds) and now and then lose the device.
+fn timers_wanted() -> bool {
+    std::env::var("SM89_GL_TIMER").is_ok_and(|v| v == "1")
+}
+
 pub struct Renderer {
     pub gl: glow::Context,
     /// The world's programs for both eyes, and for the offscreen views.
@@ -304,7 +311,8 @@ pub struct Renderer {
     pub stats: Stats,
     /// Images read back this frame (`DrawList::readbacks`): the entity and the pixels.
     pub readouts: Vec<(Entity, Vec<u8>)>,
-    /// Timestamps before and after each frame's pass, a ring of `TIMERS`.
+    /// Timestamps before and after each frame's pass, a ring of `TIMERS` (none unless
+    /// `timers_wanted`).
     timers: Vec<(glow::Query, glow::Query)>,
     frame: usize,
 }
@@ -476,7 +484,7 @@ impl Renderer {
         let samples = if multisample.is_some() { samples } else { 0 };
         // SAFETY: the context is current.
         let timers = unsafe {
-            (0..TIMERS)
+            (0..if timers_wanted() { TIMERS } else { 0 })
                 .map(|_| Ok((gl.create_query()?, gl.create_query()?)))
                 .collect::<Result<Vec<_>, String>>()?
         };
@@ -814,19 +822,21 @@ impl Renderer {
         srgb: bool,
     ) -> Result<(), String> {
         let fb = self.framebuffer(texture, size)?;
-        let timer = self.timers[self.frame % TIMERS];
+        let timer = self.timers.get(self.frame % TIMERS).copied();
         let mut gpu_ms = None;
         // SAFETY: the context is current; the queries and buffers are this renderer's.
         unsafe {
             let gl = &self.gl;
-            if self.frame >= TIMERS
-                && gl.get_query_parameter_u32(timer.1, glow::QUERY_RESULT_AVAILABLE) != 0
-            {
-                let start = gl.get_query_parameter_u64(timer.0, glow::QUERY_RESULT);
-                let end = gl.get_query_parameter_u64(timer.1, glow::QUERY_RESULT);
-                gpu_ms = Some(end.saturating_sub(start) as f32 / 1e6);
+            if let Some(timer) = timer {
+                if self.frame >= TIMERS
+                    && gl.get_query_parameter_u32(timer.1, glow::QUERY_RESULT_AVAILABLE) != 0
+                {
+                    let start = gl.get_query_parameter_u64(timer.0, glow::QUERY_RESULT);
+                    let end = gl.get_query_parameter_u64(timer.1, glow::QUERY_RESULT);
+                    gpu_ms = Some(end.saturating_sub(start) as f32 / 1e6);
+                }
+                gl.query_counter(timer.0, glow::TIMESTAMP);
             }
-            gl.query_counter(timer.0, glow::TIMESTAMP);
             if !list.globals.is_empty() {
                 gl.bind_buffer(glow::UNIFORM_BUFFER, Some(self.globals));
                 gl.buffer_data_u8_slice(glow::UNIFORM_BUFFER, &list.globals, glow::DYNAMIC_DRAW);
@@ -940,7 +950,9 @@ impl Renderer {
             gl.bind_vertex_array(None);
             gl.invalidate_framebuffer(glow::FRAMEBUFFER, &[glow::DEPTH_ATTACHMENT]);
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-            gl.query_counter(timer.1, glow::TIMESTAMP);
+            if let Some(timer) = timer {
+                gl.query_counter(timer.1, glow::TIMESTAMP);
+            }
             gl.flush();
         }
         self.frame += 1;
