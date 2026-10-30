@@ -1015,11 +1015,12 @@ fn mesh_data(mesh: &Mesh) -> Option<MeshData> {
     })
 }
 
-/// What the render thread needs of `image`: RGBA8 images only so far.
+/// What the render thread needs of `image`: RGBA8 and R8 images only so far.
 fn texture_data(image: &Image) -> Option<TextureData> {
-    let srgb = match image.texture_descriptor.format {
+    let format = image.texture_descriptor.format;
+    let srgb = match format {
         TextureFormat::Rgba8UnormSrgb => true,
-        TextureFormat::Rgba8Unorm => false,
+        TextureFormat::Rgba8Unorm | TextureFormat::R8Unorm => false,
         other => {
             warn!("glvr: images of format {other:?} aren't drawn yet");
             return None;
@@ -1036,6 +1037,7 @@ fn texture_data(image: &Image) -> Option<TextureData> {
         levels: image.texture_descriptor.mip_level_count.max(1),
         data: image.data.clone()?,
         srgb,
+        one_channel: format == TextureFormat::R8Unorm,
         nearest,
         anisotropy,
     })

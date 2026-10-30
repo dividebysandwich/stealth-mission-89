@@ -122,10 +122,7 @@ fn attach(
         vis.set_if_neq(if shown { Visibility::Inherited } else { Visibility::Hidden });
         return;
     }
-    let tex = CanvasTexture::new(Canvas::new(WIDTH, HEIGHT), &mut images, true);
-    if let Some(mut img) = images.get_mut(&tex.image) {
-        img.sampler = bevy::image::ImageSampler::linear();
-    }
+    let tex = CanvasTexture::coverage(Canvas::new(WIDTH, HEIGHT), &mut images);
     let material = materials.add(HmdMaterial {
         tint: Vec4::ZERO,
         image: tex.image.clone(),

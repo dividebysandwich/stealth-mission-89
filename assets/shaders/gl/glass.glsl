@@ -44,13 +44,13 @@ void main() {
     // (The canvas's rows go top down, as Bevy's images.)
     vec4 c = textureLod(u_base_tex, p / size, 0.0);
     if (u_style.x > 0.5) {
-        float a = inside ? clamp(c.a * 1.2, 0.0, 1.0) : 0.0;
+        float a = inside ? clamp(c.r * 1.2, 0.0, 1.0) : 0.0;
         if (a <= 0.01) {
             if (u_tint.a <= 0.0) { discard; }
             o_colour = u_tint;
             return;
         }
-        o_colour = vec4(HUD_GREEN * u_style.y * (0.75 + 0.6 * c.a), a);
+        o_colour = vec4(HUD_GREEN * u_style.y * (0.75 + 0.6 * c.r), a);
         return;
     }
     if (inside && c.a > 0.5) {

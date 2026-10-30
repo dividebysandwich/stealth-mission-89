@@ -134,12 +134,15 @@ pub struct MeshData {
     pub topology: PrimitiveTopology,
 }
 
-/// An RGBA8 image for the render thread: its mip levels' pixels one after the other.
+/// An RGBA8 (or one-channel R8) image for the render thread: its mip levels' pixels one after
+/// the other.
 pub struct TextureData {
     pub size: (u32, u32),
     pub levels: u32,
     pub data: Vec<u8>,
     pub srgb: bool,
+    /// R8: one byte a pixel.
+    pub one_channel: bool,
     pub nearest: bool,
     pub anisotropy: u16,
 }
@@ -627,7 +630,11 @@ impl Renderer {
     fn upload_texture(&mut self, id: AssetId<Image>, data: &TextureData) {
         let gl = &self.gl;
         let (w, h) = data.size;
-        let internal = if data.srgb { glow::SRGB8_ALPHA8 } else { glow::RGBA8 };
+        let (internal, format, bytes) = match (data.one_channel, data.srgb) {
+            (true, _) => (glow::R8, glow::RED, 1),
+            (false, true) => (glow::SRGB8_ALPHA8, glow::RGBA, 4),
+            (false, false) => (glow::RGBA8, glow::RGBA, 4),
+        };
         // SAFETY: the context is current; the data covers the levels read.
         unsafe {
             let texture = match self.textures.get(&id) {
@@ -678,7 +685,7 @@ impl Renderer {
             gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
             let (mut lw, mut lh, mut offset, mut uploaded) = (w as usize, h as usize, 0, 0);
             for level in 0..data.levels {
-                let len = lw * lh * 4;
+                let len = lw * lh * bytes;
                 let Some(pixels) = data.data.get(offset..offset + len) else { break };
                 uploaded += 1;
                 gl.tex_sub_image_2d(
@@ -688,7 +695,7 @@ impl Renderer {
                     0,
                     lw as i32,
                     lh as i32,
-                    glow::RGBA,
+                    format,
                     glow::UNSIGNED_BYTE,
                     glow::PixelUnpackData::Slice(Some(pixels)),
                 );

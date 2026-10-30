@@ -50,9 +50,9 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let size = vec2<f32>(textureDimensions(hud_texture));
     let inside = p.x >= 0.0 && p.y >= 0.0 && p.x < size.x && p.y < size.y;
     if style.x > 0.5 {
-        // Modern: ink coverage (linear filtered), one sample per pixel (the combiner covers much
-        // of the view in a headset).
-        let core = textureSampleLevel(hud_texture, hud_sampler, p / size, 0.0).a;
+        // Modern: ink coverage (a one-channel texture, linear filtered), one sample per pixel
+        // (the combiner covers much of the view in a headset).
+        let core = textureSampleLevel(hud_texture, hud_sampler, p / size, 0.0).r;
         let a = select(0.0, clamp(core * 1.2, 0.0, 1.0), inside);
         if a <= 0.01 {
             if tint.a <= 0.0 {

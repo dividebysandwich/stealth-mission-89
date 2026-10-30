@@ -448,10 +448,11 @@ fn hud_canvas(
     scale: f32,
 ) -> (CanvasTexture, Vec4, Vec4) {
     let ((w, h), proj, style) = HudGlassMaterial::layout(classic, scale);
-    let tex = CanvasTexture::new(Canvas::new(w, h), images, true);
-    if !classic && let Some(mut img) = images.get_mut(&tex.image) {
-        img.sampler = bevy::image::ImageSampler::linear();
-    }
+    let tex = if classic {
+        CanvasTexture::new(Canvas::new(w, h), images, true)
+    } else {
+        CanvasTexture::coverage(Canvas::new(w, h), images)
+    };
     (tex, proj, style)
 }
 
