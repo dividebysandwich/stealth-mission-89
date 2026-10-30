@@ -21,8 +21,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::aaa::{GroundUnit, Shell};
+use crate::aaa::{Fine, GroundUnit, Shell};
 use crate::campaign::{AiMissile, CampaignFlight};
+use crate::ground::GroundState;
 use crate::station::DefenceState;
 use crate::types::*;
 use crate::{ENEMY_SLOTS, PILOT_SLOTS, Pilot, PlayerView, Sim};
@@ -186,6 +187,9 @@ pub struct WorldFast {
     pub flash: Flash,
     /// Air defence units aiming or firing: index, azimuth, elevation, burst, tracking.
     pub aaa_busy: Vec<(u16, f32, f32, i32, bool)>,
+    /// The vehicles of the convoys on the move: index, position.
+    #[serde(default)]
+    pub moving: Vec<(u16, Fine)>,
     pub ai_missiles: Vec<AiMissile>,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
@@ -214,6 +218,9 @@ pub struct WorldSlow {
     /// ready (when they changed; refills in whole seconds).
     #[serde(default)]
     pub defence: Option<(DefenceState, Vec<i32>)>,
+    /// The ground war without the convoys' driving (when it changed).
+    #[serde(default)]
+    pub ground: Option<GroundState>,
 }
 
 /// The host's record of what a client has been sent of the slow state.
@@ -223,6 +230,7 @@ pub struct SlowBase {
     aaa: Vec<(GroundUnit, bool)>,
     campaign_flights: Vec<Option<CampaignFlight>>,
     defence: Option<(DefenceState, Vec<i32>)>,
+    ground: Option<GroundState>,
     joined: bool,
 }
 
@@ -281,9 +289,17 @@ impl Sim {
                 .enumerate()
                 // A manned one too: its turret slewed by hand.
                 .filter(|&(i, u)| {
-                    !u.destroyed && (u.tracking || u.burst > 0 || self.manned_by(i).is_some())
+                    !u.destroyed
+                        && (u.tracking
+                            || u.burst > 0
+                            || self.manned_by(i).is_some()
+                            || u.kind.armour() && self.ground_busy(i))
                 })
                 .map(|(i, u)| (i as u16, u.aim_az, u.aim_el, u.burst, u.tracking))
+                .collect(),
+            moving: (0..self.units.len())
+                .filter(|&i| !self.units[i].destroyed && self.unit_moving(i))
+                .filter_map(|i| Some((i as u16, self.units[i].fine?)))
                 .collect(),
             ai_missiles: self.ai_missiles().to_vec(),
             pilots: self.remote_pilots(),
@@ -367,7 +383,7 @@ impl Sim {
         base.aaa.truncate(self.units.len());
         for (i, u) in self.units.iter().enumerate() {
             // The aim, the burst and the tracking go with the fast state.
-            let still = GroundUnit {
+            let mut still = GroundUnit {
                 aim_az: 0.0,
                 aim_el: 0.0,
                 burst: 0,
@@ -376,6 +392,12 @@ impl Sim {
                 rounds: 0,
                 ..*u
             };
+            // A convoy's vehicles drive with the fast state (sent in full when they join).
+            if let Some(b) = base.aaa.get(i).filter(|b| self.unit_moving(i) && b.0.kind == u.kind) {
+                still.x = b.0.x;
+                still.y = b.0.y;
+                still.fine = b.0.fine;
+            }
             let now = (still, self.aaa_blue(i));
             if base.aaa.get(i) != Some(&now) {
                 if i < base.aaa.len() {
@@ -406,6 +428,18 @@ impl Sim {
             if base.defence != now {
                 base.defence.clone_from(&now);
                 out.defence = now;
+            }
+            let mut g = c.ground.clone();
+            g.reload.clear();
+            g.rng = None;
+            for v in &mut g.convoys {
+                v.along = 0.0;
+                v.mode = Default::default();
+            }
+            let now = Some(g);
+            if base.ground != now {
+                base.ground.clone_from(&now);
+                out.ground = now;
             }
         }
         if !base.joined {
@@ -535,6 +569,13 @@ impl Sim {
                 u.tracking = tracking;
             }
         }
+        for &(i, f) in &w.moving {
+            if let Some(u) = self.units.get_mut(i as usize) {
+                u.fine = Some(f);
+                u.x = (f.e as f64 / crate::aaa::M_PER_MAP).round() as i32;
+                u.y = 0x8000 - (f.n as f64 / crate::aaa::M_PER_MAP).round() as i32;
+            }
+        }
         if let Some(c) = self.campaign.as_mut() {
             c.missiles = w.ai_missiles.clone();
         }
@@ -614,6 +655,9 @@ impl Sim {
                 for (u, &r) in self.units.iter_mut().zip(rounds) {
                     u.rounds = r;
                 }
+            }
+            if let Some(g) = &w.ground {
+                c.ground = g.clone();
             }
         }
         if let Some(t) = &w.tiles {

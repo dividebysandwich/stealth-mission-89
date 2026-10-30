@@ -853,6 +853,14 @@ pub enum SimEvent {
         unit: usize,
         by: Option<u8>,
     },
+    /// Campaign: ground unit `from` fired at ground unit `to` (`Sim::units` indices), a gun
+    /// or a guided missile, and hit it or not.
+    GroundShot {
+        from: usize,
+        to: usize,
+        hit: bool,
+        missile: bool,
+    },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {
         unit: usize,

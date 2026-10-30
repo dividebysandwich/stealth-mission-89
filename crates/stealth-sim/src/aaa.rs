@@ -54,6 +54,14 @@ pub enum GroundKind {
     /// Drone command center: a bunker with a launch ramp, flies surveillance and attack drones
     /// (no gun of its own).
     DroneCenter,
+    /// T-90 main battle tank (125 mm gun).
+    T90,
+    /// Leopard 2 main battle tank (120 mm gun).
+    Leopard2,
+    /// M2 Bradley infantry fighting vehicle: 25 mm gun, TOW missiles and a rifle squad.
+    Bradley,
+    /// BMP-2 infantry fighting vehicle: 30 mm gun, Konkurs missiles and a rifle squad.
+    Bmp2,
 }
 
 impl GroundKind {
@@ -66,6 +74,10 @@ impl GroundKind {
             GroundKind::PatriotRadar => "Patriot radar",
             GroundKind::Gepard => "Gepard",
             GroundKind::DroneCenter => "Drone command center",
+            GroundKind::T90 => "T-90",
+            GroundKind::Leopard2 => "Leopard 2",
+            GroundKind::Bradley => "M2 Bradley",
+            GroundKind::Bmp2 => "BMP-2",
         }
     }
 
@@ -82,9 +94,30 @@ impl GroundKind {
         matches!(self, GroundKind::PatriotLauncher | GroundKind::PatriotRadar)
     }
 
-    /// No gun and no MANPADS of its own: a Patriot launcher or radar, a drone command center.
+    /// No gun and no MANPADS of its own to fire at aircraft: a Patriot launcher or radar, a
+    /// drone command center, a tank or an infantry fighting vehicle.
     pub fn unarmed(self) -> bool {
-        self.patriot() || self == GroundKind::DroneCenter
+        self.patriot() || self == GroundKind::DroneCenter || self.armour()
+    }
+
+    /// A main battle tank.
+    pub fn tank(self) -> bool {
+        matches!(self, GroundKind::T90 | GroundKind::Leopard2)
+    }
+
+    /// An infantry fighting vehicle: carries the troops that take a place.
+    pub fn carrier(self) -> bool {
+        matches!(self, GroundKind::Bradley | GroundKind::Bmp2)
+    }
+
+    /// A tank or an infantry fighting vehicle: fights other ground units.
+    pub fn armour(self) -> bool {
+        self.tank() || self.carrier()
+    }
+
+    /// Goes with a convoy: armour and the tracked air defence guns.
+    pub fn mobile(self) -> bool {
+        self.armour() || matches!(self, GroundKind::Zsu | GroundKind::Gepard)
     }
 
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
@@ -94,9 +127,7 @@ impl GroundKind {
             GroundKind::S60 => (1000.0, 6000.0, 4500.0),
             GroundKind::Manpads => (0.0, 5000.0, 3500.0),
             GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
-            GroundKind::PatriotLauncher | GroundKind::PatriotRadar | GroundKind::DroneCenter => {
-                (0.0, 0.0, 0.0)
-            }
+            _ => (0.0, 0.0, 0.0),
         }
     }
 }
@@ -126,12 +157,35 @@ pub struct GroundUnit {
     /// Patriot launcher: missiles ready.
     #[serde(default)]
     pub rounds: i32,
+    /// A vehicle's own position and the way its hull points (`x`, `y` are this rounded).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fine: Option<Fine>,
+}
+
+/// A vehicle's position in metres (east, north) and its hull's heading (rad, clockwise from
+/// north).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct Fine {
+    pub e: f32,
+    pub n: f32,
+    pub heading: f32,
 }
 
 impl GroundUnit {
     /// Position in metres (east, north, up).
     pub fn metres(&self) -> [f64; 3] {
-        [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP, 2.0]
+        match self.fine {
+            Some(f) => [f.e as f64, f.n as f64, 2.0],
+            None => [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP, 2.0],
+        }
+    }
+
+    /// Position in map units, between the units' grid.
+    pub fn map_xy(&self) -> (f64, f64) {
+        match self.fine {
+            Some(f) => (f.e as f64 / M_PER_MAP, 0x8000 as f64 - f.n as f64 / M_PER_MAP),
+            None => (self.x as f64, self.y as f64),
+        }
     }
 }
 
@@ -165,6 +219,12 @@ const ZSU_HIT_RADIUS: f64 = 9.0;
 const ZSU_HIT_CHANCE: i32 = 450; // per mille, per tracer passing within the radius
 const FLAK_LETHAL: f64 = 14.0;
 const FLAK_REACH: f64 = 40.0;
+/// A bomb's or missile's blast kills a tank this close (map units, ~16 m), an infantry fighting
+/// vehicle this close (~25 m); one gun round in so many kills one.
+const TANK_BLAST: f64 = 1.0;
+const IFV_BLAST: f64 = 1.6;
+const TANK_ROUND_ODDS: i32 = 30;
+const IFV_ROUND_ODDS: i32 = 10;
 /// Units and shells at most.
 const MAX_UNITS: usize = 72;
 const MAX_SHELLS: usize = 160;
@@ -286,6 +346,7 @@ impl Sim {
                     burst: 0,
                     cooldown: 0,
                     rounds: 0,
+                    fine: None,
                 });
             };
         let hostile = |o: &GroundObject| o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) == 0;
@@ -488,7 +549,11 @@ impl Sim {
                 GroundKind::PatriotLauncher
                 | GroundKind::PatriotRadar
                 | GroundKind::Gepard
-                | GroundKind::DroneCenter => {}
+                | GroundKind::DroneCenter
+                | GroundKind::T90
+                | GroundKind::Leopard2
+                | GroundKind::Bradley
+                | GroundKind::Bmp2 => {}
             }
         }
         self.units = units;
@@ -607,7 +672,7 @@ impl Sim {
     /// units nearby.
     pub(crate) fn aaa_damage(&mut self) {
         let fine = (32 * ROUND_FINE) as f64;
-        let blasts: Vec<(f64, f64, f64, Option<u8>)> = self
+        let blasts: Vec<(f64, f64, bool, Option<u8>)> = self
             .events
             .iter()
             .zip(&self.event_credit)
@@ -615,9 +680,11 @@ impl Sim {
                 SimEvent::Explosion { x, y, alt, kind }
                     if alt < 60 && kind != -1 && kind != -16 =>
                 {
-                    Some((x as f64, y as f64, 4.0, by))
+                    Some((x as f64, y as f64, false, by))
                 }
-                SimEvent::RoundImpact { x, y } => Some((x as f64 / fine, y as f64 / fine, 1.0, by)),
+                SimEvent::RoundImpact { x, y } => {
+                    Some((x as f64 / fine, y as f64 / fine, true, by))
+                }
                 _ => None,
             })
             .collect();
@@ -630,10 +697,17 @@ impl Sim {
             if u.destroyed {
                 continue;
             }
-            for &(x, y, r, by) in &blasts {
-                let d = (x - u.x as f64).hypot(y - u.y as f64);
+            let (ux, uy) = u.map_xy();
+            // Blast radius and the odds against a gun round (map units, 1 in n).
+            let (r, odds) = match u.kind {
+                k if k.tank() => (TANK_BLAST, TANK_ROUND_ODDS),
+                k if k.carrier() => (IFV_BLAST, IFV_ROUND_ODDS),
+                _ => (4.0, 6),
+            };
+            for &(x, y, round, by) in &blasts {
+                let d = (x - ux).hypot(y - uy);
                 // A gun round kills only now and then.
-                if d < r && (r > 1.0 || rng.random(6) == 0) {
+                if (round && d < 1.0 && rng.random(odds) == 0) || (!round && d < r) {
                     self.units[k].destroyed = true;
                     self.units[k].burst = 0;
                     if let Some(p) = by {

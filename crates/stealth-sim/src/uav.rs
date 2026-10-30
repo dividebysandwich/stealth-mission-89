@@ -1151,8 +1151,12 @@ impl Sim {
     /// is forgotten.
     fn uav_look(&mut self) {
         let mut known = self.defence().map(|d| d.uav_known.clone()).unwrap_or_default();
+        // Armour on the move is known only while a drone sees it.
         known.retain(|s| match *s {
-            Seen::Aaa(k) => self.units.get(k as usize).is_some_and(|u| !u.destroyed),
+            Seen::Aaa(k) => self
+                .units
+                .get(k as usize)
+                .is_some_and(|u| !u.destroyed && !self.unit_moving(k as usize)),
             Seen::Object(o) => self
                 .objects
                 .get(o as usize)
