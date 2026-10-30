@@ -2346,3 +2346,28 @@ fn a_convoy_resumes_from_where_it_was() {
     let back: CampaignState = serde_json::from_str(&json).unwrap();
     assert_eq!(back.convoys, c.convoys);
 }
+
+/// The board asks to stop the enemy's column and to clear the way for ours.
+#[test]
+fn the_board_offers_cas_for_the_columns() {
+    let (mut c, k) = launched();
+    let red = c.convoys.iter().find(|v| v.side == Side::Red).unwrap().id;
+    let mut view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], true);
+    let mut enemy = GroundView::gun(1000, 1000, Side::Red, true);
+    enemy.vehicle = Some(ConvoyUnit::Tank);
+    enemy.convoy = red;
+    view.units.push(enemy);
+    c.board_at = f64::MIN;
+    c.tick(1.0, &view, &[]);
+    let armour = c.board.iter().find(|o| matches!(o.objective, Objective::Armour { .. }));
+    let support = c.board.iter().find(|o| matches!(o.objective, Objective::Support { .. }));
+    let Some(Objective::Armour { convoy, aaa }) = armour.map(|o| o.objective.clone()) else {
+        panic!("{:?}", c.board)
+    };
+    assert_eq!((convoy, aaa), (red, vec![3]));
+    let Some(Objective::Support { aaa, .. }) = support.map(|o| o.objective.clone()) else {
+        panic!("{:?}", c.board)
+    };
+    assert_eq!(aaa, vec![2], "the garrison's tank");
+    assert!(armour.unwrap().kind == MissionKind::Cas && support.unwrap().kind == MissionKind::Cas);
+}

@@ -917,6 +917,7 @@ fn place_of(o: &Objective) -> Option<u16> {
         | Objective::Cas { place, .. }
         | Objective::Strike { place, .. }
         | Objective::Interdict { place, .. }
+        | Objective::Support { place, .. }
         | Objective::Insertion { place } => Some(place),
         _ => None,
     }
@@ -929,6 +930,8 @@ fn describe_offer(c: &ActiveCampaign, o: &MissionOffer) -> &'static str {
             "Shoot down the attack drones before they dive into the target: one getting through destroys it"
         }
         Objective::Battery { .. } => stealth_host::glue::BATTERY_TASK,
+        Objective::Armour { .. } => stealth_host::glue::ARMOUR_TASK,
+        Objective::Support { .. } => stealth_host::glue::SUPPORT_TASK,
         _ => describe(o.kind),
     }
 }

@@ -5,7 +5,7 @@
 
 use crate::state::*;
 use crate::tuning::*;
-use crate::{CampaignEvent, Report, WorldView};
+use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WorldView};
 
 impl CampaignState {
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
@@ -1392,6 +1392,56 @@ impl CampaignState {
                 threat,
             );
         }
+        // The armour columns: the enemy's to stop, ours to clear the way for.
+        let moving: Vec<u32> = self.convoys.iter().filter(|v| v.active()).map(|v| v.id).collect();
+        for v in self.convoys.clone().into_iter().filter(Convoy::active) {
+            let p = &self.places[v.place as usize];
+            let (name, px, py) = (p.name.clone(), p.x, p.y);
+            if v.side == side.enemy() {
+                let aaa: Vec<u32> = (0..view.units.len() as u32)
+                    .filter(|&k| {
+                        let u = &view.units[k as usize];
+                        u.convoy == v.id && u.alive
+                    })
+                    .collect();
+                if aaa.is_empty() {
+                    continue;
+                }
+                let threat = v.units.iter().filter(|&&u| u == ConvoyUnit::Escort).count() as i32;
+                add(
+                    self,
+                    MissionKind::Cas,
+                    format!("CAS - armour column to {name}"),
+                    Objective::Armour { convoy: v.id, aaa },
+                    v.at.0,
+                    v.at.1,
+                    threat,
+                );
+            } else {
+                let aaa: Vec<u32> = (0..view.units.len() as u32)
+                    .filter(|&k| {
+                        let u = &view.units[k as usize];
+                        u.alive
+                            && u.side == v.side.enemy()
+                            && !moving.contains(&u.convoy)
+                            && dist(u.x - px, u.y - py) <= GARRISON_RADIUS
+                    })
+                    .collect();
+                if aaa.is_empty() {
+                    continue;
+                }
+                let threat = aaa.len() as i32;
+                add(
+                    self,
+                    MissionKind::Cas,
+                    format!("CAS - support armour at {name}"),
+                    Objective::Support { convoy: v.id, place: v.place, aaa },
+                    px,
+                    py,
+                    threat,
+                );
+            }
+        }
         // Escorts for the insertions under way.
         for ins in self.insertions.clone() {
             if ins.side != side
@@ -1477,6 +1527,9 @@ impl CampaignState {
             let rank = |o: &MissionOffer| match o.kind {
                 // Near the bases for the helicopters, when nothing else is.
                 _ if matches!(o.objective, Objective::Battery { .. }) => 2,
+                // An enemy column on its way, our own one in a fight.
+                _ if matches!(o.objective, Objective::Armour { .. }) => 0,
+                _ if matches!(o.objective, Objective::Support { .. }) => 1,
                 MissionKind::Intercept
                 | MissionKind::Defend
                 | MissionKind::Csar
@@ -1524,6 +1577,7 @@ fn front_index(front: &[PlaceId], o: &Objective) -> usize {
         | Objective::Sead { place, .. }
         | Objective::Cas { place, .. }
         | Objective::Strike { place, .. }
+        | Objective::Support { place, .. }
         | Objective::Insertion { place } => place,
         _ => return front.len(),
     };
@@ -1550,5 +1604,7 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Battery { battery, .. } => (13, battery as i64),
         Objective::Resupply { request } => (14, request as i64),
         Objective::Logistics { site, leg } => (15, (site as i64) << 8 | leg as i64),
+        Objective::Armour { convoy, .. } => (16, convoy as i64),
+        Objective::Support { convoy, .. } => (17, convoy as i64),
     }
 }

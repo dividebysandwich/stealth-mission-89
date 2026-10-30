@@ -289,6 +289,8 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     s.special_model = None;
     let what = match o.objective {
         stealth_campaign::Objective::Battery { .. } => BATTERY_TASK,
+        stealth_campaign::Objective::Armour { .. } => ARMOUR_TASK,
+        stealth_campaign::Objective::Support { .. } => SUPPORT_TASK,
         _ if sortie.aircraft.transport() => describe_heli(o.kind),
         _ => describe(o.kind),
     };
@@ -335,6 +337,10 @@ pub fn airborne(kind: MissionKind) -> bool {
 
 /// What an enemy forward battery's offer asks for.
 pub const BATTERY_TASK: &str = "Destroy the guns of the enemy battery pushed forward near our base";
+/// What the armour columns' offers ask for.
+pub const ARMOUR_TASK: &str = "Stop the enemy armour column: destroy its tanks and troop carriers before they reach our lines";
+pub const SUPPORT_TASK: &str =
+    "Clear the way for our armour column: destroy the tanks and guns defending the place";
 
 /// The world object an objective is about (None: aircraft or an area), what it is for the
 /// kneeboard, and whether it is an area target.
@@ -351,6 +357,8 @@ fn primary_target(
         Objective::Sead { ref sites, .. } => sites.first().copied(),
         Objective::Cas { .. } => return (None, "GUNS AND MANPADS".into(), true),
         Objective::Battery { .. } => return (None, "GUN BATTERY".into(), true),
+        Objective::Armour { .. } => return (None, "ARMOUR COLUMN".into(), true),
+        Objective::Support { .. } => return (None, "ARMOUR AND GUNS".into(), true),
         _ => return (None, String::new(), false),
     };
     let name = object.and_then(|k| state.site(k)).map_or(String::new(), |s| {
@@ -381,6 +389,24 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         }
         Objective::Battery { ref aaa, .. } => format!(
             "An enemy battery pushed forward: {} guns and a MANPADS team. Destroy them.",
+            aaa.len()
+        ),
+        Objective::Armour { ref aaa, convoy } => {
+            let to = state
+                .convoys
+                .iter()
+                .find(|v| v.id == convoy)
+                .map_or(String::new(), |v| state.places[v.place as usize].name.clone());
+            format!(
+                "{} enemy tanks, troop carriers and a Shilka on the road to {to}. Find them \
+                 near the briefed point and stop them.",
+                aaa.len()
+            )
+        }
+        Objective::Support { ref aaa, place, .. } => format!(
+            "Our armour attacks {}: {} tanks, guns and MANPADS teams defend it. Destroy them \
+             before our column arrives.",
+            state.places[place as usize].name,
             aaa.len()
         ),
         Objective::Strike { airfield, .. } => format!("The airfield of {}.", site(airfield)),

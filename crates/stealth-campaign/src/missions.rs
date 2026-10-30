@@ -443,8 +443,15 @@ impl CampaignState {
                     sites.iter().filter(|&&s| !self.site(s).is_some_and(Site::alive)).count();
                 share(sites.len(), done)
             }
-            Objective::Cas { aaa, .. } | Objective::Battery { aaa, .. } => {
+            Objective::Cas { aaa, .. }
+            | Objective::Battery { aaa, .. }
+            | Objective::Armour { aaa, .. } => {
                 share(aaa.len(), aaa.iter().filter(|a| p.aaa_destroyed.contains(a)).count())
+            }
+            // Or the column took the place with him there.
+            Objective::Support { aaa, place, .. } => {
+                share(aaa.len(), aaa.iter().filter(|a| p.aaa_destroyed.contains(a)).count())
+                    || p.present() && self.places[*place as usize].owner == Side::Blue
             }
             Objective::Strike { airfield, .. } => !self.site(*airfield).is_some_and(Site::alive),
             Objective::AntiShip { ship } => !self.site(*ship).is_some_and(Site::alive),

@@ -338,6 +338,18 @@ pub enum Objective {
         battery: u32,
         aaa: Vec<u32>,
     },
+    /// Destroy an enemy armour column on its way (its vehicles' unit indices).
+    Armour {
+        convoy: u32,
+        aaa: Vec<u32>,
+    },
+    /// Clear the way for a friendly armour column: destroy the garrison, guns and armour of
+    /// the place it attacks (unit indices).
+    Support {
+        convoy: u32,
+        place: PlaceId,
+        aaa: Vec<u32>,
+    },
     /// Hover with a new stockpile at a friendly air defence unit (a [`SupplyRequest`]).
     Resupply {
         request: u32,
