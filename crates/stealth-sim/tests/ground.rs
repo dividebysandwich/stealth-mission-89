@@ -134,6 +134,7 @@ fn opposing_columns_halt_and_fight() {
     // A tank fires a round every 5 to 9 s; the autocannons fire bursts a few tenths apart.
     let mut last: Vec<Option<usize>> = vec![None; sim.units().len()];
     let mut frame = 0;
+    let mut cannon = 0;
     let ps = idle();
     let (_, mut again) = campaign();
     again.spawn_convoy(1, true, &blue, &[(X, Y), (X + 30 * KM, Y)]);
@@ -149,13 +150,20 @@ fn opposing_columns_halt_and_fight() {
                         _ => assert!(gap >= 1),
                     }
                 }
+                cannon += (gun == GroundGun::Cannon) as i32;
                 last[from] = Some(frame);
             }
         }
         frame += 1;
     }
-    // They stopped to fight: neither got anywhere near the other's start.
-    assert!(metres(&sim, 0)[0] < metres(&sim, 4)[0] + 100.0);
+    // They closed in far enough for the infantry fighting vehicles' autocannons too.
+    assert!(cannon > 10, "{cannon} autocannon rounds");
+    // They stopped to fight: neither drove through the other while it still stood.
+    let left = |side: std::ops::Range<usize>| side.filter(|&k| !sim.units()[k].destroyed).count();
+    if left(0..4) > 0 && left(4..8) > 0 {
+        assert!(metres(&sim, 0)[0] < metres(&sim, 4)[0] + 100.0);
+    }
+    assert!(left(0..4) + left(4..8) <= 5, "{} {}", left(0..4), left(4..8));
 }
 
 /// Two infantry fighting vehicles 1.5 km apart fire bursts of 3 to 5 at each other, a dozen

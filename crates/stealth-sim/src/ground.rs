@@ -5,9 +5,8 @@
 //! A convoy's vehicles are ordinary [`GroundUnit`]s with a fine position ([`Fine`]); the air
 //! defence guns among them keep firing at aircraft as anywhere else. Positions are metres
 //! (east, north). A column halts while any of its vehicles can fire at an enemy it sees
-//! within [`HALT_RANGE`]; its
-//! vehicles keep their place in it by the distance driven along the
-//! route, so a wreck leaves its gap.
+//! within [`HALT_RANGE`]; its vehicles keep their place in it by the distance driven along
+//! the route, so a wreck leaves its gap.
 
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +28,13 @@ const ASSAULT_STOP: f64 = 400.0;
 /// A ground unit sees enemy ground units this far (m), the line of sight over the relief
 /// sampled this often (m) and clear by this much (m).
 pub const SIGHT_RANGE: f64 = 4000.0;
-/// A column drives on (firing as it goes) until an enemy it can hit is this close (m).
-const HALT_RANGE: f64 = 2500.0;
+/// A column drives on (its tanks firing as it goes) until an enemy it can hit is this close
+/// (m): close enough that the infantry fighting vehicles at the back of the column (300 m
+/// behind its head) reach the enemy's head with their autocannons too.
+const HALT_RANGE: f64 = 1500.0;
+/// A gun's chance to hit fired on the move, and at a target on the move (factors).
+const MOVING_SHOOTER: f64 = 0.5;
+const MOVING_TARGET: f64 = 0.8;
 const LOS_STEP: f64 = 250.0;
 const LOS_CLEAR: f64 = 10.0;
 /// The most ground units in a campaign.
@@ -464,7 +468,10 @@ impl Sim {
         for v in &mut convoys {
             self.drive(v, speed, dt, look);
         }
-        self.ground_fire(&mut rng);
+        // The vehicles on the move (their convoy not halted) fire and are hit less well.
+        let driving: Vec<u32> =
+            convoys.iter().filter(|v| v.mode != ConvoyMode::Halt).map(|v| v.tag).collect();
+        self.ground_fire(&mut rng, &driving);
         if let Some(c) = self.campaign.as_mut() {
             c.ground.convoys = convoys;
             c.ground.rng = Some(rng);
@@ -614,7 +621,11 @@ impl Sim {
 
     /// The ground guns fire at the enemy's ground units they see, a round at a time (bursts
     /// for the autocannons); the rounds that knock a vehicle out do so as they land.
-    fn ground_fire(&mut self, rng: &mut Rng) {
+    fn ground_fire(&mut self, rng: &mut Rng, driving: &[u32]) {
+        let on_move = |sim: &Sim, k: usize| {
+            let tag = sim.ground().and_then(|g| g.convoy_of.get(k).copied()).unwrap_or(0);
+            tag != 0 && driving.contains(&tag)
+        };
         let fs = self.fs.max(1) as f64;
         let n = self.units.len();
         let credit = self.credit.take();
@@ -665,7 +676,13 @@ impl Sim {
             let mb = b.metres();
             let d = dist(me, [mb[0], mb[1]]);
             let k = d / s.reach;
-            let p_hit = s.hit.0 + (s.hit.1 - s.hit.0) * k;
+            let mut p_hit = s.hit.0 + (s.hit.1 - s.hit.0) * k;
+            if on_move(self, i) {
+                p_hit *= MOVING_SHOOTER;
+            }
+            if on_move(self, j) {
+                p_hit *= MOVING_TARGET;
+            }
             let hit = (rng.random(1000) as f64) < p_hit * 1000.0;
             self.units[i].aim_az = (mb[0] - me[0]).atan2(mb[1] - me[1]) as f32;
             self.units[i].aim_el = 0.01;
