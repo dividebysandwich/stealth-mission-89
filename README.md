@@ -102,7 +102,8 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 | `--lockheed` | realistic weapons: the real aircraft's 2 bays, no air-to-air missiles, no carrier operations |
 | `--head-tracking` | head/eye tracking: infrared, eye, webcam or phone trackers move the cockpit view through a tracking program such as OpenTrack (FreeTrack output on Windows, or UDP to 127.0.0.1 port 4242); Home recentres |
 | `--vr` | OpenXR headset (without a runtime it runs on the desktop); the menu and the debrief are a panel in the headset, operated with a controller |
-| `--desktop` | On the Steam Frame, the AppImage starts in VR unless this is given |
+| `--gl-vr` | VR drawn by the game's own OpenGL renderer (Linux builds), with eye-tracked foveated rendering on the Steam Frame |
+| `--desktop` | On the Steam Frame, the AppImage starts in VR (`--gl-vr`) unless this or `--vr` is given |
 | `--viewer [--file aircraft --model 24]` | browse the 3D models |
 | `--freecam [--at Gutersloh\|primary] [--pos x,z]` | free debug camera |
 

@@ -239,9 +239,14 @@ const AIRCRAFT: [(AircraftKind, &[&str]); 7] = [
 ];
 
 /// The flag a relaunch into VR takes: the headset drawn as this game draws it (`--gl-vr`, glvr's
-/// OpenGL renderer, or `--vr`, Bevy's).
+/// OpenGL renderer, or `--vr`, Bevy's). The Steam Frame (SteamOS on aarch64) takes `--gl-vr`
+/// unless started with `--vr`: only glvr has its eye-tracked foveation.
 fn vr_flag() -> &'static str {
-    if std::env::args().any(|a| a == "--gl-vr") { "--gl-vr" } else { "--vr" }
+    let has = |flag: &str| std::env::args().any(|a| a == flag);
+    let frame = cfg!(all(feature = "glvr", target_os = "linux", target_arch = "aarch64"))
+        && std::fs::read_to_string("/etc/os-release")
+            .is_ok_and(|s| s.lines().any(|l| l == "ID=steamos"));
+    if has("--gl-vr") || (frame && !has("--vr")) { "--gl-vr" } else { "--vr" }
 }
 
 /// Starts the game again in VR, straight into the menu's mission (OpenXR has to replace the
