@@ -63,6 +63,8 @@ mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
+#[cfg(target_os = "linux")]
+mod no_gpu;
 mod options;
 mod palette;
 mod palette_material;
@@ -150,6 +152,11 @@ fn main() {
     dedicated::run_if_asked();
     // `--help`: the command line options.
     help::run_if_asked();
+    // No Vulkan driver: a window that says so, not Bevy's panic. glvr draws with OpenGL.
+    #[cfg(target_os = "linux")]
+    if gl_vr.is_none() {
+        no_gpu::exit_if_missing();
+    }
     #[cfg(windows)]
     win_console::leave_explorer_console();
     let mut settings = Settings::from_args();
