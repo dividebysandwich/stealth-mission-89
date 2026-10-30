@@ -315,8 +315,9 @@ fn render_thread(
             } else {
                 String::new()
             };
+            let (lo, hi, ahead) = headset.pacing();
             info!(
-                "glvr: {:.1} fps, draw {:.2} ms{gpu_text}, {} draws ({} culled, {} distinct world meshes) a frame",
+                "glvr: {:.1} fps, draw {:.2} ms{gpu_text}, {} draws ({} culled, {} distinct world meshes) a frame, runtime period {lo:.1}-{hi:.1} ms, eyes {ahead:.1} ms ahead",
                 frames as f32 / last_log.elapsed().as_secs_f32(),
                 draw_time.as_secs_f32() * 1000.0 / n as f32,
                 draws / n as u64,
