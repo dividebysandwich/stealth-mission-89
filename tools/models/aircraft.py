@@ -11,8 +11,8 @@ drawn at its real size (`K` model units per metre) with one detail level: the ai
 nozzle exits in `_exhaust` and the afterburner flames in `_s13v1` (the game flickers both), a
 missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's, F/A-18's and
 MiG-23's), the navigation lights in `_s12v1`; anticollision.py adds the flashing lights
-afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43, ah1z.py) have
-generators of their own. The flyable F-16 (23), A-10 (32) and Tornado (45) set the eye, lift,
+afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py), the AH-1Z (43, ah1z.py), the RAH-66 (46,
+comanche.py) and the OH-58D (48, kiowa.py) have generators of their own. The flyable F-16 (23), A-10 (32) and Tornado (45) set the eye, lift,
 exhaust and the A-10's muzzle in src/aircraft.rs: change them with their builders; the gear's depth below the origin is in
 `gear_depth` there too. The Tornado's outer wings are parts (`_part1` right, `_part2` left)
 turning about their pivots with state slots 21 and 22 (the sweep). The flyable AV-8B Harrier
