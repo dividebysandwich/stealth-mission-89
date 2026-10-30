@@ -463,7 +463,7 @@ static OH58: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
+    cockpits: &[(PanelStyle::Oh58, "cockpit_oh58")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
