@@ -581,3 +581,65 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
         u.kind == GroundKind::Gepard && again.aaa_blue(k) && (u.x, u.y) == (g.x, g.y)
     }));
 }
+
+/// Both sides send an armour column at once; they drive, fight and end, one at a time each.
+#[test]
+fn convoys_drive_fight_and_take_places() {
+    let s = setup("ukraine");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.state.convoys_due();
+    // Quicker than on the road, for the test.
+    sim.set_convoy_speed(80.0);
+    let mut launched = Vec::new();
+    let mut ended = Vec::new();
+    let mut shots = 0;
+    for frame in 0..15 * 60 * 60 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut ev2 = host.take_sim_events(&mut sim);
+        ev2.extend(ev);
+        shots += ev2
+            .iter()
+            .filter(|e| matches!(e.event, stealth_sim::SimEvent::GroundShot { .. }))
+            .count();
+        for e in host.tick(&mut sim, 1.0 / 15.0, &ev2) {
+            match e {
+                HostEvent::Campaign(stealth_campaign::CampaignEvent::ConvoyLaunched {
+                    id,
+                    side,
+                    ..
+                }) => launched.push((id, side, frame)),
+                HostEvent::Campaign(stealth_campaign::CampaignEvent::ConvoyEnded { id }) => {
+                    ended.push(id)
+                }
+                _ => {}
+            }
+        }
+        let moving = host.state.convoys.iter().filter(|c| c.active()).count();
+        assert!(moving <= 2, "one convoy per side");
+        assert!(sim.convoys().len() <= 2);
+        if ended.len() >= 2 {
+            break;
+        }
+    }
+    for c in &host.state.convoys {
+        let name = |p: u16| host.state.places[p as usize].name.clone();
+        eprintln!(
+            "{:?} convoy {} {} -> {}: {:?}, {} left",
+            c.side,
+            c.id,
+            name(c.from),
+            name(c.place),
+            c.state,
+            c.units.len()
+        );
+    }
+    eprintln!("{shots} shots");
+    assert!(launched.iter().any(|l| l.1 == stealth_campaign::Side::Blue));
+    assert!(launched.iter().any(|l| l.1 == stealth_campaign::Side::Red));
+    assert!(shots > 0);
+    assert!(ended.len() >= 2, "{launched:?} {ended:?}");
+}

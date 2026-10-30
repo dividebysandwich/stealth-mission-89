@@ -263,3 +263,20 @@ pub const CRATE_SLOT_METRES: f32 = 9.0;
 
 /// Convoys: the longest drive to an enemy place (map units, 120 km: some 100 min on the road).
 pub const CONVOY_MAX_ROUTE: i32 = 0x1E00;
+/// A side sends its next convoy this long (s) after the last one was over (the enemy's by
+/// skill), the first this long into the campaign.
+pub const CONVOY_EVERY: f64 = 25.0 * 60.0;
+pub const ENEMY_CONVOY_EVERY: [f64; 4] = [45.0 * 60.0, 35.0 * 60.0, 25.0 * 60.0, 20.0 * 60.0];
+/// What a convoy costs (materiel).
+pub const CONVOY_COST: f64 = 15.0;
+/// A place's garrison stands within this of it (map units, as its guns); a convoy whose head
+/// is this close to a place without one takes it (2.5 km).
+pub const GARRISON_RADIUS: i32 = 0x180;
+pub const CONVOY_NEAR: i32 = 0xA0;
+/// A convoy still on its way after this long (s) is called off.
+pub const CONVOY_TIMEOUT: f64 = 4.0 * 3600.0;
+/// A place's lost armour is replaced one vehicle at a time, this often (s), at this cost.
+pub const REPAIR_ARMOUR: f64 = 30.0 * 60.0;
+pub const ARMOUR_COST: f64 = 4.0;
+/// A side whose convoy cleared a place without troops tries this long (s) to send helicopters.
+pub const CONVOY_INSERTION_WAIT: f64 = 30.0 * 60.0;

@@ -2,10 +2,11 @@
 //! simulation shows the campaign, and the missions the campaign's sorties become.
 
 use stealth_campaign::{
-    CampaignSetup, CampaignState, FlightView, GroundView, MissionKind, PlayerId, PlayerPos, Report,
-    Side, Sortie, SortieEnd, WorldView,
+    CampaignSetup, CampaignState, ConvoyUnit, FlightView, GroundView, MissionKind, PlayerId,
+    PlayerPos, Report, Side, Sortie, SortieEnd, WorldView,
 };
 use stealth_mission::{GameData, Mission, MissionKind as GenKind, MissionSettings, Seed};
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::{Sim, fflags, oflags};
 
 /// Metres per world unit.
@@ -45,17 +46,43 @@ pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terr
     )
 }
 
+/// The simulation's vehicles of a side's convoy.
+pub fn convoy_kinds(side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
+    let blue = side == Side::Blue;
+    let (tank, ifv) = stealth_sim::campaign::garrison_kinds(blue);
+    units
+        .iter()
+        .map(|u| match u {
+            ConvoyUnit::Tank => tank,
+            ConvoyUnit::Carrier => ifv,
+            ConvoyUnit::Escort if blue => GroundKind::Gepard,
+            ConvoyUnit::Escort => GroundKind::Zsu,
+        })
+        .collect()
+}
+
 /// What the simulation shows the campaign.
 pub fn world_view(sim: &Sim) -> WorldView {
     let aaa = sim
         .units()
         .iter()
         .enumerate()
-        .map(|(k, u)| GroundView {
-            x: u.x,
-            y: u.y,
-            side: side_of(sim.aaa_blue(k)),
-            alive: !u.destroyed,
+        .map(|(k, u)| {
+            let convoy = sim.unit_convoy(k);
+            let vehicle = match u.kind {
+                k if k.tank() => Some(ConvoyUnit::Tank),
+                k if k.carrier() => Some(ConvoyUnit::Carrier),
+                _ if convoy != 0 => Some(ConvoyUnit::Escort),
+                _ => None,
+            };
+            GroundView {
+                x: u.x,
+                y: u.y,
+                side: side_of(sim.aaa_blue(k)),
+                alive: !u.destroyed,
+                vehicle,
+                convoy,
+            }
         })
         .collect();
     let flights = sim

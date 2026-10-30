@@ -714,7 +714,7 @@ fn lost_guns_stay_lost_until_replaced() {
     let mut c = campaign("central_europe", 3);
     let tabor = place_named(&c, "Tabor");
     let (x, y) = (c.places[tabor as usize].x, c.places[tabor as usize].y);
-    let gun = GroundView { x: x + 20, y, side: Side::Red, alive: false };
+    let gun = GroundView::gun(x + 20, y, Side::Red, false);
     let view = WorldView { units: vec![gun], ..Default::default() };
     c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: Some(P0) }]);
     assert_eq!(c.places[tabor as usize].guns_lost, 1);
@@ -1675,7 +1675,7 @@ fn a_forward_battery_is_offered_until_its_guns_are_down() {
     let mut c = campaign_on_terrain("desert_storm", 6);
     let (id, x, y) = deployed(&mut c).expect("battery");
     let guns = |alive: bool| WorldView {
-        units: (0..4).map(|k| GroundView { x: x + 10 * k, y, side: Side::Red, alive }).collect(),
+        units: (0..4).map(|k| GroundView::gun(x + 10 * k, y, Side::Red, alive)).collect(),
         ..Default::default()
     };
     c.tick(1.0, &guns(true), &[]);
@@ -1700,10 +1700,8 @@ fn battery_view() -> (CampaignState, WorldView, (i32, i32)) {
     let mut c = campaign("central_europe", 3);
     let p = &c.places[place_named(&c, "Ramstein") as usize];
     let (x, y) = (p.x + 0x100, p.y);
-    let view = WorldView {
-        units: vec![GroundView { x, y, side: Side::Blue, alive: true }],
-        ..Default::default()
-    };
+    let view =
+        WorldView { units: vec![GroundView::gun(x, y, Side::Blue, true)], ..Default::default() };
     c.tick(1.0, &view, &[]);
     (c, view, (x, y))
 }
@@ -1889,7 +1887,7 @@ fn new_sites_keep_clear_of_places_units_and_the_enemy() {
     let why = c.deploy_refusal(off.0, off.1, DefenceKind::Gepard, &[]).unwrap();
     assert!(why.contains("friendly territory") || why.contains("Too close"), "{why}");
     let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
-    let gun = [GroundView { x: at.0 + 4, y: at.1, side: Side::Blue, alive: true }];
+    let gun = [GroundView::gun(at.0 + 4, at.1, Side::Blue, true)];
     assert!(c.deploy_refusal(at.0, at.1, DefenceKind::Patriot, &gun).unwrap().contains("units"));
     // A wreck is no unit.
     let wreck = [GroundView { alive: false, ..gun[0] }];
@@ -1959,7 +1957,7 @@ fn a_gepard_site_is_built_by_one_load_of_cargo() {
     assert!(!c.board.iter().any(|o| o.kind == MissionKind::Logistics));
     // It stands, then it is destroyed: the site is gone.
     let mut gun = WorldView {
-        units: vec![GroundView { x: unit.0, y: unit.1, side: Side::Blue, alive: true }],
+        units: vec![GroundView::gun(unit.0, unit.1, Side::Blue, true)],
         ..Default::default()
     };
     c.tick(1.0, &gun, &[]);
@@ -2241,4 +2239,110 @@ fn convoy_routes_stay_on_passable_ground() {
             t1.elapsed()
         );
     }
+}
+
+/// A Ukraine campaign that has just launched both sides' convoys: the blue one.
+fn launched() -> (CampaignState, usize) {
+    let mut c = campaign_on_terrain("ukraine", 9);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    let n = ev.iter().filter(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })).count();
+    assert_eq!(n, 2, "{ev:?}");
+    // Not another while these are on their way.
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })));
+    let k = c.convoys.iter().position(|v| v.side == Side::Blue).unwrap();
+    (c, k)
+}
+
+/// The blue convoy at its target with these vehicles, and the place's garrison alive or not.
+fn at_target(c: &CampaignState, k: usize, units: &[ConvoyUnit], garrison: bool) -> WorldView {
+    let v = &c.convoys[k];
+    let p = &c.places[v.place as usize];
+    let mut view = WorldView::default();
+    for &u in units {
+        let mut g = GroundView::gun(p.x + 40, p.y, Side::Blue, true);
+        g.vehicle = Some(u);
+        g.convoy = v.id;
+        view.units.push(g);
+    }
+    let mut g = GroundView::gun(p.x - 30, p.y, Side::Red, garrison);
+    g.vehicle = Some(ConvoyUnit::Tank);
+    view.units.push(g);
+    view
+}
+
+#[test]
+fn a_convoy_with_troops_takes_a_place_without_a_garrison() {
+    let (mut c, k) = launched();
+    let place = c.convoys[k].place;
+    assert!(c.convoys[k].route.len() >= 2);
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], true);
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Red, "the garrison holds");
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], false);
+    let ev = c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Blue);
+    assert_eq!(c.convoys[k].state, ConvoyState::Captured);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. })));
+    assert!(
+        ev.iter().any(|e| matches!(*e, CampaignEvent::ConvoyEnded { id } if id == c.convoys[k].id))
+    );
+}
+
+#[test]
+fn a_convoy_without_troops_calls_for_helicopters() {
+    let (mut c, k) = launched();
+    let place = c.convoys[k].place;
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Escort], false);
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Red);
+    assert!(
+        c.insertions.iter().any(|i| i.place == place && i.side == Side::Blue),
+        "{:?} {:?}",
+        c.convoys[k].state,
+        c.log.last()
+    );
+    assert_eq!(c.convoys[k].state, ConvoyState::Captured);
+}
+
+#[test]
+fn a_destroyed_convoy_fails_and_the_next_one_comes() {
+    let (mut c, k) = launched();
+    let view = at_target(&c, k, &[], true);
+    let mut view2 = view.clone();
+    let mut dead = GroundView::gun(0, 0, Side::Blue, false);
+    dead.vehicle = Some(ConvoyUnit::Tank);
+    dead.convoy = c.convoys[k].id;
+    view2.units.push(dead);
+    c.tick(1.0, &view2, &[]);
+    assert_eq!(c.convoys[k].state, ConvoyState::Failed);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { side: Side::Blue, .. })));
+}
+
+/// No convoy where no enemy place can be driven to: Cuba's are over the sea.
+#[test]
+fn no_convoy_over_the_sea() {
+    let mut c = campaign_on_terrain("cuba", 7);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })));
+    assert!(c.convoys.is_empty());
+}
+
+#[test]
+fn a_convoy_resumes_from_where_it_was() {
+    let (mut c, k) = launched();
+    let r = c.convoys[k].route.clone();
+    let mid = ((r[0].0 + r[1].0) / 2, (r[0].1 + r[1].1) / 2);
+    c.convoys[k].at = mid;
+    let left = c.convoys[k].route_left();
+    assert_eq!(left[0], mid);
+    assert_eq!(left[1..], r[1..]);
+    let json = serde_json::to_string(&c).unwrap();
+    let back: CampaignState = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.convoys, c.convoys);
 }

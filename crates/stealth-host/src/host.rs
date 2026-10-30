@@ -151,8 +151,16 @@ impl Host {
             if p.owner != Side::Neutral {
                 let blue = p.owner == Side::Blue;
                 sim.place_defences(p.x, p.y, p.airfield.is_some(), blue);
-                // The guns it lost stay lost until the campaign replaces them.
+                // The guns and armour it lost stay lost until the campaign replaces them.
                 sim.wreck_defences(p.x, p.y, blue, p.guns_lost as usize);
+                sim.wreck_armour(p.x, p.y, blue, p.armour_lost as usize);
+            }
+        }
+        // The convoys go on from where they were; those that stopped stand there.
+        for (id, side, units, route, moving) in self.state.convoys_to_place() {
+            sim.spawn_convoy(id, side == Side::Blue, &glue::convoy_kinds(side, &units), &route);
+            if !moving {
+                sim.end_convoy(id);
             }
         }
         self.place_patriots(sim);
@@ -610,6 +618,16 @@ impl Host {
                         sim.restore_defence(p.x, p.y, p.owner == Side::Blue);
                     }
                 }
+                CampaignEvent::ArmourRepaired { place } => {
+                    if let Some(p) = self.state.place(*place) {
+                        sim.restore_armour(p.x, p.y, p.owner == Side::Blue);
+                    }
+                }
+                CampaignEvent::ConvoyLaunched { id, side, units, route } => {
+                    let kinds = glue::convoy_kinds(*side, units);
+                    sim.spawn_convoy(*id, *side == Side::Blue, &kinds, route);
+                }
+                CampaignEvent::ConvoyEnded { id } => sim.end_convoy(*id),
                 CampaignEvent::PlaceCaptured { place, side, members, removed } => {
                     let blue = *side == Side::Blue;
                     for &m in members {

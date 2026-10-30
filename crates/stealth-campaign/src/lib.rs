@@ -21,6 +21,7 @@
 //! state is plain serialisable data with its own random stream: the same seed, commands and
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
+mod convoy;
 mod deploy;
 mod director;
 mod events;
@@ -36,6 +37,7 @@ pub mod weather;
 
 use serde::{Deserialize, Serialize};
 
+pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use deploy::{footprint, loads};
 pub use record::PilotRecord;
 pub use state::*;
@@ -58,6 +60,20 @@ pub struct GroundView {
     pub y: i32,
     pub side: Side,
     pub alive: bool,
+    /// What a convoy's vehicle or a garrison's armour is (None: an air defence unit not with
+    /// a convoy).
+    #[serde(default)]
+    pub vehicle: Option<ConvoyUnit>,
+    /// The convoy it came with (0: none).
+    #[serde(default)]
+    pub convoy: u32,
+}
+
+impl GroundView {
+    /// An air defence unit (not a convoy's).
+    pub fn gun(x: i32, y: i32, side: Side, alive: bool) -> Self {
+        Self { x, y, side, alive, vehicle: None, convoy: 0 }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -214,6 +230,21 @@ pub enum CampaignEvent {
     GunRepaired {
         place: PlaceId,
     },
+    /// One of a place's garrison's destroyed tanks or infantry fighting vehicles is replaced.
+    ArmourRepaired {
+        place: PlaceId,
+    },
+    /// A side's convoy of these vehicles (head first) sets off along a route (map units).
+    ConvoyLaunched {
+        id: u32,
+        side: Side,
+        units: Vec<ConvoyUnit>,
+        route: Vec<(i32, i32)>,
+    },
+    /// A convoy is over: its vehicles stop where they are.
+    ConvoyEnded {
+        id: u32,
+    },
     /// Strike aircraft (tags) of a side take off from a base to bomb a world object, or
     /// attack drones to dive into it.
     RaidLaunched {
@@ -355,6 +386,7 @@ impl CampaignState {
         self.supply();
         self.run_downed(&mut ev);
         self.run_insertions(view, &mut ev);
+        self.run_convoys(view, &mut ev);
         self.run_raids(&mut ev);
         self.repairs(&mut ev);
         self.expire_intel(&mut ev);

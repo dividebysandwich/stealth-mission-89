@@ -131,6 +131,11 @@ pub struct Place {
     pub guns_lost: u8,
     #[serde(default)]
     pub guns_repair_at: Option<f64>,
+    /// The same for its garrison's armour.
+    #[serde(default)]
+    pub armour_lost: u8,
+    #[serde(default)]
+    pub armour_repair_at: Option<f64>,
 }
 
 impl Place {
@@ -853,6 +858,11 @@ pub struct CampaignState {
     /// The new air defence sites the players designated: waiting for their cargo, or built.
     #[serde(default)]
     pub deployments: Vec<Deployment>,
+    /// The sides' convoys, and when each side's last one was over (blue, red).
+    #[serde(default)]
+    pub convoys: Vec<crate::Convoy>,
+    #[serde(default)]
+    pub convoy_at: [f64; 2],
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1256,6 +1266,8 @@ impl CampaignState {
                         defences: Vec::new(),
                         intel_until: None,
                         guns_lost: 0,
+                        armour_lost: 0,
+                        armour_repair_at: None,
                         guns_repair_at: None,
                     });
                     places.len() - 1
@@ -1324,6 +1336,8 @@ impl CampaignState {
             defence_stock: Vec::new(),
             supply_requests: Vec::new(),
             deployments: Vec::new(),
+            convoys: Vec::new(),
+            convoy_at: [0.0; 2],
             terrain: Terrain::default(),
         };
         c.note("Campaign started");
