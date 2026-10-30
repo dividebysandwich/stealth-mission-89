@@ -708,8 +708,8 @@ fn lost_guns_stay_lost_until_replaced() {
     let mut c = campaign("central_europe", 3);
     let tabor = place_named(&c, "Tabor");
     let (x, y) = (c.places[tabor as usize].x, c.places[tabor as usize].y);
-    let gun = AaaView { x: x + 20, y, side: Side::Red, alive: false };
-    let view = WorldView { aaa: vec![gun], ..Default::default() };
+    let gun = GroundView { x: x + 20, y, side: Side::Red, alive: false };
+    let view = WorldView { units: vec![gun], ..Default::default() };
     c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: Some(P0) }]);
     assert_eq!(c.places[tabor as usize].guns_lost, 1);
     // Saved with the campaign.
@@ -1669,7 +1669,7 @@ fn a_forward_battery_is_offered_until_its_guns_are_down() {
     let mut c = campaign_on_terrain("desert_storm", 6);
     let (id, x, y) = deployed(&mut c).expect("battery");
     let guns = |alive: bool| WorldView {
-        aaa: (0..4).map(|k| AaaView { x: x + 10 * k, y, side: Side::Red, alive }).collect(),
+        units: (0..4).map(|k| GroundView { x: x + 10 * k, y, side: Side::Red, alive }).collect(),
         ..Default::default()
     };
     c.tick(1.0, &guns(true), &[]);
@@ -1695,7 +1695,7 @@ fn battery_view() -> (CampaignState, WorldView, (i32, i32)) {
     let p = &c.places[place_named(&c, "Ramstein") as usize];
     let (x, y) = (p.x + 0x100, p.y);
     let view = WorldView {
-        aaa: vec![AaaView { x, y, side: Side::Blue, alive: true }],
+        units: vec![GroundView { x, y, side: Side::Blue, alive: true }],
         ..Default::default()
     };
     c.tick(1.0, &view, &[]);
@@ -1812,7 +1812,7 @@ fn a_resupply_for_a_lost_unit_is_called_off() {
     request(&mut c, at);
     c.tick(1.0, &view, &[]);
     assert!(c.board.iter().any(|o| o.kind == MissionKind::Resupply));
-    view.aaa[0].alive = false;
+    view.units[0].alive = false;
     c.tick(1.0, &view, &[]);
     c.tick(tuning::BOARD_REFRESH, &view, &[]);
     assert!(c.supply_requests.is_empty());
@@ -1841,7 +1841,7 @@ fn a_unit_out_of_stock_orders_its_resupply_once() {
 }
 
 /// The nearest spot to Ramstein where a new site may go.
-fn deploy_spot(c: &CampaignState, kind: DefenceKind, aaa: &[AaaView]) -> (i32, i32) {
+fn deploy_spot(c: &CampaignState, kind: DefenceKind, aaa: &[GroundView]) -> (i32, i32) {
     let p = &c.places[place_named(c, "Ramstein") as usize];
     (1..40)
         .flat_map(|r| (0..16).map(move |k| (r, k)))
@@ -1883,10 +1883,10 @@ fn new_sites_keep_clear_of_places_units_and_the_enemy() {
     let why = c.deploy_refusal(off.0, off.1, DefenceKind::Gepard, &[]).unwrap();
     assert!(why.contains("friendly territory") || why.contains("Too close"), "{why}");
     let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
-    let gun = [AaaView { x: at.0 + 4, y: at.1, side: Side::Blue, alive: true }];
+    let gun = [GroundView { x: at.0 + 4, y: at.1, side: Side::Blue, alive: true }];
     assert!(c.deploy_refusal(at.0, at.1, DefenceKind::Patriot, &gun).unwrap().contains("units"));
     // A wreck is no unit.
-    let wreck = [AaaView { alive: false, ..gun[0] }];
+    let wreck = [GroundView { alive: false, ..gun[0] }];
     assert!(c.deploy_refusal(at.0, at.1, DefenceKind::Patriot, &wreck).is_none());
 }
 
@@ -1953,12 +1953,12 @@ fn a_gepard_site_is_built_by_one_load_of_cargo() {
     assert!(!c.board.iter().any(|o| o.kind == MissionKind::Logistics));
     // It stands, then it is destroyed: the site is gone.
     let mut gun = WorldView {
-        aaa: vec![AaaView { x: unit.0, y: unit.1, side: Side::Blue, alive: true }],
+        units: vec![GroundView { x: unit.0, y: unit.1, side: Side::Blue, alive: true }],
         ..Default::default()
     };
     c.tick(1.0, &gun, &[]);
     assert!(c.deployment(id).is_some_and(|d| d.built && d.seen));
-    gun.aaa[0].alive = false;
+    gun.units[0].alive = false;
     c.tick(1.0, &gun, &[]);
     assert!(c.deployments.is_empty());
 }

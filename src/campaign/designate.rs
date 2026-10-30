@@ -58,7 +58,7 @@ pub(super) fn refusal(
     y: i32,
     kind: DefenceKind,
 ) -> Option<String> {
-    let aaa = stealth_host::glue::world_view(sim).aaa;
+    let aaa = stealth_host::glue::world_view(sim).units;
     if let Some(why) = st.deploy_refusal(x, y, kind, &aaa) {
         return Some(why);
     }

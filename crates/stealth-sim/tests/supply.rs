@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
-use stealth_sim::aaa::{AaaKind, M_PER_MAP};
+use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{PATRIOT_STOCK, SavedStock};
 use stealth_sim::supply::{DROP_RADIUS, HOOK_ALT, HOVER_MAX, SET_ALT, SupplyRun};
 use stealth_sim::*;
@@ -42,7 +42,7 @@ fn battery() -> (Sim, usize, usize) {
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
     }
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     let home = (3..sim.objects().len())
         .find(|&i| {
             sim.objects()[i].flags & 0xF0F == 0x401
@@ -51,7 +51,7 @@ fn battery() -> (Sim, usize, usize) {
         .expect("Leipheim");
     let t = sim.objects()[home];
     sim.place_patriot(t.x + 0x100, t.y);
-    let radar = sim.aaa_units().iter().position(|u| u.kind == AaaKind::PatriotRadar).unwrap();
+    let radar = sim.units().iter().position(|u| u.kind == GroundKind::PatriotRadar).unwrap();
     (sim, home, radar)
 }
 
@@ -114,7 +114,7 @@ fn sling_run(sim: &mut Sim, i: usize, tag: u32, pickup: (i32, i32)) -> (FlightUn
 }
 
 /// Metres between a flight unit and the middle of an AAA unit.
-fn metres_to(u: &FlightUnit, a: &stealth_sim::aaa::AaaUnit) -> f64 {
+fn metres_to(u: &FlightUnit, a: &stealth_sim::aaa::GroundUnit) -> f64 {
     let (cx, cy) = ((a.x << 5) + 16, (a.y << 5) + 16);
     ((u.wx - cx) as f64).hypot((u.wy - cy) as f64) * M_PER_MAP / 32.0
 }
@@ -129,7 +129,7 @@ fn the_ai_helicopter_slings_a_crate_to_the_battery_and_lands_back_on_its_pad() {
     // Its crate 500 m from the pad.
     let pickup = (pad.0 + 1024, pad.1);
     let i = sim.spawn_supply(home, radar, Some(pickup), 42);
-    let a = sim.aaa_units()[radar];
+    let a = sim.units()[radar];
     let (u, (x, y)) = sling_run(&mut sim, i, 42, pickup);
     assert!(metres_to(&u, &a) <= DROP_RADIUS, "{}", metres_to(&u, &a));
     assert!(u.alt as f64 * M_PER_MAP / 32.0 <= HOVER_MAX, "{}", u.alt);
@@ -143,7 +143,7 @@ fn the_ai_helicopter_slings_a_crate_to_the_battery_and_lands_back_on_its_pad() {
 fn the_ai_helicopter_without_a_crate_hovers_at_the_battery() {
     let (mut sim, home, radar) = battery();
     let i = sim.spawn_supply(home, radar, None, 42);
-    let a = sim.aaa_units()[radar];
+    let a = sim.units()[radar];
     let mut delivered = false;
     for _ in 0..15 * 900 {
         for e in sim.step(&idle(), 15) {
@@ -166,11 +166,11 @@ fn the_ai_helicopter_without_a_crate_hovers_at_the_battery() {
 #[test]
 fn a_delivery_fills_the_stockpile() {
     let (mut sim, _, radar) = battery();
-    let a = sim.aaa_units()[radar];
+    let a = sim.units()[radar];
     sim.restore_stocks(&[SavedStock {
         x: a.x,
         y: a.y,
-        kind: AaaKind::PatriotRadar,
+        kind: GroundKind::PatriotRadar,
         stock: 1,
         stock2: 0,
         stock3: 0,
@@ -185,7 +185,7 @@ fn a_player_hovers_low_and_close_to_deliver() {
     let (mut sim, home, radar) = battery();
     let heli = Airframe { helicopter: true, ..Default::default() };
     sim.respawn_pilot(0, home, None, heli);
-    let a = sim.aaa_units()[radar];
+    let a = sim.units()[radar];
     // 30 m east of the radar (world units, y north), at `h` world units over the ground.
     let at = |h: u16| PlayerState {
         x: (a.x << 5) + 16 + 61,
@@ -226,9 +226,9 @@ fn a_cargo_helicopter_slings_its_crate_to_a_new_sites_helipad_and_flies_home() {
 fn a_new_gepard_is_friendly() {
     let (mut sim, home, _) = battery();
     let o = sim.objects()[home];
-    let n = sim.aaa_units().len();
+    let n = sim.units().len();
     sim.place_gepard(o.x - 0x180, o.y);
-    assert_eq!(sim.aaa_units().len(), n + 1);
-    assert_eq!(sim.aaa_units()[n].kind, AaaKind::Gepard);
+    assert_eq!(sim.units().len(), n + 1);
+    assert_eq!(sim.units()[n].kind, GroundKind::Gepard);
     assert!(sim.aaa_blue(n));
 }

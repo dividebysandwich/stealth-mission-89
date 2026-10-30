@@ -2,7 +2,7 @@
 //! simulation shows the campaign, and the missions the campaign's sorties become.
 
 use stealth_campaign::{
-    AaaView, CampaignSetup, CampaignState, FlightView, MissionKind, PlayerId, PlayerPos, Report,
+    CampaignSetup, CampaignState, FlightView, GroundView, MissionKind, PlayerId, PlayerPos, Report,
     Side, Sortie, SortieEnd, WorldView,
 };
 use stealth_mission::{GameData, Mission, MissionKind as GenKind, MissionSettings, Seed};
@@ -43,10 +43,10 @@ pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terr
 /// What the simulation shows the campaign.
 pub fn world_view(sim: &Sim) -> WorldView {
     let aaa = sim
-        .aaa_units()
+        .units()
         .iter()
         .enumerate()
-        .map(|(k, u)| AaaView {
+        .map(|(k, u)| GroundView {
             x: u.x,
             y: u.y,
             side: side_of(sim.aaa_blue(k)),
@@ -79,7 +79,7 @@ pub fn world_view(sim: &Sim) -> WorldView {
             Some(PlayerPos { id: PlayerId(id), x: p.mx, y: p.my, airborne, landed, hover_over })
         })
         .collect();
-    WorldView { aaa, flights, players }
+    WorldView { units: aaa, flights, players }
 }
 
 /// Enemy SAM sites a friendly aircraft detects now: their radar painted a player (his RWR)
@@ -443,25 +443,25 @@ pub fn default_base(state: &CampaignState) -> Option<usize> {
 }
 
 /// The kind of player site a mannable unit is (a Patriot battery: its radar).
-pub fn defence_kind(kind: stealth_sim::aaa::AaaKind) -> Option<stealth_campaign::DefenceKind> {
+pub fn defence_kind(kind: stealth_sim::aaa::GroundKind) -> Option<stealth_campaign::DefenceKind> {
     use stealth_campaign::DefenceKind;
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     match kind {
-        AaaKind::Gepard => Some(DefenceKind::Gepard),
-        AaaKind::PatriotRadar => Some(DefenceKind::Patriot),
-        AaaKind::DroneCenter => Some(DefenceKind::Drones),
+        GroundKind::Gepard => Some(DefenceKind::Gepard),
+        GroundKind::PatriotRadar => Some(DefenceKind::Patriot),
+        GroundKind::DroneCenter => Some(DefenceKind::Drones),
         _ => None,
     }
 }
 
 /// The unit that keeps a site's stockpile (a Patriot battery's radar).
-pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::AaaKind {
+pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::GroundKind {
     use stealth_campaign::DefenceKind;
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     match kind {
-        DefenceKind::Gepard => AaaKind::Gepard,
-        DefenceKind::Patriot => AaaKind::PatriotRadar,
-        DefenceKind::Drones => AaaKind::DroneCenter,
+        DefenceKind::Gepard => GroundKind::Gepard,
+        DefenceKind::Patriot => GroundKind::PatriotRadar,
+        DefenceKind::Drones => GroundKind::DroneCenter,
     }
 }
 

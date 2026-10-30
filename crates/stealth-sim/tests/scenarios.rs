@@ -1353,12 +1353,12 @@ fn aaa_mission(d: &Data) -> (Mission, Sim) {
 }
 
 /// One unit of `kind` in a sandbox, the player hovering `north` map units north of it.
-fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent> {
+fn aaa_duel(kind: aaa::GroundKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent> {
     let d = data();
     let (m, mut sim) = aaa_mission(d);
     let (x, y) = sandbox(&mut sim, &m);
     sim.set_visual_light(Some(light));
-    let unit = aaa::AaaUnit {
+    let unit = aaa::GroundUnit {
         kind,
         x,
         y,
@@ -1370,7 +1370,7 @@ fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent
         cooldown: 0,
         rounds: 0,
     };
-    *sim.aaa_units_mut() = vec![unit];
+    *sim.units_mut() = vec![unit];
     let p = player_at(x, y - north, alt, 0x4000, 0);
     let mut events = Vec::new();
     for _ in 0..15 * 30 {
@@ -1383,13 +1383,13 @@ fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent
 fn air_defence_only_with_the_option() {
     let d = data();
     let (m, sim) = aaa_mission(d);
-    let units = sim.aaa_units();
-    assert!(units.iter().any(|u| u.kind == aaa::AaaKind::Zsu), "{units:?}");
-    assert!(units.iter().any(|u| u.kind == aaa::AaaKind::Manpads));
+    let units = sim.units();
+    assert!(units.iter().any(|u| u.kind == aaa::GroundKind::Zsu), "{units:?}");
+    assert!(units.iter().any(|u| u.kind == aaa::GroundKind::Manpads));
     let plain = Sim::new(&d.sim, &m);
-    assert!(plain.aaa_units().is_empty());
+    assert!(plain.units().is_empty());
     // The same mission places the same units.
-    assert_eq!(aaa_mission(d).1.aaa_units(), units);
+    assert_eq!(aaa_mission(d).1.units(), units);
 }
 
 /// The MANPADS teams of a town stand round its edge, none in its middle.
@@ -1399,9 +1399,9 @@ fn town_defenders_round_the_edge() {
     let (_, sim) = aaa_mission(d);
     let towns = &d.sim.theaters[3].towns;
     assert!(!towns.is_empty());
-    let dist = |u: &aaa::AaaUnit, t: &Town| ((u.x - t.x) as f64).hypot((u.y - t.y) as f64);
+    let dist = |u: &aaa::GroundUnit, t: &Town| ((u.x - t.x) as f64).hypot((u.y - t.y) as f64);
     let manpads: Vec<_> =
-        sim.aaa_units().iter().filter(|u| u.kind == aaa::AaaKind::Manpads).collect();
+        sim.units().iter().filter(|u| u.kind == aaa::GroundKind::Manpads).collect();
     let on_edge = manpads
         .iter()
         .filter(|u| towns.iter().any(|t| (0.75..1.1).contains(&(dist(u, t) / t.r as f64))))
@@ -1415,16 +1415,16 @@ fn town_defenders_round_the_edge() {
 #[test]
 fn shilka_hits_low_and_slow_but_not_high() {
     // 1.5 km away at 600 ft: hit within 30 s.
-    let low = aaa_duel(aaa::AaaKind::Zsu, 96, 600, 255);
+    let low = aaa_duel(aaa::GroundKind::Zsu, 96, 600, 255);
     assert!(low.contains(&SimEvent::Message("Hit by AAA".into())), "never hit");
     // 20000 ft: above its reach, it does not even fire.
-    let high = aaa_duel(aaa::AaaKind::Zsu, 96, 20000, 255);
+    let high = aaa_duel(aaa::GroundKind::Zsu, 96, 20000, 255);
     assert!(!high.iter().any(|e| matches!(e, SimEvent::Message(m) if m.starts_with("Hit"))));
 }
 
 #[test]
 fn s60_bursts_flak() {
-    let ev = aaa_duel(aaa::AaaKind::S60, 160, 8000, 255);
+    let ev = aaa_duel(aaa::GroundKind::S60, 160, 8000, 255);
     assert!(ev.iter().any(|e| matches!(e, SimEvent::Flak { .. })));
 }
 
@@ -1435,8 +1435,8 @@ fn manpads_need_to_see_the_player() {
             .any(|e| matches!(e, SimEvent::MissileLaunched { launcher: Launcher::Manpads(0), .. }))
     };
     // 3 km away at 2000 ft: by day the team sees and fires, on a moonless night it does not.
-    assert!(fired(&aaa_duel(aaa::AaaKind::Manpads, 192, 2000, 255)));
-    assert!(!fired(&aaa_duel(aaa::AaaKind::Manpads, 192, 2000, 0)));
+    assert!(fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 255)));
+    assert!(!fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 0)));
 }
 
 /// The scripted ten-minute flights with the air defences, in every theater.
@@ -1447,8 +1447,8 @@ fn ten_minute_missions_with_air_defence() {
     let mut fired = 0;
     for th in 0..9 {
         let sim = ten_minute_mission(d, th, 1, 3, opts.clone());
-        assert!(!sim.aaa_units().is_empty(), "theater {th}");
-        fired += sim.aaa_units().iter().filter(|u| u.tracking).count();
+        assert!(!sim.units().is_empty(), "theater {th}");
+        fired += sim.units().iter().filter(|u| u.tracking).count();
     }
     eprintln!("units tracking at the end: {fired}");
 }
@@ -1460,8 +1460,8 @@ fn flak_leads_a_moving_target() {
     let (m, mut sim) = aaa_mission(d);
     let (x, y) = sandbox(&mut sim, &m);
     sim.set_visual_light(Some(255));
-    let unit = aaa::AaaUnit {
-        kind: aaa::AaaKind::S60,
+    let unit = aaa::GroundUnit {
+        kind: aaa::GroundKind::S60,
         x,
         y,
         destroyed: false,
@@ -1472,7 +1472,7 @@ fn flak_leads_a_moving_target() {
         cooldown: 0,
         rounds: 0,
     };
-    *sim.aaa_units_mut() = vec![unit];
+    *sim.units_mut() = vec![unit];
     let mut misses = Vec::new();
     // Flying east at 15 map units a second (234 m/s), 1500 ft, 2.5 km north of the gun.
     for f in 0..15 * 20 {

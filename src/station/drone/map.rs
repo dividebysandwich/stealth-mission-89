@@ -8,7 +8,7 @@
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
-use stealth_sim::aaa::{AaaKind, M_PER_MAP};
+use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::uav::{STORK_SENSOR, Uav, UavKind, UavMode, UavWp, WpKind};
 use stealth_sim::{Sim, fflags};
 
@@ -203,7 +203,7 @@ pub fn contacts(sim: &Sim, campaign: Option<&crate::campaign::ActiveCampaign>) -
         .filter_map(|&s| {
             let (x, y) = sim.seen_at(s)?;
             let name = match s {
-                Seen::Aaa(k) => sim.aaa_units().get(k as usize)?.kind.name().to_string(),
+                Seen::Aaa(k) => sim.units().get(k as usize)?.kind.name().to_string(),
                 Seen::Object(o) => sim.threat_name(sim.objects().get(o as usize)?.unit_type).into(),
             };
             Some(Contact { x, y, name, drones: true })
@@ -338,19 +338,19 @@ pub(super) fn draw(
     cv.set_clip(MAP_X0 as i32, 0, CANVAS.0 as i32 - 1, BAR_Y as i32 - 2);
     let contacts = contacts(sim, c.as_deref());
     // The friendly air defences, this center.
-    for (k, u) in sim.aaa_units().iter().enumerate() {
+    for (k, u) in sim.units().iter().enumerate() {
         if u.destroyed || !sim.aaa_blue(k) {
             continue;
         }
         let p = to_screen(&ui, u.x as f64 + 0.5, u.y as f64 + 0.5);
-        if u.kind == AaaKind::DroneCenter {
+        if u.kind == GroundKind::DroneCenter {
             cv.frame(p - Vec2::splat(4.0), p + Vec2::splat(4.0), 1.2, BLUE);
             cv.stroke(p + Vec2::new(-3.0, -1.5), p + Vec2::new(0.0, 1.5), 1.0, BLUE);
             cv.stroke(p + Vec2::new(0.0, 1.5), p + Vec2::new(3.0, -1.5), 1.0, BLUE);
             if k == m.unit {
                 stroke_text_at(cv, p.x, p.y + 11.0, "DCC", 5.0, 0.8, BLUE, Align::Centre);
             }
-        } else if u.kind != AaaKind::PatriotLauncher {
+        } else if u.kind != GroundKind::PatriotLauncher {
             cv.ring(p, 2.5, 1.0, BLUE);
         }
     }

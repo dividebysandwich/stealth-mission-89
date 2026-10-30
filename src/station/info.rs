@@ -80,13 +80,13 @@ pub(super) fn draw(
     framed(cv, (PANEL_X + 36, TYPE.0 + 3, RIGHT - 60, TYPE.1 - 3), &name, false);
 
     // The state boxes.
-    let u = sim.aaa_units().get(m.unit).copied();
+    let u = sim.units().get(m.unit).copied();
     let units: Vec<usize> = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let states = [
         ("TRK", lock.is_some()),
         ("MAN", m.gepard() && lock.is_none()),
         ("FIRE", u.is_some_and(|u| u.burst > 0)),
-        ("RDY", units.iter().any(|&k| sim.aaa_units()[k].rounds > 0)),
+        ("RDY", units.iter().any(|&k| sim.units()[k].rounds > 0)),
         ("RLD", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
     ];
     let step = (PANEL.1 - PANEL.0) / states.len() as i32;

@@ -37,7 +37,7 @@ pub const PATRIOT: i32 = 45;
 pub const MANPADS_LAUNCHER: i32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum AaaKind {
+pub enum GroundKind {
     /// ZSU-23-4 Shilka: four 23 mm guns, Gun Dish radar.
     #[default]
     Zsu,
@@ -56,45 +56,45 @@ pub enum AaaKind {
     DroneCenter,
 }
 
-impl AaaKind {
+impl GroundKind {
     pub fn name(self) -> &'static str {
         match self {
-            AaaKind::Zsu => "ZSU-23-4",
-            AaaKind::S60 => "S-60",
-            AaaKind::Manpads => "SA-14",
-            AaaKind::PatriotLauncher => "Patriot",
-            AaaKind::PatriotRadar => "Patriot radar",
-            AaaKind::Gepard => "Gepard",
-            AaaKind::DroneCenter => "Drone command center",
+            GroundKind::Zsu => "ZSU-23-4",
+            GroundKind::S60 => "S-60",
+            GroundKind::Manpads => "SA-14",
+            GroundKind::PatriotLauncher => "Patriot",
+            GroundKind::PatriotRadar => "Patriot radar",
+            GroundKind::Gepard => "Gepard",
+            GroundKind::DroneCenter => "Drone command center",
         }
     }
 
     /// Name on a side: the friendly MANPADS teams carry Stingers.
     pub fn name_on(self, blue: bool) -> &'static str {
         match self {
-            AaaKind::Manpads if blue => "Stinger",
+            GroundKind::Manpads if blue => "Stinger",
             _ => self.name(),
         }
     }
 
     /// Patriot launcher or radar (no gun, no MANPADS).
     pub fn patriot(self) -> bool {
-        matches!(self, AaaKind::PatriotLauncher | AaaKind::PatriotRadar)
+        matches!(self, GroundKind::PatriotLauncher | GroundKind::PatriotRadar)
     }
 
     /// No gun and no MANPADS of its own: a Patriot launcher or radar, a drone command center.
     pub fn unarmed(self) -> bool {
-        self.patriot() || self == AaaKind::DroneCenter
+        self.patriot() || self == GroundKind::DroneCenter
     }
 
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
     fn gun(self) -> (f64, f64, f64) {
         match self {
-            AaaKind::Zsu => (970.0, 2500.0, 2000.0),
-            AaaKind::S60 => (1000.0, 6000.0, 4500.0),
-            AaaKind::Manpads => (0.0, 5000.0, 3500.0),
-            AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
-            AaaKind::PatriotLauncher | AaaKind::PatriotRadar | AaaKind::DroneCenter => {
+            GroundKind::Zsu => (970.0, 2500.0, 2000.0),
+            GroundKind::S60 => (1000.0, 6000.0, 4500.0),
+            GroundKind::Manpads => (0.0, 5000.0, 3500.0),
+            GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+            GroundKind::PatriotLauncher | GroundKind::PatriotRadar | GroundKind::DroneCenter => {
                 (0.0, 0.0, 0.0)
             }
         }
@@ -108,8 +108,8 @@ pub fn unit_heading(k: usize) -> f32 {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
-pub struct AaaUnit {
-    pub kind: AaaKind,
+pub struct GroundUnit {
+    pub kind: GroundKind,
     /// Map units (x east, y south).
     pub x: i32,
     pub y: i32,
@@ -128,7 +128,7 @@ pub struct AaaUnit {
     pub rounds: i32,
 }
 
-impl AaaUnit {
+impl GroundUnit {
     /// Position in metres (east, north, up).
     pub fn metres(&self) -> [f64; 3] {
         [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP, 2.0]
@@ -211,13 +211,13 @@ pub fn lead(from: [f64; 3], to: [f64; 3], vel: [f64; 3], v: f64) -> (f64, f64, f
 }
 
 impl Sim {
-    pub fn aaa_units(&self) -> &[AaaUnit] {
-        &self.aaa
+    pub fn units(&self) -> &[GroundUnit] {
+        &self.units
     }
 
     /// The units (scenario tests place their own).
-    pub fn aaa_units_mut(&mut self) -> &mut Vec<AaaUnit> {
-        &mut self.aaa
+    pub fn units_mut(&mut self) -> &mut Vec<GroundUnit> {
+        &mut self.units
     }
 
     /// The town at map point (`x`, `y`): the nearest whose disc holds it.
@@ -271,11 +271,11 @@ impl Sim {
         let war = self.roe;
         let mut units = Vec::new();
         let around =
-            |rng: &mut Rng, units: &mut Vec<AaaUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
+            |rng: &mut Rng, units: &mut Vec<GroundUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
                 let a = rng.random(0x4000) * 4;
                 let r = (lo + rng.random(hi - lo)) as f64;
                 let t = a as f64 / 65536.0 * std::f64::consts::TAU;
-                units.push(AaaUnit {
+                units.push(GroundUnit {
                     kind,
                     x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
                     y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
@@ -296,12 +296,12 @@ impl Sim {
                 continue;
             }
             for _ in 0..1 + rng.random(war + 1) {
-                around(&mut rng, &mut units, o.x, o.y, AaaKind::Zsu, 26, 90);
+                around(&mut rng, &mut units, o.x, o.y, GroundKind::Zsu, 26, 90);
             }
             if war > 0 {
                 let (bx, by) = (o.x + rng.random(120) - 60, o.y + rng.random(120) - 60);
                 for _ in 0..2 + rng.random(3) {
-                    around(&mut rng, &mut units, bx, by, AaaKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
                 }
             }
         }
@@ -315,12 +315,12 @@ impl Sim {
             }
             let (x, y) = (o.x, o.y);
             for _ in 0..1 + rng.random(war + 1) {
-                around(&mut rng, &mut units, x, y, AaaKind::Zsu, 20, 70);
+                around(&mut rng, &mut units, x, y, GroundKind::Zsu, 20, 70);
             }
             if rng.random(3) < war {
                 let (bx, by) = (x + rng.random(100) - 50, y + rng.random(100) - 50);
                 for _ in 0..2 + rng.random(2) {
-                    around(&mut rng, &mut units, bx, by, AaaKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
                 }
             }
         }
@@ -335,11 +335,11 @@ impl Sim {
             }
             let (x, y, lo, hi) = self.town_ring(o.x, o.y).unwrap_or((o.x, o.y, 15, 80));
             for _ in 0..rng.random(war + 2) {
-                around(&mut rng, &mut units, x, y, AaaKind::Manpads, lo, hi);
+                around(&mut rng, &mut units, x, y, GroundKind::Manpads, lo, hi);
             }
         }
         units.truncate(MAX_UNITS);
-        self.aaa = units;
+        self.units = units;
         self.aaa_rng = Some(rng);
     }
 
@@ -369,7 +369,7 @@ impl Sim {
         if tracks.is_empty() {
             return;
         }
-        let mut units = std::mem::take(&mut self.aaa);
+        let mut units = std::mem::take(&mut self.units);
         self.aaa_pilot.resize(units.len(), tracks[0].k as u8);
         let vis_km = self.visual_range();
         // Accuracy: one standard deviation (radians) with a radar track / laid by eye.
@@ -379,7 +379,7 @@ impl Sim {
         let mut rwr: Vec<(usize, RwrTone)> = Vec::new();
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
-            if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == AaaKind::Gepard {
+            if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == GroundKind::Gepard {
                 continue;
             }
             u.cooldown = (u.cooldown - 1).max(0);
@@ -414,7 +414,7 @@ impl Sim {
                 && !on_ground
                 && (!self.weather.any()
                     || self.weather.los_clear((u.x, u.y, 0), (t.p.mx, t.p.my, t.p.alt.max(0))));
-            let radar = u.kind == AaaKind::Zsu && {
+            let radar = u.kind == GroundKind::Zsu && {
                 let (score, _, _) = detect(u.x, u.y, 0, 1, Some(GUN_DISH), &ctx);
                 score + t.emv > 100
             };
@@ -429,7 +429,7 @@ impl Sim {
                 continue;
             }
             let pilot = t.k as u8;
-            let (az, el, t) = if u.kind == AaaKind::Manpads {
+            let (az, el, t) = if u.kind == GroundKind::Manpads {
                 (d[0].atan2(d[1]), d[2].atan2(d[0].hypot(d[1])), 0.0)
             } else {
                 lead(from, me, vel, v0)
@@ -437,13 +437,13 @@ impl Sim {
             u.aim_az = az as f32;
             u.aim_el = el as f32;
             match u.kind {
-                AaaKind::Manpads => {
+                GroundKind::Manpads => {
                     if u.cooldown == 0 {
                         manpads.push(i);
                         u.cooldown = 60 * fs;
                     }
                 }
-                AaaKind::Zsu => {
+                GroundKind::Zsu => {
                     if u.burst == 0 && u.cooldown == 0 {
                         u.burst = fs * 3 / 2 + rng.random(fs);
                     }
@@ -468,7 +468,7 @@ impl Sim {
                         }
                     }
                 }
-                AaaKind::S60 => {
+                GroundKind::S60 => {
                     if u.cooldown == 0 {
                         u.cooldown = fs + rng.random(fs);
                         let sigma = 0.008 * skill;
@@ -485,13 +485,13 @@ impl Sim {
                         });
                     }
                 }
-                AaaKind::PatriotLauncher
-                | AaaKind::PatriotRadar
-                | AaaKind::Gepard
-                | AaaKind::DroneCenter => {}
+                GroundKind::PatriotLauncher
+                | GroundKind::PatriotRadar
+                | GroundKind::Gepard
+                | GroundKind::DroneCenter => {}
             }
         }
-        self.aaa = units;
+        self.units = units;
         for (k, tone) in rwr {
             self.activate(k);
             self.emit(SimEvent::Rwr(tone));
@@ -569,7 +569,7 @@ impl Sim {
 
     /// A MANPADS team fires an SA-14 if a missile slot is free (never one in flight).
     fn launch_manpads(&mut self, i: usize) {
-        let u = self.aaa[i];
+        let u = self.units[i];
         if !self.may_launch(SA14, (u.x, u.y, 0)) {
             return;
         }
@@ -625,8 +625,8 @@ impl Sim {
             return;
         }
         let Some(mut rng) = self.aaa_rng else { return };
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
+        for k in 0..self.units.len() {
+            let u = self.units[k];
             if u.destroyed {
                 continue;
             }
@@ -634,8 +634,8 @@ impl Sim {
                 let d = (x - u.x as f64).hypot(y - u.y as f64);
                 // A gun round kills only now and then.
                 if d < r && (r > 1.0 || rng.random(6) == 0) {
-                    self.aaa[k].destroyed = true;
-                    self.aaa[k].burst = 0;
+                    self.units[k].destroyed = true;
+                    self.units[k].burst = 0;
                     if let Some(p) = by {
                         self.activate(p as usize);
                     }
@@ -652,8 +652,8 @@ impl Sim {
     /// ZSU-23-4 radars for the radar warning receiver (range km, bearing from the player).
     pub(crate) fn aaa_emitters(&self, out: &mut Vec<Emitter>) {
         let (px, py) = (self.pl.p.mx, self.pl.p.my);
-        for (i, u) in self.aaa.iter().enumerate() {
-            if u.kind != AaaKind::Zsu || u.destroyed || self.aaa_blue(i) {
+        for (i, u) in self.units.iter().enumerate() {
+            if u.kind != GroundKind::Zsu || u.destroyed || self.aaa_blue(i) {
                 continue;
             }
             let range = approx(s16(px - u.x), s16(py - u.y)) >> 6;

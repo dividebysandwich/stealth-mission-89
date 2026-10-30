@@ -5,7 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
 use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
@@ -45,7 +45,7 @@ pub struct Gun {
     pub index: usize,
     pub x: i32,
     pub y: i32,
-    pub kind: AaaKind,
+    pub kind: GroundKind,
 }
 
 /// A friendly air defence unit: a Patriot battery (its radar), a Gepard, a Stinger team.
@@ -54,7 +54,7 @@ pub struct Defence {
     pub index: usize,
     pub x: i32,
     pub y: i32,
-    pub kind: AaaKind,
+    pub kind: GroundKind,
     /// The player at its console.
     pub manned: Option<u8>,
 }
@@ -144,14 +144,17 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
     let reconned: Vec<(i32, i32)> =
         state.places.iter().filter(|p| p.intel(state.clock)).map(|p| (p.x, p.y)).collect();
     let found = |k: usize| sim.uav_known().contains(&stealth_sim::uav::Seen::Aaa(k as u16));
-    for (k, u) in sim.aaa_units().iter().enumerate() {
+    for (k, u) in sim.units().iter().enumerate() {
         if u.destroyed {
             continue;
         }
         if sim.aaa_blue(k) {
             if matches!(
                 u.kind,
-                AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::Manpads | AaaKind::DroneCenter
+                GroundKind::PatriotRadar
+                    | GroundKind::Gepard
+                    | GroundKind::Manpads
+                    | GroundKind::DroneCenter
             ) {
                 let manned = sim.manned_by(k);
                 pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned });
@@ -196,19 +199,19 @@ pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col
 
 /// A gun: a small cross (a ring for MANPADS); APP-6: a hostile air defence gun or missile
 /// unit, `k` its size.
-fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: f32) {
+fn gun(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
     if app6() {
         let icon =
-            if kind == AaaKind::Manpads { Icon::AirDefenceMissile } else { Icon::AirDefenceGun };
+            if kind == GroundKind::Manpads { Icon::AirDefenceMissile } else { Icon::AirDefenceGun };
         let mut sym = Symbol::new(Affiliation::Hostile, Dimension::Ground, icon);
-        if kind == AaaKind::Manpads {
+        if kind == GroundKind::Manpads {
             sym = sym.echelon(Echelon::Team);
         }
         sym.draw(painter, p, k, 1.0);
         return;
     }
     let stroke = egui::Stroke::new(1.5, MISSILE_RED);
-    if kind == AaaKind::Manpads {
+    if kind == GroundKind::Manpads {
         painter.circle_stroke(p, 2.5, stroke);
     } else {
         painter.line_segment([p + egui::vec2(-3.0, -3.0), p + egui::vec2(3.0, 3.0)], stroke);
@@ -223,7 +226,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     for d in &pic.defences {
         let c = at(d.x, d.y);
-        let patriot = d.kind == AaaKind::PatriotRadar;
+        let patriot = d.kind == GroundKind::PatriotRadar;
         if patriot && layers.shows(Layer::PatriotReach) {
             painter.extend(reach_circle(c, PATRIOT_REACH / view.scale));
         }
@@ -280,13 +283,13 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
 /// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
 /// a square with its two barrels, a Stinger team a ring. APP-6: a friendly air defence missile
 /// battery, a tracked air defence gun, a missile team; `k` its size.
-pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: f32) {
+pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
     if app6() {
         let sym = |icon| Symbol::new(Affiliation::Friend, Dimension::Ground, icon);
         let sym = match kind {
-            AaaKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
-            AaaKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
-            AaaKind::DroneCenter => {
+            GroundKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
+            GroundKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
+            GroundKind::DroneCenter => {
                 Symbol::new(Affiliation::Friend, Dimension::Installation, Icon::Uav)
             }
             _ => sym(Icon::AirDefenceMissile).echelon(Echelon::Team),
@@ -296,7 +299,7 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: 
     }
     let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
     match kind {
-        AaaKind::PatriotRadar => {
+        GroundKind::PatriotRadar => {
             let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
             painter.rect_filled(r, 0.0, FRIENDLY_BLUE.gamma_multiply(0.35));
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
@@ -304,7 +307,7 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: 
                 painter.line_segment([p + egui::vec2(dx, 3.0), p + egui::vec2(dx, -3.0)], stroke);
             }
         }
-        AaaKind::Gepard => {
+        GroundKind::Gepard => {
             let r = egui::Rect::from_center_size(p, egui::vec2(7.0, 7.0));
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
             for dx in [-1.5, 1.5] {
@@ -312,7 +315,7 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind, k: 
             }
         }
         // A drone command center: a square with a drone's wings in it.
-        AaaKind::DroneCenter => {
+        GroundKind::DroneCenter => {
             let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
             painter.line_segment([p + egui::vec2(-3.5, -1.5), p + egui::vec2(0.0, 1.5)], stroke);
@@ -349,18 +352,18 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         aircraft(p, c0, &a(false), MISSILE_RED);
     });
     layers.legend(ui, Layer::Patriots, "Patriot battery", |p, c0| {
-        defence(p, c0, AaaKind::PatriotRadar, 0.8)
+        defence(p, c0, GroundKind::PatriotRadar, 0.8)
     });
     layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
         p.extend(reach_circle(c0, 6.0));
     });
     layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
         if app6() {
-            defence(p, c0 - egui::vec2(7.5, 0.0), AaaKind::Gepard, 0.65);
-            defence(p, c0 + egui::vec2(7.5, 1.0), AaaKind::Manpads, 0.65);
+            defence(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Gepard, 0.65);
+            defence(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
         } else {
-            defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard, 1.0);
-            defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads, 1.0);
+            defence(p, c0 - egui::vec2(4.0, -2.0), GroundKind::Gepard, 1.0);
+            defence(p, c0 + egui::vec2(6.0, 0.0), GroundKind::Manpads, 1.0);
         }
     });
     if let Some(pic) = pic {
@@ -378,11 +381,11 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
     }
     layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
         if app6() {
-            gun(p, c0 - egui::vec2(7.5, 0.0), AaaKind::Zsu, 0.65);
-            gun(p, c0 + egui::vec2(7.5, 1.0), AaaKind::Manpads, 0.65);
+            gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
+            gun(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
         } else {
-            gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu, 1.0);
-            gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads, 1.0);
+            gun(p, c0 - egui::vec2(4.0, 0.0), GroundKind::Zsu, 1.0);
+            gun(p, c0 + egui::vec2(5.0, 0.0), GroundKind::Manpads, 1.0);
         }
     });
     // Not layers: lined up with the lines with a checkbox.
@@ -431,7 +434,7 @@ pub fn pick(
     }
     for d in &pic.defences {
         let name = match d.kind {
-            AaaKind::PatriotRadar => "Patriot battery",
+            GroundKind::PatriotRadar => "Patriot battery",
             k => k.name_on(true),
         };
         consider(screen(d.x, d.y), UnitRef::Aaa(d.index), name.to_string());

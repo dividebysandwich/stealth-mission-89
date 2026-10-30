@@ -735,7 +735,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             match m {
                 SimMsg::Slow(w) => {
                     let before: Vec<bool> =
-                        combat.sim.aaa_units().iter().map(|u| u.destroyed).collect();
+                        combat.sim.units().iter().map(|u| u.destroyed).collect();
                     combat.sim.apply_world_slow(&w);
                     burn_aaa(combat, &before);
                 }
@@ -793,7 +793,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         combat.prev_flights.extend_from_slice(combat.sim.flights());
         combat.prev_proj = *combat.sim.projectiles();
         combat.prev_remote = remote_missiles(&combat.sim);
-        let aaa_before: Vec<bool> = combat.sim.aaa_units().iter().map(|u| u.destroyed).collect();
+        let aaa_before: Vec<bool> = combat.sim.units().iter().map(|u| u.destroyed).collect();
         // A listen server steps the joined players' aircraft too.
         let mut inputs = Vec::new();
         if let Some(NetLink::Host(server)) = link.as_deref_mut() {
@@ -2144,7 +2144,7 @@ struct Fx<'a, 'w> {
 fn burn_aaa(combat: &mut Combat, before: &[bool]) {
     let fires: Vec<Kill> = combat
         .sim
-        .aaa_units()
+        .units()
         .iter()
         .zip(before)
         .filter(|(u, was)| u.destroyed && !**was)

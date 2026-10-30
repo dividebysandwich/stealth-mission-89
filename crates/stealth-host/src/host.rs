@@ -282,7 +282,7 @@ impl Host {
         y: i32,
         kind: DefenceKind,
     ) -> Result<Vec<HostEvent>, String> {
-        if let Some(why) = self.state.deploy_refusal(x, y, kind, &glue::world_view(sim).aaa) {
+        if let Some(why) = self.state.deploy_refusal(x, y, kind, &glue::world_view(sim).units) {
             return Err(why);
         }
         let events = self.state.apply(player, Command::DesignateSite { x, y, kind })?;
@@ -380,7 +380,7 @@ impl Host {
         player: PlayerId,
     ) -> Result<Vec<HostEvent>, String> {
         let k = sim.station_of(player.0).ok_or("Not at a console")?.unit as usize;
-        let u = sim.aaa_units()[k];
+        let u = sim.units()[k];
         let full = |s: i32, f: i32| s >= f;
         let d = sim.defence().ok_or("No campaign")?;
         if full(sim.stockpile(k), stealth_sim::station::initial_stock(u.kind))
@@ -405,9 +405,9 @@ impl Host {
     /// out (their own fire, or a player's at the console; a drone command center out of any
     /// kind of drone): a resupply is ordered for each.
     fn out_of_stock(&mut self, sim: &Sim) -> Vec<CampaignEvent> {
-        use stealth_sim::aaa::AaaKind;
-        let empty: Vec<(usize, stealth_sim::aaa::AaaUnit)> = (0..sim.aaa_units().len())
-            .map(|k| (k, sim.aaa_units()[k]))
+        use stealth_sim::aaa::GroundKind;
+        let empty: Vec<(usize, stealth_sim::aaa::GroundUnit)> = (0..sim.units().len())
+            .map(|k| (k, sim.units()[k]))
             .filter(|(k, u)| {
                 let Some(d) = sim.defence() else { return false };
                 // A unit placed this frame has no stock yet (not an empty one).
@@ -415,8 +415,8 @@ impl Host {
                 !u.destroyed
                     && sim.aaa_blue(*k)
                     && match u.kind {
-                        AaaKind::PatriotRadar | AaaKind::Gepard => empty(&d.stock),
-                        AaaKind::DroneCenter => {
+                        GroundKind::PatriotRadar | GroundKind::Gepard => empty(&d.stock),
+                        GroundKind::DroneCenter => {
                             empty(&d.stock) || empty(&d.stock2) || empty(&d.stock3)
                         }
                         _ => false,

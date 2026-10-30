@@ -23,7 +23,7 @@ use crate::palette_material::{
 };
 use crate::settings::{AppState, Settings};
 use crate::world::{Theater, WU, WorldAnchor, WorldPos, map_to_wu, wu_to_bevy};
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::oflags;
 
 pub struct BarragePlugin;
@@ -102,7 +102,7 @@ struct Round {
 pub struct Barrage {
     /// None until the scenery is there; empty when there is no barrage this flight.
     sites: Option<Vec<Site>>,
-    /// The air defence units' guns (`Sim::aaa_units` order).
+    /// The air defence units' guns (`Sim::units` order).
     units: Vec<Gun>,
     rounds: Vec<Round>,
     rng: u32,
@@ -298,12 +298,12 @@ fn fire(
             .map(|(i, s)| (s.pos.distance(eye), i))
             .filter(|&(d, i)| d < GUN_RANGE && threatened(&sites[i]))
             .collect();
-        let units = combat.as_deref().map_or(&[][..], |c| c.sim.aaa_units());
+        let units = combat.as_deref().map_or(&[][..], |c| c.sim.units());
         if !sites.is_empty() {
             b.units.resize(units.len(), Gun::default());
             for (i, u) in units.iter().enumerate() {
                 let p = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
-                let gun = matches!(u.kind, AaaKind::Zsu | AaaKind::S60 | AaaKind::Gepard);
+                let gun = matches!(u.kind, GroundKind::Zsu | GroundKind::S60 | GroundKind::Gepard);
                 let blue = combat.as_deref().is_some_and(|c| c.sim.aaa_blue(i));
                 if gun && !u.destroyed && p.distance(eye) < GUN_RANGE && threat(p, blue) {
                     guns.push((p.distance(eye), sites.len() + i));

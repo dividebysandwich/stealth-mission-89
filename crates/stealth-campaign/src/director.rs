@@ -543,7 +543,7 @@ impl CampaignState {
     /// A gun or MANPADS team (AAA unit `index`) destroyed: one less at its place until it is
     /// replaced.
     fn gun_lost(&mut self, index: u32, view: &WorldView) {
-        let Some(a) = view.aaa.get(index as usize) else { return };
+        let Some(a) = view.units.get(index as usize) else { return };
         let near = self
             .places
             .iter()
@@ -1142,7 +1142,7 @@ impl CampaignState {
         side: Side,
         r: i32,
     ) -> impl Iterator<Item = u32> + 'v {
-        view.aaa
+        view.units
             .iter()
             .enumerate()
             .filter(move |(_, a)| a.alive && a.side == side && dist(a.x - x, a.y - y) <= r)

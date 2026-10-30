@@ -127,7 +127,7 @@ fn locate(combat: &Combat, unit: UnitRef) -> Option<Located> {
             Some((wu_to_bevy(e, n, alt), heading, Some((m, kt))))
         }
         UnitRef::Aaa(k) => {
-            let u = sim.aaa_units().get(k)?;
+            let u = sim.units().get(k)?;
             if u.destroyed {
                 return None;
             }

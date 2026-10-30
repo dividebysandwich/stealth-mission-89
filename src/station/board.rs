@@ -78,7 +78,7 @@ pub(super) fn click(ui: &ConsoleUi, sim: &Sim, launchers: &[usize], uv: Vec2) ->
         Tab::Site => {
             let k = ((at.y - SITE_TOP) / SITE_ROW).floor();
             let l = *launchers.get(k.max(0.0) as usize).filter(|_| k >= 0.0)?;
-            (!sim.aaa_units()[l].destroyed).then_some(Clicked::Launcher(l))
+            (!sim.units()[l].destroyed).then_some(Clicked::Launcher(l))
         }
     }
 }
@@ -242,7 +242,7 @@ fn refill_bar(cv: &mut Canvas, x: f32, y: f32, left: f32) {
 fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
     let launchers = sim.battery_launchers(radar);
     for (i, &l) in launchers.iter().enumerate() {
-        let u = sim.aaa_units()[l];
+        let u = sim.units()[l];
         let y = SITE_TOP + i as f32 * SITE_ROW;
         let mid = y + SITE_ROW / 2.0;
         if ui.launcher == Some(l) {
@@ -282,7 +282,7 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
     }
     let y = SITE_TOP + 3.0 * SITE_ROW + 16.0;
     let (status, col) =
-        if sim.aaa_units()[radar].destroyed { ("OFFLINE", RED) } else { ("ONLINE", GREEN) };
+        if sim.units()[radar].destroyed { ("OFFLINE", RED) } else { ("ONLINE", GREEN) };
     stroke_text_at(cv, 8.0, y, "RADAR", TEXT, PEN, WHITE, Align::Left);
     stroke_text_at(cv, 96.0, y, status, TEXT, PEN, col, Align::Left);
     let stock = launchers.first().map_or(0, |&l| sim.stockpile(l));
@@ -337,7 +337,7 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
             .map(|p| p.name.to_ascii_uppercase())
     };
     let full = sim
-        .aaa_units()
+        .units()
         .get(unit)
         .is_some_and(|u| sim.stockpile(unit) >= stealth_sim::station::initial_stock(u.kind));
     let (text, col, button) = match request.map(|r| (r.id, r.state)) {
@@ -370,7 +370,7 @@ fn resupply(cv: &mut Canvas, sim: &Sim, st: &stealth_campaign::CampaignState, un
 }
 
 fn gepard(cv: &mut Canvas, sim: &Sim, unit: usize) {
-    let u = sim.aaa_units()[unit];
+    let u = sim.units()[unit];
     let y = SITE_TOP + 16.0;
     let (status, col) = if u.destroyed { ("OFFLINE", RED) } else { ("ONLINE", GREEN) };
     stroke_text_at(cv, 8.0, y, "GEPARD", 8.0, 1.1, WHITE, Align::Left);

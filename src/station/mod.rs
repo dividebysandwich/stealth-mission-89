@@ -30,7 +30,7 @@ mod sound;
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::{Guidance, StationCmd};
 
 use crate::camera::{View, ViewState};
@@ -174,9 +174,9 @@ fn sync_manning(
 ) {
     let want = match (c.as_deref().map(|c| c.phase), combat.as_deref()) {
         (Some(Phase::Station { unit }), Some(combat)) => {
-            let kind = match combat.sim.aaa_units().get(unit).map(|u| u.kind) {
-                Some(AaaKind::Gepard) => StationKind::Gepard,
-                Some(AaaKind::DroneCenter) => StationKind::Drones,
+            let kind = match combat.sim.units().get(unit).map(|u| u.kind) {
+                Some(GroundKind::Gepard) => StationKind::Gepard,
+                Some(GroundKind::DroneCenter) => StationKind::Drones,
                 _ => StationKind::Patriot,
             };
             Some(Manning { unit, kind })
@@ -222,7 +222,7 @@ fn sync_manning(
 /// Where the console's shelter is: behind its radar or Gepard (Bevy world), and the operator's
 /// heading (radians clockwise from north: facing the unit).
 fn shelter(combat: &Combat, unit: usize) -> Option<(DVec3, f32)> {
-    let u = combat.sim.aaa_units().get(unit)?;
+    let u = combat.sim.units().get(unit)?;
     let at = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
     // The same spread of headings the units stand at (`sim_render`).
     let heading = (unit as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);

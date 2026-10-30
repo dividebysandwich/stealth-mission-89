@@ -12,7 +12,7 @@ use stealth_campaign::{
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
 use stealth_net::protocol::PlayerStatus;
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
@@ -1341,7 +1341,7 @@ pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
 
 /// Why this player can't man air defence unit `k`'s console now (None: they can).
 pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) -> Option<String> {
-    if sim.aaa_units().get(k).is_none_or(|u| u.destroyed) {
+    if sim.units().get(k).is_none_or(|u| u.destroyed) {
         return Some("Destroyed".to_string());
     }
     if c.phase == Phase::Sortie {
@@ -1361,7 +1361,7 @@ fn control_button(
     unit_view: &mut super::UnitView,
 ) {
     let Some(super::unit_view::UnitRef::Aaa(k)) = unit_view.target else { return };
-    let Some(u) = sim.aaa_units().get(k) else { return };
+    let Some(u) = sim.units().get(k) else { return };
     if !sim.aaa_blue(k) || !stealth_sim::station::mannable(u.kind) {
         return;
     }
@@ -1369,8 +1369,8 @@ fn control_button(
     section(
         ui,
         match u.kind {
-            AaaKind::Gepard => "Gepard",
-            AaaKind::DroneCenter => "Drone command center",
+            GroundKind::Gepard => "Gepard",
+            GroundKind::DroneCenter => "Drone command center",
             _ => "Patriot battery",
         },
     );

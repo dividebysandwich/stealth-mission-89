@@ -113,10 +113,10 @@ impl CampaignState {
             let r = &self.supply_requests[k];
             // The unit where it stands (a reloaded simulation may number it anew).
             let alive =
-                |a: &crate::AaaView| a.alive && a.side == Side::Blue && (a.x, a.y) == (r.x, r.y);
-            let unit = match view.aaa.get(r.aaa as usize) {
+                |a: &crate::GroundView| a.alive && a.side == Side::Blue && (a.x, a.y) == (r.x, r.y);
+            let unit = match view.units.get(r.aaa as usize) {
                 Some(a) if alive(a) => Some(r.aaa),
-                _ => view.aaa.iter().position(alive).map(|i| i as u32),
+                _ => view.units.iter().position(alive).map(|i| i as u32),
             };
             let Some(unit) = unit else {
                 // Its helicopter flies home with the load.

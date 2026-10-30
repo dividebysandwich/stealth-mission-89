@@ -191,9 +191,10 @@ pub struct Sim {
     /// continuous time of day; None: the mission's day or night.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) visual_light: Option<u8>,
-    /// Low-level air defences (`SimOptions::air_defence`), their shells and random stream.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) aaa: Vec<aaa::AaaUnit>,
+    /// Ground units: low-level air defences (`SimOptions::air_defence`) and the campaign's
+    /// armour; then the shells and random stream.
+    #[serde(default, rename = "aaa", skip_serializing_if = "Vec::is_empty")]
+    pub(crate) units: Vec<aaa::GroundUnit>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) aaa_shells: Vec<aaa::Shell>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -506,7 +507,7 @@ impl Sim {
                 - m.drones.as_ref().map_or(0, |d| d.count.min(w.flights.len())),
             destroyed_at: Vec::new(),
             visual_light: None,
-            aaa: Vec::new(),
+            units: Vec::new(),
             aaa_shells: Vec::new(),
             aaa_rng: None,
             drones: m.drones.as_ref().map(|d| drones::Drones {

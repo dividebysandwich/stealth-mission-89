@@ -479,7 +479,7 @@ fn spawn_model(
 struct AaaVisuals {
     units: Vec<Entity>,
     /// What each was spawned as (a unit's slot is reused for another kind on a capture).
-    kinds: Vec<stealth_sim::aaa::AaaKind>,
+    kinds: Vec<stealth_sim::aaa::GroundKind>,
     tracers: Vec<Entity>,
     /// Campaign: the AI's missiles at AI aircraft (a glowing dot each).
     ai_missiles: Vec<Entity>,
@@ -517,7 +517,7 @@ fn sync_aaa(
     console: Option<Res<crate::station::ConsoleEo>>,
 ) {
     let sim = &combat.sim;
-    let units = sim.aaa_units();
+    let units = sim.units();
     let kinds: Vec<_> = units.iter().map(|u| u.kind).collect();
     if av.units.len() != units.len() || av.kinds != kinds {
         for e in av.units.drain(..) {
@@ -549,7 +549,7 @@ fn sync_aaa(
         // Each unit stands at its own heading (golden-angle spread).
         let heading = (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);
         tf.rotation = Quat::from_rotation_y(-heading);
-        let hidden = u.kind == stealth_sim::aaa::AaaKind::Manpads
+        let hidden = u.kind == stealth_sim::aaa::GroundKind::Manpads
             && at.distance(eye) > MANPADS_RANGE
             && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
         vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
@@ -557,7 +557,7 @@ fn sync_aaa(
             s.0[1] = u.destroyed as i16;
             s.0[AAA_TURRET_SLOT] = bam16(u.aim_az - heading);
             // The Patriot launcher fires at a fixed elevation.
-            let el = if u.kind == stealth_sim::aaa::AaaKind::PatriotLauncher {
+            let el = if u.kind == stealth_sim::aaa::GroundKind::PatriotLauncher {
                 stealth_sim::campaign::PATRIOT_ELEVATION
             } else {
                 u.aim_el

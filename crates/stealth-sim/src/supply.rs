@@ -55,7 +55,7 @@ pub const NO_UNIT: u16 = u16::MAX;
 /// A resupply helicopter's run (world units, x east, y south).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SupplyRun {
-    /// The air defence unit (`Sim::aaa_units` index; `NO_UNIT`: cargo for a new site's
+    /// The air defence unit (`Sim::units` index; `NO_UNIT`: cargo for a new site's
     /// helipad).
     pub unit: u16,
     /// Where it hovers for the drop, and the helipad it came from (and lands on).
@@ -76,7 +76,7 @@ pub struct SupplyRun {
 }
 
 /// The middle of AAA unit `u` (world units, x east, y south).
-fn unit_centre(u: &crate::aaa::AaaUnit) -> (i32, i32) {
+fn unit_centre(u: &crate::aaa::GroundUnit) -> (i32, i32) {
     ((u.x << 5) + 16, (u.y << 5) + 16)
 }
 
@@ -111,7 +111,7 @@ impl Sim {
         tag: u32,
     ) -> usize {
         let pad = self.helipad(from);
-        let at = self.aaa.get(unit).map_or(pad, unit_centre);
+        let at = self.units.get(unit).map_or(pad, unit_centre);
         // It hovers beside the unit, on its way in.
         let (dx, dy) = ((pad.0 - at.0) as f64, (pad.1 - at.1) as f64);
         let d = dx.hypot(dy).max(1.0);
@@ -285,7 +285,7 @@ impl Sim {
                 && if run.unit == NO_UNIT {
                     near_point(run.drop)
                 } else {
-                    self.aaa
+                    self.units
                         .get(unit)
                         .filter(|a| !a.destroyed)
                         .is_some_and(|a| near_point(unit_centre(a)))
@@ -300,7 +300,7 @@ impl Sim {
                 self.emit(SimEvent::CampaignFlightDelivered { unit: i, tag, aaa });
             }
             // The unit is gone: home with the load.
-            if run.unit != NO_UNIT && self.aaa.get(unit).is_none_or(|a| a.destroyed) {
+            if run.unit != NO_UNIT && self.units.get(unit).is_none_or(|a| a.destroyed) {
                 run.delivered = true;
             }
         } else if d < 2.0 * THERE && u.alt == 0 {
@@ -326,8 +326,8 @@ impl Sim {
         }
         // The pilot's world units run north, a unit's south.
         let (east, south) = (p.p.wx, 0x10_0000 - p.p.wy);
-        (0..self.aaa.len()).find(|&k| {
-            let a = &self.aaa[k];
+        (0..self.units.len()).find(|&k| {
+            let a = &self.units[k];
             let c = unit_centre(a);
             !a.destroyed
                 && mannable(a.kind)
@@ -343,7 +343,7 @@ impl Sim {
             return;
         }
         self.defence_sizes();
-        let Some(kind) = self.aaa.get(k).map(|a| a.kind) else { return };
+        let Some(kind) = self.units.get(k).map(|a| a.kind) else { return };
         if !mannable(kind) {
             return;
         }

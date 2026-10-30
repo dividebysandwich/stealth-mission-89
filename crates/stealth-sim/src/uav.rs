@@ -27,7 +27,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Sim;
-use crate::aaa::{AaaKind, M_PER_MAP};
+use crate::aaa::{GroundKind, M_PER_MAP};
 use crate::campaign::{CampaignFlight, M_PER_WU, Role, add, dot, flight_metres, len, mul, sub};
 use crate::station::Station;
 use crate::types::*;
@@ -552,7 +552,7 @@ impl Sim {
     /// A drone center's launch rail: where a drone sits on it (m east, north, up) and the way
     /// it points (rad, clockwise from north).
     pub fn uav_ramp(&self, center: usize) -> ([f64; 3], f64) {
-        let u = self.aaa[center];
+        let u = self.units[center];
         let h = crate::aaa::unit_heading(center) as f64;
         let p = u.metres();
         ([p[0] + h.sin() * RAMP_FORWARD, p[1] + h.cos() * RAMP_FORWARD, RAMP_UP], h)
@@ -560,7 +560,7 @@ impl Sim {
 
     /// Seconds until a center's rail is ready again.
     pub fn uav_rail_wait(&self, center: usize) -> i32 {
-        self.aaa.get(center).map_or(0, |u| (u.cooldown + self.fs.max(1) - 1) / self.fs.max(1))
+        self.units.get(center).map_or(0, |u| (u.cooldown + self.fs.max(1) - 1) / self.fs.max(1))
     }
 
     /// A drone center's drones in the air.
@@ -577,7 +577,7 @@ impl Sim {
     /// Why station `st` can't launch a `kind` drone on `route` now (None: it can).
     pub fn launch_refusal(&self, st: &Station, kind: UavKind, route: &[UavWp]) -> Option<String> {
         let k = st.unit as usize;
-        if self.aaa.get(k).is_none_or(|u| u.kind != AaaKind::DroneCenter) {
+        if self.units.get(k).is_none_or(|u| u.kind != GroundKind::DroneCenter) {
             return Some("No drones here".into());
         }
         if self.uavs_of(k).count() >= MAX_AIRBORNE {
@@ -587,7 +587,7 @@ impl Sim {
         if stock <= 0 {
             return Some(format!("No {} left: request resupply", kind.name()));
         }
-        if self.aaa[k].cooldown > 0 {
+        if self.units[k].cooldown > 0 {
             return Some(format!("Rail ready in {} s", self.uav_rail_wait(k)));
         }
         route_refusal(kind, route).map(String::from)
@@ -674,19 +674,19 @@ impl Sim {
         let i = self.campaign_slot();
         self.flights[i] = FlightUnit { spec: kind.spec(), ..Default::default() };
         let fs = self.fs.max(1);
-        self.aaa[k].cooldown = LAUNCH_INTERVAL * fs;
+        self.units[k].cooldown = LAUNCH_INTERVAL * fs;
         let c = self.campaign.as_mut().expect("campaign");
         c.flights[i] = Some(CampaignFlight {
             tag: 0,
             role: Role::Uav,
             blue: true,
-            goal: (self.aaa[k].x, self.aaa[k].y),
+            goal: (self.units[k].x, self.units[k].y),
             target: None,
             cooldown: 0,
             loadout: Default::default(),
             task: Default::default(),
             home: 0,
-            anchor: (self.aaa[k].x, self.aaa[k].y),
+            anchor: (self.units[k].x, self.units[k].y),
             quiet: 0,
             burst: 0,
             killed_by_ai: false,
@@ -1037,11 +1037,11 @@ impl Sim {
     /// A warhead at map point (x, y): the air defence units of either side within `r` map units
     /// (also with nobody flying, when `aaa_damage` sleeps).
     fn uav_blast_units(&mut self, x: i32, y: i32, r: f64) {
-        for k in 0..self.aaa.len() {
-            let a = self.aaa[k];
+        for k in 0..self.units.len() {
+            let a = self.units[k];
             if !a.destroyed && ((a.x - x) as f64).hypot((a.y - y) as f64) < r {
-                self.aaa[k].destroyed = true;
-                self.aaa[k].burst = 0;
+                self.units[k].destroyed = true;
+                self.units[k].burst = 0;
                 self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
                 self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
                 self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
@@ -1152,7 +1152,7 @@ impl Sim {
     fn uav_look(&mut self) {
         let mut known = self.defence().map(|d| d.uav_known.clone()).unwrap_or_default();
         known.retain(|s| match *s {
-            Seen::Aaa(k) => self.aaa.get(k as usize).is_some_and(|u| !u.destroyed),
+            Seen::Aaa(k) => self.units.get(k as usize).is_some_and(|u| !u.destroyed),
             Seen::Object(o) => self
                 .objects
                 .get(o as usize)
@@ -1161,7 +1161,7 @@ impl Sim {
         for u in self.uavs() {
             let r = u.kind.sensor();
             let near = |x: f64, y: f64| (x - u.pos[0]).hypot(y - u.pos[1]) < r;
-            for (k, a) in self.aaa.iter().enumerate() {
+            for (k, a) in self.units.iter().enumerate() {
                 let m = a.metres();
                 if !a.destroyed && !self.aaa_blue(k) && near(m[0], m[1]) {
                     let s = Seen::Aaa(k as u16);
@@ -1197,7 +1197,7 @@ impl Sim {
     /// Where something the drones found is (map units).
     pub fn seen_at(&self, s: Seen) -> Option<(i32, i32)> {
         match s {
-            Seen::Aaa(k) => self.aaa.get(k as usize).map(|u| (u.x, u.y)),
+            Seen::Aaa(k) => self.units.get(k as usize).map(|u| (u.x, u.y)),
             Seen::Object(o) => self.objects.get(o as usize).map(|o| (o.x, o.y)),
         }
     }

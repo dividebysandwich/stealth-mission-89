@@ -132,7 +132,7 @@ pub(super) fn snapshot(
     }
     ui.since_snapshot = 0.0;
     let sim = &combat.sim;
-    let Some(site) = sim.aaa_units().get(m.unit).map(|u| u.metres()) else { return };
+    let Some(site) = sim.units().get(m.unit).map(|u| u.metres()) else { return };
     let mut tracks = Vec::new();
     for (i, u) in sim.flights().iter().enumerate() {
         let up = fflags::EXISTS | fflags::AIRBORNE;
@@ -266,10 +266,10 @@ pub(super) fn draw(
     stroke_text_at(cv, w - 6.0, 8.0, title, 7.0, 1.0, GREEN, Align::Right);
     // The site and, for a battery, its launchers.
     cv.frame(centre - Vec2::splat(3.0), centre + Vec2::splat(3.0), 1.0, WHITE);
-    if let Some(site) = sim.aaa_units().get(m.unit).map(|u| u.metres()) {
+    if let Some(site) = sim.units().get(m.unit).map(|u| u.metres()) {
         if !m.gepard() {
             for l in sim.battery_launchers(m.unit) {
-                let u = sim.aaa_units()[l];
+                let u = sim.units()[l];
                 let p = u.metres();
                 let s = to_screen(centre, k, (p[0] - site[0]) as f32, (p[1] - site[1]) as f32);
                 let col = if u.destroyed {

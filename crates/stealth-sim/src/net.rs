@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::aaa::{AaaUnit, Shell};
+use crate::aaa::{GroundUnit, Shell};
 use crate::campaign::{AiMissile, CampaignFlight};
 use crate::station::DefenceState;
 use crate::types::*;
@@ -202,7 +202,7 @@ pub struct WorldSlow {
     /// The air defence list's length (units come and go with captures).
     pub aaa_len: u32,
     /// Changed units (without their aim): index, record, friendly.
-    pub aaa: Vec<(u16, AaaUnit, bool)>,
+    pub aaa: Vec<(u16, GroundUnit, bool)>,
     /// Campaign flight records that changed: unit, record (None: freed).
     pub campaign_flights: Vec<(u16, Option<CampaignFlight>)>,
     /// The tile damage list (only when a client joins; the events keep it after that).
@@ -220,7 +220,7 @@ pub struct WorldSlow {
 #[derive(Debug, Clone, Default)]
 pub struct SlowBase {
     objects: Vec<(GroundObject, i32, u8, bool, bool)>,
-    aaa: Vec<(AaaUnit, bool)>,
+    aaa: Vec<(GroundUnit, bool)>,
     campaign_flights: Vec<Option<CampaignFlight>>,
     defence: Option<(DefenceState, Vec<i32>)>,
     joined: bool,
@@ -276,7 +276,7 @@ impl Sim {
             wreck: self.wreck,
             flash: self.flash,
             aaa_busy: self
-                .aaa
+                .units
                 .iter()
                 .enumerate()
                 // A manned one too: its turret slewed by hand.
@@ -363,11 +363,11 @@ impl Sim {
                 out.objects.push((i as u16, now.0, now.1, now.2, now.3, now.4));
             }
         }
-        out.aaa_len = self.aaa.len() as u32;
-        base.aaa.truncate(self.aaa.len());
-        for (i, u) in self.aaa.iter().enumerate() {
+        out.aaa_len = self.units.len() as u32;
+        base.aaa.truncate(self.units.len());
+        for (i, u) in self.units.iter().enumerate() {
             // The aim, the burst and the tracking go with the fast state.
-            let still = AaaUnit {
+            let still = GroundUnit {
                 aim_az: 0.0,
                 aim_el: 0.0,
                 burst: 0,
@@ -402,7 +402,7 @@ impl Sim {
             for s in &mut d.stations {
                 s.due = 0.0;
             }
-            let now = Some((d, self.aaa.iter().map(|u| u.rounds).collect()));
+            let now = Some((d, self.units.iter().map(|u| u.rounds).collect()));
             if base.defence != now {
                 base.defence.clone_from(&now);
                 out.defence = now;
@@ -523,12 +523,12 @@ impl Sim {
         self.smoke_src = w.smoke_src;
         self.wreck = w.wreck;
         self.flash = w.flash;
-        for u in self.aaa.iter_mut() {
+        for u in self.units.iter_mut() {
             u.tracking = false;
             u.burst = 0;
         }
         for &(i, az, el, burst, tracking) in &w.aaa_busy {
-            if let Some(u) = self.aaa.get_mut(i as usize) {
+            if let Some(u) = self.units.get_mut(i as usize) {
                 u.aim_az = az;
                 u.aim_el = el;
                 u.burst = burst;
@@ -576,7 +576,7 @@ impl Sim {
             }
         }
         let len = w.aaa_len as usize;
-        self.aaa.resize(len, AaaUnit::default());
+        self.units.resize(len, GroundUnit::default());
         if let Some(c) = self.campaign.as_mut() {
             c.aaa_blue.resize(len, false);
             c.aaa_target.resize(len, None);
@@ -584,8 +584,8 @@ impl Sim {
         for &(i, u, blue) in &w.aaa {
             let i = i as usize;
             if i < len {
-                let old = self.aaa[i];
-                self.aaa[i] = AaaUnit {
+                let old = self.units[i];
+                self.units[i] = GroundUnit {
                     aim_az: old.aim_az,
                     aim_el: old.aim_el,
                     burst: old.burst,
@@ -611,7 +611,7 @@ impl Sim {
             }
             if let Some((d, rounds)) = &w.defence {
                 c.defence = d.clone();
-                for (u, &r) in self.aaa.iter_mut().zip(rounds) {
+                for (u, &r) in self.units.iter_mut().zip(rounds) {
                     u.rounds = r;
                 }
             }

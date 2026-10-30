@@ -5,7 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::Side;
-use stealth_sim::aaa::{AaaKind, M_PER_MAP};
+use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{
     FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, GEPARD_STOCK, INTERCEPTOR_STOCK, PATRIOT_STOCK,
     STORK_STOCK, StationCmd, mannable,
@@ -33,7 +33,7 @@ struct Site {
     unit: usize,
     x: i32,
     y: i32,
-    kind: AaaKind,
+    kind: GroundKind,
     /// The nearest place's name.
     near: String,
     destroyed: bool,
@@ -52,24 +52,24 @@ struct Site {
 
 fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
     let st = c.state();
-    let mut out: Vec<Site> = (0..sim.aaa_units().len())
-        .filter(|&k| sim.aaa_blue(k) && mannable(sim.aaa_units()[k].kind))
+    let mut out: Vec<Site> = (0..sim.units().len())
+        .filter(|&k| sim.aaa_blue(k) && mannable(sim.units()[k].kind))
         .map(|k| {
-            let u = sim.aaa_units()[k];
-            let gepard = u.kind == AaaKind::Gepard;
-            let drones = u.kind == AaaKind::DroneCenter;
+            let u = sim.units()[k];
+            let gepard = u.kind == GroundKind::Gepard;
+            let drones = u.kind == GroundKind::DroneCenter;
             let near = st
                 .places
                 .iter()
                 .min_by_key(|p| stealth_campaign::dist(p.x - u.x, p.y - u.y))
                 .map_or_else(String::new, |p| p.name.clone());
             let units = match u.kind {
-                AaaKind::Gepard => vec![k],
-                AaaKind::DroneCenter => Vec::new(),
+                GroundKind::Gepard => vec![k],
+                GroundKind::DroneCenter => Vec::new(),
                 _ => sim.battery_launchers(k),
             };
             let alive: Vec<usize> =
-                units.iter().copied().filter(|&l| !sim.aaa_units()[l].destroyed).collect();
+                units.iter().copied().filter(|&l| !sim.units()[l].destroyed).collect();
             let per = if gepard { GEPARD_ROUNDS } else { stealth_sim::campaign::PATRIOT_ROUNDS };
             let at = u.metres();
             let mut enemies: Vec<(String, f32)> = sim
@@ -103,7 +103,7 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
                 ready: if drones {
                     sim.uavs_of(k).count() as i32
                 } else {
-                    alive.iter().map(|&l| sim.aaa_units()[l].rounds).sum()
+                    alive.iter().map(|&l| sim.units()[l].rounds).sum()
                 },
                 full: if drones {
                     stealth_sim::uav::MAX_AIRBORNE as i32
@@ -123,10 +123,10 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
     out
 }
 
-fn order(kind: AaaKind) -> u8 {
+fn order(kind: GroundKind) -> u8 {
     match kind {
-        AaaKind::Gepard => 1,
-        AaaKind::DroneCenter => 2,
+        GroundKind::Gepard => 1,
+        GroundKind::DroneCenter => 2,
         _ => 0,
     }
 }
@@ -137,8 +137,8 @@ fn tag(sites: &[Site], i: usize) -> String {
     let s = &sites[i];
     let n = sites[..=i].iter().filter(|o| o.kind == s.kind).count();
     let letter = match s.kind {
-        AaaKind::Gepard => "G",
-        AaaKind::DroneCenter => "D",
+        GroundKind::Gepard => "G",
+        GroundKind::DroneCenter => "D",
         _ => "P",
     };
     format!("{letter}{n}")
@@ -203,9 +203,9 @@ fn map(
     // The reach: filled, the selected site's brighter; then the symbols over all of them.
     for s in sites.iter().filter(|s| !s.destroyed) {
         let reach = match s.kind {
-            AaaKind::Gepard => GEPARD_MAP_REACH,
+            GroundKind::Gepard => GEPARD_MAP_REACH,
             // A drone command center's: as far as its surveillance drones see from over it.
-            AaaKind::DroneCenter => (stealth_sim::uav::STORK_SENSOR / M_PER_MAP) as f32,
+            GroundKind::DroneCenter => (stealth_sim::uav::STORK_SENSOR / M_PER_MAP) as f32,
             _ => PATRIOT_REACH,
         };
         let r = (reach / view.scale).max(4.0);
@@ -310,8 +310,8 @@ fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], he
 fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &str) {
     ui.horizontal(|ui| {
         let kind = match s.kind {
-            AaaKind::Gepard => "GEPARD",
-            AaaKind::DroneCenter => "DRONES",
+            GroundKind::Gepard => "GEPARD",
+            GroundKind::DroneCenter => "DRONES",
             _ => "PATRIOT",
         };
         ui.label(egui::RichText::new(format!("{tag} {kind}")).strong().color(FRIENDLY_BLUE));
@@ -333,7 +333,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         ui.label(egui::RichText::new("DESTROYED").color(MISSILE_RED));
         return;
     }
-    let drones = s.kind == AaaKind::DroneCenter;
+    let drones = s.kind == GroundKind::DroneCenter;
     let ammo_col = if drones || s.ready * 2 >= s.full {
         GREEN
     } else if s.ready > 0 {
@@ -369,7 +369,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     });
     ui.horizontal(|ui| {
         key(ui, if drones { "UP" } else { "READY" });
-        let ready = if s.kind != AaaKind::Gepard && !drones {
+        let ready = if s.kind != GroundKind::Gepard && !drones {
             format!("{}/{} {}L", s.ready, s.full, s.launchers)
         } else {
             format!("{}/{}", s.ready, s.full)
@@ -401,7 +401,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
                 }
             });
         } else {
-            let full = if s.kind == AaaKind::Gepard { GEPARD_STOCK } else { PATRIOT_STOCK };
+            let full = if s.kind == GroundKind::Gepard { GEPARD_STOCK } else { PATRIOT_STOCK };
             bar(ui, s.stock, full, BAR_W, stock_col(s.stock));
             value(ui, egui::RichText::new(s.stock.to_string()).color(stock_col(s.stock)), STOCK_W);
         }

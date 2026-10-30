@@ -17,7 +17,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Sim;
-use crate::aaa::{AaaKind, PATRIOT, Shell, lead};
+use crate::aaa::{GroundKind, PATRIOT, Shell, lead};
 use crate::campaign::{
     AiShell, M_PER_WU, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add,
     flight_metres, jitter, len, mul, sub,
@@ -189,7 +189,7 @@ pub struct DefenceState {
 pub struct SavedStock {
     pub x: i32,
     pub y: i32,
-    pub kind: AaaKind,
+    pub kind: GroundKind,
     pub stock: i32,
     pub stock2: i32,
     /// -1: not saved (a save from before the interceptors), the unit keeps its stockpile.
@@ -202,37 +202,37 @@ fn unsaved() -> i32 {
 }
 
 /// The stockpile a unit starts with (and a resupply brings it back to).
-pub fn initial_stock(kind: AaaKind) -> i32 {
+pub fn initial_stock(kind: GroundKind) -> i32 {
     match kind {
-        AaaKind::PatriotRadar => PATRIOT_STOCK,
-        AaaKind::Gepard => GEPARD_STOCK,
-        AaaKind::DroneCenter => STORK_STOCK,
+        GroundKind::PatriotRadar => PATRIOT_STOCK,
+        GroundKind::Gepard => GEPARD_STOCK,
+        GroundKind::DroneCenter => STORK_STOCK,
         _ => 0,
     }
 }
 
 /// The second stockpile a unit starts with: a drone command center's attack drones.
-pub fn initial_stock2(kind: AaaKind) -> i32 {
-    if kind == AaaKind::DroneCenter { FP2_STOCK } else { 0 }
+pub fn initial_stock2(kind: GroundKind) -> i32 {
+    if kind == GroundKind::DroneCenter { FP2_STOCK } else { 0 }
 }
 
 /// The third stockpile a unit starts with: a drone command center's interceptor drones.
-pub fn initial_stock3(kind: AaaKind) -> i32 {
-    if kind == AaaKind::DroneCenter { INTERCEPTOR_STOCK } else { 0 }
+pub fn initial_stock3(kind: GroundKind) -> i32 {
+    if kind == GroundKind::DroneCenter { INTERCEPTOR_STOCK } else { 0 }
 }
 
 /// A unit's load when full.
-fn full_load(kind: AaaKind) -> i32 {
+fn full_load(kind: GroundKind) -> i32 {
     match kind {
-        AaaKind::PatriotLauncher => PATRIOT_ROUNDS,
-        AaaKind::Gepard => GEPARD_ROUNDS,
+        GroundKind::PatriotLauncher => PATRIOT_ROUNDS,
+        GroundKind::Gepard => GEPARD_ROUNDS,
         _ => 0,
     }
 }
 
 /// A unit a player can man.
-pub fn mannable(kind: AaaKind) -> bool {
-    matches!(kind, AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::DroneCenter)
+pub fn mannable(kind: GroundKind) -> bool {
+    matches!(kind, GroundKind::PatriotRadar | GroundKind::Gepard | GroundKind::DroneCenter)
 }
 
 impl Sim {
@@ -258,12 +258,12 @@ impl Sim {
 
     /// The live launchers a Patriot radar commands.
     pub fn battery_launchers(&self, radar: usize) -> Vec<usize> {
-        let Some(r) = self.aaa.get(radar) else { return Vec::new() };
+        let Some(r) = self.units.get(radar) else { return Vec::new() };
         let blue = self.aaa_blue(radar);
-        (0..self.aaa.len())
+        (0..self.units.len())
             .filter(|&k| {
-                let u = &self.aaa[k];
-                u.kind == AaaKind::PatriotLauncher
+                let u = &self.units[k];
+                u.kind == GroundKind::PatriotLauncher
                     && self.aaa_blue(k) == blue
                     && approx(u.x - r.x, u.y - r.y) < PATRIOT_LINK
             })
@@ -272,11 +272,11 @@ impl Sim {
 
     /// The Patriot radar that commands a launcher.
     pub fn launcher_radar(&self, launcher: usize) -> Option<usize> {
-        let l = self.aaa.get(launcher)?;
+        let l = self.units.get(launcher)?;
         let blue = self.aaa_blue(launcher);
-        (0..self.aaa.len()).find(|&r| {
-            let u = &self.aaa[r];
-            u.kind == AaaKind::PatriotRadar
+        (0..self.units.len()).find(|&r| {
+            let u = &self.units[r];
+            u.kind == GroundKind::PatriotRadar
                 && !u.destroyed
                 && self.aaa_blue(r) == blue
                 && approx(u.x - l.x, u.y - l.y) < PATRIOT_LINK
@@ -285,8 +285,8 @@ impl Sim {
 
     /// Where a unit's stock is kept: a launcher's at its radar, anything else its own.
     fn stock_unit(&self, k: usize) -> Option<usize> {
-        match self.aaa.get(k)?.kind {
-            AaaKind::PatriotLauncher => self.launcher_radar(k),
+        match self.units.get(k)?.kind {
+            GroundKind::PatriotLauncher => self.launcher_radar(k),
             _ => Some(k),
         }
     }
@@ -306,18 +306,18 @@ impl Sim {
     pub(crate) fn defence_sizes(&mut self) {
         let Some(c) = self.campaign.as_mut() else { return };
         let d = &mut c.defence;
-        let n = self.aaa.len();
+        let n = self.units.len();
         d.stock.truncate(n);
         for k in d.stock.len()..n {
-            d.stock.push(initial_stock(self.aaa[k].kind));
+            d.stock.push(initial_stock(self.units[k].kind));
         }
         d.stock2.truncate(n);
         for k in d.stock2.len()..n {
-            d.stock2.push(initial_stock2(self.aaa[k].kind));
+            d.stock2.push(initial_stock2(self.units[k].kind));
         }
         d.stock3.truncate(n);
         for k in d.stock3.len()..n {
-            d.stock3.push(initial_stock3(self.aaa[k].kind));
+            d.stock3.push(initial_stock3(self.units[k].kind));
         }
         d.refill.resize(n, 0.0);
     }
@@ -378,7 +378,7 @@ impl Sim {
     }
 
     fn man_station(&mut self, pilot: u8, unit: usize) -> Result<(), String> {
-        let Some(u) = self.aaa.get(unit).copied() else { return Err("No such unit".into()) };
+        let Some(u) = self.units.get(unit).copied() else { return Err("No such unit".into()) };
         if !mannable(u.kind) || !self.aaa_blue(unit) {
             return Err(
                 "Only friendly Patriot batteries, Gepards and drone command centers can be manned"
@@ -437,10 +437,10 @@ impl Sim {
     /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot
     /// radar's missiles, a Gepard's rounds (at the lead).
     pub fn in_reach(&self, unit: usize, j: usize) -> bool {
-        let (Some(u), Some((pos, vel))) = (self.aaa.get(unit), self.track_alive(j)) else {
+        let (Some(u), Some((pos, vel))) = (self.units.get(unit), self.track_alive(j)) else {
             return false;
         };
-        if u.kind == AaaKind::Gepard {
+        if u.kind == GroundKind::Gepard {
             let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
             time * GEPARD_V0 <= GEPARD_REACH
         } else {
@@ -460,7 +460,7 @@ impl Sim {
 
     fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), String> {
         let radar = st.unit as usize;
-        if self.aaa[radar].kind != AaaKind::PatriotRadar {
+        if self.units[radar].kind != GroundKind::PatriotRadar {
             return Err("No missiles here".into());
         }
         let (j, pos, _) = self.hostile_lock(&st)?;
@@ -468,7 +468,7 @@ impl Sim {
             return Err("Out of range".into());
         }
         let ready = |sim: &Sim, k: usize| {
-            let u = &sim.aaa[k];
+            let u = &sim.units[k];
             !u.destroyed && u.rounds > 0 && u.cooldown == 0 && sim.refill_left(k) == 0.0
         };
         let launchers = self.battery_launchers(radar);
@@ -484,10 +484,10 @@ impl Sim {
                 .iter()
                 .copied()
                 .filter(|&k| ready(self, k))
-                .max_by_key(|&k| self.aaa[k].rounds)
+                .max_by_key(|&k| self.units[k].rounds)
                 .ok_or("No launcher ready")?,
         };
-        let u = self.aaa[k];
+        let u = self.units[k];
         let from = add(u.metres(), [0.0, 0.0, 3.0]);
         let d = sub(pos, from);
         let az = d[0].atan2(d[1]);
@@ -497,7 +497,7 @@ impl Sim {
         m.guidance = Some(st.mode);
         m.station = Some(st.unit);
         let fs = self.fs.max(1);
-        let a = &mut self.aaa[k];
+        let a = &mut self.units[k];
         a.rounds -= 1;
         a.cooldown = LAUNCH_INTERVAL * fs;
         a.aim_az = az as f32;
@@ -506,7 +506,7 @@ impl Sim {
     }
 
     fn gepard_here(&self, st: Station) -> Result<(), String> {
-        if self.aaa[st.unit as usize].kind != AaaKind::Gepard {
+        if self.units[st.unit as usize].kind != GroundKind::Gepard {
             return Err("No gun here".into());
         }
         Ok(())
@@ -526,7 +526,7 @@ impl Sim {
     /// barrels).
     fn burst_rounds(&self, st: &Station) -> Result<i32, String> {
         self.gepard_here(*st)?;
-        let u = self.aaa[st.unit as usize];
+        let u = self.units[st.unit as usize];
         if st.burst > 0 {
             return Err("Firing".into());
         }
@@ -545,7 +545,7 @@ impl Sim {
 
     /// Starts refilling an empty launcher (of station unit `unit`'s battery) or Gepard.
     fn start_refill(&mut self, station: usize, k: usize) -> Result<(), String> {
-        let Some(u) = self.aaa.get(k).copied() else { return Err("No such unit".into()) };
+        let Some(u) = self.units.get(k).copied() else { return Err("No such unit".into()) };
         let ours = k == station || self.battery_launchers(station).contains(&k);
         if !ours || full_load(u.kind) == 0 {
             return Err("Nothing to reload there".into());
@@ -587,8 +587,8 @@ impl Sim {
         }
         self.defence_sizes();
         let mut done = Vec::new();
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
+        for k in 0..self.units.len() {
+            let u = self.units[k];
             let left = self.refill_left(k);
             if left > 0.0 {
                 if u.destroyed {
@@ -616,12 +616,12 @@ impl Sim {
         }
         for k in done {
             let Some(s) = self.stock_unit(k) else { continue };
-            let full = full_load(self.aaa[k].kind);
-            let rounds = self.aaa[k].rounds;
+            let full = full_load(self.units[k].kind);
+            let rounds = self.units[k].rounds;
             let d = self.defence_mut();
             let n = (full - rounds).min(d.stock[s]).max(0);
             d.stock[s] -= n;
-            self.aaa[k].rounds += n;
+            self.units[k].rounds += n;
         }
     }
 
@@ -638,7 +638,7 @@ impl Sim {
         let mut keep = Vec::new();
         for st in stations {
             let k = st.unit as usize;
-            if self.aaa.get(k).is_none_or(|u| u.destroyed) {
+            if self.units.get(k).is_none_or(|u| u.destroyed) {
                 // The missiles it guided are lost.
                 let c = self.campaign.as_mut().expect("campaign");
                 for m in &mut c.missiles {
@@ -653,24 +653,24 @@ impl Sim {
             self.release_guided(st.unit, lock);
             let mut st = Station { lock: lock.map(|j| j as u16), ..st };
             if let Some((pos, vel)) = lock.and_then(|j| self.track_alive(j)) {
-                let u = self.aaa[k];
+                let u = self.units[k];
                 let (az, el, _) = lead(u.metres(), pos, vel, GEPARD_V0);
-                let a = &mut self.aaa[k];
+                let a = &mut self.units[k];
                 a.tracking = true;
                 a.aim_az = az as f32;
-                if a.kind == AaaKind::Gepard {
+                if a.kind == GroundKind::Gepard {
                     a.aim_el = el as f32;
                 }
-                if a.kind == AaaKind::PatriotRadar {
+                if a.kind == GroundKind::PatriotRadar {
                     for l in self.battery_launchers(k) {
-                        let d = sub(pos, self.aaa[l].metres());
-                        self.aaa[l].aim_az = d[0].atan2(d[1]) as f32;
+                        let d = sub(pos, self.units[l].metres());
+                        self.units[l].aim_az = d[0].atan2(d[1]) as f32;
                     }
                 }
             } else {
-                self.aaa[k].tracking = false;
+                self.units[k].tracking = false;
             }
-            let gepard = self.aaa[k].kind == AaaKind::Gepard;
+            let gepard = self.units[k].kind == GroundKind::Gepard;
             if gepard && lock.is_none() {
                 self.slew_frame(&st);
             }
@@ -685,7 +685,7 @@ impl Sim {
     /// A Gepard's turret slewed by hand for a frame.
     fn slew_frame(&mut self, st: &Station) {
         let dt = 1.0 / self.fs.max(1) as f32;
-        let a = &mut self.aaa[st.unit as usize];
+        let a = &mut self.units[st.unit as usize];
         let az = a.aim_az + st.slew[0] * dt;
         a.aim_az =
             (az + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
@@ -697,7 +697,7 @@ impl Sim {
     /// hit).
     fn manual_frame(&mut self, st: &mut Station) {
         let k = st.unit as usize;
-        let u = self.aaa[k];
+        let u = self.units[k];
         let fs = self.fs.max(1) as f64;
         let (az, el) = (u.aim_az as f64, u.aim_el as f64);
         let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
@@ -718,10 +718,10 @@ impl Sim {
         st.due += BURST as f64 / (BURST_SECONDS * fs);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        while st.due >= 1.0 && st.burst > 0 && self.aaa[k].rounds > 0 {
+        while st.due >= 1.0 && st.burst > 0 && self.units[k].rounds > 0 {
             st.due -= 1.0;
             st.burst -= 1;
-            self.aaa[k].rounds -= 1;
+            self.units[k].rounds -= 1;
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let d = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
@@ -742,10 +742,10 @@ impl Sim {
                 c.shells.push(AiShell { shell, target, ahead: false });
             }
         }
-        if self.aaa[k].rounds == 0 {
+        if self.units[k].rounds == 0 {
             st.burst = 0;
         }
-        self.aaa[k].burst = st.burst;
+        self.units[k].burst = st.burst;
         c.rng = rng;
         self.campaign = Some(c);
     }
@@ -761,17 +761,17 @@ impl Sim {
         let target = st.lock.map(|j| j as usize).and_then(|j| self.track_alive(j).map(|t| (j, t)));
         let Some((j, (pos, vel))) = target else {
             st.burst = 0;
-            self.aaa[k].burst = 0;
+            self.units[k].burst = 0;
             return;
         };
         st.due += BURST as f64 / (BURST_SECONDS * fs);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        while st.due >= 1.0 && st.burst > 0 && self.aaa[k].rounds > 0 {
+        while st.due >= 1.0 && st.burst > 0 && self.units[k].rounds > 0 {
             st.due -= 1.0;
             st.burst -= 1;
-            self.aaa[k].rounds -= 1;
-            let u = self.aaa[k];
+            self.units[k].rounds -= 1;
+            let u = self.units[k];
             let (az, el, time) = lead(u.metres(), pos, vel, GEPARD_V0);
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
@@ -793,10 +793,10 @@ impl Sim {
                 c.shells.push(AiShell { shell, target: j, ahead: true });
             }
         }
-        if self.aaa[k].rounds == 0 {
+        if self.units[k].rounds == 0 {
             st.burst = 0;
         }
-        self.aaa[k].burst = st.burst;
+        self.units[k].burst = st.burst;
         c.rng = rng;
         self.campaign = Some(c);
     }
@@ -830,10 +830,12 @@ impl Sim {
     /// The stockpiles to keep over a save.
     pub fn saved_stocks(&self) -> Vec<SavedStock> {
         let Some(d) = self.defence() else { return Vec::new() };
-        (0..self.aaa.len())
-            .filter(|&k| self.aaa_blue(k) && !self.aaa[k].destroyed && mannable(self.aaa[k].kind))
+        (0..self.units.len())
+            .filter(|&k| {
+                self.aaa_blue(k) && !self.units[k].destroyed && mannable(self.units[k].kind)
+            })
             .map(|k| {
-                let u = &self.aaa[k];
+                let u = &self.units[k];
                 SavedStock {
                     x: u.x,
                     y: u.y,
@@ -849,11 +851,11 @@ impl Sim {
     /// Saved stockpiles back on the units (each on the nearest of its kind, within 6 km).
     pub fn restore_stocks(&mut self, saved: &[SavedStock]) {
         self.defence_sizes();
-        let mut taken = vec![false; self.aaa.len()];
+        let mut taken = vec![false; self.units.len()];
         for s in saved {
-            let best = (0..self.aaa.len())
-                .filter(|&k| !taken[k] && self.aaa[k].kind == s.kind && self.aaa_blue(k))
-                .map(|k| (k, approx(self.aaa[k].x - s.x, self.aaa[k].y - s.y)))
+            let best = (0..self.units.len())
+                .filter(|&k| !taken[k] && self.units[k].kind == s.kind && self.aaa_blue(k))
+                .map(|k| (k, approx(self.units[k].x - s.x, self.units[k].y - s.y)))
                 .filter(|&(_, d)| d < 0x180)
                 .min_by_key(|&(_, d)| d);
             if let Some((k, _)) = best {

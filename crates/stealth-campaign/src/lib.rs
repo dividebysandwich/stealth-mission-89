@@ -42,8 +42,9 @@ pub use state::*;
 /// What the simulation sees now (sent with every tick).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct WorldView {
-    /// The low-level air defences, by their index in the simulation.
-    pub aaa: Vec<AaaView>,
+    /// The ground units (air defences, armour), by their index in the simulation.
+    #[serde(rename = "aaa")]
+    pub units: Vec<GroundView>,
     /// Aircraft in the air (alive).
     pub flights: Vec<FlightView>,
     /// The players' aircraft (absent while on the board).
@@ -51,7 +52,7 @@ pub struct WorldView {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct AaaView {
+pub struct GroundView {
     pub x: i32,
     pub y: i32,
     pub side: Side,

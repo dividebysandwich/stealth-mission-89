@@ -91,7 +91,7 @@ fn the_server_sees_by_the_moon() {
 /// airfields.
 #[test]
 fn friendly_air_defences_stand_from_the_start() {
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     for code in ["central_europe", "ukraine"] {
         let s = setup(code);
         let data = theater::game_data().unwrap();
@@ -100,19 +100,19 @@ fn friendly_air_defences_stand_from_the_start() {
         let mut sim = host.new_sim(&sim_data);
         host.begin(&mut sim);
         let blue = |sim: &stealth_sim::Sim, kind| {
-            (0..sim.aaa_units().len())
-                .filter(|&k| sim.aaa_units()[k].kind == kind && sim.aaa_blue(k))
+            (0..sim.units().len())
+                .filter(|&k| sim.units()[k].kind == kind && sim.aaa_blue(k))
                 .count()
         };
         let batteries = host.state.patriot_sites().len();
         assert!(batteries > 0, "{code}");
-        assert_eq!(blue(&sim, AaaKind::PatriotRadar), batteries, "{code}");
-        assert_eq!(blue(&sim, AaaKind::PatriotLauncher), 3 * batteries, "{code}");
-        assert!(blue(&sim, AaaKind::Gepard) > 0, "{code}");
-        assert_eq!(blue(&sim, AaaKind::Zsu), 0, "{code}");
+        assert_eq!(blue(&sim, GroundKind::PatriotRadar), batteries, "{code}");
+        assert_eq!(blue(&sim, GroundKind::PatriotLauncher), 3 * batteries, "{code}");
+        assert!(blue(&sim, GroundKind::Gepard) > 0, "{code}");
+        assert_eq!(blue(&sim, GroundKind::Zsu), 0, "{code}");
         // No two batteries in one place, on a second begin neither.
         host.begin(&mut sim);
-        assert_eq!(blue(&sim, AaaKind::PatriotRadar), batteries, "{code}");
+        assert_eq!(blue(&sim, GroundKind::PatriotRadar), batteries, "{code}");
     }
 }
 
@@ -263,7 +263,7 @@ fn every_theater_can_be_won() {
 #[test]
 fn every_friendly_airfield_has_a_gepard_to_man() {
     use stealth_campaign::Side;
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     use stealth_sim::station::StationCmd;
     for (code, lost) in [("central_europe", 0), ("ukraine", 0), ("central_europe", 9)] {
         let s = setup(code);
@@ -284,9 +284,9 @@ fn every_friendly_airfield_has_a_gepard_to_man() {
             .collect();
         assert!(!fields.is_empty(), "{code}");
         for (x, y, name) in fields {
-            let gepard = (0..sim.aaa_units().len()).find(|&k| {
-                let u = sim.aaa_units()[k];
-                u.kind == AaaKind::Gepard
+            let gepard = (0..sim.units().len()).find(|&k| {
+                let u = sim.units()[k];
+                u.kind == GroundKind::Gepard
                     && !u.destroyed
                     && sim.aaa_blue(k)
                     && (u.x - x).abs().max((u.y - y).abs()) < 0x180
@@ -304,7 +304,7 @@ fn every_friendly_airfield_has_a_gepard_to_man() {
 #[test]
 fn an_ai_helicopter_brings_a_requested_resupply() {
     use stealth_campaign::{MissionKind, SupplyState};
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     use stealth_sim::station::{GEPARD_STOCK, SavedStock, StationCmd};
     let code = "central_europe";
     let s = setup(code);
@@ -315,14 +315,14 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
     host.begin(&mut sim);
     host.tick(&mut sim, 0.1, &[]);
     let me = PlayerId(0);
-    let k = (0..sim.aaa_units().len())
-        .find(|&k| sim.aaa_units()[k].kind == AaaKind::Gepard && sim.aaa_blue(k))
+    let k = (0..sim.units().len())
+        .find(|&k| sim.units()[k].kind == GroundKind::Gepard && sim.aaa_blue(k))
         .unwrap();
-    let u = sim.aaa_units()[k];
+    let u = sim.units()[k];
     sim.restore_stocks(&[SavedStock {
         x: u.x,
         y: u.y,
-        kind: AaaKind::Gepard,
+        kind: GroundKind::Gepard,
         stock: 0,
         stock2: 0,
         stock3: 0,
@@ -372,7 +372,7 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
 #[test]
 fn an_empty_stockpile_orders_a_resupply() {
     use stealth_campaign::{MissionKind, Objective};
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     use stealth_sim::station::SavedStock;
     let code = "central_europe";
     let s = setup(code);
@@ -383,21 +383,21 @@ fn an_empty_stockpile_orders_a_resupply() {
     host.begin(&mut sim);
     host.tick(&mut sim, 0.1, &[]);
     assert!(host.state.supply_requests.is_empty(), "{:?}", host.state.supply_requests);
-    let radar = (0..sim.aaa_units().len())
-        .find(|&k| sim.aaa_units()[k].kind == AaaKind::PatriotRadar && sim.aaa_blue(k))
+    let radar = (0..sim.units().len())
+        .find(|&k| sim.units()[k].kind == GroundKind::PatriotRadar && sim.aaa_blue(k))
         .expect("a friendly Patriot battery");
-    let r = sim.aaa_units()[radar];
+    let r = sim.units()[radar];
     // One missile left in the stockpile, one launcher fired empty.
     sim.restore_stocks(&[SavedStock {
         x: r.x,
         y: r.y,
-        kind: AaaKind::PatriotRadar,
+        kind: GroundKind::PatriotRadar,
         stock: 1,
         stock2: 0,
         stock3: 0,
     }]);
     let l = sim.battery_launchers(radar)[0];
-    sim.aaa_units_mut()[l].rounds = 0;
+    sim.units_mut()[l].rounds = 0;
     host.tick(&mut sim, 0.1, &[]);
     assert!(host.state.supply_requests.is_empty());
     // The battery's own refill takes the last one.
@@ -490,7 +490,7 @@ fn a_sortie_briefs_its_own_base_and_fuel() {
 #[test]
 fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     use stealth_campaign::{CampaignEvent, MissionKind, Side};
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     let code = "central_europe";
     let s = setup(code);
     let data = theater::game_data().unwrap();
@@ -500,7 +500,7 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     host.begin(&mut sim);
     host.tick(&mut sim, 0.1, &[]);
     let me = PlayerId(0);
-    let aaa = stealth_host::glue::world_view(&sim).aaa;
+    let aaa = stealth_host::glue::world_view(&sim).units;
     let base = host
         .state
         .places
@@ -522,7 +522,7 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
         })
         .expect("a free spot");
     // Not on a unit.
-    let u = sim.aaa_units().iter().find(|u| !u.destroyed).copied().unwrap();
+    let u = sim.units().iter().find(|u| !u.destroyed).copied().unwrap();
     assert!(
         host.designate_site(&mut sim, me, u.x, u.y + 3, stealth_campaign::DefenceKind::Gepard)
             .is_err()
@@ -533,7 +533,7 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     assert!(host.state.board.iter().any(|o| o.kind == MissionKind::Logistics));
     // Nobody took it for long enough.
     host.state.deployments[0].open_since = -1e9;
-    let n = sim.aaa_units().len();
+    let n = sim.units().len();
     let (mut launched, mut built) = (false, false);
     for _ in 0..15 * 1200 {
         let ev = sim.step_pilots(&[], 15);
@@ -565,19 +565,19 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     }
     assert!(launched && built, "{launched} {built}");
     let spot = host.state.deployments[0].unit_at();
-    let k = (n..sim.aaa_units().len())
-        .find(|&k| (sim.aaa_units()[k].x, sim.aaa_units()[k].y) == spot)
+    let k = (n..sim.units().len())
+        .find(|&k| (sim.units()[k].x, sim.units()[k].y) == spot)
         .expect("the new unit");
-    let g = sim.aaa_units()[k];
-    assert_eq!(g.kind, AaaKind::Gepard);
+    let g = sim.units()[k];
+    assert_eq!(g.kind, GroundKind::Gepard);
     assert!(sim.aaa_blue(k));
     assert!(!host.state.board.iter().any(|o| o.kind == MissionKind::Logistics));
     // A new simulation (a loaded save) has it again.
     let mut again = host.new_sim(&sim_data);
     let mut host2 = Host::resume(host.state.clone(), &data, Rules::default()).unwrap();
     host2.begin(&mut again);
-    assert!((0..again.aaa_units().len()).any(|k| {
-        let u = again.aaa_units()[k];
-        u.kind == AaaKind::Gepard && again.aaa_blue(k) && (u.x, u.y) == (g.x, g.y)
+    assert!((0..again.units().len()).any(|k| {
+        let u = again.units()[k];
+        u.kind == GroundKind::Gepard && again.aaa_blue(k) && (u.x, u.y) == (g.x, g.y)
     }));
 }

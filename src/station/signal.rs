@@ -77,7 +77,7 @@ pub(super) fn draw(
     cv.reset_clip();
     cv.clear(BLACK);
     let sim = &combat.sim;
-    let Some(radar) = sim.aaa_units().get(m.unit).copied() else { return };
+    let Some(radar) = sim.units().get(m.unit).copied() else { return };
     let site = radar.metres();
     let st = sim.station_of(c.me.0);
     let lock = st.and_then(|s| s.lock).map(|l| l as usize);

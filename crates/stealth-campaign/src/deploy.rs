@@ -6,7 +6,7 @@
 
 use crate::state::*;
 use crate::tuning::*;
-use crate::{AaaView, CampaignEvent, Report, WorldView};
+use crate::{CampaignEvent, GroundView, Report, WorldView};
 
 /// The ground a site takes (map units from its unit).
 pub fn footprint(kind: DefenceKind) -> i32 {
@@ -35,7 +35,7 @@ impl CampaignState {
         x: i32,
         y: i32,
         kind: DefenceKind,
-        aaa: &[AaaView],
+        aaa: &[GroundView],
     ) -> Option<String> {
         if self.outcome.is_some() {
             return Some("The war is over".into());

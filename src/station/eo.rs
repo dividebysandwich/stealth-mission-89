@@ -68,7 +68,7 @@ pub(super) fn aim(
         return;
     }
     let sim = &combat.sim;
-    let Some(u) = sim.aaa_units().get(m.unit) else { return };
+    let Some(u) = sim.units().get(m.unit) else { return };
     let eye =
         crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0) + DVec3::Y * MAST;
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
@@ -195,7 +195,7 @@ pub(super) fn draw(
             leads(cv, &combat, m.unit, &eo, col);
             let text = format!("MAN B{brg:03.0} E{elv:+.0}");
             stroke_text_at(cv, w / 2.0, bottom, &text, 7.0, 1.0, col, Align::Centre);
-            if sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0) {
+            if sim.units().get(m.unit).is_some_and(|u| u.burst > 0) {
                 stroke_text_at(cv, w / 2.0, 24.0, "FIRING", 7.0, 1.0, YELLOW, Align::Centre);
             }
             return;
@@ -271,7 +271,7 @@ pub(super) fn draw(
 fn leads(cv: &mut Canvas, combat: &Combat, unit: usize, eo: &ConsoleEo, col: u8) {
     use stealth_sim::station::{GEPARD_V0, MANUAL_RANGE};
     let sim = &combat.sim;
-    let Some(gun) = sim.aaa_units().get(unit).map(|u| u.metres()) else { return };
+    let Some(gun) = sim.units().get(unit).map(|u| u.metres()) else { return };
     let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
     // The camera's projection (`trackcam`): f = 256 times the zoom over its 77 pixels' width,
     // vertically 0.75 f.

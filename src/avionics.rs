@@ -1447,7 +1447,7 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap>
     let objects = objects
         .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
         .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
-    let guns = c.sim.aaa_units().iter().filter(|u| !u.destroyed).map(|u| {
+    let guns = c.sim.units().iter().filter(|u| !u.destroyed).map(|u| {
         let at = centre(u.x, u.y);
         (Snap::Gun(at), at)
     });

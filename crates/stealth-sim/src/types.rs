@@ -223,7 +223,7 @@ pub enum EmitterSource {
     Site(usize),
     /// Aircraft (flight unit index).
     Aircraft(usize),
-    /// ZSU-23-4 Gun Dish radar (`Sim::aaa_units` index).
+    /// ZSU-23-4 Gun Dish radar (`Sim::units` index).
     Gun(usize),
 }
 
@@ -714,7 +714,7 @@ pub enum Launcher {
     Site(usize),
     Aircraft(usize),
     Player,
-    /// A MANPADS team (`Sim::aaa_units` index).
+    /// A MANPADS team (`Sim::units` index).
     Manpads(usize),
 }
 
@@ -848,7 +848,7 @@ pub enum SimEvent {
         by_player: bool,
         by: Option<u8>,
     },
-    /// A low-level air defence unit was destroyed (`Sim::aaa_units` index).
+    /// A low-level air defence unit was destroyed (`Sim::units` index).
     AaaDestroyed {
         unit: usize,
         by: Option<u8>,
@@ -861,7 +861,7 @@ pub enum SimEvent {
         y: i32,
     },
     /// Campaign: a resupply helicopter the campaign launched has set its load down at the air
-    /// defence unit (`Sim::aaa_units` index) it flew to; a cargo helicopter on a new site's
+    /// defence unit (`Sim::units` index) it flew to; a cargo helicopter on a new site's
     /// helipad (`aaa` is `usize::MAX`).
     CampaignFlightDelivered {
         unit: usize,

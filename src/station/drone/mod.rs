@@ -344,7 +344,7 @@ fn input(
     let contacts = map::contacts(sim, Some(c));
     let mut send = |cmd: StationCmd| c.actions.push(Action::Station(cmd));
     if !ui.placed
-        && let Some(u) = sim.aaa_units().get(m.unit)
+        && let Some(u) = sim.units().get(m.unit)
     {
         ui.placed = true;
         ui.centre = DVec2::new(u.x as f64, u.y as f64);
@@ -633,7 +633,7 @@ fn press(
         B::Centre => {
             let at = selected(ui, uavs)
                 .map(|u| u.map())
-                .or_else(|| sim.aaa_units().get(m.unit).map(|u| (u.x, u.y)));
+                .or_else(|| sim.units().get(m.unit).map(|u| (u.x, u.y)));
             if let Some((x, y)) = at {
                 ui.centre = DVec2::new(x as f64, y as f64);
             }
@@ -842,7 +842,7 @@ fn test_aid(
         && sim.uav_rail_wait(m.unit) == 0
         && uavs.len() == launched
     {
-        let Some(home) = sim.aaa_units().get(m.unit).map(|u| (u.x, u.y)) else { return };
+        let Some(home) = sim.units().get(m.unit).map(|u| (u.x, u.y)) else { return };
         let dist = |p: (i32, i32)| ((p.0 - home.0) as f64).hypot((p.1 - home.1) as f64);
         let air = || {
             sim.enemy_aircraft()
@@ -859,7 +859,7 @@ fn test_aid(
                 .filter_map(|&s| sim.seen_at(s))
                 .min_by(|a, b| dist(*a).total_cmp(&dist(*b))),
             UavKind::Stork => sim
-                .aaa_units()
+                .units()
                 .iter()
                 .enumerate()
                 .filter(|(k, u)| !u.destroyed && !sim.aaa_blue(*k))

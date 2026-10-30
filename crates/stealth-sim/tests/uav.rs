@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
-use stealth_sim::aaa::{AaaKind, AaaUnit, M_PER_MAP};
+use stealth_sim::aaa::{GroundKind, GroundUnit, M_PER_MAP};
 use stealth_sim::station::{FP2_STOCK, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd};
 use stealth_sim::uav::{LOCK_RANGE, MAX_AIRBORNE, Seen, UavKind, UavMode, UavWp, WpKind};
 use stealth_sim::*;
@@ -48,7 +48,7 @@ fn center() -> (Sim, usize, usize, i32) {
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
     }
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     let home = (3..sim.objects().len())
         .find(|&i| {
             sim.objects()[i].flags & 0xF0F == 0x401
@@ -57,7 +57,7 @@ fn center() -> (Sim, usize, usize, i32) {
         .expect("Neuburg");
     let o = sim.objects()[home];
     sim.place_drone_center(o.x + 0x40, o.y);
-    let k = sim.aaa_units().iter().position(|u| u.kind == AaaKind::DroneCenter).unwrap();
+    let k = sim.units().iter().position(|u| u.kind == GroundKind::DroneCenter).unwrap();
     sim.station_command(ME, StationCmd::Man { unit: k as u16 }).unwrap();
     (sim, k, site, radar)
 }
@@ -76,7 +76,7 @@ fn run(sim: &mut Sim, secs: i32) -> Vec<SimEvent> {
 
 /// A map point `east`, `north` metres from AAA unit `k`.
 fn off(sim: &Sim, k: usize, east: f64, north: f64) -> (i32, i32) {
-    let u = sim.aaa_units()[k];
+    let u = sim.units()[k];
     (u.x + (east / M_PER_MAP) as i32, u.y - (north / M_PER_MAP) as i32)
 }
 
@@ -148,13 +148,13 @@ fn an_fp2_dives_into_its_terminate_point_and_destroys_the_unit_there() {
     let (mut sim, k, _, _) = center();
     let at = off(&sim, k, 3000.0, -2000.0);
     // An enemy Patriot launcher (no gun to shoot back) there.
-    sim.aaa_units_mut().push(AaaUnit {
-        kind: AaaKind::PatriotLauncher,
+    sim.units_mut().push(GroundUnit {
+        kind: GroundKind::PatriotLauncher,
         x: at.0,
         y: at.1,
         ..Default::default()
     });
-    let target = sim.aaa_units().len() - 1;
+    let target = sim.units().len() - 1;
     let mid = off(&sim, k, 1500.0, 500.0);
     let route = vec![wp(mid, 300.0, WpKind::Nav), wp(at, 300.0, WpKind::Terminate)];
     launch(&mut sim, UavKind::Fp2, route).unwrap();
@@ -170,7 +170,7 @@ fn an_fp2_dives_into_its_terminate_point_and_destroys_the_unit_there() {
     assert!(dived);
     assert!(sim.uavs().is_empty());
     let blasts: Vec<_> = ev.iter().filter(|e| matches!(e, SimEvent::Explosion { .. })).collect();
-    assert!(sim.aaa_units()[target].destroyed, "{blasts:?} at {at:?}");
+    assert!(sim.units()[target].destroyed, "{blasts:?} at {at:?}");
     assert!(ev.iter().any(|e| matches!(e, SimEvent::Explosion { kind: -6, .. })));
 }
 
@@ -181,9 +181,9 @@ fn a_stork_finds_a_hidden_sam_site_that_never_finds_it() {
     sim.objects_mut()[site].unit_type = radar;
     // The center 20 km off the site's west: the Stork circles 4 km short of it (never closer
     // than 3 km, where the site can't find it).
-    let c = sim.aaa_units()[k];
+    let c = sim.units()[k];
     let d = (20_000.0 / M_PER_MAP) as i32;
-    (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (s.x - d, s.y);
+    (sim.units_mut()[k].x, sim.units_mut()[k].y) = (s.x - d, s.y);
     let at = (s.x - (4000.0 / M_PER_MAP) as i32, s.y);
     launch(&mut sim, UavKind::Stork, vec![wp(at, 800.0, WpKind::Loiter)]).unwrap();
     assert!(!sim.uav_known().contains(&Seen::Object(site as u16)));
@@ -234,8 +234,8 @@ fn a_drone_flown_by_hand_turns_with_the_stick() {
 fn enemy_guns_shoot_the_drones_down() {
     let (mut sim, k, _, _) = center();
     let at = off(&sim, k, 4000.0, 0.0);
-    for (dx, kind) in [(0, AaaKind::Zsu), (8, AaaKind::Zsu), (-8, AaaKind::S60)] {
-        sim.aaa_units_mut().push(AaaUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
+    for (dx, kind) in [(0, GroundKind::Zsu), (8, GroundKind::Zsu), (-8, GroundKind::S60)] {
+        sim.units_mut().push(GroundUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
     }
     launch(&mut sim, UavKind::Stork, vec![wp(at, 500.0, WpKind::Loiter)]).unwrap();
     for _ in 0..900 {
@@ -257,7 +257,7 @@ fn an_fp2_terminating_on_a_sam_site_destroys_it() {
     let s = sim.objects()[site];
     sim.objects_mut()[site].unit_type = radar;
     let d = (6000.0 / M_PER_MAP) as i32;
-    (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (s.x - d, s.y + d / 3);
+    (sim.units_mut()[k].x, sim.units_mut()[k].y) = (s.x - d, s.y + d / 3);
     launch(&mut sim, UavKind::Fp2, vec![wp((s.x, s.y), 300.0, WpKind::Terminate)]).unwrap();
     let mut ev = Vec::new();
     for _ in 0..400 {
@@ -275,8 +275,8 @@ fn an_fp2_terminating_on_a_sam_site_destroys_it() {
 fn guns_beyond_two_km_never_find_a_drone() {
     let (mut sim, k, _, _) = center();
     let guns = off(&sim, k, 6000.0, 0.0);
-    for (dx, kind) in [(0, AaaKind::Zsu), (8, AaaKind::S60), (-8, AaaKind::Manpads)] {
-        sim.aaa_units_mut().push(AaaUnit { kind, x: guns.0 + dx, y: guns.1, ..Default::default() });
+    for (dx, kind) in [(0, GroundKind::Zsu), (8, GroundKind::S60), (-8, GroundKind::Manpads)] {
+        sim.units_mut().push(GroundUnit { kind, x: guns.0 + dx, y: guns.1, ..Default::default() });
     }
     // Circling 3.5 km short of them (2.6 km at the closest): in the S-60's and the MANPADS'
     // reach, but they never find it.
@@ -294,7 +294,7 @@ fn a_sam_site_finds_a_drone_within_two_km() {
     let s = sim.objects()[site];
     sim.objects_mut()[site].unit_type = radar;
     let d = (6000.0 / M_PER_MAP) as i32;
-    (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (s.x - d, s.y);
+    (sim.units_mut()[k].x, sim.units_mut()[k].y) = (s.x - d, s.y);
     launch(&mut sim, UavKind::Stork, vec![wp((s.x, s.y), 800.0, WpKind::Loiter)]).unwrap();
     let f = sim.uavs()[0].flight as usize;
     let mut fired = false;
@@ -557,11 +557,11 @@ fn an_interceptor_into_the_ground_blows_up_what_stands_there_friendly_or_not() {
     for _ in 0..60 * 15 {
         let Some(u) = sim.uavs().first() else { break };
         let (x, y) = u.map();
-        (sim.aaa_units_mut()[k].x, sim.aaa_units_mut()[k].y) = (x, y);
+        (sim.units_mut()[k].x, sim.units_mut()[k].y) = (x, y);
         ev.extend(sim.step(&idle(), 15));
     }
     assert!(sim.uavs().is_empty(), "never came down");
-    assert!(sim.aaa_units()[k].destroyed, "the command center stands");
+    assert!(sim.units()[k].destroyed, "the command center stands");
     assert!(ev.iter().any(|e| matches!(e, SimEvent::Explosion { kind: -6, .. })));
 }
 
@@ -593,10 +593,11 @@ fn strike_odds() {
         let (mut sim, k, _, _) = center();
         let a = t as f64 * 0.31;
         let at = off(&sim, k, 6000.0 * a.cos(), 6000.0 * a.sin());
-        for (dx, kind) in [(0, AaaKind::Zsu), (10, AaaKind::Zsu), (-10, AaaKind::Manpads)] {
-            sim.aaa_units_mut().push(AaaUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
+        for (dx, kind) in [(0, GroundKind::Zsu), (10, GroundKind::Zsu), (-10, GroundKind::Manpads)]
+        {
+            sim.units_mut().push(GroundUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
         }
-        let target = sim.aaa_units().len() - 3;
+        let target = sim.units().len() - 3;
         launch(&mut sim, UavKind::Fp2, vec![wp(at, 300.0, WpKind::Terminate)]).unwrap();
         for _ in 0..400 {
             run(&mut sim, 1);
@@ -604,7 +605,7 @@ fn strike_odds() {
                 break;
             }
         }
-        hits += sim.aaa_units()[target].destroyed as i32;
+        hits += sim.units()[target].destroyed as i32;
     }
     eprintln!("{hits}/{n} got through");
 }

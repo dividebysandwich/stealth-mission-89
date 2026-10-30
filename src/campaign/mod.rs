@@ -708,9 +708,9 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     {
         let sim = &mut s.combat.sim;
         let st = c.state();
-        let enemy: Vec<(i32, i32)> = (0..sim.aaa_units().len())
-            .filter(|&k| !sim.aaa_blue(k) && !sim.aaa_units()[k].destroyed)
-            .map(|k| (sim.aaa_units()[k].x, sim.aaa_units()[k].y))
+        let enemy: Vec<(i32, i32)> = (0..sim.units().len())
+            .filter(|&k| !sim.aaa_blue(k) && !sim.units()[k].destroyed)
+            .map(|k| (sim.units()[k].x, sim.units()[k].y))
             .collect();
         let gap = |p: &stealth_campaign::Place| {
             enemy.iter().map(|&(x, y)| stealth_campaign::dist(p.x - x, p.y - y)).min().unwrap_or(0)
@@ -742,7 +742,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             for i in 0..count.max(1) as i32 {
                 sim.place_drone_center(x + i * 0x20, y);
             }
-            let k = sim.aaa_units().len() - count.max(1);
+            let k = sim.units().len() - count.max(1);
             c.ui.test_manned = true;
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
         }
@@ -811,15 +811,15 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     {
         let sim = &s.combat.sim;
         let drones = n == usize::MAX;
-        let mut units: Vec<usize> = (0..sim.aaa_units().len())
-            .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.aaa_units()[k].kind))
+        let mut units: Vec<usize> = (0..sim.units().len())
+            .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.units()[k].kind))
             .filter(|&k| {
                 !drones
-                    || sim.aaa_units()[k].kind == stealth_sim::aaa::AaaKind::DroneCenter
+                    || sim.units()[k].kind == stealth_sim::aaa::GroundKind::DroneCenter
                         && sim.manned_by(k).is_none()
             })
             .collect();
-        units.sort_by_key(|&k| sim.aaa_units()[k].kind != stealth_sim::aaa::AaaKind::PatriotRadar);
+        units.sort_by_key(|&k| sim.units()[k].kind != stealth_sim::aaa::GroundKind::PatriotRadar);
         let n = if drones { 0 } else { n };
         if let Some(&k) = units.get(n.min(units.len().saturating_sub(1))) {
             c.ui.test_manned = true;
@@ -863,7 +863,7 @@ fn station_phase(c: &mut ActiveCampaign, s: &Session) {
         (Phase::Ops, Some(unit)) => c.phase = Phase::Station { unit },
         (Phase::Station { unit }, None) => {
             c.phase = Phase::Ops;
-            if let Some(u) = sim.aaa_units().get(unit).filter(|u| u.destroyed) {
+            if let Some(u) = sim.units().get(unit).filter(|u| u.destroyed) {
                 c.ui.error = Some(format!("{} destroyed: back to operations", u.kind.name()));
             }
         }

@@ -1038,11 +1038,11 @@ fn clear_units(
     if link.as_deref().is_some_and(|l| l.is_client()) {
         return;
     }
-    let units = combat.sim.aaa_units();
+    let units = combat.sim.units();
     if units.len() == seen.len() && units.iter().zip(seen.iter()).all(|(u, &s)| (u.x, u.y) == s) {
         return;
     }
-    let units = combat.sim.aaa_units_mut();
+    let units = combat.sim.units_mut();
     let mut taken: std::collections::HashSet<(i32, i32)> =
         units.iter().filter(|u| !u.destroyed).map(|u| (u.x, u.y)).collect();
     for (i, u) in units.iter_mut().enumerate() {
@@ -1108,13 +1108,13 @@ fn clear_air_defence(
         let at = map_metres(d.x, d.y - stealth_campaign::tuning::DEPLOY_UNIT_OFFSET / 2);
         (at, DEPLOYMENT_CLEARING)
     });
-    let want: Vec<(DVec2, f64)> = (0..sim.aaa_units().len())
+    let want: Vec<(DVec2, f64)> = (0..sim.units().len())
         .filter(|&k| {
-            let u = &sim.aaa_units()[k];
+            let u = &sim.units()[k];
             sim.aaa_blue(k) && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
-            let u = &sim.aaa_units()[k];
+            let u = &sim.units()[k];
             let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
             (p, AIR_DEFENCE_CLEARING)
         })

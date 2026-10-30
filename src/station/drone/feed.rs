@@ -128,7 +128,7 @@ pub(super) fn aim(
             }
         }
         _ => {
-            let at = combat.sim.aaa_units().get(m.unit).map_or(DVec3::ZERO, |u| {
+            let at = combat.sim.units().get(m.unit).map_or(DVec3::ZERO, |u| {
                 crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0)
             });
             (at + DVec3::Y * 5.0, Vec3::NEG_Z, None, crate::mfd::CAM_ZOOM_DEFAULT, None, true)
@@ -167,7 +167,7 @@ fn seen(sim: &Sim, u: &Uav) -> Vec<(DVec3, String)> {
     let r = u.kind.sensor();
     let near = |e: f64, n: f64| (e - u.pos[0]).hypot(n - u.pos[1]) < r;
     let mut out = Vec::new();
-    for (k, a) in sim.aaa_units().iter().enumerate() {
+    for (k, a) in sim.units().iter().enumerate() {
         let m = a.metres();
         if !a.destroyed && !sim.aaa_blue(k) && near(m[0], m[1]) {
             let at = crate::sim_render::map_point(a.x as f64 + 0.5, a.y as f64 + 0.5, 0.0);
