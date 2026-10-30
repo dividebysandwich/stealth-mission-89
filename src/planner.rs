@@ -507,9 +507,12 @@ pub fn route_panel(
     });
     ui.allocate_ui(size, |ui| {
     ui.horizontal_top(|ui| {
-        let side = 300.0;
-        let map_size = egui::vec2(ui.available_width() - side - 12.0, ui.available_height() - 8.0);
+        // Wide enough for the radar coverage's three profiles on a line; the gap between the map
+        // and the column is the window's margin left of the map.
+        let (side, gap) = (350.0, 12.0);
+        let map_size = egui::vec2(ui.available_width() - side - gap, ui.available_height() - 8.0);
         map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), &weather, map_size, editable);
+        ui.add_space(gap - ui.spacing().item_spacing.x);
         ui.vertical(|ui| {
             ui.set_width(side);
             section(ui, "Route");
@@ -770,31 +773,30 @@ fn layers_panel(
         egui::pos2(map.right() - WIDTH - 8.0, map.top() + 8.0),
         egui::pos2(map.right() - 8.0, map.bottom() - 8.0),
     );
-    ui.scope_builder(
+    // A child that takes no room in the parent: over the map, not after it (the side column).
+    let ui = &mut ui.new_child(
         egui::UiBuilder::new().max_rect(area).layout(egui::Layout::top_down(egui::Align::Max)),
-        |ui| {
-            let text = if layers.panel { "LAYERS  ^" } else { "LAYERS  v" };
-            if ui
-                .add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel))
-                .clicked()
-            {
-                layers.panel = !layers.panel;
-            }
-            if !layers.panel {
-                return;
-            }
-            egui::Frame::new()
-                .fill(egui::Color32::from_black_alpha(220))
-                .stroke(egui::Stroke::new(1.0, DIM))
-                .inner_margin(6.0)
-                .show(ui, |ui| {
-                    ui.set_width(WIDTH - 14.0);
-                    ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| lines(ui, layers));
-                    });
-                });
-        },
     );
+    let text = if layers.panel { "LAYERS  ^" } else { "LAYERS  v" };
+    if ui
+        .add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel))
+        .clicked()
+    {
+        layers.panel = !layers.panel;
+    }
+    if !layers.panel {
+        return;
+    }
+    egui::Frame::new()
+        .fill(egui::Color32::from_black_alpha(220))
+        .stroke(egui::Stroke::new(1.0, DIM))
+        .inner_margin(6.0)
+        .show(ui, |ui| {
+            ui.set_width(WIDTH - 14.0);
+            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| lines(ui, layers));
+            });
+        });
 }
 
 /// A radar's detection circle: filled, its edge solid for a Doppler radar, dotted for a pulse
