@@ -1267,6 +1267,51 @@ fn bomb_run(
     (hits, released)
 }
 
+/// CCRP ripple: four bombs 200 ft apart go one after the other with the button held, the
+/// stick centred on the target.
+#[test]
+fn ccrp_ripple_straddles_the_target() {
+    for w in [9, 10] {
+        let (mut hits, released) = bomb_run(w, 15 * 40, (0, -400), |p| {
+            p.ccrp = true;
+            p.ripple = 4;
+            p.ripple_ft = 200;
+        });
+        assert_eq!(released.len(), 4, "weapon {w}: {released:?}");
+        assert!(released[0] > 5, "weapon {w}: released on the press");
+        hits.sort_by(|a, b| a.1.total_cmp(&b.1));
+        let mid = hits.iter().map(|h| h.1).sum::<f64>() / 4.0;
+        assert!(mid.abs() < 2.0, "weapon {w}: stick centre {mid} ({hits:?})");
+        for k in 1..4 {
+            let gap = (hits[k].1 - hits[k - 1].1) * 32.0;
+            assert!((gap - 200.0).abs() < 40.0, "weapon {w}: spacing {gap} ({hits:?})");
+            assert!(hits[k].0.abs() < 2.0, "weapon {w}: {hits:?}");
+        }
+    }
+}
+
+/// CCRP aims at the targeting pod's ground point with nothing locked, and still releases when
+/// the aircraft passes it to one side: the bomb lands level with it, off to the side.
+#[test]
+fn ccrp_aims_at_the_pod_point() {
+    for east in [0, 30] {
+        let (hits, released) = bomb_run(9, 15 * 40, (east, -400), |p| {
+            p.ccrp = true;
+            p.pod = Some(PodAim::default());
+        });
+        assert_eq!(released.len(), 1, "{east}: {released:?}");
+        let (dx, dy) = hits[0];
+        assert!(dy.abs() < 3.0 && (dx + east as f64).abs() < 2.0, "{east}: {hits:?}");
+    }
+}
+
+/// CCRP: let go of the button before the release point and nothing goes.
+#[test]
+fn ccrp_needs_the_button_held() {
+    let (hits, released) = bomb_run(9, 30, (0, -400), |p| p.ccrp = true);
+    assert!(released.is_empty() && hits.is_empty(), "{released:?}");
+}
+
 /// CCIP ripple: the press releases the first bomb, the rest follow at the spacing while the
 /// button is held; let go, the ripple stops.
 #[test]

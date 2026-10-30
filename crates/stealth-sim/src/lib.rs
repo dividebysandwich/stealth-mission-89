@@ -1112,6 +1112,19 @@ impl Sim {
         (groups, selected)
     }
 
+    /// Where a CCRP release aims (map units, the middle of the cell): the targeting pod's
+    /// ground point, else the ground lock.
+    pub fn ccrp_aim(&self) -> Option<(f64, f64)> {
+        self.ccrp_aim_of(&self.pl.last_input)
+    }
+
+    /// Length of the stick (ft) a release of the selected bombs lays down with the last
+    /// report's ripple (0 for one bomb); CCRP centres it on the aim point.
+    pub fn ripple_stick_ft(&self) -> f64 {
+        let (n, spacing) = self.ripple(&self.pl.last_input);
+        (n - 1) as f64 * spacing
+    }
+
     /// Replaces the mission's bays with these stations (weapon index, count; -1 empty), e.g.
     /// the player's loadout or an aircraft's pylons.
     pub fn set_loadout(&mut self, stations: &[(i32, i32)]) {

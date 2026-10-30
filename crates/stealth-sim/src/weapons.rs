@@ -342,7 +342,7 @@ impl Sim {
             }
         }
         // CCRP: with the button held, the (first) bomb goes when the impact point reaches the
-        // target.
+        // release point, wherever the aircraft points: lined up badly, it misses to the side.
         let along = if ccrp { self.ccrp_solution(ps).map(|s| s.0) } else { None };
         if let (Some(last), Some(now)) = (self.pl.ccrp_last, along)
             && last > 0.0
@@ -380,12 +380,29 @@ impl Sim {
         v[0].hypot(v[1])
     }
 
-    /// CCRP release solution against the ground lock: the ground distance (ft) the impact
-    /// point of a bomb released now still has to go to the target along the flight path (<= 0
-    /// at and past the release point) and the seconds to the release point.
-    pub(crate) fn ccrp_solution(&self, _ps: &PlayerState) -> Option<(f64, f64)> {
-        let g = self.pl.gnd_lock;
-        let o = self.objects.get(usize::try_from(g).ok()?)?;
+    /// Where a CCRP release aims (map units): the targeting pod's ground point, else the ground
+    /// lock (the lock when the pod rests on it).
+    pub(crate) fn ccrp_aim_of(&self, ps: &PlayerState) -> Option<(f64, f64)> {
+        let lock = usize::try_from(self.pl.gnd_lock)
+            .ok()
+            .and_then(|g| self.objects.get(g))
+            .map(|o| (o.x, o.y));
+        let pod = ps.pod.and_then(|p| p.ground);
+        let (x, y) = match (pod, lock) {
+            (Some(p), Some(o)) if approx(o.0 - p.0, o.1 - p.1) <= DESIGNATE_RADIUS => o,
+            (Some(p), _) => p,
+            (None, Some(o)) => o,
+            (None, None) => return None,
+        };
+        Some((x as f64 + 0.5, y as f64 + 0.5))
+    }
+
+    /// CCRP release solution: the ground distance (ft) the impact point of a bomb released
+    /// now still has to go to the release point along the flight path (<= 0 at and past it)
+    /// and the seconds to it. A ripple's release point is half its stick short of the aim
+    /// point, so the stick straddles it.
+    pub(crate) fn ccrp_solution(&self, ps: &PlayerState) -> Option<(f64, f64)> {
+        let (tx, ty) = self.ccrp_aim_of(ps)?;
         let (ix, iy) = self.bomb_impact()?;
         let v =
             ballistics::release_velocity(self.pl.p.heading, self.pl.p.velocity, self.pl.p.climb);
@@ -394,8 +411,12 @@ impl Sim {
             return None;
         }
         // Map units are 32 ft (y south, like the velocity).
-        let (dx, dy) = ((o.x as f64 + 0.5 - ix) * 32.0, (o.y as f64 + 0.5 - iy) * 32.0);
-        let along = (dx * v[0] + dy * v[1]) / vh;
+        let (dx, dy) = ((tx - ix) * 32.0, (ty - iy) * 32.0);
+        let half = {
+            let (n, spacing) = self.ripple(ps);
+            (n - 1) as f64 * spacing / 2.0
+        };
+        let along = (dx * v[0] + dy * v[1]) / vh - half;
         Some((along, along / vh))
     }
 

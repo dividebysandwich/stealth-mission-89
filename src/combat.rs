@@ -1735,7 +1735,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 spec,
                 sim.opts.fix_classic_bugs,
                 hud.ccrp,
-                t.ground.and_then(|g| objects.get(g)),
+                sim.ccrp_aim().map(|aim| (aim, sim.ripple_stick_ft() / 2.0)),
                 &mut new_cues,
             )
         {
@@ -1889,7 +1889,9 @@ fn gun_cue(
 
 /// Bombsight for an unguided bomb (`stealth_sim::ballistics`, as the simulation releases it):
 /// CCIP puts the pipper (`cues.ccip_dir`, `cues.ccip`) where a bomb released now lands; CCRP
-/// gives the time to the release point on the locked `target`.
+/// gives the time to the release point on the `aim` point (map units: the targeting pod's
+/// ground point or the lock), a ripple's first bomb going the half stick (ft) short of it, and
+/// steers at it.
 #[allow(clippy::too_many_arguments)]
 fn bomb_cue(
     a: &Aircraft,
@@ -1898,7 +1900,7 @@ fn bomb_cue(
     spec: i32,
     fix_classic_bugs: bool,
     ccrp: bool,
-    target: Option<&stealth_sim::GroundObject>,
+    aim: Option<((f64, f64), f64)>,
     cues: &mut HudCues,
 ) -> Option<crate::hud::BombCue> {
     use stealth_sim::ballistics;
@@ -1914,10 +1916,12 @@ fn bomb_cue(
         crate::hud::BombCue { ccrp, fall_secs: fall as f32, range_m: None, release_secs: None };
     if ccrp {
         let vh = v[0].hypot(v[1]);
-        if let Some(o) = target.filter(|_| vh > 1.0) {
-            let (te, tn) = ((o.x as f64 + 0.5) * 32.0, (0x8000 as f64 - o.y as f64 - 0.5) * 32.0);
-            let along = ((te - ie) * v[0] - (tn - inn) * v[1]) / vh;
+        if let Some(((x, y), half_stick)) = aim.filter(|_| vh > 1.0) {
+            let (te, tn) = (x * 32.0, (0x8000 as f64 - y) * 32.0);
+            let along = ((te - ie) * v[0] - (tn - inn) * v[1]) / vh - half_stick;
             cue.release_secs = Some((along / vh) as f32);
+            // The designator box and the steering line on the aim point (the SPI).
+            cues.target_dir = direction_cockpit(a, pos, eye, te, tn, 0.0);
             cue.range_m =
                 Some(((te - east).hypot(tn - north).hypot(a.altitude as f64) * WU) as f32);
         }
