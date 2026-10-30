@@ -243,13 +243,21 @@ fn render_thread(
         },
         samples(),
     )?;
-    let mut headset = headset::Headset::new(&context)?;
+    // Each frame's image is drawn with its own eyes and shown at once (waited for), into one
+    // swapchain. SM89_GL_DELAYED=1: shown a frame later instead, the next one drawn meanwhile
+    // into a second swapchain (more time for the GPU, but SteamVR on the Steam Frame then shows
+    // older images between new ones: a judder whenever the head turns).
+    let direct = !std::env::var("SM89_GL_DELAYED").is_ok_and(|v| v == "1");
+    let mut headset = headset::Headset::new(&context, if direct { 1 } else { 2 })?;
     info!("glvr: eyes {}x{}, sRGB {}", headset.size.0, headset.size.1, headset.srgb);
     // SM89_XR_SHOT=<secs>: both eyes' images saved that long into the run.
     let started = Instant::now();
     let mut shot = std::env::var("SM89_XR_SHOT").ok().and_then(|v| v.parse::<f32>().ok());
+    if !direct {
+        info!("glvr: images shown a frame after they are drawn");
+    }
     let mut list: Option<DrawList> = None;
-    // The image drawn, its eyes' poses and the fence it is done at, shown next frame.
+    // The image drawn, its eyes' poses and the fence it is done at, to show.
     let mut drawn: Option<(usize, Vec<openxr::View>, Option<glow::Fence>)> = None;
     let mut last_log = Instant::now();
     let (mut frames, mut draw_time, mut draws, mut culled) = (0u32, Duration::ZERO, 0u64, 0u64);
@@ -262,7 +270,7 @@ fn render_thread(
             std::thread::sleep(Duration::from_millis(10));
             continue;
         }
-        let Some(frame) = headset.begin()? else { continue };
+        let Some(frame) = headset.begin(!direct)? else { continue };
         // The main thread updates the game for the next frame meanwhile.
         let _ = tick.try_send(Eyes { views: frame.views.clone(), controllers: frame.controllers });
         let t0 = Instant::now();
@@ -278,13 +286,19 @@ fn render_thread(
         while let Ok(msg) = meshes.try_recv() {
             renderer.apply(msg);
         }
-        // The image drawn last frame is shown in this one, with the poses it was drawn with,
-        // before this frame's is drawn (waiting for it right after drawing it held up the next
-        // frame's drawing). Released after the next image's drawing was queued, it was only
-        // ready once that was done too: in a heavy scene it missed the compositor, which showed
-        // the frame before again (a stutter on every head turn, ~40% of frames reprojected).
-        show(&mut headset, &renderer, &frame, drawn.take())?;
-        let Some(list) = &list else { continue };
+        // Delayed: the image drawn last frame is shown in this one, with the poses it was drawn
+        // with, before this frame's is drawn (waiting for it right after drawing it held up the next
+        // frame's drawing; released after the next image's drawing was queued, it was only
+        // ready once that was done too).
+        if !direct {
+            show(&mut headset, &renderer, &frame, drawn.take())?;
+        }
+        let Some(list) = &list else {
+            if direct {
+                headset.end_empty(&frame)?;
+            }
+            continue;
+        };
         let (chain, image) = headset.acquire()?;
         renderer.draw(list, &frame.views, image, headset.size, headset.srgb)?;
         if shot.is_some_and(|at| started.elapsed().as_secs_f32() >= at) {
@@ -295,6 +309,9 @@ fn render_thread(
         }
         let fence = renderer.fence();
         drawn = Some((chain, frame.views.clone(), fence));
+        if direct {
+            show(&mut headset, &renderer, &frame, drawn.take())?;
+        }
         for r in renderer.readouts.drain(..) {
             let _ = readouts.send(r);
         }

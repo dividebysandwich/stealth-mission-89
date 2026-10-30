@@ -1,4 +1,4 @@
-//! The OpenXR session of the headset renderer: EGL's OpenGL context (`egl.rs`), two swapchains
+//! The OpenXR session of the headset renderer: EGL's OpenGL context (`egl.rs`), swapchains
 //! of two layers (one per eye, both drawn in one pass), the local space, and the frame loop's
 //! calls (as rust-dos's `display/stage/xr/{mod,gl_frames}.rs`).
 
@@ -18,9 +18,9 @@ pub struct Headset {
     waiter: xr::FrameWaiter,
     stream: xr::FrameStream<Egl>,
     space: xr::Space,
-    /// Two swapchains drawn in turn (one frame's image is drawn while the last one's is still
-    /// held, to be shown once the GPU is done with it; a swapchain holds one at a time), each
-    /// with its images: 2D array textures of two layers.
+    /// The swapchains drawn in turn (one; two when a frame's image is drawn while the last
+    /// one's is still held, to be shown once the GPU is done with it: a swapchain holds one at a
+    /// time), each with its images: 2D array textures of two layers.
     swapchains: Vec<(xr::Swapchain<Egl>, Vec<glow::Texture>)>,
     /// The swapchain drawn next.
     next: usize,
@@ -54,8 +54,9 @@ fn err(what: &'static str) -> impl Fn(xr::sys::Result) -> String {
 }
 
 impl Headset {
-    /// The session on `context` (current on this thread).
-    pub fn new(context: &Context) -> Result<Self, String> {
+    /// The session on `context` (current on this thread), drawing into `chains` swapchains in
+    /// turn.
+    pub fn new(context: &Context, chains: usize) -> Result<Self, String> {
         // SAFETY: loads the OpenXR loader library (beside the executable, see build.rs).
         let entry = unsafe { xr::Entry::load() }.map_err(|e| format!("no OpenXR loader: {e}"))?;
         let offered = entry.enumerate_extensions().map_err(err("the runtime's extensions"))?;
@@ -108,7 +109,7 @@ impl Headset {
             return Err(format!("the headset takes no RGBA8 format ({formats:x?})"));
         };
         let mut swapchains = Vec::new();
-        for _ in 0..2 {
+        for _ in 0..chains.max(1) {
             let swapchain = session
                 .create_swapchain(&xr::SwapchainCreateInfo {
                     create_flags: xr::SwapchainCreateFlags::EMPTY,
@@ -203,9 +204,9 @@ impl Headset {
         (lo as f32 / 1e6, hi as f32 / 1e6, self.interval as f32 / 1e6)
     }
 
-    /// Waits for the next frame and begins it: the eyes to draw, or None for a frame not shown
-    /// (ended at once).
-    pub fn begin(&mut self) -> Result<Option<Frame>, String> {
+    /// Waits for the next frame and begins it: the eyes to draw (`ahead`: where they will be a
+    /// frame later, for an image shown then), or None for a frame not shown (ended at once).
+    pub fn begin(&mut self, ahead: bool) -> Result<Option<Frame>, String> {
         let state = self.waiter.wait().map_err(err("waiting for the frame"))?;
         self.stream.begin().map_err(err("beginning the frame"))?;
         if !state.should_render {
@@ -231,7 +232,8 @@ impl Headset {
             }
         }
         self.last_time = Some(time);
-        let shown = xr::Time::from_nanos(time.as_nanos() + self.interval as i64);
+        let shown =
+            xr::Time::from_nanos(time.as_nanos() + if ahead { self.interval as i64 } else { 0 });
         let (_, views) = self
             .session
             .locate_views(xr::ViewConfigurationType::PRIMARY_STEREO, shown, &self.space)
