@@ -300,3 +300,42 @@ fn a_designated_vehicle_carries_the_point_with_it() {
     assert!((now.x - start.x - 13).abs() <= 1, "{start:?} -> {now:?}");
     assert_eq!(sim.targeting().ground, Some(0));
 }
+
+/// A column that took its place hands over to the place's garrison: its vehicles leave the
+/// world (no wrecks) and the new owner's usual garrison stands there in their slots.
+#[test]
+fn a_column_that_took_its_place_hands_over_to_the_garrison() {
+    let (_, mut sim) = campaign();
+    let (gx, gy) = (X + 10 * KM, Y);
+    let blue = [
+        GroundKind::Leopard2,
+        GroundKind::Leopard2,
+        GroundKind::Bradley,
+        GroundKind::Bradley,
+        GroundKind::Gepard,
+    ];
+    sim.spawn_convoy(5, true, &blue, &[(gx - KM, gy), (gx, gy)]);
+    run(&mut sim, 5);
+    sim.end_convoy(5);
+    let column: Vec<usize> = (0..sim.units().len()).filter(|&k| sim.unit_convoy(k) == 5).collect();
+    assert_eq!(column.len(), 5);
+    let before = sim.units().len();
+    sim.convoys_hand_over(gx, gy, true);
+    sim.place_defences(gx, gy, false, true);
+    // The column is gone (not wrecks) or its slots hold the garrison now.
+    for &k in &column {
+        let u = sim.units()[k];
+        assert!(u.gone && u.destroyed || sim.unit_convoy(k) == 0, "{k}: {u:?}");
+    }
+    let near = |k: usize| {
+        let u = sim.units()[k];
+        (u.x - gx).abs() < 0x180 && (u.y - gy).abs() < 0x180
+    };
+    let live: Vec<GroundKind> = (0..sim.units().len())
+        .filter(|&k| near(k) && !sim.units()[k].destroyed)
+        .map(|k| sim.units()[k].kind)
+        .collect();
+    assert_eq!(live.iter().filter(|k| k.tank()).count(), 2, "{live:?}");
+    assert_eq!(live.iter().filter(|k| k.carrier()).count(), 1, "{live:?}");
+    assert!(sim.units().len() <= before + 1, "the slots were reused");
+}

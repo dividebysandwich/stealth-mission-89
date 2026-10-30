@@ -160,6 +160,10 @@ pub struct GroundUnit {
     /// A vehicle's own position and the way its hull points (`x`, `y` are this rounded).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fine: Option<Fine>,
+    /// Destroyed without a wreck: left the world (a convoy that took its place hands over to
+    /// the new garrison), its slot free for another unit.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gone: bool,
 }
 
 /// A vehicle's position in metres (east, north) and its hull's heading (rad, clockwise from
@@ -361,6 +365,7 @@ impl Sim {
                     cooldown: 0,
                     rounds: 0,
                     fine: None,
+                    gone: false,
                 });
             };
         let hostile = |o: &GroundObject| o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) == 0;

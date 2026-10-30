@@ -638,6 +638,16 @@ fn convoys_drive_fight_and_take_places() {
         );
     }
     eprintln!("{shots} shots");
+    // A column that took its place handed over to the garrison: none of it is left.
+    for c in host.state.convoys.iter().filter(|c| {
+        c.state == stealth_campaign::ConvoyState::Captured
+            && host.state.places[c.place as usize].owner == c.side
+    }) {
+        let left = (0..sim.units().len())
+            .filter(|&k| sim.unit_convoy(k) == c.id && !sim.units()[k].destroyed)
+            .count();
+        assert_eq!(left, 0, "convoy {}", c.id);
+    }
     assert!(launched.iter().any(|l| l.1 == stealth_campaign::Side::Blue));
     assert!(launched.iter().any(|l| l.1 == stealth_campaign::Side::Red));
     assert!(shots > 0);

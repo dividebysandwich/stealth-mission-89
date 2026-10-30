@@ -625,9 +625,10 @@ fn sync_aaa(
         pos.0 = at;
         drawn.0[i] = (at, heading);
         tf.rotation = Quat::from_rotation_y(-heading);
-        let hidden = u.kind == stealth_sim::aaa::GroundKind::Manpads
-            && at.distance(eye) > MANPADS_RANGE
-            && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
+        let hidden = u.gone
+            || u.kind == stealth_sim::aaa::GroundKind::Manpads
+                && at.distance(eye) > MANPADS_RANGE
+                && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
         vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;

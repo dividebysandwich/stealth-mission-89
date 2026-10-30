@@ -218,7 +218,8 @@ impl FlightRecord {
                 .collect();
         }
         for (i, u) in sim.units().iter().enumerate() {
-            if u.destroyed && !self.marks.iter().any(|m| m.kind == MarkKind::AaaKill(i)) {
+            if u.destroyed && !u.gone && !self.marks.iter().any(|m| m.kind == MarkKind::AaaKill(i))
+            {
                 let (x, y) = (u.x as f32, u.y as f32);
                 self.marks.push(Mark { frame: self.frame, x, y, kind: MarkKind::AaaKill(i) });
             }

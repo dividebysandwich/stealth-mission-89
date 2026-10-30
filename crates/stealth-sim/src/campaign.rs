@@ -642,6 +642,7 @@ impl Sim {
                 cooldown: 0,
                 rounds: if kind == GroundKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
                 fine: None,
+                gone: false,
             };
             // Armour faces out, its gun level.
             if kind.armour() {
@@ -715,6 +716,33 @@ impl Sim {
         self.campaign = Some(c);
         if self.aaa_rng.is_none() {
             self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
+    /// Campaign: a side took the place at (x, y) with its armour: the vehicles of its convoys
+    /// that ended there leave the world (no wrecks; the place's garrison of
+    /// [`Sim::place_defences`] takes over in their slots).
+    pub fn convoys_hand_over(&mut self, x: i32, y: i32, blue: bool) {
+        let Some(c) = self.campaign.as_ref() else { return };
+        let moving: Vec<u32> = c.ground.convoys.iter().map(|v| v.tag).collect();
+        let leave: Vec<usize> = (0..self.units.len())
+            .filter(|&k| {
+                let u = &self.units[k];
+                let tag = c.ground.convoy_of.get(k).copied().unwrap_or(0);
+                !u.destroyed
+                    && tag != 0
+                    && !moving.contains(&tag)
+                    && c.aaa_blue.get(k).copied().unwrap_or(false) == blue
+                    && approx(u.x - x, u.y - y) < 0x180
+                    && self.manned_by(k).is_none()
+            })
+            .collect();
+        for k in leave {
+            let u = &mut self.units[k];
+            u.destroyed = true;
+            u.gone = true;
+            u.burst = 0;
+            u.tracking = false;
         }
     }
 
@@ -803,6 +831,7 @@ impl Sim {
                 c.aaa_blue.get(k).copied().unwrap_or(false) == blue
                     && u.kind.armour()
                     && u.destroyed == destroyed
+                    && !u.gone
                     && c.ground.convoy_of.get(k).copied().unwrap_or(0) == 0
                     && approx(u.x - x, u.y - y) < 0x180
             })
@@ -817,6 +846,7 @@ impl Sim {
             c.aaa_blue.get(k).copied().unwrap_or(false) == blue
                 && !u.kind.unarmed()
                 && u.destroyed
+                && !u.gone
                 && approx(u.x - x, u.y - y) < 0x180
         });
         if let Some(k) = k {

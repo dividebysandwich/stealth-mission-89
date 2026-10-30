@@ -2164,7 +2164,7 @@ fn burn_aaa(combat: &mut Combat, before: &[bool]) {
         .units()
         .iter()
         .zip(before)
-        .filter(|(u, was)| u.destroyed && !**was)
+        .filter(|(u, was)| u.destroyed && !u.gone && !**was)
         .map(|(u, _)| Kill { x: u.x, y: u.y, vehicle: true })
         .collect();
     combat.kills.extend(fires);
