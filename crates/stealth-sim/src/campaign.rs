@@ -392,6 +392,7 @@ impl Sim {
             tornado: self.pl.tornado,
             a10: self.pl.a10,
             comanche: self.pl.comanche,
+            harrier: self.pl.harrier,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -405,8 +406,16 @@ impl Sim {
         objective: Option<(i32, usize)>,
         airframe: Airframe,
     ) -> PlayerState {
-        let Airframe { lockheed, external_stores, helicopter, gunship, tornado, a10, comanche } =
-            airframe;
+        let Airframe {
+            lockheed,
+            external_stores,
+            helicopter,
+            gunship,
+            tornado,
+            a10,
+            comanche,
+            harrier,
+        } = airframe;
         if self.campaign.is_none() {
             return self.start_state();
         }
@@ -425,6 +434,7 @@ impl Sim {
         self.pl.tornado = tornado;
         self.pl.a10 = a10;
         self.pl.comanche = comanche;
+        self.pl.harrier = harrier;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;

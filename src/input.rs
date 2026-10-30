@@ -51,6 +51,12 @@ pub enum Action {
     ThrottleDown,
     ThrottleMax,
     ThrottleIdle,
+    /// V/STOL (the Harrier): the nozzle lever a notch back (the nozzles down) or forward (aft),
+    /// held: moving; to the hover stop, fully forward (the nozzles aft).
+    NozzleDown,
+    NozzleAft,
+    NozzleHover,
+    NozzleFullAft,
     SelectWeapon,
     FireWeapon,
     Flare,
@@ -267,6 +273,9 @@ pub struct FlightControls {
     /// Absolute throttle 0..1 while an analog throttle is held (VR throttle lever); None = the
     /// throttle keys set the thrust. A helicopter's collective.
     pub throttle: Option<f32>,
+    /// V/STOL: the nozzle lever 0 (forward: nozzles aft) .. 1 (braking stop) while an analog
+    /// control holds it (a nozzle axis, the VR nozzle lever); None = the nozzle keys move it.
+    pub nozzle: Option<f32>,
     /// Helicopters: the collective moving while its keys (the throttle keys) or the gamepad
     /// triggers are held, -1 (down) .. 1 (up).
     pub collective_rate: f32,
@@ -275,6 +284,9 @@ pub struct FlightControls {
     /// Fixed wing: the throttle moving while a throttle key is held past `THROTTLE_HOLD_S`, -1
     /// (down) .. 1 (up); a press alone steps it (`Action::ThrottleUp`/`Down`).
     pub throttle_rate: f32,
+    /// V/STOL: the nozzle lever moving while a nozzle key is held past `THROTTLE_HOLD_S`, -1
+    /// (forward: nozzles aft) .. 1 (back: nozzles down); a press alone steps it a notch.
+    pub nozzle_rate: f32,
     /// Trim switch held: x roll right, y nose up (-1..1).
     pub trim: Vec2,
     /// Gun trigger held.
@@ -321,6 +333,11 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::NumpadSubtract, ThrottleDown),
         (Shift, K::Equal, ThrottleMax),
         (Shift, K::Minus, ThrottleIdle),
+        // Remake: the nozzle lever, left hand beside the rudder keys.
+        (None, K::KeyF, NozzleDown),
+        (None, K::KeyR, NozzleAft),
+        (Shift, K::KeyF, NozzleHover),
+        (Shift, K::KeyR, NozzleFullAft),
         (None, K::Space, SelectWeapon),
         (None, K::Enter, FireWeapon),
         (None, K::NumpadEnter, LockCursor),
@@ -443,6 +460,7 @@ fn read_keyboard(
     (block, console): (Res<InputBlock>, Res<ConsoleStick>),
     view: Option<Res<crate::camera::ViewState>>,
     mut throttle_since: Local<Option<f64>>,
+    mut nozzle_since: Local<Option<f64>>,
 ) {
     let shift = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let alt = keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
@@ -485,6 +503,9 @@ fn read_keyboard(
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
         *throttle_since = None;
+        controls.nozzle = None;
+        controls.nozzle_rate = 0.0;
+        *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
         return;
@@ -544,6 +565,20 @@ fn read_keyboard(
     *throttle_since = (throttle != 0.0).then(|| throttle_since.unwrap_or(now));
     controls.throttle_rate =
         if throttle_since.is_some_and(|t| now - t >= THROTTLE_HOLD_S) { throttle } else { 0.0 };
+    // The nozzle keys (with no modifier: Shift sends the lever to its stops).
+    controls.nozzle = None;
+    let nozzle_key = |a: Action| {
+        config.keys.iter().any(|m| {
+            m.target == crate::hotas::ButtonTarget::Action(a)
+                && keys.pressed(m.key)
+                && m.mods == mods
+        })
+    };
+    let nozzle =
+        nozzle_key(Action::NozzleDown) as i8 as f32 - nozzle_key(Action::NozzleAft) as i8 as f32;
+    *nozzle_since = (nozzle != 0.0).then(|| nozzle_since.unwrap_or(now));
+    controls.nozzle_rate =
+        if nozzle_since.is_some_and(|t| now - t >= THROTTLE_HOLD_S) { nozzle } else { 0.0 };
     controls.trim = config
         .keys
         .iter()
@@ -570,6 +605,8 @@ fn read_keyboard(
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
         *throttle_since = None;
+        controls.nozzle_rate = 0.0;
+        *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
     }

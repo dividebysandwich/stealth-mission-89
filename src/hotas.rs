@@ -26,14 +26,17 @@ pub enum AxisControl {
     /// Sensor/cursor slew (modern avionics): right and up.
     SlewX,
     SlewY,
+    /// The nozzle lever of a V/STOL type (the Harrier): 0 aft .. 1 the braking stop.
+    Nozzle,
 }
 
 impl AxisControl {
-    pub const ALL: [AxisControl; 6] = [
+    pub const ALL: [AxisControl; 7] = [
         AxisControl::Roll,
         AxisControl::Pitch,
         AxisControl::Yaw,
         AxisControl::Throttle,
+        AxisControl::Nozzle,
         AxisControl::SlewX,
         AxisControl::SlewY,
     ];
@@ -46,6 +49,7 @@ impl AxisControl {
             AxisControl::Throttle => "Throttle",
             AxisControl::SlewX => "Sensor/cursor slew X",
             AxisControl::SlewY => "Sensor/cursor slew Y",
+            AxisControl::Nozzle => "Nozzles (Harrier)",
         }
     }
 }
@@ -91,10 +95,10 @@ pub struct AxisMapping {
 
 impl AxisMapping {
     /// The control's value from the raw axis value (-1..1): -1..1 for the stick and rudder,
-    /// 0..1 for the throttle.
+    /// 0..1 for the throttle and the nozzles.
     pub fn output(&self, raw: f32) -> f32 {
         let v = if self.invert { -raw } else { raw };
-        if self.control == AxisControl::Throttle {
+        if matches!(self.control, AxisControl::Throttle | AxisControl::Nozzle) {
             return ((v + 1.0) / 2.0).clamp(0.0, 1.0);
         }
         let dz = self.deadzone.clamp(0.0, 0.9);
@@ -417,7 +421,7 @@ impl InputConfig {
         self.axes.retain(|m| m.control != control && !(m.device == device && m.code == code));
         let invert = control == AxisControl::Throttle;
         let deadzone = match control {
-            AxisControl::Throttle => 0.0,
+            AxisControl::Throttle | AxisControl::Nozzle => 0.0,
             AxisControl::SlewX | AxisControl::SlewY => 0.1,
             _ => 0.05,
         };
@@ -674,6 +678,9 @@ pub struct Hotas {
     devices: HashMap<gilrs::GamepadId, Device>,
     /// Last throttle value written, so the throttle keys work until the lever moves.
     throttle_applied: Option<f32>,
+    /// Last nozzle axis value seen (the first only noted), so the nozzles follow the axis once
+    /// it moves and not before.
+    nozzle_seen: Option<f32>,
 }
 
 impl Hotas {
@@ -701,7 +708,7 @@ impl Hotas {
         for d in devices.values() {
             info!("joystick: {}", d.key);
         }
-        Self { gilrs: gilrs.map(SyncCell::new), devices, throttle_applied: None }
+        Self { gilrs: gilrs.map(SyncCell::new), devices, throttle_applied: None, nozzle_seen: None }
     }
 
     /// Connected devices, sorted by key.
@@ -861,6 +868,15 @@ pub fn read_hotas(
                 hotas.throttle_applied = Some(v);
                 controls.throttle = Some(v);
             }
+            // The nozzles stay where they are (aft at the start) until the axis moves.
+            AxisControl::Nozzle => match hotas.nozzle_seen {
+                None => hotas.nozzle_seen = Some(v),
+                Some(t) if (t - v).abs() > 0.01 => {
+                    hotas.nozzle_seen = Some(v);
+                    controls.nozzle = Some(v);
+                }
+                _ => {}
+            },
             _ => {}
         }
     }

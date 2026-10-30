@@ -485,9 +485,9 @@ const DOWNWASH_HEIGHT: f32 = 25.0;
 const DOWNWASH_RATE: f32 = 40.0;
 const DOWNWASH_RADIUS: f32 = 7.0;
 
-/// A hovering helicopter's downwash: a ring of dust thrown out over land (sand coloured in
-/// the deserts, that is the dust's colour everywhere), spray over water, a faint haze over
-/// concrete.
+/// A hovering helicopter's downwash, or a V/STOL type's jet blast with its nozzles down: a ring
+/// of dust thrown out over land (sand coloured in the deserts, that is the dust's colour
+/// everywhere), spray over water, a faint haze over concrete.
 #[allow(clippy::too_many_arguments)]
 fn downwash(
     mut p: ResMut<Particles>,
@@ -501,12 +501,15 @@ fn downwash(
     let Ok((a, pos)) = player.single() else { return };
     let wu = crate::world::WU as f32;
     let height = (a.altitude - a.ground_altitude) * wu;
-    let k = (1.0 - height / DOWNWASH_HEIGHT).clamp(0.0, 1.0)
-        * ((a.rotor_speed() - 0.6) / 0.4).clamp(0.0, 1.0);
-    if !settings.effects.vapour
-        || !settings.aircraft.spec().helicopter
-        || a.ended.is_some()
-        || k <= 0.0
+    let spec = settings.aircraft.spec();
+    // The rotor at speed; the nozzles pointing down at high thrust.
+    let blast = if spec.vtol {
+        a.nozzle.sin().max(0.0).powi(2) * ((a.thrust - 50.0) / 40.0).clamp(0.0, 1.0)
+    } else {
+        ((a.rotor_speed() - 0.6) / 0.4).clamp(0.0, 1.0)
+    };
+    let k = (1.0 - height / DOWNWASH_HEIGHT).clamp(0.0, 1.0) * blast;
+    if !settings.effects.vapour || !(spec.helicopter || spec.vtol) || a.ended.is_some() || k <= 0.0
     {
         *owed = 0.0;
         return;

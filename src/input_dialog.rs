@@ -364,7 +364,7 @@ pub fn show(
                                 Some(m) => {
                                     ui.label(binding_label(&m.device, &format!("Axis {}", m.code & 0xffff)));
                                     ui.checkbox(&mut m.invert, "Invert");
-                                    if control == AxisControl::Throttle {
+                                    if matches!(control, AxisControl::Throttle | AxisControl::Nozzle) {
                                         ui.label("");
                                     } else {
                                         ui.add(egui::Slider::new(&mut m.deadzone, 0.0..=0.5).text("dead zone").fixed_decimals(2));
@@ -372,7 +372,7 @@ pub fn show(
                                     let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
                                     let fill = match (control, v) {
                                         (_, None) => 0.0,
-                                        (AxisControl::Throttle, Some(v)) => v,
+                                        (AxisControl::Throttle | AxisControl::Nozzle, Some(v)) => v,
                                         (_, Some(v)) => (v + 1.0) / 2.0,
                                     };
                                     let text = v.map_or("move it".to_string(), |v| format!("{v:+.2}"));

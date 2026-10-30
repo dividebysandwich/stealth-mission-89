@@ -1119,6 +1119,7 @@ pub fn airframe_of(k: crate::aircraft::AircraftKind) -> Airframe {
         crate::aircraft::AircraftKind::Tornado => Airframe::Tornado,
         crate::aircraft::AircraftKind::A10 => Airframe::A10,
         crate::aircraft::AircraftKind::RAH66 => Airframe::RAH66,
+        crate::aircraft::AircraftKind::AV8B => Airframe::AV8B,
     }
 }
 
@@ -1131,6 +1132,7 @@ pub fn kind_of(a: Airframe) -> crate::aircraft::AircraftKind {
         Airframe::Tornado => crate::aircraft::AircraftKind::Tornado,
         Airframe::A10 => crate::aircraft::AircraftKind::A10,
         Airframe::RAH66 => crate::aircraft::AircraftKind::RAH66,
+        Airframe::AV8B => crate::aircraft::AircraftKind::AV8B,
     }
 }
 

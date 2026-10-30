@@ -290,6 +290,7 @@ fn start_combat(
     let tornado = settings.aircraft == crate::aircraft::AircraftKind::Tornado;
     let a10 = settings.aircraft == crate::aircraft::AircraftKind::A10;
     let comanche = settings.aircraft == crate::aircraft::AircraftKind::RAH66;
+    let harrier = settings.aircraft == crate::aircraft::AircraftKind::AV8B;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -299,6 +300,7 @@ fn start_combat(
             tornado,
             a10,
             comanche,
+            harrier,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -310,6 +312,7 @@ fn start_combat(
             tornado,
             a10,
             comanche,
+            harrier,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -563,6 +566,7 @@ fn player_state(
         ripple_ft: mfd.ripple().1,
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
+        nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }
@@ -1028,6 +1032,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "Tornado"
     } else if p.a10 {
         "A-10"
+    } else if p.harrier {
+        "AV-8B"
     } else if p.external_stores {
         "F-16"
     } else {

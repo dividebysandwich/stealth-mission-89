@@ -1433,9 +1433,19 @@ fn world_model_state(
         .as_ref()
         .and_then(|k| k.aero.swing_wing)
         .map(|w| crate::aircraft::wing_slot_values(a.wing_sweep, w.forward, w.back));
+    // Vectored thrust: the nozzles as far down as the flight model has them.
+    let nozzle = flight
+        .as_ref()
+        .and_then(|k| k.aero.vtol)
+        .map(|_| crate::aircraft::nozzle_slot_value(a.nozzle));
     for mut s in &mut own {
         if let Some(r) = rotor {
             s.0[17] = r;
+        }
+        if let Some(n) = nozzle
+            && s.0[crate::aircraft::NOZZLE_SLOT] != n
+        {
+            s.0[crate::aircraft::NOZZLE_SLOT] = n;
         }
         if let Some((r, l)) = wings {
             let (sr, sl) = crate::aircraft::WING_SLOTS;
@@ -1764,6 +1774,13 @@ fn sync_remote_pilots(
                     let (sr, sl) = crate::aircraft::WING_SLOTS;
                     if (s.0[sr], s.0[sl]) != (r, l) {
                         (s.0[sr], s.0[sl]) = (r, l);
+                    }
+                }
+                // His nozzles, as his flight model has them.
+                if spec.vtol {
+                    let n = crate::aircraft::nozzle_slot_value((p.nozzle as f32).to_radians());
+                    if s.0[crate::aircraft::NOZZLE_SLOT] != n {
+                        s.0[crate::aircraft::NOZZLE_SLOT] = n;
                     }
                 }
             }

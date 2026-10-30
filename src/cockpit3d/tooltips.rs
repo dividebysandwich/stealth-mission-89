@@ -91,6 +91,8 @@ enum Readout {
     RadarBars,
     Attitude,
     Hsi,
+    /// The nozzle lever's angle (`Aircraft::nozzle_lever`).
+    Nozzles,
 }
 
 /// What the instrument shows now (empty without an aircraft).
@@ -106,6 +108,7 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             LedId::Fuel => dial_text(Dial::Fuel, a.fuel),
             LedId::Thrust => format!("{} %", a.thrust.max(0.0).round() as i32),
         },
+        Readout::Nozzles => format!("Nozzles {}°", nozzle_degrees(a.nozzle_lever)),
         Readout::RadarBars => {
             let (emv, egr, ear) = panel.gauge_values();
             format!("EMV {emv}, EGR {egr}, EAR {ear} (0 to 99)")
@@ -154,7 +157,13 @@ fn dial_text(dial: Dial, value: f32) -> String {
             let (h, m, s) = crate::mfd::hms(value);
             format!("{h:02}:{m:02}:{s:02}")
         }
+        Dial::NozzleAngle => format!("{v}°"),
     }
+}
+
+/// The nozzle angle (degrees, rounded) a nozzle lever position sets.
+fn nozzle_degrees(lever: f32) -> i32 {
+    (lever.clamp(0.0, 1.0) * super::levers::NOZZLE_TRAVEL_DEG).round() as i32
 }
 
 /// A value with its sign ("+5", "-5", "0").
@@ -462,6 +471,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::Nozzle => ("Nozzle position", ""),
                 Dial::Fuel => ("Fuel quantity", ""),
                 Dial::Clock => ("Clock", "Local time"),
+                Dial::NozzleAngle => ("Nozzle angle", "Down from aft: 90° hover, 98.5° braking"),
             };
             return Some(Tip::new(title, detail, &[]).reading(Readout::Dial(dial)));
         }
@@ -565,6 +575,16 @@ pub(super) fn console_stick_tip() -> Tip {
 pub(super) fn throttle_tip() -> Tip {
     use Action::*;
     Tip::new("Throttle", "Thrust", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])
+}
+
+/// A V/STOL type's nozzle lever (the AV-8B's, inboard of the throttle).
+pub(super) fn nozzle_tip() -> Tip {
+    Tip::new(
+        "Nozzle lever",
+        "Forward: nozzles aft; back: down, to the hover stop (90°) and the braking stop (98.5°)",
+        &[],
+    )
+    .reading(Readout::Nozzles)
 }
 
 /// The tooltips' font: egui's Hack (as the menus), which has the accented letters of the
@@ -1004,6 +1024,7 @@ mod tests {
             PanelStyle::Tornado,
             PanelStyle::A10,
             PanelStyle::Rah66,
+            PanelStyle::Av8b,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
@@ -1035,7 +1056,9 @@ mod tests {
         assert_eq!(km_text(123.4), "123 km");
         assert_eq!(dial_text(Dial::Fuel, -3.0), "0 lbs");
         use Dial::*;
-        for dial in [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock] {
+        for dial in
+            [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock, NozzleAngle]
+        {
             let text = dial_text(dial, 950.0);
             assert!(drawable(&text), "{text}");
         }

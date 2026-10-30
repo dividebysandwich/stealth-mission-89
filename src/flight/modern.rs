@@ -25,6 +25,8 @@
 //!
 //! Units: feet (= world units), seconds; `vel` is in the Bevy frame (x east, y up, -z north).
 
+use std::f32::consts::{PI, TAU};
+
 use bevy::prelude::*;
 
 use super::{
@@ -102,6 +104,100 @@ pub struct Aero {
     pub yaw_rate_max: f32,
     /// A swing wing (the Tornado's): the values above are with it fully forward.
     pub swing_wing: Option<SwingWing>,
+    /// Vectored thrust (the Harrier's): nozzles turning the thrust down, reaction controls.
+    pub vtol: Option<Vtol>,
+}
+
+/// Vectored thrust: the engine's nozzles turn from aft down to past the vertical
+/// (`Aircraft::nozzle`, following the nozzle lever), and reaction control jets at the nose, the
+/// tail and the wingtips, fed with bleed air once the nozzles are off aft, fly the aircraft
+/// where the wing has too little air to (jet-borne flight: the hover, the transition).
+#[derive(Debug, Clone, Copy)]
+pub struct Vtol {
+    /// The nozzles' angle down from aft at the lever's full travel (the braking stop) and at its
+    /// hover stop (rad).
+    pub max_nozzle: f32,
+    pub hover_stop: f32,
+    /// How fast the nozzles turn (rad/s).
+    pub nozzle_rate: f32,
+    /// Share of the thrust bled to the reaction controls while they are live.
+    pub rcs_bleed: f32,
+    /// Jet-borne: the full stick roll, pitch and pedal yaw rates (rad/s) of the reaction
+    /// controls.
+    pub hover_rates: Vec3,
+    /// The intake's momentum drag at full thrust (1/s of the airspeed): the big fan swallowing
+    /// the air it flies into, which slows a hovering drift.
+    pub momentum_drag: f32,
+    /// Pitch on the gear at rest (rad, nose up).
+    pub ground_pitch: f32,
+}
+
+impl Vtol {
+    /// The nozzle lever at the hover stop.
+    pub fn hover_lever(&self) -> f32 {
+        self.hover_stop / self.max_nozzle
+    }
+
+    /// The lever one notch (10 degrees of nozzle angle) further `down` or back towards aft: the
+    /// hover stop is a notch of its own, and down from it the next is the braking stop.
+    pub fn lever_step(&self, lever: f32, down: bool) -> f32 {
+        let (max, hover) = (self.max_nozzle.to_degrees(), self.hover_stop.to_degrees());
+        let deg = lever.clamp(0.0, 1.0) * max;
+        let next = if down {
+            if deg >= hover - 0.5 {
+                max
+            } else {
+                (((deg + 0.5) / 10.0).floor() * 10.0 + 10.0).min(hover)
+            }
+        } else if deg > hover + 0.5 {
+            hover
+        } else {
+            (((deg - 0.5) / 10.0).ceil() * 10.0 - 10.0).max(0.0)
+        };
+        next / max
+    }
+
+    /// How far the reaction controls fly the aircraft (0..1) at nozzle angle `nozzle` and
+    /// dynamic pressure `qbar`: once the nozzles are off aft (the bleed valves open), until the
+    /// wing has the air to fly on.
+    pub fn jet_borne(&self, nozzle: f32, qbar: f32) -> f32 {
+        bleed_open(nozzle) * (1.0 - smooth((qbar - JET_Q.0) / (JET_Q.1 - JET_Q.0)))
+    }
+}
+
+fn smooth(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// How far the reaction controls' bleed valves are open (0..1) at a nozzle angle.
+fn bleed_open(nozzle: f32) -> f32 {
+    smooth((nozzle - RCS_OPEN.0) / (RCS_OPEN.1 - RCS_OPEN.0))
+}
+
+/// Moves the nozzle lever: to an analog control's setting, or while the nozzle keys are held
+/// (stopping at the hover stop until pushed against it for a moment); the nozzles follow it.
+fn move_nozzles(a: &mut Aircraft, v: &Vtol, controls: &FlightControls, dt: f32) {
+    if let Some(t) = controls.nozzle {
+        a.nozzle_lever = t.clamp(0.0, 1.0);
+        a.modern.stop_push = 0.0;
+    } else if controls.nozzle_rate != 0.0 {
+        let hover = v.hover_lever();
+        let mut l = a.nozzle_lever + controls.nozzle_rate * NOZZLE_KEY_RATE * dt;
+        if controls.nozzle_rate > 0.0 && a.nozzle_lever <= hover + 1e-4 && l > hover {
+            a.modern.stop_push += dt;
+            if a.modern.stop_push < NOZZLE_STOP_PUSH {
+                l = hover;
+            }
+        } else {
+            a.modern.stop_push = 0.0;
+        }
+        a.nozzle_lever = l.clamp(0.0, 1.0);
+    } else {
+        a.modern.stop_push = 0.0;
+    }
+    let step = v.nozzle_rate * dt;
+    a.nozzle += (a.nozzle_lever * v.max_nozzle - a.nozzle).clamp(-step, step);
 }
 
 /// A swing wing swept back automatically with the Mach number (`Aircraft::wing_sweep`): it
@@ -205,6 +301,7 @@ impl Aero {
         push_rate: 0.6,
         yaw_rate_max: 0.5,
         swing_wing: None,
+        vtol: None,
     };
 
     /// F-16C: Mach 1.2 at sea level, about Mach 1.9 at altitude with the afterburner (subsonic
@@ -247,6 +344,7 @@ impl Aero {
         push_rate: 0.6,
         yaw_rate_max: 0.6,
         swing_wing: None,
+        vtol: None,
     };
 
     /// Tornado IDS: two RB199s (18,200 lb dry, 33,800 lb with the afterburners) against 42,000
@@ -301,6 +399,7 @@ impl Aero {
             drag_rise_later: 0.08,
             wave_drag: 0.65,
         }),
+        vtol: None,
     };
 
     /// A-10C: two TF34 turbofans (18,000 lb static, falling off steeply with speed) against
@@ -342,6 +441,58 @@ impl Aero {
         push_rate: 0.6,
         yaw_rate_max: 0.5,
         swing_wing: None,
+        vtol: None,
+    };
+
+    /// AV-8B Harrier II: one Pegasus 11-61 (23,800 lb) against 21,750 lb with full internal
+    /// fuel, a little less with the bleed to the reaction controls: it hovers at about 90% with
+    /// the 6,000 lb of fuel it starts with. A thick supercritical wing (89
+    /// lb/ft^2) with big slotted flaps, a large fan losing much of its thrust to ram drag with
+    /// speed: about 570 kt low down, subsonic, 8 g. The nozzles turn 98.5 degrees in about a
+    /// second, their hover stop at 84; it sits 5.5 degrees nose up on its short main gear.
+    pub const AV8B: Aero = Aero {
+        wing_loading: 89.0,
+        dry_weight: 14_000.0,
+        ref_weight: 21_750.0,
+        thrust_ratio: 1.10,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        thrust_mach: -0.62,
+        cl_alpha: 4.6,
+        alpha_stall: 0.40,
+        alpha_stall_neg: -0.26,
+        alpha_limit: 0.35,
+        alpha_limit_neg: -0.22,
+        cl_flaps: 0.6,
+        alpha_flaps: 0.04,
+        cd0: 0.030,
+        cd_k: 0.11,
+        cd_sep: 0.5,
+        cl_sep: 1.1,
+        cd_gear: 0.022,
+        cd_flaps: 0.05,
+        cd_speed_brake: 0.10,
+        cd_bay: 0.0,
+        cd_idle: 0.03,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Subsonic,
+        n_max: 8.0,
+        n_min: -3.0,
+        roll_rate: 2.8,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        swing_wing: None,
+        vtol: Some(Vtol {
+            max_nozzle: 98.5 * std::f32::consts::PI / 180.0,
+            // At the ground attitude the thrust points straight down.
+            hover_stop: 84.0 * std::f32::consts::PI / 180.0,
+            nozzle_rate: 1.7,
+            rcs_bleed: 0.04,
+            hover_rates: Vec3::new(0.8, 0.45, 0.5),
+            momentum_drag: 0.08,
+            ground_pitch: 5.5 * std::f32::consts::PI / 180.0,
+        }),
     };
 
     /// The airframe with its swing wing (if it has one) at `at` (0 fully forward .. 1 fully
@@ -394,6 +545,19 @@ const TF_LEAD: f32 = 0.5;
 const TRIM_PATH_GAIN: f32 = 0.5;
 const TRIM_ROLL_GAIN: f32 = 2.0;
 
+/// Jet-borne flight: the dynamic pressures (psf) where the wing's control laws start taking
+/// over from the reaction controls and have taken over, the nozzle angles (rad) where the
+/// reaction controls' bleed valves start opening and are open, the raw stick deflection below
+/// which the attitude is held and the hold's gain (1/s).
+const JET_Q: (f32, f32) = (20.0, 70.0);
+const RCS_OPEN: (f32, f32) = (0.10, 0.25);
+const HOVER_STICK_FREE: f32 = 0.05;
+const HOVER_HOLD_GAIN: f32 = 2.0;
+/// Nozzle keys held: the lever's travel per second (45 degrees of the Harrier's 98.5), and how
+/// long they push against the hover stop before the lever goes on to the braking stop (s).
+const NOZZLE_KEY_RATE: f32 = 45.0 / 98.5;
+const NOZZLE_STOP_PUSH: f32 = 0.5;
+
 /// Ground: rolling friction, wheel brakes (g), nose-up rotation rate (rad/s), tail strike pitch.
 const ROLL_FRICTION: f32 = 0.02;
 const WHEEL_BRAKES: f32 = 1.0;
@@ -418,6 +582,12 @@ pub(super) struct State {
     released: f32,
     /// Flight path angle held with the stick released (rad).
     hold: Option<f32>,
+    /// Jet-borne: the pitch and roll held with the stick released (rad).
+    #[serde(default)]
+    attitude: Option<(f32, f32)>,
+    /// Seconds a held nozzle key has pushed the lever against the hover stop.
+    #[serde(default)]
+    stop_push: f32,
 }
 
 impl State {
@@ -436,6 +606,11 @@ pub(crate) fn atmosphere(h: f32) -> (f32, f32) {
     } else {
         (0.2971 * (-(h - 36089.0) / 20806.0).exp(), 1116.4 * 0.7519f32.sqrt())
     }
+}
+
+/// Pitch at rest on the gear (rad): level, or a V/STOL type's nose up on its short main gear.
+fn ground_pitch(ae: &Aero) -> f32 {
+    ae.vtol.map_or(0.0, |v| v.ground_pitch)
 }
 
 /// Lift slope (1/rad): the flaps steepen it, adding `cl_flaps` at their stall angle, so the
@@ -536,6 +711,9 @@ pub(super) fn step(
     } else {
         (*f - dt / FLAP_TIME).max(flaps)
     };
+    if let Some(v) = &ae.vtol {
+        move_nozzles(a, v, controls, dt);
+    }
 
     // --- controls
     let roll_stick = controls.roll.clamp(-1.0, 1.0);
@@ -608,20 +786,39 @@ pub(super) fn step(
     let ab = (ae.ab_thrust_ratio - ae.thrust_ratio).max(0.0)
         * a.afterburner
         * (1.0 + ae.ab_thrust_mach * mach.min(2.0));
-    let thrust = (dry + ab) * sigma.powf(THRUST_LAPSE) / mass;
+    let mut thrust = (dry + ab) * sigma.powf(THRUST_LAPSE) / mass;
+    // Vectored thrust: the nozzles turn it down from along the nose; the reaction controls bleed
+    // some off while they are live.
+    let (thrust_dir, jet) = match &ae.vtol {
+        Some(v) => {
+            thrust *= 1.0 - v.rcs_bleed * bleed_open(a.nozzle);
+            (fwd * a.nozzle.cos() + up * a.nozzle.sin(), v.jet_borne(a.nozzle, qbar))
+        }
+        None => (fwd, 0.0),
+    };
+    if jet > 0.5 {
+        a.autopilot_alt = 0.0;
+    }
     let lift_dir = (up - vhat * up.dot(vhat)).normalize_or(up);
     let side_dir = (right - vhat * right.dot(vhat)).normalize_or(right);
     let n_lift = per_cl * cl;
-    let mut accel = (fwd * thrust + lift_dir * n_lift
+    let mut accel = (thrust_dir * thrust + lift_dir * n_lift
         - vhat * per_cl * cd
         - side_dir * per_cl * ae.cy_beta * beta)
         * G;
     accel.y -= G;
+    if let Some(v) = &ae.vtol {
+        accel -= vel * v.momentum_drag * (a.thrust / 100.0).clamp(0.0, 1.0) * jet;
+    }
 
     // Stall speed at the current load (velocity units) for the warnings.
     let cl_avail = cl_slope(ae, a) * alpha_limit(ae, a);
     let load = (a.gees / 16.0).max(1.0);
     a.stall_speed = (2.0 * load * ae.wing_loading * mass / (RHO0 * sigma * cl_avail)).sqrt() * 16.0;
+    // Jet-borne the engine holds it up: no stall warnings.
+    if jet > 0.0 {
+        a.stall_speed *= (1.0 - 2.0 * jet).max(0.0);
+    }
 
     if air {
         // --- control laws
@@ -691,6 +888,7 @@ pub(super) fn step(
         // Crash protection: wings level and pull when the ground is less than 3 s away (not
         // while terrain following, which flies lower and clears the ground itself).
         if k.landing == 0
+            && jet < 0.5
             && !a.terrain_following()
             && !a.gear_down
             && vel.y < 0.0
@@ -722,8 +920,40 @@ pub(super) fn step(
             q_cmd -= (alpha - alpha_stall(ae, a)) * 4.0;
         }
         p_cmd += roll_fault * ae.roll_rate * (qbar / ROLL_Q_FULL).clamp(0.25, 1.0);
-        let r_cmd = (-path_rate.dot(up) + (beta + rudder * BETA_RUDDER) / TAU_BETA)
+        let mut r_cmd = (-path_rate.dot(up) + (beta + rudder * BETA_RUDDER) / TAU_BETA)
             .clamp(-ae.yaw_rate_max, ae.yaw_rate_max);
+        // Jet-borne: the reaction controls fly body rates, the attitude held with the stick
+        // released, the pedals yawing; blended into the wing's control laws as the air builds
+        // up, the roll moving from the body axis to the flight path.
+        let mut roll_axis = vhat;
+        match &ae.vtol {
+            Some(v) if jet > 0.0 => {
+                let hr = v.hover_rates;
+                let hold = a.modern.attitude.get_or_insert((pitch, roll));
+                let pitch_free = controls.pitch.abs() < HOVER_STICK_FREE;
+                let roll_free = controls.roll.abs() < HOVER_STICK_FREE;
+                if !pitch_free {
+                    hold.0 = pitch;
+                }
+                if !roll_free {
+                    hold.1 = roll;
+                }
+                let q_h = if pitch_free {
+                    (hold.0 - pitch) * HOVER_HOLD_GAIN
+                } else {
+                    pitch_stick * hr.y
+                };
+                let roll_err = (hold.1 - roll + PI).rem_euclid(TAU) - PI;
+                let p_h = if roll_free { roll_err * HOVER_HOLD_GAIN } else { roll_stick * hr.x };
+                let r_h = rudder * hr.z;
+                let mix = |c: f32, h: f32| c + (h - c) * jet;
+                p_cmd = mix(p_cmd.clamp(-ae.roll_rate, ae.roll_rate), p_h.clamp(-hr.x, hr.x));
+                q_cmd = mix(q_cmd.clamp(-2.0, 2.0), q_h.clamp(-hr.y, hr.y));
+                r_cmd = mix(r_cmd, r_h);
+                roll_axis = (vhat * (1.0 - jet) + fwd * jet).normalize_or(fwd);
+            }
+            _ => a.modern.attitude = None,
+        }
         // Pitch rate: second-order response to its command.
         let st = &mut a.modern;
         st.q_dot += (PITCH_OMEGA * PITCH_OMEGA * (q_cmd - rates.y)
@@ -733,7 +963,7 @@ pub(super) fn step(
         let r = &mut rates;
         r.x += (p_cmd - r.x) * (dt / TAU_ROLL).min(1.0);
         r.z += (r_cmd - r.z) * (dt / TAU_RATE).min(1.0);
-        let omega = vhat * r.x + right * r.y - up * r.z;
+        let omega = roll_axis * r.x + right * r.y - up * r.z;
         a.orientation = (Quat::from_scaled_axis(omega * dt) * a.orientation).normalize();
         vel += accel * dt;
         a.gees = ((accel + Vec3::Y * G).dot(up) / G * 16.0).clamp(-k.max_gees, k.max_gees);
@@ -743,20 +973,22 @@ pub(super) fn step(
         // --- ground roll along the nose, lift unloading the wheels
         let flat = Vec3::new(heading.sin(), 0.0, -heading.cos());
         let mut along = vel.dot(flat);
-        let weight_on_wheels = (1.0 - n_lift * pitch.cos()).max(0.0);
+        // Lift and the nozzles' thrust unload the wheels.
+        let weight_on_wheels = (1.0 - n_lift * pitch.cos() - thrust * thrust_dir.y).max(0.0);
         let mut decel = ROLL_FRICTION * weight_on_wheels;
         if a.brakes {
             decel += WHEEL_BRAKES * weight_on_wheels;
         }
-        // Carrier deck: the catapult launches at full throttle, the wire stops a landing.
-        if a.ground_altitude > 0.0 {
+        // Carrier deck: the catapult launches at full throttle, the wire stops a landing (not a
+        // V/STOL type's, which takes off short and lands vertically).
+        if a.ground_altitude > 0.0 && ae.vtol.is_none() {
             if !a.has_flown && a.thrust >= 90.0 {
                 decel -= CATAPULT;
             } else if a.has_flown && a.thrust <= 50.0 {
                 decel += CATAPULT;
             }
         }
-        let drive = thrust * pitch.cos() - per_cl * cd;
+        let drive = thrust * thrust_dir.dot(flat) - per_cl * cd;
         along += (drive * G - decel * G * along.signum()) * dt;
         if along < 0.5 && drive <= decel {
             along = along.max(0.0) * 0.5;
@@ -771,13 +1003,13 @@ pub(super) fn step(
         } else {
             new_pitch -= ROTATE_RATE * 0.7 * dt;
         }
-        let new_pitch = new_pitch.clamp(0.0, MAX_GROUND_PITCH);
+        let new_pitch = new_pitch.clamp(ground_pitch(ae), MAX_GROUND_PITCH);
         // Nosewheel steering by the rudder, else the stick; less authority with speed.
         let steer = if rudder != 0.0 { rudder } else { roll_stick };
         let yaw_rate = steer * (0.6 * (1.0 - along / 250.0)).clamp(0.06, 0.6);
         a.orientation = Aircraft::from_euler(heading + yaw_rate * dt, new_pitch, 0.0);
-        // Lift off once the lift exceeds the weight.
-        let climb = ((n_lift * new_pitch.cos() - 1.0) * G).max(0.0) * dt;
+        // Lift off once the lift and the nozzles' thrust exceed the weight.
+        let climb = ((n_lift * new_pitch.cos() + thrust * thrust_dir.y - 1.0) * G).max(0.0) * dt;
         vel = flat * along + Vec3::Y * climb;
         rates = Vec3::ZERO;
         a.modern.q_dot = 0.0;
@@ -802,7 +1034,8 @@ pub(super) fn step(
         if prev_alt > a.ground_altitude {
             // Touchdown: wings level, the nose stays up until the speed drops.
             let (h, p, _) = a.euler();
-            a.orientation = Aircraft::from_euler(h, p.clamp(0.0, MAX_GROUND_PITCH), 0.0);
+            a.orientation =
+                Aircraft::from_euler(h, p.clamp(ground_pitch(ae), MAX_GROUND_PITCH), 0.0);
             let flat = Vec3::new(h.sin(), 0.0, -h.cos());
             vel = flat * vel.dot(flat).max(0.0);
         }

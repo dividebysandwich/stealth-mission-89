@@ -496,6 +496,9 @@ pub struct PlayerState {
     /// Ground distance between a ripple's bombs (ft).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub ripple_ft: u16,
+    /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub nozzle: u8,
     pub cmd: Commands,
 }
 
@@ -563,6 +566,10 @@ pub struct Airframe {
     /// radar signature that fades with its speed.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub comanche: bool,
+    /// The AV-8B (weapons outside): its nozzles turn, and slow it lands anywhere flat as a
+    /// helicopter does.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub harrier: bool,
 }
 
 /// Landing option.
@@ -608,6 +615,10 @@ pub struct SimOptions {
     /// fires, its radar signature fades with its speed.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub comanche: bool,
+    /// The aircraft is the AV-8B: seen as one by the other pilots, its nozzles turning; slow
+    /// (`VTOL_LANDING_KNOTS`) its base's landing area is the whole airfield.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub harrier: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -646,6 +657,7 @@ impl Default for SimOptions {
             tornado: false,
             a10: false,
             comanche: false,
+            harrier: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

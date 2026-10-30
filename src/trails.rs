@@ -203,6 +203,7 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
         F117 => (6.6, 3.5),
         F16 => (4.7, 1.5),
         A10 => (8.7, 0.5),
+        AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
         UH60 | AH1Z | RAH66 => return None,
     };

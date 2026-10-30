@@ -583,6 +583,26 @@ static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
 static A10_LAYOUT: Layout =
     Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
+/// The AV-8B's outer pylons carry the Mavericks, the bombs and Sidewinders, the intermediate and
+/// inboard ones (over the outriggers and by the intakes) the heavier stores and the tanks, the
+/// Harpoon inboard; the centreline the camera or the cargo, the Sidewinder rails outboard.
+const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
+const AV8B_MIDDLE: [u8; 12] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+const AV8B_INNER: [u8; 13] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+/// The AV-8B's stations: the left Sidewinder rail (1) to the right one (9).
+static AV8B_STATIONS: [Hardpoint; 9] = [
+    pylon("Station 1, left Sidewinder rail", "1", -3.90, 8.64, Some(8), &SIDEWINDER),
+    pylon("Station 2, left outer wing", "2", -3.28, 8.69, Some(7), &AV8B_OUTER),
+    pylon("Station 3, left intermediate wing", "3", -2.60, 8.19, Some(6), &AV8B_MIDDLE),
+    pylon("Station 4, left inboard wing", "4", -1.88, 7.66, Some(5), &AV8B_INNER),
+    pylon("Station 5, centreline", "5", 0.0, 6.82, None, &CENTRE),
+    pylon("Station 6, right inboard wing", "6", 1.88, 7.66, Some(3), &AV8B_INNER),
+    pylon("Station 7, right intermediate wing", "7", 2.60, 8.19, Some(2), &AV8B_MIDDLE),
+    pylon("Station 8, right outer wing", "8", 3.28, 8.69, Some(1), &AV8B_OUTER),
+    pylon("Station 9, right Sidewinder rail", "9", 3.90, 8.64, Some(0), &SIDEWINDER),
+];
+static AV8B_LAYOUT: Layout =
+    Layout { outline: AV8B_OUTLINE, half_span: 4.46, length: 14.52, hardpoints: &AV8B_STATIONS };
 static TORNADO_LAYOUT: Layout = Layout {
     outline: TORNADO_OUTLINE,
     half_span: 6.98,
@@ -597,6 +617,54 @@ static AH1Z_STATIONS: [Hardpoint; 6] = [
     pylon("Station 4, right inner pylon", "4", 1.05, 5.4, Some(2), &HELLFIRES),
     pylon("Station 5, right outer pylon", "5", 1.75, 5.5, Some(1), &HELLFIRES),
     pylon("Station 6, right wingtip rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
+];
+/// aircraft_047 (tools/models/aircraft.py `harrier`) seen from above: half span 4.46 m, length
+/// 14.52 m.
+const AV8B_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.50, 1.40),
+    (0.56, 3.62),
+    (1.20, 3.68),
+    (1.22, 4.92),
+    (1.14, 6.04),
+    (4.46, 8.46),
+    (4.46, 9.28),
+    (3.34, 9.24),
+    (3.32, 9.42),
+    (3.22, 9.42),
+    (3.18, 9.22),
+    (2.70, 9.22),
+    (2.60, 10.16),
+    (2.48, 9.80),
+    (2.46, 9.20),
+    (0.66, 9.16),
+    (0.32, 11.96),
+    (2.08, 13.30),
+    (2.08, 13.80),
+    (0.14, 13.44),
+    (0.10, 14.32),
+    (0.00, 14.52),
+    (-0.10, 14.32),
+    (-0.14, 13.44),
+    (-2.08, 13.80),
+    (-2.08, 13.30),
+    (-0.32, 11.96),
+    (-0.66, 9.16),
+    (-2.46, 9.20),
+    (-2.48, 9.80),
+    (-2.60, 10.16),
+    (-2.70, 9.22),
+    (-3.18, 9.22),
+    (-3.22, 9.42),
+    (-3.32, 9.42),
+    (-3.34, 9.24),
+    (-4.46, 9.28),
+    (-4.46, 8.46),
+    (-1.14, 6.04),
+    (-1.22, 4.92),
+    (-1.20, 3.68),
+    (-0.56, 3.62),
+    (-0.50, 1.40),
 ];
 const SIDEWINDER: [u8; 1] = [0];
 const HELLFIRES: [u8; 1] = [HELLFIRE];
@@ -635,6 +703,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F16 => &F16_LAYOUT,
         AircraftKind::Tornado => &TORNADO_LAYOUT,
         AircraftKind::A10 => &A10_LAYOUT,
+        AircraftKind::AV8B => &AV8B_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
@@ -660,8 +729,8 @@ pub struct PlannedLoadout {
 pub const LOADOUT_FILE: &str = "loadout.json";
 
 impl PlannedLoadout {
-    /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado and
-    /// the A-10 each on the first free pair of stations that carries it, and Sidewinders on the free
+    /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado, the
+    /// A-10 and the AV-8B each on the first free pair of stations that carries it, and Sidewinders on the free
     /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
@@ -682,12 +751,19 @@ impl PlannedLoadout {
                     *s = h.loads.first().copied();
                 }
             }
-            AircraftKind::F16 | AircraftKind::Tornado | AircraftKind::A10 => {
+            AircraftKind::F16 | AircraftKind::Tornado | AircraftKind::A10 | AircraftKind::AV8B => {
                 let tornado = aircraft == AircraftKind::Tornado;
                 let a10 = aircraft == AircraftKind::A10;
+                let harrier = aircraft == AircraftKind::AV8B;
                 for w in briefed.chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
+                        0 if harrier => &[0, 1],
+                        16 | 18 if harrier => &[4],
+                        17 if harrier => &[3, 2],
+                        4 if harrier => &[3],
+                        5 if harrier => &[1, 2],
+                        _ if harrier => &[2, 3, 1],
                         0 if a10 => &[0],
                         16 | 18 if a10 => &[5],
                         17 if a10 => &[3],

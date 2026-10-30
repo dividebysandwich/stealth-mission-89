@@ -940,6 +940,7 @@ impl PanelParams<'_, '_> {
             Dial::Fuel => a.fuel,
             // Seconds of the day.
             Dial::Clock => self.clock.start_seconds + self.clock.elapsed.unwrap_or(a.time),
+            Dial::NozzleAngle => a.nozzle.to_degrees(),
         }
     }
 }
@@ -998,6 +999,8 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32) {
             0.0,
             360.0,
         ),
+        // Aft at 9 o'clock, the hover (90) straight up, the braking stop past it.
+        Dial::NozzleAngle => ("NOZ", &["0", "30", "60", "90", "120"], value / 120.0, -90.0, 120.0),
     };
     let dir = |deg: f32| {
         let a = deg.to_radians();

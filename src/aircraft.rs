@@ -18,6 +18,7 @@ pub enum AircraftKind {
     Tornado,
     A10,
     RAH66,
+    AV8B,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -82,6 +83,9 @@ pub struct AircraftSpec {
     /// A swing wing (`flight::modern::SwingWing`): the model's outer wings are parts turning
     /// about their pivots with state slots `WING_SLOTS`, drawn at the forward sweep.
     pub swing_wing: bool,
+    /// Vectored thrust (`flight::modern::Vtol`): the model's nozzles are parts turning down
+    /// about their pivots with state slot `NOZZLE_SLOT`, the HUD shows their angle.
+    pub vtol: bool,
     flight: fn() -> FlightConstants,
 }
 
@@ -94,6 +98,15 @@ pub const WING_SLOTS: (usize, usize) = (21, 22);
 pub fn wing_slot_values(at: f32, forward: f32, back: f32) -> (i16, i16) {
     let bam = ((back - forward) * at.clamp(0.0, 1.0) / std::f32::consts::TAU * 65536.0) as i16;
     (bam, -bam)
+}
+
+/// The model state slot of a V/STOL type's nozzles: their angle down from aft.
+pub const NOZZLE_SLOT: usize = 25;
+
+/// The nozzles' state slot value at `angle` (rad down from aft): the model turns a part by minus
+/// its slot angle about its x axis, which turns the exits (aft, +Z) down for a negative value.
+pub fn nozzle_slot_value(angle: f32) -> i16 {
+    -((angle / std::f32::consts::TAU * 65536.0) as i16)
 }
 
 /// A helmet-mounted display's symbology (`hmd.rs`).
@@ -162,6 +175,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         23 => Some(F16_LIFT - RUNWAY_Y),
         45 => Some(TORNADO_LIFT - RUNWAY_Y),
         32 => Some(A10_LIFT - RUNWAY_Y),
+        47 => Some(HARRIER_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -211,6 +225,7 @@ static F117: AircraftSpec = AircraftSpec {
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::default,
 };
 
@@ -244,6 +259,7 @@ static F16: AircraftSpec = AircraftSpec {
     nozzles: &[f16_point(0.0, -7.2, 0.04)],
     nozzle_radius: 0.45,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::f16,
 };
 
@@ -286,6 +302,7 @@ static UH60: AircraftSpec = AircraftSpec {
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::uh60,
 };
 
@@ -327,6 +344,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::ah1z,
 };
 
@@ -369,6 +387,7 @@ static RAH66: AircraftSpec = AircraftSpec {
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::rah66,
 };
 
@@ -415,6 +434,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     nozzles: &[tornado_point(0.55, -7.35, -0.15), tornado_point(-0.55, -7.35, -0.15)],
     nozzle_radius: 0.38,
     swing_wing: true,
+    vtol: false,
     flight: FlightConstants::tornado,
 };
 
@@ -458,15 +478,64 @@ static A10: AircraftSpec = AircraftSpec {
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
+    vtol: false,
     flight: FlightConstants::a10,
 };
 
+/// The AV-8B's wheels are 1.56 m below its model origin (tools/models/aircraft.py
+/// `HARRIER_GROUND`), on the ground line of its nose-up attitude.
+const HARRIER_LIFT: f32 = 1.56 + RUNWAY_Y;
+/// A point of the AV-8B's builder (tools/models/aircraft.py `harrier`: metres, x right, y
+/// forward, z up) in the aircraft frame: the model is centred on its length at the builder's
+/// origin.
+const fn harrier_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(HARRIER_LIFT, x * K, z * K, -y * K)
+}
+
+static AV8B: AircraftSpec = AircraftSpec {
+    model: "aircraft_047",
+    model_lift: HARRIER_LIFT,
+    // Under the raised bubble (y 3.15..5.9 m, sill z 0.57, top 1.27 m over the eye), 0.27 m
+    // under its top.
+    eye: harrier_point(0.0, 4.30, 1.00),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.52, -1.15, -0.97), Vec3::new(0.52, 0.40, 0.80)),
+        two_sided: false,
+        // The front nozzles show beside the intakes.
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Av8b, "cockpit_av8b")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // As the F-16's: the symbology inside the combiner of about the same angular size (x
+    // +-0.15, z -0.13 .. 0.075 at 0.66 m in front of the eye, tools/models/build_cockpit_av8b.py).
+    hud_scale: 2080.0,
+    vr_hud_scale: 2080.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    // The GAU-12 in the left pod.
+    muzzle: Some(harrier_point(-0.38, 2.95, -0.85)),
+    // Between the hot rear nozzles.
+    exhaust: harrier_point(0.0, -1.10, -0.35),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    vtol: true,
+    flight: FlightConstants::av8b,
+};
+
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 7] = [
+    pub const ALL: [AircraftKind; 8] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::Tornado,
         AircraftKind::A10,
+        AircraftKind::AV8B,
         AircraftKind::UH60,
         AircraftKind::AH1Z,
         AircraftKind::RAH66,
@@ -484,6 +553,8 @@ impl AircraftKind {
             AircraftKind::Tornado
         } else if p.a10 {
             AircraftKind::A10
+        } else if p.harrier {
+            AircraftKind::AV8B
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -500,6 +571,7 @@ impl AircraftKind {
             AircraftKind::Tornado => &TORNADO,
             AircraftKind::A10 => &A10,
             AircraftKind::RAH66 => &RAH66,
+            AircraftKind::AV8B => &AV8B,
         }
     }
 
@@ -513,6 +585,7 @@ impl AircraftKind {
             AircraftKind::Tornado => "tornado",
             AircraftKind::A10 => "a10",
             AircraftKind::RAH66 => "rah66",
+            AircraftKind::AV8B => "av8b",
         }
     }
 
@@ -528,6 +601,8 @@ impl AircraftKind {
                 || (matches!(s.as_str(), "tornadoids" | "ids") && *k == AircraftKind::Tornado)
                 || (matches!(s.as_str(), "a10c" | "warthog" | "thunderbolt")
                     && *k == AircraftKind::A10)
+                || (matches!(s.as_str(), "harrier" | "av8" | "av8bplus" | "harrierii")
+                    && *k == AircraftKind::AV8B)
         })
     }
 
@@ -540,6 +615,7 @@ impl AircraftKind {
             AircraftKind::Tornado => "Tornado IDS",
             AircraftKind::A10 => "A-10C Thunderbolt II",
             AircraftKind::RAH66 => "RAH-66 Comanche",
+            AircraftKind::AV8B => "AV-8B Harrier II",
         }
     }
 }
@@ -594,9 +670,13 @@ mod tests {
     /// The jets' eye inside the bounds of their canopy glass.
     #[test]
     fn eye_under_the_canopy() {
-        for kind in
-            [AircraftKind::F16, AircraftKind::F117, AircraftKind::Tornado, AircraftKind::A10]
-        {
+        for kind in [
+            AircraftKind::F16,
+            AircraftKind::F117,
+            AircraftKind::Tornado,
+            AircraftKind::A10,
+            AircraftKind::AV8B,
+        ] {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(
                 &format!("{}_lod0", spec.model),
@@ -666,6 +746,36 @@ mod tests {
         assert_eq!(AircraftKind::parse("warthog"), Some(AircraftKind::A10));
         assert_eq!(AircraftKind::parse("RAH-66"), Some(AircraftKind::RAH66));
         assert_eq!(AircraftKind::parse("Comanche"), Some(AircraftKind::RAH66));
+        assert_eq!(AircraftKind::parse("AV-8B"), Some(AircraftKind::AV8B));
+        assert_eq!(AircraftKind::parse("Harrier"), Some(AircraftKind::AV8B));
+    }
+
+    /// The Harrier's four nozzles: parts pitching about x on the nozzle slot, pivoted on the
+    /// fuselage's sides; a positive nozzle angle turns their exits down.
+    #[test]
+    fn harrier_nozzles_are_parts() {
+        let path = crate::asset_path::asset("models/aircraft.glb");
+        let data = std::fs::read(&path).unwrap();
+        let len = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+        let j: serde_json::Value = serde_json::from_slice(&data[20..20 + len]).unwrap();
+        let model = AircraftKind::AV8B.spec().model;
+        let mut sides = vec![];
+        for k in 1..=4 {
+            let name = format!("{model}_lod0_part{k}");
+            let n = j["nodes"].as_array().unwrap().iter().find(|n| n["name"] == name).unwrap();
+            assert_eq!(n["extras"]["state_slot"].as_u64(), Some(NOZZLE_SLOT as u64), "{name}");
+            assert_eq!(n["extras"]["axis"].as_u64(), Some(1), "{name}");
+            let x = n["translation"][0].as_f64().unwrap() as f32 / 16.384;
+            assert!((0.8..1.3).contains(&x.abs()), "{name} pivot {x} m out");
+            sides.push(x.signum());
+        }
+        assert_eq!(sides.iter().sum::<f32>(), 0.0);
+        // As `models::apply_model_state` turns them: the exit, aft, goes straight down at 90.
+        let v = nozzle_slot_value(90f32.to_radians());
+        let angle = -(v as u16 as f32) / 65536.0 * std::f32::consts::TAU;
+        let exit = Quat::from_rotation_x(angle) * Vec3::Z;
+        assert!(exit.y < -0.999, "{exit}");
+        assert_eq!(nozzle_slot_value(0.0), 0);
     }
 
     /// The Tornado's outer wings: two parts on the slots the game sweeps them with, pivoted

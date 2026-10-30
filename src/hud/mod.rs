@@ -579,6 +579,18 @@ pub struct HudFrame {
     /// A helicopter's readouts (`modern`: torque and rotor speed instead of g and Mach, a hover
     /// drift vector instead of the flight path marker at low speed).
     pub heli: Option<HeliHud>,
+    /// A V/STOL type's readouts (`modern`: the nozzle angle, and jet-borne the hover drift
+    /// vector at low speed).
+    pub vtol: Option<VtolHud>,
+}
+
+/// A V/STOL type's HUD readouts.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VtolHud {
+    /// Nozzle angle down from aft, degrees.
+    pub nozzle: f32,
+    /// Speed over the ground in the aircraft's heading frame (knots, x right, y ahead).
+    pub drift: Vec2,
 }
 
 /// A helicopter's HUD readouts.
@@ -705,6 +717,16 @@ impl HudParams<'_, '_> {
                 .map(|p| (p - eye).as_vec3()),
             weapon_range_km: bay.filter(|b| b.range_km > 0.0).map(|b| b.range_km),
             target_range_km: self.cam.as_ref().and_then(|c| c.range_km),
+            vtol: self.settings.aircraft.spec().vtol.then(|| {
+                let v = path * knots;
+                VtolHud {
+                    nozzle: a.nozzle.to_degrees(),
+                    drift: Vec2::new(
+                        v.dot(Vec3::new(h.cos(), 0.0, h.sin())),
+                        v.dot(Vec3::new(h.sin(), 0.0, -h.cos())),
+                    ),
+                }
+            }),
             heli: self.settings.aircraft.spec().helicopter.then(|| {
                 let v = path * knots;
                 let ahead = Vec3::new(h.sin(), 0.0, -h.cos());

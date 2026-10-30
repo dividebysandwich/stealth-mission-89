@@ -343,6 +343,7 @@ impl Sim {
         let tornado = opts.tornado;
         let a10 = opts.a10;
         let comanche = opts.comanche;
+        let harrier = opts.harrier;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -381,6 +382,7 @@ impl Sim {
                 tornado,
                 a10,
                 comanche,
+                harrier,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
