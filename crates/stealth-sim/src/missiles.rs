@@ -70,11 +70,26 @@ impl Sim {
     /// The designated ground point stays object 0 while it is the held ground lock (rounds and
     /// bombs falling on tiles reuse object 0); another lock ends it.
     pub(crate) fn hold_spi(&mut self) {
-        let Some((x, y)) = self.pl.spi else { return };
+        let Some((mut x, mut y)) = self.pl.spi else {
+            self.pl.spi_unit = None;
+            return;
+        };
+        // A vehicle's point moves with it (until it is destroyed).
+        if let Some(k) = self.pl.spi_unit {
+            match self.units.get(k as usize).filter(|u| !u.destroyed) {
+                Some(u) => {
+                    let (ux, uy) = u.map_xy();
+                    (x, y) = (ux.round() as i32, uy.round() as i32);
+                    self.pl.spi = Some((x, y));
+                }
+                None => self.pl.spi_unit = None,
+            }
+        }
         if self.pl.gnd_lock == 0 && self.pl.target_hold {
             self.ground_point(x, y);
         } else {
             self.pl.spi = None;
+            self.pl.spi_unit = None;
         }
     }
 

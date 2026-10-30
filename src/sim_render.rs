@@ -515,6 +515,8 @@ fn sync_aaa(
         With<SimObject>,
     >,
     console: Option<Res<crate::station::ConsoleEo>>,
+    origin: Option<Res<crate::world::FloatingOrigin>>,
+    hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
 ) {
     let sim = &combat.sim;
     let units = sim.units();
@@ -542,12 +544,56 @@ fn sync_aaa(
     let eye = player.single().map_or(DVec3::ZERO, |p| p.0);
     // A drone command center's camera sees the MANPADS teams near its drone.
     let camera = console.as_deref().filter(|c| !c.idle).map(|c| c.eye);
+    // The mountains' surfaces the vehicles drive over (relative to the floating origin).
+    let origin = origin.map_or(DVec3::ZERO, |o| o.origin);
+    let mountains: Vec<_> = hulls
+        .iter()
+        .filter(|(h, _, vis)| h.surface.is_some() && vis.get())
+        .map(|(h, tf, _)| {
+            let c = tf.translation();
+            let inv = tf.affine().inverse();
+            (h, Vec2::new(c.x, c.z), (h.radius + 2.0) * tf.scale().x.max(1e-6), inv)
+        })
+        .collect();
+    let ground = |p: DVec3| {
+        let q = (p - origin).as_vec3();
+        let q2 = Vec2::new(q.x, q.z);
+        mountains
+            .iter()
+            .filter(|(_, c, r, _)| c.distance(q2) < *r)
+            .filter_map(|(h, _, _, inv)| {
+                let o = inv.transform_point3(Vec3::new(q.x, 0.0, q.z));
+                h.top(o, inv.transform_vector3(Vec3::Y))
+            })
+            .fold(0.0f32, f32::max) as f64
+    };
     for (i, (u, &e)) in units.iter().zip(&av.units).enumerate() {
         let Ok((mut pos, mut tf, state, mut vis)) = q.get_mut(e) else { continue };
-        let at = map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
+        let (at, heading) = match u.fine {
+            // A vehicle where it drives (between the last two frames), on the ground.
+            Some(f) => {
+                let a = combat.alpha as f64;
+                let (e0, n0, h0) = match combat.prev_fine.get(i).copied().flatten() {
+                    Some(p) if (p.e - f.e).abs() + (p.n - f.n).abs() < 100.0 => {
+                        (p.e, p.n, p.heading)
+                    }
+                    _ => (f.e, f.n, f.heading),
+                };
+                let e = e0 as f64 + (f.e - e0) as f64 * a;
+                let n = n0 as f64 + (f.n - n0) as f64 * a;
+                let turn = (f.heading - h0 + std::f32::consts::PI)
+                    .rem_euclid(std::f32::consts::TAU)
+                    - std::f32::consts::PI;
+                let flat = aaa_point([e, n, 0.0]);
+                (flat + DVec3::Y * ground(flat), h0 + turn * a as f32)
+            }
+            // Each unit stands at its own heading (golden-angle spread).
+            None => (
+                map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0),
+                (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU),
+            ),
+        };
         pos.0 = at;
-        // Each unit stands at its own heading (golden-angle spread).
-        let heading = (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);
         tf.rotation = Quat::from_rotation_y(-heading);
         let hidden = u.kind == stealth_sim::aaa::GroundKind::Manpads
             && at.distance(eye) > MANPADS_RANGE

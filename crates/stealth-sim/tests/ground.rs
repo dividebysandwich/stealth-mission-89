@@ -189,3 +189,46 @@ fn a_client_mirrors_the_convoys() {
 fn sim_mirror(_host: &mut Sim, client: &mut Sim) {
     client.units_mut().clear();
 }
+
+/// The targeting pod's lock on a vehicle: the designated point drives with it.
+#[test]
+fn a_designated_vehicle_carries_the_point_with_it() {
+    let (_, mut sim) = campaign();
+    sim.spawn_convoy(4, false, &[GroundKind::T90], &[(X, Y), (X + 30 * KM, Y)]);
+    let (x, y) = Sim::map_to_world(X + 2 * KM, Y + KM);
+    let mut p = PlayerState {
+        x,
+        y,
+        altitude: 3000,
+        height: 3000,
+        velocity: 300 * 27,
+        gear_up: true,
+        fuel: 10000,
+        hud_visible: true,
+        hud_mode: HudMode::Gnd,
+        ..Default::default()
+    };
+    // In the world (off a friendly airfield), then over the tank.
+    let base = (3..sim.objects().len())
+        .find(|&i| {
+            sim.objects()[i].flags & (oflags::AIRFIELD | oflags::FRIENDLY)
+                == oflags::AIRFIELD | oflags::FRIENDLY
+        })
+        .expect("a friendly airfield");
+    sim.respawn_player(base, None);
+    sim.step(&p, 15);
+    p.cmd.designate_unit = Some(0);
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert_eq!(sim.targeting().ground, Some(0), "{:?}", sim.targeting());
+    let start = sim.objects()[0];
+    for _ in 0..15 * 10 {
+        sim.step(&p, 15);
+    }
+    let now = sim.objects()[0];
+    let u = sim.units()[0];
+    assert_eq!((now.x, now.y), (u.x, u.y));
+    // 200 m east in ten seconds.
+    assert!((now.x - start.x - 13).abs() <= 1, "{start:?} -> {now:?}");
+    assert_eq!(sim.targeting().ground, Some(0));
+}

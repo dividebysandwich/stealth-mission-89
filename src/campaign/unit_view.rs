@@ -131,8 +131,13 @@ fn locate(combat: &Combat, unit: UnitRef) -> Option<Located> {
             if u.destroyed {
                 return None;
             }
-            let p = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
-            Some((p + DVec3::Y * 2.0, u.aim_az, None))
+            // A vehicle where it drives, the way its hull points.
+            let ((x, y), heading) = match u.fine {
+                Some(f) => (u.map_xy(), f.heading),
+                None => ((u.x as f64 + 0.5, u.y as f64 + 0.5), u.aim_az),
+            };
+            let p = crate::sim_render::map_point(x, y, 0.0);
+            Some((p + DVec3::Y * 2.0, heading, None))
         }
         UnitRef::Site(i) => {
             let o = sim.objects().get(i)?;

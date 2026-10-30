@@ -51,6 +51,9 @@ pub struct Pilot {
     /// the ground lock is object 0 on it, plain ground, while the lock holds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) spi: Option<(i32, i32)>,
+    /// The ground unit (a vehicle) the designated point follows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) spi_unit: Option<u16>,
     /// His gun rounds and his weapons in flight while parked (the active pilot's are in the
     /// world's first gun-round slots and projectile slots 8..11).
     #[serde(default)]

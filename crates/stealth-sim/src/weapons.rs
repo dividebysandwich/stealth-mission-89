@@ -103,7 +103,26 @@ impl Sim {
                 self.msg("No target");
             }
         }
+        if let Some(k) = c.designate_unit
+            && let Some(u) = self.units.get(k as usize).filter(|u| !u.destroyed)
+        {
+            let (ux, uy) = u.map_xy();
+            let (x, y) = (ux.round() as i32, uy.round() as i32);
+            if !self.player_sees(x, y, 0) {
+                self.msg("Target obscured");
+            } else {
+                self.ground_point(x, y);
+                self.pl.gnd_lock = 0;
+                self.pl.spi = Some((x, y));
+                self.pl.spi_unit = Some(k);
+                self.pl.target_hold = true;
+                self.pl.nearest_req = 0;
+                self.pl.targeting.target_killed = false;
+                self.pl.pflags &= !pflags::DESIGNATE;
+            }
+        }
         if let Some((x, y)) = c.designate_at {
+            self.pl.spi_unit = None;
             // The object there (a world object, else a scenery tile), else the plain ground
             // (scratch object 0).
             let world = (3..self.objects.len())

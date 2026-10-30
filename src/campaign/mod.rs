@@ -520,6 +520,20 @@ fn begin(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     if let Some(r) = c.resume.take() {
         begin_sortie(c, &mut s, &r.sortie, &r.state);
     }
+    // Test aids: `--convoy-now` sends both sides' armour columns at once, `--convoy-speed
+    // <m/s>` drives them faster.
+    if let Some(host) = c.host.as_mut() {
+        if std::env::args().any(|a| a == "--convoy-now") {
+            host.state.convoys_due();
+        }
+        if let Some(v) = std::env::args()
+            .skip_while(|a| a != "--convoy-speed")
+            .nth(1)
+            .and_then(|v| v.parse::<f32>().ok())
+        {
+            s.combat.sim.set_convoy_speed(v);
+        }
+    }
     // Test aid: `--campaign-insert` orders an insertion against the nearest enemy place.
     if std::env::args().any(|a| a == "--campaign-insert")
         && let Some(&place) = c.state().front(Side::Blue).first()

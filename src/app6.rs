@@ -45,6 +45,10 @@ pub enum Icon {
     AirDefenceMissile,
     /// Air defence, gun (AAA, a Gepard).
     AirDefenceGun,
+    /// Armour: a tank unit (the track's oval).
+    Armour,
+    /// Mechanised infantry: the infantry's cross over the track's oval.
+    MechInfantry,
 }
 
 /// The echelon above the frame.
@@ -241,6 +245,19 @@ fn icon(painter: &egui::Painter, icon: Icon, c: egui::Pos2, hw: f32, hh: f32, li
         Icon::Uav => {
             let wide = egui::Stroke::new(line.width * 1.4, line.color);
             painter.add(egui::Shape::line(vec![at(-1.0, -0.5), at(0.0, 0.5), at(1.0, -0.5)], wide));
+        }
+        Icon::Armour | Icon::MechInfantry => {
+            let oval = (0..=24)
+                .map(|i| {
+                    let t = i as f32 / 24.0 * std::f32::consts::TAU;
+                    at(0.75 * t.cos(), 0.45 * t.sin())
+                })
+                .collect();
+            painter.add(egui::Shape::line(oval, line));
+            if icon == Icon::MechInfantry {
+                painter.line_segment([at(-1.0, -1.0), at(1.0, 1.0)], line);
+                painter.line_segment([at(-1.0, 1.0), at(1.0, -1.0)], line);
+            }
         }
         Icon::AirDefenceMissile | Icon::AirDefenceGun => {
             // The air defence dome on the box's floor, the weapon rising from it.

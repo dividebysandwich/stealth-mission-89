@@ -221,6 +221,11 @@ pub fn contacts(sim: &Sim, campaign: Option<&crate::campaign::ActiveCampaign>) -
                 out.push(Contact { x: g.x, y: g.y, name: g.kind.name().into(), drones: false });
             }
         }
+        for v in pic.armour.iter().filter(|v| !v.blue) {
+            if !out.iter().any(|o| (o.x, o.y) == (v.x, v.y)) {
+                out.push(Contact { x: v.x, y: v.y, name: v.kind.name().into(), drones: false });
+            }
+        }
     }
     out
 }

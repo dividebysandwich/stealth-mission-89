@@ -1042,11 +1042,13 @@ fn clear_units(
     if units.len() == seen.len() && units.iter().zip(seen.iter()).all(|(u, &s)| (u.x, u.y) == s) {
         return;
     }
+    // A convoy's vehicles drive where the route takes them.
+    let moving: Vec<bool> = (0..units.len()).map(|k| combat.sim.unit_moving(k)).collect();
     let units = combat.sim.units_mut();
     let mut taken: std::collections::HashSet<(i32, i32)> =
         units.iter().filter(|u| !u.destroyed).map(|u| (u.x, u.y)).collect();
     for (i, u) in units.iter_mut().enumerate() {
-        if u.destroyed || seen.get(i) == Some(&(u.x, u.y)) {
+        if u.destroyed || moving[i] || seen.get(i) == Some(&(u.x, u.y)) {
             continue;
         }
         let m = stealth_sim::aaa::M_PER_MAP;
@@ -1071,6 +1073,11 @@ fn clear_units(
         if let Some(at) = spot {
             taken.remove(&(u.x, u.y));
             taken.insert(at);
+            // A vehicle standing still moves with its fine position.
+            if let Some(f) = u.fine.as_mut() {
+                f.e += ((at.0 - u.x) as f64 * m) as f32;
+                f.n -= ((at.1 - u.y) as f64 * m) as f32;
+            }
             (u.x, u.y) = at;
         }
     }
@@ -1111,7 +1118,9 @@ fn clear_air_defence(
     let want: Vec<(DVec2, f64)> = (0..sim.units().len())
         .filter(|&k| {
             let u = &sim.units()[k];
-            sim.aaa_blue(k) && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
+            sim.aaa_blue(k)
+                && !sim.unit_moving(k)
+                && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
             let u = &sim.units()[k];

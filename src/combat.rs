@@ -103,6 +103,8 @@ pub struct Combat {
     pub quit: bool,
     /// Flight units and projectiles before the last step, for render interpolation.
     pub prev_flights: Vec<FlightUnit>,
+    /// The ground units' fine positions (vehicles) before the last step.
+    pub prev_fine: Vec<Option<stealth_sim::aaa::Fine>>,
     pub prev_proj: [Projectile; N_PROJ],
     /// The other pilots' weapons in flight before the last step (or server frame).
     pub prev_remote: Vec<RemoteMissile>,
@@ -368,6 +370,7 @@ fn start_combat(
         sky_seconds: None,
         sky_ratio: 1.0,
         prev_flights: sim.flights().to_vec(),
+        prev_fine: fines(&sim),
         prev_proj: *sim.projectiles(),
         prev_remote: remote_missiles(&sim),
         proj_smooth: [None; N_PROJ],
@@ -411,6 +414,7 @@ impl Combat {
     /// its mission logic chose last is no news.
     pub fn restore(&mut self, sim: Sim, record: crate::recorder::FlightRecord) {
         self.prev_flights = sim.flights().to_vec();
+        self.prev_fine = fines(&sim);
         self.prev_proj = *sim.projectiles();
         self.prev_remote = remote_missiles(&sim);
         self.prior_tiles.extend_from_slice(sim.tile_damage());
@@ -445,6 +449,7 @@ fn collect_commands(
     mut actions: MessageReader<ActionEvent>,
     mut locks: MessageReader<crate::avionics::LockRequest>,
     mut pods: MessageReader<crate::avionics::PodDesignate>,
+    mut tracks: MessageReader<crate::avionics::PodTrack>,
     mut combat: ResMut<Combat>,
     mut accel: ResMut<TimeAccel>,
     settings: Res<crate::settings::Settings>,
@@ -456,6 +461,9 @@ fn collect_commands(
     let c = &mut combat.pending;
     for crate::avionics::PodDesignate(x, y) in pods.read() {
         c.designate_at = Some((*x, *y));
+    }
+    for crate::avionics::PodTrack(k) in tracks.read() {
+        c.designate_unit = u16::try_from(*k).ok();
     }
     for crate::avionics::LockRequest(target) in locks.read() {
         match *target {
@@ -752,6 +760,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                     }
                     combat.prev_flights.clear();
                     combat.prev_flights.extend_from_slice(combat.sim.flights());
+                    combat.prev_fine = fines(&combat.sim);
                     combat.prev_proj = *combat.sim.projectiles();
                     combat.prev_remote = remote_missiles(&combat.sim);
                     combat.sim.apply_world_fast(&w);
@@ -791,6 +800,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
+        combat.prev_fine = fines(&combat.sim);
         combat.prev_proj = *combat.sim.projectiles();
         combat.prev_remote = remote_missiles(&combat.sim);
         let aaa_before: Vec<bool> = combat.sim.units().iter().map(|u| u.destroyed).collect();
@@ -2206,6 +2216,25 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             let fine = (32 * stealth_sim::ROUND_FINE) as f64;
             combat.round_impacts.push((x as f64 / fine, y as f64 / fine));
         }
+        // Armour firing: the muzzle flash, then a blast on the target, or a strike beside it.
+        SimEvent::GroundShot { from, to, hit, missile } => {
+            let units = combat.sim.units();
+            let (Some(a), Some(b)) = (units.get(from).copied(), units.get(to).copied()) else {
+                return;
+            };
+            let (ax, ay) = a.map_xy();
+            combat.explosions.push((ax.round() as i32, ay.round() as i32, 6, -1));
+            let (bx, by) = b.map_xy();
+            if hit && (b.destroyed || missile) {
+                combat.explosions.push((bx.round() as i32, by.round() as i32, 0, 0x10));
+            } else if hit {
+                combat.round_impacts.push((bx, by));
+            } else {
+                // Short or wide by a few tens of metres.
+                let off = ((from * 7 + to * 3) % 5) as f64 - 2.0;
+                combat.round_impacts.push((bx + off, by + 2.5 - off.abs()));
+            }
+        }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {
             // Launched from the ground, so its viewZ is its altitude in feet.
@@ -2248,4 +2277,9 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         }
         _ => {}
     }
+}
+
+/// The ground units' fine positions (vehicles; None for the others).
+pub fn fines(sim: &Sim) -> Vec<Option<stealth_sim::aaa::Fine>> {
+    sim.units().iter().map(|u| u.fine).collect()
 }

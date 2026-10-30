@@ -273,6 +273,8 @@ pub enum Layer {
     Gepards,
     Sams,
     Guns,
+    /// Tanks and infantry fighting vehicles, and the friendly columns' routes.
+    Armour,
     PulseRadar,
     DopplerRadar,
     MissileRange,

@@ -1217,8 +1217,17 @@ fn war_map(
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
         super::picture::draw(&painter, &view, &pic, &layers);
-        // Test aid: `--campaign-watch` watches the first friendly aircraft.
-        if std::env::args().any(|a| a == "--campaign-watch")
+        // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
+        // armour` the first tank of a column on the move.
+        let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
+        if watch.as_deref() == Some("armour") {
+            if unit_view.target.is_none()
+                && let Some(v) = pic.armour.iter().find(|v| v.heading.is_some())
+                && !std::mem::replace(test_taken, true)
+            {
+                unit_view.watch(super::unit_view::UnitRef::Aaa(v.index), v.kind.name().into());
+            }
+        } else if std::env::args().any(|a| a == "--campaign-watch")
             && unit_view.target.is_none()
             && let Some(a) = pic.friendly.first()
             && !std::mem::replace(test_taken, true)
@@ -1339,6 +1348,13 @@ pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
         },
     );
     (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
+    // Test aid: `--map-view <x>,<y>,<map units per point>` frames the map there.
+    if let Some(v) = std::env::args().skip_while(|a| a != "--map-view").nth(1) {
+        let n: Vec<f32> = v.split(',').filter_map(|s| s.parse().ok()).collect();
+        if let [x, y, scale] = n[..] {
+            (c.ui.centre, c.ui.scale) = (egui::vec2(x, y), scale);
+        }
+    }
     c.ui.fitted = true;
 }
 

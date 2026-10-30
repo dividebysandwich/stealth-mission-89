@@ -433,6 +433,10 @@ pub struct Commands {
     /// the object there, or the plain ground as object 0.
     #[serde(default)]
     pub designate_at: Option<(i32, i32)>,
+    /// Lock this ground unit (the targeting pod's track on a vehicle): the ground point
+    /// follows it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub designate_unit: Option<u16>,
 }
 
 /// What the flight model / game reports about the player this frame.

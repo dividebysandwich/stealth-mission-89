@@ -59,6 +59,18 @@ pub struct Defence {
     pub manned: Option<u8>,
 }
 
+/// A tank or an infantry fighting vehicle, friendly or seen.
+pub struct Vehicle {
+    /// AAA unit index.
+    pub index: usize,
+    pub x: i32,
+    pub y: i32,
+    pub kind: GroundKind,
+    pub blue: bool,
+    /// Its heading while its convoy drives (radians, clockwise from north).
+    pub heading: Option<f32>,
+}
+
 /// Patriot reach on the map (map units).
 const PATRIOT_REACH: f32 = stealth_sim::campaign::PATRIOT_REACH as f32;
 
@@ -69,6 +81,10 @@ pub struct Picture {
     pub sams: Vec<SamSite>,
     pub guns: Vec<Gun>,
     pub defences: Vec<Defence>,
+    /// Armour: the friendly side's, and the enemy's its ground units or drones see now.
+    pub armour: Vec<Vehicle>,
+    /// The friendly convoys' ways still to drive (map units), to the place they attack.
+    pub columns: Vec<Vec<(i32, i32)>>,
     /// The player in the air.
     pub player: Option<(i32, i32)>,
 }
@@ -148,6 +164,27 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
         if u.destroyed {
             continue;
         }
+        // Armour, and the guns with a convoy: the enemy's only while seen.
+        let moving = sim.unit_moving(k);
+        if u.kind.armour() || moving && u.kind == GroundKind::Zsu {
+            let blue = sim.aaa_blue(k);
+            if blue || sim.unit_seen_by(k, true) {
+                let heading = moving.then(|| u.fine.map(|f| f.heading)).flatten();
+                if u.kind.armour() {
+                    pic.armour.push(Vehicle {
+                        index: k,
+                        x: u.x,
+                        y: u.y,
+                        kind: u.kind,
+                        blue,
+                        heading,
+                    });
+                } else {
+                    pic.guns.push(Gun { index: k, x: u.x, y: u.y, kind: u.kind });
+                }
+            }
+            continue;
+        }
         if sim.aaa_blue(k) {
             if matches!(
                 u.kind,
@@ -168,7 +205,39 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             pic.guns.push(Gun { index: k, x: u.x, y: u.y, kind: u.kind });
         }
     }
+    for v in state.convoys.iter().filter(|v| v.side == Side::Blue && v.active()) {
+        pic.columns.push(v.route_left());
+    }
     pic
+}
+
+/// A tank or an infantry fighting vehicle: a filled box (crossed for the infantry), its
+/// heading a tick when it drives; APP-6: an armour or mechanised infantry unit, `k` its size.
+pub(super) fn vehicle(painter: &egui::Painter, p: egui::Pos2, v: &Vehicle, k: f32) {
+    if app6() {
+        let side = if v.blue { Affiliation::Friend } else { Affiliation::Hostile };
+        let icon = if v.kind.tank() { Icon::Armour } else { Icon::MechInfantry };
+        let mut sym = Symbol::new(side, Dimension::Ground, icon);
+        if let Some(h) = v.heading {
+            sym = sym.heading(h);
+        }
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
+    let col = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
+    let stroke = egui::Stroke::new(1.3, col);
+    let r = egui::Rect::from_center_size(p, egui::vec2(7.0, 5.0));
+    if v.kind.tank() {
+        painter.rect_filled(r, 1.0, col);
+    } else {
+        painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+        painter.line_segment([r.left_top(), r.right_bottom()], stroke);
+        painter.line_segment([r.left_bottom(), r.right_top()], stroke);
+    }
+    if let Some(h) = v.heading {
+        let fwd = egui::vec2(h.sin(), -h.cos());
+        painter.line_segment([p + fwd * 4.0, p + fwd * 9.0], stroke);
+    }
 }
 
 /// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane (APP-6:
@@ -252,6 +321,23 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
         map_draw::site(painter, view, c, &s.name, 1.0);
         if s.reconned {
             painter.circle_stroke(c, map_draw::halo(6.0), egui::Stroke::new(1.0, BRIGHT));
+        }
+    }
+    if layers.shows(Layer::Armour) {
+        // Our columns' way to the place they attack, an arrowhead at its end.
+        let faint = egui::Stroke::new(1.2, FRIENDLY_BLUE.gamma_multiply(0.6));
+        for route in &pic.columns {
+            let pts: Vec<egui::Pos2> = route.iter().map(|&(x, y)| at(x, y)).collect();
+            painter.extend(egui::Shape::dashed_line(&pts, faint, 4.0, 3.0));
+            if let [.., a, b] = pts[..] {
+                let fwd = (b - a).normalized();
+                let side = egui::vec2(-fwd.y, fwd.x);
+                let tip = vec![b, b - fwd * 7.0 + side * 4.0, b - fwd * 7.0 - side * 4.0];
+                painter.add(egui::Shape::convex_polygon(tip, faint.color, egui::Stroke::NONE));
+            }
+        }
+        for v in &pic.armour {
+            vehicle(painter, at(v.x, v.y), v, 0.7);
         }
     }
     for g in &pic.guns {
@@ -379,6 +465,13 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
             p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
         });
     }
+    let tank = |blue| Vehicle { index: 0, x: 0, y: 0, kind: GroundKind::T90, blue, heading: None };
+    let ifv = |blue| Vehicle { kind: GroundKind::Bmp2, ..tank(blue) };
+    layers.legend(ui, Layer::Armour, "Tank / IFV (enemy: in sight)", |p, c0| {
+        let (dx, k) = if app6() { (7.5, 0.65) } else { (5.0, 1.0) };
+        vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
+        vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
+    });
     layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
         if app6() {
             gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
@@ -431,6 +524,9 @@ pub fn pick(
     }
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
+    }
+    for v in &pic.armour {
+        consider(screen(v.x, v.y), UnitRef::Aaa(v.index), v.kind.name().to_string());
     }
     for d in &pic.defences {
         let name = match d.kind {

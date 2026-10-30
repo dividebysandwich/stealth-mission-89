@@ -380,6 +380,7 @@ impl Sim {
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
+                spi_unit: None,
                 rounds: Vec::new(),
                 missiles: Default::default(),
                 last_input: PlayerState::default(),

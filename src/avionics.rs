@@ -39,6 +39,7 @@ impl Plugin for AvionicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<LockRequest>()
             .add_message::<PodDesignate>()
+            .add_message::<PodTrack>()
             .add_systems(
                 Update,
                 slew_and_lock
@@ -196,6 +197,8 @@ pub struct TgpState {
     clear: bool,
     /// CZ pressed: the pod is to hold the current steerpoint (`update_pod`, which has the route).
     cz: bool,
+    /// The vehicle (`Sim::units` index) the point track follows.
+    pub track: Option<usize>,
 }
 
 impl TgpMode {
@@ -1305,6 +1308,10 @@ pub struct LockRequest(pub ContactRef);
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PodDesignate(pub i32, pub i32);
 
+/// The targeting pod locks this ground unit (a vehicle it tracks; `Sim::units` index).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PodTrack(pub usize);
+
 /// The targeting pod: slewed as the SOI, tracking; "lock cursor target" locks the ground point
 /// it holds (then it follows the lock).
 #[allow(clippy::too_many_arguments)]
@@ -1322,6 +1329,7 @@ fn update_pod(
     settings: Res<crate::settings::Settings>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
     mut designate: MessageWriter<PodDesignate>,
+    mut track: MessageWriter<PodTrack>,
     mut locks: MessageWriter<LockRequest>,
     waypoints: Res<crate::hud::Waypoints>,
 ) {
@@ -1380,6 +1388,14 @@ fn update_pod(
         Vec2::ZERO
     };
     let tgp = &mut state.av.tgp;
+    // A point track on a vehicle follows it, until slewed off or it is gone.
+    if let Some(k) = tgp.track {
+        let at = combat.as_deref().and_then(|c| vehicle_at(c, k, ground_y));
+        match (tgp.mode, at) {
+            (TgpMode::Point(_), Some(at)) if slew == Vec2::ZERO => tgp.mode = TgpMode::Point(at),
+            _ => tgp.track = None,
+        }
+    }
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
     // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
@@ -1399,13 +1415,23 @@ fn update_pod(
                 tgp.mode = TgpMode::Slaved;
                 hud.mode = HudMode::Gnd;
             }
-            Snap::Gun(at) => tgp.mode = TgpMode::Point(at),
+            Snap::Gun(k, at) => {
+                tgp.mode = TgpMode::Point(at);
+                let vehicle = combat.as_deref().is_some_and(|c| c.sim.units()[k].fine.is_some());
+                tgp.track = vehicle.then_some(k);
+            }
         }
     }
     tgp.los_ground = los.filter(|_| shown || turret);
     tgp.los = pod_direction(tgp, a.orientation, pos.0).or(looking).filter(|_| shown || turret);
     if lock && soi && tgp.mode != TgpMode::Slaved {
         match los {
+            // A vehicle: the simulation's point follows it.
+            Some(_) if tgp.track.is_some() => {
+                track.write(PodTrack(tgp.track.take().unwrap()));
+                hud.mode = HudMode::Gnd;
+                tgp.mode = TgpMode::Slaved;
+            }
             Some(p) => {
                 let (e, n, _) = bevy_to_wu(p);
                 designate.write(PodDesignate(
@@ -1429,8 +1455,17 @@ enum Snap {
     Object(usize),
     /// A theater tile object at this map point, designated.
     Tile(i32, i32),
-    /// An air defence gun (not lockable): a point track on it.
-    Gun(DVec3),
+    /// An air defence gun or a vehicle (`Sim::units` index): a point track on it.
+    Gun(usize, DVec3),
+}
+
+/// Where vehicle `k` is now (Bevy world, on the ground at `ground_y`), None once destroyed.
+fn vehicle_at(c: &crate::combat::Combat, k: usize, ground_y: f64) -> Option<DVec3> {
+    let u = c.sim.units().get(k).filter(|u| !u.destroyed)?;
+    let (x, y) = u.map_xy();
+    let mut at = crate::sim_render::map_point(x, y, 0.0);
+    at.y = ground_y;
+    Some(at)
 }
 
 /// The unit nearest the pod's ground point `p` within `POD_SNAP`, friend or foe.
@@ -1447,9 +1482,10 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap>
     let objects = objects
         .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
         .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
-    let guns = c.sim.units().iter().filter(|u| !u.destroyed).map(|u| {
-        let at = centre(u.x, u.y);
-        (Snap::Gun(at), at)
+    let guns = c.sim.units().iter().enumerate().filter(|(_, u)| !u.destroyed).map(|(k, u)| {
+        let at = vehicle_at(c, k, ground_y).filter(|_| u.fine.is_some());
+        let at = at.unwrap_or_else(|| centre(u.x, u.y));
+        (Snap::Gun(k, at), at)
     });
     let (e, n, _) = bevy_to_wu(p);
     let tile = c.sim.target_tile_near(e as i32, n as i32).map(|(x, y)| {

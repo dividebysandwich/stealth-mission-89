@@ -139,6 +139,9 @@ Testing and screenshots
   --campaign-accept map|loadout
                                open the first mission's briefing on that page
   --campaign-insert            order an insertion against the nearest enemy place
+  --convoy-now                 both sides send an armour column at once
+  --convoy-speed <m/s>         the columns drive this fast
+  --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
   --campaign-watch             watch the first friendly aircraft
   --campaign-designate gepard|patriot|drones
                                designate a new air defence site near the parked base
