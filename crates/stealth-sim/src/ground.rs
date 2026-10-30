@@ -4,7 +4,8 @@
 //!
 //! A convoy's vehicles are ordinary [`GroundUnit`]s with a fine position ([`Fine`]); the air
 //! defence guns among them keep firing at aircraft as anywhere else. Positions are metres
-//! (east, north). A column halts while any of its vehicles can fire at an enemy it sees; its
+//! (east, north). A column halts while any of its vehicles can fire at an enemy it sees
+//! within [`HALT_RANGE`]; its
 //! vehicles keep their place in it by the distance driven along the
 //! route, so a wreck leaves its gap.
 
@@ -28,6 +29,8 @@ const ASSAULT_STOP: f64 = 400.0;
 /// A ground unit sees enemy ground units this far (m), the line of sight over the relief
 /// sampled this often (m) and clear by this much (m).
 pub const SIGHT_RANGE: f64 = 4000.0;
+/// A column drives on (firing as it goes) until an enemy it can hit is this close (m).
+const HALT_RANGE: f64 = 2500.0;
 const LOS_STEP: f64 = 250.0;
 const LOS_CLEAR: f64 = 10.0;
 /// The most ground units in a campaign.
@@ -428,8 +431,9 @@ impl Sim {
             let mb = b.metres();
             !b.destroyed
                 && self.aaa_blue(j) != blue
-                && shot(a.kind, b.kind)
-                    .is_some_and(|s| s.kill > 0.0 && dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach)
+                && shot(a.kind, b.kind).is_some_and(|s| {
+                    s.kill > 0.0 && dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE)
+                })
                 && self.unit_seen_by(j, blue)
         })
     }
