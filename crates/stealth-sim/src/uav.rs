@@ -669,6 +669,12 @@ impl Sim {
     }
 
     /// A drone off center `k`'s rail.
+    /// Test aid: drone center `k` launches a drone along `route`, nobody at its console.
+    pub fn test_launch_uav(&mut self, k: usize, kind: UavKind, route: Vec<UavWp>) {
+        self.defence_sizes();
+        self.launch_uav(k, kind, route);
+    }
+
     fn launch_uav(&mut self, k: usize, kind: UavKind, route: Vec<UavWp>) {
         let (pos, heading) = self.uav_ramp(k);
         let i = self.campaign_slot();
@@ -749,6 +755,13 @@ impl Sim {
     }
 
     /// The highest ground (m) under a point and ahead of it on a heading.
+    /// The highest ground (m) of the relief's cell under a point.
+    fn uav_ground_here(&self, pos: [f64; 3]) -> f64 {
+        let Some(relief) = self.tiles.as_ref().map(|t| &t.relief) else { return 0.0 };
+        relief.height((pos[0] / M_PER_MAP) as i32, 0x8000 - (pos[1] / M_PER_MAP) as i32) as f64
+            * M_PER_WU
+    }
+
     fn uav_ground(&self, pos: [f64; 3], heading: f64) -> f64 {
         let Some(relief) = self.tiles.as_ref().map(|t| &t.relief) else { return 0.0 };
         let cell = 2000.0;
@@ -918,7 +931,9 @@ impl Sim {
             let step = sub(sub(u.pos, from), mul(tv, dt));
             (crate::aaa::closest(sub(from, tp), step) < INTERCEPT_FUSE).then_some(u.lock?)
         });
-        let crashed = u.pos[2] <= 0.0 || u.pos[2] < ground - 50.0;
+        // Into the ground under it (`ground` looks ahead: a hill on the way is no crash yet).
+        let under = self.uav_ground_here(u.pos);
+        let crashed = u.pos[2] <= 0.0 || u.pos[2] < under - 50.0;
         self.defence_mut().uavs[n] = u;
         if let Some(j) = hit {
             self.uav_intercept(n, j as usize);
