@@ -696,24 +696,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x7c9016b99414b4de,
-        0xc84ea4b602cc142f,
-        0x42b9e7b0575f95bc,
-        0x9438ea8c3629aef6,
-        0x1c97d171cd3e6dc4,
-        0xf4bc99a4513a3d06,
-        0x2696988428133c39,
-        0xcbd35891d988c6c3,
-        0x26aa7e80407e237a,
-        0x61bbb0b5bf315695,
-        0x8856080b5ca2c9d9,
-        0x6d769625d7ee3112,
-        0x5136ef77e85d01f3,
-        0x9254c46e11aa9847,
-        0x98c3016c5accbf08,
-        0x4937c0af4368d04a,
-        0x595f7552d69d1f13,
-        0xbfcd1ff8338949d2,
+        0x8a9d1487d896663a,
+        0xc32b3e2a93b38acf,
+        0x7ea2c85a3cc8fcf0,
+        0x3c100212d9329e82,
+        0x83353a0311959820,
+        0xa76adb8d109fff52,
+        0x1901731213de13ad,
+        0x79bffa3333d3665f,
+        0x26270a7875a21f5e,
+        0x7cfa1e7209808e29,
+        0x8dda1abb873388a5,
+        0xc0da3497f0ed4f96,
+        0xcec658dc3ee74bff,
+        0xd84ab2d820495c2b,
+        0xa49d42d590826514,
+        0x674b4eb007b7acd2,
+        0x75ef2431df61b3f7,
+        0xea59a26653d2e6ee,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -2629,4 +2629,46 @@ fn patrols_ignore_an_unseen_player() {
     }
     let mean = closing / n.max(1);
     assert!(n > 500 && mean < 25, "{n} samples, closing {mean} units per 10 s");
+}
+
+/// The OH-58D's gun is its machine gun pods: the pod stations are not selectable, the gun is
+/// the entry after the missiles with 500 rounds a pod, it fires along the nose, and the model's
+/// pylons show what is left on them.
+#[test]
+fn kiowa_gun_pods_are_its_gun() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts =
+        SimOptions { helicopter: true, external_stores: true, kiowa: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    sim.set_loadout(&[(-1, 0), (-1, 0)]);
+    assert!(!sim.has_gun(), "no gun without a pod");
+    sim.set_loadout(&[(20, 2), (22, 1)]);
+    assert!(sim.has_gun());
+    assert_eq!(sim.gun_ammo(), GUN_POD_ROUNDS);
+    assert_eq!(sim.bays(), (&[(20, 2), (22, 1)][..], 0));
+    assert!(!sim.gun_selected());
+    assert_eq!(sim.pylon_looks(sim.bays().0), [1, 3]);
+    assert_eq!(sim.pylon_looks(&[(20, 1), (21, 0)]), [5, 10]);
+    // Space: Hellfires, the gun, the Hellfires again.
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    let mut p = player_at(mx, my, 500, 0, 100);
+    for want in [true, false] {
+        p.cmd.next_bay = true;
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        assert_eq!(sim.gun_selected(), want);
+        assert_eq!(sim.bays().1, 0, "never the pod's station");
+    }
+    // A pod-only loadout starts on the gun, with both pods' rounds; firing uses them.
+    sim.set_loadout(&[(22, 1), (22, 1)]);
+    sim.select_bay(0);
+    assert!(sim.gun_selected());
+    assert_eq!(sim.gun_ammo(), 2 * GUN_POD_ROUNDS);
+    p.cmd.trigger = true;
+    for _ in 0..15 {
+        sim.step(&p, 15);
+    }
+    assert!(sim.gun_ammo() < 2 * GUN_POD_ROUNDS);
 }

@@ -1480,11 +1480,13 @@ fn update_pod(
     });
     state.av.helmet_body = body;
     state.av.helmet = body.map(|d| a.orientation * d);
-    // The gunship's pod is always up (its turret and Hellfires follow it).
-    let turret = settings.aircraft.spec().turret;
+    // The gunship's pod is always up (its turret and Hellfires follow it), as the mast-mounted
+    // sight is; that looks from above the rotor.
+    let turret = settings.aircraft.spec().slaved_pod();
     if !state.modern && !turret {
         return;
     }
+    let origin = pos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
     // Snowplow: nothing stays locked (nor is acquired until the next target key).
     if std::mem::take(&mut state.av.tgp.clear)
         && let Some(combat) = &mut combat
@@ -1493,7 +1495,7 @@ fn update_pod(
     }
     let shown = state.camera_shown();
     let looking = if turret {
-        slaved_sight(combat.as_deref(), pos.0)
+        slaved_sight(combat.as_deref(), origin)
             .or(state.av.helmet)
             .or_else(|| Some(a.orientation * pod_dir(0.0, -0.05)))
     } else {
@@ -1531,7 +1533,8 @@ fn update_pod(
         }
     }
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
-    let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
+    let los =
+        pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, origin, looking, ground_y);
     // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
     // by the lock key (a gun, which cannot be locked, held in point track).
     if (slewed || cz)
@@ -1557,7 +1560,7 @@ fn update_pod(
         }
     }
     tgp.los_ground = los.filter(|_| shown || turret);
-    tgp.los = pod_direction(tgp, a.orientation, pos.0).or(looking).filter(|_| shown || turret);
+    tgp.los = pod_direction(tgp, a.orientation, origin).or(looking).filter(|_| shown || turret);
     if lock && soi && tgp.mode != TgpMode::Slaved {
         match los {
             // A vehicle: the simulation's point follows it.

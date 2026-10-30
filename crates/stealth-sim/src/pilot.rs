@@ -44,6 +44,9 @@ pub struct Pilot {
     /// The aircraft is the AV-8B (`SimOptions::harrier` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) harrier: bool,
+    /// The aircraft is the OH-58D (`SimOptions::kiowa` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) kiowa: bool,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -316,6 +319,7 @@ impl Sim {
             a10: p0.a10,
             comanche: p0.comanche,
             harrier: p0.harrier,
+            kiowa: p0.kiowa,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

@@ -19,6 +19,7 @@ pub enum AircraftKind {
     A10,
     RAH66,
     AV8B,
+    OH58,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -69,6 +70,9 @@ pub struct AircraftSpec {
     pub helicopter: bool,
     /// A turret cannon aimed with the targeting pod, and no troops (the AH-1Z, the RAH-66).
     pub turret: bool,
+    /// A mast-mounted sight (aircraft frame, m): the targeting pod looks from there, always up
+    /// and slaved as a turret's sight is (the OH-58D's).
+    pub sight: Option<Vec3>,
     /// A helmet-mounted display (`hmd.rs`).
     pub hmd: Hmd,
     /// The cannon's muzzle (aircraft frame, m), where it is not at the nose.
@@ -99,6 +103,9 @@ pub fn wing_slot_values(at: f32, forward: f32, back: f32) -> (i16, i16) {
     let bam = ((back - forward) * at.clamp(0.0, 1.0) / std::f32::consts::TAU * 65536.0) as i16;
     (bam, -bam)
 }
+
+/// The model state slots of the OH-58D's left and right weapons pylon (`Sim::pylon_looks`).
+pub const PYLON_SLOTS: (usize, usize) = (26, 27);
 
 /// The model state slot of a V/STOL type's nozzles: their angle down from aft.
 pub const NOZZLE_SLOT: usize = 25;
@@ -137,7 +144,18 @@ impl AircraftSpec {
 
     /// A troop helicopter: its missions are insertions.
     pub fn transport(&self) -> bool {
-        self.helicopter && !self.turret
+        self.helicopter && !self.turret && self.sight.is_none()
+    }
+
+    /// The targeting pod is a turret on the airframe (an attack helicopter's sight, a
+    /// mast-mounted sight): always up, slaved to the lock or the helmet sight.
+    pub fn slaved_pod(&self) -> bool {
+        self.turret || self.sight.is_some()
+    }
+
+    /// Where the targeting pod looks from (aircraft frame, m from the aircraft's position).
+    pub fn pod_origin(&self) -> Vec3 {
+        self.sight.unwrap_or(Vec3::ZERO)
     }
 
     /// The cockpit flown with the cockpit style setting (aircraft with one cockpit ignore it).
@@ -201,6 +219,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         45 => tornado_point(0.0, 3.85, -0.90) - Vec3::Y * TORNADO_LIFT,
         46 => rah66_point(0.0, 2.5, 0.57) - Vec3::Y * RAH66_LIFT,
         47 => harrier_point(0.0, 2.30, -0.78) - Vec3::Y * HARRIER_LIFT,
+        48 => oh58_point(0.0, 2.3, 0.55) - Vec3::Y * OH58_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
         102 => Vec3::new(0.0, 0.92, -3.6),
         _ => Vec3::new(0.0, -1.0, -4.0),
@@ -247,6 +266,7 @@ static F117: AircraftSpec = AircraftSpec {
     turret: false,
     hmd: Hmd::None,
     muzzle: None,
+    sight: None,
     exhaust: F117_EXHAUST,
     nozzles: &[],
     nozzle_radius: 0.0,
@@ -281,6 +301,7 @@ static F16: AircraftSpec = AircraftSpec {
     hmd: Hmd::Hmcs,
     muzzle: None,
     // The nozzle.
+    sight: None,
     exhaust: f16_point(0.0, -7.2, 0.04),
     nozzles: &[f16_point(0.0, -7.2, 0.04)],
     nozzle_radius: 0.45,
@@ -324,6 +345,7 @@ static UH60: AircraftSpec = AircraftSpec {
     turret: false,
     hmd: Hmd::None,
     muzzle: None,
+    sight: None,
     exhaust: EXHAUST,
     nozzles: &[],
     nozzle_radius: 0.0,
@@ -366,6 +388,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     hmd: Hmd::Full,
     // The chin turret's barrels.
     muzzle: Some(ah1z_point(0.0, 5.30, 0.58)),
+    sight: None,
     exhaust: EXHAUST,
     nozzles: &[],
     nozzle_radius: 0.0,
@@ -409,12 +432,57 @@ static RAH66: AircraftSpec = AircraftSpec {
     hmd: Hmd::Full,
     // The chin turret's barrels.
     muzzle: Some(rah66_point(0.0, 4.75, 0.56)),
+    sight: None,
     exhaust: EXHAUST,
     nozzles: &[],
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
     flight: FlightConstants::rah66,
+};
+
+/// A point of the OH-58D model (tools/models/kiowa.py, as `ah1z_point`) in the aircraft frame.
+const fn oh58_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.38;
+    model_point(OH58_LIFT, x * K, z * K, -y * K)
+}
+
+/// The OH-58D's model origin is on the ground under its skids; clear of the ground overlays.
+const OH58_LIFT: f32 = 0.05;
+
+static OH58: AircraftSpec = AircraftSpec {
+    model: "aircraft_048",
+    model_lift: OH58_LIFT,
+    // The pilot's (right) seat: behind the windshield's top (y 1.44) over the front door
+    // (y 0.88..1.48), the head under the roof (z 1.81), the window sills (z 1.1) at the elbows.
+    eye: oh58_point(0.36, 1.10, 1.45),
+    cockpit_view: Some(CockpitView {
+        // The windshield and the door windows: open from inside; the hull drawn from inside.
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: crate::hud::modern::SCALE,
+    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    bomb_bay: false,
+    helicopter: true,
+    turret: false,
+    // The mast-mounted sight's ball above the rotor.
+    sight: Some(oh58_point(0.0, 0.04, 3.62)),
+    hmd: Hmd::Full,
+    // The machine gun pods fire along the nose.
+    muzzle: None,
+    exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    vtol: false,
+    flight: FlightConstants::oh58,
 };
 
 /// The Tornado's wheels are 1.90 m below its model origin (tools/models/aircraft.py
@@ -456,6 +524,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     hmd: Hmd::None,
     muzzle: None,
     // Between the two nozzles.
+    sight: None,
     exhaust: tornado_point(0.0, -7.35, -0.15),
     nozzles: &[tornado_point(0.55, -7.35, -0.15), tornado_point(-0.55, -7.35, -0.15)],
     nozzle_radius: 0.38,
@@ -500,6 +569,7 @@ static A10: AircraftSpec = AircraftSpec {
     // The GAU-8's muzzle under the nose.
     muzzle: Some(a10_point(0.0, 8.36, -0.34)),
     // Between the two engines.
+    sight: None,
     exhaust: a10_point(0.0, -5.0, 0.80),
     nozzles: &[],
     nozzle_radius: 0.0,
@@ -547,6 +617,7 @@ static AV8B: AircraftSpec = AircraftSpec {
     // The GAU-12 in the left pod.
     muzzle: Some(harrier_point(-0.38, 2.95, -0.85)),
     // Between the hot rear nozzles.
+    sight: None,
     exhaust: harrier_point(0.0, -1.10, -0.35),
     nozzles: &[],
     nozzle_radius: 0.0,
@@ -556,7 +627,7 @@ static AV8B: AircraftSpec = AircraftSpec {
 };
 
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 8] = [
+    pub const ALL: [AircraftKind; 9] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::Tornado,
@@ -565,12 +636,15 @@ impl AircraftKind {
         AircraftKind::UH60,
         AircraftKind::AH1Z,
         AircraftKind::RAH66,
+        AircraftKind::OH58,
     ];
 
     /// What another pilot flies.
     pub fn of_remote(p: &stealth_sim::net::RemotePilot) -> Self {
         if p.comanche {
             AircraftKind::RAH66
+        } else if p.kiowa {
+            AircraftKind::OH58
         } else if p.gunship {
             AircraftKind::AH1Z
         } else if p.helicopter {
@@ -598,6 +672,7 @@ impl AircraftKind {
             AircraftKind::A10 => &A10,
             AircraftKind::RAH66 => &RAH66,
             AircraftKind::AV8B => &AV8B,
+            AircraftKind::OH58 => &OH58,
         }
     }
 
@@ -612,6 +687,7 @@ impl AircraftKind {
             AircraftKind::A10 => "a10",
             AircraftKind::RAH66 => "rah66",
             AircraftKind::AV8B => "av8b",
+            AircraftKind::OH58 => "oh58",
         }
     }
 
@@ -629,6 +705,8 @@ impl AircraftKind {
                     && *k == AircraftKind::A10)
                 || (matches!(s.as_str(), "harrier" | "av8" | "av8bplus" | "harrierii")
                     && *k == AircraftKind::AV8B)
+                || (matches!(s.as_str(), "kiowa" | "oh58d" | "kiowawarrior")
+                    && *k == AircraftKind::OH58)
         })
     }
 
@@ -642,6 +720,7 @@ impl AircraftKind {
             AircraftKind::A10 => "A-10C Thunderbolt II",
             AircraftKind::RAH66 => "RAH-66 Comanche",
             AircraftKind::AV8B => "AV-8B Harrier II",
+            AircraftKind::OH58 => "OH-58D Kiowa Warrior",
         }
     }
 }
@@ -756,6 +835,23 @@ mod tests {
         assert!(x.abs() < 0.3, "eye {x} m to the side");
     }
 
+    /// The OH-58D's eye: in the right seat behind the windshield's top, over the front door
+    /// (tools/models/kiowa.py STATIONS), under the roof, inside the side; the sight above the
+    /// rotor.
+    #[test]
+    fn oh58_eye_in_the_cockpit() {
+        let spec = AircraftKind::OH58.spec();
+        let s = AIRCRAFT_MODEL_SCALE as f32 * 16.38;
+        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (eye.x, -eye.z, eye.y);
+        assert!((0.88..1.44).contains(&y), "eye {y} m from the mast");
+        assert!((1.20..1.70).contains(&z), "eye {z} m high");
+        assert!((0.2..0.6).contains(&x), "eye {x} m right");
+        let sight = (spec.sight.unwrap() - Vec3::Y * spec.model_lift) / s;
+        assert!((3.3..3.9).contains(&sight.y), "sight {} m high", sight.y);
+        assert!(!spec.transport() && spec.slaved_pod());
+    }
+
     #[test]
     fn names_round_trip() {
         for k in AircraftKind::ALL {
@@ -774,6 +870,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("Comanche"), Some(AircraftKind::RAH66));
         assert_eq!(AircraftKind::parse("AV-8B"), Some(AircraftKind::AV8B));
         assert_eq!(AircraftKind::parse("Harrier"), Some(AircraftKind::AV8B));
+        assert_eq!(AircraftKind::parse("OH-58D"), Some(AircraftKind::OH58));
+        assert_eq!(AircraftKind::parse("Kiowa"), Some(AircraftKind::OH58));
     }
 
     /// The Harrier's four nozzles: parts pitching about x on the nozzle slot, pivoted on the

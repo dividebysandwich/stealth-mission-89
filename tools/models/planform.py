@@ -26,7 +26,8 @@ TOLERANCE = 0.05
 # The helicopters' outlines leave the rotors (their `_part` nodes) out; the Tornado's keep its
 # outer wings, swept forward. Bay doors are shut.
 AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0"), ("RAH66_OUTLINE", "aircraft_046_lod0"),
-            ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032"), ("AV8B_OUTLINE", "aircraft_047")]
+            ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032"), ("AV8B_OUTLINE", "aircraft_047"),
+            ("OH58_OUTLINE", "aircraft_048_lod0")]
 WITH_PARTS = {"aircraft_045"}
 
 
@@ -58,8 +59,9 @@ def triangles(js, binary, node, parts=False):
         name = js["nodes"][c].get("name", "")
         if "_part" in name and not parts:
             continue
-        # Bay doors shut (the RAH-66's swing out as they open).
-        if "_s8v1" in name or "_s8v2" in name:
+        # Bay doors shut (the RAH-66's swing out as they open), no optional pylons (the
+        # OH-58D's).
+        if any(s in name for s in ("_s8v1", "_s8v2", "_s26v", "_s27v")):
             continue
         tris.extend(triangles(js, binary, c, parts))
     t = n.get("translation", [0, 0, 0])

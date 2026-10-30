@@ -169,6 +169,21 @@ impl Rotor {
         ..Rotor::AH1Z
     };
 
+    /// OH-58D: a light scout with a small four-blade rotor, quicker than the AH-1Z on the
+    /// cyclic and the pedals and answering the collective sooner, but draggier with its mast
+    /// sight and pylons and stalling earlier (the level speed tops out near 130 kt); a small
+    /// turbine that burns little.
+    pub const OH58: Rotor = Rotor {
+        pitch_accel: 3.6,
+        roll_accel: 8.4,
+        pedal_accel: 3.7,
+        stall_knots: (115.0, 150.0),
+        drag: Vec3::new(8.0e-4, 0.0, 1.1e-4),
+        rotor_lag: 0.9,
+        fuel_burn: 0.11,
+        ..Rotor::AH1Z
+    };
+
     /// Collective that hovers out of ground effect, in still air.
     pub fn hover_collective(&self) -> f32 {
         (1.0 - self.thrust_flat) / self.thrust_slope
@@ -997,6 +1012,38 @@ mod tests {
         assert!(comanche < viper * 0.9);
     }
 
+    #[test]
+    fn oh58_turns_quicker_than_the_ah1z_but_is_slower() {
+        let hc = Rotor::OH58.hover_collective();
+        let (a, _) = fly_as(FlightConstants::oh58(), hovering(200.0), 10.0, 1, |a, c| {
+            c.throttle = Some(hc);
+            pilot(a, c, 0.0);
+        });
+        assert!(a.climb_rate.abs() < 2.0, "climb {}", a.climb_rate);
+        let (viper, kiowa) = (
+            full_collective(FlightConstants::ah1z(), 14.0),
+            full_collective(FlightConstants::oh58(), 14.0),
+        );
+        println!(
+            "14 deg: AH-1Z {:.0} kt climb {:.1}, OH-58D {:.0} kt climb {:.1}",
+            viper.knots(),
+            viper.climb_rate,
+            kiowa.knots(),
+            kiowa.climb_rate
+        );
+        assert!((115.0..140.0).contains(&kiowa.knots()), "OH-58D {:.0} kt", kiowa.knots());
+        assert!(kiowa.knots() < viper.knots() - 25.0);
+        // Half a second of full cyclic banks it more than the AH-1Z.
+        let (viper, kiowa) =
+            (bank_after(FlightConstants::ah1z(), 0.5), bank_after(FlightConstants::oh58(), 0.5));
+        println!(
+            "bank after 0.5 s: AH-1Z {:.1} deg, OH-58D {:.1} deg",
+            viper.to_degrees(),
+            kiowa.to_degrees()
+        );
+        assert!(kiowa > viper * 1.1);
+    }
+
     /// The autopilot, engaged in a hover with the waypoint off to the right and in cruise with
     /// it behind: turns onto it, flies at its speed and holds the altitude.
     #[test]
@@ -1005,6 +1052,7 @@ mod tests {
             ("UH-60A", FlightConstants::uh60()),
             ("AH-1Z", FlightConstants::ah1z()),
             ("RAH-66", FlightConstants::rah66()),
+            ("OH-58D", FlightConstants::oh58()),
         ] {
             let r = k.heli.unwrap();
             for (case, knots, bearing) in [("hover", 0.0, 90.0f32), ("cruise", 120.0, 200.0)] {

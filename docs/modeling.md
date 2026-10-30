@@ -303,7 +303,7 @@ information. The name is what counts.
 | 17 | Aircraft | Rotor and propeller angle. |
 | 21, 22 | AAA units | Turret azimuth, gun elevation (aimed at the target). |
 | 23, 24 | The player's RAH-66 | The stores on the left and right bay door: 0 three Hellfires, 1 six Stingers, 2 none (with slot 8 for the door's angle). |
-| 26, 27 | The OH-58D (own and other pilots') | The left and right weapons pylon: 0 none (no pylon), 1 two Hellfires, 2 two Stingers, 3 the .50 cal gun pod. |
+| 26, 27 | The OH-58D (own and other pilots') | The left and right weapons pylon: 0 none (no pylon), 1 two Hellfires, 2 two Stingers, 3 the .50 cal gun pod; plus 4 for each missile fired (`Sim::pylon_looks`). |
 | 25 | The AV-8B (own and other pilots') | Nozzle angle down from aft, negative (`aircraft::nozzle_slot_value`): its four nozzle parts turn about x (axis 1). |
 
 Slots 15-17, 21-22 and 25 are angles for [rotating parts](#rotating-parts), not values to test.

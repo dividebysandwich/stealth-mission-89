@@ -76,6 +76,13 @@ impl Rules {
             Aircraft::UH60 => {
                 Airframe { external_stores: true, helicopter: true, ..Airframe::default() }
             }
+            // Weapons on pylons, no turret: its gun is the machine gun pods.
+            Aircraft::OH58 => Airframe {
+                external_stores: true,
+                helicopter: true,
+                kiowa: true,
+                ..Airframe::default()
+            },
             Aircraft::AH1Z => Airframe {
                 external_stores: true,
                 helicopter: true,

@@ -341,6 +341,8 @@ mod tests {
             comanche: false,
             harrier: false,
             nozzle: 0,
+            kiowa: false,
+            pylons: [0; 2],
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -374,6 +376,17 @@ mod tests {
             ..c
         };
         let w = WorldFast { pilots: vec![h.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![h]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![h.clone()]);
+        // The OH-58D's, with one Hellfire fired on the left and a gun pod on the right.
+        let k = RemotePilot {
+            helicopter: true,
+            harrier: false,
+            nozzle: 0,
+            kiowa: true,
+            pylons: [5, 3],
+            ..h
+        };
+        let w = WorldFast { pilots: vec![k.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![k]);
     }
 }

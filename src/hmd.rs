@@ -212,7 +212,11 @@ fn draw(
         reticle: full,
         sight: mfd.av.helmet,
         lock: cues.helmet_lock,
-        gun: cues.turret_gun.filter(|_| full && stores.gun_slave == Some("HMS")).map(|g| g.dir),
+        // A turret's while it follows the helmet, a fixed gun's (no slave) along the nose.
+        gun: cues
+            .turret_gun
+            .filter(|_| full && matches!(stores.gun_slave, Some("HMS") | None))
+            .map(|g| g.dir),
         // East, north, up to the world frame (x east, y up, -z north).
         seeker: combat
             .and_then(|c| c.sim.helmet_seeker())
@@ -222,10 +226,13 @@ fn draw(
             (p - eye).as_vec3().try_normalize()
         }),
         waypoints,
-        gun_line: stores
-            .gun_slave
-            .filter(|_| full && stores.gun_selected)
-            .map(|s| format!("GUN {} {s}", stores.gun_rounds.unwrap_or(0))),
+        gun_line: (full && stores.gun_selected).then(|| {
+            let rounds = stores.gun_rounds.unwrap_or(0);
+            match stores.gun_slave {
+                Some(s) => format!("GUN {rounds} {s}"),
+                None => format!("GUN {rounds}"),
+            }
+        }),
         blink: crate::hud::blink(&time),
         knots: a.knots().max(0.0),
         alt: a.altitude.clamp(0.0, 65535.0),
@@ -246,7 +253,8 @@ struct Frame {
     sight: Option<Vec3>,
     /// The locked target (aircraft frame) and whether it is an aircraft.
     lock: Option<(Vec3, bool)>,
-    /// The turret gun's pipper (aircraft frame) while it is slaved to the helmet.
+    /// The gun's pipper (aircraft frame): a turret's while it is slaved to the helmet, a fixed
+    /// gun's while it is selected.
     gun: Option<Vec3>,
     /// Where the Sidewinder seeker looks (world).
     seeker: Option<Vec3>,

@@ -393,6 +393,7 @@ impl Sim {
             a10: self.pl.a10,
             comanche: self.pl.comanche,
             harrier: self.pl.harrier,
+            kiowa: self.pl.kiowa,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -415,6 +416,7 @@ impl Sim {
             a10,
             comanche,
             harrier,
+            kiowa,
         } = airframe;
         if self.campaign.is_none() {
             return self.start_state();
@@ -435,6 +437,7 @@ impl Sim {
         self.pl.a10 = a10;
         self.pl.comanche = comanche;
         self.pl.harrier = harrier;
+        self.pl.kiowa = kiowa;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;

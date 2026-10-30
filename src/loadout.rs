@@ -1,6 +1,7 @@
 //! Loadout editor (otherwise the mission generator picks the stores): the stores on each
 //! hardpoint, the F-117A's bays (two real ones, two more inside the wings without realistic
-//! weapons), the F-16's nine pylon stations, the A-10's eleven or the AH-1Z's six.
+//! weapons), the F-16's nine pylon stations, the A-10's eleven, the AH-1Z's six or the OH-58D's
+//! two.
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -11,7 +12,7 @@ use crate::aircraft::AircraftKind;
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, section};
 
 /// The weapons (index = weapon type): name, what it is for.
-pub const WEAPONS: [(&str, &str); 22] = [
+pub const WEAPONS: [(&str, &str); 23] = [
     ("AIM-9M Sidewinder", "Air-to-air, infrared homing, short range"),
     ("AIM-120A AMRAAM", "Air-to-air, radar homing, medium range"),
     ("AGM-88A HARM", "Anti-radiation missile: radars and SAM sites"),
@@ -37,6 +38,7 @@ pub const WEAPONS: [(&str, &str); 22] = [
         "Laser guided anti-armour missile: flies to where the targeting pod looks",
     ),
     ("FIM-92 Stinger", "Air-to-air, infrared homing, very short range"),
+    ("M3P .50 cal gun pod", "Machine gun pod: fired as the gun, along the nose"),
 ];
 /// How each weapon is used (index = weapon type), shown under its role; ranges in the HUD's km.
 /// Missiles: the longest range is the LOCK oval's (the lock range of assets/sim/units.ron,
@@ -45,7 +47,7 @@ pub const WEAPONS: [(&str, &str); 22] = [
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
-const EMPLOYMENT: [&[&str]; 22] = [
+const EMPLOYMENT: [&[&str]; 23] = [
     &["Range: 1-12 km, farther head-on"],
     &["Range: 1-38 km, farther head-on"],
     &["Range: 9-50 km", "Launch: 5,000-20,000 ft"],
@@ -71,6 +73,7 @@ const EMPLOYMENT: [&[&str]; 22] = [
     &[],
     &["Range: 4-8 km", "Launch: 2,000-3,000 ft"],
     &["Range: 1-6 km, farther head-on"],
+    &["Range: up to 1.5 km, 500 rounds a pod"],
 ];
 const GUIDED_CLUSTER: &[&str] = &[
     "Range: 1.5 km to 2.5 times the height, LOCK steady (3.7 km from 3,000 ft, 6 km from 5,000 ft)",
@@ -82,13 +85,14 @@ const LOW_RETARDED: &[&str] = &["Range: 0.9-1.3 km short of the target", "Releas
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 22] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6];
+const BAY_QTY: [u8; 23] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 22] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2];
-/// The Hellfire's and the Stinger's weapon types.
+const PYLON_QTY: [u8; 23] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1];
+/// The Hellfire's, the Stinger's and the machine gun pod's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
+pub const GUN_POD: u8 = 22;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -158,6 +162,52 @@ const F117_OUTLINE: &[(f32, f32)] = &[
     (-5.88, 17.14),
     (-6.48, 16.48),
     (-6.48, 14.96),
+];
+/// aircraft_048 (tools/models/kiowa.py) seen from above, without its rotors and pylons: half span
+/// (the skids) 1.18 m, length 10.32 m.
+const OH58_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.00, 0.18),
+    (0.16, 0.20),
+    (0.42, 0.38),
+    (0.66, 0.72),
+    (0.72, 1.02),
+    (0.70, 1.96),
+    (1.12, 1.96),
+    (1.12, 1.26),
+    (1.18, 1.26),
+    (1.18, 3.86),
+    (1.12, 3.86),
+    (1.10, 3.50),
+    (0.68, 3.52),
+    (0.22, 5.68),
+    (0.18, 7.02),
+    (0.92, 7.04),
+    (0.92, 7.52),
+    (0.16, 7.50),
+    (0.10, 9.32),
+    (0.04, 9.34),
+    (0.00, 10.32),
+    (-0.04, 9.34),
+    (-0.10, 9.32),
+    (-0.16, 7.50),
+    (-0.92, 7.52),
+    (-0.92, 7.04),
+    (-0.18, 7.02),
+    (-0.22, 5.68),
+    (-0.68, 3.52),
+    (-1.10, 3.50),
+    (-1.12, 3.86),
+    (-1.18, 3.86),
+    (-1.18, 1.26),
+    (-1.12, 1.26),
+    (-1.12, 1.96),
+    (-0.70, 1.96),
+    (-0.72, 1.02),
+    (-0.66, 0.72),
+    (-0.42, 0.38),
+    (-0.16, 0.20),
+    (0.00, 0.18),
 ];
 /// aircraft_046 (tools/models/comanche.py) seen from above, without its rotors, the bay doors shut:
 /// half span (the tail's end plates) 1.58 m, length 13.44 m.
@@ -691,6 +741,34 @@ const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) ->
 
 static RAH66_LAYOUT: Layout =
     Layout { outline: RAH66_OUTLINE, half_span: 1.58, length: 13.44, hardpoints: &RAH66_STATIONS };
+/// The OH-58D's universal weapons pylons, left and right: two Hellfires, two Stingers or a
+/// .50 cal machine gun pod each, or none (the pylon left off).
+static OH58_STATIONS: [Hardpoint; 2] = [
+    Hardpoint {
+        name: "Left weapons pylon",
+        label: "L",
+        pos: (-1.36, 3.04),
+        bay: false,
+        fantasy: false,
+        mirror: Some(1),
+        loads: &OH58_LOADS,
+        qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
+    },
+    Hardpoint {
+        name: "Right weapons pylon",
+        label: "R",
+        pos: (1.36, 3.04),
+        bay: false,
+        fantasy: false,
+        mirror: Some(0),
+        loads: &OH58_LOADS,
+        qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
+    },
+];
+const OH58_LOADS: [u8; 3] = [HELLFIRE, STINGER, GUN_POD];
+
+static OH58_LAYOUT: Layout =
+    Layout { outline: OH58_OUTLINE, half_span: 1.40, length: 10.32, hardpoints: &OH58_STATIONS };
 /// The UH-60A carries troops, no stores.
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
@@ -707,6 +785,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
+        AircraftKind::OH58 => &OH58_LAYOUT,
     }
 }
 
@@ -731,7 +810,8 @@ pub const LOADOUT_FILE: &str = "loadout.json";
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado, the
     /// A-10 and the AV-8B each on the first free pair of stations that carries it, and Sidewinders on the free
-    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays.
+    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays, the OH-58D
+    /// with Hellfires on the left and a gun pod on the right.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
         let lay = layout(aircraft, realistic);
@@ -744,6 +824,10 @@ impl PlannedLoadout {
                 }
             }
             AircraftKind::UH60 => {}
+            AircraftKind::OH58 => {
+                stores[0] = Some(HELLFIRE);
+                stores[1] = Some(GUN_POD);
+            }
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
             AircraftKind::AH1Z | AircraftKind::RAH66 => {

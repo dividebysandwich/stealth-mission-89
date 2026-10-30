@@ -212,7 +212,8 @@ pub(crate) fn update_camera(
     if !want {
         return site(&mut sites, None);
     }
-    let eye = apos.0;
+    // The camera looks from the mast-mounted sight above the rotor where there is one.
+    let eye = apos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
     if mfd.ils {
         // ILS: the runway ahead with its PAPI, zoomed just enough to read the lights.
         let (h, _, _) = a.euler();
@@ -289,7 +290,7 @@ pub(crate) fn update_camera(
     let dir = match target {
         Some(p) if (p - eye).length() > 1.0 => (p - eye).as_vec3().normalize(),
         // The gunship's slaved pod: along its sight.
-        _ if let Some(d) = mfd.av.tgp.los.filter(|_| settings.aircraft.spec().turret) => d,
+        _ if let Some(d) = mfd.av.tgp.los.filter(|_| settings.aircraft.spec().slaved_pod()) => d,
         _ => {
             let (h, _, _) = a.euler();
             let d = match mfd.cam_dir {

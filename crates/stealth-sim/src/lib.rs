@@ -344,6 +344,7 @@ impl Sim {
         let a10 = opts.a10;
         let comanche = opts.comanche;
         let harrier = opts.harrier;
+        let kiowa = opts.kiowa;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -383,6 +384,7 @@ impl Sim {
                 a10,
                 comanche,
                 harrier,
+                kiowa,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
@@ -1072,9 +1074,36 @@ impl Sim {
         self.pl.gun_firing
     }
 
-    /// The aircraft has a cannon (the real F-117A and the transport helicopter have none).
+    /// The aircraft has a cannon (the real F-117A and the transport helicopter have none), or
+    /// a helicopter without a turret a machine gun pod on a pylon.
     pub fn has_gun(&self) -> bool {
-        !self.pl.lockheed && (!self.pl.helicopter || self.pl.gunship)
+        !self.pl.lockheed
+            && (!self.pl.helicopter
+                || self.pl.gunship
+                || self.pl.bays.iter().any(|b| self.gun_pod(b.0)))
+    }
+
+    /// Weapon type `w` is fired as the cannon (a machine gun pod), not from its station.
+    pub fn gun_pod(&self, w: i32) -> bool {
+        w >= 0 && self.weapon_types.get(w as usize).is_some_and(|t| t.spec == 0)
+    }
+
+    /// The OH-58D's left and right weapons pylon as its model shows them (state slots 26 and
+    /// 27, `bays` its two stations): 0 none, else the store (1 Hellfires, 2 Stingers, 3 a gun
+    /// pod) plus 4 for each of the two missiles fired.
+    pub fn pylon_looks(&self, bays: &[(i32, i32)]) -> [u8; 2] {
+        let look = |b: Option<&(i32, i32)>| {
+            let &(w, n) = b?;
+            let spec = self.weapon_types.get(usize::try_from(w).ok()?)?.spec as i32;
+            let fired = 4 * (2 - n.clamp(0, 2)) as u8;
+            match spec {
+                0 => Some(3),
+                HELLFIRE_SPEC => Some(1 + fired),
+                STINGER_SPEC => Some(2 + fired),
+                _ => None,
+            }
+        };
+        [look(bays.first()).unwrap_or(0), look(bays.get(1)).unwrap_or(0)]
     }
 
     /// The cannon is the selected weapon.
@@ -1132,8 +1161,14 @@ impl Sim {
     pub fn set_loadout(&mut self, stations: &[(i32, i32)]) {
         self.pl.bays =
             stations.iter().map(|&(w, n)| if w < 0 { (-1, 0) } else { (w, n.max(0)) }).collect();
-        self.pl.cur_bay = self.pl.bays.iter().position(|b| b.0 >= 0).unwrap_or(0);
-        self.pl.gun_selected = self.has_gun() && !self.pl.bays.iter().any(|b| b.0 >= 0);
+        // Machine gun pods: the gun, their rounds its ammunition.
+        let pods = self.pl.bays.iter().filter(|b| self.gun_pod(b.0)).count() as i32;
+        if pods > 0 && self.pl.helicopter && !self.pl.gunship {
+            self.pl.gun_ammo = GUN_POD_ROUNDS * pods;
+        }
+        let first = self.pl.bays.iter().position(|b| b.0 >= 0 && !self.gun_pod(b.0));
+        self.pl.cur_bay = first.unwrap_or(0);
+        self.pl.gun_selected = self.has_gun() && first.is_none();
     }
 
     pub fn weapon_types(&self) -> &[WeaponType] {
@@ -1359,6 +1394,13 @@ impl Sim {
     pub fn select_bay(&mut self, bay: usize) {
         self.pl.cur_bay = bay.min(self.pl.bays.len().saturating_sub(1));
         self.pl.gun_selected = false;
+        // A gun pod's station: its gun, unless a missile station is loaded.
+        if self.pl.bays.get(self.pl.cur_bay).is_some_and(|b| self.gun_pod(b.0)) {
+            match self.pl.bays.iter().position(|b| b.0 >= 0 && !self.gun_pod(b.0)) {
+                Some(i) => self.pl.cur_bay = i,
+                None => self.pl.gun_selected = self.has_gun(),
+            }
+        }
     }
 
     /// Test / tool hook: set the ground lock.

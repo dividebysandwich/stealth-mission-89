@@ -530,6 +530,8 @@ pub const HELLFIRE_SPEC: i32 = 47;
 /// The AIM-9's and the air-launched Stinger's missile table entries.
 pub const AIM9_SPEC: i32 = 23;
 pub const STINGER_SPEC: i32 = 48;
+/// Rounds in a machine gun pod (the OH-58D's M3P with its M296 .50 cal gun).
+pub const GUN_POD_ROUNDS: i32 = 500;
 
 /// An infrared air-to-air missile the player fires (the AIM-9 or the Stinger): its seeker
 /// growls, follows the helmet sight and needs to see the target.
@@ -570,6 +572,9 @@ pub struct Airframe {
     /// helicopter does.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub harrier: bool,
+    /// The OH-58D (a helicopter with its weapons on pylons, no turret): only its look differs.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kiowa: bool,
 }
 
 /// Landing option.
@@ -619,6 +624,10 @@ pub struct SimOptions {
     /// (`VTOL_LANDING_KNOTS`) its base's landing area is the whole airfield.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub harrier: bool,
+    /// The aircraft is the OH-58D (with `helicopter` and `external_stores`): seen as one by the
+    /// other pilots; its gun is the machine gun pods on its pylons.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kiowa: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -658,6 +667,7 @@ impl Default for SimOptions {
             a10: false,
             comanche: false,
             harrier: false,
+            kiowa: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

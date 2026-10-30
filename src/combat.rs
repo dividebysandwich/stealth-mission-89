@@ -291,6 +291,7 @@ fn start_combat(
     let a10 = settings.aircraft == crate::aircraft::AircraftKind::A10;
     let comanche = settings.aircraft == crate::aircraft::AircraftKind::RAH66;
     let harrier = settings.aircraft == crate::aircraft::AircraftKind::AV8B;
+    let kiowa = settings.aircraft == crate::aircraft::AircraftKind::OH58;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -301,6 +302,7 @@ fn start_combat(
             a10,
             comanche,
             harrier,
+            kiowa,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -313,6 +315,7 @@ fn start_combat(
             a10,
             comanche,
             harrier,
+            kiowa,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -1024,6 +1027,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
     let dir = DVec3::new(h.sin() * pitch.cos(), pitch.sin(), -h.cos() * pitch.cos());
     let name = if p.comanche {
         "RAH-66"
+    } else if p.kiowa {
+        "OH-58D"
     } else if p.gunship {
         "AH-1Z"
     } else if p.helicopter {
@@ -1779,10 +1784,13 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         });
     }
     // The gun pipper: on the HUD with the gun selected; a turret gun's also on the helmet
-    // display, in every cockpit view.
+    // display, in every cockpit view, as a fixed gun's with a full helmet display (the OH-58D's
+    // gun pods) while it is selected.
     let turret = settings.aircraft.spec().turret;
+    let helmet_gun = turret
+        || (settings.aircraft.spec().hmd == crate::aircraft::Hmd::Full && sim.gun_selected());
     let hud_gun = cockpit && sim.gun_selected();
-    if hud_gun || (turret && is_cockpit_view(view.view)) {
+    if hud_gun || (helmet_gun && is_cockpit_view(view.view)) {
         // The locked aircraft (position and velocity over the last sim frame) or ground
         // object, else a target 1000 m ahead flying along with the aircraft.
         let pilot = t.pilot.and_then(|k| remote_motion(combat, k));
@@ -1814,7 +1822,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         if hud_gun {
             new_cues.gun = Some(cue);
         }
-        if turret {
+        if helmet_gun {
             new_cues.turret_gun = Some(cue);
         }
     }

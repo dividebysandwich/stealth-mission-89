@@ -1414,6 +1414,9 @@ fn world_model_state(
         })
     };
     let (left_stores, right_stores) = (door_stores(0), door_stores(1));
+    // The OH-58D's pylons and what is left on them (slots 26 left, 27 right).
+    let pylons = combat.as_ref().map_or([0; 2], |c| c.sim.pylon_looks(c.sim.bays().0));
+    let (left_pylon, right_pylon) = crate::aircraft::PYLON_SLOTS;
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1467,6 +1470,8 @@ fn world_model_state(
             s20,
             (23, left_stores),
             (24, right_stores),
+            (left_pylon, pylons[0] as i16),
+            (right_pylon, pylons[1] as i16),
         ];
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
@@ -1782,6 +1787,14 @@ fn sync_remote_pilots(
                     let (sr, sl) = crate::aircraft::WING_SLOTS;
                     if (s.0[sr], s.0[sl]) != (r, l) {
                         (s.0[sr], s.0[sl]) = (r, l);
+                    }
+                }
+                // His pylons and what is left on them.
+                if p.kiowa {
+                    let (l, r) = crate::aircraft::PYLON_SLOTS;
+                    let v = (p.pylons[0] as i16, p.pylons[1] as i16);
+                    if (s.0[l], s.0[r]) != v {
+                        (s.0[l], s.0[r]) = v;
                     }
                 }
                 // His nozzles, as his flight model has them.

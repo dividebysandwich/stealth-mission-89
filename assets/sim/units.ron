@@ -189,6 +189,8 @@
             effect: {"shelter": 2, "aircraft": 4, "building": 2, "bridge": 1, "bunker": 2, "depot": 3, "launcher": 5,
                      "radar": 5, "rig": 2, "industry": 2, "small_ship": 4, "large_ship": 1, "armour": 8}),
         (id: "stinger", short: "FIM-92", long: "Stinger", missile: "fim92_air", picture: 0, bay: 6),
+        // A machine gun pod on a pylon: fired as the cannon, along the nose (the OH-58D's M3P).
+        (id: "m3p", short: "M3P", long: ".50 cal pod", missile: "guns", picture: 5, bay: 1),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

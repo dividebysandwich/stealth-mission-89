@@ -245,7 +245,7 @@ pub struct HudCues {
     pub gun: Option<GunCue>,
     /// The helmet-mounted display's cues, in every cockpit view whatever the HUD mode: the
     /// locked target's direction (aircraft frame) and whether it is an aircraft, and a turret
-    /// gun's pipper (selected or not).
+    /// gun's pipper (selected or not), or a fixed gun's while selected.
     pub helmet_lock: Option<(Vec3, bool)>,
     pub turret_gun: Option<GunCue>,
     /// Unguided bomb selected in AG: the CCIP or CCRP solution.

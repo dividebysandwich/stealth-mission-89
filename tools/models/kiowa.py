@@ -17,7 +17,7 @@ down so it turns anticlockwise, `_part2` two-blade tail rotor on the left of the
 slot 17), navigation lights (`_s12v1`) and red beacons (`_s20v1`). Levels 0 and 1 have the
 universal weapons pylons, one each side, on slot 26 (left) and 27 (right): 0 none (the pylon is
 left off), 1 a two-rail launcher with two Hellfires, 2 a launcher with two Stingers, 3 a .50 cal
-machine gun pod. Olive drab. Built in metres and scaled to aircraft units (K per metre). Model
+machine gun pod; plus 4 for each missile fired (the outer one first). Olive drab. Built in metres and scaled to aircraft units (K per metre). Model
 space: x right, y forward, z up.
 """
 
@@ -431,9 +431,9 @@ def gun_pod(x, level):
     return g
 
 
-def pylon(sx, kind, level):
+def pylon(sx, kind, level, left=2):
     """The universal weapons pylon on one side (`sx` -1 left, 1 right) with its stores: `kind`
-    1 Hellfires, 2 Stingers, 3 the gun pod."""
+    1 Hellfires, 2 Stingers (`left` of the two, the inner one last), 3 the gun pod."""
     g = Geo()
     x0, x1 = ARM_X
     y = ARM_Y
@@ -449,7 +449,9 @@ def pylon(sx, kind, level):
     xs = (x - sx * 0.18, x + sx * 0.18) if kind == 1 else (x - sx * 0.11, x + sx * 0.11)
     top = STORE_Z + 0.20
     g.add(mklib.block(min(xs) - 0.05, max(xs) + 0.05, y - 0.80 if kind == 1 else y - 0.60, y + 0.20, top - 0.06, top, METAL))
-    for sx_ in xs:
+    for k, sx_ in enumerate(xs):
+        if k >= left:
+            continue
         if kind == 1:
             g.add(hellfire((sx_, 1.14, STORE_Z), level))
             if level == 0:
@@ -499,8 +501,10 @@ def build():
     for level in (0, 1):
         lod = bpy.data.objects[f"{NAME}_lod{level}"]
         for sx, slot in ((-1, 26), (1, 27)):
-            for kind in (1, 2, 3):
-                group(lod, [(slot, kind)], pylon(sx, kind, level))
+            group(lod, [(slot, 3)], pylon(sx, 3, level))
+            for kind in (1, 2):
+                for fired in range(3):
+                    group(lod, [(slot, kind + 4 * fired)], pylon(sx, kind, level, 2 - fired))
 
 
 mklib.load_palette(os.path.join(ROOT, "assets", "palettes", "tod_central_europe.ron"))

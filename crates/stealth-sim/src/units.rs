@@ -335,7 +335,7 @@ mod tests {
         assert_eq!(t.threats.len(), 27);
         assert_eq!(t.aircraft.len(), 36);
         assert_eq!(t.missiles.len(), 49);
-        assert_eq!((t.weapons.len(), t.compat.len()), (22, 22));
+        assert_eq!((t.weapons.len(), t.compat.len()), (23, 23));
         assert!(
             t.threats
                 .iter()
@@ -354,6 +354,7 @@ mod tests {
                 .all(|m| (0..=2600).contains(&m.max_speed) && (0..=8).contains(&m.turn))
         );
         assert_eq!(t.weapons[19].spec, 0, "guns");
+        assert_eq!(t.weapons[22].spec, 0, "gun pod");
         assert_eq!(t.weapons[16].spec, -1, "camera");
         assert_eq!(t.aircraft[22].name, "F-16");
         assert_eq!(t.missiles[t.weapons[1].spec as usize].name, "AIM-120");
