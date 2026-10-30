@@ -1854,6 +1854,7 @@ impl Sim {
         let mut rng = c.rng;
         let mut kills = Vec::new();
         let mut bursts = Vec::new();
+        let mut down = Vec::new();
         c.shells.retain_mut(|s| {
             let t = self.flights.get(s.target).copied().unwrap_or_default();
             let tp = flight_metres(&t);
@@ -1863,6 +1864,7 @@ impl Sim {
             s.shell.vel[2] -= G * dt;
             s.shell.ttl -= 1;
             if s.shell.pos[2] < 0.0 {
+                down.push(([s.shell.pos[0], s.shell.pos[1]], s.shell.flak));
                 return false;
             }
             let alive = t.flags & fflags::DESTROYED == 0 && t.flags & fflags::AIRBORNE != 0;
@@ -1891,6 +1893,7 @@ impl Sim {
         });
         c.rng = rng;
         self.campaign = Some(c);
+        self.shells_down(down);
         for (x, y, alt) in bursts {
             self.emit(SimEvent::Flak { x, y, alt });
         }

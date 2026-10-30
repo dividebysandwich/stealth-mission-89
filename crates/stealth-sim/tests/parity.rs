@@ -43,6 +43,7 @@ fn event_text(e: &SimEvent) -> String {
         .replace(", by: None", "")
         .replace(", by: Some(0)", "")
         .replace("Player(0)", "Player")
+        .replace(", heavy: false", "")
 }
 
 fn fnv(h: u64, s: &str) -> u64 {

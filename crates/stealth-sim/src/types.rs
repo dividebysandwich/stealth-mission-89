@@ -775,10 +775,13 @@ pub enum SimEvent {
         y: i32,
         alt: i32,
     },
-    /// A gun round hit the ground here (a round's fine units: x east, y south).
+    /// A gun round hit the ground here (a round's fine units: x east, y south); `heavy`: a
+    /// 27 or 30 mm cannon's (the A-10's, the Tornado's, a gunship's).
     RoundImpact {
         x: i32,
         y: i32,
+        #[serde(default)]
+        heavy: bool,
     },
     AircraftDestroyed {
         unit: usize,

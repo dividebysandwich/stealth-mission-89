@@ -127,8 +127,11 @@ pub struct Combat {
     host_frame: u32,
     /// Explosions of the steps of this frame: (map x, map y, viewZ altitude, kind).
     pub explosions: Vec<(i32, i32, i32, i32)>,
-    /// Gun rounds that hit the ground in the steps of this frame (map x, map y).
-    pub round_impacts: Vec<(f64, f64)>,
+    /// Gun rounds and shells that hit the ground in the steps of this frame (map x, map y).
+    pub round_impacts: Vec<(f64, f64, crate::explosions::Calibre)>,
+    /// Vehicles' rounds fired at the ground in the steps of this frame (`SimEvent::GroundShot`:
+    /// from, to, gun, hit, kill, miss).
+    pub ground_shots: Vec<GroundShotFx>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -388,6 +391,7 @@ fn start_combat(
         host_frame: 0,
         explosions: Vec::new(),
         round_impacts: Vec::new(),
+        ground_shots: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -681,6 +685,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let combat = &mut *combat;
     combat.explosions.clear();
     combat.round_impacts.clear();
+    combat.ground_shots.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -777,6 +782,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                     for _ in 0..gap.min(MAX_STEPS) {
                         combat.sim.mirror_frame();
                     }
+                    shell_strikes(combat);
                     combat.sim.set_local_player(&ps);
                     combat.steps += 1;
                     combat.record.sample(&combat.sim);
@@ -811,6 +817,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         }
         inputs.push((0, ps));
         let events = combat.sim.step_pilots(&inputs, FS);
+        shell_strikes(combat);
         if let Some(NetLink::Host(server)) = link.as_deref_mut() {
             server.after_step(&events);
         }
@@ -2212,27 +2219,18 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                     .write(crate::sound::PlaySound { id: crate::sound::AIRBURST, priority: 1 });
             }
         }
-        SimEvent::RoundImpact { x, y } => {
+        SimEvent::RoundImpact { x, y, heavy } => {
             let fine = (32 * stealth_sim::ROUND_FINE) as f64;
-            combat.round_impacts.push((x as f64 / fine, y as f64 / fine));
-        }
-        // Armour firing: the muzzle flash, then a blast on the target, or a strike beside it.
-        SimEvent::GroundShot { from, to, hit, kill, miss, .. } => {
-            let units = combat.sim.units();
-            let (Some(a), Some(b)) = (units.get(from).copied(), units.get(to).copied()) else {
-                return;
-            };
-            let (ax, ay) = a.map_xy();
-            combat.explosions.push((ax.round() as i32, ay.round() as i32, 6, -1));
-            let (bx, by) = b.map_xy();
-            if kill {
-                combat.explosions.push((bx.round() as i32, by.round() as i32, 0, 0x10));
-            } else if hit {
-                combat.round_impacts.push((bx, by));
+            let calibre = if heavy {
+                crate::explosions::Calibre::Cannon
             } else {
-                let m = stealth_sim::aaa::M_PER_MAP;
-                combat.round_impacts.push((bx + miss.0 as f64 / m, by - miss.1 as f64 / m));
-            }
+                crate::explosions::Calibre::Small
+            };
+            combat.round_impacts.push((x as f64 / fine, y as f64 / fine, calibre));
+        }
+        // Armour firing: drawn by `ground_fire` (the flash, the tracer, the strike).
+        SimEvent::GroundShot { from, to, gun, hit, kill, miss } => {
+            combat.ground_shots.push(GroundShotFx { from, to, gun, hit, kill, miss });
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {
@@ -2275,6 +2273,31 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             }
         }
         _ => {}
+    }
+}
+
+/// A vehicle's round at another (`SimEvent::GroundShot`).
+#[derive(Clone, Copy, Debug)]
+pub struct GroundShotFx {
+    pub from: usize,
+    pub to: usize,
+    pub gun: stealth_sim::ground::GroundGun,
+    pub hit: bool,
+    pub kill: bool,
+    /// Where it lands from the target (metres east, north).
+    pub miss: (i16, i16),
+}
+
+/// The shells that came down on the ground since the last call, as round impacts.
+fn shell_strikes(combat: &mut Combat) {
+    let m = stealth_sim::aaa::M_PER_MAP;
+    for ([e, n], flak) in combat.sim.take_shell_impacts() {
+        let calibre = if flak {
+            crate::explosions::Calibre::Cannon
+        } else {
+            crate::explosions::Calibre::Small
+        };
+        combat.round_impacts.push((e / m, 0x8000 as f64 - n / m, calibre));
     }
 }
 

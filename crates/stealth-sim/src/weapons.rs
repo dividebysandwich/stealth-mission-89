@@ -819,7 +819,8 @@ impl Sim {
     /// below it: dust, and what stands there may go.
     pub(crate) fn round_impact(&mut self, x: i32, y: i32, (bx, by): (i32, i32)) {
         {
-            self.emit(SimEvent::RoundImpact { x, y });
+            let heavy = self.pl.a10 || self.pl.tornado || self.pl.gunship;
+            self.emit(SimEvent::RoundImpact { x, y, heavy });
             let o = self.find_object_at(bx, by);
             if o == -1 || self.obj(o).flags & oflags::DESTROYED != 0 {
                 return;

@@ -302,6 +302,20 @@ impl Sim {
         &self.aaa_shells
     }
 
+    /// Shells came down here (nobody may take them: a dedicated server keeps the last few).
+    pub(crate) fn shells_down(&mut self, down: Vec<([f64; 2], bool)>) {
+        self.shell_impacts.extend(down);
+        if self.shell_impacts.len() > 256 {
+            self.shell_impacts.drain(..128);
+        }
+    }
+
+    /// The shells that came down on the ground since the last call (metres east, north; flak
+    /// or not).
+    pub fn take_shell_impacts(&mut self) -> Vec<([f64; 2], bool)> {
+        std::mem::take(&mut self.shell_impacts)
+    }
+
     /// The player in metres (east, north, up) and his velocity (m/s), as the gunners see it:
     /// from how he moved over the last frames (the flight model covers more ground than its
     /// airspeed says, and the flight path is not the nose's direction).
@@ -576,6 +590,7 @@ impl Sim {
         let mut hits = vec![(0, 0); tracks.len()];
         let mut bursts = Vec::new();
         let mut shells = std::mem::take(&mut self.aaa_shells);
+        let mut down = Vec::new();
         shells.retain_mut(|s| {
             let n = tracks.iter().position(|t| t.k == s.pilot as usize);
             let (me, vel) = n.map_or(([f64::MAX; 3], [0.0; 3]), |n| (tracks[n].me, tracks[n].vel));
@@ -586,6 +601,7 @@ impl Sim {
             s.vel[2] -= G * dt;
             s.ttl -= 1;
             if s.pos[2] < 0.0 {
+                down.push(([s.pos[0], s.pos[1]], s.flak));
                 return false;
             }
             let near = if n.is_some() { closest(rel, rel_step) } else { f64::MAX };
@@ -611,6 +627,7 @@ impl Sim {
         });
         self.aaa_shells = shells;
         self.aaa_rng = Some(rng);
+        self.shells_down(down);
         for (k, x, y, alt) in bursts {
             self.activate(k);
             self.emit(SimEvent::Flak { x, y, alt });
@@ -682,7 +699,7 @@ impl Sim {
                 {
                     Some((x as f64, y as f64, false, by))
                 }
-                SimEvent::RoundImpact { x, y } => {
+                SimEvent::RoundImpact { x, y, .. } => {
                     Some((x as f64 / fine, y as f64 / fine, true, by))
                 }
                 _ => None,

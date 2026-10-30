@@ -539,9 +539,8 @@ impl Sim {
             let mb = b.metres();
             !b.destroyed
                 && self.aaa_blue(j) != blue
-                && shot(a.kind, b.kind).is_some_and(|s| {
-                    dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE)
-                })
+                && shot(a.kind, b.kind)
+                    .is_some_and(|s| dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE))
                 && self.unit_seen_by(j, blue)
         })
     }
@@ -697,11 +696,9 @@ impl Sim {
                 }
             } else {
                 // Mostly short (the dirt kicked up in front of it), some over or wide.
-                let along = if rng.random(10) < 7 {
-                    -(8 + rng.random(40))
-                } else {
-                    10 + rng.random(50)
-                } as f64;
+                let along =
+                    if rng.random(10) < 7 { -(8 + rng.random(40)) } else { 10 + rng.random(50) }
+                        as f64;
                 let wide = (rng.random(25) - 12) as f64;
                 let (dx, dy) = ((mb[0] - me[0]) / d.max(1.0), (mb[1] - me[1]) / d.max(1.0));
                 miss = (

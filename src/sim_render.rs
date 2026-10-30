@@ -29,6 +29,8 @@ impl Plugin for SimRenderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimVisuals>()
             .init_resource::<AaaVisuals>()
+            .init_resource::<DrawnUnits>()
+            .init_resource::<crate::ground_fire::GroundRounds>()
             .init_resource::<RemoteVisuals>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
@@ -36,6 +38,9 @@ impl Plugin for SimRenderPlugin {
                 (
                     sync_objects.run_if(resource_exists::<Combat>),
                     sync_aaa.run_if(resource_exists::<Combat>),
+                    crate::ground_fire::ground_fire
+                        .after(sync_aaa)
+                        .run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
                     own_muzzle_flash.run_if(resource_exists::<Combat>),
                     own_shadow,
@@ -67,7 +72,7 @@ pub struct SimObject;
 const FLARE: u8 = 15;
 const CHAFF: u8 = 7;
 const DECOY: u8 = 13;
-const TRACER: u8 = 17;
+pub const TRACER: u8 = 17;
 pub const ENEMY_TRACER: u8 = 41;
 /// The other players' rounds: the same ammunition as ours.
 const FRIENDLY_TRACER: u8 = TRACER;
@@ -237,8 +242,10 @@ fn cleanup(
     mut vis: ResMut<SimVisuals>,
     mut aaa: ResMut<AaaVisuals>,
     mut remote: ResMut<RemoteVisuals>,
+    mut rounds: ResMut<crate::ground_fire::GroundRounds>,
 ) {
     *aaa = AaaVisuals::default();
+    *rounds = Default::default();
     *remote = RemoteVisuals::default();
     for e in &q {
         commands.entity(e).try_despawn();
@@ -486,6 +493,11 @@ struct AaaVisuals {
     material: Option<Handle<PaletteMaterial>>,
 }
 
+/// The ground units as drawn this frame: on the ground (Bevy world), hull heading (rad,
+/// clockwise from north).
+#[derive(Resource, Default)]
+pub struct DrawnUnits(pub Vec<(DVec3, f32)>);
+
 /// How far behind a vehicle's centre its dust rises (m).
 const VEHICLE_REAR: f32 = 3.6;
 
@@ -521,8 +533,10 @@ fn sync_aaa(
     origin: Option<Res<crate::world::FloatingOrigin>>,
     hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
     mut dust: ResMut<crate::explosions::VehicleDust>,
+    mut drawn: ResMut<DrawnUnits>,
 ) {
     dust.0.clear();
+    drawn.0.clear();
     let sim = &combat.sim;
     let units = sim.units();
     let kinds: Vec<_> = units.iter().map(|u| u.kind).collect();
@@ -572,6 +586,7 @@ fn sync_aaa(
             })
             .fold(0.0f32, f32::max) as f64
     };
+    drawn.0.resize(units.len(), (DVec3::ZERO, 0.0));
     for (i, (u, &e)) in units.iter().zip(&av.units).enumerate() {
         let Ok((mut pos, mut tf, state, mut vis)) = q.get_mut(e) else { continue };
         let (at, heading) = match u.fine {
@@ -608,6 +623,7 @@ fn sync_aaa(
             ),
         };
         pos.0 = at;
+        drawn.0[i] = (at, heading);
         tf.rotation = Quat::from_rotation_y(-heading);
         let hidden = u.kind == stealth_sim::aaa::GroundKind::Manpads
             && at.distance(eye) > MANPADS_RANGE
@@ -794,7 +810,7 @@ fn place_tracer(
 }
 
 /// A tracer line: a unit segment along +Z from the round, scaled to the streak.
-fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMaterial>) -> Entity {
+pub(crate) fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMaterial>) -> Entity {
     let e = commands
         .spawn((
             SimObject,

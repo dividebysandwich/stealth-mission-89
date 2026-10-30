@@ -198,6 +198,9 @@ pub struct Sim {
     pub(crate) units: Vec<aaa::GroundUnit>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) aaa_shells: Vec<aaa::Shell>,
+    /// Where shells came down on the ground (metres east, north) and if they were flak, since
+    /// [`Sim::take_shell_impacts`] (only drawn).
+    pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
@@ -511,6 +514,7 @@ impl Sim {
             visual_light: None,
             units: Vec::new(),
             aaa_shells: Vec::new(),
+            shell_impacts: Vec::new(),
             aaa_rng: None,
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,

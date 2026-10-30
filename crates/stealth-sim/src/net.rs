@@ -707,15 +707,20 @@ impl Sim {
             self.remote_rounds.push((Self::gun_round(&p.view, p.gun_aim, fs), 0));
         }
         let dt = 1.0 / fs as f64;
-        let fly = |s: &mut Shell| {
+        let mut down = Vec::new();
+        let mut fly = |s: &mut Shell| {
             s.pos = [s.pos[0] + s.vel[0] * dt, s.pos[1] + s.vel[1] * dt, s.pos[2] + s.vel[2] * dt];
             s.vel[2] -= 9.81 * dt;
             s.ttl -= 1;
+            if s.pos[2] < 0.0 {
+                down.push(([s.pos[0], s.pos[1]], s.flak));
+            }
             s.pos[2] >= 0.0 && s.ttl > 0
         };
-        self.aaa_shells.retain_mut(fly);
+        self.aaa_shells.retain_mut(&mut fly);
         if let Some(c) = self.campaign.as_mut() {
             c.shells.retain_mut(|s| fly(&mut s.shell));
         }
+        self.shells_down(down);
     }
 }

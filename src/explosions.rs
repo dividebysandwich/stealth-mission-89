@@ -123,8 +123,19 @@ impl Material for ParticleMaterial {
     }
 }
 
-/// What a blast looks like.
+/// How heavy a round is, for its muzzle flash and the strike it makes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Calibre {
+    /// Machine guns and the 20 to 23 mm guns: a tiny puff.
+    Small,
+    /// 25 to 35 mm cannon: a puff of a few metres.
+    Cannon,
+    /// A tank's main gun: a fountain of dirt.
+    Tank,
+}
+
+/// What a blast looks like.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Blast {
     /// Gun round hitting the player or the ground: sparks and a dust puff.
     GunHit,
@@ -136,6 +147,13 @@ pub enum Blast {
     Crash,
     /// An anti-aircraft shell bursting in the air: a flash and a black puff.
     Flak,
+    /// A round striking the ground: dust and clods (spray on water, a grey puff on concrete).
+    Strike(Calibre),
+    /// A round striking a vehicle without knocking it out: sparks.
+    ArmourHit(Calibre),
+    /// A vehicle's gun firing this way (Bevy world, unit): the flash, its smoke, and a tank's
+    /// blast raising the dust around it.
+    Muzzle(Calibre, Vec3),
 }
 
 /// Explosion kind of an anti-aircraft shell burst (`Combat::explosions`; not a sim kind).
@@ -174,6 +192,8 @@ enum PuffLook {
     Trail(f32),
     /// Brown dust thrown up by ground impacts.
     Dust,
+    /// Darker earth thrown up by a heavy round.
+    Dirt,
 }
 
 struct Puff {
@@ -228,6 +248,11 @@ impl Puff {
             PuffLook::Dust => (
                 Vec3::new(0.30, 0.24, 0.17),
                 self.opacity * fade_in * (1.0 - smooth(0.3, 1.0, t)),
+                0.0,
+            ),
+            PuffLook::Dirt => (
+                Vec3::new(0.17, 0.13, 0.09),
+                self.opacity * fade_in * (1.0 - smooth(0.4, 1.0, t)),
                 0.0,
             ),
         }
@@ -389,6 +414,7 @@ fn spawn_blasts(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     palette: Res<crate::palette::Palette>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
 ) {
     let p = &mut *p;
     if p.rng == 0 {
@@ -410,10 +436,17 @@ fn spawn_blasts(
             ground,
         ));
     }
-    for &(x, y) in &combat.round_impacts {
-        blasts.push((map_point(x, y, 0.0), Blast::GunHit, true));
+    for &(x, y, calibre) in &combat.round_impacts {
+        blasts.push((map_point(x, y, 0.0), Blast::Strike(calibre), true));
     }
     for (pos, blast, ground) in blasts {
+        if let Blast::Strike(calibre) = blast {
+            let surface = scenery.as_ref().map_or(crate::scenery::Surface::Land, |s| {
+                s.surface(bevy::math::DVec2::new(pos.x, -pos.z))
+            });
+            strike(&mut commands, p, &mut materials, &palette.globals, pos, calibre, surface);
+            continue;
+        }
         spawn_blast(&mut commands, p, &mut materials, &palette.globals, pos, blast, ground);
     }
 
@@ -737,6 +770,18 @@ fn spawn_blast(
         Blast::Bomb => (22.0, 12, 34, 22, 10, 3.0),
         Blast::Crash => (30.0, 16, 40, 30, 14, 3.5),
         Blast::Flak => (0.0, 0, 0, 0, 0, 0.0),
+        Blast::Muzzle(calibre, dir) => {
+            muzzle(commands, p, pos, calibre, dir);
+            return;
+        }
+        Blast::ArmourHit(calibre) => {
+            armour_hit(commands, p, materials, globals, pos, calibre);
+            return;
+        }
+        Blast::Strike(calibre) => {
+            strike(commands, p, materials, globals, pos, calibre, crate::scenery::Surface::Land);
+            return;
+        }
     };
     let up = if ground { 0.7 } else { 0.0 };
     // Ground blasts sit on the ground (their middle a little above it).
@@ -875,6 +920,199 @@ fn spawn_blast(
             .spawn((SimObject, WorldPos(centre), Transform::default(), Visibility::Inherited))
             .id();
         p.lights.push((e, 0.0, 1.4, light));
+    }
+}
+
+/// A short flash light at `at` (Bevy world) of `strength`, for `life` seconds.
+fn flash_light(commands: &mut Commands, p: &mut Particles, at: DVec3, strength: f32, life: f32) {
+    let e =
+        commands.spawn((SimObject, WorldPos(at), Transform::default(), Visibility::Inherited)).id();
+    p.lights.push((e, 0.0, life, strength));
+}
+
+/// A vehicle's gun firing from `at` along `dir`: a tank's flash and fire thrown out of the
+/// barrel, its blast rolling the dust out around the hull and a cloud of grey smoke; an
+/// autocannon's quick flash and a wisp of smoke.
+fn muzzle(commands: &mut Commands, p: &mut Particles, at: DVec3, calibre: Calibre, dir: Vec3) {
+    match calibre {
+        Calibre::Tank => {
+            p.puff(at, dir * 20.0, 0.12, (1.5, 4.5), PuffLook::Flash, 0.0, 0.0, 1.0);
+            for _ in 0..5 {
+                let v = dir * p.range(25.0, 60.0) + p.dir(0.0) * 4.0;
+                let life = p.range(0.12, 0.25);
+                let o = at + (dir * p.range(0.0, 2.0)).as_dvec3();
+                p.puff(o, v, life, (0.8, 2.5), PuffLook::Fire, 6.0, 0.0, 0.95);
+            }
+            for _ in 0..6 {
+                let v = dir * p.range(6.0, 16.0) + p.dir(0.0) * 2.0;
+                let life = p.range(2.5, 4.0);
+                let shade = p.range(0.65, 0.85);
+                p.puff(at, v, life, (1.2, 5.5), PuffLook::Trail(shade), 1.2, 0.4, 0.6);
+            }
+            // The blast's dust ring on the ground below the barrel.
+            let ground = at - DVec3::Y * 2.2;
+            for _ in 0..10 {
+                let a = p.range(0.0, std::f32::consts::TAU);
+                let out = Vec3::new(a.cos(), 0.0, a.sin());
+                let o = ground + (out * 2.0 + dir * 3.0).as_dvec3() + DVec3::Y * 0.5;
+                let v = out * p.range(6.0, 12.0) + dir * 4.0 + Vec3::Y * p.range(0.3, 1.2);
+                let life = p.range(1.8, 3.0);
+                p.puff(o, v, life, (1.0, 4.0), PuffLook::Dust, 1.5, 0.2, 0.45);
+            }
+            flash_light(commands, p, at, 1.2, 0.3);
+        }
+        Calibre::Cannon => {
+            p.puff(at, dir * 5.0, 0.07, (0.5, 1.3), PuffLook::GunFlash, 0.0, 0.0, 1.0);
+            let v = dir * p.range(3.0, 6.0);
+            let life = p.range(0.8, 1.4);
+            p.puff(at, v, life, (0.3, 1.6), PuffLook::Trail(0.8), 1.5, 0.3, 0.35);
+            flash_light(commands, p, at, 0.3, 0.08);
+        }
+        Calibre::Small => {
+            p.puff(at, dir * 4.0, 0.05, (0.3, 0.8), PuffLook::GunFlash, 0.0, 0.0, 1.0);
+        }
+    }
+}
+
+/// A round striking a vehicle without knocking it out: sparks off the armour, a flash, and a
+/// tank round's dark smoke.
+fn armour_hit(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    at: DVec3,
+    calibre: Calibre,
+) {
+    let (sparks, flash, speed) = match calibre {
+        Calibre::Tank => (16, (2.0, 4.0), (20.0, 50.0)),
+        Calibre::Cannon => (6, (0.8, 1.8), (12.0, 35.0)),
+        Calibre::Small => (3, (0.4, 0.9), (10.0, 25.0)),
+    };
+    for _ in 0..sparks {
+        let v = p.dir(0.2) * p.range(speed.0, speed.1);
+        let life = p.range(0.2, 0.5);
+        spawn_chunk(commands, p, materials, globals, ChunkKind::GunSpark, at, v, life, 1.0, false);
+    }
+    p.puff(at, Vec3::ZERO, 0.1, flash, PuffLook::GunFlash, 0.0, 0.0, 1.0);
+    if calibre == Calibre::Tank {
+        for _ in 0..3 {
+            let v = p.dir(0.6) * 1.5 + Vec3::Y;
+            let life = p.range(2.5, 4.0);
+            p.puff(at, v, life, (1.0, 4.0), PuffLook::Smoke(0.15), 0.6, 0.8, 0.7);
+        }
+        flash_light(commands, p, at, 0.8, 0.25);
+    }
+}
+
+/// A round striking the ground at `at`: a machine gun's tiny puff, a cannon's puff with a few
+/// clods, a tank round's fountain of dirt; spray from the water, a grey puff from concrete.
+#[allow(clippy::too_many_arguments)]
+fn strike(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    at: DVec3,
+    calibre: Calibre,
+    surface: crate::scenery::Surface,
+) {
+    use crate::scenery::Surface;
+    let (dust, dirt) = match surface {
+        Surface::Land => (PuffLook::Dust, PuffLook::Dirt),
+        Surface::Concrete => (PuffLook::Smoke(0.7), PuffLook::Smoke(0.55)),
+        Surface::Water => (PuffLook::Smoke(1.0), PuffLook::Smoke(1.0)),
+    };
+    let land = surface != Surface::Water;
+    let up = at + DVec3::Y * 0.3;
+    match calibre {
+        Calibre::Small => {
+            let life = p.range(0.7, 1.1);
+            let v = Vec3::Y * p.range(1.0, 2.0) + p.dir(0.0) * 0.3;
+            p.puff(up, v, life, (0.35, 1.5), dust, 1.2, 0.3, 0.7);
+            if land {
+                for _ in 0..2 {
+                    let v = p.dir(0.6) * p.range(8.0, 20.0);
+                    let life = p.range(0.1, 0.25);
+                    spawn_chunk(
+                        commands,
+                        p,
+                        materials,
+                        globals,
+                        ChunkKind::GunSpark,
+                        up,
+                        v,
+                        life,
+                        0.7,
+                        false,
+                    );
+                }
+            }
+        }
+        Calibre::Cannon => {
+            p.puff(up, Vec3::ZERO, 0.08, (0.8, 1.8), PuffLook::GunFlash, 0.0, 0.0, 0.9);
+            for _ in 0..4 {
+                let v = Vec3::Y * p.range(2.0, 5.0) + p.dir(0.0) * 1.2;
+                let life = p.range(1.6, 2.6);
+                p.puff(up, v, life, (0.8, 4.0), dust, 1.2, 0.4, 0.7);
+            }
+            if land {
+                for _ in 0..3 {
+                    let v = p.dir(0.7) * p.range(4.0, 9.0) + Vec3::Y * 4.0;
+                    let life = p.range(1.0, 2.0);
+                    let size = p.range(0.12, 0.25);
+                    spawn_chunk(
+                        commands,
+                        p,
+                        materials,
+                        globals,
+                        ChunkKind::Debris,
+                        up,
+                        v,
+                        life,
+                        size,
+                        false,
+                    );
+                }
+            }
+        }
+        Calibre::Tank => {
+            p.puff(up, Vec3::ZERO, 0.1, (1.5, 3.5), PuffLook::Flash, 0.0, 0.0, 0.8);
+            // The fountain: earth thrown high, then slumping and drifting off.
+            for _ in 0..12 {
+                let v = Vec3::Y * p.range(8.0, 20.0) + p.dir(0.0) * p.range(1.0, 4.0);
+                let life = p.range(2.5, 4.5);
+                let s = p.range(1.2, 2.0);
+                p.puff(up, v, life, (s, s * 3.5), dirt, 1.6, -1.0, 0.8);
+            }
+            // The ring rolling out along the ground.
+            for _ in 0..8 {
+                let a = p.range(0.0, std::f32::consts::TAU);
+                let out = Vec3::new(a.cos(), 0.05, a.sin());
+                let life = p.range(2.5, 4.0);
+                let v = out * p.range(6.0, 12.0);
+                p.puff(up, v, life, (1.5, 5.5), dust, 1.4, 0.3, 0.6);
+            }
+            if land {
+                for _ in 0..12 {
+                    let v = p.dir(0.8) * p.range(5.0, 12.0) + Vec3::Y * p.range(6.0, 14.0);
+                    let life = p.range(2.0, 3.5);
+                    let size = p.range(0.2, 0.5);
+                    spawn_chunk(
+                        commands,
+                        p,
+                        materials,
+                        globals,
+                        ChunkKind::Debris,
+                        up,
+                        v,
+                        life,
+                        size,
+                        false,
+                    );
+                }
+            }
+        }
     }
 }
 
