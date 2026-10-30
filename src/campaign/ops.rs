@@ -55,6 +55,7 @@ pub struct OpsUi {
     /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
     pub test_taken: bool,
     pub test_manned: bool,
+    pub test_strike: bool,
     pub test_geran: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
@@ -1220,7 +1221,32 @@ fn war_map(
         // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
         // armour` the first tank of a column on the move.
         let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
-        if watch.as_deref() == Some("armour") {
+        if watch.as_deref() == Some("fp2") {
+            // The first attack drone in the air.
+            if unit_view.target.is_none()
+                && let Some(a) = pic.friendly.iter().find(|a| a.spec == stealth_sim::uav::FP2_SPEC)
+                && !std::mem::replace(test_taken, true)
+            {
+                let unit = super::unit_view::UnitRef::Flight { index: a.unit, spec: a.spec };
+                unit_view.watch(unit, sim.aircraft_name(a.spec));
+                unit_view.test_orbit();
+            }
+        } else if watch.as_deref() == Some("zsu") {
+            // The Shilka of an enemy column on the move.
+            let zsu = (0..sim.units().len()).find(|&k| {
+                sim.units()[k].kind == stealth_sim::aaa::GroundKind::Zsu
+                    && !sim.units()[k].destroyed
+                    && !sim.aaa_blue(k)
+                    && sim.unit_moving(k)
+            });
+            if unit_view.target.is_none()
+                && let Some(k) = zsu
+                && !std::mem::replace(test_taken, true)
+            {
+                unit_view.watch(super::unit_view::UnitRef::Aaa(k), "ZSU-23-4".into());
+                unit_view.test_orbit();
+            }
+        } else if watch.as_deref() == Some("armour") {
             if unit_view.target.is_none()
                 && let Some(v) = pic.armour.iter().find(|v| v.heading.is_some())
                 && !std::mem::replace(test_taken, true)

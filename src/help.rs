@@ -142,6 +142,12 @@ Testing and screenshots
   --convoy-now                 both sides send an armour column at once
   --convoy-speed <m/s>         the columns drive this fast
   --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
+  --fp2-strike [m]             an attack drone at the enemy column's Shilka once it drove m
+                               (with --convoy-now)
+  --campaign-watch armour|fp2|zsu
+                               watch a tank on the move, the attack drone, the column's Shilka
+  --watch-orbit <yaw>,<pitch>,<m>
+                               the watching camera's place (radians from behind, above)
   --campaign-watch             watch the first friendly aircraft
   --campaign-designate gepard|patriot|drones
                                designate a new air defence site near the parked base

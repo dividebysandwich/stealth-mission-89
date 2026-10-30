@@ -98,6 +98,16 @@ impl UnitView {
         self.distance = if aircraft { 45.0 } else { 90.0 };
     }
 
+    /// Test aid: `--watch-orbit <yaw>,<pitch>,<metres>` places the camera (radians from
+    /// behind, above).
+    pub fn test_orbit(&mut self) {
+        let Some(v) = std::env::args().skip_while(|a| a != "--watch-orbit").nth(1) else { return };
+        let n: Vec<f32> = v.split(',').filter_map(|s| s.parse().ok()).collect();
+        if let [yaw, pitch, distance] = n[..] {
+            (self.orbit, self.pitch, self.distance) = (yaw, pitch, distance);
+        }
+    }
+
     pub fn close(&mut self) {
         self.target = None;
     }
@@ -433,7 +443,12 @@ pub fn window(
         .open(&mut open)
         .resizable(true)
         .collapsible(true)
-        .default_size(egui::vec2(560.0, 340.0))
+        // (Test shots with `--watch-orbit`: the picture at its own size.)
+        .default_size(if std::env::args().any(|a| a == "--watch-orbit") {
+            egui::vec2(W as f32, H as f32 + 30.0)
+        } else {
+            egui::vec2(560.0, 340.0)
+        })
         .default_pos(egui::pos2(60.0, 60.0))
         .show(ctx, |ui| {
             let w = ui.available_width().max(160.0);

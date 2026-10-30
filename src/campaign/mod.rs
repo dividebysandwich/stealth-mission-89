@@ -761,6 +761,70 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
         }
     }
+    // Test aid: `--fp2-strike [m]` (with `--convoy-now`): once the enemy column has driven so
+    // far (0), a drone command center 3.5 km off its road ahead launches an attack drone at
+    // where its Shilka will be when the drone gets there.
+    if c.phase == Phase::Ops
+        && c.state().clock > 20.0
+        && !c.ui.test_strike
+        && c.role != Role::Client
+        && std::env::args().any(|a| a == "--fp2-strike")
+    {
+        use stealth_sim::aaa::{GroundKind, M_PER_MAP};
+        use stealth_sim::uav::{UavKind, UavWp, WpKind};
+        let sim = &mut s.combat.sim;
+        let red = sim.convoys().iter().find(|v| !v.blue).cloned();
+        let zsu = red.as_ref().and_then(|v| {
+            v.units.iter().position(|&k| sim.units()[k as usize].kind == GroundKind::Zsu)
+        });
+        let after: f64 = std::env::args()
+            .skip_while(|a| a != "--fp2-strike")
+            .nth(1)
+            .and_then(|m| m.parse().ok())
+            .unwrap_or(0.0);
+        if let (Some(v), Some(i)) = (red, zsu)
+            && v.along >= after
+        {
+            const OFF: f64 = 3500.0;
+            let along = v.along - i as f64 * stealth_sim::ground::GAP;
+            let speed = sim.convoy_speed();
+            let fp2 = UavKind::Fp2.perf().cruise;
+            // The side of the road further from the enemy's other guns.
+            let guns: Vec<[f64; 2]> = (0..sim.units().len())
+                .filter(|&k| !sim.aaa_blue(k) && !sim.units()[k].destroyed && !sim.unit_moving(k))
+                .map(|k| {
+                    let m = sim.units()[k].metres();
+                    [m[0], m[1]]
+                })
+                .collect();
+            let clear = |p: [f64; 2]| {
+                guns.iter().map(|g| (g[0] - p[0]).hypot(g[1] - p[1])).fold(f64::MAX, f64::min)
+            };
+            let mut ahead = 1500.0;
+            let (mut aim, mut center) = ([0.0; 2], [0.0; 2]);
+            for _ in 0..8 {
+                let (p, h) = v.point(along + ahead);
+                aim = p;
+                let side = |s: f64| [p[0] + s * h.cos() * OFF, p[1] - s * h.sin() * OFF];
+                center = if clear(side(1.0)) >= clear(side(-1.0)) { side(1.0) } else { side(-1.0) };
+                // Its dive is faster than its cruise.
+                ahead = speed * (OFF / fp2 - 4.0);
+            }
+            let map = |p: [f64; 2]| ((p[0] / M_PER_MAP) as i32, 0x8000 - (p[1] / M_PER_MAP) as i32);
+            let ((cx, cy), (ax, ay)) = (map(center), map(aim));
+            sim.place_drone_center(cx, cy);
+            let k = sim.units().len() - 1;
+            let alt = UavKind::Fp2.perf().altitude as f32;
+            let route = vec![UavWp { x: ax, y: ay, alt, kind: WpKind::Terminate }];
+            sim.test_launch_uav(k, UavKind::Fp2, route);
+            info!(
+                "test: FP-2 launched at {:.0} s from ({cx}, {cy}) at ({ax}, {ay}), {:.0} m from a gun",
+                c.state().clock,
+                clear(center)
+            );
+            c.ui.test_strike = true;
+        }
+    }
     // Test aid: `--campaign-geran <n> [km]` (with `--campaign-drones`): once an interceptor is
     // up and level, a raid of n enemy Geran-2s km (2) ahead of its nose at its height, from the
     // enemy place nearest there and flying at the friendly place behind the interceptor.

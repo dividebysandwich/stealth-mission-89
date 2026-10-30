@@ -20,7 +20,7 @@ use crate::types::SimEvent;
 pub const CONVOY_SPEED: f64 = 20.0;
 const ASSAULT_SPEED: f64 = 6.0;
 /// Metres between the column's vehicles.
-const GAP: f64 = 60.0;
+pub const GAP: f64 = 60.0;
 /// The convoy leaves the road this far (m) before its goal and attacks in line abreast, its
 /// vehicles this far apart, stopping this short of the place's centre.
 const ASSAULT_START: f64 = 2000.0;
@@ -64,6 +64,11 @@ pub struct Convoy {
 }
 
 impl Convoy {
+    /// Point (metres east, north) and heading at distance `s` along its route.
+    pub fn point(&self, s: f64) -> ([f64; 2], f64) {
+        point_at(&self.route, s)
+    }
+
     fn length(&self) -> f64 {
         self.route.windows(2).map(|w| dist(w[0], w[1])).sum()
     }
@@ -228,6 +233,11 @@ impl Sim {
     pub(crate) fn ground_busy(&self, k: usize) -> bool {
         self.unit_moving(k)
             || self.ground().is_some_and(|g| g.reload.get(k).is_some_and(|&r| r > self.fs))
+    }
+
+    /// The convoys' road march speed (m/s).
+    pub fn convoy_speed(&self) -> f64 {
+        self.ground().filter(|g| g.speed > 0.0).map_or(CONVOY_SPEED, |g| g.speed as f64)
     }
 
     /// Test aid: the convoys' road march speed (m/s).
