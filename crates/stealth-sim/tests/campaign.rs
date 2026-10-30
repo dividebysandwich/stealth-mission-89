@@ -823,6 +823,10 @@ fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
     assert!(!ev.iter().any(|e| matches!(e, SimEvent::SortieEnded(_))));
     let c = sim.csar().expect("rescue on its way").clone();
     assert!(!sim.player_absent());
+    // The friendly air defence leaves the Black Hawk alone, the enemy's goes for it.
+    let side = |i: usize| sim.friendly_unit(i, sim.flights()[i].spec);
+    assert!(side(c.rescue));
+    assert!(c.hunters.iter().all(|&i| !side(i)));
     // Skip the extraction: the sortie ends as an ejection, the helicopters go home.
     sim.end_sortie(0);
     let ev = sim.take_pilot_events();

@@ -1233,8 +1233,12 @@ impl Sim {
     }
 
     /// Whether flight unit `i` (of aircraft spec `spec`) is friendly: a campaign aircraft's
-    /// side, else its type's.
+    /// side, a rescue's helicopters by their part in it (the Black Hawk's type counts as
+    /// hostile), else its type's.
     pub fn friendly_unit(&self, i: usize, spec: i32) -> bool {
+        if let Some(c) = self.csar_of(i) {
+            return c.rescue == i;
+        }
         self.campaign_flight(i).map_or_else(|| self.friendly_aircraft(spec), |f| f.blue)
     }
 
