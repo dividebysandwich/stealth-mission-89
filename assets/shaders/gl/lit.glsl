@@ -50,7 +50,8 @@ uniform vec4 u_emissive;
 // bit 0: base colour texture, 1: emissive texture, 2: unlit, 3: never darkened, 4: alpha mask
 uniform uint u_flags;
 uniform float u_cutoff;
-// x: darkness of a night without moonlight (cockpit3d/shading.rs `CockpitShading::night`)
+// x: darkness of a night without moonlight, y: night vision goggles, z: daylight 0..1
+// (cockpit3d/shading.rs `CockpitShading::night`)
 uniform vec4 u_night;
 // The night flood light (rgb) and the master caution (w) (`CockpitShading::flood`).
 uniform vec4 u_flood;
@@ -108,6 +109,22 @@ vec3 burst_glow(vec3 world) {
     return g.burst_colour.rgb * i * mix(1.0, 0.3, g.light_info.y) * (1.0 - smoothstep(0.3 * reach, reach, d)) * (1.6 / (1.0 + core * core) + 0.3 / (1.0 + halo * halo));
 }
 
+// Night vision goggles: cockpit.wgsl's `nvg`, the cockpit as the goggles show it.
+vec3 nvg(vec3 rgb) {
+    if (u_night.y == 0.0) { return rgb; }
+    float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+    float gain = mix(14.0, 2.5, clamp(u_night.z, 0.0, 1.0));
+    float v = smoothstep(0.12, 0.95, sqrt(1.0 - exp(-lum * gain)));
+    uvec2 p = uvec2(gl_FragCoord.xy);
+    uint h = p.x * 0x27d4eb2du ^ p.y * 0x165667b1u ^ uint(g.dots.y * 60.0) * 0x9e3779b9u;
+    h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
+    // Scintillation: the tube's grain, with the goggles effect strongest in the dark.
+    float grain = u_night.y > 1.5 ? mix(0.16, 0.05, v) : 0.06;
+    v = clamp(v + (float(h >> 8u) / 16777216.0 - 0.5) * grain, 0.0, 1.0);
+    vec3 c = mix(vec3(0.0, 0.04, 0.01), vec3(0.3, 0.85, 0.2), v) + vec3(0.5, 0.15, 0.4) * v * v * v;
+    return pow(min(c, vec3(1.0)), vec3(2.2));
+}
+
 void main() {
     vec4 base = u_base;
     if ((u_flags & 1u) != 0u) {
@@ -143,6 +160,7 @@ void main() {
         float pulse = u_flood.w * max(sin(g.dots.y * 6.2831853 * 1.5), 0.0);
         rgb += base.rgb * (u_flood.rgb + vec3(0.1, 0.05, 0.0) * pulse);
     }
+    rgb = nvg(rgb);
     // VGA colours (palette.glsl `retro`).
     if (g.retro.x > 0.0) {
         uvec2 p = uvec2(gl_FragCoord.xy) & 3u;
