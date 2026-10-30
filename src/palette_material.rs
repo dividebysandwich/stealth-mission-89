@@ -81,20 +81,31 @@ pub struct PaletteMaterial {
 /// `Globals` (binding 1, its `globals` field): a storage buffer, or a uniform buffer where
 /// there are none (the WebGL2 build). The shaders pick theirs with
 /// `#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0`. (The derive only binds a buffer asset as
-/// storage.) The third argument is the bind group data, made `From<&Self>`.
+/// storage.) The third argument is the bind group data, made `From<&Self>`; with `stars` the
+/// star cells' texture is binding 2 (`stars::STAR_GRID`).
 macro_rules! globals_bind_group {
     ($ty:ty, $params:ident) => {
-        $crate::palette_material::globals_bind_group!($ty, $params, (), |_| ());
+        $crate::palette_material::globals_bind_group!($ty, $params, (), |_| (), false);
     };
     ($ty:ty, $params:ident, $data:ty) => {
-        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from);
+        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from, false);
     };
-    ($ty:ty, $params:ident, $data:ty, $make:expr) => {
+    ($ty:ty, $params:ident, $data:ty, stars) => {
+        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from, true);
+    };
+    ($ty:ty, $params:ident, $data:ty, $make:expr, $stars:literal) => {
         impl bevy::render::render_resource::AsBindGroup for $ty {
             type Data = $data;
-            type Param = bevy::ecs::system::lifetimeless::SRes<
-                bevy::render::render_asset::RenderAssets<bevy::render::storage::GpuShaderBuffer>,
-            >;
+            type Param = (
+                bevy::ecs::system::lifetimeless::SRes<
+                    bevy::render::render_asset::RenderAssets<
+                        bevy::render::storage::GpuShaderBuffer,
+                    >,
+                >,
+                bevy::ecs::system::lifetimeless::SRes<
+                    bevy::render::render_asset::RenderAssets<bevy::render::texture::GpuImage>,
+                >,
+            );
 
             fn label() -> &'static str {
                 stringify!($ty)
@@ -104,7 +115,7 @@ macro_rules! globals_bind_group {
                 &self,
                 _: &bevy::render::render_resource::BindGroupLayout,
                 render_device: &bevy::render::renderer::RenderDevice,
-                buffers: &mut bevy::ecs::system::SystemParamItem<'_, '_, Self::Param>,
+                (buffers, images): &mut bevy::ecs::system::SystemParamItem<'_, '_, Self::Param>,
                 _: bool,
             ) -> Result<
                 bevy::render::render_resource::UnpreparedBindGroup,
@@ -123,12 +134,23 @@ macro_rules! globals_bind_group {
                     .ok_or(AsBindGroupError::RetryNextUpdate)?
                     .buffer
                     .clone();
-                Ok(UnpreparedBindGroup {
-                    bindings: BindingResources(vec![
-                        (0, OwnedBindingResource::Buffer(params)),
-                        (1, OwnedBindingResource::Buffer(globals)),
-                    ]),
-                })
+                let mut bindings = vec![
+                    (0, OwnedBindingResource::Buffer(params)),
+                    (1, OwnedBindingResource::Buffer(globals)),
+                ];
+                if $stars {
+                    let grid = images
+                        .get(&$crate::stars::STAR_GRID)
+                        .ok_or(AsBindGroupError::RetryNextUpdate)?;
+                    bindings.push((
+                        2,
+                        OwnedBindingResource::TextureView(
+                            TextureViewDimension::D2,
+                            grid.texture_view.clone(),
+                        ),
+                    ));
+                }
+                Ok(UnpreparedBindGroup { bindings: BindingResources(bindings) })
             }
 
             #[allow(clippy::redundant_closure_call)]
@@ -146,7 +168,7 @@ macro_rules! globals_bind_group {
                 } else {
                     BufferBindingType::Uniform
                 };
-                [BufferBindingType::Uniform, globals]
+                let mut entries: Vec<_> = [BufferBindingType::Uniform, globals]
                     .into_iter()
                     .enumerate()
                     .map(|(binding, ty)| BindGroupLayoutEntry {
@@ -159,14 +181,27 @@ macro_rules! globals_bind_group {
                         },
                         count: None,
                     })
-                    .collect()
+                    .collect();
+                if $stars {
+                    entries.push(BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    });
+                }
+                entries
             }
         }
     };
 }
 pub(crate) use globals_bind_group;
 
-globals_bind_group!(PaletteMaterial, params, PaletteKey);
+globals_bind_group!(PaletteMaterial, params, PaletteKey, stars);
 
 /// The shader variant of a material: objects (polygons, lines, dots), the background sphere,
 /// or clouds and smoke.
@@ -378,6 +413,9 @@ pub struct Globals {
     /// The cloud shadow grid's squares (up to four cloud numbers each) and the cloud discs.
     pub shadow_cells: [Vec4; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
     pub shadow_clouds: [Vec4; crate::weather::SHADOW_CLOUDS],
+    /// The stars: the columns of the rotation from Bevy's frame to the star catalogue's
+    /// (`stars::frame`).
+    pub star_frame: [Vec4; 3],
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -482,6 +520,7 @@ impl Default for Globals {
             retro: Vec4::ZERO,
             shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
+            star_frame: [Vec4::ZERO; 3],
         }
     }
 }

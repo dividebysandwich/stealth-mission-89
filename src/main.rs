@@ -83,6 +83,7 @@ mod settings;
 mod shake;
 mod sim_render;
 mod sky;
+mod stars;
 mod sling;
 mod sound;
 mod stage;
@@ -294,6 +295,7 @@ fn main() {
         ))
         .add_plugins((
             sky::SkyPlugin,
+            stars::StarsPlugin,
             lighting::LightingPlugin,
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,

@@ -580,6 +580,8 @@ fn update_globals(
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);
+        let f = sky.star_frame;
+        g.star_frame = [f.x_axis, f.y_axis, f.z_axis].map(|c| c.extend(0.0));
         // Night vision goggles see as well on a moonless night.
         g.sky_night = Vec4::new(if nvg { 0.0 } else { sky.dark }, sky.glow, 0.0, 0.0);
     }

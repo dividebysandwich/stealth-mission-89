@@ -32,6 +32,9 @@ const LOWER_LEFT: u32 = 0x8CA1;
 const ZERO_TO_ONE: u32 = 0x935F;
 /// GL_TEXTURE_MAX_ANISOTROPY.
 const MAX_ANISOTROPY: u32 = 0x84FE;
+/// The texture unit holding the star catalogue's cells (`u_stars`) throughout: the others
+/// use units 0 and 1.
+const STAR_UNIT: u32 = 2;
 
 type MultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32);
 type MultisampleMultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32, i32);
@@ -346,6 +349,7 @@ fn compile(gl: &glow::Context, shader: &str, defines: &str) -> Result<Program, S
         gl.use_program(Some(program));
         gl.uniform_1_i32(at("u_base_tex").as_ref(), 0);
         gl.uniform_1_i32(at("u_emissive_tex").as_ref(), 1);
+        gl.uniform_1_i32(at("u_stars").as_ref(), STAR_UNIT as i32);
         Ok(Program {
             program,
             view_proj: at("u_view_proj"),
@@ -468,6 +472,7 @@ impl Renderer {
 
         // SAFETY: the context is current.
         let (globals, instances) = unsafe { (gl.create_buffer()?, gl.create_buffer()?) };
+        Self::star_grid(&gl)?;
         let samples = if multisample.is_some() { samples } else { 0 };
         // SAFETY: the context is current.
         let timers = unsafe {
@@ -623,6 +628,38 @@ impl Renderer {
             gl.bind_vertex_array(None);
             Some(GpuMesh { vao, buffers, count, indexed, mode, colours: mesh.colours.is_some() })
         }
+    }
+
+    /// The star catalogue's cells (`stars::grid`) on texture unit `STAR_UNIT`, for good.
+    fn star_grid(gl: &glow::Context) -> Result<(), String> {
+        use crate::stars::{ROWS, WIDTH};
+        // SAFETY: the context is current; the grid is WIDTH x ROWS RGBA8 texels.
+        unsafe {
+            let t = gl.create_texture()?;
+            gl.active_texture(glow::TEXTURE0 + STAR_UNIT);
+            gl.bind_texture(glow::TEXTURE_2D, Some(t));
+            gl.tex_storage_2d(glow::TEXTURE_2D, 1, glow::RGBA8, WIDTH as i32, ROWS as i32);
+            for (param, value) in [
+                (glow::TEXTURE_MIN_FILTER, glow::NEAREST),
+                (glow::TEXTURE_MAG_FILTER, glow::NEAREST),
+            ] {
+                gl.tex_parameter_i32(glow::TEXTURE_2D, param, value as i32);
+            }
+            gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
+            gl.tex_sub_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                0,
+                0,
+                WIDTH as i32,
+                ROWS as i32,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                glow::PixelUnpackData::Slice(Some(&crate::stars::grid().0)),
+            );
+            gl.active_texture(glow::TEXTURE0);
+        }
+        Ok(())
     }
 
     /// Uploads image `id` (all its mip levels): into the texture it has if it is the same

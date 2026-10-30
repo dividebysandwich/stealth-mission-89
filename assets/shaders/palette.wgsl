@@ -111,6 +111,9 @@ struct Globals {
     // (centre x, z where the sun sees them from the base height, radius, darkness).
     shadow_cells: array<vec4<f32>, 144>,
     shadow_clouds: array<vec4<f32>, 112>,
+    // The stars: the columns of the rotation from the world's frame to the star catalogue's
+    // (stars.rs `frame`).
+    star_frame: array<vec4<f32>, 3>,
 };
 
 struct PaletteMaterial {
@@ -710,9 +713,98 @@ fn sun_glare(dir: vec3<f32>) -> vec3<f32> {
 // Angular radius of the moon's disc (drawn about five times its real size).
 const MOON_RADIUS: f32 = 0.022;
 const MOON_COLOR: vec3<f32> = vec3<f32>(0.82, 0.80, 0.74);
-// Star cells (radians) and the share of cells holding a star.
-const STAR_CELL: f32 = 0.012;
-const STAR_SHARE: f32 = 0.035;
+// The star catalogue's cells (stars.rs `ROWS`, `EQUATOR_CELLS`), in a texture (stars.rs
+// `grid`). A star is a point STAR_PIXELS pixels in radius (at least STAR_MIN_RADIUS radians),
+// up to STAR_GROW times that for the brightest.
+const STAR_ROWS: f32 = 512.0;
+const STAR_COLS: f32 = 1020.0;
+const STAR_PIXELS: f32 = 0.55;
+const STAR_MIN_RADIUS: f32 = 0.00015;
+const STAR_GROW: f32 = 2.0;
+const PI: f32 = 3.14159265;
+const TAU: f32 = 6.28318531;
+
+@group(#{MATERIAL_BIND_GROUP}) @binding(2) var star_grid: texture_2d<f32>;
+
+// Cells in a row of the star grid (stars.rs `row_cells`).
+fn star_row_cells(row: f32) -> f32 {
+    return max(floor(STAR_COLS * cos(((row + 0.5) / STAR_ROWS - 0.5) * PI) + 0.5), 1.0);
+}
+
+// The light of the star of cell `col` of `n` in grid row `row` at catalogue direction `e`:
+// a point `r` radians in radius (more for the brightest), seen down to magnitude `lim`, `ext`
+// magnitudes fainter through the air.
+fn star_light(row: f32, col: f32, n: f32, e: vec3<f32>, r: f32, lim: f32, ext: f32) -> vec3<f32> {
+    let t = textureLoad(star_grid, vec2<i32>(i32(col), i32(row)), 0);
+    let mag = (t.b * 255.0 - 1.0) / 25.0 - 2.0 + ext;
+    if (t.b == 0.0 || mag > lim + 0.5) {
+        return vec3<f32>(0.0);
+    }
+    let ra = (col + t.r) / n * TAU;
+    let dec = (row + t.g) / STAR_ROWS * PI - 0.5 * PI;
+    let s = vec3<f32>(cos(dec) * cos(ra), cos(dec) * sin(ra), sin(dec));
+    // A hard edged point: unfiltered, it pops between pixels as the view moves, so the stars
+    // twinkle.
+    let grow = 1.0 + (STAR_GROW - 1.0) * clamp((1.0 - mag) / 2.5, 0.0, 1.0);
+    if (length(e - s) >= r * grow) {
+        return vec3<f32>(0.0);
+    }
+    // Its colour by its B-V index, blue white to orange, paler than in a telescope.
+    let bv = t.a * 255.0 / 80.0 - 0.5;
+    var c = mix(vec3<f32>(0.72, 0.82, 1.0), vec3<f32>(1.0, 0.97, 0.92), smoothstep(-0.3, 0.4, bv));
+    c = mix(c, vec3<f32>(1.0, 0.78, 0.55), smoothstep(0.4, 1.6, bv));
+    // Less contrast than the sky's (2.5 times the light a magnitude): the faint ones show.
+    return c * min(pow(10.0, -0.3 * (mag - 1.0)), 1.0) * smoothstep(lim + 0.5, lim - 0.5, mag);
+}
+
+// The stars' light in direction `nd` (world, above the horizon), visibility `stars`, `px`
+// radians a pixel: the catalogue's stars where they stand (`Globals::star_frame`).
+fn star_field(nd: vec3<f32>, stars: f32, px: f32) -> vec3<f32> {
+    let f = globals.star_frame;
+    let e = mat3x3<f32>(f[0].xyz, f[1].xyz, f[2].xyz) * nd;
+    let up = (asin(clamp(e.z, -1.0, 1.0)) / PI + 0.5) * STAR_ROWS;
+    let row = clamp(floor(up), 0.0, STAR_ROWS - 1.0);
+    let n = star_row_cells(row);
+    let across = fract(atan2(e.y, e.x) / TAU) * n;
+    let col = min(floor(across), n - 1.0);
+    // The faintest seen: magnitude 6 on a dark night, 3.3 under a full moon, none by day.
+    let dim = 1.0 - stars;
+    let lim = 6.0 - 7.5 * dim * dim;
+    // Extinction: 0.2 magnitudes for each air mass more than overhead.
+    let ext = 0.2 * (1.0 / max(nd.y, 0.03) - 1.0);
+    let r = max(px * STAR_PIXELS, STAR_MIN_RADIUS);
+    var light = star_light(row, col, n, e, r, lim, ext);
+    // A star near its cell's edge reaches over it: the neighbour's star nearest this pixel too.
+    let reach = r * STAR_GROW;
+    let side = reach * n / (TAU * max(sqrt(1.0 - e.z * e.z), 1e-3));
+    let fx = across - col;
+    if (fx < side) {
+        light += star_light(row, select(col - 1.0, n - 1.0, col == 0.0), n, e, r, lim, ext);
+    } else if (fx > 1.0 - side) {
+        light += star_light(row, select(col + 1.0, 0.0, col + 1.0 >= n), n, e, r, lim, ext);
+    }
+    let fy = up - row;
+    let high = reach * STAR_ROWS / PI;
+    var row2 = -1.0;
+    if (fy < high && row > 0.0) {
+        row2 = row - 1.0;
+    } else if (fy > 1.0 - high && row < STAR_ROWS - 1.0) {
+        row2 = row + 1.0;
+    }
+    if (row2 >= 0.0) {
+        let n2 = star_row_cells(row2);
+        let col2 = min(floor(fract(atan2(e.y, e.x) / TAU) * n2), n2 - 1.0);
+        light += star_light(row2, col2, n2, e, r, lim, ext);
+    }
+#ifdef PALETTE_SKY_FX
+    // Low stars twinkle (through more air), each at its own pace.
+    let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+    let h = hash2(vec2<f32>(col, row));
+    light *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * h) + h * 400.0), 0.0);
+#endif
+    // Gone in the haze at the horizon.
+    return light * smoothstep(0.0, 0.05, nd.y);
+}
 
 fn hash2(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
@@ -782,33 +874,7 @@ fn night_sky(bg_in: vec3<f32>, nd: vec3<f32>, px: f32) -> vec3<f32> {
     // stars' code costs the background half its waves on the Steam Frame.
 #ifdef PALETTE_STARS
     if (stars > 0.0) {
-        let az = atan2(nd.x, -nd.z);
-        let el = asin(clamp(nd.y, -1.0, 1.0));
-        // Rows of cells by elevation; narrower azimuth cells near the zenith would crowd the
-        // stars, so each row's cells are as wide as the row's middle is around.
-        let row = floor(el / STAR_CELL);
-        let w = STAR_CELL / max(cos((row + 0.5) * STAR_CELL), 0.05);
-        let cell = vec2<f32>(floor(az / w), row);
-        let h = hash2(cell);
-        if (h < STAR_SHARE) {
-            let c_az = (cell.x + 0.5 + 0.6 * (hash2(cell + 7.1) - 0.5)) * w;
-            let c_el = (cell.y + 0.5 + 0.6 * (hash2(cell + 3.3) - 0.5)) * STAR_CELL;
-            let star = vec3<f32>(cos(c_el) * sin(c_az), sin(c_el), -cos(c_el) * cos(c_az));
-            let d = length(nd - star);
-            // A hard edged point about a pixel across: unfiltered, it pops between pixels as the
-            // view moves, so the stars twinkle.
-            let r = max(STAR_CELL * 0.03, px * 0.55);
-            let core = select(0.0, 1.0, d < r);
-            var mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
-#ifdef PALETTE_SKY_FX
-            // Low stars twinkle (through more air), each at its own pace.
-            let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
-            mag *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
-#endif
-            // Fainter towards the horizon (haze).
-            let alt_fade = smoothstep(0.0, 0.15, nd.y);
-            bg += vec3<f32>(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
-        }
+        bg += star_field(nd, stars, px);
 #ifdef PALETTE_SKY_FX
         bg += (aurora(nd) + vec3<f32>(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
 #endif
