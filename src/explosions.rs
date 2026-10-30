@@ -57,6 +57,7 @@ impl Plugin for ExplosionsPlugin {
         app.add_plugins(MaterialPlugin::<ParticleMaterial>::default())
             .init_resource::<Explosions>()
             .init_resource::<Particles>()
+            .init_resource::<VehicleDust>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
                 Update,
@@ -64,6 +65,7 @@ impl Plugin for ExplosionsPlugin {
                     spawn_blasts.run_if(resource_exists::<Combat>),
                     damage_trail.run_if(resource_exists::<Combat>),
                     downwash,
+                    vehicle_dust,
                     simulate,
                 )
                     .chain()
@@ -495,6 +497,44 @@ fn downwash(
         let vel = out * p.range(6.0, 11.0) + Vec3::Y * p.range(0.5, 2.0);
         let life = p.range(1.0, 1.8);
         p.puff(at, vel, life, (1.5, 5.0), look, 1.5, 0.3, opacity * k);
+    }
+}
+
+/// The vehicles on the move this frame (`sim_render` fills it): unit index, the ground behind
+/// the hull (Bevy world), the way it drives (unit, flat) and its speed (m/s).
+#[derive(Resource, Default)]
+pub struct VehicleDust(pub Vec<(usize, DVec3, Vec3, f32)>);
+
+/// Metres driven per dust puff.
+const DUST_SPACING: f32 = 5.0;
+
+/// A vehicle on the move (`Effects::vapour`) raises a little dust behind it, billowing and
+/// settling over a few seconds.
+fn vehicle_dust(
+    mut p: ResMut<Particles>,
+    mut owed: Local<std::collections::HashMap<usize, f32>>,
+    time: Res<Time>,
+    settings: Res<crate::settings::Settings>,
+    dust: Res<VehicleDust>,
+) {
+    let dt = time.delta_secs();
+    owed.retain(|k, _| dust.0.iter().any(|d| d.0 == *k));
+    if !settings.effects.vapour || dt <= 0.0 {
+        return;
+    }
+    for &(k, at, dir, speed) in &dust.0 {
+        let o = owed.entry(k).or_insert(0.0);
+        *o += speed * dt / DUST_SPACING;
+        while *o >= 1.0 {
+            *o -= 1.0;
+            let across = Vec3::new(-dir.z, 0.0, dir.x) * p.range(-1.2, 1.2);
+            let pos = at + (across + Vec3::Y * 0.4).as_dvec3();
+            let vel =
+                -dir * speed * p.range(0.05, 0.2) + across * 0.4 + Vec3::Y * p.range(0.4, 1.2);
+            let life = p.range(1.8, 3.0);
+            let size = (p.range(0.7, 1.1), p.range(2.2, 3.2) + speed * 0.03);
+            p.puff(pos, vel, life, size, PuffLook::Dust, 0.8, 0.15, 0.25);
+        }
     }
 }
 

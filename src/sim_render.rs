@@ -486,6 +486,9 @@ struct AaaVisuals {
     material: Option<Handle<PaletteMaterial>>,
 }
 
+/// How far behind a vehicle's centre its dust rises (m).
+const VEHICLE_REAR: f32 = 3.6;
+
 /// Bevy world position of a point in the air defences' metres (east, north, up).
 fn aaa_point(p: [f64; 3]) -> DVec3 {
     let wu = crate::world::WU;
@@ -517,7 +520,9 @@ fn sync_aaa(
     console: Option<Res<crate::station::ConsoleEo>>,
     origin: Option<Res<crate::world::FloatingOrigin>>,
     hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
+    mut dust: ResMut<crate::explosions::VehicleDust>,
 ) {
+    dust.0.clear();
     let sim = &combat.sim;
     let units = sim.units();
     let kinds: Vec<_> = units.iter().map(|u| u.kind).collect();
@@ -585,7 +590,16 @@ fn sync_aaa(
                     .rem_euclid(std::f32::consts::TAU)
                     - std::f32::consts::PI;
                 let flat = aaa_point([e, n, 0.0]);
-                (flat + DVec3::Y * ground(flat), h0 + turn * a as f32)
+                let at = flat + DVec3::Y * ground(flat);
+                let heading = h0 + turn * a as f32;
+                // Driving (a frame's move, at the simulation's rate): dust behind the hull.
+                let gap = combat.frame_gap.max(1.0) / crate::combat::FS as f32;
+                let speed = (f.e - e0).hypot(f.n - n0) / gap;
+                if !u.destroyed && speed > 1.0 {
+                    let dir = Vec3::new(heading.sin(), 0.0, -heading.cos());
+                    dust.0.push((i, at - (dir * VEHICLE_REAR).as_dvec3(), dir, speed));
+                }
+                (at, heading)
             }
             // Each unit stands at its own heading (golden-angle spread).
             None => (

@@ -188,6 +188,7 @@ impl Effect {
             Effect::Vapour => &[
                 "Pulling hard, vapour trails from the wingtips",
                 "A helicopter hovering low whips up dust, or spray over water",
+                "Vehicles on the move raise dust behind them",
             ],
             Effect::NightSky => &[
                 "Shooting stars now and then, the stars low over the horizon twinkle",
