@@ -54,6 +54,8 @@ BLADE = Ramp(0xEB, 0xEF)
 SENSOR = Ramp(0xE9, 0xEE)
 STORE = Ramp(0xE2, 0xE8)
 SEAM = 0xEE
+# The open weapon bay and the door's inner face: near black, apart from the dark grey skin.
+BAY = Ramp(157, 159)
 RED, GREEN = 147, 151
 
 # Fuselage stations from the nose: y, then the heights of the belly, the lower and upper edge
@@ -288,13 +290,13 @@ def door(sx, angle):
             g.line(p, q, SEAM)
         return g
     for k in range(2):
-        g.face([at(out[k], y0), at(out[k + 1], y0), at(out[k + 1], y1), at(out[k], y1)], DARK, at(inner[k], 0))
+        g.face([at(out[k], y0), at(out[k + 1], y0), at(out[k + 1], y1), at(out[k], y1)], BAY, at(inner[k], 0))
     # The door: the skin outside, the inner face darker, the hinge and lip edges and the ends.
     outer, inner, _, _ = door_section(sx, angle)
     for k in range(2):
         o0, o1, i0, i1 = outer[k], outer[k + 1], inner[k], inner[k + 1]
         g.face([at(o0, y0), at(o1, y0), at(o1, y1), at(o0, y1)], BODY, at((i0 + i1) / 2, (y0 + y1) / 2))
-        g.face([at(i0, y0), at(i1, y0), at(i1, y1), at(i0, y1)], DARK, at((o0 + o1) / 2, (y0 + y1) / 2))
+        g.face([at(i0, y0), at(i1, y0), at(i1, y1), at(i0, y1)], BAY, at((o0 + o1) / 2, (y0 + y1) / 2))
         for y, other in ((y0, y1), (y1, y0)):
             g.face([at(o0, y), at(o1, y), at(i1, y), at(i0, y)], BODY, at((o0 + i1) / 2, other))
     for k in (0, 2):
