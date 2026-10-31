@@ -14,7 +14,7 @@ use stealth_sim::{Sim, fflags};
 
 use super::ops::{fit_map, man_refusal};
 use super::{Action, ActiveCampaign};
-use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapTips, MapView};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon, icon_text, section};
 
 /// The list's width (points).
@@ -191,6 +191,7 @@ fn map(
     painter.rect_filled(rect, 0.0, egui::Color32::from_black_alpha(140));
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     let st = c.state();
+    let mut tips = MapTips::default();
     for p in &st.places {
         let col = match p.owner {
             Side::Blue => FRIENDLY_BLUE,
@@ -199,6 +200,7 @@ fn map(
         }
         .gamma_multiply(0.5);
         painter.circle_filled(at(p.x, p.y), 2.5, col);
+        super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true);
     }
     // The reach: filled, the selected site's brighter; then the symbols over all of them.
     for s in sites.iter().filter(|s| !s.destroyed) {
@@ -221,9 +223,11 @@ fn map(
     let pic = super::picture::picture(st, sim);
     for a in &pic.fighters {
         super::picture::aircraft(&painter, at(a.x, a.y), a, MISSILE_RED);
+        super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, false);
     }
     for a in &pic.friendly {
         super::picture::aircraft(&painter, at(a.x, a.y), a, FRIENDLY_BLUE.gamma_multiply(0.6));
+        super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, true);
     }
     let mut hovered = None;
     let mut named = Vec::new();
@@ -238,6 +242,7 @@ fn map(
         if s.manned.is_some() {
             painter.circle_stroke(p, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
         }
+        site_tip(&mut tips, p, s, &tag(sites, i));
         // Named unless another's name is there already (crowded sites: the list has them).
         if !named.iter().any(|q: &egui::Pos2| q.distance(p) < 16.0) {
             named.push(p);
@@ -264,6 +269,9 @@ fn map(
             c.ui.defence_scroll = true;
         }
     }
+    if !designating {
+        tips.show(&resp, hovered.map(|_| "Click to select it"));
+    }
     painter.text(
         rect.left_bottom() + egui::vec2(8.0, -8.0),
         egui::Align2::LEFT_BOTTOM,
@@ -271,6 +279,41 @@ fn map(
         egui::FontId::monospace(11.0),
         DIM,
     );
+}
+
+/// A site's tooltip: what it is, its tag and place, its rounds and the enemies its radar sees.
+fn site_tip(tips: &mut MapTips, p: egui::Pos2, s: &Site, tag: &str) {
+    let kind = super::picture::defence_name(s.kind);
+    let tip = tips.add(p, kind, tag, FRIENDLY_BLUE);
+    let (what, destroyed) = (s.kind, s.destroyed);
+    tip.symbol(move |p, c| {
+        if destroyed {
+            p.circle_stroke(c, 5.0, egui::Stroke::new(1.5, DIM));
+        } else {
+            super::picture::defence(p, c, what, 0.8);
+        }
+    });
+    if !s.near.is_empty() {
+        tip.line(format!("Near {}", crate::mission::clean_text(&s.near)));
+    }
+    if s.destroyed {
+        tip.line("Destroyed");
+        return;
+    }
+    let what = if s.kind == GroundKind::DroneCenter { "Drones up" } else { "Rounds ready" };
+    tip.line(format!("{what} {} / {}, stock {}", s.ready, s.full, s.stock));
+    match s.enemies.first() {
+        Some((name, km)) => {
+            let n = s.enemies.len();
+            tip.line(format!("{n} enemy aircraft on radar, nearest {name} at {km:.0} km"));
+        }
+        None => {
+            tip.line("No enemy aircraft on radar");
+        }
+    }
+    if s.manned.is_some() {
+        tip.line("Manned by a player");
+    }
 }
 
 /// The sites one under the other: what each has and sees, and the way in.

@@ -5,10 +5,10 @@ use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
 use stealth_sim::score::MissionReport;
 
-use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
+use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapTips, MapView};
 use crate::menu::{AMBER, BG, BRIGHT, DIM, GREEN, apply_terminal_style, big_button, icon, section};
 use crate::mission::clean_text;
-use crate::recorder::{FlightRecord, MarkKind, Sample};
+use crate::recorder::{FlightRecord, MarkKind};
 use crate::settings::AppState;
 
 pub struct DebriefPlugin;
@@ -306,8 +306,10 @@ fn flight_map(
         // (Without the mission, no theater: the note that the map is being prepared.)
         let theater = d.mission.as_ref().map(|m| m.theater_code.to_ascii_lowercase());
         planner.draw_map(&painter, &view, theater.as_deref().unwrap_or_default());
+        let mut tips = MapTips::default();
         if let Some(m) = &d.mission {
-            map_draw::airfields(&painter, &view, m);
+            map_draw::landmark_tips(&view, m, &mut tips);
+            map_draw::airfields(&painter, &view, m, &mut tips);
         }
         // Sites that tracked the player at some time; the ones tracking him now bright.
         let now = |i: usize| rec.spans.iter().any(|s| s.site == i && s.covers(cursor));
@@ -321,6 +323,15 @@ fn flight_map(
             let alpha = if now(i) { 1.0 } else { 0.45 };
             painter.extend(map_draw::missile_circle(c, site.lock / view.scale, alpha));
             map_draw::site(&painter, &view, c, &site.kind, alpha);
+            let tip = tips.add(c, "Radar / SAM site", &site.kind, MISSILE_RED);
+            tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
+            if !site.place.is_empty() {
+                tip.line(format!("Near {}", clean_text(&site.place)));
+            }
+            if site.lock > 0.0 {
+                tip.line(format!("Missile range {:.0} km", site.lock / 64.0));
+            }
+            tip.line(if now(i) { "Tracking you now" } else { "Tracked you" });
             if now(i)
                 && let Some(s) = here
             {
@@ -354,12 +365,26 @@ fn flight_map(
             painter.add(egui::Shape::line(pts, egui::Stroke::new(2.5, c)));
         }
         for m in rec.marks.iter().filter(|m| m.frame <= cursor) {
-            mark(&painter, view.to_screen(m.x, m.y), m.kind);
+            let p = view.to_screen(m.x, m.y);
+            mark(&painter, p, m.kind);
+            let (kind, name) = mark_name(d, m.kind);
+            let what = m.kind;
+            tips.add(p, kind, name, BRIGHT)
+                .line(format!("At {}", clock((m.frame / crate::recorder::FS) as i32)))
+                .symbol(move |p, c| mark(p, c, what));
         }
         if let Some(s) = here {
-            aircraft(&painter, &view, &s);
+            let (x, y) = s.map();
+            let p = view.to_screen(x, y);
+            aircraft(&painter, p, s.heading);
+            let heading = s.heading;
+            tips.add(p, "You", "", BRIGHT)
+                .line(format!("{} ft, {} kt", s.alt, s.knots))
+                .line(format!("At {}", clock((cursor / crate::recorder::FS) as i32)))
+                .symbol(move |p, c| aircraft(p, c, heading));
         }
         view.pan_zoom(ui, &resp, &mut map.centre, &mut map.scale);
+        tips.show(&resp, None);
 
         ui.vertical(|ui| {
             ui.set_width(side);
@@ -456,6 +481,34 @@ fn flight_map(
     });
 }
 
+/// What an event on the flight map is, and what it concerns (a site, a target, or nothing).
+fn mark_name(d: &Debrief, kind: MarkKind) -> (&'static str, String) {
+    let site = |i: usize| d.record.sites.get(i).map_or(String::new(), |s| s.kind.clone());
+    match kind {
+        MarkKind::Tracked(i) => ("Tracked by", site(i)),
+        MarkKind::Launch { site: by, .. } => ("Missile launch", by.map(site).unwrap_or_default()),
+        MarkKind::Hit => ("Hit taken", String::new()),
+        MarkKind::AirKill { .. } => ("Air kill", String::new()),
+        MarkKind::GroundKill { object } => {
+            let name = match site(object) {
+                s if !s.is_empty() => s,
+                _ => d.mission.as_ref().map_or(String::new(), |m| map_draw::object_name(m, object)),
+            };
+            ("Ground kill", name)
+        }
+        MarkKind::AaaKill(_) => ("Air defence unit destroyed", String::new()),
+        MarkKind::Photo => ("Photo taken", String::new()),
+        MarkKind::Objective { primary } => {
+            let t = d.mission.as_ref().map(|m| if primary { &m.primary } else { &m.secondary });
+            let name = t.map_or(String::new(), |t| {
+                clean_text(if t.place_name.is_empty() { &t.shape_name } else { &t.place_name })
+            });
+            (if primary { "Primary objective" } else { "Secondary objective" }, name)
+        }
+        MarkKind::Ejected => ("Ejected", String::new()),
+    }
+}
+
 /// An event symbol on the flight map.
 fn mark(painter: &egui::Painter, p: egui::Pos2, kind: MarkKind) {
     let stroke = |c| egui::Stroke::new(1.8, c);
@@ -505,12 +558,10 @@ fn mark(painter: &egui::Painter, p: egui::Pos2, kind: MarkKind) {
     }
 }
 
-/// The player's aircraft at the scrubber: a triangle along the heading (APP-6: a friendly
-/// fixed wing air track).
-fn aircraft(painter: &egui::Painter, view: &MapView, s: &Sample) {
-    let (x, y) = s.map();
-    let p = view.to_screen(x, y);
-    let a = s.heading as u16 as f32 / 65536.0 * std::f32::consts::TAU;
+/// The player's aircraft at the scrubber: a triangle along the `heading` (16-bit angle; APP-6:
+/// a friendly fixed wing air track).
+fn aircraft(painter: &egui::Painter, p: egui::Pos2, heading: i32) {
+    let a = heading as u16 as f32 / 65536.0 * std::f32::consts::TAU;
     if map_draw::app6() {
         use crate::app6::{Affiliation, Dimension, Icon, Symbol};
         Symbol::new(Affiliation::Friend, Dimension::Air, Icon::FixedWing)

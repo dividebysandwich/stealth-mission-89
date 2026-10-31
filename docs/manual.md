@@ -1883,6 +1883,7 @@ landing base stay where they are; between them you add, move and remove navigati
 | Drag a point | Move it. |
 | Right click a point | Remove it. |
 | Drag the map, mouse wheel | Pan, zoom. |
+| Point at a symbol | Its tooltip: what and where it is. |
 | RESET | Back to the briefed route. |
 
 Each SAM site shows its missile range as a dotted red circle and, filled in orange, where its radar would
@@ -1891,6 +1892,14 @@ detect you, flown at the selected profile (*Low* 500 ft, *Medium* 5000 ft or *Hi
 speed make the circles larger). Sites that are off the air are drawn faint. The panel lists the
 legs with distance and time and how many km of the route a radar would see. In drone defense
 missions the drones' starting points are marked.
+
+Every zoomable map (the planner's, the debrief's flight map, the campaign's war map and AIR
+DEFENSE map) shows a **tooltip** for what is under the mouse pointer: what it is (airfield, city,
+SAM site, radar, ship, tank, aircraft...), its name, its side and what the mission knows about it
+(a site's radar and ranges, a route point's distance and time from the previous one, a target's
+type), beside its symbol enlarged (classic or APP-6, as the map draws it). Cities, towns and depots
+have one too where the map picture shows them; overlapping symbols are listed together, one under
+the other.
 
 In flight the INS and the autopilot follow the planned route. When a target is done, the next
 waypoint is the point after it, so the planned way home is flown as well. The planned route also
@@ -2033,8 +2042,8 @@ heading while it drives. Your own columns' remaining route is a faint dashed lin
 own armour always shows; enemy armour only while one of your ground units or drones has it in sight. The
 checkboxes in the legend beside the map switch each kind of symbol on and off (clouds, snow and storm
 cells, SAM and engagement ranges among them), and the *Symbols* switch chooses between the game's
-classic symbols and NATO's **APP-6** military map symbols. Click a unit to watch it live; the
-wheel zooms, dragging pans. The selected mission's target is circled.
+classic symbols and NATO's **APP-6** military map symbols. Pointing at a symbol shows its tooltip
+(chapter 8.2). Click a unit to watch it live; the wheel zooms, dragging pans. The selected mission's target is circled.
 
 ## 9.3 Places and the front
 

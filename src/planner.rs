@@ -18,7 +18,8 @@ use stealth_sim::SimData;
 
 use crate::canvas::Canvas;
 use crate::map_draw::{
-    self, Layer, MapLayers, MapView, MapWeather, UAV_PINK, drone_cross, missile_circle,
+    self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather, UAV_PINK,
+    drone_cross, missile_circle,
 };
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, icon, section};
 use crate::mfd::{MapModel, map_models, rasterise_map};
@@ -512,6 +513,9 @@ struct Ring {
     /// Where it opens fire on the player: inside both its detection and its missile range.
     engage: f32,
     name: String,
+    /// What it is (a SAM site, a radar, a ship) and where (its place, a ship's class).
+    kind: &'static str,
+    place: String,
     active: bool,
     /// Doppler radar (solid detection circle; pulse radars dotted).
     doppler: bool,
@@ -556,6 +560,8 @@ fn threat_rings(
                 0.0
             };
             let launch = missile.lock_range as f32 * PER_KM as f32;
+            let ship = o.flags & F::SHIP != 0;
+            let place = crate::mission::clean_text(w.name(o.name as i32));
             Some(Ring {
                 x: x as f32,
                 y: y as f32,
@@ -563,6 +569,18 @@ fn threat_rings(
                 launch,
                 engage: (detect * PER_KM as f32).min(launch),
                 name: t.name.clone(),
+                kind: if ship {
+                    "Enemy ship"
+                } else if launch > 0.0 {
+                    "SAM site"
+                } else {
+                    "Enemy radar"
+                },
+                place: match ship {
+                    true => map_draw::object_name(m, i),
+                    false if place.is_empty() => String::new(),
+                    false => format!("Near {place}"),
+                },
                 active: o.flags & (F::OFF_THE_AIR | F::UNDER_REPAIR) == 0,
                 doppler: t.flags & 1 != 0,
             })
@@ -655,7 +673,7 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
 /// Drawn over the route editor's map instead of the mission's airfields, with the legend lines
 /// (and layer checkboxes) of what it draws.
 pub struct Overlay<'a> {
-    pub draw: &'a dyn Fn(&egui::Painter, &MapView, &MapLayers),
+    pub draw: &'a dyn Fn(&egui::Painter, &MapView, &MapLayers, &mut MapTips),
     pub legend: &'a dyn Fn(&mut egui::Ui, &mut MapLayers),
 }
 pub type MapOverlay<'a> = Option<Overlay<'a>>;
@@ -782,6 +800,7 @@ fn map_view(
     let to_screen = |x: f32, y: f32| view.to_screen(x, y);
     let to_map = |p: egui::Pos2| view.to_map(p);
     let painter = painter.with_clip_rect(rect);
+    let mut tips = MapTips::default();
 
     planner.draw_map(&painter, &view, &m.theater_code.to_ascii_lowercase());
     map_draw::weather(&painter, &view, "route", weather, layers);
@@ -803,12 +822,19 @@ fn map_view(
         if layers.shows(Layer::Sams) {
             let tag = if ring.doppler { "D" } else { "P" };
             map_draw::site(&painter, &view, c, &format!("{} {tag}", ring.name), alpha);
+            ring_tip(&mut tips, c, ring, planner.profile);
         }
     }
+    // (The mission's airfields' tooltips name the takeoff base themselves.)
+    let airfield_tips = overlay.is_none() && layers.shows(Layer::Airfields);
     match overlay {
-        Some(o) => (o.draw)(&painter, &view, layers),
-        None if layers.shows(Layer::Airfields) => map_draw::airfields(&painter, &view, m),
-        None => {}
+        Some(o) => (o.draw)(&painter, &view, layers, &mut tips),
+        None => {
+            map_draw::landmark_tips(&view, m, &mut tips);
+            if layers.shows(Layer::Airfields) {
+                map_draw::airfields(&painter, &view, m, &mut tips);
+            }
+        }
     }
     // Drones on their way (drone defense).
     if let Some(d) = m.drones.as_ref().filter(|_| layers.shows(Layer::Drones)) {
@@ -816,6 +842,10 @@ fn map_view(
         for f in m.world.flights.iter().skip(d.first_unit).take(d.count) {
             let p = to_screen(f.x as u16 as f32, f.y as u16 as f32);
             drone_cross(&painter, p);
+            let target = crate::mission::clean_text(&d.target_name);
+            tips.add(p, "Enemy UAV", "", UAV_PINK)
+                .line(format!("Flying at {target}"))
+                .symbol(drone_cross);
             painter.extend(egui::Shape::dashed_line(
                 &[p, to_screen(t.x as u16 as f32, t.y as u16 as f32)],
                 egui::Stroke::new(0.8, UAV_PINK.gamma_multiply(0.5)),
@@ -850,6 +880,43 @@ fn map_view(
             egui::FontId::monospace(13.0),
             colour,
         );
+        let tip = match route.points[i].kind {
+            RouteKind::Nav => {
+                tips.add(p, "Navigation point", point_label(&route.points, i), colour)
+            }
+            RouteKind::Primary => target_tip(&mut tips, p, "Primary target", &m.primary, colour),
+            RouteKind::Secondary => {
+                target_tip(&mut tips, p, "Secondary target", &m.secondary, colour)
+            }
+            RouteKind::Land => {
+                tips.add(p, "Landing base", crate::mission::clean_text(&m.landing.name), colour)
+            }
+        };
+        let (from, a) = match i {
+            0 => ("BASE".to_string(), (m.takeoff.position.x, m.takeoff.position.y)),
+            _ => {
+                (point_label(&route.points, i - 1), (route.points[i - 1].x, route.points[i - 1].y))
+            }
+        };
+        let b = &route.points[i];
+        let km = (((b.x - a.0) as f64).powi(2) + ((b.y - a.1) as f64).powi(2)).sqrt() / PER_KM;
+        tip.line(format!("{km:.0} km from {from}, {}", leg_time(km))).symbol(move |p, c| {
+            p.circle(
+                c,
+                r,
+                egui::Color32::BLACK.gamma_multiply(0.5),
+                egui::Stroke::new(2.0, colour),
+            );
+        });
+    }
+    if !airfield_tips {
+        let owner = m
+            .world
+            .objects
+            .get(m.takeoff.object_index as usize)
+            .map_or(crate::app6::Affiliation::Friend, |o| map_draw::affiliation_of(o.flags));
+        tips.add(base, "Takeoff base", crate::mission::clean_text(&m.takeoff.name), FRIENDLY_BLUE)
+            .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
     }
 
     // Input.
@@ -914,7 +981,7 @@ fn map_view(
     {
         route.points.remove(i);
     }
-    layers_panel(ui, rect, layers, |ui, layers| {
+    let panel = layers_panel(ui, rect, layers, |ui, layers| {
         layers.legend(ui, Layer::Sams, "Radar / SAM site", |p, c| {
             map_draw::site_symbol(p, c, 1.0);
         });
@@ -943,16 +1010,76 @@ fn map_view(
         }
         map_draw::weather_legend(ui, layers, weather.snow);
     });
+    // The tooltip of what is under the pointer (not over the LAYERS panel, nor while a point is
+    // dragged), with what a click does there.
+    if let Some(pos) = resp.hover_pos().filter(|&p| !panel.contains(p) && planner.drag.is_none()) {
+        let hint = if !editable {
+            None
+        } else if hit_point(pos).is_some_and(|i| route.points[i].kind == RouteKind::Nav) {
+            Some("Drag to move it, right click to remove it")
+        } else if hit_leg(pos).is_some() {
+            Some("Click to add a point here")
+        } else {
+            None
+        };
+        tips.show(&resp, hint);
+    }
+}
+
+/// A radar or SAM site's tooltip: its type, place, radar and ranges for the flight `profile`.
+fn ring_tip(tips: &mut MapTips, c: egui::Pos2, ring: &Ring, profile: Profile) {
+    let tip = tips.add(c, ring.kind, &ring.name, MISSILE_RED);
+    tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
+    if !ring.place.is_empty() {
+        tip.line(&ring.place);
+    }
+    tip.line(if ring.doppler { "Doppler radar" } else { "Pulse radar" });
+    let km = |r: f32| r as f64 / PER_KM;
+    if ring.detect > 0.0 {
+        tip.line(format!("Detects you {:.0} km out at {}", km(ring.detect), profile.name()));
+    } else {
+        tip.line(format!("Does not detect you at {}", profile.name()));
+    }
+    if ring.launch > 0.0 {
+        tip.line(format!("Missile range {:.0} km", km(ring.launch)));
+    }
+    if !ring.active {
+        tip.line("Off the air");
+    }
+}
+
+/// A route target's tooltip: its name, the mission type and what it is.
+fn target_tip<'t>(
+    tips: &'t mut MapTips,
+    p: egui::Pos2,
+    kind: &str,
+    t: &stealth_mission::Target,
+    colour: egui::Color32,
+) -> &'t mut map_draw::Tip {
+    let named = !t.place_name.is_empty();
+    let name = if named { &t.place_name } else { &t.shape_name };
+    let tip = tips.add(p, kind, crate::mission::clean_text(name), colour);
+    if named && !t.shape_name.is_empty() {
+        tip.line(crate::mission::clean_text(&t.shape_name));
+    }
+    let mut what = t.type_name.clone();
+    if let Some(first) = what.get_mut(..1) {
+        first.make_ascii_uppercase();
+    }
+    if !what.is_empty() {
+        tip.line(what);
+    }
+    tip
 }
 
 /// The map's LAYERS button in its top-right corner, opening a panel over the map with the
-/// checkboxes `lines` draws.
+/// checkboxes `lines` draws; where it is (the button and the open panel).
 fn layers_panel(
     ui: &mut egui::Ui,
     map: egui::Rect,
     layers: &mut MapLayers,
     lines: impl FnOnce(&mut egui::Ui, &mut MapLayers),
-) {
+) -> egui::Rect {
     const WIDTH: f32 = 280.0;
     let area = egui::Rect::from_min_max(
         egui::pos2(map.right() - WIDTH - 8.0, map.top() + 8.0),
@@ -968,7 +1095,7 @@ fn layers_panel(
         layers.panel = !layers.panel;
     }
     if !layers.panel {
-        return;
+        return ui.min_rect();
     }
     egui::Frame::new()
         .fill(egui::Color32::from_black_alpha(220))
@@ -980,6 +1107,7 @@ fn layers_panel(
                 egui::ScrollArea::vertical().show(ui, |ui| lines(ui, layers));
             });
         });
+    ui.min_rect()
 }
 
 /// A radar's detection circle: filled, its edge solid for a Doppler radar, dotted for a pulse
