@@ -227,7 +227,8 @@ fn shelter(combat: &Combat, unit: usize) -> Option<(DVec3, f32)> {
     // The same spread of headings the units stand at (`sim_render`).
     let heading = (unit as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);
     let back = DVec3::new(-(heading as f64).sin(), 0.0, (heading as f64).cos()) * SHELTER_OFFSET;
-    Some((at + back + DVec3::Y * EYE_HEIGHT, heading))
+    let at = crate::sim_render::on_ground(&combat.sim.hills(), at + back);
+    Some((at + DVec3::Y * EYE_HEIGHT, heading))
 }
 
 /// The operator sits in the shelter (the parked aircraft stands there unseen), looking from the

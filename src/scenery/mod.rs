@@ -1201,6 +1201,7 @@ fn deployment_pads(
     palette: Res<Palette>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut airfields: ResMut<Airfields>,
+    scenery: Res<Scenery>,
 ) {
     // Built, the site's unit stands there and its helipad is gone.
     let want: Vec<(i32, i32)> = campaign
@@ -1222,7 +1223,10 @@ fn deployment_pads(
         }
         let c = map_metres(at.0, at.1);
         let mut geom = geom::Geom::default();
-        airfield::helipad(&mut geom, &content::Frame::around(c), c, DVec2::Y);
+        let frame = content::Frame::around(c);
+        airfield::helipad(&mut geom, &frame, c, DVec2::Y);
+        // On the rolling hills there.
+        content::drape(&scenery.hills, &frame, &mut geom);
         let e = spawn_block(
             &mut commands,
             &mut meshes,

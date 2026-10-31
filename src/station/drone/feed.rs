@@ -78,9 +78,13 @@ fn forward_view(u: &Uav) -> (Vec3, Vec3) {
     (bevy(nose), bevy(up))
 }
 
-/// A map point on the ground (Bevy world; the middle of its map unit, where the units stand).
-fn ground(p: DVec2) -> DVec3 {
-    crate::sim_render::map_point(p.x + 0.5, p.y + 0.5, 0.0)
+/// A map point on the ground (Bevy world; the middle of its map unit, where the units stand,
+/// on the rolling hills).
+fn ground(sim: &Sim, p: DVec2) -> DVec3 {
+    crate::sim_render::on_ground(
+        &sim.hills(),
+        crate::sim_render::map_point(p.x + 0.5, p.y + 0.5, 0.0),
+    )
 }
 
 /// Where a slaved camera looks (map units).
@@ -122,15 +126,16 @@ pub(super) fn aim(
             } else {
                 let look = cam.track.unwrap_or_else(|| slaved(&u));
                 ui.cam_mut(u.id).look = Some(look);
-                let at = ground(look);
+                let at = ground(&combat.sim, look);
                 let dir = (at - eye).as_vec3().normalize_or(Vec3::NEG_Y);
                 (eye, dir, None, cam.zoom, Some(at), false)
             }
         }
         _ => {
-            let at = combat.sim.units().get(m.unit).map_or(DVec3::ZERO, |u| {
-                crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0)
-            });
+            let at =
+                combat.sim.units().get(m.unit).map_or(DVec3::ZERO, |u| {
+                    ground(&combat.sim, DVec2::new(u.x as f64, u.y as f64))
+                });
             (at + DVec3::Y * 5.0, Vec3::NEG_Z, None, crate::mfd::CAM_ZOOM_DEFAULT, None, true)
         }
     };
@@ -170,7 +175,7 @@ fn seen(sim: &Sim, u: &Uav) -> Vec<(DVec3, String)> {
     for (k, a) in sim.units().iter().enumerate() {
         let m = a.metres();
         if !a.destroyed && !sim.aaa_blue(k) && near(m[0], m[1]) {
-            let at = crate::sim_render::map_point(a.x as f64 + 0.5, a.y as f64 + 0.5, 0.0);
+            let at = ground(sim, DVec2::new(a.x as f64, a.y as f64));
             out.push((at, a.kind.name().to_string()));
         }
     }
@@ -178,7 +183,7 @@ fn seen(sim: &Sim, u: &Uav) -> Vec<(DVec3, String)> {
         let hostile = o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) == 0;
         let (e, n) = (o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP);
         if o.unit_type != 0 && hostile && near(e, n) {
-            let at = crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0);
+            let at = ground(sim, DVec2::new(o.x as f64, o.y as f64));
             out.push((at, sim.threat_name(o.unit_type).to_string()));
         }
     }

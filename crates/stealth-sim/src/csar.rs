@@ -275,7 +275,7 @@ impl Sim {
             c.state = CsarState::Captured;
         }
         match c.state {
-            CsarState::Inbound if d < 0x10 && r.alt <= HOVER_ALT + 10 => {
+            CsarState::Inbound if d < 0x10 && r.alt - self.hill_alt(r.x, r.y) <= HOVER_ALT + 10 => {
                 c.state = CsarState::Pickup(0)
             }
             CsarState::Pickup(n) if n >= PICKUP_SECONDS * fs => c.state = CsarState::Rescued,
@@ -382,11 +382,13 @@ impl Sim {
             let climb = cdiv(30, fs).max(1);
             // Landing: no climb back to the cruise height against the descent below.
             let landing = hover && u.flags & fflags::RTB != 0 && d < 0x10;
-            // Cruising over the mountains as over the plain (not hovering over the pilot).
+            // Cruising over the mountains as over the plain (not hovering over the pilot), and
+            // hovering and landing over the ground under it (the rolling hills).
+            let ground = self.hill_alt(u.x, u.y);
             let galt = if landing {
-                0
+                ground
             } else if hover {
-                galt
+                galt + ground
             } else {
                 galt + self.terrain_ahead(&u)
             };
@@ -403,8 +405,9 @@ impl Sim {
         u.y = (u.wy >> 5) & 0xFFFF;
         // Landed back at base.
         if hover && u.flags & fflags::RTB != 0 && d < 0x10 {
-            u.alt = (u.alt - cdiv(30, fs).max(1)).max(0);
-            if u.alt == 0 {
+            let ground = self.hill_alt(u.x, u.y);
+            u.alt = (u.alt - cdiv(30, fs).max(1)).max(ground);
+            if u.alt == ground {
                 u.flags &= 0x1C1;
                 u.speed = 0;
                 // A campaign's rescue helicopters are done (its own come back as events).

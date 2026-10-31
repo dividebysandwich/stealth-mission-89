@@ -504,6 +504,7 @@ fn downwash(
     settings: Res<crate::settings::Settings>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     player: Query<(&crate::flight::Aircraft, &crate::world::WorldPos), With<crate::flight::Player>>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     use crate::scenery::Surface;
     let Ok((a, pos)) = player.single() else { return };
@@ -523,13 +524,21 @@ fn downwash(
         return;
     }
     *owed += DOWNWASH_RATE * k * time.delta_secs();
-    let ground = a.ground_altitude as f64 * crate::world::WU;
+    // The deck under the aircraft, or the ground at each puff (the rolling hills).
+    let deck = a.over_deck.then(|| a.ground_altitude as f64 * crate::world::WU);
+    let ground = |q: DVec3| {
+        deck.unwrap_or_else(|| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(q.x, -q.z) as f64))
+    };
     while *owed >= 1.0 {
         *owed -= 1.0;
         let angle = p.range(0.0, std::f32::consts::TAU);
         let out = Vec3::new(angle.cos(), 0.0, angle.sin());
         let r = DOWNWASH_RADIUS * p.range(0.6, 1.3);
-        let at = DVec3::new(pos.0.x, ground + 0.5, pos.0.z) + (out * r).as_dvec3();
+        let flat = pos.0 + (out * r).as_dvec3();
+        let here = ground(flat);
+        let at = DVec3::new(flat.x, here + 0.5, flat.z);
+        // Thrown out along the ground: up a slope, down one.
+        let slope = (ground(flat + out.as_dvec3()) - here) as f32;
         let surface = scenery
             .as_ref()
             .map_or(Surface::Land, |s| s.surface(bevy::math::DVec2::new(at.x, -at.z)));
@@ -538,7 +547,8 @@ fn downwash(
             Surface::Concrete => (PuffLook::Smoke(0.8), 0.15),
             Surface::Land => (PuffLook::Dust, 0.4),
         };
-        let vel = out * p.range(6.0, 11.0) + Vec3::Y * p.range(0.5, 2.0);
+        let speed = p.range(6.0, 11.0);
+        let vel = out * speed + Vec3::Y * (slope * speed + p.range(0.5, 2.0));
         let life = p.range(1.0, 1.8);
         p.puff(at, vel, life, (1.5, 5.0), look, 1.5, 0.3, opacity * k);
     }

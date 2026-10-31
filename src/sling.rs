@@ -24,6 +24,7 @@ use crate::scenery::{CRATE_SIZE, map_metres, spawn_crate};
 use crate::settings::AppState;
 use crate::sim_render::attitude;
 use crate::world::{WorldPos, wu_to_bevy};
+use stealth_sim::hills::Hills;
 
 pub struct SlingPlugin;
 
@@ -180,9 +181,20 @@ fn bevy_at(p: DVec2, y: f64) -> DVec3 {
     DVec3::new(p.x, y, -p.y)
 }
 
-/// A spot of a crate row (metres east, north, and a heading) as a crate standing there.
-fn standing(((east, north), heading): ((f64, f64), f32)) -> (DVec3, f32) {
-    (bevy_at(DVec2::new(east, north), rest_height()), heading)
+/// A spot of a crate row (metres east, north, and a heading) as a crate standing there, on the
+/// rolling hills.
+fn standing(hills: &Hills, ((east, north), heading): ((f64, f64), f32)) -> (DVec3, f32) {
+    (resting(hills, DVec2::new(east, north)), heading)
+}
+
+/// Where a crate stands at a ground point (metres east, north): on the ground there.
+fn resting(hills: &Hills, p: DVec2) -> DVec3 {
+    bevy_at(p, hills.ground_m(p.x, p.y) as f64 + rest_height())
+}
+
+/// The ground (Bevy y) under a Bevy point.
+fn ground_under(hills: &Hills, p: DVec3) -> f64 {
+    hills.ground_m(p.x, -p.z) as f64
 }
 
 /// The turn from `a` towards `b` (radians, the short way round).
@@ -231,6 +243,7 @@ fn sling(
         });
     // The other pilots' hooks and headings.
     let sim = &combat.sim;
+    let hills = sim.hills();
     let remote: HashMap<u8, (DVec3, f32)> = sim
         .remote_pilots()
         .iter()
@@ -247,7 +260,9 @@ fn sling(
         let pad = map_metres(d.x, d.y);
         for leg in 0..d.loads {
             let key = (d.id, leg);
-            let at_home = || stealth_host::cargo::crate_home(sim, state, d.id, leg).map(standing);
+            let at_home = || {
+                stealth_host::cargo::crate_home(sim, state, d.id, leg).map(|c| standing(&hills, c))
+            };
             let cs = d.crate_state(leg);
             let delivered = matches!(cs, CrateState::Delivered { .. });
             let dropped = sling.dropped.iter().find(|x| x.0 == key);
@@ -264,7 +279,7 @@ fn sling(
                 CrateState::Carried(p) if p == me => own.map(|o| Place::Hung(o.0, o.1)),
                 CrateState::Carried(p) => remote.get(&p.0).map(|r| Place::Hung(r.0, r.1)),
                 CrateState::Delivered { east, north, heading } => Some(Place::Rest(
-                    bevy_at(pad + DVec2::new(east as f64, north as f64), rest_height()),
+                    resting(&hills, pad + DVec2::new(east as f64, north as f64)),
                     heading,
                 )),
             };
@@ -306,7 +321,7 @@ fn sling(
             let hook = wu_to_bevy(east, north, alt) + (rot * Vec3::Y * HOOK_UP).as_dvec3();
             Place::Hung(hook, heading_of(rot))
         } else if let Some(p) = run.pickup {
-            let (at, _) = standing((stealth_host::cargo::metres(p), 0.0));
+            let (at, _) = standing(&hills, (stealth_host::cargo::metres(p), 0.0));
             let row = if run.unit == stealth_sim::supply::NO_UNIT {
                 stealth_host::cargo::crate_home(sim, state, key.0, key.1)
             } else {
@@ -315,7 +330,7 @@ fn sling(
             Place::Rest(at, row.map_or(0.0, |r| r.1))
         } else {
             // Where it came down.
-            let (at, h) = standing((stealth_host::cargo::metres(run.drop), 0.0));
+            let (at, h) = standing(&hills, (stealth_host::cargo::metres(run.drop), 0.0));
             Place::Rest(
                 shown.map_or(at, |s| DVec3::new(s.at.x, at.y, s.at.z)),
                 shown.map_or(h, |s| s.heading),
@@ -399,13 +414,14 @@ fn sling(
             }
             Place::Hung(hook, h) => {
                 let w = s.swing.get_or_insert_with(|| Swing::new(s.at, hook));
-                w.advance(hook, dt as f64, 0.0);
+                let ground = ground_under(&hills, w.pos);
+                w.advance(hook, dt as f64, ground);
                 s.at = w.pos;
                 // It turns slowly with the helicopter, and leans along its rope.
                 s.heading += turn(s.heading, h) * (1.0 - (-0.5 * dt).exp());
                 // (Lifting off, it leans in gradually: no flicker as it touches and leaves.)
                 let up = (hook - s.at).as_vec3().normalize_or(Vec3::Y);
-                let off = ((w.pos.y - rest_height()) / 0.5).clamp(0.0, 1.0) as f32;
+                let off = ((w.pos.y - ground - rest_height()) / 0.5).clamp(0.0, 1.0) as f32;
                 tilt = Quat::IDENTITY.slerp(Quat::from_rotation_arc(Vec3::Y, up), off);
                 Some(hook)
             }
@@ -456,7 +472,7 @@ fn sling(
         (Some((key, ..)), Some(_)) => {
             let pad = want.iter().find(|w| w.0 == key).map(|w| w.2);
             if let (Some(pad), Some(s)) = (pad, sling.crates.get_mut(&key))
-                && s.swing.is_some_and(|w| w.grounded(0.0))
+                && s.swing.is_some_and(|w| w.grounded(ground_under(&hills, w.pos)))
             {
                 let (east, north) = (s.at.x - pad.x, -s.at.z - pad.y);
                 if (east.hypot(north) as f32) <= CRATE_DROP_METRES {

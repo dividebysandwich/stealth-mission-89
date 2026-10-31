@@ -533,6 +533,9 @@ fn steer_along(u: &mut Uav, want: [f64; 3], max: f64, dt: f64) {
     u.pitch = new[2].clamp(-1.0, 1.0).asin();
 }
 
+/// Spacing of the rolling hills' samples ahead of a drone (m).
+const HILLS_AHEAD_STEP: f64 = 250.0;
+
 impl Sim {
     /// The drones in the air (a campaign's).
     pub fn uavs(&self) -> &[Uav] {
@@ -755,25 +758,39 @@ impl Sim {
         f.timer = 0x7FFF;
     }
 
-    /// The highest ground (m) under a point and ahead of it on a heading.
-    /// The highest ground (m) of the relief's cell under a point.
+    /// The highest ground (m) of the relief's cell under a point, or of the rolling hills.
     fn uav_ground_here(&self, pos: [f64; 3]) -> f64 {
-        let Some(relief) = self.tiles.as_ref().map(|t| &t.relief) else { return 0.0 };
-        relief.height((pos[0] / M_PER_MAP) as i32, 0x8000 - (pos[1] / M_PER_MAP) as i32) as f64
-            * M_PER_WU
+        let Some(t) = self.tiles.as_ref() else { return 0.0 };
+        let relief =
+            t.relief.height((pos[0] / M_PER_MAP) as i32, 0x8000 - (pos[1] / M_PER_MAP) as i32)
+                as f64
+                * M_PER_WU;
+        relief.max(t.hills.height_m(pos[0], pos[1]) as f64)
     }
 
+    /// The highest ground (m) under a point and ahead of it on a heading: the relief's cells
+    /// every 2 km, the rolling hills every `HILLS_AHEAD_STEP` as far.
     fn uav_ground(&self, pos: [f64; 3], heading: f64) -> f64 {
-        let Some(relief) = self.tiles.as_ref().map(|t| &t.relief) else { return 0.0 };
+        let Some(t) = self.tiles.as_ref() else { return 0.0 };
         let cell = 2000.0;
-        (0..4)
+        let at = |d: f64| (pos[0] + heading.sin() * d, pos[1] + heading.cos() * d);
+        let relief = (0..4)
             .map(|k| {
-                let d = k as f64 * cell;
-                let (e, n) = (pos[0] + heading.sin() * d, pos[1] + heading.cos() * d);
-                relief.height((e / M_PER_MAP) as i32, 0x8000 - (n / M_PER_MAP) as i32) as f64
+                let (e, n) = at(k as f64 * cell);
+                t.relief.height((e / M_PER_MAP) as i32, 0x8000 - (n / M_PER_MAP) as i32) as f64
                     * M_PER_WU
             })
-            .fold(0.0, f64::max)
+            .fold(0.0, f64::max);
+        if t.hills.is_flat() {
+            return relief;
+        }
+        let steps = (3.0 * cell / HILLS_AHEAD_STEP) as usize;
+        (0..=steps)
+            .map(|k| {
+                let (e, n) = at(k as f64 * HILLS_AHEAD_STEP);
+                t.hills.height_m(e, n) as f64
+            })
+            .fold(relief, f64::max)
     }
 
     /// One frame of flight unit `i`, a drone.

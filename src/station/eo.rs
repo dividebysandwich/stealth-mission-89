@@ -69,8 +69,8 @@ pub(super) fn aim(
     }
     let sim = &combat.sim;
     let Some(u) = sim.units().get(m.unit) else { return };
-    let eye =
-        crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0) + DVec3::Y * MAST;
+    let at = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
+    let eye = crate::sim_render::on_ground(&sim.hills(), at + DVec3::Y * MAST);
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
     let target = lock.and_then(|i| {
         let f = sim.flights().get(i)?;

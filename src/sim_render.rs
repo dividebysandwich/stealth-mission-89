@@ -253,6 +253,12 @@ fn cleanup(
     *vis = SimVisuals::default();
 }
 
+/// A Bevy world point raised by the ground under it (the rolling hills there): a height over
+/// the ground made one over the flat world.
+pub fn on_ground(hills: &stealth_sim::hills::Hills, p: DVec3) -> DVec3 {
+    DVec3::new(p.x, p.y + hills.ground_m(p.x, -p.z) as f64, p.z)
+}
+
 /// World position (Bevy metres) of a map point at a viewZ altitude.
 pub fn map_point(x: f64, y: f64, alt: f64) -> bevy::math::DVec3 {
     wu_to_bevy(x * 32.0, (0x8000 as f64 - y) * 32.0, alt)

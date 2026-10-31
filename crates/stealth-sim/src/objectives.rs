@@ -192,8 +192,10 @@ impl Sim {
             self.pl.eject += 1;
             let dz = clamp_q(0x20 - self.pl.eject, cdiv(-0x60, fs), cdiv(0x80, fs));
             self.pl.chute.2 += dz;
-            if self.pl.chute.2 <= 0 {
-                self.pl.chute.2 = 0;
+            // Down on the ground (the rolling hills there).
+            let ground = self.hill_alt(self.pl.chute.0, self.pl.chute.1);
+            if self.pl.chute.2 <= ground {
+                self.pl.chute.2 = ground;
                 if self.mission_tick & 7 == 0 && !self.start_csar() {
                     self.finalize(0);
                 }

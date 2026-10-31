@@ -188,7 +188,7 @@ const DRAPE_MARGIN: f64 = 300.0;
 
 /// Lays a block's geometry on the rolling hills: the flat parts split to follow the ground,
 /// every point raised by the ground under it (so walls stay upright and trees stand on it).
-fn drape(hills: &stealth_sim::hills::Hills, f: &Frame, g: &mut Geom) {
+pub(super) fn drape(hills: &stealth_sim::hills::Hills, f: &Frame, g: &mut Geom) {
     let (lo, hi) = (f.min - DRAPE_MARGIN, f.max() + DRAPE_MARGIN);
     let Some(patch) = stealth_sim::hills::Patch::new(hills, (lo.x, lo.y), (hi.x, hi.y)) else {
         return;

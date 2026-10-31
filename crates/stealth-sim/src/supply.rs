@@ -213,10 +213,12 @@ impl Sim {
         let (gx, gy) = if run.delivered { run.pad } else { fetching.unwrap_or(run.drop) };
         let (dx, dy) = (gx - u.wx, gy - u.wy);
         let d = (dx as f64).hypot(dy as f64);
+        // Its heights are over the ground under it (the rolling hills).
+        let ground = self.hill_alt(u.x, u.y);
         if u.flags & fflags::TAKEOFF != 0 {
             // Straight up off the pad.
             u.alt += cdiv(40, fs).max(1);
-            if u.alt >= LIFT_ALT {
+            if u.alt - ground >= LIFT_ALT {
                 u.flags &= !fflags::TAKEOFF;
             }
         } else {
@@ -242,16 +244,16 @@ impl Sim {
             let galt = if d > SLOW_DOWN / 2.0 {
                 CRUISE_ALT + self.terrain_ahead(&u)
             } else if d >= LOW {
-                LIFT_ALT
+                ground + LIFT_ALT
             } else if run.delivered {
-                if d < 2.0 * THERE { 0 } else { LIFT_ALT }
+                ground + if d < 2.0 * THERE { 0 } else { LIFT_ALT }
             } else if fetching.is_some() {
-                HOOK_ALT
+                ground + HOOK_ALT
             } else {
-                SET_ALT
+                ground + SET_ALT
             };
             let rate = cdiv(30, fs).max(1);
-            u.alt = (u.alt + clamp_q(galt - u.alt, -rate, rate)).max(0);
+            u.alt = (u.alt + clamp_q(galt - u.alt, -rate, rate)).max(ground);
             // At the goal it holds the spot.
             let mv = if d < THERE { 0 } else { cdiv(u.speed, fs).max(1).min(d as i32) };
             u.wx = u.wx.wrapping_add(self.trig.sin_mul(u.heading, mv));
@@ -264,7 +266,8 @@ impl Sim {
         u.bank = clamp_q(s16(bearing(dx, s16(-dy)) - u.heading) * 2, -0x1800, 0x1800)
             * (u.speed > 20) as i32;
         let unit = run.unit as usize;
-        let over = d < THERE * 2.0 && u.alt <= HOOK_ALT + 2;
+        let height = u.alt - self.hill_alt(u.x, u.y);
+        let over = d < THERE * 2.0 && height <= HOOK_ALT + 2;
         if fetching.is_some() {
             // Over the crate: hooked, it holds the spot while the winch lifts it.
             run.hooked |= over;
@@ -278,9 +281,9 @@ impl Sim {
             // site's helipad), for long enough.
             let near_point = |c: (i32, i32)| {
                 let m = ((u.wx - c.0) as f64).hypot((u.wy - c.1) as f64) * M_PER_WU;
-                m <= DROP_RADIUS && u.alt as f64 * M_PER_WU <= HOVER_MAX
+                m <= DROP_RADIUS && height as f64 * M_PER_WU <= HOVER_MAX
             };
-            let set_down = d < 2.0 * THERE && u.alt <= SET_ALT;
+            let set_down = d < 2.0 * THERE && height <= SET_ALT;
             let near = set_down
                 && if run.unit == NO_UNIT {
                     near_point(run.drop)
@@ -303,7 +306,7 @@ impl Sim {
             if run.unit != NO_UNIT && self.units.get(unit).is_none_or(|a| a.destroyed) {
                 run.delivered = true;
             }
-        } else if d < 2.0 * THERE && u.alt == 0 {
+        } else if d < 2.0 * THERE && height <= 0 {
             // Down on the pad: done (the campaign's bookkeeping reports it and frees the slot).
             u.flags &= 0x1C1;
             u.speed = 0;
