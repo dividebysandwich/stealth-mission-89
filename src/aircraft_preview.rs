@@ -1,17 +1,26 @@
 //! The menus' preview of the chosen aircraft: its model turning slowly in a box above the
 //! VEHICLE choices. An offscreen camera draws the model, alone on its own layer far below the
 //! menu's scene, into a picture egui shows; both exist only while a menu shows the preview.
+//! The model is drawn in daylight whatever the menu's scene: its materials are twins of the
+//! scene's that read shader globals of their own (the theater's day palette, a high sun).
 
 use bevy::camera::RenderTarget;
 use bevy::camera::primitives::Aabb;
 use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
+use bevy::render::storage::ShaderBuffer;
 use bevy_egui::egui;
 
 use crate::aircraft::AircraftKind;
 use crate::camera::{OffscreenCamera, PREVIEW_LAYER};
 use crate::models::{LodBias, LodMesh, ModelAssets, ModelLibrary};
+use crate::palette::Palette;
+use crate::palette_material::{Globals, PaletteMaterial};
+use crate::rotor_blur::RotorMaterial;
+
+/// Twins of materials, by the material they were made from.
+type Twins<M> = std::collections::HashMap<AssetId<M>, Handle<M>>;
 use crate::settings::{AppState, Settings};
 
 /// Picture size (pixels).
@@ -54,6 +63,10 @@ pub struct AircraftPreview {
     /// slices, in its own frame): turning rotors sweep their discs into it, so the framing
     /// settles instead of breathing with the blades.
     profile: std::collections::BTreeMap<i32, f32>,
+    /// The daylight shader globals, and the scene's materials' twins reading them.
+    globals: Option<Handle<ShaderBuffer>>,
+    day: Twins<PaletteMaterial>,
+    day_rotors: Twins<RotorMaterial>,
     yaw: f32,
 }
 
@@ -66,6 +79,47 @@ impl AircraftPreview {
 /// The marker of the turning model's root.
 #[derive(Component)]
 struct PreviewModel;
+
+/// A mesh of the model drawn with its daylight twin material.
+#[derive(Component)]
+struct DayLit;
+
+/// The twin of material `m` reading the shader globals `globals` (made once).
+fn twin<M: Asset + Clone>(
+    m: &Handle<M>,
+    twins: &mut Twins<M>,
+    materials: &mut Assets<M>,
+    globals: impl FnOnce(&mut M),
+) -> Option<Handle<M>> {
+    if let Some(t) = twins.get(&m.id()) {
+        return Some(t.clone());
+    }
+    let mut twin = materials.get(m)?.clone();
+    globals(&mut twin);
+    let twin = materials.add(twin);
+    twins.insert(m.id(), twin.clone());
+    Some(twin)
+}
+
+/// Shader globals of a clear day: the theater's day palette lit as by the classic shading's
+/// sun, without shadows, haze, clouds or the night sky.
+fn day_globals(palette: &Palette, settings: &Settings) -> Globals {
+    let mut g = Globals::default();
+    for i in 0..256 {
+        let c = palette.theater.day.color(i as u8).to_linear();
+        g.palette[i] = Vec4::new(c.red, c.green, c.blue, 1.0);
+        g.recon_palette[i] = g.palette[i];
+    }
+    g.params = Vec4::new(0.0, crate::world::WU as f32, 0.0, 0.0);
+    // As `lighting::update_sun` at noon without the modern balance.
+    let sun = 0.45;
+    g.sun = crate::lighting::sun_direction().extend(sun);
+    g.ambient = Vec4::new(1.0 - sun * 0.6, 1.0 - sun * 0.6, 1.0 - sun * 0.55, 0.0);
+    g.light_info.y = 1.0;
+    g.dots.x = if settings.vr { crate::dots::XR_ANGLE } else { 0.0 };
+    g.retro = crate::palette::retro(settings);
+    g
+}
 
 /// The preview across the column, a rule under it (blank until its picture is drawn).
 pub(crate) fn show(ui: &mut egui::Ui, preview: &mut AircraftPreview) {
@@ -93,11 +147,14 @@ fn despawn(commands: &mut Commands, preview: &mut AircraftPreview) {
 fn cleanup(mut commands: Commands, mut preview: ResMut<AircraftPreview>) {
     despawn(&mut commands, &mut preview);
     preview.requested = false;
+    // (The scene's palette, and with it its materials, is made anew with the next menu.)
+    preview.day.clear();
+    preview.day_rotors.clear();
 }
 
 /// Spawns the camera and the chosen aircraft's model while a menu shows the preview (despawns
 /// them when none does), turns the model and keeps it framed.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn update(
     mut commands: Commands,
     mut preview: ResMut<AircraftPreview>,
@@ -112,6 +169,13 @@ fn update(
     bounds: Query<(&Aabb, &GlobalTransform, &InheritedVisibility)>,
     mut roots: Query<(&mut Transform, &GlobalTransform), With<PreviewModel>>,
     mut cams: Query<&mut Transform, (With<Camera>, Without<PreviewModel>)>,
+    (mut buffers, mut materials, mut rotor_materials, lit, rotors): (
+        ResMut<Assets<ShaderBuffer>>,
+        ResMut<Assets<PaletteMaterial>>,
+        ResMut<Assets<RotorMaterial>>,
+        Query<&MeshMaterial3d<PaletteMaterial>, Without<DayLit>>,
+        Query<&MeshMaterial3d<RotorMaterial>, Without<DayLit>>,
+    ),
 ) {
     let preview = &mut *preview;
     if !std::mem::take(&mut preview.requested) {
@@ -196,6 +260,36 @@ fn update(
             && layers != Some(&layer)
         {
             commands.entity(e).remove::<LodMesh>().insert(layer.clone());
+        }
+    }
+    // Lit by day.
+    let fresh = preview.globals.is_none();
+    let globals = preview
+        .globals
+        .get_or_insert_with(|| {
+            // Bound as the scene's are (`Palette::new`).
+            let mut b = ShaderBuffer::from(Globals::default());
+            b.buffer_description.usage |= bevy::render::render_resource::BufferUsages::UNIFORM;
+            buffers.add(b)
+        })
+        .clone();
+    if (fresh || settings.is_changed())
+        && let Some(mut b) = buffers.get_mut(&globals)
+    {
+        b.set_data(day_globals(&assets.palette, &settings));
+    }
+    for e in children.iter_descendants(root) {
+        if let Ok(m) = lit.get(e)
+            && let Some(t) =
+                twin(&m.0, &mut preview.day, &mut materials, |t| t.globals = globals.clone())
+        {
+            commands.entity(e).insert((MeshMaterial3d(t), DayLit));
+        } else if let Ok(m) = rotors.get(e)
+            && let Some(t) = twin(&m.0, &mut preview.day_rotors, &mut rotor_materials, |t| {
+                t.globals = globals.clone()
+            })
+        {
+            commands.entity(e).insert((MeshMaterial3d(t), DayLit));
         }
     }
     preview.yaw = (preview.yaw + TURN * time.delta_secs()) % std::f32::consts::TAU;

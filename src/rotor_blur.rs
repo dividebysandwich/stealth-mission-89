@@ -55,7 +55,7 @@ pub struct RotorParams {
 #[derive(Asset, TypePath, Clone, Debug)]
 pub struct RotorMaterial {
     pub(crate) params: RotorParams,
-    globals: Handle<ShaderBuffer>,
+    pub(crate) globals: Handle<ShaderBuffer>,
 }
 
 crate::palette_material::globals_bind_group!(RotorMaterial, params);
