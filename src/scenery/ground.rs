@@ -97,13 +97,17 @@ struct FlatTri {
     surface: Surface,
     /// Model colour.
     colour: u8,
+    /// Its height in its model (metres, the painter's order lift among the model's overlays).
+    y: f32,
 }
 
-/// A flat ground polygon of the theater (metres), its painter's order and model colour.
+/// A flat ground polygon of the theater (metres), its painter's order, model colour and height
+/// in its model (metres).
 pub struct Overlay {
     pub p: [Vec2; 3],
     pub order: u32,
     pub colour: u8,
+    pub y: f32,
 }
 
 impl FlatTri {
@@ -145,7 +149,8 @@ impl FlatTri {
 /// Geometry of one tile shape that matters here, in model units (x east, y north).
 #[derive(Default)]
 struct ShapeGeom {
-    flat: Vec<([Vec2; 3], Surface, u8)>,
+    /// Flat polygons: corners, surface, model colour and height (model units).
+    flat: Vec<([Vec2; 3], Surface, u8, f32)>,
     /// Footprint of the raised geometry.
     raised: Option<Rect>,
     /// Flat lines in the road greys.
@@ -374,7 +379,7 @@ impl Ground {
             .into_iter()
             .map(|i| &self.tris[i as usize])
             .filter(|t| t.surface != Surface::Water && t.overlaps(lo, hi))
-            .map(|t| Overlay { p: t.p, order: t.order, colour: t.colour })
+            .map(|t| Overlay { p: t.p, order: t.order, colour: t.colour, y: t.y })
             .collect();
         out.sort_by_key(|o| o.order);
         out
@@ -410,14 +415,14 @@ impl Ground {
         for &Placed { lod, k, shape, origin, scale } in &src.objects {
             let geom = src.shapes.get(&shape).unwrap_or(&none);
             let place = |p: Vec2| origin + p * scale;
-            for (j, (tri, s, colour)) in geom.flat.iter().enumerate() {
+            for (j, (tri, s, colour, y)) in geom.flat.iter().enumerate() {
                 let p = tri.map(place);
                 let id = g.tris.len() as u32;
                 let (min, max) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
                 g.tri_index.insert(min.as_dvec2(), max.as_dvec2(), id);
                 let order =
                     ((4 - lod as u32) << 28) | ((k as u32 & 0xFFF) << 16) | (j as u32 & 0xFFFF);
-                g.tris.push(FlatTri { p, order, surface: *s, colour: *colour });
+                g.tris.push(FlatTri { p, order, surface: *s, colour: *colour, y: y * scale });
                 if *s == Surface::Solid {
                     g.add_box(Rect::from_corners(min, max).inflate(SOLID_MARGIN), false);
                 }
@@ -644,7 +649,7 @@ fn walk(
                                 geom.runways.push(r);
                             }
                         }
-                        geom.flat.push((q, s, colour));
+                        geom.flat.push((q, s, colour, (p[0].y + p[1].y + p[2].y) / 3.0));
                     }
                 } else {
                     geom.solid.push(p.map(|v| Vec3::new(v.x, -v.z, v.y)));

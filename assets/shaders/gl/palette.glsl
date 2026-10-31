@@ -72,6 +72,7 @@ const uint TAG_DOT_SPOT = 32768u;
 const uint TAG_DOT_FAR = 2147483648u;
 const uint TAG_VERTEX_HAZE = 1073741824u;
 const uint TAG_HILLS = 65536u;
+const uint TAG_FLAT_LIT = 131072u;
 const float DOT_FAR_MIN = 3000.0;
 const float AIRCRAFT_NIGHT = 0.95;
 const uint CLOUD_RAMP = 0xE0u;
@@ -102,7 +103,7 @@ out vec3 v_world;
 flat out uint v_fog;
 flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
-// hills' ground.
+// hills' ground; bit 4: lit as flat ground (the hills' skirts).
 flat out uint v_warm;
 #ifdef CLOUD
 // Smoke volumes, in the plume's local space (unit radius, y 0..1): position (w: noise offset),
@@ -140,7 +141,8 @@ void main() {
     uint tag = a_tag;
     v_warm = ((tag & (TAG_WARM | 128u)) != 0u ? 1u : 0u) | (((tag & 7u) == 5u) ? 2u : 0u)
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u)
-        | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u);
+        | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u)
+        | ((tag & (TAG_FLAT_LIT | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_FLAT_LIT ? 16u : 0u);
 #ifdef CLOUD
     v_puff_pos = vec4(0.0);
     v_puff_eye = vec4(0.0);
@@ -1262,7 +1264,7 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
 }
 
 void main() {
-    vec3 face = cross(dFdx(v_world), dFdy(v_world));
+    vec3 face = (v_warm & 16u) != 0u ? vec3(0.0, 1.0, 0.0) : cross(dFdx(v_world), dFdy(v_world));
     float sky_px = max(length(fwidth(normalize(v_world - eye_pos()))), 1e-5);
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);

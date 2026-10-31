@@ -17,7 +17,9 @@ use stealth_sim::hills::GRID_M;
 use super::content::{self, FIELD_BLOCK, Tier};
 use super::{DetailLevel, Scenery, budget, mesh};
 use crate::palette::Palette;
-use crate::palette_material::{ATTRIBUTE_PALETTE_WORD, TAG_HILLS, TAG_VERTEX_HAZE, mesh_tag};
+use crate::palette_material::{
+    ATTRIBUTE_PALETTE_WORD, TAG_FLAT_LIT, TAG_HILLS, TAG_VERTEX_HAZE, mesh_tag,
+};
 use crate::world::{LAYER_STEP_M, WU, WorldAnchor, WorldPos, bevy_to_wu};
 
 /// Chunk side (metres).
@@ -37,21 +39,26 @@ const BUILDING: usize = 4;
 /// Size of the buckets the polygons are sorted into (metres).
 const BUCKET: f64 = 250.0;
 
-/// A chunk's mesh being built on its grid level.
-type Building = (usize, Task<Option<ChunkMesh>>);
+/// What a chunk is built as: its grid level, and whether with the farmland's fields.
+type Kind = (usize, bool);
 
-/// Chunk -> its grid level and entity; chunks being built.
+/// A chunk's mesh being built.
+type Building = (Kind, Task<Option<ChunkMesh>>);
+
+/// Chunk -> what it is built as and its entity; chunks being built.
 #[derive(Resource, Default)]
 pub struct Skin {
-    chunks: HashMap<(i32, i32), (usize, Entity)>,
+    chunks: HashMap<(i32, i32), (Kind, Entity)>,
     building: HashMap<(i32, i32), Building>,
 }
 
 /// A chunk's triangles (chunk-local Bevy positions) and their model colours (`GROUND`: the
-/// ground gradient).
+/// ground gradient), and its skirts'.
 pub struct ChunkMesh {
     pos: Vec<Vec3>,
     colours: Vec<u16>,
+    skirt: Vec<Vec3>,
+    skirt_colours: Vec<u16>,
 }
 
 /// The colour of the open ground: the ground gradient the flat world shows there (the
@@ -116,8 +123,14 @@ pub(super) fn stream_skin(
     let (east, north, _) = bevy_to_wu(anchor.0);
     let eye = DVec2::new(east, north) * WU;
     let range = STEPS[STEPS.len() - 1].0;
-    // Chunks wanted: their grid level and distance.
-    let mut wanted: HashMap<(i32, i32), (usize, f64)> = HashMap::new();
+    // The farmland as `stream_blocks` lays it (its fields under the hills are drawn here): in
+    // the blocks whose centre is in its range (by the same measure, so the flat fields and
+    // the hills' agree).
+    let farmland = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
+    let fields_r = budget.ranges().radius(Tier::Fields);
+    debug_assert_eq!(CHUNK, FIELD_BLOCK);
+    // Chunks wanted: what they are built as and their distance.
+    let mut wanted: HashMap<(i32, i32), (Kind, f64)> = HashMap::new();
     let (lo, hi) =
         (((eye - range) / CHUNK).floor().as_ivec2(), ((eye + range) / CHUNK).floor().as_ivec2());
     for by in lo.y..=hi.y {
@@ -128,7 +141,8 @@ pub(super) fn stream_skin(
             if let Some(l) = level(d)
                 && hills.any_in(c.x, c.y, CHUNK * 0.5)
             {
-                wanted.insert((bx, by), (l, d));
+                let fields = farmland && c.distance(eye) < fields_r + CHUNK * 0.5;
+                wanted.insert((bx, by), ((l, fields), d));
             }
         }
     }
@@ -136,18 +150,18 @@ pub(super) fn stream_skin(
     let done: Vec<(i32, i32)> =
         skin.building.iter_mut().filter_map(|(&k, (_, t))| t.is_finished().then_some(k)).collect();
     for key in done {
-        let Some((l, task)) = skin.building.remove(&key) else { continue };
+        let Some((kind, task)) = skin.building.remove(&key) else { continue };
         let Some(built) = block_on(poll_once(task)) else { continue };
         if let Some((_, old)) = skin.chunks.remove(&key) {
             commands.entity(old).try_despawn();
         }
-        if wanted.get(&key).is_none_or(|w| w.0 != l) {
+        if wanted.get(&key).is_none_or(|w| w.0 != kind) {
             continue;
         }
         let Some(built) = built else {
-            // Nothing to draw (flat after all): remember the level, no mesh.
+            // Nothing to draw (flat after all): remember what it is, no mesh.
             let e = commands.spawn(SkinChunk).id();
-            skin.chunks.insert(key, (l, e));
+            skin.chunks.insert(key, (kind, e));
             continue;
         };
         let m = mesh(PrimitiveTopology::TriangleList, built.pos)
@@ -166,7 +180,26 @@ pub(super) fn stream_skin(
                 Visibility::default(),
             ))
             .id();
-        skin.chunks.insert(key, (l, e));
+        // The skirts lit as the flat ground: they only show in the cracks, as ground.
+        if !built.skirt.is_empty() {
+            let m = mesh(PrimitiveTopology::TriangleList, built.skirt).with_inserted_attribute(
+                ATTRIBUTE_PALETTE_WORD,
+                words(&palette, &built.skirt_colours),
+            );
+            let skirt = commands
+                .spawn((
+                    Mesh3d(meshes.add(m)),
+                    MeshMaterial3d(palette.per_vertex.clone()),
+                    SkinColours(built.skirt_colours),
+                    MeshTag(mesh_tag(3, 4, false) | TAG_VERTEX_HAZE | TAG_HILLS | TAG_FLAT_LIT),
+                    NotShadowCaster,
+                    Transform::default(),
+                    Visibility::default(),
+                ))
+                .id();
+            commands.entity(e).add_child(skirt);
+        }
+        skin.chunks.insert(key, (kind, e));
     }
     // Chunks out of range go; those on another grid stay until rebuilt.
     skin.chunks.retain(|k, (_, e)| {
@@ -176,25 +209,22 @@ pub(super) fn stream_skin(
         }
         keep
     });
-    skin.building.retain(|k, (l, _)| wanted.get(k).is_some_and(|w| w.0 == *l));
+    skin.building.retain(|k, (kind, _)| wanted.get(k).is_some_and(|w| w.0 == *kind));
     // Start the nearest builds missing.
     let mut todo: Vec<_> = wanted
         .iter()
-        .filter(|(k, (l, _))| {
-            skin.chunks.get(k).is_none_or(|c| c.0 != *l) && !skin.building.contains_key(k)
+        .filter(|(k, (kind, _))| {
+            skin.chunks.get(k).is_none_or(|c| c.0 != *kind) && !skin.building.contains_key(k)
         })
-        .map(|(&k, &(l, d))| (d, k, l))
+        .map(|(&k, &(kind, d))| (d, k, kind))
         .collect();
     todo.sort_by(|a, b| a.0.total_cmp(&b.0));
-    // The farmland as `stream_blocks` lays it (its fields under the hills are drawn here).
-    let farmland = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
-    let fields_r = budget.ranges().radius(Tier::Fields);
-    for (d, (bx, by), l) in todo.into_iter().take(BUILDING.saturating_sub(skin.building.len())) {
+    for (_, (bx, by), kind) in todo.into_iter().take(BUILDING.saturating_sub(skin.building.len())) {
         let sc = (*scenery).clone();
-        let fields = farmland && d < fields_r;
+        let (l, fields) = kind;
         let task = AsyncComputeTaskPool::get()
             .spawn(async move { build(&sc, bx, by, STEPS[l].1, fields) });
-        skin.building.insert((bx, by), (l, task));
+        skin.building.insert((bx, by), (kind, task));
     }
 }
 
@@ -271,18 +301,31 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         .into_iter()
         .map(|o| {
             let (lod, k) = (4 - (o.order >> 28) as i32, (o.order >> 16) & 0xFFF);
-            let lift = ((4 - lod) as f64 * LAYER_STEP_M * 8.0 + k as f64 * LAYER_STEP_M) as f32;
+            // Its height as drawn: its object's lift and its own in the model.
+            let lift =
+                ((4 - lod) as f64 * LAYER_STEP_M * 8.0 + k as f64 * LAYER_STEP_M) as f32 + o.y;
             Flat { p: o.p.map(|v| (v.as_dvec2() - min).as_vec2()), lift, colour: o.colour }
         })
         .collect();
     if fields {
         debug_assert_eq!(CHUNK, FIELD_BLOCK);
-        let g = content::build(sc, bx, by, Tier::Fields, 1.0);
-        let half = (CHUNK * 0.5) as f32;
-        for (&colour, tris) in &g.flat {
-            for t in tris.as_chunks::<3>().0 {
-                let p = t.map(|v| Vec2::new(v.x + half, -v.z + half));
-                flats.push(Flat { p, lift: t[0].y, colour });
+        // A field block's fields reach over its edges: the neighbours' too, those over this
+        // chunk.
+        let size = CHUNK as f32;
+        let inside = |p: &[Vec2; 3]| {
+            let (lo, hi) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
+            hi.x > 0.0 && hi.y > 0.0 && lo.x < size && lo.y < size
+        };
+        for (dx, dy) in (-1..=1).flat_map(|dx| (-1..=1).map(move |dy| (dx, dy))) {
+            let g = content::build(sc, bx + dx, by + dy, Tier::Fields, 1.0);
+            let off = Vec2::new(dx as f32 + 0.5, dy as f32 + 0.5) * size;
+            for (&colour, tris) in &g.flat {
+                for t in tris.as_chunks::<3>().0 {
+                    let p = t.map(|v| Vec2::new(v.x, -v.z) + off);
+                    if inside(&p) {
+                        flats.push(Flat { p, lift: t[0].y, colour });
+                    }
+                }
             }
         }
     }
@@ -305,7 +348,12 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         let w = min + p.as_dvec2();
         Vec3::new((w.x - centre.x) as f32, y, -(w.y - centre.y) as f32)
     };
-    let mut out = ChunkMesh { pos: Vec::new(), colours: Vec::new() };
+    let mut out = ChunkMesh {
+        pos: Vec::new(),
+        colours: Vec::new(),
+        skirt: Vec::new(),
+        skirt_colours: Vec::new(),
+    };
     let mut ids: Vec<u32> = Vec::new();
     let mut layers: Vec<(Vec<Vec2>, u16)> = Vec::new();
     let s = step as f32;
@@ -395,8 +443,8 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         let skirt = SKIRT.max(s * SKIRT_PER_STEP);
         let (a1, b1) = (at(pa, ha - skirt), at(pb, hb - skirt));
         for v in [a, a1, b1, a, b1, b, a, b1, a1, a, b, b1] {
-            out.pos.push(v);
-            out.colours.push(base);
+            out.skirt.push(v);
+            out.skirt_colours.push(base);
         }
     }
     (!out.pos.is_empty()).then_some(out)

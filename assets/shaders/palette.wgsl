@@ -28,6 +28,8 @@ const TAG_VERTEX_HAZE: u32 = 1073741824u;
 // The rolling hills' ground (palette_material.rs `TAG_HILLS`): shaded by its slope in the
 // classic look too.
 const TAG_HILLS: u32 = 65536u;
+// Lit as flat ground whatever the face (palette_material.rs `TAG_FLAT_LIT`: the hills' skirts).
+const TAG_FLAT_LIT: u32 = 131072u;
 const DOT_FAR_MIN: f32 = 3000.0;
 // Share of a moonless night's darkness on aircraft and their spotting dots: barely visible.
 const AIRCRAFT_NIGHT: f32 = 0.95;
@@ -172,7 +174,7 @@ struct VertexOutput {
     @location(5) @interpolate(flat) puff_sun: vec3<f32>,
     @location(6) @interpolate(flat) puff_scale: vec3<f32>,
     // Bit 0: warm object or dot light (FLIR); bit 1: aircraft (level code 5); bit 2: spotting
-    // dot; bit 3: the hills' ground.
+    // dot; bit 3: the hills' ground; bit 4: lit as flat ground.
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -230,7 +232,8 @@ fn vertex(v: Vertex) -> VertexOutput {
     let tag = mesh_functions::get_tag(v.instance_index);
     out.warm = select(0u, 1u, (tag & (TAG_WARM | 128u)) != 0u) | select(0u, 2u, (tag & 7u) == 5u)
         | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u))
-        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS);
+        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS)
+        | select(0u, 16u, (tag & (TAG_FLAT_LIT | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_FLAT_LIT);
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
 #endif
@@ -1445,6 +1448,9 @@ fn colour_word(in: VertexOutput) -> u32 {
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var deriv: Deriv;
     deriv.face = cross(dpdx(in.world_position), dpdy(in.world_position));
+    if ((in.warm & 16u) != 0u) {
+        deriv.face = vec3<f32>(0.0, 1.0, 0.0);
+    }
     deriv.sky_px = max(length(fwidth(normalize(in.world_position - view.world_position))), 1e-5);
     deriv.foot = length(fwidth(in.world_position));
     deriv.ground_dx = dpdx(in.world_position.xz);
