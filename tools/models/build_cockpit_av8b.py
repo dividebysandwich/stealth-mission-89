@@ -581,13 +581,13 @@ plates = [
     ("black", (-100.0, -146.0, 24.0, 132.0)),  # left of it: the option window, the knobs
     ("black", (75.0, -146.0, 25.0, 132.0)),  # option display unit
     ("dark", (-78.0, -6.0, 156.0, 20.0)),  # caution and warning lights
-    ("dark", (-342.0, -140.0, 64.0, 120.0)),  # master modes, master arm, launch flare
+    ("dark", (-366.0, -140.0, 64.0, 120.0)),  # master modes, master arm, launch flare
     ("black", (-418.0, 46.0, 52.0, 146.0)),  # gear lights, gear handle, brake
     ("dark", (-364.0, 46.0, 60.0, 92.0)),  # flaps
     ("black", (-288.0, 44.0, 184.0, 140.0)),  # armament
-    ("black", (272.0, -148.0, 80.0, 128.0)),  # engine display
-    ("dark", (352.0, -108.0, 64.0, 142.0)),  # RWR and ECM
-    ("dark", (272.0, -4.0, 80.0, 50.0)),  # countermeasures
+    ("black", (294.0, -148.0, 72.0, 128.0)),  # engine display
+    ("dark", (366.0, -108.0, 54.0, 142.0)),  # RWR and ECM
+    ("dark", (290.0, -4.0, 76.0, 50.0)),  # countermeasures
     ("black", (118.0, 48.0, 158.0, 80.0)),  # fuel
     ("dark", (280.0, 50.0, 136.0, 80.0)),  # caution lights
     ("black", (-100.0, 140.0, 200.0, 30.0)),  # target buttons
@@ -606,8 +606,8 @@ knob(-88.0, -40.0, 0.007, 0.010, "dark", offset=PLATE)
 # The master arm switch on its stripes, the launch flare switch under its guard.
 x, y, w, h = faces["Item(Hazard)"]
 toggle(x + w / 2, y + h / 2, PLATE + 0.001)
-mesh_object("yellow", box_mesh("yellow", (0.012, 0.010, 0.020), "yellow", (0.0, -0.005, 0.0)), point(-295.0, -42.0, PLATE), rotation())
-toggle(-295.0, -42.0, PLATE + 0.010, up=False)
+mesh_object("yellow", box_mesh("yellow", (0.012, 0.010, 0.020), "yellow", (0.0, -0.005, 0.0)), point(-319.0, -42.0, PLATE), rotation())
+toggle(-319.0, -42.0, PLATE + 0.010, up=False)
 # The armament panel's switches and knobs under their legends, the jettison button and its
 # selector knob, the master arm's own lights.
 for k in range(5):
@@ -644,7 +644,7 @@ knob(212.0, 104.0, 0.007, 0.010, "dark", offset=PLATE)
 knob(245.0, 104.0, 0.007, 0.010, "dark", offset=PLATE)
 # The engine display's windows (black, unlit) right of their legends.
 for k in range(4):
-    panel_box("black", "black", (302.0, -71.0 + 14.0 * k, 40.0, 12.0), 0.001, 0.0, PLATE)
+    panel_box("black", "black", (324.0, -71.0 + 14.0 * k, 40.0, 12.0), 0.001, 0.0, PLATE)
 # MFD bezels: a square housing standing BEZEL off the panel round the screen (the canvas'
 # shape in its upper part), the screen back in a black recess; twenty push buttons round it
 # (layout faces) with ridges between them, rocker switches at the corners, the DAY / NIGHT /

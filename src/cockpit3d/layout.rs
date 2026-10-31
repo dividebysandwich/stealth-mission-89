@@ -1198,13 +1198,13 @@ impl PanelLayout {
         .into_iter()
         .enumerate()
         {
-            put(elem, rect(-332.0, -136.0 + 20.0 * k as f32, 44.0, 13.0), cap, false);
+            put(elem, rect(-356.0, -136.0 + 20.0 * k as f32, 44.0, 13.0), cap, false);
         }
-        put(Elem::Hazard, rect(-338.0, -70.0, 26.0, 30.0), None, false);
-        put(legend("MASTER\nARM"), rect(-338.0, -36.0, 26.0, 12.0), None, false);
+        put(Elem::Hazard, rect(-362.0, -70.0, 26.0, 30.0), None, false);
+        put(legend("MASTER\nARM"), rect(-362.0, -36.0, 26.0, 12.0), None, false);
         put(
             Elem::Label("LAUNCH\nFLARE", 17, 5),
-            rect(-308.0, -70.0, 26.0, 18.0),
+            rect(-332.0, -70.0, 26.0, 18.0),
             Some(E::Action(Action::Flare)),
             false,
         );
@@ -1232,11 +1232,11 @@ impl PanelLayout {
         // Right of the right MFD: the engine display panel (the nozzle angle needle over the
         // windows), the RWR and ECM lights and switches outboard of it, the countermeasures
         // under it.
-        put(Elem::Dial(Dial::NozzleAngle), rect(290.0, -144.0, 46.0, 46.0), None, true);
-        put(legend("RPM"), rect(278.0, -86.0, 20.0, 10.0), None, false);
-        put(Elem::Led(LedId::Thrust), rect(302.0, -87.0, 40.0, 12.0), None, false);
+        put(Elem::Dial(Dial::NozzleAngle), rect(312.0, -144.0, 46.0, 46.0), None, true);
+        put(legend("RPM"), rect(300.0, -86.0, 20.0, 10.0), None, false);
+        put(Elem::Led(LedId::Thrust), rect(324.0, -87.0, 40.0, 12.0), None, false);
         for (k, label) in ["JPT", "STAB", "FLOW", "H2O"].into_iter().enumerate() {
-            put(legend(label), rect(278.0, -70.0 + 14.0 * k as f32, 20.0, 10.0), None, false);
+            put(legend(label), rect(300.0, -70.0 + 14.0 * k as f32, 20.0, 10.0), None, false);
         }
         for (k, (elem, cap)) in [
             (Elem::Lamp(Rad, Some("LAUNCH")), None),
@@ -1251,7 +1251,7 @@ impl PanelLayout {
         .into_iter()
         .enumerate()
         {
-            put(elem, rect(358.0, -104.0 + 16.0 * k as f32, 48.0, 13.0), cap, false);
+            put(elem, rect(372.0, -104.0 + 16.0 * k as f32, 48.0, 13.0), cap, false);
         }
         for (k, (label, action, led, act)) in [
             ("CHAFF", Action::Chaff, LedId::Chaff, ChaffAct),
@@ -1263,9 +1263,9 @@ impl PanelLayout {
         {
             let y = 16.0 * k as f32;
             let cap = Some(E::Action(action));
-            put(Elem::Label(label, 47, 38), rect(276.0, y, 28.0, 13.0), cap, false);
-            put(Elem::Led(led), rect(307.0, y, 22.0, 13.0), None, false);
-            put(Elem::Lamp(act, None), rect(332.0, y, 16.0, 13.0), None, false);
+            put(Elem::Label(label, 47, 38), rect(294.0, y, 28.0, 13.0), cap, false);
+            put(Elem::Led(led), rect(325.0, y, 22.0, 13.0), None, false);
+            put(Elem::Lamp(act, None), rect(350.0, y, 16.0, 13.0), None, false);
         }
         // Lower right: the fuel panel under the right MFD, the caution lights outboard.
         put(Elem::Led(LedId::Fuel), rect(128.0, 62.0, 52.0, 14.0), None, false);
@@ -1290,15 +1290,16 @@ impl PanelLayout {
             );
         }
 
-        // The HIRES canvas' shape, 128 mm wide (5 inches), in square bezels.
-        let (w, h) = (128.0, 128.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        // The HIRES canvas' shape, 144 mm wide, in square bezels level with each other either
+        // side of the controller.
+        let (w, h) = (144.0, 144.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
         Self {
             style: PanelStyle::Av8b,
             items,
             adi: rect(-30.0, 18.0, 60.0, 60.0),
             mfds: vec![
-                MfdUnit { side: MfdSide::Left, screen: rect(-249.0, -124.0, w, h), osbs: true },
-                MfdUnit { side: MfdSide::Right, screen: rect(121.0, -110.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Left, screen: rect(-126.0 - w, -124.0, w, h), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: rect(126.0, -124.0, w, h), osbs: true },
             ],
             rwr: None,
             hsi: None,
