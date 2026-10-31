@@ -937,6 +937,8 @@ pub(crate) mod icon {
     pub(crate) const DOWNLOAD: char = '\u{e0b2}'; // download
     #[cfg(target_arch = "wasm32")]
     pub(crate) const DISCORD: char = '\u{e116}'; // message-circle
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) const GITHUB: char = '\u{e28d}'; // git-fork
     pub(crate) const BACK: char = '\u{e048}'; // arrow-left
     /// NEW MISSION, NEW SORTIE.
     pub(crate) const NEW_MISSION: char = '\u{e2c5}'; // dices
@@ -1596,6 +1598,10 @@ fn download_url() -> String {
 #[cfg(target_arch = "wasm32")]
 const DISCORD_URL: &str = "https://discord.gg/zjjGeKKpC";
 
+/// The game's source on GitHub.
+#[cfg(target_arch = "wasm32")]
+const GITHUB_URL: &str = "https://github.com/dividebysandwich/stealth-mission-89/";
+
 /// A full-screen-width menu window in the terminal style.
 pub(crate) fn menu_window(ctx: &egui::Context, id: &str, width: f32) -> egui::Window<'static> {
     egui::Window::new(id.to_string())
@@ -1650,6 +1656,11 @@ fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
                         egui::RichText::new("Windows, Linux and macOS, Steam Deck and Steam Frame")
                             .color(DIM),
                     );
+                    ui.add_space(14.0);
+                    if ui.add(wide("GITHUB").icon(icon::GITHUB)).clicked() {
+                        ui.ctx().open_url(egui::OpenUrl::new_tab(GITHUB_URL));
+                    }
+                    ui.label(egui::RichText::new("The source code").color(DIM));
                 });
                 ui.add_space(16.0);
                 ui.vertical(|ui| {
