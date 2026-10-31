@@ -41,6 +41,7 @@ use stealth_campaign::{
     PlayerId, Side, Sortie,
 };
 use stealth_host::{Debrief, Host, HostEvent, Rules, Stores, save};
+use stealth_i18n::tf;
 use stealth_mission::Mission;
 use stealth_net::protocol::{PlayerInfo, PlayerStatus, ToServer};
 use stealth_sim::station::StationCmd;
@@ -942,7 +943,7 @@ fn station_phase(c: &mut ActiveCampaign, s: &Session) {
         (Phase::Station { unit }, None) => {
             c.phase = Phase::Ops;
             if let Some(u) = sim.units().get(unit).filter(|u| u.destroyed) {
-                c.ui.error = Some(format!("{} destroyed: back to operations", u.kind.name()));
+                c.ui.error = Some(stealth_i18n::text!("ops-unit-destroyed", unit = u.kind.name()));
             }
         }
         (Phase::Station { unit }, Some(now)) if unit != now => {
@@ -1003,7 +1004,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Rearm { loadout } => {
                 host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
-                s.msgs.show("Rearmed and refuelled");
+                s.msgs.show(tf!("hud-rearmed"));
                 c.landed = None;
                 Ok(Vec::new())
             }
@@ -1061,7 +1062,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::EndSortie { outcome } => ToServer::EndSortie { outcome },
             Action::Rearm { loadout } => {
-                s.msgs.show("Rearmed and refuelled");
+                s.msgs.show(tf!("hud-rearmed"));
                 c.landed = None;
                 let fuel = s.constants.fuel;
                 if let Ok((mut a, _)) = s.player.single_mut() {
@@ -1099,7 +1100,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
                 c.roster = r;
             }
             E::Closed(why) => {
-                s.notice.0 = Some(format!("Disconnected: {why}"));
+                s.notice.0 = Some(stealth_i18n::t!("mp-disconnected", why = why.tr()));
                 c.exit = true;
                 s.next.set(AppState::Menu);
             }
@@ -1145,7 +1146,7 @@ fn handle(c: &mut ActiveCampaign, s: &mut Session, events: Vec<HostEvent>) {
                 begin_sortie(c, s, &sortie, &start);
             }
             HostEvent::SortieFinished { player, debrief } if player == me => {
-                s.msgs.show(debrief.title.clone());
+                s.msgs.show(debrief.title.tr_flight());
                 // Down under the parachute: the debrief at once (the pilotless aircraft is
                 // nothing to watch); else the end stays in view a few seconds.
                 use stealth_campaign::SortieEnd;
@@ -1159,16 +1160,16 @@ fn handle(c: &mut ActiveCampaign, s: &mut Session, events: Vec<HostEvent>) {
             }
             HostEvent::Landed { player, base } if player == me && c.phase == Phase::Sortie => {
                 c.landed = Some(base);
-                s.msgs.show("Landed - rearm or end the sortie");
+                s.msgs.show(tf!("hud-landed-rearm"));
             }
             HostEvent::Campaign(CampaignEvent::Message(text)) => {
-                info!("campaign: {text}");
-                s.msgs.show(text);
+                info!("campaign: {}", text.tr_in(stealth_i18n::Language::En));
+                s.msgs.show(text.tr_flight());
             }
             HostEvent::Campaign(CampaignEvent::ObjectiveAchieved { player, .. })
                 if player == me =>
             {
-                s.msgs.show("Objective achieved");
+                s.msgs.show(tf!("hud-objective-achieved"));
                 s.orders.done[0] = true;
             }
             // A client's copy has the plans at once (the host's state has them already).
@@ -1230,7 +1231,7 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
     c.landed = None;
     c.end_timer = None;
     c.crash_timer = 0.0;
-    s.msgs.show(sortie.offer.title.clone());
+    s.msgs.show(sortie.offer.title.tr_flight());
 }
 
 /// Leaving the flight session: the campaign is saved and closed (a client leaves the server,
@@ -1258,7 +1259,7 @@ fn leave(
     if let Some(mut link) = link {
         match &mut *link {
             NetLink::Client(client) => client.leave(),
-            NetLink::Host(server) => server.shutdown("The host left the game"),
+            NetLink::Host(server) => server.shutdown(stealth_i18n::text!("net-host-left")),
         }
         commands.remove_resource::<NetLink>();
     }

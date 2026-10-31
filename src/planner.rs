@@ -6,6 +6,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use stealth_i18n::t;
+
 use bevy::gltf::Gltf;
 use bevy::math::DVec2;
 use bevy::prelude::*;
@@ -69,11 +71,11 @@ impl Profile {
     }
 
     fn name(self) -> &'static str {
-        match self {
-            Profile::Low => "LOW 500 FT",
-            Profile::Medium => "MED 5000 FT",
-            Profile::High => "HIGH 20000 FT",
-        }
+        t!(match self {
+            Profile::Low => "planner-low",
+            Profile::Medium => "planner-medium",
+            Profile::High => "planner-high",
+        })
     }
 }
 
@@ -621,12 +623,12 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
         .fixed_size(size)
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(12.0))
         .show(ctx, |ui| {
-            ui.label(egui::RichText::new("MISSION PLANNER").heading().color(BRIGHT));
+            ui.label(egui::RichText::new(t!("planner-title")).heading().color(BRIGHT));
             ui.separator();
             let size = ui.available_size();
             route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
                 ui.add_space(12.0);
-                if ui.add(big_button("DONE").fill(DIM)).clicked() {
+                if ui.add(big_button(t!("loadout-done")).fill(DIM)).clicked() {
                     open = false;
                 }
             });
@@ -676,62 +678,99 @@ pub fn route_panel(
         MapWeather::new(m.weather, sky.freezing_level())
     });
     ui.allocate_ui(size, |ui| {
-    ui.horizontal_top(|ui| {
-        // Wide enough for the radar coverage's three profiles on a line; the gap between the map
-        // and the column is the window's margin left of the map.
-        let (side, gap) = (350.0, 12.0);
-        let map_size = egui::vec2(ui.available_width() - side - gap, ui.available_height() - 8.0);
-        map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), &weather, map_size, editable);
-        ui.add_space(gap - ui.spacing().item_spacing.x);
-        ui.vertical(|ui| {
-            ui.set_width(side);
-            section(ui, "Route");
-            let pts = with_base(m, &route.points);
-            let label = |i: usize| if i == 0 { "BASE".to_string() } else { point_label(&route.points, i - 1) };
-            egui::Grid::new("legs").num_columns(3).spacing([12.0, 3.0]).show(ui, |ui| {
-                for i in 1..pts.len() {
-                    let km = (((pts[i].x - pts[i - 1].x) as f64).powi(2) + ((pts[i].y - pts[i - 1].y) as f64).powi(2)).sqrt() / PER_KM;
-                    ui.label(format!("{} > {}", label(i - 1), label(i)));
-                    ui.label(format!("{km:5.0} km"));
-                    ui.label(leg_time(km));
-                    ui.end_row();
+        ui.horizontal_top(|ui| {
+            // Wide enough for the radar coverage's three profiles on a line; the gap between the
+            // map and the column is the window's margin left of the map.
+            let (side, gap) = (350.0, 12.0);
+            let map_size =
+                egui::vec2(ui.available_width() - side - gap, ui.available_height() - 8.0);
+            map_view(
+                ui,
+                planner,
+                m,
+                route,
+                &rings,
+                &mut layers,
+                overlay.as_ref(),
+                &weather,
+                map_size,
+                editable,
+            );
+            ui.add_space(gap - ui.spacing().item_spacing.x);
+            ui.vertical(|ui| {
+                ui.set_width(side);
+                section(ui, t!("planner-route"));
+                let pts = with_base(m, &route.points);
+                let label = |i: usize| {
+                    if i == 0 {
+                        t!("planner-base").to_string()
+                    } else {
+                        point_label(&route.points, i - 1)
+                    }
+                };
+                egui::Grid::new("legs").num_columns(3).spacing([12.0, 3.0]).show(ui, |ui| {
+                    for i in 1..pts.len() {
+                        let km = (((pts[i].x - pts[i - 1].x) as f64).powi(2)
+                            + ((pts[i].y - pts[i - 1].y) as f64).powi(2))
+                        .sqrt()
+                            / PER_KM;
+                        ui.label(format!("{} > {}", label(i - 1), label(i)));
+                        ui.label(format!("{km:5.0} km"));
+                        ui.label(leg_time(km));
+                        ui.end_row();
+                    }
+                });
+                let length = |r: &[RoutePoint]| {
+                    PlannedRoute { mission: Default::default(), points: with_base(m, r) }.length()
+                        / PER_KM
+                };
+                let total = length(&route.points);
+                let default = length(&PlannedRoute::of(m).points);
+                ui.add_space(4.0);
+                let total_line =
+                    t!("planner-total", km = format!("{total:.0}"), time = leg_time(total));
+                ui.label(egui::RichText::new(total_line).color(BRIGHT));
+                let briefed =
+                    t!("planner-briefed", km = format!("{default:.0}"), fuel = m.fuel_lbs);
+                ui.label(egui::RichText::new(briefed).color(DIM));
+                section(ui, t!("planner-coverage"));
+                ui.horizontal(|ui| {
+                    for p in Profile::ALL {
+                        ui.radio_value(
+                            &mut planner.profile,
+                            p,
+                            egui::RichText::new(p.name()).small(),
+                        );
+                    }
+                });
+                let detect = exposure(&pts, &rings, |r| r.detect);
+                let detected = t!("planner-detected", km = format!("{detect:.0}"));
+                ui.label(egui::RichText::new(detected).color(if detect > 0.0 {
+                    AMBER
+                } else {
+                    GREEN
+                }));
+                ui.label(egui::RichText::new(t!("planner-coverage.note")).small().color(DIM));
+                section(ui, t!("debrief-section-map"));
+                map_draw::symbology_switch(ui);
+                legend(ui, Legend::Pulse, t!("planner-pulse"));
+                legend(ui, Legend::Doppler, t!("planner-doppler"));
+                legend(ui, Legend::Missile, t!("planner-missile"));
+                if m.drones.is_some() {
+                    legend(ui, Legend::Drone, t!("planner-uav"));
                 }
+                if editable {
+                    ui.label(egui::RichText::new(t!("planner-edit-hint")).small().color(DIM));
+                    ui.add_space(12.0);
+                    if ui.add(big_button(t!("planner-reset"))).clicked() {
+                        *route = PlannedRoute::of(m);
+                    }
+                } else {
+                    ui.label(egui::RichText::new(t!("planner-view-hint")).small().color(DIM));
+                }
+                buttons(ui);
             });
-            let length = |r: &[RoutePoint]| PlannedRoute { mission: Default::default(), points: with_base(m, r) }.length() / PER_KM;
-            let total = length(&route.points);
-            let default = length(&PlannedRoute::of(m).points);
-            ui.add_space(4.0);
-            ui.label(egui::RichText::new(format!("TOTAL {total:.0} KM  {}", leg_time(total))).color(BRIGHT));
-            ui.label(egui::RichText::new(format!("Briefed route {default:.0} km, fuel {} lbs", m.fuel_lbs)).color(DIM));
-            section(ui, "Radar coverage for");
-            ui.horizontal(|ui| {
-                for p in Profile::ALL {
-                    ui.radio_value(&mut planner.profile, p, egui::RichText::new(p.name()).small());
-                }
-            });
-            let detect = exposure(&pts, &rings, |r| r.detect);
-            ui.label(egui::RichText::new(format!("{detect:.0} km of the route detected")).color(if detect > 0.0 { AMBER } else { GREEN }));
-            ui.label(egui::RichText::new("Radar coverage assumes 480kt level flight, bay doors closed.").small().color(DIM));
-            section(ui, "Map");
-            map_draw::symbology_switch(ui);
-            legend(ui, Legend::Pulse, "Pulse radar (P) detection range");
-            legend(ui, Legend::Doppler, "Doppler radar (D) detection range");
-            legend(ui, Legend::Missile, "Missile range");
-            if m.drones.is_some() {
-                legend(ui, Legend::Drone, "Enemy UAV");
-            }
-            if editable {
-                ui.label(egui::RichText::new("Drag a point to move it, the map to pan. Click a leg to add a point, right click to remove it. Wheel: zoom.").small().color(DIM));
-                ui.add_space(12.0);
-                if ui.add(big_button("RESET")).clicked() {
-                    *route = PlannedRoute::of(m);
-                }
-            } else {
-                ui.label(egui::RichText::new("Drag the map to pan. Wheel: zoom.").small().color(DIM));
-            }
-            buttons(ui);
         });
-    });
     });
     layers.keep(ui.ctx(), "route");
 }
@@ -908,20 +947,24 @@ fn map_view(
         route.points.remove(i);
     }
     layers_panel(ui, rect, layers, |ui, layers| {
-        layers.legend(ui, Layer::Sams, "Radar / SAM site", |p, c| {
+        layers.legend(ui, Layer::Sams, t!("planner-layer-sams"), |p, c| {
             map_draw::site_symbol(p, c, 1.0);
         });
-        layers.types(ui, "Radar types", rings.iter().map(|r| r.name.as_str()).collect());
-        layer_legend(ui, layers, Legend::Pulse, "Pulse radar detection range");
-        layer_legend(ui, layers, Legend::Doppler, "Doppler radar detection range");
-        layer_legend(ui, layers, Legend::Missile, "Missile range");
-        layer_legend(ui, layers, Legend::Engage, "Engagement range");
+        layers.types(
+            ui,
+            t!("planner-radar-types"),
+            rings.iter().map(|r| r.name.as_str()).collect(),
+        );
+        layer_legend(ui, layers, Legend::Pulse, t!("planner-layer-pulse"));
+        layer_legend(ui, layers, Legend::Doppler, t!("planner-layer-doppler"));
+        layer_legend(ui, layers, Legend::Missile, t!("planner-missile"));
+        layer_legend(ui, layers, Legend::Engage, t!("pic-engagement-range"));
         if m.drones.is_some() {
-            layer_legend(ui, layers, Legend::Drone, "Enemy UAV");
+            layer_legend(ui, layers, Legend::Drone, t!("planner-uav"));
         }
         match overlay {
             Some(o) => (o.legend)(ui, layers),
-            None => layers.legend(ui, Layer::Airfields, "Airfield", |p, c| {
+            None => layers.legend(ui, Layer::Airfields, t!("planner-layer-airfield"), |p, c| {
                 if map_draw::app6() {
                     let side = crate::app6::Affiliation::Friend;
                     return map_draw::app6_place(p, c + egui::vec2(0.0, 1.0), side, true, 0.8);
@@ -955,7 +998,7 @@ fn layers_panel(
     let ui = &mut ui.new_child(
         egui::UiBuilder::new().max_rect(area).layout(egui::Layout::top_down(egui::Align::Max)),
     );
-    let text = if layers.panel { "LAYERS  ^" } else { "LAYERS  v" };
+    let text = format!("{}  {}", t!("planner-layers"), if layers.panel { "^" } else { "v" });
     if ui.add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel)).clicked()
     {
         layers.panel = !layers.panel;

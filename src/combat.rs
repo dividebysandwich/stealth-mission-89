@@ -16,6 +16,8 @@
 
 use std::sync::Arc;
 
+use stealth_i18n::tf;
+
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -500,7 +502,7 @@ fn collect_commands(
             Action::CamRight => c.camera_dir = Some(0x4000),
             Action::CamRear => c.camera_dir = Some(0x8000),
             Action::CamLeft => c.camera_dir = Some(0xC000),
-            Action::Eject if helicopter => msgs.show("NO EJECTION SEAT"),
+            Action::Eject if helicopter => msgs.show(tf!("hud-no-ejection-seat")),
             Action::Eject => c.eject = true,
             Action::Training => c.toggle_training ^= true,
             Action::Resupply => c.resupply = true,
@@ -908,44 +910,47 @@ fn log_event(data: &SimData, e: &SimEvent, t: f32) {
     }
 }
 
-/// Text for the end overlay.
+/// Text for the end overlay (in [`stealth_i18n::flight_language`]: the VR end screen draws it
+/// with the stroke font).
 trait EndSource {
     fn describe(self) -> String;
 }
 
 impl EndSource for Option<MissionEnd> {
     fn describe(self) -> String {
-        match self {
+        tf!(match self {
             Some(e) => match (e.outcome, e.landing_type) {
-                (0, 2) => "Ejected - landed by parachute".into(),
-                (0, 4) => "Ejected - rescued by CSAR".into(),
-                (8, _) => "Ejected - captured".into(),
-                (0, _) => "Safe landing".into(),
-                (1, _) => "Crashed".into(),
-                (2, _) => "Collision".into(),
-                (5, _) => "Bad landing".into(),
-                (6, _) => "Ejection failed".into(),
-                _ => "Mission aborted".into(),
+                (0, 2) => "outcome-ejected",
+                (0, 4) => "outcome-rescued",
+                (8, _) => "outcome-captured",
+                (0, _) => "outcome-landed",
+                (1, _) => "outcome-crashed",
+                (2, _) => "outcome-collision",
+                (5, _) => "outcome-bad-landing",
+                (6, _) => "outcome-ejection-failed",
+                _ => "outcome-aborted",
             },
-            None => "Mission aborted".into(),
-        }
+            None => "outcome-aborted",
+        })
+        .into()
     }
 }
 
 impl EndSource for Option<FlightEnd> {
     fn describe(self) -> String {
-        match self {
-            Some(FlightEnd::Landed) => "Safe landing".into(),
-            Some(FlightEnd::BadLanding) => "Bad landing".into(),
-            Some(FlightEnd::Crash) => "Crashed".into(),
-            None => "Mission aborted".into(),
-        }
+        tf!(match self {
+            Some(FlightEnd::Landed) => "outcome-landed",
+            Some(FlightEnd::BadLanding) => "outcome-bad-landing",
+            Some(FlightEnd::Crash) => "outcome-crashed",
+            None => "outcome-aborted",
+        })
+        .into()
     }
 }
 
 fn end_info(sim: &Sim, how: impl EndSource) -> EndInfo {
     let o = sim.objectives();
-    let done = |b: bool| if b { "accomplished" } else { "not accomplished" };
+    let done = |b: bool| tf!(if b { "end-accomplished" } else { "end-not-accomplished" });
     // Debrief log kinds: 1/12 world object, 2 tile object, 3 aircraft.
     let (mut air, mut ground) = (0, 0);
     for e in sim.event_log() {
@@ -957,16 +962,19 @@ fn end_info(sim: &Sim, how: impl EndSource) -> EndInfo {
     }
     let d = sim.damage_effects();
     let mut lines = vec![
-        format!("Primary objective {}", done(o.primary_done)),
-        format!("Secondary objective {}", done(o.secondary_done)),
-        format!("Kills: {air} aircraft, {ground} ground targets"),
-        format!("Mission time {}:{:02}", sim.mission_tick() / 60, sim.mission_tick() % 60),
+        tf!("end-primary", result = done(o.primary_done)),
+        tf!("end-secondary", result = done(o.secondary_done)),
+        tf!("end-kills", air = air, ground = ground),
+        tf!(
+            "end-time",
+            time = format!("{}:{:02}", sim.mission_tick() / 60, sim.mission_tick() % 60)
+        ),
     ];
     if d.bits != 0 {
-        lines.push(format!("Damage: {} hits", d.hits));
+        lines.push(tf!("end-damage", hits = d.hits));
     }
     if sim.invulnerable() {
-        lines.push("Training mission".into());
+        lines.push(tf!("end-training").into());
     }
     EndInfo { title: how.describe(), lines }
 }
@@ -1972,6 +1980,7 @@ fn end_overlay(
     menu: Res<crate::flight_menu::FlightMenu>,
     hands: Res<crate::cockpit3d::Hands>,
     settings: Res<crate::settings::Settings>,
+    font: Res<crate::i18n::UiFont>,
 ) {
     let Some(end) = combat.as_ref().and_then(|c| c.end.clone()) else { return };
     let vr_pressed = hands
@@ -2013,7 +2022,8 @@ fn end_overlay(
                 text.push_str(l);
                 text.push('\n');
             }
-            text.push_str("\nPress any key");
+            text.push('\n');
+            text.push_str(tf!("end-press-any-key"));
             commands
                 .spawn((
                     EndOverlay { timer: 0.0 },
@@ -2034,7 +2044,7 @@ fn end_overlay(
                     .with_children(|p| {
                         p.spawn((
                             Text::new(text),
-                            TextFont { font_size: bevy::text::FontSize::Px(28.0), ..default() },
+                            font.at(28.0),
                             TextColor(Color::srgb(1.0, 0.85, 0.3)),
                             TextLayout::justify(Justify::Center),
                         ));
@@ -2208,7 +2218,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
     }
     combat.record.event(&combat.sim, &e);
     match e {
-        SimEvent::Message(s) => fx.msgs.show(s),
+        SimEvent::Message(s) => fx.msgs.show(s.tr_flight()),
         SimEvent::CancelTimeAccel => fx.accel.on = false,
         SimEvent::DamageFlash => fx.flash.0 = 1,
         SimEvent::Sound { id, priority } => {

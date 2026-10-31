@@ -9,6 +9,7 @@
 //! or, in VR, the thumbstick of the hand carrying it or with a fingertip over it.
 
 use std::sync::Arc;
+use stealth_i18n::tf;
 
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::light::NotShadowCaster;
@@ -98,13 +99,13 @@ impl Page {
     const ALL: [Page; 5] = [Page::Brief, Page::Route, Page::Map, Page::Target, Page::Keys];
 
     fn name(self) -> &'static str {
-        match self {
-            Page::Brief => "BRIEF",
-            Page::Route => "ROUTE",
-            Page::Map => "MAP",
-            Page::Target => "TARGET",
-            Page::Keys => "KEYS",
-        }
+        tf!(match self {
+            Page::Brief => "kb-brief",
+            Page::Route => "kb-route",
+            Page::Map => "kb-map",
+            Page::Target => "kb-target",
+            Page::Keys => "kb-keys",
+        })
     }
 }
 
@@ -233,8 +234,8 @@ fn spawn(
                 Board,
                 crate::cockpit3d::Solid,
                 crate::cockpit3d::Tip::new(
-                    "Kneeboard",
-                    "Maps, mission notes and the key guide",
+                    stealth_i18n::t!("tip-kneeboard"),
+                    stealth_i18n::t!("kb-tip"),
                     &[crate::input::Action::Kneeboard],
                 ),
                 tex,
@@ -536,7 +537,7 @@ pub fn wrap(text: &str, width: f32, h: f32) -> Vec<String> {
 /// What a target is (its shape's name, else the mission type; a drone wave's file photo).
 fn target_name(t: &stealth_mission::Target) -> String {
     if crate::recon::drone_wave(t) {
-        return "GERAN-2 (FILE)".into();
+        return tf!("kb-geran-file").into();
     }
     let name = clean_text(&t.shape_name).trim().to_ascii_uppercase();
     if name.is_empty() { t.type_name.to_ascii_uppercase() } else { name }
@@ -689,38 +690,46 @@ fn draw(
             let mut w = Writer { c, y: TABS + 34.0 };
             w.para(&b.title, WHITE);
             w.para(&b.base_date_line, GREY);
-            w.heading("OBJECTIVES");
-            w.objective(&format!("PRIMARY: {}", b.primary_objective), GREEN, orders.done[0]);
-            w.objective(&format!("SECONDARY: {}", b.secondary_objective), WHITE, orders.done[1]);
-            w.heading("TIMES");
+            w.heading(tf!("kb-objectives"));
+            w.objective(
+                &tf!("kb-primary", objective = b.primary_objective.as_str()),
+                GREEN,
+                orders.done[0],
+            );
+            w.objective(
+                &tf!("kb-secondary", objective = b.secondary_objective.as_str()),
+                WHITE,
+                orders.done[1],
+            );
+            w.heading(tf!("kb-times"));
             w.para(&b.depart_line, WHITE);
             w.para(&b.land_line, WHITE);
             if !m.time.deadline.is_empty() && m.time.has_deadline {
-                w.para(&format!("DEADLINE {}", m.time.deadline), RED);
+                w.para(&tf!("kb-deadline", time = m.time.deadline.as_str()), RED);
             }
-            w.para(&format!("NOW {}", clock(now)), WHITE);
-            w.heading("CONDITIONS");
+            w.para(&tf!("kb-now", time = clock(now)), WHITE);
+            w.heading(tf!("kb-conditions"));
             if !b.weather_line.is_empty() {
                 w.para(&b.weather_line, WHITE);
             }
             let phase = sky.phase_at(now / 3600.0);
             w.para(
-                &format!(
-                    "MOON: {} ({:.0}% LIT)",
-                    crate::sky::phase_name(phase),
-                    crate::sky::illumination(phase) * 100.0
+                &tf!(
+                    "kb-moon",
+                    phase = crate::sky::phase_name(phase),
+                    lit = format!("{:.0}", crate::sky::illumination(phase) * 100.0)
                 ),
                 WHITE,
             );
             w.para(&b.fuel_line, WHITE);
-            w.heading("ARMAMENT");
+            w.heading(tf!("kb-armament"));
             // The stores flown (the campaign's or chosen in the loadout), else the briefed ones.
             let stores = match loadout.as_deref() {
                 Some(l) if l.mission == crate::mission::PlannedRoute::key(m) => l.summary(),
                 _ => b.armament.join(", "),
             };
             w.para(&stores, WHITE);
-            w.heading("RULES OF ENGAGEMENT");
+            w.heading(tf!("kb-roe"));
             w.para(&b.roe_text, GREY);
         }
         Page::Route => {
@@ -766,7 +775,7 @@ fn draw(
                 c,
                 28.0,
                 y,
-                &format!("TOTAL {total:.0} KM AT {CRUISE_KTS:.0} KT"),
+                &tf!("kb-total", km = format!("{total:.0}"), kt = format!("{CRUISE_KTS:.0}")),
                 20.0,
                 2.6,
                 GREY,
@@ -776,7 +785,7 @@ fn draw(
                 c,
                 28.0,
                 y + 36.0,
-                &format!("FUEL {} LBS", m.fuel_lbs),
+                &tf!("kb-fuel", lbs = m.fuel_lbs),
                 20.0,
                 2.6,
                 GREY,
@@ -789,7 +798,7 @@ fn draw(
                     c,
                     W as f32 / 2.0,
                     H as f32 / 2.0,
-                    "PREPARING...",
+                    tf!("kb-preparing"),
                     24.0,
                     3.0,
                     GREY,
@@ -844,9 +853,14 @@ fn draw(
             let t = &m.primary;
             let mut w = Writer { c, y: TABS + 34.0 };
             w.para(&format!("{} - {}", t.type_name, t.place_name), GREEN);
-            w.objective(&format!("PRIMARY: {}", b.primary_objective), WHITE, orders.done[0]);
+            w.objective(
+                &tf!("kb-primary", objective = b.primary_objective.as_str()),
+                WHITE,
+                orders.done[0],
+            );
             if !b.secondary_objective.is_empty() {
-                w.objective(&format!("SECONDARY: {}", b.secondary_objective), CYAN, orders.done[1]);
+                let secondary = tf!("kb-secondary", objective = b.secondary_objective.as_str());
+                w.objective(&secondary, CYAN, orders.done[1]);
             }
             // Recon photos of the primary and the secondary target, side by side.
             let top = w.y as i32 - 6;
@@ -875,13 +889,13 @@ fn draw(
                     }
                     None => {
                         c.fill_rect(x, top, pw, ph, TAB_BG);
-                        let note = if crate::recon::airborne(tgt) {
-                            "AIRBORNE"
+                        let note = tf!(if crate::recon::airborne(tgt) {
+                            "kb-airborne"
                         } else if recon.developing(k) {
-                            "DEVELOPING..."
+                            "kb-developing"
                         } else {
-                            "NO PHOTO"
-                        };
+                            "kb-no-photo"
+                        });
                         stroke_text_at(c, mid.x, mid.y, note, 18.0, 2.4, GREY, Align::Centre);
                         if done {
                             tick(c, Vec2::new(x as f32, top as f32), pw as f32, ph as f32, GREEN);
@@ -910,7 +924,7 @@ fn draw(
             let top = top + ph + 44;
             if crate::recon::airborne(t) {
                 let mut w = Writer { c, y: top as f32 + 10.0 };
-                w.heading("AIRBORNE TARGET");
+                w.heading(tf!("kb-airborne-target"));
                 w.para(&b.primary_summary, GREY);
             } else if let Some(pic) = &kb.target_map {
                 // The target map's middle, as tall as leaves room for the summary.
@@ -949,11 +963,7 @@ fn draw(
             let mut scroll = kb.keys_scroll;
             key_guide::draw(c, &lines, GUIDE, &mut scroll, &style);
             kb.keys_scroll = scroll;
-            let hint = if settings.vr {
-                "SCROLL: THUMBSTICK, FINGER ON THE BOARD"
-            } else {
-                "SCROLL: MOUSE WHEEL OVER THE BOARD"
-            };
+            let hint = tf!(if settings.vr { "kb-scroll-vr" } else { "kb-scroll-desktop" });
             stroke_text_at(
                 c,
                 W as f32 / 2.0,

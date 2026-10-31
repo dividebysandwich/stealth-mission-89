@@ -289,30 +289,29 @@ pub struct ReconCue {
 }
 
 impl ReconCue {
-    /// The HUD's recon line; `page` names the camera page.
+    /// The HUD's recon line (in [`stealth_i18n::flight_language`]); `page` names the camera
+    /// page.
     pub fn text(&self, page: &str) -> String {
+        use stealth_i18n::tf;
         use stealth_sim::PhotoNeeds;
         let step = match self.needs {
-            PhotoNeeds::Camera => Some("SELECT CAMERA".to_string()),
-            PhotoNeeds::BayOpen => Some("OPEN BAY".to_string()),
-            PhotoNeeds::CameraPage => Some(format!("{page} PAGE")),
+            PhotoNeeds::Camera => Some(tf!("hud-select-camera").to_string()),
+            PhotoNeeds::BayOpen => Some(tf!("hud-open-bay").to_string()),
+            PhotoNeeds::CameraPage => Some(tf!("hud-camera-page", page = page)),
             PhotoNeeds::Nothing => None,
         };
         let state = if self.in_view {
-            if step.is_none() {
-                "TARGET IN VIEW - SHOOT".to_string()
-            } else {
-                "TARGET IN VIEW".to_string()
-            }
+            tf!(if step.is_none() { "hud-target-in-view-shoot" } else { "hud-target-in-view" })
+                .to_string()
         } else {
             // Rounded apart, so that a range still too far never reads as the maximum.
             let range = (self.range_km * 10.0).ceil() / 10.0;
             match self.max_km {
                 Some(max) => format!("{range:.1} KM / MAX {:.1}", (max * 10.0).floor() / 10.0),
-                None => format!("{range:.1} KM / AIM AT TGT"),
+                None => format!("{range:.1} KM / {}", tf!("hud-aim-at-target")),
             }
         };
-        let state = if self.in_view { state } else { format!("PHOTO {state}") };
+        let state = if self.in_view { state } else { tf!("hud-photo", state = state) };
         match step {
             Some(s) => format!("{state}  {s}"),
             None => state,
@@ -495,7 +494,7 @@ fn advance_waypoints(
         }
         if !wps.passed[reached] {
             wps.passed[reached] = true;
-            msg.show(format!("Waypoint {} reached", reached + 1));
+            msg.show(stealth_i18n::tf!("hud-waypoint-reached", waypoint = reached + 1));
         }
         if reached + 1 < point_count {
             wps.current = reached + 1;

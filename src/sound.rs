@@ -183,27 +183,27 @@ impl RwrTones {
     pub const ALL: [RwrTones; 4] =
         [RwrTones::All, RwrTones::Detect, RwrTones::Launch, RwrTones::Off];
 
-    pub fn name(self) -> &'static str {
+    fn id(self) -> &'static str {
         match self {
-            RwrTones::All => "ALL",
-            RwrTones::Detect => "DETECT ONLY",
-            RwrTones::Launch => "LAUNCH ONLY",
-            RwrTones::Off => "OFF",
+            RwrTones::All => "rwr-tones-all",
+            RwrTones::Detect => "rwr-tones-detect",
+            RwrTones::Launch => "rwr-tones-launch",
+            RwrTones::Off => "rwr-tones-off",
         }
     }
 
+    /// Its name in the menus ("DETECT ONLY").
+    pub fn name(self) -> &'static str {
+        stealth_i18n::t!(self.id())
+    }
+
+    /// Its name in the in-flight menu (the flight font's language).
+    pub fn flight_name(self) -> &'static str {
+        stealth_i18n::tf!(self.id())
+    }
+
     pub fn facts(self) -> &'static [&'static str] {
-        match self {
-            RwrTones::All => {
-                &["A radar painting you, every sweep that detects you, missile launches"]
-            }
-            RwrTones::Detect => &[
-                "One tone when a radar detects you (again after the radars let go for a while)",
-                "And missile launches",
-            ],
-            RwrTones::Launch => &["Only missiles launched at you"],
-            RwrTones::Off => &["No radar warning tones (the lights and displays still warn)"],
-        }
+        stealth_i18n::t_lines!(&format!("{}.facts", self.id()))
     }
 
     /// The next (`dir` 1) or previous (-1) choice, wrapping.

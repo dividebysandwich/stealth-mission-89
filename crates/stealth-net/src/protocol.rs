@@ -125,7 +125,7 @@ pub enum PlayerStatus {
     /// On the Ops screen.
     Ops,
     Flying {
-        title: String,
+        title: stealth_i18n::Text,
         aircraft: Aircraft,
     },
     /// Dropped out: his aircraft waits this many seconds more.
@@ -145,8 +145,12 @@ pub enum ToClient {
         /// He comes back within the grace period: his sortie goes on.
         resume: Option<Resume>,
     },
+    /// `reason` in English (what an older game version reads), `text` translated where it is
+    /// shown.
     Reject {
         reason: String,
+        #[serde(default)]
+        text: Option<stealth_i18n::Text>,
     },
     /// What moves and the player's own state, a few times a second (unreliable). `step`: the
     /// server's frame; `pilot` only when it changed (and now and then).
@@ -165,14 +169,15 @@ pub enum ToClient {
     /// The whole campaign (now and then: the board, the places, the log).
     Campaign(CampaignState),
     /// A command failed.
-    Error(String),
+    /// A command failed: why, translated where it is shown.
+    Error(stealth_i18n::Text),
     Roster(Vec<PlayerInfo>),
     /// Another player's chat message.
     Chat {
         from: String,
         text: String,
     },
-    Shutdown(String),
+    Shutdown(stealth_i18n::Text),
 }
 
 /// A message's bytes: a flag (1 compressed) and CBOR.
@@ -309,7 +314,12 @@ mod tests {
         assert_eq!(decode::<ToServer>(&encode(&plan)), Some(plan));
         let chat = ToServer::Chat { text: "Wheels up".into() };
         assert_eq!(decode::<ToServer>(&encode(&chat)), Some(chat));
-        let big = ToClient::Error("x".repeat(5000));
+        let big = ToClient::Error(stealth_i18n::Text::raw("x".repeat(5000)));
+        let text = ToClient::Error(stealth_i18n::text!("ce-not-enemy", place = "Wittstock"));
+        assert_eq!(
+            format!("{:?}", decode::<ToClient>(&encode(&text))),
+            format!("{:?}", Some(text))
+        );
         let bytes = encode(&big);
         assert!(bytes.len() < 500 && bytes[0] == 1);
         assert_eq!(format!("{:?}", decode::<ToClient>(&bytes)), format!("{:?}", Some(big)));

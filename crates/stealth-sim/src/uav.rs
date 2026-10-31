@@ -25,6 +25,7 @@
 //! unit each frame, which draws it, sends it to the clients and lets the guns aim at it.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::text;
 
 use crate::Sim;
 use crate::aaa::{GroundKind, M_PER_MAP};
@@ -1025,7 +1026,7 @@ impl Sim {
                     self.destroy_ground(o);
                 }
             }
-            self.msg(format!("{} impact", u.label()));
+            self.msg(text!("sim-impact", weapon = u.label()));
         } else if u.kind == UavKind::Interceptor {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -6 });
             self.uav_blast_units(x, y, QUAD_BLAST);
@@ -1039,13 +1040,13 @@ impl Sim {
                 {
                     let name = self.place_name(o as usize);
                     self.destroy_ground(o);
-                    self.msg(format!("{name} destroyed by {}", u.label()));
+                    self.msg(text!("sim-destroyed-by", target = name, weapon = u.label()));
                 }
             }
-            self.msg(format!("{} impact", u.label()));
+            self.msg(text!("sim-impact", weapon = u.label()));
         } else {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -1 });
-            self.msg(format!("{} lost", u.label()));
+            self.msg(text!("sim-lost", target = u.label()));
         }
     }
 
@@ -1057,7 +1058,7 @@ impl Sim {
             if !a.destroyed && ((a.x - x) as f64).hypot((a.y - y) as f64) < r {
                 self.units[k].destroyed = true;
                 self.units[k].burst = 0;
-                self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
+                self.msg(text!("sim-destroyed", target = a.kind.name_on(self.aaa_blue(k))));
                 self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
                 self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
             }
@@ -1076,7 +1077,7 @@ impl Sim {
         let alt = (u.pos[2] / M_PER_WU) as i32;
         self.emit(SimEvent::Explosion { x, y, alt, kind: -6 });
         let name = self.ac_type(self.flights[j].spec).name.clone();
-        self.msg(format!("{} hit {name}", u.label()));
+        self.msg(text!("sim-uav-hit", weapon = u.label(), target = name));
         self.ai_kill(j);
     }
 
@@ -1122,9 +1123,11 @@ impl Sim {
             match lock {
                 Some(j) => {
                     let name = self.ac_type(self.flights[j as usize].spec).name.clone();
-                    self.msg(format!("{label} locked on {name}"));
+                    self.msg(text!("sim-locked-on", weapon = label, target = name));
                 }
-                None if self.uavs()[n].battery > EMPTY => self.msg(format!("{label} lost lock")),
+                None if self.uavs()[n].battery > EMPTY => {
+                    self.msg(text!("sim-lost-lock", weapon = label))
+                }
                 None => {}
             }
             self.defence_mut().uavs[n].lock = lock;
@@ -1148,7 +1151,7 @@ impl Sim {
             if f.flags & fflags::EXISTS == 0 || f.flags & fflags::DESTROYED != 0 || !ours {
                 let label = u.label();
                 self.defence_mut().uavs.remove(n);
-                self.msg(format!("{label} shot down"));
+                self.msg(text!("sim-shot-down", target = label));
                 continue;
             }
             let drain = u.drain() * dt;

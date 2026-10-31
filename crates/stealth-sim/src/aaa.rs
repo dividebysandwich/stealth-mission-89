@@ -9,6 +9,7 @@
 //! y north, z up from the ground) with gravity and no drag.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::text;
 use stealth_mission::Mission;
 
 use crate::Sim;
@@ -639,9 +640,9 @@ impl Sim {
         }
         for (n, &(hits, flak_hits)) in hits.iter().enumerate() {
             self.activate(tracks[n].k);
-            for (n, text) in [(hits, "Hit by AAA"), (flak_hits, "Hit by flak")] {
+            for (n, id) in [(hits, "sim-hit-aaa"), (flak_hits, "sim-hit-flak")] {
                 if n > 0 && !self.training() {
-                    self.msg(text);
+                    self.msg(text!(id));
                     self.player_hit(false);
                     self.emit(SimEvent::Explosion {
                         x: self.pl.p.mx,
@@ -680,7 +681,7 @@ impl Sim {
             let tgt = self.player_target().p;
             self.launch_flight_at(k, (u.x, u.y), tgt);
         }
-        self.msg("Missile launch");
+        self.msg(text!("sim-missile-launch"));
         self.proj_pilot[k] = self.pl.id;
         self.pl.launches += 1;
         self.emit(SimEvent::MissileLaunched {
@@ -735,7 +736,7 @@ impl Sim {
                     if let Some(p) = by {
                         self.activate(p as usize);
                     }
-                    self.msg(format!("{} destroyed", u.kind.name()));
+                    self.msg(text!("sim-destroyed", target = u.kind.name()));
                     self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: 0, kind: 0x10 });
                     self.emit(SimEvent::AaaDestroyed { unit: k, by });
                     break;

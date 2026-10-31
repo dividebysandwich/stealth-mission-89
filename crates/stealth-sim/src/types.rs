@@ -763,8 +763,8 @@ pub enum RwrTone {
 /// Output events of one frame.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SimEvent {
-    /// HUD message line.
-    Message(String),
+    /// HUD message line (translated where it is shown).
+    Message(stealth_i18n::Text),
     /// Sound effect `id` at `priority`.
     Sound {
         id: u8,

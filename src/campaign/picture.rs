@@ -5,6 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
+use stealth_i18n::t;
 use stealth_sim::aaa::GroundKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
@@ -428,22 +429,22 @@ fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
 pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) {
     // (No unit: no heading staff on the APP-6 symbol.)
     let a = |helicopter| Aircraft { unit: usize::MAX, spec: 0, x: 0, y: 0, heading: 0, helicopter };
-    layers.legend(ui, Layer::FriendlyAircraft, "Friendly aircraft", |p, c0| {
+    layers.legend(ui, Layer::FriendlyAircraft, t!("pic-friendly-aircraft"), |p, c0| {
         aircraft(p, c0, &a(false), FRIENDLY_BLUE);
     });
-    layers.legend(ui, Layer::FriendlyHelicopters, "Friendly helicopter", |p, c0| {
+    layers.legend(ui, Layer::FriendlyHelicopters, t!("pic-friendly-helicopter"), |p, c0| {
         aircraft(p, c0, &a(true), FRIENDLY_BLUE);
     });
-    layers.legend(ui, Layer::EnemyFighters, "Enemy fighter (on radar)", |p, c0| {
+    layers.legend(ui, Layer::EnemyFighters, t!("pic-enemy-fighter"), |p, c0| {
         aircraft(p, c0, &a(false), MISSILE_RED);
     });
-    layers.legend(ui, Layer::Patriots, "Patriot battery", |p, c0| {
+    layers.legend(ui, Layer::Patriots, t!("ops-patriot"), |p, c0| {
         defence(p, c0, GroundKind::PatriotRadar, 0.8)
     });
-    layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
+    layers.legend(ui, Layer::PatriotReach, t!("pic-patriot-reach"), |p, c0| {
         p.extend(reach_circle(c0, 6.0));
     });
-    layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
+    layers.legend(ui, Layer::Gepards, t!("pic-gepard-stinger"), |p, c0| {
         if app6() {
             defence(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Gepard, 0.65);
             defence(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
@@ -453,26 +454,26 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         }
     });
     if let Some(pic) = pic {
-        layers.legend(ui, Layer::Sams, "SAM site (known)", |p, c0| {
+        layers.legend(ui, Layer::Sams, t!("pic-sam-known"), |p, c0| {
             map_draw::site_symbol(p, c0, 1.0);
         });
         layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
-        layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
+        layers.legend(ui, Layer::MissileRange, t!("pic-missile-range"), |p, c0| {
             p.extend(map_draw::missile_circle(c0, 6.0, 1.0));
         });
         // (The route editor has its own line for the engagement range.)
-        layers.legend(ui, Layer::EngagementRange, "Engagement range", |p, c0| {
+        layers.legend(ui, Layer::EngagementRange, t!("pic-engagement-range"), |p, c0| {
             p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
         });
     }
     let tank = |blue| Vehicle { index: 0, x: 0, y: 0, kind: GroundKind::T90, blue, heading: None };
     let ifv = |blue| Vehicle { kind: GroundKind::Bmp2, ..tank(blue) };
-    layers.legend(ui, Layer::Armour, "Tank / IFV (enemy: in sight)", |p, c0| {
+    layers.legend(ui, Layer::Armour, t!("pic-armour"), |p, c0| {
         let (dx, k) = if app6() { (7.5, 0.65) } else { (5.0, 1.0) };
         vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
         vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
     });
-    layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
+    layers.legend(ui, Layer::Guns, t!("pic-guns-known"), |p, c0| {
         if app6() {
             gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
             gun(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
@@ -488,10 +489,10 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
             map_draw::legend(ui, text, draw);
         });
     };
-    unchecked(ui, "Reconned", &|p, c0| {
+    unchecked(ui, t!("pic-reconned"), &|p, c0| {
         p.circle_stroke(c0, if app6() { 7.5 } else { 6.0 }, egui::Stroke::new(1.0, BRIGHT));
     });
-    unchecked(ui, "You", &|p, c0| {
+    unchecked(ui, t!("pic-you"), &|p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));
     });
 }
@@ -520,7 +521,11 @@ pub fn pick(
         );
     }
     for s in &pic.sams {
-        consider(screen(s.x, s.y), UnitRef::Site(s.object), format!("{} site", s.name));
+        consider(
+            screen(s.x, s.y),
+            UnitRef::Site(s.object),
+            t!("pic-site", place = s.name.as_str()),
+        );
     }
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
@@ -530,7 +535,7 @@ pub fn pick(
     }
     for d in &pic.defences {
         let name = match d.kind {
-            GroundKind::PatriotRadar => "Patriot battery",
+            GroundKind::PatriotRadar => t!("ops-patriot"),
             k => k.name_on(true),
         };
         consider(screen(d.x, d.y), UnitRef::Aaa(d.index), name.to_string());

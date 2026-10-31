@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, WorldView};
+use stealth_i18n::text;
 
 /// What a convoy's vehicle is (the simulation picks the side's model).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -177,14 +178,17 @@ impl CampaignState {
             }
             if alive.is_empty() {
                 self.note(if side == Side::Blue {
-                    format!("Armour column to {name} destroyed")
+                    text!("cl-convoy-destroyed", place = name.as_str())
                 } else {
-                    format!("Enemy armour column to {name} destroyed")
+                    text!("cl-enemy-convoy-destroyed", place = name.as_str())
                 });
                 ev.push(CampaignEvent::Message(if side == Side::Blue {
-                    format!("Our armour column to {name} was destroyed")
+                    text!("cl-convoy-lost", place = name.as_str())
                 } else {
-                    format!("Enemy armour column to {name} destroyed!")
+                    text!(
+                        "cl-exclaim",
+                        text = text!("cl-enemy-convoy-destroyed", place = name.as_str())
+                    )
                 }));
                 self.end_convoy(k, ConvoyState::Failed, ev);
                 return;
@@ -216,9 +220,9 @@ impl CampaignState {
             self.capture_place(place, side, ev);
         } else {
             self.note(if side == Side::Blue {
-                format!("Armour cleared {name} without infantry: helicopters to take it")
+                text!("cl-convoy-cleared", place = name.as_str())
             } else {
-                format!("Enemy armour cleared {name}: expect helicopters")
+                text!("cl-enemy-convoy-cleared", place = name.as_str())
             });
             self.convoys[k].retry_since = self.clock;
             self.convoys[k].retry_at = self.clock;
@@ -304,9 +308,9 @@ impl CampaignState {
         let (src, dst) =
             (self.places[from as usize].name.clone(), self.places[place as usize].name.clone());
         let text = if side == Side::Blue {
-            format!("Armour column leaves {src} to take {dst}")
+            text!("cl-convoy-launched", from = src.as_str(), place = dst.as_str())
         } else {
-            format!("Intelligence: enemy armour column leaves {src} for {dst}")
+            text!("cl-enemy-convoy-intel", from = src.as_str(), place = dst.as_str())
         };
         self.note(text.clone());
         self.board_at = f64::MIN;

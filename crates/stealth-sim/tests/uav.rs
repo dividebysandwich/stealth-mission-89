@@ -86,6 +86,7 @@ fn wp((x, y): (i32, i32), alt: f32, kind: WpKind) -> UavWp {
 
 fn launch(sim: &mut Sim, kind: UavKind, route: Vec<UavWp>) -> Result<(), String> {
     sim.station_command(ME, StationCmd::Launch { kind, route })
+        .map_err(|t| t.tr_in(stealth_i18n::Language::En))
 }
 
 #[test]

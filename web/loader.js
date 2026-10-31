@@ -3,13 +3,15 @@
 // compresses. The megabytes shown are that share of the gzipped size (version.js), what a server
 // with gzip_static sends.
 const $ = id => document.getElementById(id);
+// The loading screen's words (index.html), English without them.
+const t = key => (window.SM89_T ? window.SM89_T(key) : key.toUpperCase());
 const mb = bytes => (bytes / 1048576).toFixed(1);
 const wire = (bytes, total) => (window.SM89_WASM_GZ ? (bytes / total) * window.SM89_WASM_GZ : bytes);
 
 export default function loader() {
   return {
     onStart() {
-      $("phase").textContent = "DOWNLOADING";
+      $("phase").textContent = t("downloading");
     },
     onProgress({ current, total }) {
       const pct = Math.min(100, Math.floor((current / total) * 100));
@@ -19,7 +21,7 @@ export default function loader() {
       $("bytes").textContent = `${mb(wire(current, total))} / ${mb(wire(total, total))} MB`;
       // Downloaded: the browser compiles the wasm, which takes a while.
       if (current >= total) {
-        $("phase").textContent = "STARTING";
+        $("phase").textContent = t("starting");
         $("bar").classList.add("busy");
       }
     },
@@ -28,7 +30,7 @@ export default function loader() {
     onFailure(error) {
       // Trunk still sends TrunkApplicationStarted: index.html keeps this screen up.
       $("status").dataset.failed = "";
-      $("phase").textContent = "LOADING FAILED";
+      $("phase").textContent = t("failed");
       $("bar").classList.remove("busy");
       $("bar").classList.add("failed");
       $("bytes").textContent = String(error);

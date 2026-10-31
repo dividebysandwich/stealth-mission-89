@@ -10,7 +10,8 @@
 //! box is drawn into an image shown on a small screen above the finger, facing the eye point,
 //! drawn over the cockpit (readable where it goes into the panel).
 //!
-//! Every tooltip text is here (to translate them one day; the aviation terms stay English).
+//! The texts are in `assets/i18n/*/tooltips.ftl`: the descriptions in the player's language,
+//! the titles that are the cockpit's own labels (lamps, bezel and console buttons) in English.
 
 use std::sync::LazyLock;
 
@@ -38,6 +39,7 @@ use crate::input::{Action, key_label, qwerty_key_label};
 use crate::mfd::{CamDir, LeftMfd, MfdCmd, MfdState, OsbFn, RightMfd, osb};
 use crate::panel::{LAMPS, LampId, LedId, PanelParams};
 use crate::settings::{AppState, Settings};
+use stealth_i18n::t;
 
 /// Seconds the mouse rests on a part before its tooltip shows.
 const DELAY: f32 = 0.4;
@@ -108,31 +110,36 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             LedId::Fuel => dial_text(Dial::Fuel, a.fuel),
             LedId::Thrust => format!("{} %", a.thrust.max(0.0).round() as i32),
         },
-        Readout::Nozzles => format!("Nozzles {}°", nozzle_degrees(a.nozzle_lever)),
+        Readout::Nozzles => t!("tip-nozzles", deg = nozzle_degrees(a.nozzle_lever)),
         Readout::RadarBars => {
             let (emv, egr, ear) = panel.gauge_values();
-            format!("EMV {emv}, EGR {egr}, EAR {ear} (0 to 99)")
+            t!("tip-radar-bars-readout", emv = emv, egr = egr, ear = ear)
         }
         Readout::Attitude => {
             let (_, pitch, roll) = a.euler();
             let bank = roll.to_degrees().round() as i32;
             let bank = match bank {
-                0 => "wings level".to_string(),
-                1.. => format!("bank {bank}° right"),
-                _ => format!("bank {}° left", -bank),
+                0 => t!("tip-wings-level").to_string(),
+                1.. => t!("tip-bank-right", deg = bank),
+                _ => t!("tip-bank-left", deg = -bank),
             };
-            format!("Pitch {}°, {bank}", signed(pitch.to_degrees().round() as i32))
+            t!(
+                "tip-attitude-readout",
+                pitch = signed(pitch.to_degrees().round() as i32),
+                bank = bank
+            )
         }
         Readout::Hsi => {
             let Some((heading, bearing, dist)) = panel.hsi_values() else { return String::new() };
             let degrees = |rad: f32| rad.to_degrees().rem_euclid(360.0).round() as i32 % 360;
-            let heading = format!("Heading {:03}°", degrees(heading));
+            let heading = t!("tip-heading", heading = format!("{:03}", degrees(heading)));
             match bearing.zip(dist) {
-                Some((bearing, km)) => format!(
-                    "{heading}, WP{}: {:03}° at {}",
-                    panel.waypoints.current,
-                    degrees(bearing),
-                    km_text(km)
+                Some((bearing, km)) => t!(
+                    "tip-heading-waypoint",
+                    heading = heading,
+                    wp = panel.waypoints.current,
+                    bearing = format!("{:03}", degrees(bearing)),
+                    distance = km_text(km)
                 ),
                 None => heading,
             }
@@ -151,7 +158,7 @@ fn dial_text(dial: Dial, value: f32) -> String {
         Dial::Rpm => format!("{v} %"),
         Dial::Ftit => format!("{v} °C"),
         Dial::Oil => format!("{v} psi"),
-        Dial::Nozzle => format!("{v} % open"),
+        Dial::Nozzle => t!("tip-nozzle-open", value = v),
         Dial::Fuel => format!("{} lbs", v.max(0)),
         Dial::Clock => {
             let (h, m, s) = crate::mfd::hms(value);
@@ -176,72 +183,74 @@ fn km_text(km: f32) -> String {
     if km < 100.0 { format!("{km:.1} km") } else { format!("{km:.0} km") }
 }
 
-/// An action's name and what it does.
+/// An action's name and what it does (in the player's language).
 pub fn action_text(a: Action) -> (String, &'static str) {
     use Action::*;
-    let (title, detail) = match a {
-        Gear => ("Landing gear", "Gear up / down (the lever shows the position)"),
-        Autopilot => {
-            ("Autopilot", "Flies to the current waypoint (Tornado: following the terrain)")
-        }
-        BayDoors => ("Weapon bay doors", "Open / close; weapons are released with open bays only"),
-        Flaps => ("Flaps", "More lift, about 20 % lower stall speed"),
-        Brakes => ("Brakes", "Wheel brakes on the ground, speed brake in the air"),
-        Eject => ("Ejection handle", "Eject"),
-        MasterCaution => (
-            "Master caution",
-            "Lit by new warnings and cautions; acknowledges them and silences the alarms",
-        ),
-        HudMode => ("HUD mode", "NAV, AIR, GND"),
-        BombMode => ("Bombing mode", "CCIP / CCRP"),
-        HudDeclutter => ("HUD declutter", ""),
-        Maps => ("Left MFD page", "Map / tactical"),
-        Nvg => ("Night vision goggles", ""),
-        Ordnance => ("Weapons page", "Right MFD"),
-        Flir => ("FLIR", "Infrared picture on / off"),
-        Ils => ("ILS", "Instrument landing system: landing guidance and the HUD steering bars"),
-        MissionOrders => ("Mission orders", ""),
-        CamAhead => ("Tracking camera", "Looking ahead"),
-        CamRear => ("Tracking camera", "Looking to the rear"),
-        CamRight => ("Tracking camera", "Looking right"),
-        CamLeft => ("Tracking camera", "Looking left"),
-        DesignateTarget => {
-            ("Designate target", "Blinks while a target is designated, steady within weapon range")
-        }
-        SelectTarget => ("Next target", "Select the next target"),
-        NearestTarget => ("Nearest target", "Lock the nearest target ahead"),
-        ClearTarget => ("Clear target", "No automatic acquisition until the next target key"),
-        SelectWeapon => ("Select weapon", "The next weapon, after the last one the gun"),
-        FireWeapon => ("Fire", "Release the selected weapon"),
-        Flare => ("Flare", "Release a flare (against infrared missiles)"),
-        Chaff => ("Chaff", "Release chaff (against radar missiles)"),
-        Decoy => ("Decoy", "Release a decoy"),
-        Ecm => ("ECM", "Radar jammer on / off (lit when on)"),
-        IrJammer => ("IR jammer", "On / off; switches itself off after 20 s and must cool down"),
-        SelectWaypoint => ("Waypoints", "Waypoint page"),
-        ChangeWaypoint => ("Edit waypoints", "The keypad moves the selected waypoint"),
-        ResetWaypoint => ("Reset waypoints", "All waypoints back to their planned positions"),
-        LastWaypoint => ("Previous waypoint", ""),
-        NextWaypoint => ("Next waypoint", ""),
-        Menu => ("Settings menu", "Opens or closes the in-flight menu"),
-        Volume => ("Sound volume", ""),
-        Detail => ("Detail level", ""),
-        TimeAccel => {
-            ("Time acceleration", "Ends when a radar detects the aircraft or a weapon is released")
-        }
-        TimeNormal => ("Normal time", ""),
-        MapZoomIn => ("Map zoom in", ""),
-        MapZoomOut => ("Map zoom out", ""),
-        MapOrientation => ("Map orientation", "North up / heading up"),
-        LockCursor => ("Lock cursor target", "Lock what is under the sensor's cursor"),
-        SwapSoi => ("Sensor of interest", "Moves to the other MFD"),
-        Kneeboard => ("Kneeboard", "Show it over the view, next page, hide"),
-        Chat => ("Chat", "Type a message to the other players"),
-        CameraZoomIn => ("Camera zoom in", ""),
-        CameraZoomOut => ("Camera zoom out", ""),
+    let id = match a {
+        Gear => "tip-gear",
+        Autopilot => "tip-autopilot",
+        BayDoors => "tip-bay-doors",
+        Flaps => "tip-flaps",
+        Brakes => "tip-brakes",
+        Eject => "tip-eject",
+        MasterCaution => "tip-master-caution",
+        HudMode => "tip-hud-mode",
+        BombMode => "tip-bomb-mode",
+        HudDeclutter => "tip-hud-declutter",
+        Maps => "tip-maps",
+        Nvg => "tip-nvg",
+        Ordnance => "tip-ordnance",
+        Flir => "tip-flir",
+        Ils => "tip-ils",
+        MissionOrders => "tip-mission-orders",
+        CamAhead => "tip-cam-ahead",
+        CamRear => "tip-cam-rear",
+        CamRight => "tip-cam-right",
+        CamLeft => "tip-cam-left",
+        DesignateTarget => "tip-designate-target",
+        SelectTarget => "tip-select-target",
+        NearestTarget => "tip-nearest-target",
+        ClearTarget => "tip-clear-target",
+        SelectWeapon => "tip-select-weapon",
+        FireWeapon => "tip-fire-weapon",
+        Flare => "tip-flare",
+        Chaff => "tip-chaff",
+        Decoy => "tip-decoy",
+        Ecm => "tip-ecm",
+        IrJammer => "tip-ir-jammer",
+        SelectWaypoint => "tip-select-waypoint",
+        ChangeWaypoint => "tip-change-waypoint",
+        ResetWaypoint => "tip-reset-waypoint",
+        LastWaypoint => "tip-last-waypoint",
+        NextWaypoint => "tip-next-waypoint",
+        Menu => "tip-menu",
+        Volume => "tip-volume",
+        Detail => "tip-detail",
+        TimeAccel => "tip-time-accel",
+        TimeNormal => "tip-time-normal",
+        MapZoomIn => "tip-map-zoom-in",
+        MapZoomOut => "tip-map-zoom-out",
+        MapOrientation => "tip-map-orientation",
+        LockCursor => "tip-lock-cursor",
+        SwapSoi => "tip-swap-soi",
+        Kneeboard => "tip-kneeboard",
+        Chat => "tip-chat",
+        CameraZoomIn => "tip-camera-zoom-in",
+        CameraZoomOut => "tip-camera-zoom-out",
         _ => return (crate::hotas::action_name(a), ""),
     };
-    (title.to_string(), detail)
+    (t!(id).to_string(), desc(id))
+}
+
+/// The `.desc` of message `id`: what it does ("" if it has none).
+fn desc(id: &str) -> &'static str {
+    let attr = format!("{id}.desc");
+    if stealth_i18n::exists(&attr) { t!(&attr) } else { "" }
+}
+
+/// A tip from message `id` (its value the title, its `.desc` the detail).
+fn tip(id: &str, actions: &[Action]) -> Tip {
+    Tip::new(t!(id), desc(id), actions)
 }
 
 /// The tooltip's title of a bezel button: its label, but for the classic cockpit's waypoint
@@ -251,11 +260,11 @@ fn osb_title(label: &str, f: OsbFn, style: PanelStyle) -> String {
         return label.to_string();
     }
     match f {
-        OsbFn::Cmd(MfdCmd::WaypointNudge(0, 1)) => "Move waypoint up".into(),
-        OsbFn::Cmd(MfdCmd::WaypointNudge(0, ..=-1)) => "Move waypoint down".into(),
-        OsbFn::Cmd(MfdCmd::WaypointNudge(..=-1, _)) => "Move waypoint left".into(),
-        OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => "Move waypoint right".into(),
-        OsbFn::Action(Action::ResetWaypoint) => "Reset waypoints".into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, 1)) => t!("tip-osb-waypoint-up").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, ..=-1)) => t!("tip-osb-waypoint-down").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..=-1, _)) => t!("tip-osb-waypoint-left").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => t!("tip-osb-waypoint-right").into(),
+        OsbFn::Action(Action::ResetWaypoint) => t!("tip-reset-waypoint").into(),
         _ => label.to_string(),
     }
 }
@@ -263,96 +272,82 @@ fn osb_title(label: &str, f: OsbFn, style: PanelStyle) -> String {
 /// What a display command does.
 fn cmd_text(c: MfdCmd) -> String {
     use crate::avionics::Format;
-    match c {
-        MfdCmd::LeftPage(LeftMfd::Map) => "Map page".into(),
-        MfdCmd::LeftPage(LeftMfd::Tac) => "Tactical page".into(),
-        MfdCmd::RightPage(RightMfd::Camera) => "Tracking camera page".into(),
-        MfdCmd::RightPage(RightMfd::Way) => "Waypoint page".into(),
-        MfdCmd::RightPage(RightMfd::Wpn) => "Weapons page".into(),
-        MfdCmd::RightPage(RightMfd::Ord) => "Mission orders page".into(),
-        MfdCmd::ZoomIn | MfdCmd::MapZoom(1..) => "Map zoom in".into(),
-        MfdCmd::ZoomOut | MfdCmd::MapZoom(..=0) => "Map zoom out".into(),
-        MfdCmd::ToggleOrient => "Map north up / heading up".into(),
-        MfdCmd::Flir => "FLIR: infrared picture on / off".into(),
-        MfdCmd::Cam(dir) => format!(
-            "Tracking camera looks {}",
-            match dir {
-                CamDir::Ahead => "ahead",
-                CamDir::Right => "right",
-                CamDir::Rear => "to the rear",
-                CamDir::Left => "left",
-            }
-        ),
-        MfdCmd::Ils => "ILS on / off".into(),
+    t!(match c {
+        MfdCmd::LeftPage(LeftMfd::Map) => "tip-cmd-map-page",
+        MfdCmd::LeftPage(LeftMfd::Tac) => "tip-cmd-tac-page",
+        MfdCmd::RightPage(RightMfd::Camera) => "tip-cmd-camera-page",
+        MfdCmd::RightPage(RightMfd::Way) => "tip-cmd-way-page",
+        MfdCmd::RightPage(RightMfd::Wpn) => "tip-cmd-wpn-page",
+        MfdCmd::RightPage(RightMfd::Ord) => "tip-cmd-ord-page",
+        MfdCmd::ZoomIn | MfdCmd::MapZoom(1..) => "tip-cmd-map-zoom-in",
+        MfdCmd::ZoomOut | MfdCmd::MapZoom(..=0) => "tip-cmd-map-zoom-out",
+        MfdCmd::ToggleOrient => "tip-cmd-orientation",
+        MfdCmd::Flir => "tip-cmd-flir",
+        MfdCmd::Cam(CamDir::Ahead) => "tip-cmd-cam-ahead",
+        MfdCmd::Cam(CamDir::Right) => "tip-cmd-cam-right",
+        MfdCmd::Cam(CamDir::Rear) => "tip-cmd-cam-rear",
+        MfdCmd::Cam(CamDir::Left) => "tip-cmd-cam-left",
+        MfdCmd::Ils => "tip-cmd-ils",
         MfdCmd::Format(_, f) => match f {
-            Format::Hsd => "Horizontal situation display",
-            Format::Harm => "HARM targeting",
-            Format::Tgp => "Targeting pod",
-            Format::Map => "Map",
-            Format::Sms => "Stores management",
-            Format::Hsi => "Horizontal situation indicator",
-        }
-        .into(),
-        MfdCmd::Soi(_) => "Make this display the sensor of interest (the slew keys move it)".into(),
-        MfdCmd::SwapSoi => "Sensor of interest to the other MFD".into(),
-        MfdCmd::HsdRange(1..) => "HSD range up".into(),
-        MfdCmd::HsdRange(..=0) => "HSD range down".into(),
-        MfdCmd::HsdCentre => "HSD centred / depressed".into(),
-        MfdCmd::MapWay => "Waypoints on the map".into(),
-        MfdCmd::WaypointNudge(0, 1) => "Move the selected waypoint up".into(),
-        MfdCmd::WaypointNudge(0, ..=-1) => "Move the selected waypoint down".into(),
-        MfdCmd::WaypointNudge(..=-1, _) => "Move the selected waypoint left".into(),
-        MfdCmd::WaypointNudge(..) => "Move the selected waypoint right".into(),
-        MfdCmd::Sms(true) => "Mission orders".into(),
-        MfdCmd::Sms(false) => "Weapon list".into(),
-        MfdCmd::Ripple(1..) => "Ripple: one more bomb per release".into(),
-        MfdCmd::Ripple(..=0) => "Ripple: one bomb fewer per release".into(),
-        MfdCmd::RippleSpacing(1..) => "Ripple spacing up".into(),
-        MfdCmd::RippleSpacing(..=0) => "Ripple spacing down".into(),
-        MfdCmd::HarmFilter => "HARM threat filter: all, SAM, air".into(),
-        MfdCmd::CamZoom(1..) => "Camera zoom in".into(),
-        MfdCmd::CamZoom(..=0) => "Camera zoom out".into(),
-        MfdCmd::CamZoomCycle => "Camera zoom: auto, 1X to 20X".into(),
-        MfdCmd::TgpSp => "Targeting pod snowplow: locks dropped, fixed ahead".into(),
-        MfdCmd::TgpSlave => "Targeting pod back to slaved".into(),
-        MfdCmd::TgpCz => "Cursor zero: targeting pod to the current steerpoint".into(),
-    }
+            Format::Hsd => "tip-cmd-hsd",
+            Format::Harm => "tip-cmd-harm",
+            Format::Tgp => "tip-cmd-tgp",
+            Format::Map => "tip-cmd-map",
+            Format::Sms => "tip-cmd-sms",
+            Format::Hsi => "tip-cmd-hsi",
+        },
+        MfdCmd::Soi(_) => "tip-cmd-soi",
+        MfdCmd::SwapSoi => "tip-cmd-swap-soi",
+        MfdCmd::HsdRange(1..) => "tip-cmd-hsd-range-up",
+        MfdCmd::HsdRange(..=0) => "tip-cmd-hsd-range-down",
+        MfdCmd::HsdCentre => "tip-cmd-hsd-centre",
+        MfdCmd::MapWay => "tip-cmd-map-way",
+        MfdCmd::WaypointNudge(0, 1) => "tip-cmd-waypoint-up",
+        MfdCmd::WaypointNudge(0, ..=-1) => "tip-cmd-waypoint-down",
+        MfdCmd::WaypointNudge(..=-1, _) => "tip-cmd-waypoint-left",
+        MfdCmd::WaypointNudge(..) => "tip-cmd-waypoint-right",
+        MfdCmd::Sms(true) => "tip-cmd-sms-orders",
+        MfdCmd::Sms(false) => "tip-cmd-sms-weapons",
+        MfdCmd::Ripple(1..) => "tip-cmd-ripple-up",
+        MfdCmd::Ripple(..=0) => "tip-cmd-ripple-down",
+        MfdCmd::RippleSpacing(1..) => "tip-cmd-ripple-spacing-up",
+        MfdCmd::RippleSpacing(..=0) => "tip-cmd-ripple-spacing-down",
+        MfdCmd::HarmFilter => "tip-cmd-harm-filter",
+        MfdCmd::CamZoom(1..) => "tip-cmd-cam-zoom-in",
+        MfdCmd::CamZoom(..=0) => "tip-cmd-cam-zoom-out",
+        MfdCmd::CamZoomCycle => "tip-cmd-cam-zoom-cycle",
+        MfdCmd::TgpSp => "tip-cmd-tgp-sp",
+        MfdCmd::TgpSlave => "tip-cmd-tgp-slave",
+        MfdCmd::TgpCz => "tip-cmd-tgp-cz",
+    })
+    .to_string()
 }
 
-/// An air defence console button's title and what it does.
+/// An air defence console button's title (its label, in English) and what it does.
 fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
-    match k {
-        ConsoleKey::Tracks => ("TRACKS", "The track list"),
-        ConsoleKey::Site => ("SITE", "Launchers, missiles, stockpile and reloads"),
-        ConsoleKey::Lock => ("LOCK", "Lock the selected track: the camera follows it"),
-        ConsoleKey::Drop => ("DROP", "Drop the lock (guided missiles go semi-active)"),
-        ConsoleKey::Guided => {
-            ("GUIDED", "The radar guides the next missiles: hard to decoy, one target at a time")
-        }
-        ConsoleKey::Semi => (
-            "SEMI-ACTIVE",
-            "The next missiles home on the radar's illumination: several targets, easier to decoy; \
-             guided missiles in the air go semi-active",
-        ),
-        ConsoleKey::Fire => ("FIRE", "A missile (a Gepard: a burst) at the locked track"),
-        ConsoleKey::Launcher(_) => ("LAUNCHER", "Fire from this launcher; again: the readiest"),
-        ConsoleKey::Refill(_) => ("RELOAD", "Reload the empty launcher from the stockpile (4 min)"),
-        ConsoleKey::Flir => ("FLIR", "Thermal or colour camera picture"),
-        ConsoleKey::ZoomIn => ("ZOOM IN", "Camera zoom"),
-        ConsoleKey::ZoomOut => ("ZOOM OUT", "Camera zoom"),
-        ConsoleKey::RangeIn => ("RANGE -", "The air picture's range"),
-        ConsoleKey::RangeOut => ("RANGE +", "The air picture's range"),
-        ConsoleKey::Leave => ("LEAVE", "Leave the console: back to operations"),
-        ConsoleKey::Auto => ("AUTO", "The selected drone flies its route again"),
-        ConsoleKey::Manual => {
-            ("MANUAL", "Fly the selected drone by hand: the stick and the throttle")
-        }
-        ConsoleKey::Track => ("TRACK", "Hold the drone's camera on the ground at its crosshair"),
-        ConsoleKey::Slave => ("SLAVE", "The drone's camera back to its waypoint (ahead and down)"),
-        ConsoleKey::View => {
-            ("FWD", "The drone's camera: its TGP, or the FLIR looking ahead to fly it by")
-        }
-    }
+    let (title, id) = match k {
+        ConsoleKey::Tracks => ("TRACKS", "tip-console-tracks"),
+        ConsoleKey::Site => ("SITE", "tip-console-site"),
+        ConsoleKey::Lock => ("LOCK", "tip-console-lock"),
+        ConsoleKey::Drop => ("DROP", "tip-console-drop"),
+        ConsoleKey::Guided => ("GUIDED", "tip-console-guided"),
+        ConsoleKey::Semi => ("SEMI-ACTIVE", "tip-console-semi"),
+        ConsoleKey::Fire => ("FIRE", "tip-console-fire"),
+        ConsoleKey::Launcher(_) => ("LAUNCHER", "tip-console-launcher"),
+        ConsoleKey::Refill(_) => ("RELOAD", "tip-console-refill"),
+        ConsoleKey::Flir => ("FLIR", "tip-console-flir"),
+        ConsoleKey::ZoomIn => ("ZOOM IN", "tip-console-zoom"),
+        ConsoleKey::ZoomOut => ("ZOOM OUT", "tip-console-zoom"),
+        ConsoleKey::RangeIn => ("RANGE -", "tip-console-range"),
+        ConsoleKey::RangeOut => ("RANGE +", "tip-console-range"),
+        ConsoleKey::Leave => ("LEAVE", "tip-console-leave"),
+        ConsoleKey::Auto => ("AUTO", "tip-console-auto"),
+        ConsoleKey::Manual => ("MANUAL", "tip-console-manual"),
+        ConsoleKey::Track => ("TRACK", "tip-console-track"),
+        ConsoleKey::Slave => ("SLAVE", "tip-console-slave"),
+        ConsoleKey::View => ("FWD", "tip-console-view"),
+    };
+    (title, t!(id))
 }
 
 /// A control's tooltip (bezel buttons: on the current page; None for a blank one).
@@ -363,23 +358,18 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
             (title, detail.to_string())
         }
         Effect::HudMode(m) => {
-            let (title, detail) = match m {
-                0 => ("NAV mode", "HUD navigation mode: steering to the current waypoint"),
-                1 => ("AIR mode (A-A)", "HUD air-to-air mode: aircraft targets"),
-                _ => {
-                    ("GND mode (A-G)", "HUD air-to-ground mode: ground targets; again: CCIP / CCRP")
-                }
+            let id = match m {
+                0 => "tip-hud-nav",
+                1 => "tip-hud-air",
+                _ => "tip-hud-gnd",
             };
-            (title.to_string(), detail.to_string())
+            (t!(id).to_string(), desc(id).to_string())
         }
-        Effect::LeftPage(p) => (cmd_text(MfdCmd::LeftPage(p)), "Left MFD".to_string()),
-        Effect::CamCycle => (
-            "Tracking camera direction".to_string(),
-            "Next direction: ahead, right, rear, left".to_string(),
-        ),
+        Effect::LeftPage(p) => (cmd_text(MfdCmd::LeftPage(p)), t!("tip-left-mfd").to_string()),
+        Effect::CamCycle => (t!("tip-cam-cycle").to_string(), desc("tip-cam-cycle").to_string()),
         Effect::TimeToggle => {
             let (title, detail) = action_text(Action::TimeAccel);
-            (title, format!("On / off. {detail}"))
+            (title, t!("tip-on-off", detail = detail))
         }
         Effect::Console(k) => {
             let (title, detail) = console_text(k);
@@ -394,7 +384,7 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
                     if detail.is_empty() { title } else { format!("{title}: {detail}") }
                 }
                 // The only readout: the HSD's range between its RNG- and RNG+ buttons.
-                OsbFn::Readout => "HSD range in km".to_string(),
+                OsbFn::Readout => t!("tip-hsd-range").to_string(),
             };
             (osb_title(label, f, style), detail)
         }
@@ -416,64 +406,61 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
     };
     let (title, detail): (String, &str) = match elem {
         Elem::Lamp(id, label) => {
-            let detail = match id {
-                LampId::Stall => "Airspeed below stall speed (blinks)",
-                LampId::Trak => "An enemy radar tracks the aircraft",
-                LampId::Ir => "An infrared missile is in flight",
-                LampId::Rad => "A radar-guided missile is in flight",
-                LampId::Fire => "Fire on board",
-                LampId::Eng => "Engine damage",
-                LampId::Fc => "Fire control damage",
-                LampId::Jam => "Jammer damage: ECM and IRJ fail",
-                LampId::Av => "Avionics damage",
-                LampId::Fuel => "Fuel system damage",
-                LampId::Bd => "Bay door damage: the doors stay open",
-                LampId::ChaffAct => "Lights when chaff is released",
-                LampId::FlareAct => "Lights when a flare is released",
-                LampId::DecoyAct => "Lights when a decoy is released",
-                LampId::EmvWarn => "EMV: lit for 2 s after each radar detection",
-                LampId::LowFuel => "Blinks below 1500 lbs of fuel",
+            let lamp = match id {
+                LampId::Stall => "tip-lamp-stall",
+                LampId::Trak => "tip-lamp-trak",
+                LampId::Ir => "tip-lamp-ir",
+                LampId::Rad => "tip-lamp-rad",
+                LampId::Fire => "tip-lamp-fire",
+                LampId::Eng => "tip-lamp-eng",
+                LampId::Fc => "tip-lamp-fc",
+                LampId::Jam => "tip-lamp-jam",
+                LampId::Av => "tip-lamp-av",
+                LampId::Fuel => "tip-lamp-fuel",
+                LampId::Bd => "tip-lamp-bd",
+                LampId::ChaffAct => "tip-lamp-chaff-act",
+                LampId::FlareAct => "tip-lamp-flare-act",
+                LampId::DecoyAct => "tip-lamp-decoy-act",
+                LampId::EmvWarn => "tip-lamp-emv-warn",
+                LampId::LowFuel => "tip-lamp-low-fuel",
                 _ => return None,
             };
-            let name = label.unwrap_or(LAMPS[id as usize].1);
-            let title = match id {
-                LampId::ChaffAct => "Chaff released",
-                LampId::FlareAct => "Flare released",
-                LampId::DecoyAct => "Decoy released",
-                LampId::EmvWarn => "EMV warning",
-                _ => name,
+            // The lamp's label (English, as on the panel), but for the unlabelled lights.
+            let (title, detail) = match id {
+                LampId::ChaffAct | LampId::FlareAct | LampId::DecoyAct | LampId::EmvWarn => {
+                    (t!(lamp), desc(lamp))
+                }
+                _ => (label.unwrap_or(LAMPS[id as usize].1), t!(lamp)),
             };
             (title.replace('\n', " "), detail)
         }
         Elem::Led(led) => {
-            let (title, detail) = match led {
-                LedId::Chaff => ("Chaff", "Chaff left"),
-                LedId::Flares => ("Flares", "Flares left"),
-                LedId::Decoys => ("Decoys", "Decoys left"),
-                LedId::Fuel => ("Fuel", "Fuel in lbs divided by 10"),
-                LedId::Thrust => ("Thrust", "Thrust in percent"),
+            let id = match led {
+                LedId::Chaff => "tip-led-chaff",
+                LedId::Flares => "tip-led-flares",
+                LedId::Decoys => "tip-led-decoys",
+                LedId::Fuel => "tip-led-fuel",
+                LedId::Thrust => "tip-led-thrust",
             };
-            return Some(Tip::new(title, detail, &[]).reading(Readout::Led(led)));
+            return Some(tip(id, &[]).reading(Readout::Led(led)));
         }
         Elem::Gauge => return Some(radar_bars()),
-        Elem::GearLights => {
-            ("Gear lights".into(), "A green lamp at each wheel while the gear is down")
-        }
+        Elem::GearLights => (t!("tip-gear-lights").into(), desc("tip-gear-lights")),
         Elem::Dial(dial) => {
-            let (title, detail) = match dial {
-                Dial::Airspeed => ("Airspeed indicator", ""),
-                Dial::Altimeter => ("Altimeter", ""),
-                Dial::Aoa => ("AOA indicator", "Angle of attack; the approach band is green"),
-                Dial::Vvi => ("Vertical velocity indicator", ""),
-                Dial::Rpm => ("RPM", "Engine speed"),
-                Dial::Ftit => ("FTIT", "Fan turbine inlet temperature"),
-                Dial::Oil => ("Oil pressure", ""),
-                Dial::Nozzle => ("Nozzle position", ""),
-                Dial::Fuel => ("Fuel quantity", ""),
-                Dial::Clock => ("Clock", "Local time"),
-                Dial::NozzleAngle => ("Nozzle angle", "Down from aft: 90° hover, 98.5° braking"),
+            let id = match dial {
+                Dial::Airspeed => "tip-dial-airspeed",
+                Dial::Altimeter => "tip-dial-altimeter",
+                Dial::Aoa => "tip-dial-aoa",
+                Dial::Vvi => "tip-dial-vvi",
+                Dial::Rpm => "tip-dial-rpm",
+                Dial::Ftit => "tip-dial-ftit",
+                Dial::Oil => "tip-dial-oil",
+                Dial::Nozzle => "tip-dial-nozzle",
+                Dial::Fuel => "tip-dial-fuel",
+                Dial::Clock => "tip-dial-clock",
+                Dial::NozzleAngle => "tip-dial-nozzle-angle",
             };
-            return Some(Tip::new(title, detail, &[]).reading(Readout::Dial(dial)));
+            return Some(tip(id, &[]).reading(Readout::Dial(dial)));
         }
         Elem::Label(..) | Elem::Arrow(..) | Elem::Hazard => return None,
     };
@@ -481,75 +468,35 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
 }
 
 fn radar_bars() -> Tip {
-    Tip::new("EGR / EAR", "Radar bar graph: enemy radar signal against the aircraft's EMV", &[])
-        .reading(Readout::RadarBars)
+    tip("tip-radar-bars", &[]).reading(Readout::RadarBars)
 }
 
 /// The tooltip of a live display (None: the HUD and the atlases).
 pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
-    let (title, detail) = match role {
-        CanvasRole::Left => ("Left MFD", "Multifunction display"),
-        CanvasRole::Right if style == PanelStyle::Modern => {
-            ("Centre display", "The right MFD's pages")
-        }
-        CanvasRole::Right if style == PanelStyle::Tornado => {
-            ("Centre MFD", "The right MFD's pages")
-        }
-        CanvasRole::Right => ("Right MFD", "Multifunction display"),
-        CanvasRole::Third => ("Third MFD", "Starts on the HSI page"),
-        CanvasRole::Adi => ("Attitude indicator", "Pitch and bank"),
-        CanvasRole::Approach => (
-            "AOA indexer",
-            "Slow: red top chevron, on speed: green circle, fast: amber bottom chevron",
-        ),
-        CanvasRole::Rwr => ("RWR", "Radar warning receiver: the radars that see the aircraft"),
-        CanvasRole::Tfr => (
-            "Terrain following radar",
-            "Range across, angle up: the terrain and the steering template; AUTO follows it",
-        ),
-        CanvasRole::Hsi => {
-            ("HSI", "Horizontal situation indicator: heading, bearing and distance to the waypoint")
-        }
-        CanvasRole::Ded if style == PanelStyle::Rah66 => {
-            ("Scratchpad", "Keyboard display: radio, steerpoint, target, time and fuel")
-        }
-        CanvasRole::Ded => ("DED", "Data entry display: radio, steerpoint, target, time and fuel"),
-        CanvasRole::Lmpd => (
-            "Left MPD",
-            "Threats: radars at their range and bearing, missile envelopes, our radar return (inside the dashed ring: unseen) and its last 30 s; warnings (red), cautions (amber), advisories (green) flash until the master caution",
-        ),
-        CanvasRole::Rmpd => {
-            ("Right MPD", "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow")
-        }
-        CanvasRole::Console(ConsoleScreen::Scope) => {
-            ("Air picture", "The tracks around the site, twice a second; click one to select it")
-        }
-        CanvasRole::Console(ConsoleScreen::Board) => {
-            ("Tracks / site", "Click a track to select it; the SITE tab: launchers and stocks")
-        }
-        CanvasRole::Console(ConsoleScreen::Eo) => (
-            "Camera",
-            "The locked track (a drone command center: the selected drone's camera), in colour or \
-             thermal (FLIR)",
-        ),
-        CanvasRole::Console(ConsoleScreen::Info) => (
-            "Target data",
-            "The locked track: range, altitude, speed, time of flight (a drone command center: \
-             its drones in the air and their batteries)",
-        ),
-        CanvasRole::Console(ConsoleScreen::Feed) => (
-            "Drone camera",
-            "The selected drone's camera: its TGP (the stick slews it) or the forward FLIR, its \
-             speed, height and heading",
-        ),
-        CanvasRole::Console(ConsoleScreen::Map) => (
-            "Ground control station",
-            "The drones and the contacts: drag to pan, click a drone to select it, drag its \
-             waypoints; NEW DRONE plans a launch",
-        ),
+    let id = match role {
+        CanvasRole::Left => "tip-display-left",
+        CanvasRole::Right if style == PanelStyle::Modern => "tip-display-centre",
+        CanvasRole::Right if style == PanelStyle::Tornado => "tip-display-centre-mfd",
+        CanvasRole::Right => "tip-display-right",
+        CanvasRole::Third => "tip-display-third",
+        CanvasRole::Adi => "tip-display-adi",
+        CanvasRole::Approach => "tip-display-approach",
+        CanvasRole::Rwr => "tip-display-rwr",
+        CanvasRole::Tfr => "tip-display-tfr",
+        CanvasRole::Hsi => "tip-display-hsi",
+        CanvasRole::Ded if style == PanelStyle::Rah66 => "tip-display-scratchpad",
+        CanvasRole::Ded => "tip-display-ded",
+        CanvasRole::Lmpd => "tip-display-lmpd",
+        CanvasRole::Rmpd => "tip-display-rmpd",
+        CanvasRole::Console(ConsoleScreen::Scope) => "tip-display-scope",
+        CanvasRole::Console(ConsoleScreen::Board) => "tip-display-board",
+        CanvasRole::Console(ConsoleScreen::Eo) => "tip-display-eo",
+        CanvasRole::Console(ConsoleScreen::Info) => "tip-display-info",
+        CanvasRole::Console(ConsoleScreen::Feed) => "tip-display-feed",
+        CanvasRole::Console(ConsoleScreen::Map) => "tip-display-map",
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
-    let tip = Tip::new(title, detail, &[]);
+    let tip = tip(id, &[]);
     Some(match role {
         CanvasRole::Adi => tip.reading(Readout::Attitude),
         CanvasRole::Hsi => tip.reading(Readout::Hsi),
@@ -559,32 +506,23 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
 
 pub(super) fn stick_tip() -> Tip {
     use Action::*;
-    Tip::new("Side stick", "Pitch and roll", &[PitchDown, PitchUp, RollLeft, RollRight])
+    tip("tip-stick", &[PitchDown, PitchUp, RollLeft, RollRight])
 }
 
 /// The air defence console's hand controller (`station`).
 pub(super) fn console_stick_tip() -> Tip {
     use Action::*;
-    Tip::new(
-        "Hand controller",
-        "Without a lock: slews the gun and the camera; the trigger fires",
-        &[PitchDown, PitchUp, RollLeft, RollRight, FireWeapon],
-    )
+    tip("tip-console-stick", &[PitchDown, PitchUp, RollLeft, RollRight, FireWeapon])
 }
 
 pub(super) fn throttle_tip() -> Tip {
     use Action::*;
-    Tip::new("Throttle", "Thrust", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])
+    tip("tip-throttle", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])
 }
 
 /// A V/STOL type's nozzle lever (the AV-8B's, inboard of the throttle).
 pub(super) fn nozzle_tip() -> Tip {
-    Tip::new(
-        "Nozzle lever",
-        "Forward: nozzles aft; back: down, to the hover stop (90°) and the braking stop (98.5°)",
-        &[],
-    )
-    .reading(Readout::Nozzles)
+    tip("tip-nozzle-lever", &[]).reading(Readout::Nozzles)
 }
 
 /// The tooltips' font: egui's Hack (as the menus), which has the accented letters of the
@@ -632,8 +570,8 @@ fn join_keys(groups: impl IntoIterator<Item = Vec<String>>) -> String {
     }
     match seen.as_slice() {
         [] => String::new(),
-        [key] => format!("Key: {key}"),
-        _ => format!("Keys: {}", shown.join(", ")),
+        [key] => t!("tip-key", key = key.as_str()),
+        _ => t!("tip-keys", keys = shown.join(", ")),
     }
 }
 
@@ -707,13 +645,12 @@ pub(super) struct TipAnchor(Option<Vec3>);
 pub(super) fn spawn_box(
     mut commands: Commands,
     settings: Res<Settings>,
-    mut fonts: ResMut<Assets<Font>>,
+    ui_font: Res<crate::i18n::UiFont>,
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TipScreenMaterial>>,
-    mut font: Local<Option<Handle<Font>>>,
 ) {
-    let font = font.get_or_insert_with(|| fonts.add(Font::from_bytes(FONT.to_vec()))).clone();
+    let font = ui_font.handle();
     let k = if settings.vr { VR_SCALE } else { 1.0 };
     let line = |i: usize, size: f32, color: Color| {
         (
@@ -798,11 +735,13 @@ pub(super) struct Hover {
     resting: f32,
     /// Seconds since a tooltip was up.
     since_shown: f32,
+    /// The language the lines' font was set for.
+    font_for: Option<stealth_i18n::Language>,
 }
 
 impl Default for Hover {
     fn default() -> Self {
-        Self { pointed: None, resting: 0.0, since_shown: f32::INFINITY }
+        Self { pointed: None, resting: 0.0, since_shown: f32::INFINITY, font_for: None }
     }
 }
 
@@ -822,9 +761,14 @@ pub(super) fn hover(
     panel: PanelParams,
     input: Res<InputConfig>,
     mut state: Local<Hover>,
-    (hands, mut anchor, root): (Res<Hands>, ResMut<TipAnchor>, Query<&CockpitRoot>),
+    (hands, mut anchor, root, ui_font): (
+        Res<Hands>,
+        ResMut<TipAnchor>,
+        Query<&CockpitRoot>,
+        Res<crate::i18n::UiFont>,
+    ),
     mut boxes: Query<(&mut Node, &mut Visibility, &ComputedNode), With<TipBox>>,
-    mut lines: Query<(&TipLine, &mut Text, &mut Node), Without<TipBox>>,
+    mut lines: Query<(&TipLine, &mut Text, &mut Node, &mut TextFont), Without<TipBox>>,
 ) {
     let dt = time.delta_secs();
     let cockpit_view =
@@ -877,7 +821,13 @@ pub(super) fn hover(
         wrap(&tip.detail),
         wrap(&keys_text(&tip.actions, &input)),
     ];
-    for (TipLine(i), mut text, mut line) in &mut lines {
+    let language = stealth_i18n::language();
+    let new_font = state.font_for != Some(language);
+    state.font_for = Some(language);
+    for (TipLine(i), mut text, mut line, mut text_font) in &mut lines {
+        if new_font {
+            text_font.font = ui_font.handle().into();
+        }
         let s = &texts[*i];
         if text.0 != *s {
             text.0.clone_from(s);

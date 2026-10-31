@@ -41,16 +41,17 @@ impl AxisControl {
         AxisControl::SlewY,
     ];
 
+    /// The axis's name in the player's language.
     pub fn name(self) -> &'static str {
-        match self {
-            AxisControl::Roll => "Roll",
-            AxisControl::Pitch => "Pitch",
-            AxisControl::Yaw => "Rudder",
-            AxisControl::Throttle => "Throttle",
-            AxisControl::SlewX => "Sensor/cursor slew X",
-            AxisControl::SlewY => "Sensor/cursor slew Y",
-            AxisControl::Nozzle => "Nozzles (Harrier)",
-        }
+        stealth_i18n::t!(match self {
+            AxisControl::Roll => "axis-roll",
+            AxisControl::Pitch => "axis-pitch",
+            AxisControl::Yaw => "axis-rudder",
+            AxisControl::Throttle => "axis-throttle",
+            AxisControl::SlewX => "axis-slew-x",
+            AxisControl::SlewY => "axis-slew-y",
+            AxisControl::Nozzle => "axis-nozzle",
+        })
     }
 }
 
@@ -73,9 +74,13 @@ pub enum Source {
 impl Source {
     pub fn label(self) -> String {
         match self {
-            Source::Button(c) => format!("Button {}", c & 0xffff),
-            Source::AxisPositive(c) => format!("Axis {} +", c & 0xffff),
-            Source::AxisNegative(c) => format!("Axis {} -", c & 0xffff),
+            Source::Button(c) => stealth_i18n::t!("input-button", n = c & 0xffff),
+            Source::AxisPositive(c) => {
+                format!("{} +", stealth_i18n::t!("input-axis", n = c & 0xffff))
+            }
+            Source::AxisNegative(c) => {
+                format!("{} -", stealth_i18n::t!("input-axis", n = c & 0xffff))
+            }
         }
     }
 }
@@ -147,19 +152,22 @@ impl VrInput {
         VrInput::ThumbRight,
     ];
 
+    /// The input's name (the key guide draws it with the stroke font: in
+    /// [`stealth_i18n::flight_language`]).
     pub fn name(self, hand: VrHand) -> &'static str {
-        match (self, hand) {
-            (VrInput::Trigger, _) => "Trigger",
-            (VrInput::Primary, VrHand::Left) => "X",
-            (VrInput::Primary, VrHand::Right) => "A",
-            (VrInput::Secondary, VrHand::Left) => "Y",
-            (VrInput::Secondary, VrHand::Right) => "B",
-            (VrInput::ThumbClick, _) => "Stick click",
-            (VrInput::ThumbUp, _) => "Stick up",
-            (VrInput::ThumbDown, _) => "Stick down",
-            (VrInput::ThumbLeft, _) => "Stick left",
-            (VrInput::ThumbRight, _) => "Stick right",
-        }
+        let id = match (self, hand) {
+            (VrInput::Trigger, _) => "vr-trigger",
+            (VrInput::Primary, VrHand::Left) => return "X",
+            (VrInput::Primary, VrHand::Right) => return "A",
+            (VrInput::Secondary, VrHand::Left) => return "Y",
+            (VrInput::Secondary, VrHand::Right) => return "B",
+            (VrInput::ThumbClick, _) => "vr-stick-click",
+            (VrInput::ThumbUp, _) => "vr-stick-up",
+            (VrInput::ThumbDown, _) => "vr-stick-down",
+            (VrInput::ThumbLeft, _) => "vr-stick-left",
+            (VrInput::ThumbRight, _) => "vr-stick-right",
+        };
+        stealth_i18n::tf!(id)
     }
 }
 
@@ -913,18 +921,16 @@ pub fn read_hotas(
     }
 }
 
-/// "ThrottleUp" -> "Throttle up".
+/// An action's name in the player's language: message `action-throttle-up` ("Throttle up").
 pub fn action_name(a: Action) -> String {
-    let mut s = String::new();
+    let mut id = String::from("action-");
     for (i, c) in format!("{a:?}").chars().enumerate() {
         if c.is_ascii_uppercase() && i > 0 {
-            s.push(' ');
-            s.push(c.to_ascii_lowercase());
-        } else {
-            s.push(c);
+            id.push('-');
         }
+        id.push(c.to_ascii_lowercase());
     }
-    s
+    stealth_i18n::tr(&id).to_string()
 }
 
 #[cfg(test)]

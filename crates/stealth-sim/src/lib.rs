@@ -653,8 +653,9 @@ impl Sim {
         self.event_credit.push(self.credit);
     }
 
-    pub(crate) fn msg(&mut self, s: impl Into<String>) {
-        self.emit(SimEvent::Message(s.into()));
+    /// A HUD message, translated where it is shown.
+    pub(crate) fn msg(&mut self, t: stealth_i18n::Text) {
+        self.emit(SimEvent::Message(t));
     }
 
     pub(crate) fn sound(&mut self, id: u8, priority: u8) {

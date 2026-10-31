@@ -8,6 +8,7 @@
 //! captured (outcome 8).
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::text;
 
 use crate::Sim;
 use crate::math::{approx, bearing, cdiv, clamp_q, s16};
@@ -189,7 +190,7 @@ impl Sim {
             ..Default::default()
         });
         let base_name = self.place_name(base);
-        self.msg(format!("Down in enemy territory - CSAR from {base_name}"));
+        self.msg(text!("sim-csar-down", base = base_name.to_string()));
         self.emit(SimEvent::CancelTimeAccel);
         self.emit(SimEvent::PilotDown { x, y });
         true
@@ -222,11 +223,11 @@ impl Sim {
             if c.flares > 0 {
                 c.flares -= 1;
                 c.since_flare = Some(0);
-                self.msg(format!("Signal flare - {} left", c.flares));
+                self.msg(text!("sim-flare-left", count = c.flares));
                 self.sound(0x1C, 1);
                 self.emit(SimEvent::SignalFlare { x: c.pilot.0, y: c.pilot.1 });
             } else {
-                self.msg("No signal flares left");
+                self.msg(text!("sim-no-flares"));
             }
         }
         // Hinds search around the pilot, closer as time goes on; a flare shows them the spot.
@@ -245,7 +246,7 @@ impl Sim {
                     && self.rng.random(20 << self.night as i32) <= self.diff;
                 if flare || chance {
                     c.spotted[k] = true;
-                    self.msg("A Hind has spotted you");
+                    self.msg(text!("sim-hind-spotted"));
                 }
             }
             if c.spotted[k] {
@@ -271,7 +272,7 @@ impl Sim {
             c.located = true;
         }
         if r.flags & fflags::DESTROYED != 0 && c.state != CsarState::Captured {
-            self.msg("Rescue helicopter lost");
+            self.msg(text!("sim-rescue-lost"));
             c.state = CsarState::Captured;
         }
         match c.state {
@@ -286,12 +287,12 @@ impl Sim {
         self.pl.csar = Some(c);
         match state {
             CsarState::Rescued => {
-                self.msg("Rescued!");
+                self.msg(text!("sim-rescued"));
                 self.pl.landing_type = 4;
                 self.finalize(0);
             }
             CsarState::Captured => {
-                self.msg("Captured");
+                self.msg(text!("sim-captured"));
                 self.finalize(8);
             }
             _ => {}

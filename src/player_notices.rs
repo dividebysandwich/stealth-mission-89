@@ -151,17 +151,14 @@ impl PlayerNotices {
         };
         for p in new.iter().filter(|p| p.id != me) {
             if here(new, p.id) && !here(old, p.id) {
-                self.push(format!("{} joined", p.name));
+                self.push(stealth_i18n::tf!("notice-joined", pilot = p.name.as_str()));
             }
         }
         for p in old.iter().filter(|p| p.id != me) {
             if here(old, p.id) && !here(new, p.id) {
                 let dropped = new.iter().any(|q| q.id == p.id);
-                self.push(format!(
-                    "{} {}",
-                    p.name,
-                    if dropped { "lost connection" } else { "left" }
-                ));
+                let id = if dropped { "notice-lost-connection" } else { "notice-left" };
+                self.push(stealth_i18n::tf!(id, pilot = p.name.as_str()));
             }
         }
     }

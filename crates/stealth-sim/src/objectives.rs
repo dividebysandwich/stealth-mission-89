@@ -1,6 +1,7 @@
 use crate::Sim;
 use crate::math::{abs16, cdiv, clamp_q, s16};
 use crate::types::*;
+use stealth_i18n::text;
 
 /// A helicopter's base landing area: the whole airfield beside the runway (half width, map
 /// units << 5; the flight model's `landing_corridor`, keep in step).
@@ -25,10 +26,10 @@ impl Sim {
             self.log_event(0x0B | if k == 1 { 0x40 } else { 0x80 }, t.object);
         }
         if k == 1 {
-            self.msg("Second. target");
+            self.msg(text!("sim-secondary-target"));
             self.pl.waypoint = 1;
         } else {
-            self.msg("Primary target");
+            self.msg(text!("sim-primary-target"));
             self.pl.waypoint = 2;
         }
         self.pl.pflags |= bit;
@@ -58,7 +59,7 @@ impl Sim {
             }
             self.pl.unload[k] += 1;
             if self.pl.unload[k] == INSERT_SECONDS * self.fs && self.mark_target_reached(k) {
-                self.msg("Troops inserted");
+                self.msg(text!("sim-troops-inserted"));
             }
         }
     }
@@ -152,7 +153,7 @@ impl Sim {
                 let t = self.pl.targets[k];
                 if t.code & 2 != 0 && !self.pl.time_expired_shown {
                     self.pl.time_expired_shown = true;
-                    self.msg("Time expired");
+                    self.msg(text!("sim-time-expired"));
                 }
                 if !self.pl.on_ground
                     && t.code & 0x20 != 0
@@ -253,7 +254,7 @@ impl Sim {
                         && self.mission_tick < self.pl.deadline
                         && self.mark_target_reached(k)
                     {
-                        self.msg("Cargo delivered");
+                        self.msg(text!("sim-cargo-delivered"));
                         // Empty bay k (the generator loads the target's
                         // equipment there).
                         if let Some(b) =
@@ -270,7 +271,7 @@ impl Sim {
                     let old = self.pl.armed_landing;
                     self.pl.armed_landing += 1;
                     if old == 1 {
-                        self.msg("Safe Landing");
+                        self.msg(text!("sim-safe-landing"));
                         self.sound(0x2B, 2);
                     }
                     if cdiv(16, fs) < self.pl.armed_landing {

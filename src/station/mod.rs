@@ -334,7 +334,7 @@ fn buttons(
                     ui.zoom = None;
                     send(StationCmd::Lock(Some(t as u16)));
                 }
-                None => ui.note = Some(("Select a track first".into(), 3.0)),
+                None => ui.note = Some((stealth_i18n::tf!("st-select-track").into(), 3.0)),
             },
             ConsoleKey::Drop => send(StationCmd::Lock(None)),
             ConsoleKey::Guided => send(StationCmd::Mode(Guidance::Guided)),
@@ -418,7 +418,7 @@ fn buttons(
     }
     // A refused command (the host's answer; a client's comes back from the server).
     if let Some(e) = c.ui.error.take() {
-        ui.note = Some((e, 4.0));
+        ui.note = Some((e.tr_flight(), 4.0));
     }
     if let Some((_, t)) = ui.note.as_mut() {
         *t -= time.delta_secs();

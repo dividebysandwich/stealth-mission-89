@@ -1,0 +1,66 @@
+# The simulation's HUD messages (crates/stealth-sim). Drawn with the flight fonts: in capitals,
+# without accents (Latin languages; the others see the English). Unit, weapon and place names
+# are passed as they are.
+
+sim-missile-launch = Missile launch
+sim-no-flares = No signal flares left
+sim-hind-spotted = A Hind has spotted you
+sim-rescue-lost = Rescue helicopter lost
+sim-rescued = Rescued!
+sim-captured = Captured
+sim-aircraft-destroyed-eject = Aircraft destroyed - Eject
+sim-fire-out = Fire out
+sim-aircraft-exploded = Aircraft exploded
+sim-equipment-delivered = Equipment Delivered
+sim-bad-drop = Bad Drop
+sim-secondary-target = Second. target
+sim-primary-target = Primary target
+sim-troops-inserted = Troops inserted
+sim-time-expired = Time expired
+sim-cargo-delivered = Cargo delivered
+sim-safe-landing = Safe Landing
+sim-no-target-ahead = No target ahead
+sim-target-obscured = Target obscured
+sim-target-photographed = Target photographed.
+sim-drop-supplies = Drop supplies now
+sim-no-target = No target
+sim-no-target-designated = No target designated
+sim-bay-closed = Bay closed
+sim-insufficient-altitude = Insufficient Altitude
+sim-fuel-transfer = Fuel transfer
+sim-stores-exhausted = Stores exhausted
+sim-hit-gunfire = Hit by gunfire
+sim-hit-aaa = Hit by AAA
+sim-hit-flak = Hit by flak
+sim-destroyed = { $target } destroyed
+sim-landing = { $base } - { $aircraft } landing
+sim-on-final = { $base } - { $aircraft } on final
+sim-taking-off = { $base } - { $aircraft } taking off
+sim-shot-down = { $target } shot down
+sim-lost = { $target } lost
+sim-uav-hit = { $weapon } hit { $target }
+sim-locked-on = { $weapon } locked on { $target }
+sim-lost-lock = { $weapon } lost lock
+sim-csar-down = Down in enemy territory - CSAR from { $base }
+sim-flare-left = Signal flare - { $count } left
+sim-drone-hit-npp = Drone hit { $place } NPP
+sim-drone-hit = Drone hit { $place }
+sim-defense-failed = Defense failed - { $count } drones through
+sim-hit-by = Hit by { $weapon }
+sim-target-hit-by = { $target } hit by { $weapon }
+sim-ineffective = Ineffective
+sim-impact = { $weapon } impact
+# The trailing space is the classic game's.
+sim-misses = { $weapon } misses{" "}
+sim-destroyed-by = { $target } destroyed by { $weapon }
+sim-ground-impact = { $weapon } ground impact
+sim-detected = { $target } detected
+sim-radar-id = { $site } - Radar ID
+sim-firing = { $site } firing { $missile }
+sim-visual-id = Visual ID - { $aircraft }
+sim-fired-by = { $missile } fired by { $launcher }
+sim-frame = Frame { $frame }
+sim-beacon = Radio beacon bearing { $bearing }
+sim-fired = { $weapon } fired
+sim-released = { $weapon } released
+sim-destroyed-gunfire = { $target } destroyed by gunfire

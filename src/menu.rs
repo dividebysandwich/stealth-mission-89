@@ -10,6 +10,7 @@ use stealth_mission::{Mission, MissionKind, Sky};
 use crate::aircraft::AircraftKind;
 use crate::mission::{ActiveMission, MissionData, clean_text};
 use crate::settings::{AppState, MissionSetup};
+use stealth_i18n::{t, t_lines};
 
 pub struct MenuPlugin;
 
@@ -198,52 +199,16 @@ fn vr_available() -> bool {
     }
 }
 
-/// Flyable aircraft and their notes.
-const AIRCRAFT: [(AircraftKind, &[&str]); 8] = [
-    (
-        AircraftKind::F117,
-        &["Stealth attack aircraft", "Subsonic, 7 g", "Modern and classic cockpit"],
-    ),
-    (
-        AircraftKind::F16,
-        &["Multirole fighter", "Mach 2 class, 9 g, quick roll", "F-16 cockpit with RWR"],
-    ),
-    (
-        AircraftKind::Tornado,
-        &[
-            "Low-level strike aircraft",
-            "Swing wings sweep with speed",
-            "Modern cockpit, three MFDs",
-        ],
-    ),
-    (
-        AircraftKind::A10,
-        &["Close air support aircraft", "Slow and rugged, 30 mm cannon", "A-10C cockpit, two MFDs"],
-    ),
-    (
-        AircraftKind::AV8B,
-        &[
-            "V/STOL attack aircraft",
-            "Vectored thrust: hover, land anywhere",
-            "Nozzle lever: R / F, Shift for the stops",
-        ],
-    ),
-    (
-        AircraftKind::UH60,
-        &["Utility helicopter", "Inserts troops: land near the target", "Cyclic and collective"],
-    ),
-    (
-        AircraftKind::AH1Z,
-        &["Attack helicopter", "Turret gun, Hellfires, AIM-9", "Gun and Hellfires follow the pod"],
-    ),
-    (
-        AircraftKind::RAH66,
-        &[
-            "Stealth scout helicopter",
-            "Bays: Hellfires or Stingers",
-            "Hard to see on radar, slow or hovering",
-        ],
-    ),
+/// Flyable aircraft.
+const AIRCRAFT: [AircraftKind; 8] = [
+    AircraftKind::F117,
+    AircraftKind::F16,
+    AircraftKind::Tornado,
+    AircraftKind::A10,
+    AircraftKind::AV8B,
+    AircraftKind::UH60,
+    AircraftKind::AH1Z,
+    AircraftKind::RAH66,
 ];
 
 /// The flag a relaunch into VR takes: the headset drawn as this game draws it (`--gl-vr`, glvr's
@@ -422,145 +387,16 @@ pub(crate) const DIM: egui::Color32 = egui::Color32::from_rgb(30, 130, 60);
 pub(crate) const BRIGHT: egui::Color32 = egui::Color32::from_rgb(190, 255, 205);
 pub(crate) const AMBER: egui::Color32 = egui::Color32::from_rgb(255, 176, 0);
 
-/// Hover facts per theater ([`THEATERS`] order).
-const THEATER_FACTS: [&[&str]; 10] = [
-    &[
-        "Gulf of Sidra and the Libyan coast",
-        "Era of Operation El Dorado Canyon",
-        "Clear desert skies most days",
-    ],
-    &[
-        "Iran-Iraq Tanker War era",
-        "Over water and coastal desert",
-        "Clearest weather of all theaters",
-    ],
-    &[
-        "Arctic Norway and the Kola Peninsula",
-        "Home of the Soviet Northern Fleet",
-        "Frequent low overcast",
-    ],
-    &["NATO vs Warsaw Pact over Germany", "Clear skies only 15% of the time"],
-    &[
-        "Hanoi and Haiphong region",
-        "Jungle and mountain terrain",
-        "Thunderstorms in 30% of missions",
-    ],
-    &["Eastern Mediterranean and the Levant", "Mostly clear skies"],
-    &["Kuwait and Iraq, 1991", "The F-117A's real combat debut", "Mostly clear desert skies"],
-    &["Caribbean island theater", "Sea and land targets", "Tropical: storms in 15% of missions"],
-    &[
-        "Korean peninsula north of the DMZ",
-        "Mountainous terrain",
-        "Changeable weather, any sky is likely",
-    ],
-    &[
-        "Eastern Ukraine, Crimea and southern Russia",
-        "Front line from Kharkiv to Kherson burns",
-        "Open farmland, ruined towns at the front",
-    ],
-];
-const ROE: [(&str, &[&str]); 3] = [
-    (
-        "Cold War",
-        &[
-            "Covert peacetime operation",
-            "Staying undetected matters most",
-            "Fewer enemy aircraft on patrol",
-            "Exact rules of engagement are in the briefing",
-        ],
-    ),
-    (
-        "Limited War",
-        &[
-            "Regional shooting conflict",
-            "Enemy air defenses on alert",
-            "More enemy aircraft than in Cold War",
-        ],
-    ),
-    (
-        "Conventional War",
-        &["Full-scale war", "All enemy forces active", "More enemy aircraft than in Cold War"],
-    ),
-];
-const KINDS: [(MissionKind, &str, &[&str]); 5] = [
-    (
-        MissionKind::Strike,
-        "Strike",
-        &[
-            "Destroy, photograph or reach a ground target",
-            "Primary and secondary objective",
-            "Air-to-ground loadout",
-        ],
-    ),
-    (
-        MissionKind::Air,
-        "Air to air",
-        &[
-            "Intercept an enemy aircraft",
-            "Transports, bombers or fighter patrols",
-            "Air-to-air missile loadout",
-        ],
-    ),
-    (
-        MissionKind::StrikeTraining,
-        "Strike training",
-        &["Practice strike mission", "Learn weapons and navigation"],
-    ),
-    (
-        MissionKind::AirTraining,
-        "Air training",
-        &["Practice air-to-air mission", "Learn intercepts and missiles"],
-    ),
-    (
-        MissionKind::DroneDefense,
-        "Drone defense",
-        &[
-            "Ukraine only",
-            "Stop a wave of Geran attack drones before it hits a city or a nuclear plant",
-            "Then bomb their launch site",
-        ],
-    ),
+const KINDS: [MissionKind; 5] = [
+    MissionKind::Strike,
+    MissionKind::Air,
+    MissionKind::StrikeTraining,
+    MissionKind::AirTraining,
+    MissionKind::DroneDefense,
 ];
 
 /// Theaters with drone launch sites (drone defense missions).
 const DRONE_THEATERS: [&str; 1] = ["ukraine"];
-const OPPONENTS: [(&str, &[&str]); 4] = [
-    ("Green", &["Inexperienced enemy crews", "Easiest setting"]),
-    ("Regular", &["Average enemy crews", "Default setting"]),
-    ("Veteran", &["Skilled enemy crews", "More ships and patrols"]),
-    ("Elite", &["Best enemy pilots and SAM crews", "Hardest setting"]),
-];
-const RANDOM_SKY_FACTS: &[&str] = &[
-    "Rolled from the theater's climate",
-    "Changes with each new mission",
-    "Clouds block line of sight for both sides",
-];
-
-fn sky_facts(sky: Sky) -> &'static [&'static str] {
-    match sky {
-        Sky::Clear => &["No clouds", "Visibility 40 km", "The classic DOS era sky"],
-        Sky::Scattered => &[
-            "Cumulus 20-45%, base 2500-6000 ft",
-            "Sometimes a thin altostratus high above",
-            "Visibility 30 km",
-        ],
-        Sky::Broken => &[
-            "Cumulus 45-70%, base 2000-5000 ft",
-            "Often a stratocumulus layer above",
-            "Visibility 25 km",
-        ],
-        Sky::Overcast => &[
-            "Stratus 80-100%, base 1500-5000 ft",
-            "A few cumulus fragments below",
-            "Visibility 20 km",
-        ],
-        Sky::Storm => &[
-            "Cumulonimbus towers up to 40000 ft",
-            "Low stratus and cumulus from 1000 ft",
-            "Visibility 8 km",
-        ],
-    }
-}
 
 /// The window size the menus are laid out for (logical pixels, the desktop window's).
 const UI_REFERENCE: egui::Vec2 = egui::vec2(1280.0, 768.0);
@@ -643,11 +479,19 @@ pub(crate) fn facts(resp: egui::Response, facts: &[&str]) -> egui::Response {
     })
 }
 
+/// `text` in monospace, smaller if it is wider than `width` points (a translation longer than
+/// the English), down to 70 % of the size: a label's truncation takes what still does not fit.
+pub(crate) fn fit_monospace(ui: &egui::Ui, text: egui::RichText, width: f32) -> egui::RichText {
+    let size = egui::TextStyle::Monospace.resolve(ui.style()).size;
+    let font = egui::FontId::monospace(size);
+    let w = ui.painter().layout_no_wrap(text.text().to_string(), font, GREEN).size().x;
+    let text = text.monospace();
+    if w <= width { text } else { text.size((size * width / w).max(size * 0.7)) }
+}
+
 pub(crate) fn section(ui: &mut egui::Ui, title: &str) {
     ui.add_space(4.0);
-    ui.label(
-        egui::RichText::new(format!("[ {} ]", title.to_ascii_uppercase())).color(AMBER).size(14.0),
-    );
+    ui.label(egui::RichText::new(format!("[ {} ]", title.to_uppercase())).color(AMBER).size(14.0));
 }
 
 /// A framed group of sections under a bright title, filling the column.
@@ -657,7 +501,7 @@ pub(crate) fn group<R>(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egu
         .inner_margin(8.0)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(egui::RichText::new(title.to_ascii_uppercase()).size(16.0).color(BRIGHT));
+            ui.label(egui::RichText::new(title.to_uppercase()).size(16.0).color(BRIGHT));
             add(ui)
         })
         .inner;
@@ -773,19 +617,31 @@ fn wheel_notches(ui: &egui::Ui, resp: &egui::Response) -> i32 {
 
 /// A labelled CLASSIC / MODERN slide switch; `modern` is the right position.
 pub(crate) fn slide_switch(ui: &mut egui::Ui, label: &str, modern: &mut bool) -> egui::Response {
-    two_way_switch(ui, label, modern, ("CLASSIC", "MODERN"))
+    two_way_switch(ui, label, modern, (t!("classic"), t!("modern")))
 }
 
 /// A labelled slide switch between two settings (`sides`: left, right); `right` is the right
-/// position.
+/// position. The track is as wide as its words; a label that does not fit beside it goes above.
 fn two_way_switch(
     ui: &mut egui::Ui,
     label: &str,
     modern: &mut bool,
     sides: (&str, &str),
 ) -> egui::Response {
-    let width = ui.available_width().min(200.0);
-    let (rect, mut resp) = ui.allocate_exact_size(egui::vec2(width, 22.0), egui::Sense::click());
+    let font = egui::FontId::monospace(12.0);
+    let side_font = egui::FontId::monospace(11.0);
+    let label = label.to_uppercase();
+    let text_width = |t: &str, f: &egui::FontId| {
+        ui.painter().layout_no_wrap(t.to_string(), f.clone(), GREEN).size().x
+    };
+    let half =
+        (text_width(sides.0, &side_font).max(text_width(sides.1, &side_font)) + 8.0).max(54.0);
+    let track_width = 2.0 * half;
+    let beside = text_width(&label, &font) + 8.0 + track_width;
+    // One width for every switch of a column, so that their tracks line up.
+    let width = ui.available_width().min(260.0);
+    let height = if beside > width { 40.0 } else { 22.0 };
+    let (rect, mut resp) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::click());
     if resp.clicked() {
         *modern = !*modern;
         resp.mark_changed();
@@ -794,17 +650,16 @@ fn two_way_switch(
         let t = ui.ctx().animate_bool_responsive(resp.id, *modern);
         let hovered = resp.hovered();
         let p = ui.painter();
-        let font = egui::FontId::monospace(12.0);
         p.text(
-            rect.left_center(),
+            egui::pos2(rect.left(), rect.top() + 11.0),
             egui::Align2::LEFT_CENTER,
-            label.to_ascii_uppercase(),
-            font.clone(),
+            label,
+            font,
             if hovered { BRIGHT } else { GREEN },
         );
         // The track: two halves, the knob slides over the selected one.
         let track = egui::Rect::from_min_max(
-            egui::pos2(rect.right() - 108.0, rect.top()),
+            egui::pos2(rect.right() - track_width, rect.bottom() - 22.0),
             rect.right_bottom(),
         );
         p.rect_filled(track, 0.0, FIELD);
@@ -814,7 +669,6 @@ fn two_way_switch(
             egui::Stroke::new(1.0, if hovered { BRIGHT } else { DIM }),
             egui::StrokeKind::Inside,
         );
-        let half = track.width() / 2.0;
         let knob = egui::Rect::from_min_size(
             egui::pos2(track.left() + t * half, track.top()),
             egui::vec2(half, track.height()),
@@ -827,7 +681,7 @@ fn two_way_switch(
                 center,
                 egui::Align2::CENTER_CENTER,
                 text,
-                egui::FontId::monospace(11.0),
+                side_font.clone(),
                 if on { BRIGHT } else { DIM },
             );
         }
@@ -844,80 +698,65 @@ pub(crate) fn big_button(text: &str) -> egui::Button<'static> {
 type SettingsMut<'a> = ResMut<'a, crate::settings::Settings>;
 
 pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize) {
-    section(ui, "Theater");
-    for (i, (_, name)) in THEATERS.iter().enumerate() {
-        facts(ui.radio_value(theater, i, *name), THEATER_FACTS[i]);
+    section(ui, t!("section-theater"));
+    for i in 0..THEATERS.len() {
+        facts(
+            ui.radio_value(theater, i, crate::i18n::theater_name(i)),
+            crate::i18n::theater_facts(i),
+        );
     }
 }
 
 pub(crate) fn opponent_options(ui: &mut egui::Ui, opponents: &mut u8) {
-    section(ui, "Opponents");
-    let options = OPPONENTS.iter().enumerate().map(|(i, (name, f))| (i as u8, *name, *f));
+    section(ui, t!("section-opponents"));
+    let options =
+        (0..4).map(|o| (o, crate::i18n::opponents_name(o), crate::i18n::opponents_facts(o)));
     dropdown(ui, "opponents", opponents, options);
 }
 
 pub(crate) fn situation_options(ui: &mut egui::Ui, roe: &mut u8) {
-    section(ui, "Situation");
-    let options = ROE.iter().enumerate().map(|(i, (name, f))| (i as u8, *name, *f));
+    section(ui, t!("section-situation"));
+    let options = (0..3).map(|r| (r, crate::i18n::roe_name(r), crate::i18n::roe_facts(r)));
     dropdown(ui, "situation", roe, options);
 }
 
 fn mission_options(ui: &mut egui::Ui, state: &mut MenuState) {
-    section(ui, "Mission");
+    section(ui, t!("section-mission"));
     let drones = DRONE_THEATERS.contains(&THEATERS[state.theater].0);
     if !drones && state.kind == MissionKind::DroneDefense {
         state.kind = MissionKind::Air;
     }
-    let options = KINDS.into_iter().filter(|k| k.0 != MissionKind::DroneDefense || drones);
+    let options = KINDS
+        .into_iter()
+        .filter(|k| *k != MissionKind::DroneDefense || drones)
+        .map(|k| (k, crate::i18n::kind_name(k), crate::i18n::kind_facts(k)));
     dropdown(ui, "mission", &mut state.kind, options);
 }
 
-/// The moon phases to choose from, in eighths of the cycle.
-const MOON_PHASES: [(u8, &str, &[&str]); 8] = [
-    (
-        0,
-        "New moon",
-        &["No moonlight: a black night, lights and stars only", "Enemy pilots see you at 2 km"],
-    ),
-    (1, "Waxing crescent", &["A thin moon in the evening sky, set before midnight"]),
-    (2, "First quarter", &["Half lit, up in the evening, sets around midnight"]),
-    (3, "Waxing gibbous", &["Bright, up from the afternoon until after midnight"]),
-    (4, "Full moon", &["Up all night, high at midnight", "Enemy pilots see you at 4 km"]),
-    (5, "Waning gibbous", &["Bright, rises in the evening, up until the morning"]),
-    (6, "Last quarter", &["Half lit, rises around midnight"]),
-    (7, "Waning crescent", &["A thin moon rising before dawn"]),
-];
-
 /// The moon's phase (with the time of day switch on).
 pub(crate) fn moon_options(ui: &mut egui::Ui, moon: &mut Option<u8>) {
-    section(ui, "Moon");
-    let date: &[&str] =
-        &["The real moon of the briefing date", "Needs the time of day switch (modern)"];
-    let options = std::iter::once((None, "Mission date", date))
-        .chain(MOON_PHASES.into_iter().map(|(m, name, f)| (Some(m), name, f)));
+    section(ui, t!("section-moon"));
+    let options =
+        std::iter::once((None, t!("moon-date"), t_lines!("moon-date.facts")))
+            .chain((0..8u8).map(|m| {
+                (Some(m), t!(&format!("moon-{m}")), t_lines!(&format!("moon-{m}.facts")))
+            }));
     dropdown(ui, "moon", moon, options);
 }
 
 fn start_time_options(ui: &mut egui::Ui, state: &mut MenuState) {
-    section(ui, "Start time");
+    section(ui, t!("section-start-time"));
     let mut random = state.start_hour.is_none();
     let r = facts(
-        ui.checkbox(&mut random, "Random"),
-        &[
-            "Rolled with each new mission, as in classic mode",
-            "06:00-08:00 by day or 18:00-20:00 by night",
-            "Uncheck to choose the hour",
-        ],
+        ui.checkbox(&mut random, t!("menu-start-random")),
+        t_lines!("menu-start-random.facts"),
     );
     if r.changed() {
         state.start_hour = if random { None } else { Some(8) };
     }
     if let Some(h) = state.start_hour.as_mut() {
         let slider = egui::Slider::new(h, 0..=23).custom_formatter(|v, _| format!("{v:02.0}:00"));
-        facts(
-            ui.add(slider),
-            &["Takeoff time", "Night from 18:00 to 06:00", "Kept by NEW MISSION"],
-        );
+        facts(ui.add(slider), t_lines!("menu-start-slider.facts"));
     }
 }
 
@@ -929,8 +768,12 @@ pub(crate) fn vehicle_options(
 ) {
     let s = settings.bypass_change_detection();
     let mut picked = false;
-    for (kind, f) in AIRCRAFT {
-        picked |= facts(ui.radio_value(&mut s.aircraft, kind, kind.name()), f).changed();
+    for kind in AIRCRAFT {
+        picked |= facts(
+            ui.radio_value(&mut s.aircraft, kind, kind.name()),
+            crate::i18n::aircraft_facts(kind),
+        )
+        .changed();
     }
     if picked {
         settings.set_changed();
@@ -940,13 +783,8 @@ pub(crate) fn vehicle_options(
         && let Some(lockheed) = lockheed
     {
         facts(
-            ui.checkbox(lockheed, "Realistic weapons"),
-            &[
-                "The real aircraft's limits",
-                "2 weapon bays instead of 4",
-                "No AIM-9 or AIM-120 missiles",
-                "No carrier takeoffs or landings",
-            ],
+            ui.checkbox(lockheed, t!("menu-realistic-weapons")),
+            t_lines!("menu-realistic-weapons.facts"),
         );
     }
 }
@@ -958,7 +796,7 @@ pub(crate) fn simulation_options(
     settings: &mut SettingsMut,
     note: Option<&str>,
 ) {
-    group(ui, "Simulation", |ui| {
+    group(ui, t!("group-simulation"), |ui| {
         realism_options(ui, settings);
         crash_option(ui, settings);
         if let Some(note) = note {
@@ -970,12 +808,8 @@ pub(crate) fn simulation_options(
 fn crash_option(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     let s = settings.bypass_change_detection();
     if facts(
-        ui.checkbox(&mut s.no_crashes, "Crash protection"),
-        &[
-            "Pulls up automatically near the ground (gear up)",
-            "Ground contact and collisions are not fatal",
-            "Off: the ground can always be hit",
-        ],
+        ui.checkbox(&mut s.no_crashes, t!("menu-crash-protection")),
+        t_lines!("menu-crash-protection.facts"),
     )
     .changed()
     {
@@ -988,14 +822,11 @@ pub(crate) fn tacview_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     if cfg!(target_arch = "wasm32") {
         return;
     }
-    section(ui, "Tacview");
+    section(ui, t!("section-tacview"));
     let s = settings.bypass_change_detection();
     if facts(
-        ui.checkbox(&mut s.tacview, "Export"),
-        &[
-            "Saves each flight as a Tacview recording (.acmi)",
-            "In the game's folder for your files, under tacview",
-        ],
+        ui.checkbox(&mut s.tacview, t!("menu-tacview-export")),
+        t_lines!("menu-tacview-export.facts"),
     )
     .changed()
     {
@@ -1003,12 +834,8 @@ pub(crate) fn tacview_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
     let s = settings.bypass_change_detection();
     if facts(
-        ui.checkbox(&mut s.tacview_real_time, "Real-time telemetry"),
-        &[
-            "Sends the flight to Tacview while you fly",
-            "In Tacview: Record > Real-Time Telemetry",
-            "Address 127.0.0.1, port 42674 (--tacview-address)",
-        ],
+        ui.checkbox(&mut s.tacview_real_time, t!("menu-tacview-real-time")),
+        t_lines!("menu-tacview-real-time.facts"),
     )
     .changed()
     {
@@ -1017,15 +844,16 @@ pub(crate) fn tacview_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
 }
 
 pub(crate) fn realism_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
-    section(ui, "Realism");
+    section(ui, t!("section-realism"));
     let s = settings.bypass_change_detection();
     if facts(
-        two_way_switch(ui, "Damage", &mut s.realistic_damage, ("GAME", "REAL")),
-        &[
-            "Weapon damage", "Game: classic damage; hits add up but never bring the aircraft down",
-            "Realistic: a missile hit can destroy the aircraft (eject!), damages more systems and often starts a fire, which burns out or blows the aircraft up",
-            "Realistic: damaged control surfaces put the aircraft out of trim or make it oscillate",
-        ],
+        two_way_switch(
+            ui,
+            t!("menu-damage"),
+            &mut s.realistic_damage,
+            (t!("switch-game"), t!("switch-real")),
+        ),
+        t_lines!("menu-damage.facts"),
     )
     .changed()
     {
@@ -1033,12 +861,13 @@ pub(crate) fn realism_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
     let s = settings.bypass_change_detection();
     if facts(
-        two_way_switch(ui, "Guidance", &mut s.realistic_guidance, ("CLASSIC", "REAL")),
-        &[
-            "Missile guidance", "Classic: missiles flying straight at their target",
-            "Realistic: proportional navigation to the collision point; motors burn out and the missiles glide on, losing speed with every turn (smoke only while the motor burns)",
-            "Realistic: SAMs loft against distant targets; the AIM-120 flies straight for 3 s (pull up to lob it)",
-        ],
+        two_way_switch(
+            ui,
+            t!("menu-guidance"),
+            &mut s.realistic_guidance,
+            (t!("classic"), t!("switch-real")),
+        ),
+        t_lines!("menu-guidance.facts"),
     )
     .changed()
     {
@@ -1046,12 +875,13 @@ pub(crate) fn realism_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
     let s = settings.bypass_change_detection();
     if facts(
-        two_way_switch(ui, "Air defence", &mut s.air_defence, ("CLASSIC", "REAL")),
-        &[
-            "Low-level air defences", "Classic: only the SAM sites and fighters",
-            "Realistic: radar-laid ZSU-23-4 guns (their radar sees you like a SAM's) and S-60 flak batteries guard the airfields and the targets; MANPADS teams in the towns fire SA-14s at what they see",
-            "Flying low over defended places becomes dangerous; bombs and guns destroy the guns",
-        ],
+        two_way_switch(
+            ui,
+            t!("menu-air-defence"),
+            &mut s.air_defence,
+            (t!("classic"), t!("switch-real")),
+        ),
+        t_lines!("menu-air-defence.facts"),
     )
     .changed()
     {
@@ -1064,27 +894,24 @@ pub(crate) fn weather_options(
     weather: &mut Option<Sky>,
     cloud_cover: &mut Option<u8>,
 ) {
-    section(ui, "Weather");
-    let options = std::iter::once((None, "Random", RANDOM_SKY_FACTS))
-        .chain(Sky::ALL.into_iter().map(|sky| (Some(sky), sky.name(), sky_facts(sky))));
+    section(ui, t!("section-weather"));
+    let options = std::iter::once((None, t!("sky-random"), t_lines!("sky-random.facts"))).chain(
+        Sky::ALL
+            .into_iter()
+            .map(|sky| (Some(sky), crate::i18n::sky_name(sky), crate::i18n::sky_facts(sky))),
+    );
     dropdown(ui, "weather", weather, options);
     // Coverage of the main layer (cumulus, or stratus for overcast and storms).
     let mut auto = cloud_cover.is_none();
-    let r = facts(
-        ui.checkbox(&mut auto, "Random cover"),
-        &[
-            "Main cloud layer cover rolled with the weather",
-            "Uncheck to set it yourself",
-            "Main layer: stratus for overcast and storm, cumulus otherwise",
-        ],
-    );
+    let r =
+        facts(ui.checkbox(&mut auto, t!("menu-random-cover")), t_lines!("menu-random-cover.facts"));
     if r.changed() {
         *cloud_cover = if auto { None } else { Some(50) };
     }
     if let Some(c) = cloud_cover.as_mut() {
         facts(
             ui.add(egui::Slider::new(c, 0..=100).suffix("%")),
-            &["Share of the sky the main layer covers", "No effect on a clear sky"],
+            t_lines!("menu-cover-slider.facts"),
         );
     }
 }
@@ -1121,14 +948,14 @@ pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
 
 /// What the download has that the browser build has not (`web_gateway`), with the reason.
 #[cfg(target_arch = "wasm32")]
-const DOWNLOAD_GIVES: [(&str, &str); 7] = [
-    ("VR", "Fly in VR on any OpenXR-compatible headset and the Steam Frame"),
-    ("HOTAS", "Full support for gamepads, joysticks, throttles and pedals"),
-    ("Better multiplayer", "Direct UDP connection to servers for less lag"),
-    ("Host your own server", "Host a coop campaign, or run a dedicated server"),
-    ("Head tracking", "TrackIR-style trackers through OpenTrack"),
-    ("Tacview", "Flight recordings and real-time telemetry"),
-    ("Yours to keep", "If the website goes down you still have your own copy"),
+const DOWNLOAD_GIVES: [&str; 7] = [
+    "web-gives-vr",
+    "web-gives-hotas",
+    "web-gives-multiplayer",
+    "web-gives-server",
+    "web-gives-head-tracking",
+    "web-gives-tacview",
+    "web-gives-keep",
 ];
 
 /// The browser build's first screen: play in the browser or download the desktop game, beside
@@ -1139,32 +966,31 @@ fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
     let width = (ctx.content_rect().width() - 32.0).clamp(600.0, 820.0);
     menu_window(ctx, "Stealth Mission 89", width).show(ctx, |ui| {
         ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("STEALTH MISSION 89").heading().color(BRIGHT));
-            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+            ui.label(egui::RichText::new(t!("menu-title")).heading().color(BRIGHT));
+            ui.label(egui::RichText::new(t!("menu-subtitle")).color(DIM));
         });
         ui.add_space(14.0);
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(300.0);
-                if ui.add(wide("PLAY IN BROWSER")).clicked() {
+                if ui.add(wide(t!("web-play"))).clicked() {
                     state.web_gateway = false;
                 }
-                ui.label(egui::RichText::new("Right here, nothing to install").color(DIM));
+                ui.label(egui::RichText::new(t!("web-play.facts")).color(DIM));
                 ui.add_space(14.0);
-                if ui.add(wide("DOWNLOAD")).clicked() {
+                if ui.add(wide(t!("menu-download"))).clicked() {
                     ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
                 }
-                ui.label(
-                    egui::RichText::new("Windows, Linux and macOS, Steam Deck and Steam Frame")
-                        .color(DIM),
-                );
+                ui.label(egui::RichText::new(t!("web-download-platforms")).color(DIM));
             });
             ui.add_space(16.0);
             ui.vertical(|ui| {
-                group(ui, "The download version", |ui| {
-                    for (what, why) in DOWNLOAD_GIVES {
-                        ui.label(egui::RichText::new(format!("> {what}")).color(GREEN));
-                        ui.label(egui::RichText::new(why).size(14.0).color(DIM));
+                group(ui, t!("web-download-version"), |ui| {
+                    for id in DOWNLOAD_GIVES {
+                        ui.label(egui::RichText::new(format!("> {}", t!(id))).color(GREEN));
+                        ui.label(
+                            egui::RichText::new(t!(&format!("{id}.why"))).size(14.0).color(DIM),
+                        );
                         ui.add_space(2.0);
                     }
                 });
@@ -1186,96 +1012,50 @@ fn main_screen(
     let wide = |text: &str| big_button(text).min_size(egui::vec2(360.0, 50.0));
     menu_window(ctx, "Stealth Mission 89", 420.0).show(ctx, |ui| {
         ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("STEALTH MISSION 89").heading().color(BRIGHT));
-            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+            ui.label(egui::RichText::new(t!("menu-title")).heading().color(BRIGHT));
+            ui.label(egui::RichText::new(t!("menu-subtitle")).color(DIM));
             ui.add_space(10.0);
-            if facts(
-                ui.add(wide("SINGLE MISSION")),
-                &[
-                    "One mission in the theater of your choice",
-                    "Choose the options, plan the route and the loadout",
-                ],
-            )
-            .clicked()
+            if facts(ui.add(wide(t!("menu-single-mission"))), t_lines!("menu-single-mission.facts"))
+                .clicked()
             {
                 // Leaves career mode; the same mission again if the options are the same.
                 state.career = None;
                 state.dirty = true;
                 state.mission_screen = true;
             }
-            if facts(
-                ui.add(wide("CAREER")),
-                &[
-                    "Pilot records: rank, decorations, sorties",
-                    "Tour of duty: 12 sorties in one theater",
-                    "What you destroy stays destroyed",
-                ],
-            )
-            .clicked()
-            {
+            if facts(ui.add(wide(t!("menu-career"))), t_lines!("menu-career.facts")).clicked() {
                 career.show();
             }
-            if facts(
-                ui.add(wide("DYNAMIC CAMPAIGN")),
-                &[
-                    "Dynamic campaign in real time",
-                    "Take the enemy's cities and airfields",
-                    "Missions from the live situation",
-                ],
-            )
-            .clicked()
-            {
+            if facts(ui.add(wide(t!("menu-campaign"))), t_lines!("menu-campaign.facts")).clicked() {
                 campaign.show();
             }
             // Browsers only join, through the master server's relay (docs/web.md).
             let how = if cfg!(target_arch = "wasm32") {
-                "Join a server on the public list"
+                t!("menu-multiplayer.join")
             } else {
-                "Join a server, or host a campaign and fly in it"
+                t!("menu-multiplayer.host")
             };
-            if facts(ui.add(wide("MULTIPLAYER")), &["Coop in the dynamic campaign", how]).clicked()
+            if facts(ui.add(wide(t!("menu-multiplayer"))), &[t!("menu-multiplayer.facts"), how])
+                .clicked()
             {
                 multiplayer.show();
             }
-            if facts(
-                ui.add(wide("OPTIONS")),
-                &[
-                    "Game: cockpit, HUD and avionics style, auto trim",
-                    "Graphics, sound volumes, key and joystick bindings",
-                    "Saved for the next flights",
-                ],
-            )
-            .clicked()
-            {
+            if facts(ui.add(wide(t!("menu-options"))), t_lines!("menu-options.facts")).clicked() {
                 options.open = true;
             }
             // The browser build: the desktop game is a download (web/download.html).
             #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DOWNLOAD")),
-                &[
-                    "The desktop game for Windows, Linux and macOS",
-                    "With VR and multiplayer",
-                    "Steam Deck and Steam Frame: the Linux AppImage",
-                ],
-            )
-            .clicked()
-            {
+            if facts(ui.add(wide(t!("menu-download"))), t_lines!("menu-download.facts")).clicked() {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
             }
             #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DISCORD")),
-                &["Fly together, report bugs and share missions", "Follow development"],
-            )
-            .clicked()
-            {
+            if facts(ui.add(wide(t!("menu-discord"))), t_lines!("menu-discord.facts")).clicked() {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
             }
             ui.add_space(10.0);
             // In the browser the tab is closed instead.
             if !cfg!(target_arch = "wasm32")
-                && facts(ui.add(wide("QUIT")), &["Exit to the desktop"]).clicked()
+                && facts(ui.add(wide(t!("menu-quit"))), t_lines!("menu-quit.facts")).clicked()
             {
                 exit.write(AppExit::Success);
             }
@@ -1287,9 +1067,12 @@ fn main_screen(
                 (true, true) => " · WEBGL2",
             };
             ui.label(
-                egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
-                    .size(11.0)
-                    .color(DIM),
+                egui::RichText::new(format!(
+                    "{}{renderer}",
+                    t!("menu-version", version = env!("CARGO_PKG_VERSION"))
+                ))
+                .size(11.0)
+                .color(DIM),
             );
         });
     });
@@ -1311,7 +1094,10 @@ pub(crate) fn menu_ui(
     mut input_config: ResMut<crate::hotas::InputConfig>,
     hotas: Res<crate::hotas::Hotas>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut saved: Local<Option<crate::prefs::Prefs>>,
+    (mut saved, mut worded_in): (
+        Local<Option<crate::prefs::Prefs>>,
+        Local<Option<stealth_i18n::Language>>,
+    ),
     windows: (
         ResMut<crate::planner::Planner>,
         ResMut<crate::career::CareerWindow>,
@@ -1339,6 +1125,11 @@ pub(crate) fn menu_ui(
         }
         return Ok(());
     };
+    // The briefing is worded when the mission is generated: again (the same mission) in
+    // another language.
+    if worded_in.replace(settings.language).is_some_and(|l| l != settings.language) {
+        state.dirty = true;
+    }
     if state.dirty {
         state.dirty = false;
         let pilot = state.career.as_deref().and_then(crate::career::Pilot::load);
@@ -1350,7 +1141,7 @@ pub(crate) fn menu_ui(
                     state.kind = m.settings.kind;
                     state.mission = Some(Ok(m));
                 }
-                None => state.mission = Some(Err("No targets left standing for this tour".into())),
+                None => state.mission = Some(Err(t!("menu-no-targets").into())),
             }
         } else {
             state.career = None;
@@ -1435,14 +1226,31 @@ pub(crate) fn menu_ui(
         let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
         menu_window(ctx, "Single mission", width).show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(if career_mode { "CAREER SORTIE" } else { "SINGLE MISSION" }).heading().color(BRIGHT));
+                ui.label(
+                    egui::RichText::new(if career_mode {
+                        t!("menu-career-sortie")
+                    } else {
+                        t!("menu-single-mission")
+                    })
+                    .heading()
+                    .color(BRIGHT),
+                );
                 if let Some(p) = state.career.as_deref().and_then(crate::career::Pilot::load)
                     && let Some(t) = &p.tour
                 {
-                    ui.label(egui::RichText::new(format!("  {}  //  TOUR SORTIE {} OF {}", p.title().to_ascii_uppercase(), t.sortie + 1, t.length)).color(AMBER));
+                    let line = t!(
+                        "menu-tour-sortie",
+                        pilot = p.title().to_uppercase(),
+                        sortie = t.sortie + 1,
+                        length = t.length
+                    );
+                    ui.label(egui::RichText::new(format!("  {line}")).color(AMBER));
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new(format!("MISSION PLANNING SYSTEM  //  MSN {:05}", state.seed)).color(DIM));
+                    ui.label(
+                        egui::RichText::new(t!("menu-msn", seed = format!("{:05}", state.seed)))
+                            .color(DIM),
+                    );
                 });
             });
             ui.separator();
@@ -1451,7 +1259,7 @@ pub(crate) fn menu_ui(
                     // Options: three narrow columns.
                     ui.vertical(|ui| {
                         ui.set_width(210.0);
-                        group(ui, "Mission", |ui| {
+                        group(ui, t!("group-mission"), |ui| {
                             theater_options(ui, &mut state.theater);
                             situation_options(ui, &mut state.roe);
                             opponent_options(ui, &mut state.opponents);
@@ -1460,19 +1268,20 @@ pub(crate) fn menu_ui(
                     });
                     ui.vertical(|ui| {
                         ui.set_width(210.0);
-                        group(ui, "Conditions", |ui| {
+                        group(ui, t!("group-conditions"), |ui| {
                             let state = &mut *state;
                             weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
-                        group(ui, "Vehicle", |ui| {
+                        group(ui, t!("group-vehicle"), |ui| {
                             let was = settings.aircraft;
                             vehicle_options(ui, &mut settings, Some(&mut state.lockheed));
                             // A troop helicopter flies the same seed's targets as insertions;
                             // helicopters fly short missions.
                             let (now, was) = (settings.aircraft.spec(), was.spec());
-                            if now.transport() != was.transport() || now.helicopter != was.helicopter
+                            if now.transport() != was.transport()
+                                || now.helicopter != was.helicopter
                             {
                                 state.regenerate();
                             }
@@ -1486,66 +1295,88 @@ pub(crate) fn menu_ui(
                 // Mission summary in big type, the full briefing below in small type.
                 // What is left beside the option columns, less the frame margins and border.
                 let summary_width = (ui.available_width() - 22.0).max(300.0);
-                egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.set_width(summary_width);
-                        match &state.mission {
-                            Some(Ok(m)) => {
-                                mission_summary(ui, &state, m);
-                                ui.add_space(6.0);
-                                ui.horizontal(|ui| {
-                                    let plan = ui.button(egui::RichText::new("PLAN ROUTE").size(16.0));
-                                    if facts(plan, &["The theater map with the enemy radar and SAM coverage", "Add, move and remove navigation points", "Targets and the landing base stay fixed"]).clicked() {
-                                        planner.open = true;
-                                    }
-                                    let arm = ui.button(egui::RichText::new("LOADOUT").size(16.0));
-                                    if facts(arm, &["Choose the stores on each bay or pylon", "Starts with the briefed weapons"]).clicked() {
-                                        loadout.open = true;
-                                    }
-                                });
+                egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(
+                    ui,
+                    |ui| {
+                        ui.vertical(|ui| {
+                            ui.set_width(summary_width);
+                            match &state.mission {
+                                Some(Ok(m)) => {
+                                    mission_summary(ui, &state, m);
+                                    ui.add_space(6.0);
+                                    ui.horizontal(|ui| {
+                                        let plan = ui.button(
+                                            egui::RichText::new(t!("menu-plan-route")).size(16.0),
+                                        );
+                                        if facts(plan, t_lines!("menu-plan-route.facts")).clicked()
+                                        {
+                                            planner.open = true;
+                                        }
+                                        let arm = ui.button(
+                                            egui::RichText::new(t!("menu-loadout")).size(16.0),
+                                        );
+                                        if facts(arm, t_lines!("menu-loadout.facts")).clicked() {
+                                            loadout.open = true;
+                                        }
+                                    });
+                                }
+                                Some(Err(e)) => {
+                                    ui.colored_label(AMBER, e);
+                                }
+                                None => {
+                                    ui.label(t!("menu-generating"));
+                                }
                             }
-                            Some(Err(e)) => {
-                                ui.colored_label(AMBER, e);
-                            }
-                            None => {
-                                ui.label("GENERATING...");
-                            }
-                        }
-                    });
-                });
+                        });
+                    },
+                );
             });
             ui.add_space(6.0);
             ui.separator();
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                let to = if career_mode { "Back to the pilot records" } else { "Back to the main menu" };
-                if facts(ui.add(big_button("BACK")), &[to]).clicked() {
+                let to = if career_mode { t!("menu-back-records") } else { t!("menu-back-main") };
+                if facts(ui.add(big_button(t!("back"))), &[to]).clicked() {
                     back = true;
                 }
-                let new = if career_mode { "NEW SORTIE" } else { "NEW MISSION" };
-                if facts(ui.add(big_button(new)), &["Rolls different objectives", "Keeps all the options and the start time"]).clicked() {
+                let new = if career_mode { t!("menu-new-sortie") } else { t!("menu-new-mission") };
+                if facts(ui.add(big_button(new)), t_lines!("menu-new-mission.facts")).clicked() {
                     state.seed = rand::random();
                     state.dirty = true;
                 }
-                if !career_mode && facts(ui.add(big_button("LOAD")), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
+                if !career_mode
+                    && facts(ui.add(big_button(t!("menu-load"))), t_lines!("menu-load.facts"))
+                        .clicked()
+                {
                     saves.show();
                 }
-                if facts(ui.add(big_button("OPTIONS")), &["Game, graphics, sound and controls"]).clicked() {
+                if facts(ui.add(big_button(t!("menu-options"))), &[t!("menu-options.short")])
+                    .clicked()
+                {
                     options.open = true;
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let can_fly = matches!(state.mission, Some(Ok(_)));
-                    let fly = ui.add_enabled(can_fly, big_button("FLY").fill(DIM));
-                    if facts(fly, &["Take off on the briefed mission"]).clicked()
+                    let fly = ui.add_enabled(can_fly, big_button(t!("menu-fly")).fill(DIM));
+                    if facts(fly, t_lines!("menu-fly.facts")).clicked()
                         && let Some(Ok(m)) = &state.mission
                     {
                         *setup = crate::mission::setup_from_mission(m, &tables.start_dir);
                         commands.insert_resource(ActiveMission(m.clone()));
-                        commands.insert_resource(state.route.clone().unwrap_or_else(|| crate::mission::PlannedRoute::of(m)));
-                        commands.insert_resource(state.loadout.clone().unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft)));
+                        commands.insert_resource(
+                            state
+                                .route
+                                .clone()
+                                .unwrap_or_else(|| crate::mission::PlannedRoute::of(m)),
+                        );
+                        commands.insert_resource(state.loadout.clone().unwrap_or_else(|| {
+                            crate::loadout::PlannedLoadout::of(m, settings.aircraft)
+                        }));
                         match &state.career {
-                            Some(key) => commands.insert_resource(crate::career::CareerFlight(key.clone())),
+                            Some(key) => {
+                                commands.insert_resource(crate::career::CareerFlight(key.clone()))
+                            }
                             None => commands.remove_resource::<crate::career::CareerFlight>(),
                         }
                         next.set(AppState::Flight);
@@ -1553,14 +1384,21 @@ pub(crate) fn menu_ui(
                     // Already in VR: "Fly" flies in the headset. No VR in the browser.
                     if !settings.vr && !cfg!(target_arch = "wasm32") {
                         let vr_button = ui
-                            .add_enabled(can_fly && vr.0, big_button("FLY IN VR"))
-                            .on_disabled_hover_text(if vr.0 { "Generate a mission first" } else { "No OpenXR runtime (Monado, WiVRn, SteamVR) is active" });
-                        if facts(vr_button, &["Restarts the game in the VR headset", "Flies this exact mission"]).clicked() {
+                            .add_enabled(can_fly && vr.0, big_button(t!("menu-fly-vr")))
+                            .on_disabled_hover_text(if vr.0 {
+                                t!("menu-fly-vr.no-mission")
+                            } else {
+                                t!("menu-fly-vr.no-runtime")
+                            });
+                        if facts(vr_button, t_lines!("menu-fly-vr.facts")).clicked() {
                             match relaunch_in_vr(&state, &settings) {
                                 Ok(()) => {
                                     exit.write(AppExit::Success);
                                 }
-                                Err(e) => state.mission = Some(Err(format!("could not start in VR: {e}"))),
+                                Err(e) => {
+                                    state.mission =
+                                        Some(Err(t!("menu-vr-failed", error = e.to_string())))
+                                }
                             }
                         }
                     }
@@ -1625,39 +1463,39 @@ pub(crate) fn menu_ui(
 
 fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
     let b = &m.briefing;
-    section(ui, "Mission summary");
+    section(ui, t!("section-mission-summary"));
     ui.label(egui::RichText::new(clean_text(&b.title)).size(20.0).color(BRIGHT));
     ui.add_space(4.0);
     let w = &m.weather;
     let rows = [
-        ("THEATER", THEATERS[state.theater].1.to_string(), GREEN),
-        ("SITUATION", ROE[state.roe as usize].0.to_string(), GREEN),
+        (t!("summary-theater"), crate::i18n::theater_name(state.theater).to_string(), GREEN),
+        (t!("summary-situation"), crate::i18n::roe_name(state.roe).to_string(), GREEN),
+        (t!("summary-mission"), crate::i18n::kind_name(state.kind).to_string(), GREEN),
+        (t!("summary-opponents"), crate::i18n::opponents_name(state.opponents).to_string(), GREEN),
         (
-            "MISSION",
-            KINDS.iter().find(|k| k.0 == state.kind).map_or("", |k| k.1).to_string(),
+            t!("summary-time"),
+            t!(
+                "summary-time-value",
+                daytime = crate::i18n::daytime(m.night),
+                depart = m.time.depart.to_string()
+            ),
             GREEN,
         ),
-        ("OPPONENTS", OPPONENTS[state.opponents as usize].0.to_string(), GREEN),
         (
-            "TIME",
-            format!("{}  dep {}", if m.night { "Night" } else { "Day" }, m.time.depart),
-            GREEN,
-        ),
-        (
-            "WEATHER",
-            format!("{}  vis {} km", w.sky.name(), w.vis_km),
+            t!("summary-weather"),
+            t!("summary-weather-value", sky = crate::i18n::sky_name(w.sky), vis = w.vis_km),
             if w.sky == Sky::Storm { AMBER } else { GREEN },
         ),
-        ("FUEL", format!("{} lbs", m.fuel_lbs), GREEN),
+        (t!("summary-fuel"), t!("summary-fuel-value", fuel = m.fuel_lbs), GREEN),
     ];
     egui::Grid::new("summary").num_columns(2).spacing([18.0, 4.0]).show(ui, |ui| {
         for (key, value, color) in rows {
             ui.label(egui::RichText::new(key).size(14.0).color(DIM));
-            ui.label(egui::RichText::new(value.to_ascii_uppercase()).size(20.0).color(color));
+            ui.label(egui::RichText::new(value.to_uppercase()).size(20.0).color(color));
             ui.end_row();
         }
     });
-    section(ui, "Briefing");
+    section(ui, t!("section-briefing"));
     egui::ScrollArea::vertical().max_height(230.0).auto_shrink([false, true]).show(ui, |ui| {
         let small = |ui: &mut egui::Ui, s: &str| {
             if !s.trim().is_empty() {
@@ -1674,17 +1512,18 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
             small(ui, l);
         }
         match &state.loadout {
-            Some(lo) => small(ui, &format!("Armament: {}", lo.summary())),
+            Some(lo) => small(ui, &t!("summary-armament", stores = lo.summary())),
             None => small(
                 ui,
-                &format!(
-                    "Armament: {}",
-                    b.armament.iter().map(|a| clean_text(a)).collect::<Vec<_>>().join(", ")
+                &t!(
+                    "summary-armament",
+                    stores =
+                        b.armament.iter().map(|a| clean_text(a)).collect::<Vec<_>>().join(", ")
                 ),
             ),
         }
         ui.add_space(4.0);
-        ui.label(egui::RichText::new("INTELLIGENCE").small().color(AMBER));
+        ui.label(egui::RichText::new(t!("summary-intelligence")).small().color(AMBER));
         for l in [&b.primary_summary, &b.secondary_summary, &b.roe_text] {
             small(ui, l);
         }

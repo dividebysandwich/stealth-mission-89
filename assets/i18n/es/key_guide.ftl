@@ -1,0 +1,122 @@
+# La guía de teclas (src/key_guide.rs): la página TECLAS de la tablilla de rodilla y la GUÍA DE
+# TECLAS del menú en vuelo, dibujadas con la fuente vectorial; los títulos de sección encabezan
+# también las listas de la ventana CONTROLES.
+# En las teclas, "_" sustituye a un espacio (las palabras quedan en una sola línea).
+
+kg-vr-controllers = MANDOS VR
+kg-vr-grip = GRIP
+    .desc = Agarrar la palanca, los gases o la tablilla de rodilla
+kg-vr-fingertip = PUNTA_DEL_DEDO
+    .desc = Pulsar interruptores y botones, pestañas de la tablilla
+kg-vr-left-stick = STICK_IZQUIERDO
+    .desc = Mover el cursor del sensor
+kg-vr-stick = STICK
+    .desc = Desplazar esta lista (dedo sobre la tablilla)
+kg-gun-target = Cañón
+kg-mouse = RATÓN
+kg-mouse-right-drag = ARRASTRE_DERECHO
+    .desc = Mirar alrededor (fuera: girar la cámara alrededor)
+kg-mouse-hold-right = DERECHO_PULSADO, RUEDA
+    .desc = Acercar / alejar la vista
+kg-mouse-left-click = CLIC_IZQUIERDO
+    .desc = Pulsar un interruptor o un botón de la cabina, una pestaña de la tablilla
+kg-mouse-point = SEÑALAR
+    .desc = Tooltip de un mando de la cabina (menú: TOOLTIPS)
+kg-mouse-wheel = RUEDA
+    .desc = Desplazar esta lista
+kg-unbound = SIN_ASIGNAR
+
+## Secciones
+
+kg-section-flight = VUELO
+kg-section-aircraft = AERONAVE
+kg-section-weapons = ARMAS
+kg-section-targets = BLANCOS
+kg-section-defenses = DEFENSAS
+kg-section-displays = PANTALLAS
+kg-section-navigation = NAVEGACIÓN
+kg-section-views = VISTAS
+kg-section-game = JUEGO
+
+## Filas
+
+kg-pitch-down = Picar / encabritar
+kg-roll-left = Alabeo a la izquierda / derecha
+kg-yaw-left = Pedales a la izquierda / derecha
+kg-trim-nose-down = Trim a picar / encabritar
+kg-trim-left = Trim a la izquierda / derecha
+kg-trim-reset = Centrar el trim
+kg-stick-sensitivity = Sensibilidad de la palanca (doble pulsación en una tecla de palanca: máxima)
+kg-throttle-up = Gases (colectivo) más
+kg-throttle-down = Gases (colectivo) menos
+kg-throttle-max = Potencia máxima
+kg-throttle-idle = Ralentí
+kg-nozzle-down = Toberas abajo / atrás (Harrier; mantenido: en movimiento)
+kg-nozzle-hover = Toberas al tope de estacionario
+kg-nozzle-full-aft = Toberas totalmente atrás
+kg-autopilot = Piloto automático hacia el waypoint
+kg-gear = Tren de aterrizaje
+kg-flaps = Flaps
+kg-brakes = Frenos de ruedas, aerofreno
+kg-bay-doors = Compuertas de las bodegas de armas
+kg-master-caution = Master caution: silenciar las alarmas
+kg-eject = Eyectarse
+kg-select-weapon = Arma siguiente
+kg-fire-weapon = Disparar el arma seleccionada
+kg-gun = Disparar el cañón
+kg-bomb-mode = Modo de bombardeo CCIP / CCRP
+kg-nearest-target = Fijar el blanco más cercano por delante
+kg-select-target = Blanco siguiente
+kg-designate-target = Designar un nuevo blanco
+kg-clear-target = Soltar los blancos fijados
+kg-cam-ahead = Cámara de seguimiento hacia delante
+kg-cam-rear = Cámara de seguimiento hacia atrás
+kg-cam-left = Cámara de seguimiento a la izquierda
+kg-cam-right = Cámara de seguimiento a la derecha
+kg-camera-zoom-in = Zoom de la cámara más / menos
+kg-lock-cursor = Fijar el blanco bajo el cursor
+kg-swap-soi = Sensor de interés (SOI) al otro MFD
+kg-flare = Bengala (misiles infrarrojos)
+kg-chaff = Chaff (misiles radar)
+kg-decoy = Señuelo
+kg-ir-jammer = Perturbador IR sí / no
+kg-ecm = Perturbador radar (ECM) sí / no
+kg-hud-mode = Modo del HUD NAV / AIR / GND
+kg-hud-declutter = Despejar el HUD
+kg-maps = MFD izquierdo: mapa / táctico
+kg-map-zoom-in = Zoom del mapa más / menos
+kg-map-orientation = Mapa norte arriba / rumbo arriba
+kg-ordnance = Página de armas
+kg-mission-orders = Órdenes de misión
+kg-flir = FLIR sí / no
+kg-nvg = Gafas de visión nocturna
+kg-ils = Guiado de aterrizaje ILS
+kg-select-waypoint = Página de waypoints
+kg-change-waypoint = Editar waypoints (teclado numérico)
+kg-reset-waypoint = Restablecer waypoints
+kg-last-waypoint = Waypoint anterior / siguiente
+kg-view-cockpit = Cabina
+kg-look-ahead = Mirar al frente
+kg-look-left = Mirar a la izquierda
+kg-look-right = Mirar a la derecha
+kg-look-rear = Mirar atrás
+kg-view-slot = Vista de formación
+kg-view-chase = Vista de persecución
+kg-view-side = Vista lateral
+kg-view-missile = Vista del misil
+kg-view-tactical = Vista táctica
+kg-view-inverse-tactical = Vista táctica inversa
+kg-view-free = Cámara libre: W/S/A/D/Q/E, ratón, rueda
+kg-zoom = Zoom más / menos
+kg-wide-angle = Gran angular
+kg-menu = Menú de ajustes, pausa
+kg-kneeboard = Tablilla de rodilla
+kg-chat = Chat (multijugador)
+kg-record-gif = Grabar un GIF: iniciar / detener
+kg-time-accel = Tiempo acelerado / normal
+kg-volume = Volumen del sonido
+kg-detail = Nivel de detalle
+kg-day-night = Día / noche
+kg-training = Pasar a entrenamiento
+kg-resupply = Reabastecimiento
+kg-quit = Salir

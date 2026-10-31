@@ -1,0 +1,66 @@
+# Simulatsiooni HUD-teated (crates/stealth-sim). Joonistatud lennufontidega: suurtähtedega,
+# ilma diakriitikuteta (ladina keeled; teised näevad inglise keelt). Üksuste, relvade ja
+# kohtade nimed antakse edasi muutmata.
+
+sim-missile-launch = Raketi väljalase
+sim-no-flares = Signaalraketid on otsas
+sim-hind-spotted = Hind märkas sind
+sim-rescue-lost = Päästehelikopter kadunud
+sim-rescued = Päästetud!
+sim-captured = Vangistatud
+sim-aircraft-destroyed-eject = Õhusõiduk hävitatud - katapulteeru
+sim-fire-out = Tulekahju kustus
+sim-aircraft-exploded = Õhusõiduk plahvatas
+sim-equipment-delivered = Varustus kohale toimetatud
+sim-bad-drop = Ebaõnnestunud heide
+sim-secondary-target = Teisene siht
+sim-primary-target = Põhisiht
+sim-troops-inserted = Väed maandatud
+sim-time-expired = Aeg sai läbi
+sim-cargo-delivered = Last kohale toimetatud
+sim-safe-landing = Ohutu maandumine
+sim-no-target-ahead = Sihtmärki ees pole
+sim-target-obscured = Sihtmärk varjatud
+sim-target-photographed = Sihtmärk pildistatud.
+sim-drop-supplies = Heida varustus nüüd
+sim-no-target = Sihtmärki pole
+sim-no-target-designated = Sihtmärki pole määratud
+sim-bay-closed = Relvaluuk suletud
+sim-insufficient-altitude = Kõrgus ebapiisav
+sim-fuel-transfer = Kütuse ülekanne
+sim-stores-exhausted = Relvastus otsas
+sim-hit-gunfire = Tabas kahurituli
+sim-hit-aaa = Tabas AAA
+sim-hit-flak = Tabas õhutõrjetuli
+sim-destroyed = { $target } hävitatud
+sim-landing = { $base } - { $aircraft } maandub
+sim-on-final = { $base } - { $aircraft } lõppsirgel
+sim-taking-off = { $base } - { $aircraft } tõuseb õhku
+sim-shot-down = { $target } alla tulistatud
+sim-lost = { $target } kaotatud
+sim-uav-hit = { $weapon } tabas: { $target }
+sim-locked-on = { $weapon } lukustus: { $target }
+sim-lost-lock = { $weapon } kaotas lukustuse
+sim-csar-down = Maha laskunud vaenlase territooriumil - CSAR baasist { $base }
+sim-flare-left = Signaalrakett - jäänud { $count }
+sim-drone-hit-npp = Droon tabas: { $place } NPP
+sim-drone-hit = Droon tabas: { $place }
+sim-defense-failed = Kaitse murti - { $count } drooni pääses läbi
+sim-hit-by = Tabas { $weapon }
+sim-target-hit-by = { $target } tabati: { $weapon }
+sim-ineffective = Mõjutu
+sim-impact = { $weapon } tabamus
+# The trailing space is the classic game's.
+sim-misses = { $weapon } möödas{" "}
+sim-destroyed-by = { $target } hävitati: { $weapon }
+sim-ground-impact = { $weapon } maapinna tabamus
+sim-detected = { $target } avastatud
+sim-radar-id = { $site } - radari ID
+sim-firing = { $site } tulistab: { $missile }
+sim-visual-id = Visuaalne ID - { $aircraft }
+sim-fired-by = { $missile } välja lastud: { $launcher }
+sim-frame = Kaader { $frame }
+sim-beacon = Raadiomajaka suund { $bearing }
+sim-fired = { $weapon } välja lastud
+sim-released = { $weapon } heidetud
+sim-destroyed-gunfire = { $target } hävitati kahuritulega

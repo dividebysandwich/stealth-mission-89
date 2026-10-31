@@ -44,6 +44,7 @@ mod help;
 mod hmd;
 mod hotas;
 mod hud;
+mod i18n;
 mod input;
 mod input_dialog;
 mod key_guide;
@@ -166,7 +167,12 @@ fn main() {
     let mut menu_state = menu::MenuState::default();
     if settings.initial_state == settings::AppState::Menu {
         prefs::Prefs::load().apply(&mut menu_state, &mut settings);
+    } else if settings::language_arg().is_none()
+        && let Some(l) = prefs::Prefs::load().language
+    {
+        settings.language = l;
     }
+    stealth_i18n::set_language(settings.language);
     let mut app = App::new();
     let plugins = DefaultPlugins
         .set(WindowPlugin {
@@ -243,6 +249,7 @@ fn main() {
         .insert_resource(menu_state)
         .insert_resource(MissionSetup::from_args())
         .insert_resource(flight::SimTables::load())
+        .add_plugins(i18n::I18nPlugin)
         .add_plugins(settings::configure)
         .add_plugins((
             palette::PalettePlugin,

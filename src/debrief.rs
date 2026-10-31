@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
+use stealth_i18n::t;
 use stealth_sim::score::MissionReport;
 
 use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapView};
@@ -124,7 +125,7 @@ fn debrief_ui(
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(16.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("MISSION DEBRIEF").heading().color(BRIGHT));
+                ui.label(egui::RichText::new(t!("debrief-title")).heading().color(BRIGHT));
                 if let Some(m) = &d.mission {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
@@ -136,12 +137,12 @@ fn debrief_ui(
             });
             ui.separator();
             ui.label(
-                egui::RichText::new(d.title.to_ascii_uppercase())
+                egui::RichText::new(d.title.to_uppercase())
                     .size(24.0)
                     .color(if r.outcome.fatal() { AMBER } else { BRIGHT }),
             );
             if r.training {
-                ui.label(egui::RichText::new("TRAINING MISSION").color(DIM));
+                ui.label(egui::RichText::new(t!("debrief-training")).color(DIM));
             }
             ui.add_space(6.0);
             if map.open {
@@ -152,9 +153,9 @@ fn debrief_ui(
             ui.add_space(6.0);
             ui.separator();
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                done |= ui.add(big_button("CONTINUE").fill(DIM)).clicked();
+                done |= ui.add(big_button(t!("continue")).fill(DIM)).clicked();
                 if !d.record.samples.is_empty() {
-                    let label = if map.open { "RESULTS" } else { "FLIGHT MAP" };
+                    let label = t!(if map.open { "debrief-results" } else { "debrief-flight-map" });
                     if ui.add(big_button(label)).clicked() {
                         map.open = !map.open;
                     }
@@ -173,10 +174,14 @@ fn summary(ui: &mut egui::Ui, d: &Debrief, width: f32) {
     ui.horizontal_top(|ui| {
         ui.vertical(|ui| {
             ui.set_width(width * 0.3);
-            section(ui, "Results");
-            let yes_no = |b: bool| if b { ("ACCOMPLISHED", GREEN) } else { ("FAILED", AMBER) };
-            let rows =
-                [("PRIMARY", yes_no(r.primary_done)), ("SECONDARY", yes_no(r.secondary_done))];
+            section(ui, t!("debrief-section-results"));
+            let yes_no = |b: bool| {
+                if b { (t!("debrief-accomplished"), GREEN) } else { (t!("debrief-failed"), AMBER) }
+            };
+            let rows = [
+                (t!("debrief-primary"), yes_no(r.primary_done)),
+                (t!("debrief-secondary"), yes_no(r.secondary_done)),
+            ];
             egui::Grid::new("results").num_columns(2).spacing([14.0, 4.0]).show(ui, |ui| {
                 for (k, (v, c)) in rows {
                     ui.label(egui::RichText::new(k).size(14.0).color(DIM));
@@ -184,21 +189,25 @@ fn summary(ui: &mut egui::Ui, d: &Debrief, width: f32) {
                     ui.end_row();
                 }
                 for (k, v) in [
-                    ("AIRCRAFT", r.air_kills.to_string()),
+                    (t!("debrief-aircraft"), r.air_kills.to_string()),
                     (
-                        "DRONES",
+                        t!("debrief-drones"),
                         if r.drones_killed + r.drones_leaked > 0 {
-                            format!("{} down, {} through", r.drones_killed, r.drones_leaked)
+                            t!(
+                                "debrief-drones-value",
+                                down = r.drones_killed,
+                                through = r.drones_leaked
+                            )
                         } else {
                             "-".into()
                         },
                     ),
-                    ("GROUND", r.ground_kills.to_string()),
-                    ("WEAPONS", r.weapons_fired.to_string()),
-                    ("RADAR IDS", r.radar_ids.to_string()),
-                    ("VISUAL IDS", r.visual_ids.to_string()),
-                    ("HITS TAKEN", r.hits_taken.to_string()),
-                    ("TIME", clock(r.time)),
+                    (t!("debrief-ground"), r.ground_kills.to_string()),
+                    (t!("debrief-weapons"), r.weapons_fired.to_string()),
+                    (t!("debrief-radar-ids"), r.radar_ids.to_string()),
+                    (t!("debrief-visual-ids"), r.visual_ids.to_string()),
+                    (t!("debrief-hits-taken"), r.hits_taken.to_string()),
+                    (t!("debrief-time"), clock(r.time)),
                 ] {
                     ui.label(egui::RichText::new(k).size(14.0).color(DIM));
                     ui.label(egui::RichText::new(v).size(18.0).color(GREEN));
@@ -208,10 +217,10 @@ fn summary(ui: &mut egui::Ui, d: &Debrief, width: f32) {
         });
         ui.vertical(|ui| {
             ui.set_width(width * 0.3);
-            section(ui, "Points");
+            section(ui, t!("debrief-section-points"));
             egui::Grid::new("points").num_columns(2).spacing([14.0, 4.0]).show(ui, |ui| {
                 for (what, p) in &r.points {
-                    ui.label(egui::RichText::new(what.to_ascii_uppercase()).size(14.0).color(DIM));
+                    ui.label(egui::RichText::new(what.tr().to_uppercase()).size(14.0).color(DIM));
                     ui.label(egui::RichText::new(format!("{p:+}")).size(16.0).color(if *p < 0 {
                         AMBER
                     } else {
@@ -219,40 +228,40 @@ fn summary(ui: &mut egui::Ui, d: &Debrief, width: f32) {
                     }));
                     ui.end_row();
                 }
-                ui.label(egui::RichText::new("DIFFICULTY").size(14.0).color(DIM));
+                ui.label(egui::RichText::new(t!("debrief-difficulty")).size(14.0).color(DIM));
                 ui.label(
                     egui::RichText::new(format!("x{:.2}", r.multiplier)).size(16.0).color(GREEN),
                 );
                 ui.end_row();
-                ui.label(egui::RichText::new("TOTAL").size(16.0).color(BRIGHT));
+                ui.label(egui::RichText::new(t!("debrief-total")).size(16.0).color(BRIGHT));
                 ui.label(egui::RichText::new(r.total.to_string()).size(24.0).color(BRIGHT));
                 ui.end_row();
             });
             ui.add_space(8.0);
             ui.label(
-                egui::RichText::new(r.rating.to_ascii_uppercase())
+                egui::RichText::new(crate::i18n::rating_name(&r.rating).to_uppercase())
                     .size(22.0)
                     .color(if r.total > 0 { BRIGHT } else { AMBER }),
             );
             if !d.career.is_empty() {
-                section(ui, "Service record");
+                section(ui, t!("career-service-record"));
                 for line in &d.career {
-                    ui.label(egui::RichText::new(line.to_ascii_uppercase()).color(AMBER));
+                    ui.label(egui::RichText::new(line.to_uppercase()).color(AMBER));
                 }
             }
         });
         ui.vertical(|ui| {
-            section(ui, "Timeline");
+            section(ui, t!("debrief-section-timeline"));
             egui::ScrollArea::vertical().max_height(320.0).auto_shrink([false, true]).show(
                 ui,
                 |ui| {
                     if r.timeline.is_empty() {
-                        ui.label(egui::RichText::new("No events").color(DIM));
+                        ui.label(egui::RichText::new(t!("debrief-no-events")).color(DIM));
                     }
                     for e in &r.timeline {
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new(clock(e.tick)).color(DIM));
-                            ui.label(&e.text);
+                            ui.label(e.text.tr());
                         });
                     }
                 },
@@ -368,7 +377,7 @@ fn flight_map(
 
         ui.vertical(|ui| {
             ui.set_width(side);
-            section(ui, "Radar exposure");
+            section(ui, t!("debrief-section-exposure"));
             let e = rec.exposure();
             let row = |ui: &mut egui::Ui, k: &str, v: String, c: egui::Color32| {
                 ui.label(egui::RichText::new(k).size(13.0).color(DIM));
@@ -377,26 +386,33 @@ fn flight_map(
             };
             egui::Grid::new("exposure").num_columns(2).spacing([12.0, 3.0]).show(ui, |ui| {
                 let c = if e.tracked_s > 0.0 { AMBER } else { GREEN };
-                row(ui, "TRACKED", clock(e.tracked_s as i32), c);
-                row(ui, "CLOSEST", format!("{:+}", e.peak_margin), margin_colour(e.peak_margin));
+                row(ui, t!("debrief-tracked"), clock(e.tracked_s as i32), c);
+                let closest = format!("{:+}", e.peak_margin);
+                row(ui, t!("debrief-closest"), closest, margin_colour(e.peak_margin));
                 if let Some((i, t)) = e.worst
                     && let Some(site) = rec.sites.get(i)
                 {
-                    row(ui, "WORST", format!("{} {}", site.kind, clock(t as i32)), AMBER);
+                    let worst = format!("{} {}", site.kind, clock(t as i32));
+                    row(ui, t!("debrief-worst"), worst, AMBER);
                     ui.label("");
                     ui.label(egui::RichText::new(clean_text(&site.place)).small().color(DIM));
                     ui.end_row();
                 }
             });
-            section(ui, &format!("At {}", clock((cursor / crate::recorder::FS) as i32)));
+            section(ui, &t!("debrief-at", time = clock((cursor / crate::recorder::FS) as i32)));
             if let Some(s) = here {
                 egui::Grid::new("at").num_columns(2).spacing([12.0, 3.0]).show(ui, |ui| {
-                    row(ui, "ALTITUDE", format!("{} ft", s.alt), GREEN);
-                    row(ui, "SPEED", format!("{} kt", s.knots), GREEN);
+                    row(ui, t!("debrief-altitude"), format!("{} ft", s.alt), GREEN);
+                    row(ui, t!("debrief-speed"), format!("{} kt", s.knots), GREEN);
                     row(ui, "EMV", s.emv.to_string(), GREEN);
-                    row(ui, "MARGIN", format!("{:+}", s.margin), margin_colour(s.margin));
+                    row(
+                        ui,
+                        t!("debrief-margin"),
+                        format!("{:+}", s.margin),
+                        margin_colour(s.margin),
+                    );
                     if let Some(site) = s.site.and_then(|i| rec.sites.get(i)) {
-                        row(ui, "STRONGEST", site.kind.clone(), DIM);
+                        row(ui, t!("debrief-strongest"), site.kind.clone(), DIM);
                     }
                 });
                 let tracking: Vec<&str> = shown
@@ -406,43 +422,43 @@ fn flight_map(
                     .collect();
                 if !tracking.is_empty() {
                     ui.label(
-                        egui::RichText::new(format!("TRACKED BY {}", tracking.join(", ")))
+                        egui::RichText::new(t!("debrief-tracked-by", sites = tracking.join(", ")))
                             .color(MISSILE_RED),
                     );
                 }
             }
-            section(ui, "Map");
+            section(ui, t!("debrief-section-map"));
             map_draw::symbology_switch(ui);
-            map_draw::legend(ui, "Not detectable", |p, c| {
+            map_draw::legend(ui, t!("debrief-legend-safe"), |p, c| {
                 p.line_segment(
                     [c - egui::vec2(7.0, 0.0), c + egui::vec2(7.0, 0.0)],
                     egui::Stroke::new(2.5, GREEN),
                 );
             });
-            map_draw::legend(ui, "Close to detection", |p, c| {
+            map_draw::legend(ui, t!("debrief-legend-close"), |p, c| {
                 p.line_segment(
                     [c - egui::vec2(7.0, 0.0), c + egui::vec2(7.0, 0.0)],
                     egui::Stroke::new(2.5, AMBER),
                 );
             });
-            map_draw::legend(ui, "Detectable", |p, c| {
+            map_draw::legend(ui, t!("debrief-legend-detectable"), |p, c| {
                 p.line_segment(
                     [c - egui::vec2(7.0, 0.0), c + egui::vec2(7.0, 0.0)],
                     egui::Stroke::new(2.5, MISSILE_RED),
                 );
             });
-            map_draw::legend(ui, "Tracked / missile launch", |p, c| {
+            map_draw::legend(ui, t!("debrief-legend-tracked"), |p, c| {
                 mark(p, c - egui::vec2(4.0, 0.0), MarkKind::Tracked(0));
                 mark(p, c + egui::vec2(5.0, 0.0), MarkKind::Launch { site: None, spec: 0 });
             });
-            map_draw::legend(ui, "Hit taken / kill", |p, c| {
+            map_draw::legend(ui, t!("debrief-legend-hit"), |p, c| {
                 mark(p, c - egui::vec2(4.0, 0.0), MarkKind::Hit);
                 mark(p, c + egui::vec2(5.0, 0.0), MarkKind::AirKill { spec: 0 });
             });
         });
     });
     ui.horizontal(|ui| {
-        let label = if map.playing { "PAUSE" } else { "PLAY" };
+        let label = t!(if map.playing { "debrief-pause" } else { "debrief-play" });
         if ui.add(big_button(label)).clicked() {
             if map.frame >= last as f32 {
                 map.frame = 0.0;

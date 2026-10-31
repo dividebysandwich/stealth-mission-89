@@ -2,6 +2,7 @@
 //! out, the server's state and events in.
 
 use std::collections::VecDeque;
+use stealth_i18n::Text;
 use web_time::Instant;
 
 use stealth_campaign::{CampaignState, PlayerId};
@@ -28,7 +29,7 @@ pub enum ClientEvent {
         resume: Option<Resume>,
     },
     /// Not taken in, or gone: why.
-    Closed(String),
+    Closed(Text),
     Fast {
         step: u32,
         world: Box<WorldFast>,
@@ -39,7 +40,7 @@ pub enum ClientEvent {
     Events(Vec<SimEvent>),
     Host(HostEvent),
     Campaign(Box<CampaignState>),
-    Error(String),
+    Error(Text),
     Roster(Vec<PlayerInfo>),
     /// Another player's chat message.
     Chat {
@@ -143,7 +144,7 @@ impl Client {
                 }
                 NetEvent::Disconnected(_, why) => {
                     self.closed = true;
-                    out.push(ClientEvent::Closed(why));
+                    out.push(ClientEvent::Closed(transport_reason(why)));
                 }
                 NetEvent::Message(_, _, bytes) => {
                     let Some(msg) = decode::<ToClient>(&bytes) else { continue };
@@ -160,9 +161,9 @@ impl Client {
                 self.id = Some(id);
                 ClientEvent::Welcome { id, server, rules, state: Box::new(state), resume }
             }
-            ToClient::Reject { reason } => {
+            ToClient::Reject { reason, text } => {
                 self.closed = true;
-                ClientEvent::Closed(reason)
+                ClientEvent::Closed(text.unwrap_or_else(|| transport_reason(reason)))
             }
             ToClient::Fast { step, world, tick, pilot } => {
                 // An older frame than the last one is of no use.
@@ -215,4 +216,17 @@ fn with_default_port(addr: &str) -> String {
     } else {
         format!("{addr}:{DEFAULT_PORT}")
     }
+}
+
+/// A connection's end as the transport gives it (in English): the known reasons translated.
+fn transport_reason(why: String) -> Text {
+    let id = match why.as_str() {
+        "Timed out" => "net-timed-out",
+        "No answer" => "net-no-answer",
+        "The server is full" => "net-server-full",
+        "Reconnected" => "net-reconnected",
+        "Relay: idle" => "net-relay-idle",
+        _ => return Text::raw(why),
+    };
+    Text::new(id)
 }

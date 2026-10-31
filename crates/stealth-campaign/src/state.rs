@@ -3,6 +3,7 @@
 //! send its clients).
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::{Text, text};
 use stealth_mission::world::{MissionWorld, flags};
 
 use crate::rng::Rng;
@@ -243,15 +244,15 @@ impl MissionKind {
     }
 
     /// Why an aircraft may not fly it.
-    pub fn not_flyable(self, aircraft: Aircraft) -> &'static str {
+    pub fn not_flyable(self, aircraft: Aircraft) -> Text {
         if aircraft.transport() {
-            "The UH-60 flies insertions, rescues, resupply and logistics"
+            text!("ce-uh60-only")
         } else if self == MissionKind::Resupply {
-            "Resupply is flown in the UH-60"
+            text!("ce-resupply-uh60")
         } else if self == MissionKind::Logistics {
-            "Logistics is flown in the UH-60"
+            text!("ce-logistics-uh60")
         } else {
-            "Insertions are flown in the UH-60, or ordered for the helicopter crews"
+            text!("ce-insertion-uh60")
         }
     }
 
@@ -370,7 +371,7 @@ pub enum Objective {
 pub struct MissionOffer {
     pub id: u32,
     pub kind: MissionKind,
-    pub title: String,
+    pub title: Text,
     pub objective: Objective,
     /// Where it happens (map units).
     pub x: i32,
@@ -437,6 +438,19 @@ pub enum SortieEnd {
 }
 
 impl SortieEnd {
+    /// Message id of [`SortieEnd::name`].
+    pub fn id(self) -> &'static str {
+        match self {
+            SortieEnd::Landed => "sortie-end-landed",
+            SortieEnd::Ejected => "sortie-end-ejected",
+            SortieEnd::Crashed => "sortie-end-crashed",
+            SortieEnd::Aborted => "sortie-end-aborted",
+            SortieEnd::Rescued => "sortie-end-rescued",
+            SortieEnd::Captured => "sortie-end-captured",
+        }
+    }
+
+    /// In English (the logs of the dedicated server).
     pub fn name(self) -> &'static str {
         match self {
             SortieEnd::Landed => "Landed",
@@ -530,7 +544,7 @@ pub struct SortieRecord {
     pub id: u32,
     pub player: PlayerId,
     pub kind: MissionKind,
-    pub title: String,
+    pub title: Text,
     pub end: SortieEnd,
     pub result: SortieResult,
     pub started: f64,
@@ -603,7 +617,8 @@ pub struct PlayerSlot {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LogEntry {
     pub time: f64,
-    pub text: String,
+    /// Translated where it is shown (an old save's entries are plain English text).
+    pub text: Text,
 }
 
 /// A coop chat message, kept with the campaign (a joining player and a restarted server see
@@ -992,8 +1007,13 @@ pub struct SupplyRequest {
 
 impl SupplyRequest {
     /// "Patriot battery near Wittstock".
-    pub fn title(&self) -> String {
-        format!("{} near {}", self.kind.name(), self.name)
+    pub fn title(&self) -> Text {
+        let id = match self.kind {
+            DefenceKind::Gepard => "cl-supply-gepard",
+            DefenceKind::Patriot => "cl-supply-patriot",
+            DefenceKind::Drones => "cl-supply-drones",
+        };
+        text!(id, place = self.name.as_str())
     }
 }
 
@@ -1355,7 +1375,7 @@ impl CampaignState {
             convoy_at: [0.0; 2],
             terrain: Terrain::default(),
         };
-        c.note("Campaign started");
+        c.note(text!("cl-campaign-started"));
         c
     }
 
@@ -1365,8 +1385,8 @@ impl CampaignState {
         id
     }
 
-    pub(crate) fn note(&mut self, text: impl Into<String>) {
-        self.log.push(LogEntry { time: self.clock, text: text.into() });
+    pub(crate) fn note(&mut self, text: Text) {
+        self.log.push(LogEntry { time: self.clock, text });
         if self.log.len() > LOG_SIZE {
             let extra = self.log.len() - LOG_SIZE;
             self.log.drain(..extra);
@@ -1498,7 +1518,11 @@ impl CampaignState {
         self.slot_mut(player).name = name.to_string();
     }
 
-    /// A player's name.
+    /// A player's name for the news, "A pilot" (translated) without one.
+    pub(crate) fn who(&self, player: PlayerId) -> Text {
+        self.player_name(player).map_or_else(|| text!("cl-a-pilot"), Text::raw)
+    }
+
     pub fn player_name(&self, player: PlayerId) -> Option<&str> {
         self.players.iter().find(|p| p.id == player).map(|p| p.name.as_str())
     }

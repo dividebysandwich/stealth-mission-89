@@ -15,6 +15,7 @@
 //! * A station whose radar (or Gepard) is destroyed is gone: [`Sim::station_of`] is None.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::{Text, text};
 
 use crate::Sim;
 use crate::aaa::{GroundKind, PATRIOT, Shell, lead};
@@ -323,9 +324,9 @@ impl Sim {
     }
 
     /// A console command of pilot `pilot`.
-    pub fn station_command(&mut self, pilot: u8, cmd: StationCmd) -> Result<(), String> {
+    pub fn station_command(&mut self, pilot: u8, cmd: StationCmd) -> Result<(), Text> {
         if self.campaign.is_none() {
-            return Err("No campaign".into());
+            return Err(text!("st-no-campaign"));
         }
         self.defence_sizes();
         if let StationCmd::Man { unit } = cmd {
@@ -334,7 +335,7 @@ impl Sim {
         let Some(at) =
             self.defence().and_then(|d| d.stations.iter().position(|s| s.pilot == pilot))
         else {
-            return Err("Not at a console".into());
+            return Err(text!("st-not-at-a-console"));
         };
         let st = self.defence().expect("campaign").stations[at];
         match cmd {
@@ -347,7 +348,7 @@ impl Sim {
                 if let Some(t) = t
                     && self.track_alive(t as usize).is_none()
                 {
-                    return Err("No such track".into());
+                    return Err(text!("st-no-such-track"));
                 }
                 self.defence_mut().stations[at].lock = t;
             }
@@ -367,29 +368,28 @@ impl Sim {
                 ];
             }
             StationCmd::Refill { unit } => self.start_refill(st.unit as usize, unit as usize)?,
-            StationCmd::RequestResupply => return Err("Resupply goes through the campaign".into()),
+            StationCmd::RequestResupply => {
+                return Err(text!("st-resupply-goes-through-the-campaign"));
+            }
             cmd @ (StationCmd::Launch { .. }
             | StationCmd::Route { .. }
             | StationCmd::Next { .. }
             | StationCmd::Manual { .. }
-            | StationCmd::Fly { .. }) => self.uav_command(&st, cmd)?,
+            | StationCmd::Fly { .. }) => self.uav_command(&st, cmd).map_err(Text::raw)?,
         }
         Ok(())
     }
 
-    fn man_station(&mut self, pilot: u8, unit: usize) -> Result<(), String> {
-        let Some(u) = self.units.get(unit).copied() else { return Err("No such unit".into()) };
+    fn man_station(&mut self, pilot: u8, unit: usize) -> Result<(), Text> {
+        let Some(u) = self.units.get(unit).copied() else { return Err(text!("st-no-such-unit")) };
         if !mannable(u.kind) || !self.aaa_blue(unit) {
-            return Err(
-                "Only friendly Patriot batteries, Gepards and drone command centers can be manned"
-                    .into(),
-            );
+            return Err(text!("st-only-friendly-air-defence-can-be-manned"));
         }
         if u.destroyed {
-            return Err(format!("The {} is destroyed", u.kind.name()));
+            return Err(text!("st-unit-destroyed", unit = u.kind.name()));
         }
         if self.manned_by(unit).is_some_and(|p| p != pilot) {
-            return Err("Another player mans it".into());
+            return Err(text!("st-another-player-mans-it"));
         }
         let d = self.defence_mut();
         d.stations.retain(|s| s.pilot != pilot);
@@ -449,23 +449,23 @@ impl Sim {
     }
 
     /// A locked track the station may shoot at: alive and not friendly.
-    fn hostile_lock(&self, st: &Station) -> Result<(usize, [f64; 3], [f64; 3]), String> {
-        let Some(j) = st.lock.map(|j| j as usize) else { return Err("No track locked".into()) };
-        let Some((pos, vel)) = self.track_alive(j) else { return Err("Track lost".into()) };
+    fn hostile_lock(&self, st: &Station) -> Result<(usize, [f64; 3], [f64; 3]), Text> {
+        let Some(j) = st.lock.map(|j| j as usize) else { return Err(text!("st-no-track-locked")) };
+        let Some((pos, vel)) = self.track_alive(j) else { return Err(text!("st-track-lost")) };
         if self.friendly_unit(j, self.flights[j].spec) {
-            return Err("Friendly track: weapons hold".into());
+            return Err(text!("st-friendly-track-weapons-hold"));
         }
         Ok((j, pos, vel))
     }
 
-    fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), String> {
+    fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), Text> {
         let radar = st.unit as usize;
         if self.units[radar].kind != GroundKind::PatriotRadar {
-            return Err("No missiles here".into());
+            return Err(text!("st-no-missiles-here"));
         }
         let (j, pos, _) = self.hostile_lock(&st)?;
         if !self.in_reach(radar, j) {
-            return Err("Out of range".into());
+            return Err(text!("st-out-of-range"));
         }
         let ready = |sim: &Sim, k: usize| {
             let u = &sim.units[k];
@@ -475,17 +475,17 @@ impl Sim {
         let k = match launcher {
             Some(k) if launchers.contains(&k) => {
                 if !ready(self, k) {
-                    return Err("Launcher not ready".into());
+                    return Err(text!("st-launcher-not-ready"));
                 }
                 k
             }
-            Some(_) => return Err("Not this battery's launcher".into()),
+            Some(_) => return Err(text!("st-not-this-battery-s-launcher")),
             None => launchers
                 .iter()
                 .copied()
                 .filter(|&k| ready(self, k))
                 .max_by_key(|&k| self.units[k].rounds)
-                .ok_or("No launcher ready")?,
+                .ok_or_else(|| text!("st-no-launcher-ready"))?,
         };
         let u = self.units[k];
         let from = add(u.metres(), [0.0, 0.0, 3.0]);
@@ -505,14 +505,14 @@ impl Sim {
         Ok(())
     }
 
-    fn gepard_here(&self, st: Station) -> Result<(), String> {
+    fn gepard_here(&self, st: Station) -> Result<(), Text> {
         if self.units[st.unit as usize].kind != GroundKind::Gepard {
-            return Err("No gun here".into());
+            return Err(text!("st-no-gun-here"));
         }
         Ok(())
     }
 
-    fn station_burst(&mut self, at: usize) -> Result<(), String> {
+    fn station_burst(&mut self, at: usize) -> Result<(), Text> {
         let st = self.defence().expect("campaign").stations[at];
         let n = self.burst_rounds(&st)?;
         let d = self.defence_mut();
@@ -524,43 +524,43 @@ impl Sim {
 
     /// The rounds of a burst station `st` can fire now (at its lock, or without one along the
     /// barrels).
-    fn burst_rounds(&self, st: &Station) -> Result<i32, String> {
+    fn burst_rounds(&self, st: &Station) -> Result<i32, Text> {
         self.gepard_here(*st)?;
         let u = self.units[st.unit as usize];
         if st.burst > 0 {
-            return Err("Firing".into());
+            return Err(text!("st-firing"));
         }
         if u.rounds <= 0 || self.refill_left(st.unit as usize) > 0.0 {
-            return Err("Out of ammunition".into());
+            return Err(text!("st-out-of-ammunition"));
         }
         if st.lock.is_none() {
             return Ok(BURST.min(u.rounds));
         }
         let (j, _, _) = self.hostile_lock(st)?;
         if !self.in_reach(st.unit as usize, j) {
-            return Err("Out of range".into());
+            return Err(text!("st-out-of-range"));
         }
         Ok(BURST.min(u.rounds))
     }
 
     /// Starts refilling an empty launcher (of station unit `unit`'s battery) or Gepard.
-    fn start_refill(&mut self, station: usize, k: usize) -> Result<(), String> {
-        let Some(u) = self.units.get(k).copied() else { return Err("No such unit".into()) };
+    fn start_refill(&mut self, station: usize, k: usize) -> Result<(), Text> {
+        let Some(u) = self.units.get(k).copied() else { return Err(text!("st-no-such-unit")) };
         let ours = k == station || self.battery_launchers(station).contains(&k);
         if !ours || full_load(u.kind) == 0 {
-            return Err("Nothing to reload there".into());
+            return Err(text!("st-nothing-to-refill-there"));
         }
         if u.destroyed {
-            return Err("Destroyed".into());
+            return Err(text!("st-destroyed"));
         }
         if self.refill_left(k) > 0.0 {
-            return Err("Already reloading".into());
+            return Err(text!("st-already-refilling"));
         }
         if u.rounds > 0 {
-            return Err("Not empty yet".into());
+            return Err(text!("st-not-empty-yet"));
         }
         if self.stockpile(k) <= 0 {
-            return Err("Stockpile empty".into());
+            return Err(text!("st-stockpile-empty"));
         }
         self.defence_mut().refill[k] = REFILL_SECONDS;
         Ok(())

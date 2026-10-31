@@ -120,6 +120,9 @@ pub struct Settings {
     pub rwr_tones: crate::sound::RwrTones,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
+    /// `--lang <code>`: the language of the menus and messages (OPTIONS; the system's by
+    /// default).
+    pub language: stealth_i18n::Language,
     /// The atmosphere effects' switches (`--effects`).
     pub effects: crate::effects::Effects,
     /// GIF recording (`gif_recorder`): percent of the window's size, frames per second.
@@ -173,6 +176,30 @@ pub fn weather_arg(args: &[String]) -> Option<stealth_mission::Sky> {
 /// `--cloud-cover <percent>`: coverage of the main cloud layer.
 pub fn cover_arg(args: &[String]) -> Option<u8> {
     get(args, "--cloud-cover").and_then(|s| s.parse::<u8>().ok()).map(|c| c.min(100))
+}
+
+/// `--lang <code>`.
+pub fn language_arg() -> Option<stealth_i18n::Language> {
+    get(&args(), "--lang").and_then(|s| stealth_i18n::Language::parse(&s))
+}
+
+/// The system's language if the game has it, else English. The browser build starts in English
+/// and offers the browser's language (`i18n::language_offer`).
+pub fn system_language() -> stealth_i18n::Language {
+    #[cfg(not(target_arch = "wasm32"))]
+    return sys_locale::get_locale()
+        .and_then(|l| stealth_i18n::Language::parse(&l))
+        .unwrap_or_default();
+    #[cfg(target_arch = "wasm32")]
+    stealth_i18n::Language::default()
+}
+
+/// The browser's language if the game has it and it is not English.
+#[cfg(target_arch = "wasm32")]
+pub fn browser_language() -> Option<stealth_i18n::Language> {
+    use stealth_i18n::Language;
+    let locale = web_sys::window()?.navigator().language()?;
+    Language::parse(&locale).filter(|&l| l != Language::En && l != Language::Pseudo)
 }
 
 fn args() -> Vec<String> {
@@ -293,6 +320,7 @@ impl Settings {
             rwr_volume: 1.0,
             rwr_tones: Default::default(),
             engine_low_pass: true,
+            language: language_arg().unwrap_or_else(system_language),
             effects: get(&a, "--effects")
                 .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,

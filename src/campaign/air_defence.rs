@@ -5,6 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::Side;
+use stealth_i18n::t;
 use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{
     FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, GEPARD_STOCK, INTERCEPTOR_STOCK, PATRIOT_STOCK,
@@ -267,7 +268,7 @@ fn map(
     painter.text(
         rect.left_bottom() + egui::vec2(8.0, -8.0),
         egui::Align2::LEFT_BOTTOM,
-        "Click a site to select it - wheel: zoom, drag: pan",
+        t!("ad-map-hint"),
         egui::FontId::monospace(11.0),
         DIM,
     );
@@ -275,9 +276,9 @@ fn map(
 
 /// The sites one under the other: what each has and sees, and the way in.
 fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], height: f32) {
-    section(ui, "Air defense sites");
+    section(ui, t!("ad-sites"));
     if sites.is_empty() {
-        ui.label(egui::RichText::new("No Patriot battery or Gepard on our side").color(DIM));
+        ui.label(egui::RichText::new(t!("ad-none")).color(DIM));
         return;
     }
     egui::ScrollArea::vertical().id_salt("air_defence").max_height(height - 30.0).show(ui, |ui| {
@@ -311,14 +312,14 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     ui.horizontal(|ui| {
         let kind = match s.kind {
             GroundKind::Gepard => "GEPARD",
-            GroundKind::DroneCenter => "DRONES",
+            GroundKind::DroneCenter => t!("ad-drones"),
             _ => "PATRIOT",
         };
         ui.label(egui::RichText::new(format!("{tag} {kind}")).strong().color(FRIENDLY_BLUE));
-        ui.label(egui::RichText::new(format!("near {}", s.near)).color(DIM));
+        ui.label(egui::RichText::new(t!("ad-near", place = s.near.as_str())).color(DIM));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let why = man_refusal(c, sim, s.unit);
-            let button = egui::Button::new("ENTER").min_size(egui::vec2(80.0, 24.0));
+            let button = egui::Button::new(t!("ad-enter")).min_size(egui::vec2(80.0, 24.0));
             let r = ui.add_enabled(why.is_none(), button);
             if r.clicked() {
                 c.ui.error = None;
@@ -330,7 +331,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         });
     });
     if s.destroyed {
-        ui.label(egui::RichText::new("DESTROYED").color(MISSILE_RED));
+        ui.label(egui::RichText::new(t!("ad-destroyed")).color(MISSILE_RED));
         return;
     }
     let drones = s.kind == GroundKind::DroneCenter;
@@ -343,20 +344,20 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     };
     let stock_col = |n: i32| if n > 0 { BRIGHT } else { MISSILE_RED };
     ui.horizontal(|ui| {
-        key(ui, "OP");
+        key(ui, t!("ad-op"));
         let operator = match s.manned {
-            Some(p) if p == c.me.0 => egui::RichText::new("You").color(GREEN),
+            Some(p) if p == c.me.0 => egui::RichText::new(t!("ad-you")).color(GREEN),
             Some(p) => egui::RichText::new(
-                c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or("A player"),
+                c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or(t!("ad-a-player")),
             )
             .color(GREEN),
-            None => egui::RichText::new("auto").color(DIM),
+            None => egui::RichText::new(t!("ad-auto")).color(DIM),
         };
         value(ui, operator, NUM_W);
-        key(ui, "RDR");
+        key(ui, t!("ad-radar"));
         match s.enemies.first() {
             None => {
-                ui.label(egui::RichText::new("clear").monospace().color(DIM));
+                ui.label(egui::RichText::new(t!("ad-clear")).monospace().color(DIM));
             }
             Some((_, km)) => {
                 let text = format!("{} - {km:.0} km", s.enemies.len());
@@ -368,18 +369,18 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         }
     });
     ui.horizontal(|ui| {
-        key(ui, if drones { "UP" } else { "READY" });
+        key(ui, if drones { t!("ad-up") } else { t!("ad-ready") });
         let ready = if s.kind != GroundKind::Gepard && !drones {
-            format!("{}/{} {}L", s.ready, s.full, s.launchers)
+            t!("ad-ready-patriot", ready = s.ready, full = s.full, launchers = s.launchers)
         } else {
             format!("{}/{}", s.ready, s.full)
         };
         let col = if s.reloading > 0 { AMBER } else { ammo_col };
         let r = value(ui, egui::RichText::new(ready).color(col), NUM_W);
         if s.reloading > 0 {
-            r.on_hover_text(format!("{} reloading", s.reloading));
+            r.on_hover_text(t!("ad-reloading", count = s.reloading));
         }
-        key(ui, "STOCK");
+        key(ui, t!("ad-stock"));
         if drones {
             // One short bar for each kind of drone (Stork, FP-2, interceptor), together as
             // wide as the others' bar and number.
@@ -390,7 +391,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
                 ui.spacing_mut().item_spacing.x = 2.0;
                 let stock = sim.uav_stock(s.unit);
                 let full = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK];
-                let names = [("S", "Stork"), ("F", "FP-2"), ("I", "Interceptors")];
+                let names = [("S", "Stork"), ("F", "FP-2"), ("I", t!("ad-interceptors"))];
                 for ((n, full), (short, name)) in stock.into_iter().zip(full).zip(names) {
                     let r = ui.label(egui::RichText::new(short).monospace().color(DIM));
                     r.on_hover_text(name);
@@ -413,12 +414,13 @@ fn key(ui: &mut egui::Ui, text: &str) {
     value(ui, egui::RichText::new(text).color(DIM), KEY_W);
 }
 
-/// A monospace value in a fixed width.
+/// A monospace value in a fixed width (smaller if it is too long: a translation).
 fn value(ui: &mut egui::Ui, text: egui::RichText, w: f32) -> egui::Response {
     let layout = egui::Layout::left_to_right(egui::Align::Center);
     ui.allocate_ui_with_layout(egui::vec2(w, 16.0), layout, |ui| {
         ui.set_min_width(w);
-        ui.add(egui::Label::new(text.monospace()).truncate());
+        let text = crate::menu::fit_monospace(ui, text, w);
+        ui.add(egui::Label::new(text).truncate());
     })
     .response
 }

@@ -1,0 +1,66 @@
+# Simulaation HUD-viestit (crates/stealth-sim). Piirretään lennon fonteilla: isoin kirjaimin,
+# ilman aksentteja (latinalaiset kielet; muut näkevät englannin). Yksiköiden, aseiden ja
+# paikkojen nimet välitetään sellaisenaan.
+
+sim-missile-launch = Ohjuksen laukaisu
+sim-no-flares = Ei enää merkkitulia
+sim-hind-spotted = Hind on havainnut sinut
+sim-rescue-lost = Pelastushelikopteri menetetty
+sim-rescued = Pelastettu!
+sim-captured = Vangittu
+sim-aircraft-destroyed-eject = Kone tuhoutui - katapultoi
+sim-fire-out = Palo sammui
+sim-aircraft-exploded = Kone räjähti
+sim-equipment-delivered = Varusteet toimitettu
+sim-bad-drop = Epäonnistunut pudotus
+sim-secondary-target = Sivukohde
+sim-primary-target = Pääkohde
+sim-troops-inserted = Joukot maissa
+sim-time-expired = Aika loppui
+sim-cargo-delivered = Lasti toimitettu
+sim-safe-landing = Turvallinen lasku
+sim-no-target-ahead = Ei kohdetta edessä
+sim-target-obscured = Kohde peittyy
+sim-target-photographed = Kohde kuvattu.
+sim-drop-supplies = Pudota tarvikkeet nyt
+sim-no-target = Ei kohdetta
+sim-no-target-designated = Kohdetta ei ole osoitettu
+sim-bay-closed = Ruuma kiinni
+sim-insufficient-altitude = Riittämätön korkeus
+sim-fuel-transfer = Polttoaineen siirto
+sim-stores-exhausted = Aseistus loppu
+sim-hit-gunfire = Tykkitulen osuma
+sim-hit-aaa = AAA:n osuma
+sim-hit-flak = Ilmatorjuntatulen osuma
+sim-destroyed = Tuhottu: { $target }
+sim-landing = { $base } - { $aircraft } laskeutuu
+sim-on-final = { $base } - { $aircraft } loppulähestymisessä
+sim-taking-off = { $base } - { $aircraft } nousee
+sim-shot-down = Alasammuttu: { $target }
+sim-lost = Menetetty: { $target }
+sim-uav-hit = { $weapon } osui: { $target }
+sim-locked-on = { $weapon } lukittu: { $target }
+sim-lost-lock = { $weapon } menetti lukituksen
+sim-csar-down = Alhaalla vihollisen alueella - CSAR tukikohdasta { $base }
+sim-flare-left = Merkkituli - jäljellä { $count }
+sim-drone-hit-npp = Drooni osui: { $place } NPP
+sim-drone-hit = Drooni osui: { $place }
+sim-defense-failed = Puolustus epäonnistui - droonia läpi: { $count }
+sim-hit-by = Osuma: { $weapon }
+sim-target-hit-by = { $target } - osuma: { $weapon }
+sim-ineffective = Tehoton
+sim-impact = Osuma: { $weapon }
+# Loppuvälilyönti on klassisen pelin.
+sim-misses = { $weapon } ohi{" "}
+sim-destroyed-by = { $target } tuhottu aseella { $weapon }
+sim-ground-impact = Maaosuma: { $weapon }
+sim-detected = Havaittu: { $target }
+sim-radar-id = { $site } - Tutkatunnistus
+sim-firing = { $site } ampuu: { $missile }
+sim-visual-id = Näkötunnistus - { $aircraft }
+sim-fired-by = { $missile } ampunut: { $launcher }
+sim-frame = Ruutu { $frame }
+sim-beacon = Radiomajakan suunta { $bearing }
+sim-fired = Ammuttu: { $weapon }
+sim-released = Pudotettu: { $weapon }
+sim-destroyed-gunfire = { $target } tuhottu tykkitulella

@@ -1,0 +1,66 @@
+# Simulationens HUD-meddelelser (crates/stealth-sim). Tegnes med flyvefonte: med store bogstaver,
+# uden accenter (latinske sprog; de andre ser den engelske tekst). Enheds-, våben- og stedsnavne
+# gives videre uændret.
+
+sim-missile-launch = Missilaffyring
+sim-no-flares = Ingen nødblus tilbage
+sim-hind-spotted = En Hind har set dig
+sim-rescue-lost = Redningshelikopter tabt
+sim-rescued = Reddet!
+sim-captured = Fanget
+sim-aircraft-destroyed-eject = Fly ødelagt - Udskyd
+sim-fire-out = Branden slukket
+sim-aircraft-exploded = Flyet eksploderede
+sim-equipment-delivered = Udstyr leveret
+sim-bad-drop = Dårligt nedkast
+sim-secondary-target = Sekund. mål
+sim-primary-target = Primært mål
+sim-troops-inserted = Tropper indsat
+sim-time-expired = Tiden er udløbet
+sim-cargo-delivered = Last leveret
+sim-safe-landing = Sikker landing
+sim-no-target-ahead = Intet mål forude
+sim-target-obscured = Målet skjult
+sim-target-photographed = Målet fotograferet.
+sim-drop-supplies = Nedkast forsyninger nu
+sim-no-target = Intet mål
+sim-no-target-designated = Intet mål udpeget
+sim-bay-closed = Bomberum lukket
+sim-insufficient-altitude = For lav højde
+sim-fuel-transfer = Brændstofoverførsel
+sim-stores-exhausted = Bevæbning opbrugt
+sim-hit-gunfire = Ramt af skud
+sim-hit-aaa = Ramt af AAA
+sim-hit-flak = Ramt af flak
+sim-destroyed = { $target } ødelagt
+sim-landing = { $base } - { $aircraft } lander
+sim-on-final = { $base } - { $aircraft } på final
+sim-taking-off = { $base } - { $aircraft } letter
+sim-shot-down = { $target } skudt ned
+sim-lost = { $target } mistet
+sim-uav-hit = { $weapon } ramte { $target }
+sim-locked-on = { $weapon } låst på { $target }
+sim-lost-lock = { $weapon } mistede låsningen
+sim-csar-down = Nede på fjendens område - CSAR fra { $base }
+sim-flare-left = Nødblus - { $count } tilbage
+sim-drone-hit-npp = Drone ramte atomkraftværket { $place }
+sim-drone-hit = Drone ramte { $place }
+sim-defense-failed = Forsvar slog fejl - { $count } droner igennem
+sim-hit-by = Ramt af { $weapon }
+sim-target-hit-by = { $target } ramt af { $weapon }
+sim-ineffective = Uden virkning
+sim-impact = { $weapon } nedslag
+# Mellemrummet til sidst stammer fra det klassiske spil.
+sim-misses = { $weapon } bomber forbi{" "}
+sim-destroyed-by = { $target } ødelagt af { $weapon }
+sim-ground-impact = { $weapon } nedslag på jorden
+sim-detected = { $target } opdaget
+sim-radar-id = { $site } - Radar-ID
+sim-firing = { $site } affyrer { $missile }
+sim-visual-id = Visuel ID - { $aircraft }
+sim-fired-by = { $missile } affyret af { $launcher }
+sim-frame = Billede { $frame }
+sim-beacon = Radiofyr pejling { $bearing }
+sim-fired = { $weapon } affyret
+sim-released = { $weapon } udløst
+sim-destroyed-gunfire = { $target } ødelagt af kanonild

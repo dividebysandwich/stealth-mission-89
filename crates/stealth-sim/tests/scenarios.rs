@@ -5,6 +5,16 @@ use std::sync::OnceLock;
 use stealth_mission::{GameData, Mission, MissionKind, MissionSettings, Seed, Weather};
 use stealth_sim::*;
 
+/// A HUD message in English.
+fn en(t: &stealth_i18n::Text) -> String {
+    t.tr_in(stealth_i18n::Language::En)
+}
+
+/// Whether `e` is the HUD message `text` (in English).
+fn is_msg(e: &SimEvent, text: &str) -> bool {
+    matches!(e, SimEvent::Message(t) if en(t) == text)
+}
+
 struct Data {
     sim: SimData,
     gdata: GameData,
@@ -132,7 +142,7 @@ fn site_detects_and_launches() {
                 SimEvent::MissileLaunched { slot, spec, launcher: Launcher::Site(3) } => {
                     launched = Some((f, *slot, *spec))
                 }
-                SimEvent::Message(s) if s.ends_with(" detected") => detected_msg = true,
+                SimEvent::Message(s) if en(s).ends_with(" detected") => detected_msg = true,
                 _ => {}
             }
         }
@@ -338,7 +348,7 @@ fn decoy_soaks_the_missile() {
     for _ in 0..15 * 50 {
         for e in sim.step(&p, 15) {
             assert!(!matches!(e, SimEvent::PlayerHit { .. }), "decoy must soak the hit");
-            if matches!(&e, SimEvent::Message(s) if s.starts_with("Hit by")) {
+            if matches!(&e, SimEvent::Message(s) if en(s).starts_with("Hit by")) {
                 hit_msg = true;
             }
         }
@@ -367,7 +377,7 @@ fn chaff_breaks_semi_active_lock() {
     let (mut sim, mut p) = engaged(d, 3);
     p.cmd.chaff = true;
     let ev = sim.step(&p, 15);
-    assert!(ev.contains(&SimEvent::Message("Chaff released".into())));
+    assert!(ev.iter().any(|e| is_msg(e, "Chaff released")));
     assert!(!sim.projectiles()[3].locked);
     assert!(sim.lights().chaff);
 }
@@ -473,7 +483,7 @@ fn aim9_shot(d: &Data, weather: Weather) -> bool {
     assert!(sim.bay_doors_open());
     p.cmd.fire = true;
     let ev = sim.step(&p, 15);
-    assert!(ev.contains(&SimEvent::Message("Sidewinder fired".into())), "{ev:?}");
+    assert!(ev.iter().any(|e| is_msg(e, "Sidewinder fired")), "{ev:?}");
     p.cmd = Commands::default();
     let mut killed = false;
     for _ in 0..15 * 20 {
@@ -489,7 +499,13 @@ fn aim9_shot(d: &Data, weather: Weather) -> bool {
         // The An-72 has no radar and never saw the player.
         let r = sim.mission_report();
         assert_eq!((r.air_kills, r.unseen_kills, r.weapons_fired), (1, 1, 1));
-        assert!(r.timeline.iter().any(|t| t.text == "Shot down An-72"), "{:?}", r.timeline);
+        assert!(
+            r.timeline
+                .iter()
+                .any(|t| t.text.tr_in(stealth_i18n::Language::En) == "Shot down An-72"),
+            "{:?}",
+            r.timeline
+        );
     }
     killed
 }
@@ -527,7 +543,7 @@ fn bomb_vs_target_uses_effectiveness_table() {
             for e in sim.step(&p, 15) {
                 match e {
                     SimEvent::GroundDestroyed { object, .. } if object == t => killed = true,
-                    SimEvent::Message(s) => msgs.push(s),
+                    SimEvent::Message(s) => msgs.push(en(&s)),
                     _ => {}
                 }
             }
@@ -544,7 +560,13 @@ fn bomb_vs_target_uses_effectiveness_table() {
             );
             let r = sim.mission_report();
             assert!(r.primary_done && r.training && r.ground_kills >= 1);
-            assert!(r.timeline.iter().any(|t| t.text.ends_with("(primary)")), "{:?}", r.timeline);
+            assert!(
+                r.timeline
+                    .iter()
+                    .any(|t| t.text.tr_in(stealth_i18n::Language::En).ends_with("(primary)")),
+                "{:?}",
+                r.timeline
+            );
             // Campaign damage: the next mission starts with the target destroyed.
             let damage = sim.world_damage();
             assert!(damage.objects.contains(&(t as u16)) || t < 3);
@@ -577,7 +599,7 @@ fn bay_closed_and_altitude_gates() {
     let mut p = player_at(0x4000, 0x4000, 3000, 0, 300);
     p.cmd.fire = true;
     let ev = sim.step(&p, 15);
-    assert!(ev.contains(&SimEvent::Message("Bay closed".into())));
+    assert!(ev.iter().any(|e| is_msg(e, "Bay closed")));
     assert_eq!(sim.bays().0[0].1, 3);
 }
 
@@ -591,7 +613,7 @@ fn countermeasure_stores_run_out() {
     for _ in 0..20 {
         p.cmd.flare = true;
         for e in sim.step(&p, 15) {
-            if e == SimEvent::Message("Stores exhausted".into()) {
+            if is_msg(&e, "Stores exhausted") {
                 exhausted = true;
             }
         }
@@ -799,7 +821,7 @@ fn supply_drop_fixed_and_classic() {
         let mut delivered = false;
         for _ in 0..15 * 30 {
             for e in sim.step(&p, 15) {
-                if e == SimEvent::Message("Equipment Delivered".into()) {
+                if is_msg(&e, "Equipment Delivered") {
                     delivered = true;
                 }
             }
@@ -1546,10 +1568,10 @@ fn town_defenders_round_the_edge() {
 fn shilka_hits_low_and_slow_but_not_high() {
     // 1.5 km away at 600 ft: hit within 30 s.
     let low = aaa_duel(aaa::GroundKind::Zsu, 96, 600, 255);
-    assert!(low.contains(&SimEvent::Message("Hit by AAA".into())), "never hit");
+    assert!(low.iter().any(|e| is_msg(e, "Hit by AAA")), "never hit");
     // 20000 ft: above its reach, it does not even fire.
     let high = aaa_duel(aaa::GroundKind::Zsu, 96, 20000, 255);
-    assert!(!high.iter().any(|e| matches!(e, SimEvent::Message(m) if m.starts_with("Hit"))));
+    assert!(!high.iter().any(|e| matches!(e, SimEvent::Message(m) if en(m).starts_with("Hit"))));
 }
 
 #[test]
@@ -1704,7 +1726,7 @@ fn maverick_shot(guided: bool, range: i32) -> Option<(dlz::LaunchZone, bool)> {
     for _ in 0..15 * 90 {
         for e in sim.step(&p, 15) {
             if let SimEvent::Message(s) = e {
-                hit |= s.contains("hit by AGM-65");
+                hit |= en(&s).contains("hit by AGM-65");
             }
         }
         p.cmd = Commands::default();
@@ -1773,7 +1795,7 @@ fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool) {
     for _ in 0..15 * 240 {
         for e in sim.step(&p, 15) {
             if let SimEvent::Message(s) = e {
-                hit |= s.contains("hit by");
+                hit |= en(&s).contains("hit by");
             }
         }
         p.cmd = Commands::default();
@@ -1985,7 +2007,7 @@ fn helicopter_inserts_troops_off_base() {
     let mut inserted = None;
     for f in 0..15 * 15 {
         for e in sim.step(&landed(x + 0x14, y), 15) {
-            if e == SimEvent::Message("Troops inserted".into()) {
+            if is_msg(&e, "Troops inserted") {
                 inserted = Some(f);
             }
         }

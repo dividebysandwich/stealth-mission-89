@@ -1,5 +1,22 @@
 use stealth_mission::TheaterData;
 
+/// The tests read the campaign's texts in English.
+trait English {
+    fn en(&self) -> String;
+    fn contains(&self, s: &str) -> bool {
+        self.en().contains(s)
+    }
+    fn starts_with(&self, s: &str) -> bool {
+        self.en().starts_with(s)
+    }
+}
+
+impl English for stealth_i18n::Text {
+    fn en(&self) -> String {
+        self.tr_in(stealth_i18n::Language::En)
+    }
+}
+
 use super::*;
 
 fn theater(code: &str) -> TheaterData {
@@ -1861,7 +1878,7 @@ fn deploy_spot(c: &CampaignState, kind: DefenceKind, aaa: &[GroundView]) -> (i32
 }
 
 fn designate(c: &mut CampaignState, (x, y): (i32, i32), kind: DefenceKind) -> Result<u32, String> {
-    c.apply(P0, Command::DesignateSite { x, y, kind })?;
+    c.apply(P0, Command::DesignateSite { x, y, kind }).map_err(|t| t.en())?;
     Ok(c.deployments.last().unwrap().id)
 }
 

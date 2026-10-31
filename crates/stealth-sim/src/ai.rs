@@ -1,6 +1,7 @@
 use crate::Sim;
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, s16};
 use crate::types::*;
+use stealth_i18n::text;
 
 /// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
 const TERRAIN_CLEARANCE: i32 = 614;
@@ -355,10 +356,10 @@ impl Sim {
             let msg = if u.flags & fflags::FINAL != 0 {
                 let first = u.flags & fflags::ROLLOUT == 0;
                 u.flags |= fflags::ROLLOUT;
-                first.then(|| format!("{base} - {ty} landing"))
+                first.then(|| text!("sim-landing", base = base.as_str(), aircraft = ty.as_str()))
             } else {
                 u.flags |= fflags::FINAL;
-                Some(format!("{base} - {ty} on final"))
+                Some(text!("sim-on-final", base = base.as_str(), aircraft = ty.as_str()))
             };
             if let Some(m) = msg
                 && !self.is_traffic(i)
@@ -504,7 +505,7 @@ impl Sim {
         }
         if !self.is_traffic(i) {
             let base = self.place_name(b);
-            self.msg(format!("{base} - {} taking off", t.name));
+            self.msg(text!("sim-taking-off", base = base.to_string(), aircraft = t.name.clone()));
         }
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: b });
     }

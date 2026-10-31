@@ -1,0 +1,229 @@
+# A BEÁLLÍTÁSOK ablak (src/options.rs) és oldalai a repülés közbeni menüben.
+
+options-title = BEÁLLÍTÁSOK
+options-tab-game = JÁTÉK
+options-tab-graphics = GRAFIKA
+options-tab-sound = HANG
+options-tab-controls = VEZÉRLÉS
+options-footer = Mentve a következő repülésekhez; a realizmus kapcsolóit minden játékhoz külön kell megadni
+
+## JÁTÉK
+
+options-section-language = Nyelv
+options-section-classic-modern = Klasszikus / Modern
+options-cockpit = Pilótafülke
+    .facts =
+        Modern: nagy felbontású kijelzők peremgombokkal
+        Klasszikus: a DOS-kor műszerfal-elrendezése és 77x60-as kijelzői (F-117A)
+options-hud = HUD
+    .facts =
+        Modern: nagy felbontású, zöld F-16-stílusú HUD NAV, AA és AG módokkal
+        Klasszikus: a DOS-kor HUD-ja
+options-avionics = Avionika
+    .facts =
+        Modern: F-16-stílusú MFD-oldalak bármelyik MFD-n (helyzetkép, HARM, célzópod, térkép, függesztmények) mozgatható kurzorral
+        Klasszikus: térkép és TAC balra, kamera, WAY, WPN és ORD jobbra
+options-flight-model = Repülési modell
+    .facts =
+        Modern: aerodinamikai repülési modell fly-by-wire vezérléssel: a botkormány a bólintási és orsózási sebességet parancsolja; elengedve az orr a helyén marad és a repülési pálya megmarad
+        Klasszikus: DOS-kori repülési modell
+options-section-flying = Repülés
+options-auto-trim = Automatikus trim
+    .facts =
+        Elengedett botkormánynál a trim ott tartja a helyzetet, ahol hagyta
+        Helikopterek: az orr nem emelkedik tovább a sebességgel; vadászgépek: kitrimmeli a sérült kormányfelületeket
+        Kézi trim: Alt + nyílbillentyűk, az Alt + Home középre állítja
+options-tooltips = Pilótafülke-tooltipek
+    .facts = Mi a pilótafülke egy kezelőszerve vagy kijelzője, az egér alatt vagy VR-ban egy ujjhegynél
+options-player-labels = Játékosnevek
+    .facts = Többjátékos: a többi pilóta neve a gépe fölött, bármilyen távolságból
+options-label-size =
+    .facts =
+        A játékosnevek mérete
+        50%: alapértelmezett
+options-section-vr-size = VR pilótafülke mérete
+options-vr-size =
+    .facts =
+        A pilótafülke (és a világ) mérete a headsetben
+        100%: valódi méret
+options-section-gif = GIF-felvétel
+options-gif-size = MÉRET
+options-gif-rate = KÉPKOCKA
+options-gif-scale-100 =
+    .facts = Az ablak teljes felbontása: nagy fájlok
+options-gif-scale-25 =
+    .facts = Kis fájlok
+options-gif-rate-50 =
+    .facts = Csak ha a játék 100 fps-sel vagy gyorsabban fut (minden második képkocka kerül rögzítésre)
+options-gif-hint = F12 (ha nincs átállítva) indítja és leállítja; a Képek mappába menti
+
+## GRAFIKA
+
+options-section-rendering = Megjelenítés
+options-shaders = Shaderek
+    .facts =
+        Modern: finom irányított árnyalás, lágy távolsági köd
+        Klasszikus: lapos árnyalás
+options-shadows = Árnyékok
+    .facts =
+        Modern: napárnyékok a pilótafülkében és a világban (GPU-időbe kerül)
+        Klasszikus: nincsenek árnyékok
+options-point-lights = Pontfények
+    .facts =
+        Modern: a pilótafülke és a kijelzők megvilágítása; a robbanások, füstoszlopok és kifutópálya-fények megvilágítják a jelenetet
+        Klasszikus: csak nap- és égbolt-fény
+options-time-of-day = Napszak
+    .facts =
+        Modern: a nap és a hold a küldetés órájával mozog, az égbolt a nappal sötétedik és világosodik; éjjel csillagok és a hold fázisa
+        Modern: a holdfény szabja meg, milyen messziről látják Önt az ellenséges pilóták éjjel (2 km holdtalan éjszakán, 4 km teliholdnál)
+        Klasszikus: lassú színváltozás és rögzített nap
+options-msaa = Élsimítás (MSAA)
+    .facts =
+        Sima élek: 4x MSAA, VR-ban 2x (GPU-időbe kerül)
+        Kikapcsolva: kemény pixelélek
+options-auto-detail = Automatikus tájdetail (VR)
+    .facts =
+        A headsetben a városok, erdők és mezők látótávolsága csökken, amíg a képkockák késnek, és visszanő, ha van tartalék idő
+        A grafikai beállítások a választottak maradnak
+options-sun-moon = Nap és hold
+    .facts =
+        Nappal a nap az égen, éjjel a hold és a csillagok
+        A hold a küldetés fázisát mutatja
+
+## HANG
+
+options-section-volume = Hangerő
+options-volume-master = Fő
+    .facts = Minden hang
+options-volume-engine = Hajtómű
+    .facts = A saját hajtóműve vagy rotorja, és az Ön körül hallható gépek
+options-volume-effects = Effektek
+    .facts = Fegyverek, robbanások, futó, rádió és a többi
+options-volume-warnings = Figyelmeztetések
+    .facts = Átesési kürt, radar- és rakétafigyelmeztetések, a tűzjelző szirénája, a Sidewinder hangjai
+options-volume-rwr = RWR
+    .facts = A radarfigyelmeztető hangok, a figyelmeztetések hangerejének részeként
+options-section-rwr-tones = Radarfigyelmeztető hangok
+rwr-tones-all = MIND
+    .facts = Egy radar, amely megvilágít, minden pásztázás, amely észlel, rakétaindítások
+rwr-tones-detect = CSAK ÉSZLELÉS
+    .facts =
+        Egy hang, amikor egy radar észlel (újra, miután a radarok egy időre elengedtek)
+        És a rakétaindítások
+rwr-tones-launch = CSAK INDÍTÁSOK
+    .facts = Csak a rád indított rakéták
+rwr-tones-off = KI
+    .facts = Nincs radarfigyelmeztető hang (a lámpák és a kijelzők továbbra is figyelmeztetnek)
+options-section-cockpit = Pilótafülke
+options-low-pass = Hajtómű aluláteresztő szűrő
+    .facts =
+        A gép belsejében a hajtómű tompán szól (a kabinfedél és a sisak levágja a magasakat)
+        Kikapcsolva: ugyanaz, mint kint
+
+## VEZÉRLÉS
+
+options-section-bindings = Kiosztások
+options-keys-joystick = BILLENTYŰK ÉS JOYSTICK
+    .facts =
+        A billentyűk, a joystick és a HOTAS tengelyeinek és gombjainak kiosztása
+        Mentve a következő repülésekhez
+options-section-head-tracking = Fej- és szemkövetés
+options-head-tracking = Fej-/szemkövetés
+    .facts =
+        A feje elfordítja és mozgatja a nézetet a pilótafülkében (asztali gépen; VR-ban a headset teszi)
+        Követőprogram (OpenTrack...): FreeTrack kimenet, vagy UDP a 127.0.0.1 címre, 4242-es porton
+        Home: a fej jelenlegi helyzete lesz a középpont
+options-tracking = Követés ({ $source })
+options-no-tracker = Nem érkezik követőjel: indítsa el a követőprogramot
+
+## EFFECTS
+
+options-section-effects = Effects
+options-section-retro = Retro
+effect-shake = Camera shake
+    .facts =
+        The view shakes with the gun, nearby blasts, stall buffet, touchdowns and the runway
+        VR: the cockpit vibrates, your head stays still
+effect-flashes = Combat flashes
+    .facts =
+        Flak bursts, explosions and missile launches light the clouds, the ground and the cockpit for a moment
+effect-barrage = Night barrage
+    .facts =
+        Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them
+        Only for the look: the barrage hits nothing, the searchlights find nothing
+effect-cockpit-night = Cockpit night lighting
+    .facts =
+        A dim red flood light in the cockpit after dark (blue-green under the goggles)
+        The master caution pulses amber over the panel while a warning is on
+effect-nvg = Night vision goggles
+    .facts =
+        Bright lights bloom into halos, the picture grains more in the dark
+        Desktop: the goggles' round field of view
+effect-snow = Snow
+    .facts =
+        Above the freezing level storms snow instead of rain: low in a northern winter, high in summer
+effect-mist = Ground mist
+    .facts =
+        Modern shaders: mist lies over the low ground and the sea at dawn, dusk and night
+        Thin in the deserts, none in storms
+effect-cloud-shadows = Cloud shadows
+    .facts =
+        Modern shaders: the clouds' shadows on the ground below
+effect-vapour = Pára és rotorleáramlás
+    .facts =
+        Éles manővereknél párafátyol a szárnyvégeken
+        Az alacsonyan függő helikopter port ver fel, víz fölött permetet
+        A mozgó járművek port vernek fel maguk mögött
+effect-night-sky = Night sky
+    .facts =
+        Shooting stars now and then, the stars low over the horizon twinkle
+        The northern lights over the North Cape
+effect-vga = VGA colours
+    .facts =
+        The 1989 look with modern shading: 64 steps a colour channel, as a VGA card's, dithered
+effect-scanlines = Scanlines
+    .facts =
+        A CRT monitor's scanlines (not in VR)
+
+## LANGUAGE NAMES
+
+lang-name-en = angol
+lang-name-bg = bolgár
+lang-name-zh-Hans = kínai (egyszerűsített)
+lang-name-hr = horvát
+lang-name-cs = cseh
+lang-name-da = dán
+lang-name-nl = holland
+lang-name-et = észt
+lang-name-fi = finn
+lang-name-fr = francia
+lang-name-de = német
+lang-name-el = görög
+lang-name-hu = magyar
+lang-name-id = indonéz
+lang-name-ga = ír
+lang-name-it = olasz
+lang-name-ja = japán
+lang-name-ko = koreai
+lang-name-lv = lett
+lang-name-lt = litván
+lang-name-mt = máltai
+lang-name-pl = lengyel
+lang-name-pt-BR = portugál (brazil)
+lang-name-ro = román
+lang-name-ru = orosz
+lang-name-sk = szlovák
+lang-name-sl = szlovén
+lang-name-es = spanyol
+lang-name-sv = svéd
+lang-name-uk = ukrán
+
+## Browser build: offer to play in the browser's language (src/i18n.rs)
+
+language-offer-question = A böngésző nyelve: { $language }. Ezen a nyelven szeretnél játszani?
+language-offer-yes = Igen
+language-offer-no = Nem
+language-offer-never = Ne kérdezd újra
+effect-sunbeams = Sunbeams
+    .facts =
+        Shafts of sunlight through the gaps of a broken overcast

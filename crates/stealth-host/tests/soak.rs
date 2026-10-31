@@ -31,8 +31,13 @@ fn soak(code: &str, opponents: u8, hours: usize) {
             host.tick(&mut sim, 1.0 / 15.0, &e2);
         }
         let st = &host.state;
-        let new: Vec<&str> =
-            st.log.iter().filter(|l| l.time > seen).map(|l| l.text.as_str()).collect();
+        // The log in English.
+        let new: Vec<String> = st
+            .log
+            .iter()
+            .filter(|l| l.time > seen)
+            .map(|l| l.text.tr_in(stealth_i18n::Language::En))
+            .collect();
         seen = st.clock;
         let count = |k: &str| new.iter().filter(|t| t.contains(k)).count();
         targets.extend(

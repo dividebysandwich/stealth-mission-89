@@ -406,7 +406,7 @@ fn an_empty_stockpile_orders_a_resupply() {
     assert_eq!(sim.stockpile(radar), 0);
     let ev = host.tick(&mut sim, 0.1, &[]);
     assert!(ev.iter().any(|e| matches!(e,
-        HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) if m.contains("out of missiles"))));
+        HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) if m.tr_in(stealth_i18n::Language::En).contains("out of missiles"))));
     assert_eq!(host.state.supply_requests.len(), 1);
     let q = host.state.supply_requests[0].clone();
     assert_eq!(

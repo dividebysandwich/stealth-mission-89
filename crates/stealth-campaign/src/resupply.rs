@@ -7,6 +7,7 @@
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, Report, WorldView};
+use stealth_i18n::{Text, text};
 
 impl CampaignState {
     /// A player at an air defence console asks for a new stockpile for its unit (None: it ran
@@ -18,15 +19,15 @@ impl CampaignState {
         x: i32,
         y: i32,
         kind: DefenceKind,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         if let Some(r) = self.supply_requests.iter().find(|r| r.aaa == aaa) {
             return Err(match r.state {
-                SupplyState::Open { .. } => "Resupply already requested".into(),
-                SupplyState::Ai { .. } => "A resupply helicopter is on its way".into(),
+                SupplyState::Open { .. } => text!("ce-resupply-requested"),
+                SupplyState::Ai { .. } => text!("ce-resupply-on-way"),
             });
         }
         if self.supply_base(x, y).is_none() {
-            return Err("No friendly airfield to fly it from".into());
+            return Err(text!("ce-no-supply-airfield"));
         }
         let name = self
             .places
@@ -47,17 +48,14 @@ impl CampaignState {
             state: SupplyState::Open { since: now },
         };
         let text = match player {
-            Some(p) => {
-                let who = self.player_name(p).unwrap_or("A pilot");
-                format!("{who} requests resupply for the {}", r.title())
-            }
+            Some(p) => text!("cl-resupply-requested", who = self.who(p), unit = r.title()),
             None => {
-                let what = match kind {
-                    DefenceKind::Gepard => "rounds",
-                    DefenceKind::Patriot => "missiles",
-                    DefenceKind::Drones => "drones",
+                let id = match kind {
+                    DefenceKind::Gepard => "cl-resupply-out-of-rounds",
+                    DefenceKind::Patriot => "cl-resupply-out-of-missiles",
+                    DefenceKind::Drones => "cl-resupply-out-of-drones",
                 };
-                format!("The {} is out of {what}: resupply ordered", r.title())
+                text!(id, unit = r.title())
             }
         };
         self.supply_requests.push(r);
@@ -122,7 +120,7 @@ impl CampaignState {
                 // Its helicopter flies home with the load.
                 let r = self.supply_requests.remove(k);
                 self.board_at = f64::MIN;
-                self.note(format!("The {} is lost: its resupply is called off", r.title()));
+                self.note(text!("cl-resupply-lost-unit", unit = r.title()));
                 continue;
             };
             let r = &mut self.supply_requests[k];
@@ -145,7 +143,7 @@ impl CampaignState {
             r.state = SupplyState::Ai { tag };
             let (id, aaa, title) = (r.id, r.aaa, r.title());
             let base = self.site(from).map_or(String::new(), |s| s.name.clone());
-            let text = format!("A UH-60 takes the resupply for the {title} from {base}");
+            let text = text!("cl-resupply-ai", unit = title, base = base);
             self.note(text.clone());
             self.board_at = f64::MIN;
             ev.push(CampaignEvent::Message(text));
@@ -176,7 +174,7 @@ impl CampaignState {
         let now = self.clock;
         let r = &mut self.supply_requests[k];
         r.state = SupplyState::Open { since: now };
-        let text = format!("Resupply helicopter for the {} lost - back on the board", r.title());
+        let text = text!("cl-resupply-heli-lost", unit = r.title());
         self.note(text.clone());
         self.board_at = f64::MIN;
         ev.push(CampaignEvent::Message(text));
@@ -191,9 +189,10 @@ impl CampaignState {
     ) {
         let Some(k) = self.supply_requests.iter().position(|r| r.id == id) else { return };
         let r = self.supply_requests.remove(k);
-        let who =
-            by.and_then(|p| self.player_name(p)).map(|n| format!(" by {n}")).unwrap_or_default();
-        let text = format!("The {} is resupplied{who}", r.title());
+        let text = match by.and_then(|p| self.player_name(p)) {
+            Some(who) => text!("cl-resupplied-by", unit = r.title(), who = who),
+            None => text!("cl-resupplied", unit = r.title()),
+        };
         self.note(text.clone());
         self.board_at = f64::MIN;
         ev.push(CampaignEvent::Message(text));
@@ -201,13 +200,13 @@ impl CampaignState {
     }
 
     /// The board's resupply offers: the requests nobody's helicopter has taken yet.
-    pub(crate) fn supply_offers(&self) -> Vec<(String, Objective, i32, i32)> {
+    pub(crate) fn supply_offers(&self) -> Vec<(Text, Objective, i32, i32)> {
         self.supply_requests
             .iter()
             .filter(|r| matches!(r.state, SupplyState::Open { .. }))
             .map(|r| {
                 (
-                    format!("Resupply - {}", r.title()),
+                    text!("cb-resupply", place = r.title()),
                     Objective::Resupply { request: r.id },
                     r.x,
                     r.y,

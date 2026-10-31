@@ -43,70 +43,460 @@
 <body>
 <main>
   <h1>STEALTH MISSION 89</h1>
-  <p class="sub">Download version <span id="version">?</span> for your computer.
-    <a href="index.html">Back to the browser version</a></p>
+  <p class="sub"><span data-i18n="sub">Download version</span> <span id="version">?</span>
+    <span data-i18n="for">for your computer.</span>
+    <a href="index.html" data-i18n="back">Back to the browser version</a></p>
 
-  <h2>Steam Deck and Steam Frame</h2>
+  <h2 data-i18n="steam">Steam Deck and Steam Frame</h2>
   <div class="steam">
     <div class="card">
       <h3>Steam Deck</h3>
-      <div class="what">Take <b>Linux, Intel/AMD (x86-64)</b>: the AppImage.</div>
+      <div class="what" data-i18n="deck">Take <b>Linux, Intel/AMD (x86-64)</b>: the AppImage.</div>
       <a class="btn" data-file="x86_64.AppImage">AppImage, x86-64</a>
     </div>
     <div class="card">
       <h3>Steam Frame</h3>
-      <div class="what">Take <b>Linux, ARM (aarch64)</b>: the AppImage. VR included.</div>
+      <div class="what" data-i18n="frame">Take <b>Linux, ARM (aarch64)</b>: the AppImage. VR included.</div>
       <a class="btn" data-file="aarch64.AppImage">AppImage, aarch64</a>
     </div>
   </div>
-  <p class="note">In desktop mode, mark the AppImage executable (Properties &gt; Permissions, or
+  <p class="note" data-i18n="appimage">In desktop mode, mark the AppImage executable (Properties &gt; Permissions, or
     <code>chmod +x</code>) and start it, or add it to Steam as a non-Steam game.</p>
 
-  <h2>All platforms</h2>
+  <h2 data-i18n="all">All platforms</h2>
   <div class="grid">
     <div class="card" data-os="windows" data-arch="x86">
       <h3>Windows, Intel/AMD</h3>
-      <div class="what">x86-64 PCs. VR with an OpenXR runtime (SteamVR...).</div>
-      <a class="btn" data-file="x86_64-pc-windows-msvc.msi">Installer (.msi)</a>
-      <a class="btn alt" data-file="x86_64-pc-windows-msvc.zip">Portable (.zip)</a>
+      <div class="what" data-i18n="win-x86">x86-64 PCs. VR with an OpenXR runtime (SteamVR...).</div>
+      <a class="btn" data-file="x86_64-pc-windows-msvc.msi" data-i18n="msi">Installer (.msi)</a>
+      <a class="btn alt" data-file="x86_64-pc-windows-msvc.zip" data-i18n="zip">Portable (.zip)</a>
     </div>
     <div class="card" data-os="windows" data-arch="arm">
       <h3>Windows, ARM</h3>
-      <div class="what">Snapdragon and other ARM64 PCs.</div>
-      <a class="btn" data-file="aarch64-pc-windows-msvc.msi">Installer (.msi)</a>
-      <a class="btn alt" data-file="aarch64-pc-windows-msvc.zip">Portable (.zip)</a>
+      <div class="what" data-i18n="win-arm">Snapdragon and other ARM64 PCs.</div>
+      <a class="btn" data-file="aarch64-pc-windows-msvc.msi" data-i18n="msi">Installer (.msi)</a>
+      <a class="btn alt" data-file="aarch64-pc-windows-msvc.zip" data-i18n="zip">Portable (.zip)</a>
     </div>
     <div class="card" data-os="linux" data-arch="x86">
       <h3>Linux, Intel/AMD</h3>
-      <div class="what">x86-64, also the Steam Deck.</div>
+      <div class="what" data-i18n="linux-x86">x86-64, also the Steam Deck.</div>
       <a class="btn" data-file="x86_64.AppImage">AppImage</a>
-      <a class="btn alt" data-file="x86_64-unknown-linux-gnu.tar.gz">Archive (.tar.gz)</a>
+      <a class="btn alt" data-file="x86_64-unknown-linux-gnu.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="linux" data-arch="arm">
       <h3>Linux, ARM</h3>
-      <div class="what">aarch64, also the Steam Frame.</div>
+      <div class="what" data-i18n="linux-arm">aarch64, also the Steam Frame.</div>
       <a class="btn" data-file="aarch64.AppImage">AppImage</a>
-      <a class="btn alt" data-file="aarch64-unknown-linux-gnu.tar.gz">Archive (.tar.gz)</a>
+      <a class="btn alt" data-file="aarch64-unknown-linux-gnu.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="mac" data-arch="arm">
       <h3>macOS, Apple Silicon</h3>
-      <div class="what">M1 and later. No VR.</div>
-      <a class="btn" data-file="aarch64-apple-darwin.tar.gz">Archive (.tar.gz)</a>
+      <div class="what" data-i18n="mac-arm">M1 and later. No VR.</div>
+      <a class="btn" data-file="aarch64-apple-darwin.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
     <div class="card" data-os="mac" data-arch="x86">
       <h3>macOS, Intel</h3>
-      <div class="what">Intel Macs. No VR.</div>
-      <a class="btn" data-file="x86_64-apple-darwin.tar.gz">Archive (.tar.gz)</a>
+      <div class="what" data-i18n="mac-x86">Intel Macs. No VR.</div>
+      <a class="btn" data-file="x86_64-apple-darwin.tar.gz" data-i18n="tar">Archive (.tar.gz)</a>
     </div>
   </div>
 
-  <p class="note" style="margin-top: 24px">Other versions and the release notes:
-    <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases">the release on GitHub</a>.</p>
+  <p class="note" style="margin-top: 24px"><span data-i18n="other">Other versions and the release notes:</span>
+    <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases" data-i18n="github">the release on GitHub</a>.</p>
 </main>
 <script>
+  // The page in the browser's language, English for the others (data-i18n elements).
+  const TEXTS = {
+    fr: {
+      title: "Télécharger Stealth Mission 89", sub: "Télécharger la version", for: "pour votre ordinateur.",
+      back: "Retour à la version navigateur", steam: "Steam Deck et Steam Frame",
+      deck: "Prenez <b>Linux, Intel/AMD (x86-64)</b> : l'AppImage.",
+      frame: "Prenez <b>Linux, ARM (aarch64)</b> : l'AppImage. VR incluse.",
+      appimage: "En mode bureau, rendez l'AppImage exécutable (Propriétés &gt; Permissions, ou <code>chmod +x</code>) et lancez-la, ou ajoutez-la à Steam comme jeu non Steam.",
+      all: "Toutes les plateformes", "win-x86": "PC x86-64. VR avec un runtime OpenXR (SteamVR...).",
+      "win-arm": "PC Snapdragon et autres ARM64.", msi: "Installateur (.msi)", zip: "Portable (.zip)",
+      "linux-x86": "x86-64, dont le Steam Deck.", "linux-arm": "aarch64, dont le Steam Frame.",
+      tar: "Archive (.tar.gz)", "mac-arm": "M1 et suivants. Pas de VR.", "mac-x86": "Mac Intel. Pas de VR.",
+      other: "Autres versions et notes de version :", github: "la version sur GitHub",
+      mine: "CET ORDINATEUR", latest: "dernière",
+    },
+    de: {
+      title: "Stealth Mission 89 herunterladen", sub: "Die Version", for: "für Ihren Computer herunterladen.",
+      back: "Zurück zur Browserversion", steam: "Steam Deck und Steam Frame",
+      deck: "Nehmen Sie <b>Linux, Intel/AMD (x86-64)</b>: das AppImage.",
+      frame: "Nehmen Sie <b>Linux, ARM (aarch64)</b>: das AppImage. Mit VR.",
+      appimage: "Machen Sie das AppImage im Desktopmodus ausführbar (Eigenschaften &gt; Berechtigungen oder <code>chmod +x</code>) und starten Sie es, oder fügen Sie es Steam als Nicht-Steam-Spiel hinzu.",
+      all: "Alle Plattformen", "win-x86": "x86-64-PCs. VR mit einer OpenXR-Laufzeit (SteamVR...).",
+      "win-arm": "Snapdragon- und andere ARM64-PCs.", msi: "Installer (.msi)", zip: "Portabel (.zip)",
+      "linux-x86": "x86-64, auch das Steam Deck.", "linux-arm": "aarch64, auch der Steam Frame.",
+      tar: "Archiv (.tar.gz)", "mac-arm": "M1 und neuer. Kein VR.", "mac-x86": "Intel-Macs. Kein VR.",
+      other: "Andere Versionen und Versionshinweise:", github: "die Version auf GitHub",
+      mine: "DIESER COMPUTER", latest: "neueste",
+    },
+    es: {
+      title: "Descargar Stealth Mission 89", sub: "Descarga la versión", for: "para tu ordenador.",
+      back: "Volver a la versión de navegador", steam: "Steam Deck y Steam Frame",
+      deck: "Elige <b>Linux, Intel/AMD (x86-64)</b>: el AppImage.",
+      frame: "Elige <b>Linux, ARM (aarch64)</b>: el AppImage. Con RV.",
+      appimage: "En el modo escritorio, haz ejecutable el AppImage (Propiedades &gt; Permisos, o <code>chmod +x</code>) y ábrelo, o añádelo a Steam como juego no de Steam.",
+      all: "Todas las plataformas", "win-x86": "PC x86-64. RV con un runtime OpenXR (SteamVR...).",
+      "win-arm": "PC Snapdragon y otros ARM64.", msi: "Instalador (.msi)", zip: "Portátil (.zip)",
+      "linux-x86": "x86-64, incluido el Steam Deck.", "linux-arm": "aarch64, incluido el Steam Frame.",
+      tar: "Archivo (.tar.gz)", "mac-arm": "M1 y posteriores. Sin RV.", "mac-x86": "Mac Intel. Sin RV.",
+      other: "Otras versiones y notas de la versión:", github: "la versión en GitHub",
+      mine: "ESTE ORDENADOR", latest: "última",
+    },
+    it: {
+      title: "Scarica Stealth Mission 89", sub: "Scarica la versione", for: "per il tuo computer.",
+      back: "Torna alla versione browser", steam: "Steam Deck e Steam Frame",
+      deck: "Scegli <b>Linux, Intel/AMD (x86-64)</b>: l'AppImage.",
+      frame: "Scegli <b>Linux, ARM (aarch64)</b>: l'AppImage. VR inclusa.",
+      appimage: "In modalità desktop, rendi eseguibile l'AppImage (Proprietà &gt; Permessi, o <code>chmod +x</code>) e avviala, oppure aggiungila a Steam come gioco non Steam.",
+      all: "Tutte le piattaforme", "win-x86": "PC x86-64. VR con un runtime OpenXR (SteamVR...).",
+      "win-arm": "PC Snapdragon e altri ARM64.", msi: "Installer (.msi)", zip: "Portatile (.zip)",
+      "linux-x86": "x86-64, incluso lo Steam Deck.", "linux-arm": "aarch64, incluso lo Steam Frame.",
+      tar: "Archivio (.tar.gz)", "mac-arm": "M1 e successivi. Niente VR.", "mac-x86": "Mac Intel. Niente VR.",
+      other: "Altre versioni e note di rilascio:", github: "la versione su GitHub",
+      mine: "QUESTO COMPUTER", latest: "ultima",
+    },
+    pl: {
+      title: "Pobierz Stealth Mission 89", sub: "Pobierz wersję", for: "na swój komputer.",
+      back: "Wróć do wersji przeglądarkowej", steam: "Steam Deck i Steam Frame",
+      deck: "Wybierz <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Wybierz <b>Linux, ARM (aarch64)</b>: AppImage. Z obsługą VR.",
+      appimage: "W trybie pulpitu nadaj plikowi AppImage prawo wykonywania (Właściwości &gt; Uprawnienia lub <code>chmod +x</code>) i uruchom go albo dodaj go do Steam jako grę spoza Steam.",
+      all: "Wszystkie platformy", "win-x86": "Komputery x86-64. VR ze środowiskiem OpenXR (SteamVR...).",
+      "win-arm": "Komputery Snapdragon i inne ARM64.", msi: "Instalator (.msi)", zip: "Przenośna (.zip)",
+      "linux-x86": "x86-64, w tym Steam Deck.", "linux-arm": "aarch64, w tym Steam Frame.",
+      tar: "Archiwum (.tar.gz)", "mac-arm": "M1 i nowsze. Bez VR.", "mac-x86": "Maki z procesorem Intel. Bez VR.",
+      other: "Inne wersje i informacje o wydaniu:", github: "wydanie na GitHubie",
+      mine: "TEN KOMPUTER", latest: "najnowsza",
+    },
+    pt: {
+      title: "Baixar Stealth Mission 89", sub: "Baixe a versão", for: "para o seu computador.",
+      back: "Voltar à versão para navegador", steam: "Steam Deck e Steam Frame",
+      deck: "Escolha <b>Linux, Intel/AMD (x86-64)</b>: o AppImage.",
+      frame: "Escolha <b>Linux, ARM (aarch64)</b>: o AppImage. Com RV.",
+      appimage: "No modo desktop, torne o AppImage executável (Propriedades &gt; Permissões, ou <code>chmod +x</code>) e abra-o, ou adicione-o à Steam como jogo não Steam.",
+      all: "Todas as plataformas", "win-x86": "PCs x86-64. RV com um runtime OpenXR (SteamVR...).",
+      "win-arm": "PCs Snapdragon e outros ARM64.", msi: "Instalador (.msi)", zip: "Portátil (.zip)",
+      "linux-x86": "x86-64, inclusive o Steam Deck.", "linux-arm": "aarch64, inclusive o Steam Frame.",
+      tar: "Arquivo (.tar.gz)", "mac-arm": "M1 e posteriores. Sem RV.", "mac-x86": "Macs Intel. Sem RV.",
+      other: "Outras versões e notas de lançamento:", github: "a versão no GitHub",
+      mine: "ESTE COMPUTADOR", latest: "mais recente",
+    },
+    ru: {
+      title: "Скачать Stealth Mission 89", sub: "Скачайте версию", for: "для своего компьютера.",
+      back: "Вернуться к браузерной версии", steam: "Steam Deck и Steam Frame",
+      deck: "Выберите <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Выберите <b>Linux, ARM (aarch64)</b>: AppImage. С поддержкой VR.",
+      appimage: "В режиме рабочего стола сделайте AppImage исполняемым (Свойства &gt; Права или <code>chmod +x</code>) и запустите его либо добавьте в Steam как стороннюю игру.",
+      all: "Все платформы", "win-x86": "ПК x86-64. VR со средой OpenXR (SteamVR...).",
+      "win-arm": "ПК на Snapdragon и других ARM64.", msi: "Установщик (.msi)", zip: "Портативная версия (.zip)",
+      "linux-x86": "x86-64, в том числе Steam Deck.", "linux-arm": "aarch64, в том числе Steam Frame.",
+      tar: "Архив (.tar.gz)", "mac-arm": "M1 и новее. Без VR.", "mac-x86": "Mac на Intel. Без VR.",
+      other: "Другие версии и примечания к выпуску:", github: "выпуск на GitHub",
+      mine: "ЭТОТ КОМПЬЮТЕР", latest: "последняя",
+    },
+    zh: {
+      title: "下载 Stealth Mission 89", sub: "下载版本", for: "，适用于你的电脑。",
+      back: "返回浏览器版", steam: "Steam Deck 和 Steam Frame",
+      deck: "请选择 <b>Linux，Intel/AMD (x86-64)</b>：AppImage。",
+      frame: "请选择 <b>Linux，ARM (aarch64)</b>：AppImage。支持 VR。",
+      appimage: "在桌面模式下，先让 AppImage 可执行（属性 &gt; 权限，或 <code>chmod +x</code>）再运行，或将其作为非 Steam 游戏添加到 Steam。",
+      all: "所有平台", "win-x86": "x86-64 电脑。通过 OpenXR 运行时（SteamVR 等）支持 VR。",
+      "win-arm": "骁龙及其他 ARM64 电脑。", msi: "安装程序 (.msi)", zip: "便携版 (.zip)",
+      "linux-x86": "x86-64，包括 Steam Deck。", "linux-arm": "aarch64，包括 Steam Frame。",
+      tar: "压缩包 (.tar.gz)", "mac-arm": "M1 及更新机型。不支持 VR。", "mac-x86": "Intel Mac。不支持 VR。",
+      other: "其他版本和发行说明：", github: "GitHub 上的发行版",
+      mine: "这台电脑", latest: "最新",
+    },
+    ja: {
+      title: "Stealth Mission 89 をダウンロード", sub: "バージョン", for: "をお使いのパソコン用にダウンロードします。",
+      back: "ブラウザ版に戻る", steam: "Steam Deck と Steam Frame",
+      deck: "<b>Linux、Intel/AMD (x86-64)</b> の AppImage を選んでください。",
+      frame: "<b>Linux、ARM (aarch64)</b> の AppImage を選んでください。VR 対応。",
+      appimage: "デスクトップモードで AppImage に実行権限を付け（プロパティ &gt; アクセス権、または <code>chmod +x</code>）、起動するか、Steam に非 Steam ゲームとして追加してください。",
+      all: "すべてのプラットフォーム", "win-x86": "x86-64 パソコン。OpenXR ランタイム（SteamVR など）で VR に対応。",
+      "win-arm": "Snapdragon などの ARM64 パソコン。", msi: "インストーラー (.msi)", zip: "ポータブル版 (.zip)",
+      "linux-x86": "x86-64（Steam Deck を含む）。", "linux-arm": "aarch64（Steam Frame を含む）。",
+      tar: "アーカイブ (.tar.gz)", "mac-arm": "M1 以降。VR 非対応。", "mac-x86": "Intel Mac。VR 非対応。",
+      other: "その他のバージョンとリリースノート：", github: "GitHub のリリース",
+      mine: "このパソコン", latest: "最新",
+    },
+    ko: {
+      title: "Stealth Mission 89 다운로드", sub: "버전", for: "을(를) 내 컴퓨터용으로 다운로드합니다.",
+      back: "브라우저 버전으로 돌아가기", steam: "Steam Deck 및 Steam Frame",
+      deck: "<b>Linux, Intel/AMD (x86-64)</b> AppImage를 선택하세요.",
+      frame: "<b>Linux, ARM (aarch64)</b> AppImage를 선택하세요. VR 지원.",
+      appimage: "데스크톱 모드에서 AppImage에 실행 권한을 주고(속성 &gt; 권한, 또는 <code>chmod +x</code>) 실행하거나, Steam에 비 Steam 게임으로 추가하세요.",
+      all: "모든 플랫폼", "win-x86": "x86-64 PC. OpenXR 런타임(SteamVR 등)으로 VR 지원.",
+      "win-arm": "Snapdragon 등 ARM64 PC.", msi: "설치 프로그램 (.msi)", zip: "휴대용 (.zip)",
+      "linux-x86": "x86-64, Steam Deck 포함.", "linux-arm": "aarch64, Steam Frame 포함.",
+      tar: "압축 파일 (.tar.gz)", "mac-arm": "M1 이후. VR 미지원.", "mac-x86": "Intel Mac. VR 미지원.",
+      other: "다른 버전과 릴리스 노트:", github: "GitHub의 릴리스",
+      mine: "이 컴퓨터", latest: "최신",
+    },
+    uk: {
+      title: "Завантажити Stealth Mission 89", sub: "Завантажити версію", for: "для вашого комп'ютера.",
+      back: "Назад до браузерної версії", steam: "Steam Deck і Steam Frame",
+      deck: "Оберіть <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Оберіть <b>Linux, ARM (aarch64)</b>: AppImage. VR підтримується.",
+      appimage: "У режимі робочого столу зробіть AppImage виконуваним (Властивості &gt; Дозволи, або <code>chmod +x</code>) і запустіть його, або додайте його до Steam як сторонню гру.",
+      all: "Усі платформи", "win-x86": "ПК x86-64. VR через середовище OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon та інші ПК на ARM64.", msi: "Інсталятор (.msi)", zip: "Портативна версія (.zip)",
+      "linux-x86": "x86-64, включно зі Steam Deck.", "linux-arm": "aarch64, включно зі Steam Frame.",
+      tar: "Архів (.tar.gz)", "mac-arm": "M1 і новіші. Без VR.", "mac-x86": "Mac на Intel. Без VR.",
+      other: "Інші версії та нотатки до випусків:", github: "випуск на GitHub",
+      mine: "ЦЕЙ КОМП'ЮТЕР", latest: "остання",
+    },
+    cs: {
+      title: "Stáhnout Stealth Mission 89", sub: "Stáhnout verzi", for: "pro váš počítač.",
+      back: "Zpět na verzi v prohlížeči", steam: "Steam Deck a Steam Frame",
+      deck: "Vyberte <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Vyberte <b>Linux, ARM (aarch64)</b>: AppImage. Včetně VR.",
+      appimage: "V desktopovém režimu nastavte AppImage jako spustitelný (Vlastnosti &gt; Oprávnění, nebo <code>chmod +x</code>) a spusťte ho, nebo ho přidejte do Steamu jako hru mimo Steam.",
+      all: "Všechny platformy", "win-x86": "PC x86-64. VR s runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon a další PC s ARM64.", msi: "Instalátor (.msi)", zip: "Přenosná verze (.zip)",
+      "linux-x86": "x86-64, včetně Steam Decku.", "linux-arm": "aarch64, včetně Steam Frame.",
+      tar: "Archiv (.tar.gz)", "mac-arm": "M1 a novější. Bez VR.", "mac-x86": "Macy s Intelem. Bez VR.",
+      other: "Další verze a poznámky k vydání:", github: "vydání na GitHubu",
+      mine: "TENTO POČÍTAČ", latest: "nejnovější",
+    },
+    nl: {
+      title: "Stealth Mission 89 downloaden", sub: "Download versie", for: "voor je computer.",
+      back: "Terug naar de browserversie", steam: "Steam Deck en Steam Frame",
+      deck: "Kies <b>Linux, Intel/AMD (x86-64)</b>: de AppImage.",
+      frame: "Kies <b>Linux, ARM (aarch64)</b>: de AppImage. Inclusief VR.",
+      appimage: "Maak in de desktopmodus de AppImage uitvoerbaar (Eigenschappen &gt; Rechten, of <code>chmod +x</code>) en start hem, of voeg hem toe aan Steam als non-Steam-spel.",
+      all: "Alle platforms", "win-x86": "x86-64-pc's. VR met een OpenXR-runtime (SteamVR...).",
+      "win-arm": "Snapdragon en andere ARM64-pc's.", msi: "Installatieprogramma (.msi)", zip: "Draagbaar (.zip)",
+      "linux-x86": "x86-64, inclusief de Steam Deck.", "linux-arm": "aarch64, inclusief de Steam Frame.",
+      tar: "Archief (.tar.gz)", "mac-arm": "M1 en nieuwer. Geen VR.", "mac-x86": "Intel-Macs. Geen VR.",
+      other: "Andere versies en release-notities:", github: "de release op GitHub",
+      mine: "DEZE COMPUTER", latest: "nieuwste",
+    },
+    sv: {
+      title: "Ladda ned Stealth Mission 89", sub: "Ladda ned version", for: "för din dator.",
+      back: "Tillbaka till webbversionen", steam: "Steam Deck och Steam Frame",
+      deck: "Välj <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Välj <b>Linux, ARM (aarch64)</b>: AppImage. VR ingår.",
+      appimage: "Gör AppImage körbar i skrivbordsläget (Egenskaper &gt; Behörigheter, eller <code>chmod +x</code>) och kör den, eller lägg till den i Steam som ett spel utanför Steam.",
+      all: "Alla plattformar", "win-x86": "x86-64-datorer. VR med en OpenXR-runtime (SteamVR...).",
+      "win-arm": "Snapdragon och andra ARM64-datorer.", msi: "Installationsprogram (.msi)", zip: "Portabel (.zip)",
+      "linux-x86": "x86-64, inklusive Steam Deck.", "linux-arm": "aarch64, inklusive Steam Frame.",
+      tar: "Arkiv (.tar.gz)", "mac-arm": "M1 och senare. Ingen VR.", "mac-x86": "Intel-Mac. Ingen VR.",
+      other: "Andra versioner och versionsanteckningar:", github: "versionen på GitHub",
+      mine: "DEN HÄR DATORN", latest: "senaste",
+    },
+    fi: {
+      title: "Lataa Stealth Mission 89", sub: "Lataa versio", for: "tietokoneellesi.",
+      back: "Takaisin selainversioon", steam: "Steam Deck ja Steam Frame",
+      deck: "Valitse <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Valitse <b>Linux, ARM (aarch64)</b>: AppImage. VR mukana.",
+      appimage: "Tee AppImagesta suoritettava työpöytätilassa (Ominaisuudet &gt; Oikeudet tai <code>chmod +x</code>) ja käynnistä se, tai lisää se Steamiin Steamin ulkopuolisena pelinä.",
+      all: "Kaikki alustat", "win-x86": "x86-64-tietokoneet. VR OpenXR-ajoympäristöllä (SteamVR...).",
+      "win-arm": "Snapdragon ja muut ARM64-tietokoneet.", msi: "Asennusohjelma (.msi)", zip: "Kannettava (.zip)",
+      "linux-x86": "x86-64, myös Steam Deck.", "linux-arm": "aarch64, myös Steam Frame.",
+      tar: "Arkisto (.tar.gz)", "mac-arm": "M1 ja uudemmat. Ei VR:ää.", "mac-x86": "Intel-Macit. Ei VR:ää.",
+      other: "Muut versiot ja julkaisutiedot:", github: "julkaisu GitHubissa",
+      mine: "TÄMÄ TIETOKONE", latest: "uusin",
+    },
+    hu: {
+      title: "Stealth Mission 89 letöltése", sub: "Verzió letöltése", for: "a számítógépedhez.",
+      back: "Vissza a böngészős verzióhoz", steam: "Steam Deck és Steam Frame",
+      deck: "Válaszd a <b>Linux, Intel/AMD (x86-64)</b> csomagot: az AppImage-et.",
+      frame: "Válaszd a <b>Linux, ARM (aarch64)</b> csomagot: az AppImage-et. VR-rel együtt.",
+      appimage: "Asztali módban tedd futtathatóvá az AppImage-et (Tulajdonságok &gt; Jogosultságok, vagy <code>chmod +x</code>) és indítsd el, vagy add hozzá a Steamhez nem Steames játékként.",
+      all: "Minden platform", "win-x86": "x86-64 PC-k. VR OpenXR futtatókörnyezettel (SteamVR...).",
+      "win-arm": "Snapdragon és más ARM64 PC-k.", msi: "Telepítő (.msi)", zip: "Hordozható (.zip)",
+      "linux-x86": "x86-64, a Steam Deckkel együtt.", "linux-arm": "aarch64, a Steam Frame-mel együtt.",
+      tar: "Archívum (.tar.gz)", "mac-arm": "M1 és újabb. Nincs VR.", "mac-x86": "Intel Macek. Nincs VR.",
+      other: "Más verziók és kiadási jegyzetek:", github: "a kiadás a GitHubon",
+      mine: "EZ A SZÁMÍTÓGÉP", latest: "legújabb",
+    },
+    id: {
+      title: "Unduh Stealth Mission 89", sub: "Unduh versi", for: "untuk komputer Anda.",
+      back: "Kembali ke versi peramban", steam: "Steam Deck dan Steam Frame",
+      deck: "Pilih <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Pilih <b>Linux, ARM (aarch64)</b>: AppImage. Termasuk VR.",
+      appimage: "Di mode desktop, jadikan AppImage dapat dieksekusi (Properties &gt; Permissions, atau <code>chmod +x</code>) lalu jalankan, atau tambahkan ke Steam sebagai game non-Steam.",
+      all: "Semua platform", "win-x86": "PC x86-64. VR dengan runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon dan PC ARM64 lainnya.", msi: "Penginstal (.msi)", zip: "Portabel (.zip)",
+      "linux-x86": "x86-64, termasuk Steam Deck.", "linux-arm": "aarch64, termasuk Steam Frame.",
+      tar: "Arsip (.tar.gz)", "mac-arm": "M1 dan yang lebih baru. Tanpa VR.", "mac-x86": "Mac Intel. Tanpa VR.",
+      other: "Versi lain dan catatan rilis:", github: "rilis di GitHub",
+      mine: "KOMPUTER INI", latest: "terbaru",
+    },
+    da: {
+      title: "Hent Stealth Mission 89", sub: "Hent version", for: "til din computer.",
+      back: "Tilbage til browserversionen", steam: "Steam Deck og Steam Frame",
+      deck: "Vælg <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Vælg <b>Linux, ARM (aarch64)</b>: AppImage. VR inkluderet.",
+      appimage: "I desktoptilstand skal du gøre AppImage kørbar (Egenskaber &gt; Rettigheder eller <code>chmod +x</code>) og køre den, eller tilføje den til Steam som et ikke-Steam-spil.",
+      all: "Alle platforme", "win-x86": "x86-64-pc'er. VR med en OpenXR-runtime (SteamVR...).",
+      "win-arm": "Snapdragon og andre ARM64-pc'er.", msi: "Installationsprogram (.msi)", zip: "Transportabel (.zip)",
+      "linux-x86": "x86-64, inklusive Steam Deck.", "linux-arm": "aarch64, inklusive Steam Frame.",
+      tar: "Arkiv (.tar.gz)", "mac-arm": "M1 og nyere. Ingen VR.", "mac-x86": "Intel-Mac'er. Ingen VR.",
+      other: "Andre versioner og udgivelsesnoter:", github: "udgivelsen på GitHub",
+      mine: "DENNE COMPUTER", latest: "seneste",
+    },
+    bg: {
+      title: "Изтегляне на Stealth Mission 89", sub: "Изтегляне на версия", for: "за вашия компютър.",
+      back: "Обратно към браузърната версия", steam: "Steam Deck и Steam Frame",
+      deck: "Изберете <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Изберете <b>Linux, ARM (aarch64)</b>: AppImage. Включително VR.",
+      appimage: "В режим на работен плот направете AppImage изпълним (Свойства &gt; Разрешения или <code>chmod +x</code>) и го стартирайте, или го добавете в Steam като игра извън Steam.",
+      all: "Всички платформи", "win-x86": "PC с x86-64. VR с OpenXR среда (SteamVR...).",
+      "win-arm": "Snapdragon и други PC с ARM64.", msi: "Инсталатор (.msi)", zip: "Преносима (.zip)",
+      "linux-x86": "x86-64, включително Steam Deck.", "linux-arm": "aarch64, включително Steam Frame.",
+      tar: "Архив (.tar.gz)", "mac-arm": "M1 и по-нови. Без VR.", "mac-x86": "Mac с Intel. Без VR.",
+      other: "Други версии и бележки към изданията:", github: "изданието в GitHub",
+      mine: "ТОЗИ КОМПЮТЪР", latest: "последна",
+    },
+    hr: {
+      title: "Preuzmite Stealth Mission 89", sub: "Preuzmite verziju", for: "za svoje računalo.",
+      back: "Natrag na verziju u pregledniku", steam: "Steam Deck i Steam Frame",
+      deck: "Odaberite <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Odaberite <b>Linux, ARM (aarch64)</b>: AppImage. VR uključen.",
+      appimage: "U desktop načinu rada učinite AppImage izvršnim (Svojstva &gt; Dozvole, ili <code>chmod +x</code>) i pokrenite ga, ili ga dodajte u Steam kao igru koja nije na Steamu.",
+      all: "Sve platforme", "win-x86": "x86-64 računala. VR uz OpenXR runtime (SteamVR...).",
+      "win-arm": "Snapdragon i druga ARM64 računala.", msi: "Instalacijski program (.msi)", zip: "Prijenosna verzija (.zip)",
+      "linux-x86": "x86-64, uključujući Steam Deck.", "linux-arm": "aarch64, uključujući Steam Frame.",
+      tar: "Arhiva (.tar.gz)", "mac-arm": "M1 i noviji. Bez VR-a.", "mac-x86": "Intel Macovi. Bez VR-a.",
+      other: "Ostale verzije i napomene uz izdanje:", github: "izdanje na GitHubu",
+      mine: "OVO RAČUNALO", latest: "najnovije",
+    },
+    et: {
+      title: "Laadi alla Stealth Mission 89", sub: "Laadi alla versioon", for: "oma arvutile.",
+      back: "Tagasi brauseriversiooni juurde", steam: "Steam Deck ja Steam Frame",
+      deck: "Vali <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Vali <b>Linux, ARM (aarch64)</b>: AppImage. VR kaasa arvatud.",
+      appimage: "Töölauarežiimis tee AppImage käivitatavaks (Atribuudid &gt; Õigused või <code>chmod +x</code>) ja käivita see või lisa see Steami mittesteamilise mänguna.",
+      all: "Kõik platvormid", "win-x86": "x86-64 arvutid. VR OpenXR-i käitusega (SteamVR...).",
+      "win-arm": "Snapdragon ja muud ARM64 arvutid.", msi: "Paigaldaja (.msi)", zip: "Kaasaskantav (.zip)",
+      "linux-x86": "x86-64, sealhulgas Steam Deck.", "linux-arm": "aarch64, sealhulgas Steam Frame.",
+      tar: "Arhiiv (.tar.gz)", "mac-arm": "M1 ja uuemad. VR-i pole.", "mac-x86": "Inteli Macid. VR-i pole.",
+      other: "Muud versioonid ja väljalaskemärkmed:", github: "väljalase GitHubis",
+      mine: "SEE ARVUTI", latest: "uusim",
+    },
+    el: {
+      title: "Λήψη του Stealth Mission 89", sub: "Λήψη έκδοσης", for: "για τον υπολογιστή σας.",
+      back: "Επιστροφή στην έκδοση για browser", steam: "Steam Deck και Steam Frame",
+      deck: "Επιλέξτε <b>Linux, Intel/AMD (x86-64)</b>: το AppImage.",
+      frame: "Επιλέξτε <b>Linux, ARM (aarch64)</b>: το AppImage. Με υποστήριξη VR.",
+      appimage: "Σε λειτουργία επιφάνειας εργασίας, κάντε το AppImage εκτελέσιμο (Ιδιότητες &gt; Δικαιώματα, ή <code>chmod +x</code>) και εκτελέστε το, ή προσθέστε το στο Steam ως παιχνίδι εκτός Steam.",
+      all: "Όλες οι πλατφόρμες", "win-x86": "PC x86-64. VR με runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon και άλλα PC ARM64.", msi: "Πρόγραμμα εγκατάστασης (.msi)", zip: "Φορητή έκδοση (.zip)",
+      "linux-x86": "x86-64, συμπεριλαμβανομένου του Steam Deck.", "linux-arm": "aarch64, συμπεριλαμβανομένου του Steam Frame.",
+      tar: "Αρχείο (.tar.gz)", "mac-arm": "M1 και νεότερα. Χωρίς VR.", "mac-x86": "Mac με Intel. Χωρίς VR.",
+      other: "Άλλες εκδόσεις και σημειώσεις έκδοσης:", github: "η έκδοση στο GitHub",
+      mine: "ΑΥΤΟΣ Ο ΥΠΟΛΟΓΙΣΤΗΣ", latest: "τελευταία",
+    },
+    ro: {
+      title: "Descărcați Stealth Mission 89", sub: "Descărcați versiunea", for: "pentru calculatorul dumneavoastră.",
+      back: "Înapoi la versiunea din browser", steam: "Steam Deck și Steam Frame",
+      deck: "Alegeți <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Alegeți <b>Linux, ARM (aarch64)</b>: AppImage. VR inclus.",
+      appimage: "În modul desktop, faceți AppImage executabil (Proprietăți &gt; Permisiuni sau <code>chmod +x</code>) și rulați-l, sau adăugați-l în Steam ca joc non-Steam.",
+      all: "Toate platformele", "win-x86": "PC-uri x86-64. VR cu un runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon și alte PC-uri ARM64.", msi: "Program de instalare (.msi)", zip: "Portabil (.zip)",
+      "linux-x86": "x86-64, inclusiv Steam Deck.", "linux-arm": "aarch64, inclusiv Steam Frame.",
+      tar: "Arhivă (.tar.gz)", "mac-arm": "M1 și mai noi. Fără VR.", "mac-x86": "Mac-uri Intel. Fără VR.",
+      other: "Alte versiuni și note de lansare:", github: "versiunea de pe GitHub",
+      mine: "ACEST CALCULATOR", latest: "cea mai recentă",
+    },
+    sl: {
+      title: "Prenos igre Stealth Mission 89", sub: "Prenos različice", for: "za vaš računalnik.",
+      back: "Nazaj na brskalniško različico", steam: "Steam Deck in Steam Frame",
+      deck: "Izberite <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Izberite <b>Linux, ARM (aarch64)</b>: AppImage. VR vključen.",
+      appimage: "V namiznem načinu naredite AppImage izvedljiv (Lastnosti &gt; Dovoljenja ali <code>chmod +x</code>) in ga zaženite ali ga dodajte v Steam kot igro, ki ni iz Steama.",
+      all: "Vse platforme", "win-x86": "Računalniki x86-64. VR z izvajalnim okoljem OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon in drugi računalniki ARM64.", msi: "Namestitveni program (.msi)", zip: "Prenosna različica (.zip)",
+      "linux-x86": "x86-64, vključno s Steam Deckom.", "linux-arm": "aarch64, vključno s Steam Frame.",
+      tar: "Arhiv (.tar.gz)", "mac-arm": "M1 in novejši. Brez VR.", "mac-x86": "Računalniki Mac z Intelom. Brez VR.",
+      other: "Druge različice in opombe ob izdaji:", github: "izdaja na GitHubu",
+      mine: "TA RAČUNALNIK", latest: "najnovejša",
+    },
+    sk: {
+      title: "Stiahnuť Stealth Mission 89", sub: "Stiahnuť verziu", for: "pre váš počítač.",
+      back: "Späť na verziu v prehliadači", steam: "Steam Deck a Steam Frame",
+      deck: "Vezmite <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Vezmite <b>Linux, ARM (aarch64)</b>: AppImage. VR v cene.",
+      appimage: "V režime pracovnej plochy nastavte AppImage ako spustiteľný (Vlastnosti &gt; Oprávnenia, alebo <code>chmod +x</code>) a spustite ho, alebo ho pridajte do Steamu ako hru mimo Steamu.",
+      all: "Všetky platformy", "win-x86": "PC x86-64. VR s runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon a iné PC ARM64.", msi: "Inštalátor (.msi)", zip: "Prenosná verzia (.zip)",
+      "linux-x86": "x86-64, vrátane Steam Decku.", "linux-arm": "aarch64, vrátane Steam Frame.",
+      tar: "Archív (.tar.gz)", "mac-arm": "M1 a novšie. Bez VR.", "mac-x86": "Macy s procesorom Intel. Bez VR.",
+      other: "Ďalšie verzie a poznámky k vydaniu:", github: "vydanie na GitHube",
+      mine: "TENTO POČÍTAČ", latest: "najnovšia",
+    },
+    lt: {
+      title: "Atsisiųsti Stealth Mission 89", sub: "Atsisiųsti versiją", for: "jūsų kompiuteriui.",
+      back: "Atgal į naršyklės versiją", steam: "Steam Deck ir Steam Frame",
+      deck: "Rinkitės <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Rinkitės <b>Linux, ARM (aarch64)</b>: AppImage. VR įskaitytas.",
+      appimage: "Darbalaukio režimu padarykite AppImage vykdomąjį (Ypatybės &gt; Leidimai arba <code>chmod +x</code>) ir paleiskite jį arba pridėkite prie Steam kaip ne Steam žaidimą.",
+      all: "Visos platformos", "win-x86": "x86-64 kompiuteriai. VR su OpenXR vykdymo aplinka (SteamVR...).",
+      "win-arm": "Snapdragon ir kiti ARM64 kompiuteriai.", msi: "Diegimo programa (.msi)", zip: "Nešiojama versija (.zip)",
+      "linux-x86": "x86-64, įskaitant Steam Deck.", "linux-arm": "aarch64, įskaitant Steam Frame.",
+      tar: "Archyvas (.tar.gz)", "mac-arm": "M1 ir naujesni. Be VR.", "mac-x86": "Intel Mac kompiuteriai. Be VR.",
+      other: "Kitos versijos ir leidimo pastabos:", github: "leidimas GitHub",
+      mine: "ŠIS KOMPIUTERIS", latest: "naujausia",
+    },
+    lv: {
+      title: "Lejupielādēt Stealth Mission 89", sub: "Lejupielādēt versiju", for: "jūsu datoram.",
+      back: "Atpakaļ uz pārlūka versiju", steam: "Steam Deck un Steam Frame",
+      deck: "Izvēlieties <b>Linux, Intel/AMD (x86-64)</b>: AppImage.",
+      frame: "Izvēlieties <b>Linux, ARM (aarch64)</b>: AppImage. VR iekļauts.",
+      appimage: "Darbvirsmas režīmā padariet AppImage izpildāmu (Properties &gt; Permissions vai <code>chmod +x</code>) un palaidiet to, vai pievienojiet to Steam kā ne-Steam spēli.",
+      all: "Visas platformas", "win-x86": "x86-64 datori. VR ar OpenXR izpildlaiku (SteamVR...).",
+      "win-arm": "Snapdragon un citi ARM64 datori.", msi: "Instalators (.msi)", zip: "Portatīvā versija (.zip)",
+      "linux-x86": "x86-64, ieskaitot Steam Deck.", "linux-arm": "aarch64, ieskaitot Steam Frame.",
+      tar: "Arhīvs (.tar.gz)", "mac-arm": "M1 un jaunāki. Bez VR.", "mac-x86": "Intel Mac datori. Bez VR.",
+      other: "Citas versijas un laidiena piezīmes:", github: "laidiens vietnē GitHub",
+      mine: "ŠIS DATORS", latest: "jaunākā",
+    },
+    mt: {
+      title: "Niżżel Stealth Mission 89", sub: "Niżżel il-verżjoni", for: "għall-kompjuter tiegħek.",
+      back: "Lura għall-verżjoni tal-browser", steam: "Steam Deck u Steam Frame",
+      deck: "Ħu <b>Linux, Intel/AMD (x86-64)</b>: l-AppImage.",
+      frame: "Ħu <b>Linux, ARM (aarch64)</b>: l-AppImage. VR inkluż.",
+      appimage: "Fil-modalità desktop, agħmel l-AppImage eżegwibbli (Proprjetajiet &gt; Permessi, jew <code>chmod +x</code>) u ħaddmu, jew żidu ma' Steam bħala logħba mhux ta' Steam.",
+      all: "Il-pjattaformi kollha", "win-x86": "PCs x86-64. VR b'runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon u PCs oħra ARM64.", msi: "Installer (.msi)", zip: "Portabbli (.zip)",
+      "linux-x86": "x86-64, inkluż l-Steam Deck.", "linux-arm": "aarch64, inkluż l-Steam Frame.",
+      tar: "Arkivju (.tar.gz)", "mac-arm": "M1 u aktar tard. Bla VR.", "mac-x86": "Macs Intel. Bla VR.",
+      other: "Verżjonijiet oħra u noti tal-ħruġ:", github: "il-ħruġ fuq GitHub",
+      mine: "DAN IL-KOMPJUTER", latest: "l-aħħar",
+    },
+    ga: {
+      title: "Íoslódáil Stealth Mission 89", sub: "Íoslódáil leagan", for: "do do ríomhaire.",
+      back: "Ar ais go leagan an bhrabhsálaí", steam: "Steam Deck agus Steam Frame",
+      deck: "Roghnaigh <b>Linux, Intel/AMD (x86-64)</b>: an AppImage.",
+      frame: "Roghnaigh <b>Linux, ARM (aarch64)</b>: an AppImage. VR san áireamh.",
+      appimage: "I mód deisce, déan an AppImage inrite (Airíonna &gt; Ceadanna, nó <code>chmod +x</code>) agus rith é, nó cuir le Steam é mar chluiche nach de chuid Steam é.",
+      all: "Gach ardán", "win-x86": "ríomhairí x86-64. VR le runtime OpenXR (SteamVR...).",
+      "win-arm": "Snapdragon agus ríomhairí ARM64 eile.", msi: "Suiteálaí (.msi)", zip: "Iniompartha (.zip)",
+      "linux-x86": "x86-64, an Steam Deck san áireamh.", "linux-arm": "aarch64, an Steam Frame san áireamh.",
+      tar: "Cartlann (.tar.gz)", "mac-arm": "M1 agus níos déanaí. Gan VR.", "mac-x86": "Macanna Intel. Gan VR.",
+      other: "Leaganacha eile agus nótaí eisiúna:", github: "an t-eisiúint ar GitHub",
+      mine: "AN RÍOMHAIRE SEO", latest: "is déanaí",
+    },
+  };
+  const LANG = (navigator.language || "en").toLowerCase().split("-")[0];
+  const T = TEXTS[LANG];
+  if (T) {
+    document.documentElement.lang = LANG;
+    document.title = T.title;
+    for (const e of document.querySelectorAll("[data-i18n]")) {
+      if (T[e.dataset.i18n]) e.innerHTML = T[e.dataset.i18n];
+    }
+  }
   const REPO = "https://github.com/dividebysandwich/stealth-mission-89/releases";
   const version = window.SM89_VERSION;
-  document.getElementById("version").textContent = version || "latest";
+  document.getElementById("version").textContent = version || (T ? T.latest : "latest");
   // Release files are named stealth-mission-89-v<version>-<platform>.<ext> (.github/workflows/build.yml).
   for (const a of document.querySelectorAll("a[data-file]")) {
     a.href = version
@@ -135,7 +525,8 @@
     const card = document.querySelector(`.card[data-os="${os}"][data-arch="${arch}"]`);
     if (!card) return;
     card.classList.add("mine");
-    card.querySelector("h3").insertAdjacentHTML("beforeend", '<span class="tag">THIS COMPUTER</span>');
+    const mine = T ? T.mine : "THIS COMPUTER";
+    card.querySelector("h3").insertAdjacentHTML("beforeend", `<span class="tag">${mine}</span>`);
   })();
 </script>
 </body>

@@ -4,6 +4,8 @@
 //! `DEPLOY_AI_WAIT` goes by AI helicopter. All loads in within `DEPLOY_TIMEOUT`, the unit
 //! stands beside the pad; else the helipad is gone.
 
+use stealth_i18n::Text;
+
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, GroundView, Report, WorldView};
@@ -93,9 +95,9 @@ impl CampaignState {
         x: i32,
         y: i32,
         kind: DefenceKind,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         if let Some(why) = self.deploy_refusal(x, y, kind, &[]) {
-            return Err(why);
+            return Err(Text::raw(why));
         }
         let name = self
             .places
@@ -125,7 +127,8 @@ impl CampaignState {
         };
         let who = self.player_name(player).unwrap_or("A pilot");
         let loads = if d.loads == 1 { "1 load".to_string() } else { format!("{} loads", d.loads) };
-        let text = format!("{who} designates a new {}: {loads} of cargo needed", d.title());
+        let text =
+            Text::raw(format!("{who} designates a new {}: {loads} of cargo needed", d.title()));
         self.deployments.push(d);
         self.note(text.clone());
         self.board_at = f64::MIN;
@@ -173,7 +176,7 @@ impl CampaignState {
                     self.deployments[k].seen = true;
                 } else if !up && d.seen {
                     let d = self.deployments.remove(k);
-                    let text = format!("The {} is destroyed", d.title());
+                    let text = Text::raw(format!("The {} is destroyed", d.title()));
                     self.note(text.clone());
                     ev.push(CampaignEvent::Message(text));
                 }
@@ -186,7 +189,10 @@ impl CampaignState {
                     ev.push(CampaignEvent::Recall { tag });
                 }
                 self.board_at = f64::MIN;
-                let text = format!("The {} was not supplied in time: helipad removed", d.title());
+                let text = Text::raw(format!(
+                    "The {} was not supplied in time: helipad removed",
+                    d.title()
+                ));
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
                 continue;
@@ -208,7 +214,8 @@ impl CampaignState {
             d.open_since = now;
             let title = d.title();
             let base = self.site(from).map_or(String::new(), |s| s.name.clone());
-            let text = format!("A UH-60 takes a load of cargo for the {title} from {base}");
+            let text =
+                Text::raw(format!("A UH-60 takes a load of cargo for the {title} from {base}"));
             self.note(text.clone());
             self.board_at = f64::MIN;
             ev.push(CampaignEvent::Message(text));
@@ -237,7 +244,8 @@ impl CampaignState {
             return;
         }
         d.open_since = now;
-        let text = format!("Cargo helicopter for the {} lost - back on the board", d.title());
+        let text =
+            Text::raw(format!("Cargo helicopter for the {} lost - back on the board", d.title()));
         self.note(text.clone());
         self.board_at = f64::MIN;
         ev.push(CampaignEvent::Message(text));
@@ -273,7 +281,8 @@ impl CampaignState {
         d.ai.retain(|a| a.0 != leg);
         let (done, loads) = (d.delivered.len(), d.loads as usize);
         if done < loads {
-            let text = format!("Cargo {done} of {loads} for the {} delivered{who}", d.title());
+            let text =
+                Text::raw(format!("Cargo {done} of {loads} for the {} delivered{who}", d.title()));
             self.note(text.clone());
             ev.push(CampaignEvent::Message(text));
             return;
@@ -284,7 +293,7 @@ impl CampaignState {
         for (_, tag) in std::mem::take(&mut d.ai) {
             ev.push(CampaignEvent::Recall { tag });
         }
-        let text = format!("The {title} is supplied{who} and ready for action");
+        let text = Text::raw(format!("The {title} is supplied{who} and ready for action"));
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::SiteBuilt { id, x, y, kind });
@@ -332,12 +341,12 @@ impl CampaignState {
         player: PlayerId,
         id: u32,
         leg: u8,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && leg < d.loads) else {
-            return Err("No such cargo".into());
+            return Err(Text::raw("No such cargo"));
         };
         if !d.crate_waiting(leg) {
-            return Err("That cargo is taken".into());
+            return Err(Text::raw("That cargo is taken"));
         }
         d.set_crate(leg, CrateState::Carried(player));
         self.board_at = f64::MIN;
@@ -354,16 +363,16 @@ impl CampaignState {
         east: f32,
         north: f32,
         heading: f32,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && leg < d.loads) else {
-            return Err("No such cargo".into());
+            return Err(Text::raw("No such cargo"));
         };
         if d.crate_state(leg) != CrateState::Carried(player) {
-            return Err("Not carrying that cargo".into());
+            return Err(Text::raw("Not carrying that cargo"));
         }
         let off = east.hypot(north);
         if off.is_nan() || off > CRATE_DROP_METRES * 1.1 {
-            return Err("Too far from the helipad".into());
+            return Err(Text::raw("Too far from the helipad"));
         }
         d.set_crate(leg, CrateState::Delivered { east, north, heading });
         let mut ev = vec![CampaignEvent::CrateDropped { id, leg, east, north, heading }];
@@ -379,14 +388,20 @@ impl CampaignState {
 
     /// The board's logistics offers: the loads of the sites waiting for cargo that no AI
     /// helicopter is bringing.
-    pub(crate) fn logistics_offers(&self) -> Vec<(String, Objective, i32, i32)> {
+    pub(crate) fn logistics_offers(&self) -> Vec<(Text, Objective, i32, i32)> {
         self.deployments
             .iter()
             .filter(|d| !d.built)
             .flat_map(|d| {
                 d.open_legs().map(move |leg| {
                     (
-                        format!("{} {}/{} - {}", d.kind.short(), leg + 1, d.loads, d.name),
+                        Text::raw(format!(
+                            "{} {}/{} - {}",
+                            d.kind.short(),
+                            leg + 1,
+                            d.loads,
+                            d.name
+                        )),
                         Objective::Logistics { site: d.id, leg },
                         d.x,
                         d.y,

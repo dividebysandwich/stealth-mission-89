@@ -1,0 +1,122 @@
+# A billentyű-útmutató (src/key_guide.rs): a kneeboard BILLENTYŰK lapja és a repülés közbeni
+# menü BILLENTYŰ-ÚTMUTATÓJA, vonalas betűtípussal rajzolva; a szakaszcímek a VEZÉRLÉS
+# párbeszédablak listáit is vezetik.
+# A billentyűk szövegében a "_" szóközt jelent (a szavak egy sorban maradnak).
+
+kg-vr-controllers = VR KONTROLLEREK
+kg-vr-grip = GRIP
+    .desc = A botkormány, a gázkar vagy a kneeboard megfogása
+kg-vr-fingertip = UJJHEGY
+    .desc = Kapcsolók és gombok, kneeboard-fülek megnyomása
+kg-vr-left-stick = BAL_STICK
+    .desc = Az érzékelő kurzorának mozgatása
+kg-vr-stick = STICK
+    .desc = A lista görgetése (ujj a kneeboardon)
+kg-gun-target = Gépágyú
+kg-mouse = EGÉR
+kg-mouse-right-drag = JOBB_HÚZÁS
+    .desc = Körbenézés (kint: a kamera forgatása)
+kg-mouse-hold-right = JOBB_TARTÁS, GÖRGŐ
+    .desc = A nézet nagyítása / kicsinyítése
+kg-mouse-left-click = BAL_KATTINTÁS
+    .desc = Pilótafülke-kapcsoló vagy -gomb, kneeboard-fül megnyomása
+kg-mouse-point = MUTATÁS
+    .desc = Egy pilótafülke-kezelőszerv tooltipje (menü: TOOLTIPEK)
+kg-mouse-wheel = GÖRGŐ
+    .desc = A lista görgetése
+kg-unbound = KIOSZTATLAN
+
+## Szakaszok
+
+kg-section-flight = REPÜLÉS
+kg-section-aircraft = REPÜLŐGÉP
+kg-section-weapons = FEGYVEREK
+kg-section-targets = CÉLPONTOK
+kg-section-defenses = VÉDELEM
+kg-section-displays = KIJELZŐK
+kg-section-navigation = NAVIGÁCIÓ
+kg-section-views = NÉZETEK
+kg-section-game = JÁTÉK
+
+## Sorok
+
+kg-pitch-down = Orr le / fel
+kg-roll-left = Orsózás balra / jobbra
+kg-yaw-left = Lábpedál balra / jobbra
+kg-trim-nose-down = Trim orr le / fel
+kg-trim-left = Trim balra / jobbra
+kg-trim-reset = A trim középre állítása
+kg-stick-sensitivity = Botkormány érzékenysége (botkormány-billentyű dupla koppintása: teljes)
+kg-throttle-up = Gáz (kollektív) fel
+kg-throttle-down = Gáz (kollektív) le
+kg-throttle-max = Teljes tolóerő
+kg-throttle-idle = Alapjárat
+kg-nozzle-down = Fúvócsövek le / hátra (Harrier; nyomva tartva: mozog)
+kg-nozzle-hover = Fúvócsövek a függési ütközőre
+kg-nozzle-full-aft = Fúvócsövek teljesen hátra
+kg-autopilot = Robotpilóta a waypointhoz
+kg-gear = Futómű
+kg-flaps = Szárnyfelületek (flap)
+kg-brakes = Kerékfékek, légfék
+kg-bay-doors = Fegyverterem-ajtók
+kg-master-caution = Master caution: a riasztások elnémítása
+kg-eject = Katapultálás
+kg-select-weapon = Következő fegyver
+kg-fire-weapon = A kiválasztott fegyver kilövése
+kg-gun = Tüzelés a gépágyúval
+kg-bomb-mode = Bombázási mód CCIP / CCRP
+kg-nearest-target = A legközelebbi célpont befogása elöl
+kg-select-target = Következő célpont
+kg-designate-target = Új célpont kijelölése
+kg-clear-target = A célbefogások elengedése
+kg-cam-ahead = Követőkamera előre
+kg-cam-rear = Követőkamera hátra
+kg-cam-left = Követőkamera balra
+kg-cam-right = Követőkamera jobbra
+kg-camera-zoom-in = Kamera nagyítás / kicsinyítés
+kg-lock-cursor = A kurzor alatti célpont befogása
+kg-swap-soi = Az érdekes érzékelő (SOI) a másik MFD-re
+kg-flare = Flare (infravörös rakéták ellen)
+kg-chaff = Chaff (radarrakéták ellen)
+kg-decoy = Csalétek
+kg-ir-jammer = IR zavaró be / ki
+kg-ecm = Radarzavaró (ECM) be / ki
+kg-hud-mode = HUD-mód NAV / AIR / GND
+kg-hud-declutter = HUD egyszerűsítése
+kg-maps = Bal MFD: térkép / taktikai
+kg-map-zoom-in = Térkép nagyítás / kicsinyítés
+kg-map-orientation = Térkép északra / haladási irányba forgatva
+kg-ordnance = Fegyverek oldala
+kg-mission-orders = Küldetésparancsok
+kg-flir = FLIR be / ki
+kg-nvg = Éjjellátó szemüveg
+kg-ils = ILS leszállási rávezetés
+kg-select-waypoint = Waypoint-oldal
+kg-change-waypoint = Waypointok szerkesztése (numerikus billentyűzet)
+kg-reset-waypoint = Waypointok visszaállítása
+kg-last-waypoint = Előző / következő waypoint
+kg-view-cockpit = Pilótafülke
+kg-look-ahead = Előre nézés
+kg-look-left = Balra nézés
+kg-look-right = Jobbra nézés
+kg-look-rear = Hátranézés
+kg-view-slot = Szárnyvadász-nézet
+kg-view-chase = Követő nézet
+kg-view-side = Oldalnézet
+kg-view-missile = Rakéta-nézet
+kg-view-tactical = Taktikai nézet
+kg-view-inverse-tactical = Fordított taktikai nézet
+kg-view-free = Szabad kamera: W/S/A/D/Q/E, egér, görgő
+kg-zoom = Nagyítás / kicsinyítés
+kg-wide-angle = Nagy látószög
+kg-menu = Beállítások menü, szünet
+kg-kneeboard = Kneeboard
+kg-chat = Csevegés (többjátékos)
+kg-record-gif = GIF-felvétel: indítás / leállítás
+kg-time-accel = Idő gyorsítva / normál
+kg-volume = Hangerő
+kg-detail = Részletességi szint
+kg-day-night = Nappal / éjszaka
+kg-training = Átváltás gyakorlásra
+kg-resupply = Utánpótlás
+kg-quit = Kilépés

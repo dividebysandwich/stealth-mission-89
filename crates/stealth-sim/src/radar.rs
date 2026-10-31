@@ -1,6 +1,7 @@
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, u16v};
 use crate::types::*;
 use crate::{ENEMY_SLOTS, Sim};
+use stealth_i18n::text;
 
 /// What the gear down (legs and open wells) adds to the EMV of every aircraft.
 pub const GEAR_DOWN_EMV: i32 = 12;
@@ -338,7 +339,7 @@ impl Sim {
             if o.flags & oflags::PAINTED == 0 {
                 self.objects[i].flags |= oflags::PAINTED;
                 let n = self.place_name(i);
-                self.msg(format!("{n} detected"));
+                self.msg(text!("sim-detected", target = n.to_string()));
             }
         }
         if score + emv > 100 {
@@ -361,7 +362,7 @@ impl Sim {
                     self.objects[i].flags |= oflags::RADAR_ID;
                     self.pl.radar_ids += 1;
                     let n = self.place_name(i);
-                    self.msg(format!("{n} - Radar ID"));
+                    self.msg(text!("sim-radar-id", site = n.to_string()));
                     self.emit(SimEvent::Rwr(detected_tone(doppler)));
                     self.log_event(7, i as i32);
                 } else {
@@ -416,7 +417,7 @@ impl Sim {
         }
         let n = self.place_name(i);
         let sam = self.missile(spec).name.clone();
-        self.msg(format!("{n} firing {sam}"));
+        self.msg(text!("sim-firing", site = n.to_string(), missile = sam.to_string()));
         self.proj_pilot[k] = self.pl.id;
         self.pl.launches += 1;
         self.emit(SimEvent::MissileLaunched { slot: k, spec, launcher: Launcher::Site(i) });
@@ -476,7 +477,7 @@ impl Sim {
                     self.flights[i].flags |= fflags::VISUAL_ID;
                     self.pl.visual_ids += 1;
                     let n = self.ac_type(u.spec).name.clone();
-                    self.msg(format!("Visual ID - {n}"));
+                    self.msg(text!("sim-visual-id", aircraft = n.to_string()));
                     self.sound(7, 1);
                     self.log_event(6, u.spec);
                 }
@@ -540,7 +541,7 @@ impl Sim {
             self.start_flight(k, pos, vel);
         }
         let ty = self.ac_type(u.spec).name.clone();
-        self.msg(format!("{} fired by {ty}", t.name));
+        self.msg(text!("sim-fired-by", missile = t.name.clone(), launcher = ty.to_string()));
         self.proj_pilot[k] = self.pl.id;
         self.pl.launches += 1;
         self.emit(SimEvent::MissileLaunched {

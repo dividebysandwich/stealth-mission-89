@@ -3,6 +3,7 @@ use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, sign, view_z
 use crate::types::*;
 use crate::weather::optical_seeker;
 use crate::{ENEMY_SLOTS, Sim};
+use stealth_i18n::{Text, text};
 
 impl Sim {
     /// Seeker acquisition of a target at (tx, ty, talt) for class `cls`. Sets `acq_aim` always and `acq_range` on
@@ -167,7 +168,7 @@ impl Sim {
             match spec {
                 Some(spec) => {
                     let name = self.missile(spec).name.clone();
-                    self.msg(format!("Hit by {name}"));
+                    self.msg(text!("sim-hit-by", weapon = name.to_string()));
                     self.player_hit(true);
                 }
                 None => self.player_hit(false),
@@ -463,7 +464,7 @@ impl Sim {
                     self.emit(SimEvent::Explosion { x: m.x, y: m.y, alt: m.alt, kind: 0x10 });
                     self.proj[s].ttl = if guided { 0 } else { 2 * fs };
                     if !self.decoy_active() {
-                        self.msg(format!("Hit by {}", mt.name));
+                        self.msg(text!("sim-hit-by", weapon = mt.name.clone()));
                         self.player_hit(true);
                         if !self.training() {
                             self.log_event(5, spec);
@@ -493,7 +494,11 @@ impl Sim {
                     self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: u.alt, kind: 0x10 });
                     self.destroy_aircraft(hit as usize);
                     let n = self.ac_type(u.spec).name.clone();
-                    self.msg(format!("{n} hit by {}", mt.name));
+                    self.msg(text!(
+                        "sim-target-hit-by",
+                        target = n.to_string(),
+                        weapon = mt.name.clone()
+                    ));
                     if self.opts.fix_classic_bugs {
                         // Classic: the missile sits on the wreck for 2 s, still locked, and
                         // repeats the hit every frame. Fixed: it is spent.
@@ -506,24 +511,24 @@ impl Sim {
                 self.flash = Flash { x: o.x, y: o.y, alt: 0, timer: 0x10 };
                 self.emit(SimEvent::Explosion { x: o.x, y: o.y, alt: 0, kind: 0x10 });
                 self.proj[s].ttl = 0;
-                self.msg(format!("{} impact", mt.name));
+                self.msg(text!("sim-impact", weapon = mt.name.clone()));
             } else if hit >= 0 {
                 let o = self.obj(hit);
                 self.flash = Flash { x: o.x, y: o.y, alt: 0, timer: 0x10 };
                 self.emit(SimEvent::Explosion { x: o.x, y: o.y, alt: 0, kind: 0x10 });
                 self.proj[s].ttl = 0;
                 let r = self.rng.random(4);
-                let text = if self.compat(m.weapon, hit) > r {
+                let target = if self.compat(m.weapon, hit) > r {
                     self.destroy_ground(hit);
-                    self.place_name(hit as usize)
+                    Text::raw(self.place_name(hit as usize))
                 } else {
-                    "Ineffective".to_string()
+                    text!("sim-ineffective")
                 };
                 self.alarm_timer = self.alarm_init();
                 self.ref_x = o.x;
                 self.ref_y = o.y;
                 self.ref_alt = 3000;
-                self.msg(format!("{text} hit by {}", mt.name));
+                self.msg(text!("sim-target-hit-by", target = target, weapon = mt.name.clone()));
             }
         }
     }
@@ -644,17 +649,17 @@ impl Sim {
                     && t.mission_type == 3
                     && self.mission_tick < self.pl.deadline
                 {
-                    self.msg("Equipment Delivered");
+                    self.msg(text!("sim-equipment-delivered"));
                     self.mark_target_reached(k);
                     delivered = true;
                 }
             }
             if !delivered {
-                self.msg("Bad Drop");
+                self.msg(text!("sim-bad-drop"));
             }
         } else if matches!(m.spec, 28..=30) {
             self.sound(5, 2);
-            let mut text = format!("{long} misses ");
+            let mut text = text!("sim-misses", weapon = long.to_string());
             let o = self.find_object_at(ex, ey);
             if o != -1 && self.obj(o).flags & oflags::DESTROYED == 0 {
                 let (tx, ty) =
@@ -663,7 +668,8 @@ impl Sim {
                 let lim = (self.compat(m.weapon, o) << 6) / (self.diff + 2);
                 if (lim as u16) > (dist as u16) {
                     self.destroy_ground(o);
-                    text = format!("{} destroyed by {long}", self.place_name(o as usize));
+                    let place = self.place_name(o as usize);
+                    text = text!("sim-destroyed-by", target = place, weapon = long.to_string());
                     kind = 0x10;
                     ealt = 0;
                 }
@@ -675,7 +681,7 @@ impl Sim {
                 self.player_hit(false);
             }
         } else if s >= 8 {
-            self.msg(format!("{long} ground impact"));
+            self.msg(text!("sim-ground-impact", weapon = long.to_string()));
         }
         self.emit(SimEvent::Explosion { x: ex, y: ey, alt: ealt, kind });
     }

@@ -3,6 +3,7 @@
 //! (`Effect::name`) turn effects on, `-name` off, `all` / `none` all of them.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::{t, t_lines, tf};
 
 /// Which atmosphere effects are on.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -118,87 +119,17 @@ impl Effect {
 
     /// Its name in the menus.
     pub fn label(self) -> &'static str {
-        match self {
-            Effect::Shake => "Camera shake",
-            Effect::Flashes => "Combat flashes",
-            Effect::Barrage => "Night barrage",
-            Effect::CockpitNight => "Cockpit night lighting",
-            Effect::Nvg => "Night vision goggles",
-            Effect::Snow => "Snow",
-            Effect::Mist => "Ground mist",
-            Effect::CloudShadows => "Cloud shadows",
-            Effect::Sunbeams => "Sunbeams",
-            Effect::Vapour => "Vapour and downwash",
-            Effect::NightSky => "Night sky",
-            Effect::Vga => "VGA colours",
-            Effect::Scanlines => "Scanlines",
-        }
+        t!(&format!("effect-{}", self.name()))
     }
 
     /// Its name in the in-flight menu.
     pub fn menu_label(self) -> &'static str {
-        match self {
-            Effect::Shake => "CAMERA SHAKE",
-            Effect::Flashes => "COMBAT FLASHES",
-            Effect::Barrage => "NIGHT BARRAGE",
-            Effect::CockpitNight => "COCKPIT NIGHT LIGHT",
-            Effect::Nvg => "GOGGLES EFFECT",
-            Effect::Snow => "SNOW",
-            Effect::Mist => "GROUND MIST",
-            Effect::CloudShadows => "CLOUD SHADOWS",
-            Effect::Sunbeams => "SUNBEAMS",
-            Effect::Vapour => "VAPOUR AND DUST",
-            Effect::NightSky => "NIGHT SKY",
-            Effect::Vga => "VGA COLOURS",
-            Effect::Scanlines => "SCANLINES",
-        }
+        tf!(&format!("fm-effect-{}", self.name()))
     }
 
     /// What it does (the options window's notes under it).
     pub fn facts(self) -> &'static [&'static str] {
-        match self {
-            Effect::Shake => &[
-                "The view shakes with the gun, nearby blasts, stall buffet, touchdowns and the runway",
-                "VR: the cockpit vibrates, your head stays still",
-            ],
-            Effect::Flashes => &[
-                "Flak bursts, explosions and missile launches light the clouds, the ground and the cockpit for a moment",
-            ],
-            Effect::Barrage => &[
-                "Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them",
-                "Only for the look: the barrage hits nothing, the searchlights find nothing",
-            ],
-            Effect::CockpitNight => &[
-                "A dim red flood light in the cockpit after dark (blue-green under the goggles)",
-                "The master caution pulses amber over the panel while a warning is on",
-            ],
-            Effect::Nvg => &[
-                "Bright lights bloom into halos, the picture grains more in the dark",
-                "Desktop: the goggles' round field of view",
-            ],
-            Effect::Snow => &[
-                "Above the freezing level storms snow instead of rain: low in a northern winter, high in summer",
-            ],
-            Effect::Mist => &[
-                "Modern shaders: mist lies over the low ground and the sea at dawn, dusk and night",
-                "Thin in the deserts, none in storms",
-            ],
-            Effect::CloudShadows => &["Modern shaders: the clouds' shadows on the ground below"],
-            Effect::Sunbeams => &["Shafts of sunlight through the gaps of a broken overcast"],
-            Effect::Vapour => &[
-                "Pulling hard, vapour trails from the wingtips",
-                "A helicopter hovering low whips up dust, or spray over water",
-                "Vehicles on the move raise dust behind them",
-            ],
-            Effect::NightSky => &[
-                "Shooting stars now and then, the stars low over the horizon twinkle",
-                "The northern lights over the North Cape",
-            ],
-            Effect::Vga => &[
-                "The 1989 look with modern shading: 64 steps a colour channel, as a VGA card's, dithered",
-            ],
-            Effect::Scanlines => &["A CRT monitor's scanlines (not in VR)"],
-        }
+        t_lines!(&format!("effect-{}.facts", self.name()))
     }
 
     pub fn get(self, e: &Effects) -> bool {
