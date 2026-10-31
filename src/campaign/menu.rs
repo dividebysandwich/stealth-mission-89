@@ -142,7 +142,7 @@ pub fn campaign_window(
                 });
             });
             ui.vertical(|ui| {
-                ui.set_width(210.0);
+                ui.set_width(220.0);
                 group(ui, "Conditions", |ui| {
                     section(ui, "Weather");
                     dropdown(
@@ -178,9 +178,6 @@ pub fn campaign_window(
                         .small()
                         .color(DIM),
                 );
-            });
-            ui.vertical(|ui| {
-                ui.set_width(220.0);
                 crate::menu::simulation_options(
                     ui,
                     &mut settings,

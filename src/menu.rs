@@ -1952,13 +1952,17 @@ pub(crate) fn menu_ui(
                         });
                     });
                     ui.vertical(|ui| {
-                        ui.set_width(210.0);
+                        ui.set_width(220.0);
                         group(ui, "Conditions", |ui| {
                             let state = &mut *state;
                             weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
+                        simulation_options(ui, &mut settings, None);
+                    });
+                    ui.vertical(|ui| {
+                        ui.set_width(210.0);
                         group(ui, "Vehicle", |ui| {
                             let was = settings.aircraft;
                             vehicle_options(ui, &mut settings, Some(&mut state.lockheed));
@@ -1970,10 +1974,6 @@ pub(crate) fn menu_ui(
                                 state.regenerate();
                             }
                         });
-                    });
-                    ui.vertical(|ui| {
-                        ui.set_width(220.0);
-                        simulation_options(ui, &mut settings, None);
                     });
                 }
                 // Mission summary in big type, the full briefing below in small type.

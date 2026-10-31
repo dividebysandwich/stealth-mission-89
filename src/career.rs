@@ -344,19 +344,19 @@ pub fn career_ui(
                 });
             });
             ui.vertical(|ui| {
-                ui.set_width(210.0);
+                ui.set_width(220.0);
                 group(ui, "Conditions", |ui| {
                     crate::menu::weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
+                crate::menu::simulation_options(ui, settings, None);
+            });
+            ui.vertical(|ui| {
+                ui.set_width(210.0);
                 group(ui, "Vehicle", |ui| {
                     let lockheed = tour.is_none().then_some(&mut state.lockheed);
                     crate::menu::vehicle_options(ui, settings, lockheed);
                 });
-            });
-            ui.vertical(|ui| {
-                ui.set_width(220.0);
-                crate::menu::simulation_options(ui, settings, None);
             });
             ui.vertical(|ui| {
                 ui.set_width(260.0);
