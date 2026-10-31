@@ -56,6 +56,9 @@ impl CampaignState {
         if wet(x, y) || ring.into_iter().any(|(px, py)| wet(px, py)) {
             return Some("Not on dry land".into());
         }
+        if self.terrain.is_steep(x, y, foot) {
+            return Some("Too steep a hillside".into());
+        }
         let near = |px: i32, py: i32, d: i32| dist(px - x, py - y) < d;
         let nearest = self.places.iter().min_by_key(|p| dist(p.x - x, p.y - y));
         if nearest.is_none_or(|p| p.owner != Side::Blue) {

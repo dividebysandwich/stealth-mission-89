@@ -28,8 +28,10 @@ const STEPS: [(f64, f64); 4] =
     [(3000.0, GRID_M), (8000.0, GRID_M * 2.0), (20_000.0, GRID_M * 4.0), (40_000.0, GRID_M * 8.0)];
 /// Lift of each ground polygon above the one below it (metres).
 const LIFT: f32 = 0.05;
-/// Depth of the skirts round a chunk, hiding the cracks to a neighbour on another grid.
+/// Depth of the skirts round a chunk, hiding the cracks to a neighbour on another grid: at
+/// least this, and this share of the grid's spacing (coarser grids cut the hilltops lower).
 const SKIRT: f32 = 6.0;
+const SKIRT_PER_STEP: f32 = 0.4;
 /// Chunks being built at once.
 const BUILDING: usize = 4;
 /// Size of the buckets the polygons are sorted into (metres).
@@ -390,7 +392,8 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         let pa = Vec2::new(ai as f32 * s, aj as f32 * s);
         let pb = Vec2::new(bi as f32 * s, bj as f32 * s);
         let (a, b) = (at(pa, ha), at(pb, hb));
-        let (a1, b1) = (at(pa, ha - SKIRT), at(pb, hb - SKIRT));
+        let skirt = SKIRT.max(s * SKIRT_PER_STEP);
+        let (a1, b1) = (at(pa, ha - skirt), at(pb, hb - skirt));
         for v in [a, a1, b1, a, b1, b, a, b1, a1, a, b, b1] {
             out.pos.push(v);
             out.colours.push(base);

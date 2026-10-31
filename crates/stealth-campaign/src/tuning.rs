@@ -217,6 +217,8 @@ pub const BATTERY_EVERY: f64 = 10.0 * 60.0;
 pub const BATTERIES: usize = 2;
 pub const BATTERY_COST: f64 = 6.0;
 pub const BATTERY_RADIUS: i32 = 0x60;
+/// The ground round a gun of a battery (map units, about 100 m) that must not be too steep.
+pub const GUN_GROUND: i32 = 6;
 
 /// Drone waves (the Ukraine theater): this often by the opponents' skill, this many drones,
 /// announced this long before launch, at a target this far from their base at most (300 km),

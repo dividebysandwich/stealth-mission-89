@@ -16,8 +16,13 @@ pub const DIM: usize = 1024;
 pub const THEATER_M: f64 = 512_000.0;
 /// Metres per mask cell side.
 pub const CELL_M: f64 = THEATER_M / DIM as f64;
-/// The highest the hills reach, metres.
-pub const MAX_M: f32 = 120.0;
+/// The highest the hills reach (the highlands', the mask at 255), metres.
+pub const MAX_M: f32 = 300.0;
+/// The share of `MAX_M` the rolling hills reach outside the highlands (120 m).
+pub const ROLLING: f32 = 0.4;
+/// The steepest ground (rise per metre) a building, an air defence site or a drone command
+/// center goes on (about 8 degrees).
+pub const SITE_SLOPE: f32 = 0.14;
 /// Spacing of the finest grid the hills are drawn on (metres): the ground between its points
 /// is flat, cut along the diagonal from each point to the one north east of it.
 pub const GRID_M: f64 = 31.25;
@@ -164,6 +169,25 @@ impl Hills {
         })
     }
 
+    /// The steepest rise per metre of the ground within `r` metres of a point (metres east,
+    /// north): from the point to 8 around it at `r` and at half of it.
+    pub fn slope_within(&self, e: f64, n: f64, r: f64) -> f32 {
+        if self.0.is_empty() || !self.any_in(e, n, r) {
+            return 0.0;
+        }
+        let r = r.max(GRID_M);
+        let h0 = self.height_m(e, n);
+        let mut steep = 0.0f32;
+        for k in 0..8 {
+            let a = k as f64 * std::f64::consts::FRAC_PI_4;
+            for d in [r * 0.5, r] {
+                let h = self.height_m(e + a.cos() * d, n + a.sin() * d);
+                steep = steep.max((h - h0).abs() / d as f32);
+            }
+        }
+        steep
+    }
+
     /// The ground's rise per metre east and north at a point (central differences over 2 m).
     pub fn gradient(&self, e: f64, n: f64) -> (f32, f32) {
         let de = self.height_m(e + 1.0, n) - self.height_m(e - 1.0, n);
@@ -275,6 +299,15 @@ fn lattice(x: i32, y: i32, seed: u32) -> f32 {
     (h >> 8) as f32 * (1.0 / 16_777_216.0)
 }
 
+/// The highlands for the mask writer: 0 outside, up to 1 in their heart (higher and steeper
+/// hills), about a tenth of the land (wavelength about 40 km).
+pub fn highland(e: f64, n: f64) -> f32 {
+    let v = 0.75 * value(e / 40_000.0, n / 40_000.0, 0x3C6E)
+        + 0.25 * value(e / 12_000.0, n / 12_000.0, 0x1B87);
+    let t = ((v - 0.7) * (1.0 / 0.12)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
 /// Regional variety for the mask writer: 0 on the plains, up to 1 in the hill country, about
 /// 40% of the land plains (wavelength about 25 km).
 pub fn region(e: f64, n: f64) -> f32 {
@@ -290,6 +323,11 @@ mod tests {
 
     fn full() -> Hills {
         Hills::from_bytes(vec![255; DIM * DIM]).unwrap()
+    }
+
+    /// The rolling hills outside the highlands.
+    fn rolling_hills() -> Hills {
+        Hills::from_bytes(vec![(ROLLING * 255.0).round() as u8; DIM * DIM]).unwrap()
     }
 
     #[test]
@@ -312,7 +350,7 @@ mod tests {
     /// Within the height limit, mostly gentle, with flat ground between the hills.
     #[test]
     fn rolling_not_steep() {
-        let h = full();
+        let h = rolling_hills();
         let (mut top, mut steep, mut flat, mut n) = (0.0f32, 0.0f32, 0, 0);
         for i in 0..400 {
             for j in 0..400 {
@@ -325,7 +363,7 @@ mod tests {
                 n += 1;
             }
         }
-        assert!(top <= MAX_M && top > 60.0, "{top}");
+        assert!(top <= MAX_M * ROLLING + 0.5 && top > 60.0, "{top}");
         // tan 15 degrees.
         assert!(steep < 0.27, "{steep}");
         assert!(flat * 10 > n, "{flat} of {n} flat");
@@ -333,6 +371,38 @@ mod tests {
     }
 
     /// Where the mask is 0 (water, airfields) the ground is flat; it fades in over the cells.
+    /// The highlands: up to `MAX_M`, steep in places, still flat in the valleys.
+    #[test]
+    fn highlands_higher_and_steeper() {
+        let h = full();
+        let (mut top, mut steep) = (0.0f32, 0.0f32);
+        for i in 0..300 {
+            for j in 0..300 {
+                let (e, n) = (100_000.0 + i as f64 * 37.0, 100_000.0 + j as f64 * 41.0);
+                top = top.max(h.height_m(e, n));
+                let (ge, gn) = h.gradient(e, n);
+                steep = steep.max(ge.hypot(gn));
+            }
+        }
+        assert!(top <= MAX_M && top > 200.0, "{top}");
+        // Steeper than a vehicle drives (20 degrees), not cliffs (35 degrees).
+        assert!(steep > 0.36 && steep < 0.7, "{steep}");
+        let c = (100_000.0, 100_000.0);
+        assert!(h.slope_within(c.0, c.1, 60.0) >= 0.0);
+        assert_eq!(Hills::default().slope_within(c.0, c.1, 60.0), 0.0);
+    }
+
+    #[test]
+    fn highlands_are_rare() {
+        let mut n = 0;
+        for i in 0..100 {
+            for j in 0..100 {
+                n += (highland(i as f64 * 5000.0, j as f64 * 5000.0) > 0.0) as usize;
+            }
+        }
+        assert!((300..2500).contains(&n), "{n}");
+    }
+
     #[test]
     fn masked_flat() {
         let mut m = vec![255; DIM * DIM];

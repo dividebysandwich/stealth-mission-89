@@ -1154,6 +1154,15 @@ impl Terrain {
         Self(world, relief, Default::default(), hills)
     }
 
+    /// The ground within `r` map units of a map point (x east, y south) is too steep for a
+    /// site (the rolling hills' `SITE_SLOPE`).
+    pub fn is_steep(&self, x: i32, y: i32, r: i32) -> bool {
+        use stealth_mission::hills::{SITE_SLOPE, THEATER_M};
+        let m = THEATER_M / 32768.0;
+        let (e, n) = (x as f64 * m, THEATER_M - y as f64 * m);
+        self.3.slope_within(e, n, r as f64 * m) > SITE_SLOPE
+    }
+
     /// Water at a map point; None without the theater's terrain.
     pub fn is_water(&self, x: i32, y: i32) -> Option<bool> {
         self.0.as_ref().map(|t| t.is_water(x, y))

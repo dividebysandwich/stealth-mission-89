@@ -88,7 +88,10 @@ impl CampaignState {
         if from.is_empty() {
             return None;
         }
-        let dry = |c: &Self, x: i32, y: i32| c.terrain.is_water(x, y) == Some(false);
+        // Dry land the guns can stand on (not too steep a hillside where each stands).
+        let dry = |c: &Self, x: i32, y: i32| {
+            c.terrain.is_water(x, y) == Some(false) && !c.terrain.is_steep(x, y, GUN_GROUND)
+        };
         for k in 0..120 {
             let (b, f, _) = from[self.rng.below(from.len() as i32) as usize];
             let toward = ((f.1 - b.1) as f64).atan2((f.0 - b.0) as f64);

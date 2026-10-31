@@ -484,6 +484,7 @@ struct LayoutSource {
     index: usize,
     towns: Vec<crate::world::TownSite>,
     style: Option<style::Style>,
+    hills: stealth_sim::hills::Hills,
 }
 
 impl LayoutSource {
@@ -500,6 +501,7 @@ impl LayoutSource {
             index: theater.index,
             towns: theater.towns.clone(),
             style: style::Style::for_theater(&theater.id, theater.index),
+            hills: theater.hills.clone(),
         }
     }
 
@@ -524,7 +526,7 @@ impl LayoutSource {
         let net = self
             .style
             .as_ref()
-            .map(|s| network::Network::build(&ground, s, &self.towns))
+            .map(|s| network::Network::build(&ground, s, &self.towns, &self.hills))
             .unwrap_or_default();
         Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields) }
     }

@@ -65,6 +65,11 @@ pub(super) fn refusal(
     if scenery.is_some_and(|s| !s.is_open(metres(x, y), GROUND_ROOM)) {
         return Some("Not on open ground".into());
     }
+    // (A coop client's campaign has no terrain: the sim's hills tell it.)
+    let at = metres(x, y);
+    if sim.hills().slope_within(at.x, at.y, GROUND_ROOM) > stealth_sim::hills::SITE_SLOPE {
+        return Some("Too steep a hillside".into());
+    }
     None
 }
 

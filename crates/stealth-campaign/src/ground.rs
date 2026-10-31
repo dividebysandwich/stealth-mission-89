@@ -424,4 +424,15 @@ mod tests {
             .sum();
         assert!(length < 640.0 * 1.4, "{length}");
     }
+
+    /// The highlands' steep hillsides are no place for a site; the flat world is.
+    #[test]
+    fn steep_hillsides_found() {
+        let full = stealth_mission::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
+        let t = crate::Terrain::new(None, None, full);
+        let steep = (0..40).flat_map(|i| (0..40).map(move |j| (12000 + i * 13, 16000 + j * 11)));
+        assert!(steep.clone().any(|(x, y)| t.is_steep(x, y, 6)));
+        assert!(!steep.clone().all(|(x, y)| t.is_steep(x, y, 6)));
+        assert!(!crate::Terrain::default().is_steep(12000, 16000, 6));
+    }
 }

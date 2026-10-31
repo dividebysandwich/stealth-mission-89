@@ -380,6 +380,15 @@ impl Ground {
         out
     }
 
+    /// The footprints of the raised tile objects the hills don't keep flat ground for (smaller
+    /// than `FLAT_SIZE`), metres.
+    pub fn small_raised(&self) -> impl Iterator<Item = Rect> + '_ {
+        self.boxes
+            .iter()
+            .filter(|(b, raised)| *raised && b.size().max_element() < FLAT_SIZE.start)
+            .map(|(b, _)| *b)
+    }
+
     /// Keeps an area clear of later scenery (counts as a raised object).
     pub fn claim(&mut self, r: Rect) {
         self.add_box(r, true);

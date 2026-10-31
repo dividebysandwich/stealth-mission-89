@@ -1,7 +1,8 @@
 //! The hills' mask (`stealth_sim::hills`, written with `--write-hills`): where the rolling
 //! hills may rise. Flat at water (seas, lakes, river lines), concrete, the theater's raised
 //! objects, towns and airfields (their approaches too), rising over `RAMP` cells from there,
-//! scaled by the regional variety and the theater's own amount of hills.
+//! scaled by the regional variety and the theater's own amount of hills. The highlands
+//! (`hills::highland`) rise higher and steeper, well away from the cities and airfields.
 
 use bevy::math::DVec2;
 use stealth_sim::hills::{self, CELL_M, DIM, THEATER_M};
@@ -17,6 +18,11 @@ const RAMP: f32 = 4.0;
 const TOWN_HILLS: f32 = 0.25;
 const VILLAGE_HILLS: f32 = 0.5;
 const TOWN_RAMP: f32 = 2.0;
+/// The highlands: cells from the cities and airfields where they may begin and where they
+/// reach their full height, and from other flat ground (water, the theater's sites).
+const HIGHLAND_FROM: f32 = 8.0;
+const HIGHLAND_FULL: f32 = 20.0;
+const HIGHLAND_RAMP: f32 = 10.0;
 /// Samples per cell side for water and concrete.
 const SAMPLES: usize = 4;
 /// Flat ground round a town beyond its edge (metres), and round an airfield.
@@ -66,6 +72,8 @@ pub fn build(ground: &Ground, net: &Network, fields: &[Airfield], amount: f32) -
         }
     });
     let (mut town, mut village) = (vec![false; DIM * DIM], vec![false; DIM * DIM]);
+    // The cities and airfields, which the highlands keep well away from.
+    let mut major = vec![false; DIM * DIM];
     let mut mark = |p: DVec2| {
         if let Some(i) = cell(p) {
             flat[i] = true;
@@ -98,17 +106,30 @@ pub fn build(ground: &Ground, net: &Network, fields: &[Airfield], amount: f32) -
         match t.kind {
             TownKind::Village => area(&mut village, lo, hi, &|p| t.near(p, 1.0, 0.0)),
             TownKind::Town => area(&mut town, lo, hi, &|p| t.near(p, 1.0, 0.0)),
-            TownKind::City => area(&mut flat, lo, hi, &|p| t.near(p, 1.0, TOWN_MARGIN)),
+            TownKind::City => {
+                area(&mut flat, lo, hi, &|p| t.near(p, 1.0, TOWN_MARGIN));
+                area(&mut major, lo, hi, &|p| t.near(p, 1.0, TOWN_MARGIN));
+            }
+        }
+    }
+    // The theater's small objects stand on gentle slopes, as the villages' houses.
+    for b in ground.small_raised() {
+        let (lo, hi) = (b.min.as_dvec2(), b.max.as_dvec2());
+        area(&mut village, clamp(lo), clamp(hi), &|_| true);
+        if let Some(i) = cell(b.center().as_dvec2()) {
+            village[i] = true;
         }
     }
     for f in fields {
         let w = &f.runway;
         let (along, across) = (w.half_len + APPROACH, w.half_width + FIELD_MARGIN);
         let r = DVec2::splat(along + across);
-        area(&mut flat, clamp(w.c - r), clamp(w.c + r), &|p| {
+        let runway = |p: DVec2| {
             let d = p - w.c;
             d.dot(w.axis).abs() < along && d.dot(w.axis.perp()).abs() < across
-        });
+        };
+        area(&mut flat, clamp(w.c - r), clamp(w.c + r), &runway);
+        area(&mut major, clamp(w.c - r), clamp(w.c + r), &runway);
         let pts = f.pads.iter().flatten().copied().chain(f.buildings.iter().map(|b| b.p));
         let (mut lo, mut hi) = (w.c, w.c);
         for p in pts {
@@ -116,16 +137,29 @@ pub fn build(ground: &Ground, net: &Network, fields: &[Airfield], amount: f32) -
         }
         let m = DVec2::splat(FIELD_MARGIN);
         area(&mut flat, clamp(lo - m), clamp(hi + m), &|_| true);
+        area(&mut major, clamp(lo - m), clamp(hi + m), &|_| true);
     }
     let (dist, town, village) = (distance(&flat), distance(&town), distance(&village));
+    let major = distance(&major);
+    let smooth = |t: f32| {
+        let t = t.clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    };
     (0..DIM * DIM)
         .map(|i| {
-            let ramp = ((dist[i] - 1.0) / RAMP)
-                .min(TOWN_HILLS + (1.0 - TOWN_HILLS) * town[i] / TOWN_RAMP)
-                .min(VILLAGE_HILLS + (1.0 - VILLAGE_HILLS) * village[i] / TOWN_RAMP)
-                .clamp(0.0, 1.0);
+            // The towns' and villages' gentle slopes, whatever the hills round them (rising on
+            // from there at the same pace into the highlands).
+            let homes = (TOWN_HILLS + (1.0 - TOWN_HILLS) * town[i] / TOWN_RAMP)
+                .min(VILLAGE_HILLS + (1.0 - VILLAGE_HILLS) * village[i] / TOWN_RAMP);
             let c = centre(i % DIM, i / DIM);
-            let v = ramp * hills::region(c.x, c.y) * amount;
+            let ramp = ((dist[i] - 1.0) / RAMP).clamp(0.0, 1.0);
+            let rolling = ramp * hills::region(c.x, c.y) * hills::ROLLING;
+            let away = smooth((major[i] - HIGHLAND_FROM) / (HIGHLAND_FULL - HIGHLAND_FROM));
+            let high = hills::highland(c.x, c.y) * away * smooth(dist[i] / HIGHLAND_RAMP);
+            let v = (rolling + high * (1.0 - hills::ROLLING))
+                .min(homes * hills::ROLLING)
+                .clamp(0.0, 1.0)
+                * amount;
             (v * 255.0).round() as u8
         })
         .collect()

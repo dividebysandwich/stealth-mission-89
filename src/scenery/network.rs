@@ -280,6 +280,8 @@ pub struct Network {
     /// (line, pylon) ids by pylon position.
     pub pylon_index: Index,
     pub pylons: Vec<(u32, u32)>,
+    /// The rolling hills: no buildings on their steep slopes.
+    hills: stealth_sim::hills::Hills,
 }
 
 pub fn dist_to_segment(p: DVec2, a: DVec2, b: DVec2) -> f64 {
@@ -313,7 +315,12 @@ impl Network {
         self.town_index.at(p).iter().map(|&i| &self.towns[i as usize]).find(|t| t.near(p, f, 0.0))
     }
 
-    pub fn build(ground: &Ground, style: &Style, sites: &[crate::world::TownSite]) -> Network {
+    pub fn build(
+        ground: &Ground,
+        style: &Style,
+        sites: &[crate::world::TownSite],
+        hills: &stealth_sim::hills::Hills,
+    ) -> Network {
         let mut n = Network {
             towns: vec![],
             town_index: Index::default(),
@@ -325,6 +332,7 @@ impl Network {
             lines: vec![],
             pylon_index: Index::default(),
             pylons: vec![],
+            hills: hills.clone(),
         };
         n.real_towns(sites);
         n.place_towns(ground, style);
@@ -519,7 +527,11 @@ impl Network {
         }
     }
 
+    /// A building, unless the hillside there is too steep for it.
     fn add_building(&mut self, b: Building) {
+        if self.hills.slope_within(b.p.x, b.p.y, b.radius()) > stealth_sim::hills::SITE_SLOPE {
+            return;
+        }
         let d = DVec2::splat(b.radius());
         let id = self.buildings.len() as u32;
         self.building_index.insert(b.p - d, b.p + d, id);
