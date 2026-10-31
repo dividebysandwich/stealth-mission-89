@@ -309,6 +309,7 @@ pub fn career_ui(
     state: &mut MenuState,
     settings: &mut ResMut<Settings>,
     options: &mut crate::options::OptionsWindow,
+    preview: &mut crate::aircraft_preview::AircraftPreview,
 ) {
     // Hidden while OPTIONS is open over it.
     if !w.open || options.open {
@@ -352,8 +353,9 @@ pub fn career_ui(
                 crate::menu::simulation_options(ui, settings, None);
             });
             ui.vertical(|ui| {
-                ui.set_width(210.0);
+                ui.set_width(crate::menu::VEHICLE_WIDTH);
                 group(ui, "Vehicle", |ui| {
+                    crate::aircraft_preview::show(ui, preview);
                     let lockheed = tour.is_none().then_some(&mut state.lockheed);
                     crate::menu::vehicle_options(ui, settings, lockheed);
                 });

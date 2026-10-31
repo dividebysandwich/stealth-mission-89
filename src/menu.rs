@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 use bevy_egui::{
-    EguiContexts, EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiContext, egui,
+    EguiContexts, EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass, EguiTextureHandle,
+    PrimaryEguiContext, egui,
 };
 
 use stealth_mission::{Mission, MissionKind, Sky};
@@ -436,6 +437,9 @@ pub(crate) const AMBER: egui::Color32 = egui::Color32::from_rgb(255, 176, 0);
 const EDGE: egui::Color32 = egui::Color32::from_rgb(61, 231, 140);
 const LIT_TOP: egui::Color32 = egui::Color32::from_rgb(31, 156, 91);
 const LIT_BOTTOM: egui::Color32 = egui::Color32::from_rgb(23, 111, 70);
+
+/// Width of the VEHICLE column (the aircraft preview above the choices).
+pub(crate) const VEHICLE_WIDTH: f32 = 260.0;
 
 /// Hover facts per theater ([`THEATERS`] order).
 const THEATER_FACTS: [&[&str]; 10] = [
@@ -1809,6 +1813,7 @@ pub(crate) fn menu_ui(
         ResMut<crate::multiplayer_menu::MultiplayerWindow>,
         ResMut<crate::options::OptionsWindow>,
         ResMut<crate::savegame::SavesWindow>,
+        ResMut<crate::aircraft_preview::AircraftPreview>,
     ),
 ) -> Result {
     let (
@@ -1819,6 +1824,7 @@ pub(crate) fn menu_ui(
         mut multiplayer,
         mut options,
         mut saves,
+        mut preview,
     ) = windows;
     // Generator data is loaded on first use.
     let Some(data) = data else {
@@ -1880,6 +1886,9 @@ pub(crate) fn menu_ui(
         state.loadout = Some(crate::loadout::PlannedLoadout::of(m, settings.aircraft));
     }
 
+    // The aircraft preview's picture, once there is one.
+    preview.texture =
+        preview.image().map(|image| contexts.add_image(EguiTextureHandle::Strong(image)));
     let ctx = contexts.ctx_mut()?;
     apply_ui_zoom(ctx);
     add_icon_font(ctx);
@@ -1962,8 +1971,9 @@ pub(crate) fn menu_ui(
                         simulation_options(ui, &mut settings, None);
                     });
                     ui.vertical(|ui| {
-                        ui.set_width(210.0);
+                        ui.set_width(VEHICLE_WIDTH);
                         group(ui, "Vehicle", |ui| {
+                            crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
                             vehicle_options(ui, &mut settings, Some(&mut state.lockheed));
                             // A troop helicopter flies the same seed's targets as insertions;
@@ -2110,7 +2120,14 @@ pub(crate) fn menu_ui(
         );
         next.set(AppState::Flight);
     }
-    crate::career::career_ui(ctx, &mut career, &mut state, &mut settings, &mut options);
+    crate::career::career_ui(
+        ctx,
+        &mut career,
+        &mut state,
+        &mut settings,
+        &mut options,
+        &mut preview,
+    );
     crate::options::options_ui(ctx, &mut options, &mut settings, head.source, &mut dialog);
     crate::prefs::Prefs::save_if_changed(&state, &settings, &mut saved);
     Ok(())

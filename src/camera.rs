@@ -238,6 +238,8 @@ pub const RECON_BACKGROUND_LAYER: [usize; 2] = [5, 6];
 pub const UNIT_BACKGROUND_LAYER: usize = 7;
 /// Meshes no camera draws, kept for the mouse to point at (the cockpit parts drawn merged).
 pub const UNDRAWN_LAYER: usize = 8;
+/// The menu's preview of the chosen aircraft (`aircraft_preview.rs`), seen only by its camera.
+pub const PREVIEW_LAYER: usize = 9;
 
 /// The headset's eye poses in its tracking space, while a session runs (set by the XR module,
 /// or glvr's): where the VR panels are placed.

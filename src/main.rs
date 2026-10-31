@@ -5,6 +5,7 @@ pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu"
 
 mod afterburner_flame;
 mod aircraft;
+mod aircraft_preview;
 mod app6;
 mod asset_path;
 mod autoshot;
@@ -256,6 +257,7 @@ fn main() {
         .add_plugins((
             menu::MenuPlugin,
             menu_scene::MenuScenePlugin,
+            aircraft_preview::AircraftPreviewPlugin,
             debrief::DebriefPlugin,
             viewer::ViewerPlugin,
         ))
