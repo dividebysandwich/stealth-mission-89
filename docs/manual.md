@@ -4,7 +4,7 @@
 
 ### FLIGHT MANUAL
 
-*Eight aircraft. Ten theaters. One war that never stops.*
+*Ten aircraft. Ten theaters. One war that never stops.*
 
 <img src="images/units/fly_f117.png" width="480" alt="F-117A Nighthawk">
 
@@ -40,7 +40,7 @@ centers and remotely pilot recon, attack and interceptor drones.
 | [Introduction: The Night Belongs to Us](#introduction-the-night-belongs-to-us) | Radar wars, stealth, and the modern sky |
 | [1. Getting Started](#1-getting-started) | The menu, the mission screen, options, controls |
 | [2. Tutorial](#2-tutorial) | Your first and second missions |
-| [3. The Flight Line](#3-the-flight-line) | The eight aircraft: their history, and what they do in the game |
+| [3. The Flight Line](#3-the-flight-line) | The ten aircraft: their history, and what they do in the game |
 | [4. In the Cockpit](#4-in-the-cockpit) | HUD, panels, warning lights, MFD pages, the in-flight menu, the kneeboard |
 | [5. Sensors and Targeting](#5-sensors-and-targeting) | Locking targets, the targeting pod, the helmet sights |
 | [6. Arms and Equipment](#6-arms-and-equipment) | Every weapon, its range and how to deliver it |
@@ -172,7 +172,7 @@ mouse on an option for a short description.
 |---|---|
 | **Mission** | *Theater*: the ten areas of conflict (chapter 12). *Situation*: Cold War (covert operation, few enemy aircraft), Limited War (air defences on alert) or Conventional War (all enemy forces active); the briefing states the rules of engagement. *Opponents*: Green, Regular, Veteran or Elite crews; higher levels bring more ships and patrols and more sensitive radars. *Mission*: Strike, Air to air, Strike training, Air training, or Drone defense (Ukraine only, chapter 10.2). |
 | **Conditions** | *Weather*: Random (from the theater's climate), Clear, Scattered, Broken, Overcast or Storm; with *Random cover* off a slider sets the main cloud layer's cover. Clouds block optical seekers and eyes on both sides; radar sees through them. *Start time*: night is 18:00-06:00; *Random* rolls a morning or evening take-off. *Moon*: the real moon of the mission's date, or a fixed phase from new (enemy pilots see you at 2 km) to full (4 km). |
-| **Vehicle** | The eight aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
+| **Vehicle** | The ten aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
 | **Simulation** | *Damage*: *Game* hits damage systems but never bring you down; *Real* hits can destroy the aircraft, start fires and damage the flight controls. *Guidance*: *Classic* DOS era missiles, or *Real* missiles that fly proportional navigation, glide after burn-out and loft against distant targets. *Air defence*: *Real* adds anti-aircraft guns and MANPADS teams (chapter 13.3). *Crash protection*: an automatic pull-up near the ground; collisions are not fatal. These switches belong to each game, not to OPTIONS. |
 
 | Button | Function |
@@ -184,7 +184,7 @@ mouse on an option for a short description.
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
 | FLY | Take off. |
 
-Helicopter missions are short ones near a friendly base; in the UH-60, the targets become insertions.
+Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions.
 
 ## 1.3 Options
 
@@ -319,7 +319,7 @@ When you've brought a few F-117As home, try the others. The **F-16C** with HARMs
 
 # 3. THE FLIGHT LINE
 
-Eight aircraft stand ready on the flight line. Choose yours in the single mission screen's *Vehicle*
+Ten aircraft stand ready on the flight line. Choose yours in the single mission screen's *Vehicle*
 section, in the career's options, or on a campaign briefing's LOADOUT page. Each has its own
 cockpit, its own flight model and its own place in the war. This chapter tells where each one came
 from, and what it does in the game.
@@ -334,6 +334,8 @@ from, and what it does in the game.
 | <img src="images/units/fly_uh60.png" width="160"> | [**UH-60 BLACK HAWK**](#36-uh-60-black-hawk) | Unarmed transport helicopter: insertions, rescues, sling loads. The only way to take a place by air. |
 | <img src="images/units/fly_ah1z.png" width="160"> | [**AH-1Z VIPER**](#37-ah-1z-viper) | Attack helicopter: turret gun and Hellfires that follow the pilot's eyes. |
 | <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors. |
+| <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods. |
+| <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -751,8 +753,8 @@ cyclic or the collective disengages it.
 
 ![The UH-60's cockpit](images/cockpit_uh60.png)
 
-**Best for.** In a campaign it is the only aircraft for INSERTION, LOGISTICS and RESUPPLY, and the
-first choice for CSAR, and it flies nothing else.
+**Best for.** In a campaign it is the only aircraft for INSERTION, flies LOGISTICS and RESUPPLY
+(as does the CH-47), is the first choice for CSAR, and flies nothing else.
 
 ## 3.7 AH-1Z VIPER
 
@@ -865,6 +867,118 @@ screen, CHAFF, FLARE, DECOY, DCLT, NVG, MENU, VOL, TIME and AUTO.
 
 **Best for.** Escort (second choice), CAS and intercepting helicopters, and anything that means
 sneaking up on an air defence site at walking pace.
+
+## 3.9 OH-58D KIOWA WARRIOR
+
+<img src="images/units/fly_oh58.png" width="480" alt="OH-58D KIOWA WARRIOR">
+
+The Bell OH-58 Kiowa began as the military version of the Bell 206 JetRanger, the US Army's light
+observation helicopter from 1969: a scout that flew ahead of the gunships in Vietnam, found the
+enemy and called in the fire. By the end of the 1970s the Army wanted a scout that could see by
+night and in bad weather, and stay hidden while it looked.
+
+Bell won the Army Helicopter Improvement Program (AHIP) in 1981 with the **OH-58D**: a more
+powerful engine, a four-bladed rotor and, on top of the mast, a ball the size of a beach ball. The
+**mast-mounted sight** holds a television camera, a thermal imager and a laser designator above the
+rotor, so the helicopter can hover behind a ridge or a tree line with only the ball showing and
+find targets for others. The first one flew on 6 October 1983. Armed OH-58Ds escorted tankers
+in the Persian Gulf in 1987-88, and the **Kiowa Warrior**, with weapons pylons on both sides, became
+the standard version. It flew in the Gulf War, the Balkans, Afghanistan and Iraq, and was retired
+in 2017.
+
+| **OH-58D KIOWA WARRIOR** | |
+|---|---|
+| *Role* | Armed reconnaissance helicopter, two pilots |
+| *Manufacturer* | Bell Helicopter, USA |
+| *First flight* | 6 October 1983 |
+| *Rotor diameter / length / height* | 10.67 m / 12.85 m (rotors turning) / 3.93 m (top of the sight) |
+| *Engine* | 1 × Rolls-Royce (Allison) T703-AD-700, 485 kW (650 shp) |
+| *Maximum take-off weight* | 2,495 kg (5,500 lb) |
+| *Maximum speed* | about 125 kt (232 km/h) |
+| *Armament* | Two universal weapons pylons: 2 Hellfire, 2 Stinger, rockets or a .50 cal machine gun pod each |
+
+**IN THE GAME.** The Kiowa Warrior is the small, quick helicopter: quicker than the AH-1Z on the
+cyclic and the pedals and answering the collective sooner, but draggier with its sight and pylons,
+so the level speed tops out near 130 kt. It carries 750 lb of fuel and has skids, so the gear key
+does nothing.
+
+**The pylons.** One on each side, each with **two Hellfires**, **two Stingers** or an **M3P .50 cal
+machine gun pod** (500 rounds), or nothing (the default is Hellfires on the left and a gun pod on
+the right; change them on the LOADOUT page). The pods are its gun: they fire along the nose, so aim
+with the helicopter; with the gun selected the helmet display shows the pipper. The outer missile
+goes first, and the model shows what is left.
+
+**Sights.** The targeting pod is the **mast-mounted sight**: always working, looking from above the
+rotor, slaved to the lock or to your eyes like an attack helicopter's (chapter 5.2). Hide low behind
+a hill with only the sight above it, lock, and fire Hellfires over the crest. The full helmet display
+(chapter 5.4) shows where the sight is looking.
+
+**Cockpit.** One wide panel across both seats (the pilot in the right one) under a low glareshield:
+two large MFDs either side of the centre column with the standby instruments and the engine gauges,
+the CDU and the caution and countermeasure panels on the console between the seats.
+
+![The OH-58D's cockpit](images/cockpit_oh58.png)
+
+**Best for.** CAS, ESCORT and INTERCEPT against helicopters close to the front, and finding targets
+from behind cover.
+
+## 3.10 CH-47F CHINOOK
+
+<img src="images/units/fly_ch47.png" width="480" alt="CH-47F CHINOOK">
+
+In 1956 the US Army asked for a turbine-powered helicopter that could lift a howitzer, a truck or
+a platoon. Frank Piasecki's company, by then Vertol and later part of Boeing, had built tandem-rotor
+helicopters since the 1940s: two rotors, one at each end of a long fuselage and turning opposite
+ways, so neither needs a tail rotor to hold its torque and all the engine power goes into lift. The
+YCH-47A first flew on 21 September 1961, and the **Chinook** entered service the next year.
+
+In Vietnam Chinooks carried artillery to mountaintop fire bases, moved whole battalions and
+recovered more than 11,000 downed aircraft on their cargo hooks. In the Falklands in 1982 a single
+RAF Chinook, "Bravo November", the only one left after the *Atlantic Conveyor* was sunk, carried
+troops, guns and casualties for weeks, once with 81 soldiers aboard. Rebuilt again and again, the
+Chinook is still in front-line service more than sixty years after its first flight; the
+**CH-47F**, from 2007, has a glass cockpit with digital displays and a digital flight control
+system that holds the hover by itself.
+
+| **CH-47F CHINOOK** | |
+|---|---|
+| *Role* | Heavy-lift cargo helicopter, two pilots and a flight engineer |
+| *Manufacturer* | Boeing (Vertol), USA |
+| *First flight* | 21 September 1961 (YCH-47A) |
+| *Rotor diameter / length / height* | 18.29 m (each) / 30.14 m (rotors turning) / 5.68 m |
+| *Engines* | 2 × Honeywell T55-GA-714A, 3,529 kW (4,733 shp) each |
+| *Maximum take-off weight* | 22,680 kg (50,000 lb) |
+| *Maximum speed* | about 170 kt (315 km/h) |
+| *Payload* | 33-55 troops, or up to about 12,000 kg (26,000 lb) on the cargo hooks |
+
+**IN THE GAME.** The Chinook is the cargo helicopter: unarmed, no stores, no gun. Flown with the
+helicopter flight model, it feels different from every other helicopter in the game:
+
+- **No torque.** Its two three-bladed rotors turn opposite ways and cancel each other's torque:
+  raising or lowering the collective does not swing the nose, so the pedals stay where they are.
+  The pedals yaw it by tilting the rotors apart, the cyclic pitches it by moving lift from one rotor
+  to the other.
+- **Heavy.** Slower in roll and yaw than the UH-60, slow to change its rotor speed, and with ground
+  effect reaching higher under its wide rotors (about 60 ft). Plan a hover early.
+- **Fast.** The level speed tops out near 165 kt. It carries 6,800 lb of fuel, and its two big
+  turbines burn a lot of it.
+- Fixed wheels (the gear key does nothing) and no ejection seat.
+
+**Sling loads.** In a campaign the Chinook flies **LOGISTICS** and **RESUPPLY**, the same way as
+the UH-60: hover over a crate to hook it and set it down by a new site's helipad, or hover at an air
+defence unit to resupply it (chapter 9.14). It flies no insertions, no rescues and no combat
+missions. In a single mission it flies the UH-60's insertions.
+
+**Cockpit.** Two seats, the pilot in the right one. In front of the pilot two MFDs; in the middle
+of the panel a larger display with the **engine page** (the RAH-66's: rotor speed, both engines'
+torque, temperatures, oil, fuel and fuel flow, chapter 3.8); the copilot's two MFDs stay dark. The
+panel is low and cut away under the MFDs: below it, on both sides of the pedals, the big chin
+windows look down at the ground, the best view of a hook load in the game. Eyebrow windows above
+the windshield show the sky in a turn.
+
+![The CH-47's cockpit](images/cockpit_ch47.png)
+
+**Best for.** LOGISTICS and RESUPPLY, and nothing else.
 
 
 ---
@@ -1256,7 +1370,7 @@ with the targeting pod and the helmet sights in chapter 5.
 
 The F-16C and the F-117A carry a targeting pod (TGP) with the modern avionics; its picture is the
 **TGP** format on an MFD (chapter 4.10). With the classic avionics the TC page shows the same
-camera, pointed only by the camera keys. On the AH-1Z and the RAH-66 the pod is always working, with or without
+camera, pointed only by the camera keys. On the AH-1Z, the RAH-66 and the OH-58D (its mast-mounted sight) the pod is always working, with or without
 its format on a display. The pod's picture shows in the forward cockpit view, not while you look
 left, right or back.
 
@@ -1314,7 +1428,7 @@ other weapon uses the lock, which the pod is one way to make.
 
 ## 5.3 The F-16C's helmet (HMCS)
 
-The F-16C's pilot wears a helmet-mounted cueing system (HMCS), the AH-1Z's and RAH-66's crews a full
+The F-16C's pilot wears a helmet-mounted cueing system (HMCS), the AH-1Z's, RAH-66's and OH-58D's crews a full
 helmet-mounted display (5.4). The other aircraft have neither. The symbology is drawn on the visor,
 40° wide and 30° high, wherever you look in the cockpit (also in the look left, right and rear
 views), and lies on the world like the HUD's.
@@ -1351,7 +1465,7 @@ helmet.
 
 ## 5.4 The AH-1Z's and RAH-66's helmet (HMD)
 
-The AH-1Z's and the RAH-66's visor shows everything the HMCS does except the waypoints, and:
+The AH-1Z's, the RAH-66's and the OH-58D's visor shows everything the HMCS does except the waypoints, and:
 
 - a **cross** where you look: the line of sight that a helmet-slaved gun follows;
 - the turret gun's **pipper** while the gun is slaved to the helmet, where its rounds go; at the
@@ -1421,12 +1535,12 @@ farther head-on.
 |---|---|---|---|---|
 | AIM-9M Sidewinder | Aircraft (IR) | 1-12 km | Any | F-117A*, F-16C, Tornado, A-10C, AV-8B, AH-1Z (wingtips) |
 | AIM-120A AMRAAM | Aircraft (radar) | 1-38 km | Any | F-117A*, F-16C, Tornado (wing rails) |
-| FIM-92 Stinger | Aircraft (IR) | 1-6 km | Any | RAH-66 (6 per bay door) |
+| FIM-92 Stinger | Aircraft (IR) | 1-6 km | Any | RAH-66 (6 per bay door), OH-58D (2 per pylon) |
 | AGM-88A HARM | Radars | 9-50 km | 5,000-20,000 ft | F-117A, F-16C, Tornado |
 | Penguin 3 | Ships | 6-14 km (classic guidance 13-14) | 100-500 ft | F-117A, F-16C, Tornado |
 | AGM-84A Harpoon | Ships | 6-41 km | 2,000-5,000 ft | F-117A, F-16C, Tornado, AV-8B (inboard) |
 | AGM-65 Maverick | Ground (TV) | 5-10 km | 2,000-5,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
-| AGM-114 Hellfire | Ground (laser, the pod's spot) | 4-8 km | 2,000-3,000 ft | AH-1Z (16), RAH-66 (3 per bay door) |
+| AGM-114 Hellfire | Ground (laser, the pod's spot) | 4-8 km | 2,000-3,000 ft | AH-1Z (16), RAH-66 (3 per bay door), OH-58D (2 per pylon) |
 | GBU-12 Paveway | Ground (laser) | 1.5 km to 2.5 × height (14 km from 15,000 ft) | 15,000-25,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | Mk 20 Rockeye II, CBU-72 FAE | Ground (laser) | 1.5 km to 2.5 × height (3.7 km from 3,000 ft) | 3,000-5,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | Mk 82 LDGP | Ground | 5-11 km short of the target | 3,000-20,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
@@ -1435,7 +1549,8 @@ farther head-on.
 | Mk 82 Snakeye, ISCB-1 mines | Ground | 0.9-1.3 km short | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | BLU-107 Durandal | Runways | 0.9-1.3 km short of the runway | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | IR/optical camera | Recon target | Photos from 2-8 km | Any | F-117A, F-16C, Tornado, A-10C, AV-8B (centreline) |
-| 20 mm gun | Air and ground | Up to 2 km (ground: 4 km) | Any | All but the real F-117A and the UH-60 (510 rounds) |
+| 20 mm gun | Air and ground | Up to 2 km (ground: 4 km) | Any | All but the real F-117A and the UH-60, OH-58D and CH-47 (510 rounds) |
+| M3P .50 cal pod | Air and ground | Up to 2 km (ground: 4 km) | Any | OH-58D (500 rounds per pod, along the nose) |
 
 \* Not with *Realistic weapons*. Which station of each aircraft takes which store is in chapter 3; the
 LOADOUT page greys out what a station can't carry.
@@ -1458,7 +1573,7 @@ steeper for farther targets), flies high where it loses little speed and dives o
 **Pull up 10-20° before a long-range shot**: the missile has less climbing to do and the zone on
 the HUD grows. Its motor burns 8 s, then it glides.
 
-**FIM-92 Stinger** (RAH-66). A very short range infrared missile from the Comanche's bay doors: 1-6 km,
+**FIM-92 Stinger** (RAH-66, OH-58D). A very short range infrared missile from the Comanche's bay doors or the Kiowa Warrior's pylons: 1-6 km,
 farther head-on. It locks and is aimed like the Sidewinder, by the helmet or the HUD keys, and its seeker
 growls the same way. The doors open when you fire and close again four seconds after the last shot.
 
@@ -1493,7 +1608,7 @@ or the pod), and fire with the LOCK lamp on and the caret in the zone: 5-10 km, 
 ft. With the pod slewed off the lock the zone is measured to the pod's point, but the missile
 flies at the lock.
 
-**AGM-114 Hellfire** (AH-1Z, RAH-66). Laser guided: it flies to wherever the targeting pod
+**AGM-114 Hellfire** (AH-1Z, RAH-66, OH-58D). Laser guided: it flies to wherever the targeting pod
 looks and follows the pod as it moves, so **keep the pod on the target until it hits**. It needs a
 line of sight to the spot. SHOOT shows when the spot is in the zone, with or without a lock. In
 the AH-1Z the pod follows your eyes without a lock (chapter 5.4), so you can fire just by
@@ -1849,7 +1964,7 @@ In Ukraine, drone waves cross the border at night. Your side fights the same war
 columns and insertions, repairs what was destroyed, and puts fighters up when raiders come close.
 
 You are one pilot in it, or one of up to 64 in a multiplayer campaign (chapter 11). You take your
-missions from a board that follows the situation, fly them in any of the eight aircraft, and come back
+missions from a board that follows the situation, fly them in any of the ten aircraft, and come back
 to the board. You can't be killed or lost for good: after every sortie you are back on the Ops screen.
 But the places your side holds, the materiel it has, the air defences it builds: all of that is won or
 lost one sortie at a time.
@@ -1973,8 +2088,8 @@ long as its situation lasts.
 | **CAP** | 100 | Where enemy aircraft are near a friendly place or an insertion's target; else over the friendly place nearest the front. | 10 minutes airborne within 20 km of the point; each kill there counts 5 minutes. A friendly aircraft lost there sets the clock back. |
 | **CSAR** | 150 | Each pilot down and waiting (9.9). | 2 minutes airborne within 5 km of the pilot, or there when they are rescued; in the UH-60, land beside them, wait 30 s for them to board, and land at a friendly base. |
 | **AWACS** | 250 | While the enemy AWACS is up. | It is shot down, by anyone. |
-| **LOGISTICS** | 100 | Each cargo load for a new air defence site. | You set its crate down by the site's helipad. UH-60 only (9.14). |
-| **RESUPPLY** | 100 | Each air defence site that ran out or asked for a resupply. | You hover at the unit for 10 s. UH-60 only (9.14). |
+| **LOGISTICS** | 100 | Each cargo load for a new air defence site. | You set its crate down by the site's helipad. UH-60 or CH-47 (9.14). |
+| **RESUPPLY** | 100 | Each air defence site that ran out or asked for a resupply. | You hover at the unit for 10 s. UH-60 or CH-47 (9.14). |
 
 The game counts a player as involved in activity if they were at least 2 minutes in the air within 20 km
 of the helicopters, attackers or column, their target or the meeting point while it is going on, 
@@ -2002,14 +2117,15 @@ mission, else the best one. TAKE OFF puts you on the chosen base's runway or dec
 | INTERDICT | F-117A, Tornado, F-16C, A-10C |
 | SEAD | F-16C, Tornado, F-117A |
 | CAP, DEFEND, AWACS | F-16C |
-| INTERCEPT | F-16C, AH-1Z, RAH-66 |
-| CAS (all kinds) | A-10C, AV-8B, AH-1Z, RAH-66, F-16C, Tornado, F-117A |
-| ESCORT | AH-1Z, RAH-66, AV-8B, F-16C, A-10C |
-| INSERTION, LOGISTICS, RESUPPLY | UH-60 only |
+| INTERCEPT | F-16C, AH-1Z, RAH-66, OH-58D |
+| CAS (all kinds) | A-10C, AV-8B, AH-1Z, RAH-66, OH-58D, F-16C, Tornado, F-117A |
+| ESCORT | AH-1Z, RAH-66, OH-58D, AV-8B, F-16C, A-10C |
+| INSERTION | UH-60 only |
+| LOGISTICS, RESUPPLY | UH-60, CH-47 only |
 | CSAR | UH-60 best; any aircraft can hold the air over a downed pilot |
 
-Every aircraft but the UH-60 may fly any mission except the UH-60's own, and the UH-60 flies only those
-and CSAR. You may achieve more than the mission you accepted: every kill counts, and objectives at the same
+Every aircraft but the UH-60 and the CH-47 may fly any mission except INSERTION, LOGISTICS and
+RESUPPLY; the UH-60 flies only those and CSAR, the CH-47 only LOGISTICS and RESUPPLY. You may achieve more than the mission you accepted: every kill counts, and objectives at the same
 place make a package.
 
 **Coming home.** Stop on a friendly runway (or, in a helicopter or the Harrier, set down at a friendly base)
@@ -2293,8 +2409,8 @@ refilling (RLD).</li>
 
 ## 9.14 Logistics
 
-UH-60 pilots keep the air defence going: they fly the cargo for new sites and the resupplies for
-existing ones. Both are missions on the board (UH-60 only, 100 points). If no player takes one,
+UH-60 and CH-47 pilots keep the air defence going: they fly the cargo for new sites and the
+resupplies for existing ones. Both are missions on the board (UH-60 or CH-47, 100 points). If no player takes one,
 an AI helicopter flies it.
 
 **Cargo for a new site (LOGISTICS, sling load)**
@@ -2303,7 +2419,7 @@ Each load of a designated site (9.13) is a **LOGISTICS** mission (`PATRIOT 2/3 -
 crate waits beside the runway of the nearest friendly airfield; after 30 minutes without a
 player, an AI UH-60 brings it.
 
-1. Take the mission and take off in the UH-60 from the crate's airfield.
+1. Take the mission and take off in the UH-60 or the CH-47 from the crate's airfield.
 2. Hover low over the crate: below 50 ft, slower than 15 kt, within 8 m of it. *Cargo hooked*:
    the winch lifts it on its rope under the helicopter.
 3. Fly to the helipad. The crate swings on the rope: accelerate and turn gently, slow down
@@ -2311,14 +2427,14 @@ player, an AI UH-60 brings it.
 4. Lower the crate onto the ground within 90 m of the helipad. *Cargo set down*: the load is
    delivered.
 
-Any UH-60 can hook any waiting crate, and other players see it hanging under your helicopter.
+Any UH-60 or CH-47 can hook any waiting crate, and other players see it hanging under your helicopter.
 
 **Resupply (RESUPPLY)**
 
 A site that runs out of stock orders a resupply by itself; at a Patriot or Gepard console you
 can also press **REQUEST RESUPPLY** on the SITE page. It becomes a **RESUPPLY** mission:
 
-1. Take the mission and fly the UH-60 to the unit.
+1. Take the mission and fly the UH-60 or the CH-47 to the unit.
 2. Hover within 50 m of it, under 100 ft and slower than 15 kt, for 10 seconds.
 3. The load goes down and the site's stock is full again.
 
