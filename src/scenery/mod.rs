@@ -23,6 +23,7 @@ mod content;
 mod fields;
 mod geom;
 mod ground;
+mod hills_mask;
 mod network;
 mod obstacles;
 mod style;
@@ -375,6 +376,25 @@ fn build_scenery(
         let relief = stealth_sim::relief::Relief::from_metres(&ground.relief);
         match std::fs::write(&path, relief.bytes()) {
             Ok(()) => info!("relief written to {}", path.display()),
+            Err(e) => error!("{}: {e}", path.display()),
+        }
+        exit.write(AppExit::Success);
+    }
+    // `--write-hills`: save the theater's hills mask (`stealth_sim::hills`) and quit.
+    if std::env::args().any(|a| a == "--write-hills") {
+        let path = stealth_host::assets::asset(&format!("theaters/{}.hills", theater.id));
+        let amount = hills_mask::amount(&theater.id);
+        let result = if amount > 0.0 {
+            std::fs::write(&path, hills_mask::build(&ground, &net, &fields, amount))
+        } else {
+            // A flat theater has no file.
+            std::fs::remove_file(&path).or_else(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => Ok(()),
+                _ => Err(e),
+            })
+        };
+        match result {
+            Ok(()) => info!("hills ({amount}) written to {}", path.display()),
             Err(e) => error!("{}: {e}", path.display()),
         }
         exit.write(AppExit::Success);

@@ -9,6 +9,7 @@ pub fn load_tiles(code: &str) -> Result<TheaterTiles> {
     let rel = format!("theaters/{}.ron", code.to_ascii_lowercase());
     let mut tiles = TheaterTiles::read_ron(&crate::assets::read(&rel)?).context(rel)?;
     tiles.relief = relief(code);
+    tiles.hills = hills(code);
     tiles.helipads = helipads(code);
     tiles.runways = runways(code);
     Ok(tiles)
@@ -27,6 +28,11 @@ pub fn runways(code: &str) -> Vec<stealth_sim::Runway> {
 /// A theater's relief (`assets/theaters/<code>.relief`; flat without one).
 pub fn relief(code: &str) -> stealth_sim::relief::Relief {
     TheaterTiles::read_relief(|name| crate::assets::read(name.trim_start_matches("../")), code)
+}
+
+/// A theater's hills (`assets/theaters/<code>.hills`; flat without one).
+pub fn hills(code: &str) -> stealth_sim::hills::Hills {
+    TheaterTiles::read_hills(|name| crate::assets::read(name.trim_start_matches("../")), code)
 }
 
 /// The simulation's tables, with the tiles of theater `index` (`code`) if they are not among

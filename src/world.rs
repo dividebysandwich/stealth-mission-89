@@ -308,6 +308,7 @@ impl Theater {
                 .map(|t| stealth_sim::Town::from_metres(t.x, t.y, t.r))
                 .collect(),
             relief: stealth_host::theater::relief(&self.id),
+            hills: stealth_host::theater::hills(&self.id),
             helipads: stealth_host::theater::helipads(&self.id),
             runways: stealth_host::theater::runways(&self.id),
         }

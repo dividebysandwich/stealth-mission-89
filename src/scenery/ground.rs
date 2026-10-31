@@ -22,6 +22,9 @@ pub const CELL: f64 = 500.0;
 /// Clearance around raised tile geometry and concrete (metres).
 const RAISED_MARGIN: f32 = 25.0;
 const SOLID_MARGIN: f32 = 45.0;
+/// Sizes of raised tile objects (metres, with their clearance) the hills keep flat ground for;
+/// concrete from the smallest up.
+const FLAT_SIZE: std::ops::Range<f32> = 250.0..1500.0;
 
 /// Ids of items overlapping each `CELL` square (ground positions in metres, x east, y north).
 #[derive(Default)]
@@ -138,6 +141,8 @@ struct ShapeGeom {
     raised: Option<Rect>,
     /// Flat lines in the road greys.
     lines: Vec<(Vec2, Vec2)>,
+    /// Flat lines in water colours (the classic theaters' rivers).
+    water_lines: Vec<(Vec2, Vec2)>,
     /// Runway strips: long, narrow concrete rectangles.
     runways: Vec<Rect>,
     /// The raised triangles (x east, y north, z up).
@@ -235,6 +240,8 @@ pub struct Ground {
     /// Road lines of the theater terrain (polylines, metres).
     pub highways: Vec<Vec<DVec2>>,
     pub runways: Vec<Runway>,
+    /// Rivers drawn as lines (metres), which the hills keep clear of.
+    pub water_lines: Vec<(DVec2, DVec2)>,
     /// The highest raised ground of the coarse levels (mountains, hills) per relief cell, metres
     /// (`stealth_sim::relief`).
     pub relief: Vec<f32>,
@@ -333,6 +340,21 @@ impl Ground {
         })
     }
 
+    /// Whether the ground at a point must stay flat (the hills, `stealth_sim::hills`): water
+    /// there, or within the clearance of concrete or a raised tile object of `FLAT_SIZE` (smaller
+    /// ones stand on the slopes, mountains rise from the hills).
+    pub fn needs_flat(&self, p: DVec2) -> bool {
+        if self.top(p) == Some(Surface::Water) {
+            return true;
+        }
+        let q = p.as_vec2();
+        self.box_index.at(p).iter().any(|&i| {
+            let (b, raised) = self.boxes[i as usize];
+            let size = b.size().max_element();
+            b.contains(q) && size >= FLAT_SIZE.start && (!raised || size < FLAT_SIZE.end)
+        })
+    }
+
     /// Keeps an area clear of later scenery (counts as a raised object).
     pub fn claim(&mut self, r: Rect) {
         self.add_box(r, true);
@@ -346,6 +368,7 @@ impl Ground {
             box_index: Index::default(),
             highways: vec![],
             runways: vec![],
+            water_lines: vec![],
             relief: vec![0.0; relief::DIM * relief::DIM],
         };
         let mut road_segments = Vec::new();
@@ -384,6 +407,9 @@ impl Ground {
                     });
                 }
             }
+            g.water_lines.extend(
+                geom.water_lines.iter().map(|&(a, b)| (place(a).as_dvec2(), place(b).as_dvec2())),
+            );
             if lod >= 2 {
                 for t in &geom.solid {
                     let t = t.map(|v| place(v.xy()).extend(v.z * scale));
@@ -553,6 +579,11 @@ fn walk(
                     if a.y.abs() < 1.0 && b.y.abs() < 1.0 && (0xE0..=0xEF).contains(&(word & 0xFF))
                     {
                         geom.lines.push((ground(a), ground(b)));
+                    } else if a.y.abs() < 1.0
+                        && b.y.abs() < 1.0
+                        && surface(word, day) == Some(Surface::Water)
+                    {
+                        geom.water_lines.push((ground(a), ground(b)));
                     }
                 }
                 continue;

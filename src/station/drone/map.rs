@@ -298,8 +298,8 @@ pub(super) struct Terrain {
     theater: String,
     /// It has the towns, roads and woods.
     detailed: bool,
-    /// The theater's relief (`stealth_host::theater::relief`).
-    relief: Option<(String, stealth_sim::relief::Relief)>,
+    /// The theater's relief and hills (`stealth_host::theater::relief`, `hills`).
+    relief: Option<(String, stealth_sim::relief::Relief, stealth_sim::hills::Hills)>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -557,9 +557,13 @@ fn ground(
         crate::mfd::rasterise_map(&mut c, raster.models(), theater, &to_px, visible, zoom, &remap);
         let relief = match t.relief.take() {
             Some(r) if r.0 == theater.id => r,
-            _ => (theater.id.clone(), stealth_host::theater::relief(&theater.id)),
+            _ => (
+                theater.id.clone(),
+                stealth_host::theater::relief(&theater.id),
+                stealth_host::theater::hills(&theater.id),
+            ),
         };
-        heights(&mut c, &relief.1, (centre, scale));
+        heights(&mut c, &relief.1, &relief.2, (centre, scale));
         if let Some(d) = detail {
             scenery(&mut c, &d.scenery, &to_px, (centre, scale));
         }
@@ -583,21 +587,26 @@ fn ground(
 /// The relief over the terrain: the slopes turned from the light (north west) shaded (ordered
 /// dither), contour lines every `CONTOURS` step at least 1.5 pixels of height apart, every fifth
 /// brighter.
-fn heights(c: &mut Canvas, relief: &stealth_sim::relief::Relief, (centre, scale): (DVec2, f64)) {
+fn heights(
+    c: &mut Canvas,
+    relief: &stealth_sim::relief::Relief,
+    hills: &stealth_sim::hills::Hills,
+    (centre, scale): (DVec2, f64),
+) {
     const BAYER: [[f32; 4]; 4] = [
         [0.0, 8.0, 2.0, 10.0],
         [12.0, 4.0, 14.0, 6.0],
         [3.0, 11.0, 1.0, 9.0],
         [15.0, 7.0, 13.0, 5.0],
     ];
-    if relief.bytes().iter().all(|&b| b == 0) {
+    if relief.bytes().iter().all(|&b| b == 0) && hills.is_flat() {
         return;
     }
     let (w, h) = (c.w, c.h);
     let half = DVec2::new(w as f64, h as f64) / 2.0;
     let at = |x: usize, y: usize| {
         let m = centre + (DVec2::new(x as f64, y as f64) - half) * scale;
-        relief.smooth_m(m.x, m.y)
+        relief.smooth_m(m.x, m.y).max(hills.at_map(m.x, m.y))
     };
     let z: Vec<f32> = (0..w * h).map(|i| at(i % w, i / w)).collect();
     let px_m = (scale * M_PER_MAP) as f32;

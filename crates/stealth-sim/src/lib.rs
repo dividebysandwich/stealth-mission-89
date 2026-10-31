@@ -16,6 +16,7 @@ pub mod dlz;
 pub mod drones;
 pub mod ground;
 pub mod guidance;
+pub mod hills;
 pub mod lights;
 mod missiles;
 pub mod net;
@@ -1004,10 +1005,12 @@ impl Sim {
         self.detect_pure(o.x, o.y, 0, o.unit_type).0
     }
 
-    /// A loaded state takes the relief (not saved) of a sim made for the same theater.
+    /// A loaded state takes the relief and hills (not saved) of a sim made for the same
+    /// theater.
     pub fn keep_relief_of(&mut self, fresh: &Sim) {
         if let (Some(t), Some(f)) = (self.tiles.as_mut(), fresh.tiles.as_ref()) {
             t.relief = f.relief.clone();
+            t.hills = f.hills.clone();
         }
     }
 

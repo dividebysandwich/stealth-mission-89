@@ -110,6 +110,8 @@ Testing and screenshots
   --write-helipads             with --freecam --theater <id>: save the airfields' helipads
                                and runways for the AI (assets/theaters/<id>.helipads,
                                .runways) and exit
+  --write-hills                with --freecam --theater <id>: save where the theater's
+                               rolling hills rise (assets/theaters/<id>.hills) and exit
   --screenshot <file.png>      save a screenshot and exit
     --shot-frames <n>          after n frames (default 90)
     --shot-time <s>            after s seconds of flight

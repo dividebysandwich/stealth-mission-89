@@ -102,6 +102,9 @@ pub struct TheaterTiles {
     /// The mountains (`assets/theaters/<code>.relief`, read beside the tiles).
     #[serde(skip)]
     pub relief: crate::relief::Relief,
+    /// The rolling hills (`assets/theaters/<code>.hills`, read beside the tiles).
+    #[serde(skip)]
+    pub hills: crate::hills::Hills,
     /// The airfields' helipads (`assets/theaters/<code>.helipads`, read beside the tiles).
     #[serde(skip)]
     pub helipads: Vec<(i32, i32)>,
@@ -205,6 +208,7 @@ impl SimData {
                         .with_context(|| format!("theaters/{code}.ron"))?,
                 };
                 t.relief = TheaterTiles::read_relief(&read, code);
+                t.hills = TheaterTiles::read_hills(&read, code);
                 t.helipads = TheaterTiles::read_helipads(&read, code);
                 t.runways = TheaterTiles::read_runways(&read, code);
                 Ok(t)
@@ -300,6 +304,7 @@ impl TheaterTiles {
             model_attr: model_attr.to_vec(),
             towns: Vec::new(),
             relief: Default::default(),
+            hills: Default::default(),
             helipads: Vec::new(),
             runways: Vec::new(),
         }
@@ -313,6 +318,13 @@ impl TheaterTiles {
     ) -> crate::relief::Relief {
         let name = format!("../theaters/{}.relief", code.to_ascii_lowercase());
         read(&name).ok().and_then(crate::relief::Relief::from_bytes).unwrap_or_default()
+    }
+
+    /// A theater's hills (`theaters/<code>.hills` through `read`, from `assets/sim`): flat
+    /// without one.
+    pub fn read_hills(read: impl Fn(&str) -> Result<Vec<u8>>, code: &str) -> crate::hills::Hills {
+        let name = format!("../theaters/{}.hills", code.to_ascii_lowercase());
+        read(&name).ok().and_then(crate::hills::Hills::from_bytes).unwrap_or_default()
     }
 
     /// A theater's helipads (`theaters/<code>.helipads` through `read`, from `assets/sim`): a
