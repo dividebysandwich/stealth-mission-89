@@ -17,7 +17,7 @@ down so it turns anticlockwise, `_part2` two-blade tail rotor on the left of the
 slot 17), navigation lights (`_s12v1`) and red beacons (`_s20v1`). Levels 0 and 1 have the
 universal weapons pylons, one each side, on slot 26 (left) and 27 (right): 0 none (the pylon is
 left off), 1 a two-rail launcher with two Hellfires, 2 a launcher with two Stingers, 3 a .50 cal
-machine gun pod; plus 4 for each missile fired (the outer one first). Olive drab. Built in metres and scaled to aircraft units (K per metre). Model
+machine gun pod; plus 4 for each missile fired (the outer one first). Dark grey. Built in metres and scaled to aircraft units (K per metre). Model
 space: x right, y forward, z up.
 """
 
@@ -42,15 +42,15 @@ K = 16.38
 # max_dist of each level (the game draws them 4x further): about 600 m and 2.2 km.
 LOD_DISTS = [2500, 9000, 32769]
 
-BODY = Ramp(0xA7, 0xAE)
-DECK = Ramp(0xA8, 0xAF)
+BODY = Ramp(0xE6, 0xED)
+DECK = Ramp(0xE7, 0xEE)
 GLASS = Ramp(144, 145)
 DARK = Ramp(0xEB, 0xEF)
 METAL = Ramp(0xE8, 0xEC)
 BLADE = Ramp(0xEC, 0xEF)
 SENSOR = Ramp(0xE6, 0xEC)
 STORE = Ramp(0xE2, 0xE8)
-SEAM = 0xAF
+SEAM = 0xEE
 RED, GREEN = 147, 151
 
 # Fuselage stations from the nose: y, then the heights of the belly, the lower and upper edge
