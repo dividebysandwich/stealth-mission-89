@@ -213,6 +213,9 @@ fn update(
                 ))
                 .id(),
         );
+        if let (Some(c), Some(g)) = (preview.camera, &preview.globals) {
+            commands.entity(c).insert(crate::camera::OffscreenGlobals(g.clone()));
+        }
     }
     // The chosen aircraft (again when another is chosen).
     let kind = settings.aircraft;
@@ -277,6 +280,9 @@ fn update(
         && let Some(mut b) = buffers.get_mut(&globals)
     {
         b.set_data(day_globals(&assets.palette, &settings));
+    }
+    if fresh && let Some(c) = preview.camera {
+        commands.entity(c).insert(crate::camera::OffscreenGlobals(globals.clone()));
     }
     for e in children.iter_descendants(root) {
         if let Ok(m) = lit.get(e)

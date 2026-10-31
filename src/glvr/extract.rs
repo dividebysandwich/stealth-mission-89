@@ -28,7 +28,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
 use bevy::render::storage::ShaderBuffer;
 use openxr as xr;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Sender;
 
 /// The eyes' fields of view are widened this much for culling: the draw list is drawn a frame
@@ -126,6 +126,8 @@ pub struct Offscreen {
     pub view: EyeView,
     pub clear: Vec4,
     pub list: DrawList,
+    /// Its own shader globals (`camera::OffscreenGlobals`; empty: the scene's).
+    pub globals: Vec<u8>,
 }
 
 /// A menu drawn with egui into an image (the VR menu's panel): its paint jobs.
@@ -330,6 +332,7 @@ type OffscreenQuery = (
     &'static GlobalTransform,
     &'static Projection,
     Option<&'static RenderLayers>,
+    Option<&'static crate::camera::OffscreenGlobals>,
 );
 
 pub struct Extractor {
@@ -341,6 +344,8 @@ pub struct Extractor {
     targets: HashSet<AssetId<Image>>,
     /// Readbacks asked of the render thread already.
     read: HashSet<Entity>,
+    /// The images of egui's user textures (`EguiUserTextures`) by id.
+    user_textures: HashMap<u64, AssetId<Image>>,
     queries: Option<Queries>,
     camera: Option<QueryState<&'static GlobalTransform>>,
 }
@@ -353,6 +358,7 @@ impl Extractor {
             sent_images: HashSet::new(),
             targets: HashSet::new(),
             read: HashSet::new(),
+            user_textures: HashMap::new(),
             queries: None,
             camera: None,
         }
@@ -448,7 +454,7 @@ impl Extractor {
             .offscreen
             .iter(world)
             .filter(|(c, ..)| c.is_active)
-            .filter_map(|(c, target, t, projection, layers)| {
+            .filter_map(|(c, target, t, projection, layers, globals)| {
                 let RenderTarget::Image(target) = target else { return None };
                 let Projection::Perspective(p) = projection else { return None };
                 let image = images.get(&target.handle)?;
@@ -457,12 +463,17 @@ impl Extractor {
                     _ => Vec4::new(0.0, 0.0, 0.0, 1.0),
                 };
                 let view = camera_view(t.to_matrix(), p.fov, p.aspect_ratio, p.near);
+                let globals = globals
+                    .and_then(|g| world.resource::<Assets<ShaderBuffer>>().get(&g.0))
+                    .and_then(|b| b.data.clone())
+                    .unwrap_or_default();
                 Some((
                     target.handle.id(),
                     image.size(),
                     view,
                     clear,
                     layers.cloned().unwrap_or_default(),
+                    globals,
                 ))
             })
             .collect();
@@ -482,7 +493,7 @@ impl Extractor {
         self.world_into(&mut q, world, &cull, &mut list);
         self.cockpit_into(&mut q, world, &cull, &mut list);
         // The cameras drawing into images, each with what it sees.
-        for (image, size, view, clear, layers) in cameras {
+        for (image, size, view, clear, layers, globals) in cameras {
             let frusta = [planes(view.view_proj)];
             let cull = Cull { layers, default_layer: RenderLayers::default(), frusta: &frusta };
             let mut sub = DrawList::default();
@@ -493,6 +504,7 @@ impl Extractor {
                 view,
                 clear,
                 list: sub,
+                globals,
             });
         }
         self.queries = Some(q);
@@ -524,8 +536,8 @@ impl Extractor {
                     egui::TextureId::Managed(t) => {
                         managed.and_then(|m| m.0.get(&(entity, t))).map(|m| m.handle.id())
                     }
-                    // (User textures: the campaign's unit picture, not drawn yet.)
-                    egui::TextureId::User(_) => None,
+                    // Pictures egui shows (the aircraft preview, the campaign's unit picture).
+                    egui::TextureId::User(u) => self.user_texture(world, images, u),
                 };
                 if let Some(t) = texture {
                     self.send_image(images, t);
@@ -546,6 +558,28 @@ impl Extractor {
                 jobs,
             });
         }
+    }
+
+    /// The image of egui user texture `u` (the map of them made again when one isn't in it).
+    fn user_texture(
+        &mut self,
+        world: &World,
+        images: &Assets<Image>,
+        u: u64,
+    ) -> Option<AssetId<Image>> {
+        use bevy_egui::egui::TextureId;
+        if let Some(&id) = self.user_textures.get(&u).filter(|&&id| images.contains(id)) {
+            return Some(id);
+        }
+        let user = world.get_resource::<bevy_egui::EguiUserTextures>()?;
+        self.user_textures = images
+            .ids()
+            .filter_map(|id| match user.image_id(id)? {
+                TextureId::User(u) => Some((u, id)),
+                TextureId::Managed(_) => None,
+            })
+            .collect();
+        self.user_textures.get(&u).copied()
     }
 
     /// The bevy_ui nodes drawn into images (the cockpit tooltip in VR): their backgrounds,

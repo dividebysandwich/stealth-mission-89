@@ -256,6 +256,13 @@ pub struct HideOwnAircraft(pub bool);
 #[derive(Component)]
 pub struct OffscreenCamera;
 
+/// The shader globals an `OffscreenCamera` draws with when they aren't the scene's (the
+/// aircraft preview's daylight): for the OpenGL VR renderer, which binds one set of globals
+/// per view (Bevy's materials carry theirs).
+#[derive(Component)]
+#[cfg_attr(not(feature = "glvr"), allow(dead_code))]
+pub struct OffscreenGlobals(pub Handle<bevy::render::storage::ShaderBuffer>);
+
 /// An image an `OffscreenCamera` renders into: stored `Rgba8Unorm`, drawn through an sRGB view,
 /// so it is sampled (egui, the cockpit displays) and read back as its sRGB bytes. WebGL2 has no
 /// view formats: stored sRGB.

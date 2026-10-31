@@ -851,7 +851,7 @@ impl Renderer {
             self.draw_egui(view)?;
         }
         for off in &list.offscreen {
-            self.draw_offscreen(off, &mut stats)?;
+            self.draw_offscreen(off, &list.globals, &mut stats)?;
         }
         for &(entity, image) in &list.readbacks {
             if let Some(pixels) = self.read_target(image) {
@@ -1208,8 +1208,26 @@ impl Renderer {
         Ok(())
     }
 
-    /// Draws offscreen view `off` into its image's texture.
-    fn draw_offscreen(&mut self, off: &Offscreen, stats: &mut Stats) -> Result<(), String> {
+    /// Draws offscreen view `off` into its image's texture (with its own globals if it has any,
+    /// the scene's `globals` bound again after).
+    fn draw_offscreen(
+        &mut self,
+        off: &Offscreen,
+        globals: &[u8],
+        stats: &mut Stats,
+    ) -> Result<(), String> {
+        let own = !off.globals.is_empty();
+        if own {
+            // SAFETY: the context is current; the buffer is this renderer's.
+            unsafe {
+                self.gl.bind_buffer(glow::UNIFORM_BUFFER, Some(self.globals));
+                self.gl.buffer_data_u8_slice(
+                    glow::UNIFORM_BUFFER,
+                    &off.globals,
+                    glow::DYNAMIC_DRAW,
+                );
+            }
+        }
         let (w, h) = off.size;
         // (The tracking camera's picture is sampled nearest, as its image says.)
         let fb = self.target(off.image, off.size, false)?;
@@ -1235,6 +1253,10 @@ impl Renderer {
             self.gl.depth_mask(true);
             self.gl.front_face(glow::CCW);
             self.gl.invalidate_framebuffer(glow::FRAMEBUFFER, &[glow::DEPTH_ATTACHMENT]);
+            if own && !globals.is_empty() {
+                self.gl.bind_buffer(glow::UNIFORM_BUFFER, Some(self.globals));
+                self.gl.buffer_data_u8_slice(glow::UNIFORM_BUFFER, globals, glow::DYNAMIC_DRAW);
+            }
         }
         Ok(())
     }
