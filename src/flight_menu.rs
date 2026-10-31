@@ -709,18 +709,20 @@ fn spawn_screen(
         fog_enabled: false,
         ..default()
     });
-    let screen = commands
-        .spawn((
-            MenuScreen,
-            tex,
-            Mesh3d(meshes.add(Rectangle::new(SIZE.x, SIZE.y))),
-            MeshMaterial3d(material),
-            Transform::from_translation(POSITION),
-            Visibility::Hidden,
-            NotShadowCaster,
-        ))
-        .id();
-    commands.entity(root).add_child(screen);
+    // Only if the cockpit still stands when the commands apply (it can be rebuilt the frame
+    // this runs, e.g. when a campaign mission starts), or the screen would be left without one.
+    let screen = (
+        MenuScreen,
+        tex,
+        Mesh3d(meshes.add(Rectangle::new(SIZE.x, SIZE.y))),
+        MeshMaterial3d(material),
+        Transform::from_translation(POSITION),
+        Visibility::Hidden,
+        NotShadowCaster,
+    );
+    commands.entity(root).queue_silenced(move |mut root: EntityWorldMut| {
+        root.with_child(screen);
+    });
 }
 
 /// Canvas pixel of a point in the screen's local frame (None off the screen).
