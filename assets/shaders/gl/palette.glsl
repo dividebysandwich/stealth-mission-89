@@ -1186,15 +1186,17 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         if (((px.x + px.y) & 1u) == 1u) { discard; }
         rgb = pal(lo);
     } else if (hi == 0xFEu || hi == 0xFDu) {
+        // On the hills: the gradient of the flat ground under the point.
+        vec3 gdir = (v_warm & 8u) != 0u ? vec3(dir.x, -max(eye_pos().y, 0.5), dir.z) : dir;
         if (modern) {
-            vec3 b = band_f(dir);
+            vec3 b = band_f(gdir);
             uint k = uint(b.x) + uint(b.y);
             uint k1 = uint(b.x) + min(uint(b.y) + 1u, 15u);
             uint c0 = hi == 0xFEu ? (k & lo) : (k | lo);
             uint c1 = hi == 0xFEu ? (k1 & lo) : (k1 | lo);
             rgb = mix(pal(c0), pal(c1), b.z);
         } else {
-            uint k = band(dir).x;
+            uint k = band(gdir).x;
             rgb = pal(hi == 0xFEu ? (k & lo) : (k | lo));
         }
     } else {

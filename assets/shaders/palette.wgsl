@@ -1607,16 +1607,21 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         if (((px.x + px.y) & 1u) == 1u) { discard; }
         rgb = pal(lo);
     } else if (hi == 0xFEu || hi == 0xFDu) {
-        // AND / OR with the ground gradient underneath.
+        // AND / OR with the ground gradient underneath; on the hills the gradient of the flat
+        // ground under the point (else hillsides above the eye took the sky's bands).
+        var gdir = dir;
+        if ((in.warm & 8u) != 0u) {
+            gdir = vec3<f32>(dir.x, -max(view.world_position.y, 0.5), dir.z);
+        }
         if (modern) {
-            let b = band_f(dir);
+            let b = band_f(gdir);
             let k = u32(b.x) + u32(b.y);
             let k1 = u32(b.x) + min(u32(b.y) + 1u, 15u);
             let c0 = select(k | lo, k & lo, hi == 0xFEu);
             let c1 = select(k1 | lo, k1 & lo, hi == 0xFEu);
             rgb = mix(pal(c0), pal(c1), b.z);
         } else {
-            rgb = pal(select(band(dir).x | lo, band(dir).x & lo, hi == 0xFEu));
+            rgb = pal(select(band(gdir).x | lo, band(gdir).x & lo, hi == 0xFEu));
         }
     } else {
         // Two-colour checkerboard dither (modern: the average of both colours).
