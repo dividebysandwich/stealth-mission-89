@@ -825,6 +825,8 @@ fn map_view(
             ring_tip(&mut tips, c, ring, planner.profile);
         }
     }
+    // (The mission's airfields' tooltips name the takeoff base themselves.)
+    let airfield_tips = overlay.is_none() && layers.shows(Layer::Airfields);
     match overlay {
         Some(o) => (o.draw)(&painter, &view, layers, &mut tips),
         None => {
@@ -907,13 +909,15 @@ fn map_view(
             );
         });
     }
-    let owner = m
-        .world
-        .objects
-        .get(m.takeoff.object_index as usize)
-        .map_or(crate::app6::Affiliation::Friend, |o| map_draw::affiliation_of(o.flags));
-    tips.add(base, "Takeoff base", crate::mission::clean_text(&m.takeoff.name), FRIENDLY_BLUE)
-        .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
+    if !airfield_tips {
+        let owner = m
+            .world
+            .objects
+            .get(m.takeoff.object_index as usize)
+            .map_or(crate::app6::Affiliation::Friend, |o| map_draw::affiliation_of(o.flags));
+        tips.add(base, "Takeoff base", crate::mission::clean_text(&m.takeoff.name), FRIENDLY_BLUE)
+            .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
+    }
 
     // Input.
     let hit_point = |pos: egui::Pos2| pts.iter().position(|&p| p.distance(pos) < 9.0);
