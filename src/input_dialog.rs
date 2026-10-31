@@ -475,8 +475,8 @@ pub fn show(
 
 /// The search field across the dialog, as the key guide's: inside its frame a magnifier, the
 /// text with a slowly blinking `_` caret as a console's while it has the keyboard (a hint while
-/// empty without it) and an X clearing it; in VR clicking it opens the virtual keyboard under it. It has the keyboard once clicked
-/// (until Esc), never while a key is being captured.
+/// empty without it) and an X clearing it; in VR clicking it opens the virtual keyboard under
+/// it. It has the keyboard once clicked (until Esc), never while a key is being captured.
 fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: bool) {
     /// The magnifier's and the X's squares.
     const ICON: f32 = 22.0;
