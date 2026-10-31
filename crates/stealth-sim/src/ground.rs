@@ -482,12 +482,13 @@ impl Sim {
     /// ground units has it in sight within [`SIGHT_RANGE`], or one of its drones within its
     /// sensor's reach.
     fn ground_look(&mut self) {
+        let hills = self.hills();
         let n = self.units.len();
         let pos: Vec<[f64; 2]> = self
             .units
             .iter()
             .map(|u| {
-                let m = u.metres();
+                let m = u.metres_on(&hills);
                 [m[0], m[1]]
             })
             .collect();
@@ -523,10 +524,14 @@ impl Sim {
         }
     }
 
-    /// The relief leaves a line of sight from `a` to `b` (metres) open.
+    /// The relief and the rolling hills leave a line of sight from `a` to `b` (metres) open.
     fn ground_los(&self, a: [f64; 2], b: [f64; 2]) -> bool {
-        let Some(r) = self.tiles.as_ref().map(|t| &t.relief) else { return true };
-        let h = |p: [f64; 2]| r.smooth_m(p[0] / M_PER_MAP, 0x8000 as f64 - p[1] / M_PER_MAP) as f64;
+        let Some(t) = self.tiles.as_ref() else { return true };
+        let (r, hills) = (&t.relief, &t.hills);
+        let h = |p: [f64; 2]| {
+            let m = r.smooth_m(p[0] / M_PER_MAP, 0x8000 as f64 - p[1] / M_PER_MAP) as f64;
+            m.max(hills.height_m(p[0], p[1]) as f64)
+        };
         let (ha, hb) = (h(a) + 3.0, h(b) + 2.0);
         let steps = (dist(a, b) / LOS_STEP) as usize;
         (1..steps).all(|i| {
@@ -538,12 +543,13 @@ impl Sim {
 
     /// Unit `k` has an enemy ground unit in sight that it can fire at.
     fn in_contact(&self, k: usize) -> bool {
+        let hills = self.hills();
         let a = &self.units[k];
-        let m = a.metres();
+        let m = a.metres_on(&hills);
         let blue = self.aaa_blue(k);
         (0..self.units.len()).any(|j| {
             let b = &self.units[j];
-            let mb = b.metres();
+            let mb = b.metres_on(&hills);
             !b.destroyed
                 && self.aaa_blue(j) != blue
                 && shot(a.kind, b.kind)
@@ -554,6 +560,7 @@ impl Sim {
 
     /// One frame of a convoy's driving.
     fn drive(&mut self, v: &mut Convoy, speed: f64, dt: f64, look: bool) {
+        let hills = self.hills();
         let alive: Vec<usize> =
             v.units.iter().map(|&k| k as usize).filter(|&k| !self.units[k].destroyed).collect();
         if alive.is_empty() {
@@ -602,7 +609,7 @@ impl Sim {
                         goal[0] - dir[0] * ASSAULT_STOP + across[0] * off,
                         goal[1] - dir[1] * ASSAULT_STOP + across[1] * off,
                     ];
-                    let m = self.units[k].metres();
+                    let m = self.units[k].metres_on(&hills);
                     let at = [m[0], m[1]];
                     let left = dist(at, slot);
                     let step = ASSAULT_SPEED * dt;
@@ -622,6 +629,7 @@ impl Sim {
     /// The ground guns fire at the enemy's ground units they see, a round at a time (bursts
     /// for the autocannons); the rounds that knock a vehicle out do so as they land.
     fn ground_fire(&mut self, rng: &mut Rng, driving: &[u32]) {
+        let hills = self.hills();
         let on_move = |sim: &Sim, k: usize| {
             let tag = sim.ground().and_then(|g| g.convoy_of.get(k).copied()).unwrap_or(0);
             tag != 0 && driving.contains(&tag)
@@ -652,7 +660,7 @@ impl Sim {
                 }
                 continue;
             }
-            let m = a.metres();
+            let m = a.metres_on(&hills);
             let me = [m[0], m[1]];
             // A burst keeps on at its target while it can.
             let mut aim = None;
@@ -673,7 +681,7 @@ impl Sim {
             };
             let b = self.units[j];
             let s = shot(a.kind, b.kind).unwrap();
-            let mb = b.metres();
+            let mb = b.metres_on(&hills);
             let d = dist(me, [mb[0], mb[1]]);
             let k = d / s.reach;
             let mut p_hit = s.hit.0 + (s.hit.1 - s.hit.0) * k;
@@ -731,6 +739,7 @@ impl Sim {
     /// Unit `i` (at `me`) can fire at ground unit `j`: an enemy its side sees, in its gun's
     /// reach, not knocked out yet.
     fn ground_target_ok(&self, i: usize, j: usize, me: [f64; 2]) -> bool {
+        let hills = self.hills();
         let (a, b) = (&self.units[i], &self.units[j]);
         let blue = self.aaa_blue(i);
         if b.destroyed || self.aaa_blue(j) == blue || !self.unit_seen_by(j, blue) {
@@ -740,13 +749,14 @@ impl Sim {
             return false;
         }
         let Some(s) = shot(a.kind, b.kind) else { return false };
-        let mb = b.metres();
+        let mb = b.metres_on(&hills);
         dist(me, [mb[0], mb[1]]) <= s.reach
     }
 
     /// The enemy ground unit that unit `i` (at `me`) fires at next: tanks first for the
     /// tanks, the nearest otherwise.
     fn ground_pick(&self, i: usize, me: [f64; 2]) -> Option<usize> {
+        let hills = self.hills();
         let a = self.units[i];
         let mut best: Option<(f64, usize)> = None;
         for j in 0..self.units.len() {
@@ -754,7 +764,7 @@ impl Sim {
                 continue;
             }
             let b = &self.units[j];
-            let mb = b.metres();
+            let mb = b.metres_on(&hills);
             let d = dist(me, [mb[0], mb[1]]);
             let score = if b.kind.tank() == a.kind.tank() { d } else { d * 1.5 + 500.0 };
             if best.is_none_or(|(sc, _)| score < sc) {

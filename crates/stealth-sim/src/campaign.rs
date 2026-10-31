@@ -1405,6 +1405,7 @@ impl Sim {
 
     /// Once a second: sites, guns and fighters pick their AI targets; sites and fighters fire.
     fn campaign_acquire(&mut self) {
+        let hills = self.hills();
         let fs = self.fs.max(1);
         let sides: Vec<Option<bool>> = (0..self.flights.len()).map(|i| self.ai_side(i)).collect();
         let pos: Vec<[f64; 3]> = self.flights.iter().map(flight_metres).collect();
@@ -1496,7 +1497,7 @@ impl Sim {
                 let a = &mut self.units[k];
                 a.tracking = track.is_some();
                 if let Some((j, _)) = track {
-                    let d = sub(pos[j], u.metres());
+                    let d = sub(pos[j], u.metres_on(&hills));
                     a.aim_az = d[0].atan2(d[1]) as f32;
                 }
                 continue;
@@ -1513,7 +1514,7 @@ impl Sim {
             if u.kind == GroundKind::Manpads && self.units[k].cooldown == 0 && rng.random(100) < 50
             {
                 self.units[k].cooldown = 45 * fs;
-                let from = add(u.metres(), [0.0, 0.0, 1.5]);
+                let from = add(u.metres_on(&hills), [0.0, 0.0, 1.5]);
                 let d = sub(pos[j], from);
                 let dir = mul(d, 1.0 / len(d).max(1.0));
                 launches.push(self.ai_missile(
@@ -1543,7 +1544,7 @@ impl Sim {
             });
             self.units[k].tracking = track.is_some();
             let Some(j) = track else { continue };
-            let from = add(u.metres(), [0.0, 0.0, 3.0]);
+            let from = add(u.metres_on(&hills), [0.0, 0.0, 3.0]);
             let d = sub(pos[j], from);
             let az = d[0].atan2(d[1]);
             self.units[k].aim_az = az as f32;
@@ -1657,6 +1658,7 @@ impl Sim {
 
     /// Guns that have a target fire bursts of tracers at it.
     fn campaign_guns(&mut self) {
+        let hills = self.hills();
         let fs = self.fs.max(1);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
@@ -1676,7 +1678,7 @@ impl Sim {
             let t = self.flights[j];
             let to = flight_metres(&t);
             let vel = mul(direction(t.heading, t.pitch), t.speed as f64 * 0.514);
-            let from = u.metres();
+            let from = u.metres_on(&hills);
             let (v0, reach, _) = gun_envelope(u.kind);
             let (az, el, time) = lead(from, to, vel, v0);
             u.aim_az = az as f32;
@@ -1830,6 +1832,7 @@ impl Sim {
                     self.fs,
                     target,
                     target,
+                    0.0,
                 );
                 let f = pm.flight.unwrap_or_default();
                 let q = |a: i32| a as f64 / ROUND_FINE as f64;

@@ -238,7 +238,7 @@ impl Sim {
                     out.push(GunHit::Pilot { id: k, step, at: (b.x / f, b.y / f, b.alt / f) });
                 }
             }
-            if let Some((x, y)) = self.bullets[i].ground_crossing() {
+            if let Some((x, y)) = self.bullets[i].ground_crossing(&self.hills()) {
                 self.bullets[i].x = 0;
                 out.push(GunHit::Ground { x, y });
             }

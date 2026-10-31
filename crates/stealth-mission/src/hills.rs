@@ -30,6 +30,12 @@ const FLOOR: f32 = 0.38;
 const TOP: f32 = 0.78;
 /// Metres per map unit (map x east, y south, 0x8000 across).
 const MAP_M: f64 = THEATER_M / 32768.0;
+/// Metres per altitude unit.
+const ALT_M: f64 = THEATER_M / 1_048_576.0;
+/// Line of sight samples over the hills (metres apart), and the stretch at each end left out
+/// (the ground under the eye and under what it looks at).
+const LOS_STEP_M: f64 = 150.0;
+const LOS_END_M: f64 = 60.0;
 
 #[derive(Clone, Default)]
 pub struct Hills(Arc<Vec<u8>>);
@@ -112,6 +118,50 @@ impl Hills {
     /// The ground as drawn up close (`surface_m` on the finest grid), metres east, north.
     pub fn ground_m(&self, e: f64, n: f64) -> f32 {
         self.surface_m(e, n, GRID_M)
+    }
+
+    /// The drawn ground at a map point (x east, y south) in altitude units.
+    pub fn ground_alt(&self, x: i32, y: i32) -> i32 {
+        if self.0.is_empty() {
+            return 0;
+        }
+        (self.ground_m(x as f64 * MAP_M, THEATER_M - y as f64 * MAP_M) as f64 / ALT_M) as i32
+    }
+
+    /// Whether the hills leave the line of sight open between two points (map x, y south,
+    /// altitude units): sampled where the line runs lower than the hills reach.
+    pub fn sight_open(&self, a: (i32, i32, i32), b: (i32, i32, i32)) -> bool {
+        if self.0.is_empty() {
+            return true;
+        }
+        let (za, zb) = (a.2 as f64 * ALT_M, b.2 as f64 * ALT_M);
+        let top = MAX_M as f64;
+        if za >= top && zb >= top {
+            return true;
+        }
+        let (ea, na) = (a.0 as f64 * MAP_M, THEATER_M - a.1 as f64 * MAP_M);
+        let (eb, nb) = (b.0 as f64 * MAP_M, THEATER_M - b.1 as f64 * MAP_M);
+        let len = (eb - ea).hypot(nb - na);
+        if len < 2.0 * LOS_END_M {
+            return true;
+        }
+        // The stretch of the line below the hills' top.
+        let (mut t0, mut t1) = (0.0f64, 1.0f64);
+        if (zb - za).abs() > 1e-9 {
+            let t = (top - za) / (zb - za);
+            if za < zb { t1 = t1.min(t) } else { t0 = t0.max(t) }
+        }
+        let end = LOS_END_M / len;
+        let (t0, t1) = (t0.max(end), t1.min(1.0 - end));
+        if t0 >= t1 {
+            return true;
+        }
+        let steps = (((t1 - t0) * len) / LOS_STEP_M).ceil().max(1.0) as usize;
+        (0..=steps).all(|i| {
+            let t = t0 + (t1 - t0) * i as f64 / steps as f64;
+            let z = za + (zb - za) * t;
+            self.height_m(ea + (eb - ea) * t, na + (nb - na) * t) as f64 <= z
+        })
     }
 
     /// The ground's rise per metre east and north at a point (central differences over 2 m).
@@ -328,6 +378,22 @@ mod tests {
             assert_eq!(p.ground_m(e, n).to_bits(), h.ground_m(e, n).to_bits());
         }
         assert!(Patch::new(&Hills::default(), (0.0, 0.0), (10.0, 10.0)).is_none());
+    }
+
+    /// A low helicopter behind a hill is hidden from a radar; higher up it is seen.
+    #[test]
+    fn hill_hides_a_low_target() {
+        let h = full();
+        // The highest point along a line west to east, and points 3 km either side of it.
+        let y = 16384;
+        let top = (14000..15000).max_by_key(|&x| h.ground_alt(x, y)).unwrap();
+        let (west, east) = (top - 200, top + 200);
+        let alt = |x: i32, above_m: f64| h.ground_alt(x, y) + (above_m / ALT_M) as i32;
+        let peak = h.ground_alt(top, y);
+        assert!(peak > alt(west, 0.0) + 60 && peak > alt(east, 0.0) + 60, "no hill there");
+        assert!(!h.sight_open((west, y, alt(west, 15.0)), (east, y, alt(east, 10.0))));
+        assert!(h.sight_open((west, y, alt(west, 15.0)), (east, y, peak + 400)));
+        assert!(Hills::default().sight_open((west, y, 0), (east, y, 0)));
     }
 
     #[test]

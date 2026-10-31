@@ -16,7 +16,7 @@ pub mod dlz;
 pub mod drones;
 pub mod ground;
 pub mod guidance;
-pub mod hills;
+pub use stealth_mission::hills;
 pub mod lights;
 mod missiles;
 pub mod net;
@@ -1003,6 +1003,11 @@ impl Sim {
             return 0;
         }
         self.detect_pure(o.x, o.y, 0, o.unit_type).0
+    }
+
+    /// The theater's rolling hills (flat without).
+    pub fn hills(&self) -> crate::hills::Hills {
+        self.tiles.as_ref().map(|t| t.hills.clone()).unwrap_or_default()
     }
 
     /// A loaded state takes the relief and hills (not saved) of a sim made for the same

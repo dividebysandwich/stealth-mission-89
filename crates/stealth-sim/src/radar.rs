@@ -60,6 +60,8 @@ pub struct DetectCtx<'a> {
     pub grid: &'a [u8],
     /// The mountains, which hide the player from radars behind them.
     pub relief: Option<&'a Relief>,
+    /// The rolling hills, which do too (low flyers behind them).
+    pub hills: Option<&'a crate::hills::Hills>,
 }
 
 /// A ground radar's antenna above the ground (altitude units, about 15 m).
@@ -113,13 +115,16 @@ pub fn detect(
         let h = c.height.max(0);
         score = score * h * h / (LOW_LEVEL_FT * LOW_LEVEL_FT);
     }
-    // Mountains between the radar and the player hide it (a ground site's antenna on its
-    // mast above the ground).
-    if score > 0
-        && let Some(r) = c.relief
-    {
-        let alt = if salt == 0 { r.ground(sx, sy) + MAST } else { salt };
-        if !r.sight_open((sx, sy, alt), (c.px, c.py, c.alt)) {
+    // Mountains and hills between the radar and the player hide it (a ground site's antenna
+    // on its mast above the ground).
+    if score > 0 && (c.relief.is_some() || c.hills.is_some()) {
+        let ground = c.relief.map_or(0, |r| r.ground(sx, sy));
+        let ground = ground.max(c.hills.map_or(0, |h| h.ground_alt(sx, sy)));
+        let alt = if salt == 0 { ground + MAST } else { salt };
+        let (site, player) = ((sx, sy, alt), (c.px, c.py, c.alt));
+        if !c.relief.is_none_or(|r| r.sight_open(site, player))
+            || !c.hills.is_none_or(|h| h.sight_open(site, player))
+        {
             score = 0;
         }
     }
@@ -150,6 +155,7 @@ impl Sim {
             comanche: self.pl.comanche,
             grid: &self.grid,
             relief: self.tiles.as_ref().map(|t| &t.relief),
+            hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
         }
     }
 
@@ -412,7 +418,7 @@ impl Sim {
         self.proj[k] = Projectile {
             x: o.x + 8,
             y: o.y,
-            alt: 0,
+            alt: self.hill_alt(o.x + 8, o.y),
             speed: 1,
             heading: s16(brg),
             pitch: 0x4000,
@@ -807,6 +813,7 @@ mod tests {
             comanche: false,
             grid,
             relief: None,
+            hills: None,
         }
     }
 
@@ -903,6 +910,7 @@ mod tests {
                 comanche: false,
                 grid: &grid,
                 relief: None,
+                hills: None,
             };
             assert_eq!(detect(sx, sy, salt, typ, Some(th), &c), want);
         }

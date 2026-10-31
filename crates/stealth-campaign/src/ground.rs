@@ -1,6 +1,6 @@
 //! Where convoys can drive: a grid of 250 m cells over the theater, land that is not
-//! mountains, and water narrow enough to cross (a river: bridged or forded), and the routes
-//! over it.
+//! mountains or too steep a hillside, and water narrow enough to cross (a river: bridged or
+//! forded), and the routes over it (climbing the hills costs more than going round them).
 
 use std::collections::{BinaryHeap, HashMap};
 
@@ -16,6 +16,13 @@ const WATER_COST: f32 = 8.0;
 /// A place's centre is reached from the nearest passable cell this many cells away at most.
 const SNAP: i32 = 6;
 
+/// Hillsides steeper than this (rise per metre between the cells' centres) are too steep to
+/// drive up, and each unit of rise per metre costs this many times the distance.
+const STEEP: f32 = 0.36;
+const CLIMB_COST: f32 = 4.0;
+/// Metres per cell side.
+const CELL_M: f32 = 250.0;
+
 const BLOCKED: u8 = 0;
 const LAND: u8 = 1;
 const FORD: u8 = 2;
@@ -27,6 +34,8 @@ const RELIEF_STEP_M: f32 = 32.0;
 
 pub struct GroundGrid {
     pass: Vec<u8>,
+    /// The rolling hills' height at each cell's centre (m; empty for a flat theater).
+    height: Vec<f32>,
     /// Connected areas (0: blocked).
     area: Vec<u32>,
 }
@@ -67,8 +76,34 @@ const STEPS: [(i32, i32, f32); 8] = [
 impl GroundGrid {
     /// The grid from the water at each cell's centre (`TheaterData::water_grid(DIM)`) and the
     /// theater's relief (none: flat).
-    pub fn build(water: &[bool], relief: Option<&[u8]>) -> Self {
+    pub fn build(
+        water: &[bool],
+        relief: Option<&[u8]>,
+        hills: &stealth_mission::hills::Hills,
+    ) -> Self {
         assert_eq!(water.len(), DIM * DIM);
+        let height: Vec<f32> = if hills.is_flat() {
+            Vec::new()
+        } else {
+            let m = CELL_M as f64;
+            (0..DIM * DIM)
+                .map(|i| {
+                    let (c, r) = ((i % DIM) as f64, (i / DIM) as f64);
+                    hills.height_m((c + 0.5) * m, (DIM as f64 - r - 0.5) * m)
+                })
+                .collect()
+        };
+        // A hillside too steep to drive: the rise to a neighbour's centre.
+        let steep = |c: usize, r: usize| {
+            !height.is_empty()
+                && STEPS.iter().any(|&(dc, dr, len)| {
+                    let (nc, nr) = (c as i32 + dc, r as i32 + dr);
+                    (0..DIM as i32).contains(&nc)
+                        && (0..DIM as i32).contains(&nr)
+                        && (height[nr as usize * DIM + nc as usize] - height[r * DIM + c]).abs()
+                            > STEEP * CELL_M * len
+                })
+        };
         let relief = relief.filter(|r| r.len() == RELIEF_DIM * RELIEF_DIM);
         // Runs of water along the rows and the columns.
         let mut across = vec![0u16; DIM * DIM];
@@ -109,7 +144,7 @@ impl GroundGrid {
         for r in 0..DIM {
             for c in 0..DIM {
                 let i = r * DIM + c;
-                if relief.is_some_and(|h| relief_m(h, c, r) > MOUNTAIN_M) {
+                if relief.is_some_and(|h| relief_m(h, c, r) > MOUNTAIN_M) || steep(c, r) {
                     continue;
                 }
                 pass[i] = if !water[i] {
@@ -122,7 +157,7 @@ impl GroundGrid {
             }
         }
         let area = areas(&pass);
-        Self { pass, area }
+        Self { pass, height, area }
     }
 
     fn cell(x: i32, y: i32) -> Option<(i32, i32)> {
@@ -213,9 +248,14 @@ impl GroundGrid {
                 {
                     continue;
                 }
-                let step = if kind == FORD { len * WATER_COST } else { len };
-                let ng = g + step;
                 let n = idx((nc, nr));
+                let climb = if self.height.is_empty() {
+                    0.0
+                } else {
+                    (self.height[n] - self.height[i]).abs() / CELL_M
+                };
+                let step = if kind == FORD { len * WATER_COST } else { len + climb * CLIMB_COST };
+                let ng = g + step;
                 // Water costs more but is no longer to drive: the limit counts the distance.
                 if ng + h((nc, nr)) > limit * WATER_COST
                     || best.get(&n).is_some_and(|&(b, _)| b <= ng)
@@ -333,7 +373,7 @@ mod tests {
                 water[r * DIM + c] = true;
             }
         }
-        GroundGrid::build(&water, None)
+        GroundGrid::build(&water, None, &Default::default())
     }
 
     #[test]
@@ -364,9 +404,24 @@ mod tests {
         for r in 0..RELIEF_DIM {
             relief[r * RELIEF_DIM + 20] = 13;
         }
-        let g = GroundGrid::build(&vec![false; DIM * DIM], Some(&relief));
+        let g = GroundGrid::build(&vec![false; DIM * DIM], Some(&relief), &Default::default());
         let row = 500 * CELL;
         assert!(!g.passable(164 * CELL, row));
         assert!(g.route((150 * CELL, row), (180 * CELL, row), 0x8000).is_none());
+    }
+
+    /// Over the rolling hills (gentle, none too steep) a convoy drives on, a little round
+    /// their tops.
+    #[test]
+    fn routes_over_the_hills() {
+        let full = stealth_mission::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
+        let g = GroundGrid::build(&vec![false; DIM * DIM], None, &full);
+        let (from, to) = ((12000, 16000), (12640, 16000));
+        let route = g.route(from, to, 2000).expect("a way over the hills");
+        let length: f64 = route
+            .windows(2)
+            .map(|w| ((w[1].0 - w[0].0) as f64).hypot((w[1].1 - w[0].1) as f64))
+            .sum();
+        assert!(length < 640.0 * 1.4, "{length}");
     }
 }

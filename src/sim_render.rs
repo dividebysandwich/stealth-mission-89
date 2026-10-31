@@ -512,6 +512,9 @@ fn bam16(a: f32) -> i16 {
     (a / std::f32::consts::TAU * 65536.0).round() as i32 as i16
 }
 
+/// Half the span over which a vehicle's slope is measured (metres).
+const VEHICLE_SLOPE_SPAN: f64 = 3.0;
+
 /// The guns and MANPADS teams turn towards the player as they aim (each placed at its own
 /// heading), show their wreck once destroyed; the Shilkas' shells are yellow tracer streaks like
 /// the player's gun rounds, without a dot at the head.
@@ -534,6 +537,7 @@ fn sync_aaa(
     hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
     mut dust: ResMut<crate::explosions::VehicleDust>,
     mut drawn: ResMut<DrawnUnits>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     dust.0.clear();
     drawn.0.clear();
@@ -574,9 +578,11 @@ fn sync_aaa(
             (h, Vec2::new(c.x, c.z), (h.radius + 2.0) * tf.scale().x.max(1e-6), inv)
         })
         .collect();
+    let hills = theater.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat());
     let ground = |p: DVec3| {
         let q = (p - origin).as_vec3();
         let q2 = Vec2::new(q.x, q.z);
+        let hill = hills.map_or(0.0, |h| h.ground_m(p.x, -p.z));
         mountains
             .iter()
             .filter(|(_, c, r, _)| c.distance(q2) < *r)
@@ -584,7 +590,20 @@ fn sync_aaa(
                 let o = inv.transform_point3(Vec3::new(q.x, 0.0, q.z));
                 h.top(o, inv.transform_vector3(Vec3::Y))
             })
-            .fold(0.0f32, f32::max) as f64
+            .fold(hill, f32::max) as f64
+    };
+    // A hull at its heading on the hills' slope there (pitch up the slope ahead, the side the
+    // ground rises on up).
+    let on_slope = |at: DVec3, heading: f32| {
+        let turn = Quat::from_rotation_y(-heading);
+        let Some(h) = hills else { return turn };
+        let fwd = DVec3::new(heading.sin() as f64, 0.0, -heading.cos() as f64);
+        let right = DVec3::new(-fwd.z, 0.0, fwd.x);
+        let rise = |d: DVec3| {
+            let (a, b) = (at + d * VEHICLE_SLOPE_SPAN, at - d * VEHICLE_SLOPE_SPAN);
+            (h.ground_m(a.x, -a.z) - h.ground_m(b.x, -b.z)) / (2.0 * VEHICLE_SLOPE_SPAN) as f32
+        };
+        turn * Quat::from_rotation_x(rise(fwd).atan()) * Quat::from_rotation_z(-rise(right).atan())
     };
     drawn.0.resize(units.len(), (DVec3::ZERO, 0.0));
     for (i, (u, &e)) in units.iter().zip(&av.units).enumerate() {
@@ -616,15 +635,17 @@ fn sync_aaa(
                 }
                 (at, heading)
             }
-            // Each unit stands at its own heading (golden-angle spread).
-            None => (
-                map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0),
-                (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU),
-            ),
+            // Each unit stands at its own heading (golden-angle spread), on the hills.
+            None => {
+                let flat = map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
+                let at =
+                    flat + DVec3::Y * hills.map_or(0.0, |h| h.ground_m(flat.x, -flat.z) as f64);
+                (at, (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU))
+            }
         };
         pos.0 = at;
         drawn.0[i] = (at, heading);
-        tf.rotation = Quat::from_rotation_y(-heading);
+        tf.rotation = on_slope(at, heading);
         let hidden = u.gone
             || u.kind == stealth_sim::aaa::GroundKind::Manpads
                 && at.distance(eye) > MANPADS_RANGE

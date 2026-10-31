@@ -726,7 +726,8 @@ impl Sim {
         }
         // A coop client's rounds hit on his side (he reports the hits): here they only fly.
         if self.pl.client_rounds {
-            for b in self.bullets[..nb].iter_mut().filter(|b| b.alt < 0) {
+            let hills = self.hills();
+            for b in self.bullets[..nb].iter_mut().filter(|b| b.alt < b.ground(&hills)) {
                 b.x = 0;
             }
             return;
@@ -876,7 +877,7 @@ impl Sim {
     /// Gun round `i` below the ground: its impact, and what it destroys there.
     fn round_on_ground(&mut self, i: usize) {
         let b = self.bullets[i];
-        if let Some((x, y)) = b.ground_crossing() {
+        if let Some((x, y)) = b.ground_crossing(&self.hills()) {
             self.bullets[i].x = 0;
             self.round_impact(x, y, b.map_xy());
         }

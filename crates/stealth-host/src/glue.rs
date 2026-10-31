@@ -43,6 +43,7 @@ pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terr
     stealth_campaign::Terrain::new(
         data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new),
         relief,
+        crate::theater::hills(&setup.theater_code.to_ascii_lowercase()),
     )
 }
 

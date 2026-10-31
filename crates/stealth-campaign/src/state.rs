@@ -1135,21 +1135,23 @@ pub struct Battery {
 }
 
 /// The theater's land and water, for putting things on land, and its relief (the relief
-/// file's bytes) for the convoys' routes: the host's (a coop client's state has none), not
-/// saved and not compared.
+/// file's bytes) and rolling hills for the convoys' routes: the host's (a coop client's state
+/// has none), not saved and not compared.
 #[derive(Clone, Default)]
 pub struct Terrain(
     pub Option<std::sync::Arc<stealth_mission::TheaterData>>,
     pub Option<std::sync::Arc<Vec<u8>>>,
     std::sync::Arc<std::sync::OnceLock<crate::ground::GroundGrid>>,
+    stealth_mission::hills::Hills,
 );
 
 impl Terrain {
     pub fn new(
         world: Option<std::sync::Arc<stealth_mission::TheaterData>>,
         relief: Option<std::sync::Arc<Vec<u8>>>,
+        hills: stealth_mission::hills::Hills,
     ) -> Self {
-        Self(world, relief, Default::default())
+        Self(world, relief, Default::default(), hills)
     }
 
     /// Water at a map point; None without the theater's terrain.
@@ -1163,7 +1165,7 @@ impl Terrain {
         let world = self.0.as_ref()?;
         Some(self.2.get_or_init(|| {
             let water = world.water_grid(crate::ground::DIM);
-            crate::ground::GroundGrid::build(&water, self.1.as_deref().map(Vec::as_slice))
+            crate::ground::GroundGrid::build(&water, self.1.as_deref().map(Vec::as_slice), &self.3)
         }))
     }
 }

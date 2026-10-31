@@ -437,14 +437,15 @@ impl Sim {
     /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot
     /// radar's missiles, a Gepard's rounds (at the lead).
     pub fn in_reach(&self, unit: usize, j: usize) -> bool {
+        let hills = self.hills();
         let (Some(u), Some((pos, vel))) = (self.units.get(unit), self.track_alive(j)) else {
             return false;
         };
         if u.kind == GroundKind::Gepard {
-            let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
+            let (_, _, time) = lead(u.metres_on(&hills), pos, vel, GEPARD_V0);
             time * GEPARD_V0 <= GEPARD_REACH
         } else {
-            len(sub(pos, u.metres())) <= PATRIOT_MAX_RANGE
+            len(sub(pos, u.metres_on(&hills))) <= PATRIOT_MAX_RANGE
         }
     }
 
@@ -459,6 +460,7 @@ impl Sim {
     }
 
     fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), String> {
+        let hills = self.hills();
         let radar = st.unit as usize;
         if self.units[radar].kind != GroundKind::PatriotRadar {
             return Err("No missiles here".into());
@@ -488,7 +490,7 @@ impl Sim {
                 .ok_or("No launcher ready")?,
         };
         let u = self.units[k];
-        let from = add(u.metres(), [0.0, 0.0, 3.0]);
+        let from = add(u.metres_on(&hills), [0.0, 0.0, 3.0]);
         let d = sub(pos, from);
         let az = d[0].atan2(d[1]);
         let el = PATRIOT_ELEVATION as f64;
@@ -629,6 +631,7 @@ impl Sim {
     /// the guns fire their bursts, the turrets and launchers point at the lock (a Gepard's
     /// without one where it is slewed).
     pub(crate) fn update_stations(&mut self) {
+        let hills = self.hills();
         self.defence_sizes();
         let Some(c) = self.campaign.as_ref() else { return };
         if c.defence.stations.is_empty() && c.missiles.iter().all(|m| m.guidance.is_none()) {
@@ -654,7 +657,7 @@ impl Sim {
             let mut st = Station { lock: lock.map(|j| j as u16), ..st };
             if let Some((pos, vel)) = lock.and_then(|j| self.track_alive(j)) {
                 let u = self.units[k];
-                let (az, el, _) = lead(u.metres(), pos, vel, GEPARD_V0);
+                let (az, el, _) = lead(u.metres_on(&hills), pos, vel, GEPARD_V0);
                 let a = &mut self.units[k];
                 a.tracking = true;
                 a.aim_az = az as f32;
@@ -663,7 +666,7 @@ impl Sim {
                 }
                 if a.kind == GroundKind::PatriotRadar {
                     for l in self.battery_launchers(k) {
-                        let d = sub(pos, self.units[l].metres());
+                        let d = sub(pos, self.units[l].metres_on(&hills));
                         self.units[l].aim_az = d[0].atan2(d[1]) as f32;
                     }
                 }
@@ -696,6 +699,7 @@ impl Sim {
     /// at the hostile aircraft whose lead is nearest the line of fire (one far off it can't be
     /// hit).
     fn manual_frame(&mut self, st: &mut Station) {
+        let hills = self.hills();
         let k = st.unit as usize;
         let u = self.units[k];
         let fs = self.fs.max(1) as f64;
@@ -707,8 +711,8 @@ impl Sim {
                 if self.friendly_unit(j, self.flights[j].spec) {
                     return None;
                 }
-                let r = len(sub(pos, u.metres()));
-                let (az, el, _) = lead(u.metres(), pos, vel, GEPARD_V0);
+                let r = len(sub(pos, u.metres_on(&hills)));
+                let (az, el, _) = lead(u.metres_on(&hills), pos, vel, GEPARD_V0);
                 let to = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
                 let off = crate::campaign::dot(to, dir).clamp(-1.0, 1.0).acos();
                 (r < MANUAL_RANGE && off < MANUAL_CONE).then_some((j, off))
@@ -727,7 +731,7 @@ impl Sim {
             let d = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
             // Either barrel, a little to each side of the turret.
             let side = if st.burst & 1 == 0 { 1.2 } else { -1.2 };
-            let from = add(u.metres(), [az.cos() * side, -az.sin() * side, 1.5]);
+            let from = add(u.metres_on(&hills), [az.cos() * side, -az.sin() * side, 1.5]);
             let shell = Shell {
                 pos: from,
                 vel: mul(d, GEPARD_V0),
@@ -753,6 +757,7 @@ impl Sim {
     /// The rounds of a Gepard burst due this frame, each laid on the lock anew (a burst
     /// without one: along the barrels).
     fn burst_frame(&mut self, st: &mut Station) {
+        let hills = self.hills();
         if st.manual {
             return self.manual_frame(st);
         }
@@ -772,13 +777,13 @@ impl Sim {
             st.burst -= 1;
             self.units[k].rounds -= 1;
             let u = self.units[k];
-            let (az, el, time) = lead(u.metres(), pos, vel, GEPARD_V0);
+            let (az, el, time) = lead(u.metres_on(&hills), pos, vel, GEPARD_V0);
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let dir = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
             // Either barrel, a little to each side of the turret.
             let side = if st.burst & 1 == 0 { 1.2 } else { -1.2 };
-            let from = add(u.metres(), [az.cos() * side, -az.sin() * side, 1.5]);
+            let from = add(u.metres_on(&hills), [az.cos() * side, -az.sin() * side, 1.5]);
             let shell = Shell {
                 pos: from,
                 vel: mul(dir, GEPARD_V0),

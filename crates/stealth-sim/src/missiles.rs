@@ -448,8 +448,8 @@ impl Sim {
             let mut m = self.proj[s];
             let fused = self.classic_step(&mut m, s < 8, locked, aim, best, alt0);
             self.proj[s] = m;
-            // Terrain contact: flat world, objects are not tested.
-            if m.alt < 0 {
+            // Terrain contact: the flat world and the rolling hills, objects are not tested.
+            if m.alt < self.hill_alt(m.x, m.y) {
                 self.ground_impact(s);
             }
             fused
@@ -590,11 +590,14 @@ impl Sim {
         let before = [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine];
         let (mut p, mut v) = (before, [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine]);
         ballistics::step(&mut p, &mut v, k, 1.0 / self.fs as f64);
-        let landed = p[2] <= 0.0;
+        // The ground (the rolling hills) where the bomb is now.
+        let ground = self.hill_alt((p[0] / 32.0) as i32, (p[1] / 32.0) as i32) as f64;
+        let landed = p[2] <= ground;
         if landed {
             // Where the step crossed the ground.
-            let t = if before[2] > 0.0 { before[2] / (before[2] - p[2]) } else { 0.0 };
-            p = [before[0] + (p[0] - before[0]) * t, before[1] + (p[1] - before[1]) * t, 0.0];
+            let (b, a) = (before[2] - ground, p[2] - ground);
+            let t = if b > 0.0 { b / (b - a) } else { 0.0 };
+            p = [before[0] + (p[0] - before[0]) * t, before[1] + (p[1] - before[1]) * t, ground];
         }
         let q = |a: f64| (a * fine).round() as i32;
         let nf = BombFall {

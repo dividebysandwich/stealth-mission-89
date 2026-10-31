@@ -1604,7 +1604,12 @@ fn a_helicopter_rescue_lands_by_the_pilot_and_brings_him_home() {
 /// A campaign that knows the theater's land and water (the host's).
 fn campaign_on_terrain(code: &str, index: usize) -> CampaignState {
     let mut c = campaign(code, index);
-    c.terrain = Terrain::new(Some(std::sync::Arc::new(theater(code))), relief(code));
+    let hills =
+        std::fs::read(format!("{}/../../assets/theaters/{code}.hills", env!("CARGO_MANIFEST_DIR")))
+            .ok()
+            .and_then(stealth_mission::hills::Hills::from_bytes)
+            .unwrap_or_default();
+    c.terrain = Terrain::new(Some(std::sync::Arc::new(theater(code))), relief(code), hills);
     c
 }
 

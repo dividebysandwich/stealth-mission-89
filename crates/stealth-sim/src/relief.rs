@@ -97,7 +97,24 @@ impl Relief {
 /// Look-ahead steps along the heading (map units, one cell each).
 const AHEAD: [i32; 4] = [0, CELL_MAP, 2 * CELL_MAP, 3 * CELL_MAP];
 
+/// Eye height of a ground unit's crew or sights (altitude units, about 3 m).
+pub const GROUND_EYE: i32 = 6;
+
 impl crate::Sim {
+    /// The rolling hills' ground at a map point (x east, y south), altitude units.
+    pub(crate) fn hill_alt(&self, x: i32, y: i32) -> i32 {
+        self.tiles.as_ref().map_or(0, |t| t.hills.ground_alt(x, y))
+    }
+
+    /// Whether the mountains and hills leave the line of sight open from a ground unit's eye
+    /// (map x, y south) to a point (map x, y, altitude units).
+    pub(crate) fn sight_from_ground(&self, x: i32, y: i32, to: (i32, i32, i32)) -> bool {
+        let Some(t) = self.tiles.as_ref() else { return true };
+        let ground = t.relief.ground(x, y).max(t.hills.ground_alt(x, y));
+        let from = (x, y, ground + GROUND_EYE);
+        t.relief.sight_open(from, to) && t.hills.sight_open(from, to)
+    }
+
     /// The highest ground under a flight unit and up to three cells (6 km) ahead of it, in
     /// altitude units.
     pub(crate) fn terrain_ahead(&self, u: &crate::types::FlightUnit) -> i32 {
@@ -107,7 +124,7 @@ impl crate::Sim {
             .map(|&d| {
                 let x = u.x + self.trig.sin_mul(u.heading, d);
                 let y = u.y - self.trig.cos_mul(u.heading, d);
-                relief.height(x, y)
+                relief.height(x, y).max(self.hill_alt(x, y))
             })
             .max()
             .unwrap_or(0)

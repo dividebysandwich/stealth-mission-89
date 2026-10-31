@@ -275,7 +275,9 @@ impl Sim {
     pub(crate) fn launch_flight_at(&mut self, s: usize, (x, y): (i32, i32), tgt: V3) {
         let spec = self.proj[s].spec;
         let Some(prof) = profile(spec) else { return };
-        let pos = [x as f64 * 32.0 + 16.0, y as f64 * 32.0 + 16.0, RAIL_HEIGHT];
+        // On its rail over the ground (the rolling hills there).
+        let ground = self.hill_alt(x, y) as f64;
+        let pos = [x as f64 * 32.0 + 16.0, y as f64 * 32.0 + 16.0, ground + RAIL_HEIGHT];
         let r = sub(tgt, pos);
         let range = r[0].hypot(r[1]);
         let elev = r[2].atan2(range);
@@ -327,7 +329,8 @@ impl Sim {
             FUSE_AAM
         };
         let fs = self.fs;
-        match flight_step(&mut self.proj[s], vmax, radius, fs, guide, fuse) {
+        let ground = self.hill_alt(self.proj[s].x, self.proj[s].y) as f64;
+        match flight_step(&mut self.proj[s], vmax, radius, fs, guide, fuse, ground) {
             Step::Fused => true,
             Step::Flying => false,
             Step::Ground => {
@@ -396,7 +399,9 @@ pub(crate) enum Step {
 }
 
 /// One frame of the realistic flight of `pm` with top speed `vmax` (wu/s) and fuse `radius`:
-/// steers for `guide`, moves and checks the fuse against `fuse`.
+/// steers for `guide`, moves and checks the fuse against `fuse`, and the ground at `ground`
+/// (wu: the rolling hills under it).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn flight_step(
     pm: &mut Projectile,
     vmax: f64,
@@ -404,6 +409,7 @@ pub(crate) fn flight_step(
     fs: i32,
     guide: Option<Target>,
     fuse: Option<Target>,
+    ground: f64,
 ) -> Step {
     let m = *pm;
     let (Some(mut f), Some(prof)) = (m.flight, profile(m.spec)) else { return Step::Flying };
@@ -523,7 +529,7 @@ pub(crate) fn flight_step(
     pm.ttl -= 1;
     if fused {
         Step::Fused
-    } else if p[2] < 0.0 {
+    } else if p[2] < ground {
         pm.alt = -1;
         Step::Ground
     } else {
@@ -801,7 +807,7 @@ mod pac3 {
             let swing = if a > 0.0 { (a / 0.5) * (0.5 * t).sin() } else { 0.0 };
             let tv = [speed * swing.sin(), speed * swing.cos(), 0.0];
             let target = Target { p: tgt, v: tv };
-            match flight_step(&mut pm, vmax, FUSE_AAM, FS, Some(target), Some(target)) {
+            match flight_step(&mut pm, vmax, FUSE_AAM, FS, Some(target), Some(target), 0.0) {
                 Step::Fused => return Some(t),
                 Step::Ground => return None,
                 Step::Flying => {}

@@ -1,5 +1,6 @@
 pub mod drones;
 mod generator;
+pub mod hills;
 pub mod insertion;
 pub mod rng;
 pub mod tables;

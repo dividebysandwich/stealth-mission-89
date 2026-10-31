@@ -288,9 +288,9 @@ fn single_player_parity() {
         0x7295e21cfeb6ff40,
         0x0b282f8c6097776f,
         0x1abfe7a9e58a823c,
-        0x83532ce27c5324eb,
-        0x1c0d449f6c605629,
-        0xd8e9a003648cbf26,
+        0x495ddbc7224a349b,
+        0xb5fcfbf19a9f43c6,
+        0x5ecca429cf8ab4ff,
         0xa5b99ed77c41c835,
         0x1fa49295987b70e4,
         0x5e9ccd66c58d0ca1,
@@ -306,7 +306,7 @@ fn single_player_parity() {
         0xbfd3f8fadf137074,
         0x90fdfcf6675c442d,
         0xa825b436a530c75f,
-        0xf11b90b570aabc7a,
+        0x645367f367907fd0,
     ];
     let mut got = missions();
     got.push(campaign_run());

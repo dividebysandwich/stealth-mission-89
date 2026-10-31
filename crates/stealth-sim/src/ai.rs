@@ -340,10 +340,11 @@ impl Sim {
         if u.alt > 30000 {
             u.pitch = 0;
         }
-        if u.alt < 0 {
+        let ground = self.hill_alt(u.x, u.y);
+        if u.alt < ground {
             u.flags &= if i != 0 { 0x1C1 } else { 0 };
-            self.flash = Flash { x: u.x, y: u.y, alt: 0, timer: -16 };
-            self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: 0, kind: -16 });
+            self.flash = Flash { x: u.x, y: u.y, alt: ground, timer: -16 };
+            self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: ground, kind: -16 });
             self.emit(SimEvent::AircraftCrashed { unit: i });
             if i as i32 == self.pl.air_lock {
                 self.pl.air_lock = -1;

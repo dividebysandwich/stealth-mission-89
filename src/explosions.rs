@@ -403,6 +403,9 @@ fn cleanup(mut commands: Commands, mut p: ResMut<Particles>, mut ex: ResMut<Expl
     ex.pending.clear();
 }
 
+/// A blast this close above the ground (metres) is on it.
+const GROUND_BLAST_M: f64 = 1.0;
+
 /// Starts this frame's blasts and the sim smoke.
 #[allow(clippy::too_many_arguments)]
 fn spawn_blasts(
@@ -415,6 +418,7 @@ fn spawn_blasts(
     mut materials: ResMut<Assets<PaletteMaterial>>,
     palette: Res<crate::palette::Palette>,
     scenery: Option<Res<crate::scenery::Scenery>>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let p = &mut *p;
     if p.rng == 0 {
@@ -428,16 +432,20 @@ fn spawn_blasts(
     }
     let mut blasts: Vec<(DVec3, Blast, bool)> =
         ex.pending.drain(..).map(|(pos, b)| (pos, b, true)).collect();
+    // The rolling hills' ground (Bevy y) under a point.
+    let hill = |p: DVec3| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64);
     for &(x, y, alt, kind) in &combat.explosions {
-        let ground = alt <= 0;
-        blasts.push((
-            map_point(x as f64 + 0.5, y as f64 + 0.5, alt.max(0) as f64),
-            Blast::from_kind(kind),
-            ground,
-        ));
+        let mut pos = map_point(x as f64 + 0.5, y as f64 + 0.5, alt.max(0) as f64);
+        let ground_y = hill(pos);
+        let ground = pos.y <= ground_y + GROUND_BLAST_M;
+        if ground {
+            pos.y = ground_y;
+        }
+        blasts.push((pos, Blast::from_kind(kind), ground));
     }
     for &(x, y, calibre) in &combat.round_impacts {
-        blasts.push((map_point(x, y, 0.0), Blast::Strike(calibre), true));
+        let p = map_point(x, y, 0.0);
+        blasts.push((p + DVec3::Y * hill(p), Blast::Strike(calibre), true));
     }
     for (pos, blast, ground) in blasts {
         if let Blast::Strike(calibre) = blast {

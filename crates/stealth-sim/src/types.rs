@@ -282,18 +282,25 @@ impl Bullet {
         (self.x / (32 * ROUND_FINE), self.y / (32 * ROUND_FINE))
     }
 
+    /// The ground under the round (fine altitude units, the rolling hills').
+    pub(crate) fn ground(&self, hills: &crate::hills::Hills) -> i32 {
+        let (x, y) = self.map_xy();
+        hills.ground_alt(x, y) * ROUND_FINE
+    }
+
     /// A round in flight below the ground: where its path over the last frame crossed it
     /// (fine units x, y).
-    pub(crate) fn ground_crossing(&self) -> Option<(i32, i32)> {
-        if self.x == 0 || self.alt >= 0 {
+    pub(crate) fn ground_crossing(&self, hills: &crate::hills::Hills) -> Option<(i32, i32)> {
+        if self.x == 0 {
             return None;
         }
-        let above = (self.alt - self.vz) as f64;
-        let k = if above > 0.0 {
-            (above / (above - self.alt as f64)).clamp(0.0, 1.0) - 1.0
-        } else {
-            0.0
-        };
+        let below = self.alt - self.ground(hills);
+        if below >= 0 {
+            return None;
+        }
+        let above = (below - self.vz) as f64;
+        let k =
+            if above > 0.0 { (above / (above - below as f64)).clamp(0.0, 1.0) - 1.0 } else { 0.0 };
         let at = |p: i32, v: i32| p + (v as f64 * k).round() as i32;
         Some((at(self.x, self.vx), at(self.y, self.vy)))
     }

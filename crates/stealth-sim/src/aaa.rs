@@ -176,7 +176,13 @@ pub struct Fine {
 }
 
 impl GroundUnit {
-    /// Position in metres (east, north, up).
+    /// Position in metres (east, north, up) on the rolling hills.
+    pub fn metres_on(&self, hills: &crate::hills::Hills) -> [f64; 3] {
+        let [e, n, z] = self.metres();
+        [e, n, z + hills.height_m(e, n) as f64]
+    }
+
+    /// Position in metres (east, north, up) over the flat world.
     pub fn metres(&self) -> [f64; 3] {
         match self.fine {
             Some(f) => [f.e as f64, f.n as f64, 2.0],
@@ -426,6 +432,7 @@ impl Sim {
     /// One frame of the air defences: aiming, firing, the shells and the MANPADS launches.
     /// Each unit goes for the nearest pilot in the world.
     pub(crate) fn update_aaa(&mut self, present: &[usize]) {
+        let hills = self.hills();
         let Some(mut rng) = self.aaa_rng else { return };
         let fs = self.fs.max(1);
         let dt = 1.0 / fs as f64;
@@ -486,8 +493,9 @@ impl Sim {
                 comanche: t.comanche,
                 grid: &self.grid,
                 relief: self.tiles.as_ref().map(|t| &t.relief),
+                hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
             };
-            let from = u.metres();
+            let from = u.metres_on(&hills);
             let d = sub(me, from);
             let dist = len(d);
             let (v0, reach, ceiling) = u.kind.gun();
@@ -495,7 +503,8 @@ impl Sim {
             let seen = range_km < vis_km
                 && !on_ground
                 && (!self.weather.any()
-                    || self.weather.los_clear((u.x, u.y, 0), (t.p.mx, t.p.my, t.p.alt.max(0))));
+                    || self.weather.los_clear((u.x, u.y, 0), (t.p.mx, t.p.my, t.p.alt.max(0))))
+                && self.sight_from_ground(u.x, u.y, (t.p.mx, t.p.my, t.p.alt));
             let radar = u.kind == GroundKind::Zsu && {
                 let (score, _, _) = detect(u.x, u.y, 0, 1, Some(GUN_DISH), &ctx);
                 score + t.emv > 100
@@ -668,7 +677,7 @@ impl Sim {
         self.proj[k] = Projectile {
             x: u.x,
             y: u.y,
-            alt: 0,
+            alt: self.hill_alt(u.x, u.y),
             speed: 1,
             heading: s16(brg),
             pitch: 0x2000,

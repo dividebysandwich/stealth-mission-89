@@ -552,9 +552,10 @@ impl Sim {
     /// A drone center's launch rail: where a drone sits on it (m east, north, up) and the way
     /// it points (rad, clockwise from north).
     pub fn uav_ramp(&self, center: usize) -> ([f64; 3], f64) {
+        let hills = self.hills();
         let u = self.units[center];
         let h = crate::aaa::unit_heading(center) as f64;
-        let p = u.metres();
+        let p = u.metres_on(&hills);
         ([p[0] + h.sin() * RAMP_FORWARD, p[1] + h.cos() * RAMP_FORWARD, RAMP_UP], h)
     }
 
@@ -1165,6 +1166,7 @@ impl Sim {
     /// The drones' sensors: what they see now joins what they have found; what is destroyed
     /// is forgotten.
     fn uav_look(&mut self) {
+        let hills = self.hills();
         let mut known = self.defence().map(|d| d.uav_known.clone()).unwrap_or_default();
         // Armour on the move is known only while a drone sees it.
         known.retain(|s| match *s {
@@ -1181,7 +1183,7 @@ impl Sim {
             let r = u.kind.sensor();
             let near = |x: f64, y: f64| (x - u.pos[0]).hypot(y - u.pos[1]) < r;
             for (k, a) in self.units.iter().enumerate() {
-                let m = a.metres();
+                let m = a.metres_on(&hills);
                 if !a.destroyed && !self.aaa_blue(k) && near(m[0], m[1]) {
                     let s = Seen::Aaa(k as u16);
                     if !known.contains(&s) {

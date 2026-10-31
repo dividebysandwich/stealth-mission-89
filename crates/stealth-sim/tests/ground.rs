@@ -57,9 +57,10 @@ fn run(sim: &mut Sim, secs: i32) -> Vec<SimEvent> {
     ev
 }
 
-/// Open country in the north-west of Central Europe (no relief between these points).
+/// Open country in the north-west of Central Europe (no relief and no hills between these
+/// points).
 const Y: i32 = 0x1400;
-const X: i32 = 0x0C00;
+const X: i32 = 0x1140;
 /// Map units per kilometre.
 const KM: i32 = 64;
 

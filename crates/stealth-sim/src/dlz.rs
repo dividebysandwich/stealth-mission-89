@@ -266,7 +266,7 @@ impl Sim {
             if guided {
                 let target = seen.then_some(Target { p, v: track.v });
                 let guide = target.filter(|_| aim != 0);
-                match guidance::flight_step(&mut m, vmax, radius, fs, guide, target) {
+                match guidance::flight_step(&mut m, vmax, radius, fs, guide, target, 0.0) {
                     Step::Fused => return true,
                     Step::Flying => {}
                     Step::Ground => return false,
