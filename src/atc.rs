@@ -260,6 +260,11 @@ impl Atc {
             Phase::Vectors => self.vectors(i),
             Phase::Talkdown => self.talkdown(i),
             Phase::Final => self.final_approach(i),
+            // Off again after rearming: a new departure (unannounced) and recovery.
+            Phase::Landed if !i.on_ground && i.agl_ft > 200.0 => {
+                self.base = None;
+                self.phase = Phase::Enroute;
+            }
             Phase::Landed => {}
         }
     }
@@ -908,6 +913,12 @@ fn control(
 ) {
     let (Some(combat), Ok((a, pos))) = (combat, player.single()) else { return };
     if !settings.atc || a.ended.is_some() || time.delta_secs() <= 0.0 {
+        return;
+    }
+    // In a campaign only a sortie is flown: not the Ops screen (the aircraft parked behind
+    // it), nor an air defence console. Each sortie starts afresh.
+    if campaign.as_ref().is_some_and(|c| c.phase != crate::campaign::Phase::Sortie) {
+        state.atc = None;
         return;
     }
     let sim = &combat.sim;
