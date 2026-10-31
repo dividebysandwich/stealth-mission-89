@@ -715,10 +715,11 @@ impl PanelLayout {
     /// at x -620, the copilot's dark MFDs are only modelled): the pilot's two MFDs side by side
     /// under the warning lights, the large centre display on the centre line showing the engines
     /// (`rmpd`, the RAH-66's engine page), the standby instruments and the engine gauges between
-    /// it and the pilot's MFDs, the F-16's RWR scope with the flight control caps beside it and
-    /// the fuel readouts under them (the panel reaches down only between the pilots: the chin
-    /// windows show under it in front of each). Fixed wheels: no gear lights, gear handle or
-    /// FLAPS; no EMV bar graph. The CDU, the cautions and the countermeasures on the centre
+    /// it and the pilot's MFDs, the F-16's RWR scope over the engine gauges left of the left MFD
+    /// (as far from them as they are apart), the flight control caps and the fuel readouts under
+    /// them (the panel reaches down only between the pilots: the chin windows show under it in
+    /// front of each). Fixed wheels and no weapons: no gear lights, gear handle, FLAPS or BAY; no
+    /// EMV bar graph. The CDU, the cautions and the countermeasures on the centre
     /// console between the seats, as the UH-60A's.
     pub fn ch47() -> Self {
         let u = Self::uh60();
@@ -732,7 +733,7 @@ impl PanelLayout {
                 !matches!(
                     p.elem,
                     Elem::GearLights
-                        | Elem::Lamp(LampId::Flaps | LampId::EmvWarn, _)
+                        | Elem::Lamp(LampId::Flaps | LampId::Bay | LampId::EmvWarn, _)
                         | Elem::Gauge
                         | Elem::Label("EGR\nEAR" | "EMV", ..)
                 )
@@ -742,12 +743,11 @@ impl PanelLayout {
                 let by = |dx: f32| rect(r.x + dx, r.y, r.w, r.h);
                 let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
                 let rect = match p.elem {
-                    // BAY, BRAKE, AUTO and HOVER in a column right of the RWR scope, under the
-                    // standby instruments.
-                    Elem::Lamp(LampId::Bay, _) => at(-470.0, 102.0),
-                    Elem::Lamp(LampId::Brake, _) => at(-470.0, 120.0),
-                    Elem::Lamp(LampId::Auto, _) => at(-470.0, 138.0),
-                    Elem::Lamp(LampId::Hover, _) => at(-470.0, 156.0),
+                    // BRAKE, AUTO and HOVER in a column under the standby instruments, level
+                    // with the fuel readouts.
+                    Elem::Lamp(LampId::Brake, _) => at(-518.0, 103.0),
+                    Elem::Lamp(LampId::Auto, _) => at(-518.0, 119.0),
+                    Elem::Lamp(LampId::Hover, _) => at(-518.0, 135.0),
                     // Fuel, the engine readouts and the EMV gauge under the engine gauges.
                     _ if r.x < 1000.0 && r.x >= 60.0 && r.y >= 100.0 => by(-482.0),
                     Elem::Dial(
@@ -771,7 +771,9 @@ impl PanelLayout {
             items,
             adi: rect(u.adi.x + DX, u.adi.y, u.adi.w, u.adi.h),
             rmpd: Some(rect(-685.0, -95.0, 130.0, 182.0)),
-            rwr: Some(rect(-538.0, 100.0, 58.0, 58.0)),
+            // Centred over the engine gauges (x -370..-278), its top level with the attitude
+            // indicator's and the warning lights', 8 mm above them as they are apart.
+            rwr: Some(rect(-360.0, -125.0, 72.0, 72.0)),
             ..u
         }
     }

@@ -485,10 +485,10 @@ screen("screen_rmpd", scr["rmpd"], BEZEL - 0.008)
 # the pilot than the UH-60's)
 plates = [
     ("dark", (-540.0, -135.0, 125.0, 195.0)),  # standby instruments
-    ("dark", (-380.0, -55.0, 112.0, 112.0)),  # engine gauges
+    ("dark", (-380.0, -135.0, 112.0, 192.0)),  # RWR scope over the engine gauges
     ("dark", (-183.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
     ("dark", (107.0, -130.0, 76.0, 37.0)),  # and over the right one
-    ("dark", (-540.0, 95.0, 113.0, 81.0)),  # RWR scope, BAY, BRAKE, AUTO, HOVER
+    ("dark", (-528.0, 100.0, 58.0, 52.0)),  # BRAKE, AUTO, HOVER
     ("dark", (-418.0, 100.0, 155.0, 52.0)),  # fuel, engine readouts
     ("black", (1920.0, -142.0, 160.0, 104.0)),  # CDU
     ("dark", (1940.0, 25.0, 120.0, 128.0)),  # cautions and countermeasures
@@ -536,9 +536,10 @@ for f in layout["faces"]:
         r = mirror(f["rect"])
         bezel(r, PLATE)
         mesh_object("black", disc_mesh("black", min(r[2], r[3]) / 2000, "black"), rect_point(r, PLATE + 0.0085), rotation(r[0]))
-r = mirror(scr["adi"])
-bezel(r, PLATE, 0.010, 0.004)
-mesh_object("black", disc_mesh("black", r[2] / 2000, "black"), rect_point(r, PLATE + 0.0105), rotation(r[0]))
+for k in ("adi", "rwr"):
+    r = mirror(scr[k])
+    bezel(r, PLATE, 0.010, 0.004)
+    mesh_object("black", disc_mesh("black", r[2] / 2000, "black"), rect_point(r, PLATE + 0.0105), rotation(r[0]))
 
 # --- centre console between the seats: its face from under the panel down aft, filled to the
 # floor

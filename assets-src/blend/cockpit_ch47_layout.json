@@ -397,18 +397,6 @@
       "round": true
     },
     {
-      "control": "Action(BayDoors)",
-      "key": "Button(Bay, None)",
-      "kind": "cap",
-      "rect": [
-        -470.0,
-        102.0,
-        38.0,
-        14.0
-      ],
-      "round": false
-    },
-    {
       "control": null,
       "key": "Item(Dial(Fuel))",
       "kind": null,
@@ -485,8 +473,8 @@
       "key": "Button(Brake, None)",
       "kind": "cap",
       "rect": [
-        -470.0,
-        120.0,
+        -518.0,
+        103.0,
         38.0,
         14.0
       ],
@@ -497,8 +485,8 @@
       "key": "Button(Auto, None)",
       "kind": "cap",
       "rect": [
-        -470.0,
-        138.0,
+        -518.0,
+        119.0,
         38.0,
         14.0
       ],
@@ -713,8 +701,8 @@
       "key": "Button(Hover, None)",
       "kind": "cap",
       "rect": [
-        -470.0,
-        156.0,
+        -518.0,
+        135.0,
         38.0,
         14.0
       ],
@@ -1233,10 +1221,10 @@
       182.0
     ],
     "rwr": [
-      -538.0,
-      100.0,
-      58.0,
-      58.0
+      -360.0,
+      -125.0,
+      72.0,
+      72.0
     ]
   }
 }

@@ -972,8 +972,9 @@ missions. In a single mission it flies the UH-60's insertions.
 **Cockpit.** Two seats, the pilot in the right one. In front of the pilot two MFDs; in the middle
 of the panel a larger display with the **engine page** (the RAH-66's: rotor speed, both engines'
 torque, temperatures, oil, fuel and fuel flow, chapter 3.8); the copilot's two MFDs stay dark.
-Under the standby instruments the F-16's round RWR scope (chapter 3.2) shows the radars painting
-you; fixed wheels mean no gear lights, gear handle or FLAPS, and there is no EMV bar graph. The
+Left of the left MFD, over the engine gauges, the F-16's round RWR scope (chapter 3.2) shows the
+radars painting you; fixed wheels and no weapons mean no gear lights, gear handle, FLAPS or BAY,
+and there is no EMV bar graph. The
 panel is low and cut away under the MFDs: below it, on both sides of the pedals, the big chin
 windows look down at the ground, the best view of a hook load in the game. Eyebrow windows above
 the windshield show the sky in a turn.
