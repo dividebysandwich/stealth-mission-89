@@ -406,30 +406,9 @@ pub fn ops_ui(
         panel = panel.after(egui::RichText::new(format!("  {server}")).color(FRIENDLY_BLUE));
     }
     panel.window(window, ctx, |ui| {
-        ui.horizontal_top(|ui| {
-            ui.vertical(|ui| {
-                // The right side's clock, score and button keep their room.
-                ui.set_max_width((width - 380.0).max(240.0));
-                ui.horizontal(|ui| {
-                    for (tab, label) in [
-                        (Tab::Board, "MISSIONS"),
-                        (Tab::Map, "WAR MAP"),
-                        (Tab::AirDefence, "AIR DEFENSE"),
-                        (Tab::Forces, "FORCES"),
-                        (Tab::Players, "PLAYERS"),
-                        (Tab::Debrief, "DEBRIEF"),
-                        (Tab::Log, "LOG"),
-                        (Tab::Chat, "CHAT"),
-                    ] {
-                        if tab == Tab::Chat && c.role == Role::Local {
-                            continue;
-                        }
-                        if ui.selectable_label(c.ui.tab == tab, label).clicked() {
-                            c.ui.tab = tab;
-                        }
-                    }
-                });
-            });
+        // The right side first, the tabs in what is left (on two rows if they don't fit), the
+        // weather under them.
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
             // Top right: the clock and the score, the way out under them.
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                 ui.horizontal(|ui| {
@@ -442,9 +421,6 @@ pub fn ops_ui(
                             .color(MISSILE_RED),
                     );
                     ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
-                    if let Some((short, _)) = &wx {
-                        ui.label(egui::RichText::new(short).color(DIM));
-                    }
                 });
                 ui.horizontal(|ui| {
                     if ui.add(exit_button(ui, c.role)).clicked() {
@@ -460,6 +436,34 @@ pub fn ops_ui(
                         menu.open_options = true;
                     }
                 });
+            });
+            ui.add_space(16.0);
+            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                ui.with_layout(
+                    egui::Layout::left_to_right(egui::Align::Min).with_main_wrap(true),
+                    |ui| {
+                        for (tab, label) in [
+                            (Tab::Board, "MISSIONS"),
+                            (Tab::Map, "WAR MAP"),
+                            (Tab::AirDefence, "AIR DEFENSE"),
+                            (Tab::Forces, "FORCES"),
+                            (Tab::Players, "PLAYERS"),
+                            (Tab::Debrief, "DEBRIEF"),
+                            (Tab::Log, "LOG"),
+                            (Tab::Chat, "CHAT"),
+                        ] {
+                            if tab == Tab::Chat && c.role == Role::Local {
+                                continue;
+                            }
+                            if ui.selectable_label(c.ui.tab == tab, label).clicked() {
+                                c.ui.tab = tab;
+                            }
+                        }
+                    },
+                );
+                if let Some((short, _)) = &wx {
+                    ui.label(egui::RichText::new(short).color(DIM));
+                }
             });
         });
         ui.separator();
@@ -1171,7 +1175,8 @@ fn war_map(
         let test_taken = &mut c.ui.test_taken;
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
         let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
-        let mut tips = MapTips::default();
+        let k = map_draw::BIG;
+        let mut tips = MapTips::grown(k);
         // Insertion routes.
         for ins in st.insertions.iter().filter(|_| layers.shows(Layer::Insertions)) {
             if !matches!(ins.state, InsertionState::Pending { .. } | InsertionState::Enroute) {
@@ -1195,14 +1200,18 @@ fn war_map(
                 Side::Neutral => DIM,
             };
             let c0 = at(p.x, p.y);
-            map_draw::place_symbol(&painter, c0, affiliation(p.owner), p.airfield.is_some(), true);
+            let (owner, airfield) = (affiliation(p.owner), p.airfield.is_some());
+            map_draw::scaled(&painter, c0, k, |pa, c| {
+                map_draw::place_symbol(pa, c, owner, airfield, true);
+            });
             if p.intel(st.clock) {
-                painter.circle_stroke(c0, map_draw::halo(10.0), egui::Stroke::new(1.0, BRIGHT));
+                let r = map_draw::halo(10.0) * k;
+                painter.circle_stroke(c0, r, egui::Stroke::new(1.0, BRIGHT));
             }
             place_tip(&mut tips, c0, p, st.clock, true);
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
                 painter.text(
-                    c0 + egui::vec2(7.0, -7.0),
+                    c0 + egui::vec2(7.0, -7.0) * k,
                     egui::Align2::LEFT_BOTTOM,
                     &p.name,
                     egui::FontId::monospace(11.0),
@@ -1212,7 +1221,7 @@ fn war_map(
         }
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
-        super::picture::draw(&painter, &view, &pic, &layers, &mut tips);
+        super::picture::draw(&painter, &view, &pic, &layers, &mut tips, k);
         // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
         // armour` the first tank of a column on the move.
         let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
@@ -1261,18 +1270,19 @@ fn war_map(
         if pic.player.is_none()
             && let Some(b) = parked.and_then(|b| st.site(b as u16))
         {
-            painter.circle_stroke(at(b.x, b.y), 8.0, egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(at(b.x, b.y), 8.0 * k, egui::Stroke::new(1.5, GREEN));
             tips.add(at(b.x, b.y), "Your aircraft (parked)", "", GREEN).symbol(|p, c| {
                 p.circle_stroke(c, 8.0, egui::Stroke::new(1.5, GREEN));
             });
         }
         // The selected mission's target.
         if let Some(o) = selected.and_then(|id| st.board.iter().find(|o| o.id == id)) {
-            painter.circle_stroke(at(o.x, o.y), 14.0, egui::Stroke::new(2.0, kind_colour(o.kind)));
+            let r = 14.0 * k;
+            painter.circle_stroke(at(o.x, o.y), r, egui::Stroke::new(2.0, kind_colour(o.kind)));
             let title = crate::mission::clean_text(&o.title);
             let colour = kind_colour(o.kind);
             tips.add(at(o.x, o.y), "Selected mission", title, colour)
-                .reach(16.0)
+                .reach(16.0 * k)
                 .line(o.kind.name())
                 .symbol(move |p, c| {
                     p.circle_stroke(c, 14.0, egui::Stroke::new(2.0, colour));
@@ -1280,7 +1290,7 @@ fn war_map(
         }
         // What is under the pointer: its tooltip; a click on a unit watches it live.
         if !designating && let Some(pos) = resp.hover_pos() {
-            let picked = super::picture::pick(&view, &pic, pos);
+            let picked = super::picture::pick(&view, &pic, pos, k);
             tips.show(&resp, picked.as_ref().map(|_| "Click to watch it live"));
             if let Some((unit, name)) = picked {
                 ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
@@ -1909,7 +1919,7 @@ fn route_editor(
             );
             place_tip(tips, c0, p, st.clock, false);
         }
-        super::picture::draw(painter, view, &pic, layers, tips);
+        super::picture::draw(painter, view, &pic, layers, tips, 1.0);
     };
     let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
         place_legend(ui, layers);

@@ -117,17 +117,17 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
             }
         })
         .collect();
-    // Patriot batteries first, then the Gepards, then the drone command centers, each west to
-    // east.
+    // The drone command centers first, then the Patriot batteries, then the Gepards, each west
+    // to east.
     out.sort_by_key(|s| (order(s.kind), s.x));
     out
 }
 
 fn order(kind: GroundKind) -> u8 {
     match kind {
-        GroundKind::Gepard => 1,
-        GroundKind::DroneCenter => 2,
-        _ => 0,
+        GroundKind::DroneCenter => 0,
+        GroundKind::Gepard => 2,
+        _ => 1,
     }
 }
 
@@ -191,7 +191,8 @@ fn map(
     painter.rect_filled(rect, 0.0, egui::Color32::from_black_alpha(140));
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     let st = c.state();
-    let mut tips = MapTips::default();
+    let k = map_draw::BIG;
+    let mut tips = MapTips::grown(k);
     for p in &st.places {
         let col = match p.owner {
             Side::Blue => FRIENDLY_BLUE,
@@ -199,7 +200,7 @@ fn map(
             Side::Neutral => DIM,
         }
         .gamma_multiply(0.5);
-        painter.circle_filled(at(p.x, p.y), 2.5, col);
+        painter.circle_filled(at(p.x, p.y), 2.5 * k, col);
         super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true);
     }
     // The reach: filled, the selected site's brighter; then the symbols over all of them.
@@ -222,11 +223,15 @@ fn map(
     }
     let pic = super::picture::picture(st, sim);
     for a in &pic.fighters {
-        super::picture::aircraft(&painter, at(a.x, a.y), a, MISSILE_RED);
+        map_draw::scaled(&painter, at(a.x, a.y), k, |p, c| {
+            super::picture::aircraft(p, c, a, MISSILE_RED);
+        });
         super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, false);
     }
     for a in &pic.friendly {
-        super::picture::aircraft(&painter, at(a.x, a.y), a, FRIENDLY_BLUE.gamma_multiply(0.6));
+        map_draw::scaled(&painter, at(a.x, a.y), k, |p, c| {
+            super::picture::aircraft(p, c, a, FRIENDLY_BLUE.gamma_multiply(0.6));
+        });
         super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, true);
     }
     let mut hovered = None;
@@ -235,27 +240,31 @@ fn map(
         let p = at(s.x, s.y);
         let kind = s.kind;
         if s.destroyed {
-            painter.circle_stroke(p, 5.0, egui::Stroke::new(1.5, DIM));
+            painter.circle_stroke(p, 5.0 * k, egui::Stroke::new(1.5, DIM));
         } else {
-            super::picture::defence(&painter, p, kind, 0.8);
+            map_draw::scaled(&painter, p, k, |pa, p| super::picture::defence(pa, p, kind, 0.8));
         }
         if s.manned.is_some() {
-            painter.circle_stroke(p, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(p, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
         }
         site_tip(&mut tips, p, s, &tag(sites, i));
         // Named unless another's name is there already (crowded sites: the list has them).
-        if !named.iter().any(|q: &egui::Pos2| q.distance(p) < 16.0) {
+        if !named.iter().any(|q: &egui::Pos2| q.distance(p) < 16.0 * k) {
             named.push(p);
             let col = if s.destroyed { DIM } else { BRIGHT };
             painter.text(
-                p + if map_draw::app6() { egui::vec2(10.0, -8.0) } else { egui::vec2(8.0, -6.0) },
+                p + k * if map_draw::app6() {
+                    egui::vec2(10.0, -8.0)
+                } else {
+                    egui::vec2(8.0, -6.0)
+                },
                 egui::Align2::LEFT_BOTTOM,
                 tag(sites, i),
                 egui::FontId::monospace(11.0),
                 col,
             );
         }
-        if resp.hover_pos().is_some_and(|h| h.distance(p) < 10.0) {
+        if resp.hover_pos().is_some_and(|h| h.distance(p) < 10.0 * k) {
             hovered = Some(s.unit);
         }
     }

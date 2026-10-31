@@ -295,14 +295,17 @@ fn gun(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
 
 /// Draws the picture's shown `layers`: friendly air defences (a battery with its missile
 /// reach), known enemy defences (with their missile reach), enemy fighters, friendly aircraft,
-/// the player; and their `tips`.
+/// the player; and their `tips`. The symbols `k` times their size.
 pub fn draw(
     painter: &egui::Painter,
     view: &MapView,
     pic: &Picture,
     layers: &MapLayers,
     tips: &mut MapTips,
+    k: f32,
 ) {
+    let scaled =
+        |c, draw: &dyn Fn(&egui::Painter, egui::Pos2)| map_draw::scaled(painter, c, k, draw);
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     for d in &pic.defences {
         let c = at(d.x, d.y);
@@ -313,15 +316,15 @@ pub fn draw(
         if !layers.shows(if patriot { Layer::Patriots } else { Layer::Gepards }) {
             continue;
         }
-        defence(painter, c, d.kind, 0.8);
         let kind = d.kind;
+        scaled(c, &|p, c| defence(p, c, kind, 0.8));
         let tip = tips.add(c, defence_name(kind), "", FRIENDLY_BLUE);
         tip.symbol(move |p, c| defence(p, c, kind, 0.8));
         if patriot {
             tip.line(format!("Missile range {:.0} km", PATRIOT_REACH / 64.0));
         }
         if d.manned.is_some() {
-            painter.circle_stroke(c, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(c, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
             tip.line("Manned by a player");
         }
     }
@@ -336,12 +339,12 @@ pub fn draw(
         if !layers.shows(Layer::Sams) {
             continue;
         }
-        map_draw::site(painter, view, c, &s.name, 1.0);
+        map_draw::site(painter, view, c, &s.name, 1.0, k);
         let tip = tips.add(c, "Enemy SAM site", &s.name, MISSILE_RED);
         tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
         tip.line(format!("Missile range {:.0} km", s.reach / 64.0));
         if s.reconned {
-            painter.circle_stroke(c, map_draw::halo(6.0), egui::Stroke::new(1.0, BRIGHT));
+            painter.circle_stroke(c, map_draw::halo(6.0) * k, egui::Stroke::new(1.0, BRIGHT));
             tip.line("Reconned");
         }
     }
@@ -360,7 +363,7 @@ pub fn draw(
         }
         for v in &pic.armour {
             let p = at(v.x, v.y);
-            vehicle(painter, p, v, 0.7);
+            scaled(p, &|pa, p| vehicle(pa, p, v, 0.7));
             let kind = match (v.blue, v.kind.tank()) {
                 (true, true) => "Friendly tank",
                 (true, false) => "Friendly infantry fighting vehicle",
@@ -386,7 +389,7 @@ pub fn draw(
             painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
         }
         if layers.shows(Layer::Guns) {
-            gun(painter, c, g.kind, 0.7);
+            scaled(c, &|p, c| gun(p, c, g.kind, 0.7));
             let kind = if g.kind == GroundKind::Manpads { "Enemy MANPADS" } else { "Enemy gun" };
             let reach = stealth_sim::campaign::gun_reach(g.kind);
             let what = g.kind;
@@ -398,7 +401,7 @@ pub fn draw(
     if layers.shows(Layer::EnemyFighters) {
         for a in &pic.fighters {
             let p = at(a.x, a.y);
-            aircraft(painter, p, a, MISSILE_RED);
+            scaled(p, &|pa, p| aircraft(pa, p, a, MISSILE_RED));
             aircraft_tip(tips, p, a, false);
         }
     }
@@ -406,12 +409,12 @@ pub fn draw(
         let layer = if a.helicopter { Layer::FriendlyHelicopters } else { Layer::FriendlyAircraft };
         if layers.shows(layer) {
             let p = at(a.x, a.y);
-            aircraft(painter, p, a, FRIENDLY_BLUE);
+            scaled(p, &|pa, p| aircraft(pa, p, a, FRIENDLY_BLUE));
             aircraft_tip(tips, p, a, true);
         }
     }
     if let Some((x, y)) = pic.player {
-        painter.circle_stroke(at(x, y), 6.0, egui::Stroke::new(2.0, GREEN));
+        painter.circle_stroke(at(x, y), 6.0 * k, egui::Stroke::new(2.0, GREEN));
         tips.add(at(x, y), "You", "", GREEN).symbol(|p, c| {
             p.circle_stroke(c, 6.0, egui::Stroke::new(2.0, GREEN));
         });
@@ -580,18 +583,20 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
     });
 }
 
-/// The unit nearest a screen point on the map (within a few points), and its name.
+/// The unit nearest a screen point on the map (within a few points, `k` times as many for
+/// symbols drawn `k` times their size), and its name.
 pub fn pick(
     view: &MapView,
     pic: &Picture,
     at: egui::Pos2,
+    k: f32,
 ) -> Option<(super::unit_view::UnitRef, String)> {
     use super::unit_view::UnitRef;
     let screen = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     let mut best: Option<(f32, UnitRef, String)> = None;
     let mut consider = |p: egui::Pos2, r: UnitRef, name: String| {
         let d = p.distance(at);
-        if d < 12.0 && best.as_ref().is_none_or(|b| d < b.0) {
+        if d < 12.0 * k && best.as_ref().is_none_or(|b| d < b.0) {
             best = Some((d, r, name));
         }
     };

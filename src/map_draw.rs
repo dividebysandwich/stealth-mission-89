@@ -178,12 +178,46 @@ pub fn engagement_circle(c: egui::Pos2, r: f32, alpha: f32) -> egui::Shape {
 
 /// A site: a red dot (APP-6: a hostile air defence missile unit) with its name once zoomed in
 /// far enough.
-pub fn site(painter: &egui::Painter, view: &MapView, c: egui::Pos2, name: &str, alpha: f32) {
-    site_symbol(painter, c, alpha);
+/// How much larger the campaign's war and air defence maps draw their symbols.
+pub const BIG: f32 = 1.5;
+
+/// A symbol drawn by `draw` at `c`, then scaled `k` times about `c` (its strokes with it).
+pub fn scaled(
+    painter: &egui::Painter,
+    c: egui::Pos2,
+    k: f32,
+    draw: impl FnOnce(&egui::Painter, egui::Pos2),
+) {
+    if k == 1.0 {
+        return draw(painter, c);
+    }
+    let layer = painter.layer_id();
+    let start = painter.ctx().graphics_mut(|g| g.entry(layer).next_idx());
+    draw(painter, c);
+    painter.ctx().graphics_mut(|g| {
+        let list = g.entry(layer);
+        let end = list.next_idx();
+        let t = egui::emath::TSTransform::new(c.to_vec2() * (1.0 - k), k);
+        for i in start.0..end.0 {
+            list.mutate_shape(egui::layers::ShapeIdx(i), |c| c.shape.transform(t));
+        }
+    });
+}
+
+/// A SAM site's symbol and name, `k` times the symbol's size.
+pub fn site(
+    painter: &egui::Painter,
+    view: &MapView,
+    c: egui::Pos2,
+    name: &str,
+    alpha: f32,
+    k: f32,
+) {
+    scaled(painter, c, k, |p, c| site_symbol(p, c, alpha));
     if 1.0 / view.scale > 0.02 {
         let off = if app6() { egui::vec2(9.0, -8.0) } else { egui::vec2(5.0, -5.0) };
         painter.text(
-            c + off,
+            c + off * k,
             egui::Align2::LEFT_BOTTOM,
             name,
             egui::FontId::monospace(11.0),
@@ -244,10 +278,20 @@ const TIPS_MAX: usize = 5;
 
 /// What a map has drawn, for the tooltip of what is under the pointer: every zoomable map
 /// (the planner's, the debrief's, the campaign's war and air defence maps).
-#[derive(Default)]
-pub struct MapTips(Vec<Tip>);
+pub struct MapTips(Vec<Tip>, f32);
+
+impl Default for MapTips {
+    fn default() -> Self {
+        Self(Vec::new(), 1.0)
+    }
+}
 
 impl MapTips {
+    /// For a map drawing its symbols `k` times their size: each reaches as much further.
+    pub fn grown(k: f32) -> Self {
+        Self(Vec::new(), k)
+    }
+
     /// A symbol drawn at `at`: `kind` what it is ("Airfield"), `name` which one (may be
     /// empty), `colour` its side's.
     pub fn add(
@@ -259,7 +303,7 @@ impl MapTips {
     ) -> &mut Tip {
         self.0.push(Tip {
             at,
-            reach: halo(10.0),
+            reach: halo(10.0) * self.1,
             kind: kind.into(),
             name: name.into(),
             colour,

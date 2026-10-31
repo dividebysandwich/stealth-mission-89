@@ -821,7 +821,7 @@ fn map_view(
         }
         if layers.shows(Layer::Sams) {
             let tag = if ring.doppler { "D" } else { "P" };
-            map_draw::site(&painter, &view, c, &format!("{} {tag}", ring.name), alpha);
+            map_draw::site(&painter, &view, c, &format!("{} {tag}", ring.name), alpha, 1.0);
             ring_tip(&mut tips, c, ring, planner.profile);
         }
     }

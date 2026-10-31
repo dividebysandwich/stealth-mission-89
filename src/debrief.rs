@@ -322,7 +322,7 @@ fn flight_map(
             let c = view.to_screen(site.x, site.y);
             let alpha = if now(i) { 1.0 } else { 0.45 };
             painter.extend(map_draw::missile_circle(c, site.lock / view.scale, alpha));
-            map_draw::site(&painter, &view, c, &site.kind, alpha);
+            map_draw::site(&painter, &view, c, &site.kind, alpha, 1.0);
             let tip = tips.add(c, "Radar / SAM site", &site.kind, MISSILE_RED);
             tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
             if !site.place.is_empty() {
