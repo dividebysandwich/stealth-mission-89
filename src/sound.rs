@@ -38,10 +38,11 @@
 //!   setting, with a deeper thump as it lights). All only play at level 3.
 //! - A helicopter's rotor (`heli_rotor.flac`) plays at the rotor speed, louder with the torque
 //!   and in translational lift (the blade slap), over the turbines (`heli_turbine.flac`)
-//!   pitched up with the torque.
+//!   pitched up with the torque. The CH-47 has its own: two rotors' double chop
+//!   (`ch47_rotor.flac`) over bigger turbines (`ch47_turbine.flac`).
 //! - The other aircraft are heard around, the AI's and the other players': jets and the Geran-3
 //!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording),
-//!   helicopters (`helicopter.flac`) and a drone command center's quadrotor interceptors
+//!   helicopters (`helicopter.flac`, a CH-47 `chinook.flac`) and a drone command center's quadrotor interceptors
 //!   (`interceptor.flac`, as at 20% throttle, its motors two octaves up at full throttle),
 //!   placed by direction with stereo
 //!   panning that follows the head, fading with distance, with a Doppler shift. Only at
@@ -418,12 +419,15 @@ struct SoundBank {
     /// The cannon's loop and tail.
     cannon: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
-    distant: [Option<Handle<AudioSource>>; 4],
+    distant: [Option<Handle<AudioSource>>; 5],
     launch: Option<Handle<AudioSource>>,
     /// The vehicles' guns, near and far: the tank's, the autocannon's.
     guns: [Option<(Handle<AudioSource>, Handle<AudioSource>)>; 2],
     heli_rotor: Option<Handle<AudioSource>>,
     heli_turbine: Option<Handle<AudioSource>>,
+    /// The CH-47's rotors and turbines.
+    ch47_rotor: Option<Handle<AudioSource>>,
+    ch47_turbine: Option<Handle<AudioSource>>,
     /// The flown jet's engine and wind loops, and its afterburner's.
     jet_loops: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     afterburner: Option<Handle<AudioSource>>,
@@ -458,6 +462,8 @@ enum Engine {
     Helicopter,
     /// A quadrotor interceptor.
     Quad,
+    /// A tandem-rotor helicopter (the CH-47).
+    Tandem,
 }
 
 impl Engine {
@@ -466,13 +472,16 @@ impl Engine {
         match self {
             Engine::Jet => (JET_RANGE, JET_REF, JET_VOLUME),
             Engine::Propeller => (PROPELLER_RANGE, PROPELLER_REF, PROPELLER_VOLUME),
-            Engine::Helicopter => (HELICOPTER_RANGE, HELICOPTER_REF, HELICOPTER_VOLUME),
+            Engine::Helicopter | Engine::Tandem => {
+                (HELICOPTER_RANGE, HELICOPTER_REF, HELICOPTER_VOLUME)
+            }
             Engine::Quad => (QUAD_RANGE, QUAD_REF, QUAD_VOLUME),
         }
     }
 }
 
-const DISTANT_FILES: [&str; 4] = ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac"];
+const DISTANT_FILES: [&str; 5] =
+    ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac", "chinook.flac"];
 
 /// Another aircraft heard: an AI flight unit or another player.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -620,6 +629,8 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     ];
     bank.heli_rotor = optional("heli_rotor.flac");
     bank.heli_turbine = optional("heli_turbine.flac");
+    bank.ch47_rotor = optional("ch47_rotor.flac");
+    bank.ch47_turbine = optional("ch47_turbine.flac");
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
     bank.afterburner = optional("afterburner.flac");
     bank.aim9 = AIM9_FILES.map(optional);
@@ -988,7 +999,11 @@ fn heli_sounds(
             sink.set_volume(Volume::Linear(volume));
         }
     }
-    for (turbines, handle) in [(false, &bank.heli_rotor), (true, &bank.heli_turbine)] {
+    let (rotor_loop, turbine_loop) = match settings.aircraft {
+        crate::aircraft::AircraftKind::CH47 => (&bank.ch47_rotor, &bank.ch47_turbine),
+        _ => (&bank.heli_rotor, &bank.heli_turbine),
+    };
+    for (turbines, handle) in [(false, rotor_loop), (true, turbine_loop)] {
         let Some(handle) = handle.as_ref().filter(|_| !have[turbines as usize]) else { continue };
         let (speed, volume) = if turbines { turbine } else { rotor };
         spawn_loop(&mut commands, &mut muffler, handle, speed, volume, HeliLoop(turbines));
@@ -1336,7 +1351,11 @@ fn distant_aircraft(
         if p.on_ground && v.knots == 0 {
             continue;
         }
-        let engine = if p.helicopter { Engine::Helicopter } else { Engine::Jet };
+        let engine = match (p.helicopter, p.chinook) {
+            (true, true) => Engine::Tandem,
+            (true, false) => Engine::Helicopter,
+            _ => Engine::Jet,
+        };
         let at = wu_to_bevy(v.wx as f64, v.wy as f64, v.alt as f64);
         heard.extend(in_range(Heard::Pilot(p.id), engine, at, 1.0));
     }

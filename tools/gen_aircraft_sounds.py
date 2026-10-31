@@ -9,6 +9,12 @@
   the tail rotor and the main gearbox whine.
 - heli_turbine.flac: its two turbines: whine, a compressor tone and broadband hiss (pitched with
   torque in the game).
+- ch47_rotor.flac: the flown CH-47's two rotors from inside (3 blades each at 225 rpm, 11.25 Hz):
+  the front rotor's deep thump overhead, the rear rotor's a little under half a pass later (the
+  double chop), the slap where the front rotor's tip vortices meet the rear blades, and the
+  transmissions' whine.
+- ch47_turbine.flac: its two bigger, lower turbines: whine, compressor tones, hiss and roar.
+- chinook.flac: a CH-47 heard around: the rotors' double chop and slap, the turbines' whine.
 - jet_engine.flac: the flown jet's engine at full rpm: the compressor's and the turbine's
   whine over the airflow's roar and hiss (the game plays it slower with the rpm, so it
   winds up from 0 on start).
@@ -140,6 +146,62 @@ def heli_rotor():
     return 1.0 * norm(thump) + 0.45 * norm(slap) + 0.08 * norm(tail) + 0.03 * gearbox + 0.35 * norm(rumble) * swell(t, 2.0, 0.2)
 
 
+def ch47_passes():
+    """The CH-47's loop length, blade passes per rotor in it, and the rear rotor's lag behind the
+    front one (samples): a little under half a pass, so the chops come in uneven pairs."""
+    t = 3.2
+    passes = round(3 * 225 / 60 * t)
+    lag = int(int(t * RATE) / passes * 0.42)
+    return t, passes, lag
+
+
+def ch47_rotor():
+    t, passes, lag = ch47_passes()
+    k = np.arange(int(0.13 * RATE))
+    # The big blades: a deeper, longer thump than the UH-60's; the rear rotor's further away,
+    # a little higher and softer.
+    front = np.sin(2 * np.pi * 34 * k / RATE) * np.exp(-k / (0.042 * RATE)) * (1 - np.exp(-k / (0.004 * RATE)))
+    rear = np.sin(2 * np.pi * 47 * k / RATE) * np.exp(-k / (0.032 * RATE)) * (1 - np.exp(-k / (0.003 * RATE)))
+    front = blade_passes(t, passes, front, (1.0, 0.86, 0.94))
+    rear = np.roll(blade_passes(t, passes, rear, (0.92, 1.0, 0.8)), lag)
+    slap_env = np.exp(-k / (0.011 * RATE)) * (1 - np.exp(-k / (0.0008 * RATE)))
+    slap = np.roll(blade_passes(t, passes, slap_env, (1.0, 0.72, 0.86)), lag)
+    slap *= periodic_noise(t, lambda f: band(f, 150, 1400, 2.0))
+    # The forward, aft and combining transmissions.
+    gearbox = tone(t, 1360) + 0.5 * tone(t, 680, 0.5) + 0.35 * tone(t, 2720, 1.0) + 0.3 * tone(t, 905, 2.0)
+    rumble = periodic_noise(t, lambda f: band(f, 18, 220, 1.5))
+    norm = lambda x: x / np.max(np.abs(x))  # noqa: E731
+    return (1.0 * norm(front) + 0.7 * norm(rear) + 0.4 * norm(slap) + 0.045 * gearbox * swell(t, 1.5, 0.15)
+            + 0.35 * norm(rumble) * swell(t, 2.0, 0.2))
+
+
+def ch47_turbine():
+    t = 2.0
+    whine = tone(t, 2350) + 0.5 * tone(t, 4700, 1.0) + 0.25 * tone(t, 3525, 2.0)
+    compressor = tone(t, 1175, 0.3) + 0.45 * tone(t, 590, 1.3)
+    hiss = periodic_noise(t, lambda f: band(f, 700, 7000, 1.5))
+    roar = periodic_noise(t, lambda f: band(f, 50, 600, 1.2))
+    return 0.22 * whine * swell(t, 1.0, 0.1) + 0.14 * compressor + 0.45 * hiss + 0.75 * roar
+
+
+def chinook():
+    t, passes, lag = ch47_passes()
+    n = int(t * RATE)
+    k = np.arange(int(0.08 * RATE))
+    # From outside the slap carries: each rotor's sharp crack over its thump, the rear rotor's
+    # louder (it cuts through the front one's wake), the uneven pairs the familiar chop.
+    thump = np.sin(2 * np.pi * 55 * k / RATE) * np.exp(-k / (0.022 * RATE)) * (1 - np.exp(-k / (0.002 * RATE)))
+    slap_env = np.exp(-k / (0.008 * RATE)) * (1 - np.exp(-k / (0.0007 * RATE)))
+    noise = periodic_noise(t, lambda f: band(f, 220, 2200, 2.0))
+    front = blade_passes(t, passes, thump, (1.0, 0.85, 0.93)) + 0.8 * blade_passes(t, passes, slap_env, (1.0, 0.8, 0.9)) * noise
+    rear = np.roll(blade_passes(t, passes, thump, (0.95, 1.0, 0.82)) + 1.2 * blade_passes(t, passes, slap_env, (1.0, 0.75, 0.9)) * noise, lag)
+    whine = tone(t, 2350) + 0.4 * tone(t, 4700, 1.0)
+    rumble = periodic_noise(t, lambda f: band(f, 30, 400, 1.5))
+    assert len(front) == n
+    norm = lambda x: x / np.max(np.abs(x))  # noqa: E731
+    return 0.9 * norm(front) + 1.0 * norm(rear) + 0.03 * whine + 0.18 * norm(rumble)
+
+
 def heli_turbine():
     t = 2.0
     whine = tone(t, 3100) + 0.5 * tone(t, 6200, 1.0) + 0.25 * tone(t, 4650, 2.0)
@@ -233,6 +295,9 @@ LOOPS = {
     "jet_wind.flac": jet_wind,
     "afterburner.flac": afterburner,
     "interceptor.flac": interceptor,
+    "ch47_rotor.flac": ch47_rotor,
+    "ch47_turbine.flac": ch47_turbine,
+    "chinook.flac": chinook,
 }
 
 if __name__ == "__main__":
