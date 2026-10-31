@@ -184,6 +184,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Autopilot => {
             ("Autopilot", "Flies to the current waypoint (Tornado: following the terrain)")
         }
+        Hover => (
+            "Auto hover",
+            "Holds the hover over this spot, the heading and the altitude (up to 30 kt)",
+        ),
         BayDoors => ("Weapon bay doors", "Open / close; weapons are released with open bays only"),
         Flaps => ("Flaps", "More lift, about 20 % lower stall speed"),
         Brakes => ("Brakes", "Wheel brakes on the ground, speed brake in the air"),

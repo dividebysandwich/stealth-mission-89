@@ -193,6 +193,18 @@
       "round": false
     },
     {
+      "control": "Action(Hover)",
+      "key": "Button(Hover, None)",
+      "kind": "cap",
+      "rect": [
+        -164.0,
+        218.0,
+        40.0,
+        16.0
+      ],
+      "round": false
+    },
+    {
       "control": "Action(Chaff)",
       "key": "Item(Label(\"CHAFF\", 5, 14))",
       "kind": "cap",

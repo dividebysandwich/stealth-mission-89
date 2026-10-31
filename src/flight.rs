@@ -493,6 +493,11 @@ impl Aircraft {
         self.autopilot_alt > 0.0
     }
 
+    /// A helicopter's autopilot holds it in the hover (`heli::engage_hover`).
+    pub fn auto_hover(&self) -> bool {
+        self.autopilot() && self.heli.hovering()
+    }
+
     /// The autopilot follows the terrain (the terrain following radar has a command).
     pub fn terrain_following(&self) -> bool {
         self.autopilot() && self.tf_gamma.is_some()
@@ -551,6 +556,7 @@ fn handle_actions(
     mut q: Query<&mut Aircraft, With<Player>>,
     k: Res<FlightConstants>,
     manning: Option<Res<crate::station::Manning>>,
+    mut msg: ResMut<crate::hud::HudMessages>,
 ) {
     // At a console the controls are the console's, not the parked aircraft's.
     let (Ok(mut a), None) = (q.single_mut(), manning) else {
@@ -565,7 +571,18 @@ fn handle_actions(
             // (`FlightControls::collective_rate`); fixed gear unless it retracts, the brakes are
             // the parking brake; the autopilot holds the speed as well.
             Action::ThrottleUp | Action::ThrottleDown if heli => {}
-            Action::Autopilot if heli && a.autopilot() => a.autopilot_alt = 0.0,
+            Action::Autopilot if heli && a.autopilot() && !a.auto_hover() => {
+                a.autopilot_alt = 0.0
+            }
+            // Auto-hover (helicopters, slow): again, or the autopilot to the waypoint, leaves it.
+            Action::Hover if a.auto_hover() => a.autopilot_alt = 0.0,
+            Action::Hover if heli && !a.damage.autopilot_failed && !a.on_ground => {
+                if heli::engage_hover(&mut a) {
+                    msg.show("Auto hover");
+                } else {
+                    msg.show(format!("Too fast to hover (over {:.0} kt)", heli::HOVER_KNOTS));
+                }
+            }
             Action::Autopilot
                 if !a.damage.autopilot_failed
                     && let Some(r) = &k.heli =>

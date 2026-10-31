@@ -66,6 +66,8 @@ pub enum Action {
     Decoy,
     Gear,
     Autopilot,
+    /// Helicopters: auto-hover (at most 30 kt), holding the heading, the altitude and the spot.
+    Hover,
     BayDoors,
     Flaps,
     Brakes,
@@ -351,6 +353,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::Digit5, Decoy),
         (None, K::Digit6, Gear),
         (None, K::Digit7, Autopilot),
+        (Shift, K::Digit7, Hover),
         (None, K::Digit8, BayDoors),
         (None, K::Digit9, Flaps),
         (None, K::Digit0, Brakes),

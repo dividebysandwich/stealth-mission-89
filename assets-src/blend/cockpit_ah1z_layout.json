@@ -769,6 +769,18 @@
       "round": false
     },
     {
+      "control": "Action(Hover)",
+      "key": "Button(Hover, None)",
+      "kind": "cap",
+      "rect": [
+        -139.0,
+        128.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": "Osb(Left, 0)",
       "key": "Osb(Left, 0)",
       "kind": "osb",

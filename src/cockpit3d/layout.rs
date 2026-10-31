@@ -665,7 +665,15 @@ impl PanelLayout {
                 _ => by(-40.0, 20.0),
             }
         };
-        let items = m.items.iter().map(|p| Placed { rect: place(p), ..*p }).collect();
+        let mut items: Vec<Placed> =
+            m.items.iter().map(|p| Placed { rect: place(p), ..*p }).collect();
+        // HOVER right of AUTO.
+        items.push(Placed {
+            elem: Elem::Lamp(LampId::Hover, None),
+            rect: rect(-197.0, 178.0, 38.0, 14.0),
+            cap: Some(Effect::Action(Action::Hover)),
+            round: false,
+        });
         let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
         let ded = m.ded.map(|r| rect(r.x + 2000.0, r.y, r.w, r.h));
         Self {
@@ -719,6 +727,7 @@ impl PanelLayout {
                     Elem::Dial(Dial::Oil) => at(330.0, -60.0),
                     Elem::Dial(Dial::Nozzle) => at(330.0, -10.0),
                     Elem::Lamp(LampId::Auto, _) => at(-180.0, 128.0),
+                    Elem::Lamp(LampId::Hover, _) => at(-139.0, 128.0),
                     _ => r,
                 };
                 Placed { rect, ..*p }
@@ -1366,6 +1375,11 @@ impl PanelLayout {
             rect(-121.0, 218.0, 40.0, 16.0),
             Some(E::Action(Action::Autopilot)),
         );
+        put(
+            Elem::Lamp(LampId::Hover, None),
+            rect(-164.0, 218.0, 40.0, 16.0),
+            Some(E::Action(Action::Hover)),
+        );
         // Under the standby attitude display: the countermeasures.
         let adi = rect(-206.0, 120.0, 64.0, 64.0);
         for (k, (label, action)) in
@@ -1509,7 +1523,14 @@ impl PanelLayout {
             cap: None,
             round: false,
         });
-        let items = items.chain(keyboard).collect();
+        // HOVER under AUTO.
+        let hover = Placed {
+            elem: Elem::Lamp(LampId::Hover, None),
+            rect: rect(-168.0, -68.0, 38.0, 14.0),
+            cap: Some(Effect::Action(Action::Hover)),
+            round: false,
+        };
+        let items = items.chain(keyboard).chain([hover]).collect();
         let (w, h) = (200.0, 200.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
         Self {
             style: PanelStyle::Oh58,
@@ -1824,7 +1845,8 @@ mod tests {
                 .filter_map(|p| if let Elem::Lamp(id, _) = p.elem { Some(id) } else { None })
                 .collect()
         };
-        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT);
+        // Every lamp but the helicopters' HOVER.
+        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT - 1);
         let modern = lamps(&PanelLayout::modern());
         for id in [
             LampId::Map,

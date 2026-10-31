@@ -21,6 +21,8 @@
 //!   (within `AP_KNOTS`) and holds the altitude it was engaged at with the collective; slow, it
 //!   turns on the pedals before it picks up speed. The cyclic, the collective keys or the lever
 //!   moved take it out.
+//! - Auto-hover (`engage_hover`, at most `HOVER_KNOTS`): the autopilot holds the heading and
+//!   the altitude and flies back over the spot where it was engaged, at walking pace.
 //! - Ground: wheels anywhere flat; touching down too hard, too fast or tilted is a crash (none
 //!   with the "no crashes" landing skill). A helicopter needs no runway: the base it lands at is
 //!   its whole airfield (`landing_corridor`).
@@ -221,6 +223,17 @@ struct Autopilot {
     lever: Option<f32>,
     pitch: f32,
     pedal: f32,
+    /// Auto-hover, in place of flying to the waypoint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    hover: Option<Hover>,
+}
+
+/// Auto-hover: the heading it holds and how far it has drifted from the spot where it was
+/// engaged (ft, Bevy x and z).
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
+struct Hover {
+    heading: f32,
+    drift: Vec2,
 }
 
 impl State {
@@ -279,7 +292,33 @@ pub(super) fn engage_autopilot(a: &mut Aircraft, r: &Rotor) {
         (a.heli.vel.with_y(0.0).length() / KNOT).clamp(AP_KNOTS.0, r.stall_knots.0 - AP_KNOTS.1);
     // Above 0, which is off.
     a.autopilot_alt = a.view_z().max(1.0);
-    a.heli.ap = Some(Autopilot { speed: knots * KNOT, lever: None, pitch: 0.0, pedal: 0.0 });
+    a.heli.ap = Some(Autopilot { speed: knots * KNOT, ..default() });
+}
+
+/// The fastest auto-hover engages at (knots over the ground).
+pub const HOVER_KNOTS: f32 = 30.0;
+/// Auto-hover: ground speed back towards the spot per foot off it (1/s), and at most (ft/s).
+const HOVER_RETURN: f32 = 0.15;
+const HOVER_RETURN_MAX: f32 = 8.0;
+
+/// Engages auto-hover (airborne, at most `HOVER_KNOTS`): it holds the heading and the altitude
+/// over the spot it was engaged at. False if it is too fast (or on the ground).
+pub(super) fn engage_hover(a: &mut Aircraft) -> bool {
+    if a.on_ground || !a.heli.init || a.heli.vel.with_y(0.0).length() > HOVER_KNOTS * KNOT {
+        return false;
+    }
+    let (heading, ..) = a.euler();
+    a.autopilot_alt = a.view_z().max(1.0);
+    let hover = Some(Hover { heading, drift: Vec2::ZERO });
+    a.heli.ap = Some(Autopilot { hover, ..default() });
+    true
+}
+
+impl State {
+    /// Auto-hover is engaged.
+    pub(super) fn hovering(&self) -> bool {
+        self.ap.is_some_and(|ap| ap.hover.is_some())
+    }
 }
 
 /// The autopilot's cyclic (roll, pitch) and pedals, and its collective into `set_thrust` (0..1
@@ -292,12 +331,26 @@ fn autopilot(a: &mut Aircraft, ap: &mut Autopilot, dt: f32) -> (f32, f32, f32, f
     let fwd = Vec3::new(h.sin(), 0.0, -h.cos());
     let along = vel.dot(fwd);
     let across = vel.dot(Vec3::new(h.cos(), 0.0, h.sin()));
-    let e = (bam(a.waypoint_bearing) - h + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
-        - std::f32::consts::PI;
-    // Turns by bank at speed, on the pedals slow.
-    let fast = smoothstep(25.0, 50.0, along / KNOT);
-    // Slow and off the bearing, it turns before it picks up speed.
-    let speed = ap.speed * fast.max((1.0 - e.abs() / 0.5).clamp(0.0, 1.0));
+    let wrap = |x: f32| {
+        (x + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI
+    };
+    // Flying to the waypoint: its bearing and the speed; hovering: the heading held, and slowly
+    // back over the spot (`side` the speed to the right).
+    let (e, fast, speed, side) = match &mut ap.hover {
+        Some(hv) => {
+            hv.drift += Vec2::new(vel.x, vel.z) * dt;
+            let back = (-HOVER_RETURN * hv.drift).clamp_length_max(HOVER_RETURN_MAX);
+            let back = Vec3::new(back.x, 0.0, back.y);
+            (wrap(hv.heading - h), 0.0, back.dot(fwd), back.dot(Vec3::new(h.cos(), 0.0, h.sin())))
+        }
+        None => {
+            let e = wrap(bam(a.waypoint_bearing) - h);
+            // Turns by bank at speed, on the pedals slow.
+            let fast = smoothstep(25.0, 50.0, along / KNOT);
+            // Slow and off the bearing, it turns before it picks up speed.
+            (e, fast, ap.speed * fast.max((1.0 - e.abs() / 0.5).clamp(0.0, 1.0)), 0.0)
+        }
+    };
 
     // Pitch: the attitude for the speed (its integrator the trim attitude), the cyclic onto it
     // (the stick trim takes out what holds it there, against flapback).
@@ -309,7 +362,7 @@ fn autopilot(a: &mut Aircraft, ap: &mut Autopilot, dt: f32) -> (f32, f32, f32, f
 
     // Roll: banked towards the bearing at speed (up to 25 degrees), slow the drift sideways
     // stopped.
-    let bank_cmd = (1.5 * e).clamp(-0.44, 0.44) * fast - 0.01 * across * (1.0 - fast);
+    let bank_cmd = (1.5 * e).clamp(-0.44, 0.44) * fast - 0.01 * (across - side) * (1.0 - fast);
     a.move_trim(Vec2::new(0.8 * (bank_cmd - b) * dt, 0.0));
     let roll = a.stick_trim.x + 3.0 * (bank_cmd - b) + 0.5 * rates.z;
 
@@ -1095,6 +1148,50 @@ mod tests {
                 let want = knots.clamp(AP_KNOTS.0, r.stall_knots.0 - AP_KNOTS.1);
                 assert!((a.knots() - want).abs() < 5.0, "{name} {case}: {} kt", a.knots());
             }
+        }
+    }
+
+    /// Auto-hover, engaged at 25 kt with a crosswind drift: stops, comes back over the spot and
+    /// holds it, the heading and the altitude. Faster than `HOVER_KNOTS` it does not engage.
+    #[test]
+    fn auto_hover_holds_the_spot() {
+        for (name, k) in [
+            ("UH-60A", FlightConstants::uh60()),
+            ("AH-1Z", FlightConstants::ah1z()),
+            ("RAH-66", FlightConstants::rah66()),
+            ("OH-58D", FlightConstants::oh58()),
+        ] {
+            let r = k.heli.unwrap();
+            let mut a0 = hovering(300.0);
+            a0.velocity = 25.0 * 27.0;
+            a0.set_thrust = r.hover_collective() * 100.0;
+            a0.gear_down = false;
+            let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+            a.heli.vel.x += 8.0;
+            let (h0, ..) = a.euler();
+            assert!(engage_hover(&mut a) && a.auto_hover(), "{name}");
+            let mut worst = 0.0f32;
+            let (a, p) = fly_as(k.clone(), a, 60.0, 1, |a, _| {
+                worst = worst.max((a.altitude - 300.0).abs())
+            });
+            let (h, ..) = a.euler();
+            let off = ((h - h0).to_degrees() + 540.0).rem_euclid(360.0) - 180.0;
+            let away = p.xz().length() * crate::world::WU as f32;
+            println!(
+                "{name}: {:.1} kt, {away:.0} m from the spot, heading off {off:.1}, alt {:.0} (worst {worst:.0})",
+                a.knots(),
+                a.altitude
+            );
+            assert!(a.auto_hover() && a.ended.is_none(), "{name}");
+            assert!(a.heli.vel.with_y(0.0).length() / KNOT < 2.0, "{name}: still moving");
+            assert!(away < 25.0, "{name}: {away:.0} m off the spot");
+            assert!(off.abs() < 3.0, "{name}: heading off {off}");
+            assert!(worst < 40.0 && (a.altitude - 300.0).abs() < 10.0, "{name}: alt");
+
+            let mut a0 = hovering(300.0);
+            a0.velocity = 40.0 * 27.0;
+            let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+            assert!(!engage_hover(&mut a) && !a.autopilot(), "{name}: engaged at 40 kt");
         }
     }
 

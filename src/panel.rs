@@ -152,9 +152,11 @@ pub enum LampId {
     Gear,
     Brake,
     LowFuel,
+    /// Helicopters: auto-hover (beside AUTO; not on the classic panel).
+    Hover,
 }
 
-pub const LAMP_COUNT: usize = 37;
+pub const LAMP_COUNT: usize = 38;
 
 /// Lamp colours, (text and border, fill) unlit and lit, as they recolour the panel art.
 #[derive(Debug, Clone, Copy)]
@@ -213,6 +215,7 @@ pub const LAMPS: [(LampId, &str, LampStyle); LAMP_COUNT] = {
         (Gear, "GEAR", RED),
         (Brake, "BRAKE", RED),
         (LowFuel, "", RED),
+        (Hover, "HOVER", RED),
     ]
 };
 
@@ -683,7 +686,8 @@ impl PanelParams<'_, '_> {
         if let Some(a) = a {
             lit[Stall as usize] = !a.on_ground && a.velocity < a.stall_speed && blink;
             lit[Bay as usize] = a.bay_open;
-            lit[Auto as usize] = a.autopilot();
+            lit[Auto as usize] = a.autopilot() && !a.auto_hover();
+            lit[Hover as usize] = a.auto_hover();
             lit[Flaps as usize] = a.flaps;
             lit[Gear as usize] = a.gear_down;
             lit[Brake as usize] = a.brakes;
