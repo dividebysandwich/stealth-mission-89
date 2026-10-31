@@ -167,6 +167,46 @@ fn opposing_columns_halt_and_fight() {
     assert!(left(0..4) + left(4..8) <= 5, "{} {}", left(0..4), left(4..8));
 }
 
+/// A tank with a hill between it and the enemy holds its fire, even while its side (a Gepard
+/// over there) sees the enemy; the enemy in the open gets fired at.
+#[test]
+fn tanks_do_not_fire_through_hills() {
+    let (_, mut sim) = campaign();
+    let hills = hills::Hills::from_bytes(vec![255; hills::DIM * hills::DIM]).unwrap();
+    let h = |x: i32| {
+        let m = stealth_sim::ground::metres_of(x, Y);
+        hills.height_m(m[0], m[1]) as f64
+    };
+    // A ridge between a and b (1.2 km apart), and open ground from b to c 300 m on.
+    let open = |b: i32, c: i32| {
+        let (hb, hc) = (h(b) + 2.0, h(c) + 2.0);
+        (b..=c).all(|x| h(x) <= hb + (hc - hb) * (x - b) as f64 / (c - b) as f64)
+    };
+    let a = (X..X + 200 * KM)
+        .step_by(4)
+        .find(|&a| {
+            let (b, c) = (a + 6 * KM / 5, a + 3 * KM / 2);
+            (a..b).map(h).fold(0.0, f64::max) > h(a).max(h(b)) + 30.0 && open(b, c)
+        })
+        .expect("a ridge");
+    let (b, c) = (a + 6 * KM / 5, a + 3 * KM / 2);
+    sim.set_hills(hills.clone());
+    sim.spawn_convoy(1, true, &[GroundKind::Leopard2], &[(a, Y), (a - KM, Y)]);
+    sim.spawn_convoy(2, false, &[GroundKind::T90], &[(b, Y), (b + KM, Y)]);
+    sim.spawn_convoy(3, true, &[GroundKind::Gepard], &[(c, Y), (c + KM, Y)]);
+    for tag in 1..=3 {
+        sim.end_convoy(tag);
+    }
+    let mut ev = run(&mut sim, 1);
+    assert!(sim.unit_seen_by(1, true), "the Gepard sees the T-90");
+    ev.extend(run(&mut sim, 30));
+    let from = |k: usize| {
+        ev.iter().filter(|e| matches!(**e, SimEvent::GroundShot { from, .. } if from == k)).count()
+    };
+    assert_eq!(from(0), 0, "the Leopard fired through the hill");
+    assert!(from(1) > 0, "the T-90 fires at the Gepard in the open");
+}
+
 /// Two infantry fighting vehicles 1.5 km apart fire bursts of 3 to 5 at each other, a dozen
 /// hits or so to knock one out.
 #[test]

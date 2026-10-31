@@ -1015,6 +1015,13 @@ impl Sim {
         }
     }
 
+    /// Other rolling hills for the theater (test set-ups).
+    pub fn set_hills(&mut self, hills: crate::hills::Hills) {
+        if let Some(t) = self.tiles.as_mut() {
+            t.hills = hills;
+        }
+    }
+
     /// The theater's rolling hills (flat without).
     pub fn hills(&self) -> crate::hills::Hills {
         self.tiles.as_ref().map(|t| t.hills.clone()).unwrap_or_default()

@@ -35,8 +35,8 @@ const HALT_RANGE: f64 = 1500.0;
 /// A gun's chance to hit fired on the move, and at a target on the move (factors).
 const MOVING_SHOOTER: f64 = 0.5;
 const MOVING_TARGET: f64 = 0.8;
-const LOS_STEP: f64 = 250.0;
-const LOS_CLEAR: f64 = 10.0;
+const LOS_STEP: f64 = 100.0;
+const LOS_CLEAR: f64 = 1.0;
 /// The most ground units in a campaign.
 pub(crate) const MAX_GROUND: usize = 600;
 
@@ -541,7 +541,8 @@ impl Sim {
         })
     }
 
-    /// Unit `k` has an enemy ground unit in sight that it can fire at.
+    /// Unit `k` has an enemy ground unit in sight that it can fire at (its own line of sight:
+    /// a column behind a hill drives on until it has one).
     fn in_contact(&self, k: usize) -> bool {
         let hills = self.hills();
         let a = &self.units[k];
@@ -555,6 +556,7 @@ impl Sim {
                 && shot(a.kind, b.kind)
                     .is_some_and(|s| dist([m[0], m[1]], [mb[0], mb[1]]) < s.reach.min(HALT_RANGE))
                 && self.unit_seen_by(j, blue)
+                && self.ground_los([m[0], m[1]], [mb[0], mb[1]])
         })
     }
 
@@ -737,7 +739,7 @@ impl Sim {
     }
 
     /// Unit `i` (at `me`) can fire at ground unit `j`: an enemy its side sees, in its gun's
-    /// reach, not knocked out yet.
+    /// reach and its own line of sight (not through a hill), not knocked out yet.
     fn ground_target_ok(&self, i: usize, j: usize, me: [f64; 2]) -> bool {
         let hills = self.hills();
         let (a, b) = (&self.units[i], &self.units[j]);
@@ -750,7 +752,7 @@ impl Sim {
         }
         let Some(s) = shot(a.kind, b.kind) else { return false };
         let mb = b.metres_on(&hills);
-        dist(me, [mb[0], mb[1]]) <= s.reach
+        dist(me, [mb[0], mb[1]]) <= s.reach && self.ground_los(me, [mb[0], mb[1]])
     }
 
     /// The enemy ground unit that unit `i` (at `me`) fires at next: tanks first for the
