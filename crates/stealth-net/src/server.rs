@@ -32,6 +32,9 @@ const SNAP_REFRESH: u32 = 8;
 /// message only.
 const FAR: i32 = 122_880;
 const FAR_EVERY: u32 = 4;
+/// Voice packets a player may send a second (about 17 while talking), and in a burst.
+const VOICE_RATE: f32 = 30.0;
+const VOICE_BURST: f32 = 45.0;
 
 /// A connection, and once it has joined its player.
 struct Remote {
@@ -48,6 +51,8 @@ struct Remote {
     /// Bytes sent him this second, and a second's worth.
     sent: usize,
     rate: u32,
+    /// Voice packets he may still send (refilled at `VOICE_RATE`).
+    voice_budget: f32,
 }
 
 pub struct Server {
@@ -74,6 +79,8 @@ pub struct Server {
     pub log: Vec<String>,
     /// The players' chat messages (sender, text) for the listen server's own player.
     chat: Vec<(String, String)>,
+    /// The players' radio transmissions for the listen server's own player.
+    voice: Vec<(PlayerId, VoicePacket)>,
     /// On the public server list: its reporter, and the time since the last update.
     master: Option<crate::master::Reporter>,
     master_timer: f32,
@@ -106,6 +113,7 @@ impl Server {
             last_pump: None,
             log: Vec::new(),
             chat: Vec::new(),
+            voice: Vec::new(),
             master: None,
             master_timer: f32::MAX,
         })
@@ -155,6 +163,7 @@ impl Server {
                             snap_age: 0,
                             sent: 0,
                             rate: 0,
+                            voice_budget: VOICE_BURST,
                         },
                     );
                 }
@@ -189,6 +198,9 @@ impl Server {
         self.roster_timer += dt;
         self.master_timer += dt;
         self.rate_timer += dt;
+        for r in self.remotes.values_mut() {
+            r.voice_budget = (r.voice_budget + dt * VOICE_RATE).min(VOICE_BURST);
+        }
         if self.rate_timer >= 1.0 {
             for r in self.remotes.values_mut() {
                 r.rate = (r.sent as f32 / self.rate_timer) as u32;
@@ -246,6 +258,14 @@ impl Server {
             (ToServer::Chat { text }, Some(p)) => {
                 let name = host.state.player_name(p).unwrap_or("?").to_string();
                 self.relay_chat(Some(conn), &name, &text, host);
+                return Vec::new();
+            }
+            (ToServer::Voice(packet), Some(p)) => {
+                let Some(r) = self.remotes.get_mut(&conn) else { return Vec::new() };
+                if r.voice_budget >= 1.0 && packet.data.len() <= crate::voice::MAX_DATA {
+                    r.voice_budget -= 1.0;
+                    self.relay_voice(Some(conn), p, packet);
+                }
                 return Vec::new();
             }
             (ToServer::Rearm { stores }, Some(p)) => {
@@ -313,6 +333,32 @@ impl Server {
     /// The players' chat messages since the last call (sender, text): a listen server's.
     pub fn take_chat(&mut self) -> Vec<(String, String)> {
         std::mem::take(&mut self.chat)
+    }
+
+    /// A piece of player `p`'s transmission to every player but him (`from`: his connection;
+    /// None for the listen server's own player). The one radio channel: everybody hears it.
+    fn relay_voice(&mut self, from: Option<ConnId>, p: PlayerId, packet: VoicePacket) {
+        let msg = encode(&ToClient::Voice { from: p, packet: packet.clone() });
+        for r in self.remotes.values() {
+            if r.player.is_some() && Some(r.conn) != from {
+                self.net.send(r.conn, Channel::Unreliable, &msg);
+            }
+        }
+        if from.is_some() && self.local.is_some() {
+            self.voice.push((p, packet));
+        }
+    }
+
+    /// The listen server's own player transmits.
+    pub fn voice(&mut self, packet: VoicePacket) {
+        if let Some(p) = self.local {
+            self.relay_voice(None, p, packet);
+        }
+    }
+
+    /// The players' transmissions since the last call: a listen server's.
+    pub fn take_voice(&mut self) -> Vec<(PlayerId, VoicePacket)> {
+        std::mem::take(&mut self.voice)
     }
 
     /// A player gone: off his air defence console (the AI's again) and the plans he was on.

@@ -7,6 +7,7 @@
 //! * [`server`]: the host's side, [`client`]: a player's.
 //! * [`dedicated`]: the server without a game of its own.
 //! * [`master`]: the public server list.
+//! * [`voice`]: the players' push-to-talk radio.
 
 pub mod client;
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,6 +19,7 @@ pub mod protocol;
 mod reports;
 pub mod server;
 pub mod transport;
+pub mod voice;
 #[cfg(target_arch = "wasm32")]
 mod websocket;
 

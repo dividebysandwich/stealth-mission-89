@@ -10,8 +10,10 @@ use stealth_sim::net::{PilotSnap, PilotTick, WorldFast, WorldSlow};
 use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
+pub use crate::voice::VoicePacket;
+
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 20;
+pub const PROTOCOL: u16 = 21;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -95,6 +97,8 @@ pub enum ToServer {
     },
     /// At a friendly air defence console: man it, leave it, fight it.
     Station(StationCmd),
+    /// A piece of his radio transmission (unreliable).
+    Voice(VoicePacket),
     Bye,
 }
 
@@ -171,6 +175,11 @@ pub enum ToClient {
     Chat {
         from: String,
         text: String,
+    },
+    /// A piece of another player's radio transmission (unreliable).
+    Voice {
+        from: PlayerId,
+        packet: VoicePacket,
     },
     Shutdown(String),
 }

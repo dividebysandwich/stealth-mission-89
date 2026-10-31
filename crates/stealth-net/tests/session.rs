@@ -396,3 +396,42 @@ fn chat_is_kept_with_the_campaign() {
     assert_eq!(state.chat.len(), 1);
     assert_eq!(state.chat[0].text, "Wheels up");
 }
+
+/// A radio transmission goes to the other players, not back to its sender, and a flood of
+/// packets is cut to the rate limit.
+#[test]
+fn voice_is_relayed_and_rate_limited() {
+    use stealth_net::voice::VoicePacket;
+    let mut w = world();
+    let port = w.server.port().unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let mut now = Instant::now();
+    let mut a = Client::connect(&addr, "Maverick").unwrap();
+    let mut b = Client::connect(&addr, "Goose").unwrap();
+    let mut welcomed = [false; 2];
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        welcomed[k] |= matches!(e, ClientEvent::Welcome { .. });
+        welcomed == [true, true]
+    }));
+    let packet = |seq| VoicePacket { seq, end: false, data: vec![0; 249] };
+    // 200 packets at once: the burst allowance gets through.
+    for seq in 0..200 {
+        a.voice(packet(seq));
+    }
+    let mut heard = [0usize; 2];
+    until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Voice { from, packet } = e {
+            assert_eq!(*from, PlayerId(1));
+            assert_eq!(packet.data.len(), 249);
+            heard[k] += 1;
+        }
+        false
+    });
+    assert_eq!(heard[0], 0, "the sender doesn't hear himself");
+    assert!((30..=50).contains(&heard[1]), "{} relayed", heard[1]);
+    // Too long a packet is dropped.
+    a.voice(VoicePacket { seq: 0, end: true, data: vec![0; 2000] });
+    assert!(!until(&mut w, &mut [&mut a, &mut b], &mut now, |_, e| {
+        matches!(e, ClientEvent::Voice { .. })
+    }));
+}

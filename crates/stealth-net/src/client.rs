@@ -46,6 +46,11 @@ pub enum ClientEvent {
         from: String,
         text: String,
     },
+    /// A piece of another player's radio transmission.
+    Voice {
+        from: PlayerId,
+        packet: VoicePacket,
+    },
 }
 
 pub struct Client {
@@ -115,6 +120,13 @@ impl Client {
         }
     }
 
+    /// A piece of his radio transmission.
+    pub fn voice(&mut self, packet: VoicePacket) {
+        if self.id.is_some() {
+            self.net.send(0, Channel::Unreliable, &encode(&ToServer::Voice(packet)));
+        }
+    }
+
     /// Reports a hit of one of his own gun rounds.
     pub fn send_hit(&mut self, hit: stealth_sim::claims::GunHit) {
         if self.id.is_some() {
@@ -179,6 +191,7 @@ impl Client {
             ToClient::Error(e) => ClientEvent::Error(e),
             ToClient::Roster(r) => ClientEvent::Roster(r),
             ToClient::Chat { from, text } => ClientEvent::Chat { from, text },
+            ToClient::Voice { from, packet } => ClientEvent::Voice { from, packet },
             ToClient::Shutdown(why) => {
                 self.closed = true;
                 ClientEvent::Closed(why)
