@@ -396,10 +396,9 @@ fn cleanup(mut commands: Commands, mut p: ResMut<Particles>, mut ex: ResMut<Expl
     if let Some((e, _)) = p.batch {
         commands.entity(e).try_despawn();
     }
-    // Keep the shared assets.
-    let (material, meshes, colours) =
-        (p.material.take(), p.meshes.take(), std::mem::take(&mut p.colours));
-    *p = Particles { material, meshes, colours, ..default() };
+    // Keep the meshes; the materials are bound to this flight's palette globals (the next
+    // flight gets new ones).
+    *p = Particles { meshes: p.meshes.take(), ..default() };
     ex.pending.clear();
 }
 

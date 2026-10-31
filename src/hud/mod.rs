@@ -27,6 +27,10 @@ impl Plugin for HudPlugin {
             .init_resource::<GunLead>()
             .init_resource::<HudCues>()
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_hud)
+            // The menus are not seen through the goggles.
+            .add_systems(OnExit(crate::settings::AppState::Flight), |mut hud: ResMut<HudState>| {
+                hud.nvg = false
+            })
             .add_systems(
                 Update,
                 (hud_keys, update_messages, track_throttle, advance_waypoints, track_max_g)
