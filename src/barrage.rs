@@ -8,8 +8,9 @@
 //! Drones are the exception to the blind fire: an attack drone of the other side (an enemy
 //! Geran over a friendly town, one of the player's side's drones over an enemy one) that comes
 //! within `SPOT_RANGE` of a town's searchlight is caught by it, and the light follows it until it
-//! is out of reach or explodes; the town's guns then fire at it, roughly (`DRONE_ERROR`), heavier
-//! than their blind barrage. The drone defense missions have the towns' guns and lights whatever
+//! is out of reach or explodes; the town's guns then fire at it, heavier than their blind
+//! barrage, but unsure how far to lead it (`LEAD`) and always off by some way (`MISS`): their
+//! streams hose about round it and never hit it. The drone defense missions have the towns' guns and lights whatever
 //! the ROE, a campaign the lights and the guns firing at drones whatever its ROE.
 //!
 //! All the rounds are one line mesh rebuilt every frame (one draw); the searchlights are beam
@@ -82,10 +83,15 @@ const LOSE_RANGE: f64 = 5000.0;
 /// caught, or back to its sweep.
 const SLEW: f32 = 0.9;
 const SLEW_EL: f32 = 50.0;
-/// A town's guns fire at a drone this close (m, slant), aimed this far off at most (degrees,
-/// a slow wander) and leading it by their rounds' flight time.
+/// A town's guns fire at a drone this close (m, slant).
 const DRONE_GUN_RANGE: f64 = 4000.0;
-const DRONE_ERROR: f32 = 7.0;
+/// A gun's guess at the lead: a slow wander through this range of the true lead (none .. more
+/// than double).
+const LEAD: (f64, f64) = (0.0, 2.3);
+/// How far its stream passes the drone besides (m): a slow wander across the line of sight.
+const MISS: (f64, f64) = (70.0, 160.0);
+/// The rounds' drag (a fraction of their speed lost per second).
+const DRAG: f64 = 0.08;
 /// Firing at a drone: bursts and pauses (ranges, seconds), seconds between rounds.
 const DRONE_BURST: (f32, f32) = (2.5, 6.0);
 const DRONE_PAUSE: (f32, f32) = (0.2, 0.8);
@@ -138,6 +144,16 @@ struct Round {
     vel: DVec3,
     age: f32,
     burn: f32,
+}
+
+impl Round {
+    /// Flies on `dt` seconds: falls, slows.
+    fn fly(&mut self, dt: f32) {
+        self.vel.y -= 9.81 * dt as f64;
+        self.vel *= 1.0 - DRAG * dt as f64;
+        self.pos += self.vel * dt as f64;
+        self.age += dt;
+    }
 }
 
 #[derive(Resource, Default)]
@@ -318,10 +334,7 @@ fn fire(
     b.clock += dt;
     // The rounds in the air fly on (and fall), and burn out.
     for r in &mut b.rounds {
-        r.vel.y -= 9.81 * dt as f64;
-        r.vel *= 1.0 - 0.08 * dt as f64;
-        r.pos += r.vel * dt as f64;
-        r.age += dt;
+        r.fly(dt);
     }
     b.rounds.retain(|r| r.age < r.burn);
     let Some(mut sites) = b.sites.take() else { return };
@@ -489,22 +502,44 @@ fn aim_lights(s: &mut Site, i: usize, drones: &[Drone], blue: Option<bool>, t: f
 }
 
 /// Where a town's guns aim at the nearest enemy drone within `DRONE_GUN_RANGE` (town side
-/// `blue`): ahead of it by the rounds' flight time, a few degrees off.
-fn drone_aim(b: &Barrage, s: &Site, blue: bool) -> Option<(f32, f32)> {
-    let (r, d) = b
+/// `blue`).
+fn drone_aim(b: &Barrage, s: &Site, blue: bool) -> Option<Aim> {
+    let d = b
         .drones
         .iter()
         .filter(|d| d.blue != blue)
-        .map(|d| (d.pos.distance(s.pos), *d))
-        .filter(|&(r, _)| r < DRONE_GUN_RANGE)
-        .min_by(|a, b| a.0.total_cmp(&b.0))?;
-    let lead = d.pos + d.vel * (r / 700.0);
-    let (az, el) = look(s.pos, lead);
-    // A slow wander of the aim, each gun out of step, and the rounds' drop.
-    let t = b.clock + s.pos.x as f32 * 0.01;
-    let off_az = (DRONE_ERROR * (t * 0.7).sin()).to_radians();
-    let off_el = DRONE_ERROR * 0.6 * (t * 1.1 + 1.0).sin() + (r / 1000.0) as f32 * 0.6;
-    Some((az + off_az / (el.to_radians().cos().max(0.2)), (el + off_el).clamp(2.0, 88.0)))
+        .filter(|d| d.pos.distance(s.pos) < DRONE_GUN_RANGE)
+        .min_by(|a, b| a.pos.distance(s.pos).total_cmp(&b.pos.distance(s.pos)))?;
+    // Each gun out of step with the others.
+    let t = b.clock as f64 + s.pos.x * 0.013 + s.pos.z * 0.007;
+    Some(look(s.pos, miss_point(s.pos, d, t)))
+}
+
+/// Where a gun at `at` aims at drone `d`, `t` seconds into its fire: ahead of it by a wandering
+/// guess at the lead, and to one side of that.
+fn miss_point(at: DVec3, d: &Drone, t: f64) -> DVec3 {
+    let r = d.pos.distance(at);
+    // The rounds' time of flight (slowed by drag) at the middle of their speed.
+    let v = (SPEED.0 + SPEED.1) as f64 / 2.0;
+    let fly = -(1.0 - (r * DRAG / v).min(0.9)).ln() / DRAG;
+    let s = 0.5 + 0.35 * (t * 0.53).sin() + 0.15 * (t * 1.37 + 2.0).sin();
+    let lead = LEAD.0 + (LEAD.1 - LEAD.0) * s;
+    // Off across the line of sight, round and round.
+    let sight = (d.pos - at).normalize_or(DVec3::Y);
+    let u = sight.cross(DVec3::Y).normalize_or(DVec3::X);
+    let w = u.cross(sight);
+    let a = t * 0.41;
+    let miss = MISS.0 + (MISS.1 - MISS.0) * (0.5 + 0.5 * (t * 0.83 + 1.0).sin());
+    let side = u * a.cos() + w * a.sin();
+    let mut off = d.vel * (fly * (lead - 1.0)) + side * miss;
+    // The lead's error must not take the miss back: at least `MISS.0` off to the side.
+    let across = off.dot(side);
+    if across < MISS.0 {
+        off += side * (MISS.0 - across);
+    }
+    // And raised for the rounds' drop.
+    let drop = DVec3::Y * (0.5 * 9.81 * fly * fly);
+    d.pos + d.vel * fly + off + drop
 }
 
 /// Searchlight `k` of a town at `pos`, and its sweep's seed.
@@ -702,6 +737,37 @@ mod tests {
         // A neutral town's lights catch nothing.
         aim_lights(&mut s, 0, &[drone(2, 0.0, false)], None, 0.0, 0.1);
         assert_eq!(s.track[0], None);
+    }
+
+    #[test]
+    fn rounds_miss_drones() {
+        let at = DVec3::ZERO;
+        for (k, &(x, z, vx)) in
+            [(0.0, -2000.0, 50.0), (800.0, -1500.0, -50.0), (3000.0, 0.0, 0.0)].iter().enumerate()
+        {
+            let d = Drone {
+                unit: 0,
+                pos: DVec3::new(x, 600.0, z),
+                vel: DVec3::new(vx, 0.0, 10.0),
+                blue: false,
+            };
+            for i in 0..200 {
+                let t = i as f64 * 0.37 + k as f64 * 11.0;
+                let (az, el) = look(at, miss_point(at, &d, t));
+                let el = el.to_radians();
+                let dir = Vec3::new(az.sin() * el.cos(), el.sin(), -az.cos() * el.cos());
+                for speed in [SPEED.0, SPEED.1] {
+                    let mut r =
+                        Round { pos: at, vel: (dir * speed).as_dvec3(), age: 0.0, burn: 9.0 };
+                    let mut closest = f64::MAX;
+                    while r.age < BURN.1 {
+                        r.fly(1.0 / 120.0);
+                        closest = closest.min(r.pos.distance(d.pos + d.vel * r.age as f64));
+                    }
+                    assert!(closest > 25.0, "t {t} speed {speed}: {closest:.0} m");
+                }
+            }
+        }
     }
 
     #[test]
