@@ -85,6 +85,9 @@ pub struct Settings {
     /// Realistic missile guidance (`stealth_sim::SimOptions::realistic_guidance`); off with
     /// `--classic-guidance`.
     pub realistic_guidance: bool,
+    /// Rolling hills and highlands on the ground; the classic flat ground with
+    /// `--classic-terrain` (`stealth_sim::SimOptions::classic_terrain`).
+    pub realistic_terrain: bool,
     /// `--tacview`: the flight is saved as a Tacview ACMI file when it ends.
     pub tacview: bool,
     /// `--tacview-real-time`: the flight is sent to Tacview while it is flown
@@ -266,6 +269,7 @@ impl Settings {
             no_crashes: has("--no-crashes"),
             realistic_damage: has("--realistic-damage"),
             realistic_guidance: !has("--classic-guidance"),
+            realistic_terrain: !has("--classic-terrain"),
             tacview: has("--tacview"),
             tacview_real_time: has("--tacview-real-time"),
             tacview_address: get(&a, "--tacview-address")

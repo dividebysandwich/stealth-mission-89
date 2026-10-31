@@ -560,7 +560,7 @@ fn ground(
             _ => (
                 theater.id.clone(),
                 stealth_host::theater::relief(&theater.id),
-                stealth_host::theater::hills(&theater.id),
+                theater.hills.clone(),
             ),
         };
         heights(&mut c, &relief.1, &relief.2, (centre, scale));

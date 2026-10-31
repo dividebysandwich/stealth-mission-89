@@ -360,11 +360,11 @@ fn build_scenery(
     if !loaded {
         return;
     }
-    let key = &theater.id;
+    let key = &layout_key(&theater.id);
     cache.collect();
     let done = cache.done.as_ref().filter(|(k, _)| k == key).map(|(_, l)| l.clone());
     let Some(Layout { ground, net, airfields: fields }) = done else {
-        if !cache.making(key) {
+        if !cache.making(&theater.id) {
             let source = LayoutSource::gather(
                 &theater,
                 &handles,
@@ -568,30 +568,37 @@ fn prefetch_layout(
     mut library: ResMut<ModelLibrary>,
     server: Res<AssetServer>,
     assets: ModelAssets,
-    mut theater: Local<Option<Theater>>,
+    mut theater: Local<Option<(String, Theater)>>,
 ) {
     let mission = state.mission.as_ref().and_then(|m| m.as_ref().ok());
-    let id = match mission {
+    let id: String = match mission {
         Some(m) if !window.open => m.theater_code.to_ascii_lowercase(),
         _ => crate::menu::THEATERS[state.theater.min(crate::menu::THEATERS.len() - 1)].0.into(),
     };
+    let key = layout_key(&id);
     cache.collect();
-    let known = |k: Option<&String>| k == Some(&id);
+    let known = |k: Option<&String>| k == Some(&key);
     if known(cache.done.as_ref().map(|d| &d.0)) || known(cache.making.as_ref().map(|m| &m.0)) {
         return;
     }
-    if theater.as_ref().is_none_or(|t| t.id != id) {
-        *theater = Some(Theater::load(&id));
+    if theater.as_ref().is_none_or(|(k, _)| *k != key) {
+        *theater = Some((key.clone(), Theater::load(&id)));
     }
     let loaded = [id.as_str(), "special_targets"]
         .map(|f| library.load(&server, f))
         .iter()
         .all(|h| assets.gltfs.get(h).is_some());
-    let Some(t) = theater.as_ref().filter(|_| loaded) else { return };
+    let Some((_, t)) = theater.as_ref().filter(|_| loaded) else { return };
     let day = crate::palette::load_theater_palettes(&id).day;
     let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), &assets, &library.files, &day);
-    cache.making = Some((id, make_layout(source)));
+    cache.making = Some((key, make_layout(source)));
     *theater = None;
+}
+
+/// The layout cache's key of a theater: the classic flat terrain's layout (its towns and roads
+/// are laid out without the hills) is another.
+fn layout_key(id: &str) -> String {
+    if stealth_host::theater::classic_terrain() { format!("{id}/classic") } else { id.into() }
 }
 
 impl LayoutCache {
@@ -607,7 +614,8 @@ impl LayoutCache {
 
     /// The layout of this theater is being made.
     pub fn making(&self, id: &str) -> bool {
-        self.making.as_ref().is_some_and(|(k, _)| k == id)
+        let key = layout_key(id);
+        self.making.as_ref().is_some_and(|(k, _)| *k == key)
     }
 
     /// The layout of a theater: the kept one, or made now.
@@ -647,7 +655,7 @@ pub fn map_scenery(
     let Some(style) = style::Style::for_theater(&theater.id, theater.index) else {
         return MapScenery::default();
     };
-    let layout = cache.get_or_make(&theater.id, || {
+    let layout = cache.get_or_make(&layout_key(&theater.id), || {
         LayoutSource::gather(theater, &ShapeHandles::for_map(theater), assets, files, day)
     });
     let (ground, net) = (&layout.ground, &layout.net);

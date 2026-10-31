@@ -1012,6 +1012,7 @@ fn rules_text(r: &stealth_host::Rules) -> String {
         (r.continuous_time, "continuous time"),
         (r.realistic_weapons, "realistic F-117A weapons"),
         (r.friendly_fire, "friendly fire"),
+        (r.classic_terrain, "classic terrain"),
     ]
     .iter()
     .filter(|x| x.0)

@@ -319,6 +319,7 @@ fn start_combat(
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
+            classic_terrain: !settings.realistic_terrain,
             ..default()
         },
     };

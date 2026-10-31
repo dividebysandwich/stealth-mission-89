@@ -210,6 +210,7 @@ impl Plugin for WorldPlugin {
             .init_resource::<StreamedCells>()
             .init_resource::<StreamSites>()
             .init_resource::<TileOverrides>()
+            .add_systems(First, follow_terrain_rule)
             .add_systems(OnEnter(AppState::Flight), load_theater.in_set(SetupSet::World))
             .add_systems(OnExit(AppState::Flight), unload_theater)
             .add_systems(Update, stream_tiles.run_if(resource_exists::<Theater>))
@@ -219,6 +220,21 @@ impl Plugin for WorldPlugin {
                     .chain()
                     .before(bevy::transform::TransformSystems::Propagate),
             );
+    }
+}
+
+/// The theaters are loaded with the hills of the terrain rule in force: the campaign's (a coop
+/// server's), else the player's (`stealth_host::theater::set_classic_terrain`).
+fn follow_terrain_rule(
+    settings: Res<crate::settings::Settings>,
+    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+) {
+    let classic = match campaign {
+        Some(c) => c.rules.classic_terrain,
+        None => !settings.realistic_terrain,
+    };
+    if classic != stealth_host::theater::classic_terrain() {
+        stealth_host::theater::set_classic_terrain(classic);
     }
 }
 

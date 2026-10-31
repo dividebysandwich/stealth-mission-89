@@ -94,7 +94,8 @@ impl Host {
         let mission = glue::base_mission(&setup, data)?;
         let mut state = CampaignState::new(setup, &mission.world);
         state.rules = Some(rules.into());
-        state.terrain = glue::terrain(&state.setup, data);
+        crate::theater::set_classic_terrain(rules.classic_terrain);
+        state.terrain = glue::terrain(&state.setup, data, rules.classic_terrain);
         Ok(Self::with_state(state, mission, rules))
     }
 
@@ -104,7 +105,8 @@ impl Host {
         let mission = glue::base_mission(&state.setup, data)?;
         let rules = state.rules.map_or(rules, Rules::from);
         state.rules = Some(rules.into());
-        state.terrain = glue::terrain(&state.setup, data);
+        crate::theater::set_classic_terrain(rules.classic_terrain);
+        state.terrain = glue::terrain(&state.setup, data, rules.classic_terrain);
         Ok(Self::with_state(state, mission, rules))
     }
 

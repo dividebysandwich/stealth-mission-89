@@ -358,6 +358,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (!settings.auto_trim, "--no-auto-trim"),
         (settings.realistic_damage, "--realistic-damage"),
         (!settings.realistic_guidance, "--classic-guidance"),
+        (!settings.realistic_terrain, "--classic-terrain"),
         (settings.tacview, "--tacview"),
         (settings.tacview_real_time, "--tacview-real-time"),
         (settings.air_defence, "--air-defence"),
@@ -1511,6 +1512,18 @@ pub(crate) fn realism_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             "Missile guidance", "Classic: missiles flying straight at their target",
             "Realistic: proportional navigation to the collision point; motors burn out and the missiles glide on, losing speed with every turn (smoke only while the motor burns)",
             "Realistic: SAMs loft against distant targets; the AIM-120 flies straight for 3 s (pull up to lob it)",
+        ],
+    )
+    .changed()
+    {
+        settings.set_changed();
+    }
+    let s = settings.bypass_change_detection();
+    if facts(
+        two_way_switch(ui, "Terrain", &mut s.realistic_terrain, ("CLASSIC", "REAL")),
+        &[
+            "Terrain elevation", "Classic: the flat ground of the original game (mountains stay)",
+            "Realistic: rolling hills and higher highlands; ground units, SAM sites and pilots can hide behind them",
         ],
     )
     .changed()

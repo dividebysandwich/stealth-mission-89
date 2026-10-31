@@ -2623,6 +2623,7 @@ stealth-mission-89 --dedicated --theater ukraine --name "Friday night ops" --por
 | `--clear-sky` | A new campaign without weather (else it changes once or twice a day). |
 | `--classic-damage`, `--classic-guidance`, `--classic-time` | Classic damage, guidance and a fixed time of day instead of the default realistic damage, realistic guidance and moving sun and moon. |
 | `--no-crashes`, `--realistic-weapons`, `--friendly-fire` | The other rules. |
+| `--classic-terrain` | The classic flat ground instead of the default rolling hills and highlands; the players see and fly the server's terrain. |
 | `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's folder for your files, Appendix B). |
 | `--send-rate <hz>` | How often the moving world goes to the players, 1 to 15 times a second (default 7.5). More is smoother; less leaves bandwidth for more players. |
 | `--master <url>` | The server list to be on (default `https://sm-master.playspoon.com`; reported every 30 seconds). |

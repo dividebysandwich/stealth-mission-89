@@ -559,6 +559,9 @@ impl Sim {
             new_ai_shells: Vec::new(),
         };
         sim.set_fs(15);
+        if sim.opts.classic_terrain {
+            sim.flatten_hills();
+        }
         if let Some(d) = sim.opts.prior_damage.clone() {
             sim.apply_damage(&d);
         }

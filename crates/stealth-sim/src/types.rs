@@ -658,6 +658,9 @@ pub struct SimOptions {
     /// damage each other (without it they burst on the other aircraft harmlessly).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub friendly_fire: bool,
+    /// The classic flat ground: no rolling hills or highlands ([`crate::hills`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub classic_terrain: bool,
 }
 
 impl Default for SimOptions {
@@ -680,6 +683,7 @@ impl Default for SimOptions {
             air_defence: false,
             campaign: false,
             friendly_fire: false,
+            classic_terrain: false,
         }
     }
 }

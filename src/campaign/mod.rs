@@ -402,6 +402,7 @@ pub fn rules_of(s: &crate::settings::Settings, realistic_weapons: bool) -> Rules
         continuous_time: s.continuous_time,
         realistic_weapons,
         friendly_fire: false,
+        classic_terrain: !s.realistic_terrain,
     }
 }
 

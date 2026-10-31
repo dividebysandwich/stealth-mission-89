@@ -36,14 +36,17 @@ pub fn base_mission(setup: &CampaignSetup, data: &GameData) -> anyhow::Result<Mi
     Ok(m)
 }
 
-/// The theater's land and water, for the campaign to put its forward batteries on land.
-pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terrain {
+/// The theater's land and water, for the campaign to put its forward batteries on land (flat
+/// with the classic terrain).
+pub fn terrain(setup: &CampaignSetup, data: &GameData, classic: bool) -> stealth_campaign::Terrain {
+    let code = setup.theater_code.to_ascii_lowercase();
+    let hills = if classic { Default::default() } else { crate::theater::hills(&code) };
     let relief = crate::theater::relief(&setup.theater_code.to_ascii_lowercase());
     let relief = (!relief.bytes().is_empty()).then(|| std::sync::Arc::new(relief.bytes().to_vec()));
     stealth_campaign::Terrain::new(
         data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new),
         relief,
-        crate::theater::hills(&setup.theater_code.to_ascii_lowercase()),
+        hills,
     )
 }
 

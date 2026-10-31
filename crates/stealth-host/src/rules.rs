@@ -19,6 +19,9 @@ pub struct Rules {
     /// The players' missiles and gunfire damage each other.
     #[serde(default)]
     pub friendly_fire: bool,
+    /// The classic flat ground, without the rolling hills.
+    #[serde(default)]
+    pub classic_terrain: bool,
 }
 
 impl From<CampaignRules> for Rules {
@@ -30,6 +33,7 @@ impl From<CampaignRules> for Rules {
             continuous_time: r.continuous_time,
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
+            classic_terrain: r.classic_terrain,
         }
     }
 }
@@ -43,6 +47,7 @@ impl From<Rules> for CampaignRules {
             continuous_time: r.continuous_time,
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
+            classic_terrain: r.classic_terrain,
         }
     }
 }
@@ -55,6 +60,7 @@ impl Rules {
             realistic_damage: self.realistic_damage,
             realistic_guidance: self.realistic_guidance,
             friendly_fire: self.friendly_fire,
+            classic_terrain: self.classic_terrain,
             air_defence: true,
             campaign: true,
             ..Default::default()

@@ -77,6 +77,12 @@ pub struct Realism {
     pub realistic_damage: bool,
     pub realistic_guidance: bool,
     pub air_defence: bool,
+    #[serde(default = "yes")]
+    pub realistic_terrain: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// A saved flight.
@@ -221,6 +227,7 @@ fn save(
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
+            realistic_terrain: settings.realistic_terrain,
         },
         route: route.filter(|r| r.fits(m)).map_or_else(|| PlannedRoute::of(m), |r| r.clone()),
         loadout: loadout
@@ -315,6 +322,7 @@ pub fn fly(
     settings.realistic_damage = r.realistic_damage;
     settings.realistic_guidance = r.realistic_guidance;
     settings.air_defence = r.air_defence;
+    settings.realistic_terrain = r.realistic_terrain;
     *setup = crate::mission::setup_from_mission(m, start_dir);
     commands.insert_resource(ActiveMission(m.clone()));
     commands.insert_resource(save.route.clone());
@@ -518,6 +526,7 @@ mod tests {
                 realistic_damage: true,
                 realistic_guidance: true,
                 air_defence: true,
+                realistic_terrain: true,
             },
             passed_waypoints: vec![false; route.points.len()],
             waypoint_positions: Vec::new(),

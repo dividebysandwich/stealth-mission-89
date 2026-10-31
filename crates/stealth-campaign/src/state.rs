@@ -651,6 +651,8 @@ pub struct CampaignRules {
     pub realistic_weapons: bool,
     #[serde(default)]
     pub friendly_fire: bool,
+    #[serde(default)]
+    pub classic_terrain: bool,
 }
 
 fn blue() -> Side {

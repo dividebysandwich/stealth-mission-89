@@ -30,8 +30,24 @@ pub fn relief(code: &str) -> stealth_sim::relief::Relief {
     TheaterTiles::read_relief(|name| crate::assets::read(name.trim_start_matches("../")), code)
 }
 
-/// A theater's hills (`assets/theaters/<code>.hills`; flat without one).
+/// The classic flat ground for everything of this process: the rules of the flight or
+/// campaign being played (a coop server's for its players).
+static CLASSIC_TERRAIN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_classic_terrain(on: bool) {
+    CLASSIC_TERRAIN.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn classic_terrain() -> bool {
+    CLASSIC_TERRAIN.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// A theater's hills (`assets/theaters/<code>.hills`; flat without one, or with the classic
+/// terrain).
 pub fn hills(code: &str) -> stealth_sim::hills::Hills {
+    if classic_terrain() {
+        return Default::default();
+    }
     TheaterTiles::read_hills(|name| crate::assets::read(name.trim_start_matches("../")), code)
 }
 
