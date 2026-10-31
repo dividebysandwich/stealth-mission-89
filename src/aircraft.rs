@@ -511,7 +511,7 @@ static CH47: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    cockpits: &[(PanelStyle::Ch47, "cockpit_ch47")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
