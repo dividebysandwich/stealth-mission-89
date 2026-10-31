@@ -522,6 +522,10 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
             "Left MPD",
             "Threats: radars at their range and bearing, missile envelopes, our radar return (inside the dashed ring: unseen) and its last 30 s; warnings (red), cautions (amber), advisories (green) flash until the master caution",
         ),
+        CanvasRole::Rmpd if style == PanelStyle::Ch47 => (
+            "Centre display",
+            "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow",
+        ),
         CanvasRole::Rmpd => {
             ("Right MPD", "Engines: rotor speed, torque, temperatures, oil, fuel and fuel flow")
         }
@@ -1030,6 +1034,7 @@ mod tests {
             PanelStyle::Rah66,
             PanelStyle::Av8b,
             PanelStyle::Oh58,
+            PanelStyle::Ch47,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));

@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py` and `build_cockpit_oh58.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py` and `build_cockpit_ch47.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -38,6 +38,9 @@ pub enum PanelStyle {
     /// The OH-58D's: side by side, one wide panel with two large MFDs either side of the
     /// standby instruments, the CDU down the pedestal.
     Oh58,
+    /// The CH-47F's: side by side, one wide panel with two MFDs in front of each pilot (the
+    /// copilot's dark) and a large engine display between them.
+    Ch47,
 }
 
 /// A rectangle in panel pixels.
@@ -199,8 +202,10 @@ pub struct PanelLayout {
     pub tfr: Option<PxRect>,
     /// Data entry display: the up-front controls' readout (none on the classic panel).
     pub ded: Option<PxRect>,
-    /// The RAH-66's portrait multipurpose displays, left (warnings) and right (engines).
-    pub mpds: Option<(PxRect, PxRect)>,
+    /// The portrait multipurpose displays: the left one (warnings; the RAH-66's) and the right
+    /// one (engines; the RAH-66's, the CH-47F's centre display).
+    pub lmpd: Option<PxRect>,
+    pub rmpd: Option<PxRect>,
 }
 
 /// Bezel button cap size (millimetres; turned on end down the sides).
@@ -229,6 +234,7 @@ impl PanelLayout {
             PanelStyle::Rah66 => Self::rah66(),
             PanelStyle::Av8b => Self::av8b(),
             PanelStyle::Oh58 => Self::oh58(),
+            PanelStyle::Ch47 => Self::ch47(),
         }
     }
 
@@ -426,7 +432,8 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded: None,
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
@@ -618,7 +625,8 @@ impl PanelLayout {
                 DED_W,
                 DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32,
             )),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
@@ -696,7 +704,64 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded,
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
+        }
+    }
+
+    /// The CH-47F's panel: the UH-60A's (millimetres, x right and y down, life size;
+    /// `tools/models/build_cockpit_ch47.py`) on one wide panel across the cockpit after the
+    /// CH-47F's, its origin in front of the pilot (in the right seat; the cabin's centre line is
+    /// at x -620, the copilot's dark MFDs are only modelled): the pilot's two MFDs side by side
+    /// under the warning lights, the large centre display on the centre line showing the engines
+    /// (`rmpd`, the RAH-66's engine page), the standby instruments and the engine gauges between
+    /// it and the pilot's MFDs, the gear lights with the flight control caps and the fuel and EMV
+    /// readouts under them (the panel reaches down only between the pilots: the chin windows
+    /// show under it in front of each). The CDU, the cautions and the countermeasures on the
+    /// centre console between the seats, as the UH-60A's.
+    pub fn ch47() -> Self {
+        let u = Self::uh60();
+        // The standby and engine instruments closer to the pilot's MFDs, clear of the centre
+        // display.
+        const DX: f32 = 45.0;
+        let items = u
+            .items
+            .iter()
+            .map(|p| {
+                let r = p.rect;
+                let by = |dx: f32| rect(r.x + dx, r.y, r.w, r.h);
+                let rect = match p.elem {
+                    // The gear lights, FLAPS, BRAKE, AUTO, HOVER and BAY under the standby
+                    // instruments.
+                    Elem::GearLights
+                    | Elem::Lamp(
+                        LampId::Flaps | LampId::Brake | LampId::Auto | LampId::Hover | LampId::Bay,
+                        _,
+                    ) => by(-292.0),
+                    // Fuel, the engine readouts and the EMV gauge under the engine gauges.
+                    _ if r.x < 1000.0 && r.x >= 60.0 && r.y >= 100.0 => by(-482.0),
+                    Elem::Dial(
+                        Dial::Airspeed
+                        | Dial::Altimeter
+                        | Dial::Clock
+                        | Dial::Aoa
+                        | Dial::Vvi
+                        | Dial::Rpm
+                        | Dial::Ftit
+                        | Dial::Oil
+                        | Dial::Nozzle,
+                    ) => rect(r.x + DX, r.y, r.w, r.h),
+                    _ => r,
+                };
+                Placed { rect, ..*p }
+            })
+            .collect();
+        Self {
+            style: PanelStyle::Ch47,
+            items,
+            adi: rect(u.adi.x + DX, u.adi.y, u.adi.w, u.adi.h),
+            rmpd: Some(rect(-685.0, -95.0, 130.0, 182.0)),
+            ..u
         }
     }
 
@@ -845,7 +910,8 @@ impl PanelLayout {
             hsi: None,
             tfr: Some(rect(-284.0, -250.0, 58.0, 58.0)),
             ded: Some(rect(-46.0, -20.0, 92.0, 92.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
@@ -1064,7 +1130,8 @@ impl PanelLayout {
             hsi: Some(rect(-56.0, 72.0, 112.0, 112.0)),
             tfr: None,
             ded: Some(rect(-68.0, -256.0, 86.0, 86.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
@@ -1305,14 +1372,15 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
     /// The RAH-66's panel (millimetres, x right and y down from the centre), after the
     /// mock-up's: the two large MFDs side by side in the middle (the monochrome one left, the
     /// colour one right), a portrait multipurpose display outboard of each, centred between the
-    /// MFD bezels and the panel's ends at +-420 mm (`mpds`: the threats and warnings left, the
+    /// MFD bezels and the panel's ends at +-420 mm (`lmpd`, `rmpd`: the threats and warnings left, the
     /// engines right), the keyboard with its scratchpad (the `ded`) under them. No dials and no
     /// warning lights but the master caution: the landing gear and parking brake keys top left,
     /// the HUD modes and the master caution top centre, the jammers, the laser and the emergency
@@ -1436,7 +1504,8 @@ impl PanelLayout {
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            mpds: Some((rect(-378.0, -44.0, 100.0, 140.0), rect(278.0, -44.0, 100.0, 140.0))),
+            lmpd: Some(rect(-378.0, -44.0, 100.0, 140.0)),
+            rmpd: Some(rect(278.0, -44.0, 100.0, 140.0)),
         }
     }
 
@@ -1550,7 +1619,8 @@ impl PanelLayout {
                 DED_W,
                 DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32,
             )),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 
@@ -1783,7 +1853,8 @@ impl PanelLayout {
             hsi: Some(rect(-34.0, 44.0, 68.0, 68.0)),
             tfr: None,
             ded: Some(rect(95.0, -152.0, DED_W, DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
-            mpds: None,
+            lmpd: None,
+            rmpd: None,
         }
     }
 }
@@ -1803,7 +1874,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 10] {
+    fn all() -> [PanelLayout; 11] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -1815,6 +1886,7 @@ mod tests {
             PanelLayout::rah66(),
             PanelLayout::av8b(),
             PanelLayout::oh58(),
+            PanelLayout::ch47(),
         ]
     }
 
@@ -1825,7 +1897,7 @@ mod tests {
             let mut rects: Vec<PxRect> = l.items.iter().map(|p| p.rect).collect();
             rects.push(l.adi);
             rects.extend(l.rwr.iter().chain(&l.hsi).chain(&l.tfr).chain(&l.ded));
-            rects.extend(l.mpds.iter().flat_map(|&(a, b)| [a, b]));
+            rects.extend(l.lmpd.iter().chain(&l.rmpd));
             for m in &l.mfds {
                 rects.push(m.screen);
                 rects.extend(l.osbs(m).into_iter().map(|(_, r)| r));
@@ -1899,6 +1971,7 @@ mod tests {
             PanelLayout::rah66(),
             PanelLayout::av8b(),
             PanelLayout::oh58(),
+            PanelLayout::ch47(),
         ] {
             bezel_buttons_of(&l);
         }

@@ -278,7 +278,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::A10
         | PanelStyle::Rah66
         | PanelStyle::Av8b
-        | PanelStyle::Oh58 => MM_TEXELS,
+        | PanelStyle::Oh58
+        | PanelStyle::Ch47 => MM_TEXELS,
     }
 }
 
@@ -341,9 +342,9 @@ pub(super) fn screen(
                 matches!(s, ConsoleScreen::Eo | ConsoleScreen::Map | ConsoleScreen::Feed),
             )
         }
-        // Only the RAH-66 has the multipurpose displays.
+        // Only the RAH-66 and the CH-47F have the multipurpose displays.
         CanvasRole::Lmpd | CanvasRole::Rmpd => (
-            if layout.mpds.is_some() {
+            if (if role == CanvasRole::Lmpd { layout.lmpd } else { layout.rmpd }).is_some() {
                 let (w, h) = crate::mpd::MPD_CANVAS;
                 Canvas::scaled(w, h, crate::mpd::MPD_SCALE)
             } else {
@@ -716,6 +717,7 @@ mod tests {
             PanelStyle::Rah66,
             PanelStyle::Av8b,
             PanelStyle::Oh58,
+            PanelStyle::Ch47,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);
