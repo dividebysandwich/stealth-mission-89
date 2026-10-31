@@ -10,7 +10,9 @@ use stealth_mission::{Mission, MissionKind, Seed};
 use stealth_sim::WorldDamage;
 use stealth_sim::score::{MissionReport, Outcome};
 
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, group, section};
+use crate::menu::{
+    AMBER, DIM, GREEN, MenuState, THEATERS, big_button, group, icon, icon_text, section,
+};
 use crate::mission::MissionData;
 use crate::settings::Settings;
 
@@ -325,9 +327,8 @@ pub fn career_ui(
             (t.theater, t.roe, t.opponents, t.lockheed);
     }
     let width = crate::menu::wide_width(ctx);
-    crate::menu::menu_window(ctx, "Career", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("PILOT RECORDS").heading().color(BRIGHT));
-        ui.separator();
+    let window = crate::menu::menu_window(ctx, "Career", width);
+    crate::menu::Panel::new("PILOT RECORDS").note("CAREER").window(window, ctx, |ui| {
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(210.0);
@@ -387,7 +388,7 @@ pub fn career_ui(
                 if ui
                     .add_enabled(
                         !name.is_empty() && !taken && name.len() <= 24,
-                        egui::Button::new("ENLIST"),
+                        egui::Button::new(icon_text(ui, icon::ENLIST, "ENLIST")),
                     )
                     .clicked()
                 {
@@ -455,7 +456,8 @@ pub fn career_ui(
                             .small()
                             .color(DIM),
                         );
-                        if ui.add(big_button("FLY NEXT SORTIE").fill(DIM)).clicked() {
+                        if ui.add(big_button("FLY NEXT SORTIE").icon(icon::FLY).primary()).clicked()
+                        {
                             state.start_career(p, t);
                             state.mission_screen = true;
                             close = true;
@@ -470,7 +472,7 @@ pub fn career_ui(
                                 .to_ascii_lowercase()
                         )))
                         .on_hover_text("What you destroy stays destroyed for the rest of the tour");
-                        if ui.add(big_button("START TOUR").fill(DIM)).clicked() {
+                        if ui.add(big_button("START TOUR").icon(icon::START).primary()).clicked() {
                             let t = Tour {
                                 theater: state.theater,
                                 roe: state.roe,
@@ -513,13 +515,18 @@ pub fn career_ui(
             });
         });
         ui.add_space(8.0);
-        ui.separator();
+        crate::menu::footer_rule(ui);
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if ui.add(big_button("BACK")).on_hover_text("Back to the main menu").clicked() {
+            if ui
+                .add(big_button("BACK").icon(icon::BACK))
+                .on_hover_text("Back to the main menu")
+                .clicked()
+            {
                 close = true;
             }
             if ui
-                .add(big_button("OPTIONS"))
+                .add(big_button("OPTIONS").icon(icon::OPTIONS))
                 .on_hover_text("Game, graphics, sound and controls")
                 .clicked()
             {

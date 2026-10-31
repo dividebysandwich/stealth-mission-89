@@ -24,7 +24,7 @@ use crate::flight::{Aircraft, Player};
 use crate::flight_menu::FlightMenu;
 use crate::hud::{HudState, Waypoints};
 use crate::loadout::PlannedLoadout;
-use crate::menu::{AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, menu_window};
+use crate::menu::{AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, icon, menu_window};
 use crate::mission::{ActiveMission, PlannedRoute, clean_text};
 use crate::palette::{Palette, TimeOfDay};
 use crate::recorder::FlightRecord;
@@ -372,72 +372,84 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
     let mut close = escape && w.confirm_delete.is_none();
     let mut load = None;
     let width = crate::menu::wide_width(ctx).min(900.0);
-    menu_window(ctx, "Saved missions", width).show(ctx, |ui| {
-        ui.label(egui::RichText::new("SAVED MISSIONS").heading().color(BRIGHT));
-        ui.label(egui::RichText::new("Saved in flight from the menu: SAVE MISSION").color(DIM));
-        ui.separator();
-        if w.saves.is_empty() {
-            ui.label(egui::RichText::new("No saved missions").color(DIM));
-        }
-        egui::ScrollArea::vertical()
-            .id_salt("mission_saves")
-            .max_height(crate::campaign::SAVES_HEIGHT * 1.5)
-            .show(ui, |ui| {
-                for (name, summary) in &w.saves {
-                    ui.horizontal(|ui| {
-                        let label = match summary {
-                            Some(s) => {
-                                ui.vertical(|ui| {
-                                    ui.label(egui::RichText::new(&s.title).color(BRIGHT));
-                                    let small = |ui: &mut egui::Ui, text: String| {
-                                        ui.label(egui::RichText::new(text).small().color(DIM));
-                                    };
-                                    small(
-                                        ui,
-                                        format!(
-                                            "{}  -  {}  -  mission time {}:{:02}",
-                                            s.theater,
-                                            s.aircraft.name(),
-                                            s.mission_seconds / 60,
-                                            s.mission_seconds % 60,
-                                        ),
+    let window = menu_window(ctx, "Saved missions", width);
+    crate::menu::Panel::new("SAVED MISSIONS").note("SAVED IN FLIGHT: MENU > SAVE MISSION").window(
+        window,
+        ctx,
+        |ui| {
+            if w.saves.is_empty() {
+                ui.label(egui::RichText::new("No saved missions").color(DIM));
+            }
+            egui::ScrollArea::vertical()
+                .id_salt("mission_saves")
+                .max_height(crate::campaign::SAVES_HEIGHT * 1.5)
+                .show(ui, |ui| {
+                    for (name, summary) in &w.saves {
+                        ui.horizontal(|ui| {
+                            let label = match summary {
+                                Some(s) => {
+                                    ui.vertical(|ui| {
+                                        ui.label(egui::RichText::new(&s.title).color(BRIGHT));
+                                        let small = |ui: &mut egui::Ui, text: String| {
+                                            ui.label(egui::RichText::new(text).small().color(DIM));
+                                        };
+                                        small(
+                                            ui,
+                                            format!(
+                                                "{}  -  {}  -  mission time {}:{:02}",
+                                                s.theater,
+                                                s.aircraft.name(),
+                                                s.mission_seconds / 60,
+                                                s.mission_seconds % 60,
+                                            ),
+                                        );
+                                        small(ui, format!("Saved {}", saved_at(s.saved_at)));
+                                    });
+                                    format!("{}, {}", s.theater, s.title)
+                                }
+                                None => {
+                                    ui.label(
+                                        egui::RichText::new("Unreadable save (another version)")
+                                            .color(AMBER),
                                     );
-                                    small(ui, format!("Saved {}", saved_at(s.saved_at)));
-                                });
-                                format!("{}, {}", s.theater, s.title)
-                            }
-                            None => {
-                                ui.label(
-                                    egui::RichText::new("Unreadable save (another version)")
-                                        .color(AMBER),
-                                );
-                                name.clone()
-                            }
-                        };
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui
-                                .add(big_button("DELETE"))
-                                .on_hover_text("Delete this save")
-                                .clicked()
-                            {
-                                w.confirm_delete = Some((name.clone(), label));
-                            }
-                            if summary.is_some() && ui.add(big_button("LOAD")).clicked() {
-                                load = Some(name.clone());
-                            }
+                                    name.clone()
+                                }
+                            };
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add(big_button("DELETE").icon(icon::DELETE))
+                                        .on_hover_text("Delete this save")
+                                        .clicked()
+                                    {
+                                        w.confirm_delete = Some((name.clone(), label));
+                                    }
+                                    if summary.is_some()
+                                        && ui.add(big_button("LOAD").icon(icon::LOAD)).clicked()
+                                    {
+                                        load = Some(name.clone());
+                                    }
+                                },
+                            );
                         });
-                    });
-                    ui.separator();
-                }
-            });
-        if let Some(e) = &w.error {
-            ui.colored_label(AMBER, e);
-        }
-        ui.add_space(6.0);
-        if ui.add(big_button("BACK")).on_hover_text("Back to the single mission screen").clicked() {
-            close = true;
-        }
-    });
+                        ui.separator();
+                    }
+                });
+            if let Some(e) = &w.error {
+                ui.colored_label(AMBER, e);
+            }
+            crate::menu::footer_rule(ui);
+            ui.add_space(8.0);
+            if ui
+                .add(big_button("BACK").icon(icon::BACK))
+                .on_hover_text("Back to the single mission screen")
+                .clicked()
+            {
+                close = true;
+            }
+        },
+    );
     if let Some((name, label)) = w.confirm_delete.clone() {
         let answer = crate::campaign::delete_popup(ctx, "SAVE", &label, escape);
         if answer == Some(true) {

@@ -20,7 +20,9 @@ use stealth_net::client::{Client, ClientEvent};
 use stealth_net::server::Server;
 
 use crate::campaign::{ActiveCampaign, Role};
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, section};
+use crate::menu::{
+    AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, icon, icon_text, section,
+};
 use crate::mission::MissionData;
 use crate::net::{NetLink, Notice};
 use crate::settings::{AppState, MissionSetup};
@@ -321,11 +323,9 @@ fn multiplayer_window(
     let width = crate::menu::wide_width(ctx).min(1100.0);
     // The server list takes the room the screen leaves.
     let list_height = (ctx.content_rect().height() - 330.0).max(160.0);
-    crate::menu::menu_window(ctx, "Multiplayer", width).show(ctx, |ui| {
-        let title = if w.page == Page::Host { "MULTIPLAYER: HOST A GAME" } else { "MULTIPLAYER" };
-        ui.label(egui::RichText::new(title).heading().color(BRIGHT));
-        ui.label(egui::RichText::new("Coop in the dynamic campaign: fly the war together").color(DIM));
-        ui.add_space(6.0);
+    let title = if w.page == Page::Host { "MULTIPLAYER: HOST A GAME" } else { "MULTIPLAYER" };
+    let panel = crate::menu::Panel::new(title).note("COOP IN THE DYNAMIC CAMPAIGN");
+    panel.window(crate::menu::menu_window(ctx, "Multiplayer", width), ctx, |ui| {
         let named = !state.player_name.trim().is_empty();
         ui.horizontal_top(|ui| {
             area(ui, flash, |ui| {
@@ -350,14 +350,14 @@ fn multiplayer_window(
                     );
                     if w.joining.is_some() {
                         ui.add(egui::Spinner::new().color(GREEN));
-                        if ui.button("CANCEL").clicked() {
+                        if ui.button(icon_text(ui, icon::CANCEL, "CANCEL")).clicked() {
                             if let Some((mut c, _)) = w.joining.take() {
                                 c.leave();
                             }
                             w.status = None;
                         }
                     } else if ui
-                        .add_enabled(!state.server_addr.trim().is_empty(), egui::Button::new("CONNECT"))
+                        .add_enabled(!state.server_addr.trim().is_empty(), egui::Button::new(icon_text(ui, icon::JOIN, "CONNECT")))
                         .clicked()
                     {
                         if named {
@@ -444,7 +444,7 @@ fn multiplayer_window(
                                 }
                             }
                         });
-                        let clicked = ui.add(big_button("HOST NEW")).clicked();
+                        let clicked = ui.add(big_button("HOST NEW").icon(icon::HOST)).clicked();
                         no_name |= clicked && !named;
                         if (clicked && named) || auto_host {
                             let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
@@ -493,7 +493,7 @@ fn multiplayer_window(
                                 let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
                                 ui.horizontal(|ui| {
                                     ui.label(format!("{theater:<22} {hours:>5.1} h"));
-                                    let clicked = ui.button("HOST").clicked();
+                                    let clicked = ui.button(icon_text(ui, icon::HOST, "HOST")).clicked();
                                     no_name |= clicked && !named;
                                     if clicked && named {
                                         let rules = host_rules(&settings, &state);
@@ -505,7 +505,7 @@ fn multiplayer_window(
                                             Err(e) => Err(format!("{e:#}")),
                                         });
                                     }
-                                    if ui.button("DELETE").on_hover_text("Delete this saved campaign").clicked() {
+                                    if ui.button(icon_text(ui, icon::DELETE, "DELETE")).on_hover_text("Delete this saved campaign").clicked() {
                                         w.confirm_delete = Some((name.clone(), format!("{theater}, {hours:.1} h played")));
                                     }
                                 });
@@ -515,15 +515,16 @@ fn multiplayer_window(
                 });
             }
         }
-        ui.separator();
+        crate::menu::footer_rule(ui);
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if ui.add_enabled(w.joining.is_none(), big_button("BACK")).clicked() {
+            if ui.add_enabled(w.joining.is_none(), big_button("BACK").icon(icon::BACK)).clicked() {
                 close = true;
             }
             // A browser can't host (no UDP).
             if w.page == Page::Join && !cfg!(target_arch = "wasm32") {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add_enabled(w.joining.is_none(), big_button("HOST A GAME")).clicked() {
+                    if ui.add_enabled(w.joining.is_none(), big_button("HOST A GAME").icon(icon::HOST)).clicked() {
                         w.page = Page::Host;
                     }
                 });
@@ -626,7 +627,7 @@ fn area(ui: &mut egui::Ui, flash: bool, add: impl FnOnce(&mut egui::Ui)) {
     let (stroke, fill) = if flash {
         (egui::Stroke::new(1.0, AMBER), AMBER.gamma_multiply(0.35))
     } else {
-        (egui::Stroke::new(1.0, DIM), egui::Color32::TRANSPARENT)
+        (egui::Stroke::new(1.0, crate::menu::FRAME), egui::Color32::TRANSPARENT)
     };
     egui::Frame::group(ui.style()).stroke(stroke).fill(fill).inner_margin(10.0).show(ui, add);
 }
@@ -639,7 +640,7 @@ fn server_list(ui: &mut egui::Ui, w: &mut MultiplayerWindow, height: f32) -> Opt
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if w.fetching.is_some() {
                 ui.add(egui::Spinner::new().color(GREEN));
-            } else if ui.button("REFRESH").clicked() {
+            } else if ui.button(icon_text(ui, icon::REFRESH, "REFRESH")).clicked() {
                 w.refresh_list();
             }
             let n: usize = w.servers.iter().map(|s| s.report.players.len()).sum();
@@ -698,7 +699,10 @@ fn server_list(ui: &mut egui::Ui, w: &mut MultiplayerWindow, height: f32) -> Opt
                     if !ours {
                         ui.label(egui::RichText::new("other version").small().color(DIM));
                     } else if ui
-                        .add_enabled(!full && w.joining.is_none(), egui::Button::new("JOIN"))
+                        .add_enabled(
+                            !full && w.joining.is_none(),
+                            egui::Button::new(icon_text(ui, icon::JOIN, "JOIN")),
+                        )
                         .clicked()
                     {
                         pick = Some(s.addr.clone());

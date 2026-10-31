@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 /// The directories read with `assets::read`; the rest (models, sounds, shaders) are loaded
 /// through Bevy's asset server.
-const EMBEDDED: [&str; 5] = ["sim", "mission", "theaters", "palettes", "images"];
+const EMBEDDED: [&str; 6] = ["sim", "mission", "theaters", "palettes", "images", "fonts"];
 
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() != Ok("wasm32") {

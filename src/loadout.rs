@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use stealth_mission::{Mission, Plane};
 
 use crate::aircraft::AircraftKind;
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, section};
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, icon, section};
 
 /// The weapons (index = weapon type): name, what it is for.
 pub const WEAPONS: [(&str, &str); 23] = [
@@ -972,43 +972,38 @@ pub fn loadout_ui(
         (screen.width() - 32.0).clamp(600.0, 1100.0),
         (screen.height() - 32.0).clamp(400.0, 760.0),
     );
-    egui::Window::new("Loadout")
+    let window = egui::Window::new("Loadout")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
-        .fixed_size(size)
-        .frame(egui::Frame::window(&ctx.global_style()).inner_margin(12.0))
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("LOADOUT").heading().color(BRIGHT));
-                ui.label(
-                    egui::RichText::new(format!("  {}", aircraft.name().to_ascii_uppercase()))
-                        .color(DIM),
-                );
-            });
-            ui.separator();
-            editor(ui, w, lo, &m, size.y);
-            ui.separator();
-            ui.horizontal(|ui| {
-                if facts(
-                    ui.add(big_button("BRIEFED")),
-                    &["The stores the mission was briefed with"],
-                )
+        .fixed_size(size);
+    let panel = crate::menu::Panel::new("LOADOUT").note(aircraft.name().to_ascii_uppercase());
+    panel.window(window, ctx, |ui| {
+        editor(ui, w, lo, &m, size.y);
+        crate::menu::footer_rule(ui);
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            if facts(
+                ui.add(big_button("BRIEFED").icon(icon::BRIEFED)),
+                &["The stores the mission was briefed with"],
+            )
+            .clicked()
+            {
+                *lo = PlannedLoadout::of(&m, aircraft);
+            }
+            if facts(ui.add(big_button("CLEAR").icon(icon::CLEAR)), &["Every hardpoint empty"])
                 .clicked()
-                {
-                    *lo = PlannedLoadout::of(&m, aircraft);
+            {
+                lo.stores.iter_mut().for_each(|s| *s = None);
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.add(big_button("DONE").icon(icon::DONE).primary()).clicked() {
+                    w.open = false;
                 }
-                if facts(ui.add(big_button("CLEAR")), &["Every hardpoint empty"]).clicked() {
-                    lo.stores.iter_mut().for_each(|s| *s = None);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add(big_button("DONE").fill(DIM)).clicked() {
-                        w.open = false;
-                    }
-                });
             });
         });
+    });
 }
 
 /// The editor: the aircraft's hardpoints and the stores of the selected one (the menu's
