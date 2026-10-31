@@ -99,6 +99,9 @@ pub struct PlayerNotices {
     pub field_focus: bool,
     /// The campaign's chat history is in the log.
     pub seeded: bool,
+    /// The coop radio: who is talking, or this player transmitting (a line under the
+    /// messages, keeping the panel up).
+    pub radio: Option<String>,
 }
 
 impl PlayerNotices {
@@ -330,7 +333,7 @@ fn cockpit_panel(
     }
     let shown = notices.shown();
     let typing = notices.typing.is_some();
-    if shown.is_empty() && !typing {
+    if shown.is_empty() && !typing && notices.radio.is_none() {
         *up = 0.0;
         for (_, _, mut v, _) in &mut panels {
             v.set_if_neq(Visibility::Hidden);
@@ -363,7 +366,13 @@ fn cockpit_panel(
         let blink = (time.elapsed_secs() * 2.0) as u32 % 2 == 0;
         format!("{t}{}", if blink { "_" } else { " " })
     });
-    let want = (lines(shown), field);
+    let mut lines = lines(shown);
+    if let Some(radio) = &notices.radio {
+        for text in wrap(radio, line_chars()) {
+            lines.push(Line { text, name: 0, name_ink: OWN, ink: OWN });
+        }
+    }
+    let want = (lines, field);
     let mut height = PITCH;
     for (mut panel, _, _, _) in &mut panels {
         if panel.0.as_ref() != Some(&want) {
@@ -383,7 +392,7 @@ fn cockpit_panel(
         let at = centre * (1.0 - forward);
         Transform::from_translation(at).with_scale(size.extend(1.0) * PULL * (1.0 - forward))
     };
-    let a = alpha(*up, shown, typing);
+    let a = alpha(*up, shown, typing || notices.radio.is_some());
     for (_, mut tf, mut v, m) in &mut panels {
         *tf = place(0.005);
         v.set_if_neq(Visibility::Inherited);

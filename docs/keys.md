@@ -58,5 +58,6 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | volume / detail level | Alt V / Alt D |
 | | kneeboard (remake): show, next page, hide | K |
 | | chat (remake, multiplayer): type a message, Enter sends, Esc cancels | Y |
+| | radio (remake, multiplayer): hold to talk to every player | CapsLock |
 | | record an animated GIF (remake, also in the menus): start / stop; size and frame rate in OPTIONS > GAME, saved in your Pictures folder | F12 |
 | Training | go to training / resupply / day-night | Alt T / Alt R / Alt N |

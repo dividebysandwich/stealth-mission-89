@@ -8,8 +8,8 @@ use stealth_mission::{MissionKind, Sky};
 
 use crate::menu::MenuState;
 use crate::settings::{
-    DEFAULT_PLAYER_LABEL_SIZE, DEFAULT_VR_COCKPIT_SCALE, PLAYER_LABEL_SIZE_RANGE, Settings,
-    VR_COCKPIT_SCALE_RANGE,
+    DEFAULT_PLAYER_LABEL_SIZE, DEFAULT_VR_COCKPIT_SCALE, MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE,
+    Settings, VR_COCKPIT_SCALE_RANGE,
 };
 
 /// `config/<name>` in the player's folder (`stealth_host::store`); None in the browser.
@@ -87,6 +87,10 @@ pub struct Prefs {
     pub player_labels: bool,
     pub player_label_size: f32,
     pub atc: bool,
+    pub voice: bool,
+    pub voice_volume: f32,
+    pub mic_gain: f32,
+    pub mic_device: String,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
@@ -155,6 +159,10 @@ impl Default for Prefs {
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             atc: true,
+            voice: true,
+            voice_volume: 1.0,
+            mic_gain: 1.0,
+            mic_device: String::new(),
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
@@ -241,6 +249,10 @@ impl Prefs {
             player_labels: s.player_labels,
             player_label_size: s.player_label_size,
             atc: s.atc,
+            voice: s.voice,
+            voice_volume: s.voice_volume,
+            mic_gain: s.mic_gain,
+            mic_device: s.mic_device.clone(),
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
@@ -301,6 +313,10 @@ impl Prefs {
         s.tooltips = self.tooltips;
         s.player_labels = self.player_labels;
         s.atc = self.atc;
+        s.voice = self.voice;
+        s.voice_volume = self.voice_volume.clamp(0.0, 1.0);
+        s.mic_gain = self.mic_gain.clamp(MIC_GAIN_RANGE.0, MIC_GAIN_RANGE.1);
+        s.mic_device = self.mic_device.clone();
         s.player_label_size = self
             .player_label_size
             .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
@@ -346,6 +362,10 @@ impl Prefs {
         self.player_labels = s.player_labels;
         self.player_label_size = s.player_label_size;
         self.atc = s.atc;
+        self.voice = s.voice;
+        self.voice_volume = s.voice_volume;
+        self.mic_gain = s.mic_gain;
+        self.mic_device = s.mic_device.clone();
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;

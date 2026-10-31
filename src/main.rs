@@ -102,6 +102,7 @@ mod tfr;
 mod trackcam;
 mod trails;
 mod viewer;
+mod voice;
 #[cfg(feature = "xr")]
 mod vr_menu;
 mod weather;
@@ -327,6 +328,7 @@ fn main() {
             multiplayer_menu::MultiplayerMenuPlugin,
             savegame::SaveGamePlugin,
             atc::AtcPlugin,
+            voice::VoicePlugin,
         ));
     mission::from_args(&mut app);
     campaign::from_args(&mut app);

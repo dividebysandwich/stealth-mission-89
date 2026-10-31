@@ -114,6 +114,12 @@ pub struct Settings {
     pub player_label_size: f32,
     /// Air traffic control's radio calls (`atc.rs`; on by default).
     pub atc: bool,
+    /// The coop radio (`voice`): push-to-talk on, the voices' volume (0..1), the microphone's
+    /// gain and its device (empty: the default one).
+    pub voice: bool,
+    pub voice_volume: f32,
+    pub mic_gain: f32,
+    pub mic_device: String,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -140,6 +146,8 @@ pub const VR_COCKPIT_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.7..=1.5;
 /// Default and range of the player labels' size.
 pub const DEFAULT_PLAYER_LABEL_SIZE: f32 = 0.5;
 pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
+/// The coop radio microphone's gain, lowest and highest.
+pub const MIC_GAIN_RANGE: (f32, f32) = (0.25, 4.0);
 
 /// What the next flight looks like (filled by the menu or command-line flags).
 #[derive(Resource, Debug, Clone)]
@@ -293,6 +301,10 @@ impl Settings {
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             atc: true,
+            voice: true,
+            voice_volume: 1.0,
+            mic_gain: 1.0,
+            mic_device: String::new(),
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,

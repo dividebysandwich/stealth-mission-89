@@ -305,8 +305,8 @@ pub struct InputConfig {
 /// (Q / E); the VR thumbsticks as a HOTAS (the right one targets only). 6: the trim keys
 /// (Alt + arrows, Alt + Home). 7: the master caution key (Alt + C). 8: the free view key
 /// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
-/// recording key (F12).
-const VERSION: u32 = 10;
+/// recording key (F12). 11: the radio's push-to-talk key (CapsLock).
+const VERSION: u32 = 11;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -895,6 +895,7 @@ pub fn read_hotas(
                     continue;
                 }
                 controls.fire |= now && a == Action::FireWeapon;
+                controls.talk |= now && a == Action::Talk;
                 if console {
                     continue;
                 }

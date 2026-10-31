@@ -47,6 +47,8 @@ pub struct NetInbox {
     pub campaign: Vec<ClientEvent>,
     /// Chat messages (sender, text).
     pub chat: Vec<(String, String)>,
+    /// The radio's voice (sender, packet).
+    pub voice: Vec<(stealth_campaign::PlayerId, stealth_net::voice::VoicePacket)>,
 }
 
 impl NetInbox {
@@ -59,10 +61,15 @@ impl NetInbox {
             ClientEvent::Slow(s) => self.sim.push(SimMsg::Slow(s)),
             ClientEvent::Events(e) => self.sim.push(SimMsg::Events(e)),
             ClientEvent::Chat { from, text } => self.chat.push((from, text)),
+            ClientEvent::Voice { from, packet } => self.voice.push((from, packet)),
             e => self.campaign.push(e),
         }
     }
 }
+
+/// Taking in the server's messages (the systems using them run after).
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NetSystems;
 
 /// Something the menu tells the player when he is back (why a coop game ended).
 #[derive(Resource, Default)]
@@ -76,7 +83,10 @@ impl Plugin for NetPlugin {
             .init_resource::<Notice>()
             .add_systems(
                 Update,
-                pump_client.before(crate::combat::CombatSystems).run_if(resource_exists::<NetLink>),
+                pump_client
+                    .in_set(NetSystems)
+                    .before(crate::combat::CombatSystems)
+                    .run_if(resource_exists::<NetLink>),
             )
             .add_systems(Last, goodbye.run_if(resource_exists::<NetLink>));
     }

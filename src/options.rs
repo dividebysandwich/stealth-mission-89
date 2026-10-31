@@ -4,8 +4,8 @@
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
 //!   player labels, the VR cockpit size and Tacview.
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
-//! - SOUND: the master, engine, effects, warning and radar warning volumes, which radar warning
-//!   tones sound, the engine low-pass inside the aircraft.
+//! - SOUND: the master, engine, effects, warning, radar warning and radio volumes, which radar
+//!   warning tones sound, the engine low-pass inside the aircraft, the coop radio's microphone.
 //! - CONTROLS: the key and joystick bindings (the CONTROLS dialog, `input_dialog.rs`) and head
 //!   tracking.
 //!
@@ -20,7 +20,7 @@ use crate::menu::{
     AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, menu_window, section,
     slide_switch,
 };
-use crate::settings::{PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 #[derive(Resource, Default)]
 pub struct OptionsWindow {
@@ -395,6 +395,7 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             "RWR",
             &["The radar warning tones, as a part of the warnings' volume"][..],
         ),
+        (&mut s.voice_volume, "Radio", &["The other players talking on the coop radio"][..]),
     ] {
         let mut percent = (*v * 100.0).round();
         ui.horizontal(|ui| {
@@ -431,9 +432,55 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         ],
     )
     .changed();
+    section(ui, "Coop radio");
+    changed |= facts(
+        ui.checkbox(&mut s.voice, "Push-to-talk"),
+        &[
+            "Hold the talk key (CapsLock, or a joystick or VR button mapped to Talk) and every player hears you",
+            "The microphone opens the first time you press it",
+        ],
+    )
+    .changed();
+    ui.add_enabled_ui(s.voice, |ui| {
+        let mut percent = (s.mic_gain * 100.0).round();
+        ui.horizontal(|ui| {
+            ui.spacing_mut().slider_width = 220.0;
+            ui.label(format!("{:<9}", "MIC GAIN"));
+            let range = MIC_GAIN_RANGE.0 * 100.0..=MIC_GAIN_RANGE.1 * 100.0;
+            let slider =
+                egui::Slider::new(&mut percent, range).step_by(5.0).fixed_decimals(0).suffix("%");
+            if facts(ui.add(slider), &["How loud your microphone goes out", "100%: as it is"])
+                .changed()
+            {
+                s.mic_gain = percent / 100.0;
+                changed = true;
+            }
+        });
+        let devices = mic_devices();
+        if !devices.is_empty() {
+            let shown = if s.mic_device.is_empty() { "Default" } else { s.mic_device.as_str() };
+            let before = s.mic_device.clone();
+            egui::ComboBox::from_id_salt("mic_device").width(220.0).selected_text(shown).show_ui(
+                ui,
+                |ui| {
+                    ui.selectable_value(&mut s.mic_device, String::new(), "Default");
+                    for d in devices {
+                        ui.selectable_value(&mut s.mic_device, d.clone(), d.as_str());
+                    }
+                },
+            );
+            changed |= s.mic_device != before;
+        }
+    });
     if changed {
         settings.set_changed();
     }
+}
+
+/// The microphones (looked up once: it takes a moment).
+fn mic_devices() -> &'static [String] {
+    static DEVICES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    DEVICES.get_or_init(crate::voice::devices)
 }
 
 fn control_options(

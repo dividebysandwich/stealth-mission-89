@@ -66,11 +66,14 @@ libloading = { version = "0.8", optional = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
 js-sys = "0.3"
+wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["Window", "Location"] }
 
 # The Pictures folder for GIF recordings.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dirs = "6"
+# The coop radio's microphone (`voice/capture.rs`); already in the tree through bevy_audio.
+cpal = "0.17"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

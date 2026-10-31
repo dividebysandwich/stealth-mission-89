@@ -599,6 +599,8 @@ pub(super) fn grab_levers(
                         actions.write(ActionEvent(Action::LockCursor));
                     }
                 }
+                // The radio talks while the button is held, also at a console or the menu.
+                ButtonTarget::Action(Action::Talk) => controls.talk |= held,
                 ButtonTarget::Action(a) if a.trim_direction().is_some() => {
                     if held && !block.0 {
                         controls.trim += a.trim_direction().unwrap_or_default();

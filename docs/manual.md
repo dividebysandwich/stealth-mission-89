@@ -2739,7 +2739,7 @@ The Ops screen and the campaign itself work as when you play alone (chapter 9). 
   up in a staggered formation on the runway: the first in the middle, far enough down the runway
   for the others, then rows of two behind.
 
-## 11.6 Chat
+## 11.6 Chat and radio
 
 Who joins and leaves, and what the players write, comes up on a panel next to the HUD's lower
 right corner, with the sender's name; it grows with the messages (the last six, the newest at the
@@ -2754,6 +2754,15 @@ fire** rule the hits damage them, without it missiles burst harmlessly and round
 
 Your cannon hits are judged on your computer and checked by the server; missiles and bombs are
 flown by the server.
+
+**The radio.** Hold **CapsLock** to talk and every player in the game hears you, in the air
+or on the Ops screen, through a radio's loudspeaker: a narrow band, a hiss under the voice
+and the squelch's click as each transmission starts and ends. Any joystick or VR controller
+button can be mapped to *Talk* in the CONTROLS dialog; it talks while held. The microphone
+opens the first time you press the key. While you transmit, the panel next to the HUD reads
+TRANSMITTING; while someone else does, it shows who is on the radio, and so does the PLAYERS
+list, where MUTE silences a player for you. OPTIONS > SOUND has the radio's volume, the
+microphone's gain and which microphone to use, and turns push-to-talk off.
 
 If your connection drops during a sortie, your aircraft waits for you for 30 seconds: join again
 under the same name and fly on. After that the sortie ends as aborted.

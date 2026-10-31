@@ -322,6 +322,7 @@ pub fn ops_ui(
     settings: Res<crate::settings::Settings>,
     mut menu: ResMut<crate::flight_menu::FlightMenu>,
     scenery: Option<Res<crate::scenery::Scenery>>,
+    mut voice: ResMut<crate::voice::Voice>,
 ) -> Result {
     // On the desktop the in-flight menu (OPTIONS) is drawn in the view the screen covers.
     if !c.screen_open() || c.exit || (menu.open && !settings.vr) {
@@ -494,7 +495,7 @@ pub fn ops_ui(
                     egui::vec2(width, height),
                 ),
                 Tab::Forces => forces(ui, c),
-                Tab::Players => players(ui, c),
+                Tab::Players => players(ui, c, &mut voice),
                 Tab::Debrief => debrief(ui, c),
                 Tab::Log => log(ui, c),
                 Tab::Chat => chat(ui, c, &mut notices, settings.vr),
@@ -1988,7 +1989,7 @@ fn exit_button(ui: &egui::Ui, role: Role) -> egui::Button<'static> {
 }
 
 /// The players in the campaign: who flies what, who waits on the board.
-fn players(ui: &mut egui::Ui, c: &ActiveCampaign) {
+fn players(ui: &mut egui::Ui, c: &ActiveCampaign, voice: &mut crate::voice::Voice) {
     section(ui, "Players");
     let list = c.players();
     // Up to 64 of them: the list scrolls; the leaderboard under it.
@@ -2016,6 +2017,23 @@ fn players(ui: &mut egui::Ui, c: &ActiveCampaign) {
                         }
                         if p.host {
                             ui.label(egui::RichText::new("HOST").small().color(FRIENDLY_BLUE));
+                        }
+                        // The coop radio: talking now, and muting him.
+                        if voice.talking.contains(&p.id.0) {
+                            ui.label(egui::RichText::new("ON THE RADIO").small().color(GREEN));
+                        }
+                        if p.id != c.me && c.role != Role::Local {
+                            let muted = voice.muted.contains(&p.id.0);
+                            let text = egui::RichText::new(if muted { "UNMUTE" } else { "MUTE" })
+                                .small()
+                                .color(if muted { AMBER } else { DIM });
+                            if ui
+                                .small_button(text)
+                                .on_hover_text("Hear (or not) this player on the radio")
+                                .clicked()
+                            {
+                                crate::voice::toggle_mute(voice, p.id.0);
+                            }
                         }
                     });
                     let (status, col) = match &p.status {

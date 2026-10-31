@@ -256,6 +256,8 @@ pub enum Channel {
     Warnings,
     /// The radar warning tones (also under the warnings' volume).
     Rwr,
+    /// The coop radio's voices.
+    Voice,
 }
 
 impl Channel {
@@ -278,6 +280,7 @@ impl Channel {
                 Channel::Effects => s.effects_volume,
                 Channel::Warnings => s.warning_volume,
                 Channel::Rwr => s.warning_volume * s.rwr_volume,
+                Channel::Voice => s.voice_volume,
             }
     }
 }

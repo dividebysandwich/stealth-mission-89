@@ -24,12 +24,13 @@ To play right now, you can either:
 * **Play in the browser** right on [stealth-mission.com](https://stealth-mission.com) or **locally** [on your PC](https://github.com/dividebysandwich/stealth-mission-89/releases)
 * **Dynamic realtime campaign:** a living war with materiel and dynamic missions, strikes, CSAR, CAP, escort, resupply etc.
 * **Career mode:** pilot records, tours of duty, ranks and medals
-* **Multiplayer:** coop campaigns for up to 64 players, hosted in-game or on a **dedicated server**
+* **Multiplayer:** coop campaigns for up to 64 players with push-to-talk radio, hosted in-game or on a **dedicated server**
 * **Live map** of every public server's campaign on the [server list](https://sm-master.playspoon.com)
 * **VR:** great on Steam Frame (streaming and standalone), fully clickable cockpit, virtual joysticks,
   working eject handle and kneeboard
 * **HOTAS** support - but also supports keyboard-only flight
 * **Head and Eye tracking** via FreeTrack
+* **Air traffic control:** takeoff clearances, overhead recoveries and GCA talkdowns in bad weather
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording

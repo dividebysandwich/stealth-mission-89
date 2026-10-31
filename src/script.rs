@@ -9,7 +9,7 @@
 //! `msl<2:ViewChase` / `air<2:HudMode` = an enemy missile / an airborne aircraft within 2 km. The step `Screenshot` takes the
 //! `--screenshot` picture at that moment. `yaw=0.5` sets the rudder, `throttle=0.8` holds an
 //! absolute throttle (`collective=0.6`: a helicopter's collective), `trigger=1` / `trigger=0` holds / releases the fire button (`gun=1` / `gun=0` the gun trigger), `mark=1` / `mark=0` the lock cursor
-//! target button, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION),
+//! target button, `talk=1` / `talk=0` the coop radio's push-to-talk, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION),
 //! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
 //! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
@@ -64,6 +64,8 @@ enum Step {
     Gun(bool),
     /// Holds or releases "lock cursor target" (`mark=1`, `mark=0`).
     Mark(bool),
+    /// Holds or releases the radio's push-to-talk (`talk=1`, `talk=0`).
+    Talk(bool),
     /// Locks another player's aircraft by pilot id (`lockpilot=1`).
     LockPilot(u8),
     /// Pushes an MFD bezel button (`osb=r2`).
@@ -106,6 +108,7 @@ struct Axes {
     trigger: bool,
     gun: bool,
     mark: bool,
+    talk: bool,
     lock_pilot: Option<u8>,
     osb: Option<(crate::mfd::MfdSide, u8)>,
 }
@@ -129,6 +132,8 @@ fn parse_step(what: &str) -> Option<Step> {
         Step::Gun(x.parse::<u8>().ok()? != 0)
     } else if let Some(x) = what.strip_prefix("mark=") {
         Step::Mark(x.parse::<u8>().ok()? != 0)
+    } else if let Some(x) = what.strip_prefix("talk=") {
+        Step::Talk(x.parse::<u8>().ok()? != 0)
     } else if let Some(x) = what.strip_prefix("lockpilot=") {
         Step::LockPilot(x.parse().ok()?)
     } else if let Some(x) = what.strip_prefix("osb=") {
@@ -211,6 +216,7 @@ fn apply(
         Step::Trigger(t) => axes.trigger = *t,
         Step::Gun(t) => axes.gun = *t,
         Step::Mark(t) => axes.mark = *t,
+        Step::Talk(t) => axes.talk = *t,
         Step::LockPilot(k) => axes.lock_pilot = Some(*k),
         Step::Osb(side, slot) => axes.osb = Some((*side, *slot)),
         Step::Say(text) => notices.outbox.push(text.clone()),
@@ -331,6 +337,7 @@ fn run_script(
     controls.fire |= script.axes.trigger;
     controls.gun |= script.axes.gun;
     controls.mark |= script.axes.mark;
+    controls.talk |= script.axes.talk;
     if script.axes.throttle.is_some() {
         controls.throttle = script.axes.throttle;
     }
@@ -349,6 +356,7 @@ fn step_name(s: &Step) -> String {
         Step::Trigger(t) => format!("trigger={}", *t as u8),
         Step::Gun(t) => format!("gun={}", *t as u8),
         Step::Mark(t) => format!("mark={}", *t as u8),
+        Step::Talk(t) => format!("talk={}", *t as u8),
         Step::LockPilot(k) => format!("lockpilot={k}"),
         Step::Osb(side, slot) => format!("osb={side:?} {slot}"),
         Step::Say(t) => format!("say={t}"),

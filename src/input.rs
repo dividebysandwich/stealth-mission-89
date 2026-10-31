@@ -141,6 +141,8 @@ pub enum Action {
     Kneeboard,
     /// Multiplayer: type a chat message.
     Chat,
+    /// Multiplayer: the radio's push-to-talk (held, not a discrete action).
+    Talk,
     /// Tracking camera / targeting pod zoom.
     CameraZoomIn,
     CameraZoomOut,
@@ -299,6 +301,8 @@ pub struct FlightControls {
     pub slew: Vec2,
     /// "Lock cursor target" held (held on the HSD or HARM display: a zoomed view to aim with).
     pub mark: bool,
+    /// The radio's push-to-talk held (coop, `voice`).
+    pub talk: bool,
 }
 
 /// Modifier held with a key (Alt wins over Shift).
@@ -413,6 +417,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
+        (None, K::CapsLock, Talk),
         (None, K::F12, RecordGif),
     ]
 };
@@ -560,6 +565,8 @@ fn read_keyboard(
     };
     controls.fire = held(Action::FireWeapon) && !crate::fullscreen::alt_enter(&keys);
     controls.mark = held(Action::LockCursor);
+    // Talking works over the Ops screen too (a text field being typed in takes the keys).
+    controls.talk = held(Action::Talk);
     controls.yaw = yaw.clamp(-1.0, 1.0) * scale;
     controls.throttle = None;
     controls.collective_rate =
