@@ -18,6 +18,9 @@ pub const THEATER_M: f64 = 512_000.0;
 pub const CELL_M: f64 = THEATER_M / DIM as f64;
 /// The highest the hills reach, metres.
 pub const MAX_M: f32 = 120.0;
+/// Spacing of the finest grid the hills are drawn on (metres): the ground between its points
+/// is flat, cut along the diagonal from each point to the one north east of it.
+pub const GRID_M: f64 = 31.25;
 /// Noise octaves: wavelength (metres) and weight (the weights add up to 1).
 const OCTAVES: [(f64, f32, u32); 3] =
     [(4000.0, 0.55, 0x9E37), (1700.0, 0.3, 0x85EB), (700.0, 0.15, 0xC2B2)];
@@ -85,6 +88,32 @@ impl Hills {
         self.height_m(x * MAP_M, THEATER_M - y * MAP_M)
     }
 
+    /// The ground as drawn on a grid of `step` metres (a multiple of `GRID_M`): the hills'
+    /// heights at the grid points, flat triangles between them.
+    pub fn surface_m(&self, e: f64, n: f64, step: f64) -> f32 {
+        if self.0.is_empty() {
+            return 0.0;
+        }
+        let (fx, fy) = (e / step, n / step);
+        let (i, j) = (fx.floor(), fy.floor());
+        let (tx, ty) = ((fx - i) as f32, (fy - j) as f32);
+        let (x0, y0) = (i * step, j * step);
+        let h00 = self.height_m(x0, y0);
+        let h11 = self.height_m(x0 + step, y0 + step);
+        if tx >= ty {
+            let h10 = self.height_m(x0 + step, y0);
+            h00 + (h10 - h00) * tx + (h11 - h10) * ty
+        } else {
+            let h01 = self.height_m(x0, y0 + step);
+            h00 + (h11 - h01) * tx + (h01 - h00) * ty
+        }
+    }
+
+    /// The ground as drawn up close (`surface_m` on the finest grid), metres east, north.
+    pub fn ground_m(&self, e: f64, n: f64) -> f32 {
+        self.surface_m(e, n, GRID_M)
+    }
+
     /// The ground's rise per metre east and north at a point (central differences over 2 m).
     pub fn gradient(&self, e: f64, n: f64) -> (f32, f32) {
         let de = self.height_m(e + 1.0, n) - self.height_m(e - 1.0, n);
@@ -104,6 +133,57 @@ impl Hills {
         let (c0, c1) = (col(e - r), (col(e + r) + 1).min(DIM as i64 - 1));
         let (r0, r1) = (row(n + r), (row(n - r) + 1).min(DIM as i64 - 1));
         (r0..=r1).any(|r| (c0..=c1).any(|c| self.0[r as usize * DIM + c as usize] != 0))
+    }
+}
+
+/// The drawn ground (`Hills::ground_m`) over a rectangle, its grid points' heights worked out
+/// once: for laying many points on it.
+pub struct Patch {
+    /// Grid indices of the first point east and north.
+    i0: i64,
+    j0: i64,
+    cols: usize,
+    heights: Vec<f32>,
+}
+
+impl Patch {
+    /// The ground over a rectangle (metres east, north; `None` if the hills stay flat there).
+    pub fn new(hills: &Hills, min: (f64, f64), max: (f64, f64)) -> Option<Self> {
+        let r = (max.0 - min.0).max(max.1 - min.1) * 0.5;
+        if !hills.any_in((min.0 + max.0) * 0.5, (min.1 + max.1) * 0.5, r + GRID_M) {
+            return None;
+        }
+        let (i0, j0) = ((min.0 / GRID_M).floor() as i64 - 1, (min.1 / GRID_M).floor() as i64 - 1);
+        let (i1, j1) = ((max.0 / GRID_M).floor() as i64 + 2, (max.1 / GRID_M).floor() as i64 + 2);
+        let (cols, rows) = ((i1 - i0 + 1) as usize, (j1 - j0 + 1) as usize);
+        let heights = (0..cols * rows)
+            .map(|k| {
+                let (i, j) = (i0 + (k % cols) as i64, j0 + (k / cols) as i64);
+                hills.height_m(i as f64 * GRID_M, j as f64 * GRID_M)
+            })
+            .collect();
+        Some(Self { i0, j0, cols, heights })
+    }
+
+    /// `Hills::ground_m` at a point inside the rectangle (the edge's height outside).
+    pub fn ground_m(&self, e: f64, n: f64) -> f32 {
+        let (fx, fy) = (e / GRID_M, n / GRID_M);
+        let (i, j) = (fx.floor(), fy.floor());
+        let (tx, ty) = ((fx - i) as f32, (fy - j) as f32);
+        let rows = self.heights.len() / self.cols;
+        let at = |di: i64, dj: i64| {
+            let c = (i as i64 + di - self.i0).clamp(0, self.cols as i64 - 1) as usize;
+            let r = (j as i64 + dj - self.j0).clamp(0, rows as i64 - 1) as usize;
+            self.heights[r * self.cols + c]
+        };
+        let (h00, h11) = (at(0, 0), at(1, 1));
+        if tx >= ty {
+            let h10 = at(1, 0);
+            h00 + (h10 - h00) * tx + (h11 - h10) * ty
+        } else {
+            let h01 = at(0, 1);
+            h00 + (h11 - h01) * tx + (h01 - h00) * ty
+        }
     }
 }
 
@@ -217,6 +297,37 @@ mod tests {
         }
         assert!(!h.any_in(200_000.0, 300_000.0, 1000.0));
         assert!(h.any_in(255_800.0, 300_000.0, 1000.0));
+    }
+
+    /// The drawn ground meets the hills at the grid points and stays close between them.
+    #[test]
+    fn surface_on_the_grid() {
+        let h = full();
+        let (e, n) = (200_000.0, 300_000.0);
+        assert_eq!(h.surface_m(e, n, GRID_M), h.height_m(e, n));
+        let mut worst = 0.0f32;
+        for k in 0..2000 {
+            let (x, y) = (e + k as f64 * 7.3, n + (k * 13 % 997) as f64 * 3.1);
+            worst = worst.max((h.ground_m(x, y) - h.height_m(x, y)).abs());
+        }
+        assert!(worst < 0.5, "{worst}");
+        // Corners of the cell: continuous across the diagonal.
+        let g = GRID_M;
+        let c = h.surface_m(e + g * 0.5, n + g * 0.5, g);
+        let (a, b) = (h.height_m(e, n), h.height_m(e + g, n + g));
+        assert!((c - (a + b) * 0.5).abs() < 1e-3);
+    }
+
+    /// A patch lays points exactly where the drawn ground is.
+    #[test]
+    fn patch_matches() {
+        let h = full();
+        let p = Patch::new(&h, (100_000.0, 200_000.0), (101_000.0, 201_000.0)).unwrap();
+        for k in 0..500 {
+            let (e, n) = (100_000.0 + k as f64 * 1.97, 200_000.0 + (k * 7 % 500) as f64 * 1.93);
+            assert_eq!(p.ground_m(e, n).to_bits(), h.ground_m(e, n).to_bits());
+        }
+        assert!(Patch::new(&Hills::default(), (0.0, 0.0), (10.0, 10.0)).is_none());
     }
 
     #[test]

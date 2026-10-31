@@ -263,6 +263,7 @@ mod tests {
             net: net.into(),
             airfields: vec![].into(),
             clearings: vec![],
+            hills: Default::default(),
         }
     }
 

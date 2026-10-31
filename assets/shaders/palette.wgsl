@@ -25,6 +25,9 @@ const TAG_DOT_SPOT: u32 = 32768u;
 // Dot only drawn from DOT_FAR_MIN metres away (palette_material.rs `TAG_DOT_FAR`).
 const TAG_DOT_FAR: u32 = 2147483648u;
 const TAG_VERTEX_HAZE: u32 = 1073741824u;
+// The rolling hills' ground (palette_material.rs `TAG_HILLS`): shaded by its slope in the
+// classic look too.
+const TAG_HILLS: u32 = 65536u;
 const DOT_FAR_MIN: f32 = 3000.0;
 // Share of a moonless night's darkness on aircraft and their spotting dots: barely visible.
 const AIRCRAFT_NIGHT: f32 = 0.95;
@@ -169,7 +172,7 @@ struct VertexOutput {
     @location(5) @interpolate(flat) puff_sun: vec3<f32>,
     @location(6) @interpolate(flat) puff_scale: vec3<f32>,
     // Bit 0: warm object or dot light (FLIR); bit 1: aircraft (level code 5); bit 2: spotting
-    // dot.
+    // dot; bit 3: the hills' ground.
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -226,7 +229,8 @@ fn vertex(v: Vertex) -> VertexOutput {
     out.clip_position = position_world_to_clip(world.xyz);
     let tag = mesh_functions::get_tag(v.instance_index);
     out.warm = select(0u, 1u, (tag & (TAG_WARM | 128u)) != 0u) | select(0u, 2u, (tag & 7u) == 5u)
-        | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u));
+        | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u))
+        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS);
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
 #endif
@@ -1641,7 +1645,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     } else
 #endif
     {
-        if (modern && !is_line) {
+        if ((modern || (in.warm & 8u) != 0u) && !is_line) {
             rgb = rgb * shade(deriv.face, dir);
         }
         rgb = rgb * (1.0 - dark);

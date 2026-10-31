@@ -189,8 +189,11 @@ pub fn geo_origin(id: &str) -> (f64, f64) {
         _ => (10.0, 45.0),
     }
 }
+/// Raised tile objects up to this size (metres) stand on the rolling hills; bigger ones
+/// (mountains) on the flat world under them.
+const HILLS_RIGID_MAX_M: f32 = 1500.0;
 /// Height step separating coplanar ground overlays (metres).
-const LAYER_STEP_M: f64 = 0.02;
+pub const LAYER_STEP_M: f64 = 0.02;
 /// Cells streamed around the camera per LOD (index = LOD), as a radius in cells.
 const CELL_RADIUS: [i32; 5] = [0, 2, 2, 1, 2];
 /// Ships (on the open sea, seen from far away) are streamed out to about this range (metres)
@@ -268,6 +271,9 @@ pub struct Theater {
     /// Remake theaters: the real towns for the scenery layout.
     #[serde(default)]
     pub towns: Vec<TownSite>,
+    /// The rolling hills (`assets/theaters/<id>.hills`, read beside the theater).
+    #[serde(skip)]
+    pub hills: stealth_sim::hills::Hills,
 }
 
 /// A town of a remake theater: centre (metres east, north), radius (metres), size class
@@ -284,7 +290,9 @@ pub struct TownSite {
 
 impl Theater {
     pub fn load(id: &str) -> Theater {
-        crate::asset_path::load_ron(&format!("theaters/{id}.ron"))
+        let mut t: Theater = crate::asset_path::load_ron(&format!("theaters/{id}.ron"));
+        t.hills = stealth_host::theater::hills(id);
+        t
     }
 
     /// Tile data for the simulation (`findNearestTile`), for theaters not in the exported sim data.
@@ -308,7 +316,7 @@ impl Theater {
                 .map(|t| stealth_sim::Town::from_metres(t.x, t.y, t.r))
                 .collect(),
             relief: stealth_host::theater::relief(&self.id),
-            hills: stealth_host::theater::hills(&self.id),
+            hills: self.hills.clone(),
             helipads: stealth_host::theater::helipads(&self.id),
             runways: stealth_host::theater::runways(&self.id),
         }
@@ -474,6 +482,7 @@ fn stream_tiles(
     mut overrides: ResMut<TileOverrides>,
     handles: Res<ShapeHandles>,
     mut sites: ResMut<StreamSites>,
+    mut raised: Local<HashMap<(bool, u8), Option<f32>>>,
 ) {
     let Ok(anchor) = anchor.single() else { return };
     let file = library.load(&server, &theater.id);
@@ -566,6 +575,19 @@ fn stream_tiles(
             // entries go on top; lift them by a few centimetres.
             if o.z == 0 {
                 pos.y += (4 - lod) as f64 * LAYER_STEP_M * 8.0 + k as f64 * LAYER_STEP_M;
+            }
+            // Objects stand on the rolling hills (their ground overlays are drawn on them by
+            // the scenery's `skin`); mountains rise from the flat world.
+            if !theater.hills.is_flat() && lod <= 2 {
+                let special = model_file == "special_targets";
+                let size = *raised
+                    .entry((special, shape))
+                    .or_insert_with(|| assets.raised_size(gltf, &name));
+                let unit_m = (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
+                if size.is_some_and(|s| s * unit_m < HILLS_RIGID_MAX_M) {
+                    let (e, n, _) = bevy_to_wu(pos);
+                    pos.y += theater.hills.ground_m(e * WU, n * WU) as f64;
+                }
             }
             commands.entity(e).insert((
                 WorldPos(pos),

@@ -26,6 +26,7 @@ mod ground;
 mod hills_mask;
 mod network;
 mod obstacles;
+mod skin;
 mod style;
 
 use std::collections::HashMap;
@@ -59,7 +60,8 @@ impl Plugin for SceneryPlugin {
             .init_resource::<Airfields>()
             .init_resource::<LayoutCache>()
             .init_resource::<PapiSites>()
-            .add_systems(OnExit(AppState::Flight), cleanup)
+            .init_resource::<skin::Skin>()
+            .add_systems(OnExit(AppState::Flight), (cleanup, skin::cleanup))
             .add_systems(
                 Update,
                 (
@@ -68,6 +70,7 @@ impl Plugin for SceneryPlugin {
                         .run_if(not(resource_exists::<Scenery>)),
                     (
                         stream_blocks,
+                        skin::stream_skin,
                         airfields,
                         lamps_at_night,
                         papi_lights,
@@ -78,6 +81,7 @@ impl Plugin for SceneryPlugin {
                         clear_air_defence,
                         deployment_pads,
                         remap_vertex_words,
+                        skin::remap_words,
                     )
                         .run_if(resource_exists::<Scenery>),
                 )
@@ -126,7 +130,7 @@ pub enum Surface {
 }
 
 /// The theater's scenery layout (no style and an empty network for the desert theaters).
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct Scenery {
     style: Option<style::Style>,
     ground: Arc<ground::Ground>,
@@ -135,6 +139,8 @@ pub struct Scenery {
     /// Where no trees grow and no generated buildings stand (metres east, north; radius):
     /// round the friendly air defence and the helipads of its new sites.
     clearings: Vec<(DVec2, f64)>,
+    /// The rolling hills the scenery stands on.
+    hills: stealth_sim::hills::Hills,
 }
 
 impl Scenery {
@@ -413,7 +419,14 @@ fn build_scenery(
     }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
     let style = style::Style::for_theater(&theater.id, theater.index);
-    commands.insert_resource(Scenery { style, ground, net, airfields: fields, clearings: vec![] });
+    commands.insert_resource(Scenery {
+        style,
+        ground,
+        net,
+        airfields: fields,
+        clearings: vec![],
+        hills: theater.hills.clone(),
+    });
 }
 
 /// The airfields' helipads as the simulation reads them (`TheaterTiles::read_helipads`): a RON

@@ -760,6 +760,36 @@ impl ModelAssets<'_> {
         (!tris.is_empty()).then(|| triangle_mesh(&tris))
     }
 
+    /// The horizontal size (model units) of a model's raised geometry in its finest detail
+    /// level: None for a flat ground overlay.
+    pub fn raised_size(&self, file: &Handle<Gltf>, name: &str) -> Option<f32> {
+        let node = self.gltfs.get(file)?.named_nodes.get(name)?;
+        let (mut lo, mut hi) = (Vec2::MAX, Vec2::MIN);
+        let mut todo = vec![(node.clone(), Transform::IDENTITY, false)];
+        while let Some((h, parent, in_lod0)) = todo.pop() {
+            let Some(n) = self.nodes.get(&h) else { continue };
+            let lod0 = in_lod0 || n.name.contains("_lod0");
+            if n.name.contains("_lod") && !lod0 {
+                continue;
+            }
+            let tf = parent.mul_transform(n.transform);
+            for prim in
+                n.mesh.as_ref().and_then(|m| self.meshes.get(m)).iter().flat_map(|m| &m.primitives)
+            {
+                let p = self.positions(&prim.mesh);
+                if p.iter().all(|v| v.y.abs() < 1.0) {
+                    continue;
+                }
+                for v in p {
+                    let w = tf.transform_point(v).xz();
+                    (lo, hi) = (lo.min(w), hi.max(w));
+                }
+            }
+            todo.extend(n.children.iter().map(|c| (c.clone(), tf, lod0)));
+        }
+        (lo.x <= hi.x).then(|| (hi - lo).max_element())
+    }
+
     fn positions(&self, mesh: &Handle<Mesh>) -> Vec<Vec3> {
         let Some(m) = self.mesh_data.get(mesh) else { return vec![] };
         match m.attribute(Mesh::ATTRIBUTE_POSITION) {

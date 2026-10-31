@@ -1,5 +1,6 @@
 //! `--freecam`: debug camera to inspect the world. WASD/QE move, right mouse drag looks around,
-//! Shift = fast. Start options: `--at <world object name>`, `--pos x,z`, `--alt <metres>`, `--yaw/--look-pitch <deg>`.
+//! Shift = fast. Start options: `--at <world object name>`, `--pos x,z`, `--alt <metres above
+//! the ground>`, `--yaw/--look-pitch <deg>`. The camera stays above the rolling hills.
 
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::DVec3;
@@ -19,6 +20,9 @@ impl Plugin for FreeCamPlugin {
         .add_systems(Update, fly.run_if(in_state(AppState::Flight)));
     }
 }
+
+/// The lowest the camera goes over the ground (metres).
+const FLOOR_M: f64 = 2.0;
 
 #[derive(Component)]
 struct FreeCam {
@@ -64,6 +68,7 @@ fn spawn(
             })
         })
         .unwrap_or(DVec3::new(256_000.0, 0.0, -256_000.0));
+    let ground = ground + DVec3::Y * theater.hills.ground_m(ground.x, -ground.z) as f64;
     let alt: f64 = arg("--alt").and_then(|s| s.parse().ok()).unwrap_or(300.0);
     let yaw = arg("--yaw").and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.0).to_radians();
     let pitch =
@@ -103,6 +108,7 @@ fn fly(
     buttons: Res<ButtonInput<MouseButton>>,
     motion: Res<AccumulatedMouseMotion>,
     time: Res<Time>,
+    theater: Option<Res<Theater>>,
     mut q: Query<(&mut FreeCam, &mut WorldPos, &mut Transform)>,
     mut viewpoint: ResMut<crate::palette::Viewpoint>,
 ) {
@@ -129,5 +135,11 @@ fn fly(
     let speed = if keys.pressed(KeyCode::ShiftLeft) { 3000.0 } else { 300.0 };
     if dir != Vec3::ZERO {
         pos.0 += (dir.normalize() * speed * time.delta_secs()).as_dvec3();
+    }
+    if let Some(t) = theater {
+        let floor = t.hills.ground_m(pos.0.x, -pos.0.z) as f64 + FLOOR_M;
+        if pos.0.y < floor {
+            pos.0.y = floor;
+        }
     }
 }

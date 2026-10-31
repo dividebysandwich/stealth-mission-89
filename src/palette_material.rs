@@ -555,6 +555,10 @@ pub fn dot_size_tenths(tenths: u32) -> u32 {
 /// Mesh tag bit of a dot only drawn far away (the shader's `DOT_FAR_MIN`): gun rounds, whose
 /// tracer lines show them up close.
 pub const TAG_DOT_FAR: u32 = 1 << 31;
+/// Mesh tag bit of the rolling hills' ground (`scenery::skin`): shaded by its slope in the
+/// classic look too, which otherwise draws faces in their flat colours. Not with `TAG_SMOKE`,
+/// `TAG_DOT_SPOT` or `TAG_DOT`.
+pub const TAG_HILLS: u32 = 1 << 16;
 /// Mesh tag bit of meshes too big for one haze level (the coarse scenery blocks): each vertex
 /// hazes by its own depth instead of the object origin's. Not with `TAG_SMOKE`,
 /// `TAG_DOT_SPOT` or `TAG_DOT`, whose bits 16.. carry other things.

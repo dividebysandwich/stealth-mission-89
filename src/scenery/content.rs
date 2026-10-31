@@ -169,9 +169,82 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
         Tier::Fields => {
             let min = DVec2::new(bx as f64, by as f64) * FIELD_BLOCK;
             farmland(sc, &Frame::around(min + FIELD_BLOCK * 0.5), min, min + FIELD_BLOCK, &mut g);
+            // On the hills the fields are drawn with their ground (`skin`).
+            return g;
         }
     }
+    drape(&sc.hills, &f, &mut g);
     g
+}
+
+/// The longest edge of the ground's triangles and lines laid on the hills (metres): well under
+/// the drawn ground's grid (`stealth_sim::hills::GRID_M`), so they follow its slopes.
+const DRAPE_EDGE: f32 = 16.0;
+/// Lines up to this high are on the ground (roads' centre lines), higher ones span between
+/// things standing on it (wires).
+const DRAPE_LINE_Y: f32 = 2.0;
+/// How far a block's geometry may reach past its edge (metres).
+const DRAPE_MARGIN: f64 = 300.0;
+
+/// Lays a block's geometry on the rolling hills: the flat parts split to follow the ground,
+/// every point raised by the ground under it (so walls stay upright and trees stand on it).
+fn drape(hills: &stealth_sim::hills::Hills, f: &Frame, g: &mut Geom) {
+    let (lo, hi) = (f.min - DRAPE_MARGIN, f.max() + DRAPE_MARGIN);
+    let Some(patch) = stealth_sim::hills::Patch::new(hills, (lo.x, lo.y), (hi.x, hi.y)) else {
+        return;
+    };
+    let raise = |v: &mut Vec3| v.y += patch.ground_m(f.o.x + v.x as f64, f.o.y - v.z as f64);
+    for tris in g.flat.values_mut() {
+        *tris = split_tris(tris);
+        tris.iter_mut().for_each(raise);
+    }
+    for tris in g.solid.values_mut() {
+        tris.iter_mut().for_each(raise);
+    }
+    for lines in g.lines.values_mut() {
+        *lines = split_lines(lines);
+        lines.iter_mut().for_each(raise);
+    }
+    g.lamps.iter_mut().for_each(|(_, p)| raise(p));
+    g.strobes.values_mut().flatten().for_each(raise);
+    g.papi.iter_mut().for_each(|l| raise(&mut l.pos));
+}
+
+/// Triangles split at their longest edges until none is longer than `DRAPE_EDGE`.
+fn split_tris(tris: &[Vec3]) -> Vec<Vec3> {
+    let mut out = Vec::with_capacity(tris.len());
+    let mut todo: Vec<[Vec3; 3]> = tris.as_chunks::<3>().0.to_vec();
+    while let Some(t) = todo.pop() {
+        let len = [0, 1, 2].map(|k| t[k].xz().distance_squared(t[(k + 1) % 3].xz()));
+        let k = (0..3).max_by(|&a, &b| len[a].total_cmp(&len[b])).unwrap();
+        if len[k] <= DRAPE_EDGE * DRAPE_EDGE {
+            out.extend(t);
+            continue;
+        }
+        let (a, b, c) = (t[k], t[(k + 1) % 3], t[(k + 2) % 3]);
+        let m = (a + b) * 0.5;
+        todo.push([a, m, c]);
+        todo.push([m, b, c]);
+    }
+    out
+}
+
+/// Ground lines (`DRAPE_LINE_Y`) split into pieces of up to `DRAPE_EDGE`.
+fn split_lines(lines: &[Vec3]) -> Vec<Vec3> {
+    let mut out = Vec::with_capacity(lines.len());
+    for l in lines.as_chunks::<2>().0 {
+        let (a, b) = (l[0], l[1]);
+        if a.y.max(b.y) > DRAPE_LINE_Y {
+            out.extend(l);
+            continue;
+        }
+        let n = (a.xz().distance(b.xz()) / DRAPE_EDGE).ceil().max(1.0) as usize;
+        for i in 0..n {
+            out.push(a.lerp(b, i as f32 / n as f32));
+            out.push(a.lerp(b, (i + 1) as f32 / n as f32));
+        }
+    }
+    out
 }
 
 /// What a farmland section is used for.
