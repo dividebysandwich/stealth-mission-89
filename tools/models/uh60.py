@@ -69,9 +69,15 @@ STATIONS = [
 ]
 # Segments (between station i and i+1) and ring quads that are glazed. Quads per ring:
 # 0/8 belly chamfer, 1/7 side, 2/6 upper side, 3/5 roof slope, 4 top strip, 9 belly.
-# The roof over the pilots glazed back from the windshield's top, clear of their view up.
-WINDSHIELD, ROOF, COCKPIT = 3, 4, 5
-GLAZED = {WINDSHIELD: {2, 3, 4, 5, 6}, ROOF: {2, 3, 4, 5, 6}, COCKPIT: {2, 3, 5, 6}}
+# The roof over the pilots glazed back from the windshield's top, clear of their view up. The
+# flat sides from the nose's shoulder to the cockpit door are glazed too, under the frame
+# (`chin_frame`) round the chin windows in front of the pilots' feet.
+NOSE, CHIN, WINDSHIELD, ROOF, COCKPIT = 1, 2, 3, 4, 5
+SIDES = {1, 7}
+GLAZED = {NOSE: SIDES, CHIN: SIDES, WINDSHIELD: {2, 3, 4, 5, 6} | SIDES, ROOF: {2, 3, 4, 5, 6}, COCKPIT: {2, 3, 5, 6}}
+# The chin windows as seen from the side, (y, z): under the windshield from the nose's shoulder
+# back to the cockpit door, wrapping round the nose's corner, down near the floor.
+CHIN_WINDOW = [(4.02, 1.22), (3.62, 1.34), (3.12, 1.34), (3.10, 1.00), (3.22, 0.88), (3.50, 0.83), (3.85, 0.85), (4.02, 0.95)]
 
 MAST = (0.0, 0.0, 3.47)
 ROTOR_R, ROTOR_CHORD = 8.18, 0.53
@@ -91,6 +97,64 @@ def side_panel(y0, y1, z0, z1, paint, g):
 
 def side_outline(pts, g):
     heli.side_outline(STATIONS, pts, SEAM, g)
+
+
+def station_at(y):
+    """The station at `y`, interpolated."""
+    for s0, s1 in zip(STATIONS, STATIONS[1:]):
+        if s1[0] <= y <= s0[0]:
+            t = (s0[0] - y) / (s0[0] - s1[0])
+            return [a + (b - a) * t for a, b in zip(s0, s1)]
+    raise ValueError(y)
+
+
+def on_side(sx, y, z, lift=0.015):
+    """A point on the flat side (between its lower and upper edge) just outside the skin."""
+    return Vector((sx * (side_x(y, z) + lift), y, z))
+
+
+def edge_z(e, y):
+    (y0, z0), (y1, z1) = e
+    return z0 + (z1 - z0) * (y - y0) / (y1 - y0)
+
+
+def chin_frame(level):
+    """The glazed flat sides from the nose's shoulder to the cockpit door covered by body panels,
+    but for the chin windows: strips across the side, split up and down to follow its curve."""
+    g = Geo()
+    y0, y1 = STATIONS[NOSE][0], STATIONS[COCKPIT - 1][0]
+    w = CHIN_WINDOW
+    cuts = {y0, y1} | {p[0] for p in w} | {st[0] for st in STATIONS if y1 < st[0] < y0}
+    step = 0.10 if level == 0 else 0.25
+    ys = sorted(cuts, reverse=True)
+    stops = []
+    for a, b in zip(ys, ys[1:]):
+        n = max(1, math.ceil((a - b) / step))
+        stops += [a + (b - a) * k / n for k in range(n)]
+    stops.append(ys[-1])
+    for ya, yb in zip(stops, stops[1:]):
+        mid = (ya + yb) / 2
+        edges = sorted(((a, b) for a, b in zip(w, w[1:] + w[:1]) if min(a[0], b[0]) < mid < max(a[0], b[0])), key=lambda e: edge_z(e, mid))
+        lo = lambda y: station_at(y)[2]  # noqa: E731
+        hi = lambda y: station_at(y)[3]  # noqa: E731
+        bounds = [lo] + [(lambda e: lambda y: edge_z(e, y))(e) for e in edges] + [hi]
+        for k in range(0, len(bounds), 2):
+            fb, ft = bounds[k], bounds[k + 1]
+            za0, za1 = min(max(fb(ya), lo(ya)), hi(ya)), min(max(ft(ya), lo(ya)), hi(ya))
+            zb0, zb1 = min(max(fb(yb), lo(yb)), hi(yb)), min(max(ft(yb), lo(yb)), hi(yb))
+            if za1 - za0 < 0.005 and zb1 - zb0 < 0.005:
+                continue
+            m = max(1, math.ceil(max(za1 - za0, zb1 - zb0) / (0.12 if level == 0 else 0.3)))
+            for j in range(m):
+                t0, t1 = j / m, (j + 1) / m
+                pa0, pa1 = za0 + (za1 - za0) * t0, za0 + (za1 - za0) * t1
+                pb0, pb1 = zb0 + (zb1 - zb0) * t0, zb0 + (zb1 - zb0) * t1
+                for sx in (-1, 1):
+                    pts = [on_side(sx, ya, pa0), on_side(sx, yb, pb0), on_side(sx, yb, pb1), on_side(sx, ya, pa1)]
+                    uniq = [p for i, p in enumerate(pts) if (p - pts[i - 1]).length > 1e-5]
+                    if len(uniq) >= 3:
+                        g.face(uniq, BODY, Vector((0, mid, (pa0 + pb1) / 2)))
+    return g
 
 
 def nacelles(full=True):
@@ -178,11 +242,13 @@ def body(level):
     g = Geo()
     if level == 0:
         g.add(heli.fuselage(STATIONS, BODY, GLASS, True, GLAZED))
+        g.add(chin_frame(level))
         g.add(nacelles(True))
         details(g)
     elif level == 1:
         st = [STATIONS[i] for i in (0, 1, 3, 4, 5, 6, 8, 11, 12, 14, 15)]
-        g.add(heli.fuselage(st, BODY, GLASS, True, {2: GLAZED[WINDSHIELD], 3: GLAZED[ROOF], 4: GLAZED[COCKPIT]}))
+        g.add(heli.fuselage(st, BODY, GLASS, True, {1: SIDES, 2: GLAZED[WINDSHIELD], 3: GLAZED[ROOF], 4: GLAZED[COCKPIT]}))
+        g.add(chin_frame(level))
         g.add(nacelles(False))
     else:
         st = [STATIONS[i] for i in (1, 3, 4, 8, 11, 12, 15)]
