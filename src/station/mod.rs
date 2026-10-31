@@ -119,8 +119,9 @@ pub struct ConsoleUi {
     pub since_snapshot: f32,
     /// A message (a refused command) and how long it shows yet (s).
     pub note: Option<(String, f32)>,
-    /// Where the aircraft waited before, to put it back.
-    parked: Option<(DVec3, Quat)>,
+    /// Where the aircraft waited before and its whole state (the seat moves it and its
+    /// altitude), to put it back.
+    parked: Option<(DVec3, Aircraft)>,
     /// The hand controller's slew (rad/s: traverse, elevation) as last sent, its trigger held.
     pub slew: Vec2,
     trigger: bool,
@@ -191,9 +192,9 @@ fn sync_manning(
             if manning.is_none()
                 && let Ok((pos, a)) = player.single()
             {
-                ui.parked = Some((pos.0, a.orientation));
+                ui.parked = Some((pos.0, a.clone()));
             }
-            let parked = ui.parked;
+            let parked = ui.parked.take();
             // Test aid: `--console-tab site` opens the site's page.
             let site = std::env::args().skip_while(|a| a != "--console-tab").nth(1);
             *ui = ConsoleUi {
@@ -206,11 +207,11 @@ fn sync_manning(
             commands.insert_resource(m);
         }
         None => {
-            if let Some((p, o)) = ui.parked.take()
+            if let Some((p, parked)) = ui.parked.take()
                 && let Ok((mut pos, mut a)) = player.single_mut()
             {
                 pos.0 = p;
-                a.orientation = o;
+                *a = parked;
             }
             mfd.flir = false;
             commands.remove_resource::<Manning>();
