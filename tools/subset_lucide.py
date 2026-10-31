@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Cuts assets/fonts/lucide.ttf down to the icons the game uses (the code points written
 '\\u{eXXX}' in src/menu.rs and src/flight_menu.rs), from the full Lucide font kept locally
-(not in git) as assets-src/fonts/lucide-backup.ttf.
+(not in git) as assets-src/fonts/lucide-backup.ttf. Missing? Take it from before the cut:
+
+    git show 47081e4:assets/fonts/lucide.ttf > assets-src/fonts/lucide-backup.ttf
 
     pip install fonttools
     tools/subset_lucide.py [full.ttf [out.ttf]]
