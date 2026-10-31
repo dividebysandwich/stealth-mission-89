@@ -98,9 +98,11 @@ pub struct FlightMenu {
     /// The key guide is shown instead of the entries, scrolled down this far (canvas pixels).
     guide: bool,
     guide_scroll: f32,
-    /// The key guide's search (as typed), whether its VR keyboard is open, what of it the mouse
-    /// or a fingertip is over.
+    /// The key guide's search (as typed), whether it was clicked or typed into (its caret then
+    /// blinks, even while empty), whether its VR keyboard is open, what of it the mouse or a
+    /// fingertip is over.
     search: String,
+    focused: bool,
     keyboard: bool,
     hover: Option<Spot>,
     /// The bindings dialog is up instead of the menu's screen (until its DONE).
@@ -497,6 +499,7 @@ fn toggle(
         } else {
             clear_search(&mut menu);
         }
+        menu.focused = false;
     } else if pressed
         && menu.open
         && !menu.exiting
@@ -769,6 +772,7 @@ fn clear_search(menu: &mut FlightMenu) {
 
 /// Adds a character to the search, back at the top of the list (not past its longest).
 fn push_search(menu: &mut FlightMenu, ch: char) {
+    menu.focused = true;
     if menu.search.chars().count() < crate::key_guide::SEARCH_MAX {
         menu.search.push(ch);
         menu.guide_scroll = 0.0;
@@ -976,7 +980,10 @@ fn navigate(
             || hands.hands.iter().any(|h| h.active && h.just_pressed(BUTTON_PRIMARY));
         match pressed {
             Some(Spot::Clear) => clear_search(&mut menu),
-            Some(Spot::Field) => menu.keyboard |= settings.vr,
+            Some(Spot::Field) => {
+                menu.focused = true;
+                menu.keyboard |= settings.vr;
+            }
             Some(Spot::Key(key)) => press_key(&mut menu, key),
             Some(Spot::Keyboard) => {}
             Some(Spot::List) => menu.guide = false,
@@ -1117,6 +1124,7 @@ fn navigate(
         },
         Item::KeyGuide => {
             menu.guide = true;
+            menu.focused = false;
             menu.keyboard = false;
             clear_search(&mut menu);
         }
@@ -1266,7 +1274,8 @@ fn draw(
         stroke_text_at(c, W as f32 / 2.0, 32.0, "KEY GUIDE", 22.0, 2.8, BRIGHT, Align::Centre);
         let area = guide_area(menu.keyboard);
         let caret = crate::key_guide::caret_shown(time.elapsed_secs_f64());
-        draw_search(c, &menu.search, caret, menu.hover == Some(Spot::Clear));
+        let focused = menu.focused || menu.keyboard;
+        draw_search(c, &menu.search, focused, caret, menu.hover == Some(Spot::Clear));
         if menu.keyboard {
             draw_keyboard(c, menu.hover);
         }
@@ -1364,7 +1373,7 @@ fn draw_keyboard(c: &mut Canvas, hover: Option<Spot>) {
 /// The key guide's search field: a magnifier, the text and its `_` caret while `caret` (a hint
 /// while empty), the clear button's X while there is text (on a dark square under the mouse or
 /// a fingertip).
-fn draw_search(c: &mut Canvas, text: &str, caret: bool, clear_hover: bool) {
+fn draw_search(c: &mut Canvas, text: &str, focused: bool, caret: bool, clear_hover: bool) {
     let [x0, y0, x1, y1] = SEARCH;
     let mid = (y0 + y1) / 2.0;
     let col = if text.is_empty() { DIM } else { BRIGHT };
@@ -1373,8 +1382,13 @@ fn draw_search(c: &mut Canvas, text: &str, caret: bool, clear_hover: bool) {
     c.ring(lens, 6.0, 2.0, col);
     c.stroke(lens + Vec2::splat(4.5), lens + Vec2::splat(9.5), 2.4, col);
     let tx = x0 + 34.0;
+    // Once clicked or typed into, the hint makes way for the caret.
     if text.is_empty() {
-        stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, DIM, Align::Left);
+        if !focused {
+            stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, DIM, Align::Left);
+        } else if caret {
+            stroke_text_at(c, tx, mid, "_", 14.0, 2.0, BRIGHT, Align::Left);
+        }
         return;
     }
     let end = stroke_text_at(c, tx, mid, text, 14.0, 2.0, BRIGHT, Align::Left);
