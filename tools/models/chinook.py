@@ -308,14 +308,15 @@ AFT_PYLON = [(931, 611), (936, 604), (942, 592), (948, 580), (955, 567), (962, 5
              (1030, 538), (1060, 540), (1085, 546), (1095, 551), (1100, 556)]
 
 
-def pylon(top, wb, wt, level):
+def pylon(top, wb, wt, level, sink=0.35):
+    """A pylon along its side view top line, its foot `sink` under the roof."""
     n = (4, 2, 1)[level]
     pts = top if level < 2 else top[::2] + ([top[-1]] if len(top) % 2 == 0 else [])
     rings = []
     for px, row in pts:
         y, zt = side(px, row)
         _, roof = side(px, interp(TOP, px))
-        rings.append(column_ring(y, roof - 0.35, max(zt, roof - 0.30), wb, wt, 0.35, n))
+        rings.append(column_ring(y, roof - sink, max(zt, roof - sink + 0.02), wb, wt, 0.35, n))
     return mklib.tube(rings, DECK)
 
 
@@ -469,7 +470,9 @@ def body(level):
     g = Geo()
     cols = (COLUMNS, COLUMNS1, COLUMNS2)[level]
     g.add(fuselage(cols, SEGS[level]))
-    g.add(pylon(FWD_PYLON, 0.95, 0.75, level))
+    # The front one's foot just under the roof: sunk deeper it would show through the cockpit's
+    # roof, drawn from inside.
+    g.add(pylon(FWD_PYLON, 0.95, 0.75, level, sink=0.06))
     g.add(pylon(AFT_PYLON, 1.10, 0.80, level))
     g.add(heads(level))
     g.add(engines(level))
