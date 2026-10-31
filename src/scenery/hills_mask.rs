@@ -31,8 +31,20 @@ const FIELD_MARGIN: f64 = 700.0;
 /// The approaches beyond the runway ends kept flat (metres along the runway).
 const APPROACH: f64 = 3000.0;
 
-/// How hilly each theater is (0..1, by theater id); flat if not listed.
-const THEATERS: [(&str, f32); 1] = [("central_europe", 1.0)];
+/// How hilly each theater is (0..1, by theater id; the highlands too); flat if not listed. The
+/// deserts are flatter, the Levant between them and the green theaters.
+const THEATERS: [(&str, f32); 10] = [
+    ("central_europe", 1.0),
+    ("north_cape", 1.0),
+    ("vietnam", 1.0),
+    ("korea", 1.0),
+    ("cuba", 1.0),
+    ("ukraine", 1.0),
+    ("middle_east", 0.6),
+    ("libya", 0.35),
+    ("persian_gulf", 0.35),
+    ("desert_storm", 0.35),
+];
 
 pub fn amount(theater: &str) -> f32 {
     THEATERS.iter().find(|(t, _)| *t == theater).map_or(0.0, |&(_, a)| a)

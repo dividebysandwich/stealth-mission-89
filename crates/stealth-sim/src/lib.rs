@@ -1005,6 +1005,13 @@ impl Sim {
         self.detect_pure(o.x, o.y, 0, o.unit_type).0
     }
 
+    /// The theater made flat: no rolling hills (test set-ups that move things anywhere).
+    pub fn flatten_hills(&mut self) {
+        if let Some(t) = self.tiles.as_mut() {
+            t.hills = Default::default();
+        }
+    }
+
     /// The theater's rolling hills (flat without).
     pub fn hills(&self) -> crate::hills::Hills {
         self.tiles.as_ref().map(|t| t.hills.clone()).unwrap_or_default()

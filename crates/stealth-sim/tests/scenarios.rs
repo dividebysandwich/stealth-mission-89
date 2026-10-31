@@ -34,6 +34,7 @@ fn mission(d: &Data, theater: usize, seed: u16, opponents: u8) -> Mission {
 /// A clean sandbox: no radars, no aircraft, no friendly bases; returns a map cell centre with
 /// flat / open terrain.
 fn sandbox(sim: &mut Sim, m: &Mission) -> (i32, i32) {
+    sim.flatten_hills();
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
         o.flags &= !0x0501;
@@ -697,23 +698,23 @@ fn state_hash(sim: &Sim) -> u64 {
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
         0xf0e217c5d1f2c8ae,
-        0x15c8d55d241afef9,
+        0xa827b31b6b3bb704,
         0x7ea2c85a3cc8fcf0,
-        0xd470e51609a6aa3c,
-        0xce2ea0c991a14859,
-        0x7427999d3f48f061,
+        0x5915650a9ec33e5d,
+        0x6bcaa8d83fb91ba8,
+        0xf11d7d32df5c38d0,
         0x8e16ebbdf0eb102b,
         0x601fe6e3cfaa87f4,
-        0x0c1dcb2edee8b292,
-        0xeb56c72eec0445b1,
-        0xa22afd88525667bf,
-        0xe6514ea926afa54c,
-        0xcec658dc3ee74bff,
-        0x23f60ef33c452ce2,
-        0x6628b0aa6928d54b,
-        0x1c8029d44a83ceaf,
-        0x233a8bf45887ada1,
-        0xe2f08728424a6b43,
+        0x47faa7880ff7533a,
+        0x2c5724a235001c71,
+        0xd22e696abee7a5a8,
+        0x334c285c89790154,
+        0xfd1a936a853a75a8,
+        0x971670abe4161724,
+        0x36fad94c2a3e8e29,
+        0x22a9cdb2a0a66274,
+        0x84479fc3ac982093,
+        0xc49932e1d622e6f6,
     ];
     let d = data();
     let mut got = Vec::new();
