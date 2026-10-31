@@ -12,7 +12,8 @@ pub struct Effects {
     pub shake: bool,
     /// Flak, explosions and missile launches light their surroundings (flashes.rs).
     pub flashes: bool,
-    /// Conventional war at night: tracer barrages and searchlights over the towns (barrage.rs).
+    /// Conventional war at night: tracer barrages and searchlights over the towns, which catch
+    /// the other side's drones (barrage.rs).
     pub barrage: bool,
     /// The cockpit's red flood light at night and the master caution's pulse (cockpit3d).
     pub cockpit_night: bool,
@@ -166,7 +167,8 @@ impl Effect {
             ],
             Effect::Barrage => &[
                 "Conventional war at night: the towns' guns fire tracer blindly into the sky, searchlights sweep over them",
-                "Only for the look: the barrage hits nothing, the searchlights find nothing",
+                "Enemy drones over a town are caught by its searchlights and draw its guns' fire",
+                "Only for the look: the barrage hits nothing",
             ],
             Effect::CockpitNight => &[
                 "A dim red flood light in the cockpit after dark (blue-green under the goggles)",

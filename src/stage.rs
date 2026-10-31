@@ -5,7 +5,9 @@
 //! - `--stage-cam mode[,distance,height]`: a camera placed relative to the chased drone `k`
 //!   and the player: `front` (ahead of the drone looking back), `behind` (behind the player
 //!   looking past him at the drone), `side`, `high`, `missile` (behind the player's missile,
-//!   else `behind`), `drone` (past the drone, looking back over it at the player).
+//!   else `behind`), `drone` (past the drone, looking back over it at the player), `follow`
+//!   (behind the drone on its own heading and above it, looking at it; the drone a town's
+//!   searchlight follows rather than drone `k` while there is one).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -80,6 +82,7 @@ pub fn chase_start(m: &Mission) -> Option<(DVec3, f32, f32, f32)> {
 fn stage_camera(
     combat: Option<Res<Combat>>,
     mission: Option<Res<crate::mission::ActiveMission>>,
+    barrage: Res<crate::barrage::Barrage>,
     mut view: ResMut<ViewState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
@@ -99,7 +102,8 @@ fn stage_camera(
         view.view = View::Chase;
     }
     let sim = &combat.sim;
-    let Some(i) = chased_unit(&mission.0) else { return };
+    let lit = barrage.lit_drone().filter(|_| mode == "follow");
+    let Some(i) = lit.or_else(|| chased_unit(&mission.0)) else { return };
     let Some(u) = sim.flights().get(i) else { return };
     let (e, n, z) = unit_position(combat.prev_flights.get(i), u, combat.alpha);
     let drone = wu_to_bevy(e, n, z);
@@ -120,6 +124,11 @@ fn stage_camera(
         "side" => (mid + side * d + up * h, mid),
         "high" => (mid + up * d - ax * (d * 0.4) + side * (d * 0.2), mid),
         "drone" => (drone + ax * (d * 0.4) + side * (d * 0.15) + up * (h * 0.4), me),
+        "follow" => {
+            let hd = u.heading as u16 as f64 / 65536.0 * std::f64::consts::TAU;
+            let fwd = DVec3::new(hd.sin(), 0.0, -hd.cos());
+            (drone - fwd * d + up * h + fwd.cross(up) * (d * 0.2), drone)
+        }
         "missile" => match missile {
             Some(m) => {
                 let dir = (drone - m).try_normalize().unwrap_or(ax);
