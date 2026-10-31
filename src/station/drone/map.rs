@@ -485,12 +485,14 @@ pub(super) fn draw(
     sidebar(cv, sim, &m, &ui, &uavs);
     // The buttons.
     for (b, [bx, by, bw, bh], label, on) in buttons(&ui, &uavs) {
-        let col = if on { GREEN } else { DARK };
-        cv.fill_rect(bx as i32, by as i32, bw as i32, bh as i32, BLACK);
-        cv.frame(Vec2::new(bx, by), Vec2::new(bx + bw, by + bh), 1.0, col);
+        // The new drone's chosen type inverted: black on green.
         let lit = ui.plan.as_ref().is_some_and(|p| b == Button::Kind(p.kind));
-        let col = if lit { WHITE } else { col };
-        stroke_text_at(cv, bx + bw / 2.0, by + bh / 2.0, label, 6.0, 0.9, col, Align::Centre);
+        let col = if on || lit { GREEN } else { DARK };
+        let fill = if lit { GREEN } else { BLACK };
+        cv.fill_rect(bx as i32, by as i32, bw as i32, bh as i32, fill);
+        cv.frame(Vec2::new(bx, by), Vec2::new(bx + bw, by + bh), 1.0, col);
+        let (col, pen) = if lit { (BLACK, 1.3) } else { (col, 0.9) };
+        stroke_text_at(cv, bx + bw / 2.0, by + bh / 2.0, label, 6.0, pen, col, Align::Centre);
         // The panning cross's arrows.
         let c = Vec2::new(bx + bw / 2.0, by + bh / 2.0);
         let d = match b {
