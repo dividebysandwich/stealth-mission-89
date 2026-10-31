@@ -112,6 +112,7 @@ pub(super) fn scan(
     )>,
     tile_roots: Query<(), With<crate::world::TileObject>>,
     mut radar: ResMut<TerrainRadar>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     radar.on = false;
     radar.returns.clear();
@@ -122,6 +123,7 @@ pub(super) fn scan(
         return;
     }
     let following = a.autopilot();
+    let hills = theater.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat());
     let origin = origin.map_or(bevy::math::DVec3::ZERO, |o| o.origin);
     let here = (pos.0 - origin).as_vec3();
     let path = a.path_dir();
@@ -157,16 +159,28 @@ pub(super) fn scan(
         let step = SPACING + SPACING_GROWTH * d;
         let half = HALF_WIDTH + WIDTH_GROWTH * d;
         let across = dir.perp();
+        // The rolling hills under the corridor (Bevy world x, z of a corridor point).
+        let world = |q: Vec2| pos.0 + Vec3::new(q.x - start.x, 0.0, q.y - start.y).as_dvec3();
+        let hill = |q: Vec2| {
+            let w = world(q);
+            hills.map_or(0.0, |h| h.ground_m(w.x, -w.z))
+        };
         let mut top = [0.0, -half, half]
             .into_iter()
-            .map(|o| hull_top(&near, p + across * o, step * 0.5))
+            .map(|o| {
+                let q = p + across * o;
+                hull_top(&near, q, step * 0.5).max(hill(q))
+            })
             .fold(0.0, f32::max);
         if let Some(s) = &scenery {
             // Ground metres (east, north) of the point.
-            let w = pos.0 + Vec3::new(p.x - start.x, 0.0, p.y - start.y).as_dvec3();
+            let w = world(p);
             let r = (half + step * 0.5) as f64;
             let trees = if d < TREES_AHEAD { r.min(TREE_REACH) } else { 0.0 };
-            top = top.max(s.top_near(DVec2::new(w.x, -w.z), r, trees) as f32);
+            let above = s.top_near(DVec2::new(w.x, -w.z), r, trees) as f32;
+            if above > 0.0 {
+                top = top.max(hill(p) + above);
+            }
         }
         if d == 0.0 {
             a.radar_ground = Some(top / WU as f32);

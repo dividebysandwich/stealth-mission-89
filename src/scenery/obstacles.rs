@@ -1,7 +1,8 @@
 //! What an aircraft can fly into among the generated scenery: the buildings (their footprint
 //! up to the roof ridge), the trees (the crown as an upright capsule), the power line pylons
 //! and the wires sagging between them. The aircraft is a sphere; ground metres (x east, y
-//! north), heights above the ground, which is flat wherever scenery stands.
+//! north), heights above the ground (the rolling hills under the point: they are gentle where
+//! scenery stands).
 
 use bevy::math::{DVec2, DVec3};
 
@@ -151,8 +152,10 @@ impl Scenery {
         top
     }
 
-    /// What a sphere of radius `r` at ground point `p`, `h` metres up, is inside of.
+    /// What a sphere of radius `r` at ground point `p`, at height `h` (metres over the flat
+    /// world), is inside of.
     pub fn obstacle(&self, p: DVec2, h: f64, r: f64) -> Option<Obstacle> {
+        let h = h - self.hills.ground_m(p.x, p.y) as f64;
         // Nothing generated stands taller than the masts.
         if h - r > 320.0 {
             return None;
