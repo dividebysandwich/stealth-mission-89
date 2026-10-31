@@ -488,8 +488,7 @@ plates = [
     ("dark", (-380.0, -135.0, 112.0, 192.0)),  # RWR scope over the engine gauges
     ("dark", (-183.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
     ("dark", (107.0, -130.0, 76.0, 37.0)),  # and over the right one
-    ("dark", (-528.0, 100.0, 58.0, 52.0)),  # BRAKE, AUTO, HOVER
-    ("dark", (-418.0, 100.0, 155.0, 52.0)),  # fuel, engine readouts
+    ("dark", (-472.0, 100.0, 209.0, 52.0)),  # BRAKE, AUTO, HOVER, fuel, engine readouts
     ("black", (1920.0, -142.0, 160.0, 104.0)),  # CDU
     ("dark", (1940.0, 25.0, 120.0, 128.0)),  # cautions and countermeasures
 ]

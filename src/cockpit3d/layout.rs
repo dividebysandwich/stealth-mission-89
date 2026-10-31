@@ -743,11 +743,10 @@ impl PanelLayout {
                 let by = |dx: f32| rect(r.x + dx, r.y, r.w, r.h);
                 let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
                 let rect = match p.elem {
-                    // BRAKE, AUTO and HOVER in a column under the standby instruments, level
-                    // with the fuel readouts.
-                    Elem::Lamp(LampId::Brake, _) => at(-518.0, 103.0),
-                    Elem::Lamp(LampId::Auto, _) => at(-518.0, 119.0),
-                    Elem::Lamp(LampId::Hover, _) => at(-518.0, 135.0),
+                    // BRAKE, AUTO and HOVER in a column left of the fuel readouts, on their plate.
+                    Elem::Lamp(LampId::Brake, _) => at(-466.0, 103.0),
+                    Elem::Lamp(LampId::Auto, _) => at(-466.0, 119.0),
+                    Elem::Lamp(LampId::Hover, _) => at(-466.0, 135.0),
                     // Fuel, the engine readouts and the EMV gauge under the engine gauges.
                     _ if r.x < 1000.0 && r.x >= 60.0 && r.y >= 100.0 => by(-482.0),
                     Elem::Dial(

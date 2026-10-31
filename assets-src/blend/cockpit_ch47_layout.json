@@ -473,7 +473,7 @@
       "key": "Button(Brake, None)",
       "kind": "cap",
       "rect": [
-        -518.0,
+        -466.0,
         103.0,
         38.0,
         14.0
@@ -485,7 +485,7 @@
       "key": "Button(Auto, None)",
       "kind": "cap",
       "rect": [
-        -518.0,
+        -466.0,
         119.0,
         38.0,
         14.0
@@ -701,7 +701,7 @@
       "key": "Button(Hover, None)",
       "kind": "cap",
       "rect": [
-        -518.0,
+        -466.0,
         135.0,
         38.0,
         14.0
