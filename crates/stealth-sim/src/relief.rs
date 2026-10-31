@@ -69,6 +69,31 @@ impl Relief {
     }
 }
 
+/// Line of sight samples: one every half cell (1 km).
+const LOS_STEP: i32 = CELL_MAP / 2;
+
+impl Relief {
+    /// Whether the mountains leave the line of sight open between two points (map x, y south,
+    /// altitude units), sampled every kilometre between them.
+    pub fn sight_open(&self, a: (i32, i32, i32), b: (i32, i32, i32)) -> bool {
+        if self.0.is_empty() {
+            return true;
+        }
+        let (dx, dy) = ((b.0 - a.0) as f64, (b.1 - a.1) as f64);
+        let steps = (dx.hypot(dy) / LOS_STEP as f64) as usize;
+        (1..steps).all(|i| {
+            let t = i as f64 / steps as f64;
+            let ground = self.smooth_m(a.0 as f64 + dx * t, a.1 as f64 + dy * t) as f64 / WU_M;
+            ground <= a.2 as f64 + (b.2 - a.2) as f64 * t
+        })
+    }
+
+    /// The ground (smoothed, altitude units) at a map point.
+    pub fn ground(&self, x: i32, y: i32) -> i32 {
+        (self.smooth_m(x as f64, y as f64) as f64 / WU_M) as i32
+    }
+}
+
 /// Look-ahead steps along the heading (map units, one cell each).
 const AHEAD: [i32; 4] = [0, CELL_MAP, 2 * CELL_MAP, 3 * CELL_MAP];
 
@@ -92,6 +117,23 @@ impl crate::Sim {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A ridge between a radar and a low aircraft hides it; above the ridge it is seen.
+    #[test]
+    fn ridge_blocks_the_sight() {
+        let mut m = vec![0.0; DIM * DIM];
+        for row in 0..DIM {
+            m[row * DIM + 100] = 1500.0;
+        }
+        let r = Relief::from_metres(&m);
+        let x = |col: i32| col * CELL_MAP + CELL_MAP / 2;
+        let y = 128 * CELL_MAP;
+        let site = (x(90), y, 20);
+        assert!(!r.sight_open(site, (x(110), y, 1000)));
+        assert!(r.sight_open(site, (x(110), y, 8000)));
+        assert!(r.sight_open(site, (x(98), y, 300)), "this side of the ridge");
+        assert!(Relief::default().sight_open(site, (x(110), y, 0)));
+    }
 
     #[test]
     fn heights_by_map_point() {

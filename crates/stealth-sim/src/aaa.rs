@@ -476,6 +476,7 @@ impl Sim {
             let ctx = DetectCtx {
                 px: t.p.mx,
                 py: t.p.my,
+                alt: t.p.alt,
                 view_z: t.p.view_z,
                 height: t.p.height,
                 heading: t.p.heading,
@@ -484,6 +485,7 @@ impl Sim {
                 lockheed: t.lockheed,
                 comanche: t.comanche,
                 grid: &self.grid,
+                relief: self.tiles.as_ref().map(|t| &t.relief),
             };
             let from = u.metres();
             let d = sub(me, from);

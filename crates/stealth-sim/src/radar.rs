@@ -1,4 +1,5 @@
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, u16v};
+use crate::relief::Relief;
 use crate::types::*;
 use crate::{ENEMY_SLOTS, Sim};
 
@@ -42,9 +43,10 @@ pub fn comanche_signature(velocity: i32) -> i32 {
 /// Inputs of [`detect`] that describe the player and the game settings.
 #[derive(Debug, Clone, Copy)]
 pub struct DetectCtx<'a> {
-    /// Player map position.
+    /// Player map position and true altitude.
     pub px: i32,
     pub py: i32,
+    pub alt: i32,
     pub view_z: i32,
     /// Height above the ground (ft).
     pub height: i32,
@@ -56,7 +58,12 @@ pub struct DetectCtx<'a> {
     pub comanche: bool,
     /// Theater terrain grid (16 x 16 cells, 256 bytes).
     pub grid: &'a [u8],
+    /// The mountains, which hide the player from radars behind them.
+    pub relief: Option<&'a Relief>,
 }
+
+/// A ground radar's antenna above the ground (altitude units, about 15 m).
+const MAST: i32 = 30;
 
 /// Pure radar signal.
 /// `threat` = (lethality, tier, flags) of the radar type. Returns (score, bearing, range).
@@ -106,6 +113,16 @@ pub fn detect(
         let h = c.height.max(0);
         score = score * h * h / (LOW_LEVEL_FT * LOW_LEVEL_FT);
     }
+    // Mountains between the radar and the player hide it (a ground site's antenna on its
+    // mast above the ground).
+    if score > 0
+        && let Some(r) = c.relief
+    {
+        let alt = if salt == 0 { r.ground(sx, sy) + MAST } else { salt };
+        if !r.sight_open((sx, sy, alt), (c.px, c.py, c.alt)) {
+            score = 0;
+        }
+    }
     (score, brg, rng)
 }
 
@@ -123,6 +140,7 @@ impl Sim {
         DetectCtx {
             px: self.pl.p.mx,
             py: self.pl.p.my,
+            alt: self.pl.p.alt,
             view_z: self.pl.p.view_z,
             height: self.pl.p.height,
             heading: self.pl.p.heading,
@@ -131,6 +149,7 @@ impl Sim {
             lockheed: self.pl.lockheed,
             comanche: self.pl.comanche,
             grid: &self.grid,
+            relief: self.tiles.as_ref().map(|t| &t.relief),
         }
     }
 
@@ -778,6 +797,7 @@ mod tests {
         DetectCtx {
             px: 0x4000,
             py: 0x4000,
+            alt: 0,
             view_z: 0,
             height: 1000,
             heading,
@@ -786,6 +806,7 @@ mod tests {
             lockheed: false,
             comanche: false,
             grid,
+            relief: None,
         }
     }
 
@@ -872,6 +893,7 @@ mod tests {
             let c = DetectCtx {
                 px,
                 py,
+                alt: vz,
                 view_z: vz,
                 height: vz,
                 heading: h,
@@ -880,6 +902,7 @@ mod tests {
                 lockheed: l,
                 comanche: false,
                 grid: &grid,
+                relief: None,
             };
             assert_eq!(detect(sx, sy, salt, typ, Some(th), &c), want);
         }

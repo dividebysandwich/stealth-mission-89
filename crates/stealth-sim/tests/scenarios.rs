@@ -696,24 +696,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x8a9d1487d896663a,
-        0xc32b3e2a93b38acf,
+        0xf0e217c5d1f2c8ae,
+        0x15c8d55d241afef9,
         0x7ea2c85a3cc8fcf0,
-        0x3c100212d9329e82,
-        0x83353a0311959820,
-        0xa76adb8d109fff52,
-        0x1901731213de13ad,
-        0x79bffa3333d3665f,
-        0x26270a7875a21f5e,
-        0x7cfa1e7209808e29,
-        0x8dda1abb873388a5,
-        0xc0da3497f0ed4f96,
+        0xd470e51609a6aa3c,
+        0xce2ea0c991a14859,
+        0x7427999d3f48f061,
+        0x552c26b0701e9873,
+        0x7ae9926548ec8927,
+        0x0c1dcb2edee8b292,
+        0xeb56c72eec0445b1,
+        0xa22afd88525667bf,
+        0xe6514ea926afa54c,
         0xcec658dc3ee74bff,
-        0xd84ab2d820495c2b,
-        0xa49d42d590826514,
-        0x674b4eb007b7acd2,
-        0x75ef2431df61b3f7,
-        0xea59a26653d2e6ee,
+        0x23f60ef33c452ce2,
+        0x6628b0aa6928d54b,
+        0x1c8029d44a83ceaf,
+        0x233a8bf45887ada1,
+        0xe2f08728424a6b43,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -762,6 +762,7 @@ fn saved_state_goes_on_the_same() {
         let json = serde_json::to_string(&sim).unwrap();
         eprintln!("theater {th}: saved state {} kB", json.len() / 1024);
         let mut loaded: Sim = serde_json::from_str(&json).unwrap();
+        loaded.keep_relief_of(&sim);
         assert_eq!(state_hash(&loaded), state_hash(&sim));
         for f in 15 * 240..15 * 360 {
             input(f, &mut p);

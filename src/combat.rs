@@ -422,7 +422,8 @@ impl Combat {
     /// A saved game's simulation and flight record (`savegame.rs`) in place of the ones the
     /// mission started with: the tile objects it destroyed are drawn destroyed, and the waypoint
     /// its mission logic chose last is no news.
-    pub fn restore(&mut self, sim: Sim, record: crate::recorder::FlightRecord) {
+    pub fn restore(&mut self, mut sim: Sim, record: crate::recorder::FlightRecord) {
+        sim.keep_relief_of(&self.sim);
         self.prev_flights = sim.flights().to_vec();
         self.prev_fine = fines(&sim);
         self.prev_proj = *sim.projectiles();
