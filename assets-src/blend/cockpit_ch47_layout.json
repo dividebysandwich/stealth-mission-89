@@ -401,8 +401,8 @@
       "key": "Button(Bay, None)",
       "kind": "cap",
       "rect": [
-        -472.0,
-        110.0,
+        -470.0,
+        102.0,
         38.0,
         14.0
       ],
@@ -481,84 +481,12 @@
       "round": false
     },
     {
-      "control": null,
-      "key": "Item(Label(\"EGR\\nEAR\", 47, 33))",
-      "kind": null,
-      "rect": [
-        -412.0,
-        158.0,
-        20.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "LedBars",
-      "kind": null,
-      "rect": [
-        -390.0,
-        158.0,
-        84.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"EMV\", 47, 33))",
-      "kind": null,
-      "rect": [
-        -304.0,
-        158.0,
-        20.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Lamp(EmvWarn, None))",
-      "kind": null,
-      "rect": [
-        -282.0,
-        158.0,
-        18.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(GearLights)",
-      "kind": null,
-      "rect": [
-        -532.0,
-        100.0,
-        40.0,
-        32.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Action(Flaps)",
-      "key": "Button(Flaps, None)",
-      "kind": "cap",
-      "rect": [
-        -531.0,
-        142.0,
-        38.0,
-        14.0
-      ],
-      "round": false
-    },
-    {
       "control": "Action(Brakes)",
       "key": "Button(Brake, None)",
       "kind": "cap",
       "rect": [
-        -531.0,
-        160.0,
+        -470.0,
+        120.0,
         38.0,
         14.0
       ],
@@ -569,8 +497,8 @@
       "key": "Button(Auto, None)",
       "kind": "cap",
       "rect": [
-        -531.0,
-        178.0,
+        -470.0,
+        138.0,
         38.0,
         14.0
       ],
@@ -785,8 +713,8 @@
       "key": "Button(Hover, None)",
       "kind": "cap",
       "rect": [
-        -489.0,
-        178.0,
+        -470.0,
+        156.0,
         38.0,
         14.0
       ],
@@ -1303,6 +1231,12 @@
       -95.0,
       130.0,
       182.0
+    ],
+    "rwr": [
+      -538.0,
+      100.0,
+      58.0,
+      58.0
     ]
   }
 }

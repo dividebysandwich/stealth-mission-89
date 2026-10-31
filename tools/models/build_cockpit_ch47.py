@@ -10,7 +10,7 @@
 # the F-117A's cockpit, with their materials, labels and control properties: the seat with the
 # ejection handle, the stick (a centre cyclic on a shaft from the floor), the throttle (the
 # collective, the UH-60's grip on an arm from a pivot behind it left of the seat, swinging up),
-# the gear handle, the five target buttons, the HUD glass, the approach indexer and the flood
+# the five target buttons, the HUD glass, the approach indexer and the flood
 # lamps. Built here, low-poly: one wide instrument panel across the cockpit under a low
 # glareshield (the windshield over it, the chin windows under it either side of the pedals
 # open), the pilot's two MFDs in raised bezels with the warning lights over them, the large
@@ -139,7 +139,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
+    "hud_glass", "approach", "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -385,10 +385,14 @@ def screen(mat, r, offset, behind=None, round=False):
         mesh_object(behind, quad_mesh(behind, w / 1000, h / 1000, behind), rect_point(r, offset - 0.003), rot, props={"no_shadow": True})
 
 
-# --- materials: the centre display's screen after the right MFD's
+# --- materials: the centre display's screen after the right MFD's, the RWR scope's after the
+# attitude indicator's (as the F-16's)
 if "screen_rmpd" not in mats:
     m = mats["screen_right"].copy()
     m.name = "screen_rmpd"
+if "screen_rwr" not in mats:
+    m = mats["adi"].copy()
+    m.name = "screen_rwr"
 
 # --- the instrument panel, 3 cm thick, across the cockpit
 u0, u1 = PANEL_U
@@ -484,8 +488,8 @@ plates = [
     ("dark", (-380.0, -55.0, 112.0, 112.0)),  # engine gauges
     ("dark", (-183.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
     ("dark", (107.0, -130.0, 76.0, 37.0)),  # and over the right one
-    ("dark", (-540.0, 95.0, 113.0, 102.0)),  # gear lights, FLAPS, BRAKE, AUTO, BAY
-    ("dark", (-418.0, 100.0, 155.0, 78.0)),  # fuel, engine readouts, EMV
+    ("dark", (-540.0, 95.0, 113.0, 81.0)),  # RWR scope, BAY, BRAKE, AUTO, HOVER
+    ("dark", (-418.0, 100.0, 155.0, 52.0)),  # fuel, engine readouts
     ("black", (1920.0, -142.0, 160.0, 104.0)),  # CDU
     ("dark", (1940.0, 25.0, 120.0, 128.0)),  # cautions and countermeasures
 ]
@@ -512,6 +516,7 @@ for r in (faces["Item(Dial(Airspeed))"], faces["Item(Dial(Altimeter))"], scr["ad
     knob(*corner(r), 0.0045, 0.009, "dark", offset=PLATE)
 
 screen("adi", scr["adi"], PLATE, round=True)
+screen("screen_rwr", scr["rwr"], PLATE, round=True)
 screen("ded", scr["ded"], PLATE + 0.0005)
 for f in layout["faces"]:
     if f["control"] is None:
@@ -554,11 +559,6 @@ for i, n in enumerate(["button_NEAR", "button_NEXT", "button_NONE", "button_WPN"
     o.rotation_mode = "QUATERNION"
     o.rotation_quaternion = rotation(u)
 panel_box("dark", "dark", (CONSOLE_U - 70.0, 160.0, 140.0, 100.0), 0.004)
-# The gear handle right of the flight control caps.
-g = objs["control_Action_Gear_.001"]
-g.location = point(-460.0, 150.0, 0.002)
-g.rotation_mode = "QUATERNION"
-g.rotation_quaternion = rotation(-460.0)
 
 # --- overhead console: hanging from the roof on the centre line between the eyebrow windows,
 # its face sloping down forward (facing the pilots), rows of switch panels on it

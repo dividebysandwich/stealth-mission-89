@@ -870,7 +870,9 @@ mod tests {
                 PanelStyle::Rah66 => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_lmpd", "screen_rmpd"]
                 }
-                PanelStyle::Ch47 => vec!["ded", "trackcam_left", "label_NEAR", "screen_rmpd"],
+                PanelStyle::Ch47 => {
+                    vec!["ded", "trackcam_left", "label_NEAR", "screen_rmpd", "screen_rwr"]
+                }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
             for m in required {
