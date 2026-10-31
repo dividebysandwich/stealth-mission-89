@@ -1745,6 +1745,7 @@ fn briefing(
                                 Airframe::CH47,
                                 Airframe::AH1Z,
                                 Airframe::RAH66,
+                                Airframe::OH58,
                             ]
                             .into_iter()
                             .filter(|a| o.kind.flyable_by(*a));
