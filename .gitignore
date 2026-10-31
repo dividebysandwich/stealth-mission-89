@@ -14,3 +14,6 @@ __pycache__/
 # The browser build (Trunk.toml)
 /dist
 /web/index.gl.html
+
+# Full Lucide font kept locally as the source of assets/fonts/lucide.ttf (tools/subset_lucide.py)
+/assets-src/fonts/lucide-backup.ttf

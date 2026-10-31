@@ -1859,4 +1859,25 @@ mod tests {
         let gap = Vec2::new(keys[0].1[2] + KEY_GAP / 2.0, keys[0].1[1] + 1.0);
         assert_eq!(spot_at(gap, true, true), Spot::Keyboard);
     }
+
+    /// Every icon the menus write (`'\u{eXXX}'` here and in `crate::menu`) is in the cut-down
+    /// Lucide font (`tools/subset_lucide.py`).
+    #[test]
+    fn icons_in_font() {
+        let face = ICONS.as_ref().expect("assets/fonts/lucide.ttf");
+        let mut icons = 0;
+        for source in [include_str!("menu.rs"), include_str!("flight_menu.rs")] {
+            for (i, _) in source.match_indices("\\u{") {
+                let hex = &source[i + 3..];
+                let Some(end) = hex.find('}') else { continue };
+                let Ok(code) = u32::from_str_radix(&hex[..end], 16) else { continue };
+                if (0xe000..=0xf8ff).contains(&code) {
+                    let c = char::from_u32(code).unwrap();
+                    assert!(face.glyph_index(c).is_some(), "U+{code:04X} not in lucide.ttf");
+                    icons += 1;
+                }
+            }
+        }
+        assert!(icons > 40);
+    }
 }
