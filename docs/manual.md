@@ -1825,6 +1825,32 @@ Low level is where the strike aircraft live, and where most of them die. A few r
 Helicopters and the Harrier land anywhere flat and friendly: arrive slow, settle onto the ground,
 and you're down.
 
+**Air traffic control.** The friendly airfields talk to you on the radio, on the panel next to the
+HUD with a click of the squelch. You don't key anything: your own calls go out by themselves
+when you get there, in green under your callsign (Nighthawk 1-1, Viper 1-1, Hawk 1-1 and so on;
+in coop the last number is yours).
+
+- **Departure.** On the runway you report ready and the tower clears you for takeoff, or lines you
+  up to wait while traffic is on final. Through 2,000 ft or 5 km out, departure control lets you
+  go on your way.
+- **Recovery in good weather.** Heading home within about 20 miles of the field, you call inbound
+  and approach sends you to the **initial**, 3 miles out on the runway's centreline at
+  1,000-2,000 ft. Report initial, fly over the runway and **break** into the circuit, and turn
+  base with the gear down: the tower clears you to land, or tells you to continue while the
+  runway is busy. Coming straight in on final with the gear down works too. With the gear up
+  inside 2 miles the tower calls "check gear", then sends you around.
+- **Recovery in low cloud or poor visibility** (cloud base under 3,000 ft or under 5 km
+  visibility). Approach gives you headings and an altitude to an 8-mile final, then the **GCA**
+  controller talks you down every few seconds: left or right of course with a heading to fly,
+  above or below the glidepath, the miles to touchdown, the landing clearance at 4 miles and
+  "runway in sight?" at decision height. "Too low, climb immediately" means exactly that.
+- **Helicopters** report ready from the pad and come straight in to the helipad.
+- **Diversions.** If your field has been bombed shut or lost, approach sends you to the nearest
+  open one, with a heading and the distance, and moves your landing waypoint there.
+
+The AI aircraft don't listen to the tower; it only works you around them. Air traffic control can
+be switched off under *Air traffic control* in the options and the in-flight menu's GAME page.
+
 ## 7.10 When it goes wrong: ejection and rescue
 
 The jets have ejection seats; the helicopters don't, so their crews ride it down.

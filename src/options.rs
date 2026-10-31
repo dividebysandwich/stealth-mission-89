@@ -202,6 +202,14 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     )
     .changed();
     toggled |= facts(
+        ui.checkbox(&mut s.atc, "Air traffic control"),
+        &[
+            "Tower, approach and GCA radio calls at the friendly airfields",
+            "Takeoff clearance, overhead break, and a talkdown in low cloud or poor visibility",
+        ],
+    )
+    .changed();
+    toggled |= facts(
         ui.checkbox(&mut s.player_labels, "Player labels"),
         &["Multiplayer: the other pilots' names over their aircraft, however far away"],
     )

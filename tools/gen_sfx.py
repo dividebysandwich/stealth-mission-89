@@ -23,6 +23,8 @@
 - sfx_31_bay_doors: the weapon bay doors' actuators, ending in a clunk.
 - sfx_32_error_buzz: a short buzzer.
 - objective_complete: a mission objective achieved: a chime, two rising notes.
+- radio_click: a radio call (air traffic control): the key's click, a breath of static in a
+  narrow radio band and the squelch's tail.
 - tank_gun: a tank's main gun close by: the muzzle blast's crack and boom, the ground's
   rumble and its echo off the country around.
 - tank_gun_far: the same a few kilometres off: the boom and the rolling rumble, the crack long
@@ -265,6 +267,15 @@ def objective_complete():
     return fades(x + 0.08 * at(t, 0.0, np.sin(2 * np.pi * 1760 * seconds(0.2)) * env(0.2, 0.004, 0.06)))
 
 
+def radio_click():
+    t = 0.32
+    key = click(0.012, 600, 4000, 0.003)
+    hiss = noise(0.2, 400, 3200, 3.0) * env(0.2, 0.004, 0.06, 0.04)
+    tail = noise(0.12, 900, 3000, 3.0) * env(0.12, 0.002, 0.03)
+    x = at(t, 0.0, key) + 0.35 * at(t, 0.006, hiss) + 0.8 * at(t, 0.2, tail)
+    return fades(x, 0.0005, 0.02)
+
+
 def touchdown():
     t = 0.29
     bump = thump(t, 70, 0.07, 0.3)
@@ -356,6 +367,7 @@ if __name__ == "__main__":
     import sys
 
     wanted = sys.argv[1:]
+    radio = {"radio_click.flac": (radio_click, -27.0)}
     guns = {
         "tank_gun.flac": (lambda: tank_gun(False), -13.0),
         "tank_gun_far.flac": (lambda: tank_gun(True), -16.0),
@@ -364,7 +376,7 @@ if __name__ == "__main__":
     }
     if wanted:
         for name in wanted:
-            make, level = guns[name]
+            make, level = {**guns, **radio}[name]
             write(name, make(), level)
         sys.exit(0)
     loop, tail = cannon_loop(), cannon_tail()
@@ -385,5 +397,7 @@ if __name__ == "__main__":
     write("sfx_31_bay_doors.flac", bay_doors(), -20.0)
     write("sfx_32_error_buzz.flac", error_buzz(), -28.0)
     write("objective_complete.flac", objective_complete(), -18.0)
+    for name, (make, level) in radio.items():
+        write(name, make(), level)
     for name, (make, level) in guns.items():
         write(name, make(), level)

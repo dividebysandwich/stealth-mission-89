@@ -112,6 +112,8 @@ pub struct Settings {
     pub player_labels: bool,
     /// Their size (1: 100%).
     pub player_label_size: f32,
+    /// Air traffic control's radio calls (`atc.rs`; on by default).
+    pub atc: bool,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -290,6 +292,7 @@ impl Settings {
             tooltips: true,
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
+            atc: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,

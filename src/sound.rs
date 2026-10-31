@@ -618,6 +618,9 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     if let Some(h) = optional("objective_complete.flac") {
         bank.sfx.entry(OBJECTIVE).or_default().push(h);
     }
+    if let Some(h) = optional("radio_click.flac") {
+        bank.sfx.entry(crate::atc::RADIO_CLICK).or_default().push(h);
+    }
     bank.beacon = optional("beacon.flac");
     bank.siren = optional("fire_siren.flac");
     bank.cannon = optional("cannon_loop.flac").zip(optional("cannon_tail.flac"));

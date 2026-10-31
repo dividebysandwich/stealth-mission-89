@@ -8,6 +8,7 @@ mod aircraft;
 mod aircraft_preview;
 mod app6;
 mod asset_path;
+mod atc;
 mod autoshot;
 mod avionics;
 mod barrage;
@@ -325,6 +326,7 @@ fn main() {
             chat::ChatPlugin,
             multiplayer_menu::MultiplayerMenuPlugin,
             savegame::SaveGamePlugin,
+            atc::AtcPlugin,
         ));
     mission::from_args(&mut app);
     campaign::from_args(&mut app);

@@ -86,6 +86,7 @@ pub struct Prefs {
     pub tooltips: bool,
     pub player_labels: bool,
     pub player_label_size: f32,
+    pub atc: bool,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
@@ -153,6 +154,7 @@ impl Default for Prefs {
             tooltips: true,
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
+            atc: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
@@ -238,6 +240,7 @@ impl Prefs {
             tooltips: s.tooltips,
             player_labels: s.player_labels,
             player_label_size: s.player_label_size,
+            atc: s.atc,
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
@@ -297,6 +300,7 @@ impl Prefs {
         s.classic_flight |= self.classic_flight;
         s.tooltips = self.tooltips;
         s.player_labels = self.player_labels;
+        s.atc = self.atc;
         s.player_label_size = self
             .player_label_size
             .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
@@ -341,6 +345,7 @@ impl Prefs {
         self.tooltips = s.tooltips;
         self.player_labels = s.player_labels;
         self.player_label_size = s.player_label_size;
+        self.atc = s.atc;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;
