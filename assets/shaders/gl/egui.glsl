@@ -1,9 +1,11 @@
 // egui's meshes for the OpenGL headset renderer (src/glvr): the menus drawn into their images.
 // egui blends in gamma space: the colours stay sRGB throughout, the framebuffer's sRGB
-// encoding off; textures (sRGB images) are sampled back into sRGB.
+// encoding off; textures (sRGB images) are sampled back into sRGB. egui's textures are
+// premultiplied, bevy_ui's glyph atlases (`u_straight`) are not: white, the coverage in alpha.
 
 uniform vec2 u_screen;
 uniform sampler2D u_base_tex;
+uniform bool u_straight;
 
 #ifdef VERTEX
 // Points (y down), texture coordinates, premultiplied sRGBA.
@@ -32,6 +34,10 @@ vec3 srgb(vec3 l) {
 
 void main() {
     vec4 t = texture(u_base_tex, v_uv);
-    o_colour = v_colour * vec4(srgb(t.rgb), t.a);
+    vec3 rgb = srgb(t.rgb);
+    if (u_straight) {
+        rgb *= t.a;
+    }
+    o_colour = v_colour * vec4(rgb, t.a);
 }
 #endif

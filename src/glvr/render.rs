@@ -77,6 +77,7 @@ struct Program {
     raw: Option<glow::UniformLocation>,
     screen: Option<glow::UniformLocation>,
     first: Option<glow::UniformLocation>,
+    straight: Option<glow::UniformLocation>,
 }
 
 /// The world's programs: palette objects, the background sphere, dot lights and the effects
@@ -384,6 +385,7 @@ fn compile(gl: &glow::Context, shader: &str, defines: &str) -> Result<Program, S
             raw: at("u_raw"),
             screen: at("u_screen"),
             first: at("u_first"),
+            straight: at("u_straight"),
         })
     }
 }
@@ -1189,6 +1191,7 @@ impl Renderer {
                 let texture =
                     job.texture.and_then(|t| self.textures.get(&t)).map_or(*white, |t| t.0);
                 gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+                gl.uniform_1_i32(program.straight.as_ref(), job.straight as i32);
                 let v = &job.vertices;
                 let bytes = std::slice::from_raw_parts(
                     v.as_ptr().cast::<u8>(),

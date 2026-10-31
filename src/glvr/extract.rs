@@ -147,6 +147,8 @@ pub struct EguiJob {
     pub vertices: Vec<bevy_egui::egui::epaint::Vertex>,
     pub indices: Vec<u32>,
     pub texture: Option<AssetId<Image>>,
+    /// The texture's colours are not premultiplied by its alpha (bevy_ui's glyph atlases).
+    pub straight: bool,
 }
 
 /// The volumetric clouds of the frame (bevy_fast_clouds' `CloudFrame`), packed for the
@@ -548,6 +550,7 @@ impl Extractor {
                     vertices: mesh.vertices.clone(),
                     indices: mesh.indices.clone(),
                     texture,
+                    straight: false,
                 });
             }
             list.egui.push(EguiView {
@@ -645,6 +648,8 @@ impl Extractor {
                         vertices: Vec::new(),
                         indices: Vec::new(),
                         texture,
+                        // (The glyph atlases are white with the coverage in alpha.)
+                        straight: texture.is_some(),
                     });
                 }
                 let job = jobs.last_mut().expect("a job");
