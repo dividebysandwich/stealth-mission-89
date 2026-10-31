@@ -191,6 +191,7 @@ fn draw(
     waypoints: Res<Waypoints>,
     settings: Res<Settings>,
     time: Res<Time>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let Ok((parent, mut tex, vis)) = visors.single_mut() else { return };
     if *vis == Visibility::Hidden {
@@ -209,7 +210,10 @@ fn draw(
         .enumerate()
         .filter(|_| !a.damage.autopilot_failed)
         .filter_map(|(i, w)| {
-            let p = crate::world::wu_to_bevy(w.east, w.north, a.ground_altitude as f64);
+            let alt = theater.as_ref().map_or(a.ground_altitude as f64, |t| {
+                t.ground_wu(w.east, w.north, a.ground_altitude, a.over_deck)
+            });
+            let p = crate::world::wu_to_bevy(w.east, w.north, alt);
             Some(((p - pos.0).as_vec3().try_normalize()?, i, i == waypoints.current))
         })
         .collect();

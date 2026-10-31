@@ -974,7 +974,7 @@ pub(super) fn step(
         }
         // Carrier deck: the catapult launches at full throttle, the wire stops a landing (not a
         // V/STOL type's, which takes off short and lands vertically).
-        if a.ground_altitude > 0.0 && ae.vtol.is_none() {
+        if a.over_deck && ae.vtol.is_none() {
             if !a.has_flown && a.thrust >= 90.0 {
                 decel -= CATAPULT;
             } else if a.has_flown && a.thrust <= 50.0 {

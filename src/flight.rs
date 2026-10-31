@@ -15,7 +15,7 @@ use bevy::prelude::*;
 
 use crate::input::{Action, ActionEvent, FlightControls};
 use crate::settings::{Settings, SetupSet};
-use crate::world::{Theater, WorldPos, bevy_to_wu, wu_to_bevy};
+use crate::world::{Theater, WU, WorldPos, bevy_to_wu, wu_to_bevy};
 
 pub mod heli;
 pub mod modern;
@@ -328,6 +328,13 @@ pub struct Aircraft {
     /// World units ("feet") above sea level.
     pub altitude: f32,
     pub ground_altitude: f32,
+    /// The ground's slope under the aircraft along its heading: the pitch and roll (rad) it
+    /// stands at there (the rolling hills).
+    #[serde(default)]
+    pub ground_slope: (f32, f32),
+    /// The ground under the aircraft is a carrier's deck.
+    #[serde(default)]
+    pub over_deck: bool,
     /// wu per second along the flight path.
     pub climb_rate: f32,
     /// 1/16 g
@@ -425,6 +432,8 @@ impl Aircraft {
             nozzle: 0.0,
             altitude: 0.0,
             ground_altitude: 0.0,
+            ground_slope: (0.0, 0.0),
+            over_deck: false,
             climb_rate: 0.0,
             gees: 16.0,
             stall_speed: 0.0,
@@ -571,9 +580,7 @@ fn handle_actions(
             // (`FlightControls::collective_rate`); fixed gear unless it retracts, the brakes are
             // the parking brake; the autopilot holds the speed as well.
             Action::ThrottleUp | Action::ThrottleDown if heli => {}
-            Action::Autopilot if heli && a.autopilot() && !a.auto_hover() => {
-                a.autopilot_alt = 0.0
-            }
+            Action::Autopilot if heli && a.autopilot() && !a.auto_hover() => a.autopilot_alt = 0.0,
             // Auto-hover (helicopters, slow): again, or the autopilot to the waypoint, leaves it.
             Action::Hover if a.auto_hover() => a.autopilot_alt = 0.0,
             Action::Hover if heli && !a.damage.autopilot_failed && !a.on_ground => {
@@ -1054,7 +1061,22 @@ fn ground_contact(
         .map(|t| landing_corridor(t, east, north, k.landing, heli || vertical))
         .unwrap_or((false, 0.0));
     a.in_landing_corridor = corridor;
-    a.ground_altitude = ground;
+    // The rolling hills (flat at the airfields and the sea).
+    let hills = theater.map(|t| &t.hills).filter(|h| !h.is_flat());
+    let (e_m, n_m) = (east * WU, north * WU);
+    let hill = hills.map_or(0.0, |h| h.ground_m(e_m, n_m) / WU as f32);
+    a.ground_altitude = ground.max(hill);
+    a.over_deck = ground > 0.0;
+    a.ground_slope = hills.map_or((0.0, 0.0), |h| {
+        let rise = |de: f64, dn: f64| {
+            let d = SLOPE_SPAN_M * 0.5;
+            (h.ground_m(e_m + de * d, n_m + dn * d) - h.ground_m(e_m - de * d, n_m - dn * d))
+                / SLOPE_SPAN_M as f32
+        };
+        let f = a.orientation * Vec3::NEG_Z;
+        let fwd = Vec2::new(f.x, -f.z).normalize_or(Vec2::Y);
+        (rise(fwd.x as f64, fwd.y as f64).atan(), -rise(fwd.y as f64, -fwd.x as f64).atan())
+    });
     a.altitude = a.altitude.clamp(a.ground_altitude, 60000.0);
     let on_ground_now = a.altitude <= a.ground_altitude;
     if on_ground_now && prev_alt > a.ground_altitude && !heli {
@@ -1089,7 +1111,7 @@ fn touchdown(a: &mut Aircraft, roll: f32, l: f32, anywhere: bool) {
         return;
     }
     let sink = (-a.climb_rate).max(0.0);
-    let limit = if a.ground_altitude > 0.0 { 256.0 } else { 128.0 };
+    let limit = if a.over_deck { 256.0 } else { 128.0 };
     let max_roll = if l > 0.0 { bam(24.0 / l * 256.0) } else { f32::MAX };
     if sink * l > limit || (l > 0.0 && (!a.gear_down || roll.abs() > max_roll)) {
         a.ended = Some(FlightEnd::BadLanding);
@@ -1122,6 +1144,9 @@ fn landing_corridor(t: &Theater, east: f64, north: f64, landing: u8, heli: bool)
     }
     (false, 0.0)
 }
+
+/// The span over which the ground's slope under an aircraft is measured (metres).
+const SLOPE_SPAN_M: f64 = 6.0;
 
 /// Speed (knots) up to which a V/STOL type lands as a helicopter does (`ground_contact`; the
 /// sim's `objectives`, keep in step).

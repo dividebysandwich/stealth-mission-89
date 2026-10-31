@@ -576,6 +576,7 @@ fn place_weapon_camera(
     mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
     mut cam: Query<&mut Transform, With<EyeCamera>>,
     mut viewpoint: ResMut<crate::palette::Viewpoint>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     if state.view != View::Weapon {
         return;
@@ -586,9 +587,11 @@ fn place_weapon_camera(
         return;
     };
     let Some((mut eye, target, up)) = weapon_eye(&weapon, &state, &orbit) else { return };
-    // At least 2 m above the ground (the ground under the aircraft).
+    // At least 2 m above the ground (the ground under the aircraft, and the hills under the
+    // eye).
     let ground = crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y;
-    eye.y = eye.y.max(ground + 2.0);
+    let hill = theater.map_or(0.0, |t| t.hills.ground_m(eye.x, -eye.z) as f64);
+    eye.y = eye.y.max(ground.max(hill) + 2.0);
     viewpoint.altitude_wu = (eye.y / crate::world::WU) as f32;
     let world_rot = Transform::IDENTITY.looking_to((target - eye).as_vec3(), up).rotation;
     let local = a.orientation.inverse();
@@ -692,13 +695,22 @@ fn update_rig(
     combat: Option<Res<crate::combat::Combat>>,
     track: Res<crate::headtrack::HeadTrack>,
     manning: Option<Res<crate::station::Manning>>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let (Ok(mut head), Ok(mut cam_tf)) = (head.single_mut(), cam.single_mut()) else { return };
     // The tracked head on top of the views' own direction (none in VR).
     let tracked = track.pose().unwrap_or_default();
     let Ok((a, pos)) = aircraft.single() else { return };
-    // Lowest camera height relative to the aircraft origin in external views (1 m above ground).
-    let floor = 1.0 - (a.altitude - a.ground_altitude) * crate::world::WU as f32;
+    // Lowest camera height relative to the aircraft origin in external views (1 m above the
+    // ground under the aircraft, or under the camera on the rolling hills).
+    let under = 1.0 - (a.altitude - a.ground_altitude) * crate::world::WU as f32;
+    let hills = theater.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat());
+    let floor = |offset: Vec3| {
+        hills.map_or(under, |h| {
+            let p = pos.0 + offset.as_dvec3();
+            under.max(1.0 + h.ground_m(p.x, -p.z) - pos.0.y as f32)
+        })
+    };
     let eye = settings.cockpit_eye();
     viewpoint.altitude_wu = a.altitude + eye.y / crate::world::WU as f32;
     let yaw = match state.view {
@@ -734,13 +746,13 @@ fn update_rig(
                 Vec3::new(0.0, 0.0, -20.0),
                 &orbit,
                 a.orientation,
-                floor,
+                &floor,
             );
         }
         View::Side => {
             let d = 40.0 * 2f32.powf(-state.external_zoom());
             *head = Transform::IDENTITY;
-            *cam_tf = orbited(Vec3::new(d, 2.0, 0.0), Vec3::ZERO, &orbit, a.orientation, floor);
+            *cam_tf = orbited(Vec3::new(d, 2.0, 0.0), Vec3::ZERO, &orbit, a.orientation, &floor);
         }
         View::Pilot => {
             let Some(sim) = combat.as_ref().map(|c| &c.sim) else { return };
@@ -774,7 +786,7 @@ fn update_rig(
             let world_rot = Quat::from_rotation_y(-h);
             let local = a.orientation.inverse() * world_rot;
             *head = Transform::from_rotation(local);
-            *cam_tf = orbited(Vec3::new(0.0, d * 0.5, d), Vec3::ZERO, &orbit, world_rot, floor);
+            *cam_tf = orbited(Vec3::new(0.0, d * 0.5, d), Vec3::ZERO, &orbit, world_rot, &floor);
         }
     }
     // Projection (FOV, off-centre frustum) is set by the cockpit module from the classic
@@ -783,14 +795,21 @@ fn update_rig(
 
 /// An external camera at `pos` looking at `target` (rig frame), orbited around the aircraft:
 /// the orbit yaw turns both about the vertical axis, the pitch raises or lowers the camera.
-/// `to_world` rotates the rig frame to the world; the camera stays at least `floor` metres above
-/// the aircraft origin (world up).
-fn orbited(pos: Vec3, target: Vec3, orbit: &Orbit, to_world: Quat, floor: f32) -> Transform {
+/// `to_world` rotates the rig frame to the world; the camera stays at least `floor` (of its
+/// offset from the aircraft origin in the world) metres above the aircraft origin (world up).
+fn orbited(
+    pos: Vec3,
+    target: Vec3,
+    orbit: &Orbit,
+    to_world: Quat,
+    floor: &dyn Fn(Vec3) -> f32,
+) -> Transform {
     let r = pos.length();
     let yaw = pos.x.atan2(pos.z) + orbit.yaw;
     let pitch = ((pos.y / r).asin() + orbit.pitch).clamp(-1.5, 1.5);
     let mut p = Vec3::new(yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos()) * r;
-    let height = (to_world * p).y;
+    let world = to_world * p;
+    let (height, floor) = (world.y, floor(world));
     if height < floor {
         p += to_world.inverse() * Vec3::Y * (floor - height);
     }

@@ -257,22 +257,80 @@ pub fn pod_angles(d: Vec3) -> (f32, f32) {
     (d.x.atan2(-d.z), d.y.clamp(-1.0, 1.0).asin())
 }
 
-/// Where a line of sight meets the ground (the plane at height `ground_y`), within the pod's
-/// range.
-pub fn ground_hit(origin: DVec3, dir: Vec3, ground_y: f64) -> Option<DVec3> {
-    let t = ground_distance(origin, dir, ground_y)?;
+/// The ground a line of sight meets: the plane at height `y` (Bevy metres: the flat world or a
+/// carrier's deck) and the rolling hills over it.
+#[derive(Clone, Default)]
+pub struct Terrain {
+    pub y: f64,
+    pub hills: stealth_sim::hills::Hills,
+}
+
+impl Terrain {
+    #[cfg(test)]
+    pub fn flat(y: f64) -> Self {
+        Self { y, hills: Default::default() }
+    }
+
+    /// The ground's height (Bevy y) at a point (Bevy x, z).
+    pub fn at(&self, x: f64, z: f64) -> f64 {
+        self.y.max(self.hills.ground_m(x, -z) as f64)
+    }
+
+    /// A point put on the ground.
+    pub fn on(&self, p: DVec3) -> DVec3 {
+        DVec3::new(p.x, self.at(p.x, p.z), p.z)
+    }
+}
+
+/// Where a line of sight meets the ground, within the pod's range.
+pub fn ground_hit(origin: DVec3, dir: Vec3, ground: &Terrain) -> Option<DVec3> {
+    let t = ground_distance(origin, dir, ground)?;
     (t <= POD_RANGE).then(|| origin + dir.as_dvec3().normalize_or_zero() * t)
 }
 
-/// Distance along a line of sight to the ground (the plane at height `ground_y`), at any
-/// range; None when it does not meet it.
-fn ground_distance(origin: DVec3, dir: Vec3, ground_y: f64) -> Option<f64> {
+/// How far a line of sight is followed over the hills (metres), its first step and its steps'
+/// growth with the distance.
+const HILLS_RAY: f64 = 100_000.0;
+const HILLS_STEP: f64 = 5.0;
+const HILLS_STEP_GROWTH: f64 = 0.02;
+
+/// Distance along a line of sight to the ground, at any range; None when it does not meet it.
+fn ground_distance(origin: DVec3, dir: Vec3, ground: &Terrain) -> Option<f64> {
     let d = dir.as_dvec3().normalize_or_zero();
-    if d.y > -1e-4 {
-        return None;
+    if ground.hills.is_flat() {
+        if d.y > -1e-4 {
+            return None;
+        }
+        let t = (ground.y - origin.y) / d.y;
+        return (t > 0.0).then_some(t);
     }
-    let t = (ground_y - origin.y) / d.y;
-    (t > 0.0).then_some(t)
+    // Over the hills: in steps until below the ground, then halved down to it.
+    let below = |t: f64| {
+        let p = origin + d * t;
+        p.y <= ground.at(p.x, p.z)
+    };
+    let top = ground.y + stealth_sim::hills::MAX_M as f64;
+    let (mut lo, mut t) = (0.0, 0.0);
+    loop {
+        t += HILLS_STEP + t * HILLS_STEP_GROWTH;
+        if t > HILLS_RAY || (d.y >= 0.0 && origin.y + d.y * t > top) {
+            return None;
+        }
+        if below(t) {
+            break;
+        }
+        lo = t;
+    }
+    let mut hi = t;
+    for _ in 0..24 {
+        let mid = (lo + hi) * 0.5;
+        if below(mid) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    Some(hi)
 }
 
 /// The slew's share of the full pod rate per axis, with the ground point `range` (m) away
@@ -302,16 +360,16 @@ pub fn pod_step(
     orientation: Quat,
     origin: DVec3,
     looking: Option<Vec3>,
-    ground_y: f64,
+    ground: &Terrain,
 ) -> Option<DVec3> {
     let to_world = |az: f32, el: f32| orientation * pod_dir(az, el);
     // An area track's ground point (as it is when on the ground, not rounded through its
     // direction).
     let area_ground = |p: DVec3| {
-        if p.y == ground_y {
+        if p.y == ground.at(p.x, p.z) {
             Some(p).filter(|p| (p - origin).length() <= POD_RANGE)
         } else {
-            ground_hit(origin, (p - origin).as_vec3(), ground_y)
+            ground_hit(origin, (p - origin).as_vec3(), ground)
         }
     };
     if slew.length() > 0.05 {
@@ -321,7 +379,7 @@ pub fn pod_step(
             TgpMode::Snowplow => to_world(0.0, SP_EL),
         }
         .normalize_or(orientation * Vec3::NEG_Z);
-        let range = ground_distance(origin, dir, ground_y);
+        let range = ground_distance(origin, dir, ground);
         let slew = slew_gain(slew, range, tgp.held);
         tgp.held += dt;
         let rate = POD_RATE / crate::mfd::cam_magnification(zoom) * dt;
@@ -337,7 +395,7 @@ pub fn pod_step(
                 let r = (p - origin).length();
                 let shallow = (-dir.y as f64).max(1e-3).powf(-SLEW_AWAY_SHALLOW);
                 let away = away * SLEW_AWAY as f64 * shallow;
-                p + (right * slew.x as f64 + away * slew.y as f64) * r * rate as f64
+                ground.on(p + (right * slew.x as f64 + away * slew.y as f64) * r * rate as f64)
             }
             // Above the horizon (or past the pod's range): turned by heading and elevation, as
             // its picture is upright.
@@ -351,12 +409,13 @@ pub fn pod_step(
         let (az, el) = pod_angles(orientation.inverse() * (moved - origin).as_vec3());
         let (caz, cel) =
             (az.clamp(-POD_AZ_LIMIT, POD_AZ_LIMIT), el.clamp(POD_EL_LIMITS.0, POD_EL_LIMITS.1));
-        let ground = area_ground(moved).is_some_and(|p| p == moved);
-        tgp.mode = TgpMode::Area(if (caz, cel) == (az, el) && (ground || moved.y > ground_y) {
+        let on_ground = area_ground(moved).is_some_and(|p| p == moved);
+        let above = moved.y > ground.at(moved.x, moved.z);
+        tgp.mode = TgpMode::Area(if (caz, cel) == (az, el) && (on_ground || above) {
             moved
         } else {
             let dir = to_world(caz, cel);
-            ground_hit(origin, dir, ground_y).unwrap_or(origin + dir.as_dvec3() * POD_SKY)
+            ground_hit(origin, dir, ground).unwrap_or(origin + dir.as_dvec3() * POD_SKY)
         });
         tgp.idle = 0.0;
     } else {
@@ -373,8 +432,8 @@ pub fn pod_step(
     match tgp.mode {
         TgpMode::Point(p) => Some(p),
         TgpMode::Area(p) => area_ground(p),
-        TgpMode::Snowplow => ground_hit(origin, to_world(0.0, SP_EL), ground_y),
-        TgpMode::Slaved => looking.and_then(|d| ground_hit(origin, d, ground_y)),
+        TgpMode::Snowplow => ground_hit(origin, to_world(0.0, SP_EL), ground),
+        TgpMode::Slaved => looking.and_then(|d| ground_hit(origin, d, ground)),
     }
 }
 
@@ -1465,7 +1524,7 @@ fn update_pod(
     mut designate: MessageWriter<PodDesignate>,
     mut track: MessageWriter<PodTrack>,
     mut locks: MessageWriter<LockRequest>,
-    waypoints: Res<crate::hud::Waypoints>,
+    (waypoints, theater): (Res<crate::hud::Waypoints>, Option<Res<crate::world::Theater>>),
 ) {
     let lock = actions.read().any(|a| a.0 == Action::LockCursor);
     let Ok((a, pos)) = aircraft.single() else { return };
@@ -1501,7 +1560,17 @@ fn update_pod(
     } else {
         camera.single().ok().filter(|_| shown && info.live).map(|t| t.forward().as_vec3())
     };
-    let ground_y = crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y;
+    // The flat world or the deck under the aircraft, and the hills.
+    let ground = Terrain {
+        y: crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y,
+        hills: theater.map(|t| t.hills.clone()).unwrap_or_default(),
+    };
+    // Over the hills the aircraft's own ground is theirs: the plane under them is the flat world.
+    let ground = if ground.hills.ground_m(pos.0.x, -pos.0.z) > 0.0 {
+        Terrain { y: 0.0, ..ground }
+    } else {
+        ground
+    };
     // CZ: point track on the current steerpoint, the pod the SOI to slew on from there.
     let mut cz = false;
     if std::mem::take(&mut state.av.tgp.cz)
@@ -1509,7 +1578,7 @@ fn update_pod(
     {
         cz = true;
         let p = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64);
-        state.av.tgp.mode = TgpMode::Point(p);
+        state.av.tgp.mode = TgpMode::Point(ground.on(p));
         state.av.tgp.idle = 0.0;
         if shown {
             state.av.soi = Some(Format::Tgp);
@@ -1526,20 +1595,19 @@ fn update_pod(
     let tgp = &mut state.av.tgp;
     // A point track on a vehicle follows it, until slewed off or it is gone.
     if let Some(k) = tgp.track {
-        let at = combat.as_deref().and_then(|c| vehicle_at(c, k, ground_y));
+        let at = combat.as_deref().and_then(|c| vehicle_at(c, k, &ground));
         match (tgp.mode, at) {
             (TgpMode::Point(_), Some(at)) if slew == Vec2::ZERO => tgp.mode = TgpMode::Point(at),
             _ => tgp.track = None,
         }
     }
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
-    let los =
-        pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, origin, looking, ground_y);
+    let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, origin, looking, &ground);
     // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
     // by the lock key (a gun, which cannot be locked, held in point track).
     if (slewed || cz)
         && let TgpMode::Point(p) = tgp.mode
-        && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, ground_y))
+        && let Some(snap) = combat.as_deref().and_then(|c| unit_near(c, p, &ground))
     {
         match snap {
             Snap::Object(object) => {
@@ -1596,23 +1664,19 @@ enum Snap {
     Gun(usize, DVec3),
 }
 
-/// Where vehicle `k` is now (Bevy world, on the ground at `ground_y`), None once destroyed.
-fn vehicle_at(c: &crate::combat::Combat, k: usize, ground_y: f64) -> Option<DVec3> {
+/// Where vehicle `k` is now (Bevy world, on the ground), None once destroyed.
+fn vehicle_at(c: &crate::combat::Combat, k: usize, ground: &Terrain) -> Option<DVec3> {
     let u = c.sim.units().get(k).filter(|u| !u.destroyed)?;
     let (x, y) = u.map_xy();
-    let mut at = crate::sim_render::map_point(x, y, 0.0);
-    at.y = ground_y;
-    Some(at)
+    Some(ground.on(crate::sim_render::map_point(x, y, 0.0)))
 }
 
 /// The unit nearest the pod's ground point `p` within `POD_SNAP`, friend or foe.
-fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap> {
+fn unit_near(c: &crate::combat::Combat, p: DVec3, ground: &Terrain) -> Option<Snap> {
     use stealth_sim::oflags;
     let centre = |x: i32, y: i32| {
         let (e, n) = crate::combat::map_wu(x, y);
-        let mut at = crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0);
-        at.y = ground_y;
-        at
+        ground.on(crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0))
     };
     let flat = |q: DVec3| DVec2::new(q.x - p.x, q.z - p.z).length();
     let objects = c.sim.objects().iter().enumerate().skip(3);
@@ -1620,7 +1684,7 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap>
         .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
         .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
     let guns = c.sim.units().iter().enumerate().filter(|(_, u)| !u.destroyed).map(|(k, u)| {
-        let at = vehicle_at(c, k, ground_y).filter(|_| u.fine.is_some());
+        let at = vehicle_at(c, k, ground).filter(|_| u.fine.is_some());
         let at = at.unwrap_or_else(|| centre(u.x, u.y));
         (Snap::Gun(k, at), at)
     });
@@ -1628,7 +1692,7 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap>
     let tile = c.sim.target_tile_near(e as i32, n as i32).map(|(x, y)| {
         let at = crate::world::wu_to_bevy(x as f64, y as f64, 0.0);
         let (mx, my) = (x >> 5, 0x8000 - (y >> 5));
-        (Snap::Tile(mx, my), DVec3::new(at.x, ground_y, at.z))
+        (Snap::Tile(mx, my), ground.on(at))
     });
     objects
         .chain(guns)
@@ -1979,23 +2043,41 @@ mod tests {
         let origin = DVec3::new(0.0, 1000.0, 0.0);
         let mut tgp = TgpState::default();
         let ahead_down = Vec3::new(0.0, -0.5, -1.0).normalize();
-        let start = ground_hit(origin, ahead_down, 0.0).unwrap();
+        let start = ground_hit(origin, ahead_down, &Terrain::flat(0.0)).unwrap();
         let r = (start - origin).length();
         // Slewing right from where the slaved pod looks: the ground point moves right.
-        let p0 = pod_step(&mut tgp, Vec2::X, 0.5, 0, Quat::IDENTITY, origin, Some(ahead_down), 0.0);
+        let p0 = pod_step(
+            &mut tgp,
+            Vec2::X,
+            0.5,
+            0,
+            Quat::IDENTITY,
+            origin,
+            Some(ahead_down),
+            &Terrain::flat(0.0),
+        );
         let p = area_point(&tgp);
         assert!((p.x - r * 0.25).abs() < 1e-3 && (p.z - start.z).abs() < 1e-3, "{p}");
         assert_eq!(p0, Some(p));
         // Zoomed in, slower.
         let mut z = tgp.clone();
-        pod_step(&mut z, Vec2::X, 0.5, 2, Quat::IDENTITY, origin, None, 0.0);
+        pod_step(&mut z, Vec2::X, 0.5, 2, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
         let r2 = (p - origin).length();
         let moved = (area_point(&z) - p).length();
         assert!((moved - r2 * 0.0625).abs() < 1e-3, "{moved}");
         // Released: point track on the ground point after a moment.
-        pod_step(&mut tgp, Vec2::ZERO, 0.1, 0, Quat::IDENTITY, origin, None, 0.0);
+        pod_step(&mut tgp, Vec2::ZERO, 0.1, 0, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
         assert!(matches!(tgp.mode, TgpMode::Area(_)));
-        let p = pod_step(&mut tgp, Vec2::ZERO, 0.1, 0, Quat::IDENTITY, origin, None, 0.0);
+        let p = pod_step(
+            &mut tgp,
+            Vec2::ZERO,
+            0.1,
+            0,
+            Quat::IDENTITY,
+            origin,
+            None,
+            &Terrain::flat(0.0),
+        );
         let TgpMode::Point(q) = tgp.mode else { panic!("{:?}", tgp.mode) };
         assert_eq!(p, Some(q));
         // It stays on that point as the aircraft moves.
@@ -2013,7 +2095,7 @@ mod tests {
             for i in 0..20 {
                 let t = i as f32 * 0.05;
                 let attitude = Quat::from_rotation_x(pitch * t) * Quat::from_rotation_z(roll * t);
-                pod_step(&mut tgp, Vec2::X, 0.05, 0, attitude, origin, None, 0.0);
+                pod_step(&mut tgp, Vec2::X, 0.05, 0, attitude, origin, None, &Terrain::flat(0.0));
                 origin += DVec3::new(0.0, 0.0, -12.0);
             }
             area_point(&tgp)
@@ -2026,11 +2108,11 @@ mod tests {
         let origin = DVec3::new(0.0, 1000.0, 0.0);
         let sky = origin + pod_dir(0.0, 0.2).as_dvec3() * POD_SKY;
         let mut tgp = TgpState { mode: TgpMode::Area(sky), ..default() };
-        pod_step(&mut tgp, Vec2::Y, 0.2, 0, Quat::IDENTITY, origin, None, 0.0);
+        pod_step(&mut tgp, Vec2::Y, 0.2, 0, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
         let d = pod_direction(&tgp, Quat::IDENTITY, origin).unwrap();
         assert!(d.y > 0.0, "{d}");
         let pitched = Quat::from_rotation_x(0.2);
-        pod_step(&mut tgp, Vec2::ZERO, 0.5, 0, pitched, origin, None, 0.0);
+        pod_step(&mut tgp, Vec2::ZERO, 0.5, 0, pitched, origin, None, &Terrain::flat(0.0));
         assert!((pod_direction(&tgp, pitched, origin).unwrap() - d).length() < 1e-4);
     }
 
@@ -2044,9 +2126,9 @@ mod tests {
             |tgp: &TgpState| pod_angles(pod_direction(tgp, Quat::IDENTITY, origin).unwrap());
         let (az0, el0) = pod_angles((start - origin).as_vec3());
         let mut right = TgpState { mode: TgpMode::Point(start), ..default() };
-        pod_step(&mut right, Vec2::X, 0.1, 0, Quat::IDENTITY, origin, None, 0.0);
+        pod_step(&mut right, Vec2::X, 0.1, 0, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
         let mut up = TgpState { mode: TgpMode::Point(start), ..default() };
-        pod_step(&mut up, Vec2::Y, 0.1, 0, Quat::IDENTITY, origin, None, 0.0);
+        pod_step(&mut up, Vec2::Y, 0.1, 0, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
         let daz = angles(&right).0 - az0;
         let del = angles(&up).1 - el0;
         assert!(daz > 0.0 && del > 0.0 && del < daz / 5.0, "{daz} {del}");
@@ -2075,7 +2157,7 @@ mod tests {
             TgpState { mode: TgpMode::Area(DVec3::new(0.0, 0.0, -25_000.0)), ..default() };
         let step = |tgp: &mut TgpState, s: Vec2| {
             let before = area_point(tgp);
-            pod_step(tgp, s, 0.1, 0, Quat::IDENTITY, origin, None, 0.0);
+            pod_step(tgp, s, 0.1, 0, Quat::IDENTITY, origin, None, &Terrain::flat(0.0));
             (area_point(tgp) - before).length() / (before - origin).length()
         };
         let first = step(&mut tgp, Vec2::X);
@@ -2129,13 +2211,14 @@ mod tests {
         // Fixed ahead of the nose, turning with the aircraft, without holding the ground.
         let origin = DVec3::new(0.0, 1000.0, 0.0);
         let turned = Quat::from_rotation_y(-0.5);
-        let p = pod_step(&mut s.av.tgp, Vec2::ZERO, 1.0, 0, turned, origin, None, 0.0);
+        let p =
+            pod_step(&mut s.av.tgp, Vec2::ZERO, 1.0, 0, turned, origin, None, &Terrain::flat(0.0));
         assert_eq!(s.av.tgp.mode, TgpMode::Snowplow);
         let d = pod_direction(&s.av.tgp, turned, origin).unwrap();
         assert!((d - turned * pod_dir(0.0, SP_EL)).length() < 1e-5);
         assert!(p.is_some_and(|p| p.x > 0.0));
         // A slew starts from there.
-        pod_step(&mut s.av.tgp, Vec2::Y, 0.5, 0, turned, origin, None, 0.0);
+        pod_step(&mut s.av.tgp, Vec2::Y, 0.5, 0, turned, origin, None, &Terrain::flat(0.0));
         let d = pod_direction(&s.av.tgp, turned, origin).unwrap();
         let (az, el) = pod_angles(turned.inverse() * d);
         // (Farther out on the ground, finer at the shallow angle.)
@@ -2154,11 +2237,29 @@ mod tests {
     #[test]
     fn ground_hits() {
         let o = DVec3::new(10.0, 100.0, 0.0);
-        assert_eq!(ground_hit(o, Vec3::NEG_Y, 0.0), Some(DVec3::new(10.0, 0.0, 0.0)));
-        assert_eq!(ground_hit(o, Vec3::Y, 0.0), None);
-        assert_eq!(ground_hit(o, Vec3::new(1.0, -1e-5, 0.0), 0.0), None);
+        assert_eq!(
+            ground_hit(o, Vec3::NEG_Y, &Terrain::flat(0.0)),
+            Some(DVec3::new(10.0, 0.0, 0.0))
+        );
+        assert_eq!(ground_hit(o, Vec3::Y, &Terrain::flat(0.0)), None);
+        assert_eq!(ground_hit(o, Vec3::new(1.0, -1e-5, 0.0), &Terrain::flat(0.0)), None);
         let (az, el) = pod_angles(pod_dir(0.7, -0.3));
         assert!((az - 0.7).abs() < 1e-5 && (el + 0.3).abs() < 1e-5);
+    }
+    /// Over the hills a line of sight stops at the hillside, even looking level.
+    #[test]
+    fn line_of_sight_meets_the_hills() {
+        let hills =
+            stealth_sim::hills::Hills::from_bytes(vec![255; stealth_sim::hills::DIM.pow(2)])
+                .unwrap();
+        let ground = Terrain { y: 0.0, hills };
+        let o = DVec3::new(200_000.0, 0.0, -300_000.0);
+        let o = DVec3::new(o.x, ground.at(o.x, o.z) + 20.0, o.z);
+        let p = ground_hit(o, Vec3::new(0.3, -0.2, -1.0), &ground).expect("meets the ground");
+        assert!((p.y - ground.at(p.x, p.z)).abs() < 0.05, "{p} {}", ground.at(p.x, p.z));
+        // Straight down: the ground under the eye.
+        let p = ground_hit(o, Vec3::NEG_Y, &ground).unwrap();
+        assert!((o.y - p.y - 20.0).abs() < 0.05);
     }
 
     #[test]

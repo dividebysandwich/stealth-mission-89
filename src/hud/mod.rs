@@ -618,6 +618,7 @@ pub struct HudParams<'w, 's> {
     pub settings: Res<'w, crate::settings::Settings>,
     pub mfd: Option<Res<'w, crate::mfd::MfdState>>,
     pub papi: Option<Res<'w, crate::scenery::PapiSites>>,
+    pub theater: Option<Res<'w, crate::world::Theater>>,
 }
 
 /// (temperature ratio, speed of sound in ft/s) at an altitude in feet (standard atmosphere).
@@ -648,7 +649,10 @@ impl HudParams<'_, '_> {
         let body = a.orientation.inverse() * path;
         let eye = pos.0 + (a.orientation * self.settings.cockpit_eye()).as_dvec3();
         let steer = self.waypoints.target().filter(|_| !a.damage.autopilot_failed).map(|wp| {
-            let d = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64) - eye;
+            let alt = self.theater.as_ref().map_or(a.ground_altitude as f64, |t| {
+                t.ground_wu(wp.east, wp.north, a.ground_altitude, a.over_deck)
+            });
+            let d = crate::world::wu_to_bevy(wp.east, wp.north, alt) - eye;
             let km = (d.x.hypot(d.z) / 1000.0) as f32;
             let ms = knots * 0.5144;
             (

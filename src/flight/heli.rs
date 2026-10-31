@@ -538,9 +538,10 @@ pub(super) fn step(
             - r.sas.z * rates.z,
     );
 
-    // --- ground: wheels on flat ground hold it level and stop it sliding
+    // --- ground: the wheels hold it at the ground's slope and stop it sliding
     if a.on_ground {
         let (_, p, b) = a.euler();
+        let (p, b) = (p - a.ground_slope.0, b - a.ground_slope.1);
         // Weight on the wheels: what the rotor does not lift.
         let wow = (1.0 - thrust * up.y).clamp(0.0, 1.0);
         rate_dot.x += wow * (-60.0 * p - 12.0 * rates.x);
@@ -627,8 +628,9 @@ fn touchdown(a: &mut Aircraft, k: &FlightConstants, r: &Rotor, vel: Vec3, roll: 
     let f = if k.landing >= 2 { 0.75 } else { 1.0 };
     let sink = -vel.y;
     let knots = Vec3::new(vel.x, 0.0, vel.z).length() / KNOT;
+    // Tilted against the ground's slope.
     let (_, pitch, _) = a.euler();
-    let tilt = pitch.abs().max(roll.abs());
+    let tilt = (pitch - a.ground_slope.0).abs().max((roll - a.ground_slope.1).abs());
     if sink > r.max_sink * f || tilt > r.max_tilt * f || knots > r.max_knots * f {
         a.ended = Some(FlightEnd::Crash);
         info!(
@@ -1171,9 +1173,8 @@ mod tests {
             let (h0, ..) = a.euler();
             assert!(engage_hover(&mut a) && a.auto_hover(), "{name}");
             let mut worst = 0.0f32;
-            let (a, p) = fly_as(k.clone(), a, 60.0, 1, |a, _| {
-                worst = worst.max((a.altitude - 300.0).abs())
-            });
+            let (a, p) =
+                fly_as(k.clone(), a, 60.0, 1, |a, _| worst = worst.max((a.altitude - 300.0).abs()));
             let (h, ..) = a.euler();
             let off = ((h - h0).to_degrees() + 540.0).rem_euclid(360.0) - 180.0;
             let away = p.xz().length() * crate::world::WU as f32;

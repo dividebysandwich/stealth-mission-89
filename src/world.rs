@@ -295,6 +295,15 @@ impl Theater {
         t
     }
 
+    /// The ground's height (world units) at a waypoint (wu east, north) for an aircraft whose
+    /// ground is at `ground_wu` (`over_deck`: a carrier's deck): the hills there, or the deck.
+    pub fn ground_wu(&self, east: f64, north: f64, ground_wu: f32, over_deck: bool) -> f64 {
+        if over_deck {
+            return ground_wu as f64;
+        }
+        self.hills.ground_m(east * WU, north * WU) as f64 / WU
+    }
+
     /// Tile data for the simulation (`findNearestTile`), for theaters not in the exported sim data.
     pub fn sim_tiles(&self) -> stealth_sim::TheaterTiles {
         let level = |l: usize| -> Vec<Vec<(i16, i16, u8)>> {
