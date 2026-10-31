@@ -295,7 +295,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         stealth_campaign::Objective::Battery { .. } => BATTERY_TASK,
         stealth_campaign::Objective::Armour { .. } => ARMOUR_TASK,
         stealth_campaign::Objective::Support { .. } => SUPPORT_TASK,
-        _ if sortie.aircraft.transport() => describe_heli(o.kind),
+        _ if sortie.aircraft.cargo() => describe_heli(o.kind),
         _ => describe(o.kind),
     };
     m.briefing.title = o.title.clone();
@@ -313,7 +313,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     ];
     m.loadout.bays =
         stores(o.kind).iter().map(|&w| Bay { weapon: w, name: String::new(), count: 1 }).collect();
-    m.loadout.usable_bays = if sortie.aircraft.transport() {
+    m.loadout.usable_bays = if sortie.aircraft.cargo() {
         0
     } else if m.settings.plane == stealth_mission::Plane::Lockheed {
         2

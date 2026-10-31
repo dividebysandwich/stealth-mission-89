@@ -200,7 +200,7 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft and their notes.
-const AIRCRAFT: [(AircraftKind, &[&str]); 9] = [
+const AIRCRAFT: [(AircraftKind, &[&str]); 10] = [
     (
         AircraftKind::F117,
         &["Stealth attack aircraft", "Subsonic, 7 g", "Modern and classic cockpit"],
@@ -251,6 +251,14 @@ const AIRCRAFT: [(AircraftKind, &[&str]); 9] = [
             "Armed scout helicopter, nimble",
             "Pylons: Hellfires, Stingers or .50 cal pods",
             "Mast-mounted sight, helmet display",
+        ],
+    ),
+    (
+        AircraftKind::CH47,
+        &[
+            "Tandem-rotor cargo helicopter",
+            "Slings resupply and logistics loads",
+            "No torque to hold: the rotors cancel",
         ],
     ),
 ];

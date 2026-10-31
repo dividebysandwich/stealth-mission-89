@@ -582,6 +582,9 @@ pub struct Airframe {
     /// The OH-58D (a helicopter with its weapons on pylons, no turret): only its look differs.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kiowa: bool,
+    /// The CH-47 (a cargo helicopter, no weapons): only its look differs from the UH-60's.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub chinook: bool,
 }
 
 /// Landing option.
@@ -635,6 +638,9 @@ pub struct SimOptions {
     /// other pilots; its gun is the machine gun pods on its pylons.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kiowa: bool,
+    /// The aircraft is the CH-47 (with `helicopter`): seen as one by the other pilots.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub chinook: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -678,6 +684,7 @@ impl Default for SimOptions {
             comanche: false,
             harrier: false,
             kiowa: false,
+            chinook: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

@@ -186,6 +186,29 @@ impl Rotor {
         ..Rotor::AH1Z
     };
 
+    /// CH-47: two big three-blade rotors in tandem turning opposite ways, so no torque reaction
+    /// to hold with the pedals and no tail fin to weathervane (the long fuselage still does a
+    /// little); the pedals yaw it by tilting the rotors apart, the cyclic pitches it by moving
+    /// lift between them. Heavy: slower in roll and yaw than the UH-60 and slow to change its
+    /// rotor speed; ground effect reaches higher under the wide discs; it cruises fast for its
+    /// size (the level speed tops out near 160 kt); two big turbines that burn a lot.
+    pub const CH47: Rotor = Rotor {
+        etl_gain: 0.12,
+        ge_height: 60.0,
+        pitch_accel: 1.8,
+        roll_accel: 3.4,
+        pedal_accel: 1.7,
+        sas: Vec3::new(3.6, 1.9, 4.2),
+        stall_knots: (160.0, 205.0),
+        torque_yaw: 0.0,
+        weathervane: 0.012,
+        drag: Vec3::new(6.0e-4, 0.0, 6.5e-5),
+        rotor_lag: 2.0,
+        fuel_burn: 0.85,
+        max_knots: 40.0,
+        ..Rotor::UH60
+    };
+
     /// Collective that hovers out of ground effect, in still air.
     pub fn hover_collective(&self) -> f32 {
         (1.0 - self.thrust_flat) / self.thrust_slope
@@ -1016,6 +1039,44 @@ mod tests {
         .0
     }
 
+    /// The CH-47: no torque to hold (the collective raised in a hover with the pedals centred
+    /// leaves the heading alone), slower in roll than the UH-60, and fast: the level speed tops
+    /// out between 150 and 190 kt.
+    #[test]
+    fn ch47_needs_no_pedal_and_cruises_fast() {
+        let r = Rotor::CH47;
+        let (a, _) = fly_as(FlightConstants::ch47(), hovering(500.0), 5.0, 1, |a, c| {
+            let mut free = FlightControls::default();
+            pilot(a, &mut free, 0.0);
+            c.roll = free.roll;
+            c.pitch = free.pitch;
+            c.yaw = 0.0;
+            c.throttle = Some((r.hover_collective() + 0.3).min(1.0));
+        });
+        let (h, ..) = a.euler();
+        assert!(
+            h.to_degrees().abs() < 2.0 && a.climb_rate > 5.0,
+            "heading {h} climb {}",
+            a.climb_rate
+        );
+        let (chinook, hawk) =
+            (bank_after(FlightConstants::ch47(), 0.5), bank_after(FlightConstants::uh60(), 0.5));
+        assert!(chinook < hawk * 0.9, "bank {chinook} vs UH-60 {hawk}");
+        let (fast, faster) = (
+            full_collective(FlightConstants::ch47(), 14.0),
+            full_collective(FlightConstants::ch47(), 20.0),
+        );
+        println!(
+            "CH-47 full collective: {:.0} kt climb {:.1}, {:.0} kt climb {:.1}",
+            fast.knots(),
+            fast.climb_rate,
+            faster.knots(),
+            faster.climb_rate
+        );
+        assert!(fast.knots() > 150.0 && fast.climb_rate > 0.0);
+        assert!(faster.knots() < 190.0 && faster.climb_rate < 0.0);
+    }
+
     /// The bank after `secs` of full right cyclic from level flight at 120 kt.
     fn bank_after(k: FlightConstants, secs: f32) -> f32 {
         let hc = k.heli.unwrap().hover_collective();
@@ -1108,6 +1169,7 @@ mod tests {
             ("AH-1Z", FlightConstants::ah1z()),
             ("RAH-66", FlightConstants::rah66()),
             ("OH-58D", FlightConstants::oh58()),
+            ("CH-47F", FlightConstants::ch47()),
         ] {
             let r = k.heli.unwrap();
             for (case, knots, bearing) in [("hover", 0.0, 90.0f32), ("cruise", 120.0, 200.0)] {
@@ -1162,6 +1224,7 @@ mod tests {
             ("AH-1Z", FlightConstants::ah1z()),
             ("RAH-66", FlightConstants::rah66()),
             ("OH-58D", FlightConstants::oh58()),
+            ("CH-47F", FlightConstants::ch47()),
         ] {
             let r = k.heli.unwrap();
             let mut a0 = hovering(300.0);

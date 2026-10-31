@@ -58,6 +58,8 @@ pub struct RemotePilot {
     /// them (`Sim::pylon_looks`).
     pub kiowa: bool,
     pub pylons: [u8; 2],
+    /// The CH-47 (with `helicopter`).
+    pub chinook: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -75,7 +77,7 @@ pub struct RemotePilot {
 /// [`RemotePilot`] as a sequence without field names: id, view (wx, wy, mx, my, alt, view_z,
 /// heading, pitch, roll, velocity, knots, climb), flags (gear up, on the ground, F-117A as it
 /// was, external stores, gun firing, burning, damage smoke in two bits, helicopter, gunship, Tornado,
-/// A-10),
+/// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits).
 
@@ -108,7 +110,8 @@ impl From<RemotePilot> for RemoteWire {
                 | (p.a10 as u16) << 11
                 | (p.comanche as u16) << 12
                 | (p.harrier as u16) << 13
-                | (p.kiowa as u16) << 14;
+                | (p.kiowa as u16) << 14
+                | (p.chinook as u16) << 15;
         RemoteWire(
             p.id,
             [
@@ -176,6 +179,7 @@ impl From<RemoteWire> for RemotePilot {
             nozzle,
             kiowa: bit(14),
             pylons: [pylons & 15, pylons >> 4],
+            chinook: bit(15),
             gun_aim,
             chute,
             missiles,
@@ -356,6 +360,7 @@ impl Sim {
                     nozzle: if p.harrier { p.last_input.nozzle } else { 0 },
                     kiowa: p.kiowa,
                     pylons: if p.kiowa { self.pylon_looks(&p.bays) } else { [0; 2] },
+                    chinook: p.chinook,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

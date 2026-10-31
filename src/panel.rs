@@ -663,6 +663,7 @@ pub struct PanelParams<'w, 's> {
     pub wca: Res<'w, crate::mpd::WcaAck>,
     /// The RAH-66's threat page's strip chart (`mpd`).
     pub threats: Res<'w, crate::mpd::ThreatHistory>,
+    pub settings: Res<'w, crate::settings::Settings>,
 }
 
 /// Fuel (lbs) below which the low-fuel light blinks.
@@ -911,13 +912,14 @@ impl PanelParams<'_, '_> {
         crate::mpd::draw_left(c, fonts, &threats, &list, &self.wca.0, blink, &self.cm);
     }
 
-    /// The RAH-66's right multipurpose display: the engine page.
+    /// The RAH-66's right multipurpose display, the CH-47's centre one: the engine page.
     pub fn draw_engines(&self, c: &mut Canvas, fonts: &Fonts) {
         let Ok(a) = self.aircraft.single() else {
             c.clear(5);
             return;
         };
-        let r = crate::mpd::engine_readings(a, self.warnings.engine, self.warnings.fire);
+        let burn = self.settings.aircraft.spec().flight().heli.map_or(0.3, |r| r.fuel_burn);
+        let r = crate::mpd::engine_readings(a, burn, self.warnings.engine, self.warnings.fire);
         crate::mpd::draw_engines(c, fonts, &r);
     }
 

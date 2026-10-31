@@ -42,6 +42,7 @@ pub enum Aircraft {
     RAH66,
     AV8B,
     OH58,
+    CH47,
 }
 
 impl Aircraft {
@@ -56,16 +57,25 @@ impl Aircraft {
             Aircraft::RAH66 => "RAH-66",
             Aircraft::AV8B => "AV-8B",
             Aircraft::OH58 => "OH-58D",
+            Aircraft::CH47 => "CH-47",
         }
     }
 
     pub fn helicopter(self) -> bool {
-        matches!(self, Aircraft::UH60 | Aircraft::AH1Z | Aircraft::RAH66 | Aircraft::OH58)
+        matches!(
+            self,
+            Aircraft::UH60 | Aircraft::AH1Z | Aircraft::RAH66 | Aircraft::OH58 | Aircraft::CH47
+        )
     }
 
     /// The troop helicopter: flies insertions and picks downed pilots up.
     pub fn transport(self) -> bool {
         self == Aircraft::UH60
+    }
+
+    /// The helicopters that sling cargo: fly resupply and logistics (the CH-47 nothing else).
+    pub fn cargo(self) -> bool {
+        matches!(self, Aircraft::UH60 | Aircraft::CH47)
     }
 }
 
@@ -201,16 +211,15 @@ impl MissionKind {
         self == MissionKind::Insertion
     }
 
-    /// Who may fly it: insertions, resupply and logistics only the troop helicopter, which
-    /// flies nothing but them and rescues (it picks the pilot up, the others cover it). The
-    /// gunship flies the rest.
+    /// Who may fly it: insertions only the troop helicopter, resupply and logistics only the
+    /// cargo helicopters, which fly nothing but them and (the troop helicopter) rescues (it
+    /// picks the pilot up, the others cover it). The gunship flies the rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
         match self {
-            MissionKind::Insertion | MissionKind::Resupply | MissionKind::Logistics => {
-                aircraft.transport()
-            }
-            MissionKind::Csar => true,
-            _ => !aircraft.transport(),
+            MissionKind::Insertion => aircraft.transport(),
+            MissionKind::Resupply | MissionKind::Logistics => aircraft.cargo(),
+            MissionKind::Csar => aircraft != Aircraft::CH47,
+            _ => !aircraft.cargo(),
         }
     }
 
@@ -230,10 +239,8 @@ impl MissionKind {
             MissionKind::Intercept => &[F16, AH1Z, RAH66, OH58],
             MissionKind::Cas => &[A10, AV8B, AH1Z, RAH66, OH58, F16, Tornado, F117],
             MissionKind::Escort => &[AH1Z, RAH66, OH58, AV8B, F16, A10],
-            MissionKind::Insertion
-            | MissionKind::Csar
-            | MissionKind::Resupply
-            | MissionKind::Logistics => &[UH60],
+            MissionKind::Insertion | MissionKind::Csar => &[UH60],
+            MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
         }
     }
 
@@ -246,12 +253,14 @@ impl MissionKind {
 
     /// Why an aircraft may not fly it.
     pub fn not_flyable(self, aircraft: Aircraft) -> &'static str {
-        if aircraft.transport() {
+        if aircraft == Aircraft::CH47 {
+            "The CH-47 flies resupply and logistics"
+        } else if aircraft.transport() {
             "The UH-60 flies insertions, rescues, resupply and logistics"
         } else if self == MissionKind::Resupply {
-            "Resupply is flown in the UH-60"
+            "Resupply is flown in the UH-60 or the CH-47"
         } else if self == MissionKind::Logistics {
-            "Logistics is flown in the UH-60"
+            "Logistics is flown in the UH-60 or the CH-47"
         } else {
             "Insertions are flown in the UH-60, or ordered for the helicopter crews"
         }

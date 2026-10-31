@@ -1742,6 +1742,7 @@ fn briefing(
                                 Airframe::A10,
                                 Airframe::AV8B,
                                 Airframe::UH60,
+                                Airframe::CH47,
                                 Airframe::AH1Z,
                                 Airframe::RAH66,
                             ]

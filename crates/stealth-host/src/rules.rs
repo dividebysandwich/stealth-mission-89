@@ -89,6 +89,12 @@ impl Rules {
                 kiowa: true,
                 ..Airframe::default()
             },
+            Aircraft::CH47 => Airframe {
+                external_stores: true,
+                helicopter: true,
+                chinook: true,
+                ..Airframe::default()
+            },
             Aircraft::AH1Z => Airframe {
                 external_stores: true,
                 helicopter: true,

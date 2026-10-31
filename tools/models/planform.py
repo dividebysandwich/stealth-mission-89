@@ -27,7 +27,7 @@ TOLERANCE = 0.05
 # outer wings, swept forward. Bay doors are shut.
 AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0"), ("RAH66_OUTLINE", "aircraft_046_lod0"),
             ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032"), ("AV8B_OUTLINE", "aircraft_047"),
-            ("OH58_OUTLINE", "aircraft_048_lod0")]
+            ("OH58_OUTLINE", "aircraft_048_lod0"), ("CH47_OUTLINE", "aircraft_049_lod0")]
 WITH_PARTS = {"aircraft_045"}
 
 

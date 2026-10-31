@@ -205,7 +205,7 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
         A10 => (8.7, 0.5),
         AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
-        UH60 | AH1Z | RAH66 | OH58 => return None,
+        UH60 | AH1Z | RAH66 | OH58 | CH47 => return None,
     };
     Some([Vec3::new(-x, 0.0, z), Vec3::new(x, 0.0, z)])
 }

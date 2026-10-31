@@ -319,6 +319,46 @@ const AH1Z_OUTLINE: &[(f32, f32)] = &[
     (-0.30, 0.20),
     (-0.18, 0.02),
 ];
+/// aircraft_049 (tools/models/chinook.py) seen from above, without its rotors: half span (the
+/// sponsons) 1.94 m, length 15.84 m.
+const CH47_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.34, 0.00),
+    (0.74, 0.14),
+    (0.92, 0.30),
+    (1.18, 0.74),
+    (1.32, 1.44),
+    (1.32, 3.92),
+    (1.72, 4.02),
+    (1.92, 4.16),
+    (1.94, 5.76),
+    (1.92, 12.40),
+    (1.88, 12.66),
+    (1.76, 12.82),
+    (1.64, 14.12),
+    (1.32, 14.16),
+    (1.30, 15.34),
+    (1.08, 15.60),
+    (1.08, 15.84),
+    (0.00, 15.84),
+    (-1.08, 15.84),
+    (-1.08, 15.60),
+    (-1.30, 15.34),
+    (-1.32, 14.16),
+    (-1.64, 14.12),
+    (-1.76, 12.82),
+    (-1.88, 12.66),
+    (-1.92, 12.40),
+    (-1.94, 5.76),
+    (-1.92, 4.16),
+    (-1.72, 4.02),
+    (-1.32, 3.92),
+    (-1.32, 1.44),
+    (-1.18, 0.74),
+    (-0.92, 0.30),
+    (-0.74, 0.14),
+    (-0.34, 0.00),
+];
 /// aircraft_025 (tools/models/uh60.py) seen from above, without its rotors: half span (the
 /// stabilator) 2.16 m, length 15.1 m.
 const UH60_OUTLINE: &[(f32, f32)] = &[
@@ -772,6 +812,9 @@ static OH58_LAYOUT: Layout =
 /// The UH-60A carries troops, no stores.
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
+/// The CH-47 slings cargo, no stores.
+static CH47_LAYOUT: Layout =
+    Layout { outline: CH47_OUTLINE, half_span: 1.94, length: 15.84, hardpoints: &[] };
 
 /// The hardpoints of an aircraft (`realistic`: the F-117A's real two bays).
 pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
@@ -786,6 +829,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
         AircraftKind::OH58 => &OH58_LAYOUT,
+        AircraftKind::CH47 => &CH47_LAYOUT,
     }
 }
 
@@ -823,7 +867,7 @@ impl PlannedLoadout {
                     *s = Some(w);
                 }
             }
-            AircraftKind::UH60 => {}
+            AircraftKind::UH60 | AircraftKind::CH47 => {}
             AircraftKind::OH58 => {
                 stores[0] = Some(HELLFIRE);
                 stores[1] = Some(GUN_POD);

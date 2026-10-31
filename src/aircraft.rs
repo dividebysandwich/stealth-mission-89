@@ -20,6 +20,7 @@ pub enum AircraftKind {
     RAH66,
     AV8B,
     OH58,
+    CH47,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -220,6 +221,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         46 => rah66_point(0.0, 2.5, 0.57) - Vec3::Y * RAH66_LIFT,
         47 => harrier_point(0.0, 2.30, -0.78) - Vec3::Y * HARRIER_LIFT,
         48 => oh58_point(0.0, 2.3, 0.55) - Vec3::Y * OH58_LIFT,
+        49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
         102 => Vec3::new(0.0, 0.92, -3.6),
         _ => Vec3::new(0.0, -1.0, -4.0),
@@ -485,6 +487,51 @@ static OH58: AircraftSpec = AircraftSpec {
     flight: FlightConstants::oh58,
 };
 
+/// A point of the CH-47 model (tools/models/chinook.py, as `uh60_point`: its origin on the ground
+/// halfway between the rotors) in the aircraft frame.
+const fn ch47_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.38;
+    model_point(CH47_LIFT, x * K, z * K, -y * K)
+}
+
+/// The CH-47's model origin is on the ground under its wheels; clear of the ground overlays.
+const CH47_LIFT: f32 = 0.05;
+
+static CH47: AircraftSpec = AircraftSpec {
+    model: "aircraft_049",
+    model_lift: CH47_LIFT,
+    // The pilot's (right) seat: behind the windshield (its base y 7.0, z 2.83; its top y 6.64)
+    // beside the upper side windows (y 5.9..6.7, z 2.63..3.2), the head under the roof (z 3.66).
+    eye: ch47_point(0.62, 6.10, 2.85),
+    cockpit_view: Some(CockpitView {
+        // The windshield, the chin, side and eyebrow windows: open from inside; the hull drawn
+        // from inside round the cockpit.
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: crate::hud::modern::SCALE,
+    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    bomb_bay: false,
+    helicopter: true,
+    turret: false,
+    sight: None,
+    hmd: Hmd::None,
+    muzzle: None,
+    // The engines' exhausts on the aft pylon's sides.
+    exhaust: ch47_point(0.0, -6.2, 3.4),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    swing_wing: false,
+    vtol: false,
+    flight: FlightConstants::ch47,
+};
+
 /// The Tornado's wheels are 1.90 m below its model origin (tools/models/aircraft.py
 /// `TORNADO_GROUND`).
 const TORNADO_LIFT: f32 = 1.90 + RUNWAY_Y;
@@ -627,7 +674,7 @@ static AV8B: AircraftSpec = AircraftSpec {
 };
 
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 9] = [
+    pub const ALL: [AircraftKind; 10] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::Tornado,
@@ -637,6 +684,7 @@ impl AircraftKind {
         AircraftKind::AH1Z,
         AircraftKind::RAH66,
         AircraftKind::OH58,
+        AircraftKind::CH47,
     ];
 
     /// What another pilot flies.
@@ -645,6 +693,8 @@ impl AircraftKind {
             AircraftKind::RAH66
         } else if p.kiowa {
             AircraftKind::OH58
+        } else if p.chinook {
+            AircraftKind::CH47
         } else if p.gunship {
             AircraftKind::AH1Z
         } else if p.helicopter {
@@ -673,6 +723,7 @@ impl AircraftKind {
             AircraftKind::RAH66 => &RAH66,
             AircraftKind::AV8B => &AV8B,
             AircraftKind::OH58 => &OH58,
+            AircraftKind::CH47 => &CH47,
         }
     }
 
@@ -688,6 +739,7 @@ impl AircraftKind {
             AircraftKind::RAH66 => "rah66",
             AircraftKind::AV8B => "av8b",
             AircraftKind::OH58 => "oh58",
+            AircraftKind::CH47 => "ch47",
         }
     }
 
@@ -707,6 +759,7 @@ impl AircraftKind {
                     && *k == AircraftKind::AV8B)
                 || (matches!(s.as_str(), "kiowa" | "oh58d" | "kiowawarrior")
                     && *k == AircraftKind::OH58)
+                || (matches!(s.as_str(), "chinook" | "ch47f" | "ch47d") && *k == AircraftKind::CH47)
         })
     }
 
@@ -721,6 +774,7 @@ impl AircraftKind {
             AircraftKind::RAH66 => "RAH-66 Comanche",
             AircraftKind::AV8B => "AV-8B Harrier II",
             AircraftKind::OH58 => "OH-58D Kiowa Warrior",
+            AircraftKind::CH47 => "CH-47F Chinook",
         }
     }
 }
@@ -853,6 +907,23 @@ mod tests {
     }
 
     #[test]
+    fn ch47_eye_in_the_cockpit() {
+        let spec = AircraftKind::CH47.spec();
+        let s = AIRCRAFT_MODEL_SCALE as f32 * 16.38;
+        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (eye.x, -eye.z, eye.y);
+        // Behind the windshield's top, ahead of the cockpit's end; under the roof.
+        assert!((5.6..6.64).contains(&y), "eye {y} m ahead of the middle");
+        assert!((2.5..3.4).contains(&z), "eye {z} m high");
+        assert!((0.4..0.9).contains(&x), "eye {x} m right");
+        assert!(spec.transport() && !spec.slaved_pod());
+        // Inside the glazed nose (model units).
+        let (lo, hi) = primitive_bounds("aircraft_049_lod0", &[144, 145]);
+        let eye = eye * 16.38;
+        assert!(eye.cmpgt(lo).all() && eye.cmplt(hi).all(), "eye {eye} outside {lo}..{hi}");
+    }
+
+    #[test]
     fn names_round_trip() {
         for k in AircraftKind::ALL {
             assert_eq!(AircraftKind::parse(k.id()), Some(k));
@@ -870,6 +941,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("Comanche"), Some(AircraftKind::RAH66));
         assert_eq!(AircraftKind::parse("AV-8B"), Some(AircraftKind::AV8B));
         assert_eq!(AircraftKind::parse("Harrier"), Some(AircraftKind::AV8B));
+        assert_eq!(AircraftKind::parse("CH-47"), Some(AircraftKind::CH47));
+        assert_eq!(AircraftKind::parse("Chinook"), Some(AircraftKind::CH47));
         assert_eq!(AircraftKind::parse("OH-58D"), Some(AircraftKind::OH58));
         assert_eq!(AircraftKind::parse("Kiowa"), Some(AircraftKind::OH58));
     }

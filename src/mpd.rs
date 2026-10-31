@@ -45,8 +45,6 @@ const AMBER: u8 = 18;
 
 /// Fuel (lbs) below which the low fuel caution shows (the panels' LOW FUEL light's).
 const LOW_FUEL: f32 = 1500.0;
-/// Fuel flow (lb/h, both engines) at 100% torque (`heli::Rotor::fuel_burn`).
-const FLOW_AT_FULL: f32 = 0.3 * 3600.0;
 
 /// How bad an entry of the list is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -76,10 +74,11 @@ pub struct EngineReadings {
     pub flow: f32,
 }
 
-/// The engines as the helicopter model has them: one torque for both, rotor speed, fuel. An
+/// The engines as the helicopter model has them: one torque for both, rotor speed, fuel and its
+/// flow (`burn`: lb/s at 100% torque, `heli::Rotor::fuel_burn`). An
 /// engine hit (`damaged`) shows on the right engine (less torque, hotter), a fire on the left
 /// one; no fuel, both run down.
-pub fn engine_readings(a: &Aircraft, damaged: bool, fire: bool) -> EngineReadings {
+pub fn engine_readings(a: &Aircraft, burn: f32, damaged: bool, fire: bool) -> EngineReadings {
     let running = a.fuel > 0.0;
     let tq = (a.torque() * 100.0).max(0.0);
     let mut r = EngineReadings { nr: a.rotor_speed() * 100.0, fuel: a.fuel.max(0.0), ..default() };
@@ -99,7 +98,7 @@ pub fn engine_readings(a: &Aircraft, damaged: bool, fire: bool) -> EngineReading
     if fire {
         r.tgt[0] = r.tgt[0].max(960.0);
     }
-    r.flow = if running { (r.tq[0] + r.tq[1]) / 200.0 * FLOW_AT_FULL } else { 0.0 };
+    r.flow = if running { (r.tq[0] + r.tq[1]) / 200.0 * burn * 3600.0 } else { 0.0 };
     r
 }
 
@@ -595,17 +594,17 @@ mod tests {
     #[test]
     fn engines_follow_the_torque() {
         let a = hovering();
-        let r = engine_readings(&a, false, false);
+        let r = engine_readings(&a, 0.3, false, false);
         assert_eq!(r.nr, 100.0);
         assert!(r.tq.iter().all(|t| (t - 60.0).abs() < 0.01), "{:?}", r.tq);
         assert!(r.tgt[0] > 500.0 && r.tgt[0] < 810.0);
-        assert!((r.flow - 0.6 * FLOW_AT_FULL).abs() < 1.0);
+        assert!((r.flow - 0.6 * 0.3 * 3600.0).abs() < 1.0);
         // An engine hit: the right engine gives less and runs hot; no fuel, both run down.
-        let hit = engine_readings(&a, true, false);
+        let hit = engine_readings(&a, 0.3, true, false);
         assert!(hit.tq[1] < hit.tq[0] && hit.tgt[1] > hit.tgt[0]);
         let mut dry = a.clone();
         dry.fuel = 0.0;
-        let out = engine_readings(&dry, false, false);
+        let out = engine_readings(&dry, 0.3, false, false);
         assert_eq!((out.tq, out.flow), ([0.0, 0.0], 0.0));
     }
 

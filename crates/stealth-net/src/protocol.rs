@@ -343,6 +343,7 @@ mod tests {
             nozzle: 0,
             kiowa: false,
             pylons: [0; 2],
+            chinook: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -387,6 +388,10 @@ mod tests {
             ..h
         };
         let w = WorldFast { pilots: vec![k.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![k]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![k.clone()]);
+        // The CH-47's.
+        let ch = RemotePilot { kiowa: false, pylons: [0; 2], chinook: true, ..k };
+        let w = WorldFast { pilots: vec![ch.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![ch]);
     }
 }
