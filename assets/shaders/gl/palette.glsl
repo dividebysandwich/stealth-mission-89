@@ -72,7 +72,7 @@ const uint TAG_DOT_SPOT = 32768u;
 const uint TAG_DOT_FAR = 2147483648u;
 const uint TAG_VERTEX_HAZE = 1073741824u;
 const uint TAG_HILLS = 65536u;
-const uint TAG_FLAT_LIT = 131072u;
+const uint WORD_FLAT_LIT = 65536u;
 const float DOT_FAR_MIN = 3000.0;
 const float AIRCRAFT_NIGHT = 0.95;
 const uint CLOUD_RAMP = 0xE0u;
@@ -137,12 +137,12 @@ void main() {
     vec4 world = a_model * vec4(a_position, 1.0);
     v_world = world.xyz;
     gl_Position = u_view_proj[VIEW] * world;
-    v_word = u_word == WORD_PER_VERTEX ? a_word : u_word;
+    v_word = u_word == WORD_PER_VERTEX ? a_word & 0xFFFFu : u_word;
     uint tag = a_tag;
     v_warm = ((tag & (TAG_WARM | 128u)) != 0u ? 1u : 0u) | (((tag & 7u) == 5u) ? 2u : 0u)
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u)
         | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u)
-        | ((tag & (TAG_FLAT_LIT | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_FLAT_LIT ? 16u : 0u);
+        | (u_word == WORD_PER_VERTEX && (a_word & WORD_FLAT_LIT) != 0u ? 16u : 0u);
 #ifdef CLOUD
     v_puff_pos = vec4(0.0);
     v_puff_eye = vec4(0.0);

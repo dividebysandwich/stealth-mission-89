@@ -559,10 +559,10 @@ pub const TAG_DOT_FAR: u32 = 1 << 31;
 /// classic look too, which otherwise draws faces in their flat colours. Not with `TAG_SMOKE`,
 /// `TAG_DOT_SPOT` or `TAG_DOT`.
 pub const TAG_HILLS: u32 = 1 << 16;
-/// Mesh tag bit of a mesh lit as flat ground whatever its faces' slopes (the hills' skirts,
-/// which only show in the cracks between their chunks). Not with `TAG_SMOKE`, `TAG_DOT_SPOT`
-/// or `TAG_DOT`.
-pub const TAG_FLAT_LIT: u32 = 1 << 17;
+/// Bit of a per-vertex colour word (`ATTRIBUTE_PALETTE_WORD`, above the word itself): the
+/// vertex is lit as flat ground whatever its face's slope (the hills' skirts, which only show in
+/// the cracks between their chunks, in their chunk's mesh).
+pub const WORD_FLAT_LIT: u32 = 1 << 16;
 /// Mesh tag bit of meshes too big for one haze level (the coarse scenery blocks): each vertex
 /// hazes by its own depth instead of the object origin's. Not with `TAG_SMOKE`,
 /// `TAG_DOT_SPOT` or `TAG_DOT`, whose bits 16.. carry other things.

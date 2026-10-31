@@ -1,6 +1,6 @@
 //! The rolling hills' ground (`stealth_sim::hills`): the flat world stays where it is, and
 //! where the hills rise a mesh of flat triangles on a grid (finer near the viewpoint) is drawn
-//! over it, in chunks. The theater's flat ground polygons (fields, woods, concrete) are cut to
+//! over it, in chunks (bigger ones further out: each is a draw). The theater's flat ground polygons (fields, woods, concrete) are cut to
 //! the grid's triangles and laid on them in their painter's order, so the hills show what the
 //! flat ground below them does. Built on other threads; a chunk whose grid changes keeps its
 //! old mesh until the new one is there.
@@ -18,12 +18,15 @@ use super::content::{self, FIELD_BLOCK, Tier};
 use super::{DetailLevel, Scenery, budget, mesh};
 use crate::palette::Palette;
 use crate::palette_material::{
-    ATTRIBUTE_PALETTE_WORD, TAG_FLAT_LIT, TAG_HILLS, TAG_VERTEX_HAZE, mesh_tag,
+    ATTRIBUTE_PALETTE_WORD, TAG_HILLS, TAG_VERTEX_HAZE, WORD_FLAT_LIT, mesh_tag,
 };
 use crate::world::{LAYER_STEP_M, WU, WorldAnchor, WorldPos, bevy_to_wu};
 
-/// Chunk side (metres).
+/// Chunk side (metres): the nearest chunks', and the field blocks'.
 pub const CHUNK: f64 = 4000.0;
+/// The most `CHUNK`s a chunk on each grid level spans a side (a quadtree: a chunk is split while
+/// it is bigger than its nearest point's level allows).
+const SPAN: [i32; 4] = [1, 1, 2, 4];
 /// Grid spacing (metres) by distance of the chunk's nearest point from the viewpoint, out to
 /// the last distance (the hills further out are not drawn).
 const STEPS: [(f64, f64); 4] =
@@ -39,8 +42,12 @@ const BUILDING: usize = 4;
 /// Size of the buckets the polygons are sorted into (metres).
 const BUCKET: f64 = 250.0;
 
-/// What a chunk is built as: its grid level, and whether with the farmland's fields.
-type Kind = (usize, bool);
+/// A chunk: its first `CHUNK` east and north, and how many it spans a side.
+type Key = (i32, i32, i32);
+
+/// What a chunk is built as: its grid level, and which of its `CHUNK` blocks (bit `y * span +
+/// x`) have the farmland's fields.
+type Kind = (usize, u16);
 
 /// A chunk's mesh being built.
 type Building = (Kind, Task<Option<ChunkMesh>>);
@@ -48,17 +55,15 @@ type Building = (Kind, Task<Option<ChunkMesh>>);
 /// Chunk -> what it is built as and its entity; chunks being built.
 #[derive(Resource, Default)]
 pub struct Skin {
-    chunks: HashMap<(i32, i32), (Kind, Entity)>,
-    building: HashMap<(i32, i32), Building>,
+    chunks: HashMap<Key, (Kind, Entity)>,
+    building: HashMap<Key, Building>,
 }
 
-/// A chunk's triangles (chunk-local Bevy positions) and their model colours (`GROUND`: the
-/// ground gradient), and its skirts'.
+/// A chunk's triangles, its skirts' too (chunk-local Bevy positions), and their model colours
+/// (`GROUND`: the ground gradient, `SKIRT_COLOUR` for the skirts).
 pub struct ChunkMesh {
     pos: Vec<Vec3>,
     colours: Vec<u16>,
-    skirt: Vec<Vec3>,
-    skirt_colours: Vec<u16>,
 }
 
 /// The colour of the open ground: the ground gradient the flat world shows there (the
@@ -66,6 +71,9 @@ pub struct ChunkMesh {
 const GROUND: u16 = 0x100;
 /// Its colour word: OR with nothing.
 const GROUND_WORD: u32 = 0xFD00;
+/// The skirts' colour: the open ground's, lit as flat ground whatever the face (they only show
+/// in the cracks, as ground).
+const SKIRT_COLOUR: u16 = 0x101;
 
 /// The model colours of a chunk's vertices, for their words to follow the palette's remap.
 #[derive(Component)]
@@ -74,7 +82,11 @@ pub(super) struct SkinColours(Vec<u16>);
 fn words(palette: &Palette, colours: &[u16]) -> Vec<u32> {
     colours
         .iter()
-        .map(|&c| if c == GROUND { GROUND_WORD } else { palette.word(c as u8) as u32 })
+        .map(|&c| match c {
+            GROUND => GROUND_WORD,
+            SKIRT_COLOUR => GROUND_WORD | WORD_FLAT_LIT,
+            c => palette.word(c as u8) as u32,
+        })
         .collect()
 }
 
@@ -104,6 +116,51 @@ fn chunk_min(bx: i32, by: i32) -> DVec2 {
     DVec2::new(bx as f64, by as f64) * CHUNK
 }
 
+/// The chunks to draw around `eye` (metres east, north) out to `range`, by the grid level of
+/// their nearest point: a `SPAN[0]` chunk near, bigger ones further out. With what they are
+/// built as (`fields`: a `CHUNK` block has the farmland's fields) and their distance.
+fn chunks_around(
+    eye: DVec2,
+    range: f64,
+    hills: &stealth_sim::hills::Hills,
+    fields: impl Fn(i32, i32) -> bool,
+) -> HashMap<Key, (Kind, f64)> {
+    let top = SPAN[SPAN.len() - 1];
+    let side = CHUNK * top as f64;
+    let (lo, hi) =
+        (((eye - range) / side).floor().as_ivec2(), ((eye + range) / side).floor().as_ivec2());
+    let mut todo: Vec<Key> =
+        (lo.y..=hi.y).flat_map(|y| (lo.x..=hi.x).map(move |x| (x * top, y * top, top))).collect();
+    let mut out = HashMap::new();
+    while let Some((bx, by, span)) = todo.pop() {
+        let min = chunk_min(bx, by);
+        let size = CHUNK * span as f64;
+        let d = eye.clamp(min, min + size).distance(eye);
+        let Some(l) = level(d) else { continue };
+        if span > SPAN[l] {
+            let h = span / 2;
+            todo.extend(
+                [(bx, by), (bx + h, by), (bx, by + h), (bx + h, by + h)].map(|(x, y)| (x, y, h)),
+            );
+            continue;
+        }
+        let c = min + size * 0.5;
+        if !hills.any_in(c.x, c.y, size * 0.5) {
+            continue;
+        }
+        let mut mask = 0u16;
+        for y in 0..span {
+            for x in 0..span {
+                if fields(bx + x, by + y) {
+                    mask |= 1 << (y * span + x);
+                }
+            }
+        }
+        out.insert((bx, by, span), ((l, mask), d));
+    }
+    out
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn stream_skin(
     mut commands: Commands,
@@ -130,24 +187,12 @@ pub(super) fn stream_skin(
     let fields_r = budget.ranges().radius(Tier::Fields);
     debug_assert_eq!(CHUNK, FIELD_BLOCK);
     // Chunks wanted: what they are built as and their distance.
-    let mut wanted: HashMap<(i32, i32), (Kind, f64)> = HashMap::new();
-    let (lo, hi) =
-        (((eye - range) / CHUNK).floor().as_ivec2(), ((eye + range) / CHUNK).floor().as_ivec2());
-    for by in lo.y..=hi.y {
-        for bx in lo.x..=hi.x {
-            let min = chunk_min(bx, by);
-            let d = eye.clamp(min, min + CHUNK).distance(eye);
-            let c = min + CHUNK * 0.5;
-            if let Some(l) = level(d)
-                && hills.any_in(c.x, c.y, CHUNK * 0.5)
-            {
-                let fields = farmland && c.distance(eye) < fields_r + CHUNK * 0.5;
-                wanted.insert((bx, by), ((l, fields), d));
-            }
-        }
-    }
+    let wanted = chunks_around(eye, range, hills, |bx, by| {
+        let c = chunk_min(bx, by) + CHUNK * 0.5;
+        farmland && c.distance(eye) < fields_r + CHUNK * 0.5
+    });
     // Finished builds replace their chunk's mesh.
-    let done: Vec<(i32, i32)> =
+    let done: Vec<Key> =
         skin.building.iter_mut().filter_map(|(&k, (_, t))| t.is_finished().then_some(k)).collect();
     for key in done {
         let Some((kind, task)) = skin.building.remove(&key) else { continue };
@@ -166,7 +211,7 @@ pub(super) fn stream_skin(
         };
         let m = mesh(PrimitiveTopology::TriangleList, built.pos)
             .with_inserted_attribute(ATTRIBUTE_PALETTE_WORD, words(&palette, &built.colours));
-        let c = chunk_min(key.0, key.1) + CHUNK * 0.5;
+        let c = chunk_min(key.0, key.1) + CHUNK * key.2 as f64 * 0.5;
         let e = commands
             .spawn((
                 SkinChunk,
@@ -180,30 +225,16 @@ pub(super) fn stream_skin(
                 Visibility::default(),
             ))
             .id();
-        // The skirts lit as the flat ground: they only show in the cracks, as ground.
-        if !built.skirt.is_empty() {
-            let m = mesh(PrimitiveTopology::TriangleList, built.skirt).with_inserted_attribute(
-                ATTRIBUTE_PALETTE_WORD,
-                words(&palette, &built.skirt_colours),
-            );
-            let skirt = commands
-                .spawn((
-                    Mesh3d(meshes.add(m)),
-                    MeshMaterial3d(palette.per_vertex.clone()),
-                    SkinColours(built.skirt_colours),
-                    MeshTag(mesh_tag(3, 4, false) | TAG_VERTEX_HAZE | TAG_HILLS | TAG_FLAT_LIT),
-                    NotShadowCaster,
-                    Transform::default(),
-                    Visibility::default(),
-                ))
-                .id();
-            commands.entity(e).add_child(skirt);
-        }
         skin.chunks.insert(key, (kind, e));
     }
-    // Chunks out of range go; those on another grid stay until rebuilt.
+    // Chunks out of range go (those on another grid stay until rebuilt), and those merged or
+    // split once the chunks replacing them are all there.
+    let present: std::collections::HashSet<Key> = skin.chunks.keys().copied().collect();
+    let overlaps =
+        |a: &Key, b: &Key| a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.2 && b.1 < a.1 + a.2;
     skin.chunks.retain(|k, (_, e)| {
-        let keep = wanted.contains_key(k);
+        let keep =
+            wanted.contains_key(k) || wanted.keys().any(|w| overlaps(w, k) && !present.contains(w));
         if !keep {
             commands.entity(*e).try_despawn();
         }
@@ -219,12 +250,12 @@ pub(super) fn stream_skin(
         .map(|(&k, &(kind, d))| (d, k, kind))
         .collect();
     todo.sort_by(|a, b| a.0.total_cmp(&b.0));
-    for (_, (bx, by), kind) in todo.into_iter().take(BUILDING.saturating_sub(skin.building.len())) {
+    for (_, key, kind) in todo.into_iter().take(BUILDING.saturating_sub(skin.building.len())) {
         let sc = (*scenery).clone();
         let (l, fields) = kind;
-        let task = AsyncComputeTaskPool::get()
-            .spawn(async move { build(&sc, bx, by, STEPS[l].1, fields) });
-        skin.building.insert((bx, by), (kind, task));
+        let task =
+            AsyncComputeTaskPool::get().spawn(async move { build(&sc, key, STEPS[l].1, fields) });
+        skin.building.insert(key, (kind, task));
     }
 }
 
@@ -278,11 +309,13 @@ struct Flat {
 
 /// A chunk's mesh on a grid of `step` metres, with the farmland's fields if `fields` (None
 /// where the hills stay flat).
-fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<ChunkMesh> {
+fn build(sc: &Scenery, key: Key, step: f64, fields: u16) -> Option<ChunkMesh> {
     let hills = &sc.hills;
+    let (bx, by, span) = key;
     let min = chunk_min(bx, by);
-    let centre = min + CHUNK * 0.5;
-    let n = (CHUNK / step).round() as usize;
+    let side = CHUNK * span as f64;
+    let centre = min + side * 0.5;
+    let n = (side / step).round() as usize;
     let heights: Vec<f32> = (0..(n + 1) * (n + 1))
         .map(|i| {
             let p = min + DVec2::new((i % (n + 1)) as f64, (i / (n + 1)) as f64) * step;
@@ -297,7 +330,7 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
     // farmland's, in painter's order, in buckets.
     let mut flats: Vec<Flat> = sc
         .ground
-        .overlays(min, min + CHUNK)
+        .overlays(min, min + side)
         .into_iter()
         .map(|o| {
             let (lod, k) = (4 - (o.order >> 28) as i32, (o.order >> 16) & 0xFFF);
@@ -307,16 +340,33 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
             Flat { p: o.p.map(|v| (v.as_dvec2() - min).as_vec2()), lift, colour: o.colour }
         })
         .collect();
-    if fields {
+    if fields != 0 {
         debug_assert_eq!(CHUNK, FIELD_BLOCK);
         // A field block's fields reach over its edges: the neighbours' too, those over this
-        // chunk.
+        // chunk's blocks with fields.
         let size = CHUNK as f32;
         let inside = |p: &[Vec2; 3]| {
             let (lo, hi) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
-            hi.x > 0.0 && hi.y > 0.0 && lo.x < size && lo.y < size
+            (0..span * span).any(|b| {
+                let o = Vec2::new((b % span) as f32, (b / span) as f32) * size;
+                fields & (1 << b) != 0
+                    && hi.x > o.x
+                    && hi.y > o.y
+                    && lo.x < o.x + size
+                    && lo.y < o.y + size
+            })
         };
-        for (dx, dy) in (-1..=1).flat_map(|dx| (-1..=1).map(move |dy| (dx, dy))) {
+        let near = |d: i32| (-1..=span).contains(&d);
+        let blocks = (-1..=span).flat_map(|dx| (-1..=span).map(move |dy| (dx, dy)));
+        for (dx, dy) in blocks.filter(|&(dx, dy)| {
+            // Only those next to a block with fields.
+            (0..span * span).any(|b| {
+                fields & (1 << b) != 0
+                    && near(dx)
+                    && (dx - b % span).abs() <= 1
+                    && (dy - b / span).abs() <= 1
+            })
+        }) {
             let g = content::build(sc, bx + dx, by + dy, Tier::Fields, 1.0);
             let off = Vec2::new(dx as f32 + 0.5, dy as f32 + 0.5) * size;
             for (&colour, tris) in &g.flat {
@@ -331,7 +381,7 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
     }
     flats.sort_by(|a, b| a.lift.total_cmp(&b.lift));
     let local: Vec<[Vec2; 3]> = flats.iter().map(|f| f.p).collect();
-    let nb = (CHUNK / BUCKET).ceil() as usize;
+    let nb = (side / BUCKET).ceil() as usize;
     let mut buckets: Vec<Vec<u32>> = vec![Vec::new(); nb * nb];
     let bucket = |v: f32| ((v as f64 / BUCKET).floor() as i64).clamp(0, nb as i64 - 1) as usize;
     for (i, t) in local.iter().enumerate() {
@@ -348,12 +398,7 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         let w = min + p.as_dvec2();
         Vec3::new((w.x - centre.x) as f32, y, -(w.y - centre.y) as f32)
     };
-    let mut out = ChunkMesh {
-        pos: Vec::new(),
-        colours: Vec::new(),
-        skirt: Vec::new(),
-        skirt_colours: Vec::new(),
-    };
+    let mut out = ChunkMesh { pos: Vec::new(), colours: Vec::new() };
     let mut ids: Vec<u32> = Vec::new();
     let mut layers: Vec<(Vec<Vec2>, u16)> = Vec::new();
     let s = step as f32;
@@ -428,6 +473,9 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
             }
         }
     }
+    if out.pos.is_empty() {
+        return None;
+    }
     // Skirts along the chunk's edges, both faces.
     let edges = (0..n).flat_map(|k| {
         [((k, 0), (k + 1, 0)), ((n, k), (n, k + 1)), ((k + 1, n), (k, n)), ((0, k + 1), (0, k))]
@@ -443,16 +491,46 @@ fn build(sc: &Scenery, bx: i32, by: i32, step: f64, fields: bool) -> Option<Chun
         let skirt = SKIRT.max(s * SKIRT_PER_STEP);
         let (a1, b1) = (at(pa, ha - skirt), at(pb, hb - skirt));
         for v in [a, a1, b1, a, b1, b, a, b1, a1, a, b, b1] {
-            out.skirt.push(v);
-            out.skirt_colours.push(base);
+            out.pos.push(v);
+            out.colours.push(SKIRT_COLOUR);
         }
     }
-    (!out.pos.is_empty()).then_some(out)
+    Some(out)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The chunks around a viewpoint don't overlap, cover the hills' range, and grow with
+    /// distance: a draw each.
+    #[test]
+    fn chunks_grow_with_distance() {
+        let hills = stealth_sim::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
+        let eye = DVec2::new(250_000.0, 260_000.0);
+        let range = STEPS[STEPS.len() - 1].0;
+        let chunks = chunks_around(eye, range, &hills, |_, _| true);
+        let keys: Vec<Key> = chunks.keys().copied().collect();
+        for (i, a) in keys.iter().enumerate() {
+            for b in &keys[i + 1..] {
+                let apart =
+                    a.0 + a.2 <= b.0 || b.0 + b.2 <= a.0 || a.1 + a.2 <= b.1 || b.1 + b.2 <= a.1;
+                assert!(apart, "{a:?} {b:?}");
+            }
+        }
+        let area: i32 = keys.iter().map(|k| k.2 * k.2).sum();
+        let ring = std::f64::consts::PI * (range / CHUNK).powi(2);
+        assert!(area as f64 > ring, "{area} blocks");
+        for (k, ((l, fields), d)) in &chunks {
+            assert!(k.2 <= SPAN[*l], "{k:?} on level {l}");
+            assert_eq!(*fields, u16::MAX >> (16 - k.2 * k.2), "{k:?}");
+            if *d > STEPS[1].0 + CHUNK * 4.0 {
+                assert!(k.2 > 1, "{k:?} at {d}");
+            }
+        }
+        // Far fewer than a 4 km chunk each.
+        assert!(chunks.len() * 3 < area as usize, "{} chunks", chunks.len());
+    }
 
     #[test]
     fn clips_to_the_triangle() {

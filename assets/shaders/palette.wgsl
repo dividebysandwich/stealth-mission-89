@@ -28,8 +28,9 @@ const TAG_VERTEX_HAZE: u32 = 1073741824u;
 // The rolling hills' ground (palette_material.rs `TAG_HILLS`): shaded by its slope in the
 // classic look too.
 const TAG_HILLS: u32 = 65536u;
-// Lit as flat ground whatever the face (palette_material.rs `TAG_FLAT_LIT`: the hills' skirts).
-const TAG_FLAT_LIT: u32 = 131072u;
+// A vertex lit as flat ground whatever the face (palette_material.rs `WORD_FLAT_LIT`, above its
+// colour word: the hills' skirts).
+const WORD_FLAT_LIT: u32 = 65536u;
 const DOT_FAR_MIN: f32 = 3000.0;
 // Share of a moonless night's darkness on aircraft and their spotting dots: barely visible.
 const AIRCRAFT_NIGHT: f32 = 0.95;
@@ -232,13 +233,13 @@ fn vertex(v: Vertex) -> VertexOutput {
     let tag = mesh_functions::get_tag(v.instance_index);
     out.warm = select(0u, 1u, (tag & (TAG_WARM | 128u)) != 0u) | select(0u, 2u, (tag & 7u) == 5u)
         | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u))
-        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS)
-        | select(0u, 16u, (tag & (TAG_FLAT_LIT | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_FLAT_LIT);
+        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS);
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
 #endif
 #ifdef VERTEX_WORD
-    out.word = v.word;
+    out.word = v.word & 0xFFFFu;
+    out.warm |= select(0u, 16u, (v.word & WORD_FLAT_LIT) != 0u);
 #endif
     // Smoke volumes: the view ray and the sun in the plume's local space (inverse of the
     // scaled rotation m = diag(1/s^2) m^T).
