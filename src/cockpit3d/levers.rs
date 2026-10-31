@@ -12,6 +12,9 @@
 //! a rumble of its own. While it burns both controllers shake, harder with its setting.
 //! The controller buttons are mapped in the input mapping (`InputConfig::vr_buttons`); a trigger
 //! only counts while its hand holds the stick or throttle.
+//! A V/STOL type's nozzle lever (the AV-8B's, just inboard of the throttle) is taken the same way
+//! by the left hand (the nearer of the two handles): pulled back it swings the nozzles down, a
+//! tick every 10 degrees and a firm one on the hover stop (90 degrees) and the end stops.
 //! The ejection handle is pulled up with either hand. A hand carrying the kneeboard grabs none.
 //! Without VR both animate from the keyboard/gamepad controls.
 
@@ -56,6 +59,12 @@ pub struct CockpitAnchors {
     pub throttle_full: Vec3,
     /// The collective's pivot (none: the throttle slides along its rail).
     pub throttle_pivot: Option<Vec3>,
+    /// A V/STOL type's nozzle lever: its knob forward (nozzles aft, the `nozzle` object) and
+    /// pulled back to the braking stop (the `nozzle_down` anchor), swinging about its pivot
+    /// (`nozzle_pivot`). None of them: no nozzle lever.
+    pub nozzle_aft: Option<Vec3>,
+    pub nozzle_down: Option<Vec3>,
+    pub nozzle_pivot: Option<Vec3>,
     pub eject: Vec3,
 }
 
@@ -67,6 +76,9 @@ impl Default for CockpitAnchors {
             throttle_idle: Vec3::new(-0.40, -0.40, -0.12),
             throttle_full: Vec3::new(-0.40, -0.40, -0.30),
             throttle_pivot: None,
+            nozzle_aft: None,
+            nozzle_down: None,
+            nozzle_pivot: None,
             eject: Vec3::new(0.0, -0.74, -0.20),
         }
     }
@@ -96,7 +108,44 @@ impl CockpitAnchors {
         let rail = self.throttle_full - self.throttle_idle;
         d.dot(rail) / rail.length_squared().max(1e-6)
     }
+
+    /// The nozzle lever's pivot and its knob's offsets from it forward and back (None: no
+    /// nozzle lever).
+    fn nozzle_arc(&self) -> Option<(Vec3, Vec3, Vec3)> {
+        let (p, a, b) = (self.nozzle_pivot?, self.nozzle_aft?, self.nozzle_down?);
+        let (a, b) = (a - p, b - p);
+        (a.length_squared() > 1e-6 && b.length_squared() > 1e-6).then_some((p, a, b))
+    }
+
+    /// The nozzle lever's rotation about its pivot at lever `t`.
+    fn nozzle_rotation(&self, t: f32) -> Quat {
+        let Some((_, a, b)) = self.nozzle_arc() else { return Quat::IDENTITY };
+        Quat::IDENTITY
+            .slerp(Quat::from_rotation_arc(a.normalize(), b.normalize()), t.clamp(0.0, 1.0))
+    }
+
+    /// The nozzle lever's knob at lever `t`.
+    fn nozzle_handle(&self, t: f32) -> Option<Vec3> {
+        let (p, a, _) = self.nozzle_arc()?;
+        Some(p + self.nozzle_rotation(t) * a)
+    }
+
+    /// How far round its arc (lever units: 1 = forward to the braking stop) a point is from
+    /// the knob's forward position, seen along the pivot's axis.
+    fn nozzle_angle(&self, at: Vec3) -> f32 {
+        let Some((p, a, b)) = self.nozzle_arc() else { return 0.0 };
+        let axis = a.cross(b).normalize_or_zero();
+        let full = a.angle_between(b).max(1e-3);
+        let v = at - p;
+        axis.dot(a.cross(v)).atan2(a.dot(v)) / full
+    }
 }
+
+/// The nozzles' travel: lever 1 (the braking stop) sets them this far down from aft (degrees).
+pub(super) const NOZZLE_TRAVEL_DEG: f32 = 98.5;
+/// The nozzle lever's hover stop (90 degrees) and the 10-degree ticks.
+const NOZZLE_HOVER: f32 = 90.0 / NOZZLE_TRAVEL_DEG;
+const NOZZLE_NOTCH: f32 = 10.0 / NOZZLE_TRAVEL_DEG;
 
 /// Reach for grabbing (metres from the grip centre).
 const GRAB_REACH: f32 = 0.10;
@@ -107,10 +156,14 @@ pub(super) struct Stick;
 #[derive(Component)]
 pub(super) struct ThrottleLever;
 
+#[derive(Component)]
+pub(super) struct NozzleLever;
+
 #[derive(Default)]
 pub(super) struct Grabs {
     stick: Option<StickGrab>,
     throttle: Option<ThrottleGrab>,
+    nozzle: Option<NozzleGrab>,
     eject: Option<(usize, f32)>,
     /// A held VR button set the wheel brakes (they come off when it is let go).
     brakes: bool,
@@ -215,6 +268,14 @@ struct ThrottleGrab {
     zone: u8,
 }
 
+struct NozzleGrab {
+    /// The hand's angle round the lever's arc when grabbed (`CockpitAnchors::nozzle_angle`).
+    a0: f32,
+    t0: f32,
+    /// Last 10-degree tick passed.
+    notch: i32,
+}
+
 /// Throttle detents per full travel (one haptic tick each).
 const THROTTLE_NOTCHES: f32 = 10.0;
 
@@ -280,6 +341,7 @@ pub(super) fn grab_levers(
     mut actions: MessageWriter<ActionEvent>,
     aircraft: Query<&Aircraft, With<Player>>,
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
+    console_throttle: Res<crate::input::ConsoleThrottle>,
     anchors: Res<CockpitAnchors>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     k: Res<FlightConstants>,
@@ -288,6 +350,9 @@ pub(super) fn grab_levers(
     // The cockpit is not there (VR, the campaign's Ops screen): nothing is held, and of the
     // mapped buttons only the in-flight menu's works.
     if hide.is_some_and(|h| h.0) {
+        if grabs.nozzle.is_some() {
+            controls.nozzle = None;
+        }
         *grabs = Grabs::default();
         for hand in hands.hands.iter_mut() {
             hand.lever = false;
@@ -307,8 +372,10 @@ pub(super) fn grab_levers(
         return;
     }
     let ab = k.afterburner();
-    let set_thrust = aircraft.single().map_or(0.0, |a| a.lever(ab));
+    let set_thrust =
+        console_throttle.0.unwrap_or_else(|| aircraft.single().map_or(0.0, |a| a.lever(ab)));
     let brakes_on = aircraft.single().is_ok_and(|a| a.brakes);
+    let set_nozzle = aircraft.single().map_or(0.0, |a| a.nozzle_lever);
     let [left, right] = &mut hands.hands;
 
     // --- stick (right hand)
@@ -354,22 +421,54 @@ pub(super) fn grab_levers(
         };
     }
 
-    // --- throttle (left hand)
+    // --- throttle and nozzle lever (left hand): the nearer handle
     let handle = anchors.throttle_handle(set_thrust);
+    let to_throttle = left.grip.translation.distance(handle);
+    let to_nozzle = anchors
+        .nozzle_handle(set_nozzle)
+        .map_or(f32::INFINITY, |h| left.grip.translation.distance(h));
     if !left.active || left.squeeze < 0.4 {
         if grabs.throttle.take().is_some() {
             left.haptic = left.haptic.max(0.2);
         }
+        if grabs.nozzle.take().is_some() {
+            controls.nozzle = None;
+            left.haptic = left.haptic.max(0.2);
+        }
     } else if grabs.throttle.is_none()
+        && grabs.nozzle.is_none()
         && !left.carrying
         && left.squeeze > 0.6
-        && left.grip.translation.distance(handle) < GRAB_REACH
+        && to_throttle.min(to_nozzle) < GRAB_REACH
     {
-        let notch = (set_thrust * THROTTLE_NOTCHES).floor() as i32;
-        let zone = throttle_zone(set_thrust);
-        grabs.throttle =
-            Some(ThrottleGrab { p0: left.grip.translation, t0: set_thrust, notch, zone });
+        if to_nozzle < to_throttle {
+            let a0 = anchors.nozzle_angle(left.grip.translation);
+            let notch = (set_nozzle / NOZZLE_NOTCH).floor() as i32;
+            grabs.nozzle = Some(NozzleGrab { a0, t0: set_nozzle, notch });
+        } else {
+            let notch = (set_thrust * THROTTLE_NOTCHES).floor() as i32;
+            let zone = throttle_zone(set_thrust);
+            grabs.throttle =
+                Some(ThrottleGrab { p0: left.grip.translation, t0: set_thrust, notch, zone });
+        }
         left.haptic = left.haptic.max(0.4);
+    }
+    if let Some(g) = &mut grabs.nozzle {
+        let moved = anchors.nozzle_angle(left.grip.translation) - g.a0;
+        let t = (g.t0 + moved).clamp(0.0, 1.0);
+        let before = controls.nozzle.unwrap_or(set_nozzle);
+        // A firm tick on the end stops and the hover stop, a light one every 10 degrees (with
+        // hysteresis, so hand jitter on one doesn't buzz).
+        let crossed = |at: f32| (before < at) != (t < at);
+        if (t >= 1.0 && before < 1.0) || (t <= 0.0 && before > 0.0) || crossed(NOZZLE_HOVER) {
+            left.haptic = left.haptic.max(0.5);
+        }
+        let pos = t / NOZZLE_NOTCH;
+        if pos >= (g.notch + 1) as f32 + 0.1 || pos < g.notch as f32 - 0.1 {
+            g.notch = pos.floor() as i32;
+            left.haptic = left.haptic.max(0.15);
+        }
+        controls.nozzle = Some(t);
     }
     let mut rumble = None;
     if let Some(g) = &mut grabs.throttle {
@@ -443,7 +542,7 @@ pub(super) fn grab_levers(
     // presses the cockpit control under the fingertip), but for the brakes
     let mut brakes_held = false;
     for (side, hand, holding) in [
-        (VrHand::Left, &*left, grabs.throttle.is_some()),
+        (VrHand::Left, &*left, grabs.throttle.is_some() || grabs.nozzle.is_some()),
         (VrHand::Right, &*right, grabs.stick.is_some()),
     ] {
         if !hand.active {
@@ -511,8 +610,8 @@ pub(super) fn grab_levers(
     // --- ejection handle: grab with either hand and pull up 6 cm
     let handle = anchors.eject;
     for (i, h) in [&mut *left, &mut *right].into_iter().enumerate() {
-        let is_grabbing_other =
-            (i == 1 && grabs.stick.is_some()) || (i == 0 && grabs.throttle.is_some());
+        let is_grabbing_other = (i == 1 && grabs.stick.is_some())
+            || (i == 0 && (grabs.throttle.is_some() || grabs.nozzle.is_some()));
         match grabs.eject {
             Some((who, y0)) if who == i => {
                 if !h.active || h.squeeze < 0.4 {
@@ -535,16 +634,21 @@ pub(super) fn grab_levers(
             _ => {}
         }
     }
-    left.lever = grabs.throttle.is_some() || grabs.eject.is_some_and(|(who, _)| who == 0);
+    left.lever = grabs.throttle.is_some()
+        || grabs.nozzle.is_some()
+        || grabs.eject.is_some_and(|(who, _)| who == 0);
     right.lever = grabs.stick.is_some() || grabs.eject.is_some_and(|(who, _)| who == 1);
 }
 
-/// Stick and throttle follow the controls (whatever the input source).
+/// Stick, throttle and nozzle lever follow the controls (whatever the input source).
+#[allow(clippy::type_complexity)]
 pub(super) fn animate_levers(
     controls: Res<FlightControls>,
+    console_throttle: Res<crate::input::ConsoleThrottle>,
     aircraft: Query<&Aircraft, With<Player>>,
-    mut stick: Query<&mut Transform, (With<Stick>, Without<ThrottleLever>)>,
-    mut throttle: Query<&mut Transform, With<ThrottleLever>>,
+    mut stick: Query<&mut Transform, (With<Stick>, Without<ThrottleLever>, Without<NozzleLever>)>,
+    mut throttle: Query<&mut Transform, (With<ThrottleLever>, Without<NozzleLever>)>,
+    mut nozzle: Query<&mut Transform, With<NozzleLever>>,
     anchors: Res<CockpitAnchors>,
     k: Res<FlightConstants>,
 ) {
@@ -554,9 +658,16 @@ pub(super) fn animate_levers(
             * Quat::from_rotation_y(-controls.yaw * STICK_TWIST);
     }
     if let (Ok(mut tf), Ok(a)) = (throttle.single_mut(), aircraft.single()) {
-        let t = controls.throttle.unwrap_or(a.lever(k.afterburner()));
+        let t = controls.throttle.or(console_throttle.0).unwrap_or(a.lever(k.afterburner()));
         tf.translation = anchors.throttle_handle(t);
         tf.rotation = anchors.throttle_rotation(t);
+    }
+    if let (Ok(mut tf), Ok(a)) = (nozzle.single_mut(), aircraft.single()) {
+        let t = controls.nozzle.unwrap_or(a.nozzle_lever);
+        if let Some(at) = anchors.nozzle_handle(t) {
+            tf.translation = at;
+            tf.rotation = anchors.nozzle_rotation(t);
+        }
     }
 }
 
@@ -606,6 +717,30 @@ mod tests {
             [0.5, AB_DETENT + 0.01, AB_DETENT + AB_GAP, 1.0].map(throttle_zone),
             [0, 1, 2, 2]
         );
+    }
+
+    /// The nozzle lever swings about its pivot: forward at 0, the braking stop at 1, the hover
+    /// stop between; the hand's angle round the arc reads back as the lever position.
+    #[test]
+    fn nozzle_lever_arc() {
+        let p = Vec3::new(-0.30, -0.66, 0.10);
+        let (fwd, back) = (40f32.to_radians(), -35f32.to_radians());
+        let knob = |a: f32| p + 0.13 * Vec3::new(0.0, a.cos(), -a.sin());
+        let anchors = CockpitAnchors {
+            nozzle_pivot: Some(p),
+            nozzle_aft: Some(knob(fwd)),
+            nozzle_down: Some(knob(back)),
+            ..default()
+        };
+        for t in [0.0, NOZZLE_HOVER, 1.0] {
+            let at = anchors.nozzle_handle(t).unwrap();
+            assert!(at.distance(knob(fwd + (back - fwd) * t)) < 1e-4, "{t}: {at}");
+            assert!((anchors.nozzle_angle(at) - t).abs() < 1e-3, "{t}");
+        }
+        // Further out along the lever reads the same.
+        let far = p + (anchors.nozzle_handle(0.5).unwrap() - p) * 1.5;
+        assert!((anchors.nozzle_angle(far) - 0.5).abs() < 1e-3);
+        assert!(CockpitAnchors::default().nozzle_handle(0.5).is_none());
     }
 
     /// A centre stick's grip stays in the hand, however short (the Tornado's, 0.39 m): moving

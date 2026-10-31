@@ -47,6 +47,7 @@ fn event_text(e: &SimEvent) -> String {
         .replace(", by: None", "")
         .replace(", by: Some(0)", "")
         .replace("Player(0)", "Player")
+        .replace(", heavy: false", "")
 }
 
 fn fnv(h: u64, s: &str) -> u64 {
@@ -98,9 +99,15 @@ fn frame_line(sim: &Sim, events: &[SimEvent]) -> String {
     for (i, o) in sim.objects().iter().enumerate().skip(1) {
         h = fnv(h, &format!("{i} {} {} {}", o.flags, o.alert, o.unit_type));
     }
-    for u in sim.aaa_units() {
-        // Without the Patriot launchers' ready rounds (added later; always 0 here).
-        h = fnv(h, &format!("{u:?}").replace(", rounds: 0", ""));
+    for u in sim.units() {
+        // Without the Patriot launchers' ready rounds, the vehicles' fine positions and the
+        // gone flag (added later; always 0, None and false here), under the types' names from
+        // before they took armour.
+        let line = format!("{u:?}")
+            .replace(", rounds: 0", "")
+            .replace(", fine: None", "")
+            .replace(", gone: false", "");
+        h = fnv(h, &line.replace("GroundUnit", "AaaUnit").replace("GroundKind", "AaaKind"));
     }
     let _ = write!(
         s,
@@ -276,34 +283,34 @@ fn campaign_run() -> u64 {
 #[test]
 fn single_player_parity() {
     const GOLDEN: &[u64] = &[
-        0x7083289f2a5f2f84,
-        0x6b6d08b3f7e801a3,
-        0xb6598ead521a8bb8,
-        0xeb8e0e35a8c62956,
-        0xd32d11d4bb790b67,
-        0x8a822463a5d7eb95,
-        0x2ce760c5bf34b50a,
-        0xc7ba5d6f732a614e,
-        0x3356a7817bbb96ba,
-        0x3a1d88f347452165,
-        0x2fa9443a89135833,
-        0xf5273460d1e5eb66,
-        0x8c938725b1e39f54,
-        0x3c1e7bed1751988e,
-        0x1bddd5b07cb3eaac,
-        0x0ce1c4edf2a42759,
-        0x86f8f21aed49f97d,
-        0x326bef07e128ce7a,
-        0x1c48eb91ded179cc,
-        0xb6709eb96b8caa83,
-        0xba5f83dfcbbada69,
-        0x8b712f53ff1e39ac,
-        0x82f508e3e637ef71,
-        0x04a3c002c568fdc2,
-        0x674a9f772a7b6801,
-        0x4e363586aa052192,
-        0x643324fc370f8979,
-        0x2660c1b968a06de5,
+        0x58291d8ca0995ca9,
+        0x1d75d4a8f62eb0c6,
+        0xbc9a94e2708c08fc,
+        0xa1b954769e22b2ff,
+        0xef073820de6530a1,
+        0xa629ada0500927c4,
+        0x8bcfe0b45cc6916d,
+        0xcb1a1a5ab5c13af9,
+        0x50d47ca763bc9e8a,
+        0x681886822e0350e1,
+        0x21091f53fc6f63c7,
+        0x310ab4c2a33e3a78,
+        0x6f1f4d8819807e8f,
+        0x8ea56ce21376ef8b,
+        0x14117b28aed76c7d,
+        0x285146c349ef4b0a,
+        0x454742adabc51bb7,
+        0xc164448c788d708a,
+        0x39cc855e226d4e2f,
+        0x94e7de32af5b9104,
+        0x6550658049ddb4d3,
+        0x81e972af7d921c73,
+        0x03d6b21504aca7c2,
+        0x562094d42c8f44c6,
+        0x49ea1c82797b03a1,
+        0x8df80a92d6d74a4b,
+        0xf60d8d6c3630425c,
+        0x47258f4aee44bddc,
     ];
     let mut got = missions();
     got.push(campaign_run());

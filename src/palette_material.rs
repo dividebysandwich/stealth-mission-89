@@ -67,7 +67,8 @@ pub struct PaletteParams {
     /// The lighting options that are on (`LIGHT_SHADOWS` | `LIGHT_LOCAL`): the shader variant
     /// with sun shadows and/or local lights (kept in sync by `sync_lighting`).
     pub lit: u32,
-    pub _pad1: u32,
+    /// The atmosphere effects compiled in (`FX_*`, kept in sync by `sync_lighting`).
+    pub fx: u32,
 }
 
 #[derive(Asset, TypePath, Clone, Debug)]
@@ -80,20 +81,31 @@ pub struct PaletteMaterial {
 /// `Globals` (binding 1, its `globals` field): a storage buffer, or a uniform buffer where
 /// there are none (the WebGL2 build). The shaders pick theirs with
 /// `#if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0`. (The derive only binds a buffer asset as
-/// storage.) The third argument is the bind group data, made `From<&Self>`.
+/// storage.) The third argument is the bind group data, made `From<&Self>`; with `stars` the
+/// star cells' texture is binding 2 (`stars::STAR_GRID`).
 macro_rules! globals_bind_group {
     ($ty:ty, $params:ident) => {
-        $crate::palette_material::globals_bind_group!($ty, $params, (), |_| ());
+        $crate::palette_material::globals_bind_group!($ty, $params, (), |_| (), false);
     };
     ($ty:ty, $params:ident, $data:ty) => {
-        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from);
+        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from, false);
     };
-    ($ty:ty, $params:ident, $data:ty, $make:expr) => {
+    ($ty:ty, $params:ident, $data:ty, stars) => {
+        $crate::palette_material::globals_bind_group!($ty, $params, $data, <$data>::from, true);
+    };
+    ($ty:ty, $params:ident, $data:ty, $make:expr, $stars:literal) => {
         impl bevy::render::render_resource::AsBindGroup for $ty {
             type Data = $data;
-            type Param = bevy::ecs::system::lifetimeless::SRes<
-                bevy::render::render_asset::RenderAssets<bevy::render::storage::GpuShaderBuffer>,
-            >;
+            type Param = (
+                bevy::ecs::system::lifetimeless::SRes<
+                    bevy::render::render_asset::RenderAssets<
+                        bevy::render::storage::GpuShaderBuffer,
+                    >,
+                >,
+                bevy::ecs::system::lifetimeless::SRes<
+                    bevy::render::render_asset::RenderAssets<bevy::render::texture::GpuImage>,
+                >,
+            );
 
             fn label() -> &'static str {
                 stringify!($ty)
@@ -103,7 +115,7 @@ macro_rules! globals_bind_group {
                 &self,
                 _: &bevy::render::render_resource::BindGroupLayout,
                 render_device: &bevy::render::renderer::RenderDevice,
-                buffers: &mut bevy::ecs::system::SystemParamItem<'_, '_, Self::Param>,
+                (buffers, images): &mut bevy::ecs::system::SystemParamItem<'_, '_, Self::Param>,
                 _: bool,
             ) -> Result<
                 bevy::render::render_resource::UnpreparedBindGroup,
@@ -122,12 +134,23 @@ macro_rules! globals_bind_group {
                     .ok_or(AsBindGroupError::RetryNextUpdate)?
                     .buffer
                     .clone();
-                Ok(UnpreparedBindGroup {
-                    bindings: BindingResources(vec![
-                        (0, OwnedBindingResource::Buffer(params)),
-                        (1, OwnedBindingResource::Buffer(globals)),
-                    ]),
-                })
+                let mut bindings = vec![
+                    (0, OwnedBindingResource::Buffer(params)),
+                    (1, OwnedBindingResource::Buffer(globals)),
+                ];
+                if $stars {
+                    let grid = images
+                        .get(&$crate::stars::STAR_GRID)
+                        .ok_or(AsBindGroupError::RetryNextUpdate)?;
+                    bindings.push((
+                        2,
+                        OwnedBindingResource::TextureView(
+                            TextureViewDimension::D2,
+                            grid.texture_view.clone(),
+                        ),
+                    ));
+                }
+                Ok(UnpreparedBindGroup { bindings: BindingResources(bindings) })
             }
 
             #[allow(clippy::redundant_closure_call)]
@@ -145,7 +168,7 @@ macro_rules! globals_bind_group {
                 } else {
                     BufferBindingType::Uniform
                 };
-                [BufferBindingType::Uniform, globals]
+                let mut entries: Vec<_> = [BufferBindingType::Uniform, globals]
                     .into_iter()
                     .enumerate()
                     .map(|(binding, ty)| BindGroupLayoutEntry {
@@ -158,14 +181,27 @@ macro_rules! globals_bind_group {
                         },
                         count: None,
                     })
-                    .collect()
+                    .collect();
+                if $stars {
+                    entries.push(BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    });
+                }
+                entries
             }
         }
     };
 }
 pub(crate) use globals_bind_group;
 
-globals_bind_group!(PaletteMaterial, params, PaletteKey);
+globals_bind_group!(PaletteMaterial, params, PaletteKey, stars);
 
 /// The shader variant of a material: objects (polygons, lines, dots), the background sphere,
 /// or clouds and smoke.
@@ -174,6 +210,7 @@ globals_bind_group!(PaletteMaterial, params, PaletteKey);
 pub struct PaletteKey {
     kind: u8,
     lit: u8,
+    fx: u16,
 }
 
 const KIND_OBJECT: u8 = 0;
@@ -190,7 +227,7 @@ impl From<&PaletteMaterial> for PaletteKey {
         } else {
             KIND_OBJECT
         };
-        Self { kind, lit: m.params.lit as u8 }
+        Self { kind, lit: m.params.lit as u8, fx: m.params.fx as u16 }
     }
 }
 
@@ -254,6 +291,14 @@ impl Material for PaletteMaterial {
             }
             if lit & LIGHT_LOCAL != 0 {
                 fragment.shader_defs.push("PALETTE_LOCAL".into());
+            }
+            // Likewise the atmosphere effects that can show in this flight: even skipped at
+            // run time, their code costs registers (fewer waves in flight on the Steam Frame).
+            let fx = key.bind_group_data.fx as u32;
+            for (bit, def) in FX_DEFS {
+                if fx & bit != 0 {
+                    fragment.shader_defs.push(def.into());
+                }
             }
         }
         // Only positions are used (models have no normals or UVs). Batched dot lights (scenery
@@ -335,11 +380,16 @@ pub struct Globals {
     pub recon_palette: [Vec4; 256],
     /// Direction to the moon (xyz) and its light's strength (w), for modern shading.
     pub moon: Vec4,
-    /// The key light's shadow maps: its index among Bevy's directional lights (x) and number
-    /// of cascades (y, 0 without shadows).
+    /// The key light's shadow maps: number of cascades (y, 0 without shadows), normal bias (z)
+    /// and depth bias (w).
     pub shadow: Vec4,
     /// The cascades' far bounds (metres from the eye; unused ones huge).
     pub shadow_bounds: Vec4,
+    /// The cascades' light space projections (`clip_from_world`) and texel sizes, the
+    /// direction to the light (`palette::shadow_cascades`).
+    pub shadow_cascades: [Mat4; 4],
+    pub shadow_texel: Vec4,
+    pub shadow_light: Vec4,
     /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     pub storm_haze: Vec4,
     /// Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
@@ -355,7 +405,7 @@ pub struct Globals {
     pub shadow_grid: Vec4,
     pub shadow_far: Vec4,
     /// Night sky extras (`Effects::night_sky`): aurora strength (x), shooting stars (y),
-    /// twinkling near the horizon (z).
+    /// twinkling near the horizon (z); specks on the desert theaters' ground gradient (w).
     pub sky_fx: Vec4,
     /// Retro output: VGA colours (x), scanlines (y; never in VR) (`Effects::vga`,
     /// `Effects::scanlines`).
@@ -363,11 +413,70 @@ pub struct Globals {
     /// The cloud shadow grid's squares (up to four cloud numbers each) and the cloud discs.
     pub shadow_cells: [Vec4; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
     pub shadow_clouds: [Vec4; crate::weather::SHADOW_CLOUDS],
+    /// The stars: the columns of the rotation from Bevy's frame to the star catalogue's
+    /// (`stars::frame`).
+    pub star_frame: [Vec4; 3],
 }
 
 /// Lighting flags in `Globals.ambient.w`.
 pub const LIGHT_SHADOWS: u32 = 1;
 pub const LIGHT_LOCAL: u32 = 2;
+
+/// Atmosphere effects compiled into the palette shader (`PaletteParams::fx`): ground mist,
+/// cloud shadows, combat flashes' light, the night sky extras, the desert's specks, retro
+/// output.
+pub const FX_MIST: u32 = 1;
+pub const FX_CLOUD_SHADOWS: u32 = 2;
+pub const FX_BURST: u32 = 4;
+pub const FX_SKY: u32 = 8;
+pub const FX_SAND: u32 = 16;
+pub const FX_RETRO: u32 = 32;
+/// The background's variants for the sky now (`sky_bits`): with the stars, with the stratus
+/// deck. Each draws as the one without while there are no stars or no deck, so switching
+/// between them shows no change; twins of the sphere keep them all compiled
+/// (`camera::spawn_background`), so the switch doesn't wait on a compile either.
+pub const FX_STARS: u32 = 64;
+pub const FX_STRATUS: u32 = 128;
+/// Modern shading (`Settings::modern_shading`).
+pub const FX_MODERN: u32 = 256;
+pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
+const FX_DEFS: [(u32, &str); 9] = [
+    (FX_MIST, "PALETTE_MIST"),
+    (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
+    (FX_BURST, "PALETTE_BURST"),
+    (FX_SKY, "PALETTE_SKY_FX"),
+    (FX_SAND, "PALETTE_SAND"),
+    (FX_RETRO, "PALETTE_RETRO"),
+    (FX_STARS, "PALETTE_STARS"),
+    (FX_STRATUS, "PALETTE_STRATUS"),
+    (FX_MODERN, "PALETTE_MODERN"),
+];
+
+/// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
+pub fn sky_bits(sky: &crate::sky::Sky, weather: &crate::weather::WeatherState) -> u32 {
+    let stars = (sky.on || sky.classic_bodies) && sky.stars > 0.0;
+    bit(stars, FX_STARS) | bit(weather.drawn_deck().0 > 0.0, FX_STRATUS)
+}
+
+/// The atmosphere effects that can show with these settings in this theater: switched by
+/// options (not by the time of day or the weather, which change in flight; a new variant
+/// takes a moment to compile, the world missing meanwhile).
+pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
+    let e = &settings.effects;
+    let modern = settings.modern_shading;
+    let retro = crate::palette::retro(settings);
+    bit(e.mist && modern, FX_MIST)
+        | bit(e.cloud_shadows && modern, FX_CLOUD_SHADOWS)
+        | bit(e.flashes, FX_BURST)
+        | bit(e.night_sky, FX_SKY)
+        | bit(crate::weather::dry_theater(theater), FX_SAND)
+        | bit(retro.x + retro.y > 0.0, FX_RETRO)
+        | bit(modern, FX_MODERN)
+}
+
+fn bit(on: bool, bit: u32) -> u32 {
+    if on { bit } else { 0 }
+}
 /// The shadow maps are the moon's (it is brighter than the sun).
 pub const LIGHT_MOON_KEY: u32 = 4;
 /// Local lights handed to the world shader (must match palette.wgsl).
@@ -398,6 +507,9 @@ impl Default for Globals {
             moon: Vec4::ZERO,
             shadow: Vec4::ZERO,
             shadow_bounds: Vec4::ZERO,
+            shadow_cascades: [Mat4::ZERO; 4],
+            shadow_texel: Vec4::ZERO,
+            shadow_light: Vec4::ZERO,
             storm_haze: Vec4::ZERO,
             burst: Vec4::ZERO,
             burst_colour: Vec4::ZERO,
@@ -408,6 +520,7 @@ impl Default for Globals {
             retro: Vec4::ZERO,
             shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
+            star_frame: [Vec4::ZERO; 3],
         }
     }
 }
@@ -449,19 +562,38 @@ pub const TAG_VERTEX_HAZE: u32 = 1 << 30;
 
 /// Switches every palette material to the shader variant with or without the lighting options
 /// (also materials created later).
+#[allow(clippy::too_many_arguments)]
 pub fn sync_lighting(
     settings: Res<crate::settings::Settings>,
     scene: Option<Res<crate::menu_scene::MenuScene>>,
+    theater: Option<Res<crate::world::Theater>>,
+    palette: Option<Res<crate::palette::Palette>>,
+    sky: Res<crate::sky::Sky>,
+    weather: Res<crate::weather::WeatherState>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
 ) {
     // The scene behind the menu always has shadows.
     let shadows = settings.shadows || scene.is_some();
     let lit = (shadows as u32 * LIGHT_SHADOWS) | (settings.local_lights as u32 * LIGHT_LOCAL);
-    let stale: Vec<_> =
-        materials.iter().filter(|(_, m)| m.params.lit != lit).map(|(id, _)| id).collect();
+    let fx = fx_bits(&settings, theater.as_ref().map_or("", |t| t.id.as_str()));
+    // The sky's own bits: the live background's by the sky now, its twins' fixed.
+    let mut sky_variant = Vec::new();
+    if let Some(p) = &palette {
+        sky_variant.push((p.background.id(), sky_bits(&sky, &weather)));
+        sky_variant.extend(p.background_twins.iter().map(|h| h.id()).zip(SKY_VARIANTS));
+    }
+    let want = |id: AssetId<PaletteMaterial>| {
+        fx | sky_variant.iter().find(|(s, _)| *s == id).map_or(0, |(_, b)| *b)
+    };
+    let stale: Vec<_> = materials
+        .iter()
+        .filter(|(id, m)| m.params.lit != lit || m.params.fx != want(*id))
+        .map(|(id, _)| id)
+        .collect();
     for id in stale {
         if let Some(mut m) = materials.get_mut(id) {
             m.params.lit = lit;
+            m.params.fx = want(id);
         }
     }
 }

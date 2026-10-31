@@ -1,8 +1,9 @@
 //! Continuous time of day (the "Time of day" switch, `--continuous-time`): the sun and the moon
 //! move with the mission clock, the palette blends between the theater's night, dusk and day
 //! palettes by the sun's elevation, the moon shows the phase of the briefing date (or the one
-//! chosen; in a campaign it moves on 30% of its cycle a day), stars come out, and moonlight sets how far enemy pilots see at night. Off, the classic palette drift
-//! and fixed sun stay (`palette::step_time_of_day`).
+//! chosen; in a campaign it moves on 30% of its cycle a day), the stars come out where they
+//! stand on that date and hour (`stars.rs`), and moonlight sets how far enemy pilots see at
+//! night. Off, the classic palette drift and fixed sun stay (`palette::step_time_of_day`).
 //!
 //! The sun keeps to the equinox (it rises at 06:00 and sets at 18:00 local time everywhere), so
 //! day missions still start at dawn and night missions at dusk.
@@ -45,14 +46,18 @@ pub struct Sky {
     pub moonlight: f32,
     /// Star visibility 0..1.
     pub stars: f32,
+    /// The rotation from Bevy's frame to the star catalogue's ([`crate::stars::frame`]).
+    pub star_frame: Mat3,
     /// Daylight from the sun's elevation 0 (night) .. 1 (day).
     pub day: f32,
     /// Darkness of a night without moonlight 0 .. 1 (black sky and ground, lights and stars
     /// only), and the strength of the red glow it leaves at the horizon.
     pub dark: f32,
     pub glow: f32,
-    /// Mission date: days since 1970-01-01 (the moon's phase), and the theater's latitude.
+    /// Mission date: days since 1970-01-01 (the moon's phase, the stars), and the theater's
+    /// longitude and latitude.
     days: f64,
+    lon: f64,
     lat: f64,
     /// The season 0 (midwinter) .. 1 (midsummer); summer without a mission date.
     summer: f64,
@@ -75,10 +80,12 @@ impl Default for Sky {
             moon: Vec3::Y,
             moonlight: 0.0,
             stars: 0.0,
+            star_frame: crate::stars::frame(0.0, 23.0, 0.0, 45.0).as_mat3(),
             day: 1.0,
             dark: 0.0,
             glow: 0.0,
             days: 0.0,
+            lon: 0.0,
             lat: 45.0,
             summer: 1.0,
             chosen: None,
@@ -346,14 +353,20 @@ fn reset_sky(
 impl Sky {
     /// The sky of a mission on theater `theater` (its date and latitude), before the clock runs.
     pub fn of(theater: &str, mission: Option<&stealth_mission::Mission>) -> Self {
-        let (_, lat0) = crate::world::geo_origin(theater);
+        let (lon0, lat0) = crate::world::geo_origin(theater);
         let date = mission.and_then(|m| crate::tacview::parse_briefing_date(&m.briefing.date));
         let days = date.map_or(0.0, |(y, mo, d)| crate::tacview::days_from_civil(y, mo, d) as f64);
         let chosen = mission.and_then(|m| m.settings.moon).map(|e| (e % 8) as f64 / 8.0);
         // The middle of the theater, 256 km north of its corner.
         let lat = lat0 + 256.0 / 111.2;
+        let lon = lon0 + 256.0 / (111.2 * lat.to_radians().cos());
         let summer = date.map_or(1.0, |_| season(days, lat));
-        Sky { lat, days, summer, chosen, ..default() }
+        Sky { lon, lat, days, summer, chosen, ..default() }
+    }
+
+    /// The stars' frame `hours` local time into the mission date.
+    fn star_frame_at(&self, hours: f64) -> Mat3 {
+        crate::stars::frame(self.days, hours, self.lon, self.lat).as_mat3()
     }
 }
 
@@ -371,6 +384,7 @@ fn classic_bodies(sky: &mut Sky, on: bool, night: bool) {
     let phase = test_phase().unwrap_or_else(|| sky.phase_at(hours));
     sky.sun = sun_dir(hours, sky.lat);
     sky.moon = moon_dir(hours, sky.lat, phase);
+    sky.star_frame = sky.star_frame_at(hours);
     let moonlight = illumination(phase) * smoothstep(0.0, 0.25, sky.moon.y as f64);
     sky.stars = (1.0 - 0.6 * moonlight) as f32;
 }
@@ -382,6 +396,7 @@ fn update_sky(
     mut sky: ResMut<Sky>,
     palette: Option<ResMut<Palette>>,
     combat: Option<ResMut<crate::combat::Combat>>,
+    weather: Option<Res<crate::weather::WeatherState>>,
 ) {
     let on = settings.continuous_time;
     sky.campaign = combat.as_ref().is_some_and(|c| c.sky_seconds.is_some());
@@ -408,6 +423,8 @@ fn update_sky(
     let elev = (sun.y as f64).asin().to_degrees();
     let lit = illumination(phase);
     let moonlight = lit * smoothstep(0.0, 0.25, moon.y as f64);
+    // Under a full overcast no moonlight reaches the ground: a dark night.
+    let ground_moon = moonlight * (1.0 - weather.map_or(0.0, |w| w.world_shade) as f64);
     let day = smoothstep(-12.0, 6.0, elev);
     *sky = Sky {
         on,
@@ -415,8 +432,9 @@ fn update_sky(
         moon,
         moonlight: moonlight as f32,
         stars: ((1.0 - smoothstep(-14.0, -4.0, elev)) * (1.0 - 0.6 * moonlight)) as f32,
+        star_frame: sky.star_frame_at(hours),
         day: day as f32,
-        dark: darkness(elev, moonlight) as f32,
+        dark: darkness(elev, ground_moon) as f32,
         glow: horizon_glow(elev, sky.lat, sky.summer) as f32,
         ..sky.clone()
     };
@@ -429,7 +447,7 @@ fn update_sky(
             sky.golden = Some((look, golden(&palette.theater, &look)));
         }
         let Some((_, gold)) = &sky.golden else { return };
-        let p = blend(&palette.theater, gold, elev, moonlight);
+        let p = blend(&palette.theater, gold, elev, ground_moon);
         if p.colors != palette.active.colors {
             palette.active = p;
         }

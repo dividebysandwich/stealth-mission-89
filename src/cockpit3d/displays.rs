@@ -18,7 +18,8 @@ use crate::cockpit::{CockpitArt, Displays};
 use crate::font::Fonts;
 use crate::mfd::{CLASSIC, HIRES, MfdSide, osb};
 use crate::panel::{
-    BUTTON, GREEN, LAMPS, LampId, draw_gauge, draw_label, draw_lamp, draw_led, draw_led_bars,
+    BUTTON, GREEN, LAMPS, LampId, draw_arrow, draw_gauge, draw_label, draw_lamp, draw_led,
+    draw_led_bars,
 };
 
 /// Emissive strength of the displays and lit lights when the cockpit is lit.
@@ -62,7 +63,7 @@ pub(super) enum CanvasRole {
     Console(ConsoleScreen),
 }
 
-/// The screens of an air defence console.
+/// The screens of an air defence console (and the drone command center's).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConsoleScreen {
     /// The air picture.
@@ -71,8 +72,13 @@ pub enum ConsoleScreen {
     Board,
     /// The camera's overlay (over the camera picture).
     Eo,
-    /// The locked target's data.
+    /// The locked target's data (the drone command center's drone list).
     Info,
+    /// The drone command center's ground control station map (its picture in picture shows
+    /// through it).
+    Map,
+    /// The drone command center's camera overlay (over its wide picture).
+    Feed,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -84,6 +90,9 @@ pub const SCOPE_CANVAS: (usize, usize) = (320, 320);
 pub const BOARD_CANVAS: (usize, usize) = (400, 300);
 pub const EO_CANVAS: (usize, usize) = (308, 240);
 pub const INFO_CANVAS: (usize, usize) = (320, 240);
+pub const MAP_CANVAS: (usize, usize) = (640, 244);
+/// The shape of `trackcam::WIDE`.
+pub const FEED_CANVAS: (usize, usize) = (640, 270);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -267,7 +276,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Ah1z
         | PanelStyle::Tornado
         | PanelStyle::A10
-        | PanelStyle::Rah66 => MM_TEXELS,
+        | PanelStyle::Rah66
+        | PanelStyle::Av8b => MM_TEXELS,
     }
 }
 
@@ -322,8 +332,13 @@ pub(super) fn screen(
                 ConsoleScreen::Board => BOARD_CANVAS,
                 ConsoleScreen::Eo => EO_CANVAS,
                 ConsoleScreen::Info => INFO_CANVAS,
+                ConsoleScreen::Map => MAP_CANVAS,
+                ConsoleScreen::Feed => FEED_CANVAS,
             };
-            (Canvas::scaled(w, h, CONSOLE_SCALE), s == ConsoleScreen::Eo)
+            (
+                Canvas::scaled(w, h, CONSOLE_SCALE),
+                matches!(s, ConsoleScreen::Eo | ConsoleScreen::Map | ConsoleScreen::Feed),
+            )
         }
         // Only the RAH-66 has the multipurpose displays.
         CanvasRole::Lmpd | CanvasRole::Rmpd => (
@@ -435,10 +450,11 @@ fn hud_canvas(
     scale: f32,
 ) -> (CanvasTexture, Vec4, Vec4) {
     let ((w, h), proj, style) = HudGlassMaterial::layout(classic, scale);
-    let tex = CanvasTexture::new(Canvas::new(w, h), images, true);
-    if !classic && let Some(mut img) = images.get_mut(&tex.image) {
-        img.sampler = bevy::image::ImageSampler::linear();
-    }
+    let tex = if classic {
+        CanvasTexture::new(Canvas::new(w, h), images, true)
+    } else {
+        CanvasTexture::coverage(Canvas::new(w, h), images)
+    };
     (tex, proj, style)
 }
 
@@ -495,8 +511,8 @@ pub(super) fn update_displays(
         });
     }
     // VR (72 Hz, the Steam Frame's CPU short of time): the HUD and the ADI, which move with
-    // the aircraft's attitude, every frame; the other screens every other frame, half of them
-    // each (all of them took the Frame 2.7 ms a frame).
+    // the aircraft's attitude, every frame; the other screens and the instrument atlas every
+    // other frame, half of them each (all of them took the Frame 2.7 ms a frame).
     *frame = frame.wrapping_add(1);
     let half = |r: CanvasRole| match r {
         CanvasRole::Hud | CanvasRole::Adi => None,
@@ -564,18 +580,27 @@ pub(super) fn update_displays(
         tex.dirty = true;
     }
 
+    if settings.vr && *frame % 2 != 1 {
+        return;
+    }
     let (Some(a), Some(g)) = (find(CanvasRole::Atlas), find(CanvasRole::Glow)) else { return };
     let Ok(info) = atlas.get(a) else { return };
     let Ok([mut a, mut g]) = texes.get_many_mut([a, g]) else { return };
     let (c, glow) = (&mut a.canvas, &mut g.canvas);
     glow.px.fill(0);
     let lit = d.panel.lamp_states();
+    // A labelled MW lamp is the modern cockpits' master caution, not the MWS damage light.
+    let master_caution = d.panel.master_caution();
     let (emv, egr, ear) = d.panel.gauge_values();
     let (k, t) = (info.texels, TEXT_SCALE);
     for &(face, r) in &info.faces {
         let glows = match face {
             Face::Item(Elem::Lamp(id, label)) => {
-                let on = lit[id as usize];
+                let on = if id == LampId::Mw && label.is_some() {
+                    master_caution
+                } else {
+                    lit[id as usize]
+                };
                 let style = LAMPS[id as usize].2;
                 draw_lamp(
                     c,
@@ -615,6 +640,10 @@ pub(super) fn update_displays(
             }
             Face::Item(Elem::Label(text, fg, bg)) => {
                 draw_label(c, &fonts, r, text, fg, bg, t);
+                true
+            }
+            Face::Item(Elem::Arrow(arrow, fg, bg)) => {
+                draw_arrow(c, r, arrow, fg, bg);
                 true
             }
             Face::Item(Elem::Hazard) => {
@@ -684,6 +713,7 @@ mod tests {
             PanelStyle::Tornado,
             PanelStyle::A10,
             PanelStyle::Rah66,
+            PanelStyle::Av8b,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

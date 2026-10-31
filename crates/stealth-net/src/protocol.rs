@@ -1,7 +1,9 @@
 //! The coop messages and their encoding (CBOR, LZ4-compressed when large).
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use stealth_campaign::{Aircraft, CampaignState, PlaceId, PlayerId, RoutePoint, Sortie};
+use stealth_campaign::{
+    Aircraft, CampaignState, DefenceKind, PlaceId, PlayerId, RoutePoint, Sortie,
+};
 use stealth_host::{HostEvent, Rules, Stores};
 use stealth_sim::claims::GunHit;
 use stealth_sim::net::{PilotSnap, PilotTick, WorldFast, WorldSlow};
@@ -45,12 +47,13 @@ pub enum ToServer {
     RequestSupport {
         offer: u32,
     },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y), map units.
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y), map units.
     DesignateSite {
         x: i32,
         y: i32,
-        patriot: bool,
+        #[serde(alias = "patriot")]
+        kind: DefenceKind,
     },
     /// The crate of load `leg` of new site `id` hooked under his helicopter.
     HookCrate {
@@ -245,15 +248,28 @@ mod tests {
     #[test]
     fn station_messages_survive_encoding() {
         use stealth_sim::station::{DefenceState, Guidance, Station, StationCmd};
+        use stealth_sim::uav::{UavKind, UavWp, WpKind};
+        let route = vec![
+            UavWp { x: 0x1000, y: 0x2000, alt: 800.0, kind: WpKind::Nav },
+            UavWp { x: 0x1100, y: 0x2040, alt: 300.0, kind: WpKind::Terminate },
+        ];
         for cmd in [
             StationCmd::Fire { launcher: Some(3) },
             StationCmd::Slew { az: 0.5, el: -0.25 },
             StationCmd::Burst,
+            StationCmd::Launch { kind: UavKind::Fp2, route: route.clone() },
+            StationCmd::Launch { kind: UavKind::Interceptor, route: route.clone() },
+            StationCmd::Route { uav: 4, route },
+            StationCmd::Next { uav: 4, wp: 1 },
+            StationCmd::Manual { uav: 2, on: true },
+            StationCmd::Fly { uav: 2, roll: -0.5, pitch: 0.25, yaw: 0.5, throttle: 0.75 },
         ] {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
         }
         let defence = DefenceState {
+            stock2: vec![0, 3],
+            stock3: vec![0, 6],
             stations: vec![Station {
                 unit: 4,
                 pilot: 1,
@@ -266,6 +282,9 @@ mod tests {
             }],
             stock: vec![8, 0, 0, 0, 640],
             refill: vec![0.0, 120.0, 0.0, 0.0, 0.0],
+            uavs: Vec::new(),
+            uav_serial: 3,
+            uav_known: vec![stealth_sim::uav::Seen::Aaa(2), stealth_sim::uav::Seen::Object(40)],
         };
         let slow = WorldSlow {
             aaa_len: 5,
@@ -330,6 +349,8 @@ mod tests {
             tornado: false,
             a10: false,
             comanche: false,
+            harrier: false,
+            nozzle: 0,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -352,6 +373,17 @@ mod tests {
         // The RAH-66's.
         let c = RemotePilot { a10: false, helicopter: true, gunship: true, comanche: true, ..a };
         let w = WorldFast { pilots: vec![c.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![c]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![c.clone()]);
+        // The AV-8B's, with its nozzles down.
+        let h = RemotePilot {
+            helicopter: false,
+            gunship: false,
+            comanche: false,
+            harrier: true,
+            nozzle: 84,
+            ..c
+        };
+        let w = WorldFast { pilots: vec![h.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![h]);
     }
 }

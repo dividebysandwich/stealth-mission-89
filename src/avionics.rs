@@ -4,7 +4,8 @@
 //! - Formats: HSD (horizontal situation display: route, threat rings, air and ground contacts),
 //!   HARM (the radars painting the aircraft, placed by danger like the RWR), TGP (the tracking
 //!   camera), MAP (the moving map in muted colours, or the waypoint table) and SMS (stores: the
-//!   WPN and ORD pages); on the F-117A's third MFD also HSI (`draw_hsi_page`). The bottom bezel
+//!   inventory by station with the bomb release program, ripple count and spacing, and the
+//!   ORD page); on the F-117A's third MFD also HSI (`draw_hsi_page`). The bottom bezel
 //!   buttons pick the format; picking one another MFD shows swaps the two. The top buttons are the format's own, the top right one makes the
 //!   format the sensor of interest (SOI). The buttons' functions are drawn on the display next
 //!   to them, like the real ones.
@@ -23,7 +24,7 @@ use bevy::prelude::*;
 use crate::canvas::Canvas;
 use crate::cockpit::CockpitArt;
 use crate::flight::{Aircraft, Player};
-use crate::font::{Align, Fonts, stroke_text_at, upper};
+use crate::font::{Align, Fonts, stroke_text, stroke_text_at, upper};
 use crate::hud::{HudMode, HudState};
 use crate::input::{Action, ActionEvent, FlightControls};
 use crate::mfd::{
@@ -39,6 +40,7 @@ impl Plugin for AvionicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<LockRequest>()
             .add_message::<PodDesignate>()
+            .add_message::<PodTrack>()
             .add_systems(
                 Update,
                 slew_and_lock
@@ -154,6 +156,10 @@ pub struct AvionicsState {
     pub map_way: bool,
     /// SMS shows the mission orders (else the weapons).
     pub sms_ord: bool,
+    /// Free-fall and retarded bombs per release (1..=`RIPPLE_MAX`).
+    pub ripple: u8,
+    /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
+    pub ripple_spacing: usize,
     /// Right format before ILS was switched on.
     pub before_ils: Option<Format>,
     pub tgp: TgpState,
@@ -196,6 +202,8 @@ pub struct TgpState {
     clear: bool,
     /// CZ pressed: the pod is to hold the current steerpoint (`update_pod`, which has the route).
     cz: bool,
+    /// The vehicle (`Sim::units` index) the point track follows.
+    pub track: Option<usize>,
 }
 
 impl TgpMode {
@@ -396,6 +404,8 @@ impl Default for AvionicsState {
             harm_filter: HarmFilter::All,
             map_way: false,
             sms_ord: true,
+            ripple: 1,
+            ripple_spacing: 3,
             before_ils: None,
             tgp: default(),
             helmet: None,
@@ -404,6 +414,14 @@ impl Default for AvionicsState {
     }
 }
 
+/// Most bombs a ripple releases (the simulation flies four of the player's stores at a time).
+pub const RIPPLE_MAX: u8 = 4;
+const RIPPLE_LABELS: [&str; RIPPLE_MAX as usize] = ["RP 1", "RP 2", "RP 3", "RP 4"];
+/// Ripple spacings (ft between the bombs' impacts).
+pub const RIPPLE_SPACING_FT: [u16; 9] = [25, 50, 75, 100, 150, 200, 300, 400, 500];
+const SPACING_LABELS: [&str; 9] =
+    ["25FT", "50FT", "75FT", "100FT", "150FT", "200FT", "300FT", "400FT", "500FT"];
+
 /// Seconds "lock cursor target" is held before the zoomed window shows.
 const MARK_HOLD: f32 = 0.3;
 
@@ -411,6 +429,11 @@ impl AvionicsState {
     /// The zoomed window around the SOI's cursor is up.
     pub fn zoom_window(&self) -> bool {
         self.mark_held >= MARK_HOLD
+    }
+
+    /// The ripple's spacing (ft).
+    pub fn ripple_ft(&self) -> u16 {
+        RIPPLE_SPACING_FT[self.ripple_spacing.min(RIPPLE_SPACING_FT.len() - 1)]
     }
 }
 
@@ -456,7 +479,13 @@ impl AvionicsState {
 
     /// The sensor of interest if it is on an MFD.
     pub fn soi_format(&self) -> Option<Format> {
-        self.soi.filter(|&f| self.shown(f).is_some())
+        self.soi.filter(|&f| self.shown(f).is_some() && self.soi_capable(f))
+    }
+
+    /// Formats that can be the SOI: those with a cursor or a pod, and the MAP while it shows
+    /// the waypoint table (the slew keys then move the waypoint being edited).
+    pub fn soi_capable(&self, f: Format) -> bool {
+        f.soi_capable() || f == Format::Map && self.map_way
     }
 
     /// Puts a format on an MFD; the MFD showing the new one gets this one's format.
@@ -479,7 +508,7 @@ impl AvionicsState {
     /// The SOI stays on a displayed format that can be one.
     fn fix_soi(&mut self) {
         if self.soi_format().is_none() {
-            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|f| f.soi_capable());
+            self.soi = self.sides().iter().map(|&s| self.format(s)).find(|&f| self.soi_capable(f));
         }
     }
 }
@@ -496,7 +525,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         }
         MfdCmd::Soi(side) => {
             let f = av.format(side);
-            if f.soi_capable() {
+            if av.soi_capable(f) {
                 av.soi = Some(f);
             }
         }
@@ -507,7 +536,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             let at = sides.iter().position(|&s| s == side).unwrap_or(0);
             let next = (1..sides.len())
                 .map(|k| av.format(sides[(at + k) % sides.len()]))
-                .find(|f| f.soi_capable());
+                .find(|&f| av.soi_capable(f));
             if let Some(f) = next {
                 av.soi = Some(f);
             }
@@ -535,11 +564,20 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::ToggleOrient => state.map_heading_up = !state.map_heading_up,
         MfdCmd::MapWay => {
             av.map_way = !av.map_way;
+            av.fix_soi();
             raster.invalidate();
         }
         MfdCmd::Sms(ord) => {
             av.sms_ord = ord;
             av.show(Format::Sms);
+        }
+        MfdCmd::Ripple(d) => {
+            av.ripple = (av.ripple as i32 + d as i32).clamp(1, RIPPLE_MAX as i32) as u8;
+        }
+        MfdCmd::RippleSpacing(d) => {
+            av.ripple_spacing = (av.ripple_spacing as i32 + d as i32)
+                .clamp(0, RIPPLE_SPACING_FT.len() as i32 - 1)
+                as usize;
         }
         MfdCmd::HarmFilter => {
             av.harm_filter = match av.harm_filter {
@@ -569,6 +607,8 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::TgpCz => av.tgp.cz = true,
         // Applied before (`mfd::cam_zoom`).
         MfdCmd::CamZoom(_) | MfdCmd::CamZoomCycle => {}
+        // Moves the waypoint (`mfd::edit_waypoints`).
+        MfdCmd::WaypointNudge(..) => {}
         MfdCmd::Ils => {
             state.ils = !state.ils;
             if state.ils {
@@ -600,13 +640,14 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
 }
 
 /// Label, function and lit state of a bezel button with the modern avionics: the formats along
-/// the bottom, the format's own functions along the top (SOI top right).
+/// the bottom, the format's own functions along the top (SOI top right); the side rows (10..20)
+/// are free but for the waypoint table's.
 pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
     use crate::input::Action as A;
     use OsbFn::*;
     let av = &s.av;
     let f = av.format(side);
-    if slot >= 5 {
+    if (5..10).contains(&slot) {
         let g = formats(side)[slot as usize - 5];
         return Some((g.label(), Cmd(MfdCmd::Format(side, g)), f == g));
     }
@@ -637,9 +678,10 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Tgp, 2) => ("SP", Cmd(MfdCmd::TgpSp), av.tgp.mode == TgpMode::Snowplow),
         // CZ: the pod to the current steerpoint, not in A-A.
         (Format::Tgp, 3) if !s.air => ("CZ", Cmd(MfdCmd::TgpCz), false),
-        (Format::Map, 0) if av.map_way => ("WP-", Action(A::LastWaypoint), false),
-        (Format::Map, 1) if av.map_way => ("WP+", Action(A::NextWaypoint), false),
-        (Format::Map, 2) if av.map_way => ("RST", Action(A::ResetWaypoint), false),
+        // The waypoint table: the top row has no map functions, the side ones are its own.
+        (Format::Map, 0..=2) if av.map_way => return None,
+        (Format::Map, 4) if av.map_way => soi,
+        (Format::Map, 10..=16 | 19) if av.map_way => return crate::mfd::way_osb(slot, s),
         (Format::Map, 0) => {
             (if s.map_heading_up { "HUP" } else { "NUP" }, Cmd(MfdCmd::ToggleOrient), false)
         }
@@ -652,6 +694,17 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Sms, 3) if !av.sms_ord => {
             (crate::mfd::bomb_mode_label(s.ccrp), Action(A::BombMode), false)
         }
+        // The release program down the sides: ripple count on the left, spacing on the right.
+        (Format::Sms, 10) if !av.sms_ord => ("RP+", Cmd(MfdCmd::Ripple(1)), false),
+        (Format::Sms, 11) if !av.sms_ord => {
+            (RIPPLE_LABELS[(av.ripple.clamp(1, RIPPLE_MAX) - 1) as usize], Readout, false)
+        }
+        (Format::Sms, 12) if !av.sms_ord => ("RP-", Cmd(MfdCmd::Ripple(-1)), false),
+        (Format::Sms, 15) if !av.sms_ord => ("SPC+", Cmd(MfdCmd::RippleSpacing(1)), false),
+        (Format::Sms, 16) if !av.sms_ord => {
+            (SPACING_LABELS[av.ripple_spacing.min(SPACING_LABELS.len() - 1)], Readout, false)
+        }
+        (Format::Sms, 17) if !av.sms_ord => ("SPC-", Cmd(MfdCmd::RippleSpacing(-1)), false),
         (Format::Hsi, 0) => ("WP-", Action(A::LastWaypoint), false),
         (Format::Hsi, 1) => ("WP+", Action(A::NextWaypoint), false),
         _ => return None,
@@ -685,6 +738,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Hsd => draw_hsd(p, c, ac, soi),
         Format::Harm => draw_harm(p, c, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
+        Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
             let mut page = Canvas::scaled(c.w, c.h - 2 * BAND as usize, c.scale);
@@ -692,8 +746,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
                 Format::Tgp => p.draw_camera_hires(&mut page, fonts),
                 Format::Map if av.map_way => p.draw_way_hires(&mut page, fonts, ac),
                 Format::Map => p.draw_map_hires(&mut page, art, fonts, ac, true),
-                _ if av.sms_ord => p.draw_ord_hires(&mut page, fonts),
-                _ => p.draw_wpn_hires(&mut page, art, fonts),
+                _ => p.draw_ord_hires(&mut page, fonts),
             }
             // See-through around the pod picture, black elsewhere.
             c.clear(if f == Format::Tgp && p.cam.live { 0 } else { BLACK });
@@ -716,25 +769,142 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
             }
         }
     }
-    draw_labels(c, fonts, side, s);
+    draw_labels(c, side, s);
     if soi {
         c.frame(Vec2::splat(1.0), Vec2::new(c.w as f32 - 2.0, c.h as f32 - 2.0), 2.0, WHITE);
     }
 }
 
-/// The bezel button labels next to their buttons: lit ones inverted.
-fn draw_labels(c: &mut Canvas, fonts: &Fonts, side: MfdSide, s: &MfdState) {
+/// Glyph height of the bezel labels (the stroke font, sharp at the canvas' resolution).
+const LABEL_GLYPH: f32 = 7.0;
+
+/// The bezel button labels next to their buttons: lit ones inverted. The top and bottom ones
+/// in the label bands, centred over their buttons; the side ones against the edges, kept
+/// between the bands.
+fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
+    use crate::mfd::OsbEdge;
+    let h = LABEL_GLYPH as i32;
     for slot in 0..crate::mfd::OSB_COUNT {
         let Some((label, _, lit)) = osb(side, slot, s) else { continue };
-        let col = (slot % 5) as i32;
-        let text = upper(label);
-        let w = 2 * fonts.width(&text) - 2;
-        let x = (c.w as i32 * (2 * col + 1)) / 10 - w / 2;
-        let y = if slot < 5 { 3 } else { c.h as i32 - 13 };
+        let (edge, k) = crate::mfd::osb_edge(slot);
+        let k = k as i32;
+        let w = crate::font::stroke_width(label, LABEL_GLYPH).ceil() as i32;
+        // Vertical middles: of the label bands, and of the side buttons (clear of the bands).
+        let row = ((c.h as i32 * (2 * k + 1)) / 10)
+            .clamp(BAND + 2 + h / 2, c.h as i32 - BAND - 2 - h / 2);
+        let col = (c.w as i32 * (2 * k + 1)) / 10 - w / 2;
+        let (x, mid) = match edge {
+            OsbEdge::Top => (col, BAND / 2),
+            OsbEdge::Bottom => (col, c.h as i32 - BAND / 2),
+            OsbEdge::Left => (4, row),
+            OsbEdge::Right => (c.w as i32 - 4 - w, row),
+        };
+        let y = mid - h / 2;
         if lit {
-            c.fill_rect(x - 2, y - 2, w + 4, 14, GREEN);
+            c.fill_rect(x - 2, y - 2, w + 4, h + 4, GREEN);
         }
-        fonts.text_scaled(c, x, y, &text, if lit { BLACK } else { GREEN }, 2);
+        stroke_text(
+            c,
+            x as f32,
+            y as f32,
+            label,
+            LABEL_GLYPH,
+            1.0,
+            if lit { BLACK } else { GREEN },
+        );
+    }
+}
+
+/// The SMS inventory (F-16 style): the master mode, the selected weapon and its rounds, and
+/// the stations with what each carries, the selected weapon's highlighted; the bombs' ripple
+/// count and spacing by their side buttons.
+fn draw_sms(p: &MfdParams, c: &mut Canvas) {
+    c.clear(BLACK);
+    let s = &p.state;
+    let st = &p.stores;
+    let (w, h) = (c.w as f32, c.h as f32);
+    let mid = w / 2.0;
+    let sel = st.bays.get(st.selected).filter(|_| !st.gun_selected);
+    let master = if s.air {
+        "A-A"
+    } else if s.ground {
+        "A-G"
+    } else {
+        "NAV"
+    };
+    let mut y = BAND as f32 + 6.0;
+    stroke_text_at(c, mid, y, master, 8.0, 1.2, GREEN, Align::Centre);
+    y += 14.0;
+    let weapon = match (sel, st.gun_rounds) {
+        (Some(b), _) => format!("{} {}", b.count, b.short),
+        (None, Some(n)) if st.gun_selected => match st.gun_slave {
+            Some(slave) => format!("GUN {n} {slave}"),
+            None => format!("GUN {n}"),
+        },
+        _ => "NO STORES".to_string(),
+    };
+    stroke_text_at(c, mid, y, &weapon, 11.0, 1.5, WHITE, Align::Centre);
+    y += 16.0;
+    c.stroke(Vec2::new(44.0, y), Vec2::new(w - 44.0, y), 1.0, DARK);
+    y += 6.0;
+    // The stations in mirrored pairs from the wingtips in (the first and the last on the top
+    // row, numbers outboard), a centreline station between them, then the gun.
+    let cell = |k: usize| {
+        let (g, n) = st.stations[k];
+        match g.and_then(|g| st.bays.get(g).map(|b| (g, b))) {
+            Some((g, b)) => (
+                format!("{}", k + 1),
+                format!("{n} {}", b.short),
+                g == st.selected && !st.gun_selected,
+                n == 0,
+            ),
+            None => (format!("{}", k + 1), "----".to_string(), false, true),
+        }
+    };
+    let n = st.stations.len();
+    // Each row: (left, centre, right).
+    type Cell = (String, String, bool, bool);
+    let mut rows: Vec<[Option<Cell>; 3]> =
+        (0..n / 2).map(|k| [Some(cell(k)), None, Some(cell(n - 1 - k))]).collect();
+    if n % 2 == 1 {
+        rows.push([None, Some(cell(n / 2)), None]);
+    }
+    if let Some(r) = st.gun_rounds {
+        rows.push([None, Some(("GUN".to_string(), r.to_string(), st.gun_selected, r == 0)), None]);
+    }
+    let pitch = ((h - BAND as f32 - 4.0 - y) / rows.len().max(1) as f32).min(14.0);
+    let glyph = (pitch - 5.0).min(6.5);
+    let (left, right, gap) = (46.0, w - 46.0, 14.0);
+    let col_w = (right - left - gap) / 2.0;
+    for (i, row) in rows.iter().enumerate() {
+        // The row's vertical middle.
+        let ry = y + i as f32 * pitch + glyph / 2.0;
+        for (slot, cell) in row.iter().enumerate() {
+            let Some((label, text, lit, empty)) = cell else { continue };
+            let x0 = match slot {
+                0 => left,
+                1 => mid - col_w / 2.0,
+                _ => right - col_w,
+            };
+            let x1 = x0 + col_w;
+            if *lit {
+                let top = (ry - (pitch - 1.0) / 2.0).round() as i32;
+                c.fill_rect(x0 as i32 - 2, top, col_w as i32 + 4, pitch as i32 - 1, GREEN);
+            }
+            let col = if *lit {
+                BLACK
+            } else if *empty {
+                GREY
+            } else {
+                GREEN
+            };
+            // The number outboard: on the right in the right-hand column.
+            let (outer, inner) = if slot == 2 { (x1, x0) } else { (x0, x1) };
+            let (oa, ia) =
+                if slot == 2 { (Align::Right, Align::Left) } else { (Align::Left, Align::Right) };
+            stroke_text_at(c, outer, ry, label, glyph, 1.2, col, oa);
+            stroke_text_at(c, inner, ry, text, glyph, 1.2, col, ia);
+        }
     }
 }
 
@@ -1147,13 +1317,18 @@ fn threat_ring(c: &mut Canvas, centre: Vec2, r: f32, doppler: bool, colour: u8) 
         c.ring(centre, r, 1.0, colour);
         return;
     }
-    // Dots about 2 px long, 5 px apart.
+    if !c.ring_shows(centre, r, 1.0) {
+        return;
+    }
+    // Dots about 2 px long, 5 px apart (those on the screen).
     let n = ((r * std::f32::consts::TAU / 5.0) as i32).clamp(12, 720);
     let step = std::f32::consts::TAU / n as f32;
     let dot = (2.0 / r.max(1.0)).min(step * 0.5);
     for i in 0..n {
         let a = i as f32 * step;
-        c.arc(centre, r, a, a + dot, 1.0, colour);
+        if c.shows(centre + Vec2::from_angle(a) * r, 3.0) {
+            c.arc(centre, r, a, a + dot, 1.0, colour);
+        }
     }
 }
 
@@ -1267,6 +1442,10 @@ pub struct LockRequest(pub ContactRef);
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PodDesignate(pub i32, pub i32);
 
+/// The targeting pod locks this ground unit (a vehicle it tracks; `Sim::units` index).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PodTrack(pub usize);
+
 /// The targeting pod: slewed as the SOI, tracking; "lock cursor target" locks the ground point
 /// it holds (then it follows the lock).
 #[allow(clippy::too_many_arguments)]
@@ -1279,11 +1458,12 @@ fn update_pod(
     mut hud: ResMut<HudState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     camera: Query<&Transform, With<crate::trackcam::TrackCamera>>,
-    eyes: Query<&GlobalTransform, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
+    eyes: HelmetEyes,
     view: Res<crate::camera::ViewState>,
     settings: Res<crate::settings::Settings>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
     mut designate: MessageWriter<PodDesignate>,
+    mut track: MessageWriter<PodTrack>,
     mut locks: MessageWriter<LockRequest>,
     waypoints: Res<crate::hud::Waypoints>,
 ) {
@@ -1335,8 +1515,21 @@ fn update_pod(
     }
     let soi = state.av.soi_format() == Some(Format::Tgp);
     let zoom = state.cam_zoom.unwrap_or(info.zoom.saturating_sub(1));
-    let slew = if soi && shown { controls.slew } else { Vec2::ZERO };
+    // Not while the slew keys move a waypoint (the classic avionics have no SOI).
+    let slew = if soi && shown && !crate::mfd::editing_waypoints(&state, &waypoints) {
+        controls.slew
+    } else {
+        Vec2::ZERO
+    };
     let tgp = &mut state.av.tgp;
+    // A point track on a vehicle follows it, until slewed off or it is gone.
+    if let Some(k) = tgp.track {
+        let at = combat.as_deref().and_then(|c| vehicle_at(c, k, ground_y));
+        match (tgp.mode, at) {
+            (TgpMode::Point(_), Some(at)) if slew == Vec2::ZERO => tgp.mode = TgpMode::Point(at),
+            _ => tgp.track = None,
+        }
+    }
     let slewed = matches!(tgp.mode, TgpMode::Area(_));
     let los = pod_step(tgp, slew, time.delta_secs(), zoom, a.orientation, pos.0, looking, ground_y);
     // Settled near a unit, or CZ'd onto a steerpoint on one: the pod snaps onto it, locked as
@@ -1356,13 +1549,23 @@ fn update_pod(
                 tgp.mode = TgpMode::Slaved;
                 hud.mode = HudMode::Gnd;
             }
-            Snap::Gun(at) => tgp.mode = TgpMode::Point(at),
+            Snap::Gun(k, at) => {
+                tgp.mode = TgpMode::Point(at);
+                let vehicle = combat.as_deref().is_some_and(|c| c.sim.units()[k].fine.is_some());
+                tgp.track = vehicle.then_some(k);
+            }
         }
     }
     tgp.los_ground = los.filter(|_| shown || turret);
     tgp.los = pod_direction(tgp, a.orientation, pos.0).or(looking).filter(|_| shown || turret);
     if lock && soi && tgp.mode != TgpMode::Slaved {
         match los {
+            // A vehicle: the simulation's point follows it.
+            Some(_) if tgp.track.is_some() => {
+                track.write(PodTrack(tgp.track.take().unwrap()));
+                hud.mode = HudMode::Gnd;
+                tgp.mode = TgpMode::Slaved;
+            }
             Some(p) => {
                 let (e, n, _) = bevy_to_wu(p);
                 designate.write(PodDesignate(
@@ -1386,8 +1589,17 @@ enum Snap {
     Object(usize),
     /// A theater tile object at this map point, designated.
     Tile(i32, i32),
-    /// An air defence gun (not lockable): a point track on it.
-    Gun(DVec3),
+    /// An air defence gun or a vehicle (`Sim::units` index): a point track on it.
+    Gun(usize, DVec3),
+}
+
+/// Where vehicle `k` is now (Bevy world, on the ground at `ground_y`), None once destroyed.
+fn vehicle_at(c: &crate::combat::Combat, k: usize, ground_y: f64) -> Option<DVec3> {
+    let u = c.sim.units().get(k).filter(|u| !u.destroyed)?;
+    let (x, y) = u.map_xy();
+    let mut at = crate::sim_render::map_point(x, y, 0.0);
+    at.y = ground_y;
+    Some(at)
 }
 
 /// The unit nearest the pod's ground point `p` within `POD_SNAP`, friend or foe.
@@ -1404,9 +1616,10 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground_y: f64) -> Option<Snap>
     let objects = objects
         .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
         .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
-    let guns = c.sim.aaa_units().iter().filter(|u| !u.destroyed).map(|u| {
-        let at = centre(u.x, u.y);
-        (Snap::Gun(at), at)
+    let guns = c.sim.units().iter().enumerate().filter(|(_, u)| !u.destroyed).map(|(k, u)| {
+        let at = vehicle_at(c, k, ground_y).filter(|_| u.fine.is_some());
+        let at = at.unwrap_or_else(|| centre(u.x, u.y));
+        (Snap::Gun(k, at), at)
     });
     let (e, n, _) = bevy_to_wu(p);
     let tile = c.sim.target_tile_near(e as i32, n as i32).map(|(x, y)| {
@@ -1442,12 +1655,18 @@ fn slaved_sight(combat: Option<&crate::combat::Combat>, eye: DVec3) -> Option<Ve
     })
 }
 
+/// What the helmet sight looks along: the eye cameras, and glvr's head (`--gl-vr`, whose only
+/// camera is the tracking root, fixed in the cockpit).
+type HelmetEyes<'w, 's> = Query<
+    'w,
+    's,
+    (&'static GlobalTransform, Has<crate::camera::XrHead>),
+    (Or<(With<Camera3d>, With<crate::camera::XrHead>)>, Without<crate::camera::OffscreenCamera>),
+>;
+
 /// Where the pilot looks from the cockpit (the helmet sight: the eye camera, the headset in
 /// VR). None in the outside views.
-fn helmet_sight(
-    eyes: &Query<&GlobalTransform, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
-    view: crate::camera::View,
-) -> Option<Vec3> {
+fn helmet_sight(eyes: &HelmetEyes, view: crate::camera::View) -> Option<Vec3> {
     let cockpit = matches!(
         view,
         crate::camera::View::Cockpit
@@ -1455,7 +1674,9 @@ fn helmet_sight(
             | crate::camera::View::LookRight
             | crate::camera::View::LookRear
     );
-    let sum: Vec3 = eyes.iter().map(|t| t.forward().as_vec3()).sum();
+    let head = eyes.iter().any(|(_, head)| head);
+    let sum: Vec3 =
+        eyes.iter().filter(|&(_, h)| h == head).map(|(t, _)| t.forward().as_vec3()).sum();
     sum.try_normalize().filter(|_| cockpit)
 }
 
@@ -1700,6 +1921,23 @@ mod tests {
         // Not on a format without a cursor.
         s.av.select(MfdSide::Right, Format::Sms);
         apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+    }
+
+    /// The MAP can be the SOI while it shows the waypoint table, and loses it with the table.
+    #[test]
+    fn way_page_soi() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.select(MfdSide::Right, Format::Map);
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd), "not the map itself");
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), None);
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
+        assert_eq!(osb(MfdSide::Right, 4, &s).map(|o| o.0), Some("SOI"));
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Right));
+        assert_eq!(s.av.soi_format(), Some(Format::Map));
+        apply(&mut s, &mut raster, MfdCmd::MapWay);
         assert_eq!(s.av.soi_format(), Some(Format::Hsd));
     }
 

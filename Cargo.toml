@@ -4,7 +4,7 @@ resolver = "3"
 
 [workspace.package]
 edition = "2024"
-version = "0.7.2"
+version = "0.8.0"
 
 [workspace.dependencies]
 stealth-formats = { path = "crates/stealth-formats" }
@@ -51,6 +51,8 @@ bevy_fast_clouds = { path = "crates/bevy_fast_clouds" }
 anyhow.workspace = true
 rand = "0.9"
 image = { version = "0.25", default-features = false, features = ["png"] }
+# GIF recording (src/gif_recorder.rs).
+gif = "0.14"
 png = "0.18"
 gilrs = "0.11"
 # SystemTime that works in the browser build too (std's panics there).
@@ -68,12 +70,22 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Window", "Location", "Navigator"] }
 
-# The system's language, the default of the menus' (src/settings.rs).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The system's language, the default of the menus' (src/settings.rs).
 sys-locale = "0.3"
+# The Pictures folder for GIF recordings.
+dirs = "6"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# The check for a Vulkan GPU before Bevy starts, and the window that says there is none
+# (src/no_gpu.rs): Bevy's GL fallback can't present to a window.
+[target.'cfg(target_os = "linux")'.dependencies]
+wgpu = { version = "29", default-features = false, features = ["vulkan"] }
+winit = "0.30"
+softbuffer = { version = "0.4", default-features = false, features = ["x11", "x11-dlopen", "wayland", "wayland-dlopen"] }
+ab_glyph = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 # Closes the console window of a game started from Explorer (src/win_console.rs); reads the

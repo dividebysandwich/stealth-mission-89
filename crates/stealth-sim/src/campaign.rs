@@ -20,7 +20,7 @@
 use serde::{Deserialize, Serialize};
 use stealth_i18n::text;
 
-use crate::aaa::{AaaKind, AaaUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
+use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
 use crate::ai_loadout::{AiLoadout, FighterTask};
 use crate::csar::{BLACKHAWK, HIND};
 use crate::math::{approx, s16};
@@ -28,7 +28,7 @@ use crate::rng::Rng;
 use crate::types::*;
 use crate::{AircraftKind, ENEMY_SLOTS, Sim};
 
-const M_PER_WU: f64 = M_PER_MAP / 32.0;
+pub(crate) const M_PER_WU: f64 = M_PER_MAP / 32.0;
 const G: f64 = 9.81;
 /// Detection range factor of a site with recon intelligence against it (tenths).
 pub const INTEL_DETECTION: i32 = 7;
@@ -74,8 +74,8 @@ const MISSILE_PK: i32 = 700;
 const TRACER_RADIUS: f64 = 10.0;
 const TRACER_HIT: i32 = 300;
 pub(crate) const MAX_SHELLS: usize = 200;
-/// Low-level air defences in a campaign at most.
-const MAX_UNITS: usize = 400;
+/// Ground units in a campaign at most.
+const MAX_UNITS: usize = crate::ground::MAX_GROUND;
 /// A crashed pilot's aircraft below this (ft) leaves a burning wreck where it came down.
 const CRASH_SITE_ALT: i32 = 200;
 /// The attack drone's aircraft type (Geran-2), and the height it cruises at (~150 m).
@@ -110,6 +110,8 @@ pub enum Role {
     /// Helicopter bringing an air defence unit's stockpile up (`supply`): it flies to the
     /// unit, hovers low beside it, then flies back to its helipad and lands.
     Supply,
+    /// A drone command center's drone (`uav.rs` flies it).
+    Uav,
 }
 
 /// An aircraft the campaign launched.
@@ -217,6 +219,9 @@ pub struct CampaignSim {
     /// The friendly air defence the players man, and its stocks.
     #[serde(default)]
     pub(crate) defence: crate::station::DefenceState,
+    /// Convoys, and who sees which ground unit.
+    #[serde(default)]
+    pub(crate) ground: crate::ground::GroundState,
 }
 
 /// Metres (east, north, up) of a flight unit.
@@ -272,6 +277,7 @@ impl Sim {
             stores_init: stores,
             gun_init: gun,
             defence: Default::default(),
+            ground: Default::default(),
         }));
         self.leave_world();
     }
@@ -387,6 +393,7 @@ impl Sim {
             tornado: self.pl.tornado,
             a10: self.pl.a10,
             comanche: self.pl.comanche,
+            harrier: self.pl.harrier,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -400,8 +407,16 @@ impl Sim {
         objective: Option<(i32, usize)>,
         airframe: Airframe,
     ) -> PlayerState {
-        let Airframe { lockheed, external_stores, helicopter, gunship, tornado, a10, comanche } =
-            airframe;
+        let Airframe {
+            lockheed,
+            external_stores,
+            helicopter,
+            gunship,
+            tornado,
+            a10,
+            comanche,
+            harrier,
+        } = airframe;
         if self.campaign.is_none() {
             return self.start_state();
         }
@@ -420,6 +435,7 @@ impl Sim {
         self.pl.tornado = tornado;
         self.pl.a10 = a10;
         self.pl.comanche = comanche;
+        self.pl.harrier = harrier;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;
@@ -591,19 +607,28 @@ impl Sim {
     pub fn place_defences(&mut self, x: i32, y: i32, airfield: bool, blue: bool) {
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        c.aaa_blue.resize(self.aaa.len(), false);
-        c.aaa_target.resize(self.aaa.len(), None);
-        for (k, u) in self.aaa.iter_mut().enumerate() {
-            if !u.destroyed && c.aaa_blue[k] != blue && approx(u.x - x, u.y - y) < 0x180 {
+        c.aaa_blue.resize(self.units.len(), false);
+        c.aaa_target.resize(self.units.len(), None);
+        c.ground.convoy_of.resize(self.units.len(), 0);
+        // A convoy on the move is not part of the place (it may be the one that took it).
+        let convoys: Vec<u32> = c.ground.convoys.iter().map(|v| v.tag).collect();
+        let moving = |k: usize| convoys.contains(&c.ground.convoy_of[k]);
+        for (k, u) in self.units.iter_mut().enumerate() {
+            if !u.destroyed
+                && c.aaa_blue[k] != blue
+                && !moving(k)
+                && approx(u.x - x, u.y - y) < 0x180
+            {
                 u.destroyed = true;
                 u.burst = 0;
             }
         }
         // The wrecks here make room (not one a player still mans).
-        let mut free: Vec<usize> = (0..self.aaa.len())
+        let mut free: Vec<usize> = (0..self.units.len())
             .filter(|&k| {
-                let u = &self.aaa[k];
+                let u = &self.units[k];
                 u.destroyed
+                    && !moving(k)
                     && approx(u.x - x, u.y - y) < 0x180
                     && !c.defence.stations.iter().any(|s| s.unit as usize == k)
             })
@@ -616,7 +641,7 @@ impl Sim {
         let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
             let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
             let r = (lo + rng.random(hi - lo)) as f64;
-            let unit = AaaUnit {
+            let mut unit = GroundUnit {
                 kind,
                 x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
                 y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
@@ -626,13 +651,22 @@ impl Sim {
                 aim_el: 0.3,
                 burst: 0,
                 cooldown: 0,
-                rounds: if kind == AaaKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
+                rounds: if kind == GroundKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
+                fine: None,
+                gone: false,
             };
+            // Armour faces out, its gun level.
+            if kind.armour() {
+                let [e, n] = crate::ground::metres_of(unit.x, unit.y);
+                unit.fine = Some(Fine { e: e as f32, n: n as f32, heading: t as f32 });
+                unit.aim_el = 0.0;
+            }
             match free.pop() {
                 Some(k) => {
-                    self.aaa[k] = unit;
+                    self.units[k] = unit;
                     c.aaa_blue[k] = blue;
                     c.aaa_target[k] = None;
+                    c.ground.convoy_of[k] = 0;
                     if let Some(s) = c.defence.stock.get_mut(k) {
                         *s = crate::station::initial_stock(kind);
                     }
@@ -640,55 +674,86 @@ impl Sim {
                         *r = 0.0;
                     }
                 }
-                None => {
-                    self.aaa.push(unit);
+                None if self.units.len() < MAX_UNITS => {
+                    self.units.push(unit);
                     c.aaa_blue.push(blue);
+                    c.ground.convoy_of.push(0);
                 }
+                None => {}
             }
         };
         match (blue, airfield) {
             (false, true) => {
                 for _ in 0..1 + rng.random(war + 1) {
-                    add(&mut rng, AaaKind::Zsu, x, y, 26, 90);
+                    add(&mut rng, GroundKind::Zsu, x, y, 26, 90);
                 }
                 if war > 0 {
                     let (bx, by) = (x + rng.random(120) - 60, y + rng.random(120) - 60);
                     for _ in 0..2 + rng.random(3) {
-                        add(&mut rng, AaaKind::S60, bx, by, 3, 8);
+                        add(&mut rng, GroundKind::S60, bx, by, 3, 8);
                     }
                 }
-                add(&mut rng, AaaKind::Manpads, x, y, 15, 80);
+                add(&mut rng, GroundKind::Manpads, x, y, 15, 80);
             }
             (false, false) => {
                 let (tx, ty, lo, hi) = around(15, 80);
                 for _ in 0..1 + rng.random(war + 1) {
-                    add(&mut rng, AaaKind::Manpads, tx, ty, lo, hi);
+                    add(&mut rng, GroundKind::Manpads, tx, ty, lo, hi);
                 }
                 if rng.random(3) < war {
                     let (tx, ty, lo, hi) = around(20, 70);
-                    add(&mut rng, AaaKind::Zsu, tx, ty, lo, hi);
+                    add(&mut rng, GroundKind::Zsu, tx, ty, lo, hi);
                 }
             }
             (true, true) => {
                 for _ in 0..2 {
-                    add(&mut rng, AaaKind::Gepard, x, y, 26, 90);
-                    add(&mut rng, AaaKind::Manpads, x, y, 15, 80);
+                    add(&mut rng, GroundKind::Gepard, x, y, 26, 90);
+                    add(&mut rng, GroundKind::Manpads, x, y, 15, 80);
                 }
             }
             (true, false) => {
                 let (tx, ty, lo, hi) = around(15, 60);
-                add(&mut rng, AaaKind::Manpads, tx, ty, lo, hi);
+                add(&mut rng, GroundKind::Manpads, tx, ty, lo, hi);
             }
         }
-        if self.aaa.len() > MAX_UNITS {
-            self.aaa.truncate(MAX_UNITS);
-            c.aaa_blue.truncate(MAX_UNITS);
+        // The garrison: two tanks (three at an airfield) and an infantry fighting vehicle.
+        let (tank, ifv) = garrison_kinds(blue);
+        let (tx, ty, lo, hi) = around(25, 80);
+        for kind in [tank, tank, ifv].into_iter().chain(airfield.then_some(tank)) {
+            add(&mut rng, kind, tx, ty, lo, hi);
         }
         c.rng = rng;
-        c.aaa_target.resize(self.aaa.len(), None);
+        c.aaa_target.resize(self.units.len(), None);
         self.campaign = Some(c);
         if self.aaa_rng.is_none() {
             self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
+    /// Campaign: a side took the place at (x, y) with its armour: the vehicles of its convoys
+    /// that ended there leave the world (no wrecks; the place's garrison of
+    /// [`Sim::place_defences`] takes over in their slots).
+    pub fn convoys_hand_over(&mut self, x: i32, y: i32, blue: bool) {
+        let Some(c) = self.campaign.as_ref() else { return };
+        let moving: Vec<u32> = c.ground.convoys.iter().map(|v| v.tag).collect();
+        let leave: Vec<usize> = (0..self.units.len())
+            .filter(|&k| {
+                let u = &self.units[k];
+                let tag = c.ground.convoy_of.get(k).copied().unwrap_or(0);
+                !u.destroyed
+                    && tag != 0
+                    && !moving.contains(&tag)
+                    && c.aaa_blue.get(k).copied().unwrap_or(false) == blue
+                    && approx(u.x - x, u.y - y) < 0x180
+                    && self.manned_by(k).is_none()
+            })
+            .collect();
+        for k in leave {
+            let u = &mut self.units[k];
+            u.destroyed = true;
+            u.gone = true;
+            u.burst = 0;
+            u.tracking = false;
         }
     }
 
@@ -696,12 +761,12 @@ impl Sim {
     /// team, all within 80 map units of it.
     pub fn place_battery(&mut self, x: i32, y: i32) {
         let Some(mut c) = self.campaign.take() else { return };
-        if self.aaa.len() + 7 <= MAX_UNITS {
+        if self.units.len() + 7 <= MAX_UNITS {
             let mut rng = c.rng;
             let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
                 let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
                 let r = (lo + rng.random(hi - lo)) as f64;
-                self.aaa.push(AaaUnit {
+                self.units.push(GroundUnit {
                     kind,
                     x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
                     y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
@@ -711,15 +776,15 @@ impl Sim {
                 });
             };
             for _ in 0..2 {
-                add(&mut rng, AaaKind::Zsu, x, y, 10, 50);
+                add(&mut rng, GroundKind::Zsu, x, y, 10, 50);
             }
             let (bx, by) = (x + rng.random(60) - 30, y + rng.random(60) - 30);
             for _ in 0..2 + rng.random(2) {
-                add(&mut rng, AaaKind::S60, bx, by, 3, 8);
+                add(&mut rng, GroundKind::S60, bx, by, 3, 8);
             }
-            add(&mut rng, AaaKind::Manpads, x, y, 15, 60);
-            c.aaa_blue.resize(self.aaa.len(), false);
-            c.aaa_target.resize(self.aaa.len(), None);
+            add(&mut rng, GroundKind::Manpads, x, y, 15, 60);
+            c.aaa_blue.resize(self.units.len(), false);
+            c.aaa_target.resize(self.units.len(), None);
             c.rng = rng;
         }
         self.campaign = Some(c);
@@ -732,38 +797,74 @@ impl Sim {
     /// before the simulation was built).
     pub fn wreck_defences(&mut self, x: i32, y: i32, blue: bool, n: usize) {
         let Some(c) = self.campaign.as_ref() else { return };
-        let mut mine: Vec<usize> = (0..self.aaa.len())
+        let mut mine: Vec<usize> = (0..self.units.len())
             .filter(|&k| c.aaa_blue.get(k).copied().unwrap_or(false) == blue)
-            .filter(|&k| !self.aaa[k].kind.patriot())
+            .filter(|&k| !self.units[k].kind.unarmed())
             .filter(|&k| {
-                !self.aaa[k].destroyed && approx(self.aaa[k].x - x, self.aaa[k].y - y) < 0x180
+                !self.units[k].destroyed && approx(self.units[k].x - x, self.units[k].y - y) < 0x180
             })
             .collect();
         // A friendly airfield keeps one Gepard whatever it lost (the players' to man).
-        if blue && let Some(i) = mine.iter().position(|&k| self.aaa[k].kind == AaaKind::Gepard) {
+        if blue && let Some(i) = mine.iter().position(|&k| self.units[k].kind == GroundKind::Gepard)
+        {
             mine.remove(i);
         }
         for k in mine.into_iter().rev().take(n) {
-            self.aaa[k].destroyed = true;
-            self.aaa[k].burst = 0;
+            self.units[k].destroyed = true;
+            self.units[k].burst = 0;
         }
+    }
+
+    /// Campaign: `n` of the armour of a side's garrison of a place are wrecks (lost before the
+    /// simulation was built).
+    pub fn wreck_armour(&mut self, x: i32, y: i32, blue: bool, n: usize) {
+        let mine = self.garrison(x, y, blue, false);
+        for k in mine.into_iter().rev().take(n) {
+            self.units[k].destroyed = true;
+        }
+    }
+
+    /// Campaign: one of the destroyed armour of a side's garrison of a place is replaced.
+    pub fn restore_armour(&mut self, x: i32, y: i32, blue: bool) {
+        if let Some(&k) = self.garrison(x, y, blue, true).first() {
+            self.units[k].destroyed = false;
+            self.units[k].cooldown = 0;
+        }
+    }
+
+    /// The armour of a side's garrison of the place at (x, y), destroyed or live (not a
+    /// convoy's).
+    fn garrison(&self, x: i32, y: i32, blue: bool, destroyed: bool) -> Vec<usize> {
+        let Some(c) = self.campaign.as_ref() else { return Vec::new() };
+        (0..self.units.len())
+            .filter(|&k| {
+                let u = &self.units[k];
+                c.aaa_blue.get(k).copied().unwrap_or(false) == blue
+                    && u.kind.armour()
+                    && u.destroyed == destroyed
+                    && !u.gone
+                    && c.ground.convoy_of.get(k).copied().unwrap_or(0) == 0
+                    && approx(u.x - x, u.y - y) < 0x180
+            })
+            .collect()
     }
 
     /// Campaign: one of a side's destroyed guns or MANPADS teams around a place is replaced.
     pub fn restore_defence(&mut self, x: i32, y: i32, blue: bool) {
         let Some(c) = self.campaign.as_ref() else { return };
-        let k = (0..self.aaa.len()).find(|&k| {
-            let u = &self.aaa[k];
+        let k = (0..self.units.len()).find(|&k| {
+            let u = &self.units[k];
             c.aaa_blue.get(k).copied().unwrap_or(false) == blue
-                && !u.kind.patriot()
+                && !u.kind.unarmed()
                 && u.destroyed
+                && !u.gone
                 && approx(u.x - x, u.y - y) < 0x180
         });
         if let Some(k) = k {
-            let u = &mut self.aaa[k];
+            let u = &mut self.units[k];
             u.destroyed = false;
             u.tracking = false;
-            if u.kind == AaaKind::Gepard {
+            if u.kind == GroundKind::Gepard {
                 u.rounds = crate::station::GEPARD_ROUNDS;
             }
             u.cooldown = 0;
@@ -774,28 +875,28 @@ impl Sim {
     /// Campaign: a friendly Patriot battery at (x, y): its radar and three launchers around it.
     pub fn place_patriot(&mut self, x: i32, y: i32) {
         let Some(mut c) = self.campaign.take() else { return };
-        if self.aaa.len() + 4 <= MAX_UNITS {
-            c.aaa_blue.resize(self.aaa.len(), false);
+        if self.units.len() + 4 <= MAX_UNITS {
+            c.aaa_blue.resize(self.units.len(), false);
             let mut rng = c.rng;
             let facing = rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
-            let unit = |kind: AaaKind, x: i32, y: i32| AaaUnit {
+            let unit = |kind: GroundKind, x: i32, y: i32| GroundUnit {
                 kind,
                 x: x.clamp(0x40, 0x7FC0),
                 y: y.clamp(0x40, 0x7FC0),
                 aim_az: facing,
                 aim_el: PATRIOT_ELEVATION,
-                rounds: if kind == AaaKind::PatriotLauncher { PATRIOT_ROUNDS } else { 0 },
+                rounds: if kind == GroundKind::PatriotLauncher { PATRIOT_ROUNDS } else { 0 },
                 ..Default::default()
             };
-            self.aaa.push(unit(AaaKind::PatriotRadar, x, y));
+            self.units.push(unit(GroundKind::PatriotRadar, x, y));
             for k in 0..3 {
                 let t = facing as f64 + (k as f64 - 1.0) * 1.2 + std::f64::consts::PI;
                 let r = (10 + rng.random(16)) as f64;
                 let (lx, ly) = (x + (t.sin() * r) as i32, y - (t.cos() * r) as i32);
-                self.aaa.push(unit(AaaKind::PatriotLauncher, lx, ly));
+                self.units.push(unit(GroundKind::PatriotLauncher, lx, ly));
             }
-            c.aaa_blue.resize(self.aaa.len(), true);
-            c.aaa_target.resize(self.aaa.len(), None);
+            c.aaa_blue.resize(self.units.len(), true);
+            c.aaa_target.resize(self.units.len(), None);
             c.rng = rng;
         }
         self.campaign = Some(c);
@@ -807,11 +908,11 @@ impl Sim {
     /// Campaign: a friendly Gepard at (x, y) (a new site the players supplied).
     pub fn place_gepard(&mut self, x: i32, y: i32) {
         let Some(mut c) = self.campaign.take() else { return };
-        if self.aaa.len() < MAX_UNITS {
-            c.aaa_blue.resize(self.aaa.len(), false);
+        if self.units.len() < MAX_UNITS {
+            c.aaa_blue.resize(self.units.len(), false);
             let facing = c.rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
-            self.aaa.push(AaaUnit {
-                kind: AaaKind::Gepard,
+            self.units.push(GroundUnit {
+                kind: GroundKind::Gepard,
                 x: x.clamp(0x40, 0x7FC0),
                 y: y.clamp(0x40, 0x7FC0),
                 aim_az: facing,
@@ -819,8 +920,31 @@ impl Sim {
                 rounds: crate::station::GEPARD_ROUNDS,
                 ..Default::default()
             });
-            c.aaa_blue.resize(self.aaa.len(), true);
-            c.aaa_target.resize(self.aaa.len(), None);
+            c.aaa_blue.resize(self.units.len(), true);
+            c.aaa_target.resize(self.units.len(), None);
+        }
+        self.campaign = Some(c);
+        if self.aaa_rng.is_none() {
+            self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+    }
+
+    /// Campaign: a friendly drone command center at (x, y) (a new site the players supplied),
+    /// its launch ramp facing a random way.
+    pub fn place_drone_center(&mut self, x: i32, y: i32) {
+        let Some(mut c) = self.campaign.take() else { return };
+        if self.units.len() < MAX_UNITS {
+            c.aaa_blue.resize(self.units.len(), false);
+            let facing = c.rng.random(0x4000) as f32 * 4.0 / 65536.0 * std::f32::consts::TAU;
+            self.units.push(GroundUnit {
+                kind: GroundKind::DroneCenter,
+                x: x.clamp(0x40, 0x7FC0),
+                y: y.clamp(0x40, 0x7FC0),
+                aim_az: facing,
+                ..Default::default()
+            });
+            c.aaa_blue.resize(self.units.len(), true);
+            c.aaa_target.resize(self.units.len(), None);
         }
         self.campaign = Some(c);
         if self.aaa_rng.is_none() {
@@ -835,7 +959,7 @@ impl Sim {
 
     /// Campaign: AAA unit `k` is engaging something (an AI aircraft or the player).
     pub fn aaa_engaging(&self, k: usize) -> bool {
-        let busy = self.aaa.get(k).is_some_and(|u| !u.destroyed && (u.burst > 0 || u.tracking));
+        let busy = self.units.get(k).is_some_and(|u| !u.destroyed && (u.burst > 0 || u.tracking));
         busy || self
             .campaign
             .as_ref()
@@ -1120,8 +1244,12 @@ impl Sim {
     }
 
     /// Whether flight unit `i` (of aircraft spec `spec`) is friendly: a campaign aircraft's
-    /// side, else its type's.
+    /// side, a rescue's helicopters by their part in it (the Black Hawk's type counts as
+    /// hostile), else its type's.
     pub fn friendly_unit(&self, i: usize, spec: i32) -> bool {
+        if let Some(c) = self.csar_of(i) {
+            return c.rescue == i;
+        }
         self.campaign_flight(i).map_or_else(|| self.friendly_aircraft(spec), |f| f.blue)
     }
 
@@ -1130,7 +1258,7 @@ impl Sim {
     pub(crate) fn campaign_goal(&self, i: usize, u: &FlightUnit) -> Option<(i32, i32)> {
         let f = self
             .campaign_flight(i)
-            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply))?;
+            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
         let (gx, gy) = f.goal;
         if f.role == Role::Strike {
             return Some((gx, gy));
@@ -1157,7 +1285,7 @@ impl Sim {
     }
 
     /// Side of an airborne aircraft (None for wrecks, parked and traffic).
-    fn ai_side(&self, i: usize) -> Option<bool> {
+    pub(crate) fn ai_side(&self, i: usize) -> Option<bool> {
         let u = self.flights.get(i)?;
         if u.flags & (fflags::EXISTS | fflags::AIRBORNE) != fflags::EXISTS | fflags::AIRBORNE
             || u.flags & fflags::DESTROYED != 0
@@ -1173,8 +1301,8 @@ impl Sim {
     pub(crate) fn update_campaign(&mut self) {
         let Some(mut c) = self.campaign.take() else { return };
         c.flights.resize(self.flights.len(), None);
-        c.aaa_blue.resize(self.aaa.len(), false);
-        c.aaa_target.resize(self.aaa.len(), None);
+        c.aaa_blue.resize(self.units.len(), false);
+        c.aaa_target.resize(self.units.len(), None);
         c.site_cool.resize(self.objects.len(), 0);
         self.campaign = Some(c);
         self.campaign_bookkeeping();
@@ -1184,6 +1312,8 @@ impl Sim {
             self.campaign_acquire();
         }
         self.update_stations();
+        self.update_uavs();
+        self.update_ground();
         self.campaign_guns();
         self.campaign_fighter_guns();
         self.campaign_missiles();
@@ -1292,6 +1422,12 @@ impl Sim {
                 }
             })
             .collect();
+        // A command center's small drones (their radar cross section tiny, their engines quiet):
+        // every air defence finds them only this close (map units).
+        let unseen: Vec<bool> = (0..self.flights.len())
+            .map(|i| self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav))
+            .collect();
+        let drone_reach = (crate::uav::DETECT_RANGE / M_PER_MAP) as i32;
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
@@ -1299,7 +1435,10 @@ impl Sim {
             (0..sides.len())
                 .filter(|&j| sides[j] == Some(blue) && pos[j][2] > min_alt)
                 .map(|j| (j, approx(xy[j].0 - x, xy[j].1 - y)))
-                .filter(|&(j, d)| d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l)))
+                .filter(|&(j, d)| {
+                    let reach = if unseen[j] { reach.min(drone_reach) } else { reach };
+                    d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l))
+                })
                 .min_by_key(|&(_, d)| d)
         };
         let mut launches: Vec<AiMissile> = Vec::new();
@@ -1327,29 +1466,32 @@ impl Sim {
             launches.push(self.ai_missile(spec, from, [0.0, 0.0, 1.0], j, false));
         }
         // Guns pick a target in reach; MANPADS teams fire; Patriot radars track.
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
+        for k in 0..self.units.len() {
+            let u = self.units[k];
             let blue = c.aaa_blue[k];
             c.aaa_target[k] = None;
             // The missile teams reload here (the classic air defence only does it while it
             // fights a player). Launchers are refilled from their battery's stockpile
             // (`Sim::tick_refills`).
-            if (u.kind == AaaKind::Manpads && (blue || !u.tracking)) || u.kind.patriot() {
-                let a = &mut self.aaa[k];
+            if (u.kind == GroundKind::Manpads && (blue || !u.tracking)) || u.kind.unarmed() {
+                let a = &mut self.units[k];
                 a.cooldown = (a.cooldown - fs).max(0);
             }
-            if u.destroyed || (!blue && u.tracking) || u.kind == AaaKind::PatriotLauncher {
+            if u.destroyed
+                || (!blue && u.tracking)
+                || matches!(u.kind, GroundKind::PatriotLauncher | GroundKind::DroneCenter)
+            {
                 continue;
             }
             // A player mans it: his console aims and fires.
             if c.defence.stations.iter().any(|s| s.unit as usize == k) {
                 continue;
             }
-            if u.kind == AaaKind::PatriotRadar {
+            if u.kind == GroundKind::PatriotRadar {
                 let track = near(u.x, u.y, !blue, PATRIOT_REACH, true, PATRIOT_FLOOR)
                     .filter(|&(j, d)| d <= horizon(pos[j][2]));
                 c.aaa_target[k] = track.map(|t| t.0);
-                let a = &mut self.aaa[k];
+                let a = &mut self.units[k];
                 a.tracking = track.is_some();
                 if let Some((j, _)) = track {
                     let d = sub(pos[j], u.metres());
@@ -1366,8 +1508,9 @@ impl Sim {
                 continue;
             }
             c.aaa_target[k] = Some(j);
-            if u.kind == AaaKind::Manpads && self.aaa[k].cooldown == 0 && rng.random(100) < 50 {
-                self.aaa[k].cooldown = 45 * fs;
+            if u.kind == GroundKind::Manpads && self.units[k].cooldown == 0 && rng.random(100) < 50
+            {
+                self.units[k].cooldown = 45 * fs;
                 let from = add(u.metres(), [0.0, 0.0, 1.5]);
                 let d = sub(pos[j], from);
                 let dir = mul(d, 1.0 / len(d).max(1.0));
@@ -1381,27 +1524,27 @@ impl Sim {
             }
         }
         // Patriot launchers fire on their battery radar's track.
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
-            if u.kind != AaaKind::PatriotLauncher || u.destroyed {
+        for k in 0..self.units.len() {
+            let u = self.units[k];
+            if u.kind != GroundKind::PatriotLauncher || u.destroyed {
                 continue;
             }
             let blue = c.aaa_blue[k];
-            let track = (0..self.aaa.len()).find_map(|r| {
-                let radar = self.aaa[r];
-                (radar.kind == AaaKind::PatriotRadar
+            let track = (0..self.units.len()).find_map(|r| {
+                let radar = self.units[r];
+                (radar.kind == GroundKind::PatriotRadar
                     && !radar.destroyed
                     && c.aaa_blue[r] == blue
                     && approx(radar.x - u.x, radar.y - u.y) < PATRIOT_LINK)
                     .then_some(c.aaa_target[r])
                     .flatten()
             });
-            self.aaa[k].tracking = track.is_some();
+            self.units[k].tracking = track.is_some();
             let Some(j) = track else { continue };
             let from = add(u.metres(), [0.0, 0.0, 3.0]);
             let d = sub(pos[j], from);
             let az = d[0].atan2(d[1]);
-            self.aaa[k].aim_az = az as f32;
+            self.units[k].aim_az = az as f32;
             let in_air = |m: &AiMissile| {
                 m.target == j && m.spec == PATRIOT && m.blue == blue && m.station.is_none()
             };
@@ -1409,7 +1552,7 @@ impl Sim {
             if u.rounds == 0 || u.cooldown > 0 || salvo >= PATRIOT_SALVO || rng.random(100) >= 50 {
                 continue;
             }
-            let a = &mut self.aaa[k];
+            let a = &mut self.units[k];
             a.rounds -= 1;
             a.cooldown = PATRIOT_INTERVAL * fs;
             let el = PATRIOT_ELEVATION as f64;
@@ -1516,14 +1659,14 @@ impl Sim {
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         let skill = 1.6 - 0.2 * self.diff as f64;
-        for k in 0..self.aaa.len() {
+        for k in 0..self.units.len() {
             let Some(j) = c.aaa_target[k] else { continue };
-            let u = &mut self.aaa[k];
-            if u.destroyed || u.kind == AaaKind::Manpads || u.kind.patriot() {
+            let u = &mut self.units[k];
+            if u.destroyed || u.kind == GroundKind::Manpads || u.kind.unarmed() {
                 continue;
             }
             // A Gepard fires what it has (its refill comes from the stockpile).
-            let gepard = u.kind == AaaKind::Gepard;
+            let gepard = u.kind == GroundKind::Gepard;
             if gepard && u.rounds <= 0 {
                 u.burst = 0;
                 continue;
@@ -1547,7 +1690,7 @@ impl Sim {
             if u.burst == 0 {
                 u.cooldown = fs * 2 + rng.random(fs * 3);
             }
-            let flak = u.kind == AaaKind::S60;
+            let flak = u.kind == GroundKind::S60;
             if (flak && u.burst % fs != 0) || (!flak && u.burst & 1 != 0) {
                 continue;
             }
@@ -1741,7 +1884,8 @@ impl Sim {
         for (x, y, alt) in pops {
             self.emit(SimEvent::Explosion { x, y, alt, kind: -6 });
         }
-        for (j, ..) in kills {
+        let kills: Vec<usize> = kills.into_iter().map(|k| k.0).collect();
+        for j in self.small_survive(kills, crate::uav::MISSILE_HIT) {
             self.ai_kill(j);
         }
         for g in ground_hits {
@@ -1755,6 +1899,7 @@ impl Sim {
         let mut rng = c.rng;
         let mut kills = Vec::new();
         let mut bursts = Vec::new();
+        let mut down = Vec::new();
         c.shells.retain_mut(|s| {
             let t = self.flights.get(s.target).copied().unwrap_or_default();
             let tp = flight_metres(&t);
@@ -1764,6 +1909,7 @@ impl Sim {
             s.shell.vel[2] -= G * dt;
             s.shell.ttl -= 1;
             if s.shell.pos[2] < 0.0 {
+                down.push(([s.shell.pos[0], s.shell.pos[1]], s.shell.flak));
                 return false;
             }
             let alive = t.flags & fflags::DESTROYED == 0 && t.flags & fflags::AIRBORNE != 0;
@@ -1792,12 +1938,29 @@ impl Sim {
         });
         c.rng = rng;
         self.campaign = Some(c);
+        self.shells_down(down);
         for (x, y, alt) in bursts {
             self.emit(SimEvent::Flak { x, y, alt });
         }
-        for j in kills {
+        for j in self.small_survive(kills, crate::uav::SHELL_HIT) {
             self.ai_kill(j);
         }
+    }
+
+    /// The AI's kills that stand: a command center's drone, a small target, is brought down
+    /// only `per_mille` of the times an aircraft would be.
+    fn small_survive(&mut self, kills: Vec<usize>, per_mille: i32) -> Vec<usize> {
+        let small: Vec<bool> = kills
+            .iter()
+            .map(|&j| self.campaign_flight(j).is_some_and(|f| f.role == Role::Uav))
+            .collect();
+        let Some(c) = self.campaign.as_mut() else { return kills };
+        kills
+            .into_iter()
+            .zip(small)
+            .filter(|&(_, small)| !small || c.rng.random(1000) < per_mille)
+            .map(|(j, _)| j)
+            .collect()
     }
 
     /// An AI aircraft destroyed by the AI.
@@ -1863,19 +2026,28 @@ fn bam(a: i32) -> f64 {
     s16(a) as f64 / 65536.0 * std::f64::consts::TAU
 }
 
+/// A side's tank and infantry fighting vehicle.
+pub fn garrison_kinds(blue: bool) -> (GroundKind, GroundKind) {
+    if blue {
+        (GroundKind::Leopard2, GroundKind::Bradley)
+    } else {
+        (GroundKind::T90, GroundKind::Bmp2)
+    }
+}
+
 /// Muzzle velocity (m/s), slant range (m) and highest target (m) of a gun.
-fn gun_envelope(kind: AaaKind) -> (f64, f64, f64) {
+fn gun_envelope(kind: GroundKind) -> (f64, f64, f64) {
     match kind {
-        AaaKind::Zsu => (970.0, 2500.0, 2000.0),
-        AaaKind::S60 => (1000.0, 6000.0, 4500.0),
-        AaaKind::Manpads => (0.0, 5000.0, 3500.0),
-        AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
-        AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
+        GroundKind::Zsu => (970.0, 2500.0, 2000.0),
+        GroundKind::S60 => (1000.0, 6000.0, 4500.0),
+        GroundKind::Manpads => (0.0, 5000.0, 3500.0),
+        GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+        _ => (0.0, 0.0, 0.0),
     }
 }
 
 /// How far a gun or a MANPADS team engages (map units).
-pub fn gun_reach(kind: AaaKind) -> f32 {
+pub fn gun_reach(kind: GroundKind) -> f32 {
     (gun_envelope(kind).1 / M_PER_MAP) as f32
 }
 

@@ -718,24 +718,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xc78a9fafbd661ae8,
-        0xa15d0f1769d18811,
-        0x59b57bbe9f20d517,
-        0x625d60d005d2bb76,
-        0xcd0503f61276f1d2,
-        0x810ec650b438f587,
-        0x71451069ff1e983c,
-        0xc15895d347722155,
-        0xb3816704e70b9a84,
-        0x29df14a4a4fef498,
-        0x056dca768cdb2ec6,
-        0xfc7b52faabf7d693,
-        0x1774eb4b9852a017,
-        0x111f150533c029dd,
-        0x0d496fef34d2594f,
-        0x48f947ba1a2fd347,
-        0x6873bcef368fbd8f,
-        0xc70eb46110231072,
+        0x7c9016b99414b4de,
+        0xc84ea4b602cc142f,
+        0x42b9e7b0575f95bc,
+        0x9438ea8c3629aef6,
+        0x1c97d171cd3e6dc4,
+        0xf4bc99a4513a3d06,
+        0x2696988428133c39,
+        0xcbd35891d988c6c3,
+        0x26aa7e80407e237a,
+        0x61bbb0b5bf315695,
+        0x8856080b5ca2c9d9,
+        0x6d769625d7ee3112,
+        0x5136ef77e85d01f3,
+        0x9254c46e11aa9847,
+        0x98c3016c5accbf08,
+        0x4937c0af4368d04a,
+        0x595f7552d69d1f13,
+        0xbfcd1ff8338949d2,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -1225,6 +1225,134 @@ fn ccrp_releases_at_the_release_point() {
     }
 }
 
+/// Flies level north at 450 knots and 500 ft with `w` x4 loaded and the bay open, the fire
+/// button pressed on frame 5 and held until `hold` frames; `setup` adjusts the report (bombing
+/// mode, ripple, pod). Returns the bombs' impact points (map units) and the release frames.
+fn bomb_run(
+    w: i32,
+    hold: i32,
+    target: (i32, i32),
+    setup: impl Fn(&mut PlayerState),
+) -> (Vec<(f64, f64)>, Vec<i32>) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 4)]);
+    let knots = 450u16;
+    let mut p = player_at(mx, my, 500, 0, knots);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    let (tx, ty) = (mx + target.0, my + target.1);
+    setup(&mut p);
+    if let Some(pod) = p.pod.as_mut() {
+        pod.ground = Some((tx, ty));
+    }
+    let t = 5;
+    {
+        let o = &mut sim.objects_mut()[t];
+        o.x = tx;
+        o.y = ty;
+        o.flags = 0;
+    }
+    if p.pod.is_none() {
+        p.cmd.lock_object = Some(t as u16);
+    }
+    let step = knots as f64 * 27.0 / 16.0 / 15.0;
+    let mut y = p.y as f64;
+    let mut released = Vec::new();
+    let mut left = 4;
+    for f in 0..15 * 40 {
+        p.cmd.fire = f == 5;
+        p.cmd.trigger = (5..hold).contains(&f);
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        let now = sim.weapon_groups().0[0].1;
+        for _ in now..left {
+            released.push(f);
+        }
+        left = now;
+        if f > hold && (8..12).all(|s| sim.projectiles()[s].ttl == 0) {
+            break;
+        }
+        y += step;
+        p.y = y as i32;
+    }
+    let hits = (8..12)
+        .filter(|&s| sim.projectiles()[s].fall.is_some())
+        .map(|s| {
+            let (x, y, _) = sim.projectiles()[s].map_pos();
+            (x - tx as f64 - 0.5, y - ty as f64 - 0.5)
+        })
+        .collect();
+    (hits, released)
+}
+
+/// CCRP ripple: four bombs 200 ft apart go one after the other with the button held, the
+/// stick centred on the target.
+#[test]
+fn ccrp_ripple_straddles_the_target() {
+    for w in [9, 10] {
+        let (mut hits, released) = bomb_run(w, 15 * 40, (0, -400), |p| {
+            p.ccrp = true;
+            p.ripple = 4;
+            p.ripple_ft = 200;
+        });
+        assert_eq!(released.len(), 4, "weapon {w}: {released:?}");
+        assert!(released[0] > 5, "weapon {w}: released on the press");
+        hits.sort_by(|a, b| a.1.total_cmp(&b.1));
+        let mid = hits.iter().map(|h| h.1).sum::<f64>() / 4.0;
+        assert!(mid.abs() < 2.0, "weapon {w}: stick centre {mid} ({hits:?})");
+        for k in 1..4 {
+            let gap = (hits[k].1 - hits[k - 1].1) * 32.0;
+            assert!((gap - 200.0).abs() < 40.0, "weapon {w}: spacing {gap} ({hits:?})");
+            assert!(hits[k].0.abs() < 2.0, "weapon {w}: {hits:?}");
+        }
+    }
+}
+
+/// CCRP aims at the targeting pod's ground point with nothing locked, and still releases when
+/// the aircraft passes it to one side: the bomb lands level with it, off to the side.
+#[test]
+fn ccrp_aims_at_the_pod_point() {
+    for east in [0, 30] {
+        let (hits, released) = bomb_run(9, 15 * 40, (east, -400), |p| {
+            p.ccrp = true;
+            p.pod = Some(PodAim::default());
+        });
+        assert_eq!(released.len(), 1, "{east}: {released:?}");
+        let (dx, dy) = hits[0];
+        assert!(dy.abs() < 3.0 && (dx + east as f64).abs() < 2.0, "{east}: {hits:?}");
+    }
+}
+
+/// CCRP: let go of the button before the release point and nothing goes.
+#[test]
+fn ccrp_needs_the_button_held() {
+    let (hits, released) = bomb_run(9, 30, (0, -400), |p| p.ccrp = true);
+    assert!(released.is_empty() && hits.is_empty(), "{released:?}");
+}
+
+/// CCIP ripple: the press releases the first bomb, the rest follow at the spacing while the
+/// button is held; let go, the ripple stops.
+#[test]
+fn ccip_ripple_while_held() {
+    let ripple = |p: &mut PlayerState| {
+        p.ripple = 4;
+        p.ripple_ft = 300;
+    };
+    let (_, released) = bomb_run(9, 15 * 40, (0, -400), ripple);
+    assert_eq!(released.len(), 4, "{released:?}");
+    assert_eq!(released[0], 5);
+    // 300 ft at 450 knots (760 ft/s): about 6 frames apart.
+    for k in 1..4 {
+        assert!((5..=7).contains(&(released[k] - released[k - 1])), "{released:?}");
+    }
+    let (_, released) = bomb_run(9, 13, (0, -400), ripple);
+    assert_eq!(released.len(), 2, "{released:?}");
+}
+
 /// An SA-2 site 10 km north of a slow, high player with open bays fires until a hit; returns
 /// the simulation after the first hit (None: no hit in 4 minutes).
 fn sa2_hit(opts: SimOptions) -> Option<(Sim, PlayerState)> {
@@ -1375,12 +1503,12 @@ fn aaa_mission(d: &Data) -> (Mission, Sim) {
 }
 
 /// One unit of `kind` in a sandbox, the player hovering `north` map units north of it.
-fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent> {
+fn aaa_duel(kind: aaa::GroundKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent> {
     let d = data();
     let (m, mut sim) = aaa_mission(d);
     let (x, y) = sandbox(&mut sim, &m);
     sim.set_visual_light(Some(light));
-    let unit = aaa::AaaUnit {
+    let unit = aaa::GroundUnit {
         kind,
         x,
         y,
@@ -1391,8 +1519,10 @@ fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent
         burst: 0,
         cooldown: 0,
         rounds: 0,
+        fine: None,
+        gone: false,
     };
-    *sim.aaa_units_mut() = vec![unit];
+    *sim.units_mut() = vec![unit];
     let p = player_at(x, y - north, alt, 0x4000, 0);
     let mut events = Vec::new();
     for _ in 0..15 * 30 {
@@ -1405,13 +1535,13 @@ fn aaa_duel(kind: aaa::AaaKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent
 fn air_defence_only_with_the_option() {
     let d = data();
     let (m, sim) = aaa_mission(d);
-    let units = sim.aaa_units();
-    assert!(units.iter().any(|u| u.kind == aaa::AaaKind::Zsu), "{units:?}");
-    assert!(units.iter().any(|u| u.kind == aaa::AaaKind::Manpads));
+    let units = sim.units();
+    assert!(units.iter().any(|u| u.kind == aaa::GroundKind::Zsu), "{units:?}");
+    assert!(units.iter().any(|u| u.kind == aaa::GroundKind::Manpads));
     let plain = Sim::new(&d.sim, &m);
-    assert!(plain.aaa_units().is_empty());
+    assert!(plain.units().is_empty());
     // The same mission places the same units.
-    assert_eq!(aaa_mission(d).1.aaa_units(), units);
+    assert_eq!(aaa_mission(d).1.units(), units);
 }
 
 /// The MANPADS teams of a town stand round its edge, none in its middle.
@@ -1421,9 +1551,9 @@ fn town_defenders_round_the_edge() {
     let (_, sim) = aaa_mission(d);
     let towns = &d.sim.theaters[3].towns;
     assert!(!towns.is_empty());
-    let dist = |u: &aaa::AaaUnit, t: &Town| ((u.x - t.x) as f64).hypot((u.y - t.y) as f64);
+    let dist = |u: &aaa::GroundUnit, t: &Town| ((u.x - t.x) as f64).hypot((u.y - t.y) as f64);
     let manpads: Vec<_> =
-        sim.aaa_units().iter().filter(|u| u.kind == aaa::AaaKind::Manpads).collect();
+        sim.units().iter().filter(|u| u.kind == aaa::GroundKind::Manpads).collect();
     let on_edge = manpads
         .iter()
         .filter(|u| towns.iter().any(|t| (0.75..1.1).contains(&(dist(u, t) / t.r as f64))))
@@ -1437,16 +1567,16 @@ fn town_defenders_round_the_edge() {
 #[test]
 fn shilka_hits_low_and_slow_but_not_high() {
     // 1.5 km away at 600 ft: hit within 30 s.
-    let low = aaa_duel(aaa::AaaKind::Zsu, 96, 600, 255);
+    let low = aaa_duel(aaa::GroundKind::Zsu, 96, 600, 255);
     assert!(low.iter().any(|e| is_msg(e, "Hit by AAA")), "never hit");
     // 20000 ft: above its reach, it does not even fire.
-    let high = aaa_duel(aaa::AaaKind::Zsu, 96, 20000, 255);
+    let high = aaa_duel(aaa::GroundKind::Zsu, 96, 20000, 255);
     assert!(!high.iter().any(|e| matches!(e, SimEvent::Message(m) if en(m).starts_with("Hit"))));
 }
 
 #[test]
 fn s60_bursts_flak() {
-    let ev = aaa_duel(aaa::AaaKind::S60, 160, 8000, 255);
+    let ev = aaa_duel(aaa::GroundKind::S60, 160, 8000, 255);
     assert!(ev.iter().any(|e| matches!(e, SimEvent::Flak { .. })));
 }
 
@@ -1457,8 +1587,8 @@ fn manpads_need_to_see_the_player() {
             .any(|e| matches!(e, SimEvent::MissileLaunched { launcher: Launcher::Manpads(0), .. }))
     };
     // 3 km away at 2000 ft: by day the team sees and fires, on a moonless night it does not.
-    assert!(fired(&aaa_duel(aaa::AaaKind::Manpads, 192, 2000, 255)));
-    assert!(!fired(&aaa_duel(aaa::AaaKind::Manpads, 192, 2000, 0)));
+    assert!(fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 255)));
+    assert!(!fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 0)));
 }
 
 /// The scripted ten-minute flights with the air defences, in every theater.
@@ -1469,8 +1599,8 @@ fn ten_minute_missions_with_air_defence() {
     let mut fired = 0;
     for th in 0..9 {
         let sim = ten_minute_mission(d, th, 1, 3, opts.clone());
-        assert!(!sim.aaa_units().is_empty(), "theater {th}");
-        fired += sim.aaa_units().iter().filter(|u| u.tracking).count();
+        assert!(!sim.units().is_empty(), "theater {th}");
+        fired += sim.units().iter().filter(|u| u.tracking).count();
     }
     eprintln!("units tracking at the end: {fired}");
 }
@@ -1482,8 +1612,8 @@ fn flak_leads_a_moving_target() {
     let (m, mut sim) = aaa_mission(d);
     let (x, y) = sandbox(&mut sim, &m);
     sim.set_visual_light(Some(255));
-    let unit = aaa::AaaUnit {
-        kind: aaa::AaaKind::S60,
+    let unit = aaa::GroundUnit {
+        kind: aaa::GroundKind::S60,
         x,
         y,
         destroyed: false,
@@ -1493,8 +1623,10 @@ fn flak_leads_a_moving_target() {
         burst: 0,
         cooldown: 0,
         rounds: 0,
+        fine: None,
+        gone: false,
     };
-    *sim.aaa_units_mut() = vec![unit];
+    *sim.units_mut() = vec![unit];
     let mut misses = Vec::new();
     // Flying east at 15 map units a second (234 m/s), 1500 ft, 2.5 km north of the gun.
     for f in 0..15 * 20 {

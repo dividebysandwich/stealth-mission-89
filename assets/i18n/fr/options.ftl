@@ -35,11 +35,27 @@ options-auto-trim = Trim automatique
         Trim manuel : Alt + flèches, Alt + Origine le recentre
 options-tooltips = Tooltips du cockpit
     .facts = Ce qu'est une commande ou un écran du cockpit, sous la souris ou un doigt en VR
+options-player-labels = Noms des joueurs
+    .facts = Multijoueur : le nom des autres pilotes au-dessus de leur avion, quelle que soit la distance
+options-label-size =
+    .facts =
+        Taille des noms des joueurs
+        50 % : par défaut
 options-section-vr-size = Taille du cockpit en VR
 options-vr-size =
     .facts =
         Taille du cockpit (et du monde) dans le casque
         100 % : taille réelle
+options-section-gif = Enregistrement GIF
+options-gif-size = TAILLE
+options-gif-rate = CADENCE
+options-gif-scale-100 =
+    .facts = La pleine résolution de la fenêtre : fichiers volumineux
+options-gif-scale-25 =
+    .facts = Petits fichiers
+options-gif-rate-50 =
+    .facts = Seulement si le jeu tourne à 100 fps ou plus (une image sur deux est capturée)
+options-gif-hint = F12 (sauf réaffectation) démarre et arrête ; enregistré dans votre dossier Images
 
 ## GRAPHISMES
 
@@ -85,6 +101,19 @@ options-volume-effects = Effets
     .facts = Armes, explosions, train, radio et le reste
 options-volume-warnings = Alarmes
     .facts = Alarme de décrochage, alertes radar et missile, sirène d'incendie, tonalités du Sidewinder
+options-volume-rwr = RWR
+    .facts = Les tonalités d'alerte radar, en part du volume des alarmes
+options-section-rwr-tones = Tonalités d'alerte radar
+rwr-tones-all = TOUTES
+    .facts = Un radar qui vous illumine, chaque balayage qui vous détecte, les tirs de missiles
+rwr-tones-detect = DÉTECTION SEULE
+    .facts =
+        Une tonalité quand un radar vous détecte (de nouveau après que les radars vous ont lâché un moment)
+        Et les tirs de missiles
+rwr-tones-launch = TIRS SEULS
+    .facts = Seulement les missiles tirés sur vous
+rwr-tones-off = AUCUNE
+    .facts = Aucune tonalité d'alerte radar (les voyants et les écrans avertissent toujours)
 options-section-cockpit = Cockpit
 options-low-pass = Filtre passe-bas du moteur
     .facts =
@@ -144,6 +173,7 @@ effect-vapour = Vapeur et souffle du rotor
     .facts =
         En virage serré, de la vapeur se forme aux bouts d'aile
         Un hélicoptère en vol stationnaire bas soulève de la poussière, ou des embruns au-dessus de l'eau
+        Les véhicules en mouvement soulèvent de la poussière derrière eux
 effect-night-sky = Ciel nocturne
     .facts =
         Des étoiles filantes de temps en temps, les étoiles basses sur l'horizon scintillent

@@ -49,6 +49,12 @@ planner-uav = Vihollisen UAV
 planner-edit-hint = Vedä pistettä siirtääksesi sitä, karttaa panoroidaksesi. Napsauta osuutta lisätäksesi pisteen, oikea napsautus poistaa sen. Pyörä: zoom.
 planner-reset = NOLLAA
 planner-view-hint = Vedä karttaa panoroidaksesi. Pyörä: zoom.
+planner-layers = TASOT
+planner-layer-sams = Tutka / SAM-asema
+planner-radar-types = Tutkatyypit
+planner-layer-pulse = Pulssitutkan havaintokantama
+planner-layer-doppler = Doppler-tutkan havaintokantama
+planner-layer-airfield = Lentokenttä
 
 ## Tallennetut tehtävät
 

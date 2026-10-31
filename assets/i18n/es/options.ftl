@@ -35,11 +35,27 @@ options-auto-trim = Trim automático
         Trim manual: Alt + flechas, Alt + Inicio lo centra
 options-tooltips = Tooltips de la cabina
     .facts = Qué es un mando o una pantalla de la cabina, bajo el ratón o un dedo en VR
+options-player-labels = Nombres de los jugadores
+    .facts = Multijugador: los nombres de los demás pilotos sobre sus aviones, a cualquier distancia
+options-label-size =
+    .facts =
+        Tamaño de los nombres de los jugadores
+        50 %: por defecto
 options-section-vr-size = Tamaño de la cabina en VR
 options-vr-size =
     .facts =
         Tamaño de la cabina (y del mundo) en el visor
         100 %: tamaño real
+options-section-gif = Grabación GIF
+options-gif-size = TAMAÑO
+options-gif-rate = FPS
+options-gif-scale-100 =
+    .facts = La resolución completa de la ventana: archivos grandes
+options-gif-scale-25 =
+    .facts = Archivos pequeños
+options-gif-rate-50 =
+    .facts = Solo si el juego va a 100 fps o más (se captura una imagen de cada dos)
+options-gif-hint = F12 (salvo reasignación) inicia y detiene; se guarda en su carpeta Imágenes
 
 ## GRÁFICOS
 
@@ -85,6 +101,19 @@ options-volume-effects = Efectos
     .facts = Armas, explosiones, tren, radio y lo demás
 options-volume-warnings = Alarmas
     .facts = Bocina de pérdida, avisos de radar y de misil, sirena de incendio, tonos del Sidewinder
+options-volume-rwr = RWR
+    .facts = Los tonos de aviso radar, como parte del volumen de las alarmas
+options-section-rwr-tones = Tonos de aviso radar
+rwr-tones-all = TODOS
+    .facts = Un radar que le ilumina, cada barrido que le detecta, los lanzamientos de misiles
+rwr-tones-detect = SOLO DETECCIÓN
+    .facts =
+        Un tono cuando un radar le detecta (de nuevo tras un rato sin radares)
+        Y los lanzamientos de misiles
+rwr-tones-launch = SOLO LANZAMIENTOS
+    .facts = Solo los misiles lanzados contra usted
+rwr-tones-off = NINGUNO
+    .facts = Ningún tono de aviso radar (las luces y pantallas siguen avisando)
 options-section-cockpit = Cabina
 options-low-pass = Filtro paso bajo del motor
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Vapor y corriente descendente
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        En virajes cerrados, estelas de vapor en las puntas de ala
+        Un helicóptero en estacionario bajo levanta polvo, o espuma sobre el agua
+        Los vehículos en marcha levantan polvo tras ellos
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

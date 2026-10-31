@@ -32,6 +32,9 @@ const LOWER_LEFT: u32 = 0x8CA1;
 const ZERO_TO_ONE: u32 = 0x935F;
 /// GL_TEXTURE_MAX_ANISOTROPY.
 const MAX_ANISOTROPY: u32 = 0x84FE;
+/// The texture unit holding the star catalogue's cells (`u_stars`) throughout: the others
+/// use units 0 and 1.
+const STAR_UNIT: u32 = 2;
 
 type MultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32);
 type MultisampleMultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32, i32);
@@ -134,12 +137,15 @@ pub struct MeshData {
     pub topology: PrimitiveTopology,
 }
 
-/// An RGBA8 image for the render thread: its mip levels' pixels one after the other.
+/// An RGBA8 (or one-channel R8) image for the render thread: its mip levels' pixels one after
+/// the other.
 pub struct TextureData {
     pub size: (u32, u32),
     pub levels: u32,
     pub data: Vec<u8>,
     pub srgb: bool,
+    /// R8: one byte a pixel.
+    pub one_channel: bool,
     pub nearest: bool,
     pub anisotropy: u16,
 }
@@ -261,6 +267,13 @@ fn groups<'a>(items: impl Iterator<Item = &'a Item>, instances: &mut Vec<u32>) -
 /// Frames of GPU timestamps in flight: read back this many frames after they were taken.
 const TIMERS: usize = 4;
 
+/// `SM89_GL_TIMER=1`: GPU timestamps around each frame's pass, for the log's GPU time. Off by
+/// default: on the Steam Frame (Zink on Turnip) the CP's writes into their query pools fault
+/// (kernel "gpu fault ... source=CP" every few seconds) and now and then lose the device.
+fn timers_wanted() -> bool {
+    std::env::var("SM89_GL_TIMER").is_ok_and(|v| v == "1")
+}
+
 pub struct Renderer {
     pub gl: glow::Context,
     /// The world's programs for both eyes, and for the offscreen views.
@@ -298,7 +311,8 @@ pub struct Renderer {
     pub stats: Stats,
     /// Images read back this frame (`DrawList::readbacks`): the entity and the pixels.
     pub readouts: Vec<(Entity, Vec<u8>)>,
-    /// Timestamps before and after each frame's pass, a ring of `TIMERS`.
+    /// Timestamps before and after each frame's pass, a ring of `TIMERS` (none unless
+    /// `timers_wanted`).
     timers: Vec<(glow::Query, glow::Query)>,
     frame: usize,
 }
@@ -343,6 +357,7 @@ fn compile(gl: &glow::Context, shader: &str, defines: &str) -> Result<Program, S
         gl.use_program(Some(program));
         gl.uniform_1_i32(at("u_base_tex").as_ref(), 0);
         gl.uniform_1_i32(at("u_emissive_tex").as_ref(), 1);
+        gl.uniform_1_i32(at("u_stars").as_ref(), STAR_UNIT as i32);
         Ok(Program {
             program,
             view_proj: at("u_view_proj"),
@@ -451,7 +466,8 @@ impl Renderer {
         unsafe { clip_control(LOWER_LEFT, ZERO_TO_ONE) };
         let eyes = Programs::new(&gl, false)?;
         let single = Programs::new(&gl, true)?;
-        let lit = compile(&gl, LIT_SHADER, "")?;
+        let lit_defines = format!("#define MIP_BIAS {:.3}", crate::camera::VR_MIP_BIAS);
+        let lit = compile(&gl, LIT_SHADER, &lit_defines)?;
         let glass = compile(&gl, GLASS_SHADER, "")?;
         let egui = Self::egui_setup(&gl)?;
         let cloud_composite = compile(&gl, CLOUDS_SHADER, "#define COMPOSITE")?;
@@ -465,10 +481,11 @@ impl Renderer {
 
         // SAFETY: the context is current.
         let (globals, instances) = unsafe { (gl.create_buffer()?, gl.create_buffer()?) };
+        Self::star_grid(&gl)?;
         let samples = if multisample.is_some() { samples } else { 0 };
         // SAFETY: the context is current.
         let timers = unsafe {
-            (0..TIMERS)
+            (0..if timers_wanted() { TIMERS } else { 0 })
                 .map(|_| Ok((gl.create_query()?, gl.create_query()?)))
                 .collect::<Result<Vec<_>, String>>()?
         };
@@ -622,12 +639,48 @@ impl Renderer {
         }
     }
 
+    /// The star catalogue's cells (`stars::grid`) on texture unit `STAR_UNIT`, for good.
+    fn star_grid(gl: &glow::Context) -> Result<(), String> {
+        use crate::stars::{ROWS, WIDTH};
+        // SAFETY: the context is current; the grid is WIDTH x ROWS RGBA8 texels.
+        unsafe {
+            let t = gl.create_texture()?;
+            gl.active_texture(glow::TEXTURE0 + STAR_UNIT);
+            gl.bind_texture(glow::TEXTURE_2D, Some(t));
+            gl.tex_storage_2d(glow::TEXTURE_2D, 1, glow::RGBA8, WIDTH as i32, ROWS as i32);
+            for (param, value) in [
+                (glow::TEXTURE_MIN_FILTER, glow::NEAREST),
+                (glow::TEXTURE_MAG_FILTER, glow::NEAREST),
+            ] {
+                gl.tex_parameter_i32(glow::TEXTURE_2D, param, value as i32);
+            }
+            gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
+            gl.tex_sub_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                0,
+                0,
+                WIDTH as i32,
+                ROWS as i32,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                glow::PixelUnpackData::Slice(Some(&crate::stars::grid().0)),
+            );
+            gl.active_texture(glow::TEXTURE0);
+        }
+        Ok(())
+    }
+
     /// Uploads image `id` (all its mip levels): into the texture it has if it is the same
     /// size, else a new one.
     fn upload_texture(&mut self, id: AssetId<Image>, data: &TextureData) {
         let gl = &self.gl;
         let (w, h) = data.size;
-        let internal = if data.srgb { glow::SRGB8_ALPHA8 } else { glow::RGBA8 };
+        let (internal, format, bytes) = match (data.one_channel, data.srgb) {
+            (true, _) => (glow::R8, glow::RED, 1),
+            (false, true) => (glow::SRGB8_ALPHA8, glow::RGBA, 4),
+            (false, false) => (glow::RGBA8, glow::RGBA, 4),
+        };
         // SAFETY: the context is current; the data covers the levels read.
         unsafe {
             let texture = match self.textures.get(&id) {
@@ -678,7 +731,7 @@ impl Renderer {
             gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
             let (mut lw, mut lh, mut offset, mut uploaded) = (w as usize, h as usize, 0, 0);
             for level in 0..data.levels {
-                let len = lw * lh * 4;
+                let len = lw * lh * bytes;
                 let Some(pixels) = data.data.get(offset..offset + len) else { break };
                 uploaded += 1;
                 gl.tex_sub_image_2d(
@@ -688,7 +741,7 @@ impl Renderer {
                     0,
                     lw as i32,
                     lh as i32,
-                    glow::RGBA,
+                    format,
                     glow::UNSIGNED_BYTE,
                     glow::PixelUnpackData::Slice(Some(pixels)),
                 );
@@ -770,19 +823,21 @@ impl Renderer {
         srgb: bool,
     ) -> Result<(), String> {
         let fb = self.framebuffer(texture, size)?;
-        let timer = self.timers[self.frame % TIMERS];
+        let timer = self.timers.get(self.frame % TIMERS).copied();
         let mut gpu_ms = None;
         // SAFETY: the context is current; the queries and buffers are this renderer's.
         unsafe {
             let gl = &self.gl;
-            if self.frame >= TIMERS
-                && gl.get_query_parameter_u32(timer.1, glow::QUERY_RESULT_AVAILABLE) != 0
-            {
-                let start = gl.get_query_parameter_u64(timer.0, glow::QUERY_RESULT);
-                let end = gl.get_query_parameter_u64(timer.1, glow::QUERY_RESULT);
-                gpu_ms = Some(end.saturating_sub(start) as f32 / 1e6);
+            if let Some(timer) = timer {
+                if self.frame >= TIMERS
+                    && gl.get_query_parameter_u32(timer.1, glow::QUERY_RESULT_AVAILABLE) != 0
+                {
+                    let start = gl.get_query_parameter_u64(timer.0, glow::QUERY_RESULT);
+                    let end = gl.get_query_parameter_u64(timer.1, glow::QUERY_RESULT);
+                    gpu_ms = Some(end.saturating_sub(start) as f32 / 1e6);
+                }
+                gl.query_counter(timer.0, glow::TIMESTAMP);
             }
-            gl.query_counter(timer.0, glow::TIMESTAMP);
             if !list.globals.is_empty() {
                 gl.bind_buffer(glow::UNIFORM_BUFFER, Some(self.globals));
                 gl.buffer_data_u8_slice(glow::UNIFORM_BUFFER, &list.globals, glow::DYNAMIC_DRAW);
@@ -896,7 +951,9 @@ impl Renderer {
             gl.bind_vertex_array(None);
             gl.invalidate_framebuffer(glow::FRAMEBUFFER, &[glow::DEPTH_ATTACHMENT]);
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
-            gl.query_counter(timer.1, glow::TIMESTAMP);
+            if let Some(timer) = timer {
+                gl.query_counter(timer.1, glow::TIMESTAMP);
+            }
             gl.flush();
         }
         self.frame += 1;

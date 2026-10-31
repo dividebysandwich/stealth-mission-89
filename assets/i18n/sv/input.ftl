@@ -6,6 +6,7 @@ axis-rudder = Roder
 axis-throttle = Gasreglage
 axis-slew-x = Sensor-/markörstyrning X
 axis-slew-y = Sensor-/markörstyrning Y
+axis-nozzle = Munstycken (Harrier)
 input-button = Knapp { $n }
 input-axis = Axel { $n }
 vr-trigger = Avtryckare

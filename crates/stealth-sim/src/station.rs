@@ -11,25 +11,31 @@
 //! * A Gepard fires bursts of [`BURST`] programmed airburst rounds, out to [`GEPARD_REACH`].
 //!   Without a lock its turret is slewed by hand ([`StationCmd::Slew`]) and a burst is
 //!   [`BURST`] tracers along the barrels.
+//! * A drone command center launches and flies drones (`uav.rs`).
 //! * A station whose radar (or Gepard) is destroyed is gone: [`Sim::station_of`] is None.
 
 use serde::{Deserialize, Serialize};
 use stealth_i18n::{Text, text};
 
 use crate::Sim;
-use crate::aaa::{AaaKind, PATRIOT, Shell, lead};
+use crate::aaa::{GroundKind, PATRIOT, Shell, lead};
 use crate::campaign::{
-    AiShell, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add, flight_metres,
-    jitter, len, mul, sub,
+    AiShell, M_PER_WU, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add,
+    flight_metres, jitter, len, mul, sub,
 };
 use crate::math::approx;
 use crate::types::*;
+use crate::uav::{Seen, Uav, UavKind, UavMode, UavWp};
 
 /// Missiles in a Patriot battery's stockpile, beyond those on its launchers.
 pub const PATRIOT_STOCK: i32 = 8;
 /// A Gepard's rounds ready, and in its stockpile.
 pub const GEPARD_ROUNDS: i32 = 640;
 pub const GEPARD_STOCK: i32 = 640;
+/// A drone command center's stockpile: surveillance drones, attack drones.
+pub const STORK_STOCK: i32 = 4;
+pub const FP2_STOCK: i32 = 8;
+pub const INTERCEPTOR_STOCK: i32 = 6;
 /// Real seconds to refill a launcher (or a Gepard).
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
@@ -71,9 +77,9 @@ pub enum Guidance {
 }
 
 /// What a player at a console does.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum StationCmd {
-    /// Man a friendly Patriot radar or Gepard (AAA unit).
+    /// Man a friendly Patriot radar, Gepard or drone command center (AAA unit).
     Man {
         unit: u16,
     },
@@ -100,6 +106,35 @@ pub enum StationCmd {
     /// Ask for a helicopter with a new stockpile (the campaign's business: it goes on the
     /// mission board).
     RequestResupply,
+    /// Drone command center: a drone off the rail to fly a route.
+    Launch {
+        kind: UavKind,
+        route: Vec<UavWp>,
+    },
+    /// A drone's new route (its id at the center).
+    Route {
+        uav: u16,
+        route: Vec<UavWp>,
+    },
+    /// A drone flies to waypoint `wp` next.
+    Next {
+        uav: u16,
+        wp: u16,
+    },
+    /// A drone flown by hand, or back on its route.
+    Manual {
+        uav: u16,
+        on: bool,
+    },
+    /// Flying by hand: the stick (roll right, pitch up, -1..1), the rudder (nose right, -1..1)
+    /// and throttle (0..1).
+    Fly {
+        uav: u16,
+        roll: f32,
+        pitch: f32,
+        yaw: f32,
+        throttle: f32,
+    },
 }
 
 /// A manned console.
@@ -127,42 +162,78 @@ pub struct Station {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DefenceState {
     pub stations: Vec<Station>,
-    /// Per AAA unit: the stockpile at a Patriot radar (its battery's) or a Gepard.
+    /// Per AAA unit: the stockpile at a Patriot radar (its battery's) or a Gepard; a drone
+    /// command center's surveillance drones.
     pub stock: Vec<i32>,
+    /// Per AAA unit: a drone command center's attack drones.
+    #[serde(default)]
+    pub stock2: Vec<i32>,
+    /// Per AAA unit: a drone command center's interceptor drones.
+    #[serde(default)]
+    pub stock3: Vec<i32>,
     /// Per AAA unit: real seconds left of a launcher's or Gepard's refill (0: none).
     pub refill: Vec<f32>,
+    /// The drone command centers' drones in the air, the last one's number, and what the
+    /// drones have found.
+    #[serde(default)]
+    pub uavs: Vec<Uav>,
+    #[serde(default)]
+    pub uav_serial: u16,
+    #[serde(default)]
+    pub uav_known: Vec<Seen>,
 }
 
-/// A stockpile to keep over a save: where, a Patriot battery (else a Gepard), how much.
+/// A stockpile to keep over a save: where, the unit that keeps it (a Patriot radar, a Gepard,
+/// a drone command center), how much (and a drone command center's attack and interceptor
+/// drones).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SavedStock {
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    pub kind: GroundKind,
     pub stock: i32,
+    pub stock2: i32,
+    /// -1: not saved (a save from before the interceptors), the unit keeps its stockpile.
+    #[serde(default = "unsaved")]
+    pub stock3: i32,
+}
+
+fn unsaved() -> i32 {
+    -1
 }
 
 /// The stockpile a unit starts with (and a resupply brings it back to).
-pub fn initial_stock(kind: AaaKind) -> i32 {
+pub fn initial_stock(kind: GroundKind) -> i32 {
     match kind {
-        AaaKind::PatriotRadar => PATRIOT_STOCK,
-        AaaKind::Gepard => GEPARD_STOCK,
+        GroundKind::PatriotRadar => PATRIOT_STOCK,
+        GroundKind::Gepard => GEPARD_STOCK,
+        GroundKind::DroneCenter => STORK_STOCK,
         _ => 0,
     }
 }
 
+/// The second stockpile a unit starts with: a drone command center's attack drones.
+pub fn initial_stock2(kind: GroundKind) -> i32 {
+    if kind == GroundKind::DroneCenter { FP2_STOCK } else { 0 }
+}
+
+/// The third stockpile a unit starts with: a drone command center's interceptor drones.
+pub fn initial_stock3(kind: GroundKind) -> i32 {
+    if kind == GroundKind::DroneCenter { INTERCEPTOR_STOCK } else { 0 }
+}
+
 /// A unit's load when full.
-fn full_load(kind: AaaKind) -> i32 {
+fn full_load(kind: GroundKind) -> i32 {
     match kind {
-        AaaKind::PatriotLauncher => PATRIOT_ROUNDS,
-        AaaKind::Gepard => GEPARD_ROUNDS,
+        GroundKind::PatriotLauncher => PATRIOT_ROUNDS,
+        GroundKind::Gepard => GEPARD_ROUNDS,
         _ => 0,
     }
 }
 
 /// A unit a player can man.
-pub fn mannable(kind: AaaKind) -> bool {
-    matches!(kind, AaaKind::PatriotRadar | AaaKind::Gepard)
+pub fn mannable(kind: GroundKind) -> bool {
+    matches!(kind, GroundKind::PatriotRadar | GroundKind::Gepard | GroundKind::DroneCenter)
 }
 
 impl Sim {
@@ -171,7 +242,7 @@ impl Sim {
         self.campaign.as_ref().map(|c| &c.defence)
     }
 
-    fn defence_mut(&mut self) -> &mut DefenceState {
+    pub(crate) fn defence_mut(&mut self) -> &mut DefenceState {
         &mut self.campaign.as_mut().expect("campaign").defence
     }
 
@@ -188,12 +259,12 @@ impl Sim {
 
     /// The live launchers a Patriot radar commands.
     pub fn battery_launchers(&self, radar: usize) -> Vec<usize> {
-        let Some(r) = self.aaa.get(radar) else { return Vec::new() };
+        let Some(r) = self.units.get(radar) else { return Vec::new() };
         let blue = self.aaa_blue(radar);
-        (0..self.aaa.len())
+        (0..self.units.len())
             .filter(|&k| {
-                let u = &self.aaa[k];
-                u.kind == AaaKind::PatriotLauncher
+                let u = &self.units[k];
+                u.kind == GroundKind::PatriotLauncher
                     && self.aaa_blue(k) == blue
                     && approx(u.x - r.x, u.y - r.y) < PATRIOT_LINK
             })
@@ -202,11 +273,11 @@ impl Sim {
 
     /// The Patriot radar that commands a launcher.
     pub fn launcher_radar(&self, launcher: usize) -> Option<usize> {
-        let l = self.aaa.get(launcher)?;
+        let l = self.units.get(launcher)?;
         let blue = self.aaa_blue(launcher);
-        (0..self.aaa.len()).find(|&r| {
-            let u = &self.aaa[r];
-            u.kind == AaaKind::PatriotRadar
+        (0..self.units.len()).find(|&r| {
+            let u = &self.units[r];
+            u.kind == GroundKind::PatriotRadar
                 && !u.destroyed
                 && self.aaa_blue(r) == blue
                 && approx(u.x - l.x, u.y - l.y) < PATRIOT_LINK
@@ -215,8 +286,8 @@ impl Sim {
 
     /// Where a unit's stock is kept: a launcher's at its radar, anything else its own.
     fn stock_unit(&self, k: usize) -> Option<usize> {
-        match self.aaa.get(k)?.kind {
-            AaaKind::PatriotLauncher => self.launcher_radar(k),
+        match self.units.get(k)?.kind {
+            GroundKind::PatriotLauncher => self.launcher_radar(k),
             _ => Some(k),
         }
     }
@@ -236,10 +307,18 @@ impl Sim {
     pub(crate) fn defence_sizes(&mut self) {
         let Some(c) = self.campaign.as_mut() else { return };
         let d = &mut c.defence;
-        let n = self.aaa.len();
+        let n = self.units.len();
         d.stock.truncate(n);
         for k in d.stock.len()..n {
-            d.stock.push(initial_stock(self.aaa[k].kind));
+            d.stock.push(initial_stock(self.units[k].kind));
+        }
+        d.stock2.truncate(n);
+        for k in d.stock2.len()..n {
+            d.stock2.push(initial_stock2(self.units[k].kind));
+        }
+        d.stock3.truncate(n);
+        for k in d.stock3.len()..n {
+            d.stock3.push(initial_stock3(self.units[k].kind));
         }
         d.refill.resize(n, 0.0);
     }
@@ -263,6 +342,7 @@ impl Sim {
             StationCmd::Man { .. } => unreachable!(),
             StationCmd::Leave => {
                 self.defence_mut().stations.remove(at);
+                self.uavs_unmanned(st.unit);
             }
             StationCmd::Lock(t) => {
                 if let Some(t) = t
@@ -291,14 +371,19 @@ impl Sim {
             StationCmd::RequestResupply => {
                 return Err(text!("st-resupply-goes-through-the-campaign"));
             }
+            cmd @ (StationCmd::Launch { .. }
+            | StationCmd::Route { .. }
+            | StationCmd::Next { .. }
+            | StationCmd::Manual { .. }
+            | StationCmd::Fly { .. }) => self.uav_command(&st, cmd).map_err(Text::raw)?,
         }
         Ok(())
     }
 
     fn man_station(&mut self, pilot: u8, unit: usize) -> Result<(), Text> {
-        let Some(u) = self.aaa.get(unit).copied() else { return Err(text!("st-no-such-unit")) };
+        let Some(u) = self.units.get(unit).copied() else { return Err(text!("st-no-such-unit")) };
         if !mannable(u.kind) || !self.aaa_blue(unit) {
-            return Err(text!("st-only-friendly-patriot-batteries-and-gepards-can-be-manned"));
+            return Err(text!("st-only-friendly-air-defence-can-be-manned"));
         }
         if u.destroyed {
             return Err(text!("st-unit-destroyed", unit = u.kind.name()));
@@ -323,8 +408,19 @@ impl Sim {
 
     /// Pilot `pilot` leaves his console (a sortie, a disconnect).
     pub fn leave_station(&mut self, pilot: u8) {
+        let Some(unit) = self.station_of(pilot).map(|s| s.unit) else { return };
         if let Some(c) = self.campaign.as_mut() {
             c.defence.stations.retain(|s| s.pilot != pilot);
+        }
+        self.uavs_unmanned(unit);
+    }
+
+    /// Nobody mans drone center `unit` any more: the drones flown by hand go on by themselves.
+    fn uavs_unmanned(&mut self, unit: u16) {
+        for u in self.defence_mut().uavs.iter_mut().filter(|u| u.center == unit) {
+            if u.mode == UavMode::Manual {
+                u.mode = UavMode::Auto;
+            }
         }
     }
 
@@ -334,17 +430,17 @@ impl Sim {
         if t.flags & fflags::DESTROYED != 0 || t.flags & fflags::AIRBORNE == 0 {
             return None;
         }
-        let vel = mul(crate::campaign::direction(t.heading, t.pitch), t.speed as f64 * 0.514);
-        Some((flight_metres(t), vel))
+        let v = mul(self.flight_velocity(j), M_PER_WU);
+        Some((flight_metres(t), [v[0], -v[1], v[2]]))
     }
 
     /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot
     /// radar's missiles, a Gepard's rounds (at the lead).
     pub fn in_reach(&self, unit: usize, j: usize) -> bool {
-        let (Some(u), Some((pos, vel))) = (self.aaa.get(unit), self.track_alive(j)) else {
+        let (Some(u), Some((pos, vel))) = (self.units.get(unit), self.track_alive(j)) else {
             return false;
         };
-        if u.kind == AaaKind::Gepard {
+        if u.kind == GroundKind::Gepard {
             let (_, _, time) = lead(u.metres(), pos, vel, GEPARD_V0);
             time * GEPARD_V0 <= GEPARD_REACH
         } else {
@@ -364,7 +460,7 @@ impl Sim {
 
     fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), Text> {
         let radar = st.unit as usize;
-        if self.aaa[radar].kind != AaaKind::PatriotRadar {
+        if self.units[radar].kind != GroundKind::PatriotRadar {
             return Err(text!("st-no-missiles-here"));
         }
         let (j, pos, _) = self.hostile_lock(&st)?;
@@ -372,7 +468,7 @@ impl Sim {
             return Err(text!("st-out-of-range"));
         }
         let ready = |sim: &Sim, k: usize| {
-            let u = &sim.aaa[k];
+            let u = &sim.units[k];
             !u.destroyed && u.rounds > 0 && u.cooldown == 0 && sim.refill_left(k) == 0.0
         };
         let launchers = self.battery_launchers(radar);
@@ -388,10 +484,10 @@ impl Sim {
                 .iter()
                 .copied()
                 .filter(|&k| ready(self, k))
-                .max_by_key(|&k| self.aaa[k].rounds)
+                .max_by_key(|&k| self.units[k].rounds)
                 .ok_or_else(|| text!("st-no-launcher-ready"))?,
         };
-        let u = self.aaa[k];
+        let u = self.units[k];
         let from = add(u.metres(), [0.0, 0.0, 3.0]);
         let d = sub(pos, from);
         let az = d[0].atan2(d[1]);
@@ -401,7 +497,7 @@ impl Sim {
         m.guidance = Some(st.mode);
         m.station = Some(st.unit);
         let fs = self.fs.max(1);
-        let a = &mut self.aaa[k];
+        let a = &mut self.units[k];
         a.rounds -= 1;
         a.cooldown = LAUNCH_INTERVAL * fs;
         a.aim_az = az as f32;
@@ -410,7 +506,7 @@ impl Sim {
     }
 
     fn gepard_here(&self, st: Station) -> Result<(), Text> {
-        if self.aaa[st.unit as usize].kind != AaaKind::Gepard {
+        if self.units[st.unit as usize].kind != GroundKind::Gepard {
             return Err(text!("st-no-gun-here"));
         }
         Ok(())
@@ -430,7 +526,7 @@ impl Sim {
     /// barrels).
     fn burst_rounds(&self, st: &Station) -> Result<i32, Text> {
         self.gepard_here(*st)?;
-        let u = self.aaa[st.unit as usize];
+        let u = self.units[st.unit as usize];
         if st.burst > 0 {
             return Err(text!("st-firing"));
         }
@@ -449,7 +545,7 @@ impl Sim {
 
     /// Starts refilling an empty launcher (of station unit `unit`'s battery) or Gepard.
     fn start_refill(&mut self, station: usize, k: usize) -> Result<(), Text> {
-        let Some(u) = self.aaa.get(k).copied() else { return Err(text!("st-no-such-unit")) };
+        let Some(u) = self.units.get(k).copied() else { return Err(text!("st-no-such-unit")) };
         let ours = k == station || self.battery_launchers(station).contains(&k);
         if !ours || full_load(u.kind) == 0 {
             return Err(text!("st-nothing-to-refill-there"));
@@ -491,8 +587,8 @@ impl Sim {
         }
         self.defence_sizes();
         let mut done = Vec::new();
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
+        for k in 0..self.units.len() {
+            let u = self.units[k];
             let left = self.refill_left(k);
             if left > 0.0 {
                 if u.destroyed {
@@ -520,12 +616,12 @@ impl Sim {
         }
         for k in done {
             let Some(s) = self.stock_unit(k) else { continue };
-            let full = full_load(self.aaa[k].kind);
-            let rounds = self.aaa[k].rounds;
+            let full = full_load(self.units[k].kind);
+            let rounds = self.units[k].rounds;
             let d = self.defence_mut();
             let n = (full - rounds).min(d.stock[s]).max(0);
             d.stock[s] -= n;
-            self.aaa[k].rounds += n;
+            self.units[k].rounds += n;
         }
     }
 
@@ -542,7 +638,7 @@ impl Sim {
         let mut keep = Vec::new();
         for st in stations {
             let k = st.unit as usize;
-            if self.aaa.get(k).is_none_or(|u| u.destroyed) {
+            if self.units.get(k).is_none_or(|u| u.destroyed) {
                 // The missiles it guided are lost.
                 let c = self.campaign.as_mut().expect("campaign");
                 for m in &mut c.missiles {
@@ -557,24 +653,24 @@ impl Sim {
             self.release_guided(st.unit, lock);
             let mut st = Station { lock: lock.map(|j| j as u16), ..st };
             if let Some((pos, vel)) = lock.and_then(|j| self.track_alive(j)) {
-                let u = self.aaa[k];
+                let u = self.units[k];
                 let (az, el, _) = lead(u.metres(), pos, vel, GEPARD_V0);
-                let a = &mut self.aaa[k];
+                let a = &mut self.units[k];
                 a.tracking = true;
                 a.aim_az = az as f32;
-                if a.kind == AaaKind::Gepard {
+                if a.kind == GroundKind::Gepard {
                     a.aim_el = el as f32;
                 }
-                if a.kind == AaaKind::PatriotRadar {
+                if a.kind == GroundKind::PatriotRadar {
                     for l in self.battery_launchers(k) {
-                        let d = sub(pos, self.aaa[l].metres());
-                        self.aaa[l].aim_az = d[0].atan2(d[1]) as f32;
+                        let d = sub(pos, self.units[l].metres());
+                        self.units[l].aim_az = d[0].atan2(d[1]) as f32;
                     }
                 }
             } else {
-                self.aaa[k].tracking = false;
+                self.units[k].tracking = false;
             }
-            let gepard = self.aaa[k].kind == AaaKind::Gepard;
+            let gepard = self.units[k].kind == GroundKind::Gepard;
             if gepard && lock.is_none() {
                 self.slew_frame(&st);
             }
@@ -589,7 +685,7 @@ impl Sim {
     /// A Gepard's turret slewed by hand for a frame.
     fn slew_frame(&mut self, st: &Station) {
         let dt = 1.0 / self.fs.max(1) as f32;
-        let a = &mut self.aaa[st.unit as usize];
+        let a = &mut self.units[st.unit as usize];
         let az = a.aim_az + st.slew[0] * dt;
         a.aim_az =
             (az + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
@@ -601,7 +697,7 @@ impl Sim {
     /// hit).
     fn manual_frame(&mut self, st: &mut Station) {
         let k = st.unit as usize;
-        let u = self.aaa[k];
+        let u = self.units[k];
         let fs = self.fs.max(1) as f64;
         let (az, el) = (u.aim_az as f64, u.aim_el as f64);
         let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
@@ -622,10 +718,10 @@ impl Sim {
         st.due += BURST as f64 / (BURST_SECONDS * fs);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        while st.due >= 1.0 && st.burst > 0 && self.aaa[k].rounds > 0 {
+        while st.due >= 1.0 && st.burst > 0 && self.units[k].rounds > 0 {
             st.due -= 1.0;
             st.burst -= 1;
-            self.aaa[k].rounds -= 1;
+            self.units[k].rounds -= 1;
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let d = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
@@ -646,10 +742,10 @@ impl Sim {
                 c.shells.push(AiShell { shell, target, ahead: false });
             }
         }
-        if self.aaa[k].rounds == 0 {
+        if self.units[k].rounds == 0 {
             st.burst = 0;
         }
-        self.aaa[k].burst = st.burst;
+        self.units[k].burst = st.burst;
         c.rng = rng;
         self.campaign = Some(c);
     }
@@ -665,17 +761,17 @@ impl Sim {
         let target = st.lock.map(|j| j as usize).and_then(|j| self.track_alive(j).map(|t| (j, t)));
         let Some((j, (pos, vel))) = target else {
             st.burst = 0;
-            self.aaa[k].burst = 0;
+            self.units[k].burst = 0;
             return;
         };
         st.due += BURST as f64 / (BURST_SECONDS * fs);
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        while st.due >= 1.0 && st.burst > 0 && self.aaa[k].rounds > 0 {
+        while st.due >= 1.0 && st.burst > 0 && self.units[k].rounds > 0 {
             st.due -= 1.0;
             st.burst -= 1;
-            self.aaa[k].rounds -= 1;
-            let u = self.aaa[k];
+            self.units[k].rounds -= 1;
+            let u = self.units[k];
             let (az, el, time) = lead(u.metres(), pos, vel, GEPARD_V0);
             let sigma = 0.0025;
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
@@ -697,10 +793,10 @@ impl Sim {
                 c.shells.push(AiShell { shell, target: j, ahead: true });
             }
         }
-        if self.aaa[k].rounds == 0 {
+        if self.units[k].rounds == 0 {
             st.burst = 0;
         }
-        self.aaa[k].burst = st.burst;
+        self.units[k].burst = st.burst;
         c.rng = rng;
         self.campaign = Some(c);
     }
@@ -734,15 +830,19 @@ impl Sim {
     /// The stockpiles to keep over a save.
     pub fn saved_stocks(&self) -> Vec<SavedStock> {
         let Some(d) = self.defence() else { return Vec::new() };
-        (0..self.aaa.len())
-            .filter(|&k| self.aaa_blue(k) && !self.aaa[k].destroyed && mannable(self.aaa[k].kind))
+        (0..self.units.len())
+            .filter(|&k| {
+                self.aaa_blue(k) && !self.units[k].destroyed && mannable(self.units[k].kind)
+            })
             .map(|k| {
-                let u = &self.aaa[k];
+                let u = &self.units[k];
                 SavedStock {
                     x: u.x,
                     y: u.y,
-                    patriot: u.kind == AaaKind::PatriotRadar,
+                    kind: u.kind,
                     stock: d.stock.get(k).copied().unwrap_or(0),
+                    stock2: d.stock2.get(k).copied().unwrap_or(0),
+                    stock3: d.stock3.get(k).copied().unwrap_or(0),
                 }
             })
             .collect()
@@ -751,17 +851,21 @@ impl Sim {
     /// Saved stockpiles back on the units (each on the nearest of its kind, within 6 km).
     pub fn restore_stocks(&mut self, saved: &[SavedStock]) {
         self.defence_sizes();
-        let mut taken = vec![false; self.aaa.len()];
+        let mut taken = vec![false; self.units.len()];
         for s in saved {
-            let kind = if s.patriot { AaaKind::PatriotRadar } else { AaaKind::Gepard };
-            let best = (0..self.aaa.len())
-                .filter(|&k| !taken[k] && self.aaa[k].kind == kind && self.aaa_blue(k))
-                .map(|k| (k, approx(self.aaa[k].x - s.x, self.aaa[k].y - s.y)))
+            let best = (0..self.units.len())
+                .filter(|&k| !taken[k] && self.units[k].kind == s.kind && self.aaa_blue(k))
+                .map(|k| (k, approx(self.units[k].x - s.x, self.units[k].y - s.y)))
                 .filter(|&(_, d)| d < 0x180)
                 .min_by_key(|&(_, d)| d);
             if let Some((k, _)) = best {
                 taken[k] = true;
-                self.defence_mut().stock[k] = s.stock;
+                let d = self.defence_mut();
+                d.stock[k] = s.stock;
+                d.stock2[k] = s.stock2;
+                if s.stock3 >= 0 {
+                    d.stock3[k] = s.stock3;
+                }
             }
         }
     }

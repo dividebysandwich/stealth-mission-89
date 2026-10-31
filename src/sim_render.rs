@@ -29,6 +29,8 @@ impl Plugin for SimRenderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimVisuals>()
             .init_resource::<AaaVisuals>()
+            .init_resource::<DrawnUnits>()
+            .init_resource::<crate::ground_fire::GroundRounds>()
             .init_resource::<RemoteVisuals>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
@@ -36,6 +38,9 @@ impl Plugin for SimRenderPlugin {
                 (
                     sync_objects.run_if(resource_exists::<Combat>),
                     sync_aaa.run_if(resource_exists::<Combat>),
+                    crate::ground_fire::ground_fire
+                        .after(sync_aaa)
+                        .run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
                     own_muzzle_flash.run_if(resource_exists::<Combat>),
                     own_shadow,
@@ -67,7 +72,7 @@ pub struct SimObject;
 const FLARE: u8 = 15;
 const CHAFF: u8 = 7;
 const DECOY: u8 = 13;
-const TRACER: u8 = 17;
+pub const TRACER: u8 = 17;
 pub const ENEMY_TRACER: u8 = 41;
 /// The other players' rounds: the same ammunition as ours.
 const FRIENDLY_TRACER: u8 = TRACER;
@@ -237,8 +242,10 @@ fn cleanup(
     mut vis: ResMut<SimVisuals>,
     mut aaa: ResMut<AaaVisuals>,
     mut remote: ResMut<RemoteVisuals>,
+    mut rounds: ResMut<crate::ground_fire::GroundRounds>,
 ) {
     *aaa = AaaVisuals::default();
+    *rounds = Default::default();
     *remote = RemoteVisuals::default();
     for e in &q {
         commands.entity(e).try_despawn();
@@ -479,12 +486,20 @@ fn spawn_model(
 struct AaaVisuals {
     units: Vec<Entity>,
     /// What each was spawned as (a unit's slot is reused for another kind on a capture).
-    kinds: Vec<stealth_sim::aaa::AaaKind>,
+    kinds: Vec<stealth_sim::aaa::GroundKind>,
     tracers: Vec<Entity>,
     /// Campaign: the AI's missiles at AI aircraft (a glowing dot each).
     ai_missiles: Vec<Entity>,
     material: Option<Handle<PaletteMaterial>>,
 }
+
+/// The ground units as drawn this frame: on the ground (Bevy world), hull heading (rad,
+/// clockwise from north).
+#[derive(Resource, Default)]
+pub struct DrawnUnits(pub Vec<(DVec3, f32)>);
+
+/// How far behind a vehicle's centre its dust rises (m).
+const VEHICLE_REAR: f32 = 3.6;
 
 /// Bevy world position of a point in the air defences' metres (east, north, up).
 fn aaa_point(p: [f64; 3]) -> DVec3 {
@@ -514,9 +529,16 @@ fn sync_aaa(
         (&mut WorldPos, &mut Transform, Option<&mut ModelState>, &mut Visibility),
         With<SimObject>,
     >,
+    console: Option<Res<crate::station::ConsoleEo>>,
+    origin: Option<Res<crate::world::FloatingOrigin>>,
+    hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
+    mut dust: ResMut<crate::explosions::VehicleDust>,
+    mut drawn: ResMut<DrawnUnits>,
 ) {
+    dust.0.clear();
+    drawn.0.clear();
     let sim = &combat.sim;
-    let units = sim.aaa_units();
+    let units = sim.units();
     let kinds: Vec<_> = units.iter().map(|u| u.kind).collect();
     if av.units.len() != units.len() || av.kinds != kinds {
         for e in av.units.drain(..) {
@@ -539,21 +561,80 @@ fn sync_aaa(
         }
     }
     let eye = player.single().map_or(DVec3::ZERO, |p| p.0);
+    // A drone command center's camera sees the MANPADS teams near its drone.
+    let camera = console.as_deref().filter(|c| !c.idle).map(|c| c.eye);
+    // The mountains' surfaces the vehicles drive over (relative to the floating origin).
+    let origin = origin.map_or(DVec3::ZERO, |o| o.origin);
+    let mountains: Vec<_> = hulls
+        .iter()
+        .filter(|(h, _, vis)| h.surface.is_some() && vis.get())
+        .map(|(h, tf, _)| {
+            let c = tf.translation();
+            let inv = tf.affine().inverse();
+            (h, Vec2::new(c.x, c.z), (h.radius + 2.0) * tf.scale().x.max(1e-6), inv)
+        })
+        .collect();
+    let ground = |p: DVec3| {
+        let q = (p - origin).as_vec3();
+        let q2 = Vec2::new(q.x, q.z);
+        mountains
+            .iter()
+            .filter(|(_, c, r, _)| c.distance(q2) < *r)
+            .filter_map(|(h, _, _, inv)| {
+                let o = inv.transform_point3(Vec3::new(q.x, 0.0, q.z));
+                h.top(o, inv.transform_vector3(Vec3::Y))
+            })
+            .fold(0.0f32, f32::max) as f64
+    };
+    drawn.0.resize(units.len(), (DVec3::ZERO, 0.0));
     for (i, (u, &e)) in units.iter().zip(&av.units).enumerate() {
         let Ok((mut pos, mut tf, state, mut vis)) = q.get_mut(e) else { continue };
-        let at = map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
+        let (at, heading) = match u.fine {
+            // A vehicle where it drives (between the last two frames), on the ground.
+            Some(f) => {
+                let a = combat.alpha as f64;
+                let (e0, n0, h0) = match combat.prev_fine.get(i).copied().flatten() {
+                    Some(p) if (p.e - f.e).abs() + (p.n - f.n).abs() < 100.0 => {
+                        (p.e, p.n, p.heading)
+                    }
+                    _ => (f.e, f.n, f.heading),
+                };
+                let e = e0 as f64 + (f.e - e0) as f64 * a;
+                let n = n0 as f64 + (f.n - n0) as f64 * a;
+                let turn = (f.heading - h0 + std::f32::consts::PI)
+                    .rem_euclid(std::f32::consts::TAU)
+                    - std::f32::consts::PI;
+                let flat = aaa_point([e, n, 0.0]);
+                let at = flat + DVec3::Y * ground(flat);
+                let heading = h0 + turn * a as f32;
+                // Driving (a frame's move, at the simulation's rate): dust behind the hull.
+                let gap = combat.frame_gap.max(1.0) / crate::combat::FS as f32;
+                let speed = (f.e - e0).hypot(f.n - n0) / gap;
+                if !u.destroyed && speed > 1.0 {
+                    let dir = Vec3::new(heading.sin(), 0.0, -heading.cos());
+                    dust.0.push((i, at - (dir * VEHICLE_REAR).as_dvec3(), dir, speed));
+                }
+                (at, heading)
+            }
+            // Each unit stands at its own heading (golden-angle spread).
+            None => (
+                map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0),
+                (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU),
+            ),
+        };
         pos.0 = at;
-        // Each unit stands at its own heading (golden-angle spread).
-        let heading = (i as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU);
+        drawn.0[i] = (at, heading);
         tf.rotation = Quat::from_rotation_y(-heading);
-        let hidden =
-            u.kind == stealth_sim::aaa::AaaKind::Manpads && at.distance(eye) > MANPADS_RANGE;
+        let hidden = u.gone
+            || u.kind == stealth_sim::aaa::GroundKind::Manpads
+                && at.distance(eye) > MANPADS_RANGE
+                && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
         vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;
             s.0[AAA_TURRET_SLOT] = bam16(u.aim_az - heading);
             // The Patriot launcher fires at a fixed elevation.
-            let el = if u.kind == stealth_sim::aaa::AaaKind::PatriotLauncher {
+            let el = if u.kind == stealth_sim::aaa::GroundKind::PatriotLauncher {
                 stealth_sim::campaign::PATRIOT_ELEVATION
             } else {
                 u.aim_el
@@ -730,7 +811,7 @@ fn place_tracer(
 }
 
 /// A tracer line: a unit segment along +Z from the round, scaled to the streak.
-fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMaterial>) -> Entity {
+pub(crate) fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMaterial>) -> Entity {
     let e = commands
         .spawn((
             SimObject,
@@ -920,8 +1001,9 @@ fn sync_objects(
             };
             let dot = spawn_spot_dot(&mut commands, &assets, e, metres);
             let scale = AIRCRAFT_MODEL_SCALE as f32;
+            let at = crate::aircraft::landing_light(model);
             let landing =
-                crate::landing_lights::spawn(&mut commands, &landing, e, scale, helicopter);
+                crate::landing_lights::spawn(&mut commands, &landing, e, at, scale, helicopter);
             vis.aircraft.insert(i, (e, key, dot, landing));
         }
         seen.insert(i);
@@ -1352,9 +1434,19 @@ fn world_model_state(
         .as_ref()
         .and_then(|k| k.aero.swing_wing)
         .map(|w| crate::aircraft::wing_slot_values(a.wing_sweep, w.forward, w.back));
+    // Vectored thrust: the nozzles as far down as the flight model has them.
+    let nozzle = flight
+        .as_ref()
+        .and_then(|k| k.aero.vtol)
+        .map(|_| crate::aircraft::nozzle_slot_value(a.nozzle));
     for mut s in &mut own {
         if let Some(r) = rotor {
             s.0[17] = r;
+        }
+        if let Some(n) = nozzle
+            && s.0[crate::aircraft::NOZZLE_SLOT] != n
+        {
+            s.0[crate::aircraft::NOZZLE_SLOT] = n;
         }
         if let Some((r, l)) = wings {
             let (sr, sl) = crate::aircraft::WING_SLOTS;
@@ -1402,6 +1494,7 @@ fn own_shadow(
     mut shadow: Query<(&mut WorldPos, &mut Transform, &mut Visibility), With<OwnShadow>>,
     settings: Res<crate::settings::Settings>,
     view: Res<crate::camera::ViewState>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Ok((a, pos)) = player.single() else { return };
     let Ok((mut spos, mut tf, mut vis)) = shadow.single_mut() else {
@@ -1441,8 +1534,11 @@ fn own_shadow(
             | crate::camera::View::Weapon
             | crate::camera::View::Free
     );
-    let show =
-        a.altitude < 1000.0 && !assets.palette.lights_on() && !(settings.shadows && external);
+    // At an air defence console the aircraft waits unseen (`player::own_model_visibility`).
+    let show = a.altitude < 1000.0
+        && !assets.palette.lights_on()
+        && !(settings.shadows && external)
+        && manning.is_none();
     vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
     if show {
         let (e, n, _) = crate::world::bevy_to_wu(pos.0);
@@ -1626,8 +1722,15 @@ fn sync_remote_pilots(
                 .id();
             commands.entity(e).add_child(muzzle);
             let scale = AIRCRAFT_MODEL_SCALE as f32;
-            let landing =
-                crate::landing_lights::spawn(&mut commands, &landing, e, scale, spec.helicopter);
+            let at = crate::aircraft::landing_light(spec.model_number());
+            let landing = crate::landing_lights::spawn(
+                &mut commands,
+                &landing,
+                e,
+                at,
+                scale,
+                spec.helicopter,
+            );
             vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
@@ -1679,6 +1782,13 @@ fn sync_remote_pilots(
                     let (sr, sl) = crate::aircraft::WING_SLOTS;
                     if (s.0[sr], s.0[sl]) != (r, l) {
                         (s.0[sr], s.0[sl]) = (r, l);
+                    }
+                }
+                // His nozzles, as his flight model has them.
+                if spec.vtol {
+                    let n = crate::aircraft::nozzle_slot_value((p.nozzle as f32).to_radians());
+                    if s.0[crate::aircraft::NOZZLE_SLOT] != n {
+                        s.0[crate::aircraft::NOZZLE_SLOT] = n;
                     }
                 }
             }

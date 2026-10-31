@@ -49,6 +49,12 @@ planner-uav = Wrogi dron
 planner-edit-hint = Przeciągnij punkt, aby go przesunąć, lub mapę, aby ją przewinąć. Kliknij odcinek, aby dodać punkt, prawym przyciskiem, aby go usunąć. Kółko: zoom.
 planner-reset = ZRESETOWAĆ
 planner-view-hint = Przeciągnij mapę, aby ją przewinąć. Kółko: zoom.
+planner-layers = WARSTWY
+planner-layer-sams = Radar / stanowisko SAM
+planner-radar-types = Typy radarów
+planner-layer-pulse = Zasięg wykrywania radaru impulsowego
+planner-layer-doppler = Zasięg wykrywania radaru dopplerowskiego
+planner-layer-airfield = Lotnisko
 
 ## Zapisane misje
 

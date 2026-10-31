@@ -35,11 +35,27 @@ options-auto-trim = Uath-trim
         Trim láimhe: Alt + eochracha saighde, lárú le Alt + Home
 options-tooltips = Leideanna uirlise an chockpit
     .facts = Cad is rialú nó scáileán cockpit ann, faoin luch nó faoi bharr méire i VR
+options-player-labels = Ainmneacha imreoirí
+    .facts = Ilimreoir: ainmneacha na bpíolótaí eile os cionn a n-aerárthaí, is cuma cé chomh fada uait
+options-label-size =
+    .facts =
+        Méid ainmneacha na n-imreoirí
+        50%: an réamhshocrú
 options-section-vr-size = Méid an chockpit i VR
 options-vr-size =
     .facts =
         Méid an chockpit (agus an domhain) sa cheannsraith
         100%: méid iarbhír
+options-section-gif = Taifeadadh GIF
+options-gif-size = MÉID
+options-gif-rate = FRÁMAÍ
+options-gif-scale-100 =
+    .facts = Taifeach iomlán na fuinneoige: comhaid mhóra
+options-gif-scale-25 =
+    .facts = Comhaid bheaga
+options-gif-rate-50 =
+    .facts = Ach amháin nuair a ritheann an cluiche ag 100 fps nó níos mó (gabhtar gach dara fráma)
+options-gif-hint = F12 (mura ndearnadh athcheangal) tosaíonn agus stopann; sábháilte i d'fhillteán Pictiúir
 
 ## GRAFAICÍ
 
@@ -85,6 +101,19 @@ options-volume-effects = Éifeachtaí
     .facts = Airm, pléascanna, gear, raidió agus an chuid eile
 options-volume-warnings = Rabhaidh
     .facts = Adharc stalla, rabhaidh radair agus diúracáin, siren tine, tonnta an Sidewinder
+options-volume-rwr = RWR
+    .facts = Toin rabhaidh radair, mar chuid d'airde na rabhadh
+options-section-rwr-tones = Toin rabhaidh radair
+rwr-tones-all = GACH CEANN
+    .facts = Radar do do shoilsiú, gach scuabadh a bhraitheann thú, seoltaí diúracán
+rwr-tones-detect = BRAITH AMHÁIN
+    .facts =
+        Ton amháin nuair a bhraitheann radar thú (arís tar éis do na radair thú a scaoileadh ar feadh tamaill)
+        Agus seoltaí diúracán
+rwr-tones-launch = SEOLTAÍ AMHÁIN
+    .facts = Diúracáin a seoladh ort amháin
+rwr-tones-off = AS
+    .facts = Gan toin rabhaidh radair (tugann na soilse agus na scáileáin rabhadh fós)
 options-section-cockpit = Cockpit
 options-low-pass = Scagaire ísealpháis an einnill
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Gal agus sruth rótair
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Le hainlithe géara, rianta gaile ó bharr na sciathán
+        Ardaíonn héileacaptar íseal ag ainliú deannach, nó sprae os cionn uisce
+        Ardaíonn feithiclí ag gluaiseacht deannach ina ndiaidh
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

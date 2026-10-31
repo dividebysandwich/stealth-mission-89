@@ -105,6 +105,8 @@ pub struct Combat {
     pub quit: bool,
     /// Flight units and projectiles before the last step, for render interpolation.
     pub prev_flights: Vec<FlightUnit>,
+    /// The ground units' fine positions (vehicles) before the last step.
+    pub prev_fine: Vec<Option<stealth_sim::aaa::Fine>>,
     pub prev_proj: [Projectile; N_PROJ],
     /// The other pilots' weapons in flight before the last step (or server frame).
     pub prev_remote: Vec<RemoteMissile>,
@@ -127,8 +129,11 @@ pub struct Combat {
     host_frame: u32,
     /// Explosions of the steps of this frame: (map x, map y, viewZ altitude, kind).
     pub explosions: Vec<(i32, i32, i32, i32)>,
-    /// Gun rounds that hit the ground in the steps of this frame (map x, map y).
-    pub round_impacts: Vec<(f64, f64)>,
+    /// Gun rounds and shells that hit the ground in the steps of this frame (map x, map y).
+    pub round_impacts: Vec<(f64, f64, crate::explosions::Calibre)>,
+    /// Vehicles' rounds fired at the ground in the steps of this frame (`SimEvent::GroundShot`:
+    /// from, to, gun, hit, kill, miss).
+    pub ground_shots: Vec<GroundShotFx>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -287,6 +292,7 @@ fn start_combat(
     let tornado = settings.aircraft == crate::aircraft::AircraftKind::Tornado;
     let a10 = settings.aircraft == crate::aircraft::AircraftKind::A10;
     let comanche = settings.aircraft == crate::aircraft::AircraftKind::RAH66;
+    let harrier = settings.aircraft == crate::aircraft::AircraftKind::AV8B;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -296,6 +302,7 @@ fn start_combat(
             tornado,
             a10,
             comanche,
+            harrier,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -307,6 +314,7 @@ fn start_combat(
             tornado,
             a10,
             comanche,
+            harrier,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -355,16 +363,14 @@ fn start_combat(
     // The route from the mission planner, else the mission's own waypoints.
     let route =
         route.filter(|r| r.fits(m)).map(|r| r.clone()).unwrap_or_else(|| PlannedRoute::of(m));
-    *wps = Waypoints {
-        points: route
+    *wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     let names = m.world.names.clone();
     commands.insert_resource(Combat {
         prior_tiles,
@@ -372,6 +378,7 @@ fn start_combat(
         sky_seconds: None,
         sky_ratio: 1.0,
         prev_flights: sim.flights().to_vec(),
+        prev_fine: fines(&sim),
         prev_proj: *sim.projectiles(),
         prev_remote: remote_missiles(&sim),
         proj_smooth: [None; N_PROJ],
@@ -389,6 +396,7 @@ fn start_combat(
         host_frame: 0,
         explosions: Vec::new(),
         round_impacts: Vec::new(),
+        ground_shots: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -415,6 +423,7 @@ impl Combat {
     /// its mission logic chose last is no news.
     pub fn restore(&mut self, sim: Sim, record: crate::recorder::FlightRecord) {
         self.prev_flights = sim.flights().to_vec();
+        self.prev_fine = fines(&sim);
         self.prev_proj = *sim.projectiles();
         self.prev_remote = remote_missiles(&sim);
         self.prior_tiles.extend_from_slice(sim.tile_damage());
@@ -449,6 +458,7 @@ fn collect_commands(
     mut actions: MessageReader<ActionEvent>,
     mut locks: MessageReader<crate::avionics::LockRequest>,
     mut pods: MessageReader<crate::avionics::PodDesignate>,
+    mut tracks: MessageReader<crate::avionics::PodTrack>,
     mut combat: ResMut<Combat>,
     mut accel: ResMut<TimeAccel>,
     settings: Res<crate::settings::Settings>,
@@ -460,6 +470,9 @@ fn collect_commands(
     let c = &mut combat.pending;
     for crate::avionics::PodDesignate(x, y) in pods.read() {
         c.designate_at = Some((*x, *y));
+    }
+    for crate::avionics::PodTrack(k) in tracks.read() {
+        c.designate_unit = u16::try_from(*k).ok();
     }
     for crate::avionics::LockRequest(target) in locks.read() {
         match *target {
@@ -551,8 +564,11 @@ fn player_state(
         external_view: !is_cockpit_view(view.view),
         hud_visible: view.view == View::Cockpit,
         ccrp: hud.ccrp,
+        ripple: mfd.ripple().0,
+        ripple_ft: mfd.ripple().1,
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
+        nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }
@@ -677,6 +693,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let combat = &mut *combat;
     combat.explosions.clear();
     combat.round_impacts.clear();
+    combat.ground_shots.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -739,7 +756,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             match m {
                 SimMsg::Slow(w) => {
                     let before: Vec<bool> =
-                        combat.sim.aaa_units().iter().map(|u| u.destroyed).collect();
+                        combat.sim.units().iter().map(|u| u.destroyed).collect();
                     combat.sim.apply_world_slow(&w);
                     burn_aaa(combat, &before);
                 }
@@ -756,6 +773,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                     }
                     combat.prev_flights.clear();
                     combat.prev_flights.extend_from_slice(combat.sim.flights());
+                    combat.prev_fine = fines(&combat.sim);
                     combat.prev_proj = *combat.sim.projectiles();
                     combat.prev_remote = remote_missiles(&combat.sim);
                     combat.sim.apply_world_fast(&w);
@@ -772,6 +790,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                     for _ in 0..gap.min(MAX_STEPS) {
                         combat.sim.mirror_frame();
                     }
+                    shell_strikes(combat);
                     combat.sim.set_local_player(&ps);
                     combat.steps += 1;
                     combat.record.sample(&combat.sim);
@@ -795,9 +814,10 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
+        combat.prev_fine = fines(&combat.sim);
         combat.prev_proj = *combat.sim.projectiles();
         combat.prev_remote = remote_missiles(&combat.sim);
-        let aaa_before: Vec<bool> = combat.sim.aaa_units().iter().map(|u| u.destroyed).collect();
+        let aaa_before: Vec<bool> = combat.sim.units().iter().map(|u| u.destroyed).collect();
         // A listen server steps the joined players' aircraft too.
         let mut inputs = Vec::new();
         if let Some(NetLink::Host(server)) = link.as_deref_mut() {
@@ -805,6 +825,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         }
         inputs.push((0, ps));
         let events = combat.sim.step_pilots(&inputs, FS);
+        shell_strikes(combat);
         if let Some(NetLink::Host(server)) = link.as_deref_mut() {
             server.after_step(&events);
         }
@@ -1019,6 +1040,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "Tornado"
     } else if p.a10 {
         "A-10"
+    } else if p.harrier {
+        "AV-8B"
     } else if p.external_stores {
         "F-16"
     } else {
@@ -1290,6 +1313,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             let wt = &data.weapons[(w.max(0) as usize).min(data.weapons.len() - 1)];
             Bay {
                 name: wt.long_name.clone(),
+                short: wt.short_name.clone(),
                 count: count.max(0) as u32,
                 picture: wt.picture.max(0) as usize,
                 air_to_air: wt.spec > 0 && data.missile(wt.spec as i32).class == 7,
@@ -1305,7 +1329,14 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
     let gun_selected = sim.gun_selected();
     let gun_slave =
         settings.aircraft.spec().turret.then_some(if sim.gun_on_pod() { "TGP" } else { "HMS" });
+    let stations: Vec<(Option<usize>, u32)> = sim
+        .bays()
+        .0
+        .iter()
+        .map(|&(w, n)| (groups.iter().position(|g| g.0 == w && w >= 0), n.max(0) as u32))
+        .collect();
     if stores.selected != cur
+        || stores.stations != stations
         || stores.gun_selected != gun_selected
         || stores.gun_slave != gun_slave
         || stores.gun_rounds != gun
@@ -1317,6 +1348,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         stores.gun_rounds = gun;
         stores.gun_selected = gun_selected;
         stores.gun_slave = gun_slave;
+        stores.stations = stations;
     }
 
     // Waypoints: the mission logic switches to the next one when an objective is done.
@@ -1715,7 +1747,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 spec,
                 sim.opts.fix_classic_bugs,
                 hud.ccrp,
-                t.ground.and_then(|g| objects.get(g)),
+                sim.ccrp_aim().map(|aim| (aim, sim.ripple_stick_ft() / 2.0)),
                 &mut new_cues,
             )
         {
@@ -1869,7 +1901,9 @@ fn gun_cue(
 
 /// Bombsight for an unguided bomb (`stealth_sim::ballistics`, as the simulation releases it):
 /// CCIP puts the pipper (`cues.ccip_dir`, `cues.ccip`) where a bomb released now lands; CCRP
-/// gives the time to the release point on the locked `target`.
+/// gives the time to the release point on the `aim` point (map units: the targeting pod's
+/// ground point or the lock), a ripple's first bomb going the half stick (ft) short of it, and
+/// steers at it.
 #[allow(clippy::too_many_arguments)]
 fn bomb_cue(
     a: &Aircraft,
@@ -1878,7 +1912,7 @@ fn bomb_cue(
     spec: i32,
     fix_classic_bugs: bool,
     ccrp: bool,
-    target: Option<&stealth_sim::GroundObject>,
+    aim: Option<((f64, f64), f64)>,
     cues: &mut HudCues,
 ) -> Option<crate::hud::BombCue> {
     use stealth_sim::ballistics;
@@ -1894,10 +1928,12 @@ fn bomb_cue(
         crate::hud::BombCue { ccrp, fall_secs: fall as f32, range_m: None, release_secs: None };
     if ccrp {
         let vh = v[0].hypot(v[1]);
-        if let Some(o) = target.filter(|_| vh > 1.0) {
-            let (te, tn) = ((o.x as f64 + 0.5) * 32.0, (0x8000 as f64 - o.y as f64 - 0.5) * 32.0);
-            let along = ((te - ie) * v[0] - (tn - inn) * v[1]) / vh;
+        if let Some(((x, y), half_stick)) = aim.filter(|_| vh > 1.0) {
+            let (te, tn) = (x * 32.0, (0x8000 as f64 - y) * 32.0);
+            let along = ((te - ie) * v[0] - (tn - inn) * v[1]) / vh - half_stick;
             cue.release_secs = Some((along / vh) as f32);
+            // The designator box and the steering line on the aim point (the SPI).
+            cues.target_dir = direction_cockpit(a, pos, eye, te, tn, 0.0);
             cue.range_m =
                 Some(((te - east).hypot(tn - north).hypot(a.altitude as f64) * WU) as f32);
         }
@@ -2156,10 +2192,10 @@ struct Fx<'a, 'w> {
 fn burn_aaa(combat: &mut Combat, before: &[bool]) {
     let fires: Vec<Kill> = combat
         .sim
-        .aaa_units()
+        .units()
         .iter()
         .zip(before)
-        .filter(|(u, was)| u.destroyed && !**was)
+        .filter(|(u, was)| u.destroyed && !u.gone && !**was)
         .map(|(u, _)| Kill { x: u.x, y: u.y, vehicle: true })
         .collect();
     combat.kills.extend(fires);
@@ -2214,9 +2250,18 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                     .write(crate::sound::PlaySound { id: crate::sound::AIRBURST, priority: 1 });
             }
         }
-        SimEvent::RoundImpact { x, y } => {
+        SimEvent::RoundImpact { x, y, heavy } => {
             let fine = (32 * stealth_sim::ROUND_FINE) as f64;
-            combat.round_impacts.push((x as f64 / fine, y as f64 / fine));
+            let calibre = if heavy {
+                crate::explosions::Calibre::Cannon
+            } else {
+                crate::explosions::Calibre::Small
+            };
+            combat.round_impacts.push((x as f64 / fine, y as f64 / fine, calibre));
+        }
+        // Armour firing: drawn by `ground_fire` (the flash, the tracer, the strike).
+        SimEvent::GroundShot { from, to, gun, hit, kill, miss } => {
+            combat.ground_shots.push(GroundShotFx { from, to, gun, hit, kill, miss });
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {
@@ -2260,4 +2305,34 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         }
         _ => {}
     }
+}
+
+/// A vehicle's round at another (`SimEvent::GroundShot`).
+#[derive(Clone, Copy, Debug)]
+pub struct GroundShotFx {
+    pub from: usize,
+    pub to: usize,
+    pub gun: stealth_sim::ground::GroundGun,
+    pub hit: bool,
+    pub kill: bool,
+    /// Where it lands from the target (metres east, north).
+    pub miss: (i16, i16),
+}
+
+/// The shells that came down on the ground since the last call, as round impacts.
+fn shell_strikes(combat: &mut Combat) {
+    let m = stealth_sim::aaa::M_PER_MAP;
+    for ([e, n], flak) in combat.sim.take_shell_impacts() {
+        let calibre = if flak {
+            crate::explosions::Calibre::Cannon
+        } else {
+            crate::explosions::Calibre::Small
+        };
+        combat.round_impacts.push((e / m, 0x8000 as f64 - n / m, calibre));
+    }
+}
+
+/// The ground units' fine positions (vehicles; None for the others).
+pub fn fines(sim: &Sim) -> Vec<Option<stealth_sim::aaa::Fine>> {
+    sim.units().iter().map(|u| u.fine).collect()
 }

@@ -93,6 +93,8 @@ enum Readout {
     RadarBars,
     Attitude,
     Hsi,
+    /// The nozzle lever's angle (`Aircraft::nozzle_lever`).
+    Nozzles,
 }
 
 /// What the instrument shows now (empty without an aircraft).
@@ -108,6 +110,7 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             LedId::Fuel => dial_text(Dial::Fuel, a.fuel),
             LedId::Thrust => format!("{} %", a.thrust.max(0.0).round() as i32),
         },
+        Readout::Nozzles => t!("tip-nozzles", deg = nozzle_degrees(a.nozzle_lever)),
         Readout::RadarBars => {
             let (emv, egr, ear) = panel.gauge_values();
             t!("tip-radar-bars-readout", emv = emv, egr = egr, ear = ear)
@@ -161,7 +164,13 @@ fn dial_text(dial: Dial, value: f32) -> String {
             let (h, m, s) = crate::mfd::hms(value);
             format!("{h:02}:{m:02}:{s:02}")
         }
+        Dial::NozzleAngle => format!("{v}°"),
     }
+}
+
+/// The nozzle angle (degrees, rounded) a nozzle lever position sets.
+fn nozzle_degrees(lever: f32) -> i32 {
+    (lever.clamp(0.0, 1.0) * super::levers::NOZZLE_TRAVEL_DEG).round() as i32
 }
 
 /// A value with its sign ("+5", "-5", "0").
@@ -244,6 +253,22 @@ fn tip(id: &str, actions: &[Action]) -> Tip {
     Tip::new(t!(id), desc(id), actions)
 }
 
+/// The tooltip's title of a bezel button: its label, but for the classic cockpit's waypoint
+/// editing buttons, which are arrows with no label to show.
+fn osb_title(label: &str, f: OsbFn, style: PanelStyle) -> String {
+    if style != PanelStyle::Classic {
+        return label.to_string();
+    }
+    match f {
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, 1)) => t!("tip-osb-waypoint-up").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(0, ..=-1)) => t!("tip-osb-waypoint-down").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..=-1, _)) => t!("tip-osb-waypoint-left").into(),
+        OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => t!("tip-osb-waypoint-right").into(),
+        OsbFn::Action(Action::ResetWaypoint) => t!("tip-reset-waypoint").into(),
+        _ => label.to_string(),
+    }
+}
+
 /// What a display command does.
 fn cmd_text(c: MfdCmd) -> String {
     use crate::avionics::Format;
@@ -277,8 +302,16 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::HsdRange(..=0) => "tip-cmd-hsd-range-down",
         MfdCmd::HsdCentre => "tip-cmd-hsd-centre",
         MfdCmd::MapWay => "tip-cmd-map-way",
+        MfdCmd::WaypointNudge(0, 1) => "tip-cmd-waypoint-up",
+        MfdCmd::WaypointNudge(0, ..=-1) => "tip-cmd-waypoint-down",
+        MfdCmd::WaypointNudge(..=-1, _) => "tip-cmd-waypoint-left",
+        MfdCmd::WaypointNudge(..) => "tip-cmd-waypoint-right",
         MfdCmd::Sms(true) => "tip-cmd-sms-orders",
         MfdCmd::Sms(false) => "tip-cmd-sms-weapons",
+        MfdCmd::Ripple(1..) => "tip-cmd-ripple-up",
+        MfdCmd::Ripple(..=0) => "tip-cmd-ripple-down",
+        MfdCmd::RippleSpacing(1..) => "tip-cmd-ripple-spacing-up",
+        MfdCmd::RippleSpacing(..=0) => "tip-cmd-ripple-spacing-down",
         MfdCmd::HarmFilter => "tip-cmd-harm-filter",
         MfdCmd::CamZoom(1..) => "tip-cmd-cam-zoom-in",
         MfdCmd::CamZoom(..=0) => "tip-cmd-cam-zoom-out",
@@ -308,12 +341,17 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::RangeIn => ("RANGE -", "tip-console-range"),
         ConsoleKey::RangeOut => ("RANGE +", "tip-console-range"),
         ConsoleKey::Leave => ("LEAVE", "tip-console-leave"),
+        ConsoleKey::Auto => ("AUTO", "tip-console-auto"),
+        ConsoleKey::Manual => ("MANUAL", "tip-console-manual"),
+        ConsoleKey::Track => ("TRACK", "tip-console-track"),
+        ConsoleKey::Slave => ("SLAVE", "tip-console-slave"),
+        ConsoleKey::View => ("FWD", "tip-console-view"),
     };
     (title, t!(id))
 }
 
 /// A control's tooltip (bezel buttons: on the current page; None for a blank one).
-fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
+fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip> {
     let (title, detail) = match effect {
         Effect::Action(a) => {
             let (title, detail) = action_text(a);
@@ -348,7 +386,7 @@ fn control_tip(effect: Effect, mfd: &MfdState) -> Option<Tip> {
                 // The only readout: the HSD's range between its RNG- and RNG+ buttons.
                 OsbFn::Readout => t!("tip-hsd-range").to_string(),
             };
-            (label.to_string(), detail)
+            (osb_title(label, f, style), detail)
         }
     };
     // The key a script `press=` names; both time keys; none for the camera cycle (one key per
@@ -420,10 +458,11 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::Nozzle => "tip-dial-nozzle",
                 Dial::Fuel => "tip-dial-fuel",
                 Dial::Clock => "tip-dial-clock",
+                Dial::NozzleAngle => "tip-dial-nozzle-angle",
             };
             return Some(tip(id, &[]).reading(Readout::Dial(dial)));
         }
-        Elem::Label(..) | Elem::Hazard => return None,
+        Elem::Label(..) | Elem::Arrow(..) | Elem::Hazard => return None,
     };
     Some(Tip::new(title, detail, &[]))
 }
@@ -453,6 +492,8 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Console(ConsoleScreen::Board) => "tip-display-board",
         CanvasRole::Console(ConsoleScreen::Eo) => "tip-display-eo",
         CanvasRole::Console(ConsoleScreen::Info) => "tip-display-info",
+        CanvasRole::Console(ConsoleScreen::Feed) => "tip-display-feed",
+        CanvasRole::Console(ConsoleScreen::Map) => "tip-display-map",
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
     let tip = tip(id, &[]);
@@ -477,6 +518,11 @@ pub(super) fn console_stick_tip() -> Tip {
 pub(super) fn throttle_tip() -> Tip {
     use Action::*;
     tip("tip-throttle", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])
+}
+
+/// A V/STOL type's nozzle lever (the AV-8B's, inboard of the throttle).
+pub(super) fn nozzle_tip() -> Tip {
+    tip("tip-nozzle-lever", &[]).reading(Readout::Nozzles)
 }
 
 /// The tooltips' font: egui's Hack (as the menus), which has the accented letters of the
@@ -715,7 +761,12 @@ pub(super) fn hover(
     panel: PanelParams,
     input: Res<InputConfig>,
     mut state: Local<Hover>,
-    (hands, mut anchor, ui_font): (Res<Hands>, ResMut<TipAnchor>, Res<crate::i18n::UiFont>),
+    (hands, mut anchor, root, ui_font): (
+        Res<Hands>,
+        ResMut<TipAnchor>,
+        Query<&CockpitRoot>,
+        Res<crate::i18n::UiFont>,
+    ),
     mut boxes: Query<(&mut Node, &mut Visibility, &ComputedNode), With<TipBox>>,
     mut lines: Query<(&TipLine, &mut Text, &mut Node, &mut TextFont), Without<TipBox>>,
 ) {
@@ -749,9 +800,10 @@ pub(super) fn hover(
         state.pointed = pointed;
         state.resting = 0.0;
     }
+    let style = root.single().map_or(PanelStyle::Classic, |r| r.0);
     let tip = pointed.and_then(|p| match p {
         Pointed::Control(e) => {
-            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &panel.mfd))
+            controls.get(e).ok().and_then(|(_, c, _)| control_tip(c.effect, &panel.mfd, style))
         }
         Pointed::Tip(e) => tips.get(e).ok().cloned(),
     });
@@ -922,16 +974,20 @@ mod tests {
             PanelStyle::Tornado,
             PanelStyle::A10,
             PanelStyle::Rah66,
+            PanelStyle::Av8b,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
-                let tip = control_tip(effect, &mfd).unwrap_or_else(|| panic!("{effect:?}"));
+                let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
                 assert!(!tip.title.is_empty() && !tip.title.contains('_'), "{effect:?}");
             }
         }
         for side in [crate::mfd::MfdSide::Left, crate::mfd::MfdSide::Right] {
             for slot in 0..crate::mfd::OSB_COUNT {
                 let effect = Effect::Osb(side, slot);
-                assert_eq!(control_tip(effect, &mfd).is_some(), osb(side, slot, &mfd).is_some());
+                assert_eq!(
+                    control_tip(effect, &mfd, PanelStyle::Classic).is_some(),
+                    osb(side, slot, &mfd).is_some()
+                );
             }
         }
     }
@@ -950,7 +1006,9 @@ mod tests {
         assert_eq!(km_text(123.4), "123 km");
         assert_eq!(dial_text(Dial::Fuel, -3.0), "0 lbs");
         use Dial::*;
-        for dial in [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock] {
+        for dial in
+            [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock, NozzleAngle]
+        {
             let text = dial_text(dial, 950.0);
             assert!(drawable(&text), "{text}");
         }

@@ -49,6 +49,12 @@ planner-uav = Fjendtlig UAV
 planner-edit-hint = Træk et punkt for at flytte det, kortet for at panorere. Klik på en strækning for at tilføje et punkt, højreklik for at fjerne det. Hjul: zoom.
 planner-reset = NULSTIL
 planner-view-hint = Træk kortet for at panorere. Hjul: zoom.
+planner-layers = LAG
+planner-layer-sams = Radar / SAM-stilling
+planner-radar-types = Radartyper
+planner-layer-pulse = Pulsradarens detektionsrækkevidde
+planner-layer-doppler = Dopplerradarens detektionsrækkevidde
+planner-layer-airfield = Flyveplads
 
 ## Gemte missioner
 

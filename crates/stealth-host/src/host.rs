@@ -10,8 +10,8 @@
 use serde::{Deserialize, Serialize};
 use stealth_campaign::weather::Forecast;
 use stealth_campaign::{
-    Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceStock, FighterTask,
-    Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
+    Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceKind, DefenceStock,
+    FighterTask, Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
 };
 use stealth_i18n::{Text, text};
 use stealth_mission::{GameData, Mission};
@@ -152,8 +152,16 @@ impl Host {
             if p.owner != Side::Neutral {
                 let blue = p.owner == Side::Blue;
                 sim.place_defences(p.x, p.y, p.airfield.is_some(), blue);
-                // The guns it lost stay lost until the campaign replaces them.
+                // The guns and armour it lost stay lost until the campaign replaces them.
                 sim.wreck_defences(p.x, p.y, blue, p.guns_lost as usize);
+                sim.wreck_armour(p.x, p.y, blue, p.armour_lost as usize);
+            }
+        }
+        // The convoys go on from where they were; those that stopped stand there.
+        for (id, side, units, route, moving) in self.state.convoys_to_place() {
+            sim.spawn_convoy(id, side == Side::Blue, &glue::convoy_kinds(side, &units), &route);
+            if !moving {
+                sim.end_convoy(id);
             }
         }
         self.place_patriots(sim);
@@ -163,17 +171,20 @@ impl Host {
         // The new sites the players supplied stand again.
         for d in self.state.deployments.iter().filter(|d| d.built) {
             let (x, y) = d.unit_at();
-            if d.patriot {
-                sim.place_patriot(x, y);
-            } else {
-                sim.place_gepard(x, y);
-            }
+            glue::place_site(sim, d.kind, x, y);
         }
         let stocks: Vec<SavedStock> = self
             .state
             .defence_stock
             .iter()
-            .map(|s| SavedStock { x: s.x, y: s.y, patriot: s.patriot, stock: s.stock })
+            .map(|s| SavedStock {
+                x: s.x,
+                y: s.y,
+                kind: glue::station_unit(s.kind),
+                stock: s.stock,
+                stock2: s.stock2,
+                stock3: s.stock3,
+            })
             .collect();
         sim.restore_stocks(&stocks);
         sim.record_shells(true);
@@ -278,12 +289,12 @@ impl Host {
         player: PlayerId,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Result<Vec<HostEvent>, Text> {
-        if let Some(why) = self.state.deploy_refusal(x, y, patriot, &glue::world_view(sim).aaa) {
+        if let Some(why) = self.state.deploy_refusal(x, y, kind, &glue::world_view(sim).units) {
             return Err(Text::raw(why));
         }
-        let events = self.state.apply(player, Command::DesignateSite { x, y, patriot })?;
+        let events = self.state.apply(player, Command::DesignateSite { x, y, kind })?;
         Ok(self.apply(sim, events))
     }
 
@@ -378,34 +389,53 @@ impl Host {
         player: PlayerId,
     ) -> Result<Vec<HostEvent>, Text> {
         let k = sim.station_of(player.0).ok_or_else(|| text!("st-not-at-a-console"))?.unit as usize;
-        let u = sim.aaa_units()[k];
-        if sim.stockpile(k) >= stealth_sim::station::initial_stock(u.kind) {
+        let u = sim.units()[k];
+        let full = |s: i32, f: i32| s >= f;
+        let d = sim.defence().ok_or_else(|| text!("st-no-campaign"))?;
+        if full(sim.stockpile(k), stealth_sim::station::initial_stock(u.kind))
+            && full(
+                d.stock2.get(k).copied().unwrap_or(0),
+                stealth_sim::station::initial_stock2(u.kind),
+            )
+            && full(
+                d.stock3.get(k).copied().unwrap_or(0),
+                stealth_sim::station::initial_stock3(u.kind),
+            )
+        {
             return Err(text!("ce-stockpile-full"));
         }
-        let patriot = u.kind == stealth_sim::aaa::AaaKind::PatriotRadar;
-        let cmd = Command::RequestResupply { aaa: k as u32, x: u.x, y: u.y, patriot };
+        let kind = glue::defence_kind(u.kind).ok_or_else(|| text!("ce-nothing-to-resupply"))?;
+        let cmd = Command::RequestResupply { aaa: k as u32, x: u.x, y: u.y, kind };
         let events = self.state.apply(player, cmd)?;
         Ok(self.apply(sim, events))
     }
 
-    /// The friendly Patriot batteries and Gepards whose stockpile ran out (their own fire, or a
-    /// player's at the console): a resupply is ordered for each.
+    /// The friendly Patriot batteries, Gepards and drone command centers whose stockpile ran
+    /// out (their own fire, or a player's at the console; a drone command center out of any
+    /// kind of drone): a resupply is ordered for each.
     fn out_of_stock(&mut self, sim: &Sim) -> Vec<CampaignEvent> {
-        use stealth_sim::aaa::AaaKind;
-        let empty: Vec<(usize, stealth_sim::aaa::AaaUnit)> = (0..sim.aaa_units().len())
-            .map(|k| (k, sim.aaa_units()[k]))
+        use stealth_sim::aaa::GroundKind;
+        let empty: Vec<(usize, stealth_sim::aaa::GroundUnit)> = (0..sim.units().len())
+            .map(|k| (k, sim.units()[k]))
             .filter(|(k, u)| {
-                matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard)
-                    && !u.destroyed
+                let Some(d) = sim.defence() else { return false };
+                // A unit placed this frame has no stock yet (not an empty one).
+                let empty = |v: &Vec<i32>| v.get(*k).is_some_and(|&s| s <= 0);
+                !u.destroyed
                     && sim.aaa_blue(*k)
-                    // A unit placed this frame has no stock yet (not an empty one).
-                    && sim.defence().and_then(|d| d.stock.get(*k)).is_some_and(|&s| s <= 0)
+                    && match u.kind {
+                        GroundKind::PatriotRadar | GroundKind::Gepard => empty(&d.stock),
+                        GroundKind::DroneCenter => {
+                            empty(&d.stock) || empty(&d.stock2) || empty(&d.stock3)
+                        }
+                        _ => false,
+                    }
             })
             .collect();
         let mut events = Vec::new();
         for (k, u) in empty {
-            let patriot = u.kind == AaaKind::PatriotRadar;
-            events.extend(self.state.order_resupply(k as u32, u.x, u.y, patriot));
+            let Some(kind) = glue::defence_kind(u.kind) else { continue };
+            events.extend(self.state.order_resupply(k as u32, u.x, u.y, kind));
         }
         events
     }
@@ -417,7 +447,16 @@ impl Host {
         let stocks: Vec<DefenceStock> = sim
             .saved_stocks()
             .into_iter()
-            .map(|s| DefenceStock { x: s.x, y: s.y, patriot: s.patriot, stock: s.stock })
+            .filter_map(|s| {
+                Some(DefenceStock {
+                    x: s.x,
+                    y: s.y,
+                    kind: glue::defence_kind(s.kind)?,
+                    stock: s.stock,
+                    stock2: s.stock2,
+                    stock3: s.stock3,
+                })
+            })
             .collect();
         if !stocks.is_empty() && stocks != self.state.defence_stock {
             self.state.defence_stock = stocks;
@@ -563,25 +602,33 @@ impl Host {
                 }
                 CampaignEvent::Recall { tag } => sim.recall_flight(*tag),
                 CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
-                    sim.spawn_supply(*from as usize, *aaa as usize, *tag);
+                    let (at, _) = crate::cargo::supply_crate(sim, *from as usize, *tag);
+                    let pickup = Some(crate::cargo::world_units(at));
+                    sim.spawn_supply(*from as usize, *aaa as usize, pickup, *tag);
                 }
                 CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
-                CampaignEvent::CargoLaunched { from, x, y, tag, .. } => {
-                    sim.spawn_cargo(*from as usize, *x, *y, *tag);
+                CampaignEvent::CargoLaunched { id, from, x, y, tag } => {
+                    let (pickup, drop) =
+                        crate::cargo::cargo_run(sim, &self.state, *id, *tag, *x, *y);
+                    sim.spawn_cargo(*from as usize, pickup, drop, *tag);
                 }
-                CampaignEvent::SiteBuilt { x, y, patriot, .. } => {
-                    if *patriot {
-                        sim.place_patriot(*x, *y);
-                    } else {
-                        sim.place_gepard(*x, *y);
-                    }
-                }
+                CampaignEvent::SiteBuilt { x, y, kind, .. } => glue::place_site(sim, *kind, *x, *y),
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
                 CampaignEvent::GunRepaired { place } => {
                     if let Some(p) = self.state.place(*place) {
                         sim.restore_defence(p.x, p.y, p.owner == Side::Blue);
                     }
                 }
+                CampaignEvent::ArmourRepaired { place } => {
+                    if let Some(p) = self.state.place(*place) {
+                        sim.restore_armour(p.x, p.y, p.owner == Side::Blue);
+                    }
+                }
+                CampaignEvent::ConvoyLaunched { id, side, units, route } => {
+                    let kinds = glue::convoy_kinds(*side, units);
+                    sim.spawn_convoy(*id, *side == Side::Blue, &kinds, route);
+                }
+                CampaignEvent::ConvoyEnded { id } => sim.end_convoy(*id),
                 CampaignEvent::PlaceCaptured { place, side, members, removed } => {
                     let blue = *side == Side::Blue;
                     for &m in members {
@@ -592,6 +639,7 @@ impl Host {
                         sim.remove_object(r as usize);
                     }
                     if let Some(p) = self.state.place(*place) {
+                        sim.convoys_hand_over(p.x, p.y, blue);
                         sim.place_defences(p.x, p.y, p.airfield.is_some(), blue);
                     }
                     // A battery at a place the enemy took is gone with its other defences.

@@ -105,12 +105,19 @@ pub struct Settings {
     pub aircraft: crate::aircraft::AircraftKind,
     /// Tooltips over the cockpit's parts (in-flight menu; on by default).
     pub tooltips: bool,
+    /// Name labels over the other players' aircraft in multiplayer (on by default).
+    pub player_labels: bool,
+    /// Their size (1: 100%).
+    pub player_label_size: f32,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
+    /// The radar warning tones: their volume (a part of the warnings') and which sound.
+    pub rwr_volume: f32,
+    pub rwr_tones: crate::sound::RwrTones,
     /// The engine sounds muffled inside the aircraft (`sound::muffle`).
     pub engine_low_pass: bool,
     /// `--lang <code>`: the language of the menus and messages (OPTIONS; the system's by
@@ -118,12 +125,19 @@ pub struct Settings {
     pub language: stealth_i18n::Language,
     /// The atmosphere effects' switches (`--effects`).
     pub effects: crate::effects::Effects,
+    /// GIF recording (`gif_recorder`): percent of the window's size, frames per second.
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 /// Default VR cockpit size.
 pub const DEFAULT_VR_COCKPIT_SCALE: f32 = 1.0;
 /// Range of the VR cockpit size.
 pub const VR_COCKPIT_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.7..=1.5;
+
+/// Default and range of the player labels' size.
+pub const DEFAULT_PLAYER_LABEL_SIZE: f32 = 0.5;
+pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
 
 /// What the next flight looks like (filled by the menu or command-line flags).
 #[derive(Resource, Debug, Clone)]
@@ -297,14 +311,20 @@ impl Settings {
                 .and_then(|s| crate::aircraft::AircraftKind::parse(&s))
                 .unwrap_or_default(),
             tooltips: true,
+            player_labels: true,
+            player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
+            rwr_volume: 1.0,
+            rwr_tones: Default::default(),
             engine_low_pass: true,
             language: language_arg().unwrap_or_else(system_language),
             effects: get(&a, "--effects")
                 .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }

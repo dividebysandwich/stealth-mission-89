@@ -35,11 +35,27 @@ options-auto-trim = Auto trim
         Χειροκίνητο trim: Alt + βελάκια, το Alt + Home το κεντράρει
 options-tooltips = Tooltips πιλοτηρίου
     .facts = Τι είναι ένα χειριστήριο ή μια οθόνη του πιλοτηρίου, κάτω από το ποντίκι ή την άκρη του δαχτύλου σε VR
+options-player-labels = Ονόματα παικτών
+    .facts = Πολλοί παίκτες: τα ονόματα των άλλων πιλότων πάνω από τα αεροσκάφη τους, σε κάθε απόσταση
+options-label-size =
+    .facts =
+        Μέγεθος των ονομάτων παικτών
+        50%: προεπιλογή
 options-section-vr-size = Μέγεθος πιλοτηρίου σε VR
 options-vr-size =
     .facts =
         Μέγεθος του πιλοτηρίου (και του κόσμου) στο headset
         100%: φυσικό μέγεθος
+options-section-gif = Εγγραφή GIF
+options-gif-size = ΜΕΓΕΘΟΣ
+options-gif-rate = ΚΑΡΕ
+options-gif-scale-100 =
+    .facts = Η πλήρης ανάλυση του παραθύρου: μεγάλα αρχεία
+options-gif-scale-25 =
+    .facts = Μικρά αρχεία
+options-gif-rate-50 =
+    .facts = Μόνο όταν το παιχνίδι τρέχει στα 100 fps ή περισσότερο (καταγράφεται ένα καρέ στα δύο)
+options-gif-hint = F12 (εκτός αν έχει αλλάξει) ξεκινά και σταματά· αποθηκεύεται στον φάκελο Εικόνες
 
 ## ΓΡΑΦΙΚΑ
 
@@ -85,6 +101,19 @@ options-volume-effects = Εφέ
     .facts = Όπλα, εκρήξεις, σύστημα προσγείωσης, ασύρματος και τα υπόλοιπα
 options-volume-warnings = Προειδοποιήσεις
     .facts = Σειρήνα απώλειας στήριξης, προειδοποιήσεις radar και πυραύλων, σειρήνα φωτιάς, τόνοι Sidewinder
+options-volume-rwr = RWR
+    .facts = Οι τόνοι προειδοποίησης radar, ως μέρος της έντασης των προειδοποιήσεων
+options-section-rwr-tones = Τόνοι προειδοποίησης radar
+rwr-tones-all = ΟΛΟΙ
+    .facts = Ένα radar που σας φωτίζει, κάθε σάρωση που σας ανιχνεύει, εκτοξεύσεις πυραύλων
+rwr-tones-detect = ΜΟΝΟ ΑΝΙΧΝΕΥΣΗ
+    .facts =
+        Ένας τόνος όταν ένα radar σας ανιχνεύει (ξανά αφού τα radar σας χάσουν για λίγο)
+        Και οι εκτοξεύσεις πυραύλων
+rwr-tones-launch = ΜΟΝΟ ΕΚΤΟΞΕΥΣΕΙΣ
+    .facts = Μόνο οι πύραυλοι που εκτοξεύονται εναντίον σας
+rwr-tones-off = ΚΛΕΙΣΤΟ
+    .facts = Κανένας τόνος προειδοποίησης radar (οι λυχνίες και οι οθόνες προειδοποιούν ακόμη)
 options-section-cockpit = Πιλοτήριο
 options-low-pass = Φίλτρο χαμηλών κινητήρα
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Ατμός και ρεύμα ρότορα
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Σε απότομους ελιγμούς, ίχνη ατμού από τα ακροπτερύγια
+        Ελικόπτερο σε χαμηλή αιώρηση σηκώνει σκόνη, ή σταγόνες πάνω από νερό
+        Τα οχήματα σε κίνηση σηκώνουν σκόνη πίσω τους
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

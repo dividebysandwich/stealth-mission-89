@@ -93,6 +93,7 @@ impl CampaignState {
             | Objective::Cas { place, .. }
             | Objective::Strike { place, .. }
             | Objective::Interdict { place, .. }
+            | Objective::Support { place, .. }
             | Objective::Insertion { place } => Some(place),
             Objective::Escort { insertion } | Objective::Intercept { insertion } => {
                 self.insertion(insertion).map(|i| i.place)

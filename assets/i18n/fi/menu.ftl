@@ -206,6 +206,11 @@ aircraft-a10 =
         Lähitukikone
         Hidas ja kestävä, 30 mm:n tykki
         A-10C-ohjaamo, kaksi MFD:tä
+aircraft-av8b =
+    .facts =
+        V/STOL-rynnäkkökone
+        Työntövoiman suuntaus: leijunta, laskeutuu minne vain
+        Suutinvipu: R / F, Shift rajoittimiin
 aircraft-uh60 =
     .facts =
         Yleiskäyttöhelikopteri

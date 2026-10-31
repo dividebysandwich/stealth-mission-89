@@ -206,6 +206,11 @@ aircraft-a10 =
         近距空中支援飞机
         速度慢，皮实耐打，30 mm 机炮
         A-10C 座舱，两块 MFD
+aircraft-av8b =
+    .facts =
+        V/STOL 攻击机
+        推力矢量：悬停，随处降落
+        喷口杆：R / F，Shift 用于止动位
 aircraft-uh60 =
     .facts =
         通用直升机

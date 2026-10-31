@@ -6,6 +6,7 @@ axis-rudder = Richtingsroer
 axis-throttle = Gas
 axis-slew-x = Sensor-/cursorbeweging X
 axis-slew-y = Sensor-/cursorbeweging Y
+axis-nozzle = Straalpijpen (Harrier)
 input-button = Knop { $n }
 input-axis = As { $n }
 vr-trigger = Trigger

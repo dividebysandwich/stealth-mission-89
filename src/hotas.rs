@@ -26,14 +26,17 @@ pub enum AxisControl {
     /// Sensor/cursor slew (modern avionics): right and up.
     SlewX,
     SlewY,
+    /// The nozzle lever of a V/STOL type (the Harrier): 0 aft .. 1 the braking stop.
+    Nozzle,
 }
 
 impl AxisControl {
-    pub const ALL: [AxisControl; 6] = [
+    pub const ALL: [AxisControl; 7] = [
         AxisControl::Roll,
         AxisControl::Pitch,
         AxisControl::Yaw,
         AxisControl::Throttle,
+        AxisControl::Nozzle,
         AxisControl::SlewX,
         AxisControl::SlewY,
     ];
@@ -47,6 +50,7 @@ impl AxisControl {
             AxisControl::Throttle => "axis-throttle",
             AxisControl::SlewX => "axis-slew-x",
             AxisControl::SlewY => "axis-slew-y",
+            AxisControl::Nozzle => "axis-nozzle",
         })
     }
 }
@@ -96,10 +100,10 @@ pub struct AxisMapping {
 
 impl AxisMapping {
     /// The control's value from the raw axis value (-1..1): -1..1 for the stick and rudder,
-    /// 0..1 for the throttle.
+    /// 0..1 for the throttle and the nozzles.
     pub fn output(&self, raw: f32) -> f32 {
         let v = if self.invert { -raw } else { raw };
-        if self.control == AxisControl::Throttle {
+        if matches!(self.control, AxisControl::Throttle | AxisControl::Nozzle) {
             return ((v + 1.0) / 2.0).clamp(0.0, 1.0);
         }
         let dz = self.deadzone.clamp(0.0, 0.9);
@@ -308,8 +312,9 @@ pub struct InputConfig {
 /// the bombsight mode key. 4: the stick keys (the arrows) became bindable. 5: the rudder keys
 /// (Q / E); the VR thumbsticks as a HOTAS (the right one targets only). 6: the trim keys
 /// (Alt + arrows, Alt + Home). 7: the master caution key (Alt + C). 8: the free view key
-/// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors).
-const VERSION: u32 = 9;
+/// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
+/// recording key (F12).
+const VERSION: u32 = 10;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -424,7 +429,7 @@ impl InputConfig {
         self.axes.retain(|m| m.control != control && !(m.device == device && m.code == code));
         let invert = control == AxisControl::Throttle;
         let deadzone = match control {
-            AxisControl::Throttle => 0.0,
+            AxisControl::Throttle | AxisControl::Nozzle => 0.0,
             AxisControl::SlewX | AxisControl::SlewY => 0.1,
             _ => 0.05,
         };
@@ -681,6 +686,9 @@ pub struct Hotas {
     devices: HashMap<gilrs::GamepadId, Device>,
     /// Last throttle value written, so the throttle keys work until the lever moves.
     throttle_applied: Option<f32>,
+    /// Last nozzle axis value seen (the first only noted), so the nozzles follow the axis once
+    /// it moves and not before.
+    nozzle_seen: Option<f32>,
 }
 
 impl Hotas {
@@ -708,7 +716,7 @@ impl Hotas {
         for d in devices.values() {
             info!("joystick: {}", d.key);
         }
-        Self { gilrs: gilrs.map(SyncCell::new), devices, throttle_applied: None }
+        Self { gilrs: gilrs.map(SyncCell::new), devices, throttle_applied: None, nozzle_seen: None }
     }
 
     /// Connected devices, sorted by key.
@@ -843,10 +851,15 @@ pub fn read_hotas(
             return;
         }
     }
-    // At a console only the stick and the triggers pass.
+    // At a console only the stick, the rudder and the triggers pass.
     let console = block.0;
     for m in &config.axes {
-        if console && !matches!(m.control, AxisControl::Roll | AxisControl::Pitch) {
+        if console
+            && !matches!(
+                m.control,
+                AxisControl::Roll | AxisControl::Pitch | AxisControl::Yaw | AxisControl::Throttle
+            )
+        {
             continue;
         }
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
@@ -863,6 +876,15 @@ pub fn read_hotas(
                 hotas.throttle_applied = Some(v);
                 controls.throttle = Some(v);
             }
+            // The nozzles stay where they are (aft at the start) until the axis moves.
+            AxisControl::Nozzle => match hotas.nozzle_seen {
+                None => hotas.nozzle_seen = Some(v),
+                Some(t) if (t - v).abs() > 0.01 => {
+                    hotas.nozzle_seen = Some(v);
+                    controls.nozzle = Some(v);
+                }
+                _ => {}
+            },
             _ => {}
         }
     }

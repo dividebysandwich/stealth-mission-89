@@ -6,6 +6,7 @@ axis-rudder = Pedaliera
 axis-throttle = Manetta
 axis-slew-x = Spostamento sensore/cursore X
 axis-slew-y = Spostamento sensore/cursore Y
+axis-nozzle = Ugelli (Harrier)
 input-button = Pulsante { $n }
 input-axis = Asse { $n }
 vr-trigger = Grilletto

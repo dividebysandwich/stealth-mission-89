@@ -48,6 +48,12 @@ planner-uav = Dron enemigo
 planner-edit-hint = Arrastre un punto para moverlo y el mapa para desplazarlo. Haga clic en un tramo para añadir un punto, clic derecho para quitarlo. Rueda: zoom.
 planner-reset = RESTABLECER
 planner-view-hint = Arrastre el mapa para desplazarlo. Rueda: zoom.
+planner-layers = CAPAS
+planner-layer-sams = Radar / emplazamiento SAM
+planner-radar-types = Tipos de radar
+planner-layer-pulse = Alcance de detección del radar de impulsos
+planner-layer-doppler = Alcance de detección del radar Doppler
+planner-layer-airfield = Aeródromo
 
 ## Misiones guardadas
 

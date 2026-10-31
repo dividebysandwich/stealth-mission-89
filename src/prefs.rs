@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use stealth_mission::{MissionKind, Sky};
 
 use crate::menu::MenuState;
-use crate::settings::{DEFAULT_VR_COCKPIT_SCALE, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{
+    DEFAULT_PLAYER_LABEL_SIZE, DEFAULT_VR_COCKPIT_SCALE, PLAYER_LABEL_SIZE_RANGE, Settings,
+    VR_COCKPIT_SCALE_RANGE,
+};
 
 /// `config/<name>` in the player's folder (`stealth_host::store`); None in the browser.
 pub fn config_path(name: &str) -> Option<std::path::PathBuf> {
@@ -80,17 +83,28 @@ pub struct Prefs {
     /// None: on (the default before it could be chosen).
     pub list_public: Option<bool>,
     pub tooltips: bool,
+    pub player_labels: bool,
+    pub player_label_size: f32,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
+    pub rwr_volume: f32,
+    pub rwr_tones: crate::sound::RwrTones,
     pub engine_low_pass: bool,
     /// None: the system's.
     pub language: Option<stealth_i18n::Language>,
     pub effects: crate::effects::Effects,
+    /// 0: saved before the Steam Frame's default effects (`Effects::HEAVY_EFFECTS_OFF`), 1:
+    /// after.
+    #[serde(default)]
+    pub effects_version: u32,
+    pub gif_scale: u8,
+    pub gif_fps: u8,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
+const EFFECTS_VERSION: u32 = 1;
 
 impl Default for Prefs {
     fn default() -> Self {
@@ -137,13 +151,20 @@ impl Default for Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: true,
+            player_labels: true,
+            player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
+            rwr_volume: 1.0,
+            rwr_tones: Default::default(),
             engine_low_pass: true,
             language: None,
             effects: Default::default(),
+            effects_version: EFFECTS_VERSION,
+            gif_scale: crate::gif_recorder::DEFAULT_SCALE,
+            gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
     }
 }
@@ -157,11 +178,20 @@ impl Prefs {
         p
     }
 
-    /// A VR cockpit size saved before the sizes were the aircraft's own goes back to 100%.
+    /// A VR cockpit size saved before the sizes were the aircraft's own goes back to 100%; the
+    /// Steam Frame's effects saved before their own defaults take those up.
     fn migrate(&mut self) {
         if self.vr_scale_version < VR_SCALE_VERSION {
             self.vr_cockpit_scale = DEFAULT_VR_COCKPIT_SCALE;
             self.vr_scale_version = VR_SCALE_VERSION;
+        }
+        if self.effects_version < EFFECTS_VERSION {
+            if crate::effects::HEAVY_EFFECTS_OFF {
+                self.effects.mist = false;
+                self.effects.cloud_shadows = false;
+                self.effects.vapour = false;
+            }
+            self.effects_version = EFFECTS_VERSION;
         }
     }
 
@@ -206,13 +236,20 @@ impl Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: s.tooltips,
+            player_labels: s.player_labels,
+            player_label_size: s.player_label_size,
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
+            rwr_volume: s.rwr_volume,
+            rwr_tones: s.rwr_tones,
             engine_low_pass: s.engine_low_pass,
             language: saved_language(s),
             effects: s.effects,
+            effects_version: EFFECTS_VERSION,
+            gif_scale: s.gif_scale,
+            gif_fps: s.gif_fps,
         }
     }
 
@@ -259,17 +296,25 @@ impl Prefs {
         s.classic_avionics |= self.classic_avionics;
         s.classic_flight |= self.classic_flight;
         s.tooltips = self.tooltips;
+        s.player_labels = self.player_labels;
+        s.player_label_size = self
+            .player_label_size
+            .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
         let volume = |v: f32| v.clamp(0.0, 1.0);
         s.master_volume = volume(self.master_volume);
         s.engine_volume = volume(self.engine_volume);
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
+        s.rwr_volume = volume(self.rwr_volume);
+        s.rwr_tones = self.rwr_tones;
         s.engine_low_pass = self.engine_low_pass;
         if let Some(l) = self.language
             && crate::settings::language_arg().is_none()
         {
             s.language = l;
         }
+        s.gif_scale = self.gif_scale.clamp(1, 100);
+        s.gif_fps = self.gif_fps.clamp(1, 50);
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -299,6 +344,8 @@ impl Prefs {
         self.classic_flight = s.classic_flight;
         self.auto_trim = s.auto_trim;
         self.tooltips = s.tooltips;
+        self.player_labels = s.player_labels;
+        self.player_label_size = s.player_label_size;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;
@@ -307,9 +354,13 @@ impl Prefs {
         self.engine_volume = s.engine_volume;
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
+        self.rwr_volume = s.rwr_volume;
+        self.rwr_tones = s.rwr_tones;
         self.engine_low_pass = s.engine_low_pass;
         self.language = saved_language(s);
         self.effects = s.effects;
+        self.gif_scale = s.gif_scale;
+        self.gif_fps = s.gif_fps;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.
@@ -376,6 +427,8 @@ mod tests {
         let mut s = Settings::from_args();
         s.engine_volume = 0.4;
         s.engine_low_pass = false;
+        s.rwr_volume = 0.5;
+        s.rwr_tones = crate::sound::RwrTones::Detect;
         s.classic_hud = true;
         let p: Prefs =
             serde_json::from_str(&serde_json::to_string(&Prefs::options(&s)).unwrap()).unwrap();
@@ -384,12 +437,13 @@ mod tests {
         assert_eq!(Prefs::options(&back), Prefs::options(&s));
         let old: Prefs = serde_json::from_str("{}").unwrap();
         assert_eq!((old.master_volume, old.engine_low_pass), (1.0, true));
+        assert_eq!((old.rwr_volume, old.rwr_tones), (1.0, crate::sound::RwrTones::All));
     }
 
     #[test]
     fn tooltips_default_to_on() {
         let p: Prefs = serde_json::from_str("{}").unwrap();
-        assert!(p.tooltips);
+        assert!(p.tooltips && p.player_labels && p.player_label_size == DEFAULT_PLAYER_LABEL_SIZE);
         let p: Prefs = serde_json::from_str(r#"{"tooltips": false}"#).unwrap();
         assert!(!p.tooltips);
     }

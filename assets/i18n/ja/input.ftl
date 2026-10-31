@@ -6,6 +6,7 @@ axis-rudder = ラダー
 axis-throttle = スロットル
 axis-slew-x = センサー/カーソル スルー X
 axis-slew-y = センサー/カーソル スルー Y
+axis-nozzle = ノズル（ハリアー）
 input-button = ボタン { $n }
 input-axis = 軸 { $n }
 vr-trigger = トリガー

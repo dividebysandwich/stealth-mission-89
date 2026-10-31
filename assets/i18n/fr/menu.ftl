@@ -206,6 +206,11 @@ aircraft-a10 =
         Avion d'appui aérien rapproché
         Lent et robuste, canon de 30 mm
         Cockpit A-10C, deux MFD
+aircraft-av8b =
+    .facts =
+        Avion d'attaque ADAC/V
+        Poussée vectorielle : vol stationnaire, se pose partout
+        Levier des tuyères : R / F, Maj pour les butées
 aircraft-uh60 =
     .facts =
         Hélicoptère de transport

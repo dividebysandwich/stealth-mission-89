@@ -89,7 +89,7 @@ impl Sim {
         self.designate();
         self.lock_oval(ps);
         self.update_helmet_seeker(ps);
-        self.bombsight(ps.ccrp);
+        self.bombsight(ps);
         self.photo(ps);
         self.radio_beacon();
         self.pl.prev_fire = ps.cmd.fire;
@@ -569,7 +569,7 @@ impl Sim {
     /// Bombsights: CCIP and ranging bar for free-fall / retarded bombs. The impact
     /// point is where the bomb's path meets the ground ([`ballistics`]), not an estimate from
     /// the release altitude and pitch.
-    fn bombsight(&mut self, ccrp: bool) {
+    fn bombsight(&mut self, ps: &PlayerState) {
         self.pl.targeting.ccip = None;
         self.pl.targeting.ranging_bar = None;
         self.pl.targeting.ccrp_release = None;
@@ -578,9 +578,9 @@ impl Sim {
         }
         let spec = self.selected_spec();
         let Some((ix, iy)) = self.bomb_impact() else { return };
-        if ccrp {
+        if ps.ccrp {
             // The ranging bar closes to the release cue as the release point comes up.
-            if let Some((_, secs)) = self.ccrp_solution() {
+            if let Some((_, secs)) = self.ccrp_solution(ps) {
                 let frames = (secs * self.fs as f64).round() as i32;
                 self.pl.targeting.ccrp_release = Some(frames);
                 self.pl.targeting.ranging_bar =

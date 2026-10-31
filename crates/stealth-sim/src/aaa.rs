@@ -38,7 +38,7 @@ pub const PATRIOT: i32 = 45;
 pub const MANPADS_LAUNCHER: i32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum AaaKind {
+pub enum GroundKind {
     /// ZSU-23-4 Shilka: four 23 mm guns, Gun Dish radar.
     #[default]
     Zsu,
@@ -52,48 +52,96 @@ pub enum AaaKind {
     PatriotRadar,
     /// Gepard: two 35 mm guns, search and tracking radar.
     Gepard,
+    /// Drone command center: a bunker with a launch ramp, flies surveillance and attack drones
+    /// (no gun of its own).
+    DroneCenter,
+    /// T-90 main battle tank (125 mm gun).
+    T90,
+    /// Leopard 2 main battle tank (120 mm gun).
+    Leopard2,
+    /// M2 Bradley infantry fighting vehicle: 25 mm gun, TOW missiles and a rifle squad.
+    Bradley,
+    /// BMP-2 infantry fighting vehicle: 30 mm gun, Konkurs missiles and a rifle squad.
+    Bmp2,
 }
 
-impl AaaKind {
+impl GroundKind {
     pub fn name(self) -> &'static str {
         match self {
-            AaaKind::Zsu => "ZSU-23-4",
-            AaaKind::S60 => "S-60",
-            AaaKind::Manpads => "SA-14",
-            AaaKind::PatriotLauncher => "Patriot",
-            AaaKind::PatriotRadar => "Patriot radar",
-            AaaKind::Gepard => "Gepard",
+            GroundKind::Zsu => "ZSU-23-4",
+            GroundKind::S60 => "S-60",
+            GroundKind::Manpads => "SA-14",
+            GroundKind::PatriotLauncher => "Patriot",
+            GroundKind::PatriotRadar => "Patriot radar",
+            GroundKind::Gepard => "Gepard",
+            GroundKind::DroneCenter => "Drone command center",
+            GroundKind::T90 => "T-90",
+            GroundKind::Leopard2 => "Leopard 2",
+            GroundKind::Bradley => "M2 Bradley",
+            GroundKind::Bmp2 => "BMP-2",
         }
     }
 
     /// Name on a side: the friendly MANPADS teams carry Stingers.
     pub fn name_on(self, blue: bool) -> &'static str {
         match self {
-            AaaKind::Manpads if blue => "Stinger",
+            GroundKind::Manpads if blue => "Stinger",
             _ => self.name(),
         }
     }
 
     /// Patriot launcher or radar (no gun, no MANPADS).
     pub fn patriot(self) -> bool {
-        matches!(self, AaaKind::PatriotLauncher | AaaKind::PatriotRadar)
+        matches!(self, GroundKind::PatriotLauncher | GroundKind::PatriotRadar)
+    }
+
+    /// No gun and no MANPADS of its own to fire at aircraft: a Patriot launcher or radar, a
+    /// drone command center, a tank or an infantry fighting vehicle.
+    pub fn unarmed(self) -> bool {
+        self.patriot() || self == GroundKind::DroneCenter || self.armour()
+    }
+
+    /// A main battle tank.
+    pub fn tank(self) -> bool {
+        matches!(self, GroundKind::T90 | GroundKind::Leopard2)
+    }
+
+    /// An infantry fighting vehicle: carries the troops that take a place.
+    pub fn carrier(self) -> bool {
+        matches!(self, GroundKind::Bradley | GroundKind::Bmp2)
+    }
+
+    /// A tank or an infantry fighting vehicle: fights other ground units.
+    pub fn armour(self) -> bool {
+        self.tank() || self.carrier()
+    }
+
+    /// Goes with a convoy: armour and the tracked air defence guns.
+    pub fn mobile(self) -> bool {
+        self.armour() || matches!(self, GroundKind::Zsu | GroundKind::Gepard)
     }
 
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
     fn gun(self) -> (f64, f64, f64) {
         match self {
-            AaaKind::Zsu => (970.0, 2500.0, 2000.0),
-            AaaKind::S60 => (1000.0, 6000.0, 4500.0),
-            AaaKind::Manpads => (0.0, 5000.0, 3500.0),
-            AaaKind::Gepard => (1175.0, 3500.0, 3000.0),
-            AaaKind::PatriotLauncher | AaaKind::PatriotRadar => (0.0, 0.0, 0.0),
+            GroundKind::Zsu => (970.0, 2500.0, 2000.0),
+            GroundKind::S60 => (1000.0, 6000.0, 4500.0),
+            GroundKind::Manpads => (0.0, 5000.0, 3500.0),
+            GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+            _ => (0.0, 0.0, 0.0),
         }
     }
 }
 
+/// The way air defence unit `k` stands (rad, clockwise from north): each its own, spread by the
+/// golden angle. A drone command center's rail points this way.
+pub fn unit_heading(k: usize) -> f32 {
+    (k as f32 * 2.399_963).rem_euclid(std::f32::consts::TAU)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
-pub struct AaaUnit {
-    pub kind: AaaKind,
+pub struct GroundUnit {
+    pub kind: GroundKind,
     /// Map units (x east, y south).
     pub x: i32,
     pub y: i32,
@@ -110,12 +158,39 @@ pub struct AaaUnit {
     /// Patriot launcher: missiles ready.
     #[serde(default)]
     pub rounds: i32,
+    /// A vehicle's own position and the way its hull points (`x`, `y` are this rounded).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fine: Option<Fine>,
+    /// Destroyed without a wreck: left the world (a convoy that took its place hands over to
+    /// the new garrison), its slot free for another unit.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gone: bool,
 }
 
-impl AaaUnit {
+/// A vehicle's position in metres (east, north) and its hull's heading (rad, clockwise from
+/// north).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct Fine {
+    pub e: f32,
+    pub n: f32,
+    pub heading: f32,
+}
+
+impl GroundUnit {
     /// Position in metres (east, north, up).
     pub fn metres(&self) -> [f64; 3] {
-        [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP, 2.0]
+        match self.fine {
+            Some(f) => [f.e as f64, f.n as f64, 2.0],
+            None => [self.x as f64 * M_PER_MAP, (0x8000 - self.y) as f64 * M_PER_MAP, 2.0],
+        }
+    }
+
+    /// Position in map units, between the units' grid.
+    pub fn map_xy(&self) -> (f64, f64) {
+        match self.fine {
+            Some(f) => (f.e as f64 / M_PER_MAP, 0x8000 as f64 - f.n as f64 / M_PER_MAP),
+            None => (self.x as f64, self.y as f64),
+        }
     }
 }
 
@@ -149,6 +224,12 @@ const ZSU_HIT_RADIUS: f64 = 9.0;
 const ZSU_HIT_CHANCE: i32 = 450; // per mille, per tracer passing within the radius
 const FLAK_LETHAL: f64 = 14.0;
 const FLAK_REACH: f64 = 40.0;
+/// A bomb's or missile's blast kills a tank this close (map units, ~16 m), an infantry fighting
+/// vehicle this close (~25 m); one gun round in so many kills one.
+const TANK_BLAST: f64 = 1.0;
+const IFV_BLAST: f64 = 1.6;
+const TANK_ROUND_ODDS: i32 = 30;
+const IFV_ROUND_ODDS: i32 = 10;
 /// Units and shells at most.
 const MAX_UNITS: usize = 72;
 const MAX_SHELLS: usize = 160;
@@ -195,13 +276,13 @@ pub fn lead(from: [f64; 3], to: [f64; 3], vel: [f64; 3], v: f64) -> (f64, f64, f
 }
 
 impl Sim {
-    pub fn aaa_units(&self) -> &[AaaUnit] {
-        &self.aaa
+    pub fn units(&self) -> &[GroundUnit] {
+        &self.units
     }
 
     /// The units (scenario tests place their own).
-    pub fn aaa_units_mut(&mut self) -> &mut Vec<AaaUnit> {
-        &mut self.aaa
+    pub fn units_mut(&mut self) -> &mut Vec<GroundUnit> {
+        &mut self.units
     }
 
     /// The town at map point (`x`, `y`): the nearest whose disc holds it.
@@ -224,6 +305,20 @@ impl Sim {
 
     pub fn aaa_shells(&self) -> &[Shell] {
         &self.aaa_shells
+    }
+
+    /// Shells came down here (nobody may take them: a dedicated server keeps the last few).
+    pub(crate) fn shells_down(&mut self, down: Vec<([f64; 2], bool)>) {
+        self.shell_impacts.extend(down);
+        if self.shell_impacts.len() > 256 {
+            self.shell_impacts.drain(..128);
+        }
+    }
+
+    /// The shells that came down on the ground since the last call (metres east, north; flak
+    /// or not).
+    pub fn take_shell_impacts(&mut self) -> Vec<([f64; 2], bool)> {
+        std::mem::take(&mut self.shell_impacts)
     }
 
     /// The player in metres (east, north, up) and his velocity (m/s), as the gunners see it:
@@ -255,11 +350,11 @@ impl Sim {
         let war = self.roe;
         let mut units = Vec::new();
         let around =
-            |rng: &mut Rng, units: &mut Vec<AaaUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
+            |rng: &mut Rng, units: &mut Vec<GroundUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
                 let a = rng.random(0x4000) * 4;
                 let r = (lo + rng.random(hi - lo)) as f64;
                 let t = a as f64 / 65536.0 * std::f64::consts::TAU;
-                units.push(AaaUnit {
+                units.push(GroundUnit {
                     kind,
                     x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
                     y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
@@ -270,6 +365,8 @@ impl Sim {
                     burst: 0,
                     cooldown: 0,
                     rounds: 0,
+                    fine: None,
+                    gone: false,
                 });
             };
         let hostile = |o: &GroundObject| o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) == 0;
@@ -280,12 +377,12 @@ impl Sim {
                 continue;
             }
             for _ in 0..1 + rng.random(war + 1) {
-                around(&mut rng, &mut units, o.x, o.y, AaaKind::Zsu, 26, 90);
+                around(&mut rng, &mut units, o.x, o.y, GroundKind::Zsu, 26, 90);
             }
             if war > 0 {
                 let (bx, by) = (o.x + rng.random(120) - 60, o.y + rng.random(120) - 60);
                 for _ in 0..2 + rng.random(3) {
-                    around(&mut rng, &mut units, bx, by, AaaKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
                 }
             }
         }
@@ -299,12 +396,12 @@ impl Sim {
             }
             let (x, y) = (o.x, o.y);
             for _ in 0..1 + rng.random(war + 1) {
-                around(&mut rng, &mut units, x, y, AaaKind::Zsu, 20, 70);
+                around(&mut rng, &mut units, x, y, GroundKind::Zsu, 20, 70);
             }
             if rng.random(3) < war {
                 let (bx, by) = (x + rng.random(100) - 50, y + rng.random(100) - 50);
                 for _ in 0..2 + rng.random(2) {
-                    around(&mut rng, &mut units, bx, by, AaaKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
                 }
             }
         }
@@ -319,11 +416,11 @@ impl Sim {
             }
             let (x, y, lo, hi) = self.town_ring(o.x, o.y).unwrap_or((o.x, o.y, 15, 80));
             for _ in 0..rng.random(war + 2) {
-                around(&mut rng, &mut units, x, y, AaaKind::Manpads, lo, hi);
+                around(&mut rng, &mut units, x, y, GroundKind::Manpads, lo, hi);
             }
         }
         units.truncate(MAX_UNITS);
-        self.aaa = units;
+        self.units = units;
         self.aaa_rng = Some(rng);
     }
 
@@ -353,7 +450,7 @@ impl Sim {
         if tracks.is_empty() {
             return;
         }
-        let mut units = std::mem::take(&mut self.aaa);
+        let mut units = std::mem::take(&mut self.units);
         self.aaa_pilot.resize(units.len(), tracks[0].k as u8);
         let vis_km = self.visual_range();
         // Accuracy: one standard deviation (radians) with a radar track / laid by eye.
@@ -363,7 +460,7 @@ impl Sim {
         let mut rwr: Vec<(usize, RwrTone)> = Vec::new();
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
-            if u.destroyed || self.aaa_blue(i) || u.kind.patriot() || u.kind == AaaKind::Gepard {
+            if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == GroundKind::Gepard {
                 continue;
             }
             u.cooldown = (u.cooldown - 1).max(0);
@@ -398,7 +495,7 @@ impl Sim {
                 && !on_ground
                 && (!self.weather.any()
                     || self.weather.los_clear((u.x, u.y, 0), (t.p.mx, t.p.my, t.p.alt.max(0))));
-            let radar = u.kind == AaaKind::Zsu && {
+            let radar = u.kind == GroundKind::Zsu && {
                 let (score, _, _) = detect(u.x, u.y, 0, 1, Some(GUN_DISH), &ctx);
                 score + t.emv > 100
             };
@@ -413,7 +510,7 @@ impl Sim {
                 continue;
             }
             let pilot = t.k as u8;
-            let (az, el, t) = if u.kind == AaaKind::Manpads {
+            let (az, el, t) = if u.kind == GroundKind::Manpads {
                 (d[0].atan2(d[1]), d[2].atan2(d[0].hypot(d[1])), 0.0)
             } else {
                 lead(from, me, vel, v0)
@@ -421,13 +518,13 @@ impl Sim {
             u.aim_az = az as f32;
             u.aim_el = el as f32;
             match u.kind {
-                AaaKind::Manpads => {
+                GroundKind::Manpads => {
                     if u.cooldown == 0 {
                         manpads.push(i);
                         u.cooldown = 60 * fs;
                     }
                 }
-                AaaKind::Zsu => {
+                GroundKind::Zsu => {
                     if u.burst == 0 && u.cooldown == 0 {
                         u.burst = fs * 3 / 2 + rng.random(fs);
                     }
@@ -452,7 +549,7 @@ impl Sim {
                         }
                     }
                 }
-                AaaKind::S60 => {
+                GroundKind::S60 => {
                     if u.cooldown == 0 {
                         u.cooldown = fs + rng.random(fs);
                         let sigma = 0.008 * skill;
@@ -469,10 +566,17 @@ impl Sim {
                         });
                     }
                 }
-                AaaKind::PatriotLauncher | AaaKind::PatriotRadar | AaaKind::Gepard => {}
+                GroundKind::PatriotLauncher
+                | GroundKind::PatriotRadar
+                | GroundKind::Gepard
+                | GroundKind::DroneCenter
+                | GroundKind::T90
+                | GroundKind::Leopard2
+                | GroundKind::Bradley
+                | GroundKind::Bmp2 => {}
             }
         }
-        self.aaa = units;
+        self.units = units;
         for (k, tone) in rwr {
             self.activate(k);
             self.emit(SimEvent::Rwr(tone));
@@ -492,6 +596,7 @@ impl Sim {
         let mut hits = vec![(0, 0); tracks.len()];
         let mut bursts = Vec::new();
         let mut shells = std::mem::take(&mut self.aaa_shells);
+        let mut down = Vec::new();
         shells.retain_mut(|s| {
             let n = tracks.iter().position(|t| t.k == s.pilot as usize);
             let (me, vel) = n.map_or(([f64::MAX; 3], [0.0; 3]), |n| (tracks[n].me, tracks[n].vel));
@@ -502,6 +607,7 @@ impl Sim {
             s.vel[2] -= G * dt;
             s.ttl -= 1;
             if s.pos[2] < 0.0 {
+                down.push(([s.pos[0], s.pos[1]], s.flak));
                 return false;
             }
             let near = if n.is_some() { closest(rel, rel_step) } else { f64::MAX };
@@ -527,6 +633,7 @@ impl Sim {
         });
         self.aaa_shells = shells;
         self.aaa_rng = Some(rng);
+        self.shells_down(down);
         for (k, x, y, alt) in bursts {
             self.activate(k);
             self.emit(SimEvent::Flak { x, y, alt });
@@ -550,7 +657,7 @@ impl Sim {
 
     /// A MANPADS team fires an SA-14 if a missile slot is free (never one in flight).
     fn launch_manpads(&mut self, i: usize) {
-        let u = self.aaa[i];
+        let u = self.units[i];
         if !self.may_launch(SA14, (u.x, u.y, 0)) {
             return;
         }
@@ -588,7 +695,7 @@ impl Sim {
     /// units nearby.
     pub(crate) fn aaa_damage(&mut self) {
         let fine = (32 * ROUND_FINE) as f64;
-        let blasts: Vec<(f64, f64, f64, Option<u8>)> = self
+        let blasts: Vec<(f64, f64, bool, Option<u8>)> = self
             .events
             .iter()
             .zip(&self.event_credit)
@@ -596,9 +703,11 @@ impl Sim {
                 SimEvent::Explosion { x, y, alt, kind }
                     if alt < 60 && kind != -1 && kind != -16 =>
                 {
-                    Some((x as f64, y as f64, 4.0, by))
+                    Some((x as f64, y as f64, false, by))
                 }
-                SimEvent::RoundImpact { x, y } => Some((x as f64 / fine, y as f64 / fine, 1.0, by)),
+                SimEvent::RoundImpact { x, y, .. } => {
+                    Some((x as f64 / fine, y as f64 / fine, true, by))
+                }
                 _ => None,
             })
             .collect();
@@ -606,17 +715,24 @@ impl Sim {
             return;
         }
         let Some(mut rng) = self.aaa_rng else { return };
-        for k in 0..self.aaa.len() {
-            let u = self.aaa[k];
+        for k in 0..self.units.len() {
+            let u = self.units[k];
             if u.destroyed {
                 continue;
             }
-            for &(x, y, r, by) in &blasts {
-                let d = (x - u.x as f64).hypot(y - u.y as f64);
+            let (ux, uy) = u.map_xy();
+            // Blast radius and the odds against a gun round (map units, 1 in n).
+            let (r, odds) = match u.kind {
+                k if k.tank() => (TANK_BLAST, TANK_ROUND_ODDS),
+                k if k.carrier() => (IFV_BLAST, IFV_ROUND_ODDS),
+                _ => (4.0, 6),
+            };
+            for &(x, y, round, by) in &blasts {
+                let d = (x - ux).hypot(y - uy);
                 // A gun round kills only now and then.
-                if d < r && (r > 1.0 || rng.random(6) == 0) {
-                    self.aaa[k].destroyed = true;
-                    self.aaa[k].burst = 0;
+                if (round && d < 1.0 && rng.random(odds) == 0) || (!round && d < r) {
+                    self.units[k].destroyed = true;
+                    self.units[k].burst = 0;
                     if let Some(p) = by {
                         self.activate(p as usize);
                     }
@@ -633,8 +749,8 @@ impl Sim {
     /// ZSU-23-4 radars for the radar warning receiver (range km, bearing from the player).
     pub(crate) fn aaa_emitters(&self, out: &mut Vec<Emitter>) {
         let (px, py) = (self.pl.p.mx, self.pl.p.my);
-        for (i, u) in self.aaa.iter().enumerate() {
-            if u.kind != AaaKind::Zsu || u.destroyed || self.aaa_blue(i) {
+        for (i, u) in self.units.iter().enumerate() {
+            if u.kind != GroundKind::Zsu || u.destroyed || self.aaa_blue(i) {
                 continue;
             }
             let range = approx(s16(px - u.x), s16(py - u.y)) >> 6;

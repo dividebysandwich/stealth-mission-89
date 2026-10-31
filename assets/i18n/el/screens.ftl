@@ -49,6 +49,12 @@ planner-uav = Εχθρικό UAV
 planner-edit-hint = Σύρετε ένα σημείο για να το μετακινήσετε, τον χάρτη για μετατόπιση. Κλικ σε τμήμα για νέο σημείο, δεξί κλικ για αφαίρεση. Ροδάκι: ζουμ.
 planner-reset = ΕΠΑΝΑΦΟΡΑ
 planner-view-hint = Σύρετε τον χάρτη για μετατόπιση. Ροδάκι: ζουμ.
+planner-layers = ΕΠΙΠΕΔΑ
+planner-layer-sams = Radar / θέση SAM
+planner-radar-types = Τύποι radar
+planner-layer-pulse = Εμβέλεια ανίχνευσης radar παλμών
+planner-layer-doppler = Εμβέλεια ανίχνευσης radar Doppler
+planner-layer-airfield = Αεροδρόμιο
 
 ## Αποθηκευμένες αποστολές
 

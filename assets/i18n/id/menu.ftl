@@ -206,6 +206,11 @@ aircraft-a10 =
         Pesawat dukungan udara jarak dekat
         Lambat dan tangguh, kanon 30 mm
         Kokpit A-10C, dua MFD
+aircraft-av8b =
+    .facts =
+        Pesawat serang V/STOL
+        Dorongan vektor: hover, mendarat di mana saja
+        Tuas nozzle: R / F, Shift untuk penahan
 aircraft-uh60 =
     .facts =
         Helikopter serbaguna

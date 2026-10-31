@@ -6,6 +6,7 @@ axis-rudder = Smerno krmilo
 axis-throttle = Plin
 axis-slew-x = Premik senzorja/kazalca X
 axis-slew-y = Premik senzorja/kazalca Y
+axis-nozzle = Šobe (Harrier)
 input-button = Gumb { $n }
 input-axis = Os { $n }
 vr-trigger = Sprožilec

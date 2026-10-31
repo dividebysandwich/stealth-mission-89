@@ -12,7 +12,7 @@ use stealth_campaign::{
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
 use stealth_net::protocol::PlayerStatus;
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
@@ -49,13 +49,15 @@ pub struct OpsUi {
     /// to it (picked on the map).
     pub(super) defence: Option<usize>,
     pub(super) defence_scroll: bool,
-    /// A new air defence site is being designated on the map (a Patriot battery or a Gepard),
-    /// and `--campaign-designate` was done.
-    pub(super) designate: Option<bool>,
+    /// A new site is being designated on the map (a Patriot battery, a Gepard, a drone command
+    /// center), and `--campaign-designate` was done.
+    pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
-    /// `--campaign-take` was done, `--campaign-man`.
+    /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
     pub test_taken: bool,
     pub test_manned: bool,
+    pub test_strike: bool,
+    pub test_geran: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
@@ -225,10 +227,11 @@ pub fn test_tab() -> Option<Tab> {
 }
 
 /// Test aid: `--campaign-man <n>` mans the n-th friendly air defence console once the
-/// campaign is up (Patriot batteries first, then the Gepards).
+/// campaign is up (Patriot batteries first, then the Gepards); `drone` is `usize::MAX`.
 pub fn test_man() -> Option<usize> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?.parse().ok()
+    let a = args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?;
+    if a == "drone" { Some(usize::MAX) } else { a.parse().ok() }
 }
 
 /// `--campaign-take <n>`: the n-th mission of the board, or the first of a kind (`logistics`).
@@ -909,6 +912,7 @@ fn place_of(o: &Objective) -> Option<u16> {
         | Objective::Cas { place, .. }
         | Objective::Strike { place, .. }
         | Objective::Interdict { place, .. }
+        | Objective::Support { place, .. }
         | Objective::Insertion { place } => Some(place),
         _ => None,
     }
@@ -921,6 +925,8 @@ fn describe_offer(c: &ActiveCampaign, o: &MissionOffer) -> &'static str {
             t!("brief-task-drones")
         }
         Objective::Battery { .. } => t!(stealth_host::glue::BATTERY_TASK),
+        Objective::Armour { .. } => t!(stealth_host::glue::ARMOUR_TASK),
+        Objective::Support { .. } => t!(stealth_host::glue::SUPPORT_TASK),
         _ => describe(o.kind),
     }
 }
@@ -1193,7 +1199,9 @@ fn war_map(
                 Side::Neutral => DIM,
             };
             let c0 = at(p.x, p.y);
-            if p.airfield.is_some() {
+            if map_draw::app6() {
+                map_draw::app6_place(&painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
+            } else if p.airfield.is_some() {
                 let r = egui::Rect::from_center_size(c0, egui::vec2(10.0, 10.0));
                 painter.rect_filled(r, 0.0, col.gamma_multiply(0.5));
                 painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
@@ -1202,7 +1210,7 @@ fn war_map(
                 painter.circle_stroke(c0, 5.0, egui::Stroke::new(1.5, col));
             }
             if p.intel(st.clock) {
-                painter.circle_stroke(c0, 10.0, egui::Stroke::new(1.0, BRIGHT));
+                painter.circle_stroke(c0, map_draw::halo(10.0), egui::Stroke::new(1.0, BRIGHT));
             }
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
                 painter.text(
@@ -1217,8 +1225,42 @@ fn war_map(
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
         super::picture::draw(&painter, &view, &pic, &layers);
-        // Test aid: `--campaign-watch` watches the first friendly aircraft.
-        if std::env::args().any(|a| a == "--campaign-watch")
+        // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
+        // armour` the first tank of a column on the move.
+        let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
+        if watch.as_deref() == Some("fp2") {
+            // The first attack drone in the air.
+            if unit_view.target.is_none()
+                && let Some(a) = pic.friendly.iter().find(|a| a.spec == stealth_sim::uav::FP2_SPEC)
+                && !std::mem::replace(test_taken, true)
+            {
+                let unit = super::unit_view::UnitRef::Flight { index: a.unit, spec: a.spec };
+                unit_view.watch(unit, sim.aircraft_name(a.spec));
+                unit_view.test_orbit();
+            }
+        } else if watch.as_deref() == Some("zsu") {
+            // The Shilka of an enemy column on the move.
+            let zsu = (0..sim.units().len()).find(|&k| {
+                sim.units()[k].kind == stealth_sim::aaa::GroundKind::Zsu
+                    && !sim.units()[k].destroyed
+                    && !sim.aaa_blue(k)
+                    && sim.unit_moving(k)
+            });
+            if unit_view.target.is_none()
+                && let Some(k) = zsu
+                && !std::mem::replace(test_taken, true)
+            {
+                unit_view.watch(super::unit_view::UnitRef::Aaa(k), "ZSU-23-4".into());
+                unit_view.test_orbit();
+            }
+        } else if watch.as_deref() == Some("armour") {
+            if unit_view.target.is_none()
+                && let Some(v) = pic.armour.iter().find(|v| v.heading.is_some())
+                && !std::mem::replace(test_taken, true)
+            {
+                unit_view.watch(super::unit_view::UnitRef::Aaa(v.index), v.kind.name().into());
+            }
+        } else if std::env::args().any(|a| a == "--campaign-watch")
             && unit_view.target.is_none()
             && let Some(a) = pic.friendly.first()
             && !std::mem::replace(test_taken, true)
@@ -1258,8 +1300,9 @@ fn war_map(
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
             section(ui, t!("ops-section-legend"));
+            map_draw::symbology_switch(ui);
             place_legend(ui, &mut layers);
-            layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
+            layers.legend(ui, Layer::Insertions, t!("ops-legend-insertion"), |p, c0| {
                 p.extend(egui::Shape::dashed_line(
                     &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
                     egui::Stroke::new(1.5, FRIENDLY_BLUE),
@@ -1287,7 +1330,20 @@ fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
 
 /// The places' legend lines, with their layers' checkboxes.
 fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
-    layers.legend(ui, Layer::Airfields, "Friendly / enemy airfield", |p, c0| {
+    if map_draw::app6() {
+        use crate::app6::Affiliation::{Friend, Hostile};
+        for (layer, text, airfield) in [
+            (Layer::Airfields, t!("ops-legend-airfield"), true),
+            (Layer::Cities, t!("ops-legend-city"), false),
+        ] {
+            layers.legend(ui, layer, text, |p, c0| {
+                map_draw::app6_place(p, c0 + egui::vec2(-7.5, 1.0), Friend, airfield, 0.65);
+                map_draw::app6_place(p, c0 + egui::vec2(7.5, 1.0), Hostile, airfield, 0.65);
+            });
+        }
+        return;
+    }
+    layers.legend(ui, Layer::Airfields, t!("ops-legend-airfield"), |p, c0| {
         for (dx, col) in [(-4.5, FRIENDLY_BLUE), (5.0, MISSILE_RED)] {
             p.rect_stroke(
                 egui::Rect::from_center_size(c0 + egui::vec2(dx, 0.0), egui::vec2(7.0, 7.0)),
@@ -1303,6 +1359,15 @@ fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
     });
 }
 
+/// A side as an APP-6 affiliation.
+fn affiliation(side: Side) -> crate::app6::Affiliation {
+    match side {
+        Side::Blue => crate::app6::Affiliation::Friend,
+        Side::Red => crate::app6::Affiliation::Hostile,
+        Side::Neutral => crate::app6::Affiliation::Neutral,
+    }
+}
+
 /// The war map's view the first time: all the places in `rect`.
 pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
     if c.ui.fitted {
@@ -1316,12 +1381,19 @@ pub(super) fn fit_map(c: &mut ActiveCampaign, rect: egui::Rect) {
         },
     );
     (c.ui.centre, c.ui.scale) = MapView::fit(rect, lo, hi);
+    // Test aid: `--map-view <x>,<y>,<map units per point>` frames the map there.
+    if let Some(v) = std::env::args().skip_while(|a| a != "--map-view").nth(1) {
+        let n: Vec<f32> = v.split(',').filter_map(|s| s.parse().ok()).collect();
+        if let [x, y, scale] = n[..] {
+            (c.ui.centre, c.ui.scale) = (egui::vec2(x, y), scale);
+        }
+    }
     c.ui.fitted = true;
 }
 
 /// Why this player can't man air defence unit `k`'s console now (None: they can).
 pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) -> Option<String> {
-    if sim.aaa_units().get(k).is_none_or(|u| u.destroyed) {
+    if sim.units().get(k).is_none_or(|u| u.destroyed) {
         return Some(t!("st-destroyed").to_string());
     }
     if c.phase == Phase::Sortie {
@@ -1341,12 +1413,19 @@ fn control_button(
     unit_view: &mut super::UnitView,
 ) {
     let Some(super::unit_view::UnitRef::Aaa(k)) = unit_view.target else { return };
-    let Some(u) = sim.aaa_units().get(k) else { return };
+    let Some(u) = sim.units().get(k) else { return };
     if !sim.aaa_blue(k) || !stealth_sim::station::mannable(u.kind) {
         return;
     }
     ui.add_space(10.0);
-    section(ui, if u.kind == AaaKind::Gepard { "Gepard" } else { t!("ops-patriot") });
+    section(
+        ui,
+        match u.kind {
+            GroundKind::Gepard => "Gepard",
+            GroundKind::DroneCenter => t!("ops-drone-center"),
+            _ => t!("ops-patriot"),
+        },
+    );
     let why = man_refusal(c, sim, k);
     if ui.add_enabled(why.is_none(), big_button(t!("ops-control"))).clicked() {
         c.ui.error = None;
@@ -1676,6 +1755,7 @@ fn briefing(
                                 Airframe::F16,
                                 Airframe::Tornado,
                                 Airframe::A10,
+                                Airframe::AV8B,
                                 Airframe::UH60,
                                 Airframe::AH1Z,
                                 Airframe::RAH66,
@@ -1805,7 +1885,9 @@ fn route_editor(
                 Side::Neutral => DIM,
             };
             let c0 = view.to_screen(p.x as f32, p.y as f32);
-            if p.airfield.is_some() {
+            if map_draw::app6() {
+                map_draw::app6_place(painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
+            } else if p.airfield.is_some() {
                 let r = egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0));
                 painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
             } else {

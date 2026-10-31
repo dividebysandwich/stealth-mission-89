@@ -6,10 +6,11 @@
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
 use stealth_i18n::t;
-use stealth_sim::aaa::AaaKind;
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
-use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView};
+use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
+use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, app6};
 use crate::menu::{BRIGHT, GREEN};
 
 /// Radar cover: friendly places (ground radars), friendly aircraft, the player (map units).
@@ -45,7 +46,7 @@ pub struct Gun {
     pub index: usize,
     pub x: i32,
     pub y: i32,
-    pub kind: AaaKind,
+    pub kind: GroundKind,
 }
 
 /// A friendly air defence unit: a Patriot battery (its radar), a Gepard, a Stinger team.
@@ -54,9 +55,21 @@ pub struct Defence {
     pub index: usize,
     pub x: i32,
     pub y: i32,
-    pub kind: AaaKind,
+    pub kind: GroundKind,
     /// The player at its console.
     pub manned: Option<u8>,
+}
+
+/// A tank or an infantry fighting vehicle, friendly or seen.
+pub struct Vehicle {
+    /// AAA unit index.
+    pub index: usize,
+    pub x: i32,
+    pub y: i32,
+    pub kind: GroundKind,
+    pub blue: bool,
+    /// Its heading while its convoy drives (radians, clockwise from north).
+    pub heading: Option<f32>,
 }
 
 /// Patriot reach on the map (map units).
@@ -69,6 +82,10 @@ pub struct Picture {
     pub sams: Vec<SamSite>,
     pub guns: Vec<Gun>,
     pub defences: Vec<Defence>,
+    /// Armour: the friendly side's, and the enemy's its ground units or drones see now.
+    pub armour: Vec<Vehicle>,
+    /// The friendly convoys' ways still to drive (map units), to the place they attack.
+    pub columns: Vec<Vec<(i32, i32)>>,
     /// The player in the air.
     pub player: Option<(i32, i32)>,
 }
@@ -140,29 +157,104 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             });
         }
     }
-    // Guns and MANPADS: around reconned places, or engaging.
+    // Guns and MANPADS: around reconned places, engaging, or found by a command center's drones.
     let reconned: Vec<(i32, i32)> =
         state.places.iter().filter(|p| p.intel(state.clock)).map(|p| (p.x, p.y)).collect();
-    for (k, u) in sim.aaa_units().iter().enumerate() {
+    let found = |k: usize| sim.uav_known().contains(&stealth_sim::uav::Seen::Aaa(k as u16));
+    for (k, u) in sim.units().iter().enumerate() {
         if u.destroyed {
             continue;
         }
+        // Armour, and the guns with a convoy: the enemy's only while seen.
+        let moving = sim.unit_moving(k);
+        if u.kind.armour() || moving && u.kind == GroundKind::Zsu {
+            let blue = sim.aaa_blue(k);
+            if blue || sim.unit_seen_by(k, true) {
+                let heading = moving.then(|| u.fine.map(|f| f.heading)).flatten();
+                if u.kind.armour() {
+                    pic.armour.push(Vehicle {
+                        index: k,
+                        x: u.x,
+                        y: u.y,
+                        kind: u.kind,
+                        blue,
+                        heading,
+                    });
+                } else {
+                    pic.guns.push(Gun { index: k, x: u.x, y: u.y, kind: u.kind });
+                }
+            }
+            continue;
+        }
         if sim.aaa_blue(k) {
-            if matches!(u.kind, AaaKind::PatriotRadar | AaaKind::Gepard | AaaKind::Manpads) {
+            if matches!(
+                u.kind,
+                GroundKind::PatriotRadar
+                    | GroundKind::Gepard
+                    | GroundKind::Manpads
+                    | GroundKind::DroneCenter
+            ) {
                 let manned = sim.manned_by(k);
                 pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned });
             }
             continue;
         }
-        if sim.aaa_engaging(k) || reconned.iter().any(|&(x, y)| near(u.x, u.y, x, y, RECON_GUNS)) {
+        if sim.aaa_engaging(k)
+            || found(k)
+            || reconned.iter().any(|&(x, y)| near(u.x, u.y, x, y, RECON_GUNS))
+        {
             pic.guns.push(Gun { index: k, x: u.x, y: u.y, kind: u.kind });
         }
+    }
+    for v in state.convoys.iter().filter(|v| v.side == Side::Blue && v.active()) {
+        pic.columns.push(v.route_left());
     }
     pic
 }
 
-/// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane.
+/// A tank or an infantry fighting vehicle: a filled box (crossed for the infantry), its
+/// heading a tick when it drives; APP-6: an armour or mechanised infantry unit, `k` its size.
+pub(super) fn vehicle(painter: &egui::Painter, p: egui::Pos2, v: &Vehicle, k: f32) {
+    if app6() {
+        let side = if v.blue { Affiliation::Friend } else { Affiliation::Hostile };
+        let icon = if v.kind.tank() { Icon::Armour } else { Icon::MechInfantry };
+        let mut sym = Symbol::new(side, Dimension::Ground, icon);
+        if let Some(h) = v.heading {
+            sym = sym.heading(h);
+        }
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
+    let col = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
+    let stroke = egui::Stroke::new(1.3, col);
+    let r = egui::Rect::from_center_size(p, egui::vec2(7.0, 5.0));
+    if v.kind.tank() {
+        painter.rect_filled(r, 1.0, col);
+    } else {
+        painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+        painter.line_segment([r.left_top(), r.right_bottom()], stroke);
+        painter.line_segment([r.left_bottom(), r.right_top()], stroke);
+    }
+    if let Some(h) = v.heading {
+        let fwd = egui::vec2(h.sin(), -h.cos());
+        painter.line_segment([p + fwd * 4.0, p + fwd * 9.0], stroke);
+    }
+}
+
+/// An aircraft symbol: a dot for a helicopter, an arrowhead along the heading for a plane (APP-6:
+/// a fixed or rotary wing air track, heading `None` for the legend's).
 pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col: egui::Color32) {
+    if app6() {
+        let side = if col == MISSILE_RED { Affiliation::Hostile } else { Affiliation::Friend };
+        let icon = if a.helicopter { Icon::RotaryWing } else { Icon::FixedWing };
+        let mut sym = Symbol::new(side, Dimension::Air, icon);
+        if a.unit != usize::MAX {
+            sym = sym.heading(a.heading as f32 / 65536.0 * std::f32::consts::TAU);
+        }
+        // Dimmed colours (the air defence map's friendly aircraft) dim the symbol.
+        sym.draw(painter, p, 0.8, col.a() as f32 / 255.0);
+        return;
+    }
     if a.helicopter {
         painter.circle_filled(p, 3.0, col);
         painter.circle_stroke(p, 5.0, egui::Stroke::new(1.0, col));
@@ -175,10 +267,21 @@ pub(super) fn aircraft(painter: &egui::Painter, p: egui::Pos2, a: &Aircraft, col
     painter.add(egui::Shape::convex_polygon(pts, col, egui::Stroke::NONE));
 }
 
-/// A gun: a small cross (a ring for MANPADS).
-fn gun(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+/// A gun: a small cross (a ring for MANPADS); APP-6: a hostile air defence gun or missile
+/// unit, `k` its size.
+fn gun(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
+    if app6() {
+        let icon =
+            if kind == GroundKind::Manpads { Icon::AirDefenceMissile } else { Icon::AirDefenceGun };
+        let mut sym = Symbol::new(Affiliation::Hostile, Dimension::Ground, icon);
+        if kind == GroundKind::Manpads {
+            sym = sym.echelon(Echelon::Team);
+        }
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
     let stroke = egui::Stroke::new(1.5, MISSILE_RED);
-    if kind == AaaKind::Manpads {
+    if kind == GroundKind::Manpads {
         painter.circle_stroke(p, 2.5, stroke);
     } else {
         painter.line_segment([p + egui::vec2(-3.0, -3.0), p + egui::vec2(3.0, 3.0)], stroke);
@@ -193,16 +296,16 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     for d in &pic.defences {
         let c = at(d.x, d.y);
-        let patriot = d.kind == AaaKind::PatriotRadar;
+        let patriot = d.kind == GroundKind::PatriotRadar;
         if patriot && layers.shows(Layer::PatriotReach) {
             painter.extend(reach_circle(c, PATRIOT_REACH / view.scale));
         }
         if !layers.shows(if patriot { Layer::Patriots } else { Layer::Gepards }) {
             continue;
         }
-        defence(painter, c, d.kind);
+        defence(painter, c, d.kind, 0.8);
         if d.manned.is_some() {
-            painter.circle_stroke(c, 9.0, egui::Stroke::new(1.5, GREEN));
+            painter.circle_stroke(c, map_draw::halo(9.0), egui::Stroke::new(1.5, GREEN));
         }
     }
     for s in pic.sams.iter().filter(|s| layers.shows_type(&s.name)) {
@@ -218,7 +321,24 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
         }
         map_draw::site(painter, view, c, &s.name, 1.0);
         if s.reconned {
-            painter.circle_stroke(c, 6.0, egui::Stroke::new(1.0, BRIGHT));
+            painter.circle_stroke(c, map_draw::halo(6.0), egui::Stroke::new(1.0, BRIGHT));
+        }
+    }
+    if layers.shows(Layer::Armour) {
+        // Our columns' way to the place they attack, an arrowhead at its end.
+        let faint = egui::Stroke::new(1.2, FRIENDLY_BLUE.gamma_multiply(0.6));
+        for route in &pic.columns {
+            let pts: Vec<egui::Pos2> = route.iter().map(|&(x, y)| at(x, y)).collect();
+            painter.extend(egui::Shape::dashed_line(&pts, faint, 4.0, 3.0));
+            if let [.., a, b] = pts[..] {
+                let fwd = (b - a).normalized();
+                let side = egui::vec2(-fwd.y, fwd.x);
+                let tip = vec![b, b - fwd * 7.0 + side * 4.0, b - fwd * 7.0 - side * 4.0];
+                painter.add(egui::Shape::convex_polygon(tip, faint.color, egui::Stroke::NONE));
+            }
+        }
+        for v in &pic.armour {
+            vehicle(painter, at(v.x, v.y), v, 0.7);
         }
     }
     for g in &pic.guns {
@@ -228,7 +348,7 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
             painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
         }
         if layers.shows(Layer::Guns) {
-            gun(painter, c, g.kind);
+            gun(painter, c, g.kind, 0.7);
         }
     }
     if layers.shows(Layer::EnemyFighters) {
@@ -248,11 +368,25 @@ pub fn draw(painter: &egui::Painter, view: &MapView, pic: &Picture, layers: &Map
 }
 
 /// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
-/// a square with its two barrels, a Stinger team a ring.
-pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
+/// a square with its two barrels, a Stinger team a ring. APP-6: a friendly air defence missile
+/// battery, a tracked air defence gun, a missile team; `k` its size.
+pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
+    if app6() {
+        let sym = |icon| Symbol::new(Affiliation::Friend, Dimension::Ground, icon);
+        let sym = match kind {
+            GroundKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
+            GroundKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
+            GroundKind::DroneCenter => {
+                Symbol::new(Affiliation::Friend, Dimension::Installation, Icon::Uav)
+            }
+            _ => sym(Icon::AirDefenceMissile).echelon(Echelon::Team),
+        };
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
     let stroke = egui::Stroke::new(1.5, FRIENDLY_BLUE);
     match kind {
-        AaaKind::PatriotRadar => {
+        GroundKind::PatriotRadar => {
             let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
             painter.rect_filled(r, 0.0, FRIENDLY_BLUE.gamma_multiply(0.35));
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
@@ -260,12 +394,19 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: AaaKind) {
                 painter.line_segment([p + egui::vec2(dx, 3.0), p + egui::vec2(dx, -3.0)], stroke);
             }
         }
-        AaaKind::Gepard => {
+        GroundKind::Gepard => {
             let r = egui::Rect::from_center_size(p, egui::vec2(7.0, 7.0));
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
             for dx in [-1.5, 1.5] {
                 painter.line_segment([p + egui::vec2(dx, -3.5), p + egui::vec2(dx, -7.5)], stroke);
             }
+        }
+        // A drone command center: a square with a drone's wings in it.
+        GroundKind::DroneCenter => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 9.0));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([p + egui::vec2(-3.5, -1.5), p + egui::vec2(0.0, 1.5)], stroke);
+            painter.line_segment([p + egui::vec2(0.0, 1.5), p + egui::vec2(3.5, -1.5)], stroke);
         }
         _ => {
             painter.circle_stroke(p, 2.5, stroke);
@@ -286,44 +427,60 @@ fn reach_circle(c: egui::Pos2, r: f32) -> Vec<egui::Shape> {
 /// The legend lines of the picture, with their layers' checkboxes; the SAM sites' (and a
 /// checkbox per SAM type) only with `pic`.
 pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) {
+    // (No unit: no heading staff on the APP-6 symbol.)
+    let a = |helicopter| Aircraft { unit: usize::MAX, spec: 0, x: 0, y: 0, heading: 0, helicopter };
     layers.legend(ui, Layer::FriendlyAircraft, t!("pic-friendly-aircraft"), |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
-        aircraft(p, c0, &a, FRIENDLY_BLUE);
+        aircraft(p, c0, &a(false), FRIENDLY_BLUE);
     });
     layers.legend(ui, Layer::FriendlyHelicopters, t!("pic-friendly-helicopter"), |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: true };
-        aircraft(p, c0, &a, FRIENDLY_BLUE);
+        aircraft(p, c0, &a(true), FRIENDLY_BLUE);
     });
     layers.legend(ui, Layer::EnemyFighters, t!("pic-enemy-fighter"), |p, c0| {
-        let a = Aircraft { unit: 0, spec: 0, x: 0, y: 0, heading: 0, helicopter: false };
-        aircraft(p, c0, &a, MISSILE_RED);
+        aircraft(p, c0, &a(false), MISSILE_RED);
     });
     layers.legend(ui, Layer::Patriots, t!("ops-patriot"), |p, c0| {
-        defence(p, c0, AaaKind::PatriotRadar)
+        defence(p, c0, GroundKind::PatriotRadar, 0.8)
     });
-    layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
+    layers.legend(ui, Layer::PatriotReach, t!("pic-patriot-reach"), |p, c0| {
         p.extend(reach_circle(c0, 6.0));
     });
-    layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
-        defence(p, c0 - egui::vec2(4.0, -2.0), AaaKind::Gepard);
-        defence(p, c0 + egui::vec2(6.0, 0.0), AaaKind::Manpads);
+    layers.legend(ui, Layer::Gepards, t!("pic-gepard-stinger"), |p, c0| {
+        if app6() {
+            defence(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Gepard, 0.65);
+            defence(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
+        } else {
+            defence(p, c0 - egui::vec2(4.0, -2.0), GroundKind::Gepard, 1.0);
+            defence(p, c0 + egui::vec2(6.0, 0.0), GroundKind::Manpads, 1.0);
+        }
     });
     if let Some(pic) = pic {
         layers.legend(ui, Layer::Sams, t!("pic-sam-known"), |p, c0| {
-            p.circle_filled(c0, 3.0, MISSILE_RED);
+            map_draw::site_symbol(p, c0, 1.0);
         });
         layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
-        layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
+        layers.legend(ui, Layer::MissileRange, t!("pic-missile-range"), |p, c0| {
             p.extend(map_draw::missile_circle(c0, 6.0, 1.0));
         });
         // (The route editor has its own line for the engagement range.)
-        layers.legend(ui, Layer::EngagementRange, "Engagement range", |p, c0| {
+        layers.legend(ui, Layer::EngagementRange, t!("pic-engagement-range"), |p, c0| {
             p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
         });
     }
+    let tank = |blue| Vehicle { index: 0, x: 0, y: 0, kind: GroundKind::T90, blue, heading: None };
+    let ifv = |blue| Vehicle { kind: GroundKind::Bmp2, ..tank(blue) };
+    layers.legend(ui, Layer::Armour, t!("pic-armour"), |p, c0| {
+        let (dx, k) = if app6() { (7.5, 0.65) } else { (5.0, 1.0) };
+        vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
+        vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
+    });
     layers.legend(ui, Layer::Guns, t!("pic-guns-known"), |p, c0| {
-        gun(p, c0 - egui::vec2(4.0, 0.0), AaaKind::Zsu);
-        gun(p, c0 + egui::vec2(5.0, 0.0), AaaKind::Manpads);
+        if app6() {
+            gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
+            gun(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
+        } else {
+            gun(p, c0 - egui::vec2(4.0, 0.0), GroundKind::Zsu, 1.0);
+            gun(p, c0 + egui::vec2(5.0, 0.0), GroundKind::Manpads, 1.0);
+        }
     });
     // Not layers: lined up with the lines with a checkbox.
     let unchecked = |ui: &mut egui::Ui, text, draw: &dyn Fn(&egui::Painter, egui::Pos2)| {
@@ -333,7 +490,7 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         });
     };
     unchecked(ui, t!("pic-reconned"), &|p, c0| {
-        p.circle_stroke(c0, 6.0, egui::Stroke::new(1.0, BRIGHT));
+        p.circle_stroke(c0, if app6() { 7.5 } else { 6.0 }, egui::Stroke::new(1.0, BRIGHT));
     });
     unchecked(ui, t!("pic-you"), &|p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));
@@ -373,9 +530,12 @@ pub fn pick(
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
     }
+    for v in &pic.armour {
+        consider(screen(v.x, v.y), UnitRef::Aaa(v.index), v.kind.name().to_string());
+    }
     for d in &pic.defences {
         let name = match d.kind {
-            AaaKind::PatriotRadar => t!("ops-patriot"),
+            GroundKind::PatriotRadar => t!("ops-patriot"),
             k => k.name_on(true),
         };
         consider(screen(d.x, d.y), UnitRef::Aaa(d.index), name.to_string());

@@ -35,11 +35,27 @@ options-auto-trim = Автотрим
         Ручний трим: Alt + стрілки, Alt + Home центрує
 options-tooltips = Підказки кабіни
     .facts = Що це за елемент або дисплей кабіни, під мишею чи кінчиком пальця у VR
+options-player-labels = Імена гравців
+    .facts = Мультиплеєр: імена інших пілотів над їхніми літаками, на будь-якій відстані
+options-label-size =
+    .facts =
+        Розмір імен гравців
+        50%: типово
 options-section-vr-size = Розмір кабіни у VR
 options-vr-size =
     .facts =
         Розмір кабіни (і світу) в шоломі
         100%: натуральна величина
+options-section-gif = Запис GIF
+options-gif-size = РОЗМІР
+options-gif-rate = КАДРИ
+options-gif-scale-100 =
+    .facts = Повна роздільність вікна: великі файли
+options-gif-scale-25 =
+    .facts = Малі файли
+options-gif-rate-50 =
+    .facts = Лише якщо гра йде зі 100 fps і більше (записується кожен другий кадр)
+options-gif-hint = F12 (якщо не перепризначено) запускає й зупиняє; зберігається в теці «Зображення»
 
 ## ГРАФІКА
 
@@ -85,6 +101,19 @@ options-volume-effects = Ефекти
     .facts = Зброя, вибухи, шасі, радіо та решта
 options-volume-warnings = Сигнали
     .facts = Сигнал зриву, попередження радара й ракет, пожежна сирена, тони Sidewinder
+options-volume-rwr = RWR
+    .facts = Тональні сигнали попередження про радари, як частка гучності сигналів
+options-section-rwr-tones = Сигнали попередження про радари
+rwr-tones-all = УСІ
+    .facts = Радар, що опромінює вас, кожен огляд, що вас виявляє, пуски ракет
+rwr-tones-detect = ЛИШЕ ВИЯВЛЕННЯ
+    .facts =
+        Один сигнал, коли радар вас виявляє (знову після того, як радари на час вас втрачають)
+        І пуски ракет
+rwr-tones-launch = ЛИШЕ ПУСКИ
+    .facts = Лише ракети, випущені по вас
+rwr-tones-off = ВИМК
+    .facts = Без сигналів попередження про радари (лампи й дисплеї однаково попереджають)
 options-section-cockpit = Кабіна
 options-low-pass = Низькочастотний фільтр двигуна
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Пара й потік від гвинта
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Під час різких маневрів із законцовок крила зриваються сліди пари
+        Гелікоптер, що низько висить, здіймає пил, над водою - бризки
+        Техніка в русі здіймає за собою пил
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

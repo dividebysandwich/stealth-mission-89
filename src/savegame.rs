@@ -95,6 +95,12 @@ pub struct SavedFlight {
     pub position: DVec3,
     /// The waypoint flown to and the one the mission logic chose last.
     pub waypoint: (usize, usize),
+    /// Passed route points; absent in older version-1 saves.
+    #[serde(default)]
+    pub passed_waypoints: Vec<bool>,
+    /// Waypoint positions (east, north) as moved on the WAY page; absent in older saves.
+    #[serde(default)]
+    pub waypoint_positions: Vec<(f64, f64)>,
     pub hud: HudState,
     /// `TimeOfDay::saved`.
     pub time_of_day: (u32, f32),
@@ -226,6 +232,8 @@ fn save(
         aircraft: a.clone(),
         position: pos.0,
         waypoint: (wps.current, wps.mission_current),
+        passed_waypoints: wps.passed.clone(),
+        waypoint_positions: wps.points.iter().map(|p| (p.east, p.north)).collect(),
         hud: hud.clone(),
         time_of_day: tod.saved(),
         record: c.record.clone(),
@@ -273,8 +281,16 @@ fn restore(
         *a = save.aircraft;
         pos.0 = save.position;
     }
-    let last = wps.points.len().saturating_sub(1);
+    let point_count = wps.points.len();
+    let last = point_count.saturating_sub(1);
     (wps.current, wps.mission_current) = (save.waypoint.0.min(last), save.waypoint.1.min(last));
+    wps.passed = save.passed_waypoints;
+    wps.passed.resize(point_count, false);
+    if save.waypoint_positions.len() == point_count {
+        for (p, &(east, north)) in wps.points.iter_mut().zip(&save.waypoint_positions) {
+            *p = crate::hud::Waypoint { east, north };
+        }
+    }
     *hud = save.hud;
     if let Some(mut palette) = palette {
         tod.restore(&mut palette, save.time_of_day);
@@ -476,6 +492,7 @@ mod tests {
         for _ in 0..4 {
             record.sample(&sim);
         }
+        let route = PlannedRoute::of(&m);
         SavedFlight {
             summary: Summary {
                 version: VERSION,
@@ -492,7 +509,9 @@ mod tests {
                 realistic_guidance: true,
                 air_defence: true,
             },
-            route: PlannedRoute::of(&m),
+            passed_waypoints: vec![false; route.points.len()],
+            waypoint_positions: Vec::new(),
+            route,
             loadout: PlannedLoadout::of(&m, AircraftKind::F16),
             mission: m,
             sim,

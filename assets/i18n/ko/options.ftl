@@ -35,11 +35,27 @@ options-auto-trim = 자동 트림
         수동 트림: Alt + 방향키, Alt + Home으로 중앙 복귀
 options-tooltips = 조종석 툴팁
     .facts = 마우스 아래 또는 VR 손끝에 있는 조종석 조작부나 디스플레이가 무엇인지 표시합니다
+options-player-labels = 플레이어 이름
+    .facts = 멀티플레이: 다른 조종사의 이름을 기체 위에 표시, 거리와 관계없이
+options-label-size =
+    .facts =
+        플레이어 이름의 크기
+        50%: 기본값
 options-section-vr-size = VR 조종석 크기
 options-vr-size =
     .facts =
         헤드셋 속 조종석(과 세계)의 크기
         100%: 실물 크기
+options-section-gif = GIF 녹화
+options-gif-size = 크기
+options-gif-rate = 프레임
+options-gif-scale-100 =
+    .facts = 창의 전체 해상도: 큰 파일
+options-gif-scale-25 =
+    .facts = 작은 파일
+options-gif-rate-50 =
+    .facts = 게임이 100 fps 이상으로 실행될 때만(한 프레임 걸러 기록)
+options-gif-hint = F12(재지정하지 않은 경우)로 시작과 정지. 사진 폴더에 저장
 
 ## 그래픽
 
@@ -85,6 +101,19 @@ options-volume-effects = 효과음
     .facts = 무기, 폭발, 기어, 무전, 그 밖의 소리
 options-volume-warnings = 경고음
     .facts = 실속 경보, 레이더와 미사일 경보, 화재 사이렌, 사이드와인더 톤
+options-volume-rwr = RWR
+    .facts = 레이더 경보음, 경고음 음량의 일부로
+options-section-rwr-tones = 레이더 경보음
+rwr-tones-all = 모두
+    .facts = 나를 조사하는 레이더, 나를 탐지하는 매 스캔, 미사일 발사
+rwr-tones-detect = 탐지만
+    .facts =
+        레이더가 나를 탐지할 때 한 번(레이더가 잠시 놓친 뒤에는 다시)
+        그리고 미사일 발사
+rwr-tones-launch = 발사만
+    .facts = 나를 향해 발사된 미사일만
+rwr-tones-off = 끔
+    .facts = 레이더 경보음 없음(경고등과 화면은 계속 경고)
 options-section-cockpit = 조종석
 options-low-pass = 엔진 로패스
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = 수증기와 하강풍
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        급기동 시 날개 끝에서 수증기 흔적
+        낮게 호버링하는 헬기가 먼지를, 물 위에서는 물보라를 일으킴
+        움직이는 차량이 뒤로 먼지를 일으킴
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

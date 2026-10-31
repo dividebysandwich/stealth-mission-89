@@ -35,11 +35,27 @@ options-auto-trim = Auto trim
         Trim manwali: Alt + vleġeġ, Alt + Home iċċentrah
 options-tooltips = Tooltips tal-kokpit
     .facts = X'inhi kontroll jew display tal-kokpit, taħt il-maws jew ras is-swaba' f'VR
+options-player-labels = Ismijiet tal-plejers
+    .facts = Multiplayer: l-ismijiet tal-piloti l-oħra fuq l-ajruplani tagħhom, kemm jekk ikunu 'l bogħod
+options-label-size =
+    .facts =
+        Daqs tal-ismijiet tal-plejers
+        50%: id-default
 options-section-vr-size = Daqs tal-kokpit f'VR
 options-vr-size =
     .facts =
         Id-daqs tal-kokpit (u tad-dinja) fil-headset
         100%: daqs naturali
+options-section-gif = Reġistrazzjoni GIF
+options-gif-size = DAQS
+options-gif-rate = FRAMES
+options-gif-scale-100 =
+    .facts = Ir-riżoluzzjoni sħiħa tat-tieqa: fajls kbar
+options-gif-scale-25 =
+    .facts = Fajls żgħar
+options-gif-rate-50 =
+    .facts = Biss meta l-logħba tmur b'100 fps jew aktar (jinqabad frame kull tnejn)
+options-gif-hint = F12 (sakemm ma jinbidilx) jibda u jwaqqaf; jiġi ssejvjat fil-folder Stampi
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Effetti
     .facts = Armi, splużjonijiet, landing gear, radju u l-bqija
 options-volume-warnings = Allarmi
     .facts = Il-qarn tal-stall, twissijiet tar-radar u tal-missili, is-sirena tan-nar, it-toni tas-Sidewinder
+options-volume-rwr = RWR
+    .facts = It-toni tat-twissija tar-radar, bħala parti mill-volum tat-twissijiet
+options-section-rwr-tones = Toni tat-twissija tar-radar
+rwr-tones-all = KOLLHA
+    .facts = Radar li jdawlek, kull sweep li jsibek, tnedijiet ta' missili
+rwr-tones-detect = SKOPERTA BISS
+    .facts =
+        Ton wieħed meta radar isibek (mill-ġdid wara li r-radars jitilquk għal ftit)
+        U tnedijiet ta' missili
+rwr-tones-launch = TNEDIJIET BISS
+    .facts = Biss missili mniedja fuqek
+rwr-tones-off = MITFI
+    .facts = L-ebda ton tat-twissija tar-radar (id-dwal u l-iskrins xorta jwissu)
 options-section-cockpit = Kokpit
 options-low-pass = Low-pass tal-mutur
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Fwar u fluss tar-rotor
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        F'manuvri ħorox, linji ta' fwar mill-ponot tal-ġwienaħ
+        Ħelikopter f'hover baxx iqajjem it-trab, jew bexx fuq l-ilma
+        Vetturi jimxu jqajmu t-trab warajhom
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

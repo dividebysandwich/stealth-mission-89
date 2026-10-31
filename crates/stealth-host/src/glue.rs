@@ -2,11 +2,12 @@
 //! simulation shows the campaign, and the missions the campaign's sorties become.
 
 use stealth_campaign::{
-    AaaView, CampaignSetup, CampaignState, FlightView, MissionKind, PlayerId, PlayerPos, Report,
-    Side, Sortie, SortieEnd, WorldView,
+    CampaignSetup, CampaignState, ConvoyUnit, FlightView, GroundView, MissionKind, PlayerId,
+    PlayerPos, Report, Side, Sortie, SortieEnd, WorldView,
 };
 use stealth_i18n::t;
 use stealth_mission::{GameData, Mission, MissionKind as GenKind, MissionSettings, Seed};
+use stealth_sim::aaa::GroundKind;
 use stealth_sim::{Sim, fflags, oflags};
 
 /// Metres per world unit.
@@ -38,20 +39,51 @@ pub fn base_mission(setup: &CampaignSetup, data: &GameData) -> anyhow::Result<Mi
 
 /// The theater's land and water, for the campaign to put its forward batteries on land.
 pub fn terrain(setup: &CampaignSetup, data: &GameData) -> stealth_campaign::Terrain {
-    stealth_campaign::Terrain(data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new))
+    let relief = crate::theater::relief(&setup.theater_code.to_ascii_lowercase());
+    let relief = (!relief.bytes().is_empty()).then(|| std::sync::Arc::new(relief.bytes().to_vec()));
+    stealth_campaign::Terrain::new(
+        data.theaters.get(setup.theater).cloned().map(std::sync::Arc::new),
+        relief,
+    )
+}
+
+/// The simulation's vehicles of a side's convoy.
+pub fn convoy_kinds(side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
+    let blue = side == Side::Blue;
+    let (tank, ifv) = stealth_sim::campaign::garrison_kinds(blue);
+    units
+        .iter()
+        .map(|u| match u {
+            ConvoyUnit::Tank => tank,
+            ConvoyUnit::Carrier => ifv,
+            ConvoyUnit::Escort if blue => GroundKind::Gepard,
+            ConvoyUnit::Escort => GroundKind::Zsu,
+        })
+        .collect()
 }
 
 /// What the simulation shows the campaign.
 pub fn world_view(sim: &Sim) -> WorldView {
     let aaa = sim
-        .aaa_units()
+        .units()
         .iter()
         .enumerate()
-        .map(|(k, u)| AaaView {
-            x: u.x,
-            y: u.y,
-            side: side_of(sim.aaa_blue(k)),
-            alive: !u.destroyed,
+        .map(|(k, u)| {
+            let convoy = sim.unit_convoy(k);
+            let vehicle = match u.kind {
+                k if k.tank() => Some(ConvoyUnit::Tank),
+                k if k.carrier() => Some(ConvoyUnit::Carrier),
+                _ if convoy != 0 => Some(ConvoyUnit::Escort),
+                _ => None,
+            };
+            GroundView {
+                x: u.x,
+                y: u.y,
+                side: side_of(sim.aaa_blue(k)),
+                alive: !u.destroyed,
+                vehicle,
+                convoy,
+            }
         })
         .collect();
     let flights = sim
@@ -80,13 +112,22 @@ pub fn world_view(sim: &Sim) -> WorldView {
             Some(PlayerPos { id: PlayerId(id), x: p.mx, y: p.my, airborne, landed, hover_over })
         })
         .collect();
-    WorldView { aaa, flights, players }
+    WorldView { units: aaa, flights, players }
 }
 
 /// Enemy SAM sites a friendly aircraft detects now: their radar painted a player (his RWR)
 /// or they fire at friendly aircraft, or a friendly aircraft is within their radar's range and
-/// above its horizon (its RWR picks the radar up).
+/// above its horizon (its RWR picks the radar up), or a drone of a command center found it
+/// (the drones carry cameras, not RWRs).
 pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
+    let found: Vec<usize> = sim
+        .uav_known()
+        .iter()
+        .filter_map(|s| match *s {
+            stealth_sim::uav::Seen::Object(o) => Some(o as usize),
+            stealth_sim::uav::Seen::Aaa(_) => None,
+        })
+        .collect();
     let eyes: Vec<(i32, i32, f64)> = sim
         .flights()
         .iter()
@@ -96,7 +137,7 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
                 && u.flags & fflags::DESTROYED == 0
                 && u.speed > 0
         })
-        .filter(|(i, u)| sim.friendly_unit(*i, u.spec))
+        .filter(|(i, u)| sim.friendly_unit(*i, u.spec) && sim.uav_of_flight(*i).is_none())
         .map(|(_, u)| (u.x, u.y, u.alt.max(0) as f64 * WU))
         .collect();
     let objects = sim.objects();
@@ -117,7 +158,7 @@ pub fn spotted(state: &CampaignState, sim: &Sim) -> Vec<Report> {
                 let horizon = 4120.0 * (alt.sqrt() + 3.2) / 15.625;
                 ((x - o.x) as f64).hypot((y - o.y) as f64) < range.min(horizon)
             });
-            (rwr || seen).then_some(Report::SiteSpotted { object: s.object })
+            (rwr || seen || found.contains(&i)).then_some(Report::SiteSpotted { object: s.object })
         })
         .collect()
 }
@@ -250,6 +291,8 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     s.special_model = None;
     let what = match o.objective {
         stealth_campaign::Objective::Battery { .. } => t!(BATTERY_TASK),
+        stealth_campaign::Objective::Armour { .. } => t!(ARMOUR_TASK),
+        stealth_campaign::Objective::Support { .. } => t!(SUPPORT_TASK),
         _ if sortie.aircraft.transport() => describe_heli(o.kind),
         _ => describe(o.kind),
     };
@@ -298,6 +341,9 @@ pub fn airborne(kind: MissionKind) -> bool {
 
 /// What an enemy forward battery's offer asks for (message id).
 pub const BATTERY_TASK: &str = "brief-battery-task";
+/// What the armour columns' offers ask for (message ids).
+pub const ARMOUR_TASK: &str = "brief-armour-task";
+pub const SUPPORT_TASK: &str = "brief-support-task";
 
 /// The world object an objective is about (None: aircraft or an area), what it is for the
 /// kneeboard, and whether it is an area target.
@@ -314,6 +360,8 @@ fn primary_target(
         Objective::Sead { ref sites, .. } => sites.first().copied(),
         Objective::Cas { .. } => return (None, t!("brief-shape-guns").into(), true),
         Objective::Battery { .. } => return (None, t!("brief-shape-battery").into(), true),
+        Objective::Armour { .. } => return (None, t!("brief-shape-armour").into(), true),
+        Objective::Support { .. } => return (None, t!("brief-shape-armour-guns").into(), true),
         _ => return (None, String::new(), false),
     };
     let name = object.and_then(|k| state.site(k)).map_or(String::new(), |s| {
@@ -339,6 +387,19 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         Objective::Sead { ref sites, .. } => t!("brief-sead", count = sites.len()),
         Objective::Cas { ref aaa, .. } => t!("brief-cas", count = aaa.len()),
         Objective::Battery { ref aaa, .. } => t!("brief-battery", count = aaa.len()),
+        Objective::Armour { ref aaa, convoy } => {
+            let to = state
+                .convoys
+                .iter()
+                .find(|v| v.id == convoy)
+                .map_or(String::new(), |v| state.places[v.place as usize].name.clone());
+            t!("brief-armour", count = aaa.len(), place = to)
+        }
+        Objective::Support { ref aaa, place, .. } => t!(
+            "brief-support",
+            place = state.places[place as usize].name.clone(),
+            count = aaa.len()
+        ),
         Objective::Strike { airfield, .. } => t!("brief-strike", place = site(airfield)),
         Objective::Interdict { object, .. } => t!("brief-interdict", place = site(object)),
         Objective::AntiShip { .. } => t!("brief-anti-ship").into(),
@@ -386,4 +447,37 @@ pub fn default_base(state: &CampaignState) -> Option<usize> {
     let (x, y) =
         front.first().and_then(|&p| state.place(p)).map_or((0x4000, 0x4000), |p| (p.x, p.y));
     state.nearest_player_base(x, y).map(|b| b as usize)
+}
+
+/// The kind of player site a mannable unit is (a Patriot battery: its radar).
+pub fn defence_kind(kind: stealth_sim::aaa::GroundKind) -> Option<stealth_campaign::DefenceKind> {
+    use stealth_campaign::DefenceKind;
+    use stealth_sim::aaa::GroundKind;
+    match kind {
+        GroundKind::Gepard => Some(DefenceKind::Gepard),
+        GroundKind::PatriotRadar => Some(DefenceKind::Patriot),
+        GroundKind::DroneCenter => Some(DefenceKind::Drones),
+        _ => None,
+    }
+}
+
+/// The unit that keeps a site's stockpile (a Patriot battery's radar).
+pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::GroundKind {
+    use stealth_campaign::DefenceKind;
+    use stealth_sim::aaa::GroundKind;
+    match kind {
+        DefenceKind::Gepard => GroundKind::Gepard,
+        DefenceKind::Patriot => GroundKind::PatriotRadar,
+        DefenceKind::Drones => GroundKind::DroneCenter,
+    }
+}
+
+/// A new site the players supplied stands at (x, y).
+pub fn place_site(sim: &mut Sim, kind: stealth_campaign::DefenceKind, x: i32, y: i32) {
+    use stealth_campaign::DefenceKind;
+    match kind {
+        DefenceKind::Gepard => sim.place_gepard(x, y),
+        DefenceKind::Patriot => sim.place_patriot(x, y),
+        DefenceKind::Drones => sim.place_drone_center(x, y),
+    }
 }

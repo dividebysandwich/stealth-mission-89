@@ -49,6 +49,12 @@ planner-uav = Sovražni UAV
 planner-edit-hint = Povlecite točko za premik, karto za pomik. Kliknite odsek za dodajanje točke, desni klik jo odstrani. Kolesce: povečava.
 planner-reset = PONASTAVI
 planner-view-hint = Povlecite karto za pomik. Kolesce: povečava.
+planner-layers = PLASTI
+planner-layer-sams = Radar / položaj SAM
+planner-radar-types = Vrste radarjev
+planner-layer-pulse = Doseg zaznave pulznega radarja
+planner-layer-doppler = Doseg zaznave dopplerjevega radarja
+planner-layer-airfield = Letališče
 
 ## Shranjene misije
 

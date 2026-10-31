@@ -35,11 +35,27 @@ options-auto-trim = Automatische trim
         Handmatige trim: Alt + pijltjestoetsen, Alt + Home centreert hem
 options-tooltips = Cockpit-tooltips
     .facts = Wat een bedieningselement of display in de cockpit is, onder de muis of een vingertop in VR
+options-player-labels = Spelersnamen
+    .facts = Multiplayer: de namen van de andere piloten boven hun toestel, op elke afstand
+options-label-size =
+    .facts =
+        Grootte van de spelersnamen
+        50%: standaard
 options-section-vr-size = Cockpitgrootte in VR
 options-vr-size =
     .facts =
         Grootte van de cockpit (en de wereld) in de headset
         100%: ware grootte
+options-section-gif = GIF-opname
+options-gif-size = GROOTTE
+options-gif-rate = BEELDEN
+options-gif-scale-100 =
+    .facts = De volle resolutie van het venster: grote bestanden
+options-gif-scale-25 =
+    .facts = Kleine bestanden
+options-gif-rate-50 =
+    .facts = Alleen als het spel op 100 fps of meer draait (elk tweede beeld wordt vastgelegd)
+options-gif-hint = F12 (tenzij anders toegewezen) start en stopt; opgeslagen in uw map Afbeeldingen
 
 ## GRAFISCH
 
@@ -85,6 +101,19 @@ options-volume-effects = Effecten
     .facts = Wapens, explosies, landingsgestel, radio en de rest
 options-volume-warnings = Waarschuwingen
     .facts = Stalhoorn, radar- en raketwaarschuwingen, de brandsirene, de Sidewinder-tonen
+options-volume-rwr = RWR
+    .facts = De radarwaarschuwingstonen, als deel van het volume van de waarschuwingen
+options-section-rwr-tones = Radarwaarschuwingstonen
+rwr-tones-all = ALLE
+    .facts = Een radar die u belicht, elke zwaai die u detecteert, raketlanceringen
+rwr-tones-detect = ALLEEN DETECTIE
+    .facts =
+        Eén toon wanneer een radar u detecteert (opnieuw nadat de radars u een tijd kwijt waren)
+        En raketlanceringen
+rwr-tones-launch = ALLEEN LANCERINGEN
+    .facts = Alleen raketten die op u worden afgevuurd
+rwr-tones-off = UIT
+    .facts = Geen radarwaarschuwingstonen (de lampjes en schermen waarschuwen nog steeds)
 options-section-cockpit = Cockpit
 options-low-pass = Laagdoorlaatfilter motor
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Damp en rotorwind
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Bij scherpe manoeuvres dampsporen van de vleugeltippen
+        Een laag zwevende helikopter blaast stof op, of nevel boven water
+        Rijdende voertuigen trekken een stofwolk achter zich
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

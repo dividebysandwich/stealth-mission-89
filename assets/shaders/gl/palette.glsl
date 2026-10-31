@@ -29,6 +29,10 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    // The key light's cascades (palette.wgsl; unused here: no sun shadows).
+    mat4 shadow_cascades[4];
+    vec4 shadow_texel;
+    vec4 shadow_light;
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     vec4 storm_haze;
     vec4 burst;
@@ -36,10 +40,13 @@ layout(std140) uniform Globals {
     vec4 atmos;
     vec4 shadow_grid;
     vec4 shadow_far;
+    // Night sky extras (x, y, z); desert specks (w).
     vec4 sky_fx;
     vec4 retro;
     vec4 shadow_cells[144];
     vec4 shadow_clouds[112];
+    // The stars' frame (palette.wgsl).
+    vec4 star_frame[3];
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -525,11 +532,78 @@ vec3 sun_glare(vec3 dir) {
 
 const float MOON_RADIUS = 0.022;
 const vec3 MOON_COLOR = vec3(0.82, 0.80, 0.74);
-const float STAR_CELL = 0.012;
-const float STAR_SHARE = 0.035;
+const float STAR_ROWS = 512.0;
+const float STAR_COLS = 1020.0;
+const float STAR_PIXELS = 0.55;
+const float STAR_MIN_RADIUS = 0.00015;
+const float STAR_GROW = 2.0;
+const float PI = 3.14159265;
+const float TAU = 6.28318531;
+
+// The star catalogue's cells (stars.rs `grid`; render.rs binds it to unit STAR_UNIT).
+uniform sampler2D u_stars;
 
 float hash2(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// palette.wgsl `star_row_cells`, `star_light` and `star_field`.
+float star_row_cells(float row) {
+    return max(floor(STAR_COLS * cos(((row + 0.5) / STAR_ROWS - 0.5) * PI) + 0.5), 1.0);
+}
+
+vec3 star_light(float row, float col, float n, vec3 e, float r, float lim, float ext) {
+    vec4 t = texelFetch(u_stars, ivec2(int(col), int(row)), 0);
+    float mag = (t.b * 255.0 - 1.0) / 25.0 - 2.0 + ext;
+    if (t.b == 0.0 || mag > lim + 0.5) { return vec3(0.0); }
+    float ra = (col + t.r) / n * TAU;
+    float dec = (row + t.g) / STAR_ROWS * PI - 0.5 * PI;
+    vec3 s = vec3(cos(dec) * cos(ra), cos(dec) * sin(ra), sin(dec));
+    float grow = 1.0 + (STAR_GROW - 1.0) * clamp((1.0 - mag) / 2.5, 0.0, 1.0);
+    if (length(e - s) >= r * grow) { return vec3(0.0); }
+    float bv = t.a * 255.0 / 80.0 - 0.5;
+    vec3 c = mix(vec3(0.72, 0.82, 1.0), vec3(1.0, 0.97, 0.92), smoothstep(-0.3, 0.4, bv));
+    c = mix(c, vec3(1.0, 0.78, 0.55), smoothstep(0.4, 1.6, bv));
+    return c * min(pow(10.0, -0.3 * (mag - 1.0)), 1.0) * smoothstep(lim + 0.5, lim - 0.5, mag);
+}
+
+vec3 star_field(vec3 nd, float stars, float px) {
+    vec3 e = mat3(g.star_frame[0].xyz, g.star_frame[1].xyz, g.star_frame[2].xyz) * nd;
+    float up = (asin(clamp(e.z, -1.0, 1.0)) / PI + 0.5) * STAR_ROWS;
+    float row = clamp(floor(up), 0.0, STAR_ROWS - 1.0);
+    float n = star_row_cells(row);
+    float around = fract(atan(e.y, e.x) / TAU);
+    float across = around * n;
+    float col = min(floor(across), n - 1.0);
+    float dim = 1.0 - stars;
+    float lim = 6.0 - 7.5 * dim * dim;
+    float ext = 0.2 * (1.0 / max(nd.y, 0.03) - 1.0);
+    float r = max(px * STAR_PIXELS, STAR_MIN_RADIUS);
+    vec3 light = star_light(row, col, n, e, r, lim, ext);
+    float reach = r * STAR_GROW;
+    float side = reach * n / (TAU * max(sqrt(1.0 - e.z * e.z), 1e-3));
+    float fx = across - col;
+    if (fx < side) {
+        light += star_light(row, col == 0.0 ? n - 1.0 : col - 1.0, n, e, r, lim, ext);
+    } else if (fx > 1.0 - side) {
+        light += star_light(row, col + 1.0 >= n ? 0.0 : col + 1.0, n, e, r, lim, ext);
+    }
+    float fy = up - row;
+    float high = reach * STAR_ROWS / PI;
+    float row2 = -1.0;
+    if (fy < high && row > 0.0) {
+        row2 = row - 1.0;
+    } else if (fy > 1.0 - high && row < STAR_ROWS - 1.0) {
+        row2 = row + 1.0;
+    }
+    if (row2 >= 0.0) {
+        float n2 = star_row_cells(row2);
+        light += star_light(row2, min(floor(around * n2), n2 - 1.0), n2, e, r, lim, ext);
+    }
+    float low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+    float h = hash2(vec2(col, row));
+    light *= max(1.0 + g.sky_fx.z * low * 0.7 * sin(g.dots.y * (7.0 + 9.0 * h) + h * 400.0), 0.0);
+    return light * smoothstep(0.0, 0.05, nd.y);
 }
 
 // palette.wgsl `aurora` and `meteor`.
@@ -579,25 +653,7 @@ vec3 night_sky(vec3 bg_in, vec3 nd, float px) {
     float daylight = clamp(g.light_info.y, 0.0, 1.0);
     float stars = g.sky_moon.w;
     if (stars > 0.0) {
-        float az = atan(nd.x, -nd.z);
-        float el = asin(clamp(nd.y, -1.0, 1.0));
-        float row = floor(el / STAR_CELL);
-        float w = STAR_CELL / max(cos((row + 0.5) * STAR_CELL), 0.05);
-        vec2 cell = vec2(floor(az / w), row);
-        float h = hash2(cell);
-        if (h < STAR_SHARE) {
-            float c_az = (cell.x + 0.5 + 0.6 * (hash2(cell + 7.1) - 0.5)) * w;
-            float c_el = (cell.y + 0.5 + 0.6 * (hash2(cell + 3.3) - 0.5)) * STAR_CELL;
-            vec3 star = vec3(cos(c_el) * sin(c_az), sin(c_el), -cos(c_el) * cos(c_az));
-            float d = length(nd - star);
-            float r = max(STAR_CELL * 0.03, px * 0.55);
-            float core = d < r ? 1.0 : 0.0;
-            float mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
-            float low = 1.0 - smoothstep(0.05, 0.5, nd.y);
-            mag *= max(1.0 + g.sky_fx.z * low * 0.7 * sin(g.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
-            float alt_fade = smoothstep(0.0, 0.15, nd.y);
-            bg += vec3(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
-        }
+        bg += star_field(nd, stars, px);
         bg += (aurora(nd) + vec3(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
     }
     vec3 sun = normalize(g.sky_sun.xyz);
@@ -942,6 +998,9 @@ const float WATER_SPECKS = 0.35;
 const vec2 WATER_DOTS_HIGH = vec2(80.0, 300.0);
 // Least speck radius up close (metres); otherwise a dot light's size.
 const float WATER_SPECK_M = 0.25;
+// The desert's specks (linear): the sand darkened to brown, and pale sand to mix in.
+const vec3 SAND_DARK = vec3(0.5, 0.4, 0.3);
+const vec3 SAND_LIGHT = vec3(0.85, 0.7, 0.45);
 
 // A dot light's size in this view's pixels (the vertex shader's DOT).
 float dot_pixels() {
@@ -962,19 +1021,19 @@ vec2 pixels(vec2 off, vec2 dx, vec2 dy) {
     return vec2(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
 }
 
-vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
-    float h = eye_pos().y - world.y;
-    bool level = abs(normalize(face).y) > 0.95;
+// Specks pinned to the ground plane at `xz`, seen from `h` metres above it: their weight 0..1
+// (x) and whether the one here is a light one (y).
+vec2 specks(vec2 xz, float h, float foot, vec2 gdx, vec2 gdy, bool modern) {
     float fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
         * (1.0 - smoothstep(0.15, 0.4, foot / WATER_GRID));
-    if (!level || fade <= 0.0) {
-        return rgb;
+    if (fade <= 0.0) {
+        return vec2(0.0);
     }
-    vec2 p = (world.xz + g.noise.xy) / WATER_GRID;
+    vec2 p = (xz + g.noise.xy) / WATER_GRID;
     vec2 cell = floor(p);
     float n = hash2(cell);
     if (n >= WATER_SPECKS) {
-        return rgb;
+        return vec2(0.0);
     }
     vec2 at = cell + vec2(hash2(cell + 17.0), hash2(cell + 43.0));
     // Distance from the speck in screen pixels (a little world size up close).
@@ -982,8 +1041,24 @@ vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy,
     float px = length(pixels(off, gdx, gdy));
     float r = max(dot_pixels() * 0.5, WATER_SPECK_M / max(foot, 1e-3));
     float k = modern ? 1.0 - smoothstep(r - 0.3, r + 0.3, px) : (px < r ? 1.0 : 0.0);
-    vec3 tone = n < WATER_SPECKS * 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
-    return mix(rgb, tone, k * fade);
+    return vec2(k * fade, n < WATER_SPECKS * 0.5 ? 1.0 : 0.0);
+}
+
+vec3 water_dots(vec3 rgb, vec3 world, vec3 face, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    if (abs(normalize(face).y) <= 0.95) {
+        return rgb;
+    }
+    vec2 s = specks(world.xz, eye_pos().y - world.y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? rgb * 0.4 + vec3(0.4) : rgb * 0.4;
+    return mix(rgb, tone, s.x);
+}
+
+// The desert theaters' ground gradient (g.sky_fx.w): the water's specks in earth colours, a
+// darker brown and a pale sand, on the ground plane at `xz`.
+vec3 sand_dots(vec3 rgb, vec2 xz, float foot, vec2 gdx, vec2 gdy, bool modern) {
+    vec2 s = specks(xz, eye_pos().y, foot, gdx, gdy, modern);
+    vec3 tone = s.y > 0.5 ? mix(rgb, SAND_LIGHT, 0.5) : rgb * SAND_DARK;
+    return mix(rgb, tone, s.x);
 }
 
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
@@ -1028,6 +1103,9 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         bg = pal(band(dir).x);
     }
     vec3 eye = eye_pos();
+    if (g.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
+        bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), foot, gdx, gdy, modern);
+    }
     bool ground_lit = false;
 #ifdef LIT
     uint flags = uint(g.ambient.w);
@@ -1164,6 +1242,15 @@ void main() {
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);
     vec2 gdy = dFdy(v_world.xz);
+#ifdef BACKGROUND
+    // The background sphere: the ground plane (y = 0) where the view ray meets it (the
+    // desert's specks).
+    vec3 ray = v_world - eye_pos();
+    vec3 ground = eye_pos() + ray * (eye_pos().y / max(-ray.y, 1e-4));
+    foot = length(fwidth(ground));
+    gdx = dFdx(ground.xz);
+    gdy = dFdy(ground.xz);
+#endif
     if ((uint(g.light_info.w) & 1u) != 0u) {
         o_colour = vec4(pal(v_word & 0xFFu), 1.0);
         return;

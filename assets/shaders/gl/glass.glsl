@@ -36,28 +36,50 @@ layout(location = 0) out vec4 o_colour;
 
 const vec3 HUD_GREEN = vec3(0.18, 1.0, 0.32);
 
+// Rotated grid taps across a pixel (`canvas`).
+const vec2 GRID[4] = vec2[4](vec2(0.125, 0.375), vec2(0.375, -0.125), vec2(-0.125, -0.375), vec2(-0.375, 0.125));
+
+// The canvas over this pixel: four taps on a rotated grid across the pixel's footprint (about
+// a texel in the headset), averaged. The canvas is inked or not, so one tap a pixel shows its
+// texels' stair steps on every slanted line, and MSAA doesn't help (one shading sample a
+// pixel). Colour is weighted by alpha.
+vec4 canvas(vec2 p, vec2 size) {
+    vec2 dx = dFdx(p);
+    vec2 dy = dFdy(p);
+    vec4 sum = vec4(0.0);
+    for (int i = 0; i < 4; i++) {
+        vec4 c = textureLod(u_base_tex, (p + GRID[i].x * dx + GRID[i].y * dy) / size, 0.0);
+        sum += vec4(c.rgb * c.a, c.a);
+    }
+    return sum * 0.25;
+}
+
 void main() {
     float z = max(-v_dir.z, 1e-4);
     vec2 p = vec2(u_proj.x + u_proj.z * v_dir.x / z, u_proj.y - u_proj.w * v_dir.y / z);
     vec2 size = vec2(textureSize(u_base_tex, 0));
     bool inside = p.x >= 0.0 && p.y >= 0.0 && p.x < size.x && p.y < size.y;
     // (The canvas's rows go top down, as Bevy's images.)
-    vec4 c = textureLod(u_base_tex, p / size, 0.0);
+    vec4 c = canvas(p, size);
     if (u_style.x > 0.5) {
-        float a = inside ? clamp(c.a * 1.2, 0.0, 1.0) : 0.0;
+        // (A one-channel texture: the coverage is in r, its alpha is 1.)
+        float a = inside ? clamp(c.r * 1.2, 0.0, 1.0) : 0.0;
         if (a <= 0.01) {
             if (u_tint.a <= 0.0) { discard; }
             o_colour = u_tint;
             return;
         }
-        o_colour = vec4(HUD_GREEN * u_style.y * (0.75 + 0.6 * c.a), a);
+        o_colour = vec4(HUD_GREEN * u_style.y * (0.75 + 0.6 * c.r), a);
         return;
     }
-    if (inside && c.a > 0.5) {
-        o_colour = vec4(c.rgb, 1.0);
+    // The ink over the tint over what is behind.
+    float a = inside ? c.a : 0.0;
+    if (a <= 0.01) {
+        if (u_tint.a <= 0.0) { discard; }
+        o_colour = u_tint;
         return;
     }
-    if (u_tint.a <= 0.0) { discard; }
-    o_colour = u_tint;
+    float out_a = a + (1.0 - a) * u_tint.a;
+    o_colour = vec4((c.rgb + (1.0 - a) * u_tint.a * u_tint.rgb) / out_a, out_a);
 }
 #endif

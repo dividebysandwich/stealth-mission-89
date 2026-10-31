@@ -206,6 +206,11 @@ aircraft-a10 =
         Flygplan för nära understöd
         Långsamt och robust, 30 mm kanon
         A-10C-cockpit, två MFD
+aircraft-av8b =
+    .facts =
+        V/STOL-attackflygplan
+        Vektoriserad dragkraft: hovring, landar var som helst
+        Munstycksreglage: R / F, Skift för stoppen
 aircraft-uh60 =
     .facts =
         Transporthelikopter

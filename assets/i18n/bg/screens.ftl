@@ -49,6 +49,12 @@ planner-uav = Вражески UAV
 planner-edit-hint = Влачете точка, за да я преместите, картата - за да я местите. Щракнете върху отсечка, за да добавите точка, десен бутон - за да я премахнете. Колелце: мащаб.
 planner-reset = НУЛИРАЙ
 planner-view-hint = Влачете картата, за да я местите. Колелце: мащаб.
+planner-layers = СЛОЕВЕ
+planner-layer-sams = Радар / позиция SAM
+planner-radar-types = Типове радари
+planner-layer-pulse = Обсег на засичане на импулсен радар
+planner-layer-doppler = Обсег на засичане на доплеров радар
+planner-layer-airfield = Летище
 
 ## Записани мисии
 

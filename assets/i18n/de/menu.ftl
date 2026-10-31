@@ -206,6 +206,11 @@ aircraft-a10 =
         Flugzeug zur Luftnahunterstützung
         Langsam und robust, 30-mm-Kanone
         A-10C-Cockpit, zwei MFDs
+aircraft-av8b =
+    .facts =
+        Senkrechtstart-Erdkampfflugzeug
+        Schubvektor: Schwebeflug, überall landen
+        Düsenhebel: R / F, Umschalt für die Anschläge
 aircraft-uh60 =
     .facts =
         Transporthubschrauber

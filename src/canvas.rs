@@ -7,7 +7,7 @@ use std::sync::Arc;
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 
 use crate::palette::Palette;
 
@@ -15,51 +15,284 @@ pub struct CanvasPlugin;
 
 impl Plugin for CanvasPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CanvasMips>()
-            .add_plugins(
-                bevy::render::extract_resource::ExtractResourcePlugin::<CanvasMips>::default(),
-            )
-            .add_systems(
-                PostUpdate,
-                upload_canvases.in_set(CanvasUpload).run_if(resource_exists::<Palette>),
-            );
+        app.add_systems(
+            PostUpdate,
+            upload_canvases.in_set(CanvasUpload).run_if(resource_exists::<Palette>),
+        );
+        // With Bevy's renderer the render world writes the canvases' textures; without it
+        // (`--gl-vr`) glvr uploads the changed image assets.
         if let Some(render) = app.get_sub_app_mut(bevy::render::RenderApp) {
-            render.add_systems(
-                bevy::render::Render,
-                write_canvas_mips.in_set(bevy::render::RenderSystems::PrepareResources),
-            );
+            render
+                .init_resource::<gpu::Pending>()
+                .add_systems(bevy::render::ExtractSchedule, gpu::extract)
+                .add_systems(
+                    bevy::render::Render,
+                    gpu::write.in_set(bevy::render::RenderSystems::PrepareResources),
+                );
+            app.init_resource::<CanvasWrites>();
         }
     }
 }
 
-/// The lower mip levels of the mipmapped canvases uploaded this frame: Bevy rewrites only the
-/// first level of a texture it already has, so these are written after it (`write_canvas_mips`).
-#[derive(Resource, Default, Clone, bevy::render::extract_resource::ExtractResource)]
-struct CanvasMips(Vec<(AssetId<Image>, usize, usize, usize, Vec<u8>)>);
+/// The canvases' new pixels for the render world (`gpu`): with Bevy's renderer the image assets
+/// stay as they were made, so Bevy doesn't copy each changed one whole (its mip levels too)
+/// into the render world every frame.
+#[derive(Resource, Default)]
+struct CanvasWrites {
+    queue: Vec<CanvasWrite>,
+    /// Buffers back from the render world, to fill again (new ones of these sizes would cost
+    /// the page faults of fresh memory every frame).
+    spare: Vec<Vec<u8>>,
+}
 
-fn write_canvas_mips(
-    mips: Res<CanvasMips>,
-    images: Res<bevy::render::render_asset::RenderAssets<bevy::render::texture::GpuImage>>,
-    queue: Res<bevy::render::renderer::RenderQueue>,
-) {
-    use bevy::render::render_resource::{TexelCopyBufferLayout, TexelCopyTextureInfo};
-    for (id, w, h, levels, data) in &mips.0 {
-        let Some(gpu) = images.get(*id) else { continue };
-        let mut offset = 0;
-        for (level, (mw, mh)) in mip_sizes(*w, *h, *levels).into_iter().enumerate().skip(1) {
-            let len = mw * mh * 4;
-            let Some(bytes) = data.get(offset..offset + len) else { break };
+/// Mip levels of `CanvasTexture::mipmapped`.
+const MIPS: usize = 4;
+
+/// Buffers kept for reuse.
+const SPARE: usize = 16;
+
+struct CanvasWrite {
+    image: AssetId<Image>,
+    /// The texture's width, and the rows written: from `top`, as many as `data` holds.
+    width: u32,
+    top: u32,
+    /// Bytes per texel: 4, or 1 for a coverage texture.
+    texel: u32,
+    /// Mip levels, made from the first on the GPU.
+    mips: u32,
+    /// The first level's rows.
+    data: Vec<u8>,
+}
+
+/// Render world: the canvas writes into their textures, and the mip levels drawn from them.
+mod gpu {
+    use bevy::prelude::*;
+    use bevy::render::MainWorld;
+    use bevy::render::render_asset::RenderAssets;
+    use bevy::render::render_resource::*;
+    use bevy::render::renderer::{PendingCommandBuffers, RenderDevice, RenderQueue};
+    use bevy::render::texture::GpuImage;
+
+    use super::{CanvasWrite, CanvasWrites};
+
+    /// Writes waiting for their textures (a canvas made this frame), in order, and how many
+    /// frames they have waited.
+    #[derive(Resource, Default)]
+    pub struct Pending {
+        writes: Vec<(CanvasWrite, u8)>,
+        /// Written buffers, going back to the main world.
+        done: Vec<Vec<u8>>,
+    }
+
+    /// Frames a write waits for its texture before it is dropped (the image is gone).
+    const PATIENCE: u8 = 30;
+
+    pub fn extract(mut main: ResMut<MainWorld>, mut pending: ResMut<Pending>) {
+        let Some(mut writes) = main.get_resource_mut::<CanvasWrites>() else { return };
+        let pending = &mut *pending;
+        pending.writes.extend(writes.queue.drain(..).map(|w| (w, 0)));
+        let room = super::SPARE.saturating_sub(writes.spare.len());
+        writes.spare.extend(pending.done.drain(..).take(room));
+        pending.done.clear();
+    }
+
+    pub fn write(
+        mut pending: ResMut<Pending>,
+        images: Res<RenderAssets<GpuImage>>,
+        device: Res<RenderDevice>,
+        queue: Res<RenderQueue>,
+        mut submit: ResMut<PendingCommandBuffers>,
+        mut mipper: Local<Option<Mipper>>,
+    ) {
+        if pending.writes.is_empty() {
+            return;
+        }
+        let mut encoder = None;
+        let Pending { writes, done } = &mut *pending;
+        writes.retain_mut(|(w, age)| {
+            let Some(gpu) = images.get(w.image) else {
+                *age += 1;
+                return *age < PATIENCE;
+            };
+            let (width, row) = (w.width, w.width * w.texel);
+            let height = w.data.len() as u32 / row;
             queue.write_texture(
-                TexelCopyTextureInfo { mip_level: level as u32, ..gpu.texture.as_image_copy() },
-                bytes,
+                TexelCopyTextureInfo {
+                    origin: Origin3d { x: 0, y: w.top, z: 0 },
+                    ..gpu.texture.as_image_copy()
+                },
+                &w.data,
                 TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(mw as u32 * 4),
-                    rows_per_image: Some(mh as u32),
+                    bytes_per_row: Some(row),
+                    rows_per_image: Some(height),
                 },
-                Extent3d { width: mw as u32, height: mh as u32, depth_or_array_layers: 1 },
+                Extent3d { width, height, depth_or_array_layers: 1 },
             );
-            offset += len;
+            if w.mips > 1 {
+                let encoder = encoder.get_or_insert_with(|| {
+                    device.create_command_encoder(&CommandEncoderDescriptor {
+                        label: Some("canvas_mips"),
+                    })
+                });
+                mipper.get_or_insert_with(|| Mipper::new(&device)).levels(
+                    &device,
+                    encoder,
+                    &gpu.texture,
+                    w.mips,
+                );
+            }
+            done.push(std::mem::take(&mut w.data));
+            false
+        });
+        // In the frame's submission, ahead of the passes that show them (and after the writes:
+        // a submission carries the queue's writes before its commands).
+        if let Some(encoder) = encoder {
+            submit.push([encoder.finish()]);
+        }
+    }
+
+    /// Each mip level drawn from the one above, a texel from the bilinear sample between four:
+    /// their average. Through views as plain RGBA, so the sRGB bytes average as they did on
+    /// the CPU.
+    pub struct Mipper {
+        pipeline: RenderPipeline,
+        layout: BindGroupLayout,
+        sampler: Sampler,
+    }
+
+    /// The view format of the mip passes (`CanvasTexture::mipmapped_levels` allows it).
+    pub const VIEW: TextureFormat = TextureFormat::Rgba8Unorm;
+
+    const SHADER: &str = r"
+        @group(0) @binding(0) var src: texture_2d<f32>;
+        @group(0) @binding(1) var bilinear: sampler;
+
+        struct Out {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertex(@builtin(vertex_index) i: u32) -> Out {
+            let uv = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
+            var out: Out;
+            out.position = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, 0.0, 1.0);
+            out.uv = uv;
+            return out;
+        }
+
+        @fragment
+        fn fragment(in: Out) -> @location(0) vec4<f32> {
+            return textureSampleLevel(src, bilinear, in.uv, 0.0);
+        }
+    ";
+
+    impl Mipper {
+        fn new(device: &RenderDevice) -> Self {
+            let module = device.create_and_validate_shader_module(ShaderModuleDescriptor {
+                label: Some("canvas_mips"),
+                source: ShaderSource::Wgsl(SHADER.into()),
+            });
+            let layout = device.create_bind_group_layout(
+                "canvas_mips",
+                &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            );
+            let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("canvas_mips"),
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
+            });
+            let pipeline = device.create_render_pipeline(&RawRenderPipelineDescriptor {
+                label: Some("canvas_mips"),
+                layout: Some(&pipeline_layout),
+                vertex: RawVertexState {
+                    module: &module,
+                    entry_point: Some("vertex"),
+                    compilation_options: default(),
+                    buffers: &[],
+                },
+                primitive: default(),
+                depth_stencil: None,
+                multisample: default(),
+                fragment: Some(RawFragmentState {
+                    module: &module,
+                    entry_point: Some("fragment"),
+                    compilation_options: default(),
+                    targets: &[Some(ColorTargetState {
+                        format: VIEW,
+                        blend: None,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            });
+            let sampler = device.create_sampler(&SamplerDescriptor {
+                label: Some("canvas_mips"),
+                mag_filter: FilterMode::Linear,
+                min_filter: FilterMode::Linear,
+                ..default()
+            });
+            Self { pipeline, layout, sampler }
+        }
+
+        fn levels(
+            &self,
+            device: &RenderDevice,
+            encoder: &mut CommandEncoder,
+            texture: &Texture,
+            mips: u32,
+        ) {
+            let view = |level| {
+                texture.create_view(&TextureViewDescriptor {
+                    format: Some(VIEW),
+                    base_mip_level: level,
+                    mip_level_count: Some(1),
+                    ..default()
+                })
+            };
+            let mut src = view(0);
+            for level in 1..mips {
+                let dst = view(level);
+                let bind = device.create_bind_group(
+                    "canvas_mips",
+                    &self.layout,
+                    &BindGroupEntries::sequential((&src, &self.sampler)),
+                );
+                let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                    label: Some("canvas_mips"),
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view: &dst,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: Operations { load: LoadOp::Clear(default()), store: StoreOp::Store },
+                    })],
+                    ..default()
+                });
+                pass.set_pipeline(&self.pipeline);
+                pass.set_bind_group(0, &bind, &[]);
+                pass.draw(0..3, 0..1);
+                drop(pass);
+                src = dst;
+            }
         }
     }
 }
@@ -319,24 +552,6 @@ impl Canvas {
 
 /// Thick strokes for the high-resolution displays (sub-pixel endpoints, round pens).
 impl Canvas {
-    /// Round pen of width `w` stamped at (x, y).
-    fn dot(&mut self, x: f32, y: f32, w: f32, c: u8) {
-        let s = self.scale as f32;
-        let (x, y, w) = (x * s, y * s, w * s);
-        let r = w * 0.5;
-        let (x0, x1) = ((x - r).round() as i32, (x + r).round() as i32);
-        let (y0, y1) = ((y - r).round() as i32, (y + r).round() as i32);
-        let rr = r * r + 0.25;
-        for yy in y0..=y1 {
-            for xx in x0..=x1 {
-                let (dx, dy) = (xx as f32 + 0.5 - x, yy as f32 + 0.5 - y);
-                if dx * dx + dy * dy <= rr {
-                    self.set_texel(xx, yy, c);
-                }
-            }
-        }
-    }
-
     /// Line of width `w` from a to b.
     pub fn stroke(&mut self, a: Vec2, b: Vec2, w: f32, c: u8) {
         let [x0, y0, x1, y1] = self.clip;
@@ -360,11 +575,66 @@ impl Canvas {
         } else {
             (a, b)
         };
-        let len = a.distance(b);
-        let steps = (len / (w * 0.35).max(0.5)).ceil().max(1.0) as i32;
-        for i in 0..=steps {
-            let p = a.lerp(b, i as f32 / steps as f32);
-            self.dot(p.x, p.y, w, c);
+        self.capsule(a, b, w, c);
+    }
+
+    /// Every texel whose centre is within the pen's reach of the segment a-b: row by row, the
+    /// span where the row crosses the capsule (one span, the capsule being convex).
+    fn capsule(&mut self, a: Vec2, b: Vec2, w: f32, c: u8) {
+        let s = self.scale as f32;
+        let (a, b) = (a * s, b * s);
+        let r = w * s * 0.5;
+        // As far as a round pen of width w reaches: half a texel past its radius.
+        let rr = r * r + 0.25;
+        let reach = rr.sqrt();
+        let si = self.scale as i32;
+        let [x0, y0, x1, y1] = self.clip;
+        let (tx0, ty0, tx1, ty1) = (x0 * si, y0 * si, (x1 + 1) * si - 1, (y1 + 1) * si - 1);
+        let top = ((a.y.min(b.y) - reach - 0.5).floor() as i32).max(ty0);
+        let bottom = ((a.y.max(b.y) + reach - 0.5).ceil() as i32).min(ty1);
+        let d = b - a;
+        let l2 = d.length_squared();
+        let span = reach * l2.sqrt();
+        let pw = self.pw();
+        for y in top..=bottom {
+            let qy = y as f32 + 0.5;
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            // The round ends.
+            for p in [a, b] {
+                let h = rr - (qy - p.y) * (qy - p.y);
+                if h >= 0.0 {
+                    let h = h.sqrt();
+                    (lo, hi) = (lo.min(p.x - h), hi.max(p.x + h));
+                }
+            }
+            // The band between them: within reach of the line, projecting inside the segment.
+            if l2 > 1e-6 {
+                let dy = qy - a.y;
+                let (mut l, mut h) = (f32::NEG_INFINITY, f32::INFINITY);
+                // |d.x * dy - d.y * (qx - a.x)| <= span
+                if d.y.abs() > 1e-6 {
+                    let (e0, e1) = ((d.x * dy - span) / d.y, (d.x * dy + span) / d.y);
+                    (l, h) = (l.max(a.x + e0.min(e1)), h.min(a.x + e0.max(e1)));
+                } else if (d.x * dy).abs() > span {
+                    h = l;
+                }
+                // 0 <= d.x * (qx - a.x) + d.y * dy <= l2
+                if d.x.abs() > 1e-6 {
+                    let (e0, e1) = (-d.y * dy / d.x, (l2 - d.y * dy) / d.x);
+                    (l, h) = (l.max(a.x + e0.min(e1)), h.min(a.x + e0.max(e1)));
+                } else if !(0.0..=l2).contains(&(d.y * dy)) {
+                    h = l;
+                }
+                if l <= h {
+                    (lo, hi) = (lo.min(l), hi.max(h));
+                }
+            }
+            let x0 = ((lo - 0.5).ceil() as i32).max(tx0);
+            let x1 = ((hi - 0.5).floor() as i32).min(tx1);
+            if x0 <= x1 {
+                let row = y as usize * pw;
+                self.px[row + x0 as usize..=row + x1 as usize].fill(c);
+            }
         }
     }
 
@@ -397,7 +667,12 @@ impl Canvas {
 
     /// Arc from angle a0 to a1 (radians, 0 = right, positive = clockwise on screen).
     pub fn arc(&mut self, centre: Vec2, r: f32, a0: f32, a1: f32, w: f32, c: u8) {
-        let steps = ((r * (a1 - a0).abs() / 3.0) as i32).clamp(8, 256);
+        if !self.ring_shows(centre, r, w) {
+            return;
+        }
+        // About 3 pixel chords, at least 8 a turn.
+        let turn = (a1 - a0).abs() / std::f32::consts::TAU;
+        let steps = ((r * (a1 - a0).abs() / 3.0).max(8.0 * turn).ceil() as i32).clamp(1, 256);
         let mut prev = centre + Vec2::new(a0.cos(), a0.sin()) * r;
         for i in 1..=steps {
             let t = a0 + (a1 - a0) * i as f32 / steps as f32;
@@ -405,6 +680,28 @@ impl Canvas {
             self.stroke(prev, p, w, c);
             prev = p;
         }
+    }
+
+    /// Whether a circle of radius r and pen width w crosses the clip rectangle (threat rings
+    /// far larger than the screen, or wholly off it, are skipped).
+    pub fn ring_shows(&self, centre: Vec2, r: f32, w: f32) -> bool {
+        let (lo, hi) = self.clip_box(w);
+        let near = centre.clamp(lo, hi).distance(centre);
+        let far = (centre - lo).abs().max((centre - hi).abs()).length();
+        near <= r + w && far >= r - w
+    }
+
+    /// Whether a point is within the clip rectangle grown by `pad`.
+    pub fn shows(&self, p: Vec2, pad: f32) -> bool {
+        let (lo, hi) = self.clip_box(pad);
+        p.cmpge(lo).all() && p.cmple(hi).all()
+    }
+
+    /// The clip rectangle (drawing units, its far edges inclusive of their pixels) grown by
+    /// `pad`.
+    fn clip_box(&self, pad: f32) -> (Vec2, Vec2) {
+        let [x0, y0, x1, y1] = self.clip;
+        (Vec2::new(x0 as f32, y0 as f32) - pad, Vec2::new((x1 + 1) as f32, (y1 + 1) as f32) + pad)
     }
 
     /// Rectangle outline (corners a, b) of width w.
@@ -456,6 +753,8 @@ pub struct CanvasTexture {
     pub dirty: bool,
     /// Mip levels of the texture (1: none; the others are built from the canvas on every upload).
     mips: usize,
+    /// One channel, the ink's coverage (`coverage`).
+    coverage: bool,
     /// The pixels, transparency and pictures last uploaded: a redraw that changed nothing (most
     /// frames for the instrument atlas) skips the conversion and the texture upload.
     shown: Option<(Vec<u8>, bool, Placed)>,
@@ -473,34 +772,46 @@ impl CanvasTexture {
 
 impl CanvasTexture {
     pub fn new(canvas: Canvas, images: &mut Assets<Image>, transparent: bool) -> Self {
-        let mut image = Image::new_fill(
-            Extent3d {
-                width: canvas.pw() as u32,
-                height: canvas.ph() as u32,
-                depth_or_array_layers: 1,
-            },
-            TextureDimension::D2,
-            &[0, 0, 0, 0],
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::default(),
-        );
+        let mut image = blank(&canvas, TextureFormat::Rgba8UnormSrgb);
         image.sampler = ImageSampler::nearest();
+        Self::with_image(canvas, images.add(image), transparent, 1, false)
+    }
+
+    /// A one-channel texture of where the canvas is inked (any index but 0), linear filtered:
+    /// the modern HUD and the helmet display, drawn in one colour, upload a quarter of the
+    /// bytes of a palette picture every frame.
+    pub fn coverage(canvas: Canvas, images: &mut Assets<Image>) -> Self {
+        let mut image = blank(&canvas, TextureFormat::R8Unorm);
+        image.sampler = ImageSampler::linear();
+        Self::with_image(canvas, images.add(image), true, 1, true)
+    }
+
+    fn with_image(
+        canvas: Canvas,
+        image: Handle<Image>,
+        transparent: bool,
+        mips: usize,
+        coverage: bool,
+    ) -> Self {
         Self {
             canvas,
-            image: images.add(image),
+            image,
             transparent,
             mask: None,
             pictures: Vec::new(),
             dirty: true,
-            mips: 1,
+            mips,
+            coverage,
             shown: None,
         }
     }
 
     /// A texture with mipmaps and trilinear, anisotropic filtering: thin lines stay readable
-    /// on screens and dials seen from further away than one texel per pixel.
+    /// on screens and dials seen from further away than one texel per pixel. Down to an eighth
+    /// of the size: the cockpit's screens are never seen smaller, and each level is a render
+    /// pass on every upload.
     pub fn mipmapped(canvas: Canvas, images: &mut Assets<Image>, transparent: bool) -> Self {
-        Self::mipmapped_levels(canvas, images, transparent, usize::MAX)
+        Self::mipmapped_levels(canvas, images, transparent, MIPS)
     }
 
     /// `mipmapped` with at most `max_levels` levels (an atlas: the coarser ones would blend
@@ -511,32 +822,30 @@ impl CanvasTexture {
         transparent: bool,
         max_levels: usize,
     ) -> Self {
-        let (w, h) = (canvas.pw(), canvas.ph());
-        let levels = mip_sizes(w, h, max_levels);
-        let mut image = Image::new_fill(
-            Extent3d { width: w as u32, height: h as u32, depth_or_array_layers: 1 },
-            TextureDimension::D2,
-            &[0, 0, 0, 0],
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::default(),
-        );
+        let levels = mip_sizes(canvas.pw(), canvas.ph(), max_levels);
+        let mut image = blank(&canvas, TextureFormat::Rgba8UnormSrgb);
         image.texture_descriptor.mip_level_count = levels.len() as u32;
+        // The render world draws the levels (`gpu::Mipper`).
+        image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT;
+        image.texture_descriptor.view_formats = &[gpu::VIEW];
         image.data = Some(vec![0; levels.iter().map(|(w, h)| w * h * 4).sum()]);
         image.sampler = ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
             anisotropy_clamp: 16,
             ..bevy::image::ImageSamplerDescriptor::linear()
         });
-        Self {
-            canvas,
-            image: images.add(image),
-            transparent,
-            mask: None,
-            pictures: Vec::new(),
-            dirty: true,
-            mips: levels.len(),
-            shown: None,
-        }
+        Self::with_image(canvas, images.add(image), transparent, levels.len(), false)
     }
+}
+
+/// A zeroed texture the canvas' size, RGBA or (`R8Unorm`) one channel.
+fn blank(canvas: &Canvas, format: TextureFormat) -> Image {
+    let size = Extent3d {
+        width: canvas.pw() as u32,
+        height: canvas.ph() as u32,
+        depth_or_array_layers: 1,
+    };
+    let pixel = if format == TextureFormat::R8Unorm { &[0][..] } else { &[0, 0, 0, 0] };
+    Image::new_fill(size, TextureDimension::D2, pixel, format, RenderAssetUsages::default())
 }
 
 /// Mip level sizes down to 1x1, at most `max` of them.
@@ -555,24 +864,31 @@ fn build_mips(data: &mut [u8], w: usize, h: usize, levels: usize) {
     for pair in mip_sizes(w, h, levels).windows(2) {
         let ((sw, sh), (dw, dh)) = (pair[0], pair[1]);
         let (src, dst) = data[start..].split_at_mut(sw * sh * 4);
-        for y in 0..dh {
-            for x in 0..dw {
-                let mut sum = [0u32; 4];
-                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                    let (sx, sy) = ((2 * x + dx).min(sw - 1), (2 * y + dy).min(sh - 1));
-                    let i = (sy * sw + sx) * 4;
-                    for (k, v) in sum.iter_mut().enumerate() {
-                        *v += src[i + k] as u32;
-                    }
-                }
-                let o = (y * dw + x) * 4;
-                for k in 0..4 {
-                    dst[o + k] = ((sum[k] + 2) / 4) as u8;
-                }
+        let src = src.as_chunks::<4>().0;
+        let dst = &mut dst.as_chunks_mut::<4>().0[..dw * dh];
+        for (y, out) in dst.chunks_exact_mut(dw).enumerate() {
+            let rows = [(2 * y).min(sh - 1), (2 * y + 1).min(sh - 1)].map(|r| &src[r * sw..][..sw]);
+            for (x, o) in out.iter_mut().enumerate() {
+                let (c0, c1) = ((2 * x).min(sw - 1), (2 * x + 1).min(sw - 1));
+                *o = average([rows[0][c0], rows[0][c1], rows[1][c0], rows[1][c1]]);
             }
         }
         start += sw * sh * 4;
     }
+}
+
+/// The rounded average of four RGBA texels, channel by channel: two channels at a time in the
+/// halves of a u32 (four bytes' sum fits in 16 bits).
+#[inline]
+fn average(px: [[u8; 4]; 4]) -> [u8; 4] {
+    const LOW: u32 = 0x00ff_00ff;
+    let (mut even, mut odd) = (0x0002_0002, 0x0002_0002);
+    for p in px {
+        let p = u32::from_le_bytes(p);
+        even += p & LOW;
+        odd += (p >> 8) & LOW;
+    }
+    (((even >> 2) & LOW) | (((odd >> 2) & LOW) << 8)).to_le_bytes()
 }
 
 /// Copies the drawn canvases into their textures (PostUpdate): canvases drawn in PostUpdate
@@ -584,11 +900,8 @@ fn upload_canvases(
     palette: Res<Palette>,
     mut images: ResMut<Assets<Image>>,
     mut q: Query<&mut CanvasTexture>,
-    mut mips: ResMut<CanvasMips>,
+    mut writes: Option<ResMut<CanvasWrites>>,
 ) {
-    if !mips.0.is_empty() {
-        mips.0.clear();
-    }
     let all = palette.is_changed();
     // Palette as 8-bit sRGB RGBA (in memory order), and with index 0 see-through.
     let mut lut = [0u32; 256];
@@ -610,56 +923,144 @@ fn upload_canvases(
         let ct = ct.bypass_change_detection();
         ct.dirty = false;
         let placed = ct.placed();
-        let unchanged = ct.shown.as_ref().is_some_and(|(px, t, pics)| {
-            *t == ct.transparent && *px == ct.canvas.px && *pics == placed
-        });
-        if !all && ct.mask.is_none() && unchanged {
-            continue;
-        }
-        let Some(mut img) = images.get_mut(&ct.image) else { continue };
-        let Some(data) = img.data.as_mut() else { continue };
-        let base = ct.canvas.px.len() * 4;
-        let out = data[..base].as_chunks_mut::<4>().0.iter_mut().zip(&ct.canvas.px);
-        match (&ct.mask, ct.transparent) {
-            (Some(mask), true) => {
-                for (i, (o, &c)) in out.enumerate() {
-                    let l = if mask[i] { &see_lut } else { &lut };
-                    *o = l[c as usize].to_le_bytes();
-                }
-            }
-            (_, t) => {
-                let l = if t { &see_lut } else { &lut };
-                for (o, &c) in out {
-                    *o = l[c as usize].to_le_bytes();
-                }
-            }
-        }
         let (pw, ph) = (ct.canvas.pw(), ct.canvas.ph());
-        for (at, pic) in &ct.pictures {
-            let (x0, y0) = (at.x as usize, at.y as usize);
-            let w = pic.w.min(pw.saturating_sub(x0));
-            for y in 0..pic.h.min(ph.saturating_sub(y0)) {
-                let o = ((y0 + y) * pw + x0) * 4;
-                data[o..o + w * 4].copy_from_slice(&pic.rgba[y * pic.w * 4..][..w * 4]);
+        // The rows that changed since the last upload; everything after a palette change, for
+        // the masked canvases and those with pictures.
+        let rows = match &ct.shown {
+            Some((px, t, pics))
+                if !all
+                    && ct.mask.is_none()
+                    && ct.pictures.is_empty()
+                    && *t == ct.transparent
+                    && *pics == placed
+                    && px.len() == ct.canvas.px.len() =>
+            {
+                changed_rows(px, &ct.canvas.px, pw)
+            }
+            Some((px, t, pics))
+                if !all
+                    && ct.mask.is_none()
+                    && *t == ct.transparent
+                    && *pics == placed
+                    && *px == ct.canvas.px =>
+            {
+                None
+            }
+            _ => Some(0..ph),
+        };
+        let Some(rows) = rows else { continue };
+        let texel = if ct.coverage { 1 } else { 4 };
+        let span = rows.start * pw * texel..rows.end * pw * texel;
+        if let Some(writes) = writes.as_mut() {
+            let len = span.len();
+            let mut data = match writes.spare.iter().position(|b| b.capacity() >= len) {
+                Some(i) => writes.spare.swap_remove(i),
+                None => Vec::with_capacity(len),
+            };
+            data.clear();
+            data.resize(len, 0);
+            first_level(ct, &lut, &see_lut, rows.clone(), &mut data);
+            writes.queue.push(CanvasWrite {
+                image: ct.image.id(),
+                width: pw as u32,
+                top: rows.start as u32,
+                texel: texel as u32,
+                mips: ct.mips as u32,
+                data,
+            });
+        } else {
+            let Some(mut img) = images.get_mut(&ct.image) else { continue };
+            let Some(data) = img.data.as_mut() else { continue };
+            first_level(ct, &lut, &see_lut, rows, &mut data[span]);
+            if ct.mips > 1 {
+                build_mips(data, pw, ph, ct.mips);
             }
         }
-        if ct.mips > 1 {
-            build_mips(data, ct.canvas.pw(), ct.canvas.ph(), ct.mips);
-            mips.0.push((
-                ct.image.id(),
-                ct.canvas.pw(),
-                ct.canvas.ph(),
-                ct.mips,
-                data[base..].to_vec(),
-            ));
+        remember(ct, placed);
+    }
+}
+
+/// The texel rows (first to past the last) where two pictures of a canvas `pw` texels wide
+/// differ, if they do.
+fn changed_rows(old: &[u8], new: &[u8], pw: usize) -> Option<std::ops::Range<usize>> {
+    let pairs = || old.chunks_exact(pw).zip(new.chunks_exact(pw));
+    let top = pairs().position(|(a, b)| a != b)?;
+    let below = pairs().rev().position(|(a, b)| a != b).unwrap_or(0);
+    Some(top..new.len() / pw - below)
+}
+
+/// Rows of the canvas through the palette (with its pictures), or its coverage, into `out`.
+fn first_level(
+    ct: &CanvasTexture,
+    lut: &[u32; 256],
+    see_lut: &[u32; 256],
+    rows: std::ops::Range<usize>,
+    out: &mut [u8],
+) {
+    let pw = ct.canvas.pw();
+    let first = rows.start * pw;
+    let px = &ct.canvas.px[first..rows.end * pw];
+    if ct.coverage {
+        for (o, &c) in out.iter_mut().zip(px) {
+            *o = if c == TRANSPARENT { 0 } else { 255 };
         }
-        match &mut ct.shown {
-            Some((px, t, pics)) => {
-                px.clone_from(&ct.canvas.px);
-                *t = ct.transparent;
-                *pics = placed;
+        return;
+    }
+    let texels = out.as_chunks_mut::<4>().0.iter_mut().zip(px);
+    match (&ct.mask, ct.transparent) {
+        (Some(mask), true) => {
+            for (i, (o, &c)) in texels.enumerate() {
+                let l = if mask[first + i] { see_lut } else { lut };
+                *o = l[c as usize].to_le_bytes();
             }
-            None => ct.shown = Some((ct.canvas.px.clone(), ct.transparent, placed)),
         }
+        (_, t) => {
+            let l = if t { see_lut } else { lut };
+            for (o, &c) in texels {
+                *o = l[c as usize].to_le_bytes();
+            }
+        }
+    }
+    for (at, pic) in &ct.pictures {
+        let (x0, y0) = (at.x as usize, at.y as usize);
+        let w = pic.w.min(pw.saturating_sub(x0));
+        for y in 0..pic.h {
+            let ty = y0 + y;
+            if rows.contains(&ty) {
+                let o = ((ty - rows.start) * pw + x0) * 4;
+                out[o..o + w * 4].copy_from_slice(&pic.rgba[y * pic.w * 4..][..w * 4]);
+            }
+        }
+    }
+}
+
+/// Keeps what was uploaded, to skip uploading it again unchanged.
+fn remember(ct: &mut CanvasTexture, placed: Placed) {
+    match &mut ct.shown {
+        Some((px, t, pics)) => {
+            px.clone_from(&ct.canvas.px);
+            *t = ct.transparent;
+            *pics = placed;
+        }
+        None => ct.shown = Some((ct.canvas.px.clone(), ct.transparent, placed)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The band of rows to upload runs from the first changed row to the last.
+    #[test]
+    fn changed_rows_band() {
+        let old = vec![0u8; 4 * 6];
+        let mut new = old.clone();
+        assert_eq!(changed_rows(&old, &new, 4), None);
+        new[4 + 2] = 1;
+        assert_eq!(changed_rows(&old, &new, 4), Some(1..2));
+        new[4 * 4] = 1;
+        assert_eq!(changed_rows(&old, &new, 4), Some(1..5));
+        new[4 * 5 + 3] = 1;
+        assert_eq!(changed_rows(&old, &new, 4), Some(1..6));
     }
 }

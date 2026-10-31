@@ -35,11 +35,27 @@ options-auto-trim = Auto trim
         Manual trim: Alt + arrow keys, Alt + Home centres it
 options-tooltips = Cockpit tooltips
     .facts = What a cockpit control or display is, under the mouse or a VR fingertip
+options-player-labels = Player labels
+    .facts = Multiplayer: the other pilots' names over their aircraft, however far away
+options-label-size =
+    .facts =
+        Size of the player labels
+        50%: the default
 options-section-vr-size = VR cockpit size
 options-vr-size =
     .facts =
         Size of the cockpit (and the world) in the headset
         100%: life size
+options-section-gif = GIF recording
+options-gif-size = SIZE
+options-gif-rate = RATE
+options-gif-scale-100 =
+    .facts = The window's full resolution: large files
+options-gif-scale-25 =
+    .facts = Small files
+options-gif-rate-50 =
+    .facts = Only when the game runs at 100 fps or more (every other frame is captured)
+options-gif-hint = F12 (unless rebound) starts and stops; saved in your Pictures folder
 
 ## GRAPHICS
 
@@ -85,6 +101,19 @@ options-volume-effects = Effects
     .facts = Weapons, explosions, gear, radio and the rest
 options-volume-warnings = Warnings
     .facts = Stall horn, radar and missile warnings, the fire siren, the Sidewinder tones
+options-volume-rwr = RWR
+    .facts = The radar warning tones, as a part of the warnings' volume
+options-section-rwr-tones = Radar warning tones
+rwr-tones-all = ALL
+    .facts = A radar painting you, every sweep that detects you, missile launches
+rwr-tones-detect = DETECT ONLY
+    .facts =
+        One tone when a radar detects you (again after the radars let go for a while)
+        And missile launches
+rwr-tones-launch = LAUNCH ONLY
+    .facts = Only missiles launched at you
+rwr-tones-off = OFF
+    .facts = No radar warning tones (the lights and displays still warn)
 options-section-cockpit = Cockpit
 options-low-pass = Engine low-pass
     .facts =
@@ -144,6 +173,7 @@ effect-vapour = Vapour and downwash
     .facts =
         Pulling hard, vapour trails from the wingtips
         A helicopter hovering low whips up dust, or spray over water
+        Vehicles on the move raise dust behind them
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

@@ -6,6 +6,7 @@ axis-rudder = Rudder
 axis-throttle = Throttle
 axis-slew-x = Slew tas-sensor/cursor X
 axis-slew-y = Slew tas-sensor/cursor Y
+axis-nozzle = Nozzles (Harrier)
 input-button = Buttuna { $n }
 input-axis = Assi { $n }
 vr-trigger = Trigger

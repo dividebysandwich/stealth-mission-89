@@ -2,7 +2,8 @@
 //! runway of its base. A helicopter hovering low over one hooks it; it swings on its rope under
 //! the helicopter (a damped pendulum, simulated on every client: the carrier's says where it is
 //! set down), and set down by its site's helipad it is delivered and stays there until the site
-//! is built.
+//! is built. The AI's cargo and resupply helicopters sling theirs the same way (the simulation
+//! flies them: hooked, carried, set down).
 
 use std::collections::HashMap;
 
@@ -10,17 +11,18 @@ use bevy::camera::visibility::NoFrustumCulling;
 use bevy::math::{DVec2, DVec3};
 use bevy::mesh::{MeshTag, PrimitiveTopology};
 use bevy::prelude::*;
+use stealth_campaign::CrateState;
 use stealth_campaign::tuning::CRATE_DROP_METRES;
-use stealth_campaign::{CrateState, ObjectId};
 
 use crate::campaign::{Action, ActiveCampaign, Phase};
-use crate::combat::{Combat, CombatSystems};
+use crate::combat::{Combat, CombatSystems, unit_position};
 use crate::flight::{Aircraft, FlightConstants, Player};
 use crate::hud::HudMessages;
 use crate::palette::Palette;
 use crate::palette_material::{LEVEL_AIRCRAFT, mesh_tag};
-use crate::scenery::{CRATE_SIZE, Scenery, map_metres, spawn_crate};
+use crate::scenery::{CRATE_SIZE, map_metres, spawn_crate};
 use crate::settings::AppState;
+use crate::sim_render::attitude;
 use crate::world::{WorldPos, wu_to_bevy};
 
 pub struct SlingPlugin;
@@ -50,8 +52,6 @@ const HOOK_FEET: f32 = 50.0;
 const HOOK_KNOTS: f32 = 15.0;
 /// The four strops meet this far above the crate's top (metres).
 const APEX: f32 = 2.0;
-/// The crates of a base stand this far apart in their row (metres).
-const ROW_SPACING: f64 = 6.0;
 /// Physics step (s); the swing's damping (1/s, relative to the hook), the air's drag and the
 /// ground's friction (1/s).
 const STEP: f64 = 1.0 / 120.0;
@@ -180,28 +180,9 @@ fn bevy_at(p: DVec2, y: f64) -> DVec3 {
     DVec3::new(p.x, y, -p.y)
 }
 
-/// Slot `k` of `n` in the crate row of base `base`, beside its runway where its aircraft start:
-/// where it stands and its heading.
-fn home(
-    sim: &stealth_sim::Sim,
-    scenery: Option<&Scenery>,
-    base: ObjectId,
-    k: usize,
-    n: usize,
-) -> (DVec3, f32) {
-    // Where the lead of the take-off formation stands.
-    let st = sim.start_state_at(base as usize);
-    let dir = if st.heading == 0 { 1 } else { -1 };
-    let along = stealth_host::host::formation(0).0 * dir;
-    let at = wu_to_bevy(st.x as f64, (st.y + along) as f64, 0.0);
-    let start = DVec2::new(at.x, -at.z);
-    let h = st.heading as f64 / 65536.0 * std::f64::consts::TAU;
-    let forward = DVec2::new(h.sin(), h.cos());
-    let (c, axis) = scenery
-        .and_then(|sc| sc.crate_row(start, forward))
-        .unwrap_or((start + forward * 150.0 + forward.perp() * 80.0, forward));
-    let p = c + axis * ((k as f64 - (n as f64 - 1.0) * 0.5) * ROW_SPACING);
-    (bevy_at(p, rest_height()), axis.x.atan2(axis.y) as f32)
+/// A spot of a crate row (metres east, north, and a heading) as a crate standing there.
+fn standing(((east, north), heading): ((f64, f64), f32)) -> (DVec3, f32) {
+    (bevy_at(DVec2::new(east, north), rest_height()), heading)
 }
 
 /// The turn from `a` towards `b` (radians, the short way round).
@@ -213,7 +194,6 @@ fn turn(a: f32, b: f32) -> f32 {
 fn sling(
     mut commands: Commands,
     campaign: Option<ResMut<ActiveCampaign>>,
-    scenery: Option<Res<Scenery>>,
     combat: Res<Combat>,
     k: Res<FlightConstants>,
     player: Query<(&Aircraft, &WorldPos), With<Player>>,
@@ -262,22 +242,12 @@ fn sling(
         .collect();
 
     // Where every crate of the sites waiting for cargo is.
-    let mut rows: HashMap<ObjectId, Vec<(u32, u8)>> = HashMap::new();
-    for d in state.deployments.iter().filter(|d| !d.built) {
-        if let Some(b) = d.base {
-            rows.entry(b).or_default().extend((0..d.loads).map(|l| (d.id, l)));
-        }
-    }
     let mut want: Vec<((u32, u8), Place, DVec2, bool)> = Vec::new();
     for d in state.deployments.iter().filter(|d| !d.built) {
         let pad = map_metres(d.x, d.y);
         for leg in 0..d.loads {
             let key = (d.id, leg);
-            let at_home = || {
-                let row = rows.get(&d.base?)?;
-                let k = row.iter().position(|r| *r == key)?;
-                Some(home(sim, scenery.as_deref(), d.base?, k, row.len()))
-            };
+            let at_home = || stealth_host::cargo::crate_home(sim, state, d.id, leg).map(standing);
             let cs = d.crate_state(leg);
             let delivered = matches!(cs, CrateState::Delivered { .. });
             let dropped = sling.dropped.iter().find(|x| x.0 == key);
@@ -303,6 +273,55 @@ fn sling(
                 want.push((key, place, pad, waiting));
             }
         }
+    }
+    // The AI helicopters' crates: waiting for them in the row of their base, slung under them,
+    // set down at the drop (a new site's until the campaign has it delivered: then it is the
+    // site's).
+    for (i, u) in sim.flights().iter().enumerate() {
+        let Some(f) = sim.campaign_flight(i) else { continue };
+        let Some(run) = f.supply.filter(|r| r.pickup.is_some() || r.hooked || r.set_down) else {
+            continue;
+        };
+        if u.flags & stealth_sim::fflags::EXISTS == 0 {
+            continue;
+        }
+        let key = if run.unit == stealth_sim::supply::NO_UNIT {
+            let leg = state
+                .deployments
+                .iter()
+                .filter(|d| !d.built)
+                .find_map(|d| d.ai.iter().find(|a| a.1 == f.tag).map(|a| (d.id, a.0)));
+            let Some(key) = leg else { continue };
+            key
+        } else {
+            (f.tag, u8::MAX)
+        };
+        if want.iter().any(|w| w.0 == key) {
+            continue;
+        }
+        let shown = sling.crates.get(&key);
+        let place = if run.hooked {
+            let (east, north, alt) = unit_position(combat.prev_flights.get(i), u, combat.alpha);
+            let rot = attitude(u.heading, u.pitch, u.bank);
+            let hook = wu_to_bevy(east, north, alt) + (rot * Vec3::Y * HOOK_UP).as_dvec3();
+            Place::Hung(hook, heading_of(rot))
+        } else if let Some(p) = run.pickup {
+            let (at, _) = standing((stealth_host::cargo::metres(p), 0.0));
+            let row = if run.unit == stealth_sim::supply::NO_UNIT {
+                stealth_host::cargo::crate_home(sim, state, key.0, key.1)
+            } else {
+                Some(stealth_host::cargo::supply_crate(sim, f.home as usize, f.tag))
+            };
+            Place::Rest(at, row.map_or(0.0, |r| r.1))
+        } else {
+            // Where it came down.
+            let (at, h) = standing((stealth_host::cargo::metres(run.drop), 0.0));
+            Place::Rest(
+                shown.map_or(at, |s| DVec3::new(s.at.x, at.y, s.at.z)),
+                shown.map_or(h, |s| s.heading),
+            )
+        };
+        want.push((key, place, DVec2::ZERO, false));
     }
     // The own crate: the campaign carries it (a host's at once, a server's a moment later), or
     // the hook did not count; set down, it is delivered.
@@ -528,5 +547,22 @@ mod tests {
             assert!(s.pos.y >= rest_height() - 1e-9, "step {k}: {}", s.pos.y);
         }
         assert!(s.grounded(0.0));
+    }
+
+    #[test]
+    fn the_ais_heights_lift_a_crate_off_and_set_it_down() {
+        use stealth_sim::supply::{HOOK_ALT, HOOK_SECONDS, SET_ALT};
+        let hook = |alt: i32| DVec3::new(0.0, alt as f64 * crate::world::WU + HOOK_UP as f64, 0.0);
+        // Hooked from its hover over the crate: off the ground before it flies away.
+        let mut s = Swing::new(DVec3::new(1.0, rest_height(), 0.0), hook(HOOK_ALT));
+        for _ in 0..(HOOK_SECONDS * 60) {
+            s.advance(hook(HOOK_ALT), 1.0 / 60.0, 0.0);
+        }
+        assert!(!s.grounded(0.0), "{}", s.pos.y);
+        // Down to its set-down height: the crate stands on the ground.
+        for _ in 0..(5 * 60) {
+            s.advance(hook(SET_ALT), 1.0 / 60.0, 0.0);
+        }
+        assert!(s.grounded(0.0), "{}", s.pos.y);
     }
 }

@@ -15,7 +15,9 @@ afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py) and the AH-1Z (43,
 generators of their own. The flyable F-16 (23), A-10 (32) and Tornado (45) set the eye, lift,
 exhaust and the A-10's muzzle in src/aircraft.rs: change them with their builders; the gear's depth below the origin is in
 `gear_depth` there too. The Tornado's outer wings are parts (`_part1` right, `_part2` left)
-turning about their pivots with state slots 21 and 22 (the sweep).
+turning about their pivots with state slots 21 and 22 (the sweep). The flyable AV-8B Harrier
+(47) sits nose up on its bicycle gear (`HARRIER_GROUND_PITCH`); its four nozzles are parts
+(`_part1`..`_part4`) pitching down about their pivots with state slot 25 (the nozzle angle).
 """
 
 import math
@@ -52,8 +54,8 @@ BLACK = 239
 
 class Craft:
     def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None, parts=()):
-        # `parts`: (geometry about its pivot, pivot, state slot) of parts turning about their
-        # up axis (the Tornado's outer wings).
+        # `parts`: (geometry about its pivot, pivot, state slot[, axis]) of parts turning about
+        # their up axis (the Tornado's outer wings), or axis 1 (pitch: the Harrier's nozzles).
         self.body, self.flames, self.part, self.gear, self.parts = body, flames, part, gear, parts
         # Light dots sit just outboard of the wingtips so the tip itself doesn't hide them.
         out = Vector((0.25, 0, 0))
@@ -745,6 +747,183 @@ def a10_gear():
     return g
 
 
+# The AV-8B Harrier II from its three-view (GR.5/7 drawing, 153 px per metre: 14.4 m long,
+# 9.2 m span): stations along y, heights above the fuselage datum. Fuselage rings as the F-16's
+# (`f16_section`): the slim nose and cockpit, the wide middle over the Pegasus with the intakes
+# either side, the tail cone tapering to the reaction control boom.
+HARRIER_GREY = Ramp(232, 238)
+HARRIER_BODY = [
+    (7.27, -0.08, -0.10, 0.00, -0.12, 0.00, 2.0, 2.0),
+    (7.10, 0.02, -0.10, 0.10, -0.22, 0.10, 2.0, 2.0),
+    (6.97, 0.10, -0.10, 0.15, -0.29, 0.15, 2.0, 2.0),
+    (6.65, 0.25, -0.10, 0.25, -0.44, 0.25, 2.0, 2.2),
+    (6.32, 0.34, -0.08, 0.37, -0.47, 0.36, 2.0, 2.4),
+    (5.86, 0.50, -0.05, 0.52, -0.52, 0.50, 2.2, 2.6),
+    (5.34, 0.55, 0.00, 0.57, -0.56, 0.55, 2.6, 2.8),
+    (4.36, 0.57, 0.00, 0.58, -0.58, 0.56, 2.8, 2.8),
+    (3.50, 0.68, 0.05, 0.60, -0.63, 0.58, 2.8, 2.8),
+    (2.60, 0.96, 0.10, 0.66, -0.65, 0.62, 2.8, 3.0),
+    (1.60, 1.10, 0.10, 0.76, -0.65, 0.72, 3.2, 3.0),
+    (0.00, 1.14, 0.10, 0.80, -0.63, 0.74, 3.4, 3.0),
+    (-1.52, 1.12, 0.10, 0.72, -0.59, 0.68, 3.2, 3.0),
+    (-2.83, 1.04, 0.15, 0.60, -0.42, 0.56, 2.8, 2.8),
+    (-4.14, 0.98, 0.30, 0.42, -0.23, 0.40, 2.2, 2.6),
+    (-5.12, 0.97, 0.45, 0.24, -0.10, 0.22, 2.0, 2.4),
+    (-6.10, 0.93, 0.58, 0.16, 0.20, 0.15, 2.0, 2.2),
+    (-6.40, 0.93, 0.78, 0.15, 0.63, 0.15, 2.0, 2.0),
+]
+# The raised bubble canopy's glass (the inner line of the drawing): (y, sill z, half width,
+# top), the windscreen from the nose's top, the frame bow between it and the bubble, and the
+# fairing behind it into the spine.
+HARRIER_CANOPY = [(5.90, 0.49, 0.06, 0.52), (5.40, 0.53, 0.34, 0.82), (4.95, 0.55, 0.46, 1.08),
+                  (4.40, 0.57, 0.50, 1.27), (3.90, 0.60, 0.48, 1.31), (3.45, 0.63, 0.42, 1.25),
+                  (3.15, 0.66, 0.34, 1.14)]
+HARRIER_BOW = (5.00, 4.90, 0.55, 0.47, 1.11)
+HARRIER_FAIRING = [(3.15, 0.66, 0.34, 1.14), (2.60, 0.80, 0.42, 1.10), (2.00, 0.90, 0.46, 1.12),
+                   (1.40, 0.95, 0.44, 1.14)]
+# The wing on top of the fuselage (14 degrees anhedral), flowing into its top: its root inside
+# the fuselage near the centreline, the leading edge's root and tip, the chords.
+HARRIER_WING_ROOT = (0.30, 1.86, 1.10)
+HARRIER_WING_TIP = (4.49, -1.20, 0.08)
+HARRIER_CHORDS = (3.73, 0.83)
+# The nozzles: front (cold, fan air) and rear (hot) pairs, their pivots (x, y, z) on the
+# fuselage's sides, turned down about x by the nozzle angle in state slot 25.
+HARRIER_NOZZLES = [((1.10, 1.70, -0.22), 0.27), ((0.94, -0.40, -0.28), 0.29)]
+HARRIER_NOZZLE_SLOT = 25
+# The ground under the wheels: 5.5 degrees nose up on its short main gear (the side view's
+# ground line), through the main wheels' bottom. `HARRIER_GROUND` is its height under the model
+# origin (`HARRIER_LIFT`, `gear_depth` in src/aircraft.rs).
+HARRIER_GROUND_PITCH = math.radians(5.5)
+HARRIER_MAIN = (-0.95, -1.47)
+HARRIER_OUTRIGGER_X = 2.60
+
+
+def harrier_ground(y):
+    """z of the ground under station y, the aircraft at its ground attitude."""
+    return HARRIER_MAIN[1] - (y - HARRIER_MAIN[0]) * math.tan(HARRIER_GROUND_PITCH)
+
+
+HARRIER_GROUND = harrier_ground(0.0)
+
+
+def harrier_wing_at(x):
+    """The wing's leading edge (y, z) and chord at x out from the centreline."""
+    (x0, y0, z0), (x1, y1, z1) = HARRIER_WING_ROOT, HARRIER_WING_TIP
+    t = (x - x0) / (x1 - x0)
+    c0, c1 = HARRIER_CHORDS
+    return y0 + t * (y1 - y0), z0 + t * (z1 - z0), c0 + t * (c1 - c0)
+
+
+def harrier_nozzle(r, hot):
+    """One nozzle about its pivot, pointing aft (nozzle angle 0): the bearing's drum on the
+    fuselage's side, the elbow out of it with its vanes and dark mouth."""
+    g = frustum((0, 0.18, 0), (0, -0.30, 0), r * 1.02, r * 0.92, DARK, 10, caps=False)
+    g.add(frustum((0, -0.30, 0), (0, -0.62, -0.04), r * 0.92, r * 0.86, DARK if hot else HARRIER_GREY, 10, caps=False))
+    g.add(frustum((0, -0.60, -0.04), (0, -0.55, -0.04), r * 0.80, r * 0.80, BLACK, 10))
+    for k in (-1, 0, 1):
+        z = -0.04 + k * r * 0.45
+        w = r * (0.8 if k == 0 else 0.6)
+        g.face2([(-w, -0.60, z), (w, -0.60, z), (w, -0.40, z + 0.03), (-w, -0.40, z + 0.03)], GREY_D)
+    return g
+
+
+def harrier():
+    p = HARRIER_GREY
+    rings = [f16_section(*s) for s in HARRIER_BODY]
+    g = tube(rings, p, paints=[RADOME] * 3 + [p] * (len(rings) - 4))
+    # The reaction control boom aft of the tail cone, its rounded end.
+    g.add(loft([(-6.40, 0.78, 0.15, 0.15), (-7.00, 0.78, 0.14, 0.14), (-7.18, 0.78, 0.11, 0.11),
+                (-7.27, 0.78, 0.04, 0.04)], p, n=8))
+    # The angle rate bombing set's window in the nose's tip.
+    g.add(frustum((0, 7.12, -0.10), (0, 7.20, -0.10), 0.07, 0.04, BLACK, 6))
+    g.add(tube([f16_arch(*s) for s in HARRIER_CANOPY], CANOPY))
+    y0, y1, sill, hw, top = HARRIER_BOW
+    front, rear = f16_arch(y0, sill, hw, top), f16_arch(y1, sill, hw, top)
+    for k in range(len(front) - 1):
+        g.face([front[k], front[k + 1], rear[k + 1], rear[k]], DARK, (0, (y0 + y1) / 2, sill))
+    g.add(tube([f16_arch(*s) for s in HARRIER_FAIRING], p))
+    for s in (-1, 1):
+        # The big semicircular intakes either side behind the cockpit, their trunks running
+        # into the fuselage over the fan; the dark mouths.
+        x = s * 0.86
+        g.add(loft([(3.62, 0.14, 0.37, 0.70), (3.30, 0.15, 0.40, 0.71), (2.40, 0.15, 0.40, 0.70),
+                    (1.30, 0.20, 0.30, 0.62), (0.20, 0.30, 0.12, 0.45)], p, n=12, x=x))
+        g.add(frustum((x, 3.56, 0.14), (x, 3.63, 0.14), 0.30, 0.30, BLACK, 12, r0b=0.64, r1b=0.64))
+        # The blow-in doors' row round the intake's lip.
+        for z in (-0.25, 0.15, 0.55):
+            g.face2([(s * 1.265, 3.20, z - 0.12), (s * 1.265, 2.95, z - 0.12), (s * 1.265, 2.95, z + 0.12),
+                     (s * 1.265, 3.20, z + 0.12)], DARK)
+        # The gun and ammunition pods under the fuselage, the strakes on them.
+        g.add(loft([(3.00, -0.70, 0.05, 0.05), (2.60, -0.80, 0.17, 0.20), (1.60, -0.88, 0.20, 0.25),
+                    (-0.40, -0.86, 0.20, 0.25), (-0.90, -0.78, 0.08, 0.14)], p, n=8, x=s * 0.38))
+        g.add(block(s * 0.37, s * 0.39, 1.90, -0.80, -1.25, -1.05, p))
+        # The leading edge root extensions.
+        g.add(wing((s * 0.70, 2.30, 0.96), 0.95, (s * 1.02, 1.36, 0.96), 0.25, p, t=0.03, mirror=False))
+    # The wing; the outrigger fairings; the pylons (three a side and the Sidewinder rails
+    # outboard) and the centreline station between the pods.
+    g.add(wing(HARRIER_WING_ROOT, HARRIER_CHORDS[0], HARRIER_WING_TIP, HARRIER_CHORDS[1], p, t=0.07, t_tip=0.05))
+    for s in (-1, 1):
+        le, z, c = harrier_wing_at(HARRIER_OUTRIGGER_X)
+        x = s * HARRIER_OUTRIGGER_X
+        g.add(loft([(-0.50, z - 0.06, 0.02, 0.02), (-0.90, z - 0.10, 0.12, 0.14), (-2.50, z - 0.10, 0.12, 0.13),
+                    (-2.90, z - 0.08, 0.03, 0.04)], p, n=8, x=x))
+        for px in (1.88, 2.60, 3.28):
+            le, z, c = harrier_wing_at(px)
+            g.add(pylon(s * px, le - 0.35, le - 1.85, z - 0.03, z - 0.33, w=0.06, paint=p))
+        le, z, c = harrier_wing_at(3.90)
+        g.add(pylon(s * 3.90, le - 0.25, le - 0.95, z - 0.02, z - 0.18, w=0.04, paint=p))
+    g.add(pylon(0.0, 1.20, -0.30, -0.66, -0.90, w=0.07, paint=p))
+    # The anhedral tailplane; the fin on its dorsal fillet with the ram air intake at its base;
+    # the ventral fin under the tail cone.
+    g.add(wing((0.20, -4.59, 0.82), 1.57, (2.10, -6.03, 0.50), 0.52, p, t=0.045, t_tip=0.035))
+    g.add(wing((0, -4.46, 0.97), 1.87, (0, -6.10, 2.95), 0.49, p, t=0.05, vertical=True, mirror=False))
+    g.add(wing((0, -2.90, 0.98), 1.60, (0, -4.40, 1.30), 0.25, p, t=0.06, vertical=True, mirror=False))
+    g.add(frustum((0, -3.05, 1.06), (0, -2.85, 1.06), 0.06, 0.08, BLACK, 6))
+    g.add(wing((0, -4.80, -0.12), 1.10, (0, -5.40, -0.42), 0.55, p, t=0.06, vertical=True, mirror=False))
+    # The nozzles, turning down about their pivots (`_part1`.. `_part4`, state slot 25).
+    parts = []
+    for k, (pivot, r) in enumerate(HARRIER_NOZZLES):
+        right = harrier_nozzle(r, hot=k == 1)
+        parts.append((right, pivot, HARRIER_NOZZLE_SLOT, 1))
+        parts.append((right.mirrored(), (-pivot[0], pivot[1], pivot[2]), HARRIER_NOZZLE_SLOT, 1))
+    # The navigation lights on the wingtips, the white one on the boom's end.
+    le, z, c = harrier_wing_at(HARRIER_WING_TIP[0])
+    tip = (HARRIER_WING_TIP[0] + 0.03, le - c / 2, z)
+    return Craft(g, (-tip[0], tip[1], tip[2]), tip, [(0, -7.30, 0.78)], gear=harrier_gear(), parts=parts)
+
+
+def harrier_gear():
+    """The bicycle gear down: the nose unit under the intakes, the twin-wheeled main unit behind
+    the rear nozzles, the outriggers from their fairings; every wheel on the ground line of the
+    nose-up attitude (`harrier_ground`)."""
+    g = Geo()
+    # The nose unit: the leg raked forward to its wheel, its door beside it.
+    y, r = 2.53, 0.30
+    axle = (0.0, y, harrier_ground(y) + r)
+    g.add(mklib.wheel(axle, r, 0.20, BLACK, n=10))
+    g.add(frustum((0.0, y - 0.25, -0.66), (0.0, y - 0.02, axle[2] + 0.08), 0.08, 0.07, GREY_L, n=5))
+    g.add(frustum((0.0, y - 0.70, -0.66), (0.0, y - 0.18, (axle[2] - 0.66) / 2), 0.035, 0.035, GREY_L, n=4))
+    g.face2([(0.05, y + 0.45, -0.64), (0.05, y - 0.85, -0.64), (0.05, y - 0.85, -1.02), (0.05, y + 0.45, -1.02)],
+            HARRIER_GREY)
+    # The main unit: two wheels side by side on one axle.
+    y, r = HARRIER_MAIN[0], 0.32
+    axle_z = harrier_ground(y) + r
+    for s in (-1, 1):
+        g.add(mklib.wheel((s * 0.17, y, axle_z), r, 0.18, BLACK, n=10))
+    g.add(frustum((0.0, y + 0.15, -0.60), (0.0, y, axle_z + 0.05), 0.09, 0.08, GREY_L, n=5))
+    g.add(frustum((0.0, y + 0.85, -0.60), (0.0, y + 0.10, axle_z + 0.35), 0.04, 0.04, GREY_L, n=4))
+    g.add(block(-0.08, 0.08, y + 0.05, y - 0.05, axle_z - 0.03, axle_z + 0.03, GREY_L))
+    # The outriggers: long thin legs down from the fairings.
+    y, r = -1.46, 0.17
+    _, z, _ = harrier_wing_at(HARRIER_OUTRIGGER_X)
+    for s in (-1, 1):
+        x = s * HARRIER_OUTRIGGER_X
+        axle = (x, y, harrier_ground(y) + r)
+        g.add(mklib.wheel(axle, r, 0.10, BLACK, n=8))
+        g.add(frustum((x, y + 0.05, z - 0.18), (x, y, axle[2] + 0.06), 0.045, 0.04, GREY_L, n=5))
+    return g
+
+
 # ---------------------------------------------------------------------------------------------
 # Transports, bombers, helicopter
 
@@ -971,6 +1150,7 @@ BUILDERS = {
     30: c5,
     32: a10,
     45: tornado,
+    47: harrier,
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.
@@ -1032,10 +1212,10 @@ def build_craft(index, craft):
         part = heli.mesh_with_lines(lod, f"{lod.name}_part1", craft.part.scaled(K), tuple(shift * K))
         part["state_slot"] = 17
         part["axis"] = 0
-    for k, (geo, pivot, slot) in enumerate(craft.parts):
+    for k, (geo, pivot, slot, *axis) in enumerate(craft.parts):
         part = heli.mesh_with_lines(lod, f"{lod.name}_part{k + 1}", geo.scaled(K), tuple((Vector(pivot) + shift) * K))
         part["state_slot"] = slot
-        part["axis"] = 0
+        part["axis"] = axis[0] if axis else 0
     heli.lights(lod, 12, {c: [(p + shift) * K for p in pts] for c, pts in craft.lights.items()})
     return lod
 

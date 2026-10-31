@@ -206,6 +206,11 @@ aircraft-a10 =
         Lietadlo na priamu leteckú podporu
         Pomalé a odolné, kanón 30 mm
         Kokpit A-10C, dve MFD
+aircraft-av8b =
+    .facts =
+        Bitevné lietadlo V/STOL
+        Vektorovanie ťahu: visenie, pristátie kdekoľvek
+        Páka dýz: R / F, Shift pre dorazy
 aircraft-uh60 =
     .facts =
         Univerzálny vrtuľník

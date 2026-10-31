@@ -206,6 +206,11 @@ aircraft-a10 =
         Vliegtuig voor close air support
         Traag en robuust, 30 mm-kanon
         A-10C-cockpit, twee MFD's
+aircraft-av8b =
+    .facts =
+        V/STOL-aanvalsvliegtuig
+        Stuwkrachtvectoring: zweven, landt overal
+        Straalpijphendel: R / F, Shift voor de aanslagen
 aircraft-uh60 =
     .facts =
         Transporthelikopter

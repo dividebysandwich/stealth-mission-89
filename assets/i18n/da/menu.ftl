@@ -206,6 +206,11 @@ aircraft-a10 =
         Fly til tæt luftstøtte
         Langsomt og robust, 30 mm kanon
         A-10C-cockpit, to MFD'er
+aircraft-av8b =
+    .facts =
+        V/STOL-angrebsfly
+        Vektoriseret tryk: svæv, lander hvor som helst
+        Dysehåndtag: R / F, Skift for stoppene
 aircraft-uh60 =
     .facts =
         Transporthelikopter

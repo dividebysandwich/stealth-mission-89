@@ -6,6 +6,7 @@ axis-rudder = Oldalkormány
 axis-throttle = Gázkar
 axis-slew-x = Érzékelő/kurzor mozgatása X
 axis-slew-y = Érzékelő/kurzor mozgatása Y
+axis-nozzle = Fúvócsövek (Harrier)
 input-button = { $n }. gomb
 input-axis = { $n }. tengely
 vr-trigger = Ravasz

@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
-use stealth_sim::aaa::{AaaKind, PATRIOT};
+use stealth_sim::aaa::{GroundKind, PATRIOT};
 use stealth_sim::ai_loadout::FighterTask;
 use stealth_sim::station::{
     BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, PATRIOT_STOCK, REFILL_SECONDS,
@@ -43,7 +43,7 @@ fn campaign() -> Sim {
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
     }
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     sim
 }
 
@@ -80,15 +80,15 @@ fn battery() -> (Sim, usize, usize) {
     let f = sim.spawn_fighter(enemy, t.x, t.y, 8, false, FighterTask::Patrol);
     sim.set_fighter_loadout(f, Default::default());
     sim.place_patriot(t.x + 0x100, t.y);
-    let radar = kind_index(&sim, AaaKind::PatriotRadar);
+    let radar = kind_index(&sim, GroundKind::PatriotRadar);
     // In the PAC-3's reach: 30 km east, at 2 km.
-    let at = sim.aaa_units()[radar];
+    let at = sim.units()[radar];
     hold(&mut sim, f, (at.x + 0x780, at.y, 4000));
     (sim, radar, f)
 }
 
-fn kind_index(sim: &Sim, kind: AaaKind) -> usize {
-    sim.aaa_units().iter().position(|u| u.kind == kind).expect("unit")
+fn kind_index(sim: &Sim, kind: GroundKind) -> usize {
+    sim.units().iter().position(|u| u.kind == kind).expect("unit")
 }
 
 /// The fighter held over a point (map units, world-unit altitude) for a moment.
@@ -100,7 +100,7 @@ fn hold(sim: &mut Sim, f: usize, (x, y, alt): (i32, i32, i32)) {
 }
 
 fn launcher_rounds(sim: &Sim, radar: usize) -> i32 {
-    sim.battery_launchers(radar).iter().map(|&k| sim.aaa_units()[k].rounds).sum()
+    sim.battery_launchers(radar).iter().map(|&k| sim.units()[k].rounds).sum()
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn another_player_cannot_man_a_manned_battery() {
     assert!(sim.station_command(1, StationCmd::Man { unit: radar as u16 }).is_err());
     sim.station_command(ME, StationCmd::Leave).unwrap();
     sim.station_command(1, StationCmd::Man { unit: radar as u16 }).unwrap();
-    let launcher = kind_index(&sim, AaaKind::PatriotLauncher);
+    let launcher = kind_index(&sim, GroundKind::PatriotLauncher);
     assert!(sim.station_command(ME, StationCmd::Man { unit: launcher as u16 }).is_err());
 }
 
@@ -162,30 +162,61 @@ fn going_semi_active_or_changing_the_lock_releases_guided_missiles() {
 }
 
 #[test]
+fn missiles_meet_a_banked_target() {
+    // The fighter patrols in a gentle bank, slower than its speed says: the missile steers
+    // for (and its fuse expects) where it really goes.
+    for (dx, dy) in [(0x880, -0x80), (0x980, 0), (0xA80, 0x80), (0xB80, 0x100)] {
+        let (mut sim, radar, f) = battery();
+        let at = sim.units()[radar];
+        hold(&mut sim, f, (at.x + dx, at.y + dy, 3700));
+        sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+        run(&mut sim, 1);
+        sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+        sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+        let mut fused = false;
+        for _ in 0..15 * 90 {
+            let ev = sim.step(&idle(), 15);
+            fused |= ev.iter().any(|e| matches!(e, SimEvent::Explosion { kind: -6, .. }));
+            if sim.ai_missiles().iter().all(|m| m.station.is_none()) {
+                break;
+            }
+        }
+        assert!(fused, "the missile at the fighter ({dx}, {dy}) map units off went past it");
+    }
+}
+
+#[test]
 fn a_launcher_refills_from_the_stockpile_in_real_time() {
     let (mut sim, radar, _) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
     let l = sim.battery_launchers(radar)[0];
     assert!(sim.station_command(ME, StationCmd::Refill { unit: l as u16 }).is_err(), "not empty");
-    sim.aaa_units_mut()[l].rounds = 0;
+    sim.units_mut()[l].rounds = 0;
     assert_eq!(sim.stockpile(l), PATRIOT_STOCK);
     sim.station_command(ME, StationCmd::Refill { unit: l as u16 }).unwrap();
     // The game's own clock does not refill it.
     run(&mut sim, 10);
     sim.tick_refills(REFILL_SECONDS - 1.0);
-    assert_eq!(sim.aaa_units()[l].rounds, 0);
+    assert_eq!(sim.units()[l].rounds, 0);
     assert!(sim.refill_left(l) > 0.0);
     sim.tick_refills(1.0);
-    assert_eq!(sim.aaa_units()[l].rounds, 4);
+    assert_eq!(sim.units()[l].rounds, 4);
     assert_eq!(sim.stockpile(l), PATRIOT_STOCK - 4);
     // Short of missiles: what there is.
-    let at = sim.aaa_units()[radar];
-    sim.restore_stocks(&[SavedStock { x: at.x, y: at.y, patriot: true, stock: 2 }]);
+    let at = sim.units()[radar];
+    sim.restore_stocks(&[SavedStock {
+        x: at.x,
+        y: at.y,
+        kind: GroundKind::PatriotRadar,
+        stock: 2,
+        stock2: 0,
+        stock3: 0,
+    }]);
     let l2 = sim.battery_launchers(radar)[1];
-    sim.aaa_units_mut()[l2].rounds = 0;
+    sim.units_mut()[l2].rounds = 0;
     sim.station_command(ME, StationCmd::Refill { unit: l2 as u16 }).unwrap();
     sim.tick_refills(REFILL_SECONDS);
-    assert_eq!(sim.aaa_units()[l2].rounds, 2);
+    assert_eq!(sim.units()[l2].rounds, 2);
     assert_eq!(sim.stockpile(l2), 0);
 }
 
@@ -193,18 +224,18 @@ fn a_launcher_refills_from_the_stockpile_in_real_time() {
 fn an_unmanned_battery_refills_itself() {
     let (mut sim, radar, _) = battery();
     let l = sim.battery_launchers(radar)[0];
-    sim.aaa_units_mut()[l].rounds = 0;
+    sim.units_mut()[l].rounds = 0;
     sim.tick_refills(1.0);
     assert!(sim.refill_left(l) > 0.0);
     sim.tick_refills(REFILL_SECONDS);
-    assert_eq!(sim.aaa_units()[l].rounds, 4);
+    assert_eq!(sim.units()[l].rounds, 4);
 }
 
 #[test]
 fn the_ai_leaves_a_manned_battery_alone() {
     let (mut sim, radar, f) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
-    let at = sim.aaa_units()[radar];
+    let at = sim.units()[radar];
     for _ in 0..60 {
         hold(&mut sim, f, (at.x + 0x200, at.y, 4000));
         run(&mut sim, 1);
@@ -228,7 +259,7 @@ fn losing_the_radar_ends_the_station() {
     run(&mut sim, 1);
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
-    sim.aaa_units_mut()[radar].destroyed = true;
+    sim.units_mut()[radar].destroyed = true;
     run(&mut sim, 1);
     assert!(sim.station_of(ME).is_none());
     assert!(sim.ai_missiles().iter().all(|m| m.guidance.is_none()), "its missiles are lost");
@@ -257,14 +288,14 @@ fn a_gepard_burst_brings_down_a_low_raider() {
     let f = sim.spawn_fighter(enemy, o.x, o.y, 8, false, FighterTask::Patrol);
     sim.set_fighter_loadout(f, Default::default());
     sim.place_defences(o.x, o.y, true, true);
-    let g = kind_index(&sim, AaaKind::Gepard);
+    let g = kind_index(&sim, GroundKind::Gepard);
     // Only the manned Gepard.
-    for (k, u) in sim.aaa_units_mut().iter_mut().enumerate() {
+    for (k, u) in sim.units_mut().iter_mut().enumerate() {
         u.destroyed = k != g;
     }
-    assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS);
+    assert_eq!(sim.units()[g].rounds, GEPARD_ROUNDS);
     sim.station_command(ME, StationCmd::Man { unit: g as u16 }).unwrap();
-    let at = sim.aaa_units()[g];
+    let at = sim.units()[g];
     // Far: out of range.
     hold(&mut sim, f, (at.x + 0x200, at.y, 1500));
     run(&mut sim, 1);
@@ -287,7 +318,7 @@ fn a_gepard_burst_brings_down_a_low_raider() {
     }
     assert!(down, "{bursts} bursts never got it");
     // A burst stops when its target is down.
-    let used = GEPARD_ROUNDS - sim.aaa_units()[g].rounds;
+    let used = GEPARD_ROUNDS - sim.units()[g].rounds;
     assert!(
         used > (bursts - 1) * BURST && used <= bursts * BURST,
         "{used} rounds, {bursts} bursts"
@@ -303,8 +334,8 @@ fn gepard() -> (Sim, usize, usize) {
     let f = sim.spawn_fighter(enemy, o.x, o.y, 8, false, FighterTask::Patrol);
     sim.set_fighter_loadout(f, Default::default());
     sim.place_defences(o.x, o.y, true, true);
-    let g = kind_index(&sim, AaaKind::Gepard);
-    for (k, u) in sim.aaa_units_mut().iter_mut().enumerate() {
+    let g = kind_index(&sim, GroundKind::Gepard);
+    for (k, u) in sim.units_mut().iter_mut().enumerate() {
         u.destroyed = k != g;
     }
     sim.station_command(ME, StationCmd::Man { unit: g as u16 }).unwrap();
@@ -314,26 +345,26 @@ fn gepard() -> (Sim, usize, usize) {
 #[test]
 fn a_gepard_is_slewed_by_hand_without_a_lock() {
     let (mut sim, g, _) = gepard();
-    sim.aaa_units_mut()[g].aim_az = 0.0;
-    sim.aaa_units_mut()[g].aim_el = 0.3;
+    sim.units_mut()[g].aim_az = 0.0;
+    sim.units_mut()[g].aim_el = 0.3;
     // Faster than it can: limited to its traverse.
     sim.station_command(ME, StationCmd::Slew { az: 5.0, el: 5.0 }).unwrap();
     run(&mut sim, 1);
-    let u = sim.aaa_units()[g];
+    let u = sim.units()[g];
     assert!((u.aim_az - GEPARD_TRAVERSE).abs() < 0.01, "{}", u.aim_az);
     run(&mut sim, 3);
-    assert!(sim.aaa_units()[g].aim_el < 1.5, "stops at its limit");
+    assert!(sim.units()[g].aim_el < 1.5, "stops at its limit");
     sim.station_command(ME, StationCmd::Slew { az: 0.0, el: 0.0 }).unwrap();
-    let before = sim.aaa_units()[g];
+    let before = sim.units()[g];
     run(&mut sim, 1);
-    assert_eq!(sim.aaa_units()[g].aim_az, before.aim_az);
-    assert!(sim.aaa_units()[g].rounds == GEPARD_ROUNDS, "no rounds without the trigger");
+    assert_eq!(sim.units()[g].aim_az, before.aim_az);
+    assert!(sim.units()[g].rounds == GEPARD_ROUNDS, "no rounds without the trigger");
 }
 
 #[test]
 fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     let (mut sim, g, f) = gepard();
-    let at = sim.aaa_units()[g];
+    let at = sim.units()[g];
     let to = (at.x + 0x30, at.y, 1500);
     // Held all but still (no lead; at a standstill the AI would scramble it).
     let stop = |sim: &mut Sim| {
@@ -346,15 +377,15 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
     let m = stealth_sim::types::WU_METRES;
     let p = at.metres();
     let (east, up) = ((to.0 << 5) as f64 * m - p[0], to.2 as f64 * m - p[2]);
-    sim.aaa_units_mut()[g].aim_az = std::f32::consts::FRAC_PI_2;
-    sim.aaa_units_mut()[g].aim_el = up.atan2(east) as f32;
+    sim.units_mut()[g].aim_az = std::f32::consts::FRAC_PI_2;
+    sim.units_mut()[g].aim_el = up.atan2(east) as f32;
     // One press, one burst: not another while it fires.
     sim.station_command(ME, StationCmd::Burst).unwrap();
     let e = sim.station_command(ME, StationCmd::Burst).unwrap_err();
     assert!(e.tr_in(stealth_i18n::Language::En).contains("Firing"), "{e}");
     run(&mut sim, 3);
-    assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - BURST);
-    assert_eq!(sim.aaa_units()[g].burst, 0);
+    assert_eq!(sim.units()[g].rounds, GEPARD_ROUNDS - BURST);
+    assert_eq!(sim.units()[g].burst, 0);
     let mut bursts = 1;
     let mut down = false;
     for _ in 0..10 {
@@ -372,13 +403,13 @@ fn a_gepard_without_a_lock_fires_one_burst_along_its_barrels() {
         }
     }
     assert!(down, "{bursts} bursts never got it");
-    assert_eq!(sim.aaa_units()[g].rounds, GEPARD_ROUNDS - bursts * BURST);
+    assert_eq!(sim.units()[g].rounds, GEPARD_ROUNDS - bursts * BURST);
 }
 
 #[test]
 fn a_gepard_laid_by_hand_on_the_lead_brings_down_a_moving_raider() {
     let (mut sim, g, f) = gepard();
-    let at = sim.aaa_units()[g];
+    let at = sim.units()[g];
     let mut down = false;
     for _ in 0..10 {
         // Flying past northward at 350 kt: laid where the console's camera draws its lead
@@ -390,8 +421,8 @@ fn a_gepard_laid_by_hand_on_the_lead_brings_down_a_moving_raider() {
         let (pos, _) = sim.track_alive(f).expect("airborne");
         let vel = [0, 1, 2].map(|k| (pos[k] - before[k]) * 15.0);
         let (az, el, _) = stealth_sim::aaa::lead(at.metres(), pos, vel, GEPARD_V0);
-        sim.aaa_units_mut()[g].aim_az = az as f32;
-        sim.aaa_units_mut()[g].aim_el = el as f32;
+        sim.units_mut()[g].aim_az = az as f32;
+        sim.units_mut()[g].aim_el = el as f32;
         sim.station_command(ME, StationCmd::Burst).unwrap();
         let ev = run(&mut sim, 3);
         if ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 8, .. })) {
@@ -410,18 +441,18 @@ fn one_launcher_fires_its_missiles_within_seconds() {
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let l = sim.battery_launchers(radar)[0];
     let fire = StationCmd::Fire { launcher: Some(l as u16) };
-    sim.station_command(ME, fire).unwrap();
-    assert!(sim.station_command(ME, fire).is_err(), "not at once");
+    sim.station_command(ME, fire.clone()).unwrap();
+    assert!(sim.station_command(ME, fire.clone()).is_err(), "not at once");
     run(&mut sim, 3);
     sim.station_command(ME, fire).unwrap();
-    assert_eq!(sim.aaa_units()[l].rounds, 2);
+    assert_eq!(sim.units()[l].rounds, 2);
 }
 
 #[test]
 fn no_shot_beyond_the_pac3_reach() {
     let (mut sim, radar, f) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
-    let at = sim.aaa_units()[radar];
+    let at = sim.units()[radar];
     // 90 km east.
     hold(&mut sim, f, (at.x + 5760, at.y, 16000));
     run(&mut sim, 1);
@@ -437,19 +468,19 @@ fn captures_reuse_the_wrecks_and_a_friendly_field_keeps_its_gepard() {
     let home = find(&sim, 0x401, "Neuburg");
     let o = sim.objects()[home];
     sim.place_defences(o.x, o.y, true, true);
-    let len = sim.aaa_units().len();
+    let len = sim.units().len();
     for i in 0..60 {
         let blue = i % 2 == 1;
         sim.place_defences(o.x, o.y, true, blue);
         sim.wreck_defences(o.x, o.y, blue, 10);
         if blue {
             let k =
-                sim.aaa_units().iter().enumerate().position(|(k, u)| {
-                    u.kind == AaaKind::Gepard && !u.destroyed && sim.aaa_blue(k)
+                sim.units().iter().enumerate().position(|(k, u)| {
+                    u.kind == GroundKind::Gepard && !u.destroyed && sim.aaa_blue(k)
                 });
             assert!(k.is_some(), "capture {i}: no Gepard");
-            assert_eq!(sim.aaa_units()[k.unwrap()].rounds, GEPARD_ROUNDS);
+            assert_eq!(sim.units()[k.unwrap()].rounds, GEPARD_ROUNDS);
         }
     }
-    assert!(sim.aaa_units().len() <= len + 12, "{} units from {len}", sim.aaa_units().len());
+    assert!(sim.units().len() <= len + 12, "{} units from {len}", sim.units().len());
 }

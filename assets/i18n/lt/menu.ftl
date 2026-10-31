@@ -206,6 +206,11 @@ aircraft-a10 =
         Artimosios oro paramos orlaivis
         Lėtas ir patvarus, 30 mm patranka
         A-10C kabina, du MFD
+aircraft-av8b =
+    .facts =
+        V/STOL atakos lėktuvas
+        Vektorinė trauka: kabojimas, nusileidžia bet kur
+        Antgalių svirtis: R / F, Shift ribotuvams
 aircraft-uh60 =
     .facts =
         Universalus sraigtasparnis

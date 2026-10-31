@@ -22,7 +22,8 @@
 //!   aircraft's and the others'), warnings (alarms, the fire siren, the Sidewinder tones) or
 //!   effects (everything else) (`Channel`).
 //! - Inside the aircraft (the cockpit views) the engine sounds (the jet's engine and wind, the
-//!   helicopter's rotor and turbines), the other aircraft, SAM launches, explosions, thunder
+//!   helicopter's rotor and turbines), the other aircraft, SAM launches, vehicles' guns
+//!   (`tank_gun`, `autocannon` and their `_far` variants), explosions, thunder
 //!   and the world around (`ambient`) play through a low-pass filter (`muffle`).
 //! - In the external views (chase, side, tactical, weapon, free) the flown aircraft's engine
 //!   falls off with its distance from the eye, and the sounds heard only inside the cockpit
@@ -39,9 +40,12 @@
 //!   and in translational lift (the blade slap), over the turbines (`heli_turbine.flac`)
 //!   pitched up with the torque.
 //! - The other aircraft are heard around, the AI's and the other players': jets and the Geran-3
-//!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording) and
-//!   helicopters (`helicopter.flac`), placed by direction with stereo panning that follows the
-//!   head, fading with distance, with a Doppler shift. Only at level 3.
+//!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording),
+//!   helicopters (`helicopter.flac`) and a drone command center's quadrotor interceptors
+//!   (`interceptor.flac`, as at 20% throttle, its motors two octaves up at full throttle),
+//!   placed by direction with stereo
+//!   panning that follows the head, fading with distance, with a Doppler shift. Only at
+//!   level 3.
 //! - A SAM site's launch (`launch.flac`, a recording) is heard near the site, placed and fading
 //!   like the aircraft, arriving at the speed of sound.
 //! - At an air defence console the shelter's own sounds play (`station::sound`).
@@ -78,6 +82,7 @@ impl Plugin for SoundPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySound>()
             .add_message::<Thunder>()
+            .add_message::<GunReport>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
             .init_resource::<muffle::MuffledSounds>()
@@ -107,7 +112,7 @@ impl Plugin for SoundPlugin {
             )
             .add_systems(
                 Update,
-                (follow_head, distant_aircraft, sam_launches)
+                (follow_head, distant_aircraft, sam_launches, gun_reports)
                     .chain()
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
@@ -124,6 +129,13 @@ pub struct PlaySound {
 }
 
 pub const DIRECT: u8 = 255;
+
+/// A vehicle's gun fired a round at `at` (Bevy world).
+#[derive(Message, Debug, Clone, Copy)]
+pub struct GunReport {
+    pub at: bevy::math::DVec3,
+    pub calibre: crate::explosions::Calibre,
+}
 
 /// Thunder of a lightning strike `distance` metres away, arriving now.
 #[derive(Message, Debug, Clone, Copy)]
@@ -154,6 +166,76 @@ const RWR_FILES: [(stealth_sim::RwrTone, &str); 5] = {
     ]
 };
 
+/// Which radar warning tones sound (`Settings::rwr_tones`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub enum RwrTones {
+    /// Every tone: a radar painting, each sweep that detects, missile launches.
+    #[default]
+    All,
+    /// A detection once (until the radars have let go for a while) and missile launches.
+    Detect,
+    /// Missile launches only.
+    Launch,
+    Off,
+}
+
+impl RwrTones {
+    pub const ALL: [RwrTones; 4] =
+        [RwrTones::All, RwrTones::Detect, RwrTones::Launch, RwrTones::Off];
+
+    fn id(self) -> &'static str {
+        match self {
+            RwrTones::All => "rwr-tones-all",
+            RwrTones::Detect => "rwr-tones-detect",
+            RwrTones::Launch => "rwr-tones-launch",
+            RwrTones::Off => "rwr-tones-off",
+        }
+    }
+
+    /// Its name in the menus ("DETECT ONLY").
+    pub fn name(self) -> &'static str {
+        stealth_i18n::t!(self.id())
+    }
+
+    /// Its name in the in-flight menu (the flight font's language).
+    pub fn flight_name(self) -> &'static str {
+        stealth_i18n::tf!(self.id())
+    }
+
+    pub fn facts(self) -> &'static [&'static str] {
+        stealth_i18n::t_lines!(&format!("{}.facts", self.id()))
+    }
+
+    /// The next (`dir` 1) or previous (-1) choice, wrapping.
+    pub fn step(self, dir: i32) -> Self {
+        let i = Self::ALL.iter().position(|&t| t == self).unwrap_or(0) as i32;
+        Self::ALL[(i + dir).rem_euclid(Self::ALL.len() as i32) as usize]
+    }
+}
+
+/// The radar warning tones' sound ids: painted, detected (Doppler, pulse), launches.
+const RWR_PAINTED: u8 = 100;
+const RWR_DETECTED: [u8; 2] = [101, 102];
+
+/// Seconds without a detecting sweep before a detection sounds again in `RwrTones::Detect`.
+const DETECT_REARM: f64 = 10.0;
+
+/// Whether the tones setting lets radar warning tone `id` sound; `last_detected` is when a
+/// detecting sweep last asked for its tone (real seconds).
+fn rwr_sounds(tones: RwrTones, id: u8, now: f64, last_detected: &mut Option<f64>) -> bool {
+    let detected = RWR_DETECTED.contains(&id);
+    let fresh = last_detected.is_none_or(|t| now - t > DETECT_REARM);
+    if detected {
+        *last_detected = Some(now);
+    }
+    match tones {
+        RwrTones::All => true,
+        RwrTones::Detect => id != RWR_PAINTED && (!detected || fresh),
+        RwrTones::Launch => id != RWR_PAINTED && !detected,
+        RwrTones::Off => false,
+    }
+}
+
 /// Alt-V sound level (3 = all sounds .. 0 = none); `engine_half` = level 3 with the engine
 /// at half volume.
 #[derive(Resource)]
@@ -171,12 +253,20 @@ pub enum Channel {
     Engine,
     Effects,
     Warnings,
+    /// The radar warning tones (also under the warnings' volume).
+    Rwr,
 }
 
 impl Channel {
     /// The channel of an effect by id.
     fn of(id: u8) -> Self {
-        if ALARM_TONES.contains(&id) { Channel::Warnings } else { Channel::Effects }
+        if RWR_IDS.contains(&id) {
+            Channel::Rwr
+        } else if ALARM_TONES.contains(&id) {
+            Channel::Warnings
+        } else {
+            Channel::Effects
+        }
     }
 
     /// The channel's volume: the master volume times its own.
@@ -186,6 +276,7 @@ impl Channel {
                 Channel::Engine => s.engine_volume,
                 Channel::Effects => s.effects_volume,
                 Channel::Warnings => s.warning_volume,
+                Channel::Rwr => s.warning_volume * s.rwr_volume,
             }
     }
 }
@@ -237,6 +328,9 @@ const SIREN_VOLUME: f32 = 0.35;
 /// The alarm tones the master caution silences: the stall horn and the radar warning tones.
 const ALARM_TONES: [u8; 6] = [14, 100, 101, 102, 103, 104];
 
+/// The radar warning tones' ids (`rwr_id`).
+const RWR_IDS: std::ops::RangeInclusive<u8> = 100..=104;
+
 /// Seconds an alarm tone silenced by the master caution has to pause to sound again.
 const ALARM_REARM: f64 = 5.0;
 
@@ -284,11 +378,20 @@ const PROPELLER_VOLUME: f32 = 0.8;
 const HELICOPTER_RANGE: f32 = 5_000.0;
 const HELICOPTER_REF: f32 = 200.0;
 const HELICOPTER_VOLUME: f32 = 0.8;
+const QUAD_RANGE: f32 = 2_000.0;
+const QUAD_REF: f32 = 60.0;
+const QUAD_VOLUME: f32 = 0.7;
 const DISTANT_MAX: usize = 6;
 /// A SAM launch: heard up to this range (m), at full volume within the reference distance (m).
 const LAUNCH_RANGE: f32 = 10_000.0;
 const LAUNCH_REF: f32 = 400.0;
 const LAUNCH_VOLUME: f32 = 1.0;
+/// A tank's gun and an autocannon's round (the Shilka's lighter): heard up to this range (m),
+/// at full volume within the reference distance (m); beyond `GUN_FAR` (m) the distant sound.
+const TANK_GUN: (f32, f32, f32) = (12_000.0, 150.0, 1.0);
+const AUTOCANNON: (f32, f32, f32) = (5_000.0, 50.0, 0.6);
+const LIGHT_GUN: (f32, f32, f32) = (3_000.0, 30.0, 0.35);
+const GUN_FAR: f32 = 800.0;
 /// The flown aircraft's engine in the external views: at full volume within this distance (m)
 /// of the eye, then falling off with 1 / distance.
 const ENGINE_REF: f32 = 25.0;
@@ -315,8 +418,10 @@ struct SoundBank {
     /// The cannon's loop and tail.
     cannon: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
-    distant: [Option<Handle<AudioSource>>; 3],
+    distant: [Option<Handle<AudioSource>>; 4],
     launch: Option<Handle<AudioSource>>,
+    /// The vehicles' guns, near and far: the tank's, the autocannon's.
+    guns: [Option<(Handle<AudioSource>, Handle<AudioSource>)>; 2],
     heli_rotor: Option<Handle<AudioSource>>,
     heli_turbine: Option<Handle<AudioSource>>,
     /// The flown jet's engine and wind loops, and its afterburner's.
@@ -351,6 +456,8 @@ enum Engine {
     Jet,
     Propeller,
     Helicopter,
+    /// A quadrotor interceptor.
+    Quad,
 }
 
 impl Engine {
@@ -360,11 +467,12 @@ impl Engine {
             Engine::Jet => (JET_RANGE, JET_REF, JET_VOLUME),
             Engine::Propeller => (PROPELLER_RANGE, PROPELLER_REF, PROPELLER_VOLUME),
             Engine::Helicopter => (HELICOPTER_RANGE, HELICOPTER_REF, HELICOPTER_VOLUME),
+            Engine::Quad => (QUAD_RANGE, QUAD_REF, QUAD_VOLUME),
         }
     }
 }
 
-const DISTANT_FILES: [&str; 3] = ["jet.flac", "engine.flac", "helicopter.flac"];
+const DISTANT_FILES: [&str; 4] = ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac"];
 
 /// Another aircraft heard: an AI flight unit or another player.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -389,6 +497,8 @@ impl Heard {
 struct DistantAircraft {
     who: Heard,
     engine: Engine,
+    /// The engine's own pitch (an interceptor's motors with its speed).
+    rev: f32,
     /// Distance (m) last frame, and the current Doppler factor.
     dist: f32,
     doppler: f32,
@@ -397,6 +507,10 @@ struct DistantAircraft {
 /// A SAM launch playing.
 #[derive(Component)]
 struct LaunchSound;
+
+/// A vehicle's gun report playing.
+#[derive(Component)]
+struct GunSound;
 
 /// A Sidewinder seeker loop: 0 the search growl, 1 the growl with the target in the seeker,
 /// 2 the lock tone.
@@ -500,6 +614,10 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.cannon = optional("cannon_loop.flac").zip(optional("cannon_tail.flac"));
     bank.distant = DISTANT_FILES.map(optional);
     bank.launch = optional("launch.flac");
+    bank.guns = [
+        optional("tank_gun.flac").zip(optional("tank_gun_far.flac")),
+        optional("autocannon.flac").zip(optional("autocannon_far.flac")),
+    ];
     bank.heli_rotor = optional("heli_rotor.flac");
     bank.heli_turbine = optional("heli_turbine.flac");
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
@@ -586,6 +704,7 @@ fn play_sounds(
     playing: Query<(Entity, &OneShot)>,
     mut silenced: Local<bool>,
     mut alarms: ResMut<Alarms>,
+    mut last_detected: Local<Option<f64>>,
     real: Res<Time<Real>>,
     settings: Res<crate::settings::Settings>,
     view: Option<Res<ViewState>>,
@@ -637,6 +756,10 @@ fn play_sounds(
     }
     for r in requests.read() {
         if outside && cockpit_only(r.id) {
+            continue;
+        }
+        if RWR_IDS.contains(&r.id) && !rwr_sounds(settings.rwr_tones, r.id, now, &mut last_detected)
+        {
             continue;
         }
         if ALARM_TONES.contains(&r.id) && !alarms.sounds(r.id, now) {
@@ -1167,12 +1290,12 @@ fn distant_aircraft(
     };
     let ear = origin.origin + eye_tf.translation().as_dvec3();
     let sim = &combat.sim;
-    // The nearest aircraft in range: (who, engine, position, distance).
-    let in_range = |who, engine: Engine, p: bevy::math::DVec3| {
+    // The nearest aircraft in range: (who, engine, position, distance, the engine's pitch).
+    let in_range = |who, engine: Engine, p: bevy::math::DVec3, rev: f32| {
         let d = (p - ear).length() as f32;
-        (d < engine.reach().0).then_some((who, engine, p, d))
+        (d < engine.reach().0).then_some((who, engine, p, d, rev))
     };
-    let mut heard: Vec<(Heard, Engine, bevy::math::DVec3, f32)> = sim
+    let mut heard: Vec<(Heard, Engine, bevy::math::DVec3, f32, f32)> = sim
         .active_aircraft()
         .into_iter()
         .filter(|(_, u, _)| {
@@ -1182,16 +1305,29 @@ fn distant_aircraft(
                 && u.speed > 0
         })
         .filter_map(|(i, u, _)| {
+            let quad =
+                sim.uav_of_flight(i).filter(|d| d.kind == stealth_sim::uav::UavKind::Interceptor);
             let engine = match sim.aircraft_kind(u.spec) {
                 AircraftKind::Plane => Engine::Jet,
                 AircraftKind::Helicopter => Engine::Helicopter,
                 AircraftKind::Drone if u.spec == stealth_mission::drones::GERAN3 as i32 => {
                     Engine::Jet
                 }
+                AircraftKind::Drone if quad.is_some() => Engine::Quad,
                 AircraftKind::Drone => Engine::Propeller,
             };
+            // An interceptor's motors spin up with the throttle (the loop is at its hover
+            // throttle, 20%; two octaves up at full), and stop with its battery flat.
+            let rev = match quad {
+                Some(d) if d.battery <= 0.0 => return None,
+                Some(d) => {
+                    let hover = d.kind.perf().hover;
+                    4f32.powf(((d.throttle() - hover) / (1.0 - hover)) as f32)
+                }
+                None => 1.0,
+            };
             let (east, north, alt) = unit_position(combat.prev_flights.get(i), &u, combat.alpha);
-            in_range(Heard::Unit(i), engine, wu_to_bevy(east, north, alt))
+            in_range(Heard::Unit(i), engine, wu_to_bevy(east, north, alt), rev)
         })
         .collect();
     let me = sim.active_pilot();
@@ -1202,7 +1338,7 @@ fn distant_aircraft(
         }
         let engine = if p.helicopter { Engine::Helicopter } else { Engine::Jet };
         let at = wu_to_bevy(v.wx as f64, v.wy as f64, v.alt as f64);
-        heard.extend(in_range(Heard::Pilot(p.id), engine, at));
+        heard.extend(in_range(Heard::Pilot(p.id), engine, at, 1.0));
     }
     heard.sort_by(|a, b| a.3.total_cmp(&b.3));
     heard.truncate(DISTANT_MAX);
@@ -1210,7 +1346,8 @@ fn distant_aircraft(
     let dt = virt.delta_secs();
     let mut have = Vec::new();
     for (e, mut d, mut pos, pitch, sink) in &mut playing {
-        let Some(&(_, engine, p, dist)) = heard.iter().find(|h| h.0 == d.who && h.1 == d.engine)
+        let Some(&(_, engine, p, dist, rev)) =
+            heard.iter().find(|h| h.0 == d.who && h.1 == d.engine)
         else {
             commands.entity(e).despawn();
             continue;
@@ -1224,7 +1361,8 @@ fn distant_aircraft(
             d.doppler += (target - d.doppler) * (dt * 4.0).min(1.0);
         }
         d.dist = dist;
-        pitch.set(d.who.pitch() * d.doppler);
+        d.rev += (rev - d.rev) * (dt * 3.0).min(1.0);
+        pitch.set(d.who.pitch() * d.rev * d.doppler);
         let Some(mut sink) = sink else { continue };
         if virt.is_paused() {
             sink.pause();
@@ -1233,9 +1371,9 @@ fn distant_aircraft(
         sink.play();
         sink.set_volume(Volume::Linear(heard_volume(engine.reach(), dist) * gain));
     }
-    for &(who, engine, p, dist) in heard.iter().filter(|h| !have.contains(&h.0)) {
+    for &(who, engine, p, dist, rev) in heard.iter().filter(|h| !have.contains(&h.0)) {
         let Some(handle) = &bank.distant[engine as usize] else { continue };
-        let Some((handle, pitch)) = muffler.looped(handle, who.pitch()) else { continue };
+        let Some((handle, pitch)) = muffler.looped(handle, who.pitch() * rev) else { continue };
         debug!("heard {who:?} ({engine:?}) {dist:.0} m away");
         commands.spawn((
             AudioPlayer(handle),
@@ -1252,7 +1390,7 @@ fn distant_aircraft(
             WorldPos(p),
             Transform::from_translation((p - origin.origin).as_vec3()),
             pitch,
-            DistantAircraft { who, engine, dist, doppler: 1.0 },
+            DistantAircraft { who, engine, rev, dist, doppler: 1.0 },
         ));
     }
 }
@@ -1371,6 +1509,80 @@ fn sam_launches(
     }
 }
 
+/// The vehicles' guns firing: each round heard when its sound gets here (the far sound beyond
+/// `GUN_FAR`), as loud as its distance allows, from where it was fired.
+#[allow(clippy::too_many_arguments)]
+fn gun_reports(
+    mut commands: Commands,
+    mut fired: MessageReader<GunReport>,
+    bank: Option<Res<SoundBank>>,
+    level: Res<SoundLevel>,
+    origin: Res<FloatingOrigin>,
+    virt: Res<Time<Virtual>>,
+    eye: Query<&GlobalTransform, With<EyeCamera>>,
+    settings: Res<crate::settings::Settings>,
+    mut muffler: Muffler,
+    // Reports on their way: seconds until heard, position (Bevy world), calibre.
+    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre)>>,
+) {
+    use crate::explosions::Calibre;
+    let (Some(bank), Ok(eye_tf)) = (bank.filter(|_| level.0 >= 1), eye.single()) else {
+        fired.clear();
+        coming.clear();
+        return;
+    };
+    let ear = origin.origin + eye_tf.translation().as_dvec3();
+    let reach = |c: Calibre| match c {
+        Calibre::Tank => TANK_GUN,
+        Calibre::Cannon => AUTOCANNON,
+        Calibre::Small => LIGHT_GUN,
+    };
+    for g in fired.read() {
+        let d = (g.at - ear).length() as f32;
+        // Only so many rounds on their way at once (a few columns firing bursts).
+        if d < reach(g.calibre).0 && coming.len() < 48 {
+            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre));
+        }
+    }
+    let dt = virt.delta_secs();
+    for c in coming.iter_mut() {
+        c.0 -= dt;
+    }
+    let mut i = 0;
+    while i < coming.len() {
+        if coming[i].0 > 0.0 {
+            i += 1;
+            continue;
+        }
+        let (_, p, calibre) = coming.swap_remove(i);
+        let dist = (p - ear).length() as f32;
+        let Some((near, far)) = bank.guns[(calibre != Calibre::Tank) as usize].as_ref() else {
+            continue;
+        };
+        let Some(muffled) = muffler.once(if dist > GUN_FAR { far } else { near }) else {
+            continue;
+        };
+        let (range, ..) = reach(calibre);
+        // The Shilka's 23 mm: the autocannon's report, smaller and quicker.
+        let speed = if calibre == Calibre::Small { 1.3 } else { rand::random_range(0.95..1.05) };
+        commands.spawn((
+            AudioPlayer(muffled),
+            PlaybackSettings {
+                volume: Volume::Linear(
+                    heard_volume(reach(calibre), dist) * Channel::Effects.gain(&settings),
+                ),
+                speed,
+                spatial: true,
+                spatial_scale: Some(SpatialScale::new(1.0 / range)),
+                ..PlaybackSettings::DESPAWN
+            },
+            WorldPos(p),
+            Transform::from_translation((p - origin.origin).as_vec3()),
+            GunSound,
+        ));
+    }
+}
+
 /// Volume of a sound with reach (range, reference distance, volume) heard `dist` metres away,
 /// fading out over the last quarter of the range.
 fn heard_volume((range, reference, volume): (f32, f32, f32), dist: f32) -> f32 {
@@ -1387,6 +1599,7 @@ type FlightSound = Or<(
     With<CannonLoop>,
     With<DistantAircraft>,
     With<LaunchSound>,
+    With<GunSound>,
     With<ThunderClap>,
     With<ambient::AmbientLoop>,
 )>;
@@ -1400,6 +1613,24 @@ fn stop_all(mut commands: Commands, q: Query<Entity, FlightSound>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Detect only: one tone per detection, again after the radars let go; no painted tone.
+    #[test]
+    fn rwr_detect_only() {
+        let mut last = None;
+        let detect = |id, t, last: &mut _| rwr_sounds(RwrTones::Detect, id, t, last);
+        assert!(!detect(100, 0.0, &mut last));
+        assert!(detect(101, 1.0, &mut last));
+        assert!(!detect(102, 4.0, &mut last));
+        assert!(!detect(101, 12.0, &mut last));
+        assert!(detect(103, 13.0, &mut last));
+        assert!(detect(101, 30.0, &mut last));
+        assert!(!rwr_sounds(RwrTones::Launch, 101, 60.0, &mut last));
+        assert!(rwr_sounds(RwrTones::Launch, 104, 60.0, &mut last));
+        assert!(!rwr_sounds(RwrTones::Off, 104, 60.0, &mut last));
+        assert_eq!(RwrTones::Off.step(1), RwrTones::All);
+        assert_eq!(RwrTones::All.step(-1), RwrTones::Off);
+    }
 
     /// The master caution silences the tones sounding while they repeat; a tone that pauses,
     /// or one not heard before, sounds again.

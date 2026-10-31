@@ -48,6 +48,12 @@ planner-uav = UAV nemico
 planner-edit-hint = Trascinare un punto per spostarlo, la mappa per scorrerla. Cliccare su una tratta per aggiungere un punto, clic destro per rimuoverlo. Rotellina: zoom.
 planner-reset = REIMPOSTARE
 planner-view-hint = Trascinare la mappa per scorrerla. Rotellina: zoom.
+planner-layers = LIVELLI
+planner-layer-sams = Sito radar / SAM
+planner-radar-types = Tipi di radar
+planner-layer-pulse = Portata di rilevamento radar a impulsi
+planner-layer-doppler = Portata di rilevamento radar Doppler
+planner-layer-airfield = Aeroporto
 
 ## Missioni salvate
 

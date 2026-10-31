@@ -82,6 +82,12 @@ impl Plugin for GlVrPlugin {
                 ]),
             ))
             .id();
+        world.spawn((
+            crate::camera::XrHead,
+            Transform::IDENTITY,
+            Visibility::default(),
+            ChildOf(root),
+        ));
         world.insert_resource(crate::camera::XrRoot(Some(root)));
     }
 }
@@ -168,6 +174,7 @@ fn run(app: &mut App) -> Result<AppExit, String> {
                     })
                     .collect();
                 let heads = input.eyes.clone();
+                set_head(app.world_mut(), &heads);
                 app.world_mut().resource_mut::<crate::camera::HeadPoses>().0 = heads;
                 eyes = Some(e);
             }
@@ -202,6 +209,16 @@ fn run(app: &mut App) -> Result<AppExit, String> {
             last_log = Instant::now();
             (updates, update_time, extract_time) = (0, Duration::ZERO, Duration::ZERO);
         }
+    }
+}
+
+/// Puts the head (`XrHead`) between the eyes `eyes`, facing as the first.
+fn set_head(world: &mut World, eyes: &[Transform]) {
+    let Some(first) = eyes.first() else { return };
+    let middle = eyes.iter().map(|e| e.translation).sum::<Vec3>() / eyes.len() as f32;
+    let mut heads = world.query_filtered::<&mut Transform, With<crate::camera::XrHead>>();
+    for mut head in heads.iter_mut(world) {
+        *head = Transform::from_translation(middle).with_rotation(first.rotation);
     }
 }
 
@@ -243,13 +260,21 @@ fn render_thread(
         },
         samples(),
     )?;
-    let mut headset = headset::Headset::new(&context)?;
+    // Each frame's image is drawn with its own eyes and shown at once (waited for), into one
+    // swapchain. SM89_GL_DELAYED=1: shown a frame later instead, the next one drawn meanwhile
+    // into a second swapchain (more time for the GPU, but SteamVR on the Steam Frame then shows
+    // older images between new ones: a judder whenever the head turns).
+    let direct = !std::env::var("SM89_GL_DELAYED").is_ok_and(|v| v == "1");
+    let mut headset = headset::Headset::new(&context, if direct { 1 } else { 2 })?;
     info!("glvr: eyes {}x{}, sRGB {}", headset.size.0, headset.size.1, headset.srgb);
     // SM89_XR_SHOT=<secs>: both eyes' images saved that long into the run.
     let started = Instant::now();
     let mut shot = std::env::var("SM89_XR_SHOT").ok().and_then(|v| v.parse::<f32>().ok());
+    if !direct {
+        info!("glvr: images shown a frame after they are drawn");
+    }
     let mut list: Option<DrawList> = None;
-    // The image drawn, its eyes' poses and the fence it is done at, shown next frame.
+    // The image drawn, its eyes' poses and the fence it is done at, to show.
     let mut drawn: Option<(usize, Vec<openxr::View>, Option<glow::Fence>)> = None;
     let mut last_log = Instant::now();
     let (mut frames, mut draw_time, mut draws, mut culled) = (0u32, Duration::ZERO, 0u64, 0u64);
@@ -262,7 +287,7 @@ fn render_thread(
             std::thread::sleep(Duration::from_millis(10));
             continue;
         }
-        let Some(frame) = headset.begin()? else { continue };
+        let Some(frame) = headset.begin(!direct)? else { continue };
         // The main thread updates the game for the next frame meanwhile.
         let _ = tick.try_send(Eyes { views: frame.views.clone(), controllers: frame.controllers });
         let t0 = Instant::now();
@@ -278,13 +303,17 @@ fn render_thread(
         while let Ok(msg) = meshes.try_recv() {
             renderer.apply(msg);
         }
-        // The image drawn last frame is shown in this one, with the poses it was drawn with,
-        // once this frame's is drawn: by then the GPU is done with it (waiting for it right
-        // after drawing it held up the next frame's drawing; at the start of the next frame
-        // it still took 4 ms, the GPU shared with the compositor).
-        let shown = drawn.take();
+        // Delayed: the image drawn last frame is shown in this one, with the poses it was drawn
+        // with, before this frame's is drawn (waiting for it right after drawing it held up the next
+        // frame's drawing; released after the next image's drawing was queued, it was only
+        // ready once that was done too).
+        if !direct {
+            show(&mut headset, &renderer, &frame, drawn.take())?;
+        }
         let Some(list) = &list else {
-            show(&mut headset, &renderer, &frame, shown)?;
+            if direct {
+                headset.end_empty(&frame)?;
+            }
             continue;
         };
         let (chain, image) = headset.acquire()?;
@@ -296,8 +325,10 @@ fn render_thread(
             }
         }
         let fence = renderer.fence();
-        show(&mut headset, &renderer, &frame, shown)?;
         drawn = Some((chain, frame.views.clone(), fence));
+        if direct {
+            show(&mut headset, &renderer, &frame, drawn.take())?;
+        }
         for r in renderer.readouts.drain(..) {
             let _ = readouts.send(r);
         }
@@ -312,11 +343,17 @@ fn render_thread(
         }
         if last_log.elapsed() >= Duration::from_secs(5) {
             let n = frames.max(1);
+            // (GPU times only with SM89_GL_TIMER=1.)
+            let gpu_text = if gpu_frames > 0 {
+                format!(", GPU {:.2} ms", gpu / gpu_frames as f32)
+            } else {
+                String::new()
+            };
+            let (lo, hi, ahead) = headset.pacing();
             info!(
-                "glvr: {:.1} fps, draw {:.2} ms, GPU {:.2} ms, {} draws ({} culled, {} distinct world meshes) a frame",
+                "glvr: {:.1} fps, draw {:.2} ms{gpu_text}, {} draws ({} culled, {} distinct world meshes) a frame, runtime period {lo:.1}-{hi:.1} ms, eyes {ahead:.1} ms ahead",
                 frames as f32 / last_log.elapsed().as_secs_f32(),
                 draw_time.as_secs_f32() * 1000.0 / n as f32,
-                gpu / gpu_frames.max(1) as f32,
                 draws / n as u64,
                 culled / n as u64,
                 distinct / n as u64,

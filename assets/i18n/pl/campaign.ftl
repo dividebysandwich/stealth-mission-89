@@ -56,6 +56,13 @@ cl-raid-drones = Drony wroga
 cl-raid-strike = Samoloty uderzeniowe wroga
 cl-battery-destroyed = Bateria wroga - { $place } - zniszczona
 cl-battery-intel = Wywiad: wróg wysunął baterię działek w rejon: { $place }
+cl-convoy-launched = Kolumna pancerna wyrusza z: { $from }, by zdobyć: { $place }
+cl-enemy-convoy-intel = Wywiad: wroga kolumna pancerna wyrusza z: { $from } w kierunku: { $place }
+cl-convoy-destroyed = Kolumna pancerna w kierunku: { $place } - zniszczona
+cl-enemy-convoy-destroyed = Wroga kolumna pancerna w kierunku: { $place } - zniszczona
+cl-convoy-lost = Nasza kolumna pancerna w kierunku: { $place } została zniszczona
+cl-convoy-cleared = Pancerni oczyścili { $place } bez piechoty: śmigłowce mają to zająć
+cl-enemy-convoy-cleared = Wrogie czołgi oczyściły { $place }: spodziewaj się śmigłowców
 cl-awacs-home = AWACS wroga zawraca do bazy
 cl-awacs-intel = Wywiad: AWACS wroga startuje za linią: { $place }; naprowadza myśliwce wroga, dopóki nie zostanie zestrzelony
 cl-awacs-down = AWACS wroga zestrzelony
@@ -78,9 +85,11 @@ cl-recon = Zdjęcia rozpoznawcze - { $place }: obrona miejsca rozpoznana
 cl-package = Pakiet - { $place }: { $kinds } - +{ $bonus } dla: { $pilots }
 cl-supply-patriot = bateria Patriot ({ $place })
 cl-supply-gepard = Gepard ({ $place })
+cl-supply-drones = centrum dowodzenia dronami ({ $place })
 cl-resupply-requested = { $who } prosi o zaopatrzenie dla: { $unit }
 cl-resupply-out-of-missiles = Brak rakiet w jednostce: { $unit } - zaopatrzenie zamówione
 cl-resupply-out-of-rounds = Brak amunicji w jednostce: { $unit } - zaopatrzenie zamówione
+cl-resupply-out-of-drones = Brak dronów w jednostce: { $unit } - zaopatrzenie zamówione
 cl-resupply-lost-unit = Utracono: { $unit } - zaopatrzenie odwołane
 cl-resupply-ai = UH-60 z { $base } przejmuje zaopatrzenie dla: { $unit }
 cl-resupply-heli-lost = Utracono śmigłowiec z zaopatrzeniem dla: { $unit } - zadanie wraca na tablicę
@@ -128,6 +137,8 @@ cb-insertion = Desant - { $place }
 cb-interdiction = Izolacja - { $place }
 cb-deep-strike = Głębokie uderzenie - lotnisko { $place }
 cb-cas-battery = CAS - bateria ({ $place })
+cb-cas-armour = CAS - kolumna pancerna ({ $place })
+cb-cas-support = CAS - wsparcie czołgów ({ $place })
 cb-escort = Eskorta - desant ({ $place })
 cb-anti-ship = Zwalczanie okrętów - okręt wroga
 cb-cap = CAP - { $place }
@@ -180,6 +191,7 @@ ce-resupply-on-way = Śmigłowiec z zaopatrzeniem jest w drodze
 ce-no-supply-airfield = Brak sojuszniczego lotniska, z którego można wystartować
 ce-finish-sortie = Najpierw zakończ lot bojowy
 ce-stockpile-full = Zapas jest pełny
+ce-nothing-to-resupply = Nie ma tu czego zaopatrywać
 
 ## Odmowy konsoli obrony powietrznej (crates/stealth-sim station.rs)
 
@@ -188,7 +200,7 @@ st-not-at-a-console = Brak konsoli
 st-no-such-track = Nie ma takiego śladu
 st-resupply-goes-through-the-campaign = Zaopatrzenie odbywa się przez kampanię
 st-no-such-unit = Nie ma takiej jednostki
-st-only-friendly-patriot-batteries-and-gepards-can-be-manned = Obsadzić można tylko sojusznicze baterie Patriot i Gepardy
+st-only-friendly-air-defence-can-be-manned = Obsadzić można tylko sojusznicze baterie Patriot, Gepardy i centra dowodzenia dronami
 st-another-player-mans-it = Obsługuje ją inny gracz
 st-no-track-locked = Brak namierzonego śladu
 st-track-lost = Utracono ślad
@@ -226,8 +238,12 @@ net-host-left = Host opuścił grę
 ## Odprawy kampanii (crates/stealth-host glue.rs)
 
 brief-battery-task = Zniszcz działka baterii wroga wysuniętej w pobliże naszej bazy
+brief-armour-task = Zatrzymaj wrogą kolumnę pancerną: zniszcz jej czołgi i transportery, zanim dotrą do naszych linii
+brief-support-task = Utoruj drogę naszej kolumnie pancernej: zniszcz czołgi i działka broniące miejsca
 brief-shape-guns = DZIAŁKA I MANPADS
 brief-shape-battery = BATERIA DZIAŁEK
+brief-shape-armour = KOLUMNA PANCERNA
+brief-shape-armour-guns = CZOŁGI I DZIAŁKA
 brief-shape-airfield = LOTNISKO
 brief-shape-carrier = LOTNISKOWIEC
 brief-shape-city = MIASTO
@@ -251,6 +267,18 @@ brief-battery = { $count ->
     [few] Wysunięta bateria wroga: { $count } działka i zespół MANPADS. Zniszcz je.
     [many] Wysunięta bateria wroga: { $count } działek i zespół MANPADS. Zniszcz je.
    *[other] Wysunięta bateria wroga: { $count } działka i zespół MANPADS. Zniszcz je.
+}
+brief-armour = { $count ->
+    [one] { $count } wrogi pojazd (czołgi, transportery i Szyłka) na drodze do: { $place }. Znajdź je w pobliżu punktu z odprawy i zatrzymaj.
+    [few] { $count } wrogie pojazdy (czołgi, transportery i Szyłka) na drodze do: { $place }. Znajdź je w pobliżu punktu z odprawy i zatrzymaj.
+    [many] { $count } wrogich pojazdów (czołgi, transportery i Szyłka) na drodze do: { $place }. Znajdź je w pobliżu punktu z odprawy i zatrzymaj.
+   *[other] { $count } wrogiego pojazdu (czołgi, transportery i Szyłka) na drodze do: { $place }. Znajdź je w pobliżu punktu z odprawy i zatrzymaj.
+}
+brief-support = { $count ->
+    [one] Nasze czołgi atakują: { $place }; broni go { $count } czołg, działko lub zespół MANPADS. Zniszcz je, zanim dotrze nasza kolumna.
+    [few] Nasze czołgi atakują: { $place }; bronią go { $count } czołgi, działka i zespoły MANPADS. Zniszcz je, zanim dotrze nasza kolumna.
+    [many] Nasze czołgi atakują: { $place }; broni go { $count } czołgów, działek i zespołów MANPADS. Zniszcz je, zanim dotrze nasza kolumna.
+   *[other] Nasze czołgi atakują: { $place }; broni go { $count } czołgu, działka i zespołu MANPADS. Zniszcz je, zanim dotrze nasza kolumna.
 }
 brief-strike = Lotnisko { $place }.
 brief-interdict = Miasto { $place }: jego magazyny i fabryki zaopatrują wroga.

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use crate::canvas::Canvas;
 use crate::cockpit::sprites::led_digit;
-use crate::cockpit3d::layout::Dial;
+use crate::cockpit3d::layout::{Arrow, Dial};
 use crate::flight::{Aircraft, Player};
 use crate::font::{Fonts, upper};
 use crate::hud::{HudMode, HudState};
@@ -256,6 +256,27 @@ pub fn draw_label(c: &mut Canvas, fonts: &Fonts, r: [i32; 4], label: &str, fg: u
     text_in(c, fonts, r, label, fg, k);
 }
 
+/// An arrow glyph centred in the rectangle: a triangle pointing up, down, left or right, or the
+/// return arrow (a head pointing left on a shaft with a hook up at its tail).
+pub fn draw_arrow(c: &mut Canvas, r: [i32; 4], arrow: Arrow, fg: u8, bg: u8) {
+    c.fill_rect(r[0], r[1], r[2], r[3], bg);
+    let centre = Vec2::new(r[0] as f32 + r[2] as f32 / 2.0, r[1] as f32 + r[3] as f32 / 2.0);
+    let half = r[2].min(r[3]) as f32 * 0.32;
+    let p = |x: f32, y: f32| centre + Vec2::new(x, y) * half;
+    match arrow {
+        Arrow::Up => c.triangle([p(0.0, -1.0), p(-1.0, 0.8), p(1.0, 0.8)], fg),
+        Arrow::Down => c.triangle([p(0.0, 1.0), p(-1.0, -0.8), p(1.0, -0.8)], fg),
+        Arrow::Left => c.triangle([p(-1.0, 0.0), p(0.8, -1.0), p(0.8, 1.0)], fg),
+        Arrow::Right => c.triangle([p(1.0, 0.0), p(-0.8, -1.0), p(-0.8, 1.0)], fg),
+        Arrow::Return => {
+            c.triangle([p(-1.0, 0.1), p(-0.2, -0.5), p(-0.2, 0.7)], fg);
+            let w = half * 0.35;
+            c.stroke(p(-0.3, 0.1), p(0.8, 0.1), w, fg);
+            c.stroke(p(0.8, 0.1), p(0.8, -0.7), w, fg);
+        }
+    }
+}
+
 /// Centred text at up to `k` times the font size, smaller if it does not fit with a margin.
 fn text_in(c: &mut Canvas, fonts: &Fonts, r: [i32; 4], label: &str, fg: u8, k: i32) {
     let lines: Vec<Vec<u8>> = label.split('\n').filter(|l| !l.is_empty()).map(upper).collect();
@@ -435,20 +456,25 @@ pub fn adi_ball(c: &mut Canvas, pitch: f32, roll: f32) {
     // Same sense as the classic ball (`adi`): the horizon sits at -h along `down`, so nose up
     // moves it towards the ground side.
     let h = -pitch.clamp(-1.5, 1.5).to_degrees() * k;
-    for py in 0..c.h {
-        for px in 0..c.w {
-            let d = Vec2::new(px as f32 + 0.5, py as f32 + 0.5) - centre;
-            let len = d.length();
-            let colour = if len > r {
-                0
-            } else if len > ring {
-                5
-            } else if d.dot(down) > -h {
-                6
-            } else {
-                9
-            };
-            c.set(px as i32, py as i32, colour);
+    // Row by row: clear outside the ball, the rim, then sky and ground inside the ring.
+    let pw = c.pw();
+    for (py, row) in c.px.chunks_exact_mut(pw).enumerate() {
+        let dy = py as f32 + 0.5 - centre.y;
+        // The texels whose centres are within q of the ball's centre on this row.
+        let span = |q: f32| {
+            let h = q * q - dy * dy;
+            let h = if h >= 0.0 { h.sqrt() } else { -1.0 };
+            let a = (centre.x - h - 0.5).ceil().max(0.0) as usize;
+            let b = ((centre.x + h - 0.5).floor() + 1.0).clamp(0.0, pw as f32) as usize;
+            a..b.max(a)
+        };
+        row.fill(0);
+        row[span(r)].fill(5);
+        let inside = span(ring);
+        let start = inside.start;
+        for (x, t) in row[inside].iter_mut().enumerate() {
+            let dx = (start + x) as f32 + 0.5 - centre.x;
+            *t = if dx * down.x + dy * down.y > -h { 6 } else { 9 };
         }
     }
     let w = (n / 110.0).max(1.0);
@@ -691,6 +717,12 @@ impl PanelParams<'_, '_> {
         lit
     }
 
+    /// The modern cockpits' master caution light: an unacknowledged warning or caution.
+    pub fn master_caution(&self) -> bool {
+        let list = crate::mpd::alerts(&self.warnings, self.aircraft.single().ok(), &self.cm);
+        crate::mpd::master_caution(&list, &self.wca.0)
+    }
+
     /// Label of a lamp; the camera direction lamp shows the direction on the camera page.
     pub fn lamp_label(&self, id: LampId) -> &'static str {
         if id == LampId::CamDir && self.mfd.right == RightMfd::Camera {
@@ -908,6 +940,7 @@ impl PanelParams<'_, '_> {
             Dial::Fuel => a.fuel,
             // Seconds of the day.
             Dial::Clock => self.clock.start_seconds + self.clock.elapsed.unwrap_or(a.time),
+            Dial::NozzleAngle => a.nozzle.to_degrees(),
         }
     }
 }
@@ -966,6 +999,8 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32) {
             0.0,
             360.0,
         ),
+        // Aft at 9 o'clock, the hover (90) straight up, the braking stop past it.
+        Dial::NozzleAngle => ("NOZ", &["0", "30", "60", "90", "120"], value / 120.0, -90.0, 120.0),
     };
     let dir = |deg: f32| {
         let a = deg.to_radians();

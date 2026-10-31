@@ -206,6 +206,11 @@ aircraft-a10 =
         Avión de apoyo aéreo cercano
         Lento y robusto, cañón de 30 mm
         Cabina A-10C, dos MFD
+aircraft-av8b =
+    .facts =
+        Avión de ataque V/STOL
+        Empuje vectorial: vuelo estacionario, aterriza en cualquier sitio
+        Palanca de toberas: R / F, Mayús para los topes
 aircraft-uh60 =
     .facts =
         Helicóptero de transporte

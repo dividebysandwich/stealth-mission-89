@@ -4,7 +4,7 @@
 
 #import bevy_pbr::{
     mesh_functions,
-    mesh_view_bindings::{view, lights, directional_shadow_textures, directional_shadow_textures_comparison_sampler},
+    mesh_view_bindings::{view, directional_shadow_textures, directional_shadow_textures_comparison_sampler},
     view_transformations::position_world_to_clip,
     mesh_view_types::DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT,
 }
@@ -78,10 +78,16 @@ struct Globals {
     recon_palette: array<vec4<f32>, 256>,
     // Direction to the moon (xyz) and its light's strength (w), for modern shading.
     moon: vec4<f32>,
-    // The key light's shadow maps: its index among Bevy's directional lights (x), number of
-    // cascades (y, 0 without shadows); the cascades' far bounds.
+    // The key light's shadow maps: number of cascades (y, 0 without shadows), normal bias (z)
+    // and depth bias (w); the cascades' far bounds; their light space projections and texel
+    // sizes, the direction to the light (palette.rs `shadow_cascades`: Bevy's, as in its
+    // `lights` binding, which the shader leaves alone: indexing it costs the Steam Frame's
+    // GPU hundreds of constants on every draw).
     shadow: vec4<f32>,
     shadow_bounds: vec4<f32>,
+    shadow_cascades: array<mat4x4<f32>, 4>,
+    shadow_texel: vec4<f32>,
+    shadow_light: vec4<f32>,
     // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
     storm_haze: vec4<f32>,
     // Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
@@ -96,7 +102,8 @@ struct Globals {
     // shade past the grid (z).
     shadow_grid: vec4<f32>,
     shadow_far: vec4<f32>,
-    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z).
+    // Night sky extras: aurora strength (x), shooting stars (y), twinkling (z); desert
+    // specks (w).
     sky_fx: vec4<f32>,
     // Retro output: VGA colours (x), scanlines (y).
     retro: vec4<f32>,
@@ -104,6 +111,9 @@ struct Globals {
     // (centre x, z where the sun sees them from the base height, radius, darkness).
     shadow_cells: array<vec4<f32>, 144>,
     shadow_clouds: array<vec4<f32>, 112>,
+    // The stars: the columns of the rotation from the world's frame to the star catalogue's
+    // (stars.rs `frame`).
+    star_frame: array<vec4<f32>, 3>,
 };
 
 struct PaletteMaterial {
@@ -114,7 +124,9 @@ struct PaletteMaterial {
     flags: u32,
     // The lighting options are on (the PALETTE_LIT variant; unused here).
     lit: u32,
-    _pad1: u32,
+    // The atmosphere effects compiled in (the PALETTE_MIST ... PALETTE_RETRO variants; unused
+    // here).
+    fx: u32,
 };
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: PaletteMaterial;
@@ -456,17 +468,16 @@ fn sun_shadow(world: vec3<f32>, n: vec3<f32>, view_z: f32, hard: bool) -> f32 {
     if (ci >= u32(globals.shadow.y)) {
         return 1.0;
     }
-    let light = &lights.directional_lights[u32(globals.shadow.x)];
-    let cascade = &(*light).cascades[ci];
-    let p = world + (*light).shadow_normal_bias * (*cascade).texel_size * n
-        + (*light).shadow_depth_bias * (*light).direction_to_light;
-    let c = (*cascade).clip_from_world * vec4<f32>(p, 1.0);
+    let p = world + globals.shadow.z * globals.shadow_texel[ci] * n
+        + globals.shadow.w * globals.shadow_light.xyz;
+    let c = globals.shadow_cascades[ci] * vec4<f32>(p, 1.0);
     let ndc = c.xyz / c.w;
     if (any(abs(ndc.xy) > vec2<f32>(1.0)) || ndc.z < 0.0 || ndc.z > 1.0) {
         return 1.0;
     }
     let uv = ndc.xy * vec2<f32>(0.5, -0.5) + 0.5;
-    let layer = i32((*light).depth_texture_base_index + ci);
+    // The key light is the only one with shadow maps: its cascades are the first layers.
+    let layer = i32(ci);
 #ifdef NO_ARRAY_TEXTURES_SUPPORT
     // WebGL2 (GLSL can't load from a depth texture): the comparison filter, hard edged or not.
     return textureSampleCompareLevel(directional_shadow_textures, directional_shadow_textures_comparison_sampler, uv, ndc.z);
@@ -492,14 +503,14 @@ fn lit_surface(rgb: vec3<f32>, world: vec3<f32>, n: vec3<f32>, dir: vec3<f32>, c
 #ifdef PALETTE_SHADOWS
         if (globals.shadow.y > 0.0 && !offscreen_view() && dot(select(sun_l, moon_l, moon_key), vec3<f32>(1.0)) > 0.0) {
             let view_z = (view.view_from_world * vec4<f32>(world, 1.0)).z;
-            shadow = sun_shadow(world, n, view_z, globals.params.w == 0.0);
+            shadow = sun_shadow(world, n, view_z, !MODERN);
         }
 #endif
         light += select(sun_l * shadow, sun_l, moon_key) + select(moon_l, moon_l * shadow, moon_key);
         // Sunlit flat ground keeps the palette's brightness, shadows go darker (lighting.rs
         // sets the ambient light for that).
         light = min(light / sun_moon(vec3<f32>(0.0, 1.0, 0.0)), vec3<f32>(SKY_LIGHT_MAX));
-    } else if (globals.params.w != 0.0) {
+    } else if (MODERN) {
         light = sky_light(n);
     } else {
         light = vec3<f32>(1.0);
@@ -685,7 +696,7 @@ fn sun_colour(h: f32) -> vec3<f32> {
 // Modern shaders, continuous time of day: the glare of the sun over everything in its
 // direction, a bright core and wide soft halos, dimmed by an overcast and gone below the horizon.
 fn sun_glare(dir: vec3<f32>) -> vec3<f32> {
-    if (globals.sky_sun.w == 0.0 || globals.params.w == 0.0) {
+    if (globals.sky_sun.w == 0.0 || !MODERN) {
         return vec3<f32>(0.0);
     }
     let s = normalize(globals.sky_sun.xyz);
@@ -702,9 +713,98 @@ fn sun_glare(dir: vec3<f32>) -> vec3<f32> {
 // Angular radius of the moon's disc (drawn about five times its real size).
 const MOON_RADIUS: f32 = 0.022;
 const MOON_COLOR: vec3<f32> = vec3<f32>(0.82, 0.80, 0.74);
-// Star cells (radians) and the share of cells holding a star.
-const STAR_CELL: f32 = 0.012;
-const STAR_SHARE: f32 = 0.035;
+// The star catalogue's cells (stars.rs `ROWS`, `EQUATOR_CELLS`), in a texture (stars.rs
+// `grid`). A star is a point STAR_PIXELS pixels in radius (at least STAR_MIN_RADIUS radians),
+// up to STAR_GROW times that for the brightest.
+const STAR_ROWS: f32 = 512.0;
+const STAR_COLS: f32 = 1020.0;
+const STAR_PIXELS: f32 = 0.55;
+const STAR_MIN_RADIUS: f32 = 0.00015;
+const STAR_GROW: f32 = 2.0;
+const PI: f32 = 3.14159265;
+const TAU: f32 = 6.28318531;
+
+@group(#{MATERIAL_BIND_GROUP}) @binding(2) var star_grid: texture_2d<f32>;
+
+// Cells in a row of the star grid (stars.rs `row_cells`).
+fn star_row_cells(row: f32) -> f32 {
+    return max(floor(STAR_COLS * cos(((row + 0.5) / STAR_ROWS - 0.5) * PI) + 0.5), 1.0);
+}
+
+// The light of the star of cell `col` of `n` in grid row `row` at catalogue direction `e`:
+// a point `r` radians in radius (more for the brightest), seen down to magnitude `lim`, `ext`
+// magnitudes fainter through the air.
+fn star_light(row: f32, col: f32, n: f32, e: vec3<f32>, r: f32, lim: f32, ext: f32) -> vec3<f32> {
+    let t = textureLoad(star_grid, vec2<i32>(i32(col), i32(row)), 0);
+    let mag = (t.b * 255.0 - 1.0) / 25.0 - 2.0 + ext;
+    if (t.b == 0.0 || mag > lim + 0.5) {
+        return vec3<f32>(0.0);
+    }
+    let ra = (col + t.r) / n * TAU;
+    let dec = (row + t.g) / STAR_ROWS * PI - 0.5 * PI;
+    let s = vec3<f32>(cos(dec) * cos(ra), cos(dec) * sin(ra), sin(dec));
+    // A hard edged point: unfiltered, it pops between pixels as the view moves, so the stars
+    // twinkle.
+    let grow = 1.0 + (STAR_GROW - 1.0) * clamp((1.0 - mag) / 2.5, 0.0, 1.0);
+    if (length(e - s) >= r * grow) {
+        return vec3<f32>(0.0);
+    }
+    // Its colour by its B-V index, blue white to orange, paler than in a telescope.
+    let bv = t.a * 255.0 / 80.0 - 0.5;
+    var c = mix(vec3<f32>(0.72, 0.82, 1.0), vec3<f32>(1.0, 0.97, 0.92), smoothstep(-0.3, 0.4, bv));
+    c = mix(c, vec3<f32>(1.0, 0.78, 0.55), smoothstep(0.4, 1.6, bv));
+    // Less contrast than the sky's (2.5 times the light a magnitude): the faint ones show.
+    return c * min(pow(10.0, -0.3 * (mag - 1.0)), 1.0) * smoothstep(lim + 0.5, lim - 0.5, mag);
+}
+
+// The stars' light in direction `nd` (world, above the horizon), visibility `stars`, `px`
+// radians a pixel: the catalogue's stars where they stand (`Globals::star_frame`).
+fn star_field(nd: vec3<f32>, stars: f32, px: f32) -> vec3<f32> {
+    let f = globals.star_frame;
+    let e = mat3x3<f32>(f[0].xyz, f[1].xyz, f[2].xyz) * nd;
+    let up = (asin(clamp(e.z, -1.0, 1.0)) / PI + 0.5) * STAR_ROWS;
+    let row = clamp(floor(up), 0.0, STAR_ROWS - 1.0);
+    let n = star_row_cells(row);
+    let across = fract(atan2(e.y, e.x) / TAU) * n;
+    let col = min(floor(across), n - 1.0);
+    // The faintest seen: magnitude 6 on a dark night, 3.3 under a full moon, none by day.
+    let dim = 1.0 - stars;
+    let lim = 6.0 - 7.5 * dim * dim;
+    // Extinction: 0.2 magnitudes for each air mass more than overhead.
+    let ext = 0.2 * (1.0 / max(nd.y, 0.03) - 1.0);
+    let r = max(px * STAR_PIXELS, STAR_MIN_RADIUS);
+    var light = star_light(row, col, n, e, r, lim, ext);
+    // A star near its cell's edge reaches over it: the neighbour's star nearest this pixel too.
+    let reach = r * STAR_GROW;
+    let side = reach * n / (TAU * max(sqrt(1.0 - e.z * e.z), 1e-3));
+    let fx = across - col;
+    if (fx < side) {
+        light += star_light(row, select(col - 1.0, n - 1.0, col == 0.0), n, e, r, lim, ext);
+    } else if (fx > 1.0 - side) {
+        light += star_light(row, select(col + 1.0, 0.0, col + 1.0 >= n), n, e, r, lim, ext);
+    }
+    let fy = up - row;
+    let high = reach * STAR_ROWS / PI;
+    var row2 = -1.0;
+    if (fy < high && row > 0.0) {
+        row2 = row - 1.0;
+    } else if (fy > 1.0 - high && row < STAR_ROWS - 1.0) {
+        row2 = row + 1.0;
+    }
+    if (row2 >= 0.0) {
+        let n2 = star_row_cells(row2);
+        let col2 = min(floor(fract(atan2(e.y, e.x) / TAU) * n2), n2 - 1.0);
+        light += star_light(row2, col2, n2, e, r, lim, ext);
+    }
+#ifdef PALETTE_SKY_FX
+    // Low stars twinkle (through more air), each at its own pace.
+    let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
+    let h = hash2(vec2<f32>(col, row));
+    light *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * h) + h * 400.0), 0.0);
+#endif
+    // Gone in the haze at the horizon.
+    return light * smoothstep(0.0, 0.05, nd.y);
+}
 
 fn hash2(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
@@ -770,34 +870,16 @@ fn night_sky(bg_in: vec3<f32>, nd: vec3<f32>, px: f32) -> vec3<f32> {
     var bg = bg_in;
     let daylight = clamp(globals.light_info.y, 0.0, 1.0);
     let stars = globals.sky_moon.w;
+    // Only in the night variant (palette_material.rs `FX_STARS`, on while the stars show): the
+    // stars' code costs the background half its waves on the Steam Frame.
+#ifdef PALETTE_STARS
     if (stars > 0.0) {
-        let az = atan2(nd.x, -nd.z);
-        let el = asin(clamp(nd.y, -1.0, 1.0));
-        // Rows of cells by elevation; narrower azimuth cells near the zenith would crowd the
-        // stars, so each row's cells are as wide as the row's middle is around.
-        let row = floor(el / STAR_CELL);
-        let w = STAR_CELL / max(cos((row + 0.5) * STAR_CELL), 0.05);
-        let cell = vec2<f32>(floor(az / w), row);
-        let h = hash2(cell);
-        if (h < STAR_SHARE) {
-            let c_az = (cell.x + 0.5 + 0.6 * (hash2(cell + 7.1) - 0.5)) * w;
-            let c_el = (cell.y + 0.5 + 0.6 * (hash2(cell + 3.3) - 0.5)) * STAR_CELL;
-            let star = vec3<f32>(cos(c_el) * sin(c_az), sin(c_el), -cos(c_el) * cos(c_az));
-            let d = length(nd - star);
-            // A hard edged point about a pixel across: unfiltered, it pops between pixels as the
-            // view moves, so the stars twinkle.
-            let r = max(STAR_CELL * 0.03, px * 0.55);
-            let core = select(0.0, 1.0, d < r);
-            var mag = 0.35 + 0.65 * pow(h / STAR_SHARE, 3.0);
-            // Low stars twinkle (through more air), each at its own pace.
-            let low = 1.0 - smoothstep(0.05, 0.5, nd.y);
-            mag *= max(1.0 + globals.sky_fx.z * low * 0.7 * sin(globals.dots.y * (7.0 + 9.0 * hash2(cell + 1.9)) + h * 400.0), 0.0);
-            // Fainter towards the horizon (haze).
-            let alt_fade = smoothstep(0.0, 0.15, nd.y);
-            bg += vec3<f32>(0.9, 0.92, 1.0) * core * mag * stars * alt_fade;
-        }
+        bg += star_field(nd, stars, px);
+#ifdef PALETTE_SKY_FX
         bg += (aurora(nd) + vec3<f32>(1.0, 0.95, 0.85) * meteor(nd, px)) * stars;
+#endif
     }
+#endif
     // The sun's disc, a soft edge against the sky.
     let sun = normalize(globals.sky_sun.xyz);
     if (sun.y > -SUN_RADIUS) {
@@ -922,13 +1004,22 @@ fn ground_mist(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
 
 const SHADOW_GRID: f32 = 12.0;
 
-// Cloud shadows: the shade of the clouds above `world` where the sun's ray from it meets their
-// base: the stratus deck's (unless a full overcast hides the sun everywhere), and the cumulus
-// and storm towers' (round, soft edged) from the grid of them round the eye, fading to their
-// average shade past it.
+// Modern or classic shading (`Globals::params` w), compiled in: the classic paths' code costs
+// the Steam Frame's GPU even skipped.
+#ifdef PALETTE_MODERN
+const MODERN: bool = true;
+#else
+const MODERN: bool = false;
+#endif
+
+// Cloud shadows: the shade of the clouds above `world` where the key light's ray from it meets
+// their base (the sun's, or the moon's when it is the brighter): the stratus deck's (unless a
+// full overcast hides it everywhere), and the cumulus and storm towers' (round, soft edged)
+// from the grid of them round the eye, fading to their average shade past it.
 fn cloud_shadow(world: vec3<f32>) -> f32 {
     let s = globals.atmos.z;
-    let sun = globals.sun.xyz;
+    let moon_key = (u32(globals.ambient.w) & LIGHT_MOON_KEY) != 0u;
+    let sun = select(globals.sun.xyz, globals.moon.xyz, moon_key);
     if (s <= 0.0 || sun.y < 0.05) {
         return 1.0;
     }
@@ -958,6 +1049,19 @@ fn cloud_shadow(world: vec3<f32>) -> f32 {
         shade = max(shade, mix(local, globals.shadow_far.z, smoothstep(0.75, 1.0, edge)));
     }
     return 1.0 - s * shade;
+}
+
+// The cloud shadows and ground mist at `world`, `dist` metres from the eye (each only in the
+// variants with it).
+fn atmosphere(rgb: vec3<f32>, world: vec3<f32>, dist: f32) -> vec3<f32> {
+    var c = rgb;
+#ifdef PALETTE_CLOUD_SHADOWS
+    c *= cloud_shadow(world);
+#endif
+#ifdef PALETTE_MIST
+    c = ground_mist(c, world, dist);
+#endif
+    return c;
 }
 
 // How thick the storm haze is at the visibility distance (1 - exp(-this)).
@@ -1163,7 +1267,11 @@ fn burst_glow(world: vec3<f32>) -> vec3<f32> {
 // Lightning: the far-reaching flash over everything plus the channel's local light; and the
 // combat flash's light.
 fn flash(rgb: vec3<f32>, world: vec3<f32>) -> vec3<f32> {
+#ifdef PALETTE_BURST
     return rgb + (BOLT_COLOR * (globals.weather.y + bolt_glow(world)) + burst_glow(world)) * flash_scale();
+#else
+    return rgb + BOLT_COLOR * (globals.weather.y + bolt_glow(world)) * flash_scale();
+#endif
 }
 
 // Night vision goggles (light_info.z): the image intensified to a green phosphor picture,
@@ -1219,6 +1327,9 @@ const WATER_SPECKS: f32 = 0.35;
 const WATER_DOTS_HIGH: vec2<f32> = vec2<f32>(80.0, 300.0);
 // Least speck radius up close (metres); otherwise a dot light's size.
 const WATER_SPECK_M: f32 = 0.25;
+// The desert's specks (linear): the sand darkened to brown, and pale sand to mix in.
+const SAND_DARK: vec3<f32> = vec3<f32>(0.5, 0.4, 0.3);
+const SAND_LIGHT: vec3<f32> = vec3<f32>(0.85, 0.7, 0.45);
 
 // A dot light's size in this view's pixels (the vertex shader's DOT_BATCH).
 fn dot_pixels() -> f32 {
@@ -1239,19 +1350,19 @@ fn pixels(off: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(off.x * dy.y - off.y * dy.x, dx.x * off.y - dx.y * off.x) / det;
 }
 
-fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
-    let h = view.world_position.y - world.y;
-    let level = abs(normalize(deriv.face).y) > 0.95;
+// Specks pinned to the ground plane at `xz`, seen from `h` metres above it: their weight 0..1
+// (x) and whether the one here is a light one (y).
+fn specks(xz: vec2<f32>, h: f32, deriv: Deriv, modern: bool) -> vec2<f32> {
     let fade = (1.0 - smoothstep(WATER_DOTS_HIGH.x, WATER_DOTS_HIGH.y, h))
         * (1.0 - smoothstep(0.15, 0.4, deriv.foot / WATER_GRID));
-    if (!level || fade <= 0.0) {
-        return rgb;
+    if (fade <= 0.0) {
+        return vec2<f32>(0.0);
     }
-    let p = (world.xz + globals.noise.xy) / WATER_GRID;
+    let p = (xz + globals.noise.xy) / WATER_GRID;
     let cell = floor(p);
     let n = hash2(cell);
     if (n >= WATER_SPECKS) {
-        return rgb;
+        return vec2<f32>(0.0);
     }
     let at = cell + vec2<f32>(hash2(cell + 17.0), hash2(cell + 43.0));
     // Distance from the speck in screen pixels (a little world size up close).
@@ -1262,8 +1373,24 @@ fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> v
     if (!modern) {
         k = select(0.0, 1.0, px < r);
     }
-    let tone = select(rgb * 0.4, rgb * 0.4 + vec3<f32>(0.4), n < WATER_SPECKS * 0.5);
-    return mix(rgb, tone, k * fade);
+    return vec2<f32>(k * fade, select(0.0, 1.0, n < WATER_SPECKS * 0.5));
+}
+
+fn water_dots(rgb: vec3<f32>, world: vec3<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
+    if (abs(normalize(deriv.face).y) <= 0.95) {
+        return rgb;
+    }
+    let s = specks(world.xz, view.world_position.y - world.y, deriv, modern);
+    let tone = select(rgb * 0.4, rgb * 0.4 + vec3<f32>(0.4), s.y > 0.5);
+    return mix(rgb, tone, s.x);
+}
+
+// The desert theaters' ground gradient (globals.sky_fx.w): the water's specks in earth
+// colours, a darker brown and a pale sand, on the ground plane at `xz`.
+fn sand_dots(rgb: vec3<f32>, xz: vec2<f32>, deriv: Deriv, modern: bool) -> vec3<f32> {
+    let s = specks(xz, view.world_position.y, deriv, modern);
+    let tone = select(rgb * SAND_DARK, mix(rgb, SAND_LIGHT, 0.5), s.y > 0.5);
+    return mix(rgb, tone, s.x);
 }
 
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
@@ -1298,6 +1425,17 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     deriv.foot = length(fwidth(in.world_position));
     deriv.ground_dx = dpdx(in.world_position.xz);
     deriv.ground_dy = dpdy(in.world_position.xz);
+#ifdef PALETTE_BACKGROUND
+#ifdef PALETTE_SAND
+    // The background sphere: the ground plane (y = 0) where the view ray meets it (the
+    // desert's specks).
+    let ray = in.world_position - view.world_position;
+    let ground = view.world_position + ray * (view.world_position.y / max(-ray.y, 1e-4));
+    deriv.foot = length(fwidth(ground));
+    deriv.ground_dx = dpdx(ground.xz);
+    deriv.ground_dy = dpdy(ground.xz);
+#endif
+#endif
     if ((u32(globals.light_info.w) & 1u) != 0u) {
         return vec4<f32>(pal(colour_word(in) & 0xFFu), 1.0);
     }
@@ -1312,12 +1450,16 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     let c = shade_fragment(in, deriv);
     let glare = sun_glare(in.world_position - view.world_position);
+#ifdef PALETTE_RETRO
     return vec4<f32>(retro(nvg(c.rgb + glare * c.a, in.clip_position), in.clip_position.xy), c.a);
+#else
+    return vec4<f32>(nvg(c.rgb + glare * c.a, in.clip_position), c.a);
+#endif
 }
 
 fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     let dir = in.world_position - view.world_position;
-    let modern = globals.params.w != 0.0;
+    let modern = MODERN;
     // One pipeline per kind of material (palette_material.rs `PaletteKey`): a shader with
     // every branch needs so many registers that the Frame's GPU runs half as many fragments
     // at once.
@@ -1362,9 +1504,14 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         } else {
             bg = pal(band(dir).x);
         }
+        let eye = view.world_position;
+#ifdef PALETTE_SAND
+        if (globals.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
+            bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), deriv, modern);
+        }
+#endif
         // Lighting options: the ground gradient is lit like flat ground where the view ray
         // meets the ground plane (y = 0), so it takes shadows and local lights.
-        let eye = view.world_position;
         var ground_lit = false;
 #ifdef PALETTE_LIT
         let flags = u32(globals.ambient.w);
@@ -1381,7 +1528,9 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
             bg = night_sky(bg, normalize(dir), deriv.sky_px);
         }
         // Stratus layer beyond its planes: its underside over the sky below it, its top over
-        // the ground above it, where the layer's coverage field has cloud.
+        // the ground above it, where the layer's coverage field has cloud. Only in the variant
+        // for a sky with a deck (`FX_STRATUS`).
+#ifdef PALETTE_STRATUS
         if (globals.clouds.z != 0.0) {
             let eye_y = eye.y;
             let nd = normalize(dir);
@@ -1401,6 +1550,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
                 bg = mix(bg, c, stratus_cover(hit));
             }
         }
+#endif
         // Lightning: the channel's light where the view ray meets cloud or ground, and the
         // glow of a strike over the sky in its direction.
         let to_bolt = (globals.bolt_a.xyz + globals.bolt_b.xyz) * 0.5 - eye;
@@ -1413,17 +1563,19 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         // The ground gradient's mist and cloud shadows, where the ray meets the ground.
         if (nd.y < 0.0) {
             let ground = eye + nd * haze_d;
-            bg = ground_mist(bg * cloud_shadow(ground), ground, haze_d);
+            bg = atmosphere(bg, ground, haze_d);
         }
         bg = storm_haze(bg, nd, haze_d);
         bg = flash(whiteout(bg, 1e4), eye + nd * along) + BOLT_COLOR * sheet;
         // A distant combat flash's halo over the sky (where the view ray passes it; one near
         // the eye lights what is around it, not the sky).
+#ifdef PALETTE_BURST
         if (globals.burst.w > 0.0) {
             let burst_d = length(globals.burst.xyz - eye);
             let far = smoothstep(0.5, 2.0, burst_d / globals.burst_colour.w);
             bg += burst_glow(eye + nd * burst_d) * flash_scale() * far;
         }
+#endif
         return vec4<f32>(bg, 1.0);
     }
 #else
@@ -1496,7 +1648,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     }
     let d = length(dir);
     if (!is_line) {
-        rgb = ground_mist(rgb * cloud_shadow(in.world_position), in.world_position, d);
+        rgb = atmosphere(rgb, in.world_position, d);
     }
     var alpha = 1.0;
 #ifdef DOT_BATCH

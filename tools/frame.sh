@@ -11,8 +11,8 @@
 #   --detach       leave the game running and return (stop it with `tools/frame.sh --stop`)
 #   --stop         stop a running game and exit
 # ENV=VALUE pairs are set for the game (e.g. SM89_PROFILE=10s SM89_MSAA=2).
-# Game args default to `--vr` (the main menu, in the headset); a flight straight away:
-#   tools/frame.sh -- --vr --mission 1234 --theater-index 3 --weather clear --modern
+# Game args default to `--gl-vr` (the main menu, in the headset, foveated); a flight straight away:
+#   tools/frame.sh -- --gl-vr --mission 1234 --theater-index 3 --weather clear --modern
 #
 # Ctrl-C stops the game on the Frame. The log is copied to target/frame-logs/, followed by
 # SteamVR's measurement of the run (ApplicationTime CPU / GPU per frame, from vrcompositor.txt).
@@ -51,7 +51,7 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
-[ ${#args[@]} -eq 0 ] && args=(--vr)
+[ ${#args[@]} -eq 0 ] && args=(--gl-vr)
 
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
 stop_game() { remote 'pkill -INT -x stealth-mission; sleep 2; pkill -KILL -x stealth-mission' || true; }

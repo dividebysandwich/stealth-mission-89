@@ -18,7 +18,7 @@ impl CampaignState {
         aaa: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Result<Vec<CampaignEvent>, Text> {
         if let Some(r) = self.supply_requests.iter().find(|r| r.aaa == aaa) {
             return Err(match r.state {
@@ -41,7 +41,7 @@ impl CampaignState {
             aaa,
             x,
             y,
-            patriot,
+            kind,
             name,
             by: player,
             posted: now,
@@ -49,8 +49,14 @@ impl CampaignState {
         };
         let text = match player {
             Some(p) => text!("cl-resupply-requested", who = self.who(p), unit = r.title()),
-            None if patriot => text!("cl-resupply-out-of-missiles", unit = r.title()),
-            None => text!("cl-resupply-out-of-rounds", unit = r.title()),
+            None => {
+                let id = match kind {
+                    DefenceKind::Gepard => "cl-resupply-out-of-rounds",
+                    DefenceKind::Patriot => "cl-resupply-out-of-missiles",
+                    DefenceKind::Drones => "cl-resupply-out-of-drones",
+                };
+                text!(id, unit = r.title())
+            }
         };
         self.supply_requests.push(r);
         self.note(text.clone());
@@ -58,7 +64,7 @@ impl CampaignState {
         Ok(vec![CampaignEvent::Message(text)])
     }
 
-    /// An air defence unit (AAA index, where it stands, a Patriot battery or a Gepard) has used
+    /// An air defence unit (AAA index, where it stands, what it is) has used
     /// up its stockpile: a resupply is ordered unless one is already under way (or no airfield
     /// is left to fly it from).
     pub fn order_resupply(
@@ -66,14 +72,14 @@ impl CampaignState {
         aaa: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     ) -> Vec<CampaignEvent> {
         if self.outcome.is_some()
             || self.supply_requests.iter().any(|r| r.aaa == aaa || (r.x, r.y) == (x, y))
         {
             return Vec::new();
         }
-        self.request_resupply(None, aaa, x, y, patriot).unwrap_or_default()
+        self.request_resupply(None, aaa, x, y, kind).unwrap_or_default()
     }
 
     /// The friendly airfield a resupply for (x, y) is flown from: the nearest intact one, else
@@ -105,10 +111,10 @@ impl CampaignState {
             let r = &self.supply_requests[k];
             // The unit where it stands (a reloaded simulation may number it anew).
             let alive =
-                |a: &crate::AaaView| a.alive && a.side == Side::Blue && (a.x, a.y) == (r.x, r.y);
-            let unit = match view.aaa.get(r.aaa as usize) {
+                |a: &crate::GroundView| a.alive && a.side == Side::Blue && (a.x, a.y) == (r.x, r.y);
+            let unit = match view.units.get(r.aaa as usize) {
                 Some(a) if alive(a) => Some(r.aaa),
-                _ => view.aaa.iter().position(alive).map(|i| i as u32),
+                _ => view.units.iter().position(alive).map(|i| i as u32),
             };
             let Some(unit) = unit else {
                 // Its helicopter flies home with the load.

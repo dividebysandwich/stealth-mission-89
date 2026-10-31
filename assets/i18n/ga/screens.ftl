@@ -49,6 +49,12 @@ planner-uav = UAV namhad
 planner-edit-hint = Tarraing pointe chun é a bhogadh, an mhapa chun pan a dhéanamh. Cliceáil ar chos chun pointe a chur leis, cliceáil dheas chun é a bhaint. Roth: zúmáil.
 planner-reset = ATHSHOCRÚ
 planner-view-hint = Tarraing an mhapa chun pan a dhéanamh. Roth: zúmáil.
+planner-layers = SRAITHEANNA
+planner-layer-sams = Radar / suíomh SAM
+planner-radar-types = Cineálacha radair
+planner-layer-pulse = Raon braite radair bhíoma
+planner-layer-doppler = Raon braite radair Doppler
+planner-layer-airfield = Aerpháirc
 
 ## Misin shábháilte
 

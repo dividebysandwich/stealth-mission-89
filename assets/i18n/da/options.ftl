@@ -35,11 +35,27 @@ options-auto-trim = Automatisk trim
         Manuel trim: Alt + piletaster, Alt + Home centrerer den
 options-tooltips = Cockpit-tooltips
     .facts = Hvad et cockpitinstrument eller en skærm er, under musen eller en VR-fingerspids
+options-player-labels = Spillernavne
+    .facts = Multiplayer: de andre piloters navne over deres fly, uanset afstand
+options-label-size =
+    .facts =
+        Spillernavnenes størrelse
+        50 %: standard
 options-section-vr-size = Cockpitstørrelse i VR
 options-vr-size =
     .facts =
         Cockpittets (og verdens) størrelse i headsettet
         100 %: i naturlig størrelse
+options-section-gif = GIF-optagelse
+options-gif-size = STØRRELSE
+options-gif-rate = BILLEDER
+options-gif-scale-100 =
+    .facts = Vinduets fulde opløsning: store filer
+options-gif-scale-25 =
+    .facts = Små filer
+options-gif-rate-50 =
+    .facts = Kun når spillet kører med 100 fps eller mere (hvert andet billede optages)
+options-gif-hint = F12 (medmindre omdefineret) starter og stopper; gemmes i mappen Billeder
 
 ## GRAFIK
 
@@ -85,6 +101,19 @@ options-volume-effects = Effekter
     .facts = Våben, eksplosioner, understel, radio og resten
 options-volume-warnings = Advarsler
     .facts = Stall-horn, radar- og missiladvarsler, brandsirenen, Sidewinder-tonerne
+options-volume-rwr = RWR
+    .facts = Radaradvarselstonerne, som en del af advarslernes lydstyrke
+options-section-rwr-tones = Radaradvarselstoner
+rwr-tones-all = ALLE
+    .facts = En radar, der belyser dig, hvert sweep, der opdager dig, missilaffyringer
+rwr-tones-detect = KUN OPDAGELSE
+    .facts =
+        Én tone, når en radar opdager dig (igen efter at radarerne har sluppet dig et stykke tid)
+        Og missilaffyringer
+rwr-tones-launch = KUN AFFYRINGER
+    .facts = Kun missiler affyret mod dig
+rwr-tones-off = FRA
+    .facts = Ingen radaradvarselstoner (lamperne og skærmene advarer stadig)
 options-section-cockpit = Cockpit
 options-low-pass = Lavpasfilter på motor
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Damp og rotorvind
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Ved hårde manøvrer dampstriber fra vingespidserne
+        En helikopter, der svæver lavt, hvirvler støv op, eller sprøjt over vand
+        Køretøjer i bevægelse hvirvler støv op bag sig
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

@@ -6,6 +6,7 @@ axis-rudder = Sideror
 axis-throttle = Gashåndtag
 axis-slew-x = Sensor-/markørbevægelse X
 axis-slew-y = Sensor-/markørbevægelse Y
+axis-nozzle = Dyser (Harrier)
 input-button = Knap { $n }
 input-axis = Akse { $n }
 vr-trigger = Aftrækker

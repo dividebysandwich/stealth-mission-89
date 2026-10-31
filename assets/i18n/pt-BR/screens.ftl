@@ -49,6 +49,12 @@ planner-uav = VANT inimigo
 planner-edit-hint = Arraste um ponto para movê-lo, o mapa para deslocá-lo. Clique em um trecho para adicionar um ponto, clique direito para removê-lo. Roda: zoom.
 planner-reset = REDEFINIR
 planner-view-hint = Arraste o mapa para deslocá-lo. Roda: zoom.
+planner-layers = CAMADAS
+planner-layer-sams = Radar / local de SAM
+planner-radar-types = Tipos de radar
+planner-layer-pulse = Alcance de detecção do radar pulsado
+planner-layer-doppler = Alcance de detecção do radar Doppler
+planner-layer-airfield = Aeródromo
 
 ## Missões salvas
 

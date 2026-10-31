@@ -46,7 +46,7 @@ Starting
                                view direction (default 0, -15)
 
 Aircraft and rules
-  --aircraft f117|f16|tornado|a10|uh60|ah1z|rah66
+  --aircraft f117|f16|tornado|a10|av8b|uh60|ah1z|rah66
                                the flown aircraft (default f117)
   --lockheed                   realistic weapons: the real F-117A's 2 bays, no air-to-air
                                missiles, no carrier operations
@@ -80,7 +80,7 @@ Cockpit and graphics
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size
   --novsync                    uncapped frame rate
-  --ui-zoom <f>                interface scale
+  --ui-zoom <f>                interface scale (default: fit the window)
 
 Tacview
   --tacview                    save the flight as a Tacview ACMI file when it ends
@@ -108,7 +108,8 @@ Testing and screenshots
   --write-relief               with --freecam --theater <id>: save the theater's mountains
                                for the AI (assets/theaters/<id>.relief) and exit
   --write-helipads             with --freecam --theater <id>: save the airfields' helipads
-                               for the AI (assets/theaters/<id>.helipads) and exit
+                               and runways for the AI (assets/theaters/<id>.helipads,
+                               .runways) and exit
   --screenshot <file.png>      save a screenshot and exit
     --shot-frames <n>          after n frames (default 90)
     --shot-time <s>            after s seconds of flight
@@ -138,9 +139,25 @@ Testing and screenshots
   --campaign-accept map|loadout
                                open the first mission's briefing on that page
   --campaign-insert            order an insertion against the nearest enemy place
+  --convoy-now                 both sides send an armour column at once
+  --convoy-speed <m/s>         the columns drive this fast
+  --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
+  --fp2-strike [m]             an attack drone at the enemy column's Shilka once it drove m
+                               (with --convoy-now)
+  --campaign-watch armour|fp2|zsu
+                               watch a tank on the move, the attack drone, the column's Shilka
+  --watch-orbit <yaw>,<pitch>,<m>
+                               the watching camera's place (radians from behind, above)
   --campaign-watch             watch the first friendly aircraft
-  --campaign-designate gepard|patriot
+  --campaign-designate gepard|patriot|drones
                                designate a new air defence site near the parked base
+  --campaign-drones [front [n]] put (n) drone command centers near the front, man one
+  --campaign-man <n>|drone     man the n-th friendly console, or a free drone center
+  --campaign-geran <n> [km]    an enemy Geran-2 raid km (2) ahead of the first interceptor up
+  --drone-launch stork|fp2     at it, launch a drone at the nearest enemy air defence
+  --drone-manual               flown by hand
+  --drone-forward              its forward-looking camera
+  --drone-flir                 its camera in FLIR (thermal)
 
   -h, --help                   this list
 ";

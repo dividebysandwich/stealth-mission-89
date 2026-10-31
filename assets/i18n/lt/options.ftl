@@ -35,11 +35,27 @@ options-auto-trim = Autom. trim
         Rankinis trim: Alt + rodyklių klavišai, Alt + Home centruoja
 options-tooltips = Kabinos paaiškinimai
     .facts = Kas yra kabinos valdiklis ar ekranas, po pele arba VR piršto galiuku
+options-player-labels = Žaidėjų vardai
+    .facts = Daugelio žaidėjų režimas: kitų pilotų vardai virš jų lėktuvų, bet kokiu atstumu
+options-label-size =
+    .facts =
+        Žaidėjų vardų dydis
+        50 %: numatytasis
 options-section-vr-size = VR kabinos dydis
 options-vr-size =
     .facts =
         Kabinos (ir pasaulio) dydis ausinėje
         100 %: natūralus dydis
+options-section-gif = GIF įrašymas
+options-gif-size = DYDIS
+options-gif-rate = KADRAI
+options-gif-scale-100 =
+    .facts = Visa lango raiška: dideli failai
+options-gif-scale-25 =
+    .facts = Maži failai
+options-gif-rate-50 =
+    .facts = Tik kai žaidimas veikia 100 fps ar daugiau (įrašomas kas antras kadras)
+options-gif-hint = F12 (jei nepriskirta kitaip) pradeda ir sustabdo; įrašoma į aplanką Paveikslėliai
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efektai
     .facts = Ginklai, sprogimai, važiuoklė, radijas ir kita
 options-volume-warnings = Įspėjimai
     .facts = Praradimo signalas, radaro ir raketų įspėjimai, gaisro sirena, Sidewinder tonai
+options-volume-rwr = RWR
+    .facts = Radaro įspėjimo tonai, kaip įspėjimų garsumo dalis
+options-section-rwr-tones = Radaro įspėjimo tonai
+rwr-tones-all = VISI
+    .facts = Jus apšviečiantis radaras, kiekvienas jus aptinkantis apžvalgos ciklas, raketų paleidimai
+rwr-tones-detect = TIK APTIKIMAS
+    .facts =
+        Vienas tonas, kai radaras jus aptinka (vėl, kai radarai jus kuriam laikui paleidžia)
+        Ir raketų paleidimai
+rwr-tones-launch = TIK PALEIDIMAI
+    .facts = Tik į jus paleistos raketos
+rwr-tones-off = IŠJ
+    .facts = Jokių radaro įspėjimo tonų (lemputės ir ekranai vis tiek įspėja)
 options-section-cockpit = Kabina
 options-low-pass = Variklio žemų dažnių filtras
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Garai ir rotoriaus srautas
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Staigiai manevruojant nuo sparnų galų driekiasi garų pėdsakai
+        Žemai kabantis sraigtasparnis kelia dulkes, virš vandens - purslus
+        Važiuojančios mašinos kelia dulkes už savęs
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

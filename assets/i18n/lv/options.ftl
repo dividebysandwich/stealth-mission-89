@@ -35,11 +35,27 @@ options-auto-trim = Automātiskais trim
         Manuālais trim: Alt + bulttaustiņi, Alt + Home to centrē
 options-tooltips = Kabīnes tooltips
     .facts = Kas ir kabīnes vadības elements vai displejs, zem peles vai VR pirksta gala
+options-player-labels = Spēlētāju vārdi
+    .facts = Daudzspēlētāju režīms: citu pilotu vārdi virs viņu lidmašīnām, jebkurā attālumā
+options-label-size =
+    .facts =
+        Spēlētāju vārdu izmērs
+        50 %: noklusējums
 options-section-vr-size = VR kabīnes izmērs
 options-vr-size =
     .facts =
         Kabīnes (un pasaules) izmērs austiņās
         100%: dabiskais izmērs
+options-section-gif = GIF ierakstīšana
+options-gif-size = IZMĒRS
+options-gif-rate = KADRI
+options-gif-scale-100 =
+    .facts = Pilna loga izšķirtspēja: lieli faili
+options-gif-scale-25 =
+    .facts = Mazi faili
+options-gif-rate-50 =
+    .facts = Tikai ja spēle darbojas ar 100 fps vai vairāk (tiek tverts katrs otrais kadrs)
+options-gif-hint = F12 (ja nav pārpiešķirts) sāk un aptur; saglabāts mapē Attēli
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efekti
     .facts = Ieroči, sprādzieni, šasija, radio un pārējais
 options-volume-warnings = Brīdinājumi
     .facts = Pārvilkšanas signāls, radara un raķešu brīdinājumi, ugunsgrēka sirēna, Sidewinder toņi
+options-volume-rwr = RWR
+    .facts = Radara brīdinājuma toņi, kā daļa no brīdinājumu skaļuma
+options-section-rwr-tones = Radara brīdinājuma toņi
+rwr-tones-all = VISI
+    .facts = Radars, kas jūs apgaismo, katrs apskats, kas jūs atklāj, raķešu palaišanas
+rwr-tones-detect = TIKAI ATKLĀŠANA
+    .facts =
+        Viens tonis, kad radars jūs atklāj (atkal, kad radari jūs kādu laiku zaudējuši)
+        Un raķešu palaišanas
+rwr-tones-launch = TIKAI PALAIŠANAS
+    .facts = Tikai uz jums palaistās raķetes
+rwr-tones-off = IZSL
+    .facts = Bez radara brīdinājuma toņiem (lampiņas un displeji joprojām brīdina)
 options-section-cockpit = Kabīne
 options-low-pass = Dzinēja zemfrekvenču filtrs
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Tvaiks un rotora plūsma
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Asos manevros no spārnu galiem stiepjas tvaika sliedes
+        Zemu karājošs helikopters saceļ putekļus, virs ūdens - šļakatas
+        Braucoši transportlīdzekļi saceļ putekļus aiz sevis
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

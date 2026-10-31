@@ -206,6 +206,11 @@ aircraft-a10 =
         近接航空支援機
         低速で頑丈、30 mm 機関砲
         A-10C コックピット、MFD 2 基
+aircraft-av8b =
+    .facts =
+        V/STOL攻撃機
+        推力偏向：ホバリング、どこにでも着陸
+        ノズルレバー：R / F、Shiftでストップ
 aircraft-uh60 =
     .facts =
         多用途ヘリコプター

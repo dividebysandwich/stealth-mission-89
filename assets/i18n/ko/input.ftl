@@ -6,6 +6,7 @@ axis-rudder = 러더
 axis-throttle = 스로틀
 axis-slew-x = 센서/커서 이동 X
 axis-slew-y = 센서/커서 이동 Y
+axis-nozzle = 노즐(해리어)
 input-button = 버튼 { $n }
 input-axis = 축 { $n }
 vr-trigger = 트리거

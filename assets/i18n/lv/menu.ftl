@@ -206,6 +206,11 @@ aircraft-a10 =
         Tuvā gaisa atbalsta lidmašīna
         Lēna un izturīga, 30 mm lielgabals
         A-10C kabīne, divi MFD
+aircraft-av8b =
+    .facts =
+        V/STOL uzbrukuma lidmašīna
+        Vektorizēta vilkme: karāšanās, nolaižas jebkur
+        Sprauslu svira: R / F, Shift atdurēm
 aircraft-uh60 =
     .facts =
         Daudzfunkcionāls helikopters

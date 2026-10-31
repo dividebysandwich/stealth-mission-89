@@ -104,7 +104,26 @@ impl Sim {
                 self.msg(text!("sim-no-target"));
             }
         }
+        if let Some(k) = c.designate_unit
+            && let Some(u) = self.units.get(k as usize).filter(|u| !u.destroyed)
+        {
+            let (ux, uy) = u.map_xy();
+            let (x, y) = (ux.round() as i32, uy.round() as i32);
+            if !self.player_sees(x, y, 0) {
+                self.msg(text!("sim-target-obscured"));
+            } else {
+                self.ground_point(x, y);
+                self.pl.gnd_lock = 0;
+                self.pl.spi = Some((x, y));
+                self.pl.spi_unit = Some(k);
+                self.pl.target_hold = true;
+                self.pl.nearest_req = 0;
+                self.pl.targeting.target_killed = false;
+                self.pl.pflags &= !pflags::DESIGNATE;
+            }
+        }
         if let Some((x, y)) = c.designate_at {
+            self.pl.spi_unit = None;
             // The object there (a world object, else a scenery tile), else the plain ground
             // (scratch object 0).
             let world = (3..self.objects.len())
@@ -287,9 +306,8 @@ impl Sim {
         if self.pl.fire_cooldown > 0 {
             self.pl.fire_cooldown -= 1;
         }
-        let ccrp = ps.ccrp
-            && self.pl.hud_mode == HudMode::Gnd
-            && ballistics::drag(self.selected_spec(), self.opts.fix_classic_bugs).is_some();
+        let bomb = ballistics::drag(self.selected_spec(), self.opts.fix_classic_bugs).is_some();
+        let ccrp = ps.ccrp && self.pl.hud_mode == HudMode::Gnd && bomb;
         // The RAH-66's missile waiting for its doors goes as soon as they are open.
         if self.pl.bay_pending && self.pl.pflags & pflags::BAY_OPEN != 0 {
             self.pl.bay_pending = false;
@@ -297,33 +315,95 @@ impl Sim {
                 self.fire_missile();
             }
         }
-        if ps.cmd.fire && self.pl.fire_cooldown == 0 && self.pl.eject == 0 {
+        // The rest of a ripple at its spacing while the button stays held; let go, it stops.
+        if let Some(mut r) = self.pl.ripple {
+            if !ps.cmd.trigger || !bomb || self.pl.eject != 0 {
+                self.pl.ripple = None;
+            } else if r.left > 0 {
+                r.run_ft += self.ground_speed() / self.fs as f64;
+                if r.run_ft >= r.spacing_ft {
+                    r.run_ft -= r.spacing_ft;
+                    r.left -= 1;
+                    self.fire_missile();
+                }
+                self.pl.ripple = Some(r);
+            }
+        }
+        let rippling = self.pl.ripple.is_some();
+        if ps.cmd.fire && self.pl.fire_cooldown == 0 && self.pl.eject == 0 && !rippling {
             if !ccrp {
-                self.fire_missile();
+                if bomb {
+                    self.release_bombs(ps);
+                } else {
+                    self.fire_missile();
+                }
                 self.pl.fire_cooldown = 4;
-            } else if self.ccrp_solution().is_none() {
+            } else if self.ccrp_solution(ps).is_none() {
                 self.msg(text!("sim-no-target-designated"));
             }
         }
-        // CCRP: with the button held, the bomb goes when the impact point reaches the target.
-        let along = if ccrp { self.ccrp_solution().map(|s| s.0) } else { None };
+        // CCRP: with the button held, the (first) bomb goes when the impact point reaches the
+        // release point, wherever the aircraft points: lined up badly, it misses to the side.
+        let along = if ccrp { self.ccrp_solution(ps).map(|s| s.0) } else { None };
         if let (Some(last), Some(now)) = (self.pl.ccrp_last, along)
             && last > 0.0
             && now <= 0.0
             && ps.cmd.trigger
             && self.pl.eject == 0
+            && !rippling
         {
-            self.fire_missile();
+            self.release_bombs(ps);
         }
         self.pl.ccrp_last = along;
     }
 
-    /// CCRP release solution against the ground lock: the ground distance (ft) the impact
-    /// point of a bomb released now still has to go to the target along the flight path (<= 0
-    /// at and past the release point) and the seconds to the release point.
-    pub(crate) fn ccrp_solution(&self) -> Option<(f64, f64)> {
-        let g = self.pl.gnd_lock;
-        let o = self.objects.get(usize::try_from(g).ok()?)?;
+    /// Bombs a press releases (at least 1, no more than are left) and the ground distance
+    /// between them (ft).
+    pub(crate) fn ripple(&self, ps: &PlayerState) -> (i32, f64) {
+        let n = (ps.ripple as i32).clamp(1, self.selected_weapon().1.max(1));
+        if n == 1 { (1, 0.0) } else { (n, ps.ripple_ft.max(1) as f64) }
+    }
+
+    /// The first bomb of a release; once it is away the rest of the ripple follow.
+    fn release_bombs(&mut self, ps: &PlayerState) {
+        let (n, spacing_ft) = self.ripple(ps);
+        let before = self.selected_weapon().1;
+        self.fire_missile();
+        if n > 1 && self.selected_weapon().1 < before {
+            self.pl.ripple = Some(crate::pilot::RippleRun { left: n - 1, spacing_ft, run_ft: 0.0 });
+        }
+    }
+
+    /// Ground speed (ft/s).
+    fn ground_speed(&self) -> f64 {
+        let v =
+            ballistics::release_velocity(self.pl.p.heading, self.pl.p.velocity, self.pl.p.climb);
+        v[0].hypot(v[1])
+    }
+
+    /// Where a CCRP release aims (map units): the targeting pod's ground point, else the ground
+    /// lock (the lock when the pod rests on it).
+    pub(crate) fn ccrp_aim_of(&self, ps: &PlayerState) -> Option<(f64, f64)> {
+        let lock = usize::try_from(self.pl.gnd_lock)
+            .ok()
+            .and_then(|g| self.objects.get(g))
+            .map(|o| (o.x, o.y));
+        let pod = ps.pod.and_then(|p| p.ground);
+        let (x, y) = match (pod, lock) {
+            (Some(p), Some(o)) if approx(o.0 - p.0, o.1 - p.1) <= DESIGNATE_RADIUS => o,
+            (Some(p), _) => p,
+            (None, Some(o)) => o,
+            (None, None) => return None,
+        };
+        Some((x as f64 + 0.5, y as f64 + 0.5))
+    }
+
+    /// CCRP release solution: the ground distance (ft) the impact point of a bomb released
+    /// now still has to go to the release point along the flight path (<= 0 at and past it)
+    /// and the seconds to it. A ripple's release point is half its stick short of the aim
+    /// point, so the stick straddles it.
+    pub(crate) fn ccrp_solution(&self, ps: &PlayerState) -> Option<(f64, f64)> {
+        let (tx, ty) = self.ccrp_aim_of(ps)?;
         let (ix, iy) = self.bomb_impact()?;
         let v =
             ballistics::release_velocity(self.pl.p.heading, self.pl.p.velocity, self.pl.p.climb);
@@ -332,8 +412,12 @@ impl Sim {
             return None;
         }
         // Map units are 32 ft (y south, like the velocity).
-        let (dx, dy) = ((o.x as f64 + 0.5 - ix) * 32.0, (o.y as f64 + 0.5 - iy) * 32.0);
-        let along = (dx * v[0] + dy * v[1]) / vh;
+        let (dx, dy) = ((tx - ix) * 32.0, (ty - iy) * 32.0);
+        let half = {
+            let (n, spacing) = self.ripple(ps);
+            (n - 1) as f64 * spacing / 2.0
+        };
+        let along = (dx * v[0] + dy * v[1]) / vh - half;
         Some((along, along / vh))
     }
 
@@ -801,7 +885,8 @@ impl Sim {
     /// below it: dust, and what stands there may go.
     pub(crate) fn round_impact(&mut self, x: i32, y: i32, (bx, by): (i32, i32)) {
         {
-            self.emit(SimEvent::RoundImpact { x, y });
+            let heavy = self.pl.a10 || self.pl.tornado || self.pl.gunship;
+            self.emit(SimEvent::RoundImpact { x, y, heavy });
             let o = self.find_object_at(bx, by);
             if o == -1 || self.obj(o).flags & oflags::DESTROYED != 0 {
                 return;

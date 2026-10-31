@@ -216,6 +216,24 @@ impl FlightConstants {
         }
     }
 
+    /// AV-8B Harrier II: vectored thrust, the classic model's top speed about 570 kt, 8 g; it
+    /// starts with 6,000 lb of its 7,750 lb of fuel, light enough to take off vertically, and
+    /// the Pegasus burns it fast.
+    pub fn av8b() -> Self {
+        Self {
+            gravity_term: 80.0,
+            thrust_to_knots: 6.2,
+            max_knots: 600.0,
+            stall_knots: 120.0,
+            fuel_div: 800.0,
+            fuel: 6000.0,
+            max_gees: 128.0,
+            roll_rate: 1.5,
+            aero: modern::Aero::AV8B,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -296,6 +314,12 @@ pub struct Aircraft {
     /// A swing wing's position (`modern::SwingWing`): 0 fully forward .. 1 fully back.
     #[serde(default)]
     pub wing_sweep: f32,
+    /// A V/STOL type's nozzle lever (0 forward: the nozzles aft .. 1 pulled back to the braking
+    /// stop, `modern::Vtol::max_nozzle`), and the nozzles' angle down from aft following it (rad).
+    #[serde(default)]
+    pub nozzle_lever: f32,
+    #[serde(default)]
+    pub nozzle: f32,
     /// World units ("feet") above sea level.
     pub altitude: f32,
     pub ground_altitude: f32,
@@ -392,6 +416,8 @@ impl Aircraft {
             set_afterburner: None,
             afterburner: 0.0,
             wing_sweep: 0.0,
+            nozzle_lever: 0.0,
+            nozzle: 0.0,
             altitude: 0.0,
             ground_altitude: 0.0,
             climb_rate: 0.0,
@@ -519,8 +545,10 @@ fn handle_actions(
     mut actions: MessageReader<ActionEvent>,
     mut q: Query<&mut Aircraft, With<Player>>,
     k: Res<FlightConstants>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
-    let Ok(mut a) = q.single_mut() else {
+    // At a console the controls are the console's, not the parked aircraft's.
+    let (Ok(mut a), None) = (q.single_mut(), manning) else {
         actions.clear();
         return;
     };
@@ -540,6 +568,19 @@ fn handle_actions(
                 heli::engage_autopilot(&mut a, r)
             }
             Action::Gear if k.heli.is_some_and(|r| r.retract_gear.is_none()) => {}
+            // The nozzle lever (V/STOL types only).
+            Action::NozzleDown
+            | Action::NozzleAft
+            | Action::NozzleHover
+            | Action::NozzleFullAft => {
+                let Some(v) = &k.aero.vtol else { continue };
+                a.nozzle_lever = match action {
+                    Action::NozzleDown => v.lever_step(a.nozzle_lever, true),
+                    Action::NozzleAft => v.lever_step(a.nozzle_lever, false),
+                    Action::NozzleHover => v.hover_lever(),
+                    _ => 0.0,
+                };
+            }
             // '=' / '-' / '+' / '_' (they do not release the brakes in the F-117A). Past full
             // dry thrust they step through the afterburner; full power lights it at full dry
             // thrust.
@@ -642,11 +683,17 @@ fn step_flight(
     tables: Res<SimTables>,
     settings: Res<Settings>,
     theater: Option<Res<Theater>>,
+    manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(&mut Aircraft, &mut WorldPos, &mut Transform), With<Player>>,
 ) {
+    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun).
+    let parked = FlightControls::default();
+    let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.
     let total = time.delta_secs().min(1.0);
-    let max_dt = if settings.classic_flight && k.heli.is_none() { 1.0 / 60.0 } else { 1.0 / 120.0 };
+    // A V/STOL type always flies the modern model (the classic one can't hover).
+    let classic = settings.classic_flight && k.heli.is_none() && k.aero.vtol.is_none();
+    let max_dt = if classic { 1.0 / 60.0 } else { 1.0 / 120.0 };
     for (mut a, mut pos, mut tf) in &mut q {
         a.auto_trim = settings.auto_trim;
         let mut remaining = total;
@@ -657,11 +704,11 @@ fn step_flight(
                 a.move_trim(controls.trim.clamp(Vec2::NEG_ONE, Vec2::ONE) * TRIM_RATE * dt);
             }
             if let Some(r) = &k.heli {
-                heli::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, r, theater.as_deref());
-            } else if settings.classic_flight {
-                step_one(&mut a, &mut pos, &mut tf, dt, &controls, &k, &tables, theater.as_deref());
+                heli::step(&mut a, &mut pos, &mut tf, dt, controls, &k, r, theater.as_deref());
+            } else if classic {
+                step_one(&mut a, &mut pos, &mut tf, dt, controls, &k, &tables, theater.as_deref());
             } else {
-                modern::step(&mut a, &mut pos, &mut tf, dt, &controls, &k, theater.as_deref());
+                modern::step(&mut a, &mut pos, &mut tf, dt, controls, &k, theater.as_deref());
             }
             a.sweep_wing(&k, dt);
         }
@@ -964,7 +1011,9 @@ fn engine(a: &mut Aircraft, controls: &FlightControls, k: &FlightConstants, dt: 
 
 /// Ground altitude and landing corridor, touchdown, ground crashes and the safe landing end.
 /// `a.altitude` has been integrated from `prev_alt`; `a.climb_rate` is the sink at contact.
-/// A helicopter (`heli`) judges its own touchdowns, and its base is the whole airfield.
+/// A helicopter (`heli`) judges its own touchdowns, and its base is the whole airfield; so is a
+/// V/STOL type's when it is slow (a vertical landing), which may also land slowly anywhere flat,
+/// its touchdown judged there too.
 #[allow(clippy::too_many_arguments)]
 fn ground_contact(
     a: &mut Aircraft,
@@ -978,14 +1027,16 @@ fn ground_contact(
     dt: f32,
 ) {
     // --- landing corridor at the nearest friendly base
-    let (corridor, ground) =
-        theater.map(|t| landing_corridor(t, east, north, k.landing, heli)).unwrap_or((false, 0.0));
+    let vertical = !heli && k.aero.vtol.is_some() && a.knots() <= VTOL_LANDING_KNOTS;
+    let (corridor, ground) = theater
+        .map(|t| landing_corridor(t, east, north, k.landing, heli || vertical))
+        .unwrap_or((false, 0.0));
     a.in_landing_corridor = corridor;
     a.ground_altitude = ground;
     a.altitude = a.altitude.clamp(a.ground_altitude, 60000.0);
     let on_ground_now = a.altitude <= a.ground_altitude;
     if on_ground_now && prev_alt > a.ground_altitude && !heli {
-        touchdown(a, roll, k.landing as f32);
+        touchdown(a, roll, k.landing as f32, vertical);
     }
     if on_ground_now {
         a.climb_rate = 0.0;
@@ -1010,9 +1061,9 @@ fn ground_contact(
     }
 }
 
-/// Touchdown in a landing corridor.
-fn touchdown(a: &mut Aircraft, roll: f32, l: f32) {
-    if !a.in_landing_corridor {
+/// Touchdown in a landing corridor (`anywhere`: a V/STOL type's vertical landing).
+fn touchdown(a: &mut Aircraft, roll: f32, l: f32, anywhere: bool) {
+    if !a.in_landing_corridor && !anywhere {
         return;
     }
     let sink = (-a.climb_rate).max(0.0);
@@ -1049,6 +1100,10 @@ fn landing_corridor(t: &Theater, east: f64, north: f64, landing: u8, heli: bool)
     }
     (false, 0.0)
 }
+
+/// Speed (knots) up to which a V/STOL type lands as a helicopter does (`ground_contact`; the
+/// sim's `objectives`, keep in step).
+pub const VTOL_LANDING_KNOTS: f32 = 50.0;
 
 /// Half width (map units) of a base's landing area for helicopters: the airfield beside the
 /// runway (`landing_corridor`).
@@ -1615,6 +1670,185 @@ mod tests {
         let mut a = airborne(8000.0, 400.0, 70.0);
         a.move_trim(Vec2::new(0.0, 5.0));
         assert_eq!(a.stick_trim.y, TRIM_MAX);
+    }
+
+    /// The Harrier with the fuel it starts with.
+    fn harrier(mut a: Aircraft) -> Aircraft {
+        a.fuel = FlightConstants::av8b().fuel;
+        a
+    }
+
+    /// A pilot holding `alt` with the throttle (and the climb rate damped).
+    fn hover_throttle(a: &Aircraft, alt: f32) -> f32 {
+        (0.90 + (alt - a.altitude) * 0.004 - a.climb_rate * 0.03).clamp(0.0, 1.0)
+    }
+
+    /// AV-8B (modern): about 570 kt low down at full throttle, no afterburner, a 1 g stall
+    /// about 120 kt clean and slower with the flaps; never the classic model.
+    #[test]
+    fn av8b_performance() {
+        let k = FlightConstants::av8b;
+        assert!(!k().afterburner());
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(harrier(airborne(1000.0, 400.0, 100.0)), 240.0);
+        println!("AV-8B: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((540.0..610.0).contains(&a.knots()), "sea level {}", a.knots());
+        let a = run(harrier(airborne(25000.0, 400.0, 100.0)), 300.0);
+        println!("AV-8B: max speed at 25000 ft: {:.0} kt", a.knots());
+        let mut slow = harrier(airborne(1000.0, 180.0, 60.0));
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("AV-8B: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((105.0..135.0).contains(&clean), "clean {clean}");
+        assert!(flaps < clean - 8.0, "flaps {flaps}");
+    }
+
+    /// The Harrier sits nose up on its short main gear; the other jets level.
+    #[test]
+    fn av8b_sits_nose_up() {
+        let k = FlightConstants::av8b();
+        let (a, _) = fly_with(k.clone(), false, Aircraft::new_on_runway(k.fuel), 2.0, |_, _| {});
+        let pitch = a.euler().1.to_degrees();
+        println!("AV-8B on its gear: pitch {pitch:.2}");
+        assert!(a.on_ground && (pitch - 5.5).abs() < 0.01, "pitch {pitch}");
+        assert_eq!((a.nozzle, a.nozzle_lever), (0.0, 0.0), "nozzles aft");
+        let k = FlightConstants::f16();
+        let (a, _) = fly_with(k.clone(), false, Aircraft::new_on_runway(k.fuel), 2.0, |_, _| {});
+        assert!(a.euler().1.abs() < 1e-4);
+    }
+
+    /// The nozzle lever's notches and stops, and the keys holding it at the hover stop for a
+    /// moment.
+    #[test]
+    fn av8b_nozzle_lever() {
+        let v = FlightConstants::av8b().aero.vtol.unwrap();
+        let deg = |l: f32| (l * v.max_nozzle.to_degrees() * 10.0).round() / 10.0;
+        let mut l = 0.0;
+        let mut down = vec![];
+        for _ in 0..11 {
+            l = v.lever_step(l, true);
+            down.push(deg(l));
+        }
+        assert_eq!(down, [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 84.0, 98.5, 98.5]);
+        assert_eq!(deg(v.lever_step(1.0, false)), 84.0);
+        assert_eq!(deg(v.lever_step(v.hover_lever(), false)), 80.0);
+        assert_eq!(deg(v.lever_step(35.0 / 98.5, false)), 30.0);
+        assert_eq!(v.lever_step(0.0, false), 0.0);
+        // Held: the lever stops at the hover stop, then goes on to the braking stop.
+        let k = FlightConstants::av8b();
+        let mut at = vec![];
+        let mut t = 0.0;
+        fly_with(k.clone(), false, Aircraft::new_on_runway(k.fuel), 3.0, |a, c| {
+            c.nozzle_rate = 1.0;
+            t += 1.0 / 120.0;
+            if (t * 4.0f32).fract() < 1.0 / 30.0 {
+                at.push(deg(a.nozzle_lever));
+            }
+        });
+        println!("held nozzle key, every 0.25 s: {at:?}");
+        assert!(at.windows(2).all(|w| w[1] >= w[0]));
+        assert!(at.iter().filter(|&&d| d == 84.0).count() >= 2, "{at:?}");
+        assert_eq!(*at.last().unwrap(), 98.5);
+    }
+
+    /// From the runway at the hover stop and full throttle the Harrier rises straight up, and
+    /// hovers at 100 ft with the throttle alone, nose and heading held; then it lets down slowly
+    /// and lands where it is (outside a base: no runway needed).
+    #[test]
+    fn av8b_vertical_takeoff_and_hover() {
+        let k = FlightConstants { landing: 1, ..FlightConstants::av8b() };
+        let hover = k.aero.vtol.unwrap().hover_lever();
+        let (a, dist) =
+            fly_with(k.clone(), false, Aircraft::new_on_runway(k.fuel), 40.0, |a, c| {
+                c.nozzle = Some(hover);
+                c.throttle = Some(hover_throttle(a, 100.0));
+            });
+        let (heading, pitch, roll) = a.euler();
+        println!(
+            "AV-8B hover: {:.0} ft {:.1} kt drifted {dist:.0} ft, heading {:.1} pitch {:.1} roll {:.1}, \
+             thrust {:.0}%",
+            a.altitude,
+            a.knots(),
+            heading.to_degrees(),
+            pitch.to_degrees(),
+            roll.to_degrees(),
+            a.thrust
+        );
+        assert!(a.ended.is_none() && !a.on_ground && a.has_flown);
+        assert!((a.altitude - 100.0).abs() < 15.0, "altitude {}", a.altitude);
+        assert!(a.knots() < 5.0 && dist < 150.0, "{} kt, drifted {dist}", a.knots());
+        assert!(roll.abs() < 0.02 && (pitch.to_degrees() - 5.5).abs() < 2.0);
+        assert!(a.stall_speed == 0.0, "no stall warning in the hover");
+        // Down at about 6 ft/s, onto the ground outside any base.
+        let mut target = 100.0f32;
+        let (b, _) = fly_with(k, false, a, 30.0, |a, c| {
+            target -= 6.0 / 120.0;
+            c.nozzle = Some(hover);
+            c.throttle = Some(hover_throttle(a, target.max(-20.0)));
+        });
+        println!("AV-8B landed: {:?} on ground {} {:.1} kt", b.ended, b.on_ground, b.knots());
+        assert!(b.on_ground && b.ended.is_none(), "{:?}", b.ended);
+    }
+
+    /// A short takeoff: the nozzles to 50 degrees at 80 kt leave the ground in a much shorter
+    /// roll than nozzles aft (no runway here: without the ground crashes).
+    #[test]
+    fn av8b_short_takeoff() {
+        let k = FlightConstants { landing: 0, ..FlightConstants::av8b() };
+        let roll_to_liftoff = |sto: bool| {
+            let mut liftoff = None;
+            let mut x = 0.0;
+            fly_with(k.clone(), false, Aircraft::new_on_runway(k.fuel), 60.0, |a, c| {
+                c.throttle = Some(1.0);
+                x += a.knots() * 1.6878 / 120.0;
+                let rotate = a.knots() > if sto { 80.0 } else { 115.0 };
+                if sto && rotate {
+                    c.nozzle = Some(50.0 / 98.5);
+                }
+                c.pitch = if rotate && a.euler().1 < 0.2 { 0.5 } else { 0.0 };
+                if !a.on_ground && liftoff.is_none() {
+                    liftoff = Some((x, a.knots()));
+                }
+            });
+            liftoff
+        };
+        let (sto, conventional) = (roll_to_liftoff(true), roll_to_liftoff(false));
+        println!("AV-8B lift-off: STO {sto:?}, nozzles aft {conventional:?} (ft, kt)");
+        let (sto, conventional) = (sto.unwrap(), conventional.unwrap());
+        assert!(sto.0 < conventional.0 * 0.7, "STO {sto:?} conventional {conventional:?}");
+    }
+
+    /// The transition from the hover: the nozzles going aft over 15 s at full throttle, the
+    /// pilot holding the height with the stick, it accelerates onto the wing.
+    #[test]
+    fn av8b_transition() {
+        let k = FlightConstants { landing: 1, ..FlightConstants::av8b() };
+        let v = k.aero.vtol.unwrap();
+        let mut a = harrier(airborne(300.0, 0.0, 92.0));
+        a.gear_down = true;
+        a.nozzle_lever = v.hover_lever();
+        a.nozzle = v.hover_stop;
+        let mut t = 0.0f32;
+        let mut lowest = f32::MAX;
+        let (a, _) = fly_with(k, false, a, 60.0, |a, c| {
+            t += 1.0 / 120.0;
+            c.nozzle = Some(v.hover_lever() * (1.0 - t / 15.0).max(0.0));
+            c.throttle = Some(if t < 2.0 { hover_throttle(a, 300.0) } else { 1.0 });
+            c.pitch = ((300.0 - a.altitude) * 0.006 - a.climb_rate * 0.02).clamp(-0.6, 0.6);
+            if t > 2.0 {
+                lowest = lowest.min(a.altitude);
+            }
+        });
+        println!(
+            "AV-8B transition: {:.0} kt at {:.0} ft (lowest {lowest:.0})",
+            a.knots(),
+            a.altitude
+        );
+        assert!(a.ended.is_none() && a.knots() > 250.0, "{:?} {} kt", a.ended, a.knots());
+        assert!(lowest > 150.0, "lowest {lowest}");
+        assert!(a.stall_speed > 0.0, "wing-borne");
     }
 
     #[test]

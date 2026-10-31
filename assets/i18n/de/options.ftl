@@ -35,11 +35,27 @@ options-auto-trim = Auto-Trimmung
         Manuelle Trimmung: Alt + Pfeiltasten, Alt + Pos1 zentriert sie
 options-tooltips = Cockpit-Tooltips
     .facts = Was ein Bedienelement oder Display des Cockpits ist, unter der Maus oder einer VR-Fingerspitze
+options-player-labels = Spielernamen
+    .facts = Mehrspieler: die Namen der anderen Piloten über ihren Flugzeugen, egal wie weit entfernt
+options-label-size =
+    .facts =
+        Größe der Spielernamen
+        50 %: Standard
 options-section-vr-size = VR-Cockpitgröße
 options-vr-size =
     .facts =
         Größe des Cockpits (und der Welt) im Headset
         100 %: Originalgröße
+options-section-gif = GIF-Aufnahme
+options-gif-size = GRÖSSE
+options-gif-rate = RATE
+options-gif-scale-100 =
+    .facts = Die volle Auflösung des Fensters: große Dateien
+options-gif-scale-25 =
+    .facts = Kleine Dateien
+options-gif-rate-50 =
+    .facts = Nur wenn das Spiel mit 100 fps oder mehr läuft (jedes zweite Bild wird aufgenommen)
+options-gif-hint = F12 (sofern nicht neu belegt) startet und stoppt; gespeichert in Ihrem Bilder-Ordner
 
 ## GRAFIK
 
@@ -85,6 +101,19 @@ options-volume-effects = Effekte
     .facts = Waffen, Explosionen, Fahrwerk, Funk und der Rest
 options-volume-warnings = Warnungen
     .facts = Überziehwarnung, Radar- und Raketenwarnungen, Feuersirene, Sidewinder-Töne
+options-volume-rwr = RWR
+    .facts = Die Radarwarntöne, als Anteil an der Lautstärke der Warnungen
+options-section-rwr-tones = Radarwarntöne
+rwr-tones-all = ALLE
+    .facts = Ein Radar, das Sie erfasst, jeder Suchstrahl, der Sie ortet, Raketenstarts
+rwr-tones-detect = NUR ORTUNG
+    .facts =
+        Ein Ton, wenn ein Radar Sie ortet (erneut, nachdem die Radare Sie eine Weile verloren haben)
+        Und Raketenstarts
+rwr-tones-launch = NUR STARTS
+    .facts = Nur auf Sie abgefeuerte Raketen
+rwr-tones-off = AUS
+    .facts = Keine Radarwarntöne (Leuchten und Displays warnen weiterhin)
 options-section-cockpit = Cockpit
 options-low-pass = Triebwerks-Tiefpass
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Kondensstreifen und Abwind
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Bei harten Manövern Kondensstreifen an den Flügelspitzen
+        Ein tief schwebender Hubschrauber wirbelt Staub auf, über Wasser Gischt
+        Fahrende Fahrzeuge ziehen eine Staubfahne hinter sich her
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

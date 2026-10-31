@@ -6,6 +6,9 @@ use stealth_i18n::text;
 /// A helicopter's base landing area: the whole airfield beside the runway (half width, map
 /// units << 5; the flight model's `landing_corridor`, keep in step).
 const HELI_BASE_HALF_WIDTH: i32 = 0x200;
+/// Speed (knots) up to which the Harrier lands as a helicopter does (the flight model's
+/// `VTOL_LANDING_KNOTS`, keep in step).
+const VTOL_LANDING_KNOTS: u16 = 50;
 /// Insertion (mission type 9): landed within this many map units of the target, stopped for
 /// this many seconds while the troops get out.
 pub const INSERT_RADIUS: i32 = 0x20;
@@ -207,7 +210,9 @@ impl Sim {
             let (mut hw, mut hl) = if carrier {
                 (0x100, 0x3C0)
             } else {
-                let hw = if self.pl.helicopter { HELI_BASE_HALF_WIDTH } else { 0xA0 };
+                // A slow Harrier lands vertically: as a helicopter does.
+                let vertical = self.pl.harrier && ps.velocity <= VTOL_LANDING_KNOTS * 27;
+                let hw = if self.pl.helicopter || vertical { HELI_BASE_HALF_WIDTH } else { 0xA0 };
                 (hw, if b.flags & oflags::DISABLED != 0 { 0x400 } else { 0x800 })
             };
             if carrier {

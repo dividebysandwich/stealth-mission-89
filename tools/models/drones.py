@@ -1,10 +1,12 @@
 """Builds the remake's own aircraft models (Geran-2 / Geran-3 attack drones, the Mi-24 Hind
-from mi24.py) in Blender:
+from mi24.py, the drone command center's FP-2 attack drone, Stork-100 surveillance drone and
+quadrotor interceptor) in Blender:
 
     blender -b --factory-startup --python-exit-code 1 --python tools/models/drones.py -- assets/models/drones.glb
 
-Nodes follow aircraft.glb's conventions: a root `drones_NNN` with `attr`, a `_lod0` mesh and a
-spinning `_part1` (state slot 17; axis 2 = fore-aft, the Geran-2's pusher propeller). Model
+Nodes follow aircraft.glb's conventions: a root `drones_NNN` with `attr`, a `_lod0` mesh and
+spinning `_part1`.. (state slot 17; axis 2 = fore-aft, the Geran-2's pusher propeller, the
+interceptor's four). Model
 space: x right, y forward, z up, aircraft model units (WU / 8 m).
 """
 
@@ -27,6 +29,13 @@ GERAN2 = 100
 GERAN3 = 101
 # The Mi-24 Hind (tools/models/mi24.py).
 HIND = 102
+# The drone command center's FP-2 and Stork-100 (crates/stealth-sim/src/uav.rs).
+FP2 = 103
+STORK = 104
+INTERCEPTOR = 105
+
+# Model units per metre (a unit is WU / 8).
+K = 8.0 * 1_048_576 / 512_000
 
 # Dark grey/black paint of the recent Gerans, a lighter grey belly.
 BODY = Ramp(0xE9, 0xEF)
@@ -110,6 +119,124 @@ def geran3():
     return g, None, None
 
 
+# ------------------------------------------------------------------------------------------ FP-2
+
+FP2_GREY = Ramp(0xE7, 0xED)
+CARBON = Ramp(0xEC, 0xEF)
+WOOD = Ramp(0xC2, 0xC6)
+
+
+def fp2():
+    """FP-2: a 4.2 m straight high wing on a boxy pod with a rounded nose, the two-stroke
+    engine and its exhaust pipes on top of the pod's tail, a pusher propeller, and two carbon
+    booms to the tailplane (metres; scaled to model units)."""
+    g = Geo()
+    pod = [(1.05, 0.0, 0.04, 0.04), (1.0, 0.0, 0.14, 0.12), (0.9, 0.0, 0.2, 0.18), (0.6, 0.0, 0.21, 0.2),
+           (-0.4, 0.0, 0.21, 0.2), (-0.65, 0.03, 0.17, 0.16), (-0.8, 0.05, 0.1, 0.1)]
+    g.add(loft(pod, FP2_GREY, n=12, power=3.0))
+    # The hatch hump on the pod ahead of the wing.
+    g.add(loft([(0.75, 0.17, 0.02, 0.01), (0.65, 0.19, 0.12, 0.05), (0.3, 0.2, 0.14, 0.06), (0.15, 0.18, 0.1, 0.02)], FP2_GREY, n=8, power=3.0))
+    g.add(mklib.wing((0, 0.25, 0.21), 0.46, (2.1, 0.23, 0.22), 0.42, FP2_GREY, t=0.12, t_tip=0.1, peak=0.3))
+    # The engine behind the wing, the two exhaust pipes along its top.
+    g.add(mklib.block(-0.12, 0.12, -0.62, -0.32, 0.12, 0.32, CARBON))
+    for x in (-0.07, 0.07):
+        g.add(frustum((x, 0.05, 0.3), (x, -0.75, 0.3), 0.035, 0.035, Ramp(0xE4, 0xEA), n=6))
+    g.add(frustum((0, -0.62, 0.2), (0, -0.82, 0.2), 0.08, 0.04, CARBON, n=8))
+    # The booms from the wing to the tailplane, its small fins under the boom ends.
+    for x in (-0.55, 0.55):
+        g.add(frustum((x, 0.15, 0.17), (x, -2.0, 0.17), 0.025, 0.025, CARBON, n=6))
+    g.add(mklib.wing((0, -1.7, 0.17), 0.3, (0.66, -1.7, 0.17), 0.3, FP2_GREY, t=0.08, peak=0.3))
+    for x in (-0.55, 0.55):
+        g.face2([(x, -1.72, 0.15), (x, -2.0, 0.15), (x, -2.0, -0.05), (x, -1.85, -0.05)], FP2_GREY)
+    g.line((-2.1, 0.21, 0.22), (-2.1, -0.19, 0.22), RED)
+    g.line((2.1, 0.21, 0.22), (2.1, -0.19, 0.22), GREEN)
+    prop = Geo()
+    # A wooden two-bladed pusher propeller, about 0.8 m across.
+    for a in (0, math.pi):
+        c, s = math.cos(a), math.sin(a)
+        prop.face2([(c * 0.04, 0, s * 0.04), (c * 0.4, 0.02, s * 0.4 + 0.05 * c), (c * 0.4, -0.02, s * 0.4 - 0.05 * c), (c * 0.04, 0.02, -s * 0.04)], WOOD)
+    return g.scaled(K), prop.scaled(K), (0, -0.84 * K, 0.2 * K)
+
+
+# ------------------------------------------------------------------------------------- Stork-100
+
+STORK_GREY = Ramp(0xE1, 0xE7)
+
+
+def stork():
+    """Stork-100: a 2 m span, 1.3 m long pale grey airframe, the camera ball under the nose, a
+    high wing with rounded tips, a conventional tail and a pusher propeller."""
+    g = Geo()
+    body = [(0.58, 0.0, 0.015, 0.015), (0.54, 0.0, 0.05, 0.05), (0.45, 0.0, 0.07, 0.075), (0.1, 0.01, 0.075, 0.08),
+            (-0.2, 0.02, 0.06, 0.06), (-0.55, 0.035, 0.025, 0.03), (-0.62, 0.04, 0.015, 0.015)]
+    g.add(loft(body, STORK_GREY, n=10))
+    g.add(frustum((0, 0.4, -0.06), (0, 0.4, -0.1), 0.035, 0.04, Ramp(0xEB, 0xEF), n=8))
+    g.add(mklib.wing((0, 0.14, 0.07), 0.24, (0.85, 0.12, 0.075), 0.2, STORK_GREY, t=0.12, peak=0.3))
+    # The rounded tips.
+    g.add(mklib.wing((0.85, 0.12, 0.075), 0.2, (1.0, 0.07, 0.075), 0.1, STORK_GREY, t=0.1, peak=0.3))
+    g.add(mklib.wing((0, -0.5, 0.04), 0.13, (0.26, -0.53, 0.04), 0.09, STORK_GREY, t=0.08, peak=0.3))
+    g.face2([(0, -0.47, 0.05), (0, -0.63, 0.05), (0, -0.66, 0.2), (0, -0.58, 0.2)], STORK_GREY)
+    g.line((-1.0, 0.07, 0.075), (-1.0, -0.03, 0.075), RED)
+    g.line((1.0, 0.07, 0.075), (1.0, -0.03, 0.075), GREEN)
+    prop = Geo()
+    for a in (0, math.pi):
+        c, s = math.cos(a), math.sin(a)
+        prop.face2([(c * 0.02, 0, s * 0.02), (c * 0.16, 0.01, s * 0.16 + 0.02 * c), (c * 0.16, -0.01, s * 0.16 - 0.02 * c), (c * 0.02, 0.01, -s * 0.02)], PROP)
+    return g.scaled(K), prop.scaled(K), (0, -0.66 * K, 0.04 * K)
+
+
+# ----------------------------------------------------------------------------------- Interceptor
+
+INT_GREY = Ramp(0xE1, 0xE7)
+MOTOR = Ramp(0xEC, 0xEF)
+# The turquoise propellers.
+INT_PROP = 11
+
+
+def about_y(geo, a, paint):
+    """`geo` rolled by `a` about the fore-aft axis (x towards z), shaded again with `paint`."""
+    c, s = math.cos(a), math.sin(a)
+    return geo.transformed(lambda p: mklib.Vector((p.x * c - p.z * s, p.y, p.x * s + p.z * c))).recolour(paint)
+
+
+def interceptor():
+    """A 3D-printed quadrotor interceptor, about 0.62 m long: a bullet nose on a round body
+    tapering to the tail (the antenna lead out of it), four cropped delta wings in an X on its
+    rear half, a nacelle at each tip with a cone ahead and the motor behind, turning a
+    three-bladed pusher propeller (metres; scaled to model units)."""
+    g = Geo()
+    body = [(0.34, 0.0, 0.004, 0.004), (0.33, 0.0, 0.024, 0.024), (0.31, 0.0, 0.038, 0.038), (0.27, 0.0, 0.05, 0.05),
+            (0.21, 0.0, 0.056, 0.056), (0.14, 0.0, 0.057, 0.057), (0.0, 0.0, 0.055, 0.055), (-0.12, 0.0, 0.045, 0.045),
+            (-0.22, 0.0, 0.028, 0.028), (-0.28, 0.0, 0.012, 0.012)]
+    g.add(loft(body, INT_GREY, n=12))
+    # The seam between the nose cone and the body.
+    for k in range(12):
+        a0, a1 = 2 * math.pi * k / 12, 2 * math.pi * (k + 1) / 12
+        r = 0.0575
+        g.line((r * math.cos(a0), 0.14, r * math.sin(a0)), (r * math.cos(a1), 0.14, r * math.sin(a1)), 0xEF)
+    g.line((0, -0.28, 0), (0.0, -0.36, -0.02), 0xEF)
+    tip = 0.19
+    wing = mklib.wing((0, 0.02, 0), 0.24, (tip, -0.11, 0), 0.13, INT_GREY, t=0.07, mirror=False, peak=0.3)
+    nacelle = Geo()
+    nacelle.add(frustum((tip, -0.02, 0), (tip, -0.08, 0), 0.003, 0.021, INT_GREY, n=10))
+    nacelle.add(frustum((tip, -0.08, 0), (tip, -0.2, 0), 0.021, 0.021, INT_GREY, n=10))
+    motor = frustum((tip, -0.2, 0), (tip, -0.238, 0), 0.019, 0.017, MOTOR, n=10)
+    props = []
+    for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4):
+        g.add(about_y(wing, a, INT_GREY))
+        g.add(about_y(nacelle, a, INT_GREY))
+        g.add(about_y(motor, a, MOTOR))
+        prop = Geo()
+        # Three blades about 0.13 m across round the hub (the part origin).
+        for k in range(3):
+            b = 2 * math.pi * k / 3 + a
+            c, s = math.cos(b), math.sin(b)
+            prop.face2([(c * 0.006, 0, s * 0.006), (c * 0.065 - s * 0.012, 0.004, s * 0.065 + c * 0.012),
+                        (c * 0.065, -0.004, s * 0.065), (c * 0.006 - s * 0.01, 0.002, s * 0.006 + c * 0.01)], INT_PROP)
+        props.append((prop.scaled(K), (tip * math.cos(a) * K, -0.245 * K, tip * math.sin(a) * K)))
+    return g.scaled(K), props
+
+
 def model(index, geo, prop=None, prop_at=None):
     name = "drones_%03d" % index
     root = empty(name)
@@ -124,8 +251,10 @@ def model(index, geo, prop=None, prop_at=None):
         lo = bpy.data.objects.new(ln, mklib.lines_mesh(ln, segs, c))
         bpy.context.scene.collection.objects.link(lo)
         lo.parent = lod
-    if prop is not None:
-        part = mesh_obj(name + "_lod0_part1", prop, lod, prop_at)
+    # One propeller, or a list of (propeller, hub).
+    props = prop if isinstance(prop, list) else [] if prop is None else [(prop, prop_at)]
+    for k, (p, at) in enumerate(props, 1):
+        part = mesh_obj("%s_lod0_part%d" % (name, k), p, lod, at)
         part["state_slot"] = 17
         part["axis"] = 2
 
@@ -139,6 +268,9 @@ def main():
     g3, _, _ = geran3()
     model(GERAN3, g3)
     mi24.build("drones_%03d" % HIND)
+    model(FP2, *fp2())
+    model(STORK, *stork())
+    model(INTERCEPTOR, *interceptor())
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

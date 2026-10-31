@@ -48,6 +48,12 @@ planner-uav = Drone ennemi
 planner-edit-hint = Glissez un point pour le déplacer, la carte pour la déplacer. Cliquez sur un segment pour ajouter un point, clic droit pour le supprimer. Molette : zoom.
 planner-reset = RÉINITIALISER
 planner-view-hint = Glissez la carte pour la déplacer. Molette : zoom.
+planner-layers = CALQUES
+planner-layer-sams = Site radar / SAM
+planner-radar-types = Types de radar
+planner-layer-pulse = Portée de détection radar à impulsions
+planner-layer-doppler = Portée de détection radar Doppler
+planner-layer-airfield = Aérodrome
 
 ## Missions enregistrées
 

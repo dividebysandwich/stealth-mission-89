@@ -13,7 +13,7 @@
 //! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
 //! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
-//! top, 5..9 along the bottom). In a coop game `say=Hello there` sends a chat message and
+//! top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right). In a coop game `say=Hello there` sends a chat message and
 //! `type=Hello` opens the chat field with that text (no commas in either).
 
 use bevy::prelude::*;

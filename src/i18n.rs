@@ -209,16 +209,19 @@ fn language_offer_ui(
     let l = offer.language;
     let mut answer = None;
     menu_window(ctx, "language-offer", 460.0).order(egui::Order::Foreground).show(ctx, |ui| {
-        ui.label(egui::RichText::new(stealth_i18n::t_in!(
-            l,
-            "language-offer-question",
-            language = l.native_name()
-        ))
-        .color(BRIGHT));
+        ui.label(
+            egui::RichText::new(stealth_i18n::t_in!(
+                l,
+                "language-offer-question",
+                language = l.native_name()
+            ))
+            .color(BRIGHT),
+        );
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             for (id, yes) in [("language-offer-yes", true), ("language-offer-no", false)] {
-                if ui.add(big_button(stealth_i18n::tr_in(l, id)).min_size(egui::vec2(120.0, 40.0)))
+                if ui
+                    .add(big_button(stealth_i18n::tr_in(l, id)).min_size(egui::vec2(120.0, 40.0)))
                     .clicked()
                 {
                     answer = Some(yes);

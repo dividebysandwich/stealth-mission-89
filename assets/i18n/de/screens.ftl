@@ -49,6 +49,12 @@ planner-uav = Feindliche Drohne
 planner-edit-hint = Einen Punkt ziehen, um ihn zu verschieben, die Karte, um sie zu verschieben. Auf einen Abschnitt klicken, um einen Punkt hinzuzufügen, Rechtsklick, um ihn zu entfernen. Mausrad: Zoom.
 planner-reset = ZURÜCKSETZEN
 planner-view-hint = Die Karte ziehen, um sie zu verschieben. Mausrad: Zoom.
+planner-layers = EBENEN
+planner-layer-sams = Radar- / SAM-Stellung
+planner-radar-types = Radartypen
+planner-layer-pulse = Ortungsreichweite Pulsradar
+planner-layer-doppler = Ortungsreichweite Dopplerradar
+planner-layer-airfield = Flugplatz
 
 ## Gespeicherte Missionen
 

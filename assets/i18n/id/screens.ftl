@@ -48,6 +48,12 @@ planner-uav = UAV musuh
 planner-edit-hint = Seret titik untuk memindahkannya, seret peta untuk menggeser. Klik ruas untuk menambah titik, klik kanan untuk menghapusnya. Roda: zoom.
 planner-reset = RESET
 planner-view-hint = Seret peta untuk menggeser. Roda: zoom.
+planner-layers = LAPISAN
+planner-layer-sams = Radar / posisi SAM
+planner-radar-types = Jenis radar
+planner-layer-pulse = Jangkauan deteksi radar pulse
+planner-layer-doppler = Jangkauan deteksi radar Doppler
+planner-layer-airfield = Lapangan udara
 
 ## Misi tersimpan
 

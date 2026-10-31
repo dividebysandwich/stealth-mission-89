@@ -21,9 +21,11 @@
 //! state is plain serialisable data with its own random stream: the same seed, commands and
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
+mod convoy;
 mod deploy;
 mod director;
 mod events;
+pub mod ground;
 mod missions;
 mod record;
 mod resupply;
@@ -36,15 +38,17 @@ pub mod weather;
 use serde::{Deserialize, Serialize};
 use stealth_i18n::Text;
 
-pub use deploy::footprint;
+pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
+pub use deploy::{footprint, loads};
 pub use record::PilotRecord;
 pub use state::*;
 
 /// What the simulation sees now (sent with every tick).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct WorldView {
-    /// The low-level air defences, by their index in the simulation.
-    pub aaa: Vec<AaaView>,
+    /// The ground units (air defences, armour), by their index in the simulation.
+    #[serde(rename = "aaa")]
+    pub units: Vec<GroundView>,
     /// Aircraft in the air (alive).
     pub flights: Vec<FlightView>,
     /// The players' aircraft (absent while on the board).
@@ -52,11 +56,25 @@ pub struct WorldView {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct AaaView {
+pub struct GroundView {
     pub x: i32,
     pub y: i32,
     pub side: Side,
     pub alive: bool,
+    /// What a convoy's vehicle or a garrison's armour is (None: an air defence unit not with
+    /// a convoy).
+    #[serde(default)]
+    pub vehicle: Option<ConvoyUnit>,
+    /// The convoy it came with (0: none).
+    #[serde(default)]
+    pub convoy: u32,
+}
+
+impl GroundView {
+    /// An air defence unit (not a convoy's).
+    pub fn gun(x: i32, y: i32, side: Side, alive: bool) -> Self {
+        Self { x, y, side, alive, vehicle: None, convoy: 0 }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -152,11 +170,11 @@ pub enum Command {
     /// Call in AI SEAD against the SAM sites of an offer's place.
     RequestSupport { offer: u32 },
     /// From an air defence console: a new stockpile for its unit (AAA index, where it stands,
-    /// a Patriot battery or a Gepard).
-    RequestResupply { aaa: u32, x: i32, y: i32, patriot: bool },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y): its cargo goes on the board.
-    DesignateSite { x: i32, y: i32, patriot: bool },
+    /// what it is).
+    RequestResupply { aaa: u32, x: i32, y: i32, kind: DefenceKind },
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y): its cargo goes on the board.
+    DesignateSite { x: i32, y: i32, kind: DefenceKind },
     /// Hook the crate of load `leg` of new site `id` under the helicopter (the host checked
     /// where it is with [`CampaignState::hook_refusal`]).
     HookCrate { id: u32, leg: u8 },
@@ -212,6 +230,21 @@ pub enum CampaignEvent {
     /// One of a place's destroyed guns or MANPADS teams is replaced.
     GunRepaired {
         place: PlaceId,
+    },
+    /// One of a place's garrison's destroyed tanks or infantry fighting vehicles is replaced.
+    ArmourRepaired {
+        place: PlaceId,
+    },
+    /// A side's convoy of these vehicles (head first) sets off along a route (map units).
+    ConvoyLaunched {
+        id: u32,
+        side: Side,
+        units: Vec<ConvoyUnit>,
+        route: Vec<(i32, i32)>,
+    },
+    /// A convoy is over: its vehicles stop where they are.
+    ConvoyEnded {
+        id: u32,
     },
     /// Strike aircraft (tags) of a side take off from a base to bomb a world object, or
     /// attack drones to dive into it.
@@ -281,13 +314,12 @@ pub enum CampaignEvent {
         y: i32,
         tag: u32,
     },
-    /// A new site (deployment `id`) has all its cargo: a Patriot battery or a Gepard stands at
-    /// (x, y).
+    /// A new site (deployment `id`) has all its cargo: its unit stands at (x, y).
     SiteBuilt {
         id: u32,
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: DefenceKind,
     },
     /// A player hooked the crate of load `leg` of new site `id`.
     CrateHooked {
@@ -330,10 +362,10 @@ impl CampaignState {
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),
-            Command::RequestResupply { aaa, x, y, patriot } => {
-                self.request_resupply(Some(player), aaa, x, y, patriot)
+            Command::RequestResupply { aaa, x, y, kind } => {
+                self.request_resupply(Some(player), aaa, x, y, kind)
             }
-            Command::DesignateSite { x, y, patriot } => self.designate(player, x, y, patriot),
+            Command::DesignateSite { x, y, kind } => self.designate(player, x, y, kind),
             Command::HookCrate { id, leg } => self.hook_crate(player, id, leg),
             Command::DropCrate { id, leg, east, north, heading } => {
                 self.drop_crate(player, id, leg, east, north, heading)
@@ -356,6 +388,7 @@ impl CampaignState {
         self.supply();
         self.run_downed(&mut ev);
         self.run_insertions(view, &mut ev);
+        self.run_convoys(view, &mut ev);
         self.run_raids(&mut ev);
         self.repairs(&mut ev);
         self.expire_intel(&mut ev);

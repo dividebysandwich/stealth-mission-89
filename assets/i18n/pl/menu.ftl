@@ -206,6 +206,11 @@ aircraft-a10 =
         Samolot bezpośredniego wsparcia powietrznego
         Wolny i wytrzymały, działko 30 mm
         Kokpit A-10C, dwa MFD
+aircraft-av8b =
+    .facts =
+        Samolot szturmowy V/STOL
+        Wektorowanie ciągu: zawis, lądowanie wszędzie
+        Dźwignia dysz: R / F, Shift do oporów
 aircraft-uh60 =
     .facts =
         Śmigłowiec wielozadaniowy

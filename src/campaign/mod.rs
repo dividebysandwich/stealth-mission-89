@@ -26,7 +26,7 @@ mod air_defence;
 mod designate;
 mod menu;
 mod ops;
-mod picture;
+pub(crate) mod picture;
 pub mod unit_view;
 
 pub use menu::CampaignWindow;
@@ -161,12 +161,12 @@ pub enum Action {
     RequestSupport {
         offer: u32,
     },
-    /// Designate a new air defence site (a Patriot battery or a Gepard) with its helipad at
-    /// (x, y), map units.
+    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// helipad at (x, y), map units.
     DesignateSite {
         x: i32,
         y: i32,
-        patriot: bool,
+        kind: stealth_campaign::DefenceKind,
     },
     /// The crate of load `leg` of new site `id` hooked under the helicopter (see `sling.rs`).
     HookCrate {
@@ -521,6 +521,20 @@ fn begin(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     if let Some(r) = c.resume.take() {
         begin_sortie(c, &mut s, &r.sortie, &r.state);
     }
+    // Test aids: `--convoy-now` sends both sides' armour columns at once, `--convoy-speed
+    // <m/s>` drives them faster.
+    if let Some(host) = c.host.as_mut() {
+        if std::env::args().any(|a| a == "--convoy-now") {
+            host.state.convoys_due();
+        }
+        if let Some(v) = std::env::args()
+            .skip_while(|a| a != "--convoy-speed")
+            .nth(1)
+            .and_then(|v| v.parse::<f32>().ok())
+        {
+            s.combat.sim.set_convoy_speed(v);
+        }
+    }
     // Test aid: `--campaign-insert` orders an insertion against the nearest enemy place.
     if std::env::args().any(|a| a == "--campaign-insert")
         && let Some(&place) = c.state().front(Side::Blue).first()
@@ -697,7 +711,177 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             }
         }
     }
-    // Test aid: man the n-th friendly air defence console (Patriot batteries first).
+    // Test aid: `--campaign-drones` puts a drone command center at the friendly place nearest
+    // the enemy's air defences and mans it (a host's or a single player's campaign);
+    // `--campaign-drones front` 8 km short of the nearest enemy air defence unit;
+    // `--campaign-drones front <n>` puts n of them there, side by side (one for each player).
+    if c.phase == Phase::Ops
+        && c.state().clock > 2.0
+        && !c.ui.test_manned
+        && c.role != Role::Client
+        && std::env::args().any(|a| a == "--campaign-drones")
+    {
+        let sim = &mut s.combat.sim;
+        let st = c.state();
+        let enemy: Vec<(i32, i32)> = (0..sim.units().len())
+            .filter(|&k| !sim.aaa_blue(k) && !sim.units()[k].destroyed)
+            .map(|k| (sim.units()[k].x, sim.units()[k].y))
+            .collect();
+        let gap = |p: &stealth_campaign::Place| {
+            enemy.iter().map(|&(x, y)| stealth_campaign::dist(p.x - x, p.y - y)).min().unwrap_or(0)
+        };
+        let place = st
+            .places
+            .iter()
+            .filter(|p| p.owner == stealth_campaign::Side::Blue)
+            .min_by_key(|p| gap(p))
+            .map(|p| (p.x, p.y));
+        let front = std::env::args().skip_while(|a| a != "--campaign-drones").nth(1);
+        let place = match (place, front.as_deref()) {
+            (Some((px, py)), Some("front")) => enemy
+                .iter()
+                .min_by_key(|&&(x, y)| stealth_campaign::dist(px - x, py - y))
+                .map(|&(x, y)| {
+                    let d = ((px - x) as f64).hypot((py - y) as f64).max(1.0);
+                    let k = 8000.0 / stealth_sim::aaa::M_PER_MAP / d;
+                    (x + ((px - x) as f64 * k) as i32, y + ((py - y) as f64 * k) as i32)
+                }),
+            (p, _) => p.map(|(x, y)| (x + 0x30, y - 0x30)),
+        };
+        let count: usize = std::env::args()
+            .skip_while(|a| a != "--campaign-drones")
+            .nth(2)
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(1);
+        if let Some((x, y)) = place {
+            for i in 0..count.max(1) as i32 {
+                sim.place_drone_center(x + i * 0x20, y);
+            }
+            let k = sim.units().len() - count.max(1);
+            c.ui.test_manned = true;
+            c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
+        }
+    }
+    // Test aid: `--fp2-strike [m]` (with `--convoy-now`): once the enemy column has driven so
+    // far (0), a drone command center 3.5 km off its road ahead launches an attack drone at
+    // where its Shilka will be when the drone gets there.
+    if c.phase == Phase::Ops
+        && c.state().clock > 20.0
+        && !c.ui.test_strike
+        && c.role != Role::Client
+        && std::env::args().any(|a| a == "--fp2-strike")
+    {
+        use stealth_sim::aaa::{GroundKind, M_PER_MAP};
+        use stealth_sim::uav::{UavKind, UavWp, WpKind};
+        let sim = &mut s.combat.sim;
+        let red = sim.convoys().iter().find(|v| !v.blue).cloned();
+        let zsu = red.as_ref().and_then(|v| {
+            v.units.iter().position(|&k| sim.units()[k as usize].kind == GroundKind::Zsu)
+        });
+        let after: f64 = std::env::args()
+            .skip_while(|a| a != "--fp2-strike")
+            .nth(1)
+            .and_then(|m| m.parse().ok())
+            .unwrap_or(0.0);
+        if let (Some(v), Some(i)) = (red, zsu)
+            && v.along >= after
+        {
+            const OFF: f64 = 3500.0;
+            let along = v.along - i as f64 * stealth_sim::ground::GAP;
+            let speed = sim.convoy_speed();
+            let fp2 = UavKind::Fp2.perf().cruise;
+            // The side of the road further from the enemy's other guns.
+            let guns: Vec<[f64; 2]> = (0..sim.units().len())
+                .filter(|&k| !sim.aaa_blue(k) && !sim.units()[k].destroyed && !sim.unit_moving(k))
+                .map(|k| {
+                    let m = sim.units()[k].metres();
+                    [m[0], m[1]]
+                })
+                .collect();
+            let clear = |p: [f64; 2]| {
+                guns.iter().map(|g| (g[0] - p[0]).hypot(g[1] - p[1])).fold(f64::MAX, f64::min)
+            };
+            let mut ahead = 1500.0;
+            let (mut aim, mut center) = ([0.0; 2], [0.0; 2]);
+            for _ in 0..8 {
+                let (p, h) = v.point(along + ahead);
+                aim = p;
+                let side = |s: f64| [p[0] + s * h.cos() * OFF, p[1] - s * h.sin() * OFF];
+                center = if clear(side(1.0)) >= clear(side(-1.0)) { side(1.0) } else { side(-1.0) };
+                // Its dive is faster than its cruise.
+                ahead = speed * (OFF / fp2 - 4.0);
+            }
+            let map = |p: [f64; 2]| ((p[0] / M_PER_MAP) as i32, 0x8000 - (p[1] / M_PER_MAP) as i32);
+            let ((cx, cy), (ax, ay)) = (map(center), map(aim));
+            sim.place_drone_center(cx, cy);
+            let k = sim.units().len() - 1;
+            let alt = UavKind::Fp2.perf().altitude as f32;
+            let route = vec![UavWp { x: ax, y: ay, alt, kind: WpKind::Terminate }];
+            sim.test_launch_uav(k, UavKind::Fp2, route);
+            info!(
+                "test: FP-2 launched at {:.0} s from ({cx}, {cy}) at ({ax}, {ay}), {:.0} m from a gun",
+                c.state().clock,
+                clear(center)
+            );
+            c.ui.test_strike = true;
+        }
+    }
+    // Test aid: `--campaign-geran <n> [km]` (with `--campaign-drones`): once an interceptor is
+    // up and level, a raid of n enemy Geran-2s km (2) ahead of its nose at its height, from the
+    // enemy place nearest there and flying at the friendly place behind the interceptor.
+    if matches!(c.phase, Phase::Station { .. })
+        && c.ui.test_manned
+        && !c.ui.test_geran
+        && c.role != Role::Client
+        && let Some(n) = std::env::args()
+            .skip_while(|a| a != "--campaign-geran")
+            .nth(1)
+            .and_then(|n| n.parse::<u32>().ok())
+        && let Some(u) = s.combat.sim.uavs().iter().find(|u| {
+            u.kind == stealth_sim::uav::UavKind::Interceptor
+                && u.mode == stealth_sim::uav::UavMode::Auto
+                && u.pos[2] > 150.0
+                && u.pitch.abs() < 0.1
+        })
+    {
+        c.ui.test_geran = true;
+        let km: f64 = std::env::args()
+            .skip_while(|a| a != "--campaign-geran")
+            .nth(2)
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(2.0);
+        // Map units along the interceptor's nose (y runs south).
+        let (x0, y0) = u.map();
+        let ahead = |m: f64| {
+            let d = m / stealth_sim::aaa::M_PER_MAP;
+            (x0 + (u.heading.sin() * d) as i32, y0 - (u.heading.cos() * d) as i32)
+        };
+        let st = c.state();
+        let nearest = |side: stealth_campaign::Side, (x, y): (i32, i32)| {
+            st.places
+                .iter()
+                .filter(|p| p.owner == side && !p.members.is_empty())
+                .min_by_key(|p| stealth_campaign::dist(p.x - x, p.y - y))
+                .map(|p| p.airfield.unwrap_or(p.members[0]) as usize)
+        };
+        let (start, behind) = (ahead(km * 1000.0), ahead(-10_000.0));
+        let alt = (u.pos[2] * 32.0 / stealth_sim::aaa::M_PER_MAP) as i32;
+        if let Some(from) = nearest(stealth_campaign::Side::Red, start)
+            && let Some(to) = nearest(stealth_campaign::Side::Blue, behind)
+        {
+            let sim = &mut s.combat.sim;
+            for i in 0..n {
+                let j = sim.spawn_drone(from, to, 0xF000 + i, false);
+                let (x, y) = (start.0 + 0x8 * i as i32, start.1);
+                let f = &mut sim.flights_mut()[j];
+                (f.wx, f.wy) = (x << 5, y << 5);
+                (f.x, f.y) = (x, y);
+                f.alt = alt;
+            }
+        }
+    }
+    // Test aid: man the n-th friendly air defence console (Patriot batteries first), or with
+    // `--campaign-man drone` the first drone command center nobody mans.
     // (A client waits for the server's units.)
     if c.phase == Phase::Ops
         && c.state().clock > 2.0
@@ -705,10 +889,17 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         && let Some(n) = ops::test_man()
     {
         let sim = &s.combat.sim;
-        let mut units: Vec<usize> = (0..sim.aaa_units().len())
-            .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.aaa_units()[k].kind))
+        let drones = n == usize::MAX;
+        let mut units: Vec<usize> = (0..sim.units().len())
+            .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.units()[k].kind))
+            .filter(|&k| {
+                !drones
+                    || sim.units()[k].kind == stealth_sim::aaa::GroundKind::DroneCenter
+                        && sim.manned_by(k).is_none()
+            })
             .collect();
-        units.sort_by_key(|&k| sim.aaa_units()[k].kind != stealth_sim::aaa::AaaKind::PatriotRadar);
+        units.sort_by_key(|&k| sim.units()[k].kind != stealth_sim::aaa::GroundKind::PatriotRadar);
+        let n = if drones { 0 } else { n };
         if let Some(&k) = units.get(n.min(units.len().saturating_sub(1))) {
             c.ui.test_manned = true;
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
@@ -751,7 +942,7 @@ fn station_phase(c: &mut ActiveCampaign, s: &Session) {
         (Phase::Ops, Some(unit)) => c.phase = Phase::Station { unit },
         (Phase::Station { unit }, None) => {
             c.phase = Phase::Ops;
-            if let Some(u) = sim.aaa_units().get(unit).filter(|u| u.destroyed) {
+            if let Some(u) = sim.units().get(unit).filter(|u| u.destroyed) {
                 c.ui.error = Some(stealth_i18n::text!("ops-unit-destroyed", unit = u.kind.name()));
             }
         }
@@ -805,7 +996,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
-            Action::DesignateSite { x, y, patriot } => host.designate_site(sim, me, x, y, patriot),
+            Action::DesignateSite { x, y, kind } => host.designate_site(sim, me, x, y, kind),
             Action::HookCrate { id, leg } => host.hook_crate(sim, me, id, leg),
             Action::DropCrate { id, leg, east, north, heading } => {
                 host.drop_crate(sim, me, id, leg, east, north, heading)
@@ -864,7 +1055,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
-            Action::DesignateSite { x, y, patriot } => ToServer::DesignateSite { x, y, patriot },
+            Action::DesignateSite { x, y, kind } => ToServer::DesignateSite { x, y, kind },
             Action::HookCrate { id, leg } => ToServer::HookCrate { id, leg },
             Action::DropCrate { id, leg, east, north, heading } => {
                 ToServer::DropCrate { id, leg, east, north, heading }
@@ -929,6 +1120,7 @@ pub fn airframe_of(k: crate::aircraft::AircraftKind) -> Airframe {
         crate::aircraft::AircraftKind::Tornado => Airframe::Tornado,
         crate::aircraft::AircraftKind::A10 => Airframe::A10,
         crate::aircraft::AircraftKind::RAH66 => Airframe::RAH66,
+        crate::aircraft::AircraftKind::AV8B => Airframe::AV8B,
     }
 }
 
@@ -941,6 +1133,7 @@ pub fn kind_of(a: Airframe) -> crate::aircraft::AircraftKind {
         Airframe::Tornado => crate::aircraft::AircraftKind::Tornado,
         Airframe::A10 => crate::aircraft::AircraftKind::A10,
         Airframe::RAH66 => crate::aircraft::AircraftKind::RAH66,
+        Airframe::AV8B => crate::aircraft::AircraftKind::AV8B,
     }
 }
 
@@ -1013,16 +1206,14 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
         .filter(|l| l.fits(&m, aircraft))
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(&m, aircraft));
     let route = c.take_route.take().filter(|r| r.fits(&m)).unwrap_or_else(|| PlannedRoute::of(&m));
-    *s.wps = Waypoints {
-        points: route
+    *s.wps = Waypoints::planned(
+        route
             .points
             .iter()
             .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
             .collect(),
-        current: 0,
-        mission_current: 0,
-        anchors: route.anchors(),
-    };
+        route.anchors(),
+    );
     s.orders.set(
         m.orders.lines.iter().map(|l| (l.color, crate::mission::clean_text(&l.text))).collect(),
     );

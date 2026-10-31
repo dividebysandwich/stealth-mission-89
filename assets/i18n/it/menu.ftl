@@ -206,6 +206,11 @@ aircraft-a10 =
         Aereo d'appoggio aereo ravvicinato
         Lento e robusto, cannone da 30 mm
         Cockpit dell'A-10C, due MFD
+aircraft-av8b =
+    .facts =
+        Aereo d'attacco V/STOL
+        Spinta vettoriale: hovering, atterra ovunque
+        Leva degli ugelli: R / F, Maiusc per i fermi
 aircraft-uh60 =
     .facts =
         Elicottero utility

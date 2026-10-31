@@ -232,19 +232,22 @@ pub const DRONE_COST: f64 = 12.0;
 pub const SUPPLY_AI_WAIT: f64 = 5.0 * 60.0;
 pub const SUPPLY_HOVER_SECONDS: f64 = 10.0;
 
-/// New air defence sites the players designate: loads of cargo a Gepard and a Patriot battery
-/// need, how long the helipad waits for them (s), how many sites may wait at once, how long an
+/// New air defence sites the players designate: loads of cargo a Gepard, a Patriot battery and
+/// a drone command center need, how long the helipad waits for them (s), how many sites may wait at once, how long an
 /// open load waits for a player before an AI helicopter brings it (s).
 pub const DEPLOY_LOADS_GEPARD: u8 = 1;
 pub const DEPLOY_LOADS_PATRIOT: u8 = 3;
+pub const DEPLOY_LOADS_DRONES: u8 = 1;
 pub const DEPLOY_TIMEOUT: f64 = 24.0 * 3600.0;
 pub const DEPLOY_OPEN_MAX: usize = 3;
 pub const DEPLOY_AI_WAIT: f64 = 30.0 * 60.0;
-/// Map units: the unit stands this far north of its helipad; a Gepard's and a Patriot
-/// battery's ground (its launchers stand around the radar), kept clear of the other units.
+/// Map units: the unit stands this far north of its helipad; a Gepard's, a Patriot battery's
+/// (its launchers stand around the radar) and a drone command center's ground, kept clear of
+/// the other units.
 pub const DEPLOY_UNIT_OFFSET: i32 = 3;
 pub const DEPLOY_FOOTPRINT_GEPARD: i32 = 0x10;
 pub const DEPLOY_FOOTPRINT_PATRIOT: i32 = 0x30;
+pub const DEPLOY_FOOTPRINT_DRONES: i32 = 0x20;
 /// Map units: a site keeps this far from a place (its town or airfield) and from a world object.
 pub const DEPLOY_PLACE_CLEAR: i32 = 0x80;
 pub const DEPLOY_SITE_CLEAR: i32 = 0x40;
@@ -257,3 +260,23 @@ pub const CRATE_DROP_METRES: f32 = 90.0;
 pub const CRATE_HOOK_RANGE: i32 = 0xC0;
 /// Metres from the helipad where the AI's loads are set down.
 pub const CRATE_SLOT_METRES: f32 = 9.0;
+
+/// Convoys: the longest drive to an enemy place (map units, 120 km: some 100 min on the road).
+pub const CONVOY_MAX_ROUTE: i32 = 0x1E00;
+/// A side sends its next convoy this long (s) after the last one was over (the enemy's by
+/// skill), the first this long into the campaign.
+pub const CONVOY_EVERY: f64 = 25.0 * 60.0;
+pub const ENEMY_CONVOY_EVERY: [f64; 4] = [45.0 * 60.0, 35.0 * 60.0, 25.0 * 60.0, 20.0 * 60.0];
+/// What a convoy costs (materiel).
+pub const CONVOY_COST: f64 = 15.0;
+/// A place's garrison stands within this of it (map units, as its guns); a convoy whose head
+/// is this close to a place without one takes it (2.5 km).
+pub const GARRISON_RADIUS: i32 = 0x180;
+pub const CONVOY_NEAR: i32 = 0xA0;
+/// A convoy still on its way after this long (s) is called off.
+pub const CONVOY_TIMEOUT: f64 = 4.0 * 3600.0;
+/// A place's lost armour is replaced one vehicle at a time, this often (s), at this cost.
+pub const REPAIR_ARMOUR: f64 = 30.0 * 60.0;
+pub const ARMOUR_COST: f64 = 4.0;
+/// A side whose convoy cleared a place without troops tries this long (s) to send helicopters.
+pub const CONVOY_INSERTION_WAIT: f64 = 30.0 * 60.0;

@@ -35,11 +35,27 @@ options-auto-trim = Automatisk trim
         Manuell trim: Alt + piltangenter, Alt + Home centrerar den
 options-tooltips = Tooltips i cockpit
     .facts = Vad ett reglage eller en skärm i cockpit är, under musen eller en fingertopp i VR
+options-player-labels = Spelarnamn
+    .facts = Flerspelare: de andra pilotternas namn över deras flygplan, oavsett avstånd
+options-label-size =
+    .facts =
+        Spelarnamnens storlek
+        50 %: standard
 options-section-vr-size = Cockpitens storlek i VR
 options-vr-size =
     .facts =
         Cockpitens (och världens) storlek i headsetet
         100 %: naturlig storlek
+options-section-gif = GIF-inspelning
+options-gif-size = STORLEK
+options-gif-rate = BILDER
+options-gif-scale-100 =
+    .facts = Fönstrets fulla upplösning: stora filer
+options-gif-scale-25 =
+    .facts = Små filer
+options-gif-rate-50 =
+    .facts = Bara när spelet går i 100 fps eller mer (varannan bild fångas)
+options-gif-hint = F12 (om den inte bundits om) startar och stoppar; sparas i mappen Bilder
 
 ## GRAFIK
 
@@ -85,6 +101,19 @@ options-volume-effects = Effekter
     .facts = Vapen, explosioner, landningsställ, radio och resten
 options-volume-warnings = Varningar
     .facts = Stallvarning, radar- och robotvarningar, brandsirenen, Sidewinder-tonerna
+options-volume-rwr = RWR
+    .facts = Radarvarningstonerna, som en del av varningarnas volym
+options-section-rwr-tones = Radarvarningstoner
+rwr-tones-all = ALLA
+    .facts = En radar som belyser dig, varje svep som upptäcker dig, robotavfyrningar
+rwr-tones-detect = BARA UPPTÄCKT
+    .facts =
+        En ton när en radar upptäcker dig (igen efter att radarerna släppt dig en stund)
+        Och robotavfyrningar
+rwr-tones-launch = BARA AVFYRNINGAR
+    .facts = Bara robotar som avfyras mot dig
+rwr-tones-off = AV
+    .facts = Inga radarvarningstoner (lampor och skärmar varnar fortfarande)
 options-section-cockpit = Cockpit
 options-low-pass = Lågpassfilter för motor
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Ånga och rotorvind
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Vid hårda svängar kondensstrimmor från vingspetsarna
+        En helikopter som hovrar lågt virvlar upp damm, eller vattenstänk över vatten
+        Fordon i rörelse rör upp damm bakom sig
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

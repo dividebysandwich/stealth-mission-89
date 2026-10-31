@@ -35,11 +35,27 @@ options-auto-trim = Автоматичен трим
         Ръчен трим: Alt + стрелките, Alt + Home го центрира
 options-tooltips = Подсказки в кабината
     .facts = Какво е даден орган за управление или дисплей в кабината, под мишката или връхчето на пръста във VR
+options-player-labels = Имена на играчите
+    .facts = Мултиплейър: имената на другите пилоти над самолетите им, от всяко разстояние
+options-label-size =
+    .facts =
+        Размер на имената на играчите
+        50%: по подразбиране
 options-section-vr-size = Размер на кабината във VR
 options-vr-size =
     .facts =
         Размерът на кабината (и на света) в шлема
         100%: в естествен размер
+options-section-gif = Запис на GIF
+options-gif-size = РАЗМЕР
+options-gif-rate = КАДРИ
+options-gif-scale-100 =
+    .facts = Пълната резолюция на прозореца: големи файлове
+options-gif-scale-25 =
+    .facts = Малки файлове
+options-gif-rate-50 =
+    .facts = Само когато играта върви със 100 fps или повече (записва се всеки втори кадър)
+options-gif-hint = F12 (ако не е пренастроен) пуска и спира; записва се в папката „Снимки“
 
 ## ГРАФИКА
 
@@ -85,6 +101,19 @@ options-volume-effects = Ефекти
     .facts = Оръжия, експлозии, колесник, радио и останалото
 options-volume-warnings = Предупреждения
     .facts = Сирената за сваляне, радарните и ракетните предупреждения, сирената за пожар, тоновете на Sidewinder
+options-volume-rwr = RWR
+    .facts = Тоновете на радарното предупреждение, като част от силата на предупрежденията
+options-section-rwr-tones = Тонове на радарното предупреждение
+rwr-tones-all = ВСИЧКИ
+    .facts = Радар, който ви облъчва, всяко обхождане, което ви засича, изстрелвания на ракети
+rwr-tones-detect = САМО ЗАСИЧАНЕ
+    .facts =
+        Един тон, когато радар ви засече (отново, след като радарите ви изпуснат за известно време)
+        И изстрелванията на ракети
+rwr-tones-launch = САМО ИЗСТРЕЛВАНИЯ
+    .facts = Само ракети, изстреляни срещу вас
+rwr-tones-off = ИЗКЛ
+    .facts = Без тонове на радарно предупреждение (лампите и дисплеите пак предупреждават)
 options-section-cockpit = Кабина
 options-low-pass = Нискочестотен филтър на двигателя
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Пара и поток от витлото
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        При остри маневри от краищата на крилата се откъсват следи от пара
+        Ниско висящ хеликоптер вдига прах, над вода - пръски
+        Движещите се машини вдигат прах след себе си
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

@@ -6,6 +6,7 @@ axis-rudder = Rudder
 axis-throttle = Throttle
 axis-slew-x = Slew braiteora/cúrsóra X
 axis-slew-y = Slew braiteora/cúrsóra Y
+axis-nozzle = Gaibíní (Harrier)
 input-button = Cnaipe { $n }
 input-axis = Ais { $n }
 vr-trigger = Truicear

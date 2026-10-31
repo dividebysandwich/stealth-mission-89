@@ -38,7 +38,7 @@ fn two_pilots() -> (Sim, usize) {
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
     }
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     let base = (3..sim.objects().len())
         .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
         .expect("friendly base");
@@ -308,14 +308,19 @@ fn a_mirror_follows_the_host() {
         assert_eq!(mirror.targeting(), targeting);
         assert_eq!(mirror.damage_effects(), damage);
         assert_eq!(mirror.stores(), stores);
-        assert_eq!(mirror.flights(), host.flights());
+        // The mirror gets the flights that exist (base traffic resting keeps its timer).
+        let live = |s: &Sim| -> Vec<FlightUnit> {
+            let on = |u: &&FlightUnit| u.flags & fflags::EXISTS != 0;
+            s.flights().iter().map(|u| Some(u).filter(on).copied().unwrap_or_default()).collect()
+        };
+        assert_eq!(live(&mirror), live(&host));
         assert_eq!(mirror.objects()[1..], host.objects()[1..]);
         let enemy = |s: &Sim| -> Vec<_> {
             s.active_projectiles().into_iter().filter(|p| p.0 < 8).collect()
         };
         assert_eq!(enemy(&mirror), enemy(&host));
         assert_eq!(mirror.countermeasures(), &host.as_pilot(1, |s| *s.countermeasures()));
-        assert_eq!(mirror.aaa_units().len(), host.aaa_units().len());
+        assert_eq!(mirror.units().len(), host.units().len());
         let others = mirror.remote_pilots();
         assert_eq!(others.len(), 1);
         assert_eq!(others[0].id, 0);
@@ -716,7 +721,7 @@ fn a_forged_report_on_a_pilot_is_turned_down() {
 
 #[test]
 fn a_mirror_sees_the_friendly_air_defences() {
-    use stealth_sim::aaa::AaaKind;
+    use stealth_sim::aaa::GroundKind;
     use stealth_sim::ai_loadout::FighterTask;
     let (mut host, base) = two_pilots();
     let b = host.objects()[base];
@@ -728,10 +733,10 @@ fn a_mirror_sees_the_friendly_air_defences() {
     host.spawn_fighter(enemy, b.x, b.y, 8, false, FighterTask::Patrol);
     let cap = host.spawn_fighter(base, b.x, b.y, 9, true, FighterTask::Cap);
     // Pilot 1 mans the battery; one launcher is empty and refilling.
-    let radar = host.aaa_units().iter().position(|u| u.kind == AaaKind::PatriotRadar).unwrap();
+    let radar = host.units().iter().position(|u| u.kind == GroundKind::PatriotRadar).unwrap();
     host.station_command(1, stealth_sim::station::StationCmd::Man { unit: radar as u16 }).unwrap();
     let l = host.battery_launchers(radar)[0];
-    host.aaa_units_mut()[l].rounds = 0;
+    host.units_mut()[l].rounds = 0;
     host.station_command(1, stealth_sim::station::StationCmd::Refill { unit: l as u16 }).unwrap();
     host.tick_refills(10.2);
     let d = data();
@@ -761,11 +766,11 @@ fn a_mirror_sees_the_friendly_air_defences() {
         mirror.apply_world_fast(&fast);
         mirror.mirror_frame();
     }
-    let kinds = |s: &Sim| -> Vec<(AaaKind, bool)> {
-        (0..s.aaa_units().len()).map(|k| (s.aaa_units()[k].kind, s.aaa_blue(k))).collect()
+    let kinds = |s: &Sim| -> Vec<(GroundKind, bool)> {
+        (0..s.units().len()).map(|k| (s.units()[k].kind, s.aaa_blue(k))).collect()
     };
     assert_eq!(kinds(&mirror), kinds(&host));
-    for kind in [AaaKind::Gepard, AaaKind::PatriotRadar, AaaKind::PatriotLauncher] {
+    for kind in [GroundKind::Gepard, GroundKind::PatriotRadar, GroundKind::PatriotLauncher] {
         assert!(kinds(&mirror).contains(&(kind, true)), "{kind:?}");
     }
     let f = mirror.campaign_flight(cap).expect("the CAP");
@@ -777,7 +782,7 @@ fn a_mirror_sees_the_friendly_air_defences() {
     assert_eq!(live(&mirror), live(&host));
     assert_eq!(mirror.station_of(1).map(|s| s.unit as usize), Some(radar));
     assert_eq!(mirror.manned_by(radar), Some(1));
-    let rounds = |s: &Sim| -> Vec<i32> { s.aaa_units().iter().map(|u| u.rounds).collect() };
+    let rounds = |s: &Sim| -> Vec<i32> { s.units().iter().map(|u| u.rounds).collect() };
     assert_eq!(rounds(&mirror), rounds(&host));
     assert_eq!(mirror.stockpile(l), host.stockpile(l));
     assert_eq!(mirror.refill_left(l), host.refill_left(l).ceil());

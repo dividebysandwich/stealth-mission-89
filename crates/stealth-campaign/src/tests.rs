@@ -24,6 +24,12 @@ fn theater(code: &str) -> TheaterData {
     TheaterData::from_json(&std::fs::read(path).expect("theater file")).expect("theater")
 }
 
+/// The theater's relief file's bytes.
+fn relief(code: &str) -> Option<std::sync::Arc<Vec<u8>>> {
+    let path = format!("{}/../../assets/theaters/{code}.relief", env!("CARGO_MANIFEST_DIR"));
+    std::fs::read(path).ok().map(std::sync::Arc::new)
+}
+
 fn campaign(code: &str, index: usize) -> CampaignState {
     let t = theater(code);
     let setup = CampaignSetup {
@@ -725,8 +731,8 @@ fn lost_guns_stay_lost_until_replaced() {
     let mut c = campaign("central_europe", 3);
     let tabor = place_named(&c, "Tabor");
     let (x, y) = (c.places[tabor as usize].x, c.places[tabor as usize].y);
-    let gun = AaaView { x: x + 20, y, side: Side::Red, alive: false };
-    let view = WorldView { aaa: vec![gun], ..Default::default() };
+    let gun = GroundView::gun(x + 20, y, Side::Red, false);
+    let view = WorldView { units: vec![gun], ..Default::default() };
     c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: Some(P0) }]);
     assert_eq!(c.places[tabor as usize].guns_lost, 1);
     // Saved with the campaign.
@@ -1515,6 +1521,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::Tornado,
         Aircraft::A10,
         Aircraft::RAH66,
+        Aircraft::AV8B,
     ];
     for k in kinds {
         for last in all {
@@ -1531,6 +1538,8 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
     assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);
     assert_eq!(Escort.pick(Aircraft::RAH66), Aircraft::RAH66);
+    assert_eq!(Cas.pick(Aircraft::AV8B), Aircraft::AV8B);
+    assert_eq!(Sead.pick(Aircraft::AV8B), Aircraft::F16);
     assert_eq!(Interdiction.pick(Aircraft::RAH66), Aircraft::F117);
 }
 
@@ -1609,7 +1618,7 @@ fn a_helicopter_rescue_lands_by_the_pilot_and_brings_him_home() {
 /// A campaign that knows the theater's land and water (the host's).
 fn campaign_on_terrain(code: &str, index: usize) -> CampaignState {
     let mut c = campaign(code, index);
-    c.terrain = Terrain(Some(std::sync::Arc::new(theater(code))));
+    c.terrain = Terrain::new(Some(std::sync::Arc::new(theater(code))), relief(code));
     c
 }
 
@@ -1686,7 +1695,7 @@ fn a_forward_battery_is_offered_until_its_guns_are_down() {
     let mut c = campaign_on_terrain("desert_storm", 6);
     let (id, x, y) = deployed(&mut c).expect("battery");
     let guns = |alive: bool| WorldView {
-        aaa: (0..4).map(|k| AaaView { x: x + 10 * k, y, side: Side::Red, alive }).collect(),
+        units: (0..4).map(|k| GroundView::gun(x + 10 * k, y, Side::Red, alive)).collect(),
         ..Default::default()
     };
     c.tick(1.0, &guns(true), &[]);
@@ -1711,16 +1720,14 @@ fn battery_view() -> (CampaignState, WorldView, (i32, i32)) {
     let mut c = campaign("central_europe", 3);
     let p = &c.places[place_named(&c, "Ramstein") as usize];
     let (x, y) = (p.x + 0x100, p.y);
-    let view = WorldView {
-        aaa: vec![AaaView { x, y, side: Side::Blue, alive: true }],
-        ..Default::default()
-    };
+    let view =
+        WorldView { units: vec![GroundView::gun(x, y, Side::Blue, true)], ..Default::default() };
     c.tick(1.0, &view, &[]);
     (c, view, (x, y))
 }
 
 fn request(c: &mut CampaignState, (x, y): (i32, i32)) -> Vec<CampaignEvent> {
-    c.apply(P0, Command::RequestResupply { aaa: 0, x, y, patriot: true }).unwrap()
+    c.apply(P0, Command::RequestResupply { aaa: 0, x, y, kind: DefenceKind::Patriot }).unwrap()
 }
 
 #[test]
@@ -1728,7 +1735,11 @@ fn nobody_takes_a_resupply_and_the_ai_flies_it() {
     let (mut c, view, at) = battery_view();
     request(&mut c, at);
     assert!(
-        c.apply(P0, Command::RequestResupply { aaa: 0, x: at.0, y: at.1, patriot: true }).is_err()
+        c.apply(
+            P0,
+            Command::RequestResupply { aaa: 0, x: at.0, y: at.1, kind: DefenceKind::Patriot }
+        )
+        .is_err()
     );
     c.tick(1.0, &view, &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Resupply).unwrap().clone();
@@ -1825,7 +1836,7 @@ fn a_resupply_for_a_lost_unit_is_called_off() {
     request(&mut c, at);
     c.tick(1.0, &view, &[]);
     assert!(c.board.iter().any(|o| o.kind == MissionKind::Resupply));
-    view.aaa[0].alive = false;
+    view.units[0].alive = false;
     c.tick(1.0, &view, &[]);
     c.tick(tuning::BOARD_REFRESH, &view, &[]);
     assert!(c.supply_requests.is_empty());
@@ -1835,22 +1846,26 @@ fn a_resupply_for_a_lost_unit_is_called_off() {
 #[test]
 fn a_unit_out_of_stock_orders_its_resupply_once() {
     let (mut c, view, at) = battery_view();
-    let ev = c.order_resupply(0, at.0, at.1, true);
+    let ev = c.order_resupply(0, at.0, at.1, DefenceKind::Patriot);
     assert!(
         ev.iter().any(|e| matches!(e, CampaignEvent::Message(m) if m.contains("out of missiles")))
     );
     assert_eq!(c.supply_requests[0].by, None);
-    assert!(c.order_resupply(0, at.0, at.1, true).is_empty());
+    assert!(c.order_resupply(0, at.0, at.1, DefenceKind::Patriot).is_empty());
     // A player's request for it is the same one.
     assert!(
-        c.apply(P0, Command::RequestResupply { aaa: 0, x: at.0, y: at.1, patriot: true }).is_err()
+        c.apply(
+            P0,
+            Command::RequestResupply { aaa: 0, x: at.0, y: at.1, kind: DefenceKind::Patriot }
+        )
+        .is_err()
     );
     c.tick(1.0, &view, &[]);
     assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Resupply).count(), 1);
 }
 
 /// The nearest spot to Ramstein where a new site may go.
-fn deploy_spot(c: &CampaignState, patriot: bool, aaa: &[AaaView]) -> (i32, i32) {
+fn deploy_spot(c: &CampaignState, kind: DefenceKind, aaa: &[GroundView]) -> (i32, i32) {
     let p = &c.places[place_named(c, "Ramstein") as usize];
     (1..40)
         .flat_map(|r| (0..16).map(move |k| (r, k)))
@@ -1858,12 +1873,12 @@ fn deploy_spot(c: &CampaignState, patriot: bool, aaa: &[AaaView]) -> (i32, i32) 
             let t = k as f64 / 16.0 * std::f64::consts::TAU;
             (p.x + (t.cos() * r as f64 * 32.0) as i32, p.y + (t.sin() * r as f64 * 32.0) as i32)
         })
-        .find(|&(x, y)| c.deploy_refusal(x, y, patriot, aaa).is_none())
+        .find(|&(x, y)| c.deploy_refusal(x, y, kind, aaa).is_none())
         .expect("a free spot")
 }
 
-fn designate(c: &mut CampaignState, (x, y): (i32, i32), patriot: bool) -> Result<u32, String> {
-    c.apply(P0, Command::DesignateSite { x, y, patriot }).map_err(|t| t.en())?;
+fn designate(c: &mut CampaignState, (x, y): (i32, i32), kind: DefenceKind) -> Result<u32, String> {
+    c.apply(P0, Command::DesignateSite { x, y, kind }).map_err(|t| t.en())?;
     Ok(c.deployments.last().unwrap().id)
 }
 
@@ -1885,39 +1900,39 @@ fn flying_at(x: i32, y: i32) -> WorldView {
 fn new_sites_keep_clear_of_places_units_and_the_enemy() {
     let c = campaign("central_europe", 3);
     let ramstein = &c.places[place_named(&c, "Ramstein") as usize];
-    let why = c.deploy_refusal(ramstein.x, ramstein.y, false, &[]).unwrap();
+    let why = c.deploy_refusal(ramstein.x, ramstein.y, DefenceKind::Gepard, &[]).unwrap();
     assert!(why.contains("Too close"), "{why}");
     let enemy = c.places.iter().find(|p| p.owner == Side::Red).unwrap();
     let off = (enemy.x + 0x100, enemy.y + 0x100);
-    let why = c.deploy_refusal(off.0, off.1, false, &[]).unwrap();
+    let why = c.deploy_refusal(off.0, off.1, DefenceKind::Gepard, &[]).unwrap();
     assert!(why.contains("friendly territory") || why.contains("Too close"), "{why}");
-    let at = deploy_spot(&c, true, &[]);
-    let gun = [AaaView { x: at.0 + 4, y: at.1, side: Side::Blue, alive: true }];
-    assert!(c.deploy_refusal(at.0, at.1, true, &gun).unwrap().contains("units"));
+    let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
+    let gun = [GroundView::gun(at.0 + 4, at.1, Side::Blue, true)];
+    assert!(c.deploy_refusal(at.0, at.1, DefenceKind::Patriot, &gun).unwrap().contains("units"));
     // A wreck is no unit.
-    let wreck = [AaaView { alive: false, ..gun[0] }];
-    assert!(c.deploy_refusal(at.0, at.1, true, &wreck).is_none());
+    let wreck = [GroundView { alive: false, ..gun[0] }];
+    assert!(c.deploy_refusal(at.0, at.1, DefenceKind::Patriot, &wreck).is_none());
 }
 
 #[test]
 fn only_three_sites_wait_for_cargo_at_once() {
     let mut c = campaign("central_europe", 3);
     for _ in 0..tuning::DEPLOY_OPEN_MAX {
-        let at = deploy_spot(&c, false, &[]);
-        designate(&mut c, at, false).unwrap();
+        let at = deploy_spot(&c, DefenceKind::Gepard, &[]);
+        designate(&mut c, at, DefenceKind::Gepard).unwrap();
     }
     let p = &c.places[place_named(&c, "Ramstein") as usize];
-    let why = c.deploy_refusal(p.x + 0x400, p.y + 0x400, false, &[]).unwrap();
+    let why = c.deploy_refusal(p.x + 0x400, p.y + 0x400, DefenceKind::Gepard, &[]).unwrap();
     assert!(why.contains("waiting"), "{why}");
 }
 
 #[test]
 fn a_gepard_site_is_built_by_one_load_of_cargo() {
     let mut c = campaign("central_europe", 3);
-    let at = deploy_spot(&c, false, &[]);
-    let id = designate(&mut c, at, false).unwrap();
+    let at = deploy_spot(&c, DefenceKind::Gepard, &[]);
+    let id = designate(&mut c, at, DefenceKind::Gepard).unwrap();
     // Not twice in one place.
-    assert!(designate(&mut c, at, false).is_err());
+    assert!(designate(&mut c, at, DefenceKind::Gepard).is_err());
     c.tick(1.0, &WorldView::default(), &[]);
     let offers: Vec<_> = c.board.iter().filter(|o| o.kind == MissionKind::Logistics).collect();
     assert_eq!(offers.len(), 1);
@@ -1949,7 +1964,12 @@ fn a_gepard_site_is_built_by_one_load_of_cargo() {
     ev.extend(c.tick(1.0, &flying_at(at.0, at.1), &[]));
     let unit = (at.0, at.1 - tuning::DEPLOY_UNIT_OFFSET);
     assert!(
-        ev.contains(&CampaignEvent::SiteBuilt { id, x: unit.0, y: unit.1, patriot: false }),
+        ev.contains(&CampaignEvent::SiteBuilt {
+            id,
+            x: unit.0,
+            y: unit.1,
+            kind: DefenceKind::Gepard
+        }),
         "{ev:?}"
     );
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { player: P0, .. })));
@@ -1957,21 +1977,46 @@ fn a_gepard_site_is_built_by_one_load_of_cargo() {
     assert!(!c.board.iter().any(|o| o.kind == MissionKind::Logistics));
     // It stands, then it is destroyed: the site is gone.
     let mut gun = WorldView {
-        aaa: vec![AaaView { x: unit.0, y: unit.1, side: Side::Blue, alive: true }],
+        units: vec![GroundView::gun(unit.0, unit.1, Side::Blue, true)],
         ..Default::default()
     };
     c.tick(1.0, &gun, &[]);
     assert!(c.deployment(id).is_some_and(|d| d.built && d.seen));
-    gun.aaa[0].alive = false;
+    gun.units[0].alive = false;
     c.tick(1.0, &gun, &[]);
     assert!(c.deployments.is_empty());
 }
 
 #[test]
+fn a_drone_command_center_takes_one_load() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, DefenceKind::Drones, &[]);
+    let id = designate(&mut c, at, DefenceKind::Drones).unwrap();
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offers: Vec<_> = c.board.iter().filter(|o| o.kind == MissionKind::Logistics).collect();
+    assert_eq!(offers.len(), 1);
+    assert!(offers[0].title.starts_with("Drones 1/1"), "{}", offers[0].title);
+    assert!(c.deployment(id).unwrap().title().starts_with("Drone command center near"));
+}
+
+#[test]
+fn saves_from_before_the_drones_say_patriot() {
+    let old = r#"{"x":1,"y":2,"patriot":true,"stock":5}"#;
+    let s: DefenceStock = serde_json::from_str(old).unwrap();
+    assert_eq!((s.kind, s.stock, s.stock2, s.stock3), (DefenceKind::Patriot, 5, 0, -1));
+    let old = r#"{"x":1,"y":2,"patriot":false,"stock":5}"#;
+    assert_eq!(serde_json::from_str::<DefenceStock>(old).unwrap().kind, DefenceKind::Gepard);
+    let new =
+        DefenceStock { x: 1, y: 2, kind: DefenceKind::Drones, stock: 3, stock2: 7, stock3: 2 };
+    let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&new).unwrap()).unwrap();
+    assert_eq!(back, new);
+}
+
+#[test]
 fn a_patriot_site_takes_three_loads_and_the_ai_brings_the_untaken_ones() {
     let mut c = campaign("central_europe", 3);
-    let at = deploy_spot(&c, true, &[]);
-    let id = designate(&mut c, at, true).unwrap();
+    let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
+    let id = designate(&mut c, at, DefenceKind::Patriot).unwrap();
     c.tick(1.0, &WorldView::default(), &[]);
     assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Logistics).count(), 3);
     let mut built = false;
@@ -1986,7 +2031,9 @@ fn a_patriot_site_takes_three_loads_and_the_ai_brings_the_untaken_ones() {
         assert_eq!(c.board.iter().filter(|o| o.kind == MissionKind::Logistics).count(), 3 - n);
         let ev = c.tick(1.0, &WorldView::default(), &[Report::SupplyDelivered { tag }]);
         assert_eq!(c.deployment(id).unwrap().delivered.len(), n);
-        built = ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { patriot: true, .. }));
+        built = ev
+            .iter()
+            .any(|e| matches!(e, CampaignEvent::SiteBuilt { kind: DefenceKind::Patriot, .. }));
         assert_eq!(built, n == 3);
     }
     assert!(built);
@@ -1995,8 +2042,8 @@ fn a_patriot_site_takes_three_loads_and_the_ai_brings_the_untaken_ones() {
 #[test]
 fn a_site_not_supplied_in_a_day_loses_its_helipad() {
     let mut c = campaign("central_europe", 3);
-    let at = deploy_spot(&c, true, &[]);
-    designate(&mut c, at, true).unwrap();
+    let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
+    designate(&mut c, at, DefenceKind::Patriot).unwrap();
     // Lost cargo helicopters don't bring it: the loads stay open.
     let mut t = 0.0;
     while t < tuning::DEPLOY_TIMEOUT - 3600.0 {
@@ -2024,8 +2071,8 @@ fn a_site_not_supplied_in_a_day_loses_its_helipad() {
 #[test]
 fn deployments_save_and_load() {
     let mut c = campaign("central_europe", 3);
-    let at = deploy_spot(&c, false, &[]);
-    designate(&mut c, at, false).unwrap();
+    let at = deploy_spot(&c, DefenceKind::Gepard, &[]);
+    designate(&mut c, at, DefenceKind::Gepard).unwrap();
     let json = serde_json::to_string(&c).unwrap();
     let back: CampaignState = serde_json::from_str(&json).unwrap();
     assert_eq!(back.deployments, c.deployments);
@@ -2034,8 +2081,8 @@ fn deployments_save_and_load() {
 /// A Patriot site on the board with P0 on its first load's sortie, over the crates' base.
 fn patriot_sortie() -> (CampaignState, u32, WorldView) {
     let mut c = campaign("central_europe", 3);
-    let at = deploy_spot(&c, true, &[]);
-    let id = designate(&mut c, at, true).unwrap();
+    let at = deploy_spot(&c, DefenceKind::Patriot, &[]);
+    let id = designate(&mut c, at, DefenceKind::Patriot).unwrap();
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Logistics).unwrap().clone();
     c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::UH60 })
@@ -2100,7 +2147,9 @@ fn the_last_crate_builds_the_site_and_its_crates_go() {
         let drop = Command::DropCrate { id, leg, east: leg as f32 * 5.0, north: 0.0, heading: 0.0 };
         ev.extend(c.apply(P0, drop).unwrap());
     }
-    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { patriot: true, .. })));
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { kind: DefenceKind::Patriot, .. }))
+    );
     let d = c.deployment(id).unwrap();
     assert!(d.built && d.crates.is_empty());
     let ev = c.tick(1.0, &WorldView::default(), &[]);
@@ -2126,4 +2175,219 @@ fn a_save_from_before_the_crates_places_them() {
     assert!(d.base.is_some());
     assert_eq!(d.crates.len(), 3);
     assert_eq!(d.crates[leg as usize], crate_slot(leg));
+}
+
+/// Convoy routes in every theater: from every place to the enemy places in reach, never over
+/// mountains or wide water (checked every 100 m), and each theater with some. `GROUND_PGM=<dir>`
+/// writes each theater's grid (black blocked, grey fords, white land).
+#[test]
+fn convoy_routes_stay_on_passable_ground() {
+    let codes = [
+        "libya",
+        "persian_gulf",
+        "north_cape",
+        "central_europe",
+        "vietnam",
+        "middle_east",
+        "desert_storm",
+        "cuba",
+        "korea",
+        "ukraine",
+    ];
+    for (index, code) in codes.iter().enumerate() {
+        let c = campaign_on_terrain(code, index);
+        let t0 = std::time::Instant::now();
+        let g = c.terrain.ground().expect("grid");
+        let built = t0.elapsed();
+        if let Ok(dir) = std::env::var("GROUND_PGM") {
+            let d = ground::DIM;
+            let mut out = format!("P5 {d} {d} 255\n").into_bytes();
+            for r in 0..d as i32 {
+                for col in 0..d as i32 {
+                    let (x, y) = (col * ground::CELL + 8, r * ground::CELL + 8);
+                    out.push(if g.dry(x, y) {
+                        255
+                    } else if g.passable(x, y) {
+                        128
+                    } else {
+                        0
+                    });
+                }
+            }
+            std::fs::write(format!("{dir}/{code}.pgm"), out).unwrap();
+        }
+        let (mut pairs, mut routes) = (0, 0);
+        let t1 = std::time::Instant::now();
+        for a in &c.places {
+            for b in &c.places {
+                if a.owner == b.owner || a.owner == Side::Neutral || b.owner == Side::Neutral {
+                    continue;
+                }
+                if dist(a.x - b.x, a.y - b.y) > tuning::CONVOY_MAX_ROUTE {
+                    continue;
+                }
+                pairs += 1;
+                let Some(r) = g.route((a.x, a.y), (b.x, b.y), tuning::CONVOY_MAX_ROUTE) else {
+                    continue;
+                };
+                routes += 1;
+                for w in r.windows(2) {
+                    let n = (dist(w[1].0 - w[0].0, w[1].1 - w[0].1) / 6).max(1);
+                    // The ends are the places' centres (a town may stand on a hill).
+                    let inner = r.len() > 2 || n > 2;
+                    for k in 0..=n {
+                        let (x, y) = (
+                            w[0].0 + (w[1].0 - w[0].0) * k / n,
+                            w[0].1 + (w[1].1 - w[0].1) * k / n,
+                        );
+                        let end = (w[0] == r[0] && k * 6 < 0x60)
+                            || (w[1] == *r.last().unwrap() && (n - k) * 6 < 0x60);
+                        if inner && !end {
+                            assert!(
+                                g.passable(x, y),
+                                "{code}: {} to {} crosses ({x}, {y})",
+                                a.name,
+                                b.name
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        eprintln!(
+            "{code}: grid {built:?}, {routes} of {pairs} pairs in reach have a route ({:?})",
+            t1.elapsed()
+        );
+    }
+}
+
+/// A Ukraine campaign that has just launched both sides' convoys: the blue one.
+fn launched() -> (CampaignState, usize) {
+    let mut c = campaign_on_terrain("ukraine", 9);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    let n = ev.iter().filter(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })).count();
+    assert_eq!(n, 2, "{ev:?}");
+    // Not another while these are on their way.
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })));
+    let k = c.convoys.iter().position(|v| v.side == Side::Blue).unwrap();
+    (c, k)
+}
+
+/// The blue convoy at its target with these vehicles, and the place's garrison alive or not.
+fn at_target(c: &CampaignState, k: usize, units: &[ConvoyUnit], garrison: bool) -> WorldView {
+    let v = &c.convoys[k];
+    let p = &c.places[v.place as usize];
+    let mut view = WorldView::default();
+    for &u in units {
+        let mut g = GroundView::gun(p.x + 40, p.y, Side::Blue, true);
+        g.vehicle = Some(u);
+        g.convoy = v.id;
+        view.units.push(g);
+    }
+    let mut g = GroundView::gun(p.x - 30, p.y, Side::Red, garrison);
+    g.vehicle = Some(ConvoyUnit::Tank);
+    view.units.push(g);
+    view
+}
+
+#[test]
+fn a_convoy_with_troops_takes_a_place_without_a_garrison() {
+    let (mut c, k) = launched();
+    let place = c.convoys[k].place;
+    assert!(c.convoys[k].route.len() >= 2);
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], true);
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Red, "the garrison holds");
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], false);
+    let ev = c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Blue);
+    assert_eq!(c.convoys[k].state, ConvoyState::Captured);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. })));
+    assert!(
+        ev.iter().any(|e| matches!(*e, CampaignEvent::ConvoyEnded { id } if id == c.convoys[k].id))
+    );
+}
+
+#[test]
+fn a_convoy_without_troops_calls_for_helicopters() {
+    let (mut c, k) = launched();
+    let place = c.convoys[k].place;
+    let view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Escort], false);
+    c.tick(1.0, &view, &[]);
+    assert_eq!(c.places[place as usize].owner, Side::Red);
+    assert!(
+        c.insertions.iter().any(|i| i.place == place && i.side == Side::Blue),
+        "{:?} {:?}",
+        c.convoys[k].state,
+        c.log.last()
+    );
+    assert_eq!(c.convoys[k].state, ConvoyState::Captured);
+}
+
+#[test]
+fn a_destroyed_convoy_fails_and_the_next_one_comes() {
+    let (mut c, k) = launched();
+    let view = at_target(&c, k, &[], true);
+    let mut view2 = view.clone();
+    let mut dead = GroundView::gun(0, 0, Side::Blue, false);
+    dead.vehicle = Some(ConvoyUnit::Tank);
+    dead.convoy = c.convoys[k].id;
+    view2.units.push(dead);
+    c.tick(1.0, &view2, &[]);
+    assert_eq!(c.convoys[k].state, ConvoyState::Failed);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { side: Side::Blue, .. })));
+}
+
+/// No convoy where no enemy place can be driven to: Cuba's are over the sea.
+#[test]
+fn no_convoy_over_the_sea() {
+    let mut c = campaign_on_terrain("cuba", 7);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { .. })));
+    assert!(c.convoys.is_empty());
+}
+
+#[test]
+fn a_convoy_resumes_from_where_it_was() {
+    let (mut c, k) = launched();
+    let r = c.convoys[k].route.clone();
+    let mid = ((r[0].0 + r[1].0) / 2, (r[0].1 + r[1].1) / 2);
+    c.convoys[k].at = mid;
+    let left = c.convoys[k].route_left();
+    assert_eq!(left[0], mid);
+    assert_eq!(left[1..], r[1..]);
+    let json = serde_json::to_string(&c).unwrap();
+    let back: CampaignState = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.convoys, c.convoys);
+}
+
+/// The board asks to stop the enemy's column and to clear the way for ours.
+#[test]
+fn the_board_offers_cas_for_the_columns() {
+    let (mut c, k) = launched();
+    let red = c.convoys.iter().find(|v| v.side == Side::Red).unwrap().id;
+    let mut view = at_target(&c, k, &[ConvoyUnit::Tank, ConvoyUnit::Carrier], true);
+    let mut enemy = GroundView::gun(1000, 1000, Side::Red, true);
+    enemy.vehicle = Some(ConvoyUnit::Tank);
+    enemy.convoy = red;
+    view.units.push(enemy);
+    c.board_at = f64::MIN;
+    c.tick(1.0, &view, &[]);
+    let armour = c.board.iter().find(|o| matches!(o.objective, Objective::Armour { .. }));
+    let support = c.board.iter().find(|o| matches!(o.objective, Objective::Support { .. }));
+    let Some(Objective::Armour { convoy, aaa }) = armour.map(|o| o.objective.clone()) else {
+        panic!("{:?}", c.board)
+    };
+    assert_eq!((convoy, aaa), (red, vec![3]));
+    let Some(Objective::Support { aaa, .. }) = support.map(|o| o.objective.clone()) else {
+        panic!("{:?}", c.board)
+    };
+    assert_eq!(aaa, vec![2], "the garrison's tank");
+    assert!(armour.unwrap().kind == MissionKind::Cas && support.unwrap().kind == MissionKind::Cas);
 }

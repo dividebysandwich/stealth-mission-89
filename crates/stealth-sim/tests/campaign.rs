@@ -56,7 +56,7 @@ fn quiet(sim: &mut Sim) {
     for o in sim.objects_mut().iter_mut() {
         o.unit_type = 0;
     }
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
 }
 
 fn run(sim: &mut Sim, ps: &PlayerState, secs: i32) -> Vec<SimEvent> {
@@ -309,14 +309,12 @@ fn places_change_hands_and_get_repaired() {
     // (In the enemy's wrecks' slots.)
     sim.place_defences(o.x, o.y, true, false);
     sim.place_defences(o.x, o.y, true, true);
-    let near = |u: &AaaUnit| (u.x - o.x).abs() + (u.y - o.y).abs() <= 0x200;
-    let units = sim.aaa_units();
+    let near = |u: &GroundUnit| (u.x - o.x).abs() + (u.y - o.y).abs() <= 0x200;
+    let units = sim.units();
     assert!((0..units.len()).all(|k| !near(&units[k]) || units[k].destroyed || sim.aaa_blue(k)));
-    assert!(
-        (0..units.len()).any(|k| {
-            near(&units[k]) && !units[k].destroyed && units[k].kind == AaaKind::Gepard
-        })
-    );
+    assert!((0..units.len()).any(|k| {
+        near(&units[k]) && !units[k].destroyed && units[k].kind == GroundKind::Gepard
+    }));
     // A sortie can start there.
     let st = sim.respawn_player(tabor, None);
     assert!(st.on_ground);
@@ -381,7 +379,7 @@ fn a_long_campaign_stays_bounded() {
     assert!(sim.event_log().len() < 500);
 }
 
-use stealth_sim::aaa::{AaaKind, AaaUnit, PATRIOT, STINGER};
+use stealth_sim::aaa::{GroundKind, GroundUnit, PATRIOT, STINGER};
 use stealth_sim::ai_loadout::{AIM9, AIM120, FighterTask};
 use stealth_sim::campaign::{CAP_BUBBLE, CAP_LEASH};
 
@@ -430,9 +428,9 @@ fn a_patriot_battery_shoots_down_raiders() {
     let (home, _) = raid(&mut sim);
     let o = sim.objects()[home];
     sim.place_patriot(o.x + 0x100, o.y);
-    let kinds: Vec<AaaKind> = sim.aaa_units().iter().map(|u| u.kind).collect();
-    assert_eq!(kinds.iter().filter(|&&k| k == AaaKind::PatriotLauncher).count(), 3);
-    assert_eq!(kinds.iter().filter(|&&k| k == AaaKind::PatriotRadar).count(), 1);
+    let kinds: Vec<GroundKind> = sim.units().iter().map(|u| u.kind).collect();
+    assert_eq!(kinds.iter().filter(|&&k| k == GroundKind::PatriotLauncher).count(), 3);
+    assert_eq!(kinds.iter().filter(|&&k| k == GroundKind::PatriotRadar).count(), 1);
     assert!((0..kinds.len()).all(|k| sim.aaa_blue(k)));
     let mut seen = Vec::new();
     assert!(until_down(&mut sim, 8, 40 * 60, &mut seen), "the Patriots never got it");
@@ -446,8 +444,8 @@ fn patriot_launchers_need_their_radar() {
     let (home, _) = raid(&mut sim);
     let o = sim.objects()[home];
     sim.place_patriot(o.x + 0x100, o.y);
-    for u in sim.aaa_units_mut().iter_mut() {
-        if u.kind == AaaKind::PatriotRadar {
+    for u in sim.units_mut().iter_mut() {
+        if u.kind == GroundKind::PatriotRadar {
             u.destroyed = true;
         }
     }
@@ -463,9 +461,9 @@ fn friendly_guns_and_stingers_defend_an_airfield() {
     let (home, f) = raid(&mut sim);
     let o = sim.objects()[home];
     sim.place_defences(o.x, o.y, true, true);
-    let kinds: Vec<AaaKind> = sim.aaa_units().iter().map(|u| u.kind).collect();
-    assert!(kinds.contains(&AaaKind::Gepard) && kinds.contains(&AaaKind::Manpads));
-    assert!(!kinds.contains(&AaaKind::Zsu));
+    let kinds: Vec<GroundKind> = sim.units().iter().map(|u| u.kind).collect();
+    assert!(kinds.contains(&GroundKind::Gepard) && kinds.contains(&GroundKind::Manpads));
+    assert!(!kinds.contains(&GroundKind::Zsu));
     // Low over the field, in the guns' reach (its patrol would circle it out of their reach).
     run(&mut sim, &idle(), 60);
     let mut seen = Vec::new();
@@ -625,7 +623,7 @@ fn an_enemy_strike_bombs_the_airfield_and_flies_home() {
 #[test]
 fn a_sead_strike_gets_its_missile_off_at_a_live_sam_site() {
     let (_, mut sim) = campaign();
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     let from = find(&sim, 0x401, None);
     let b = sim.objects()[from];
     // The enemy SAM site nearest the base keeps its radar; every other one is off.
@@ -687,10 +685,10 @@ fn an_enemy_helicopter_lands_at_a_friendly_place() {
 #[test]
 fn lost_guns_are_wrecks_until_replaced() {
     let (_, mut sim) = campaign();
-    sim.aaa_units_mut().clear();
+    sim.units_mut().clear();
     let o = sim.objects()[find(&sim, 0x001, Some("Tabor"))];
     sim.place_defences(o.x, o.y, true, false);
-    let alive = |sim: &Sim| sim.aaa_units().iter().filter(|u| !u.destroyed).count();
+    let alive = |sim: &Sim| sim.units().iter().filter(|u| !u.destroyed).count();
     let n = alive(&sim);
     assert!(n >= 2);
     sim.wreck_defences(o.x, o.y, false, 2);
@@ -786,7 +784,7 @@ fn a_forward_battery_is_enemy_guns_around_its_point() {
     quiet(&mut sim);
     let (x, y) = (0x4000, 0x4000);
     sim.place_battery(x, y);
-    let units = sim.aaa_units();
+    let units = sim.units();
     assert!((5..=7).contains(&units.len()), "{} units", units.len());
     for (k, u) in units.iter().enumerate() {
         assert!(!sim.aaa_blue(k) && !u.destroyed);
@@ -825,6 +823,10 @@ fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
     assert!(!ev.iter().any(|e| matches!(e, SimEvent::SortieEnded(_))));
     let c = sim.csar().expect("rescue on its way").clone();
     assert!(!sim.player_absent());
+    // The friendly air defence leaves the Black Hawk alone, the enemy's goes for it.
+    let side = |i: usize| sim.friendly_unit(i, sim.flights()[i].spec);
+    assert!(side(c.rescue));
+    assert!(c.hunters.iter().all(|&i| !side(i)));
     // Skip the extraction: the sortie ends as an ejection, the helicopters go home.
     sim.end_sortie(0);
     let ev = sim.take_pilot_events();

@@ -6,6 +6,7 @@ axis-rudder = Педали
 axis-throttle = Газ
 axis-slew-x = Преместване на сензор/курсор X
 axis-slew-y = Преместване на сензор/курсор Y
+axis-nozzle = Дюзи (Harrier)
 input-button = Бутон { $n }
 input-axis = Ос { $n }
 vr-trigger = Спусък

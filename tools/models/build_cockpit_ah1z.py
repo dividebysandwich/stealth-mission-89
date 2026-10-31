@@ -378,8 +378,8 @@ yz = [(t.y + 0.01, t.z - 0.01), (HOOD_Y, glare_top - 0.02), (HOOD_Y, glare_top -
 prism("black", "black", yz, u0 / 1000, u1 / 1000)
 
 # --- MFDs: a housing standing BEZEL out of the panel round each screen, the screen recessed in
-# it; ten labelled push buttons above and below, five dummy ones each side with ridges between
-# them and rocker switches at the corners (as the F-16's).
+# it; twenty labelled push buttons round it with ridges between them and rocker switches at the
+# corners (as the F-16's).
 scr = layout["screens"]
 faces = {f["key"]: f["rect"] for f in layout["faces"]}
 for key in ("left", "right"):
@@ -394,10 +394,9 @@ for key in ("left", "right"):
     for k in range(1, 5):
         for by in (y - 16.5, y + h + 6.5):
             panel_box("black", "black", (x + w * k / 5 - 1.0, by - 4.0, 2.0, 8.0), 0.003, base=BEZEL)
-    for k in range(5):
-        by = y + h * (k + 0.5) / 5
-        for bx in (x - 10.0, x + w + 10.0):
-            panel_box("dark", "dark", (bx - 5.0, by - 6.0, 10.0, 12.0), 0.005, base=BEZEL)
+    for k in range(1, 5):
+        for bx in (x - 9.0, x + w + 9.0):
+            panel_box("black", "black", (bx - 4.0, y + h * k / 5 - 1.0, 8.0, 2.0), 0.003, base=BEZEL)
     for bx in (x - 10.0, x + w + 10.0):
         for by in (y - 16.0, y + h + 16.0):
             panel_box("dark", "dark", (bx - 4.5, by - 6.5, 9.0, 13.0), 0.003, base=BEZEL)
@@ -503,7 +502,7 @@ rod("stick_shaft", (0, 0, 0), (0, 0, CYCLIC_RAISE + 0.02), 0.012, "metal", stick
 rod("cyclic_boot", CYCLIC_PIVOT, CYCLIC_PIVOT + Vector((0, 0, 0.04)), 0.035, "rubber")
 
 # --- collective: the arm from the pivot up to the grip, the UH-60's grip on it (after its
-# drawings, mm): a knurled ring on the arm's end, the hand grip, the switch box ahead of it
+# drawings, mm; few sides to the round parts, it is seen small): a knurled ring on the arm's end, the hand grip, the switch box ahead of it
 # with its face up (the hat, the rocker, the release button, the dimmer, the servo toggle, the
 # landing light hat). Built in its own frame (ring's front at the origin, y along the grip, z
 # up), then turned onto the arm with the hand at the lever's origin.
@@ -583,27 +582,45 @@ def at(x, y, z, rz=0.0):
     return Matrix.Translation((x, y, z)) @ Matrix.Rotation(math.radians(rz), 4, "Z")
 
 
+def stud(name, mat, r, h, m, n=KNOB):
+    """A cylinder up the z of m (mm) standing on a surface: no bottom, smooth sides."""
+    me = cylinder_mesh(name, r, h, mat, axis="Z", n=n)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bottom = [f for f in bm.faces if all(v.co.z < 1e-6 for v in f.verts)]
+    bmesh.ops.delete(bm, geom=bottom, context="FACES_ONLY")
+    bm.to_mesh(me)
+    bm.free()
+    o = grip(name, me, m)
+    for p in o.data.polygons:
+        p.use_smooth = len(p.vertices) == 4
+    return o
+
+
 def post(name, mat, x, y, z, r, h, n=KNOB):
     """A cylinder up from (x, y, z) mm."""
-    grip(name, cylinder_mesh(name, r, h, mat, axis="Z", n=n), at(x, y, z))
+    stud(name, mat, r, h, at(x, y, z), n)
 
 
 red = grip_mat("grip_red", (0.75, 0.02, 0.01, 1.0))
 blue = grip_mat("grip_blue", (0.05, 0.45, 0.9, 1.0))
 # The arm: from the ring's back to the pivot.
 back = GRIP @ Vector((0.0, -19.0, 0.0))
-rod("throttle_arm", back, arm, 0.016, "metal", throttle)
+rod("throttle_arm", back, arm, 0.016, "metal", throttle, n=6)
+# Sides of the collective's round parts: large, small.
+COLL_ROUND = 8
+COLL_KNOB = 6
 # Knurled ring, the hand grip narrowing to a waist and dropping onto the switch box's hub.
-grip("throttle_ring", loft("throttle_ring", "rubber", [(-19.0, 0.0, 21.5, 21.5), (0.0, 0.0, 21.5, 21.5)], n=32, rib=0.94))
+grip("throttle_ring", loft("throttle_ring", "rubber", [(-19.0, 0.0, 21.5, 21.5), (0.0, 0.0, 21.5, 21.5)], n=12, rib=0.94))
 grip("throttle_grip", loft("throttle_grip", "dark", [
     (0.0, 0.0, 19.0, 19.0), (30.0, -2.0, 17.0, 19.0), (65.0, -6.0, 13.5, 16.0),
     (100.0, -11.0, 15.0, 15.0), (128.0, -14.0, 15.0, 10.0),
-]), smooth=True)
+], n=COLL_ROUND), smooth=True)
 # The two buttons on top and on the outboard side near the ring.
 for y in (8.0, 38.0):
-    grip("throttle_button", cylinder_mesh("throttle_button", 3.5, 3.0, "metal", axis="Z"), at(0.0, y, 18.0 - y / 15))
-    grip("throttle_button", cylinder_mesh("throttle_button", 3.5, 3.0, "metal", axis="Z"),
-         at(-18.0 + y / 15, y, -2.0) @ Matrix.Rotation(math.radians(-90.0), 4, "Y"))
+    stud("throttle_button", "metal", 3.5, 3.0, at(0.0, y, 18.0 - y / 15), COLL_KNOB)
+    stud("throttle_button", "metal", 3.5, 3.0,
+         at(-18.0 + y / 15, y, -2.0) @ Matrix.Rotation(math.radians(-90.0), 4, "Y"), COLL_KNOB)
 # The web under the grip down to the box's back, the finger lever on it.
 me = bpy.data.meshes.new("throttle_web")
 web = [(55.0, -14.0), (98.0, -22.0), (98.0, -56.0), (86.0, -56.0)]
@@ -620,29 +637,27 @@ FACE = -15.0
 grip("throttle_box", slab("throttle_box", "dark", face_top, -60.0, FACE - 2.0, 0.9))
 inset = [(x * 0.97 + 0.5, (y - 140.0) * 0.97 + 140.0) for x, y in face_top]
 grip("throttle_face", slab("throttle_face", "black", inset, FACE - 2.0, FACE))
-for x, y in [(-39.0, 130.0), (-39.0, 176.0), (5.0, 177.0), (46.0, 151.0), (47.0, 106.0), (20.0, 104.0)]:
-    post("throttle_screw", "metal", x, y, FACE, 1.6, 0.8, n=6)
 # The hat on its collar where the grip meets the box.
-post("throttle_collar", "metal", 0.0, 136.0, FACE, 15.0, 8.0, n=ROUND)
-post("throttle_hat", "black", 0.0, 136.0, FACE + 8.0, 9.0, 8.0, n=ROUND)
-post("throttle_hat", "black", 0.0, 136.0, FACE + 16.0, 4.0, 3.0)
+post("throttle_collar", "metal", 0.0, 136.0, FACE, 15.0, 8.0, n=COLL_ROUND)
+post("throttle_hat", "black", 0.0, 136.0, FACE + 8.0, 9.0, 8.0, n=COLL_ROUND)
+post("throttle_hat", "black", 0.0, 136.0, FACE + 16.0, 4.0, 3.0, n=COLL_KNOB)
 # The ribbed rocker in its housing (outboard, aft).
 grip("throttle_rocker", box_mesh("throttle_rocker", (16.0, 18.0, 4.0), "dark", (-28.0, 140.0, FACE + 2.0)))
-grip("throttle_rocker", loft("throttle_rocker", "black", [(-6.0, 0.0, 7.0, 7.0), (6.0, 0.0, 7.0, 7.0)], n=16, rib=0.88),
+grip("throttle_rocker", loft("throttle_rocker", "black", [(-6.0, 0.0, 7.0, 7.0), (6.0, 0.0, 7.0, 7.0)], n=8, rib=0.88),
      Matrix.Translation((-28.0, 140.0, FACE + 3.0)))
 # The release button: red, in its blue ring (outboard, ahead).
-post("throttle_ring_lit", blue, -22.0, 165.0, FACE, 12.0, 1.5, n=ROUND)
-post("throttle_release", red, -22.0, 165.0, FACE + 1.5, 8.5, 6.0, n=ROUND)
+post("throttle_ring_lit", blue, -22.0, 165.0, FACE, 12.0, 1.5, n=COLL_ROUND)
+post("throttle_release", red, -22.0, 165.0, FACE + 1.5, 8.5, 6.0, n=COLL_ROUND)
 # The dimmer knob, star cut.
-post("throttle_dimmer", "dark", 12.0, 167.0, FACE, 9.5, 3.0, n=ROUND)
-grip("throttle_dimmer", loft("throttle_dimmer", "black", [(0.0, 0.0, 8.0, 8.0), (8.0, 0.0, 8.0, 8.0)], n=16, rib=0.75),
+post("throttle_dimmer", "dark", 12.0, 167.0, FACE, 9.5, 3.0, n=COLL_ROUND)
+grip("throttle_dimmer", loft("throttle_dimmer", "black", [(0.0, 0.0, 8.0, 8.0), (8.0, 0.0, 8.0, 8.0)], n=8, rib=0.75),
      Matrix.Translation((12.0, 167.0, FACE + 3.0)) @ Matrix.Rotation(math.radians(90.0), 4, "X"))
 # The servo toggle in its slanted slot.
 grip("throttle_slot", box_mesh("throttle_slot", (9.0, 26.0, 4.0), "dark", (30.0, 147.0, FACE + 2.0), Euler((0.0, 0.0, math.radians(-35.0)))))
 grip("throttle_toggle", box_mesh("throttle_toggle", (3.5, 4.0, 12.0), "metal", (30.0, 147.0, FACE + 8.0), Euler((0.0, math.radians(15.0), 0.0))))
 # The landing light hat (inboard, aft).
-post("throttle_ldg", "dark", 39.0, 118.0, FACE, 9.5, 4.0, n=ROUND)
-post("throttle_ldg", "black", 39.0, 118.0, FACE + 4.0, 6.5, 6.0, n=ROUND)
+post("throttle_ldg", "dark", 39.0, 118.0, FACE, 9.5, 4.0, n=COLL_ROUND)
+post("throttle_ldg", "black", 39.0, 118.0, FACE + 4.0, 6.5, 6.0, n=COLL_ROUND)
 box("dark", "dark", COLLECTIVE_PIVOT + Vector((0, 0, -0.03)), (0.07, 0.07, 0.09))
 box("dark", "dark", COLLECTIVE_PIVOT + Vector((0, 0, (FLOOR - COLLECTIVE_PIVOT.z) / 2 - 0.04)), (0.05, 0.05, COLLECTIVE_PIVOT.z - FLOOR - 0.08))
 full = COLLECTIVE_PIVOT + Matrix.Rotation(math.radians(COLLECTIVE_SWING), 3, "X") @ -arm

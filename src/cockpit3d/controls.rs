@@ -16,7 +16,7 @@ use crate::camera::{View, ViewState};
 use crate::flight::{Aircraft, Player};
 use crate::hud::{HudMode, HudState};
 use crate::input::{Action, ActionEvent};
-use crate::mfd::{CamDir, MfdCommand, MfdState, OsbFn, cmd_action, osb};
+use crate::mfd::{CamDir, MfdCmd, MfdCommand, MfdState, OsbFn, cmd_action, osb};
 
 /// Presses the 3D-cockpit control bound to an action (scripts).
 #[derive(Message, Debug, Clone, Copy)]
@@ -46,6 +46,27 @@ pub struct ScreenClick {
     pub uv: Vec2,
 }
 
+/// A press on a console screen held and moved: where it started (`Start`, with the click), where
+/// the pointer is while it is held (`Move`, each frame it moved), where it let go (`End`).
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ScreenDrag {
+    pub screen: super::displays::ConsoleScreen,
+    pub uv: Vec2,
+    pub phase: DragPhase,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragPhase {
+    Start,
+    Move,
+    End,
+}
+
+/// A press held on a console screen: the screen's entity, the VR hand holding it (None: the
+/// mouse), where the pointer last was on it.
+#[derive(Default)]
+pub(super) struct Dragging(Option<(Entity, Option<usize>, Vec2)>);
+
 impl Effect {
     /// The key action a script `press=` names for this control (None: blank bezel button).
     pub(super) fn action(self, mfd: &MfdState) -> Option<Action> {
@@ -57,6 +78,8 @@ impl Effect {
             Effect::TimeToggle => Action::TimeAccel,
             Effect::Console(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
+                // The slew buttons have no key action (F8 is the MOV button's).
+                OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => return None,
                 OsbFn::Cmd(c) => cmd_action(c),
                 OsbFn::Action(a) => a,
                 OsbFn::Readout => return None,
@@ -196,6 +219,11 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "RangeIn" => K::RangeIn,
                 "RangeOut" => K::RangeOut,
                 "Leave" => K::Leave,
+                "Auto" => K::Auto,
+                "Manual" => K::Manual,
+                "Track" => K::Track,
+                "Slave" => K::Slave,
+                "View" => K::View,
                 _ => return None,
             })
         }
@@ -306,6 +334,7 @@ pub(super) fn interact(
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     screens: Query<&super::displays::ConsoleCanvas>,
     mut clicks: MessageWriter<ScreenClick>,
+    (mut drags, mut dragging): (MessageWriter<ScreenDrag>, Local<Dragging>),
 ) {
     let dt = time.delta_secs();
     // The cockpit is not there (VR, the campaign's Ops screen): nothing to touch.
@@ -372,13 +401,15 @@ pub(super) fn interact(
             && let Some((_, uv)) = picker.uv_at(e, ray)
         {
             clicks.write(ScreenClick { screen: screen.0, uv });
+            drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
+            dragging.0 = Some((e, None, uv));
         }
     }
 
     // VR: a fingertip on a console screen and the trigger taps it there (seen from the eye, so
     // where the finger shows on the picture).
     if cockpit_view && !menu.open && !screens.is_empty() {
-        for hand in hands.hands.iter_mut() {
+        for (h, hand) in hands.hands.iter_mut().enumerate() {
             if !hand.active || hand.touching || !hand.trigger_pulled() {
                 continue;
             }
@@ -394,8 +425,34 @@ pub(super) fn interact(
             {
                 hand.haptic = hand.haptic.max(0.4);
                 clicks.write(ScreenClick { screen: screen.0, uv });
+                drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
+                dragging.0 = Some((e, Some(h), uv));
             }
         }
+    }
+
+    // A press held on a screen drags across it: the mouse button or the trigger still down (the
+    // fingertip may leave the screen's face, seen from the eye it still points at it).
+    if let Some((e, hand, last)) = dragging.0
+        && let Ok(screen) = screens.get(e)
+    {
+        let (held, ray) = match hand {
+            None => (buttons.pressed(MouseButton::Left), picker.cursor_ray()),
+            Some(h) => {
+                let hand = &hands.hands[h];
+                (hand.active && hand.trigger > 0.5, picker.eye_through(hand.finger).map(|r| r.0))
+            }
+        };
+        let uv = ray.and_then(|ray| picker.uv_at(e, ray)).map_or(last, |(_, uv)| uv);
+        if !held || menu.open {
+            drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::End });
+            dragging.0 = None;
+        } else if uv != last {
+            drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Move });
+            dragging.0 = Some((e, hand, uv));
+        }
+    } else {
+        dragging.0 = None;
     }
 
     // VR fingertips: each hand touches the control whose face is nearest its fingertip (not

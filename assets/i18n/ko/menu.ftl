@@ -206,6 +206,11 @@ aircraft-a10 =
         근접 항공 지원기
         느리지만 튼튼함, 30 mm 기관포
         A-10C 조종석, MFD 두 개
+aircraft-av8b =
+    .facts =
+        V/STOL 공격기
+        추력 편향: 호버링, 어디에나 착륙
+        노즐 레버: R / F, Shift로 정지점
 aircraft-uh60 =
     .facts =
         다목적 헬리콥터

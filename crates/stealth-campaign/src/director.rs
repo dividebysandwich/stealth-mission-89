@@ -5,7 +5,7 @@
 
 use crate::state::*;
 use crate::tuning::*;
-use crate::{CampaignEvent, Report, WorldView};
+use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WorldView};
 use stealth_i18n::{Text, text};
 
 impl CampaignState {
@@ -124,12 +124,25 @@ impl CampaignState {
         let (id, place) = (self.insertions[k].id, self.insertions[k].place);
         self.insertions[k].state = InsertionState::Captured;
         let side = self.insertions[k].side;
+        self.settle_insertion(id, InsertionState::Captured);
+        self.capture_place(place, side, ev);
+    }
+
+    /// A place changes hands (an insertion landed, or a convoy took it).
+    pub(crate) fn capture_place(
+        &mut self,
+        place: PlaceId,
+        side: Side,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
         let p = &mut self.places[place as usize];
         p.owner = side;
         p.intel_until = None;
-        // The new owner's guns, at full strength.
+        // The new owner's guns and armour, at full strength.
         p.guns_lost = 0;
         p.guns_repair_at = None;
+        p.armour_lost = 0;
+        p.armour_repair_at = None;
         let airfield = p.airfield.is_some();
         let members = p.members.clone();
         let removed = std::mem::take(&mut p.defences);
@@ -157,7 +170,6 @@ impl CampaignState {
         for i in off {
             self.settle_insertion(i, InsertionState::CalledOff);
         }
-        self.settle_insertion(id, InsertionState::Captured);
         // Aircraft left on a taken airfield.
         if airfield {
             self.aircraft_back(side, CAPTURED_FIGHTERS, CAPTURED_HELICOPTERS);
@@ -177,7 +189,7 @@ impl CampaignState {
         self.order_insertion_for(Side::Blue, by, place)
     }
 
-    fn order_insertion_for(
+    pub(crate) fn order_insertion_for(
         &mut self,
         side: Side,
         by: Option<PlayerId>,
@@ -531,12 +543,29 @@ impl CampaignState {
             p.guns_repair_at = (p.guns_lost > 0).then_some(now + REPAIR_GUN);
             ev.push(CampaignEvent::GunRepaired { place: k as PlaceId });
         }
+        for k in 0..self.places.len() {
+            let p = &self.places[k];
+            if p.armour_lost == 0 || !p.armour_repair_at.is_some_and(|t| now >= t) {
+                continue;
+            }
+            if !self.pay(p.owner, ARMOUR_COST, Spend::Repairs) {
+                continue;
+            }
+            let p = &mut self.places[k];
+            p.armour_lost -= 1;
+            p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR);
+            ev.push(CampaignEvent::ArmourRepaired { place: k as PlaceId });
+        }
     }
 
     /// A gun or MANPADS team (AAA unit `index`) destroyed: one less at its place until it is
     /// replaced.
     fn gun_lost(&mut self, index: u32, view: &WorldView) {
-        let Some(a) = view.aaa.get(index as usize) else { return };
+        let Some(a) = view.units.get(index as usize) else { return };
+        // A convoy's losses are its own (`run_convoys`).
+        if a.convoy != 0 {
+            return;
+        }
         let near = self
             .places
             .iter()
@@ -547,8 +576,13 @@ impl CampaignState {
             .min_by_key(|&(_, d)| d);
         if let Some((k, _)) = near {
             let p = &mut self.places[k];
-            p.guns_lost = p.guns_lost.saturating_add(1);
-            p.guns_repair_at = Some(self.clock + REPAIR_GUN);
+            if a.vehicle.is_some() {
+                p.armour_lost = p.armour_lost.saturating_add(1);
+                p.armour_repair_at = Some(self.clock + REPAIR_ARMOUR);
+            } else {
+                p.guns_lost = p.guns_lost.saturating_add(1);
+                p.guns_repair_at = Some(self.clock + REPAIR_GUN);
+            }
         }
     }
 
@@ -1133,7 +1167,7 @@ impl CampaignState {
         side: Side,
         r: i32,
     ) -> impl Iterator<Item = u32> + 'v {
-        view.aaa
+        view.units
             .iter()
             .enumerate()
             .filter(move |(_, a)| a.alive && a.side == side && dist(a.x - x, a.y - y) <= r)
@@ -1345,6 +1379,56 @@ impl CampaignState {
                 threat,
             );
         }
+        // The armour columns: the enemy's to stop, ours to clear the way for.
+        let moving: Vec<u32> = self.convoys.iter().filter(|v| v.active()).map(|v| v.id).collect();
+        for v in self.convoys.clone().into_iter().filter(Convoy::active) {
+            let p = &self.places[v.place as usize];
+            let (name, px, py) = (p.name.clone(), p.x, p.y);
+            if v.side == side.enemy() {
+                let aaa: Vec<u32> = (0..view.units.len() as u32)
+                    .filter(|&k| {
+                        let u = &view.units[k as usize];
+                        u.convoy == v.id && u.alive
+                    })
+                    .collect();
+                if aaa.is_empty() {
+                    continue;
+                }
+                let threat = v.units.iter().filter(|&&u| u == ConvoyUnit::Escort).count() as i32;
+                add(
+                    self,
+                    MissionKind::Cas,
+                    text!("cb-cas-armour", place = name.as_str()),
+                    Objective::Armour { convoy: v.id, aaa },
+                    v.at.0,
+                    v.at.1,
+                    threat,
+                );
+            } else {
+                let aaa: Vec<u32> = (0..view.units.len() as u32)
+                    .filter(|&k| {
+                        let u = &view.units[k as usize];
+                        u.alive
+                            && u.side == v.side.enemy()
+                            && !moving.contains(&u.convoy)
+                            && dist(u.x - px, u.y - py) <= GARRISON_RADIUS
+                    })
+                    .collect();
+                if aaa.is_empty() {
+                    continue;
+                }
+                let threat = aaa.len() as i32;
+                add(
+                    self,
+                    MissionKind::Cas,
+                    text!("cb-cas-support", place = name.as_str()),
+                    Objective::Support { convoy: v.id, place: v.place, aaa },
+                    px,
+                    py,
+                    threat,
+                );
+            }
+        }
         // Escorts for the insertions under way.
         for ins in self.insertions.clone() {
             if ins.side != side
@@ -1438,6 +1522,9 @@ impl CampaignState {
             let rank = |o: &MissionOffer| match o.kind {
                 // Near the bases for the helicopters, when nothing else is.
                 _ if matches!(o.objective, Objective::Battery { .. }) => 2,
+                // An enemy column on its way, our own one in a fight.
+                _ if matches!(o.objective, Objective::Armour { .. }) => 0,
+                _ if matches!(o.objective, Objective::Support { .. }) => 1,
                 MissionKind::Intercept
                 | MissionKind::Defend
                 | MissionKind::Csar
@@ -1485,6 +1572,7 @@ fn front_index(front: &[PlaceId], o: &Objective) -> usize {
         | Objective::Sead { place, .. }
         | Objective::Cas { place, .. }
         | Objective::Strike { place, .. }
+        | Objective::Support { place, .. }
         | Objective::Insertion { place } => place,
         _ => return front.len(),
     };
@@ -1511,5 +1599,7 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Battery { battery, .. } => (13, battery as i64),
         Objective::Resupply { request } => (14, request as i64),
         Objective::Logistics { site, leg } => (15, (site as i64) << 8 | leg as i64),
+        Objective::Armour { convoy, .. } => (16, convoy as i64),
+        Objective::Support { convoy, .. } => (17, convoy as i64),
     }
 }

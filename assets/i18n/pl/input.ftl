@@ -6,6 +6,7 @@ axis-rudder = Ster kierunku
 axis-throttle = Przepustnica
 axis-slew-x = Przesuw sensora/kursora X
 axis-slew-y = Przesuw sensora/kursora Y
+axis-nozzle = Dysze (Harrier)
 input-button = Przycisk { $n }
 input-axis = Oś { $n }
 vr-trigger = Spust

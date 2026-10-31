@@ -206,6 +206,11 @@ aircraft-a10 =
         Letoun blízké letecké podpory
         Pomalý a odolný, kanón 30 mm
         Kokpit A-10C, dvě MFD
+aircraft-av8b =
+    .facts =
+        Bitevní letoun V/STOL
+        Vektorování tahu: visení, přistání kdekoli
+        Páka trysek: R / F, Shift pro dorazy
 aircraft-uh60 =
     .facts =
         Víceúčelový vrtulník

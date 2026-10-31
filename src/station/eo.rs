@@ -32,16 +32,24 @@ pub struct ConsoleEo {
     /// The camera (Bevy world) and its direction.
     pub eye: DVec3,
     pub dir: Vec3,
+    /// The picture's up (None: as level as the direction allows): a drone's camera rolls with
+    /// it.
+    pub up: Option<Vec3>,
     /// Zoom step (`mfd::CAM_ZOOMS`).
     pub zoom: u8,
     /// The locked track (Bevy world), while it is there.
     pub target: Option<DVec3>,
     /// The slew's speed now (0..1 of the fastest), and while it is still slewing (0 once on
     /// the track: the gimbal's motor sound).
-    speed: f32,
+    pub(super) speed: f32,
     pub slew: f32,
     /// Slewed by hand: the gun's direction as the camera has it (azimuth, elevation).
-    manual: Option<Vec2>,
+    pub(super) manual: Option<Vec2>,
+    /// Nothing shows the picture (a drone command center without a drone selected): it is not
+    /// rendered.
+    pub idle: bool,
+    /// The drone command center's wide picture (`trackcam::WIDE`).
+    pub wide: bool,
 }
 
 /// The camera points at the lock.
@@ -55,8 +63,12 @@ pub(super) fn aim(
     time: Res<Time<Real>>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
+    // A drone command center's camera is on its drone (`drone::feed`).
+    if m.drones() {
+        return;
+    }
     let sim = &combat.sim;
-    let Some(u) = sim.aaa_units().get(m.unit) else { return };
+    let Some(u) = sim.units().get(m.unit) else { return };
     let eye =
         crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0) + DVec3::Y * MAST;
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
@@ -70,18 +82,21 @@ pub(super) fn aim(
         commands.insert_resource(ConsoleEo {
             eye,
             dir,
+            up: None,
             zoom: crate::mfd::CAM_ZOOM_DEFAULT,
             target,
             speed: 0.0,
             slew: 0.0,
             manual: None,
+            idle: false,
+            wide: false,
         });
         return;
     };
     let dt = time.delta_secs();
     eo.eye = eye;
     eo.target = target;
-    if m.gepard && lock.is_none() {
+    if m.gepard() && lock.is_none() {
         let wrap = |a: f32| (a + PI).rem_euclid(TAU) - PI;
         let (lo, hi) = stealth_sim::station::GEPARD_EL;
         let gun = Vec2::new(u.aim_az, u.aim_el);
@@ -132,6 +147,9 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c), Some(eo)) = (manning, combat, c, eo) else { return };
+    if m.drones() {
+        return;
+    }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Eo) else {
         return;
     };
@@ -169,7 +187,7 @@ pub(super) fn draw(
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock);
     let bottom = h - 10.0;
     let Some(t) = eo.target else {
-        if m.gepard && lock.is_none() {
+        if m.gepard() && lock.is_none() {
             // Slewed by hand: where the gun points, and while it fires.
             let d = eo.dir;
             let brg = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
@@ -177,7 +195,7 @@ pub(super) fn draw(
             leads(cv, &combat, m.unit, &eo, col);
             let text = format!("MAN B{brg:03.0} E{elv:+.0}");
             stroke_text_at(cv, w / 2.0, bottom, &text, 7.0, 1.0, col, Align::Centre);
-            if sim.aaa_units().get(m.unit).is_some_and(|u| u.burst > 0) {
+            if sim.units().get(m.unit).is_some_and(|u| u.burst > 0) {
                 stroke_text_at(cv, w / 2.0, 24.0, "FIRING", 7.0, 1.0, YELLOW, Align::Centre);
             }
             return;
@@ -240,7 +258,7 @@ pub(super) fn draw(
         col,
         Align::Centre,
     );
-    if m.gepard {
+    if m.gepard() {
         let reach = stealth_sim::station::GEPARD_REACH as f32;
         let (text, c2) = if range <= reach { ("IN RANGE", YELLOW) } else { ("OUT OF RANGE", RED) };
         stroke_text_at(cv, w / 2.0, 24.0, text, 7.0, 1.0, c2, Align::Centre);
@@ -253,7 +271,7 @@ pub(super) fn draw(
 fn leads(cv: &mut Canvas, combat: &Combat, unit: usize, eo: &ConsoleEo, col: u8) {
     use stealth_sim::station::{GEPARD_V0, MANUAL_RANGE};
     let sim = &combat.sim;
-    let Some(gun) = sim.aaa_units().get(unit).map(|u| u.metres()) else { return };
+    let Some(gun) = sim.units().get(unit).map(|u| u.metres()) else { return };
     let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
     // The camera's projection (`trackcam`): f = 256 times the zoom over its 77 pixels' width,
     // vertically 0.75 f.

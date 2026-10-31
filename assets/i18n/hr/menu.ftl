@@ -206,6 +206,11 @@ aircraft-a10 =
         Zrakoplov za izravnu zračnu potporu
         Spor i otporan, top od 30 mm
         Kokpit A-10C, dva MFD-a
+aircraft-av8b =
+    .facts =
+        Jurišni zrakoplov V/STOL
+        Vektorski potisak: lebdenje, slijeće bilo gdje
+        Ručica mlaznica: R / F, Shift za graničnike
 aircraft-uh60 =
     .facts =
         Višenamjenski helikopter

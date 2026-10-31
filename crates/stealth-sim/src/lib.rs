@@ -14,6 +14,7 @@ pub mod csar;
 mod damage;
 pub mod dlz;
 pub mod drones;
+pub mod ground;
 pub mod guidance;
 pub mod lights;
 mod missiles;
@@ -27,11 +28,13 @@ pub mod station;
 pub mod supply;
 mod targeting;
 mod tiles;
+pub mod uav;
 mod weapons;
 mod weather;
 
 pub use data::{
-    AircraftKind, AircraftType, MissileType, SimData, TheaterTiles, ThreatType, Town, WeaponType,
+    AircraftKind, AircraftType, MissileType, Runway, SimData, TheaterTiles, ThreatType, Town,
+    WeaponType,
 };
 pub use pilot::{Pilot, PilotEvent};
 pub use radar::emv;
@@ -119,6 +122,10 @@ pub struct Sim {
     pub(crate) proj_pilot: [u8; ENEMY_SLOTS],
     #[serde(default)]
     pub(crate) flight_pilot: Vec<u8>,
+    /// Each flight unit's velocity over its last frame (wu/s: east, south, up), as it really
+    /// moved ([`Sim::flight_velocity`]).
+    #[serde(skip)]
+    pub(crate) flight_vel: Vec<[f32; 3]>,
     #[serde(default)]
     pub(crate) site_pilot: Vec<u8>,
     #[serde(default)]
@@ -185,11 +192,16 @@ pub struct Sim {
     /// continuous time of day; None: the mission's day or night.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) visual_light: Option<u8>,
-    /// Low-level air defences (`SimOptions::air_defence`), their shells and random stream.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) aaa: Vec<aaa::AaaUnit>,
+    /// Ground units: low-level air defences (`SimOptions::air_defence`) and the campaign's
+    /// armour; then the shells and random stream.
+    #[serde(default, rename = "aaa", skip_serializing_if = "Vec::is_empty")]
+    pub(crate) units: Vec<aaa::GroundUnit>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) aaa_shells: Vec<aaa::Shell>,
+    /// Where shells came down on the ground (metres east, north) and if they were flak, since
+    /// [`Sim::take_shell_impacts`] (only drawn).
+    #[serde(skip)]
+    pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
@@ -331,6 +343,7 @@ impl Sim {
         let tornado = opts.tornado;
         let a10 = opts.a10;
         let comanche = opts.comanche;
+        let harrier = opts.harrier;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -355,6 +368,7 @@ impl Sim {
             parked: vec![Pilot::default()],
             proj_pilot: [0; ENEMY_SLOTS],
             flight_pilot: Vec::new(),
+            flight_vel: Vec::new(),
             site_pilot: Vec::new(),
             aaa_pilot: Vec::new(),
             alarm_pilot: 0,
@@ -368,9 +382,11 @@ impl Sim {
                 tornado,
                 a10,
                 comanche,
+                harrier,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
+                spi_unit: None,
                 rounds: Vec::new(),
                 missiles: Default::default(),
                 last_input: PlayerState::default(),
@@ -404,6 +420,7 @@ impl Sim {
                 fire_cooldown: 0,
                 prev_fire: false,
                 ccrp_last: None,
+                ripple: None,
                 prev_hud_mode: HudMode::Nav,
                 hud_mode: HudMode::Nav,
                 camera_mfd: false,
@@ -499,8 +516,9 @@ impl Sim {
                 - m.drones.as_ref().map_or(0, |d| d.count.min(w.flights.len())),
             destroyed_at: Vec::new(),
             visual_light: None,
-            aaa: Vec::new(),
+            units: Vec::new(),
             aaa_shells: Vec::new(),
+            shell_impacts: Vec::new(),
             aaa_rng: None,
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
@@ -1095,6 +1113,19 @@ impl Sim {
             }
         }
         (groups, selected)
+    }
+
+    /// Where a CCRP release aims (map units, the middle of the cell): the targeting pod's
+    /// ground point, else the ground lock.
+    pub fn ccrp_aim(&self) -> Option<(f64, f64)> {
+        self.ccrp_aim_of(&self.pl.last_input)
+    }
+
+    /// Length of the stick (ft) a release of the selected bombs lays down with the last
+    /// report's ripple (0 for one bomb); CCRP centres it on the aim point.
+    pub fn ripple_stick_ft(&self) -> f64 {
+        let (n, spacing) = self.ripple(&self.pl.last_input);
+        (n - 1) as f64 * spacing
     }
 
     /// Replaces the mission's bays with these stations (weapon index, count; -1 empty), e.g.

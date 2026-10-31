@@ -206,6 +206,11 @@ aircraft-a10 =
         Aerárthach tacaíochta aeir dlúth
         Mall agus righin, gunna 30 mm
         Cockpit A-10C, dhá MFD
+aircraft-av8b =
+    .facts =
+        Aerárthach ionsaithe V/STOL
+        Sá veicteoireach: ainliú, tuirlingíonn áit ar bith
+        Luamhán na ngaibíní: R / F, Shift do na stopanna
 aircraft-uh60 =
     .facts =
         Héileacaptar fóntais

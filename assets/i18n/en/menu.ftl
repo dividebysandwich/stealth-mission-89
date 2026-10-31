@@ -206,6 +206,11 @@ aircraft-a10 =
         Close air support aircraft
         Slow and rugged, 30 mm cannon
         A-10C cockpit, two MFDs
+aircraft-av8b =
+    .facts =
+        V/STOL attack aircraft
+        Vectored thrust: hover, land anywhere
+        Nozzle lever: R / F, Shift for the stops
 aircraft-uh60 =
     .facts =
         Utility helicopter

@@ -1,4 +1,4 @@
-//! The OpenXR session of the headset renderer: EGL's OpenGL context (`egl.rs`), two swapchains
+//! The OpenXR session of the headset renderer: EGL's OpenGL context (`egl.rs`), swapchains
 //! of two layers (one per eye, both drawn in one pass), the local space, and the frame loop's
 //! calls (as rust-dos's `display/stage/xr/{mod,gl_frames}.rs`).
 
@@ -18,9 +18,9 @@ pub struct Headset {
     waiter: xr::FrameWaiter,
     stream: xr::FrameStream<Egl>,
     space: xr::Space,
-    /// Two swapchains drawn in turn (one frame's image is drawn while the last one's is still
-    /// held, to be shown once the GPU is done with it; a swapchain holds one at a time), each
-    /// with its images: 2D array textures of two layers.
+    /// The swapchains drawn in turn (one; two when a frame's image is drawn while the last
+    /// one's is still held, to be shown once the GPU is done with it: a swapchain holds one at a
+    /// time), each with its images: 2D array textures of two layers.
     swapchains: Vec<(xr::Swapchain<Egl>, Vec<glow::Texture>)>,
     /// The swapchain drawn next.
     next: usize,
@@ -31,7 +31,15 @@ pub struct Headset {
     blend: xr::EnvironmentBlendMode,
     running: bool,
     events: xr::EventDataBuffer,
+    /// The last frame's display time, and the frames' interval measured from them (ns).
+    last_time: Option<xr::Time>,
+    interval: f64,
+    /// The runtime's frame periods since `pacing` was last asked (ns, min and max).
+    periods: (i64, i64),
 }
+
+/// Frames' intervals believed (ns): 30 to 144 Hz.
+const INTERVALS: std::ops::RangeInclusive<f64> = 6.9e6..=33.4e6;
 
 /// A frame to draw: when it is shown, and the eyes' and the controllers' poses then (local
 /// space).
@@ -46,8 +54,9 @@ fn err(what: &'static str) -> impl Fn(xr::sys::Result) -> String {
 }
 
 impl Headset {
-    /// The session on `context` (current on this thread).
-    pub fn new(context: &Context) -> Result<Self, String> {
+    /// The session on `context` (current on this thread), drawing into `chains` swapchains in
+    /// turn.
+    pub fn new(context: &Context, chains: usize) -> Result<Self, String> {
         // SAFETY: loads the OpenXR loader library (beside the executable, see build.rs).
         let entry = unsafe { xr::Entry::load() }.map_err(|e| format!("no OpenXR loader: {e}"))?;
         let offered = entry.enumerate_extensions().map_err(err("the runtime's extensions"))?;
@@ -100,7 +109,7 @@ impl Headset {
             return Err(format!("the headset takes no RGBA8 format ({formats:x?})"));
         };
         let mut swapchains = Vec::new();
-        for _ in 0..2 {
+        for _ in 0..chains.max(1) {
             let swapchain = session
                 .create_swapchain(&xr::SwapchainCreateInfo {
                     create_flags: xr::SwapchainCreateFlags::EMPTY,
@@ -143,6 +152,9 @@ impl Headset {
             blend,
             running: false,
             events: xr::EventDataBuffer::new(),
+            last_time: None,
+            interval: 1e9 / 72.0,
+            periods: (i64::MAX, 0),
         })
     }
 
@@ -185,9 +197,16 @@ impl Headset {
         self.running
     }
 
-    /// Waits for the next frame and begins it: the eyes to draw, or None for a frame not shown
-    /// (ended at once).
-    pub fn begin(&mut self) -> Result<Option<Frame>, String> {
+    /// For the log: the runtime's frame periods since last asked (min, max) and the interval
+    /// the eyes are put ahead by, in ms.
+    pub fn pacing(&mut self) -> (f32, f32, f32) {
+        let (lo, hi) = std::mem::replace(&mut self.periods, (i64::MAX, 0));
+        (lo as f32 / 1e6, hi as f32 / 1e6, self.interval as f32 / 1e6)
+    }
+
+    /// Waits for the next frame and begins it: the eyes to draw (`ahead`: where they will be a
+    /// frame later, for an image shown then), or None for a frame not shown (ended at once).
+    pub fn begin(&mut self, ahead: bool) -> Result<Option<Frame>, String> {
         let state = self.waiter.wait().map_err(err("waiting for the frame"))?;
         self.stream.begin().map_err(err("beginning the frame"))?;
         if !state.should_render {
@@ -197,11 +216,24 @@ impl Headset {
             return Ok(None);
         }
         // The image drawn now is shown a frame later (`present`): the eyes and the hands
-        // where they will be then.
+        // where they will be then. A frame later by the frames' measured interval: SteamVR on
+        // the Steam Frame gives periods of 90 Hz frames (11.1, 22.2, 33.3 ms) while it shows
+        // 72 a second, so the eyes were put ahead by varying amounts, frame to frame (images
+        // a little behind or ahead of the head in turn: a judder whenever it turned).
         let time = state.predicted_display_time;
-        let shown = xr::Time::from_nanos(
-            time.as_nanos() + state.predicted_display_period.as_nanos().max(0),
-        );
+        let period = state.predicted_display_period.as_nanos();
+        self.periods = (self.periods.0.min(period), self.periods.1.max(period));
+        if let Some(last) = self.last_time {
+            let d = (time.as_nanos() - last.as_nanos()) as f64;
+            // (Averaged: a frame now and then not shown counts little; 36 a second, SteamVR's
+            // half rate, is learnt in a second or two.)
+            if INTERVALS.contains(&d) {
+                self.interval += (d - self.interval) * 0.05;
+            }
+        }
+        self.last_time = Some(time);
+        let shown =
+            xr::Time::from_nanos(time.as_nanos() + if ahead { self.interval as i64 } else { 0 });
         let (_, views) = self
             .session
             .locate_views(xr::ViewConfigurationType::PRIMARY_STEREO, shown, &self.space)

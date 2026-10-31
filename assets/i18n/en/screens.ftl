@@ -49,6 +49,12 @@ planner-uav = Enemy UAV
 planner-edit-hint = Drag a point to move it, the map to pan. Click a leg to add a point, right click to remove it. Wheel: zoom.
 planner-reset = RESET
 planner-view-hint = Drag the map to pan. Wheel: zoom.
+planner-layers = LAYERS
+planner-layer-sams = Radar / SAM site
+planner-radar-types = Radar types
+planner-layer-pulse = Pulse radar detection range
+planner-layer-doppler = Doppler radar detection range
+planner-layer-airfield = Airfield
 
 ## Saved missions
 

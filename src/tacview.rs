@@ -201,7 +201,7 @@ impl AcmiWriter {
         }
 
         for (i, &(kind, x, y, blue)) in rec.aaa.iter().enumerate() {
-            let ty = if kind == stealth_sim::aaa::AaaKind::Manpads {
+            let ty = if kind == stealth_sim::aaa::GroundKind::Manpads {
                 "Ground+Light+Human+Infantry"
             } else {
                 "Ground+Heavy+Armor+AntiAircraft"

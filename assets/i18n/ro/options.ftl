@@ -35,11 +35,27 @@ options-auto-trim = Trim automat
         Trim manual: Alt + tastele săgeți, Alt + Home îl centrează
 options-tooltips = Tooltip-uri din cockpit
     .facts = Ce este o comandă sau un afișaj din cockpit, sub mouse sau sub vârful degetului în VR
+options-player-labels = Numele jucătorilor
+    .facts = Multiplayer: numele celorlalți piloți deasupra aeronavelor lor, la orice distanță
+options-label-size =
+    .facts =
+        Mărimea numelor jucătorilor
+        50%: implicit
 options-section-vr-size = Dimensiunea cockpitului în VR
 options-vr-size =
     .facts =
         Dimensiunea cockpitului (și a lumii) în cască
         100%: mărime naturală
+options-section-gif = Înregistrare GIF
+options-gif-size = MĂRIME
+options-gif-rate = CADRE
+options-gif-scale-100 =
+    .facts = Rezoluția completă a ferestrei: fișiere mari
+options-gif-scale-25 =
+    .facts = Fișiere mici
+options-gif-rate-50 =
+    .facts = Doar când jocul rulează la 100 fps sau mai mult (se captează un cadru din două)
+options-gif-hint = F12 (dacă nu e reasignat) pornește și oprește; salvat în dosarul Imagini
 
 ## GRAFICĂ
 
@@ -85,6 +101,19 @@ options-volume-effects = Efecte
     .facts = Arme, explozii, tren de aterizare, radio și restul
 options-volume-warnings = Alarme
     .facts = Claxonul de angajare, avertizările radar și de rachetă, sirena de incendiu, tonurile Sidewinder
+options-volume-rwr = RWR
+    .facts = Tonurile de avertizare radar, ca parte a volumului alarmelor
+options-section-rwr-tones = Tonuri de avertizare radar
+rwr-tones-all = TOATE
+    .facts = Un radar care vă iluminează, fiecare baleiaj care vă detectează, lansările de rachete
+rwr-tones-detect = DOAR DETECȚIE
+    .facts =
+        Un ton când un radar vă detectează (din nou după ce radarele vă pierd o vreme)
+        Și lansările de rachete
+rwr-tones-launch = DOAR LANSĂRI
+    .facts = Doar rachetele lansate asupra dumneavoastră
+rwr-tones-off = OPRIT
+    .facts = Niciun ton de avertizare radar (luminile și ecranele avertizează în continuare)
 options-section-cockpit = Cockpit
 options-low-pass = Filtru trece-jos motor
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Vapori și curent de rotor
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        La manevre strânse, dâre de vapori la vârfurile aripilor
+        Un elicopter în zbor staționar jos ridică praf, sau spumă deasupra apei
+        Vehiculele în mișcare ridică praf în urma lor
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

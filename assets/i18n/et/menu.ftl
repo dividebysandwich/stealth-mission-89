@@ -206,6 +206,11 @@ aircraft-a10 =
         Lähitoetuslennuk
         Aeglane ja vastupidav, 30 mm kahur
         A-10C cockpit, kaks MFD-d
+aircraft-av8b =
+    .facts =
+        V/STOL ründelennuk
+        Suunatav tõukejõud: hõljumine, maandub kõikjal
+        Düüside hoob: R / F, Shift piirikuteks
 aircraft-uh60 =
     .facts =
         Üldotstarbeline kopter

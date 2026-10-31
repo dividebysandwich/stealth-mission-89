@@ -41,6 +41,7 @@ pub enum Aircraft {
     Tornado,
     A10,
     RAH66,
+    AV8B,
 }
 
 impl Aircraft {
@@ -53,6 +54,7 @@ impl Aircraft {
             Aircraft::Tornado => "Tornado",
             Aircraft::A10 => "A-10",
             Aircraft::RAH66 => "RAH-66",
+            Aircraft::AV8B => "AV-8B",
         }
     }
 
@@ -132,6 +134,11 @@ pub struct Place {
     pub guns_lost: u8,
     #[serde(default)]
     pub guns_repair_at: Option<f64>,
+    /// The same for its garrison's armour.
+    #[serde(default)]
+    pub armour_lost: u8,
+    #[serde(default)]
+    pub armour_repair_at: Option<f64>,
 }
 
 impl Place {
@@ -208,19 +215,20 @@ impl MissionKind {
 
     /// The aircraft made for it, best first: what the briefing picks (the player may change to
     /// any other that may fly it). Deep strikes and the enemy's air defences are for the jets
-    /// (low-level interdiction the Tornado's, close support the A-10's), the air-to-air missions for the F-16, rescues for
-    /// the UH-60 that picks the pilot up, work close to the front for the gunships.
+    /// (low-level interdiction the Tornado's, close support the A-10's and the AV-8B's), the
+    /// air-to-air missions for the F-16, rescues for the UH-60 that picks the pilot up, work close
+    /// to the front for the gunships.
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
-            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10],
+            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10, AV8B],
             MissionKind::AntiShip => &[F117, F16, Tornado],
             MissionKind::Interdiction => &[F117, Tornado, F16, A10],
             MissionKind::Sead => &[F16, Tornado, F117],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
             MissionKind::Intercept => &[F16, AH1Z, RAH66],
-            MissionKind::Cas => &[A10, AH1Z, RAH66, F16, Tornado, F117],
-            MissionKind::Escort => &[AH1Z, RAH66, F16, A10],
+            MissionKind::Cas => &[A10, AV8B, AH1Z, RAH66, F16, Tornado, F117],
+            MissionKind::Escort => &[AH1Z, RAH66, AV8B, F16, A10],
             MissionKind::Insertion
             | MissionKind::Csar
             | MissionKind::Resupply
@@ -332,6 +340,18 @@ pub enum Objective {
     /// Destroy an enemy forward battery's guns (AAA unit indices).
     Battery {
         battery: u32,
+        aaa: Vec<u32>,
+    },
+    /// Destroy an enemy armour column on its way (its vehicles' unit indices).
+    Armour {
+        convoy: u32,
+        aaa: Vec<u32>,
+    },
+    /// Clear the way for a friendly armour column: destroy the garrison, guns and armour of
+    /// the place it attacks (unit indices).
+    Support {
+        convoy: u32,
+        place: PlaceId,
         aaa: Vec<u32>,
     },
     /// Hover with a new stockpile at a friendly air defence unit (a [`SupplyRequest`]).
@@ -868,18 +888,87 @@ pub struct CampaignState {
     /// The new air defence sites the players designated: waiting for their cargo, or built.
     #[serde(default)]
     pub deployments: Vec<Deployment>,
+    /// The sides' convoys, and when each side's last one was over (blue, red).
+    #[serde(default)]
+    pub convoys: Vec<crate::Convoy>,
+    #[serde(default)]
+    pub convoy_at: [f64; 2],
     #[serde(skip)]
     pub terrain: Terrain,
 }
 
-/// A friendly air defence unit's stockpile: where (map units), a Patriot battery (else a
-/// Gepard), how much (missiles, rounds).
+/// What a friendly site the players build and man is: a Gepard, a Patriot battery or a drone
+/// command center.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+pub enum DefenceKind {
+    #[default]
+    Gepard,
+    Patriot,
+    Drones,
+}
+
+impl DefenceKind {
+    /// "Patriot battery".
+    pub fn name(self) -> &'static str {
+        match self {
+            DefenceKind::Gepard => "Gepard",
+            DefenceKind::Patriot => "Patriot battery",
+            DefenceKind::Drones => "drone command center",
+        }
+    }
+
+    /// "Patriot" (the board's titles).
+    pub fn short(self) -> &'static str {
+        match self {
+            DefenceKind::Gepard => "Gepard",
+            DefenceKind::Patriot => "Patriot",
+            DefenceKind::Drones => "Drones",
+        }
+    }
+}
+
+/// Saves from before the drone command center say `"patriot": true` or `false`.
+impl<'de> Deserialize<'de> for DefenceKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        enum Named {
+            Gepard,
+            Patriot,
+            Drones,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Patriot(bool),
+            Kind(Named),
+        }
+        Ok(match Either::deserialize(d)? {
+            Either::Patriot(true) | Either::Kind(Named::Patriot) => DefenceKind::Patriot,
+            Either::Patriot(false) | Either::Kind(Named::Gepard) => DefenceKind::Gepard,
+            Either::Kind(Named::Drones) => DefenceKind::Drones,
+        })
+    }
+}
+
+/// A friendly air defence unit's stockpile: where (map units), what it is, how much
+/// (missiles, rounds; a drone command center's surveillance drones, its attack drones in
+/// `stock2` and its interceptors in `stock3`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefenceStock {
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     pub stock: i32,
+    #[serde(default)]
+    pub stock2: i32,
+    /// -1: saved before the interceptors (the center keeps its stockpile).
+    #[serde(default = "unsaved")]
+    pub stock3: i32,
+}
+
+fn unsaved() -> i32 {
+    -1
 }
 
 fn never() -> f64 {
@@ -906,7 +995,8 @@ pub struct SupplyRequest {
     pub aaa: u32,
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     /// The place it is named after (the nearest).
     pub name: String,
     /// Who asked for it (None: ordered when the unit ran out).
@@ -918,7 +1008,11 @@ pub struct SupplyRequest {
 impl SupplyRequest {
     /// "Patriot battery near Wittstock".
     pub fn title(&self) -> Text {
-        let id = if self.patriot { "cl-supply-patriot" } else { "cl-supply-gepard" };
+        let id = match self.kind {
+            DefenceKind::Gepard => "cl-supply-gepard",
+            DefenceKind::Patriot => "cl-supply-patriot",
+            DefenceKind::Drones => "cl-supply-drones",
+        };
         text!(id, place = self.name.as_str())
     }
 }
@@ -933,7 +1027,8 @@ pub struct Deployment {
     /// The helipad (map units); the unit stands [`DEPLOY_UNIT_OFFSET`] north of it.
     pub x: i32,
     pub y: i32,
-    pub patriot: bool,
+    #[serde(alias = "patriot")]
+    pub kind: DefenceKind,
     /// The place it is named after (the nearest).
     pub name: String,
     pub by: Option<PlayerId>,
@@ -976,7 +1071,11 @@ pub enum CrateState {
 impl Deployment {
     /// "Patriot site near Wittstock".
     pub fn title(&self) -> String {
-        let what = if self.patriot { "Patriot site" } else { "Gepard site" };
+        let what = match self.kind {
+            DefenceKind::Gepard => "Gepard site",
+            DefenceKind::Patriot => "Patriot site",
+            DefenceKind::Drones => "Drone command center",
+        };
         format!("{what} near {}", self.name)
     }
 
@@ -1053,15 +1152,37 @@ pub struct Battery {
     pub seen: bool,
 }
 
-/// The theater's land and water, for putting things on land: the host's (a coop client's
-/// state has none), not saved and not compared.
+/// The theater's land and water, for putting things on land, and its relief (the relief
+/// file's bytes) for the convoys' routes: the host's (a coop client's state has none), not
+/// saved and not compared.
 #[derive(Clone, Default)]
-pub struct Terrain(pub Option<std::sync::Arc<stealth_mission::TheaterData>>);
+pub struct Terrain(
+    pub Option<std::sync::Arc<stealth_mission::TheaterData>>,
+    pub Option<std::sync::Arc<Vec<u8>>>,
+    std::sync::Arc<std::sync::OnceLock<crate::ground::GroundGrid>>,
+);
 
 impl Terrain {
+    pub fn new(
+        world: Option<std::sync::Arc<stealth_mission::TheaterData>>,
+        relief: Option<std::sync::Arc<Vec<u8>>>,
+    ) -> Self {
+        Self(world, relief, Default::default())
+    }
+
     /// Water at a map point; None without the theater's terrain.
     pub fn is_water(&self, x: i32, y: i32) -> Option<bool> {
         self.0.as_ref().map(|t| t.is_water(x, y))
+    }
+
+    /// Where vehicles can drive (built the first time it is asked for); None without the
+    /// theater's terrain.
+    pub fn ground(&self) -> Option<&crate::ground::GroundGrid> {
+        let world = self.0.as_ref()?;
+        Some(self.2.get_or_init(|| {
+            let water = world.water_grid(crate::ground::DIM);
+            crate::ground::GroundGrid::build(&water, self.1.as_deref().map(Vec::as_slice))
+        }))
     }
 }
 
@@ -1180,6 +1301,8 @@ impl CampaignState {
                         defences: Vec::new(),
                         intel_until: None,
                         guns_lost: 0,
+                        armour_lost: 0,
+                        armour_repair_at: None,
                         guns_repair_at: None,
                     });
                     places.len() - 1
@@ -1248,6 +1371,8 @@ impl CampaignState {
             defence_stock: Vec::new(),
             supply_requests: Vec::new(),
             deployments: Vec::new(),
+            convoys: Vec::new(),
+            convoy_at: [0.0; 2],
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));

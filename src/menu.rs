@@ -200,20 +200,26 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft.
-const AIRCRAFT: [AircraftKind; 7] = [
+const AIRCRAFT: [AircraftKind; 8] = [
     AircraftKind::F117,
     AircraftKind::F16,
     AircraftKind::Tornado,
     AircraftKind::A10,
+    AircraftKind::AV8B,
     AircraftKind::UH60,
     AircraftKind::AH1Z,
     AircraftKind::RAH66,
 ];
 
 /// The flag a relaunch into VR takes: the headset drawn as this game draws it (`--gl-vr`, glvr's
-/// OpenGL renderer, or `--vr`, Bevy's).
+/// OpenGL renderer, or `--vr`, Bevy's). The Steam Frame (SteamOS on aarch64) takes `--gl-vr`
+/// unless started with `--vr`: only glvr has its eye-tracked foveation.
 fn vr_flag() -> &'static str {
-    if std::env::args().any(|a| a == "--gl-vr") { "--gl-vr" } else { "--vr" }
+    let has = |flag: &str| std::env::args().any(|a| a == flag);
+    let frame = cfg!(all(feature = "glvr", target_os = "linux", target_arch = "aarch64"))
+        && std::fs::read_to_string("/etc/os-release")
+            .is_ok_and(|s| s.lines().any(|l| l == "ID=steamos"));
+    if has("--gl-vr") || (frame && !has("--vr")) { "--gl-vr" } else { "--vr" }
 }
 
 /// Starts the game again in VR, straight into the menu's mission (OpenXR has to replace the
@@ -392,17 +398,31 @@ const KINDS: [MissionKind; 5] = [
 /// Theaters with drone launch sites (drone defense missions).
 const DRONE_THEATERS: [&str; 1] = ["ukraine"];
 
-/// `--ui-zoom f`: interface scale (screenshots in small windows).
+/// The window size the menus are laid out for (logical pixels, the desktop window's).
+const UI_REFERENCE: egui::Vec2 = egui::vec2(1280.0, 768.0);
+/// The furthest the menus zoom out to fit a small window (a phone on its side).
+const UI_ZOOM_MIN: f32 = 0.3;
+
+/// The interface scale: smaller windows than `UI_REFERENCE` (small laptops, a phone or tablet
+/// in the browser) zoom out to fit it, larger ones keep it; `--ui-zoom f` sets it instead.
 pub(crate) fn apply_ui_zoom(ctx: &egui::Context) {
-    if let Some(z) = std::env::args()
+    let arg = std::env::args()
         .collect::<Vec<_>>()
         .windows(2)
         .find(|w| w[0] == "--ui-zoom")
-        .and_then(|w| w[1].parse::<f32>().ok())
-        && ctx.zoom_factor() != z
-    {
+        .and_then(|w| w[1].parse::<f32>().ok());
+    // The window's own size: the content rectangle is in zoomed points.
+    let window = ctx.content_rect().size() * ctx.zoom_factor();
+    let Some(z) = arg.or_else(|| fit_zoom(window)) else { return };
+    if (ctx.zoom_factor() - z).abs() > 0.005 {
         ctx.set_zoom_factor(z);
     }
+}
+
+/// The zoom that fits `UI_REFERENCE` into a window this size (None before it has a size).
+fn fit_zoom(window: egui::Vec2) -> Option<f32> {
+    (window.min_elem() > 0.0)
+        .then(|| (window.x / UI_REFERENCE.x).min(window.y / UI_REFERENCE.y).clamp(UI_ZOOM_MIN, 1.0))
 }
 
 pub(crate) fn apply_terminal_style(style: &mut egui::Style) {
@@ -457,6 +477,16 @@ pub(crate) fn facts(resp: egui::Response, facts: &[&str]) -> egui::Response {
             ui.label(egui::RichText::new(format!("> {f}")).size(14.0));
         }
     })
+}
+
+/// `text` in monospace, smaller if it is wider than `width` points (a translation longer than
+/// the English), down to 70 % of the size: a label's truncation takes what still does not fit.
+pub(crate) fn fit_monospace(ui: &egui::Ui, text: egui::RichText, width: f32) -> egui::RichText {
+    let size = egui::TextStyle::Monospace.resolve(ui.style()).size;
+    let font = egui::FontId::monospace(size);
+    let w = ui.painter().layout_no_wrap(text.text().to_string(), font, GREEN).size().x;
+    let text = text.monospace();
+    if w <= width { text } else { text.size((size * width / w).max(size * 0.7)) }
 }
 
 pub(crate) fn section(ui: &mut egui::Ui, title: &str) {
@@ -1498,4 +1528,21 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
             small(ui, l);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The desktop window and larger keep the full size; a phone on its side zooms out to fit
+    /// its height, never below the floor.
+    #[test]
+    fn zoom_fits_the_window() {
+        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0)), Some(1.0));
+        assert_eq!(fit_zoom(UI_REFERENCE), Some(1.0));
+        let phone = fit_zoom(egui::vec2(844.0, 390.0)).unwrap();
+        assert!((phone - 390.0 / 768.0).abs() < 1e-4);
+        assert_eq!(fit_zoom(egui::vec2(300.0, 200.0)), Some(UI_ZOOM_MIN));
+        assert_eq!(fit_zoom(egui::Vec2::ZERO), None);
+    }
 }

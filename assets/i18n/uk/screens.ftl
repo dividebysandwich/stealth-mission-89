@@ -49,6 +49,12 @@ planner-uav = Ворожий БпЛА
 planner-edit-hint = Перетягніть точку, щоб перемістити її, карту - щоб зсунути. Клік по ділянці додає точку, правий клік видаляє її. Колесо: масштаб.
 planner-reset = СКИНУТИ
 planner-view-hint = Перетягніть карту, щоб зсунути. Колесо: масштаб.
+planner-layers = ШАРИ
+planner-layer-sams = Радар / позиція ЗРК
+planner-radar-types = Типи радарів
+planner-layer-pulse = Дальність виявлення імпульсним радаром
+planner-layer-doppler = Дальність виявлення доплерівським радаром
+planner-layer-airfield = Аеродром
 
 ## Збережені місії
 

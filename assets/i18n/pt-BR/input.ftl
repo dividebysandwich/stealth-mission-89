@@ -6,6 +6,7 @@ axis-rudder = Pedal
 axis-throttle = Manete
 axis-slew-x = Movimento sensor/cursor X
 axis-slew-y = Movimento sensor/cursor Y
+axis-nozzle = Bocais (Harrier)
 input-button = Botão { $n }
 input-axis = Eixo { $n }
 vr-trigger = Gatilho

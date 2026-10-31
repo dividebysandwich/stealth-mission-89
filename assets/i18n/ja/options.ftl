@@ -35,11 +35,27 @@ options-auto-trim = オートトリム
         手動トリム：Alt + 矢印キー、Alt + Home でセンターに戻します
 options-tooltips = コックピットのツールチップ
     .facts = マウスまたは VR の指先の下にある、コックピットの操作部や表示の説明
+options-player-labels = プレイヤー名
+    .facts = マルチプレイ：他のパイロットの名前を機体の上に表示、距離に関係なく
+options-label-size =
+    .facts =
+        プレイヤー名の大きさ
+        50%：既定
 options-section-vr-size = VRコックピットのサイズ
 options-vr-size =
     .facts =
         ヘッドセット内のコックピット（と世界）のサイズ
         100%：実物大
+options-section-gif = GIF録画
+options-gif-size = サイズ
+options-gif-rate = フレーム
+options-gif-scale-100 =
+    .facts = ウィンドウの最大解像度：大きなファイル
+options-gif-scale-25 =
+    .facts = 小さなファイル
+options-gif-rate-50 =
+    .facts = ゲームが100 fps以上で動作しているときのみ（1フレームおきに記録）
+options-gif-hint = F12（割り当て変更なしの場合）で開始と停止。ピクチャフォルダーに保存
 
 ## GRAPHICS
 
@@ -85,6 +101,19 @@ options-volume-effects = 効果音
     .facts = 兵装、爆発、降着装置、無線など
 options-volume-warnings = 警告音
     .facts = 失速警告、レーダーとミサイルの警告、火災サイレン、サイドワインダーのトーン
+options-volume-rwr = RWR
+    .facts = レーダー警報音、警告音量の一部として
+options-section-rwr-tones = レーダー警報音
+rwr-tones-all = すべて
+    .facts = 自機を照射するレーダー、自機を探知する各掃引、ミサイル発射
+rwr-tones-detect = 探知のみ
+    .facts =
+        レーダーに探知されたとき1回（レーダーがしばらく離れた後は再び）
+        およびミサイル発射
+rwr-tones-launch = 発射のみ
+    .facts = 自機に向けて発射されたミサイルのみ
+rwr-tones-off = オフ
+    .facts = レーダー警報音なし（ランプと表示器は引き続き警告）
 options-section-cockpit = コックピット
 options-low-pass = エンジンローパス
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = ベイパーとダウンウォッシュ
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        急旋回で翼端からベイパーが引く
+        低くホバリングするヘリコプターが砂ぼこりを、水上では飛沫を巻き上げる
+        走行中の車両が後ろに砂ぼこりを上げる
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

@@ -80,7 +80,7 @@ pub enum MarkKind {
     GroundKill {
         object: usize,
     },
-    /// A low-level air defence unit (`Sim::aaa_units` index) was destroyed.
+    /// A low-level air defence unit (`Sim::units` index) was destroyed.
     AaaKill(usize),
     Photo,
     Objective {
@@ -138,7 +138,7 @@ pub struct FlightRecord {
     /// The ground units by object index (empty names: not a radar).
     pub sites: Vec<SiteInfo>,
     /// The low-level air defences: what, where (map units) and whether friendly.
-    pub aaa: Vec<(stealth_sim::aaa::AaaKind, i32, i32, bool)>,
+    pub aaa: Vec<(stealth_sim::aaa::GroundKind, i32, i32, bool)>,
     /// Open span per site.
     open: Vec<Option<usize>>,
     frame: u32,
@@ -211,14 +211,15 @@ impl FlightRecord {
                 })
                 .collect();
             self.aaa = sim
-                .aaa_units()
+                .units()
                 .iter()
                 .enumerate()
                 .map(|(k, u)| (u.kind, u.x, u.y, sim.aaa_blue(k)))
                 .collect();
         }
-        for (i, u) in sim.aaa_units().iter().enumerate() {
-            if u.destroyed && !self.marks.iter().any(|m| m.kind == MarkKind::AaaKill(i)) {
+        for (i, u) in sim.units().iter().enumerate() {
+            if u.destroyed && !u.gone && !self.marks.iter().any(|m| m.kind == MarkKind::AaaKill(i))
+            {
                 let (x, y) = (u.x as f32, u.y as f32);
                 self.marks.push(Mark { frame: self.frame, x, y, kind: MarkKind::AaaKill(i) });
             }

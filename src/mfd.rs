@@ -52,7 +52,12 @@ impl Plugin for MfdPlugin {
             .add_systems(OnEnter(crate::settings::AppState::Flight), reset_mfd)
             .add_systems(
                 Update,
-                (mfd_keys, (build_map_geometry, render_map).chain())
+                (
+                    mfd_keys,
+                    edit_waypoints,
+                    show_way_editing,
+                    (build_map_geometry, render_map).chain(),
+                )
                     .chain()
                     .after(crate::flight::FlightSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -134,6 +139,10 @@ pub struct MfdState {
     pub ccrp: bool,
     /// The HUD is in A-A, mirrored from the HUD (the targeting pod's CZ is off).
     pub air: bool,
+    /// The HUD is in A-G, mirrored from the HUD (the SMS page's master mode).
+    pub ground: bool,
+    /// The WAY page is in edit mode (F8), mirrored from the waypoints for the editing buttons.
+    pub way_editing: bool,
 }
 
 impl Default for MfdState {
@@ -154,6 +163,8 @@ impl Default for MfdState {
             av: default(),
             ccrp: false,
             air: false,
+            ground: false,
+            way_editing: false,
         }
     }
 }
@@ -179,6 +190,16 @@ impl MfdState {
             self.av.shown(crate::avionics::Format::Map).is_some() && !self.av.map_way
         } else {
             self.left == LeftMfd::Map
+        }
+    }
+
+    /// The SMS page's ripple for the simulation: bombs per release and their spacing (ft);
+    /// (0, 0) for single bombs and with the classic avionics.
+    pub fn ripple(&self) -> (u8, u16) {
+        if self.modern && self.av.ripple > 1 {
+            (self.av.ripple, self.av.ripple_ft())
+        } else {
+            (0, 0)
         }
     }
 
@@ -215,6 +236,10 @@ pub enum MfdCmd {
     MapWay,
     /// SMS page: the ORD (true) or WPN page.
     Sms(bool),
+    /// SMS page: bombs per release up / down.
+    Ripple(i8),
+    /// SMS page: the ripple's spacing up / down.
+    RippleSpacing(i8),
     HarmFilter,
     /// Tracking camera zoom step in / out, the next step round (auto, 1X..6X).
     CamZoom(i8),
@@ -225,6 +250,9 @@ pub enum MfdCmd {
     TgpSlave,
     /// Targeting pod cursor zero: point track on the current steerpoint.
     TgpCz,
+    /// WAY page: nudges the selected waypoint one step over the map (screen x right, y up), as
+    /// the keypad does (`edit_waypoints`).
+    WaypointNudge(i8, i8),
 }
 
 /// Sent by the cockpit's bezel buttons.
@@ -240,8 +268,24 @@ pub enum OsbFn {
     Readout,
 }
 
-/// Bezel buttons per MFD: 0..5 along the top, 5..10 along the bottom (left to right).
-pub const OSB_COUNT: u8 = 10;
+/// Bezel buttons per MFD: 0..5 along the top, 5..10 along the bottom (left to right), 10..15
+/// down the left edge and 15..20 down the right one (top to bottom).
+pub const OSB_COUNT: u8 = 20;
+
+/// The edge of the display a bezel button is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OsbEdge {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+/// A bezel button's edge and its place along it (0..5, left to right or top to bottom).
+pub fn osb_edge(slot: u8) -> (OsbEdge, u8) {
+    let edge = [OsbEdge::Top, OsbEdge::Bottom, OsbEdge::Left, OsbEdge::Right][slot as usize / 5];
+    (edge, slot % 5)
+}
 
 /// Label, function and lit state of a bezel button on the current page (None = blank).
 pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
@@ -280,15 +324,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
             ][slot as usize - 5];
             (label, cmd(MfdCmd::Cam(dir)), s.cam_dir == dir)
         }
-        (MfdSide::Right, 5) if s.right == RightMfd::Way => {
-            ("WP-", Action(crate::input::Action::LastWaypoint), false)
-        }
-        (MfdSide::Right, 6) if s.right == RightMfd::Way => {
-            ("WP+", Action(crate::input::Action::NextWaypoint), false)
-        }
-        (MfdSide::Right, 7) if s.right == RightMfd::Way => {
-            ("RST", Action(crate::input::Action::ResetWaypoint), false)
-        }
+        (MfdSide::Right, 10..=16 | 19) if s.right == RightMfd::Way => return way_osb(slot, s),
         (MfdSide::Right, 5) if s.right == RightMfd::Wpn => {
             ("SEL", Action(crate::input::Action::SelectWeapon), false)
         }
@@ -301,6 +337,26 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         // The third MFD's HSI page: the steerpoint.
         (MfdSide::Third, 0) => ("WP-", Action(crate::input::Action::LastWaypoint), false),
         (MfdSide::Third, 1) => ("WP+", Action(crate::input::Action::NextWaypoint), false),
+        _ => return None,
+    })
+}
+
+/// The WAY page's side buttons: the left edge slews the selected waypoint (up, down, left,
+/// right) and resets the waypoints; the top of the right edge selects the next and the previous
+/// one, the bottom of it is F8 (edit mode, lit while it is on). The slew and reset buttons work
+/// in edit mode only.
+pub fn way_osb(slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn, bool)> {
+    use OsbFn::*;
+    Some(match slot {
+        10..=14 if !s.way_editing => return None,
+        10 => ("UP", Cmd(MfdCmd::WaypointNudge(0, 1)), false),
+        11 => ("DN", Cmd(MfdCmd::WaypointNudge(0, -1)), false),
+        12 => ("LFT", Cmd(MfdCmd::WaypointNudge(-1, 0)), false),
+        13 => ("RGT", Cmd(MfdCmd::WaypointNudge(1, 0)), false),
+        14 => ("RST", Action(crate::input::Action::ResetWaypoint), false),
+        15 => ("WP+", Action(crate::input::Action::NextWaypoint), false),
+        16 => ("WP-", Action(crate::input::Action::LastWaypoint), false),
+        19 => ("MOV", Action(crate::input::Action::ChangeWaypoint), s.way_editing),
         _ => return None,
     })
 }
@@ -387,8 +443,10 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::TgpSlave => Action::SelectTarget,
         MfdCmd::TgpCz => Action::SelectWaypoint,
         MfdCmd::MapWay => Action::SelectWaypoint,
+        // The keypad slew is no action: the mode it works in.
+        MfdCmd::WaypointNudge(..) => Action::ChangeWaypoint,
         MfdCmd::Sms(true) => Action::MissionOrders,
-        MfdCmd::Sms(false) => Action::Ordnance,
+        MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) => Action::Ordnance,
     }
 }
 
@@ -657,6 +715,10 @@ fn mfd_keys(
     if state.air != air {
         state.air = air;
     }
+    let ground = hud.mode == crate::hud::HudMode::Gnd;
+    if state.ground != ground {
+        state.ground = ground;
+    }
     if state.hires != settings.hires_displays() || state.modern == settings.classic_avionics {
         state.hires = settings.hires_displays();
         state.modern = !settings.classic_avionics;
@@ -714,6 +776,120 @@ fn mfd_keys(
     }
     for MfdCommand(cmd) in commands.read() {
         apply_with_zoom(&mut state, &mut raster, *cmd, auto_zoom);
+    }
+}
+
+/// Keypad slew speed of a waypoint being edited, in map pixels per second.
+const WAYPOINT_SLEW_PX: f64 = 30.0;
+/// A click on a bezel slew button moves the waypoint this far, in map pixels.
+const WAYPOINT_NUDGE_PX: f64 = 5.0;
+/// The theater's side, in map units (a waypoint stays on the map).
+const MAP_SIZE: f64 = 0x8000 as f64;
+
+/// The WAY page is up (with the modern avionics: the MAP showing the waypoint table).
+fn way_shown(state: &MfdState) -> bool {
+    if state.modern {
+        state.av.map_way && state.av.shown(crate::avionics::Format::Map).is_some()
+    } else {
+        state.right == RightMfd::Way
+    }
+}
+
+/// The slew keys move the selected waypoint: the WAY page is in edit mode and, with the modern
+/// avionics, the sensor of interest (else the keys would also move the SOI's cursor or pod).
+pub(crate) fn editing_waypoints(state: &MfdState, wps: &Waypoints) -> bool {
+    wps.editing
+        && if state.modern {
+            state.av.soi_format() == Some(crate::avionics::Format::Map)
+        } else {
+            way_shown(state)
+        }
+}
+
+/// Moves the selected waypoint by `d` map pixels (x right, y up on the screen); `heading` turns
+/// the screen direction on a heading-up map.
+fn move_waypoint(wps: &mut Waypoints, state: &MfdState, heading: f64, d: Vec2, px: f64) {
+    let Some(wp) = wps.points.get(wps.current).copied() else { return };
+    let rot = if state.map_heading_up { heading } else { 0.0 };
+    // Screen direction (x right, y down) to map units (x east, y south), as `MapView` does.
+    let step = px * hires_scale(state.map_zoom);
+    let (sx, sy) = (d.x as f64, -d.y as f64);
+    let (s, c) = rot.sin_cos();
+    let (dx, dy) = ((sx * c - sy * s) * step, (sx * s + sy * c) * step);
+    let x = (wp.east / 32.0 + dx).clamp(0.0, MAP_SIZE);
+    let y = (MAP_SIZE - wp.north / 32.0 + dy).clamp(0.0, MAP_SIZE);
+    let i = wps.current;
+    wps.points[i] = crate::hud::Waypoint { east: x * 32.0, north: (MAP_SIZE - y) * 32.0 };
+}
+
+/// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
+/// course line follows it); the mode ends when the page is left. With the modern avionics F8
+/// makes the page the SOI, and the keys move the waypoint only while it is.
+fn edit_waypoints(
+    mut actions: MessageReader<ActionEvent>,
+    mut commands: MessageReader<MfdCommand>,
+    mut state: ResMut<MfdState>,
+    controls: Res<crate::input::FlightControls>,
+    block: Res<crate::input::InputBlock>,
+    keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    aircraft: Query<&Aircraft, With<Player>>,
+    mut wps: ResMut<Waypoints>,
+) {
+    // The page switches on the key press itself; give it this frame to show.
+    let pressed = actions.read().any(|a| a.0 == Action::ChangeWaypoint);
+    if pressed && state.modern && way_shown(&state) {
+        state.av.soi = Some(crate::avionics::Format::Map);
+    }
+    if wps.editing && !way_shown(&state) && !pressed {
+        wps.editing = false;
+    }
+    // The bezel slew buttons (in edit mode only): one step a click.
+    let heading = aircraft.single().map_or(0.0, |a| a.euler().0 as f64);
+    for MfdCommand(cmd) in commands.read() {
+        let MfdCmd::WaypointNudge(x, y) = *cmd else { continue };
+        if !wps.editing || !way_shown(&state) || block.0 {
+            continue;
+        }
+        move_waypoint(&mut wps, &state, heading, Vec2::new(x as f32, y as f32), WAYPOINT_NUDGE_PX);
+    }
+    // The menu reads the keys while it is open.
+    if !editing_waypoints(&state, &wps) || block.0 {
+        return;
+    }
+    // As in the original, keypad 9 and 3 select the last and next waypoint, and only 8, 2, 4
+    // and 6 move it: the diagonals do not.
+    let n = wps.points.len();
+    if n > 0 {
+        if keys.just_pressed(KeyCode::Numpad9) {
+            wps.current = (wps.current + n - 1) % n;
+        }
+        if keys.just_pressed(KeyCode::Numpad3) {
+            wps.current = (wps.current + 1) % n;
+        }
+    }
+    let keypad = |keep: fn(Vec2) -> bool| {
+        crate::input::SLEW_KEYS
+            .iter()
+            .filter(|(k, x, y)| keys.pressed(*k) && keep(Vec2::new(*x, *y)))
+            .fold(Vec2::ZERO, |a, (_, x, y)| a + Vec2::new(*x, *y))
+            .clamp(Vec2::splat(-1.0), Vec2::ONE)
+    };
+    if controls.slew == Vec2::ZERO {
+        return;
+    }
+    let slew = controls.slew - keypad(|_| true) + keypad(|d| d.x == 0.0 || d.y == 0.0);
+    if slew == Vec2::ZERO {
+        return;
+    }
+    let px = WAYPOINT_SLEW_PX * time.delta_secs() as f64;
+    move_waypoint(&mut wps, &state, heading, slew, px);
+}
+
+/// Tells the displays whether the waypoints are being edited (their buttons' state).
+fn show_way_editing(wps: Res<Waypoints>, mut state: ResMut<MfdState>) {
+    if state.way_editing != wps.editing {
+        state.way_editing = wps.editing;
     }
 }
 
@@ -1231,6 +1407,7 @@ pub struct MfdParams<'w, 's> {
     pub time: Res<'w, Time>,
     pub palette: Option<Res<'w, Palette>>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
+    pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
@@ -1342,6 +1519,31 @@ impl MfdParams<'_, '_> {
                     c.line(q.0, q.1, p.0, p.1, arc.colour);
                 }
                 prev = Some(p);
+            }
+        }
+        // With the WAY page up (F7, F8): the flight plan, green from waypoint to waypoint and
+        // white from the aircraft to the selected one; it follows a waypoint being moved.
+        if self.state.right == RightMfd::Way {
+            let pts: Vec<(i32, i32)> = self
+                .waypoints
+                .points
+                .iter()
+                .map(|w| {
+                    let p = map_to_screen(centre, zoom, w.east / 32.0, MAP_SIZE - w.north / 32.0);
+                    (p.x as i32, p.y as i32)
+                })
+                .collect();
+            for pair in pts.windows(2) {
+                c.line(pair[0].0, pair[0].1, pair[1].0, pair[1].1, 10);
+            }
+            if let (Some((_, pos)), Some(&(wx, wy))) = (ac, pts.get(self.waypoints.current)) {
+                let (x, y) = map_units(pos);
+                let p = map_to_screen(centre, zoom, x as f64, y as f64);
+                c.line(p.x as i32, p.y as i32, wx, wy, 15);
+            }
+            for (i, &(x, y)) in pts.iter().enumerate() {
+                let colour = if i == self.waypoints.current { 15 } else { 19 };
+                c.fill_rect(x - 1, y - 1, 3, 3, colour);
             }
         }
         // Own aircraft: white chevron.
@@ -1565,13 +1767,18 @@ impl MfdParams<'_, '_> {
     }
 
     /// Waypoint legs from the aircraft: (km, minutes, ETA seconds) at the current speed (at
-    /// least 360 kt), ETA accumulated.
+    /// least 360 kt), ETA accumulated. The legs run through the waypoints not yet passed; the
+    /// passed ones show 0.
     fn legs(&self, t: f32, a: &Aircraft, pos: &WorldPos) -> Vec<(f64, f64, f64)> {
         let (mut e, mut n, _) = bevy_to_wu(pos.0);
         let kmh = (a.knots().max(360.0) * 1.852) as f64;
         let mut eta = t as f64;
         let mut out = Vec::new();
-        for wp in self.waypoints.points.iter().take(4) {
+        for (i, wp) in self.waypoints.points.iter().take(4).enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) {
+                out.push((0.0, 0.0, t as f64));
+                continue;
+            }
             let km = ((wp.east - e).hypot(wp.north - n) * WU / 1000.0).round();
             let minutes = (km / kmh * 60.0).round();
             eta += minutes * 60.0 * self.clock.rate as f64;
@@ -1581,8 +1788,38 @@ impl MfdParams<'_, '_> {
         out
     }
 
+    /// The WAY page's fuel bar, as (left, right, colour) spans of the bar (0..1): reserve in
+    /// green at the left, then the fuel each waypoint still needs at the current throttle (the
+    /// selected one white, the others blue; the farthest at the left), and the fuel already
+    /// consumed in black at the right.
+    fn fuel_spans(&self, a: &Aircraft, legs: &[(f64, f64, f64)]) -> Vec<(f32, f32, u8)> {
+        let fuel_div = self.constants.as_ref().map_or(1000.0, |k| k.fuel_div);
+        // Burn every 2 s: set^2 / fuel_div + 2.
+        let per_minute = ((a.set_thrust * a.set_thrust / fuel_div).floor() + 2.0) * 30.0;
+        let left = (a.fuel / FULL_FUEL).clamp(0.0, 1.0);
+        let mut spans = vec![(left, 1.0, 5)];
+        let mut x = left;
+        for (i, &(_, minutes, _)) in legs.iter().enumerate() {
+            if self.waypoints.passed.get(i).copied().unwrap_or(false) || x <= 0.0 {
+                continue;
+            }
+            let l = (x - minutes as f32 * per_minute / FULL_FUEL).max(0.0);
+            let colour = if i == self.waypoints.current { 15 } else { self.way_colour(i) };
+            spans.push((l, x, colour));
+            x = l;
+        }
+        if x > 0.0 {
+            spans.push((0.0, x, 47));
+        }
+        spans
+    }
+
+    /// Passed waypoints in black (colour 5, as in the original), the unpassed current waypoint
+    /// in white, and the others in alternating cyans.
     fn way_colour(&self, i: usize) -> u8 {
-        if i == self.waypoints.current {
+        if self.waypoints.passed.get(i).copied().unwrap_or(false) {
+            5
+        } else if i == self.waypoints.current {
             15
         } else if i % 2 == 1 {
             3
@@ -1591,14 +1828,21 @@ impl MfdParams<'_, '_> {
         }
     }
 
+    /// WAY page background: red while the waypoints are being edited (F8). Colour 42 is the
+    /// original's dark red (the classic HUD's night bars use it); 41 is its bright red.
+    fn way_background(&self) -> u8 {
+        if self.waypoints.editing { 42 } else { 1 }
+    }
+
     /// WAY page.
     fn draw_way(&self, c: &mut Canvas, fonts: &Fonts, ac: Option<(&Aircraft, &WorldPos)>) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         mfd_text(c, fonts, 2, 0, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
         if let Some((a, pos)) = ac {
-            for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+            let legs = self.legs(t, a, pos);
+            for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
                 let (eh, em, _) = hms(eta as f32);
                 let colour = self.way_colour(i);
                 mfd_text(
@@ -1618,10 +1862,11 @@ impl MfdParams<'_, '_> {
                     colour,
                 );
             }
-            // Fuel bar (y 54..57): remaining fuel in green.
-            let w = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * 75.0).round() as i32;
-            c.fill_rect(1, 54, 75, 4, 0);
-            c.fill_rect(1, 54, w, 4, 47);
+            // Fuel bar (y 54..57).
+            for (l, r, colour) in self.fuel_spans(a, &legs) {
+                let (x0, x1) = (1 + (l * 75.0).round() as i32, 1 + (r * 75.0).round() as i32);
+                c.fill_rect(x0, 54, x1 - x0, 4, colour);
+            }
         }
     }
 
@@ -1721,18 +1966,19 @@ impl MfdParams<'_, '_> {
                 prev = Some(p);
             }
         }
-        // Route: aircraft -> current waypoint -> the rest; waypoints ringed, the current one larger.
+        // Route: green from waypoint to waypoint, white from the aircraft to the selected one;
+        // waypoints ringed, the selected one larger.
         let wps: Vec<Vec2> = self.waypoints.points.iter().map(|w| to(w.east, w.north)).collect();
         let me = view.to_screen(px, py);
+        for pair in wps.windows(2) {
+            c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 10);
+        }
         if let Some(&first) = wps.get(self.waypoints.current) {
-            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 11);
-            for pair in wps[self.waypoints.current..].windows(2) {
-                c.line(pair[0].x as i32, pair[0].y as i32, pair[1].x as i32, pair[1].y as i32, 11);
-            }
+            c.line(me.x as i32, me.y as i32, first.x as i32, first.y as i32, 15);
         }
         for (i, p) in wps.iter().enumerate() {
             let current = i == self.waypoints.current;
-            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 11 });
+            c.circle(p.x, p.y, if current { 5.0 } else { 3.0 }, if current { 15 } else { 19 });
         }
         // Airbases.
         if let Some(t) = &self.theater {
@@ -1891,14 +2137,15 @@ impl MfdParams<'_, '_> {
         fonts: &Fonts,
         ac: Option<(&Aircraft, &WorldPos)>,
     ) {
-        c.clear(1);
+        c.clear(self.way_background());
         let t = self.way_time(ac);
         let (hh, mm, ss) = hms(t);
         text2(c, fonts, 6, 4, &format!("TIME  {hh:02}:{mm:02}:{ss:02}"), 15);
         text2(c, fonts, 6, 26, "WP    KM   MIN   ETA", 7);
         c.hline(4, c.w as i32 - 5, 38, 7);
         let Some((a, pos)) = ac else { return };
-        for (i, (km, minutes, eta)) in self.legs(t, a, pos).into_iter().enumerate() {
+        let legs = self.legs(t, a, pos);
+        for (i, &(km, minutes, eta)) in legs.iter().enumerate() {
             let (eh, em, _) = hms(eta as f32);
             let y = 44 + 16 * i as i32;
             if i == self.waypoints.current {
@@ -1913,12 +2160,13 @@ impl MfdParams<'_, '_> {
                 self.way_colour(i),
             );
         }
-        // Fuel bar: remaining fuel in green.
+        // Fuel bar.
         text2(c, fonts, 6, 156, "FUEL", 15);
         let (x0, w) = (46, c.w as i32 - 52);
-        let fill = ((a.fuel / FULL_FUEL).clamp(0.0, 1.0) * w as f32).round() as i32;
-        c.fill_rect(x0, 155, w, 12, 0);
-        c.fill_rect(x0, 155, fill, 12, 47);
+        for (l, r, colour) in self.fuel_spans(a, &legs) {
+            let (a0, a1) = ((l * w as f32).round() as i32, (r * w as f32).round() as i32);
+            c.fill_rect(x0 + a0, 155, a1 - a0, 12, colour);
+        }
         c.rect(x0 - 1, 154, w + 2, 14, 7);
     }
 
@@ -2091,6 +2339,67 @@ mod tests {
         let rows = o.rows(18);
         let ticks: Vec<bool> = rows.iter().map(|r| r.2).collect();
         assert_eq!(ticks, [true, false, true]);
+    }
+
+    #[test]
+    fn way_page_edit_buttons() {
+        let labels = |s: &MfdState| -> Vec<Option<&str>> {
+            [10, 11, 12, 13, 14, 15, 16, 19]
+                .map(|i| osb(MfdSide::Right, i, s).map(|o| o.0))
+                .to_vec()
+        };
+        let mut way = MfdState { right: RightMfd::Way, ..default() };
+        // The page up: the next / previous waypoint and the edit mode buttons.
+        assert_eq!(
+            labels(&way),
+            [None, None, None, None, None, Some("WP+"), Some("WP-"), Some("MOV")]
+        );
+        // In edit mode (F8): the slew and reset buttons too, and MOV is lit.
+        way.way_editing = true;
+        assert_eq!(
+            labels(&way),
+            [
+                Some("UP"),
+                Some("DN"),
+                Some("LFT"),
+                Some("RGT"),
+                Some("RST"),
+                Some("WP+"),
+                Some("WP-"),
+                Some("MOV")
+            ]
+        );
+        assert!(osb(MfdSide::Right, 19, &way).is_some_and(|o| o.2));
+        // The bottom row has no waypoint buttons: they are on the sides.
+        assert!((5..10).all(|i| osb(MfdSide::Right, i, &way).is_none()));
+        // Only on the WAY page.
+        assert!(labels(&MfdState::default()).iter().all(Option::is_none));
+        assert_eq!(osb(MfdSide::Right, 17, &way).map(|o| o.0), None);
+        // The same with the modern MAP in WAY mode.
+        let mut s = MfdState { modern: true, way_editing: true, ..default() };
+        s.av.select(MfdSide::Right, crate::avionics::Format::Map);
+        assert!(labels(&s).iter().all(Option::is_none));
+        apply(&mut s, &mut MapRaster::default(), MfdCmd::MapWay);
+        assert_eq!(labels(&s), labels(&way));
+        assert!((0..3).all(|i| osb(MfdSide::Right, i, &s).is_none()));
+    }
+
+    #[test]
+    fn waypoint_moves_over_the_map() {
+        let mut wps =
+            Waypoints::planned(vec![crate::hud::Waypoint { east: 1e5, north: 1e5 }], vec![]);
+        let mut s = MfdState { map_zoom: 5, ..default() };
+        // North up: up is north, right is east, whatever the heading.
+        move_waypoint(&mut wps, &s, 1.0, Vec2::new(1.0, 1.0), 5.0);
+        let step = 5.0 * hires_scale(5) * 32.0;
+        assert!((wps.points[0].east - (1e5 + step)).abs() < 1e-6);
+        assert!((wps.points[0].north - (1e5 + step)).abs() < 1e-6);
+        // Heading up with the aircraft heading east: up is east.
+        s.map_heading_up = true;
+        let before = wps.points[0];
+        move_waypoint(&mut wps, &s, std::f64::consts::FRAC_PI_2, Vec2::new(0.0, 1.0), 5.0);
+        assert!((wps.points[0].east - before.east - step).abs() < 1e-6);
+        assert!((wps.points[0].north - before.north).abs() < 1e-6);
     }
 
     #[test]

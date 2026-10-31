@@ -77,6 +77,9 @@
         (id: "geran3", name: "Geran-3", nato: "Shahed", kmh: 600, radius_km: 1500, agility: 1, radar: "none", model: 101, kind: Drone),
         (id: "su34", name: "Su-34", nato: "Fullback", mach: 1.8, radius_km: 1100, agility: 3, radar: "n019", model: 22),
         (id: "su35", name: "Su-35", nato: "Flanker-E", mach: 2.25, radius_km: 1600, agility: 5, radar: "zaslon", model: 22),
+        (id: "fp2", name: "FP-2", nato: "FP-2", kmh: 190, radius_km: 100, agility: 2, radar: "none", model: 103, kind: Drone),
+        (id: "stork100", name: "Stork-100", nato: "Stork", kmh: 90, radius_km: 50, agility: 2, radar: "none", model: 104, kind: Drone),
+        (id: "interceptor", name: "Interceptor", nato: "Interceptor", kmh: 600, radius_km: 25, agility: 5, radar: "none", model: 105, kind: Drone),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,

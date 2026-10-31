@@ -6,6 +6,7 @@ axis-rudder = Rudder
 axis-throttle = Throttle
 axis-slew-x = Slew sensor/kursor X
 axis-slew-y = Slew sensor/kursor Y
+axis-nozzle = Nozzle (Harrier)
 input-button = Tombol { $n }
 input-axis = Sumbu { $n }
 vr-trigger = Pelatuk

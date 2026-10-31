@@ -206,6 +206,11 @@ aircraft-a10 =
         Közvetlen légi támogató repülőgép
         Lassú és strapabíró, 30 mm-es gépágyú
         A-10C pilótafülke, két MFD
+aircraft-av8b =
+    .facts =
+        V/STOL csatarepülőgép
+        Tolóerő-vektorálás: függés, bárhol leszáll
+        Fúvócsőkar: R / F, Shift az ütközőkhöz
 aircraft-uh60 =
     .facts =
         Szállítóhelikopter

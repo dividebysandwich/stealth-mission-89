@@ -49,6 +49,12 @@ planner-uav = Neprijateljski UAV
 planner-edit-hint = Povucite točku da je pomaknete, kartu da je pomičete. Kliknite na dionicu da dodate točku, desni klik je uklanja. Kotačić: zumiranje.
 planner-reset = PONIŠTI
 planner-view-hint = Povucite kartu da je pomičete. Kotačić: zumiranje.
+planner-layers = SLOJEVI
+planner-layer-sams = Radar / SAM položaj
+planner-radar-types = Vrste radara
+planner-layer-pulse = Domet otkrivanja pulsnog radara
+planner-layer-doppler = Domet otkrivanja doplerskog radara
+planner-layer-airfield = Aerodrom
 
 ## Spremljene misije
 

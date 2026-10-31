@@ -6,6 +6,7 @@ axis-rudder = Πηδάλιο διεύθυνσης
 axis-throttle = Μανέτα
 axis-slew-x = Μετατόπιση αισθητήρα/δρομέα X
 axis-slew-y = Μετατόπιση αισθητήρα/δρομέα Y
+axis-nozzle = Ακροφύσια (Harrier)
 input-button = Κουμπί { $n }
 input-axis = Άξονας { $n }
 vr-trigger = Σκανδάλη

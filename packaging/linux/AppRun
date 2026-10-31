@@ -16,21 +16,24 @@ if [ -z "$BEVY_ASSET_ROOT" ]; then
     export BEVY_ASSET_ROOT
 fi
 # The Steam Frame (SteamOS on aarch64) starts in VR: Steam launches apps there in a 2D window
-# otherwise. `--desktop` keeps the window.
+# otherwise. It takes `--gl-vr` (glvr's renderer, with eye-tracked foveation); `--vr` picks
+# Bevy's renderer instead, `--desktop` keeps the window.
 case " $* " in
     *" --vr "*) ;;
+    *" --gl-vr "*) ;;
     *" --desktop "*) ;;
     *)
         if [ "$(uname -m)" = aarch64 ] && grep -qs '^ID=steamos$' /etc/os-release; then
-            set -- --vr "$@"
+            set -- --gl-vr "$@"
         fi
         ;;
 esac
 # Started from a launcher (Steam, a file manager, the Steam Frame), not a terminal: the log goes
-# to the data folder, stealth-mission-89-vr.log for VR starts ("Fly in VR" relaunches with --vr).
+# to the data folder, stealth-mission-89-vr.log for VR starts ("Fly in VR" relaunches with --vr
+# or --gl-vr).
 if [ ! -t 2 ]; then
     log=stealth-mission-89.log
-    case " $* " in *" --vr "*) log=stealth-mission-89-vr.log ;; esac
+    case " $* " in *" --vr "* | *" --gl-vr "*) log=stealth-mission-89-vr.log ;; esac
     NO_COLOR=1 exec "$HERE/usr/bin/stealth-mission-89" "$@" > "$BEVY_ASSET_ROOT/$log" 2>&1
 fi
 exec "$HERE/usr/bin/stealth-mission-89" "$@"

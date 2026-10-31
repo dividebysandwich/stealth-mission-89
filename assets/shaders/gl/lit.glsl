@@ -26,6 +26,9 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    mat4 shadow_cascades[4];
+    vec4 shadow_texel;
+    vec4 shadow_light;
     vec4 storm_haze;
     vec4 burst;
     vec4 burst_colour;
@@ -53,6 +56,8 @@ uniform vec4 u_night;
 uniform vec4 u_flood;
 uniform sampler2D u_base_tex;
 uniform sampler2D u_emissive_tex;
+// MIP_BIAS (defined by src/glvr/render.rs): the headset's mip level bias (camera.rs
+// `VR_MIP_BIAS`, what Bevy's eye cameras sample with), so the screens stay sharp.
 
 #ifdef VERTEX
 #ifndef SINGLE
@@ -106,14 +111,14 @@ vec3 burst_glow(vec3 world) {
 void main() {
     vec4 base = u_base;
     if ((u_flags & 1u) != 0u) {
-        base *= texture(u_base_tex, v_uv);
+        base *= texture(u_base_tex, v_uv, MIP_BIAS);
     }
     if ((u_flags & 16u) != 0u && base.a < u_cutoff) {
         discard;
     }
     vec3 e = u_emissive.rgb;
     if ((u_flags & 2u) != 0u) {
-        e *= texture(u_emissive_tex, v_uv).rgb;
+        e *= texture(u_emissive_tex, v_uv, MIP_BIAS).rgb;
     }
     float dark = (u_flags & 8u) != 0u ? 0.0 : u_night.x;
     vec3 rgb;

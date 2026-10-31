@@ -49,6 +49,24 @@ impl Relief {
         let (col, row) = ((x / CELL_MAP) as usize, (y / CELL_MAP) as usize);
         (self.0[row * DIM + col] as f64 * STEP_M / WU_M) as i32
     }
+
+    /// The ground's height in metres at map point (`x`, `y` south), blended between the cells'
+    /// centres (for the maps; `height` is the cell's highest).
+    pub fn smooth_m(&self, x: f64, y: f64) -> f32 {
+        if self.0.is_empty() {
+            return 0.0;
+        }
+        let cell = |c: i64, r: i64| {
+            let (c, r) = (c.clamp(0, DIM as i64 - 1), r.clamp(0, DIM as i64 - 1));
+            self.0[r as usize * DIM + c as usize] as f32
+        };
+        let (fx, fy) = (x / CELL_MAP as f64 - 0.5, y / CELL_MAP as f64 - 0.5);
+        let (c, r) = (fx.floor() as i64, fy.floor() as i64);
+        let (tx, ty) = ((fx - c as f64) as f32, (fy - r as f64) as f32);
+        let top = cell(c, r) * (1.0 - tx) + cell(c + 1, r) * tx;
+        let bottom = cell(c, r + 1) * (1.0 - tx) + cell(c + 1, r + 1) * tx;
+        (top * (1.0 - ty) + bottom * ty) * STEP_M as f32
+    }
 }
 
 /// Look-ahead steps along the heading (map units, one cell each).

@@ -206,6 +206,11 @@ aircraft-a10 =
         Letalo za neposredno podporo kopenskim enotam
         Počasno in robustno, top 30 mm
         Kabina A-10C, dva MFD
+aircraft-av8b =
+    .facts =
+        Jurišno letalo V/STOL
+        Usmerjeni potisk: lebdenje, pristane kjerkoli
+        Ročica šob: R / F, Shift za omejila
 aircraft-uh60 =
     .facts =
         Večnamenski helikopter

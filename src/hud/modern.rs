@@ -150,9 +150,10 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     let (h, down) = horizon_axes(f);
 
     // Flight path marker (caged to the field with an X when it would leave it).
-    // A slow helicopter has no meaningful flight path: the ladder centres on the boresight,
-    // the drift vector shows where it goes.
-    let hover = f.heli.is_some() && f.knots < HOVER_KNOTS;
+    // A slow helicopter (or a V/STOL type with its nozzles down) has no meaningful flight path:
+    // the ladder centres on the boresight, the drift vector shows where it goes.
+    let jet_borne = f.vtol.is_some_and(|v| v.nozzle > HOVER_NOZZLE);
+    let hover = (f.heli.is_some() || jet_borne) && f.knots < HOVER_KNOTS;
     let fpm_raw = if hover { Some(Vec2::new(CX, CY)) } else { project(inv * f.path_dir, f.scale) };
     let fpm = fpm_raw.map_or(Vec2::new(CX, FIELD.1.y), |p| p.clamp(FIELD.0, FIELD.1));
     let caged = fpm_raw.is_none_or(|p| !inside(p));
@@ -187,6 +188,12 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
             aoa_bracket(c, fpm, f.aoa);
         }
         load_and_mach(c, f);
+    }
+    if let Some(v) = &f.vtol {
+        nozzle(c, v);
+        if hover {
+            drift_vector(c, v.drift);
+        }
     }
 
     // Lower left: mode, stores, gun.
@@ -301,14 +308,36 @@ fn helicopter(c: &mut Canvas, f: &HudFrame, h: &super::HeliHud) {
         text(c, 300.0, 152.0, "LOW ROTOR", Align::Left);
     }
     if f.knots < HOVER_KNOTS {
-        c.ring(DRIFT_CENTRE, 6.0, PEN, INK);
-        let end =
-            (DRIFT_CENTRE + Vec2::new(h.drift.x, -h.drift.y) * DRIFT_SCALE).clamp(FIELD.0, FIELD.1);
-        if end.distance(DRIFT_CENTRE) > 8.0 {
-            c.stroke(DRIFT_CENTRE, end, PEN, INK);
-            c.ring(end, 4.0, THIN, INK);
-        }
+        drift_vector(c, h.drift);
     }
+}
+
+/// The drift over the ground (knots, x right, y ahead) from a circle below the boresight.
+fn drift_vector(c: &mut Canvas, drift: Vec2) {
+    c.ring(DRIFT_CENTRE, 6.0, PEN, INK);
+    let end = (DRIFT_CENTRE + Vec2::new(drift.x, -drift.y) * DRIFT_SCALE).clamp(FIELD.0, FIELD.1);
+    if end.distance(DRIFT_CENTRE) > 8.0 {
+        c.stroke(DRIFT_CENTRE, end, PEN, INK);
+        c.ring(end, 4.0, THIN, INK);
+    }
+}
+
+/// Nozzle angle (degrees) past which a V/STOL type's HUD shows the hover symbology when slow.
+const HOVER_NOZZLE: f32 = 20.0;
+/// The nozzle readout under the load factor and Mach: "NOZ 84" and beside it the nozzle as
+/// seen from the left, its pivot and the exit pointing aft (left) at 0, down at 90.
+const NOZZLE_AT: Vec2 = Vec2::new(300.0, 178.0);
+const NOZZLE_GLYPH: Vec2 = Vec2::new(410.0, 172.0);
+
+fn nozzle(c: &mut Canvas, v: &super::VtolHud) {
+    let deg = v.nozzle.round().clamp(0.0, 99.0);
+    text(c, NOZZLE_AT.x, NOZZLE_AT.y, &format!("NOZ {deg:.0}"), Align::Left);
+    let a = deg.to_radians();
+    c.circle(NOZZLE_GLYPH.x, NOZZLE_GLYPH.y, 2.5, INK);
+    c.stroke(NOZZLE_GLYPH, NOZZLE_GLYPH + Vec2::new(-a.cos(), a.sin()) * 20.0, PEN, INK);
+    // The aft and the hover marks the exit moves between.
+    c.stroke(NOZZLE_GLYPH + Vec2::new(-24.0, 0.0), NOZZLE_GLYPH + Vec2::new(-28.0, 0.0), THIN, INK);
+    c.stroke(NOZZLE_GLYPH + Vec2::new(0.0, 24.0), NOZZLE_GLYPH + Vec2::new(0.0, 28.0), THIN, INK);
 }
 
 fn flight_path_marker(c: &mut Canvas, p: Vec2, h: Vec2, down: Vec2, caged: bool) {
@@ -906,6 +935,36 @@ mod tests {
                 assert!(c.px.iter().filter(|&&p| p != 0).count() > ink, "{mode:?} {declutter} gun");
             }
         }
+    }
+
+    /// The Harrier's nozzle readout, its glyph turning with the angle; slow with the nozzles
+    /// down the hover drift vector instead of the flight path marker.
+    #[test]
+    fn draws_the_nozzles() {
+        let ink = |f: &HudFrame, area: (Vec2, Vec2)| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, f);
+            let mut n = 0;
+            for y in area.0.y as usize..area.1.y as usize {
+                for x in area.0.x as usize..area.1.x as usize {
+                    n += (c.px[y * WIDTH + x] != 0) as usize;
+                }
+            }
+            n
+        };
+        let readout = (NOZZLE_AT - Vec2::new(5.0, 16.0), NOZZLE_GLYPH + Vec2::new(30.0, 32.0));
+        let glyph_down = (NOZZLE_GLYPH + Vec2::new(-3.0, 8.0), NOZZLE_GLYPH + Vec2::new(3.0, 21.0));
+        let mut f = frame(HudMode::Nav);
+        let (jet, jet_down) = (ink(&f, readout), ink(&f, glyph_down));
+        f.vtol = Some(crate::hud::VtolHud { nozzle: 0.0, drift: Vec2::ZERO });
+        assert!(ink(&f, readout) > jet + 100, "the readout");
+        assert_eq!(ink(&f, glyph_down), jet_down, "aft");
+        f.vtol = Some(crate::hud::VtolHud { nozzle: 84.0, drift: Vec2::new(0.0, 6.0) });
+        assert!(ink(&f, glyph_down) > jet_down + 10, "down");
+        let drift = (DRIFT_CENTRE - Vec2::splat(8.0), DRIFT_CENTRE + Vec2::splat(8.0));
+        assert_eq!(ink(&f, drift), 0, "fast: no drift vector");
+        f.knots = 5;
+        assert!(ink(&f, drift) > 0, "hovering: the drift vector");
     }
 
     #[test]

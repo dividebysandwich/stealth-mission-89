@@ -6,6 +6,7 @@ axis-rudder = Sivuperäsin
 axis-throttle = Kaasu
 axis-slew-x = Anturin/kursorin siirto X
 axis-slew-y = Anturin/kursorin siirto Y
+axis-nozzle = Suuttimet (Harrier)
 input-button = Painike { $n }
 input-axis = Akseli { $n }
 vr-trigger = Liipaisin

@@ -223,7 +223,7 @@ pub enum EmitterSource {
     Site(usize),
     /// Aircraft (flight unit index).
     Aircraft(usize),
-    /// ZSU-23-4 Gun Dish radar (`Sim::aaa_units` index).
+    /// ZSU-23-4 Gun Dish radar (`Sim::units` index).
     Gun(usize),
 }
 
@@ -433,6 +433,10 @@ pub struct Commands {
     /// the object there, or the plain ground as object 0.
     #[serde(default)]
     pub designate_at: Option<(i32, i32)>,
+    /// Lock this ground unit (the targeting pod's track on a vehicle): the ground point
+    /// follows it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub designate_unit: Option<u16>,
 }
 
 /// What the flight model / game reports about the player this frame.
@@ -485,10 +489,24 @@ pub struct PlayerState {
     /// slaved to the helmet, and the Sidewinder seeker in the air-to-air mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub helmet: Option<PodAim>,
+    /// Free-fall and retarded bombs released per press (the SMS page's ripple; 0 and 1: one).
+    /// In CCRP the stick is centred on the target.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub ripple: u8,
+    /// Ground distance between a ripple's bombs (ft).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub ripple_ft: u16,
+    /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub nozzle: u8,
     pub cmd: Commands,
 }
 
 fn is_zero(v: &u16) -> bool {
+    *v == 0
+}
+
+fn is_zero_u8(v: &u8) -> bool {
     *v == 0
 }
 
@@ -548,6 +566,10 @@ pub struct Airframe {
     /// radar signature that fades with its speed.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub comanche: bool,
+    /// The AV-8B (weapons outside): its nozzles turn, and slow it lands anywhere flat as a
+    /// helicopter does.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub harrier: bool,
 }
 
 /// Landing option.
@@ -593,6 +615,10 @@ pub struct SimOptions {
     /// fires, its radar signature fades with its speed.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub comanche: bool,
+    /// The aircraft is the AV-8B: seen as one by the other pilots, its nozzles turning; slow
+    /// (`VTOL_LANDING_KNOTS`) its base's landing area is the whole airfield.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub harrier: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -631,6 +657,7 @@ impl Default for SimOptions {
             tornado: false,
             a10: false,
             comanche: false,
+            harrier: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,
@@ -714,7 +741,7 @@ pub enum Launcher {
     Site(usize),
     Aircraft(usize),
     Player,
-    /// A MANPADS team (`Sim::aaa_units` index).
+    /// A MANPADS team (`Sim::units` index).
     Manpads(usize),
 }
 
@@ -771,10 +798,13 @@ pub enum SimEvent {
         y: i32,
         alt: i32,
     },
-    /// A gun round hit the ground here (a round's fine units: x east, y south).
+    /// A gun round hit the ground here (a round's fine units: x east, y south); `heavy`: a
+    /// 27 or 30 mm cannon's (the A-10's, the Tornado's, a gunship's).
     RoundImpact {
         x: i32,
         y: i32,
+        #[serde(default)]
+        heavy: bool,
     },
     AircraftDestroyed {
         unit: usize,
@@ -848,10 +878,22 @@ pub enum SimEvent {
         by_player: bool,
         by: Option<u8>,
     },
-    /// A low-level air defence unit was destroyed (`Sim::aaa_units` index).
+    /// A low-level air defence unit was destroyed (`Sim::units` index).
     AaaDestroyed {
         unit: usize,
         by: Option<u8>,
+    },
+    /// Campaign: ground unit `from` fired a round of its gun at ground unit `to` (`Sim::units`
+    /// indices). It lands `miss` metres (east, north) from it ((0, 0) when it hits) after
+    /// [`crate::ground::GroundGun::flight_time`]; `kill`: the hit that knocks it out (as it
+    /// lands).
+    GroundShot {
+        from: usize,
+        to: usize,
+        gun: crate::ground::GroundGun,
+        hit: bool,
+        kill: bool,
+        miss: (i16, i16),
     },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {
@@ -861,7 +903,7 @@ pub enum SimEvent {
         y: i32,
     },
     /// Campaign: a resupply helicopter the campaign launched has set its load down at the air
-    /// defence unit (`Sim::aaa_units` index) it flew to; a cargo helicopter on a new site's
+    /// defence unit (`Sim::units` index) it flew to; a cargo helicopter on a new site's
     /// helipad (`aaa` is `usize::MAX`).
     CampaignFlightDelivered {
         unit: usize,

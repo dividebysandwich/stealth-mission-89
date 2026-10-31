@@ -29,6 +29,9 @@ layout(std140) uniform Globals {
     vec4 moon;
     vec4 shadow;
     vec4 shadow_bounds;
+    mat4 shadow_cascades[4];
+    vec4 shadow_texel;
+    vec4 shadow_light;
 } g;
 
 uniform mat4 u_view_proj[2];

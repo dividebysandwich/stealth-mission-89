@@ -45,7 +45,8 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | Modern avionics (remake) | sensor/cursor slew | keypad 8 / 2 / 4 / 6, diagonals 7 / 9 / 1 / 3 (also the VR left thumbstick and two bindable joystick axes) |
 | | lock the target under the cursor | keypad Enter (VR: left thumbstick click) |
 | | sensor of interest to the other MFD | Alt S |
-| INS | select waypoint / change waypoint / reset waypoint | F7 / F8 / Shift F8 |
+| INS | waypoint page / edit waypoints / reset waypoints | F7 / F8 / Shift F8 |
+| | move the selected waypoint while changing (F8) / last, next waypoint | keypad 8 / 2 / 4 / 6 / keypad 9, 3 |
 | | last / next waypoint | PgUp / PgDn (shift if no joystick) |
 | Cockpit views | cockpit | F1 |
 | | look ahead / rear / left / right | Shift `/` / Shift `.` / Shift `,` / Shift M |
@@ -57,4 +58,5 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | volume / detail level | Alt V / Alt D |
 | | kneeboard (remake): show, next page, hide | K |
 | | chat (remake, multiplayer): type a message, Enter sends, Esc cancels | Y |
+| | record an animated GIF (remake, also in the menus): start / stop; size and frame rate in OPTIONS > GAME, saved in your Pictures folder | F12 |
 | Training | go to training / resupply / day-night | Alt T / Alt R / Alt N |

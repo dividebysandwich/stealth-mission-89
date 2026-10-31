@@ -35,11 +35,27 @@ options-auto-trim = Autotrimmi
         Manuaalinen trimmi: Alt + nuolinäppäimet, Alt + Home keskittää sen
 options-tooltips = Ohjaamon työkaluvihjeet
     .facts = Mikä ohjaamon säädin tai näyttö on, hiiren tai VR-sormenpään alla
+options-player-labels = Pelaajien nimet
+    .facts = Moninpeli: muiden lentäjien nimet heidän koneidensa yllä, etäisyydestä riippumatta
+options-label-size =
+    .facts =
+        Pelaajien nimien koko
+        50 %: oletus
 options-section-vr-size = VR-ohjaamon koko
 options-vr-size =
     .facts =
         Ohjaamon (ja maailman) koko lasien sisällä
         100 %: luonnollinen koko
+options-section-gif = GIF-tallennus
+options-gif-size = KOKO
+options-gif-rate = KUVAT
+options-gif-scale-100 =
+    .facts = Ikkunan täysi tarkkuus: suuret tiedostot
+options-gif-scale-25 =
+    .facts = Pienet tiedostot
+options-gif-rate-50 =
+    .facts = Vain kun peli pyörii 100 fps:n tai suuremmalla nopeudella (joka toinen kuva tallennetaan)
+options-gif-hint = F12 (ellei vaihdettu) aloittaa ja lopettaa; tallennetaan Kuvat-kansioon
 
 ## GRAFIIKKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efektit
     .facts = Aseet, räjähdykset, laskuteline, radio ja muu
 options-volume-warnings = Varoitukset
     .facts = Sakkaussummeri, tutka- ja ohjusvaroitukset, palohälytys, Sidewinder-äänet
+options-volume-rwr = RWR
+    .facts = Tutkavaroitusäänet, osana varoitusten äänenvoimakkuutta
+options-section-rwr-tones = Tutkavaroitusäänet
+rwr-tones-all = KAIKKI
+    .facts = Sinua valaiseva tutka, jokainen sinut havaitseva pyyhkäisy, ohjusten laukaisut
+rwr-tones-detect = VAIN HAVAINTO
+    .facts =
+        Yksi ääni, kun tutka havaitsee sinut (uudelleen, kun tutkat ovat hetken kadottaneet sinut)
+        Ja ohjusten laukaisut
+rwr-tones-launch = VAIN LAUKAISUT
+    .facts = Vain sinua kohti laukaistut ohjukset
+rwr-tones-off = POIS
+    .facts = Ei tutkavaroitusääniä (merkkivalot ja näytöt varoittavat silti)
 options-section-cockpit = Ohjaamo
 options-low-pass = Moottorin alipäästö
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Höyry ja roottorivirtaus
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Jyrkissä liikkeissä höyryvanat siivenkärjistä
+        Matalalla leijuva helikopteri nostaa pölyä, veden yllä vesisumua
+        Liikkuvat ajoneuvot nostavat pölyä perässään
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

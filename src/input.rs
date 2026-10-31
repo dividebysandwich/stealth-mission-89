@@ -13,6 +13,7 @@ impl Plugin for InputPlugin {
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
             .init_resource::<ConsoleStick>()
+            .init_resource::<ConsoleThrottle>()
             .add_message::<ActionEvent>()
             .add_plugins(crate::hotas::build)
             .add_systems(
@@ -34,6 +35,11 @@ pub struct InputBlock(pub bool);
 #[derive(Resource, Default)]
 pub struct ConsoleStick(pub bool);
 
+/// At a console with a throttle (the drone command center's): where it is set (0..1). The
+/// throttle lever shows and is grabbed from it, not from the parked aircraft's.
+#[derive(Resource, Default)]
+pub struct ConsoleThrottle(pub Option<f32>);
+
 /// Keyboard, gamepad and joystick reading (other input sources run after it and override).
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InputSystemsSet;
@@ -45,6 +51,12 @@ pub enum Action {
     ThrottleDown,
     ThrottleMax,
     ThrottleIdle,
+    /// V/STOL (the Harrier): the nozzle lever a notch back (the nozzles down) or forward (aft),
+    /// held: moving; to the hover stop, fully forward (the nozzles aft).
+    NozzleDown,
+    NozzleAft,
+    NozzleHover,
+    NozzleFullAft,
     SelectWeapon,
     FireWeapon,
     Flare,
@@ -147,6 +159,8 @@ pub enum Action {
     TrimReset,
     /// Master caution: silences the alarms sounding.
     MasterCaution,
+    /// Starts / stops recording an animated GIF (`gif_recorder`), in any screen.
+    RecordGif,
 }
 
 impl Action {
@@ -259,12 +273,20 @@ pub struct FlightControls {
     /// Absolute throttle 0..1 while an analog throttle is held (VR throttle lever); None = the
     /// throttle keys set the thrust. A helicopter's collective.
     pub throttle: Option<f32>,
+    /// V/STOL: the nozzle lever 0 (forward: nozzles aft) .. 1 (braking stop) while an analog
+    /// control holds it (a nozzle axis, the VR nozzle lever); None = the nozzle keys move it.
+    pub nozzle: Option<f32>,
     /// Helicopters: the collective moving while its keys (the throttle keys) or the gamepad
     /// triggers are held, -1 (down) .. 1 (up).
     pub collective_rate: f32,
+    /// At a console: the throttle keys held, -1 (back) .. 1 (forward) (a drone flown by hand).
+    pub console_throttle: f32,
     /// Fixed wing: the throttle moving while a throttle key is held past `THROTTLE_HOLD_S`, -1
     /// (down) .. 1 (up); a press alone steps it (`Action::ThrottleUp`/`Down`).
     pub throttle_rate: f32,
+    /// V/STOL: the nozzle lever moving while a nozzle key is held past `THROTTLE_HOLD_S`, -1
+    /// (forward: nozzles aft) .. 1 (back: nozzles down); a press alone steps it a notch.
+    pub nozzle_rate: f32,
     /// Trim switch held: x roll right, y nose up (-1..1).
     pub trim: Vec2,
     /// Gun trigger held.
@@ -311,6 +333,11 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::NumpadSubtract, ThrottleDown),
         (Shift, K::Equal, ThrottleMax),
         (Shift, K::Minus, ThrottleIdle),
+        // Remake: the nozzle lever, left hand beside the rudder keys.
+        (None, K::KeyF, NozzleDown),
+        (None, K::KeyR, NozzleAft),
+        (Shift, K::KeyF, NozzleHover),
+        (Shift, K::KeyR, NozzleFullAft),
         (None, K::Space, SelectWeapon),
         (None, K::Enter, FireWeapon),
         (None, K::NumpadEnter, LockCursor),
@@ -383,6 +410,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
+        (None, K::F12, RecordGif),
     ]
 };
 
@@ -406,7 +434,7 @@ impl Default for VirtualStick {
 const DOUBLE_TAP_S: f64 = 5.0 / 18.2;
 
 /// Keyboard sensor/cursor slew (fixed): the numeric keypad.
-const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
+pub(crate) const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
     // (key, x, y); up = cursor up.
     (KeyCode::Numpad8, 0.0, 1.0),
     (KeyCode::Numpad2, 0.0, -1.0),
@@ -432,6 +460,7 @@ fn read_keyboard(
     (block, console): (Res<InputBlock>, Res<ConsoleStick>),
     view: Option<Res<crate::camera::ViewState>>,
     mut throttle_since: Local<Option<f64>>,
+    mut nozzle_since: Local<Option<f64>>,
 ) {
     let shift = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     let alt = keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
@@ -447,8 +476,8 @@ fn read_keyboard(
     let camera_key = |k: KeyCode| free && crate::camera::FREE_KEYS.contains(&k);
     for m in &config.keys {
         let crate::hotas::ButtonTarget::Action(action) = m.target else { continue };
-        // The stick keys are held, read below.
-        if (block.0 && action != Action::Menu)
+        // The stick keys are held, read below. The menu and recording keys work in the menu.
+        if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
             || camera_key(m.key)
         {
@@ -474,6 +503,9 @@ fn read_keyboard(
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
         *throttle_since = None;
+        controls.nozzle = None;
+        controls.nozzle_rate = 0.0;
+        *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
         return;
@@ -533,6 +565,20 @@ fn read_keyboard(
     *throttle_since = (throttle != 0.0).then(|| throttle_since.unwrap_or(now));
     controls.throttle_rate =
         if throttle_since.is_some_and(|t| now - t >= THROTTLE_HOLD_S) { throttle } else { 0.0 };
+    // The nozzle keys (with no modifier: Shift sends the lever to its stops).
+    controls.nozzle = None;
+    let nozzle_key = |a: Action| {
+        config.keys.iter().any(|m| {
+            m.target == crate::hotas::ButtonTarget::Action(a)
+                && keys.pressed(m.key)
+                && m.mods == mods
+        })
+    };
+    let nozzle =
+        nozzle_key(Action::NozzleDown) as i8 as f32 - nozzle_key(Action::NozzleAft) as i8 as f32;
+    *nozzle_since = (nozzle != 0.0).then(|| nozzle_since.unwrap_or(now));
+    controls.nozzle_rate =
+        if nozzle_since.is_some_and(|t| now - t >= THROTTLE_HOLD_S) { nozzle } else { 0.0 };
     controls.trim = config
         .keys
         .iter()
@@ -552,12 +598,15 @@ fn read_keyboard(
     }
     controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
     if block.0 {
-        // At a console: only the stick and the triggers.
+        // At a console: only the stick, the rudder and the triggers and the throttle keys (a
+        // drone's).
+        controls.console_throttle = controls.collective_rate;
         controls.mark = false;
-        controls.yaw = 0.0;
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
         *throttle_since = None;
+        controls.nozzle_rate = 0.0;
+        *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
     }
@@ -603,15 +652,15 @@ fn read_gamepad(
             controls.roll = stronger(controls.roll, x);
             controls.pitch = stronger(controls.pitch, -y);
         }
-        if block.0 {
-            // At a console: only the stick and the triggers.
-            controls.gun |= pressed(GamepadButton::East);
-            controls.fire |= pressed(GamepadButton::South);
-            continue;
-        }
         let rx = axis(GamepadAxis::RightStickX);
         if rx.abs() > 0.15 {
             controls.yaw = rx;
+        }
+        if block.0 {
+            // At a console: only the stick, the rudder and the triggers.
+            controls.gun |= pressed(GamepadButton::East);
+            controls.fire |= pressed(GamepadButton::South);
+            continue;
         }
         let pull = |b: GamepadButton| {
             if !free(GamepadInput::Button(b)) {

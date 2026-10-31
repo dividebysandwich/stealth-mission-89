@@ -49,6 +49,12 @@ planner-uav = Nepřátelský UAV
 planner-edit-hint = Tažením bod přesunete, tažením mapy ji posunete. Kliknutím na úsek přidáte bod, pravým tlačítkem ho odeberete. Kolečko: zoom.
 planner-reset = OBNOVIT
 planner-view-hint = Tažením posunete mapu. Kolečko: zoom.
+planner-layers = VRSTVY
+planner-layer-sams = Radar / stanoviště SAM
+planner-radar-types = Typy radarů
+planner-layer-pulse = Dosah detekce pulzního radaru
+planner-layer-doppler = Dosah detekce dopplerovského radaru
+planner-layer-airfield = Letiště
 
 ## Uložené mise
 

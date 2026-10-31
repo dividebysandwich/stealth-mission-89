@@ -49,6 +49,12 @@ planner-uav = Ellenséges UAV
 planner-edit-hint = Húzz egy pontot az áthelyezéséhez, a térképet az eltoláshoz. Kattints egy szakaszra pont hozzáadásához, jobb kattintás az eltávolításhoz. Kerék: nagyítás.
 planner-reset = VISSZAÁLLÍTÁS
 planner-view-hint = Húzd a térképet az eltoláshoz. Kerék: nagyítás.
+planner-layers = RÉTEGEK
+planner-layer-sams = Radar / SAM-állás
+planner-radar-types = Radartípusok
+planner-layer-pulse = Impulzusradar észlelési távolsága
+planner-layer-doppler = Doppler-radar észlelési távolsága
+planner-layer-airfield = Repülőtér
 
 ## Mentett küldetések
 

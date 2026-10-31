@@ -6,6 +6,7 @@ axis-rudder = Směrovka
 axis-throttle = Plyn
 axis-slew-x = Posun senzoru/kurzoru X
 axis-slew-y = Posun senzoru/kurzoru Y
+axis-nozzle = Trysky (Harrier)
 input-button = Tlačítko { $n }
 input-axis = Osa { $n }
 vr-trigger = Spoušť

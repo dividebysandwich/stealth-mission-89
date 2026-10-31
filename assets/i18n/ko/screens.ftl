@@ -48,6 +48,12 @@ planner-uav = 적 UAV
 planner-edit-hint = 점을 끌어 이동하고, 지도를 끌어 화면을 옮깁니다. 구간을 클릭하면 점이 추가되고, 오른쪽 클릭으로 삭제합니다. 휠: 확대/축소.
 planner-reset = 초기화
 planner-view-hint = 지도를 끌어 화면을 옮깁니다. 휠: 확대/축소.
+planner-layers = 레이어
+planner-layer-sams = 레이더 / SAM 진지
+planner-radar-types = 레이더 종류
+planner-layer-pulse = 펄스 레이더 탐지 거리
+planner-layer-doppler = 도플러 레이더 탐지 거리
+planner-layer-airfield = 비행장
 
 ## 저장된 임무
 

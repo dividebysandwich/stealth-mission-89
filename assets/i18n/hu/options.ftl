@@ -35,11 +35,27 @@ options-auto-trim = Automatikus trim
         Kézi trim: Alt + nyílbillentyűk, az Alt + Home középre állítja
 options-tooltips = Pilótafülke-tooltipek
     .facts = Mi a pilótafülke egy kezelőszerve vagy kijelzője, az egér alatt vagy VR-ban egy ujjhegynél
+options-player-labels = Játékosnevek
+    .facts = Többjátékos: a többi pilóta neve a gépe fölött, bármilyen távolságból
+options-label-size =
+    .facts =
+        A játékosnevek mérete
+        50%: alapértelmezett
 options-section-vr-size = VR pilótafülke mérete
 options-vr-size =
     .facts =
         A pilótafülke (és a világ) mérete a headsetben
         100%: valódi méret
+options-section-gif = GIF-felvétel
+options-gif-size = MÉRET
+options-gif-rate = KÉPKOCKA
+options-gif-scale-100 =
+    .facts = Az ablak teljes felbontása: nagy fájlok
+options-gif-scale-25 =
+    .facts = Kis fájlok
+options-gif-rate-50 =
+    .facts = Csak ha a játék 100 fps-sel vagy gyorsabban fut (minden második képkocka kerül rögzítésre)
+options-gif-hint = F12 (ha nincs átállítva) indítja és leállítja; a Képek mappába menti
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Effektek
     .facts = Fegyverek, robbanások, futó, rádió és a többi
 options-volume-warnings = Figyelmeztetések
     .facts = Átesési kürt, radar- és rakétafigyelmeztetések, a tűzjelző szirénája, a Sidewinder hangjai
+options-volume-rwr = RWR
+    .facts = A radarfigyelmeztető hangok, a figyelmeztetések hangerejének részeként
+options-section-rwr-tones = Radarfigyelmeztető hangok
+rwr-tones-all = MIND
+    .facts = Egy radar, amely megvilágít, minden pásztázás, amely észlel, rakétaindítások
+rwr-tones-detect = CSAK ÉSZLELÉS
+    .facts =
+        Egy hang, amikor egy radar észlel (újra, miután a radarok egy időre elengedtek)
+        És a rakétaindítások
+rwr-tones-launch = CSAK INDÍTÁSOK
+    .facts = Csak a rád indított rakéták
+rwr-tones-off = KI
+    .facts = Nincs radarfigyelmeztető hang (a lámpák és a kijelzők továbbra is figyelmeztetnek)
 options-section-cockpit = Pilótafülke
 options-low-pass = Hajtómű aluláteresztő szűrő
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Pára és rotorleáramlás
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Éles manővereknél párafátyol a szárnyvégeken
+        Az alacsonyan függő helikopter port ver fel, víz fölött permetet
+        A mozgó járművek port vernek fel maguk mögött
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

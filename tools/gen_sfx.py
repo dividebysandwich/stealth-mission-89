@@ -23,11 +23,21 @@
 - sfx_31_bay_doors: the weapon bay doors' actuators, ending in a clunk.
 - sfx_32_error_buzz: a short buzzer.
 - objective_complete: a mission objective achieved: a chime, two rising notes.
+- tank_gun: a tank's main gun close by: the muzzle blast's crack and boom, the ground's
+  rumble and its echo off the country around.
+- tank_gun_far: the same a few kilometres off: the boom and the rolling rumble, the crack long
+  gone in the air.
+- autocannon: one round of an infantry fighting vehicle's 25 or 30 mm gun: a hard bang over
+  a short thump, a quick echo (the game plays one per round of a burst).
+- autocannon_far: the same far off: a dull knock.
 
 Each one is scaled to the loudness (RMS) the game's mix expects of it. Mono, 44.1 kHz,
 16 bit, like the other game sounds.
 
-    python3 tools/gen_sfx.py      (needs numpy and ffmpeg)
+    python3 tools/gen_sfx.py [file.flac ...]      (needs numpy and ffmpeg)
+
+Without arguments every sound is written, else only those named (the vehicle guns have their
+own random streams, so writing them alone gives the same files).
 """
 
 import os
@@ -193,6 +203,54 @@ def cannon_tail():
     return fades(0.9 * last + 0.6 * echo + 0.15 * spin, 0.0, 0.05)
 
 
+def echoes(x, delays, gains, hi):
+    """`x` with its echoes `delays` s later, `gains` as loud, dulled above `hi` Hz."""
+    t = len(x) / RATE
+    f = np.fft.rfftfreq(len(x), 1.0 / RATE)
+    dull = np.fft.irfft(np.fft.rfft(x) / np.sqrt(1.0 + (f / hi) ** 4), len(x))
+    out = x.copy()
+    for d, g in zip(delays, gains):
+        out += g * at(t, d, dull)
+    return out
+
+
+def lowpass(x, hi, order=2.0):
+    f = np.fft.rfftfreq(len(x), 1.0 / RATE)
+    return np.fft.irfft(np.fft.rfft(x) / np.sqrt(1.0 + (f / hi) ** (2 * order)), len(x))
+
+
+def tank_gun(far):
+    global rng
+    rng = np.random.default_rng(120 + far)
+    t = 4.0
+    # The muzzle blast: a crack, a broadband bang falling from bright to dull, a deep boom.
+    crack = click(t, 2000, 12000, 0.0015)
+    bang = sweep_noise(t, 9000, 300) * env(t, 0.0005, 0.12)
+    boom = thump(t, 42, 0.3, 0.45)
+    # The ground and the air shaking after it, rolling on.
+    rumble = noise(t, 18, 160) * env(t, 0.03, 0.9)
+    near = 0.5 * crack + 1.0 * bang + 1.3 * boom + 0.6 * rumble
+    x = echoes(near, [0.55, 1.3, 2.1], [0.35, 0.2, 0.1], 900)
+    if far:
+        x = lowpass(x, 450) + 0.5 * noise(t, 15, 90) * env(t, 0.15, 1.2)
+        x = at(t, 0.0, x) * env(t, 0.02, 10.0)
+    return fades(x, 0.0005, 0.3)
+
+
+def autocannon(far):
+    global rng
+    rng = np.random.default_rng(130 + far)
+    t = 0.9
+    crack = click(t, 1500, 10000, 0.0012)
+    bang = noise(t, 200, 4000) * env(t, 0.0003, 0.025)
+    body = thump(t, 75, 0.035, 0.3)
+    tail = noise(t, 60, 900) * env(t, 0.005, 0.12)
+    x = echoes(0.6 * crack + 1.0 * bang + 1.2 * body + 0.35 * tail, [0.25], [0.25], 1200)
+    if far:
+        x = lowpass(x, 600) * env(t, 0.004, 10.0)
+    return fades(x, 0.0003, 0.08)
+
+
 def contact():
     t = 0.42
     beep = lambda: buzz(0.075, 1100, 4, phase_rng=False) * env(0.075, 0.003, 1.0)
@@ -295,6 +353,20 @@ def error_buzz():
 
 
 if __name__ == "__main__":
+    import sys
+
+    wanted = sys.argv[1:]
+    guns = {
+        "tank_gun.flac": (lambda: tank_gun(False), -13.0),
+        "tank_gun_far.flac": (lambda: tank_gun(True), -16.0),
+        "autocannon.flac": (lambda: autocannon(False), -15.0),
+        "autocannon_far.flac": (lambda: autocannon(True), -19.0),
+    }
+    if wanted:
+        for name in wanted:
+            make, level = guns[name]
+            write(name, make(), level)
+        sys.exit(0)
     loop, tail = cannon_loop(), cannon_tail()
     write("sfx_04_impact.flac", impact(), -14.0)
     write("sfx_05_explosion.flac", explosion(), -15.0)
@@ -313,3 +385,5 @@ if __name__ == "__main__":
     write("sfx_31_bay_doors.flac", bay_doors(), -20.0)
     write("sfx_32_error_buzz.flac", error_buzz(), -28.0)
     write("objective_complete.flac", objective_complete(), -18.0)
+    for name, (make, level) in guns.items():
+        write(name, make(), level)

@@ -105,6 +105,20 @@ pub struct TheaterTiles {
     /// The airfields' helipads (`assets/theaters/<code>.helipads`, read beside the tiles).
     #[serde(skip)]
     pub helipads: Vec<(i32, i32)>,
+    /// The airfields' runways (`assets/theaters/<code>.runways`, read beside the tiles).
+    #[serde(skip)]
+    pub runways: Vec<Runway>,
+}
+
+/// An airfield's runway as the scenery lays it out (metres east, north): its middle, its
+/// direction, half its length and width, and the side away from the apron (unit vectors).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Runway {
+    pub c: (f64, f64),
+    pub axis: (f64, f64),
+    pub half_len: f64,
+    pub half_width: f64,
+    pub out: (f64, f64),
 }
 
 /// A town: centre (map units, y south) and radius (map units).
@@ -192,6 +206,7 @@ impl SimData {
                 };
                 t.relief = TheaterTiles::read_relief(&read, code);
                 t.helipads = TheaterTiles::read_helipads(&read, code);
+                t.runways = TheaterTiles::read_runways(&read, code);
                 Ok(t)
             })
             .collect::<Result<_>>()?;
@@ -286,6 +301,7 @@ impl TheaterTiles {
             towns: Vec::new(),
             relief: Default::default(),
             helipads: Vec::new(),
+            runways: Vec::new(),
         }
     }
 
@@ -304,6 +320,16 @@ impl TheaterTiles {
     /// without one.
     pub fn read_helipads(read: impl Fn(&str) -> Result<Vec<u8>>, code: &str) -> Vec<(i32, i32)> {
         let name = format!("../theaters/{}.helipads", code.to_ascii_lowercase());
+        read(&name)
+            .ok()
+            .and_then(|b| ron::from_str(std::str::from_utf8(&b).ok()?).ok())
+            .unwrap_or_default()
+    }
+
+    /// A theater's runways (`theaters/<code>.runways` through `read`, from `assets/sim`): a list
+    /// made by the game (`--write-helipads`); none without one.
+    pub fn read_runways(read: impl Fn(&str) -> Result<Vec<u8>>, code: &str) -> Vec<Runway> {
+        let name = format!("../theaters/{}.runways", code.to_ascii_lowercase());
         read(&name)
             .ok()
             .and_then(|b| ron::from_str(std::str::from_utf8(&b).ok()?).ok())

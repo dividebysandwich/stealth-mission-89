@@ -4,7 +4,8 @@
 
 use bevy::math::DVec2;
 use bevy_egui::egui;
-use stealth_campaign::{CampaignState, footprint};
+use stealth_campaign::{CampaignState, DefenceKind, footprint};
+use stealth_i18n::t;
 use stealth_sim::Sim;
 use stealth_sim::aaa::M_PER_MAP;
 
@@ -16,21 +17,29 @@ use crate::scenery::Scenery;
 /// Metres of open ground (no mountain, no theater object) the helipad and the unit need.
 const GROUND_ROOM: f64 = 60.0;
 
-/// The NEW GEPARD SITE / NEW PATRIOT SITE buttons (the one active again: cancel).
+/// The GEPARD / PATRIOT / DRONES new site buttons (the one active again: cancel).
 pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
-    section(ui, "New site");
+    section(ui, t!("ds-new-site"));
+    // Framed buttons sharing the column's width, the one being designated lit.
     ui.horizontal(|ui| {
-        for (patriot, label) in [(false, "GEPARD"), (true, "PATRIOT")] {
-            let on = c.ui.designate == Some(patriot);
-            if ui.selectable_label(on, label).clicked() {
-                c.ui.designate = if on { None } else { Some(patriot) };
+        let w = (ui.available_width() - ui.spacing().item_spacing.x * 2.0) / 3.0;
+        let kinds = [
+            (DefenceKind::Gepard, "GEPARD"),
+            (DefenceKind::Patriot, "PATRIOT"),
+            (DefenceKind::Drones, t!("ad-drones")),
+        ];
+        for (kind, label) in kinds {
+            let on = c.ui.designate == Some(kind);
+            let button = egui::Button::new(label).min_size(egui::vec2(w, 30.0)).selected(on);
+            if ui.add(button).clicked() {
+                c.ui.designate = if on { None } else { Some(kind) };
                 c.ui.error = None;
             }
         }
     });
     let hint = match c.ui.designate {
-        Some(_) => "Click the map where it goes - right click: cancel",
-        None => "Designate a spot: UH-60s fly its cargo to a helipad there within 24 h",
+        Some(_) => t!("ds-click-hint"),
+        None => t!("ds-hint"),
     };
     ui.label(egui::RichText::new(hint).small().color(DIM));
 }
@@ -48,14 +57,14 @@ pub(super) fn refusal(
     scenery: Option<&Scenery>,
     x: i32,
     y: i32,
-    patriot: bool,
+    kind: DefenceKind,
 ) -> Option<String> {
-    let aaa = stealth_host::glue::world_view(sim).aaa;
-    if let Some(why) = st.deploy_refusal(x, y, patriot, &aaa) {
+    let aaa = stealth_host::glue::world_view(sim).units;
+    if let Some(why) = st.deploy_refusal(x, y, kind, &aaa) {
         return Some(why);
     }
     if scenery.is_some_and(|s| !s.is_open(metres(x, y), GROUND_ROOM)) {
-        return Some("Not on open ground".into());
+        return Some(t!("ds-not-open-ground").into());
     }
     None
 }
@@ -71,7 +80,7 @@ pub(super) fn pointer(
     sim: &Sim,
     scenery: Option<&Scenery>,
 ) -> bool {
-    let Some(patriot) = c.ui.designate else { return false };
+    let Some(kind) = c.ui.designate else { return false };
     if resp.secondary_clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
         c.ui.designate = None;
         return true;
@@ -79,13 +88,19 @@ pub(super) fn pointer(
     let Some(pos) = resp.hover_pos() else { return false };
     let m = view.to_map(pos);
     let (x, y) = (m.x.round() as i32, m.y.round() as i32);
-    let why = refusal(c.state(), sim, scenery, x, y, patriot);
+    let why = refusal(c.state(), sim, scenery, x, y, kind);
     let col = if why.is_none() { GREEN } else { MISSILE_RED };
-    let r = (footprint(patriot) as f32 / view.scale).max(4.0);
+    let r = (footprint(kind) as f32 / view.scale).max(4.0);
     painter.circle(pos, r, col.gamma_multiply(0.12), egui::Stroke::new(1.5, col));
     pad(painter, pos, col);
-    let what = if patriot { "Patriot site" } else { "Gepard site" };
-    let text = why.clone().unwrap_or_else(|| format!("New {what} - click to designate"));
+    let text = why.clone().unwrap_or_else(|| {
+        t!(match kind {
+            DefenceKind::Gepard => "ds-new-gepard",
+            DefenceKind::Patriot => "ds-new-patriot",
+            DefenceKind::Drones => "ds-new-drones",
+        })
+        .to_string()
+    });
     painter.text(
         pos + egui::vec2(12.0, -12.0),
         egui::Align2::LEFT_BOTTOM,
@@ -95,14 +110,14 @@ pub(super) fn pointer(
     );
     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
     if resp.clicked() && why.is_none() {
-        c.actions.push(Action::DesignateSite { x, y, patriot });
+        c.actions.push(Action::DesignateSite { x, y, kind });
         c.ui.designate = None;
         c.ui.error = None;
     }
     resp.clicked()
 }
 
-/// Test aid: `--campaign-designate gepard|patriot` designates a site once, at the first spot
+/// Test aid: `--campaign-designate gepard|patriot|drones` designates a site once, at the first spot
 /// round the parked base where one may go.
 pub(super) fn test_aid(c: &mut ActiveCampaign, sim: &Sim, scenery: Option<&Scenery>) {
     let Some(arg) = std::env::args().skip_while(|a| a != "--campaign-designate").nth(1) else {
@@ -111,7 +126,11 @@ pub(super) fn test_aid(c: &mut ActiveCampaign, sim: &Sim, scenery: Option<&Scene
     if std::mem::replace(&mut c.ui.test_designated, true) {
         return;
     }
-    let patriot = arg == "patriot";
+    let kind = match arg.as_str() {
+        "patriot" => DefenceKind::Patriot,
+        "drones" => DefenceKind::Drones,
+        _ => DefenceKind::Gepard,
+    };
     let st = c.state();
     let Some(b) = c.parked.and_then(|b| st.site(b as u16)).map(|s| (s.x, s.y)) else { return };
     let spot = (1..60)
@@ -120,9 +139,9 @@ pub(super) fn test_aid(c: &mut ActiveCampaign, sim: &Sim, scenery: Option<&Scene
             let t = k as f64 / 16.0 * std::f64::consts::TAU;
             (b.0 + (t.cos() * r as f64 * 32.0) as i32, b.1 + (t.sin() * r as f64 * 32.0) as i32)
         })
-        .find(|&(x, y)| refusal(st, sim, scenery, x, y, patriot).is_none());
+        .find(|&(x, y)| refusal(st, sim, scenery, x, y, kind).is_none());
     if let Some((x, y)) = spot {
-        c.actions.push(Action::DesignateSite { x, y, patriot });
+        c.actions.push(Action::DesignateSite { x, y, kind });
     }
 }
 
@@ -144,7 +163,11 @@ pub(super) fn waiting(painter: &egui::Painter, view: &MapView, st: &CampaignStat
         let left = (d.expires - st.clock).max(0.0) as i32;
         let text = format!(
             "{} {}/{} {}:{:02}",
-            if d.patriot { "PATRIOT" } else { "GEPARD" },
+            match d.kind {
+                DefenceKind::Gepard => "GEPARD",
+                DefenceKind::Patriot => "PATRIOT",
+                DefenceKind::Drones => t!("ad-drones"),
+            },
             d.delivered.len(),
             d.loads,
             left / 3600,

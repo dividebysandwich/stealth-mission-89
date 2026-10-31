@@ -3,6 +3,7 @@
 //! a listen server and a dedicated server all run their campaign through [`Host`].
 
 pub mod assets;
+pub mod cargo;
 pub mod glue;
 pub mod host;
 pub mod rules;

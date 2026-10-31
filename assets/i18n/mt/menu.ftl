@@ -206,6 +206,11 @@ aircraft-a10 =
         Ajruplan ta' appoġġ ajru qrib
         Bil-mod u robust, kanun ta' 30 mm
         Kokpit A-10C, żewġ MFDs
+aircraft-av8b =
+    .facts =
+        Ajruplan tal-attakk V/STOL
+        Spinta vettorjali: hover, jinżel kullimkien
+        Lieva tan-nozzles: R / F, Shift għall-waqfiet
 aircraft-uh60 =
     .facts =
         Ħelikopter utilitarju

@@ -35,11 +35,27 @@ options-auto-trim = 自动配平
         手动配平：Alt + 方向键，Alt + Home 回中
 options-tooltips = 座舱提示
     .facts = 鼠标或 VR 指尖所指的座舱控件或显示器是什么
+options-player-labels = 玩家名称
+    .facts = 多人游戏：其他飞行员的名字显示在其飞机上方，无论多远
+options-label-size =
+    .facts =
+        玩家名称的大小
+        50%：默认
 options-section-vr-size = VR 座舱大小
 options-vr-size =
     .facts =
         头显中座舱（和世界）的大小
         100%：与实物等大
+options-section-gif = GIF 录制
+options-gif-size = 尺寸
+options-gif-rate = 帧率
+options-gif-scale-100 =
+    .facts = 窗口的完整分辨率：文件较大
+options-gif-scale-25 =
+    .facts = 文件较小
+options-gif-rate-50 =
+    .facts = 仅当游戏以 100 fps 或更高运行时（每隔一帧录制）
+options-gif-hint = F12（除非已重新绑定）开始和停止；保存在你的图片文件夹中
 
 ## 图形
 
@@ -85,6 +101,19 @@ options-volume-effects = 音效
     .facts = 武器、爆炸、起落架、无线电及其他
 options-volume-warnings = 警报
     .facts = 失速警报、雷达和导弹警告、火警警笛、Sidewinder 音调
+options-volume-rwr = RWR
+    .facts = 雷达告警音，作为警报音量的一部分
+options-section-rwr-tones = 雷达告警音
+rwr-tones-all = 全部
+    .facts = 照射你的雷达、每次发现你的扫描、导弹发射
+rwr-tones-detect = 仅探测
+    .facts =
+        雷达发现你时响一声（雷达一段时间失去你后会再次响起）
+        以及导弹发射
+rwr-tones-launch = 仅发射
+    .facts = 仅对你发射的导弹
+rwr-tones-off = 关
+    .facts = 无雷达告警音（指示灯和显示器仍会告警）
 options-section-cockpit = 座舱
 options-low-pass = 发动机低通
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = 水汽与下洗气流
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        急转弯时翼尖拖出水汽
+        低空悬停的直升机扬起尘土，在水面上扬起水雾
+        行驶中的车辆在身后扬起尘土
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

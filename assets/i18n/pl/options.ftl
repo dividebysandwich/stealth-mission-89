@@ -35,11 +35,27 @@ options-auto-trim = Automatyczny trym
         Trym ręczny: Alt + strzałki, Alt + Home go centruje
 options-tooltips = Tooltipy kokpitu
     .facts = Czym jest element sterowania lub wyświetlacz kokpitu, pod myszą lub pod palcem w VR
+options-player-labels = Nazwy graczy
+    .facts = Gra wieloosobowa: nazwy innych pilotów nad ich samolotami, z każdej odległości
+options-label-size =
+    .facts =
+        Rozmiar nazw graczy
+        50%: domyślnie
 options-section-vr-size = Rozmiar kokpitu w VR
 options-vr-size =
     .facts =
         Rozmiar kokpitu (i świata) w goglach
         100%: naturalna wielkość
+options-section-gif = Nagrywanie GIF
+options-gif-size = ROZMIAR
+options-gif-rate = KLATKI
+options-gif-scale-100 =
+    .facts = Pełna rozdzielczość okna: duże pliki
+options-gif-scale-25 =
+    .facts = Małe pliki
+options-gif-rate-50 =
+    .facts = Tylko gdy gra działa w 100 fps lub więcej (nagrywana jest co druga klatka)
+options-gif-hint = F12 (o ile nie zmieniono) rozpoczyna i kończy; zapis w folderze Obrazy
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efekty
     .facts = Uzbrojenie, eksplozje, podwozie, radio i cała reszta
 options-volume-warnings = Ostrzeżenia
     .facts = Sygnał przeciągnięcia, ostrzeżenia radarowe i przed pociskami, syrena pożarowa, tony Sidewindera
+options-volume-rwr = RWR
+    .facts = Tony ostrzeżeń radarowych, jako część głośności ostrzeżeń
+options-section-rwr-tones = Tony ostrzeżeń radarowych
+rwr-tones-all = WSZYSTKIE
+    .facts = Radar, który cię oświetla, każde omiecenie, które cię wykrywa, odpalenia pocisków
+rwr-tones-detect = TYLKO WYKRYCIE
+    .facts =
+        Jeden ton, gdy radar cię wykryje (ponownie, gdy radary na chwilę cię zgubią)
+        Oraz odpalenia pocisków
+rwr-tones-launch = TYLKO ODPALENIA
+    .facts = Tylko pociski odpalone w ciebie
+rwr-tones-off = BRAK
+    .facts = Bez tonów ostrzeżeń radarowych (lampki i wyświetlacze nadal ostrzegają)
 options-section-cockpit = Kokpit
 options-low-pass = Filtr dolnoprzepustowy silnika
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Para i podmuch wirnika
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Przy ostrych manewrach smugi pary z końców skrzydeł
+        Śmigłowiec w niskim zawisie wzbija kurz albo pył wodny nad wodą
+        Jadące pojazdy wzbijają za sobą kurz
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

@@ -48,6 +48,12 @@ planner-uav = 敌方无人机
 planner-edit-hint = 拖动航点可移动它，拖动地图可平移。点击航段可添加航点，右键可删除。滚轮：缩放。
 planner-reset = 重置
 planner-view-hint = 拖动地图可平移。滚轮：缩放。
+planner-layers = 图层
+planner-layer-sams = 雷达 / SAM 阵地
+planner-radar-types = 雷达类型
+planner-layer-pulse = 脉冲雷达探测距离
+planner-layer-doppler = 多普勒雷达探测距离
+planner-layer-airfield = 机场
 
 ## 已保存的任务
 

@@ -49,6 +49,12 @@ planner-uav = Vaenlase UAV
 planner-edit-hint = Lohista punkti selle liigutamiseks, kaarti nihutamiseks. Klõpsa lõigul punkti lisamiseks, paremklõps eemaldab. Ratas: suum.
 planner-reset = TÜHISTA
 planner-view-hint = Lohista kaarti nihutamiseks. Ratas: suum.
+planner-layers = KIHID
+planner-layer-sams = Radar / SAM-positsioon
+planner-radar-types = Radaritüübid
+planner-layer-pulse = Impulssradari avastamiskaugus
+planner-layer-doppler = Doppleri radari avastamiskaugus
+planner-layer-airfield = Lennuväli
 
 ## Salvestatud missioonid
 

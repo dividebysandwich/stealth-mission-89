@@ -49,6 +49,12 @@ planner-uav = Priešo UAV
 planner-edit-hint = Vilkite tašką, kad jį perkeltumėte, žemėlapį - kad slinktumėte. Spustelėkite atkarpą, kad pridėtumėte tašką, dešiniuoju klavišu pašalinsite. Ratukas: didinti.
 planner-reset = ATSTATYTI
 planner-view-hint = Vilkite žemėlapį, kad slinktumėte. Ratukas: didinti.
+planner-layers = SLUOKSNIAI
+planner-layer-sams = Radaras / SAM pozicija
+planner-radar-types = Radarų tipai
+planner-layer-pulse = Impulsinio radaro aptikimo nuotolis
+planner-layer-doppler = Doplerio radaro aptikimo nuotolis
+planner-layer-airfield = Aerodromas
 
 ## Išsaugotos misijos
 

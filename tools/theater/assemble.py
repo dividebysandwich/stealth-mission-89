@@ -52,6 +52,9 @@ BASE, DEPOT, SAM_RADAR, BRIDGE, BOAT, BUILDINGS, OTH = (K(k) for k in (
 HOUSES, HOUSES2 = K("houses"), K("houses2")
 CARRIER = K("carrier")
 
+# Room on land all round an object (metres): its footprint and the shore's refinement.
+DRY_MARGIN = 150
+
 # Layouts of a LOD1 cell (2 km square): (metres east, metres north of the cell centre, kind).
 # The first entry of a site is its main object (the SAM sites' radar).
 TEMPLATES = {
@@ -190,14 +193,15 @@ class Layout:
         u = UNIT_WU[lod]
         return (c * 4096 + 2048) * u * geo.WU, (r * 4096 + 2048) * u * geo.WU
 
-    def template(self, name, c1, r1):
+    def template(self, name, c1, r1, main=True):
         """A LOD1 template in cell (c1, r1); returns the placements by shape. Kinds the
-        theater has no model for are left out; models of a coarser level go on that level."""
+        theater has no model for are left out, and so are the objects that would stand in
+        water (but not the main one if `main`); models of a coarser level go on that level."""
         out = []
         cx, cy = self.centre_m(1, c1, r1)
-        for dx, dy, kind in TEMPLATES[name]:
+        for k, (dx, dy, kind) in enumerate(TEMPLATES[name]):
             shape = K(kind)
-            if shape is None:
+            if shape is None or ((k > 0 or not main) and not self.dry(cx + dx, cy + dy)):
                 continue
             if LEVEL.get(shape, 1) == 1:
                 out.append((shape, self.put_at_cell(1, c1, r1, round(wu(dx)), round(wu(dy)), shape)))
@@ -207,6 +211,16 @@ class Layout:
 
     def land(self, x, y):
         return self.water.at(x, y) is None
+
+    def dry(self, x, y, r=DRY_MARGIN):
+        """Land at the point and all round it within `r` metres."""
+        return self.land(x, y) and all(
+            self.land(x + r * math.cos(k * math.tau / 8), y + r * math.sin(k * math.tau / 8)) for k in range(8))
+
+    def template_dry(self, name, c1, r1):
+        """Every object of a LOD1 template in cell (c1, r1) on dry land."""
+        cx, cy = self.centre_m(1, c1, r1)
+        return all(self.dry(cx + dx, cy + dy) for dx, dy, kind in TEMPLATES[name] if K(kind) is not None)
 
     def land_cell(self, lod, c, r, n=5, margin=0.0):
         size = 4096 * UNIT_WU[lod] * geo.WU
@@ -267,9 +281,14 @@ class Layout:
                 self.blue_bases.append((name, t))
             else:
                 self.red_bases.append((name, t))
-                # SAM site two cells to the side, inside the same LOD2 cell.
+                # SAM site two cells to the side, inside the same LOD2 cell, or the nearest
+                # cell with room on land.
                 sc = c1 - 2 if c1 & 3 >= 2 else c1 + 2
-                radar = self.template("sam", sc, r1)[0][1]
+                cell = (sc, r1) if self.template_dry("sam", sc, r1) else self.site_cell(*self.centre_m(1, sc, r1), "sam")
+                if cell is None:
+                    print("no room for the SAM site of", name)
+                    continue
+                radar = self.template("sam", *cell)[0][1]
                 self.ground_units.append((name, radar, self.rng.choice(SAM_TYPES), 0))
 
         for name, lon, lat, friendly in geo.AIRSTRIPS:
@@ -296,7 +315,7 @@ class Layout:
             x, y = self.ashore(*geo.ll(lon, lat))
             self.town_sites.append((name, x, y, r, kind, ruin))
             red = self.red(x, y)
-            if not (wld or ruin >= 0.5) or not self.land(x, y):
+            if not (wld or ruin >= 0.5) or not self.dry(x, y):
                 continue
             if not (0 <= x < geo.THEATER_M and 0 <= y < geo.THEATER_M):
                 continue  # beyond the theater's edge: scenery only
@@ -316,7 +335,7 @@ class Layout:
                 a = rng.uniform(0, math.tau)
                 d = rng.uniform(250, 700)
                 px, py = x + math.cos(a) * d, y + math.sin(a) * d
-                if self.cell(1, px, py) != (c1, r1) or not self.land(px, py) or self.on_field(px, py):
+                if self.cell(1, px, py) != (c1, r1) or not self.dry(px, py) or self.on_field(px, py):
                     continue
                 shape = rng.choice([99, 100, 101]) if ruined() else rng.choice([BUILDINGS, HOUSES, HOUSES2])
                 self.put(1, px, py, shape)
@@ -334,25 +353,27 @@ class Layout:
         return any(abs(x - fx) < 700 + margin and abs(y - fy) < 1300 + margin for fx, fy in self.fields)
 
     def ashore(self, x, y):
-        """The point, or the nearest land within 4 km (a town on its river or coast)."""
-        if self.land(x, y):
+        """The point, or the nearest dry land within 4 km (a town on its river or coast)."""
+        if self.dry(x, y):
             return x, y
         for d in range(250, 4001, 250):
             for k in range(16):
                 a = k * math.tau / 16
                 px, py = x + math.cos(a) * d, y + math.sin(a) * d
-                if self.land(px, py):
+                if self.dry(px, py):
                     return px, py
         return x, y
 
-    def site_cell(self, x, y):
-        """LOD1 cell for a site: the one under it, or the nearest one whose centre is on land."""
+    def site_cell(self, x, y, name):
+        """LOD1 cell for a site: the one under it, or the nearest one with all of the site's
+        template on land."""
         c1, r1 = self.cell(1, x, y)
         best = None
         for dc in range(-3, 4):
             for dr in range(-3, 4):
                 cx, cy = self.centre_m(1, c1 + dc, r1 + dr)
-                if (self.land_cell(1, c1 + dc, r1 + dr, 3) and (c1 + dc, r1 + dr) not in self.objs[1]
+                if (self.land_cell(1, c1 + dc, r1 + dr, 3) and self.template_dry(name, c1 + dc, r1 + dr)
+                        and (c1 + dc, r1 + dr) not in self.objs[1]
                         and not self.on_field(cx, cy, 900)):
                     d = dc * dc + dr * dr
                     if best is None or d < best[0]:
@@ -366,7 +387,7 @@ class Layout:
                 bx, by = self.on_river(x, y)
                 self.put(1, bx, by, BRIDGE)
                 continue
-            cell = self.site_cell(x, y)
+            cell = self.site_cell(x, y, kind)
             if cell is None:
                 print("no room for", kind, name)
                 continue
@@ -380,7 +401,7 @@ class Layout:
 
     def launch_sites(self):
         for name, lon, lat in geo.LAUNCH_SITES:
-            cell = self.site_cell(*geo.ll(lon, lat))
+            cell = self.site_cell(*geo.ll(lon, lat), "launch")
             if cell is None:
                 print("no room for launch site", name)
                 continue
@@ -393,7 +414,7 @@ class Layout:
             for a in range(8):
                 ang = a * math.tau / 8 + 0.4
                 px, py = x + math.cos(ang) * (t[4] + 4000), y + math.sin(ang) * (t[4] + 4000)
-                cell = self.site_cell(px, py)
+                cell = self.site_cell(px, py, "sam")
                 if cell:
                     radar = self.template("sam", *cell)[0][1]
                     self.ground_units.append((name, radar, self.rng.choice(SAM_TYPES), 0))
@@ -488,7 +509,7 @@ class Layout:
                     self.objs[2].setdefault((c2, r2), []).append((0, 0, forest))
                 p = patterns[rng.randrange(len(patterns))] if forest is None else patterns[0]
                 for (sc, sr), name in p.items():
-                    self.template(name, c2 * 4 + sc, r2 * 4 + sr)
+                    self.template(name, c2 * 4 + sc, r2 * 4 + sr, main=False)
 
     # --- grids ---------------------------------------------------------------------------
 

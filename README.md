@@ -33,7 +33,7 @@ To play right now, you can either:
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
-* **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar)
+* **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar), AV-8B Harrier II (V/STOL, vectored thrust)
 * **Flyable Helicopters:** UH-60A (Logistics and Insertions), AH-1Z (with HMD), RAH-66 Comanche (stealth, internal bays)
 * **Controllable Air Defenses:** Gepard (manual and radar-guided), Patriot (radar)
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
@@ -102,7 +102,8 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 | `--lockheed` | realistic weapons: the real aircraft's 2 bays, no air-to-air missiles, no carrier operations |
 | `--head-tracking` | head/eye tracking: infrared, eye, webcam or phone trackers move the cockpit view through a tracking program such as OpenTrack (FreeTrack output on Windows, or UDP to 127.0.0.1 port 4242); Home recentres |
 | `--vr` | OpenXR headset (without a runtime it runs on the desktop); the menu and the debrief are a panel in the headset, operated with a controller |
-| `--desktop` | On the Steam Frame, the AppImage starts in VR unless this is given |
+| `--gl-vr` | VR drawn by the game's own OpenGL renderer (Linux builds), with eye-tracked foveated rendering on the Steam Frame |
+| `--desktop` | On the Steam Frame, the AppImage starts in VR (`--gl-vr`) unless this or `--vr` is given |
 | `--viewer [--file aircraft --model 24]` | browse the 3D models |
 | `--freecam [--at Gutersloh\|primary] [--pos x,z]` | free debug camera |
 

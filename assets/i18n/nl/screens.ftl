@@ -48,6 +48,12 @@ planner-uav = Vijandelijke UAV
 planner-edit-hint = Sleep een punt om het te verplaatsen, de kaart om te pannen. Klik op een traject om een punt toe te voegen, rechtsklik om het te verwijderen. Wiel: zoomen.
 planner-reset = HERSTEL
 planner-view-hint = Sleep de kaart om te pannen. Wiel: zoomen.
+planner-layers = LAGEN
+planner-layer-sams = Radar / SAM-stelling
+planner-radar-types = Radartypen
+planner-layer-pulse = Detectiebereik pulsradar
+planner-layer-doppler = Detectiebereik dopplerradar
+planner-layer-airfield = Vliegveld
 
 ## Opgeslagen missies
 

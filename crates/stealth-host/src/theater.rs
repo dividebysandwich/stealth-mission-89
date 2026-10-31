@@ -10,12 +10,18 @@ pub fn load_tiles(code: &str) -> Result<TheaterTiles> {
     let mut tiles = TheaterTiles::read_ron(&crate::assets::read(&rel)?).context(rel)?;
     tiles.relief = relief(code);
     tiles.helipads = helipads(code);
+    tiles.runways = runways(code);
     Ok(tiles)
 }
 
 /// A theater's helipads (`assets/theaters/<code>.helipads`; none without one).
 pub fn helipads(code: &str) -> Vec<(i32, i32)> {
     TheaterTiles::read_helipads(|name| crate::assets::read(name.trim_start_matches("../")), code)
+}
+
+/// A theater's runways (`assets/theaters/<code>.runways`; none without one).
+pub fn runways(code: &str) -> Vec<stealth_sim::Runway> {
+    TheaterTiles::read_runways(|name| crate::assets::read(name.trim_start_matches("../")), code)
 }
 
 /// A theater's relief (`assets/theaters/<code>.relief`; flat without one).

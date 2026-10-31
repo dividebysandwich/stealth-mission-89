@@ -6,6 +6,7 @@ axis-rudder = 方向舵
 axis-throttle = 油门
 axis-slew-x = 传感器/光标偏移 X
 axis-slew-y = 传感器/光标偏移 Y
+axis-nozzle = 喷口（鹞式）
 input-button = 按钮 { $n }
 input-axis = 轴 { $n }
 vr-trigger = 扳机

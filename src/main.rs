@@ -5,6 +5,7 @@ pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu"
 
 mod afterburner_flame;
 mod aircraft;
+mod app6;
 mod asset_path;
 mod autoshot;
 mod avionics;
@@ -33,9 +34,11 @@ mod flight_menu;
 mod font;
 mod freecam;
 mod fullscreen;
+mod gif_recorder;
 #[cfg(all(feature = "glvr", target_os = "linux"))]
 mod glvr;
 mod goggles;
+mod ground_fire;
 mod headtrack;
 mod help;
 mod hmd;
@@ -61,12 +64,15 @@ mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
+#[cfg(target_os = "linux")]
+mod no_gpu;
 mod options;
 mod palette;
 mod palette_material;
 mod panel;
 mod planner;
 mod player;
+mod player_labels;
 mod player_notices;
 mod prefs;
 mod profile;
@@ -84,6 +90,7 @@ mod sky;
 mod sling;
 mod sound;
 mod stage;
+mod stars;
 mod station;
 mod sunbeams;
 mod tacview;
@@ -146,6 +153,11 @@ fn main() {
     dedicated::run_if_asked();
     // `--help`: the command line options.
     help::run_if_asked();
+    // No Vulkan driver: a window that says so, not Bevy's panic. glvr draws with OpenGL.
+    #[cfg(target_os = "linux")]
+    if gl_vr.is_none() {
+        no_gpu::exit_if_missing();
+    }
     #[cfg(windows)]
     win_console::leave_explorer_console();
     let mut settings = Settings::from_args();
@@ -246,6 +258,7 @@ fn main() {
             canvas::CanvasPlugin,
             boss_key::BossKeyPlugin,
             fullscreen::FullscreenPlugin,
+            gif_recorder::GifRecorderPlugin,
         ))
         .add_plugins((
             menu::MenuPlugin,
@@ -297,6 +310,7 @@ fn main() {
         ))
         .add_plugins((
             sky::SkyPlugin,
+            stars::StarsPlugin,
             lighting::LightingPlugin,
             cockpit3d::Cockpit3dPlugin,
             scenery::SceneryPlugin,
@@ -311,6 +325,7 @@ fn main() {
             stage::StagePlugin,
             campaign::CampaignPlugin,
             net::NetPlugin,
+            player_labels::PlayerLabelsPlugin,
             player_notices::PlayerNoticesPlugin,
             chat::ChatPlugin,
             multiplayer_menu::MultiplayerMenuPlugin,

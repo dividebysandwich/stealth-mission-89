@@ -49,6 +49,12 @@ planner-uav = UAV tal-għadu
 planner-edit-hint = Kaxkar punt biex tmexxih, il-mappa biex tgħaddiha. Ikklikkja fuq segment biex iżżid punt, ikklikkja bil-lemin biex tneħħih. Rota: zoom.
 planner-reset = RESET
 planner-view-hint = Kaxkar il-mappa biex tgħaddiha. Rota: zoom.
+planner-layers = SAFFI
+planner-layer-sams = Radar / sit SAM
+planner-radar-types = Tipi ta' radar
+planner-layer-pulse = Firxa ta' skoperta tar-radar pulse
+planner-layer-doppler = Firxa ta' skoperta tar-radar Doppler
+planner-layer-airfield = Ajruport
 
 ## Missjonijiet maħżuna
 

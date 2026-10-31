@@ -49,6 +49,12 @@ planner-uav = Ienaidnieka UAV
 planner-edit-hint = Velciet punktu, lai to pārvietotu, karti - lai bīdītu. Klikšķis uz posma pievieno punktu, labais klikšķis noņem. Ritenītis: tālummaiņa.
 planner-reset = ATIESTATĪT
 planner-view-hint = Velciet karti, lai bīdītu. Ritenītis: tālummaiņa.
+planner-layers = SLĀŅI
+planner-layer-sams = Radars / SAM pozīcija
+planner-radar-types = Radaru tipi
+planner-layer-pulse = Impulsu radara atklāšanas rādiuss
+planner-layer-doppler = Doplera radara atklāšanas rādiuss
+planner-layer-airfield = Lidlauks
 
 ## Saglabātās misijas
 

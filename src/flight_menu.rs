@@ -49,7 +49,7 @@ use crate::cockpit3d::{
 };
 use crate::font::{Align, capital, stroke_has, stroke_text_at};
 use crate::input::{Action, ActionEvent, InputBlock};
-use crate::settings::{AppState, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 use stealth_i18n::{Language, tf};
 
 pub struct FlightMenuPlugin;
@@ -146,9 +146,18 @@ impl Page {
                 Open(Page::Sound),
                 Open(Page::Controls),
             ],
-            Page::Game => {
-                &[Back, Language, Cockpit, Hud, Avionics, AutoTrim, Tooltips, CockpitSize]
-            }
+            Page::Game => &[
+                Back,
+                Language,
+                Cockpit,
+                Hud,
+                Avionics,
+                AutoTrim,
+                Tooltips,
+                PlayerLabels,
+                LabelSize,
+                CockpitSize,
+            ],
             Page::Graphics => {
                 use crate::effects::Effect as E;
                 &[
@@ -186,6 +195,8 @@ impl Page {
                 Volume(Vol::Engine),
                 Volume(Vol::Effects),
                 Volume(Vol::Warnings),
+                Volume(Vol::Rwr),
+                RwrTones,
                 LowPass,
             ],
             Page::Controls => &[Back, HeadTracking, Bindings, KeyGuide],
@@ -225,6 +236,7 @@ enum Vol {
     Engine,
     Effects,
     Warnings,
+    Rwr,
 }
 
 impl Vol {
@@ -234,6 +246,7 @@ impl Vol {
             Vol::Engine => s.engine_volume,
             Vol::Effects => s.effects_volume,
             Vol::Warnings => s.warning_volume,
+            Vol::Rwr => s.rwr_volume,
         }
     }
 
@@ -243,6 +256,7 @@ impl Vol {
             Vol::Engine => &mut s.engine_volume,
             Vol::Effects => &mut s.effects_volume,
             Vol::Warnings => &mut s.warning_volume,
+            Vol::Rwr => &mut s.rwr_volume,
         }
     }
 }
@@ -270,10 +284,14 @@ enum Item {
     Avionics,
     AutoTrim,
     Tooltips,
+    PlayerLabels,
+    LabelSize,
     CockpitSize,
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
     Volume(Vol),
+    /// Which radar warning tones sound.
+    RwrTones,
     LowPass,
     HeadTracking,
     /// The key and joystick bindings dialog (`input_dialog.rs`).
@@ -307,11 +325,15 @@ impl Item {
             Item::Avionics => "fm-avionics",
             Item::AutoTrim => "fm-auto-trim",
             Item::Tooltips => "fm-tooltips",
+            Item::PlayerLabels => "fm-player-labels",
+            Item::LabelSize => "fm-label-size",
             Item::CockpitSize => "fm-cockpit-size",
             Item::Volume(Vol::Master) => "fm-volume-master",
             Item::Volume(Vol::Engine) => "fm-volume-engine",
             Item::Volume(Vol::Effects) => "fm-volume-effects",
             Item::Volume(Vol::Warnings) => "fm-volume-warnings",
+            Item::Volume(Vol::Rwr) => "fm-volume-rwr",
+            Item::RwrTones => "fm-rwr-tones",
             Item::LowPass => "fm-low-pass",
             Item::HeadTracking => "fm-head-tracking",
             Item::Bindings => "fm-bindings",
@@ -338,9 +360,12 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::PlayerLabels => on(s.player_labels),
+            Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
+            Item::RwrTones => format!("< {} >", s.rwr_tones.flight_name()),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
             Item::Open(_) | Item::KeyGuide | Item::Bindings => ">".to_string(),
@@ -348,7 +373,8 @@ impl Item {
         }
     }
 
-    /// The cockpit size and the automatic scenery detail only matter in the headset, the cockpit style only for aircraft with
+    /// The cockpit size and the automatic scenery detail only matter in the headset, the label
+    /// size only with the player labels on, the cockpit style only for aircraft with
     /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
     /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
     /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
@@ -357,6 +383,7 @@ impl Item {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
             Item::CockpitSize | Item::AutoDetail => s.vr,
+            Item::LabelSize => s.player_labels,
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
@@ -1081,8 +1108,10 @@ fn navigate(
             stealth_i18n::set_language(s.language);
         }
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
+        Item::RwrTones => s.rwr_tones = s.rwr_tones.step(dir as i32),
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::Bindings => {
             menu.bindings = true;
@@ -1091,6 +1120,10 @@ fn navigate(
         Item::CockpitSize => {
             s.vr_cockpit_scale = (s.vr_cockpit_scale + 0.05 * dir)
                 .clamp(*VR_COCKPIT_SCALE_RANGE.start(), *VR_COCKPIT_SCALE_RANGE.end());
+        }
+        Item::LabelSize => {
+            s.player_label_size = (s.player_label_size + 0.1 * dir)
+                .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
         }
         Item::Volume(v) => {
             let v = v.get(s);

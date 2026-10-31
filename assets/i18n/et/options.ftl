@@ -35,11 +35,27 @@ options-auto-trim = Auto trim
         Käsitsi trim: Alt + nooleklahvid, Alt + Home tsentreerib
 options-tooltips = Cockpiti tooltips
     .facts = Mis on cockpiti juhtelement või ekraan, hiire all või VR-i sõrmeotsas
+options-player-labels = Mängijate nimed
+    .facts = Mitmikmäng: teiste pilootide nimed nende lennukite kohal, mis tahes kauguselt
+options-label-size =
+    .facts =
+        Mängijate nimede suurus
+        50%: vaikimisi
 options-section-vr-size = VR-cockpiti suurus
 options-vr-size =
     .facts =
         Cockpiti (ja maailma) suurus peakomplektis
         100%: elusuurus
+options-section-gif = GIF-salvestus
+options-gif-size = SUURUS
+options-gif-rate = KAADRID
+options-gif-scale-100 =
+    .facts = Akna täislahutus: suured failid
+options-gif-scale-25 =
+    .facts = Väikesed failid
+options-gif-rate-50 =
+    .facts = Ainult siis, kui mäng jookseb 100 fps või rohkem (salvestatakse iga teine kaader)
+options-gif-hint = F12 (kui pole ümber määratud) alustab ja lõpetab; salvestatakse kausta Pildid
 
 ## GRAAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efektid
     .facts = Relvad, plahvatused, telik, raadio ja ülejäänu
 options-volume-warnings = Hoiatused
     .facts = Kukkumishoiatus, radari ja raketi hoiatused, tulesireen, Sidewinderi toonid
+options-volume-rwr = RWR
+    .facts = Radarihoiatuse toonid, osana hoiatuste helitugevusest
+options-section-rwr-tones = Radarihoiatuse toonid
+rwr-tones-all = KÕIK
+    .facts = Sind valgustav radar, iga sind avastav pühkimine, rakettide stardid
+rwr-tones-detect = AINULT AVASTAMINE
+    .facts =
+        Üks toon, kui radar sind avastab (uuesti, kui radarid on sind mõneks ajaks kaotanud)
+        Ja rakettide stardid
+rwr-tones-launch = AINULT STARDID
+    .facts = Ainult sinu pihta lastud raketid
+rwr-tones-off = VÄLJAS
+    .facts = Radarihoiatuse toone pole (tuled ja ekraanid hoiatavad endiselt)
 options-section-cockpit = Cockpit
 options-low-pass = Mootori madalpääs
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Aur ja rootori allavool
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Järskudel manöövritel auruvööd tiivaotstest
+        Madalal hõljuv helikopter tõstab tolmu, vee kohal pritsmeid
+        Liikuvad masinad tõstavad enda taha tolmu
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

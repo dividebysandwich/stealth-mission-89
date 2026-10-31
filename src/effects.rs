@@ -1,6 +1,6 @@
 //! The atmosphere effects' switches (OPTIONS > GRAPHICS > Effects, the in-flight menu's
-//! EFFECTS page): one per effect, all cheap. `--effects <list>` sets them from the command
-//! line: names (`Effect::name`) turn effects on, `-name` off, `all` / `none` all of them.
+//! EFFECTS page): one per effect. `--effects <list>` sets them from the command line: names
+//! (`Effect::name`) turn effects on, `-name` off, `all` / `none` all of them.
 
 use serde::{Deserialize, Serialize};
 use stealth_i18n::{t, t_lines, tf};
@@ -37,6 +37,12 @@ pub struct Effects {
     pub scanlines: bool,
 }
 
+/// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows and vapour start off.
+/// Compiled into the world shader mist and cloud shadows cost its GPU (Adreno 750) about 1.4
+/// and 2.4 ms a frame in VR, even with no mist or clouds about; a helicopter's downwash dust
+/// near the ground about 1.7 ms; enough to drop the frame rate from 72 to 36 fps.
+pub const HEAVY_EFFECTS_OFF: bool = cfg!(all(target_arch = "aarch64", target_os = "linux"));
+
 impl Default for Effects {
     fn default() -> Self {
         Self {
@@ -46,10 +52,10 @@ impl Default for Effects {
             cockpit_night: true,
             nvg: true,
             snow: true,
-            mist: true,
-            cloud_shadows: true,
+            mist: !HEAVY_EFFECTS_OFF,
+            cloud_shadows: !HEAVY_EFFECTS_OFF,
             sunbeams: true,
-            vapour: true,
+            vapour: !HEAVY_EFFECTS_OFF,
             night_sky: true,
             vga: false,
             scanlines: false,

@@ -35,11 +35,27 @@ options-auto-trim = Automatický trim
         Ruční trim: Alt + šipky, Alt + Home jej vystředí
 options-tooltips = Tooltipy kokpitu
     .facts = Co je ovladač nebo displej kokpitu, pod myší nebo špičkou prstu ve VR
+options-player-labels = Jména hráčů
+    .facts = Hra více hráčů: jména ostatních pilotů nad jejich letadly, na jakoukoli vzdálenost
+options-label-size =
+    .facts =
+        Velikost jmen hráčů
+        50 %: výchozí
 options-section-vr-size = Velikost kokpitu ve VR
 options-vr-size =
     .facts =
         Velikost kokpitu (a světa) v headsetu
         100 %: skutečná velikost
+options-section-gif = Nahrávání GIF
+options-gif-size = VELIKOST
+options-gif-rate = SNÍMKY
+options-gif-scale-100 =
+    .facts = Plné rozlišení okna: velké soubory
+options-gif-scale-25 =
+    .facts = Malé soubory
+options-gif-rate-50 =
+    .facts = Jen když hra běží na 100 fps a víc (zachycen je každý druhý snímek)
+options-gif-hint = F12 (pokud není přemapována) spouští a zastavuje; uloženo ve složce Obrázky
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efekty
     .facts = Zbraně, výbuchy, podvozek, rádio a vše ostatní
 options-volume-warnings = Varování
     .facts = Houkačka přetažení, varování radaru a střel, siréna požáru, tóny Sidewinderu
+options-volume-rwr = RWR
+    .facts = Tóny radarového varování, jako část hlasitosti varování
+options-section-rwr-tones = Tóny radarového varování
+rwr-tones-all = VŠECHNY
+    .facts = Radar, který vás ozařuje, každé přehledové otočení, které vás odhalí, odpaly střel
+rwr-tones-detect = JEN ODHALENÍ
+    .facts =
+        Jeden tón, když vás radar odhalí (znovu, když vás radary na chvíli ztratí)
+        A odpaly střel
+rwr-tones-launch = JEN ODPALY
+    .facts = Jen střely odpálené na vás
+rwr-tones-off = VYP
+    .facts = Žádné tóny radarového varování (kontrolky a displeje stále varují)
 options-section-cockpit = Kokpit
 options-low-pass = Dolní propust motoru
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Pára a proud od rotoru
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Při ostrých manévrech stopy páry z konců křídel
+        Nízko visící vrtulník zvedá prach, nad vodou tříšť
+        Jedoucí vozidla za sebou zvedají prach
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

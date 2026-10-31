@@ -6,6 +6,7 @@ axis-rudder = Suunatüür
 axis-throttle = Gaas
 axis-slew-x = Anduri/kursori nihutus X
 axis-slew-y = Anduri/kursori nihutus Y
+axis-nozzle = Düüsid (Harrier)
 input-button = Nupp { $n }
 input-axis = Telg { $n }
 vr-trigger = Päästik

@@ -41,6 +41,9 @@ pub struct Pilot {
     /// The aircraft is the RAH-66 (`SimOptions::comanche` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) comanche: bool,
+    /// The aircraft is the AV-8B (`SimOptions::harrier` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) harrier: bool,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -51,6 +54,9 @@ pub struct Pilot {
     /// the ground lock is object 0 on it, plain ground, while the lock holds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) spi: Option<(i32, i32)>,
+    /// The ground unit (a vehicle) the designated point follows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) spi_unit: Option<u16>,
     /// His gun rounds and his weapons in flight while parked (the active pilot's are in the
     /// world's first gun-round slots and projectile slots 8..11).
     #[serde(default)]
@@ -110,6 +116,9 @@ pub struct Pilot {
     /// frame (None: no CCRP solution).
     #[serde(default)]
     pub(crate) ccrp_last: Option<f64>,
+    /// A ripple under way (or done with the button still held).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) ripple: Option<RippleRun>,
     pub(crate) prev_hud_mode: HudMode,
     pub(crate) hud_mode: HudMode,
     pub(crate) camera_mfd: bool,
@@ -306,6 +315,7 @@ impl Sim {
             tornado: p0.tornado,
             a10: p0.a10,
             comanche: p0.comanche,
+            harrier: p0.harrier,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,
@@ -427,4 +437,15 @@ impl Sim {
             .min()
             .map_or(current, |(_, k)| k as u8)
     }
+}
+
+/// A ripple of bombs: the rest go at their spacing while the fire button stays held.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub(crate) struct RippleRun {
+    /// Bombs still to go (0: done, waiting for the button to be let go).
+    pub left: i32,
+    /// Ground distance between them (ft).
+    pub spacing_ft: f64,
+    /// Ground distance flown since the last one (ft).
+    pub run_ft: f64,
 }

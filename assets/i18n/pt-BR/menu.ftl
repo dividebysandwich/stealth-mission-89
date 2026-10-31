@@ -206,6 +206,11 @@ aircraft-a10 =
         Aeronave de apoio aéreo aproximado
         Lenta e robusta, canhão de 30 mm
         Cockpit do A-10C, dois MFDs
+aircraft-av8b =
+    .facts =
+        Aeronave de ataque V/STOL
+        Empuxo vetorado: voo pairado, pousa em qualquer lugar
+        Alavanca dos bocais: R / F, Shift para os batentes
 aircraft-uh60 =
     .facts =
         Helicóptero utilitário

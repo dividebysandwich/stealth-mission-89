@@ -49,6 +49,12 @@ planner-uav = UAV inamic
 planner-edit-hint = Trageți un punct pentru a-l muta, harta pentru a o deplasa. Clic pe un tronson pentru a adăuga un punct, clic dreapta pentru a-l șterge. Rotiță: zoom.
 planner-reset = RESETARE
 planner-view-hint = Trageți harta pentru a o deplasa. Rotiță: zoom.
+planner-layers = STRATURI
+planner-layer-sams = Radar / amplasament SAM
+planner-radar-types = Tipuri de radar
+planner-layer-pulse = Rază de detecție radar cu impulsuri
+planner-layer-doppler = Rază de detecție radar Doppler
+planner-layer-airfield = Aerodrom
 
 ## Misiuni salvate
 

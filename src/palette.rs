@@ -33,7 +33,13 @@ impl Plugin for PalettePlugin {
             )
             .add_systems(
                 PostUpdate,
-                (apply_remap_changes, update_globals.after(crate::lighting::LightingSystems))
+                (
+                    apply_remap_changes,
+                    // After the shadow cascades are built (and shared by the headset's eyes).
+                    update_globals
+                        .after(crate::lighting::LightingSystems)
+                        .after(bevy::light::SimulationLightSystems::UpdateLightFrusta),
+                )
                     .run_if(resource_exists::<Palette>),
             )
             .add_systems(PostUpdate, (apply_msaa, crate::palette_material::sync_lighting));
@@ -185,6 +191,9 @@ pub struct Palette {
     pub per_vertex: Handle<PaletteMaterial>,
     pub background: Handle<PaletteMaterial>,
     pub background_flir: Handle<PaletteMaterial>,
+    /// The background in each sky variant (`palette_material::SKY_VARIANTS`), drawn by
+    /// invisible twins of the spheres so all of them stay compiled.
+    pub background_twins: Vec<Handle<PaletteMaterial>>,
     pub globals: Handle<ShaderBuffer>,
 }
 
@@ -328,6 +337,7 @@ impl Palette {
             per_vertex: Handle::default(),
             background: Handle::default(),
             background_flir: Handle::default(),
+            background_twins: vec![],
             globals: globals.clone(),
         };
         let mk = |word: u16, flags: u32| PaletteMaterial {
@@ -347,6 +357,10 @@ impl Palette {
         palette.background = materials.add(mk(0, FLAG_BACKGROUND));
         palette.background_flir =
             materials.add(mk(0, FLAG_BACKGROUND | crate::palette_material::FLAG_FLIR));
+        palette.background_twins = crate::palette_material::SKY_VARIANTS
+            .iter()
+            .map(|_| materials.add(mk(0, FLAG_BACKGROUND)))
+            .collect();
         palette
     }
 }
@@ -482,10 +496,15 @@ fn update_globals(
     origin: Res<crate::world::FloatingOrigin>,
     hud: Option<Res<crate::hud::HudState>>,
     mfd: Option<Res<crate::mfd::MfdState>>,
-    trackcam: Option<Res<crate::trackcam::TrackCamImage>>,
+    (trackcam, wide, console): (
+        Option<Res<crate::trackcam::TrackCamImage>>,
+        Option<Res<crate::trackcam::TrackCamWide>>,
+        Option<Res<crate::station::ConsoleEo>>,
+    ),
     images: Res<Assets<Image>>,
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
+    (shadow_lights, world_cameras): (ShadowLights, WorldCameras),
     bursts: Res<crate::flashes::Bursts>,
     theater: Option<Res<crate::world::Theater>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
@@ -516,6 +535,7 @@ fn update_globals(
     g.sun = lighting.sun;
     g.moon = lighting.moon;
     (g.shadow, g.shadow_bounds) = (lighting.shadow, lighting.shadow_bounds);
+    shadow_cascades(&mut g, &shadow_lights, &world_cameras);
     g.ambient = lighting.ambient;
     g.light_info.x = lighting.lights.len() as f32;
     g.light_info.y = lighting.daylight;
@@ -529,7 +549,12 @@ fn update_globals(
             as f32;
     g.dots.x = if settings.vr { crate::dots::XR_ANGLE } else { 0.0 };
     g.dots.y = time.elapsed_secs_wrapped() % 3600.0;
-    if let Some(img) = trackcam.and_then(|t| images.get(&t.0)) {
+    // The tracking camera's picture (the FLIR view): the drone command center's wide one there.
+    let shown = match (console.is_some_and(|c| c.wide), wide) {
+        (true, Some(w)) => Some(w.0.clone()),
+        _ => trackcam.map(|t| t.0.clone()),
+    };
+    if let Some(img) = shown.and_then(|h| images.get(&h)) {
         (g.dots.z, g.dots.w) = (img.width() as f32, img.height() as f32);
     }
     for (i, (p, c)) in lighting.lights.iter().enumerate() {
@@ -541,7 +566,7 @@ fn update_globals(
     g.storm_haze = weather.storm_haze();
     (g.burst, g.burst_colour) = bursts.globals(origin.origin);
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
-    g.atmos = weather.atmos(&settings, theater, lighting.daylight);
+    g.atmos = weather.atmos(&settings, theater, lighting.daylight, lighting.moonlit);
     let sh = &weather.shadows;
     (g.shadow_grid, g.shadow_far) = (sh.grid, sh.far);
     (g.shadow_cells, g.shadow_clouds) = (sh.cells, sh.clouds);
@@ -550,9 +575,13 @@ fn update_globals(
     if settings.effects.night_sky {
         g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);
     }
+    // Specks on the open desert to judge the height by, as over water.
+    g.sky_fx.w = crate::weather::dry_theater(theater) as u32 as f32;
     if sky.on || sky.classic_bodies {
         g.sky_sun = sky.sun.extend(1.0);
         g.sky_moon = sky.moon.extend(sky.stars);
+        let f = sky.star_frame;
+        g.star_frame = [f.x_axis, f.y_axis, f.z_axis].map(|c| c.extend(0.0));
         // Night vision goggles see as well on a moonless night.
         g.sky_night = Vec4::new(if nvg { 0.0 } else { sky.dark }, sky.glow, 0.0, 0.0);
     }
@@ -560,6 +589,46 @@ fn update_globals(
     let (rw, rh) = crate::recon::render_size();
     (g.sky_night.z, g.sky_night.w) = (rw as f32, rh as f32);
     buf.set_data(g);
+}
+
+type ShadowLights<'w, 's> = Query<
+    'w,
+    's,
+    (&'static DirectionalLight, &'static GlobalTransform, &'static bevy::light::Cascades),
+>;
+type WorldCameras<'w, 's> = Query<
+    'w,
+    's,
+    (Entity, &'static Camera),
+    (With<Camera3d>, Without<crate::camera::OffscreenCamera>),
+>;
+
+/// The key light's shadow cascades as Bevy built them this frame for the camera drawing the
+/// world (`Globals::shadow_cascades`): the headset's eyes share one set (xr.rs
+/// `share_eye_cascades`), the offscreen cameras have none (lighting.rs). None yet: no shadows.
+fn shadow_cascades(g: &mut Globals, lights: &ShadowLights, cameras: &WorldCameras) {
+    let Some((light, transform, cascades)) = lights.iter().find(|(l, ..)| l.shadow_maps_enabled)
+    else {
+        return;
+    };
+    let set = cameras
+        .iter()
+        .filter(|(_, c)| c.is_active)
+        .find_map(|(e, _)| cascades.cascades.get(&e).filter(|c| !c.is_empty()));
+    let Some(set) = set else {
+        g.shadow.y = 0.0;
+        return;
+    };
+    let n = set.len().min(4);
+    g.shadow.y = g.shadow.y.min(n as f32);
+    // As Bevy hands them to its shaders (the normal bias for a texel's diagonal).
+    g.shadow.z = light.shadow_normal_bias * std::f32::consts::SQRT_2;
+    g.shadow.w = light.shadow_depth_bias;
+    for (i, c) in set.iter().take(n).enumerate() {
+        g.shadow_cascades[i] = c.clip_from_world;
+        g.shadow_texel[i] = c.texel_size;
+    }
+    g.shadow_light = transform.back().extend(0.0);
 }
 
 /// `Globals::retro` (and the cockpit's `CockpitShading::retro`): VGA colours, scanlines (on the

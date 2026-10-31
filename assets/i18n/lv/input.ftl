@@ -6,6 +6,7 @@ axis-rudder = Stūre
 axis-throttle = Gāzes svira
 axis-slew-x = Sensora/kursora nobīde X
 axis-slew-y = Sensora/kursora nobīde Y
+axis-nozzle = Sprauslas (Harrier)
 input-button = Poga { $n }
 input-axis = Ass { $n }
 vr-trigger = Mēlīte

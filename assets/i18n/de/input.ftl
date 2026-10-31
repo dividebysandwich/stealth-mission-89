@@ -6,6 +6,7 @@ axis-rudder = Seitenruder
 axis-throttle = Schub
 axis-slew-x = Sensor/Cursor bewegen X
 axis-slew-y = Sensor/Cursor bewegen Y
+axis-nozzle = Düsen (Harrier)
 input-button = Knopf { $n }
 input-axis = Achse { $n }
 vr-trigger = Abzug

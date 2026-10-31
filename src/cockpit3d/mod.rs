@@ -28,7 +28,8 @@ mod pick;
 mod shading;
 pub mod tooltips;
 
-use bevy::camera::visibility::NoFrustumCulling;
+use bevy::app::{HierarchyPropagatePlugin, Propagate, PropagateSet};
+use bevy::camera::visibility::{NoFrustumCulling, RenderLayers, VisibilitySystems};
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions};
@@ -40,9 +41,10 @@ use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
-pub use controls::{ConsoleButton, ConsolePanel, PressControl, ScreenClick};
+pub use controls::{ConsoleButton, ConsolePanel, DragPhase, PressControl, ScreenClick, ScreenDrag};
 pub use displays::{
-    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, INFO_CANVAS, SCOPE_CANVAS,
+    BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, FEED_CANVAS, INFO_CANVAS, MAP_CANVAS,
+    SCOPE_CANVAS,
 };
 pub use layout::ConsoleKey;
 pub use pick::Solid;
@@ -57,7 +59,12 @@ impl Plugin for Cockpit3dPlugin {
             MaterialPlugin::<hud_glass::HmdMaterial>::default(),
             MaterialPlugin::<shading::CockpitMaterial>::default(),
             MaterialPlugin::<tooltips::TipScreenMaterial>::default(),
+            HierarchyPropagatePlugin::<RenderLayers>::new(PostUpdate),
         ))
+        .configure_sets(
+            PostUpdate,
+            PropagateSet::<RenderLayers>::default().before(VisibilitySystems::CheckVisibility),
+        )
         .init_resource::<Hands>()
         .init_resource::<ConsolePanel>()
         .init_resource::<levers::CockpitAnchors>()
@@ -66,6 +73,7 @@ impl Plugin for Cockpit3dPlugin {
         .add_message::<PressControl>()
         .add_message::<ConsoleButton>()
         .add_message::<ScreenClick>()
+        .add_message::<ScreenDrag>()
         .add_systems(Startup, (setup_materials, initial_look, model::load_models))
         .add_systems(OnEnter(AppState::Flight), tooltips::spawn_box)
         .add_systems(
@@ -189,8 +197,10 @@ pub struct HudGlass;
 #[derive(Component)]
 pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static str);
 
-/// The air defence console's model (`tools/models/build_console.py`).
+/// The air defence console's model (`tools/models/build_console.py`), the drone command center's
+/// (`tools/models/build_console_drone.py`).
 pub const CONSOLE_MODEL: &str = "cockpit_console";
+pub const DRONE_CONSOLE_MODEL: &str = "cockpit_drone";
 /// How much larger than shown the console's model is built (it looked too large life size).
 pub const CONSOLE_MODEL_SCALE: f32 = 1.0 / 0.95;
 /// How far below the eye the console sits in VR (m): the operator's head higher in the room.
@@ -203,10 +213,11 @@ fn choice(
     settings: &Settings,
     manning: Option<&crate::station::Manning>,
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
-    if manning.is_some() {
+    if let Some(m) = manning {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
         let eye = settings.cockpit_eye() - Vec3::Y * drop;
-        return (layout::PanelStyle::Modern, CONSOLE_MODEL, eye, CONSOLE_MODEL_SCALE);
+        let model = if m.drones() { DRONE_CONSOLE_MODEL } else { CONSOLE_MODEL };
+        return (layout::PanelStyle::Modern, model, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
     (style, stem, settings.cockpit_eye(), settings.aircraft.spec().cockpit_model_scale())
@@ -400,6 +411,7 @@ fn sync_shading(
             m.extension.unlit != m.base.unlit
                 || m.extension.full != full
                 || m.extension.shadows != shadows
+                || m.extension.one_sample != settings.vr
                 || m.extension.night != night(m)
                 || m.extension.flood != flood_of(m)
                 || m.extension.retro != retro
@@ -411,6 +423,7 @@ fn sync_shading(
             m.extension.unlit = m.base.unlit;
             m.extension.full = full;
             m.extension.shadows = shadows;
+            m.extension.one_sample = settings.vr;
             m.extension.night = night(&m);
             m.extension.flood = flood_of(&m);
             m.extension.retro = retro;
@@ -482,14 +495,19 @@ fn cockpit_visibility(
     }
 }
 
-/// At an air defence console the hand controller slews a Gepard's gun (a Patriot's has none).
+/// At an air defence console the hand controller slews a Gepard's gun (a Patriot's has none), at
+/// a drone command center it flies the drone or slews its camera.
 fn console_stick(
     manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
 ) {
     let Some(m) = manning else { return };
     for (stick, mut v, mut tip) in &mut q {
-        v.set_if_neq(if m.gepard { Visibility::Inherited } else { Visibility::Hidden });
+        v.set_if_neq(if m.gepard() || m.drones() {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        });
         if stick.is_added() {
             *tip = tooltips::console_stick_tip();
         }
@@ -508,7 +526,10 @@ fn spawn_cockpit(
     mut hud_materials: ResMut<Assets<hud_glass::HudGlassMaterial>>,
     mut images: ResMut<Assets<Image>>,
     fonts: Res<crate::font::Fonts>,
-    tc_image: Option<Res<crate::trackcam::TrackCamImage>>,
+    (tc_image, tc_wide): (
+        Option<Res<crate::trackcam::TrackCamImage>>,
+        Option<Res<crate::trackcam::TrackCamWide>>,
+    ),
     (settings, manning): (Res<Settings>, Option<Res<crate::station::Manning>>),
     models: Res<model::CockpitModels>,
     server: Res<AssetServer>,
@@ -530,6 +551,10 @@ fn spawn_cockpit(
             CockpitRoot(layout.style, settings.local_lights, settings.hires_displays(), stem),
             Transform::from_translation(eye).with_scale(Vec3::splat(1.0 / scale)),
             Visibility::default(),
+            // Only the eye cameras: the targeting pod's (an air defence console's EO camera on
+            // its mast), the recon and the unit view cameras never see the cockpit, the
+            // console room or the hands, nor are lit by its lamps.
+            Propagate(eye_only()),
         ))
         .id();
     commands.entity(aircraft).add_child(root);
@@ -551,6 +576,7 @@ fn spawn_cockpit(
         &mut hud_materials,
         &mut images,
     );
+    spawner.tc_wide = tc_wide.map(|w| crate::trackcam::TrackCamImage(w.0.clone()));
     spawner.spawn(&mut commands, &assets, file, root);
     *anchors = spawner.anchors;
 
@@ -588,9 +614,15 @@ fn spawn_cockpit(
             Visibility::Hidden,
             NoFrustumCulling,
             bevy::light::NotShadowCaster,
+            eye_only(),
         ))
         .id();
     commands.entity(head).add_child(flash);
+}
+
+/// The render layers of the cockpit: the eye cameras' only.
+fn eye_only() -> RenderLayers {
+    RenderLayers::layer(crate::camera::MAIN_LOD_LAYER)
 }
 
 /// Palm boxes following the VR controllers (the fingertip is the palm's front).

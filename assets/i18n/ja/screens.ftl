@@ -49,6 +49,12 @@ planner-uav = 敵UAV
 planner-edit-hint = 点をドラッグで移動、マップをドラッグでパン。区間をクリックで点を追加、右クリックで削除。ホイール：ズーム。
 planner-reset = リセット
 planner-view-hint = マップをドラッグでパン。ホイール：ズーム。
+planner-layers = レイヤー
+planner-layer-sams = レーダー / SAM陣地
+planner-radar-types = レーダーの種類
+planner-layer-pulse = パルスレーダーの探知距離
+planner-layer-doppler = ドップラーレーダーの探知距離
+planner-layer-airfield = 飛行場
 
 ## セーブ済みミッション
 

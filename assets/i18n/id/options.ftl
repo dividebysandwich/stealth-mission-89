@@ -35,11 +35,27 @@ options-auto-trim = Trim otomatis
         Trim manual: Alt + tombol panah, Alt + Home memusatkannya
 options-tooltips = Tooltip kokpit
     .facts = Apa itu kontrol atau layar kokpit, di bawah mouse atau ujung jari VR
+options-player-labels = Nama pemain
+    .facts = Multiplayer: nama pilot lain di atas pesawat mereka, sejauh apa pun
+options-label-size =
+    .facts =
+        Ukuran nama pemain
+        50%: bawaan
 options-section-vr-size = Ukuran kokpit VR
 options-vr-size =
     .facts =
         Ukuran kokpit (dan dunia) di headset
         100%: ukuran asli
+options-section-gif = Rekaman GIF
+options-gif-size = UKURAN
+options-gif-rate = BINGKAI
+options-gif-scale-100 =
+    .facts = Resolusi penuh jendela: berkas besar
+options-gif-scale-25 =
+    .facts = Berkas kecil
+options-gif-rate-50 =
+    .facts = Hanya jika permainan berjalan 100 fps atau lebih (setiap bingkai kedua direkam)
+options-gif-hint = F12 (kecuali diubah) memulai dan menghentikan; disimpan di folder Gambar Anda
 
 ## GRAFIK
 
@@ -85,6 +101,19 @@ options-volume-effects = Efek
     .facts = Senjata, ledakan, roda pendarat, radio, dan sisanya
 options-volume-warnings = Peringatan
     .facts = Klakson stall, peringatan radar dan rudal, sirene kebakaran, nada Sidewinder
+options-volume-rwr = RWR
+    .facts = Nada peringatan radar, sebagai bagian dari volume peringatan
+options-section-rwr-tones = Nada peringatan radar
+rwr-tones-all = SEMUA
+    .facts = Radar yang menyorot Anda, setiap sapuan yang mendeteksi Anda, peluncuran rudal
+rwr-tones-detect = HANYA DETEKSI
+    .facts =
+        Satu nada saat radar mendeteksi Anda (lagi setelah radar melepas Anda sebentar)
+        Dan peluncuran rudal
+rwr-tones-launch = HANYA PELUNCURAN
+    .facts = Hanya rudal yang diluncurkan ke Anda
+rwr-tones-off = MATI
+    .facts = Tanpa nada peringatan radar (lampu dan layar tetap memperingatkan)
 options-section-cockpit = Kokpit
 options-low-pass = Low-pass mesin
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Uap dan aliran rotor
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Saat manuver tajam, jejak uap dari ujung sayap
+        Helikopter yang melayang rendah menerbangkan debu, atau percikan di atas air
+        Kendaraan yang bergerak menerbangkan debu di belakangnya
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

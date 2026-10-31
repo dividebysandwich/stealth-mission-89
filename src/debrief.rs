@@ -428,6 +428,7 @@ fn flight_map(
                 }
             }
             section(ui, t!("debrief-section-map"));
+            map_draw::symbology_switch(ui);
             map_draw::legend(ui, t!("debrief-legend-safe"), |p, c| {
                 p.line_segment(
                     [c - egui::vec2(7.0, 0.0), c + egui::vec2(7.0, 0.0)],
@@ -524,11 +525,19 @@ fn mark(painter: &egui::Painter, p: egui::Pos2, kind: MarkKind) {
     }
 }
 
-/// The player's aircraft at the scrubber: a triangle along the heading.
+/// The player's aircraft at the scrubber: a triangle along the heading (APP-6: a friendly
+/// fixed wing air track).
 fn aircraft(painter: &egui::Painter, view: &MapView, s: &Sample) {
     let (x, y) = s.map();
     let p = view.to_screen(x, y);
     let a = s.heading as u16 as f32 / 65536.0 * std::f32::consts::TAU;
+    if map_draw::app6() {
+        use crate::app6::{Affiliation, Dimension, Icon, Symbol};
+        Symbol::new(Affiliation::Friend, Dimension::Air, Icon::FixedWing)
+            .heading(a)
+            .draw(painter, p, 1.0, 1.0);
+        return;
+    }
     // Heading 0 north (up on the map), clockwise.
     let fwd = egui::vec2(a.sin(), -a.cos());
     let right = egui::vec2(-fwd.y, fwd.x);

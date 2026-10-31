@@ -35,11 +35,27 @@ options-auto-trim = Automatski trim
         Ručni trim: Alt + strelice, Alt + Home ga centrira
 options-tooltips = Tooltipi kokpita
     .facts = Što je pojedina komanda ili zaslon u kokpitu, pod mišem ili vrhom prsta u VR-u
+options-player-labels = Imena igrača
+    .facts = Više igrača: imena drugih pilota iznad njihovih zrakoplova, na bilo kojoj udaljenosti
+options-label-size =
+    .facts =
+        Veličina imena igrača
+        50 %: zadano
 options-section-vr-size = Veličina kokpita u VR-u
 options-vr-size =
     .facts =
         Veličina kokpita (i svijeta) u headsetu
         100 %: prirodna veličina
+options-section-gif = Snimanje GIF-a
+options-gif-size = VELIČINA
+options-gif-rate = SLIKE
+options-gif-scale-100 =
+    .facts = Puna razlučivost prozora: velike datoteke
+options-gif-scale-25 =
+    .facts = Male datoteke
+options-gif-rate-50 =
+    .facts = Samo kad igra radi na 100 fps ili više (snima se svaka druga slika)
+options-gif-hint = F12 (osim ako je preraspoređen) pokreće i zaustavlja; sprema se u mapu Slike
 
 ## GRAFIKA
 
@@ -85,6 +101,19 @@ options-volume-effects = Efekti
     .facts = Oružje, eksplozije, podvozje, radio i ostalo
 options-volume-warnings = Upozorenja
     .facts = Sirena prekida uzgona, radarska upozorenja i upozorenja na projektile, požarna sirena, tonovi Sidewindera
+options-volume-rwr = RWR
+    .facts = Tonovi radarskog upozorenja, kao dio glasnoće upozorenja
+options-section-rwr-tones = Tonovi radarskog upozorenja
+rwr-tones-all = SVI
+    .facts = Radar koji vas osvjetljava, svaki prelet koji vas otkrije, lansiranja projektila
+rwr-tones-detect = SAMO OTKRIVANJE
+    .facts =
+        Jedan ton kad vas radar otkrije (ponovno nakon što vas radari neko vrijeme izgube)
+        I lansiranja projektila
+rwr-tones-launch = SAMO LANSIRANJA
+    .facts = Samo projektili lansirani na vas
+rwr-tones-off = ISKLJ
+    .facts = Bez tonova radarskog upozorenja (svjetla i zasloni i dalje upozoravaju)
 options-section-cockpit = Kokpit
 options-low-pass = Niski propust motora
     .facts =
@@ -140,10 +169,11 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
-effect-vapour = Vapour and downwash
+effect-vapour = Para i struja rotora
     .facts =
-        Pulling hard, vapour trails from the wingtips
-        A helicopter hovering low whips up dust, or spray over water
+        Pri oštrim manevrima tragovi pare s vrhova krila
+        Helikopter koji nisko lebdi diže prašinu, nad vodom pršteću vodu
+        Vozila u pokretu dižu prašinu za sobom
 effect-night-sky = Night sky
     .facts =
         Shooting stars now and then, the stars low over the horizon twinkle

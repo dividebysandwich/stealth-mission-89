@@ -206,6 +206,11 @@ aircraft-a10 =
         Aeronavă de sprijin aerian apropiat
         Lentă și robustă, tun de 30 mm
         Cockpit A-10C, două MFD-uri
+aircraft-av8b =
+    .facts =
+        Avion de atac V/STOL
+        Tracțiune vectorială: zbor staționar, aterizează oriunde
+        Maneta ajutajelor: R / F, Shift pentru opritoare
 aircraft-uh60 =
     .facts =
         Elicopter utilitar

@@ -49,6 +49,12 @@ planner-uav = Fientlig UAV
 planner-edit-hint = Dra en punkt för att flytta den, kartan för att panorera. Klicka på en sträcka för att lägga till en punkt, högerklicka för att ta bort den. Hjul: zoom.
 planner-reset = ÅTERSTÄLL
 planner-view-hint = Dra kartan för att panorera. Hjul: zoom.
+planner-layers = LAGER
+planner-layer-sams = Radar / SAM-gruppering
+planner-radar-types = Radartyper
+planner-layer-pulse = Pulsradarns detektionsavstånd
+planner-layer-doppler = Dopplerradarns detektionsavstånd
+planner-layer-airfield = Flygfält
 
 ## Sparade uppdrag
 

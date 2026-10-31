@@ -147,24 +147,6 @@ impl Scenery {
         self.net.towns.iter().max_by(|a, b| a.r.total_cmp(&b.r)).map(|t| t.c)
     }
 
-    /// Where the cargo crates of a base line up: beside its runway a little ahead of `start`
-    /// (where its aircraft start, facing `forward`; metres east, north), on the far side from
-    /// the apron, and the runway's direction (None: no runway near).
-    pub fn crate_row(&self, start: DVec2, forward: DVec2) -> Option<(DVec2, DVec2)> {
-        let a = self
-            .airfields
-            .iter()
-            .filter(|a| a.runway.c.distance(start) < CRATE_ROW_RANGE)
-            .min_by(|a, b| a.runway.c.distance(start).total_cmp(&b.runway.c.distance(start)))?;
-        let rw = &a.runway;
-        let side = rw.axis.perp();
-        let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
-        let away = if apron.dot(side) > 0.0 { -1.0 } else { 1.0 };
-        let ahead = (start + forward * CRATE_ROW_AHEAD - rw.c).dot(rw.axis);
-        let along = ahead.clamp(-rw.half_len * 0.8, rw.half_len * 0.8);
-        Some((rw.c + rw.axis * along + side * away * (rw.half_width + CRATE_ROW_OUT), rw.axis))
-    }
-
     /// What the ground is at `p` (metres east, north): water, concrete or land.
     pub fn surface(&self, p: DVec2) -> Surface {
         if !self.ground.is_dry_clear(p, 0.0) {
@@ -262,12 +244,6 @@ pub struct SceneryBacklog(pub Option<usize>);
 /// Where the ILS camera looks on an approach to each runway end (see `trackcam.rs`).
 #[derive(Resource, Default)]
 pub struct PapiSites(pub Vec<airfield::PapiSite>);
-
-/// The cargo crates line up beside the runway of an airfield this close to where its aircraft
-/// start, this far ahead of them and this far out from the runway's edge (metres).
-const CRATE_ROW_RANGE: f64 = 4000.0;
-const CRATE_ROW_AHEAD: f64 = 150.0;
-const CRATE_ROW_OUT: f64 = 35.0;
 
 /// A cargo crate for a new air defence site (metres: length, width, height), olive with dark
 /// straps.
@@ -403,13 +379,15 @@ fn build_scenery(
         }
         exit.write(AppExit::Success);
     }
-    // `--write-helipads`: save the airfields' helipads for the simulation (its resupply
-    // helicopters lift off there) and quit.
+    // `--write-helipads`: save the airfields' helipads and runways for the simulation (its
+    // resupply helicopters lift off there, and hook their crates beside the runways) and quit.
     if std::env::args().any(|a| a == "--write-helipads") {
-        let path = stealth_host::assets::asset(&format!("theaters/{}.helipads", theater.id));
-        match std::fs::write(&path, helipads_ron(&fields)) {
-            Ok(()) => info!("helipads written to {}", path.display()),
-            Err(e) => error!("{}: {e}", path.display()),
+        for (ext, ron) in [("helipads", helipads_ron(&fields)), ("runways", runways_ron(&fields))] {
+            let path = stealth_host::assets::asset(&format!("theaters/{}.{ext}", theater.id));
+            match std::fs::write(&path, ron) {
+                Ok(()) => info!("{ext} written to {}", path.display()),
+                Err(e) => error!("{}: {e}", path.display()),
+            }
         }
         exit.write(AppExit::Success);
     }
@@ -431,6 +409,30 @@ fn helipads_ron(fields: &[airfield::Airfield]) -> String {
         })
         .collect();
     format!("[\n{}]\n", pads.concat())
+}
+
+/// The airfields' runways as the simulation reads them (`TheaterTiles::read_runways`): a RON
+/// list of `stealth_sim::Runway`, metres east and north, `out` pointing away from the apron.
+fn runways_ron(fields: &[airfield::Airfield]) -> String {
+    let p = |v: DVec2| format!("({:.3}, {:.3})", v.x, v.y);
+    let runways: Vec<String> = fields
+        .iter()
+        .map(|a| {
+            let rw = &a.runway;
+            let side = rw.axis.perp();
+            let apron = a.pads.iter().flatten().fold(DVec2::ZERO, |s, p| s + *p - rw.c);
+            let out = if apron.dot(side) > 0.0 { -side } else { side };
+            format!(
+                "    (c: {}, axis: {}, half_len: {:.3}, half_width: {:.3}, out: {}),\n",
+                p(rw.c),
+                p(rw.axis),
+                rw.half_len,
+                rw.half_width,
+                p(out)
+            )
+        })
+        .collect();
+    format!("[\n{}]\n", runways.concat())
 }
 
 /// The theater's scenery layout: its ground, the town and road network (with a style) and the
@@ -1036,15 +1038,17 @@ fn clear_units(
     if link.as_deref().is_some_and(|l| l.is_client()) {
         return;
     }
-    let units = combat.sim.aaa_units();
+    let units = combat.sim.units();
     if units.len() == seen.len() && units.iter().zip(seen.iter()).all(|(u, &s)| (u.x, u.y) == s) {
         return;
     }
-    let units = combat.sim.aaa_units_mut();
+    // A convoy's vehicles drive where the route takes them.
+    let moving: Vec<bool> = (0..units.len()).map(|k| combat.sim.unit_moving(k)).collect();
+    let units = combat.sim.units_mut();
     let mut taken: std::collections::HashSet<(i32, i32)> =
         units.iter().filter(|u| !u.destroyed).map(|u| (u.x, u.y)).collect();
     for (i, u) in units.iter_mut().enumerate() {
-        if u.destroyed || seen.get(i) == Some(&(u.x, u.y)) {
+        if u.destroyed || moving[i] || seen.get(i) == Some(&(u.x, u.y)) {
             continue;
         }
         let m = stealth_sim::aaa::M_PER_MAP;
@@ -1069,6 +1073,11 @@ fn clear_units(
         if let Some(at) = spot {
             taken.remove(&(u.x, u.y));
             taken.insert(at);
+            // A vehicle standing still moves with its fine position.
+            if let Some(f) = u.fine.as_mut() {
+                f.e += ((at.0 - u.x) as f64 * m) as f32;
+                f.n -= ((at.1 - u.y) as f64 * m) as f32;
+            }
             (u.x, u.y) = at;
         }
     }
@@ -1106,13 +1115,15 @@ fn clear_air_defence(
         let at = map_metres(d.x, d.y - stealth_campaign::tuning::DEPLOY_UNIT_OFFSET / 2);
         (at, DEPLOYMENT_CLEARING)
     });
-    let want: Vec<(DVec2, f64)> = (0..sim.aaa_units().len())
+    let want: Vec<(DVec2, f64)> = (0..sim.units().len())
         .filter(|&k| {
-            let u = &sim.aaa_units()[k];
-            sim.aaa_blue(k) && (u.kind.patriot() || u.kind == stealth_sim::aaa::AaaKind::Gepard)
+            let u = &sim.units()[k];
+            sim.aaa_blue(k)
+                && !sim.unit_moving(k)
+                && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
-            let u = &sim.aaa_units()[k];
+            let u = &sim.units()[k];
             let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
             (p, AIR_DEFENCE_CLEARING)
         })
