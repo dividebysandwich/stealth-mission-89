@@ -96,6 +96,46 @@
       };
     }
     const resume = () => contexts.forEach(c => c.state === "suspended" && c.resume());
+    // The coop radio's microphone (src/voice/capture.rs): getUserMedia into an AudioWorklet that
+    // hands the game blocks of samples and their rate; the game's callback returns false to stop.
+    window.smVoiceStart = async (onSamples, onError) => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        const ctx = new AudioContext();
+        const code = `registerProcessor("sm89-mic", class extends AudioWorkletProcessor {
+          constructor() { super(); this.buf = []; }
+          process(inputs) {
+            const ch = inputs[0] && inputs[0][0];
+            if (ch) {
+              for (const v of ch) this.buf.push(v);
+              if (this.buf.length >= 1024) {
+                this.port.postMessage(new Float32Array(this.buf));
+                this.buf = [];
+              }
+            }
+            return true;
+          }
+        });`;
+        await ctx.audioWorklet.addModule(
+          URL.createObjectURL(new Blob([code], { type: "application/javascript" })));
+        const source = ctx.createMediaStreamSource(stream);
+        const node = new AudioWorkletNode(ctx, "sm89-mic");
+        // Pulled by the output to run, silenced: the voice isn't played back here.
+        const mute = ctx.createGain();
+        mute.gain.value = 0;
+        source.connect(node).connect(mute).connect(ctx.destination);
+        node.port.onmessage = e => {
+          if (!onSamples(e.data, ctx.sampleRate)) {
+            stream.getTracks().forEach(t => t.stop());
+            ctx.close();
+          }
+        };
+        if (ctx.state === "suspended") ctx.resume();
+      } catch (e) {
+        onError(String(e));
+      }
+    };
     ["pointerdown", "keydown"].forEach(e => window.addEventListener(e, resume, { capture: true }));
     // The keys and the right mouse button belong to the game.
     const canvas = document.getElementById("sm89");
