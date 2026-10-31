@@ -437,6 +437,26 @@ fn sky_light(n: vec3<f32>) -> vec3<f32> {
     return min(sun_moon(n) / sun_moon(vec3<f32>(0.0, 1.0, 0.0)), vec3<f32>(SKY_LIGHT_MAX));
 }
 
+// The rolling hills' slopes (mesh tag `TAG_HILLS`): shaded as by the key light (the sun, or the
+// moon when brighter) from its azimuth at a fixed height, so they show under a high sun too.
+// Relative to flat ground (1 there): `HILL_SHADE` of the difference, within the limits.
+const HILL_SHADE: f32 = 1.4;
+const HILL_LIGHT_UP: f32 = 0.57;
+const HILL_SHADE_MIN: f32 = 0.5;
+const HILL_SHADE_MAX: f32 = 1.4;
+
+fn hill_shade(face: vec3<f32>, dir: vec3<f32>) -> f32 {
+    var n = normalize(face);
+    if (dot(n, dir) > 0.0) { n = -n; }
+    let key = select(globals.moon.xyz, globals.sun.xyz, globals.sun.w >= globals.moon.w);
+    var h = vec2<f32>(key.x, key.z);
+    // Overhead: from the north west.
+    if (length(h) < 1e-3) { h = vec2<f32>(-1.0, -1.0); }
+    h = normalize(h) * sqrt(1.0 - HILL_LIGHT_UP * HILL_LIGHT_UP);
+    let f = dot(n, vec3<f32>(h.x, HILL_LIGHT_UP, h.y)) / HILL_LIGHT_UP;
+    return clamp(1.0 + HILL_SHADE * (f - 1.0), HILL_SHADE_MIN, HILL_SHADE_MAX);
+}
+
 // Modern mode: flat lighting of a face. `face`: the face normal from the position's
 // derivatives (`Deriv`).
 fn shade(face: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
@@ -1633,6 +1653,9 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     }
     if ((material.flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, in.world_position, deriv, modern);
+    }
+    if (!is_line && (in.warm & 8u) != 0u) {
+        rgb = rgb * hill_shade(deriv.face, dir);
     }
     // A dark night blacks out the scenery; lights (lines and dots) show, aircraft barely.
     // Lines in scenery colours (rivers, roads: material flag 64) go dark with the ground.

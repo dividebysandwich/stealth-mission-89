@@ -326,6 +326,23 @@ vec3 sky_light(vec3 n) {
     return min(sun_moon(n) / sun_moon(vec3(0.0, 1.0, 0.0)), vec3(SKY_LIGHT_MAX));
 }
 
+// The rolling hills' slopes (palette.wgsl `hill_shade`).
+const float HILL_SHADE = 1.4;
+const float HILL_LIGHT_UP = 0.57;
+const float HILL_SHADE_MIN = 0.5;
+const float HILL_SHADE_MAX = 1.4;
+
+float hill_shade(vec3 face, vec3 dir) {
+    vec3 n = normalize(face);
+    if (dot(n, dir) > 0.0) { n = -n; }
+    vec3 key = g.sun.w >= g.moon.w ? g.sun.xyz : g.moon.xyz;
+    vec2 h = vec2(key.x, key.z);
+    if (length(h) < 1e-3) { h = vec2(-1.0, -1.0); }
+    h = normalize(h) * sqrt(1.0 - HILL_LIGHT_UP * HILL_LIGHT_UP);
+    float f = dot(n, vec3(h.x, HILL_LIGHT_UP, h.y)) / HILL_LIGHT_UP;
+    return clamp(1.0 + HILL_SHADE * (f - 1.0), HILL_SHADE_MIN, HILL_SHADE_MAX);
+}
+
 vec3 shade(vec3 face, vec3 dir) {
     vec3 n = normalize(face);
     if (dot(n, dir) > 0.0) { n = -n; }
@@ -1204,6 +1221,9 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     }
     if ((u_flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, v_world, face, foot, gdx, gdy, modern);
+    }
+    if (!is_line && (v_warm & 8u) != 0u) {
+        rgb = rgb * hill_shade(face, dir);
     }
     // A dark night blacks out the scenery; lights (lines and dots) show, aircraft barely.
     float dark = (is_line && (u_flags & 64u) == 0u) ? 0.0 : night_dark();
