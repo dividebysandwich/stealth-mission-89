@@ -94,6 +94,9 @@ impl Relief {
     }
 }
 
+/// Look-ahead steps over the rolling hills (map units, 0 to 3 km).
+const HILLS_AHEAD: [i32; 7] = [0, 16, 32, 64, 96, 128, 192];
+
 /// Look-ahead steps along the heading (map units, one cell each).
 const AHEAD: [i32; 4] = [0, CELL_MAP, 2 * CELL_MAP, 3 * CELL_MAP];
 
@@ -115,6 +118,26 @@ impl crate::Sim {
         t.relief.sight_open(from, to) && t.hills.sight_open(from, to)
     }
 
+    /// The highest of the rolling hills under a flight unit and up to `HILLS_AHEAD` ahead of
+    /// it, in altitude units.
+    pub(crate) fn hills_ahead(&self, u: &crate::types::FlightUnit) -> i32 {
+        let Some(t) = self.tiles.as_ref().filter(|t| !t.hills.is_flat()) else { return 0 };
+        HILLS_AHEAD
+            .iter()
+            .map(|&d| {
+                let x = u.x + self.trig.sin_mul(u.heading, d);
+                let y = u.y - self.trig.cos_mul(u.heading, d);
+                t.hills.ground_alt(x, y)
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// The highest ground, the mountains or the rolling hills, under a flight unit and ahead.
+    pub(crate) fn ground_ahead(&self, u: &crate::types::FlightUnit) -> i32 {
+        self.terrain_ahead(u).max(self.hills_ahead(u))
+    }
+
     /// The highest ground under a flight unit and up to three cells (6 km) ahead of it, in
     /// altitude units.
     pub(crate) fn terrain_ahead(&self, u: &crate::types::FlightUnit) -> i32 {
@@ -124,7 +147,7 @@ impl crate::Sim {
             .map(|&d| {
                 let x = u.x + self.trig.sin_mul(u.heading, d);
                 let y = u.y - self.trig.cos_mul(u.heading, d);
-                relief.height(x, y).max(self.hill_alt(x, y))
+                relief.height(x, y)
             })
             .max()
             .unwrap_or(0)

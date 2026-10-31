@@ -4,6 +4,8 @@ use crate::types::*;
 
 /// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
 const TERRAIN_CLEARANCE: i32 = 614;
+/// The room kept over the rolling hills ahead (altitude units, about 60 m).
+const HILLS_CLEARANCE: i32 = 123;
 /// Base traffic: its oval circuit around the base (map units: half its width east-west, half
 /// its length along the runway; 4 x 6 km), the height it flies it at (altitude units, 730 m),
 /// how long it flies it (seconds, about two laps) and rests on the ground before the next
@@ -290,8 +292,12 @@ impl Sim {
         if ((i as i32 ^ self.frame) & 3) == 0 {
             // Mountains ahead: climb clear of them (not the airfield traffic, nor a wreck).
             let traffic = fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT | fflags::DESTROYED;
+            // The rolling hills too, with less room (they are low and gentle).
             let terrain = self.terrain_ahead(&u);
-            if u.flags & traffic == 0 && terrain > 0 && u.alt < terrain + TERRAIN_CLEARANCE {
+            let hills = self.hills_ahead(&u);
+            let low = (terrain > 0 && u.alt < terrain + TERRAIN_CLEARANCE)
+                || (hills > 0 && u.alt < hills + HILLS_CLEARANCE);
+            if u.flags & traffic == 0 && low {
                 u.flags |= fflags::TERRAIN;
             } else {
                 u.flags &= !fflags::TERRAIN;
@@ -311,7 +317,10 @@ impl Sim {
                 self.add_smoke(slot, u.x, u.y, u.alt);
             }
         }
-        let ground = self.tiles.as_ref().map_or(0, |t| t.relief.height(u.x, u.y));
+        let ground = self
+            .tiles
+            .as_ref()
+            .map_or(0, |t| t.relief.height(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)));
         if u.pitch < 0
             && u.alt - ground < 200 - self.trig.sin_mul(u.pitch, 2000)
             && u.flags & 0x220 == 0

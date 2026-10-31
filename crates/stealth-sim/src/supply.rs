@@ -242,7 +242,7 @@ impl Sim {
             // onto the pad at home, to the hook's reach over the crate, or until the crate
             // stands on the ground at the drop.
             let galt = if d > SLOW_DOWN / 2.0 {
-                CRUISE_ALT + self.terrain_ahead(&u)
+                CRUISE_ALT + self.ground_ahead(&u)
             } else if d >= LOW {
                 ground + LIFT_ALT
             } else if run.delivered {

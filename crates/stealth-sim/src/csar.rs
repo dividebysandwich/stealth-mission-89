@@ -390,7 +390,7 @@ impl Sim {
             } else if hover {
                 galt + ground
             } else {
-                galt + self.terrain_ahead(&u)
+                galt + self.ground_ahead(&u)
             };
             u.alt += clamp_q(galt - u.alt, -climb, climb);
         }

@@ -70,8 +70,8 @@ impl Sim {
         u.pitch = if d < DIVE_RANGE {
             clamp_q(-bearing(u.alt >> 6, d.max(1)), -0x2800, 0)
         } else if u.alt > 0
-            && self.terrain_ahead(&u) > 0
-            && u.alt < self.terrain_ahead(&u) + TERRAIN_CLEARANCE
+            && self.ground_ahead(&u) > 0
+            && u.alt < self.ground_ahead(&u) + TERRAIN_CLEARANCE
         {
             0x800
         } else {
@@ -85,7 +85,7 @@ impl Sim {
         u.x = (u.wx >> 5) & 0xFFFF;
         u.y = (u.wy >> 5) & 0xFFFF;
         self.flights[i] = u;
-        if d < IMPACT_RANGE || u.alt <= 0 {
+        if d < IMPACT_RANGE || u.alt <= self.hill_alt(u.x, u.y) {
             self.drone_impact(i, d < IMPACT_RANGE);
         }
     }
