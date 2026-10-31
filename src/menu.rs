@@ -857,6 +857,7 @@ pub(crate) fn big_button(text: &str) -> BigButton {
         fill: None,
         primary: false,
         icon: None,
+        left: false,
     }
 }
 
@@ -979,7 +980,18 @@ pub(crate) struct BigButton {
     primary: bool,
     /// A Lucide icon before the label.
     icon: Option<char>,
+    /// The icon and the label at the left instead of centred.
+    left: bool,
 }
+
+/// A laid out text.
+type Galley = std::sync::Arc<egui::Galley>;
+
+/// A big button's label size, the space between its icon and its label, and (left-aligned)
+/// between its left edge and its icon.
+const BIG_SIZE: f32 = 22.0;
+const BIG_GAP: f32 = 12.0;
+const BIG_INDENT: f32 = 20.0;
 
 impl BigButton {
     pub(crate) fn icon(mut self, icon: char) -> Self {
@@ -1001,24 +1013,42 @@ impl BigButton {
         self.primary = true;
         self
     }
+
+    pub(crate) fn left(mut self) -> Self {
+        self.left = true;
+        self
+    }
+
+    /// The label and the icon laid out, and how far the label is after the icon's start.
+    fn layout(&self, ctx: &egui::Context) -> (Galley, Option<Galley>, f32) {
+        let layout = |text: String, font| {
+            ctx.fonts_mut(|f| f.layout(text, font, egui::Color32::PLACEHOLDER, f32::INFINITY))
+        };
+        let galley = layout(self.text.clone(), egui::FontId::monospace(BIG_SIZE));
+        // Before its font is added (the first pass) there is no icon.
+        let icon = self
+            .icon
+            .filter(|_| has_icon_font(ctx))
+            .map(|icon| layout(icon.to_string(), egui::FontId::new(BIG_SIZE, ICON_FAMILY.clone())));
+        let lead = icon.as_ref().map_or(0.0, |g| g.size().x + BIG_GAP);
+        (galley, icon, lead)
+    }
+
+    /// The width its icon and label need (at least `min_size`'s).
+    pub(crate) fn width(&self, ctx: &egui::Context) -> f32 {
+        let (galley, _, lead) = self.layout(ctx);
+        let padding = ctx.global_style().spacing.button_padding.x;
+        let indent = if self.left { BIG_INDENT } else { padding };
+        (galley.size().x + lead + 2.0 * indent).max(self.min_size.x)
+    }
 }
 
 impl egui::Widget for BigButton {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        const SIZE: f32 = 22.0;
-        // Between the icon and the label.
-        const GAP: f32 = 12.0;
-        let font = egui::FontId::monospace(SIZE);
-        let galley =
-            ui.painter().layout_no_wrap(self.text.clone(), font, egui::Color32::PLACEHOLDER);
+        let (galley, icon, lead) = self.layout(ui.ctx());
         let padding = ui.spacing().button_padding;
-        // Before its font is added (the first pass) there is no icon.
-        let icon = self.icon.filter(|_| has_icon_font(ui.ctx())).map(|icon| {
-            let font = egui::FontId::new(SIZE, ICON_FAMILY.clone());
-            ui.painter().layout_no_wrap(icon.to_string(), font, egui::Color32::PLACEHOLDER)
-        });
-        let lead = icon.as_ref().map_or(0.0, |g| g.size().x + GAP);
-        let size = (galley.size() + 2.0 * padding + egui::vec2(lead, 0.0)).max(self.min_size);
+        let size =
+            egui::vec2(self.width(ui.ctx()), galley.size().y + 2.0 * padding.y).max(self.min_size);
         let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
         let enabled = ui.is_enabled();
         resp.widget_info(|| {
@@ -1066,8 +1096,12 @@ impl egui::Widget for BigButton {
                 GREEN
             }
         };
-        // The icon then the label, centred together.
-        let left = rect.center().x - (lead + galley.size().x) / 2.0;
+        // The icon then the label, centred together (or at the left).
+        let left = if self.left {
+            rect.left() + BIG_INDENT
+        } else {
+            rect.center().x - (lead + galley.size().x) / 2.0
+        };
         if let Some(icon) = icon {
             let at = egui::pos2(left, rect.center().y - icon.size().y / 2.0);
             p.galley(at, icon, text);
@@ -1093,6 +1127,11 @@ pub(crate) struct Panel<'a> {
 const PANEL_MARGIN: f32 = 16.0;
 const PANEL_CUT: f32 = 16.0;
 const PANEL_INSET: f32 = 3.0;
+/// The logo's width before the title; how far the title tab reaches past the title and how far
+/// its right side slants.
+const PANEL_LOGO: f32 = 30.0;
+const PANEL_TAB: f32 = 24.0;
+const PANEL_SLANT: f32 = 18.0;
 
 /// Where a panel's header put the logo, the right end of the title and the header's row.
 type Head = (egui::Rect, f32, egui::Rect);
@@ -1110,6 +1149,18 @@ impl<'a> Panel<'a> {
     pub(crate) fn note(mut self, note: impl Into<String>) -> Self {
         self.note = note.into();
         self
+    }
+
+    /// The narrowest window whose title tab still ends before its cut corner (the title alone,
+    /// without `after` or the note).
+    pub(crate) fn min_width(&self, ctx: &egui::Context) -> f32 {
+        let style = ctx.global_style();
+        let font = egui::TextStyle::Heading.resolve(&style);
+        let title = ctx.fonts_mut(|f| {
+            f.layout(self.title.to_string(), font, egui::Color32::PLACEHOLDER, f32::INFINITY)
+        });
+        let end = PANEL_MARGIN + PANEL_LOGO + style.spacing.item_spacing.x + title.size().x;
+        end + PANEL_TAB + PANEL_SLANT + PANEL_CUT + PANEL_INSET + 8.0
     }
 
     /// Shows `window` (its frame replaced) with the header and `add` on the panel, painted
@@ -1142,7 +1193,7 @@ impl<'a> Panel<'a> {
 /// A panel's header row: the room for the logo, the title, `after` it.
 fn header(ui: &mut egui::Ui, title: &str, after: Option<egui::RichText>) -> Head {
     let row = ui.horizontal(|ui| {
-        let (logo, _) = ui.allocate_exact_size(egui::vec2(30.0, 24.0), egui::Sense::hover());
+        let (logo, _) = ui.allocate_exact_size(egui::vec2(PANEL_LOGO, 24.0), egui::Sense::hover());
         let mut end = ui.label(egui::RichText::new(title).heading().color(BRIGHT)).rect.right();
         if let Some(after) = after {
             end = ui.label(after).rect.right();
@@ -1197,8 +1248,8 @@ fn panel_shapes(
         pos2(r.left(), r.bottom() - k),
         pos2(r.left(), r.top() + k),
     ];
-    let slant = 18.0;
-    let tab = end + 24.0 + slant;
+    let slant = PANEL_SLANT;
+    let tab = end + PANEL_TAB + slant;
     let line = Stroke::new(1.5, DIM);
     // The rule steps up past the tab, where there is room.
     let step = (r.right() - 190.0).max(tab + 30.0);
@@ -1600,124 +1651,137 @@ fn main_screen(
     multiplayer: &mut crate::multiplayer_menu::MultiplayerWindow,
     exit: &mut MessageWriter<AppExit>,
 ) {
-    let wide = |text: &str| big_button(text).min_size(egui::vec2(360.0, 50.0));
-    Panel::new("STEALTH MISSION 89").window(
-        menu_window(ctx, "Stealth Mission 89", 420.0),
-        ctx,
-        |ui| {
-            ui.vertical_centered(|ui| {
-                ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
-                ui.add_space(10.0);
-                if facts(
-                    ui.add(wide("SINGLE MISSION").icon(icon::SINGLE_MISSION)),
-                    &[
-                        "One mission in the theater of your choice",
-                        "Choose the options, plan the route and the loadout",
-                    ],
-                )
-                .clicked()
-                {
-                    // Leaves career mode; the same mission again if the options are the same.
-                    state.career = None;
-                    state.dirty = true;
-                    state.mission_screen = true;
-                }
-                if facts(
-                    ui.add(wide("CAREER").icon(icon::CAREER)),
-                    &[
-                        "Pilot records: rank, decorations, sorties",
-                        "Tour of duty: 12 sorties in one theater",
-                        "What you destroy stays destroyed",
-                    ],
-                )
-                .clicked()
-                {
-                    career.show();
-                }
-                if facts(
-                    ui.add(wide("DYNAMIC CAMPAIGN").icon(icon::CAMPAIGN)),
-                    &[
-                        "Dynamic campaign in real time",
-                        "Take the enemy's cities and airfields",
-                        "Missions from the live situation",
-                    ],
-                )
-                .clicked()
-                {
-                    campaign.show();
-                }
-                // Browsers only join, through the master server's relay (docs/web.md).
-                let how = if cfg!(target_arch = "wasm32") {
-                    "Join a server on the public list"
-                } else {
-                    "Join a server, or host a campaign and fly in it"
-                };
-                if facts(
-                    ui.add(wide("MULTIPLAYER").icon(icon::MULTIPLAYER)),
-                    &["Coop in the dynamic campaign", how],
-                )
-                .clicked()
-                {
-                    multiplayer.show();
-                }
-                if facts(
-                    ui.add(wide("OPTIONS").icon(icon::OPTIONS)),
-                    &[
-                        "Game: cockpit, HUD and avionics style, auto trim",
-                        "Graphics, sound volumes, key and joystick bindings",
-                        "Saved for the next flights",
-                    ],
-                )
-                .clicked()
-                {
-                    options.open = true;
-                }
-                // The browser build: the desktop game is a download (web/download.html).
-                #[cfg(target_arch = "wasm32")]
-                if facts(
-                    ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)),
-                    &[
-                        "The desktop game for Windows, Linux and macOS",
-                        "With VR and multiplayer",
-                        "Steam Deck and Steam Frame: the Linux AppImage",
-                    ],
-                )
-                .clicked()
-                {
-                    ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
-                }
-                #[cfg(target_arch = "wasm32")]
-                if facts(
-                    ui.add(wide("DISCORD").icon(icon::DISCORD)),
-                    &["Fly together, report bugs and share missions", "Follow development"],
-                )
-                .clicked()
-                {
-                    ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
-                }
-                ui.add_space(10.0);
-                // In the browser the tab is closed instead.
-                if !cfg!(target_arch = "wasm32")
-                    && facts(ui.add(wide("QUIT").icon(icon::QUIT)), &["Exit to the desktop"])
-                        .clicked()
-                {
-                    exit.write(AppExit::Success);
-                }
-                ui.add_space(6.0);
-                // In the browser: which build runs (docs/web.md).
-                let renderer = match (cfg!(target_arch = "wasm32"), crate::WEBGL2) {
-                    (false, _) => "",
-                    (true, false) => " · WEBGPU",
-                    (true, true) => " · WEBGL2",
-                };
-                ui.label(
-                    egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
-                        .size(11.0)
-                        .color(DIM),
-                );
-            });
-        },
-    );
+    // Every button as wide as the longest label needs, its icon and label at the left.
+    let mut labels = vec![
+        ("SINGLE MISSION", icon::SINGLE_MISSION),
+        ("CAREER", icon::CAREER),
+        ("DYNAMIC CAMPAIGN", icon::CAMPAIGN),
+        ("MULTIPLAYER", icon::MULTIPLAYER),
+        ("OPTIONS", icon::OPTIONS),
+    ];
+    #[cfg(target_arch = "wasm32")]
+    labels.extend([("DOWNLOAD", icon::DOWNLOAD), ("DISCORD", icon::DISCORD)]);
+    #[cfg(not(target_arch = "wasm32"))]
+    labels.push(("QUIT", icon::QUIT));
+    let width = labels
+        .iter()
+        .map(|&(text, i)| big_button(text).icon(i).left().width(ctx))
+        .fold(0.0, f32::max);
+    let wide = |text: &str| big_button(text).left().min_size(egui::vec2(width, 50.0));
+    let panel = Panel::new("STEALTH MISSION 89");
+    let window_width = (width + 60.0).max(panel.min_width(ctx));
+    panel.window(menu_window(ctx, "Stealth Mission 89", window_width), ctx, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+            ui.add_space(10.0);
+            if facts(
+                ui.add(wide("SINGLE MISSION").icon(icon::SINGLE_MISSION)),
+                &[
+                    "One mission in the theater of your choice",
+                    "Choose the options, plan the route and the loadout",
+                ],
+            )
+            .clicked()
+            {
+                // Leaves career mode; the same mission again if the options are the same.
+                state.career = None;
+                state.dirty = true;
+                state.mission_screen = true;
+            }
+            if facts(
+                ui.add(wide("CAREER").icon(icon::CAREER)),
+                &[
+                    "Pilot records: rank, decorations, sorties",
+                    "Tour of duty: 12 sorties in one theater",
+                    "What you destroy stays destroyed",
+                ],
+            )
+            .clicked()
+            {
+                career.show();
+            }
+            if facts(
+                ui.add(wide("DYNAMIC CAMPAIGN").icon(icon::CAMPAIGN)),
+                &[
+                    "Dynamic campaign in real time",
+                    "Take the enemy's cities and airfields",
+                    "Missions from the live situation",
+                ],
+            )
+            .clicked()
+            {
+                campaign.show();
+            }
+            // Browsers only join, through the master server's relay (docs/web.md).
+            let how = if cfg!(target_arch = "wasm32") {
+                "Join a server on the public list"
+            } else {
+                "Join a server, or host a campaign and fly in it"
+            };
+            if facts(
+                ui.add(wide("MULTIPLAYER").icon(icon::MULTIPLAYER)),
+                &["Coop in the dynamic campaign", how],
+            )
+            .clicked()
+            {
+                multiplayer.show();
+            }
+            if facts(
+                ui.add(wide("OPTIONS").icon(icon::OPTIONS)),
+                &[
+                    "Game: cockpit, HUD and avionics style, auto trim",
+                    "Graphics, sound volumes, key and joystick bindings",
+                    "Saved for the next flights",
+                ],
+            )
+            .clicked()
+            {
+                options.open = true;
+            }
+            // The browser build: the desktop game is a download (web/download.html).
+            #[cfg(target_arch = "wasm32")]
+            if facts(
+                ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)),
+                &[
+                    "The desktop game for Windows, Linux and macOS",
+                    "With VR and multiplayer",
+                    "Steam Deck and Steam Frame: the Linux AppImage",
+                ],
+            )
+            .clicked()
+            {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
+            }
+            #[cfg(target_arch = "wasm32")]
+            if facts(
+                ui.add(wide("DISCORD").icon(icon::DISCORD)),
+                &["Fly together, report bugs and share missions", "Follow development"],
+            )
+            .clicked()
+            {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
+            }
+            ui.add_space(10.0);
+            // In the browser the tab is closed instead.
+            if !cfg!(target_arch = "wasm32")
+                && facts(ui.add(wide("QUIT").icon(icon::QUIT)), &["Exit to the desktop"]).clicked()
+            {
+                exit.write(AppExit::Success);
+            }
+            ui.add_space(6.0);
+            // In the browser: which build runs (docs/web.md).
+            let renderer = match (cfg!(target_arch = "wasm32"), crate::WEBGL2) {
+                (false, _) => "",
+                (true, false) => " · WEBGPU",
+                (true, true) => " · WEBGL2",
+            };
+            ui.label(
+                egui::RichText::new(format!("VERSION {}{renderer}", env!("CARGO_PKG_VERSION")))
+                    .size(11.0)
+                    .color(DIM),
+            );
+        });
+    });
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
