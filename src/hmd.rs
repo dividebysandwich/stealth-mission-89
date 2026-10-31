@@ -14,10 +14,12 @@
 //!   far as its gimbals turn and locks the aircraft nearest its middle);
 //! - where the targeting pod looks on the ground (a small circle with a dot, as on the HUD);
 //! - the gun line (rounds and what it is slaved to) under the reticle while the gun is
-//!   selected.
+//!   selected;
+//! - the route's waypoints (the current steerpoint larger, with its number; off the visor it
+//!   waits crossed out in its direction).
 //!
-//! The HMCS shows only the horizon, the route's waypoints (the current steerpoint larger, with
-//! its number), the lock, the targeting pod's ground point and the Sidewinder seeker's circle.
+//! The HMCS shows only the horizon, the waypoints, the lock, the targeting pod's ground point
+//! and the Sidewinder seeker's circle.
 //!
 //! The horizon, waypoints, lock, pipper and pod sight are drawn where they are in the world;
 //! the speed and altitude boxes either side of the smoothed sight.
@@ -67,6 +69,8 @@ const DISTANCE: f32 = 0.6;
 const MARGIN: f32 = 30.0;
 /// The speed and altitude boxes' inner edges from the centre (pixels, about 15 degrees).
 const READOUT: f32 = 320.0;
+/// Radius of the circle an off-visor steerpoint waits on (pixels, inside the boxes).
+const OFF_VISOR: f32 = 250.0;
 /// How far the boxes follow the sight sideways and stay on the visor (pixels).
 const READOUT_SLACK: f32 = 80.0;
 /// Ink (any colour but the transparent 0) and pen widths.
@@ -162,6 +166,12 @@ fn project(d: Vec3) -> Option<Vec2> {
     (z > 1e-3).then(|| Vec2::new(CX + SCALE * d.x / z, CY - SCALE * d.y / z))
 }
 
+fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
+    let k = r * 0.7;
+    c.stroke(q - Vec2::splat(k), q + Vec2::splat(k), THIN, INK);
+    c.stroke(q + Vec2::new(-k, k), q + Vec2::new(k, -k), THIN, INK);
+}
+
 fn on_visor(p: Vec2) -> bool {
     p.cmpge(Vec2::splat(MARGIN)).all()
         && p.cmple(Vec2::new(WIDTH as f32, HEIGHT as f32) - MARGIN).all()
@@ -193,19 +203,16 @@ fn draw(
     let tex = &mut *tex;
     tex.canvas.px.fill(0);
     let full = settings.aircraft.spec().hmd == Hmd::Full;
-    let waypoints = if full {
-        Vec::new()
-    } else {
-        waypoints
-            .points
-            .iter()
-            .enumerate()
-            .filter_map(|(i, w)| {
-                let p = crate::world::wu_to_bevy(w.east, w.north, a.ground_altitude as f64);
-                Some(((p - pos.0).as_vec3().try_normalize()?, i, i == waypoints.current))
-            })
-            .collect()
-    };
+    let waypoints = waypoints
+        .points
+        .iter()
+        .enumerate()
+        .filter(|_| !a.damage.autopilot_failed)
+        .filter_map(|(i, w)| {
+            let p = crate::world::wu_to_bevy(w.east, w.north, a.ground_altitude as f64);
+            Some(((p - pos.0).as_vec3().try_normalize()?, i, i == waypoints.current))
+        })
+        .collect();
     let frame = Frame {
         to_head: head.inverse(),
         aircraft: a.orientation,
@@ -221,10 +228,15 @@ fn draw(
         seeker: combat
             .and_then(|c| c.sim.helmet_seeker())
             .map(|[e, n, u]| Vec3::new(e as f32, u as f32, -n as f32)),
-        pod: mfd.av.tgp.los_ground.and_then(|p| {
-            let eye = pos.0 + (a.orientation * settings.cockpit_eye()).as_dvec3();
-            (p - eye).as_vec3().try_normalize()
-        }),
+        pod: mfd
+            .av
+            .tgp
+            .los_ground
+            .and_then(|p| {
+                let eye = pos.0 + (a.orientation * settings.cockpit_eye()).as_dvec3();
+                (p - eye).as_vec3().try_normalize()
+            })
+            .or(mfd.av.tgp.los),
         waypoints,
         gun_line: (full && stores.gun_selected).then(|| {
             let rounds = stores.gun_rounds.unwrap_or(0);
@@ -258,7 +270,8 @@ struct Frame {
     gun: Option<Vec3>,
     /// Where the Sidewinder seeker looks (world).
     seeker: Option<Vec3>,
-    /// Where the targeting pod looks on the ground (world direction from the eye), while it is up.
+    /// Where the targeting pod looks (world direction from the eye: its ground point, else along
+    /// its sight), while it is up.
     pod: Option<Vec3>,
     /// The route's waypoints (world direction, index, the current steerpoint).
     waypoints: Vec<(Vec3, usize, bool)>,
@@ -287,7 +300,19 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
     }
     horizon(c, f.to_head);
     for &(d, i, current) in &f.waypoints {
-        let Some(p) = project(f.to_head * d).filter(|&p| on_visor(p)) else { continue };
+        let d = f.to_head * d;
+        let Some(p) = project(d).filter(|&p| on_visor(p)) else {
+            // The steerpoint off the visor waits on a circle inside the readouts in its
+            // direction, crossed out, so the route is never lost.
+            if current && let Some(dir) = Vec2::new(d.x, -d.y).try_normalize() {
+                let q = Vec2::new(CX, CY) + dir * OFF_VISOR;
+                c.ring(q, 9.0, PEN, INK);
+                cross_out(c, q, 9.0);
+                let n = (i + 1).to_string();
+                stroke_text_at(c, q.x, q.y + 28.0, &n, TEXT, PEN * 0.85, INK, Align::Centre);
+            }
+            continue;
+        };
         if current {
             c.ring(p, 9.0, PEN, INK);
             let n = (i + 1).to_string();
@@ -296,9 +321,21 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
             c.ring(p, 5.0, THIN, INK);
         }
     }
-    if let Some(p) = f.pod.and_then(|d| project(f.to_head * d)).filter(|&p| on_visor(p)) {
-        c.ring(p, 9.0, THIN, INK);
-        c.circle(p.x, p.y, 1.8, INK);
+    if let Some(d) = f.pod.map(|d| f.to_head * d) {
+        match project(d).filter(|&p| on_visor(p)) {
+            Some(p) => {
+                c.ring(p, 9.0, THIN, INK);
+                c.circle(p.x, p.y, 1.8, INK);
+            }
+            // Off the visor: crossed out on the circle in its direction.
+            None => {
+                if let Some(dir) = Vec2::new(d.x, -d.y).try_normalize() {
+                    let q = Vec2::new(CX, CY) + dir * OFF_VISOR;
+                    c.ring(q, 9.0, THIN, INK);
+                    cross_out(c, q, 9.0);
+                }
+            }
+        }
     }
     if let Some((d, air)) = f.lock {
         let d = head(d);
@@ -500,5 +537,24 @@ mod tests {
         let (x, y) = (q.x as usize, q.y as usize);
         assert!(ink(&c, x + 3, x + 7, y - 2, y + 2) > 0, "waypoint ring");
         assert_eq!(ink(&c, x + 8, x + 11, y - 2, y + 2), 0, "smaller");
+    }
+
+    /// A steerpoint off the visor (here behind, up to the right) waits crossed out on the circle
+    /// in its direction; other waypoints off the visor are not drawn.
+    #[test]
+    fn steerpoint_off_the_visor() {
+        let mut f = frame(Quat::IDENTITY);
+        f.reticle = false;
+        f.waypoints = vec![(Vec3::new(1.0, 1.0, 0.5).normalize(), 0, true)];
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw_visor(&mut c, &f);
+        let q = Vec2::new(CX, CY) + Vec2::new(1.0, -1.0).normalize() * OFF_VISOR;
+        let (x, y) = (q.x as usize, q.y as usize);
+        assert!(ink(&c, x - 3, x + 3, y - 3, y + 3) > 0, "crossed out");
+        assert!(ink(&c, x - 8, x + 8, y + 18, y + 38) > 0, "its number");
+        f.waypoints[0].2 = false;
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw_visor(&mut c, &f);
+        assert_eq!(ink(&c, x - 12, x + 12, y - 12, y + 40), 0);
     }
 }

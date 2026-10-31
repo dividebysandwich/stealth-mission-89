@@ -154,11 +154,9 @@ fn overlay(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col: u8,
             c.line(x - 2, 11, x + 2, 11, 11);
         }
     }
-    // Steerpoint diamond (NAV) and the targeting pod's line of sight, where they are seen.
+    // Steerpoint diamond and the targeting pod's line of sight, where they are seen.
     let inv = f.orientation.inverse();
-    if st.mode == HudMode::Nav
-        && let Some((x, y)) = f.steerpoint_dir.and_then(|d| project(f, inv * d))
-    {
+    if let Some((x, y)) = f.steerpoint_dir.and_then(|d| project(f, inv * d)) {
         diamond(c, x, y, 11);
     }
     if let Some((x, y)) = f.tgp_dir.and_then(|d| project(f, inv * d)) {

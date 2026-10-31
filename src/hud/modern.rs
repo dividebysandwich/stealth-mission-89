@@ -84,32 +84,54 @@ fn diamond(c: &mut Canvas, p: Vec2, r: f32) {
     );
 }
 
-/// The steerpoint diamond (direction in the aircraft frame); off the field it waits at the
-/// field's edge in the steerpoint's direction, crossed out.
-fn steerpoint_cue(c: &mut Canvas, d: Vec3, scale: f32) {
-    const R: f32 = 9.0;
+/// Where a cue in direction `d` (aircraft frame) is drawn: where it is seen, else (`true`) at
+/// the edge of the area inside the tapes, clear of the speed and altitude boxes and above the
+/// readouts, in its direction.
+fn kept_in_field(d: Vec3, scale: f32, r: f32) -> Option<(Vec2, bool)> {
     let p = project(d, scale);
     if let Some(p) = p.filter(|&p| inside(p)) {
-        diamond(c, p, R);
-        return;
+        return Some((p, false));
     }
     let centre = Vec2::new(CX, CY);
-    let Some(dir) = p.map_or(Vec2::new(d.x, -d.y), |p| p - centre).try_normalize() else {
-        return;
-    };
-    // Inside the tapes and above the readouts.
-    let (lo, hi) = (Vec2::new(420.0, FIELD.0.y + R), Vec2::new(860.0, 365.0));
+    let dir = p.map_or(Vec2::new(d.x, -d.y), |p| p - centre).try_normalize()?;
+    let (lo, hi) = (Vec2::new(430.0, FIELD.0.y + 2.0 * r), Vec2::new(830.0, 345.0));
     let reach = |d: f32, lo: f32, hi: f32, c: f32| match d {
         d if d > 1e-6 => (hi - c) / d,
         d if d < -1e-6 => (lo - c) / d,
         _ => f32::INFINITY,
     };
     let t = reach(dir.x, lo.x, hi.x, CX).min(reach(dir.y, lo.y, hi.y, CY));
-    let q = centre + dir * t;
-    diamond(c, q, R);
-    let k = R * 0.7;
+    Some((centre + dir * t, true))
+}
+
+fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
+    let k = r * 0.7;
     c.stroke(q + Vec2::new(-k, -k), q + Vec2::new(k, k), THIN, INK);
     c.stroke(q + Vec2::new(-k, k), q + Vec2::new(k, -k), THIN, INK);
+}
+
+/// The steerpoint diamond (direction in the aircraft frame); off the field it waits at the
+/// field's edge in the steerpoint's direction, crossed out.
+fn steerpoint_cue(c: &mut Canvas, d: Vec3, scale: f32) {
+    const R: f32 = 9.0;
+    let Some((q, off)) = kept_in_field(d, scale, R) else { return };
+    diamond(c, q, R);
+    if off {
+        cross_out(c, q, R);
+    }
+}
+
+/// Where the targeting pod looks: a small circle with a dot; off the field at its edge,
+/// crossed out.
+fn pod_cue(c: &mut Canvas, d: Vec3, scale: f32) {
+    const R: f32 = 8.0;
+    let Some((q, off)) = kept_in_field(d, scale, R) else { return };
+    c.ring(q, R, THIN, INK);
+    if off {
+        cross_out(c, q, R);
+    } else {
+        c.circle(q.x, q.y, 1.5, INK);
+    }
 }
 
 /// Screen directions of the horizon (to the right) and of world "down", from the attitude.
@@ -242,15 +264,13 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         };
         text(c, 1010.0, 444.0, &t, Align::Right);
     }
-    if st.mode == HudMode::Nav
-        && let Some(d) = f.steerpoint_dir
-    {
+    // The steerpoint in every mode, so the route is never lost.
+    if let Some(d) = f.steerpoint_dir {
         steerpoint_cue(c, inv * d, f.scale);
     }
     // Targeting pod line of sight: a small circle, in every mode.
-    if let Some(p) = f.tgp_dir.and_then(|d| project(inv * d, f.scale)).filter(|&p| inside(p)) {
-        c.ring(p, 8.0, THIN, INK);
-        c.circle(p.x, p.y, 1.5, INK);
+    if let Some(d) = f.tgp_dir {
+        pod_cue(c, inv * d, f.scale);
     }
 
     match st.mode {
@@ -1094,5 +1114,27 @@ mod tests {
         let p = project(f.orientation.inverse() * f.path_dir, f.scale).unwrap();
         assert!((p.x - CX).abs() < 0.01);
         assert!((p.y - (CY + SCALE * 5f32.to_radians().tan())).abs() < 0.01);
+    }
+
+    /// Off the field the steerpoint and the pod's sight wait crossed out at its edge, clear of
+    /// the speed and altitude boxes.
+    #[test]
+    fn cues_kept_in_the_field() {
+        let mut f = frame(HudMode::Air);
+        f.steerpoint_dir = Some(Vec3::new(0.86, 0.0, -0.5));
+        f.tgp_dir = Some(Vec3::new(-0.3, -0.2, 0.9));
+        let (q, off) = kept_in_field(f.steerpoint_dir.unwrap(), f.scale, 9.0).unwrap();
+        assert!(off && q.x + 9.0 < 850.0 && (q.y - CY).abs() < 1.0, "{q}");
+        let (p, off) = kept_in_field(f.tgp_dir.unwrap(), f.scale, 8.0).unwrap();
+        assert!(off && inside(p), "{p}");
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw(&mut c, &f);
+        for q in [q, p] {
+            let n = (q.y as usize - 3..q.y as usize + 3)
+                .flat_map(|y| (q.x as usize - 3..q.x as usize + 3).map(move |x| (x, y)))
+                .filter(|&(x, y)| c.px[y * WIDTH + x] != 0)
+                .count();
+            assert!(n > 0, "drawn at {q}");
+        }
     }
 }

@@ -568,7 +568,7 @@ pub struct HudFrame {
     pub steerpoint: Option<(usize, f32, f32)>,
     pub steerpoint_dir: Option<Vec3>,
     /// Where the targeting pod looks on the ground, from the cockpit eye (Bevy frame, not
-    /// normalised), while it is up.
+    /// normalised), else along its sight, while it is up.
     pub tgp_dir: Option<Vec3>,
     /// Lock range of the selected weapon (km), range to the locked target (km).
     pub weapon_range_km: Option<f32>,
@@ -710,11 +710,11 @@ impl HudParams<'_, '_> {
             terrain_following: a.terrain_following(),
             steerpoint: steer.map(|s| s.0),
             steerpoint_dir: steer.map(|s| s.1),
+            // Where the pod looks on the ground, else (above the horizon) along its sight.
             tgp_dir: self
                 .mfd
                 .as_ref()
-                .and_then(|m| m.av.tgp.los_ground)
-                .map(|p| (p - eye).as_vec3()),
+                .and_then(|m| m.av.tgp.los_ground.map(|p| (p - eye).as_vec3()).or(m.av.tgp.los)),
             weapon_range_km: bay.filter(|b| b.range_km > 0.0).map(|b| b.range_km),
             target_range_km: self.cam.as_ref().and_then(|c| c.range_km),
             vtol: self.settings.aircraft.spec().vtol.then(|| {
