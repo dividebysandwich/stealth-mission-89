@@ -1,7 +1,7 @@
 //! Theater map drawing shared by the mission planner and the debrief: the view's projection,
 //! the map picture, the threat and airfield symbols, the weather, and the layers a player can
-//! hide (the checkboxes of a map's legend lines), and the symbology they draw units in (the
-//! game's own symbols or APP-6).
+//! hide (the checkboxes of a map's legend lines), the symbology they draw units in (the game's
+//! own symbols or APP-6), and the tooltip of what is under the pointer.
 
 use std::collections::{BTreeSet, HashSet};
 use std::sync::LazyLock;
@@ -202,34 +202,286 @@ pub fn site_symbol(painter: &egui::Painter, c: egui::Pos2, alpha: f32) {
     }
 }
 
-/// The mission's airfields: blue friendly, dim neutral, red hostile squares.
-pub fn airfields(painter: &egui::Painter, view: &MapView, m: &Mission) {
-    for o in m.world.objects.iter().filter(|o| o.flags & F::AIRFIELD != 0) {
-        let p = view.to_screen(o.x as u16 as f32, o.y as u16 as f32);
-        if app6() {
-            let side = if o.flags & F::FRIENDLY != 0 {
-                Affiliation::Friend
-            } else if o.flags & F::NEUTRAL != 0 {
-                Affiliation::Neutral
-            } else {
-                Affiliation::Hostile
-            };
-            app6_place(painter, p, side, true, 0.9);
+/// Draws a map symbol centred on a point, at its size on the map.
+type DrawSymbol = Box<dyn Fn(&egui::Painter, egui::Pos2)>;
+
+/// A thing drawn on a map, for the tooltip of what is under the pointer: where its symbol is
+/// (screen), how close the pointer comes to it, what it is, its name, more lines, and its
+/// symbol (shown beside them).
+pub struct Tip {
+    at: egui::Pos2,
+    reach: f32,
+    kind: String,
+    name: String,
+    colour: egui::Color32,
+    lines: Vec<String>,
+    symbol: Option<DrawSymbol>,
+}
+
+impl Tip {
+    /// Its symbol, drawn by `draw` as on the map (the tooltip enlarges it).
+    pub fn symbol(&mut self, draw: impl Fn(&egui::Painter, egui::Pos2) + 'static) -> &mut Self {
+        self.symbol = Some(Box::new(draw));
+        self
+    }
+
+    /// A line under the name.
+    pub fn line(&mut self, text: impl Into<String>) -> &mut Self {
+        self.lines.push(text.into());
+        self
+    }
+
+    /// The pointer is over it this close to its centre (screen points): a town's area, wider
+    /// than a symbol.
+    pub fn reach(&mut self, r: f32) -> &mut Self {
+        self.reach = r;
+        self
+    }
+}
+
+/// Most things one tooltip lists (crowded symbols).
+const TIPS_MAX: usize = 5;
+
+/// What a map has drawn, for the tooltip of what is under the pointer: every zoomable map
+/// (the planner's, the debrief's, the campaign's war and air defence maps).
+#[derive(Default)]
+pub struct MapTips(Vec<Tip>);
+
+impl MapTips {
+    /// A symbol drawn at `at`: `kind` what it is ("Airfield"), `name` which one (may be
+    /// empty), `colour` its side's.
+    pub fn add(
+        &mut self,
+        at: egui::Pos2,
+        kind: impl Into<String>,
+        name: impl Into<String>,
+        colour: egui::Color32,
+    ) -> &mut Tip {
+        self.0.push(Tip {
+            at,
+            reach: halo(10.0),
+            kind: kind.into(),
+            name: name.into(),
+            colour,
+            lines: Vec::new(),
+            symbol: None,
+        });
+        self.0.last_mut().expect("just pushed")
+    }
+
+    /// The things under `pos`, nearest first.
+    fn under(&self, pos: egui::Pos2) -> Vec<&Tip> {
+        let mut under: Vec<(f32, &Tip)> =
+            self.0.iter().map(|t| (t.at.distance(pos), t)).filter(|(d, t)| *d <= t.reach).collect();
+        under.sort_by(|a, b| a.0.total_cmp(&b.0));
+        under.into_iter().map(|(_, t)| t).collect()
+    }
+
+    /// The tooltip of what is under the pointer on the map `resp` (none while a button is held:
+    /// a pan, a drag); `hint` a last line (what a click does).
+    pub fn show(&self, resp: &egui::Response, hint: Option<&str>) {
+        let Some(pos) = resp.hover_pos() else { return };
+        if resp.ctx.input(|i| i.pointer.any_down()) {
+            return;
+        }
+        let under = self.under(pos);
+        if under.is_empty() {
+            return;
+        }
+        egui::Tooltip::for_widget(resp).at_pointer().gap(12.0).show(|ui| {
+            ui.spacing_mut().item_spacing.y = 1.0;
+            // As wide as its longest line: near the screen's edge egui would wrap the words.
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            // The symbols' column: each as high as the kind and name lines (wider for the APP-6
+            // frames).
+            let shown = &under[..under.len().min(TIPS_MAX)];
+            let high = ui.text_style_height(&egui::TextStyle::Small)
+                + ui.spacing().item_spacing.y
+                + ui.text_style_height(&egui::TextStyle::Body);
+            let column = shown
+                .iter()
+                .any(|t| t.symbol.is_some())
+                .then(|| egui::vec2(if app6() { high * 1.5 } else { high }, high));
+            // The lines between the things, drawn once the width is known: a separator would
+            // take the width the tooltip had last frame (a wider one's) and keep it.
+            let mut rules = Vec::new();
+            for (k, t) in shown.iter().enumerate() {
+                if k > 0 {
+                    rules.push(ui.cursor().top() + 3.0);
+                    ui.add_space(6.0);
+                }
+                ui.horizontal_top(|ui| {
+                    if let Some(size) = column {
+                        let (_, rect) = ui.allocate_space(size);
+                        if let Some(draw) = &t.symbol {
+                            enlarged(ui, rect, draw);
+                        }
+                    }
+                    ui.vertical(|ui| {
+                        ui.label(egui::RichText::new(&t.kind).small().color(t.colour));
+                        if !t.name.is_empty() {
+                            let name = egui::RichText::new(&t.name).strong();
+                            ui.label(name.color(crate::menu::BRIGHT));
+                        }
+                        for line in &t.lines {
+                            ui.label(egui::RichText::new(line).small().color(DIM));
+                        }
+                    });
+                });
+            }
+            if under.len() > TIPS_MAX {
+                let more = format!("+{} more", under.len() - TIPS_MAX);
+                ui.label(egui::RichText::new(more).small().color(DIM));
+            }
+            if let Some(hint) = hint {
+                ui.add_space(3.0);
+                ui.label(egui::RichText::new(hint).small().color(crate::menu::BRIGHT));
+            }
+            let (x, stroke) =
+                (ui.min_rect().x_range(), ui.visuals().widgets.noninteractive.bg_stroke);
+            for y in rules {
+                ui.painter().hline(x, y, stroke);
+            }
+        });
+    }
+}
+
+/// A map symbol drawn by `draw` in `rect` of a tooltip: drawn at its size on the map, then
+/// scaled up (its strokes with it) to fill the rect.
+fn enlarged(ui: &egui::Ui, rect: egui::Rect, draw: &DrawSymbol) {
+    let layer = ui.layer_id();
+    let start = ui.ctx().graphics_mut(|g| g.entry(layer).next_idx());
+    draw(ui.painter(), rect.center());
+    ui.ctx().graphics_mut(|g| {
+        let list = g.entry(layer);
+        let end = list.next_idx();
+        let bounds = list
+            .all_entries()
+            .skip(start.0)
+            .take(end.0 - start.0)
+            .fold(egui::Rect::NOTHING, |b, c| b.union(c.shape.visual_bounding_rect()));
+        if !bounds.is_positive() {
+            return;
+        }
+        let k = (rect.width() / bounds.width()).min(rect.height() / bounds.height());
+        let shift = rect.center().to_vec2() - bounds.center().to_vec2() * k;
+        let t = egui::emath::TSTransform::new(shift, k);
+        // The shapes only: the clip rect stays the tooltip's.
+        for i in start.0..end.0 {
+            list.mutate_shape(egui::layers::ShapeIdx(i), |c| c.shape.transform(t));
+        }
+    });
+}
+
+/// A theater object's side by its `flags`.
+pub fn affiliation_of(flags: i16) -> Affiliation {
+    if flags & F::FRIENDLY != 0 {
+        Affiliation::Friend
+    } else if flags & F::NEUTRAL != 0 {
+        Affiliation::Neutral
+    } else {
+        Affiliation::Hostile
+    }
+}
+
+/// A side's name and colour on the maps.
+pub fn side(side: Affiliation) -> (&'static str, egui::Color32) {
+    match side {
+        Affiliation::Friend => ("Friendly", FRIENDLY_BLUE),
+        Affiliation::Neutral => ("Neutral", DIM),
+        Affiliation::Hostile => ("Enemy", MISSILE_RED),
+    }
+}
+
+/// A theater object's name: its place's, else its shape's.
+pub fn object_name(m: &Mission, i: usize) -> String {
+    let Some(o) = m.world.objects.get(i) else { return String::new() };
+    let place = m.world.name(o.name as i32);
+    let name = if place.is_empty() { m.world.name(o.shape() as i32) } else { place };
+    crate::mission::clean_text(name)
+}
+
+/// Places a town's tooltip reaches from its centre (map units, about 3 km).
+const TOWN_REACH: f32 = 192.0;
+
+/// The mission's named places the map draws no symbol for (the towns of the map picture, the
+/// depots, the missile sites): their tooltips only, with a city's symbol.
+pub fn landmark_tips(view: &MapView, m: &Mission, tips: &mut MapTips) {
+    let w = &m.world;
+    for (i, o) in w.objects.iter().enumerate().skip(w.ground_unit_count as usize) {
+        let (x, y) = (o.x as u16 as f32, o.y as u16 as f32);
+        if o.flags & (F::AIRFIELD | F::SHIP | F::CARRIER) != 0
+            || (x, y) == (0.0, 0.0)
+            || w.name(o.name as i32).is_empty()
+        {
             continue;
         }
-        let colour = if o.flags & F::FRIENDLY != 0 {
-            FRIENDLY_BLUE
-        } else if o.flags & F::NEUTRAL != 0 {
-            DIM
-        } else {
-            MISSILE_RED
+        let kind = match w.name(o.shape() as i32) {
+            "Town" => "Town",
+            "Village" => "Village",
+            "Depot" => "Depot",
+            "SS Missile" => "Missile site",
+            _ => "City",
         };
-        painter.rect_stroke(
-            egui::Rect::from_center_size(p, egui::vec2(8.0, 8.0)),
-            0.0,
-            egui::Stroke::new(1.5, colour),
-            egui::StrokeKind::Middle,
-        );
+        let owner = affiliation_of(o.flags);
+        let (name, colour) = side(owner);
+        tips.add(view.to_screen(x, y), kind, object_name(m, i), colour)
+            .reach((TOWN_REACH / view.scale).clamp(8.0, 40.0))
+            .line(name)
+            .symbol(move |p, c| place_symbol(p, c, owner, false, false));
+    }
+}
+
+/// The mission's airfields: blue friendly, dim neutral, red hostile squares; and their `tips`.
+pub fn airfields(painter: &egui::Painter, view: &MapView, m: &Mission, tips: &mut MapTips) {
+    for (i, o) in m.world.objects.iter().enumerate().filter(|(_, o)| o.flags & F::AIRFIELD != 0) {
+        let p = view.to_screen(o.x as u16 as f32, o.y as u16 as f32);
+        let kind = if o.flags & F::CARRIER != 0 { "Aircraft carrier" } else { "Airfield" };
+        let owner = affiliation_of(o.flags);
+        let (name, colour) = side(owner);
+        place_symbol(painter, p, owner, true, false);
+        let tip = tips.add(p, kind, object_name(m, i), colour).line(name);
+        tip.symbol(move |p, c| place_symbol(p, c, owner, true, false));
+        if i as i16 == m.takeoff.object_index {
+            tip.line("Your takeoff base");
+        }
+        if i as i16 == m.landing.object_index {
+            tip.line("Your landing base");
+        }
+    }
+}
+
+/// A place in its side's colour: an airfield a square, a city a ring, `filled` (the campaign's
+/// war map) or not; APP-6: an installation (with aircraft for an airfield).
+pub fn place_symbol(
+    painter: &egui::Painter,
+    p: egui::Pos2,
+    owner: Affiliation,
+    airfield: bool,
+    filled: bool,
+) {
+    if app6() {
+        return app6_place(painter, p, owner, airfield, 0.9);
+    }
+    let col = side(owner).1;
+    let stroke = egui::Stroke::new(1.5, col);
+    match (airfield, filled) {
+        (true, true) => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(10.0, 10.0));
+            painter.rect_filled(r, 0.0, col.gamma_multiply(0.5));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+        }
+        (true, false) => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(8.0, 8.0));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+        }
+        (false, true) => {
+            painter.circle_filled(p, 5.0, col.gamma_multiply(0.5));
+            painter.circle_stroke(p, 5.0, stroke);
+        }
+        (false, false) => {
+            painter.circle_stroke(p, 4.5, stroke);
+        }
     }
 }
 

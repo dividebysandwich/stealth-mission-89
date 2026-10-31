@@ -16,7 +16,9 @@ use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
-use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapView, MapWeather};
+use crate::map_draw::{
+    self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather,
+};
 use crate::menu::{
     AMBER, BG, BRIGHT, DIM, GREEN, Panel, apply_terminal_style, big_button, footer_rule, icon,
     icon_text, section,
@@ -1168,6 +1170,7 @@ fn war_map(
         let test_taken = &mut c.ui.test_taken;
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
         let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
+        let mut tips = MapTips::default();
         // Insertion routes.
         for ins in st.insertions.iter().filter(|_| layers.shows(Layer::Insertions)) {
             if !matches!(ins.state, InsertionState::Pending { .. } | InsertionState::Enroute) {
@@ -1191,19 +1194,11 @@ fn war_map(
                 Side::Neutral => DIM,
             };
             let c0 = at(p.x, p.y);
-            if map_draw::app6() {
-                map_draw::app6_place(&painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
-            } else if p.airfield.is_some() {
-                let r = egui::Rect::from_center_size(c0, egui::vec2(10.0, 10.0));
-                painter.rect_filled(r, 0.0, col.gamma_multiply(0.5));
-                painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
-            } else {
-                painter.circle_filled(c0, 5.0, col.gamma_multiply(0.5));
-                painter.circle_stroke(c0, 5.0, egui::Stroke::new(1.5, col));
-            }
+            map_draw::place_symbol(&painter, c0, affiliation(p.owner), p.airfield.is_some(), true);
             if p.intel(st.clock) {
                 painter.circle_stroke(c0, map_draw::halo(10.0), egui::Stroke::new(1.0, BRIGHT));
             }
+            place_tip(&mut tips, c0, p, st.clock, true);
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
                 painter.text(
                     c0 + egui::vec2(7.0, -7.0),
@@ -1216,7 +1211,7 @@ fn war_map(
         }
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
-        super::picture::draw(&painter, &view, &pic, &layers);
+        super::picture::draw(&painter, &view, &pic, &layers, &mut tips);
         // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
         // armour` the first tank of a column on the move.
         let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
@@ -1262,31 +1257,36 @@ fn war_map(
         }
         super::designate::waiting(&painter, &view, st);
         let designating = c.ui.designate.is_some();
-        // A unit under the pointer: its name; a click watches it live.
-        if !designating
-            && let Some(pos) = resp.hover_pos()
-            && let Some((unit, name)) = super::picture::pick(&view, &pic, &sim, pos)
-        {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
-            painter.text(
-                pos + egui::vec2(10.0, -10.0),
-                egui::Align2::LEFT_BOTTOM,
-                format!("{name} - click to watch"),
-                egui::FontId::monospace(12.0),
-                BRIGHT,
-            );
-            if resp.clicked() {
-                unit_view.watch(unit, name);
-            }
-        }
         if pic.player.is_none()
             && let Some(b) = parked.and_then(|b| st.site(b as u16))
         {
             painter.circle_stroke(at(b.x, b.y), 8.0, egui::Stroke::new(1.5, GREEN));
+            tips.add(at(b.x, b.y), "Your aircraft (parked)", "", GREEN).symbol(|p, c| {
+                p.circle_stroke(c, 8.0, egui::Stroke::new(1.5, GREEN));
+            });
         }
         // The selected mission's target.
         if let Some(o) = selected.and_then(|id| st.board.iter().find(|o| o.id == id)) {
             painter.circle_stroke(at(o.x, o.y), 14.0, egui::Stroke::new(2.0, kind_colour(o.kind)));
+            let title = crate::mission::clean_text(&o.title);
+            let colour = kind_colour(o.kind);
+            tips.add(at(o.x, o.y), "Selected mission", title, colour)
+                .reach(16.0)
+                .line(o.kind.name())
+                .symbol(move |p, c| {
+                    p.circle_stroke(c, 14.0, egui::Stroke::new(2.0, colour));
+                });
+        }
+        // What is under the pointer: its tooltip; a click on a unit watches it live.
+        if !designating && let Some(pos) = resp.hover_pos() {
+            let picked = super::picture::pick(&view, &pic, pos);
+            tips.show(&resp, picked.as_ref().map(|_| "Click to watch it live"));
+            if let Some((unit, name)) = picked {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                if resp.clicked() {
+                    unit_view.watch(unit, name);
+                }
+            }
         }
         super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
         ui.vertical(|ui| {
@@ -1313,6 +1313,25 @@ fn war_map(
         });
     });
     layers.keep(ui.ctx(), "war");
+}
+
+/// A place's tooltip: an airfield or a city, its name, its side and the recon on it; its
+/// symbol `filled` as on the war map, else as on the briefing's.
+pub(super) fn place_tip(
+    tips: &mut MapTips,
+    c0: egui::Pos2,
+    p: &stealth_campaign::Place,
+    now: f64,
+    filled: bool,
+) {
+    let (owner, airfield) = (affiliation(p.owner), p.airfield.is_some());
+    let (side, colour) = map_draw::side(owner);
+    let kind = if airfield { "Airfield" } else { "City" };
+    let tip = tips.add(c0, kind, crate::mission::clean_text(&p.name), colour).line(side);
+    tip.symbol(move |p, c| map_draw::place_symbol(p, c, owner, airfield, filled));
+    if p.intel(now) {
+        tip.line("Reconned");
+    }
 }
 
 /// A place on the map is shown: its layer (airfields, cities) is.
@@ -1862,7 +1881,7 @@ fn route_editor(
     // The SAM sites are the editor's own rings.
     let mut pic = super::picture::picture(st, &sim);
     pic.sams.clear();
-    let draw = |painter: &egui::Painter, view: &MapView, layers: &MapLayers| {
+    let draw = |painter: &egui::Painter, view: &MapView, layers: &MapLayers, tips: &mut MapTips| {
         for p in st.places.iter().filter(|p| shows_place(layers, p)) {
             let col = match p.owner {
                 Side::Blue => FRIENDLY_BLUE,
@@ -1885,8 +1904,9 @@ fn route_editor(
                 egui::FontId::monospace(11.0),
                 col,
             );
+            place_tip(tips, c0, p, st.clock, false);
         }
-        super::picture::draw(painter, view, &pic, layers);
+        super::picture::draw(painter, view, &pic, layers, tips);
     };
     let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
         place_legend(ui, layers);
