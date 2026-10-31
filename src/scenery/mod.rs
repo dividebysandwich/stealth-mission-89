@@ -347,7 +347,8 @@ pub struct LampBatch {
 #[allow(clippy::too_many_arguments)]
 fn build_scenery(
     mut commands: Commands,
-    theater: Res<Theater>,
+    mut theater: ResMut<Theater>,
+    mut lifted: Query<&mut WorldPos, With<crate::world::OnHills>>,
     handles: Res<ShapeHandles>,
     library: Res<ModelLibrary>,
     assets: ModelAssets,
@@ -363,7 +364,7 @@ fn build_scenery(
     let key = &layout_key(&theater.id);
     cache.collect();
     let done = cache.done.as_ref().filter(|(k, _)| k == key).map(|(_, l)| l.clone());
-    let Some(Layout { ground, net, airfields: fields }) = done else {
+    let Some(Layout { ground, net, airfields: fields, hills }) = done else {
         if !cache.making(&theater.id) {
             let source = LayoutSource::gather(
                 &theater,
@@ -418,6 +419,13 @@ fn build_scenery(
         exit.write(AppExit::Success);
     }
     commands.insert_resource(PapiSites(fields.iter().flat_map(airfield::papi_sites).collect()));
+    // The hills with the objects' pads from now on; the objects already standing on the old
+    // ones move to the new ground.
+    for mut p in &mut lifted {
+        let (e, n) = (p.0.x, -p.0.z);
+        p.0.y += (hills.ground_m(e, n) - theater.hills.ground_m(e, n)) as f64;
+    }
+    theater.hills = hills.clone();
     let style = style::Style::for_theater(&theater.id, theater.index);
     commands.insert_resource(Scenery {
         style,
@@ -425,7 +433,7 @@ fn build_scenery(
         net,
         airfields: fields,
         clearings: vec![],
-        hills: theater.hills.clone(),
+        hills,
     });
 }
 
@@ -475,6 +483,8 @@ pub struct Layout {
     ground: Arc<ground::Ground>,
     net: Arc<network::Network>,
     airfields: Arc<Vec<airfield::Airfield>>,
+    /// The theater's hills with level pads under its small raised objects.
+    hills: stealth_sim::hills::Hills,
 }
 
 /// What a layout is made from, taken from the theater and its loaded models; making it needs
@@ -528,7 +538,17 @@ impl LayoutSource {
             .as_ref()
             .map(|s| network::Network::build(&ground, s, &self.towns, &self.hills))
             .unwrap_or_default();
-        Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields) }
+        // The theater's small objects (the bigger ones have flat ground in the hills' mask)
+        // stand level on the hills.
+        let objects: Vec<(f64, f64, f64)> = ground
+            .small_raised()
+            .map(|b| {
+                let c = b.center().as_dvec2();
+                (c.x, c.y, (b.size() * 0.5).length() as f64)
+            })
+            .collect();
+        let hills = self.hills.with_pads(&objects);
+        Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields), hills }
     }
 }
 

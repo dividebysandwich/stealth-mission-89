@@ -8,6 +8,7 @@
 //! Only `+`, `*`, `floor` and integer hashing, so the heights are the same bit for bit on
 //! every platform.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Mask cells per side.
@@ -42,8 +43,59 @@ const ALT_M: f64 = THEATER_M / 1_048_576.0;
 const LOS_STEP_M: f64 = 150.0;
 const LOS_END_M: f64 = 60.0;
 
+/// The mask, and the level pads under the scenery's objects (the drawn ground's only: see
+/// [`Hills::with_pads`]).
 #[derive(Clone, Default)]
-pub struct Hills(Arc<Vec<u8>>);
+pub struct Hills(Arc<Vec<u8>>, Option<Arc<Pads>>);
+
+/// A pad's level ground reaches this far (m) past an object's footprint: every corner of the
+/// finest drawn grid's triangles under the object is on it.
+pub const PAD_MARGIN: f64 = GRID_M * 1.5;
+/// And blends back into the hills over this (m).
+pub const PAD_BLEND: f64 = 100.0;
+/// Side of the cells the pads are found by (m).
+const PAD_CELL: f64 = 1000.0;
+
+/// Level ground: a disc (metres east, north, the level part's radius) at a height.
+#[derive(Clone, Copy, Debug)]
+struct Pad {
+    e: f64,
+    n: f64,
+    r: f64,
+    h: f32,
+}
+
+struct Pads {
+    pads: Vec<Pad>,
+    cells: HashMap<(i32, i32), Vec<u32>>,
+}
+
+fn pad_cell(e: f64, n: f64) -> (i32, i32) {
+    ((e / PAD_CELL).floor() as i32, (n / PAD_CELL).floor() as i32)
+}
+
+/// The cells a disc touches.
+fn pad_cells(e: f64, n: f64, r: f64) -> impl Iterator<Item = (i32, i32)> {
+    let (c0, r0) = pad_cell(e - r, n - r);
+    let (c1, r1) = pad_cell(e + r, n + r);
+    (r0..=r1).flat_map(move |row| (c0..=c1).map(move |col| (col, row)))
+}
+
+impl Pads {
+    /// The height `h` at a point brought to the pads around it.
+    fn level(&self, e: f64, n: f64, mut h: f32) -> f32 {
+        let Some(list) = self.cells.get(&pad_cell(e, n)) else { return h };
+        for &i in list {
+            let p = &self.pads[i as usize];
+            let d = (e - p.e).hypot(n - p.n) - p.r;
+            if d < PAD_BLEND {
+                let t = (1.0 - d.max(0.0) / PAD_BLEND) as f32;
+                h += (p.h - h) * t * t * (3.0 - 2.0 * t);
+            }
+        }
+        h
+    }
+}
 
 impl std::fmt::Debug for Hills {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -54,7 +106,70 @@ impl std::fmt::Debug for Hills {
 impl Hills {
     /// A hills file's contents (None if it is not one).
     pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        (bytes.len() == DIM * DIM).then(|| Self(Arc::new(bytes)))
+        (bytes.len() == DIM * DIM).then(|| Self(Arc::new(bytes), None))
+    }
+
+    /// These hills with level ground under objects (discs: metres east, north, radius), as the
+    /// scenery draws them: each object stands level on its own pad, and the pads of objects
+    /// close together are one. (The simulation's hills have none: its ground is a few metres
+    /// off there at most.)
+    pub fn with_pads(&self, objects: &[(f64, f64, f64)]) -> Hills {
+        let mut discs: Vec<Option<(f64, f64, f64)>> = objects
+            .iter()
+            .map(|&(e, n, r)| (e, n, r + PAD_MARGIN))
+            .filter(|&(e, n, r)| self.any_in(e, n, r))
+            .map(Some)
+            .collect();
+        if discs.is_empty() {
+            return self.clone();
+        }
+        // Overlapping discs become the smallest disc round both, until none overlap.
+        loop {
+            let mut index: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
+            for (i, (e, n, r)) in discs.iter().enumerate().filter_map(|(i, d)| Some((i, (*d)?))) {
+                pad_cells(e, n, r).for_each(|c| index.entry(c).or_default().push(i));
+            }
+            let mut merged = false;
+            for i in 0..discs.len() {
+                let Some((e, n, r)) = discs[i] else { continue };
+                let near: Vec<usize> = pad_cells(e, n, r)
+                    .flat_map(|c| index.get(&c).into_iter().flatten().copied())
+                    .filter(|&j| j > i)
+                    .collect();
+                for j in near {
+                    let (Some(a), Some(b)) = (discs[i], discs[j]) else { continue };
+                    let d = (b.0 - a.0).hypot(b.1 - a.1);
+                    if d >= a.2 + b.2 {
+                        continue;
+                    }
+                    discs[i] = Some(if d + b.2 <= a.2 {
+                        a
+                    } else if d + a.2 <= b.2 {
+                        b
+                    } else {
+                        let r = (d + a.2 + b.2) * 0.5;
+                        let k = (r - a.2) / d;
+                        (a.0 + (b.0 - a.0) * k, a.1 + (b.1 - a.1) * k, r)
+                    });
+                    discs[j] = None;
+                    merged = true;
+                }
+            }
+            if !merged {
+                break;
+            }
+        }
+        let pads: Vec<Pad> = discs
+            .into_iter()
+            .flatten()
+            .map(|(e, n, r)| Pad { e, n, r, h: self.height_m(e, n) })
+            .collect();
+        let mut cells: HashMap<(i32, i32), Vec<u32>> = HashMap::new();
+        for (i, p) in pads.iter().enumerate() {
+            pad_cells(p.e, p.n, p.r + PAD_BLEND)
+                .for_each(|c| cells.entry(c).or_default().push(i as u32));
+        }
+        Hills(self.0.clone(), Some(Arc::new(Pads { pads, cells })))
     }
 
     pub fn bytes(&self) -> &[u8] {
@@ -88,10 +203,11 @@ impl Hills {
     /// The hills' height in metres at a point (metres east, north).
     pub fn height_m(&self, e: f64, n: f64) -> f32 {
         let m = self.mask(e, n);
-        if m <= 0.0 {
-            return 0.0;
+        let h = if m <= 0.0 { 0.0 } else { MAX_M * m * shape(rolling(e, n)) };
+        match &self.1 {
+            Some(pads) => pads.level(e, n, h),
+            None => h,
         }
-        MAX_M * m * shape(rolling(e, n))
     }
 
     /// The hills' height in metres at a map point (x east, y south).
@@ -336,6 +452,33 @@ mod tests {
         assert_eq!(h.height_m(100_000.0, 200_000.0), 0.0);
         assert!(!h.any_in(100_000.0, 200_000.0, 5000.0));
         assert!(Hills::from_bytes(vec![0; 5]).is_none());
+    }
+
+    /// An object's pad is level wherever the drawn ground under it is worked out; two objects
+    /// close together share one; the hills further off are as they were.
+    #[test]
+    fn pads_level_the_ground_under_objects() {
+        let h = full();
+        // A slope: the steepest of a few points.
+        let (e, n) = (0..200)
+            .map(|i| (100_000.0 + i as f64 * 397.0, 200_000.0))
+            .max_by(|a, b| {
+                h.slope_within(a.0, a.1, 60.0).total_cmp(&h.slope_within(b.0, b.1, 60.0))
+            })
+            .unwrap();
+        assert!(h.slope_within(e, n, 60.0) > 0.05);
+        let padded = h.with_pads(&[(e, n, 40.0), (e + 60.0, n, 20.0)]);
+        let level = padded.height_m(e, n);
+        for (de, dn) in [(-40.0, 0.0), (40.0, 30.0), (80.0, -20.0), (0.0, -40.0)] {
+            // Level on the finest grid, near enough on the next.
+            for (step, off) in [(GRID_M, 1e-3), (GRID_M * 2.0, 0.5)] {
+                let g = padded.surface_m(e + de, n + dn, step);
+                assert!((g - level).abs() < off, "{de},{dn} on {step}: {g} vs {level}");
+            }
+        }
+        let far = (e + 2000.0, n + 2000.0);
+        assert_eq!(padded.height_m(far.0, far.1), h.height_m(far.0, far.1));
+        assert!(Hills::default().with_pads(&[(e, n, 40.0)]).is_flat());
     }
 
     /// The same heights everywhere (the dedicated server and the clients agree).

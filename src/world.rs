@@ -610,8 +610,9 @@ fn stream_tiles(
                     .or_insert_with(|| assets.raised_size(gltf, &name));
                 let unit_m = (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
                 if size.is_some_and(|s| s * unit_m < HILLS_RIGID_MAX_M) {
-                    let (e, n, _) = bevy_to_wu(pos);
-                    pos.y += theater.hills.ground_m(e * WU, n * WU) as f64;
+                    let (east, north, _) = bevy_to_wu(pos);
+                    pos.y += theater.hills.ground_m(east * WU, north * WU) as f64;
+                    commands.entity(e).insert(OnHills);
                 }
             }
             commands.entity(e).insert((
@@ -635,6 +636,11 @@ fn stream_tiles(
         sites.streamed = true;
     }
 }
+
+/// A tile object lifted onto the rolling hills (it moves with them when the scenery's level
+/// pads come: `scenery::build_scenery`).
+#[derive(Component)]
+pub struct OnHills;
 
 /// A streamed tile object (ground patch, building, ...).
 #[derive(Component)]
