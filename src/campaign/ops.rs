@@ -1288,8 +1288,23 @@ fn war_map(
                     p.circle_stroke(c, 14.0, egui::Stroke::new(2.0, colour));
                 });
         }
-        // What is under the pointer: its tooltip; a click on a unit watches it live.
-        if !designating && let Some(pos) = resp.hover_pos() {
+        // The layers' checkboxes in a panel over the map, opened by its LAYERS button.
+        let panel = crate::planner::layers_panel(ui, rect, &mut layers, |ui, layers| {
+            place_legend(ui, layers);
+            layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
+                p.extend(egui::Shape::dashed_line(
+                    &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
+                    egui::Stroke::new(1.5, FRIENDLY_BLUE),
+                    6.0,
+                    4.0,
+                ));
+            });
+            super::picture::legend(ui, layers, Some(&pic));
+            map_draw::weather_legend(ui, layers, weather.snow);
+        });
+        // What is under the pointer (not the LAYERS panel): its tooltip; a click on a unit
+        // watches it live.
+        if !designating && let Some(pos) = resp.hover_pos().filter(|&p| !panel.contains(p)) {
             let picked = super::picture::pick(&view, &pic, pos, k);
             tips.show(&resp, picked.as_ref().map(|_| "Click to watch it live"));
             if let Some((unit, name)) = picked {
@@ -1300,27 +1315,26 @@ fn war_map(
             }
         }
         super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
+        // The side column scrolls rather than make the window taller than the map.
         ui.vertical(|ui| {
             ui.set_width(legend_w - 12.0);
-            section(ui, "Legend");
-            map_draw::symbology_switch(ui);
-            place_legend(ui, &mut layers);
-            layers.legend(ui, Layer::Insertions, "Insertion route", |p, c0| {
-                p.extend(egui::Shape::dashed_line(
-                    &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
-                    egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                    6.0,
-                    4.0,
-                ));
+            egui::ScrollArea::vertical().id_salt("war_side").max_height(size.y).show(ui, |ui| {
+                section(ui, "Map");
+                map_draw::symbology_switch(ui);
+                ui.label(
+                    egui::RichText::new("LAYERS (top right): what the map shows")
+                        .small()
+                        .color(DIM),
+                );
+                ui.add_space(8.0);
+                ui.label(
+                    egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT),
+                );
+                ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
+                control_button(ui, c, sim, unit_view);
+                ui.add_space(10.0);
+                super::designate::buttons(ui, c);
             });
-            super::picture::legend(ui, &mut layers, Some(&pic));
-            map_draw::weather_legend(ui, &mut layers, weather.snow);
-            ui.add_space(8.0);
-            ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
-            ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
-            control_button(ui, c, sim, unit_view);
-            ui.add_space(10.0);
-            super::designate::buttons(ui, c);
         });
     });
     layers.keep(ui.ctx(), "war");

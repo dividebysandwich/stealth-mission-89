@@ -1074,7 +1074,7 @@ fn target_tip<'t>(
 
 /// The map's LAYERS button in its top-right corner, opening a panel over the map with the
 /// checkboxes `lines` draws; where it is (the button and the open panel).
-fn layers_panel(
+pub(crate) fn layers_panel(
     ui: &mut egui::Ui,
     map: egui::Rect,
     layers: &mut MapLayers,

@@ -164,7 +164,9 @@ pub(super) fn tab(
             super::designate::buttons(ui, c);
             ui.add_space(6.0);
             map_draw::symbology_switch(ui);
-            list(ui, c, sim, &sites, size.y - 104.0);
+            // The list scrolls in what the map's height leaves under the buttons.
+            let above = ui.min_rect().height();
+            list(ui, c, sim, &sites, size.y - above);
         });
     });
 }
