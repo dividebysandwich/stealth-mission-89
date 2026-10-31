@@ -21,8 +21,9 @@
 # the footwell and the centre pedestal, the walls up to the canopy sills.
 #
 # It fits the exterior's canopy (tools/models/aircraft.py): the sills slope from 0.27 m under
-# the eye behind the seat to 0.35 m under it 0.85 m ahead, about 0.45 m either side; the panel
-# and the glare shield stay under them (the glare shield's top 0.355 m under the eye).
+# the eye behind the seat to 0.31 m under it by the knees, about 0.45 m either side. The front
+# (the panel, the glare shield and the up-front controller) stands 0.10 m higher than the
+# exterior's sills ahead (the glare shield's top 0.255 m under the eye), the walls rising to it.
 #
 # Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face points
 # along its local -Y (towards the pilot), local Z is up the panel.
@@ -41,14 +42,14 @@ root = bpy.data.objects["cockpit"]
 F117_SCALE = 1.4706
 # The main panel: the layout's origin (the attitude indicator's centre), the top leaning away.
 PANEL_TILT = math.radians(20.0)
-PANEL_CENTRE = Vector((0.0, 0.68, -0.52))
+PANEL_CENTRE = Vector((0.0, 0.68, -0.42))
 FLOOR = -1.0
 # The walls' inner faces; their tops (the canopy sills) along SILL_LINE ((y, z), from the rear
 # bulkhead to the glare shield's back), under the exterior's sills.
 WALL_X = 0.43
 SILL_REAR = -0.62
 COAMING_BACK = 1.0
-SILL_LINE = [(SILL_REAR, -0.285), (0.25, -0.31), (0.85, -0.36), (COAMING_BACK, -0.375)]
+SILL_LINE = [(SILL_REAR, -0.285), (0.25, -0.31), (0.85, -0.26), (COAMING_BACK, -0.275)]
 # Consoles (the throttle stands on the left one): x, y and their top (the kept throttle rails'
 # own).
 CONSOLE_X = (0.22, 0.43)
@@ -71,7 +72,7 @@ BOTTOM = 240.0
 UFC_LINE = -170.0
 UFC_V0 = -226.0
 UFC_TILT = math.radians(5.0)
-UFC_CENTRE = Vector((0.0, 0.735, -0.29))
+UFC_CENTRE = Vector((0.0, 0.735, -0.19))
 # The glare shield reaches forward to COAMING_BACK, sloping down COAMING_DROP from the panel's top.
 COAMING_DROP = 0.03
 # HUD combiner glass: half width, bottom and top (m), at HUD_Y in front of the eye (the A-10C's
@@ -80,7 +81,7 @@ COAMING_DROP = 0.03
 HUD_Y = 0.70
 HUD_GLASS = (0.17, -0.13, 0.11)
 HUD_BAR = 0.012
-HUD_BODY_TOP = -0.21
+HUD_BODY_TOP = -0.145
 HUD_BODY_BACK = 0.80
 # Seat: its cushion's top, the eye over the hips.
 SEAT_TOP = -0.80
