@@ -149,7 +149,7 @@ pub(super) fn tab(
     ui: &mut egui::Ui,
     c: &mut ActiveCampaign,
     sim: &Sim,
-    tex: Option<&egui::TextureHandle>,
+    planner: &mut crate::planner::Planner,
     scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
@@ -158,7 +158,7 @@ pub(super) fn tab(
         c.ui.defence = None;
     }
     ui.horizontal_top(|ui| {
-        map(ui, c, sim, &sites, tex, scenery, egui::vec2(size.x - LIST_W, size.y));
+        map(ui, c, sim, &sites, planner, scenery, egui::vec2(size.x - LIST_W, size.y));
         ui.vertical(|ui| {
             ui.set_width(LIST_W - 12.0);
             super::designate::buttons(ui, c);
@@ -176,7 +176,7 @@ fn map(
     c: &mut ActiveCampaign,
     sim: &Sim,
     sites: &[Site],
-    tex: Option<&egui::TextureHandle>,
+    planner: &mut crate::planner::Planner,
     scenery: Option<&crate::scenery::Scenery>,
     size: egui::Vec2,
 ) {
@@ -187,7 +187,7 @@ fn map(
     view.pan_zoom(ui, &resp, &mut centre, &mut scale);
     (c.ui.centre, c.ui.scale) = (centre, scale);
     let painter = ui.painter_at(rect);
-    map_draw::picture(&painter, &view, tex);
+    planner.draw_map(&painter, &view, &c.mission.theater_code.to_ascii_lowercase());
     painter.rect_filled(rect, 0.0, egui::Color32::from_black_alpha(140));
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     let st = c.state();

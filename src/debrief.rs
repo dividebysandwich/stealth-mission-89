@@ -84,7 +84,7 @@ fn debrief_ui(
     debrief: Option<Res<Debrief>>,
     keys: Res<ButtonInput<KeyCode>>,
     mut next: ResMut<NextState<AppState>>,
-    planner: Res<crate::planner::Planner>,
+    mut planner: ResMut<crate::planner::Planner>,
     mut map: Local<MapState>,
 ) -> Result {
     let Some(d) = debrief else {
@@ -99,11 +99,6 @@ fn debrief_ui(
             map.frame = d.record.last_frame() as f32 / 2.0;
         }
     }
-    let tex = d
-        .mission
-        .as_ref()
-        .and_then(|m| planner.map_texture(&m.theater_code.to_ascii_lowercase()))
-        .cloned();
     let r = &d.report;
     let ctx = contexts.ctx_mut()?;
     crate::menu::apply_ui_zoom(ctx);
@@ -145,7 +140,7 @@ fn debrief_ui(
             }
             ui.add_space(6.0);
             if map.open {
-                flight_map(ui, &d, tex.as_ref(), &mut map, width);
+                flight_map(ui, &d, &mut planner, &mut map, width);
             } else {
                 summary(ui, &d, width);
             }
@@ -277,7 +272,7 @@ fn margin_colour(margin: i32) -> egui::Color32 {
 fn flight_map(
     ui: &mut egui::Ui,
     d: &Debrief,
-    tex: Option<&egui::TextureHandle>,
+    planner: &mut crate::planner::Planner,
     map: &mut MapState,
     width: f32,
 ) {
@@ -310,7 +305,9 @@ fn flight_map(
         }
         let view = MapView { rect, centre: map.centre, scale: map.scale };
         let painter = painter.with_clip_rect(rect);
-        map_draw::picture(&painter, &view, tex);
+        // (Without the mission, no theater: the note that the map is being prepared.)
+        let theater = d.mission.as_ref().map(|m| m.theater_code.to_ascii_lowercase());
+        planner.draw_map(&painter, &view, theater.as_deref().unwrap_or_default());
         if let Some(m) = &d.mission {
             map_draw::airfields(&painter, &view, m);
         }
