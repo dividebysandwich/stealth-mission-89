@@ -503,9 +503,6 @@ impl Sim {
 
     /// Release the selected store.
     fn fire_missile(&mut self) {
-        if abs16(self.pl.p.roll) > 0x3000 {
-            return;
-        }
         let (w, count) = self.selected_weapon();
         if count <= 0 {
             return;
@@ -514,6 +511,12 @@ impl Sim {
         let wt = self.weapon_types[(w.max(0) as usize).min(self.weapon_types.len() - 1)].clone();
         let spec = wt.spec as i32;
         if spec == 0 || spec == -1 {
+            return;
+        }
+        // Stores fall out of the bay only near wings level; an air-to-air missile leaves its
+        // rail (or is ejected clear) at any bank.
+        let air = spec > 0 && self.missile(spec).class == 7;
+        if abs16(self.pl.p.roll) > 0x3000 && !air {
             return;
         }
         if self.pl.pflags & pflags::BAY_OPEN == 0 && spec != -2 {
@@ -542,15 +545,22 @@ impl Sim {
             self.msg("Insufficient Altitude");
             return;
         }
-        self.pl.bays[bay].1 -= 1;
         if spec == -2 {
+            self.pl.bays[bay].1 -= 1;
             self.emit(SimEvent::FuelTransfer { lbs: 0x76C });
             self.msg("Fuel transfer");
             return;
         }
+        // A free slot, else one of a missile spent and falling: a missile that missed glides
+        // on for a long while and would hold the slot. With none the store stays on.
+        let free = (8..12)
+            .rev()
+            .find(|&i| self.proj[i].ttl == 0)
+            .or_else(|| (8..12).rev().find(|&i| self.proj[i].flight.is_some_and(|f| f.stalled)));
+        let Some(slot) = free else { return };
+        self.pl.bays[bay].1 -= 1;
         self.log_event(4, bay as i32);
         self.emit(SimEvent::CancelTimeAccel);
-        let Some(slot) = (8..12).rev().find(|&i| self.proj[i].ttl == 0) else { return };
         let mt = self.missile(spec).clone();
         let mut pr = self.launch_projectile(w, spec);
         let point = self.station_point(bay);

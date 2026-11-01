@@ -79,7 +79,7 @@ pub fn profile(spec: i32) -> Option<Profile> {
         20 | 36 => rocket(12.0, 4.0, 15.0), // AA-9
         21 | 37 => rocket(6.0, 3.0, 30.0), // AA-10
         22 => rocket(8.0, 3.0, 35.0), // AIM-120
-        23 | 32 => rocket(5.0, 2.0, 35.0), // AIM-9
+        23 | 32 => Profile { drag: AIM9_DRAG, ..rocket(5.0, 2.0, 35.0) }, // AIM-9
         24 => rocket(6.0, 3.0, 20.0), // HARM
         25 => cruise(1e9, 10.0),      // Penguin: a sustainer the whole way
         26 => cruise(3.0, 10.0),      // Harpoon: booster, then its turbojet
@@ -119,6 +119,9 @@ const PAC3_BOOST: f64 = 6.0;
 /// Below about Mach 1.6 (wu/s) it can no longer catch a jet: spent.
 const PAC3_STALL: f64 = 1100.0;
 const PAC3_DRAG: f64 = 1.65;
+/// AIM-9: drag as a multiple of [`DRAG`]. A small, finned airframe: burnt out it slows fast,
+/// some 18 km head-on from medium altitude, well under half that chasing a target's tail.
+const AIM9_DRAG: f64 = 12.0;
 
 /// Navigation constant.
 const PN_GAIN: f64 = 4.0;
@@ -703,7 +706,7 @@ mod tests {
             if (4.9..5.0).contains(&t) {
                 at_burnout = speed(m);
             }
-            if (15.0..15.1).contains(&t) {
+            if (8.0..8.1).contains(&t) {
                 later = speed(m);
             }
         });
@@ -774,14 +777,14 @@ mod tests {
     #[test]
     fn slow_missiles_high_up_barely_turn() {
         let mut sim = new_sim();
-        // Gliding slowly at 40 kft (motor out), the target well off the nose: a slow turn.
-        missile(&mut sim, 8, 23, [0.0, 0.0, 40000.0], [0.0, -900.0, 0.0]);
+        // An AIM-120 gliding slowly at 40 kft (motor out), the target well off the nose: a slow turn.
+        missile(&mut sim, 8, 22, [0.0, 0.0, 40000.0], [0.0, -900.0, 0.0]);
         sim.proj[8].flight.as_mut().unwrap().t = 15 * 30;
         let mut h = 0;
         fly(&mut sim, 8, [20000.0, -20000.0, 40000.0], [0.0; 3], 2.0, |m, _| h = m.heading);
         let fast = {
             let mut sim = new_sim();
-            missile(&mut sim, 8, 23, [0.0, 0.0, 10000.0], [0.0, -3500.0, 0.0]);
+            missile(&mut sim, 8, 22, [0.0, 0.0, 10000.0], [0.0, -3500.0, 0.0]);
             sim.proj[8].flight.as_mut().unwrap().t = 15 * 30;
             let mut h = 0;
             fly(&mut sim, 8, [20000.0, -20000.0, 10000.0], [0.0; 3], 2.0, |m, _| h = m.heading);

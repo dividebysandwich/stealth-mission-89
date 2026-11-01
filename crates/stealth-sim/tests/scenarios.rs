@@ -709,11 +709,11 @@ fn classic_state_golden() {
         0xfbc9515e8aeb2e56,
         0x452c9a533fd36a46,
         0x3b91c76cce457ab3,
-        0xd1fc0637071dea13,
-        0x7f9f2123157a748f,
+        0x34df38a1c0d9d9e6,
+        0x7809924111f2d722,
         0x78fd64a6e5947711,
         0x7761b1fd3ede6f8c,
-        0x5d7de4aa2349491e,
+        0x27075ce8fa7d83a9,
         0xde8e817e6b7036ce,
     ];
     let d = data();
