@@ -11,8 +11,8 @@
 //! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
 //! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
 //! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
-//! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the engine
-//! low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
+//! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the radio
+//! and ATC voice ones too, the engine low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
 //! bindings are the main menu's dialog (`input_dialog.rs`) over the view (in VR on the menu panel
 //! in front of the head), the menu's screen hidden until its DONE; it takes every key, Esc
 //! included. They apply at once and are saved to the preferences when the menu closes. Esc, BACK or
@@ -202,6 +202,8 @@ impl Page {
                 Volume(Vol::Effects),
                 Volume(Vol::Warnings),
                 Volume(Vol::Rwr),
+                Volume(Vol::Radio),
+                Volume(Vol::Atc),
                 RwrTones,
                 LowPass,
                 Back,
@@ -244,6 +246,9 @@ enum Vol {
     Effects,
     Warnings,
     Rwr,
+    /// The coop radio's voices (and the spoken ATC), the spoken ATC's own.
+    Radio,
+    Atc,
 }
 
 impl Vol {
@@ -254,6 +259,8 @@ impl Vol {
             Vol::Effects => s.effects_volume,
             Vol::Warnings => s.warning_volume,
             Vol::Rwr => s.rwr_volume,
+            Vol::Radio => s.voice_volume,
+            Vol::Atc => s.atc_volume,
         }
     }
 
@@ -264,6 +271,8 @@ impl Vol {
             Vol::Effects => &mut s.effects_volume,
             Vol::Warnings => &mut s.warning_volume,
             Vol::Rwr => &mut s.rwr_volume,
+            Vol::Radio => &mut s.voice_volume,
+            Vol::Atc => &mut s.atc_volume,
         }
     }
 }
@@ -338,6 +347,8 @@ impl Item {
             Item::Volume(Vol::Effects) => "EFFECTS",
             Item::Volume(Vol::Warnings) => "WARNINGS",
             Item::Volume(Vol::Rwr) => "RWR VOLUME",
+            Item::Volume(Vol::Radio) => "RADIO",
+            Item::Volume(Vol::Atc) => "ATC VOICE",
             Item::RwrTones => "RWR TONES",
             Item::LowPass => "ENGINE LOW-PASS",
             Item::HeadTracking => "HEAD TRACKING",
