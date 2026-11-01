@@ -8,6 +8,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::num::NonZero;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -50,11 +51,22 @@ struct Mix {
     clicks: Vec<usize>,
 }
 
-/// The radio's shared state.
-#[derive(Clone, Default)]
-pub struct RadioMix(Arc<Mutex<Mix>>);
+/// The radio's shared state, and the spoken ATC's gain (`f32` bits).
+#[derive(Clone)]
+pub struct RadioMix(Arc<Mutex<Mix>>, Arc<AtomicU32>);
+
+impl Default for RadioMix {
+    fn default() -> Self {
+        Self(Arc::default(), Arc::new(AtomicU32::new(1.0f32.to_bits())))
+    }
+}
 
 impl RadioMix {
+    /// The spoken ATC's volume (the players' voices stay as they are).
+    pub fn set_spoken_gain(&self, gain: f32) {
+        self.1.store(gain.to_bits(), Ordering::Relaxed);
+    }
+
     /// A packet of `from`'s transmission arrived.
     pub fn add(&self, from: u8, packet: &VoicePacket) {
         let voice = stealth_net::voice::decode(packet);
@@ -133,6 +145,7 @@ impl RadioMix {
 
     /// The next sample of the mix (before the radio's filter).
     fn next(&self, rng: &mut u32) -> (f32, bool) {
+        let spoken = f32::from_bits(self.1.load(Ordering::Relaxed));
         let Ok(mut mix) = self.0.lock() else { return (0.0, false) };
         let mix = &mut *mix;
         let mut v = 0.0;
@@ -151,7 +164,7 @@ impl RadioMix {
             open = true;
             match t.samples.pop_front() {
                 Some(s) => {
-                    v += s;
+                    v += if k >= crate::tts::PILOT_TALKER { s * spoken } else { s };
                     t.starved = 0;
                 }
                 None => t.starved += 1,

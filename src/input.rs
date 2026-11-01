@@ -144,7 +144,8 @@ pub enum Action {
     /// Multiplayer: type a chat message.
     Chat,
     /// Multiplayer: the radio's push-to-talk (held, not a discrete action).
-    Talk,
+    #[serde(alias = "Talk")]
+    Ptt,
     /// Tracking camera / targeting pod zoom.
     CameraZoomIn,
     CameraZoomOut,
@@ -419,7 +420,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
-        (None, K::CapsLock, Talk),
+        (None, K::CapsLock, Ptt),
         (None, K::F12, RecordGif),
     ]
 };
@@ -568,7 +569,7 @@ fn read_keyboard(
     controls.fire = held(Action::FireWeapon) && !crate::fullscreen::alt_enter(&keys);
     controls.mark = held(Action::LockCursor);
     // Talking works over the Ops screen too (a text field being typed in takes the keys).
-    controls.talk = held(Action::Talk);
+    controls.talk = held(Action::Ptt);
     controls.yaw = yaw.clamp(-1.0, 1.0) * scale;
     controls.throttle = None;
     controls.collective_rate =

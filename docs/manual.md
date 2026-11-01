@@ -225,7 +225,7 @@ a HOTAS: grab the stick with the right hand and the throttle with the left.
 | A / X | Gun (held) | Flare |
 | B / Y | Select weapon | Chaff |
 | Thumbstick | Up nearest target ahead, down clear target, right next target, left designate | Slews the displays' cursor |
-| Stick click | Bay doors | Lock cursor target |
+| Stick click | Push-to-talk (PTT, held) | Lock cursor target |
 
 **Head and eye tracking.** With *Head/Eye tracking* on, the cockpit view follows your head, picked up by an
 infrared tracker, an eye tracker, a webcam or a phone, through OpenTrack (FreeTrack output, or UDP on port 4242). **Home** recentres the view.
@@ -1883,7 +1883,7 @@ controllers and one for yourself, and press *Preview* to hear them. VCTK (Britis
 LibriTTS-R (American) hold many speakers in one download: pick a different speaker for yourself,
 and with *A different controller at each station* the tower, approach and GCA each talk with
 their own. Piper voices (`.onnx` with its `.onnx.json`) put into the voices folder by hand are
-found too. Their volume is the *Radio* slider. Not in the browser version, where the calls stay
+found too. Their volume is the *ATC voice* slider, under the *Radio* one. Not in the browser version, where the calls stay
 text.
 
 ## 7.10 When it goes wrong: ejection and rescue
@@ -2793,7 +2793,7 @@ flown by the server.
 **The radio.** Hold **CapsLock** to talk and every player in the game hears you, in the air
 or on the Ops screen, through a radio's loudspeaker: a narrow band, a hiss under the voice
 and the squelch's click as each transmission starts and ends. Any joystick or VR controller
-button can be mapped to *Talk* in the CONTROLS dialog; it talks while held. The microphone
+button can be mapped to *PTT* in the CONTROLS dialog (the right VR controller's stick click by default); it talks while held. The microphone
 opens the first time you press the key. While you transmit, the panel next to the HUD reads
 TRANSMITTING; while someone else does, it shows who is on the radio, and so does the PLAYERS
 list, where MUTE silences a player for you. OPTIONS > SOUND has the radio's volume, the

@@ -39,7 +39,7 @@ impl Plugin for VoicePlugin {
                     // A test script holds the talk button there.
                     .after(crate::script::ScriptSet),
             )
-            .add_systems(Update, speaker.run_if(radio_wanted))
+            .add_systems(Update, (speaker.run_if(radio_wanted), spoken_gain))
             .add_systems(Update, leave.run_if(not(resource_exists::<NetLink>)));
     }
 }
@@ -211,6 +211,16 @@ fn radio_wanted(link: Option<Res<NetLink>>, tts: Option<Res<crate::tts::Tts>>) -
     link.is_some() || tts.is_some_and(|t| t.started())
 }
 
+/// The loudspeaker's level before the radio volume (the voices are quiet beside the engine).
+const VOICE_LEVEL: f32 = 2.0;
+
+/// The spoken ATC's volume follows the settings.
+fn spoken_gain(settings: Res<crate::settings::Settings>, voice: Res<Voice>) {
+    if settings.is_changed() {
+        voice.mix.set_spoken_gain(settings.atc_volume);
+    }
+}
+
 /// The radio's loudspeaker plays for as long as the game goes on (spawned again if a screen
 /// change took it away).
 #[derive(Component)]
@@ -226,7 +236,7 @@ fn speaker(
     if !speakers.is_empty() {
         return;
     }
-    let mix = Mixed(Channel::Voice, 1.0);
+    let mix = Mixed(Channel::Voice, VOICE_LEVEL);
     // Endless already: Bevy's looping would buffer it in 4-second blocks (rodio's repeat).
     let playback = mix.settings(&settings, PlaybackSettings::ONCE);
     let radio = radios.add(playback::Radio(voice.mix.clone()));

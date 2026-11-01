@@ -89,6 +89,7 @@ pub struct Prefs {
     pub atc: bool,
     pub voice: bool,
     pub voice_volume: f32,
+    pub atc_volume: f32,
     pub mic_gain: f32,
     pub mic_device: String,
     pub atc_voice: String,
@@ -166,6 +167,7 @@ impl Default for Prefs {
             atc: true,
             voice: true,
             voice_volume: 1.0,
+            atc_volume: 1.0,
             mic_gain: 1.0,
             mic_device: String::new(),
             atc_voice: String::new(),
@@ -261,6 +263,7 @@ impl Prefs {
             atc: s.atc,
             voice: s.voice,
             voice_volume: s.voice_volume,
+            atc_volume: s.atc_volume,
             mic_gain: s.mic_gain,
             mic_device: s.mic_device.clone(),
             atc_voice: s.atc_voice.clone(),
@@ -330,6 +333,7 @@ impl Prefs {
         s.atc = self.atc;
         s.voice = self.voice;
         s.voice_volume = self.voice_volume.clamp(0.0, 1.0);
+        s.atc_volume = self.atc_volume.clamp(0.0, 1.0);
         s.mic_gain = self.mic_gain.clamp(MIC_GAIN_RANGE.0, MIC_GAIN_RANGE.1);
         s.mic_device = self.mic_device.clone();
         s.atc_voice = self.atc_voice.clone();
@@ -384,6 +388,7 @@ impl Prefs {
         self.atc = s.atc;
         self.voice = s.voice;
         self.voice_volume = s.voice_volume;
+        self.atc_volume = s.atc_volume;
         self.mic_gain = s.mic_gain;
         self.mic_device = s.mic_device.clone();
         self.atc_voice = s.atc_voice.clone();

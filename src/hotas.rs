@@ -203,7 +203,8 @@ mod key_name {
 
 /// Default VR controller buttons, as a HOTAS: the right hand flies and fights (trigger fires,
 /// A the gun, B the next weapon), its thumbstick only targets (up: nearest target ahead, down:
-/// drop the locks, right: next target, left: designate, click: bay doors); the left hand runs
+/// drop the locks, right: next target, left: designate, click: the radio's push-to-talk); the
+/// left hand runs
 /// the aircraft (trigger brakes, X flare, Y chaff) and its thumbstick slews the cursor, its click
 /// locking what is under it. The decoy is on the cockpit's DECOY button. The triggers only count
 /// while the hand holds the stick or throttle (otherwise they press the cockpit control under the
@@ -220,7 +221,7 @@ pub fn default_vr_buttons() -> Vec<VrButtonMapping> {
         (Right, ThumbDown, ButtonTarget::Action(A::ClearTarget)),
         (Right, ThumbRight, ButtonTarget::Action(A::SelectTarget)),
         (Right, ThumbLeft, ButtonTarget::Action(A::DesignateTarget)),
-        (Right, ThumbClick, ButtonTarget::Action(A::BayDoors)),
+        (Right, ThumbClick, ButtonTarget::Action(A::Ptt)),
         (Left, Trigger, ButtonTarget::Action(A::Brakes)),
         (Left, Primary, ButtonTarget::Action(A::Flare)),
         (Left, Secondary, ButtonTarget::Action(A::Chaff)),
@@ -305,8 +306,9 @@ pub struct InputConfig {
 /// (Q / E); the VR thumbsticks as a HOTAS (the right one targets only). 6: the trim keys
 /// (Alt + arrows, Alt + Home). 7: the master caution key (Alt + C). 8: the free view key
 /// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
-/// recording key (F12). 11: the radio's push-to-talk key (CapsLock).
-const VERSION: u32 = 11;
+/// recording key (F12). 11: the radio's push-to-talk key (CapsLock). 12: the right VR stick
+/// click talks on the radio instead of moving the bay doors.
+const VERSION: u32 = 12;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -397,6 +399,15 @@ impl InputConfig {
             {
                 self.vr_buttons = default_vr_buttons();
             }
+        }
+        if self.version < 12
+            && let Some(m) = self.vr_buttons.iter_mut().find(|m| {
+                m.hand == VrHand::Right
+                    && m.input == VrInput::ThumbClick
+                    && m.target == ButtonTarget::Action(Action::BayDoors)
+            })
+        {
+            m.target = ButtonTarget::Action(Action::Ptt);
         }
         for d in crate::input::default_key_mappings() {
             let free = !self.keys.iter().any(|k| k.mods == d.mods && k.key == d.key);
@@ -895,7 +906,7 @@ pub fn read_hotas(
                     continue;
                 }
                 controls.fire |= now && a == Action::FireWeapon;
-                controls.talk |= now && a == Action::Talk;
+                controls.talk |= now && a == Action::Ptt;
                 if console {
                     continue;
                 }
@@ -916,6 +927,9 @@ pub fn read_hotas(
 
 /// "ThrottleUp" -> "Throttle up".
 pub fn action_name(a: Action) -> String {
+    if a == Action::Ptt {
+        return "PTT".to_string();
+    }
     let mut s = String::new();
     for (i, c) in format!("{a:?}").chars().enumerate() {
         if c.is_ascii_uppercase() && i > 0 {
@@ -991,6 +1005,14 @@ mod tests {
         assert_eq!(c.vr_buttons, custom);
 
         let mut c = InputConfig { version: 8, vr_buttons: vr_buttons_v8(), ..default() };
+        assert!(c.migrate());
+        assert_eq!(c.vr_buttons, default_vr_buttons());
+
+        // The right stick click moved the bay doors up to version 11; now it talks.
+        let mut v11 = default_vr_buttons();
+        v11.iter_mut().find(|m| m.target == ButtonTarget::Action(Action::Ptt)).unwrap().target =
+            ButtonTarget::Action(Action::BayDoors);
+        let mut c = InputConfig { version: 11, vr_buttons: v11, ..default() };
         assert!(c.migrate());
         assert_eq!(c.vr_buttons, default_vr_buttons());
     }

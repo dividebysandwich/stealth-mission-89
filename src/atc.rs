@@ -620,11 +620,7 @@ impl Atc {
             self.say(tower, format!("{cs}, continue, traffic on the runway"), false);
             self.cleared = false;
         } else {
-            self.say(
-                tower,
-                format!("{cs}, runway {}, cleared to land", e.name()),
-                false,
-            );
+            self.say(tower, format!("{cs}, runway {}, cleared to land", e.name()), false);
             self.cleared = true;
         }
         self.wait = 1.0;
@@ -664,11 +660,7 @@ impl Atc {
         if !self.cleared && self.wait <= 0.0 {
             self.wait = 1.0;
             if !runway_busy(b, &e, along, i.traffic) {
-                self.say(
-                    tower,
-                    format!("{cs}, runway {}, cleared to land", e.name()),
-                    false,
-                );
+                self.say(tower, format!("{cs}, runway {}, cleared to land", e.name()), false);
                 self.cleared = true;
             } else if along < 800.0 {
                 self.say(tower, format!("{cs}, go around, traffic on the runway"), false);

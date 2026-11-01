@@ -4,7 +4,7 @@
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
 //!   player labels, the VR cockpit size, Tacview and the GIF recording (in two columns).
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
-//! - SOUND: the master, engine, effects, warning, radar warning and radio volumes, which radar
+//! - SOUND: the master, engine, effects, warning, radar warning, radio and ATC voice volumes, which radar
 //!   warning tones sound, the engine low-pass inside the aircraft, the coop radio's microphone.
 //! - CONTROLS: the key and joystick bindings (the CONTROLS dialog, `input_dialog.rs`) and head
 //!   tracking.
@@ -467,6 +467,11 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
             "Radio",
             &["The other players talking on the coop radio, and the spoken ATC"][..],
         ),
+        (
+            &mut s.atc_volume,
+            "ATC voice",
+            &["The spoken ATC calls, as a part of the radio's volume"][..],
+        ),
     ] {
         let mut percent = (*v * 100.0).round();
         ui.horizontal(|ui| {
@@ -509,7 +514,7 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
     changed |= facts(
         ui.checkbox(&mut s.voice, "Push-to-talk"),
         &[
-            "Hold the talk key (CapsLock, or a joystick or VR button mapped to Talk) and every player hears you",
+            "Hold the talk key (CapsLock, or a joystick or VR button mapped to PTT) and every player hears you",
             "The microphone opens the first time you press it",
         ],
     )

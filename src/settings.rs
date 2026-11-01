@@ -118,6 +118,8 @@ pub struct Settings {
     /// gain and its device (empty: the default one).
     pub voice: bool,
     pub voice_volume: f32,
+    /// The spoken ATC's own volume (0..1), under the radio's.
+    pub atc_volume: f32,
     pub mic_gain: f32,
     pub mic_device: String,
     /// The spoken ATC (`tts`): the controllers' voice and the pilot's (empty: text only) and
@@ -310,6 +312,7 @@ impl Settings {
             atc: true,
             voice: true,
             voice_volume: 1.0,
+            atc_volume: 1.0,
             mic_gain: 1.0,
             mic_device: String::new(),
             // `--atc-voice`/`--pilot-voice <name>[:speaker]` (test runs, which skip the prefs).
