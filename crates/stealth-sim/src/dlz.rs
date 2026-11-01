@@ -212,7 +212,7 @@ impl Sim {
         let hellfire = spec == HELLFIRE_SPEC;
         let bay = self.firing_station(w);
         self.drop_clear(&mut m, bay);
-        let (pos, vel) = self.store_motion(bay);
+        let (pos, vel) = self.store_motion(bay, m.drop > 0);
         if hellfire && !guided {
             // It pitches onto the spot as it leaves the rail (`fire_missile`).
             (m.heading, m.pitch) = guidance::heading_pitch([

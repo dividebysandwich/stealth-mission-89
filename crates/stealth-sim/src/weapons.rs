@@ -627,7 +627,7 @@ impl Sim {
             if mt.class == 7 && lock >= 0 && (lock as usize) < self.flights.len() {
                 self.proj[slot].target = lock;
             }
-            let (pos, vel) = self.store_motion(bay);
+            let (pos, vel) = self.store_motion(bay, pr.drop > 0);
             self.start_flight(slot, pos, vel);
             let mut m = self.proj[slot];
             self.eject(&mut m);
@@ -717,13 +717,29 @@ impl Sim {
         if trails_smoke(pr.spec) {
             pr.drop = (drop * self.fs as f64).round() as u8;
         }
+        if pr.drop > 0 {
+            // Dropped, it goes on along the flight path, not along the nose (pitched up by
+            // the angle of attack, it would rise over the wing).
+            let (_, pitch) = crate::guidance::heading_pitch(self.flight_path());
+            pr.pitch = pitch;
+        }
     }
 
-    /// [`Sim::launch_motion`] of a missile off station `bay`: from where it hangs.
-    pub(crate) fn store_motion(&self, bay: usize) -> ([f64; 3], [f64; 3]) {
-        let (mut pos, vel) = self.launch_motion();
+    /// The aircraft's velocity (wu/s: east, south, up) along its flight path.
+    fn flight_path(&self) -> [f64; 3] {
+        let p = &self.pl.p;
+        ballistics::release_velocity(p.heading, p.velocity, p.climb)
+    }
+
+    /// [`Sim::launch_motion`] of a missile off station `bay`: from where it hangs; a dropped
+    /// one (`dropped`) along the flight path.
+    pub(crate) fn store_motion(&self, bay: usize, dropped: bool) -> ([f64; 3], [f64; 3]) {
+        let (mut pos, mut vel) = self.launch_motion();
         if let Some(p) = self.station_point(bay) {
             pos = p;
+        }
+        if dropped {
+            vel = self.flight_path();
         }
         (pos, vel)
     }

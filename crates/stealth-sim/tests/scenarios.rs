@@ -1772,9 +1772,11 @@ fn maverick_shot(guided: bool, range: i32) -> Option<(dlz::LaunchZone, bool)> {
         sim.step(&p, 15);
         p.cmd = Commands::default();
     }
-    // Nose down onto the target until the oval locks.
+    // Nose down onto the target until the oval locks, diving along it.
     (0..96).map(|k| -k * 64).find(|&pitch| {
         p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (450.0 * 27.0 / 16.0 * angle.sin()).round() as i32;
         sim.step(&p, 15);
         sim.targeting().lock_valid
     })?;
@@ -2827,5 +2829,47 @@ fn dropped_missiles_light_their_motors_clear() {
     let want = [side, side, 20.0 - 1.0 / wu];
     for k in 0..3 {
         assert!((b[k] - a[k] - want[k]).abs() < 0.6, "{a:?} -> {b:?}, want {want:?}");
+    }
+}
+
+/// A Maverick dropped while climbing nose high stays below the flight path (the nose is above
+/// it by the angle of attack) until its motor lights, rather than rising over the wing.
+#[test]
+fn dropped_missiles_fall_below_a_climb() {
+    for guided in [false, true] {
+        let d = data();
+        let m = mission(d, 3, 0x1234, 1);
+        let opts = SimOptions { realistic_guidance: guided, external_stores: true, ..Default::default() };
+        let mut sim = Sim::with_options(&d.sim, &m, opts);
+        let (mx, my) = sandbox(&mut sim, &m);
+        sim.set_training(true);
+        sim.set_loadout(&[(5, 2)]);
+        // 400 kt (675 ft/s) climbing at 5 degrees, the nose 12.7 degrees up.
+        let mut p = player_at(mx, my, 5000, 0x2000, 400);
+        p.hud_mode = HudMode::Gnd;
+        p.pitch = 0x0900;
+        p.climb_rate = 59;
+        for _ in 0..4 {
+            sim.step(&p, 15);
+            p.cmd = Commands::default();
+        }
+        p.cmd.fire = true;
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        let fine = stealth_sim::ROUND_FINE as f64;
+        let alt = |m: &Projectile| match m.flight {
+            Some(f) => f.alt as f64 / fine,
+            None => m.alt as f64,
+        };
+        let first = sim.active_projectiles().into_iter().find(|m| m.0 >= 8).expect("fired").1;
+        let start = alt(&first);
+        for frame in 1..=8 {
+            sim.step(&p, 15);
+            let m = sim.active_projectiles().into_iter().find(|m| m.0 >= 8).expect("flying").1;
+            // The flight path's height after this long (frame 0 was the launch frame); classic
+            // altitudes are whole feet. Along the nose it would rise 6 ft a frame above it.
+            let path = start + 59.0 * frame as f64 / 15.0 + if guided { 0.0 } else { 1.5 };
+            assert!(alt(&m) < path, "guided {guided} frame {frame}: {} above {path}", alt(&m));
+        }
     }
 }
