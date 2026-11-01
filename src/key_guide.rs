@@ -70,7 +70,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[NearestTarget]), "Lock the nearest target ahead"),
                 (Actions(&[SelectTarget]), "Next target"),
                 (Actions(&[DesignateTarget]), "Designate a new target"),
-                (Actions(&[ClearTarget]), "Drop the target locks"),
+                (Actions(&[ClearTarget]), "Drop the target locks (pod to the steerpoint)"),
                 (Actions(&[CamAhead]), "Tracking camera ahead"),
                 (Actions(&[CamRear]), "Tracking camera rear"),
                 (Actions(&[CamLeft]), "Tracking camera left"),

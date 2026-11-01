@@ -1527,7 +1527,11 @@ fn update_pod(
     mut locks: MessageWriter<LockRequest>,
     (waypoints, theater): (Res<crate::hud::Waypoints>, Option<Res<crate::world::Theater>>),
 ) {
-    let lock = actions.read().any(|a| a.0 == Action::LockCursor);
+    let (mut lock, mut clear) = (false, false);
+    for ActionEvent(a) in actions.read() {
+        lock |= *a == Action::LockCursor;
+        clear |= *a == Action::ClearTarget;
+    }
     let Ok((a, pos)) = aircraft.single() else { return };
     // The helmet sight, with a helmet-mounted display: the gunship's slaved pod follows it
     // whether its page is up or not (the page shows what it looks at), the Sidewinder seeker
@@ -1584,6 +1588,17 @@ fn update_pod(
         if shown {
             state.av.soi = Some(Format::Tgp);
         }
+    }
+    // Target cleared: the pod holds the current steerpoint (not the gunship's, which follows the
+    // helmet), without snapping onto a unit there (that would lock it again).
+    if clear
+        && !turret
+        && let Some(wp) = waypoints.target()
+    {
+        let p = crate::world::wu_to_bevy(wp.east, wp.north, a.ground_altitude as f64);
+        state.av.tgp.mode = TgpMode::Point(ground.on(p));
+        state.av.tgp.track = None;
+        state.av.tgp.idle = 0.0;
     }
     let soi = state.av.soi_format() == Some(Format::Tgp);
     let zoom = state.cam_zoom.unwrap_or(info.zoom.saturating_sub(1));

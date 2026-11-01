@@ -1169,7 +1169,7 @@ the left MFD.
 | BAY | 8 | Weapon bay doors open/close. Weapons can only be released with open bays. |
 | NEAR | T | Lock the nearest target ahead. AIR or GND mode depends on the selected weapon. |
 | NEXT | B | Select the next target. |
-| NONE | Shift B | Clear the target. No automatic acquisition until the next target or camera key. |
+| NONE | Shift B | Clear the target. No automatic acquisition until the next target or camera key; the targeting pod looks at the current steerpoint. |
 | WPN | Space | Select the next weapon, after the last one the gun. |
 | DTL | Alt D | Detail level. |
 
@@ -1436,7 +1436,8 @@ left, right or back.
 ahead, rear, right or left and pick the nearest object that way; T (nearest target) does the
 same ahead. F6 brings up the TGP and switches its thermal picture (FLIR) on or off with each
 press. B (next target) moves the pod onto the next target without bringing up the page; N
-(designate) and Shift B (clear) leave it where it looks.
+(designate) leaves it where it looks, Shift B (clear) points it at the current steerpoint (as CZ,
+without locking what is there).
 
 The format's top row: **FLIR** (black-and-white thermal picture), the **zoom** (AUTO or 1X..6X),
 **SP** (snowplow), **CZ** (cursor zero, blank in A-A) and **SOI**. Bottom left the pod's mode,

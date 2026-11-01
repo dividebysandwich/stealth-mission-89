@@ -216,7 +216,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         }
         SelectTarget => ("Next target", "Select the next target"),
         NearestTarget => ("Nearest target", "Lock the nearest target ahead"),
-        ClearTarget => ("Clear target", "No automatic acquisition until the next target key"),
+        ClearTarget => (
+            "Clear target",
+            "No automatic acquisition until the next target key; the targeting pod looks at the steerpoint",
+        ),
         SelectWeapon => ("Select weapon", "The next weapon, after the last one the gun"),
         FireWeapon => ("Fire", "Release the selected weapon"),
         Flare => ("Flare", "Release a flare (against infrared missiles)"),
