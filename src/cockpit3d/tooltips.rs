@@ -201,7 +201,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         HudDeclutter => ("HUD declutter", ""),
         Maps => ("Left MFD page", "Map / tactical"),
         Nvg => ("Night vision goggles", ""),
-        HudColour => ("HUD colour", "Green, amber, cyan, white (the HUD and the helmet display)"),
+        HudColour => (
+            "HUD colour",
+            "Green, amber, cyan, white, red, purple (the HUD and the helmet display)",
+        ),
         HmdMode => ("Helmet display", "On / auto (blanked while looking through the HUD) / off"),
         Ordnance => ("Weapons page", "Right MFD"),
         Flir => ("FLIR", "Infrared picture on / off"),

@@ -38,6 +38,8 @@ pub enum HudColour {
     Amber,
     Cyan,
     White,
+    Red,
+    Purple,
 }
 
 impl HudColour {
@@ -46,7 +48,9 @@ impl HudColour {
             HudColour::Green => HudColour::Amber,
             HudColour::Amber => HudColour::Cyan,
             HudColour::Cyan => HudColour::White,
-            HudColour::White => HudColour::Green,
+            HudColour::White => HudColour::Red,
+            HudColour::Red => HudColour::Purple,
+            HudColour::Purple => HudColour::Green,
         }
     }
 
@@ -56,6 +60,8 @@ impl HudColour {
             HudColour::Amber => "AMBER",
             HudColour::Cyan => "CYAN",
             HudColour::White => "WHITE",
+            HudColour::Red => "RED",
+            HudColour::Purple => "PURPLE",
         }
     }
 }
