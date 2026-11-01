@@ -69,9 +69,10 @@ use super::hud_glass::HudGlassMaterial;
 use super::layout::PanelLayout;
 use super::levers::{CockpitAnchors, NozzleLever, Stick, ThrottleLever};
 use super::pick::Solid;
-use super::shading::{CockpitMaterial, cockpit_material};
+use super::shading::{CockpitMaterial, cockpit_part};
 use super::tooltips;
 use super::{CockpitLamp, CockpitMaterials};
+use crate::effects::ViewPart;
 use crate::font::Fonts;
 
 /// The cockpit models of the flyable aircraft, by file stem.
@@ -598,7 +599,7 @@ impl<'a> Spawner<'a> {
                 fog_enabled: false,
                 ..default()
             });
-        let m = self.materials.add(cockpit_material(m));
+        let m = self.materials.add(cockpit_part(m, ViewPart::Cockpit));
         self.modelled.insert(h.id(), m.clone());
         m
     }

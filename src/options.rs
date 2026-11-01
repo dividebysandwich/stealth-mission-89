@@ -396,7 +396,9 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         // Two columns: the effects are many.
         let column = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
         egui::Grid::new(title).num_columns(2).min_col_width(column).show(ui, |ui| {
-            let list = crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro);
+            let list = crate::effects::Effect::ALL
+                .into_iter()
+                .filter(|e| e.retro() == retro && !e.pixel_part());
             for (i, e) in list.enumerate() {
                 let mut on = e.get(&s.effects);
                 ui.horizontal(|ui| {
@@ -422,6 +424,25 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
                 }
             }
         });
+        // The parts pixelize leaves sharp: one a line under it, indented, and only with it on.
+        if retro {
+            ui.indent("pixelize_sharp", |ui| {
+                let usable = s.effects.pixelize && !s.vr;
+                for e in crate::effects::Effect::ALL.into_iter().filter(|e| e.pixel_part()) {
+                    let mut on = e.get(&s.effects);
+                    let check = ui.add_enabled(usable, egui::Checkbox::new(&mut on, e.label()));
+                    let check = if usable {
+                        facts(check, e.facts())
+                    } else {
+                        check.on_disabled_hover_text("Needs Pixelize")
+                    };
+                    if check.changed() {
+                        e.set(&mut s.effects, on);
+                        toggled = true;
+                    }
+                }
+            });
+        }
     }
     if toggled {
         settings.set_changed();

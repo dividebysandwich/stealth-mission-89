@@ -191,6 +191,7 @@ fn attach(
         image: tex.image.clone(),
         proj: Vec4::new(CX, CY, SCALE, SCALE),
         style: Vec4::new(1.0, 1.0, 0.0, 0.0),
+        sharp: false,
     });
     // A little larger than the canvas (the shader leaves the rest clear).
     let size = Vec2::new(WIDTH as f32, HEIGHT as f32) / SCALE * DISTANCE * 1.1;

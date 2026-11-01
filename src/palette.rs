@@ -643,6 +643,11 @@ pub fn retro(settings: &Settings) -> Vec4 {
     Vec4::new(e.vga as u32 as f32, scanlines as u32 as f32, 0.0, 0.0)
 }
 
+/// The pixelize look is on and leaves this part of the cockpit view sharp.
+pub fn pixel_sharp(settings: &Settings, part: crate::effects::ViewPart) -> bool {
+    pixelized(settings) && settings.effects.sharp(part)
+}
+
 /// The pixelize look is on (`Effects::pixelize`; the desktop's pass, `pixelize.rs`).
 pub fn pixelized(settings: &Settings) -> bool {
     settings.effects.pixelize && !settings.vr

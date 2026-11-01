@@ -40,6 +40,35 @@ pub struct Effects {
     pub pixelize: bool,
     /// Pixelize: the side of a block, in screen pixels (`PIXEL_BLOCKS`).
     pub pixel_block: u32,
+    /// Pixelize leaves the HUD sharp (`ViewPart::Hud`).
+    pub sharp_hud: bool,
+    /// Pixelize leaves the cockpit's structure sharp (`ViewPart::Cockpit`).
+    pub sharp_cockpit: bool,
+    /// Pixelize leaves the MFDs, the gauges and the lamps sharp (`ViewPart::Gauges`).
+    pub sharp_gauges: bool,
+}
+
+/// A part of the cockpit view the pixelize look can leave sharp (it still pixelizes the rest).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ViewPart {
+    /// The HUD (and the helmet display).
+    Hud,
+    /// The cockpit itself: the panel, the frame, the seat, the buttons, the stick, the throttle.
+    Cockpit,
+    /// The live displays and the instrument faces: the MFDs, the attitude ball, the gauges, the
+    /// lamps, the readouts and the labels.
+    Gauges,
+}
+
+impl Effects {
+    /// Whether pixelize leaves this part of the view sharp.
+    pub fn sharp(&self, part: ViewPart) -> bool {
+        match part {
+            ViewPart::Hud => self.sharp_hud,
+            ViewPart::Cockpit => self.sharp_cockpit,
+            ViewPart::Gauges => self.sharp_gauges,
+        }
+    }
 }
 
 /// The sizes of a pixelize block the player can choose (screen pixels).
@@ -69,6 +98,9 @@ impl Default for Effects {
             scanlines: false,
             pixelize: false,
             pixel_block: *PIXEL_BLOCKS.end(),
+            sharp_hud: false,
+            sharp_cockpit: false,
+            sharp_gauges: false,
         }
     }
 }
@@ -90,10 +122,13 @@ pub enum Effect {
     Vga,
     Scanlines,
     Pixelize,
+    SharpHud,
+    SharpCockpit,
+    SharpGauges,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 14] = [
+    pub const ALL: [Effect; 17] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -108,6 +143,9 @@ impl Effect {
         Effect::Vga,
         Effect::Scanlines,
         Effect::Pixelize,
+        Effect::SharpHud,
+        Effect::SharpCockpit,
+        Effect::SharpGauges,
     ];
 
     /// Its name on the command line.
@@ -127,6 +165,9 @@ impl Effect {
             Effect::Vga => "vga",
             Effect::Scanlines => "scanlines",
             Effect::Pixelize => "pixelize",
+            Effect::SharpHud => "sharp-hud",
+            Effect::SharpCockpit => "sharp-cockpit",
+            Effect::SharpGauges => "sharp-gauges",
         }
     }
 
@@ -147,6 +188,9 @@ impl Effect {
             Effect::Vga => "VGA colours",
             Effect::Scanlines => "Scanlines",
             Effect::Pixelize => "Pixelize",
+            Effect::SharpHud => "Exclude HUD",
+            Effect::SharpCockpit => "Exclude cockpit (buttons, toggles...)",
+            Effect::SharpGauges => "Exclude MFDs and gauges",
         }
     }
 
@@ -167,6 +211,9 @@ impl Effect {
             Effect::Vga => "VGA COLOURS",
             Effect::Scanlines => "SCANLINES",
             Effect::Pixelize => "PIXELIZE",
+            Effect::SharpHud => "EXCLUDE HUD",
+            Effect::SharpCockpit => "EXCLUDE COCKPIT",
+            Effect::SharpGauges => "EXCLUDE MFDS+GAUGES",
         }
     }
 
@@ -219,6 +266,16 @@ impl Effect {
                 "The whole 3D view (terrain, aircraft, buildings, the cockpit) in big square pixels, as on an MS-DOS PC; the menus and tooltips stay sharp (not in VR)",
                 "The slider sets the size of a block, in screen pixels (2: fine, 5: coarse)",
                 "Anti-aliasing is off while it is on",
+                "The three switches under it leave the HUD, the cockpit or the MFDs and gauges sharp",
+            ],
+            Effect::SharpHud => &[
+                "Pixelize: the HUD (and the helmet display) is drawn sharp over the pixelized view, so its thin symbols stay readable",
+            ],
+            Effect::SharpCockpit => &[
+                "Pixelize: the cockpit's panel, frame, seat, buttons, toggles, stick and throttle are drawn sharp",
+            ],
+            Effect::SharpGauges => &[
+                "Pixelize: the MFDs, the attitude ball, the gauges, the lamps, the readouts and the labels are drawn sharp",
             ],
         }
     }
@@ -239,6 +296,9 @@ impl Effect {
             Effect::Vga => e.vga,
             Effect::Scanlines => e.scanlines,
             Effect::Pixelize => e.pixelize,
+            Effect::SharpHud => e.sharp_hud,
+            Effect::SharpCockpit => e.sharp_cockpit,
+            Effect::SharpGauges => e.sharp_gauges,
         }
     }
 
@@ -258,13 +318,21 @@ impl Effect {
             Effect::Vga => e.vga = on,
             Effect::Scanlines => e.scanlines = on,
             Effect::Pixelize => e.pixelize = on,
+            Effect::SharpHud => e.sharp_hud = on,
+            Effect::SharpCockpit => e.sharp_cockpit = on,
+            Effect::SharpGauges => e.sharp_gauges = on,
         }
     }
 
     /// A retro look (OPTIONS > GRAPHICS > Retro, the in-flight GRAPHICS page), not an
     /// atmosphere effect.
     pub fn retro(self) -> bool {
-        matches!(self, Effect::Vga | Effect::Scanlines | Effect::Pixelize)
+        matches!(self, Effect::Vga | Effect::Scanlines | Effect::Pixelize) || self.pixel_part()
+    }
+
+    /// One of the switches that leave a part of the view sharp: only with pixelize on.
+    pub fn pixel_part(self) -> bool {
+        matches!(self, Effect::SharpHud | Effect::SharpCockpit | Effect::SharpGauges)
     }
 
     pub fn toggle(self, e: &mut Effects) {
@@ -327,5 +395,8 @@ mod tests {
         assert!(Effects::parse("pixelize").pixelize);
         assert!(!Effects::default().pixelize);
         assert!(PIXEL_BLOCKS.contains(&Effects::default().pixel_block));
+        let e = Effects::parse("pixelize,sharp-hud,sharp-gauges");
+        assert!(e.sharp(ViewPart::Hud) && e.sharp(ViewPart::Gauges) && !e.sharp(ViewPart::Cockpit));
+        assert!(!Effects::default().sharp(ViewPart::Hud));
     }
 }

@@ -13,6 +13,7 @@ use stealth_campaign::PlayerId;
 use stealth_net::protocol::{PlayerInfo, PlayerStatus};
 
 use crate::canvas::Canvas;
+use crate::cockpit3d::hud_glass::{LeaveSharp, OverlayMaterial};
 use crate::cockpit3d::{CockpitRoot, HudGlass};
 use crate::font::stroke_text;
 
@@ -280,27 +281,30 @@ fn cockpit_panel(
         &mut Panel,
         &mut Transform,
         &mut Visibility,
-        &MeshMaterial3d<StandardMaterial>,
+        &MeshMaterial3d<OverlayMaterial>,
     )>,
     mut backs: Query<
-        (&mut Transform, &mut Visibility, &MeshMaterial3d<StandardMaterial>),
+        (&mut Transform, &mut Visibility, &MeshMaterial3d<OverlayMaterial>),
         (With<Back>, Without<Panel>),
     >,
     mut corner: Local<Option<(Entity, Vec3)>>,
     mut up: Local<f32>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<OverlayMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let Ok((root, root_tf)) = roots.single() else { return };
     if panels.is_empty() {
-        let material = |m: &mut Assets<StandardMaterial>, image| {
-            m.add(StandardMaterial {
-                base_color_texture: image,
-                unlit: true,
-                fog_enabled: false,
-                alpha_mode: AlphaMode::Blend,
-                ..default()
+        let material = |m: &mut Assets<OverlayMaterial>, image| {
+            m.add(OverlayMaterial {
+                base: StandardMaterial {
+                    base_color_texture: image,
+                    unlit: true,
+                    fog_enabled: false,
+                    alpha_mode: AlphaMode::Blend,
+                    ..default()
+                },
+                extension: LeaveSharp::default(),
             })
         };
         let quad = meshes.add(Rectangle::new(1.0, 1.0));
@@ -397,14 +401,14 @@ fn cockpit_panel(
         *tf = place(0.005);
         v.set_if_neq(Visibility::Inherited);
         if let Some(mut m) = materials.get_mut(&m.0) {
-            m.base_color = Color::WHITE.with_alpha(a);
+            m.base.base_color = Color::WHITE.with_alpha(a);
         }
     }
     for (mut tf, mut v, m) in &mut backs {
         *tf = place(0.0);
         v.set_if_neq(Visibility::Inherited);
         if let Some(mut m) = materials.get_mut(&m.0) {
-            m.base_color = Color::BLACK.with_alpha(a * BACK);
+            m.base.base_color = Color::BLACK.with_alpha(a * BACK);
         }
     }
 }
