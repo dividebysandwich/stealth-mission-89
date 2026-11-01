@@ -75,7 +75,7 @@ impl Effect {
             Effect::HudMode(_) => Action::HudMode,
             Effect::LeftPage(_) => Action::Maps,
             Effect::CamCycle => Action::CamAhead,
-            Effect::TimeToggle => Action::TimeAccel,
+            Effect::TimeToggle => Action::TimeStep,
             Effect::Console(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
                 // The slew buttons have no key action (F8 is the MOV button's).
@@ -247,7 +247,6 @@ pub(super) struct Fire<'w, 's> {
     mfd_commands: MessageWriter<'w, MfdCommand>,
     hud: Res<'w, HudState>,
     mfd: Res<'w, MfdState>,
-    accel: Res<'w, crate::combat::TimeAccel>,
     console: MessageWriter<'w, ConsoleButton>,
     _p: std::marker::PhantomData<&'s ()>,
 }
@@ -299,11 +298,7 @@ impl Fire<'_, '_> {
                 self.actions.write(ActionEvent(next));
             }
             Effect::TimeToggle => {
-                self.actions.write(ActionEvent(if self.accel.on {
-                    Action::TimeNormal
-                } else {
-                    Action::TimeAccel
-                }));
+                self.actions.write(ActionEvent(Action::TimeStep));
             }
             Effect::Console(key) => {
                 self.console.write(ConsoleButton(key));

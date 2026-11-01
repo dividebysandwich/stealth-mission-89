@@ -104,8 +104,8 @@ impl CsarButton {
     fn lit(self, accel: &TimeAccel) -> bool {
         match self {
             CsarButton::Flare | CsarButton::Skip => false,
-            CsarButton::Faster => accel.on,
-            CsarButton::Normal => !accel.on,
+            CsarButton::Faster => accel.on(),
+            CsarButton::Normal => !accel.on(),
         }
     }
 }

@@ -287,10 +287,11 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     if let Some(m) = &f.message {
         text(c, CX, 105.0, m, Align::Centre);
     }
-    let status: Vec<&str> = [(f.accel, "ACCEL"), (f.training, "TRAINING")]
+    let accel = super::accel_label(f.accel);
+    let status: Vec<&str> = [(accel.as_deref(), true), (Some("TRAINING"), f.training)]
         .iter()
-        .filter(|s| s.0)
-        .map(|s| s.1)
+        .filter(|s| s.1)
+        .filter_map(|s| s.0)
         .collect();
     if !status.is_empty() {
         text(c, CX, 131.0, &status.join("  "), Align::Centre);
