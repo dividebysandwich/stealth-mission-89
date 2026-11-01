@@ -178,7 +178,7 @@ mouse on an option for a short description.
 | Button | Function |
 |---|---|
 | NEW MISSION | New objectives with the same options. |
-| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. |
+| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. DELETE removes one save and DELETE ALL every save, each after a confirmation. |
 | PLAN ROUTE | The mission planner (chapter 8.2). |
 | LOADOUT | The stores on each station or bay, seen from above: click one and pick its load (*Same on both sides* mirrors it). Greyed out weapons are out of stock. BRIEFED restores the briefed stores, CLEAR empties everything. |
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |

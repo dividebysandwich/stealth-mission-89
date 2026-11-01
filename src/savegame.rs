@@ -360,6 +360,8 @@ pub struct SavesWindow {
     error: Option<String>,
     /// The save whose DELETE was clicked: (name, label), awaiting confirmation.
     confirm_delete: Option<(String, String)>,
+    /// DELETE ALL was clicked, awaiting confirmation.
+    confirm_delete_all: bool,
 }
 
 impl SavesWindow {
@@ -368,16 +370,17 @@ impl SavesWindow {
         self.saves = list();
         self.error = None;
         self.confirm_delete = None;
+        self.confirm_delete_all = false;
     }
 }
 
-/// The list of saves: LOAD returns the save to fly, DELETE asks first.
+/// The list of saves: LOAD returns the save to fly, DELETE and DELETE ALL ask first.
 pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight> {
     if !w.open {
         return None;
     }
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    let mut close = escape && w.confirm_delete.is_none();
+    let mut close = escape && w.confirm_delete.is_none() && !w.confirm_delete_all;
     let mut load = None;
     let width = crate::menu::wide_width(ctx).min(900.0);
     let window = menu_window(ctx, "Saved missions", width);
@@ -449,15 +452,47 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
             }
             crate::menu::footer_rule(ui);
             ui.add_space(8.0);
-            if ui
-                .add(big_button("BACK").icon(icon::BACK))
-                .on_hover_text("Back to the single mission screen")
-                .clicked()
-            {
-                close = true;
-            }
+            ui.horizontal(|ui| {
+                if ui
+                    .add(big_button("BACK").icon(icon::BACK))
+                    .on_hover_text("Back to the single mission screen")
+                    .clicked()
+                {
+                    close = true;
+                }
+                if ui
+                    .add_enabled(!w.saves.is_empty(), big_button("DELETE ALL").icon(icon::DELETE))
+                    .on_hover_text("Delete all the saves")
+                    .clicked()
+                {
+                    w.confirm_delete_all = true;
+                }
+            });
         },
     );
+    if w.confirm_delete_all {
+        let count = w.saves.len();
+        let label = format!("{count} saved mission{}", if count == 1 { "" } else { "s" });
+        let answer = crate::campaign::confirm_delete(
+            ctx,
+            "Delete all the saves",
+            "DELETE ALL THE SAVES?",
+            &label,
+            escape,
+        );
+        if answer == Some(true) {
+            for (name, _) in &w.saves {
+                if let Err(e) = stealth_host::store::remove(&key(name)) {
+                    w.error = Some(format!("A save could not be deleted: {e:#}"));
+                    break;
+                }
+            }
+            w.saves = list();
+        }
+        if answer.is_some() {
+            w.confirm_delete_all = false;
+        }
+    }
     if let Some((name, label)) = w.confirm_delete.clone() {
         let answer = crate::campaign::delete_popup(ctx, "SAVE", &label, escape);
         if answer == Some(true) {

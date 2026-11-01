@@ -69,15 +69,26 @@ pub(crate) fn delete_popup(
     label: &str,
     cancel: bool,
 ) -> Option<bool> {
+    let name = format!("Delete the {}", what.to_lowercase());
+    confirm_delete(ctx, &name, &format!("DELETE THIS {what}?"), label, cancel)
+}
+
+/// The popup of `delete_popup` with its own window name and title ("DELETE ALL THE SAVES?").
+pub(crate) fn confirm_delete(
+    ctx: &egui::Context,
+    name: &str,
+    title: &str,
+    label: &str,
+    cancel: bool,
+) -> Option<bool> {
     let mut answer = cancel.then_some(false);
-    let window = egui::Window::new(format!("Delete the {}", what.to_lowercase()))
+    let window = egui::Window::new(name)
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)
         .resizable(false)
         .title_bar(false)
         .order(egui::Order::Foreground);
-    let title = format!("DELETE THIS {what}?");
-    crate::menu::Panel::new(&title).window(window, ctx, |ui| {
+    crate::menu::Panel::new(title).window(window, ctx, |ui| {
         ui.label(egui::RichText::new(label).color(BRIGHT));
         ui.label(egui::RichText::new("Deletion is permanent").color(DIM));
         ui.add_space(8.0);
