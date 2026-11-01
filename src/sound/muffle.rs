@@ -7,6 +7,9 @@
 //! Bevy's looping would replay the first pass as it was filtered then. The sound plays at a
 //! speed set while it plays (`Pitch`), read from the decoded samples at that rate: the sink's
 //! own speed only reaches rodio's resampler when a span starts, and an endless one never does.
+//!
+//! The sound files are decoded into memory in the background as they load (`preload`), so a
+//! filtered sound is there to play the moment it is asked for.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -15,6 +18,8 @@ use std::time::Duration;
 
 use bevy::audio::{AudioSource, ChannelCount, Decodable, SampleRate, Source};
 use bevy::prelude::*;
+use bevy::tasks::futures::check_ready;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 
 use crate::camera::{View, ViewState};
 use crate::settings::Settings;
@@ -30,17 +35,23 @@ const GLIDE: f32 = 0.12;
 /// Samples between checks of the cutoff on the audio thread.
 const REFRESH: u32 = 64;
 
-/// The engine sounds decoded for the filter, and the cutoff they share with the audio thread
-/// (Hz, as f32 bits).
+/// The sounds decoded for the filter, and the cutoff they share with the audio thread (Hz, as
+/// f32 bits).
 #[derive(Resource)]
 pub(crate) struct MuffledSounds {
     cutoff: Arc<AtomicU32>,
     decoded: HashMap<AssetId<AudioSource>, Arc<Decoded>>,
+    /// The sound files being decoded in the background.
+    decoding: Vec<(AssetId<AudioSource>, Task<Decoded>)>,
 }
 
 impl Default for MuffledSounds {
     fn default() -> Self {
-        Self { cutoff: Arc::new(AtomicU32::new(INSIDE_HZ.to_bits())), decoded: HashMap::new() }
+        Self {
+            cutoff: Arc::new(AtomicU32::new(INSIDE_HZ.to_bits())),
+            decoded: HashMap::new(),
+            decoding: Vec::new(),
+        }
     }
 }
 
@@ -49,6 +60,44 @@ struct Decoded {
     samples: Vec<f32>,
     channels: ChannelCount,
     rate: SampleRate,
+}
+
+impl Decoded {
+    fn new(source: &AudioSource) -> Self {
+        let decoder = source.decoder();
+        let (channels, rate) = (decoder.channels(), decoder.sample_rate());
+        Self { samples: decoder.collect(), channels, rate }
+    }
+}
+
+/// Decodes each sound file (`sounds/`) in the background once it has loaded, keeping its
+/// samples for the filter.
+pub(super) fn preload(
+    mut events: MessageReader<AssetEvent<AudioSource>>,
+    server: Res<AssetServer>,
+    sources: Res<Assets<AudioSource>>,
+    mut sounds: ResMut<MuffledSounds>,
+) {
+    for event in events.read() {
+        let AssetEvent::LoadedWithDependencies { id } = *event else { continue };
+        let file = server.get_path(id).is_some_and(|p| p.path().starts_with("sounds"));
+        if !file || sounds.decoded.contains_key(&id) {
+            continue;
+        }
+        let Some(source) = sources.get(id).cloned() else { continue };
+        let task = AsyncComputeTaskPool::get().spawn(async move { Decoded::new(&source) });
+        sounds.decoding.push((id, task));
+    }
+    let mut decoding = std::mem::take(&mut sounds.decoding);
+    decoding.retain_mut(|(id, task)| match check_ready(task) {
+        Some(d) => {
+            debug!("decoded {:?} ({} samples)", server.get_path(*id), d.samples.len());
+            sounds.decoded.entry(*id).or_insert_with(|| Arc::new(d));
+            false
+        }
+        None => true,
+    });
+    sounds.decoding = decoding;
 }
 
 /// The playback speed of a looped engine sound (1 = as recorded), set while it plays.
@@ -124,12 +173,11 @@ impl Muffler<'_> {
         speed: f32,
         looped: bool,
     ) -> Option<(Handle<Muffled>, Pitch)> {
+        // Decoded here if asked for before its background decoding is done.
         let decoded = match self.sounds.decoded.get(&handle.id()) {
             Some(d) => d.clone(),
             None => {
-                let decoder = self.sources.get(handle)?.decoder();
-                let (channels, rate) = (decoder.channels(), decoder.sample_rate());
-                let d = Arc::new(Decoded { samples: decoder.collect(), channels, rate });
+                let d = Arc::new(Decoded::new(self.sources.get(handle)?));
                 self.sounds.decoded.insert(handle.id(), d.clone());
                 d
             }

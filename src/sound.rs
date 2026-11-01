@@ -90,6 +90,7 @@ impl Plugin for SoundPlugin {
             .init_resource::<ambient::Ambience>()
             .add_audio_source::<muffle::Muffled>()
             .add_systems(Startup, (load_bank, ambient::load))
+            .add_systems(Update, muffle::preload)
             .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset))
             .add_systems(
                 Update,
