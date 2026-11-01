@@ -228,8 +228,33 @@ a HOTAS: grab the stick with the right hand and the throttle with the left.
 | Stick click | Bay doors | Lock cursor target |
 
 **Head and eye tracking.** With *Head/Eye tracking* on, the cockpit view follows your head, picked up by an
-infrared tracker (TrackIR and its kin), an eye tracker (Tobii, Beam), a webcam or a phone, through
-OpenTrack (FreeTrack output, or UDP on port 4242). **Home** recentres the view.
+infrared tracker, an eye tracker, a webcam or a phone, through OpenTrack (FreeTrack output, or UDP on port 4242). **Home** recentres the view.
+
+Due to restrictions in the TrackIR EULA that are incompatible with open-source projects, we can't use their SDK to support TrackIR devices directly.
+As a workaround, you can use [FreePIE](https://andersmalmgren.github.io/FreePIE/) with the script below.
+FreePIE runs alongside the TrackIR software and acts as a bridge between it and the game. The script captures TrackIR input data and converts it into FreeTrack-compatible output.
+
+```
+def update():
+    freeTrack.yaw = -(trackIR.yaw/180)
+    freeTrack.pitch = -(trackIR.pitch/90)
+    freeTrack.roll = -(trackIR.roll/90)
+    freeTrack.x = -trackIR.x
+    freeTrack.y = trackIR.y
+    freeTrack.z = trackIR.z
+
+if starting:
+    trackIR.update += update
+
+diagnostics.watch(freeTrack.yaw)
+diagnostics.watch(freeTrack.pitch)
+diagnostics.watch(freeTrack.roll)
+diagnostics.watch(freeTrack.x)
+diagnostics.watch(freeTrack.y)
+diagnostics.watch(freeTrack.z)
+```
+
+Thank you fritzjoel for this tip!
 
 The complete list of keys is in Appendix A and in [keys.md](keys.md).
 
