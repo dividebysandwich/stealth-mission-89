@@ -184,12 +184,12 @@ impl Falling {
 }
 
 #[derive(Resource, Default)]
-struct SimVisuals {
+pub(crate) struct SimVisuals {
     /// Aircraft model, its key and its spotting dot with the dot's current look.
     aircraft: HashMap<usize, (Entity, (i32, bool), SpotDot, Entity)>,
     /// Projectile model, spec and missile dot with its current look: the motor's glow
     /// (`TRACER`), black by day (`COASTING`) or white at night (`COASTING_NIGHT`).
-    proj: [Option<(Entity, i32, Option<(Entity, u8)>)>; N_PROJ],
+    pub(crate) proj: [Option<(Entity, i32, Option<(Entity, u8)>)>; N_PROJ],
     cms: [Option<Cartridge>; 4],
     /// Gun rounds: the dot at the round and its tracer line.
     bullets: Vec<(Entity, Entity)>,
@@ -939,7 +939,7 @@ fn spawn_canopy(commands: &mut Commands, assets: &ModelAssets) -> Entity {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn sync_objects(
+pub(crate) fn sync_objects(
     mut commands: Commands,
     combat: Res<Combat>,
     mut vis: ResMut<SimVisuals>,
@@ -1106,7 +1106,7 @@ fn sync_objects(
     let projs = sim.projectiles();
     for s in 0..N_PROJ {
         let m = projs[s];
-        let model = if m.ttl != 0 { sim_missile_model(&combat, m.spec) } else { -1 };
+        let model = if m.ttl != 0 { projectile_model(&combat, &m) } else { -1 };
         if vis.proj[s].is_some_and(|(_, sp, _)| m.ttl == 0 || sp != m.spec) {
             if let Some((e, ..)) = vis.proj[s].take() {
                 commands.entity(e).try_despawn();
@@ -1376,6 +1376,14 @@ fn sim_missile_model(combat: &Combat, spec: i32) -> i32 {
     combat.data.missile(spec).model as i32
 }
 
+/// The model of a projectile: a store that left a station its own (`stores::weapon_model`),
+/// else its type's.
+fn projectile_model(combat: &Combat, m: &stealth_sim::Projectile) -> i32 {
+    m.station
+        .and_then(|_| crate::stores::weapon_model(m.weapon))
+        .unwrap_or_else(|| sim_missile_model(combat, m.spec))
+}
+
 /// Lights (slots 10/11) for the world and the own aircraft, the antenna angles (15/16) and the
 /// own aircraft's (model 24) gear (5/6), brakes (7), bay doors (8), navigation (12) and
 /// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22).
@@ -1497,6 +1505,7 @@ fn world_model_state(
             s20,
             (23, left_stores),
             (24, right_stores),
+            (crate::stores::STORES_SLOT, 1),
             (left_pylon, pylons[0] as i16),
             (right_pylon, pylons[1] as i16),
         ];
@@ -1847,7 +1856,7 @@ fn sync_remote_pilots(
     });
     for (key, m) in &missiles {
         if !vis.missiles.contains_key(key) {
-            let model = sim_missile_model(&combat, m.spec);
+            let model = projectile_model(&combat, m);
             let file = library.load(&server, model_file(model));
             let Some(e) = spawn_model(&mut commands, &assets, &file, model, true) else { break };
             let mut dot = None;

@@ -94,6 +94,7 @@ mod sling;
 mod sound;
 mod stage;
 mod stars;
+mod stores;
 mod station;
 mod sunbeams;
 mod tacview;
@@ -291,6 +292,7 @@ fn main() {
         .add_plugins((
             combat::CombatPlugin,
             sim_render::SimRenderPlugin,
+            stores::StoresPlugin,
             trackcam::TrackCamPlugin,
             trails::TrailsPlugin,
             rotor_blur::RotorBlurPlugin,
