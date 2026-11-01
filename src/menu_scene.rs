@@ -568,7 +568,16 @@ fn despawn_scene(
     mut commands: Commands,
     q: Query<Entity, With<SceneEntity>>,
     root: Option<Res<crate::camera::XrRoot>>,
+    look: Option<Res<MenuLook>>,
+    mut cursor: Query<&mut CursorOptions>,
 ) {
+    // The menu closed with the view still turning: free the cursor.
+    if look.is_some_and(|l| l.turning)
+        && let Ok(mut c) = cursor.single_mut()
+    {
+        c.grab_mode = CursorGrabMode::None;
+        c.visible = true;
+    }
     // VR: the tracking root leaves the standing point before it goes.
     if let Some(r) = root.and_then(|r| r.0) {
         commands
