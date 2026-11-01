@@ -2,7 +2,7 @@
 //! menu's other choices (`prefs.rs`), on four tabs:
 //!
 //! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
-//!   player labels, the VR cockpit size and Tacview.
+//!   player labels, the VR cockpit size, Tacview and the GIF recording (in two columns).
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
 //! - SOUND: the master, engine, effects, warning, radar warning and radio volumes, which radar
 //!   warning tones sound, the engine low-pass inside the aircraft, the coop radio's microphone.
@@ -69,6 +69,14 @@ impl Tab {
 
 type SettingsMut<'a> = ResMut<'a, Settings>;
 
+/// The window's width.
+const WIDTH: f32 = 540.0;
+/// The least height of a tab's body. With the title, the tabs and the footer it makes the window
+/// as high as the single mission screen, so the borders show wherever that screen's do.
+const BODY_HEIGHT: f32 = 487.0;
+/// The GAME tab's left column (the switches and the flying options).
+const GAME_LEFT_WIDTH: f32 = 220.0;
+
 /// The window (while open and the bindings dialog is not).
 pub fn options_ui(
     ctx: &egui::Context,
@@ -81,7 +89,7 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    Panel::new("OPTIONS").window(menu_window(ctx, "Options", 500.0), ctx, |ui| {
+    Panel::new("OPTIONS").window(menu_window(ctx, "Options", WIDTH), ctx, |ui| {
         ui.horizontal(|ui| {
             for (tab, name) in Tab::ALL {
                 ui.selectable_value(&mut w.tab, tab, egui::RichText::new(name).size(16.0));
@@ -97,7 +105,7 @@ pub fn options_ui(
             w.body = w.body.max(hidden.min_rect().size());
         }
         let shown = ui.scope(|ui| {
-            ui.set_min_size(w.body);
+            ui.set_min_size(w.body.max(egui::vec2(0.0, BODY_HEIGHT)));
             tab_options(ui, w.tab, settings, head, dialog, &mut w.voices);
         });
         w.body = w.body.max(shown.response.rect.size());
@@ -147,11 +155,28 @@ fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str, &[&str])
 }
 
 fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    // Two columns keep the tab as low as the others: the window is as high as the single
+    // mission screen.
+    ui.horizontal_top(|ui| {
+        ui.vertical(|ui| {
+            ui.set_width(GAME_LEFT_WIDTH);
+            style_options(ui, settings);
+            flying_options(ui, settings);
+        });
+        ui.vertical(|ui| {
+            vr_size_options(ui, settings);
+            crate::menu::tacview_options(ui, settings);
+            gif_options(ui, settings);
+        });
+    });
+}
+
+fn style_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     section(ui, "Classic / Modern");
     let s = settings.bypass_change_detection();
     let (mut cockpit, mut hud) = (!s.classic_cockpit, !s.classic_hud);
     let (mut avionics, mut flight) = (!s.classic_avionics, !s.classic_flight);
-    let mut toggled = switches(
+    let toggled = switches(
         ui,
         [
             (
@@ -193,6 +218,14 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     s.classic_hud = !hud;
     s.classic_avionics = !avionics;
     s.classic_flight = !flight;
+    if toggled {
+        settings.set_changed();
+    }
+}
+
+fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    let s = settings.bypass_change_detection();
+    let mut toggled = false;
     section(ui, "Flying");
     toggled |= facts(
         ui.checkbox(&mut s.auto_trim, "Auto trim"),
@@ -234,6 +267,13 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             toggled = true;
         }
     });
+    if toggled {
+        settings.set_changed();
+    }
+}
+
+fn vr_size_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+    let s = settings.bypass_change_detection();
     section(ui, "VR cockpit size");
     let mut percent = s.vr_cockpit_scale * 100.0;
     let range = VR_COCKPIT_SCALE_RANGE.start() * 100.0..=VR_COCKPIT_SCALE_RANGE.end() * 100.0;
@@ -244,13 +284,8 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     .changed()
     {
         s.vr_cockpit_scale = percent / 100.0;
-        toggled = true;
-    }
-    if toggled {
         settings.set_changed();
     }
-    crate::menu::tacview_options(ui, settings);
-    gif_options(ui, settings);
 }
 
 /// The GIF recording's size (with the resolution it gives) and frame rate.
