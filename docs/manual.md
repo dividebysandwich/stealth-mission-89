@@ -2819,8 +2819,8 @@ fire** rule the hits damage them, without it missiles burst harmlessly and round
 Your cannon hits are judged on your computer and checked by the server; missiles and bombs are
 flown by the server.
 
-**The radio.** Hold **CapsLock** to talk and every player in the game hears you, in the air
-or on the Ops screen, through a radio's loudspeaker: a narrow band, a hiss under the voice
+**The radio.** Hold **CapsLock** to talk and every player in the game hears you, in the air,
+on the Ops screen or in the menus, through a radio's loudspeaker: a narrow band, a hiss under the voice
 and the squelch's click as each transmission starts and ends. Any joystick or VR controller
 button can be mapped to *PTT* in the CONTROLS dialog (the right VR controller's stick click by default); it talks while held. The microphone
 opens the first time you press the key. While you transmit, the panel next to the HUD reads

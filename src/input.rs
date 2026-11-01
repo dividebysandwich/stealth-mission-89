@@ -516,6 +516,16 @@ fn read_keyboard(
         }
     }
 
+    let key_held = |a: Action| {
+        config.keys.iter().any(|m| {
+            m.target == crate::hotas::ButtonTarget::Action(a)
+                && keys.pressed(m.key)
+                && (m.mods == Mods::None || m.mods == mods)
+        })
+    };
+    // Talking works over the Ops screen and the menus too (a text field being typed in takes
+    // the keys).
+    controls.talk = key_held(Action::Ptt);
     if block.0 && !console.0 {
         // The menu reads the arrow keys.
         controls.roll = 0.0;
@@ -533,6 +543,7 @@ fn read_keyboard(
         *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
+        controls.view_zoom = 0.0;
         return;
     }
     // Virtual stick: the keys bound to the stick actions, with the modifier they were bound with
@@ -573,23 +584,14 @@ fn read_keyboard(
             && !camera_key(m.key)
             && (m.mods == Mods::None || m.mods == mods)
     });
-    let held = |a: Action| {
-        config.keys.iter().any(|m| {
-            m.target == crate::hotas::ButtonTarget::Action(a)
-                && keys.pressed(m.key)
-                && (m.mods == Mods::None || m.mods == mods)
-        })
-    };
-    controls.fire = held(Action::FireWeapon) && !crate::fullscreen::alt_enter(&keys);
-    controls.mark = held(Action::LockCursor);
-    // Talking works over the Ops screen too (a text field being typed in takes the keys).
-    controls.talk = held(Action::Ptt);
+    controls.fire = key_held(Action::FireWeapon) && !crate::fullscreen::alt_enter(&keys);
+    controls.mark = key_held(Action::LockCursor);
     controls.view_zoom =
-        held(Action::ViewZoomIn) as i8 as f32 - held(Action::ViewZoomOut) as i8 as f32;
+        key_held(Action::ViewZoomIn) as i8 as f32 - key_held(Action::ViewZoomOut) as i8 as f32;
     controls.yaw = yaw.clamp(-1.0, 1.0) * scale;
     controls.throttle = None;
     controls.collective_rate =
-        held(Action::ThrottleUp) as i8 as f32 - held(Action::ThrottleDown) as i8 as f32;
+        key_held(Action::ThrottleUp) as i8 as f32 - key_held(Action::ThrottleDown) as i8 as f32;
     let throttle = controls.collective_rate;
     *throttle_since = (throttle != 0.0).then(|| throttle_since.unwrap_or(now));
     controls.throttle_rate =
@@ -819,6 +821,28 @@ mod tests {
         app.world_mut().resource_mut::<ButtonInput<KeyCode>>().release(KeyCode::Equal);
         app.update();
         assert_eq!(app.world().resource::<FlightControls>().throttle_rate, 0.0);
+    }
+
+    /// The radio's push-to-talk key works while the Ops screen or a menu blocks the flight's
+    /// keys.
+    #[test]
+    fn talk_key_works_over_the_menus() {
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<VirtualStick>()
+            .insert_resource(InputBlock(true))
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<Time<Real>>()
+            .insert_resource(crate::hotas::InputConfig::default())
+            .add_message::<ActionEvent>()
+            .add_systems(Update, read_keyboard);
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::CapsLock);
+        app.update();
+        assert!(app.world().resource::<FlightControls>().talk);
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().release(KeyCode::CapsLock);
+        app.update();
+        assert!(!app.world().resource::<FlightControls>().talk);
     }
 
     /// The rudder keys are listed with the other stick keys, not at the end.

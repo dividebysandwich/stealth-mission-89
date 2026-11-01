@@ -844,6 +844,10 @@ pub fn read_hotas(
     hotas.poll();
     if block.0 {
         for m in &config.buttons {
+            // The radio talks over the Ops screen and the menus too.
+            if m.target == ButtonTarget::Action(Action::Ptt) {
+                controls.talk |= hotas.active(&m.device, m.source, false);
+            }
             if m.target == ButtonTarget::Action(Action::Menu)
                 && hotas.active(&m.device, m.source, false)
                 && !hotas.active(&m.device, m.source, true)
