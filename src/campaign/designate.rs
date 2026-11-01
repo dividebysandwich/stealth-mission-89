@@ -19,14 +19,24 @@ const GROUND_ROOM: f64 = 60.0;
 /// The GEPARD / PATRIOT / DRONES new site buttons (the one active again: cancel).
 pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
     section(ui, "New site");
-    // Framed buttons sharing the column's width, the one being designated lit.
-    ui.horizontal(|ui| {
-        let w = (ui.available_width() - ui.spacing().item_spacing.x * 2.0) / 3.0;
-        let kinds = [
-            (DefenceKind::Gepard, "GEPARD"),
-            (DefenceKind::Patriot, "PATRIOT"),
-            (DefenceKind::Drones, "DRONES"),
-        ];
+    let kinds = [
+        (DefenceKind::Gepard, "GEPARD"),
+        (DefenceKind::Patriot, "PATRIOT"),
+        (DefenceKind::Drones, "DRONES"),
+    ];
+    // Framed buttons sharing the column's width, the one being designated lit; one under the
+    // other where the column is too narrow for their labels side by side.
+    let gap = ui.spacing().item_spacing.x;
+    let third = (ui.available_width() - gap * 2.0) / 3.0;
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let pad = ui.spacing().button_padding.x * 2.0 + 4.0;
+    let widest = kinds
+        .iter()
+        .map(|(_, label)| {
+            ui.painter().layout_no_wrap(label.to_string(), font.clone(), BRIGHT).size().x + pad
+        })
+        .fold(0.0, f32::max);
+    let mut add = |ui: &mut egui::Ui, w: f32| {
         for (kind, label) in kinds {
             let on = c.ui.designate == Some(kind);
             let button = egui::Button::new(label).min_size(egui::vec2(w, 30.0)).selected(on);
@@ -35,7 +45,13 @@ pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
                 c.ui.error = None;
             }
         }
-    });
+    };
+    if widest <= third {
+        ui.horizontal(|ui| add(ui, third));
+    } else {
+        let w = ui.available_width();
+        ui.vertical(|ui| add(ui, w));
+    }
     let hint = match c.ui.designate {
         Some(_) => "Click the map where it goes - right click: cancel",
         None => "Designate a spot: UH-60s fly its cargo to a helipad there within 24 h",
