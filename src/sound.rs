@@ -73,7 +73,7 @@ use crate::settings::AppState;
 use crate::world::{FloatingOrigin, WorldPos, wu_to_bevy};
 
 mod ambient;
-mod muffle;
+pub(crate) mod muffle;
 
 use muffle::{Muffler, Pitch};
 

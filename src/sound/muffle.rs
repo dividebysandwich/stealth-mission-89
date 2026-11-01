@@ -1,6 +1,7 @@
 //! Sounds heard from inside the aircraft (the engine's, the weather's and the world's around
-//! it): a low-pass filter (the canopy and the helmet take the highs off), its cutoff gliding
-//! when the view moves in or out of the cockpit (or the SOUND options turn it off).
+//! it): a low-pass filter (the canopy and the helmet take the highs off, an air defence
+//! console's shelter more), its cutoff gliding when the view moves in or out of the cockpit
+//! (or the SOUND options turn it off).
 //!
 //! The filter runs on the audio thread over the decoded samples, so it loops the sound itself:
 //! Bevy's looping would replay the first pass as it was filtered then. The sound plays at a
@@ -17,9 +18,12 @@ use bevy::prelude::*;
 
 use crate::camera::{View, ViewState};
 use crate::settings::Settings;
+use crate::station::Manning;
 
-/// Cutoff (Hz) inside the aircraft, and outside where the filter is all but open.
-const INSIDE_HZ: f32 = 1000.0;
+/// Cutoff (Hz) inside the aircraft, inside a console's shelter (a Patriot radar, a Gepard, a
+/// drone command center), and outside where the filter is all but open.
+const INSIDE_HZ: f32 = 600.0;
+const SHELTER_HZ: f32 = 300.0;
 const OUTSIDE_HZ: f32 = 18000.0;
 /// Time constant (s) of the cutoff's glide.
 const GLIDE: f32 = 0.12;
@@ -29,7 +33,7 @@ const REFRESH: u32 = 64;
 /// The engine sounds decoded for the filter, and the cutoff they share with the audio thread
 /// (Hz, as f32 bits).
 #[derive(Resource)]
-pub(super) struct MuffledSounds {
+pub(crate) struct MuffledSounds {
     cutoff: Arc<AtomicU32>,
     decoded: HashMap<AssetId<AudioSource>, Arc<Decoded>>,
 }
@@ -49,7 +53,7 @@ struct Decoded {
 
 /// The playback speed of a looped engine sound (1 = as recorded), set while it plays.
 #[derive(Component, Clone)]
-pub(super) struct Pitch(Arc<AtomicU32>);
+pub(crate) struct Pitch(Arc<AtomicU32>);
 
 impl Pitch {
     pub(super) fn set(&self, speed: f32) {
@@ -59,7 +63,7 @@ impl Pitch {
 
 /// A sound through the low-pass filter at its `Pitch`, looped or played once.
 #[derive(Asset, TypePath)]
-pub(super) struct Muffled {
+pub(crate) struct Muffled {
     sound: Arc<Decoded>,
     pitch: Pitch,
     cutoff: Arc<AtomicU32>,
@@ -92,7 +96,7 @@ impl Decodable for Muffled {
 
 /// Makes the filtered sounds.
 #[derive(bevy::ecs::system::SystemParam)]
-pub(super) struct Muffler<'w> {
+pub(crate) struct Muffler<'w> {
     sounds: ResMut<'w, MuffledSounds>,
     sources: Res<'w, Assets<AudioSource>>,
     muffled: ResMut<'w, Assets<Muffled>>,
@@ -110,7 +114,7 @@ impl Muffler<'_> {
     }
 
     /// The filtered sound of `handle` played once (None until it has loaded).
-    pub(super) fn once(&mut self, handle: &Handle<AudioSource>) -> Option<Handle<Muffled>> {
+    pub(crate) fn once(&mut self, handle: &Handle<AudioSource>) -> Option<Handle<Muffled>> {
         self.make(handle, 1.0, false).map(|(h, _)| h)
     }
 
@@ -148,29 +152,36 @@ pub(super) fn inside(view: Option<&ViewState>) -> bool {
     })
 }
 
-/// The cutoff for the view: muffled inside the aircraft, unless the low-pass is turned off.
-fn cutoff(view: Option<&ViewState>, settings: &Settings) -> f32 {
-    if inside(view) && settings.engine_low_pass { INSIDE_HZ } else { OUTSIDE_HZ }
+/// The cutoff for the view: muffled inside the aircraft, more at a console, unless the
+/// low-pass is turned off.
+fn cutoff(view: Option<&ViewState>, manning: bool, settings: &Settings) -> f32 {
+    match (inside(view) && settings.engine_low_pass, manning) {
+        (false, _) => OUTSIDE_HZ,
+        (true, false) => INSIDE_HZ,
+        (true, true) => SHELTER_HZ,
+    }
 }
 
 /// The flight starts with the cutoff where the view is.
 pub(super) fn reset(
     view: Option<Res<ViewState>>,
+    manning: Option<Res<Manning>>,
     settings: Res<Settings>,
     sounds: Res<MuffledSounds>,
 ) {
-    let hz = cutoff(view.as_deref(), &settings);
+    let hz = cutoff(view.as_deref(), manning.is_some(), &settings);
     sounds.cutoff.store(hz.to_bits(), Ordering::Relaxed);
 }
 
 /// Glides the cutoff to the view's (in the frequency's log).
 pub(super) fn follow_view(
     view: Option<Res<ViewState>>,
+    manning: Option<Res<Manning>>,
     settings: Res<Settings>,
     real: Res<Time<Real>>,
     sounds: Res<MuffledSounds>,
 ) {
-    let target = cutoff(view.as_deref(), &settings);
+    let target = cutoff(view.as_deref(), manning.is_some(), &settings);
     let hz = f32::from_bits(sounds.cutoff.load(Ordering::Relaxed));
     let k = 1.0 - (-real.delta_secs() / GLIDE).exp();
     let next = (hz.ln() + (target.ln() - hz.ln()) * k).exp();
@@ -180,7 +191,7 @@ pub(super) fn follow_view(
 
 /// A second-order low-pass (Butterworth) over the decoded samples, each channel filtered on
 /// its own.
-pub(super) struct LowPass {
+pub(crate) struct LowPass {
     sound: Arc<Decoded>,
     pitch: Pitch,
     /// Loops (else ends after the last frame).
@@ -298,8 +309,8 @@ impl Source for LowPass {
 mod tests {
     use super::*;
 
-    /// Tones through the filter: inside a low one passes and a high one is cut, outside the
-    /// high one passes too; the cutoff is followed while playing.
+    /// Tones through the filter: inside a low one passes and a high one is cut (a middle one
+    /// more at a console), outside the high one passes too; the cutoff is followed while playing.
     #[test]
     fn low_pass_cuts_the_highs() {
         let (mut f, _) = looped(vec![0.0; 100], 1.0);
@@ -320,11 +331,16 @@ mod tests {
             }
             peak
         };
-        let (low, high) = (level(200.0), level(6000.0));
+        let (low, high, mid) = (level(200.0), level(6000.0), level(1000.0));
+        cutoff.store(SHELTER_HZ.to_bits(), Ordering::Relaxed);
+        let shelter = level(1000.0);
         cutoff.store(OUTSIDE_HZ.to_bits(), Ordering::Relaxed);
         let open = level(6000.0);
-        println!("inside: 200 Hz {low:.2}, 6 kHz {high:.3}; outside 6 kHz {open:.2}");
-        assert!(low > 0.95 && high < 0.05 && open > 0.95);
+        println!(
+            "inside: 200 Hz {low:.2}, 1 kHz {mid:.2}, 6 kHz {high:.3}; shelter 1 kHz \
+             {shelter:.2}; outside 6 kHz {open:.2}"
+        );
+        assert!(low > 0.95 && high < 0.05 && open > 0.95 && shelter < mid * 0.5);
     }
 
     /// A looped sound: `samples` (mono, 44.1 kHz) at `speed`, the filter all but open.

@@ -2,13 +2,16 @@
 //! the shelter's hum, the camera gimbal's motor while it slews (louder as it speeds up), a
 //! Patriot launch from the battery (`launch.flac`), a Gepard burst, a launcher's refill
 //! starting and done, and the explosions around (`sfx_05_explosion.flac`: a drone's warhead,
-//! a wreck coming down, a kill), quieter further off and arriving at the speed of sound.
+//! a wreck coming down, a kill), quieter further off and arriving at the speed of sound. The
+//! sounds from outside the shelter (all but the hum and the gimbal) come through the low-pass
+//! (`sound::muffle`), lower at a console than in a cockpit.
 
 use bevy::audio::{AudioSink, AudioSinkPlayback, PlaybackSettings};
 use bevy::prelude::*;
 
 use super::{ConsoleEo, Manning};
 use crate::combat::Combat;
+use crate::sound::muffle::Muffler;
 use crate::sound::{Channel, Mixed};
 
 /// Volumes: the hum, the gimbal at full slew, a launch, a burst, a refill, an explosion within
@@ -74,6 +77,7 @@ pub(super) fn play(
     time: Res<Time<Real>>,
     mut loops: Query<(Entity, &ConsoleLoop, Option<&mut AudioSink>)>,
     mut heard: Local<Heard>,
+    mut muffler: Muffler,
 ) {
     let (Some(m), Some(combat), Some(sounds)) = (manning, combat, sounds) else {
         for (e, _, _) in &loops {
@@ -82,10 +86,13 @@ pub(super) fn play(
         *heard = Heard::default();
         return;
     };
+    // Through the shelter's walls (once the sound has loaded).
     let mut one_shot = |h: &Handle<AudioSource>, v: f32| {
         let mix = Mixed(Channel::Effects, v);
         let p = mix.settings(&settings, PlaybackSettings::DESPAWN);
-        commands.spawn((AudioPlayer(h.clone()), p, mix));
+        if let Some(muffled) = muffler.once(h) {
+            commands.spawn((AudioPlayer(muffled), p, mix));
+        }
     };
     let sim = &combat.sim;
     // A launch from the battery, a burst starting.
