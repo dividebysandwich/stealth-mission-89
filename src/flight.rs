@@ -128,6 +128,9 @@ pub struct FlightConstants {
     pub landing: u8,
     /// Starting fuel (lbs).
     pub fuel: f32,
+    /// Bingo fuel (lbs): below it the low-fuel light blinks and the LOW FUEL caution shows,
+    /// about what gets the aircraft home with a reserve.
+    pub bingo: f32,
     /// Classic model: highest load factor (1/16 g) and roll rate factor.
     pub max_gees: f32,
     pub roll_rate: f32,
@@ -152,6 +155,7 @@ impl Default for FlightConstants {
             fs: 15.0,
             landing: 1,
             fuel: 10000.0,
+            bingo: 2000.0,
             max_gees: 128.0,
             roll_rate: 1.0,
             aero: modern::Aero::F117,
@@ -175,6 +179,7 @@ impl FlightConstants {
             max_knots: 1150.0,
             stall_knots: 110.0,
             fuel_div: 750.0,
+            bingo: 2000.0,
             max_gees: 144.0,
             roll_rate: 1.6,
             aero: modern::Aero::F16,
@@ -192,6 +197,7 @@ impl FlightConstants {
             stall_knots: 125.0,
             fuel_div: 750.0,
             fuel: 11000.0,
+            bingo: 2500.0,
             max_gees: 120.0,
             roll_rate: 1.3,
             aero: modern::Aero::TORNADO,
@@ -209,6 +215,7 @@ impl FlightConstants {
             stall_knots: 115.0,
             fuel_div: 1300.0,
             fuel: 10700.0,
+            bingo: 1800.0,
             max_gees: 117.0,
             roll_rate: 1.2,
             aero: modern::Aero::A10,
@@ -227,6 +234,7 @@ impl FlightConstants {
             stall_knots: 120.0,
             fuel_div: 800.0,
             fuel: 6000.0,
+            bingo: 1500.0,
             max_gees: 128.0,
             roll_rate: 1.5,
             aero: modern::Aero::AV8B,
@@ -234,29 +242,29 @@ impl FlightConstants {
         }
     }
 
-    /// UH-60A: the helicopter model; 2400 lb of fuel.
+    /// UH-60A: the helicopter model; 2400 lb of fuel, bingo 400.
     pub fn uh60() -> Self {
-        Self { fuel: 2400.0, heli: Some(heli::Rotor::UH60), ..default() }
+        Self { fuel: 2400.0, bingo: 400.0, heli: Some(heli::Rotor::UH60), ..default() }
     }
 
-    /// AH-1Z: the helicopter model; 2600 lb of fuel.
+    /// AH-1Z: the helicopter model; 2600 lb of fuel, bingo 400.
     pub fn ah1z() -> Self {
-        Self { fuel: 2600.0, heli: Some(heli::Rotor::AH1Z), ..default() }
+        Self { fuel: 2600.0, bingo: 400.0, heli: Some(heli::Rotor::AH1Z), ..default() }
     }
 
-    /// RAH-66: the helicopter model; 2600 lb of fuel.
+    /// RAH-66: the helicopter model; 2600 lb of fuel, bingo 400.
     pub fn rah66() -> Self {
-        Self { fuel: 2600.0, heli: Some(heli::Rotor::RAH66), ..default() }
+        Self { fuel: 2600.0, bingo: 400.0, heli: Some(heli::Rotor::RAH66), ..default() }
     }
 
-    /// OH-58D: the helicopter model; 750 lb of fuel.
+    /// OH-58D: the helicopter model; 750 lb of fuel, bingo 150.
     pub fn oh58() -> Self {
-        Self { fuel: 750.0, heli: Some(heli::Rotor::OH58), ..default() }
+        Self { fuel: 750.0, bingo: 150.0, heli: Some(heli::Rotor::OH58), ..default() }
     }
 
-    /// CH-47F: the helicopter model; 6800 lb of fuel.
+    /// CH-47F: the helicopter model; 6800 lb of fuel, bingo 1200.
     pub fn ch47() -> Self {
-        Self { fuel: 6800.0, heli: Some(heli::Rotor::CH47), ..default() }
+        Self { fuel: 6800.0, bingo: 1200.0, heli: Some(heli::Rotor::CH47), ..default() }
     }
 }
 

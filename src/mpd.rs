@@ -43,9 +43,6 @@ const DEEP_RED: u8 = 16;
 const WHITE: u8 = 15;
 const AMBER: u8 = 18;
 
-/// Fuel (lbs) below which the low fuel caution shows (the panels' LOW FUEL light's).
-const LOW_FUEL: f32 = 1500.0;
-
 /// How bad an entry of the list is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Level {
@@ -72,6 +69,8 @@ pub struct EngineReadings {
     /// Fuel (lbs) and the flow of both engines (lb/h).
     pub fuel: f32,
     pub flow: f32,
+    /// Bingo fuel (lbs), below which the fuel readout is amber.
+    pub bingo: f32,
 }
 
 /// The engines as the helicopter model has them: one torque for both, rotor speed, fuel and its
@@ -102,11 +101,12 @@ pub fn engine_readings(a: &Aircraft, burn: f32, damaged: bool, fire: bool) -> En
     r
 }
 
-/// The warning, caution and advisory list, worst first.
+/// The warning, caution and advisory list, worst first (LOW FUEL below `bingo` lbs).
 pub fn alerts(
     w: &Warnings,
     a: Option<&Aircraft>,
     cm: &Countermeasures,
+    bingo: f32,
 ) -> Vec<(Level, &'static str)> {
     use Level::*;
     let mut v = Vec::new();
@@ -120,7 +120,7 @@ pub fn alerts(
     add(w.ir_missile, Warning, "IR MISSILE");
     add(a.is_some_and(|a| a.rotor_speed() < 0.9 && !a.on_ground), Warning, "LOW ROTOR RPM");
     add(w.engine, Caution, "ENG 2 DAMAGE");
-    add(a.is_some_and(|a| a.fuel < LOW_FUEL), Caution, "LOW FUEL");
+    add(a.is_some_and(|a| a.fuel < bingo), Caution, "LOW FUEL");
     add(w.fuel, Caution, "FUEL SYSTEM");
     add(w.fire_control, Caution, "FLIGHT CONTROLS");
     add(w.avionics, Caution, "AVIONICS");
@@ -162,8 +162,10 @@ pub(crate) fn acknowledge(
     warnings: Res<Warnings>,
     cm: Res<Countermeasures>,
     aircraft: Query<&Aircraft, With<crate::flight::Player>>,
+    settings: Res<crate::settings::Settings>,
 ) {
-    let now = alerts(&warnings, aircraft.single().ok(), &cm);
+    let bingo = settings.aircraft.spec().flight().bingo;
+    let now = alerts(&warnings, aircraft.single().ok(), &cm, bingo);
     ack.0.retain(|t| now.iter().any(|e| e.1 == *t));
     if actions.read().any(|e| e.0 == Action::MasterCaution) {
         ack.0 = now.into_iter().map(|e| e.1).collect();
@@ -541,7 +543,7 @@ pub fn draw_engines(c: &mut Canvas, fonts: &Fonts, r: &EngineReadings) {
     // Fuel.
     c.hline(4, w - 5, h - 26, GREY);
     let fuel = format!("FUEL {:>5.0} LB", r.fuel);
-    let col = if r.fuel < LOW_FUEL { AMBER } else { GREEN };
+    let col = if r.fuel < r.bingo { AMBER } else { GREEN };
     fonts.text(c, 6, h - 22, fuel.as_bytes(), col);
     let flow = format!("FLOW {:>5.0} LB/H", r.flow);
     fonts.text(c, 6, h - 12, flow.as_bytes(), CYAN);
@@ -614,7 +616,7 @@ mod tests {
         let mut a = hovering();
         a.fuel = 1000.0;
         a.gear_down = false;
-        let list = alerts(&w, Some(&a), &Countermeasures::default());
+        let list = alerts(&w, Some(&a), &Countermeasures::default(), 1500.0);
         let texts: Vec<_> = list.iter().map(|e| e.1).collect();
         assert_eq!(texts, ["ENG 1 FIRE", "LOW FUEL", "RADAR TRACK", "GEAR UP"]);
         assert!(list.windows(2).all(|p| p[0].0 <= p[1].0));
@@ -627,11 +629,11 @@ mod tests {
         let cm = Countermeasures::default();
         // Advisories, a radar track and a detection leave it dark; a launch lights it until
         // acknowledged.
-        assert!(!master_caution(&alerts(&Warnings::default(), Some(&a), &cm), &[]));
+        assert!(!master_caution(&alerts(&Warnings::default(), Some(&a), &cm, 1500.0), &[]));
         let seen = Warnings { tracked: true, emv_warning: true, ..default() };
-        assert!(!master_caution(&alerts(&seen, Some(&a), &cm), &[]));
+        assert!(!master_caution(&alerts(&seen, Some(&a), &cm, 1500.0), &[]));
         let w = Warnings { radar_missile: true, ..default() };
-        let list = alerts(&w, Some(&a), &cm);
+        let list = alerts(&w, Some(&a), &cm, 1500.0);
         assert!(master_caution(&list, &[]));
         let acked: Vec<_> = list.iter().map(|e| e.1).collect();
         assert!(!master_caution(&list, &acked));

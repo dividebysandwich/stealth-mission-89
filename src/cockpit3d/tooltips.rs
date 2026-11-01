@@ -438,7 +438,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 LampId::FlareAct => "Lights when a flare is released",
                 LampId::DecoyAct => "Lights when a decoy is released",
                 LampId::EmvWarn => "EMV: lit for 2 s after each radar detection",
-                LampId::LowFuel => "Blinks below 1500 lbs of fuel",
+                LampId::LowFuel => "Blinks below bingo fuel, about what gets you home",
                 _ => return None,
             };
             let name = label.unwrap_or(LAMPS[id as usize].1);

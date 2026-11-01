@@ -1182,9 +1182,22 @@ the hand holds the stick.
 ![Bottom strip](images/panel_bottom.png)
 
 Under the right MFD, right of the fuel quantity: **FUEL** (fuel in lbs divided by 10) with the
-**LOW FUEL** lamp (blinks below 1500 lbs of fuel) and **THRUST** (in percent); under them the
+**LOW FUEL** lamp (blinks below bingo fuel) and **THRUST** (in percent); under them the
 **EGR/EAR radar bar graph** (described in chapter 7.2) with the **EMV** warning lamp (lit for
 2 s after each detection).
+
+Bingo fuel, below which every aircraft's low-fuel light (BINGO, LOW FUEL) blinks and the
+helicopters' displays list LOW FUEL, is about what gets that aircraft home with a reserve:
+
+| Aircraft | Fuel (lbs) | Bingo (lbs) |
+|---|---|---|
+| F-117A, F-16C | 10,000 | 2,000 |
+| Tornado IDS | 11,000 | 2,500 |
+| A-10C | 10,700 | 1,800 |
+| AV-8B | 6,000 | 1,500 |
+| UH-60A, AH-1Z, RAH-66 | 2,400-2,600 | 400 |
+| OH-58D | 750 | 150 |
+| CH-47F | 6,800 | 1,200 |
 
 ## 4.7 The in-flight menu
 

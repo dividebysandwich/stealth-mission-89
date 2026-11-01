@@ -666,10 +666,12 @@ pub struct PanelParams<'w, 's> {
     pub settings: Res<'w, crate::settings::Settings>,
 }
 
-/// Fuel (lbs) below which the low-fuel light blinks.
-const LOW_FUEL: f32 = 1500.0;
-
 impl PanelParams<'_, '_> {
+    /// The flown aircraft's bingo fuel (lbs), below which the low-fuel light blinks.
+    pub fn bingo(&self) -> f32 {
+        self.settings.aircraft.spec().flight().bingo
+    }
+
     /// Which lamps are lit, indexed by `LampId`.
     pub fn lamp_states(&self) -> [bool; LAMP_COUNT] {
         use LampId::*;
@@ -692,7 +694,7 @@ impl PanelParams<'_, '_> {
             lit[Flaps as usize] = a.flaps;
             lit[Gear as usize] = a.gear_down;
             lit[Brake as usize] = a.brakes;
-            lit[LowFuel as usize] = a.fuel < LOW_FUEL && blink;
+            lit[LowFuel as usize] = a.fuel < self.bingo() && blink;
         }
         lit[Mw as usize] = w.missile_warning;
         lit[Eng as usize] = w.engine;
@@ -724,7 +726,8 @@ impl PanelParams<'_, '_> {
 
     /// The modern cockpits' master caution light: an unacknowledged warning or caution.
     pub fn master_caution(&self) -> bool {
-        let list = crate::mpd::alerts(&self.warnings, self.aircraft.single().ok(), &self.cm);
+        let list =
+            crate::mpd::alerts(&self.warnings, self.aircraft.single().ok(), &self.cm, self.bingo());
         crate::mpd::master_caution(&list, &self.wca.0)
     }
 
@@ -898,7 +901,7 @@ impl PanelParams<'_, '_> {
     /// advisory list.
     pub fn draw_lmpd(&self, c: &mut Canvas, fonts: &Fonts) {
         let a = self.aircraft.single().ok();
-        let list = crate::mpd::alerts(&self.warnings, a, &self.cm);
+        let list = crate::mpd::alerts(&self.warnings, a, &self.cm, self.bingo());
         let blink = crate::hud::blink(&self.time);
         let threats = crate::mpd::Threats {
             emitters: &self.emitters.list,
@@ -919,7 +922,8 @@ impl PanelParams<'_, '_> {
             return;
         };
         let burn = self.settings.aircraft.spec().flight().heli.map_or(0.3, |r| r.fuel_burn);
-        let r = crate::mpd::engine_readings(a, burn, self.warnings.engine, self.warnings.fire);
+        let mut r = crate::mpd::engine_readings(a, burn, self.warnings.engine, self.warnings.fire);
+        r.bingo = self.bingo();
         crate::mpd::draw_engines(c, fonts, &r);
     }
 
