@@ -30,7 +30,7 @@ To play right now, you can either:
   working eject handle and kneeboard
 * **HOTAS** support - but also supports keyboard-only flight
 * **Head and Eye tracking** via FreeTrack
-* **Air traffic control:** takeoff clearances, overhead recoveries and GCA talkdowns in bad weather
+* **Air traffic control:** takeoff clearances, overhead recoveries and GCA talkdowns in bad weather, spoken over the radio with downloadable voices
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording

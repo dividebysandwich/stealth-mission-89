@@ -91,6 +91,11 @@ pub struct Prefs {
     pub voice_volume: f32,
     pub mic_gain: f32,
     pub mic_device: String,
+    pub atc_voice: String,
+    pub atc_speaker: u32,
+    pub pilot_voice: String,
+    pub pilot_speaker: u32,
+    pub atc_vary_station: bool,
     pub master_volume: f32,
     pub engine_volume: f32,
     pub effects_volume: f32,
@@ -163,6 +168,11 @@ impl Default for Prefs {
             voice_volume: 1.0,
             mic_gain: 1.0,
             mic_device: String::new(),
+            atc_voice: String::new(),
+            atc_speaker: 0,
+            pilot_voice: String::new(),
+            pilot_speaker: 0,
+            atc_vary_station: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
@@ -253,6 +263,11 @@ impl Prefs {
             voice_volume: s.voice_volume,
             mic_gain: s.mic_gain,
             mic_device: s.mic_device.clone(),
+            atc_voice: s.atc_voice.clone(),
+            atc_speaker: s.atc_speaker,
+            pilot_voice: s.pilot_voice.clone(),
+            pilot_speaker: s.pilot_speaker,
+            atc_vary_station: s.atc_vary_station,
             master_volume: s.master_volume,
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
@@ -317,6 +332,11 @@ impl Prefs {
         s.voice_volume = self.voice_volume.clamp(0.0, 1.0);
         s.mic_gain = self.mic_gain.clamp(MIC_GAIN_RANGE.0, MIC_GAIN_RANGE.1);
         s.mic_device = self.mic_device.clone();
+        s.atc_voice = self.atc_voice.clone();
+        s.atc_speaker = self.atc_speaker;
+        s.pilot_voice = self.pilot_voice.clone();
+        s.pilot_speaker = self.pilot_speaker;
+        s.atc_vary_station = self.atc_vary_station;
         s.player_label_size = self
             .player_label_size
             .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
@@ -366,6 +386,11 @@ impl Prefs {
         self.voice_volume = s.voice_volume;
         self.mic_gain = s.mic_gain;
         self.mic_device = s.mic_device.clone();
+        self.atc_voice = s.atc_voice.clone();
+        self.atc_speaker = s.atc_speaker;
+        self.pilot_voice = s.pilot_voice.clone();
+        self.pilot_speaker = s.pilot_speaker;
+        self.atc_vary_station = s.atc_vary_station;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;

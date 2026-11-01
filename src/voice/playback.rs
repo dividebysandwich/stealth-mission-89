@@ -84,6 +84,38 @@ impl RadioMix {
         t.samples.drain(..extra);
     }
 
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    /// A whole transmission of `from`'s at `RATE` (the spoken ATC): played at once, after the
+    /// one still going if any; no buffer limit.
+    pub fn push_pcm(&self, from: u8, samples: &[f32]) {
+        let Ok(mut mix) = self.0.lock() else { return };
+        let t = mix.talkers.entry(from).or_default();
+        if t.ended && t.samples.is_empty() && !t.playing {
+            *t = Talker::default();
+        }
+        t.samples.extend(samples);
+        t.ended = true;
+    }
+
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    /// `from` is on the radio or about to be.
+    pub fn playing(&self, from: u8) -> bool {
+        self.0
+            .lock()
+            .is_ok_and(|m| m.talkers.get(&from).is_some_and(|t| t.playing || !t.samples.is_empty()))
+    }
+
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    /// Cuts `from`'s transmission short.
+    pub fn silence(&self, from: u8) {
+        if let Ok(mut m) = self.0.lock()
+            && let Some(t) = m.talkers.get_mut(&from)
+        {
+            t.samples.clear();
+            t.ended = true;
+        }
+    }
+
     /// Talkers heard right now.
     pub fn talking(&self) -> Vec<u8> {
         self.0
@@ -306,5 +338,25 @@ mod tests {
         };
         assert!(level(&mut s, 1000.0) > 0.6);
         assert!(level(&mut s, 60.0) < 0.1);
+    }
+
+    /// A spoken line plays at once and whole (no buffer limit), clicks at both ends; one
+    /// after it on the same talker follows on; cut short, it closes.
+    #[test]
+    fn spoken_lines_play_whole() {
+        let mix = RadioMix::default();
+        let line = vec![0.3; RATE as usize * 2];
+        mix.push_pcm(254, &line);
+        assert!(mix.playing(254));
+        let (voiced, edges) = play(&mix, RATE as usize * 3);
+        assert_eq!(voiced, line.len());
+        assert_eq!(edges, 2);
+        assert!(!mix.playing(254));
+        mix.push_pcm(254, &line);
+        play(&mix, 100);
+        mix.silence(254);
+        let (voiced, _) = play(&mix, RATE as usize);
+        assert!(voiced <= 1, "{voiced}");
+        assert!(!mix.playing(254));
     }
 }

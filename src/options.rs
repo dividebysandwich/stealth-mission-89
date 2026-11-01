@@ -25,15 +25,21 @@ use crate::settings::{MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCK
 #[derive(Resource, Default)]
 pub struct OptionsWindow {
     pub open: bool,
+    /// The VOICES dialog is open over it (`voice_dialog.rs`).
+    pub voices: bool,
     tab: Tab,
     /// The largest tab's size: every tab gets it, so the window keeps its size across tabs.
     body: egui::Vec2,
 }
 
 impl OptionsWindow {
-    /// `--open-options <tab>`: open on that tab (screenshots).
+    /// `--open-options <tab>`: open on that tab; `--open-voices`: the VOICES dialog
+    /// (screenshots).
     pub fn from_args() -> Self {
         let args: Vec<String> = std::env::args().collect();
+        if args.iter().any(|a| a == "--open-voices") {
+            return Self { open: true, voices: true, tab: Tab::Sound, ..default() };
+        }
         let Some(i) = args.iter().position(|a| a == "--open-options") else {
             return Self::default();
         };
@@ -71,7 +77,7 @@ pub fn options_ui(
     head: Option<crate::headtrack::Source>,
     dialog: &mut crate::input_dialog::InputDialog,
 ) {
-    if !w.open || dialog.open {
+    if !w.open || dialog.open || w.voices {
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
@@ -87,12 +93,12 @@ pub fn options_ui(
             let builder =
                 egui::UiBuilder::new().id_salt(("measure", tab as u8)).invisible().sizing_pass();
             let mut hidden = ui.new_child(builder);
-            tab_options(&mut hidden, tab, settings, head, dialog);
+            tab_options(&mut hidden, tab, settings, head, dialog, &mut w.voices);
             w.body = w.body.max(hidden.min_rect().size());
         }
         let shown = ui.scope(|ui| {
             ui.set_min_size(w.body);
-            tab_options(ui, w.tab, settings, head, dialog);
+            tab_options(ui, w.tab, settings, head, dialog, &mut w.voices);
         });
         w.body = w.body.max(shown.response.rect.size());
         ui.add_space(4.0);
@@ -121,11 +127,12 @@ fn tab_options(
     settings: &mut SettingsMut,
     head: Option<crate::headtrack::Source>,
     dialog: &mut crate::input_dialog::InputDialog,
+    voices: &mut bool,
 ) {
     match tab {
         Tab::Game => game_options(ui, settings),
         Tab::Graphics => graphics_options(ui, settings),
-        Tab::Sound => sound_options(ui, settings),
+        Tab::Sound => sound_options(ui, settings, voices),
         Tab::Controls => control_options(ui, settings, head, dialog),
     }
 }
@@ -373,7 +380,7 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
 }
 
-fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
+fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut bool) {
     section(ui, "Volume");
     let s = settings.bypass_change_detection();
     let mut changed = false;
@@ -395,7 +402,11 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             "RWR",
             &["The radar warning tones, as a part of the warnings' volume"][..],
         ),
-        (&mut s.voice_volume, "Radio", &["The other players talking on the coop radio"][..]),
+        (
+            &mut s.voice_volume,
+            "Radio",
+            &["The other players talking on the coop radio, and the spoken ATC"][..],
+        ),
     ] {
         let mut percent = (*v * 100.0).round();
         ui.horizontal(|ui| {
@@ -432,6 +443,8 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         ],
     )
     .changed();
+    section(ui, "Spoken ATC");
+    atc_voices(ui, s, voices);
     section(ui, "Coop radio");
     changed |= facts(
         ui.checkbox(&mut s.voice, "Push-to-talk"),
@@ -475,6 +488,37 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     if changed {
         settings.set_changed();
     }
+}
+
+/// The spoken ATC's voices, and the button to the VOICES dialog.
+#[cfg(not(target_arch = "wasm32"))]
+fn atc_voices(ui: &mut egui::Ui, s: &Settings, voices: &mut bool) {
+    let name = |n: &str| if n.is_empty() { "text only".to_string() } else { n.to_string() };
+    ui.label(
+        egui::RichText::new(format!(
+            "Controllers: {}   Pilot: {}",
+            name(&s.atc_voice),
+            name(&s.pilot_voice)
+        ))
+        .color(DIM),
+    );
+    if facts(
+        ui.add(big_button("VOICES").icon(icon::DOWNLOAD).min_size(egui::vec2(300.0, 44.0))),
+        &[
+            "Download voices for the radio calls, delete them",
+            "Choose the controllers' and your own, and hear them",
+        ],
+    )
+    .clicked()
+    {
+        *voices = true;
+    }
+}
+
+/// The browser build: the calls are text.
+#[cfg(target_arch = "wasm32")]
+fn atc_voices(ui: &mut egui::Ui, _s: &Settings, _voices: &mut bool) {
+    ui.label(egui::RichText::new("Text only in the browser").color(DIM));
 }
 
 /// The microphones (looked up once: it takes a moment).

@@ -136,6 +136,10 @@ Testing and screenshots
   --open-multiplayer, --open-keyboard, --open-saves
                                start with that screen or window open
   --open-options <tab>         start with OPTIONS open: game, graphics, sound, controls
+  --open-voices                start with the VOICES dialog open
+  --atc-voice, --pilot-voice <voice[:speaker]>
+                               the spoken ATC's voices (test runs, which skip the prefs)
+  --say <text>                 say it in the ATC voice at the start
   --campaign-tab <tab>         board, map, players, debrief, log
   --campaign-take <n>          take the n-th mission of the board
   --campaign-accept map|loadout

@@ -101,8 +101,11 @@ mod text_entry;
 mod tfr;
 mod trackcam;
 mod trails;
+mod tts;
 mod viewer;
 mod voice;
+#[cfg(not(target_arch = "wasm32"))]
+mod voice_dialog;
 #[cfg(feature = "xr")]
 mod vr_menu;
 mod weather;
@@ -329,7 +332,10 @@ fn main() {
             savegame::SaveGamePlugin,
             atc::AtcPlugin,
             voice::VoicePlugin,
-        ));
+        ))
+        .add_plugins(tts::TtsPlugin);
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_plugins(voice_dialog::VoiceDialogPlugin);
     mission::from_args(&mut app);
     campaign::from_args(&mut app);
     savegame::from_args(&mut app);

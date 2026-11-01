@@ -130,6 +130,8 @@ pub struct AtcInput<'a> {
     pub ifr: bool,
     /// The landing waypoint is the one steered to.
     pub homeward: bool,
+    /// The radio is still saying the last call (the spoken ATC): the next waits.
+    pub hold: bool,
     pub bases: &'a [Base],
     pub traffic: &'a [Traffic],
 }
@@ -220,6 +222,9 @@ impl Atc {
         self.wait -= i.dt;
         self.control(i);
         let mut out = Vec::new();
+        if i.hold {
+            return out;
+        }
         let mut dt = i.dt;
         while let Some((delay, _)) = self.queue.front_mut() {
             *delay -= dt;
@@ -230,6 +235,11 @@ impl Atc {
             out.push(self.queue.pop_front().unwrap().1);
         }
         out
+    }
+
+    /// A call is still waiting or being said.
+    fn radio_busy(&self, i: &AtcInput) -> bool {
+        i.hold || !self.queue.is_empty()
     }
 
     fn base<'a>(&self, i: &AtcInput<'a>) -> Option<&'a Base> {
@@ -707,7 +717,7 @@ impl Atc {
             self.phase = Phase::Talkdown;
             return;
         }
-        if self.wait > 0.0 {
+        if self.wait > 0.0 || self.radio_busy(i) {
             return;
         }
         let h = self.vector_heading(i, &e);
@@ -751,7 +761,8 @@ impl Atc {
             self.wait = 1.0;
             return;
         }
-        if self.wait > 0.0 {
+        // Fresh numbers when the radio is free, not old ones queued behind a long call.
+        if self.wait > 0.0 || self.radio_busy(i) {
             return;
         }
         let m = miles(along);
@@ -910,6 +921,7 @@ fn control(
     mut state: ResMut<AtcState>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     mut sounds: MessageWriter<crate::sound::PlaySound>,
+    mut tts: ResMut<crate::tts::Tts>,
 ) {
     let (Some(combat), Ok((a, pos))) = (combat, player.single()) else { return };
     if !settings.atc || a.ended.is_some() || time.delta_secs() <= 0.0 {
@@ -952,6 +964,7 @@ fn control(
         helicopter: settings.aircraft.spec().helicopter,
         ifr,
         homeward,
+        hold: tts.busy(),
         bases: &state.bases,
         traffic: &traffic,
     };
@@ -967,8 +980,47 @@ fn control(
     for c in calls {
         info!("ATC {}: {}", c.from, c.text);
         notices.chat(&c.from, &c.text, c.own);
-        sounds.write(crate::sound::PlaySound { id: RADIO_CLICK, priority: crate::sound::DIRECT });
+        // Spoken, the radio's loudspeaker clicks by itself.
+        if !speak(&mut tts, &settings, &c) {
+            sounds
+                .write(crate::sound::PlaySound { id: RADIO_CLICK, priority: crate::sound::DIRECT });
+        }
     }
+}
+
+/// The voices' pace on the radio (the Piper voices read at an audiobook's).
+pub const RADIO_TEMPO: f32 = 1.15;
+
+/// Says a call in the controllers' or the pilot's voice; false without one.
+fn speak(tts: &mut crate::tts::Tts, s: &crate::settings::Settings, c: &Call) -> bool {
+    let atc = |station: &str| {
+        let speakers = tts.speakers(&s.atc_voice);
+        if s.atc_vary_station && speakers > 1 {
+            station_speaker(station, s.atc_speaker, speakers)
+        } else {
+            s.atc_speaker
+        }
+    };
+    if c.own {
+        // The same voice as the controller's: a quicker pace tells them apart.
+        let same = s.pilot_voice == s.atc_voice && s.pilot_speaker == s.atc_speaker;
+        let tempo = if same { RADIO_TEMPO * 1.12 } else { RADIO_TEMPO };
+        tts.say(crate::tts::PILOT_TALKER, &s.pilot_voice, s.pilot_speaker, tempo, &c.text)
+    } else {
+        let speaker = atc(&c.from);
+        tts.say(crate::tts::ATC_TALKER, &s.atc_voice, speaker, RADIO_TEMPO, &c.text)
+    }
+}
+
+/// A station's own speaker of a multi-speaker voice: the chosen one for the tower, others for
+/// the rest, the same each time.
+fn station_speaker(station: &str, chosen: u32, speakers: u32) -> u32 {
+    let role = station.rsplit(' ').next().unwrap_or("");
+    if role == "Tower" {
+        return chosen;
+    }
+    let h = station.bytes().fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619));
+    (chosen + 1 + h % (speakers - 1)) % speakers
 }
 
 /// The landing base's index among the waypoints.
@@ -1134,6 +1186,7 @@ mod tests {
                     helicopter: false,
                     ifr: self.ifr,
                     homeward: false,
+                    hold: false,
                     bases: &self.bases,
                     traffic: &self.traffic,
                 };

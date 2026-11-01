@@ -120,6 +120,13 @@ pub struct Settings {
     pub voice_volume: f32,
     pub mic_gain: f32,
     pub mic_device: String,
+    /// The spoken ATC (`tts`): the controllers' voice and the pilot's (empty: text only) and
+    /// the speaker of a multi-speaker voice; each station its own speaker of the controllers'.
+    pub atc_voice: String,
+    pub atc_speaker: u32,
+    pub pilot_voice: String,
+    pub pilot_speaker: u32,
+    pub atc_vary_station: bool,
     /// Sound volumes (0..1): everything, then the engine, the other effects and the warnings
     /// (`sound::Mix`).
     pub master_volume: f32,
@@ -305,6 +312,12 @@ impl Settings {
             voice_volume: 1.0,
             mic_gain: 1.0,
             mic_device: String::new(),
+            // `--atc-voice`/`--pilot-voice <name>[:speaker]` (test runs, which skip the prefs).
+            atc_voice: voice_arg(&a, "--atc-voice").0,
+            atc_speaker: voice_arg(&a, "--atc-voice").1,
+            pilot_voice: voice_arg(&a, "--pilot-voice").0,
+            pilot_speaker: voice_arg(&a, "--pilot-voice").1,
+            atc_vary_station: true,
             master_volume: 1.0,
             engine_volume: 1.0,
             effects_volume: 1.0,
@@ -317,6 +330,15 @@ impl Settings {
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
         }
+    }
+}
+
+/// `<flag> <voice>[:<speaker>]`: the voice's name and speaker.
+fn voice_arg(a: &[String], flag: &str) -> (String, u32) {
+    let v = get(a, flag).unwrap_or_default();
+    match v.split_once(':') {
+        Some((name, n)) => (name.to_string(), n.parse().unwrap_or(0)),
+        None => (v, 0),
     }
 }
 

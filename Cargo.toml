@@ -74,6 +74,15 @@ web-sys = { version = "0.3", features = ["Window", "Location"] }
 dirs = "6"
 # The coop radio's microphone (`voice/capture.rs`); already in the tree through bevy_audio.
 cpal = "0.17"
+# Spoken ATC (`src/tts`): Piper voices run in pure Rust (no ONNX Runtime, nothing to install);
+# `random` because the VITS duration predictor samples noise, `mmap` keeps the 60-80 MB model
+# out of memory until it speaks. English text to IPA phonemes from CMUdict, without eSpeak.
+rten = { version = "0.26", features = ["mmap", "random"] }
+rten-tensor = "0.26"
+piper-plus-g2p = { version = "0.4", default-features = false, features = ["english"] }
+# Downloading the voices (as stealth-net's master server client) and checking them.
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+sha2 = "0.10"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

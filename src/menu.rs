@@ -933,7 +933,7 @@ pub(crate) mod icon {
     pub(crate) const QUIT: char = '\u{e140}'; // power
     #[cfg(target_arch = "wasm32")]
     pub(crate) const BROWSER: char = '\u{e0e8}'; // globe
-    #[cfg(target_arch = "wasm32")]
+    /// The browser's DOWNLOAD, a voice's DOWNLOAD.
     pub(crate) const DOWNLOAD: char = '\u{e0b2}'; // download
     #[cfg(target_arch = "wasm32")]
     pub(crate) const DISCORD: char = '\u{e116}'; // message-circle

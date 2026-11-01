@@ -1851,6 +1851,16 @@ in coop the last number is yours).
 The AI aircraft don't listen to the tower; it only works you around them. Air traffic control can
 be switched off under *Air traffic control* in the options and the in-flight menu's GAME page.
 
+**Spoken ATC.** The calls can also be heard, through the radio's loudspeaker. No voice comes
+with the game: open *Options > Sound > Voices* and download one (60-80 MB each, freely
+licensed Piper voices; the dialog shows each one's licence and credit). Choose one for the
+controllers and one for yourself, and press *Preview* to hear them. VCTK (British) and
+LibriTTS-R (American) hold many speakers in one download: pick a different speaker for yourself,
+and with *A different controller at each station* the tower, approach and GCA each talk with
+their own. Piper voices (`.onnx` with its `.onnx.json`) put into the voices folder by hand are
+found too. Their volume is the *Radio* slider. Not in the browser version, where the calls stay
+text.
+
 ## 7.10 When it goes wrong: ejection and rescue
 
 The jets have ejection seats; the helicopters don't, so their crews ride it down.

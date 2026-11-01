@@ -20,6 +20,8 @@ use crate::net::NetLink;
 use crate::sound::{Channel, Mixed};
 
 pub use capture::devices;
+#[cfg_attr(target_arch = "wasm32", allow(unused_imports))]
+pub use playback::RadioMix;
 
 pub struct VoicePlugin;
 
@@ -30,13 +32,14 @@ impl Plugin for VoicePlugin {
             .add_systems(Startup, test_file)
             .add_systems(
                 Update,
-                (transmit, receive, speaker, indicators)
+                (transmit, receive, indicators)
                     .chain()
                     .run_if(resource_exists::<NetLink>)
                     .after(crate::net::NetSystems)
                     // A test script holds the talk button there.
                     .after(crate::script::ScriptSet),
             )
+            .add_systems(Update, speaker.run_if(radio_wanted))
             .add_systems(Update, leave.run_if(not(resource_exists::<NetLink>)));
     }
 }
@@ -61,6 +64,11 @@ pub struct Voice {
 }
 
 impl Voice {
+    /// The loudspeaker's mix (the spoken ATC talks into it too).
+    pub fn mix(&self) -> &playback::RadioMix {
+        &self.mix
+    }
+
     /// The microphone's (or the recording's) samples since the last frame and their rate.
     fn input(&mut self, dt: f32) -> (Vec<f32>, Option<u32>) {
         if let Some((samples, rate, pos)) = &mut self.file {
@@ -193,7 +201,14 @@ fn receive(
             voice.mix.add(from.0, &packet);
         }
     }
-    voice.talking = voice.mix.talking();
+    // Players only (not the spoken ATC).
+    voice.talking =
+        voice.mix.talking().into_iter().filter(|&k| k < crate::tts::PILOT_TALKER).collect();
+}
+
+/// The loudspeaker plays in coop, and once the spoken ATC has said something.
+fn radio_wanted(link: Option<Res<NetLink>>, tts: Option<Res<crate::tts::Tts>>) -> bool {
+    link.is_some() || tts.is_some_and(|t| t.started())
 }
 
 /// The radio's loudspeaker plays for as long as the game goes on (spawned again if a screen
@@ -249,6 +264,7 @@ fn leave(
     mut voice: ResMut<Voice>,
     speakers: Query<Entity, With<Speaker>>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
+    tts: Option<Res<crate::tts::Tts>>,
 ) {
     if voice.mic.is_some() || voice.transmitting || !voice.talking.is_empty() {
         voice.mic = None;
@@ -258,6 +274,10 @@ fn leave(
         voice.error = None;
         voice.mix.clear();
         notices.radio = None;
+    }
+    // The spoken ATC keeps it.
+    if tts.is_some_and(|t| t.started()) {
+        return;
     }
     for e in &speakers {
         commands.entity(e).despawn();
