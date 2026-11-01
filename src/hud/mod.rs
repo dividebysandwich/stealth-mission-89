@@ -83,14 +83,23 @@ pub struct HudMessages {
     pub text: String,
     /// Seconds the message stays up.
     pub timer: f32,
-    /// "ACCEL" (time acceleration active).
-    pub accel: bool,
+    /// "ACCEL" (time acceleration active), "ACCEL x2" and up from the second step; 0: normal time.
+    pub accel: u8,
     /// "TRAINING".
     pub training: bool,
     /// The throttle setting last seen (percent) and the seconds its readout stays up since it
     /// last changed.
     pub throttle: Option<f32>,
     pub throttle_timer: f32,
+}
+
+/// The status word of an acceleration `level` (`HudMessages::accel`): none in normal time.
+pub fn accel_label(level: u8) -> Option<String> {
+    match level {
+        0 => None,
+        1 => Some("ACCEL".to_string()),
+        n => Some(format!("ACCEL x{n}")),
+    }
 }
 
 /// Damage flash request: rows 0..89 are filled with colour 0x0D for one frame in the cockpit
@@ -551,7 +560,7 @@ pub struct HudFrame {
     /// The throttle setting (percent; past 100 the afterburner) while it is changing or the
     /// afterburner is on.
     pub throttle: Option<i32>,
-    pub accel: bool,
+    pub accel: u8,
     pub training: bool,
     /// Tracking camera selected on the right MFD: camera sight cross.
     pub camera_sight: bool,

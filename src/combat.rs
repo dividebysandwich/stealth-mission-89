@@ -189,11 +189,27 @@ pub struct EndInfo {
     pub lines: Vec<String>,
 }
 
-/// Time acceleration (Shift-Z / Shift-X: x2) on top of `--time-scale`.
+/// The most the acceleration is multiplied by.
+const ACCEL_LEVELS: u8 = 3;
+
+/// Time acceleration (Shift-Z / Shift-X: x2) on top of `--time-scale`. `level` goes from 0 (off)
+/// to `ACCEL_LEVELS`: level n runs n times faster than the plain acceleration. Shift-Z and the
+/// cockpit's TIME button step it up and back to 0.
 #[derive(Resource)]
 pub struct TimeAccel {
     pub base: f32,
-    pub on: bool,
+    pub level: u8,
+}
+
+impl TimeAccel {
+    pub fn on(&self) -> bool {
+        self.level > 0
+    }
+
+    /// The level the next press of the TIME button or of Shift-Z leads to.
+    fn next_level(&self) -> u8 {
+        (self.level + 1) % (ACCEL_LEVELS + 1)
+    }
 }
 
 impl Default for TimeAccel {
@@ -204,7 +220,7 @@ impl Default for TimeAccel {
             .find(|w| w[0] == "--time-scale")
             .and_then(|w| w[1].parse::<f32>().ok())
             .unwrap_or(1.0);
-        Self { base, on: false }
+        Self { base, level: 0 }
     }
 }
 
@@ -219,7 +235,7 @@ fn apply_time_accel(
     let campaign = combat.as_ref().is_some_and(|c| c.sim.campaign().is_some());
     let fast = if combat.is_some_and(|c| c.sim.csar().is_some()) { 4.0 } else { 2.0 };
     let base = if link.is_some() { 1.0 } else { accel.base };
-    let want = base * if accel.on && !campaign { fast } else { 1.0 };
+    let want = base * if accel.on() && !campaign { fast * accel.level as f32 } else { 1.0 };
     if time.relative_speed() != want {
         time.set_relative_speed(want);
     }
@@ -242,7 +258,7 @@ fn start_combat(
     settings: Res<crate::settings::Settings>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
 ) {
-    accel.on = false;
+    accel.level = 0;
     let Some(m) = mission else {
         warn!("no mission: flying without the combat simulation");
         return;
@@ -455,7 +471,7 @@ fn stop_combat(
     for e in players.iter().chain(overlays.iter()) {
         commands.entity(e).try_despawn();
     }
-    accel.on = false;
+    accel.level = 0;
 }
 
 /// Keys -> one-shot simulation commands, collected until the next frame.
@@ -512,8 +528,8 @@ fn collect_commands(
             Action::Eject => c.eject = true,
             Action::Training => c.toggle_training ^= true,
             Action::Resupply => c.resupply = true,
-            Action::TimeAccel => accel.on = true,
-            Action::TimeNormal => accel.on = false,
+            Action::TimeAccel => accel.level = accel.next_level(),
+            Action::TimeNormal => accel.level = 0,
             Action::Quit => combat.quit = true,
             _ => {}
         }
@@ -1364,7 +1380,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         wps.mission_current = w;
     }
     msgs.training = sim.invulnerable();
-    msgs.accel = accel.on;
+    msgs.accel = accel.level;
     match combat.sky_seconds {
         Some(s) => {
             *clock = MissionClock { start_seconds: 0.0, elapsed: Some(s), rate: combat.sky_ratio }
@@ -2075,6 +2091,19 @@ fn end_overlay(
 mod tests {
     use super::*;
 
+    /// Clicking TIME (or pressing Shift-Z) goes ACCEL, x2, x3, then back to normal time.
+    #[test]
+    fn the_time_button_loops_through_the_levels() {
+        let mut accel = TimeAccel { base: 1.0, level: 0 };
+        let mut seen = Vec::new();
+        for _ in 0..=ACCEL_LEVELS {
+            accel.level = accel.next_level();
+            seen.push(accel.level);
+        }
+        assert_eq!(seen, [1, 2, 3, 0]);
+        assert!(!accel.on());
+    }
+
     #[test]
     fn steady_values_hold_back_sudden_jumps() {
         let jump = |a: f32| (a * ZONE_JUMP.0).max(ZONE_JUMP.1);
@@ -2262,7 +2291,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
     combat.record.event(&combat.sim, &e);
     match e {
         SimEvent::Message(s) => fx.msgs.show(s),
-        SimEvent::CancelTimeAccel => fx.accel.on = false,
+        SimEvent::CancelTimeAccel => fx.accel.level = 0,
         SimEvent::DamageFlash => fx.flash.0 = 1,
         SimEvent::Sound { id, priority } => {
             fx.sounds.write(crate::sound::PlaySound { id, priority });

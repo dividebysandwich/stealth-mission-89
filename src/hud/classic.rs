@@ -135,8 +135,8 @@ fn overlay(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col: u8,
         frame_box(c, 55, 47, 79, 57, col);
         frame_box(c, 241, 47, 265, 57, col);
     }
-    if f.accel {
-        fonts.text(c, 110, 85, b"ACCEL", col);
+    if let Some(accel) = super::accel_label(f.accel) {
+        fonts.text(c, 110, 85, &upper(&accel), col);
     }
     if f.training {
         fonts.text(c, 182, 85, b"TRAINING", col);

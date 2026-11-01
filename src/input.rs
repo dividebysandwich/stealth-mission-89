@@ -121,6 +121,8 @@ pub enum Action {
     /// Modern map: north up / heading up.
     MapOrientation,
     WideAngle,
+    /// Shift-Z and the cockpit's TIME button: x1, x2, x3 the acceleration, then normal time
+    /// again.
     TimeAccel,
     TimeNormal,
     /// In-flight settings menu (pauses the flight).

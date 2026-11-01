@@ -230,9 +230,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Menu => ("Settings menu", "Opens or closes the in-flight menu"),
         Volume => ("Sound volume", ""),
         Detail => ("Detail level", ""),
-        TimeAccel => {
-            ("Time acceleration", "Ends when a radar detects the aircraft or a weapon is released")
-        }
+        TimeAccel => (
+            "Time acceleration",
+            "Each press goes faster: ACCEL, x2, x3, then normal time. Ends when a radar detects the aircraft or a weapon is released",
+        ),
         TimeNormal => ("Normal time", ""),
         MapZoomIn => ("Map zoom in", ""),
         MapZoomOut => ("Map zoom out", ""),
@@ -384,7 +385,7 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
         ),
         Effect::TimeToggle => {
             let (title, detail) = action_text(Action::TimeAccel);
-            (title, format!("On / off. {detail}"))
+            (title, detail.to_string())
         }
         Effect::Console(k) => {
             let (title, detail) = console_text(k);
