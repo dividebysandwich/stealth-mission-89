@@ -263,6 +263,8 @@ fn test_accept() -> Option<BriefPage> {
 const OPS_SIZE: egui::Vec2 = egui::vec2(1232.0, 900.0);
 /// The least height of a tab: a lower window scrolls it.
 const TAB_LEAST: f32 = 300.0;
+/// The height of the BRIEFED button's row under the loadout editor.
+const LOADOUT_BUTTONS: f32 = 60.0;
 /// The board's width from which the missions and their details are side by side, and the least
 /// width of the details.
 const BOARD_SPLIT: f32 = 900.0;
@@ -1825,7 +1827,8 @@ fn briefing(
                             )
                         }
                         BriefPage::Loadout => {
-                            ui.horizontal(|ui| {
+                            // Wrapped: a row too wide for the window would widen the page.
+                            let row = ui.horizontal_wrapped(|ui| {
                                 ui.label(egui::RichText::new("AIRCRAFT").color(DIM));
                                 let flyable = [
                                     Airframe::F117,
@@ -1853,12 +1856,13 @@ fn briefing(
                                 }
                             });
                             ui.add_space(4.0);
+                            let below = row.response.rect.height() + 4.0 + LOADOUT_BUTTONS;
                             crate::loadout::editor(
                                 ui,
                                 &mut b.window,
                                 &mut b.loadout,
                                 &m,
-                                height - 30.0,
+                                (height - below).max(TAB_LEAST - LOADOUT_BUTTONS),
                             );
                             ui.horizontal(|ui| {
                                 if ui.add(big_button("BRIEFED").icon(icon::BRIEFED)).clicked() {

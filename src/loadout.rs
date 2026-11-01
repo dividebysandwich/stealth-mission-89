@@ -636,7 +636,8 @@ static F16_STATIONS: [Hardpoint; 9] = [
 const TORNADO_WING: [u8; 15] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0];
 const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18];
 /// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
-/// fuselage's shoulder pylons fore and aft.
+/// fuselage's shoulder pylons fore and aft. The rail is drawn further out than its pylon's
+/// side, where it is apart from the pylon.
 static TORNADO_STATIONS: [Hardpoint; 8] = [
     pylon("Left wing, Sidewinder rail", "1", -4.20, 9.40, Some(7), &TIP),
     pylon("Left wing pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
@@ -1061,8 +1062,10 @@ pub fn editor(
     let mirror = w.mirror.get_or_insert(true);
     let size = egui::vec2(ui.available_width(), height);
     ui.horizontal_top(|ui| {
-        let side = (ui.available_width() * 0.5).clamp(280.0, 380.0);
-        let draw = egui::vec2(ui.available_width() - side - 12.0, ui.available_height() - 60.0);
+        // Half the width for the stores (more of a narrow window), the rest for the diagram.
+        let wide = ui.available_width();
+        let side = (wide * 0.5).min(380.0).max((wide * 0.6).min(280.0));
+        let draw = egui::vec2((wide - side - 12.0).max(0.0), height.max(0.0));
         if let Some(i) = diagram(ui, lay, &lo.stores, w.selected, draw) {
             w.selected = i;
         }
@@ -1079,7 +1082,7 @@ pub fn editor(
             }
             let mut pick = lo.stores[w.selected];
             // The column's full width: the scroll bar on its right edge, clear of the names.
-            let list = egui::ScrollArea::vertical().max_height(size.y - 260.0);
+            let list = egui::ScrollArea::vertical().max_height((size.y - 200.0).max(80.0));
             list.auto_shrink([false, true]).show(ui, |ui| {
                 ui.radio_value(&mut pick, None, "Empty");
                 for &wpn in hp.loads {
