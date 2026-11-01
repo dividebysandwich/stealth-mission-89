@@ -400,6 +400,21 @@ pub(super) struct SideLabel {
     pub lit: Option<u8>,
 }
 
+/// An MFD bezel button's cap, after the F-16's: a raised grey square standing out of the dark
+/// bezel, outlined dark, its top and left edges catching the light and its bottom and right in
+/// shadow (`k`: atlas texels per panel pixel).
+const OSB_FACE: u8 = 8;
+fn osb_cap(c: &mut Canvas, r: [i32; 4], k: i32) {
+    let [x, y, w, h] = r;
+    c.fill_rect(x, y, w, h, 0);
+    let (x, y, w, h) = (x + k, y + k, w - 2 * k, h - 2 * k);
+    c.fill_rect(x, y, w, h, OSB_FACE);
+    c.fill_rect(x, y, w, k, 7);
+    c.fill_rect(x, y, k, h, 7);
+    c.fill_rect(x, y + h - k, w, k, 5);
+    c.fill_rect(x + w - k, y, k, h, 5);
+}
+
 /// Draws a side panel button's label: light text on the dark cap, dark text on the lit one.
 pub(super) fn draw_side_label(canvas: &mut Canvas, fonts: &Fonts, text: &str, lit: Option<u8>) {
     let (back, ink) = match lit {
@@ -668,7 +683,7 @@ pub(super) fn update_displays(
             }
             // Modern avionics: blank caps, the labels are on the display.
             Face::Osb(..) if d.mfd.state.modern => {
-                draw_lamp(c, &fonts, r, "", (35, 38), k, t);
+                osb_cap(c, r, k);
                 false
             }
             Face::Osb(side, slot) => match osb(side, slot, &d.mfd.state) {
@@ -676,22 +691,22 @@ pub(super) fn update_displays(
                     draw_lamp(c, &fonts, r, label, (38, 47), k, t);
                     true
                 }
-                // Unlit: light grey label on a dark cap.
+                // Unlit: white label on the grey cap.
                 Some((label, _, false)) => {
-                    draw_lamp(c, &fonts, r, "", (35, 38), k, t);
+                    osb_cap(c, r, k);
                     draw_label(
                         c,
                         &fonts,
-                        [r[0] + k, r[1] + k, r[2] - 2 * k, r[3] - 2 * k],
+                        [r[0] + 2 * k, r[1] + 2 * k, r[2] - 4 * k, r[3] - 4 * k],
                         label,
-                        7,
-                        38,
+                        15,
+                        OSB_FACE,
                         t,
                     );
                     false
                 }
                 None => {
-                    draw_lamp(c, &fonts, r, "", (35, 38), k, t);
+                    osb_cap(c, r, k);
                     false
                 }
             },
