@@ -32,7 +32,7 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | Displays | HUD modes / declutter | F2 / V |
 | | bombsight CCIP / CCRP (remake; also A-G pressed again on the F-16) | Alt F2 |
 | | maps (left MFD) | F3 |
-| | map zoom in / out, north up / heading up (remake, modern panel) | Alt Z / Alt X / Alt F3 |
+| | map zoom in / out, north up / heading up (remake, modern panel; the zoom keys zoom the targeting pod while it is the SOI) | Alt Z / Alt X / Alt F3 |
 | | night vision goggles (remake) | F4 |
 | | helmet display (remake; F-16 HMCS, AH-1Z, RAH-66, OH-58D): on / auto (blanked looking through the HUD) / off, also the cockpit's HMCS / HMD cap | H |
 | | HUD and helmet display colour: green / amber / cyan / white (remake, modern HUD) | Shift H |
@@ -43,7 +43,7 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | Tracking camera (right MFD) | cam ahead / rear / right / left | `/` / `.` / `,` / M |
 | | designate new target / select target | N / B |
 | | nearest target ahead / clear target (remake; the targeting pod then looks at the current steerpoint) | T / Shift B |
-| | camera zoom in / out (remake) | `]` / `[` (also Z / X with the targeting pod the SOI) |
+| | camera zoom in / out (remake; the HSD's range while it is the SOI) | `]` / `[` (also Z / X and Alt Z / Alt X with the targeting pod the SOI) |
 | Modern avionics (remake) | sensor/cursor slew | keypad 8 / 2 / 4 / 6, diagonals 7 / 9 / 1 / 3 (also the VR left thumbstick and two bindable joystick axes) |
 | | lock the target under the cursor | keypad Enter (VR: left thumbstick click) |
 | | sensor of interest to the other MFD | Alt S |

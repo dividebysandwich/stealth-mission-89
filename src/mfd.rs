@@ -741,19 +741,20 @@ fn mfd_keys(
                 crate::avionics::next_left_format(state.av.formats[0]),
             ),
             Action::SwapSoi => MfdCmd::SwapSoi,
+            // Every zoom key pair (Z / X, the camera's and the map's) zooms the sensor of
+            // interest: the targeting pod, or the HSD's range.
+            Action::Zoom
+            | Action::Unzoom
+            | Action::CameraZoomIn
+            | Action::CameraZoomOut
+            | Action::MapZoomIn
+            | Action::MapZoomOut
+                if let Some(cmd) = soi_zoom(&state, *a) =>
+            {
+                cmd
+            }
             Action::CameraZoomIn => MfdCmd::CamZoom(1),
             Action::CameraZoomOut => MfdCmd::CamZoom(-1),
-            // Z / X zoom the targeting pod while it is the sensor of interest.
-            Action::Zoom
-                if state.modern && state.av.soi_format() == Some(crate::avionics::Format::Tgp) =>
-            {
-                MfdCmd::CamZoom(1)
-            }
-            Action::Unzoom
-                if state.modern && state.av.soi_format() == Some(crate::avionics::Format::Tgp) =>
-            {
-                MfdCmd::CamZoom(-1)
-            }
             Action::Maps => MfdCmd::LeftPage(if state.left == LeftMfd::Map {
                 LeftMfd::Tac
             } else {
@@ -781,6 +782,23 @@ fn mfd_keys(
     }
     for MfdCommand(cmd) in commands.read() {
         apply_with_zoom(&mut state, &mut raster, *cmd, auto_zoom);
+    }
+}
+
+/// A zoom key's command while the sensor of interest zooms (modern avionics: the targeting pod
+/// zooms, the HSD changes its range); None otherwise.
+fn soi_zoom(state: &MfdState, a: Action) -> Option<MfdCmd> {
+    use crate::avionics::Format;
+    let d = match a {
+        Action::Zoom | Action::CameraZoomIn | Action::MapZoomIn => 1,
+        Action::Unzoom | Action::CameraZoomOut | Action::MapZoomOut => -1,
+        _ => return None,
+    };
+    match state.av.soi_format().filter(|_| state.modern)? {
+        Format::Tgp => Some(MfdCmd::CamZoom(d)),
+        Format::Hsd if d > 0 => Some(MfdCmd::ZoomIn),
+        Format::Hsd => Some(MfdCmd::ZoomOut),
+        _ => None,
     }
 }
 
@@ -2331,6 +2349,34 @@ fn tac_icon(c: &mut Canvas, icon: TacIcon, x: i32, y: i32, hires: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every zoom key pair zooms the sensor of interest: the HSD's range or the targeting pod;
+    /// without one (classic avionics, HARM) each keeps its own target.
+    #[test]
+    fn zoom_keys_follow_the_soi() {
+        use crate::avionics::Format;
+        let mut s = MfdState { modern: true, ..default() };
+        s.av.select(MfdSide::Right, Format::Tgp);
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+        for (a, want) in [
+            (Action::CameraZoomIn, MfdCmd::ZoomIn),
+            (Action::MapZoomOut, MfdCmd::ZoomOut),
+            (Action::Zoom, MfdCmd::ZoomIn),
+        ] {
+            assert_eq!(soi_zoom(&s, a), Some(want), "{a:?}");
+        }
+        s.av.soi = Some(Format::Tgp);
+        for (a, want) in [
+            (Action::MapZoomIn, MfdCmd::CamZoom(1)),
+            (Action::CameraZoomOut, MfdCmd::CamZoom(-1)),
+            (Action::Unzoom, MfdCmd::CamZoom(-1)),
+        ] {
+            assert_eq!(soi_zoom(&s, a), Some(want), "{a:?}");
+        }
+        assert_eq!(soi_zoom(&s, Action::Flir), None);
+        s.modern = false;
+        assert_eq!(soi_zoom(&s, Action::MapZoomIn), None);
+    }
 
     #[test]
     fn orders_wrap() {
