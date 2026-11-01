@@ -212,7 +212,9 @@ change is saved at once.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an
   axis pushed past halfway works too.
 - A standard **gamepad** works without mapping: left stick to fly, right stick for the rudder,
-  triggers for the throttle, face buttons for fire, gun, weapon select and bay doors.
+  triggers for the throttle, face buttons for fire, gun, weapon select and bay doors, Start for the
+  menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
+  often button 9, as the gamepad's Start: bind it to free it from the menu).
 
 ![VR controller mapping](images/controls_vr.png)
 

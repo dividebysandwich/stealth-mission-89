@@ -648,8 +648,9 @@ pub fn stronger(current: f32, v: f32) -> f32 {
 }
 
 /// Gamepad: left stick = stick, right stick X = rudder, triggers = throttle (a helicopter's
-/// collective, moving as far as they are pulled), A = fire, B = gun (unless turned off in the
-/// input mapping). An input the mapping binds does only what it is bound to.
+/// collective, moving as far as they are pulled), A = fire, B = gun, Start = the menu (unless
+/// turned off in the input mapping). An input the mapping binds does only what it is bound to:
+/// a joystick's button the gamepad mapping calls Start (often button 9) can be bound to anything.
 fn read_gamepad(
     gamepads: Query<(&Gamepad, Option<&Name>)>,
     (config, hotas): (Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
@@ -657,22 +658,29 @@ fn read_gamepad(
     mut actions: MessageWriter<ActionEvent>,
     (block, console): (Res<InputBlock>, Res<ConsoleStick>),
 ) {
-    for (pad, _) in &gamepads {
-        if pad.just_pressed(GamepadButton::Start) {
-            actions.write(ActionEvent(Action::Menu));
-        }
-    }
-    if !config.gamepad_defaults || (block.0 && !console.0) {
+    if !config.gamepad_defaults {
         return;
     }
     let bound = hotas.bound_standard(&config);
-    for (pad, name) in &gamepads {
+    let free_on = |pad: &Gamepad, name: Option<&Name>, i: GamepadInput| {
         let ids = pad.vendor_id().zip(pad.product_id());
-        let free = |i: GamepadInput| {
-            !bound.iter().any(|&(usb, n, b)| {
-                b == i && usb == ids && name.is_none_or(|name| name.as_str() == n)
-            })
-        };
+        !bound
+            .iter()
+            .any(|&(usb, n, b)| b == i && usb == ids && name.is_none_or(|name| name.as_str() == n))
+    };
+    // Start opens and closes the menu (also while it is open).
+    for (pad, name) in &gamepads {
+        if pad.just_pressed(GamepadButton::Start)
+            && free_on(pad, name, GamepadInput::Button(GamepadButton::Start))
+        {
+            actions.write(ActionEvent(Action::Menu));
+        }
+    }
+    if block.0 && !console.0 {
+        return;
+    }
+    for (pad, name) in &gamepads {
+        let free = |i: GamepadInput| free_on(pad, name, i);
         let axis =
             |a: GamepadAxis| pad.get(a).filter(|_| free(GamepadInput::Axis(a))).unwrap_or(0.0);
         let pressed = |b: GamepadButton| pad.pressed(b) && free(GamepadInput::Button(b));
