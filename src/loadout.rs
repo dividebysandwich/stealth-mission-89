@@ -113,9 +113,15 @@ pub struct Hardpoint {
     pub loads: &'static [u8],
     /// Rounds of a weapon here other than a bay's or a pylon's usual (weapon, rounds).
     pub qty: &'static [(u8, u8)],
+    /// Stations whose stores would hit this one's: loading one empties the other.
+    pub excludes: &'static [usize],
 }
 
 impl Hardpoint {
+    const fn excluding(self, excludes: &'static [usize]) -> Self {
+        Hardpoint { excludes, ..self }
+    }
+
     pub fn rounds(&self, w: u8) -> u8 {
         if let Some(&(_, n)) = self.qty.iter().find(|q| q.0 == w) {
             return n;
@@ -587,6 +593,7 @@ const fn bay(
         mirror: Some(mirror),
         loads,
         qty: &[],
+        excludes: &[],
     }
 }
 
@@ -598,7 +605,17 @@ const fn pylon(
     mirror: Option<usize>,
     loads: &'static [u8],
 ) -> Hardpoint {
-    Hardpoint { name, label, pos: (x, y), bay: false, fantasy: false, mirror, loads, qty: &[] }
+    Hardpoint {
+        name,
+        label,
+        pos: (x, y),
+        bay: false,
+        fantasy: false,
+        mirror,
+        loads,
+        qty: &[],
+        excludes: &[],
+    }
 }
 
 /// The real F-117A: two bays, no air-to-air missiles.
@@ -641,10 +658,10 @@ const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 static TORNADO_STATIONS: [Hardpoint; 8] = [
     pylon("Left wing, Sidewinder rail", "1", -5.20, 10.70, Some(7), &TIP),
     pylon("Left wing pylon", "2", -3.60, 10.20, Some(6), &TORNADO_WING),
-    pylon("Left shoulder, forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
-    pylon("Left shoulder, aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
-    pylon("Right shoulder, aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
-    pylon("Right shoulder, forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
+    pylon("Left shoulder, forward", "3", -0.80, 7.15, Some(5), &TORNADO_BELLY),
+    pylon("Left shoulder, aft", "4", -0.80, 11.50, Some(4), &WING_INNER),
+    pylon("Right shoulder, aft", "5", 0.80, 11.50, Some(3), &WING_INNER),
+    pylon("Right shoulder, forward", "6", 0.80, 7.15, Some(2), &TORNADO_BELLY),
     pylon("Right wing pylon", "7", 3.60, 10.20, Some(1), &TORNADO_WING),
     pylon("Right wing, Sidewinder rail", "8", 5.20, 10.70, Some(0), &TIP),
 ];
@@ -661,9 +678,9 @@ static A10_STATIONS: [Hardpoint; 11] = [
     pylon("Station 2, left wing", "2", -4.75, 8.53, Some(9), &A10_WING),
     pylon("Station 3, left wing", "3", -3.55, 8.43, Some(8), &A10_WING),
     pylon("Station 4, left centre wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
-    pylon("Station 5, left fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY),
-    pylon("Station 6, centreline", "6", 0.0, 8.11, None, &CENTRE),
-    pylon("Station 7, right fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY),
+    pylon("Station 5, left fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY).excluding(&[5]),
+    pylon("Station 6, centreline", "6", 0.0, 8.11, None, &CENTRE).excluding(&[4, 6]),
+    pylon("Station 7, right fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY).excluding(&[5]),
     pylon("Station 8, right centre wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
     pylon("Station 9, right wing", "9", 3.55, 8.43, Some(2), &A10_WING),
     pylon("Station 10, right wing", "10", 4.75, 8.53, Some(1), &A10_WING),
@@ -678,19 +695,21 @@ static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
 static A10_LAYOUT: Layout =
     Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
-/// The AV-8B's outer pylons carry the Mavericks, the bombs and Sidewinders, the intermediate and
-/// inboard ones (over the outriggers and by the intakes) the heavier stores and the tanks, the
-/// Harpoon inboard; the centreline the camera or the cargo, the Sidewinder rails outboard.
+/// The AV-8B's outer pylons carry the Mavericks, the bombs and Sidewinders, the intermediate ones
+/// (on the outriggers' fairings, ahead of the legs) the heavier stores but the Rockeye pairs, the
+/// inboard ones (by the intakes) the tanks, the camera, the cargo and the Harpoon too; the
+/// Sidewinder rails outboard. No centreline station: the gun pods and the bicycle gear's legs
+/// leave no room for a store between them.
 const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
-const AV8B_MIDDLE: [u8; 12] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
-const AV8B_INNER: [u8; 13] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
-/// The AV-8B's stations: the left Sidewinder rail (1) to the right one (9).
-static AV8B_STATIONS: [Hardpoint; 9] = [
-    pylon("Station 1, left Sidewinder rail", "1", -3.90, 8.64, Some(8), &SIDEWINDER),
-    pylon("Station 2, left outer wing", "2", -3.28, 8.69, Some(7), &AV8B_OUTER),
-    pylon("Station 3, left intermediate wing", "3", -2.60, 8.19, Some(6), &AV8B_MIDDLE),
-    pylon("Station 4, left inboard wing", "4", -1.88, 7.66, Some(5), &AV8B_INNER),
-    pylon("Station 5, centreline", "5", 0.0, 6.82, None, &CENTRE),
+const AV8B_MIDDLE: [u8; 9] = [5, 6, 8, 9, 10, 12, 13, 14, 15];
+const AV8B_INNER: [u8; 15] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+/// The AV-8B's stations: the left Sidewinder rail (1) to the right one (9), numbered as the
+/// real ones (5, the centreline, not fitted).
+static AV8B_STATIONS: [Hardpoint; 8] = [
+    pylon("Station 1, left Sidewinder rail", "1", -3.90, 8.64, Some(7), &SIDEWINDER),
+    pylon("Station 2, left outer wing", "2", -3.28, 8.69, Some(6), &AV8B_OUTER),
+    pylon("Station 3, left intermediate wing", "3", -2.60, 8.19, Some(5), &AV8B_MIDDLE),
+    pylon("Station 4, left inboard wing", "4", -1.88, 7.66, Some(4), &AV8B_INNER),
     pylon("Station 6, right inboard wing", "6", 1.88, 7.66, Some(3), &AV8B_INNER),
     pylon("Station 7, right intermediate wing", "7", 2.60, 8.19, Some(2), &AV8B_MIDDLE),
     pylon("Station 8, right outer wing", "8", 3.28, 8.69, Some(1), &AV8B_OUTER),
@@ -781,6 +800,7 @@ const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) ->
         mirror: Some(mirror),
         loads: &[HELLFIRE, STINGER],
         qty: &[(HELLFIRE, 3), (STINGER, 6)],
+        excludes: &[],
     }
 }
 
@@ -798,6 +818,7 @@ static OH58_STATIONS: [Hardpoint; 2] = [
         mirror: Some(1),
         loads: &OH58_LOADS,
         qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
+        excludes: &[],
     },
     Hardpoint {
         name: "Right weapons pylon",
@@ -808,6 +829,7 @@ static OH58_STATIONS: [Hardpoint; 2] = [
         mirror: Some(0),
         loads: &OH58_LOADS,
         qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
+        excludes: &[],
     },
 ];
 const OH58_LOADS: [u8; 3] = [HELLFIRE, STINGER, GUN_POD];
@@ -888,11 +910,14 @@ impl PlannedLoadout {
                 let tornado = aircraft == AircraftKind::Tornado;
                 let a10 = aircraft == AircraftKind::A10;
                 let harrier = aircraft == AircraftKind::AV8B;
-                for w in briefed.chain([0]) {
+                // The mission's camera or cargo first: its station must not be blocked.
+                let mut briefed: Vec<u8> = briefed.collect();
+                briefed.sort_by_key(|w| !matches!(w, 16 | 18));
+                for w in briefed.into_iter().chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
                         0 if harrier => &[0, 1],
-                        16 | 18 if harrier => &[4],
+                        16 | 18 if harrier => &[3],
                         17 if harrier => &[3, 2],
                         4 if harrier => &[3],
                         5 if harrier => &[1, 2],
@@ -916,10 +941,15 @@ impl PlannedLoadout {
                     if w == 0 && stores.contains(&Some(0)) {
                         continue;
                     }
-                    if let Some(&i) = order
-                        .iter()
-                        .find(|&&i| stores[i].is_none() && lay.hardpoints[i].loads.contains(&w))
-                    {
+                    let free = |i: usize| {
+                        let h = &lay.hardpoints[i];
+                        stores[i].is_none() && h.excludes.iter().all(|&j| stores[j].is_none())
+                    };
+                    if let Some(&i) = order.iter().find(|&&i| {
+                        free(i)
+                            && lay.hardpoints[i].mirror.is_none_or(free)
+                            && lay.hardpoints[i].loads.contains(&w)
+                    }) {
                         stores[i] = Some(w);
                         if let Some(j) = lay.hardpoints[i].mirror {
                             stores[j] = Some(w);
@@ -940,6 +970,24 @@ impl PlannedLoadout {
 
     pub fn layout(&self) -> &'static Layout {
         layout(self.aircraft, self.realistic)
+    }
+
+    /// Puts `store` on station `i` (and its mirror too with `mirror`), emptying the stations
+    /// whose stores would hit it.
+    pub fn load(&mut self, i: usize, store: Option<u8>, mirror: bool) {
+        let lay = self.layout();
+        let mut put = |i: usize| {
+            self.stores[i] = store;
+            if store.is_some() {
+                for &j in lay.hardpoints[i].excludes {
+                    self.stores[j] = None;
+                }
+            }
+        };
+        put(i);
+        if mirror && let Some(j) = lay.hardpoints[i].mirror {
+            put(j);
+        }
     }
 
     /// The simulation's stations: (weapon type, rounds), -1 empty.
@@ -1110,11 +1158,19 @@ pub fn editor(
                     &[&format!("Loads {} too", lay.hardpoints[j].name.to_ascii_lowercase())],
                 );
             }
+            if !hp.excludes.is_empty() {
+                let names: Vec<_> = hp.excludes.iter().map(|&j| lay.hardpoints[j].label).collect();
+                ui.label(
+                    egui::RichText::new(format!(
+                        "Empties station {} when loaded",
+                        names.join(" and ")
+                    ))
+                    .small()
+                    .color(AMBER),
+                );
+            }
             if pick != lo.stores[w.selected] {
-                lo.stores[w.selected] = pick;
-                if *mirror && let Some(j) = hp.mirror {
-                    lo.stores[j] = pick;
-                }
+                lo.load(w.selected, pick, *mirror);
             }
             section(ui, "Stores");
             ui.label(egui::RichText::new(lo.summary()).color(GREEN));

@@ -25,7 +25,7 @@ import os
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -53,10 +53,16 @@ BLACK = 239
 
 
 class Craft:
-    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None, parts=()):
+    def __init__(self, body, red, green, white=(), flames=None, part=None, pivot=False, gear=None, parts=(),
+                 stations=None, groups=()):
         # `parts`: (geometry about its pivot, pivot, state slot[, axis]) of parts turning about
         # their up axis (the Tornado's outer wings), or axis 1 (pitch: the Harrier's nozzles).
-        self.body, self.flames, self.part, self.gear, self.parts = body, flames, part, gear, parts
+        # `stations`: (loadout table, [Station]) of the jets hanging stores (stores.py), their
+        # pylons built by `hang_stations`; `groups`: (conditions, geometry) shown on conditions.
+        self.body, self.flames, self.part, self.gear, self.parts = body, flames, part, gear, list(parts)
+        self.stations, self.groups = stations, list(groups)
+        # Parts on parts: (parent part's index, geometry about its pivot, pivot, state slot).
+        self.subparts = []
         # Light dots sit just outboard of the wingtips so the tip itself doesn't hide them.
         out = Vector((0.25, 0, 0))
         self.lights = {147: [Vector(red) - out], 151: [Vector(green) + out]}
@@ -117,6 +123,110 @@ def nacelle(x, y0, y1, z, r, paint=GREY_L, n=8, inlet=BLACK):
 def pylon(x, y0, y1, z0, z1, w=0.12, paint=GREY):
     return hexa([(x - w, y0, z0), (x + w, y0, z0), (x + w, y1, z0), (x - w, y1, z0),
                  (x - w, y0 - 0.3 * (y0 - y1), z1), (x + w, y0 - 0.3 * (y0 - y1), z1), (x + w, y1, z1), (x - w, y1, z1)], paint)
+
+
+# ---------------------------------------------------------------------------------------------
+# Stations: the pylons and rails the flyable jets hang their stores on (stores.py)
+
+
+class Station:
+    """How a loadout station's stores hang: under a pylon `depth` m deep and `chord` long, `w`
+    half wide (`depth` 0: straight off the structure there, a rail of its own); `part`: under
+    that outer wing part (the pylon a part of its own on it, turning back against the sweep);
+    `side`: on a rail on the side of that station's pylon, `out` m from its middle."""
+
+    def __init__(self, depth, chord=1.4, w=0.07, kind="pylon", part=None, side=None, out=0.32, rail=None, top=None):
+        # `top`: z of the structure the pylon hangs from, where its surface is not the lowest
+        # above the station (the Harrier's outrigger fairings).
+        self.depth, self.chord, self.w, self.kind, self.part = depth, chord, w, kind, part
+        self.side, self.out, self.rail, self.top = side, out, rail, top
+
+
+def underside(geos, x, y, top=10.0):
+    """z of the lowest surface of `geos` above (x, y): where a pylon there meets it."""
+    from mathutils.bvhtree import BVHTree
+
+    verts, polys = [], []
+    for g in geos:
+        for pts, _ in g.faces:
+            polys.append(list(range(len(verts), len(verts) + len(pts))))
+            verts.extend(Vector(p) for p in pts)
+    tree = BVHTree.FromPolygons(verts, polys)
+    hit = tree.ray_cast(Vector((x, y, -top)), Vector((0, 0, 1)))
+    if hit[0] is None:
+        raise ValueError(f"no structure above station ({x:.2f}, {y:.2f})")
+    return hit[0].z
+
+
+def store_pylon(x, y, chord, z0, z1, w, paint):
+    """A pylon from z0 (inside the structure) down to z1, its bottom under the store's lugs at y."""
+    c = chord
+    return hexa([(x - w, y - 0.40 * c, z1), (x + w, y - 0.40 * c, z1), (x + w, y + 0.32 * c, z1), (x - w, y + 0.32 * c, z1),
+                 (x - w, y - 0.50 * c, z0), (x + w, y - 0.50 * c, z0), (x + w, y + 0.50 * c, z0), (x - w, y + 0.50 * c, z0)],
+                paint)
+
+
+def hang_stations(craft, paint):
+    """Builds `craft`'s pylons at its loadout stations and returns where each station's stores
+    hang: [(station, parent: None (the body) or (part, subpart), (x, y, z) in its frame, roll)]."""
+    import stores
+
+    table, stations, _ = craft.stations
+    nose = craft.body.bounds()[1].y
+    spots = stores.loadout_stations(table)
+    assert len(spots) == len(stations), table
+    hung = []
+    pylons = {}
+    for i, ((x, aft, _), st) in enumerate(zip(spots, stations)):
+        if st.side is not None:
+            continue
+        y = nose - aft
+        if st.part is None:
+            z = underside([craft.body], x, y) if st.top is None else st.top
+            if st.depth > 0:
+                craft.body.add(store_pylon(x, y, st.chord, z + 0.06, z - st.depth, st.w, paint))
+            if st.rail is not None:
+                craft.body.add(st.rail(x, y, z - st.depth))
+                hung.append((i, None, (x, y, z - st.depth - st.rail.depth), 0.0))
+            else:
+                hung.append((i, None, (x, y, z - st.depth), 0.0))
+        else:
+            geo, pivot, slot, *_ = craft.parts[st.part]
+            at = geo.transformed(lambda p: p + Vector(pivot))
+            z = underside([at], x, y)
+            local = Vector((x, y, z))
+            g = store_pylon(0.0, 0.0, st.chord, 0.06, -st.depth, st.w, paint)
+            pylons[i] = (len(craft.subparts), local)
+            other = TORNADO_WING_SLOTS[1] if slot == TORNADO_WING_SLOTS[0] else TORNADO_WING_SLOTS[0]
+            craft.subparts.append([st.part, g, tuple(local), other])
+            hung.append((i, (st.part, pylons[i][0]), (0.0, 0.0, -st.depth), 0.0))
+    for i, ((x, aft, _), st) in enumerate(zip(spots, stations)):
+        if st.side is None:
+            continue
+        # A rail on the pylon's side toward the centreline, the missile beside it lying on its
+        # side (its lugs on the rail).
+        sub, local = pylons[st.side]
+        inboard = -1.0 if local.x > 0 else 1.0
+        z = -stations[st.side].depth * 0.5
+        rail = block(min(0, inboard * st.out), max(0, inboard * st.out), -0.9, 0.9, z - 0.035, z + 0.035, DARK)
+        rail.add(block(min(0, inboard * stations[st.side].w), max(0, inboard * stations[st.side].w), -1.0, 1.0,
+                       z - 0.05, z + 0.05, paint))
+        craft.subparts[sub][1].add(rail)
+        hung.append((i, (stations[st.side].part, sub), (inboard * st.out, 0.0, z), -90.0 * inboard))
+    return sorted(hung)
+
+
+class RailPylon:
+    """A launcher rail of its own (the F-16's stations 1, 2, 8 and 9): its lugs `depth` m under
+    the pylon or the wingtip."""
+    def __init__(self, paint, depth=0.11):
+        self.paint, self.depth = paint, depth
+
+    def __call__(self, x, y, z):
+        d = self.depth
+        g = block(x - 0.05, x + 0.05, y - 1.30, y + 1.10, z - d + 0.01, z + 0.02, self.paint)
+        g.add(block(x - 0.022, x + 0.022, y - 1.30, y + 0.95, z - d, z - d + 0.02, DARK))
+        return g
 
 
 # ---------------------------------------------------------------------------------------------
@@ -214,15 +324,29 @@ def f16():
     g.add(wing((1.0, 0.69, 0.0), 4.10, (4.60, -2.19, 0.0), 1.22, F16_GREY, t=0.04))
     g.add(wing((0.6, -3.3, 0.0), 3.5, (1.05, -3.5, 0.0), 3.35, F16_GREY, t=0.06, t_tip=0.04))
     g.add(wing((1.0, -4.70, 0.02), 2.39, (2.83, -6.19, -0.30), 0.90, F16_GREY, t=0.04))
+    # The wingtip launch rails; the AI's F-16s carry their Sidewinders on them always (state
+    # slot 28 is 1 on the flyable one, its stores hung by the game: `F16_STATIONS`).
+    tips = Geo()
     for s in (-1, 1):
         g.add(block(s * 4.58, s * 4.72, -1.7, -3.6, -0.05, 0.05, F16_GREY))
-        g.add(missile(s * 4.66, -0.9, -0.14, 3.0))
+        tips.add(missile(s * 4.66, -0.9, -0.14, 3.0))
     # The fin on its base, the ventral fins canted out.
     g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, F16_GREY, t=0.05, vertical=True, mirror=False))
     g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, F16_GREY, t=0.05, vertical=True))
     g.add(nozzle(0, -6.15, 0.04, 0.52, 1.05, n=12))
     fl = flame(0, -7.2, 0.04, 0.45, 3.2)
-    return Craft(g, (-4.70, -3.3, 0.05), (4.70, -3.3, 0.05), [(0, -7.0, 3.27)], fl, gear=f16_gear())
+    return Craft(g, (-4.70, -3.3, 0.05), (4.70, -3.3, 0.05), [(0, -7.0, 3.27)], fl, gear=f16_gear(),
+                 stations=("F16_STATIONS", F16_STATIONS, F16_GREY), groups=[([(STORES_SLOT, 0)], tips)])
+
+
+# The F-16's stations 1 to 9: the wingtip rails, the outer wing's launcher rails on short
+# pylons, the wing pylons, the centreline pylon under the intake.
+F16_STATIONS = [Station(0.0, rail=RailPylon(F16_GREY, depth=0.21)),
+                Station(0.18, chord=1.3, w=0.05, rail=RailPylon(F16_GREY)), Station(0.40, chord=1.6),
+                Station(0.42, chord=1.7), Station(0.09, chord=1.5)]
+F16_STATIONS = F16_STATIONS + F16_STATIONS[3::-1]
+# State slot 1 on the flyable jets (their stores hung by the game), 0 on the AI's.
+STORES_SLOT = 28
 
 
 # z of the ground under the wheels (`F16_LIFT` and `gear_depth` in src/aircraft.rs).
@@ -326,8 +450,7 @@ def tornado_wing():
     px, py = TORNADO_PIVOT
     z = TORNADO_WING_Z
     g = wing((1.75, -0.05, z), 2.20, (6.95, -2.45, z), 0.95, TORNADO_GREY, t=0.045, t_tip=0.035, mirror=False)
-    # The swivelling pylon under it, the tip's fairing.
-    g.add(pylon(3.9, -0.6, -2.0, z - 0.05, z - 0.40, w=0.08, paint=TORNADO_GREY))
+    # The tip's fairing (the swivelling pylon under it is a part of its own: `TORNADO_STATIONS`).
     g.add(block(6.93, 7.00, -2.40, -3.30, z - 0.03, z + 0.03, TORNADO_GREY))
     return g.transformed(lambda p: Vector((p.x - px, p.y - py, p.z - z)))
 
@@ -361,7 +484,15 @@ def tornado():
     # The navigation lights on the gloves' tips (the outer wings move), the white one on the
     # fin's tip.
     return Craft(g, (-2.40, -0.70, TORNADO_WING_Z), (2.40, -0.70, TORNADO_WING_Z), [(0, -8.10, 4.15)], fl,
-                 gear=tornado_gear(), parts=parts)
+                 gear=tornado_gear(), parts=parts, stations=("TORNADO_STATIONS", TORNADO_STATIONS, TORNADO_GREY))
+
+
+# The Tornado's stations: the Sidewinders on rails on the wing pylons' inner sides, the wing
+# pylons (parts of their own on the outer wings, turned back by the other wing's sweep slot so
+# they stay lined up with the airflow), the shoulder pylons fore and aft.
+TORNADO_STATIONS = [Station(0.0, side=1), Station(0.62, chord=1.5, w=0.08, part=1), Station(0.36, chord=1.7),
+                    Station(0.24, chord=1.7), Station(0.24, chord=1.7), Station(0.36, chord=1.7),
+                    Station(0.62, chord=1.5, w=0.08, part=0), Station(0.0, side=6)]
 
 
 def tornado_gear():
@@ -712,18 +843,20 @@ def a10():
         g.add(wing((s * A10_FIN_X, -5.72, -0.85), 1.95, (s * A10_FIN_X, -6.10, 2.25), 1.50, p, t=0.07,
                    vertical=True, mirror=False))
         g.add(block(s * A10_FIN_X - 0.06, s * A10_FIN_X + 0.06, -7.30, -6.10, 2.22, 2.28, p))
-        # The pylons: two on the centre section, three on each outer panel.
-        for px in (1.65, 3.55, 4.75, 5.95):
-            y, z = a10_wing_le(px)
-            g.add(pylon(s * px, y - 0.50, y - 1.90, z - 0.08, z - 0.38, w=0.07, paint=p))
-    # The fuselage's three stations under the centre section.
-    for px in (-0.45, 0.0, 0.45):
-        g.add(pylon(px, 1.10, -0.60, -0.70, -0.92, w=0.07, paint=p))
+    # The pylons (`A10_STATIONS`): one on each centre section, three on each outer panel, three
+    # under the fuselage.
     # The stabilizer between the fins.
     g.add(wing((0.30, -5.90, 0.05), 1.40, (A10_FIN_X, -5.95, 0.05), 1.30, p, t=0.06))
     # The navigation lights on the drooped tips, the white one on the tail cone.
     tip_y = y8 - 0.9
-    return Craft(g, (-8.80, tip_y, z8 - 0.18), (8.80, tip_y, z8 - 0.18), [(0, -8.15, 0.06)], gear=a10_gear())
+    return Craft(g, (-8.80, tip_y, z8 - 0.18), (8.80, tip_y, z8 - 0.18), [(0, -8.15, 0.06)], gear=a10_gear(),
+                 stations=("A10_STATIONS", A10_STATIONS, A10_GREY))
+
+
+# The A-10's stations 1 to 11: the outer panels' pylons, the centre sections', the fuselage's.
+A10_STATIONS = [Station(0.30, chord=1.4), Station(0.30, chord=1.4), Station(0.30, chord=1.4), Station(0.30, chord=1.5),
+                Station(0.22, chord=1.7), Station(0.22, chord=1.7)]
+A10_STATIONS = A10_STATIONS + A10_STATIONS[4::-1]
 
 
 def a10_gear():
@@ -796,6 +929,7 @@ HARRIER_NOZZLE_SLOT = 25
 HARRIER_GROUND_PITCH = math.radians(5.5)
 HARRIER_MAIN = (-0.95, -1.47)
 HARRIER_OUTRIGGER_X = 2.60
+HARRIER_OUTRIGGER_Y = -2.70
 
 
 def harrier_ground(y):
@@ -860,19 +994,14 @@ def harrier():
         # The leading edge root extensions.
         g.add(wing((s * 0.70, 2.30, 0.96), 0.95, (s * 1.02, 1.36, 0.96), 0.25, p, t=0.03, mirror=False))
     # The wing; the outrigger fairings; the pylons (three a side and the Sidewinder rails
-    # outboard) and the centreline station between the pods.
+    # outboard).
     g.add(wing(HARRIER_WING_ROOT, HARRIER_CHORDS[0], HARRIER_WING_TIP, HARRIER_CHORDS[1], p, t=0.07, t_tip=0.05))
     for s in (-1, 1):
         le, z, c = harrier_wing_at(HARRIER_OUTRIGGER_X)
         x = s * HARRIER_OUTRIGGER_X
-        g.add(loft([(-0.50, z - 0.06, 0.02, 0.02), (-0.90, z - 0.10, 0.12, 0.14), (-2.50, z - 0.10, 0.12, 0.13),
-                    (-2.90, z - 0.08, 0.03, 0.04)], p, n=8, x=x))
-        for px in (1.88, 2.60, 3.28):
-            le, z, c = harrier_wing_at(px)
-            g.add(pylon(s * px, le - 0.35, le - 1.85, z - 0.03, z - 0.33, w=0.06, paint=p))
-        le, z, c = harrier_wing_at(3.90)
-        g.add(pylon(s * 3.90, le - 0.25, le - 0.95, z - 0.02, z - 0.18, w=0.04, paint=p))
-    g.add(pylon(0.0, 1.20, -0.30, -0.66, -0.90, w=0.07, paint=p))
+        g.add(loft([(-0.50, z - 0.06, 0.02, 0.02), (-0.90, z - 0.10, 0.12, 0.14), (-2.90, z - 0.10, 0.12, 0.13),
+                    (-3.25, z - 0.08, 0.03, 0.04)], p, n=8, x=x))
+    # The pylons and rails (`AV8B_STATIONS`).
     # The anhedral tailplane; the fin on its dorsal fillet with the ram air intake at its base;
     # the ventral fin under the tail cone.
     g.add(wing((0.20, -4.59, 0.82), 1.57, (2.10, -6.03, 0.50), 0.52, p, t=0.045, t_tip=0.035))
@@ -889,7 +1018,20 @@ def harrier():
     # The navigation lights on the wingtips, the white one on the boom's end.
     le, z, c = harrier_wing_at(HARRIER_WING_TIP[0])
     tip = (HARRIER_WING_TIP[0] + 0.03, le - c / 2, z)
-    return Craft(g, (-tip[0], tip[1], tip[2]), tip, [(0, -7.30, 0.78)], gear=harrier_gear(), parts=parts)
+    return Craft(g, (-tip[0], tip[1], tip[2]), tip, [(0, -7.30, 0.78)], gear=harrier_gear(), parts=parts,
+                 stations=("AV8B_STATIONS", AV8B_STATIONS, HARRIER_GREY))
+
+
+def harrier_station(x, depth, chord, w):
+    """A pylon under the Harrier's wing at x, from its plane there (over the outrigger fairing)."""
+    return Station(depth, chord=chord, w=w, top=harrier_wing_at(x)[1] - 0.02)
+
+
+# The AV-8B's stations 1 to 9 (no centreline 5): the Sidewinder rails outboard, the outer,
+# intermediate and inboard pylons.
+AV8B_STATIONS = [harrier_station(3.90, 0.16, 0.8, 0.04), harrier_station(3.28, 0.30, 1.4, 0.06),
+                 harrier_station(2.60, 0.30, 1.5, 0.06), harrier_station(1.88, 0.30, 1.5, 0.06)]
+AV8B_STATIONS = AV8B_STATIONS + AV8B_STATIONS[::-1]
 
 
 def harrier_gear():
@@ -913,8 +1055,9 @@ def harrier_gear():
     g.add(frustum((0.0, y + 0.15, -0.60), (0.0, y, axle_z + 0.05), 0.09, 0.08, GREY_L, n=5))
     g.add(frustum((0.0, y + 0.85, -0.60), (0.0, y + 0.10, axle_z + 0.35), 0.04, 0.04, GREY_L, n=4))
     g.add(block(-0.08, 0.08, y + 0.05, y - 0.05, axle_z - 0.03, axle_z + 0.03, GREY_L))
-    # The outriggers: long thin legs down from the fairings.
-    y, r = -1.46, 0.17
+    # The outriggers: long thin legs down from the fairings' tails, behind the intermediate
+    # pylons' stores.
+    y, r = HARRIER_OUTRIGGER_Y, 0.17
     _, z, _ = harrier_wing_at(HARRIER_OUTRIGGER_X)
     for s in (-1, 1):
         x = s * HARRIER_OUTRIGGER_X
@@ -1179,8 +1322,14 @@ def centred(geo, shift):
     return geo.transformed(lambda p: (p + shift) * K)
 
 
+# Model index -> where its stations' stores hang (`hang_stations`), the centring shift.
+HUNG = {}
+
+
 def build_craft(index, craft):
     root = fresh_root(index)
+    if craft.stations is not None:
+        HUNG[index] = hang_stations(craft, craft.stations[2])
     lo, hi = craft.body.bounds()
     shift = Vector((0, -(lo.y + hi.y) / 2, 0))
     body = centred(craft.body, shift)
@@ -1212,10 +1361,31 @@ def build_craft(index, craft):
         part = heli.mesh_with_lines(lod, f"{lod.name}_part1", craft.part.scaled(K), tuple(shift * K))
         part["state_slot"] = 17
         part["axis"] = 0
+    part_obs = []
     for k, (geo, pivot, slot, *axis) in enumerate(craft.parts):
         part = heli.mesh_with_lines(lod, f"{lod.name}_part{k + 1}", geo.scaled(K), tuple((Vector(pivot) + shift) * K))
         part["state_slot"] = slot
         part["axis"] = axis[0] if axis else 0
+        part_obs.append(part)
+    sub_names = []
+    for k, (parent, geo, pivot, slot) in enumerate(craft.subparts):
+        up = part_obs[parent]
+        loc = (Vector(pivot) - Vector(craft.parts[parent][1])) * K
+        part = heli.mesh_with_lines(up, f"{up.name}_part{len(craft.parts) + k + 1}", geo.scaled(K), tuple(loc))
+        part["state_slot"] = slot
+        part["axis"] = 0
+        sub_names.append(part.name[len(lod.name):])
+    for conds, geo in craft.groups:
+        group = bpy.data.objects.new(lod.name + "".join(f"_s{c}v{v}" for c, v in conds), None)
+        group["conds"] = [list(c) for c in conds]
+        for col in lod.users_collection:
+            col.objects.link(group)
+        group.parent = lod
+        mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", centred(geo, shift)))
+    if index in HUNG:
+        HUNG[index] = ([(i, "" if parent is None else sub_names[parent[1]],
+                         tuple((Vector(at) + (shift if parent is None else Vector())) * K), roll)
+                        for i, parent, at, roll in HUNG[index]], craft.stations)
     heli.lights(lod, 12, {c: [(p + shift) * K for p in pts] for c, pts in craft.lights.items()})
     return lod
 
@@ -1236,6 +1406,59 @@ def build_store(index, store):
     return lod
 
 
+def station_kind(st):
+    """How a station hangs its stores (stores.py `rack_for`)."""
+    if st.side is not None:
+        return "side"
+    if st.depth == 0 or st.rail is not None:
+        return "rail"
+    return "pylon"
+
+
+def write_stores_table(path):
+    """Writes where the flyable jets hang each store (assets/models/stores.json, read by
+    src/stores.rs): per jet model, per station, its parent node (a suffix of the model's
+    `_lod0`), its mount (model units in the parent's frame, x right, y forward, z up) and
+    roll (degrees, the store's top turned right), and for each load it takes the rack (model
+    index, at the mount) and its rounds' lugs ((x, y, z, roll), the last fired first); and the
+    store model of each weapon type."""
+    import json
+
+    import stores
+
+    qty = stores.pylon_rounds()
+    out = {"models": {str(w): m for w, (m, _) in sorted(stores.WEAPON_MODELS.items())},
+           "racks": {name: m for name, (m, _) in sorted(stores.RACKS.items())}, "jets": {}}
+    racks = {name: make() for name, (_, make) in stores.RACKS.items()}
+    for index, (hung, (table, stations, _)) in sorted(HUNG.items()):
+        spots = stores.loadout_stations(table)
+        jet = []
+        for i, parent, at, roll in hung:
+            kind = station_kind(stations[i])
+            rot = Matrix.Rotation(math.radians(roll), 4, "Y")
+            loads = {}
+            for w in spots[i][2]:
+                if w not in stores.WEAPON_MODELS:
+                    continue
+                n = qty[w]
+                rack = stores.rack_for(kind, w, n)
+                mounts = racks[rack].mounts[:n] if rack else [((0.0, 0.0, 0.0), 0.0)]
+                if rack == "ter" and n == 2:
+                    mounts = racks[rack].mounts[:2]
+                rounds = []
+                for m, r in mounts:
+                    p = Vector(at) + rot @ (Vector(m) * K)
+                    rounds.append([round(p.x, 3), round(p.y, 3), round(p.z, 3), roll + r])
+                loads[str(w)] = {"rack": stores.RACKS[rack][0] if rack else None, "rounds": rounds}
+            excludes = sorted(j for p in stores.exclusive_stations(table) if i in p for j in p if j != i)
+            jet.append({"station": i, "parent": parent, "at": [round(c, 3) for c in at], "roll": roll,
+                        "kind": kind, "excludes": excludes, "loads": loads})
+        out["jets"][str(index)] = jet
+    with open(path, "w") as f:
+        json.dump(out, f, indent=1)
+        f.write("\n")
+
+
 def build():
     for index in UNUSED:
         name = f"aircraft_{index:03}"
@@ -1247,6 +1470,15 @@ def build():
     for index, make in sorted(STORES.items()):
         lod = build_store(index, make())
         print(f"{lod.name}: radius {lod['radius']}")
+    import stores
+
+    for w, (index, make) in sorted(stores.WEAPON_MODELS.items()):
+        lod = build_store(index, make())
+        print(f"{lod.name}: radius {lod['radius']} (weapon {w})")
+    for name, (index, make) in sorted(stores.RACKS.items()):
+        lod = build_store(index, stores.Store(make().body))
+        print(f"{lod.name}: radius {lod['radius']} ({name})")
+    write_stores_table(os.path.join(ROOT, "assets", "models", "stores.json"))
 
 
 if __name__ == "__main__":
