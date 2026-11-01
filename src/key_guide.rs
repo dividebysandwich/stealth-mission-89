@@ -99,6 +99,9 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
             "DISPLAYS",
             &[
                 (Actions(&[HudMode]), "HUD mode NAV / AIR / GND"),
+                (Actions(&[HudNav]), "HUD mode NAV"),
+                (Actions(&[HudAir]), "HUD mode AIR (A/A)"),
+                (Actions(&[HudGnd]), "HUD mode GND (A/G)"),
                 (Actions(&[HudDeclutter]), "HUD declutter"),
                 (Actions(&[Maps]), "Left MFD: map / tactical"),
                 (Actions(&[MapZoomIn, MapZoomOut]), "Map zoom in / out (or the SOI's)"),

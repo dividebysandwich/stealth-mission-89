@@ -73,6 +73,10 @@ pub enum Action {
     Brakes,
     Eject,
     HudMode,
+    /// The HUD mode NAV, AIR (A/A) or GND (A/G) directly (unbound by default).
+    HudNav,
+    HudAir,
+    HudGnd,
     /// Bombing mode CCIP / CCRP (also the A-G button again in AG).
     BombMode,
     HudDeclutter,
@@ -254,10 +258,13 @@ pub fn key_from_name(name: &str) -> Option<KeyCode> {
     KeyCode::from_reflect(&DynamicEnum::new(name, ()))
 }
 
-/// Every action, in the key summary's order.
+/// Actions no key is bound to by default.
+const UNBOUND: &[Action] = &[Action::HudNav, Action::HudAir, Action::HudGnd];
+
+/// Every action, in the key summary's order (the unbound ones last).
 pub fn all_actions() -> Vec<Action> {
     let mut out: Vec<Action> = Vec::new();
-    for &(_, _, a) in BINDINGS {
+    for a in BINDINGS.iter().map(|&(_, _, a)| a).chain(UNBOUND.iter().copied()) {
         if !out.contains(&a) {
             out.push(a);
         }

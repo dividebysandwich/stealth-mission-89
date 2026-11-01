@@ -401,6 +401,9 @@ fn hud_keys(
                     HudMode::Gnd => HudMode::Nav,
                 }
             }
+            Action::HudNav => hud.mode = HudMode::Nav,
+            Action::HudAir => hud.mode = HudMode::Air,
+            Action::HudGnd => hud.mode = HudMode::Gnd,
             Action::NearestTarget => {
                 // A turret gun is aimed at the ground as much as at aircraft.
                 let air = (stores.gun_selected && stores.gun_slave.is_none())
