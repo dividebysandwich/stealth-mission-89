@@ -243,7 +243,8 @@ pub fn campaign_window(
             egui::ScrollArea::vertical().id_salt("campaign_saves").max_height(SAVES_HEIGHT).show(ui, |ui| {
             for (name, code, hours) in w.saves.clone() {
                 let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
-                ui.horizontal(|ui| {
+                // Wrapped: the buttons go under the label as the card narrows, none is clipped.
+                ui.horizontal_wrapped(|ui| {
                     ui.label(format!("{theater:<24} {hours:>5.1} h played"));
                     if ui.add(big_button("CONTINUE").icon(icon::CONTINUE)).clicked() {
                         let rules = super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117));
