@@ -29,6 +29,9 @@ const CLICK_LEVEL: f32 = 0.25;
 const HISS_LEVEL: f32 = 0.012;
 /// Voice gain before the clipping.
 const DRIVE: f32 = 1.6;
+/// The players' voices are this much louder before it (microphones are quiet beside the engine;
+/// the soft clip keeps a loud one from overdriving); the spoken ATC is not.
+const PLAYER_GAIN: f32 = 5.0;
 
 /// One talker's transmission.
 #[derive(Default)]
@@ -164,7 +167,7 @@ impl RadioMix {
             open = true;
             match t.samples.pop_front() {
                 Some(s) => {
-                    v += if k >= crate::tts::PILOT_TALKER { s * spoken } else { s };
+                    v += if k >= crate::tts::PILOT_TALKER { s * spoken } else { s * PLAYER_GAIN };
                     t.starved = 0;
                 }
                 None => t.starved += 1,
