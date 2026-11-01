@@ -172,11 +172,50 @@ impl Blast {
     }
 }
 
-/// Blasts requested by other modules this frame (the falling wreck's impact).
+/// Blasts requested by other modules this frame (the falling wreck's impact), and aircraft
+/// breaking up in the air.
 #[derive(Resource, Default)]
 pub struct Explosions {
     pub pending: Vec<(DVec3, Blast)>,
+    pub breakups: Vec<Breakup>,
 }
+
+/// An aircraft shot down in the air coming apart: pieces thrown off with its velocity
+/// (Bevy world, m/s), as many and as large as its size makes them.
+#[derive(Clone, Copy, Debug)]
+pub struct Breakup {
+    pub pos: DVec3,
+    pub vel: Vec3,
+    pub size: AircraftSize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AircraftSize {
+    Drone,
+    Helicopter,
+    Fighter,
+    Large,
+}
+
+impl AircraftSize {
+    /// Pieces and their size (m).
+    fn pieces(self) -> (usize, (f32, f32)) {
+        match self {
+            AircraftSize::Drone => (3, (0.4, 0.9)),
+            AircraftSize::Helicopter => (5, (1.0, 2.2)),
+            AircraftSize::Fighter => (7, (1.2, 2.8)),
+            AircraftSize::Large => (12, (2.0, 5.0)),
+        }
+    }
+}
+
+/// Aircraft wreckage: the speed (m/s) it falls at in the end, at the least and most, the
+/// larger pieces the faster. Quadratic drag brings it there: off a jet at 250 m/s it sheds
+/// most of that speed within a couple of seconds. Seconds between its smoke puffs, and seconds
+/// it lies on the ground before it goes.
+const WRECKAGE_FALL: (f32, f32) = (30.0, 65.0);
+const WRECKAGE_SMOKE_EVERY: f32 = 0.1;
+const WRECKAGE_REST: f32 = 4.0;
 
 #[derive(Clone, Copy, PartialEq)]
 enum PuffLook {
@@ -265,6 +304,8 @@ enum ChunkKind {
     /// A gun round's spark: yellow, cooling to red.
     GunSpark,
     Debris,
+    /// A large piece of a broken-up aircraft: falls to the ground trailing smoke.
+    Wreckage,
 }
 
 struct Chunk {
@@ -281,6 +322,8 @@ struct Chunk {
     smoke: f32,
     /// Palette colour index drawn last (sparks cool down).
     colour: u8,
+    /// Wreckage: quadratic drag (1/m), g over its falling speed squared.
+    drag: f32,
 }
 
 #[derive(Resource, Default)]
@@ -400,6 +443,7 @@ fn cleanup(mut commands: Commands, mut p: ResMut<Particles>, mut ex: ResMut<Expl
     // flight gets new ones).
     *p = Particles { meshes: p.meshes.take(), ..default() };
     ex.pending.clear();
+    ex.breakups.clear();
 }
 
 /// A blast this close above the ground (metres) is on it.
@@ -445,6 +489,9 @@ fn spawn_blasts(
     for &(x, y, calibre) in &combat.round_impacts {
         let p = map_point(x, y, 0.0);
         blasts.push((p + DVec3::Y * hill(p), Blast::Strike(calibre), true));
+    }
+    for b in std::mem::take(&mut ex.breakups) {
+        breakup(&mut commands, p, &mut materials, &palette.globals, b);
     }
     for (pos, blast, ground) in blasts {
         if let Blast::Strike(calibre) = blast {
@@ -740,7 +787,7 @@ fn spawn_chunk(
     let colour = match kind {
         ChunkKind::Spark => SPARK_COLOURS[0],
         ChunkKind::GunSpark => GUN_SPARK_COLOURS[0],
-        ChunkKind::Debris => DEBRIS_COLOURS[(p.rand() * 2.0) as usize % 2],
+        ChunkKind::Debris | ChunkKind::Wreckage => DEBRIS_COLOURS[(p.rand() * 2.0) as usize % 2],
     };
     let material = colour_material(p, materials, globals, colour);
     let entity = match p.free.iter().position(|&(_, k)| k == kind) {
@@ -751,7 +798,8 @@ fn spawn_chunk(
         }
         None => {
             let (spark, debris) = p.meshes.clone().unwrap();
-            let mesh = if kind == ChunkKind::Debris { debris } else { spark };
+            let solid = matches!(kind, ChunkKind::Debris | ChunkKind::Wreckage);
+            let mesh = if solid { debris } else { spark };
             commands
                 .spawn((
                     SimObject,
@@ -769,7 +817,20 @@ fn spawn_chunk(
     let rot = Quat::from_scaled_axis(p.dir(0.0) * p.range(0.0, 3.0));
     let spin = p.dir(0.0) * p.range(2.0, 10.0);
     let smoke = if smoke { p.range(0.0, 0.1) } else { -1.0 };
-    p.chunks.push(Chunk { entity, kind, pos, vel, rot, spin, age: 0.0, life, size, smoke, colour });
+    p.chunks.push(Chunk {
+        entity,
+        kind,
+        pos,
+        vel,
+        rot,
+        spin,
+        age: 0.0,
+        life,
+        size,
+        smoke,
+        colour,
+        drag: 0.0,
+    });
 }
 
 /// One blast's particles. `ground`: on the ground (debris and dust thrown up, not around).
@@ -940,6 +1001,44 @@ fn spawn_blast(
             .spawn((SimObject, WorldPos(centre), Transform::default(), Visibility::Inherited))
             .id();
         p.lights.push((e, 0.0, 1.4, light));
+    }
+}
+
+/// An aircraft coming apart in the air: its pieces fly on with its velocity and a little
+/// more thrown out by the blast, tumbling and trailing smoke, until drag has slowed them to
+/// their falling speed.
+fn breakup(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    b: Breakup,
+) {
+    let (n, (small, large)) = b.size.pieces();
+    for _ in 0..n {
+        let k = p.rand();
+        let size = small + (large - small) * k;
+        let fall = WRECKAGE_FALL.0 + (WRECKAGE_FALL.1 - WRECKAGE_FALL.0) * k;
+        let vel = b.vel + p.dir(0.0) * p.range(5.0, 25.0);
+        let at = b.pos + (p.dir(0.0) * size).as_dvec3();
+        // Long enough to reach the ground from any height; it ends there.
+        spawn_chunk(
+            commands,
+            p,
+            materials,
+            globals,
+            ChunkKind::Wreckage,
+            at,
+            vel,
+            300.0,
+            size,
+            true,
+        );
+        let Some(c) = p.chunks.last_mut().filter(|c| c.kind == ChunkKind::Wreckage) else {
+            return;
+        };
+        c.drag = GRAVITY / (fall * fall);
+        c.spin = c.spin.normalize_or_zero() * (2.0 + 4.0 / size);
     }
 }
 
@@ -1149,8 +1248,11 @@ fn simulate(
     mut materials: ResMut<Assets<PaletteMaterial>>,
     cams: Query<&GlobalTransform, With<crate::camera::EyeCamera>>,
     mut q: Query<(&mut WorldPos, &mut Transform, &mut Visibility)>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let Some(palette) = palette else { return };
+    // The rolling hills' ground (Bevy y) under a point.
+    let hill = |p: DVec3| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64);
     let p = &mut *p;
     let dt = time.delta_secs();
     if dt <= 0.0 {
@@ -1169,6 +1271,40 @@ fn simulate(
                 v.set_if_neq(Visibility::Hidden);
             }
             p.free.push((c.entity, c.kind));
+            continue;
+        }
+        if c.kind == ChunkKind::Wreckage {
+            // Quadratic drag (implicit, stable however fast), gravity; on the ground it lies
+            // still a few seconds.
+            if c.vel != Vec3::ZERO || c.smoke >= 0.0 {
+                let v = c.vel - Vec3::Y * GRAVITY * dt;
+                c.vel = v / (1.0 + c.drag * v.length() * dt);
+                c.pos += (c.vel * dt).as_dvec3();
+                let floor = hill(c.pos);
+                if c.pos.y <= floor {
+                    c.pos.y = floor;
+                    c.vel = Vec3::ZERO;
+                    c.spin = Vec3::ZERO;
+                    c.smoke = -1.0;
+                    c.life = c.age + WRECKAGE_REST;
+                }
+            }
+            c.rot = (Quat::from_scaled_axis(c.spin * dt) * c.rot).normalize();
+            if c.smoke >= 0.0 {
+                c.smoke -= dt;
+                if c.smoke < 0.0 {
+                    c.smoke = WRECKAGE_SMOKE_EVERY;
+                    spawn_smoke.push((c.pos, c.size, true));
+                }
+            }
+            let t = c.age / c.life;
+            if let Ok((mut pos, mut tf, mut v)) = q.get_mut(c.entity) {
+                pos.0 = c.pos;
+                tf.rotation = c.rot;
+                tf.scale = Vec3::splat(c.size * (1.0 - smooth(0.9, 1.0, t)));
+                v.set_if_neq(Visibility::Inherited);
+            }
+            i += 1;
             continue;
         }
         let drag = if c.kind == ChunkKind::Debris { 0.25 } else { 1.2 };
@@ -1194,7 +1330,7 @@ fn simulate(
             c.smoke -= dt;
             if c.smoke < 0.0 {
                 c.smoke = 0.06;
-                spawn_smoke.push((c.pos, c.size));
+                spawn_smoke.push((c.pos, c.size, false));
             }
         }
         let t = c.age / c.life;
@@ -1209,7 +1345,9 @@ fn simulate(
                 )
             }
             // Debris shrinks away at the end of its life.
-            ChunkKind::Debris => (c.rot, Vec3::splat(c.size * (1.0 - smooth(0.8, 1.0, t)))),
+            ChunkKind::Debris | ChunkKind::Wreckage => {
+                (c.rot, Vec3::splat(c.size * (1.0 - smooth(0.8, 1.0, t))))
+            }
         };
         if let Ok((mut pos, mut tf, mut v)) = q.get_mut(c.entity) {
             pos.0 = c.pos;
@@ -1217,7 +1355,7 @@ fn simulate(
             tf.scale = scale;
             v.set_if_neq(Visibility::Inherited);
         }
-        if c.kind != ChunkKind::Debris {
+        if !matches!(c.kind, ChunkKind::Debris | ChunkKind::Wreckage) {
             let colours =
                 if c.kind == ChunkKind::Spark { SPARK_COLOURS } else { GUN_SPARK_COLOURS };
             let want = colours[((t * 3.0) as usize).min(2)];
@@ -1230,7 +1368,16 @@ fn simulate(
         }
         i += 1;
     }
-    for (pos, size) in spawn_smoke {
+    for (pos, size, wreckage) in spawn_smoke {
+        if wreckage {
+            // A dark trail hanging where the piece fell through.
+            let s = 0.8 + size * 0.6;
+            let life = p.range(3.0, 4.5);
+            let shade = p.range(0.0, 0.15);
+            let v = p.dir(0.0) * 0.8;
+            p.puff(pos, v, life, (s, s * 4.0), PuffLook::Trail(shade), 0.8, 0.4, 0.7);
+            continue;
+        }
         let s = size * 1.5;
         let life = p.range(2.0, 3.5);
         p.puff(pos, Vec3::Y, life, (s, s * 4.0), PuffLook::Smoke(0.1), 0.5, 1.0, 0.6);

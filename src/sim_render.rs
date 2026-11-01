@@ -129,6 +129,18 @@ fn aircraft_model(model: i32) -> i32 {
     if model == HIND_DATA_MODEL { HIND_MODEL } else { model }
 }
 
+/// How large an aircraft model is, for the pieces it breaks up into.
+fn aircraft_size(model: i32) -> crate::explosions::AircraftSize {
+    use crate::explosions::AircraftSize as S;
+    match model {
+        // An-72, A-50, E-767 / Tu-95, C-5.
+        6 | 9 | 14 | 30 => S::Large,
+        HELICOPTER_MODEL | HIND_MODEL => S::Helicopter,
+        m if (REMAKE_MODELS..AAA_MODELS).contains(&m) => S::Drone,
+        _ => S::Fighter,
+    }
+}
+
 /// Model file (stem) holding a model number.
 fn model_file(model: i32) -> &'static str {
     if model >= AAA_MODELS {
@@ -979,12 +991,17 @@ pub(crate) fn sync_objects(
             let prev = combat.prev_flights.get(i);
             let (east, north, alt) = unit_position(prev, &u, alpha);
             let pos = wu_to_bevy(east, north, alt);
-            let vel = prev.map_or(DVec3::ZERO, |p| {
+            let vel3 = prev.map_or(DVec3::ZERO, |p| {
                 let (e0, n0, a0) = unit_position(None, p, 1.0);
                 let (e1, n1, a1) = unit_position(None, &u, 1.0);
-                let v =
-                    (wu_to_bevy(e1, n1, a1) - wu_to_bevy(e0, n0, a0)) * crate::combat::FS as f64;
-                DVec3::new(v.x, 0.0, v.z)
+                (wu_to_bevy(e1, n1, a1) - wu_to_bevy(e0, n0, a0)) * crate::combat::FS as f64
+            });
+            let vel3 = if vel3.length() < 1000.0 { vel3 } else { DVec3::ZERO };
+            let vel = DVec3::new(vel3.x, 0.0, vel3.z);
+            explosions.breakups.push(crate::explosions::Breakup {
+                pos,
+                vel: vel3.as_vec3(),
+                size: aircraft_size(model),
             });
             let rot = q.get(e).map_or(Quat::IDENTITY, |(_, tf, ..)| tf.rotation);
             if let Some(old) = vis.falling.take() {
