@@ -230,9 +230,10 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Menu => ("Settings menu", "Opens or closes the in-flight menu"),
         Volume => ("Sound volume", ""),
         Detail => ("Detail level", ""),
-        TimeAccel => {
-            ("Time acceleration", "Ends when a radar detects the aircraft or a weapon is released")
-        }
+        TimeAccel => (
+            "Time acceleration",
+            "Each press goes faster: ACCEL, x2, x3, then normal time. Ends when a radar detects the aircraft or a weapon is released",
+        ),
         TimeNormal => ("Normal time", ""),
         TimeStep => (
             "Time acceleration",

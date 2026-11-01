@@ -1100,7 +1100,7 @@ The panel is laid out like the real F-117A's:
 |---|---|---|
 | MENU | Esc | Open or close the in-flight menu (chapter 4.7). |
 | VOL | Alt V | Sound level. |
-| TIME | Shift Z / Shift X | Time acceleration on/off. The cockpit TIME button steps through ACCEL, ACCEL x2 and x3 (up to three times the plain acceleration), then back to normal time. Acceleration ends automatically when a radar detects the aircraft or a weapon is released. |
+| TIME | Shift Z / Shift X | Time acceleration on/off. Each press of Shift Z, like each click on the cockpit TIME button, goes faster (ACCEL, ACCEL x2, ACCEL x3, up to three times the plain acceleration), then back to normal time; Shift X returns to normal time at once. Acceleration ends automatically when a radar detects the aircraft or a weapon is released. |
 | STPT | F7 | Waypoints. |
 | ORD | F10 | Mission orders. |
 | COM, IFF | - | Not used. |

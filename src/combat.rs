@@ -189,12 +189,12 @@ pub struct EndInfo {
     pub lines: Vec<String>,
 }
 
-/// The most the cockpit's TIME button multiplies the acceleration by.
+/// The most the acceleration is multiplied by.
 const ACCEL_LEVELS: u8 = 3;
 
-/// Time acceleration (Shift-Z / Shift-X: x2) on top of `--time-scale`. The cockpit's TIME button
-/// steps `level` from 0 (off) to `ACCEL_LEVELS` and back to 0: level n runs n times faster than
-/// the plain acceleration.
+/// Time acceleration (Shift-Z / Shift-X: x2) on top of `--time-scale`. `level` goes from 0 (off)
+/// to `ACCEL_LEVELS`: level n runs n times faster than the plain acceleration. Shift-Z and the
+/// cockpit's TIME button step it up and back to 0.
 #[derive(Resource)]
 pub struct TimeAccel {
     pub base: f32,
@@ -206,7 +206,7 @@ impl TimeAccel {
         self.level > 0
     }
 
-    /// The level the TIME button leads to.
+    /// The level the next press of the TIME button or of Shift-Z leads to.
     fn next_level(&self) -> u8 {
         (self.level + 1) % (ACCEL_LEVELS + 1)
     }
@@ -528,7 +528,7 @@ fn collect_commands(
             Action::Eject => c.eject = true,
             Action::Training => c.toggle_training ^= true,
             Action::Resupply => c.resupply = true,
-            Action::TimeAccel => accel.level = 1,
+            Action::TimeAccel => accel.level = accel.next_level(),
             Action::TimeNormal => accel.level = 0,
             Action::TimeStep => accel.level = accel.next_level(),
             Action::Quit => combat.quit = true,
@@ -2092,7 +2092,7 @@ fn end_overlay(
 mod tests {
     use super::*;
 
-    /// Clicking TIME goes ACCEL, x2, x3, then back to normal time.
+    /// Clicking TIME (or pressing Shift-Z) goes ACCEL, x2, x3, then back to normal time.
     #[test]
     fn the_time_button_loops_through_the_levels() {
         let mut accel = TimeAccel { base: 1.0, level: 0 };
