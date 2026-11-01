@@ -161,6 +161,16 @@ VR* on a saved campaign, or start the game with `--vr` to have the menus in VR h
 then float on a panel in front of you: point a controller at it, pull the trigger to click, push the
 thumbstick to scroll; the left menu button brings the panel back in front of you.
 
+On the desktop the scene behind the menu is the apron at night, seen as a pilot on foot would see it:
+hold the right mouse button on the scene and move the mouse to look around, walk with **WASD** (**ZQSD**
+on an AZERTY keyboard), hold **Shift** to run, and press **Space** to jump as a man of 1.80 m does.
+The view starts at eye height, standing on the apron. The main menu steps aside while you walk and comes
+back half a second after you stop. A gamepad or a joystick (the flight mapping's axes and buttons, also
+in a headset) does the same: the stick (the gamepad's left one) walks, the rudder or the slew's X (the
+gamepad's right stick) turns, the slew's Y looks up and down, the fire button (the gamepad's A) jumps,
+and the gun trigger (the gamepad's shoulder triggers) runs. In a headset you walk the way your head faces
+and the rudder turns you smoothly round it.
+
 ## 1.2 The single mission screen
 
 ![Single mission](images/menu.png)

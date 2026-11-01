@@ -33,6 +33,7 @@ impl Plugin for MenuScenePlugin {
                     fly_traffic,
                     aircraft_lights,
                     mouse_look,
+                    walk,
                     fit_view,
                     match_overlay_msaa,
                 )
@@ -69,17 +70,37 @@ pub(crate) struct SceneCamera;
 /// Where the camera looks, turned by the mouse as in flight: radians of yaw (anticlockwise from
 /// above, as `Transform`'s) and pitch (up).
 #[derive(Resource)]
-struct MenuLook {
+pub(crate) struct MenuLook {
     yaw: f32,
     pitch: f32,
     /// The right button went down on the scene, not on a menu window (the planner's map and the
     /// campaign's designation use the right click): the view turns until it is released.
     turning: bool,
+    /// On foot: the height of the jump over the standing eye (metres) and its vertical speed
+    /// (m/s).
+    lift: f32,
+    climb: f32,
+    /// Seconds since a walking key was last held.
+    idle: f32,
+}
+
+impl MenuLook {
+    /// The main menu is hidden while the player walks, and for `MENU_RETURN` seconds after.
+    pub(crate) fn hides_menu(&self) -> bool {
+        self.idle < MENU_RETURN
+    }
 }
 
 impl Default for MenuLook {
     fn default() -> Self {
-        Self { yaw: -CAMERA[3].to_radians(), pitch: CAMERA[4].to_radians(), turning: false }
+        Self {
+            yaw: -CAMERA[3].to_radians(),
+            pitch: CAMERA[4].to_radians(),
+            turning: false,
+            lift: 0.0,
+            climb: 0.0,
+            idle: MENU_RETURN,
+        }
     }
 }
 
@@ -100,7 +121,7 @@ const TOWER_SHAPE: u8 = 39;
 const TOWER_FALLBACK: (f64, f64) = (567_552.0, 173_056.0);
 /// The camera (metres east, up and north of the tower's foot), its heading (degrees clockwise
 /// from north) and pitch.
-const CAMERA: [f32; 5] = [-40.0, 4.5, 215.0, 146.0, 7.0];
+const CAMERA: [f32; 5] = [-40.0, VR_EYE, 215.0, 146.0, 7.0];
 /// The aircraft (metres east and north of the tower's foot) and its heading (degrees): turned
 /// some 50 degrees from facing the camera, its profile towards the menu.
 const AIRCRAFT: [f32; 3] = [30.0, 170.0, 250.0];
@@ -135,8 +156,21 @@ const TRAFFIC: [(i32, [f32; 6]); 4] = [
     (24, [1080.0, -1450.0, 900.0, 250.0, -85.0, 0.4]),
     (23, [1500.0, -1000.0, 1100.0, 350.0, -130.0, 0.7]),
 ];
-/// VR: the player's eye height over the apron (metres).
+/// VR: the player's eye height over the apron (metres); also the standing eye height on the
+/// desktop, where the player walks the apron.
 const VR_EYE: f32 = 1.75;
+/// On foot: walking and running speeds (m/s), the height of a jump (metres: a standing jump of
+/// a man of 1.80 m lifts him some half a metre), gravity (m/s^2) and the turn rate of a stick
+/// pushed over (radians per second: on the desktop, in the headset, up and down).
+const WALK: f32 = 5.0;
+const RUN: f32 = 12.0;
+const JUMP: f32 = 0.5;
+const GRAVITY: f32 = 9.81;
+const TURN: f32 = 2.0;
+const TURN_VR: f32 = 1.0;
+const LOOK: f32 = 1.5;
+/// How long the player stands still (seconds) before the main menu comes back.
+const MENU_RETURN: f32 = 0.5;
 /// The classic night palette's seed (`TimeOfDay::seed`): a few steps from dusk towards night,
 /// the purple horizon under a dark blue sky.
 const TOD_SEED: u8 = 3;
@@ -505,6 +539,175 @@ fn mouse_look(
     look.pitch = (look.pitch - motion.delta.y * K).clamp(-1.55, 1.55);
     for mut tf in &mut cams {
         tf.rotation = Quat::from_euler(EulerRot::YXZ, look.yaw, look.pitch, 0.0);
+    }
+}
+
+/// What the player's hands ask for on foot, from the keyboard or the controllers.
+#[derive(Default)]
+struct Steps {
+    /// Walking: x to the right, y forward (-1..1).
+    go: Vec2,
+    /// Turning to the right and looking up (-1..1).
+    turn: f32,
+    look: f32,
+    run: bool,
+    jump: bool,
+    /// A walking key is held or a stick is pushed (the main menu steps aside).
+    moving: bool,
+}
+
+/// The gamepads' and the joysticks' inputs: the stick (a gamepad's left one) walks, the rudder, the
+/// slew's X or the gamepad's right stick turns, the slew's Y (the right stick's) looks up and
+/// down, the fire button (a gamepad's A) jumps and the gun trigger (a gamepad's shoulder
+/// triggers and left stick click) runs. The joysticks' are the ones the flight mapping binds.
+fn read_devices(
+    gamepads: &Query<&Gamepad>,
+    config: &crate::hotas::InputConfig,
+    hotas: &crate::hotas::Hotas,
+) -> Steps {
+    use crate::hotas::{AxisControl, ButtonTarget};
+    let mut s = Steps::default();
+    let more = crate::input::stronger;
+    if config.gamepad_defaults {
+        for pad in gamepads {
+            let axis =
+                |a: GamepadAxis, dead: f32| pad.get(a).filter(|v| v.abs() > dead).unwrap_or(0.0);
+            s.go.x = more(s.go.x, axis(GamepadAxis::LeftStickX, 0.1));
+            s.go.y = more(s.go.y, axis(GamepadAxis::LeftStickY, 0.1));
+            s.turn = more(s.turn, axis(GamepadAxis::RightStickX, 0.15));
+            s.look = more(s.look, axis(GamepadAxis::RightStickY, 0.15));
+            s.run |= [
+                GamepadButton::RightTrigger,
+                GamepadButton::RightTrigger2,
+                GamepadButton::LeftThumb,
+            ]
+            .into_iter()
+            .any(|b| pad.pressed(b));
+            s.jump |= pad.just_pressed(GamepadButton::South);
+        }
+    }
+    for m in &config.axes {
+        let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
+        let v = m.output(raw);
+        match m.control {
+            AxisControl::Roll => s.go.x = more(s.go.x, v),
+            // Pushing the stick forward is a negative pitch.
+            AxisControl::Pitch => s.go.y = more(s.go.y, -v),
+            AxisControl::Yaw | AxisControl::SlewX => s.turn = more(s.turn, v),
+            AxisControl::SlewY => s.look = more(s.look, v),
+            _ => {}
+        }
+    }
+    for m in &config.buttons {
+        match m.target {
+            ButtonTarget::Gun => s.run |= hotas.active(&m.device, m.source, false),
+            ButtonTarget::Action(crate::input::Action::FireWeapon) => {
+                s.jump |= hotas.just_pressed(&m.device, m.source)
+            }
+            _ => {}
+        }
+    }
+    s.moving = s.go != Vec2::ZERO;
+    s
+}
+
+/// Walking, as a pilot on foot over the apron: W A S D (the keys at those places, Z Q S D on an
+/// AZERTY keyboard) or a gamepad's or a joystick's stick (`read_devices`) move over the ground,
+/// Shift or the run button runs, Space or the jump button jumps as a man of 1.80 m does. The
+/// camera follows the hills. In the headset the standing point walks the way the head faces, and
+/// the rudder turns it round the head.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+fn walk(
+    keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    egui: Res<EguiWantsInput>,
+    devices: (Query<&Gamepad>, Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
+    theater: Option<Res<crate::world::Theater>>,
+    heads: Res<crate::camera::HeadPoses>,
+    mut look: ResMut<MenuLook>,
+    mut cams: Query<(&mut WorldPos, &mut Transform), (With<SceneCamera>, Without<StandingPoint>)>,
+    mut stands: Query<(&mut WorldPos, &mut Transform), (With<StandingPoint>, Without<SceneCamera>)>,
+    mut viewpoint: ResMut<crate::palette::Viewpoint>,
+) {
+    // The desktop camera, or the headset once it is tracked.
+    if cams.is_empty() && (stands.is_empty() || heads.0.is_empty()) {
+        return;
+    }
+    let dt = time.delta_secs().min(0.1);
+    let (gamepads, config, hotas) = devices;
+    // A text field or a shortcut (Ctrl, Alt) is using the keys.
+    let free = !egui.wants_any_keyboard_input()
+        && !keys.any_pressed([
+            KeyCode::ControlLeft,
+            KeyCode::ControlRight,
+            KeyCode::AltLeft,
+            KeyCode::AltRight,
+        ]);
+    let mut s = read_devices(&gamepads, &config, &hotas);
+    if free {
+        let mut dir = Vec2::ZERO;
+        for (key, d) in [
+            (KeyCode::KeyW, Vec2::Y),
+            (KeyCode::KeyS, Vec2::NEG_Y),
+            (KeyCode::KeyA, Vec2::NEG_X),
+            (KeyCode::KeyD, Vec2::X),
+        ] {
+            if keys.pressed(key) {
+                dir += d;
+                s.moving = true;
+            }
+        }
+        if dir != Vec2::ZERO {
+            s.go = dir.normalize();
+        }
+        s.run |= keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+        s.jump |= keys.just_pressed(KeyCode::Space);
+    }
+    look.idle = if s.moving { 0.0 } else { (look.idle + dt).min(MENU_RETURN) };
+    let pace = s.go.clamp_length_max(1.0) * if s.run { RUN } else { WALK };
+    // The jump: up at the speed that takes a man's height, then back down under gravity.
+    let was = look.lift;
+    if s.jump && was <= 0.0 {
+        look.climb = (2.0 * GRAVITY * JUMP).sqrt();
+    }
+    if look.climb != 0.0 || look.lift > 0.0 {
+        look.lift += look.climb * dt;
+        look.climb -= GRAVITY * dt;
+        if look.lift <= 0.0 {
+            (look.lift, look.climb) = (0.0, 0.0);
+        }
+    }
+    let rise = (look.lift - was) as f64;
+    let ground = |p: DVec3| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64);
+    if let Ok((mut pos, mut tf)) = cams.single_mut() {
+        look.yaw -= s.turn * TURN * dt;
+        look.pitch = (look.pitch + s.look * LOOK * dt).clamp(-1.55, 1.55);
+        if s.turn != 0.0 || s.look != 0.0 {
+            tf.rotation = Quat::from_euler(EulerRot::YXZ, look.yaw, look.pitch, 0.0);
+        }
+        // Along the view's heading (not its pitch).
+        let step = Mat2::from_angle(-look.yaw) * Vec2::new(pace.x, -pace.y) * dt;
+        let before = ground(pos.0);
+        pos.0 += DVec3::new(step.x as f64, 0.0, step.y as f64);
+        pos.0.y += ground(pos.0) - before + rise;
+        viewpoint.altitude_wu = (pos.0.y / WU) as f32;
+    } else if let Ok((mut pos, mut tf)) = stands.single_mut() {
+        // The headset: forward is where the head faces in the tracking space.
+        let head = heads.0[0];
+        let face = head.forward().as_vec3();
+        let face = Vec3::new(face.x, 0.0, face.z).normalize_or(Vec3::NEG_Z);
+        let step = tf.rotation
+            * Quat::from_rotation_arc(Vec3::NEG_Z, face)
+            * Vec3::new(pace.x, 0.0, -pace.y)
+            * dt;
+        // Turning swings the standing point round the head.
+        let turned = Quat::from_rotation_y(-s.turn * TURN_VR * dt) * tf.rotation;
+        let at_head = Vec3::new(head.translation.x, 0.0, head.translation.z);
+        let before = ground(pos.0);
+        pos.0 += (tf.rotation * at_head - turned * at_head + step).as_dvec3();
+        tf.rotation = turned.normalize();
+        pos.0.y += ground(pos.0) - before + rise;
+        viewpoint.altitude_wu = ((pos.0.y + head.translation.y as f64) / WU) as f32;
     }
 }
 
