@@ -147,6 +147,10 @@ pub enum Action {
     Kneeboard,
     /// Multiplayer: type a chat message.
     Chat,
+    /// The RWR's priority mode (the five most dangerous radars only) and target separate
+    /// (overlapping symbols moved apart), on / off.
+    RwrPriority,
+    RwrSeparate,
     /// Multiplayer: the radio's push-to-talk (held, not a discrete action).
     #[serde(alias = "Talk")]
     Ptt,
@@ -364,6 +368,8 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::Digit3, IrJammer),
         (None, K::Digit4, Ecm),
         (None, K::Digit5, Decoy),
+        (Alt, K::KeyW, RwrPriority),
+        (Alt, K::KeyE, RwrSeparate),
         (None, K::Digit6, Gear),
         (None, K::Digit7, Autopilot),
         (Shift, K::Digit7, Hover),

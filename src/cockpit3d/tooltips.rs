@@ -243,6 +243,8 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Kneeboard => ("Kneeboard", "Show it over the view, next page, hide"),
         Chat => ("Chat", "Type a message to the other players"),
         Ptt => ("Radio", "Hold to talk to the other players"),
+        RwrPriority => ("RWR priority mode", "On: only the five most dangerous radars show"),
+        RwrSeparate => ("RWR target separate", "On: overlapping threat symbols are moved apart"),
         CameraZoomIn => ("Camera zoom in", ""),
         CameraZoomOut => ("Camera zoom out", ""),
         ViewZoomIn => ("View zoom in", "Hold: narrows the cockpit view, closes in outside"),

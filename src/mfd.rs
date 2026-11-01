@@ -46,14 +46,19 @@ impl Plugin for MfdPlugin {
             .init_resource::<TrackCam>()
             .init_resource::<Contacts>()
             .init_resource::<crate::rwr::Emitters>()
+            .init_resource::<crate::rwr::RwrMode>()
             .init_resource::<MissionClock>()
             .init_resource::<MapRaster>()
             .add_message::<MfdCommand>()
-            .add_systems(OnEnter(crate::settings::AppState::Flight), reset_mfd)
+            .add_systems(
+                OnEnter(crate::settings::AppState::Flight),
+                (reset_mfd, |mut m: ResMut<crate::rwr::RwrMode>| *m = default()),
+            )
             .add_systems(
                 Update,
                 (
                     mfd_keys,
+                    crate::rwr::rwr_keys,
                     edit_waypoints,
                     show_way_editing,
                     (build_map_geometry, render_map).chain(),

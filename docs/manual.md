@@ -514,6 +514,12 @@ tracking, a diamond = the most dangerous, a flashing circle = a missile in the a
 the same RWR scope beside its attitude indicator; the other aircraft show the same picture on the
 HARM format (chapter 4.10), and the RAH-66 on its threat scope (chapter 3.8).
 
+Two keys beside the scope (in the F-16's threat warning column, beside the A-10C's and the
+CH-47F's scopes too) tidy a busy display. **MODE** (Alt W) switches the priority mode: its status
+reads PRI and only the five most dangerous radars show; OPEN shows them all. **T** (Alt E),
+target separate, moves symbols that overlap apart so each can be read (SEP lit while on). Both
+start off each flight.
+
 **Best for.** SEAD with HARMs, combat air patrol, defending against raids and drone waves, intercepting
 helicopters, and hunting the enemy's AWACS; anything else at a much higher radar signature. In a
 campaign it is the only aircraft offered for CAP, DEFEND and AWACS missions.
@@ -3107,6 +3113,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Master caution: silence the alarms | Alt C |
 | **Weapons** | Select weapon / fire / gun | Space / Enter / Backspace |
 | | Flare / chaff / IR jammer / ECM / decoy | 1 / 2 / 3 / 4 / 5 |
+| | RWR priority mode / target separate | Alt W / Alt E |
 | **Targeting** | Nearest target ahead | T |
 | | Slew the SOI's cursor / lock the target under it / SOI to the other MFD (modern avionics) | keypad 1-9 / keypad Enter / Alt S |
 | | Designate new target / next target / clear target | N / B / Shift B |

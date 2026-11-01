@@ -1443,6 +1443,7 @@ fn harm_picture(p: &MfdParams, c: &mut Canvas, centre: Vec2, r: f32) {
         r,
         crate::hud::blink(&p.time),
         locked,
+        false,
         |e| harm_shows(filter, e),
     );
 }

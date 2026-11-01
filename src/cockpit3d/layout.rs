@@ -764,6 +764,19 @@ impl PanelLayout {
                 };
                 Placed { rect, ..*p }
             })
+            .chain(
+                // The RWR's priority mode and target separate keys left of its scope (the MFD's
+                // raised bezel is right of it), as the F-16's.
+                [(LampId::RwrPri, Action::RwrPriority), (LampId::RwrSep, Action::RwrSeparate)]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(k, (id, action))| Placed {
+                        elem: Elem::Lamp(id, None),
+                        rect: rect(-388.0, -120.0 + 18.0 * k as f32, 22.0, 14.0),
+                        cap: Some(Effect::Action(action)),
+                        round: false,
+                    }),
+            )
             .collect();
         Self {
             style: PanelStyle::Ch47,
@@ -1035,6 +1048,13 @@ impl PanelLayout {
             let (side, i) = (k / 4, k % 4);
             let x = [-158.0, 82.0][side] + 40.0 * (i % 2) as f32;
             put(elem, rect(x, -138.0 + 13.0 * (i / 2) as f32, 36.0, 11.0), None, false);
+        }
+        // The RWR's priority mode and target separate keys left of its scope, as the F-16's.
+        for (k, (id, action)) in
+            [(RwrPri, Action::RwrPriority), (RwrSep, Action::RwrSeparate)].into_iter().enumerate()
+        {
+            let r = rect(-175.0, -104.0 + 18.0 * k as f32, 22.0, 14.0);
+            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
         }
         // Countermeasures over the attitude indicator: release caps, counts and released lights
         // left, the jammers and their lights right.
@@ -1735,20 +1755,22 @@ impl PanelLayout {
         put(Elem::Lamp(Stall, None), rect(-262.0, -131.0, 50.0, 11.0), None, false);
         put(Elem::Lamp(Trak, Some("TRACK")), rect(-262.0, -117.0, 24.0, 11.0), None, false);
         put(Elem::Lamp(Ir, Some("IR")), rect(-236.0, -117.0, 24.0, 11.0), None, false);
-        // Threat warning prime: a column of six push-lights left of the RWR (LAUNCH lights
-        // with a radar missile launch).
-        for (k, elem) in [
-            Elem::Label("HAND\nOFF", WARN.0, WARN.1),
-            Elem::Lamp(Rad, Some("LAUNCH")),
-            Elem::Label("PRI\nMODE", WARN.0, WARN.1),
-            Elem::Label("UNK", WARN.0, WARN.1),
-            Elem::Label("SYS\nTEST", WARN.0, WARN.1),
-            Elem::Label("TGT\nSEP", WARN.0, WARN.1),
+        // Threat warning prime: a column of six push-lights left of the RWR, dark keys with
+        // light grey legends (LAUNCH lights with a radar missile launch; MODE switches the
+        // priority mode, T target separate).
+        const PRIME: (u8, u8) = (7, 38);
+        for (k, (elem, cap)) in [
+            (Elem::Label("HAND\nOFF", PRIME.0, PRIME.1), None),
+            (Elem::Lamp(Rad, Some("LAUNCH")), None),
+            (Elem::Lamp(RwrPri, None), Some(E::Action(Action::RwrPriority))),
+            (Elem::Label("UNK", PRIME.0, PRIME.1), None),
+            (Elem::Label("SYS\nTEST", PRIME.0, PRIME.1), None),
+            (Elem::Lamp(RwrSep, None), Some(E::Action(Action::RwrSeparate))),
         ]
         .into_iter()
         .enumerate()
         {
-            put(elem, rect(-206.0, -154.0 + 12.8 * k as f32, 22.0, 11.0), None, false);
+            put(elem, rect(-206.0, -154.0 + 12.8 * k as f32, 22.0, 11.0), cap, false);
         }
         // Gear lights left of the gear handle on the left slope (the landing gear panel), the
         // flaps, brakes and autopilot under them.
@@ -1930,8 +1952,8 @@ mod tests {
                 .filter_map(|p| if let Elem::Lamp(id, _) = p.elem { Some(id) } else { None })
                 .collect()
         };
-        // Every lamp but the helicopters' HOVER.
-        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT - 1);
+        // Every lamp but the helicopters' HOVER and the RWR scope's keys.
+        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT - 3);
         let modern = lamps(&PanelLayout::modern());
         for id in [
             LampId::Map,

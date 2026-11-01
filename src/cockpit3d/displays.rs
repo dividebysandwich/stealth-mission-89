@@ -597,6 +597,11 @@ pub(super) fn update_displays(
     let (k, t) = (info.texels, TEXT_SCALE);
     for &(face, r) in &info.faces {
         let glows = match face {
+            Face::Item(Elem::Lamp(id, _)) | Face::Button(id, _)
+                if matches!(id, LampId::RwrPri | LampId::RwrSep) =>
+            {
+                crate::panel::draw_rwr_cap(c, &fonts, r, id, lit[id as usize], k, t)
+            }
             Face::Item(Elem::Lamp(id, label)) => {
                 let on = if id == LampId::Mw && label.is_some() {
                     master_caution

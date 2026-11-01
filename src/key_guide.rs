@@ -88,6 +88,8 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[Decoy]), "Decoy"),
                 (Actions(&[IrJammer]), "IR jammer on / off"),
                 (Actions(&[Ecm]), "Radar jammer (ECM) on / off"),
+                (Actions(&[RwrPriority]), "RWR priority mode (five threats) on / off"),
+                (Actions(&[RwrSeparate]), "RWR symbol separate (T) on / off"),
             ],
         ),
         (

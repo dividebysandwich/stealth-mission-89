@@ -53,6 +53,39 @@ pub struct Emitters {
     pub pulse: Option<(EmitterSource, i32, bool)>,
 }
 
+/// The RWR scope's modes, set with the caps beside it (or their keys) for the flight.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RwrMode {
+    /// Priority: only the `PRIORITY_THREATS` most dangerous radars show.
+    pub priority: bool,
+    /// Target separate: symbols too close to read are moved apart.
+    pub separate: bool,
+}
+
+/// Radars the priority mode shows.
+pub const PRIORITY_THREATS: usize = 5;
+
+/// The caps' keys switch the modes; a new flight starts with both off.
+pub fn rwr_keys(
+    mut actions: MessageReader<crate::input::ActionEvent>,
+    mut mode: ResMut<RwrMode>,
+    mut msgs: ResMut<crate::hud::HudMessages>,
+) {
+    for crate::input::ActionEvent(a) in actions.read() {
+        match a {
+            crate::input::Action::RwrPriority => {
+                mode.priority = !mode.priority;
+                msgs.show(if mode.priority { "RWR PRIORITY" } else { "RWR OPEN" });
+            }
+            crate::input::Action::RwrSeparate => {
+                mode.separate = !mode.separate;
+                msgs.show(if mode.separate { "RWR TARGET SEPARATE" } else { "RWR SEPARATE OFF" });
+            }
+            _ => {}
+        }
+    }
+}
+
 /// RWR symbol of a radar type ("SA-10" -> "10", "SA-N-6" -> "N6") or an aircraft type
 /// ("MIG-29" -> "29", "F-14" -> "F14").
 pub fn rwr_label(name: &str, air: bool) -> String {
@@ -129,9 +162,53 @@ const DIM: u8 = 4;
 const GREEN: u8 = 10;
 const WHITE: u8 = 15;
 
+/// Symbol height on a scope of radius `r`.
+fn symbol_size(r: f32) -> f32 {
+    (r * 0.13).clamp(7.0, 22.0)
+}
+
+/// Target separate: the symbols' points moved apart until no two are closer than `gap`, each
+/// pushed along the line between them (a few rounds), and kept inside the scope.
+pub fn separate(points: &mut [Vec2], centre: Vec2, r: f32, gap: f32) {
+    for _ in 0..24 {
+        let mut moved = false;
+        for i in 0..points.len() {
+            for j in i + 1..points.len() {
+                let d = points[j] - points[i];
+                let len = d.length();
+                if len >= gap {
+                    continue;
+                }
+                // Coincident: apart sideways, the later one clockwise.
+                let dir = if len > 1e-3 {
+                    d / len
+                } else {
+                    let a = (i as f32 + 1.0) * 2.4;
+                    Vec2::new(a.cos(), a.sin())
+                };
+                let push = dir * (gap - len) / 2.0;
+                points[i] -= push;
+                points[j] += push;
+                moved = true;
+            }
+        }
+        for p in points.iter_mut() {
+            let d = *p - centre;
+            let max = r * 0.92;
+            if d.length() > max {
+                *p = centre + d.normalize() * max;
+            }
+        }
+        if !moved {
+            break;
+        }
+    }
+}
+
 /// Draws the emitter symbols on a scope of radius `r` centred at `c`: the label (with a hat for
 /// airborne radars), a diamond around the most dangerous one, a circle around a launching one
-/// (flashing with `blink`). `locked`: a box around that emitter.
+/// (flashing with `blink`). `locked`: a box around that emitter. `apart`: target separate.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_symbols(
     c: &mut Canvas,
     emitters: &[EmitterView],
@@ -139,12 +216,18 @@ pub fn draw_symbols(
     r: f32,
     blink: bool,
     locked: Option<EmitterSource>,
+    apart: bool,
     filter: impl Fn(&EmitterView) -> bool,
 ) {
-    let h = (r * 0.13).clamp(7.0, 22.0);
+    let h = symbol_size(r);
     let w = (h / 7.0).max(1.0);
-    for (rank, e) in emitters.iter().enumerate().filter(|(_, e)| filter(e)).rev() {
-        let p = scope_point(e, centre, r);
+    let shown: Vec<(usize, &EmitterView)> =
+        emitters.iter().enumerate().filter(|(_, e)| filter(e)).collect();
+    let mut points: Vec<Vec2> = shown.iter().map(|(_, e)| scope_point(e, centre, r)).collect();
+    if apart {
+        separate(&mut points, centre, r, h * 2.6);
+    }
+    for (&(rank, e), &p) in shown.iter().zip(&points).rev() {
         let col = if e.tracking || e.launch { GREEN } else { DIM };
         stroke_text_at(c, p.x, p.y, &e.label, h, w, col, Align::Centre);
         if e.air {
@@ -182,8 +265,9 @@ pub fn draw_symbols(
     }
 }
 
-/// The F-16's RWR scope filling a square canvas: rings, the centre cross and the emitters.
-pub fn draw_rwr(c: &mut Canvas, emitters: &[EmitterView], blink: bool) {
+/// The F-16's RWR scope filling a square canvas: rings, the centre cross and the emitters (in
+/// the priority mode the most dangerous few, with target separate moved apart).
+pub fn draw_rwr(c: &mut Canvas, emitters: &[EmitterView], mode: RwrMode, blink: bool) {
     c.px.fill(0);
     let n = c.w.min(c.h) as f32;
     let centre = Vec2::new(c.w as f32 / 2.0, c.h as f32 / 2.0);
@@ -210,7 +294,9 @@ pub fn draw_rwr(c: &mut Canvas, emitters: &[EmitterView], blink: bool) {
         let d = Vec2::new(a.sin(), -a.cos());
         c.stroke(centre + d * (r - w * 2.0), centre + d * (r * 0.9), w, DIM);
     }
-    draw_symbols(c, emitters, centre, r, blink, None, |_| true);
+    let shown =
+        if mode.priority { &emitters[..emitters.len().min(PRIORITY_THREATS)] } else { emitters };
+    draw_symbols(c, shown, centre, r, blink, None, mode.separate, |_| true);
 }
 
 #[cfg(test)]
@@ -227,6 +313,23 @@ mod tests {
         assert_eq!(rwr_label("F-14", true), "F14");
         assert_eq!(rwr_label("Su-27", true), "27");
         assert_eq!(rwr_label("", false), "U");
+    }
+
+    /// Target separate leaves no two symbols overlapping, and all of them on the scope.
+    #[test]
+    fn separate_moves_overlapping_symbols_apart() {
+        let centre = Vec2::splat(50.0);
+        let mut p = vec![Vec2::new(50.0, 20.0), Vec2::new(51.0, 21.0), Vec2::new(50.0, 20.0)];
+        p.push(Vec2::new(80.0, 50.0));
+        separate(&mut p, centre, 48.0, 12.0);
+        for i in 0..p.len() {
+            assert!((p[i] - centre).length() <= 48.0 * 0.92 + 1e-3);
+            for j in i + 1..p.len() {
+                assert!(p[i].distance(p[j]) > 11.5, "{i} {j}: {p:?}");
+            }
+        }
+        // One far from the others stays put.
+        assert_eq!(p[3], Vec2::new(80.0, 50.0));
     }
 
     #[test]

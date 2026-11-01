@@ -373,6 +373,30 @@
       "round": false
     },
     {
+      "control": "Action(RwrPriority)",
+      "key": "Button(RwrPri, None)",
+      "kind": "cap",
+      "rect": [
+        -175.0,
+        -104.0,
+        22.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(RwrSeparate)",
+      "key": "Button(RwrSep, None)",
+      "kind": "cap",
+      "rect": [
+        -175.0,
+        -86.0,
+        22.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": "Action(Chaff)",
       "key": "Item(Label(\"CHAFF\", 47, 38))",
       "kind": "cap",

@@ -362,7 +362,7 @@
     },
     {
       "control": null,
-      "key": "Item(Label(\"HAND\\nOFF\", 54, 55))",
+      "key": "Item(Label(\"HAND\\nOFF\", 7, 38))",
       "kind": null,
       "rect": [
         -206.0,
@@ -385,9 +385,9 @@
       "round": false
     },
     {
-      "control": null,
-      "key": "Item(Label(\"PRI\\nMODE\", 54, 55))",
-      "kind": null,
+      "control": "Action(RwrPriority)",
+      "key": "Button(RwrPri, None)",
+      "kind": "cap",
       "rect": [
         -206.0,
         -128.39999389648438,
@@ -398,7 +398,7 @@
     },
     {
       "control": null,
-      "key": "Item(Label(\"UNK\", 54, 55))",
+      "key": "Item(Label(\"UNK\", 7, 38))",
       "kind": null,
       "rect": [
         -206.0,
@@ -410,7 +410,7 @@
     },
     {
       "control": null,
-      "key": "Item(Label(\"SYS\\nTEST\", 54, 55))",
+      "key": "Item(Label(\"SYS\\nTEST\", 7, 38))",
       "kind": null,
       "rect": [
         -206.0,
@@ -421,9 +421,9 @@
       "round": false
     },
     {
-      "control": null,
-      "key": "Item(Label(\"TGT\\nSEP\", 54, 55))",
-      "kind": null,
+      "control": "Action(RwrSeparate)",
+      "key": "Button(RwrSep, None)",
+      "kind": "cap",
       "rect": [
         -206.0,
         -90.0,

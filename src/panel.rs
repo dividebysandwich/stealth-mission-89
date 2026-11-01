@@ -154,9 +154,14 @@ pub enum LampId {
     LowFuel,
     /// Helicopters: auto-hover (beside AUTO; not on the classic panel).
     Hover,
+    /// The RWR's priority mode (the five most dangerous radars only) and target separate
+    /// (overlapping symbols moved apart): caps beside the RWR scope, lit while on (not on the
+    /// classic panel).
+    RwrPri,
+    RwrSep,
 }
 
-pub const LAMP_COUNT: usize = 38;
+pub const LAMP_COUNT: usize = 40;
 
 /// Lamp colours, (text and border, fill) unlit and lit, as they recolour the panel art.
 #[derive(Debug, Clone, Copy)]
@@ -216,6 +221,8 @@ pub const LAMPS: [(LampId, &str, LampStyle); LAMP_COUNT] = {
         (Brake, "BRAKE", RED),
         (LowFuel, "", RED),
         (Hover, "HOVER", RED),
+        (RwrPri, "MODE", BUTTON),
+        (RwrSep, "T", BUTTON),
     ]
 };
 
@@ -251,6 +258,37 @@ pub fn draw_lamp(
     c.fill_rect(x, y, k, h, fg);
     c.fill_rect(x + w - k, y, k, h, fg);
     text_in(c, fonts, [x + k, y + k, w - 2 * k, h - 2 * k], label, fg, text);
+}
+
+/// The RWR's caps, after the F-16's threat warning prime panel: a dark key with its legend in
+/// light grey and its status under it in green (MODE: OPEN or PRI; T, target separate: SEP
+/// while on). True while the status shows (it glows).
+pub fn draw_rwr_cap(
+    c: &mut Canvas,
+    fonts: &Fonts,
+    r: [i32; 4],
+    id: LampId,
+    on: bool,
+    k: i32,
+    text: i32,
+) -> bool {
+    let (legend, status) = match id {
+        LampId::RwrPri => ("MODE", Some(if on { "PRI" } else { "OPEN" })),
+        _ => ("T", on.then_some("SEP")),
+    };
+    draw_lamp(c, fonts, r, "", (35, 38), k, text);
+    let [x, y, w, h] = [r[0] + k, r[1] + k, r[2] - 2 * k, r[3] - 2 * k];
+    match status {
+        Some(s) => {
+            text_in(c, fonts, [x, y, w, h / 2], legend, 7, text);
+            text_in(c, fonts, [x, y + h / 2, w, h - h / 2], s, 47, text);
+            true
+        }
+        None => {
+            text_in(c, fonts, [x, y, w, h], legend, 7, text);
+            false
+        }
+    }
 }
 
 /// Draws a label face: fill and centred text (lines separated by '\n').
@@ -656,6 +694,7 @@ pub struct PanelParams<'w, 's> {
     pub positions: Query<'w, 's, &'static crate::world::WorldPos, With<Player>>,
     pub waypoints: Res<'w, crate::hud::Waypoints>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
+    pub rwr_mode: Res<'w, crate::rwr::RwrMode>,
     pub radar: Res<'w, crate::flight::terrain_follow::TerrainRadar>,
     pub clock: Res<'w, MissionClock>,
     pub mission: Option<Res<'w, crate::mission::ActiveMission>>,
@@ -696,6 +735,8 @@ impl PanelParams<'_, '_> {
             lit[Brake as usize] = a.brakes;
             lit[LowFuel as usize] = a.fuel < self.bingo() && blink;
         }
+        lit[RwrPri as usize] = self.rwr_mode.priority;
+        lit[RwrSep as usize] = self.rwr_mode.separate;
         lit[Mw as usize] = w.missile_warning;
         lit[Eng as usize] = w.engine;
         lit[Fc as usize] = w.fire_control;
@@ -803,7 +844,7 @@ impl PanelParams<'_, '_> {
 
     /// The RWR scope.
     pub fn draw_rwr(&self, c: &mut Canvas) {
-        crate::rwr::draw_rwr(c, &self.emitters.list, crate::hud::blink(&self.time));
+        crate::rwr::draw_rwr(c, &self.emitters.list, *self.rwr_mode, crate::hud::blink(&self.time));
     }
 
     /// Angle of attack (degrees) from the flight path in the body frame.

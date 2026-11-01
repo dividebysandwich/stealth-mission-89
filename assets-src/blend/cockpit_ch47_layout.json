@@ -709,6 +709,30 @@
       "round": false
     },
     {
+      "control": "Action(RwrPriority)",
+      "key": "Button(RwrPri, None)",
+      "kind": "cap",
+      "rect": [
+        -388.0,
+        -120.0,
+        22.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(RwrSeparate)",
+      "key": "Button(RwrSep, None)",
+      "kind": "cap",
+      "rect": [
+        -388.0,
+        -102.0,
+        22.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": "Osb(Left, 0)",
       "key": "Osb(Left, 0)",
       "kind": "osb",
