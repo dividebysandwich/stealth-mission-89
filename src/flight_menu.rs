@@ -1437,7 +1437,8 @@ fn draw(
     let items = menu.page.items();
     let back_lit = items.get(menu.cursor) == Some(&Item::Back);
     draw_frame(c, crumb, title, note, Some((key, back_lit)));
-    // The main page's entries and the pages of OPTIONS have an icon and a chevron.
+    // The main page's entries and the pages of OPTIONS have an icon; the ones that open
+    // another screen (a page, the key guide, the bindings dialog) also have a chevron.
     let icons = matches!(menu.page, Page::Main | Page::Options);
     for (i, (item, r)) in items.iter().zip(item_rects(menu.page)).enumerate() {
         if *item == Item::Back {
@@ -1470,7 +1471,7 @@ fn draw(
         };
         stroke_text_at(c, x, mid, label, size, pen, col, Align::Left);
         let mut right = x1 - 18.0;
-        if icons || matches!(item, Item::KeyGuide | Item::Bindings) {
+        if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings) {
             let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));
             let arms = [tip + Vec2::new(-0.65 * s, -s), tip, tip + Vec2::new(-0.65 * s, s)];
             c.polyline(&arms, pen.max(1.8), col);
