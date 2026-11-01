@@ -154,6 +154,13 @@ impl Kneeboard {
         self.overlay
     }
 
+    /// Desktop: puts the board shown over the view away (back to its first page).
+    pub fn close_overlay(&mut self) {
+        self.overlay = false;
+        self.page = Page::Brief;
+        self.dirty = true;
+    }
+
     /// A new sortie (campaign): the maps are drawn again for its route.
     pub fn new_mission(&mut self) {
         self.route_map = None;

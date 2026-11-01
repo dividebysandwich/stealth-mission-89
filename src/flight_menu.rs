@@ -558,6 +558,7 @@ fn toggle(
     sinks: Query<&AudioSink>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     boss: Res<crate::boss_key::BossKey>,
+    mut kneeboard: Option<ResMut<crate::kneeboard::Kneeboard>>,
 ) {
     // Not behind the boss screen (closing the menu would resume the flight it paused).
     let pressed =
@@ -593,6 +594,12 @@ fn toggle(
         && let Some(parent) = menu.page.back(menu.options_only)
     {
         go_to(&mut menu, parent);
+    } else if pressed
+        && !menu.open
+        && let Some(kb) = kneeboard.as_mut().filter(|kb| kb.overlay_shown())
+    {
+        // Esc puts the kneeboard shown over the view away first; the next one opens the menu.
+        kb.close_overlay();
     } else if pressed && !menu.exiting {
         let open = !menu.open;
         let pause = campaign.is_none();

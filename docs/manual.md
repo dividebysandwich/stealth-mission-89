@@ -1233,7 +1233,7 @@ objectives, weather, armament, rules of engagement), **ROUTE** (each leg's beari
 time), **MAP** (the route and the SAM ranges) and **TARGET** (a close-up of the primary target and
 the intelligence summary). Achieved objectives are ticked.
 
-* Desktop: click a tab; **K** shows the board large over the view and turns its pages.
+* Desktop: click a tab; **K** shows the board large over the view and turns its pages; **Esc** puts it away (a second Esc opens the menu).
 * VR: touch a tab with a fingertip; **K** or the *Kneeboard* action hides or shows it. Squeeze
   the grip with a hand on the board to pick it up and leave it floating in the cockpit.
 
