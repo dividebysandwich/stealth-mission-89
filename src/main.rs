@@ -71,6 +71,7 @@ mod options;
 mod palette;
 mod palette_material;
 mod panel;
+mod pixelize;
 mod planner;
 mod player;
 mod player_labels;
@@ -307,6 +308,7 @@ fn main() {
             barrage::BarragePlugin,
             goggles::GogglesPlugin,
             sunbeams::SunbeamsPlugin,
+            pixelize::PixelizePlugin,
         ))
         .add_plugins((
             sky::SkyPlugin,

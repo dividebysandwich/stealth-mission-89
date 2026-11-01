@@ -60,7 +60,7 @@ struct SceneHeli;
 struct Traffic(usize);
 
 #[derive(Component)]
-struct SceneCamera;
+pub(crate) struct SceneCamera;
 
 /// VR: where the player stands, the XR tracking root under it.
 #[derive(Component)]

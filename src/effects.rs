@@ -35,7 +35,15 @@ pub struct Effects {
     pub vga: bool,
     /// Retro (off by default, desktop): CRT scanlines (palette.wgsl).
     pub scanlines: bool,
+    /// Retro (off by default, desktop): the 3D view in big square pixels, the anti-aliasing
+    /// off (pixelize.rs).
+    pub pixelize: bool,
+    /// Pixelize: the side of a block, in screen pixels (`PIXEL_BLOCKS`).
+    pub pixel_block: u32,
 }
+
+/// The sizes of a pixelize block the player can choose (screen pixels).
+pub const PIXEL_BLOCKS: std::ops::RangeInclusive<u32> = 2..=5;
 
 /// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows and vapour start off.
 /// Compiled into the world shader mist and cloud shadows cost its GPU (Adreno 750) about 1.4
@@ -59,6 +67,8 @@ impl Default for Effects {
             night_sky: true,
             vga: false,
             scanlines: false,
+            pixelize: false,
+            pixel_block: *PIXEL_BLOCKS.end(),
         }
     }
 }
@@ -79,10 +89,11 @@ pub enum Effect {
     NightSky,
     Vga,
     Scanlines,
+    Pixelize,
 }
 
 impl Effect {
-    pub const ALL: [Effect; 13] = [
+    pub const ALL: [Effect; 14] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -96,6 +107,7 @@ impl Effect {
         Effect::NightSky,
         Effect::Vga,
         Effect::Scanlines,
+        Effect::Pixelize,
     ];
 
     /// Its name on the command line.
@@ -114,6 +126,7 @@ impl Effect {
             Effect::NightSky => "night-sky",
             Effect::Vga => "vga",
             Effect::Scanlines => "scanlines",
+            Effect::Pixelize => "pixelize",
         }
     }
 
@@ -133,6 +146,7 @@ impl Effect {
             Effect::NightSky => "Night sky",
             Effect::Vga => "VGA colours",
             Effect::Scanlines => "Scanlines",
+            Effect::Pixelize => "Pixelize",
         }
     }
 
@@ -152,6 +166,7 @@ impl Effect {
             Effect::NightSky => "NIGHT SKY",
             Effect::Vga => "VGA COLOURS",
             Effect::Scanlines => "SCANLINES",
+            Effect::Pixelize => "PIXELIZE",
         }
     }
 
@@ -200,6 +215,11 @@ impl Effect {
                 "The 1989 look with modern shading: 64 steps a colour channel, as a VGA card's, dithered",
             ],
             Effect::Scanlines => &["A CRT monitor's scanlines (not in VR)"],
+            Effect::Pixelize => &[
+                "The whole 3D view (terrain, aircraft, buildings, the cockpit) in big square pixels, as on an MS-DOS PC; the menus and tooltips stay sharp (not in VR)",
+                "The slider sets the size of a block, in screen pixels (2: fine, 5: coarse)",
+                "Anti-aliasing is off while it is on",
+            ],
         }
     }
 
@@ -218,6 +238,7 @@ impl Effect {
             Effect::NightSky => e.night_sky,
             Effect::Vga => e.vga,
             Effect::Scanlines => e.scanlines,
+            Effect::Pixelize => e.pixelize,
         }
     }
 
@@ -236,13 +257,14 @@ impl Effect {
             Effect::NightSky => e.night_sky = on,
             Effect::Vga => e.vga = on,
             Effect::Scanlines => e.scanlines = on,
+            Effect::Pixelize => e.pixelize = on,
         }
     }
 
     /// A retro look (OPTIONS > GRAPHICS > Retro, the in-flight GRAPHICS page), not an
     /// atmosphere effect.
     pub fn retro(self) -> bool {
-        matches!(self, Effect::Vga | Effect::Scanlines)
+        matches!(self, Effect::Vga | Effect::Scanlines | Effect::Pixelize)
     }
 
     pub fn toggle(self, e: &mut Effects) {
@@ -302,5 +324,8 @@ mod tests {
         assert!(!Effects::parse("-shake").shake);
         assert!(!Effects::parse("none").shake);
         assert!(Effects::parse("none,shake").shake);
+        assert!(Effects::parse("pixelize").pixelize);
+        assert!(!Effects::default().pixelize);
+        assert!(PIXEL_BLOCKS.contains(&Effects::default().pixel_block));
     }
 }
