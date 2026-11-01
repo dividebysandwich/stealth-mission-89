@@ -90,6 +90,9 @@ pub struct FlightMenu {
     /// The page shown and its highlighted entry.
     page: Page,
     cursor: usize,
+    /// What a press would do where the mouse or a fingertip is on the highlighted entry (its
+    /// chevron then shows), None while neither is over an entry.
+    pointed: Option<Press>,
     /// Settings when the menu opened (saved to the preferences on close if changed).
     opened_with: Option<Settings>,
     /// END MISSION was chosen: the menu shows EXITING... and the flight ends without the end
@@ -793,10 +796,56 @@ fn item_rects(page: Page) -> Vec<[f32; 4]> {
         .collect()
 }
 
-/// Entry of a page under a canvas pixel, and whether the pixel is on the right half (values:
-/// larger).
-fn item_at(p: Vec2, page: Page) -> Option<(usize, bool)> {
-    item_rects(page).iter().position(|&r| inside(p, r)).map(|i| (i, p.x > W as f32 / 2.0))
+/// What a press on an entry does to its value.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Press {
+    /// The entry as a whole (toggles, pages, actions): the value goes up if it has steps.
+    Entry,
+    /// The `<` chevron of a stepped value: one step down.
+    Down,
+    /// The `>` chevron of a stepped value: one step up.
+    Up,
+    /// A stepped value's row away from its chevrons: only selects the row.
+    Away,
+}
+
+/// Where the text of a row's value is: right-aligned, this far from the row's right end.
+const VALUE_INSET: f32 = 18.0;
+/// How far a chevron's zone reaches around its glyph.
+const CHEVRON_PAD: f32 = 16.0;
+
+/// The size of the text of a row `h` tall.
+fn row_text_size(h: f32) -> f32 {
+    (h * 0.6).min(20.0)
+}
+
+/// The zones of the `<` and `>` chevrons of a stepped value (`< 3 PX >`) in the row `r`: each
+/// chevron's glyph and a margin around it, the row's full height.
+fn chevron_zones(value: &str, [x0, y0, x1, y1]: [f32; 4]) -> Option<([f32; 4], [f32; 4])> {
+    if !value.starts_with('<') || !value.ends_with('>') {
+        return None;
+    }
+    let size = row_text_size(y1 - y0);
+    let (end, glyph) = (x1 - VALUE_INSET, stroke_width("<", size));
+    let start = end - stroke_width(value, size);
+    let left = [(start - CHEVRON_PAD).max(x0), y0, start + glyph + CHEVRON_PAD, y1];
+    let right = [end - glyph - CHEVRON_PAD, y0, (end + CHEVRON_PAD).min(x1), y1];
+    Some((left, right))
+}
+
+/// Entry of a page under a canvas pixel, and what a press there does: a stepped value (`< 3
+/// PX >`) changes only on its chevrons, the other entries as a whole.
+fn item_at(p: Vec2, page: Page, s: &Settings) -> Option<(usize, Press)> {
+    let items = page.items();
+    let rects = item_rects(page);
+    let i = rects.iter().position(|&r| inside(p, r))?;
+    let press = match chevron_zones(&items[i].value(s), rects[i]) {
+        Some((down, _)) if inside(p, down) => Press::Down,
+        Some((_, up)) if inside(p, up) => Press::Up,
+        Some(_) => Press::Away,
+        None => Press::Entry,
+    };
+    Some((i, press))
 }
 
 /// The key guide's area, above the VR keyboard while it is open.
@@ -1116,9 +1165,11 @@ fn navigate(
     }
 
     // Pointing: the mouse hovers and clicks, a fingertip touches and the trigger presses.
-    let mut clicked: Option<(usize, bool)> = None;
-    if let Some(hit) = pointer.and_then(|p| item_at(p, menu.page)) {
+    let mut clicked: Option<(usize, Press)> = None;
+    menu.pointed = None;
+    if let Some(hit) = pointer.and_then(|p| item_at(p, menu.page, &settings)) {
         menu.cursor = hit.0;
+        menu.pointed = Some(hit.1);
         if click {
             clicked = Some(hit);
         }
@@ -1137,9 +1188,10 @@ fn navigate(
                 if let Some(hit) = (t > 0.0)
                     .then(|| to_canvas(o + d * t))
                     .flatten()
-                    .and_then(|p| item_at(p, menu.page))
+                    .and_then(|p| item_at(p, menu.page, &settings))
                 {
                     menu.cursor = hit.0;
+                    menu.pointed = Some(hit.1);
                     if click {
                         clicked = Some(hit);
                     }
@@ -1153,12 +1205,13 @@ fn navigate(
             let hit = (l.z < TOUCH_FRONT && l.z > -TOUCH_BEHIND)
                 .then(|| to_canvas(l))
                 .flatten()
-                .and_then(|p| item_at(p, menu.page));
+                .and_then(|p| item_at(p, menu.page, &settings));
             if let Some(hit) = hit {
                 if menu.cursor != hit.0 {
                     hand.haptic = hand.haptic.max(0.1);
                 }
                 menu.cursor = hit.0;
+                menu.pointed = Some(hit.1);
             }
             // Away from the screen, not while the finger is on a cockpit control (the MENU
             // button that opens and closes the menu).
@@ -1172,7 +1225,7 @@ fn navigate(
         }
     }
 
-    let (index, right) = match clicked {
+    let (index, press) = match clicked {
         Some(hit) => (hit.0, Some(hit.1)),
         None => (menu.cursor, None),
     };
@@ -1192,10 +1245,14 @@ fn navigate(
     if adjust != 0 && clicked.is_none() && !select && !item.adjustable() {
         return;
     }
-    // Values step left or right: the arrows, the half of the row clicked, else up.
+    // A stepped value's row clicked away from its chevrons only selects it.
+    if press == Some(Press::Away) {
+        return;
+    }
+    // Values step left or right: the arrows, the chevron clicked, else up.
     let dir = if adjust != 0 {
         adjust.signum()
-    } else if right == Some(false) {
+    } else if press == Some(Press::Down) {
         -1
     } else {
         1
@@ -1469,14 +1526,14 @@ fn draw(
             draw_icon(c, *item, Vec2::new(x0 + cell / 2.0, mid), h * 0.3, col);
             x = x0 + cell + 26.0;
         }
-        let size = (h * 0.6).min(20.0);
+        let size = row_text_size(h);
         let pen = size * 0.14;
         let label = match item {
             Item::EndMission if campaign.is_some() => "END SORTIE",
             _ => item.label(),
         };
         stroke_text_at(c, x, mid, label, size, pen, col, Align::Left);
-        let mut right = x1 - 18.0;
+        let mut right = x1 - VALUE_INSET;
         if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings) {
             let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));
             let arms = [tip + Vec2::new(-0.65 * s, -s), tip, tip + Vec2::new(-0.65 * s, s)];
@@ -1487,7 +1544,19 @@ fn draw(
             Item::SaveMission => menu.save_note.unwrap_or_default().to_string(),
             _ => item.value(&settings),
         };
-        if !v.is_empty() {
+        if chevron_zones(&v, r).is_some() {
+            // The chevron under the pointer is dark on the lit row; the value is drawn in three
+            // runs (each returns where the next one starts).
+            let on = lit && item.enabled(&settings, ops, menu.can_save);
+            let under = |p: Press| on && menu.pointed == Some(p);
+            let (left, rest) =
+                (if under(Press::Down) { ink::TAB } else { col }, &v[1..v.len() - 1]);
+            let ends = if under(Press::Up) { ink::TAB } else { col };
+            let x = right - stroke_width(&v, size);
+            let x = stroke_text_at(c, x, mid, "<", size, pen, left, Align::Left);
+            let x = stroke_text_at(c, x, mid, rest, size, pen, col, Align::Left);
+            stroke_text_at(c, x, mid, ">", size, pen, ends, Align::Left);
+        } else if !v.is_empty() {
             stroke_text_at(c, right, mid, &v, size, pen, col, Align::Right);
         }
     }
@@ -1906,6 +1975,33 @@ mod tests {
         assert_eq!(spot_at(x, true, false), Spot::Field);
         let gap = Vec2::new(keys[0].1[2] + KEY_GAP / 2.0, keys[0].1[1] + 1.0);
         assert_eq!(spot_at(gap, true, true), Spot::Keyboard);
+    }
+
+    /// A stepped value changes only on its chevrons, whatever the half of the row they are in;
+    /// the other entries take a press anywhere on their row.
+    #[test]
+    fn chevrons_are_the_buttons() {
+        let s = Settings::from_args();
+        let items = Page::Graphics.items();
+        let rects = item_rects(Page::Graphics);
+        let at = |item: Item, x: f32| {
+            let i = items.iter().position(|&o| o == item).unwrap();
+            let [_, y0, _, y1] = rects[i];
+            item_at(Vec2::new(x, (y0 + y1) / 2.0), Page::Graphics, &s).map(|h| h.1)
+        };
+        let r = rects[items.iter().position(|&o| o == Item::PixelSize).unwrap()];
+        let (down, up) = chevron_zones(&Item::PixelSize.value(&s), r).unwrap();
+        // Both chevrons are in the right half of the row, the `<` still steps down.
+        assert!(down[0] > W as f32 / 2.0 && down[2] <= up[0]);
+        let mid = |z: [f32; 4]| (z[0] + z[2]) / 2.0;
+        assert_eq!(at(Item::PixelSize, mid(down)), Some(Press::Down));
+        assert_eq!(at(Item::PixelSize, mid(up)), Some(Press::Up));
+        assert_eq!(at(Item::PixelSize, r[0] + 40.0), Some(Press::Away));
+        assert_eq!(at(Item::PixelSize, (down[2] + up[0]) / 2.0), Some(Press::Away));
+        for x in [r[0] + 40.0, mid(down), mid(up)] {
+            assert_eq!(at(Item::Shaders, x), Some(Press::Entry));
+        }
+        assert!(up[2] <= r[2] && down[0] >= r[0]);
     }
 
     /// Every icon the menus write (`'\u{eXXX}'` here and in `crate::menu`) is in the cut-down
