@@ -860,9 +860,11 @@ fn aurora(nd: vec3<f32>) -> vec3<f32> {
 }
 
 // A shooting star now and then (`Globals::sky_fx` y): a short bright streak across the sky,
-// placed and timed by the clock.
+// placed and timed by the clock: in one period of `METEOR_PERIOD` s out of 1 / `METEOR_CHANCE`
+// (some every two minutes).
 const METEOR_PERIOD: f32 = 7.0;
 const METEOR_LIFE: f32 = 0.7;
+const METEOR_CHANCE: f32 = 0.05;
 fn meteor(nd: vec3<f32>, px: f32) -> f32 {
     if (globals.sky_fx.y <= 0.0 || nd.y <= 0.0) {
         return 0.0;
@@ -870,7 +872,7 @@ fn meteor(nd: vec3<f32>, px: f32) -> f32 {
     let t = globals.dots.y;
     let k = floor(t / METEOR_PERIOD);
     let p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
-    if (p > 1.0 || hash2(vec2<f32>(k, 3.7)) > 0.5) {
+    if (p > 1.0 || hash2(vec2<f32>(k, 3.7)) > METEOR_CHANCE) {
         return 0.0;
     }
     let az = hash2(vec2<f32>(k, 1.1)) * 6.2831853;

@@ -646,12 +646,13 @@ vec3 aurora(vec3 nd) {
 
 const float METEOR_PERIOD = 7.0;
 const float METEOR_LIFE = 0.7;
+const float METEOR_CHANCE = 0.05;
 float meteor(vec3 nd, float px) {
     if (g.sky_fx.y <= 0.0 || nd.y <= 0.0) { return 0.0; }
     float t = g.dots.y;
     float k = floor(t / METEOR_PERIOD);
     float p = (t - k * METEOR_PERIOD) / METEOR_LIFE;
-    if (p > 1.0 || hash2(vec2(k, 3.7)) > 0.5) { return 0.0; }
+    if (p > 1.0 || hash2(vec2(k, 3.7)) > METEOR_CHANCE) { return 0.0; }
     float az = hash2(vec2(k, 1.1)) * 6.2831853;
     float el = 0.35 + 0.6 * hash2(vec2(k, 2.3));
     vec3 start = vec3(cos(el) * sin(az), sin(el), -cos(el) * cos(az));
