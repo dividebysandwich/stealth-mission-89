@@ -17,6 +17,7 @@ use stealth_mission::world::flags as F;
 use stealth_sim::SimData;
 
 use crate::canvas::Canvas;
+use crate::layout::screen_window;
 use crate::map_draw::{
     self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather, UAV_PINK,
     drone_cross, missile_circle,
@@ -642,18 +643,8 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
     if !route.fits(&m) {
         *route = PlannedRoute::of(&m);
     }
-    let screen = ctx.content_rect();
-    let size = egui::vec2(
-        (screen.width() - 32.0).clamp(600.0, 1600.0),
-        (screen.height() - 32.0).clamp(400.0, 1000.0),
-    );
     let mut open = true;
-    let window = egui::Window::new("Mission planner")
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .collapsible(false)
-        .resizable(false)
-        .title_bar(false)
-        .fixed_size(size);
+    let window = screen_window(ctx, "Mission planner", PLANNER_SIZE);
     let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
     crate::menu::Panel::new("MISSION PLANNER").note(note).window(window, ctx, |ui| {
         let size = ui.available_size();
@@ -669,6 +660,9 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
         planner.drag = None;
     }
 }
+
+/// The mission planner window's size, frame included.
+const PLANNER_SIZE: egui::Vec2 = egui::vec2(1632.0, 1032.0);
 
 /// Drawn over the route editor's map instead of the mission's airfields, with the legend lines
 /// (and layer checkboxes) of what it draws.
@@ -712,12 +706,17 @@ pub fn route_panel(
     ui.horizontal_top(|ui| {
         // Wide enough for the radar coverage's three profiles on a line; the gap between the map
         // and the column is the window's margin left of the map.
-        let (side, gap) = (350.0, 12.0);
+        let gap = 12.0;
+        let side = (size.x * 0.45).clamp(260.0, 350.0);
         let map_size = egui::vec2(ui.available_width() - side - gap, ui.available_height() - 8.0);
         map_view(ui, planner, m, route, &rings, &mut layers, overlay.as_ref(), &weather, map_size, editable);
         ui.add_space(gap - ui.spacing().item_spacing.x);
         ui.vertical(|ui| {
             ui.set_width(side);
+            // The column scrolls where the window is lower than it; the buttons under it stay.
+            let key = ui.id().with("route buttons height");
+            let below = ui.data(|d| d.get_temp::<f32>(key)).unwrap_or(0.0);
+            egui::ScrollArea::vertical().id_salt("route_side").max_height((size.y - 8.0 - below).max(100.0)).show(ui, |ui| {
             section(ui, "Route");
             let pts = with_base(m, &route.points);
             let label = |i: usize| if i == 0 { "BASE".to_string() } else { point_label(&route.points, i - 1) };
@@ -762,7 +761,12 @@ pub fn route_panel(
             } else {
                 ui.label(egui::RichText::new("Drag the map to pan. Wheel: zoom.").small().color(DIM));
             }
-            buttons(ui);
+            });
+            let now = ui.scope(buttons).response.rect.height();
+            if (now - below).abs() > 0.5 {
+                ui.data_mut(|d| d.insert_temp(key, now));
+                ui.ctx().request_repaint();
+            }
         });
     });
     });

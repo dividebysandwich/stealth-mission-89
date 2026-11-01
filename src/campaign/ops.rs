@@ -16,6 +16,7 @@ use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::map_draw::{
     self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather,
 };
@@ -49,6 +50,8 @@ pub struct OpsUi {
     pub(super) centre: egui::Vec2,
     pub(super) scale: f32,
     fitted: bool,
+    /// The war map's side column is open over the map (on a window too narrow for it beside).
+    side_open: bool,
     /// The air defence site selected on the AIR DEFENSE tab (AAA unit), and the list scrolls
     /// to it (picked on the map).
     pub(super) defence: Option<usize>,
@@ -256,6 +259,16 @@ fn test_accept() -> Option<BriefPage> {
     Some(if p == "loadout" { BriefPage::Loadout } else { BriefPage::Map })
 }
 
+/// The Ops window's size, frame included: as high as the screen lets it be up to this.
+const OPS_SIZE: egui::Vec2 = egui::vec2(1232.0, 900.0);
+/// The least height of a tab: a lower window scrolls it.
+const TAB_LEAST: f32 = 300.0;
+/// The board's width from which the missions and their details are side by side, and the least
+/// width of the details.
+const BOARD_SPLIT: f32 = 900.0;
+/// The war map's width from which its side column is beside it and not a drawer over it.
+const SIDE_FROM: f32 = 800.0;
+const DETAIL_LEAST: f32 = 320.0;
 /// Background of an unselected mission row.
 const ROW: egui::Color32 = egui::Color32::from_rgb(9, 29, 21);
 
@@ -333,7 +346,7 @@ pub fn ops_ui(
     let map_wx =
         MapWeather::new(weather.now.map(|n| n.weather).unwrap_or_default(), sky.freezing_level());
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
-    crate::menu::apply_ui_zoom(ctx);
+    crate::menu::apply_reflow_zoom(ctx);
     crate::menu::add_icon_font(ctx);
     if ctx.global_style().visuals.window_fill != BG {
         ctx.all_styles_mut(apply_terminal_style);
@@ -367,9 +380,6 @@ pub fn ops_ui(
         return Ok(());
     }
     let theater = c.mission.theater_name.clone();
-    let screen = ctx.content_rect();
-    let width = (screen.width() - 32.0).clamp(640.0, 1200.0);
-    let height = (screen.height() - 210.0).clamp(240.0, 700.0);
     // Test aid: `--campaign-accept map|loadout` opens the first mission's briefing.
     if let Some(page) = test_accept()
         && !std::mem::replace(&mut c.ui.test_taken, true)
@@ -385,18 +395,12 @@ pub fn ops_ui(
     }
     if c.ui.briefing.is_some() {
         let line = wx.as_ref().map(|w| w.1.as_str());
-        briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx, egui::vec2(width, height));
+        briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx);
         return Ok(());
     }
     super::designate::test_aid(c, &combat.sim, scenery.as_deref());
     let mut leave = false;
-    let window = egui::Window::new("Ops")
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .collapsible(false)
-        .resizable(false)
-        .title_bar(false)
-        .min_width(width)
-        .max_width(width);
+    let window = screen_window(ctx, "Ops", OPS_SIZE);
     let server = match (&c.server, c.role) {
         (Some(server), _) => Some(format!("ON {}", server.to_ascii_uppercase())),
         (None, Role::Host) => Some("SERVING".to_string()),
@@ -468,53 +472,60 @@ pub fn ops_ui(
             });
         });
         ui.separator();
-        ui.allocate_ui(egui::vec2(width, height), |ui| {
-            ui.set_min_height(height);
-            if c.state().outcome.is_some() {
-                end_screen(ui, c);
-                return;
-            }
-            match c.ui.tab {
-                Tab::Board => board(ui, c, width),
-                Tab::Map => war_map(
-                    ui,
-                    c,
-                    &combat.sim,
-                    &mut unit_view,
-                    &mut planner,
-                    &map_wx,
-                    scenery.as_deref(),
-                    egui::vec2(width, height),
-                ),
-                Tab::AirDefence => super::air_defence::tab(
-                    ui,
-                    c,
-                    &combat.sim,
-                    &mut planner,
-                    scenery.as_deref(),
-                    egui::vec2(width, height),
-                ),
-                Tab::Forces => forces(ui, c),
-                Tab::Players => players(ui, c, &mut voice),
-                Tab::Debrief => debrief(ui, c),
-                Tab::Log => log(ui, c),
-                Tab::Chat => chat(ui, c, &mut notices, settings.vr),
-            }
-        });
-        ui.separator();
-        ui.horizontal(|ui| {
-            if let Some(e) = &c.ui.error {
-                ui.colored_label(AMBER, e);
-            } else {
-                supply_line(ui, c);
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        let split = Split::new(ui, "ops");
+        split.body_sized(ui, |ui, room| {
+            // The tab fills the body: the map, the lists and the briefing take its size.
+            let size = egui::vec2(ui.available_width(), room.max(TAB_LEAST));
+            ui.allocate_ui(size, |ui| {
+                ui.set_min_height(size.y);
                 if c.state().outcome.is_some() {
-                    ui.label(egui::RichText::new("The war is over").color(DIM));
-                } else {
-                    ui.add(egui::Spinner::new().color(GREEN));
-                    ui.label(egui::RichText::new("War simulation running").color(DIM));
+                    end_screen(ui, c);
+                    return;
                 }
+                match c.ui.tab {
+                    Tab::Board => board(ui, c, size.x),
+                    Tab::Map => war_map(
+                        ui,
+                        c,
+                        &combat.sim,
+                        &mut unit_view,
+                        &mut planner,
+                        &map_wx,
+                        scenery.as_deref(),
+                        size,
+                    ),
+                    Tab::AirDefence => super::air_defence::tab(
+                        ui,
+                        c,
+                        &combat.sim,
+                        &mut planner,
+                        scenery.as_deref(),
+                        size,
+                    ),
+                    Tab::Forces => forces(ui, c),
+                    Tab::Players => players(ui, c, &mut voice),
+                    Tab::Debrief => debrief(ui, c),
+                    Tab::Log => log(ui, c),
+                    Tab::Chat => chat(ui, c, &mut notices, settings.vr),
+                }
+            });
+        });
+        split.footer(ui, |ui| {
+            ui.separator();
+            ui.horizontal(|ui| {
+                if let Some(e) = &c.ui.error {
+                    ui.colored_label(AMBER, e);
+                } else {
+                    supply_line(ui, c);
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if c.state().outcome.is_some() {
+                        ui.label(egui::RichText::new("The war is over").color(DIM));
+                    } else {
+                        ui.add(egui::Spinner::new().color(GREEN));
+                        ui.label(egui::RichText::new("War simulation running").color(DIM));
+                    }
+                });
             });
         });
     });
@@ -577,11 +588,13 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
         c.ui.selected = c.state().board.first().map(|o| o.id);
         c.ui.base = None;
     }
-    ui.horizontal_top(|ui| {
-        ui.vertical(|ui| {
-            ui.set_width(width * 0.52);
+    // Side by side where there is room, else the details under the missions.
+    let room = height_of(ui);
+    let left = if width < BOARD_SPLIT { width } else { width * 0.52 };
+    let mut flow = Flow::new(ui);
+    flow.card(ui, Span::Fixed(left), |ui| {
             section(ui, "Missions");
-            egui::ScrollArea::vertical().id_salt("offers").max_height(height_of(ui) * 0.62).show(
+            egui::ScrollArea::vertical().id_salt("offers").max_height(room * 0.62).show(
                 ui,
                 |ui| {
                     for o in c.state().board.clone() {
@@ -719,8 +732,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 ui.label(egui::RichText::new("None under way").color(DIM));
             }
         });
-        ui.separator();
-        ui.vertical(|ui| {
+        flow.card(ui, Span::Fill(DETAIL_LEAST), |ui| {
             let Some(o) =
                 c.ui.selected.and_then(|id| c.state().board.iter().find(|o| o.id == id)).cloned()
             else {
@@ -879,7 +891,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     Some(Briefing::new(o.id, chosen, aircraft, loadout, BriefPage::Map));
             }
         });
-    });
+    flow.finish(ui);
 }
 
 /// The players on an offer's plan (coop): planning it, flying it.
@@ -1156,12 +1168,15 @@ fn war_map(
     size: egui::Vec2,
 ) {
     let legend_w = 190.0;
+    // On a narrow window the side column is a drawer over the map, not a column beside it.
+    let drawer = size.x < SIDE_FROM;
+    let map_w = if drawer { size.x } else { size.x - legend_w };
     let off =
         [&[Layer::MissileRange, Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
     let mut layers = MapLayers::of(ui.ctx(), "war", &off);
     ui.horizontal_top(|ui| {
         let (rect, resp) = ui.allocate_exact_size(
-            egui::vec2(size.x - legend_w, size.y),
+            egui::vec2(map_w, size.y),
             egui::Sense::click_and_drag(),
         );
         fit_map(c, rect);
@@ -1305,7 +1320,15 @@ fn war_map(
         });
         // What is under the pointer (not the LAYERS panel): its tooltip; a click on a unit
         // watches it live.
-        if !designating && let Some(pos) = resp.hover_pos().filter(|&p| !panel.contains(p)) {
+        let drawer_rect = if drawer {
+            side_drawer(ui, rect, size.y, c, sim, unit_view)
+        } else {
+            egui::Rect::NOTHING
+        };
+        if !designating
+            && let Some(pos) =
+                resp.hover_pos().filter(|&p| !panel.contains(p) && !drawer_rect.contains(p))
+        {
             let picked = super::picture::pick(&view, &pic, pos, k);
             tips.show(&resp, picked.as_ref().map(|_| "Click to watch it live"));
             if let Some((unit, name)) = picked {
@@ -1317,28 +1340,77 @@ fn war_map(
         }
         super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
         // The side column scrolls rather than make the window taller than the map.
-        ui.vertical(|ui| {
-            ui.set_width(legend_w - 12.0);
-            egui::ScrollArea::vertical().id_salt("war_side").max_height(size.y).show(ui, |ui| {
-                section(ui, "Map");
-                map_draw::symbology_switch(ui);
-                ui.label(
-                    egui::RichText::new("LAYERS (top right): what the map shows")
-                        .small()
-                        .color(DIM),
+        if !drawer {
+            ui.vertical(|ui| {
+                ui.set_width(legend_w - 12.0);
+                egui::ScrollArea::vertical().id_salt("war_side").max_height(size.y).show(
+                    ui,
+                    |ui| side_column(ui, c, sim, unit_view),
                 );
-                ui.add_space(8.0);
-                ui.label(
-                    egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT),
-                );
-                ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
-                control_button(ui, c, sim, unit_view);
-                ui.add_space(10.0);
-                super::designate::buttons(ui, c);
             });
-        });
+        }
     });
     layers.keep(ui.ctx(), "war");
+}
+
+/// What the war map's side column holds: the symbols, how to use the map, the designations.
+fn side_column(
+    ui: &mut egui::Ui,
+    c: &mut ActiveCampaign,
+    sim: &stealth_sim::Sim,
+    unit_view: &mut super::UnitView,
+) {
+    section(ui, "Map");
+    map_draw::symbology_switch(ui);
+    ui.label(
+        egui::RichText::new("LAYERS (top right): what the map shows").small().color(DIM),
+    );
+    ui.add_space(8.0);
+    ui.label(egui::RichText::new("Click a unit to watch it live").small().color(BRIGHT));
+    ui.label(egui::RichText::new("Wheel: zoom, drag: pan").small().color(DIM));
+    control_button(ui, c, sim, unit_view);
+    ui.add_space(10.0);
+    super::designate::buttons(ui, c);
+}
+
+/// The side column as a drawer over the map's top left, opened by its MAP button: the rect it
+/// takes, to keep the map's tooltips from it.
+fn side_drawer(
+    ui: &mut egui::Ui,
+    map: egui::Rect,
+    height: f32,
+    c: &mut ActiveCampaign,
+    sim: &stealth_sim::Sim,
+    unit_view: &mut super::UnitView,
+) -> egui::Rect {
+    const WIDTH: f32 = 230.0;
+    let area = egui::Rect::from_min_size(
+        map.left_top() + egui::vec2(8.0, 8.0),
+        egui::vec2(WIDTH, height - 16.0),
+    );
+    // A child that takes no room in the parent: over the map.
+    let ui = &mut ui.new_child(egui::UiBuilder::new().max_rect(area));
+    let text = if c.ui.side_open { "MAP  ^" } else { "MAP  v" };
+    if ui
+        .add(egui::Button::new(egui::RichText::new(text).small()).selected(c.ui.side_open))
+        .clicked()
+    {
+        c.ui.side_open = !c.ui.side_open;
+    }
+    if c.ui.side_open {
+        egui::Frame::new()
+            .fill(egui::Color32::from_black_alpha(220))
+            .stroke(egui::Stroke::new(1.0, DIM))
+            .inner_margin(6.0)
+            .show(ui, |ui| {
+                ui.set_width(WIDTH - 14.0);
+                egui::ScrollArea::vertical()
+                    .id_salt("war_drawer")
+                    .max_height(height - 60.0)
+                    .show(ui, |ui| side_column(ui, c, sim, unit_view));
+            });
+    }
+    ui.min_rect()
 }
 
 /// A place's tooltip: an airfield or a city, its name, its side and the recon on it; its
@@ -1701,7 +1773,6 @@ fn briefing(
     planner: &mut crate::planner::Planner,
     weather: Option<&str>,
     map_wx: &MapWeather,
-    size: egui::Vec2,
 ) {
     let Some(mut b) = c.ui.briefing.take() else { return };
     let Some(o) = c.state().board.iter().find(|o| o.id == b.offer).cloned() else {
@@ -1718,13 +1789,7 @@ fn briefing(
     let mut back = false;
     let mut take_off = false;
     let mut edit = None;
-    let window = egui::Window::new("Briefing")
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .collapsible(false)
-        .resizable(false)
-        .title_bar(false)
-        .min_width(size.x)
-        .max_width(size.x);
+    let window = screen_window(ctx, "Briefing", OPS_SIZE);
     Panel::new("MISSION BRIEFING")
         .after(egui::RichText::new(format!("  {}", o.kind.name())).color(kind_colour(o.kind)))
         .note(clock_text(c))
@@ -1759,78 +1824,84 @@ fn briefing(
                 }
             });
             ui.separator();
-            // Room for the heading lines above and the buttons below.
-            let height = size.y - 150.0;
-            ui.allocate_ui(egui::vec2(size.x, height), |ui| {
-                ui.set_min_height(height);
-                match b.page {
-                    BriefPage::Map => {
-                        edit = route_editor(
-                            ui,
-                            c,
-                            sim,
-                            planner,
-                            &m,
-                            &mut b,
-                            map_wx,
-                            egui::vec2(size.x, height),
-                        )
-                    }
-                    BriefPage::Loadout => {
-                        ui.horizontal(|ui| {
-                            ui.label(egui::RichText::new("AIRCRAFT").color(DIM));
-                            let flyable = [
-                                Airframe::F117,
-                                Airframe::F16,
-                                Airframe::Tornado,
-                                Airframe::A10,
-                                Airframe::AV8B,
-                                Airframe::UH60,
-                                Airframe::CH47,
-                                Airframe::AH1Z,
-                                Airframe::RAH66,
-                                Airframe::OH58,
-                            ]
-                            .into_iter()
-                            .filter(|a| o.kind.flyable_by(*a));
-                            for a in flyable {
-                                let label = kind_of(a).name();
-                                if ui.selectable_label(b.aircraft == a, label).clicked()
-                                    && b.aircraft != a
-                                {
-                                    b.aircraft = a;
-                                    b.loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(a));
+            let split = Split::new(ui, "briefing");
+            // What the heading lines above and the buttons below leave.
+            split.body_sized(ui, |ui, room| {
+                let size = egui::vec2(ui.available_width(), room.max(TAB_LEAST));
+                let height = size.y;
+                ui.allocate_ui(size, |ui| {
+                    ui.set_min_height(height);
+                    match b.page {
+                        BriefPage::Map => {
+                            edit = route_editor(
+                                ui,
+                                c,
+                                sim,
+                                planner,
+                                &m,
+                                &mut b,
+                                map_wx,
+                                egui::vec2(size.x, height),
+                            )
+                        }
+                        BriefPage::Loadout => {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("AIRCRAFT").color(DIM));
+                                let flyable = [
+                                    Airframe::F117,
+                                    Airframe::F16,
+                                    Airframe::Tornado,
+                                    Airframe::A10,
+                                    Airframe::AV8B,
+                                    Airframe::UH60,
+                                    Airframe::CH47,
+                                    Airframe::AH1Z,
+                                    Airframe::RAH66,
+                                    Airframe::OH58,
+                                ]
+                                .into_iter()
+                                .filter(|a| o.kind.flyable_by(*a));
+                                for a in flyable {
+                                    let label = kind_of(a).name();
+                                    if ui.selectable_label(b.aircraft == a, label).clicked()
+                                        && b.aircraft != a
+                                    {
+                                        b.aircraft = a;
+                                        b.loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(a));
+                                    }
                                 }
-                            }
-                        });
-                        ui.add_space(4.0);
-                        crate::loadout::editor(
-                            ui,
-                            &mut b.window,
-                            &mut b.loadout,
-                            &m,
-                            height - 30.0,
-                        );
-                        ui.horizontal(|ui| {
-                            if ui.add(big_button("BRIEFED").icon(icon::BRIEFED)).clicked() {
-                                b.loadout =
-                                    crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
-                            }
-                        });
+                            });
+                            ui.add_space(4.0);
+                            crate::loadout::editor(
+                                ui,
+                                &mut b.window,
+                                &mut b.loadout,
+                                &m,
+                                height - 30.0,
+                            );
+                            ui.horizontal(|ui| {
+                                if ui.add(big_button("BRIEFED").icon(icon::BRIEFED)).clicked() {
+                                    b.loadout =
+                                        crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
+                                }
+                            });
+                        }
                     }
-                }
+                });
             });
-            footer_rule(ui);
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                back = ui.add(big_button("BACK").icon(icon::BACK)).clicked();
-                if let Some(e) = &c.ui.error {
-                    ui.colored_label(AMBER, e);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    take_off = ui.add(big_button("TAKE OFF").icon(icon::FLY).primary()).clicked();
-                    ui.add(egui::Spinner::new().color(GREEN));
-                    ui.label(egui::RichText::new("War simulation running").color(DIM));
+            split.footer(ui, |ui| {
+                footer_rule(ui);
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    back = ui.add(big_button("BACK").icon(icon::BACK)).clicked();
+                    if let Some(e) = &c.ui.error {
+                        ui.colored_label(AMBER, e);
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        take_off = ui.add(big_button("TAKE OFF").icon(icon::FLY).primary()).clicked();
+                        ui.add(egui::Spinner::new().color(GREEN));
+                        ui.label(egui::RichText::new("War simulation running").color(DIM));
+                    });
                 });
             });
         });

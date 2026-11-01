@@ -10,6 +10,7 @@ use stealth_mission::{Mission, MissionKind, Seed};
 use stealth_sim::WorldDamage;
 use stealth_sim::score::{MissionReport, Outcome};
 
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
     AMBER, DIM, GREEN, MenuState, THEATERS, big_button, group, icon, icon_text, section,
 };
@@ -38,6 +39,12 @@ pub const TOUR_LENGTH: u32 = 12;
 pub const TOUR_BONUS: i32 = 200;
 /// Seeds tried for a sortie whose targets still stand.
 const SORTIE_TRIES: u32 = 64;
+
+/// The window's size, frame included: the columns of options, the pilots and the pilot's record
+/// side by side where the screen is wide, under each other where it is not.
+const CAREER_SIZE: egui::Vec2 = egui::vec2(1432.0, 760.0);
+/// The least width of the pilot's record, which fills what the other columns leave.
+const RECORD_LEAST: f32 = 220.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Status {
@@ -327,12 +334,12 @@ pub fn career_ui(
         (state.theater, state.roe, state.opponents, state.lockheed) =
             (t.theater, t.roe, t.opponents, t.lockheed);
     }
-    let width = crate::menu::wide_width(ctx);
-    let window = crate::menu::menu_window(ctx, "Career", width);
+    let window = screen_window(ctx, "Career", CAREER_SIZE);
     crate::menu::Panel::new("PILOT RECORDS").note("CAREER").window(window, ctx, |ui| {
-        ui.horizontal_top(|ui| {
-            ui.vertical(|ui| {
-                ui.set_width(210.0);
+        let split = Split::new(ui, "career");
+        split.body(ui, |ui| {
+            let mut flow = Flow::new(ui);
+            flow.card(ui, Span::Fixed(210.0), |ui| {
                 group(ui, "Tour", |ui| {
                     ui.add_enabled_ui(tour.is_none(), |ui| {
                         crate::menu::theater_options(ui, &mut state.theater);
@@ -344,24 +351,21 @@ pub fn career_ui(
                     }
                 });
             });
-            ui.vertical(|ui| {
-                ui.set_width(220.0);
+            flow.card(ui, Span::Fixed(220.0), |ui| {
                 group(ui, "Conditions", |ui| {
                     crate::menu::weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
                 crate::menu::simulation_options(ui, settings, None);
             });
-            ui.vertical(|ui| {
-                ui.set_width(crate::menu::VEHICLE_WIDTH);
+            flow.card(ui, Span::Fixed(crate::menu::VEHICLE_WIDTH), |ui| {
                 group(ui, "Vehicle", |ui| {
                     crate::aircraft_preview::show(ui, preview);
                     let lockheed = tour.is_none().then_some(&mut state.lockheed);
                     crate::menu::vehicle_options(ui, settings, lockheed);
                 });
             });
-            ui.vertical(|ui| {
-                ui.set_width(260.0);
+            flow.card(ui, Span::Fixed(260.0), |ui| {
                 section(ui, "Pilots");
                 for p in &w.pilots {
                     let status = match p.status {
@@ -401,7 +405,7 @@ pub fn career_ui(
                     w.new_name.clear();
                 }
             });
-            ui.vertical(|ui| {
+            flow.card(ui, Span::Fill(RECORD_LEAST), |ui| {
                 let Some(p) =
                     w.selected.as_ref().and_then(|k| w.pilots.iter_mut().find(|p| p.key() == *k))
                 else {
@@ -515,25 +519,28 @@ pub fn career_ui(
                     }
                 });
             });
+            flow.finish(ui);
         });
-        ui.add_space(8.0);
-        crate::menu::footer_rule(ui);
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if ui
-                .add(big_button("BACK").icon(icon::BACK))
-                .on_hover_text("Back to the main menu")
-                .clicked()
-            {
-                close = true;
-            }
-            if ui
-                .add(big_button("OPTIONS").icon(icon::OPTIONS))
-                .on_hover_text("Game, graphics, sound and controls")
-                .clicked()
-            {
-                options.open = true;
-            }
+        split.footer(ui, |ui| {
+            ui.add_space(8.0);
+            crate::menu::footer_rule(ui);
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui
+                    .add(big_button("BACK").icon(icon::BACK))
+                    .on_hover_text("Back to the main menu")
+                    .clicked()
+                {
+                    close = true;
+                }
+                if ui
+                    .add(big_button("OPTIONS").icon(icon::OPTIONS))
+                    .on_hover_text("Game, graphics, sound and controls")
+                    .clicked()
+                {
+                    options.open = true;
+                }
+            });
         });
     });
     if close || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {

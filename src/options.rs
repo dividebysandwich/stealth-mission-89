@@ -17,9 +17,9 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::menu::{
-    AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, menu_window, section,
-    slide_switch,
+    AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, section, slide_switch,
 };
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::settings::{MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 #[derive(Resource, Default)]
@@ -28,8 +28,6 @@ pub struct OptionsWindow {
     /// The VOICES dialog is open over it (`voice_dialog.rs`).
     pub voices: bool,
     tab: Tab,
-    /// The largest tab's size: every tab gets it, so the window keeps its size across tabs.
-    body: egui::Vec2,
 }
 
 impl OptionsWindow {
@@ -69,13 +67,13 @@ impl Tab {
 
 type SettingsMut<'a> = ResMut<'a, Settings>;
 
-/// The window's width.
-const WIDTH: f32 = 540.0;
-/// The least height of a tab's body. With the title, the tabs and the footer it makes the window
-/// as high as the single mission screen, so the borders show wherever that screen's do.
-const BODY_HEIGHT: f32 = 487.0;
+/// The window's size, frame included. It is as high as the single mission screen, so the borders
+/// show wherever that screen's do; on a smaller screen the tabs scroll.
+const SIZE: egui::Vec2 = egui::vec2(572.0, 700.0);
 /// The GAME tab's left column (the switches and the flying options).
 const GAME_LEFT_WIDTH: f32 = 220.0;
+/// The least width of its right column (the sliders and the recording's size).
+const GAME_RIGHT_LEAST: f32 = 240.0;
 
 /// The window (while open and the bindings dialog is not).
 pub fn options_ui(
@@ -89,40 +87,31 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    Panel::new("OPTIONS").window(menu_window(ctx, "Options", WIDTH), ctx, |ui| {
+    Panel::new("OPTIONS").window(screen_window(ctx, "Options", SIZE), ctx, |ui| {
         ui.horizontal(|ui| {
             for (tab, name) in Tab::ALL {
                 ui.selectable_value(&mut w.tab, tab, egui::RichText::new(name).size(16.0));
             }
         });
         ui.separator();
-        // The other tabs are laid out unseen for their size.
-        for (tab, _) in Tab::ALL.into_iter().filter(|t| t.0 != w.tab) {
-            let builder =
-                egui::UiBuilder::new().id_salt(("measure", tab as u8)).invisible().sizing_pass();
-            let mut hidden = ui.new_child(builder);
-            tab_options(&mut hidden, tab, settings, head, dialog, &mut w.voices);
-            w.body = w.body.max(hidden.min_rect().size());
-        }
-        let shown = ui.scope(|ui| {
-            ui.set_min_size(w.body.max(egui::vec2(0.0, BODY_HEIGHT)));
-            tab_options(ui, w.tab, settings, head, dialog, &mut w.voices);
+        let split = Split::new(ui, "options");
+        split.body(ui, |ui| tab_options(ui, w.tab, settings, head, dialog, &mut w.voices));
+        split.footer(ui, |ui| {
+            ui.add_space(4.0);
+            footer_rule(ui);
+            ui.label(
+                egui::RichText::new(
+                    "Saved for the next flights; the realism switches are chosen with each game",
+                )
+                .small()
+                .color(DIM),
+            );
+            if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the previous screen"])
+                .clicked()
+            {
+                back = true;
+            }
         });
-        w.body = w.body.max(shown.response.rect.size());
-        ui.add_space(4.0);
-        footer_rule(ui);
-        ui.label(
-            egui::RichText::new(
-                "Saved for the next flights; the realism switches are chosen with each game",
-            )
-            .small()
-            .color(DIM),
-        );
-        if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the previous screen"])
-            .clicked()
-        {
-            back = true;
-        }
     });
     if back {
         w.open = false;
@@ -157,18 +146,17 @@ fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str, &[&str])
 fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     // Two columns keep the tab as low as the others: the window is as high as the single
     // mission screen.
-    ui.horizontal_top(|ui| {
-        ui.vertical(|ui| {
-            ui.set_width(GAME_LEFT_WIDTH);
-            style_options(ui, settings);
-            flying_options(ui, settings);
-        });
-        ui.vertical(|ui| {
-            vr_size_options(ui, settings);
-            crate::menu::tacview_options(ui, settings);
-            gif_options(ui, settings);
-        });
+    let mut flow = Flow::new(ui);
+    flow.card(ui, Span::Fixed(GAME_LEFT_WIDTH), |ui| {
+        style_options(ui, settings);
+        flying_options(ui, settings);
     });
+    flow.card(ui, Span::Fill(GAME_RIGHT_LEAST), |ui| {
+        vr_size_options(ui, settings);
+        crate::menu::tacview_options(ui, settings);
+        gif_options(ui, settings);
+    });
+    flow.finish(ui);
 }
 
 fn style_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {

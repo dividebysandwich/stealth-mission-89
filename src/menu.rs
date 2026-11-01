@@ -9,6 +9,7 @@ use bevy_egui::{
 use stealth_mission::{Mission, MissionKind, Sky};
 
 use crate::aircraft::AircraftKind;
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::mission::{ActiveMission, MissionData, clean_text};
 use crate::settings::{AppState, MissionSetup};
 
@@ -590,14 +591,28 @@ fn sky_facts(sky: Sky) -> &'static [&'static str] {
     }
 }
 
-/// The window size the menus are laid out for (logical pixels, the desktop window's).
+/// The window size the screens that do not reflow (the debrief, the in-flight menu) are laid out
+/// for (logical pixels, the desktop window's).
 const UI_REFERENCE: egui::Vec2 = egui::vec2(1280.0, 768.0);
+/// The window size the screens that reflow (`layout.rs`) are laid out for: they fit any window
+/// from this size up at full scale, and zoom out only below it.
+const REFLOW_REFERENCE: egui::Vec2 = egui::vec2(800.0, 600.0);
 /// The furthest the menus zoom out to fit a small window (a phone on its side).
 const UI_ZOOM_MIN: f32 = 0.3;
 
 /// The interface scale: smaller windows than `UI_REFERENCE` (small laptops, a phone or tablet
 /// in the browser) zoom out to fit it, larger ones keep it; `--ui-zoom f` sets it instead.
 pub(crate) fn apply_ui_zoom(ctx: &egui::Context) {
+    apply_zoom(ctx, UI_REFERENCE);
+}
+
+/// `apply_ui_zoom` for the screens that reflow: only windows smaller than `REFLOW_REFERENCE`
+/// zoom out, the others show the screen at full scale in as many columns as fit.
+pub(crate) fn apply_reflow_zoom(ctx: &egui::Context) {
+    apply_zoom(ctx, REFLOW_REFERENCE);
+}
+
+fn apply_zoom(ctx: &egui::Context, reference: egui::Vec2) {
     let arg = std::env::args()
         .collect::<Vec<_>>()
         .windows(2)
@@ -605,16 +620,16 @@ pub(crate) fn apply_ui_zoom(ctx: &egui::Context) {
         .and_then(|w| w[1].parse::<f32>().ok());
     // The window's own size: the content rectangle is in zoomed points.
     let window = ctx.content_rect().size() * ctx.zoom_factor();
-    let Some(z) = arg.or_else(|| fit_zoom(window)) else { return };
+    let Some(z) = arg.or_else(|| fit_zoom(window, reference)) else { return };
     if (ctx.zoom_factor() - z).abs() > 0.005 {
         ctx.set_zoom_factor(z);
     }
 }
 
-/// The zoom that fits `UI_REFERENCE` into a window this size (None before it has a size).
-fn fit_zoom(window: egui::Vec2) -> Option<f32> {
+/// The zoom that fits `reference` into a window this size (None before it has a size).
+fn fit_zoom(window: egui::Vec2, reference: egui::Vec2) -> Option<f32> {
     (window.min_elem() > 0.0)
-        .then(|| (window.x / UI_REFERENCE.x).min(window.y / UI_REFERENCE.y).clamp(UI_ZOOM_MIN, 1.0))
+        .then(|| (window.x / reference.x).min(window.y / reference.y).clamp(UI_ZOOM_MIN, 1.0))
 }
 
 pub(crate) fn apply_terminal_style(style: &mut egui::Style) {
@@ -1139,7 +1154,7 @@ pub(crate) struct Panel<'a> {
 
 /// Space between a panel's edge and its contents, how far its corners are cut, how far in its
 /// edge is (room for the glow, inside the window).
-const PANEL_MARGIN: f32 = 16.0;
+pub(crate) const PANEL_MARGIN: f32 = 16.0;
 const PANEL_CUT: f32 = 16.0;
 const PANEL_INSET: f32 = 3.0;
 /// The logo's width before the title; how far the title tab reaches past the title and how far
@@ -1614,6 +1629,19 @@ pub(crate) fn menu_window(ctx: &egui::Context, id: &str, width: f32) -> egui::Wi
         .frame(egui::Frame::window(&ctx.global_style()).inner_margin(16.0))
 }
 
+/// The single mission screen's size, frame included: wide and high enough for its three columns
+/// of options beside the summary, smaller where the screen is.
+const MISSION_SIZE: egui::Vec2 = egui::vec2(1432.0, 760.0);
+/// The least width of the summary (it fills the row beside the columns, or has one of its own).
+const SUMMARY_LEAST: f32 = 300.0;
+/// The width of the single mission screen's buttons on the left (BACK to OPTIONS), and the least
+/// for those on the right (FLY IN VR, FLY).
+const MISSION_BUTTONS: f32 = 560.0;
+const FLY_BUTTONS: f32 = 430.0;
+
+/// What the main menu has beside its scrolling buttons: the header, QUIT and the version.
+const MAIN_RESERVED: f32 = 150.0;
+
 /// Width of the menu's wide windows.
 pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
     (ctx.content_rect().width() - 32.0).clamp(600.0, 1400.0)
@@ -1707,96 +1735,101 @@ fn main_screen(
     let panel = Panel::new("STEALTH MISSION 89");
     let window_width = (width + 60.0).max(panel.min_width(ctx));
     panel.window(menu_window(ctx, "Stealth Mission 89", window_width), ctx, |ui| {
+        // The buttons scroll where the screen is lower than they are; QUIT and the version stay.
+        crate::layout::fit_scroll(ui, "main menu", MAIN_RESERVED, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
+                ui.add_space(10.0);
+                if facts(
+                    ui.add(wide("SINGLE MISSION").icon(icon::SINGLE_MISSION)),
+                    &[
+                        "One mission in the theater of your choice",
+                        "Choose the options, plan the route and the loadout",
+                    ],
+                )
+                .clicked()
+                {
+                    // Leaves career mode; the same mission again if the options are the same.
+                    state.career = None;
+                    state.dirty = true;
+                    state.mission_screen = true;
+                }
+                if facts(
+                    ui.add(wide("CAREER").icon(icon::CAREER)),
+                    &[
+                        "Pilot records: rank, decorations, sorties",
+                        "Tour of duty: 12 sorties in one theater",
+                        "What you destroy stays destroyed",
+                    ],
+                )
+                .clicked()
+                {
+                    career.show();
+                }
+                if facts(
+                    ui.add(wide("DYNAMIC CAMPAIGN").icon(icon::CAMPAIGN)),
+                    &[
+                        "Dynamic campaign in real time",
+                        "Take the enemy's cities and airfields",
+                        "Missions from the live situation",
+                    ],
+                )
+                .clicked()
+                {
+                    campaign.show();
+                }
+                // Browsers only join, through the master server's relay (docs/web.md).
+                let how = if cfg!(target_arch = "wasm32") {
+                    "Join a server on the public list"
+                } else {
+                    "Join a server, or host a campaign and fly in it"
+                };
+                if facts(
+                    ui.add(wide("MULTIPLAYER").icon(icon::MULTIPLAYER)),
+                    &["Coop in the dynamic campaign", how],
+                )
+                .clicked()
+                {
+                    multiplayer.show();
+                }
+                if facts(
+                    ui.add(wide("OPTIONS").icon(icon::OPTIONS)),
+                    &[
+                        "Game: cockpit, HUD and avionics style, auto trim",
+                        "Graphics, sound volumes, key and joystick bindings",
+                        "Saved for the next flights",
+                    ],
+                )
+                .clicked()
+                {
+                    options.open = true;
+                }
+                // The browser build: the desktop game is a download (web/download.html).
+                #[cfg(target_arch = "wasm32")]
+                if facts(
+                    ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)),
+                    &[
+                        "The desktop game for Windows, Linux and macOS",
+                        "With VR and multiplayer",
+                        "Steam Deck and Steam Frame: the Linux AppImage",
+                    ],
+                )
+                .clicked()
+                {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
+                }
+                #[cfg(target_arch = "wasm32")]
+                if facts(
+                    ui.add(wide("DISCORD").icon(icon::DISCORD)),
+                    &["Fly together, report bugs and share missions", "Follow development"],
+                )
+                .clicked()
+                {
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
+                }
+            });
+        });
         ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("MISSION PLANNING SYSTEM").color(DIM));
-            ui.add_space(10.0);
-            if facts(
-                ui.add(wide("SINGLE MISSION").icon(icon::SINGLE_MISSION)),
-                &[
-                    "One mission in the theater of your choice",
-                    "Choose the options, plan the route and the loadout",
-                ],
-            )
-            .clicked()
-            {
-                // Leaves career mode; the same mission again if the options are the same.
-                state.career = None;
-                state.dirty = true;
-                state.mission_screen = true;
-            }
-            if facts(
-                ui.add(wide("CAREER").icon(icon::CAREER)),
-                &[
-                    "Pilot records: rank, decorations, sorties",
-                    "Tour of duty: 12 sorties in one theater",
-                    "What you destroy stays destroyed",
-                ],
-            )
-            .clicked()
-            {
-                career.show();
-            }
-            if facts(
-                ui.add(wide("DYNAMIC CAMPAIGN").icon(icon::CAMPAIGN)),
-                &[
-                    "Dynamic campaign in real time",
-                    "Take the enemy's cities and airfields",
-                    "Missions from the live situation",
-                ],
-            )
-            .clicked()
-            {
-                campaign.show();
-            }
-            // Browsers only join, through the master server's relay (docs/web.md).
-            let how = if cfg!(target_arch = "wasm32") {
-                "Join a server on the public list"
-            } else {
-                "Join a server, or host a campaign and fly in it"
-            };
-            if facts(
-                ui.add(wide("MULTIPLAYER").icon(icon::MULTIPLAYER)),
-                &["Coop in the dynamic campaign", how],
-            )
-            .clicked()
-            {
-                multiplayer.show();
-            }
-            if facts(
-                ui.add(wide("OPTIONS").icon(icon::OPTIONS)),
-                &[
-                    "Game: cockpit, HUD and avionics style, auto trim",
-                    "Graphics, sound volumes, key and joystick bindings",
-                    "Saved for the next flights",
-                ],
-            )
-            .clicked()
-            {
-                options.open = true;
-            }
-            // The browser build: the desktop game is a download (web/download.html).
-            #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DOWNLOAD").icon(icon::DOWNLOAD)),
-                &[
-                    "The desktop game for Windows, Linux and macOS",
-                    "With VR and multiplayer",
-                    "Steam Deck and Steam Frame: the Linux AppImage",
-                ],
-            )
-            .clicked()
-            {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
-            }
-            #[cfg(target_arch = "wasm32")]
-            if facts(
-                ui.add(wide("DISCORD").icon(icon::DISCORD)),
-                &["Fly together, report bugs and share missions", "Follow development"],
-            )
-            .clicked()
-            {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(DISCORD_URL));
-            }
             ui.add_space(10.0);
             // In the browser the tab is closed instead.
             if !cfg!(target_arch = "wasm32")
@@ -1922,7 +1955,7 @@ pub(crate) fn menu_ui(
     preview.texture =
         preview.image().map(|image| contexts.add_image(EguiTextureHandle::Strong(image)));
     let ctx = contexts.ctx_mut()?;
-    apply_ui_zoom(ctx);
+    apply_reflow_zoom(ctx);
     add_icon_font(ctx);
     // Both themes, so the system light/dark preference does not matter.
     if ctx.global_style().visuals.window_fill != BG {
@@ -1960,7 +1993,6 @@ pub(crate) fn menu_ui(
         );
     }
     if state.mission_screen && !dialogs && !planner.open && !loadout.open && !saves.open {
-        let width = wide_width(ctx);
         // Career sorties take their options from the career window.
         let career_mode = state.career.is_some();
         let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
@@ -1979,12 +2011,13 @@ pub(crate) fn menu_ui(
                 .color(AMBER),
             );
         }
-        panel.window(menu_window(ctx, "Single mission", width), ctx, |ui| {
-            ui.horizontal_top(|ui| {
+        panel.window(screen_window(ctx, "Single mission", MISSION_SIZE), ctx, |ui| {
+            let split = Split::new(ui, "single mission");
+            split.body(ui, |ui| {
+                let mut flow = Flow::new(ui);
                 if !career_mode {
-                    // Options: three narrow columns.
-                    ui.vertical(|ui| {
-                        ui.set_width(210.0);
+                    // Options: three narrow columns, under each other where the window is narrow.
+                    flow.card(ui, Span::Fixed(210.0), |ui| {
                         group(ui, "Mission", |ui| {
                             theater_options(ui, &mut state.theater);
                             situation_options(ui, &mut state.roe);
@@ -1992,8 +2025,7 @@ pub(crate) fn menu_ui(
                             mission_options(ui, &mut state);
                         });
                     });
-                    ui.vertical(|ui| {
-                        ui.set_width(220.0);
+                    flow.card(ui, Span::Fixed(220.0), |ui| {
                         group(ui, "Conditions", |ui| {
                             let state = &mut *state;
                             weather_options(ui, &mut state.weather, &mut state.cloud_cover);
@@ -2002,8 +2034,7 @@ pub(crate) fn menu_ui(
                         });
                         simulation_options(ui, &mut settings, None);
                     });
-                    ui.vertical(|ui| {
-                        ui.set_width(VEHICLE_WIDTH);
+                    flow.card(ui, Span::Fixed(VEHICLE_WIDTH), |ui| {
                         group(ui, "Vehicle", |ui| {
                             crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
@@ -2018,88 +2049,100 @@ pub(crate) fn menu_ui(
                         });
                     });
                 }
-                // Mission summary in big type, the full briefing below in small type.
-                // What is left beside the option columns, less the frame margins and border.
-                let summary_width = (ui.available_width() - 22.0).max(300.0);
-                egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.set_width(summary_width);
-                        match &state.mission {
-                            Some(Ok(m)) => {
-                                mission_summary(ui, &state, m);
-                                ui.add_space(6.0);
-                                ui.horizontal(|ui| {
-                                    let plan = ui.button(icon_text(ui, icon::PLAN_ROUTE, egui::RichText::new("PLAN ROUTE").size(16.0)));
-                                    if facts(plan, &["The theater map with the enemy radar and SAM coverage", "Add, move and remove navigation points", "Targets and the landing base stay fixed"]).clicked() {
-                                        planner.open = true;
-                                    }
-                                    let arm = ui.button(icon_text(ui, icon::LOADOUT, egui::RichText::new("LOADOUT").size(16.0)));
-                                    if facts(arm, &["Choose the stores on each bay or pylon", "Starts with the briefed weapons"]).clicked() {
-                                        loadout.open = true;
-                                    }
-                                });
+                flow.card(ui, Span::Fill(SUMMARY_LEAST), |ui| {
+                    // Mission summary in big type, the full briefing below in small type.
+                    // What is left beside the option columns, less the frame margins and border.
+                    let summary_width = (ui.available_width() - 22.0).max(300.0);
+                    egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.set_width(summary_width);
+                            match &state.mission {
+                                Some(Ok(m)) => {
+                                    mission_summary(ui, &state, m);
+                                    ui.add_space(6.0);
+                                    ui.horizontal(|ui| {
+                                        let plan = ui.button(icon_text(ui, icon::PLAN_ROUTE, egui::RichText::new("PLAN ROUTE").size(16.0)));
+                                        if facts(plan, &["The theater map with the enemy radar and SAM coverage", "Add, move and remove navigation points", "Targets and the landing base stay fixed"]).clicked() {
+                                            planner.open = true;
+                                        }
+                                        let arm = ui.button(icon_text(ui, icon::LOADOUT, egui::RichText::new("LOADOUT").size(16.0)));
+                                        if facts(arm, &["Choose the stores on each bay or pylon", "Starts with the briefed weapons"]).clicked() {
+                                            loadout.open = true;
+                                        }
+                                    });
+                                }
+                                Some(Err(e)) => {
+                                    ui.colored_label(AMBER, e);
+                                }
+                                None => {
+                                    ui.label("GENERATING...");
+                                }
                             }
-                            Some(Err(e)) => {
-                                ui.colored_label(AMBER, e);
-                            }
-                            None => {
-                                ui.label("GENERATING...");
-                            }
+                        });
+                    });
+                });
+                flow.finish(ui);
+            });
+            split.footer(ui, |ui| {
+                ui.add_space(6.0);
+                footer_rule(ui);
+                ui.add_space(8.0);
+                let mut flow = Flow::new(ui);
+                flow.card(ui, Span::Fixed(MISSION_BUTTONS), |ui| {
+                    ui.horizontal(|ui| {
+                        let to = if career_mode { "Back to the pilot records" } else { "Back to the main menu" };
+                        if facts(ui.add(big_button("BACK").icon(icon::BACK)), &[to]).clicked() {
+                            back = true;
+                        }
+                        let new = if career_mode { "NEW SORTIE" } else { "NEW MISSION" };
+                        if facts(ui.add(big_button(new).icon(icon::NEW_MISSION)), &["Rolls different objectives", "Keeps all the options and the start time"]).clicked() {
+                            state.seed = rand::random();
+                            state.dirty = true;
+                        }
+                        if !career_mode && facts(ui.add(big_button("LOAD").icon(icon::LOAD)), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
+                            saves.show();
+                        }
+                        if facts(ui.add(big_button("OPTIONS").icon(icon::OPTIONS)), &["Game, graphics, sound and controls"]).clicked() {
+                            options.open = true;
                         }
                     });
                 });
-            });
-            ui.add_space(6.0);
-            footer_rule(ui);
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                let to = if career_mode { "Back to the pilot records" } else { "Back to the main menu" };
-                if facts(ui.add(big_button("BACK").icon(icon::BACK)), &[to]).clicked() {
-                    back = true;
-                }
-                let new = if career_mode { "NEW SORTIE" } else { "NEW MISSION" };
-                if facts(ui.add(big_button(new).icon(icon::NEW_MISSION)), &["Rolls different objectives", "Keeps all the options and the start time"]).clicked() {
-                    state.seed = rand::random();
-                    state.dirty = true;
-                }
-                if !career_mode && facts(ui.add(big_button("LOAD").icon(icon::LOAD)), &["Missions saved in flight (menu: SAVE MISSION)", "Fly on from where they were saved"]).clicked() {
-                    saves.show();
-                }
-                if facts(ui.add(big_button("OPTIONS").icon(icon::OPTIONS)), &["Game, graphics, sound and controls"]).clicked() {
-                    options.open = true;
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let can_fly = matches!(state.mission, Some(Ok(_)));
-                    let fly = ui.add_enabled(can_fly, big_button("FLY").icon(icon::FLY).primary());
-                    if facts(fly, &["Take off on the briefed mission"]).clicked()
-                        && let Some(Ok(m)) = &state.mission
-                    {
-                        *setup = crate::mission::setup_from_mission(m, &tables.start_dir);
-                        commands.insert_resource(ActiveMission(m.clone()));
-                        commands.insert_resource(state.route.clone().unwrap_or_else(|| crate::mission::PlannedRoute::of(m)));
-                        commands.insert_resource(state.loadout.clone().unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft)));
-                        match &state.career {
-                            Some(key) => commands.insert_resource(crate::career::CareerFlight(key.clone())),
-                            None => commands.remove_resource::<crate::career::CareerFlight>(),
-                        }
-                        next.set(AppState::Flight);
-                    }
-                    // Already in VR: "Fly" flies in the headset. No VR in the browser.
-                    if !settings.vr && !cfg!(target_arch = "wasm32") {
-                        let vr_button = ui
-                            .add_enabled(can_fly && vr.0, big_button("FLY IN VR").icon(icon::VR))
-                            .on_disabled_hover_text(if vr.0 { "Generate a mission first" } else { "No OpenXR runtime (Monado, WiVRn, SteamVR) is active" });
-                        if facts(vr_button, &["Restarts the game in the VR headset", "Flies this exact mission"]).clicked() {
-                            match relaunch_in_vr(&state, &settings) {
-                                Ok(()) => {
-                                    exit.write(AppExit::Success);
+                flow.card(ui, Span::Fill(FLY_BUTTONS), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let can_fly = matches!(state.mission, Some(Ok(_)));
+                            let fly = ui.add_enabled(can_fly, big_button("FLY").icon(icon::FLY).primary());
+                            if facts(fly, &["Take off on the briefed mission"]).clicked()
+                                && let Some(Ok(m)) = &state.mission
+                            {
+                                *setup = crate::mission::setup_from_mission(m, &tables.start_dir);
+                                commands.insert_resource(ActiveMission(m.clone()));
+                                commands.insert_resource(state.route.clone().unwrap_or_else(|| crate::mission::PlannedRoute::of(m)));
+                                commands.insert_resource(state.loadout.clone().unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft)));
+                                match &state.career {
+                                    Some(key) => commands.insert_resource(crate::career::CareerFlight(key.clone())),
+                                    None => commands.remove_resource::<crate::career::CareerFlight>(),
                                 }
-                                Err(e) => state.mission = Some(Err(format!("could not start in VR: {e}"))),
+                                next.set(AppState::Flight);
                             }
-                        }
-                    }
+                            // Already in VR: "Fly" flies in the headset. No VR in the browser.
+                            if !settings.vr && !cfg!(target_arch = "wasm32") {
+                                let vr_button = ui
+                                    .add_enabled(can_fly && vr.0, big_button("FLY IN VR").icon(icon::VR))
+                                    .on_disabled_hover_text(if vr.0 { "Generate a mission first" } else { "No OpenXR runtime (Monado, WiVRn, SteamVR) is active" });
+                                if facts(vr_button, &["Restarts the game in the VR headset", "Flies this exact mission"]).clicked() {
+                                    match relaunch_in_vr(&state, &settings) {
+                                        Ok(()) => {
+                                            exit.write(AppExit::Success);
+                                        }
+                                        Err(e) => state.mission = Some(Err(format!("could not start in VR: {e}"))),
+                                    }
+                                }
+                            }
+                        });
+                    });
                 });
+                flow.finish(ui);
             });
         });
         if back {
@@ -2241,11 +2284,20 @@ mod tests {
     /// its height, never below the floor.
     #[test]
     fn zoom_fits_the_window() {
-        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0)), Some(1.0));
-        assert_eq!(fit_zoom(UI_REFERENCE), Some(1.0));
-        let phone = fit_zoom(egui::vec2(844.0, 390.0)).unwrap();
+        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0), UI_REFERENCE), Some(1.0));
+        assert_eq!(fit_zoom(UI_REFERENCE, UI_REFERENCE), Some(1.0));
+        let phone = fit_zoom(egui::vec2(844.0, 390.0), UI_REFERENCE).unwrap();
         assert!((phone - 390.0 / 768.0).abs() < 1e-4);
-        assert_eq!(fit_zoom(egui::vec2(300.0, 200.0)), Some(UI_ZOOM_MIN));
-        assert_eq!(fit_zoom(egui::Vec2::ZERO), None);
+        assert_eq!(fit_zoom(egui::vec2(300.0, 200.0), UI_REFERENCE), Some(UI_ZOOM_MIN));
+        assert_eq!(fit_zoom(egui::Vec2::ZERO, UI_REFERENCE), None);
+    }
+
+    /// The screens that reflow keep the full scale down to 800 x 600 and zoom out below it.
+    #[test]
+    fn reflow_zoom_starts_below_the_small_window() {
+        assert_eq!(fit_zoom(egui::vec2(1024.0, 600.0), REFLOW_REFERENCE), Some(1.0));
+        assert_eq!(fit_zoom(REFLOW_REFERENCE, REFLOW_REFERENCE), Some(1.0));
+        let phone = fit_zoom(egui::vec2(844.0, 390.0), REFLOW_REFERENCE).unwrap();
+        assert!((phone - 390.0 / 600.0).abs() < 1e-4);
     }
 }

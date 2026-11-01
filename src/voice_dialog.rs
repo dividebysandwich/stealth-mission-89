@@ -6,15 +6,16 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 
-use crate::menu::{
-    AMBER, BRIGHT, DIM, GREEN, Panel, big_button, facts, icon, icon_text, menu_window, section,
-};
+use crate::layout::{Split, screen_window};
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, Panel, big_button, facts, icon, icon_text, section};
 use crate::settings::{AppState, Settings};
 use crate::tts::download::{Download, State};
 use crate::tts::{ATC_TALKER, PILOT_TALKER, Tts, catalog, voice};
 
 const ATC_SAMPLE: &str = "Viper 1-1, Gutersloh Tower, runway 27, wind calm, cleared for takeoff";
 const PILOT_SAMPLE: &str = "Gutersloh Tower, Viper 1-1, ready for departure, runway 27";
+/// The window's size, frame included; on a smaller screen the lists scroll.
+const SIZE: egui::Vec2 = egui::vec2(760.0, 700.0);
 
 pub struct VoiceDialogPlugin;
 
@@ -89,22 +90,29 @@ fn voice_dialog(
     }
     let running = dialog.download.is_some();
     let mut back = !running && ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    Panel::new("VOICES").window(menu_window(ctx, "Voices", 760.0), ctx, |ui| {
-        ui.add_enabled_ui(!running, |ui| {
-            changed |= choices(ui, s, &mut tts);
-            installed(ui, s, &mut tts, dialog, &mut changed);
-            available(ui, &tts, dialog);
-            if let Some((text, good)) = &dialog.status {
-                ui.add_space(4.0);
-                ui.label(egui::RichText::new(text).color(if *good { GREEN } else { AMBER }));
-            }
-            folder(ui);
+    Panel::new("VOICES").window(screen_window(ctx, "Voices", SIZE), ctx, |ui| {
+        let split = Split::new(ui, "voices");
+        split.body(ui, |ui| {
+            ui.add_enabled_ui(!running, |ui| {
+                changed |= choices(ui, s, &mut tts);
+                installed(ui, s, &mut tts, dialog, &mut changed);
+                available(ui, &tts, dialog);
+                if let Some((text, good)) = &dialog.status {
+                    ui.add_space(4.0);
+                    ui.label(egui::RichText::new(text).color(if *good { GREEN } else { AMBER }));
+                }
+                folder(ui);
+            });
+        });
+        split.footer(ui, |ui| {
             ui.add_space(6.0);
-            if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the options"])
-                .clicked()
-            {
-                back = true;
-            }
+            ui.add_enabled_ui(!running, |ui| {
+                if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the options"])
+                    .clicked()
+                {
+                    back = true;
+                }
+            });
         });
     });
     progress(ctx, dialog);
@@ -310,27 +318,22 @@ fn available(ui: &mut egui::Ui, tts: &Tts, dialog: &mut VoiceDialog) {
         );
         return;
     };
-    egui::ScrollArea::vertical().id_salt("voices_available").max_height(260.0).show(ui, |ui| {
-        for c in missing {
-            let kind = if c.speakers > 1 {
-                format!("{} speakers", c.speakers)
-            } else {
-                c.kind.to_string()
-            };
-            let credit = format!("{}, {}", c.licence, c.credit);
-            row(ui, &format!("{} ({})", c.name, c.accent), &credit, &kind, c.size(), |ui| {
-                if facts(
-                    ui.button(icon_text(ui, icon::DOWNLOAD, "DOWNLOAD")),
-                    &["From huggingface.co/rhasspy/piper-voices", "Checked before it is used"],
-                )
-                .clicked()
-                {
-                    dialog.status = None;
-                    dialog.download = Some(Download::start(c, dir.clone()));
-                }
-            });
-        }
-    });
+    for c in missing {
+        let kind =
+            if c.speakers > 1 { format!("{} speakers", c.speakers) } else { c.kind.to_string() };
+        let credit = format!("{}, {}", c.licence, c.credit);
+        row(ui, &format!("{} ({})", c.name, c.accent), &credit, &kind, c.size(), |ui| {
+            if facts(
+                ui.button(icon_text(ui, icon::DOWNLOAD, "DOWNLOAD")),
+                &["From huggingface.co/rhasspy/piper-voices", "Checked before it is used"],
+            )
+            .clicked()
+            {
+                dialog.status = None;
+                dialog.download = Some(Download::start(c, dir.clone()));
+            }
+        });
+    }
 }
 
 /// One voice in a list: its name, what it is and its size, the buttons at the right; its
