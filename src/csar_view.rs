@@ -1,7 +1,8 @@
 //! Status panel for the downed pilot: the rescue helicopter, the Hinds, flares and time on
 //! the ground (the cockpit displays are gone with the aircraft), with buttons for the signal
 //! flare and time acceleration. A campaign runs in real time: instead of the time buttons the
-//! pilot may skip the extraction (the sortie ends and the rescue goes on the mission board).
+//! pilot may skip the extraction (the sortie ends and the rescue goes on the mission board); in a
+//! single mission (or a career's) the pilot may abort, which counts as captured.
 //!
 //! On the desktop a 2D overlay clicked with the mouse (the keys 1, Shift-Z and Shift-X work as
 //! well); in VR a screen floating at chest height in front of the pilot, pointed at with either
@@ -56,6 +57,7 @@ enum CsarButton {
     Faster,
     Normal,
     Skip,
+    Abort,
 }
 
 /// The panel's buttons, in a campaign or not.
@@ -63,7 +65,7 @@ fn buttons(campaign: bool) -> &'static [CsarButton] {
     if campaign {
         &[CsarButton::Flare, CsarButton::Skip]
     } else {
-        &[CsarButton::Flare, CsarButton::Faster, CsarButton::Normal]
+        &[CsarButton::Flare, CsarButton::Faster, CsarButton::Normal, CsarButton::Abort]
     }
 }
 
@@ -78,6 +80,7 @@ impl CsarButton {
             CsarButton::Faster => "FASTER",
             CsarButton::Normal => "NORMAL TIME",
             CsarButton::Skip => "SKIP EXTRACTION",
+            CsarButton::Abort => "ABORT",
         }
     }
 
@@ -86,7 +89,7 @@ impl CsarButton {
             CsarButton::Flare => "1",
             CsarButton::Faster => "SHIFT-Z",
             CsarButton::Normal => "SHIFT-X",
-            CsarButton::Skip => "ALT-Q",
+            CsarButton::Skip | CsarButton::Abort => "ALT-Q",
         }
     }
 
@@ -97,13 +100,15 @@ impl CsarButton {
             CsarButton::Normal => Action::TimeNormal,
             // A campaign ends the sortie (`campaign.rs`).
             CsarButton::Skip => Action::Quit,
+            // Ends the mission as a capture (`combat.rs`).
+            CsarButton::Abort => Action::Quit,
         }
     }
 
     /// The time button of the current time rate is lit.
     fn lit(self, accel: &TimeAccel) -> bool {
         match self {
-            CsarButton::Flare | CsarButton::Skip => false,
+            CsarButton::Flare | CsarButton::Skip | CsarButton::Abort => false,
             CsarButton::Faster => accel.on(),
             CsarButton::Normal => !accel.on(),
         }

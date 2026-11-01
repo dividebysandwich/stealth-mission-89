@@ -729,7 +729,10 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let mut a = &mut *a;
     let campaign = combat.sim.campaign().is_some();
     if combat.quit && combat.sim.mission_end().is_none() && !campaign {
-        combat.sim.quit();
+        // Down and waiting for the rescue, an abort is a capture.
+        if !combat.sim.surrender() {
+            combat.sim.quit();
+        }
         combat.end = Some(end_info(&combat.sim, None::<MissionEnd>));
     }
     let dt = 1.0 / FS as f32;

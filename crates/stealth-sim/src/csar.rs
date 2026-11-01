@@ -79,6 +79,19 @@ impl Sim {
         self.pl.csar.as_ref()
     }
 
+    /// The downed pilot gives up waiting for the rescue (a single mission's abort): captured.
+    /// False with no rescue under way.
+    pub fn surrender(&mut self) -> bool {
+        let Some(c) = self.pl.csar.as_mut() else { return false };
+        if self.ended.is_some() || matches!(c.state, CsarState::Rescued | CsarState::Captured) {
+            return false;
+        }
+        c.state = CsarState::Captured;
+        self.msg("Captured");
+        self.finalize(8);
+        true
+    }
+
     /// The rescue flight unit `i` belongs to (as the UH-60 or a Hind), any pilot's.
     pub(crate) fn csar_of(&self, i: usize) -> Option<&Csar> {
         let me = self.pl.id as usize;

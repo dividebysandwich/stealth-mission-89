@@ -1011,6 +1011,22 @@ fn csar_hinds_capture_the_pilot() {
     assert_eq!(sim.mission_report().outcome, score::Outcome::Captured);
 }
 
+/// Down over enemy territory, the pilot aborts the mission: captured.
+#[test]
+fn csar_abort_is_a_capture() {
+    let d = data();
+    let m = mission(d, 3, 0x2345, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    disable_airfields(&mut sim, false);
+    let (x, y) = enemy_cell(&m);
+    eject_at(&mut sim, x, y);
+    assert!(sim.csar().is_some(), "rescue started");
+    assert!(sim.surrender());
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(8));
+    assert_eq!(sim.mission_report().outcome, score::Outcome::Captured);
+    assert!(!sim.surrender(), "captured once");
+}
+
 #[test]
 fn space_steps_through_the_weapons_then_the_gun() {
     let d = data();
