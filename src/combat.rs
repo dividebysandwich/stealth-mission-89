@@ -530,7 +530,6 @@ fn collect_commands(
             Action::Resupply => c.resupply = true,
             Action::TimeAccel => accel.level = accel.next_level(),
             Action::TimeNormal => accel.level = 0,
-            Action::TimeStep => accel.level = accel.next_level(),
             Action::Quit => combat.quit = true,
             _ => {}
         }

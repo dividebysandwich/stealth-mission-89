@@ -235,10 +235,6 @@ pub fn action_text(a: Action) -> (String, &'static str) {
             "Each press goes faster: ACCEL, x2, x3, then normal time. Ends when a radar detects the aircraft or a weapon is released",
         ),
         TimeNormal => ("Normal time", ""),
-        TimeStep => (
-            "Time acceleration",
-            "Each click goes faster: ACCEL, x2, x3, then normal time. Ends when a radar detects the aircraft or a weapon is released",
-        ),
         MapZoomIn => ("Map zoom in", ""),
         MapZoomOut => ("Map zoom out", ""),
         MapOrientation => ("Map orientation", "North up / heading up"),
@@ -388,7 +384,7 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
             "Next direction: ahead, right, rear, left".to_string(),
         ),
         Effect::TimeToggle => {
-            let (title, detail) = action_text(Action::TimeStep);
+            let (title, detail) = action_text(Action::TimeAccel);
             (title, detail.to_string())
         }
         Effect::Console(k) => {

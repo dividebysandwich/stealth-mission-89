@@ -75,7 +75,7 @@ impl Effect {
             Effect::HudMode(_) => Action::HudMode,
             Effect::LeftPage(_) => Action::Maps,
             Effect::CamCycle => Action::CamAhead,
-            Effect::TimeToggle => Action::TimeStep,
+            Effect::TimeToggle => Action::TimeAccel,
             Effect::Console(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
                 // The slew buttons have no key action (F8 is the MOV button's).
@@ -298,7 +298,7 @@ impl Fire<'_, '_> {
                 self.actions.write(ActionEvent(next));
             }
             Effect::TimeToggle => {
-                self.actions.write(ActionEvent(Action::TimeStep));
+                self.actions.write(ActionEvent(Action::TimeAccel));
             }
             Effect::Console(key) => {
                 self.console.write(ConsoleButton(key));
