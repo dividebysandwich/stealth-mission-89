@@ -227,6 +227,7 @@ impl Sim {
         if mode == 1 && rng < 0x400 {
             self.pl.threat_count += 1;
             if rng < 0x200
+                && self.pl.eject == 0
                 && self.frame & 3 == 0
                 && self.alarm_timer > self.alarm_recent()
                 && abs16(s16(u.heading - brg)) < 0x400

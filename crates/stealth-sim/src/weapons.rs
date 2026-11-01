@@ -928,6 +928,10 @@ impl Sim {
                 if present.len() > 1 {
                     self.activate(k);
                 }
+                // The rounds fly on past a pilot who ejected.
+                if self.pl.eject != 0 {
+                    continue;
+                }
                 let b = self.bullets[i];
                 let (bx, by) = b.map_xy();
                 let d = (s16(bx - self.pl.p.mx).abs()

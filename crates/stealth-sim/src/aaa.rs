@@ -430,13 +430,15 @@ impl Sim {
     }
 
     /// One frame of the air defences: aiming, firing, the shells and the MANPADS launches.
-    /// Each unit goes for the nearest pilot in the world.
+    /// Each unit goes for the nearest pilot in the world (one who ejected is no target).
     pub(crate) fn update_aaa(&mut self, present: &[usize]) {
         let hills = self.hills();
         let Some(mut rng) = self.aaa_rng else { return };
         let fs = self.fs.max(1);
         let dt = 1.0 / fs as f64;
-        let tracks: Vec<Track> = present
+        let aloft: Vec<usize> =
+            present.iter().copied().filter(|&k| self.pilot_ref(k).eject == 0).collect();
+        let tracks: Vec<Track> = aloft
             .iter()
             .map(|&k| {
                 self.activate(k);

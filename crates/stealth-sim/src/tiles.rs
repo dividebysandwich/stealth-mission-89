@@ -314,9 +314,9 @@ impl Sim {
         }
     }
 
-    /// The player is hit (`missile`: by a missile's warhead).
+    /// The player is hit (`missile`: by a missile's warhead); not once the pilot has ejected.
     pub(crate) fn player_hit(&mut self, missile: bool) {
-        if self.training() {
+        if self.training() || self.pl.eject != 0 {
             return;
         }
         if missile && self.opts.realistic_damage {
