@@ -207,6 +207,7 @@ impl Page {
                 Volume(Vol::Rwr),
                 Volume(Vol::Radio),
                 Volume(Vol::Atc),
+                Volume(Vol::Music),
                 RwrTones,
                 LowPass,
                 Back,
@@ -252,6 +253,7 @@ enum Vol {
     /// The coop radio's voices (and the spoken ATC), the spoken ATC's own.
     Radio,
     Atc,
+    Music,
 }
 
 impl Vol {
@@ -264,6 +266,7 @@ impl Vol {
             Vol::Rwr => s.rwr_volume,
             Vol::Radio => s.voice_volume,
             Vol::Atc => s.atc_volume,
+            Vol::Music => s.music_volume,
         }
     }
 
@@ -276,6 +279,7 @@ impl Vol {
             Vol::Rwr => &mut s.rwr_volume,
             Vol::Radio => &mut s.voice_volume,
             Vol::Atc => &mut s.atc_volume,
+            Vol::Music => &mut s.music_volume,
         }
     }
 }
@@ -354,6 +358,7 @@ impl Item {
             Item::Volume(Vol::Rwr) => "RWR VOLUME",
             Item::Volume(Vol::Radio) => "RADIO",
             Item::Volume(Vol::Atc) => "ATC VOICE",
+            Item::Volume(Vol::Music) => "MUSIC",
             Item::RwrTones => "RWR TONES",
             Item::LowPass => "ENGINE LOW-PASS",
             Item::HeadTracking => "HEAD TRACKING",

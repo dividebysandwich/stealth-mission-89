@@ -460,6 +460,7 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
             "ATC voice",
             &["The spoken ATC calls, as a part of the radio's volume"][..],
         ),
+        (&mut s.music_volume, "Music", &["The main menu's music"][..]),
     ] {
         let mut percent = (*v * 100.0).round();
         ui.horizontal(|ui| {

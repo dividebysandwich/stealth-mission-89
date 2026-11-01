@@ -102,6 +102,7 @@ pub struct Prefs {
     pub engine_volume: f32,
     pub effects_volume: f32,
     pub warning_volume: f32,
+    pub music_volume: f32,
     pub rwr_volume: f32,
     pub rwr_tones: crate::sound::RwrTones,
     pub engine_low_pass: bool,
@@ -183,6 +184,7 @@ impl Default for Prefs {
             engine_volume: 1.0,
             effects_volume: 1.0,
             warning_volume: 1.0,
+            music_volume: 1.0,
             rwr_volume: 1.0,
             rwr_tones: Default::default(),
             engine_low_pass: true,
@@ -282,6 +284,7 @@ impl Prefs {
             engine_volume: s.engine_volume,
             effects_volume: s.effects_volume,
             warning_volume: s.warning_volume,
+            music_volume: s.music_volume,
             rwr_volume: s.rwr_volume,
             rwr_tones: s.rwr_tones,
             engine_low_pass: s.engine_low_pass,
@@ -359,6 +362,7 @@ impl Prefs {
         s.engine_volume = volume(self.engine_volume);
         s.effects_volume = volume(self.effects_volume);
         s.warning_volume = volume(self.warning_volume);
+        s.music_volume = volume(self.music_volume);
         s.rwr_volume = volume(self.rwr_volume);
         s.rwr_tones = self.rwr_tones;
         s.engine_low_pass = self.engine_low_pass;
@@ -417,6 +421,7 @@ impl Prefs {
         self.engine_volume = s.engine_volume;
         self.effects_volume = s.effects_volume;
         self.warning_volume = s.warning_volume;
+        self.music_volume = s.music_volume;
         self.rwr_volume = s.rwr_volume;
         self.rwr_tones = s.rwr_tones;
         self.engine_low_pass = s.engine_low_pass;

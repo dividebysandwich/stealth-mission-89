@@ -20,7 +20,7 @@
 //!   chirps every 3 s at half volume) until the rescue ends.
 //! - Volumes (the OPTIONS menus): a master volume times the channel's, engine (the flown
 //!   aircraft's and the others'), warnings (alarms, the fire siren, the Sidewinder tones) or
-//!   effects (everything else) (`Channel`).
+//!   effects (everything else) (`Channel`); the main menu's music under its own (`music`).
 //! - Inside the aircraft (the cockpit views) the engine sounds (the jet's engine and wind, the
 //!   helicopter's rotor and turbines), the other aircraft, SAM launches, vehicles' guns
 //!   (`tank_gun`, `autocannon` and their `_far` variants), explosions, thunder
@@ -74,6 +74,7 @@ use crate::world::{FloatingOrigin, WorldPos, wu_to_bevy};
 
 mod ambient;
 pub(crate) mod muffle;
+mod music;
 
 use muffle::{Muffler, Pitch};
 
@@ -90,7 +91,9 @@ impl Plugin for SoundPlugin {
             .init_resource::<ambient::Ambience>()
             .add_audio_source::<muffle::Muffled>()
             .add_systems(Startup, (load_bank, ambient::load))
-            .add_systems(Update, muffle::preload)
+            .add_systems(Update, (muffle::preload, music::follow))
+            .add_systems(OnEnter(AppState::Menu), music::start)
+            .add_systems(OnExit(AppState::Menu), music::leave)
             .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset))
             .add_systems(
                 Update,
