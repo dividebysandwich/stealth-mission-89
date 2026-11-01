@@ -489,7 +489,17 @@ fn waypoint_bearing(pos: &WorldPos, wp: Waypoint) -> u16 {
     to_bam((dx as f32).atan2(dy_north as f32)) as i32 as u16
 }
 
-/// A waypoint is reached within 0x200 map units. The autopilot then steers to the next one.
+/// Map units within which a waypoint is reached: 0x200, but at most half the leg into it (from
+/// the route's previous point, the last one for the first) and at least 0x40, so a short route,
+/// such as a logistics sortie's around its base, is not passed all at once.
+fn reach_radius(wps: &Waypoints, i: usize) -> f64 {
+    let n = wps.points.len();
+    let (a, b) = (wps.points[(i + n - 1) % n], wps.points[i]);
+    ((b.east - a.east).hypot(b.north - a.north) / 32.0 / 2.0).clamp(64.0, 512.0)
+}
+
+/// A waypoint is reached within its `reach_radius`. The autopilot then steers to the next one;
+/// a passed waypoint selected again stays selected.
 fn advance_waypoints(
     mut q: Query<(&WorldPos, &mut Aircraft), With<Player>>,
     mut wps: ResMut<Waypoints>,
@@ -500,8 +510,9 @@ fn advance_waypoints(
     let (x, y) = map_units(pos);
     let (dx, dy) =
         ((wp.east / 32.0) as i64 - x as i64, (0x8000 - (wp.north / 32.0) as i32 - y) as i64);
-    if dx * dx + dy * dy < 512 * 512 {
-        let reached = wps.current;
+    let reached = wps.current;
+    let r = reach_radius(&wps, reached);
+    if ((dx * dx + dy * dy) as f64) < r * r {
         let point_count = wps.points.len();
         if wps.passed.len() < point_count {
             wps.passed.resize(point_count, false);
@@ -509,10 +520,10 @@ fn advance_waypoints(
         if !wps.passed[reached] {
             wps.passed[reached] = true;
             msg.show(format!("Waypoint {} reached", reached + 1));
-        }
-        if reached + 1 < point_count {
-            wps.current = reached + 1;
-            wps.mission_current = wps.current;
+            if reached + 1 < point_count {
+                wps.current = reached + 1;
+                wps.mission_current = wps.current;
+            }
         }
     }
     if let Some(wp) = wps.target() {
@@ -785,6 +796,44 @@ mod route_tests {
         assert_eq!(w.initial.len(), 4);
         assert!(!w.editing);
         assert_eq!((w.current, w.mission_current), (0, 0));
+    }
+
+    #[test]
+    fn a_short_route_is_not_passed_all_at_once() {
+        // A logistics sortie: midpoint, the site twice and the base, all within a few km.
+        let km = 1000.0 / crate::world::WU;
+        let p = |e: f64, n: f64| Waypoint { east: e * km, north: n * km };
+        let mut app = App::new();
+        app.insert_resource(Waypoints::planned(
+            vec![p(2.0, 2.0), p(5.0, 1.0), p(5.0, 1.0), p(0.0, 0.0)],
+            vec![],
+        ));
+        app.init_resource::<HudMessages>();
+        app.add_systems(Update, advance_waypoints);
+        let at = |e: f64, n: f64| WorldPos(crate::world::wu_to_bevy(e * km, n * km, 0.0));
+        let player =
+            app.world_mut().spawn((Player, at(0.0, 0.0), Aircraft::new_on_runway(10000.0))).id();
+        let state = |app: &App| {
+            let w = app.world().resource::<Waypoints>();
+            (w.current, w.passed.iter().filter(|&&p| p).count())
+        };
+        // On the runway at the base: nothing is reached yet.
+        for _ in 0..5 {
+            app.update();
+        }
+        assert_eq!(state(&app), (0, 0));
+        // Over the midpoint: on to the site, and no further.
+        *app.world_mut().get_mut::<WorldPos>(player).unwrap() = at(2.0, 2.0);
+        for _ in 0..5 {
+            app.update();
+        }
+        assert_eq!(state(&app), (1, 1));
+        // Selecting the passed midpoint again keeps it selected.
+        app.world_mut().resource_mut::<Waypoints>().current = 0;
+        for _ in 0..5 {
+            app.update();
+        }
+        assert_eq!(state(&app), (0, 1));
     }
 }
 
