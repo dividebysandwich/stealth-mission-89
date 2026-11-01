@@ -36,6 +36,7 @@ impl CampaignState {
             progress.insertion = Some(id);
             ev = e;
         }
+        let (flight, position) = self.callsign_numbers(offer);
         let sortie = Sortie {
             id: self.id(),
             offer: o.clone(),
@@ -43,6 +44,8 @@ impl CampaignState {
             aircraft,
             started: self.clock,
             progress,
+            flight,
+            position,
         };
         let from = self.site(base).map(|s| s.name.clone()).unwrap_or_default();
         self.note(format!("{} from {from}", o.title));
@@ -60,6 +63,23 @@ impl CampaignState {
         }
         ev.extend([CampaignEvent::SortieStarted { player, sortie }, self.plans_changed()]);
         Ok(ev)
+    }
+
+    /// The callsign numbers of a sortie starting on `offer`: the flight of the others flying
+    /// it, else the lowest one no sortie in the air has; the lowest position free in it.
+    fn callsign_numbers(&self, offer: u32) -> (u8, u8) {
+        let flying: Vec<&Sortie> = self.players.iter().filter_map(|p| p.sortie.as_ref()).collect();
+        let flight = flying
+            .iter()
+            .find(|s| s.offer.id == offer && s.flight > 0)
+            .map(|s| s.flight)
+            .unwrap_or_else(|| {
+                (1..=u8::MAX).find(|&f| flying.iter().all(|s| s.flight != f)).unwrap_or(1)
+            });
+        let position = (1..=u8::MAX)
+            .find(|&n| flying.iter().all(|s| s.flight != flight || s.position != n))
+            .unwrap_or(1);
+        (flight, position)
     }
 
     pub(crate) fn end_sortie(&mut self, player: PlayerId, end: SortieEnd) -> Vec<CampaignEvent> {

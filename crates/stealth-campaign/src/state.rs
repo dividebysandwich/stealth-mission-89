@@ -525,6 +525,12 @@ pub struct Sortie {
     pub aircraft: Aircraft,
     pub started: f64,
     pub progress: Progress,
+    /// The radio callsign's numbers (flight-position, "1-2"): the players flying the same
+    /// mission share a flight. 0 before they were given (an older save).
+    #[serde(default)]
+    pub flight: u8,
+    #[serde(default)]
+    pub position: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -236,6 +236,8 @@ pub struct ActiveCampaign {
     pub actions: Vec<Action>,
     /// A returning client's sortie goes on (from the server's welcome).
     pub resume: Option<stealth_net::protocol::Resume>,
+    /// The sortie's callsign numbers (flight, position) from the host; None before one.
+    pub callsign: Option<(u8, u8)>,
     started: bool,
     save_timer: f32,
     /// Seconds since the sortie ended (the debrief comes up after `END_SECONDS`).
@@ -316,6 +318,7 @@ impl ActiveCampaign {
             roster: Vec::new(),
             actions: Vec::new(),
             resume: None,
+            callsign: None,
             started: false,
             save_timer: 0.0,
             end_timer: None,
@@ -967,7 +970,16 @@ pub fn briefed_loadout(
 
 /// A sortie not taken yet (for its briefing).
 pub fn preview(o: &stealth_campaign::MissionOffer, base: u16, aircraft: Airframe) -> Sortie {
-    Sortie { id: 0, offer: o.clone(), base, aircraft, started: 0.0, progress: default() }
+    Sortie {
+        id: 0,
+        offer: o.clone(),
+        base,
+        aircraft,
+        started: 0.0,
+        progress: default(),
+        flight: 0,
+        position: 0,
+    }
 }
 
 /// The campaign is run here: the Ops screen's actions, the players' commands (listen
@@ -1199,6 +1211,7 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
     let m = sortie_mission(&c.mission, c.state(), sortie);
     let aircraft = kind_of(sortie.aircraft);
     c.aircraft = sortie.aircraft;
+    c.callsign = (sortie.flight > 0).then_some((sortie.flight, sortie.position.max(1)));
     // Another aircraft than the last sortie's: its cockpit, model and flight model.
     if s.settings.aircraft != aircraft {
         s.settings.aircraft = aircraft;

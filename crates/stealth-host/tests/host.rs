@@ -214,6 +214,8 @@ fn a_sortie_briefs_its_own_target() {
             aircraft: Default::default(),
             started: 0.0,
             progress: Progress::default(),
+            flight: 0,
+            position: 0,
         }
     };
     let cap =
@@ -446,6 +448,8 @@ fn a_sortie_briefs_its_own_base_and_fuel() {
                     aircraft: Default::default(),
                     started: 0.0,
                     progress: Progress::default(),
+                    flight: 0,
+                    position: 0,
                 };
                 let m = stealth_host::glue::sortie_mission(generated, &host.state, &s);
                 let b = &m.briefing;

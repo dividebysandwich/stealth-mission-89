@@ -869,8 +869,10 @@ fn compass(v: DVec2) -> &'static str {
     POINTS[((heading_of(v) + 22.5) / 45.0) as usize % 8]
 }
 
-/// The flown aircraft's callsign: its type's, and the pilot's number in coop.
-fn callsign(kind: crate::aircraft::AircraftKind, pilot: Option<u8>) -> String {
+/// The flown aircraft's callsign: its type's, then the flight and the position in it ("1-2").
+/// In a campaign the host numbers the sorties: players flying the same mission share a
+/// flight, each a position of his own.
+fn callsign(kind: crate::aircraft::AircraftKind, (flight, position): (u8, u8)) -> String {
     use crate::aircraft::AircraftKind as K;
     let name = match kind {
         K::F117 => "Nighthawk",
@@ -884,7 +886,7 @@ fn callsign(kind: crate::aircraft::AircraftKind, pilot: Option<u8>) -> String {
         K::OH58 => "Kiowa",
         K::CH47 => "Chinook",
     };
-    format!("{name} 1-{}", pilot.map_or(1, |p| p as u32 + 1))
+    format!("{name} {flight}-{position}")
 }
 
 /// The controller of this flight (None until the aircraft is there).
@@ -934,7 +936,12 @@ fn control(
     }
     let me = sim.active_pilot();
     let atc = state.atc.get_or_insert_with(|| {
-        Atc::new(callsign(settings.aircraft, campaign.is_some().then_some(me)))
+        // Numbered by the pilot slot without the host's numbers (an older save).
+        let numbers = match &campaign {
+            Some(c) => c.callsign.unwrap_or((1, me + 1)),
+            None => (1, 1),
+        };
+        Atc::new(callsign(settings.aircraft, numbers))
     });
     let ground = DVec2::new(pos.0.x, -pos.0.z);
     let traffic = traffic(sim, me, ground);

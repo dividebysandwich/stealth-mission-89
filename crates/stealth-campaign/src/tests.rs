@@ -2392,3 +2392,34 @@ fn the_board_offers_cas_for_the_columns() {
     assert_eq!(aaa, vec![2], "the garrison's tank");
     assert!(armour.unwrap().kind == MissionKind::Cas && support.unwrap().kind == MissionKind::Cas);
 }
+
+#[test]
+fn sorties_get_unique_callsigns_by_mission() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (b, d, e) = (PlayerId(1), PlayerId(2), PlayerId(3));
+    for name in ["Bravo", "Delta", "Echo"] {
+        c.join(name, 4, |_| false);
+    }
+    let offers: Vec<u32> = c
+        .board
+        .iter()
+        .filter(|o| !o.kind.ai_flown() && o.kind.flyable_by(Aircraft::F16))
+        .map(|o| o.id)
+        .collect();
+    assert!(offers.len() >= 2, "two missions");
+    let fly = |c: &mut CampaignState, p: PlayerId, offer: u32| {
+        let cmd = Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 };
+        c.apply(p, cmd).unwrap();
+        let s = c.sortie(p).unwrap();
+        (s.flight, s.position)
+    };
+    assert_eq!(fly(&mut c, P0, offers[0]), (1, 1));
+    // The same mission: the same flight, the next position.
+    assert_eq!(fly(&mut c, b, offers[0]), (1, 2));
+    // Another mission: a flight of its own.
+    assert_eq!(fly(&mut c, d, offers[1]), (2, 1));
+    // The first one home, his position is free again; flight 1 stays with the mission.
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
+    assert_eq!(fly(&mut c, e, offers[0]), (1, 1));
+}
