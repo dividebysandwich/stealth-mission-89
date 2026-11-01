@@ -690,9 +690,13 @@ fn set_projection(
 /// Strongest mouse wheel magnification in the cockpit.
 const MAX_MAGNIFY: f32 = 6.0;
 
+/// Wheel notches a second the view zoom keys turn while held.
+pub(crate) const ZOOM_KEY_NOTCHES: f32 = 4.0;
+
 /// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
-/// camera around the aircraft (reset when an external view is selected).
+/// camera around the aircraft (reset when an external view is selected). The wheel with the
+/// button held zooms, as the view zoom keys do.
 #[allow(clippy::too_many_arguments)]
 fn mouse_look(
     settings: Res<Settings>,
@@ -704,6 +708,8 @@ fn mouse_look(
     mut state: ResMut<ViewState>,
     mut cursor: Query<&mut CursorOptions>,
     scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
+    controls: Res<crate::input::FlightControls>,
+    time: Res<Time<Real>>,
 ) {
     for ActionEvent(a) in actions.read() {
         if matches!(
@@ -745,15 +751,13 @@ fn mouse_look(
         }
     }
     // The free view turns and zooms itself (`camera::place_free_camera`).
-    if !held || state.view == View::Free {
+    if state.view == View::Free {
         return;
     }
-    // The wheel zooms while the button is held: in the cockpit (and under the parachute) it
-    // narrows the view, outside it moves the camera in and out.
-    let notches = match scroll.unit {
-        bevy::input::mouse::MouseScrollUnit::Line => scroll.delta.y,
-        bevy::input::mouse::MouseScrollUnit::Pixel => scroll.delta.y / 50.0,
-    };
+    // The wheel zooms while the button is held, and the view zoom keys: in the cockpit (and
+    // under the parachute) it narrows the view, outside it moves the camera in and out.
+    let wheel = if held { crate::key_guide::wheel_notches(&scroll) } else { 0.0 };
+    let notches = wheel + controls.view_zoom * ZOOM_KEY_NOTCHES * time.delta_secs();
     if notches != 0.0 {
         if state.first_person() {
             state.magnify = (state.magnify * 1.2f32.powf(notches)).clamp(1.0, MAX_MAGNIFY);
@@ -761,6 +765,9 @@ fn mouse_look(
             state.wheel_zoom = (state.wheel_zoom + notches * 0.25)
                 .clamp(-(crate::camera::MAX_UNZOOM + state.zoom) as f32, 4.0 - state.zoom as f32);
         }
+    }
+    if !held {
+        return;
     }
     if cockpit {
         // Slower when zoomed in, so the view moves as far on the screen per mouse move.

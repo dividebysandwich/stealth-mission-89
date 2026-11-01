@@ -307,8 +307,9 @@ pub struct InputConfig {
 /// (Alt + arrows, Alt + Home). 7: the master caution key (Alt + C). 8: the free view key
 /// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
 /// recording key (F12). 11: the radio's push-to-talk key (CapsLock). 12: the right VR stick
-/// click talks on the radio instead of moving the bay doors.
-const VERSION: u32 = 12;
+/// click talks on the radio instead of moving the bay doors. 13: the view zoom keys (Numpad *
+/// and /).
+const VERSION: u32 = 13;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -907,6 +908,11 @@ pub fn read_hotas(
                 }
                 controls.fire |= now && a == Action::FireWeapon;
                 controls.talk |= now && a == Action::Ptt;
+                if now && a == Action::ViewZoomIn {
+                    controls.view_zoom = 1.0;
+                } else if now && a == Action::ViewZoomOut {
+                    controls.view_zoom = -1.0;
+                }
                 if console {
                     continue;
                 }

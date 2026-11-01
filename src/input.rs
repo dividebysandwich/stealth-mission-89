@@ -115,6 +115,10 @@ pub enum Action {
     ViewFree,
     Zoom,
     Unzoom,
+    /// The main view's zoom (held, not a discrete action), as the mouse wheel with the right
+    /// button held: narrows the cockpit view, moves an external view's camera in and out.
+    ViewZoomIn,
+    ViewZoomOut,
     /// Map display only (bezel buttons; Z/X also zoom the external views).
     MapZoomIn,
     MapZoomOut,
@@ -306,6 +310,8 @@ pub struct FlightControls {
     pub mark: bool,
     /// The radio's push-to-talk held (coop, `voice`).
     pub talk: bool,
+    /// The view zoom keys held, -1 (out) .. 1 (in).
+    pub view_zoom: f32,
 }
 
 /// Modifier held with a key (Alt wins over Shift).
@@ -403,6 +409,8 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Shift, K::F7, ViewFree),
         (None, K::KeyZ, Zoom),
         (None, K::KeyX, Unzoom),
+        (None, K::NumpadMultiply, ViewZoomIn),
+        (None, K::NumpadDivide, ViewZoomOut),
         (Alt, K::KeyZ, MapZoomIn),
         (Alt, K::KeyX, MapZoomOut),
         (Alt, K::F3, MapOrientation),
@@ -570,6 +578,8 @@ fn read_keyboard(
     controls.mark = held(Action::LockCursor);
     // Talking works over the Ops screen too (a text field being typed in takes the keys).
     controls.talk = held(Action::Ptt);
+    controls.view_zoom =
+        held(Action::ViewZoomIn) as i8 as f32 - held(Action::ViewZoomOut) as i8 as f32;
     controls.yaw = yaw.clamp(-1.0, 1.0) * scale;
     controls.throttle = None;
     controls.collective_rate =

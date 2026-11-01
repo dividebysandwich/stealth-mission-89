@@ -245,6 +245,8 @@ pub fn action_text(a: Action) -> (String, &'static str) {
         Ptt => ("Radio", "Hold to talk to the other players"),
         CameraZoomIn => ("Camera zoom in", ""),
         CameraZoomOut => ("Camera zoom out", ""),
+        ViewZoomIn => ("View zoom in", "Hold: narrows the cockpit view, closes in outside"),
+        ViewZoomOut => ("View zoom out", "Hold: widens the cockpit view again, backs off outside"),
         _ => return (crate::hotas::action_name(a), ""),
     };
     (title.to_string(), detail)

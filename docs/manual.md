@@ -1020,7 +1020,7 @@ chapter 3 tells what each of the others adds.
 ![Modern cockpit](images/cockpit.png)
 
 The view shows the head-up display (HUD) at the top and the instrument panel below it. Hold the
-**right mouse button** to look around; turn the **mouse wheel** while holding it to zoom in. **Click** a button on the panel to press it. Every button
+**right mouse button** to look around; turn the **mouse wheel** while holding it (or hold Numpad `*` / `/`) to zoom in. **Click** a button on the panel to press it. Every button
 has a keyboard equivalent (Appendix A). Rest the mouse on a button, display, instrument or warning
 light and a **tooltip** names it, says what it does and shows its keys; parts hidden behind the
 stick, the throttle or the glare shield can't be pointed at.
@@ -3119,7 +3119,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Free camera (W A S D, Q / E, Shift faster, Ctrl slower) | Shift F7 |
 | | Zoom / unzoom / wide angle | Z / X / C |
 | | Look around (cockpit) / orbit (external views) | Right mouse button |
-| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held |
+| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*) |
 | | Recentre head tracking (chapter 1.4) | Home |
 | **Time** | Time acceleration / normal | Shift Z / Shift X |
 | **Game** | Settings menu (pauses) / detail / sound level | Esc, Pause, Alt P, gamepad Start / Alt D / Alt V |

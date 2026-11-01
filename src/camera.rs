@@ -608,7 +608,8 @@ fn place_weapon_camera(
 }
 
 /// The free view's camera: moved by the keys, turned by the mouse with the right button held,
-/// zoomed by the wheel; placed relative to the aircraft (the rig's parent) like the weapon view.
+/// zoomed by the wheel and the view zoom keys; placed relative to the aircraft (the rig's
+/// parent) like the weapon view.
 #[allow(clippy::too_many_arguments)]
 fn place_free_camera(
     mut state: ResMut<ViewState>,
@@ -617,6 +618,7 @@ fn place_free_camera(
     buttons: Res<ButtonInput<MouseButton>>,
     motion: Res<bevy::input::mouse::AccumulatedMouseMotion>,
     scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
+    controls: Res<crate::input::FlightControls>,
     time: Res<Time<Real>>,
     block: Res<crate::input::InputBlock>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
@@ -647,7 +649,8 @@ fn place_free_camera(
             free.yaw -= motion.delta.x * k;
             free.pitch = (free.pitch - motion.delta.y * k).clamp(-1.55, 1.55);
         }
-        let notches = crate::key_guide::wheel_notches(&scroll);
+        let notches = crate::key_guide::wheel_notches(&scroll)
+            + controls.view_zoom * crate::cockpit3d::ZOOM_KEY_NOTCHES * time.delta_secs();
         if notches != 0.0 {
             state.magnify = (state.magnify * 1.2f32.powf(notches))
                 .clamp(*FREE_MAGNIFY.start(), *FREE_MAGNIFY.end());
