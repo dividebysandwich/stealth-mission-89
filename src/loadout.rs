@@ -1140,7 +1140,12 @@ pub fn editor(
                         stock,
                         egui::RadioButton::new(
                             pick == Some(wpn),
-                            format!("{}x {name}", hp.rounds(wpn)),
+                            if stock {
+                                format!("{}x {name}", hp.rounds(wpn))
+                            } else {
+                                // Said in the name too: VR has no hover text.
+                                format!("{}x {name} (none in stock)", hp.rounds(wpn))
+                            },
                         ),
                     );
                     let r = r.on_disabled_hover_text("None in stock for this mission");
