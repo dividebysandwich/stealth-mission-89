@@ -76,17 +76,11 @@ impl Split {
 
     /// `body` for contents that fill the room: `add` is given the body's height, and the width
     /// is the `ui`'s.
-    pub(crate) fn body_sized(
-        &self,
-        ui: &mut egui::Ui,
-        add: impl FnOnce(&mut egui::Ui, f32),
-    ) {
+    pub(crate) fn body_sized(&self, ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui, f32)) {
         let height =
             (ui.available_height() - self.footer - ui.spacing().item_spacing.y).max(BODY_LEAST);
-        let rect = egui::Rect::from_min_size(
-            ui.cursor().min,
-            egui::vec2(ui.available_width(), height),
-        );
+        let rect =
+            egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), height));
         let mut body = ui.new_child(egui::UiBuilder::new().max_rect(rect));
         body.set_clip_rect(rect.intersect(ui.clip_rect()));
         egui::ScrollArea::vertical()

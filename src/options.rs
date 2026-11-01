@@ -16,10 +16,10 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
     AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, section, slide_switch,
 };
-use crate::layout::{Flow, Span, Split, screen_window};
 use crate::settings::{MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
 
 #[derive(Resource, Default)]
