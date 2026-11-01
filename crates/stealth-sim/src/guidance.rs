@@ -207,9 +207,10 @@ pub(crate) struct Target {
 }
 
 impl Projectile {
-    /// The motor is burning, trailing smoke (always under classic guidance).
+    /// The motor is burning, trailing smoke (always under classic guidance once it has dropped
+    /// clear).
     pub fn motor_visible(&self) -> bool {
-        self.flight.is_none_or(|f| f.smoke > 0)
+        self.drop == 0 && self.flight.is_none_or(|f| f.smoke > 0)
     }
 }
 
@@ -383,6 +384,8 @@ pub(crate) fn start_flight(pm: &mut Projectile, pos: V3, vel: V3, fs: i32) {
         seen: false,
         lost: false,
         stalled: false,
+        sink: 0,
+        lit: 0,
     });
     pm.ttl = MAX_SECS * fs;
     pm.roll = 0;
@@ -418,7 +421,25 @@ pub(crate) fn flight_step(
     let fine = ROUND_FINE as f64;
     let mut p = [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine];
     let mut v = [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine];
+    if m.drop > 0 {
+        // Dropping clear of the aircraft: unpowered and unsteered, it sinks away below its
+        // launch path until its motor lights and it flies on parallel to that (the burn and
+        // the smoke count from then; its seeker looks already).
+        let sink = f.sink as f64 / fine + GRAVITY * dt;
+        p = add(p, mul(v, dt));
+        p[2] -= sink * dt;
+        f.sink = (sink * fine).round() as i32;
+        pm.drop = m.drop - 1;
+        f.t += 1;
+        if pm.drop == 0 {
+            f.sink = 0;
+            f.lit = f.t;
+        }
+        return store_flight(pm, f, p, v, false, ground);
+    }
     let t = f.t as f64 / fs;
+    // Since the motor lit.
+    let burnt = (f.t - f.lit) as f64 / fs;
     let speed = len(v);
     let vh = if speed > 1.0 { mul(v, 1.0 / speed) } else { direction(m.heading, m.pitch) };
     let sigma = density(p[2]);
@@ -482,7 +503,7 @@ pub(crate) fn flight_step(
     // level and climbing; diving it pushes on as in level flight and gravity speeds it up.
     let induced = INDUCED * len(a_lat);
     let drag = prof.drag * DRAG * sigma * speed * speed + induced;
-    let thrust = if t < prof.burn {
+    let thrust = if burnt < prof.burn {
         let most = vmax / prof.boost + prof.drag * DRAG * sigma * vmax * vmax + GRAVITY;
         let hold = prof.drag * DRAG * sigma * speed.min(vmax).powi(2) + induced;
         ((vmax - speed).max(0.0) / 0.5 + hold + GRAVITY * vh[2].max(0.0)).clamp(0.0, most)
@@ -506,9 +527,22 @@ pub(crate) fn flight_step(
         len(add(a, mul(d, k))) < radius
     });
 
-    // Back into the record.
+    f.stalled |= burnt > prof.burn && len(v) < prof.stall;
+    store_flight(pm, f, p, v, fused, ground)
+}
+
+/// The realistic flight `f` of `pm` now at `p` with velocity `v` (wu, wu/s) back into the
+/// record, and how its frame ended.
+fn store_flight(
+    pm: &mut Projectile,
+    mut f: MissileFlight,
+    p: V3,
+    v: V3,
+    fused: bool,
+    ground: f64,
+) -> Step {
+    let fine = ROUND_FINE as f64;
     let speed = len(v);
-    f.stalled |= t > prof.burn && speed < prof.stall;
     let q = |a: f64| (a * fine).round() as i32;
     f.x = q(p[0]);
     f.y = q(p[1]);

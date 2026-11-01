@@ -155,6 +155,16 @@ pub struct Projectile {
     /// An air-to-air missile fired at another pilot: his id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_pilot: Option<u8>,
+    /// The player's station it left from (drawn leaving its pylon or bay).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub station: Option<u8>,
+    /// Frames it still drops clear of the aircraft before its motor lights.
+    #[serde(default, skip_serializing_if = "no_drop")]
+    pub drop: u8,
+}
+
+fn no_drop(d: &u8) -> bool {
+    *d == 0
 }
 
 impl Projectile {
@@ -201,6 +211,16 @@ pub struct MissileFlight {
     /// Burnt out and too slow to fly: it falls, unguided, to the ground.
     #[serde(default)]
     pub stalled: bool,
+    /// Speed (fine units/s) it sinks below its launch path at while it drops clear, and the
+    /// frame (of `t`) its motor lit after dropping clear.
+    #[serde(default, skip_serializing_if = "no_sink")]
+    pub sink: i32,
+    #[serde(default, skip_serializing_if = "no_sink")]
+    pub lit: i32,
+}
+
+fn no_sink(s: &i32) -> bool {
+    *s == 0
 }
 
 /// A falling bomb's position (fine units, [`ROUND_FINE`] per world unit: x east, y south like

@@ -4,6 +4,9 @@ use crate::types::*;
 use crate::weather::optical_seeker;
 use crate::{ENEMY_SLOTS, Sim};
 
+/// Speed (viewZ units/s) a classic missile sinks at while it drops clear.
+const CLASSIC_DROP_SPEED: i32 = 20;
+
 impl Sim {
     /// Seeker acquisition of a target at (tx, ty, talt) for class `cls`. Sets `acq_aim` always and `acq_range` on
     /// success. Optical seekers also need a line of sight through the clouds (`talt` viewZ).
@@ -318,7 +321,11 @@ impl Sim {
                     }
                 }
             }
-            if !guided && self.proj[s].speed < (mt.max_speed as i32) >> 6 && self.frame & 1 != 0 {
+            if !guided
+                && self.proj[s].drop == 0
+                && self.proj[s].speed < (mt.max_speed as i32) >> 6
+                && self.frame & 1 != 0
+            {
                 self.proj[s].speed += 1;
                 aim = self.proj[s].heading;
             }
@@ -446,7 +453,12 @@ impl Sim {
             fused
         } else {
             let mut m = self.proj[s];
-            let fused = self.classic_step(&mut m, s < 8, locked, aim, best, alt0);
+            let fused = if m.drop > 0 {
+                self.classic_drop(&mut m);
+                false
+            } else {
+                self.classic_step(&mut m, s < 8, locked, aim, best, alt0)
+            };
             self.proj[s] = m;
             // Terrain contact: the flat world and the rolling hills, objects are not tested.
             if m.alt < self.hill_alt(m.x, m.y) {
@@ -526,6 +538,14 @@ impl Sim {
                 self.msg(format!("{text} hit by {}", mt.name));
             }
         }
+    }
+
+    /// A frame of classic missile `m` dropping clear of the aircraft: on unpowered and
+    /// unsteered, sinking, until its motor lights.
+    pub(crate) fn classic_drop(&self, m: &mut Projectile) {
+        self.classic_step(m, false, false, 0, 0, 0);
+        m.alt -= (CLASSIC_DROP_SPEED / self.fs).max(1);
+        m.drop -= 1;
     }
 
     /// One frame of the classic flight of missile `m` (an enemy missile when `enemy`): turns

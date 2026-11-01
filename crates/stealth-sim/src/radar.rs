@@ -434,6 +434,8 @@ impl Sim {
             fall: None,
             flight: None,
             target_pilot: None,
+            station: None,
+            drop: 0,
         };
         if self.guided(spec) {
             let tgt = self.player_target().p;
@@ -558,6 +560,8 @@ impl Sim {
             fall: None,
             flight: None,
             target_pilot: None,
+            station: None,
+            drop: 0,
         };
         if self.guided(u.missile) {
             let pos = [u.wx as f64, u.wy as f64, (u.alt - 25) as f64];

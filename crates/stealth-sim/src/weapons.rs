@@ -6,6 +6,13 @@ use crate::{PlayerView, Sim, ballistics};
 const NEAREST_WAIT: u8 = 8;
 /// Seconds the RAH-66's doors stay open after the last launch they opened for.
 const BAY_AUTO_CLOSE: i32 = 4;
+/// Seconds a missile dropped off its pylon falls clear before its motor lights (the Maverick,
+/// the Harpoon, the Penguin; the others light theirs on the rail), and one ejected from the
+/// F-117A's bays (all of them, lest they fly through the fuselage).
+const DROP_SECS: f64 = 0.5;
+const BAY_DROP_SECS: f64 = 0.6;
+/// Speed (wu/s) the bay's ejectors push a store down at.
+const EJECT_SPEED: f64 = 10.0;
 
 impl Sim {
     /// Key handling for this frame's commands.
@@ -503,13 +510,7 @@ impl Sim {
         if count <= 0 {
             return;
         }
-        // From the station with the most left (pairs of pylons release in turn).
-        let mut bay = self.pl.cur_bay;
-        for (i, b) in self.pl.bays.iter().enumerate() {
-            if b.0 == w && b.1 > self.pl.bays[bay].1 {
-                bay = i;
-            }
-        }
+        let bay = self.firing_station(w);
         let wt = self.weapon_types[(w.max(0) as usize).min(self.weapon_types.len() - 1)].clone();
         let spec = wt.spec as i32;
         if spec == 0 || spec == -1 {
@@ -552,6 +553,8 @@ impl Sim {
         let Some(slot) = (8..12).rev().find(|&i| self.proj[i].ttl == 0) else { return };
         let mt = self.missile(spec).clone();
         let mut pr = self.launch_projectile(w, spec);
+        let point = self.station_point(bay);
+        self.drop_clear(&mut pr, bay);
         if spec == 27 {
             self.pl.maverick_view = true;
         }
@@ -595,7 +598,7 @@ impl Sim {
                 self.pl.p.velocity,
                 self.pl.p.climb,
             );
-            let fall = BombFall {
+            let mut fall = BombFall {
                 x: self.pl.p.wx * ROUND_FINE,
                 y: (0x100000 - self.pl.p.wy) * ROUND_FINE,
                 alt: ((self.pl.p.alt as f64 - ballistics::RELEASE_DROP) * f) as i32,
@@ -603,6 +606,11 @@ impl Sim {
                 vy: (v[1] * f).round() as i32,
                 vz: (v[2] * f).round() as i32,
             };
+            if let Some(p) = point {
+                fall.x = (p[0] * f).round() as i32;
+                fall.y = (p[1] * f).round() as i32;
+                fall.alt = (p[2] * f).round() as i32;
+            }
             pr.fall = Some(fall);
             // Falls for as long as it takes (from high up, retarded bombs take minutes).
             pr.ttl = 0x7FFF;
@@ -618,9 +626,11 @@ impl Sim {
             if mt.class == 7 && lock >= 0 && (lock as usize) < self.flights.len() {
                 self.proj[slot].target = lock;
             }
-            let (pos, vel) = self.launch_motion();
+            let (pos, vel) = self.store_motion(bay);
             self.start_flight(slot, pos, vel);
-            let m = self.proj[slot];
+            let mut m = self.proj[slot];
+            self.eject(&mut m);
+            self.proj[slot] = m;
             let tgt = match m.target_pilot {
                 Some(k) => Some(self.pilot_target(k)),
                 None => {
@@ -666,11 +676,70 @@ impl Sim {
             fall: None,
             flight: None,
             target_pilot: None,
+            station: None,
+            drop: 0,
         };
         if matches!(spec, 28 | 29 | 30 | 38) {
             pr.speed >>= 1;
         }
         pr
+    }
+
+    /// The station store `w` leaves from next: the one with the most left (pairs of pylons
+    /// release in turn).
+    pub(crate) fn firing_station(&self, w: i32) -> usize {
+        let mut bay = self.pl.cur_bay;
+        for (i, b) in self.pl.bays.iter().enumerate() {
+            if b.0 == w && b.1 > self.pl.bays.get(bay).map_or(-1, |c| c.1) {
+                bay = i;
+            }
+        }
+        bay
+    }
+
+    /// The aircraft keeps its stores in internal bays (the F-117A): they all drop clear.
+    fn internal_bays(&self) -> bool {
+        !self.pl.external_stores && !self.pl.helicopter
+    }
+
+    /// Missile `pr` leaving station `bay`: dropped clear first off a pylon (the Maverick, the
+    /// Harpoon, the Penguin) or out of the bays (all of them), its motor lighting after.
+    pub(crate) fn drop_clear(&self, pr: &mut Projectile, bay: usize) {
+        pr.station = Some(bay as u8);
+        let drop = if self.internal_bays() {
+            BAY_DROP_SECS
+        } else if matches!(pr.weapon, 3..=5) {
+            DROP_SECS
+        } else {
+            0.0
+        };
+        if trails_smoke(pr.spec) {
+            pr.drop = (drop * self.fs as f64).round() as u8;
+        }
+    }
+
+    /// [`Sim::launch_motion`] of a missile off station `bay`: from where it hangs.
+    pub(crate) fn store_motion(&self, bay: usize) -> ([f64; 3], [f64; 3]) {
+        let (mut pos, vel) = self.launch_motion();
+        if let Some(p) = self.station_point(bay) {
+            pos = p;
+        }
+        (pos, vel)
+    }
+
+    /// Missile `pm` under realistic guidance dropping clear: pushed down by the bay's ejectors.
+    pub(crate) fn eject(&self, pm: &mut Projectile) {
+        if let Some(f) = pm.flight.as_mut().filter(|_| pm.drop > 0 && self.internal_bays()) {
+            f.sink = (EJECT_SPEED * ROUND_FINE as f64).round() as i32;
+        }
+    }
+
+    /// Where station `bay`'s stores hang now (wu: east, south, true altitude), if known.
+    fn station_point(&self, bay: usize) -> Option<[f64; 3]> {
+        let o = self.pl.hardpoints.get(bay)?.map(|m| m as f64 / WU_METRES);
+        let p = &self.pl.p;
+        let d = body_to_world(p.heading, p.pitch, p.roll, o);
+        Some([p.wx as f64 + d[0], (0x100000 - p.wy) as f64 + d[1], p.alt as f64 + d[2]])
     }
 
     /// Where a missile under realistic guidance starts (wu: east, south, true altitude) and its
@@ -989,4 +1058,24 @@ impl Sim {
             }
         }
     }
+}
+
+/// Missiles light a motor (bombs, pods and tanks only fall).
+fn trails_smoke(spec: i32) -> bool {
+    !matches!(spec, 28 | 29 | 30 | 38)
+}
+
+/// Offset `o` (right, forward, up) of an aircraft at `heading`, `pitch`, `roll` (BAM; roll
+/// right wing down) in the world (east, south, up).
+pub(crate) fn body_to_world(heading: i32, pitch: i32, roll: i32, o: [f64; 3]) -> [f64; 3] {
+    let bam = 65536.0 / std::f64::consts::TAU;
+    let (h, p, r) =
+        ((heading as u16) as f64 / bam, s16(pitch) as f64 / bam, s16(roll) as f64 / bam);
+    let fwd = crate::guidance::direction(heading, pitch);
+    let right0 = [h.cos(), h.sin(), 0.0];
+    let up0 = [-p.sin() * h.sin(), p.sin() * h.cos(), p.cos()];
+    let (c, sn) = (r.cos(), r.sin());
+    let right: [f64; 3] = std::array::from_fn(|i| c * right0[i] - sn * up0[i]);
+    let up: [f64; 3] = std::array::from_fn(|i| c * up0[i] + sn * right0[i]);
+    std::array::from_fn(|i| right[i] * o[0] + fwd[i] * o[1] + up[i] * o[2])
 }

@@ -573,7 +573,9 @@ fn shot_at_pilot(ff: bool, guided: bool, gun: bool, client: bool, ahead: i32) ->
     sim.set_pilot_loadout(1, &[(0, 4), (-1, 0), (-1, 0), (-1, 0)], 0);
     sim.set_client_rounds(1, client);
     let mut inputs =
-        vec![(0, flying(mx, my - ahead, 5000, 0, 200)), (1, flying(mx, my, 5000, 0, 300))];
+        // Pilot 0 a map unit east: classic guidance does not steer for a bearing of exactly
+        // north, and the F-117A's missiles drop clear of the bay below the line to him.
+        vec![(0, flying(mx + 1, my - ahead, 5000, 0, 200)), (1, flying(mx, my, 5000, 0, 300))];
     inputs[1].1.cmd.toggle_bay = !gun;
     inputs[1].1.cmd.lock_pilot = Some(0);
     sim.step_pilots(&inputs, 15);

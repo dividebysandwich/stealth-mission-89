@@ -408,6 +408,7 @@ impl Sim {
                 door_anim: 0,
                 bay_req: false,
                 bay_pending: false,
+                hardpoints: Vec::new(),
                 bay_close: 0,
                 bays,
                 cur_bay: 0,
@@ -1204,6 +1205,12 @@ impl Sim {
         let first = self.pl.bays.iter().position(|b| b.0 >= 0 && !self.gun_pod(b.0));
         self.pl.cur_bay = first.unwrap_or(0);
         self.pl.gun_selected = self.has_gun() && first.is_none();
+    }
+
+    /// Where the stations of [`Self::set_loadout`] hang (m: right, forward, up of the aircraft's
+    /// origin), so stores leave from there.
+    pub fn set_hardpoints(&mut self, points: &[[f32; 3]]) {
+        self.pl.hardpoints = points.to_vec();
     }
 
     pub fn weapon_types(&self) -> &[WeaponType] {

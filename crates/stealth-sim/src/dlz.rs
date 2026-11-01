@@ -210,7 +210,9 @@ impl Sim {
         let fs = self.fs;
         let guided = self.guided(spec);
         let hellfire = spec == HELLFIRE_SPEC;
-        let (pos, vel) = self.launch_motion();
+        let bay = self.firing_station(w);
+        self.drop_clear(&mut m, bay);
+        let (pos, vel) = self.store_motion(bay);
         if hellfire && !guided {
             // It pitches onto the spot as it leaves the rail (`fire_missile`).
             (m.heading, m.pitch) = guidance::heading_pitch([
@@ -221,6 +223,7 @@ impl Sim {
         }
         if guided {
             guidance::start_flight(&mut m, pos, vel, fs);
+            self.eject(&mut m);
             if air {
                 self.loft_launch(&mut m, track.p);
             }
@@ -238,7 +241,7 @@ impl Sim {
         let burn = guidance::profile(spec).map_or(0.0, |p| p.burn);
         while m.ttl > 0 {
             frame += 1;
-            if !guided && m.speed < top && frame & 1 != 0 {
+            if !guided && m.drop == 0 && m.speed < top && frame & 1 != 0 {
                 m.speed += 1;
             }
             let p: [f64; 3] = std::array::from_fn(|k| track.p[k] + track.v[k] * t);
@@ -256,10 +259,11 @@ impl Sim {
             let dist = (s16(tx - m.x) as f64).hypot(s16(ty - m.y) as f64) as i32;
             let away = dist > closest.saturating_add(DRAWING_AWAY);
             let spent = match m.flight {
-                Some(f) => f.t as f64 * dt > burn,
+                Some(f) => (f.t - f.lit) as f64 * dt > burn,
                 None => m.speed >= top,
             };
-            if !seen && (!air || away) || (air && away && spent) {
+            // Dropping clear, it does not look yet.
+            if m.drop == 0 && (!seen && (!air || away) || (air && away && spent)) {
                 return false;
             }
             closest = closest.min(dist);
@@ -271,6 +275,8 @@ impl Sim {
                     Step::Flying => {}
                     Step::Ground => return false,
                 }
+            } else if m.drop > 0 {
+                self.classic_drop(&mut m);
             } else {
                 if self.classic_step(&mut m, false, seen, aim, r, talt) {
                     return true;

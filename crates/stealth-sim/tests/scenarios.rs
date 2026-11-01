@@ -697,24 +697,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xf0e217c5d1f2c8ae,
-        0xa827b31b6b3bb704,
-        0x7ea2c85a3cc8fcf0,
-        0x5915650a9ec33e5d,
-        0x6bcaa8d83fb91ba8,
-        0xf11d7d32df5c38d0,
-        0x8e16ebbdf0eb102b,
-        0x601fe6e3cfaa87f4,
-        0x47faa7880ff7533a,
-        0x2c5724a235001c71,
-        0xd22e696abee7a5a8,
-        0x334c285c89790154,
-        0xfd1a936a853a75a8,
-        0x971670abe4161724,
-        0x36fad94c2a3e8e29,
-        0x22a9cdb2a0a66274,
-        0x84479fc3ac982093,
-        0xc49932e1d622e6f6,
+        0xb3218a32e8f33ec8,
+        0x5ed75bbdeb9418da,
+        0x0f99b6cae3640855,
+        0xc13d946de3940a1d,
+        0xf79f7f7b696cb500,
+        0x4010c3c7ab0fe6de,
+        0x1225c450bc8ff318,
+        0x31725d685bb5bd1e,
+        0x0a059153d8000a84,
+        0xfbc9515e8aeb2e56,
+        0x452c9a533fd36a46,
+        0x3b91c76cce457ab3,
+        0xd1fc0637071dea13,
+        0x7f9f2123157a748f,
+        0x78fd64a6e5947711,
+        0x7761b1fd3ede6f8c,
+        0x5d7de4aa2349491e,
+        0xde8e817e6b7036ce,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -1871,14 +1871,19 @@ fn launch_zone_predicts_anti_ship_hits() {
                 assert!(z.at_lock && z.zone.is_some(), "guided {guided} w {w}: {z:?}");
                 assert!((z.range - range).abs() <= range / 10 + 2, "{z:?}");
                 // Classic missiles fired from close in may dive into the water by the ship and
-                // hit it with the blast, which the zone does not count on.
+                // hit it with the blast, which the zone does not count on; at the far edge
+                // (the zone takes the ship as standing still) they may dive in short of it.
+                let far_edge = z.zone.is_some_and(|(_, hi)| (hi - range).abs() < 40);
                 assert!(
-                    z.in_zone() == hit || (!guided && hit && z.too_close()),
+                    z.in_zone() == hit || (!guided && (hit && z.too_close() || far_edge)),
                     "guided {guided} w {w} range {range}: {z:?} hit {hit}"
                 );
                 hits += hit as i32;
             }
-            assert!(hits > 3, "guided {guided} w {w}: {hits} hits");
+            // Classic missiles dropped clear of the F-117A's bays hit less often by luck from
+            // close in.
+            let least = if guided { 4 } else { 2 };
+            assert!(hits >= least, "guided {guided} w {w}: {hits} hits");
         }
     }
 }
@@ -2751,4 +2756,76 @@ fn kiowa_gun_pods_are_its_gun() {
         sim.step(&p, 15);
     }
     assert!(sim.gun_ammo() < 2 * GUN_POD_ROUNDS);
+}
+
+/// Store `w` fired level from 5000 ft heading northeast (`external`: off a pylon, else out of
+/// the F-117A's bays; from station 0 of `hardpoints`): the frames until its motor lit, how far
+/// (wu) it sank below the launch altitude by then, and where it started (wu: east, south, up).
+fn motor_lights(
+    guided: bool,
+    external: bool,
+    w: i32,
+    hardpoints: &[[f32; 3]],
+) -> (u32, f64, [f64; 3]) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts =
+        SimOptions { realistic_guidance: guided, external_stores: external, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 2)]);
+    sim.set_hardpoints(hardpoints);
+    let mut p = player_at(mx, my, 5000, 0x2000, 450);
+    p.hud_mode = if w <= 1 { HudMode::Air } else { HudMode::Gnd };
+    p.cmd.toggle_bay = !external;
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    sim.step(&p, 15);
+    let start = sim.active_projectiles().into_iter().find(|m| m.0 >= 8).expect("fired").1;
+    let fine = stealth_sim::ROUND_FINE as f64;
+    let at = |m: &Projectile| match m.flight {
+        Some(f) => [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine],
+        None => [m.x as f64 * 32.0, m.y as f64 * 32.0, m.alt as f64],
+    };
+    let launch = at(&start);
+    let mut frames = 0;
+    p.cmd = Commands::default();
+    loop {
+        let m = sim.active_projectiles().into_iter().find(|m| m.0 >= 8).expect("flying").1;
+        if m.motor_visible() {
+            let a = at(&m);
+            return (frames, launch[2] - a[2], launch);
+        }
+        assert!(frames < 60, "no motor");
+        sim.step(&p, 15);
+        frames += 1;
+    }
+}
+
+#[test]
+fn dropped_missiles_light_their_motors_clear() {
+    for guided in [false, true] {
+        // The Maverick drops off its pylon for half a second (8 frames, the first the one it
+        // was fired in); the AMRAAM and the Sidewinder light theirs on the rail.
+        assert_eq!(motor_lights(guided, true, 5, &[]).0, 7, "guided {guided}");
+        assert_eq!(motor_lights(guided, true, 1, &[]).0, 0, "guided {guided}");
+        assert_eq!(motor_lights(guided, true, 0, &[]).0, 0, "guided {guided}");
+        // Everything drops out of the F-117A's bays first, sinking well clear.
+        let (frames, sank, _) = motor_lights(guided, false, 1, &[]);
+        assert_eq!(frames, 8, "guided {guided}");
+        assert!(sank >= 8.0, "guided {guided}: {sank}");
+    }
+    // Off a station 2 m right of the origin and 1 m under it, not 20 wu under the middle.
+    let wu = stealth_sim::WU_METRES;
+    let (_, _, a) = motor_lights(true, true, 1, &[]);
+    let (_, _, b) = motor_lights(true, true, 1, &[[2.0, 0.0, -1.0]]);
+    let side = 2.0 / wu * std::f64::consts::FRAC_1_SQRT_2;
+    let want = [side, side, 20.0 - 1.0 / wu];
+    for k in 0..3 {
+        assert!((b[k] - a[k] - want[k]).abs() < 0.6, "{a:?} -> {b:?}, want {want:?}");
+    }
 }

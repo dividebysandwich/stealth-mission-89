@@ -93,6 +93,10 @@ pub struct Pilot {
     /// The RAH-66's doors: a missile fired with them shut waits for them to open.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) bay_pending: bool,
+    /// Where each station's stores hang (m: right, forward, up of the aircraft's origin); empty:
+    /// they leave from under its middle.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) hardpoints: Vec<[f32; 3]>,
     /// The RAH-66's doors opened by a launch: frames until they shut again (0: they stay as
     /// the pilot set them).
     #[serde(default, skip_serializing_if = "is_zero")]
