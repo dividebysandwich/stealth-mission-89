@@ -609,3 +609,23 @@ fn strike_odds() {
     }
     eprintln!("{hits}/{n} got through");
 }
+
+/// A center on rolling hills launches its drones off the rail on the hill (not inside it), and
+/// with high ground ahead of the rail lifts them clear of it: they climb out, never through the
+/// ground.
+#[test]
+fn a_center_in_the_hills_launches_its_drones_clear_of_the_ground() {
+    let (mut sim, k, _, _) = center();
+    let hills = hills::Hills::from_bytes(vec![255; hills::DIM * hills::DIM]).unwrap();
+    sim.set_hills(hills.clone());
+    let at = off(&sim, k, 2500.0, 0.0);
+    launch(&mut sim, UavKind::Stork, vec![wp(at, 600.0, WpKind::Loiter)]).unwrap();
+    let ground = |u: &stealth_sim::uav::Uav| hills.height_m(u.pos[0], u.pos[1]) as f64;
+    let u = &sim.uavs()[0];
+    assert!(u.pos[2] > ground(u), "launched at {} m, ground {} m", u.pos[2], ground(u));
+    for _ in 0..30 * 15 {
+        sim.step(&idle(), 15);
+        let Some(u) = sim.uavs().first() else { panic!("the drone crashed") };
+        assert!(u.pos[2] > ground(u), "at {} m over ground at {} m", u.pos[2], ground(u));
+    }
+}

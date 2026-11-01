@@ -56,6 +56,11 @@ pub const RAMP_RISE: f64 = 0.21;
 pub const LAUNCH_INTERVAL: i32 = 15;
 /// Seconds a drone climbs straight out after the rail.
 const CLIMB_OUT: f32 = 4.0;
+/// The ground ahead of the rail is looked at every `LAUNCH_STEP` (m) as far as the climb out
+/// goes and `LAUNCH_LOOK` (m) on; the climb out clears it by `LAUNCH_CLEAR` (m).
+const LAUNCH_STEP: f64 = 20.0;
+const LAUNCH_LOOK: f64 = 300.0;
+const LAUNCH_CLEAR: f64 = 3.0;
 /// A nav point is passed this close (m).
 const WP_REACHED: f64 = 150.0;
 /// Metres over the mountains on the way.
@@ -559,7 +564,33 @@ impl Sim {
         let u = self.units[center];
         let h = crate::aaa::unit_heading(center) as f64;
         let p = u.metres_on(&hills);
-        ([p[0] + h.sin() * RAMP_FORWARD, p[1] + h.cos() * RAMP_FORWARD, RAMP_UP], h)
+        let ground = p[2] - u.metres()[2];
+        ([p[0] + h.sin() * RAMP_FORWARD, p[1] + h.cos() * RAMP_FORWARD, ground + RAMP_UP], h)
+    }
+
+    /// Where a `kind` drone leaves center `k`'s rail: off the rail if its climb out clears the
+    /// ground ahead, else (a center boxed in by the hills) launched as high as it must be to.
+    fn uav_launch_point(&self, k: usize, kind: UavKind) -> ([f64; 3], f64) {
+        let (pos, heading) = self.uav_ramp(k);
+        let Some(t) = self.tiles.as_ref() else { return (pos, heading) };
+        let p = kind.perf();
+        let slope = p.climb.min(p.cruise * RAMP_RISE.sin()) / p.cruise.max(1.0);
+        let reach = CLIMB_OUT as f64 * p.cruise + LAUNCH_LOOK;
+        let steps = (reach / LAUNCH_STEP).ceil() as i32;
+        let lift = (1..=steps)
+            .map(|s| {
+                let d = s as f64 * LAUNCH_STEP;
+                let (e, n) = (pos[0] + heading.sin() * d, pos[1] + heading.cos() * d);
+                let relief =
+                    t.relief.height((e / M_PER_MAP) as i32, 0x8000 - (n / M_PER_MAP) as i32) as f64
+                        * M_PER_WU;
+                // The hills are the ground there, the relief the highest in its cell (a drone
+                // 50 m under it is in the ground: see `fly_uav`).
+                let need = (t.hills.height_m(e, n) as f64 + LAUNCH_CLEAR).max(relief - 40.0);
+                need - (pos[2] + d * slope)
+            })
+            .fold(0.0, f64::max);
+        ([pos[0], pos[1], pos[2] + lift], heading)
     }
 
     /// Seconds until a center's rail is ready again.
@@ -680,7 +711,7 @@ impl Sim {
     }
 
     fn launch_uav(&mut self, k: usize, kind: UavKind, route: Vec<UavWp>) {
-        let (pos, heading) = self.uav_ramp(k);
+        let (pos, heading) = self.uav_launch_point(k, kind);
         let i = self.campaign_slot();
         self.flights[i] = FlightUnit { spec: kind.spec(), ..Default::default() };
         let fs = self.fs.max(1);
