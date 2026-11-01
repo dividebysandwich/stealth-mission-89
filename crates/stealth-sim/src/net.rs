@@ -58,6 +58,9 @@ pub struct RemotePilot {
     /// them (`Sim::pylon_looks`).
     pub kiowa: bool,
     pub pylons: [u8; 2],
+    /// A jet's stores (with `external_stores`, not a helicopter): per station the weapon type
+    /// (255 none) and the rounds left on it, as its model hangs them.
+    pub stores: Vec<(u8, u8)>,
     /// The CH-47 (with `helicopter`).
     pub chinook: bool,
     pub gun_firing: bool,
@@ -79,7 +82,7 @@ pub struct RemotePilot {
 /// was, external stores, gun firing, burning, damage smoke in two bits, helicopter, gunship, Tornado,
 /// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
-/// the nozzle angle, the OH-58D's pylons (left in the low four bits).
+/// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores.
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -93,6 +96,7 @@ struct RemoteWire(
     #[serde(default)] Option<(i32, i32)>,
     #[serde(default)] u8,
     #[serde(default)] u8,
+    #[serde(default)] Vec<(u8, u8)>,
 );
 
 impl From<RemotePilot> for RemoteWire {
@@ -129,13 +133,26 @@ impl From<RemotePilot> for RemoteWire {
             p.gun_aim.filter(|_| p.gun_firing),
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
+            p.stores,
         )
     }
 }
 
 impl From<RemoteWire> for RemotePilot {
     fn from(w: RemoteWire) -> Self {
-        let RemoteWire(id, v, flags, door_anim, chute, missiles, live, gun_aim, nozzle, pylons) = w;
+        let RemoteWire(
+            id,
+            v,
+            flags,
+            door_anim,
+            chute,
+            missiles,
+            live,
+            gun_aim,
+            nozzle,
+            pylons,
+            stores,
+        ) = w;
         let [wx, wy, mx, my, alt, view_z, heading, pitch, roll, velocity, knots, climb] = v;
         let bit = |k: u8| flags & (1 << k) != 0;
         let mut cms = [Countermeasure::default(); 4];
@@ -179,6 +196,7 @@ impl From<RemoteWire> for RemotePilot {
             nozzle,
             kiowa: bit(14),
             pylons: [pylons & 15, pylons >> 4],
+            stores,
             chinook: bit(15),
             gun_aim,
             chute,
@@ -360,6 +378,14 @@ impl Sim {
                     nozzle: if p.harrier { p.last_input.nozzle } else { 0 },
                     kiowa: p.kiowa,
                     pylons: if p.kiowa { self.pylon_looks(&p.bays) } else { [0; 2] },
+                    stores: if p.external_stores && !p.helicopter {
+                        p.bays
+                            .iter()
+                            .map(|&(w, n)| (u8::try_from(w).unwrap_or(255), n.clamp(0, 255) as u8))
+                            .collect()
+                    } else {
+                        Vec::new()
+                    },
                     chinook: p.chinook,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,

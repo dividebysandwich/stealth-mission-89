@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn other_pilots_keep_their_missile_slots_smoke_and_turret() {
+    fn other_pilots_keep_their_missile_slots_smoke_turret_and_stores() {
         use stealth_sim::Projectile;
         use stealth_sim::net::RemotePilot;
         let p = RemotePilot {
@@ -352,6 +352,7 @@ mod tests {
             nozzle: 0,
             kiowa: false,
             pylons: [0; 2],
+            stores: Vec::new(),
             chinook: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
@@ -368,12 +369,20 @@ mod tests {
         let t = RemotePilot { helicopter: false, gunship: false, tornado: true, ..p };
         let w = WorldFast { pilots: vec![t.clone()], ..Default::default() };
         assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![t.clone()]);
-        // The A-10's.
-        let a = RemotePilot { tornado: false, a10: true, ..t };
+        // The A-10's, with its stores: two Mavericks left of three, a bomb rack, an empty station.
+        let a =
+            RemotePilot { tornado: false, a10: true, stores: vec![(5, 2), (9, 3), (255, 0)], ..t };
         let w = WorldFast { pilots: vec![a.clone()], ..Default::default() };
         assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![a.clone()]);
         // The RAH-66's.
-        let c = RemotePilot { a10: false, helicopter: true, gunship: true, comanche: true, ..a };
+        let c = RemotePilot {
+            a10: false,
+            helicopter: true,
+            gunship: true,
+            comanche: true,
+            stores: Vec::new(),
+            ..a
+        };
         let w = WorldFast { pilots: vec![c.clone()], ..Default::default() };
         assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![c.clone()]);
         // The AV-8B's, with its nozzles down.

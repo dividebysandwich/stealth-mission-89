@@ -91,7 +91,12 @@ impl Plugin for StoresPlugin {
                 aim_hardpoints
                     .before(crate::combat::CombatSystems)
                     .run_if(resource_exists::<Combat>),
-                (hang_stores, release_stores.after(crate::sim_render::sync_objects))
+                (
+                    (own_loads, hang_stores.after(crate::sim_render::sync_remote_pilots)).chain(),
+                    release_stores
+                        .after(crate::sim_render::sync_objects)
+                        .after(crate::sim_render::sync_remote_pilots),
+                )
                     .in_set(crate::sim_render::SimRenderSystems)
                     .after(crate::combat::CombatSystems)
                     .run_if(resource_exists::<Combat>),
@@ -101,8 +106,29 @@ impl Plugin for StoresPlugin {
     }
 }
 
-/// What a model of the own aircraft (outside or seen from the cockpit) has hung: per station,
-/// the weapon type, its rounds' and its rack's entities.
+/// The stores a jet's model hangs (the own aircraft's, outside and seen from the cockpit, and
+/// the other pilots'): its model, and per station the weapon type (-1 none) and the rounds
+/// left on it.
+#[derive(Component, Clone, Debug, PartialEq)]
+pub struct StoreLoads {
+    pub model: &'static str,
+    pub loads: Vec<(i32, i32)>,
+}
+
+impl StoreLoads {
+    /// Another pilot's, as sent (`RemotePilot::stores`); None if his model hangs none or none
+    /// were sent (an older game's).
+    pub fn remote(model: &'static str, stores: &[(u8, u8)]) -> Option<Self> {
+        if stores.is_empty() {
+            return None;
+        }
+        stations(model)?;
+        let loads = stores.iter().map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
+        Some(Self { model, loads: loads.collect() })
+    }
+}
+
+/// What a model has hung: per station, the weapon type, its rounds' and its rack's entities.
 #[derive(Component, Default)]
 pub struct Hung {
     stations: Vec<Option<(i32, Vec<Entity>, Option<Entity>)>>,
@@ -113,36 +139,58 @@ pub struct Hung {
 /// Frames to wait for a model's nodes before giving up on the stations hung from them.
 const NODE_WAIT: u32 = 600;
 
-/// The stores hung on the own aircraft's models as the simulation has them loaded, each round
-/// shown while it is still on its station.
+/// The own aircraft's models hang what the simulation has loaded.
 #[allow(clippy::type_complexity)]
-fn hang_stores(
+fn own_loads(
     mut commands: Commands,
     combat: Res<Combat>,
     settings: Res<crate::settings::Settings>,
+    mut holders: Query<
+        (Entity, Option<&mut StoreLoads>),
+        Or<(With<OwnModel>, With<OwnModelInterior>)>,
+    >,
+) {
+    let model = settings.aircraft.spec().model;
+    if stations(model).is_none() {
+        return;
+    }
+    let loads = combat.sim.bays().0.to_vec();
+    for (e, has) in &mut holders {
+        match has {
+            Some(mut l) => {
+                if l.model != model || l.loads != loads {
+                    *l = StoreLoads { model, loads: loads.clone() };
+                }
+            }
+            None => {
+                commands.entity(e).insert(StoreLoads { model, loads: loads.clone() });
+            }
+        }
+    }
+}
+
+/// The stores hung on the models as loaded, each round shown while it is still on its station.
+#[allow(clippy::type_complexity)]
+fn hang_stores(
+    mut commands: Commands,
     mut library: ResMut<ModelLibrary>,
     server: Res<AssetServer>,
     assets: ModelAssets,
-    mut holders: Query<
-        (Entity, Option<&mut Hung>, Has<OwnModelInterior>),
-        Or<(With<OwnModel>, With<OwnModelInterior>)>,
-    >,
+    mut holders: Query<(Entity, &StoreLoads, Option<&mut Hung>, Has<OwnModelInterior>)>,
     names: Query<(Entity, &Name)>,
     parents: Query<&ChildOf>,
     mut shown: Query<&mut Visibility>,
 ) {
-    let spec = settings.aircraft.spec();
-    let Some(stations) = stations(spec.model) else { return };
-    let (bays, _) = combat.sim.bays();
     let file = library.load(&server, "aircraft");
-    for (holder, hung, interior) in &mut holders {
+    for (holder, loads, hung, interior) in &mut holders {
+        let Some(stations) = stations(loads.model) else { continue };
         let Some(mut hung) = hung else {
             commands.entity(holder).insert(Hung::default());
             continue;
         };
         hung.stations.resize_with(stations.len(), || None);
         for (k, st) in stations.iter().enumerate() {
-            let (w, left) = bays.get(st.station).copied().unwrap_or((-1, 0));
+            let (w, left) = loads.loads.get(st.station).copied().unwrap_or((-1, 0));
             let load = u8::try_from(w).ok().and_then(|w| st.loads.get(&w));
             if hung.stations[k].as_ref().map(|h| h.0) != load.map(|_| w) {
                 if let Some((_, rounds, rack)) = hung.stations[k].take() {
@@ -155,7 +203,7 @@ fn hang_stores(
                     continue;
                 }
                 // The node the station hangs from (the cockpit view's airframe is the holder).
-                let node = format!("{}_lod0{}", spec.model, st.parent);
+                let node = format!("{}_lod0{}", loads.model, st.parent);
                 let parent = if interior && st.parent.is_empty() {
                     Some(holder)
                 } else {
@@ -241,18 +289,22 @@ fn aim_hardpoints(
 /// going over to its flight path.
 struct Release {
     entity: Entity,
+    /// The model it left (the own aircraft's or another pilot's).
+    holder: Entity,
     hung: Affine3A,
     age: f32,
 }
 
-/// The own stores that have just left (their models taking over from the hung rounds), and
-/// the motor flames of those in flight.
-#[allow(clippy::too_many_arguments)]
+/// The stores that have just left (their models taking over from the hung rounds), the own and
+/// the other pilots', and the motor flames of those in flight.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn release_stores(
     combat: Res<Combat>,
     time: Res<Time>,
     vis: Res<crate::sim_render::SimVisuals>,
-    model: Query<(&GlobalTransform, &Hung), (With<OwnModel>, Without<OwnModelInterior>)>,
+    remote: Res<crate::sim_render::RemoteVisuals>,
+    own: Query<Entity, (With<OwnModel>, Without<OwnModelInterior>)>,
+    holders: Query<(&GlobalTransform, &Hung, &StoreLoads)>,
     player: Query<(&WorldPos, &Transform), (With<Player>, Without<crate::sim_render::SimObject>)>,
     settings: Res<crate::settings::Settings>,
     rounds: Query<&GlobalTransform, Without<crate::sim_render::SimObject>>,
@@ -261,36 +313,53 @@ fn release_stores(
         (With<crate::sim_render::SimObject>, Without<Player>),
     >,
     mut releases: Local<Vec<Release>>,
-    mut seen: Local<Vec<Option<Entity>>>,
+    mut seen: Local<HashMap<(u8, u8), Entity>>,
 ) {
-    let projs = combat.sim.projectiles();
-    seen.resize(projs.len(), None);
-    let spec = settings.aircraft.spec();
-    let jet = model.single().ok();
-    let (bays, _) = combat.sim.bays();
-    // Rounds of each station gone this frame (a ripple can release several at once).
-    let mut gone: HashMap<u8, i32> = HashMap::new();
-    for (s, m) in projs.iter().enumerate() {
-        let entity = vis.proj[s].map(|(e, ..)| e);
-        let fresh = entity.is_some() && seen[s] != entity;
-        seen[s] = entity;
-        let (Some(e), Some(st)) = (entity, m.station) else { continue };
+    // Every store in flight that left a station: (key, its model, the model it left).
+    let own_model = own.single().ok();
+    let me = combat.sim.active_pilot();
+    let mut flying: Vec<((u8, u8), Entity, Option<Entity>, stealth_sim::Projectile)> = Vec::new();
+    for (s, m) in combat.sim.projectiles().iter().enumerate() {
+        if let Some((e, ..)) = vis.proj[s] {
+            flying.push(((me, s as u8), e, own_model, *m));
+        }
+    }
+    for p in combat.sim.remote_pilots().iter().filter(|p| p.id != me) {
+        let holder = remote.plane(p.id);
+        for &(slot, m) in &p.missiles {
+            if let Some(e) = remote.missile((p.id, slot)) {
+                flying.push(((p.id, slot), e, holder, m));
+            }
+        }
+    }
+    let mut fresh = Vec::new();
+    for &(key, e, holder, m) in &flying {
+        if m.station.is_none() {
+            continue;
+        }
         if let Ok((_, _, Some(mut state))) = proj.get_mut(e) {
             let v = (crate::trails::is_missile(m.spec) && m.motor_visible()) as i16;
             if state.0[MOTOR_SLOT] != v {
                 state.0[MOTOR_SLOT] = v;
             }
         }
-        if !fresh {
-            continue;
+        if seen.get(&key) != Some(&e) {
+            fresh.push((key, e, holder, m));
         }
+    }
+    seen.clear();
+    seen.extend(flying.iter().map(|&(key, e, ..)| (key, e)));
+    // Rounds of each model's station gone this frame (a ripple can release several at once).
+    let mut gone: HashMap<(Entity, u8), i32> = HashMap::new();
+    for (_, e, holder, m) in fresh {
+        let (Some(holder), Some(st)) = (holder, m.station) else { continue };
+        let Ok((root, hung, loads)) = holders.get(holder) else { continue };
         // The round that left: the one after those still on the station.
-        let n = gone.entry(st).or_insert(0);
-        let round = bays.get(st as usize).map_or(0, |b| b.1) + *n;
+        let n = gone.entry((holder, st)).or_insert(0);
+        let round = loads.loads.get(st as usize).map_or(0, |l| l.1) + *n;
         *n += 1;
-        let Some((root, hung)) = jet else { continue };
         let Some(k) =
-            stations(spec.model).and_then(|sts| sts.iter().position(|x| x.station == st as usize))
+            stations(loads.model).and_then(|sts| sts.iter().position(|x| x.station == st as usize))
         else {
             continue;
         };
@@ -298,29 +367,39 @@ fn release_stores(
             .stations
             .get(k)
             .and_then(|h| h.as_ref())
-            .and_then(|(_, r, _)| r.get(round as usize))
+            .and_then(|(_, r, _)| r.get(usize::try_from(round).ok()?))
             .and_then(|&r| rounds.get(r).ok())
         else {
             continue;
         };
         // The round in the model's frame.
-        releases.push(Release { entity: e, hung: root.affine().inverse() * g.affine(), age: 0.0 });
+        let hung = root.affine().inverse() * g.affine();
+        releases.push(Release { entity: e, holder, hung, age: 0.0 });
     }
     let dt = time.delta_secs();
-    let Ok((pos, tf)) = player.single() else { return };
+    let lift = settings.aircraft.spec().model_lift;
+    let own_pose = player
+        .single()
+        .ok()
+        .map(|(p, tf)| (p.0 + (tf.rotation * Vec3::Y * lift).as_dvec3(), tf.rotation));
     releases.retain_mut(|r| {
+        // The model it left where it is now (the own: on the flight model's pose).
+        let pose = if Some(r.holder) == own_model {
+            own_pose
+        } else {
+            proj.get(r.holder).ok().map(|(p, tf, _)| (p.0, tf.rotation))
+        };
+        let Some((origin, attitude)) = pose else { return false };
         let Ok((mut p, mut drawn, _)) = proj.get_mut(r.entity) else {
             // Not spawned yet.
             return r.age == 0.0;
         };
-        // Where it hung, on the aircraft where it is now.
         let (_, rot, at) = r.hung.to_scale_rotation_translation();
-        let lifted = Vec3::Y * spec.model_lift + at * AIRCRAFT_MODEL_SCALE as f32;
-        let hung = pos.0 + (tf.rotation * lifted).as_dvec3();
+        let hung = origin + (attitude * at * AIRCRAFT_MODEL_SCALE as f32).as_dvec3();
         let t = (r.age / RELEASE_BLEND).clamp(0.0, 1.0);
         let w = 1.0 - t * t * (3.0 - 2.0 * t);
         p.0 = p.0.lerp(hung, w as f64);
-        drawn.rotation = drawn.rotation.slerp(tf.rotation * rot, w);
+        drawn.rotation = drawn.rotation.slerp(attitude * rot, w);
         r.age += dt;
         r.age < RELEASE_BLEND
     });

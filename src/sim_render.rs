@@ -1603,6 +1603,18 @@ pub struct RemoteVisuals {
     materials: HashMap<u8, Handle<PaletteMaterial>>,
 }
 
+impl RemoteVisuals {
+    /// Pilot `id`'s aircraft model.
+    pub(crate) fn plane(&self, id: u8) -> Option<Entity> {
+        self.planes.get(&id).map(|v| v.0)
+    }
+
+    /// The model of a pilot's weapon in flight (pilot, slot).
+    pub(crate) fn missile(&self, key: (u8, u8)) -> Option<Entity> {
+        self.missiles.get(&key).map(|v| v.0)
+    }
+}
+
 /// Another pilot's weapon in flight: its model, its spec, and its dot with the dot's look.
 type RemoteMissileVisual = (Entity, i32, Option<(Entity, u8)>);
 
@@ -1694,7 +1706,7 @@ pub fn remote_missile_pose(
 /// The other pilots' aircraft, interpolated between the simulation's frames like the AI's,
 /// their cannon's muzzle flash, and their missiles and bombs.
 #[allow(clippy::too_many_arguments)]
-fn sync_remote_pilots(
+pub(crate) fn sync_remote_pilots(
     mut commands: Commands,
     combat: Res<Combat>,
     mut vis: ResMut<RemoteVisuals>,
@@ -1710,6 +1722,7 @@ fn sync_remote_pilots(
     >,
     mut landing_lights: crate::landing_lights::Lights,
     landing: Res<crate::landing_lights::LandingAssets>,
+    stores: Query<Option<&crate::stores::StoreLoads>>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
@@ -1787,6 +1800,13 @@ fn sync_remote_pilots(
         }
         // Gear down (a helicopter: near a friendly airfield), not parked.
         let parked = p.on_ground && p.view.knots == 0;
+        // His stores, hung on his model (`stores::hang_stores`).
+        let loads = crate::stores::StoreLoads::remote(spec.model, &p.stores);
+        if let Some(l) = &loads
+            && stores.get(v.0).ok().flatten() != Some(l)
+        {
+            commands.entity(v.0).insert(l.clone());
+        }
         let wanted = if spec.helicopter {
             sim.friendly_lights_at(p.view.mx, p.view.my)
         } else {
@@ -1807,6 +1827,7 @@ fn sync_remote_pilots(
                     (8, p.door_anim.min(2) as i16),
                     (10, lights as i16),
                     (11, lights as i16),
+                    (crate::stores::STORES_SLOT, loads.is_some() as i16),
                 ];
                 if v.iter().any(|&(k, x)| s.0[k] != x) {
                     for (k, x) in v {
