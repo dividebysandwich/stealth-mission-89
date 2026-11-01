@@ -506,6 +506,12 @@ pub struct PlayerState {
     /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub nozzle: u8,
+    /// Realistic avionics: the stores are used in their HUD mode only (air-to-air missiles
+    /// in AIR, the other weapons in GND, the cannon in either; the camera and the tanks in
+    /// every mode). Space steps through those of the mode, a mode change picks one of its own
+    /// and the trigger does nothing with a store of another mode.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub mode_weapons: bool,
     pub cmd: Commands,
 }
 

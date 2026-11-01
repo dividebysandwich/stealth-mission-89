@@ -113,6 +113,9 @@ pub struct Pilot {
     pub(crate) stores: [i32; 4],
     pub(crate) gun_ammo: i32,
     pub(crate) gun_firing: bool,
+    /// The gun trigger was held last frame in a mode the cannon is not used in (said once).
+    #[serde(skip)]
+    pub(crate) gun_blocked: bool,
     /// Where the turret points while it fires (BAM heading, pitch), else along the nose.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) gun_aim: Option<(i32, i32)>,

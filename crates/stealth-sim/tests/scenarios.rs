@@ -1030,6 +1030,68 @@ fn space_steps_through_the_weapons_then_the_gun() {
     assert_eq!(sim.weapon_groups().0, [(0, 2), (6, 1)]);
 }
 
+/// Realistic avionics: Space steps through the HUD mode's own weapons, a mode change picks one
+/// of the new mode's, and in NAV nothing (not even the gun) fires.
+#[test]
+fn realistic_avionics_keep_weapons_to_their_mode() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let types = sim.weapon_types().to_vec();
+    let of = |air: bool| {
+        (0..types.len() as i32)
+            .find(|&w| {
+                let spec = types[w as usize].spec as i32;
+                spec > 0 && (d.sim.missile(spec).class == 7) == air
+            })
+            .expect("weapon type")
+    };
+    let (aa, ag) = (of(true), of(false));
+    sim.set_loadout(&[(ag, 2), (aa, 2), (-1, 0), (-1, 0)]);
+    let selected = |sim: &Sim| {
+        let (groups, sel) = sim.weapon_groups();
+        if sim.gun_selected() { -1 } else { groups[sel.unwrap()].0 }
+    };
+    let mut p = player_at(0x4000, 0x4000, 3000, 0, 300);
+    p.mode_weapons = true;
+    p.hud_mode = HudMode::Air;
+    sim.step(&p, 15);
+    assert_eq!(selected(&sim), aa, "AIR picks the air-to-air missile");
+    let mut seen = Vec::new();
+    for _ in 0..3 {
+        let mut q = p.clone();
+        q.cmd.next_bay = true;
+        sim.step(&q, 15);
+        seen.push(selected(&sim));
+    }
+    assert_eq!(seen, [-1, aa, -1], "the gun and the air-to-air missile only");
+    p.hud_mode = HudMode::Gnd;
+    sim.step(&p, 15);
+    assert_eq!(selected(&sim), -1, "the gun is kept in GND");
+    let mut q = p.clone();
+    q.cmd.next_bay = true;
+    sim.step(&q, 15);
+    assert_eq!(selected(&sim), ag);
+    // NAV: the trigger and the gun trigger do nothing.
+    p.hud_mode = HudMode::Nav;
+    sim.step(&p, 15);
+    let (before, ammo) = (sim.weapon_groups().0, sim.gun_ammo());
+    let mut said = false;
+    for cmd in [
+        Commands { fire: true, ..Default::default() },
+        Commands { gun: true, ..Default::default() },
+    ] {
+        let q = PlayerState { cmd, ..p.clone() };
+        for _ in 0..10 {
+            for e in sim.step(&q, 15) {
+                said |= matches!(&e, SimEvent::Message(s) if s.starts_with("Select A-"));
+            }
+        }
+    }
+    assert_eq!((sim.weapon_groups().0, sim.gun_ammo()), (before, ammo));
+    assert!(said);
+}
+
 /// A burst at an An-72 600 m ahead: the fire button fires the gun only when it is selected.
 #[test]
 fn trigger_fires_the_selected_gun() {

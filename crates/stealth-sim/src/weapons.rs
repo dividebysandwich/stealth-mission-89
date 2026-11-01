@@ -25,6 +25,11 @@ impl Sim {
                 HudMode::Gnd => self.pl.gnd_lock = -1,
                 HudMode::Nav => {}
             }
+            // Realistic avionics: the new mode's own weapon (none fits: the selection stays,
+            // and does not fire).
+            if ps.mode_weapons && !self.selection_in_mode(ps) {
+                self.next_weapon(ps);
+            }
         }
         // After ejecting, the flare key fires the pilot's signal flares (csar.rs).
         if c.flare && self.pl.eject == 0 {
@@ -50,7 +55,14 @@ impl Sim {
             self.sound(0x1F, 1);
         }
         if c.next_bay {
-            self.next_weapon();
+            let before = (self.pl.gun_selected, self.pl.cur_bay);
+            self.next_weapon(ps);
+            if ps.mode_weapons
+                && before == (self.pl.gun_selected, self.pl.cur_bay)
+                && !self.selection_in_mode(ps)
+            {
+                self.mode_msg();
+            }
         }
         if c.designate {
             self.pl.target_hold = false;
@@ -184,9 +196,58 @@ impl Sim {
     /// Space: the next weapon carried, then the cannon (stations with the selected weapon are
     /// skipped; classic mode steps through the 2 or 4 bays, the same with a different weapon in
     /// each).
-    fn next_weapon(&mut self) {
+    /// The HUD mode store `w` (weapon type) is used in with realistic avionics: None for the
+    /// camera and the tanks, used in any mode.
+    fn store_mode(&self, w: i32) -> Option<HudMode> {
+        let spec = self.weapon_types.get(usize::try_from(w).ok()?)?.spec as i32;
+        if spec <= 0 {
+            return None;
+        }
+        Some(if self.missile(spec).class == 7 { HudMode::Air } else { HudMode::Gnd })
+    }
+
+    /// The cannon (`None`) or the store at station `i` may be used in the HUD's mode.
+    fn usable_in_mode(&self, ps: &PlayerState, i: Option<usize>) -> bool {
+        if !ps.mode_weapons {
+            return true;
+        }
+        let mode = self.pl.hud_mode;
+        match i {
+            None => mode != HudMode::Nav,
+            Some(i) => {
+                self.pl.bays.get(i).is_none_or(|b| self.store_mode(b.0).is_none_or(|m| m == mode))
+            }
+        }
+    }
+
+    /// The selected weapon may be used in the HUD's mode.
+    fn selection_in_mode(&self, ps: &PlayerState) -> bool {
+        let i = (!self.pl.gun_selected).then_some(self.pl.cur_bay);
+        self.usable_in_mode(ps, i)
+    }
+
+    /// Realistic avionics: the selected weapon belongs to another HUD mode.
+    fn mode_msg(&mut self) {
+        let want = if self.pl.gun_selected {
+            None
+        } else {
+            self.pl.bays.get(self.pl.cur_bay).and_then(|b| self.store_mode(b.0))
+        };
+        self.msg(match want {
+            Some(HudMode::Air) => "Select A-A mode",
+            Some(_) => "Select A-G mode",
+            None => "Select A-A or A-G mode",
+        });
+    }
+
+    /// Space: the next weapon (with realistic avionics, the next one of the HUD's mode).
+    fn next_weapon(&mut self, ps: &PlayerState) {
         // A gunship's cannon is two entries: slaved to the helmet, then to the pod.
-        if self.pl.gun_selected && self.pl.gunship && !self.pl.gun_pod {
+        if self.pl.gun_selected
+            && self.pl.gunship
+            && !self.pl.gun_pod
+            && self.usable_in_mode(ps, None)
+        {
             self.pl.gun_pod = true;
             return;
         }
@@ -201,7 +262,13 @@ impl Sim {
             if self.pl.gun_selected { -2 } else { self.pl.bays.get(cur).map_or(-1, |b| b.0) };
         let gun = self.has_gun();
         let next = (1..=n + 1).map(|k| (cur + k) % (n + 1)).find(|&i| {
-            if i == n { gun } else { first_of(&self.pl.bays, i) && self.pl.bays[i].0 != cur_w }
+            if i == n {
+                gun && self.usable_in_mode(ps, None)
+            } else {
+                first_of(&self.pl.bays, i)
+                    && self.pl.bays[i].0 != cur_w
+                    && self.usable_in_mode(ps, Some(i))
+            }
         });
         match next {
             Some(i) if i == n => {
@@ -331,8 +398,12 @@ impl Sim {
             }
         }
         let rippling = self.pl.ripple.is_some();
+        let in_mode = self.selection_in_mode(ps);
         if ps.cmd.fire && self.pl.fire_cooldown == 0 && self.pl.eject == 0 && !rippling {
-            if !ccrp {
+            if !in_mode {
+                self.mode_msg();
+                self.pl.fire_cooldown = 4;
+            } else if !ccrp {
                 if bomb {
                     self.release_bombs(ps);
                 } else {
@@ -352,6 +423,7 @@ impl Sim {
             && ps.cmd.trigger
             && self.pl.eject == 0
             && !rippling
+            && in_mode
         {
             self.release_bombs(ps);
         }
@@ -702,7 +774,13 @@ impl Sim {
         if self.has_gun() {
             let slot = (self.frame as usize) % nb;
             let trigger = ps.cmd.gun || (self.pl.gun_selected && ps.cmd.trigger);
-            if trigger && self.pl.gun_ammo > 0 && self.pl.eject == 0 {
+            // Realistic avionics: the cannon fires in AIR and GND only.
+            let in_mode = self.usable_in_mode(ps, None);
+            if trigger && !in_mode && !self.pl.gun_blocked && self.pl.eject == 0 {
+                self.msg("Select A-A or A-G mode");
+            }
+            self.pl.gun_blocked = trigger && !in_mode;
+            if trigger && in_mode && self.pl.gun_ammo > 0 && self.pl.eject == 0 {
                 self.pl.gun_ammo = clamp_v(self.pl.gun_ammo + cdiv(-20, fs), 0, 1000);
                 self.sound(6, 2);
                 let aim = self.turret_aim(ps);

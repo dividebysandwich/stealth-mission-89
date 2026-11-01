@@ -1312,6 +1312,14 @@ the two. F3 cycles the left MFD through HSD, MAP
 and HARM; F5 / F10 bring up SMS, the camera keys the TGP (F6 too, switching its FLIR on or
 off with each press), F7 the waypoint table.
 
+**Weapons by master mode.** With the modern avionics each weapon belongs to a HUD mode, as in
+the F-16: the air-to-air missiles (AIM-9, AIM-120, Stinger) to **AA**, the bombs, Mavericks,
+HARMs, rockets and the other air-to-ground stores to **AG**, the gun to either. Space steps only
+through the weapons of the mode you are in, and changing the mode (F2, the AA and AG buttons,
+nearest target) selects one of the new mode's weapons. In **NAV** nothing fires, the gun
+included; the trigger then tells you which mode to select. The camera and the fuel tanks work in
+every mode. With the classic avionics every weapon can be selected and fired in any mode.
+
 | Format | Top row buttons | Shows |
 |---|---|---|
 | HSD | DEP / CEN, RNG-, range, RNG+, SOI | Horizontal situation display, heading up: range rings (the range in km is the outer ring), the route with the current steerpoint ringed, SAM sites with their missile's reach as red threat rings, hostile (red) and friendly (green) aircraft, ships (hull symbols, red or green; armed ones with their threat ring), missiles, the mission targets (cyan diamonds); the locked target is boxed. |

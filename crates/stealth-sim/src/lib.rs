@@ -421,6 +421,7 @@ impl Sim {
                 ],
                 gun_ammo: data.gun_ammo_init as i32,
                 gun_firing: false,
+                gun_blocked: false,
                 gun_aim: None,
                 fire_cooldown: 0,
                 prev_fire: false,
