@@ -4,9 +4,12 @@
 //! menu's right and a few aircraft circling in the distance. In VR the player stands on the apron, life size, with the menu's panel between
 //! the tower and the aircraft.
 
+use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::storage::ShaderBuffer;
+use bevy::window::{CursorGrabMode, CursorOptions};
+use bevy_egui::input::EguiWantsInput;
 
 use crate::models::{ModelAssets, ModelLibrary, ModelState};
 use crate::palette::{Palette, TimeOfDay};
@@ -29,6 +32,7 @@ impl Plugin for MenuScenePlugin {
                     spawn_traffic,
                     fly_traffic,
                     aircraft_lights,
+                    mouse_look,
                     fit_view,
                     match_overlay_msaa,
                 )
@@ -61,6 +65,23 @@ struct Traffic(usize);
 
 #[derive(Component)]
 pub(crate) struct SceneCamera;
+
+/// Where the camera looks, turned by the mouse as in flight: radians of yaw (anticlockwise from
+/// above, as `Transform`'s) and pitch (up).
+#[derive(Resource)]
+struct MenuLook {
+    yaw: f32,
+    pitch: f32,
+    /// The right button went down on the scene, not on a menu window (the planner's map and the
+    /// campaign's designation use the right click): the view turns until it is released.
+    turning: bool,
+}
+
+impl Default for MenuLook {
+    fn default() -> Self {
+        Self { yaw: -CAMERA[3].to_radians(), pitch: CAMERA[4].to_radians(), turning: false }
+    }
+}
 
 /// VR: where the player stands, the XR tracking root under it.
 #[derive(Component)]
@@ -169,6 +190,7 @@ fn spawn_scene(
 ) {
     let (cam, moon) = (CAMERA, if settings.vr { VR_MOON } else { MOON });
     commands.insert_resource(MenuScene);
+    commands.insert_resource(MenuLook::default());
     crate::world::insert_theater(&mut commands, THEATER, None, &mut streamed, &mut overrides);
     // A night in the classic palette, held still.
     *tod = TimeOfDay::default();
@@ -446,6 +468,46 @@ fn aircraft_lights(
     }
 }
 
+/// Desktop mouse look, as in flight: hold the right button on the scene and move the mouse to turn
+/// the view round the camera, which stays where it is.
+fn mouse_look(
+    buttons: Res<ButtonInput<MouseButton>>,
+    motion: Res<AccumulatedMouseMotion>,
+    egui: Res<EguiWantsInput>,
+    mut look: ResMut<MenuLook>,
+    mut cams: Query<&mut Transform, With<SceneCamera>>,
+    mut cursor: Query<&mut CursorOptions>,
+) {
+    // No scene camera in the headset.
+    if cams.is_empty() {
+        return;
+    }
+    if buttons.just_pressed(MouseButton::Right) {
+        look.turning = !egui.wants_any_pointer_input();
+    }
+    let held = look.turning && buttons.pressed(MouseButton::Right);
+    if !held {
+        look.turning = false;
+    }
+    if let Ok(mut c) = cursor.single_mut() {
+        let (grab, visible) =
+            if held { (CursorGrabMode::Locked, false) } else { (CursorGrabMode::None, true) };
+        if c.grab_mode != grab {
+            c.grab_mode = grab;
+            c.visible = visible;
+        }
+    }
+    if !held || motion.delta == Vec2::ZERO {
+        return;
+    }
+    const K: f32 = 0.004;
+    look.yaw -= motion.delta.x * K;
+    look.pitch = (look.pitch - motion.delta.y * K).clamp(-1.55, 1.55);
+    for mut tf in &mut cams {
+        tf.rotation = Quat::from_euler(EulerRot::YXZ, look.yaw, look.pitch, 0.0);
+    }
+}
+
 /// A narrow window widens the view (Bevy keeps the vertical field of view).
 fn fit_view(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
@@ -506,7 +568,16 @@ fn despawn_scene(
     mut commands: Commands,
     q: Query<Entity, With<SceneEntity>>,
     root: Option<Res<crate::camera::XrRoot>>,
+    look: Option<Res<MenuLook>>,
+    mut cursor: Query<&mut CursorOptions>,
 ) {
+    // The menu closed with the view still turning: free the cursor.
+    if look.is_some_and(|l| l.turning)
+        && let Ok(mut c) = cursor.single_mut()
+    {
+        c.grab_mode = CursorGrabMode::None;
+        c.visible = true;
+    }
     // VR: the tracking root leaves the standing point before it goes.
     if let Some(r) = root.and_then(|r| r.0) {
         commands
@@ -518,5 +589,6 @@ fn despawn_scene(
         commands.entity(e).despawn();
     }
     commands.remove_resource::<MenuScene>();
+    commands.remove_resource::<MenuLook>();
     commands.remove_resource::<Palette>();
 }
