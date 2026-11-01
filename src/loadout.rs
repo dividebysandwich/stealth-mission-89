@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use stealth_mission::{Mission, Plane};
 
 use crate::aircraft::AircraftKind;
+use crate::layout::{Split, screen_window};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, MenuState, big_button, facts, icon, section};
 
 /// The weapons (index = weapon type): name, what it is for.
@@ -47,6 +48,9 @@ pub const WEAPONS: [(&str, &str); 23] = [
 /// sim's Rockeye II and CBU-72 too) are in range below 2.5 times the height (targeting.rs, the
 /// height compressed above 8,192 ft). The other bombs fall ballistically (ballistics.rs) from
 /// a level release at 500 kt.
+/// The window's size, frame included.
+const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
+
 const EMPLOYMENT: [&[&str]; 23] = [
     &["Range: 1-12 km, farther head-on"],
     &["Range: 1-38 km, farther head-on"],
@@ -1011,40 +1015,33 @@ pub fn loadout_ui(
     if !lo.fits(&m, aircraft) {
         *lo = PlannedLoadout::of(&m, aircraft);
     }
-    let screen = ctx.content_rect();
-    let size = egui::vec2(
-        (screen.width() - 32.0).clamp(600.0, 1100.0),
-        (screen.height() - 32.0).clamp(400.0, 760.0),
-    );
-    let window = egui::Window::new("Loadout")
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .collapsible(false)
-        .resizable(false)
-        .title_bar(false)
-        .fixed_size(size);
+    let window = screen_window(ctx, "Loadout", LOADOUT_SIZE);
     let panel = crate::menu::Panel::new("LOADOUT").note(aircraft.name().to_ascii_uppercase());
     panel.window(window, ctx, |ui| {
-        editor(ui, w, lo, &m, size.y);
-        crate::menu::footer_rule(ui);
-        ui.add_space(6.0);
-        ui.horizontal(|ui| {
-            if facts(
-                ui.add(big_button("BRIEFED").icon(icon::BRIEFED)),
-                &["The stores the mission was briefed with"],
-            )
-            .clicked()
-            {
-                *lo = PlannedLoadout::of(&m, aircraft);
-            }
-            if facts(ui.add(big_button("CLEAR").icon(icon::CLEAR)), &["Every hardpoint empty"])
+        let split = Split::new(ui, "loadout");
+        split.body_sized(ui, |ui, room| editor(ui, w, lo, &m, room));
+        split.footer(ui, |ui| {
+            crate::menu::footer_rule(ui);
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                if facts(
+                    ui.add(big_button("BRIEFED").icon(icon::BRIEFED)),
+                    &["The stores the mission was briefed with"],
+                )
                 .clicked()
-            {
-                lo.stores.iter_mut().for_each(|s| *s = None);
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.add(big_button("DONE").icon(icon::DONE).primary()).clicked() {
-                    w.open = false;
+                {
+                    *lo = PlannedLoadout::of(&m, aircraft);
                 }
+                if facts(ui.add(big_button("CLEAR").icon(icon::CLEAR)), &["Every hardpoint empty"])
+                    .clicked()
+                {
+                    lo.stores.iter_mut().for_each(|s| *s = None);
+                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.add(big_button("DONE").icon(icon::DONE).primary()).clicked() {
+                        w.open = false;
+                    }
+                });
             });
         });
     });
@@ -1064,7 +1061,7 @@ pub fn editor(
     let mirror = w.mirror.get_or_insert(true);
     let size = egui::vec2(ui.available_width(), height);
     ui.horizontal_top(|ui| {
-        let side = 380.0;
+        let side = (ui.available_width() * 0.5).clamp(280.0, 380.0);
         let draw = egui::vec2(ui.available_width() - side - 12.0, ui.available_height() - 60.0);
         if let Some(i) = diagram(ui, lay, &lo.stores, w.selected, draw) {
             w.selected = i;

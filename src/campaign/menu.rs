@@ -6,6 +6,7 @@ use bevy_egui::{EguiContexts, egui};
 use stealth_campaign::CampaignSetup;
 
 use super::ActiveCampaign;
+use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
     AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, group, icon, section,
 };
@@ -57,6 +58,10 @@ impl CampaignWindow {
         self.confirm_delete = None;
     }
 }
+
+/// The setup window's size, frame included, and the least width of its text and saves column.
+const SETUP_SIZE: egui::Vec2 = egui::vec2(1432.0, 700.0);
+const INFO_LEAST: f32 = 520.0;
 
 /// How tall the list of saved campaigns grows before it scrolls.
 pub(crate) const SAVES_HEIGHT: f32 = 240.0;
@@ -140,20 +145,19 @@ pub fn campaign_window(
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
     // Escape cancels the delete confirmation first, then closes the window.
     let mut close = escape && w.confirm_delete.is_none();
-    let width = crate::menu::wide_width(ctx);
-    let window = crate::menu::menu_window(ctx, "Dynamic campaign", width);
+    let window = screen_window(ctx, "Dynamic campaign", SETUP_SIZE);
     crate::menu::Panel::new("DYNAMIC CAMPAIGN").note("REAL-TIME THEATER WAR").window(window, ctx, |ui| {
-        ui.horizontal_top(|ui| {
-            ui.vertical(|ui| {
-                ui.set_width(210.0);
+        let split = Split::new(ui, "campaign setup");
+        split.body(ui, |ui| {
+            let mut flow = Flow::new(ui);
+            flow.card(ui, Span::Fixed(210.0), |ui| {
                 group(ui, "Campaign", |ui| {
                     crate::menu::theater_options(ui, &mut state.theater);
                     crate::menu::situation_options(ui, &mut state.roe);
                     crate::menu::opponent_options(ui, &mut state.opponents);
                 });
             });
-            ui.vertical(|ui| {
-                ui.set_width(220.0);
+            flow.card(ui, Span::Fixed(220.0), |ui| {
                 group(ui, "Conditions", |ui| {
                     section(ui, "Weather");
                     dropdown(
@@ -195,7 +199,7 @@ pub fn campaign_window(
                     Some("A saved campaign keeps the rules it was started with"),
                 );
             });
-            ui.vertical(|ui| {
+            flow.card(ui, Span::Fill(INFO_LEAST), |ui| {
             for line in [
                 "The war runs in real time while you play, also while the menu is open.",
                 "Fly the missions on the board: recon, SEAD, CAP, CAS, anti-ship, strike, escort.",
@@ -265,16 +269,19 @@ pub fn campaign_window(
                 ui.colored_label(AMBER, e);
             }
             });
+            flow.finish(ui);
         });
-        crate::menu::footer_rule(ui);
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if ui.add(big_button("BACK").icon(icon::BACK)).on_hover_text("Back to the main menu").clicked() {
-                close = true;
-            }
-            if ui.add(big_button("OPTIONS").icon(icon::OPTIONS)).on_hover_text("Game, graphics, sound and controls").clicked() {
-                options.open = true;
-            }
+        split.footer(ui, |ui| {
+            crate::menu::footer_rule(ui);
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.add(big_button("BACK").icon(icon::BACK)).on_hover_text("Back to the main menu").clicked() {
+                    close = true;
+                }
+                if ui.add(big_button("OPTIONS").icon(icon::OPTIONS)).on_hover_text("Game, graphics, sound and controls").clicked() {
+                    options.open = true;
+                }
+            });
         });
     });
     if let Some((name, label)) = w.confirm_delete.clone() {

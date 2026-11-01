@@ -20,6 +20,7 @@ use stealth_net::client::{Client, ClientEvent};
 use stealth_net::server::Server;
 
 use crate::campaign::{ActiveCampaign, Role};
+use crate::layout::{Flow, Span, Split, fitted, screen_window};
 use crate::menu::{
     AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, icon, icon_text, section,
 };
@@ -320,215 +321,220 @@ fn multiplayer_window(
     // Three flashes a second, for a second.
     let flash = w.flash_since.is_some_and(|t| now - t < 1.0 && ((now - t) * 3.0).fract() < 0.5);
     let mut no_name = false;
-    let width = crate::menu::wide_width(ctx).min(1100.0);
-    // The server list takes the room the screen leaves.
-    let list_height = (ctx.content_rect().height() - 330.0).max(160.0);
+    // The server list takes the room the window leaves.
+    let list_height = (fitted(ctx, MULTIPLAYER_SIZE).y - 330.0).max(160.0);
     let title = if w.page == Page::Host { "MULTIPLAYER: HOST A GAME" } else { "MULTIPLAYER" };
     let panel = crate::menu::Panel::new(title).note("COOP IN THE DYNAMIC CAMPAIGN");
-    panel.window(crate::menu::menu_window(ctx, "Multiplayer", width), ctx, |ui| {
+    let window = screen_window(ctx, "Multiplayer", MULTIPLAYER_SIZE);
+    panel.window(window, ctx, |ui| {
         let named = !state.player_name.trim().is_empty();
-        ui.horizontal_top(|ui| {
-            area(ui, flash, |ui| {
-                ui.set_max_width(340.0);
-                section(ui, "Your name");
-                text_entry(ui, "mp_name", &mut state.player_name, 24, Charset::Name, settings.vr, "Pilot name");
+        let split = Split::new(ui, "multiplayer");
+        split.body(ui, |ui| {
+            let mut flow = Flow::new(ui);
+            flow.card(ui, Span::Fixed(NAME_WIDTH), |ui| {
+                area(ui, flash, |ui| {
+                    ui.set_max_width(340.0);
+                    section(ui, "Your name");
+                    text_entry(ui, "mp_name", &mut state.player_name, 24, Charset::Name, settings.vr, "Pilot name");
+                });
             });
-            if w.page != Page::Join {
-                return;
-            }
-            area(ui, false, |ui| {
-                section(ui, "Join by address");
-                ui.horizontal(|ui| {
-                    text_entry(
-                        ui,
-                        "mp_server",
-                        &mut state.server_addr,
-                        64,
-                        Charset::Address,
-                        settings.vr,
-                        "address or name[:port]",
-                    );
-                    if w.joining.is_some() {
-                        ui.add(egui::Spinner::new().color(GREEN));
-                        if ui.button(icon_text(ui, icon::CANCEL, "CANCEL")).clicked() {
-                            if let Some((mut c, _)) = w.joining.take() {
-                                c.leave();
+            if w.page == Page::Join {
+                flow.card(ui, Span::Fill(JOIN_LEAST), |ui| {
+                    area(ui, false, |ui| {
+                        section(ui, "Join by address");
+                        ui.horizontal(|ui| {
+                            text_entry(
+                                ui,
+                                "mp_server",
+                                &mut state.server_addr,
+                                64,
+                                Charset::Address,
+                                settings.vr,
+                                "address or name[:port]",
+                            );
+                            if w.joining.is_some() {
+                                ui.add(egui::Spinner::new().color(GREEN));
+                                if ui.button(icon_text(ui, icon::CANCEL, "CANCEL")).clicked() {
+                                    if let Some((mut c, _)) = w.joining.take() {
+                                        c.leave();
+                                    }
+                                    w.status = None;
+                                }
+                            } else if ui
+                                .add_enabled(!state.server_addr.trim().is_empty(), egui::Button::new(icon_text(ui, icon::JOIN, "CONNECT")))
+                                .clicked()
+                            {
+                                if named {
+                                    join = true;
+                                } else {
+                                    no_name = true;
+                                }
                             }
-                            w.status = None;
+                        });
+                        if let Some(s) = &w.status {
+                            ui.label(egui::RichText::new(s).small().color(BRIGHT));
                         }
-                    } else if ui
-                        .add_enabled(!state.server_addr.trim().is_empty(), egui::Button::new(icon_text(ui, icon::JOIN, "CONNECT")))
-                        .clicked()
-                    {
+                    });
+                });
+            }
+            flow.finish(ui);
+            ui.separator();
+            match w.page {
+                Page::Join => {
+                    if let Some(addr) = server_list(ui, &mut w, list_height) {
                         if named {
+                            state.server_addr = addr;
                             join = true;
                         } else {
                             no_name = true;
                         }
                     }
-                });
-                if let Some(s) = &w.status {
-                    ui.label(egui::RichText::new(s).small().color(BRIGHT));
                 }
-            });
-        });
-        ui.separator();
-        match w.page {
-            Page::Join => {
-                if let Some(addr) = server_list(ui, &mut w, list_height) {
-                    if named {
-                        state.server_addr = addr;
-                        join = true;
-                    } else {
-                        no_name = true;
-                    }
-                }
-            }
-            Page::Host => {
-                ui.horizontal(|ui| {
-                    ui.label("Server name");
-                    let hint = server_title(&state);
-                    text_entry(ui, "mp_server", &mut state.server_name, 32, Charset::Name, settings.vr, &hint);
-                });
-                ui.horizontal(|ui| {
-                    ui.label("UDP port");
-                    ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
-                    ui.add_space(20.0);
-                    ui.label("Players");
-                    ui.add(egui::Slider::new(
-                        &mut state.max_players,
-                        2..=stealth_net::protocol::MAX_PLAYERS as u8,
-                    ));
-                });
-                ui.label(
-                    egui::RichText::new("Other players join with this computer's address; open the UDP port in your router to play over the internet")
-                        .small()
-                        .color(DIM),
-                );
-                ui.checkbox(&mut state.list_public, "List on the public server list (others find the game in their server list)");
-                ui.horizontal_top(|ui| {
-                    ui.vertical(|ui| {
-                        ui.set_width(210.0);
-                        crate::menu::theater_options(ui, &mut state.theater);
+                Page::Host => {
+                    ui.horizontal(|ui| {
+                        ui.label("Server name");
+                        let hint = server_title(&state);
+                        text_entry(ui, "mp_server", &mut state.server_name, 32, Charset::Name, settings.vr, &hint);
                     });
-                    ui.vertical(|ui| {
-                        ui.set_width(200.0);
-                        crate::menu::opponent_options(ui, &mut state.opponents);
-                        crate::menu::situation_options(ui, &mut state.roe);
+                    ui.horizontal(|ui| {
+                        ui.label("UDP port");
+                        ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
+                        ui.add_space(20.0);
+                        ui.label("Players");
+                        ui.add(egui::Slider::new(
+                            &mut state.max_players,
+                            2..=stealth_net::protocol::MAX_PLAYERS as u8,
+                        ));
                     });
-                    ui.vertical(|ui| {
-                        ui.set_width(230.0);
-                        section(ui, "Rules for everybody");
-                        crate::menu::realism_options(ui, &mut settings);
-                        ui.checkbox(&mut settings.continuous_time, "Time of day (moonlit nights)");
-                        ui.checkbox(&mut state.lockheed, "Realistic F-117A weapons");
-                        ui.checkbox(&mut state.friendly_fire, "Friendly fire");
-                    });
-                    ui.vertical(|ui| {
-                        section(ui, "New campaign");
-                        let (_, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
-                        ui.label(theater);
-                        ui.horizontal(|ui| {
-                            ui.label("Day and night:");
-                            for (ratio, label) in [(1.0, "real time"), (24.0, "1 h / day"), (48.0, "30 min / day")] {
-                                if ui.selectable_label(w.sky_ratio == ratio, label).clicked() {
-                                    w.sky_ratio = ratio;
-                                }
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Weather:");
-                            for (clear, label) in [(false, "dynamic"), (true, "clear sky")] {
-                                if ui.selectable_label(w.clear_sky == clear, label).clicked() {
-                                    w.clear_sky = clear;
-                                }
-                            }
-                        });
-                        let clicked = ui.add(big_button("HOST NEW").icon(icon::HOST)).clicked();
-                        no_name |= clicked && !named;
-                        if (clicked && named) || auto_host {
-                            let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
-                            let secs = web_time::SystemTime::now()
-                                .duration_since(web_time::UNIX_EPOCH)
-                                .map_or(0, |d| d.as_secs());
-                            let setup = CampaignSetup {
-                                theater: state.theater,
-                                theater_code: code.to_string(),
-                                roe: state.roe,
-                                opponents: state.opponents,
-                                // Test aid: `--host --seed <n>`.
-                                seed: std::env::args()
-                                    .skip_while(|a| a != "--seed")
-                                    .nth(1)
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or_else(rand::random),
-                                sky_ratio: w.sky_ratio,
-                                start_hour: w.start_hour,
-                                dynamic_weather: !w.clear_sky,
-                            };
-                            let rules = host_rules(&settings, &state);
-                            host = Some(
-                                Host::new(setup, &data.0, rules)
-                                    .map(|h| (format!("coop-{code}-{secs}"), h))
-                                    .map_err(|e| format!("{e:#}")),
-                            );
-                        }
-                        ui.add_space(6.0);
-                        section(ui, "Host a saved campaign");
-                        ui.label(
-                            egui::RichText::new(
-                                "A saved campaign keeps the rules it was started with",
-                            )
+                    ui.label(
+                        egui::RichText::new("Other players join with this computer's address; open the UDP port in your router to play over the internet")
                             .small()
                             .color(DIM),
-                        );
-                        if w.saves.is_empty() {
-                            ui.label(egui::RichText::new("No saved campaigns").color(DIM));
-                        }
-                        let scroll = egui::ScrollArea::vertical()
-                            .id_salt("mp_saves")
-                            .max_height(crate::campaign::SAVES_HEIGHT);
-                        scroll.show(ui, |ui| {
-                            for (name, code, hours) in w.saves.clone() {
-                                let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
-                                ui.horizontal(|ui| {
-                                    ui.label(format!("{theater:<22} {hours:>5.1} h"));
-                                    let clicked = ui.button(icon_text(ui, icon::HOST, "HOST")).clicked();
-                                    no_name |= clicked && !named;
-                                    if clicked && named {
-                                        let rules = host_rules(&settings, &state);
-                                        host = Some(match save::load(&name) {
-                                            Ok(Some(st)) => Host::resume(st, &data.0, rules)
-                                                .map(|h| (name.clone(), h))
-                                                .map_err(|e| format!("{e:#}")),
-                                            Ok(None) => Err("The save is gone".into()),
-                                            Err(e) => Err(format!("{e:#}")),
-                                        });
-                                    }
-                                    if ui.button(icon_text(ui, icon::DELETE, "DELETE")).on_hover_text("Delete this saved campaign").clicked() {
-                                        w.confirm_delete = Some((name.clone(), format!("{theater}, {hours:.1} h played")));
-                                    }
-                                });
-                            }
+                    );
+                    ui.checkbox(&mut state.list_public, "List on the public server list (others find the game in their server list)");
+                    let mut flow = Flow::new(ui);
+                        flow.card(ui, Span::Fixed(210.0), |ui| {
+                            crate::menu::theater_options(ui, &mut state.theater);
                         });
+                        flow.card(ui, Span::Fixed(200.0), |ui| {
+                            crate::menu::opponent_options(ui, &mut state.opponents);
+                            crate::menu::situation_options(ui, &mut state.roe);
+                        });
+                        flow.card(ui, Span::Fixed(230.0), |ui| {
+                            section(ui, "Rules for everybody");
+                            crate::menu::realism_options(ui, &mut settings);
+                            ui.checkbox(&mut settings.continuous_time, "Time of day (moonlit nights)");
+                            ui.checkbox(&mut state.lockheed, "Realistic F-117A weapons");
+                            ui.checkbox(&mut state.friendly_fire, "Friendly fire");
+                        });
+                        flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
+                            section(ui, "New campaign");
+                            let (_, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
+                            ui.label(theater);
+                            ui.horizontal(|ui| {
+                                ui.label("Day and night:");
+                                for (ratio, label) in [(1.0, "real time"), (24.0, "1 h / day"), (48.0, "30 min / day")] {
+                                    if ui.selectable_label(w.sky_ratio == ratio, label).clicked() {
+                                        w.sky_ratio = ratio;
+                                    }
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label("Weather:");
+                                for (clear, label) in [(false, "dynamic"), (true, "clear sky")] {
+                                    if ui.selectable_label(w.clear_sky == clear, label).clicked() {
+                                        w.clear_sky = clear;
+                                    }
+                                }
+                            });
+                            let clicked = ui.add(big_button("HOST NEW").icon(icon::HOST)).clicked();
+                            no_name |= clicked && !named;
+                            if (clicked && named) || auto_host {
+                                let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
+                                let secs = web_time::SystemTime::now()
+                                    .duration_since(web_time::UNIX_EPOCH)
+                                    .map_or(0, |d| d.as_secs());
+                                let setup = CampaignSetup {
+                                    theater: state.theater,
+                                    theater_code: code.to_string(),
+                                    roe: state.roe,
+                                    opponents: state.opponents,
+                                    // Test aid: `--host --seed <n>`.
+                                    seed: std::env::args()
+                                        .skip_while(|a| a != "--seed")
+                                        .nth(1)
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or_else(rand::random),
+                                    sky_ratio: w.sky_ratio,
+                                    start_hour: w.start_hour,
+                                    dynamic_weather: !w.clear_sky,
+                                };
+                                let rules = host_rules(&settings, &state);
+                                host = Some(
+                                    Host::new(setup, &data.0, rules)
+                                        .map(|h| (format!("coop-{code}-{secs}"), h))
+                                        .map_err(|e| format!("{e:#}")),
+                                );
+                            }
+                            ui.add_space(6.0);
+                            section(ui, "Host a saved campaign");
+                            ui.label(
+                                egui::RichText::new(
+                                    "A saved campaign keeps the rules it was started with",
+                                )
+                                .small()
+                                .color(DIM),
+                            );
+                            if w.saves.is_empty() {
+                                ui.label(egui::RichText::new("No saved campaigns").color(DIM));
+                            }
+                            let scroll = egui::ScrollArea::vertical()
+                                .id_salt("mp_saves")
+                                .max_height(crate::campaign::SAVES_HEIGHT);
+                            scroll.show(ui, |ui| {
+                                for (name, code, hours) in w.saves.clone() {
+                                    let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
+                                    ui.horizontal(|ui| {
+                                        ui.label(format!("{theater:<22} {hours:>5.1} h"));
+                                        let clicked = ui.button(icon_text(ui, icon::HOST, "HOST")).clicked();
+                                        no_name |= clicked && !named;
+                                        if clicked && named {
+                                            let rules = host_rules(&settings, &state);
+                                            host = Some(match save::load(&name) {
+                                                Ok(Some(st)) => Host::resume(st, &data.0, rules)
+                                                    .map(|h| (name.clone(), h))
+                                                    .map_err(|e| format!("{e:#}")),
+                                                Ok(None) => Err("The save is gone".into()),
+                                                Err(e) => Err(format!("{e:#}")),
+                                            });
+                                        }
+                                        if ui.button(icon_text(ui, icon::DELETE, "DELETE")).on_hover_text("Delete this saved campaign").clicked() {
+                                            w.confirm_delete = Some((name.clone(), format!("{theater}, {hours:.1} h played")));
+                                        }
+                                    });
+                                }
+                            });
+                        });
+                    flow.finish(ui);
+                }
+            }
+        });
+        split.footer(ui, |ui| {
+            crate::menu::footer_rule(ui);
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.add_enabled(w.joining.is_none(), big_button("BACK").icon(icon::BACK)).clicked() {
+                    close = true;
+                }
+                // A browser can't host (no UDP).
+                if w.page == Page::Join && !cfg!(target_arch = "wasm32") {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.add_enabled(w.joining.is_none(), big_button("HOST A GAME").icon(icon::HOST)).clicked() {
+                            w.page = Page::Host;
+                        }
                     });
-                });
-            }
-        }
-        crate::menu::footer_rule(ui);
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if ui.add_enabled(w.joining.is_none(), big_button("BACK").icon(icon::BACK)).clicked() {
-                close = true;
-            }
-            // A browser can't host (no UDP).
-            if w.page == Page::Join && !cfg!(target_arch = "wasm32") {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add_enabled(w.joining.is_none(), big_button("HOST A GAME").icon(icon::HOST)).clicked() {
-                        w.page = Page::Host;
-                    }
-                });
-            }
+                }
+            });
         });
     });
     if no_name {
@@ -604,6 +610,13 @@ fn server_title(state: &crate::menu::MenuState) -> String {
 
 /// How long an error shows in its popup (seconds).
 const POPUP_SECONDS: f64 = 3.0;
+
+/// The window's size, frame included, and the least width of the new campaign's column.
+const MULTIPLAYER_SIZE: egui::Vec2 = egui::vec2(1132.0, 740.0);
+const NEW_LEAST: f32 = 280.0;
+/// The width of the name's frame, and the least width of the one to join by address.
+const NAME_WIDTH: f32 = 372.0;
+const JOIN_LEAST: f32 = 540.0;
 
 /// An error in a popup at the top right of the screen.
 fn error_popup(ctx: &egui::Context, text: &str) {
