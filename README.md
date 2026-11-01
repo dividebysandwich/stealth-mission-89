@@ -7,18 +7,18 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 > **📖 [User Manual](docs/manual.md)**
 
 <p align="center">
+  <a href="https://stealth-mission.com">
+    <img alt="Play Online" src="https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge" />
+  </a>
+  <a href="https://github.com/dividebysandwich/stealth-mission-89/releases">
+    <img alt="Play on your PC" src="https://img.shields.io/badge/Play-on%20your%20PC-orange?style=for-the-badge" />
+  </a>
   <a href="https://discord.gg/zjjGeKKpC">
-    <img alt="Join us on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="48" />
+    <img alt="Join us on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" />
   </a>
   <br />
   <sub>Fly together, report bugs, share missions and follow development on the <a href="https://discord.gg/zjjGeKKpC">Stealth Mission 89 Discord</a>.</sub>
 </p>
-
-## Ready for takeoff?
-To play right now, you can either:
-1. Open your [web browser](https://stealth-mission.com) (the game works best in a Chromium-based web browser) 
-2. Or install the game on your PC with one of these [installers](https://github.com/dividebysandwich/stealth-mission-89/releases) (expand the list by clicking on "Show all assets")
-   - if you use Windows: install the `.msi` file or download the `.zip` file (then extract it) 
 
 ## Features
 * **Play in the browser** right on [stealth-mission.com](https://stealth-mission.com) or **locally** [on your PC](https://github.com/dividebysandwich/stealth-mission-89/releases)
