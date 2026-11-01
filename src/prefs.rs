@@ -112,6 +112,7 @@ pub struct Prefs {
     pub gif_scale: u8,
     pub gif_fps: u8,
     pub hmd_mode: crate::hmd::HmdMode,
+    pub hud_colour: crate::cockpit3d::hud_glass::HudColour,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -188,6 +189,7 @@ impl Default for Prefs {
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
             hmd_mode: Default::default(),
+            hud_colour: Default::default(),
         }
     }
 }
@@ -285,6 +287,7 @@ impl Prefs {
             gif_scale: s.gif_scale,
             gif_fps: s.gif_fps,
             hmd_mode: s.hmd_mode,
+            hud_colour: s.hud_colour,
         }
     }
 
@@ -358,6 +361,7 @@ impl Prefs {
         s.gif_scale = self.gif_scale.clamp(1, 100);
         s.gif_fps = self.gif_fps.clamp(1, 50);
         s.hmd_mode = self.hmd_mode;
+        s.hud_colour = self.hud_colour;
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -415,6 +419,7 @@ impl Prefs {
         self.gif_scale = s.gif_scale;
         self.gif_fps = s.gif_fps;
         self.hmd_mode = s.hmd_mode;
+        self.hud_colour = s.hud_colour;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

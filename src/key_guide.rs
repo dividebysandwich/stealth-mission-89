@@ -105,6 +105,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[Flir]), "FLIR on / off"),
                 (Actions(&[Nvg]), "Night vision goggles"),
                 (Actions(&[HmdMode]), "Helmet display on / auto (off over the HUD) / off"),
+                (Actions(&[HudColour]), "HUD and helmet display colour"),
                 (Actions(&[Ils]), "ILS landing guidance"),
             ],
         ),

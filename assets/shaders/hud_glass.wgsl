@@ -15,11 +15,17 @@
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var hud_sampler: sampler;
 // Canvas pixel of the boresight (xy), canvas pixels per unit of the tangent plane (zw).
 @group(#{MATERIAL_BIND_GROUP}) @binding(3) var<uniform> proj: vec4<f32>;
-// x: 1 = modern HUD (monochrome ink drawn in HUD green), y: brightness.
+// x: 1 = modern HUD (monochrome ink drawn in the HUD colour), y: brightness, z: the colour
+// (`HudColour`: green, amber, cyan, white).
 @group(#{MATERIAL_BIND_GROUP}) @binding(4) var<uniform> style: vec4<f32>;
 
-// Modern HUD green (linear).
-const HUD_GREEN: vec3<f32> = vec3<f32>(0.18, 1.0, 0.32);
+// The modern HUD's colours (linear), indexed by style.z.
+const HUD_COLOURS: array<vec3<f32>, 4> = array<vec3<f32>, 4>(
+    vec3<f32>(0.18, 1.0, 0.32),
+    vec3<f32>(1.0, 0.55, 0.08),
+    vec3<f32>(0.2, 0.85, 1.0),
+    vec3<f32>(0.92, 0.95, 0.92),
+);
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
@@ -84,7 +90,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
             }
             return tint;
         }
-        let rgb = HUD_GREEN * style.y * (0.75 + 0.6 * core);
+        var colours = HUD_COLOURS;
+        let rgb = colours[clamp(u32(style.z), 0u, 3u)] * style.y * (0.75 + 0.6 * core);
         return vec4<f32>(rgb, a);
     }
     // The ink over the tint over what is behind.

@@ -11,7 +11,8 @@ uniform mat4 u_local;
 uniform vec4 u_tint;
 // Canvas pixel of the boresight (xy), canvas pixels per unit of the tangent plane (zw).
 uniform vec4 u_proj;
-// x: 1 = modern HUD (monochrome ink drawn in HUD green), y: brightness.
+// x: 1 = modern HUD (monochrome ink drawn in the HUD colour), y: brightness, z: the colour
+// (`HudColour`: green, amber, cyan, white).
 uniform vec4 u_style;
 uniform sampler2D u_base_tex;
 
@@ -34,7 +35,7 @@ void main() {
 in vec3 v_dir;
 layout(location = 0) out vec4 o_colour;
 
-const vec3 HUD_GREEN = vec3(0.18, 1.0, 0.32);
+const vec3 HUD_COLOURS[4] = vec3[4](vec3(0.18, 1.0, 0.32), vec3(1.0, 0.55, 0.08), vec3(0.2, 0.85, 1.0), vec3(0.92, 0.95, 0.92));
 
 // Rotated grid taps across a pixel (`canvas`).
 const vec2 GRID[4] = vec2[4](vec2(0.125, 0.375), vec2(0.375, -0.125), vec2(-0.125, -0.375), vec2(-0.375, 0.125));
@@ -69,7 +70,7 @@ void main() {
             o_colour = u_tint;
             return;
         }
-        o_colour = vec4(HUD_GREEN * u_style.y * (0.75 + 0.6 * c.r), a);
+        o_colour = vec4(HUD_COLOURS[clamp(int(u_style.z), 0, 3)] * u_style.y * (0.75 + 0.6 * c.r), a);
         return;
     }
     // The ink over the tint over what is behind.

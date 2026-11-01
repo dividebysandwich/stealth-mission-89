@@ -83,6 +83,8 @@ pub enum Action {
     /// The helmet-mounted display (HMCS, AH-1Z helmet): always on, blanked while the head looks
     /// through the HUD, off (`hmd::HmdMode`).
     HmdMode,
+    /// The modern HUD's and the helmet display's colour: green, amber, cyan, white.
+    HudColour,
     Ordnance,
     Flir,
     Ils,
@@ -387,6 +389,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::F3, Maps),
         (None, K::F4, Nvg),
         (None, K::KeyH, HmdMode),
+        (Shift, K::KeyH, HudColour),
         (None, K::F5, Ordnance),
         (None, K::F6, Flir),
         (None, K::F9, Ils),

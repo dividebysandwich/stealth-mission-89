@@ -90,6 +90,7 @@ impl Plugin for Cockpit3dPlugin {
                 tooltips::hover,
                 tooltips::place_screen,
                 controls::console_panel,
+                hud_glass::switch_colour,
             )
                 .chain()
                 .run_if(in_state(AppState::Flight)),
@@ -107,6 +108,7 @@ impl Plugin for Cockpit3dPlugin {
             (
                 set_projection,
                 displays::restyle_hud,
+                hud_glass::recolour,
                 displays::update_displays,
                 controls::animate,
                 levers::animate_levers,

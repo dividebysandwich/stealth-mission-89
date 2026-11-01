@@ -23,9 +23,81 @@ pub struct HudGlassMaterial {
     /// (zw, horizontal and vertical).
     #[uniform(3)]
     pub proj: Vec4,
-    /// x: 1 = modern HUD (every set texel drawn in HUD green), y: brightness.
+    /// x: 1 = modern HUD (every set texel drawn in the HUD colour), y: brightness, z: the
+    /// colour (`HudColour`).
     #[uniform(4)]
     pub style: Vec4,
+}
+
+/// The modern HUD's and the helmet display's symbology colour (the shaders' `HUD_COLOURS`;
+/// the classic HUD keeps its palette).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub enum HudColour {
+    #[default]
+    Green,
+    Amber,
+    Cyan,
+    White,
+}
+
+impl HudColour {
+    pub fn next(self) -> Self {
+        match self {
+            HudColour::Green => HudColour::Amber,
+            HudColour::Amber => HudColour::Cyan,
+            HudColour::Cyan => HudColour::White,
+            HudColour::White => HudColour::Green,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            HudColour::Green => "GREEN",
+            HudColour::Amber => "AMBER",
+            HudColour::Cyan => "CYAN",
+            HudColour::White => "WHITE",
+        }
+    }
+}
+
+/// Steps the HUD colour (remembered between runs when the game started into the menu).
+pub(super) fn switch_colour(
+    mut actions: MessageReader<crate::input::ActionEvent>,
+    mut settings: ResMut<crate::settings::Settings>,
+    mut msg: ResMut<crate::hud::HudMessages>,
+) {
+    let mut changed = false;
+    for crate::input::ActionEvent(a) in actions.read() {
+        if *a == crate::input::Action::HudColour {
+            settings.hud_colour = settings.hud_colour.next();
+            msg.show(format!("HUD {}", settings.hud_colour.name()));
+            changed = true;
+        }
+    }
+    if changed && settings.initial_state == crate::settings::AppState::Menu {
+        crate::prefs::Prefs::save_options(&settings);
+    }
+}
+
+/// Gives the HUD glass and the helmet display the chosen colour (`style.z`), new ones too.
+pub(super) fn recolour(
+    settings: Res<crate::settings::Settings>,
+    mut huds: ResMut<Assets<HudGlassMaterial>>,
+    mut hmds: ResMut<Assets<HmdMaterial>>,
+) {
+    let z = settings.hud_colour as u8 as f32;
+    let stale: Vec<_> = huds.iter().filter(|(_, m)| m.style.z != z).map(|(id, _)| id).collect();
+    for id in stale {
+        if let Some(mut m) = huds.get_mut(id) {
+            m.style.z = z;
+        }
+    }
+    let stale: Vec<_> = hmds.iter().filter(|(_, m)| m.style.z != z).map(|(id, _)| id).collect();
+    for id in stale {
+        if let Some(mut m) = hmds.get_mut(id) {
+            m.style.z = z;
+        }
+    }
 }
 
 impl HudGlassMaterial {

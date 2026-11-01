@@ -148,6 +148,8 @@ pub struct Settings {
     /// The helmet-mounted display: always on, blanked while the head looks through the HUD,
     /// or off (`Action::HmdMode`, `hmd`).
     pub hmd_mode: crate::hmd::HmdMode,
+    /// The modern HUD's and the helmet display's symbology colour (`Action::HudColour`).
+    pub hud_colour: crate::cockpit3d::hud_glass::HudColour,
 }
 
 /// Default VR cockpit size.
@@ -336,6 +338,7 @@ impl Settings {
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
             hmd_mode: Default::default(),
+            hud_colour: Default::default(),
         }
     }
 }
