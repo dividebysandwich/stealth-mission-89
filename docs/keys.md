@@ -54,6 +54,7 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | look ahead / rear / left / right | Shift `/` / Shift `.` / Shift `,` / Shift M |
 | External views | slot / chase / side / missile / tactical / inverse tactical | Shift F1 .. Shift F6 |
 | | free camera (remake): W / S forward / back, A / D left / right, Q / E down / up, Shift faster, Ctrl slower, right mouse button turns, wheel zooms; again to go back | Shift F7 |
+| | main menu scene (remake, desktop): walk / run / jump on the apron, right mouse button turns (fixed keys, the same places on an AZERTY keyboard; a gamepad or a joystick walks with its stick, see 1.1) | W A S D / Shift / Space |
 | View | zoom / unzoom / wide angle | Z / X / C |
 | Time | accelerate / normal | Shift Z / Shift X |
 | Misc | pause (remake: settings menu, also Esc) / boss / quit / fullscreen | Alt P / Alt B / Alt Q / Alt Enter, F11 |

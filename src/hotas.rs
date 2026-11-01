@@ -741,7 +741,7 @@ impl Hotas {
         self.mapped(device).find_map(|d| d.axes.get(&code).copied())
     }
 
-    fn active(&self, device: &str, source: Source, prev: bool) -> bool {
+    pub fn active(&self, device: &str, source: Source, prev: bool) -> bool {
         self.mapped(device).any(|d| d.active(source, prev))
     }
 

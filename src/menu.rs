@@ -1864,7 +1864,11 @@ pub(crate) fn menu_ui(
     mut settings: ResMut<crate::settings::Settings>,
     mut next: ResMut<NextState<AppState>>,
     mut exit: MessageWriter<AppExit>,
-    (vr, head): (Res<VrAvailable>, Res<crate::headtrack::HeadTrack>),
+    (vr, head, walking): (
+        Res<VrAvailable>,
+        Res<crate::headtrack::HeadTrack>,
+        Option<Res<crate::menu_scene::MenuLook>>,
+    ),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
     mut input_config: ResMut<crate::hotas::InputConfig>,
     hotas: Res<crate::hotas::Hotas>,
@@ -1981,7 +1985,9 @@ pub(crate) fn menu_ui(
     if gateway {
         web_gateway(ctx, &mut state);
     }
-    if !state.mission_screen && !dialogs && !gateway {
+    // The main menu steps aside while the player walks the apron behind it (menu_scene.rs).
+    let walking = walking.is_some_and(|w| w.hides_menu());
+    if !state.mission_screen && !dialogs && !gateway && !walking {
         main_screen(
             ctx,
             &mut state,
