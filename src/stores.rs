@@ -96,7 +96,10 @@ impl Plugin for StoresPlugin {
                     .run_if(resource_exists::<Combat>),
                 (
                     (own_loads, hang_stores.after(crate::sim_render::sync_remote_pilots)).chain(),
+                    // After the loads are this frame's: the round that left is the one past
+                    // those still on its station.
                     release_stores
+                        .after(own_loads)
                         .after(crate::sim_render::sync_objects)
                         .after(crate::sim_render::sync_remote_pilots),
                 )
@@ -372,7 +375,7 @@ fn release_stores(
             .stations
             .get(k)
             .and_then(|h| h.as_ref())
-            .and_then(|(_, r, _)| r.get(usize::try_from(round).ok()?))
+            .and_then(|(_, r, _)| r.get(usize::try_from(round).ok()?.min(r.len().checked_sub(1)?)))
             .and_then(|&r| rounds.get(r).ok())
         else {
             continue;
