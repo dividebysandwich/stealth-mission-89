@@ -1,10 +1,11 @@
 //! Input mapping dialog (opened from the main menu): binds keyboard keys and joystick / HOTAS
-//! axes and buttons to the flight controls and every action, picks what the VR controller buttons do, and saves the
-//! mapping as JSON. A search field at its top keeps only the axes and actions whose name holds
-//! the typed text, and the VR inputs whose name or action does (as the key guide's search; Esc
-//! or its X clears it); in VR it types with the virtual keyboard (`text_entry.rs`). The field
-//! takes the keyboard once clicked; until then a key or a joystick button pressed jumps to the
-//! row it is bound to and highlights it.
+//! axes and buttons to the flight controls and every action, picks what the VR controller
+//! buttons do, and saves the mapping as JSON. A search field at its top keeps only the axes and
+//! actions whose name holds the typed text, and the VR inputs whose name or action does (as the
+//! key guide's search; Esc or its X clears it). An action a VR button can be set to holding it
+//! keeps every VR input, with their lists narrowed to the matching actions; in VR it types with
+//! the virtual keyboard (`text_entry.rs`). The field takes the keyboard once clicked; until then
+//! a key or a joystick button pressed jumps to the row it is bound to and highlights it.
 
 use std::collections::{HashMap, HashSet};
 
@@ -308,7 +309,10 @@ pub fn show(
                 })
                 .filter(|(_, targets)| !targets.is_empty())
                 .collect();
-            let vr_inputs = vr_rows(config, &query);
+            let vr_targets = vr_targets();
+            let vr_matching: Vec<ButtonTarget> =
+                vr_targets.iter().copied().filter(|&t| holds(&target_name(Some(t)), &query)).collect();
+            let vr_inputs = vr_rows(config, &query, !vr_matching.is_empty());
 
             split.body(ui, |ui| {
                 // The joysticks and the preview scroll with the rest, at its top.
@@ -439,7 +443,7 @@ pub fn show(
                     ui.add_space(8.0);
                 }
                 if !vr_inputs.is_empty() {
-                    vr_buttons(ui, config, &vr_inputs);
+                    vr_buttons(ui, config, &vr_inputs, &query, &vr_targets, &vr_matching);
                 }
             });
             split.footer(ui, |ui| {
@@ -582,12 +586,24 @@ fn vr_input_name(input: VrInput) -> String {
     if l == r { l.to_string() } else { format!("{l} / {r}") }
 }
 
-/// The VR inputs whose name or action of either hand holds a [`search_query`].
-fn vr_rows(config: &InputConfig, query: &str) -> Vec<VrInput> {
+/// What a VR controller button can be set to: every action but the stick keys, which are for
+/// the keyboard and joystick buttons (VR has the real stick).
+fn vr_targets() -> Vec<ButtonTarget> {
+    crate::key_guide::groups()
+        .into_iter()
+        .flat_map(|(_, targets)| targets)
+        .filter(|t| !matches!(t, ButtonTarget::Action(a) if a.stick_direction().is_some()))
+        .collect()
+}
+
+/// The VR inputs whose name or action of either hand holds a [`search_query`]; all of them
+/// when `target_found` (an action they could be set to holds it), as any of them can take it.
+fn vr_rows(config: &InputConfig, query: &str, target_found: bool) -> Vec<VrInput> {
     VrInput::ALL
         .into_iter()
         .filter(|&input| {
-            holds(&vr_input_name(input), query)
+            target_found
+                || holds(&vr_input_name(input), query)
                 || [VrHand::Left, VrHand::Right]
                     .into_iter()
                     .any(|hand| holds(&target_name(config.vr_button(hand, input)), query))
@@ -596,8 +612,16 @@ fn vr_rows(config: &InputConfig, query: &str) -> Vec<VrInput> {
 }
 
 /// VR controller buttons: a target picked per hand for `inputs` (no capture: the controllers
-/// are usually not awake at the desktop menu).
-fn vr_buttons(ui: &mut egui::Ui, config: &mut InputConfig, inputs: &[VrInput]) {
+/// are usually not awake at the desktop menu). Each list holds the `targets`, or only the
+/// `matching` ones (those holding the [`search_query`]) unless the query holds the input's name.
+fn vr_buttons(
+    ui: &mut egui::Ui,
+    config: &mut InputConfig,
+    inputs: &[VrInput],
+    query: &str,
+    targets: &[ButtonTarget],
+    matching: &[ButtonTarget],
+) {
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new("[ VR CONTROLLERS ]").color(AMBER).size(14.0));
         if ui.button(icon_text(ui, icon::RESET, "DEFAULTS")).clicked() {
@@ -609,12 +633,6 @@ fn vr_buttons(ui: &mut egui::Ui, config: &mut InputConfig, inputs: &[VrInput]) {
             .color(DIM)
             .small(),
     );
-    // The stick keys are for the keyboard and joystick buttons: VR has the real stick.
-    let targets: Vec<ButtonTarget> = crate::key_guide::groups()
-        .into_iter()
-        .flat_map(|(_, targets)| targets)
-        .filter(|t| !matches!(t, ButtonTarget::Action(a) if a.stick_direction().is_some()))
-        .collect();
     egui::Grid::new("vr_buttons").num_columns(3).spacing([14.0, 4.0]).striped(true).show(
         ui,
         |ui| {
@@ -623,7 +641,10 @@ fn vr_buttons(ui: &mut egui::Ui, config: &mut InputConfig, inputs: &[VrInput]) {
             ui.label(egui::RichText::new("RIGHT HAND").color(GREEN));
             ui.end_row();
             for &input in inputs {
-                ui.label(vr_input_name(input));
+                let name = vr_input_name(input);
+                let narrow = !matching.is_empty() && !holds(&name, query);
+                let listed = if narrow { matching } else { targets };
+                ui.label(name);
                 for hand in [VrHand::Left, VrHand::Right] {
                     let current = config.vr_button(hand, input);
                     let mut picked = current;
@@ -632,7 +653,7 @@ fn vr_buttons(ui: &mut egui::Ui, config: &mut InputConfig, inputs: &[VrInput]) {
                         .selected_text(target_name(current))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut picked, None, "-");
-                            for &t in &targets {
+                            for &t in listed {
                                 ui.selectable_value(&mut picked, Some(t), target_name(Some(t)));
                             }
                         });

@@ -205,7 +205,8 @@ pages for what can change in flight.
 OPTIONS > CONTROLS > *Keys and joystick* maps your joysticks, throttles, pedals and gamepads. Every
 change is saved at once.
 
-- **Search** (under the title) keeps only the actions whose name holds what you type.
+- **Search** (under the title) keeps only the actions whose name holds what you type. It also
+  narrows the VR controller lists below to the actions it matches (see *VR controllers*).
 - **Axes**: roll, pitch, rudder, throttle, the sensor/cursor slew pair and the Harrier's nozzles. Click
   **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. The F-117
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
@@ -219,7 +220,9 @@ change is saved at once.
 ![VR controller mapping](images/controls_vr.png)
 
 **VR controllers.** The last section assigns an action to each controller input. The defaults work like
-a HOTAS: grab the stick with the right hand and the throttle with the left.
+a HOTAS: grab the stick with the right hand and the throttle with the left. To find an action in
+the lists, type its name in the search field: every input stays, and their lists hold only the
+matching actions.
 
 | | Right controller (stick) | Left controller (throttle) |
 |---|---|---|
