@@ -328,9 +328,9 @@ impl Atc {
     fn takeoff_clearance(&mut self, b: &Base, helicopter: bool) {
         let cs = self.callsign.clone();
         let text = if helicopter {
-            format!("{cs}, wind calm, cleared for takeoff")
+            format!("{cs}, cleared for takeoff")
         } else {
-            format!("{cs}, runway {}, wind calm, cleared for takeoff", self.runway(b))
+            format!("{cs}, runway {}, cleared for takeoff", self.runway(b))
         };
         self.say(format!("{} Tower", b.name), text, false);
         self.phase = Phase::Departing;
@@ -458,7 +458,7 @@ impl Atc {
         if i.helicopter {
             self.say(
                 format!("{} Tower", b.name),
-                format!("{cs}, wind calm, cleared to land at the helipad"),
+                format!("{cs}, cleared to land at the helipad"),
                 false,
             );
             self.cleared = true;
@@ -622,7 +622,7 @@ impl Atc {
         } else {
             self.say(
                 tower,
-                format!("{cs}, runway {}, wind calm, cleared to land", e.name()),
+                format!("{cs}, runway {}, cleared to land", e.name()),
                 false,
             );
             self.cleared = true;
@@ -666,7 +666,7 @@ impl Atc {
             if !runway_busy(b, &e, along, i.traffic) {
                 self.say(
                     tower,
-                    format!("{cs}, runway {}, wind calm, cleared to land", e.name()),
+                    format!("{cs}, runway {}, cleared to land", e.name()),
                     false,
                 );
                 self.cleared = true;
@@ -1215,7 +1215,7 @@ mod tests {
         let mut f = Flight::new(vec![field(true)]);
         f.run(5.0);
         assert!(f.said("ready for departure, runway 36"), "{:?}", f.calls);
-        assert!(f.said("runway 36, wind calm, cleared for takeoff"));
+        assert!(f.said("runway 36, cleared for takeoff"));
         f.fly(DVec2::new(0.0, 6000.0), 2500.0, 0.0, 400.0);
         f.run(3.0);
         assert!(f.said("radar contact, climb as filed"));
@@ -1258,7 +1258,7 @@ mod tests {
         f.gear = true;
         f.run(3.0);
         assert!(f.said("base, gear down"));
-        assert!(f.said("runway 36, wind calm, cleared to land"));
+        assert!(f.said("runway 36, cleared to land"));
         f.ground = true;
         f.knots = 30.0;
         f.alt = 0.0;
