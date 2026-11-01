@@ -35,8 +35,9 @@ use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions};
 
 pub use self::shading::CockpitMaterial;
-use self::shading::{cockpit_material, cockpit_material_bright};
+use self::shading::{cockpit_material, cockpit_material_bright, cockpit_part};
 use crate::camera::{EyeCamera, HeadAnchor, HeadLook, Orbit, View, ViewState};
+use crate::effects::ViewPart;
 use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
@@ -57,6 +58,7 @@ impl Plugin for Cockpit3dPlugin {
         app.add_plugins((
             MaterialPlugin::<hud_glass::HudGlassMaterial>::default(),
             MaterialPlugin::<hud_glass::HmdMaterial>::default(),
+            MaterialPlugin::<hud_glass::OverlayMaterial>::default(),
             MaterialPlugin::<shading::CockpitMaterial>::default(),
             MaterialPlugin::<tooltips::TipScreenMaterial>::default(),
             HierarchyPropagatePlugin::<RenderLayers>::new(PostUpdate),
@@ -280,13 +282,16 @@ pub struct CockpitMaterials {
 fn setup_materials(mut commands: Commands, mut materials: ResMut<Assets<CockpitMaterial>>) {
     // Structure materials are always lit; the panel picture and labels follow the options.
     let mut m = |c: Color, rough: f32, metal: f32| {
-        materials.add(cockpit_material(StandardMaterial {
-            base_color: c,
-            perceptual_roughness: rough,
-            metallic: metal,
-            fog_enabled: false,
-            ..default()
-        }))
+        materials.add(cockpit_part(
+            StandardMaterial {
+                base_color: c,
+                perceptual_roughness: rough,
+                metallic: metal,
+                fog_enabled: false,
+                ..default()
+            },
+            ViewPart::Cockpit,
+        ))
     };
     let panel_grey = m(Color::srgb(0.20, 0.22, 0.24), 0.8, 0.0);
     let dark = m(Color::srgb(0.09, 0.10, 0.11), 0.85, 0.0);
@@ -406,6 +411,11 @@ fn sync_shading(
         Vec4::ZERO
     };
     let retro = crate::palette::retro(&settings);
+    // Pixelize: the parts it leaves sharp.
+    let sharp_of = |m: &CockpitMaterial| {
+        let sharp = m.extension.part.is_some_and(|p| crate::palette::pixel_sharp(&settings, p));
+        Vec4::new(sharp as u32 as f32, 0.0, 0.0, 0.0)
+    };
     let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials
         .iter()
@@ -417,6 +427,7 @@ fn sync_shading(
                 || m.extension.night != night(m)
                 || m.extension.flood != flood_of(m)
                 || m.extension.retro != retro
+                || m.extension.sharp != sharp_of(m)
         })
         .map(|(id, _)| id)
         .collect();
@@ -429,6 +440,7 @@ fn sync_shading(
             m.extension.night = night(&m);
             m.extension.flood = flood_of(&m);
             m.extension.retro = retro;
+            m.extension.sharp = sharp_of(&m);
         }
     }
 }

@@ -12,9 +12,10 @@ use bevy::prelude::*;
 
 use super::hud_glass::HudGlassMaterial;
 use super::layout::{DED_CANVAS, Elem, PanelLayout, PanelStyle, Placed, PxRect};
-use super::shading::{CockpitMaterial, cockpit_material, cockpit_material_bright};
+use super::shading::{CockpitMaterial, cockpit_material_bright, cockpit_part, in_part};
 use crate::canvas::{Canvas, CanvasTexture};
 use crate::cockpit::{CockpitArt, Displays};
+use crate::effects::ViewPart;
 use crate::font::Fonts;
 use crate::mfd::{CLASSIC, HIRES, MfdSide, osb};
 use crate::panel::{
@@ -218,14 +219,17 @@ pub(super) fn panel_materials(
         *p = i as u8;
     }
     let swatch = CanvasTexture::new(swatch, images, false);
-    let solid = materials.add(cockpit_material(StandardMaterial {
-        base_color_texture: Some(swatch.image.clone()),
-        perceptual_roughness: 0.8,
-        cull_mode: None,
-        unlit: true,
-        fog_enabled: false,
-        ..default()
-    }));
+    let solid = materials.add(cockpit_part(
+        StandardMaterial {
+            base_color_texture: Some(swatch.image.clone()),
+            perceptual_roughness: 0.8,
+            cull_mode: None,
+            unlit: true,
+            fog_enabled: false,
+            ..default()
+        },
+        ViewPart::Cockpit,
+    ));
     let e = commands.spawn((swatch, LitMaterial(solid.clone()))).id();
     commands.entity(root).add_child(e);
 
@@ -244,16 +248,19 @@ pub(super) fn panel_materials(
         CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, ATLAS), images, false, ATLAS_MIPS);
     let glow_tex =
         CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, ATLAS), images, false, ATLAS_MIPS);
-    let atlas = materials.add(cockpit_material(StandardMaterial {
-        base_color_texture: Some(atlas_tex.image.clone()),
-        emissive_texture: Some(glow_tex.image.clone()),
-        emissive: LinearRgba::rgb(GLOW_NITS, GLOW_NITS, GLOW_NITS),
-        perceptual_roughness: 0.6,
-        cull_mode: None,
-        unlit: true,
-        fog_enabled: false,
-        ..default()
-    }));
+    let atlas = materials.add(cockpit_part(
+        StandardMaterial {
+            base_color_texture: Some(atlas_tex.image.clone()),
+            emissive_texture: Some(glow_tex.image.clone()),
+            emissive: LinearRgba::rgb(GLOW_NITS, GLOW_NITS, GLOW_NITS),
+            perceptual_roughness: 0.6,
+            cull_mode: None,
+            unlit: true,
+            fog_enabled: false,
+            ..default()
+        },
+        ViewPart::Gauges,
+    ));
     let info = InstrumentAtlas {
         faces: faces.iter().zip(&slots).map(|((f, _), s)| (*f, *s)).collect(),
         texels: k,
@@ -364,17 +371,20 @@ pub(super) fn screen(
         _ => (Canvas::new(crate::panel::INDEXER_CANVAS.0, crate::panel::INDEXER_CANVAS.1), true),
     };
     let tex = CanvasTexture::mipmapped(canvas, images, transparent);
-    let material = materials.add(cockpit_material(StandardMaterial {
-        base_color_texture: Some(tex.image.clone()),
-        emissive_texture: Some(tex.image.clone()),
-        emissive: LinearRgba::rgb(GLOW_NITS, GLOW_NITS, GLOW_NITS),
-        alpha_mode: AlphaMode::Mask(0.5),
-        perceptual_roughness: 0.3,
-        cull_mode: None,
-        unlit: true,
-        fog_enabled: false,
-        ..default()
-    }));
+    let material = materials.add(cockpit_part(
+        StandardMaterial {
+            base_color_texture: Some(tex.image.clone()),
+            emissive_texture: Some(tex.image.clone()),
+            emissive: LinearRgba::rgb(GLOW_NITS, GLOW_NITS, GLOW_NITS),
+            alpha_mode: AlphaMode::Mask(0.5),
+            perceptual_roughness: 0.3,
+            cull_mode: None,
+            unlit: true,
+            fog_enabled: false,
+            ..default()
+        },
+        ViewPart::Gauges,
+    ));
     (tex, material)
 }
 
@@ -383,13 +393,16 @@ pub(super) fn trackcam_material(
     materials: &mut Assets<CockpitMaterial>,
     tc_image: Option<&crate::trackcam::TrackCamImage>,
 ) -> Handle<CockpitMaterial> {
-    materials.add(cockpit_material_bright(StandardMaterial {
-        base_color_texture: tc_image.map(|i| i.0.clone()),
-        unlit: true,
-        cull_mode: None,
-        fog_enabled: false,
-        ..default()
-    }))
+    materials.add(in_part(
+        cockpit_material_bright(StandardMaterial {
+            base_color_texture: tc_image.map(|i| i.0.clone()),
+            unlit: true,
+            cull_mode: None,
+            fog_enabled: false,
+            ..default()
+        }),
+        ViewPart::Gauges,
+    ))
 }
 
 /// A side panel button label (the button's text on a green cap).
@@ -435,14 +448,17 @@ pub(super) fn side_label(
     let mut canvas = Canvas::new(28, 11);
     draw_side_label(&mut canvas, fonts, text, None);
     let tex = CanvasTexture::mipmapped(canvas, images, false);
-    let m = materials.add(cockpit_material(StandardMaterial {
-        base_color_texture: Some(tex.image.clone()),
-        emissive_texture: Some(tex.image.clone()),
-        emissive: LinearRgba::rgb(1.0, 1.0, 1.0),
-        unlit: true,
-        fog_enabled: false,
-        ..default()
-    }));
+    let m = materials.add(cockpit_part(
+        StandardMaterial {
+            base_color_texture: Some(tex.image.clone()),
+            emissive_texture: Some(tex.image.clone()),
+            emissive: LinearRgba::rgb(1.0, 1.0, 1.0),
+            unlit: true,
+            fog_enabled: false,
+            ..default()
+        },
+        ViewPart::Gauges,
+    ));
     (tex, m)
 }
 
@@ -454,8 +470,13 @@ pub(super) fn hud_material(
     scale: f32,
 ) -> (CanvasTexture, Handle<HudGlassMaterial>) {
     let (tex, proj, style) = hud_canvas(images, classic, scale);
-    let material =
-        materials.add(HudGlassMaterial { tint: Vec4::ZERO, image: tex.image.clone(), proj, style });
+    let material = materials.add(HudGlassMaterial {
+        tint: Vec4::ZERO,
+        image: tex.image.clone(),
+        proj,
+        style,
+        sharp: false,
+    });
     (tex, material)
 }
 

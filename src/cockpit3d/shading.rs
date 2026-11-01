@@ -16,6 +16,8 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
+use crate::effects::ViewPart;
+
 const SHADER: &str = "shaders/cockpit.wgsl";
 
 pub type CockpitMaterial = ExtendedMaterial<StandardMaterial, CockpitShading>;
@@ -25,6 +27,17 @@ pub type CockpitMaterial = ExtendedMaterial<StandardMaterial, CockpitShading>;
 pub fn cockpit_material(base: StandardMaterial) -> CockpitMaterial {
     let unlit = base.unlit;
     ExtendedMaterial { base, extension: CockpitShading { unlit, ..default() } }
+}
+
+/// A cockpit material of this part of the view: the pixelize look can leave it sharp.
+pub fn cockpit_part(base: StandardMaterial, part: ViewPart) -> CockpitMaterial {
+    in_part(cockpit_material(base), part)
+}
+
+/// The material as a part of the view.
+pub fn in_part(mut m: CockpitMaterial, part: ViewPart) -> CockpitMaterial {
+    m.extension.part = Some(part);
+    m
 }
 
 /// A cockpit material the night never darkens (a picture or an overlay, not a surface).
@@ -64,6 +77,12 @@ pub struct CockpitShading {
     pub retro: Vec4,
     /// Never darkened.
     pub bright: bool,
+    /// The part of the view it belongs to (None: left as it is, e.g. the flash and the VR hands).
+    pub part: Option<ViewPart>,
+    /// Pixelize: x = 1 where the pass leaves this material's part sharp. Such a surface draws
+    /// an alpha of 0, which the pass reads as "keep this pixel" (pixelize.wgsl).
+    #[uniform(103)]
+    pub sharp: Vec4,
 }
 
 #[repr(C)]

@@ -180,6 +180,9 @@ impl Page {
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),
                     PixelSize,
+                    Effect(E::SharpHud),
+                    Effect(E::SharpCockpit),
+                    Effect(E::SharpGauges),
                     Back,
                 ]
             }
@@ -401,8 +404,8 @@ impl Item {
     }
 
     /// The cockpit size and the automatic scenery detail only matter in the headset, the label
-    /// size only with the player labels on, the pixel size only with the pixelize look on, the
-    /// cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
+    /// size only with the player labels on, the pixel size and the parts it leaves sharp only
+    /// with the pixelize look on, the cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
     /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
     /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
     /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved.
@@ -418,6 +421,7 @@ impl Item {
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
             Item::TrackingMouse => s.head_tracking && !s.vr && !cfg!(target_arch = "wasm32"),
             Item::Msaa => !crate::WEBGL2 && !crate::palette::pixelized(s),
+            Item::Effect(e) if e.pixel_part() => crate::palette::pixelized(s),
             Item::Effect(crate::effects::Effect::Scanlines | crate::effects::Effect::Pixelize) => {
                 !s.vr
             }
