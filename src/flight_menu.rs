@@ -1436,7 +1436,7 @@ fn draw(
     };
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
-        Page::Main if campaign.is_some() => "CAMPAIGN RUNS ON",
+        Page::Main if campaign.is_some() => "GAME IN PROGRESS",
         Page::Game => "FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS",
         _ => "",
     };
