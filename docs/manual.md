@@ -1344,7 +1344,8 @@ keypad 8 / 2 / 4 / 6, the left VR thumbstick or two bound joystick axes. **Lock 
 (keypad Enter, left thumbstick click or a bound button) locks what is under the cursor: an
 aircraft, a ground object, a ship or a radar. Held on the HSD or HARM display it opens a 4×
 magnified window; letting go locks. The zoom keys zoom the SOI: Z / X, `]` / `[` and Alt Z /
-Alt X all change the HSD range or the TGP's zoom, whichever is the SOI. The cursor stays on its target
+Alt X all change the HSD range or the TGP's zoom, whichever is the SOI. Slewing the HSD's cursor
+past the top edge steps the range out, past the bottom edge steps it in. The cursor stays on its target
 as you turn.
 
 **Targeting pod.** The TGP format and how to work the pod (SLV, AREA, PNT, SP, CZ, zoom and

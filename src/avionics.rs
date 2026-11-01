@@ -1778,6 +1778,9 @@ fn smooth_sight(s: Vec3, d: Vec3, dt: f32) -> Vec3 {
 
 /// Cursor speed at full slew (display pixels per second).
 const SLEW_SPEED: f32 = 110.0;
+/// After the HSD's cursor pushed past the bottom edge zoomed in, it is put back at least this
+/// far above the edge (pixels), so that holding the slew does not zoom in again at once.
+const HSD_EDGE_RESET: f32 = 30.0;
 /// A lock picks the nearest symbol within this many pixels of the cursor.
 const PICK_RADIUS: f32 = 14.0;
 
@@ -1802,7 +1805,8 @@ fn slew_and_lock(
     let size = Vec2::new(HIRES.0 as f32, HIRES.1 as f32);
     let lo = Vec2::new(4.0, BAND as f32 + 4.0);
     let hi = size - lo;
-    let view = hsd_view(&state.av, aircraft.single().ok());
+    let ac = aircraft.single().ok();
+    let mut view = hsd_view(&state.av, ac);
     follow_view(&mut state.av, view, lo, hi);
     let f = state.av.soi_format().filter(|f| matches!(f, Format::Hsd | Format::Harm));
     let av = &mut state.av;
@@ -1816,6 +1820,10 @@ fn slew_and_lock(
     let fine = if zoomed { ZOOM } else { 1.0 };
     let delta =
         Vec2::new(controls.slew.x, -controls.slew.y) * SLEW_SPEED / fine * time.delta_secs();
+    // The HSD's cursor pushed past the top edge zooms out, past the bottom zooms in.
+    if f == Format::Hsd && !zoomed && hsd_edge_zoom(av, delta.y, lo, hi, |av| hsd_view(av, ac)) {
+        view = hsd_view(av, ac);
+    }
     let cursor = match f {
         Format::Hsd => &mut av.hsd_cursor,
         _ => &mut av.harm_cursor,
@@ -1852,6 +1860,38 @@ fn slew_and_lock(
         };
         locks.write(LockRequest(target));
     }
+}
+
+/// The HSD's range a step out when the cursor is slewed up past the top edge (`lo`..`hi` the
+/// cursor's room), a step in past the bottom edge; the cursor stays on its ground point, after
+/// zooming in at least `HSD_EDGE_RESET` above the bottom edge. True if the range changed.
+fn hsd_edge_zoom(
+    av: &mut AvionicsState,
+    dy: f32,
+    lo: Vec2,
+    hi: Vec2,
+    view_of: impl Fn(&AvionicsState) -> Option<HsdView>,
+) -> bool {
+    let y = av.hsd_cursor.y + dy;
+    let step = if dy < 0.0 && y < lo.y {
+        1
+    } else if dy > 0.0 && y > hi.y {
+        -1
+    } else {
+        return false;
+    };
+    let range = (av.hsd_range as i32 + step).clamp(0, HSD_RANGES.len() as i32 - 1) as usize;
+    let Some(prev) = view_of(av).filter(|_| range != av.hsd_range) else { return false };
+    av.hsd_range = range;
+    let Some(view) = view_of(av) else { return true };
+    let g = prev.to_world(av.hsd_cursor);
+    let mut p = view.to_screen(g.x, g.y);
+    if step < 0 {
+        p.y = p.y.min(hi.y - HSD_EDGE_RESET);
+    }
+    av.hsd_cursor = p.clamp(lo, hi);
+    av.cursor_view = Some(view);
+    true
 }
 
 /// Keeps the cursors on what they point at as the view changes: the HSD cursor on its ground
@@ -1973,6 +2013,36 @@ mod tests {
         av.set_third(true);
         let [l, r, t] = av.formats;
         assert!(t != l && t != r, "{:?}", av.formats);
+    }
+
+    /// The HSD's cursor slewed past the top zooms out (staying on its ground point, now nearer
+    /// the aircraft), past the bottom zooms in and comes back up off the edge; at the range's
+    /// ends it only stops.
+    #[test]
+    fn hsd_cursor_edges_zoom() {
+        let mut av = MfdState { modern: true, ..default() }.av;
+        let size = Vec2::new(HIRES.0 as f32, HIRES.1 as f32);
+        let (lo, hi) =
+            (Vec2::new(4.0, BAND as f32 + 4.0), size - Vec2::new(4.0, BAND as f32 + 4.0));
+        let view_of = |av: &AvionicsState| {
+            Some(HsdView::new(DVec2::ZERO, 0.0, HSD_RANGES[av.hsd_range], av.hsd_centred, size))
+        };
+        let r0 = av.hsd_range;
+        av.hsd_cursor = Vec2::new(100.0, lo.y);
+        assert!(!hsd_edge_zoom(&mut av, 1.0, lo, hi, view_of), "moving down from the top");
+        assert!(hsd_edge_zoom(&mut av, -1.0, lo, hi, view_of));
+        assert_eq!(av.hsd_range, r0 + 1);
+        assert!(av.hsd_cursor.y > lo.y + 20.0, "{:?}", av.hsd_cursor);
+        av.hsd_cursor.y = hi.y;
+        assert!(hsd_edge_zoom(&mut av, 1.0, lo, hi, view_of));
+        assert_eq!(av.hsd_range, r0);
+        assert!(av.hsd_cursor.y <= hi.y - HSD_EDGE_RESET, "{:?}", av.hsd_cursor);
+        av.hsd_range = 0;
+        av.hsd_cursor.y = hi.y;
+        assert!(!hsd_edge_zoom(&mut av, 1.0, lo, hi, view_of), "closest range");
+        av.hsd_range = HSD_RANGES.len() - 1;
+        av.hsd_cursor.y = lo.y;
+        assert!(!hsd_edge_zoom(&mut av, -1.0, lo, hi, view_of), "farthest range");
     }
 
     /// The sensor of interest goes round the three MFDs' capable formats.
