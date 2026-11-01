@@ -321,11 +321,22 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         toggled |= facts(slide_switch(ui, name, modern), f).changed();
     }
     if !crate::WEBGL2 {
-        toggled |= facts(
-            ui.checkbox(&mut s.msaa, "Anti-aliasing (MSAA)"),
-            &["Smooth edges: 4x MSAA, 2x in VR (costs GPU time)", "Off: hard pixel edges"],
-        )
-        .changed();
+        // Off while the pixelize look is on (Retro).
+        let forced = crate::palette::pixelized(s);
+        let mut msaa = s.msaa && !forced;
+        let check = ui.add_enabled(!forced, egui::Checkbox::new(&mut msaa, "Anti-aliasing (MSAA)"));
+        let check = if forced {
+            check.on_disabled_hover_text("Off while Pixelize (Retro) is on")
+        } else {
+            facts(
+                check,
+                &["Smooth edges: 4x MSAA, 2x in VR (costs GPU time)", "Off: hard pixel edges"],
+            )
+        };
+        if check.changed() {
+            s.msaa = msaa;
+            toggled = true;
+        }
     }
     if !crate::WEBGL2 {
         toggled |= facts(
@@ -358,10 +369,24 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             let list = crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro);
             for (i, e) in list.enumerate() {
                 let mut on = e.get(&s.effects);
-                if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
-                    e.set(&mut s.effects, on);
-                    toggled = true;
-                }
+                ui.horizontal(|ui| {
+                    if facts(ui.checkbox(&mut on, e.label()), e.facts()).changed() {
+                        e.set(&mut s.effects, on);
+                        toggled = true;
+                    }
+                    // Pixelize: the size of its blocks, beside it.
+                    if e == crate::effects::Effect::Pixelize {
+                        let blocks = crate::effects::PIXEL_BLOCKS;
+                        let slider = egui::Slider::new(&mut s.effects.pixel_block, blocks)
+                            .integer()
+                            .suffix(" px");
+                        let resp = facts(
+                            ui.add_enabled(on && !s.vr, slider),
+                            &["The side of a block, in screen pixels (2: fine, 5: coarse)"],
+                        );
+                        toggled |= resp.changed();
+                    }
+                });
                 if i % 2 == 1 {
                     ui.end_row();
                 }

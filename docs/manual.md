@@ -18,7 +18,7 @@ If you flew a certain stealth fighters simulator at night on a 386 DOS PC in the
 right at home: the Nighthawk has not changed, the radar bar graph, the theaters from Libya to Korea, the 
 satisfaction of a bomb through a hangar roof and nobody ever knowing you were there. Every *Classic* switch in 
 the options brings back the DOS era version of individual game aspects: the cockpit, the HUD, the avionics, the 
-flight model, the missiles, even the VGA palette and scanlines effects.
+flight model, the missiles, even the VGA palette, scanlines and pixelize effects.
 
 But while you can visit the past in SM89, you are not stuck there. The *Modern* options give you F-16 style 
 avionics with a targeting pod, an aerodynamic flight model, missiles that use proportial navigation, a sky 
@@ -194,7 +194,7 @@ pages for what can change in flight.
 | Tab | Settings |
 |---|---|
 | **Game** | *Cockpit*, *HUD*, *Avionics*, *Flight model*: Classic (DOS era) or Modern. This manual describes the modern ones; the modern flight model is aerodynamic with fly-by-wire (released, the stick holds the attitude), and the helicopters and the AV-8B always fly it. *Auto trim*. *Cockpit tooltips*. *Player labels* and their size (multiplayer). *VR cockpit size*. *Tacview* export and real-time telemetry (chapter 8.3). *GIF recording*: size and frame rate; **F12** starts and stops a recording, saved in your Pictures folder. |
-| **Graphics** | *Shaders*, *Shadows*, *Point lights* (cockpit lamps, flares, explosions and runway lights light the scene), *Time of day* (the sun, moon and the real stars of the mission's date and place move with the clock), *Anti-aliasing*, *Automatic scenery detail* in VR. **Effects**: camera shake, combat flashes, night barrage, cockpit night lighting, night vision goggles, snow, ground mist, cloud shadows, sunbeams, vapour and downwash, night sky. **Retro**: VGA colours and scanlines, for the full 1991 look. |
+| **Graphics** | *Shaders*, *Shadows*, *Point lights* (cockpit lamps, flares, explosions and runway lights light the scene), *Time of day* (the sun, moon and the real stars of the mission's date and place move with the clock), *Anti-aliasing*, *Automatic scenery detail* in VR. **Effects**: camera shake, combat flashes, night barrage, cockpit night lighting, night vision goggles, snow, ground mist, cloud shadows, sunbeams, vapour and downwash, night sky. **Retro**: VGA colours, scanlines and *Pixelize* (the whole 3D view in big square pixels like an MS-DOS game; the menus and tooltips stay sharp, the anti-aliasing is off while it is on; a slider sets the size of the blocks, 2 to 5 screen pixels), for the full 1991 look. |
 | **Sound** | *Master*, *Engine*, *Effects*, *Warnings* and *RWR* volumes; *Radar warning tones*: all, detections only, launches only, or off. *Engine low-pass* muffles the engines inside the cockpit. |
 | **Controls** | *Keys and joystick* (1.4). *Head/Eye tracking*. |
 
@@ -1182,7 +1182,7 @@ back a page; on the first page they close the menu.
 |---|---|
 | Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Tooltips*, *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
-| Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours and scanlines. |
+| Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings* and *RWR* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |
 | Controls | *Head tracking* (desktop), *Keys and joystick*: the input mapping (chapter 1.4) over the view, in VR on a panel in front of you (point a controller, the trigger clicks); DONE returns to the menu. The key guide. |
 

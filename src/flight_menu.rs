@@ -175,6 +175,8 @@ impl Page {
                     AutoDetail,
                     Effect(E::Vga),
                     Effect(E::Scanlines),
+                    Effect(E::Pixelize),
+                    PixelSize,
                     Back,
                 ]
             }
@@ -291,6 +293,8 @@ enum Item {
     PlayerLabels,
     LabelSize,
     CockpitSize,
+    /// The size of the pixelize look's blocks.
+    PixelSize,
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
     Volume(Vol),
@@ -327,6 +331,7 @@ impl Item {
             Item::PlayerLabels => "PLAYER LABELS",
             Item::LabelSize => "LABEL SIZE",
             Item::CockpitSize => "COCKPIT SIZE",
+            Item::PixelSize => "PIXEL SIZE",
             Item::Effect(e) => e.menu_label(),
             Item::Volume(Vol::Master) => "MASTER VOLUME",
             Item::Volume(Vol::Engine) => "ENGINE",
@@ -345,7 +350,7 @@ impl Item {
         let on = |b: bool| if b { "ON" } else { "OFF" }.to_string();
         match self {
             Item::Shaders => style(!s.modern_shading),
-            Item::Msaa => on(s.msaa),
+            Item::Msaa => on(s.msaa && !crate::palette::pixelized(s)),
             Item::Shadows => on(s.shadows),
             Item::Lighting => on(s.local_lights),
             Item::TimeOfDay => style(!s.continuous_time),
@@ -359,6 +364,7 @@ impl Item {
             Item::Atc => on(s.atc),
             Item::PlayerLabels => on(s.player_labels),
             Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
+            Item::PixelSize => format!("< {} PX >", s.effects.pixel_block),
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
@@ -377,21 +383,25 @@ impl Item {
     }
 
     /// The cockpit size and the automatic scenery detail only matter in the headset, the label
-    /// size only with the player labels on, the cockpit style only for aircraft with
-    /// two cockpits, the sun and moon switch only with the classic time of day, head tracking
-    /// only on the desktop, MSAA not on WebGL2; the bindings not over the campaign's Ops screen
-    /// (its egui context is the one up then); SAVE MISSION while the flight can be saved.
+    /// size only with the player labels on, the pixel size only with the pixelize look on, the
+    /// cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
+    /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
+    /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
+    /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved.
     fn enabled(self, s: &Settings, ops: bool, can_save: bool) -> bool {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => can_save,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
+            Item::PixelSize => crate::palette::pixelized(s),
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
-            Item::Msaa => !crate::WEBGL2,
-            Item::Effect(crate::effects::Effect::Scanlines) => !s.vr,
+            Item::Msaa => !crate::WEBGL2 && !crate::palette::pixelized(s),
+            Item::Effect(crate::effects::Effect::Scanlines | crate::effects::Effect::Pixelize) => {
+                !s.vr
+            }
             _ => true,
         }
     }
@@ -1195,6 +1205,14 @@ fn navigate(
         Item::CockpitSize => {
             s.vr_cockpit_scale = (s.vr_cockpit_scale + 0.05 * dir)
                 .clamp(*VR_COCKPIT_SCALE_RANGE.start(), *VR_COCKPIT_SCALE_RANGE.end());
+        }
+        Item::PixelSize => {
+            let blocks = crate::effects::PIXEL_BLOCKS;
+            s.effects.pixel_block = s
+                .effects
+                .pixel_block
+                .saturating_add_signed(dir as i32)
+                .clamp(*blocks.start(), *blocks.end());
         }
         Item::LabelSize => {
             s.player_label_size = (s.player_label_size + 0.1 * dir)

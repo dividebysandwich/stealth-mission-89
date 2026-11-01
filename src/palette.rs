@@ -463,7 +463,7 @@ fn msaa_override() -> Option<Msaa> {
 }
 
 /// The MSAA option: 4x MSAA, 2x in VR (4x cost the Steam Frame 2 ms per frame, over its 72 Hz
-/// budget). None on WebGL2.
+/// budget). None on WebGL2, nor with the pixelize look.
 fn apply_msaa(
     settings: Res<Settings>,
     mut cams: Query<&mut Msaa, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
@@ -474,7 +474,11 @@ fn apply_msaa(
     }
     let on = if settings.vr { Msaa::Sample2 } else { Msaa::Sample4 };
     let want =
-        msaa_override().unwrap_or(if settings.msaa && !crate::WEBGL2 { on } else { Msaa::Off });
+        msaa_override().unwrap_or(if settings.msaa && !crate::WEBGL2 && !pixelized(&settings) {
+            on
+        } else {
+            Msaa::Off
+        });
     for mut m in &mut cams {
         if *m != want {
             *m = want;
@@ -636,6 +640,11 @@ fn shadow_cascades(g: &mut Globals, lights: &ShadowLights, cameras: &WorldCamera
 pub fn retro(settings: &Settings) -> Vec4 {
     let e = &settings.effects;
     Vec4::new(e.vga as u32 as f32, (e.scanlines && !settings.vr) as u32 as f32, 0.0, 0.0)
+}
+
+/// The pixelize look is on (`Effects::pixelize`; the desktop's pass, `pixelize.rs`).
+pub fn pixelized(settings: &Settings) -> bool {
+    settings.effects.pixelize && !settings.vr
 }
 
 /// Detail level 0..3 and the model LOD range reduction 0..3. Alt-D first halves the models'
