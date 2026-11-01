@@ -766,13 +766,14 @@ impl PanelLayout {
             })
             .chain(
                 // The RWR's priority mode and target separate keys left of its scope (the MFD's
-                // raised bezel is right of it), as the F-16's.
+                // raised bezel is right of it), as the F-16's, on its plate widened for them
+                // (`build_cockpit_ch47.py`).
                 [(LampId::RwrPri, Action::RwrPriority), (LampId::RwrSep, Action::RwrSeparate)]
                     .into_iter()
                     .enumerate()
                     .map(|(k, (id, action))| Placed {
                         elem: Elem::Lamp(id, None),
-                        rect: rect(-388.0, -120.0 + 18.0 * k as f32, 22.0, 14.0),
+                        rect: rect(-402.0, -120.0 + 18.0 * k as f32, 20.0, 14.0),
                         cap: Some(Effect::Action(action)),
                         round: false,
                     }),
@@ -1046,14 +1047,20 @@ impl PanelLayout {
         .enumerate()
         {
             let (side, i) = (k / 4, k % 4);
-            let x = [-158.0, 82.0][side] + 40.0 * (i % 2) as f32;
-            put(elem, rect(x, -138.0 + 13.0 * (i / 2) as f32, 36.0, 11.0), None, false);
+            let y = -138.0 + 13.0 * (i / 2) as f32;
+            let r = match side {
+                // Narrower over the RWR scope, room for its keys beside them.
+                0 => rect(-158.0 + 28.0 * (i % 2) as f32, y, 26.0, 11.0),
+                _ => rect(82.0 + 40.0 * (i % 2) as f32, y, 36.0, 11.0),
+            };
+            put(elem, r, None, false);
         }
-        // The RWR's priority mode and target separate keys left of its scope, as the F-16's.
+        // The RWR's priority mode and target separate keys, as the F-16's: a third column of the
+        // threat lights over the scope (no room beside it between the MFD and the scope's case).
         for (k, (id, action)) in
             [(RwrPri, Action::RwrPriority), (RwrSep, Action::RwrSeparate)].into_iter().enumerate()
         {
-            let r = rect(-175.0, -104.0 + 18.0 * k as f32, 22.0, 14.0);
+            let r = rect(-102.0, -138.0 + 13.0 * k as f32, 26.0, 11.0);
             put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
         }
         // Countermeasures over the attitude indicator: release caps, counts and released lights

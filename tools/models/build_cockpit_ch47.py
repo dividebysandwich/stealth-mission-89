@@ -485,7 +485,7 @@ screen("screen_rmpd", scr["rmpd"], BEZEL - 0.008)
 # the pilot than the UH-60's)
 plates = [
     ("dark", (-540.0, -135.0, 125.0, 195.0)),  # standby instruments
-    ("dark", (-380.0, -135.0, 112.0, 192.0)),  # RWR scope over the engine gauges
+    ("dark", (-410.0, -135.0, 142.0, 192.0)),  # RWR scope and its keys over the engine gauges
     ("dark", (-183.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
     ("dark", (107.0, -130.0, 76.0, 37.0)),  # and over the right one
     ("dark", (-472.0, 100.0, 209.0, 52.0)),  # BRAKE, AUTO, HOVER, fuel, engine readouts

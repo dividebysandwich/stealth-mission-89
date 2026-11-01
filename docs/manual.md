@@ -516,8 +516,8 @@ tracking, a diamond = the most dangerous, a flashing circle = a missile in the a
 the same RWR scope beside its attitude indicator; the other aircraft show the same picture on the
 HARM format (chapter 4.10), and the RAH-66 on its threat scope (chapter 3.8).
 
-Two keys beside the scope (in the F-16's threat warning column, beside the A-10C's and the
-CH-47F's scopes too) tidy a busy display. **MODE** (Alt W) switches the priority mode: its status
+Two keys by the scope (in the F-16's threat warning column, with the A-10C's threat lights over
+its scope, left of the CH-47F's) tidy a busy display. **MODE** (Alt W) switches the priority mode: its status
 reads PRI and only the five most dangerous radars show; OPEN shows them all. **T** (Alt E),
 target separate, moves symbols that overlap apart so each can be read (SEP lit while on). Both
 start off each flight.
