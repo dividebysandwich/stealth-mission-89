@@ -23,6 +23,9 @@ const RELEASE_BLEND: f32 = 0.5;
 /// State slot hiding the AI's own wingtip Sidewinders on the flyable F-16 (its stores are hung
 /// here instead); 1 on the own aircraft.
 pub const STORES_SLOT: usize = 28;
+/// The camera pod's and the fuel tank's weapon types: never released.
+const CAMERA: i32 = 16;
+const FUEL_TANK: i32 = 17;
 /// State slot showing a missile's motor flame (`_s14v1`).
 const MOTOR_SLOT: usize = 14;
 
@@ -239,11 +242,13 @@ fn hang_stores(
                 let rack = load.rack.and_then(|m| spawn(m, st.at, st.roll));
                 hung.stations[k] = Some((w, rounds, rack));
             }
-            // The rounds still there: the first `left` of them.
+            // The rounds still there: the first `left` of them (the camera pod and a tank used
+            // up stay on).
+            let stays = matches!(w, CAMERA | FUEL_TANK);
             if let Some((_, rounds, _)) = &hung.stations[k] {
                 for (i, &e) in rounds.iter().enumerate() {
                     if let Ok(mut v) = shown.get_mut(e) {
-                        v.set_if_neq(if (i as i32) < left {
+                        v.set_if_neq(if stays || (i as i32) < left {
                             Visibility::Inherited
                         } else {
                             Visibility::Hidden
