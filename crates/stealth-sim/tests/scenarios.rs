@@ -254,6 +254,22 @@ fn external_stores_always_open() {
     assert_eq!(open_emv, closed.emv() + 24);
 }
 
+/// The EMV's altitude term counts the height above the ground: 500 ft over 2500 ft hills
+/// shows as much as 500 ft over the plain.
+#[test]
+fn emv_counts_height_above_ground() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let emv = |alt: u16, height: u16| {
+        let mut sim = Sim::new(&d.sim, &m);
+        let (mx, my) = sandbox(&mut sim, &m);
+        sim.step(&PlayerState { height, ..player_at(mx, my, alt, 0, 300) }, 15);
+        sim.emv()
+    };
+    assert_eq!(emv(3000, 500), emv(500, 500));
+    assert!(emv(3000, 3000) > emv(3000, 500));
+}
+
 /// Low, fast-ish, bays closed over flat ground: the same SA-2 never detects.
 #[test]
 fn stealthy_player_not_detected() {

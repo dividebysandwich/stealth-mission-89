@@ -7,7 +7,7 @@ use crate::{ENEMY_SLOTS, Sim};
 pub const GEAR_DOWN_EMV: i32 = 12;
 
 /// Pure EMV function.
-/// `flags` = player flags, `view_z` = compressed altitude, `velocity` = knots*27.
+/// `flags` = player flags, `view_z` = compressed height above the ground, `velocity` = knots*27.
 pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockheed: bool) -> i32 {
     let mut r = hi8s(roll).abs();
     if r >= 0x40 {
@@ -192,17 +192,20 @@ impl Sim {
 
     pub(crate) fn compute_emv(&mut self) {
         let p = &self.pl.p;
+        // The altitude term counts the height above the ground, not above the zero plane:
+        // hills and mountains that push the aircraft up don't show it to the radars more.
+        let agl = crate::math::view_z(p.height.clamp(0, 0xFFFF) as u16);
         self.pl.emv = if self.pl.comanche {
             // The RAH-66's height, speed and bank show a third as much hovering, fully at
             // 180 kt; its open doors, its gear and the jammer as much as anybody's.
             let loud = pflags::BAY_OPEN | pflags::ECM;
             let quiet = (self.pl.pflags & !loud) | pflags::GEAR_UP;
-            let base = emv(p.view_z, p.velocity, p.roll, quiet, self.diff, false);
+            let base = emv(agl, p.velocity, p.roll, quiet, self.diff, false);
             let scale = 15 + comanche_signature(p.velocity);
             let loud = self.pl.pflags & (loud | pflags::GEAR_UP);
             base * scale / 47 + emv(0, 0, 0, loud, self.diff, false)
         } else {
-            emv(p.view_z, p.velocity, p.roll, self.pl.pflags, self.diff, self.pl.lockheed)
+            emv(agl, p.velocity, p.roll, self.pl.pflags, self.diff, self.pl.lockheed)
         };
     }
 
