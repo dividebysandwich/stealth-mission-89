@@ -67,7 +67,7 @@ if [ $build = 1 ]; then
         python3 tools/sysroot_arm64.py "$SR"
     fi
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-arg=--sysroot=$SR -C link-arg=-L$SR/usr/lib/gcc/aarch64-linux-gnu/13"
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-arg=--sysroot=$SR -C link-arg=-L$SR/usr/lib/aarch64-linux-gnu -C link-arg=-L$SR/usr/lib/gcc/aarch64-linux-gnu/13"
     export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
     export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=$SR" CXXFLAGS_aarch64_unknown_linux_gnu="--sysroot=$SR"
     export PKG_CONFIG_ALLOW_CROSS=1 PKG_CONFIG_SYSROOT_DIR=$SR
