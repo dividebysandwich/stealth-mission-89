@@ -17,7 +17,8 @@ use crate::hotas::{
 };
 use crate::input::{Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
-use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon, icon_text};
+use crate::layout::Split;
+use crate::menu::{AMBER, BRIGHT, DIM, GREEN, big_button, icon, icon_text};
 use crate::text_entry::{Charset, virtual_keyboard};
 
 #[derive(Resource, Default)]
@@ -293,47 +294,8 @@ pub fn show(
             (screen.height() - 120.0).max(300.0),
         ));
     crate::menu::Panel::new("INPUT MAPPING").note("KEYS, JOYSTICKS AND GAMEPADS").window(window, ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(icon_text(ui, icon::DONE, "DONE")).clicked() {
-                        open = false;
-                    }
-                    if ui.button(icon_text(ui, icon::CLEAR, "CLEAR ALL")).clicked() {
-                        config.axes.clear();
-                        config.buttons.clear();
-                    }
-                    if ui.button(icon_text(ui, icon::RESET, "DEFAULT KEYS")).clicked() {
-                        config.keys = default_key_mappings();
-                    }
-                });
-            });
+            let split = Split::new(ui, "input_mapping");
             search_field(ui, &mut dialog.search, dialog.capture.is_some(), vr);
-            ui.separator();
-            ui.horizontal_top(|ui| {
-                ui.vertical(|ui| {
-                    ui.set_width((ui.available_width() - PREVIEW.x - 16.0).max(200.0));
-                    let devices = hotas.devices();
-                    if devices.is_empty() {
-                        ui.colored_label(AMBER, "NO JOYSTICKS DETECTED  (connect a device; it shows up here)");
-                    } else {
-                        for d in &devices {
-                            ui.label(egui::RichText::new(format!("> {}", d.key)).color(GREEN));
-                        }
-                    }
-                    ui.checkbox(&mut config.gamepad_defaults, "Standard gamepad layout")
-                        .on_hover_text("Left stick, right stick rudder, triggers throttle, face buttons fire / gun / weapons / bay. A button or axis bound here only does what it is bound to. Turn off if a joystick's buttons do things they aren't bound to.");
-                    match &dialog.status {
-                        Some(text) => ui.colored_label(AMBER, text),
-                        None => ui.label(egui::RichText::new("Click BIND, then move an axis or press a button; + adds a key. Esc cancels.").color(DIM)),
-                    };
-                    ui.label(
-                        egui::RichText::new("The aircraft on the right shows what the mapped axes do: invert an axis if it moves the wrong way.")
-                            .color(DIM)
-                            .small(),
-                    );
-                });
-                preview(ui, stick);
-            });
             ui.separator();
 
             // What the search keeps: the axes and the actions (by group) by name, the VR inputs.
@@ -348,7 +310,34 @@ pub fn show(
                 .collect();
             let vr_inputs = vr_rows(config, &query);
 
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+            split.body(ui, |ui| {
+                // The joysticks and the preview scroll with the rest, at its top.
+                ui.horizontal_top(|ui| {
+                    ui.vertical(|ui| {
+                        ui.set_width((ui.available_width() - PREVIEW.x - 16.0).max(200.0));
+                        let devices = hotas.devices();
+                        if devices.is_empty() {
+                            ui.colored_label(AMBER, "NO JOYSTICKS DETECTED  (connect a device; it shows up here)");
+                        } else {
+                            for d in &devices {
+                                ui.label(egui::RichText::new(format!("> {}", d.key)).color(GREEN));
+                            }
+                        }
+                        ui.checkbox(&mut config.gamepad_defaults, "Standard gamepad layout")
+                            .on_hover_text("Left stick, right stick rudder, triggers throttle, face buttons fire / gun / weapons / bay. A button or axis bound here only does what it is bound to. Turn off if a joystick's buttons do things they aren't bound to.");
+                        match &dialog.status {
+                            Some(text) => ui.colored_label(AMBER, text),
+                            None => ui.label(egui::RichText::new("Click BIND, then move an axis or press a button; + adds a key. Esc cancels.").color(DIM)),
+                        };
+                        ui.label(
+                            egui::RichText::new("The aircraft on the right shows what the mapped axes do: invert an axis if it moves the wrong way.")
+                                .color(DIM)
+                                .small(),
+                        );
+                    });
+                    preview(ui, stick);
+                });
+                ui.separator();
                 if axes.is_empty() && groups.is_empty() && vr_inputs.is_empty() {
                     ui.label(egui::RichText::new("NO MATCH").color(DIM));
                     return;
@@ -452,6 +441,25 @@ pub fn show(
                 if !vr_inputs.is_empty() {
                     vr_buttons(ui, config, &vr_inputs);
                 }
+            });
+            split.footer(ui, |ui| {
+                ui.add_space(8.0);
+                crate::menu::footer_rule(ui);
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.add(big_button("DEFAULT KEYS").icon(icon::RESET)).on_hover_text("Restore the default keyboard keys").clicked() {
+                        config.keys = default_key_mappings();
+                    }
+                    if ui.add(big_button("CLEAR ALL").icon(icon::CLEAR)).on_hover_text("Remove every axis, key and button binding").clicked() {
+                        config.axes.clear();
+                        config.buttons.clear();
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.add(big_button("DONE").icon(icon::DONE)).on_hover_text("Close the input mapping").clicked() {
+                            open = false;
+                        }
+                    });
+                });
             });
         });
 
