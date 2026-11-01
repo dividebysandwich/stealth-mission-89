@@ -610,6 +610,16 @@ fn control_options(
             "Home: the current head position becomes the centre",
         ],
     );
+    facts(
+        ui.add_enabled(
+            s.head_tracking && !s.vr,
+            egui::Checkbox::new(&mut s.tracking_mouse_look, "Mouse look while tracking"),
+        ),
+        &[
+            "On: the right mouse button still turns and zooms the cockpit view",
+            "Off: while the tracker sends, the right mouse button does nothing in the cockpit",
+        ],
+    );
     if s.head_tracking && !s.vr {
         match head {
             Some(src) => ui.colored_label(GREEN, format!("Tracking ({})", src.name())),

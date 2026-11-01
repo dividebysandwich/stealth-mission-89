@@ -208,7 +208,7 @@ impl Page {
                 LowPass,
                 Back,
             ],
-            Page::Controls => &[HeadTracking, Bindings, KeyGuide, Back],
+            Page::Controls => &[HeadTracking, TrackingMouse, Bindings, KeyGuide, Back],
         }
     }
 
@@ -311,6 +311,8 @@ enum Item {
     RwrTones,
     LowPass,
     HeadTracking,
+    /// The right mouse button's look and zoom while a head tracker sends.
+    TrackingMouse,
     /// The key and joystick bindings dialog (`input_dialog.rs`).
     Bindings,
 }
@@ -352,6 +354,7 @@ impl Item {
             Item::RwrTones => "RWR TONES",
             Item::LowPass => "ENGINE LOW-PASS",
             Item::HeadTracking => "HEAD TRACKING",
+            Item::TrackingMouse => "TRACKER MOUSE LOOK",
             Item::Bindings => "KEYS AND JOYSTICK",
         }
     }
@@ -382,6 +385,7 @@ impl Item {
             Item::RwrTones => format!("< {} >", s.rwr_tones.name()),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
+            Item::TrackingMouse => on(s.tracking_mouse_look),
             // The pages get a chevron instead (`draw`).
             Item::Open(_)
             | Item::KeyGuide
@@ -409,6 +413,7 @@ impl Item {
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
             Item::SunMoon => !s.continuous_time,
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
+            Item::TrackingMouse => s.head_tracking && !s.vr && !cfg!(target_arch = "wasm32"),
             Item::Msaa => !crate::WEBGL2 && !crate::palette::pixelized(s),
             Item::Effect(crate::effects::Effect::Scanlines | crate::effects::Effect::Pixelize) => {
                 !s.vr
@@ -1216,6 +1221,7 @@ fn navigate(
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::RwrTones => s.rwr_tones = s.rwr_tones.step(dir as i32),
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
+        Item::TrackingMouse => s.tracking_mouse_look = !s.tracking_mouse_look,
         Item::Bindings => {
             menu.bindings = true;
             dialog.open = true;

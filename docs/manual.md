@@ -230,7 +230,8 @@ a HOTAS: grab the stick with the right hand and the throttle with the left.
 | Stick click | Push-to-talk (PTT, held) | Lock cursor target |
 
 **Head and eye tracking.** With *Head/Eye tracking* on, the cockpit view follows your head, picked up by an
-infrared tracker, an eye tracker, a webcam or a phone, through OpenTrack (FreeTrack output, or UDP on port 4242). **Home** recentres the view.
+infrared tracker, an eye tracker, a webcam or a phone, through OpenTrack (FreeTrack output, or UDP on port 4242). **Home** recentres the view. With *Mouse look while tracking*
+off (in-flight menu: *Tracker mouse look*), the right mouse button no longer turns or zooms the cockpit view while the tracker sends.
 
 Due to restrictions in the TrackIR EULA that are incompatible with open-source projects, we can't use their SDK to support TrackIR devices directly.
 As a workaround, you can use [FreePIE](https://andersmalmgren.github.io/FreePIE/) with the script below.
@@ -1230,7 +1231,7 @@ back a page; on the first page they close the menu.
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
 | Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings*, *RWR*, *Radio* and *ATC voice* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |
-| Controls | *Head tracking* (desktop), *Keys and joystick*: the input mapping (chapter 1.4) over the view, in VR on a panel in front of you (point a controller, the trigger clicks); DONE returns to the menu. The key guide. |
+| Controls | *Head tracking* (desktop) and *Tracker mouse look*, *Keys and joystick*: the input mapping (chapter 1.4) over the view, in VR on a panel in front of you (point a controller, the trigger clicks); DONE returns to the menu. The key guide. |
 
 Changes apply at once and are saved as the defaults for the next flight.
 

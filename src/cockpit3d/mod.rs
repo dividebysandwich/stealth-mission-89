@@ -698,7 +698,8 @@ pub(crate) const ZOOM_KEY_NOTCHES: f32 = 4.0;
 /// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
 /// camera around the aircraft (reset when an external view is selected). The wheel with the
-/// button held zooms, as the view zoom keys do.
+/// button held zooms, as the view zoom keys do. With mouse look while tracking off, the button
+/// does nothing in the cockpit while a head tracker sends.
 #[allow(clippy::too_many_arguments)]
 fn mouse_look(
     settings: Res<Settings>,
@@ -712,6 +713,7 @@ fn mouse_look(
     scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
     controls: Res<crate::input::FlightControls>,
     time: Res<Time<Real>>,
+    tracker: Option<Res<crate::headtrack::HeadTrack>>,
 ) {
     for ActionEvent(a) in actions.read() {
         if matches!(
@@ -743,7 +745,10 @@ fn mouse_look(
     }
     let cockpit =
         matches!(state.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
-    let held = buttons.pressed(MouseButton::Right);
+    let tracked = settings.head_tracking
+        && !settings.tracking_mouse_look
+        && tracker.is_some_and(|t| t.source.is_some());
+    let held = buttons.pressed(MouseButton::Right) && !(cockpit && tracked);
     if let Ok(mut c) = cursor.single_mut() {
         let (grab, visible) =
             if held { (CursorGrabMode::Locked, false) } else { (CursorGrabMode::None, true) };

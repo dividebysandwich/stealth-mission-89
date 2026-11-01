@@ -57,6 +57,7 @@ pub struct Prefs {
     pub tacview_real_time: bool,
     pub air_defence: bool,
     pub head_tracking: bool,
+    pub tracking_mouse_look: bool,
     pub modern_shading: bool,
     pub msaa: bool,
     pub shadows: bool,
@@ -141,6 +142,7 @@ impl Default for Prefs {
             tacview_real_time: false,
             air_defence: true,
             head_tracking: false,
+            tracking_mouse_look: true,
             // New players: modern shaders and time of day; classic shadows and lighting;
             // modern cockpit, HUD, avionics and flight model.
             modern_shading: true,
@@ -241,6 +243,7 @@ impl Prefs {
             tacview_real_time: s.tacview_real_time,
             air_defence: s.air_defence,
             head_tracking: s.head_tracking,
+            tracking_mouse_look: s.tracking_mouse_look,
             modern_shading: s.modern_shading,
             msaa: s.msaa,
             shadows: s.shadows,
@@ -323,6 +326,7 @@ impl Prefs {
         s.tacview_real_time |= self.tacview_real_time;
         s.air_defence |= self.air_defence;
         s.head_tracking |= self.head_tracking;
+        s.tracking_mouse_look = self.tracking_mouse_look;
         s.modern_shading |= self.modern_shading;
         s.msaa &= self.msaa;
         s.shadows |= self.shadows;
@@ -408,6 +412,7 @@ impl Prefs {
         self.tacview = s.tacview;
         self.tacview_real_time = s.tacview_real_time;
         self.head_tracking = s.head_tracking;
+        self.tracking_mouse_look = s.tracking_mouse_look;
         self.master_volume = s.master_volume;
         self.engine_volume = s.engine_volume;
         self.effects_volume = s.effects_volume;
