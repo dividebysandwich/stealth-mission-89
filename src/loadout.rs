@@ -639,14 +639,14 @@ const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 /// fuselage's shoulder pylons fore and aft. The rail is drawn further out than its pylon's
 /// side, where it is apart from the pylon.
 static TORNADO_STATIONS: [Hardpoint; 8] = [
-    pylon("Left wing, Sidewinder rail", "1", -4.20, 9.40, Some(7), &TIP),
-    pylon("Left wing pylon", "2", -3.90, 9.80, Some(6), &TORNADO_WING),
+    pylon("Left wing, Sidewinder rail", "1", -5.20, 10.70, Some(7), &TIP),
+    pylon("Left wing pylon", "2", -3.60, 10.20, Some(6), &TORNADO_WING),
     pylon("Left shoulder, forward", "3", -0.80, 7.40, Some(5), &TORNADO_BELLY),
     pylon("Left shoulder, aft", "4", -0.80, 11.30, Some(4), &WING_INNER),
     pylon("Right shoulder, aft", "5", 0.80, 11.30, Some(3), &WING_INNER),
     pylon("Right shoulder, forward", "6", 0.80, 7.40, Some(2), &TORNADO_BELLY),
-    pylon("Right wing pylon", "7", 3.90, 9.80, Some(1), &TORNADO_WING),
-    pylon("Right wing, Sidewinder rail", "8", 4.20, 9.40, Some(0), &TIP),
+    pylon("Right wing pylon", "7", 3.60, 10.20, Some(1), &TORNADO_WING),
+    pylon("Right wing, Sidewinder rail", "8", 5.20, 10.70, Some(0), &TIP),
 ];
 
 /// The A-10's outer wing pylons carry the Mavericks and the bombs, the centre section's the
