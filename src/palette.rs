@@ -636,10 +636,11 @@ fn shadow_cascades(g: &mut Globals, lights: &ShadowLights, cameras: &WorldCamera
 }
 
 /// `Globals::retro` (and the cockpit's `CockpitShading::retro`): VGA colours, scanlines (on the
-/// desktop only).
+/// desktop only; the pixelize pass draws them instead while it is on, after its blocks).
 pub fn retro(settings: &Settings) -> Vec4 {
     let e = &settings.effects;
-    Vec4::new(e.vga as u32 as f32, (e.scanlines && !settings.vr) as u32 as f32, 0.0, 0.0)
+    let scanlines = e.scanlines && !settings.vr && !pixelized(settings);
+    Vec4::new(e.vga as u32 as f32, scanlines as u32 as f32, 0.0, 0.0)
 }
 
 /// The pixelize look is on (`Effects::pixelize`; the desktop's pass, `pixelize.rs`).

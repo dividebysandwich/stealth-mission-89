@@ -28,14 +28,14 @@ impl Plugin for PixelizePlugin {
 /// On a camera: its picture is pixelized.
 #[derive(Component, ExtractComponent, Clone, Copy, ShaderType, Default)]
 pub struct Pixelize {
-    /// x: the side of a block in screen pixels (the pad fills the 16 bytes WebGL2 wants a
-    /// uniform to be).
+    /// x: the side of a block in screen pixels, y: 1 with the scanlines (drawn here over the
+    /// blocks, `palette::retro`; the pad fills the 16 bytes WebGL2 wants a uniform to be).
     params: Vec4,
 }
 
 impl Pixelize {
-    fn new(block: u32) -> Self {
-        Self { params: Vec4::new(block as f32, 0.0, 0.0, 0.0) }
+    fn new(block: u32, scanlines: bool) -> Self {
+        Self { params: Vec4::new(block as f32, scanlines as u32 as f32, 0.0, 0.0) }
     }
 }
 
@@ -57,7 +57,8 @@ fn sync(
 ) {
     let want = crate::palette::pixelized(&settings).then(|| {
         let blocks = crate::effects::PIXEL_BLOCKS;
-        Pixelize::new(settings.effects.pixel_block.clamp(*blocks.start(), *blocks.end()))
+        let block = settings.effects.pixel_block.clamp(*blocks.start(), *blocks.end());
+        Pixelize::new(block, settings.effects.scanlines)
     });
     for (camera, has) in &mut cameras {
         match (want, has) {
