@@ -80,6 +80,9 @@ pub enum Action {
     /// Night vision goggles (F4).
     #[serde(alias = "DayNightHud")]
     Nvg,
+    /// The helmet-mounted display (HMCS, AH-1Z helmet): always on, blanked while the head looks
+    /// through the HUD, off (`hmd::HmdMode`).
+    HmdMode,
     Ordnance,
     Flir,
     Ils,
@@ -383,6 +386,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::KeyV, HudDeclutter),
         (None, K::F3, Maps),
         (None, K::F4, Nvg),
+        (None, K::KeyH, HmdMode),
         (None, K::F5, Ordnance),
         (None, K::F6, Flir),
         (None, K::F9, Ils),

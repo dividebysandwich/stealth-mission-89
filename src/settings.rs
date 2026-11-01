@@ -145,6 +145,9 @@ pub struct Settings {
     /// GIF recording (`gif_recorder`): percent of the window's size, frames per second.
     pub gif_scale: u8,
     pub gif_fps: u8,
+    /// The helmet-mounted display: always on, blanked while the head looks through the HUD,
+    /// or off (`Action::HmdMode`, `hmd`).
+    pub hmd_mode: crate::hmd::HmdMode,
 }
 
 /// Default VR cockpit size.
@@ -332,6 +335,7 @@ impl Settings {
                 .map_or_else(Default::default, |l| crate::effects::Effects::parse(&l)),
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
+            hmd_mode: Default::default(),
         }
     }
 }

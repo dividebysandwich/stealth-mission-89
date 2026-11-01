@@ -205,6 +205,18 @@
       "round": false
     },
     {
+      "control": "Action(HmdMode)",
+      "key": "Button(Hmd, None)",
+      "kind": "cap",
+      "rect": [
+        -207.0,
+        218.0,
+        40.0,
+        16.0
+      ],
+      "round": false
+    },
+    {
       "control": "Action(Chaff)",
       "key": "Item(Label(\"CHAFF\", 5, 14))",
       "kind": "cap",

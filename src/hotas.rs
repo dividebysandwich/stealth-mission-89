@@ -308,8 +308,9 @@ pub struct InputConfig {
 /// (Shift + F7). 9: the VR stick clicks swap (left locks, right bay doors). 10: the GIF
 /// recording key (F12). 11: the radio's push-to-talk key (CapsLock). 12: the right VR stick
 /// click talks on the radio instead of moving the bay doors. 13: the view zoom keys (Numpad *
-/// and /). 14: the RWR priority and target separate keys (Alt + W, Alt + E).
-const VERSION: u32 = 14;
+/// and /). 14: the RWR priority and target separate keys (Alt + W, Alt + E). 15: the helmet
+/// display mode key (H).
+const VERSION: u32 = 15;
 
 impl Default for InputConfig {
     fn default() -> Self {

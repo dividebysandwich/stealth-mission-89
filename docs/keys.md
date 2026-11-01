@@ -34,6 +34,7 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | maps (left MFD) | F3 |
 | | map zoom in / out, north up / heading up (remake, modern panel) | Alt Z / Alt X / Alt F3 |
 | | night vision goggles (remake) | F4 |
+| | helmet display (remake; F-16 HMCS, AH-1Z, RAH-66, OH-58D): on / auto (blanked looking through the HUD) / off, also the cockpit's HMCS / HMD cap | H |
 | | ordnance (right MFD) | F5 |
 | | FLIR on/off | F6 |
 | | ILS on/off | F9 |

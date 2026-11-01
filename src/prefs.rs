@@ -111,6 +111,7 @@ pub struct Prefs {
     pub effects_version: u32,
     pub gif_scale: u8,
     pub gif_fps: u8,
+    pub hmd_mode: crate::hmd::HmdMode,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -186,6 +187,7 @@ impl Default for Prefs {
             effects_version: EFFECTS_VERSION,
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
+            hmd_mode: Default::default(),
         }
     }
 }
@@ -282,6 +284,7 @@ impl Prefs {
             effects_version: EFFECTS_VERSION,
             gif_scale: s.gif_scale,
             gif_fps: s.gif_fps,
+            hmd_mode: s.hmd_mode,
         }
     }
 
@@ -354,6 +357,7 @@ impl Prefs {
         s.engine_low_pass = self.engine_low_pass;
         s.gif_scale = self.gif_scale.clamp(1, 100);
         s.gif_fps = self.gif_fps.clamp(1, 50);
+        s.hmd_mode = self.hmd_mode;
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -410,6 +414,7 @@ impl Prefs {
         self.effects = s.effects;
         self.gif_scale = s.gif_scale;
         self.gif_fps = s.gif_fps;
+        self.hmd_mode = s.hmd_mode;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

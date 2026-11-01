@@ -24,6 +24,9 @@
 //! The horizon, waypoints, lock, pipper and pod sight are drawn where they are in the world;
 //! the speed and altitude boxes either side of the smoothed sight.
 //!
+//! `Action::HmdMode` (a key and a cockpit cap) steps the display through on, auto (blanked
+//! while the head looks through the HUD glass, as the HMCS's HUD blanking) and off.
+//!
 //! Canvas pixels are angular as on the modern HUD (`hud::modern`): (x, y) is the direction
 //! (x - CX, CY - y) / SCALE in the tangent plane one unit in front of the head.
 
@@ -34,10 +37,12 @@ use bevy::prelude::*;
 use crate::aircraft::Hmd;
 use crate::camera::{EyeCamera, View, ViewState, XrHead};
 use crate::canvas::{Canvas, CanvasTexture, CanvasUpload};
+use crate::cockpit3d::HudGlass;
 use crate::cockpit3d::hud_glass::HmdMaterial;
 use crate::flight::{Aircraft, Player};
 use crate::font::{Align, stroke_text_at};
-use crate::hud::{HudCues, Stores, Waypoints};
+use crate::hud::{HudCues, HudMessages, Stores, Waypoints};
+use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 use crate::world::WorldPos;
 
@@ -45,7 +50,7 @@ pub struct HmdPlugin;
 
 impl Plugin for HmdPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, attach.run_if(in_state(AppState::Flight)))
+        app.add_systems(Update, (switch_mode, attach).chain().run_if(in_state(AppState::Flight)))
             .add_systems(OnExit(AppState::Flight), despawn)
             .add_systems(
                 PostUpdate,
@@ -81,6 +86,57 @@ const TEXT: f32 = 15.0;
 
 #[derive(Component)]
 struct Visor;
+
+/// When the helmet display shows (`Settings::hmd_mode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub enum HmdMode {
+    #[default]
+    On,
+    /// Blanked while the head looks through the HUD glass.
+    Auto,
+    Off,
+}
+
+impl HmdMode {
+    fn next(self) -> Self {
+        match self {
+            HmdMode::On => HmdMode::Auto,
+            HmdMode::Auto => HmdMode::Off,
+            HmdMode::Off => HmdMode::On,
+        }
+    }
+
+    /// Its name on the HUD's message line and lit on the cockpit's cap (not off).
+    pub fn name(self) -> &'static str {
+        match self {
+            HmdMode::On => "ON",
+            HmdMode::Auto => "AUTO",
+            HmdMode::Off => "OFF",
+        }
+    }
+}
+
+/// Steps the helmet display's mode (aircraft with one), remembered between runs when the game
+/// started into the menu.
+fn switch_mode(
+    mut actions: MessageReader<ActionEvent>,
+    mut settings: ResMut<Settings>,
+    mut msg: ResMut<HudMessages>,
+) {
+    let hmd = settings.aircraft.spec().hmd;
+    let mut changed = false;
+    for ActionEvent(a) in actions.read() {
+        if *a == Action::HmdMode && hmd != Hmd::None {
+            settings.hmd_mode = settings.hmd_mode.next();
+            let name = if hmd == Hmd::Hmcs { "HMCS" } else { "HMD" };
+            msg.show(format!("{name} {}", settings.hmd_mode.name()));
+            changed = true;
+        }
+    }
+    if changed && settings.initial_state == AppState::Menu {
+        crate::prefs::Prefs::save_options(&settings);
+    }
+}
 
 /// The eye camera: whether it is a camera itself (else the VR tracking root) and its children.
 type Eyes<'w, 's> =
@@ -120,7 +176,8 @@ fn attach(
         return;
     };
     let shown =
-        matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
+        matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear)
+            && settings.hmd_mode != HmdMode::Off;
     if let Some((e, parent, mut vis)) = visors.iter_mut().next() {
         if parent.map(|p| p.parent()) != Some(head) {
             commands.entity(head).add_child(e);
@@ -160,6 +217,38 @@ fn despawn(mut commands: Commands, visors: Query<Entity, With<Visor>>) {
     }
 }
 
+/// The ray from `o` along `d` (the mesh's frame) passes through one of its triangles.
+fn ray_hits_mesh(mesh: &Mesh, o: Vec3, d: Vec3) -> bool {
+    use bevy::mesh::{Indices, VertexAttributeValues};
+    let Some(VertexAttributeValues::Float32x3(p)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else {
+        return false;
+    };
+    let tri = |[a, b, c]: [usize; 3]| {
+        let (Some(a), Some(b), Some(c)) = (p.get(a), p.get(b), p.get(c)) else { return false };
+        ray_hits_triangle(o, d, [Vec3::from(*a), Vec3::from(*b), Vec3::from(*c)])
+    };
+    match mesh.indices() {
+        Some(Indices::U16(i)) => i.as_chunks::<3>().0.iter().any(|t| tri(t.map(|k| k as usize))),
+        Some(Indices::U32(i)) => i.as_chunks::<3>().0.iter().any(|t| tri(t.map(|k| k as usize))),
+        None => (0..p.len() / 3).any(|k| tri([3 * k, 3 * k + 1, 3 * k + 2])),
+    }
+}
+
+/// Möller-Trumbore: the ray from `o` along `d` crosses the triangle ahead of `o`.
+fn ray_hits_triangle(o: Vec3, d: Vec3, [a, b, c]: [Vec3; 3]) -> bool {
+    let (e1, e2) = (b - a, c - a);
+    let p = d.cross(e2);
+    let det = e1.dot(p);
+    if det.abs() < 1e-9 {
+        return false;
+    }
+    let t = o - a;
+    let u = t.dot(p) / det;
+    let q = t.cross(e1);
+    let v = d.dot(q) / det;
+    u >= 0.0 && v >= 0.0 && u + v <= 1.0 && e2.dot(q) / det > 0.0
+}
+
 /// Pixel of a direction in the head frame (x right, y up, -z forward); None behind.
 fn project(d: Vec3) -> Option<Vec2> {
     let z = -d.z;
@@ -192,6 +281,9 @@ fn draw(
     settings: Res<Settings>,
     time: Res<Time>,
     theater: Option<Res<crate::world::Theater>>,
+    glass: Query<(&GlobalTransform, &Mesh3d), With<HudGlass>>,
+    meshes: Res<Assets<Mesh>>,
+    mut blank: Local<bool>,
 ) {
     let Ok((parent, mut tex, vis)) = visors.single_mut() else { return };
     if *vis == Visibility::Hidden {
@@ -200,8 +292,28 @@ fn draw(
     let (Ok(head), Ok((a, pos))) = (heads.get(parent.parent()), aircraft.single()) else {
         return;
     };
-    let head = head.compute_transform().rotation;
+    let head = head.compute_transform();
     let tex = &mut *tex;
+    // Auto: blank while the line of sight passes through the HUD glass (the HUD shows there).
+    let over_hud = settings.hmd_mode == HmdMode::Auto
+        && glass.iter().any(|(g, mesh)| {
+            meshes.get(&mesh.0).is_some_and(|m| {
+                let to_glass = g.affine().inverse();
+                let o = to_glass.transform_point3(head.translation);
+                let d = to_glass.transform_vector3(head.rotation * Vec3::NEG_Z);
+                ray_hits_mesh(m, o, d)
+            })
+        });
+    if over_hud {
+        if !*blank {
+            tex.canvas.px.fill(0);
+            tex.dirty = true;
+            *blank = true;
+        }
+        return;
+    }
+    *blank = false;
+    let head = head.rotation;
     tex.canvas.px.fill(0);
     let full = settings.aircraft.spec().hmd == Hmd::Full;
     let waypoints = waypoints
@@ -449,6 +561,29 @@ mod tests {
             knots: 0.0,
             alt: 0.0,
         }
+    }
+
+    /// The line of sight through a triangle ahead, not one behind or beside it.
+    #[test]
+    fn ray_through_the_glass() {
+        let glass =
+            [Vec3::new(-1.0, -1.0, -2.0), Vec3::new(1.0, -1.0, -2.0), Vec3::new(0.0, 1.0, -2.0)];
+        assert!(ray_hits_triangle(Vec3::ZERO, Vec3::NEG_Z, glass));
+        assert!(!ray_hits_triangle(Vec3::ZERO, Vec3::Z, glass));
+        assert!(!ray_hits_triangle(Vec3::ZERO, Vec3::new(1.0, 0.0, -1.0), glass));
+        let mesh = Mesh::from(Rectangle::new(0.2, 0.1)).translated_by(Vec3::new(0.0, 0.0, -0.5));
+        assert!(ray_hits_mesh(&mesh, Vec3::ZERO, Vec3::NEG_Z));
+        assert!(!ray_hits_mesh(&mesh, Vec3::ZERO, Vec3::new(0.0, 0.3, -1.0)));
+    }
+
+    /// The mode steps on, auto, off and round again.
+    #[test]
+    fn mode_cycles() {
+        let m = HmdMode::default();
+        assert_eq!(
+            [m, m.next(), m.next().next(), m.next().next().next()],
+            [HmdMode::On, HmdMode::Auto, HmdMode::Off, HmdMode::On]
+        );
     }
 
     fn ink(c: &Canvas, x0: usize, x1: usize, y0: usize, y1: usize) -> usize {

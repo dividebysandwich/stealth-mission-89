@@ -241,9 +241,9 @@
       "round": false
     },
     {
-      "control": null,
-      "key": "Item(Label(\"WX\", 5, 14))",
-      "kind": null,
+      "control": "Action(HmdMode)",
+      "key": "Button(Hmd, Some(\"HMCS\"))",
+      "kind": "cap",
       "rect": [
         15.0,
         -92.0,

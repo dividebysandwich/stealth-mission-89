@@ -823,6 +823,13 @@ impl PanelLayout {
                 };
                 Placed { rect, ..*p }
             })
+            // The helmet display's mode right of HOVER.
+            .chain([Placed {
+                elem: Elem::Lamp(LampId::Hmd, None),
+                rect: rect(-98.0, 128.0, 38.0, 14.0),
+                cap: Some(Effect::Action(Action::HmdMode)),
+                round: false,
+            }])
             .collect();
         Self { style: PanelStyle::Ah1z, items, adi: rect(-34.0, 110.0, 68.0, 68.0), ..u }
     }
@@ -1488,6 +1495,11 @@ impl PanelLayout {
             rect(-164.0, 218.0, 40.0, 16.0),
             Some(E::Action(Action::Hover)),
         );
+        put(
+            Elem::Lamp(LampId::Hmd, None),
+            rect(-207.0, 218.0, 40.0, 16.0),
+            Some(E::Action(Action::HmdMode)),
+        );
         // Under the standby attitude display: the countermeasures.
         let adi = rect(-206.0, 120.0, 64.0, 64.0);
         for (k, (label, action)) in
@@ -1639,7 +1651,14 @@ impl PanelLayout {
             cap: Some(Effect::Action(Action::Hover)),
             round: false,
         };
-        let items = items.chain(keyboard).chain([hover]).collect();
+        // The helmet display's mode beside it, under BAY.
+        let hmd = Placed {
+            elem: Elem::Lamp(LampId::Hmd, None),
+            rect: rect(-126.0, -68.0, 38.0, 14.0),
+            cap: Some(Effect::Action(Action::HmdMode)),
+            round: false,
+        };
+        let items = items.chain(keyboard).chain([hover, hmd]).collect();
         let (w, h) = (200.0, 200.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
         Self {
             style: PanelStyle::Oh58,
@@ -1743,7 +1762,13 @@ impl PanelLayout {
             Some(E::Action(Action::Nvg)),
             false,
         );
-        put(Elem::Label("WX", KEY.0, KEY.1), rect(15.0, -92.0, 20.0, 16.0), None, false);
+        // The helmet display's mode in the weather key's place (`hmd::HmdMode`).
+        put(
+            Elem::Lamp(Hmd, Some("HMCS")),
+            rect(15.0, -92.0, 20.0, 16.0),
+            Some(E::Action(Action::HmdMode)),
+            false,
+        );
         put(Elem::Label("FLIR", KEY.0, KEY.1), rect(15.0, -72.0, 20.0, 16.0), None, false);
         // Flight instruments as in the F-16C: airspeed and altimeter over the attitude
         // indicator's upper corners, the AOA and vertical velocity tapes either side of it, the
@@ -1959,8 +1984,8 @@ mod tests {
                 .filter_map(|p| if let Elem::Lamp(id, _) = p.elem { Some(id) } else { None })
                 .collect()
         };
-        // Every lamp but the helicopters' HOVER and the RWR scope's keys.
-        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT - 3);
+        // Every lamp but the helicopters' HOVER, the RWR scope's keys and the helmet display's.
+        assert_eq!(lamps(&PanelLayout::classic()).len(), crate::panel::LAMP_COUNT - 4);
         let modern = lamps(&PanelLayout::modern());
         for id in [
             LampId::Map,

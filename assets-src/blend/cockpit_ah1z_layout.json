@@ -781,6 +781,18 @@
       "round": false
     },
     {
+      "control": "Action(HmdMode)",
+      "key": "Button(Hmd, None)",
+      "kind": "cap",
+      "rect": [
+        -98.0,
+        128.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": "Osb(Left, 0)",
       "key": "Osb(Left, 0)",
       "kind": "osb",

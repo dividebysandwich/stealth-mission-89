@@ -159,9 +159,12 @@ pub enum LampId {
     /// classic panel).
     RwrPri,
     RwrSep,
+    /// The helmet-mounted display's mode (`hmd::HmdMode`): a cap lit while it is not off (not
+    /// on the classic panel).
+    Hmd,
 }
 
-pub const LAMP_COUNT: usize = 40;
+pub const LAMP_COUNT: usize = 41;
 
 /// Lamp colours, (text and border, fill) unlit and lit, as they recolour the panel art.
 #[derive(Debug, Clone, Copy)]
@@ -223,6 +226,7 @@ pub const LAMPS: [(LampId, &str, LampStyle); LAMP_COUNT] = {
         (Hover, "HOVER", RED),
         (RwrPri, "MODE", BUTTON),
         (RwrSep, "T", BUTTON),
+        (Hmd, "HMD", BUTTON),
     ]
 };
 
@@ -737,6 +741,7 @@ impl PanelParams<'_, '_> {
         }
         lit[RwrPri as usize] = self.rwr_mode.priority;
         lit[RwrSep as usize] = self.rwr_mode.separate;
+        lit[Hmd as usize] = self.settings.hmd_mode != crate::hmd::HmdMode::Off;
         lit[Mw as usize] = w.missile_warning;
         lit[Eng as usize] = w.engine;
         lit[Fc as usize] = w.fire_control;
