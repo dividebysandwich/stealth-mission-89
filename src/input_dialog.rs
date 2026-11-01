@@ -450,7 +450,7 @@ pub fn show(
                     if ui.add(big_button("DEFAULT KEYS").icon(icon::RESET)).on_hover_text("Restore the default keyboard keys").clicked() {
                         config.keys = default_key_mappings();
                     }
-                    if ui.add(big_button("CLEAR ALL").icon(icon::CLEAR)).on_hover_text("Remove every axis, key and button binding").clicked() {
+                    if ui.add(big_button("CLEAR ALL").icon(icon::CLEAR)).on_hover_text("Remove every joystick axis and button binding (the keys stay)").clicked() {
                         config.axes.clear();
                         config.buttons.clear();
                     }
