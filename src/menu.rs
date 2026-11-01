@@ -1692,7 +1692,7 @@ fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
                 });
                 ui.add_space(16.0);
                 ui.vertical(|ui| {
-                    group(ui, "The download version", |ui| {
+                    group(ui, "Why download?", |ui| {
                         for (what, why) in DOWNLOAD_GIVES {
                             ui.label(egui::RichText::new(format!("> {what}")).color(GREEN));
                             ui.label(egui::RichText::new(why).size(14.0).color(DIM));
