@@ -92,7 +92,7 @@ impl Plugin for SoundPlugin {
             .add_audio_source::<muffle::Muffled>()
             .add_systems(Startup, (load_bank, ambient::load))
             .add_systems(Update, (muffle::preload, music::follow))
-            .add_systems(OnEnter(AppState::Menu), music::start)
+            .add_systems(Update, music::start.run_if(in_state(AppState::Menu)))
             .add_systems(OnExit(AppState::Menu), music::leave)
             .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset))
             .add_systems(

@@ -101,6 +101,11 @@ pub struct MenuState {
 }
 
 impl MenuState {
+    /// The browser build's first screen is up (`web_gateway`).
+    pub fn web_gateway_up(&self) -> bool {
+        self.web_gateway
+    }
+
     /// Career mode: the next sortie of the pilot's tour.
     pub fn start_career(&mut self, p: &crate::career::Pilot, t: &crate::career::Tour) {
         self.career = Some(p.key());
