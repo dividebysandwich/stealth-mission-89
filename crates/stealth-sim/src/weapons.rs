@@ -588,10 +588,11 @@ impl Sim {
                 pr.target = -1;
             }
         }
-        if ballistics::drag(spec, self.opts.fix_classic_bugs).is_some() {
-            // Free-fall and retarded bombs (and, fixed, supply pods) fall ballistically.
-            // Classic flew free-fall bombs at half speed, turning down to a floor set by the
-            // release altitude, and dropped retarded ones straight down at speed 1.
+        if self.fall_drag(spec).is_some() {
+            // Free-fall and retarded bombs (and, fixed, supply pods; under realistic guidance
+            // the laser-guided ones) fall ballistically. Classic flew free-fall and guided bombs
+            // at half speed, turning down to a floor set by the release altitude, and dropped
+            // retarded ones straight down at speed 1.
             let f = ROUND_FINE as f64;
             let v = ballistics::release_velocity(
                 self.pl.p.heading,

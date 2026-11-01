@@ -4,6 +4,8 @@ use crate::types::*;
 use crate::weather::optical_seeker;
 use crate::{ENEMY_SLOTS, Sim};
 
+/// The most a laser-guided bomb's fins steer it across its path (g).
+const LGB_PULL: f64 = 1.5;
 /// Speed (viewZ units/s) a classic missile sinks at while it drops clear.
 const CLASSIC_DROP_SPEED: i32 = 20;
 
@@ -605,11 +607,15 @@ impl Sim {
     fn fall_bomb(&mut self, s: usize) {
         let m = self.proj[s];
         let Some(f) = m.fall else { return };
-        let Some(k) = ballistics::drag(m.spec, self.opts.fix_classic_bugs) else { return };
+        let Some(k) = self.fall_drag(m.spec) else { return };
         let fine = ROUND_FINE as f64;
         let before = [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine];
         let (mut p, mut v) = (before, [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine]);
-        ballistics::step(&mut p, &mut v, k, 1.0 / self.fs as f64);
+        let dt = 1.0 / self.fs as f64;
+        if m.spec == 28 && s >= ENEMY_SLOTS {
+            self.steer_lgb(&p, &mut v, dt);
+        }
+        ballistics::step(&mut p, &mut v, k, dt);
         // The ground (the rolling hills) where the bomb is now.
         let ground = self.hill_alt((p[0] / 32.0) as i32, (p[1] / 32.0) as i32) as f64;
         let landed = p[2] <= ground;
@@ -640,6 +646,48 @@ impl Sim {
         if landed {
             self.ground_impact(s);
         }
+    }
+
+    /// How a store falls ballistically ([`ballistics::drag`]), if it does: under realistic
+    /// guidance the laser-guided bombs too, like free-fall ones (steered by [`Self::steer_lgb`]).
+    pub(crate) fn fall_drag(&self, spec: i32) -> Option<f64> {
+        ballistics::drag(spec, self.opts.fix_classic_bugs).or_else(|| {
+            (spec == 28 && self.opts.realistic_guidance)
+                .then(|| ballistics::drag(30, self.opts.fix_classic_bugs))
+                .flatten()
+        })
+    }
+
+    /// A falling laser-guided bomb at `p` (ft: east, south, up) steering its velocity `v` for
+    /// `dt` s toward the laser spot on the ground lock while the designator sees it: across
+    /// its path, for where it would land, with its fins' limited pull.
+    fn steer_lgb(&self, p: &[f64; 3], v: &mut [f64; 3], dt: f64) {
+        let gl = self.pl.gnd_lock;
+        if gl < 0 || gl as usize >= self.objects.len() {
+            return;
+        }
+        let o = self.obj(gl);
+        if !self.player_sees(o.x, o.y, 0) {
+            return;
+        }
+        let (tx, ty) = ((o.x as f64 + 0.5) * 32.0, (o.y as f64 + 0.5) * 32.0);
+        let h = p[2] - self.hill_alt(o.x, o.y) as f64;
+        if h <= 0.0 {
+            return;
+        }
+        // Seconds to the ground at the target's height.
+        let g = ballistics::GRAVITY;
+        let t_go = (v[2] + (v[2] * v[2] + 2.0 * g * h).sqrt()) / g;
+        if t_go < 0.1 {
+            return;
+        }
+        let want = [(tx - p[0]) / t_go, (ty - p[1]) / t_go];
+        let dv = [want[0] - v[0], want[1] - v[1]];
+        let n = dv[0].hypot(dv[1]);
+        let most = LGB_PULL * g * dt;
+        let k = if n > most { most / n } else { 1.0 };
+        v[0] += dv[0] * k;
+        v[1] += dv[1] * k;
     }
 
     /// Ground contact of a projectile.
