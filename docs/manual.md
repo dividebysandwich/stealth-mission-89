@@ -252,8 +252,8 @@ FreePIE runs alongside the TrackIR software and acts as a bridge between it and 
 
 ```
 def update():
-    freeTrack.yaw = -(trackIR.yaw/180)
-    freeTrack.pitch = -(trackIR.pitch/90)
+    freeTrack.yaw = -(trackIR.yaw/90)
+    freeTrack.pitch = -(trackIR.pitch/45)
     freeTrack.roll = -(trackIR.roll/90)
     freeTrack.x = -trackIR.x
     freeTrack.y = trackIR.y
