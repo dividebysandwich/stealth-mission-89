@@ -2940,3 +2940,34 @@ fn a_prepared_operation_sends_the_insertion_in_at_once() {
     assert!(c.insertions.iter().any(|i| i.side == Side::Blue && i.place == place), "{:?}", ev);
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("prepared"))));
 }
+
+#[test]
+fn the_awacs_diverts_a_pilot_to_a_raid_near_him() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, strike) = take(&mut c, P0, MissionKind::Strike);
+    // An enemy raid ordered: its Defend offer on the board.
+    c.raid_at = f64::MIN / 2.0;
+    c.tick(1.0, &WorldView::default(), &[]);
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    let defend =
+        c.board.iter().find(|o| matches!(o.objective, Objective::Defend { .. })).unwrap().clone();
+    // Not seen in the air yet: nothing to divert.
+    assert!(c.divert_for(P0).is_none());
+    let view = WorldView { players: vec![up_at(P0, defend.x, defend.y)], ..Default::default() };
+    c.tick(1.0, &view, &[Report::ObjectDestroyed { object: 0, by: Some(P0) }]);
+    let kills = c.sortie(P0).unwrap().progress.sites_destroyed.clone();
+    assert_eq!(c.divert_for(P0).map(|o| o.id), Some(defend.id));
+    let ev = c.apply(P0, Command::Retask { offer: defend.id }).unwrap();
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::SortieRetasked { .. })));
+    let s = c.sortie(P0).unwrap();
+    assert_eq!(s.offer.id, defend.id);
+    assert_eq!(s.progress.sites_destroyed, kills);
+    assert!(c.plans.iter().any(|p| p.offer == defend.id && p.flying.contains(&P0)));
+    // On an urgent mission now: no divert from it, none back to the strike.
+    assert!(c.divert_for(P0).is_none());
+    let back = c.board.iter().find(|o| o.objective == strike).map(|o| o.id);
+    if let Some(back) = back {
+        assert!(c.apply(P0, Command::Retask { offer: back }).is_err());
+    }
+}

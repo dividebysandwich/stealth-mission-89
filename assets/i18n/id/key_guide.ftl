@@ -119,6 +119,7 @@ kg-detail = Tingkat detail
 kg-day-night = Siang / malam
 kg-training = Menuju latihan
 kg-resupply = Pasokan ulang
+kg-accept-tasking = Terima pengalihan
 kg-quit = Keluar
 kg-hover = Melayang otomatis (helikopter, hingga 30 kt)
 kg-rwr-priority = Mode prioritas RWR (lima ancaman) nyala / mati

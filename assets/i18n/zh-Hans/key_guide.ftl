@@ -117,6 +117,7 @@ kg-detail = 细节级别
 kg-day-night = 白天 / 夜间
 kg-training = 转到训练
 kg-resupply = 补给
+kg-accept-tasking = 接受改派
 kg-quit = 退出
 kg-hover = 自动悬停（直升机，最高 30 kt）
 kg-rwr-priority = RWR 优先模式（五个威胁）开 / 关

@@ -118,6 +118,7 @@ kg-detail = Nivel de detaliu
 kg-day-night = Zi / noapte
 kg-training = Mergeți la antrenament
 kg-resupply = Reaprovizionare
+kg-accept-tasking = Acceptă redirecționarea
 kg-quit = Ieșire
 kg-hover = Staționare automată (elicoptere, până la 30 kt)
 kg-rwr-priority = Mod prioritar RWR (cinci amenințări) activat / dezactivat

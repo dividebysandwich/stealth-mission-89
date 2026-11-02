@@ -118,6 +118,7 @@ kg-detail = Leibhéal mionsonraí
 kg-day-night = Lá / oíche
 kg-training = Téigh chuig an oiliúint
 kg-resupply = Athsholáthar
+kg-accept-tasking = Glac leis an atreorú
 kg-quit = Scoir
 kg-hover = Floscadh uathoibríoch (héileacaptair, suas le 30 kt)
 kg-rwr-priority = Mód tosaíochta RWR (cúig bhagairt) air / as

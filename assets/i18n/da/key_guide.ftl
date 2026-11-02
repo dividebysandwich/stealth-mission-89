@@ -118,6 +118,7 @@ kg-detail = Detaljeniveau
 kg-day-night = Dag / nat
 kg-training = Gå til træning
 kg-resupply = Genforsyning
+kg-accept-tasking = Accepter omdirigering
 kg-quit = Afslut
 kg-hover = Automatisk sværen (helikoptere, op til 30 kt)
 kg-rwr-priority = RWR-prioritetstilstand (fem trusler) til / fra

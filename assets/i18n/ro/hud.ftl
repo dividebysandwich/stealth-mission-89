@@ -13,6 +13,7 @@ hud-aim-at-target = ÎNDREPTAȚI SPRE ȚINTĂ
 hud-photo = FOTO { $state }
 hud-rearmed = Reînarmat și realimentat
 hud-landed-rearm = Aterizat - reînarmați sau încheiați zborul
+hud-divert-accept = Redirecționare: { $title } - { $key } pentru a accepta
 hud-objective-achieved = Obiectiv îndeplinit
 
 ## Ecranul de sfârșit al misiunii

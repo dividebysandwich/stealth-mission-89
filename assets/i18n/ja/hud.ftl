@@ -13,6 +13,7 @@ hud-aim-at-target = 目標に照準
 hud-photo = 撮影 { $state }
 hud-rearmed = 再武装・給油完了
 hud-landed-rearm = 着陸 - 再武装するか出撃を終了
+hud-divert-accept = 任務変更：{ $title } - { $key } で受諾
 hud-objective-achieved = 目標達成
 
 ## 任務終了オーバーレイ

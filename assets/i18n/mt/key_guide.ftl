@@ -119,6 +119,7 @@ kg-detail = Livell ta' detall
 kg-day-night = Nhar / lejl
 kg-training = Mur fit-taħriġ
 kg-resupply = Reżupplament
+kg-accept-tasking = Aċċetta d-devjazzjoni
 kg-quit = Oħroġ
 kg-hover = Immuntar awtomatiku (ħelikopters, sa 30 kt)
 kg-rwr-priority = Modalità ta' prijorità tal-RWR (ħames theddidiet) mixgħul / maqful

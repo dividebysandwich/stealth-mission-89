@@ -119,6 +119,7 @@ kg-detail = Ниво на детайлност
 kg-day-night = Ден / нощ
 kg-training = Към тренировката
 kg-resupply = Презареждане
+kg-accept-tasking = Приеми пренасочването
 kg-quit = Изход
 kg-hover = Автоматично висене (хеликоптери, до 30 kt)
 kg-rwr-priority = Приоритетен режим на RWR (пет заплахи) вкл. / изкл.

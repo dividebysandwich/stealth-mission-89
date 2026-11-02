@@ -12,6 +12,7 @@ hud-aim-at-target = BIDIK TARGET
 hud-photo = FOTO { $state }
 hud-rearmed = Persenjataan dan bahan bakar terisi ulang
 hud-landed-rearm = Mendarat - isi ulang persenjataan atau akhiri sorti
+hud-divert-accept = Pengalihan: { $title } - { $key } untuk menerima
 hud-objective-achieved = Sasaran tercapai
 
 ## Layar akhir misi

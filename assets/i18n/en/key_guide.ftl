@@ -128,4 +128,5 @@ kg-detail = Detail level
 kg-day-night = Day / night
 kg-training = Go to training
 kg-resupply = Resupply
+kg-accept-tasking = Accept divert
 kg-quit = Quit

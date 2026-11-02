@@ -13,6 +13,7 @@ hud-aim-at-target = НАВЕДІТЬ НА ЦІЛЬ
 hud-photo = ФОТО { $state }
 hud-rearmed = Переозброєно та заправлено
 hud-landed-rearm = Посадка виконана - переозброюйтесь або завершіть вильот
+hud-divert-accept = Перенацілювання: { $title } - { $key }, щоб прийняти
 hud-objective-achieved = Завдання виконано
 
 ## Екран завершення місії

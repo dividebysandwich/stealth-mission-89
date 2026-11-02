@@ -116,6 +116,7 @@ kg-detail = Poziom szczegółów
 kg-day-night = Dzień / noc
 kg-training = Przejść do treningu
 kg-resupply = Uzupełnienie zapasów
+kg-accept-tasking = Przyjmij zmianę zadania
 kg-quit = Wyjść
 kg-hover = Automatyczny zawis (śmigłowce, do 30 kt)
 kg-rwr-priority = Tryb priorytetu RWR (pięć zagrożeń) włączony / wyłączony

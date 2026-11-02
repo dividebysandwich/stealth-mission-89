@@ -118,6 +118,7 @@ kg-detail = Úroveň detailu
 kg-day-night = Den / noc
 kg-training = Přejít na trénink
 kg-resupply = Doplnit zásoby
+kg-accept-tasking = Přijmout přesměrování
 kg-quit = Konec
 kg-hover = Automatické visení (vrtulníky, do 30 kt)
 kg-rwr-priority = Prioritní režim RWR (pět hrozeb) zap. / vyp.

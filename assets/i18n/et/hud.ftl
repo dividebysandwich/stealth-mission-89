@@ -13,6 +13,7 @@ hud-aim-at-target = SIHI SIHTMÄRGILE
 hud-photo = FOTO { $state }
 hud-rearmed = Uuesti relvastatud ja tangitud
 hud-landed-rearm = Maandutud - relvasta uuesti või lõpeta lend
+hud-divert-accept = Ümbersuunamine: { $title } - { $key } nõustumiseks
 hud-objective-achieved = Eesmärk täidetud
 
 ## Missiooni lõpuekraan

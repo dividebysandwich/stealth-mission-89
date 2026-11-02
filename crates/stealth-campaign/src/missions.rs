@@ -1,5 +1,6 @@
 //! The players' sorties: taking a mission, following its objective, ending it.
 
+use crate::flow::divertible;
 use crate::record::{flight_points, settle};
 use crate::state::*;
 use crate::tuning::*;
@@ -64,6 +65,57 @@ impl CampaignState {
         }
         ev.extend([CampaignEvent::SortieStarted { player, sortie }, self.plans_changed()]);
         Ok(ev)
+    }
+
+    /// A player in the air takes urgent offer `offer` instead of his mission: what he destroyed
+    /// and shot down stays his, the objective is the new one's. Only before his own is
+    /// achieved, and never an insertion (its helicopters take off with him).
+    pub(crate) fn retask(
+        &mut self,
+        player: PlayerId,
+        offer: u32,
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        let Some(o) = self.board.iter().find(|o| o.id == offer).cloned() else {
+            return Err(text!("ce-off-board"));
+        };
+        let Some(s) = self.sortie(player).cloned() else {
+            return Err(text!("ce-not-flying"));
+        };
+        if !o.kind.flyable_by(s.aircraft) {
+            return Err(o.kind.not_flyable(s.aircraft));
+        }
+        if s.progress.achieved || s.offer.id == offer || !divertible(&o.objective) {
+            return Err(text!("ce-no-divert"));
+        }
+        if self.objective_met(&o.objective, &Progress::default()) {
+            return Err(text!("ce-target-destroyed"));
+        }
+        let p = s.progress;
+        let progress = Progress {
+            sites_destroyed: p.sites_destroyed,
+            aaa_destroyed: p.aaa_destroyed,
+            air_kills: p.air_kills,
+            last: p.last,
+            heli: p.heli,
+            effects: p.effects,
+            down: p.down,
+            ..Progress::default()
+        };
+        let sortie = Sortie { offer: o.clone(), progress, ..s };
+        self.note(text!("cl-diverted", title = o.title.clone()));
+        self.slot_mut(player).sortie = Some(sortie.clone());
+        self.leave_plans(player);
+        match self.plans.iter_mut().find(|p| p.offer == offer) {
+            Some(p) => p.flying.push(player),
+            None => self.plans.push(MissionPlan {
+                offer,
+                base: sortie.base,
+                route: Vec::new(),
+                crew: Vec::new(),
+                flying: vec![player],
+            }),
+        }
+        Ok(vec![CampaignEvent::SortieRetasked { player, sortie }, self.plans_changed()])
     }
 
     /// The callsign numbers of a sortie starting on `offer`: the flight of the others flying

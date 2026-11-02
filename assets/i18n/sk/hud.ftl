@@ -13,6 +13,7 @@ hud-aim-at-target = NAMIERTE NA CIEĽ
 hud-photo = FOTO { $state }
 hud-rearmed = Prezbrojené a natankované
 hud-landed-rearm = Pristáli ste - prezbrojte sa alebo ukončite bojový let
+hud-divert-accept = Presmerovanie: { $title } - { $key } na prijatie
 hud-objective-achieved = Cieľ splnený
 
 ## Prekryv konca misie

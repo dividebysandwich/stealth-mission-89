@@ -116,3 +116,27 @@ impl CampaignState {
         Some(Operation { place, steps })
     }
 }
+
+/// An urgent mission the AWACS diverts a player in the air to.
+pub fn divertible(o: &Objective) -> bool {
+    matches!(o, Objective::Defend { .. } | Objective::Intercept { .. } | Objective::Rescue { .. })
+}
+
+impl CampaignState {
+    /// The urgent mission the AWACS would divert `player` to: the nearest one on the board in
+    /// reach of where he flies, while his own is not achieved yet nor urgent itself.
+    pub fn divert_for(&self, player: PlayerId) -> Option<&MissionOffer> {
+        let s = self.sortie(player)?;
+        let (x, y) = s.progress.last?;
+        if s.progress.achieved || divertible(&s.offer.objective) || s.progress.down.is_some() {
+            return None;
+        }
+        self.board
+            .iter()
+            .filter(|o| divertible(&o.objective) && o.kind.flyable_by(s.aircraft))
+            .map(|o| (dist(o.x - x, o.y - y), o))
+            .filter(|&(d, _)| d <= DIVERT_RANGE)
+            .min_by_key(|&(d, o)| (d, o.id))
+            .map(|(_, o)| o)
+    }
+}

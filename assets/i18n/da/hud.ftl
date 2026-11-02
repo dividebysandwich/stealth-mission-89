@@ -13,6 +13,7 @@ hud-aim-at-target = SIG PÅ MÅL
 hud-photo = FOTO { $state }
 hud-rearmed = Genbevæbnet og tanket op
 hud-landed-rearm = Landet - genbevæbn eller afslut flyvningen
+hud-divert-accept = Omdirigering: { $title } - { $key } for at acceptere
 hud-objective-achieved = Mål nået
 
 ## Skærm ved missionens slutning

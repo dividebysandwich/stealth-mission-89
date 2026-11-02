@@ -118,6 +118,7 @@ kg-detail = Yksityiskohtataso
 kg-day-night = Päivä / yö
 kg-training = Siirry harjoitukseen
 kg-resupply = Täydennys
+kg-accept-tasking = Hyväksy uudelleenohjaus
 kg-quit = Lopeta
 kg-hover = Automaattinen leijunta (helikopterit, enintään 30 kt)
 kg-rwr-priority = RWR:n prioriteettitila (viisi uhkaa) päällä / pois

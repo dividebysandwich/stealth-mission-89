@@ -116,6 +116,7 @@ kg-detail = Detailstufe
 kg-day-night = Tag / Nacht
 kg-training = Zum Training wechseln
 kg-resupply = Nachschub
+kg-accept-tasking = Umleitung annehmen
 kg-quit = Beenden
 kg-hover = Automatisches Schweben (Hubschrauber, bis 30 kt)
 kg-rwr-priority = RWR-Prioritätsmodus (fünf Bedrohungen) ein / aus

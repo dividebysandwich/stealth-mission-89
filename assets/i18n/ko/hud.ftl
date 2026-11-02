@@ -13,6 +13,7 @@ hud-aim-at-target = 표적 조준
 hud-photo = 사진 { $state }
 hud-rearmed = 재무장 및 재급유 완료
 hud-landed-rearm = 착륙 완료 - 재무장하거나 출격을 종료하십시오
+hud-divert-accept = 임무 전환: { $title } - { $key }로 수락
 hud-objective-achieved = 목표 달성
 
 ## 임무 종료 오버레이

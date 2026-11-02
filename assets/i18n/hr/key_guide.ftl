@@ -118,6 +118,7 @@ kg-detail = Razina detalja
 kg-day-night = Dan / noć
 kg-training = Prijeđi na obuku
 kg-resupply = Opskrba
+kg-accept-tasking = Prihvati preusmjeravanje
 kg-quit = Izlaz
 kg-hover = Automatsko lebdenje (helikopteri, do 30 kt)
 kg-rwr-priority = Prioritetni način RWR-a (pet prijetnji) uklj. / isklj.

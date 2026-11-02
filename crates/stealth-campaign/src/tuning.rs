@@ -151,6 +151,8 @@ pub const CAP_RADIUS: i32 = 0x500;
 /// A player on CAP keeps the enemy's new raids and insertions off places this close to his
 /// CAP point (30 km).
 pub const CAP_COVER: i32 = 0x780;
+/// The AWACS diverts a player in the air to an urgent mission this close (120 km).
+pub const DIVERT_RANGE: i32 = 0x1E00;
 /// An enemy airfield struck holds back the enemy's next raid this long at least; a city its
 /// next convoy and insertion (stores and transport gone).
 pub const STRUCK_AIRFIELD_DELAY: f64 = 15.0 * 60.0;

@@ -13,6 +13,7 @@ hud-aim-at-target = IMMIRA LEJN IL-MIRA
 hud-photo = RITRATT { $state }
 hud-rearmed = Armat mill-ġdid u mimli bil-fuel
 hud-landed-rearm = Inżilt - erġa' armi jew għalaq it-titjira
+hud-divert-accept = Devjazzjoni: { $title } - { $key } biex taċċetta
 hud-objective-achieved = Għan milħuq
 
 ## Overlay tat-tmiem tal-missjoni

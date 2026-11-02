@@ -13,6 +13,7 @@ hud-aim-at-target = DIRIGH AR AN SPRIOC
 hud-photo = GRIANGHRAF { $state }
 hud-rearmed = Athairmthe agus athbhreoslaithe
 hud-landed-rearm = Tuirlingthe - athairm nó cuir deireadh leis an eitilt
+hud-divert-accept = Atreorú: { $title } - { $key } le glacadh leis
 hud-objective-achieved = Cuspóir bainte amach
 
 ## Scáileán deiridh na misean

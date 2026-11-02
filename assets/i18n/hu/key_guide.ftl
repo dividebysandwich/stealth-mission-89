@@ -119,6 +119,7 @@ kg-detail = Részletességi szint
 kg-day-night = Nappal / éjszaka
 kg-training = Átváltás gyakorlásra
 kg-resupply = Utánpótlás
+kg-accept-tasking = Átirányítás elfogadása
 kg-quit = Kilépés
 kg-hover = Automata lebegés (helikopterek, 30 kt-ig)
 kg-rwr-priority = RWR prioritási mód (öt fenyegetés) be / ki
