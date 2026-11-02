@@ -356,6 +356,26 @@ impl ActiveCampaign {
         (self.phase == Phase::Ops && self.end_timer.is_none()) || self.landed.is_some()
     }
 
+    /// On the Ops board (not flying a sortie nor at a console): the in-flight menu's END
+    /// MISSION is the board's way out (`exit_id`, `ask_exit`).
+    pub fn on_board(&self) -> bool {
+        self.phase == Phase::Ops
+    }
+
+    /// The board's way out, SAVE & EXIT or DISCONNECT from a server: its message id and icon.
+    pub fn exit_id(&self) -> &'static str {
+        ops::exit_id(self.role)
+    }
+
+    pub fn exit_icon(&self) -> char {
+        ops::exit_icon(self.role)
+    }
+
+    /// Asks to leave the campaign, as the board's way-out button does.
+    pub fn ask_exit(&mut self) {
+        self.ui.confirm_exit = true;
+    }
+
     /// Saves the campaign (alone or as the listen server).
     pub fn save(&self) {
         if let Some(h) = &self.host

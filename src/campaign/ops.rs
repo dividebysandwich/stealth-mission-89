@@ -69,7 +69,7 @@ pub struct OpsUi {
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
-    confirm_exit: bool,
+    pub(super) confirm_exit: bool,
     /// The chat message being typed on the CHAT tab.
     chat: String,
 }
@@ -1028,7 +1028,12 @@ fn kind_name(k: MissionKind) -> &'static str {
 
 /// SAVE & EXIT, or DISCONNECT from a server.
 fn exit_label(role: Role) -> &'static str {
-    t!(if role == Role::Client { "ops-disconnect" } else { "ops-save-exit" })
+    t!(exit_id(role))
+}
+
+/// SAVE & EXIT's message id, or DISCONNECT's.
+pub(super) fn exit_id(role: Role) -> &'static str {
+    if role == Role::Client { "ops-disconnect" } else { "ops-save-exit" }
 }
 
 /// The campaign's rules in words.
@@ -2087,7 +2092,7 @@ fn route_editor(
 pub(crate) const EXIT_RED: egui::Color32 = egui::Color32::from_rgb(150, 24, 20);
 
 /// SAVE & EXIT's icon, or DISCONNECT's.
-fn exit_icon(role: Role) -> char {
+pub(super) fn exit_icon(role: Role) -> char {
     if role == Role::Client { icon::DISCONNECT } else { icon::SAVE }
 }
 
