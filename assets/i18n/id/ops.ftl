@@ -90,6 +90,7 @@ ops-due-now = SEKARANG
 ops-front-blue = GARIS DEPAN: BIRU MENANG
 ops-front-red = GARIS DEPAN: MERAH MENANG
 ops-front-even = GARIS DEPAN: BERTAHAN
+ops-operation = Operasi { $place }: { $done }/{ $total } disiapkan
 ops-friendly = KAWAN
 ops-enemy = MUSUH
 ops-section-forces = Pasukan

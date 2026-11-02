@@ -90,6 +90,7 @@ ops-due-now = ΤΩΡΑ
 ops-front-blue = ΜΕΤΩΠΟ: ΟΙ ΜΠΛΕ ΚΕΡΔΙΖΟΥΝ
 ops-front-red = ΜΕΤΩΠΟ: ΟΙ ΚΟΚΚΙΝΟΙ ΚΕΡΔΙΖΟΥΝ
 ops-front-even = ΜΕΤΩΠΟ: ΣΤΑΘΕΡΟ
+ops-operation = Επιχείρηση { $place }: { $done }/{ $total } προετοιμασμένα
 ops-friendly = ΦΙΛΙΟΙ
 ops-enemy = ΕΧΘΡΟΣ
 ops-section-forces = Δυνάμεις

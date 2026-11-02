@@ -90,6 +90,7 @@ ops-due-now = NU
 ops-front-blue = FRONT: BLÅ VINNER MARK
 ops-front-red = FRONT: RÖD VINNER MARK
 ops-front-even = FRONT: HÅLLER
+ops-operation = Operation { $place }: { $done }/{ $total } förberett
 ops-friendly = EGNA
 ops-enemy = FIENDE
 ops-section-forces = Styrkor

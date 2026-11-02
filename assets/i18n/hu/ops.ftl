@@ -90,6 +90,7 @@ ops-due-now = MOST
 ops-front-blue = FRONT: A KÉK TÉRT NYER
 ops-front-red = FRONT: A PIROS TÉRT NYER
 ops-front-even = FRONT: TART
+ops-operation = { $place } hadművelet: { $done }/{ $total } előkészítve
 ops-friendly = BARÁTI
 ops-enemy = ELLENSÉGES
 ops-section-forces = Erők

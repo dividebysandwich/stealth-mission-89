@@ -15,6 +15,7 @@ cl-fx-cap = Tu CAP mantuvo los ataques e inserciones enemigos lejos de { $place 
 cl-fx-escort = Tu escolta mantuvo a los cazas enemigos lejos de los helicópteros hacia { $place }
 cl-fx-lost-fighter = Tu avión perdido: tu bando tiene un caza menos
 cl-fx-lost-helicopter = Tu helicóptero perdido: tu bando tiene un helicóptero menos
+cl-operation-go = Operación { $place } preparada: los helicópteros entran
 cl-ship-sunk = Buque hundido
 cl-why-all-lost = todos los helicópteros perdidos
 cl-why-landed-short = los helicópteros aterrizaron antes de llegar

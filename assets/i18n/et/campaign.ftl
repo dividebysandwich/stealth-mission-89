@@ -16,6 +16,7 @@ cl-fx-cap = Sinu CAP hoidis vaenlase rünnakud ja dessandid eemal kohast { $plac
 cl-fx-escort = Sinu eskort hoidis vaenlase hävitajad eemal helikopteritest teel kohta { $place }
 cl-fx-lost-fighter = Sinu lennuk kaotatud: omadel on üks hävitaja vähem
 cl-fx-lost-helicopter = Sinu helikopter kaotatud: omadel on üks helikopter vähem
+cl-operation-go = Operatsioon { $place } ette valmistatud: helikopterid lähevad
 cl-ship-sunk = Laev uputatud
 cl-why-all-lost = kõik helikopterid kadusid
 cl-why-landed-short = helikopterid maandusid liiga vara

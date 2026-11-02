@@ -90,6 +90,7 @@ ops-due-now = NYT
 ops-front-blue = RINTAMA: SININEN ETENEE
 ops-front-red = RINTAMA: PUNAINEN ETENEE
 ops-front-even = RINTAMA: PITÄÄ
+ops-operation = Operaatio { $place }: { $done }/{ $total } valmisteltu
 ops-friendly = OMAT
 ops-enemy = VIHOLLINEN
 ops-section-forces = Voimat

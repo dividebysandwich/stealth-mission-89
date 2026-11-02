@@ -16,6 +16,7 @@ cl-fx-cap = Din CAP holdt fjendens angreb og luftlandsætninger væk fra { $plac
 cl-fx-escort = Din eskorte holdt fjendens jagere væk fra helikopterne til { $place }
 cl-fx-lost-fighter = Dit fly tabt: din side har én jager mindre
 cl-fx-lost-helicopter = Din helikopter tabt: din side har én helikopter mindre
+cl-operation-go = Operation { $place } forberedt: helikopterne går ind
 cl-ship-sunk = Skib sænket
 cl-why-all-lost = alle helikoptere tabt
 cl-why-landed-short = helikopterne landede for kort

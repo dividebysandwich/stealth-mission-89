@@ -90,6 +90,7 @@ ops-due-now = 진행 중
 ops-front-blue = 전선: 아군 우세
 ops-front-red = 전선: 적군 우세
 ops-front-even = 전선: 교착
+ops-operation = { $place } 작전: 준비 { $done }/{ $total }
 ops-friendly = 아군
 ops-enemy = 적
 ops-section-forces = 전력

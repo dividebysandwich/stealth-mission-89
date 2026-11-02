@@ -90,6 +90,7 @@ ops-due-now = 进行中
 ops-front-blue = 前线：蓝方占优
 ops-front-red = 前线：红方占优
 ops-front-even = 前线：僵持
+ops-operation = { $place } 行动：已准备 { $done }/{ $total }
 ops-friendly = 友军
 ops-enemy = 敌军
 ops-section-forces = 兵力

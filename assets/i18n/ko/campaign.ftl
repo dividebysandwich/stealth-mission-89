@@ -16,6 +16,7 @@ cl-fx-cap = 너의 CAP가 적의 공습과 공중 강습을 { $place }에서 멀
 cl-fx-escort = 너의 호위가 { $place }로 가는 헬기에서 적 전투기를 멀리했다
 cl-fx-lost-fighter = 너의 기체 손실: 아군 전투기가 1대 줄었다
 cl-fx-lost-helicopter = 너의 헬기 손실: 아군 헬기가 1대 줄었다
+cl-operation-go = { $place } 작전 준비 완료: 헬기 투입
 cl-ship-sunk = 함선 격침
 cl-why-all-lost = 헬기 전멸
 cl-why-landed-short = 헬기가 목표 전에 착륙함

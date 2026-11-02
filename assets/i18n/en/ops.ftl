@@ -94,6 +94,7 @@ ops-due-now = NOW
 ops-front-blue = FRONT: BLUE GAINING
 ops-front-red = FRONT: RED GAINING
 ops-front-even = FRONT: HOLDING
+ops-operation = Operation { $place }: { $done }/{ $total } prepared
 ops-friendly = FRIENDLY
 ops-enemy = ENEMY
 ops-section-forces = Forces

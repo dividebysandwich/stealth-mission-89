@@ -90,6 +90,7 @@ ops-due-now = NU
 ops-front-blue = FRONT: BLAUW WINT TERREIN
 ops-front-red = FRONT: ROOD WINT TERREIN
 ops-front-even = FRONT: HOUDT STAND
+ops-operation = Operatie { $place }: { $done }/{ $total } voorbereid
 ops-friendly = BEVRIEND
 ops-enemy = VIJAND
 ops-section-forces = Strijdkrachten

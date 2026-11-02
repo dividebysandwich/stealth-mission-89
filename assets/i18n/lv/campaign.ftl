@@ -16,6 +16,7 @@ cl-fx-cap = Tava CAP noturēja ienaidnieka uzbrukumus un desantus prom no { $pla
 cl-fx-escort = Tava eskorts noturēja ienaidnieka iznīcinātājus prom no helikopteriem uz { $place }
 cl-fx-lost-fighter = Tavs lidaparāts zaudēts: savējiem ir par vienu iznīcinātāju mazāk
 cl-fx-lost-helicopter = Tavs helikopters zaudēts: savējiem ir par vienu helikopteru mazāk
+cl-operation-go = Operācija { $place } sagatavota: helikopteri dodas iekšā
 cl-ship-sunk = Kuģis nogremdēts
 cl-why-all-lost = visi helikopteri zaudēti
 cl-why-landed-short = helikopteri nosēdās pirms mērķa

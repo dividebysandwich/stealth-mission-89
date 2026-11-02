@@ -16,6 +16,7 @@ cl-fx-cap = Deine CAP hielt feindliche Angriffe und Luftlandungen von { $place }
 cl-fx-escort = Dein Geleitschutz hielt feindliche Jäger von den Hubschraubern nach { $place } fern
 cl-fx-lost-fighter = Dein Flugzeug verloren: die eigene Seite hat einen Jäger weniger
 cl-fx-lost-helicopter = Dein Hubschrauber verloren: die eigene Seite hat einen Hubschrauber weniger
+cl-operation-go = Operation { $place } vorbereitet: die Hubschrauber fliegen ein
 cl-ship-sunk = Schiff versenkt
 cl-why-all-lost = alle Hubschrauber verloren
 cl-why-landed-short = die Hubschrauber sind zu früh gelandet

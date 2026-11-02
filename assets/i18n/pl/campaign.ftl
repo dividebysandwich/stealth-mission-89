@@ -16,6 +16,7 @@ cl-fx-cap = Twój patrol CAP trzymał naloty i desanty wroga z dala od { $place 
 cl-fx-escort = Twoja eskorta trzymała myśliwce wroga z dala od śmigłowców lecących do { $place }
 cl-fx-lost-fighter = Twoja maszyna stracona: twoja strona ma o jeden myśliwiec mniej
 cl-fx-lost-helicopter = Twój śmigłowiec stracony: twoja strona ma o jeden śmigłowiec mniej
+cl-operation-go = Operacja { $place } przygotowana: śmigłowce lecą
 cl-ship-sunk = Okręt zatopiony
 cl-why-all-lost = utracono wszystkie śmigłowce
 cl-why-landed-short = śmigłowce wylądowały przed celem

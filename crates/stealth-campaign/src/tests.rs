@@ -2908,3 +2908,35 @@ fn the_front_moves_for_who_takes_places_and_destroys_sites() {
     c.clock += tuning::MOMENTUM_WINDOW + 1.0;
     assert_eq!(c.momentum(), 0);
 }
+
+#[test]
+fn a_prepared_operation_sends_the_insertion_in_at_once() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    // A front place with SAM sites to take down.
+    let front = c.front(Side::Blue);
+    let place = *front.iter().find(|&&p| !c.places[p as usize].defences.is_empty()).unwrap();
+    let op = c.operation(place).unwrap();
+    assert_eq!(op.done(), 0);
+    assert!(op.steps.iter().any(|s| s.0 == MissionKind::Sead));
+    // Not on the front: no operation.
+    let rear = (0..c.places.len() as PlaceId).find(|p| !front.contains(p)).unwrap();
+    assert!(c.operation(rear).is_none());
+    // Recon, SEAD and the strike done (the guns are not in the view).
+    c.places[place as usize].intel_until = Some(c.clock + 3600.0);
+    let targets: Vec<ObjectId> = c.places[place as usize]
+        .defences
+        .iter()
+        .copied()
+        .chain(c.places[place as usize].airfield)
+        .collect();
+    let hit: Vec<Report> =
+        targets.iter().map(|&object| Report::ObjectDestroyed { object, by: None }).collect();
+    c.auto_insert_at = c.clock;
+    let ev = c.tick(1.0, &WorldView::default(), &hit);
+    let op = c.operation(place).unwrap();
+    assert!(op.ready(), "{op:?}");
+    let ev: Vec<_> = ev.into_iter().chain(c.tick(1.0, &WorldView::default(), &[])).collect();
+    assert!(c.insertions.iter().any(|i| i.side == Side::Blue && i.place == place), "{:?}", ev);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("prepared"))));
+}

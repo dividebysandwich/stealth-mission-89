@@ -16,6 +16,7 @@ cl-fx-cap = 君のCAPが敵の空襲と空挺降下を { $place } から遠ざ�
 cl-fx-escort = 君の護衛が { $place } へ向かうヘリから敵戦闘機を遠ざけた
 cl-fx-lost-fighter = 君の機体を喪失：味方の戦闘機が1機減った
 cl-fx-lost-helicopter = 君のヘリを喪失：味方のヘリが1機減った
+cl-operation-go = { $place } 作戦の準備完了：ヘリが突入
 cl-ship-sunk = 艦船を撃沈
 cl-why-all-lost = ヘリコプターが全機喪失
 cl-why-landed-short = ヘリコプターが手前に着陸

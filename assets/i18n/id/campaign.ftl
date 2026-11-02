@@ -16,6 +16,7 @@ cl-fx-cap = CAP-mu menjauhkan serangan dan penyisipan musuh dari { $place }
 cl-fx-escort = Pengawalanmu menjauhkan pesawat tempur musuh dari helikopter menuju { $place }
 cl-fx-lost-fighter = Pesawatmu hilang: pihakmu kehilangan satu pesawat tempur
 cl-fx-lost-helicopter = Helikoptermu hilang: pihakmu kehilangan satu helikopter
+cl-operation-go = Operasi { $place } siap: helikopter masuk
 cl-ship-sunk = Kapal tenggelam
 cl-why-all-lost = semua helikopter hilang
 cl-why-landed-short = helikopter mendarat sebelum sampai

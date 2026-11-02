@@ -90,6 +90,7 @@ ops-due-now = ANOIS
 ops-front-blue = AN TULLÍNE: GORM AG BUA
 ops-front-red = AN TULLÍNE: DEARG AG BUA
 ops-front-even = AN TULLÍNE: SEASMHACH
+ops-operation = Oibríocht { $place }: { $done }/{ $total } ullmhaithe
 ops-friendly = CAIRDIÚIL
 ops-enemy = NAMHAD
 ops-section-forces = Forcaí

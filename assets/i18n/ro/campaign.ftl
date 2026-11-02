@@ -16,6 +16,7 @@ cl-fx-cap = CAP-ul tău a ținut raidurile și inserțiile inamice departe de { 
 cl-fx-escort = Escorta ta a ținut avioanele de vânătoare inamice departe de elicopterele spre { $place }
 cl-fx-lost-fighter = Aeronava ta pierdută: tabăra ta are un avion de vânătoare mai puțin
 cl-fx-lost-helicopter = Elicopterul tău pierdut: tabăra ta are un elicopter mai puțin
+cl-operation-go = Operațiunea { $place } pregătită: elicopterele intră
 cl-ship-sunk = Navă scufundată
 cl-why-all-lost = toate elicopterele au fost pierdute
 cl-why-landed-short = elicopterele au aterizat prea devreme

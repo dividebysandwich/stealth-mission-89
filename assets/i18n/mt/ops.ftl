@@ -90,6 +90,7 @@ ops-due-now = ISSA
 ops-front-blue = IL-FRONT: IL-BLU JAVVANZA
 ops-front-red = IL-FRONT: L-AĦMAR JAVVANZA
 ops-front-even = IL-FRONT: STABBLI
+ops-operation = Operazzjoni { $place }: { $done }/{ $total } ippreparat
 ops-friendly = ĦBIEB
 ops-enemy = GĦADU
 ops-section-forces = Forzi

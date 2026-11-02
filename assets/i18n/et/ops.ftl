@@ -90,6 +90,7 @@ ops-due-now = NÜÜD
 ops-front-blue = RINNE: SININE EDENEB
 ops-front-red = RINNE: PUNANE EDENEB
 ops-front-even = RINNE: PÜSIB
+ops-operation = Operatsioon { $place }: { $done }/{ $total } ette valmistatud
 ops-friendly = OMA
 ops-enemy = VAENLANE
 ops-section-forces = Jõud

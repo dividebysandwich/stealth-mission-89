@@ -909,14 +909,18 @@ impl CampaignState {
     /// The campaign sends an insertion of its own when a front place is (nearly) undefended.
     pub(crate) fn auto_insertion(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         // A place that just changed hands: its new guns are not in the view yet.
-        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY
-            || ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. }))
-        {
+        if ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. })) {
             return;
         }
         // Guns count too: helicopters landing among them do not get through.
         if (self.blue.helicopters as usize) < INSERTION_HELOS || self.blue.materiel < INSERTION_COST
         {
+            return;
+        }
+        if self.operation_insertion(view, ev) {
+            return;
+        }
+        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY {
             return;
         }
         let candidate = self.front(Side::Blue).into_iter().find(|&p| {
@@ -930,6 +934,27 @@ impl CampaignState {
             self.auto_insert_at = self.clock;
             ev.extend(e);
         }
+    }
+
+    /// A prepared operation (recon, SEAD and strike done) sends its insertion in at once.
+    fn operation_insertion(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) -> bool {
+        let front = self.front(Side::Blue);
+        let ready = front.iter().copied().find(|&p| {
+            let q = &self.places[p as usize];
+            self.operation_on(p, &front).is_some_and(|o| o.ready())
+                && !self.active_insertion(p)
+                && self.failed_lately(Side::Blue, p) == 0
+                && self.threat_of(p, Some(view)) <= OPERATION_THREAT
+                && self.insertion_base(Side::Blue, q.x, q.y).is_some()
+        });
+        let Some(place) = ready else { return false };
+        let Ok(e) = self.order_insertion(None, place) else { return false };
+        self.auto_insert_at = self.clock;
+        ev.extend(e);
+        let text = text!("cl-operation-go", place = self.places[place as usize].name.as_str());
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+        true
     }
 
     /// The enemy's offensive: now and then an insertion against the weakest friendly place
@@ -1004,10 +1029,15 @@ impl CampaignState {
 
     /// The enemy's insertions at a place that failed lately.
     fn failed_at(&self, place: PlaceId) -> i32 {
+        self.failed_lately(Side::Red, place)
+    }
+
+    /// A side's insertions at a place that failed lately.
+    fn failed_lately(&self, side: Side, place: PlaceId) -> i32 {
         let now = self.clock;
         self.insertions
             .iter()
-            .filter(|i| i.side == Side::Red && i.place == place)
+            .filter(|i| i.side == side && i.place == place)
             .filter(|i| i.state == InsertionState::Failed)
             .filter(|i| i.enroute_at.is_some_and(|t| now - t < FAILED_MEMORY))
             .count() as i32

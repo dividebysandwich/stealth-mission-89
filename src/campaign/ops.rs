@@ -589,6 +589,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
     let mut flow = Flow::new(ui);
     flow.card(ui, Span::Fixed(left), |ui| {
         section(ui, t!("ops-section-missions"));
+        let front = c.state().front(Side::Blue);
         egui::ScrollArea::vertical().id_salt("offers").max_height(room * 0.62).show(ui, |ui| {
             for o in c.state().board.clone() {
                 let (bx, by) = from(c, &o);
@@ -633,6 +634,15 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     c.ui.error = None;
                 }
                 group_label(ui, c, o.id);
+                // The operation it prepares: how far along.
+                if let Some(op) = place_of(&o.objective).and_then(|p| c.state().operation_on(p, &front))
+                {
+                    let name = c.state().place(op.place).map_or(String::new(), |p| p.name.clone());
+                    let text =
+                        t!("ops-operation", place = name, done = op.done(), total = op.steps.len());
+                    let col = if op.ready() { GREEN } else { AMBER };
+                    ui.label(egui::RichText::new(text).small().color(col));
+                }
                 ui.add_space(2.0);
             }
             if c.state().board.is_empty() {

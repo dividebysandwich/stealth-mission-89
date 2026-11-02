@@ -16,6 +16,7 @@ cl-fx-cap = Your CAP kept enemy raids and insertions away from { $place }
 cl-fx-escort = Your escort kept enemy fighters off the helicopters to { $place }
 cl-fx-lost-fighter = Your aircraft lost: the friendly side has one fighter fewer
 cl-fx-lost-helicopter = Your helicopter lost: the friendly side has one helicopter fewer
+cl-operation-go = Operation { $place } prepared: the helicopters go in
 cl-ship-sunk = Ship sunk
 cl-why-all-lost = all helicopters lost
 cl-why-landed-short = the helicopters landed short

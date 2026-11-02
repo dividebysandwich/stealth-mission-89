@@ -16,6 +16,7 @@ cl-fx-cap = CAP-partiosi piti vihollisen iskut ja maihinlaskut poissa kohteesta 
 cl-fx-escort = Saattosi piti vihollisen hävittäjät poissa helikoptereista kohti kohdetta { $place }
 cl-fx-lost-fighter = Koneesi menetetty: omalla puolella on yksi hävittäjä vähemmän
 cl-fx-lost-helicopter = Helikopterisi menetetty: omalla puolella on yksi helikopteri vähemmän
+cl-operation-go = Operaatio { $place } valmisteltu: helikopterit lähtevät
 cl-ship-sunk = Laiva upotettu
 cl-why-all-lost = kaikki helikopterit menetettiin
 cl-why-landed-short = helikopterit laskeutuivat liian aikaisin

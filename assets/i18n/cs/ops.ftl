@@ -90,6 +90,7 @@ ops-due-now = NYNÍ
 ops-front-blue = FRONTA: MODŘÍ POSTUPUJÍ
 ops-front-red = FRONTA: ČERVENÍ POSTUPUJÍ
 ops-front-even = FRONTA: DRŽÍ
+ops-operation = Operace { $place }: { $done }/{ $total } připraveno
 ops-friendly = PŘÁTELÉ
 ops-enemy = NEPŘÍTEL
 ops-section-forces = Síly

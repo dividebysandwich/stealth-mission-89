@@ -16,6 +16,7 @@ cl-fx-cap = La tua CAP ha tenuto attacchi e inserzioni nemici lontani da { $plac
 cl-fx-escort = La tua scorta ha tenuto i caccia nemici lontani dagli elicotteri diretti a { $place }
 cl-fx-lost-fighter = Il tuo aereo perso: la tua parte ha un caccia in meno
 cl-fx-lost-helicopter = Il tuo elicottero perso: la tua parte ha un elicottero in meno
+cl-operation-go = Operazione { $place } preparata: gli elicotteri entrano
 cl-ship-sunk = Nave affondata
 cl-why-all-lost = tutti gli elicotteri perduti
 cl-why-landed-short = gli elicotteri sono atterrati troppo presto

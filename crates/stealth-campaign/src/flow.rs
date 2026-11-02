@@ -72,3 +72,47 @@ impl CampaignState {
             .sum()
     }
 }
+
+/// An operation against an enemy place on the front: the steps that prepare its capture
+/// (each done or not). All done, the friendly insertion goes in.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Operation {
+    pub place: PlaceId,
+    pub steps: Vec<(MissionKind, bool)>,
+}
+
+impl Operation {
+    pub fn done(&self) -> usize {
+        self.steps.iter().filter(|s| s.1).count()
+    }
+
+    pub fn ready(&self) -> bool {
+        self.steps.iter().all(|s| s.1)
+    }
+}
+
+impl CampaignState {
+    /// The operation against enemy place `place` (None: not on the friendly side's front).
+    /// Recon (its intelligence current), SEAD (its SAM sites down) and a strike on its
+    /// airfield prepare it.
+    pub fn operation(&self, place: PlaceId) -> Option<Operation> {
+        self.operation_on(place, &self.front(Side::Blue))
+    }
+
+    /// [`Self::operation`] with the friendly side's front known.
+    pub fn operation_on(&self, place: PlaceId, front: &[PlaceId]) -> Option<Operation> {
+        if !front.contains(&place) {
+            return None;
+        }
+        let p = self.place(place)?;
+        let mut steps = vec![(MissionKind::Recon, p.intel_until.is_some_and(|t| t > self.clock))];
+        if !p.defences.is_empty() {
+            let up = p.defences.iter().any(|&d| self.site(d).is_some_and(Site::alive));
+            steps.push((MissionKind::Sead, !up));
+        }
+        if let Some(a) = p.airfield {
+            steps.push((MissionKind::Strike, !self.site(a).is_some_and(Site::alive)));
+        }
+        Some(Operation { place, steps })
+    }
+}

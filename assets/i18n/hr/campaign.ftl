@@ -16,6 +16,7 @@ cl-fx-cap = Tvoja CAP držala je neprijateljske napade i desante podalje od { $p
 cl-fx-escort = Tvoja pratnja držala je neprijateljske lovce podalje od helikoptera prema { $place }
 cl-fx-lost-fighter = Tvoj zrakoplov izgubljen: tvoja strana ima jedan lovac manje
 cl-fx-lost-helicopter = Tvoj helikopter izgubljen: tvoja strana ima jedan helikopter manje
+cl-operation-go = Operacija { $place } pripremljena: helikopteri kreću
 cl-ship-sunk = Brod potopljen
 cl-why-all-lost = svi helikopteri su izgubljeni
 cl-why-landed-short = helikopteri su sletjeli prekratko

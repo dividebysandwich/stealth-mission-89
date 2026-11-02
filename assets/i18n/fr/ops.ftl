@@ -90,6 +90,7 @@ ops-due-now = EN COURS
 ops-front-blue = FRONT : BLEU AVANCE
 ops-front-red = FRONT : ROUGE AVANCE
 ops-front-even = FRONT : STABLE
+ops-operation = Opération { $place } : { $done }/{ $total } préparé
 ops-friendly = AMIS
 ops-enemy = ENNEMIS
 ops-section-forces = Forces

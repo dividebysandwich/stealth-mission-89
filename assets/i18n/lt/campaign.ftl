@@ -16,6 +16,7 @@ cl-fx-cap = Tavo CAP neleido priešo antskrydžiams ir desantams pasiekti { $pla
 cl-fx-escort = Tavo palyda neleido priešo naikintuvams prisiartinti prie sraigtasparnių į { $place }
 cl-fx-lost-fighter = Tavo orlaivis prarastas: savieji turi vienu naikintuvu mažiau
 cl-fx-lost-helicopter = Tavo sraigtasparnis prarastas: savieji turi vienu sraigtasparniu mažiau
+cl-operation-go = Operacija { $place } parengta: sraigtasparniai skrenda
 cl-ship-sunk = Laivas nuskandintas
 cl-why-all-lost = prarasti visi sraigtasparniai
 cl-why-landed-short = sraigtasparniai nusileido per anksti

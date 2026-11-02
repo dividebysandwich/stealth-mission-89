@@ -90,6 +90,7 @@ ops-due-now = SADA
 ops-front-blue = BOJIŠNICA: PLAVI NAPREDUJU
 ops-front-red = BOJIŠNICA: CRVENI NAPREDUJU
 ops-front-even = BOJIŠNICA: DRŽI SE
+ops-operation = Operacija { $place }: { $done }/{ $total } pripremljeno
 ops-friendly = SAVEZNIČKO
 ops-enemy = NEPRIJATELJSKO
 ops-section-forces = Snage

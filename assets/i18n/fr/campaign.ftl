@@ -15,6 +15,7 @@ cl-fx-cap = Votre CAP a tenu les raids et héliportages ennemis loin de { $place
 cl-fx-escort = Votre escorte a tenu les chasseurs ennemis loin des hélicoptères vers { $place }
 cl-fx-lost-fighter = Votre appareil perdu : votre camp a un chasseur de moins
 cl-fx-lost-helicopter = Votre hélicoptère perdu : votre camp a un hélicoptère de moins
+cl-operation-go = Opération { $place } préparée : les hélicoptères y vont
 cl-ship-sunk = Navire coulé
 cl-why-all-lost = tous les hélicoptères perdus
 cl-why-landed-short = les hélicoptères se sont posés trop tôt

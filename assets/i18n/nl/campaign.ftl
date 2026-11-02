@@ -16,6 +16,7 @@ cl-fx-cap = Jouw CAP hield vijandelijke aanvallen en luchtlandingen weg van { $p
 cl-fx-escort = Jouw escorte hield vijandelijke jagers weg van de helikopters naar { $place }
 cl-fx-lost-fighter = Je toestel verloren: je eigen kant heeft één jager minder
 cl-fx-lost-helicopter = Je helikopter verloren: je eigen kant heeft één helikopter minder
+cl-operation-go = Operatie { $place } voorbereid: de helikopters gaan erin
 cl-ship-sunk = Schip tot zinken gebracht
 cl-why-all-lost = alle helikopters verloren
 cl-why-landed-short = de helikopters landden te vroeg

@@ -15,6 +15,7 @@ cl-fx-cap = 你的战斗空中巡逻让敌方空袭和机降远离 { $place }
 cl-fx-escort = 你的护航让敌方战斗机远离飞往 { $place } 的直升机
 cl-fx-lost-fighter = 你的飞机损失：己方少了一架战斗机
 cl-fx-lost-helicopter = 你的直升机损失：己方少了一架直升机
+cl-operation-go = { $place } 行动准备就绪：直升机出发
 cl-ship-sunk = 舰船被击沉
 cl-why-all-lost = 直升机全部损失
 cl-why-landed-short = 直升机未能到达目标便着陆

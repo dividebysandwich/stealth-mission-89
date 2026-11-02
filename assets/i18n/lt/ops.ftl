@@ -90,6 +90,7 @@ ops-due-now = DABAR
 ops-front-blue = FRONTAS: MĖLYNIEJI ŽENGIA
 ops-front-red = FRONTAS: RAUDONIEJI ŽENGIA
 ops-front-even = FRONTAS: LAIKOSI
+ops-operation = Operacija { $place }: { $done }/{ $total } parengta
 ops-friendly = DRAUGIŠKA
 ops-enemy = PRIEŠAS
 ops-section-forces = Pajėgos

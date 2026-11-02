@@ -70,6 +70,9 @@ pub const RAID_TIMEOUT: f64 = 60.0 * 60.0;
 /// not more often than this.
 pub const AUTO_INSERT_THREAT: i32 = 0;
 pub const AUTO_INSERT_EVERY: f64 = 20.0 * 60.0;
+/// A prepared operation's insertion goes in at once with this many guns left at most (and
+/// not where one failed within FAILED_MEMORY).
+pub const OPERATION_THREAT: i32 = 2;
 /// Insertions fly from bases at most this far from the target (helicopter range, 300 km: every
 /// theater's enemy airfields are in reach of one another's).
 pub const INSERTION_RANGE: i32 = 0x4B00;

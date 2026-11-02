@@ -16,6 +16,7 @@ cl-fx-cap = Choinnigh do CAP ruathair agus ionsánna an namhad amach ó { $place
 cl-fx-escort = Choinnigh do choimhdeacht scairdeitleáin an namhad ó na héileacaptair go { $place }
 cl-fx-lost-fighter = D'aerárthach caillte: tá scairdeitleán amháin níos lú ag do thaobh
 cl-fx-lost-helicopter = D'héileacaptar caillte: tá héileacaptar amháin níos lú ag do thaobh
+cl-operation-go = Oibríocht { $place } ullmhaithe: téann na héileacaptair isteach
 cl-ship-sunk = Long báite
 cl-why-all-lost = cailleadh gach héileacaptar
 cl-why-landed-short = tuirling na héileacaptair gearr

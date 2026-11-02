@@ -90,6 +90,7 @@ ops-due-now = TAGAD
 ops-front-blue = FRONTE: ZILIE VIRZĀS
 ops-front-red = FRONTE: SARKANIE VIRZĀS
 ops-front-even = FRONTE: STABILA
+ops-operation = Operācija { $place }: { $done }/{ $total } sagatavots
 ops-friendly = DRAUDZĪGIE
 ops-enemy = IENAIDNIEKS
 ops-section-forces = Spēki

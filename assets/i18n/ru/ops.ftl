@@ -110,6 +110,7 @@ ops-due-now = СЕЙЧАС
 ops-front-blue = ФРОНТ: СИНИЕ НАСТУПАЮТ
 ops-front-red = ФРОНТ: КРАСНЫЕ НАСТУПАЮТ
 ops-front-even = ФРОНТ: ДЕРЖИТСЯ
+ops-operation = Операция { $place }: { $done }/{ $total } подготовлено
 ops-friendly = СВОИ
 ops-enemy = ПРОТИВНИК
 ops-section-forces = Силы

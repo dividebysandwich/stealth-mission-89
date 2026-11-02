@@ -16,6 +16,7 @@ cl-fx-cap = Tvoje CAP udržela nepřátelské nálety a výsadky dál od { $plac
 cl-fx-escort = Tvůj doprovod udržel nepřátelské stíhačky dál od vrtulníků do { $place }
 cl-fx-lost-fighter = Tvůj letoun ztracen: vlastní strana má o jednu stíhačku méně
 cl-fx-lost-helicopter = Tvůj vrtulník ztracen: vlastní strana má o jeden vrtulník méně
+cl-operation-go = Operace { $place } připravena: vrtulníky letí
 cl-ship-sunk = Loď potopena
 cl-why-all-lost = všechny vrtulníky ztraceny
 cl-why-landed-short = vrtulníky přistály před cílem

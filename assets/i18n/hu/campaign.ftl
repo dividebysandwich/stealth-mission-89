@@ -16,6 +16,7 @@ cl-fx-cap = A CAP-od távol tartotta az ellenséges támadásokat és deszantoka
 cl-fx-escort = A kíséreted távol tartotta az ellenséges vadászokat a { $place } felé tartó helikopterektől
 cl-fx-lost-fighter = Elveszett a géped: a saját oldalnak eggyel kevesebb vadásza van
 cl-fx-lost-helicopter = Elveszett a helikoptered: a saját oldalnak eggyel kevesebb helikoptere van
+cl-operation-go = { $place } hadművelet előkészítve: indulnak a helikopterek
 cl-ship-sunk = Hajó elsüllyesztve
 cl-why-all-lost = az összes helikopter odaveszett
 cl-why-landed-short = a helikopterek idő előtt leszálltak

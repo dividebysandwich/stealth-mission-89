@@ -90,6 +90,7 @@ ops-due-now = ACUM
 ops-front-blue = FRONT: ALBASTRUL AVANSEAZĂ
 ops-front-red = FRONT: ROȘUL AVANSEAZĂ
 ops-front-even = FRONT: STABIL
+ops-operation = Operațiunea { $place }: { $done }/{ $total } pregătit
 ops-friendly = PRIETEN
 ops-enemy = INAMIC
 ops-section-forces = Forțe

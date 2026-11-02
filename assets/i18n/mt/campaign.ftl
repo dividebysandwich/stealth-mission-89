@@ -16,6 +16,7 @@ cl-fx-cap = Is-CAP tiegħek żammet ir-raids u l-inserzjonijiet tal-għadu 'l bo
 cl-fx-escort = Il-iskorta tiegħek żammet il-ġellieda tal-għadu 'l bogħod mill-ħelikopters lejn { $place }
 cl-fx-lost-fighter = L-ajruplan tiegħek mitluf: in-naħa tiegħek għandha ġellied wieħed inqas
 cl-fx-lost-helicopter = Il-ħelikopter tiegħek mitluf: in-naħa tiegħek għandha ħelikopter wieħed inqas
+cl-operation-go = Operazzjoni { $place } ippreparata: il-ħelikopters deħlin
 cl-ship-sunk = Vapur mgħarraq
 cl-why-all-lost = il-ħelikopters kollha intilfu
 cl-why-landed-short = il-ħelikopters inżlu qabel il-mira
