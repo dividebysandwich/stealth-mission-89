@@ -79,6 +79,7 @@ ops-rule-no-crashes = protección contra colisiones
 ops-rule-time = tiempo continuo
 ops-rule-weapons = armamento realista del F-117A
 ops-rule-friendly-fire = fuego amigo
+ops-rule-airframe-losses = aeronaves perdidas cuentan
 ops-rule-classic = clásicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)

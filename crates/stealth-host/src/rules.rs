@@ -22,6 +22,10 @@ pub struct Rules {
     /// The classic flat ground, without the rolling hills.
     #[serde(default)]
     pub classic_terrain: bool,
+    /// A player's aircraft lost comes out of the friendly side's (the AI's) fighters or
+    /// helicopters.
+    #[serde(default)]
+    pub airframe_losses: bool,
 }
 
 impl From<CampaignRules> for Rules {
@@ -34,6 +38,7 @@ impl From<CampaignRules> for Rules {
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
             classic_terrain: r.classic_terrain,
+            airframe_losses: r.airframe_losses,
         }
     }
 }
@@ -48,6 +53,7 @@ impl From<Rules> for CampaignRules {
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
             classic_terrain: r.classic_terrain,
+            airframe_losses: r.airframe_losses,
         }
     }
 }

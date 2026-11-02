@@ -79,6 +79,7 @@ ops-rule-no-crashes = bez havárií
 ops-rule-time = nepretržitý čas
 ops-rule-weapons = realistické zbrane F-117A
 ops-rule-friendly-fire = paľba do vlastných
+ops-rule-airframe-losses = stratené lietadlá sa počítajú
 ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODRÍ { $materiel } (+{ $income }/h)

@@ -83,6 +83,7 @@ mp-rules = Règles pour tous
 mp-time-of-day = Heure du jour (nuits au clair de lune)
 mp-realistic-weapons = Armement réaliste du F-117A
 mp-friendly-fire = Tirs fratricides
+mp-airframe-losses = Les appareils perdus comptent
 mp-day-night = Jour et nuit :
 mp-weather = Météo :
 mp-host-new = HÉBERGER UNE NOUVELLE

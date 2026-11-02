@@ -79,6 +79,7 @@ ops-rule-no-crashes = inga haverier
 ops-rule-time = kontinuerlig tid
 ops-rule-weapons = realistiska F-117A-vapen
 ops-rule-friendly-fire = vådabeskjutning
+ops-rule-airframe-losses = förlorade flygplan räknas
 ops-rule-classic = klassiskt
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/h)

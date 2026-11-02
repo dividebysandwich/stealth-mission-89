@@ -83,6 +83,7 @@ mp-rules = 모든 참가자에게 적용되는 규칙
 mp-time-of-day = 시간대 (달빛 밤)
 mp-realistic-weapons = 사실적인 F-117A 무장
 mp-friendly-fire = 아군 피해
+mp-airframe-losses = 잃은 기체 반영
 mp-day-night = 낮과 밤:
 mp-weather = 기상:
 mp-host-new = 새로 호스트

@@ -79,6 +79,7 @@ ops-rule-no-crashes = gan tuairteanna
 ops-rule-time = am leanúnach
 ops-rule-weapons = airm réalaíocha F-117A
 ops-rule-friendly-fire = tine chairdiúil
+ops-rule-airframe-losses = comhairtear aerárthaí caillte
 ops-rule-classic = clasaiceach
 ops-materiel = TREALAMH
 ops-materiel-blue = GORM { $materiel } (+{ $income }/u)

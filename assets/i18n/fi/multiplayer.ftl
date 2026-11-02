@@ -83,6 +83,7 @@ mp-rules = Säännöt kaikille
 mp-time-of-day = Vuorokaudenaika (kuutamoyöt)
 mp-realistic-weapons = Realistiset F-117A-aseet
 mp-friendly-fire = Omien tulitus
+mp-airframe-losses = Menetetyt koneet lasketaan
 mp-day-night = Päivä ja yö:
 mp-weather = Sää:
 mp-host-new = ISÄNNÖI UUTTA

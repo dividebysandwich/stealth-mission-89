@@ -83,6 +83,7 @@ mp-rules = Regler for alle
 mp-time-of-day = Tid på dagen (måneskinsnætter)
 mp-realistic-weapons = Realistiske F-117A-våben
 mp-friendly-fire = Egenbeskydning
+mp-airframe-losses = Tabte fly tæller
 mp-day-night = Dag og nat:
 mp-weather = Vejr:
 mp-host-new = HOST NY

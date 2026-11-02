@@ -79,6 +79,7 @@ ops-rule-no-crashes = Absturzschutz
 ops-rule-time = durchgehende Zeit
 ops-rule-weapons = realistische F-117A-Bewaffnung
 ops-rule-friendly-fire = Eigenbeschuss
+ops-rule-airframe-losses = verlorene Flugzeuge zählen
 ops-rule-classic = klassisch
 ops-materiel = MATERIAL
 ops-materiel-blue = BLAU { $materiel } (+{ $income }/h)

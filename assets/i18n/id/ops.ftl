@@ -79,6 +79,7 @@ ops-rule-no-crashes = tanpa kecelakaan
 ops-rule-time = waktu berkelanjutan
 ops-rule-weapons = senjata F-117A realistis
 ops-rule-friendly-fire = tembakan kawan
+ops-rule-airframe-losses = pesawat yang hilang dihitung
 ops-rule-classic = klasik
 ops-materiel = MATERIIL
 ops-materiel-blue = BIRU { $materiel } (+{ $income }/jam)

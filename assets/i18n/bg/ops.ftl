@@ -79,6 +79,7 @@ ops-rule-no-crashes = без катастрофи
 ops-rule-time = непрекъснато време
 ops-rule-weapons = реалистично въоръжение на F-117A
 ops-rule-friendly-fire = огън по свои
+ops-rule-airframe-losses = загубените самолети се броят
 ops-rule-classic = класически
 ops-materiel = МАТЕРИАЛИ
 ops-materiel-blue = СИНИ { $materiel } (+{ $income }/ч)

@@ -58,7 +58,7 @@ impl Config {
     /// `--opponents`, `--seed`, `--sky-ratio`, `--start-hour`, `--clear-sky`, `--no-crew-scaling`, `--save <file>` and the rules
     /// `--classic-damage`, `--classic-guidance`, `--classic-time` (realistic damage and guidance
     /// and continuous time are the default), `--no-crashes`, `--realistic-weapons`,
-    /// `--friendly-fire`, `--classic-terrain`, and `--no-rotate`.
+    /// `--friendly-fire`, `--classic-terrain`, `--airframe-losses`, and `--no-rotate`.
     pub fn from_args(args: &[String]) -> Result<Self> {
         let get = |f: &str| args.iter().position(|a| a == f).and_then(|i| args.get(i + 1)).cloned();
         let has = |f: &str| args.iter().any(|a| a == f);
@@ -99,6 +99,7 @@ impl Config {
                 realistic_weapons: has("--realistic-weapons"),
                 friendly_fire: has("--friendly-fire"),
                 classic_terrain: has("--classic-terrain"),
+                airframe_losses: has("--airframe-losses"),
             },
             save,
             send_every: {

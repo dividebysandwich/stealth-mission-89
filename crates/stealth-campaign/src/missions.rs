@@ -159,6 +159,21 @@ impl CampaignState {
             achieved_at: s.progress.achieved_at,
             effects: s.progress.effects.clone(),
         };
+        let mut record = record;
+        // Under the airframe rule his aircraft lost is one fewer of the friendly side's.
+        if self.rules.is_some_and(|r| r.airframe_losses)
+            && matches!(
+                end,
+                SortieEnd::Ejected | SortieEnd::Crashed | SortieEnd::Captured | SortieEnd::Rescued
+            )
+        {
+            let heli = s.aircraft.helicopter();
+            let f = self.forces_mut(Side::Blue);
+            let pool = if heli { &mut f.helicopters } else { &mut f.fighters };
+            *pool = pool.saturating_sub(1);
+            let id = if heli { "cl-fx-lost-helicopter" } else { "cl-fx-lost-fighter" };
+            record.effects.push(text!(id));
+        }
         let verdict = match result {
             SortieResult::Success => "cl-verdict-success",
             SortieResult::Failed => "cl-verdict-failed",

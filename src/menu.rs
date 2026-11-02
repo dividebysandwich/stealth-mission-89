@@ -69,6 +69,8 @@ pub struct MenuState {
     pub lockheed: bool,
     /// A hosted coop campaign's friendly fire.
     pub friendly_fire: bool,
+    /// A campaign's players' lost aircraft come out of the friendly side's.
+    pub airframe_losses: bool,
     /// None: rolled from the seed.
     pub weather: Option<Sky>,
     /// Coverage of the main cloud layer; None: rolled.
@@ -159,6 +161,7 @@ impl Default for MenuState {
             opponents: 1,
             lockheed: false,
             friendly_fire: false,
+            airframe_losses: false,
             weather: None,
             cloud_cover: None,
             seed: rand::random(),

@@ -718,6 +718,9 @@ pub struct CampaignRules {
     pub friendly_fire: bool,
     #[serde(default)]
     pub classic_terrain: bool,
+    /// The players' lost aircraft come out of the friendly side's.
+    #[serde(default)]
+    pub airframe_losses: bool,
 }
 
 fn blue() -> Side {

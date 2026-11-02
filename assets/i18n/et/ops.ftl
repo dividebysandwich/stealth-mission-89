@@ -79,6 +79,7 @@ ops-rule-no-crashes = ilma allakukkumisteta
 ops-rule-time = pidev aeg
 ops-rule-weapons = realistlikud F-117A relvad
 ops-rule-friendly-fire = oma tuli
+ops-rule-airframe-losses = kaotatud lennukid loevad
 ops-rule-classic = klassikaline
 ops-materiel = MATERJAL
 ops-materiel-blue = SININE { $materiel } (+{ $income }/h)

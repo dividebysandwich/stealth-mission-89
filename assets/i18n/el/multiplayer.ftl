@@ -84,6 +84,7 @@ mp-rules = Κανόνες για όλους
 mp-time-of-day = Ώρα της ημέρας (νύχτες με φεγγάρι)
 mp-realistic-weapons = Ρεαλιστικά όπλα F-117A
 mp-friendly-fire = Φίλια πυρά
+mp-airframe-losses = Τα χαμένα αεροσκάφη μετράνε
 mp-day-night = Ημέρα και νύχτα:
 mp-weather = Καιρός:
 mp-host-new = ΝΕΟ ΠΑΙΧΝΙΔΙ

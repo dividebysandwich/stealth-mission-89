@@ -2850,3 +2850,22 @@ fn an_escort_keeps_the_enemys_fighters_off_the_helicopters() {
     assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::LaunchFighters { side: Side::Red, .. })));
     assert!(fx.iter().any(|e| e.contains("Your escort kept")), "{fx:?}");
 }
+
+#[test]
+fn under_the_airframe_rule_a_crashed_jet_is_one_fighter_fewer() {
+    for rule in [false, true] {
+        let mut c = campaign("central_europe", 3);
+        c.rules = Some(CampaignRules { airframe_losses: rule, ..Default::default() });
+        c.tick(1.0, &WorldView::default(), &[]);
+        take(&mut c, P0, MissionKind::Strike);
+        let fighters = c.blue.fighters;
+        let record =
+            finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap());
+        assert_eq!(c.blue.fighters, fighters - rule as u32);
+        assert_eq!(record.effects.iter().any(|e| e.contains("one fighter fewer")), rule);
+        // Landed: nothing lost.
+        take(&mut c, P0, MissionKind::Strike);
+        c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
+        assert_eq!(c.blue.fighters, fighters - rule as u32);
+    }
+}

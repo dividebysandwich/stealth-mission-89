@@ -83,6 +83,7 @@ mp-rules = Noteikumi visiem
 mp-time-of-day = Diennakts laiks (mēness apgaismotas naktis)
 mp-realistic-weapons = Reālistisks F-117A bruņojums
 mp-friendly-fire = Draudzīgā uguns
+mp-airframe-losses = Zaudētie lidaparāti tiek skaitīti
 mp-day-night = Diena un nakts:
 mp-weather = Laikapstākļi:
 mp-host-new = RĪKOT JAUNU

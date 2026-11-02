@@ -83,6 +83,7 @@ mp-rules = Правила для всех
 mp-time-of-day = Время суток (лунные ночи)
 mp-realistic-weapons = Реалистичное вооружение F-117A
 mp-friendly-fire = Огонь по своим
+mp-airframe-losses = Потерянные машины учитываются
 mp-day-night = День и ночь:
 mp-weather = Погода:
 mp-host-new = СОЗДАТЬ НОВУЮ

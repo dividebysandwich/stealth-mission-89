@@ -79,6 +79,7 @@ ops-rule-no-crashes = 无坠毁
 ops-rule-time = 连续时间
 ops-rule-weapons = 真实的 F-117A 武器
 ops-rule-friendly-fire = 友军误伤
+ops-rule-airframe-losses = 损失的飞机计入
 ops-rule-classic = 经典
 ops-materiel = 物资
 ops-materiel-blue = 蓝方 { $materiel }（+{ $income }/h）

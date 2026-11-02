@@ -44,6 +44,7 @@ pub struct Prefs {
     pub opponents: u8,
     pub lockheed: bool,
     pub friendly_fire: bool,
+    pub airframe_losses: bool,
     pub weather: Option<Sky>,
     pub cloud_cover: Option<u8>,
     pub start_hour: Option<u8>,
@@ -132,6 +133,7 @@ impl Default for Prefs {
             opponents: menu.opponents,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
+            airframe_losses: menu.airframe_losses,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -235,6 +237,7 @@ impl Prefs {
             opponents: menu.opponents,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
+            airframe_losses: menu.airframe_losses,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -309,6 +312,7 @@ impl Prefs {
         menu.opponents = self.opponents.min(3);
         menu.lockheed = self.lockheed;
         menu.friendly_fire = self.friendly_fire;
+        menu.airframe_losses = self.airframe_losses;
         menu.weather = self.weather;
         menu.cloud_cover = self.cloud_cover.map(|c| c.min(100));
         menu.start_hour = self.start_hour.map(|h| h.min(23));

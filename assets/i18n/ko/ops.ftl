@@ -79,6 +79,7 @@ ops-rule-no-crashes = 추락 없음
 ops-rule-time = 연속 시간
 ops-rule-weapons = 사실적인 F-117A 무장
 ops-rule-friendly-fire = 아군 피해
+ops-rule-airframe-losses = 잃은 기체 반영
 ops-rule-classic = 클래식
 ops-materiel = 물자
 ops-materiel-blue = 청군 { $materiel } (+{ $income }/h)

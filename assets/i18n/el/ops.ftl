@@ -79,6 +79,7 @@ ops-rule-no-crashes = χωρίς συντριβές
 ops-rule-time = συνεχής χρόνος
 ops-rule-weapons = ρεαλιστικά όπλα F-117A
 ops-rule-friendly-fire = φίλια πυρά
+ops-rule-airframe-losses = τα χαμένα αεροσκάφη μετράνε
 ops-rule-classic = κλασικό
 ops-materiel = ΥΛΙΚΟ
 ops-materiel-blue = ΜΠΛΕ { $materiel } (+{ $income }/ώρα)

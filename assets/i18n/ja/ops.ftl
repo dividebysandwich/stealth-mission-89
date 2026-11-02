@@ -79,6 +79,7 @@ ops-rule-no-crashes = 墜落なし
 ops-rule-time = 連続時間
 ops-rule-weapons = リアルなF-117A兵装
 ops-rule-friendly-fire = 友軍誤射
+ops-rule-airframe-losses = 失った機体を数える
 ops-rule-classic = クラシック
 ops-materiel = 物資
 ops-materiel-blue = 青軍 { $materiel }（+{ $income }/時）
