@@ -4,6 +4,7 @@
 delete = TÖRLÉS
 delete-campaign = TÖRLÖD EZT A KAMPÁNYT?
 delete-save = TÖRLÖD EZT A MENTÉST?
+delete-pilot = TÖRLÖD EZT A PILÓTÁT?
 delete-permanent = A törlés végleges
 
 ## Kampányablak

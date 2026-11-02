@@ -4,6 +4,7 @@
 delete = ȘTERGE
 delete-campaign = ȘTERGEȚI ACEASTĂ CAMPANIE?
 delete-save = ȘTERGEȚI ACEASTĂ SALVARE?
+delete-pilot = ȘTERGEȚI ACEST PILOT?
 delete-permanent = Ștergerea este definitivă
 
 ## Fereastra campaniei

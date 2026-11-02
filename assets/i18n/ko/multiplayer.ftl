@@ -4,6 +4,7 @@
 delete = 삭제
 delete-campaign = 이 캠페인을 삭제하시겠습니까?
 delete-save = 이 저장 파일을 삭제하시겠습니까?
+delete-pilot = 이 파일럿을 삭제하시겠습니까?
 delete-permanent = 삭제하면 복구할 수 없습니다
 
 ## 캠페인 창

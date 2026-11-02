@@ -4,6 +4,7 @@
 delete = ELIMINAR
 delete-campaign = ¿ELIMINAR ESTA CAMPAÑA?
 delete-save = ¿ELIMINAR ESTA PARTIDA GUARDADA?
+delete-pilot = ¿ELIMINAR ESTE PILOTO?
 delete-permanent = La eliminación es definitiva
 
 ## Ventana de campaña

@@ -4,6 +4,7 @@
 delete = SLET
 delete-campaign = SLET DENNE KAMPAGNE?
 delete-save = SLET DETTE SPIL?
+delete-pilot = SLET DENNE PILOT?
 delete-permanent = Sletning er permanent
 
 ## Kampagnevindue

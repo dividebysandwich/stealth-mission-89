@@ -4,6 +4,7 @@
 delete = USUNĄĆ
 delete-campaign = USUNĄĆ TĘ KAMPANIĘ?
 delete-save = USUNĄĆ TEN ZAPIS?
+delete-pilot = USUNĄĆ TEGO PILOTA?
 delete-permanent = Usunięcie jest nieodwracalne
 
 ## Okno kampanii

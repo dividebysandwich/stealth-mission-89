@@ -4,6 +4,7 @@
 delete = 删除
 delete-campaign = 删除此战役？
 delete-save = 删除此存档？
+delete-pilot = 删除这名飞行员？
 delete-permanent = 删除后无法恢复
 
 ## 战役窗口

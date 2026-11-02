@@ -4,6 +4,7 @@
 delete = DELETE
 delete-campaign = DELETE THIS CAMPAIGN?
 delete-save = DELETE THIS SAVE?
+delete-pilot = DELETE THIS PILOT?
 delete-all-saves = DELETE ALL THE SAVES?
 delete-permanent = Deletion is permanent
 

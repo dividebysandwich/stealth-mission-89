@@ -2045,7 +2045,8 @@ in a campaign). For another computer, start the game with `--tacview-address 0.0
 
 ## 8.4 The career
 
-*Career* in the main menu keeps pilot records: enlist a pilot by name, then start a
+*Career* in the main menu keeps pilot records: enlist a pilot by name (the pencil beside a name
+renames the pilot, the trash can deletes the pilot and their record after a confirmation), then start a
 **tour of duty**, 12 sorties in the theater, situation and opponents chosen beside the records
 (fixed while the selected pilot is on a tour). The aircraft, realism and weather
 options there apply to every sortie. *Start tour* or *Fly next sortie* shows the sortie's briefing

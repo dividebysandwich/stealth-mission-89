@@ -3,6 +3,7 @@
 delete = HAPUS
 delete-campaign = HAPUS KAMPANYE INI?
 delete-save = HAPUS SIMPANAN INI?
+delete-pilot = HAPUS PILOT INI?
 delete-permanent = Penghapusan bersifat permanen
 
 ## Jendela kampanye

@@ -4,6 +4,7 @@
 delete = SCRIOS
 delete-campaign = AN FEACHTAS SEO A SCRIOS?
 delete-save = AN TSÁBHÁIL SEO A SCRIOS?
+delete-pilot = AN PÍOLÓTA SEO A SCRIOS?
 delete-permanent = Is buan an scriosadh
 
 ## Fuinneog an fheachtais

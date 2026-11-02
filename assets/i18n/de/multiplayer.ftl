@@ -4,6 +4,7 @@
 delete = LÖSCHEN
 delete-campaign = DIESE KAMPAGNE LÖSCHEN?
 delete-save = DIESEN SPIELSTAND LÖSCHEN?
+delete-pilot = DIESEN PILOTEN LÖSCHEN?
 delete-permanent = Das Löschen ist endgültig
 
 ## Kampagnenfenster

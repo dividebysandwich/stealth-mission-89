@@ -4,6 +4,7 @@
 delete = TA BORT
 delete-campaign = TA BORT DENNA KAMPANJ?
 delete-save = TA BORT DENNA SPARFIL?
+delete-pilot = TA BORT DENNA PILOT?
 delete-permanent = Borttagningen är permanent
 
 ## Kampanjfönstret

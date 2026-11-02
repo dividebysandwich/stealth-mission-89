@@ -4,6 +4,7 @@
 delete = KUSTUTA
 delete-campaign = KUSTUTA SEE KAMPAANIA?
 delete-save = KUSTUTA SEE SALVESTUS?
+delete-pilot = KUSTUTA SEE PILOOT?
 delete-permanent = Kustutamine on lõplik
 
 ## Kampaania aken

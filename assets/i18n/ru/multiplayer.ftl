@@ -4,6 +4,7 @@
 delete = УДАЛИТЬ
 delete-campaign = УДАЛИТЬ ЭТУ КАМПАНИЮ?
 delete-save = УДАЛИТЬ ЭТО СОХРАНЕНИЕ?
+delete-pilot = УДАЛИТЬ ЭТОГО ПИЛОТА?
 delete-permanent = Удаление необратимо
 
 ## Окно кампании

@@ -4,6 +4,7 @@
 delete = IŠTRINTI
 delete-campaign = IŠTRINTI ŠIĄ KAMPANIJĄ?
 delete-save = IŠTRINTI ŠĮ IŠSAUGOJIMĄ?
+delete-pilot = IŠTRINTI ŠĮ LAKŪNĄ?
 delete-permanent = Ištrynimas negrįžtamas
 
 ## Kampanijos langas

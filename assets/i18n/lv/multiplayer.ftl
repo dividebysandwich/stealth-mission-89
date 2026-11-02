@@ -4,6 +4,7 @@
 delete = DZĒST
 delete-campaign = DZĒST ŠO KAMPAŅU?
 delete-save = DZĒST ŠO SAGLABĀJUMU?
+delete-pilot = DZĒST ŠO PILOTU?
 delete-permanent = Dzēšana ir neatgriezeniska
 
 ## Kampaņas logs

@@ -4,6 +4,7 @@
 delete = VERWIJDEREN
 delete-campaign = DEZE CAMPAGNE VERWIJDEREN?
 delete-save = DEZE SAVE VERWIJDEREN?
+delete-pilot = DEZE PILOOT VERWIJDEREN?
 delete-permanent = Verwijderen is definitief
 
 ## Campagnevenster

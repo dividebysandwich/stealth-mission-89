@@ -782,6 +782,14 @@ pub(crate) fn icon_text(
     job.into()
 }
 
+/// A tiny button with an icon and no label (a pencil, a trash can); what it does goes in its
+/// tooltip. Blank before the icon font is added.
+pub(crate) fn icon_button(ui: &mut egui::Ui, icon: char) -> egui::Response {
+    let glyph = if has_icon_font(ui.ctx()) { icon.to_string() } else { String::new() };
+    let text = egui::RichText::new(glyph).family(ICON_FAMILY.clone()).size(13.0);
+    ui.add(egui::Button::new(text).min_size(egui::vec2(24.0, 20.0)))
+}
+
 /// Lucide icons (code points) of the menus' buttons, one per button name: the same everywhere
 /// (the in-flight menu's too).
 pub(crate) mod icon {
@@ -839,6 +847,8 @@ pub(crate) mod icon {
     pub(crate) const JOIN: char = '\u{e10d}'; // log-in
     pub(crate) const REFRESH: char = '\u{e145}'; // refresh-cw
     pub(crate) const ENLIST: char = '\u{e1a2}'; // user-plus
+    /// A pilot's rename.
+    pub(crate) const RENAME: char = '\u{e1f9}'; // pencil
     /// KEYS AND JOYSTICK, the in-flight menu's CONTROLS.
     pub(crate) const KEYS: char = '\u{e355}'; // joystick
     pub(crate) const PLAN_ROUTE: char = '\u{e53e}'; // route

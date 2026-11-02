@@ -4,6 +4,7 @@
 delete = IZBRIŠI
 delete-campaign = IZBRISATI OVU KAMPANJU?
 delete-save = IZBRISATI OVAJ SPREMAK?
+delete-pilot = IZBRISATI OVOG PILOTA?
 delete-permanent = Brisanje je trajno
 
 ## Prozor kampanje

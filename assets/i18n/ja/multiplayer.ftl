@@ -4,6 +4,7 @@
 delete = 削除
 delete-campaign = このキャンペーンを削除しますか？
 delete-save = このセーブを削除しますか？
+delete-pilot = このパイロットを削除しますか？
 delete-permanent = 削除は元に戻せません
 
 ## キャンペーンウィンドウ

@@ -12,7 +12,8 @@ use stealth_sim::score::{MissionReport, Outcome};
 
 use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
-    AMBER, DIM, GREEN, MenuState, THEATERS, big_button, group, icon, icon_text, section,
+    AMBER, DIM, GREEN, MenuState, THEATERS, big_button, group, icon, icon_button, icon_text,
+    section,
 };
 use crate::mission::MissionData;
 use crate::settings::Settings;
@@ -74,6 +75,8 @@ const SORTIE_TRIES: u32 = 64;
 const CAREER_SIZE: egui::Vec2 = egui::vec2(1432.0, 760.0);
 /// The least width of the pilot's record, which fills what the other columns leave.
 const RECORD_LEAST: f32 = 220.0;
+/// The width of the pilots' rename and delete buttons (`menu::icon_button`).
+const ICON_BUTTON_WIDTH: f32 = 24.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Status {
@@ -180,13 +183,33 @@ impl Pilot {
     }
 
     pub fn save(&self) {
-        let text = match serde_json::to_string_pretty(self) {
-            Ok(t) => t,
-            Err(e) => return warn!("saving pilot {}: {e}", self.name),
-        };
-        if let Err(e) = stealth_host::store::write(&format!("{PILOTS}/{}.json", self.key()), &text)
-        {
+        if let Err(e) = self.write() {
             warn!("saving pilot {}: {e:#}", self.name);
+        }
+    }
+
+    fn write(&self) -> anyhow::Result<()> {
+        let text = serde_json::to_string_pretty(self)?;
+        stealth_host::store::write(&format!("{PILOTS}/{}.json", self.key()), &text)
+    }
+
+    /// Renames the pilot, the career with them: the file of the new name is written before the
+    /// old one goes. Err (nothing changed) if it could not be written.
+    pub fn rename(&mut self, name: &str) -> anyhow::Result<()> {
+        let old = self.key();
+        let renamed = Self { name: name.trim().to_string(), ..self.clone() };
+        renamed.write()?;
+        if renamed.key() != old {
+            stealth_host::store::remove(&format!("{PILOTS}/{old}.json"))?;
+        }
+        *self = renamed;
+        Ok(())
+    }
+
+    /// Deletes the pilot's file, the whole career with it.
+    pub fn delete(&self) {
+        if let Err(e) = stealth_host::store::remove(&format!("{PILOTS}/{}.json", self.key())) {
+            warn!("deleting pilot {}: {e:#}", self.name);
         }
     }
 
@@ -319,6 +342,10 @@ pub struct CareerWindow {
     pilots: Vec<Pilot>,
     selected: Option<String>,
     new_name: String,
+    /// The pilot being renamed (file key) and the name typed so far.
+    renaming: Option<(String, String)>,
+    /// The pilot whose trash can was clicked: (file key, title), awaiting confirmation.
+    confirm_delete: Option<(String, String)>,
 }
 
 impl CareerWindow {
@@ -334,6 +361,8 @@ impl CareerWindow {
     pub fn show(&mut self) {
         self.open = true;
         self.pilots = Pilot::load_all();
+        self.renaming = None;
+        self.confirm_delete = None;
     }
 }
 
@@ -396,17 +425,95 @@ pub fn career_ui(
             });
             flow.card(ui, Span::Fixed(260.0), |ui| {
                 section(ui, t!("career-pilots"));
+                let mut renamed = None;
                 for p in &w.pilots {
+                    let key = p.key();
+                    if let Some((_, name)) = w.renaming.as_mut().filter(|(k, _)| *k == key) {
+                        let field = crate::text_entry::text_entry(
+                            ui,
+                            "rename_pilot",
+                            name,
+                            24,
+                            crate::text_entry::Charset::Name,
+                            settings.vr,
+                            t!("career-name"),
+                        );
+                        let new_key = file_key(name.trim());
+                        let valid = !new_key.is_empty()
+                            && (new_key == key || !w.pilots.iter().any(|q| q.key() == new_key));
+                        let enter =
+                            field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                        ui.horizontal(|ui| {
+                            ui.add_enabled_ui(valid, |ui| {
+                                if icon_button(ui, icon::DONE).on_hover_text(t!("ok")).clicked()
+                                    || enter && valid
+                                {
+                                    renamed = Some(true);
+                                }
+                            });
+                            if icon_button(ui, icon::CANCEL).on_hover_text(t!("cancel")).clicked() {
+                                renamed = Some(false);
+                            }
+                        });
+                        continue;
+                    }
                     let status = match p.status {
                         Status::Active => String::new(),
                         Status::Kia => format!(" ({})", t!("career-kia.short")),
                         Status::Pow => format!(" ({})", t!("career-pow.short")),
                     };
                     let text = format!("{}{status}", p.title());
-                    if ui.selectable_label(w.selected.as_deref() == Some(&p.key()), text).clicked()
-                    {
-                        w.selected = Some(p.key());
+                    ui.horizontal(|ui| {
+                        // The buttons stay at the right, the name takes the rest.
+                        let buttons = 2.0 * (ICON_BUTTON_WIDTH + ui.spacing().item_spacing.x);
+                        let width = (ui.available_width() - buttons).max(40.0);
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(width, ui.spacing().interact_size.y),
+                            egui::Layout::top_down_justified(egui::Align::LEFT),
+                            |ui| {
+                                let selected = w.selected.as_deref() == Some(&key);
+                                if ui
+                                    .add(egui::Button::selectable(selected, text).truncate())
+                                    .clicked()
+                                {
+                                    w.selected = Some(key.clone());
+                                }
+                            },
+                        );
+                        if icon_button(ui, icon::RENAME)
+                            .on_hover_text(t!("career-rename.facts"))
+                            .clicked()
+                        {
+                            w.renaming = Some((key.clone(), p.name.clone()));
+                            ui.memory_mut(|m| {
+                                m.request_focus(egui::Id::new(("text_entry", "rename_pilot")))
+                            });
+                        }
+                        if icon_button(ui, icon::DELETE)
+                            .on_hover_text(t!("career-delete.facts"))
+                            .clicked()
+                        {
+                            w.confirm_delete = Some((key.clone(), p.title()));
+                        }
+                    });
+                }
+                match renamed {
+                    Some(true) => {
+                        if let Some((key, name)) = w.renaming.take()
+                            && let Some(p) = w.pilots.iter_mut().find(|p| p.key() == key)
+                        {
+                            match p.rename(&name) {
+                                Ok(()) if w.selected.as_deref() == Some(&key) => {
+                                    w.selected = Some(p.key());
+                                }
+                                Ok(()) => {}
+                                Err(e) => warn!("renaming pilot {}: {e:#}", p.name),
+                            }
+                            w.pilots = Pilot::load_all();
+                        }
                     }
+                    Some(false) => w.renaming = None,
+                    None => {}
                 }
                 section(ui, t!("career-new-pilot"));
                 crate::text_entry::text_entry(
@@ -571,7 +678,25 @@ pub fn career_ui(
             });
         });
     });
-    if close || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+    let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
+    let asking = w.confirm_delete.is_some();
+    if let Some((key, label)) = w.confirm_delete.clone() {
+        let answer = crate::campaign::delete_popup(ctx, "pilot", &label, escape);
+        if answer == Some(true) {
+            if let Some(p) = w.pilots.iter().find(|p| p.key() == key) {
+                p.delete();
+            }
+            w.pilots = Pilot::load_all();
+            if w.selected.as_deref() == Some(&key) {
+                w.selected = None;
+            }
+        }
+        if answer.is_some() {
+            w.confirm_delete = None;
+        }
+    }
+    // Escape first cancels what is asked, a rename, then closes the window.
+    if close || escape && !asking && w.renaming.take().is_none() {
         w.open = false;
     }
 }
