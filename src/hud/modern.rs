@@ -31,8 +31,9 @@ const PEN: f32 = 2.4;
 const THIN: f32 = 1.8;
 const TEXT: f32 = 15.0;
 const SMALL: f32 = 12.0;
-/// Area symbols are kept inside (the combiner is roughly x 182..1098, y 14..483).
-const FIELD: (Vec2, Vec2) = (Vec2::new(250.0, 75.0), Vec2::new(1030.0, 465.0));
+/// Area symbols are kept inside (the combiner is roughly x 182..1098, y 14..483; its lower edge
+/// is seen over the glare shield, so the field reaches a little past it).
+const FIELD: (Vec2, Vec2) = (Vec2::new(250.0, 75.0), Vec2::new(1030.0, 490.0));
 
 /// Pixel of a direction in the aircraft frame (x right, y up, -z forward) at `scale` pixels
 /// per unit; None behind.
@@ -1130,6 +1131,21 @@ mod tests {
         let p = project(f.orientation.inverse() * f.path_dir, f.scale).unwrap();
         assert!((p.x - CX).abs() < 0.01);
         assert!((p.y - (CY + SCALE * 5f32.to_radians().tan())).abs() < 0.01);
+    }
+
+    /// A CCIP impact point far below the nose: the pipper waits on the fall line low on the
+    /// combiner, below the weapon readouts' top row.
+    #[test]
+    fn ccip_pipper_waits_low_in_the_field() {
+        let mut f = frame(HudMode::Gnd);
+        f.cues.ccip_dir = Some(Vec3::new(0.0, -0.9, -0.4));
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw(&mut c, &f);
+        let lowest = (0..HEIGHT)
+            .rev()
+            .find(|&y| (CX as usize - 12..CX as usize + 12).any(|x| c.px[y * WIDTH + x] != 0))
+            .unwrap();
+        assert!(lowest as f32 > 475.0 && lowest as f32 <= FIELD.1.y, "pipper down to {lowest}");
     }
 
     /// Off the field the steerpoint and the pod's sight wait crossed out at its edge, clear of
