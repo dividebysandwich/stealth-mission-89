@@ -171,7 +171,9 @@ impl Flow {
         );
         card.set_width(width);
         add(&mut card);
-        self.used = x + width;
+        // A card whose contents are wider than its column (a translated label, a drop-down)
+        // pushes the next ones to the right instead of being drawn over by them.
+        self.used = x + card.min_rect().width().max(width);
         self.height = self.height.max(card.min_rect().height());
         self.cards += 1;
     }

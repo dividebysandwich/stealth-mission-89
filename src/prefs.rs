@@ -106,6 +106,8 @@ pub struct Prefs {
     pub rwr_volume: f32,
     pub rwr_tones: crate::sound::RwrTones,
     pub engine_low_pass: bool,
+    /// None: the system's.
+    pub language: Option<stealth_i18n::Language>,
     pub effects: crate::effects::Effects,
     /// 0: saved before the Steam Frame's default effects (`Effects::HEAVY_EFFECTS_OFF`), 1:
     /// after.
@@ -188,6 +190,7 @@ impl Default for Prefs {
             rwr_volume: 1.0,
             rwr_tones: Default::default(),
             engine_low_pass: true,
+            language: None,
             effects: Default::default(),
             effects_version: EFFECTS_VERSION,
             gif_scale: crate::gif_recorder::DEFAULT_SCALE,
@@ -288,6 +291,7 @@ impl Prefs {
             rwr_volume: s.rwr_volume,
             rwr_tones: s.rwr_tones,
             engine_low_pass: s.engine_low_pass,
+            language: saved_language(s),
             effects: s.effects,
             effects_version: EFFECTS_VERSION,
             gif_scale: s.gif_scale,
@@ -366,6 +370,11 @@ impl Prefs {
         s.rwr_volume = volume(self.rwr_volume);
         s.rwr_tones = self.rwr_tones;
         s.engine_low_pass = self.engine_low_pass;
+        if let Some(l) = self.language
+            && crate::settings::language_arg().is_none()
+        {
+            s.language = l;
+        }
         s.gif_scale = self.gif_scale.clamp(1, 100);
         s.gif_fps = self.gif_fps.clamp(1, 50);
         s.hmd_mode = self.hmd_mode;
@@ -425,6 +434,7 @@ impl Prefs {
         self.rwr_volume = s.rwr_volume;
         self.rwr_tones = s.rwr_tones;
         self.engine_low_pass = s.engine_low_pass;
+        self.language = saved_language(s);
         self.effects = s.effects;
         self.gif_scale = s.gif_scale;
         self.gif_fps = s.gif_fps;
@@ -459,6 +469,11 @@ impl Prefs {
         }
         *last = Some(now);
     }
+}
+
+/// The language to remember: not the pseudo-language of `--lang pseudo`.
+fn saved_language(s: &Settings) -> Option<stealth_i18n::Language> {
+    (s.language != stealth_i18n::Language::Pseudo).then_some(s.language)
 }
 
 #[cfg(test)]

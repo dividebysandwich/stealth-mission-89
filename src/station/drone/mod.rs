@@ -484,7 +484,7 @@ fn input(
     }
     // A refused command (the host's answer; a client's comes back from the server).
     if let Some(e) = c.ui.error.take() {
-        ui.say(e);
+        ui.say(e.tr_flight());
     }
     if let Some((_, t)) = ui.note.as_mut() {
         *t -= dt;

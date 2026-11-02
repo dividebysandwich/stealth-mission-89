@@ -54,6 +54,7 @@ use crate::cockpit3d::{
 use crate::font::{Align, capital, stroke_has, stroke_text_at, stroke_width};
 use crate::input::{Action, ActionEvent, InputBlock};
 use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
+use stealth_i18n::{Language, tf};
 
 pub struct FlightMenuPlugin;
 
@@ -155,6 +156,7 @@ impl Page {
                 Back,
             ],
             Page::Game => &[
+                Language,
                 Cockpit,
                 Hud,
                 Avionics,
@@ -230,15 +232,15 @@ impl Page {
     }
 
     fn title(self) -> &'static str {
-        match self {
-            Page::Main => "MENU",
-            Page::Options => "OPTIONS",
-            Page::Game => "GAME",
-            Page::Graphics => "GRAPHICS",
-            Page::Effects => "EFFECTS",
-            Page::Sound => "SOUND",
-            Page::Controls => "CONTROLS",
-        }
+        tf!(match self {
+            Page::Main => "fm-menu",
+            Page::Options => "options-title",
+            Page::Game => "options-tab-game",
+            Page::Graphics => "options-tab-graphics",
+            Page::Effects => "fm-effects",
+            Page::Sound => "options-tab-sound",
+            Page::Controls => "options-tab-controls",
+        })
     }
 }
 
@@ -293,6 +295,8 @@ enum Item {
     KeyGuide,
     EndMission,
     Back,
+    /// The language of the menus and messages (`options::language_option`).
+    Language,
     Shaders,
     Msaa,
     Shadows,
@@ -326,51 +330,60 @@ enum Item {
 
 impl Item {
     fn label(self) -> &'static str {
-        match self {
-            Item::Resume => "RESUME",
-            Item::SaveMission => "SAVE MISSION",
-            Item::Open(p) => p.title(),
-            Item::KeyGuide => "KEY GUIDE",
-            Item::EndMission => "END MISSION",
-            Item::Back => "BACK",
-            Item::Shaders => "SHADERS",
-            Item::Msaa => "ANTI-ALIASING",
-            Item::Shadows => "SHADOWS",
-            Item::Lighting => "POINT LIGHTS",
-            Item::TimeOfDay => "TIME OF DAY",
-            Item::SunMoon => "SUN AND MOON",
-            Item::AutoDetail => "AUTO SCENERY DETAIL",
-            Item::Cockpit => "COCKPIT",
-            Item::Hud => "HUD",
-            Item::Avionics => "AVIONICS",
-            Item::AutoTrim => "AUTO TRIM",
-            Item::Tooltips => "TOOLTIPS",
-            Item::Atc => "AIR TRAFFIC CONTROL",
-            Item::PlayerLabels => "PLAYER LABELS",
-            Item::LabelSize => "LABEL SIZE",
-            Item::CockpitSize => "COCKPIT SIZE",
-            Item::PixelSize => "PIXEL SIZE",
-            Item::Effect(e) => e.menu_label(),
-            Item::Volume(Vol::Master) => "MASTER VOLUME",
-            Item::Volume(Vol::Engine) => "ENGINE",
-            Item::Volume(Vol::Effects) => "EFFECTS",
-            Item::Volume(Vol::Warnings) => "WARNINGS",
-            Item::Volume(Vol::Rwr) => "RWR VOLUME",
-            Item::Volume(Vol::Radio) => "RADIO",
-            Item::Volume(Vol::Atc) => "ATC VOICE",
-            Item::Volume(Vol::Music) => "MUSIC",
-            Item::RwrTones => "RWR TONES",
-            Item::LowPass => "ENGINE LOW-PASS",
-            Item::HeadTracking => "HEAD TRACKING",
-            Item::TrackingMouse => "TRACKER MOUSE LOOK",
-            Item::Bindings => "KEYS AND JOYSTICK",
+        if let Item::Effect(e) = self {
+            return e.menu_label();
         }
+        if let Item::Open(p) = self {
+            return p.title();
+        }
+        tf!(match self {
+            Item::Resume => "fm-resume",
+            Item::SaveMission => "fm-save-mission",
+            Item::KeyGuide => "fm-key-guide",
+            Item::EndMission => "fm-end-mission",
+            Item::Back => "back",
+            Item::Language => "fm-language",
+            Item::Shaders => "fm-shaders",
+            Item::Msaa => "fm-msaa",
+            Item::Shadows => "fm-shadows",
+            Item::Lighting => "fm-point-lights",
+            Item::TimeOfDay => "fm-time-of-day",
+            Item::SunMoon => "fm-sun-moon",
+            Item::AutoDetail => "fm-auto-detail",
+            Item::Cockpit => "fm-cockpit",
+            Item::Hud => "fm-hud",
+            Item::Avionics => "fm-avionics",
+            Item::AutoTrim => "fm-auto-trim",
+            Item::Tooltips => "fm-tooltips",
+            Item::Atc => "fm-atc",
+            Item::PlayerLabels => "fm-player-labels",
+            Item::LabelSize => "fm-label-size",
+            Item::CockpitSize => "fm-cockpit-size",
+            Item::PixelSize => "fm-pixel-size",
+            Item::Volume(Vol::Master) => "fm-volume-master",
+            Item::Volume(Vol::Engine) => "fm-volume-engine",
+            Item::Volume(Vol::Effects) => "fm-volume-effects",
+            Item::Volume(Vol::Warnings) => "fm-volume-warnings",
+            Item::Volume(Vol::Rwr) => "fm-volume-rwr",
+            Item::Volume(Vol::Radio) => "fm-volume-radio",
+            Item::Volume(Vol::Atc) => "fm-volume-atc",
+            Item::Volume(Vol::Music) => "fm-volume-music",
+            Item::RwrTones => "fm-rwr-tones",
+            Item::LowPass => "fm-low-pass",
+            Item::HeadTracking => "fm-head-tracking",
+            Item::TrackingMouse => "fm-tracking-mouse",
+            Item::Bindings => "fm-bindings",
+            Item::Open(_) | Item::Effect(_) => unreachable!(),
+        })
     }
 
     fn value(self, s: &Settings) -> String {
-        let style = |classic: bool| if classic { "CLASSIC" } else { "MODERN" }.to_string();
-        let on = |b: bool| if b { "ON" } else { "OFF" }.to_string();
+        let style = |classic: bool| tf!(if classic { "classic" } else { "modern" }).to_string();
+        let on = |b: bool| tf!(if b { "on" } else { "off" }).to_string();
         match self {
+            // The stroke font has no Cyrillic or Chinese: they are named in English.
+            Item::Language if s.language.latin() => format!("< {} >", s.language.native_name()),
+            Item::Language => format!("< {} >", s.language.english_name()),
             Item::Shaders => style(!s.modern_shading),
             Item::Msaa => on(s.msaa && !crate::palette::pixelized(s)),
             Item::Shadows => on(s.shadows),
@@ -390,7 +403,7 @@ impl Item {
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
-            Item::RwrTones => format!("< {} >", s.rwr_tones.name()),
+            Item::RwrTones => format!("< {} >", s.rwr_tones.flight_name()),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
             Item::TrackingMouse => on(s.tracking_mouse_look),
@@ -877,10 +890,10 @@ impl VKey {
     fn label(self) -> String {
         match self {
             VKey::Char(c) => c.to_string(),
-            VKey::Space => "SPACE".into(),
-            VKey::Delete => "DEL".into(),
-            VKey::Clear => "CLEAR".into(),
-            VKey::Done => "DONE".into(),
+            VKey::Space => tf!("fm-key-space").into(),
+            VKey::Delete => tf!("fm-key-delete").into(),
+            VKey::Clear => tf!("fm-key-clear").into(),
+            VKey::Done => tf!("fm-key-done").into(),
         }
     }
 }
@@ -1276,6 +1289,12 @@ fn navigate(
         Item::Hud => s.classic_hud = !s.classic_hud,
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
+        Item::Language => {
+            let all = Language::ALL;
+            let i = all.iter().position(|&l| l == s.language).unwrap_or(0) as isize;
+            s.language = all[(i + dir as isize).rem_euclid(all.len() as isize) as usize];
+            stealth_i18n::set_language(s.language);
+        }
         Item::Tooltips => s.tooltips = !s.tooltips,
         Item::Atc => s.atc = !s.atc,
         Item::PlayerLabels => s.player_labels = !s.player_labels,
@@ -1449,21 +1468,21 @@ fn draw(
     c.clear(TRANSPARENT);
     // The key on the footer's BACK (in VR an arrow).
     let key = if settings.vr { "<" } else { "ESC" };
-    let main_title = if campaign.is_some() { "MENU" } else { "PAUSE" };
+    let main_title = if campaign.is_some() { tf!("fm-menu") } else { tf!("fm-pause") };
     if menu.exiting {
         draw_frame(c, "", main_title, "", None);
         let mid = (TOP + BOTTOM) / 2.0;
-        stroke_text_at(c, W as f32 / 2.0, mid, "EXITING...", 36.0, 4.0, ink::TEXT, Align::Centre);
+        stroke_text_at(c, W as f32 / 2.0, mid, tf!("fm-exiting"), 36.0, 4.0, ink::TEXT, Align::Centre);
         tex.dirty = true;
         return;
     }
     if menu.guide {
-        let hint = match (settings.vr, menu.keyboard) {
-            (true, false) => "STICK: SCROLL   FIELD + TRIGGER: KEYBOARD",
-            (true, true) => "KEY + TRIGGER: TYPE   STICK: SCROLL",
-            (false, _) => "WHEEL, ARROWS: SCROLL",
-        };
-        draw_frame(c, "", "KEY GUIDE", hint, Some((key, false)));
+        let hint = tf!(match (settings.vr, menu.keyboard) {
+            (true, false) => "fm-hint-vr",
+            (true, true) => "fm-hint-vr-keyboard",
+            (false, _) => "fm-hint-desktop",
+        });
+        draw_frame(c, "", tf!("fm-key-guide"), hint, Some((key, false)));
         let area = guide_area(menu.keyboard);
         let caret = crate::key_guide::caret_shown(time.elapsed_secs_f64());
         let focused = menu.focused || menu.keyboard;
@@ -1475,7 +1494,7 @@ fn draw(
             crate::key_guide::filter(crate::key_guide::lines(&config, settings.vr), &menu.search);
         if lines.is_empty() {
             let mid = (area[1] + area[3]) / 2.0;
-            stroke_text_at(c, W as f32 / 2.0, mid, "NO MATCH", 18.0, 2.4, ink::OFF, Align::Centre);
+            stroke_text_at(c, W as f32 / 2.0, mid, tf!("fm-no-match"), 18.0, 2.4, ink::OFF, Align::Centre);
         }
         let style = crate::key_guide::Style {
             size: 0.72,
@@ -1493,13 +1512,13 @@ fn draw(
     }
     let (crumb, title) = match menu.page {
         Page::Main => ("", main_title),
-        Page::Options => ("", "OPTIONS"),
-        page => ("OPTIONS >", page.title()),
+        Page::Options => ("", tf!("options-title")),
+        page => (tf!("fm-crumb-options"), page.title()),
     };
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
-        Page::Main if campaign.is_some() => "GAME IN PROGRESS",
-        Page::Game => "FLIGHT MODEL, TACVIEW: MAIN MENU OPTIONS",
+        Page::Main if campaign.is_some() => tf!("fm-game-in-progress"),
+        Page::Game => tf!("fm-game-note"),
         _ => "",
     };
     let items = menu.page.items();
@@ -1534,10 +1553,9 @@ fn draw(
         let size = row_text_size(h);
         let pen = size * 0.14;
         let label = match item {
-            Item::EndMission if campaign.is_some() => "END SORTIE",
+            Item::EndMission if campaign.is_some() => tf!("fm-end-sortie"),
             _ => item.label(),
         };
-        stroke_text_at(c, x, mid, label, size, pen, col, Align::Left);
         let mut right = x1 - VALUE_INSET;
         if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings) {
             let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));
@@ -1549,6 +1567,10 @@ fn draw(
             Item::SaveMission => menu.save_note.unwrap_or_default().to_string(),
             _ => item.value(&settings),
         };
+        // The label smaller where it and the value would not fit the row.
+        let value_w = if v.is_empty() { 0.0 } else { stroke_width(&v, size) + 24.0 };
+        let label_size = fit(label, size, right - value_w - x);
+        stroke_text_at(c, x, mid, label, label_size, pen, col, Align::Left);
         if chevron_zones(&v, r).is_some() {
             // The chevron under the pointer is dark on the lit row; the value is drawn in three
             // runs (each returns where the next one starts).
@@ -1566,6 +1588,12 @@ fn draw(
         }
     }
     tex.dirty = true;
+}
+
+/// The glyph height (at most `h`) that fits `s` in `width` pixels.
+fn fit(s: &str, h: f32, width: f32) -> f32 {
+    let w = crate::font::stroke_width(s, h);
+    if w <= width { h } else { h * width / w }
 }
 
 /// The panel's outline `inset` units inside its edge, its corners cut.
@@ -1611,7 +1639,8 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
     fill_poly(c, &panel, ink::PANEL);
     let tx = 76.0;
     let crumb_w = if crumb.is_empty() { 0.0 } else { stroke_width(crumb, CRUMB) + 16.0 };
-    let tab = tx + crumb_w + stroke_width(title, TITLE) + 34.0 + SLANT;
+    let title_size = fit(title, TITLE, 520.0 - crumb_w);
+    let tab = tx + crumb_w + stroke_width(title, title_size) + 34.0 + SLANT;
     let tab_shape = [
         Vec2::new(EDGE + CUT, EDGE),
         Vec2::new(tab, EDGE),
@@ -1640,7 +1669,7 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
         let y = mid + (TITLE - CRUMB) / 2.0;
         stroke_text_at(c, tx, y, crumb, CRUMB, 1.8, ink::NOTE, Align::Left);
     }
-    stroke_text_at(c, tx + crumb_w, mid, title, TITLE, 3.4, ink::LIT_TEXT, Align::Left);
+    stroke_text_at(c, tx + crumb_w, mid, title, title_size, 3.4, ink::LIT_TEXT, Align::Left);
     stroke_text_at(
         c,
         W as f32 - 72.0,
@@ -1669,9 +1698,10 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
     for i in 0..3 {
         slash(c, Vec2::new(24.0 + 14.0 * i as f32, 492.0), 8.0, 18.0, 10.0, ink::LINE);
     }
-    stroke_text_at(c, 90.0, 483.0, note, 11.0, 1.6, ink::NOTE, Align::Left);
+    let note_size = fit(note, 11.0, BACK[0] - 110.0);
+    stroke_text_at(c, 90.0, 483.0, note, note_size, 1.6, ink::NOTE, Align::Left);
     if let Some((key, lit)) = back {
-        let [x0, y0, _, y1] = BACK;
+        let [x0, y0, x1, y1] = BACK;
         if lit {
             draw_row(c, BACK, true);
         }
@@ -1680,7 +1710,9 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
         let (k0, k1) = (x0 + 6.0, x0 + 56.0);
         c.frame(Vec2::new(k0, y0 + 4.0), Vec2::new(k1, y1 - 4.0), 1.6, col);
         stroke_text_at(c, (k0 + k1) / 2.0, mid, key, 13.0, 1.8, col, Align::Centre);
-        stroke_text_at(c, k1 + 14.0, mid, "BACK", 17.0, 2.3, col, Align::Left);
+        let back = tf!("back");
+        let size = fit(back, 17.0, x1 - k1 - 22.0);
+        stroke_text_at(c, k1 + 14.0, mid, back, size, 2.3, col, Align::Left);
     }
 
     let mut edge = panel.to_vec();
@@ -1836,7 +1868,7 @@ fn draw_search(c: &mut Canvas, text: &str, focused: bool, caret: bool, clear_hov
     // Once clicked or typed into, the hint makes way for the caret.
     if text.is_empty() {
         if !focused {
-            stroke_text_at(c, tx, mid, "TYPE TO SEARCH", 14.0, 2.0, ink::NOTE, Align::Left);
+            stroke_text_at(c, tx, mid, tf!("fm-type-to-search"), 14.0, 2.0, ink::NOTE, Align::Left);
         } else if caret {
             stroke_text_at(c, tx, mid, "_", 14.0, 2.0, ink::TEXT, Align::Left);
         }
@@ -1910,7 +1942,7 @@ fn vr_end_screen(
         let y = 140.0 + 42.0 * i as f32;
         stroke_text_at(&mut canvas, W as f32 / 2.0, y, l, fit(l, 20.0), 2.6, BRIGHT, Align::Centre);
     }
-    let hint = "PULL THE TRIGGER";
+    let hint = tf!("fm-pull-trigger");
     stroke_text_at(
         &mut canvas,
         W as f32 / 2.0,

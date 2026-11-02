@@ -18,6 +18,7 @@
 //! behaviour is untouched while the option is off.
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::text;
 
 use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
 use crate::ai_loadout::{AiLoadout, FighterTask};
@@ -2053,7 +2054,7 @@ impl Sim {
         }
         self.flights[j].flags |= fflags::DESTROYED;
         let name = self.ac_type(u.spec).name.clone();
-        self.msg(format!("{name} shot down"));
+        self.msg(text!("sim-shot-down", target = name.to_string()));
         self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: u.alt, kind: 0x10 });
         self.emit(SimEvent::AircraftDestroyed { unit: j, spec: u.spec, by: None });
     }
@@ -2065,7 +2066,7 @@ impl Sim {
         u.destroyed = true;
         u.burst = 0;
         u.tracking = false;
-        self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
+        self.msg(text!("sim-destroyed", target = a.kind.name_on(self.aaa_blue(k)).to_string()));
         self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
         self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
     }

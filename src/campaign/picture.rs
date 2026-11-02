@@ -5,6 +5,7 @@
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
+use stealth_i18n::t;
 use stealth_sim::aaa::GroundKind;
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
@@ -321,11 +322,11 @@ pub fn draw(
         let tip = tips.add(c, defence_name(kind), "", FRIENDLY_BLUE);
         tip.symbol(move |p, c| defence(p, c, kind, 0.8));
         if patriot {
-            tip.line(format!("Missile range {:.0} km", PATRIOT_REACH / 64.0));
+            tip.line(t!("mt-missile-range", km = format!("{:.0}", PATRIOT_REACH / 64.0)));
         }
         if d.manned.is_some() {
             painter.circle_stroke(c, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
-            tip.line("Manned by a player");
+            tip.line(t!("mt-manned"));
         }
     }
     for s in pic.sams.iter().filter(|s| layers.shows_type(&s.name)) {
@@ -340,12 +341,12 @@ pub fn draw(
             continue;
         }
         map_draw::site(painter, view, c, &s.name, 1.0, k);
-        let tip = tips.add(c, "Enemy SAM site", &s.name, MISSILE_RED);
+        let tip = tips.add(c, t!("mt-enemy-sam"), &s.name, MISSILE_RED);
         tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
-        tip.line(format!("Missile range {:.0} km", s.reach / 64.0));
+        tip.line(t!("mt-missile-range", km = format!("{:.0}", s.reach / 64.0)));
         if s.reconned {
             painter.circle_stroke(c, map_draw::halo(6.0) * k, egui::Stroke::new(1.0, BRIGHT));
-            tip.line("Reconned");
+            tip.line(t!("pic-reconned"));
         }
     }
     if layers.shows(Layer::Armour) {
@@ -365,20 +366,20 @@ pub fn draw(
             let p = at(v.x, v.y);
             scaled(p, &|pa, p| vehicle(pa, p, v, 0.7));
             let kind = match (v.blue, v.kind.tank()) {
-                (true, true) => "Friendly tank",
-                (true, false) => "Friendly infantry fighting vehicle",
-                (false, true) => "Enemy tank",
-                (false, false) => "Enemy infantry fighting vehicle",
+                (true, true) => t!("mt-friendly-tank"),
+                (true, false) => t!("mt-friendly-ifv"),
+                (false, true) => t!("mt-enemy-tank"),
+                (false, false) => t!("mt-enemy-ifv"),
             };
             let colour = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
             let tip = tips.add(p, kind, v.kind.name(), colour);
             let v = *v;
             tip.symbol(move |p, c| vehicle(p, c, &v, 0.7));
             if v.heading.is_some() {
-                tip.line("On the move");
+                tip.line(t!("mt-moving"));
             }
             if !v.blue {
-                tip.line("In sight");
+                tip.line(t!("mt-in-sight"));
             }
         }
     }
@@ -390,11 +391,11 @@ pub fn draw(
         }
         if layers.shows(Layer::Guns) {
             scaled(c, &|p, c| gun(p, c, g.kind, 0.7));
-            let kind = if g.kind == GroundKind::Manpads { "Enemy MANPADS" } else { "Enemy gun" };
+            let kind = if g.kind == GroundKind::Manpads { t!("mt-enemy-manpads") } else { t!("mt-enemy-gun") };
             let reach = stealth_sim::campaign::gun_reach(g.kind);
             let what = g.kind;
             tips.add(c, kind, g.kind.name(), MISSILE_RED)
-                .line(format!("Engagement range {:.1} km", reach / 64.0))
+                .line(t!("mt-engagement-range", km = format!("{:.1}", reach / 64.0)))
                 .symbol(move |p, c| gun(p, c, what, 0.7));
         }
     }
@@ -415,7 +416,7 @@ pub fn draw(
     }
     if let Some((x, y)) = pic.player {
         painter.circle_stroke(at(x, y), 6.0 * k, egui::Stroke::new(2.0, GREEN));
-        tips.add(at(x, y), "You", "", GREEN).symbol(|p, c| {
+        tips.add(at(x, y), t!("pic-you"), "", GREEN).symbol(|p, c| {
             p.circle_stroke(c, 6.0, egui::Stroke::new(2.0, GREEN));
         });
     }
@@ -424,23 +425,23 @@ pub fn draw(
 /// An aircraft's tooltip: its side, kind and type, its heading.
 pub(super) fn aircraft_tip(tips: &mut MapTips, p: egui::Pos2, a: &Aircraft, blue: bool) {
     let kind = match (blue, a.helicopter) {
-        (true, false) => "Friendly aircraft",
-        (true, true) => "Friendly helicopter",
-        (false, false) => "Enemy aircraft (on radar)",
-        (false, true) => "Enemy helicopter (on radar)",
+        (true, false) => t!("pic-friendly-aircraft"),
+        (true, true) => t!("pic-friendly-helicopter"),
+        (false, false) => t!("mt-enemy-aircraft"),
+        (false, true) => t!("mt-enemy-helicopter"),
     };
     let colour = if blue { FRIENDLY_BLUE } else { MISSILE_RED };
     let heading = (a.heading as u16 as f32 / 65536.0 * 360.0).round() as i32 % 360;
     let a = a.clone();
     tips.add(p, kind, &a.name, colour)
-        .line(format!("Heading {heading:03}"))
+        .line(t!("mt-heading", heading = format!("{heading:03}")))
         .symbol(move |p, c| aircraft(p, c, &a, colour));
 }
 
 /// A friendly air defence unit's name on the maps.
 pub(super) fn defence_name(kind: GroundKind) -> &'static str {
     match kind {
-        GroundKind::PatriotRadar => "Patriot battery",
+        GroundKind::PatriotRadar => t!("ops-patriot"),
         k => k.name_on(true),
     }
 }
@@ -515,22 +516,22 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         helicopter,
         name: String::new(),
     };
-    layers.legend(ui, Layer::FriendlyAircraft, "Friendly aircraft", |p, c0| {
+    layers.legend(ui, Layer::FriendlyAircraft, t!("pic-friendly-aircraft"), |p, c0| {
         aircraft(p, c0, &a(false), FRIENDLY_BLUE);
     });
-    layers.legend(ui, Layer::FriendlyHelicopters, "Friendly helicopter", |p, c0| {
+    layers.legend(ui, Layer::FriendlyHelicopters, t!("pic-friendly-helicopter"), |p, c0| {
         aircraft(p, c0, &a(true), FRIENDLY_BLUE);
     });
-    layers.legend(ui, Layer::EnemyFighters, "Enemy fighter (on radar)", |p, c0| {
+    layers.legend(ui, Layer::EnemyFighters, t!("pic-enemy-fighter"), |p, c0| {
         aircraft(p, c0, &a(false), MISSILE_RED);
     });
-    layers.legend(ui, Layer::Patriots, "Patriot battery", |p, c0| {
+    layers.legend(ui, Layer::Patriots, t!("ops-patriot"), |p, c0| {
         defence(p, c0, GroundKind::PatriotRadar, 0.8)
     });
-    layers.legend(ui, Layer::PatriotReach, "Patriot reach", |p, c0| {
+    layers.legend(ui, Layer::PatriotReach, t!("pic-patriot-reach"), |p, c0| {
         p.extend(reach_circle(c0, 6.0));
     });
-    layers.legend(ui, Layer::Gepards, "Gepard / Stinger", |p, c0| {
+    layers.legend(ui, Layer::Gepards, t!("pic-gepard-stinger"), |p, c0| {
         if app6() {
             defence(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Gepard, 0.65);
             defence(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
@@ -540,26 +541,26 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         }
     });
     if let Some(pic) = pic {
-        layers.legend(ui, Layer::Sams, "SAM site (known)", |p, c0| {
+        layers.legend(ui, Layer::Sams, t!("pic-sam-known"), |p, c0| {
             map_draw::site_symbol(p, c0, 1.0);
         });
         layers.types(ui, "SAM types", pic.sams.iter().map(|s| s.name.as_str()).collect());
-        layers.legend(ui, Layer::MissileRange, "SAM missile range", |p, c0| {
+        layers.legend(ui, Layer::MissileRange, t!("pic-missile-range"), |p, c0| {
             p.extend(map_draw::missile_circle(c0, 6.0, 1.0));
         });
         // (The route editor has its own line for the engagement range.)
-        layers.legend(ui, Layer::EngagementRange, "Engagement range", |p, c0| {
+        layers.legend(ui, Layer::EngagementRange, t!("pic-engagement-range"), |p, c0| {
             p.add(map_draw::engagement_circle(c0, 6.0, 1.0));
         });
     }
     let tank = |blue| Vehicle { index: 0, x: 0, y: 0, kind: GroundKind::T90, blue, heading: None };
     let ifv = |blue| Vehicle { kind: GroundKind::Bmp2, ..tank(blue) };
-    layers.legend(ui, Layer::Armour, "Tank / IFV (enemy: in sight)", |p, c0| {
+    layers.legend(ui, Layer::Armour, t!("pic-armour"), |p, c0| {
         let (dx, k) = if app6() { (7.5, 0.65) } else { (5.0, 1.0) };
         vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
         vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
     });
-    layers.legend(ui, Layer::Guns, "Guns / MANPADS (known)", |p, c0| {
+    layers.legend(ui, Layer::Guns, t!("pic-guns-known"), |p, c0| {
         if app6() {
             gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
             gun(p, c0 + egui::vec2(7.5, 1.0), GroundKind::Manpads, 0.65);
@@ -575,10 +576,10 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
             map_draw::legend(ui, text, draw);
         });
     };
-    unchecked(ui, "Reconned", &|p, c0| {
+    unchecked(ui, t!("pic-reconned"), &|p, c0| {
         p.circle_stroke(c0, if app6() { 7.5 } else { 6.0 }, egui::Stroke::new(1.0, BRIGHT));
     });
-    unchecked(ui, "You", &|p, c0| {
+    unchecked(ui, t!("pic-you"), &|p, c0| {
         p.circle_stroke(c0, 5.0, egui::Stroke::new(2.0, GREEN));
     });
 }
@@ -604,7 +605,11 @@ pub fn pick(
         consider(screen(a.x, a.y), UnitRef::Flight { index: a.unit, spec: a.spec }, a.name.clone());
     }
     for s in &pic.sams {
-        consider(screen(s.x, s.y), UnitRef::Site(s.object), format!("{} site", s.name));
+        consider(
+            screen(s.x, s.y),
+            UnitRef::Site(s.object),
+            t!("pic-site", place = s.name.as_str()),
+        );
     }
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());

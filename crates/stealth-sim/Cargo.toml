@@ -7,6 +7,7 @@ description = "Stealth Mission 89 combat, radar and weapons simulation"
 [dependencies]
 stealth-formats.workspace = true
 stealth-mission = { path = "../stealth-mission" }
+stealth-i18n.workspace = true
 serde.workspace = true
 anyhow.workspace = true
 # float_roundtrip: a state read back from its JSON (a saved game) holds the very same floats.

@@ -4,6 +4,7 @@
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, WorldView};
+use stealth_i18n::text;
 
 impl CampaignState {
     /// An aircraft of `side` was shot down by the SAM battery of radar `aaa`: the enemy sends
@@ -68,10 +69,8 @@ impl CampaignState {
             sam: Some(SamTarget { aaa, x, y }),
         });
         let name = self.places[place as usize].name.clone();
-        let text = format!(
-            "Intelligence: enemy SEAD aircraft to attack the SAM battery near {name} in {} min",
-            (RAID_LEAD / 60.0).round()
-        );
+        let mins = (RAID_LEAD / 60.0).round() as i64;
+        let text = text!("cl-sead-intel", place = name, mins = mins);
         self.note(text.clone());
         self.board_at = f64::MIN;
         ev.push(CampaignEvent::Message(text));
@@ -88,9 +87,9 @@ impl CampaignState {
         };
         let name = self.places[self.raids[k].place as usize].name.clone();
         self.end_raid(k, RaidState::Hit);
-        let text = format!("Enemy SEAD aircraft hit the SAM battery near {name}");
+        let text = text!("cl-sead-hit", place = name);
         self.note(text.clone());
-        ev.push(CampaignEvent::Message(format!("{text}!")));
+        ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
     }
 
     /// Where a raid goes: its SAM battery, else its target object.

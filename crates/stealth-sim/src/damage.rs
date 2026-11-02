@@ -12,6 +12,7 @@
 
 use crate::Sim;
 use crate::types::*;
+use stealth_i18n::text;
 
 /// Chance (%) that a missile hit destroys the airframe, by opponent skill.
 const KILL_CHANCE: [i32; 4] = [20, 28, 36, 45];
@@ -104,7 +105,7 @@ impl Sim {
             pitch_swing: 150,
             period: 5 + self.rng.random(6),
         };
-        self.msg("Aircraft destroyed - Eject");
+        self.msg(text!("sim-aircraft-destroyed-eject"));
         self.emit(SimEvent::PlayerHit { bits });
         self.emit(SimEvent::DamageFlash);
         self.sound(4, 2);
@@ -130,7 +131,7 @@ impl Sim {
                     self.explode();
                 } else {
                     self.pl.damage &= !dmg::FIRE;
-                    self.msg("Fire out");
+                    self.msg(text!("sim-fire-out"));
                 }
             }
         }
@@ -141,7 +142,7 @@ impl Sim {
         let (x, y, alt) = (self.pl.p.mx, self.pl.p.my, self.pl.p.view_z);
         self.flash = Flash { x, y, alt, timer: 0x10 };
         self.emit(SimEvent::Explosion { x, y, alt, kind: 0x10 });
-        self.msg("Aircraft exploded");
+        self.msg(text!("sim-aircraft-exploded"));
         self.sound(5, 2);
         self.pl.fire_frames = 0;
         self.pl.breakup_frames = 0;

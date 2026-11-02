@@ -250,14 +250,14 @@ fn indicators(
         campaign
             .as_ref()
             .and_then(|c| c.state().player_name(stealth_campaign::PlayerId(id)).map(str::to_string))
-            .unwrap_or_else(|| format!("Pilot {id}"))
+            .unwrap_or_else(|| stealth_i18n::t!("vr-pilot", id = id))
     };
     let mut lines: Vec<String> =
-        voice.talking.iter().map(|&k| format!("{} on the radio", name(k))).collect();
+        voice.talking.iter().map(|&k| stealth_i18n::t!("vr-on-radio", name = name(k))).collect();
     if voice.transmitting {
-        lines.insert(0, "Transmitting".to_string());
+        lines.insert(0, stealth_i18n::t!("vr-transmitting").to_string());
     } else if let Some(e) = &voice.error {
-        lines.insert(0, format!("Microphone: {e}"));
+        lines.insert(0, stealth_i18n::t!("vr-microphone", error = e.as_str()));
     }
     let radio = (!lines.is_empty()).then(|| lines.join(", "));
     if notices.radio != radio {

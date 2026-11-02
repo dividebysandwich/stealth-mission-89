@@ -37,8 +37,12 @@ fn mission(d: &Data, theater: usize, seed: u16, opponents: u8) -> Mission {
     stealth_mission::generate(&d.gdata, &s, Seed::Srand(seed)).unwrap()
 }
 
-/// An event as text, without the fields added for several pilots (`by`, the launcher's pilot).
+/// An event as text, without the fields added for several pilots (`by`, the launcher's pilot),
+/// a HUD message in English as it was written before the translations.
 fn event_text(e: &SimEvent) -> String {
+    if let SimEvent::Message(t) = e {
+        return format!("Message({:?})", t.tr_in(stealth_i18n::Language::En));
+    }
     format!("{e:?}")
         .replace(", by: None", "")
         .replace(", by: Some(0)", "")
