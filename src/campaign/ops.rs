@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_egui::{EguiContexts, PrimaryEguiContext, egui};
 use stealth_campaign::weather::Now;
 use stealth_campaign::{
-    Aircraft as Airframe, InsertionState, MissionKind, MissionOffer, Objective, PlayerId,
+    Aircraft as Airframe, Due, InsertionState, MissionKind, MissionOffer, Objective, PlayerId,
     RaidState, Side, SortieResult, tuning,
 };
 use stealth_host::glue::sortie_mission;
@@ -594,13 +594,23 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 let (bx, by) = from(c, &o);
                 let selected = c.ui.selected == Some(o.id);
                 // Each mission is a framed button row: a marker, the text, an arrow.
+                // How long an urgent one has left.
+                let due = match c.state().due(&o.objective) {
+                    Some(Due::At(t)) => {
+                        let mins = ((t - c.state().clock) / 60.0).max(0.0).ceil() as i64;
+                        t!("ops-due", mins = mins).to_string()
+                    }
+                    Some(Due::Now) => t!("ops-due-now").to_string(),
+                    None => String::new(),
+                };
                 let text = egui::RichText::new(format!(
-                    "{} {:<10} {:<32} {:>4.0} km  {:<9} >",
+                    "{} {:<10} {:<32} {:>4.0} km  {:<9} {:<10} >",
                     if selected { '\u{25B6}' } else { ' ' },
                     kind_name(o.kind),
                     o.title.tr(),
                     km(dist(bx, by, o.x, o.y)),
-                    if o.threat > 0 { t!("ops-threat", threat = o.threat) } else { String::new() }
+                    if o.threat > 0 { t!("ops-threat", threat = o.threat) } else { String::new() },
+                    due
                 ))
                 .monospace()
                 .color(if selected { BG } else { kind_colour(o.kind) });
@@ -1042,6 +1052,16 @@ fn supply_line(ui: &mut egui::Ui, c: &ActiveCampaign) {
         let text = t!(id, materiel = format!("{have:.0}"), income = format!("{income:.0}"));
         ui.label(egui::RichText::new(text).color(col));
     }
+    // Which way the front is moving.
+    let m = st.momentum();
+    let (id, col) = if m >= tuning::MOMENTUM_SHOWN {
+        ("ops-front-blue", FRIENDLY_BLUE)
+    } else if m <= -tuning::MOMENTUM_SHOWN {
+        ("ops-front-red", MISSILE_RED)
+    } else {
+        ("ops-front-even", DIM)
+    };
+    ui.label(egui::RichText::new(t!(id)).color(col));
     // More players, a faster enemy (coop scaling).
     let pace = st.pace();
     if pace > 1.05 {

@@ -27,6 +27,7 @@ mod deploy;
 mod director;
 mod effects;
 mod events;
+mod flow;
 pub mod ground;
 mod missions;
 mod record;
@@ -44,6 +45,7 @@ use stealth_i18n::Text;
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{footprint, loads};
+pub use flow::{Due, WarEvent};
 pub use record::PilotRecord;
 pub use state::*;
 

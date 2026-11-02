@@ -927,6 +927,9 @@ pub struct CampaignState {
     /// The players flying the war, for the enemy's tempo (`crew`).
     #[serde(default)]
     pub crew: crate::Crew,
+    /// What moved the front lately (`momentum`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub war_log: Vec<crate::WarEvent>,
     /// The war is over (None: still going on).
     #[serde(default)]
     pub outcome: Option<Outcome>,
@@ -1456,6 +1459,7 @@ impl CampaignState {
             sead_at: f64::MIN,
             patriots_lost: Vec::new(),
             crew: crate::Crew::default(),
+            war_log: Vec::new(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
             red: Forces::start(FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * skill),

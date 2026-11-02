@@ -84,6 +84,11 @@ pub const ENEMY_TARGET_CHOICE: usize = 2;
 /// (plus one per ROE level); interceptors scramble against insertions this close to a base.
 pub const PATROL_EVERY: f64 = 6.0 * 60.0;
 pub const PATROLS: usize = 2;
+/// The front's momentum counts what happened this long back: a place taken weighs
+/// MOMENTUM_CAPTURE, a site destroyed 1; MOMENTUM_SHOWN either way shows as gaining.
+pub const MOMENTUM_WINDOW: f64 = 2.0 * 3600.0;
+pub const MOMENTUM_CAPTURE: u8 = 5;
+pub const MOMENTUM_SHOWN: i32 = 3;
 /// A place whose sites the other side destroyed draws its owner's patrols this long.
 pub const PRESSURE_MEMORY: f64 = 30.0 * 60.0;
 pub const SCRAMBLE_RANGE: i32 = 0x1400;

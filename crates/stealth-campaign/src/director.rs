@@ -18,6 +18,11 @@ impl CampaignState {
                 let now = self.clock;
                 self.raid_hit(object, ev);
                 self.site_struck(object, by);
+                if self.site(object).is_some_and(Site::alive)
+                    && let Some(owner) = self.owner(object)
+                {
+                    self.log_war(owner.enemy(), 1);
+                }
                 // A city's stores and factories go with it.
                 if let Some(s) = self.site(object).filter(|s| s.alive() && s.kind == SiteKind::City)
                     && let Some(side) = self.owner(s.object).filter(|&o| o != Side::Neutral)
@@ -151,6 +156,7 @@ impl CampaignState {
         ev: &mut Vec<CampaignEvent>,
     ) {
         self.patriots_lost.retain(|&k| k != place);
+        self.log_war(side, MOMENTUM_CAPTURE);
         let p = &mut self.places[place as usize];
         p.owner = side;
         p.intel_until = None;

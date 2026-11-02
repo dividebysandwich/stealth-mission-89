@@ -2869,3 +2869,42 @@ fn under_the_airframe_rule_a_crashed_jet_is_one_fighter_fewer() {
         assert_eq!(c.blue.fighters, fighters - rule as u32);
     }
 }
+
+#[test]
+fn urgent_missions_say_when_they_are_due() {
+    let mut c = campaign("central_europe", 3);
+    let (id, _, _) = {
+        // An enemy raid ordered: its Defend offer is due at lift-off, then now.
+        c.tick(1.0, &WorldView::default(), &[]);
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &WorldView::default(), &[]);
+        let r = c.raids.iter().find(|r| r.side == Side::Red).expect("a raid");
+        (r.id, r.place, r.target)
+    };
+    let RaidState::Pending { launch_at } = c.raid(id).unwrap().state else { panic!() };
+    assert_eq!(c.due(&Objective::Defend { raid: id }), Some(Due::At(launch_at)));
+    c.tick(launch_at - c.clock + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.due(&Objective::Defend { raid: id }), Some(Due::Now));
+    assert_eq!(c.due(&Objective::Cap { x: 0, y: 0 }), None);
+}
+
+#[test]
+fn the_front_moves_for_who_takes_places_and_destroys_sites() {
+    let mut c = campaign("central_europe", 3);
+    assert_eq!(c.momentum(), 0);
+    let place = c.front(Side::Blue)[0];
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Blue, &mut ev);
+    assert_eq!(c.momentum(), tuning::MOMENTUM_CAPTURE as i32);
+    let city = c
+        .sites
+        .iter()
+        .find(|s| s.kind == SiteKind::City && s.alive() && c.owner(s.object) == Some(Side::Blue))
+        .unwrap()
+        .object;
+    c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: city, by: None }]);
+    assert_eq!(c.momentum(), tuning::MOMENTUM_CAPTURE as i32 - 1);
+    // Forgotten after a while.
+    c.clock += tuning::MOMENTUM_WINDOW + 1.0;
+    assert_eq!(c.momentum(), 0);
+}
