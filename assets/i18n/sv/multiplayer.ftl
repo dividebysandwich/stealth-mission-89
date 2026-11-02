@@ -84,6 +84,7 @@ mp-rules = Regler för alla
 mp-time-of-day = Tid på dygnet (månljusa nätter)
 mp-realistic-weapons = Realistiska F-117A-vapen
 mp-friendly-fire = Vådabeskjutning
+mp-airframe-losses = Förlorade flygplan räknas
 mp-day-night = Dag och natt:
 mp-weather = Väder:
 mp-host-new = STARTA NYTT

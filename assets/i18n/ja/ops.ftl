@@ -79,11 +79,18 @@ ops-rule-no-crashes = 墜落なし
 ops-rule-time = 連続時間
 ops-rule-weapons = リアルなF-117A兵装
 ops-rule-friendly-fire = 友軍誤射
+ops-rule-airframe-losses = 失った機体を数える
 ops-rule-classic = クラシック
 ops-materiel = 物資
 ops-materiel-blue = 青軍 { $materiel }（+{ $income }/時）
 ops-materiel-red = 赤軍 { $materiel }（+{ $income }/時）
 ops-crew-tempo = 敵の作戦テンポ ×{ $pace }
+ops-due = T-{ $mins }分
+ops-due-now = 進行中
+ops-front-blue = 前線：青軍が優勢
+ops-front-red = 前線：赤軍が優勢
+ops-front-even = 前線：均衡
+ops-operation = { $place } 作戦：準備 { $done }/{ $total }
 ops-friendly = 友軍
 ops-enemy = 敵軍
 ops-section-forces = 戦力
@@ -108,6 +115,8 @@ ops-how =
     AIは行動のすべてに物資を支払います。修復、戦闘機の出撃、空襲、独自の降下作戦などです。物資が不足すると、被害は修復されず、航空機は出撃しません。
     AIが飛ばせるのは保有する航空機だけです。撃墜されればそれまでで、着陸すれば再び飛べます。物資が続く限り、各陣営は毎時間、新しい機体を購入します。
     プレイヤーが不足することはありません。自機、自軍の基地（爆撃されても）、自分で発令した降下作戦のヘリコプターは常に使えます。
+ops-how-repairs = 各陣営が同時に修理できる陣地は少数（無傷の都市が多いほど増える）で、前線に近いものから修理する。修理後すぐに再び破壊された陣地は、そのたびに修理が長くなる。
+ops-how-airframes = 失った機体を数える：パイロットが失う機体1機ごとに、味方AIの戦闘機かヘリが1機減る。
 ops-section-prices = 価格
 ops-price-airfield = 飛行場の修復
 ops-price-sam = SAM陣地の修復
@@ -155,6 +164,7 @@ ops-points-bonus = { $points }ポイント（パッケージボーナス +{ $bon
 ops-campaign-points = { $rank } - キャンペーンポイント { $points }
 ops-campaign-record = キャンペーン：出撃{ $sorties }回、目標達成{ $won }回
 ops-section-meanwhile = その間に
+ops-section-effects = 戦争への君の影響
 ops-victory = 勝利
     .text = 敵は飛行場を1つも保持していません。戦域は我が方のものです。
 ops-defeat = 敗北

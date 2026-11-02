@@ -89,6 +89,15 @@ options-sun-moon = Sol och måne
     .facts =
         Solen på himlen om dagen, månen och stjärnorna om natten
         Månen visar uppdragets fas
+options-cloud-quality = Moln
+cloud-quality-auto = Auto
+    .facts = Låg i VR, hög på skärmen
+cloud-quality-low = Låg
+    .facts = Grova moln i en tredjedel av upplösningen (snabbast)
+cloud-quality-medium = Medel
+    .facts = Halva upplösningen, finare detaljer
+cloud-quality-high = Hög
+    .facts = Full upplösning, finaste detaljer och egen skugga (kostar GPU-tid)
 
 ## LJUD
 

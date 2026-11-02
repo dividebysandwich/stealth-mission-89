@@ -85,6 +85,10 @@ pub enum ToServer {
     EndSortie {
         outcome: u8,
     },
+    /// In the air: take an urgent mission instead (the AWACS's divert).
+    Retask {
+        offer: u32,
+    },
     /// Landed at a friendly base: rearm and refuel.
     Rearm {
         stores: Stores,

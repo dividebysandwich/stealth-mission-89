@@ -70,6 +70,9 @@ pub const RAID_TIMEOUT: f64 = 60.0 * 60.0;
 /// not more often than this.
 pub const AUTO_INSERT_THREAT: i32 = 0;
 pub const AUTO_INSERT_EVERY: f64 = 20.0 * 60.0;
+/// A prepared operation's insertion goes in at once with this many guns left at most (and
+/// not where one failed within FAILED_MEMORY).
+pub const OPERATION_THREAT: i32 = 2;
 /// Insertions fly from bases at most this far from the target (helicopter range, 300 km: every
 /// theater's enemy airfields are in reach of one another's).
 pub const INSERTION_RANGE: i32 = 0x4B00;
@@ -79,11 +82,20 @@ pub const SAM_THREAT: i32 = 3;
 /// were one more SAM site, and picks among this many of the weakest.
 pub const FAILED_MEMORY: f64 = 2.0 * 3600.0;
 pub const ENEMY_TARGET_CHOICE: usize = 2;
+/// What a friendly place is worth to the enemy's insertions against its defences (a SAM site
+/// weighs `SAM_THREAT`, a gun 1): an intact airfield, every intact city.
+pub const AIRFIELD_VALUE: i32 = 4;
+pub const CITY_VALUE: i32 = 2;
 
 /// Enemy air: a patrol takes off this often from a live airfield, at most this many fly
 /// (plus one per ROE level); interceptors scramble against insertions this close to a base.
 pub const PATROL_EVERY: f64 = 6.0 * 60.0;
 pub const PATROLS: usize = 2;
+/// The front's momentum counts what happened this long back: a place taken weighs
+/// MOMENTUM_CAPTURE, a site destroyed 1; MOMENTUM_SHOWN either way shows as gaining.
+pub const MOMENTUM_WINDOW: f64 = 2.0 * 3600.0;
+pub const MOMENTUM_CAPTURE: u8 = 5;
+pub const MOMENTUM_SHOWN: i32 = 3;
 /// A place whose sites the other side destroyed draws its owner's patrols this long.
 pub const PRESSURE_MEMORY: f64 = 30.0 * 60.0;
 pub const SCRAMBLE_RANGE: i32 = 0x1400;
@@ -140,6 +152,15 @@ pub const SUPPRESS_SHARE: f32 = 0.5;
 pub const CAP_SECONDS: f64 = 600.0;
 pub const CAP_KILLS: u32 = 2;
 pub const CAP_RADIUS: i32 = 0x500;
+/// A player on CAP keeps the enemy's new raids and insertions off places this close to his
+/// CAP point (30 km).
+pub const CAP_COVER: i32 = 0x780;
+/// The AWACS diverts a player in the air to an urgent mission this close (120 km).
+pub const DIVERT_RANGE: i32 = 0x1E00;
+/// An enemy airfield struck holds back the enemy's next raid this long at least; a city its
+/// next convoy and insertion (stores and transport gone).
+pub const STRUCK_AIRFIELD_DELAY: f64 = 15.0 * 60.0;
+pub const STRUCK_CITY_DELAY: f64 = 10.0 * 60.0;
 /// Escorts, intercepts, airfield defences and rescues need the pilot there: this long airborne
 /// within this radius (20 km) of the helicopters, raiders or pilot while it goes on (an air
 /// kill counts too).
@@ -167,6 +188,11 @@ pub const REPAIR_COST_SHIP: f64 = 20.0;
 pub const GUN_COST: f64 = 2.0;
 pub const SORTIE_COST: f64 = 2.0;
 pub const RAID_COST: f64 = 15.0;
+/// One enemy raid in so many goes for a site the players built; one in so many airfield raids
+/// comes with a feint at another airfield, which turns back this long after take-off.
+pub const SITE_RAID_ONE_IN: i32 = 3;
+pub const FEINT_ONE_IN: i32 = 4;
+pub const FEINT_TURN: f64 = 4.0 * 60.0;
 pub const INSERTION_COST: f64 = 20.0;
 
 /// The AI's aircraft on the ground: each side starts with these fighters (the enemy more by

@@ -147,6 +147,10 @@ pub enum Role {
 /// What the Ops screen asks for.
 #[derive(Debug, Clone)]
 pub enum Action {
+    /// In the air: take the urgent mission the AWACS diverts the pilot to.
+    Retask {
+        offer: u32,
+    },
     TakeMission {
         offer: u32,
         base: Option<u16>,
@@ -246,6 +250,8 @@ pub struct ActiveCampaign {
     /// Seconds the flight model has ended the flight without the simulation following (an
     /// end asked for: negative).
     crash_timer: f32,
+    /// The urgent mission the AWACS called a divert to (accepted with `AcceptTasking`).
+    divert: Option<u32>,
     /// Leave the campaign (back to the menu) at the next frame.
     pub exit: bool,
     /// The stores and the route chosen in the briefing for the sortie being taken.
@@ -324,6 +330,7 @@ impl ActiveCampaign {
             save_timer: 0.0,
             end_timer: None,
             crash_timer: 0.0,
+            divert: None,
             exit: false,
             take_loadout: None,
             take_route: None,
@@ -347,6 +354,26 @@ impl ActiveCampaign {
     /// The Ops screen (or the landing prompt) is up.
     pub fn screen_open(&self) -> bool {
         (self.phase == Phase::Ops && self.end_timer.is_none()) || self.landed.is_some()
+    }
+
+    /// On the Ops board (not flying a sortie nor at a console): the in-flight menu's END
+    /// MISSION is the board's way out (`exit_id`, `ask_exit`).
+    pub fn on_board(&self) -> bool {
+        self.phase == Phase::Ops
+    }
+
+    /// The board's way out, SAVE & EXIT or DISCONNECT from a server: its message id and icon.
+    pub fn exit_id(&self) -> &'static str {
+        ops::exit_id(self.role)
+    }
+
+    pub fn exit_icon(&self) -> char {
+        ops::exit_icon(self.role)
+    }
+
+    /// Asks to leave the campaign, as the board's way-out button does.
+    pub fn ask_exit(&mut self) {
+        self.ui.confirm_exit = true;
     }
 
     /// Saves the campaign (alone or as the listen server).
@@ -407,6 +434,7 @@ pub fn rules_of(s: &crate::settings::Settings, realistic_weapons: bool) -> Rules
         realistic_weapons,
         friendly_fire: false,
         classic_terrain: !s.realistic_terrain,
+        airframe_losses: false,
     }
 }
 
@@ -493,6 +521,8 @@ pub struct Session<'w, 's> {
     next: ResMut<'w, NextState<AppState>>,
     notice: ResMut<'w, crate::net::Notice>,
     players: ResMut<'w, crate::player_notices::PlayerNotices>,
+    atc: Option<ResMut<'w, crate::atc::AtcState>>,
+    input: Res<'w, crate::hotas::InputConfig>,
 }
 
 /// First frame of the session: the simulation is made to match the campaign.
@@ -657,6 +687,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             _ => {}
         }
     }
+    divert_call(c, &mut s);
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
     if c.phase == Phase::Sortie && c.end_timer.is_none() && !s.combat.sim.player_absent() {
@@ -1016,6 +1047,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
                 host.drop_crate(sim, me, id, leg, east, north, heading)
             }
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
+            Action::Retask { offer } => host.retask(sim, me, offer),
             Action::Rearm { loadout } => {
                 host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
                 s.msgs.show(tf!("hud-rearmed"));
@@ -1075,6 +1107,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
                 ToServer::DropCrate { id, leg, east, north, heading }
             }
             Action::EndSortie { outcome } => ToServer::EndSortie { outcome },
+            Action::Retask { offer } => ToServer::Retask { offer },
             Action::Rearm { loadout } => {
                 s.msgs.show(tf!("hud-rearmed"));
                 c.landed = None;
@@ -1163,6 +1196,11 @@ fn handle(c: &mut ActiveCampaign, s: &mut Session, events: Vec<HostEvent>) {
             HostEvent::SortieStarted { player, sortie, start } if player == me => {
                 begin_sortie(c, s, &sortie, &start);
             }
+            HostEvent::Campaign(CampaignEvent::SortieRetasked { player, sortie })
+                if player == me =>
+            {
+                retask_sortie(c, s, &sortie);
+            }
             HostEvent::SortieFinished { player, debrief } if player == me => {
                 s.msgs.show(debrief.title.tr_flight());
                 // Down under the parachute: the debrief at once (the pilotless aircraft is
@@ -1208,6 +1246,77 @@ fn handle(c: &mut ActiveCampaign, s: &mut Session, events: Vec<HostEvent>) {
 
 /// A sortie starts: the aircraft (the chosen type) on the base's runway with the mission's
 /// stores and route.
+/// The AWACS calls a divert when an urgent mission comes up near a pilot in the air (once per
+/// mission); the pilot takes it with `AcceptTasking`.
+fn divert_call(c: &mut ActiveCampaign, s: &mut Session) {
+    let accept = std::mem::take(&mut s.combat.accept_tasking);
+    if c.phase != Phase::Sortie || s.combat.sim.player_absent() {
+        c.divert = None;
+        return;
+    }
+    let offer = c.state().divert_for(c.me).map(|o| (o.id, o.title.clone()));
+    if offer.as_ref().map(|o| o.0) != c.divert {
+        c.divert = offer.as_ref().map(|o| o.0);
+        if let Some((_, title)) = offer {
+            let key = s
+                .input
+                .keys_for(crate::hotas::ButtonTarget::Action(crate::input::Action::AcceptTasking))
+                .next()
+                .map_or(String::new(), |k| crate::input::key_label(k.mods, k.key));
+            let me = s.atc.as_ref().and_then(|a| a.callsign().map(str::to_string));
+            let me = me.unwrap_or_default();
+            // Radio calls are in English, as the controllers' are.
+            let what = title.tr_in(stealth_i18n::Language::En);
+            let call = format!("{me}, {AWACS_STATION}, divert: {what}, how copy");
+            let spoken = s.atc.as_mut().is_some_and(|a| a.radio(AWACS_STATION, call.clone(), None));
+            if !spoken {
+                s.players.chat(AWACS_STATION, &call, false);
+            }
+            s.msgs.show(tf!("hud-divert-accept", title = title.tr_flight(), key = key));
+        }
+    }
+    if accept && let Some(offer) = c.divert {
+        c.actions.push(Action::Retask { offer });
+        let me = s.atc.as_ref().and_then(|a| a.callsign().map(str::to_string)).unwrap_or_default();
+        if let Some(atc) = s.atc.as_mut() {
+            let ack = format!("{AWACS_STATION}, {me}, wilco, diverting");
+            atc.radio(AWACS_STATION, String::new(), Some(ack));
+        }
+    }
+}
+
+/// The AWACS's callsign on the radio.
+const AWACS_STATION: &str = "Magic";
+
+/// The host retasked this player's sortie: the new mission's orders, route and briefing (the
+/// aircraft, its stores and where it flies stay).
+fn retask_sortie(c: &ActiveCampaign, s: &mut Session, sortie: &Sortie) {
+    let m = sortie_mission(&c.mission, c.state(), sortie);
+    let route = PlannedRoute::of(&m);
+    let mut wps = Waypoints::planned(
+        route
+            .points
+            .iter()
+            .map(|p| Waypoint { east: p.x as f64 * 32.0, north: (0x8000 - p.y) as f64 * 32.0 })
+            .collect(),
+        route.anchors(),
+    );
+    // Straight on to the target.
+    let target =
+        route.anchors().get(1).copied().unwrap_or(0).min(wps.points.len().saturating_sub(1));
+    wps.current = target;
+    wps.mission_current = target;
+    *s.wps = wps;
+    s.orders.set(
+        m.orders.lines.iter().map(|l| (l.color, crate::mission::clean_text(&l.text))).collect(),
+    );
+    s.commands.insert_resource(route);
+    s.commands.insert_resource(ActiveMission(m));
+    s.kneeboard.new_mission();
+    // The divert stays the one called (a client's copy has the old sortie a moment longer).
+    s.msgs.show(sortie.offer.title.tr_flight());
+}
+
 fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start: &PlayerState) {
     let base = sortie.base as usize;
     let m = sortie_mission(&c.mission, c.state(), sortie);

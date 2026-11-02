@@ -116,6 +116,7 @@ kg-detail = Detailniveau
 kg-day-night = Dag / nacht
 kg-training = Naar training
 kg-resupply = Bevoorrading
+kg-accept-tasking = Omleiding accepteren
 kg-quit = Afsluiten
 kg-hover = Automatisch hoveren (helikopters, tot 30 kt)
 kg-rwr-priority = RWR-prioriteitsmodus (vijf dreigingen) aan / uit

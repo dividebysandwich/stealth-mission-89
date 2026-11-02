@@ -79,11 +79,18 @@ ops-rule-no-crashes = brez strmoglavljenj
 ops-rule-time = neprekinjen čas
 ops-rule-weapons = realistično orožje F-117A
 ops-rule-friendly-fire = ogenj po svojih
+ops-rule-airframe-losses = izgubljena letala štejejo
 ops-rule-classic = klasično
 ops-materiel = MATERIAL
 ops-materiel-blue = MODRI { $materiel } (+{ $income }/h)
 ops-materiel-red = RDEČI { $materiel } (+{ $income }/h)
 ops-crew-tempo = TEMPO SOVRAŽNIKA ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = ZDAJ
+ops-front-blue = FRONTA: MODRI NAPREDUJEJO
+ops-front-red = FRONTA: RDEČI NAPREDUJEJO
+ops-front-even = FRONTA: STOJI
+ops-operation = Operacija { $place }: { $done }/{ $total } pripravljeno
 ops-friendly = ZAVEZNIŠKO
 ops-enemy = SOVRAŽNO
 ops-section-forces = Sile
@@ -108,6 +115,8 @@ ops-how =
     Umetna inteligenca plača vse, kar naredi: popravila, vsak bojni let lovcev, napade in lastna izkrcanja. Če ji zmanjka materiala, njena škoda ostane nepopravljena in njena letala ostanejo doma.
     Umetna inteligenca leti samo z letali, ki jih ima; sestreljena so izgubljena, pristala spet letijo. Vsako uro vsaka stran kupi nova, dokler material zadošča.
     Vam nikoli ne zmanjka: vaša letala, vaše baze (bombardirane ali ne) in helikopterji vaših izkrcanj so vedno na voljo.
+ops-how-repairs = Vsaka stran hkrati popravlja le nekaj položajev (več z več nepoškodovanimi mesti), najprej tiste najbližje fronti, in položaj, ki je kmalu po popravilu znova uničen, vsakič traja dlje.
+ops-how-airframes = Izgubljena letala štejejo: vsako letalo, ki ga pilot izgubi, je en lovec ali helikopter manj za lastno UI.
 ops-section-prices = Cene
 ops-price-airfield = Popravilo letališča
 ops-price-sam = Popravilo položaja SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } točk (bonus paketa +{ $bonus })
 ops-campaign-points = { $rank } - { $points } točk kampanje
 ops-campaign-record = Kampanja: { $sorties } bojnih letov, { $won } doseženih ciljev
 ops-section-meanwhile = Medtem
+ops-section-effects = Tvoj vpliv na vojno
 ops-victory = ZMAGA
     .text = Sovražnik nima več nobenega letališča: bojišče je naše.
 ops-defeat = PORAZ

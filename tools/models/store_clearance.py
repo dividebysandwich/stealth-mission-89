@@ -6,7 +6,8 @@ aircraft.py) clear the airframe, each other and the ground:
 For every jet, every station and every load it takes (its rack and all its rounds), the posed
 meshes must not cut into the airframe (its body, parts and pylons; the Tornado's at full forward
 and full aft sweep), nor into the gear when down, nor reach below the ground under the wheels,
-and no two stations' loads may cut into each other (but those never loaded together). Prints each failure and exits
+no two stations' loads may cut into each other (but those never loaded together), nor the rounds
+of one load (the racks') into each other. Prints each failure and exits
 non-zero if there are any.
 """
 
@@ -112,13 +113,15 @@ def load_tris(table, jet, frames, st, w):
     return tris
 
 
-def rounds_only(table, jet, frames, st, w, inset=0.0):
-    """The rounds of station `st`'s load `w`, `inset` m away from their lugs (so a round's lugs
-    touching its pylon or rack do not count)."""
+def rounds_only(table, jet, frames, st, w, inset=0.0, only=None):
+    """The rounds of station `st`'s load `w` (round `only` of them), `inset` m away from their
+    lugs (so a round's lugs touching its pylon or rack do not count)."""
     s = next(x for x in table["jets"][str(jet)] if x["station"] == st)
     f = frames[s["parent"]]
     out = []
-    for x, y, z, roll in s["loads"][str(w)]["rounds"]:
+    for k, (x, y, z, roll) in enumerate(s["loads"][str(w)]["rounds"]):
+        if only is not None and k != only:
+            continue
         m = (f @ Matrix.Translation(Vector((x, y, z))) @ Matrix.Rotation(math.radians(roll), 4, "Y")
              @ Matrix.Translation(Vector((0, 0, -inset * K))))
         out += store_tris(table["models"][str(w)], m)
@@ -141,6 +144,11 @@ def check(table):
                     name = f"aircraft_{jet:03} sweep {sweep:.0f} station {s['station'] + 1} weapon {w}"
                     if body_t.overlap(rtree):
                         failures.append(f"{name}: into the airframe")
+                    rounds = [rounds_only(table, jet, frames, s["station"], w, inset=0.012, only=k)
+                              for k in range(len(s["loads"][str(w)]["rounds"]))]
+                    for ra, rb in itertools.combinations(rounds, 2):
+                        if tree(ra).overlap(tree(rb)):
+                            failures.append(f"{name}: its rounds into each other")
                     if gear_t is not None and gear_t.overlap(tree(lt)):
                         failures.append(f"{name}: into the gear")
                     gap = min(v.z / K - GROUND[jet](v.y / K) for t in lt for v in t)

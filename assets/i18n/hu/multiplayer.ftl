@@ -84,6 +84,7 @@ mp-rules = Mindenki szabályai
 mp-time-of-day = Napszak (holdfényes éjszakák)
 mp-realistic-weapons = Valósághű F-117A fegyverzet
 mp-friendly-fire = Baráti tűz
+mp-airframe-losses = Az elvesztett gépek számítanak
 mp-day-night = Nappal és éjszaka:
 mp-weather = Időjárás:
 mp-host-new = ÚJ INDÍTÁSA

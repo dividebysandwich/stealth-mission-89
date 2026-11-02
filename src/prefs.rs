@@ -44,6 +44,7 @@ pub struct Prefs {
     pub opponents: u8,
     pub lockheed: bool,
     pub friendly_fire: bool,
+    pub airframe_losses: bool,
     pub weather: Option<Sky>,
     pub cloud_cover: Option<u8>,
     pub start_hour: Option<u8>,
@@ -62,6 +63,7 @@ pub struct Prefs {
     pub msaa: bool,
     pub shadows: bool,
     pub local_lights: bool,
+    pub cloud_quality: crate::weather::CloudQuality,
     pub vr_auto_detail: bool,
     pub continuous_time: bool,
     #[serde(default)]
@@ -132,6 +134,7 @@ impl Default for Prefs {
             opponents: menu.opponents,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
+            airframe_losses: menu.airframe_losses,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -152,6 +155,7 @@ impl Default for Prefs {
             msaa: true,
             shadows: false,
             local_lights: false,
+            cloud_quality: Default::default(),
             vr_auto_detail: true,
             continuous_time: true,
             sun_moon: true,
@@ -235,6 +239,7 @@ impl Prefs {
             opponents: menu.opponents,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
+            airframe_losses: menu.airframe_losses,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -253,6 +258,7 @@ impl Prefs {
             msaa: s.msaa,
             shadows: s.shadows,
             local_lights: s.local_lights,
+            cloud_quality: s.cloud_quality,
             vr_auto_detail: s.vr_auto_detail,
             continuous_time: s.continuous_time,
             sun_moon: s.sun_moon,
@@ -309,6 +315,7 @@ impl Prefs {
         menu.opponents = self.opponents.min(3);
         menu.lockheed = self.lockheed;
         menu.friendly_fire = self.friendly_fire;
+        menu.airframe_losses = self.airframe_losses;
         menu.weather = self.weather;
         menu.cloud_cover = self.cloud_cover.map(|c| c.min(100));
         menu.start_hour = self.start_hour.map(|h| h.min(23));
@@ -338,6 +345,7 @@ impl Prefs {
         s.msaa &= self.msaa;
         s.shadows |= self.shadows;
         s.local_lights |= self.local_lights;
+        s.cloud_quality = self.cloud_quality;
         s.vr_auto_detail &= self.vr_auto_detail;
         s.continuous_time |= self.continuous_time;
         s.sun_moon |= self.sun_moon;
@@ -399,6 +407,7 @@ impl Prefs {
         self.msaa = s.msaa;
         self.shadows = s.shadows;
         self.local_lights = s.local_lights;
+        self.cloud_quality = s.cloud_quality;
         self.vr_auto_detail = s.vr_auto_detail;
         self.continuous_time = s.continuous_time;
         self.sun_moon = s.sun_moon;

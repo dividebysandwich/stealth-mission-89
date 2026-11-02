@@ -398,6 +398,17 @@ impl Sim {
         }
     }
 
+    /// Campaign: pilot `id` in the air takes another objective (mission type and object, as
+    /// [`Sim::respawn_pilot`]); his home base stays.
+    pub fn set_pilot_target(&mut self, id: u8, objective: Option<(i32, usize)>) {
+        let was = self.pl.id;
+        self.activate(id as usize);
+        let t = &mut self.pl.targets[0];
+        t.mission_type = objective.map_or(0, |o| o.0);
+        t.object = objective.map_or(-1, |o| o.1 as i32);
+        self.activate(was as usize);
+    }
+
     /// Campaign: a new sortie from base object `base` with the objective (mission type 1
     /// photo or 2 destroy, object) in the primary slot. Returns the start state for the flight
     /// model.

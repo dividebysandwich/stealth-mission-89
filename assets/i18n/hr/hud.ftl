@@ -13,6 +13,7 @@ hud-aim-at-target = ZAUZMITE CILJ
 hud-photo = FOTO { $state }
 hud-rearmed = Naoružan i napunjen gorivom
 hud-landed-rearm = Sletjeli ste - naoružajte se ili završite borbeni let
+hud-divert-accept = Preusmjeravanje: { $title } - { $key } za prihvat
 hud-objective-achieved = Cilj postignut
 
 ## Zaslon završetka misije

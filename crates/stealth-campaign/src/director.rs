@@ -14,9 +14,15 @@ impl CampaignState {
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
         match *r {
-            Report::ObjectDestroyed { object, .. } => {
+            Report::ObjectDestroyed { object, by } => {
                 let now = self.clock;
                 self.raid_hit(object, ev);
+                self.site_struck(object, by);
+                if self.site(object).is_some_and(Site::alive)
+                    && let Some(owner) = self.owner(object)
+                {
+                    self.log_war(owner.enemy(), 1);
+                }
                 // A city's stores and factories go with it.
                 if let Some(s) = self.site(object).filter(|s| s.alive() && s.kind == SiteKind::City)
                     && let Some(side) = self.owner(s.object).filter(|&o| o != Side::Neutral)
@@ -150,6 +156,7 @@ impl CampaignState {
         ev: &mut Vec<CampaignEvent>,
     ) {
         self.patriots_lost.retain(|&k| k != place);
+        self.log_war(side, MOMENTUM_CAPTURE);
         let p = &mut self.places[place as usize];
         p.owner = side;
         p.intel_until = None;
@@ -430,6 +437,15 @@ impl CampaignState {
                         let s = self.site(b)?;
                         (dist(s.x - x, s.y - y) < SCRAMBLE_RANGE).then_some((b, x, y))
                     });
+                    // A player escorting it keeps the enemy's fighters on the ground.
+                    if near.is_some()
+                        && let Some(p) = self.escort_with(ins.id)
+                    {
+                        let place = self.places[ins.place as usize].name.clone();
+                        self.insertions[k].scrambled = true;
+                        self.effect(p, text!("cl-fx-escort", place = place));
+                        continue;
+                    }
                     if let Some((from, x, y)) = near
                         && self.forces(Side::Red).fighters > 0
                         && self.pay(Side::Red, SORTIE_COST, Spend::Operations)
@@ -893,14 +909,18 @@ impl CampaignState {
     /// The campaign sends an insertion of its own when a front place is (nearly) undefended.
     pub(crate) fn auto_insertion(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         // A place that just changed hands: its new guns are not in the view yet.
-        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY
-            || ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. }))
-        {
+        if ev.iter().any(|e| matches!(e, CampaignEvent::PlaceCaptured { .. })) {
             return;
         }
         // Guns count too: helicopters landing among them do not get through.
         if (self.blue.helicopters as usize) < INSERTION_HELOS || self.blue.materiel < INSERTION_COST
         {
+            return;
+        }
+        if self.operation_insertion(view, ev) {
+            return;
+        }
+        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY {
             return;
         }
         let candidate = self.front(Side::Blue).into_iter().find(|&p| {
@@ -916,6 +936,27 @@ impl CampaignState {
         }
     }
 
+    /// A prepared operation (recon, SEAD and strike done) sends its insertion in at once.
+    fn operation_insertion(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) -> bool {
+        let front = self.front(Side::Blue);
+        let ready = front.iter().copied().find(|&p| {
+            let q = &self.places[p as usize];
+            self.operation_on(p, &front).is_some_and(|o| o.ready())
+                && !self.active_insertion(p)
+                && self.failed_lately(Side::Blue, p) == 0
+                && self.threat_of(p, Some(view)) <= OPERATION_THREAT
+                && self.insertion_base(Side::Blue, q.x, q.y).is_some()
+        });
+        let Some(place) = ready else { return false };
+        let Ok(e) = self.order_insertion(None, place) else { return false };
+        self.auto_insert_at = self.clock;
+        ev.extend(e);
+        let text = text!("cl-operation-go", place = self.places[place as usize].name.as_str());
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+        true
+    }
+
     /// The enemy's offensive: now and then an insertion against the weakest friendly place
     /// on its front, and a raid on a friendly airfield near it (paced by its skill).
     pub(crate) fn enemy_offensive(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
@@ -923,7 +964,9 @@ impl CampaignState {
         let now = self.clock;
         let insert_every = self.paced(ENEMY_INSERT_EVERY[skill]);
         if now - self.enemy_insert_at >= insert_every {
-            // One of the weakest places, those it failed at lately weighed stronger.
+            self.credit_cap_cover();
+            // One of the weakest places for what it is worth (an airfield and a city weigh
+            // against its defences), those it failed at lately weighed stronger.
             let mut weak: Vec<(PlaceId, i32)> = self
                 .front(Side::Red)
                 .into_iter()
@@ -932,7 +975,11 @@ impl CampaignState {
                     self.insertion_base(Side::Red, p.x, p.y).is_some()
                 })
                 .filter(|&p| !self.active_insertion(p))
-                .map(|p| (p, self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p)))
+                .filter(|&p| !self.capped(p))
+                .map(|p| {
+                    let cost = self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p);
+                    (p, cost - self.place_value(p))
+                })
                 .collect();
             weak.sort_by_key(|w| w.1);
             weak.truncate(ENEMY_TARGET_CHOICE);
@@ -949,46 +996,138 @@ impl CampaignState {
         }
         let raid_every = self.paced(RAID_EVERY[skill]);
         if now - self.raid_at >= raid_every {
+            self.credit_cap_cover();
             let ready = self.forces(Side::Red).fighters as usize >= RAID_AIRCRAFT + RAID_ESCORTS
                 && self.forces(Side::Red).materiel >= RAID_COST;
+            // Now and then it goes for a site the players built instead of an airfield.
+            let site = if ready && self.rng.below(SITE_RAID_ONE_IN) == 0 {
+                self.site_raid_target(view)
+            } else {
+                None
+            };
+            if let Some((place, from, sam)) = site {
+                self.pay(Side::Red, RAID_COST, Spend::Operations);
+                self.raid_at = now;
+                self.order_raid(place, 0, from, Some(sam), false, ev);
+                return;
+            }
             match self.raid_target().filter(|_| ready) {
                 Some((place, target, from)) => {
                     self.pay(Side::Red, RAID_COST, Spend::Operations);
                     self.raid_at = now;
-                    let id = self.id();
-                    self.raids.push(Raid {
-                        id,
-                        side: Side::Red,
-                        place,
-                        target,
-                        from,
-                        aircraft: Vec::new(),
-                        alive: Vec::new(),
-                        state: RaidState::Pending { launch_at: now + RAID_LEAD },
-                        ended: None,
-                        escorted: false,
-                        drones: false,
-                        enroute_at: None,
-                        sam: None,
-                    });
-                    let name = self.places[place as usize].name.clone();
-                    let mins = (RAID_LEAD / 60.0).round() as i64;
-                    let text = text!("cl-raid-intel", place = name, mins = mins);
-                    self.note(text.clone());
-                    self.board_at = f64::MIN;
-                    ev.push(CampaignEvent::Message(text));
+                    self.order_raid(place, target, from, None, false, ev);
+                    // A feint at another airfield now and then: it turns back on the way.
+                    let more = self.forces(Side::Red).fighters as usize
+                        >= 2 * (RAID_AIRCRAFT + RAID_ESCORTS)
+                        && self.forces(Side::Red).materiel >= RAID_COST;
+                    if more
+                        && self.rng.below(FEINT_ONE_IN) == 0
+                        && let Some((place, target, from)) = self.raid_target()
+                    {
+                        self.pay(Side::Red, RAID_COST, Spend::Operations);
+                        self.order_raid(place, target, from, None, true, ev);
+                    }
                 }
                 None => self.raid_at = now - raid_every + 60.0,
             }
         }
     }
 
+    /// An enemy raid on airfield `target` of friendly place `place` from base `from` (or, with
+    /// `sam`, on that air defence unit), a feint or not: the friendly side hears of it.
+    fn order_raid(
+        &mut self,
+        place: PlaceId,
+        target: ObjectId,
+        from: ObjectId,
+        sam: Option<SamTarget>,
+        feint: bool,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        let now = self.clock;
+        let id = self.id();
+        self.raids.push(Raid {
+            id,
+            side: Side::Red,
+            place,
+            target,
+            from,
+            aircraft: Vec::new(),
+            alive: Vec::new(),
+            state: RaidState::Pending { launch_at: now + RAID_LEAD },
+            ended: None,
+            escorted: false,
+            drones: false,
+            enroute_at: None,
+            sam,
+            feint,
+        });
+        let name = self.places[place as usize].name.clone();
+        let mins = (RAID_LEAD / 60.0).round() as i64;
+        let site = sam.and_then(|s| s.site).and_then(|d| self.deployment(d));
+        let text = match site {
+            Some(d) => text!("cl-infra-intel", site = d.label(), mins = mins),
+            None => text!("cl-raid-intel", place = name, mins = mins),
+        };
+        self.note(text.clone());
+        self.board_at = f64::MIN;
+        ev.push(CampaignEvent::Message(text));
+    }
+
+    /// A site the players built for an enemy raid: its unit standing, an enemy base in reach,
+    /// no raid on it yet (the friendly place nearest it, the base, the unit).
+    fn site_raid_target(&self, view: &WorldView) -> Option<(PlaceId, ObjectId, SamTarget)> {
+        self.deployments.iter().filter(|d| d.built).find_map(|d| {
+            let (x, y) = d.unit_at();
+            let aaa = view
+                .units
+                .iter()
+                .position(|u| u.alive && u.side == Side::Blue && (u.x, u.y) == (x, y))?
+                as u32;
+            if self.raids.iter().any(|r| r.open() && r.sam.is_some_and(|s| s.aaa == aaa)) {
+                return None;
+            }
+            let from = self.nearest_base(Side::Red, x, y)?;
+            let b = self.site(from)?;
+            if dist(b.x - x, b.y - y) > RAID_RANGE {
+                return None;
+            }
+            let place = self
+                .places
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.owner == Side::Blue)
+                .min_by_key(|(_, p)| dist(p.x - x, p.y - y))?
+                .0 as PlaceId;
+            Some((place, from, SamTarget { aaa, x, y, site: Some(d.id) }))
+        })
+    }
+
+    /// What taking place `place` is worth to the enemy: its intact airfield (one base fewer for
+    /// the friendly side) and its intact cities (their income).
+    pub(crate) fn place_value(&self, place: PlaceId) -> i32 {
+        let p = &self.places[place as usize];
+        let alive = |o: ObjectId| self.site(o).is_some_and(Site::alive);
+        let airfield = p.airfield.is_some_and(alive) as i32 * AIRFIELD_VALUE;
+        let cities = p
+            .members
+            .iter()
+            .filter(|&&o| self.site(o).is_some_and(|s| s.kind == SiteKind::City && s.alive()))
+            .count() as i32;
+        airfield + cities * CITY_VALUE
+    }
+
     /// The enemy's insertions at a place that failed lately.
     fn failed_at(&self, place: PlaceId) -> i32 {
+        self.failed_lately(Side::Red, place)
+    }
+
+    /// A side's insertions at a place that failed lately.
+    fn failed_lately(&self, side: Side, place: PlaceId) -> i32 {
         let now = self.clock;
         self.insertions
             .iter()
-            .filter(|i| i.side == Side::Red && i.place == place)
+            .filter(|i| i.side == side && i.place == place)
             .filter(|i| i.state == InsertionState::Failed)
             .filter(|i| i.enroute_at.is_some_and(|t| now - t < FAILED_MEMORY))
             .count() as i32
@@ -1004,7 +1143,7 @@ impl CampaignState {
             .filter(|(_, p)| p.owner == Side::Blue)
             .filter_map(|(k, p)| {
                 let a = p.airfield.filter(|&a| self.site(a).is_some_and(Site::alive))?;
-                if self.raids.iter().any(|r| r.open() && r.bombs(a)) {
+                if self.raids.iter().any(|r| r.open() && r.bombs(a)) || self.capped(k as PlaceId) {
                     return None;
                 }
                 let from = self.nearest_base(Side::Red, p.x, p.y)?;
@@ -1027,9 +1166,10 @@ impl CampaignState {
         let now = self.clock;
         for k in 0..self.raids.len() {
             let r = &self.raids[k];
-            // Still not there long after: called home, the raid turned back.
-            if r.state == RaidState::Enroute && r.enroute_at.is_some_and(|t| now - t > RAID_TIMEOUT)
-            {
+            // Still not there long after (a feint: soon after take-off): called home, the raid
+            // turned back.
+            let turn = if r.feint { FEINT_TURN } else { RAID_TIMEOUT };
+            if r.state == RaidState::Enroute && r.enroute_at.is_some_and(|t| now - t > turn) {
                 let tags: Vec<u32> =
                     r.aircraft.iter().zip(&r.alive).filter(|(_, a)| **a).map(|(&t, _)| t).collect();
                 let text = text!(
@@ -1357,6 +1497,9 @@ impl CampaignState {
                 MissionKind::Defend,
                 if r.drones {
                     text!("cb-drone-defense", place = name)
+                } else if let Some(d) = r.sam.and_then(|s| s.site).and_then(|d| self.deployment(d))
+                {
+                    text!("cb-defend-site", site = d.label())
                 } else if r.sam.is_some() {
                     text!("cb-defend-sam", place = name)
                 } else {

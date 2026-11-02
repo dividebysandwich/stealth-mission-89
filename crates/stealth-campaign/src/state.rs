@@ -523,6 +523,12 @@ pub struct Progress {
     /// intercepts, defences, rescues: only who was there earns them).
     #[serde(default)]
     pub near_secs: f64,
+    /// Airborne over the CAP point or near what the objective is about this moment.
+    #[serde(default)]
+    pub here: bool,
+    /// What the sortie changed in the war (the debrief).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<Text>,
     /// Flown in the helicopter: the player's own insertion (its id), seconds landed where it
     /// counts (unloading the troops, the downed pilot boarding), the downed pilot aboard and
     /// brought home.
@@ -614,6 +620,9 @@ pub struct SortieRecord {
     pub place: Option<PlaceId>,
     #[serde(default)]
     pub achieved_at: Option<f64>,
+    /// What it changed in the war.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<Text>,
 }
 
 /// What a route point is: a navigation point a player placed (or the mission's midpoint), or
@@ -709,6 +718,9 @@ pub struct CampaignRules {
     pub friendly_fire: bool,
     #[serde(default)]
     pub classic_terrain: bool,
+    /// The players' lost aircraft come out of the friendly side's.
+    #[serde(default)]
+    pub airframe_losses: bool,
 }
 
 fn blue() -> Side {
@@ -757,6 +769,10 @@ pub struct Raid {
     /// SEAD: the SAM battery its anti-radiation missiles go for (`target` is then no object).
     #[serde(default)]
     pub sam: Option<SamTarget>,
+    /// A feint: it turns back on its way (`FEINT_TURN`), to draw the defence away from
+    /// another raid.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub feint: bool,
 }
 
 impl Raid {
@@ -776,6 +792,9 @@ pub struct SamTarget {
     pub aaa: u32,
     pub x: i32,
     pub y: i32,
+    /// A site the players built (deployment id), not a Patriot battery of a place.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site: Option<u32>,
 }
 
 /// A side's means of war: its materiel and the AI's aircraft on the ground.
@@ -915,6 +934,9 @@ pub struct CampaignState {
     /// The players flying the war, for the enemy's tempo (`crew`).
     #[serde(default)]
     pub crew: crate::Crew,
+    /// What moved the front lately (`momentum`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub war_log: Vec<crate::WarEvent>,
     /// The war is over (None: still going on).
     #[serde(default)]
     pub outcome: Option<Outcome>,
@@ -1148,6 +1170,16 @@ impl Deployment {
             DefenceKind::Drones => "Drone command center",
         };
         format!("{what} near {}", self.name)
+    }
+
+    /// "Gepard near Fulda" (translated).
+    pub fn label(&self) -> Text {
+        let id = match self.kind {
+            DefenceKind::Gepard => "cl-supply-gepard",
+            DefenceKind::Patriot => "cl-supply-patriot",
+            DefenceKind::Drones => "cl-supply-drones",
+        };
+        text!(id, place = self.name.as_str())
     }
 
     /// Where its unit stands (map units): beside the helipad.
@@ -1444,6 +1476,7 @@ impl CampaignState {
             sead_at: f64::MIN,
             patriots_lost: Vec::new(),
             crew: crate::Crew::default(),
+            war_log: Vec::new(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
             red: Forces::start(FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * skill),

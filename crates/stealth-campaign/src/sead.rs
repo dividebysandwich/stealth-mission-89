@@ -69,7 +69,8 @@ impl CampaignState {
             escorted: false,
             drones: false,
             enroute_at: None,
-            sam: Some(SamTarget { aaa, x, y }),
+            sam: Some(SamTarget { aaa, x, y, site: None }),
+            feint: false,
         });
         let name = self.places[place as usize].name.clone();
         let mins = (RAID_LEAD / 60.0).round() as i64;
@@ -98,8 +99,12 @@ impl CampaignState {
             return;
         }
         let name = self.places[self.raids[k].place as usize].name.clone();
+        let site = self.raids[k].sam.and_then(|s| s.site).and_then(|d| self.deployment(d));
+        let text = match site {
+            Some(d) => text!("cl-infra-hit", site = d.label()),
+            None => text!("cl-sead-hit", place = name),
+        };
         self.end_raid(k, RaidState::Hit);
-        let text = text!("cl-sead-hit", place = name);
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
     }

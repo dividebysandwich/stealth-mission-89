@@ -13,6 +13,7 @@ hud-aim-at-target = TAIKYKITĖS Į TAIKINĮ
 hud-photo = NUOTRAUKA { $state }
 hud-rearmed = Ginklai ir kuras papildyti
 hud-landed-rearm = Nusileista - papildykite arba baikite skrydį
+hud-divert-accept = Nukreipimas: { $title } - { $key } priimti
 hud-objective-achieved = Užduotis įvykdyta
 
 ## Misijos pabaigos užsklanda

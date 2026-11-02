@@ -79,11 +79,18 @@ ops-rule-no-crashes = fără prăbușiri
 ops-rule-time = timp continuu
 ops-rule-weapons = armament realist F-117A
 ops-rule-friendly-fire = foc prietenesc
+ops-rule-airframe-losses = aeronavele pierdute contează
 ops-rule-classic = clasic
 ops-materiel = MATERIALE
 ops-materiel-blue = ALBASTRU { $materiel } (+{ $income }/h)
 ops-materiel-red = ROȘU { $materiel } (+{ $income }/h)
 ops-crew-tempo = RITMUL INAMICULUI ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = ACUM
+ops-front-blue = FRONT: ALBASTRUL AVANSEAZĂ
+ops-front-red = FRONT: ROȘUL AVANSEAZĂ
+ops-front-even = FRONT: STABIL
+ops-operation = Operațiunea { $place }: { $done }/{ $total } pregătit
 ops-friendly = PRIETEN
 ops-enemy = INAMIC
 ops-section-forces = Forțe
@@ -108,6 +115,8 @@ ops-how =
     AI plătește tot ce face: reparații, fiecare zbor de vânătoare, raiduri și propriile debarcări. Fără materiale, avariile sale rămân nereparate, iar aeronavele rămân acasă.
     AI zboară doar cu aeronavele pe care le are; cele doborâte sunt pierdute, cele aterizate pot zbura din nou. În fiecare oră fiecare tabără cumpără altele noi cât timp are materiale.
     Dumneavoastră nu duceți niciodată lipsă: aeronavele, bazele (bombardate sau nu) și elicopterele propriilor ordine de debarcare sunt mereu disponibile.
+ops-how-repairs = Fiecare tabără repară doar câteva poziții odată (mai multe cu mai multe orașe intacte), întâi cele mai apropiate de front, iar o poziție distrusă din nou la scurt timp după reparație durează de fiecare dată mai mult.
+ops-how-airframes = Aeronavele pierdute contează: fiecare aeronavă pierdută de un pilot înseamnă un avion de vânătoare sau un elicopter mai puțin pentru IA aliată.
 ops-section-prices = Prețuri
 ops-price-airfield = Reparația aerodromului
 ops-price-sam = Reparația unei poziții SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } puncte (bonus de package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } puncte de campanie
 ops-campaign-record = Campanie: { $sorties } zboruri, { $won } obiective îndeplinite
 ops-section-meanwhile = Între timp
+ops-section-effects = Efectul tău asupra războiului
 ops-victory = VICTORIE
     .text = Inamicul nu mai deține niciun aerodrom: teatrul de operații este al nostru.
 ops-defeat = ÎNFRÂNGERE

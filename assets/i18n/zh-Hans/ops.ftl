@@ -79,11 +79,18 @@ ops-rule-no-crashes = 无坠毁
 ops-rule-time = 连续时间
 ops-rule-weapons = 真实的 F-117A 武器
 ops-rule-friendly-fire = 友军误伤
+ops-rule-airframe-losses = 损失的飞机计入
 ops-rule-classic = 经典
 ops-materiel = 物资
 ops-materiel-blue = 蓝方 { $materiel }（+{ $income }/h）
 ops-materiel-red = 红方 { $materiel }（+{ $income }/h）
 ops-crew-tempo = 敌方节奏 ×{ $pace }
+ops-due = T-{ $mins } 分钟
+ops-due-now = 进行中
+ops-front-blue = 前线：蓝方占优
+ops-front-red = 前线：红方占优
+ops-front-even = 前线：僵持
+ops-operation = { $place } 行动：已准备 { $done }/{ $total }
 ops-friendly = 友军
 ops-enemy = 敌军
 ops-section-forces = 兵力
@@ -108,6 +115,8 @@ ops-how =
     AI 的一切行动都要付费：修复、每次战斗机出击、空袭和它自己的投送。物资不足时，其损伤得不到修复，飞机也留在基地。
     AI 只使用它现有的飞机；被击落就没有了，着陆后可再次起飞。只要物资够用，每一方每小时都会购买新飞机。
     你不会缺乏物资：你的飞机、你的基地（无论是否被轰炸）以及你自己下令投送的直升机始终可用。
+ops-how-repairs = 每一方同时只能修复少数阵地（完好城市越多越多），先修最靠近前线的；修复后不久再次被摧毁的阵地，每次修复都更久。
+ops-how-airframes = 损失的飞机计入：飞行员每损失一架飞机，己方 AI 就少一架战斗机或直升机。
 ops-section-prices = 价格
 ops-price-airfield = 修复机场
 ops-price-sam = 修复 SAM 阵地
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } 分（package 奖励 +{ $bonus }）
 ops-campaign-points = { $rank } - 战役得分 { $points }
 ops-campaign-record = 战役：{ $sorties } 次出击，达成 { $won } 个目标
 ops-section-meanwhile = 与此同时
+ops-section-effects = 你对战争的影响
 ops-victory = 胜利
     .text = 敌军已不再拥有任何机场：战区归我方所有。
 ops-defeat = 失败

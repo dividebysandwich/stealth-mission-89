@@ -118,6 +118,7 @@ kg-detail = Detalumo lygis
 kg-day-night = Diena / naktis
 kg-training = Pereiti į treniruotę
 kg-resupply = Papildyti atsargas
+kg-accept-tasking = Priimti nukreipimą
 kg-quit = Išeiti
 kg-hover = Automatinis sklendimas (sraigtasparniai, iki 30 kt)
 kg-rwr-priority = RWR prioriteto režimas (penkios grėsmės) įj. / išj.

@@ -12,6 +12,7 @@ hud-aim-at-target = RIKTA MOT MÅL
 hud-photo = FOTO { $state }
 hud-rearmed = Ombeväpnad och tankad
 hud-landed-rearm = Landad - beväpna om eller avsluta flygningen
+hud-divert-accept = Omdirigering: { $title } - { $key } för att acceptera
 hud-objective-achieved = Målet uppnått
 
 ## Skärmen vid uppdragets slut

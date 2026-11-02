@@ -157,6 +157,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[DayNight]), "kg-day-night"),
                 (Actions(&[Training]), "kg-training"),
                 (Actions(&[Resupply]), "kg-resupply"),
+                (Actions(&[AcceptTasking]), "kg-accept-tasking"),
                 (Actions(&[Quit]), "kg-quit"),
             ],
         ),

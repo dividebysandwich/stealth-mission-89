@@ -79,11 +79,18 @@ ops-rule-no-crashes = protection anti-crash
 ops-rule-time = temps continu
 ops-rule-weapons = armement réaliste du F-117A
 ops-rule-friendly-fire = tirs fratricides
+ops-rule-airframe-losses = appareils perdus comptés
 ops-rule-classic = classiques
 ops-materiel = MATÉRIEL
 ops-materiel-blue = BLEU { $materiel } (+{ $income }/h)
 ops-materiel-red = ROUGE { $materiel } (+{ $income }/h)
 ops-crew-tempo = RYTHME ENNEMI ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = EN COURS
+ops-front-blue = FRONT : BLEU AVANCE
+ops-front-red = FRONT : ROUGE AVANCE
+ops-front-even = FRONT : STABLE
+ops-operation = Opération { $place } : { $done }/{ $total } préparé
 ops-friendly = AMIS
 ops-enemy = ENNEMIS
 ops-section-forces = Forces
@@ -108,6 +115,8 @@ ops-how =
     L'IA paie tout ce qu'elle fait : réparations, chaque sortie de chasse, raids et ses propres insertions. À court de matériel, ses dégâts ne sont pas réparés et ses avions restent au sol.
     L'IA ne vole qu'avec les appareils qu'elle a ; abattus, ils sont perdus, posés, ils revolent. Chaque heure, chaque camp en achète de nouveaux tant que son matériel le permet.
     Vous ne manquez jamais de rien : vos appareils, vos bases (bombardées ou non) et les hélicoptères de vos propres ordres d'insertion sont toujours là.
+ops-how-repairs = Chaque camp ne répare que quelques sites à la fois (davantage avec plus de villes intactes), les plus proches du front d'abord, et un site détruit de nouveau peu après sa réparation demande chaque fois plus de temps.
+ops-how-airframes = Les appareils perdus comptent : chaque appareil qu'un pilote perd est un chasseur ou un hélicoptère de moins pour l'IA alliée.
 ops-section-prices = Prix
 ops-price-airfield = Réparation d'aérodrome
 ops-price-sam = Réparation de site SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } points (bonus de package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } points de campagne
 ops-campaign-record = Campagne : { $sorties } sorties, { $won } objectifs atteints
 ops-section-meanwhile = Pendant ce temps
+ops-section-effects = Votre effet sur la guerre
 ops-victory = VICTOIRE
     .text = L'ennemi ne tient plus aucun aérodrome : le théâtre est à nous.
 ops-defeat = DÉFAITE

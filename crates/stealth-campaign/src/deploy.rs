@@ -4,7 +4,7 @@
 //! `DEPLOY_AI_WAIT` goes by AI helicopter. All loads in within `DEPLOY_TIMEOUT`, the unit
 //! stands beside the pad; else the helipad is gone.
 
-use stealth_i18n::Text;
+use stealth_i18n::{Text, text};
 
 use crate::state::*;
 use crate::tuning::*;
@@ -179,7 +179,7 @@ impl CampaignState {
                     self.deployments[k].seen = true;
                 } else if !up && d.seen {
                     let d = self.deployments.remove(k);
-                    let text = Text::raw(format!("The {} is destroyed", d.title()));
+                    let text = text!("cl-site-destroyed", site = d.label());
                     self.note(text.clone());
                     ev.push(CampaignEvent::Message(text));
                 }

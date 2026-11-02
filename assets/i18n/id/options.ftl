@@ -89,6 +89,15 @@ options-sun-moon = Matahari dan bulan
     .facts =
         Matahari di langit pada siang hari, bulan dan bintang pada malam hari
         Bulan menunjukkan fase misi
+options-cloud-quality = Awan
+cloud-quality-auto = Otomatis
+    .facts = Rendah di VR, tinggi di layar
+cloud-quality-low = Rendah
+    .facts = Awan kasar pada sepertiga resolusi (tercepat)
+cloud-quality-medium = Sedang
+    .facts = Setengah resolusi, detail lebih halus
+cloud-quality-high = Tinggi
+    .facts = Resolusi penuh, detail terhalus dan bayangan sendiri (memakan waktu GPU)
 
 ## SUARA
 

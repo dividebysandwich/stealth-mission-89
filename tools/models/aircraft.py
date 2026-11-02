@@ -217,7 +217,7 @@ def hang_stations(craft, paint):
 
 
 class RailPylon:
-    """A launcher rail of its own (the F-16's stations 1, 2, 8 and 9): its lugs `depth` m under
+    """A launcher rail of its own (the F-16's stations 2 and 8): its lugs `depth` m under
     the pylon or the wingtip."""
     def __init__(self, paint, depth=0.11):
         self.paint, self.depth = paint, depth
@@ -328,8 +328,8 @@ def f16():
     # slot 28 is 1 on the flyable one, its stores hung by the game: `F16_STATIONS`).
     tips = Geo()
     for s in (-1, 1):
-        g.add(block(s * 4.58, s * 4.72, -1.7, -3.6, -0.05, 0.05, F16_GREY))
-        tips.add(missile(s * 4.66, -0.9, -0.14, 3.0))
+        g.add(f16_tip_launcher(s))
+        tips.add(missile(s * F16_TIP_X, -0.9, F16_TIP_LUGS - 0.08, 3.0))
     # The fin on its base, the ventral fins canted out.
     g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, F16_GREY, t=0.05, vertical=True, mirror=False))
     g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, F16_GREY, t=0.05, vertical=True))
@@ -339,9 +339,27 @@ def f16():
                  stations=("F16_STATIONS", F16_STATIONS, F16_GREY), groups=[([(STORES_SLOT, 0)], tips)])
 
 
-# The F-16's stations 1 to 9: the wingtip rails, the outer wing's launcher rails on short
+# The wingtip launchers (LAU-129): x of the missile's axis, outboard of the tip's edge (x 4.60)
+# so the fins clear it; z of the lugs under the launcher's rail.
+F16_TIP_X = 4.80
+F16_TIP_LUGS = -0.15
+
+
+def f16_tip_launcher(s):
+    """The launcher on the wingtip's edge (`s` -1 left, 1 right): the fairing joining it to the
+    tip, its housing along the missile's axis, the rail underneath."""
+    def box(x0, x1, y0, y1, z0, z1, paint):
+        return block(min(s * x0, s * x1), max(s * x0, s * x1), y0, y1, z0, z1, paint)
+    x = F16_TIP_X
+    g = box(4.56, x, -2.19, -3.30, -0.025, 0.025, F16_GREY)
+    g.add(box(x - 0.05, x + 0.05, -1.55, -3.30, F16_TIP_LUGS + 0.02, 0.035, F16_GREY))
+    g.add(box(x - 0.022, x + 0.022, -1.70, -3.30, F16_TIP_LUGS, F16_TIP_LUGS + 0.02, DARK))
+    return g
+
+
+# The F-16's stations 1 to 9: the wingtip launchers, the outer wing's launcher rails on short
 # pylons, the wing pylons, the centreline pylon under the intake.
-F16_STATIONS = [Station(0.0, rail=RailPylon(F16_GREY, depth=0.21)),
+F16_STATIONS = [Station(0.0),
                 Station(0.18, chord=1.3, w=0.05, rail=RailPylon(F16_GREY)), Station(0.40, chord=1.6),
                 Station(0.42, chord=1.7), Station(0.09, chord=1.5)]
 F16_STATIONS = F16_STATIONS + F16_STATIONS[3::-1]
@@ -1426,12 +1444,12 @@ def write_stores_table(path):
 
     import stores
 
-    qty = stores.pylon_rounds()
     out = {"models": {str(w): m for w, (m, _) in sorted(stores.WEAPON_MODELS.items())},
            "racks": {name: m for name, (m, _) in sorted(stores.RACKS.items())}, "jets": {}}
     racks = {name: make() for name, (_, make) in stores.RACKS.items()}
     for index, (hung, (table, stations, _)) in sorted(HUNG.items()):
         spots = stores.loadout_stations(table)
+        qty = stores.station_rounds(table)
         jet = []
         for i, parent, at, roll in hung:
             kind = station_kind(stations[i])
@@ -1440,7 +1458,7 @@ def write_stores_table(path):
             for w in spots[i][2]:
                 if w not in stores.WEAPON_MODELS:
                     continue
-                n = qty[w]
+                n = qty[i][w]
                 rack = stores.rack_for(kind, w, n)
                 mounts = racks[rack].mounts[:n] if rack else [((0.0, 0.0, 0.0), 0.0)]
                 if rack == "ter" and n == 2:

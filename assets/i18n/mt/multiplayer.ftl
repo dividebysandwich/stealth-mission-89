@@ -84,6 +84,7 @@ mp-rules = Regoli għal kulħadd
 mp-time-of-day = Ħin tal-jum (iljieli bil-qamar)
 mp-realistic-weapons = Armi realistiċi tal-F-117A
 mp-friendly-fire = Nar alleat
+mp-airframe-losses = L-ajruplani mitlufa jgħoddu
 mp-day-night = Jum u lejl:
 mp-weather = Temp:
 mp-host-new = OSPITA ĠDID

@@ -272,6 +272,17 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// A player in the air takes an urgent mission instead of his own (the AWACS's divert).
+    pub fn retask(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        offer: u32,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let events = self.state.apply(player, Command::Retask { offer })?;
+        Ok(self.apply(sim, events))
+    }
+
     /// A player orders an insertion against an enemy place.
     pub fn order_insertion(
         &mut self,
@@ -673,6 +684,10 @@ impl Host {
                         FighterTask::Cap => stealth_sim::ai_loadout::FighterTask::Cap,
                     };
                     sim.spawn_fighter(*from as usize, *x, *y, *tag, *side == Side::Blue, task);
+                }
+                // His aircraft's target is the new mission's.
+                CampaignEvent::SortieRetasked { player, sortie } => {
+                    sim.set_pilot_target(player.0, glue::sim_objective(sortie));
                 }
                 CampaignEvent::SortieStarted { player, sortie } => {
                     let base = sortie.base as usize;

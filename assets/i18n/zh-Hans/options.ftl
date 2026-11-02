@@ -89,6 +89,15 @@ options-sun-moon = 太阳和月亮
     .facts =
         白天天空中有太阳，夜间有月亮和星星
         月亮显示任务当天的月相
+options-cloud-quality = 云
+cloud-quality-auto = 自动
+    .facts = VR 中为低，屏幕上为高
+cloud-quality-low = 低
+    .facts = 三分之一分辨率的粗糙云（最快）
+cloud-quality-medium = 中
+    .facts = 一半分辨率，细节更多
+cloud-quality-high = 高
+    .facts = 全分辨率，最细的细节和自身阴影（耗费 GPU 时间）
 
 ## 声音
 

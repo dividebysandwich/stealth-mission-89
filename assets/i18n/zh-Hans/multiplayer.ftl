@@ -84,6 +84,7 @@ mp-rules = 适用于所有人的规则
 mp-time-of-day = 时间段（有月光的夜晚）
 mp-realistic-weapons = 真实的 F-117A 武器
 mp-friendly-fire = 友军误伤
+mp-airframe-losses = 损失的飞机计入
 mp-day-night = 昼夜：
 mp-weather = 天气：
 mp-host-new = 创建新战役

@@ -79,11 +79,18 @@ ops-rule-no-crashes = bez havárií
 ops-rule-time = nepřetržitý čas
 ops-rule-weapons = realistická výzbroj F-117A
 ops-rule-friendly-fire = palba do vlastních
+ops-rule-airframe-losses = ztracené letouny se počítají
 ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODŘÍ { $materiel } (+{ $income }/h)
 ops-materiel-red = ČERVENÍ { $materiel } (+{ $income }/h)
 ops-crew-tempo = TEMPO NEPŘÍTELE ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NYNÍ
+ops-front-blue = FRONTA: MODŘÍ POSTUPUJÍ
+ops-front-red = FRONTA: ČERVENÍ POSTUPUJÍ
+ops-front-even = FRONTA: DRŽÍ
+ops-operation = Operace { $place }: { $done }/{ $total } připraveno
 ops-friendly = PŘÁTELÉ
 ops-enemy = NEPŘÍTEL
 ops-section-forces = Síly
@@ -108,6 +115,8 @@ ops-how =
     AI platí za vše, co dělá: opravy, každý stíhací let, nálety i vlastní výsadky. Při nedostatku materiálu zůstanou jeho škody neopravené a letadla na zemi.
     AI létá jen na letadlech, která má; sestřelená jsou pryč, přistálá zase létají. Každou hodinu každá strana nakupuje nová, dokud vydrží materiál.
     Vám nikdy nic nechybí: vaše letadla, vaše základny (bombardované či ne) a vrtulníky vašich vlastních rozkazů k výsadku jsou vždy k dispozici.
+ops-how-repairs = Každá strana opravuje najednou jen několik stanovišť (víc s více nepoškozenými městy), nejdřív ta nejblíž frontě, a stanoviště zničené znovu brzy po opravě trvá pokaždé déle.
+ops-how-airframes = Ztracené letouny se počítají: každý letoun, který pilot ztratí, je o jednu stíhačku nebo vrtulník méně pro spřátelenou AI.
 ops-section-prices = Ceny
 ops-price-airfield = Oprava letiště
 ops-price-sam = Oprava stanoviště SAM
@@ -155,6 +164,7 @@ ops-points-bonus = Bodů: { $points } (bonus za package +{ $bonus })
 ops-campaign-points = { $rank } - bodů kampaně: { $points }
 ops-campaign-record = Kampaň: bojových letů { $sorties }, splněných cílů { $won }
 ops-section-meanwhile = Mezitím
+ops-section-effects = Tvůj vliv na válku
 ops-victory = VÍTĚZSTVÍ
     .text = Nepřítel už nedrží žádné letiště: operační prostor je náš.
 ops-defeat = PORÁŽKA

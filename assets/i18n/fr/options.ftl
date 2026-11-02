@@ -89,6 +89,15 @@ options-sun-moon = Soleil et lune
     .facts =
         Le soleil dans le ciel le jour, la lune et les étoiles la nuit
         La lune montre la phase de la mission
+options-cloud-quality = Nuages
+cloud-quality-auto = Auto
+    .facts = Faible en VR, élevée à l'écran
+cloud-quality-low = Faible
+    .facts = Nuages grossiers au tiers de la résolution (le plus rapide)
+cloud-quality-medium = Moyenne
+    .facts = Moitié de la résolution, détails plus fins
+cloud-quality-high = Élevée
+    .facts = Pleine résolution, détails les plus fins et ombre propre (coûte du temps GPU)
 
 ## SON
 

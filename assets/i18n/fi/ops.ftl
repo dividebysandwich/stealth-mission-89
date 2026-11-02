@@ -79,11 +79,18 @@ ops-rule-no-crashes = ei syöksyjä
 ops-rule-time = jatkuva aika
 ops-rule-weapons = realistiset F-117A-aseet
 ops-rule-friendly-fire = omien tulitus
+ops-rule-airframe-losses = menetetyt koneet lasketaan
 ops-rule-classic = klassinen
 ops-materiel = MATERIAALI
 ops-materiel-blue = SININEN { $materiel } (+{ $income }/h)
 ops-materiel-red = PUNAINEN { $materiel } (+{ $income }/h)
 ops-crew-tempo = VIHOLLISEN TAHTI ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NYT
+ops-front-blue = RINTAMA: SININEN ETENEE
+ops-front-red = RINTAMA: PUNAINEN ETENEE
+ops-front-even = RINTAMA: PITÄÄ
+ops-operation = Operaatio { $place }: { $done }/{ $total } valmisteltu
 ops-friendly = OMAT
 ops-enemy = VIHOLLINEN
 ops-section-forces = Voimat
@@ -108,6 +115,8 @@ ops-how =
     Tekoäly maksaa kaikesta, mitä se tekee: korjauksista, jokaisesta hävittäjälennosta, iskuista ja omista maihinnousuistaan. Jos materiaali loppuu, sen vauriot jäävät korjaamatta ja sen koneet pysyvät kotona.
     Tekoäly lentää vain koneilla, jotka sillä on; alasammutut ovat poissa, laskeutuneet lentävät taas. Joka tunti kumpikin osapuoli ostaa uusia, kunhan materiaalia riittää.
     Sinulta ei lopu mikään: koneesi, tukikohtasi (pommitettuina tai ei) ja omien maihinnousutilaustesi helikopterit ovat aina saatavilla.
+ops-how-repairs = Kumpikin puoli korjaa vain muutaman kohteen kerrallaan (enemmän, kun ehjiä kaupunkeja on enemmän), rintamaa lähimmät ensin, ja pian korjauksen jälkeen uudelleen tuhottu kohde vie joka kerta kauemmin.
+ops-how-airframes = Menetetyt koneet lasketaan: jokainen lentäjän menettämä kone on yksi hävittäjä tai helikopteri vähemmän omalle tekoälylle.
 ops-section-prices = Hinnat
 ops-price-airfield = Lentokentän korjaus
 ops-price-sam = SAM-aseman korjaus
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } pistettä (pakettibonus +{ $bonus })
 ops-campaign-points = { $rank } - kampanjapisteet { $points }
 ops-campaign-record = Kampanja: lentoja { $sorties }, tavoitteita saavutettu { $won }
 ops-section-meanwhile = Sillä välin
+ops-section-effects = Vaikutuksesi sotaan
 ops-victory = VOITTO
     .text = Vihollisella ei ole enää yhtään lentokenttää: operaatioalue on meidän.
 ops-defeat = TAPPIO

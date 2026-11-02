@@ -116,6 +116,7 @@ kg-detail = Niveau de détail
 kg-day-night = Jour / nuit
 kg-training = Passer en entraînement
 kg-resupply = Ravitaillement
+kg-accept-tasking = Accepter le déroutement
 kg-quit = Quitter
 kg-hover = Stationnaire automatique (hélicoptères, jusqu'à 30 kt)
 kg-rwr-priority = Mode priorité du RWR (cinq menaces) activé / désactivé

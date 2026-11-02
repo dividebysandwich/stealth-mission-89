@@ -898,6 +898,26 @@ pub struct AtcState {
     refresh: f32,
 }
 
+impl AtcState {
+    /// Another station's call over the controller's radio (spoken and logged as the
+    /// controller's): false with no sortie to say it to.
+    pub fn radio(&mut self, from: &str, text: String, readback: Option<String>) -> bool {
+        let Some(atc) = self.atc.as_mut() else { return false };
+        if !text.is_empty() {
+            atc.say(from.to_string(), text, false);
+        }
+        if let Some(r) = readback {
+            atc.pilot(r);
+        }
+        true
+    }
+
+    /// The pilot's callsign on the radio.
+    pub fn callsign(&self) -> Option<&str> {
+        self.atc.as_ref().map(|a| a.callsign.as_str())
+    }
+}
+
 /// Sound id of the radio's click (`sounds/radio_click.flac`, optional).
 pub const RADIO_CLICK: u8 = 112;
 

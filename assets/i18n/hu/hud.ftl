@@ -13,6 +13,7 @@ hud-aim-at-target = CÉLOZD A CÉLPONTOT
 hud-photo = FÉNYKÉP { $state }
 hud-rearmed = Újrafegyverezve és feltankolva
 hud-landed-rearm = Leszállt - fegyverezz újra, vagy fejezd be a bevetést
+hud-divert-accept = Átirányítás: { $title } - { $key } az elfogadáshoz
 hud-objective-achieved = Cél teljesítve
 
 ## A küldetés végi rávetítés

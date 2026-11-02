@@ -89,6 +89,15 @@ options-sun-moon = 太陽と月
     .facts =
         昼は空に太陽、夜は月と星
         月はミッションの月齢を示します
+options-cloud-quality = 雲
+cloud-quality-auto = 自動
+    .facts = VRでは低、画面では高
+cloud-quality-low = 低
+    .facts = 解像度3分の1の粗い雲（最速）
+cloud-quality-medium = 中
+    .facts = 解像度2分の1、より細かい表示
+cloud-quality-high = 高
+    .facts = 最大解像度、最も細かい表示と自己影（GPU時間を使います）
 
 ## SOUND
 

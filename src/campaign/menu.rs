@@ -186,6 +186,7 @@ pub fn campaign_window(
                 });
                 ui.label(egui::RichText::new(t!("cm-conditions-note")).small().color(DIM));
                 crate::menu::simulation_options(ui, &mut settings, Some(t!("cm-rules-note")));
+                ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
             });
             flow.card(ui, Span::Fill(INFO_LEAST), |ui| {
             for line in t_lines!("cm-about") {
@@ -214,7 +215,10 @@ pub fn campaign_window(
                     dynamic_weather: !w.clear_sky,
                     crew_scaling: true,
                 };
-                let rules = super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117));
+                let rules = stealth_host::Rules {
+                    airframe_losses: state.airframe_losses,
+                    ..super::rules_of(&settings, state.realistic(crate::aircraft::AircraftKind::F117))
+                };
                 match ActiveCampaign::new(format!("{code}-{secs}"), setup, &data, rules) {
                     Ok(c) => start = Some(c),
                     Err(e) => w.error = Some(format!("{e:#}")),

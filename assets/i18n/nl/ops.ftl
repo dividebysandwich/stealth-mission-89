@@ -79,11 +79,18 @@ ops-rule-no-crashes = geen crashes
 ops-rule-time = doorlopende tijd
 ops-rule-weapons = realistische F-117A-wapens
 ops-rule-friendly-fire = friendly fire
+ops-rule-airframe-losses = verloren toestellen tellen
 ops-rule-classic = klassiek
 ops-materiel = MATERIEEL
 ops-materiel-blue = BLAUW { $materiel } (+{ $income }/u)
 ops-materiel-red = ROOD { $materiel } (+{ $income }/u)
 ops-crew-tempo = VIJANDELIJK TEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NU
+ops-front-blue = FRONT: BLAUW WINT TERREIN
+ops-front-red = FRONT: ROOD WINT TERREIN
+ops-front-even = FRONT: HOUDT STAND
+ops-operation = Operatie { $place }: { $done }/{ $total } voorbereid
 ops-friendly = BEVRIEND
 ops-enemy = VIJAND
 ops-section-forces = Strijdkrachten
@@ -108,6 +115,8 @@ ops-how =
     De AI betaalt voor alles wat ze doet: reparaties, elke jagervlucht, aanvallen en haar eigen inzetten. Bij gebrek aan materieel blijft haar schade onhersteld en blijven haar toestellen thuis.
     De AI vliegt alleen met de toestellen die ze heeft; neergehaald zijn ze weg, geland vliegen ze weer. Elk uur koopt elke partij nieuwe zolang haar materieel strekt.
     Jij komt nooit tekort: je toestellen, je bases (gebombardeerd of niet) en de helikopters van je eigen inzetbevelen zijn er altijd.
+ops-how-repairs = Elke kant herstelt maar een paar stellingen tegelijk (meer met meer intacte steden), die bij het front eerst, en een stelling die kort na herstel opnieuw wordt vernietigd duurt elke keer langer.
+ops-how-airframes = Verloren toestellen tellen: elk toestel dat een piloot verliest is één jager of helikopter minder voor de eigen AI.
 ops-section-prices = Prijzen
 ops-price-airfield = Vliegveld repareren
 ops-price-sam = SAM-site repareren
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } punten (packagebonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } campagnepunten
 ops-campaign-record = Campagne: { $sorties } vluchten, { $won } doelen bereikt
 ops-section-meanwhile = Intussen
+ops-section-effects = Jouw invloed op de oorlog
 ops-victory = OVERWINNING
     .text = De vijand houdt geen vliegveld meer: het operatiegebied is van ons.
 ops-defeat = NEDERLAAG

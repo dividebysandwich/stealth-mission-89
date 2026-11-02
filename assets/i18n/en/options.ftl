@@ -90,6 +90,15 @@ options-sun-moon = Sun and moon
     .facts =
         The sun in the sky by day, the moon and the stars by night
         The moon shows the mission's phase
+options-cloud-quality = Clouds
+cloud-quality-auto = Auto
+    .facts = Low in VR, high on the screen
+cloud-quality-low = Low
+    .facts = Coarse clouds at a third of the resolution (fastest)
+cloud-quality-medium = Medium
+    .facts = Half the resolution, finer detail
+cloud-quality-high = High
+    .facts = Full resolution, finest detail and self shadow (costs GPU time)
 
 ## SOUND
 

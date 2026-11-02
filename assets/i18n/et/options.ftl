@@ -89,6 +89,15 @@ options-sun-moon = Päike ja kuu
     .facts =
         Päike taevas päeval, kuu ja tähed öösel
         Kuu näitab missiooni faasi
+options-cloud-quality = Pilved
+cloud-quality-auto = Auto
+    .facts = Madal VR-is, kõrge ekraanil
+cloud-quality-low = Madal
+    .facts = Jämedad pilved kolmandiku eraldusvõimega (kiireim)
+cloud-quality-medium = Keskmine
+    .facts = Pool eraldusvõimest, peenemad detailid
+cloud-quality-high = Kõrge
+    .facts = Täielik eraldusvõime, peenimad detailid ja omavari (kulutab GPU aega)
 
 ## HELI
 

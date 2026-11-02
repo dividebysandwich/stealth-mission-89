@@ -79,11 +79,18 @@ ops-rule-no-crashes = nincs lezuhanás
 ops-rule-time = folyamatos idő
 ops-rule-weapons = valósághű F-117A fegyverzet
 ops-rule-friendly-fire = baráti tűz
+ops-rule-airframe-losses = az elvesztett gépek számítanak
 ops-rule-classic = klasszikus
 ops-materiel = HADIANYAG
 ops-materiel-blue = KÉK { $materiel } (+{ $income }/ó)
 ops-materiel-red = PIROS { $materiel } (+{ $income }/ó)
 ops-crew-tempo = AZ ELLENSÉG ÜTEME ×{ $pace }
+ops-due = T-{ $mins } perc
+ops-due-now = MOST
+ops-front-blue = FRONT: A KÉK TÉRT NYER
+ops-front-red = FRONT: A PIROS TÉRT NYER
+ops-front-even = FRONT: TART
+ops-operation = { $place } hadművelet: { $done }/{ $total } előkészítve
 ops-friendly = BARÁTI
 ops-enemy = ELLENSÉGES
 ops-section-forces = Erők
@@ -108,6 +115,8 @@ ops-how =
     Az MI mindenért fizet, amit tesz: javításokért, minden vadászbevetésért, légitámadásokért és saját deszantjaiért. Ha kevés a hadianyaga, a sérülései javítatlanok maradnak, és a gépei otthon maradnak.
     Az MI csak azokkal a gépekkel repül, amelyekkel rendelkezik; a lelőttek elvesznek, a leszálltak újra repülnek. Óránként mindkét oldal újakat vásárol, amíg a hadianyaga tart.
     Neked sosem fogy el: a gépeid, a bázisaid (bombázva vagy sem) és a saját deszantparancsaid helikopterei mindig rendelkezésre állnak.
+ops-how-repairs = Mindkét oldal egyszerre csak néhány állást javít (több ép várossal többet), a fronthoz legközelebbieket először, és a javítás után hamar újra lerombolt állás javítása minden alkalommal tovább tart.
+ops-how-airframes = Az elvesztett gépek számítanak: minden gép, amit egy pilóta elveszít, eggyel kevesebb vadász vagy helikopter a saját MI-nek.
 ops-section-prices = Árak
 ops-price-airfield = Repülőtér javítása
 ops-price-sam = SAM-állás javítása
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } pont (kötelékbónusz +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampánypont
 ops-campaign-record = Kampány: { $sorties } bevetés, { $won } teljesített cél
 ops-section-meanwhile = Közben
+ops-section-effects = Hatásod a háborúra
 ops-victory = GYŐZELEM
     .text = Az ellenségnek nincs több repülőtere: a hadszíntér a miénk.
 ops-defeat = VERESÉG

@@ -89,6 +89,15 @@ options-sun-moon = Saulė ir Mėnulis
     .facts =
         Saulė danguje dieną, Mėnulis ir žvaigždės naktį
         Mėnulis rodo misijos fazę
+options-cloud-quality = Debesys
+cloud-quality-auto = Auto
+    .facts = Žema VR, aukšta ekrane
+cloud-quality-low = Žema
+    .facts = Šiurkštūs debesys trečdaliu raiškos (greičiausia)
+cloud-quality-medium = Vidutinė
+    .facts = Pusė raiškos, smulkesnės detalės
+cloud-quality-high = Aukšta
+    .facts = Visa raiška, smulkiausios detalės ir savas šešėlis (naudoja GPU laiką)
 
 ## GARSAS
 

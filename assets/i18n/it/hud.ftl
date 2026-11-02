@@ -12,6 +12,7 @@ hud-aim-at-target = PUNTARE L'OBIETTIVO
 hud-photo = FOTO { $state }
 hud-rearmed = Riarmato e rifornito
 hud-landed-rearm = Atterrato - riarmare o terminare la sortita
+hud-divert-accept = Dirottamento: { $title } - { $key } per accettare
 hud-objective-achieved = Obiettivo raggiunto
 
 ## Schermata di fine missione

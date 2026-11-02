@@ -146,6 +146,8 @@ pub enum Action {
     Volume,
     Training,
     Resupply,
+    /// Campaign: take the urgent mission the AWACS diverts the pilot to.
+    AcceptTasking,
     DayNight,
     /// Modern avionics: lock what is under the sensor of interest's cursor.
     LockCursor,
@@ -445,6 +447,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyV, Volume),
         (Alt, K::KeyT, Training),
         (Alt, K::KeyR, Resupply),
+        (Alt, K::KeyA, AcceptTasking),
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),

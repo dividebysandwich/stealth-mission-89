@@ -12,10 +12,11 @@ Dimensions (m: length, body diameter, span):
     AIM-9M 2.87 x 0.127, canards 0.64, fins 0.63     AIM-120A 3.65 x 0.178, wings 0.53, fins 0.45
     AGM-88A 4.17 x 0.254, wings 1.13, fins 0.64      Penguin Mk 3 3.18 x 0.28, wings 1.0 (folded)
     AGM-84A 3.84 x 0.343, wings and fins 0.91        AGM-65 2.49 x 0.305, wings 0.72
-    GBU-12 3.27 x 0.273 (Mk 82), folded wings 0.49   Mk 20 Rockeye 2.34 x 0.335, fins 0.88
+    GBU-12 3.27 x 0.273 (Mk 82), folded wings 0.49   Mk 20 Rockeye 2.34 x 0.335, folded fins 0.44
     Durandal 2.70 x 0.223, fins 0.43                 Mk 82 LDGP 2.21 x 0.273, conical fin 0.38
     Mk 82 Snakeye 2.48 x 0.273, folded Mk 15 0.51    Mk 122 Fireye (Mk 77 class) 3.0 x 0.48
     CBU-72, Mk 35, ISCB-1 (SUU-30 / SUU-49 class) 2.35 x 0.40, fins 0.60
+    AGM-114 Hellfire 1.63 x 0.178, wings 0.33
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -196,6 +197,20 @@ def maverick():
     return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 1.0), 0.0, r))
 
 
+def hellfire():
+    """AGM-114 Hellfire: the faceted laser seeker's blunt nose, the small canards behind it, the
+    short-chord wings aft, olive with the yellow (live warhead) and brown (live motor) bands."""
+    L, r = 1.63, 0.089
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.02, 0.05), (n - 0.07, 0.075), (n - 0.13, r), (t, r)], OLIVE,
+             bands=[(n - 0.30, n - 0.36, YELLOW), (n - 0.80, n - 0.86, BROWN)])
+    g.add(body([(n + 0.003, 0.0), (n - 0.015, 0.045)], GLASS, n=8))
+    fins(g, n - 0.20, n - 0.30, r, 0.05, OLIVE, tip=(n - 0.26, n - 0.30))
+    fins(g, t + 0.30, t + 0.03, r, 0.075, OLIVE, tip=(t + 0.10, t + 0.03))
+    lugs(g, 0.0, r, spacing=0.30)
+    return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 0.8), 0.0, r))
+
+
 # ---------------------------------------------------------------------------------------------
 # Bombs, dispensers, pods and tanks (no motor)
 
@@ -257,12 +272,13 @@ def snakeye():
 
 def rockeye(band=YELLOW):
     """Mk 20 Rockeye (and the Rockeye II, its band green... here brown): the dispenser's fuzed
-    nose, the cylindrical case, the four big tail fins."""
+    nose, the cylindrical case, the four tail fins folded for carriage (0.44 across; 0.88 open
+    after release)."""
     L, r = 2.34, 0.1675
     n, t = L / 2, -L / 2
     g = body([(n, 0.0), (n - 0.06, 0.03), (n - 0.30, 0.12), (n - 0.55, r), (t + 0.45, r), (t + 0.05, 0.10),
               (t, 0.07)], OLIVE, bands=[(n - 0.62, n - 0.70, band)])
-    fins(g, t + 0.50, t + 0.02, 0.12, 0.30, OLIVE, rot=45.0, tip=(t + 0.20, t + 0.02))
+    fins(g, t + 0.50, t + 0.02, 0.12, 0.10, OLIVE, rot=45.0, tip=(t + 0.30, t + 0.02))
     lugs(g, 0.0, r)
     return Store(hang(g, 0.0, r))
 
@@ -347,17 +363,19 @@ def cargo_pod():
 
 
 # Weapon type (src/loadout.rs `WEAPONS`) -> (model index, builder): the stores the jets hang.
-# Hellfire, Stinger and the gun pod hang on the helicopters only (their own models).
+# The Stinger and the gun pod hang on the helicopters only (their own models), the Hellfire on
+# the jets too.
 WEAPON_MODELS = {
     0: (50, aim9), 1: (51, aim120), 2: (52, harm), 3: (53, penguin), 4: (54, harpoon), 5: (55, maverick),
     6: (56, gbu12), 7: (57, rockeye), 8: (58, durandal), 9: (59, mk82), 10: (60, snakeye),
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
-    16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod),
+    16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
-          10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24}
+          10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
+          20: 0.089}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -397,23 +415,39 @@ def lau118():
 
 
 # The triple ejector rack: its beam, the two shoulder stations on its canted faces (45 degrees
-# out) and the bottom one, staggered aft so the rounds' tails clear each other.
-TER_DEPTH = 0.30
-TER_SHOULDER = (0.105, -0.13)
+# out, each round's top turned in to its face) and the bottom one, staggered aft so the
+# rounds' tails clear each other. Spaced for the Snakeye's folded retarder (the widest tail
+# carried three to a rack).
+TER_DEPTH = 0.42
+TER_SHOULDER = (0.16, -0.13)
 TER_STAGGER = 0.0
 
 
 def ter():
-    """TER-9/A: the beam under the pylon, its sway braces, the three ejector stations."""
+    """BRU-42 (TER-9/A class) triple ejector rack: the beam under the pylon, the shoulder
+    ejectors canted out on its sides with their sway braces, the bottom ejector."""
     g = Geo()
-    w, d = 0.10, TER_DEPTH
+    w, d = 0.08, TER_DEPTH
     sx, sz = TER_SHOULDER
     g.add(hexa([(-w, 1.15, 0.0), (w, 1.15, 0.0), (w, -1.15, 0.0), (-w, -1.15, 0.0),
                 (-0.05, 1.05, -d), (0.05, 1.05, -d), (0.05, -1.05, -d), (-0.05, -1.05, -d)], GREY))
-    for y in (0.30, -0.30):
-        for s in (-1, 1):
-            g.add(block(s * sx - 0.02, s * sx + 0.02, y - 0.03, y + 0.03, sz - 0.03, sz + 0.06, DARK))
-    return Rack(g, [((-sx, 0.0, sz), -45.0), ((sx, 0.0, sz), 45.0), ((0.0, TER_STAGGER, -d), 0.0)])
+    for s in (-1, 1):
+        # The ejector's face through the lugs, facing down and out; its housing back into the beam.
+        c = Vector((s * sx, 0.0, sz))
+        n = Vector((s * 0.7071, 0.0, -0.7071))
+        t = Vector((0.7071, 0.0, s * 0.7071))
+        back = c - n * 0.14
+        pts = []
+        for depth in (c, back):
+            for y, side in ((0.95, -1), (0.95, 1), (-0.95, 1), (-0.95, -1)):
+                p = depth + t * (side * 0.05)
+                pts.append((p.x, y, p.z))
+        g.add(hexa(pts, GREY))
+        for y in (0.30, -0.30):
+            for side in (-1, 1):
+                p = c + t * (side * 0.09) - n * 0.01
+                g.add(block(p.x - 0.02, p.x + 0.02, y - 0.03, y + 0.03, p.z - 0.03, p.z + 0.03, DARK))
+    return Rack(g, [((-sx, 0.0, sz), 45.0), ((sx, 0.0, sz), -45.0), ((0.0, TER_STAGGER, -d), 0.0)])
 
 
 RACKS = {"rail": (70, rail_launcher), "lau117": (71, lau117), "lau118": (72, lau118), "ter": (73, ter)}
@@ -468,23 +502,45 @@ def pylon_rounds():
 
 def loadout_stations(table):
     """The hardpoints of `table` (e.g. "F16_STATIONS"): [(x, aft, loads)] in station order."""
-    return [(x, aft, loads) for x, aft, loads, _ in _hardpoints(table)]
+    return [(x, aft, loads) for x, aft, loads, *_ in _hardpoints(table)]
+
+
+def station_rounds(table):
+    """Rounds of each weapon type on each hardpoint of `table`: `PYLON_QTY` but where the
+    station carries another number (`Hardpoint::carrying`)."""
+    qty = pylon_rounds()
+    return [{w: own.get(w, qty[w]) for w in loads} for _, _, loads, _, own in _hardpoints(table)]
 
 
 def exclusive_stations(table):
     """Pairs of stations of `table` that are never loaded together (`Hardpoint::excludes`)."""
-    return {(min(i, j), max(i, j)) for i, (*_, ex) in enumerate(_hardpoints(table)) for j in ex}
+    return {(min(i, j), max(i, j)) for i, (*_, ex, _) in enumerate(_hardpoints(table)) for j in ex}
+
+
+def _qty_lists(text):
+    """The `[(u8, u8); n]` constants: weapon type -> rounds."""
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22}
+    out = {}
+    for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
+        pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)
+        out[name] = {named[w] if w in named else int(w): int(n) for w, n in pairs}
+    return out
 
 
 def _hardpoints(table):
     text = _loadout_text()
     lists = _u8_lists(text)
+    qtys = _qty_lists(text)
     start = text.index(f"static {table}:")
     body = text[start:text.index("];", start)]
     out = []
-    for x, aft, loads, ex in re.findall(
+    for x, aft, loads, tail in re.findall(
             r"pylon\(\s*\"[^\"]*\",\s*\"[^\"]*\",\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(?:Some\(\d+\)|None),\s*&([A-Z0-9_]+),?\s*\)"
-            r"(?:\s*\.excluding\(&\[([\d, ]*)\]\))?",
+            r"((?:\s*\.(?:excluding\(&\[[\d, ]*\]\)|carrying\(&[A-Z0-9_]+\)))*)",
             body):
-        out.append((float(x), float(aft), lists[loads], [int(v) for v in ex.split(",") if v.strip()]))
+        ex = re.search(r"excluding\(&\[([\d, ]*)\]\)", tail)
+        own = re.search(r"carrying\(&([A-Z0-9_]+)\)", tail)
+        out.append((float(x), float(aft), lists[loads],
+                    [int(v) for v in ex.group(1).split(",") if v.strip()] if ex else [],
+                    qtys[own.group(1)] if own else {}))
     return out

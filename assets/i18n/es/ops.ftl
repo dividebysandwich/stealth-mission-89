@@ -79,11 +79,18 @@ ops-rule-no-crashes = protección contra colisiones
 ops-rule-time = tiempo continuo
 ops-rule-weapons = armamento realista del F-117A
 ops-rule-friendly-fire = fuego amigo
+ops-rule-airframe-losses = aeronaves perdidas cuentan
 ops-rule-classic = clásicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)
 ops-materiel-red = ROJO { $materiel } (+{ $income }/h)
 ops-crew-tempo = RITMO ENEMIGO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = AHORA
+ops-front-blue = FRENTE: AZUL AVANZA
+ops-front-red = FRENTE: ROJO AVANZA
+ops-front-even = FRENTE: ESTABLE
+ops-operation = Operación { $place }: { $done }/{ $total } preparado
 ops-friendly = AMIGOS
 ops-enemy = ENEMIGOS
 ops-section-forces = Fuerzas
@@ -108,6 +115,8 @@ ops-how =
     La IA paga todo lo que hace: reparaciones, cada salida de caza, incursiones y sus propias inserciones. Sin material, sus daños quedan sin reparar y sus aviones se quedan en tierra.
     La IA solo vuela los aviones que tiene; derribados, se pierden; aterrizados, vuelven a volar. Cada hora, cada bando compra otros nuevos mientras le dure el material.
     A usted nunca le falta nada: sus aviones, sus bases (bombardeadas o no) y los helicópteros de sus propias órdenes de inserción siempre están ahí.
+ops-how-repairs = Cada bando repara solo unos pocos sitios a la vez (más con más ciudades intactas), primero los más cercanos al frente, y un sitio destruido de nuevo poco después de repararse tarda más cada vez.
+ops-how-airframes = Las aeronaves perdidas cuentan: cada aeronave que pierde un piloto es un caza o helicóptero menos para la IA aliada.
 ops-section-prices = Precios
 ops-price-airfield = Reparación de aeródromo
 ops-price-sam = Reparación de emplazamiento SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } puntos (bonificación de paquete +{ $bonus })
 ops-campaign-points = { $rank } - { $points } puntos de campaña
 ops-campaign-record = Campaña: { $sorties } salidas, { $won } objetivos cumplidos
 ops-section-meanwhile = Mientras tanto
+ops-section-effects = Tu efecto en la guerra
 ops-victory = VICTORIA
     .text = El enemigo ya no controla ningún aeródromo: el teatro es nuestro.
 ops-defeat = DERROTA

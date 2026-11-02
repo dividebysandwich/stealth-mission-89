@@ -79,11 +79,18 @@ ops-rule-no-crashes = inga haverier
 ops-rule-time = kontinuerlig tid
 ops-rule-weapons = realistiska F-117A-vapen
 ops-rule-friendly-fire = vådabeskjutning
+ops-rule-airframe-losses = förlorade flygplan räknas
 ops-rule-classic = klassiskt
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/h)
 ops-materiel-red = RÖD { $materiel } (+{ $income }/h)
 ops-crew-tempo = FIENDENS TEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NU
+ops-front-blue = FRONT: BLÅ VINNER MARK
+ops-front-red = FRONT: RÖD VINNER MARK
+ops-front-even = FRONT: HÅLLER
+ops-operation = Operation { $place }: { $done }/{ $total } förberett
 ops-friendly = EGNA
 ops-enemy = FIENDE
 ops-section-forces = Styrkor
@@ -108,6 +115,8 @@ ops-how =
     AI:n betalar för allt den gör: reparationer, varje jaktflygning, anfall och egna insättningar. Har den ont om materiel förblir skadorna oreparerade och flygplanen stannar hemma.
     AI:n flyger bara de flygplan den har; nedskjutna är de borta, landade flyger de igen. Varje timme köper varje sida nya så länge materielen räcker.
     Du får aldrig ont om något: dina flygplan, dina baser (bombade eller inte) och helikoptrarna i dina egna insättningsordrar finns alltid.
+ops-how-repairs = Varje sida reparerar bara några få ställningar åt gången (fler med fler intakta städer), närmast fronten först, och en ställning som förstörs igen strax efter reparationen tar längre tid varje gång.
+ops-how-airframes = Förlorade flygplan räknas: varje flygplan en pilot förlorar är ett jaktplan eller en helikopter mindre för den egna AI:n.
 ops-section-prices = Priser
 ops-price-airfield = Reparation av flygfält
 ops-price-sam = Reparation av SAM-ställning
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } poäng (package-bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampanjpoäng
 ops-campaign-record = Kampanj: { $sorties } flygningar, { $won } mål uppnådda
 ops-section-meanwhile = Under tiden
+ops-section-effects = Din inverkan på kriget
 ops-victory = SEGER
     .text = Fienden håller inte längre något flygfält: operationsområdet är vårt.
 ops-defeat = NEDERLAG

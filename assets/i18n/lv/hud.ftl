@@ -13,6 +13,7 @@ hud-aim-at-target = TĒMĒT UZ MĒRĶI
 hud-photo = FOTO { $state }
 hud-rearmed = Bruņojums un degviela papildināta
 hud-landed-rearm = Nosēdies - papildiniet bruņojumu vai beidziet lidojumu
+hud-divert-accept = Pārvirzīšana: { $title } - { $key }, lai pieņemtu
 hud-objective-achieved = Uzdevums izpildīts
 
 ## Misijas beigu pārklājums

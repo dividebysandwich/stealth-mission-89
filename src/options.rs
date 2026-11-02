@@ -334,6 +334,19 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         )
         .changed();
     }
+    let clouds = s.cloud_quality;
+    ui.horizontal(|ui| {
+        ui.label(t!("options-cloud-quality"));
+        ui.allocate_ui(egui::vec2(140.0, 22.0), |ui| {
+            crate::menu::dropdown(
+                ui,
+                "cloud_quality",
+                &mut s.cloud_quality,
+                crate::weather::CloudQuality::ALL.map(|q| (q, q.name(), q.facts())),
+            )
+        });
+    });
+    toggled |= s.cloud_quality != clouds;
     // The classic time of day can still show the sun and the moon.
     if !s.continuous_time {
         ui.indent("sun_moon", |ui| {

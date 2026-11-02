@@ -84,6 +84,7 @@ mp-rules = Rialacha do chách
 mp-time-of-day = Am an lae (oícheanta gealaí)
 mp-realistic-weapons = Airm réalaíocha F-117A
 mp-friendly-fire = Tine chairdiúil
+mp-airframe-losses = Comhairtear aerárthaí caillte
 mp-day-night = Lá agus oíche:
 mp-weather = Aimsir:
 mp-host-new = ÓSTÁIL NUA

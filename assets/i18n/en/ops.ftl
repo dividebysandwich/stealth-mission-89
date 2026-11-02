@@ -82,12 +82,19 @@ ops-rule-no-crashes = no crashes
 ops-rule-time = continuous time
 ops-rule-weapons = realistic F-117A weapons
 ops-rule-friendly-fire = friendly fire
+ops-rule-airframe-losses = lost aircraft count
 ops-rule-classic-terrain = classic terrain
 ops-rule-classic = classic
 ops-materiel = MATERIEL
 ops-materiel-blue = BLUE { $materiel } (+{ $income }/h)
 ops-materiel-red = RED { $materiel } (+{ $income }/h)
 ops-crew-tempo = ENEMY TEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NOW
+ops-front-blue = FRONT: BLUE GAINING
+ops-front-red = FRONT: RED GAINING
+ops-front-even = FRONT: HOLDING
+ops-operation = Operation { $place }: { $done }/{ $total } prepared
 ops-friendly = FRIENDLY
 ops-enemy = ENEMY
 ops-section-forces = Forces
@@ -112,6 +119,8 @@ ops-how =
     The AI pays for everything it does: repairs, every fighter sortie, raids and its own insertions. Short of materiel, its damage stays unrepaired and its aircraft stay home.
     The AI flies only the aircraft it has; shot down they are gone, landed they fly again. Every hour each side buys new ones while its materiel lasts.
     You never run short: your aircraft, your bases (bombed or not) and the helicopters of your own insertion orders are always there.
+ops-how-repairs = Each side repairs only a few sites at once (more with more intact cities), nearest the front first, and a site destroyed again soon after its repair takes longer each time.
+ops-how-airframes = Lost aircraft count: every aircraft a pilot loses is one fighter or helicopter fewer for the friendly AI.
 ops-section-prices = Prices
 ops-price-airfield = Airfield repair
 ops-price-sam = SAM site repair
@@ -165,6 +174,7 @@ ops-points-bonus = { $points } points (package bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } campaign points
 ops-campaign-record = Campaign: { $sorties } sorties, { $won } objectives achieved
 ops-section-meanwhile = Meanwhile
+ops-section-effects = Your effect on the war
 ops-victory = VICTORY
     .text = The enemy holds no airfield any more: the theater is ours.
 ops-defeat = DEFEAT

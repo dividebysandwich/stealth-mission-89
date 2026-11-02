@@ -118,6 +118,7 @@ kg-detail = Уровень детализации
 kg-day-night = День / ночь
 kg-training = Перейти к тренировке
 kg-resupply = Пополнение запасов
+kg-accept-tasking = Принять перенацеливание
 kg-quit = Выход
 kg-hover = Автовисение (вертолёты, до 30 kt)
 kg-rwr-priority = Режим приоритета RWR (пять угроз) вкл. / выкл.

@@ -79,11 +79,18 @@ ops-rule-no-crashes = bez avārijām
 ops-rule-time = nepārtraukts laiks
 ops-rule-weapons = reālistisks F-117A bruņojums
 ops-rule-friendly-fire = draudzīgā uguns
+ops-rule-airframe-losses = zaudētie lidaparāti tiek skaitīti
 ops-rule-classic = klasiskie
 ops-materiel = MATERIĀLIE RESURSI
 ops-materiel-blue = ZILIE { $materiel } (+{ $income }/h)
 ops-materiel-red = SARKANIE { $materiel } (+{ $income }/h)
 ops-crew-tempo = IENAIDNIEKA TEMPS ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = TAGAD
+ops-front-blue = FRONTE: ZILIE VIRZĀS
+ops-front-red = FRONTE: SARKANIE VIRZĀS
+ops-front-even = FRONTE: STABILA
+ops-operation = Operācija { $place }: { $done }/{ $total } sagatavots
 ops-friendly = DRAUDZĪGIE
 ops-enemy = IENAIDNIEKS
 ops-section-forces = Spēki
@@ -108,6 +115,8 @@ ops-how =
     AI maksā par visu, ko dara: remontiem, katru iznīcinātāju lidojumu, reidiem un saviem desantiem. Ja resursu trūkst, bojājumi paliek nelaboti un lidmašīnas paliek mājās.
     AI lido tikai ar tām lidmašīnām, kas tam ir; notriektas tās ir zudušas, nosēdušās lido atkal. Katru stundu katra puse nopērk jaunas, kamēr pietiek resursu.
     Jums nekad netrūkst: jūsu lidmašīnas, jūsu bāzes (bombardētas vai nē) un jūsu pašu desanta pasūtījumu helikopteri vienmēr ir pieejami.
+ops-how-repairs = Katra puse vienlaikus labo tikai dažas pozīcijas (vairāk, ja ir vairāk veselu pilsētu), vispirms frontei tuvākās, un drīz pēc remonta atkal iznīcināta pozīcija katru reizi prasa ilgāk.
+ops-how-airframes = Zaudētie lidaparāti tiek skaitīti: katrs pilota zaudētais lidaparāts ir par vienu iznīcinātāju vai helikopteru mazāk savējo MI.
 ops-section-prices = Cenas
 ops-price-airfield = Lidlauka remonts
 ops-price-sam = SAM pozīcijas remonts
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } punkti (paketes bonuss +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampaņas punkti
 ops-campaign-record = Kampaņa: { $sorties } lidojumi, { $won } uzdevumi izpildīti
 ops-section-meanwhile = Pa to laiku
+ops-section-effects = Tava ietekme uz karu
 ops-victory = UZVARA
     .text = Ienaidniekam vairs nav neviena lidlauka: operāciju teātris ir mūsu.
 ops-defeat = SAKĀVE

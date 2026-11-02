@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_egui::{EguiContexts, PrimaryEguiContext, egui};
 use stealth_campaign::weather::Now;
 use stealth_campaign::{
-    Aircraft as Airframe, InsertionState, MissionKind, MissionOffer, Objective, PlayerId,
+    Aircraft as Airframe, Due, InsertionState, MissionKind, MissionOffer, Objective, PlayerId,
     RaidState, Side, SortieResult, tuning,
 };
 use stealth_host::glue::sortie_mission;
@@ -69,7 +69,7 @@ pub struct OpsUi {
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
-    confirm_exit: bool,
+    pub(super) confirm_exit: bool,
     /// The chat message being typed on the CHAT tab.
     chat: String,
 }
@@ -589,18 +589,29 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
     let mut flow = Flow::new(ui);
     flow.card(ui, Span::Fixed(left), |ui| {
         section(ui, t!("ops-section-missions"));
+        let front = c.state().front(Side::Blue);
         egui::ScrollArea::vertical().id_salt("offers").max_height(room * 0.62).show(ui, |ui| {
             for o in c.state().board.clone() {
                 let (bx, by) = from(c, &o);
                 let selected = c.ui.selected == Some(o.id);
                 // Each mission is a framed button row: a marker, the text, an arrow.
+                // How long an urgent one has left.
+                let due = match c.state().due(&o.objective) {
+                    Some(Due::At(t)) => {
+                        let mins = ((t - c.state().clock) / 60.0).max(0.0).ceil() as i64;
+                        t!("ops-due", mins = mins).to_string()
+                    }
+                    Some(Due::Now) => t!("ops-due-now").to_string(),
+                    None => String::new(),
+                };
                 let text = egui::RichText::new(format!(
-                    "{} {:<10} {:<32} {:>4.0} km  {:<9} >",
+                    "{} {:<10} {:<32} {:>4.0} km  {:<9} {:<10} >",
                     if selected { '\u{25B6}' } else { ' ' },
                     kind_name(o.kind),
                     o.title.tr(),
                     km(dist(bx, by, o.x, o.y)),
-                    if o.threat > 0 { t!("ops-threat", threat = o.threat) } else { String::new() }
+                    if o.threat > 0 { t!("ops-threat", threat = o.threat) } else { String::new() },
+                    due
                 ))
                 .monospace()
                 .color(if selected { BG } else { kind_colour(o.kind) });
@@ -623,6 +634,15 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     c.ui.error = None;
                 }
                 group_label(ui, c, o.id);
+                // The operation it prepares: how far along.
+                if let Some(op) = place_of(&o.objective).and_then(|p| c.state().operation_on(p, &front))
+                {
+                    let name = c.state().place(op.place).map_or(String::new(), |p| p.name.clone());
+                    let text =
+                        t!("ops-operation", place = name, done = op.done(), total = op.steps.len());
+                    let col = if op.ready() { GREEN } else { AMBER };
+                    ui.label(egui::RichText::new(text).small().color(col));
+                }
                 ui.add_space(2.0);
             }
             if c.state().board.is_empty() {
@@ -1008,7 +1028,12 @@ fn kind_name(k: MissionKind) -> &'static str {
 
 /// SAVE & EXIT, or DISCONNECT from a server.
 fn exit_label(role: Role) -> &'static str {
-    t!(if role == Role::Client { "ops-disconnect" } else { "ops-save-exit" })
+    t!(exit_id(role))
+}
+
+/// SAVE & EXIT's message id, or DISCONNECT's.
+pub(super) fn exit_id(role: Role) -> &'static str {
+    if role == Role::Client { "ops-disconnect" } else { "ops-save-exit" }
 }
 
 /// The campaign's rules in words.
@@ -1021,6 +1046,7 @@ fn rules_text(r: &stealth_host::Rules) -> String {
         (r.realistic_weapons, "ops-rule-weapons"),
         (r.friendly_fire, "ops-rule-friendly-fire"),
         (r.classic_terrain, "ops-rule-classic-terrain"),
+        (r.airframe_losses, "ops-rule-airframe-losses"),
     ]
     .iter()
     .filter(|x| x.0)
@@ -1041,6 +1067,16 @@ fn supply_line(ui: &mut egui::Ui, c: &ActiveCampaign) {
         let text = t!(id, materiel = format!("{have:.0}"), income = format!("{income:.0}"));
         ui.label(egui::RichText::new(text).color(col));
     }
+    // Which way the front is moving.
+    let m = st.momentum();
+    let (id, col) = if m >= tuning::MOMENTUM_SHOWN {
+        ("ops-front-blue", FRIENDLY_BLUE)
+    } else if m <= -tuning::MOMENTUM_SHOWN {
+        ("ops-front-red", MISSILE_RED)
+    } else {
+        ("ops-front-even", DIM)
+    };
+    ui.label(egui::RichText::new(t!(id)).color(col));
     // More players, a faster enemy (coop scaling).
     let pace = st.pace();
     if pace > 1.05 {
@@ -1117,6 +1153,13 @@ fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
         section(ui, t!("ops-section-how"));
         for line in stealth_i18n::t_lines!("ops-how") {
             ui.label(egui::RichText::new(*line).color(BRIGHT));
+            ui.add_space(2.0);
+        }
+        ui.label(egui::RichText::new(t!("ops-how-repairs")).color(BRIGHT));
+        ui.add_space(2.0);
+        // The rule that makes the players' losses count.
+        if c.rules.airframe_losses {
+            ui.label(egui::RichText::new(t!("ops-how-airframes")).color(AMBER));
             ui.add_space(2.0);
         }
         ui.add_space(8.0);
@@ -1593,6 +1636,14 @@ fn debrief(ui: &mut egui::Ui, c: &ActiveCampaign) {
         .filter(|h| h.player == c.me && h.result == SortieResult::Success)
         .count();
     ui.label(egui::RichText::new(t!("ops-campaign-record", sorties = done, won = won)).color(DIM));
+    // What the sortie changed in the war.
+    if !r.effects.is_empty() {
+        ui.add_space(8.0);
+        section(ui, t!("ops-section-effects"));
+        for e in &r.effects {
+            ui.label(egui::RichText::new(e.tr()).color(GREEN));
+        }
+    }
     ui.add_space(8.0);
     section(ui, t!("ops-section-meanwhile"));
     egui::ScrollArea::vertical().id_salt("news").max_height(300.0).show(ui, |ui| {
@@ -2041,7 +2092,7 @@ fn route_editor(
 pub(crate) const EXIT_RED: egui::Color32 = egui::Color32::from_rgb(150, 24, 20);
 
 /// SAVE & EXIT's icon, or DISCONNECT's.
-fn exit_icon(role: Role) -> char {
+pub(super) fn exit_icon(role: Role) -> char {
     if role == Role::Client { icon::DISCONNECT } else { icon::SAVE }
 }
 

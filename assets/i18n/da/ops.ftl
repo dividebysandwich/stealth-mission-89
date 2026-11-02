@@ -79,11 +79,18 @@ ops-rule-no-crashes = ingen styrt
 ops-rule-time = kontinuerlig tid
 ops-rule-weapons = realistiske F-117A-våben
 ops-rule-friendly-fire = egenbeskydning
+ops-rule-airframe-losses = tabte fly tæller
 ops-rule-classic = klassisk
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/t)
 ops-materiel-red = RØD { $materiel } (+{ $income }/t)
 ops-crew-tempo = FJENDENS TEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NU
+ops-front-blue = FRONT: BLÅ VINDER FREM
+ops-front-red = FRONT: RØD VINDER FREM
+ops-front-even = FRONT: HOLDER
+ops-operation = Operation { $place }: { $done }/{ $total } forberedt
 ops-friendly = EGNE
 ops-enemy = FJENDE
 ops-section-forces = Styrker
@@ -108,6 +115,8 @@ ops-how =
     AI betaler for alt, hvad den gør: reparationer, hver jagerflyvning, angreb og sine egne indsættelser. Mangler den materiel, forbliver dens skader urepareret, og dens fly bliver hjemme.
     AI flyver kun med de fly, den har; nedskudte er væk, landede kan flyve igen. Hver time køber hver side nye, så længe materiellet rækker.
     Du løber aldrig tør: dine fly, dine baser (bombede eller ej) og helikopterne fra dine egne indsættelsesordrer er der altid.
+ops-how-repairs = Hver side reparerer kun få stillinger ad gangen (flere med flere intakte byer), nærmest fronten først, og en stilling ødelagt igen kort efter reparationen tager længere tid hver gang.
+ops-how-airframes = Tabte fly tæller: hvert fly en pilot mister, er én jager eller helikopter mindre for den egne AI.
 ops-section-prices = Priser
 ops-price-airfield = Reparation af flyveplads
 ops-price-sam = Reparation af SAM-stilling
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } point (package-bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampagnepoint
 ops-campaign-record = Kampagne: { $sorties } flyvninger, { $won } mål nået
 ops-section-meanwhile = Imens
+ops-section-effects = Din indflydelse på krigen
 ops-victory = SEJR
     .text = Fjenden har ikke flere flyvepladser: operationsområdet er vores.
 ops-defeat = NEDERLAG

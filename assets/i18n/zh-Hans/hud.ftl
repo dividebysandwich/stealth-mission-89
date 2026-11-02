@@ -12,6 +12,7 @@ hud-aim-at-target = 瞄准目标
 hud-photo = 拍照 { $state }
 hud-rearmed = 已重新挂弹并加油
 hud-landed-rearm = 已着陆 - 重新挂弹或结束出击
+hud-divert-accept = 改派：{ $title } - 按 { $key } 接受
 hud-objective-achieved = 目标已达成
 
 ## 任务结束叠加层

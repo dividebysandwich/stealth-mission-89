@@ -79,11 +79,18 @@ ops-rule-no-crashes = 추락 없음
 ops-rule-time = 연속 시간
 ops-rule-weapons = 사실적인 F-117A 무장
 ops-rule-friendly-fire = 아군 피해
+ops-rule-airframe-losses = 잃은 기체 반영
 ops-rule-classic = 클래식
 ops-materiel = 물자
 ops-materiel-blue = 청군 { $materiel } (+{ $income }/h)
 ops-materiel-red = 적군 { $materiel } (+{ $income }/h)
 ops-crew-tempo = 적의 작전 템포 ×{ $pace }
+ops-due = T-{ $mins }분
+ops-due-now = 진행 중
+ops-front-blue = 전선: 아군 우세
+ops-front-red = 전선: 적군 우세
+ops-front-even = 전선: 교착
+ops-operation = { $place } 작전: 준비 { $done }/{ $total }
 ops-friendly = 아군
 ops-enemy = 적
 ops-section-forces = 전력
@@ -108,6 +115,8 @@ ops-how =
     AI는 수리, 전투기 출격, 습격, 자체 침투 등 모든 행동에 물자를 소모합니다. 물자가 부족하면 피해가 복구되지 않고 항공기도 출격하지 않습니다.
     AI는 보유한 항공기만 운용합니다. 격추되면 사라지고, 착륙하면 다시 출격합니다. 매시간 물자가 남아 있는 한 각 진영이 새 항공기를 구입합니다.
     플레이어는 물자가 부족해지지 않습니다. 자신의 항공기, 기지(폭격 여부와 무관), 직접 내린 침투 명령의 헬기는 항상 사용할 수 있습니다.
+ops-how-repairs = 각 진영은 한 번에 몇 곳만 수리한다(온전한 도시가 많을수록 더 많이). 전선에 가까운 곳부터 수리하며, 수리 직후 다시 파괴된 곳은 매번 더 오래 걸린다.
+ops-how-airframes = 잃은 기체 반영: 조종사가 잃는 기체마다 아군 AI의 전투기나 헬기가 1대 줄어든다.
 ops-section-prices = 가격
 ops-price-airfield = 비행장 수리
 ops-price-sam = SAM 기지 수리
@@ -155,6 +164,7 @@ ops-points-bonus = { $points }점 (패키지 보너스 +{ $bonus })
 ops-campaign-points = { $rank } - 캠페인 점수 { $points }점
 ops-campaign-record = 캠페인: 출격 { $sorties }회, 목표 달성 { $won }회
 ops-section-meanwhile = 그동안
+ops-section-effects = 전쟁에 대한 너의 영향
 ops-victory = 승리
     .text = 적에게 남은 비행장이 없습니다. 전역은 우리 것입니다.
 ops-defeat = 패배

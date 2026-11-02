@@ -118,6 +118,7 @@ kg-detail = Raven podrobnosti
 kg-day-night = Dan / noč
 kg-training = Pojdi na vadbo
 kg-resupply = Oskrba
+kg-accept-tasking = Sprejmi preusmeritev
 kg-quit = Izhod
 kg-hover = Samodejno lebdenje (helikopterji, do 30 kt)
 kg-rwr-priority = Prednostni način RWR (pet groženj) vkl. / izkl.

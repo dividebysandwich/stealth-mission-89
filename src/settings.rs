@@ -52,6 +52,8 @@ pub struct Settings {
     pub vr: bool,
     /// Sun shadows (cockpit and world).
     pub shadows: bool,
+    /// How finely the volumetric clouds are drawn (`weather::CloudQuality`).
+    pub cloud_quality: crate::weather::CloudQuality,
     /// Local lights: cockpit flood/display lights, explosions, plumes, runway lights.
     pub local_lights: bool,
     /// VR: the scenery's detail follows the frame rate (`scenery::budget`), on unless
@@ -314,6 +316,7 @@ impl Settings {
             vr,
             shadows: has("--shadows"),
             local_lights: has("--local-lights"),
+            cloud_quality: Default::default(),
             vr_auto_detail: !has("--no-auto-detail"),
             continuous_time: has("--continuous-time"),
             sun_moon: has("--sun-moon"),

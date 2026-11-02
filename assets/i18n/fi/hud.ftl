@@ -13,6 +13,7 @@ hud-aim-at-target = TÄHTÄÄ KOHTEESEEN
 hud-photo = KUVA { $state }
 hud-rearmed = Aseistettu ja tankattu
 hud-landed-rearm = Laskeuduttu - aseista tai päätä lento
+hud-divert-accept = Uudelleenohjaus: { $title } - { $key } hyväksyy
 hud-objective-achieved = Tavoite saavutettu
 
 ## Tehtävän lopetusnäyttö

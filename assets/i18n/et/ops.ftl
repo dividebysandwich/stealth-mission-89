@@ -79,11 +79,18 @@ ops-rule-no-crashes = ilma allakukkumisteta
 ops-rule-time = pidev aeg
 ops-rule-weapons = realistlikud F-117A relvad
 ops-rule-friendly-fire = oma tuli
+ops-rule-airframe-losses = kaotatud lennukid loevad
 ops-rule-classic = klassikaline
 ops-materiel = MATERJAL
 ops-materiel-blue = SININE { $materiel } (+{ $income }/h)
 ops-materiel-red = PUNANE { $materiel } (+{ $income }/h)
 ops-crew-tempo = VAENLASE TEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = NÜÜD
+ops-front-blue = RINNE: SININE EDENEB
+ops-front-red = RINNE: PUNANE EDENEB
+ops-front-even = RINNE: PÜSIB
+ops-operation = Operatsioon { $place }: { $done }/{ $total } ette valmistatud
 ops-friendly = OMA
 ops-enemy = VAENLANE
 ops-section-forces = Jõud
@@ -108,6 +115,8 @@ ops-how =
     AI maksab kõige eest, mida ta teeb: remont, iga hävitajalend, rünnakud ja oma dessandid. Materjali nappusel jääb tema kahju parandamata ja tema õhusõidukid jäävad koju.
     AI lendab ainult nende õhusõidukitega, mis tal on; alla tulistatud on kadunud, maandunud lendavad uuesti. Iga tund ostab kumbki pool uusi, kuni materjali jätkub.
     Sul ei saa kunagi puudu: sinu õhusõidukid, sinu baasid (pommitatud või mitte) ja sinu enda dessanditellimuste helikopterid on alati olemas.
+ops-how-repairs = Kumbki pool parandab korraga vaid mõnda positsiooni (rohkem, kui terveid linnu on rohkem), rindele lähimad enne, ja varsti pärast parandust uuesti hävitatud positsioon võtab iga kord kauem.
+ops-how-airframes = Kaotatud lennukid loevad: iga lenduri kaotatud lennuk on üks hävitaja või helikopter vähem omale tehisintellektile.
 ops-section-prices = Hinnad
 ops-price-airfield = Lennuvälja remont
 ops-price-sam = SAM-positsiooni remont
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } punkti (paketibonus +{ $bonus })
 ops-campaign-points = { $rank } - kampaania punktid: { $points }
 ops-campaign-record = Kampaania: lende { $sorties }, saavutatud eesmärke { $won }
 ops-section-meanwhile = Vahepeal
+ops-section-effects = Sinu mõju sõjale
 ops-victory = VÕIT
     .text = Vaenlasel pole enam ühtegi lennuvälja: operatsiooniala on meie.
 ops-defeat = LÜÜASAAMINE

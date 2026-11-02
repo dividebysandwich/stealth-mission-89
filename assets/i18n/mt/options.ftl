@@ -89,6 +89,15 @@ options-sun-moon = Xemx u qamar
     .facts =
         Ix-xemx fis-sema bin-nhar, il-qamar u l-istilel bil-lejl
         Il-qamar juri l-fażi tal-missjoni
+options-cloud-quality = Sħab
+cloud-quality-auto = Awtomatiku
+    .facts = Baxx fil-VR, għoli fuq l-iskrin
+cloud-quality-low = Baxx
+    .facts = Sħab mhux raffinat f'terz tar-riżoluzzjoni (l-aktar mgħaġġel)
+cloud-quality-medium = Medju
+    .facts = Nofs ir-riżoluzzjoni, dettall aktar fin
+cloud-quality-high = Għoli
+    .facts = Riżoluzzjoni sħiħa, l-iżjed dettall fin u dell proprju (jiswa ħin tal-GPU)
 
 ## ŻUNA
 

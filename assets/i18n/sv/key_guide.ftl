@@ -116,6 +116,7 @@ kg-detail = Detaljnivå
 kg-day-night = Dag / natt
 kg-training = Gå till övning
 kg-resupply = Återförsörjning
+kg-accept-tasking = Acceptera omdirigering
 kg-quit = Avsluta
 kg-hover = Automatisk svävning (helikoptrar, upp till 30 kt)
 kg-rwr-priority = RWR-prioritetsläge (fem hot) på / av

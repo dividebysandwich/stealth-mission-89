@@ -79,11 +79,18 @@ ops-rule-no-crashes = Absturzschutz
 ops-rule-time = durchgehende Zeit
 ops-rule-weapons = realistische F-117A-Bewaffnung
 ops-rule-friendly-fire = Eigenbeschuss
+ops-rule-airframe-losses = verlorene Flugzeuge zählen
 ops-rule-classic = klassisch
 ops-materiel = MATERIAL
 ops-materiel-blue = BLAU { $materiel } (+{ $income }/h)
 ops-materiel-red = ROT { $materiel } (+{ $income }/h)
 ops-crew-tempo = FEINDTEMPO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = JETZT
+ops-front-blue = FRONT: BLAU GEWINNT
+ops-front-red = FRONT: ROT GEWINNT
+ops-front-even = FRONT: HÄLT
+ops-operation = Operation { $place }: { $done }/{ $total } vorbereitet
 ops-friendly = EIGENE
 ops-enemy = FEIND
 ops-section-forces = Kräfte
@@ -108,6 +115,8 @@ ops-how =
     Die KI bezahlt alles, was sie tut: Reparaturen, jeden Jägereinsatz, Angriffe und ihre eigenen Luftlandungen. Fehlt ihr Material, bleiben ihre Schäden unrepariert und ihre Flugzeuge am Boden.
     Die KI fliegt nur die Flugzeuge, die sie hat; abgeschossen sind sie weg, gelandet fliegen sie wieder. Jede Stunde kauft jede Seite neue, solange ihr Material reicht.
     Ihnen fehlt nie etwas: Ihre Flugzeuge, Ihre Basen (bombardiert oder nicht) und die Hubschrauber Ihrer eigenen Luftlandebefehle sind immer da.
+ops-how-repairs = Jede Seite repariert nur wenige Stellungen gleichzeitig (mehr mit mehr intakten Städten), frontnahe zuerst, und eine kurz nach der Reparatur erneut zerstörte Stellung braucht jedes Mal länger.
+ops-how-airframes = Verlorene Flugzeuge zählen: jedes Flugzeug, das ein Pilot verliert, ist ein Jäger oder Hubschrauber weniger für die eigene KI.
 ops-section-prices = Preise
 ops-price-airfield = Reparatur Flugplatz
 ops-price-sam = Reparatur SAM-Stellung
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } Punkte (Package-Bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } Kampagnenpunkte
 ops-campaign-record = Kampagne: { $sorties } Einsätze, { $won } Ziele erreicht
 ops-section-meanwhile = Inzwischen
+ops-section-effects = Deine Wirkung auf den Krieg
 ops-victory = SIEG
     .text = Der Feind hält keinen Flugplatz mehr: Der Schauplatz gehört uns.
 ops-defeat = NIEDERLAGE

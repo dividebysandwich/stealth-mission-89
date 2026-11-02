@@ -79,11 +79,18 @@ ops-rule-no-crashes = bez havárií
 ops-rule-time = nepretržitý čas
 ops-rule-weapons = realistické zbrane F-117A
 ops-rule-friendly-fire = paľba do vlastných
+ops-rule-airframe-losses = stratené lietadlá sa počítajú
 ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODRÍ { $materiel } (+{ $income }/h)
 ops-materiel-red = ČERVENÍ { $materiel } (+{ $income }/h)
 ops-crew-tempo = TEMPO NEPRIATEĽA ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = TERAZ
+ops-front-blue = FRONT: MODRÍ POSTUPUJÚ
+ops-front-red = FRONT: ČERVENÍ POSTUPUJÚ
+ops-front-even = FRONT: DRŽÍ
+ops-operation = Operácia { $place }: { $done }/{ $total } pripravené
 ops-friendly = SPOJENECKÉ
 ops-enemy = NEPRIATEĽSKÉ
 ops-section-forces = Sily
@@ -108,6 +115,8 @@ ops-how =
     Umelá inteligencia platí za všetko, čo robí: opravy, každý bojový let stíhačiek, nálety a vlastné vysadenia. Bez materiálu zostanú jej škody neopravené a jej lietadlá zostanú doma.
     Umelá inteligencia lieta len s lietadlami, ktoré má; zostrelené sú preč, pristáté lietajú znova. Každú hodinu každá strana nakúpi nové, kým jej vydrží materiál.
     Vám nikdy nechýba: vaše lietadlá, vaše základne (bombardované či nie) a vrtuľníky vašich vlastných objednávok vysadenia sú vždy k dispozícii.
+ops-how-repairs = Každá strana opravuje naraz len niekoľko stanovíšť (viac s viac nepoškodenými mestami), najprv tie najbližšie k frontu, a stanovište zničené znova krátko po oprave trvá zakaždým dlhšie.
+ops-how-airframes = Stratené lietadlá sa počítajú: každé lietadlo, ktoré pilot stratí, je o jednu stíhačku alebo vrtuľník menej pre spriatelenú AI.
 ops-section-prices = Ceny
 ops-price-airfield = Oprava letiska
 ops-price-sam = Oprava stanovišťa SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } bodov (bonus za package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } bodov kampane
 ops-campaign-record = Kampaň: bojových letov { $sorties }, splnených cieľov { $won }
 ops-section-meanwhile = Medzitým
+ops-section-effects = Tvoj vplyv na vojnu
 ops-victory = VÍŤAZSTVO
     .text = Nepriateľ už nedrží žiadne letisko: operačný priestor je náš.
 ops-defeat = PORAŽKA

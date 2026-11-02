@@ -79,11 +79,18 @@ ops-rule-no-crashes = l-ebda waqgħat
 ops-rule-time = ħin kontinwu
 ops-rule-weapons = armi realistiċi tal-F-117A
 ops-rule-friendly-fire = nar alleat
+ops-rule-airframe-losses = l-ajruplani mitlufa jgħoddu
 ops-rule-classic = klassiku
 ops-materiel = MATERJAL
 ops-materiel-blue = BLU { $materiel } (+{ $income }/h)
 ops-materiel-red = AĦMAR { $materiel } (+{ $income }/h)
 ops-crew-tempo = RITMU TAL-GĦADU ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = ISSA
+ops-front-blue = IL-FRONT: IL-BLU JAVVANZA
+ops-front-red = IL-FRONT: L-AĦMAR JAVVANZA
+ops-front-even = IL-FRONT: STABBLI
+ops-operation = Operazzjoni { $place }: { $done }/{ $total } ippreparat
 ops-friendly = ĦBIEB
 ops-enemy = GĦADU
 ops-section-forces = Forzi
@@ -108,6 +115,8 @@ ops-how =
     L-AI thallas għal kull ma tagħmel: tiswijiet, kull titjira ta' fighter, rejds u l-inserzjonijiet tagħha. Jekk jonqosha l-materiel, il-ħsara tagħha tibqa' mhix imsewwija u l-inġenji tal-ajru tagħha jibqgħu d-dar.
     L-AI ittir biss l-inġenji tal-ajru li għandha; jekk jitwaqqgħu jintilfu, jekk jinżlu jerġgħu jtiru. Kull siegħa kull naħa tixtri oħrajn ġodda sakemm idum il-materiel tagħha.
     Int qatt ma tispiċċa mill-materiel: l-inġenji tal-ajru tiegħek, il-bażijiet tiegħek (bombardati jew le) u l-ħelikopters tal-ordnijiet ta' inserzjoni tiegħek huma dejjem hemm.
+ops-how-repairs = Kull naħa ssewwi biss ftit pożizzjonijiet f'daqqa (aktar b'aktar bliet sħaħ), l-eqreb tal-front l-ewwel, u pożizzjoni meqruda mill-ġdid ftit wara t-tiswija tieħu aktar żmien kull darba.
+ops-how-airframes = L-ajruplani mitlufa jgħoddu: kull ajruplan li jitlef pilota huwa ġellied jew ħelikopter wieħed inqas għall-IA alleata.
 ops-section-prices = Prezzijiet
 ops-price-airfield = Tiswija ta' ajrudrom
 ops-price-sam = Tiswija ta' sit SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } punti (bonus tal-package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } punti tal-kampanja
 ops-campaign-record = Kampanja: { $sorties } titjiriet, { $won } għanijiet milħuqa
 ops-section-meanwhile = Sadanittant
+ops-section-effects = L-effett tiegħek fuq il-gwerra
 ops-victory = REBĦA
     .text = L-għadu m'għadu jżomm l-ebda ajrudrom: it-teatru huwa tagħna.
 ops-defeat = TELFA

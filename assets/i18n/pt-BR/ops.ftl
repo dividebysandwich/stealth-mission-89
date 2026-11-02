@@ -79,11 +79,18 @@ ops-rule-no-crashes = sem acidentes
 ops-rule-time = tempo contínuo
 ops-rule-weapons = armamento realista do F-117A
 ops-rule-friendly-fire = fogo amigo
+ops-rule-airframe-losses = aeronaves perdidas contam
 ops-rule-classic = clássicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)
 ops-materiel-red = VERMELHO { $materiel } (+{ $income }/h)
 ops-crew-tempo = RITMO INIMIGO ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = AGORA
+ops-front-blue = FRENTE: AZUL AVANÇA
+ops-front-red = FRENTE: VERMELHO AVANÇA
+ops-front-even = FRENTE: ESTÁVEL
+ops-operation = Operação { $place }: { $done }/{ $total } preparado
 ops-friendly = AMIGOS
 ops-enemy = INIMIGOS
 ops-section-forces = Forças
@@ -108,6 +115,8 @@ ops-how =
     A IA paga por tudo o que faz: reparos, cada surtida de caça, ataques e suas próprias infiltrações. Sem material, os danos dela ficam sem reparo e as aeronaves dela ficam em terra.
     A IA voa apenas as aeronaves que tem; abatidas, estão perdidas; pousadas, voam de novo. A cada hora, cada lado compra novas enquanto o material durar.
     Você nunca fica sem nada: suas aeronaves, suas bases (bombardeadas ou não) e os helicópteros das suas próprias ordens de infiltração estão sempre lá.
+ops-how-repairs = Cada lado repara apenas alguns sítios por vez (mais com mais cidades intactas), primeiro os mais próximos da frente, e um sítio destruído de novo logo após o reparo demora mais a cada vez.
+ops-how-airframes = Aeronaves perdidas contam: cada aeronave que um piloto perde é um caça ou helicóptero a menos para a IA aliada.
 ops-section-prices = Preços
 ops-price-airfield = Reparo de aeródromo
 ops-price-sam = Reparo de sítio SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } pontos (bônus de package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } pontos de campanha
 ops-campaign-record = Campanha: { $sorties } surtidas, { $won } objetivos cumpridos
 ops-section-meanwhile = Enquanto isso
+ops-section-effects = Seu efeito na guerra
 ops-victory = VITÓRIA
     .text = O inimigo não controla mais nenhum aeródromo: o teatro é nosso.
 ops-defeat = DERROTA

@@ -2184,6 +2184,45 @@ fn hellfire_follows_the_pod() {
     }
 }
 
+/// A jet's Hellfires (three on an F-16's rack) fly to the pod's spot too: fired 3,000 ft up at
+/// 400 kt, some 4.5 km out, one hits the target the pod looks at.
+#[test]
+fn a_jets_hellfire_follows_the_pod() {
+    for guided in [false, true] {
+        let d = data();
+        let m = mission(d, 3, 0x1234, 1);
+        let opts =
+            SimOptions { external_stores: true, realistic_guidance: guided, ..Default::default() };
+        let mut sim = Sim::with_options(&d.sim, &m, opts);
+        let (mx, my) = sandbox(&mut sim, &m);
+        sim.set_training(true);
+        sim.set_loadout(&[(20, 3)]);
+        let t = 5;
+        let o = &mut sim.objects_mut()[t];
+        (o.x, o.y, o.flags) = (mx + 200, my - 200, 0);
+        let mut p = player_at(mx, my, 3000, 0x2000, 400);
+        p.pod = Some(PodAim { heading: 0x2000, pitch: -0x800, ground: Some((mx + 200, my - 200)) });
+        sim.step(&p, 15);
+        p.cmd.fire = true;
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        let slot = (8..12).find(|&s| sim.projectiles()[s].ttl != 0).expect("Hellfire fired");
+        assert_eq!(sim.projectiles()[slot].target, t as i32, "guided {guided}");
+        let mut at = None;
+        for _ in 0..15 * 30 {
+            for e in sim.step(&p, 15) {
+                if let SimEvent::Explosion { x, y, .. } = e {
+                    at.get_or_insert((x, y));
+                }
+            }
+            if at.is_some() {
+                break;
+            }
+        }
+        assert_eq!(at, Some((mx + 200, my - 200)), "guided {guided}");
+    }
+}
+
 /// The RAH-66 carries its Hellfires in bays: fired with the doors shut, the missile waits for them
 /// to open, then they shut again a few seconds after the last launch.
 #[test]

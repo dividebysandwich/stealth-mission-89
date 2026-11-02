@@ -89,6 +89,15 @@ options-sun-moon = An ghrian agus an ghealach
     .facts =
         An ghrian sa spéir sa lá, an ghealach agus na réaltaí san oíche
         Taispeánann an ghealach céim an mhisin
+options-cloud-quality = Scamaill
+cloud-quality-auto = Uathoibríoch
+    .facts = Íseal i VR, ard ar an scáileán
+cloud-quality-low = Íseal
+    .facts = Scamaill gharbha ag trian den taifeach (is tapúla)
+cloud-quality-medium = Meánach
+    .facts = Leath den taifeach, mionsonraí níos mine
+cloud-quality-high = Ard
+    .facts = Taifeach iomlán, na mionsonraí is mine agus féinscáth (cosnaíonn sé am GPU)
 
 ## FUAIM
 

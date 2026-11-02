@@ -32,7 +32,9 @@
 //! END MISSION keeps the flight paused and shows EXITING... until the debrief takes over.
 //!
 //! In a dynamic campaign the world goes on while the menu is open (nothing pauses), and END
-//! SORTIE ends the sortie: the campaign's debrief and mission board come up in the flight.
+//! SORTIE ends the sortie: the campaign's debrief and mission board come up in the flight. Over
+//! the mission board (no sortie flown) it is the board's own way out instead, SAVE & EXIT or
+//! DISCONNECT from a server, asking first as the board does.
 //!
 //! In VR the end-of-mission overlay (a 2D overlay on the desktop) is a screen floating in front of
 //! the head, also in the outside views, drawn over the cockpit.
@@ -1062,7 +1064,7 @@ fn navigate(
     mut block: ResMut<InputBlock>,
     mut actions: MessageWriter<ActionEvent>,
     sinks: Query<&AudioSink>,
-    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    mut campaign: Option<ResMut<crate::campaign::ActiveCampaign>>,
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
 ) {
     if !menu.open || menu.exiting || menu.bindings {
@@ -1340,6 +1342,11 @@ fn navigate(
         }
         Item::Resume => close = true,
         Item::SaveMission => menu.save_request = true,
+        // On the campaign's board: its SAVE & EXIT or DISCONNECT, asking first.
+        Item::EndMission if let Some(c) = campaign.as_mut().filter(|c| c.on_board()) => {
+            c.ask_exit();
+            close = true;
+        }
         // A campaign sortie ends; the flight goes on with the campaign's board.
         Item::EndMission if !pause => {
             actions.write(ActionEvent(Action::Quit));
@@ -1464,6 +1471,8 @@ fn draw(
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    // Over the campaign's board END MISSION is its way out (SAVE & EXIT or DISCONNECT).
+    let board = campaign.as_deref().filter(|c| c.on_board());
     let c = &mut tex.canvas;
     c.clear(TRANSPARENT);
     // The key on the footer's BACK (in VR an arrow).
@@ -1547,12 +1556,17 @@ fn draw(
             let cell = (h * 1.3).round();
             let line = if lit { ink::LIT_GLOW } else { ink::FRAME };
             c.stroke(Vec2::new(x0 + cell, y0 + 1.0), Vec2::new(x0 + cell, y1 - 1.0), 1.2, line);
-            draw_icon(c, *item, Vec2::new(x0 + cell / 2.0, mid), h * 0.3, col);
+            let glyph = match item {
+                Item::EndMission if let Some(b) = board => Some(b.exit_icon()),
+                _ => icon(*item),
+            };
+            draw_icon(c, glyph, Vec2::new(x0 + cell / 2.0, mid), h * 0.3, col);
             x = x0 + cell + 26.0;
         }
         let size = row_text_size(h);
         let pen = size * 0.14;
         let label = match item {
+            Item::EndMission if let Some(b) = board => tf!(b.exit_id()),
             Item::EndMission if campaign.is_some() => tf!("fm-end-sortie"),
             _ => item.label(),
         };
@@ -1820,9 +1834,9 @@ impl ttf_parser::OutlineBuilder for Outline {
 /// The icon of an entry of the main page or of OPTIONS centred on `o`, the font's em `2 r`
 /// wide (the same stroke for every icon), its edges blended into the colour under it (the
 /// menu's colours are a ramp).
-fn draw_icon(c: &mut Canvas, item: Item, o: Vec2, r: f32, col: u8) {
+fn draw_icon(c: &mut Canvas, glyph: Option<char>, o: Vec2, r: f32, col: u8) {
     let Some(face) = ICONS.as_ref() else { return };
-    let Some(id) = icon(item).and_then(|ch| face.glyph_index(ch)) else { return };
+    let Some(id) = glyph.and_then(|ch| face.glyph_index(ch)) else { return };
     let mut outline = Outline::default();
     let Some(b) = face.outline_glyph(id, &mut outline) else { return };
     let k = 2.0 * r / face.units_per_em() as f32;

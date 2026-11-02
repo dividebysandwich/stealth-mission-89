@@ -182,6 +182,7 @@ fn test_args(
 fn host_rules(settings: &crate::settings::Settings, state: &MenuState) -> stealth_host::Rules {
     stealth_host::Rules {
         friendly_fire: state.friendly_fire,
+        airframe_losses: state.airframe_losses,
         ..crate::campaign::rules_of(settings, state.lockheed)
     }
 }
@@ -429,6 +430,7 @@ fn multiplayer_window(
                             ui.checkbox(&mut settings.continuous_time, t!("mp-time-of-day"));
                             ui.checkbox(&mut state.lockheed, t!("mp-realistic-weapons"));
                             ui.checkbox(&mut state.friendly_fire, t!("mp-friendly-fire"));
+                            ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
                         });
                         flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
                             section(ui, t!("cm-section-new"));

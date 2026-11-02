@@ -87,6 +87,7 @@ mp-rules = Rules for everybody
 mp-time-of-day = Time of day (moonlit nights)
 mp-realistic-weapons = Realistic F-117A weapons
 mp-friendly-fire = Friendly fire
+mp-airframe-losses = Lost aircraft count
 mp-day-night = Day and night:
 mp-weather = Weather:
 mp-host-new = HOST NEW

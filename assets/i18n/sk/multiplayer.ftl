@@ -84,6 +84,7 @@ mp-rules = Pravidlá pre všetkých
 mp-time-of-day = Denná doba (mesačné noci)
 mp-realistic-weapons = Realistické zbrane F-117A
 mp-friendly-fire = Paľba do vlastných
+mp-airframe-losses = Stratené lietadlá sa počítajú
 mp-day-night = Deň a noc:
 mp-weather = Počasie:
 mp-host-new = HOSTIŤ NOVÚ

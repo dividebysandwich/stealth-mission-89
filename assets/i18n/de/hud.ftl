@@ -13,6 +13,7 @@ hud-aim-at-target = ZIEL ANVISIEREN
 hud-photo = FOTO { $state }
 hud-rearmed = Aufmunitioniert und betankt
 hud-landed-rearm = Gelandet - aufmunitionieren oder Einsatz beenden
+hud-divert-accept = Umleitung: { $title } - { $key } zum Annehmen
 hud-objective-achieved = Ziel erreicht
 
 ## Einblendung am Missionsende

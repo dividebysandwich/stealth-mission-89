@@ -125,6 +125,10 @@ impl Hardpoint {
         Hardpoint { excludes, ..self }
     }
 
+    const fn carrying(self, qty: &'static [(u8, u8)]) -> Self {
+        Hardpoint { qty, ..self }
+    }
+
     pub fn rounds(&self, w: u8) -> u8 {
         if let Some(&(_, n)) = self.qty.iter().find(|q| q.0 == w) {
             return n;
@@ -532,50 +536,64 @@ const A10_OUTLINE: &[(f32, f32)] = &[
     (-0.10, 0.26),
     (-0.10, 0.04),
 ];
-/// aircraft_023 (tools/models/aircraft.py `f16`) seen from above: half span 4.70 m, length 15.88 m.
+/// aircraft_023 (tools/models/aircraft.py `f16`) seen from above: half span 4.84 m, length 15.90 m.
 const F16_OUTLINE: &[(f32, f32)] = &[
     (0.00, 0.00),
-    (0.44, 1.62),
-    (0.84, 4.58),
-    (1.34, 6.84),
-    (4.34, 9.26),
-    (4.58, 9.24),
-    (4.60, 8.10),
-    (4.64, 7.78),
-    (4.70, 8.10),
-    (4.70, 11.14),
-    (4.60, 11.14),
-    (4.56, 10.66),
-    (1.04, 10.68),
-    (1.04, 12.00),
-    (2.82, 13.46),
-    (2.82, 14.34),
-    (1.00, 14.34),
-    (0.98, 14.08),
-    (0.48, 14.06),
+    (0.42, 1.54),
+    (0.84, 4.62),
+    (1.34, 6.86),
+    (3.62, 8.70),
+    (3.90, 8.70),
+    (3.90, 8.92),
+    (4.52, 9.42),
+    (4.74, 9.40),
+    (4.74, 8.10),
+    (4.78, 7.78),
+    (4.84, 8.16),
+    (4.84, 11.16),
+    (4.74, 11.16),
+    (4.72, 10.68),
+    (3.92, 10.68),
+    (3.90, 11.08),
+    (3.82, 11.08),
+    (3.80, 10.68),
+    (1.02, 10.70),
+    (1.02, 12.00),
+    (2.80, 13.46),
+    (2.80, 14.36),
+    (1.00, 14.36),
+    (0.98, 14.10),
+    (0.48, 14.08),
     (0.44, 14.44),
-    (0.26, 14.46),
-    (0.00, 15.88),
-    (-0.26, 14.46),
+    (0.24, 14.52),
+    (0.00, 15.90),
+    (-0.24, 14.52),
     (-0.44, 14.44),
-    (-0.48, 14.06),
-    (-0.98, 14.08),
-    (-1.00, 14.34),
-    (-2.82, 14.34),
-    (-2.82, 13.46),
-    (-1.04, 12.00),
-    (-1.04, 10.68),
-    (-4.56, 10.66),
-    (-4.60, 11.14),
-    (-4.70, 11.14),
-    (-4.70, 8.10),
-    (-4.64, 7.78),
-    (-4.60, 8.10),
-    (-4.58, 9.24),
-    (-4.34, 9.26),
-    (-1.34, 6.84),
-    (-0.84, 4.58),
-    (-0.44, 1.62),
+    (-0.48, 14.08),
+    (-0.98, 14.10),
+    (-1.00, 14.36),
+    (-2.80, 14.36),
+    (-2.80, 13.46),
+    (-1.02, 12.00),
+    (-1.02, 10.70),
+    (-3.80, 10.68),
+    (-3.82, 11.08),
+    (-3.90, 11.08),
+    (-3.92, 10.68),
+    (-4.72, 10.68),
+    (-4.74, 11.16),
+    (-4.84, 11.16),
+    (-4.84, 8.16),
+    (-4.78, 7.78),
+    (-4.74, 8.10),
+    (-4.74, 9.40),
+    (-4.52, 9.42),
+    (-3.90, 8.92),
+    (-3.90, 8.70),
+    (-3.62, 8.70),
+    (-1.34, 6.86),
+    (-0.84, 4.62),
+    (-0.42, 1.54),
 ];
 
 const fn bay(
@@ -634,20 +652,32 @@ static F117_FANTASY: [Hardpoint; 4] = [
     bay("hardpoint-right-wing-bay", "RW", 3.1, 10.5, true, 2, &ALL),
 ];
 const TIP: [u8; 2] = [0, 1];
-const WING_MID: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const WING_MID: [u8; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, HELLFIRE];
 const WING_INNER: [u8; 13] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+const F16_INNER: [u8; 14] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, HELLFIRE];
 const CENTRE: [u8; 3] = [16, 17, 18];
-/// The F-16's stations 1 (left wingtip) to 9 (right wingtip).
+/// Three Hellfires on a wing pylon's triple ejector rack (BRU-42).
+const TER_HELLFIRES: [(u8, u8); 1] = [(HELLFIRE, 3)];
+/// The wing pylons' stores beside the inner ones' leave no room for a rack of the fat or widely
+/// finned ones (the Snakeye's retarders, the Fireye, the Mk 35): one straight on the pylon
+/// (tools/models/store_clearance.py).
+const F16_MID_QTY: [(u8, u8); 4] = [(HELLFIRE, 3), (10, 1), (12, 1), (14, 1)];
+/// The F-16's stations 1 (left wingtip) to 9 (right wingtip); the wing pylons take a triple
+/// ejector rack of Hellfires.
 static F16_STATIONS: [Hardpoint; 9] = [
-    pylon("hardpoint-station-1-left-wingtip", "1", -4.66, 9.70, Some(8), &TIP),
+    pylon("hardpoint-station-1-left-wingtip", "1", -4.80, 9.70, Some(8), &TIP),
     pylon("hardpoint-station-2-left-outer-wing", "2", -3.88, 9.81, Some(7), &TIP),
-    pylon("hardpoint-station-3-left-wing", "3", -2.93, 9.43, Some(6), &WING_MID),
-    pylon("hardpoint-station-4-left-inner-wing", "4", -1.89, 9.12, Some(5), &WING_INNER),
+    pylon("hardpoint-station-3-left-wing", "3", -2.93, 9.43, Some(6), &WING_MID)
+        .carrying(&F16_MID_QTY),
+    pylon("hardpoint-station-4-left-inner-wing", "4", -1.89, 9.12, Some(5), &F16_INNER)
+        .carrying(&TER_HELLFIRES),
     pylon("hardpoint-station-5-centreline", "5", 0.00, 8.79, None, &CENTRE),
-    pylon("hardpoint-station-6-right-inner-wing", "6", 1.89, 9.12, Some(3), &WING_INNER),
-    pylon("hardpoint-station-7-right-wing", "7", 2.93, 9.43, Some(2), &WING_MID),
+    pylon("hardpoint-station-6-right-inner-wing", "6", 1.89, 9.12, Some(3), &F16_INNER)
+        .carrying(&TER_HELLFIRES),
+    pylon("hardpoint-station-7-right-wing", "7", 2.93, 9.43, Some(2), &WING_MID)
+        .carrying(&F16_MID_QTY),
     pylon("hardpoint-station-8-right-outer-wing", "8", 3.88, 9.81, Some(1), &TIP),
-    pylon("hardpoint-station-9-right-wingtip", "9", 4.66, 9.70, Some(0), &TIP),
+    pylon("hardpoint-station-9-right-wingtip", "9", 4.80, 9.70, Some(0), &TIP),
 ];
 
 /// The Tornado's wing pylons (swivelling with the sweep) carry the tanks, the fuselage's
@@ -658,13 +688,20 @@ const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 /// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
 /// fuselage's shoulder pylons fore and aft. The rail is drawn further out than its pylon's
 /// side, where it is apart from the pylon.
+/// Two Snakeyes forward (a full rack's retarders reach the gear), one Fireye aft.
+const TORNADO_FORWARD_QTY: [(u8, u8); 1] = [(10, 2)];
+const TORNADO_AFT_QTY: [(u8, u8); 1] = [(12, 1)];
 static TORNADO_STATIONS: [Hardpoint; 8] = [
     pylon("hardpoint-tornado-left-wing-rail", "1", -5.20, 10.70, Some(7), &TIP),
     pylon("hardpoint-tornado-left-wing-pylon", "2", -3.60, 10.20, Some(6), &TORNADO_WING),
-    pylon("hardpoint-tornado-left-shoulder-forward", "3", -0.80, 7.15, Some(5), &TORNADO_BELLY),
-    pylon("hardpoint-tornado-left-shoulder-aft", "4", -0.80, 11.50, Some(4), &WING_INNER),
-    pylon("hardpoint-tornado-right-shoulder-aft", "5", 0.80, 11.50, Some(3), &WING_INNER),
-    pylon("hardpoint-tornado-right-shoulder-forward", "6", 0.80, 7.15, Some(2), &TORNADO_BELLY),
+    pylon("hardpoint-tornado-left-shoulder-forward", "3", -0.80, 7.15, Some(5), &TORNADO_BELLY)
+        .carrying(&TORNADO_FORWARD_QTY),
+    pylon("hardpoint-tornado-left-shoulder-aft", "4", -0.80, 11.50, Some(4), &WING_INNER)
+        .carrying(&TORNADO_AFT_QTY),
+    pylon("hardpoint-tornado-right-shoulder-aft", "5", 0.80, 11.50, Some(3), &WING_INNER)
+        .carrying(&TORNADO_AFT_QTY),
+    pylon("hardpoint-tornado-right-shoulder-forward", "6", 0.80, 7.15, Some(2), &TORNADO_BELLY)
+        .carrying(&TORNADO_FORWARD_QTY),
     pylon("hardpoint-tornado-right-wing-pylon", "7", 3.60, 10.20, Some(1), &TORNADO_WING),
     pylon("hardpoint-tornado-right-wing-rail", "8", 5.20, 10.70, Some(0), &TIP),
 ];
@@ -675,15 +712,21 @@ static TORNADO_STATIONS: [Hardpoint; 8] = [
 const A10_WING: [u8; 11] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const A10_INNER: [u8; 11] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
 const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
+/// The fuselage stations' racks of the fat or widely finned stores would meet: one of them each.
+const A10_BELLY_QTY: [(u8, u8); 5] = [(7, 1), (10, 1), (11, 1), (12, 1), (14, 1)];
 /// The A-10's eleven stations: 1 (left outer wing, the Sidewinders) to 11.
 static A10_STATIONS: [Hardpoint; 11] = [
     pylon("hardpoint-a10-1-left-outer-wing", "1", -5.95, 8.63, Some(10), &SIDEWINDER),
     pylon("hardpoint-a10-2-left-wing", "2", -4.75, 8.53, Some(9), &A10_WING),
     pylon("hardpoint-a10-3-left-wing", "3", -3.55, 8.43, Some(8), &A10_WING),
     pylon("hardpoint-a10-4-left-centre-wing", "4", -1.65, 8.27, Some(7), &A10_INNER),
-    pylon("hardpoint-a10-5-left-fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY).excluding(&[5]),
+    pylon("hardpoint-a10-5-left-fuselage", "5", -0.45, 8.11, Some(6), &A10_BELLY)
+        .excluding(&[5])
+        .carrying(&A10_BELLY_QTY),
     pylon("hardpoint-a10-6-centreline", "6", 0.0, 8.11, None, &CENTRE).excluding(&[4, 6]),
-    pylon("hardpoint-a10-7-right-fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY).excluding(&[5]),
+    pylon("hardpoint-a10-7-right-fuselage", "7", 0.45, 8.11, Some(4), &A10_BELLY)
+        .excluding(&[5])
+        .carrying(&A10_BELLY_QTY),
     pylon("hardpoint-a10-8-right-centre-wing", "8", 1.65, 8.27, Some(3), &A10_INNER),
     pylon("hardpoint-a10-9-right-wing", "9", 3.55, 8.43, Some(2), &A10_WING),
     pylon("hardpoint-a10-10-right-wing", "10", 4.75, 8.53, Some(1), &A10_WING),
@@ -695,7 +738,7 @@ static F117_REAL_LAYOUT: Layout =
 static F117_FANTASY_LAYOUT: Layout =
     Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_FANTASY };
 static F16_LAYOUT: Layout =
-    Layout { outline: F16_OUTLINE, half_span: 4.70, length: 15.88, hardpoints: &F16_STATIONS };
+    Layout { outline: F16_OUTLINE, half_span: 4.84, length: 15.90, hardpoints: &F16_STATIONS };
 static A10_LAYOUT: Layout =
     Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
 /// The AV-8B's outer pylons carry the Mavericks, the bombs and Sidewinders, the intermediate ones
@@ -706,16 +749,27 @@ static A10_LAYOUT: Layout =
 const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
 const AV8B_MIDDLE: [u8; 9] = [5, 6, 8, 9, 10, 12, 13, 14, 15];
 const AV8B_INNER: [u8; 15] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+/// The AV-8B's pylons are close together: the fat or widely finned stores one to a pylon, and on
+/// the intermediate ones (by the outrigger legs) the Mk 82s and Durandals too.
+const AV8B_OUTER_QTY: [(u8, u8); 3] = [(10, 1), (12, 1), (14, 1)];
+const AV8B_MIDDLE_QTY: [(u8, u8); 5] = [(8, 1), (9, 1), (10, 1), (12, 1), (14, 1)];
+const AV8B_INNER_QTY: [(u8, u8); 3] = [(10, 1), (12, 1), (14, 1)];
 /// The AV-8B's stations: the left Sidewinder rail (1) to the right one (9), numbered as the
 /// real ones (5, the centreline, not fitted).
 static AV8B_STATIONS: [Hardpoint; 8] = [
     pylon("hardpoint-av8b-1-left-rail", "1", -3.90, 8.64, Some(7), &SIDEWINDER),
-    pylon("hardpoint-station-2-left-outer-wing", "2", -3.28, 8.69, Some(6), &AV8B_OUTER),
-    pylon("hardpoint-av8b-3-left-middle-wing", "3", -2.60, 8.19, Some(5), &AV8B_MIDDLE),
-    pylon("hardpoint-av8b-4-left-inboard-wing", "4", -1.88, 7.66, Some(4), &AV8B_INNER),
-    pylon("hardpoint-av8b-6-right-inboard-wing", "6", 1.88, 7.66, Some(3), &AV8B_INNER),
-    pylon("hardpoint-av8b-7-right-middle-wing", "7", 2.60, 8.19, Some(2), &AV8B_MIDDLE),
-    pylon("hardpoint-station-8-right-outer-wing", "8", 3.28, 8.69, Some(1), &AV8B_OUTER),
+    pylon("hardpoint-station-2-left-outer-wing", "2", -3.28, 8.69, Some(6), &AV8B_OUTER)
+        .carrying(&AV8B_OUTER_QTY),
+    pylon("hardpoint-av8b-3-left-middle-wing", "3", -2.60, 8.19, Some(5), &AV8B_MIDDLE)
+        .carrying(&AV8B_MIDDLE_QTY),
+    pylon("hardpoint-av8b-4-left-inboard-wing", "4", -1.88, 7.66, Some(4), &AV8B_INNER)
+        .carrying(&AV8B_INNER_QTY),
+    pylon("hardpoint-av8b-6-right-inboard-wing", "6", 1.88, 7.66, Some(3), &AV8B_INNER)
+        .carrying(&AV8B_INNER_QTY),
+    pylon("hardpoint-av8b-7-right-middle-wing", "7", 2.60, 8.19, Some(2), &AV8B_MIDDLE)
+        .carrying(&AV8B_MIDDLE_QTY),
+    pylon("hardpoint-station-8-right-outer-wing", "8", 3.28, 8.69, Some(1), &AV8B_OUTER)
+        .carrying(&AV8B_OUTER_QTY),
     pylon("hardpoint-av8b-9-right-rail", "9", 3.90, 8.64, Some(0), &SIDEWINDER),
 ];
 static AV8B_LAYOUT: Layout =
@@ -1068,7 +1122,8 @@ pub fn loadout_ui(
         *lo = PlannedLoadout::of(&m, aircraft);
     }
     let window = screen_window(ctx, "Loadout", LOADOUT_SIZE);
-    let panel = crate::menu::Panel::new(t!("menu-loadout")).note(aircraft.name().to_ascii_uppercase());
+    let panel =
+        crate::menu::Panel::new(t!("menu-loadout")).note(aircraft.name().to_ascii_uppercase());
     panel.window(window, ctx, |ui| {
         let split = Split::new(ui, "loadout");
         split.body_sized(ui, |ui, room| editor(ui, w, lo, &m, room));
@@ -1084,8 +1139,11 @@ pub fn loadout_ui(
                 {
                     *lo = PlannedLoadout::of(&m, aircraft);
                 }
-                if facts(ui.add(big_button(t!("loadout-clear")).icon(icon::CLEAR)), t_lines!("loadout-clear.facts"))
-                    .clicked()
+                if facts(
+                    ui.add(big_button(t!("loadout-clear")).icon(icon::CLEAR)),
+                    t_lines!("loadout-clear.facts"),
+                )
+                .clicked()
                 {
                     lo.stores.iter_mut().for_each(|s| *s = None);
                 }
@@ -1147,7 +1205,11 @@ pub fn editor(
                                 format!("{}x {name}", hp.rounds(wpn))
                             } else {
                                 // Said in the name too: VR has no hover text.
-                                format!("{}x {name} {}", hp.rounds(wpn), t!("loadout-none-in-stock"))
+                                format!(
+                                    "{}x {name} {}",
+                                    hp.rounds(wpn),
+                                    t!("loadout-none-in-stock")
+                                )
                             },
                         ),
                     );

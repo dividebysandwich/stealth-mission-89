@@ -89,6 +89,15 @@ options-sun-moon = 태양과 달
     .facts =
         낮에는 하늘의 태양, 밤에는 달과 별
         달은 임무의 위상을 보여줍니다
+options-cloud-quality = 구름
+cloud-quality-auto = 자동
+    .facts = VR에서는 낮음, 화면에서는 높음
+cloud-quality-low = 낮음
+    .facts = 3분의 1 해상도의 거친 구름 (가장 빠름)
+cloud-quality-medium = 중간
+    .facts = 절반 해상도, 더 세밀함
+cloud-quality-high = 높음
+    .facts = 전체 해상도, 가장 세밀한 표현과 자체 그림자 (GPU 시간 소모)
 
 ## 사운드
 

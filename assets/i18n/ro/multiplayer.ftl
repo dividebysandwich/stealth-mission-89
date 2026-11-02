@@ -84,6 +84,7 @@ mp-rules = Reguli pentru toți
 mp-time-of-day = Ora din zi (nopți cu lună)
 mp-realistic-weapons = Armament realist F-117A
 mp-friendly-fire = Foc prietenesc
+mp-airframe-losses = Aeronavele pierdute contează
 mp-day-night = Zi și noapte:
 mp-weather = Vreme:
 mp-host-new = GĂZDUIEȘTE NOU

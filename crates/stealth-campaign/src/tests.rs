@@ -1512,6 +1512,7 @@ fn drones_in_the_air_are_no_fighters_after_a_load() {
         drones: true,
         enroute_at: Some(0.0),
         sam: None,
+        feint: false,
     });
     c.after_load();
     assert_eq!(c.red.fighters, before);
@@ -2734,4 +2735,322 @@ fn enemy_patrols_guard_the_place_the_players_strike() {
         _ => None,
     });
     assert!(goal.is_some_and(|g| g != (px, py)), "{goal:?}");
+}
+
+/// Player `p` airborne at (x, y).
+fn up_at(p: PlayerId, x: i32, y: i32) -> PlayerPos {
+    PlayerPos { id: p, x, y, airborne: true, landed: false, hover_over: None }
+}
+
+#[test]
+fn a_struck_airfield_holds_back_the_enemys_raids_and_the_debrief_says_so() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, obj) = take(&mut c, P0, MissionKind::Strike);
+    let Objective::Strike { airfield, .. } = obj else { unreachable!() };
+    c.raid_at = f64::MIN / 2.0;
+    c.tick(
+        1.0,
+        &WorldView::default(),
+        &[Report::ObjectDestroyed { object: airfield, by: Some(P0) }],
+    );
+    // No raid for the delay, whatever its interval says.
+    let every = tuning::RAID_EVERY[1];
+    assert!(c.raid_at >= c.clock + tuning::STRUCK_AIRFIELD_DELAY - every - 2.0);
+    let record = finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap());
+    assert!(
+        record.effects.iter().any(|e| e.contains("airfield out of action")),
+        "{:?}",
+        record.effects
+    );
+}
+
+#[test]
+fn a_struck_city_holds_back_the_enemys_convoys_and_insertions() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    take(&mut c, P0, MissionKind::Strike);
+    let object = c
+        .sites
+        .iter()
+        .find(|s| s.kind == SiteKind::City && c.owner(s.object) == Some(Side::Red))
+        .unwrap()
+        .object;
+    c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object, by: Some(P0) }]);
+    let now = c.clock;
+    let insert = tuning::ENEMY_INSERT_EVERY[1];
+    let convoy = tuning::ENEMY_CONVOY_EVERY[1];
+    assert!(c.enemy_insert_at >= now + tuning::STRUCK_CITY_DELAY - insert - 1.0);
+    assert!(c.convoy_at[1] >= now + tuning::STRUCK_CITY_DELAY - convoy - 1.0);
+    let s = c.sortie(P0).unwrap();
+    assert!(s.progress.effects.iter().any(|e| e.contains("in ruins")), "{:?}", s.progress.effects);
+}
+
+#[test]
+fn a_player_on_cap_keeps_enemy_raids_off_the_places_under_it() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, _) = take(&mut c, P0, MissionKind::Cap);
+    // Over a friendly airfield: the enemy raids it no more.
+    let (x, y) = c
+        .places
+        .iter()
+        .find(|p| p.owner == Side::Blue && p.airfield.is_some())
+        .map(|p| (p.x, p.y))
+        .unwrap();
+    c.slot_mut(P0).sortie.as_mut().unwrap().offer.objective = Objective::Cap { x, y };
+    let view = WorldView { players: vec![up_at(P0, x, y)], ..Default::default() };
+    c.tick(1.0, &view, &[]);
+    let place = c.places.iter().position(|p| (p.x, p.y) == (x, y)).unwrap() as PlaceId;
+    assert!(c.capped(place));
+    let mut raided = 0;
+    for _ in 0..8 {
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &view, &[]);
+        raided += c.raids.iter().filter(|r| r.side == Side::Red && r.place == place).count();
+    }
+    assert_eq!(raided, 0);
+    let s = c.sortie(P0).unwrap();
+    assert!(
+        s.progress.effects.iter().any(|e| e.contains("Your CAP kept")),
+        "{:?}",
+        s.progress.effects
+    );
+}
+
+#[test]
+fn an_escort_keeps_the_enemys_fighters_off_the_helicopters() {
+    let scrambled = |escorted: bool| {
+        let mut c = campaign("central_europe", 3);
+        let place = c.front(Side::Blue)[0];
+        c.apply(P0, Command::OrderInsertion { place }).unwrap();
+        c.tick(1.0, &WorldView::default(), &[]);
+        let escort = c.board.iter().find(|o| o.kind == MissionKind::Escort).unwrap().clone();
+        c.apply(P0, Command::TakeMission { offer: escort.id, base: None, aircraft: Aircraft::F16 })
+            .unwrap();
+        let Objective::Escort { insertion } = escort.objective else { unreachable!() };
+        c.tick(tuning::INSERTION_LEAD, &WorldView::default(), &[]);
+        let ins = c.insertion(insertion).unwrap().clone();
+        assert_eq!(ins.state, InsertionState::Enroute);
+        // The helicopters over an enemy airfield, the escort with them (or not).
+        let t = c.site(ins.target).unwrap();
+        let b = c.nearest_base(Side::Red, t.x, t.y).unwrap();
+        let (x, y) = (c.site(b).unwrap().x, c.site(b).unwrap().y);
+        let flights =
+            ins.helicopters.iter().map(|&tag| FlightView { x, y, side: Side::Blue, tag }).collect();
+        let players = if escorted { vec![up_at(P0, x, y)] } else { Vec::new() };
+        let view = WorldView { players, flights, ..Default::default() };
+        c.tick(1.0, &view, &[]);
+        let ev = c.tick(1.0, &view, &[]);
+        let fx = c.sortie(P0).unwrap().progress.effects.clone();
+        (c.insertion(insertion).unwrap().scrambled, ev, fx)
+    };
+    let (alone, _, fx) = scrambled(false);
+    assert!(alone && fx.is_empty());
+    let (_, ev, fx) = scrambled(true);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::LaunchFighters { side: Side::Red, .. })));
+    assert!(fx.iter().any(|e| e.contains("Your escort kept")), "{fx:?}");
+}
+
+#[test]
+fn under_the_airframe_rule_a_crashed_jet_is_one_fighter_fewer() {
+    for rule in [false, true] {
+        let mut c = campaign("central_europe", 3);
+        c.rules = Some(CampaignRules { airframe_losses: rule, ..Default::default() });
+        c.tick(1.0, &WorldView::default(), &[]);
+        take(&mut c, P0, MissionKind::Strike);
+        let fighters = c.blue.fighters;
+        let record =
+            finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap());
+        assert_eq!(c.blue.fighters, fighters - rule as u32);
+        assert_eq!(record.effects.iter().any(|e| e.contains("one fighter fewer")), rule);
+        // Landed: nothing lost.
+        take(&mut c, P0, MissionKind::Strike);
+        c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
+        assert_eq!(c.blue.fighters, fighters - rule as u32);
+    }
+}
+
+#[test]
+fn urgent_missions_say_when_they_are_due() {
+    let mut c = campaign("central_europe", 3);
+    let (id, _, _) = {
+        // An enemy raid ordered: its Defend offer is due at lift-off, then now.
+        c.tick(1.0, &WorldView::default(), &[]);
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &WorldView::default(), &[]);
+        let r = c.raids.iter().find(|r| r.side == Side::Red).expect("a raid");
+        (r.id, r.place, r.target)
+    };
+    let RaidState::Pending { launch_at } = c.raid(id).unwrap().state else { panic!() };
+    assert_eq!(c.due(&Objective::Defend { raid: id }), Some(Due::At(launch_at)));
+    c.tick(launch_at - c.clock + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.due(&Objective::Defend { raid: id }), Some(Due::Now));
+    assert_eq!(c.due(&Objective::Cap { x: 0, y: 0 }), None);
+}
+
+#[test]
+fn the_front_moves_for_who_takes_places_and_destroys_sites() {
+    let mut c = campaign("central_europe", 3);
+    assert_eq!(c.momentum(), 0);
+    let place = c.front(Side::Blue)[0];
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Blue, &mut ev);
+    assert_eq!(c.momentum(), tuning::MOMENTUM_CAPTURE as i32);
+    let city = c
+        .sites
+        .iter()
+        .find(|s| s.kind == SiteKind::City && s.alive() && c.owner(s.object) == Some(Side::Blue))
+        .unwrap()
+        .object;
+    c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: city, by: None }]);
+    assert_eq!(c.momentum(), tuning::MOMENTUM_CAPTURE as i32 - 1);
+    // Forgotten after a while.
+    c.clock += tuning::MOMENTUM_WINDOW + 1.0;
+    assert_eq!(c.momentum(), 0);
+}
+
+#[test]
+fn a_prepared_operation_sends_the_insertion_in_at_once() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    // A front place with SAM sites to take down.
+    let front = c.front(Side::Blue);
+    let place = *front.iter().find(|&&p| !c.places[p as usize].defences.is_empty()).unwrap();
+    let op = c.operation(place).unwrap();
+    assert_eq!(op.done(), 0);
+    assert!(op.steps.iter().any(|s| s.0 == MissionKind::Sead));
+    // Not on the front: no operation.
+    let rear = (0..c.places.len() as PlaceId).find(|p| !front.contains(p)).unwrap();
+    assert!(c.operation(rear).is_none());
+    // Recon, SEAD and the strike done (the guns are not in the view).
+    c.places[place as usize].intel_until = Some(c.clock + 3600.0);
+    let targets: Vec<ObjectId> = c.places[place as usize]
+        .defences
+        .iter()
+        .copied()
+        .chain(c.places[place as usize].airfield)
+        .collect();
+    let hit: Vec<Report> =
+        targets.iter().map(|&object| Report::ObjectDestroyed { object, by: None }).collect();
+    c.auto_insert_at = c.clock;
+    let ev = c.tick(1.0, &WorldView::default(), &hit);
+    let op = c.operation(place).unwrap();
+    assert!(op.ready(), "{op:?}");
+    let ev: Vec<_> = ev.into_iter().chain(c.tick(1.0, &WorldView::default(), &[])).collect();
+    assert!(c.insertions.iter().any(|i| i.side == Side::Blue && i.place == place), "{:?}", ev);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("prepared"))));
+}
+
+#[test]
+fn the_awacs_diverts_a_pilot_to_a_raid_near_him() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, strike) = take(&mut c, P0, MissionKind::Strike);
+    // An enemy raid ordered: its Defend offer on the board.
+    c.raid_at = f64::MIN / 2.0;
+    c.tick(1.0, &WorldView::default(), &[]);
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    let defend =
+        c.board.iter().find(|o| matches!(o.objective, Objective::Defend { .. })).unwrap().clone();
+    // Not seen in the air yet: nothing to divert.
+    assert!(c.divert_for(P0).is_none());
+    let view = WorldView { players: vec![up_at(P0, defend.x, defend.y)], ..Default::default() };
+    c.tick(1.0, &view, &[Report::ObjectDestroyed { object: 0, by: Some(P0) }]);
+    let kills = c.sortie(P0).unwrap().progress.sites_destroyed.clone();
+    assert_eq!(c.divert_for(P0).map(|o| o.id), Some(defend.id));
+    let ev = c.apply(P0, Command::Retask { offer: defend.id }).unwrap();
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::SortieRetasked { .. })));
+    let s = c.sortie(P0).unwrap();
+    assert_eq!(s.offer.id, defend.id);
+    assert_eq!(s.progress.sites_destroyed, kills);
+    assert!(c.plans.iter().any(|p| p.offer == defend.id && p.flying.contains(&P0)));
+    // On an urgent mission now: no divert from it, none back to the strike.
+    assert!(c.divert_for(P0).is_none());
+    let back = c.board.iter().find(|o| o.objective == strike).map(|o| o.id);
+    if let Some(back) = back {
+        assert!(c.apply(P0, Command::Retask { offer: back }).is_err());
+    }
+}
+
+#[test]
+fn the_enemy_raids_the_sites_the_players_built() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let spot = deploy_spot(&c, DefenceKind::Gepard, &[]);
+    let id = designate(&mut c, spot, DefenceKind::Gepard).unwrap();
+    let k = c.deployments.iter().position(|d| d.id == id).unwrap();
+    c.deployments[k].built = true;
+    let (x, y) = c.deployments[k].unit_at();
+    let view =
+        WorldView { units: vec![GroundView::gun(x, y, Side::Blue, true)], ..Default::default() };
+    // One raid in a few goes for it.
+    let mut raid = None;
+    for _ in 0..40 {
+        c.red.fighters = 30;
+        c.red.materiel = tuning::MATERIEL_MAX;
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &view, &[]);
+        raid = c.raids.iter().find(|r| r.sam.is_some_and(|s| s.site == Some(id))).cloned();
+        if raid.is_some() {
+            break;
+        }
+        c.raids.retain(|r| r.sam.is_some());
+    }
+    let r = raid.expect("a raid on the Gepard");
+    assert_eq!(r.sam.unwrap().aaa, 0);
+    c.tick(tuning::BOARD_REFRESH, &view, &[]);
+    let o = c.board.iter().find(|o| o.objective == Objective::Defend { raid: r.id }).unwrap();
+    assert!(o.title.contains("Gepard near"), "{}", o.title.en());
+}
+
+#[test]
+fn a_feint_turns_back_on_its_way() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let mut feint = None;
+    for _ in 0..40 {
+        c.red.fighters = 30;
+        c.red.materiel = tuning::MATERIEL_MAX;
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &WorldView::default(), &[]);
+        feint = c.raids.iter().find(|r| r.feint && r.open()).map(|r| r.id);
+        if feint.is_some() {
+            break;
+        }
+        c.raids.clear();
+    }
+    let id = feint.expect("a feint");
+    // It goes with a real raid on another airfield.
+    let real: Vec<&Raid> = c.raids.iter().filter(|r| r.open() && !r.feint).collect();
+    assert!(real.iter().any(|r| r.target != c.raid(id).unwrap().target));
+    c.tick(tuning::RAID_LEAD + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Enroute);
+    let ev = c.tick(tuning::FEINT_TURN + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Repelled);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })));
+}
+
+#[test]
+fn enemy_insertions_go_for_what_a_place_is_worth() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let front = c.front(Side::Red);
+    let with_airfield = front.iter().copied().find(|&p| {
+        c.places[p as usize].airfield.is_some_and(|a| c.site(a).is_some_and(Site::alive))
+    });
+    if let Some(p) = with_airfield {
+        let v = c.place_value(p);
+        let a = c.places[p as usize].airfield.unwrap();
+        c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: a, by: None }]);
+        assert_eq!(c.place_value(p), v - tuning::AIRFIELD_VALUE);
+    }
+    // Undefended (no guns in the view), the most valuable ones are the targets.
+    let mut values: Vec<(i32, PlaceId)> = front.iter().map(|&p| (c.place_value(p), p)).collect();
+    values.sort_by_key(|v| std::cmp::Reverse(v.0));
+    let best = values[tuning::ENEMY_TARGET_CHOICE.min(values.len()) - 1].0;
+    c.enemy_insert_at = f64::MIN / 2.0;
+    c.tick(1.0, &WorldView::default(), &[]);
+    let ins = c.insertions.iter().find(|i| i.side == Side::Red).expect("an enemy insertion");
+    assert!(c.place_value(ins.place) >= best, "{values:?} -> {}", ins.place);
 }

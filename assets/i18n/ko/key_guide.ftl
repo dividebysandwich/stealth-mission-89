@@ -118,6 +118,7 @@ kg-detail = 디테일 수준
 kg-day-night = 낮 / 밤
 kg-training = 훈련으로 이동
 kg-resupply = 재보급
+kg-accept-tasking = 임무 전환 수락
 kg-quit = 종료
 kg-hover = 자동 정지 비행 (헬리콥터, 30 kt까지)
 kg-rwr-priority = RWR 우선순위 모드 (위협 5개) 켜기 / 끄기

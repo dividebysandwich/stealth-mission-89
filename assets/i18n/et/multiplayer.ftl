@@ -84,6 +84,7 @@ mp-rules = Reeglid kõigile
 mp-time-of-day = Kellaaeg (kuuvalged ööd)
 mp-realistic-weapons = Realistlikud F-117A relvad
 mp-friendly-fire = Oma tuli
+mp-airframe-losses = Kaotatud lennukid loevad
 mp-day-night = Päev ja öö:
 mp-weather = Ilm:
 mp-host-new = KORRALDA UUS

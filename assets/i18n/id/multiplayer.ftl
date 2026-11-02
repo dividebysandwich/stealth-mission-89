@@ -83,6 +83,7 @@ mp-rules = Aturan untuk semua
 mp-time-of-day = Waktu hari (malam berbulan)
 mp-realistic-weapons = Senjata F-117A realistis
 mp-friendly-fire = Tembakan kawan
+mp-airframe-losses = Pesawat yang hilang dihitung
 mp-day-night = Siang dan malam:
 mp-weather = Cuaca:
 mp-host-new = HOST BARU

@@ -12,6 +12,7 @@ hud-aim-at-target = RICHT OP DOEL
 hud-photo = FOTO { $state }
 hud-rearmed = Herbewapend en bijgetankt
 hud-landed-rearm = Geland - herbewapen of beëindig de vlucht
+hud-divert-accept = Omleiding: { $title } - { $key } om te accepteren
 hud-objective-achieved = Doel bereikt
 
 ## Scherm einde missie

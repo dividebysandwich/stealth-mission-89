@@ -103,6 +103,8 @@ pub struct Combat {
     pending: SimCommands,
     /// END MISSION was asked for (a campaign ends the sortie instead, `campaign.rs`).
     pub quit: bool,
+    /// The pilot accepted the AWACS's divert (a campaign retasks the sortie).
+    pub accept_tasking: bool,
     /// Flight units and projectiles before the last step, for render interpolation.
     pub prev_flights: Vec<FlightUnit>,
     /// The ground units' fine positions (vehicles) before the last step.
@@ -410,6 +412,7 @@ fn start_combat(
         accum: 0.0,
         pending: SimCommands::default(),
         quit: false,
+        accept_tasking: false,
         alpha: 0.0,
         frame_gap: 1.0,
         own_alpha: 0.0,
@@ -533,6 +536,7 @@ fn collect_commands(
             Action::TimeAccel => accel.level = accel.next_level(),
             Action::TimeNormal => accel.level = 0,
             Action::Quit => combat.quit = true,
+            Action::AcceptTasking => combat.accept_tasking = true,
             _ => {}
         }
     }

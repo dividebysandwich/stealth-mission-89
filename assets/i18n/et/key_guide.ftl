@@ -118,6 +118,7 @@ kg-detail = Detailsuse tase
 kg-day-night = Päev / öö
 kg-training = Mine treeningule
 kg-resupply = Täiendus
+kg-accept-tasking = Nõustu ümbersuunamisega
 kg-quit = Välju
 kg-hover = Automaatne hõljumine (kopterid, kuni 30 kt)
 kg-rwr-priority = RWR-i prioriteediroll (viis ohtu) sees / väljas

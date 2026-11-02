@@ -15,6 +15,7 @@ hud-aim-at-target = AIM AT TGT
 hud-photo = PHOTO { $state }
 hud-rearmed = Rearmed and refuelled
 hud-landed-rearm = Landed - rearm or end the sortie
+hud-divert-accept = Divert: { $title } - { $key } to accept
 hud-objective-achieved = Objective achieved
 
 ## End of mission overlay

@@ -79,11 +79,18 @@ ops-rule-no-crashes = bez padova
 ops-rule-time = neprekinuto vrijeme
 ops-rule-weapons = realistično naoružanje F-117A
 ops-rule-friendly-fire = prijateljska paljba
+ops-rule-airframe-losses = izgubljeni zrakoplovi se broje
 ops-rule-classic = klasično
 ops-materiel = MATERIJAL
 ops-materiel-blue = PLAVI { $materiel } (+{ $income }/h)
 ops-materiel-red = CRVENI { $materiel } (+{ $income }/h)
 ops-crew-tempo = TEMPO NEPRIJATELJA ×{ $pace }
+ops-due = T-{ $mins } min
+ops-due-now = SADA
+ops-front-blue = BOJIŠNICA: PLAVI NAPREDUJU
+ops-front-red = BOJIŠNICA: CRVENI NAPREDUJU
+ops-front-even = BOJIŠNICA: DRŽI SE
+ops-operation = Operacija { $place }: { $done }/{ $total } pripremljeno
 ops-friendly = SAVEZNIČKO
 ops-enemy = NEPRIJATELJSKO
 ops-section-forces = Snage
@@ -108,6 +115,8 @@ ops-how =
     AI plaća sve što radi: popravke, svaki borbeni let lovaca, napade i vlastite desante. Bez materijala njegova oštećenja ostaju nepopravljena, a zrakoplovi ostaju kod kuće.
     AI leti samo zrakoplovima koje ima; oboreni su izgubljeni, sletjeli opet lete. Svakog sata svaka strana kupuje nove dok joj materijala ima.
     Vama nikad ne ponestaje: vaši zrakoplovi, vaše baze (bombardirane ili ne) i helikopteri vaših naredbi za desant uvijek su tu.
+ops-how-repairs = Svaka strana istodobno popravlja samo nekoliko položaja (više s više netaknutih gradova), najprije one najbliže bojišnici, a položaj ponovno uništen ubrzo nakon popravka svaki put traje dulje.
+ops-how-airframes = Izgubljeni zrakoplovi se broje: svaki zrakoplov koji pilot izgubi jedan je lovac ili helikopter manje za vlastitu UI.
 ops-section-prices = Cijene
 ops-price-airfield = Popravak aerodroma
 ops-price-sam = Popravak SAM položaja
@@ -155,6 +164,7 @@ ops-points-bonus = Bodova: { $points } (bonus paketa +{ $bonus })
 ops-campaign-points = { $rank } - bodova kampanje: { $points }
 ops-campaign-record = Kampanja: borbenih letova { $sorties }, postignutih ciljeva { $won }
 ops-section-meanwhile = U međuvremenu
+ops-section-effects = Tvoj utjecaj na rat
 ops-victory = POBJEDA
     .text = Neprijatelj više ne drži nijedan aerodrom: ratište je naše.
 ops-defeat = PORAZ

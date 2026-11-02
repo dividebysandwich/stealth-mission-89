@@ -84,6 +84,7 @@ mp-rules = Regeln für alle
 mp-time-of-day = Tageszeit (mondhelle Nächte)
 mp-realistic-weapons = Realistische F-117A-Bewaffnung
 mp-friendly-fire = Eigenbeschuss
+mp-airframe-losses = Verlorene Flugzeuge zählen
 mp-day-night = Tag und Nacht:
 mp-weather = Wetter:
 mp-host-new = NEUE HOSTEN

@@ -116,6 +116,7 @@ kg-detail = Detalizācijas līmenis
 kg-day-night = Diena / nakts
 kg-training = Pāriet uz treniņu
 kg-resupply = Papildināt krājumus
+kg-accept-tasking = Pieņemt pārvirzīšanu
 kg-quit = Iziet
 kg-hover = Automātiskā paraugšana (helikopteri, līdz 30 kt)
 kg-rwr-priority = RWR prioritārais režīms (pieci draudi) ieslēgts / izslēgts

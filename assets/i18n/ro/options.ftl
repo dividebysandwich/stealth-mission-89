@@ -89,6 +89,15 @@ options-sun-moon = Soare și lună
     .facts =
         Soarele pe cer ziua, luna și stelele noaptea
         Luna arată faza din data misiunii
+options-cloud-quality = Nori
+cloud-quality-auto = Auto
+    .facts = Scăzută în VR, ridicată pe ecran
+cloud-quality-low = Scăzută
+    .facts = Nori grosieri la o treime din rezoluție (cel mai rapid)
+cloud-quality-medium = Medie
+    .facts = Jumătate din rezoluție, detalii mai fine
+cloud-quality-high = Ridicată
+    .facts = Rezoluție completă, cele mai fine detalii și umbră proprie (costă timp GPU)
 
 ## SUNET
 

@@ -25,7 +25,9 @@ mod convoy;
 mod crew;
 mod deploy;
 mod director;
+mod effects;
 mod events;
+mod flow;
 pub mod ground;
 mod missions;
 mod record;
@@ -43,6 +45,7 @@ use stealth_i18n::Text;
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{footprint, loads};
+pub use flow::{Due, Operation, WarEvent, divertible};
 pub use record::PilotRecord;
 pub use state::*;
 
@@ -189,6 +192,9 @@ pub enum Command {
     HookCrate { id: u32, leg: u8 },
     /// Set it down at (`east`, `north`) metres from the site's helipad, heading `heading`.
     DropCrate { id: u32, leg: u8, east: f32, north: f32, heading: f32 },
+    /// In the air: take an urgent mission from the board instead of the one flown (a divert
+    /// the AWACS called).
+    Retask { offer: u32 },
 }
 
 /// What the authority has to do or show.
@@ -199,6 +205,11 @@ pub enum CampaignEvent {
     /// The players' plans changed (all of them).
     PlansChanged(Vec<MissionPlan>),
     SortieStarted {
+        player: PlayerId,
+        sortie: Sortie,
+    },
+    /// A player in the air took another mission (`Command::Retask`).
+    SortieRetasked {
         player: PlayerId,
         sortie: Sortie,
     },
@@ -371,6 +382,7 @@ impl CampaignState {
             }
             Command::OrderInsertion { place } => self.order_insertion(Some(player), place),
             Command::EndSortie { end } => Ok(self.end_sortie(player, end)),
+            Command::Retask { offer } => self.retask(player, offer),
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),

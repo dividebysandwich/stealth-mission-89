@@ -89,6 +89,15 @@ options-sun-moon = Sol e lua
     .facts =
         O sol no céu de dia, a lua e as estrelas à noite
         A lua mostra a fase da missão
+options-cloud-quality = Nuvens
+cloud-quality-auto = Auto
+    .facts = Baixa em RV, alta na tela
+cloud-quality-low = Baixa
+    .facts = Nuvens grosseiras a um terço da resolução (mais rápido)
+cloud-quality-medium = Média
+    .facts = Metade da resolução, mais detalhes
+cloud-quality-high = Alta
+    .facts = Resolução total, máximo detalhe e sombra própria (custa tempo de GPU)
 
 ## SOM
 

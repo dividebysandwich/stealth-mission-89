@@ -79,11 +79,18 @@ ops-rule-no-crashes = tanpa kecelakaan
 ops-rule-time = waktu berkelanjutan
 ops-rule-weapons = senjata F-117A realistis
 ops-rule-friendly-fire = tembakan kawan
+ops-rule-airframe-losses = pesawat yang hilang dihitung
 ops-rule-classic = klasik
 ops-materiel = MATERIIL
 ops-materiel-blue = BIRU { $materiel } (+{ $income }/jam)
 ops-materiel-red = MERAH { $materiel } (+{ $income }/jam)
 ops-crew-tempo = TEMPO MUSUH ×{ $pace }
+ops-due = T-{ $mins } mnt
+ops-due-now = SEKARANG
+ops-front-blue = GARIS DEPAN: BIRU MENANG
+ops-front-red = GARIS DEPAN: MERAH MENANG
+ops-front-even = GARIS DEPAN: BERTAHAN
+ops-operation = Operasi { $place }: { $done }/{ $total } disiapkan
 ops-friendly = KAWAN
 ops-enemy = MUSUH
 ops-section-forces = Pasukan
@@ -108,6 +115,8 @@ ops-how =
     AI membayar semua yang dilakukannya: perbaikan, setiap sorti pesawat tempur, serangan, dan penurunan pasukannya sendiri. Jika materiel kurang, kerusakannya tidak diperbaiki dan pesawatnya tetap di pangkalan.
     AI hanya menerbangkan pesawat yang dimilikinya; yang tertembak jatuh hilang, yang mendarat dapat terbang lagi. Setiap jam tiap pihak membeli pesawat baru selama materielnya cukup.
     Anda tidak pernah kekurangan: pesawat Anda, pangkalan Anda (dibom atau tidak), dan helikopter dari perintah penurunan pasukan Anda selalu tersedia.
+ops-how-repairs = Setiap pihak hanya memperbaiki beberapa situs sekaligus (lebih banyak dengan lebih banyak kota utuh), yang terdekat ke garis depan lebih dulu, dan situs yang dihancurkan lagi segera setelah diperbaiki butuh waktu lebih lama setiap kali.
+ops-how-airframes = Pesawat yang hilang dihitung: setiap pesawat yang hilang dari pilot berarti satu pesawat tempur atau helikopter berkurang bagi AI kawan.
 ops-section-prices = Harga
 ops-price-airfield = Perbaikan pangkalan udara
 ops-price-sam = Perbaikan situs SAM
@@ -155,6 +164,7 @@ ops-points-bonus = { $points } poin (bonus paket +{ $bonus })
 ops-campaign-points = { $rank } - { $points } poin kampanye
 ops-campaign-record = Kampanye: { $sorties } sorti, { $won } sasaran tercapai
 ops-section-meanwhile = Sementara itu
+ops-section-effects = Pengaruhmu pada perang
 ops-victory = KEMENANGAN
     .text = Musuh tidak lagi menguasai pangkalan udara: teater operasi ini milik kita.
 ops-defeat = KEKALAHAN

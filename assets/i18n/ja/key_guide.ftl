@@ -118,6 +118,7 @@ kg-detail = ディテールレベル
 kg-day-night = 昼 / 夜
 kg-training = 訓練へ移動
 kg-resupply = 補給
+kg-accept-tasking = 任務変更を受諾
 kg-quit = 終了
 kg-hover = 自動ホバリング (ヘリコプター、30 kt まで)
 kg-rwr-priority = RWR優先モード (脅威5件) オン / オフ

@@ -89,6 +89,15 @@ options-sun-moon = Saule un Mēness
     .facts =
         Saule debesīs dienā, Mēness un zvaigznes naktī
         Mēness parāda misijas fāzi
+options-cloud-quality = Mākoņi
+cloud-quality-auto = Auto
+    .facts = Zema VR, augsta ekrānā
+cloud-quality-low = Zema
+    .facts = Rupji mākoņi trešdaļas izšķirtspējā (ātrākais)
+cloud-quality-medium = Vidēja
+    .facts = Puse izšķirtspējas, smalkākas detaļas
+cloud-quality-high = Augsta
+    .facts = Pilna izšķirtspēja, smalkākās detaļas un pašēna (patērē GPU laiku)
 
 ## SKAŅA
 

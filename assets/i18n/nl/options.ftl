@@ -89,6 +89,15 @@ options-sun-moon = Zon en maan
     .facts =
         De zon aan de hemel overdag, de maan en de sterren 's nachts
         De maan toont de fase van de missie
+options-cloud-quality = Wolken
+cloud-quality-auto = Auto
+    .facts = Laag in VR, hoog op het scherm
+cloud-quality-low = Laag
+    .facts = Grove wolken op een derde van de resolutie (snelst)
+cloud-quality-medium = Middel
+    .facts = Halve resolutie, fijnere details
+cloud-quality-high = Hoog
+    .facts = Volledige resolutie, fijnste details en eigen schaduw (kost GPU-tijd)
 
 ## GELUID
 

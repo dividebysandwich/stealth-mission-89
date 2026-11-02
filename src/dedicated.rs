@@ -37,6 +37,8 @@ stealth-mission-89 --dedicated [switches]
   --realistic-weapons    the F-117A as it was: no cannon, two bays
   --friendly-fire        the players' missiles and gunfire damage each other
   --classic-terrain      the classic flat ground (default: rolling hills and highlands)
+  --airframe-losses      a player's lost aircraft comes out of the friendly side's fighters or
+                         helicopters (new campaigns)
   --plain                log lines instead of the console screen (UTC timestamps; the screen is shown
                          when the output is a terminal; q or Ctrl-C stops the server)
 ";
