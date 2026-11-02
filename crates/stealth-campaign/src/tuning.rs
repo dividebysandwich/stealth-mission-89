@@ -74,6 +74,8 @@ pub const AI_CAP_RESPAWN: f64 = 5.0 * 60.0;
 pub const PATRIOT_REAR: i32 = 0xF00;
 pub const PATRIOT_BATTERIES: usize = 2;
 pub const PATRIOT_OFFSET: i32 = 0x100;
+/// A Patriot battery's launchers stand this close to its radar at most (map units).
+pub const PATRIOT_SPREAD: i32 = 0x20;
 
 /// The enemy's offensive, by the opponents' skill (0..3): an insertion against the weakest
 /// friendly place on its front this often, announced this long before the helicopters lift

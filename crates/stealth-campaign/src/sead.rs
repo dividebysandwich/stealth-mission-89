@@ -76,8 +76,9 @@ impl CampaignState {
         ev.push(CampaignEvent::Message(text));
     }
 
-    /// Air defence unit `aaa` was destroyed: the SEAD raid on it (if one is under way) hit.
-    pub(crate) fn sead_hit(&mut self, aaa: u32, ev: &mut Vec<CampaignEvent>) {
+    /// Air defence unit `aaa` was destroyed: the SEAD raid on it (if one is under way) hit,
+    /// unless a player destroyed it (`by_ai` false): then it has nothing left to go for.
+    pub(crate) fn sead_hit(&mut self, aaa: u32, by_ai: bool, ev: &mut Vec<CampaignEvent>) {
         let Some(k) = self
             .raids
             .iter()
@@ -85,6 +86,14 @@ impl CampaignState {
         else {
             return;
         };
+        if !by_ai {
+            let r = &self.raids[k];
+            let tags: Vec<u32> =
+                r.aircraft.iter().zip(&r.alive).filter(|(_, a)| **a).map(|(&t, _)| t).collect();
+            ev.extend(tags.into_iter().map(|tag| CampaignEvent::Recall { tag }));
+            self.end_raid(k, RaidState::CalledOff);
+            return;
+        }
         let name = self.places[self.raids[k].place as usize].name.clone();
         self.end_raid(k, RaidState::Hit);
         let text = text!("cl-sead-hit", place = name);

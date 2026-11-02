@@ -882,6 +882,10 @@ pub struct CampaignState {
     /// When the enemy last sent SEAD against a friendly SAM battery.
     #[serde(default)]
     pub sead_at: f64,
+    /// The friendly places whose Patriot battery the enemy destroyed: it stands no more (a
+    /// reloaded simulation does not place it again) until the place changes hands.
+    #[serde(default)]
+    pub patriots_lost: Vec<PlaceId>,
     /// The war is over (None: still going on).
     #[serde(default)]
     pub outcome: Option<Outcome>,
@@ -1405,6 +1409,7 @@ impl CampaignState {
             enemy_insert_at: 0.0,
             raid_at: 0.0,
             sead_at: f64::MIN,
+            patriots_lost: Vec::new(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
             red: Forces::start(FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * skill),

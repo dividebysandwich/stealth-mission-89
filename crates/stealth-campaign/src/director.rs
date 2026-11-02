@@ -45,8 +45,8 @@ impl CampaignState {
                     s.spotted = true;
                 }
             }
-            Report::AaaDestroyed { index, .. } => {
-                self.sead_hit(index, ev);
+            Report::AaaDestroyed { index, by } => {
+                self.sead_hit(index, by.is_none(), ev);
                 self.gun_lost(index, view);
             }
             Report::SamKill { aaa, side } => self.sam_kill(aaa, side, view, ev),
@@ -139,6 +139,7 @@ impl CampaignState {
         side: Side,
         ev: &mut Vec<CampaignEvent>,
     ) {
+        self.patriots_lost.retain(|&k| k != place);
         let p = &mut self.places[place as usize];
         p.owner = side;
         p.intel_until = None;
@@ -570,6 +571,18 @@ impl CampaignState {
         if a.convoy != 0 {
             return;
         }
+        // A Patriot battery's are no garrison's: its radar lost, the battery is gone for good.
+        if a.side == Side::Blue
+            && let Some(&(place, x, y)) = self
+                .patriot_spots()
+                .iter()
+                .find(|&&(_, x, y)| dist(x - a.x, y - a.y) <= PATRIOT_SPREAD)
+        {
+            if (a.x, a.y) == (x, y) && !self.patriots_lost.contains(&place) {
+                self.patriots_lost.push(place);
+            }
+            return;
+        }
         let near = self
             .places
             .iter()
@@ -754,6 +767,13 @@ impl CampaignState {
     /// Friendly airfields with a Patriot battery, and where each stands: those well behind
     /// the front (else the rearmost one), nearest the front first.
     pub fn patriot_sites(&self) -> Vec<(PlaceId, i32, i32)> {
+        let mut all = self.patriot_spots();
+        all.retain(|s| !self.patriots_lost.contains(&s.0));
+        all
+    }
+
+    /// Where the Patriot batteries stand or stood (those the enemy destroyed too).
+    fn patriot_spots(&self) -> Vec<(PlaceId, i32, i32)> {
         let mut all: Vec<(PlaceId, i32)> = self
             .places
             .iter()
@@ -942,12 +962,21 @@ impl CampaignState {
             let (id, side, target, base, escorted) = (r.id, r.side, r.target, r.from, r.escorted);
             let (drones, sam, what) = (r.drones, r.sam, raid_name(r));
             let name = self.places[r.place as usize].name.clone();
+            let mut radar = None;
             let gone = match sam {
-                // The battery's radar destroyed already (or taken over).
-                Some(s) => !view
-                    .units
-                    .get(s.aaa as usize)
-                    .is_some_and(|u| u.alive && u.side == side.enemy()),
+                // The battery's radar destroyed already (or taken over), found where it stands
+                // (a reloaded simulation numbers its units anew).
+                Some(s) => {
+                    let alive = |u: &crate::GroundView| {
+                        u.alive && u.side == side.enemy() && (u.x, u.y) == (s.x, s.y)
+                    };
+                    let unit = match view.units.get(s.aaa as usize) {
+                        Some(u) if alive(u) => Some(s.aaa),
+                        _ => view.units.iter().position(alive).map(|i| i as u32),
+                    };
+                    radar = unit;
+                    unit.is_none()
+                }
                 None => {
                     self.owner(target) != Some(side.enemy())
                         || !self.site(target).is_some_and(Site::alive)
@@ -957,6 +986,11 @@ impl CampaignState {
             if gone {
                 self.end_raid(k, RaidState::CalledOff);
                 continue;
+            }
+            let mut sam = sam;
+            if let (Some(aaa), Some(t)) = (radar, sam.as_mut()) {
+                t.aaa = aaa;
+                self.raids[k].sam = Some(*t);
             }
             // The escort goes first, to patrol over the target.
             if !escorted && now >= launch_at - RAID_ESCORT_LEAD && self.bases(side).contains(&base)
@@ -1082,10 +1116,12 @@ impl CampaignState {
             .iter()
             .any(|p| p.owner == Side::Red && (p.airfield.is_some() || !had_airfields));
         let blue = self.places.iter().any(|p| p.owner == Side::Blue && p.airfield.is_some())
-            || self
-                .sites
-                .iter()
-                .any(|s| s.kind == SiteKind::Carrier && s.side == Side::Blue && !s.removed);
+            || self.sites.iter().any(|s| {
+                s.kind == SiteKind::Carrier
+                    && s.side == Side::Blue
+                    && !s.removed
+                    && s.destroyed_at.is_none()
+            });
         let winner = match (red, blue) {
             (false, _) => Side::Blue,
             (true, false) => Side::Red,

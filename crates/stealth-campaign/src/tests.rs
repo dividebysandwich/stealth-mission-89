@@ -702,6 +702,51 @@ fn enemy_sead_is_called_off_once_its_radar_is_gone() {
 }
 
 #[test]
+fn enemy_sead_finds_its_radar_anew_after_a_reload() {
+    let mut c = campaign("central_europe", 3);
+    let view = patriot_view(&c, true);
+    c.tick(1.0, &view, &[Report::SamKill { aaa: 0, side: Side::Red }]);
+    let id = c.raids.iter().find(|r| r.sam.is_some()).expect("SEAD ordered").id;
+    // The reloaded simulation numbers the radar 2.
+    let mut moved = view.clone();
+    moved.units.insert(0, GroundView::gun(1, 1, Side::Blue, true));
+    moved.units.insert(0, GroundView::gun(2, 2, Side::Blue, true));
+    c.tick(1.0, &moved, &[]);
+    assert_eq!(c.raid(id).unwrap().sam.unwrap().aaa, 2);
+    assert!(c.raid(id).unwrap().open());
+    c.tick(1.0, &moved, &[Report::AaaDestroyed { index: 0, by: None }]);
+    assert!(c.raid(id).unwrap().open(), "another unit's loss is no hit");
+}
+
+#[test]
+fn enemy_sead_scores_no_hit_on_a_radar_a_player_destroyed() {
+    let mut c = campaign("central_europe", 3);
+    let view = patriot_view(&c, true);
+    c.tick(1.0, &view, &[Report::SamKill { aaa: 0, side: Side::Red }]);
+    let id = c.raids.iter().find(|r| r.sam.is_some()).expect("SEAD ordered").id;
+    c.tick(tuning::RAID_LEAD + 1.0, &view, &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Enroute);
+    let ev =
+        c.tick(1.0, &patriot_view(&c, false), &[Report::AaaDestroyed { index: 0, by: Some(P0) }]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::CalledOff);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })));
+}
+
+#[test]
+fn a_destroyed_patriot_battery_stays_gone() {
+    let mut c = campaign("central_europe", 3);
+    let (place, _, _) = c.patriot_sites()[0];
+    let guns: Vec<u8> = c.places.iter().map(|p| p.guns_lost).collect();
+    c.tick(1.0, &patriot_view(&c, false), &[Report::AaaDestroyed { index: 0, by: None }]);
+    assert!(c.patriot_sites().iter().all(|s| s.0 != place));
+    // No garrison gun to replace.
+    assert_eq!(c.places.iter().map(|p| p.guns_lost).collect::<Vec<_>>(), guns);
+    // Saved with the campaign.
+    let d: CampaignState = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+    assert_eq!(d.patriots_lost, vec![place]);
+}
+
+#[test]
 fn a_raid_grounds_the_ai_but_never_the_players() {
     let mut c = campaign("central_europe", 3);
     let (id, target, tags) = raid(&mut c);
@@ -782,6 +827,22 @@ fn the_war_is_won_and_lost() {
     }
     let ev = c.tick(1.0, &WorldView::default(), &[]);
     assert!(ev.contains(&CampaignEvent::Ended { winner: Side::Red }));
+    // A sunk carrier is no refuge either.
+    let mut c = campaign("persian_gulf", 1);
+    for p in c.places.iter_mut().filter(|p| p.owner == Side::Blue && p.airfield.is_some()) {
+        p.owner = Side::Red;
+    }
+    let carriers: Vec<ObjectId> = c
+        .sites
+        .iter()
+        .filter(|s| s.kind == SiteKind::Carrier && s.side == Side::Blue)
+        .map(|s| s.object)
+        .collect();
+    assert!(!carriers.is_empty());
+    let sunk: Vec<Report> =
+        carriers.iter().map(|&object| Report::ObjectDestroyed { object, by: None }).collect();
+    let ev = c.tick(1.0, &WorldView::default(), &sunk);
+    assert!(ev.contains(&CampaignEvent::Ended { winner: Side::Red }), "{ev:?}");
     // No theater is over before it starts.
     for (code, index) in
         [("central_europe", 3), ("ukraine", 9), ("persian_gulf", 1), ("vietnam", 4)]
