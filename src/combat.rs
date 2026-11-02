@@ -61,6 +61,7 @@ impl Plugin for CombatPlugin {
             )
             .add_systems(OnExit(AppState::Flight), stop_combat.in_set(FlightTeardown))
             .add_systems(Update, apply_time_accel)
+            .add_systems(Update, record_names.run_if(resource_exists::<Combat>))
             .add_systems(
                 Update,
                 (detect_collision, collect_commands, step_combat, publish)
@@ -707,6 +708,35 @@ fn detect_collision(
     }
 }
 
+/// The campaign's pilot names for the flight record (Tacview).
+fn record_names(
+    mut combat: ResMut<Combat>,
+    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+) {
+    let Some(campaign) = campaign else { return };
+    let combat = &mut *combat;
+    let mut ids: Vec<u8> = combat.sim.remote_pilots().iter().map(|p| p.id).collect();
+    ids.push(combat.sim.active_pilot());
+    for id in ids {
+        if !combat.record.names.contains_key(&id)
+            && let Some(name) = campaign.state().player_name(stealth_campaign::PlayerId(id))
+        {
+            combat.record.names.insert(id, name.to_string());
+        }
+    }
+}
+
+/// The player's aircraft for the flight record (Tacview).
+fn telemetry(a: &Aircraft) -> crate::recorder::Telemetry {
+    crate::recorder::Telemetry {
+        agl: 0.0,
+        fuel_lb: a.fuel,
+        throttle: (a.set_thrust / 100.0).clamp(0.0, 1.0),
+        afterburner: a.afterburner,
+        gear_down: a.gear_down,
+    }
+}
+
 fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let StepParams {
         time,
@@ -831,6 +861,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                     shell_strikes(combat);
                     combat.sim.set_local_player(&ps);
                     combat.steps += 1;
+                    combat.record.telemetry = telemetry(a);
                     combat.record.sample(&combat.sim);
                     wreck_fire(combat);
                 }
@@ -878,6 +909,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             }
             take_event(combat, e.event, &mut a, &mut fx);
         }
+        combat.record.telemetry = telemetry(a);
         combat.record.sample(&combat.sim);
         wreck_fire(combat);
         // The other pilots as of this step (a listen server's).

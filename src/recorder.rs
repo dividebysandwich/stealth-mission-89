@@ -2,7 +2,15 @@
 //! tracked him, the enemy aircraft and missiles and the main events of the flight. It feeds the
 //! debrief map and the Tacview export; it only reads the simulation.
 
-use stealth_sim::{FlightUnit, Launcher, Projectile, Sim, SimEvent, oflags};
+use std::collections::HashMap;
+
+use stealth_sim::aaa::GroundKind;
+use stealth_sim::data::AircraftKind;
+use stealth_sim::ground::GroundGun;
+use stealth_sim::uav::{Uav, UavMode};
+use stealth_sim::{
+    Countermeasure, FlightUnit, Launcher, PlayerView, Projectile, Sim, SimEvent, oflags,
+};
 
 /// Sim frames per second.
 pub const FS: u32 = crate::combat::FS as u32;
@@ -55,12 +63,120 @@ impl Sample {
     }
 }
 
-/// Enemy aircraft and live missiles in one frame.
-#[derive(Debug, Clone)]
+/// Everything else in one frame: the other aircraft and pilots, the ground units, weapons in
+/// flight and the player's own state (Tacview).
+#[derive(Debug, Clone, Default)]
 pub struct Contacts {
     pub frame: u32,
-    pub aircraft: Vec<(usize, FlightUnit)>,
+    pub aircraft: Vec<Air>,
     pub missiles: Vec<(usize, Projectile)>,
+    /// The low-level air defences and vehicles by `Sim::units` index.
+    pub ground: Vec<(usize, GroundSnap)>,
+    /// The other pilots (not the player, not hanging under a parachute).
+    pub pilots: Vec<PilotSnap>,
+    /// Gun rounds in flight.
+    pub bullets: Vec<Round>,
+    /// The player's flares, chaff and decoys (by slot).
+    pub cms: Vec<(usize, Countermeasure)>,
+    pub player: Telemetry,
+}
+
+/// An AI flight unit (by `Sim::flights` index).
+#[derive(Debug, Clone)]
+pub struct Air {
+    pub index: usize,
+    pub unit: FlightUnit,
+    pub kind: AircraftKind,
+    pub friendly: bool,
+    /// The drone it is, if one, and the ground's height (m) under each of its waypoints.
+    pub uav: Option<Uav>,
+    pub route_ground: Vec<f64>,
+    /// A drone the player flies by hand at its command center's console.
+    pub flown_by_player: bool,
+}
+
+/// A ground unit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GroundSnap {
+    pub kind: GroundKind,
+    /// Metres east, north, up (on the rolling hills).
+    pub pos: [f64; 3],
+    /// Hull heading (rad, clockwise from north).
+    pub heading: f32,
+    pub blue: bool,
+    pub destroyed: bool,
+    pub gone: bool,
+    /// Its convoy (0: none).
+    pub convoy: u32,
+}
+
+/// Another pilot.
+#[derive(Debug, Clone)]
+pub struct PilotSnap {
+    pub id: u8,
+    pub view: PlayerView,
+    pub aircraft: crate::aircraft::AircraftKind,
+    pub missiles: Vec<(u8, Projectile)>,
+    pub cms: [Countermeasure; 4],
+}
+
+/// A gun round: who fired it, what tells it from the next one in its slot, where it is.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Round {
+    pub owner: RoundOwner,
+    /// The slot (the player's and the enemy's), and its velocity.
+    pub key: (usize, i32, i32),
+    /// Map units (x east, y south) and altitude (ft).
+    pub pos: (f64, f64, f64),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RoundOwner {
+    Player,
+    Enemy,
+    OtherPilot,
+}
+
+/// The player's aircraft beyond its track.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Telemetry {
+    /// Height above the ground (ft).
+    pub agl: f32,
+    pub fuel_lb: f32,
+    /// Throttle (0..1; 1 full dry) and the afterburner lit (0..1).
+    pub throttle: f32,
+    pub afterburner: f32,
+    pub gear_down: bool,
+}
+
+/// What Tacview shows of an event (only kept for the flight being flown).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TacEvent {
+    /// An AI aircraft (flight unit) was destroyed or crashed.
+    AirDestroyed(usize),
+    TakeOff(usize),
+    Landed(usize),
+    PlayerLanded,
+    /// A world object was destroyed: where (map units).
+    GroundDestroyed {
+        object: usize,
+        x: f32,
+        y: f32,
+    },
+    /// A ground gun fired: from, to (metres east, north, up), seconds of flight.
+    GroundShot {
+        gun: GroundGun,
+        from: [f64; 3],
+        to: [f64; 3],
+        secs: f64,
+        blue: bool,
+    },
+    /// An S-60 shell burst (map units, altitude ft).
+    Flak {
+        x: f32,
+        y: f32,
+        alt: f32,
+    },
 }
 
 /// Something that happened, marked on the map where the player was.
@@ -142,6 +258,18 @@ pub struct FlightRecord {
     /// Open span per site.
     open: Vec<Option<usize>>,
     frame: u32,
+    /// Events for Tacview by frame.
+    #[serde(skip)]
+    pub events: Vec<(u32, TacEvent)>,
+    /// The player's state for the next sample (set by the caller before each).
+    #[serde(skip)]
+    pub telemetry: Telemetry,
+    /// Pilot names by id (multiplayer; set by the caller).
+    #[serde(skip)]
+    pub names: HashMap<u8, String>,
+    /// The player's pilot id.
+    #[serde(skip)]
+    pub pilot: u8,
 }
 
 /// Exposure totals for the debrief.
@@ -256,26 +384,160 @@ impl FlightRecord {
                 _ => {}
             }
         }
+        self.pilot = sim.active_pilot();
         if self.frame.is_multiple_of(CONTACT_EVERY) {
-            self.contacts.push(Contacts {
-                frame: self.frame,
-                // As drawn: not the destroyed ones nor those not yet placed.
-                aircraft: sim
-                    .active_aircraft()
-                    .into_iter()
-                    .filter(|(_, u, _)| {
-                        u.flags & stealth_sim::fflags::DESTROYED == 0 && (u.wx != 0 || u.wy != 0)
-                    })
-                    .map(|(i, u, _)| (i, u))
-                    .collect(),
-                missiles: sim.active_projectiles().into_iter().map(|(s, m, _, _)| (s, m)).collect(),
-            });
+            let c = self.contacts(sim);
+            self.contacts.push(c);
         }
         self.frame += 1;
     }
 
+    fn contacts(&self, sim: &Sim) -> Contacts {
+        let me = sim.active_pilot();
+        let manned = sim.station_of(me).map(|st| st.unit);
+        let hills = sim.hills();
+        // As drawn: not the destroyed ones nor those not yet placed.
+        let aircraft = sim
+            .active_aircraft()
+            .into_iter()
+            .filter(|(_, u, _)| {
+                u.flags & stealth_sim::fflags::DESTROYED == 0 && (u.wx != 0 || u.wy != 0)
+            })
+            .map(|(i, u, _)| {
+                let uav = sim.uav_of_flight(i).cloned();
+                let flown_by_player = uav
+                    .as_ref()
+                    .is_some_and(|d| Some(d.center) == manned && d.mode == UavMode::Manual);
+                let route_ground = uav.as_ref().map_or_else(Vec::new, |d| {
+                    d.route
+                        .iter()
+                        .map(|wp| {
+                            let [e, n] = wp.metres();
+                            hills.height_m(e, n) as f64
+                        })
+                        .collect()
+                });
+                Air {
+                    route_ground,
+                    index: i,
+                    unit: u,
+                    kind: sim.aircraft_kind(u.spec),
+                    friendly: sim.friendly_unit(i, u.spec),
+                    uav,
+                    flown_by_player,
+                }
+            })
+            .collect();
+        let ground = sim
+            .units()
+            .iter()
+            .enumerate()
+            .map(|(k, u)| {
+                let snap = GroundSnap {
+                    kind: u.kind,
+                    pos: u.metres_on(&hills),
+                    heading: u
+                        .fine
+                        .map_or_else(|| stealth_sim::aaa::unit_heading(k), |f| f.heading),
+                    blue: sim.aaa_blue(k),
+                    destroyed: u.destroyed,
+                    gone: u.gone,
+                    convoy: sim.unit_convoy(k),
+                };
+                (k, snap)
+            })
+            .collect();
+        let pilots = sim
+            .remote_pilots()
+            .into_iter()
+            .filter(|p| p.id != me && p.chute.is_none())
+            .map(|p| PilotSnap {
+                id: p.id,
+                view: p.view,
+                aircraft: crate::aircraft::AircraftKind::of_remote(&p),
+                missiles: p.missiles.clone(),
+                cms: p.cms,
+            })
+            .collect();
+        let (rounds, n) = sim.bullets();
+        let mut bullets: Vec<Round> = rounds
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| b.x != 0)
+            .map(|(k, b)| Round {
+                owner: if k < n { RoundOwner::Player } else { RoundOwner::Enemy },
+                key: (k, b.vx, b.vy),
+                pos: b.map_pos(),
+            })
+            .collect();
+        bullets.extend(sim.other_rounds().iter().map(|b| Round {
+            owner: RoundOwner::OtherPilot,
+            key: (usize::MAX, b.vx, b.vy),
+            pos: b.map_pos(),
+        }));
+        Contacts {
+            frame: self.frame,
+            aircraft,
+            missiles: sim.active_projectiles().into_iter().map(|(s, m, _, _)| (s, m)).collect(),
+            ground,
+            pilots,
+            bullets,
+            cms: sim
+                .countermeasures()
+                .iter()
+                .copied()
+                .enumerate()
+                .filter(|(_, c)| c.ttl > 0)
+                .collect(),
+            player: Telemetry { agl: sim.player().height as f32, ..self.telemetry },
+        }
+    }
+
+    /// Notes for Tacview an event of the step about to be sampled.
+    fn tac_event(&mut self, sim: &Sim, e: &SimEvent) {
+        let ev = match *e {
+            SimEvent::AircraftDestroyed { unit, .. }
+            | SimEvent::AircraftCrashed { unit }
+            | SimEvent::CampaignFlightDestroyed { unit, .. } => TacEvent::AirDestroyed(unit),
+            SimEvent::AircraftTakeoff { unit, .. } => TacEvent::TakeOff(unit),
+            SimEvent::CampaignFlightLanded { unit, .. }
+            | SimEvent::CampaignFlightDelivered { unit, .. } => TacEvent::Landed(unit),
+            SimEvent::LandedAtBase { .. } => TacEvent::PlayerLanded,
+            SimEvent::GroundDestroyed { object, .. } => {
+                let Some(o) = sim.objects().get(object) else { return };
+                TacEvent::GroundDestroyed { object, x: o.x as f32, y: o.y as f32 }
+            }
+            SimEvent::GroundShot { from, to, gun, hit, miss, .. } => {
+                let (Some(a), Some(b)) = (sim.units().get(from), sim.units().get(to)) else {
+                    return;
+                };
+                let hills = sim.hills();
+                let (from_m, mut to_m) = (a.metres_on(&hills), b.metres_on(&hills));
+                if !hit {
+                    to_m[0] += miss.0 as f64;
+                    to_m[1] += miss.1 as f64;
+                    to_m[2] = hills.height_m(to_m[0], to_m[1]) as f64;
+                }
+                let d = ((to_m[0] - from_m[0]).powi(2) + (to_m[1] - from_m[1]).powi(2)).sqrt();
+                TacEvent::GroundShot {
+                    gun,
+                    from: from_m,
+                    to: to_m,
+                    secs: gun.flight_time(d),
+                    blue: sim.aaa_blue(from),
+                }
+            }
+            SimEvent::Flak { x, y, alt } => {
+                TacEvent::Flak { x: x as f32, y: y as f32, alt: alt as f32 }
+            }
+            _ => return,
+        };
+        self.events.push((self.frame, ev));
+    }
+
     /// Notes an event of the step about to be sampled.
     pub fn event(&mut self, sim: &Sim, e: &SimEvent) {
+        self.tac_event(sim, e);
         let kind = match *e {
             SimEvent::MissileLaunched { spec, launcher, .. } => match launcher {
                 Launcher::Site(i) => MarkKind::Launch { site: Some(i), spec },
