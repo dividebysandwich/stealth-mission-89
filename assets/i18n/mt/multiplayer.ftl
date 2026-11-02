@@ -4,6 +4,7 @@
 delete = ĦASSAR
 delete-campaign = TĦASSAR DIN IL-KAMPANJA?
 delete-save = TĦASSAR DIN IL-ĦAŻNA?
+delete-pilot = TĦASSAR DAN IL-PILOTA?
 delete-permanent = It-tħassir huwa permanenti
 
 ## Tieqa tal-kampanja

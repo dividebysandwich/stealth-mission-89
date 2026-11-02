@@ -4,6 +4,7 @@
 delete = ELIMINARE
 delete-campaign = ELIMINARE QUESTA CAMPAGNA?
 delete-save = ELIMINARE QUESTO SALVATAGGIO?
+delete-pilot = ELIMINARE QUESTO PILOTA?
 delete-permanent = L'eliminazione è definitiva
 
 ## Finestra della campagna

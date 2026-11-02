@@ -4,6 +4,7 @@
 delete = ВИДАЛИТИ
 delete-campaign = ВИДАЛИТИ ЦЮ КАМПАНІЮ?
 delete-save = ВИДАЛИТИ ЦЕ ЗБЕРЕЖЕННЯ?
+delete-pilot = ВИДАЛИТИ ЦЬОГО ПІЛОТА?
 delete-permanent = Видалення незворотне
 
 ## Вікно кампанії

@@ -4,6 +4,7 @@
 delete = ODSTRÁNIŤ
 delete-campaign = ODSTRÁNIŤ TÚTO KAMPAŇ?
 delete-save = ODSTRÁNIŤ TOTO ULOŽENIE?
+delete-pilot = ODSTRÁNIŤ TOHTO PILOTA?
 delete-permanent = Odstránenie je trvalé
 
 ## Okno kampane

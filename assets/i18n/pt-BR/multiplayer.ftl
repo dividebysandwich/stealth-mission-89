@@ -4,6 +4,7 @@
 delete = EXCLUIR
 delete-campaign = EXCLUIR ESTA CAMPANHA?
 delete-save = EXCLUIR ESTE SALVAMENTO?
+delete-pilot = EXCLUIR ESTE PILOTO?
 delete-permanent = A exclusão é definitiva
 
 ## Janela de campanha

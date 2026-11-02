@@ -4,6 +4,7 @@
 delete = POISTA
 delete-campaign = POISTETAANKO TÄMÄ KAMPANJA?
 delete-save = POISTETAANKO TÄMÄ TALLENNUS?
+delete-pilot = POISTETAANKO TÄMÄ LENTÄJÄ?
 delete-permanent = Poisto on pysyvä
 
 ## Kampanjaikkuna
