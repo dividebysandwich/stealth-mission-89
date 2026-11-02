@@ -14,6 +14,7 @@ fn setup(code: &str) -> CampaignSetup {
         sky_ratio: 24.0,
         start_hour: 8.0,
         dynamic_weather: true,
+        crew_scaling: true,
     }
 }
 

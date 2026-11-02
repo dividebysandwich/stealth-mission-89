@@ -83,6 +83,7 @@ ops-rule-classic = klassiek
 ops-materiel = MATERIEEL
 ops-materiel-blue = BLAUW { $materiel } (+{ $income }/u)
 ops-materiel-red = ROOD { $materiel } (+{ $income }/u)
+ops-crew-tempo = VIJANDELIJK TEMPO ×{ $pace }
 ops-friendly = BEVRIEND
 ops-enemy = VIJAND
 ops-section-forces = Strijdkrachten

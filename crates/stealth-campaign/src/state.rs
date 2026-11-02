@@ -665,6 +665,9 @@ pub struct CampaignSetup {
     /// The weather changes during the campaign (else a clear sky).
     #[serde(default = "yes")]
     pub dynamic_weather: bool,
+    /// The enemy's tempo rises with the players flying the war (coop scaling).
+    #[serde(default = "yes")]
+    pub crew_scaling: bool,
 }
 
 fn yes() -> bool {
@@ -886,6 +889,9 @@ pub struct CampaignState {
     /// reloaded simulation does not place it again) until the place changes hands.
     #[serde(default)]
     pub patriots_lost: Vec<PlaceId>,
+    /// The players flying the war, for the enemy's tempo (`crew`).
+    #[serde(default)]
+    pub crew: crate::Crew,
     /// The war is over (None: still going on).
     #[serde(default)]
     pub outcome: Option<Outcome>,
@@ -1410,6 +1416,7 @@ impl CampaignState {
             raid_at: 0.0,
             sead_at: f64::MIN,
             patriots_lost: Vec::new(),
+            crew: crate::Crew::default(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
             red: Forces::start(FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * skill),

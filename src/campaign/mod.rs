@@ -445,6 +445,7 @@ pub fn from_args(app: &mut App) {
                 sky_ratio: get("--sky-ratio").and_then(|s| s.parse().ok()).unwrap_or(24.0),
                 start_hour: get("--start-hour").and_then(|s| s.parse().ok()).unwrap_or(8.0),
                 dynamic_weather: !args.iter().any(|a| a == "--clear-sky"),
+                crew_scaling: true,
             };
             ActiveCampaign::new(name, setup, &data, rules)
         }

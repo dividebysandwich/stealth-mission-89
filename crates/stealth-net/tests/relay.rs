@@ -47,6 +47,7 @@ fn a_browser_player_joins_through_the_relay() {
         sky_ratio: 24.0,
         start_hour: 8.0,
         dynamic_weather: true,
+        crew_scaling: true,
     };
     let data = theater::game_data().unwrap();
     let mut host = Host::new(setup, &data, Rules::default()).unwrap();

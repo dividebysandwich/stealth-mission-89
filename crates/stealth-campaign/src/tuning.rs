@@ -11,6 +11,20 @@ pub const FRONT_RANGE: i32 = 0x2600;
 pub const FRONT_PLACES: usize = 3;
 /// Offers on the board at most.
 pub const BOARD_SIZE: usize = 12;
+/// Coop scaling: the enemy's tempo for n players is n^CREW_EXPONENT (1.5 for two, 1.9 for
+/// three, 2.3 for four), at most CREW_SCALE_MAX. The count it follows rises by one player in
+/// CREW_RISE seconds, falls by one in CREW_FALL. Each player beyond the first adds CREW_OFFERS
+/// to the board, CREW_OFFERS_MAX at most.
+pub const CREW_EXPONENT: f64 = 0.6;
+pub const CREW_SCALE_MAX: f64 = 4.0;
+pub const CREW_RISE: f64 = 3.0 * 60.0;
+pub const CREW_FALL: f64 = 10.0 * 60.0;
+pub const CREW_OFFERS: usize = 2;
+pub const CREW_OFFERS_MAX: usize = 12;
+/// Per step of the crew's pace beyond one: more enemy patrols up at once, more escorts with
+/// a raid.
+pub const CREW_PATROLS: f64 = 2.0;
+pub const CREW_ESCORTS: f64 = 1.0;
 /// Points of a planned route at most.
 pub const ROUTE_POINTS: usize = 16;
 /// The board is rebuilt this often (and after every capture).

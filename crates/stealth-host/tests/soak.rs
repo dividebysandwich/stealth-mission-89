@@ -15,6 +15,7 @@ fn soak(code: &str, opponents: u8, hours: usize) {
         sky_ratio: 24.0,
         start_hour: 8.0,
         dynamic_weather: true,
+        crew_scaling: true,
     };
     let data = theater::game_data().unwrap();
     let sim_data = theater::sim_data(s.theater, code).unwrap();

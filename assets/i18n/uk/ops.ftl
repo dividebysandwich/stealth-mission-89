@@ -83,6 +83,7 @@ ops-rule-classic = класичні
 ops-materiel = МАТЕРІАЛЬНІ ЗАСОБИ
 ops-materiel-blue = СИНІ { $materiel } (+{ $income }/год)
 ops-materiel-red = ЧЕРВОНІ { $materiel } (+{ $income }/год)
+ops-crew-tempo = ТЕМП ВОРОГА ×{ $pace }
 ops-friendly = СВОЇ
 ops-enemy = ПРОТИВНИК
 ops-section-forces = Сили

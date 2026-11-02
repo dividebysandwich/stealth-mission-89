@@ -614,18 +614,23 @@ impl CampaignState {
         }
     }
 
+    /// Enemy patrols up at once at most: more in a hotter war, more for more players.
+    pub(crate) fn patrol_cap(&self) -> usize {
+        PATROLS + self.setup.roe as usize + self.crew_extra(CREW_PATROLS)
+    }
+
     /// Enemy patrols take off now and then from live airfields near the front.
     pub(crate) fn enemy_air(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         // Fighters the simulation no longer has (shot down unreported, landed, lost on load).
         let now = self.clock;
         self.patrols
             .retain(|&(tag, _, at)| now - at < 30.0 || view.flights.iter().any(|f| f.tag == tag));
-        let max = PATROLS + self.setup.roe as usize;
+        let max = self.patrol_cap();
         let red = self.patrols.iter().filter(|p| p.1 == Side::Red).count();
         // With its AWACS up the enemy sees more and sends patrols twice as often, at the
         // players.
         let awacs = self.awacs.as_ref().filter(|a| a.side == Side::Red).map(|a| (a.x, a.y));
-        let every = if awacs.is_some() { PATROL_EVERY / 2.0 } else { PATROL_EVERY };
+        let every = self.paced(if awacs.is_some() { PATROL_EVERY / 2.0 } else { PATROL_EVERY });
         if now - self.patrol_at < every || red >= max {
             return;
         }
@@ -839,7 +844,8 @@ impl CampaignState {
     pub(crate) fn enemy_offensive(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         let skill = (self.setup.opponents as usize).min(3);
         let now = self.clock;
-        if now - self.enemy_insert_at >= ENEMY_INSERT_EVERY[skill] {
+        let insert_every = self.paced(ENEMY_INSERT_EVERY[skill]);
+        if now - self.enemy_insert_at >= insert_every {
             // One of the weakest places, those it failed at lately weighed stronger.
             let mut weak: Vec<(PlaceId, i32)> = self
                 .front(Side::Red)
@@ -861,10 +867,11 @@ impl CampaignState {
                     ev.extend(e);
                 }
                 // Nothing in reach now: another look in a minute.
-                _ => self.enemy_insert_at = now - ENEMY_INSERT_EVERY[skill] + 60.0,
+                _ => self.enemy_insert_at = now - insert_every + 60.0,
             }
         }
-        if now - self.raid_at >= RAID_EVERY[skill] {
+        let raid_every = self.paced(RAID_EVERY[skill]);
+        if now - self.raid_at >= raid_every {
             let ready = self.forces(Side::Red).fighters as usize >= RAID_AIRCRAFT + RAID_ESCORTS
                 && self.forces(Side::Red).materiel >= RAID_COST;
             match self.raid_target().filter(|_| ready) {
@@ -894,7 +901,7 @@ impl CampaignState {
                     self.board_at = f64::MIN;
                     ev.push(CampaignEvent::Message(text));
                 }
-                None => self.raid_at = now - RAID_EVERY[skill] + 60.0,
+                None => self.raid_at = now - raid_every + 60.0,
             }
         }
     }
@@ -998,7 +1005,8 @@ impl CampaignState {
                 let from = base;
                 self.raids[k].escorted = true;
                 let (x, y) = point.unwrap_or((0, 0));
-                let n = RAID_ESCORTS.min(self.forces(side).fighters as usize);
+                let extra = if side == Side::Red { self.crew_extra(CREW_ESCORTS) } else { 0 };
+                let n = (RAID_ESCORTS + extra).min(self.forces(side).fighters as usize);
                 self.take_fighters(side, n as u32);
                 for _ in 0..n {
                     let tag = self.id();
@@ -1578,7 +1586,8 @@ impl CampaignState {
             );
         }
         // Too many: the urgent ones stay, the front's furthest places go first.
-        if offers.len() > BOARD_SIZE {
+        let board_size = self.board_size();
+        if offers.len() > board_size {
             let rank = |o: &MissionOffer| match o.kind {
                 // Near the bases for the helicopters, when nothing else is.
                 _ if matches!(o.objective, Objective::Battery { .. }) => 2,
@@ -1597,7 +1606,7 @@ impl CampaignState {
             };
             let mut keep: Vec<usize> = (0..offers.len()).collect();
             keep.sort_by_key(|&k| rank(&offers[k]));
-            keep.truncate(BOARD_SIZE);
+            keep.truncate(board_size);
             keep.sort_unstable();
             offers = keep.into_iter().map(|k| offers[k].clone()).collect();
         }

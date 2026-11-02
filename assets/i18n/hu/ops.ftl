@@ -83,6 +83,7 @@ ops-rule-classic = klasszikus
 ops-materiel = HADIANYAG
 ops-materiel-blue = KÉK { $materiel } (+{ $income }/ó)
 ops-materiel-red = PIROS { $materiel } (+{ $income }/ó)
+ops-crew-tempo = AZ ELLENSÉG ÜTEME ×{ $pace }
 ops-friendly = BARÁTI
 ops-enemy = ELLENSÉGES
 ops-section-forces = Erők

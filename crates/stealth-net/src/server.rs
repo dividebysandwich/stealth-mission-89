@@ -142,6 +142,17 @@ impl Server {
         self.remotes.values().filter_map(|r| r.player).collect()
     }
 
+    /// The players in the war now: the host's own, the connected ones and those about to
+    /// reconnect.
+    fn in_war(&self) -> Vec<PlayerId> {
+        let mut ids: Vec<PlayerId> = self.connected();
+        ids.extend(self.local);
+        ids.extend(self.grace.keys().copied());
+        ids.sort();
+        ids.dedup();
+        ids
+    }
+
     /// The players' messages since the last call; what they caused in the campaign (for the
     /// listen server's own player too).
     pub fn pump(&mut self, host: &mut Host, sim: &mut Sim, now: Instant) -> Vec<HostEvent> {
@@ -209,6 +220,8 @@ impl Server {
             }
             self.rate_timer = 0.0;
         }
+        // The enemy's tempo follows the players in the war.
+        host.state.set_crew(self.in_war().len());
         out
     }
 
@@ -599,12 +612,8 @@ impl Server {
     /// Everybody in the campaign now: the host's player, the connected ones, those dropped out.
     pub fn roster(&self, host: &Host, sim: &Sim) -> Vec<PlayerInfo> {
         let now = Instant::now();
-        let mut ids: Vec<PlayerId> = self.connected();
-        ids.extend(self.local);
-        ids.extend(self.grace.keys().copied());
-        ids.sort();
-        ids.dedup();
-        ids.into_iter()
+        self.in_war()
+            .into_iter()
             .map(|id| {
                 let status = if let Some(t) = self.grace.get(&id) {
                     PlayerStatus::Reconnecting {

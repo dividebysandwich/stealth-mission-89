@@ -254,7 +254,8 @@ impl CampaignState {
             return;
         }
         let skill = (self.setup.opponents as usize).min(3);
-        let every = if side == Side::Blue { CONVOY_EVERY } else { ENEMY_CONVOY_EVERY[skill] };
+        let every =
+            if side == Side::Blue { CONVOY_EVERY } else { self.paced(ENEMY_CONVOY_EVERY[skill]) };
         if self.clock - self.convoy_at[index(side)] < every {
             return;
         }

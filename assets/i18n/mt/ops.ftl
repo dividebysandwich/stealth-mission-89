@@ -83,6 +83,7 @@ ops-rule-classic = klassiku
 ops-materiel = MATERJAL
 ops-materiel-blue = BLU { $materiel } (+{ $income }/h)
 ops-materiel-red = AĦMAR { $materiel } (+{ $income }/h)
+ops-crew-tempo = RITMU TAL-GĦADU ×{ $pace }
 ops-friendly = ĦBIEB
 ops-enemy = GĦADU
 ops-section-forces = Forzi

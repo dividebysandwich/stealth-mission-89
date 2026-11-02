@@ -1041,6 +1041,12 @@ fn supply_line(ui: &mut egui::Ui, c: &ActiveCampaign) {
         let text = t!(id, materiel = format!("{have:.0}"), income = format!("{income:.0}"));
         ui.label(egui::RichText::new(text).color(col));
     }
+    // More players, a faster enemy (coop scaling).
+    let pace = st.pace();
+    if pace > 1.05 {
+        let text = t!("ops-crew-tempo", pace = format!("{pace:.1}"));
+        ui.label(egui::RichText::new(text).color(MISSILE_RED));
+    }
 }
 
 /// The two sides' means of war side by side: materiel, income and where it comes from, the

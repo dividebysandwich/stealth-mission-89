@@ -83,6 +83,7 @@ ops-rule-classic = clásicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)
 ops-materiel-red = ROJO { $materiel } (+{ $income }/h)
+ops-crew-tempo = RITMO ENEMIGO ×{ $pace }
 ops-friendly = AMIGOS
 ops-enemy = ENEMIGOS
 ops-section-forces = Fuerzas

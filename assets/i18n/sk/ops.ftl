@@ -83,6 +83,7 @@ ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODRÍ { $materiel } (+{ $income }/h)
 ops-materiel-red = ČERVENÍ { $materiel } (+{ $income }/h)
+ops-crew-tempo = TEMPO NEPRIATEĽA ×{ $pace }
 ops-friendly = SPOJENECKÉ
 ops-enemy = NEPRIATEĽSKÉ
 ops-section-forces = Sily

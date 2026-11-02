@@ -83,6 +83,7 @@ ops-rule-classic = clasaiceach
 ops-materiel = TREALAMH
 ops-materiel-blue = GORM { $materiel } (+{ $income }/u)
 ops-materiel-red = DEARG { $materiel } (+{ $income }/u)
+ops-crew-tempo = LUAS AN NÁMHAID ×{ $pace }
 ops-friendly = CAIRDIÚIL
 ops-enemy = NAMHAD
 ops-section-forces = Forcaí

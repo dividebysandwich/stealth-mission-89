@@ -83,6 +83,7 @@ ops-rule-classic = 经典
 ops-materiel = 物资
 ops-materiel-blue = 蓝方 { $materiel }（+{ $income }/h）
 ops-materiel-red = 红方 { $materiel }（+{ $income }/h）
+ops-crew-tempo = 敌方节奏 ×{ $pace }
 ops-friendly = 友军
 ops-enemy = 敌军
 ops-section-forces = 兵力

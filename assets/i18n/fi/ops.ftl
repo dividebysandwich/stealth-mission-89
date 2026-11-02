@@ -83,6 +83,7 @@ ops-rule-classic = klassinen
 ops-materiel = MATERIAALI
 ops-materiel-blue = SININEN { $materiel } (+{ $income }/h)
 ops-materiel-red = PUNAINEN { $materiel } (+{ $income }/h)
+ops-crew-tempo = VIHOLLISEN TAHTI ×{ $pace }
 ops-friendly = OMAT
 ops-enemy = VIHOLLINEN
 ops-section-forces = Voimat

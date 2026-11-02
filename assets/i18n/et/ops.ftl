@@ -83,6 +83,7 @@ ops-rule-classic = klassikaline
 ops-materiel = MATERJAL
 ops-materiel-blue = SININE { $materiel } (+{ $income }/h)
 ops-materiel-red = PUNANE { $materiel } (+{ $income }/h)
+ops-crew-tempo = VAENLASE TEMPO ×{ $pace }
 ops-friendly = OMA
 ops-enemy = VAENLANE
 ops-section-forces = Jõud

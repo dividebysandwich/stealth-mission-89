@@ -83,6 +83,7 @@ ops-rule-classic = klasik
 ops-materiel = MATERIIL
 ops-materiel-blue = BIRU { $materiel } (+{ $income }/jam)
 ops-materiel-red = MERAH { $materiel } (+{ $income }/jam)
+ops-crew-tempo = TEMPO MUSUH ×{ $pace }
 ops-friendly = KAWAN
 ops-enemy = MUSUH
 ops-section-forces = Pasukan

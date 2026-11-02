@@ -39,6 +39,8 @@ pub struct Config {
     pub start_hour: f32,
     /// `--clear-sky`: a new campaign without weather.
     pub clear_sky: bool,
+    /// The enemy's tempo rises with the players connected (`--no-crew-scaling`: it stays).
+    pub crew_scaling: bool,
     pub rules: Rules,
     pub save: PathBuf,
     /// Simulation frames between the moving world's messages (`--send-rate`, a second).
@@ -53,7 +55,7 @@ pub struct Config {
 
 impl Config {
     /// From the command line: `--name`, `--port`, `--max-players`, `--theater`, `--roe`,
-    /// `--opponents`, `--seed`, `--sky-ratio`, `--start-hour`, `--clear-sky`, `--save <file>` and the rules
+    /// `--opponents`, `--seed`, `--sky-ratio`, `--start-hour`, `--clear-sky`, `--no-crew-scaling`, `--save <file>` and the rules
     /// `--classic-damage`, `--classic-guidance`, `--classic-time` (realistic damage and guidance
     /// and continuous time are the default), `--no-crashes`, `--realistic-weapons`,
     /// `--friendly-fire`, `--classic-terrain`, and `--no-rotate`.
@@ -88,6 +90,7 @@ impl Config {
             sky_ratio: num(get("--sky-ratio"), "--sky-ratio", 24.0f32)?.max(0.0),
             start_hour: num(get("--start-hour"), "--start-hour", 8.0f32)?.rem_euclid(24.0),
             clear_sky: has("--clear-sky"),
+            crew_scaling: !has("--no-crew-scaling"),
             rules: Rules {
                 realistic_damage: !has("--classic-damage"),
                 realistic_guidance: !has("--classic-guidance"),
@@ -119,7 +122,7 @@ fn theater_list() -> String {
 fn campaign(cfg: &Config, data: &stealth_mission::GameData, con: &mut Console) -> Result<Host> {
     let saved = save::load_from(&cfg.save)?;
     match saved {
-        Some(state)
+        Some(mut state)
             if cfg
                 .theater
                 .as_ref()
@@ -131,6 +134,7 @@ fn campaign(cfg: &Config, data: &stealth_mission::GameData, con: &mut Console) -
                 (state.sky_hours() / 24.0).floor() as i64 + 1,
                 state.players.len()
             ));
+            state.setup.crew_scaling = cfg.crew_scaling;
             Host::resume(state, data, cfg.rules)
         }
         saved => {
@@ -176,6 +180,7 @@ fn new_campaign(
         sky_ratio: cfg.sky_ratio,
         start_hour: cfg.start_hour,
         dynamic_weather: !cfg.clear_sky,
+        crew_scaling: cfg.crew_scaling,
     };
     con.say(format!("a new campaign in {}", theater::theater_name(code)));
     let host = Host::new(setup, data, cfg.rules)?;

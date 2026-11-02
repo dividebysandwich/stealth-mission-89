@@ -83,6 +83,7 @@ ops-rule-classic = κλασικό
 ops-materiel = ΥΛΙΚΟ
 ops-materiel-blue = ΜΠΛΕ { $materiel } (+{ $income }/ώρα)
 ops-materiel-red = ΚΟΚΚΙΝΟΙ { $materiel } (+{ $income }/ώρα)
+ops-crew-tempo = ΡΥΘΜΟΣ ΕΧΘΡΟΥ ×{ $pace }
 ops-friendly = ΦΙΛΙΟΙ
 ops-enemy = ΕΧΘΡΟΣ
 ops-section-forces = Δυνάμεις

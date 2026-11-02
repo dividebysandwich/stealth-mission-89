@@ -144,7 +144,7 @@ impl CampaignState {
             }
             return;
         }
-        if now - self.awacs_at < AWACS_EVERY {
+        if now - self.awacs_at < self.paced(AWACS_EVERY) {
             return;
         }
         self.awacs_at = now;
@@ -205,10 +205,11 @@ impl CampaignState {
         }
         let skill = (self.setup.opponents as usize).min(3);
         let now = self.clock;
-        if now - self.drones_at < DRONES_EVERY[skill] {
+        let every = self.paced(DRONES_EVERY[skill]);
+        if now - self.drones_at < every {
             return;
         }
-        let retry = now - DRONES_EVERY[skill] + 60.0;
+        let retry = now - every + 60.0;
         let mut all: Vec<(ObjectId, PlaceId, ObjectId, i32, bool)> = self
             .sites
             .iter()

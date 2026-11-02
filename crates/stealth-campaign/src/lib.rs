@@ -22,6 +22,7 @@
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
 mod convoy;
+mod crew;
 mod deploy;
 mod director;
 mod events;
@@ -40,6 +41,7 @@ use serde::{Deserialize, Serialize};
 use stealth_i18n::Text;
 
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
+pub use crew::{Crew, crew_scale};
 pub use deploy::{footprint, loads};
 pub use record::PilotRecord;
 pub use state::*;
@@ -387,6 +389,7 @@ impl CampaignState {
     pub fn tick(&mut self, dt: f64, view: &WorldView, reports: &[Report]) -> Vec<CampaignEvent> {
         let mut ev = Vec::new();
         self.clock += dt.max(0.0);
+        self.run_crew(dt.max(0.0));
         for r in reports {
             self.report(r, view, &mut ev);
         }

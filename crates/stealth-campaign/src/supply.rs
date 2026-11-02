@@ -35,7 +35,11 @@ impl CampaignState {
             let (most_f, most_h) = (2 * self.fighters_start(side), 2 * HELICOPTERS_START);
             let (nf, nh) = match side {
                 Side::Blue => (RESUPPLY_FIGHTERS, RESUPPLY_HELICOPTERS),
-                _ => (ENEMY_RESUPPLY_FIGHTERS[skill], ENEMY_RESUPPLY_HELICOPTERS[skill]),
+                _ => {
+                    let pace = self.pace();
+                    let more = |n: u32| (n as f64 * pace).round() as u32;
+                    (more(ENEMY_RESUPPLY_FIGHTERS[skill]), more(ENEMY_RESUPPLY_HELICOPTERS[skill]))
+                }
             };
             let f = self.forces_mut(side);
             let buy = |f: &mut Forces, fighter: bool| {
@@ -71,10 +75,12 @@ impl CampaignState {
         }
     }
 
-    /// Materiel a side gets an hour: a base amount, its places and their intact cities.
+    /// Materiel a side gets an hour: a base amount, its places and their intact cities (the
+    /// enemy's more for more players, to pay for its tempo).
     pub fn income(&self, side: Side) -> f64 {
         let (places, cities) = self.producers(side);
-        INCOME_BASE + INCOME_PLACE * places as f64 + INCOME_CITY * cities as f64
+        let income = INCOME_BASE + INCOME_PLACE * places as f64 + INCOME_CITY * cities as f64;
+        if side == Side::Red { income * self.pace() } else { income }
     }
 
     /// What a side's income comes from: the places it holds, the intact cities among them.

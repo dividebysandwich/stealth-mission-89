@@ -83,6 +83,7 @@ ops-rule-classic = 클래식
 ops-materiel = 물자
 ops-materiel-blue = 청군 { $materiel } (+{ $income }/h)
 ops-materiel-red = 적군 { $materiel } (+{ $income }/h)
+ops-crew-tempo = 적의 작전 템포 ×{ $pace }
 ops-friendly = 아군
 ops-enemy = 적
 ops-section-forces = 전력

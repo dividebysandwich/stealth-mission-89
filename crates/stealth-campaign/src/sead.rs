@@ -18,7 +18,10 @@ impl CampaignState {
     ) {
         let skill = (self.setup.opponents as usize).min(3);
         let now = self.clock;
-        if side != Side::Red || self.outcome.is_some() || now - self.sead_at < SEAD_EVERY[skill] {
+        if side != Side::Red
+            || self.outcome.is_some()
+            || now - self.sead_at < self.paced(SEAD_EVERY[skill])
+        {
             return;
         }
         let Some(u) = view.units.get(aaa as usize).filter(|u| u.alive && u.side == Side::Blue)

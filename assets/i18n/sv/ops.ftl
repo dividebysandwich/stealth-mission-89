@@ -83,6 +83,7 @@ ops-rule-classic = klassiskt
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/h)
 ops-materiel-red = RÖD { $materiel } (+{ $income }/h)
+ops-crew-tempo = FIENDENS TEMPO ×{ $pace }
 ops-friendly = EGNA
 ops-enemy = FIENDE
 ops-section-forces = Styrkor

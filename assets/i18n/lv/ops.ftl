@@ -83,6 +83,7 @@ ops-rule-classic = klasiskie
 ops-materiel = MATERIĀLIE RESURSI
 ops-materiel-blue = ZILIE { $materiel } (+{ $income }/h)
 ops-materiel-red = SARKANIE { $materiel } (+{ $income }/h)
+ops-crew-tempo = IENAIDNIEKA TEMPS ×{ $pace }
 ops-friendly = DRAUDZĪGIE
 ops-enemy = IENAIDNIEKS
 ops-section-forces = Spēki

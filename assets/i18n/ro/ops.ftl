@@ -83,6 +83,7 @@ ops-rule-classic = clasic
 ops-materiel = MATERIALE
 ops-materiel-blue = ALBASTRU { $materiel } (+{ $income }/h)
 ops-materiel-red = ROȘU { $materiel } (+{ $income }/h)
+ops-crew-tempo = RITMUL INAMICULUI ×{ $pace }
 ops-friendly = PRIETEN
 ops-enemy = INAMIC
 ops-section-forces = Forțe

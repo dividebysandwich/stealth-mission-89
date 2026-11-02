@@ -83,6 +83,7 @@ ops-rule-classic = klasikinės
 ops-materiel = IŠTEKLIAI
 ops-materiel-blue = MĖLYNIEJI { $materiel } (+{ $income }/val.)
 ops-materiel-red = RAUDONIEJI { $materiel } (+{ $income }/val.)
+ops-crew-tempo = PRIEŠO TEMPAS ×{ $pace }
 ops-friendly = DRAUGIŠKA
 ops-enemy = PRIEŠAS
 ops-section-forces = Pajėgos

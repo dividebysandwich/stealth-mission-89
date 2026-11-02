@@ -471,6 +471,7 @@ fn multiplayer_window(
                                     sky_ratio: w.sky_ratio,
                                     start_hour: w.start_hour,
                                     dynamic_weather: !w.clear_sky,
+                                    crew_scaling: true,
                                 };
                                 let rules = host_rules(&settings, &state);
                                 host = Some(

@@ -44,6 +44,7 @@ fn campaign(code: &str, index: usize) -> CampaignState {
         sky_ratio: 24.0,
         start_hour: 8.0,
         dynamic_weather: true,
+        crew_scaling: true,
     };
     CampaignState::new(setup, &t.world)
 }
@@ -2567,4 +2568,61 @@ fn sorties_get_unique_callsigns_by_mission() {
     // The first one home, his position is free again; flight 1 stays with the mission.
     c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
     assert_eq!(fly(&mut c, e, offers[0]), (1, 1));
+}
+
+#[test]
+fn the_crew_sets_the_enemys_pace() {
+    assert_eq!(crew_scale(1.0), 1.0);
+    assert!((crew_scale(2.0) - 1.516).abs() < 0.01);
+    assert!((crew_scale(4.0) - 2.297).abs() < 0.01);
+    assert_eq!(crew_scale(64.0), tuning::CREW_SCALE_MAX);
+    let mut c = campaign("central_europe", 3);
+    assert_eq!(c.pace(), 1.0);
+    // Four players: the count rises one player per CREW_RISE, the pace with it.
+    c.set_crew(4);
+    c.tick(tuning::CREW_RISE, &WorldView::default(), &[]);
+    assert!((c.crew.level - 2.0).abs() < 1e-9);
+    c.tick(2.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
+    assert_eq!(c.crew.level, 4.0);
+    assert_eq!(c.pace(), crew_scale(4.0));
+    assert_eq!(c.board_size(), tuning::BOARD_SIZE + 3 * tuning::CREW_OFFERS);
+    // One drops out for a minute: the pace hardly moves.
+    c.set_crew(3);
+    c.tick(60.0, &WorldView::default(), &[]);
+    assert!(c.crew.level > 3.8);
+    // Saved with the campaign; an older save plays as one player.
+    let d: CampaignState = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+    assert_eq!(d.crew, c.crew);
+    let mut v = serde_json::to_value(&c).unwrap();
+    v.as_object_mut().unwrap().remove("crew");
+    v["setup"].as_object_mut().unwrap().remove("crew_scaling");
+    let d: CampaignState = serde_json::from_value(v).unwrap();
+    assert_eq!((d.crew, d.pace()), (Crew::default(), 1.0));
+    // Off: the same war for any crew.
+    c.setup.crew_scaling = false;
+    assert_eq!((c.pace(), c.board_size()), (1.0, tuning::BOARD_SIZE));
+}
+
+#[test]
+fn more_players_draw_more_enemy_patrols() {
+    let patrols = |players: usize| {
+        let mut c = campaign("central_europe", 3);
+        c.set_crew(players);
+        // The fighters stay up.
+        for _ in 0..60 {
+            let flights =
+                c.patrols.iter().map(|p| FlightView { x: 0, y: 0, side: p.1, tag: p.0 }).collect();
+            c.tick(60.0, &WorldView { flights, ..Default::default() }, &[]);
+        }
+        c.patrols.iter().filter(|p| p.1 == Side::Red).count()
+    };
+    let (one, four) = (patrols(1), patrols(4));
+    assert!(four >= one + 3, "{one} patrols alone, {four} for four");
+    // Four: a pace of 2.3, 1.3 steps of 2 more each.
+    let mut c = campaign("central_europe", 3);
+    let roe = 1;
+    assert_eq!(c.patrol_cap(), tuning::PATROLS + roe);
+    c.set_crew(4);
+    c.tick(3.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
+    assert_eq!(c.patrol_cap(), tuning::PATROLS + roe + 3);
 }

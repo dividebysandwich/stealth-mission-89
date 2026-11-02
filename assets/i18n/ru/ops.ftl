@@ -103,6 +103,7 @@ ops-rule-classic = классические
 ops-materiel = МАТЧАСТЬ
 ops-materiel-blue = СИНИЕ { $materiel } (+{ $income }/ч)
 ops-materiel-red = КРАСНЫЕ { $materiel } (+{ $income }/ч)
+ops-crew-tempo = ТЕМП ПРОТИВНИКА ×{ $pace }
 ops-friendly = СВОИ
 ops-enemy = ПРОТИВНИК
 ops-section-forces = Силы

@@ -83,6 +83,7 @@ ops-rule-classic = クラシック
 ops-materiel = 物資
 ops-materiel-blue = 青軍 { $materiel }（+{ $income }/時）
 ops-materiel-red = 赤軍 { $materiel }（+{ $income }/時）
+ops-crew-tempo = 敵の作戦テンポ ×{ $pace }
 ops-friendly = 友軍
 ops-enemy = 敵軍
 ops-section-forces = 戦力
