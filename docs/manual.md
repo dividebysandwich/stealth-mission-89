@@ -435,7 +435,10 @@ to bleed off an incoming missile's energy.
 around: an attack aircraft radars only see at short range, provided its bay doors stay shut.
 It is subsonic (about 560 kt at sea level, drag rising steeply above Mach 0.85), has no afterburner, 
 pulls 7 g and stalls at about 120 kt clean. It has no radar warning scope; instead the fictional EGR/EAR 
-**radar bar graph** shows how close each radar sweep came to finding you (chapter 7.2).
+**radar bar graph** shows how close each radar sweep came to finding you (chapter 7.2). In the campaign
+its faceted shape returns only about five eighths of the usual signal to every radar, ground and
+airborne, so it can slip deep into enemy country low and with its bays shut. Open the bays or climb and
+it shows up again; pulse and Doppler radars still see it at their best aspects (chapter 7.4).
 
 **Weapons.** Two internal bays, with *Realistic weapons* on, or four (the two wing bays are marked
 *Not on the real aircraft*). Each bay takes one kind of store, several of the smaller ones: up to four
@@ -633,7 +636,10 @@ its last in 2019, while the Luftwaffe flies them on into the 2020s.
 
 **IN THE GAME.** The Tornado IDS is the game's low-level specialist. It reaches about Mach 1.2 low and
 past Mach 1.6 high, has afterburners, pulls 7.5 g and approaches at about 130 kt with full flaps. Its
-stores are external (+24 EMV): it survives by flying under the radar, not by hiding from it.
+stores are external (+24 EMV): it survives by flying under the radar, not by hiding from it. Below
+**150 ft** (100 ft for every other aircraft) ground radars and the Shilka's radar start losing it in the
+ground clutter, and lose it more the lower it goes: hold it at 100 ft or less and most ground radars only
+find it close in. Fighters and the AWACS look down on it as usual.
 
 **Swing wings.** The wings sweep by themselves: fully forward (25°) for take-off, landing and slow
 flight, back to 67° between Mach 0.6 and 0.9, taking six seconds for the full travel. Lowering the flaps
@@ -1767,6 +1773,9 @@ The radar's **signal** depends on:
   that. Over **mountains** no radar can pick you out of the clutter.
 - **Height above the radar**: an aircraft high above a nearby radar is in the blind cone over it.
   At 10,000 ft above a site, a radar closer than about 10 km can't see you.
+- **Height above the ground**: below 100 ft (150 ft in the Tornado) a ground radar starts losing you in
+  the ground clutter, and the lower you go the less it sees. Airborne radars look down unhindered.
+- **Your aircraft's shape**: in the campaign the F-117A returns about five eighths of the usual signal.
 - **Aspect and radar type** (7.4).
 - **The enemy's skill**: Veteran and Elite crews get more out of their radars.
 
@@ -2109,7 +2118,7 @@ IN VR and DELETE, and the options for a new one:
 |---|---|
 | **Campaign** | *Theater*. *Situation*: Cold War, Limited War or Conventional War, how many enemy aircraft fly. *Opponents*: Green to Elite, the enemy's skill and how often it attacks. |
 | **Conditions** | *Weather*: *Dynamic* or *Clear sky*. *Start time* (default 08:00). *Day and night*: a day lasts 24 h (real time), 2 h, 1 h (the default) or 30 min. |
-| **Simulation** | *Damage*, *Guidance*, *Air defence* and *Crash protection* (chapter 1.2). |
+| **Simulation** | *Damage*, *Guidance*, *Air defence* and *Crash protection* (chapter 1.2). *Lost aircraft count*: every aircraft you lose is one fighter or helicopter fewer for your side's AI (off by default). |
 
 START begins the campaign and saves it at once. A campaign keeps the rules it was started with,
 whoever continues or serves it later. With dynamic weather the sky changes once or twice a campaign day:
@@ -2123,7 +2132,9 @@ island and sea theaters (Cuba, the Persian Gulf) see none, and Libya's places li
 
 The campaign opens on the **Ops screen**. Its header shows the score (*BLUE n RED n*: the places each side
 holds), the campaign's day and time, the weather now and the next change, **SAVE & EXIT** and
-**OPTIONS**. The footer shows both sides' materiel and income.
+**OPTIONS**. The footer shows both sides' materiel and income, which way the front is moving
+(*BLUE GAINING*, *RED GAINING* or *HOLDING*, from the places taken and sites destroyed in the last two
+hours) and, in multiplayer, the enemy's tempo (11.5).
 
 | Tab | Shows |
 |---|---|
@@ -2132,7 +2143,7 @@ holds), the campaign's day and time, the weather now and the next change, **SAVE
 | **AIR DEFENSE** | Your side's Gepard, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
 | **FORCES** | Both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
 | **PLAYERS** | The pilots in the campaign, what they do, their sorties, points and rank; the leaderboard of everyone who has flown in it; the campaign's rules. |
-| **DEBRIEF** | The last sortie's result, kills, points, medal and rank, and what happened meanwhile. |
+| **DEBRIEF** | The last sortie's result, kills, points, medal and rank, its effect on the war (9.8), and what happened meanwhile. |
 | **LOG** | The war's events, newest first: for example *Armour column leaves Kostiantynivka to take Bakhmut* |
 | **CHAT** | Multiplayer only. |
 
@@ -2183,10 +2194,18 @@ and its armour (CAS); then send the helicopters in (INSERTION, ESCORT) or clear 
 (CAS - support armour). Command orders a free insertion against a front place by itself once nothing
 defends it any more: no SAM sites, no guns, no armour (at most every 20 minutes).
 
+**Operations.** Each front place is an operation with up to three steps: fresh RECON, its SAM sites down
+(SEAD) and its airfield destroyed (STRIKE). The board shows how far along it is under each of its
+missions (*Operation Tabor: 2/3 prepared*, green when ready). Once every step is done and its threat
+is two or less, the helicopters go in at once, without waiting for the 20 minutes.
+
 ## 9.4 The mission board
 
-The board lists up to twelve missions, the urgent ones first (interceptions, enemy armour, defence,
-rescue, the AWACS), each with its kind, target, distance from the selected base and threat. It is rebuilt
+The board lists up to twelve missions (two more for each further player in multiplayer), the urgent
+ones first (interceptions, enemy armour, defence, rescue, the AWACS), each with its kind, target,
+distance from the selected base and threat. Urgent missions count down: *T-4 min* until the raid or the
+helicopters lift off (or the AWACS goes home, the downed pilot is captured), *NOW* once they are on
+their way. It is rebuilt
 every minute, after every capture and as soon as a target is destroyed. A mission stays on the board as
 long as its situation lasts.
 
@@ -2247,6 +2266,11 @@ mission, else the best one. TAKE OFF puts you on the chosen base's runway or dec
 Every aircraft but the UH-60 and the CH-47 may fly any mission except INSERTION, LOGISTICS and
 RESUPPLY; the UH-60 flies only those and CSAR, the CH-47 only LOGISTICS and RESUPPLY. You may achieve more than the mission you accepted: every kill counts, and objectives at the same
 place make a package.
+
+**Diverts.** While you fly a mission and haven't achieved it yet, the AWACS (*Magic*) may call a divert
+when an enemy raid, an enemy insertion or a pilot down comes up within 120 km of you. The radio call and
+a HUD line name it; press **Alt A** to take it. The new mission replaces yours (orders, route and
+kneeboard, the next waypoint its target), and your kills so far stay yours.
 
 **Coming home.** Stop on a friendly runway (or, in a helicopter or the Harrier, set down at a friendly base)
 and the ground crew comes out: **REARM & REFUEL** fills you up for another mission in the same sortie,
@@ -2353,9 +2377,10 @@ Each vehicle destroyed counts as a ground kill (20 points).
 | Action | How often (Green .. Elite) | What happens |
 |---|---|---|
 | **Armour column** | 45 / 35 / 25 / 20 min after the last one ended | Seven vehicles against the nearest friendly place within 120 km of road (9.7). *CAS - armour column*. |
-| **Insertion** | Every 75 / 50 / 35 / 25 min, warned 5 min ahead | Four helicopters against one of the two weakest friendly places near the front (fewest SAM sites, guns and armour). A place where its insertions failed in the last two hours counts as stronger. INTERCEPT it. |
-| **Raid** | Every 60 / 40 / 28 / 18 min, warned 2 min ahead | Two strike aircraft, escorted by two fighters that take off 90 s earlier, against one of the two friendly airfields nearest it. A hit destroys the airfield: it launches no AI aircraft until repaired, though you can still take off from it. DEFEND it. |
-| **Patrols** | Every 6 min (3 with the AWACS up) | Fighters from the airfields near the front, at most 2 to 4 in the air by the situation, sent at the insertions and raids, else at the friendly place nearest the front. |
+| **Insertion** | Every 75 / 50 / 35 / 25 min, warned 5 min ahead | Four helicopters against one of the two friendly places near the front that are weakest for what they are worth: an intact airfield and cities draw it, SAM sites, guns and armour put it off. A place where its insertions failed in the last two hours counts as stronger. INTERCEPT it. |
+| **Raid** | Every 60 / 40 / 28 / 18 min, warned 2 min ahead | Two strike aircraft, escorted by two fighters that take off 90 s earlier, against one of the two friendly airfields nearest it. A hit destroys the airfield: it launches no AI aircraft until repaired, though you can still take off from it. About one raid in three goes for a Gepard, Patriot or drone site your side built instead, if one is in its reach. About one in four comes with a **feint** at another airfield that turns back a few minutes after take-off; you can't tell which is which. DEFEND it. |
+| **SEAD** | When your Patriots or Gepards shoot down its aircraft, at most every 30 / 20 / 15 / 10 min | Two aircraft with anti-radiation missiles, escorted, against that battery. DEFEND it. |
+| **Patrols** | Every 6 min (3 with the AWACS up) | Fighters from the airfields near the front, at most 2 to 4 in the air by the situation, sent at the insertions and raids, else over its own place you struck last (for 30 minutes), else at the friendly place nearest the front. |
 | **AWACS** | Every 90 min, for an hour | Orbits behind the front; its patrols go up twice as often and are sent straight at you. Shoot it down (AWACS). |
 | **Forward batteries** | Checked every 10 min, when nothing is on the board near your bases | Two Shilkas, two or three S-60 guns and a MANPADS team 15-35 km from a friendly base near the front, at most two batteries: *CAS - battery*. |
 | **Drone waves** (Ukraine) | Every 80 / 55 / 40 / 30 min, warned 3 min ahead | Six Geran-2s at a friendly city (else an airfield) within 300 km of an enemy base; the first one through destroys it. DEFEND (DRONE DEFENSE) it (chapter 10.3). |
@@ -2364,9 +2389,24 @@ Your own side defends too: an airfield scrambles one or two fighters when enemy 
 its Gepards and Stinger teams engage what comes closer, and Patriot batteries stand at airfields well behind
 the front.
 
-Everything destroyed is repaired by its owner, as long as it has the materiel: SAM sites, cities and ships
-after 45 minutes, airfields after an hour. Guns and MANPADS teams are replaced one per place every 20
-minutes, garrison armour one vehicle every 30.
+Everything destroyed is repaired by its owner, as long as it has the materiel, but each side has only a
+few **repair crews**: one, plus one for every eight intact cities, four at most. They work on the
+destroyed sites nearest the front first: a SAM site, city or ship takes 45 minutes, an airfield an hour.
+A site destroyed again within four hours of its repair takes 1.5 times longer each time (three times at
+most), so hitting the same target again and again keeps it down. Guns and MANPADS teams are replaced one
+per place every 20 minutes, garrison armour one vehicle every 30.
+
+**What your sorties change.** Besides what you destroy, some missions hold the enemy back:
+
+| You | The enemy |
+|---|---|
+| Destroy one of its airfields | Its next raid comes 15 minutes later at the earliest. |
+| Destroy one of its cities | Its next armour column and insertion come 10 minutes later at the earliest, and it loses materiel and income (9.10). |
+| Fly CAP over your point | It sends no new raid or insertion against your places within 30 km while you are there. |
+| Escort an insertion | Its airfields scramble no fighters at the helicopters while you are with them. |
+
+The debrief lists what your sortie did under *Your effect on the war*: for example *SAM site at Tabor
+down: 45 min or more to repair*.
 
 
 ## 9.9 Pilots down (CSAR)
@@ -2385,8 +2425,8 @@ back what the pilot cost.
 ## 9.10 Materiel and aircraft
 
 Each side's AI fights with the materiel its places bring in and with the aircraft it has left.
-Each side starts with 150 materiel and holds at most 400. The income per hour is 20, plus 2 per
-place, plus 3 per intact city.
+Each side starts with 150 materiel and holds at most 400. The income per hour is 20, plus 1 per
+place, plus 5 per intact city.
 
 | Costs | Materiel |
 |---|---|
@@ -2404,10 +2444,12 @@ place, plus 3 per intact city.
 
 Aircraft shot down are gone; every hour each side buys new ones while its materiel lasts
 (helicopters first). An enemy that runs out can't repair, attack or replace its losses.
-INTERDICT missions strike its income: a city destroyed costs it 20 materiel at once and its 3 an
+INTERDICT missions strike its income: a city destroyed costs it 30 materiel at once and its 5 an
 hour until rebuilt. An AWACS shot down costs it 60. Your own side's AI pays from its materiel too
 (its armour columns, repairs, scrambles and replacements), but your own sorties, aircraft and insertion
-orders cost nothing.
+orders cost nothing. With *Lost aircraft count* on, every aircraft a player loses (crashed, or lost
+with an ejection) takes one fighter or helicopter from your side's AI; you still always have an
+aircraft to fly.
 
 ## 9.11 Points, ranks and packages
 
@@ -2425,7 +2467,7 @@ armour* does.
 ## 9.12 Winning and losing
 
 The war is won when the enemy holds no airfield, and lost when the friendly side holds neither an
-airfield nor a carrier. The end screen shows the result and every pilot's record; sorties in the
+airfield nor a carrier afloat. The end screen shows the result and every pilot's record; sorties in the
 air may still finish. Then start a new campaign from the menu (a dedicated server starts the next
 one by itself, chapter 11).
 
@@ -2564,7 +2606,12 @@ After 5 minutes without a player, an AI helicopter flies it from the nearest air
 
 - Clear a front place's SAM sites and guns and Command sends the helicopters in for free; or
   order the insertion yourself and fly its escort.
-- STRIKE the enemy's airfields near the front: for an hour they send no patrols or raids.
+- STRIKE the enemy's airfields near the front: for an hour or more they send no patrols, and its next
+  raid is held back. Strike them again soon after their repair and they stay down longer.
+- Work through an operation: RECON, SEAD and STRIKE on one front place send the helicopters in at once.
+- Fly CAP over the airfield the enemy keeps raiding: while you hold it, its raids go elsewhere.
+- Take the AWACS's diverts (Alt A) on your way to a target: a raid caught on its way in saves an
+  airfield, and the target will still be there.
 - The enemy goes for your weakest places. Keep the guns and SAM sites there standing, and
   intercept its insertions: a failed one keeps it away from that place for two hours.
 - Fly RECON first on a well defended place: with fresh intelligence its defences see you later
@@ -2799,7 +2846,7 @@ when you play alone.
 
 The server decides how the war is fought, for everybody: realistic damage, realistic guidance, no
 crashes, time of day (moonlit nights shorten the enemy's visual range), realistic F-117A
-weapons and friendly fire, and of course the campaign's own options. The weather is the same for
+weapons, friendly fire and whether lost aircraft count, and of course the campaign's own options. The weather is the same for
 everybody: the same clouds in the same places, and the same lightning strikes. Each player keeps their own cockpit (classic or
 modern), flight model, avionics, HUD, shaders, shadows and lights, and picks their aircraft for each sortie on the briefing's LOADOUT page.
 
@@ -2816,6 +2863,13 @@ The Ops screen and the campaign itself work as when you play alone (chapter 9). 
 - **SAVE & EXIT** (top right, under the clock) leaves the campaign; as the host it also ends the
   game for the others. On a server that is not yours the button reads **DISCONNECT**: the war goes
   on on the server, and nothing is saved on your computer.
+- **The enemy fights harder the more of you there are.** With two players its raids, insertions,
+  armour columns, SEAD, patrols and AWACS come about 1.5 times as often, with three 1.9 times, with
+  four 2.3 times; more patrols fly at once, raids bring more escorts, and the enemy earns and buys
+  more to pay for it. Its pilots and gunners don't get any better. The tempo follows the players
+  connected, rising over a few minutes and falling more slowly, so a player dropping out for a moment
+  changes little; the Ops footer shows it (*ENEMY TEMPO x1.9*). The enemy's fighters and alarms also
+  deal with each of you where you were seen, so flights far apart each draw their own interceptors.
 - Every player takes their own missions from the board and may order insertions. Kills and
   objectives count for the player whose weapon it was. Players taking off from the same base line
   up in a staggered formation on the runway: the first in the middle, far enough down the runway
@@ -2868,6 +2922,8 @@ stealth-mission-89 --dedicated --theater ukraine --name "Friday night ops" --por
 | `--clear-sky` | A new campaign without weather (else it changes once or twice a day). |
 | `--classic-damage`, `--classic-guidance`, `--classic-time` | Classic damage, guidance and a fixed time of day instead of the default realistic damage, realistic guidance and moving sun and moon. |
 | `--no-crashes`, `--realistic-weapons`, `--friendly-fire` | The other rules. |
+| `--airframe-losses` | A new campaign where a player's lost aircraft comes out of your side's AI fighters or helicopters. |
+| `--no-crew-scaling` | The enemy's tempo stays the same however many players are connected (11.5). |
 | `--classic-terrain` | The classic flat ground instead of the default rolling hills and highlands; the players see and fly the server's terrain. |
 | `--save <file>` | The campaign file (default `campaigns/dedicated.json` in the game's folder for your files, Appendix B). |
 | `--send-rate <hz>` | How often the moving world goes to the players, 1 to 15 times a second (default 7.5). More is smoother; less leaves bandwidth for more players. |
@@ -3159,6 +3215,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | **Time** | Time acceleration / normal | Shift Z / Shift X |
 | **Game** | Settings menu (pauses) / detail / sound level | Esc, Pause, Alt P, gamepad Start / Alt D / Alt V |
 | | Training / resupply / quit | Alt T / Alt R / Alt Q |
+| | Accept the AWACS's divert (campaign, 9.5) | Alt A |
 | | Chat (multiplayer, chapter 11) | Y |
 | | Record an animated GIF: start / stop | F12 |
 | | Fullscreen | Alt Enter, F11 |

@@ -64,3 +64,4 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | | radio (remake, multiplayer): hold to talk to every player | CapsLock |
 | | record an animated GIF (remake, also in the menus): start / stop; size and frame rate in OPTIONS > GAME, saved in your Pictures folder | F12 |
 | Training | go to training / resupply / day-night | Alt T / Alt R / Alt N |
+| | accept the AWACS's divert (remake, campaign) | Alt A |
