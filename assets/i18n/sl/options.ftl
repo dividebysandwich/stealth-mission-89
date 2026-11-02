@@ -89,6 +89,15 @@ options-sun-moon = Sonce in luna
     .facts =
         Podnevi sonce na nebu, ponoči luna in zvezde
         Luna kaže mena misije
+options-cloud-quality = Oblaki
+cloud-quality-auto = Samodejno
+    .facts = Nizka v VR, visoka na zaslonu
+cloud-quality-low = Nizka
+    .facts = Grobi oblaki pri tretjini ločljivosti (najhitreje)
+cloud-quality-medium = Srednja
+    .facts = Polovična ločljivost, finejše podrobnosti
+cloud-quality-high = Visoka
+    .facts = Polna ločljivost, najfinejše podrobnosti in lastna senca (porabi čas GPE)
 
 ## ZVOK
 

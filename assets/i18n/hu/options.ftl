@@ -89,6 +89,15 @@ options-sun-moon = Nap és hold
     .facts =
         Nappal a nap az égen, éjjel a hold és a csillagok
         A hold a küldetés fázisát mutatja
+options-cloud-quality = Felhők
+cloud-quality-auto = Auto
+    .facts = Alacsony VR-ben, magas a képernyőn
+cloud-quality-low = Alacsony
+    .facts = Durva felhők harmad felbontásban (leggyorsabb)
+cloud-quality-medium = Közepes
+    .facts = Fél felbontás, finomabb részletek
+cloud-quality-high = Magas
+    .facts = Teljes felbontás, legfinomabb részletek és saját árnyék (GPU-időbe kerül)
 
 ## HANG
 

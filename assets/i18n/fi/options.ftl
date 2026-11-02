@@ -89,6 +89,15 @@ options-sun-moon = Aurinko ja kuu
     .facts =
         Aurinko taivaalla päivällä, kuu ja tähdet yöllä
         Kuu näyttää tehtävän vaiheen
+options-cloud-quality = Pilvet
+cloud-quality-auto = Auto
+    .facts = Matala VR:ssä, korkea näytöllä
+cloud-quality-low = Matala
+    .facts = Karkeat pilvet kolmasosaresoluutiolla (nopein)
+cloud-quality-medium = Keskitaso
+    .facts = Puolet resoluutiosta, tarkemmat yksityiskohdat
+cloud-quality-high = Korkea
+    .facts = Täysi resoluutio, tarkimmat yksityiskohdat ja omavarjo (vie GPU-aikaa)
 
 ## ÄÄNI
 

@@ -89,6 +89,15 @@ options-sun-moon = Sol og måne
     .facts =
         Solen på himlen om dagen, månen og stjernerne om natten
         Månen viser missionens fase
+options-cloud-quality = Skyer
+cloud-quality-auto = Auto
+    .facts = Lav i VR, høj på skærmen
+cloud-quality-low = Lav
+    .facts = Grove skyer i en tredjedel af opløsningen (hurtigst)
+cloud-quality-medium = Middel
+    .facts = Halv opløsning, finere detaljer
+cloud-quality-high = Høj
+    .facts = Fuld opløsning, fineste detaljer og egen skygge (koster GPU-tid)
 
 ## LYD
 

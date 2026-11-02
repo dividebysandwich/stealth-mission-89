@@ -89,6 +89,15 @@ options-sun-moon = Sonne und Mond
     .facts =
         Tagsüber die Sonne am Himmel, nachts Mond und Sterne
         Der Mond zeigt die Phase der Mission
+options-cloud-quality = Wolken
+cloud-quality-auto = Auto
+    .facts = Niedrig in VR, hoch am Bildschirm
+cloud-quality-low = Niedrig
+    .facts = Grobe Wolken in einem Drittel der Auflösung (am schnellsten)
+cloud-quality-medium = Mittel
+    .facts = Halbe Auflösung, feinere Details
+cloud-quality-high = Hoch
+    .facts = Volle Auflösung, feinste Details und Eigenschatten (kostet GPU-Zeit)
 
 ## TON
 

@@ -89,6 +89,15 @@ options-sun-moon = Sunce i Mjesec
     .facts =
         Sunce na nebu danju, Mjesec i zvijezde noću
         Mjesec prikazuje mijenu misije
+options-cloud-quality = Oblaci
+cloud-quality-auto = Auto
+    .facts = Niska u VR-u, visoka na zaslonu
+cloud-quality-low = Niska
+    .facts = Grubi oblaci u trećini razlučivosti (najbrže)
+cloud-quality-medium = Srednja
+    .facts = Pola razlučivosti, finiji detalji
+cloud-quality-high = Visoka
+    .facts = Puna razlučivost, najfiniji detalji i vlastita sjena (troši vrijeme GPU-a)
 
 ## ZVUK
 

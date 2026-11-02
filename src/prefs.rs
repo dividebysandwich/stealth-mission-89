@@ -63,6 +63,7 @@ pub struct Prefs {
     pub msaa: bool,
     pub shadows: bool,
     pub local_lights: bool,
+    pub cloud_quality: crate::weather::CloudQuality,
     pub vr_auto_detail: bool,
     pub continuous_time: bool,
     #[serde(default)]
@@ -154,6 +155,7 @@ impl Default for Prefs {
             msaa: true,
             shadows: false,
             local_lights: false,
+            cloud_quality: Default::default(),
             vr_auto_detail: true,
             continuous_time: true,
             sun_moon: true,
@@ -256,6 +258,7 @@ impl Prefs {
             msaa: s.msaa,
             shadows: s.shadows,
             local_lights: s.local_lights,
+            cloud_quality: s.cloud_quality,
             vr_auto_detail: s.vr_auto_detail,
             continuous_time: s.continuous_time,
             sun_moon: s.sun_moon,
@@ -342,6 +345,7 @@ impl Prefs {
         s.msaa &= self.msaa;
         s.shadows |= self.shadows;
         s.local_lights |= self.local_lights;
+        s.cloud_quality = self.cloud_quality;
         s.vr_auto_detail &= self.vr_auto_detail;
         s.continuous_time |= self.continuous_time;
         s.sun_moon |= self.sun_moon;
@@ -403,6 +407,7 @@ impl Prefs {
         self.msaa = s.msaa;
         self.shadows = s.shadows;
         self.local_lights = s.local_lights;
+        self.cloud_quality = s.cloud_quality;
         self.vr_auto_detail = s.vr_auto_detail;
         self.continuous_time = s.continuous_time;
         self.sun_moon = s.sun_moon;

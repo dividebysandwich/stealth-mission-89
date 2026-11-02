@@ -89,6 +89,15 @@ options-sun-moon = Słońce i księżyc
     .facts =
         Słońce na niebie w dzień, księżyc i gwiazdy w nocy
         Księżyc pokazuje fazę z misji
+options-cloud-quality = Chmury
+cloud-quality-auto = Auto
+    .facts = Niska w VR, wysoka na ekranie
+cloud-quality-low = Niska
+    .facts = Zgrubne chmury w jednej trzeciej rozdzielczości (najszybciej)
+cloud-quality-medium = Średnia
+    .facts = Połowa rozdzielczości, drobniejsze szczegóły
+cloud-quality-high = Wysoka
+    .facts = Pełna rozdzielczość, najdrobniejsze szczegóły i własny cień (kosztuje czas GPU)
 
 ## DŹWIĘK
 

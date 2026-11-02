@@ -862,24 +862,97 @@ fn shade_clouds(
         // Inside a cloud everything fades into it (`whiteout` in palette.wgsl).
         fog: tint(linear(CLOUD_RAMP + 2) * lit).extend(state.whiteout),
     };
-    // VR (two large eye views on a mobile GPU): marched at a third of the resolution, coarse
-    // scales only, fewer steps, no second occupancy sample for the self shadow.
-    let vr = settings.vr;
+    let q = settings.cloud_quality.level(settings.vr);
     let env = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u32>().ok());
     let want = CloudRenderSettings {
-        j_cap: env("SM89_CLOUD_JCAP").unwrap_or(if vr { 1 } else { 3 }),
-        h_cap: if vr { 2 } else { 4 },
-        step_count: env("SM89_CLOUD_STEPS").unwrap_or(if vr { 6 } else { 16 }),
+        j_cap: env("SM89_CLOUD_JCAP").unwrap_or(q.j_cap),
+        h_cap: q.h_cap,
+        step_count: env("SM89_CLOUD_STEPS").unwrap_or(q.step_count),
         max_march_span: 30_000.0,
         interior_span: 3_000.0,
         sigma_t: 0.02,
         dither: !settings.modern_shading,
-        sun_shadow: env("SM89_CLOUD_SHADOW").map_or(!vr, |v| v != 0),
-        resolution_scale: env("SM89_CLOUD_SCALE").unwrap_or(if vr { 3 } else { 1 }),
+        sun_shadow: env("SM89_CLOUD_SHADOW").map_or(q.sun_shadow, |v| v != 0),
+        resolution_scale: env("SM89_CLOUD_SCALE").unwrap_or(q.resolution_scale),
         ..default()
     };
     if *render != want {
         *render = want;
+    }
+}
+
+/// How finely the volumetric clouds are drawn (`Settings::cloud_quality`, OPTIONS).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+pub enum CloudQuality {
+    /// Low in VR, high on the screen.
+    #[default]
+    Auto,
+    Low,
+    Medium,
+    High,
+}
+
+/// A cloud quality's march: finest wavelet scales, march steps, the self shadow and view pixels
+/// per marched pixel.
+pub struct CloudLevel {
+    pub j_cap: u32,
+    pub h_cap: u32,
+    pub step_count: u32,
+    pub sun_shadow: bool,
+    pub resolution_scale: u32,
+}
+
+impl CloudQuality {
+    pub const ALL: [CloudQuality; 4] =
+        [CloudQuality::Auto, CloudQuality::Low, CloudQuality::Medium, CloudQuality::High];
+
+    fn id(self) -> &'static str {
+        match self {
+            CloudQuality::Auto => "cloud-quality-auto",
+            CloudQuality::Low => "cloud-quality-low",
+            CloudQuality::Medium => "cloud-quality-medium",
+            CloudQuality::High => "cloud-quality-high",
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        stealth_i18n::t!(self.id())
+    }
+
+    pub fn facts(self) -> &'static [&'static str] {
+        stealth_i18n::t_lines!(&format!("{}.facts", self.id()))
+    }
+
+    /// Low (VR's default: two large eye views on a mobile GPU) marches a third of the
+    /// resolution, coarse scales only, fewer steps, no second occupancy sample for the self
+    /// shadow; medium half the resolution.
+    pub fn level(self, vr: bool) -> CloudLevel {
+        match self {
+            CloudQuality::Auto => {
+                (if vr { CloudQuality::Low } else { CloudQuality::High }).level(vr)
+            }
+            CloudQuality::Low => CloudLevel {
+                j_cap: 1,
+                h_cap: 2,
+                step_count: 6,
+                sun_shadow: false,
+                resolution_scale: 3,
+            },
+            CloudQuality::Medium => CloudLevel {
+                j_cap: 2,
+                h_cap: 3,
+                step_count: 10,
+                sun_shadow: false,
+                resolution_scale: 2,
+            },
+            CloudQuality::High => CloudLevel {
+                j_cap: 3,
+                h_cap: 4,
+                step_count: 16,
+                sun_shadow: true,
+                resolution_scale: 1,
+            },
+        }
     }
 }
 

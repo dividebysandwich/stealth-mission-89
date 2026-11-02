@@ -89,6 +89,15 @@ options-sun-moon = Slnko a mesiac
     .facts =
         Slnko na oblohe cez deň, mesiac a hviezdy v noci
         Mesiac ukazuje fázu v čase misie
+options-cloud-quality = Oblaky
+cloud-quality-auto = Auto
+    .facts = Nízka vo VR, vysoká na obrazovke
+cloud-quality-low = Nízka
+    .facts = Hrubé oblaky v tretinovom rozlíšení (najrýchlejšie)
+cloud-quality-medium = Stredná
+    .facts = Polovičné rozlíšenie, jemnejšie detaily
+cloud-quality-high = Vysoká
+    .facts = Plné rozlíšenie, najjemnejšie detaily a vlastný tieň (stojí čas GPU)
 
 ## ZVUK
 
