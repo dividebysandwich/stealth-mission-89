@@ -84,6 +84,8 @@ pub const ENEMY_TARGET_CHOICE: usize = 2;
 /// (plus one per ROE level); interceptors scramble against insertions this close to a base.
 pub const PATROL_EVERY: f64 = 6.0 * 60.0;
 pub const PATROLS: usize = 2;
+/// A place whose sites the other side destroyed draws its owner's patrols this long.
+pub const PRESSURE_MEMORY: f64 = 30.0 * 60.0;
 pub const SCRAMBLE_RANGE: i32 = 0x1400;
 
 /// Friendly air: a CAP of one or two fighters scrambles from an airfield when enemy aircraft

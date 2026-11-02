@@ -23,6 +23,10 @@ impl CampaignState {
                 {
                     self.lose(side, CITY_LOSS);
                 }
+                // Its place is under attack: the owner's patrols guard it for a while.
+                if let Some(p) = self.site(object).filter(|s| s.alive()).and_then(|s| s.place) {
+                    self.places[p as usize].struck_at = Some(now);
+                }
                 if let Some(s) = self.site_mut(object).filter(|s| s.alive()) {
                     s.destroyed_at = Some(now);
                     s.repair_from = None;
@@ -733,6 +737,17 @@ impl CampaignState {
                         .iter()
                         .filter(|r| r.state == RaidState::Enroute)
                         .find_map(|r| self.raid_point(r))
+                })
+                // Over the place of its own struck last, while it is fresh.
+                .or_else(|| {
+                    self.places
+                        .iter()
+                        .filter(|p| p.owner == Side::Red)
+                        .filter_map(|p| {
+                            p.struck_at.filter(|&t| now - t < PRESSURE_MEMORY).map(|t| (t, p))
+                        })
+                        .max_by(|a, b| a.0.total_cmp(&b.0))
+                        .map(|(_, p)| (p.x, p.y))
                 })
                 .or_else(|| {
                     let p = front.first()?;

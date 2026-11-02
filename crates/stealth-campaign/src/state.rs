@@ -159,6 +159,10 @@ pub struct Place {
     pub defences: Vec<ObjectId>,
     /// Recon intelligence valid until then (campaign time).
     pub intel_until: Option<f64>,
+    /// When the other side last destroyed one of its sites: its owner's patrols guard it for
+    /// a while (`PRESSURE_MEMORY`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub struck_at: Option<f64>,
     /// Its guns and MANPADS teams destroyed and not replaced yet, and when the next one is
     /// replaced.
     #[serde(default)]
@@ -1381,6 +1385,7 @@ impl CampaignState {
                         airfield: None,
                         defences: Vec::new(),
                         intel_until: None,
+                        struck_at: None,
                         guns_lost: 0,
                         armour_lost: 0,
                         armour_repair_at: None,

@@ -2696,3 +2696,42 @@ fn the_awacs_sends_patrols_at_each_player_in_turn() {
         assert!(goals.contains(&(p.x, p.y)), "no patrol at {:?}: {goals:?}", (p.x, p.y));
     }
 }
+
+#[test]
+fn enemy_patrols_guard_the_place_the_players_strike() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let sam = c
+        .sites
+        .iter()
+        .find(|s| {
+            s.kind == SiteKind::Sam
+                && s.alive()
+                && s.place.is_some()
+                && c.owner(s.object) == Some(Side::Red)
+        })
+        .unwrap();
+    let (object, place) = (sam.object, sam.place.unwrap());
+    let (px, py) = (c.places[place as usize].x, c.places[place as usize].y);
+    c.red.fighters = 30;
+    c.raid_at = f64::MAX;
+    c.patrol_at = f64::MIN;
+    let ev =
+        c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object, by: Some(P0) }]);
+    let goal = ev.iter().find_map(|e| match e {
+        CampaignEvent::LaunchFighters { side: Side::Red, x, y, .. } => Some((*x, *y)),
+        _ => None,
+    });
+    assert_eq!(goal, Some((px, py)));
+    // Long after, the patrols go back to the front.
+    c.tick(tuning::PRESSURE_MEMORY, &WorldView::default(), &[]);
+    assert!(c.places[place as usize].struck_at.is_some());
+    c.patrols.clear();
+    c.patrol_at = f64::MIN;
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    let goal = ev.iter().find_map(|e| match e {
+        CampaignEvent::LaunchFighters { side: Side::Red, x, y, .. } => Some((*x, *y)),
+        _ => None,
+    });
+    assert!(goal.is_some_and(|g| g != (px, py)), "{goal:?}");
+}
