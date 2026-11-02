@@ -75,8 +75,6 @@ const SORTIE_TRIES: u32 = 64;
 const CAREER_SIZE: egui::Vec2 = egui::vec2(1432.0, 760.0);
 /// The least width of the pilot's record, which fills what the other columns leave.
 const RECORD_LEAST: f32 = 220.0;
-/// The width of the pilots' rename and delete buttons (`menu::icon_button`).
-const ICON_BUTTON_WIDTH: f32 = 24.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Status {
@@ -463,23 +461,15 @@ pub fn career_ui(
                         Status::Pow => format!(" ({})", t!("career-pow.short")),
                     };
                     let text = format!("{}{status}", p.title());
-                    ui.horizontal(|ui| {
-                        // The buttons stay at the right, the name takes the rest.
-                        let buttons = 2.0 * (ICON_BUTTON_WIDTH + ui.spacing().item_spacing.x);
-                        let width = (ui.available_width() - buttons).max(40.0);
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(width, ui.spacing().interact_size.y),
-                            egui::Layout::top_down_justified(egui::Align::LEFT),
-                            |ui| {
-                                let selected = w.selected.as_deref() == Some(&key);
-                                if ui
-                                    .add(egui::Button::selectable(selected, text).truncate())
-                                    .clicked()
-                                {
-                                    w.selected = Some(key.clone());
-                                }
-                            },
-                        );
+                    // The buttons are flush right whatever the name's length (the first added is
+                    // the rightmost), the name takes the rest.
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if icon_button(ui, icon::DELETE)
+                            .on_hover_text(t!("career-delete.facts"))
+                            .clicked()
+                        {
+                            w.confirm_delete = Some((key.clone(), p.title()));
+                        }
                         if icon_button(ui, icon::RENAME)
                             .on_hover_text(t!("career-rename.facts"))
                             .clicked()
@@ -489,12 +479,13 @@ pub fn career_ui(
                                 m.request_focus(egui::Id::new(("text_entry", "rename_pilot")))
                             });
                         }
-                        if icon_button(ui, icon::DELETE)
-                            .on_hover_text(t!("career-delete.facts"))
-                            .clicked()
-                        {
-                            w.confirm_delete = Some((key.clone(), p.title()));
-                        }
+                        ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                            let selected = w.selected.as_deref() == Some(&key);
+                            if ui.add(egui::Button::selectable(selected, text).truncate()).clicked()
+                            {
+                                w.selected = Some(key.clone());
+                            }
+                        });
                     });
                 }
                 match renamed {
