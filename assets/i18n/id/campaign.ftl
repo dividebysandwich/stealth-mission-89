@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } mendekati { $place }!
 cl-raid-hit = { $raid } menghantam { $target }
 cl-sead-hit = Pesawat SEAD musuh menghantam baterai SAM dekat { $place }
 cl-infra-hit = Pesawat musuh mengenai situs kita { $site }
+cl-site-destroyed = Situs kita { $site } hancur
 cl-target-generic = target
 cl-target-airfield = pangkalan udara { $place }
 cl-target-city = kota { $place }

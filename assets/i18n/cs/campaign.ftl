@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } se blíží: { $place }!
 cl-raid-hit = { $raid } zasáhl: { $target }
 cl-sead-hit = Nepřátelské letouny SEAD zasáhly baterii SAM { $place }
 cl-infra-hit = Nepřátelské letouny zasáhly naše stanoviště { $site }
+cl-site-destroyed = Naše stanoviště { $site } je zničeno
 cl-target-generic = cíl
 cl-target-airfield = letiště { $place }
 cl-target-city = město { $place }

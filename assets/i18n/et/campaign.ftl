@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } läheneb: { $place }!
 cl-raid-hit = { $raid } tabas: { $target }
 cl-sead-hit = Vaenlase SEAD-lennukid tabasid SAM-patareid { $place }
 cl-infra-hit = Vaenlase lennukid tabasid meie positsiooni { $site }
+cl-site-destroyed = Meie positsioon { $site } on hävitatud
 cl-target-generic = sihtmärk
 cl-target-airfield = lennuväli { $place }
 cl-target-city = linn { $place }

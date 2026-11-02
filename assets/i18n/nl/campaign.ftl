@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } nadert { $place }!
 cl-raid-hit = { $raid } raakte { $target }
 cl-sead-hit = Vijandelijke SEAD-toestellen hebben de SAM-batterij bij { $place } geraakt
 cl-infra-hit = Vijandelijke toestellen troffen onze stelling { $site }
+cl-site-destroyed = Onze stelling { $site } is vernietigd
 cl-target-generic = het doel
 cl-target-airfield = vliegveld { $place }
 cl-target-city = stad { $place }

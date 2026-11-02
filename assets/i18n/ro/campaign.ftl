@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } se apropie de { $place }!
 cl-raid-hit = { $raid } a lovit { $target }
 cl-sead-hit = Aeronave SEAD inamice au lovit bateria SAM de lângă { $place }
 cl-infra-hit = Avioane inamice au lovit poziția noastră { $site }
+cl-site-destroyed = Poziția noastră { $site } a fost distrusă
 cl-target-generic = ținta
 cl-target-airfield = aerodromul { $place }
 cl-target-city = orașul { $place }

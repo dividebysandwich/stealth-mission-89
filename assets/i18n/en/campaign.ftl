@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } inbound to { $place }!
 cl-raid-hit = { $raid } hit { $target }
 cl-sead-hit = Enemy SEAD aircraft hit the SAM battery near { $place }
 cl-infra-hit = Enemy aircraft hit our { $site }
+cl-site-destroyed = The { $site } is destroyed
 cl-target-generic = the target
 cl-target-airfield = the { $place } airfield
 cl-target-city = the city of { $place }

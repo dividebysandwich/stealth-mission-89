@@ -54,6 +54,7 @@ cl-raid-inbound = { $raid } 正逼近 { $place }！
 cl-raid-hit = { $raid } 击中了 { $target }
 cl-sead-hit = 敌方 SEAD 飞机击中了 { $place } 附近的 SAM 营
 cl-infra-hit = 敌机击中了我方的 { $site }
+cl-site-destroyed = 我方的 { $site } 被摧毁
 cl-target-generic = 目标
 cl-target-airfield = { $place } 机场
 cl-target-city = { $place } 市

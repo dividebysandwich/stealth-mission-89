@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } tuvojas: { $place }!
 cl-raid-hit = { $raid } trāpīja mērķim: { $target }
 cl-sead-hit = Ienaidnieka SEAD lidmašīnas trāpīja SAM baterijai ({ $place })
 cl-infra-hit = Ienaidnieka lidmašīnas trāpīja mūsu pozīcijai { $site }
+cl-site-destroyed = Mūsu pozīcija { $site } ir iznīcināta
 cl-target-generic = mērķis
 cl-target-airfield = lidlauks { $place }
 cl-target-city = pilsēta { $place }

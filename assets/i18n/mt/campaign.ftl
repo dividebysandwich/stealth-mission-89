@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } ġej lejn { $place }!
 cl-raid-hit = { $raid } laqat { $target }
 cl-sead-hit = Inġenji tal-ajru SEAD tal-għadu laqtu l-batterija SAM qrib { $place }
 cl-infra-hit = Ajruplani tal-għadu laqtu l-pożizzjoni tagħna { $site }
+cl-site-destroyed = Il-pożizzjoni tagħna { $site } inqerdet
 cl-target-generic = il-mira
 cl-target-airfield = l-ajrudrom ta' { $place }
 cl-target-city = il-belt ta' { $place }

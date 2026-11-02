@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } se približuje: { $place }!
 cl-raid-hit = { $raid } je zadel: { $target }
 cl-sead-hit = Sovražna letala SEAD so zadela baterijo SAM pri { $place }
 cl-infra-hit = Sovražna letala so zadela naš položaj { $site }
+cl-site-destroyed = Naš položaj { $site } je uničen
 cl-target-generic = cilj
 cl-target-airfield = letališče { $place }
 cl-target-city = mesto { $place }

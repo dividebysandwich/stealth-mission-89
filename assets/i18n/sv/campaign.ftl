@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } på anflygning mot { $place }!
 cl-raid-hit = { $raid } träffade { $target }
 cl-sead-hit = Fientliga SEAD-flygplan har träffat SAM-batteriet vid { $place }
 cl-infra-hit = Fientliga flygplan träffade vår ställning { $site }
+cl-site-destroyed = Vår ställning { $site } är förstörd
 cl-target-generic = målet
 cl-target-airfield = flygfältet { $place }
 cl-target-city = staden { $place }

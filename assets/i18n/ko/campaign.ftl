@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid }: { $place }(으)로 접근 중!
 cl-raid-hit = { $raid }: { $target } 타격
 cl-sead-hit = 적 SEAD 항공기가 { $place } 인근 SAM 포대를 타격
 cl-infra-hit = 적기가 아군 { $site }을(를) 타격
+cl-site-destroyed = 아군 { $site }이(가) 파괴되었다
 cl-target-generic = 표적
 cl-target-airfield = { $place } 비행장
 cl-target-city = { $place } 도시

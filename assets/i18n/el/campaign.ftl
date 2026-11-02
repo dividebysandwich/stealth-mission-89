@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } πλησιάζει προς { $place }!
 cl-raid-hit = { $raid } έπληξε: { $target }
 cl-sead-hit = Εχθρικά αεροσκάφη SEAD έπληξαν τη συστοιχία SAM κοντά σε { $place }
 cl-infra-hit = Εχθρικά αεροσκάφη έπληξαν τη θέση μας { $site }
+cl-site-destroyed = Η θέση μας { $site } καταστράφηκε
 cl-target-generic = ο στόχος
 cl-target-airfield = το αεροδρόμιο { $place }
 cl-target-city = η πόλη { $place }

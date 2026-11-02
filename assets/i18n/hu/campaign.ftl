@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } közeledik: { $place }!
 cl-raid-hit = { $raid } csapást mért { $target }
 cl-sead-hit = Ellenséges SEAD-gépek eltalálták a SAM-üteget: { $place }
 cl-infra-hit = Ellenséges gépek eltalálták állásunkat ({ $site })
+cl-site-destroyed = Állásunk megsemmisült ({ $site })
 cl-target-generic = a célpontra
 cl-target-airfield = a repülőtérre: { $place }
 cl-target-city = a városra: { $place }

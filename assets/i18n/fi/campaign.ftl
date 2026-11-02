@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } lähestyy, kohde: { $place }!
 cl-raid-hit = { $raid } iski: { $target }
 cl-sead-hit = Vihollisen SEAD-koneet osuivat SAM-patteriin, paikka { $place }
 cl-infra-hit = Vihollisen koneet osuivat asemaamme { $site }
+cl-site-destroyed = Asemamme { $site } on tuhottu
 cl-target-generic = kohde
 cl-target-airfield = lentokenttä { $place }
 cl-target-city = kaupunki { $place }

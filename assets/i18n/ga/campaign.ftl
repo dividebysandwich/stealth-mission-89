@@ -55,6 +55,7 @@ cl-raid-inbound = { $raid } ag teacht chuig { $place }!
 cl-raid-hit = Bhuail { $raid } an sprioc: { $target }
 cl-sead-hit = Bhuail aerárthaigh SEAD namhad an ceallra SAM gar do { $place }
 cl-infra-hit = Bhuail aerárthaí an namhad ár láithreán { $site }
+cl-site-destroyed = Tá ár láithreán { $site } scriosta
 cl-target-generic = an sprioc
 cl-target-airfield = aerfort: { $place }
 cl-target-city = cathair: { $place }
