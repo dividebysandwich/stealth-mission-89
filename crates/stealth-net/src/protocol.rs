@@ -13,7 +13,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 24;
+pub const PROTOCOL: u16 = 25;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -397,6 +397,7 @@ mod tests {
             pylons: [0; 2],
             stores: Vec::new(),
             chinook: false,
+            raptor: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             burning: false,
@@ -453,6 +454,17 @@ mod tests {
         // The CH-47's.
         let ch = RemotePilot { kiowa: false, pylons: [0; 2], chinook: true, ..k };
         let w = WorldFast { pilots: vec![ch.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![ch]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![ch.clone()]);
+        // The F-22A's, its bays open.
+        let r = RemotePilot {
+            helicopter: false,
+            external_stores: false,
+            chinook: false,
+            raptor: true,
+            door_anim: 2,
+            ..ch
+        };
+        let w = WorldFast { pilots: vec![r.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![r]);
     }
 }

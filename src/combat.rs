@@ -316,6 +316,7 @@ fn start_combat(
     let harrier = settings.aircraft == crate::aircraft::AircraftKind::AV8B;
     let kiowa = settings.aircraft == crate::aircraft::AircraftKind::OH58;
     let chinook = settings.aircraft == crate::aircraft::AircraftKind::CH47;
+    let raptor = settings.aircraft == crate::aircraft::AircraftKind::F22;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -328,6 +329,7 @@ fn start_combat(
             harrier,
             kiowa,
             chinook,
+            raptor,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -342,6 +344,7 @@ fn start_combat(
             harrier,
             kiowa,
             chinook,
+            raptor,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             air_defence: settings.air_defence,
@@ -1119,6 +1122,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "A-10"
     } else if p.harrier {
         "AV-8B"
+    } else if p.raptor {
+        "F-22A"
     } else if p.external_stores {
         "F-16"
     } else {

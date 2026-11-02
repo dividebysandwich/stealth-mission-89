@@ -44,6 +44,7 @@ pub enum Aircraft {
     AV8B,
     OH58,
     CH47,
+    F22,
 }
 
 impl Aircraft {
@@ -59,6 +60,7 @@ impl Aircraft {
             Aircraft::AV8B => "AV-8B",
             Aircraft::OH58 => "OH-58D",
             Aircraft::CH47 => "CH-47",
+            Aircraft::F22 => "F-22A",
         }
     }
 
@@ -255,14 +257,14 @@ impl MissionKind {
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
-            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10, AV8B],
-            MissionKind::AntiShip => &[F117, F16, Tornado],
-            MissionKind::Interdiction => &[F117, Tornado, F16, A10],
-            MissionKind::Sead => &[F16, Tornado, F117],
-            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16],
-            MissionKind::Intercept => &[F16, AH1Z, RAH66, OH58],
+            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10, AV8B, F22],
+            MissionKind::AntiShip => &[F117, F16, Tornado, F22],
+            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22],
+            MissionKind::Sead => &[F16, Tornado, F117, F22],
+            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22],
+            MissionKind::Intercept => &[F16, F22, AH1Z, RAH66, OH58],
             MissionKind::Cas => &[A10, AV8B, AH1Z, RAH66, OH58, F16, Tornado, F117],
-            MissionKind::Escort => &[AH1Z, RAH66, OH58, AV8B, F16, A10],
+            MissionKind::Escort => &[AH1Z, RAH66, OH58, AV8B, F16, F22, A10],
             MissionKind::Insertion | MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
         }

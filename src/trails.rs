@@ -202,6 +202,7 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
     let (x, z) = match kind {
         F117 => (6.6, 3.5),
         F16 => (4.7, 1.5),
+        F22 => (6.8, 3.7),
         A10 => (8.7, 0.5),
         AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),

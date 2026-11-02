@@ -779,6 +779,22 @@ static AV8B_STATIONS: [Hardpoint; 8] = [
 ];
 static AV8B_LAYOUT: Layout =
     Layout { outline: AV8B_OUTLINE, half_span: 4.46, length: 14.52, hardpoints: &AV8B_STATIONS };
+
+/// The F-22A: a Sidewinder in each side bay (on the intakes' flanks), any one store in each half
+/// of the main bay under the fuselage (two AIM-120s, two GBU-32s and the like).
+const F22_MAIN: [u8; 21] =
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, HELLFIRE, CBU105];
+const F22_SIDE_QTY: [(u8, u8); 1] = [(0, 1)];
+static F22_STATIONS: [Hardpoint; 4] = [
+    bay("hardpoint-f22-left-side-bay", "LS", -1.75, 8.85, false, 3, &SIDEWINDER)
+        .carrying(&F22_SIDE_QTY),
+    bay("hardpoint-f22-left-main-bay", "L", -0.45, 9.45, false, 2, &F22_MAIN),
+    bay("hardpoint-f22-right-main-bay", "R", 0.45, 9.45, false, 1, &F22_MAIN),
+    bay("hardpoint-f22-right-side-bay", "RS", 1.75, 8.85, false, 0, &SIDEWINDER)
+        .carrying(&F22_SIDE_QTY),
+];
+static F22_LAYOUT: Layout =
+    Layout { outline: F22_OUTLINE, half_span: 6.76, length: 18.62, hardpoints: &F22_STATIONS };
 static TORNADO_LAYOUT: Layout = Layout {
     outline: TORNADO_OUTLINE,
     half_span: 6.98,
@@ -793,6 +809,60 @@ static AH1Z_STATIONS: [Hardpoint; 6] = [
     pylon("hardpoint-station-4-right-inner-pylon", "4", 1.05, 5.4, Some(2), &HELLFIRES),
     pylon("hardpoint-station-5-right-outer-pylon", "5", 1.75, 5.5, Some(1), &HELLFIRES),
     pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
+];
+/// aircraft_075 (tools/models/aircraft.py `f22`) seen from above, the bays shut: half span 6.76
+/// m, length 18.62 m.
+const F22_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.48, 1.10),
+    (0.70, 2.08),
+    (0.92, 4.82),
+    (1.86, 5.54),
+    (2.08, 7.48),
+    (2.08, 8.30),
+    (6.76, 12.38),
+    (6.76, 13.62),
+    (6.04, 14.28),
+    (5.90, 14.38),
+    (3.42, 15.16),
+    (3.42, 15.38),
+    (4.56, 16.84),
+    (4.56, 18.14),
+    (2.82, 18.62),
+    (1.30, 17.34),
+    (1.08, 17.36),
+    (1.08, 17.64),
+    (1.04, 17.58),
+    (0.78, 17.64),
+    (0.72, 17.58),
+    (0.46, 17.64),
+    (0.18, 17.58),
+    (0.04, 17.66),
+    (0.00, 17.86),
+    (-0.04, 17.66),
+    (-0.18, 17.58),
+    (-0.46, 17.64),
+    (-0.72, 17.58),
+    (-0.78, 17.64),
+    (-1.04, 17.58),
+    (-1.08, 17.64),
+    (-1.08, 17.36),
+    (-1.30, 17.34),
+    (-2.82, 18.62),
+    (-4.56, 18.14),
+    (-4.56, 16.84),
+    (-3.42, 15.38),
+    (-3.42, 15.16),
+    (-5.90, 14.38),
+    (-6.04, 14.28),
+    (-6.76, 13.62),
+    (-6.76, 12.38),
+    (-2.08, 8.30),
+    (-2.08, 7.48),
+    (-1.86, 5.54),
+    (-0.92, 4.82),
+    (-0.70, 2.08),
+    (-0.48, 1.10),
 ];
 /// aircraft_047 (tools/models/aircraft.py `harrier`) seen from above: half span 4.46 m, length
 /// 14.52 m.
@@ -914,6 +984,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::Tornado => &TORNADO_LAYOUT,
         AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::AV8B => &AV8B_LAYOUT,
+        AircraftKind::F22 => &F22_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
@@ -954,6 +1025,15 @@ impl PlannedLoadout {
             AircraftKind::F117 => {
                 for (s, w) in stores.iter_mut().zip(briefed) {
                     *s = Some(w);
+                }
+            }
+            // Sidewinders in the side bays, the first two briefed stores in the main bay.
+            AircraftKind::F22 => {
+                stores[0] = Some(0);
+                stores[3] = Some(0);
+                let main: Vec<u8> = briefed.filter(|w| F22_MAIN.contains(w)).take(2).collect();
+                for (i, &w) in [1usize, 2].into_iter().zip(main.iter().cycle()) {
+                    stores[i] = Some(w);
                 }
             }
             AircraftKind::UH60 | AircraftKind::CH47 => {}
@@ -1393,6 +1473,27 @@ mod tests {
                 .collect();
             assert_eq!(lo.stations(), bays);
             assert_eq!(lo.first_choice(&m), 0);
+        }
+    }
+
+    /// The F-22A: Sidewinders in the side bays, the briefed stores in the main bay's halves.
+    #[test]
+    fn the_f22_flies_sidewinders_and_the_briefed_stores() {
+        for seed in 0..40 {
+            let m = mission(seed, false);
+            let lo = PlannedLoadout::of(&m, AircraftKind::F22);
+            assert!(lo.fits(&m, AircraftKind::F22));
+            let st = lo.stations();
+            assert_eq!((st[0], st[3]), ((0, 1), (0, 1)), "seed {seed}");
+            let main = m.loadout.bays[0].weapon as u8;
+            if F22_MAIN.contains(&main) {
+                assert_eq!(lo.stores[1], Some(main), "seed {seed}");
+            }
+            assert!(lo.stores[1].is_some() && lo.stores[2].is_some(), "seed {seed}");
+        }
+        // Every store fits in each half of the main bay, one type at a time.
+        for w in F22_MAIN {
+            assert!(F22_STATIONS[1].rounds(w) >= 1 && F22_STATIONS[2].rounds(w) >= 1, "{w}");
         }
     }
 

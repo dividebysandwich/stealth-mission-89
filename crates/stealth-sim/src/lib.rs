@@ -351,6 +351,7 @@ impl Sim {
         let harrier = opts.harrier;
         let kiowa = opts.kiowa;
         let chinook = opts.chinook;
+        let raptor = opts.raptor;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -392,6 +393,7 @@ impl Sim {
                 harrier,
                 kiowa,
                 chinook,
+                raptor,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,

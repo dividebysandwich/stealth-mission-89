@@ -187,6 +187,24 @@ impl FlightConstants {
         }
     }
 
+    /// F-22A: as the F-16's, faster (it cruises supersonic without the afterburner), 18,000 lb
+    /// of fuel for its two F119s.
+    pub fn f22() -> Self {
+        Self {
+            gravity_term: 80.0,
+            thrust_to_knots: 7.6,
+            max_knots: 1300.0,
+            stall_knots: 110.0,
+            fuel_div: 750.0,
+            fuel: 18000.0,
+            bingo: 3000.0,
+            max_gees: 144.0,
+            roll_rate: 1.6,
+            aero: modern::Aero::F22,
+            ..default()
+        }
+    }
+
     /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel; the
     /// autopilot follows the terrain.
     pub fn tornado() -> Self {
@@ -1384,6 +1402,40 @@ mod tests {
         let c = fly_with(k(), true, level(airborne(1000.0, 300.0, 100.0)), 120.0, |_, _| {}).0;
         println!("A-10 classic: max speed {:.0} kt", c.knots());
         assert!((340.0..420.0).contains(&c.knots()), "classic {}", c.knots());
+    }
+
+    /// F-22A: supersonic at altitude without the afterburner, past Mach 2 with it; 9 g.
+    #[test]
+    fn f22_performance() {
+        let k = FlightConstants::f22;
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 500.0, 100.0), 240.0);
+        println!("F-22 modern: dry max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((650.0..790.0).contains(&a.knots()), "dry sea level {}", a.knots());
+        // Supercruise: past Mach 1.5 at altitude without the afterburner.
+        let a = run(airborne(36000.0, 700.0, 100.0), 400.0);
+        println!("F-22 modern: dry max speed at 36000 ft: {:.0} kt", a.knots());
+        assert!((860.0..1060.0).contains(&a.knots()), "supercruise {}", a.knots());
+        let a = run(reheat(airborne(1000.0, 600.0, 100.0)), 240.0);
+        println!("F-22 modern: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((780.0..960.0).contains(&a.knots()), "sea level {}", a.knots());
+        let a = run(reheat(airborne(36000.0, 900.0, 100.0)), 240.0);
+        println!("F-22 modern: max speed at 36000 ft: {:.0} kt, fuel {:.0} lb", a.knots(), a.fuel);
+        assert!((1080.0..1360.0).contains(&a.knots()), "at altitude {}", a.knots());
+        let mut slow = airborne(1000.0, 180.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("F-22: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((95.0..135.0).contains(&flaps), "flaps {flaps}");
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, airborne(10000.0, 500.0, 100.0), 5.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("F-22 modern: peak load {peak:.1} g");
+        assert!((7.6..9.05).contains(&peak), "peak {peak}");
     }
 
     /// F-16: Mach 1.2 class at sea level, past 1050 kt at 36000 ft (modern) with the afterburner,

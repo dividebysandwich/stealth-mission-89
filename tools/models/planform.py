@@ -27,7 +27,7 @@ TOLERANCE = 0.05
 # outer wings, swept forward. Bay doors are shut.
 AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), ("AH1Z_OUTLINE", "aircraft_043_lod0"), ("RAH66_OUTLINE", "aircraft_046_lod0"),
             ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032"), ("AV8B_OUTLINE", "aircraft_047"),
-            ("OH58_OUTLINE", "aircraft_048_lod0"), ("CH47_OUTLINE", "aircraft_049_lod0")]
+            ("OH58_OUTLINE", "aircraft_048_lod0"), ("CH47_OUTLINE", "aircraft_049_lod0"), ("F22_OUTLINE", "aircraft_075")]
 WITH_PARTS = {"aircraft_045"}
 
 
@@ -60,8 +60,8 @@ def triangles(js, binary, node, parts=False):
         if "_part" in name and not parts:
             continue
         # Bay doors shut (the RAH-66's swing out as they open), no optional pylons (the
-        # OH-58D's).
-        if any(s in name for s in ("_s8v1", "_s8v2", "_s26v", "_s27v")):
+        # OH-58D's), no afterburner flames.
+        if any(s in name for s in ("_s8v1", "_s8v2", "_s26v", "_s27v", "_s13v1")):
             continue
         tris.extend(triangles(js, binary, c, parts))
     t = n.get("translation", [0, 0, 0])

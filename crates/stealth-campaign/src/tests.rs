@@ -1654,6 +1654,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::AV8B,
         Aircraft::OH58,
         Aircraft::CH47,
+        Aircraft::F22,
     ];
     for k in kinds {
         for last in all {
@@ -1678,6 +1679,10 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     // The CH-47 slings cargo and does nothing else.
     assert_eq!(Logistics.pick(Aircraft::CH47), Aircraft::CH47);
     assert_eq!(Resupply.pick(Aircraft::CH47), Aircraft::CH47);
+    // The F-22A flies the jets' missions, never close support.
+    assert_eq!(Cap.pick(Aircraft::F22), Aircraft::F22);
+    assert_eq!(Strike.pick(Aircraft::F22), Aircraft::F22);
+    assert_eq!(Cas.pick(Aircraft::F22), Aircraft::A10);
     assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::UH60);
     assert_eq!(Csar.pick(Aircraft::CH47), Aircraft::UH60);
     assert_eq!(Strike.pick(Aircraft::CH47), Aircraft::F117);

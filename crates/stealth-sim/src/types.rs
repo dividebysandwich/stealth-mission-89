@@ -629,6 +629,9 @@ pub struct Airframe {
     /// The CH-47 (a cargo helicopter, no weapons): only its look differs from the UH-60's.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub chinook: bool,
+    /// The F-22A (weapons in bays, as the F-117A): its radar return is lower still.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub raptor: bool,
 }
 
 /// Landing option.
@@ -685,6 +688,10 @@ pub struct SimOptions {
     /// The aircraft is the CH-47 (with `helicopter`): seen as one by the other pilots.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub chinook: bool,
+    /// The aircraft is the F-22A (weapons in bays): seen as one by the other pilots, its radar
+    /// return lower than the F-117A's ([`crate::radar::F22_RCS`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub raptor: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -729,6 +736,7 @@ impl Default for SimOptions {
             harrier: false,
             kiowa: false,
             chinook: false,
+            raptor: false,
             realistic_damage: false,
             realistic_guidance: false,
             air_defence: false,

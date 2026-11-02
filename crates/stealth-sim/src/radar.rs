@@ -46,15 +46,22 @@ pub fn comanche_signature(velocity: i32) -> i32 {
 /// the real F-117A of the Lockheed mode has its own rules.
 pub const F117_RCS: i32 = 20;
 
+/// The F-22A's radar return in a campaign, in 32nds: lower than the F-117A's. Outside campaigns
+/// (where the F-117A keeps the classic return) it is as much lower against the classic one.
+pub const F22_RCS: i32 = 12;
+
 /// Height above the ground (ft) below which ground radars start losing the Tornado: its
 /// terrain-following radar holds it down in the clutter where others fly by hand.
 pub const TORNADO_LOW_LEVEL_FT: i32 = 150;
 
 impl crate::pilot::Pilot {
-    /// The aircraft's radar return in 32nds of the usual one in a campaign ([`F117_RCS`] for
-    /// the F-117A with its bays, the only jet without weapons outside).
+    /// The aircraft's radar return in 32nds of the usual one: in a campaign [`F117_RCS`] for
+    /// the F-117A with its bays, [`F22_RCS`] for the F-22A; the F-22A's as much under the
+    /// classic return in the other missions.
     pub(crate) fn rcs(&self, campaign: bool) -> i32 {
-        if !campaign || self.lockheed || self.external_stores || self.helicopter {
+        if self.raptor {
+            if campaign { F22_RCS } else { 32 * F22_RCS / F117_RCS }
+        } else if !campaign || self.lockheed || self.external_stores || self.helicopter {
             32
         } else {
             F117_RCS
@@ -859,6 +866,17 @@ mod tests {
         };
         assert_eq!(score(0, true), score(0, false) / 32);
         assert_eq!(score(180 * 27, true), score(180 * 27, false));
+    }
+
+    /// The F-22A returns less than the F-117A in a campaign and in the other missions alike.
+    #[test]
+    fn f22_returns_less_than_the_f117() {
+        let jet = |raptor: bool| crate::pilot::Pilot { raptor, ..Default::default() };
+        for campaign in [false, true] {
+            assert!(jet(true).rcs(campaign) < jet(false).rcs(campaign), "campaign {campaign}");
+        }
+        assert_eq!(jet(true).rcs(true), F22_RCS);
+        assert_eq!(jet(false).rcs(true), F117_RCS);
     }
 
     /// The F-117A returns a smaller share; the pulse radar still sees its beam best, the

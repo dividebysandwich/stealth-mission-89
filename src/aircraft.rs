@@ -21,6 +21,7 @@ pub enum AircraftKind {
     AV8B,
     OH58,
     CH47,
+    F22,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -200,6 +201,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         45 => Some(TORNADO_LIFT - RUNWAY_Y),
         32 => Some(A10_LIFT - RUNWAY_Y),
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
+        75 => Some(F22_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -222,6 +224,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         47 => harrier_point(0.0, 2.30, -0.78) - Vec3::Y * HARRIER_LIFT,
         48 => oh58_point(0.0, 2.3, 0.55) - Vec3::Y * OH58_LIFT,
         49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
+        75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
         102 => Vec3::new(0.0, 0.92, -3.6),
         _ => Vec3::new(0.0, -1.0, -4.0),
@@ -673,10 +676,54 @@ static AV8B: AircraftSpec = AircraftSpec {
     flight: FlightConstants::av8b,
 };
 
+/// The F-22A's wheels are 2.05 m below its model origin (tools/models/aircraft.py `F22_GROUND`).
+const F22_LIFT: f32 = 2.05 + RUNWAY_Y;
+/// A point of the F-22A's builder (tools/models/aircraft.py `f22`: metres, x right, s aft of the
+/// nose, z up) in the aircraft frame: the model is centred on its length, its middle 9.335 m
+/// behind the nose.
+const fn f22_point(x: f32, s: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(F22_LIFT, x * K, z * K, -(9.335 - s) * K)
+}
+
+static F22: AircraftSpec = AircraftSpec {
+    model: "aircraft_075",
+    model_lift: F22_LIFT,
+    // Under the bubble (s 2.6..5.45 m, sill z 0.42..0.92, top 1.22 m), 0.30 m under its top.
+    eye: f22_point(0.0, 4.35, 0.92),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.45, -1.15, -0.85), Vec3::new(0.45, 0.40, 0.80)),
+        two_sided: false,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::F16, "cockpit_f16")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: 2080.0,
+    vr_hud_scale: 2080.0,
+    bomb_bay: true,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    // The M61 above the right intake, ahead of the wing root.
+    muzzle: Some(f22_point(1.55, 7.9, 0.15)),
+    sight: None,
+    // Between the two 2D nozzles.
+    exhaust: f22_point(0.0, 17.7, -0.17),
+    nozzles: &[f22_point(0.62, 17.7, -0.17), f22_point(-0.62, 17.7, -0.17)],
+    nozzle_radius: 0.35,
+    swing_wing: false,
+    vtol: false,
+    flight: FlightConstants::f22,
+};
+
 impl AircraftKind {
-    pub const ALL: [AircraftKind; 10] = [
+    pub const ALL: [AircraftKind; 11] = [
         AircraftKind::F117,
         AircraftKind::F16,
+        AircraftKind::F22,
         AircraftKind::Tornado,
         AircraftKind::A10,
         AircraftKind::AV8B,
@@ -705,6 +752,8 @@ impl AircraftKind {
             AircraftKind::A10
         } else if p.harrier {
             AircraftKind::AV8B
+        } else if p.raptor {
+            AircraftKind::F22
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -724,6 +773,7 @@ impl AircraftKind {
             AircraftKind::AV8B => &AV8B,
             AircraftKind::OH58 => &OH58,
             AircraftKind::CH47 => &CH47,
+            AircraftKind::F22 => &F22,
         }
     }
 
@@ -740,6 +790,7 @@ impl AircraftKind {
             AircraftKind::AV8B => "av8b",
             AircraftKind::OH58 => "oh58",
             AircraftKind::CH47 => "ch47",
+            AircraftKind::F22 => "f22",
         }
     }
 
@@ -760,6 +811,7 @@ impl AircraftKind {
                 || (matches!(s.as_str(), "kiowa" | "oh58d" | "kiowawarrior")
                     && *k == AircraftKind::OH58)
                 || (matches!(s.as_str(), "chinook" | "ch47f" | "ch47d") && *k == AircraftKind::CH47)
+                || (matches!(s.as_str(), "f22a" | "raptor") && *k == AircraftKind::F22)
         })
     }
 
@@ -775,6 +827,7 @@ impl AircraftKind {
             AircraftKind::AV8B => "AV-8B Harrier II",
             AircraftKind::OH58 => "OH-58D Kiowa Warrior",
             AircraftKind::CH47 => "CH-47F Chinook",
+            AircraftKind::F22 => "F-22A Raptor",
         }
     }
 }
@@ -835,6 +888,7 @@ mod tests {
             AircraftKind::Tornado,
             AircraftKind::A10,
             AircraftKind::AV8B,
+            AircraftKind::F22,
         ] {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(

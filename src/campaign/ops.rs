@@ -1888,6 +1888,7 @@ fn briefing(
                                 let flyable = [
                                     Airframe::F117,
                                     Airframe::F16,
+                                    Airframe::F22,
                                     Airframe::Tornado,
                                     Airframe::A10,
                                     Airframe::AV8B,

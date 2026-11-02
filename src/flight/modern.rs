@@ -351,6 +351,51 @@ impl Aero {
     /// lb with full internal fuel, a heavily loaded wing (about 150 lb/ft^2) that needs its
     /// full-span slats and flaps for a 130 kt approach. About Mach 1.2 low down and past Mach 1.6
     /// high with the wings fully back, 7.5 g.
+    /// The F-22A: two F119s (about 52,000 lbf dry, 70,000 lbf with the afterburners) on 61,000 lb
+    /// with full internal fuel, 840 ft^2 of wing; little supersonic drag (it cruises past Mach 1.5
+    /// without the afterburners), its weapons in bays, its thrust vectoring pulling to higher
+    /// angles of attack than the F-16's.
+    pub const F22: Aero = Aero {
+        wing_loading: 73.0,
+        dry_weight: 43_000.0,
+        ref_weight: 61_000.0,
+        thrust_ratio: 0.85,
+        ab_thrust_ratio: 1.14,
+        ab_thrust_mach: 0.4,
+        thrust_mach: 0.15,
+        cl_alpha: 4.0,
+        alpha_stall: 0.50,
+        alpha_stall_neg: -0.30,
+        alpha_limit: 0.46,
+        alpha_limit_neg: -0.25,
+        cl_flaps: 0.10,
+        alpha_flaps: 0.04,
+        cd0: 0.017,
+        cd_k: 0.14,
+        cd_sep: 0.45,
+        cl_sep: 1.2,
+        cd_gear: 0.02,
+        cd_flaps: 0.04,
+        cd_speed_brake: 0.10,
+        cd_bay: 0.006,
+        cd_idle: 0.022,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Supersonic {
+            start: 0.9,
+            peak_mach: 1.1,
+            peak: 0.030,
+            supersonic: 0.018,
+        },
+        n_max: 9.0,
+        n_min: -3.0,
+        roll_rate: 4.0,
+        pitch_rate_max: 0.75,
+        push_rate: 0.6,
+        yaw_rate_max: 0.7,
+        swing_wing: None,
+        vtol: None,
+    };
+
     pub const TORNADO: Aero = Aero {
         wing_loading: 147.0,
         dry_weight: 31_000.0,
