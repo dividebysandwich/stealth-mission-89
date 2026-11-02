@@ -17,6 +17,7 @@ Dimensions (m: length, body diameter, span):
     Mk 82 Snakeye 2.48 x 0.273, folded Mk 15 0.51    Mk 122 Fireye (Mk 77 class) 3.0 x 0.48
     CBU-72, Mk 35, ISCB-1 (SUU-30 / SUU-49 class) 2.35 x 0.40, fins 0.60
     AGM-114 Hellfire 1.63 x 0.178, wings 0.33
+    CBU-105 (SUU-66/B with the WCMD tail kit) 2.34 x 0.40, folded fins 0.62
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -320,6 +321,28 @@ def dispenser(band, band2=None, paint=OLIVE):
     return Store(hang(g, 0.0, r))
 
 
+def cbu105():
+    """CBU-105 sensor fuzed weapon: the SUU-66/B dispenser's blunt ogive nose, its case with the
+    three seams the cutting charge severs into panels, the Wind Corrected Munitions Dispenser
+    tail kit's cone and its four fins folded for carriage."""
+    L, r = 2.34, 0.20
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.04, 0.07), (n - 0.20, 0.16), (n - 0.40, r), (t + 0.62, r), (t + 0.42, 0.17),
+              (t + 0.06, 0.12), (t, 0.10)], OLIVE, n=12,
+             bands=[(n - 0.46, n - 0.52, YELLOW), (t + 0.62, t + 0.42, DARK)])
+    # The skin's seams, the forward and aft bays' join round the case.
+    for a in (90.0, 210.0, 330.0):
+        ang = math.radians(a)
+        d = Vector((math.cos(ang), 0, math.sin(ang)))
+        s = Vector((-math.sin(ang), 0, math.cos(ang)))
+        c0, c1 = Vector((0, n - 0.42, 0)) + d * (r + 0.002), Vector((0, t + 0.64, 0)) + d * (r + 0.002)
+        g.face2([c0 - s * 0.006, c0 + s * 0.006, c1 + s * 0.006, c1 - s * 0.006], DARK)
+    g.add(body([(-0.10, r + 0.002), (-0.10, r + 0.002), (-0.13, r + 0.002)], DARK, n=12))
+    fins(g, t + 0.40, t + 0.04, 0.13, 0.18, OLIVE, rot=45.0, tip=(t + 0.20, t + 0.04))
+    lugs(g, 0.0, r)
+    return Store(hang(g, 0.0, r))
+
+
 def camera_pod():
     """A reconnaissance pod: its long body with the camera windows forward and under it."""
     L, r = 4.0, 0.20
@@ -370,12 +393,12 @@ WEAPON_MODELS = {
     6: (56, gbu12), 7: (57, rockeye), 8: (58, durandal), 9: (59, mk82), 10: (60, snakeye),
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
-    16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire),
+    16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089}
+          20: 0.089, 23: 0.20}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -488,9 +511,9 @@ def _loadout_text():
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23}
     out = {}
-    for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] = \[([^\]]*)\];", text, re.M):
+    for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
         out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
     return out
 
@@ -519,7 +542,7 @@ def exclusive_stations(table):
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)
