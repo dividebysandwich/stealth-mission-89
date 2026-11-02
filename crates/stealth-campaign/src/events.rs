@@ -253,6 +253,7 @@ impl CampaignState {
             drones: true,
             enroute_at: None,
             sam: None,
+            feint: false,
         });
         let text = text!(
             "cl-drones-intel",
@@ -316,6 +317,7 @@ impl CampaignState {
             drones: false,
             enroute_at: None,
             sam: None,
+            feint: false,
         });
         let text = text!(
             "cl-support",

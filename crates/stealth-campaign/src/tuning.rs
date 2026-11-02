@@ -184,6 +184,11 @@ pub const REPAIR_COST_SHIP: f64 = 20.0;
 pub const GUN_COST: f64 = 2.0;
 pub const SORTIE_COST: f64 = 2.0;
 pub const RAID_COST: f64 = 15.0;
+/// One enemy raid in so many goes for a site the players built; one in so many airfield raids
+/// comes with a feint at another airfield, which turns back this long after take-off.
+pub const SITE_RAID_ONE_IN: i32 = 3;
+pub const FEINT_ONE_IN: i32 = 4;
+pub const FEINT_TURN: f64 = 4.0 * 60.0;
 pub const INSERTION_COST: f64 = 20.0;
 
 /// The AI's aircraft on the ground: each side starts with these fighters (the enemy more by

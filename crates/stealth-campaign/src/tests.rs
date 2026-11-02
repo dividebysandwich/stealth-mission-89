@@ -1512,6 +1512,7 @@ fn drones_in_the_air_are_no_fighters_after_a_load() {
         drones: true,
         enroute_at: Some(0.0),
         sam: None,
+        feint: false,
     });
     c.after_load();
     assert_eq!(c.red.fighters, before);
@@ -2970,4 +2971,62 @@ fn the_awacs_diverts_a_pilot_to_a_raid_near_him() {
     if let Some(back) = back {
         assert!(c.apply(P0, Command::Retask { offer: back }).is_err());
     }
+}
+
+#[test]
+fn the_enemy_raids_the_sites_the_players_built() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let spot = deploy_spot(&c, DefenceKind::Gepard, &[]);
+    let id = designate(&mut c, spot, DefenceKind::Gepard).unwrap();
+    let k = c.deployments.iter().position(|d| d.id == id).unwrap();
+    c.deployments[k].built = true;
+    let (x, y) = c.deployments[k].unit_at();
+    let view =
+        WorldView { units: vec![GroundView::gun(x, y, Side::Blue, true)], ..Default::default() };
+    // One raid in a few goes for it.
+    let mut raid = None;
+    for _ in 0..40 {
+        c.red.fighters = 30;
+        c.red.materiel = tuning::MATERIEL_MAX;
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &view, &[]);
+        raid = c.raids.iter().find(|r| r.sam.is_some_and(|s| s.site == Some(id))).cloned();
+        if raid.is_some() {
+            break;
+        }
+        c.raids.retain(|r| r.sam.is_some());
+    }
+    let r = raid.expect("a raid on the Gepard");
+    assert_eq!(r.sam.unwrap().aaa, 0);
+    c.tick(tuning::BOARD_REFRESH, &view, &[]);
+    let o = c.board.iter().find(|o| o.objective == Objective::Defend { raid: r.id }).unwrap();
+    assert!(o.title.contains("Gepard near"), "{}", o.title.en());
+}
+
+#[test]
+fn a_feint_turns_back_on_its_way() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let mut feint = None;
+    for _ in 0..40 {
+        c.red.fighters = 30;
+        c.red.materiel = tuning::MATERIEL_MAX;
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &WorldView::default(), &[]);
+        feint = c.raids.iter().find(|r| r.feint && r.open()).map(|r| r.id);
+        if feint.is_some() {
+            break;
+        }
+        c.raids.clear();
+    }
+    let id = feint.expect("a feint");
+    // It goes with a real raid on another airfield.
+    let real: Vec<&Raid> = c.raids.iter().filter(|r| r.open() && !r.feint).collect();
+    assert!(real.iter().any(|r| r.target != c.raid(id).unwrap().target));
+    c.tick(tuning::RAID_LEAD + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Enroute);
+    let ev = c.tick(tuning::FEINT_TURN + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Repelled);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })));
 }

@@ -769,6 +769,10 @@ pub struct Raid {
     /// SEAD: the SAM battery its anti-radiation missiles go for (`target` is then no object).
     #[serde(default)]
     pub sam: Option<SamTarget>,
+    /// A feint: it turns back on its way (`FEINT_TURN`), to draw the defence away from
+    /// another raid.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub feint: bool,
 }
 
 impl Raid {
@@ -788,6 +792,9 @@ pub struct SamTarget {
     pub aaa: u32,
     pub x: i32,
     pub y: i32,
+    /// A site the players built (deployment id), not a Patriot battery of a place.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site: Option<u32>,
 }
 
 /// A side's means of war: its materiel and the AI's aircraft on the ground.
@@ -1163,6 +1170,16 @@ impl Deployment {
             DefenceKind::Drones => "Drone command center",
         };
         format!("{what} near {}", self.name)
+    }
+
+    /// "Gepard near Fulda" (translated).
+    pub fn label(&self) -> Text {
+        let id = match self.kind {
+            DefenceKind::Gepard => "cl-supply-gepard",
+            DefenceKind::Patriot => "cl-supply-patriot",
+            DefenceKind::Drones => "cl-supply-drones",
+        };
+        text!(id, place = self.name.as_str())
     }
 
     /// Where its unit stands (map units): beside the helipad.
