@@ -114,6 +114,14 @@ pub struct Site {
     pub destroyed_at: Option<f64>,
     /// Removed for good (the defences of a captured place).
     pub removed: bool,
+    /// When a repair crew started on it (None: none at work).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repair_from: Option<f64>,
+    /// Times destroyed lately (each takes longer to repair), and when last repaired.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub hits: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repaired_at: Option<f64>,
     /// A friendly aircraft has detected it (its radar on an RWR, recon photos): the briefings
     /// show it while it lives.
     #[serde(default)]
@@ -124,6 +132,17 @@ impl Site {
     pub fn alive(&self) -> bool {
         self.destroyed_at.is_none() && !self.removed
     }
+
+    /// How long its repair takes: longer the more often it was destroyed lately.
+    pub fn repair_time(&self) -> f64 {
+        let base = if self.kind == SiteKind::Airfield { REPAIR_AIRFIELD } else { REPAIR_SITE };
+        let slow = REPAIR_SLOWDOWN.powi(self.hits.saturating_sub(1) as i32);
+        base * slow.min(REPAIR_SLOWDOWN_MAX)
+    }
+}
+
+fn is_zero(v: &u8) -> bool {
+    *v == 0
 }
 
 /// A city and its airfield (same name, close together): what the sides fight over.
@@ -1328,6 +1347,9 @@ impl CampaignState {
                 side,
                 destroyed_at: None,
                 removed: false,
+                repair_from: None,
+                hits: 0,
+                repaired_at: None,
                 spotted: false,
             });
         }

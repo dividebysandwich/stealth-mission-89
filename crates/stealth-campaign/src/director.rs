@@ -25,6 +25,12 @@ impl CampaignState {
                 }
                 if let Some(s) = self.site_mut(object).filter(|s| s.alive()) {
                     s.destroyed_at = Some(now);
+                    s.repair_from = None;
+                    // Destroyed again soon after its repair: slower to repair each time.
+                    if s.repaired_at.is_some_and(|t| now - t > REPAIR_MEMORY) {
+                        s.hits = 0;
+                    }
+                    s.hits = s.hits.saturating_add(1);
                     let place = s.name.as_str();
                     let text = match s.kind {
                         SiteKind::Airfield => Some(text!("cl-airfield-destroyed", place = place)),
@@ -155,6 +161,7 @@ impl CampaignState {
         for &o in &members {
             if let Some(s) = self.site_mut(o) {
                 s.destroyed_at = None;
+                s.repair_from = None;
             }
         }
         for &o in &removed {
@@ -497,18 +504,69 @@ impl CampaignState {
         }
     }
 
+    /// The repair crews a side has: more with more intact cities.
+    pub fn repair_crews(&self, side: Side) -> usize {
+        let (_, cities) = self.producers(side);
+        (REPAIR_CREWS + cities / REPAIR_CITIES_PER_CREW).min(REPAIR_CREWS_MAX)
+    }
+
+    /// Free repair crews go to work on the destroyed sites nearest the front.
+    fn assign_repair_crews(&mut self) {
+        let now = self.clock;
+        let waiting = |s: &Site| s.destroyed_at.is_some() && !s.removed && s.repair_from.is_none();
+        if !self.sites.iter().any(waiting) {
+            return;
+        }
+        let owner = |s: &Site| match (s.kind, s.place) {
+            (SiteKind::City | SiteKind::Airfield, Some(p)) => self.places[p as usize].owner,
+            _ => s.side,
+        };
+        let owners: Vec<Side> = self.sites.iter().map(owner).collect();
+        for side in [Side::Blue, Side::Red, Side::Neutral] {
+            let mine: Vec<usize> = (0..self.sites.len()).filter(|&k| owners[k] == side).collect();
+            let busy = mine
+                .iter()
+                .filter(|&&k| {
+                    let s = &self.sites[k];
+                    s.repair_from.is_some() && s.destroyed_at.is_some() && !s.removed
+                })
+                .count();
+            let crews = if side == Side::Neutral { usize::MAX } else { self.repair_crews(side) };
+            let free = crews.saturating_sub(busy);
+            if free == 0 {
+                continue;
+            }
+            let enemy: Vec<(i32, i32)> = self
+                .places
+                .iter()
+                .filter(|p| p.owner != side && p.owner != Side::Neutral)
+                .map(|p| (p.x, p.y))
+                .collect();
+            let mut todo: Vec<(usize, i32)> = mine
+                .into_iter()
+                .filter(|&k| waiting(&self.sites[k]))
+                .map(|k| {
+                    let s = &self.sites[k];
+                    let d = enemy.iter().map(|&(x, y)| dist(x - s.x, y - s.y)).min();
+                    (k, d.unwrap_or(i32::MAX))
+                })
+                .collect();
+            todo.sort_by_key(|t| (t.1, t.0));
+            for (k, _) in todo.into_iter().take(free) {
+                self.sites[k].repair_from = Some(now);
+            }
+        }
+    }
+
     pub(crate) fn repairs(&mut self, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;
-        // Due, and paid for by the owner (the neutrals' are free).
+        // Done, and paid for by the owner (the neutrals' are free).
         let due: Vec<(usize, SiteKind)> = self
             .sites
             .iter()
             .enumerate()
-            .filter(|(_, s)| !s.removed)
-            .filter(|(_, s)| {
-                let wait = if s.kind == SiteKind::Airfield { REPAIR_AIRFIELD } else { REPAIR_SITE };
-                s.destroyed_at.is_some_and(|at| now - at >= wait)
-            })
+            .filter(|(_, s)| !s.removed && s.destroyed_at.is_some())
+            .filter(|(_, s)| s.repair_from.is_some_and(|at| now - at >= s.repair_time()))
             .map(|(k, s)| (k, s.kind))
             .collect();
         let mut done = Vec::new();
@@ -525,8 +583,12 @@ impl CampaignState {
             }
             let s = &mut self.sites[k];
             s.destroyed_at = None;
+            s.repair_from = None;
+            s.repaired_at = Some(now);
             done.push((s.object, s.kind, s.name.clone()));
         }
+        // The crews done (and new ruins) go on to the next.
+        self.assign_repair_crews();
         for (object, kind, name) in done {
             if matches!(kind, SiteKind::Airfield | SiteKind::Sam) {
                 let id =

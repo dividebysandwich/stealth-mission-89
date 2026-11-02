@@ -45,6 +45,16 @@ pub const INTEL_SPOTTING: f32 = 2.0;
 /// The enemy repairs destroyed sites and airfields after this long.
 pub const REPAIR_SITE: f64 = 45.0 * 60.0;
 pub const REPAIR_AIRFIELD: f64 = 60.0 * 60.0;
+/// A side repairs this many sites at once, one more for every REPAIR_CITIES_PER_CREW intact
+/// cities, REPAIR_CREWS_MAX at most (the neutrals' all at once). A site destroyed again within
+/// REPAIR_MEMORY of its last repair takes REPAIR_SLOWDOWN times longer each time, at most
+/// REPAIR_SLOWDOWN_MAX times.
+pub const REPAIR_CREWS: usize = 1;
+pub const REPAIR_CITIES_PER_CREW: usize = 8;
+pub const REPAIR_CREWS_MAX: usize = 4;
+pub const REPAIR_MEMORY: f64 = 4.0 * 3600.0;
+pub const REPAIR_SLOWDOWN: f64 = 1.5;
+pub const REPAIR_SLOWDOWN_MAX: f64 = 3.0;
 /// Insertions: helicopters per insertion, minutes from the order until they lift off (time to
 /// take off for an escort), landing this close to the place takes it (1.5 km).
 pub const INSERTION_HELOS: usize = 4;
@@ -142,10 +152,10 @@ pub const LOG_SIZE: usize = 200;
 pub const MATERIEL_START: f64 = 150.0;
 pub const MATERIEL_MAX: f64 = 400.0;
 pub const INCOME_BASE: f64 = 20.0;
-pub const INCOME_PLACE: f64 = 2.0;
-pub const INCOME_CITY: f64 = 3.0;
+pub const INCOME_PLACE: f64 = 1.0;
+pub const INCOME_CITY: f64 = 5.0;
 /// A destroyed city costs its side this much at once (stores and factories gone).
-pub const CITY_LOSS: f64 = 20.0;
+pub const CITY_LOSS: f64 = 30.0;
 /// What the AI pays: repairs by kind of site, a gun or MANPADS team, a fighter sortie (patrol,
 /// CAP), a raid, an insertion the campaign orders itself (the players' orders are free).
 pub const REPAIR_COST_AIRFIELD: f64 = 25.0;

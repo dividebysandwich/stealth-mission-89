@@ -2626,3 +2626,36 @@ fn more_players_draw_more_enemy_patrols() {
     c.tick(3.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
     assert_eq!(c.patrol_cap(), tuning::PATROLS + roe + 3);
 }
+
+#[test]
+fn repair_crews_work_on_a_few_sites_at_a_time_and_slower_each_time() {
+    let mut c = campaign("central_europe", 3);
+    let crews = c.repair_crews(Side::Red);
+    assert!((1..=tuning::REPAIR_CREWS_MAX).contains(&crews));
+    // More SAM sites destroyed than the enemy has crews: the rest wait.
+    let sams: Vec<ObjectId> = c
+        .sites
+        .iter()
+        .filter(|s| s.kind == SiteKind::Sam && s.alive() && c.owner(s.object) == Some(Side::Red))
+        .map(|s| s.object)
+        .take(crews + 2)
+        .collect();
+    assert_eq!(sams.len(), crews + 2);
+    let hit: Vec<Report> =
+        sams.iter().map(|&object| Report::ObjectDestroyed { object, by: Some(P0) }).collect();
+    c.red.materiel = tuning::MATERIEL_MAX;
+    c.tick(1.0, &WorldView::default(), &hit);
+    let at_work = |c: &CampaignState| c.sites.iter().filter(|s| s.repair_from.is_some()).count();
+    assert_eq!(at_work(&c), crews);
+    let ev = c.tick(tuning::REPAIR_SITE, &WorldView::default(), &[]);
+    let repaired = ev.iter().filter(|e| matches!(e, CampaignEvent::Repaired { .. })).count();
+    assert_eq!(repaired, crews);
+    // The next ones are under way now.
+    assert_eq!(at_work(&c), 2.min(crews));
+    // A site destroyed again soon after its repair takes longer.
+    let again = sams.iter().copied().find(|&o| c.site(o).unwrap().alive()).unwrap();
+    c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: again, by: None }]);
+    let s = c.site(again).unwrap();
+    assert_eq!(s.hits, 2);
+    assert_eq!(s.repair_time(), tuning::REPAIR_SITE * tuning::REPAIR_SLOWDOWN);
+}
