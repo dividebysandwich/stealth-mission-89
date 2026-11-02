@@ -351,6 +351,7 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::RangeIn => ("RANGE -", "tip-console-range"),
         ConsoleKey::RangeOut => ("RANGE +", "tip-console-range"),
         ConsoleKey::Leave => ("LEAVE", "tip-console-leave"),
+        ConsoleKey::Radar => ("RADAR", "tip-console-radar"),
         ConsoleKey::Auto => ("AUTO", "tip-console-auto"),
         ConsoleKey::Manual => ("MANUAL", "tip-console-manual"),
         ConsoleKey::Track => ("TRACK", "tip-console-track"),

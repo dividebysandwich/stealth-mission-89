@@ -385,103 +385,89 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
     let mut load = None;
     let width = crate::menu::wide_width(ctx).min(900.0);
     let window = menu_window(ctx, "Saved missions", width);
-    crate::menu::Panel::new(t!("saves-title")).note(t!("saves-note")).window(
-        window,
-        ctx,
-        |ui| {
-            if w.saves.is_empty() {
-                ui.label(egui::RichText::new(t!("saves-none")).color(DIM));
-            }
-            egui::ScrollArea::vertical()
-                .id_salt("mission_saves")
-                .max_height(crate::campaign::SAVES_HEIGHT * 1.5)
-                .show(ui, |ui| {
-                    for (name, summary) in &w.saves {
-                        ui.horizontal(|ui| {
-                            let label = match summary {
-                                Some(s) => {
-                                    ui.vertical(|ui| {
-                                        ui.label(egui::RichText::new(&s.title).color(BRIGHT));
-                                        let small = |ui: &mut egui::Ui, text: String| {
-                                            ui.label(egui::RichText::new(text).small().color(DIM));
-                                        };
-                                        let time = format!(
-                                            "{}:{:02}",
-                                            s.mission_seconds / 60,
-                                            s.mission_seconds % 60
-                                        );
-                                        small(
-                                            ui,
-                                            t!(
-                                                "saves-line",
-                                                theater = s.theater.as_str(),
-                                                aircraft = s.aircraft.name(),
-                                                time = time
-                                            ),
-                                        );
-                                        small(
-                                            ui,
-                                            t!("saves-saved-at", date = saved_at(s.saved_at)),
-                                        );
-                                    });
-                                    format!("{}, {}", s.theater, s.title)
-                                }
-                                None => {
-                                    ui.label(
-                                        egui::RichText::new(t!("saves-unreadable")).color(AMBER),
+    crate::menu::Panel::new(t!("saves-title")).note(t!("saves-note")).window(window, ctx, |ui| {
+        if w.saves.is_empty() {
+            ui.label(egui::RichText::new(t!("saves-none")).color(DIM));
+        }
+        egui::ScrollArea::vertical()
+            .id_salt("mission_saves")
+            .max_height(crate::campaign::SAVES_HEIGHT * 1.5)
+            .show(ui, |ui| {
+                for (name, summary) in &w.saves {
+                    ui.horizontal(|ui| {
+                        let label = match summary {
+                            Some(s) => {
+                                ui.vertical(|ui| {
+                                    ui.label(egui::RichText::new(&s.title).color(BRIGHT));
+                                    let small = |ui: &mut egui::Ui, text: String| {
+                                        ui.label(egui::RichText::new(text).small().color(DIM));
+                                    };
+                                    let time = format!(
+                                        "{}:{:02}",
+                                        s.mission_seconds / 60,
+                                        s.mission_seconds % 60
                                     );
-                                    name.clone()
-                                }
-                            };
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if ui
-                                        .add(big_button(t!("delete")).icon(icon::DELETE))
-                                        .on_hover_text(t!("saves-delete.facts"))
-                                        .clicked()
-                                    {
-                                        w.confirm_delete = Some((name.clone(), label));
-                                    }
-                                    if summary.is_some()
-                                        && ui
-                                            .add(big_button(t!("menu-load")).icon(icon::LOAD))
-                                            .clicked()
-                                    {
-                                        load = Some(name.clone());
-                                    }
-                                },
-                            );
+                                    small(
+                                        ui,
+                                        t!(
+                                            "saves-line",
+                                            theater = s.theater.as_str(),
+                                            aircraft = s.aircraft.name(),
+                                            time = time
+                                        ),
+                                    );
+                                    small(ui, t!("saves-saved-at", date = saved_at(s.saved_at)));
+                                });
+                                format!("{}, {}", s.theater, s.title)
+                            }
+                            None => {
+                                ui.label(egui::RichText::new(t!("saves-unreadable")).color(AMBER));
+                                name.clone()
+                            }
+                        };
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .add(big_button(t!("delete")).icon(icon::DELETE))
+                                .on_hover_text(t!("saves-delete.facts"))
+                                .clicked()
+                            {
+                                w.confirm_delete = Some((name.clone(), label));
+                            }
+                            if summary.is_some()
+                                && ui.add(big_button(t!("menu-load")).icon(icon::LOAD)).clicked()
+                            {
+                                load = Some(name.clone());
+                            }
                         });
-                        ui.separator();
-                    }
-                });
-            if let Some(e) = &w.error {
-                ui.colored_label(AMBER, e);
-            }
-            crate::menu::footer_rule(ui);
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui
-                    .add(big_button(t!("back")).icon(icon::BACK))
-                    .on_hover_text(t!("saves-back.facts"))
-                    .clicked()
-                {
-                    close = true;
-                }
-                if ui
-                    .add_enabled(
-                        !w.saves.is_empty(),
-                        big_button(t!("saves-delete-all")).icon(icon::DELETE),
-                    )
-                    .on_hover_text(t!("saves-delete-all.facts"))
-                    .clicked()
-                {
-                    w.confirm_delete_all = true;
+                    });
+                    ui.separator();
                 }
             });
-        },
-    );
+        if let Some(e) = &w.error {
+            ui.colored_label(AMBER, e);
+        }
+        crate::menu::footer_rule(ui);
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if ui
+                .add(big_button(t!("back")).icon(icon::BACK))
+                .on_hover_text(t!("saves-back.facts"))
+                .clicked()
+            {
+                close = true;
+            }
+            if ui
+                .add_enabled(
+                    !w.saves.is_empty(),
+                    big_button(t!("saves-delete-all")).icon(icon::DELETE),
+                )
+                .on_hover_text(t!("saves-delete-all.facts"))
+                .clicked()
+            {
+                w.confirm_delete_all = true;
+            }
+        });
+    });
     if w.confirm_delete_all {
         let count = w.saves.len();
         let label = t!("saves-count", count = count);

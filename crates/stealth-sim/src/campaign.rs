@@ -184,6 +184,12 @@ pub struct AiMissile {
     /// anti-radiation missile.
     #[serde(default)]
     pub ground_aaa: bool,
+    /// An anti-radiation missile whose radar went silent had its chance to lose it, and lost
+    /// it (it flies on straight, `station::arm_lost`).
+    #[serde(default)]
+    pub arm_checked: bool,
+    #[serde(default)]
+    pub arm_lost: bool,
     /// A SAM's missile: the radar (AAA unit) guiding it, credited with what it shoots down.
     #[serde(default)]
     pub radar: Option<u16>,
@@ -1718,6 +1724,8 @@ impl Sim {
             blue,
             ground: None,
             ground_aaa: false,
+            arm_checked: false,
+            arm_lost: false,
             radar: None,
             guidance: None,
             station: None,
@@ -1868,6 +1876,8 @@ impl Sim {
         let mut kills: Vec<(usize, Option<u16>, i32, i32, i32)> = Vec::new();
         let mut pops: Vec<(i32, i32, i32)> = Vec::new();
         let mut ground_hits = Vec::new();
+        let silent: Vec<usize> =
+            c.defence.stations.iter().filter(|s| s.radar_off).map(|s| s.unit as usize).collect();
         c.missiles.retain_mut(|m| {
             m.ttl -= 1;
             // A strike aircraft's weapon flies at its object (an anti-radiation missile at its
@@ -1880,10 +1890,19 @@ impl Sim {
                     let o = self.objects.get(g).copied().unwrap_or_default();
                     [o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP, 5.0]
                 };
+                let to = sub(at, m.pos);
+                if m.ground_aaa && !m.arm_checked && silent.contains(&g) {
+                    m.arm_checked = true;
+                    m.arm_lost = crate::station::arm_lost(&mut rng, &mut m.vel, len(to));
+                }
+                // One that lost its radar flies on unguided, falls and blows up where it
+                // comes down.
+                if m.arm_lost {
+                    m.vel[2] -= 9.81 * dt;
+                }
                 let v = len(m.vel).max(1.0);
                 let speed = (v + m.speed * dt * 1.5).min(m.speed);
-                let to = sub(at, m.pos);
-                let k = (m.turn * dt * 4.0).min(1.0);
+                let k = if m.arm_lost { 0.0 } else { (m.turn * dt * 4.0).min(1.0) };
                 let dir = add(mul(m.vel, (1.0 - k) / v), mul(to, k / len(to).max(1e-6)));
                 let dir = mul(dir, 1.0 / len(dir).max(1e-9));
                 let step = mul(dir, speed * dt);
@@ -1896,6 +1915,10 @@ impl Sim {
                 }
                 m.vel = mul(dir, speed);
                 m.pos = add(m.pos, step);
+                if m.arm_lost && m.pos[2] <= at[2] - 3.0 {
+                    pops.push(metres_map(m.pos));
+                    return false;
+                }
                 return m.ttl > 0 && m.pos[2] > 0.0;
             }
             let t = self.flights.get(m.target).copied().unwrap_or_default();

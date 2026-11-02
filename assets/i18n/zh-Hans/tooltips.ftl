@@ -178,6 +178,7 @@ tip-console-flir = 热成像或彩色摄像机图像
 tip-console-zoom = 摄像机变焦
 tip-console-range = 空情图的量程
 tip-console-leave = 离开控制台：返回作战
+tip-console-radar = 雷达开关：关闭时反辐射导弹可能丢失阵地，但无法锁定任何目标
 tip-console-auto = 所选无人机重新沿航线飞行
 tip-console-manual = 手动驾驶所选无人机：操纵杆和油门
 tip-console-track = 将无人机摄像机保持在十字线下的地面上

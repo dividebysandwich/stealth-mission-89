@@ -1481,7 +1481,16 @@ fn draw(
     if menu.exiting {
         draw_frame(c, "", main_title, "", None);
         let mid = (TOP + BOTTOM) / 2.0;
-        stroke_text_at(c, W as f32 / 2.0, mid, tf!("fm-exiting"), 36.0, 4.0, ink::TEXT, Align::Centre);
+        stroke_text_at(
+            c,
+            W as f32 / 2.0,
+            mid,
+            tf!("fm-exiting"),
+            36.0,
+            4.0,
+            ink::TEXT,
+            Align::Centre,
+        );
         tex.dirty = true;
         return;
     }
@@ -1503,7 +1512,16 @@ fn draw(
             crate::key_guide::filter(crate::key_guide::lines(&config, settings.vr), &menu.search);
         if lines.is_empty() {
             let mid = (area[1] + area[3]) / 2.0;
-            stroke_text_at(c, W as f32 / 2.0, mid, tf!("fm-no-match"), 18.0, 2.4, ink::OFF, Align::Centre);
+            stroke_text_at(
+                c,
+                W as f32 / 2.0,
+                mid,
+                tf!("fm-no-match"),
+                18.0,
+                2.4,
+                ink::OFF,
+                Align::Centre,
+            );
         }
         let style = crate::key_guide::Style {
             size: 0.72,

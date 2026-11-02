@@ -109,6 +109,8 @@ pub enum ConsoleKey {
     RangeOut,
     /// Leave the console (back to the Ops screen).
     Leave,
+    /// The radar on / off (off: silent against anti-radiation missiles, no lock).
+    Radar,
     /// Drone command center: the drone on its route again, flown by hand; its camera held on
     /// the ground point at its crosshair, back ahead and down.
     Auto,

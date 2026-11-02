@@ -222,6 +222,7 @@ st-no-such-unit = Diese Einheit gibt es nicht
 st-only-friendly-air-defence-can-be-manned = Nur eigene Patriot-Batterien, Gepard und Drohnenleitstände können bemannt werden
 st-another-player-mans-it = Ein anderer Spieler bemannt sie
 st-no-track-locked = Keine Spur aufgeschaltet
+st-radar-off = Radar aus
 st-track-lost = Spur verloren
 st-friendly-track-weapons-hold = Eigene Spur: Feuer halten
 st-no-missiles-here = Hier keine Raketen

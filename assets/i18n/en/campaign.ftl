@@ -223,6 +223,7 @@ st-no-such-unit = No such unit
 st-only-friendly-air-defence-can-be-manned = Only friendly Patriot batteries, Gepards and drone command centers can be manned
 st-another-player-mans-it = Another player mans it
 st-no-track-locked = No track locked
+st-radar-off = Radar off
 st-track-lost = Track lost
 st-friendly-track-weapons-hold = Friendly track: weapons hold
 st-no-missiles-here = No missiles here

@@ -180,6 +180,7 @@ tip-console-flir = Gambar kamera termal atau berwarna
 tip-console-zoom = Zoom kamera
 tip-console-range = Jangkauan gambaran udara
 tip-console-leave = Tinggalkan konsol: kembali ke operasi
+tip-console-radar = Radar hidup atau mati: saat mati, rudal antiradiasi bisa kehilangan lokasi, tetapi tidak ada yang bisa dikunci
 tip-console-auto = Drone terpilih kembali terbang di rutenya
 tip-console-manual = Terbangkan drone terpilih secara manual: stick dan throttle
 tip-console-track = Tahan kamera drone di tanah pada crosshair-nya

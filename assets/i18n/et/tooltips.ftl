@@ -180,6 +180,7 @@ tip-console-flir = Termo- või värvikaamera pilt
 tip-console-zoom = Kaamera suum
 tip-console-range = Õhupildi kaugus
 tip-console-leave = Lahku konsoolist: tagasi operatsioonide juurde
+tip-console-radar = Radar sisse või välja: väljas võib radarivastane rakett positsiooni kaotada, kuid midagi ei saa lukustada
 tip-console-auto = Valitud droon lendab taas oma marsruuti
 tip-console-manual = Juhi valitud drooni käsitsi: juhtkang ja gaasihoob
 tip-console-track = Hoia drooni kaamerat maapinnal selle sihiku all

@@ -222,6 +222,7 @@ st-no-such-unit = Ingen sådan enhet
 st-only-friendly-air-defence-can-be-manned = Bara egna Patriot-batterier, Gepard och drönarledningscentraler kan bemannas
 st-another-player-mans-it = En annan spelare bemannar den
 st-no-track-locked = Inget spår låst
+st-radar-off = Radar av
 st-track-lost = Spåret förlorat
 st-friendly-track-weapons-hold = Eget spår: eldförbud
 st-no-missiles-here = Inga robotar här

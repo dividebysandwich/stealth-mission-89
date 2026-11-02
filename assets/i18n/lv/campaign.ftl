@@ -222,6 +222,7 @@ st-no-such-unit = Tādas vienības nav
 st-only-friendly-air-defence-can-be-manned = Ieņemt var tikai savas Patriot baterijas, Gepard un dronu vadības punktus
 st-another-player-mans-it = To apkalpo cits spēlētājs
 st-no-track-locked = Neviens mērķis nav notverts
+st-radar-off = Radars izslēgts
 st-track-lost = Mērķis zaudēts
 st-friendly-track-weapons-hold = Draudzīgs mērķis: ugunsatturība
 st-no-missiles-here = Šeit nav raķešu

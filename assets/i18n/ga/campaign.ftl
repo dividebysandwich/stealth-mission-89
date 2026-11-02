@@ -222,6 +222,7 @@ st-no-such-unit = Níl a leithéid d'aonad ann
 st-only-friendly-air-defence-can-be-manned = Ní féidir ach cadhnraí Patriot, Gepard agus ionaid ceannais dróin chairdiúla a fhoireannú
 st-another-player-mans-it = Tá imreoir eile á fhoirneamh
 st-no-track-locked = Gan rian faoi ghlas
+st-radar-off = Radar múchta
 st-track-lost = Rian caillte
 st-friendly-track-weapons-hold = Rian cairdiúil: airm coinnithe
 st-no-missiles-here = Gan diúracáin anseo

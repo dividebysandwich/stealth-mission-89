@@ -180,6 +180,7 @@ tip-console-flir = Wärmebild oder Farbbild der Kamera
 tip-console-zoom = Kamerazoom
 tip-console-range = Die Reichweite des Luftlagebilds
 tip-console-leave = Die Konsole verlassen: zurück zu den Operationen
+tip-console-radar = Radar ein oder aus: abgeschaltet kann ein Anti-Radar-Flugkörper die Stellung verlieren, aber nichts lässt sich aufschalten
 tip-console-auto = Die gewählte Drohne fliegt wieder ihre Route
 tip-console-manual = Die gewählte Drohne von Hand fliegen: Stick und Schubhebel
 tip-console-track = Die Kamera der Drohne am Boden unter ihrem Fadenkreuz halten

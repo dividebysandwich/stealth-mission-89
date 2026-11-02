@@ -179,6 +179,7 @@ tip-console-flir = Billede fra termisk eller farvekamera
 tip-console-zoom = Kamerazoom
 tip-console-range = Luftbilledets rækkevidde
 tip-console-leave = Forlad konsollen: tilbage til operationerne
+tip-console-radar = Radar til eller fra: slukket kan et antiradarmissil miste stillingen, men intet kan låses
 tip-console-auto = Den valgte drone flyver sin rute igen
 tip-console-manual = Flyv den valgte drone med hånden: pinden og gashåndtaget
 tip-console-track = Hold dronens kamera på jorden ved dens trådkors

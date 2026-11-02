@@ -179,6 +179,7 @@ tip-console-flir = Obraz z termokamery alebo farebnej kamery
 tip-console-zoom = Zoom kamery
 tip-console-range = Dosah vzdušného obrazu
 tip-console-leave = Opustiť konzolu: späť na operácie
+tip-console-radar = Radar zapnúť/vypnúť: vypnutý môže protiradarová strela stratiť stanovište, ale nič sa nedá zamerať
 tip-console-auto = Vybraný dron opäť letí svojou trasou
 tip-console-manual = Riadiť vybraný dron ručne: knipel a plyn
 tip-console-track = Držať kameru dronu na zemi pod jej zameriavačom

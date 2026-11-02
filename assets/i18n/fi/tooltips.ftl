@@ -179,6 +179,7 @@ tip-console-flir = Lämpö- tai värikameran kuva
 tip-console-zoom = Kameran zoom
 tip-console-range = Ilmatilannekuvan kantama
 tip-console-leave = Poistu konsolista: takaisin operaatioihin
+tip-console-radar = Tutka päälle tai pois: pois päältä tutkantorjuntaohjus voi kadottaa aseman, mutta mitään ei voi lukita
 tip-console-auto = Valittu lennokki lentää taas reittiään
 tip-console-manual = Lennä valittua lennokkia käsin: ohjaussauva ja kaasuvipu
 tip-console-track = Pidä lennokin kamera maassa tähtäimensä kohdalla

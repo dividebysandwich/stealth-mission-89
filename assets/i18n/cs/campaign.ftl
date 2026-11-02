@@ -222,6 +222,7 @@ st-no-such-unit = Taková jednotka neexistuje
 st-only-friendly-air-defence-can-be-manned = Obsadit lze jen vlastní baterie Patriot, Gepardy a velitelská stanoviště dronů
 st-another-player-mans-it = Obsluhuje ji jiný hráč
 st-no-track-locked = Žádná stopa není zamčená
+st-radar-off = Radar vypnut
 st-track-lost = Stopa ztracena
 st-friendly-track-weapons-hold = Přátelská stopa: nestřílet
 st-no-missiles-here = Zde nejsou střely

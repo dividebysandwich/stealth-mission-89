@@ -180,6 +180,7 @@ tip-console-flir = Imagen de la cámara térmica o en color
 tip-console-zoom = Zoom de la cámara
 tip-console-range = El alcance de la situación aérea
 tip-console-leave = Salir de la consola: volver a operaciones
+tip-console-radar = Radar encendido o apagado: apagado, un misil antirradiación puede perder el emplazamiento, pero no se puede fijar nada
 tip-console-auto = El dron seleccionado vuelve a volar su ruta
 tip-console-manual = Pilotar el dron seleccionado a mano: la palanca y el acelerador
 tip-console-track = Mantener la cámara del dron sobre el suelo en su retícula

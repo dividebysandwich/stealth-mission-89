@@ -179,6 +179,7 @@ tip-console-flir = Termiskās vai krāsainās kameras attēls
 tip-console-zoom = Kameras tālummaiņa
 tip-console-range = Gaisa situācijas rādiuss
 tip-console-leave = Atstāt konsoli: atpakaļ uz operācijām
+tip-console-radar = Radars ieslēgts vai izslēgts: izslēgtu pretradiolokācijas raķete var pazaudēt pozīciju, bet neko nevar notvert
 tip-console-auto = Izvēlētais drons atkal lido savu maršrutu
 tip-console-manual = Vadīt izvēlēto dronu ar roku: vadības svira un droselis
 tip-console-track = Turēt drona kameru uz zemes zem tās tēmekļa

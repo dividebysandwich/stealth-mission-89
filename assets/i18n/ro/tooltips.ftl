@@ -179,6 +179,7 @@ tip-console-flir = Imaginea camerei termice sau color
 tip-console-zoom = Zoom cameră
 tip-console-range = Raza imaginii aeriene
 tip-console-leave = Părăsiți consola: înapoi la operațiuni
+tip-console-radar = Radar pornit sau oprit: oprit, o rachetă antiradiație poate pierde poziția, dar nimic nu poate fi blocat
 tip-console-auto = Drona selectată își zboară din nou ruta
 tip-console-manual = Pilotează manual drona selectată: manșa și maneta de gaze
 tip-console-track = Ține camera dronei pe sol, sub reticul

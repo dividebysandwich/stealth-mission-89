@@ -505,7 +505,9 @@ fn mark_name(d: &Debrief, kind: MarkKind) -> (&'static str, String) {
     let site = |i: usize| d.record.sites.get(i).map_or(String::new(), |s| s.kind.clone());
     match kind {
         MarkKind::Tracked(i) => (t!("mt-mark-tracked"), site(i)),
-        MarkKind::Launch { site: by, .. } => (t!("mt-mark-launch"), by.map(site).unwrap_or_default()),
+        MarkKind::Launch { site: by, .. } => {
+            (t!("mt-mark-launch"), by.map(site).unwrap_or_default())
+        }
         MarkKind::Hit => (t!("mt-mark-hit"), String::new()),
         MarkKind::AirKill { .. } => (t!("mt-mark-air-kill"), String::new()),
         MarkKind::GroundKill { object } => {

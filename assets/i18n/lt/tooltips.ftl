@@ -180,6 +180,7 @@ tip-console-flir = Terminės arba spalvotos kameros vaizdas
 tip-console-zoom = Kameros mastelis
 tip-console-range = Oro vaizdo nuotolis
 tip-console-leave = Išeiti iš pulto: atgal į operacijas
+tip-console-radar = Radaras įjungtas arba išjungtas: išjungus priešradiolokacinė raketa gali pamesti poziciją, bet nieko negalima užrakinti
 tip-console-auto = Pasirinktas dronas vėl skrenda savo maršrutu
 tip-console-manual = Valdyti pasirinktą droną rankiniu būdu: vairalazdė ir droselis
 tip-console-track = Laikyti drono kamerą ant žemės po jos taikikliu

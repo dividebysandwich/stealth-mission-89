@@ -391,7 +391,11 @@ pub fn draw(
         }
         if layers.shows(Layer::Guns) {
             scaled(c, &|p, c| gun(p, c, g.kind, 0.7));
-            let kind = if g.kind == GroundKind::Manpads { t!("mt-enemy-manpads") } else { t!("mt-enemy-gun") };
+            let kind = if g.kind == GroundKind::Manpads {
+                t!("mt-enemy-manpads")
+            } else {
+                t!("mt-enemy-gun")
+            };
             let reach = stealth_sim::campaign::gun_reach(g.kind);
             let what = g.kind;
             tips.add(c, kind, g.kind.name(), MISSILE_RED)

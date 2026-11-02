@@ -180,6 +180,7 @@ tip-console-flir = Beeld van de thermische of kleurencamera
 tip-console-zoom = Camerazoom
 tip-console-range = Het bereik van het luchtbeeld
 tip-console-leave = De console verlaten: terug naar de operaties
+tip-console-radar = Radar aan of uit: uit kan een antiradarraket de stelling kwijtraken, maar er kan niets worden vergrendeld
 tip-console-auto = De gekozen drone vliegt weer zijn route
 tip-console-manual = De gekozen drone met de hand vliegen: de stick en de gashendel
 tip-console-track = De camera van de drone op de grond houden, onder het dradenkruis

@@ -179,6 +179,7 @@ tip-console-flir = 열상 또는 컬러 카메라 영상
 tip-console-zoom = 카메라 줌
 tip-console-range = 공중 상황도의 범위
 tip-console-leave = 콘솔 나가기: 작전 화면으로 돌아감
+tip-console-radar = 레이더 켜기/끄기: 끄면 대레이더 미사일이 진지를 놓칠 수 있지만 아무것도 록온할 수 없음
 tip-console-auto = 선택한 드론이 다시 경로를 비행
 tip-console-manual = 선택한 드론을 수동 조종: 스틱과 스로틀
 tip-console-track = 드론 카메라를 조준선 아래 지면에 고정

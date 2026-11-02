@@ -221,6 +221,7 @@ st-no-such-unit = 没有这个单位
 st-only-friendly-air-defence-can-be-manned = 只能操作友方的 Patriot 连、Gepard 和无人机指挥所
 st-another-player-mans-it = 已有其他玩家在操作
 st-no-track-locked = 未锁定航迹
+st-radar-off = 雷达已关闭
 st-track-lost = 航迹丢失
 st-friendly-track-weapons-hold = 友军航迹：武器保持
 st-no-missiles-here = 此处没有导弹

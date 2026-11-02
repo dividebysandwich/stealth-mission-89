@@ -179,6 +179,7 @@ tip-console-flir = Bild från termisk kamera eller färgkamera
 tip-console-zoom = Kamerazoom
 tip-console-range = Luftlägesbildens räckvidd
 tip-console-leave = Lämna konsolen: tillbaka till operationerna
+tip-console-radar = Radar på eller av: avstängd kan en antiradarrobot tappa ställningen, men inget kan låsas
 tip-console-auto = Den valda drönaren flyger sin rutt igen
 tip-console-manual = Flyg den valda drönaren för hand: spaken och gasreglaget
 tip-console-track = Håll drönarens kamera på marken vid dess hårkors

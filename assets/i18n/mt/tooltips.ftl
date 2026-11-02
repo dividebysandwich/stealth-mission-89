@@ -180,6 +180,7 @@ tip-console-flir = Stampa tal-kamera termali jew bil-kulur
 tip-console-zoom = Zoom tal-kamera
 tip-console-range = Il-firxa tas-sitwazzjoni tal-ajru
 tip-console-leave = Oħroġ mill-console: lura għall-operazzjonijiet
+tip-console-radar = Radar mixgħul jew mitfi: mitfi, missila kontra r-radar tista' titlef is-sit, iżda xejn ma jista' jiġi lockjat
 tip-console-auto = Id-drone magħżul jerġa' jtir ir-rotta tiegħu
 tip-console-manual = Tajjar id-drone magħżul bl-idejn: l-istick u t-throttle
 tip-console-track = Żomm il-kamera tad-drone fuq l-art taħt il-crosshair tagħha

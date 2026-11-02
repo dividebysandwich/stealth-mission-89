@@ -222,6 +222,7 @@ st-no-such-unit = Nie ma takiej jednostki
 st-only-friendly-air-defence-can-be-manned = Obsadzić można tylko sojusznicze baterie Patriot, Gepardy i centra dowodzenia dronami
 st-another-player-mans-it = Obsługuje ją inny gracz
 st-no-track-locked = Brak namierzonego śladu
+st-radar-off = Radar wyłączony
 st-track-lost = Utracono ślad
 st-friendly-track-weapons-hold = Ślad sojuszniczy: wstrzymać ogień
 st-no-missiles-here = Brak tu rakiet

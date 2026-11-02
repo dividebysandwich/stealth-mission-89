@@ -222,6 +222,7 @@ st-no-such-unit = Unità sconosciuta
 st-only-friendly-air-defence-can-be-manned = Si possono presidiare solo batterie Patriot, Gepard e centri di comando droni amici
 st-another-player-mans-it = Un altro giocatore la serve
 st-no-track-locked = Nessuna traccia agganciata
+st-radar-off = Radar spento
 st-track-lost = Traccia persa
 st-friendly-track-weapons-hold = Traccia amica: fuoco interdetto
 st-no-missiles-here = Nessun missile qui

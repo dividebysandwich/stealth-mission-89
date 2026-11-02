@@ -222,6 +222,7 @@ st-no-such-unit = そのような部隊はありません
 st-only-friendly-air-defence-can-be-manned = 配置できるのは味方のパトリオット部隊、ゲパルト、ドローン指揮所のみです
 st-another-player-mans-it = 別のプレイヤーが配置中です
 st-no-track-locked = ロックされたトラックなし
+st-radar-off = レーダー停止中
 st-track-lost = トラックを喪失
 st-friendly-track-weapons-hold = 友軍トラック：射撃禁止
 st-no-missiles-here = ミサイルがありません

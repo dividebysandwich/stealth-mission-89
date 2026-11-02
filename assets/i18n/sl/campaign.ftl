@@ -222,6 +222,7 @@ st-no-such-unit = Take enote ni
 st-only-friendly-air-defence-can-be-manned = Zasesti je mogoče le lastne baterije Patriot, Geparde in poveljniška mesta dronov
 st-another-player-mans-it = Upravlja jo drug igralec
 st-no-track-locked = Nobena sled ni zaklenjena
+st-radar-off = Radar izklopljen
 st-track-lost = Sled izgubljena
 st-friendly-track-weapons-hold = Zavezniška sled: ogenj prepovedan
 st-no-missiles-here = Tu ni izstrelkov

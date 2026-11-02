@@ -222,6 +222,7 @@ st-no-such-unit = Unitate inexistentă
 st-only-friendly-air-defence-can-be-manned = Pot fi încadrate doar bateriile Patriot, Gepard și centrele de comandă drone proprii
 st-another-player-mans-it = Un alt jucător o deservește
 st-no-track-locked = Nicio pistă blocată
+st-radar-off = Radar oprit
 st-track-lost = Pistă pierdută
 st-friendly-track-weapons-hold = Pistă prietenă: foc interzis
 st-no-missiles-here = Nicio rachetă aici

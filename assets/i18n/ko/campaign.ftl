@@ -222,6 +222,7 @@ st-no-such-unit = 해당 부대 없음
 st-only-friendly-air-defence-can-be-manned = 아군 패트리엇 포대, 게파르트, 드론 지휘소만 운용할 수 있습니다
 st-another-player-mans-it = 다른 플레이어가 담당 중입니다
 st-no-track-locked = 고정된 트랙 없음
+st-radar-off = 레이더 꺼짐
 st-track-lost = 트랙 상실
 st-friendly-track-weapons-hold = 아군 트랙: 사격 금지
 st-no-missiles-here = 여기에는 미사일 없음

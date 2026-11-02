@@ -222,6 +222,7 @@ st-no-such-unit = Nincs ilyen egység
 st-only-friendly-air-defence-can-be-manned = Csak saját Patriot ütegek, Gepardok és drónirányító központok vehetők át
 st-another-player-mans-it = Egy másik játékos kezeli
 st-no-track-locked = Nincs követett cél rögzítve
+st-radar-off = Radar kikapcsolva
 st-track-lost = Követett cél elveszett
 st-friendly-track-weapons-hold = Baráti cél: tüzet szüntess
 st-no-missiles-here = Itt nincs rakéta

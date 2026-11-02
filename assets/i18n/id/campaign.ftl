@@ -222,6 +222,7 @@ st-no-such-unit = Unit tidak ditemukan
 st-only-friendly-air-defence-can-be-manned = Hanya baterai Patriot, Gepard, dan pusat komando drone kawan yang bisa diawaki
 st-another-player-mans-it = Pemain lain mengoperasikannya
 st-no-track-locked = Tidak ada track terkunci
+st-radar-off = Radar mati
 st-track-lost = Track hilang
 st-friendly-track-weapons-hold = Track kawan: weapons hold
 st-no-missiles-here = Tidak ada rudal di sini

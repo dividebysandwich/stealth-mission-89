@@ -77,10 +77,11 @@ front = desk.at(0.0, -0.23, -0.02)
 box("black", "black", (0.0, front.y + 0.12, (front.z + FLOOR) / 2), (1.5, 0.24, front.z - FLOOR))
 box("frame", "frame", desk.at(0.0, -0.235, 0.0), (1.52, 0.03, 0.03), desk.rot)
 
-# --- the camera screen; the leave button and the launchers' block left of it, the camera's
-# buttons right of it
+# --- the camera screen; the leave and radar buttons and the launchers' block left of it, the
+# camera's buttons right of it
 screen(panel, "screen_eo", 0.0, 0.0, EO, behind="trackcam")
 column(panel, -0.44, [("Console(Leave)", "LEAVE", 0.16)])
+column(panel, -0.34, [("Console(Radar)", "RADAR", 0.16)])
 for k in (1, 2, 3):
     v = 0.06 - (k - 1) * 0.05
     column(panel, -0.44, [(f"Console(Launcher, {k})", f"L{k}", v)])

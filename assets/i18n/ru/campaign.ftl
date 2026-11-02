@@ -221,6 +221,7 @@ st-no-such-unit = Нет такого подразделения
 st-only-friendly-air-defence-can-be-manned = Занять можно только свои батареи Patriot, Gepard и пункты управления дронами
 st-another-player-mans-it = Занято другим игроком
 st-no-track-locked = Трасса не захвачена
+st-radar-off = Радар выключен
 st-track-lost = Трасса потеряна
 st-friendly-track-weapons-hold = Своя трасса: огонь запрещён
 st-no-missiles-here = Здесь нет ракет

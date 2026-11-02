@@ -131,9 +131,7 @@ fn voice_dialog(
 fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
     section(ui, t!("vd-radio-voices"));
     if tts.installed.is_empty() {
-        ui.label(
-            egui::RichText::new(t!("vd-none-yet")).color(DIM),
-        );
+        ui.label(egui::RichText::new(t!("vd-none-yet")).color(DIM));
     }
     let mut changed = false;
     egui::Grid::new("voice_choices").num_columns(4).spacing([10.0, 6.0]).show(ui, |ui| {
@@ -174,7 +172,9 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
                     let max = v.speakers - 1;
                     let corpus =
                         v.speaker_names.get(*speaker as usize).cloned().unwrap_or_default();
-                    let drag = egui::DragValue::new(speaker).range(0..=max).prefix(format!("{} ", t!("vd-speaker")));
+                    let drag = egui::DragValue::new(speaker)
+                        .range(0..=max)
+                        .prefix(format!("{} ", t!("vd-speaker")));
                     changed |= facts(
                         ui.add(drag),
                         &[
@@ -191,7 +191,10 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
             }
             let can = v.is_some();
             if facts(
-                ui.add_enabled(can, egui::Button::new(icon_text(ui, icon::START, t!("vd-preview")))),
+                ui.add_enabled(
+                    can,
+                    egui::Button::new(icon_text(ui, icon::START, t!("vd-preview"))),
+                ),
                 t_lines!("vd-preview.facts"),
             )
             .clicked()
@@ -202,11 +205,9 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
         }
     });
     if tts.speakers(&s.atc_voice) > 1 {
-        changed |= facts(
-            ui.checkbox(&mut s.atc_vary_station, t!("vd-vary")),
-            t_lines!("vd-vary.facts"),
-        )
-        .changed();
+        changed |=
+            facts(ui.checkbox(&mut s.atc_vary_station, t!("vd-vary")), t_lines!("vd-vary.facts"))
+                .changed();
     }
     if let Some(e) = tts.error() {
         ui.label(egui::RichText::new(e).color(AMBER).small());
@@ -240,10 +241,9 @@ fn installed(
     section(ui, t!("vd-installed"));
     let mut delete = None;
     for v in &tts.installed {
-        let credit =
-            v.catalog.map_or(t!("vd-licence-unknown").to_string(), |c| {
-                format!("{}, {}", c.licence, c.credit)
-            });
+        let credit = v.catalog.map_or(t!("vd-licence-unknown").to_string(), |c| {
+            format!("{}, {}", c.licence, c.credit)
+        });
         let kind = if v.speakers > 1 {
             t!("vd-speakers", count = v.speakers)
         } else {
@@ -310,9 +310,7 @@ fn available(ui: &mut egui::Ui, tts: &Tts, dialog: &mut VoiceDialog) {
     }
     section(ui, t!("vd-download"));
     let Some(dir) = voice::download_dir() else {
-        ui.label(
-            egui::RichText::new(t!("vd-no-folder")).color(AMBER),
-        );
+        ui.label(egui::RichText::new(t!("vd-no-folder")).color(AMBER));
         return;
     };
     for c in missing {
@@ -383,8 +381,9 @@ fn folder(ui: &mut egui::Ui) {
                 warn!("{opener} {}: {e}", dir.display());
             }
         }
-        let text =
-            egui::RichText::new(t!("vd-folder", path = dir.display().to_string())).small().color(DIM);
+        let text = egui::RichText::new(t!("vd-folder", path = dir.display().to_string()))
+            .small()
+            .color(DIM);
         ui.add(egui::Label::new(text).truncate());
     });
 }

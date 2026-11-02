@@ -222,6 +222,7 @@ st-no-such-unit = Tokio dalinio nėra
 st-only-friendly-air-defence-can-be-manned = Užimti galima tik savas Patriot baterijas, Gepard ir dronų valdymo punktus
 st-another-player-mans-it = Ją valdo kitas žaidėjas
 st-no-track-locked = Nėra užfiksuoto takelio
+st-radar-off = Radaras išjungtas
 st-track-lost = Takelis prarastas
 st-friendly-track-weapons-hold = Draugiškas takelis: ugnis draudžiama
 st-no-missiles-here = Čia nėra raketų

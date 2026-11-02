@@ -179,6 +179,7 @@ tip-console-flir = Obraz kamery termowizyjnej lub kolorowej
 tip-console-zoom = Zoom kamery
 tip-console-range = Zasięg obrazu sytuacji powietrznej
 tip-console-leave = Opuścić konsolę: powrót do operacji
+tip-console-radar = Radar włącz/wyłącz: wyłączony pocisk przeciwradarowy może zgubić stanowisko, ale nie można niczego namierzyć
 tip-console-auto = Wybrany dron znów leci swoją trasą
 tip-console-manual = Pilotować wybranego drona ręcznie: drążek i przepustnica
 tip-console-track = Utrzymać kamerę drona na ziemi pod jej celownikiem

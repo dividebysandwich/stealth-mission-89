@@ -13,6 +13,9 @@
 //!   [`BURST`] tracers along the barrels.
 //! * A drone command center launches and flies drones (`uav.rs`).
 //! * A station whose radar (or Gepard) is destroyed is gone: [`Sim::station_of`] is None.
+//! * The radar can be switched off ([`StationCmd::Radar`]): no lock and no guidance (a Gepard
+//!   still fires along its barrels), but an anti-radiation missile flying at it may lose it
+//!   ([`arm_lost`], the further out the likelier).
 
 use serde::{Deserialize, Serialize};
 use stealth_i18n::{Text, text};
@@ -67,6 +70,13 @@ const SPOOF_GUIDED: i32 = 80;
 const SPOOF_SEMI: i32 = 300;
 /// A spoofed missile's target (none: it flies on until its fuel is gone).
 const NO_TARGET: usize = usize::MAX;
+/// The chance (per mille) an anti-radiation missile loses a radar switched off: this close,
+/// rising to `ARM_LOST_FAR` from `ARM_FAR` metres out.
+const ARM_LOST_NEAR: i32 = 150;
+const ARM_LOST_FAR: i32 = 750;
+const ARM_FAR: f64 = 15_000.0;
+/// A missile that lost its radar flies on this far off its line (rad, at most).
+const ARM_ERROR: f64 = 0.12;
 
 /// How a missile from a manned console is guided.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -86,6 +96,8 @@ pub enum StationCmd {
     Leave,
     /// Lock a track (flight unit), or drop the lock.
     Lock(Option<u16>),
+    /// Switch the radar on or off.
+    Radar(bool),
     Mode(Guidance),
     /// A missile at the locked track from a launcher (None: the readiest).
     Fire {
@@ -156,6 +168,9 @@ pub struct Station {
     pub slew: [f32; 2],
     #[serde(default)]
     pub manual: bool,
+    /// The radar is switched off (silent: nothing for an anti-radiation missile to home on).
+    #[serde(default)]
+    pub radar_off: bool,
 }
 
 /// The friendly air defence's consoles and stocks.
@@ -345,12 +360,21 @@ impl Sim {
                 self.uavs_unmanned(st.unit);
             }
             StationCmd::Lock(t) => {
+                if t.is_some() && st.radar_off {
+                    return Err(text!("st-radar-off"));
+                }
                 if let Some(t) = t
                     && self.track_alive(t as usize).is_none()
                 {
                     return Err(text!("st-no-such-track"));
                 }
                 self.defence_mut().stations[at].lock = t;
+            }
+            StationCmd::Radar(on) => {
+                self.defence_mut().stations[at].radar_off = !on;
+                if !on {
+                    self.radar_silent(at);
+                }
             }
             StationCmd::Mode(m) => {
                 self.defence_mut().stations[at].mode = m;
@@ -402,6 +426,7 @@ impl Sim {
             due: 0.0,
             slew: [0.0; 2],
             manual: false,
+            radar_off: false,
         });
         Ok(())
     }
@@ -567,6 +592,24 @@ impl Sim {
         }
         self.defence_mut().refill[k] = REFILL_SECONDS;
         Ok(())
+    }
+
+    /// Station `at`'s radar goes silent: its lock is dropped (a burst at it stops) and the
+    /// missiles it guided or illuminated for lose their target.
+    fn radar_silent(&mut self, at: usize) {
+        let st = &mut self.defence_mut().stations[at];
+        st.lock = None;
+        let unit = st.unit;
+        let c = self.campaign.as_mut().expect("campaign");
+        for m in &mut c.missiles {
+            if m.station == Some(unit) {
+                m.target = NO_TARGET;
+                m.guidance = None;
+            }
+        }
+        if let Some(u) = self.units.get_mut(unit as usize) {
+            u.tracking = false;
+        }
     }
 
     /// Guided missiles of station `unit` become semi-active (all, or those not at `keep`).
@@ -875,4 +918,19 @@ impl Sim {
             }
         }
     }
+}
+
+/// An anti-radiation missile `range` metres from the radar it flies at, which has just gone
+/// silent (checked once): has it lost it? If so it flies on a little off its line.
+pub(crate) fn arm_lost(rng: &mut crate::rng::Rng, vel: &mut [f64; 3], range: f64) -> bool {
+    let far = (range / ARM_FAR).clamp(0.0, 1.0);
+    let chance = ARM_LOST_NEAR + ((ARM_LOST_FAR - ARM_LOST_NEAR) as f64 * far) as i32;
+    if rng.random(1000) >= chance {
+        return false;
+    }
+    let side = if rng.random(2) == 0 { -1.0 } else { 1.0 };
+    let a = side * ARM_ERROR * (0.4 + 0.6 * rng.random(1000) as f64 / 1000.0);
+    let (s, c) = a.sin_cos();
+    *vel = [vel[0] * c - vel[1] * s, vel[0] * s + vel[1] * c, vel[2]];
+    true
 }

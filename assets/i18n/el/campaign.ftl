@@ -222,6 +222,7 @@ st-no-such-unit = Δεν υπάρχει τέτοια μονάδα
 st-only-friendly-air-defence-can-be-manned = Μόνο φίλιες πυροβολαρχίες Patriot, Gepard και κέντρα διοίκησης drones μπορούν να επανδρωθούν
 st-another-player-mans-it = Την επανδρώνει άλλος παίκτης
 st-no-track-locked = Κανένα ίχνος δεν είναι κλειδωμένο
+st-radar-off = Ραντάρ κλειστό
 st-track-lost = Το ίχνος χάθηκε
 st-friendly-track-weapons-hold = Φίλιο ίχνος: weapons hold
 st-no-missiles-here = Δεν υπάρχουν πύραυλοι εδώ

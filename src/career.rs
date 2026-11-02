@@ -601,7 +601,9 @@ pub fn career_ui(
                             .small()
                             .color(DIM),
                         );
-                        if ui.add(big_button(t!("career-fly-next")).icon(icon::FLY).primary()).clicked()
+                        if ui
+                            .add(big_button(t!("career-fly-next")).icon(icon::FLY).primary())
+                            .clicked()
                         {
                             state.start_career(p, t);
                             state.mission_screen = true;
@@ -617,7 +619,10 @@ pub fn career_ui(
                             opponents = crate::i18n::opponents_name(state.opponents).to_lowercase()
                         )))
                         .on_hover_text(t!("career-new-tour.facts"));
-                        if ui.add(big_button(t!("career-start-tour")).icon(icon::START).primary()).clicked() {
+                        if ui
+                            .add(big_button(t!("career-start-tour")).icon(icon::START).primary())
+                            .clicked()
+                        {
                             let t = Tour {
                                 theater: state.theater,
                                 roe: state.roe,

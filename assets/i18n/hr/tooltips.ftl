@@ -179,6 +179,7 @@ tip-console-flir = Slika termalne ili kolor kamere
 tip-console-zoom = Zum kamere
 tip-console-range = Domet zračne slike
 tip-console-leave = Napusti konzolu: povratak na operacije
+tip-console-radar = Radar uključen ili isključen: isključen, proturadarski projektil može izgubiti položaj, ali ništa se ne može zahvatiti
 tip-console-auto = Odabrani dron ponovno leti svojom rutom
 tip-console-manual = Upravljaj odabranim dronom ručno: palica i ručica snage
 tip-console-track = Drži kameru drona na tlu ispod njezina križa

@@ -162,6 +162,56 @@ fn going_semi_active_or_changing_the_lock_releases_guided_missiles() {
 }
 
 #[test]
+fn a_silent_radar_has_no_lock_and_its_missiles_lose_their_target() {
+    let (mut sim, radar, f) = battery();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    run(&mut sim, 1);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+    sim.station_command(ME, StationCmd::Radar(false)).unwrap();
+    assert_eq!(sim.station_of(ME).and_then(|s| s.lock), None);
+    assert!(sim.station_command(ME, StationCmd::Lock(Some(f as u16))).is_err());
+    assert!(sim.ai_missiles().iter().filter(|m| m.station.is_some()).all(|m| m.guidance.is_none()));
+    sim.station_command(ME, StationCmd::Radar(true)).unwrap();
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+}
+
+#[test]
+fn anti_radiation_missiles_often_lose_a_silent_radar() {
+    let (mut sim, radar, _) = battery();
+    let from = find(&sim, 0x001, "Komarno");
+    let (mut lost, mut hits) = (0, 0);
+    for tag in 0..10 {
+        // A hit radar's console is gone: repaired, manned and silent again.
+        sim.units_mut()[radar].destroyed = false;
+        sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+        sim.station_command(ME, StationCmd::Radar(false)).unwrap();
+        sim.spawn_sead(from, radar, 60 + tag, false);
+        let mut last = None;
+        for _ in 0..60 * 30 {
+            let arm = sim.ai_missiles().iter().find(|m| m.ground == Some(radar) && m.ground_aaa);
+            match (arm, last) {
+                (Some(m), _) => last = Some(*m),
+                (None, Some(_)) => break,
+                (None, None) => {}
+            }
+            let ev = run(&mut sim, 1);
+            hits += ev
+                .iter()
+                .filter(|e| matches!(e, SimEvent::AaaDestroyed { unit, .. } if *unit == radar))
+                .count() as i32;
+        }
+        let m = last.unwrap_or_else(|| panic!("SEAD aircraft {tag} fired no missile"));
+        assert!(m.arm_checked, "the missile had its chance at the silent radar");
+        lost += m.arm_lost as i32;
+    }
+    assert!(lost > 0, "every missile kept the silent radar");
+    assert!(lost + hits <= 10, "a lost missile hit: {lost} lost, {hits} hits");
+    assert!(hits < 10, "every missile hit the silent radar");
+    assert!(hits > 0, "a silent radar cannot be hit at all");
+}
+
+#[test]
 fn missiles_meet_a_banked_target() {
     // The fighter patrols in a gentle bank, slower than its speed says: the missile steers
     // for (and its fuse expects) where it really goes.

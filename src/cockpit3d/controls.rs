@@ -219,6 +219,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "RangeIn" => K::RangeIn,
                 "RangeOut" => K::RangeOut,
                 "Leave" => K::Leave,
+                "Radar" => K::Radar,
                 "Auto" => K::Auto,
                 "Manual" => K::Manual,
                 "Track" => K::Track,

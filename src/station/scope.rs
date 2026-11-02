@@ -119,6 +119,7 @@ impl Snapshot {
 pub(super) fn snapshot(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
+    c: Option<Res<crate::campaign::ActiveCampaign>>,
     mut ui: ResMut<ConsoleUi>,
     time: Res<Time<Real>>,
 ) {
@@ -134,7 +135,10 @@ pub(super) fn snapshot(
     let sim = &combat.sim;
     let Some(site) = sim.units().get(m.unit).map(|u| u.metres()) else { return };
     let mut tracks = Vec::new();
-    for (i, u) in sim.flights().iter().enumerate() {
+    // A silent radar sees nothing.
+    let me = c.map(|c| c.me.0);
+    let off = me.and_then(|p| sim.station_of(p)).is_some_and(|s| s.radar_off);
+    for (i, u) in sim.flights().iter().enumerate().filter(|_| !off) {
         let up = fflags::EXISTS | fflags::AIRBORNE;
         if u.flags & up != up || u.flags & fflags::DESTROYED != 0 || u.speed == 0 {
             continue;
@@ -167,7 +171,7 @@ pub(super) fn snapshot(
             name: sim.aircraft_name(u.spec),
         });
     }
-    for msl in sim.ai_missiles() {
+    for msl in sim.ai_missiles().iter().filter(|_| !off) {
         let (e, n) = (msl.pos[0] - site[0], msl.pos[1] - site[1]);
         if e.hypot(n) > RADAR_REACH {
             continue;
@@ -264,6 +268,10 @@ pub(super) fn draw(
     stroke_text_at(cv, 6.0, 8.0, &format!("{:.0} KM", ui.range_km), 7.0, 1.0, GREEN, Align::Left);
     let title = if m.gepard() { "GEPARD" } else { "PATRIOT" };
     stroke_text_at(cv, w - 6.0, 8.0, title, 7.0, 1.0, GREEN, Align::Right);
+    if sim.station_of(c.me.0).is_some_and(|s| s.radar_off) {
+        let h = SCOPE_CANVAS.1 as f32;
+        stroke_text_at(cv, w / 2.0, h - 8.0, "RADAR OFF", 7.0, 1.0, YELLOW, Align::Centre);
+    }
     // The site and, for a battery, its launchers.
     cv.frame(centre - Vec2::splat(3.0), centre + Vec2::splat(3.0), 1.0, WHITE);
     if let Some(site) = sim.units().get(m.unit).map(|u| u.metres()) {

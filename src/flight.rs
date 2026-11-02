@@ -600,7 +600,10 @@ fn handle_actions(
                 if heli::engage_hover(&mut a) {
                     msg.show(stealth_i18n::tf!("hud-auto-hover"));
                 } else {
-                    msg.show(stealth_i18n::tf!("hud-hover-too-fast", knots = format!("{:.0}", heli::HOVER_KNOTS)));
+                    msg.show(stealth_i18n::tf!(
+                        "hud-hover-too-fast",
+                        knots = format!("{:.0}", heli::HOVER_KNOTS)
+                    ));
                 }
             }
             Action::Autopilot

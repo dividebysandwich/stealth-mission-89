@@ -339,7 +339,15 @@ fn multiplayer_window(
                 area(ui, flash, |ui| {
                     ui.set_max_width(340.0);
                     section(ui, t!("mp-your-name"));
-                    text_entry(ui, "mp_name", &mut state.player_name, 24, Charset::Name, settings.vr, t!("mp-your-name.hint"));
+                    text_entry(
+                        ui,
+                        "mp_name",
+                        &mut state.player_name,
+                        24,
+                        Charset::Name,
+                        settings.vr,
+                        t!("mp-your-name.hint"),
+                    );
                 });
             });
             if w.page == Page::Join {
@@ -365,7 +373,10 @@ fn multiplayer_window(
                                     w.status = None;
                                 }
                             } else if ui
-                                .add_enabled(!state.server_addr.trim().is_empty(), egui::Button::new(icon_text(ui, icon::JOIN, t!("mp-connect"))))
+                                .add_enabled(
+                                    !state.server_addr.trim().is_empty(),
+                                    egui::Button::new(icon_text(ui, icon::JOIN, t!("mp-connect"))),
+                                )
                                 .clicked()
                             {
                                 if named {
@@ -398,7 +409,15 @@ fn multiplayer_window(
                     ui.horizontal(|ui| {
                         ui.label(t!("mp-server-name"));
                         let hint = server_title(&state);
-                        text_entry(ui, "mp_server", &mut state.server_name, 32, Charset::Name, settings.vr, &hint);
+                        text_entry(
+                            ui,
+                            "mp_server",
+                            &mut state.server_name,
+                            32,
+                            Charset::Name,
+                            settings.vr,
+                            &hint,
+                        );
                     });
                     ui.horizontal(|ui| {
                         ui.label(t!("mp-udp-port"));
@@ -410,118 +429,125 @@ fn multiplayer_window(
                             2..=stealth_net::protocol::MAX_PLAYERS as u8,
                         ));
                     });
-                    ui.label(
-                        egui::RichText::new(t!("mp-address-note"))
-                            .small()
-                            .color(DIM),
-                    );
+                    ui.label(egui::RichText::new(t!("mp-address-note")).small().color(DIM));
                     ui.checkbox(&mut state.list_public, t!("mp-list-public"));
                     let mut flow = Flow::new(ui);
-                        flow.card(ui, Span::Fixed(210.0), |ui| {
-                            crate::menu::theater_options(ui, &mut state.theater);
-                        });
-                        flow.card(ui, Span::Fixed(200.0), |ui| {
-                            crate::menu::opponent_options(ui, &mut state.opponents);
-                            crate::menu::situation_options(ui, &mut state.roe);
-                        });
-                        flow.card(ui, Span::Fixed(230.0), |ui| {
-                            section(ui, t!("mp-rules"));
-                            crate::menu::realism_options(ui, &mut settings);
-                            ui.checkbox(&mut settings.continuous_time, t!("mp-time-of-day"));
-                            ui.checkbox(&mut state.lockheed, t!("mp-realistic-weapons"));
-                            ui.checkbox(&mut state.friendly_fire, t!("mp-friendly-fire"));
-                            ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
-                        });
-                        flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
-                            section(ui, t!("cm-section-new"));
-                            let (_, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
-                            ui.label(theater);
-                            ui.horizontal(|ui| {
-                                ui.label(t!("mp-day-night"));
-                                for (ratio, label) in [(1.0, t!("cm-day-real")), (24.0, t!("cm-day-1h")), (48.0, t!("cm-day-30min"))] {
-                                    if ui.selectable_label(w.sky_ratio == ratio, label).clicked() {
-                                        w.sky_ratio = ratio;
-                                    }
+                    flow.card(ui, Span::Fixed(210.0), |ui| {
+                        crate::menu::theater_options(ui, &mut state.theater);
+                    });
+                    flow.card(ui, Span::Fixed(200.0), |ui| {
+                        crate::menu::opponent_options(ui, &mut state.opponents);
+                        crate::menu::situation_options(ui, &mut state.roe);
+                    });
+                    flow.card(ui, Span::Fixed(230.0), |ui| {
+                        section(ui, t!("mp-rules"));
+                        crate::menu::realism_options(ui, &mut settings);
+                        ui.checkbox(&mut settings.continuous_time, t!("mp-time-of-day"));
+                        ui.checkbox(&mut state.lockheed, t!("mp-realistic-weapons"));
+                        ui.checkbox(&mut state.friendly_fire, t!("mp-friendly-fire"));
+                        ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
+                    });
+                    flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
+                        section(ui, t!("cm-section-new"));
+                        let (_, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
+                        ui.label(theater);
+                        ui.horizontal(|ui| {
+                            ui.label(t!("mp-day-night"));
+                            for (ratio, label) in [
+                                (1.0, t!("cm-day-real")),
+                                (24.0, t!("cm-day-1h")),
+                                (48.0, t!("cm-day-30min")),
+                            ] {
+                                if ui.selectable_label(w.sky_ratio == ratio, label).clicked() {
+                                    w.sky_ratio = ratio;
                                 }
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(t!("mp-weather"));
-                                for (clear, label) in [(false, t!("cm-weather-dynamic")), (true, t!("cm-weather-clear"))] {
-                                    if ui.selectable_label(w.clear_sky == clear, label).clicked() {
-                                        w.clear_sky = clear;
-                                    }
-                                }
-                            });
-                            let clicked = ui.add(big_button(t!("mp-host-new")).icon(icon::HOST)).clicked();
-                            no_name |= clicked && !named;
-                            if (clicked && named) || auto_host {
-                                let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
-                                let secs = web_time::SystemTime::now()
-                                    .duration_since(web_time::UNIX_EPOCH)
-                                    .map_or(0, |d| d.as_secs());
-                                let setup = CampaignSetup {
-                                    theater: state.theater,
-                                    theater_code: code.to_string(),
-                                    roe: state.roe,
-                                    opponents: state.opponents,
-                                    // Test aid: `--host --seed <n>`.
-                                    seed: std::env::args()
-                                        .skip_while(|a| a != "--seed")
-                                        .nth(1)
-                                        .and_then(|s| s.parse().ok())
-                                        .unwrap_or_else(rand::random),
-                                    sky_ratio: w.sky_ratio,
-                                    start_hour: w.start_hour,
-                                    dynamic_weather: !w.clear_sky,
-                                    crew_scaling: true,
-                                };
-                                let rules = host_rules(&settings, &state);
-                                host = Some(
-                                    Host::new(setup, &data.0, rules)
-                                        .map(|h| (format!("coop-{code}-{secs}"), h))
-                                        .map_err(|e| format!("{e:#}")),
-                                );
                             }
-                            ui.add_space(6.0);
-                            section(ui, t!("mp-host-saved"));
-                            ui.label(
-                                egui::RichText::new(
-                                    t!("cm-rules-note"),
-                                )
-                                .small()
-                                .color(DIM),
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label(t!("mp-weather"));
+                            for (clear, label) in
+                                [(false, t!("cm-weather-dynamic")), (true, t!("cm-weather-clear"))]
+                            {
+                                if ui.selectable_label(w.clear_sky == clear, label).clicked() {
+                                    w.clear_sky = clear;
+                                }
+                            }
+                        });
+                        let clicked =
+                            ui.add(big_button(t!("mp-host-new")).icon(icon::HOST)).clicked();
+                        no_name |= clicked && !named;
+                        if (clicked && named) || auto_host {
+                            let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
+                            let secs = web_time::SystemTime::now()
+                                .duration_since(web_time::UNIX_EPOCH)
+                                .map_or(0, |d| d.as_secs());
+                            let setup = CampaignSetup {
+                                theater: state.theater,
+                                theater_code: code.to_string(),
+                                roe: state.roe,
+                                opponents: state.opponents,
+                                // Test aid: `--host --seed <n>`.
+                                seed: std::env::args()
+                                    .skip_while(|a| a != "--seed")
+                                    .nth(1)
+                                    .and_then(|s| s.parse().ok())
+                                    .unwrap_or_else(rand::random),
+                                sky_ratio: w.sky_ratio,
+                                start_hour: w.start_hour,
+                                dynamic_weather: !w.clear_sky,
+                                crew_scaling: true,
+                            };
+                            let rules = host_rules(&settings, &state);
+                            host = Some(
+                                Host::new(setup, &data.0, rules)
+                                    .map(|h| (format!("coop-{code}-{secs}"), h))
+                                    .map_err(|e| format!("{e:#}")),
                             );
-                            if w.saves.is_empty() {
-                                ui.label(egui::RichText::new(t!("cm-no-saves")).color(DIM));
+                        }
+                        ui.add_space(6.0);
+                        section(ui, t!("mp-host-saved"));
+                        ui.label(egui::RichText::new(t!("cm-rules-note")).small().color(DIM));
+                        if w.saves.is_empty() {
+                            ui.label(egui::RichText::new(t!("cm-no-saves")).color(DIM));
+                        }
+                        let scroll = egui::ScrollArea::vertical()
+                            .id_salt("mp_saves")
+                            .max_height(crate::campaign::SAVES_HEIGHT);
+                        scroll.show(ui, |ui| {
+                            for (name, code, hours) in w.saves.clone() {
+                                let theater = THEATERS
+                                    .iter()
+                                    .find(|t| t.0 == code)
+                                    .map_or(code.as_str(), |t| t.1);
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("{theater:<22} {hours:>5.1} h"));
+                                    let clicked = ui
+                                        .button(icon_text(ui, icon::HOST, t!("mp-host")))
+                                        .clicked();
+                                    no_name |= clicked && !named;
+                                    if clicked && named {
+                                        let rules = host_rules(&settings, &state);
+                                        host = Some(match save::load(&name) {
+                                            Ok(Some(st)) => Host::resume(st, &data.0, rules)
+                                                .map(|h| (name.clone(), h))
+                                                .map_err(|e| format!("{e:#}")),
+                                            Ok(None) => Err(t!("cm-save-gone").into()),
+                                            Err(e) => Err(format!("{e:#}")),
+                                        });
+                                    }
+                                    if ui
+                                        .button(icon_text(ui, icon::DELETE, t!("delete")))
+                                        .on_hover_text(t!("cm-delete.facts"))
+                                        .clicked()
+                                    {
+                                        let played = t!("cm-played", hours = format!("{hours:.1}"));
+                                        w.confirm_delete =
+                                            Some((name.clone(), format!("{theater}, {played}")));
+                                    }
+                                });
                             }
-                            let scroll = egui::ScrollArea::vertical()
-                                .id_salt("mp_saves")
-                                .max_height(crate::campaign::SAVES_HEIGHT);
-                            scroll.show(ui, |ui| {
-                                for (name, code, hours) in w.saves.clone() {
-                                    let theater = THEATERS.iter().find(|t| t.0 == code).map_or(code.as_str(), |t| t.1);
-                                    ui.horizontal(|ui| {
-                                        ui.label(format!("{theater:<22} {hours:>5.1} h"));
-                                        let clicked = ui.button(icon_text(ui, icon::HOST, t!("mp-host"))).clicked();
-                                        no_name |= clicked && !named;
-                                        if clicked && named {
-                                            let rules = host_rules(&settings, &state);
-                                            host = Some(match save::load(&name) {
-                                                Ok(Some(st)) => Host::resume(st, &data.0, rules)
-                                                    .map(|h| (name.clone(), h))
-                                                    .map_err(|e| format!("{e:#}")),
-                                                Ok(None) => Err(t!("cm-save-gone").into()),
-                                                Err(e) => Err(format!("{e:#}")),
-                                            });
-                                        }
-                                        if ui.button(icon_text(ui, icon::DELETE, t!("delete"))).on_hover_text(t!("cm-delete.facts")).clicked() {
-                                            let played = t!("cm-played", hours = format!("{hours:.1}"));
-                                            w.confirm_delete = Some((name.clone(), format!("{theater}, {played}")));
-                                        }
-                                    });
-                                }
-                            });
                         });
+                    });
                     flow.finish(ui);
                 }
             }
@@ -530,13 +556,22 @@ fn multiplayer_window(
             crate::menu::footer_rule(ui);
             ui.add_space(8.0);
             ui.horizontal(|ui| {
-                if ui.add_enabled(w.joining.is_none(), big_button(t!("back")).icon(icon::BACK)).clicked() {
+                if ui
+                    .add_enabled(w.joining.is_none(), big_button(t!("back")).icon(icon::BACK))
+                    .clicked()
+                {
                     close = true;
                 }
                 // A browser can't host (no UDP).
                 if w.page == Page::Join && !cfg!(target_arch = "wasm32") {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.add_enabled(w.joining.is_none(), big_button(t!("mp-host-game")).icon(icon::HOST)).clicked() {
+                        if ui
+                            .add_enabled(
+                                w.joining.is_none(),
+                                big_button(t!("mp-host-game")).icon(icon::HOST),
+                            )
+                            .clicked()
+                        {
                             w.page = Page::Host;
                         }
                     });
@@ -595,7 +630,10 @@ fn multiplayer_window(
                     w.open = false;
                     next.set(AppState::Flight);
                 }
-                Err(e) => w.error = Some(t!("mp-port-error", port = state.host_port, error = e.to_string())),
+                Err(e) => {
+                    w.error =
+                        Some(t!("mp-port-error", port = state.host_port, error = e.to_string()))
+                }
             }
         }
         Some(Err(e)) => w.error = Some(e),

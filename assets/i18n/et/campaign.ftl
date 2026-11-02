@@ -222,6 +222,7 @@ st-no-such-unit = Sellist üksust pole
 st-only-friendly-air-defence-can-be-manned = Mehitada saab ainult omi Patriot patareisid, Gepard'e ja droonide juhtimispunkte
 st-another-player-mans-it = Seda teenindab teine mängija
 st-no-track-locked = Jälge pole lukustatud
+st-radar-off = Radar väljas
 st-track-lost = Jälg kadunud
 st-friendly-track-weapons-hold = Oma jälg: relvad hoidke
 st-no-missiles-here = Siin pole rakette

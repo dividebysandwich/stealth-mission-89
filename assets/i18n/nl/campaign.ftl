@@ -222,6 +222,7 @@ st-no-such-unit = Onbekende eenheid
 st-only-friendly-air-defence-can-be-manned = Alleen eigen Patriot-batterijen, Gepards en dronecommandoposten kunnen worden bemand
 st-another-player-mans-it = Een andere speler bemant hem
 st-no-track-locked = Geen track vergrendeld
+st-radar-off = Radar uit
 st-track-lost = Track verloren
 st-friendly-track-weapons-hold = Bevriende track: vuur staken
 st-no-missiles-here = Hier zijn geen raketten

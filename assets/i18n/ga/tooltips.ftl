@@ -179,6 +179,7 @@ tip-console-flir = Pictiúr an cheamara teirmeach nó daite
 tip-console-zoom = Súmáil an cheamara
 tip-console-range = Raon an chláir aeir
 tip-console-leave = Fág an consól: ar ais chuig na hoibríochtaí
+tip-console-radar = Radar ar siúl nó múchta: múchta, féadfaidh diúracán frith-radair an suíomh a chailleadh, ach ní féidir aon rud a ghlasáil
 tip-console-auto = Eitlíonn an dróin roghnaithe a bhealach arís
 tip-console-manual = Eitil an dróin roghnaithe de láimh: an maide agus an scóig
 tip-console-track = Coinnigh ceamara an dróin ar an talamh faoina chros-ribí

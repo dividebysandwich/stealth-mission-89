@@ -180,6 +180,7 @@ tip-console-flir = Hő- vagy színes kamerakép
 tip-console-zoom = Kamera nagyítása
 tip-console-range = A légihelyzet hatótávolsága
 tip-console-leave = Kilépés a konzolból: vissza a műveletekhez
+tip-console-radar = Radar be vagy ki: kikapcsolva a radarromboló rakéta elvesztheti az állást, de semmit sem lehet befogni
 tip-console-auto = A kiválasztott drón újra az útvonalát repüli
 tip-console-manual = A kiválasztott drón kézi vezetése: botkormány és gázkar
 tip-console-track = A drón kamerájának a földön tartása a célkereszt alatt

@@ -222,6 +222,7 @@ st-no-such-unit = Ei tällaista yksikköä
 st-only-friendly-air-defence-can-be-manned = Miehittää voi vain omia Patriot-pattereita, Gepardeja ja lennokkien johtokeskuksia
 st-another-player-mans-it = Toinen pelaaja miehittää sen
 st-no-track-locked = Kohdetta ei ole lukittu
+st-radar-off = Tutka pois
 st-track-lost = Kohde kadotettu
 st-friendly-track-weapons-hold = Oma kohde: tulenkielto
 st-no-missiles-here = Ei ohjuksia täällä

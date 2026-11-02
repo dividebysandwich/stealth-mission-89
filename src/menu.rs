@@ -1513,10 +1513,7 @@ fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
                     if ui.add(wide(t!("menu-download")).icon(icon::DOWNLOAD)).clicked() {
                         ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
                     }
-                    ui.label(
-                        egui::RichText::new(t!("web-download-platforms"))
-                            .color(DIM),
-                    );
+                    ui.label(egui::RichText::new(t!("web-download-platforms")).color(DIM));
                     ui.add_space(14.0);
                     if ui.add(wide(t!("web-github")).icon(icon::GITHUB)).clicked() {
                         ui.ctx().open_url(egui::OpenUrl::new_tab(GITHUB_URL));
@@ -1649,7 +1646,11 @@ fn main_screen(
             ui.add_space(10.0);
             // In the browser the tab is closed instead.
             if !cfg!(target_arch = "wasm32")
-                && facts(ui.add(wide(t!("menu-quit")).icon(icon::QUIT)), t_lines!("menu-quit.facts")).clicked()
+                && facts(
+                    ui.add(wide(t!("menu-quit")).icon(icon::QUIT)),
+                    t_lines!("menu-quit.facts"),
+                )
+                .clicked()
             {
                 exit.write(AppExit::Success);
             }
@@ -1889,33 +1890,48 @@ pub(crate) fn menu_ui(
                     // Mission summary in big type, the full briefing below in small type.
                     // What is left beside the option columns, less the frame margins and border.
                     let summary_width = (ui.available_width() - 22.0).max(300.0);
-                    egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(ui, |ui| {
-                        ui.vertical(|ui| {
-                            ui.set_width(summary_width);
-                            match &state.mission {
-                                Some(Ok(m)) => {
-                                    mission_summary(ui, &state, m);
-                                    ui.add_space(6.0);
-                                    ui.horizontal(|ui| {
-                                        let plan = ui.button(icon_text(ui, icon::PLAN_ROUTE, egui::RichText::new(t!("menu-plan-route")).size(16.0)));
-                                        if facts(plan, t_lines!("menu-plan-route.facts")).clicked() {
-                                            planner.open = true;
-                                        }
-                                        let arm = ui.button(icon_text(ui, icon::LOADOUT, egui::RichText::new(t!("menu-loadout")).size(16.0)));
-                                        if facts(arm, t_lines!("menu-loadout.facts")).clicked() {
-                                            loadout.open = true;
-                                        }
-                                    });
+                    egui::Frame::new().stroke(egui::Stroke::new(1.0, DIM)).inner_margin(10.0).show(
+                        ui,
+                        |ui| {
+                            ui.vertical(|ui| {
+                                ui.set_width(summary_width);
+                                match &state.mission {
+                                    Some(Ok(m)) => {
+                                        mission_summary(ui, &state, m);
+                                        ui.add_space(6.0);
+                                        ui.horizontal(|ui| {
+                                            let plan = ui.button(icon_text(
+                                                ui,
+                                                icon::PLAN_ROUTE,
+                                                egui::RichText::new(t!("menu-plan-route"))
+                                                    .size(16.0),
+                                            ));
+                                            if facts(plan, t_lines!("menu-plan-route.facts"))
+                                                .clicked()
+                                            {
+                                                planner.open = true;
+                                            }
+                                            let arm = ui.button(icon_text(
+                                                ui,
+                                                icon::LOADOUT,
+                                                egui::RichText::new(t!("menu-loadout")).size(16.0),
+                                            ));
+                                            if facts(arm, t_lines!("menu-loadout.facts")).clicked()
+                                            {
+                                                loadout.open = true;
+                                            }
+                                        });
+                                    }
+                                    Some(Err(e)) => {
+                                        ui.colored_label(AMBER, e);
+                                    }
+                                    None => {
+                                        ui.label(t!("menu-generating"));
+                                    }
                                 }
-                                Some(Err(e)) => {
-                                    ui.colored_label(AMBER, e);
-                                }
-                                None => {
-                                    ui.label(t!("menu-generating"));
-                                }
-                            }
-                        });
-                    });
+                            });
+                        },
+                    );
                 });
                 flow.finish(ui);
             });
@@ -1926,19 +1942,43 @@ pub(crate) fn menu_ui(
                 let mut flow = Flow::new(ui);
                 flow.card(ui, Span::Fixed(MISSION_BUTTONS), |ui| {
                     ui.horizontal(|ui| {
-                        let to = if career_mode { t!("menu-back-records") } else { t!("menu-back-main") };
+                        let to = if career_mode {
+                            t!("menu-back-records")
+                        } else {
+                            t!("menu-back-main")
+                        };
                         if facts(ui.add(big_button(t!("back")).icon(icon::BACK)), &[to]).clicked() {
                             back = true;
                         }
-                        let new = if career_mode { t!("menu-new-sortie") } else { t!("menu-new-mission") };
-                        if facts(ui.add(big_button(new).icon(icon::NEW_MISSION)), t_lines!("menu-new-mission.facts")).clicked() {
+                        let new = if career_mode {
+                            t!("menu-new-sortie")
+                        } else {
+                            t!("menu-new-mission")
+                        };
+                        if facts(
+                            ui.add(big_button(new).icon(icon::NEW_MISSION)),
+                            t_lines!("menu-new-mission.facts"),
+                        )
+                        .clicked()
+                        {
                             state.seed = rand::random();
                             state.dirty = true;
                         }
-                        if !career_mode && facts(ui.add(big_button(t!("menu-load")).icon(icon::LOAD)), t_lines!("menu-load.facts")).clicked() {
+                        if !career_mode
+                            && facts(
+                                ui.add(big_button(t!("menu-load")).icon(icon::LOAD)),
+                                t_lines!("menu-load.facts"),
+                            )
+                            .clicked()
+                        {
                             saves.show();
                         }
-                        if facts(ui.add(big_button(t!("menu-options")).icon(icon::OPTIONS)), &[t!("menu-options.short")]).clicked() {
+                        if facts(
+                            ui.add(big_button(t!("menu-options")).icon(icon::OPTIONS)),
+                            &[t!("menu-options.short")],
+                        )
+                        .clicked()
+                        {
                             options.open = true;
                         }
                     });
@@ -1947,31 +1987,56 @@ pub(crate) fn menu_ui(
                     ui.horizontal(|ui| {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let can_fly = matches!(state.mission, Some(Ok(_)));
-                            let fly = ui.add_enabled(can_fly, big_button(t!("menu-fly")).icon(icon::FLY).primary());
+                            let fly = ui.add_enabled(
+                                can_fly,
+                                big_button(t!("menu-fly")).icon(icon::FLY).primary(),
+                            );
                             if facts(fly, t_lines!("menu-fly.facts")).clicked()
                                 && let Some(Ok(m)) = &state.mission
                             {
                                 *setup = crate::mission::setup_from_mission(m, &tables.start_dir);
                                 commands.insert_resource(ActiveMission(m.clone()));
-                                commands.insert_resource(state.route.clone().unwrap_or_else(|| crate::mission::PlannedRoute::of(m)));
-                                commands.insert_resource(state.loadout.clone().unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft)));
+                                commands.insert_resource(
+                                    state
+                                        .route
+                                        .clone()
+                                        .unwrap_or_else(|| crate::mission::PlannedRoute::of(m)),
+                                );
+                                commands.insert_resource(state.loadout.clone().unwrap_or_else(
+                                    || crate::loadout::PlannedLoadout::of(m, settings.aircraft),
+                                ));
                                 match &state.career {
-                                    Some(key) => commands.insert_resource(crate::career::CareerFlight(key.clone())),
-                                    None => commands.remove_resource::<crate::career::CareerFlight>(),
+                                    Some(key) => commands
+                                        .insert_resource(crate::career::CareerFlight(key.clone())),
+                                    None => {
+                                        commands.remove_resource::<crate::career::CareerFlight>()
+                                    }
                                 }
                                 next.set(AppState::Flight);
                             }
                             // Already in VR: "Fly" flies in the headset. No VR in the browser.
                             if !settings.vr && !cfg!(target_arch = "wasm32") {
                                 let vr_button = ui
-                                    .add_enabled(can_fly && vr.0, big_button(t!("menu-fly-vr")).icon(icon::VR))
-                                    .on_disabled_hover_text(if vr.0 { t!("menu-fly-vr.no-mission") } else { t!("menu-fly-vr.no-runtime") });
+                                    .add_enabled(
+                                        can_fly && vr.0,
+                                        big_button(t!("menu-fly-vr")).icon(icon::VR),
+                                    )
+                                    .on_disabled_hover_text(if vr.0 {
+                                        t!("menu-fly-vr.no-mission")
+                                    } else {
+                                        t!("menu-fly-vr.no-runtime")
+                                    });
                                 if facts(vr_button, t_lines!("menu-fly-vr.facts")).clicked() {
                                     match relaunch_in_vr(&state, &settings) {
                                         Ok(()) => {
                                             exit.write(AppExit::Success);
                                         }
-                                        Err(e) => state.mission = Some(Err(t!("menu-vr-failed", error = e.to_string()))),
+                                        Err(e) => {
+                                            state.mission = Some(Err(t!(
+                                                "menu-vr-failed",
+                                                error = e.to_string()
+                                            )))
+                                        }
                                     }
                                 }
                             }

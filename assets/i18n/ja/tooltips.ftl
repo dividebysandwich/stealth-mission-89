@@ -180,6 +180,7 @@ tip-console-flir = 熱線またはカラーカメラの映像
 tip-console-zoom = カメラズーム
 tip-console-range = 航空状況のレンジ
 tip-console-leave = コンソールを離れる：作戦に戻る
+tip-console-radar = レーダーのオン／オフ：停止中は対レーダーミサイルが陣地を見失うことがあるが、何もロックできない
 tip-console-auto = 選択中のドローンが再びルートを飛行
 tip-console-manual = 選択中のドローンを手動で操縦：スティックとスロットル
 tip-console-track = ドローンのカメラを照準の地上地点に固定

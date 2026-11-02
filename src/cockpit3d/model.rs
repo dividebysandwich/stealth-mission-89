@@ -739,6 +739,7 @@ mod tests {
             ConsoleKey::RangeIn,
             ConsoleKey::RangeOut,
             ConsoleKey::Leave,
+            ConsoleKey::Radar,
         ] {
             assert!(keys.contains(&k), "no {k:?} button");
         }

@@ -380,7 +380,10 @@ pub fn ops_ui(
                         c.actions.push(Action::Rearm { loadout });
                     }
                 }
-                if ui.add(big_button(t!("ops-end-sortie")).icon(icon::END_SORTIE).primary()).clicked() {
+                if ui
+                    .add(big_button(t!("ops-end-sortie")).icon(icon::END_SORTIE).primary())
+                    .clicked()
+                {
                     c.actions.push(Action::EndSortie { outcome: 0 });
                     c.landed = None;
                 }
@@ -635,7 +638,8 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 }
                 group_label(ui, c, o.id);
                 // The operation it prepares: how far along.
-                if let Some(op) = place_of(&o.objective).and_then(|p| c.state().operation_on(p, &front))
+                if let Some(op) =
+                    place_of(&o.objective).and_then(|p| c.state().operation_on(p, &front))
                 {
                     let name = c.state().place(op.place).map_or(String::new(), |p| p.name.clone());
                     let text =
@@ -657,10 +661,9 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             let name = c.state().place(ins.place).map_or(String::new(), |p| p.name.clone());
             let enemy = ins.side != Side::Blue;
             let (text, col) = match ins.state {
-                InsertionState::Pending { launch_at } if enemy => (
-                    t!("ops-enemy-liftoff", place = name, mins = mins(launch_at)),
-                    MISSILE_RED,
-                ),
+                InsertionState::Pending { launch_at } if enemy => {
+                    (t!("ops-enemy-liftoff", place = name, mins = mins(launch_at)), MISSILE_RED)
+                }
                 InsertionState::Pending { launch_at } => {
                     (t!("ops-liftoff", place = name, mins = mins(launch_at)), BRIGHT)
                 }
@@ -754,8 +757,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
         {
             let wait = stealth_campaign::tuning::SUPPLY_AI_WAIT;
             let left = (wait - (c.state().clock - since)).max(0.0) as i32;
-            let text =
-                t!("ops-ai-helicopter", time = format!("{}:{:02}", left / 60, left % 60));
+            let text = t!("ops-ai-helicopter", time = format!("{}:{:02}", left / 60, left % 60));
             ui.label(egui::RichText::new(text).color(BRIGHT));
         }
         // The site's cargo so far, how long its helipad waits, the AI's turn.
@@ -786,11 +788,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 .filter(|&&d| c.state().site(d).is_some_and(|s| s.alive()))
                 .count();
             let line = t!("ops-defences", sams = sams, threat = o.threat);
-            ui.label(if intel {
-                format!("{line}  -  {}", t!("ops-recon-intel"))
-            } else {
-                line
-            });
+            ui.label(if intel { format!("{line}  -  {}", t!("ops-recon-intel")) } else { line });
         }
         package_info(ui, c, &o);
         if o.kind.ai_flown() {
@@ -801,11 +799,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                 c.ui.error = None;
                 c.actions.push(Action::OrderInsertion { place });
             }
-            ui.label(
-                egui::RichText::new(t!("ops-order-insertion.facts"))
-                    .small()
-                    .color(DIM),
-            );
+            ui.label(egui::RichText::new(t!("ops-order-insertion.facts")).small().color(DIM));
             ui.add_space(6.0);
         }
         // The aircraft that flies it: the one last flown if it is made for it, else the best
@@ -864,7 +858,8 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
         let sortie = preview(&o, chosen, aircraft);
         let m = sortie_mission(&c.mission, c.state(), &sortie);
         let loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft));
-        let text = t!("ops-stores", aircraft = kind_of(aircraft).name(), stores = loadout.summary());
+        let text =
+            t!("ops-stores", aircraft = kind_of(aircraft).name(), stores = loadout.summary());
         ui.label(egui::RichText::new(text).color(DIM));
         support_button(ui, c, &o);
         ui.add_space(10.0);
@@ -2150,14 +2145,14 @@ fn players(ui: &mut egui::Ui, c: &ActiveCampaign, voice: &mut crate::voice::Voic
                         }
                         if p.id != c.me && c.role != Role::Local {
                             let muted = voice.muted.contains(&p.id.0);
-                            let text = egui::RichText::new(if muted { t!("ops-unmute") } else { t!("ops-mute") })
-                                .small()
-                                .color(if muted { AMBER } else { DIM });
-                            if ui
-                                .small_button(text)
-                                .on_hover_text(t!("ops-mute.facts"))
-                                .clicked()
-                            {
+                            let text = egui::RichText::new(if muted {
+                                t!("ops-unmute")
+                            } else {
+                                t!("ops-mute")
+                            })
+                            .small()
+                            .color(if muted { AMBER } else { DIM });
+                            if ui.small_button(text).on_hover_text(t!("ops-mute.facts")).clicked() {
                                 crate::voice::toggle_mute(voice, p.id.0);
                             }
                         }

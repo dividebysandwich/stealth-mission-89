@@ -215,11 +215,8 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         t_lines!("options-tooltips.facts"),
     )
     .changed();
-    toggled |= facts(
-        ui.checkbox(&mut s.atc, t!("options-atc")),
-        t_lines!("options-atc.facts"),
-    )
-    .changed();
+    toggled |=
+        facts(ui.checkbox(&mut s.atc, t!("options-atc")), t_lines!("options-atc.facts")).changed();
     toggled |= facts(
         ui.checkbox(&mut s.player_labels, t!("options-player-labels")),
         t_lines!("options-player-labels.facts"),
@@ -369,7 +366,11 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             .into_iter()
             .filter(|e| e.retro() == retro)
             .map(|e| {
-                let label = ui.painter().layout_no_wrap(e.label().to_string(), font.clone(), egui::Color32::WHITE);
+                let label = ui.painter().layout_no_wrap(
+                    e.label().to_string(),
+                    font.clone(),
+                    egui::Color32::WHITE,
+                );
                 // Pixelize has its slider beside it.
                 let slider = if e == crate::effects::Effect::Pixelize { 150.0 } else { 0.0 };
                 box_width + label.size().x + slider + 2.0 * ui.spacing().item_spacing.x
@@ -476,21 +477,27 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
             let range = MIC_GAIN_RANGE.0 * 100.0..=MIC_GAIN_RANGE.1 * 100.0;
             let slider =
                 egui::Slider::new(&mut percent, range).step_by(5.0).fixed_decimals(0).suffix("%");
-            if facts(ui.add(slider), t_lines!("options-mic-gain.facts"))
-                .changed()
-            {
+            if facts(ui.add(slider), t_lines!("options-mic-gain.facts")).changed() {
                 s.mic_gain = percent / 100.0;
                 changed = true;
             }
         });
         let devices = mic_devices();
         if !devices.is_empty() {
-            let shown = if s.mic_device.is_empty() { t!("options-mic-default") } else { s.mic_device.as_str() };
+            let shown = if s.mic_device.is_empty() {
+                t!("options-mic-default")
+            } else {
+                s.mic_device.as_str()
+            };
             let before = s.mic_device.clone();
             egui::ComboBox::from_id_salt("mic_device").width(220.0).selected_text(shown).show_ui(
                 ui,
                 |ui| {
-                    ui.selectable_value(&mut s.mic_device, String::new(), t!("options-mic-default"));
+                    ui.selectable_value(
+                        &mut s.mic_device,
+                        String::new(),
+                        t!("options-mic-default"),
+                    );
                     for d in devices {
                         ui.selectable_value(&mut s.mic_device, d.clone(), d.as_str());
                     }
@@ -507,7 +514,9 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
 /// The spoken ATC's voices, and the button to the VOICES dialog.
 #[cfg(not(target_arch = "wasm32"))]
 fn atc_voices(ui: &mut egui::Ui, s: &Settings, voices: &mut bool) {
-    let name = |n: &str| if n.is_empty() { t!("options-voice-text-only").to_string() } else { n.to_string() };
+    let name = |n: &str| {
+        if n.is_empty() { t!("options-voice-text-only").to_string() } else { n.to_string() }
+    };
     ui.label(
         egui::RichText::new(t!(
             "options-voices-line",
@@ -517,7 +526,9 @@ fn atc_voices(ui: &mut egui::Ui, s: &Settings, voices: &mut bool) {
         .color(DIM),
     );
     if facts(
-        ui.add(big_button(t!("options-voices")).icon(icon::DOWNLOAD).min_size(egui::vec2(300.0, 44.0))),
+        ui.add(
+            big_button(t!("options-voices")).icon(icon::DOWNLOAD).min_size(egui::vec2(300.0, 44.0)),
+        ),
         t_lines!("options-voices.facts"),
     )
     .clicked()
@@ -546,7 +557,11 @@ fn control_options(
 ) {
     section(ui, t!("options-section-bindings"));
     if facts(
-        ui.add(big_button(t!("options-keys-joystick")).icon(icon::KEYS).min_size(egui::vec2(300.0, 44.0))),
+        ui.add(
+            big_button(t!("options-keys-joystick"))
+                .icon(icon::KEYS)
+                .min_size(egui::vec2(300.0, 44.0)),
+        ),
         t_lines!("options-keys-joystick.facts"),
     )
     .clicked()

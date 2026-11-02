@@ -128,6 +128,7 @@ pub struct ConsoleUi {
     /// `--console-fire` fired, `--console-resupply` asked.
     test_fired: bool,
     test_resupply: bool,
+    test_radar_off: bool,
 }
 
 impl Default for ConsoleUi {
@@ -146,6 +147,7 @@ impl Default for ConsoleUi {
             trigger: false,
             test_fired: false,
             test_resupply: false,
+            test_radar_off: false,
         }
     }
 }
@@ -326,6 +328,7 @@ fn buttons(
     }
     let sim = &combat.sim;
     let launchers = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
+    let radar_off = sim.station_of(c.me.0).is_some_and(|s| s.radar_off);
     let mut send = |cmd: StationCmd| c.actions.push(Action::Station(cmd));
     for ConsoleButton(k) in keys.read() {
         match *k {
@@ -358,6 +361,7 @@ fn buttons(
             ConsoleKey::RangeIn => step_range(&mut ui, -1),
             ConsoleKey::RangeOut => step_range(&mut ui, 1),
             ConsoleKey::Leave => send(StationCmd::Leave),
+            ConsoleKey::Radar => send(StationCmd::Radar(radar_off)),
             // The drone command center's (`drone`).
             ConsoleKey::Auto
             | ConsoleKey::Manual
@@ -413,6 +417,11 @@ fn buttons(
         ui.test_fired = true;
         send(if m.gepard() { StationCmd::Burst } else { StationCmd::Fire { launcher: None } });
     }
+    // Test aid: `--console-radar-off` switches the radar off once.
+    if std::env::args().any(|a| a == "--console-radar-off") && !ui.test_radar_off {
+        ui.test_radar_off = true;
+        send(StationCmd::Radar(false));
+    }
     // Test aid: `--console-resupply` asks for a new stockpile once.
     if std::env::args().any(|a| a == "--console-resupply") && !ui.test_resupply {
         ui.test_resupply = true;
@@ -438,8 +447,8 @@ fn buttons(
 const FIRE_BLINK: f32 = 2.0;
 
 /// The console's buttons: a Gepard's without the missile battery's (launchers, guidance, the
-/// second and third reload); LOCK lit with a lock, FLIR with the thermal picture, FIRE lit with
-/// a lock out of reach and blinking with a hostile one in reach.
+/// second and third reload); LOCK lit with a lock, RADAR with the radar on, FLIR with the
+/// thermal picture, FIRE lit with a lock out of reach and blinking with a hostile one in reach.
 fn panel(
     manning: Option<Res<Manning>>,
     c: Option<Res<ActiveCampaign>>,
@@ -476,6 +485,9 @@ fn panel(
     let mut lit = Vec::new();
     if lock.is_some() {
         lit.push((ConsoleKey::Lock, scope::GREEN));
+    }
+    if sim.station_of(c.me.0).is_some_and(|s| !s.radar_off) {
+        lit.push((ConsoleKey::Radar, scope::GREEN));
     }
     if mfd.flir {
         lit.push((ConsoleKey::Flir, scope::GREEN));

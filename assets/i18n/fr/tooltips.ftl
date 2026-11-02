@@ -179,6 +179,7 @@ tip-console-flir = Image de la caméra thermique ou couleur
 tip-console-zoom = Zoom de la caméra
 tip-console-range = La portée de la situation aérienne
 tip-console-leave = Quitter la console : retour aux opérations
+tip-console-radar = Radar allumé ou coupé : coupé, un missile antiradar peut perdre le site, mais rien ne peut être verrouillé
 tip-console-auto = Le drone sélectionné reprend sa route
 tip-console-manual = Piloter le drone sélectionné à la main : le manche et les gaz
 tip-console-track = Garder la caméra du drone sur le sol, sous son réticule

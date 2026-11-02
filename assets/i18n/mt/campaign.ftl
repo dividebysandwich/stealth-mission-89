@@ -222,6 +222,7 @@ st-no-such-unit = Ebda unità bħal din
 st-only-friendly-air-defence-can-be-manned = Jistgħu jiġu mħaddma biss batteriji Patriot, Gepards u ċentri tal-kmand tad-drones ħbiebna
 st-another-player-mans-it = Plejer ieħor imexxiha
 st-no-track-locked = L-ebda track imsakkar
+st-radar-off = Radar mitfi
 st-track-lost = Track mitluf
 st-friendly-track-weapons-hold = Track ħabib: weapons hold
 st-no-missiles-here = M'hemmx missili hawn
