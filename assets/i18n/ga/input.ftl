@@ -7,6 +7,7 @@ axis-throttle = Sliotán
 axis-slew-x = Slew braiteora/cúrsóra X
 axis-slew-y = Slew braiteora/cúrsóra Y
 axis-nozzle = Gaibíní (Harrier)
+axis-tgp-zoom = Súmáil TGP
 input-button = Cnaipe { $n }
 input-axis = Ais { $n }
 vr-trigger = Truicear

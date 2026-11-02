@@ -717,6 +717,7 @@ fn reset_mfd(
     raster.geometry_theater.clear();
 }
 
+#[allow(clippy::too_many_arguments)]
 fn mfd_keys(
     mut actions: MessageReader<ActionEvent>,
     mut commands: MessageReader<MfdCommand>,
@@ -726,8 +727,13 @@ fn mfd_keys(
     cam: Res<TrackCam>,
     hud: Res<crate::hud::HudState>,
     stores: Res<crate::hud::Stores>,
+    mut zoom_axis: MessageReader<crate::hotas::TgpZoomAxis>,
 ) {
     let auto_zoom = cam.zoom.saturating_sub(1);
+    // The TGP zoom axis sets the zoom step outright.
+    if let Some(crate::hotas::TgpZoomAxis(z)) = zoom_axis.read().last() {
+        state.cam_zoom = Some(*z);
+    }
     let sfw = !stores.gun_selected && stores.bays.get(stores.selected).is_some_and(|b| b.sfw);
     if state.sfw != sfw {
         state.sfw = sfw;

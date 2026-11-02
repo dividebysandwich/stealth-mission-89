@@ -7,6 +7,7 @@ axis-throttle = Schub
 axis-slew-x = Sensor/Cursor bewegen X
 axis-slew-y = Sensor/Cursor bewegen Y
 axis-nozzle = Düsen (Harrier)
+axis-tgp-zoom = TGP-Zoom
 input-button = Knopf { $n }
 input-axis = Achse { $n }
 vr-trigger = Abzug

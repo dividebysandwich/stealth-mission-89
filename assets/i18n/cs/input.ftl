@@ -7,6 +7,7 @@ axis-throttle = Plyn
 axis-slew-x = Posun senzoru/kurzoru X
 axis-slew-y = Posun senzoru/kurzoru Y
 axis-nozzle = Trysky (Harrier)
+axis-tgp-zoom = Zoom TGP
 input-button = Tlačítko { $n }
 input-axis = Osa { $n }
 vr-trigger = Spoušť

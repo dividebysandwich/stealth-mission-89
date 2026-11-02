@@ -328,16 +328,25 @@ fn input(
     settings: Res<crate::settings::Settings>,
     time: Res<Time<Real>>,
     mut mfd: ResMut<crate::mfd::MfdState>,
+    mut zoom_axis: MessageReader<crate::hotas::TgpZoomAxis>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c.as_deref_mut()) else {
         keys.clear();
         drags.clear();
+        zoom_axis.clear();
         return;
     };
     if !m.drones() {
         keys.clear();
         drags.clear();
+        zoom_axis.clear();
         return;
+    }
+    // The TGP zoom axis sets the selected drone's camera zoom step.
+    if let Some(crate::hotas::TgpZoomAxis(z)) = zoom_axis.read().last()
+        && let Some(id) = ui.selected
+    {
+        ui.cam_mut(id).zoom = *z;
     }
     let sim = &combat.sim;
     let uavs = center_uavs(&combat, &m);

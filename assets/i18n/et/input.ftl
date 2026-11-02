@@ -7,6 +7,7 @@ axis-throttle = Gaas
 axis-slew-x = Anduri/kursori nihutus X
 axis-slew-y = Anduri/kursori nihutus Y
 axis-nozzle = Düüsid (Harrier)
+axis-tgp-zoom = TGP suum
 input-button = Nupp { $n }
 input-axis = Telg { $n }
 vr-trigger = Päästik

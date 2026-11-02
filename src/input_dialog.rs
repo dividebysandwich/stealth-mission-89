@@ -371,10 +371,7 @@ pub fn show(
                                         &t!("input-axis", n = m.code & 0xffff),
                                     ));
                                     ui.checkbox(&mut m.invert, t!("input-invert"));
-                                    if matches!(
-                                        control,
-                                        AxisControl::Throttle | AxisControl::Nozzle
-                                    ) {
+                                    if control.lever() {
                                         ui.label("");
                                     } else {
                                         ui.add(

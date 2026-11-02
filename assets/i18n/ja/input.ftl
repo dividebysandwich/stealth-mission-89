@@ -7,6 +7,7 @@ axis-throttle = スロットル
 axis-slew-x = センサー/カーソル スルー X
 axis-slew-y = センサー/カーソル スルー Y
 axis-nozzle = ノズル（ハリアー）
+axis-tgp-zoom = TGPズーム
 input-button = ボタン { $n }
 input-axis = 軸 { $n }
 vr-trigger = トリガー

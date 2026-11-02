@@ -7,6 +7,7 @@ axis-throttle = РУД
 axis-slew-x = Перемещение датчика/курсора X
 axis-slew-y = Перемещение датчика/курсора Y
 axis-nozzle = Сопла (Harrier)
+axis-tgp-zoom = Зум TGP
 input-button = Кнопка { $n }
 input-axis = Ось { $n }
 vr-trigger = Курок

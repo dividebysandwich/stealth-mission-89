@@ -7,6 +7,7 @@ axis-throttle = Manetă de gaze
 axis-slew-x = Deplasare senzor/cursor X
 axis-slew-y = Deplasare senzor/cursor Y
 axis-nozzle = Ajutaje (Harrier)
+axis-tgp-zoom = Zoom TGP
 input-button = Buton { $n }
 input-axis = Axa { $n }
 vr-trigger = Trăgaci

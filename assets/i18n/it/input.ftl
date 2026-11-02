@@ -7,6 +7,7 @@ axis-throttle = Manetta
 axis-slew-x = Spostamento sensore/cursore X
 axis-slew-y = Spostamento sensore/cursore Y
 axis-nozzle = Ugelli (Harrier)
+axis-tgp-zoom = Zoom TGP
 input-button = Pulsante { $n }
 input-axis = Asse { $n }
 vr-trigger = Grilletto

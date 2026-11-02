@@ -13,7 +13,28 @@ use serde::{Deserialize, Serialize};
 use crate::input::{Action, ActionEvent, FlightControls, Mods};
 
 pub fn build(app: &mut App) {
-    app.insert_resource(InputConfig::load()).insert_resource(Hotas::new());
+    app.insert_resource(InputConfig::load())
+        .insert_resource(Hotas::new())
+        .add_message::<TgpZoomAxis>();
+}
+
+/// The TGP zoom axis moved to another zoom step (`mfd::CAM_ZOOMS`): the targeting pod's or
+/// tracking camera's, a console camera's.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TgpZoomAxis(pub u8);
+
+/// How far past the middle between two zoom steps the axis must go to change step (of a step),
+/// so a lever resting between two does not flicker.
+const ZOOM_HYSTERESIS: f32 = 0.1;
+
+/// The zoom step for a TGP zoom axis value (0..1), staying at `last` near its edges.
+pub fn zoom_step(v: f32, last: Option<u8>) -> u8 {
+    let max = crate::mfd::CAM_ZOOM_MAX as f32;
+    let x = v.clamp(0.0, 1.0) * max;
+    match last {
+        Some(l) if (x - l as f32).abs() < 0.5 + ZOOM_HYSTERESIS => l,
+        _ => x.round() as u8,
+    }
 }
 
 /// Continuous controls a device axis can drive.
@@ -28,10 +49,17 @@ pub enum AxisControl {
     SlewY,
     /// The nozzle lever of a V/STOL type (the Harrier): 0 aft .. 1 the braking stop.
     Nozzle,
+    /// The targeting pod's (tracking camera's) zoom: 0 widest .. 1 narrowest.
+    TgpZoom,
 }
 
 impl AxisControl {
-    pub const ALL: [AxisControl; 7] = [
+    /// A lever (0..1, no centre and no dead zone), not a stick axis.
+    pub fn lever(self) -> bool {
+        matches!(self, AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom)
+    }
+
+    pub const ALL: [AxisControl; 8] = [
         AxisControl::Roll,
         AxisControl::Pitch,
         AxisControl::Yaw,
@@ -39,6 +67,7 @@ impl AxisControl {
         AxisControl::Nozzle,
         AxisControl::SlewX,
         AxisControl::SlewY,
+        AxisControl::TgpZoom,
     ];
 
     /// The axis's name in the player's language.
@@ -51,6 +80,7 @@ impl AxisControl {
             AxisControl::SlewX => "axis-slew-x",
             AxisControl::SlewY => "axis-slew-y",
             AxisControl::Nozzle => "axis-nozzle",
+            AxisControl::TgpZoom => "axis-tgp-zoom",
         })
     }
 }
@@ -100,10 +130,10 @@ pub struct AxisMapping {
 
 impl AxisMapping {
     /// The control's value from the raw axis value (-1..1): -1..1 for the stick and rudder,
-    /// 0..1 for the throttle and the nozzles.
+    /// 0..1 for the throttle, the nozzles and the zoom.
     pub fn output(&self, raw: f32) -> f32 {
         let v = if self.invert { -raw } else { raw };
-        if matches!(self.control, AxisControl::Throttle | AxisControl::Nozzle) {
+        if self.control.lever() {
             return ((v + 1.0) / 2.0).clamp(0.0, 1.0);
         }
         let dz = self.deadzone.clamp(0.0, 0.9);
@@ -442,7 +472,7 @@ impl InputConfig {
         self.axes.retain(|m| m.control != control && !(m.device == device && m.code == code));
         let invert = control == AxisControl::Throttle;
         let deadzone = match control {
-            AxisControl::Throttle | AxisControl::Nozzle => 0.0,
+            AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom => 0.0,
             AxisControl::SlewX | AxisControl::SlewY => 0.1,
             _ => 0.05,
         };
@@ -702,6 +732,8 @@ pub struct Hotas {
     /// Last nozzle axis value seen (the first only noted), so the nozzles follow the axis once
     /// it moves and not before.
     nozzle_seen: Option<f32>,
+    /// The TGP zoom axis's zoom step (the first only noted, like the nozzles').
+    zoom_seen: Option<u8>,
 }
 
 impl Hotas {
@@ -729,7 +761,13 @@ impl Hotas {
         for d in devices.values() {
             info!("joystick: {}", d.key);
         }
-        Self { gilrs: gilrs.map(SyncCell::new), devices, throttle_applied: None, nozzle_seen: None }
+        Self {
+            gilrs: gilrs.map(SyncCell::new),
+            devices,
+            throttle_applied: None,
+            nozzle_seen: None,
+            zoom_seen: None,
+        }
     }
 
     /// Connected devices, sorted by key.
@@ -848,6 +886,7 @@ pub fn read_hotas(
     config: Res<InputConfig>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
+    mut zoom: MessageWriter<TgpZoomAxis>,
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
 ) {
     hotas.poll();
@@ -868,13 +907,17 @@ pub fn read_hotas(
             return;
         }
     }
-    // At a console only the stick, the rudder and the triggers pass.
+    // At a console only the stick, the rudder, the camera's zoom and the triggers pass.
     let console = block.0;
     for m in &config.axes {
         if console
             && !matches!(
                 m.control,
-                AxisControl::Roll | AxisControl::Pitch | AxisControl::Yaw | AxisControl::Throttle
+                AxisControl::Roll
+                    | AxisControl::Pitch
+                    | AxisControl::Yaw
+                    | AxisControl::Throttle
+                    | AxisControl::TgpZoom
             )
         {
             continue;
@@ -902,6 +945,13 @@ pub fn read_hotas(
                 }
                 _ => {}
             },
+            AxisControl::TgpZoom => {
+                let step = zoom_step(v, hotas.zoom_seen);
+                if hotas.zoom_seen.is_some_and(|s| s != step) {
+                    zoom.write(TgpZoomAxis(step));
+                }
+                hotas.zoom_seen = Some(step);
+            }
             _ => {}
         }
     }
@@ -962,6 +1012,25 @@ pub fn action_name(a: Action) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The TGP zoom axis is a lever over the zoom steps, holding a step near its edges.
+    #[test]
+    fn tgp_zoom_axis_steps() {
+        let max = crate::mfd::CAM_ZOOM_MAX;
+        let m = AxisMapping {
+            control: AxisControl::TgpZoom,
+            device: String::new(),
+            code: 0,
+            invert: false,
+            deadzone: 0.0,
+        };
+        assert_eq!(zoom_step(m.output(-1.0), None), 0);
+        assert_eq!(zoom_step(m.output(1.0), None), max);
+        let edge = 2.5 / max as f32;
+        assert_eq!(zoom_step(edge + 0.01, Some(2)), 2, "held near the edge");
+        assert_eq!(zoom_step(edge + 0.01, None), 3);
+        assert_eq!(zoom_step(edge + 0.1 / max as f32 + 0.01, Some(2)), 3);
+    }
 
     /// A mapping saved before the cursor lock: NumpadEnter fired, the left thumbstick click
     /// dropped a decoy.

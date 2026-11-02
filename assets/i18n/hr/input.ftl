@@ -7,6 +7,7 @@ axis-throttle = Gas
 axis-slew-x = Pomak senzora/kursora X
 axis-slew-y = Pomak senzora/kursora Y
 axis-nozzle = Mlaznice (Harrier)
+axis-tgp-zoom = Zum TGP-a
 input-button = Tipka { $n }
 input-axis = Os { $n }
 vr-trigger = Okidač

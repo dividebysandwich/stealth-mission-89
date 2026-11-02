@@ -7,6 +7,7 @@ axis-throttle = Μανέτα
 axis-slew-x = Μετατόπιση αισθητήρα/δρομέα X
 axis-slew-y = Μετατόπιση αισθητήρα/δρομέα Y
 axis-nozzle = Ακροφύσια (Harrier)
+axis-tgp-zoom = Ζουμ TGP
 input-button = Κουμπί { $n }
 input-axis = Άξονας { $n }
 vr-trigger = Σκανδάλη

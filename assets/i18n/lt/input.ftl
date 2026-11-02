@@ -7,6 +7,7 @@ axis-throttle = Greičio svirtis (throttle)
 axis-slew-x = Jutiklio / žymeklio postūmis X
 axis-slew-y = Jutiklio / žymeklio postūmis Y
 axis-nozzle = Antgaliai (Harrier)
+axis-tgp-zoom = TGP mastelis
 input-button = Mygtukas { $n }
 input-axis = Ašis { $n }
 vr-trigger = Gaidukas

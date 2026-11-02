@@ -7,6 +7,7 @@ axis-throttle = Gaz
 axis-slew-x = Déplacement capteur/curseur X
 axis-slew-y = Déplacement capteur/curseur Y
 axis-nozzle = Tuyères (Harrier)
+axis-tgp-zoom = Zoom TGP
 input-button = Bouton { $n }
 input-axis = Axe { $n }
 vr-trigger = Gâchette

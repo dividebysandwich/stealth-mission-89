@@ -309,6 +309,7 @@ fn buttons(
     mut keys: MessageReader<ConsoleButton>,
     mut clicks: MessageReader<ScreenClick>,
     mut actions: MessageReader<crate::input::ActionEvent>,
+    mut zoom_axis: MessageReader<crate::hotas::TgpZoomAxis>,
     mut mfd: ResMut<crate::mfd::MfdState>,
     time: Res<Time<Real>>,
 ) {
@@ -316,8 +317,15 @@ fn buttons(
         keys.clear();
         clicks.clear();
         actions.clear();
+        zoom_axis.clear();
         return;
     };
+    // The TGP zoom axis sets the camera's zoom step (the drone center's: `drone`).
+    if let Some(crate::hotas::TgpZoomAxis(z)) = zoom_axis.read().last()
+        && !m.drones()
+    {
+        ui.zoom = Some(*z);
+    }
     // The bound camera zoom controls work the console's camera too.
     for crate::input::ActionEvent(a) in actions.read() {
         match a {

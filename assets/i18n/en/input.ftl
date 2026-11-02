@@ -7,6 +7,7 @@ axis-throttle = Throttle
 axis-slew-x = Sensor/cursor slew X
 axis-slew-y = Sensor/cursor slew Y
 axis-nozzle = Nozzles (Harrier)
+axis-tgp-zoom = TGP zoom
 input-button = Button { $n }
 input-axis = Axis { $n }
 vr-trigger = Trigger

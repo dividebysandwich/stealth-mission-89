@@ -7,6 +7,7 @@ axis-throttle = Przepustnica
 axis-slew-x = Przesuw sensora/kursora X
 axis-slew-y = Przesuw sensora/kursora Y
 axis-nozzle = Dysze (Harrier)
+axis-tgp-zoom = Zoom TGP
 input-button = Przycisk { $n }
 input-axis = Oś { $n }
 vr-trigger = Spust

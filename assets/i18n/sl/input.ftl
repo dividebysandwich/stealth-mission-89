@@ -7,6 +7,7 @@ axis-throttle = Plin
 axis-slew-x = Premik senzorja/kazalca X
 axis-slew-y = Premik senzorja/kazalca Y
 axis-nozzle = Šobe (Harrier)
+axis-tgp-zoom = Povečava TGP
 input-button = Gumb { $n }
 input-axis = Os { $n }
 vr-trigger = Sprožilec

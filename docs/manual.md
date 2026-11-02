@@ -217,7 +217,8 @@ change is saved at once.
 
 - **Search** (under the title) keeps only the actions whose name holds what you type. It also
   narrows the VR controller lists below to the actions it matches (see *VR controllers*).
-- **Axes**: roll, pitch, rudder, throttle, the sensor/cursor slew pair and the Harrier's nozzles. Click
+- **Axes**: roll, pitch, rudder, throttle, the sensor/cursor slew pair, the Harrier's nozzles and the
+  TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera). Click
   **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. The F-117
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an

@@ -7,6 +7,7 @@ axis-throttle = Gases
 axis-slew-x = Desplazamiento sensor/cursor X
 axis-slew-y = Desplazamiento sensor/cursor Y
 axis-nozzle = Toberas (Harrier)
+axis-tgp-zoom = Zoom del TGP
 input-button = Botón { $n }
 input-axis = Eje { $n }
 vr-trigger = Gatillo

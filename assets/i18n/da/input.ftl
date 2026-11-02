@@ -7,6 +7,7 @@ axis-throttle = Gashåndtag
 axis-slew-x = Sensor-/markørbevægelse X
 axis-slew-y = Sensor-/markørbevægelse Y
 axis-nozzle = Dyser (Harrier)
+axis-tgp-zoom = TGP-zoom
 input-button = Knap { $n }
 input-axis = Akse { $n }
 vr-trigger = Aftrækker
