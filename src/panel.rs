@@ -174,10 +174,10 @@ pub struct LampStyle {
 }
 
 pub const GREEN: LampStyle = LampStyle { off: (45, 44), on: (47, 46) };
-const EMV: LampStyle = LampStyle { off: (38, 55), on: (41, 42) };
-const RED: LampStyle = LampStyle { off: (54, 55), on: (41, 42) };
-const DARK_RED: LampStyle = LampStyle { off: (16, 43), on: (41, 42) };
-const AMBER: LampStyle = LampStyle { off: (16, 43), on: (40, 39) };
+const EMV: LampStyle = LampStyle { off: (38, 55), on: (15, 42) };
+const RED: LampStyle = LampStyle { off: (42, 55), on: (15, 42) };
+const DARK_RED: LampStyle = LampStyle { off: (39, 43), on: (15, 42) };
+const AMBER: LampStyle = LampStyle { off: (39, 43), on: (15, 39) };
 /// Button caps of the modern panel: green text on dark green unlit, dark text on bright green
 /// lit (like the lit MFD bezel buttons).
 pub const BUTTON: LampStyle = LampStyle { off: (47, 44), on: (38, 47) };
