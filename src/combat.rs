@@ -537,6 +537,8 @@ fn collect_commands(
             Action::Eject => c.eject = true,
             Action::Training => c.toggle_training ^= true,
             Action::Resupply => c.resupply = true,
+            // A campaign runs in real time (`apply_time_accel`): no ACCEL on the HUD either.
+            Action::TimeAccel if combat.sim.campaign().is_some() => {}
             Action::TimeAccel => accel.level = accel.next_level(),
             Action::TimeNormal => accel.level = 0,
             Action::Quit => combat.quit = true,
