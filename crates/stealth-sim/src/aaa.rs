@@ -223,6 +223,8 @@ struct Track {
     on_ground: bool,
     lockheed: bool,
     comanche: bool,
+    rcs: i32,
+    low_level_ft: i32,
 }
 
 /// What the AAA does to the player in one frame.
@@ -453,6 +455,8 @@ impl Sim {
                     on_ground: self.pl.on_ground,
                     lockheed: self.pl.lockheed,
                     comanche: self.pl.comanche,
+                    rcs: self.pl.rcs(self.opts.campaign),
+                    low_level_ft: self.pl.low_level_ft(),
                 }
             })
             .collect();
@@ -494,6 +498,8 @@ impl Sim {
                 diff: self.diff,
                 lockheed: t.lockheed,
                 comanche: t.comanche,
+                rcs: t.rcs,
+                low_level_ft: t.low_level_ft,
                 grid: &self.grid,
                 relief: self.tiles.as_ref().map(|t| &t.relief),
                 hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),

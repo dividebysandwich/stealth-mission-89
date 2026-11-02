@@ -41,6 +41,32 @@ pub fn comanche_signature(velocity: i32) -> i32 {
     1 + 31 * knots / 180
 }
 
+/// The F-117A's radar return in a campaign against everyone else's, in 32nds (its faceted
+/// airframe scatters the radar's energy away). The classic missions keep the classic return;
+/// the real F-117A of the Lockheed mode has its own rules.
+pub const F117_RCS: i32 = 20;
+
+/// Height above the ground (ft) below which ground radars start losing the Tornado: its
+/// terrain-following radar holds it down in the clutter where others fly by hand.
+pub const TORNADO_LOW_LEVEL_FT: i32 = 150;
+
+impl crate::pilot::Pilot {
+    /// The aircraft's radar return in 32nds of the usual one in a campaign ([`F117_RCS`] for
+    /// the F-117A with its bays, the only jet without weapons outside).
+    pub(crate) fn rcs(&self, campaign: bool) -> i32 {
+        if !campaign || self.lockheed || self.external_stores || self.helicopter {
+            32
+        } else {
+            F117_RCS
+        }
+    }
+
+    /// The height (ft) below which ground radars lose the aircraft in the ground clutter.
+    pub(crate) fn low_level_ft(&self) -> i32 {
+        if self.tornado { TORNADO_LOW_LEVEL_FT } else { LOW_LEVEL_FT }
+    }
+}
+
 /// Inputs of [`detect`] that describe the player and the game settings.
 #[derive(Debug, Clone, Copy)]
 pub struct DetectCtx<'a> {
@@ -57,6 +83,10 @@ pub struct DetectCtx<'a> {
     pub lockheed: bool,
     /// The RAH-66: the return falls with its speed ([`comanche_signature`]).
     pub comanche: bool,
+    /// The aircraft's radar return in 32nds of the usual one ([`F117_RCS`] for the F-117A).
+    pub rcs: i32,
+    /// Ground radars lose it in the clutter below this height (ft), [`LOW_LEVEL_FT`] for most.
+    pub low_level_ft: i32,
     /// Theater terrain grid (16 x 16 cells, 256 bytes).
     pub grid: &'a [u8],
     /// The mountains, which hide the player from radars behind them.
@@ -111,10 +141,14 @@ pub fn detect(
     if c.comanche {
         score = score * comanche_signature(c.velocity) / 32;
     }
-    // Ground radars (site altitude 0) lose a target below LOW_LEVEL_FT in the ground clutter.
-    if salt == 0 && c.height < LOW_LEVEL_FT {
+    if c.rcs != 32 {
+        score = score * c.rcs / 32;
+    }
+    // Ground radars (site altitude 0) lose a low target in the ground clutter.
+    let low = c.low_level_ft.max(1);
+    if salt == 0 && c.height < low {
         let h = c.height.max(0);
-        score = score * h * h / (LOW_LEVEL_FT * LOW_LEVEL_FT);
+        score = score * h * h / (low * low);
     }
     // Mountains and hills between the radar and the player hide it (a ground site's antenna
     // on its mast above the ground).
@@ -154,6 +188,8 @@ impl Sim {
             diff: self.diff,
             lockheed: self.pl.lockheed,
             comanche: self.pl.comanche,
+            rcs: self.pl.rcs(self.opts.campaign),
+            low_level_ft: self.pl.low_level_ft(),
             grid: &self.grid,
             relief: self.tiles.as_ref().map(|t| &t.relief),
             hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
@@ -807,6 +843,40 @@ mod tests {
         assert_eq!(score(180 * 27, true), score(180 * 27, false));
     }
 
+    /// The F-117A returns a smaller share; the pulse radar still sees its beam best, the
+    /// Doppler radar its nose.
+    #[test]
+    fn f117_rcs_keeps_pulse_and_doppler() {
+        let grid = vec![12u8; 256];
+        let d = |h: i32, th, rcs| {
+            let c = DetectCtx { rcs, ..ctx(&grid, h, 500 * 27) };
+            detect(0x4000, 0x3FC0, 0, 4, Some(th), &c).0
+        };
+        let (pulse, doppler) = ((320, 7, 0), (320, 7, 1));
+        for th in [pulse, doppler] {
+            for h in [0x100, 0x2000, 0x4000] {
+                assert_eq!(d(h, th, F117_RCS), d(h, th, 32) * F117_RCS / 32);
+            }
+        }
+        assert!(d(0x4000, pulse, F117_RCS) > d(0x100, pulse, F117_RCS));
+        assert!(d(0x100, doppler, F117_RCS) > d(0x4000, doppler, F117_RCS));
+    }
+
+    /// The Tornado sinks into the ground clutter from higher up; airborne radars still see it.
+    #[test]
+    fn tornado_hides_in_the_clutter_higher_up() {
+        let grid = vec![8u8; 256];
+        let at = |height, low, salt| {
+            let c = DetectCtx { height, low_level_ft: low, ..ctx(&grid, 0x4000, 400 * 27) };
+            detect(0x4000, 0x4000 - 1, salt, 1, Some((200, 3, 0)), &c).0
+        };
+        let tornado = TORNADO_LOW_LEVEL_FT;
+        assert_eq!(at(100, LOW_LEVEL_FT, 0), 72);
+        assert_eq!(at(100, tornado, 0), 72 * 100 * 100 / (tornado * tornado));
+        assert_eq!(at(tornado, tornado, 0), 72);
+        assert_eq!(at(100, tornado, 500), 72);
+    }
+
     fn ctx(grid: &[u8], heading: i32, vel: i32) -> DetectCtx<'_> {
         DetectCtx {
             px: 0x4000,
@@ -819,6 +889,8 @@ mod tests {
             diff: 1,
             lockheed: false,
             comanche: false,
+            rcs: 32,
+            low_level_ft: LOW_LEVEL_FT,
             grid,
             relief: None,
             hills: None,
@@ -916,6 +988,8 @@ mod tests {
                 diff: d,
                 lockheed: l,
                 comanche: false,
+                rcs: 32,
+                low_level_ft: LOW_LEVEL_FT,
                 grid: &grid,
                 relief: None,
                 hills: None,
