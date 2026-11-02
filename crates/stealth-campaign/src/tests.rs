@@ -3030,3 +3030,27 @@ fn a_feint_turns_back_on_its_way() {
     assert_eq!(c.raid(id).unwrap().state, RaidState::Repelled);
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })));
 }
+
+#[test]
+fn enemy_insertions_go_for_what_a_place_is_worth() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let front = c.front(Side::Red);
+    let with_airfield = front.iter().copied().find(|&p| {
+        c.places[p as usize].airfield.is_some_and(|a| c.site(a).is_some_and(Site::alive))
+    });
+    if let Some(p) = with_airfield {
+        let v = c.place_value(p);
+        let a = c.places[p as usize].airfield.unwrap();
+        c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: a, by: None }]);
+        assert_eq!(c.place_value(p), v - tuning::AIRFIELD_VALUE);
+    }
+    // Undefended (no guns in the view), the most valuable ones are the targets.
+    let mut values: Vec<(i32, PlaceId)> = front.iter().map(|&p| (c.place_value(p), p)).collect();
+    values.sort_by_key(|v| std::cmp::Reverse(v.0));
+    let best = values[tuning::ENEMY_TARGET_CHOICE.min(values.len()) - 1].0;
+    c.enemy_insert_at = f64::MIN / 2.0;
+    c.tick(1.0, &WorldView::default(), &[]);
+    let ins = c.insertions.iter().find(|i| i.side == Side::Red).expect("an enemy insertion");
+    assert!(c.place_value(ins.place) >= best, "{values:?} -> {}", ins.place);
+}

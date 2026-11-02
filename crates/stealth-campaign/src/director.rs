@@ -965,7 +965,8 @@ impl CampaignState {
         let insert_every = self.paced(ENEMY_INSERT_EVERY[skill]);
         if now - self.enemy_insert_at >= insert_every {
             self.credit_cap_cover();
-            // One of the weakest places, those it failed at lately weighed stronger.
+            // One of the weakest places for what it is worth (an airfield and a city weigh
+            // against its defences), those it failed at lately weighed stronger.
             let mut weak: Vec<(PlaceId, i32)> = self
                 .front(Side::Red)
                 .into_iter()
@@ -975,7 +976,10 @@ impl CampaignState {
                 })
                 .filter(|&p| !self.active_insertion(p))
                 .filter(|&p| !self.capped(p))
-                .map(|p| (p, self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p)))
+                .map(|p| {
+                    let cost = self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p);
+                    (p, cost - self.place_value(p))
+                })
                 .collect();
             weak.sort_by_key(|w| w.1);
             weak.truncate(ENEMY_TARGET_CHOICE);
@@ -1097,6 +1101,20 @@ impl CampaignState {
                 .0 as PlaceId;
             Some((place, from, SamTarget { aaa, x, y, site: Some(d.id) }))
         })
+    }
+
+    /// What taking place `place` is worth to the enemy: its intact airfield (one base fewer for
+    /// the friendly side) and its intact cities (their income).
+    pub(crate) fn place_value(&self, place: PlaceId) -> i32 {
+        let p = &self.places[place as usize];
+        let alive = |o: ObjectId| self.site(o).is_some_and(Site::alive);
+        let airfield = p.airfield.is_some_and(alive) as i32 * AIRFIELD_VALUE;
+        let cities = p
+            .members
+            .iter()
+            .filter(|&&o| self.site(o).is_some_and(|s| s.kind == SiteKind::City && s.alive()))
+            .count() as i32;
+        airfield + cities * CITY_VALUE
     }
 
     /// The enemy's insertions at a place that failed lately.

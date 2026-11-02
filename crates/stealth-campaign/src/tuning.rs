@@ -82,6 +82,10 @@ pub const SAM_THREAT: i32 = 3;
 /// were one more SAM site, and picks among this many of the weakest.
 pub const FAILED_MEMORY: f64 = 2.0 * 3600.0;
 pub const ENEMY_TARGET_CHOICE: usize = 2;
+/// What a friendly place is worth to the enemy's insertions against its defences (a SAM site
+/// weighs `SAM_THREAT`, a gun 1): an intact airfield, every intact city.
+pub const AIRFIELD_VALUE: i32 = 4;
+pub const CITY_VALUE: i32 = 2;
 
 /// Enemy air: a patrol takes off this often from a live airfield, at most this many fly
 /// (plus one per ROE level); interceptors scramble against insertions this close to a base.
