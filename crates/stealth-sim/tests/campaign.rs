@@ -457,6 +457,29 @@ fn a_patriot_kill_is_credited_to_its_radar() {
 }
 
 #[test]
+fn a_gepard_kill_is_credited_to_the_gun() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    // A strike aircraft, flying in low (a fighter on patrol flies above the gun).
+    let home = find(&sim, 0x401, Some("Neuburg"));
+    let enemy = find(&sim, 0x001, Some("Komarno"));
+    sim.spawn_striker(enemy, home, 8, false);
+    // On its way in (it flies at about 300 m).
+    sim.place_gepard(13900, 28580);
+    let gepard = sim.units().iter().position(|u| u.kind == GroundKind::Gepard);
+    for _ in 0..40 * 60 {
+        let ev = run(&mut sim, &idle(), 1);
+        for e in ev {
+            if let SimEvent::CampaignFlightDestroyed { tag: 8, radar: by, .. } = e {
+                assert_eq!(by, gepard);
+                return;
+            }
+        }
+    }
+    panic!("the Gepard never got it");
+}
+
+#[test]
 fn an_enemy_sead_strike_takes_out_a_patriot_radar() {
     let (_, mut sim) = campaign();
     quiet(&mut sim);

@@ -744,7 +744,7 @@ impl Sim {
                 if self.record_shells {
                     self.new_ai_shells.push(shell);
                 }
-                c.shells.push(AiShell { shell, target, ahead: false });
+                c.shells.push(AiShell { shell, target, ahead: false, gun: Some(k as u16) });
             }
         }
         if self.units[k].rounds == 0 {
@@ -796,7 +796,7 @@ impl Sim {
                 if self.record_shells {
                     self.new_ai_shells.push(shell);
                 }
-                c.shells.push(AiShell { shell, target: j, ahead: true });
+                c.shells.push(AiShell { shell, target: j, ahead: true, gun: Some(k as u16) });
             }
         }
         if self.units[k].rounds == 0 {

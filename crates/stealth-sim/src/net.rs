@@ -696,7 +696,9 @@ impl Sim {
                 c.flights[i] = f;
             }
             for s in &w.ai_shells {
-                c.shells.push(crate::campaign::AiShell { shell: *s, target: 0, ahead: false });
+                let shell =
+                    crate::campaign::AiShell { shell: *s, target: 0, ahead: false, gun: None };
+                c.shells.push(shell);
             }
             if let Some((d, rounds)) = &w.defence {
                 c.defence = d.clone();

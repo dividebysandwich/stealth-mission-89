@@ -209,6 +209,10 @@ pub struct AiShell {
     /// A manned Gepard's programmed airburst round (bursts at its time, sprays fragments).
     #[serde(default)]
     pub ahead: bool,
+    /// A Gepard's round: the gun (AAA unit), credited with what it shoots down as a SAM
+    /// radar is (its radar draws the enemy's SEAD).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gun: Option<u16>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1771,7 +1775,8 @@ impl Sim {
                 if self.record_shells {
                     self.new_ai_shells.push(shell);
                 }
-                c.shells.push(AiShell { shell, target: j, ahead: false });
+                let gun = gepard.then_some(k as u16);
+                c.shells.push(AiShell { shell, target: j, ahead: false, gun });
             }
         }
         c.rng = rng;
@@ -1833,7 +1838,8 @@ impl Sim {
                     if self.record_shells {
                         self.new_ai_shells.push(shell);
                     }
-                    c.shells.push(AiShell { shell, target: f.target.unwrap_or(0), ahead: false });
+                    let target = f.target.unwrap_or(0);
+                    c.shells.push(AiShell { shell, target, ahead: false, gun: None });
                 }
             }
             c.flights[i] = Some(f);
@@ -1999,12 +2005,12 @@ impl Sim {
                     len(sub(s.shell.pos, tp)) < 30.0 && rng.random(1000) < 400
                 };
                 if alive && kill {
-                    kills.push(s.target);
+                    kills.push((s.target, s.gun));
                 }
                 return false;
             }
             if !s.shell.flak && alive && near < TRACER_RADIUS && rng.random(1000) < TRACER_HIT {
-                kills.push(s.target);
+                kills.push((s.target, s.gun));
                 return false;
             }
             s.shell.ttl > 0
@@ -2015,8 +2021,10 @@ impl Sim {
         for (x, y, alt) in bursts {
             self.emit(SimEvent::Flak { x, y, alt });
         }
-        for j in self.small_survive(kills, crate::uav::SHELL_HIT) {
-            self.ai_kill(j);
+        for (j, gun) in kills {
+            if !self.small_survive(vec![j], crate::uav::SHELL_HIT).is_empty() {
+                self.ai_kill_by(j, gun);
+            }
         }
     }
 
