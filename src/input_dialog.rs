@@ -8,6 +8,7 @@
 //! a key or a joystick button pressed jumps to the row it is bound to and highlights it.
 
 use std::collections::{HashMap, HashSet};
+use stealth_i18n::t;
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -105,7 +106,7 @@ impl Binding {
         match self {
             Binding::Axis(a) => a.name().to_string(),
             Binding::Button(ButtonTarget::Gun) | Binding::Key(ButtonTarget::Gun) => {
-                "Gun".to_string()
+                stealth_i18n::t!("kg-gun-target").to_string()
             }
             Binding::Button(ButtonTarget::Action(a)) | Binding::Key(ButtonTarget::Action(a)) => {
                 action_name(a)
@@ -235,7 +236,7 @@ pub fn show(
                 config.bind_key(target, mods, key);
                 dialog.status = Some(format!(
                     "{} -> {}",
-                    cap.what.name().to_ascii_uppercase(),
+                    cap.what.name().to_uppercase(),
                     crate::input::key_label(mods, key)
                 ));
                 dialog.capture = None;
@@ -245,7 +246,7 @@ pub fn show(
             let label = match (what, input) {
                 (Binding::Axis(control), Found::Axis(code)) => {
                     config.bind_axis(control, device.clone(), code);
-                    format!("Axis {}", code & 0xffff)
+                    t!("input-axis", n = code & 0xffff)
                 }
                 (Binding::Button(target), Found::Button(source)) => {
                     config.bind_button(target, device.clone(), source);
@@ -255,7 +256,7 @@ pub fn show(
             };
             dialog.status = Some(format!(
                 "{} -> {}",
-                what.name().to_ascii_uppercase(),
+                what.name().to_uppercase(),
                 binding_label(&device, &label)
             ));
             dialog.capture = None;
@@ -294,18 +295,25 @@ pub fn show(
             (screen.width() - 80.0).clamp(560.0, 980.0),
             (screen.height() - 120.0).max(300.0),
         ));
-    crate::menu::Panel::new("INPUT MAPPING").note("KEYS, JOYSTICKS AND GAMEPADS").window(window, ctx, |ui| {
+    crate::menu::Panel::new(t!("input-title")).note(t!("input-note")).window(window, ctx, |ui| {
             let split = Split::new(ui, "input_mapping");
             search_field(ui, &mut dialog.search, dialog.capture.is_some(), vr);
             ui.separator();
 
             // What the search keeps: the axes and the actions (by group) by name, the VR inputs.
             let query = search_query(&dialog.search);
-            let axes: Vec<AxisControl> = AxisControl::ALL.into_iter().filter(|c| holds(c.name(), &query)).collect();
+            let axes: Vec<AxisControl> =
+                AxisControl::ALL.into_iter().filter(|c| holds(c.name(), &query)).collect();
             let groups: Vec<(&str, Vec<ButtonTarget>)> = crate::key_guide::groups()
                 .into_iter()
                 .map(|(title, targets)| {
-                    (title, targets.into_iter().filter(|&t| holds(&Binding::Key(t).name(), &query)).collect::<Vec<_>>())
+                    (
+                        title,
+                        targets
+                            .into_iter()
+                            .filter(|&t| holds(&Binding::Key(t).name(), &query))
+                            .collect::<Vec<_>>(),
+                    )
                 })
                 .filter(|(_, targets)| !targets.is_empty())
                 .collect();
@@ -321,20 +329,20 @@ pub fn show(
                         ui.set_width((ui.available_width() - PREVIEW.x - 16.0).max(200.0));
                         let devices = hotas.devices();
                         if devices.is_empty() {
-                            ui.colored_label(AMBER, "NO JOYSTICKS DETECTED  (connect a device; it shows up here)");
+                            ui.colored_label(AMBER, t!("input-no-joysticks"));
                         } else {
                             for d in &devices {
                                 ui.label(egui::RichText::new(format!("> {}", d.key)).color(GREEN));
                             }
                         }
-                        ui.checkbox(&mut config.gamepad_defaults, "Standard gamepad layout")
-                            .on_hover_text("Left stick, right stick rudder, triggers throttle, face buttons fire / gun / weapons / bay. A button or axis bound here only does what it is bound to. Turn off if a joystick's buttons do things they aren't bound to.");
+                        ui.checkbox(&mut config.gamepad_defaults, t!("input-gamepad"))
+                            .on_hover_text(t!("input-gamepad.facts"));
                         match &dialog.status {
                             Some(text) => ui.colored_label(AMBER, text),
-                            None => ui.label(egui::RichText::new("Click BIND, then move an axis or press a button; + adds a key. Esc cancels.").color(DIM)),
+                            None => ui.label(egui::RichText::new(t!("input-help")).color(DIM)),
                         };
                         ui.label(
-                            egui::RichText::new("The aircraft on the right shows what the mapped axes do: invert an axis if it moves the wrong way.")
+                            egui::RichText::new(t!("input-preview-help"))
                                 .color(DIM)
                                 .small(),
                         );
@@ -343,103 +351,184 @@ pub fn show(
                 });
                 ui.separator();
                 if axes.is_empty() && groups.is_empty() && vr_inputs.is_empty() {
-                    ui.label(egui::RichText::new("NO MATCH").color(DIM));
+                    ui.label(egui::RichText::new(t!("input-no-match")).color(DIM));
                     return;
                 }
                 if !axes.is_empty() {
-                    ui.label(egui::RichText::new("[ AXES ]").color(AMBER).size(14.0));
-                    egui::Grid::new("axes").num_columns(6).spacing([14.0, 6.0]).striped(true).show(ui, |ui| {
-                        for &control in &axes {
-                            let what = Binding::Axis(control);
-                            ui.label(control.name());
-                            let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
-                            let mapping = config.axes.iter_mut().find(|m| m.control == control);
-                            match mapping {
-                                Some(m) => {
-                                    ui.label(binding_label(&m.device, &format!("Axis {}", m.code & 0xffff)));
-                                    ui.checkbox(&mut m.invert, "Invert");
-                                    if matches!(control, AxisControl::Throttle | AxisControl::Nozzle) {
-                                        ui.label("");
-                                    } else {
-                                        ui.add(egui::Slider::new(&mut m.deadzone, 0.0..=0.5).text("dead zone").fixed_decimals(2));
+                    ui.label(
+                        egui::RichText::new(format!("[ {} ]", t!("input-axes")))
+                            .color(AMBER)
+                            .size(14.0),
+                    );
+                    egui::Grid::new("axes").num_columns(6).spacing([14.0, 6.0]).striped(true).show(
+                        ui,
+                        |ui| {
+                            for &control in &axes {
+                                let what = Binding::Axis(control);
+                                ui.label(control.name());
+                                let capturing =
+                                    dialog.capture.as_ref().is_some_and(|c| c.what == what);
+                                let mapping = config.axes.iter_mut().find(|m| m.control == control);
+                                match mapping {
+                                    Some(m) => {
+                                        ui.label(binding_label(
+                                            &m.device,
+                                            &t!("input-axis", n = m.code & 0xffff),
+                                        ));
+                                        ui.checkbox(&mut m.invert, t!("input-invert"));
+                                        if matches!(
+                                            control,
+                                            AxisControl::Throttle | AxisControl::Nozzle
+                                        ) {
+                                            ui.label("");
+                                        } else {
+                                            ui.add(
+                                                egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
+                                                    .text(t!("input-dead-zone"))
+                                                    .fixed_decimals(2),
+                                            );
+                                        }
+                                        let v =
+                                            hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
+                                        let fill = match (control, v) {
+                                            (_, None) => 0.0,
+                                            (
+                                                AxisControl::Throttle | AxisControl::Nozzle,
+                                                Some(v),
+                                            ) => v,
+                                            (_, Some(v)) => (v + 1.0) / 2.0,
+                                        };
+                                        let text = v.map_or(t!("input-move-it").to_string(), |v| {
+                                            format!("{v:+.2}")
+                                        });
+                                        ui.add(
+                                            egui::ProgressBar::new(fill)
+                                                .desired_width(120.0)
+                                                .text(text),
+                                        );
                                     }
-                                    let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
-                                    let fill = match (control, v) {
-                                        (_, None) => 0.0,
-                                        (AxisControl::Throttle | AxisControl::Nozzle, Some(v)) => v,
-                                        (_, Some(v)) => (v + 1.0) / 2.0,
-                                    };
-                                    let text = v.map_or("move it".to_string(), |v| format!("{v:+.2}"));
-                                    ui.add(egui::ProgressBar::new(fill).desired_width(120.0).text(text));
+                                    None => {
+                                        ui.label(
+                                            egui::RichText::new(if capturing {
+                                                t!("input-move-axis")
+                                            } else {
+                                                "-"
+                                            })
+                                            .color(DIM),
+                                        );
+                                        ui.label("");
+                                        ui.label("");
+                                        ui.label("");
+                                    }
                                 }
-                                None => {
-                                    ui.label(egui::RichText::new(if capturing { "MOVE AN AXIS..." } else { "-" }).color(DIM));
-                                    ui.label("");
-                                    ui.label("");
-                                    ui.label("");
-                                }
+                                row_buttons(ui, what, capturing, &mut start, || {
+                                    config.axes.retain(|m| m.control != control)
+                                });
+                                ui.end_row();
                             }
-                            row_buttons(ui, what, capturing, &mut start, || config.axes.retain(|m| m.control != control));
-                            ui.end_row();
-                        }
-                    });
+                        },
+                    );
                     ui.add_space(8.0);
                 }
                 if !groups.is_empty() {
-                    ui.label(egui::RichText::new("[ BUTTONS ]").color(AMBER).size(14.0));
-                    egui::Grid::new("buttons").num_columns(5).spacing([14.0, 4.0]).striped(true).show(ui, |ui| {
-                        ui.label("");
-                        ui.label(egui::RichText::new("KEYBOARD").color(GREEN));
-                        ui.label("");
-                        ui.label(egui::RichText::new("JOYSTICK").color(GREEN));
-                        ui.end_row();
-                        for (target, title) in groups.into_iter().flat_map(|(title, targets)| {
-                            targets.into_iter().enumerate().map(move |(i, t)| (t, (i == 0).then_some(title)))
-                        }) {
-                            if let Some(title) = title {
-                                ui.label(egui::RichText::new(title).color(AMBER).strong());
+                    ui.label(
+                        egui::RichText::new(format!("[ {} ]", t!("input-buttons")))
+                            .color(AMBER)
+                            .size(14.0),
+                    );
+                    egui::Grid::new("buttons")
+                        .num_columns(5)
+                        .spacing([14.0, 4.0])
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("");
+                            ui.label(egui::RichText::new(t!("input-keyboard")).color(GREEN));
+                            ui.label("");
+                            ui.label(egui::RichText::new(t!("input-joystick")).color(GREEN));
+                            ui.end_row();
+                            for (target, title) in
+                                groups.into_iter().flat_map(|(title, targets)| {
+                                    targets
+                                        .into_iter()
+                                        .enumerate()
+                                        .map(move |(i, t)| (t, (i == 0).then_some(title)))
+                                })
+                            {
+                                if let Some(title) = title {
+                                    ui.label(egui::RichText::new(title).color(AMBER).strong());
+                                    ui.end_row();
+                                }
+                                let key = Binding::Key(target);
+                                // Behind the row it jumped to: a highlight, set once the row is
+                                // laid out.
+                                let highlight = ui.painter().add(egui::Shape::Noop);
+                                let name = ui.label(key.name());
+                                let capturing_key =
+                                    dialog.capture.as_ref().is_some_and(|c| c.what == key);
+                                let labels: Vec<String> =
+                                    config.keys_for(target).map(|m| m.label()).collect();
+                                let text = match (capturing_key, labels.is_empty()) {
+                                    (true, _) => t!("input-press-key").to_string(),
+                                    (false, true) => "-".to_string(),
+                                    (false, false) => labels.join(", "),
+                                };
+                                ui.label(egui::RichText::new(text).color(
+                                    if labels.is_empty() || capturing_key { DIM } else { BRIGHT },
+                                ));
+                                ui.horizontal(|ui| {
+                                    let add = egui::Button::new(if capturing_key {
+                                        t!("input-waiting")
+                                    } else {
+                                        "+"
+                                    })
+                                    .selected(capturing_key);
+                                    if ui.add(add).on_hover_text(t!("input-add-key")).clicked()
+                                        && !capturing_key
+                                    {
+                                        start = Some(key);
+                                    }
+                                    if ui.button(icon_text(ui, icon::CLEAR, t!("fm-key-clear"))).clicked() {
+                                        config.keys.retain(|m| m.target != target);
+                                    }
+                                });
+                                let what = Binding::Button(target);
+                                let capturing =
+                                    dialog.capture.as_ref().is_some_and(|c| c.what == what);
+                                match config.button(target) {
+                                    Some(m) => {
+                                        ui.label(binding_label(&m.device, &m.source.label()))
+                                    }
+                                    None => ui.label(
+                                        egui::RichText::new(if capturing {
+                                            t!("input-press-button")
+                                        } else {
+                                            "-"
+                                        })
+                                        .color(DIM),
+                                    ),
+                                };
+                                let buttons = row_buttons(ui, what, capturing, &mut start, || {
+                                    config.buttons.retain(|m| m.target != target)
+                                });
+                                if let Some((jumped, scroll)) = &mut dialog.jump
+                                    && *jumped == target
+                                {
+                                    let rect = name.rect.union(buttons.rect).expand(3.0);
+                                    ui.painter().set(
+                                        highlight,
+                                        egui::Shape::rect_filled(
+                                            rect,
+                                            2.0,
+                                            AMBER.gamma_multiply(0.25),
+                                        ),
+                                    );
+                                    if std::mem::take(scroll) {
+                                        ui.scroll_to_rect(rect, Some(egui::Align::Center));
+                                    }
+                                }
                                 ui.end_row();
                             }
-                            let key = Binding::Key(target);
-                            // Behind the row it jumped to: a highlight, set once the row is laid out.
-                            let highlight = ui.painter().add(egui::Shape::Noop);
-                            let name = ui.label(key.name());
-                            let capturing_key = dialog.capture.as_ref().is_some_and(|c| c.what == key);
-                            let labels: Vec<String> = config.keys_for(target).map(|m| m.label()).collect();
-                            let text = match (capturing_key, labels.is_empty()) {
-                                (true, _) => "PRESS A KEY...".to_string(),
-                                (false, true) => "-".to_string(),
-                                (false, false) => labels.join(", "),
-                            };
-                            ui.label(egui::RichText::new(text).color(if labels.is_empty() || capturing_key { DIM } else { BRIGHT }));
-                            ui.horizontal(|ui| {
-                                let add = egui::Button::new(if capturing_key { "WAITING" } else { "+" }).selected(capturing_key);
-                                if ui.add(add).on_hover_text("Add a key (it is taken from any other action)").clicked() && !capturing_key {
-                                    start = Some(key);
-                                }
-                                if ui.button(icon_text(ui, icon::CLEAR, "CLEAR")).clicked() {
-                                    config.keys.retain(|m| m.target != target);
-                                }
-                            });
-                            let what = Binding::Button(target);
-                            let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
-                            match config.button(target) {
-                                Some(m) => ui.label(binding_label(&m.device, &m.source.label())),
-                                None => ui.label(egui::RichText::new(if capturing { "PRESS A BUTTON..." } else { "-" }).color(DIM)),
-                            };
-                            let buttons = row_buttons(ui, what, capturing, &mut start, || config.buttons.retain(|m| m.target != target));
-                            if let Some((jumped, scroll)) = &mut dialog.jump
-                                && *jumped == target
-                            {
-                                let rect = name.rect.union(buttons.rect).expand(3.0);
-                                ui.painter().set(highlight, egui::Shape::rect_filled(rect, 2.0, AMBER.gamma_multiply(0.25)));
-                                if std::mem::take(scroll) {
-                                    ui.scroll_to_rect(rect, Some(egui::Align::Center));
-                                }
-                            }
-                            ui.end_row();
-                        }
-                    });
+                        });
                     ui.add_space(8.0);
                 }
                 if !vr_inputs.is_empty() {
@@ -451,15 +540,15 @@ pub fn show(
                 crate::menu::footer_rule(ui);
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    if ui.add(big_button("DEFAULT KEYS").icon(icon::RESET)).on_hover_text("Restore the default keyboard keys").clicked() {
+                    if ui.add(big_button(t!("input-default-keys")).icon(icon::RESET)).on_hover_text(t!("input-default-keys.facts")).clicked() {
                         config.keys = default_key_mappings();
                     }
-                    if ui.add(big_button("CLEAR ALL").icon(icon::CLEAR)).on_hover_text("Remove every joystick axis and button binding (the keys stay)").clicked() {
+                    if ui.add(big_button(t!("input-clear-all")).icon(icon::CLEAR)).on_hover_text(t!("input-clear-all.facts")).clicked() {
                         config.axes.clear();
                         config.buttons.clear();
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.add(big_button("DONE").icon(icon::DONE)).on_hover_text("Close the input mapping").clicked() {
+                        if ui.add(big_button(t!("input-done")).icon(icon::DONE)).on_hover_text(t!("input-done.facts")).clicked() {
                             open = false;
                         }
                     });
@@ -476,7 +565,7 @@ pub fn show(
         match config.save() {
             Ok(_) => dialog.saved = Some(config.clone()),
             Err(e) => {
-                dialog.status = Some(format!("could not save the input mapping: {e}"));
+                dialog.status = Some(t!("input-save-failed", error = e.to_string()));
                 dialog.saved = Some(config.clone());
             }
         }
@@ -514,7 +603,7 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
             // Up to the X's square at the right end, kept while empty so the field stays put.
             let width = ui.available_width() - ICON - ui.spacing().item_spacing.x;
             // The hint makes way for the caret once the field has the keyboard.
-            let hint = if ui.memory(|m| m.has_focus(id)) { "" } else { "TYPE TO SEARCH" };
+            let hint = if ui.memory(|m| m.has_focus(id)) { "" } else { t!("fm-type-to-search") };
             let out = ui
                 .scope(|ui| {
                     // The field's own caret is hidden: the `_` is drawn instead.
@@ -555,7 +644,7 @@ fn search_field(ui: &mut egui::Ui, search: &mut String, capturing: bool, vr: boo
                 let stroke = egui::Stroke::new(2.0, BRIGHT);
                 ui.painter().line_segment([c + egui::vec2(-r, -r), c + egui::vec2(r, r)], stroke);
                 ui.painter().line_segment([c + egui::vec2(-r, r), c + egui::vec2(r, -r)], stroke);
-                if x.on_hover_text("Clear the search").clicked() {
+                if x.on_hover_text(t!("input-clear-search")).clicked() {
                     search.clear();
                     ui.memory_mut(|m| m.request_focus(id));
                 }
@@ -623,22 +712,20 @@ fn vr_buttons(
     matching: &[ButtonTarget],
 ) {
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("[ VR CONTROLLERS ]").color(AMBER).size(14.0));
-        if ui.button(icon_text(ui, icon::RESET, "DEFAULTS")).clicked() {
+        ui.label(
+            egui::RichText::new(format!("[ {} ]", t!("kg-vr-controllers"))).color(AMBER).size(14.0),
+        );
+        if ui.button(icon_text(ui, icon::RESET, t!("input-defaults"))).clicked() {
             config.vr_buttons = default_vr_buttons();
         }
     });
-    ui.label(
-        egui::RichText::new("A trigger only counts while its hand holds the throttle (left) or stick (right); otherwise it presses the control under the fingertip.")
-            .color(DIM)
-            .small(),
-    );
+    ui.label(egui::RichText::new(t!("input-vr-trigger-note")).color(DIM).small());
     egui::Grid::new("vr_buttons").num_columns(3).spacing([14.0, 4.0]).striped(true).show(
         ui,
         |ui| {
             ui.label("");
-            ui.label(egui::RichText::new("LEFT HAND").color(GREEN));
-            ui.label(egui::RichText::new("RIGHT HAND").color(GREEN));
+            ui.label(egui::RichText::new(t!("input-left-hand")).color(GREEN));
+            ui.label(egui::RichText::new(t!("input-right-hand")).color(GREEN));
             ui.end_row();
             for &input in inputs {
                 let name = vr_input_name(input);
@@ -676,11 +763,12 @@ fn row_buttons(
 ) -> egui::Response {
     ui.horizontal(|ui| {
         let bind =
-            egui::Button::new(if capturing { "WAITING" } else { "BIND" }).selected(capturing);
+            egui::Button::new(if capturing { t!("input-waiting") } else { t!("input-bind") })
+                .selected(capturing);
         if ui.add(bind).clicked() && !capturing {
             *start = Some(what);
         }
-        if ui.button(icon_text(ui, icon::CLEAR, "CLEAR")).clicked() {
+        if ui.button(icon_text(ui, icon::CLEAR, t!("fm-key-clear"))).clicked() {
             clear();
         }
     })
@@ -824,15 +912,17 @@ fn preview(ui: &mut egui::Ui, s: Stick) {
 
     // Readouts.
     let dir = |v: f32, neg: &str, pos: &str| match v {
-        v if v > 0.02 => format!("{pos} {:.0}%", v * 100.0),
-        v if v < -0.02 => format!("{neg} {:.0}%", -v * 100.0),
-        _ => "CENTRE".to_string(),
+        v if v > 0.02 => format!("{} {:.0}%", t!(pos), v * 100.0),
+        v if v < -0.02 => format!("{} {:.0}%", t!(neg), -v * 100.0),
+        _ => t!("input-centre").to_string(),
     };
     let font = egui::FontId::monospace(11.0);
+    let names = [t!("input-roll"), t!("input-pitch"), t!("input-rudder")];
+    let pad = names.iter().map(|n| n.chars().count()).max().unwrap_or(0) + 1;
     let lines = [
-        format!("ROLL   {}", dir(s.roll, "LEFT", "RIGHT")),
-        format!("PITCH  {}", dir(s.pitch, "DOWN", "UP")),
-        format!("RUDDER {}", dir(s.yaw, "LEFT", "RIGHT")),
+        format!("{:<pad$}{}", names[0], dir(s.roll, "input-left", "input-right")),
+        format!("{:<pad$}{}", names[1], dir(s.pitch, "input-down", "input-up")),
+        format!("{:<pad$}{}", names[2], dir(s.yaw, "input-left", "input-right")),
     ];
     for (i, l) in lines.iter().enumerate() {
         painter.text(
@@ -843,8 +933,9 @@ fn preview(ui: &mut egui::Ui, s: Stick) {
             GREEN,
         );
     }
+    let throttle = t!("input-throttle");
     let thr =
-        s.throttle.map_or("THROTTLE -".to_string(), |t| format!("THROTTLE {:.0}%", t * 100.0));
+        s.throttle.map_or(format!("{throttle} -"), |t| format!("{throttle} {:.0}%", t * 100.0));
     painter.text(
         rect.right_bottom() + egui::vec2(-6.0, -5.0),
         egui::Align2::RIGHT_BOTTOM,

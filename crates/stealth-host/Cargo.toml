@@ -9,6 +9,7 @@ stealth-formats.workspace = true
 stealth-mission = { path = "../stealth-mission" }
 stealth-sim = { path = "../stealth-sim" }
 stealth-campaign = { path = "../stealth-campaign" }
+stealth-i18n.workspace = true
 serde.workspace = true
 ron.workspace = true
 anyhow.workspace = true

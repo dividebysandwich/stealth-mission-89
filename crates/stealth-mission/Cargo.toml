@@ -7,6 +7,7 @@ description = "Stealth Mission 89 random mission generator"
 [dependencies]
 ron.workspace = true
 stealth-formats.workspace = true
+stealth-i18n.workspace = true
 serde.workspace = true
 anyhow.workspace = true
 serde_json = "1"

@@ -6,6 +6,7 @@
 use crate::state::*;
 use crate::tuning::*;
 use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WorldView};
+use stealth_i18n::{Text, text};
 
 impl CampaignState {
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
@@ -24,10 +25,11 @@ impl CampaignState {
                 }
                 if let Some(s) = self.site_mut(object).filter(|s| s.alive()) {
                     s.destroyed_at = Some(now);
+                    let place = s.name.as_str();
                     let text = match s.kind {
-                        SiteKind::Airfield => Some(format!("{} airfield destroyed", s.name)),
-                        SiteKind::Sam => Some(format!("SAM site at {} destroyed", s.name)),
-                        SiteKind::Ship => Some("Ship sunk".to_string()),
+                        SiteKind::Airfield => Some(text!("cl-airfield-destroyed", place = place)),
+                        SiteKind::Sam => Some(text!("cl-sam-destroyed", place = place)),
+                        SiteKind::Ship => Some(text!("cl-ship-sunk")),
                         _ => None,
                     };
                     if let Some(t) = text {
@@ -61,13 +63,10 @@ impl CampaignState {
                 let side = ins.side;
                 // A player's helicopter carries on alone.
                 if ins.state == InsertionState::Enroute && left == 0 && ins.pilots.is_empty() {
-                    self.insertion_failed(k, "all helicopters lost", ev);
+                    self.insertion_failed(k, "cl-why-all-lost", ev);
                 } else if ins.state == InsertionState::Enroute {
-                    ev.push(CampaignEvent::Message(if side == Side::Blue {
-                        format!("Helicopter lost - {left} left for {name}")
-                    } else {
-                        format!("Enemy helicopter down - {left} left for {name}")
-                    }));
+                    let id = if side == Side::Blue { "cl-heli-lost" } else { "cl-enemy-heli-down" };
+                    ev.push(CampaignEvent::Message(text!(id, left = left, place = name)));
                 }
             }
             Report::FlightLanded { tag, x, y } if tag != 0 => {
@@ -95,14 +94,14 @@ impl CampaignState {
                 let h = ins.helicopters.iter().position(|&t| t == tag).expect("contains");
                 ins.alive[h] = false;
                 if ins.alive.iter().all(|a| !a) && ins.pilots.is_empty() {
-                    self.insertion_failed(k, "the helicopters landed short", ev);
+                    self.insertion_failed(k, "cl-why-landed-short", ev);
                 }
             }
             _ => {}
         }
     }
 
-    /// Insertion `k` in the air failed (`why`, for the friendly side's log).
+    /// Insertion `k` in the air failed (`why`: message id, for the friendly side's log).
     pub(crate) fn insertion_failed(&mut self, k: usize, why: &str, ev: &mut Vec<CampaignEvent>) {
         let ins = &mut self.insertions[k];
         ins.state = InsertionState::Failed;
@@ -111,11 +110,12 @@ impl CampaignState {
         self.settle_insertion(id, InsertionState::Failed);
         ev.push(CampaignEvent::InsertionFailed { id, place });
         if side == Side::Blue {
-            self.note(format!("Insertion at {name} failed: {why}"));
-            ev.push(CampaignEvent::Message(format!("Insertion at {name} failed")));
+            self.note(text!("cl-insertion-failed-why", place = name.as_str(), why = text!(why)));
+            ev.push(CampaignEvent::Message(text!("cl-insertion-failed", place = name)));
         } else {
-            self.note(format!("Enemy insertion at {name} stopped"));
-            ev.push(CampaignEvent::Message(format!("Enemy insertion at {name} stopped!")));
+            let text = text!("cl-enemy-insertion-stopped", place = name);
+            self.note(text.clone());
+            ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
         }
     }
 
@@ -174,13 +174,9 @@ impl CampaignState {
         if airfield {
             self.aircraft_back(side, CAPTURED_FIGHTERS, CAPTURED_HELICOPTERS);
         }
-        if side == Side::Blue {
-            self.note(format!("{name} captured"));
-            ev.push(CampaignEvent::Message(format!("{name} captured!")));
-        } else {
-            self.note(format!("{name} lost to the enemy"));
-            ev.push(CampaignEvent::Message(format!("{name} lost to the enemy!")));
-        }
+        let text = text!(if side == Side::Blue { "cl-captured" } else { "cl-lost" }, place = name);
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
         ev.push(CampaignEvent::PlaceCaptured { place, side, members, removed });
     }
 
@@ -189,7 +185,7 @@ impl CampaignState {
         &mut self,
         by: Option<PlayerId>,
         place: PlaceId,
-    ) -> Result<Vec<CampaignEvent>, String> {
+    ) -> Result<Vec<CampaignEvent>, Text> {
         self.order_insertion_for(Side::Blue, by, place)
     }
 
@@ -198,30 +194,31 @@ impl CampaignState {
         side: Side,
         by: Option<PlayerId>,
         place: PlaceId,
-    ) -> Result<Vec<CampaignEvent>, String> {
-        let Some(p) = self.places.get(place as usize) else { return Err("No such place".into()) };
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        let Some(p) = self.places.get(place as usize) else { return Err(text!("ce-no-place")) };
         if p.owner != side.enemy() {
-            return Err(format!("{} is not held by the enemy", p.name));
+            return Err(text!("ce-not-enemy", place = p.name.as_str()));
         }
         // The players order what the board offers: the places on the front.
         if by.is_some() && !self.front(side).contains(&place) {
-            return Err(format!("{} is not on the front", p.name));
+            return Err(text!("ce-not-front", place = p.name.as_str()));
         }
         if self.active_insertion(place) {
-            return Err(format!("An insertion at {} is already under way", p.name));
+            return Err(text!("ce-insertion-under-way", place = p.name.as_str()));
         }
-        let target = p.airfield.or(p.members.first().copied()).ok_or("Nothing to land at")?;
+        let target =
+            p.airfield.or(p.members.first().copied()).ok_or_else(|| text!("ce-nothing-to-land"))?;
         let (x, y, name) = (p.x, p.y, p.name.clone());
         let from = self
             .insertion_base(side, x, y)
-            .ok_or_else(|| format!("No friendly base within helicopter range of {name}"))?;
+            .ok_or_else(|| text!("ce-no-base-in-range", place = name.as_str()))?;
         // The campaign's own orders need the helicopters and pay for the operation.
         if by.is_none() {
             if (self.forces(side).helicopters as usize) < INSERTION_HELOS {
-                return Err("Not enough helicopters".into());
+                return Err(text!("ce-no-helicopters"));
             }
             if !self.pay(side, INSERTION_COST, Spend::Operations) {
-                return Err("Not enough materiel".into());
+                return Err(text!("ce-no-materiel"));
             }
         }
         let id = self.id();
@@ -241,13 +238,13 @@ impl CampaignState {
             pilots: Vec::new(),
         });
         let base = self.site(from).map(|s| s.name.clone()).unwrap_or_default();
-        let mins = (lead / 60.0).round();
-        let text = if side == Side::Blue {
-            let who = if by.is_some() { "ordered" } else { "Command orders" };
-            format!("Insertion at {name} {who}: helicopters lift off from {base} in {mins} min")
-        } else {
-            format!("Intelligence: enemy helicopters lift off from {base} for {name} in {mins} min")
+        let mins = (lead / 60.0).round() as i64;
+        let id = match (side, by) {
+            (Side::Blue, Some(_)) => "cl-insertion-ordered",
+            (Side::Blue, None) => "cl-insertion-command",
+            _ => "cl-enemy-insertion-intel",
         };
+        let text = text!(id, place = name, base = base, mins = mins);
         self.note(text.clone());
         self.board_at = f64::MIN;
         Ok(vec![CampaignEvent::Message(text)])
@@ -260,7 +257,7 @@ impl CampaignState {
         player: PlayerId,
         place: PlaceId,
         base: ObjectId,
-    ) -> Result<(u32, Vec<CampaignEvent>), String> {
+    ) -> Result<(u32, Vec<CampaignEvent>), Text> {
         if let Some(i) = self.insertions.iter_mut().find(|i| {
             i.place == place
                 && i.side == Side::Blue
@@ -269,11 +266,12 @@ impl CampaignState {
             i.pilots.push(player);
             return Ok((i.id, Vec::new()));
         }
-        let Some(p) = self.places.get(place as usize) else { return Err("No such place".into()) };
+        let Some(p) = self.places.get(place as usize) else { return Err(text!("ce-no-place")) };
         if p.owner != Side::Red {
-            return Err(format!("{} is not held by the enemy", p.name));
+            return Err(text!("ce-not-enemy", place = p.name.as_str()));
         }
-        let target = p.airfield.or(p.members.first().copied()).ok_or("Nothing to land at")?;
+        let target =
+            p.airfield.or(p.members.first().copied()).ok_or_else(|| text!("ce-nothing-to-land"))?;
         let name = p.name.clone();
         let id = self.id();
         self.insertions.push(Insertion {
@@ -290,8 +288,7 @@ impl CampaignState {
             enroute_at: None,
             pilots: vec![player],
         });
-        let who = self.player_name(player).unwrap_or("A pilot").to_string();
-        let text = format!("Insertion at {name}: {who} leads the helicopters");
+        let text = text!("cl-insertion-leads", place = name, who = self.who(player));
         self.note(text.clone());
         self.board_at = f64::MIN;
         Ok((id, vec![CampaignEvent::Message(text)]))
@@ -310,9 +307,7 @@ impl CampaignState {
         ins.pilots.retain(|&p| p != player);
         if ins.pilots.is_empty() && ins.alive.iter().all(|a| !a) {
             match ins.state {
-                InsertionState::Enroute => {
-                    self.insertion_failed(k, "the helicopters were lost", ev)
-                }
+                InsertionState::Enroute => self.insertion_failed(k, "cl-why-lost", ev),
                 InsertionState::Pending { .. } => {
                     ins.state = InsertionState::CalledOff;
                     self.settle_insertion(id, InsertionState::CalledOff);
@@ -381,17 +376,13 @@ impl CampaignState {
                     ins.state = InsertionState::Enroute;
                     ins.enroute_at = Some(self.clock);
                     let (id, target) = (ins.id, ins.target);
-                    if side == Side::Blue {
-                        self.note(format!("Helicopters on the way to {name}"));
-                        ev.push(CampaignEvent::Message(format!(
-                            "Insertion helicopters lift off for {name}"
-                        )));
+                    let (note, news) = if side == Side::Blue {
+                        ("cl-helis-on-way", "cl-helis-lift-off")
                     } else {
-                        self.note(format!("Enemy helicopters on the way to {name}"));
-                        ev.push(CampaignEvent::Message(format!(
-                            "Enemy helicopters inbound to {name}!"
-                        )));
-                    }
+                        ("cl-enemy-helis-on-way", "cl-enemy-helis-inbound")
+                    };
+                    self.note(text!(note, place = name.as_str()));
+                    ev.push(CampaignEvent::Message(text!(news, place = name)));
                     ev.push(CampaignEvent::InsertionLaunched { id, side, from, target, tags });
                 }
                 // Still not there long after: called home.
@@ -406,7 +397,7 @@ impl CampaignState {
                         .map(|(&t, _)| t)
                         .collect();
                     ev.extend(tags.into_iter().map(|tag| CampaignEvent::Recall { tag }));
-                    self.insertion_failed(k, "the helicopters turned back", ev);
+                    self.insertion_failed(k, "cl-why-turned-back", ev);
                 }
                 // Friendly airfields scramble their CAP at the enemy's helicopters on their own
                 // (`friendly_cap`).
@@ -434,7 +425,7 @@ impl CampaignState {
                         let task = FighterTask::Patrol;
                         let side = Side::Red;
                         ev.push(CampaignEvent::LaunchFighters { tag, side, from, x, y, task });
-                        ev.push(CampaignEvent::Message("Enemy fighters scrambled".into()));
+                        ev.push(CampaignEvent::Message(text!("cl-fighters-scrambled")));
                     }
                 }
                 _ => {}
@@ -450,11 +441,12 @@ impl CampaignState {
         let (id, place, side) = (ins.id, ins.place, ins.side);
         self.settle_insertion(id, InsertionState::CalledOff);
         let name = self.places[place as usize].name.clone();
-        let text = if side == Side::Blue {
-            format!("Insertion at {name} called off: no helicopters to fly it")
+        let id = if side == Side::Blue {
+            "cl-insertion-called-off"
         } else {
-            format!("Enemy insertion at {name} called off")
+            "cl-enemy-insertion-called-off"
         };
+        let text = text!(id, place = name);
         self.note(text.clone());
         self.board_at = f64::MIN;
         ev.push(CampaignEvent::Message(text));
@@ -473,25 +465,27 @@ impl CampaignState {
 
     /// An insertion's timing for the briefings: when the helicopters lift off, or when they
     /// are due at their goal.
-    pub fn insertion_status(&self, id: u32) -> Option<String> {
+    pub fn insertion_status(&self, id: u32) -> Option<Text> {
         let ins = self.insertion(id)?;
         let (from, to) = (self.site(ins.from)?, self.site(ins.target)?);
         let flight = dist(from.x - to.x, from.y - to.y) as f64 / HELO_SPEED;
-        let mins = |s: f64| (s.max(0.0) / 60.0).ceil();
-        let to_name = &self.places[ins.place as usize].name;
+        let mins = |s: f64| (s.max(0.0) / 60.0).ceil() as i64;
+        let to_name = self.places[ins.place as usize].name.as_str();
         match ins.state {
-            InsertionState::Pending { launch_at } => Some(format!(
-                "Helicopters lift off from {} in {} min, then about {} min to {to_name}",
-                from.name,
-                mins(launch_at - self.clock),
-                mins(flight)
+            InsertionState::Pending { launch_at } => Some(text!(
+                "cl-status-pending",
+                base = from.name.as_str(),
+                mins = mins(launch_at - self.clock),
+                flight = mins(flight),
+                place = to_name
             )),
             InsertionState::Enroute => {
                 let left = ins.enroute_at.map_or(flight, |t| flight - (self.clock - t));
-                Some(format!(
-                    "Helicopters from {} inbound to {to_name}, due in about {} min",
-                    from.name,
-                    mins(left)
+                Some(text!(
+                    "cl-status-enroute",
+                    base = from.name.as_str(),
+                    place = to_name,
+                    mins = mins(left)
                 ))
             }
             _ => None,
@@ -530,10 +524,9 @@ impl CampaignState {
         }
         for (object, kind, name) in done {
             if matches!(kind, SiteKind::Airfield | SiteKind::Sam) {
-                self.note(format!(
-                    "{name}: {} repaired",
-                    if kind == SiteKind::Sam { "SAM site" } else { "airfield" }
-                ));
+                let id =
+                    if kind == SiteKind::Sam { "cl-sam-repaired" } else { "cl-airfield-repaired" };
+                self.note(text!(id, place = name));
             }
             ev.push(CampaignEvent::Repaired { object });
         }
@@ -733,7 +726,7 @@ impl CampaignState {
                 });
             }
             self.caps.push(CapFlight { base, tags, launched: now });
-            self.note(format!("CAP scrambled from {name}"));
+            self.note(text!("cl-cap-scrambled", base = name));
         }
     }
 
@@ -868,10 +861,8 @@ impl CampaignState {
                         enroute_at: None,
                     });
                     let name = self.places[place as usize].name.clone();
-                    let text = format!(
-                        "Intelligence: enemy strike aircraft to raid {name} airfield in {} min",
-                        (RAID_LEAD / 60.0).round()
-                    );
+                    let mins = (RAID_LEAD / 60.0).round() as i64;
+                    let text = text!("cl-raid-intel", place = name, mins = mins);
                     self.note(text.clone());
                     self.board_at = f64::MIN;
                     ev.push(CampaignEvent::Message(text));
@@ -930,10 +921,10 @@ impl CampaignState {
             {
                 let tags: Vec<u32> =
                     r.aircraft.iter().zip(&r.alive).filter(|(_, a)| **a).map(|(&t, _)| t).collect();
-                let text = format!(
-                    "{} turned back from {}",
-                    raid_name(r),
-                    self.places[r.place as usize].name
+                let text = text!(
+                    "cl-raid-turned-back",
+                    raid = text!(raid_name(r)),
+                    place = self.places[r.place as usize].name.as_str()
                 );
                 ev.extend(tags.into_iter().map(|tag| CampaignEvent::Recall { tag }));
                 self.end_raid(k, RaidState::Repelled);
@@ -994,11 +985,12 @@ impl CampaignState {
             r.alive = vec![true; tags.len()];
             r.state = RaidState::Enroute;
             r.enroute_at = Some(now);
-            self.note(format!("{what} on the way to {name}"));
+            let text = text!("cl-raid-on-way", raid = text!(what), place = name.as_str());
+            self.note(text.clone());
             ev.push(CampaignEvent::Message(if side == Side::Blue {
-                format!("{what} on the way to {name}")
+                text
             } else {
-                format!("{what} inbound to {name}!")
+                text!("cl-raid-inbound", raid = text!(what), place = name)
             }));
             ev.push(CampaignEvent::RaidLaunched { id, side, from, target, tags, drones });
         }
@@ -1024,19 +1016,20 @@ impl CampaignState {
         let what = raid_name(r);
         let target = self.target_name(r.target);
         self.end_raid(k, RaidState::Hit);
-        let text = format!("{what} hit {target}");
+        let text = text!("cl-raid-hit", raid = text!(what), target = target);
         self.note(text.clone());
-        ev.push(CampaignEvent::Message(format!("{text}!")));
+        ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
     }
 
     /// A raid's target for the news: "the Rhein-Main airfield", "the city of Kiev".
-    pub(crate) fn target_name(&self, object: ObjectId) -> String {
-        let Some(s) = self.site(object) else { return "the target".into() };
+    pub(crate) fn target_name(&self, object: ObjectId) -> Text {
+        let Some(s) = self.site(object) else { return text!("cl-target-generic") };
+        let place = s.name.as_str();
         match s.kind {
-            SiteKind::Airfield => format!("the {} airfield", s.name),
-            SiteKind::City => format!("the city of {}", s.name),
-            SiteKind::Sam => format!("the SAM site at {}", s.name),
-            _ => s.name.clone(),
+            SiteKind::Airfield => text!("cl-target-airfield", place = place),
+            SiteKind::City => text!("cl-target-city", place = place),
+            SiteKind::Sam => text!("cl-target-sam", place = place),
+            _ => Text::raw(place),
         }
     }
 
@@ -1050,13 +1043,15 @@ impl CampaignState {
         if r.state == RaidState::Enroute && r.alive.iter().all(|a| !a) {
             let name = self.places[r.place as usize].name.clone();
             let text = match (r.side, r.drones) {
-                (Side::Blue, _) => format!("{} did not get through to {name}", raid_name(r)),
-                (_, true) => format!("Drone attack on {name} stopped"),
-                _ => format!("Enemy raid on {name} repelled"),
+                (Side::Blue, _) => {
+                    text!("cl-raid-missed", raid = text!(raid_name(r)), place = name)
+                }
+                (_, true) => text!("cl-drones-stopped", place = name),
+                _ => text!("cl-raid-repelled", place = name),
             };
             self.end_raid(k, RaidState::Repelled);
             self.note(text.clone());
-            ev.push(CampaignEvent::Message(format!("{text}!")));
+            ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
         }
     }
 
@@ -1081,17 +1076,13 @@ impl CampaignState {
         };
         self.outcome = Some(Outcome { winner, at: self.clock });
         self.board.clear();
-        let text = if winner == Side::Blue {
-            "VICTORY: the enemy holds no airfield any more"
-        } else {
-            "DEFEAT: no friendly airfield is left"
-        };
-        self.note(text);
+        let text = text!(if winner == Side::Blue { "cl-victory" } else { "cl-defeat" });
+        self.note(text.clone());
         ev.push(CampaignEvent::BoardChanged);
         if self.prune_plans() {
             ev.push(self.plans_changed());
         }
-        ev.push(CampaignEvent::Message(text.into()));
+        ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::Ended { winner });
         true
     }
@@ -1188,7 +1179,7 @@ impl CampaignState {
         let side = Side::Blue;
         let mut offers: Vec<MissionOffer> = Vec::new();
         let now = self.clock;
-        let mut add = |c: &mut CampaignState, kind, title: String, objective, x, y, threat| {
+        let mut add = |c: &mut CampaignState, kind, title: Text, objective, x, y, threat| {
             let Some(base) = c.nearest_player_base(x, y) else { return };
             let key = objective_key(&objective);
             let (id, posted) = match c.board.iter().find(|o| objective_key(&o.objective) == key) {
@@ -1209,7 +1200,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Intercept,
-                format!("Intercept - {name}"),
+                text!("cb-intercept", place = name),
                 Objective::Intercept { insertion: ins.id },
                 x,
                 y,
@@ -1225,11 +1216,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Defend,
-                if r.drones {
-                    format!("Drone defense - {name}")
-                } else {
-                    format!("Defend - {name} airfield")
-                },
+                text!(if r.drones { "cb-drone-defense" } else { "cb-defend" }, place = name),
                 Objective::Defend { raid: r.id },
                 x,
                 y,
@@ -1241,7 +1228,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Awacs,
-                "AWACS - shoot it down".into(),
+                text!("cb-awacs"),
                 Objective::Awacs { tag: a.tag },
                 a.x,
                 a.y,
@@ -1256,7 +1243,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Csar,
-                format!("Rescue - {}", d.name),
+                text!("cb-rescue", place = d.name.as_str()),
                 Objective::Rescue { downed: d.id },
                 d.x,
                 d.y,
@@ -1281,7 +1268,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Recon,
-                    format!("Recon - {name}"),
+                    text!("cb-recon", place = name.as_str()),
                     Objective::Recon { place: pid, object },
                     x,
                     y,
@@ -1299,7 +1286,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Sead,
-                    format!("SEAD - {name}"),
+                    text!("cb-sead", place = name.as_str()),
                     Objective::Sead { place: pid, sites },
                     sx,
                     sy,
@@ -1311,7 +1298,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Cas,
-                    format!("CAS - {name}"),
+                    text!("cb-cas", place = name.as_str()),
                     Objective::Cas { place: pid, aaa },
                     x,
                     y,
@@ -1322,7 +1309,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Strike,
-                    format!("Strike - {name} airfield"),
+                    text!("cb-strike", place = name.as_str()),
                     Objective::Strike { place: pid, airfield: a },
                     x,
                     y,
@@ -1333,7 +1320,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Insertion,
-                    format!("Insertion - {name}"),
+                    text!("cb-insertion", place = name.as_str()),
                     Objective::Insertion { place: pid },
                     x,
                     y,
@@ -1356,7 +1343,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Interdiction,
-                    format!("Interdiction - {}", p.name),
+                    text!("cb-interdiction", place = p.name.as_str()),
                     Objective::Interdict { place: pid, object },
                     p.x,
                     p.y,
@@ -1366,7 +1353,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Interdiction,
-                    format!("Deep strike - {} airfield", p.name),
+                    text!("cb-deep-strike", place = p.name.as_str()),
                     Objective::Strike { place: pid, airfield: a },
                     p.x,
                     p.y,
@@ -1385,7 +1372,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Cas,
-                format!("CAS - battery near {}", b.name),
+                text!("cb-cas-battery", place = b.name.as_str()),
                 Objective::Battery { battery: b.id, aaa },
                 b.x,
                 b.y,
@@ -1411,7 +1398,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Cas,
-                    format!("CAS - armour column to {name}"),
+                    text!("cb-cas-armour", place = name.as_str()),
                     Objective::Armour { convoy: v.id, aaa },
                     v.at.0,
                     v.at.1,
@@ -1434,7 +1421,7 @@ impl CampaignState {
                 add(
                     self,
                     MissionKind::Cas,
-                    format!("CAS - support armour at {name}"),
+                    text!("cb-cas-support", place = name.as_str()),
                     Objective::Support { convoy: v.id, place: v.place, aaa },
                     px,
                     py,
@@ -1455,7 +1442,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::Escort,
-                format!("Escort - insertion at {name}"),
+                text!("cb-escort", place = name),
                 Objective::Escort { insertion: ins.id },
                 x,
                 y,
@@ -1477,7 +1464,7 @@ impl CampaignState {
             add(
                 self,
                 MissionKind::AntiShip,
-                "Anti-ship - enemy ship".into(),
+                text!("cb-anti-ship"),
                 Objective::AntiShip { ship },
                 x,
                 y,
@@ -1486,19 +1473,19 @@ impl CampaignState {
         }
         // CAP: where enemy fighters are near friendly places or insertions, else over the
         // friendly place nearest the front.
-        let mut guarded: Vec<(i32, i32, String)> = self
+        let mut guarded: Vec<(i32, i32, Text)> = self
             .blue_places()
-            .map(|p| (p.x, p.y, p.name.clone()))
+            .map(|p| (p.x, p.y, Text::raw(p.name.clone())))
             .chain(
                 self.insertions.iter().filter(|i| i.state == InsertionState::Enroute).filter_map(
                     |i| {
                         let s = self.site(i.target)?;
-                        Some((s.x, s.y, format!("{} insertion", s.name)))
+                        Some((s.x, s.y, text!("cb-insertion-of", place = s.name.as_str())))
                     },
                 ),
             )
             .collect();
-        let threatened: Vec<(i32, i32, String)> = guarded
+        let threatened: Vec<(i32, i32, Text)> = guarded
             .iter()
             .filter(|g| {
                 view.flights
@@ -1520,7 +1507,15 @@ impl CampaignState {
             threatened.into_iter().take(2).collect::<Vec<_>>()
         };
         for (x, y, name) in caps {
-            add(self, MissionKind::Cap, format!("CAP - {name}"), Objective::Cap { x, y }, x, y, 0);
+            add(
+                self,
+                MissionKind::Cap,
+                text!("cb-cap", place = name),
+                Objective::Cap { x, y },
+                x,
+                y,
+                0,
+            );
         }
         // Too many: the urgent ones stay, the front's furthest places go first.
         if offers.len() > BOARD_SIZE {
@@ -1561,12 +1556,12 @@ impl CampaignState {
     }
 }
 
-/// What flies a raid, for the news.
+/// What flies a raid, for the news (message id).
 fn raid_name(r: &Raid) -> &'static str {
     match (r.side, r.drones) {
-        (Side::Blue, _) => "AI SEAD aircraft",
-        (_, true) => "Enemy drones",
-        _ => "Enemy strike aircraft",
+        (Side::Blue, _) => "cl-raid-ai-sead",
+        (_, true) => "cl-raid-drones",
+        _ => "cl-raid-strike",
     }
 }
 

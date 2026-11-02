@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bevy_egui::egui;
+use stealth_i18n::t;
 
 use stealth_mission::weather::{CloudKind, STORM_CELL};
 use stealth_mission::world::flags as F;
@@ -98,8 +99,8 @@ pub fn app6() -> bool {
 pub fn symbology_switch(ui: &mut egui::Ui) {
     let mut on = app6();
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("Symbols").small().color(crate::menu::BRIGHT));
-        ui.selectable_value(&mut on, false, egui::RichText::new("CLASSIC").small());
+        ui.label(egui::RichText::new(t!("map-symbols")).small().color(crate::menu::BRIGHT));
+        ui.selectable_value(&mut on, false, egui::RichText::new(t!("classic")).small());
         ui.selectable_value(&mut on, true, egui::RichText::new("APP-6").small());
     });
     if on != app6() {
@@ -374,7 +375,7 @@ impl MapTips {
                 });
             }
             if under.len() > TIPS_MAX {
-                let more = format!("+{} more", under.len() - TIPS_MAX);
+                let more = t!("mt-more", count = under.len() - TIPS_MAX);
                 ui.label(egui::RichText::new(more).small().color(DIM));
             }
             if let Some(hint) = hint {
@@ -431,9 +432,9 @@ pub fn affiliation_of(flags: i16) -> Affiliation {
 /// A side's name and colour on the maps.
 pub fn side(side: Affiliation) -> (&'static str, egui::Color32) {
     match side {
-        Affiliation::Friend => ("Friendly", FRIENDLY_BLUE),
-        Affiliation::Neutral => ("Neutral", DIM),
-        Affiliation::Hostile => ("Enemy", MISSILE_RED),
+        Affiliation::Friend => (t!("mt-friendly"), FRIENDLY_BLUE),
+        Affiliation::Neutral => (t!("mt-neutral"), DIM),
+        Affiliation::Hostile => (t!("mt-enemy"), MISSILE_RED),
     }
 }
 
@@ -461,11 +462,11 @@ pub fn landmark_tips(view: &MapView, m: &Mission, tips: &mut MapTips) {
             continue;
         }
         let kind = match w.name(o.shape() as i32) {
-            "Town" => "Town",
-            "Village" => "Village",
-            "Depot" => "Depot",
-            "SS Missile" => "Missile site",
-            _ => "City",
+            "Town" => t!("mt-town"),
+            "Village" => t!("mt-village"),
+            "Depot" => t!("mt-depot"),
+            "SS Missile" => t!("mt-missile-site"),
+            _ => t!("mt-city"),
         };
         let owner = affiliation_of(o.flags);
         let (name, colour) = side(owner);
@@ -480,17 +481,17 @@ pub fn landmark_tips(view: &MapView, m: &Mission, tips: &mut MapTips) {
 pub fn airfields(painter: &egui::Painter, view: &MapView, m: &Mission, tips: &mut MapTips) {
     for (i, o) in m.world.objects.iter().enumerate().filter(|(_, o)| o.flags & F::AIRFIELD != 0) {
         let p = view.to_screen(o.x as u16 as f32, o.y as u16 as f32);
-        let kind = if o.flags & F::CARRIER != 0 { "Aircraft carrier" } else { "Airfield" };
+        let kind = if o.flags & F::CARRIER != 0 { t!("mt-carrier") } else { t!("mt-airfield") };
         let owner = affiliation_of(o.flags);
         let (name, colour) = side(owner);
         place_symbol(painter, p, owner, true, false);
         let tip = tips.add(p, kind, object_name(m, i), colour).line(name);
         tip.symbol(move |p, c| place_symbol(p, c, owner, true, false));
         if i as i16 == m.takeoff.object_index {
-            tip.line("Your takeoff base");
+            tip.line(t!("mt-your-takeoff"));
         }
         if i as i16 == m.landing.object_index {
-            tip.line("Your landing base");
+            tip.line(t!("mt-your-landing"));
         }
     }
 }
@@ -886,14 +887,14 @@ pub fn weather_legend(ui: &mut egui::Ui, layers: &mut MapLayers, snow: bool) {
         let [r, g, b] = CLOUD_GREYS[k];
         egui::Color32::from_rgb(r as u8, g as u8, b as u8)
     };
-    layers.legend(ui, Layer::Clouds, "Clouds / storm towers", |p, c0| {
+    layers.legend(ui, Layer::Clouds, t!("map-legend-clouds"), |p, c0| {
         p.circle_filled(c0 - egui::vec2(3.0, 0.0), 5.0, grey(0).gamma_multiply(0.8));
         p.circle_filled(c0 + egui::vec2(4.0, 0.0), 4.0, grey(1).gamma_multiply(0.9));
     });
     let (stops, text) = if snow {
-        (&SNOW_RAMP, "Snow, light to heavy")
+        (&SNOW_RAMP, t!("map-legend-snow"))
     } else {
-        (&RAIN_RAMP, "Rain, light to heavy")
+        (&RAIN_RAMP, t!("map-legend-rain"))
     };
     layers.legend(ui, Layer::Precipitation, text, |p, c0| {
         for k in 0..6 {
@@ -906,7 +907,7 @@ pub fn weather_legend(ui: &mut egui::Ui, layers: &mut MapLayers, snow: bool) {
             );
         }
     });
-    layers.legend(ui, Layer::Thunderstorms, "Thunderstorm cell", lightning);
+    layers.legend(ui, Layer::Thunderstorms, t!("map-legend-thunderstorm"), lightning);
 }
 
 #[cfg(test)]

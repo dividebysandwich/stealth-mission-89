@@ -11,6 +11,7 @@ use crate::menu::{AMBER, BRIGHT, DIM, GREEN, Panel, big_button, facts, icon, ico
 use crate::settings::{AppState, Settings};
 use crate::tts::download::{Download, State};
 use crate::tts::{ATC_TALKER, PILOT_TALKER, Tts, catalog, voice};
+use stealth_i18n::{t, t_lines};
 
 const ATC_SAMPLE: &str = "Viper 1-1, Gutersloh Tower, runway 27, wind calm, cleared for takeoff";
 const PILOT_SAMPLE: &str = "Gutersloh Tower, Viper 1-1, ready for departure, runway 27";
@@ -65,9 +66,9 @@ fn voice_dialog(
         if state != State::Running {
             let name = d.voice.name;
             dialog.status = Some(match state.clone() {
-                State::Done => (format!("{name} installed"), true),
-                State::Cancelled => (format!("{name}: download cancelled"), false),
-                State::Failed(e) => (format!("{name}: download failed: {e}"), false),
+                State::Done => (t!("vd-installed-ok", name = name), true),
+                State::Cancelled => (t!("vd-cancelled", name = name), false),
+                State::Failed(e) => (t!("vd-failed", name = name, error = e.as_str()), false),
                 State::Running => unreachable!(),
             });
             if state == State::Done {
@@ -90,7 +91,7 @@ fn voice_dialog(
     }
     let running = dialog.download.is_some();
     let mut back = !running && ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    Panel::new("VOICES").window(screen_window(ctx, "Voices", SIZE), ctx, |ui| {
+    Panel::new(t!("vd-title")).window(screen_window(ctx, "Voices", SIZE), ctx, |ui| {
         let split = Split::new(ui, "voices");
         split.body(ui, |ui| {
             ui.add_enabled_ui(!running, |ui| {
@@ -107,7 +108,7 @@ fn voice_dialog(
         split.footer(ui, |ui| {
             ui.add_space(6.0);
             ui.add_enabled_ui(!running, |ui| {
-                if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the options"])
+                if facts(ui.add(big_button(t!("back")).icon(icon::BACK)), &[t!("vd-back")])
                     .clicked()
                 {
                     back = true;
@@ -128,20 +129,19 @@ fn voice_dialog(
 
 /// The controllers' and the pilot's voice, speaker and preview: true if one changed.
 fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
-    section(ui, "Radio voices");
+    section(ui, t!("vd-radio-voices"));
     if tts.installed.is_empty() {
         ui.label(
-            egui::RichText::new("No voice yet: download one below. Until then the calls are text.")
-                .color(DIM),
+            egui::RichText::new(t!("vd-none-yet")).color(DIM),
         );
     }
     let mut changed = false;
     egui::Grid::new("voice_choices").num_columns(4).spacing([10.0, 6.0]).show(ui, |ui| {
         for pilot in [false, true] {
             let (label, talker, sample) = if pilot {
-                ("PILOT", PILOT_TALKER, PILOT_SAMPLE)
+                (t!("vd-pilot"), PILOT_TALKER, PILOT_SAMPLE)
             } else {
-                ("CONTROLLERS", ATC_TALKER, ATC_SAMPLE)
+                (t!("vd-controllers"), ATC_TALKER, ATC_SAMPLE)
             };
             let (name, speaker) = if pilot {
                 (&mut s.pilot_voice, &mut s.pilot_speaker)
@@ -154,12 +154,12 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
                 .installed
                 .iter()
                 .find(|v| v.name == *name)
-                .map_or("None (text only)".to_string(), title);
+                .map_or(t!("vd-none").to_string(), title);
             egui::ComboBox::from_id_salt(("voice", pilot))
                 .width(280.0)
                 .selected_text(shown)
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(name, String::new(), "None (text only)");
+                    ui.selectable_value(name, String::new(), t!("vd-none"));
                     for v in &tts.installed {
                         ui.selectable_value(name, v.name.clone(), title(v));
                     }
@@ -174,13 +174,13 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
                     let max = v.speakers - 1;
                     let corpus =
                         v.speaker_names.get(*speaker as usize).cloned().unwrap_or_default();
-                    let drag = egui::DragValue::new(speaker).range(0..=max).prefix("speaker ");
+                    let drag = egui::DragValue::new(speaker).range(0..=max).prefix(format!("{} ", t!("vd-speaker")));
                     changed |= facts(
                         ui.add(drag),
                         &[
-                            "One of the voice's speakers (drag, or click and type)",
-                            &format!("{corpus} in the recordings"),
-                            "Preview to hear it",
+                            t!("vd-speaker.one"),
+                            &t!("vd-speaker.corpus", corpus = corpus),
+                            t!("vd-speaker.preview"),
                         ],
                     )
                     .changed();
@@ -191,8 +191,8 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
             }
             let can = v.is_some();
             if facts(
-                ui.add_enabled(can, egui::Button::new(icon_text(ui, icon::START, "PREVIEW"))),
-                &["Hear it on the radio"],
+                ui.add_enabled(can, egui::Button::new(icon_text(ui, icon::START, t!("vd-preview")))),
+                t_lines!("vd-preview.facts"),
             )
             .clicked()
             {
@@ -203,11 +203,8 @@ fn choices(ui: &mut egui::Ui, s: &mut Settings, tts: &mut Tts) -> bool {
     });
     if tts.speakers(&s.atc_voice) > 1 {
         changed |= facts(
-            ui.checkbox(&mut s.atc_vary_station, "A different controller at each station"),
-            &[
-                "Tower, approach, departure and GCA each talk with another of the voice's speakers",
-                "The tower's is the one chosen above",
-            ],
+            ui.checkbox(&mut s.atc_vary_station, t!("vd-vary")),
+            t_lines!("vd-vary.facts"),
         )
         .changed();
     }
@@ -240,36 +237,36 @@ fn installed(
     if tts.installed.is_empty() {
         return;
     }
-    section(ui, "Installed");
+    section(ui, t!("vd-installed"));
     let mut delete = None;
     for v in &tts.installed {
         let credit =
-            v.catalog.map_or("Licence unknown: see the voice's MODEL_CARD".to_string(), |c| {
+            v.catalog.map_or(t!("vd-licence-unknown").to_string(), |c| {
                 format!("{}, {}", c.licence, c.credit)
             });
         let kind = if v.speakers > 1 {
-            format!("{} speakers", v.speakers)
+            t!("vd-speakers", count = v.speakers)
         } else {
             v.catalog.map_or("", |c| c.kind).to_string()
         };
         row(ui, &title(v), &credit, &kind, v.size, |ui| {
             if !v.removable {
                 facts(
-                    ui.label(egui::RichText::new("beside the game").color(DIM)),
-                    &["Found in a voices folder next to the game: remove it there"],
+                    ui.label(egui::RichText::new(t!("vd-beside-game")).color(DIM)),
+                    t_lines!("vd-beside-game.facts"),
                 );
             } else if dialog.confirm.as_deref() == Some(v.name.as_str()) {
-                if ui.button(icon_text(ui, icon::CANCEL, "KEEP")).clicked() {
+                if ui.button(icon_text(ui, icon::CANCEL, t!("vd-keep"))).clicked() {
                     dialog.confirm = None;
                 }
-                let sure = egui::Button::new(icon_text(ui, icon::DELETE, "DELETE"))
+                let sure = egui::Button::new(icon_text(ui, icon::DELETE, t!("delete")))
                     .fill(egui::Color32::from_rgb(110, 20, 20));
                 if ui.add(sure).clicked() {
                     delete = Some(v.clone());
                 }
             } else if facts(
-                ui.button(icon_text(ui, icon::DELETE, "DELETE")),
-                &["Removes its files (asks again)"],
+                ui.button(icon_text(ui, icon::DELETE, t!("delete"))),
+                t_lines!("vd-delete.facts"),
             )
             .clicked()
             {
@@ -287,7 +284,7 @@ fn installed(
             .filter_map(|p| std::fs::remove_file(p).err().map(|e| format!("{}: {e}", p.display())))
             .collect();
         dialog.status = Some(if failed.is_empty() {
-            (format!("{} deleted", title(&v)), true)
+            (t!("vd-deleted", name = title(&v)), true)
         } else {
             (failed.join("; "), false)
         });
@@ -311,21 +308,21 @@ fn available(ui: &mut egui::Ui, tts: &Tts, dialog: &mut VoiceDialog) {
     if missing.is_empty() {
         return;
     }
-    section(ui, "Download");
+    section(ui, t!("vd-download"));
     let Some(dir) = voice::download_dir() else {
         ui.label(
-            egui::RichText::new("No folder to keep voices in (no home directory)").color(AMBER),
+            egui::RichText::new(t!("vd-no-folder")).color(AMBER),
         );
         return;
     };
     for c in missing {
         let kind =
-            if c.speakers > 1 { format!("{} speakers", c.speakers) } else { c.kind.to_string() };
+            if c.speakers > 1 { t!("vd-speakers", count = c.speakers) } else { c.kind.to_string() };
         let credit = format!("{}, {}", c.licence, c.credit);
         row(ui, &format!("{} ({})", c.name, c.accent), &credit, &kind, c.size(), |ui| {
             if facts(
-                ui.button(icon_text(ui, icon::DOWNLOAD, "DOWNLOAD")),
-                &["From huggingface.co/rhasspy/piper-voices", "Checked before it is used"],
+                ui.button(icon_text(ui, icon::DOWNLOAD, t!("vd-download-button"))),
+                t_lines!("vd-download-button.facts"),
             )
             .clicked()
             {
@@ -369,11 +366,8 @@ fn folder(ui: &mut egui::Ui) {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         if facts(
-            ui.small_button(icon_text(ui, icon::LOAD, "OPEN")),
-            &[
-                "Opens the voices folder",
-                "Piper voices (.onnx with its .onnx.json) put here are found too",
-            ],
+            ui.small_button(icon_text(ui, icon::LOAD, t!("vd-open"))),
+            t_lines!("vd-open.facts"),
         )
         .clicked()
         {
@@ -390,7 +384,7 @@ fn folder(ui: &mut egui::Ui) {
             }
         }
         let text =
-            egui::RichText::new(format!("Voices folder: {}", dir.display())).small().color(DIM);
+            egui::RichText::new(t!("vd-folder", path = dir.display().to_string())).small().color(DIM);
         ui.add(egui::Label::new(text).truncate());
     });
 }
@@ -402,7 +396,7 @@ fn progress(ctx: &egui::Context, dialog: &mut VoiceDialog) {
     let mut cancel = ctx.input(|i| i.key_pressed(egui::Key::Escape));
     egui::Modal::new(egui::Id::new("voice_download")).show(ctx, |ui| {
         ui.set_width(420.0);
-        ui.label(egui::RichText::new(format!("Downloading {}", d.voice.name)).color(BRIGHT));
+        ui.label(egui::RichText::new(t!("vd-downloading", name = d.voice.name)).color(BRIGHT));
         ui.add_space(6.0);
         let part = done as f32 / total as f32;
         let text = format!(
@@ -413,7 +407,7 @@ fn progress(ctx: &egui::Context, dialog: &mut VoiceDialog) {
         );
         ui.add(egui::ProgressBar::new(part).text(text));
         ui.add_space(6.0);
-        if ui.add(big_button("CANCEL").icon(icon::CANCEL)).clicked() {
+        if ui.add(big_button(t!("cancel")).icon(icon::CANCEL)).clicked() {
             cancel = true;
         }
     });

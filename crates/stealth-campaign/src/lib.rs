@@ -36,6 +36,7 @@ pub mod tuning;
 pub mod weather;
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::Text;
 
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use deploy::{footprint, loads};
@@ -195,7 +196,7 @@ pub enum CampaignEvent {
     /// The player's objective is achieved (once per sortie).
     ObjectiveAchieved {
         player: PlayerId,
-        title: String,
+        title: Text,
     },
     SortieFinished {
         player: PlayerId,
@@ -340,8 +341,9 @@ pub enum CampaignEvent {
         x: i32,
         y: i32,
     },
-    /// News for the players (shown on the HUD and in the campaign log).
-    Message(String),
+    /// News for the players (shown on the HUD and in the campaign log), translated where it is
+    /// shown.
+    Message(Text),
 }
 
 fn blue() -> Side {
@@ -350,7 +352,7 @@ fn blue() -> Side {
 
 impl CampaignState {
     /// Carry out a player's command.
-    pub fn apply(&mut self, player: PlayerId, cmd: Command) -> Result<Vec<CampaignEvent>, String> {
+    pub fn apply(&mut self, player: PlayerId, cmd: Command) -> Result<Vec<CampaignEvent>, Text> {
         match cmd {
             Command::TakeMission { offer, base, aircraft } => {
                 self.take_mission(player, offer, base, aircraft)

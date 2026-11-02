@@ -106,9 +106,10 @@ pub fn generate(
     stealth_mission::generate(&data.0, settings, Seed::Srand(seed))
 }
 
-/// Strips text control bytes (colour switches >= 0x80, CR).
+/// Strips text control bytes (the classic colour switches 0x80-0x9F, CR); the translations'
+/// letters stay.
 pub fn clean_text(s: &str) -> String {
-    s.chars().filter(|&c| (c as u32) < 0x80 && c != '\r').collect()
+    s.chars().filter(|&c| !('\u{80}'..='\u{9f}').contains(&c) && c != '\r').collect()
 }
 
 /// Per-theater runway direction, exported in assets/sim/tables.ron.

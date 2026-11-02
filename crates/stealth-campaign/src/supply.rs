@@ -6,6 +6,7 @@
 use crate::CampaignEvent;
 use crate::state::*;
 use crate::tuning::*;
+use stealth_i18n::text;
 
 /// Seconds of income settled at once.
 const INCOME_STEP: f64 = 10.0;
@@ -228,6 +229,7 @@ impl CampaignState {
         let Some(near) = near.filter(|p| lost.is_some() || p.owner == Side::Red) else { return };
         let place = near.name.clone();
         let name = self.player_name(player).unwrap_or("A pilot").to_string();
+        let who = self.who(player);
         let lost = lost.unwrap_or_else(|| self.lose_pilot());
         let id = self.id();
         self.downed.push(Downed {
@@ -241,9 +243,11 @@ impl CampaignState {
             lost: Some(lost),
         });
         self.board_at = f64::MIN;
-        let text = format!(
-            "{name} is down near {place}: a rescue is needed within {} min",
-            (RESCUE_WINDOW / 60.0).round()
+        let text = text!(
+            "cl-pilot-down-near",
+            pilot = who,
+            place = place,
+            mins = (RESCUE_WINDOW / 60.0).round() as i64
         );
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
@@ -264,7 +268,7 @@ impl CampaignState {
             if lucky {
                 self.downed[k].state = DownedState::Rescued;
                 self.recover(lost);
-                let text = format!("A rescue helicopter got {name} out");
+                let text = text!("cl-ai-rescue", pilot = name);
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
             } else {
@@ -272,7 +276,7 @@ impl CampaignState {
                 if lost.is_none() {
                     self.lose_pilot();
                 }
-                let text = format!("{name} was captured by the enemy");
+                let text = text!("cl-pilot-captured", pilot = name);
                 self.note(text.clone());
                 ev.push(CampaignEvent::Message(text));
             }
@@ -300,7 +304,7 @@ impl CampaignState {
             return;
         }
         d.state = DownedState::Captured;
-        let text = format!("{} was lost with the helicopter", d.name);
+        let text = text!("cl-lost-with-heli", pilot = d.name.as_str());
         if d.lost.is_none() {
             self.lose(Side::Blue, CAPTURE_COST);
         }
@@ -316,7 +320,7 @@ impl CampaignState {
             return;
         }
         d.state = DownedState::Rescued;
-        let text = format!("{} rescued!", d.name);
+        let text = text!("cl-rescued", pilot = d.name.as_str());
         let lost = d.lost;
         self.recover(lost);
         self.note(text.clone());
@@ -360,8 +364,7 @@ impl CampaignState {
         if let Some(s) = self.slot_mut(player).sortie.as_mut() {
             s.progress.down = Some(((x, y), lost));
         }
-        let name = self.player_name(player).unwrap_or("A pilot").to_string();
-        let text = format!("{name} is down in enemy territory: a rescue helicopter is on its way");
+        let text = text!("cl-pilot-down", pilot = self.who(player));
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
     }
@@ -375,22 +378,30 @@ impl CampaignState {
         rescued: bool,
         ev: &mut Vec<CampaignEvent>,
     ) {
-        let name = self.player_name(player).unwrap_or("A pilot").to_string();
+        let name = self.who(player);
         let lost = down.map(|d| d.1);
         let text = if rescued {
             self.recover(lost);
             match lost {
-                Some(l) if l.fighter => {
-                    format!("{name} extracted - {:.0} materiel and a fighter recovered", l.materiel)
+                Some(l) if l.fighter => text!(
+                    "cl-extracted-fighter",
+                    pilot = name,
+                    materiel = format!("{:.0}", l.materiel)
+                ),
+                Some(l) => {
+                    text!(
+                        "cl-extracted-materiel",
+                        pilot = name,
+                        materiel = format!("{:.0}", l.materiel)
+                    )
                 }
-                Some(l) => format!("{name} extracted - {:.0} materiel recovered", l.materiel),
-                None => format!("{name} extracted"),
+                None => text!("cl-extracted", pilot = name),
             }
         } else {
             if lost.is_none() {
                 self.lose_pilot();
             }
-            format!("{name} was captured by the enemy")
+            text!("cl-pilot-captured", pilot = name)
         };
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));

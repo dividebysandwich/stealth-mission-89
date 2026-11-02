@@ -433,7 +433,7 @@ pub fn window(
     let tex = contexts.add_image(EguiTextureHandle::Strong(image));
     let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
     let mut open = true;
-    let title = format!("{} - LIVE", view.title.to_ascii_uppercase());
+    let title = stealth_i18n::t!("uv-live", unit = view.title.to_uppercase());
     let view = &mut *view;
     egui::Window::new(title)
         .id(egui::Id::new("unit_view"))
@@ -465,7 +465,7 @@ pub fn window(
             }
             ui.horizontal(|ui| {
                 if view.lost > 0.0 {
-                    ui.label(egui::RichText::new("CONTACT LOST").color(AMBER));
+                    ui.label(egui::RichText::new(stealth_i18n::t!("uv-contact-lost")).color(AMBER));
                 } else if let Some((alt, kt)) = view.info {
                     ui.label(
                         egui::RichText::new(format!("ALT {:.0} FT  SPD {kt:.0} KT", alt / 0.3048))
@@ -473,7 +473,7 @@ pub fn window(
                     );
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new("Drag: orbit  Wheel: zoom").small().color(DIM));
+                    ui.label(egui::RichText::new(stealth_i18n::t!("uv-hint")).small().color(DIM));
                 });
             });
         });

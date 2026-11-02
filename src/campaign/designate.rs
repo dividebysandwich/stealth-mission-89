@@ -5,6 +5,7 @@
 use bevy::math::DVec2;
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, DefenceKind, footprint};
+use stealth_i18n::t;
 use stealth_sim::Sim;
 use stealth_sim::aaa::M_PER_MAP;
 
@@ -18,11 +19,11 @@ const GROUND_ROOM: f64 = 60.0;
 
 /// The GEPARD / PATRIOT / DRONES new site buttons (the one active again: cancel).
 pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
-    section(ui, "New site");
+    section(ui, t!("ds-new-site"));
     let kinds = [
         (DefenceKind::Gepard, "GEPARD"),
         (DefenceKind::Patriot, "PATRIOT"),
-        (DefenceKind::Drones, "DRONES"),
+        (DefenceKind::Drones, t!("ad-drones")),
     ];
     // Framed buttons sharing the column's width, the one being designated lit; one under the
     // other where the column is too narrow for their labels side by side.
@@ -53,8 +54,8 @@ pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
         ui.vertical(|ui| add(ui, w));
     }
     let hint = match c.ui.designate {
-        Some(_) => "Click the map where it goes - right click: cancel",
-        None => "Designate a spot: UH-60s fly its cargo to a helipad there within 24 h",
+        Some(_) => t!("ds-click-hint"),
+        None => t!("ds-hint"),
     };
     ui.label(egui::RichText::new(hint).small().color(DIM));
 }
@@ -79,12 +80,12 @@ pub(super) fn refusal(
         return Some(why);
     }
     if scenery.is_some_and(|s| !s.is_open(metres(x, y), GROUND_ROOM)) {
-        return Some("Not on open ground".into());
+        return Some(t!("ds-not-open-ground").into());
     }
     // (A coop client's campaign has no terrain: the sim's hills tell it.)
     let at = metres(x, y);
     if sim.hills().slope_within(at.x, at.y, GROUND_ROOM) > stealth_sim::hills::SITE_SLOPE {
-        return Some("Too steep a hillside".into());
+        return Some(t!("ds-too-steep").into());
     }
     None
 }
@@ -113,12 +114,14 @@ pub(super) fn pointer(
     let r = (footprint(kind) as f32 / view.scale).max(4.0);
     painter.circle(pos, r, col.gamma_multiply(0.12), egui::Stroke::new(1.5, col));
     pad(painter, pos, col);
-    let what = match kind {
-        DefenceKind::Gepard => "Gepard site",
-        DefenceKind::Patriot => "Patriot site",
-        DefenceKind::Drones => "drone command center",
-    };
-    let text = why.clone().unwrap_or_else(|| format!("New {what} - click to designate"));
+    let text = why.clone().unwrap_or_else(|| {
+        t!(match kind {
+            DefenceKind::Gepard => "ds-new-gepard",
+            DefenceKind::Patriot => "ds-new-patriot",
+            DefenceKind::Drones => "ds-new-drones",
+        })
+        .to_string()
+    });
     painter.text(
         pos + egui::vec2(12.0, -12.0),
         egui::Align2::LEFT_BOTTOM,
@@ -184,7 +187,7 @@ pub(super) fn waiting(painter: &egui::Painter, view: &MapView, st: &CampaignStat
             match d.kind {
                 DefenceKind::Gepard => "GEPARD",
                 DefenceKind::Patriot => "PATRIOT",
-                DefenceKind::Drones => "DRONES",
+                DefenceKind::Drones => t!("ad-drones"),
             },
             d.delivered.len(),
             d.loads,

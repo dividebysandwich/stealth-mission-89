@@ -598,9 +598,9 @@ fn handle_actions(
             Action::Hover if a.auto_hover() => a.autopilot_alt = 0.0,
             Action::Hover if heli && !a.damage.autopilot_failed && !a.on_ground => {
                 if heli::engage_hover(&mut a) {
-                    msg.show("Auto hover");
+                    msg.show(stealth_i18n::tf!("hud-auto-hover"));
                 } else {
-                    msg.show(format!("Too fast to hover (over {:.0} kt)", heli::HOVER_KNOTS));
+                    msg.show(stealth_i18n::tf!("hud-hover-too-fast", knots = format!("{:.0}", heli::HOVER_KNOTS)));
                 }
             }
             Action::Autopilot

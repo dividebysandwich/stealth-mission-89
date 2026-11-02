@@ -1,6 +1,9 @@
 //! Mission debrief: statistics from the event log, points and a rating (the remake's own scoring).
+//! Its texts are [`Text`]s, translated where the debrief is shown (a coop server's reports go
+//! to players of other languages).
 
 use serde::{Deserialize, Serialize};
+use stealth_i18n::{Text, text};
 
 use crate::Sim;
 use crate::types::MissionEnd;
@@ -35,6 +38,8 @@ impl Outcome {
         }
     }
 
+    /// The outcome in English (saved in the pilots' records; [`Outcome::from_text`] reads it
+    /// back).
     pub fn text(self) -> &'static str {
         match self {
             Self::Landed => "Safe landing",
@@ -45,6 +50,36 @@ impl Outcome {
             Self::Crashed => "Crashed",
             Self::EjectionFailed => "Ejection failed",
             Self::Aborted => "Mission aborted",
+        }
+    }
+
+    pub const ALL: [Outcome; 8] = [
+        Self::Landed,
+        Self::BadLanding,
+        Self::Ejected,
+        Self::Rescued,
+        Self::Captured,
+        Self::Crashed,
+        Self::EjectionFailed,
+        Self::Aborted,
+    ];
+
+    /// The outcome whose English [`Outcome::text`] this is.
+    pub fn from_text(s: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|o| o.text() == s)
+    }
+
+    /// Message id of the outcome's name.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Landed => "outcome-landed",
+            Self::BadLanding => "outcome-bad-landing",
+            Self::Ejected => "outcome-ejected",
+            Self::Rescued => "outcome-rescued",
+            Self::Captured => "outcome-captured",
+            Self::Crashed => "outcome-crashed",
+            Self::EjectionFailed => "outcome-ejection-failed",
+            Self::Aborted => "outcome-aborted",
         }
     }
 
@@ -59,7 +94,7 @@ impl Outcome {
 pub struct TimelineEntry {
     /// Mission clock (seconds).
     pub tick: i32,
-    pub text: String,
+    pub text: Text,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -87,10 +122,11 @@ pub struct MissionReport {
     /// Mission clock at the end (seconds).
     pub time: i32,
     /// Points before the difficulty multiplier, by reason.
-    pub points: Vec<(String, i32)>,
+    pub points: Vec<(Text, i32)>,
     /// Difficulty multiplier.
     pub multiplier: f32,
     pub total: i32,
+    /// [`rating`], in English (message `rating-<it in small letters>`).
     pub rating: String,
     pub timeline: Vec<TimelineEntry>,
 }
@@ -124,18 +160,19 @@ impl Sim {
         let mut timeline = Vec::new();
         for e in self.event_log() {
             let tag = match e.kind & 0xC0 {
-                0x80 => " (primary)",
-                0x40 => " (secondary)",
-                _ => "",
+                0x80 => text!("timeline-primary"),
+                0x40 => text!("timeline-secondary"),
+                _ => Text::raw(""),
             };
             let text = match e.kind & 0x3F {
                 1 | 12 => {
                     ground += 1;
-                    Some(format!("Destroyed {}{tag}", self.place_name(e.arg as usize)))
+                    let place = self.place_name(e.arg as usize);
+                    Some(text!("timeline-destroyed", place = place, tag = tag))
                 }
                 2 => {
                     ground += 1;
-                    Some(format!("Destroyed ground target{tag}"))
+                    Some(text!("timeline-destroyed-ground", tag = tag))
                 }
                 3 => {
                     let spec = e.arg as i32 & 0x7F;
@@ -147,7 +184,11 @@ impl Sim {
                             unseen += 1;
                         }
                     }
-                    Some(format!("Shot down {}{tag}", self.aircraft_name(spec)))
+                    Some(text!(
+                        "timeline-shot-down",
+                        aircraft = self.aircraft_name(spec),
+                        tag = tag
+                    ))
                 }
                 4 => {
                     fired += 1;
@@ -155,19 +196,21 @@ impl Sim {
                 }
                 5 => {
                     hits += 1;
-                    Some("Hit by a missile".to_string())
+                    Some(text!("timeline-hit"))
                 }
                 6 => {
                     visual_ids += 1;
-                    Some(format!("Seen by a {}", self.aircraft_name(e.arg as i32)))
+                    Some(text!("timeline-seen", aircraft = self.aircraft_name(e.arg as i32)))
                 }
                 7 => {
                     radar_ids += 1;
-                    Some(format!("Radar ID by {}", self.place_name(e.arg as usize)))
+                    Some(text!("timeline-radar-id", place = self.place_name(e.arg as usize)))
                 }
-                0x0B => Some(format!("Objective reached{tag}")),
-                0x0D => Some(format!("{} got through", self.aircraft_name(e.arg as i32))),
-                0x0A => Some(format!("Photo taken{tag}")),
+                0x0B => Some(text!("timeline-objective", tag = tag)),
+                0x0D => {
+                    Some(text!("timeline-got-through", aircraft = self.aircraft_name(e.arg as i32)))
+                }
+                0x0A => Some(text!("timeline-photo", tag = tag)),
                 _ => None,
             };
             if let Some(text) = text {
@@ -180,24 +223,24 @@ impl Sim {
         let mut points = Vec::new();
         let mut add = |what: &str, p: i32| {
             if p != 0 {
-                points.push((what.to_string(), p));
+                points.push((Text::new(what), p));
             }
         };
         if outcome != Outcome::Aborted {
-            add("Primary objective", if o.primary_done { 100 } else { 0 });
-            add("Secondary objective", if o.secondary_done { 50 } else { 0 });
-            add("Aircraft destroyed", 10 * air);
-            add("Shot down unseen", 5 * unseen);
-            add("Ground targets destroyed", 10 * ground);
-            add("Drones shot down", 15 * drones_killed);
+            add("points-primary", if o.primary_done { 100 } else { 0 });
+            add("points-secondary", if o.secondary_done { 50 } else { 0 });
+            add("points-aircraft", 10 * air);
+            add("points-unseen", 5 * unseen);
+            add("points-ground", 10 * ground);
+            add("points-drones", 15 * drones_killed);
             if defend {
-                add("Drones through", -30 * drones_leaked);
-                add("Nuclear plant hit", if nuclear_hit { -200 } else { 0 });
+                add("points-drones-through", -30 * drones_leaked);
+                add("points-nuclear", if nuclear_hit { -200 } else { 0 });
             }
-            add("Detected", -5 * (radar_ids + visual_ids));
-            add("Missile hits", -10 * hits);
+            add("points-detected", -5 * (radar_ids + visual_ids));
+            add("points-missile-hits", -10 * hits);
             add(
-                outcome.text(),
+                outcome.id(),
                 match outcome {
                     Outcome::Landed => 25,
                     Outcome::BadLanding => 5,

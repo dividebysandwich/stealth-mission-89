@@ -1,8 +1,9 @@
 //! The main menu's OPTIONS window: the player's own settings, saved in the preferences with the
 //! menu's other choices (`prefs.rs`), on four tabs:
 //!
-//! - GAME: cockpit, HUD, avionics and flight model style, auto trim, the cockpit tooltips, the
-//!   player labels, the VR cockpit size, Tacview and the GIF recording (in two columns).
+//! - GAME: the language, cockpit, HUD, avionics and flight model style, auto trim, the cockpit
+//!   tooltips, the player labels, the VR cockpit size, Tacview and the GIF recording (in two
+//!   columns).
 //! - GRAPHICS: shaders, anti-aliasing, shadows, point lights, time of day.
 //! - SOUND: the master, engine, effects, warning, radar warning, radio and ATC voice volumes, which radar
 //!   warning tones sound, the engine low-pass inside the aircraft, the coop radio's microphone.
@@ -15,6 +16,7 @@
 
 use bevy::prelude::*;
 use bevy_egui::egui;
+use stealth_i18n::{Language, list_name, t, t_lines};
 
 use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
@@ -42,7 +44,7 @@ impl OptionsWindow {
             return Self::default();
         };
         let name = args.get(i + 1).map_or("", |s| s.as_str()).to_ascii_uppercase();
-        let tab = Tab::ALL.iter().find(|(_, n)| *n == name).map_or(Tab::Game, |t| t.0);
+        let tab = Tab::ALL.iter().find(|(_, n, _)| *n == name).map_or(Tab::Game, |t| t.0);
         Self { open: true, tab, ..default() }
     }
 }
@@ -57,11 +59,12 @@ enum Tab {
 }
 
 impl Tab {
-    const ALL: [(Tab, &'static str); 4] = [
-        (Tab::Game, "GAME"),
-        (Tab::Graphics, "GRAPHICS"),
-        (Tab::Sound, "SOUND"),
-        (Tab::Controls, "CONTROLS"),
+    /// The tab, its `--open-options` name and its title's message.
+    const ALL: [(Tab, &'static str, &'static str); 4] = [
+        (Tab::Game, "GAME", "options-tab-game"),
+        (Tab::Graphics, "GRAPHICS", "options-tab-graphics"),
+        (Tab::Sound, "SOUND", "options-tab-sound"),
+        (Tab::Controls, "CONTROLS", "options-tab-controls"),
     ];
 }
 
@@ -87,10 +90,10 @@ pub fn options_ui(
         return;
     }
     let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    Panel::new("OPTIONS").window(screen_window(ctx, "Options", SIZE), ctx, |ui| {
+    Panel::new(t!("options-title")).window(screen_window(ctx, "Options", SIZE), ctx, |ui| {
         ui.horizontal(|ui| {
-            for (tab, name) in Tab::ALL {
-                ui.selectable_value(&mut w.tab, tab, egui::RichText::new(name).size(16.0));
+            for (tab, _, name) in Tab::ALL {
+                ui.selectable_value(&mut w.tab, tab, egui::RichText::new(t!(name)).size(16.0));
             }
         });
         ui.separator();
@@ -99,14 +102,8 @@ pub fn options_ui(
         split.footer(ui, |ui| {
             ui.add_space(4.0);
             footer_rule(ui);
-            ui.label(
-                egui::RichText::new(
-                    "Saved for the next flights; the realism switches are chosen with each game",
-                )
-                .small()
-                .color(DIM),
-            );
-            if facts(ui.add(big_button("BACK").icon(icon::BACK)), &["Back to the previous screen"])
+            ui.label(egui::RichText::new(t!("options-footer")).small().color(DIM));
+            if facts(ui.add(big_button(t!("back")).icon(icon::BACK)), t_lines!("back.facts"))
                 .clicked()
             {
                 back = true;
@@ -134,13 +131,33 @@ fn tab_options(
     }
 }
 
-/// CLASSIC / MODERN switches with their facts: true if one is flipped.
-fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str, &[&str]); N]) -> bool {
+/// CLASSIC / MODERN switches (the message of each name has the facts): true if one is flipped.
+fn switches<const N: usize>(ui: &mut egui::Ui, list: [(&mut bool, &str); N]) -> bool {
     let mut toggled = false;
-    for (modern, name, f) in list {
-        toggled |= facts(slide_switch(ui, name, modern), f).changed();
+    for (modern, id) in list {
+        toggled |=
+            facts(slide_switch(ui, t!(id), modern), t_lines!(&format!("{id}.facts"))).changed();
     }
     toggled
+}
+
+/// The language of the menus and messages, in OPTIONS and in the in-flight menu: true if it
+/// changed (it is shown from the next frame).
+pub fn language_option(ui: &mut egui::Ui, settings: &mut SettingsMut) -> bool {
+    section(ui, t!("options-section-language"));
+    let mut lang = settings.language;
+    // Alphabetical by the language's own name, accents ignored; the other scripts follow the
+    // Latin one.
+    let mut languages = Language::ALL;
+    languages.sort_by_cached_key(|l| stealth_i18n::fold_accents(l.native_name()).to_lowercase());
+    let options = languages.map(|l| (l, list_name(l), t_lines!("language.facts")));
+    crate::menu::dropdown(ui, "language", &mut lang, options);
+    if lang == settings.language {
+        return false;
+    }
+    settings.language = lang;
+    stealth_i18n::set_language(lang);
+    true
 }
 
 fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
@@ -148,6 +165,7 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     // mission screen.
     let mut flow = Flow::new(ui);
     flow.card(ui, Span::Fixed(GAME_LEFT_WIDTH), |ui| {
+        language_option(ui, settings);
         style_options(ui, settings);
         flying_options(ui, settings);
     });
@@ -160,45 +178,17 @@ fn game_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
 }
 
 fn style_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
-    section(ui, "Classic / Modern");
+    section(ui, t!("options-section-classic-modern"));
     let s = settings.bypass_change_detection();
     let (mut cockpit, mut hud) = (!s.classic_cockpit, !s.classic_hud);
     let (mut avionics, mut flight) = (!s.classic_avionics, !s.classic_flight);
     let toggled = switches(
         ui,
         [
-            (
-                &mut cockpit,
-                "Cockpit",
-                &[
-                    "Modern: high-resolution displays with bezel buttons",
-                    "Classic: the DOS-era instrument panel layout and 77x60 displays (F-117A)",
-                ][..],
-            ),
-            (
-                &mut hud,
-                "HUD",
-                &[
-                    "Modern: high-resolution F-16 style HUD in green with NAV, AA and AG modes",
-                    "Classic: the DOS-era HUD",
-                ][..],
-            ),
-            (
-                &mut avionics,
-                "Avionics",
-                &[
-                    "Modern: F-16 style MFD formats on either MFD (situation display, HARM, targeting pod, map, stores) with a slewable cursor",
-                    "Classic: map and TAC left, camera, WAY, WPN and ORD right",
-                ][..],
-            ),
-            (
-                &mut flight,
-                "Flight model",
-                &[
-                    "Modern: aerodynamic flight model with fly-by-wire: the stick commands pitch and roll rate; released, the nose stays put and the flight path is held",
-                    "Classic: a DOS-era flight model",
-                ][..],
-            ),
+            (&mut cockpit, "options-cockpit"),
+            (&mut hud, "options-hud"),
+            (&mut avionics, "options-avionics"),
+            (&mut flight, "options-flight-model"),
         ],
     );
     let s = settings.bypass_change_detection();
@@ -214,32 +204,25 @@ fn style_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
 fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     let s = settings.bypass_change_detection();
     let mut toggled = false;
-    section(ui, "Flying");
+    section(ui, t!("options-section-flying"));
     toggled |= facts(
-        ui.checkbox(&mut s.auto_trim, "Auto trim"),
-        &[
-            "With the stick released, the trim holds the attitude where you left it",
-            "Helicopters: no more nose rising with speed; jets: trims out damaged control surfaces",
-            "Manual trim: Alt + arrow keys, Alt + Home centres it",
-        ],
+        ui.checkbox(&mut s.auto_trim, t!("options-auto-trim")),
+        t_lines!("options-auto-trim.facts"),
     )
     .changed();
     toggled |= facts(
-        ui.checkbox(&mut s.tooltips, "Cockpit tooltips"),
-        &["What a cockpit control or display is, under the mouse or a VR fingertip"],
+        ui.checkbox(&mut s.tooltips, t!("options-tooltips")),
+        t_lines!("options-tooltips.facts"),
     )
     .changed();
     toggled |= facts(
-        ui.checkbox(&mut s.atc, "Air traffic control"),
-        &[
-            "Tower, approach and GCA radio calls at the friendly airfields",
-            "Takeoff clearance, overhead break, and a talkdown in low cloud or poor visibility",
-        ],
+        ui.checkbox(&mut s.atc, t!("options-atc")),
+        t_lines!("options-atc.facts"),
     )
     .changed();
     toggled |= facts(
-        ui.checkbox(&mut s.player_labels, "Player labels"),
-        &["Multiplayer: the other pilots' names over their aircraft, however far away"],
+        ui.checkbox(&mut s.player_labels, t!("options-player-labels")),
+        t_lines!("options-player-labels.facts"),
     )
     .changed();
     let mut percent = s.player_label_size * 100.0;
@@ -248,7 +231,7 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         let slider = egui::Slider::new(&mut percent, range).step_by(10.0).fixed_decimals(0);
         let resp = facts(
             ui.add_enabled(s.player_labels, slider.suffix("%")),
-            &["Size of the player labels", "50%: the default"],
+            t_lines!("options-label-size.facts"),
         );
         if resp.changed() {
             s.player_label_size = percent / 100.0;
@@ -262,12 +245,12 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
 
 fn vr_size_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     let s = settings.bypass_change_detection();
-    section(ui, "VR cockpit size");
+    section(ui, t!("options-section-vr-size"));
     let mut percent = s.vr_cockpit_scale * 100.0;
     let range = VR_COCKPIT_SCALE_RANGE.start() * 100.0..=VR_COCKPIT_SCALE_RANGE.end() * 100.0;
     if facts(
         ui.add(egui::Slider::new(&mut percent, range).step_by(5.0).fixed_decimals(0).suffix("%")),
-        &["Size of the cockpit (and the world) in the headset", "100%: life size"],
+        t_lines!("options-vr-size.facts"),
     )
     .changed()
     {
@@ -282,86 +265,62 @@ fn gif_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     if cfg!(target_arch = "wasm32") {
         return;
     }
-    section(ui, "GIF recording");
+    section(ui, t!("options-section-gif"));
     let s = settings.bypass_change_detection();
     let before = (s.gif_scale, s.gif_fps);
     let window = ui.ctx().content_rect().size() * ui.ctx().pixels_per_point();
     let size =
         crate::gif_recorder::gif_size(UVec2::new(window.x as u32, window.y as u32), s.gif_scale);
+    // The choices' notes: the message of a choice's value, where it has one.
+    let noted =
+        |id: String, f: &'static [&'static str]| if f.is_empty() { f } else { t_lines!(&id) };
+    let scales = crate::gif_recorder::SCALES
+        .map(|(v, name, f)| (v, name, noted(format!("options-gif-scale-{v}.facts"), f)));
+    let rates = crate::gif_recorder::FRAME_RATES
+        .map(|(v, name, f)| (v, name, noted(format!("options-gif-rate-{v}.facts"), f)));
+    // The names padded to the longer (the font is monospace).
+    let names = [t!("options-gif-size"), t!("options-gif-rate")];
+    let pad = names.iter().map(|n| n.chars().count()).max().unwrap_or(0) + 1;
     ui.horizontal(|ui| {
-        ui.label(format!("{:<6}", "SIZE"));
+        ui.label(format!("{:<pad$}", names[0]));
         ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
-            crate::menu::dropdown(ui, "gif_scale", &mut s.gif_scale, crate::gif_recorder::SCALES)
+            crate::menu::dropdown(ui, "gif_scale", &mut s.gif_scale, scales)
         });
         ui.colored_label(GREEN, format!("{} x {}", size.x, size.y));
     });
     ui.horizontal(|ui| {
-        ui.label(format!("{:<6}", "RATE"));
+        ui.label(format!("{:<pad$}", names[1]));
         ui.allocate_ui(egui::vec2(90.0, 22.0), |ui| {
-            crate::menu::dropdown(ui, "gif_fps", &mut s.gif_fps, crate::gif_recorder::FRAME_RATES)
+            crate::menu::dropdown(ui, "gif_fps", &mut s.gif_fps, rates)
         });
     });
-    ui.label(
-        egui::RichText::new("F12 (unless rebound) starts and stops; saved in your Pictures folder")
-            .small()
-            .color(DIM),
-    );
+    ui.label(egui::RichText::new(t!("options-gif-hint")).small().color(DIM));
     if (s.gif_scale, s.gif_fps) != before {
         settings.set_changed();
     }
 }
 
 fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
-    section(ui, "Rendering");
+    section(ui, t!("options-section-rendering"));
     let s = settings.bypass_change_detection();
-    let mut toggled = false;
-    for (modern, name, f) in [
-        (
-            &mut s.modern_shading,
-            "Shaders",
-            &["Modern: subtle directional shading, smooth distance haze", "Classic: flat shading"]
-                [..],
-        ),
-        (
-            &mut s.shadows,
-            "Shadows",
-            &[
-                "Modern: sun shadows in the cockpit and the world (costs GPU time)",
-                "Classic: no shadows",
-            ][..],
-        ),
-        (
-            &mut s.local_lights,
-            "Point lights",
-            &[
-                "Modern: cockpit flood and display lights; explosions, plumes and runway lights light the scene",
-                "Classic: sun and sky light only",
-            ][..],
-        ),
-        (
-            &mut s.continuous_time,
-            "Time of day",
-            &[
-                "Modern: the sun and the moon move with the mission clock, the sky darkens and brightens with the sun; stars and the moon's phase at night",
-                "Modern: moonlight sets how far enemy pilots see you at night (2 km on a moonless night, 4 km under a full moon)",
-                "Classic: a slow change of colours and a fixed sun",
-            ][..],
-        ),
-    ] {
-        toggled |= facts(slide_switch(ui, name, modern), f).changed();
-    }
+    let mut toggled = switches(
+        ui,
+        [
+            (&mut s.modern_shading, "options-shaders"),
+            (&mut s.shadows, "options-shadows"),
+            (&mut s.local_lights, "options-point-lights"),
+            (&mut s.continuous_time, "options-time-of-day"),
+        ],
+    );
     if !crate::WEBGL2 {
         // Off while the pixelize look is on (Retro).
         let forced = crate::palette::pixelized(s);
         let mut msaa = s.msaa && !forced;
-        let check = ui.add_enabled(!forced, egui::Checkbox::new(&mut msaa, "Anti-aliasing (MSAA)"));
+        let check = ui.add_enabled(!forced, egui::Checkbox::new(&mut msaa, t!("options-msaa")));
         let check = if forced {
-            check.on_disabled_hover_text("Off while Pixelize (Retro) is on")
+            check.on_disabled_hover_text(t!("options-msaa-forced"))
         } else {
-            facts(
-                check,
-                &["Smooth edges: 4x MSAA, 2x in VR (costs GPU time)", "Off: hard pixel edges"],
-            )
+            facts(check, t_lines!("options-msaa.facts"))
         };
         if check.changed() {
             s.msaa = msaa;
@@ -370,11 +329,8 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
     if !crate::WEBGL2 {
         toggled |= facts(
-            ui.checkbox(&mut s.vr_auto_detail, "Automatic scenery detail (VR)"),
-            &[
-                "In the headset, the range of towns, forests and fields shrinks while frames run late and grows back when there is time to spare",
-                "The graphics settings stay as chosen",
-            ],
+            ui.checkbox(&mut s.vr_auto_detail, t!("options-auto-detail")),
+            t_lines!("options-auto-detail.facts"),
         )
         .changed();
     }
@@ -382,20 +338,33 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     if !s.continuous_time {
         ui.indent("sun_moon", |ui| {
             toggled |= facts(
-                ui.checkbox(&mut s.sun_moon, "Sun and moon"),
-                &[
-                    "The sun in the sky by day, the moon and the stars by night",
-                    "The moon shows the mission's phase",
-                ],
+                ui.checkbox(&mut s.sun_moon, t!("options-sun-moon")),
+                t_lines!("options-sun-moon.facts"),
             )
             .changed();
         });
     }
-    for (title, retro) in [("Effects", false), ("Retro", true)] {
+    for (title, retro) in
+        [(t!("options-section-effects"), false), (t!("options-section-retro"), true)]
+    {
         section(ui, title);
-        // Two columns: the effects are many.
+        // Two columns: the effects are many; one where a label would not fit its column.
         let column = (ui.available_width() - ui.spacing().item_spacing.x) / 2.0;
-        egui::Grid::new(title).num_columns(2).min_col_width(column).show(ui, |ui| {
+        let font = egui::TextStyle::Body.resolve(ui.style());
+        let box_width = ui.spacing().icon_width + ui.spacing().icon_spacing;
+        let widest = crate::effects::Effect::ALL
+            .into_iter()
+            .filter(|e| e.retro() == retro)
+            .map(|e| {
+                let label = ui.painter().layout_no_wrap(e.label().to_string(), font.clone(), egui::Color32::WHITE);
+                // Pixelize has its slider beside it.
+                let slider = if e == crate::effects::Effect::Pixelize { 150.0 } else { 0.0 };
+                box_width + label.size().x + slider + 2.0 * ui.spacing().item_spacing.x
+            })
+            .fold(0.0, f32::max);
+        let columns = if widest > column { 1 } else { 2 };
+        let column = if columns == 1 { ui.available_width() } else { column };
+        egui::Grid::new(title).num_columns(columns).min_col_width(column).show(ui, |ui| {
             let list = crate::effects::Effect::ALL.into_iter().filter(|e| e.retro() == retro);
             for (i, e) in list.enumerate() {
                 let mut on = e.get(&s.effects);
@@ -412,12 +381,12 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
                             .suffix(" px");
                         let resp = facts(
                             ui.add_enabled(on && !s.vr, slider),
-                            &["The side of a block, in screen pixels (2: fine, 5: coarse)"],
+                            t_lines!("options-pixel-block.facts"),
                         );
                         toggled |= resp.changed();
                     }
                 });
-                if i % 2 == 1 {
+                if i % columns == columns - 1 {
                     ui.end_row();
                 }
             }
@@ -429,43 +398,27 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
 }
 
 fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut bool) {
-    section(ui, "Volume");
+    section(ui, t!("options-section-volume"));
     let s = settings.bypass_change_detection();
     let mut changed = false;
-    for (v, name, f) in [
-        (&mut s.master_volume, "Master", &["Every sound"][..]),
-        (
-            &mut s.engine_volume,
-            "Engine",
-            &["Your engine or rotor, and the aircraft heard around you"][..],
-        ),
-        (&mut s.effects_volume, "Effects", &["Weapons, explosions, gear, radio and the rest"][..]),
-        (
-            &mut s.warning_volume,
-            "Warnings",
-            &["Stall horn, radar and missile warnings, the fire siren, the Sidewinder tones"][..],
-        ),
-        (
-            &mut s.rwr_volume,
-            "RWR",
-            &["The radar warning tones, as a part of the warnings' volume"][..],
-        ),
-        (
-            &mut s.voice_volume,
-            "Radio",
-            &["The other players talking on the coop radio, and the spoken ATC"][..],
-        ),
-        (
-            &mut s.atc_volume,
-            "ATC voice",
-            &["The spoken ATC calls, as a part of the radio's volume"][..],
-        ),
-        (&mut s.music_volume, "Music", &["The main menu's music"][..]),
-    ] {
+    let volumes = [
+        (&mut s.master_volume, "options-volume-master"),
+        (&mut s.engine_volume, "options-volume-engine"),
+        (&mut s.effects_volume, "options-volume-effects"),
+        (&mut s.warning_volume, "options-volume-warnings"),
+        (&mut s.rwr_volume, "options-volume-rwr"),
+        (&mut s.voice_volume, "options-volume-radio"),
+        (&mut s.atc_volume, "options-volume-atc"),
+        (&mut s.music_volume, "options-volume-music"),
+    ];
+    // The names padded to the longest (the font is monospace).
+    let pad = volumes.iter().map(|(_, id)| t!(id).chars().count()).max().unwrap_or(0) + 1;
+    for (v, id) in volumes {
         let mut percent = (*v * 100.0).round();
+        let f = t_lines!(&format!("{id}.facts"));
         ui.horizontal(|ui| {
             ui.spacing_mut().slider_width = 220.0;
-            ui.label(format!("{:<9}", name.to_ascii_uppercase()));
+            ui.label(format!("{:<pad$}", t!(id).to_uppercase()));
             let slider = egui::Slider::new(&mut percent, 0.0..=100.0)
                 .step_by(5.0)
                 .fixed_decimals(0)
@@ -476,7 +429,7 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
             }
         });
     }
-    section(ui, "Radar warning tones");
+    section(ui, t!("options-section-rwr-tones"));
     let tones = s.rwr_tones;
     ui.scope(|ui| {
         ui.set_width(220.0);
@@ -488,35 +441,29 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
         );
     });
     changed |= s.rwr_tones != tones;
-    section(ui, "Cockpit");
+    section(ui, t!("options-section-cockpit"));
     changed |= facts(
-        ui.checkbox(&mut s.engine_low_pass, "Engine low-pass"),
-        &[
-            "Inside the aircraft the engine sounds muffled (the canopy and helmet take the highs off)",
-            "Off: the same as outside",
-        ],
+        ui.checkbox(&mut s.engine_low_pass, t!("options-low-pass")),
+        t_lines!("options-low-pass.facts"),
     )
     .changed();
-    section(ui, "Spoken ATC");
+    section(ui, t!("options-section-atc"));
     atc_voices(ui, s, voices);
-    section(ui, "Coop radio");
+    section(ui, t!("options-section-radio"));
     changed |= facts(
-        ui.checkbox(&mut s.voice, "Push-to-talk"),
-        &[
-            "Hold the talk key (CapsLock, or a joystick or VR button mapped to PTT) and every player hears you",
-            "The microphone opens the first time you press it",
-        ],
+        ui.checkbox(&mut s.voice, t!("options-push-to-talk")),
+        t_lines!("options-push-to-talk.facts"),
     )
     .changed();
     ui.add_enabled_ui(s.voice, |ui| {
         let mut percent = (s.mic_gain * 100.0).round();
         ui.horizontal(|ui| {
             ui.spacing_mut().slider_width = 220.0;
-            ui.label(format!("{:<9}", "MIC GAIN"));
+            ui.label(format!("{:<9}", t!("options-mic-gain")));
             let range = MIC_GAIN_RANGE.0 * 100.0..=MIC_GAIN_RANGE.1 * 100.0;
             let slider =
                 egui::Slider::new(&mut percent, range).step_by(5.0).fixed_decimals(0).suffix("%");
-            if facts(ui.add(slider), &["How loud your microphone goes out", "100%: as it is"])
+            if facts(ui.add(slider), t_lines!("options-mic-gain.facts"))
                 .changed()
             {
                 s.mic_gain = percent / 100.0;
@@ -525,12 +472,12 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
         });
         let devices = mic_devices();
         if !devices.is_empty() {
-            let shown = if s.mic_device.is_empty() { "Default" } else { s.mic_device.as_str() };
+            let shown = if s.mic_device.is_empty() { t!("options-mic-default") } else { s.mic_device.as_str() };
             let before = s.mic_device.clone();
             egui::ComboBox::from_id_salt("mic_device").width(220.0).selected_text(shown).show_ui(
                 ui,
                 |ui| {
-                    ui.selectable_value(&mut s.mic_device, String::new(), "Default");
+                    ui.selectable_value(&mut s.mic_device, String::new(), t!("options-mic-default"));
                     for d in devices {
                         ui.selectable_value(&mut s.mic_device, d.clone(), d.as_str());
                     }
@@ -547,21 +494,18 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
 /// The spoken ATC's voices, and the button to the VOICES dialog.
 #[cfg(not(target_arch = "wasm32"))]
 fn atc_voices(ui: &mut egui::Ui, s: &Settings, voices: &mut bool) {
-    let name = |n: &str| if n.is_empty() { "text only".to_string() } else { n.to_string() };
+    let name = |n: &str| if n.is_empty() { t!("options-voice-text-only").to_string() } else { n.to_string() };
     ui.label(
-        egui::RichText::new(format!(
-            "Controllers: {}   Pilot: {}",
-            name(&s.atc_voice),
-            name(&s.pilot_voice)
+        egui::RichText::new(t!(
+            "options-voices-line",
+            controllers = name(&s.atc_voice),
+            pilot = name(&s.pilot_voice)
         ))
         .color(DIM),
     );
     if facts(
-        ui.add(big_button("VOICES").icon(icon::DOWNLOAD).min_size(egui::vec2(300.0, 44.0))),
-        &[
-            "Download voices for the radio calls, delete them",
-            "Choose the controllers' and your own, and hear them",
-        ],
+        ui.add(big_button(t!("options-voices")).icon(icon::DOWNLOAD).min_size(egui::vec2(300.0, 44.0))),
+        t_lines!("options-voices.facts"),
     )
     .clicked()
     {
@@ -572,7 +516,7 @@ fn atc_voices(ui: &mut egui::Ui, s: &Settings, voices: &mut bool) {
 /// The browser build: the calls are text.
 #[cfg(target_arch = "wasm32")]
 fn atc_voices(ui: &mut egui::Ui, _s: &Settings, _voices: &mut bool) {
-    ui.label(egui::RichText::new("Text only in the browser").color(DIM));
+    ui.label(egui::RichText::new(t!("options-voices-web")).color(DIM));
 }
 
 /// The microphones (looked up once: it takes a moment).
@@ -587,10 +531,10 @@ fn control_options(
     head: Option<crate::headtrack::Source>,
     dialog: &mut crate::input_dialog::InputDialog,
 ) {
-    section(ui, "Bindings");
+    section(ui, t!("options-section-bindings"));
     if facts(
-        ui.add(big_button("KEYS AND JOYSTICK").icon(icon::KEYS).min_size(egui::vec2(300.0, 44.0))),
-        &["Map keys, joystick and HOTAS axes and buttons", "Saved for the next flights"],
+        ui.add(big_button(t!("options-keys-joystick")).icon(icon::KEYS).min_size(egui::vec2(300.0, 44.0))),
+        t_lines!("options-keys-joystick.facts"),
     )
     .clicked()
     {
@@ -600,31 +544,27 @@ fn control_options(
     if cfg!(target_arch = "wasm32") {
         return;
     }
-    section(ui, "Head/eye tracking");
+    section(ui, t!("options-section-head-tracking"));
     // Read every frame by `headtrack`: no change detection needed.
     let s = settings.bypass_change_detection();
     facts(
-        ui.add_enabled(!s.vr, egui::Checkbox::new(&mut s.head_tracking, "Head/Eye Tracking")),
-        &[
-            "Your head turns and moves the view in the cockpit (desktop; in VR the headset does)",
-            "Tracking program (OpenTrack...): FreeTrack output, or UDP to 127.0.0.1 port 4242",
-            "Home: the current head position becomes the centre",
-        ],
+        ui.add_enabled(
+            !s.vr,
+            egui::Checkbox::new(&mut s.head_tracking, t!("options-head-tracking")),
+        ),
+        t_lines!("options-head-tracking.facts"),
     );
     facts(
         ui.add_enabled(
             s.head_tracking && !s.vr,
-            egui::Checkbox::new(&mut s.tracking_mouse_look, "Mouse look while tracking"),
+            egui::Checkbox::new(&mut s.tracking_mouse_look, t!("options-tracking-mouse")),
         ),
-        &[
-            "On: the right mouse button still turns and zooms the cockpit view",
-            "Off: while the tracker sends, the right mouse button does nothing in the cockpit",
-        ],
+        t_lines!("options-tracking-mouse.facts"),
     );
     if s.head_tracking && !s.vr {
         match head {
-            Some(src) => ui.colored_label(GREEN, format!("Tracking ({})", src.name())),
-            None => ui.colored_label(AMBER, "No tracker heard: start the tracking program"),
+            Some(src) => ui.colored_label(GREEN, t!("options-tracking", source = src.name())),
+            None => ui.colored_label(AMBER, t!("options-no-tracker")),
         };
     }
 }

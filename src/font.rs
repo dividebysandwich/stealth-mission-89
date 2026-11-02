@@ -153,9 +153,10 @@ pub const fn ink(colour: u8) -> u8 {
     0x80 | (colour & 0x7F)
 }
 
-/// Upper-cases a string before drawing (flight text is upper case).
+/// Upper-cases a string before drawing (flight text is upper case): the translations' accents
+/// dropped, so that no byte of a UTF-8 letter is taken for a colour change.
 pub fn upper(s: &str) -> Vec<u8> {
-    s.bytes().map(|b| b.to_ascii_uppercase()).collect()
+    stealth_i18n::ascii_upper(s).into_bytes()
 }
 
 pub fn draw_text(
@@ -297,7 +298,8 @@ const STROKES: &[(char, &str)] = &[
 ];
 
 /// Small letters (x-height 2 to 6, l and t rise to 0), the bases of the accented letters that
-/// the French, Italian, Hungarian, Czech and Slovak keycaps print in lower case.
+/// the French, Italian, Hungarian, Czech and Slovak keycaps print in lower case (and of the
+/// translations' Polish letters).
 const SMALL: &[(char, &str)] = &[
     ('a', "0,2 4,2 4,6 0,6 0,4 4,4"),
     ('c', "4,2 0,2 0,6 4,6"),
@@ -317,14 +319,17 @@ const SMALL: &[(char, &str)] = &[
 /// The diacritics: strokes over the x-height (y 0 to 1.3) or under the baseline, whether they
 /// are raised over a capital, and the base letters with their accented letters, char by char.
 const MARKS: &[(&str, bool, &str, &str)] = &[
-    ("1.5,1.3 2.5,0", true, "aeiouyAEIOUY", "áéíóúýÁÉÍÓÚÝ"),
+    ("1.5,1.3 2.5,0", true, "aeiouycnszAEIOUYCNSZ", "áéíóúýćńśźÁÉÍÓÚÝĆŃŚŹ"),
     ("1.5,0 2.5,1.3", true, "aeiouAEIOU", "àèìòùÀÈÌÒÙ"),
     ("1,1.3 2,0 3,1.3", true, "aeiouAEIOU", "âêîôûÂÊÎÔÛ"),
-    ("1,0.5 1,0.8|3,0.5 3,0.8", true, "aeiouyAEIOU", "äëïöüÿÄËÏÖÜ"),
+    ("1,0.5 1,0.8|3,0.5 3,0.8", true, "aeiouyAEIOUY", "äëïöüÿÄËÏÖÜŸ"),
     ("1,0 2,1.3 3,0", true, "censrzCENSRZLT", "čěňšřžČĚŇŠŘŽĽŤ"),
     ("1,1.3 1.8,0|2.5,1.3 3.3,0", true, "ouOU", "őűŐŰ"),
     ("1.5,0 2.5,0 2.5,1 1.5,1 1.5,0", true, "auAU", "åůÅŮ"),
-    ("0.5,1 1.5,0.3 2.5,1 3.5,0.3", true, "noNO", "ñõÑÕ"),
+    ("0.5,1 1.5,0.3 2.5,1 3.5,0.3", true, "anoANO", "ãñõÃÑÕ"),
+    ("2,0.4 2,0.9", true, "zZ", "żŻ"),
+    ("3,6 2.5,7 3.5,7.5", false, "aeAE", "ąęĄĘ"),
+    ("1,4.5 3,2.5", false, "lL", "łŁ"),
     // The caron of ľ and ť is an apostrophe beside the stem.
     ("3.5,0 3,1.3", false, "lt", "ľť"),
     ("2,6 2.5,7 1.5,7.5", false, "cC", "çÇ"),
@@ -357,9 +362,26 @@ pub fn stroke_has(ch: char) -> bool {
 /// Advance of the stroke font in grid units (4 wide + 2 apart).
 const STROKE_ADVANCE: f32 = 6.0;
 
+/// `s` with the characters the stroke font lacks replaced by their letters without accents
+/// ("œ" -> "oe"); the others are left out when drawn.
+fn stroke_safe(s: &str) -> std::borrow::Cow<'_, str> {
+    if s.chars().all(|c| c.is_ascii() || stroke_has(c) || stroke_has(capital(c))) {
+        return s.into();
+    }
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if c.is_ascii() || stroke_has(c) || stroke_has(capital(c)) {
+            out.push(c);
+        } else {
+            out.push_str(&stealth_i18n::fold_accents(&c.to_string()));
+        }
+    }
+    out.into()
+}
+
 /// Width in pixels of `s` drawn with [`stroke_text`] at glyph height `h`.
 pub fn stroke_width(s: &str, h: f32) -> f32 {
-    let n = s.chars().count() as f32;
+    let n = stroke_safe(s).chars().count() as f32;
     if n == 0.0 { 0.0 } else { (n * STROKE_ADVANCE - 2.0) * h / 6.0 }
 }
 
@@ -376,7 +398,7 @@ pub fn capital(ch: char) -> char {
 /// Draws `s` (upper-cased) with the stroke font, top-left at (x, y), glyph height `h`, pen
 /// width `w`. Returns the x after the text.
 pub fn stroke_text(c: &mut Canvas, x: f32, y: f32, s: &str, h: f32, w: f32, col: u8) -> f32 {
-    stroke_chars(c, x, y, s.chars().map(capital), h, w, col)
+    stroke_chars(c, x, y, stroke_safe(s).chars().map(capital), h, w, col)
 }
 
 /// [`stroke_text`] keeping the accented small letters small: the key labels of the layouts
@@ -390,7 +412,7 @@ pub fn stroke_text_keep_case(
     w: f32,
     col: u8,
 ) -> f32 {
-    stroke_chars(c, x, y, s.chars(), h, w, col)
+    stroke_chars(c, x, y, stroke_safe(s).chars(), h, w, col)
 }
 
 fn stroke_chars(
@@ -500,6 +522,19 @@ mod tests {
             assert_eq!(bases.chars().count(), accented.chars().count(), "{accented}");
         }
         assert!(!stroke_has('ф'));
+    }
+
+    /// The translations' letters (French, German, Spanish, Italian, Polish, Portuguese) are
+    /// drawn, the others without their accents.
+    #[test]
+    fn stroke_font_covers_translations() {
+        for ch in "àâäçéèêëîïôöùûüÿñãõáíóúßąćęłńśźżÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸÑÃÕÁÍÓÚĄĆĘŁŃŚŹŻ".chars()
+        {
+            assert!(stroke_has(capital(ch)), "no stroke glyph for {ch:?}");
+        }
+        assert_eq!(stroke_safe("ŒUVRE"), "OEUVRE");
+        assert_eq!(stroke_width("Œ", 6.0), stroke_width("OE", 6.0));
+        assert_eq!(upper("Siège"), b"SIEGE");
     }
 
     /// Text is drawn in capitals where the font has them.

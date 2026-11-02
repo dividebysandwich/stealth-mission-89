@@ -7,6 +7,10 @@ use crate::tables::{MissionTables, Objective};
 /// Briefing wording (`assets/mission/briefings.json`): every entry is a list of variants, one
 /// of which is picked per mission. Templates use `{name}` placeholders. The intelligence
 /// summaries are the mission templates' own (`missions.ron`).
+///
+/// This is the English; the other languages' are messages `bt-<entry>-<variant>` of
+/// `assets/i18n/<language>/briefings.ftl` (written for English by `tools/i18n_briefings.py`),
+/// the briefing being worded in the player's language when the mission is generated.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BriefingTexts {
     /// Rules of engagement per ROE level (0 clandestine, 1 limited, 2 full war).
@@ -78,6 +82,36 @@ fn days_in_month(month: u32, year: u32) -> u32 {
 /// Fills `{key}` placeholders.
 fn fill(template: &str, vars: &[(&str, &str)]) -> String {
     vars.iter().fold(template.to_string(), |s, (k, v)| s.replace(&format!("{{{k}}}"), v))
+}
+
+/// Message `id` in the player's language with `vars`; None in English or where the language
+/// lacks it (the data files' English is used).
+fn translated(id: &str, vars: &[(&str, &str)]) -> Option<String> {
+    let l = stealth_i18n::language();
+    if l == stealth_i18n::Language::En || !stealth_i18n::exists_in(l, id) {
+        return None;
+    }
+    let mut args = stealth_i18n::Args::new();
+    for (k, v) in vars {
+        args.set(*k, *v);
+    }
+    Some(stealth_i18n::tr_args_in(l, id, Some(&args)))
+}
+
+/// A target type's name ("Bridge") in the player's language, with its article where the
+/// language's objective templates need it.
+fn object_name(name: &str) -> String {
+    let id: String = name
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
+        .collect();
+    let id = format!("obj-{}", id.trim_matches('-'));
+    translated(&id, &[]).unwrap_or_else(|| name.to_string())
+}
+
+/// A briefing label in the player's language (`english` from the data files).
+fn label(id: &str, english: &str) -> String {
+    translated(id, &[]).unwrap_or_else(|| english.to_string())
 }
 
 /// The pre-flight briefing (paragraph layout is not reproduced).
@@ -161,24 +195,32 @@ impl TextCtx<'_> {
         b.iter().map(|&c| c as char).collect()
     }
 
-    /// One of `variants`, the same for every call with this mission and `salt` (own random
-    /// stream, so the generator's sequence is untouched).
-    fn pick<'v>(&self, variants: &'v [String], salt: u32) -> &'v str {
-        if variants.is_empty() {
-            return "";
-        }
+    /// One variant, the same for every call with this mission and `salt` (own random stream,
+    /// so the generator's sequence is untouched).
+    /// Which of `n` variants (one per mission and `salt`).
+    fn pick_index(&self, n: usize, salt: u32) -> usize {
         let mut r = MscRand::new(self.seed ^ 0x4252_4946 ^ salt.wrapping_mul(0x9E37_79B9));
         r.rand();
-        variants[r.rand() as usize % variants.len()].as_str()
+        r.rand() as usize % n
+    }
+
+    /// The picked variant of entry `id` (message `<id>-<variant>`) in the player's language,
+    /// else the English of `variants`, with its placeholders filled.
+    fn text(&self, id: &str, variants: &[String], salt: u32, vars: &[(&str, &str)]) -> String {
+        if variants.is_empty() {
+            return String::new();
+        }
+        let i = self.pick_index(variants.len(), salt);
+        translated(&format!("{id}-{i}"), vars).unwrap_or_else(|| fill(&variants[i], vars))
     }
 
     /// Intelligence paragraph of a target slot.
     pub fn summary(&self, slot: usize) -> String {
         let k = self.g.targets[slot].num as usize;
-        self.x
-            .templates
-            .get(k)
-            .map_or(String::new(), |m| self.pick(&m.briefings, 0x100 + slot as u32).to_string())
+        self.x.templates.get(k).map_or(String::new(), |m| {
+            let id = format!("bt-intel-{}", m.id.replace('_', "-"));
+            self.text(&id, &m.briefings, 0x100 + slot as u32, &[])
+        })
     }
 
     /// Objective text by mission type.
@@ -191,39 +233,40 @@ impl TextCtx<'_> {
         let code = m.code();
         let coord = Self::onc(&t.coord);
         let salt = 0x200 + slot as u32;
-        let pick = |v: &[String]| self.pick(v, salt).to_string();
+        let text = |id: &str, v: &[String], vars: &[(&str, &str)]| self.text(id, v, salt, vars);
         let (deadline, depart) = (g.deadline.as_str(), g.depart.as_str());
         match m.objective {
             Objective::Photo | Objective::Destroy => {
-                let what = self.name((o.object_idx & 0xFF) as i32);
+                let what = object_name(self.name((o.object_idx & 0xFF) as i32));
                 let photo = m.objective == Objective::Photo;
-                let forms = match (photo, o.name != 0) {
-                    (true, true) => &o_t.photo_at,
-                    (true, false) => &o_t.photo,
-                    (false, true) => &o_t.destroy_at,
-                    (false, false) => &o_t.destroy,
+                let (id, forms) = match (photo, o.name != 0) {
+                    (true, true) => ("bt-photo-at", &o_t.photo_at),
+                    (true, false) => ("bt-photo", &o_t.photo),
+                    (false, true) => ("bt-destroy-at", &o_t.destroy_at),
+                    (false, false) => ("bt-destroy", &o_t.destroy),
                 };
-                let mut s = fill(&pick(forms), &[("what", what), ("place", place)]);
-                let suffix = if code & 0x20 != 0 {
-                    &o_t.suffix_unloading
+                let mut s = text(id, forms, &[("what", &what), ("place", place)]);
+                let (id, suffix) = if code & 0x20 != 0 {
+                    ("bt-suffix-unloading", &o_t.suffix_unloading)
                 } else if code & 2 != 0 {
-                    &o_t.suffix_deadline
+                    ("bt-suffix-deadline", &o_t.suffix_deadline)
                 } else {
                     if s.ends_with(',') {
                         s.pop();
                     }
-                    &o_t.suffix_none
+                    ("bt-suffix-none", &o_t.suffix_none)
                 };
-                s + &fill(&pick(suffix), &[("deadline", deadline)])
+                s + &text(id, suffix, &[("deadline", deadline)])
             }
             Objective::SupplyDrop => {
-                fill(&pick(&o_t.drop), &[("coord", &coord), ("deadline", deadline)])
+                text("bt-drop", &o_t.drop, &[("coord", &coord), ("deadline", deadline)])
             }
             Objective::Airstrip => {
-                fill(&pick(&o_t.airstrip), &[("coord", &coord), ("deadline", deadline)])
+                text("bt-airstrip", &o_t.airstrip, &[("coord", &coord), ("deadline", deadline)])
             }
-            Objective::InterceptRoute => fill(
-                &pick(&o_t.route),
+            Objective::InterceptRoute => text(
+                "bt-route",
+                &o_t.route,
                 &[
                     ("origin", self.name(self.obj(g.special_start).name as i32)),
                     ("depart", depart),
@@ -232,10 +275,11 @@ impl TextCtx<'_> {
                 ],
             ),
             Objective::InterceptLeaving => {
-                fill(&pick(&o_t.leaving), &[("place", place), ("depart", depart)])
+                text("bt-leaving", &o_t.leaving, &[("place", place), ("depart", depart)])
             }
-            Objective::InterceptHome => fill(
-                &pick(&o_t.last_seen),
+            Objective::InterceptHome => text(
+                "bt-last-seen",
+                &o_t.last_seen,
                 &[
                     ("coord", &g.intercept_ref.as_ref().map(Self::onc).unwrap_or_default()),
                     ("depart", depart),
@@ -244,9 +288,14 @@ impl TextCtx<'_> {
                 ],
             ),
             Objective::Patrol => {
-                let suf = if m.fighters { " fighter patrol" } else { "" };
-                let target = format!("{}{suf}", x.plane(g.world.flights[0].plane_type).name);
-                fill(&pick(&o_t.patrol), &[("target", &target), ("coord", &coord)])
+                let plane = &x.plane(g.world.flights[0].plane_type).name;
+                let target = if m.fighters {
+                    translated("bt-fighter-patrol", &[("plane", plane)])
+                        .unwrap_or_else(|| format!("{plane} fighter patrol"))
+                } else {
+                    plane.to_string()
+                };
+                text("bt-patrol", &o_t.patrol, &[("target", &target), ("coord", &coord)])
             }
         }
     }
@@ -266,7 +315,11 @@ impl TextCtx<'_> {
                 yr += 1;
             }
         }
-        format!("{} {day}, {yr}", MONTHS[mon as usize - 1])
+        let english = MONTHS[mon as usize - 1];
+        let month = label(&format!("bt-month-{mon}"), english);
+        let (day, year) = (day.to_string(), yr.to_string());
+        let vars = [("month", month.as_str()), ("day", day.as_str()), ("year", year.as_str())];
+        translated("bt-date", &vars).unwrap_or_else(|| format!("{english} {day}, {year}"))
     }
 
     pub fn briefing(&self, sorties: u16, pilot: &str) -> Briefing {
@@ -277,46 +330,57 @@ impl TextCtx<'_> {
         let takeoff = self.base_name(t[0].base);
         let fuel = g.fuel.to_string();
         let b = Briefing {
-            header: self.pick(&tx.headers, 1).into(),
-            title: tx.titles.get(self.kind).map_or("", |v| self.pick(v, 2)).into(),
-            pilot_line: fill(self.pick(&tx.pilot, 3), &[("pilot", pilot)]),
+            header: self.text("bt-header", &tx.headers, 1, &[]),
+            title: tx.titles.get(self.kind).map_or(String::new(), |v| {
+                self.text(&format!("bt-title-{}", self.kind), v, 2, &[])
+            }),
+            pilot_line: self.text("bt-pilot", &tx.pilot, 3, &[("pilot", pilot)]),
             base_date_line: format!("{takeoff} - {date}"),
             date,
             primary_summary: self.summary(0),
             primary_objective: self.objective(0),
             secondary_summary: self.summary(1),
             secondary_objective: self.objective(1),
-            depart_line: fill(self.pick(&tx.depart, 4), &[("base", &takeoff), ("time", &g.depart)]),
-            land_line: fill(self.pick(&tx.land, 5), &[("base", &self.base_name(t[1].base))]),
-            roe_text: tx.roe.get(self.roe).map_or("", |v| self.pick(v, 6)).into(),
+            depart_line: self.text(
+                "bt-depart",
+                &tx.depart,
+                4,
+                &[("base", &takeoff), ("time", &g.depart)],
+            ),
+            land_line: self.text("bt-land", &tx.land, 5, &[("base", &self.base_name(t[1].base))]),
+            roe_text: tx
+                .roe
+                .get(self.roe)
+                .map_or(String::new(), |v| self.text(&format!("bt-roe-{}", self.roe), v, 6, &[])),
             armament: g.weapons[..nbays]
                 .iter()
                 .map(|&w| x.weapon_name(w as i16).to_string())
                 .collect(),
-            fuel_line: fill(self.pick(&tx.fuel, 7), &[("fuel", &fuel)]),
+            fuel_line: self.text("bt-fuel", &tx.fuel, 7, &[("fuel", &fuel)]),
             weather_line: String::new(),
             lines: Vec::new(),
         };
         let l = &tx.labels;
+        let objective = label("bt-label-objective", &l.objective);
         let mut lines: Vec<String> = vec![
             b.header.clone(),
             b.title.clone(),
             b.pilot_line.clone(),
             b.base_date_line.clone(),
-            l.primary.clone(),
+            label("bt-label-primary", &l.primary),
             b.primary_summary.clone(),
-            l.objective.clone(),
+            objective.clone(),
             b.primary_objective.clone(),
-            l.secondary.clone(),
+            label("bt-label-secondary", &l.secondary),
             b.secondary_summary.clone(),
-            l.objective.clone(),
+            objective,
             b.secondary_objective.clone(),
-            l.flight_plan.clone(),
+            label("bt-label-flight-plan", &l.flight_plan),
             b.depart_line.clone(),
             b.land_line.clone(),
-            l.roe.clone(),
+            label("bt-label-roe", &l.roe),
             b.roe_text.clone(),
-            l.armament.clone(),
+            label("bt-label-armament", &l.armament),
         ];
         lines.extend(b.armament.iter().cloned());
         lines.push(b.fuel_line.clone());
