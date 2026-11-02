@@ -733,8 +733,10 @@ impl Sim {
             killed_by_ai: false,
             reported: false,
             killed_by: None,
+            killed_by_radar: None,
             strike: None,
             kamikaze: false,
+            strike_aaa: false,
             supply: None,
         });
         let d = &mut c.defence;

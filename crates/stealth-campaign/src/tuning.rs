@@ -93,6 +93,10 @@ pub const RAID_LEAD: f64 = 120.0;
 pub const RAID_RANGE: i32 = 0x4B00;
 /// Finished raids are kept this long (the log and the debriefs have them).
 pub const RAID_KEEP: f64 = 3600.0;
+/// Enemy SEAD: a friendly SAM battery that shoots down an enemy aircraft draws a raid of
+/// `RAID_AIRCRAFT` with anti-radiation missiles (escorted, paid like a raid), no sooner than
+/// this after the last one, by the opponents' skill.
+pub const SEAD_EVERY: [f64; 4] = [30.0 * 60.0, 20.0 * 60.0, 15.0 * 60.0, 10.0 * 60.0];
 
 /// Guns and MANPADS teams of a place: one destroyed comes back this long after the last one
 /// came back (or was lost).

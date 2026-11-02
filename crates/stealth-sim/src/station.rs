@@ -498,6 +498,7 @@ impl Sim {
         let mut m = self.ai_missile(PATRIOT, from, dir, j, true);
         m.guidance = Some(st.mode);
         m.station = Some(st.unit);
+        m.radar = Some(st.unit);
         let fs = self.fs.max(1);
         let a = &mut self.units[k];
         a.rounds -= 1;

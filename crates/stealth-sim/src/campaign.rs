@@ -146,9 +146,15 @@ pub struct CampaignFlight {
     /// The pilot who shot it down.
     #[serde(default)]
     pub killed_by: Option<u8>,
+    /// The SAM radar (AAA unit) whose missile shot it down.
+    #[serde(default)]
+    pub killed_by_radar: Option<u16>,
     /// Strike aircraft: the object it attacks (None once it has fired).
     #[serde(default)]
     pub strike: Option<i32>,
+    /// SEAD: `strike` is an air defence radar (AAA unit), not an object.
+    #[serde(default)]
+    pub strike_aaa: bool,
     /// An attack drone: it is destroyed with its target.
     #[serde(default)]
     pub kamikaze: bool,
@@ -173,6 +179,13 @@ pub struct AiMissile {
     /// A strike aircraft's weapon: the object it flies at (`target` is then its launcher).
     #[serde(default)]
     pub ground: Option<usize>,
+    /// `ground` is an air defence unit (AAA index), not an object: a SEAD aircraft's
+    /// anti-radiation missile.
+    #[serde(default)]
+    pub ground_aaa: bool,
+    /// A SAM's missile: the radar (AAA unit) guiding it, credited with what it shoots down.
+    #[serde(default)]
+    pub radar: Option<u16>,
     /// Fired from a manned Patriot console: how it is guided, the radar (AAA unit) guiding it,
     /// and whether its target's countermeasures had their chance at it.
     #[serde(default)]
@@ -1042,9 +1055,11 @@ impl Sim {
             burst: 0,
             killed_by_ai: false,
             killed_by: None,
+            killed_by_radar: None,
             reported: false,
             strike: None,
             kamikaze: false,
+            strike_aaa: false,
             supply: None,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
@@ -1055,14 +1070,32 @@ impl Sim {
     /// `target`, then flies home and lands.
     pub fn spawn_striker(&mut self, from: usize, target: usize, tag: u32, blue: bool) -> usize {
         let to = self.objects.get(target).map_or((0, 0), |o| (o.x, o.y));
-        let spec = if blue {
+        let spec = self.strike_type(from, to, blue);
+        self.spawn_strike(from, target, tag, blue, spec, false)
+    }
+
+    /// Campaign: a SEAD aircraft of a side takes off from base `from` to fire an
+    /// anti-radiation missile at air defence radar `aaa` (AAA unit), then flies home and lands.
+    pub fn spawn_sead(&mut self, from: usize, aaa: usize, tag: u32, blue: bool) -> usize {
+        let to = self.units.get(aaa).map_or((0, 0), |u| (u.x, u.y));
+        let spec = self.strike_type(from, to, blue);
+        let i = self.spawn_strike(from, aaa, tag, blue, spec, false);
+        if let Some(Some(f)) = self.campaign.as_mut().map(|c| &mut c.flights[i]) {
+            f.goal = to;
+            f.strike_aaa = true;
+        }
+        i
+    }
+
+    /// A side's strike aircraft type for a flight from base `from` to `to` (map units).
+    fn strike_type(&mut self, from: usize, to: (i32, i32), blue: bool) -> i32 {
+        if blue {
             self.pick_reaching(&[22, 24], from, to)
         } else if self.aircraft_types.len() > 32 && self.theater >= 9 {
             31
         } else {
             0
-        };
-        self.spawn_strike(from, target, tag, blue, spec, false)
+        }
     }
 
     /// One of the aircraft `types` that can fly from base `from` to `goal` (map units) and back
@@ -1110,9 +1143,11 @@ impl Sim {
             burst: 0,
             killed_by_ai: false,
             killed_by: None,
+            killed_by_radar: None,
             reported: false,
             strike: None,
             kamikaze: false,
+            strike_aaa: false,
             supply: None,
         });
         i
@@ -1174,9 +1209,11 @@ impl Sim {
             burst: 0,
             killed_by_ai: false,
             killed_by: None,
+            killed_by_radar: None,
             reported: false,
             strike: Some(target as i32),
             kamikaze,
+            strike_aaa: false,
             supply: None,
         });
         i
@@ -1228,9 +1265,11 @@ impl Sim {
             burst: 0,
             killed_by_ai: false,
             killed_by: None,
+            killed_by_radar: None,
             reported: false,
             strike: None,
             kamikaze: false,
+            strike_aaa: false,
             supply: None,
         });
         i
@@ -1339,6 +1378,7 @@ impl Sim {
                     tag: f.tag,
                     by_player: !f.killed_by_ai,
                     by: if f.killed_by_ai { None } else { f.killed_by },
+                    radar: f.killed_by_radar.map(usize::from),
                 });
             }
             // Down, or stopped at the end of its landing roll.
@@ -1356,14 +1396,16 @@ impl Sim {
         }
     }
 
-    /// Strike aircraft in reach of their target fire at it and turn for home; a recalled
-    /// AWACS over its base lands. (Attack drones hit theirs in `drone_impact`.)
+    /// Strike aircraft in reach of their target fire at it (a SEAD aircraft its anti-radiation
+    /// missile at an air defence radar) and turn for home; a recalled AWACS over its base
+    /// lands. (Attack drones hit theirs in `drone_impact`.)
     fn campaign_bombs(&mut self) {
         // Per object: the weapon a strike aircraft fires at it, and from how far.
+        let harm = (HARM, (self.missile(HARM).lock_range as i32) << 6);
         let weapon = |sim: &Sim, t: usize| {
             let o = sim.objects.get(t).copied().unwrap_or_default();
             if o.unit_type != 0 && o.flags & oflags::AIRFIELD == 0 {
-                (HARM, (sim.missile(HARM).lock_range as i32) << 6)
+                harm
             } else {
                 (ROCKETS, ROCKET_RELEASE)
             }
@@ -1387,19 +1429,23 @@ impl Sim {
             if u.flags & fflags::DESTROYED != 0 || u.flags & fflags::AIRBORNE == 0 {
                 continue;
             }
-            let (spec, release) =
-                weapons.get(target as usize).copied().unwrap_or((ROCKETS, ROCKET_RELEASE));
+            let (spec, release) = if f.strike_aaa {
+                harm
+            } else {
+                weapons.get(target as usize).copied().unwrap_or((ROCKETS, ROCKET_RELEASE))
+            };
             if approx(u.x - f.goal.0, u.y - f.goal.1) < release {
                 f.strike = None;
                 u.flags |= fflags::RTB;
                 u.wp = f.home;
-                shots.push((i, spec, target as usize, f.blue));
+                shots.push((i, spec, target as usize, f.strike_aaa, f.blue));
             }
         }
-        for (i, spec, target, blue) in shots {
+        for (i, spec, target, aaa, blue) in shots {
             let u = self.flights[i];
             let mut m = self.ai_missile(spec, flight_metres(&u), direction(u.heading, 0), i, blue);
             m.ground = Some(target);
+            m.ground_aaa = aaa;
             if let Some(c) = self.campaign.as_mut() {
                 c.missiles.push(m);
             }
@@ -1544,9 +1590,10 @@ impl Sim {
                     && approx(radar.x - u.x, radar.y - u.y) < PATRIOT_LINK)
                     .then_some(c.aaa_target[r])
                     .flatten()
+                    .map(|j| (r, j))
             });
             self.units[k].tracking = track.is_some();
-            let Some(j) = track else { continue };
+            let Some((radar, j)) = track else { continue };
             let from = add(u.metres_on(&hills), [0.0, 0.0, 3.0]);
             let d = sub(pos[j], from);
             let az = d[0].atan2(d[1]);
@@ -1563,7 +1610,9 @@ impl Sim {
             a.cooldown = PATRIOT_INTERVAL * fs;
             let el = PATRIOT_ELEVATION as f64;
             let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
-            launches.push(self.ai_missile(PATRIOT, from, dir, j, blue));
+            let mut m = self.ai_missile(PATRIOT, from, dir, j, blue);
+            m.radar = Some(radar as u16);
+            launches.push(m);
         }
         // Campaign fighters go for the other side's aircraft and fire when in reach. A CAP
         // stays over its airfield and lands when there is nothing left to engage.
@@ -1652,6 +1701,8 @@ impl Sim {
             ttl: ((range_m / speed + 3.0) * self.fs as f64) as i32,
             blue,
             ground: None,
+            ground_aaa: false,
+            radar: None,
             guidance: None,
             station: None,
             spoof_checked: false,
@@ -1792,17 +1843,25 @@ impl Sim {
 
     fn campaign_missiles(&mut self) {
         let dt = 1.0 / self.fs.max(1) as f64;
+        let hills = self.hills();
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
-        let mut kills: Vec<(usize, i32, i32, i32)> = Vec::new();
+        // Aircraft hit and the SAM radar credited, where they were hit.
+        let mut kills: Vec<(usize, Option<u16>, i32, i32, i32)> = Vec::new();
         let mut pops: Vec<(i32, i32, i32)> = Vec::new();
         let mut ground_hits = Vec::new();
         c.missiles.retain_mut(|m| {
             m.ttl -= 1;
-            // A strike aircraft's weapon flies at its object and hits it there.
+            // A strike aircraft's weapon flies at its object (an anti-radiation missile at its
+            // radar) and hits it there.
             if let Some(g) = m.ground {
-                let o = self.objects.get(g).copied().unwrap_or_default();
-                let at = [o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP, 5.0];
+                let at = if m.ground_aaa {
+                    let u = self.units.get(g).copied().unwrap_or_default();
+                    add(u.metres_on(&hills), [0.0, 0.0, 3.0])
+                } else {
+                    let o = self.objects.get(g).copied().unwrap_or_default();
+                    [o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP, 5.0]
+                };
                 let v = len(m.vel).max(1.0);
                 let speed = (v + m.speed * dt * 1.5).min(m.speed);
                 let to = sub(at, m.pos);
@@ -1813,7 +1872,7 @@ impl Sim {
                 if crate::aaa::closest(sub(m.pos, at), step) < FUSE {
                     pops.push(metres_map(at));
                     if rng.random(1000) < GROUND_PK {
-                        ground_hits.push(g);
+                        ground_hits.push((g, m.ground_aaa));
                     }
                     return false;
                 }
@@ -1851,7 +1910,7 @@ impl Sim {
                         let (x, y, alt) = metres_map(m.pos);
                         pops.push((x, y, alt));
                         if alive && rng.random(1000) < MISSILE_PK {
-                            kills.push((m.target, x, y, alt));
+                            kills.push((m.target, m.radar, x, y, alt));
                         }
                         false
                     }
@@ -1878,7 +1937,7 @@ impl Sim {
                     let (x, y, alt) = metres_map(m.pos);
                     pops.push((x, y, alt));
                     if rng.random(1000) < MISSILE_PK {
-                        kills.push((m.target, x, y, alt));
+                        kills.push((m.target, m.radar, x, y, alt));
                     }
                     return false;
                 }
@@ -1892,12 +1951,17 @@ impl Sim {
         for (x, y, alt) in pops {
             self.emit(SimEvent::Explosion { x, y, alt, kind: -6 });
         }
-        let kills: Vec<usize> = kills.into_iter().map(|k| k.0).collect();
-        for j in self.small_survive(kills, crate::uav::MISSILE_HIT) {
-            self.ai_kill(j);
+        let hit: Vec<usize> = kills.iter().map(|k| k.0).collect();
+        for j in self.small_survive(hit, crate::uav::MISSILE_HIT) {
+            let radar = kills.iter().find(|k| k.0 == j).and_then(|k| k.1);
+            self.ai_kill_by(j, radar);
         }
-        for g in ground_hits {
-            self.remove_object(g);
+        for (g, aaa) in ground_hits {
+            if aaa {
+                self.aaa_struck(g);
+            } else {
+                self.remove_object(g);
+            }
         }
     }
 
@@ -1973,18 +2037,37 @@ impl Sim {
 
     /// An AI aircraft destroyed by the AI.
     pub(crate) fn ai_kill(&mut self, j: usize) {
+        self.ai_kill_by(j, None);
+    }
+
+    /// An AI aircraft destroyed by the AI, by a missile of SAM radar `radar` (AAA unit) if
+    /// any.
+    fn ai_kill_by(&mut self, j: usize, radar: Option<u16>) {
         let Some(u) = self.flights.get(j).copied() else { return };
         if u.flags & fflags::DESTROYED != 0 {
             return;
         }
         if let Some(Some(f)) = self.campaign.as_mut().and_then(|c| c.flights.get_mut(j)) {
             f.killed_by_ai = true;
+            f.killed_by_radar = radar;
         }
         self.flights[j].flags |= fflags::DESTROYED;
         let name = self.ac_type(u.spec).name.clone();
         self.msg(format!("{name} shot down"));
         self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: u.alt, kind: 0x10 });
         self.emit(SimEvent::AircraftDestroyed { unit: j, spec: u.spec, by: None });
+    }
+
+    /// A SEAD aircraft's anti-radiation missile destroyed air defence unit `k`.
+    fn aaa_struck(&mut self, k: usize) {
+        let Some(a) = self.units.get(k).copied().filter(|a| !a.destroyed) else { return };
+        let u = &mut self.units[k];
+        u.destroyed = true;
+        u.burst = 0;
+        u.tracking = false;
+        self.msg(format!("{} destroyed", a.kind.name_on(self.aaa_blue(k))));
+        self.emit(SimEvent::Explosion { x: a.x, y: a.y, alt: 0, kind: 0x10 });
+        self.emit(SimEvent::AaaDestroyed { unit: k, by: None });
     }
 
     /// The AI's missiles in flight (metres east, north, up; velocity).

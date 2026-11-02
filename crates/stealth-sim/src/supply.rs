@@ -177,9 +177,11 @@ impl Sim {
             burst: 0,
             killed_by_ai: false,
             killed_by: None,
+            killed_by_radar: None,
             reported: false,
             strike: None,
             kamikaze: false,
+            strike_aaa: false,
             supply: Some(SupplyRun {
                 unit,
                 drop,

@@ -295,6 +295,11 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         stealth_campaign::Objective::Battery { .. } => BATTERY_TASK,
         stealth_campaign::Objective::Armour { .. } => ARMOUR_TASK,
         stealth_campaign::Objective::Support { .. } => SUPPORT_TASK,
+        stealth_campaign::Objective::Defend { raid }
+            if state.raid(raid).is_some_and(|r| r.sam.is_some()) =>
+        {
+            SEAD_DEFENCE_TASK
+        }
         _ if sortie.aircraft.cargo() => describe_heli(o.kind),
         _ => describe(o.kind),
     };
@@ -341,6 +346,8 @@ pub fn airborne(kind: MissionKind) -> bool {
 
 /// What an enemy forward battery's offer asks for.
 pub const BATTERY_TASK: &str = "Destroy the guns of the enemy battery pushed forward near our base";
+/// What the defence of a SAM battery against enemy SEAD asks for.
+pub const SEAD_DEFENCE_TASK: &str = "Shoot down the enemy SEAD aircraft before their anti-radiation missiles destroy the SAM battery's radar";
 /// What the armour columns' offers ask for.
 pub const ARMOUR_TASK: &str = "Stop the enemy armour column: destroy its tanks and troop carriers before they reach our lines";
 pub const SUPPORT_TASK: &str =

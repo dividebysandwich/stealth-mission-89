@@ -43,7 +43,11 @@ impl CampaignState {
                     s.spotted = true;
                 }
             }
-            Report::AaaDestroyed { index, .. } => self.gun_lost(index, view),
+            Report::AaaDestroyed { index, .. } => {
+                self.sead_hit(index, ev);
+                self.gun_lost(index, view);
+            }
+            Report::SamKill { aaa, side } => self.sam_kill(aaa, side, view, ev),
             Report::FlightDestroyed { tag, .. } if tag != 0 => {
                 self.patrols.retain(|p| p.0 != tag);
                 self.cap_report(tag, true);
@@ -650,11 +654,13 @@ impl CampaignState {
             self.insertions
                 .iter()
                 .filter(|i| i.state == InsertionState::Enroute)
-                .map(|i| i.target)
-                .chain(
-                    self.raids.iter().filter(|r| r.state == RaidState::Enroute).map(|r| r.target),
-                )
-                .find_map(|t| self.site(t).map(|s| (s.x, s.y)))
+                .find_map(|i| self.site(i.target).map(|s| (s.x, s.y)))
+                .or_else(|| {
+                    self.raids
+                        .iter()
+                        .filter(|r| r.state == RaidState::Enroute)
+                        .find_map(|r| self.raid_point(r))
+                })
                 .or_else(|| {
                     let p = front.first()?;
                     let (px, py) = (self.places[*p as usize].x, self.places[*p as usize].y);
@@ -866,6 +872,7 @@ impl CampaignState {
                         escorted: false,
                         drones: false,
                         enroute_at: None,
+                        sam: None,
                     });
                     let name = self.places[place as usize].name.clone();
                     let text = format!(
@@ -902,7 +909,7 @@ impl CampaignState {
             .filter(|(_, p)| p.owner == Side::Blue)
             .filter_map(|(k, p)| {
                 let a = p.airfield.filter(|&a| self.site(a).is_some_and(Site::alive))?;
-                if self.raids.iter().any(|r| r.open() && r.target == a) {
+                if self.raids.iter().any(|r| r.open() && r.bombs(a)) {
                     return None;
                 }
                 let from = self.nearest_base(Side::Red, p.x, p.y)?;
@@ -921,7 +928,7 @@ impl CampaignState {
     }
 
     /// The raids' take-off, and the ones that cannot go any more.
-    pub(crate) fn run_raids(&mut self, ev: &mut Vec<CampaignEvent>) {
+    pub(crate) fn run_raids(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;
         for k in 0..self.raids.len() {
             let r = &self.raids[k];
@@ -942,10 +949,20 @@ impl CampaignState {
             }
             let RaidState::Pending { launch_at } = r.state else { continue };
             let (id, side, target, base, escorted) = (r.id, r.side, r.target, r.from, r.escorted);
-            let (drones, what) = (r.drones, raid_name(r));
+            let (drones, sam, what) = (r.drones, r.sam, raid_name(r));
             let name = self.places[r.place as usize].name.clone();
-            let gone = self.owner(target) != Some(side.enemy())
-                || !self.site(target).is_some_and(Site::alive);
+            let gone = match sam {
+                // The battery's radar destroyed already (or taken over).
+                Some(s) => !view
+                    .units
+                    .get(s.aaa as usize)
+                    .is_some_and(|u| u.alive && u.side == side.enemy()),
+                None => {
+                    self.owner(target) != Some(side.enemy())
+                        || !self.site(target).is_some_and(Site::alive)
+                }
+            };
+            let point = self.raid_point(r);
             if gone {
                 self.end_raid(k, RaidState::CalledOff);
                 continue;
@@ -955,7 +972,7 @@ impl CampaignState {
             {
                 let from = base;
                 self.raids[k].escorted = true;
-                let (x, y) = self.site(target).map_or((0, 0), |s| (s.x, s.y));
+                let (x, y) = point.unwrap_or((0, 0));
                 let n = RAID_ESCORTS.min(self.forces(side).fighters as usize);
                 self.take_fighters(side, n as u32);
                 for _ in 0..n {
@@ -972,8 +989,7 @@ impl CampaignState {
             let from = if self.bases(side).contains(&base) {
                 Some(base)
             } else {
-                let t = self.site(target).expect("target is a site");
-                let (x, y) = (t.x, t.y);
+                let (x, y) = point.expect("target is a site");
                 self.nearest_base(side, x, y)
                     .filter(|&b| self.site(b).is_some_and(|s| dist(s.x - x, s.y - y) <= range))
             };
@@ -1000,12 +1016,13 @@ impl CampaignState {
             } else {
                 format!("{what} inbound to {name}!")
             }));
-            ev.push(CampaignEvent::RaidLaunched { id, side, from, target, tags, drones });
+            let sam = sam.map(|s| s.aaa);
+            ev.push(CampaignEvent::RaidLaunched { id, side, from, target, tags, drones, sam });
         }
         self.raids.retain(|r| r.ended.is_none_or(|t| now - t < RAID_KEEP));
     }
 
-    fn end_raid(&mut self, k: usize, state: RaidState) {
+    pub(crate) fn end_raid(&mut self, k: usize, state: RaidState) {
         let r = &mut self.raids[k];
         r.state = state;
         r.ended = Some(self.clock);
@@ -1016,7 +1033,7 @@ impl CampaignState {
     /// A world object was destroyed: the raid on it (if one is under way) hit.
     fn raid_hit(&mut self, object: ObjectId, ev: &mut Vec<CampaignEvent>) {
         let Some(k) =
-            self.raids.iter().position(|r| r.state == RaidState::Enroute && r.target == object)
+            self.raids.iter().position(|r| r.state == RaidState::Enroute && r.bombs(object))
         else {
             return;
         };
@@ -1222,11 +1239,14 @@ impl CampaignState {
             }
             let p = &self.places[r.place as usize];
             let (x, y, name) = (p.x, p.y, p.name.clone());
+            let (x, y) = r.sam.map_or((x, y), |s| (s.x, s.y));
             add(
                 self,
                 MissionKind::Defend,
                 if r.drones {
                     format!("Drone defense - {name}")
+                } else if r.sam.is_some() {
+                    format!("Defend - {name} SAM battery")
                 } else {
                     format!("Defend - {name} airfield")
                 },
@@ -1566,6 +1586,7 @@ fn raid_name(r: &Raid) -> &'static str {
     match (r.side, r.drones) {
         (Side::Blue, _) => "AI SEAD aircraft",
         (_, true) => "Enemy drones",
+        _ if r.sam.is_some() => "Enemy SEAD aircraft",
         _ => "Enemy strike aircraft",
     }
 }

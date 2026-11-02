@@ -487,7 +487,7 @@ impl Host {
                         by: by.map(PlayerId),
                     });
                 }
-                SimEvent::CampaignFlightDestroyed { unit, tag, by, .. } => {
+                SimEvent::CampaignFlightDestroyed { unit, tag, by, radar, .. } => {
                     let u = sim.flights().get(unit).copied().unwrap_or_default();
                     let blue = sim.campaign_flight(unit).is_some_and(|f| f.blue);
                     reports.push(Report::FlightDestroyed {
@@ -497,6 +497,9 @@ impl Host {
                         y: u.y,
                         by: by.map(PlayerId),
                     });
+                    if let Some(aaa) = radar {
+                        reports.push(Report::SamKill { aaa: aaa as u32, side: side_of(blue) });
+                    }
                 }
                 SimEvent::CampaignFlightLanded { tag, x, y, .. } => {
                     reports.push(Report::FlightLanded { tag, x, y })
@@ -587,11 +590,13 @@ impl Host {
                         sim.spawn_insertion_for(*from as usize, *target as usize, tag, n, blue);
                     }
                 }
-                CampaignEvent::RaidLaunched { from, target, tags, side, drones, .. } => {
+                CampaignEvent::RaidLaunched { from, target, tags, side, drones, sam, .. } => {
                     let (from, target) = (*from as usize, *target as usize);
                     let blue = *side == Side::Blue;
                     for &tag in tags {
-                        if *drones {
+                        if let Some(aaa) = *sam {
+                            sim.spawn_sead(from, aaa as usize, tag, blue);
+                        } else if *drones {
                             sim.spawn_drone(from, target, tag, blue);
                         } else {
                             sim.spawn_striker(from, target, tag, blue);

@@ -30,6 +30,7 @@ mod missions;
 mod record;
 mod resupply;
 pub mod rng;
+mod sead;
 mod state;
 mod supply;
 pub mod tuning;
@@ -145,6 +146,12 @@ pub enum Report {
     SupplyDelivered {
         tag: u32,
     },
+    /// An aircraft of a side was shot down by a missile of the SAM battery of the other side's
+    /// radar `aaa` (AAA unit index).
+    SamKill {
+        aaa: u32,
+        side: Side,
+    },
 }
 
 /// A player's request.
@@ -246,7 +253,8 @@ pub enum CampaignEvent {
         id: u32,
     },
     /// Strike aircraft (tags) of a side take off from a base to bomb a world object, or
-    /// attack drones to dive into it.
+    /// attack drones to dive into it, or SEAD aircraft to fire anti-radiation missiles at a
+    /// SAM battery's radar (`sam`, AAA index; `target` is then no object).
     RaidLaunched {
         id: u32,
         side: Side,
@@ -255,6 +263,8 @@ pub enum CampaignEvent {
         tags: Vec<u32>,
         #[serde(default)]
         drones: bool,
+        #[serde(default)]
+        sam: Option<u32>,
     },
     /// An AWACS of a side takes off from a base to orbit a point.
     LaunchAwacs {
@@ -387,7 +397,7 @@ impl CampaignState {
         self.run_downed(&mut ev);
         self.run_insertions(view, &mut ev);
         self.run_convoys(view, &mut ev);
-        self.run_raids(&mut ev);
+        self.run_raids(view, &mut ev);
         self.repairs(&mut ev);
         self.expire_intel(&mut ev);
         self.enemy_air(view, &mut ev);

@@ -713,12 +713,28 @@ pub struct Raid {
     /// When the strike aircraft took off.
     #[serde(default)]
     pub enroute_at: Option<f64>,
+    /// SEAD: the SAM battery its anti-radiation missiles go for (`target` is then no object).
+    #[serde(default)]
+    pub sam: Option<SamTarget>,
 }
 
 impl Raid {
     pub fn open(&self) -> bool {
         matches!(self.state, RaidState::Pending { .. } | RaidState::Enroute)
     }
+
+    /// It bombs world object `object` (a SEAD raid bombs none).
+    pub fn bombs(&self, object: ObjectId) -> bool {
+        self.sam.is_none() && self.target == object
+    }
+}
+
+/// A SAM battery a SEAD raid goes for: its radar (AAA index) and where it stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SamTarget {
+    pub aaa: u32,
+    pub x: i32,
+    pub y: i32,
 }
 
 /// A side's means of war: its materiel and the AI's aircraft on the ground.
@@ -848,6 +864,9 @@ pub struct CampaignState {
     pub enemy_insert_at: f64,
     #[serde(default)]
     pub raid_at: f64,
+    /// When the enemy last sent SEAD against a friendly SAM battery.
+    #[serde(default)]
+    pub sead_at: f64,
     /// The war is over (None: still going on).
     #[serde(default)]
     pub outcome: Option<Outcome>,
@@ -1365,6 +1384,7 @@ impl CampaignState {
             raids: Vec::new(),
             enemy_insert_at: 0.0,
             raid_at: 0.0,
+            sead_at: f64::MIN,
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
             red: Forces::start(FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * skill),

@@ -438,6 +438,55 @@ fn a_patriot_battery_shoots_down_raiders() {
 }
 
 #[test]
+fn a_patriot_kill_is_credited_to_its_radar() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let (home, _) = raid(&mut sim);
+    let o = sim.objects()[home];
+    sim.place_patriot(o.x + 0x100, o.y);
+    let radar = sim.units().iter().position(|u| u.kind == GroundKind::PatriotRadar);
+    for _ in 0..40 * 60 {
+        for e in run(&mut sim, &idle(), 1) {
+            if let SimEvent::CampaignFlightDestroyed { tag: 8, radar: by, .. } = e {
+                assert_eq!(by, radar);
+                return;
+            }
+        }
+    }
+    panic!("the Patriots never got it");
+}
+
+#[test]
+fn an_enemy_sead_strike_takes_out_a_patriot_radar() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x001, Some("Tabor"));
+    let o = sim.objects()[find(&sim, 0x401, Some("Neuburg"))];
+    sim.place_patriot(o.x + 0x100, o.y);
+    let radar = sim.units().iter().position(|u| u.kind == GroundKind::PatriotRadar).unwrap();
+    let i = sim.spawn_sead(from, radar, 57, false);
+    let (mut hit, mut lost, mut arm) = (false, false, false);
+    for _ in 0..60 * 60 {
+        arm |= sim.ai_missiles().iter().any(|m| m.ground == Some(radar) && m.ground_aaa);
+        for e in run(&mut sim, &idle(), 1) {
+            match e {
+                SimEvent::AaaDestroyed { unit, .. } if unit == radar => hit = true,
+                SimEvent::CampaignFlightDestroyed { tag: 57, .. } => lost = true,
+                _ => {}
+            }
+        }
+        if hit {
+            break;
+        }
+    }
+    assert!(arm, "no anti-radiation missile at the radar");
+    assert!(hit, "the Patriot radar was not hit");
+    assert!(sim.units()[radar].destroyed);
+    assert!(!lost, "the Patriots shot the SEAD aircraft down before it fired");
+    assert!(sim.campaign_flight(i).is_some_and(|f| f.strike.is_none()), "it fired");
+}
+
+#[test]
 fn patriot_launchers_need_their_radar() {
     let (_, mut sim) = campaign();
     quiet(&mut sim);

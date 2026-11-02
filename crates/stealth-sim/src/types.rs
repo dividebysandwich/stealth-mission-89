@@ -931,6 +931,9 @@ pub enum SimEvent {
         tag: u32,
         by_player: bool,
         by: Option<u8>,
+        /// The SAM radar (`Sim::units` index) whose missile shot it down.
+        #[serde(default)]
+        radar: Option<usize>,
     },
     /// A low-level air defence unit was destroyed (`Sim::units` index).
     AaaDestroyed {

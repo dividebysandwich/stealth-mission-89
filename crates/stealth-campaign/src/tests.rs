@@ -618,6 +618,69 @@ fn raid(c: &mut CampaignState) -> (u32, ObjectId, Vec<u32>) {
         .expect("strike aircraft launched")
 }
 
+/// A friendly Patriot radar (AAA index 0) at a rear airfield, alive or not.
+fn patriot_view(c: &CampaignState, alive: bool) -> WorldView {
+    let (_, x, y) = c.patriot_sites()[0];
+    WorldView { units: vec![GroundView::gun(x, y, Side::Blue, alive)], ..Default::default() }
+}
+
+#[test]
+fn a_sam_kill_draws_enemy_sead_at_the_battery() {
+    let mut c = campaign("central_europe", 3);
+    let view = patriot_view(&c, true);
+    c.tick(1.0, &view, &[]);
+    let kill = Report::SamKill { aaa: 0, side: Side::Red };
+    c.tick(1.0, &view, &[kill.clone()]);
+    let sead: Vec<&Raid> = c.raids.iter().filter(|r| r.sam.is_some()).collect();
+    assert_eq!(sead.len(), 1, "{:?}", c.raids);
+    let (id, sam) = (sead[0].id, sead[0].sam.unwrap());
+    assert_eq!((sead[0].side, sam.aaa), (Side::Red, 0));
+    let offer = c.board.iter().find(|o| o.objective == Objective::Defend { raid: id });
+    assert!(
+        offer.is_some_and(|o| o.title.ends_with("SAM battery") && (o.x, o.y) == (sam.x, sam.y))
+    );
+    // One raid per battery, and not again so soon.
+    c.tick(1.0, &view, &[kill.clone()]);
+    assert_eq!(c.raids.iter().filter(|r| r.sam.is_some()).count(), 1);
+    // The escort, then the SEAD aircraft.
+    c.tick(tuning::RAID_LEAD - tuning::RAID_ESCORT_LEAD + 1.0, &view, &[]);
+    let ev = c.tick(tuning::RAID_ESCORT_LEAD, &view, &[]);
+    let tags =
+        ev.iter()
+            .find_map(|e| match e {
+                CampaignEvent::RaidLaunched {
+                    id: i, side: Side::Red, sam: Some(0), tags, ..
+                } if *i == id => Some(tags.clone()),
+                _ => None,
+            })
+            .expect("SEAD aircraft launched");
+    assert_eq!(tags.len(), tuning::RAID_AIRCRAFT);
+    // Their missiles take out the radar.
+    let dead = patriot_view(&c, false);
+    c.tick(1.0, &dead, &[Report::AaaDestroyed { index: 0, by: None }]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::Hit);
+}
+
+#[test]
+fn no_enemy_sead_for_a_kill_by_a_dead_radar_or_an_enemy_one() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let kill = |side| Report::SamKill { aaa: 0, side };
+    c.tick(1.0, &patriot_view(&c, false), &[kill(Side::Red)]);
+    c.tick(1.0, &patriot_view(&c, true), &[kill(Side::Blue)]);
+    assert!(c.raids.iter().all(|r| r.sam.is_none()));
+}
+
+#[test]
+fn enemy_sead_is_called_off_once_its_radar_is_gone() {
+    let mut c = campaign("central_europe", 3);
+    let view = patriot_view(&c, true);
+    c.tick(1.0, &view, &[Report::SamKill { aaa: 0, side: Side::Red }]);
+    let id = c.raids.iter().find(|r| r.sam.is_some()).expect("SEAD ordered").id;
+    c.tick(1.0, &patriot_view(&c, false), &[]);
+    assert_eq!(c.raid(id).unwrap().state, RaidState::CalledOff);
+}
+
 #[test]
 fn a_raid_grounds_the_ai_but_never_the_players() {
     let mut c = campaign("central_europe", 3);
@@ -1366,6 +1429,7 @@ fn drones_in_the_air_are_no_fighters_after_a_load() {
         escorted: true,
         drones: true,
         enroute_at: Some(0.0),
+        sam: None,
     });
     c.after_load();
     assert_eq!(c.red.fighters, before);

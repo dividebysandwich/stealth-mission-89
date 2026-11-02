@@ -216,7 +216,7 @@ impl CampaignState {
             .iter()
             .filter(|s| s.alive() && matches!(s.kind, SiteKind::City | SiteKind::Airfield))
             .filter(|s| self.owner(s.object) == Some(Side::Blue))
-            .filter(|s| !self.raids.iter().any(|r| r.open() && r.target == s.object))
+            .filter(|s| !self.raids.iter().any(|r| r.open() && r.bombs(s.object)))
             .filter_map(|s| {
                 let from = self.nearest_base(Side::Red, s.x, s.y)?;
                 let b = self.site(from)?;
@@ -253,6 +253,7 @@ impl CampaignState {
             escorted: true,
             drones: true,
             enroute_at: None,
+            sam: None,
         });
         let text = format!(
             "Intelligence: enemy attack drones to be launched at {} in {} min",
@@ -313,6 +314,7 @@ impl CampaignState {
             escorted: true,
             drones: false,
             enroute_at: None,
+            sam: None,
         });
         let who = self.player_name(player).unwrap_or("A pilot");
         let text = format!(

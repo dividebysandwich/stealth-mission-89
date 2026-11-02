@@ -533,7 +533,7 @@ impl CampaignState {
             Objective::Defend { raid } => {
                 let Some(r) = self.raid(raid).filter(|r| r.open()) else { return Vec::new() };
                 let mut v = flying(&r.aircraft);
-                v.extend(at(r.target));
+                v.extend(self.raid_point(r));
                 v
             }
             Objective::Rescue { downed } => self

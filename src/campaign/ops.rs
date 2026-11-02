@@ -669,6 +669,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             let (what, col) = match (r.side, r.drones) {
                 (Side::Blue, _) => (format!("AI SEAD at {name}"), FRIENDLY_BLUE),
                 (_, true) => (format!("DRONES at {name}"), MISSILE_RED),
+                _ if r.sam.is_some() => (format!("SEAD on {name} SAM battery"), MISSILE_RED),
                 _ => (format!("RAID on {name} airfield"), MISSILE_RED),
             };
             let text = match r.state {
@@ -933,6 +934,9 @@ fn describe_offer(c: &ActiveCampaign, o: &MissionOffer) -> &'static str {
     match o.objective {
         Objective::Defend { raid } if c.state().raid(raid).is_some_and(|r| r.drones) => {
             "Shoot down the attack drones before they dive into the target: one getting through destroys it"
+        }
+        Objective::Defend { raid } if c.state().raid(raid).is_some_and(|r| r.sam.is_some()) => {
+            stealth_host::glue::SEAD_DEFENCE_TASK
         }
         Objective::Battery { .. } => stealth_host::glue::BATTERY_TASK,
         Objective::Armour { .. } => stealth_host::glue::ARMOUR_TASK,
