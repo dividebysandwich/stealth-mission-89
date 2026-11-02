@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Vänster vapenpylon
 hardpoint-oh58-right-pylon = Höger vapenpylon
 weapon-role-22 = Kulsprutebehållare: avfyras som kanonen, längs nosen
 employment-22 = Räckvidd: upp till 1,5 km, 500 skott per behållare
+weapon-role-23 = Sensortänt vapen: fyrtio skeets skjuter ner mot fordonen under mönstret
+employment-23 =
+    Styrs mot punkten som märktes med siktkapseln vid fällningen
+    Fällning: över öppningshöjden inställd på SMS-sidan (500-3 000 ft)

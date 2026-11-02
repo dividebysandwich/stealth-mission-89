@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 23] = [
+pub const WEAPONS: [(&str, &str); 24] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -39,6 +39,7 @@ pub const WEAPONS: [(&str, &str); 23] = [
     ("AGM-114 Hellfire", "weapon-role-20"),
     ("FIM-92 Stinger", "weapon-role-21"),
     ("M3P .50 cal gun pod", "weapon-role-22"),
+    ("CBU-105 SFW", "weapon-role-23"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -51,7 +52,7 @@ pub const WEAPONS: [(&str, &str); 23] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 23] = [
+const EMPLOYMENT: [&str; 24] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -75,6 +76,7 @@ const EMPLOYMENT: [&str; 23] = [
     "employment-20",
     "employment-21",
     "employment-22",
+    "employment-23",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -91,14 +93,16 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 23] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1];
+const BAY_QTY: [u8; 24] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 23] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1];
-/// The Hellfire's, the Stinger's and the machine gun pod's weapon types.
+const PYLON_QTY: [u8; 24] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1];
+/// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
 pub const GUN_POD: u8 = 22;
+pub const CBU105: u8 = 23;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -147,8 +151,9 @@ pub struct Layout {
     pub hardpoints: &'static [Hardpoint],
 }
 
-const ALL: [u8; 19] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-const NO_AIR_TO_AIR: [u8; 17] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const ALL: [u8; 20] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105];
+const NO_AIR_TO_AIR: [u8; 18] =
+    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105];
 
 // tools/models/planform.py
 /// aircraft_024 (tools/models/f117.py) seen from above: half span 6.48 m, length 20.26 m.
@@ -652,9 +657,9 @@ static F117_FANTASY: [Hardpoint; 4] = [
     bay("hardpoint-right-wing-bay", "RW", 3.1, 10.5, true, 2, &ALL),
 ];
 const TIP: [u8; 2] = [0, 1];
-const WING_MID: [u8; 17] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, HELLFIRE];
+const WING_MID: [u8; 18] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, HELLFIRE, CBU105];
 const WING_INNER: [u8; 13] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
-const F16_INNER: [u8; 14] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, HELLFIRE];
+const F16_INNER: [u8; 15] = [2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, HELLFIRE, CBU105];
 const CENTRE: [u8; 3] = [16, 17, 18];
 /// Three Hellfires on a wing pylon's triple ejector rack (BRU-42).
 const TER_HELLFIRES: [(u8, u8); 1] = [(HELLFIRE, 3)];
@@ -683,8 +688,8 @@ static F16_STATIONS: [Hardpoint; 9] = [
 /// The Tornado's wing pylons (swivelling with the sweep) carry the tanks, the fuselage's
 /// forward shoulder pylons the heavy stores and the camera; its Sidewinders go on the wing
 /// pylons' rails.
-const TORNADO_WING: [u8; 15] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0];
-const TORNADO_BELLY: [u8; 16] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18];
+const TORNADO_WING: [u8; 16] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0, CBU105];
+const TORNADO_BELLY: [u8; 17] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, CBU105];
 /// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
 /// fuselage's shoulder pylons fore and aft. The rail is drawn further out than its pylon's
 /// side, where it is apart from the pylon.
@@ -709,8 +714,8 @@ static TORNADO_STATIONS: [Hardpoint; 8] = [
 /// The A-10's outer wing pylons carry the Mavericks and the bombs, the centre section's the
 /// heavy bombs and the tanks, the fuselage's the lighter bombs; the centreline the tank, the
 /// camera or the cargo. No anti-ship or anti-radar missiles.
-const A10_WING: [u8; 11] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-const A10_INNER: [u8; 11] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17];
+const A10_WING: [u8; 12] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, CBU105];
+const A10_INNER: [u8; 12] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105];
 const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
 /// The fuselage stations' racks of the fat or widely finned stores would meet: one of them each.
 const A10_BELLY_QTY: [(u8, u8); 5] = [(7, 1), (10, 1), (11, 1), (12, 1), (14, 1)];
@@ -747,8 +752,8 @@ static A10_LAYOUT: Layout =
 /// Sidewinder rails outboard. No centreline station: the gun pods and the bicycle gear's legs
 /// leave no room for a store between them.
 const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
-const AV8B_MIDDLE: [u8; 9] = [5, 6, 8, 9, 10, 12, 13, 14, 15];
-const AV8B_INNER: [u8; 15] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const AV8B_MIDDLE: [u8; 10] = [5, 6, 8, 9, 10, 12, 13, 14, 15, CBU105];
+const AV8B_INNER: [u8; 16] = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105];
 /// The AV-8B's pylons are close together: the fat or widely finned stores one to a pylon, and on
 /// the intermediate ones (by the outrigger legs) the Mk 82s and Durandals too.
 const AV8B_OUTER_QTY: [(u8, u8); 3] = [(10, 1), (12, 1), (14, 1)];

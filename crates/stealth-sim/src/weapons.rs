@@ -414,6 +414,8 @@ impl Sim {
             } else if !ccrp {
                 if bomb {
                     self.release_bombs(ps);
+                } else if self.selected_spec() == CBU105_SPEC {
+                    self.release_sfw(ps);
                 } else {
                     self.fire_missile();
                 }
@@ -453,6 +455,38 @@ impl Sim {
         if n > 1 && self.selected_weapon().1 < before {
             self.pl.ripple = Some(crate::pilot::RippleRun { left: n - 1, spacing_ft, run_ft: 0.0 });
         }
+    }
+
+    /// A CBU-105 goes to the point marked now (the targeting pod's, else the ground lock) and
+    /// opens at the SMS page's burst altitude: not without a point, nor from below it.
+    fn release_sfw(&mut self, ps: &PlayerState) {
+        let Some((x, y)) = self.ccrp_aim_of(ps) else {
+            self.sound(0x20, 1);
+            self.msg(text!("sim-no-target-designated"));
+            return;
+        };
+        let burst = match ps.burst_ft {
+            0 => SFW_DEFAULT_BURST_FT,
+            b => b,
+        };
+        if self.height_above_ground() < burst as i32 {
+            self.sound(0x20, 1);
+            self.msg(text!("sim-below-burst-altitude", feet = burst as i64));
+            return;
+        }
+        self.fire_missile();
+        for s in Self::own_slots() {
+            let pr = &mut self.proj[s];
+            if pr.spec == CBU105_SPEC && pr.ttl != 0 && pr.aim.is_none() {
+                pr.aim = Some(((x * 32.0) as i32, (y * 32.0) as i32));
+                pr.burst_ft = burst;
+            }
+        }
+    }
+
+    /// The aircraft's height above the ground under it (ft).
+    pub(crate) fn height_above_ground(&self) -> i32 {
+        self.pl.p.alt - self.hill_alt(self.pl.p.mx, self.pl.p.my)
     }
 
     /// Ground speed (ft/s).
@@ -690,8 +724,10 @@ impl Sim {
             target_pilot: None,
             station: None,
             drop: 0,
+            aim: None,
+            burst_ft: 0,
         };
-        if matches!(spec, 28 | 29 | 30 | 38) {
+        if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;
         }
         pr
@@ -1090,7 +1126,7 @@ impl Sim {
 
 /// Missiles light a motor (bombs, pods and tanks only fall).
 fn trails_smoke(spec: i32) -> bool {
-    !matches!(spec, 28 | 29 | 30 | 38)
+    !matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC)
 }
 
 /// Offset `o` (right, forward, up) of an aircraft at `heading`, `pitch`, `roll` (BAM; roll

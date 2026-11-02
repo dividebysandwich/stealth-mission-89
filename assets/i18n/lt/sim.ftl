@@ -27,6 +27,7 @@ sim-no-target = Nėra taikinio
 sim-no-target-designated = Taikinys nenurodytas
 sim-bay-closed = Skyrius uždarytas
 sim-insufficient-altitude = Per mažas aukštis
+sim-below-burst-altitude = Žemiau atsidarymo aukščio ({ $feet } ft)
 sim-fuel-transfer = Kuro perpylimas
 sim-stores-exhausted = Ginkluotė išnaudota
 sim-hit-gunfire = Pataikė šaudmenys

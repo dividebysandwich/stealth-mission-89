@@ -27,6 +27,7 @@ sim-no-target = Nav mērķa
 sim-no-target-designated = Mērķis nav norādīts
 sim-bay-closed = Nodalījums aizvērts
 sim-insufficient-altitude = Nepietiekams augstums
+sim-below-burst-altitude = Zem atvēršanās augstuma ({ $feet } ft)
 sim-fuel-transfer = Degvielas pārsūknēšana
 sim-stores-exhausted = Bruņojums izlietots
 sim-hit-gunfire = Trāpījums no ložmetēju uguns

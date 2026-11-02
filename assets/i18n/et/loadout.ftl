@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Vasak relvakandur
 hardpoint-oh58-right-pylon = Parem relvakandur
 weapon-role-22 = Kuulipildujakonteiner: tulistab nagu kahur, nina suunas
 employment-22 = Ulatus: kuni 1,5 km, 500 padrunit konteineris
+weapon-role-23 = Sensorsüütega relv: nelikümmend skeet’i tulistavad all olevaid sõidukeid
+employment-23 =
+    Juhitakse vabastamisel sihtimiskonteineriga märgitud punkti
+    Vabastamine: üle SMS-lehel seatud avanemiskõrguse (500-3000 ft)

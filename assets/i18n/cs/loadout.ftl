@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Levý závěsník zbraní
 hardpoint-oh58-right-pylon = Pravý závěsník zbraní
 weapon-role-22 = Kontejner s kulometem: střílí jako kanón, podél přídě
 employment-22 = Dosah: do 1,5 km, 500 nábojů v kontejneru
+weapon-role-23 = Zbraň se senzorovým zapalovačem: čtyřicet skeetů střílí dolů na vozidla pod ní
+employment-23 =
+    Naváděná na bod označený zaměřovacím kontejnerem při odhozu
+    Odhoz: nad výškou otevření nastavenou na stránce SMS (500-3 000 ft)

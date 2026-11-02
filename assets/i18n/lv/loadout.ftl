@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Kreisais bruņojuma pilons
 hardpoint-oh58-right-pylon = Labais bruņojuma pilons
 weapon-role-22 = Ložmetēja konteiners: šauj kā lielgabals, gar degunu
 employment-22 = Darbības rādiuss: līdz 1,5 km, 500 patronas konteinerā
+weapon-role-23 = Ierocis ar sensora degli: četrdesmit skeet šauj lejup uz transportlīdzekļiem
+employment-23 =
+    Vadāms uz punktu, kas atzīmēts ar mērķēšanas konteineru nomešanas brīdī
+    Nomešana: virs SMS lapā iestatītā atvēršanās augstuma (500-3000 ft)

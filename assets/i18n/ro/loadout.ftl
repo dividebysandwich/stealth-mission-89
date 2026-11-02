@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pilon de armament stâng
 hardpoint-oh58-right-pylon = Pilon de armament drept
 weapon-role-22 = Container cu mitralieră: trage ca tunul, de-a lungul nasului
 employment-22 = Rază: până la 1,5 km, 500 de cartușe pe container
+weapon-role-23 = Armă cu focos senzorial: patruzeci de skeet trag în jos asupra vehiculelor
+employment-23 =
+    Ghidată spre punctul marcat cu containerul de ochire la lansare
+    Lansare: deasupra altitudinii de deschidere setate pe pagina SMS (500-3.000 ft)

@@ -735,24 +735,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xb3218a32e8f33ec8,
-        0x5ed75bbdeb9418da,
-        0x0f99b6cae3640855,
-        0xc13d946de3940a1d,
-        0xf79f7f7b696cb500,
-        0x4010c3c7ab0fe6de,
-        0x1225c450bc8ff318,
-        0x31725d685bb5bd1e,
-        0x0a059153d8000a84,
-        0xfbc9515e8aeb2e56,
-        0x452c9a533fd36a46,
-        0x3b91c76cce457ab3,
-        0x34df38a1c0d9d9e6,
-        0x7809924111f2d722,
-        0x78fd64a6e5947711,
-        0x7761b1fd3ede6f8c,
-        0x27075ce8fa7d83a9,
-        0xde8e817e6b7036ce,
+        0x3283e9da34348b79,
+        0x945a478bb81c7637,
+        0x6d416ba25036af96,
+        0xece2306e30476aee,
+        0x9ee3ca291acdfa93,
+        0x04063a2c8dd70a4d,
+        0x8888ab50c4d6b911,
+        0x2702d5f646e7c8cb,
+        0x38ee369e728466df,
+        0x08845aaa5c4ebe71,
+        0xb0b350c81d1057b5,
+        0xe5c5b9d93e6b86ac,
+        0x1d3f8f39c7e06173,
+        0xb3d2af7020850341,
+        0x8b2a61c9dd9e7f88,
+        0x75bfd6b8a86c9247,
+        0x00c7877f1caff04e,
+        0xc6058b69cf960483,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -2916,7 +2916,8 @@ fn dropped_missiles_fall_below_a_climb() {
     for guided in [false, true] {
         let d = data();
         let m = mission(d, 3, 0x1234, 1);
-        let opts = SimOptions { realistic_guidance: guided, external_stores: true, ..Default::default() };
+        let opts =
+            SimOptions { realistic_guidance: guided, external_stores: true, ..Default::default() };
         let mut sim = Sim::with_options(&d.sim, &m, opts);
         let (mx, my) = sandbox(&mut sim, &m);
         sim.set_training(true);
@@ -2949,4 +2950,150 @@ fn dropped_missiles_fall_below_a_climb() {
             assert!(alt(&m) < path, "guided {guided} frame {frame}: {} above {path}", alt(&m));
         }
     }
+}
+
+/// A CBU-105 run: an aircraft `alt` ft up at 450 kt heading north in a sandbox, the targeting
+/// pod on a point 4 km ahead and 300 m to the right with `units` around it (map offsets from
+/// the point), the burst altitude `burst` ft. Returns the simulation and the point after the
+/// release press.
+fn cbu105_run(
+    alt: u16,
+    burst: u16,
+    units: &[(aaa::GroundKind, i32, i32)],
+) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(CBU105_WEAPON, 2)]);
+    let aim = (mx + 20, my - 256);
+    *sim.units_mut() = units
+        .iter()
+        .map(|&(kind, dx, dy)| aaa::GroundUnit {
+            kind,
+            x: aim.0 + dx,
+            y: aim.1 + dy,
+            ..Default::default()
+        })
+        .collect();
+    let mut p = player_at(mx, my, alt, 0, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.burst_ft = burst;
+    p.pod = Some(PodAim { heading: 0, pitch: -0x400, ground: Some(aim) });
+    p.cmd.toggle_bay = true;
+    let mut events = Vec::new();
+    for _ in 0..4 {
+        events.extend(sim.step(&p, 15));
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    events.extend(sim.step(&p, 15));
+    p.cmd = Commands::default();
+    (sim, p, aim, events)
+}
+
+/// The CBU-105 is not released below its burst altitude, nor without a marked point.
+#[test]
+fn cbu105_refuses_release_below_burst_altitude() {
+    let (sim, _, _, events) = cbu105_run(1000, 1500, &[]);
+    assert!((8..12).all(|s| sim.projectiles()[s].ttl == 0), "released below the burst altitude");
+    assert!(events.iter().any(|e| is_msg(e, "Below burst altitude (1,500 ft)")
+        || is_msg(e, "Below burst altitude (1500 ft)")));
+    let (sim, _, _, _) = cbu105_run(3000, 1500, &[]);
+    assert!((8..12).any(|s| sim.projectiles()[s].ttl != 0), "released above it");
+    let (sim, _, _, _) = cbu105_run(3000, 500, &[]);
+    assert!((8..12).any(|s| sim.projectiles()[s].ttl != 0), "released above a lower one");
+}
+
+/// Without a point marked with the pod (or a ground lock) there is nothing to fly to.
+#[test]
+fn cbu105_needs_a_marked_point() {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(CBU105_WEAPON, 2)]);
+    let mut p = player_at(mx, my, 10000, 0, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    let mut events = Vec::new();
+    for _ in 0..4 {
+        events.extend(sim.step(&p, 15));
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    events.extend(sim.step(&p, 15));
+    assert!((8..12).all(|s| sim.projectiles()[s].ttl == 0));
+    assert!(events.iter().any(|e| is_msg(e, "No target designated")));
+}
+
+/// Released 15,000 ft up, the CBU-105 flies to the point marked at release (the pod looking
+/// elsewhere after), opens at its burst altitude and its submunitions settle over the point.
+#[test]
+fn cbu105_guides_to_the_marked_point() {
+    for burst in [500, 1500, 3000] {
+        let (mut sim, mut p, aim, _) = cbu105_run(15000, burst, &[]);
+        p.pod = Some(PodAim { heading: 0x4000, pitch: -0x400, ground: Some((aim.0 + 300, aim.1)) });
+        let mut opened = None;
+        let mut settled = None;
+        for _ in 0..15 * 120 {
+            for e in sim.step(&p, 15) {
+                if let SimEvent::SfwDispense { alt, .. } = e {
+                    opened = Some(alt as f64 / 256.0);
+                }
+            }
+            let b = &sim.sfw().blus;
+            if opened.is_some()
+                && b.len() == 10
+                && b.iter().all(|b| b.phase != sfw::Phase::Eject && b.phase != sfw::Phase::Chute)
+            {
+                let n = b.len() as f64;
+                let c = b.iter().fold((0.0, 0.0), |a, b| (a.0 + b.p[0] / n, a.1 + b.p[1] / n));
+                settled = Some(c);
+                break;
+            }
+        }
+        let opened = opened.expect("dispenser opened");
+        assert!((opened - burst as f64).abs() < 60.0, "burst {burst}: opened at {opened} ft");
+        let (cx, cy) = settled.expect("submunitions came down");
+        let (ax, ay) = (aim.0 as f64 * 32.0 + 16.0, aim.1 as f64 * 32.0 + 16.0);
+        let off = ((cx - ax).hypot(cy - ay)) / 3.28;
+        eprintln!(
+            "burst {burst}: pattern centre {off:.0} m off ({:.0}, {:.0} ft)",
+            cx - ax,
+            cy - ay
+        );
+        assert!(off < 60.0, "burst {burst}: pattern centre {off:.0} m from the point");
+    }
+}
+
+/// The skeets fire down at the vehicles under the pattern and destroy most of them; those that
+/// find nothing destroy themselves in the air; a vehicle far off is left alone.
+#[test]
+fn skeets_strike_vehicles_under_the_pattern() {
+    use aaa::GroundKind::*;
+    let units = [(T90, 0, 0), (Bmp2, 3, 0), (T90, -3, 2), (Bmp2, 0, -3), (T90, 0, 52)];
+    let (mut sim, p, _, _) = cbu105_run(15000, 1500, &units);
+    let (mut fired, mut bursts, mut killed) = (0, 0, Vec::new());
+    for _ in 0..15 * 120 {
+        for e in sim.step(&p, 15) {
+            match e {
+                SimEvent::SkeetFire { .. } => fired += 1,
+                SimEvent::SkeetBurst { .. } => bursts += 1,
+                SimEvent::AaaDestroyed { unit, by } => {
+                    assert_eq!(by, Some(0), "the kill is the pilot's");
+                    killed.push(unit);
+                }
+                _ => {}
+            }
+        }
+        if fired + bursts == 40 {
+            break;
+        }
+    }
+    eprintln!("fired {fired}, self-destructed {bursts}, killed {killed:?}");
+    assert_eq!(fired + bursts, 40, "every skeet fired or burst");
+    assert!(killed.iter().filter(|&&k| k < 4).count() >= 3, "most of the column: {killed:?}");
+    assert!(!killed.contains(&4), "the vehicle 800 m off is left alone");
+    assert!(sim.sfw().is_empty() || sim.sfw().skeets.is_empty());
 }

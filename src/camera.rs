@@ -120,6 +120,8 @@ pub struct WeaponCam {
 const PLAYER_SLOTS: std::ops::Range<usize> = 8..stealth_sim::N_PROJ;
 /// Seconds the camera stays on the impact point, pulling back.
 const IMPACT_SECONDS: f32 = 10.0;
+/// How far back (m) the weapon view follows a CBU-105's submunitions.
+const SFW_CAM_BACK: f64 = 220.0;
 /// Seconds the view takes to glide from where the weapon was last seen to its explosion.
 const GLIDE_SECONDS: f32 = 0.6;
 /// Distance behind and above the weapon in flight, and how far back and up the camera pulls
@@ -488,6 +490,16 @@ fn track_weapon(
                     None => (rot * Vec3::NEG_Z).as_dvec3(),
                 };
                 weapon.last = Some((p, dir));
+            }
+            // A CBU-105 opened: on with its submunitions while they come down, far enough back
+            // to see their whole pattern (a few hundred metres long).
+            None if spec == stealth_sim::CBU105_SPEC
+                && let Some(p) = crate::sfw::submunitions_centre(combat) =>
+            {
+                let d = weapon.last.map_or(DVec3::NEG_Y, |(_, d)| d);
+                let flat = DVec3::new(d.x, 0.0, d.z).normalize_or(DVec3::NEG_Z);
+                let down = (flat * 0.6 + DVec3::NEG_Y).normalize();
+                weapon.last = Some((p - down * SFW_CAM_BACK, down));
             }
             None => {
                 weapon.slot = None;

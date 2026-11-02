@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pilone armi sinistro
 hardpoint-oh58-right-pylon = Pilone armi destro
 weapon-role-22 = Contenitore mitragliatrice: spara come il cannone, lungo il muso
 employment-22 = Gittata: fino a 1,5 km, 500 colpi per contenitore
+weapon-role-23 = Arma a spoletta sensoriale: quaranta skeet sparano verso il basso sui veicoli
+employment-23 =
+    Guidata al punto marcato con il pod di puntamento al rilascio
+    Rilascio: sopra la quota di apertura impostata nella pagina SMS (500-3.000 ft)

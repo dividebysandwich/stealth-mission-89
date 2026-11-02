@@ -253,6 +253,8 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     // Lower right: steerpoint number, distance and time to go; with a bomb the release data.
     if let Some(b) = bomb {
         bomb_readouts(c, &b);
+    } else if let Some(s) = f.cues.sfw.filter(|_| st.mode == HudMode::Gnd) {
+        sfw_readouts(c, &s);
     } else if let Some((n, km, secs)) = f.steerpoint {
         text(c, 1010.0, 392.0, &format!("STPT {n}"), Align::Right);
         text(c, 1010.0, 418.0, &format!("{km:.1} KM"), Align::Right);
@@ -775,6 +777,19 @@ fn bomb_readouts(c: &mut Canvas, b: &super::BombCue) {
         &format!("TOF {:.1}", b.fall_secs),
         Align::Right,
     );
+}
+
+/// The CBU-105's release data: its burst altitude, and below it ALT LOW, else whether one
+/// released now reaches the marked point.
+fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
+    text(c, 1010.0, 392.0, &format!("BA {}", s.burst_ft), Align::Right);
+    let state = match s.in_range {
+        _ if s.low => "ALT LOW",
+        None => "NO TGT",
+        Some(true) => "IN RNG",
+        Some(false) => "OUT RNG",
+    };
+    text(c, 1010.0, 418.0, state, Align::Right);
 }
 
 /// Pixels per second to the release the CCRP solution cue sits above the flight path marker.

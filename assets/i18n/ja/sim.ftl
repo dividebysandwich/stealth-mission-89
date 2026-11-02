@@ -26,6 +26,7 @@ sim-no-target = 目標なし
 sim-no-target-designated = 目標が指定されていない
 sim-bay-closed = ベイ閉鎖中
 sim-insufficient-altitude = 高度不足
+sim-below-burst-altitude = 散布高度未満 ({ $feet } ft)
 sim-fuel-transfer = 燃料移送
 sim-stores-exhausted = 兵装が尽きた
 sim-hit-gunfire = 銃撃を受けた

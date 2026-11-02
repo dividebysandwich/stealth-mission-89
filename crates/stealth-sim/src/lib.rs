@@ -25,6 +25,7 @@ mod pilot;
 mod radar;
 pub mod relief;
 pub mod score;
+pub mod sfw;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -205,6 +206,9 @@ pub struct Sim {
     pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
+    /// The CBU-105s' submunitions and skeets on their way down.
+    #[serde(default, skip_serializing_if = "sfw::Sfw::is_empty")]
+    pub(crate) sfw: sfw::Sfw,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -528,6 +532,7 @@ impl Sim {
             aaa_shells: Vec::new(),
             shell_impacts: Vec::new(),
             aaa_rng: None,
+            sfw: sfw::Sfw::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -888,6 +893,7 @@ impl Sim {
             self.update_campaign();
         }
         self.update_missiles(&present);
+        self.update_sfw();
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();

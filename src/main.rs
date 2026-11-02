@@ -41,6 +41,7 @@ mod gif_recorder;
 mod glvr;
 mod goggles;
 mod ground_fire;
+mod sfw;
 mod headtrack;
 mod help;
 mod hmd;

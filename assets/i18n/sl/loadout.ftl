@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Levi nosilec orožja
 hardpoint-oh58-right-pylon = Desni nosilec orožja
 weapon-role-22 = Strojnični kontejner: strelja kot top, vzdolž nosu
 employment-22 = Doseg: do 1,5 km, 500 nabojev na kontejner
+weapon-role-23 = Orožje s senzorskim vžigalnikom: štirideset skeetov strelja navzdol na vozila
+employment-23 =
+    Vodeno do točke, označene s ciljnim vsebnikom ob odvrženju
+    Odvrženje: nad višino odprtja, nastavljeno na strani SMS (500-3.000 ft)

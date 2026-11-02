@@ -26,6 +26,7 @@ sim-no-target = Žiadny cieľ
 sim-no-target-designated = Cieľ nie je označený
 sim-bay-closed = Šachta zatvorená
 sim-insufficient-altitude = Nedostatočná výška
+sim-below-burst-altitude = Pod výškou otvorenia ({ $feet } ft)
 sim-fuel-transfer = Prečerpávanie paliva
 sim-stores-exhausted = Výzbroj vyčerpaná
 sim-hit-gunfire = Zásah paľbou z kanóna

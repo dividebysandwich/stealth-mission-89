@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pilone de armas esquerdo
 hardpoint-oh58-right-pylon = Pilone de armas direito
 weapon-role-22 = Casulo de metralhadora: dispara como o canhão, ao longo do nariz
 employment-22 = Alcance: até 1,5 km, 500 tiros por casulo
+weapon-role-23 = Arma de espoleta sensora: quarenta skeets disparam para baixo contra os veículos
+employment-23 =
+    Guiada ao ponto marcado com o pod de designação no lançamento
+    Lançamento: acima da altitude de abertura definida na página SMS (500-3.000 ft)

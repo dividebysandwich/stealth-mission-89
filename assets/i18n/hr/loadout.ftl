@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Lijevi nosač oružja
 hardpoint-oh58-right-pylon = Desni nosač oružja
 weapon-role-22 = Kontejner s mitraljezom: puca kao top, uzduž nosa
 employment-22 = Domet: do 1,5 km, 500 metaka po kontejneru
+weapon-role-23 = Oružje sa senzorskim upaljačem: četrdeset skeetova puca prema vozilima ispod
+employment-23 =
+    Navodi se na točku označenu ciljničkim kontejnerom pri odbacivanju
+    Odbacivanje: iznad visine otvaranja zadane na stranici SMS (500-3.000 ft)

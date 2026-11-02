@@ -27,6 +27,7 @@ sim-no-target = Gan sprioc
 sim-no-target-designated = Níor ainmníodh sprioc
 sim-bay-closed = Bá dúnta
 sim-insufficient-altitude = Airde easnamhach
+sim-below-burst-altitude = Faoi bhun airde pléasctha ({ $feet } ft)
 sim-fuel-transfer = Aistriú breosla
 sim-stores-exhausted = Stoic ídithe
 sim-hit-gunfire = Buailte ag tine ghunnaí

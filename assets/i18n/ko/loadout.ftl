@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = 왼쪽 무장 파일론
 hardpoint-oh58-right-pylon = 오른쪽 무장 파일론
 weapon-role-22 = 기관총 포드: 기관포처럼 기수 방향으로 발사합니다
 employment-22 = 사거리: 최대 1.5 km, 포드당 500발
+weapon-role-23 = 센서 신관 무기: 40 개의 스키트가 아래 차량을 향해 발사됩니다
+employment-23 =
+    투하 시 표적 포드로 지정한 지점으로 유도
+    투하: SMS 페이지에서 설정한 산개 고도 이상 (500-3,000 ft)

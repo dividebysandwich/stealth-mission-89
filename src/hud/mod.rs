@@ -128,6 +128,8 @@ pub struct Bay {
     pub air_to_air: bool,
     /// Lock range of the weapon's missile (km), 0 for unguided stores.
     pub range_km: f32,
+    /// The CBU-105 (the SMS page sets its burst altitude).
+    pub sfw: bool,
 }
 
 /// Weapon stores (mirrored from the combat simulation every frame; defaults to a typical load).
@@ -155,6 +157,7 @@ impl Default for Stores {
             picture,
             air_to_air,
             range_km: 0.0,
+            sfw: false,
         };
         Self {
             bays: vec![
@@ -263,6 +266,8 @@ pub struct HudCues {
     pub turret_gun: Option<GunCue>,
     /// Unguided bomb selected in AG: the CCIP or CCRP solution.
     pub bomb: Option<BombCue>,
+    /// CBU-105 selected in AG: its burst altitude and release cues.
+    pub sfw: Option<stealth_sim::sfw::SfwSolution>,
     /// A recon target still to photograph is locked.
     pub recon: Option<ReconCue>,
     /// Missile selected with a target locked (AG: air-to-ground, AA: air-to-air): its launch

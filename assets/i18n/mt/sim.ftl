@@ -27,6 +27,7 @@ sim-no-target = L-ebda mira
 sim-no-target-designated = L-ebda mira ddeżinjata
 sim-bay-closed = Bay magħluq
 sim-insufficient-altitude = Altitudni insuffiċjenti
+sim-below-burst-altitude = Taħt l-altitudni tal-ftuħ ({ $feet } ft)
 sim-fuel-transfer = Trasferiment ta' fuel
 sim-stores-exhausted = Armi mistekkija
 sim-hit-gunfire = Milqut minn nar tal-kanun

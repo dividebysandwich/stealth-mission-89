@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Venstre våbenpylon
 hardpoint-oh58-right-pylon = Højre våbenpylon
 weapon-role-22 = Maskingeværbeholder: affyres som kanonen, langs næsen
 employment-22 = Rækkevidde: op til 1,5 km, 500 skud pr. beholder
+weapon-role-23 = Sensorudløst våben: fyrre skeets skyder ned mod køretøjerne under mønsteret
+employment-23 =
+    Styres mod punktet, der var markeret med sigtepoden ved udløsningen
+    Udløsning: over åbningshøjden sat på SMS-siden (500-3.000 ft)

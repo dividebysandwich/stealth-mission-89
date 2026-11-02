@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Lewy pylon uzbrojenia
 hardpoint-oh58-right-pylon = Prawy pylon uzbrojenia
 weapon-role-22 = Gondola karabinu maszynowego: strzela jak działko, wzdłuż dziobu
 employment-22 = Zasięg: do 1,5 km, 500 nabojów w gondoli
+weapon-role-23 = Broń z zapalnikiem sensorowym: czterdzieści skeetów strzela w dół w pojazdy
+employment-23 =
+    Naprowadzana na punkt oznaczony zasobnikiem celowniczym przy zrzucie
+    Zrzut: powyżej wysokości otwarcia ustawionej na stronie SMS (500-3000 ft)

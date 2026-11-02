@@ -160,6 +160,8 @@ pub struct AvionicsState {
     pub ripple: u8,
     /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
     pub ripple_spacing: usize,
+    /// The CBU-105's burst altitude (index into `BURST_FT`).
+    pub burst: usize,
     /// Right format before ILS was switched on.
     pub before_ils: Option<Format>,
     pub tgp: TgpState,
@@ -465,6 +467,7 @@ impl Default for AvionicsState {
             sms_ord: true,
             ripple: 1,
             ripple_spacing: 3,
+            burst: 2,
             before_ils: None,
             tgp: default(),
             helmet: None,
@@ -481,6 +484,10 @@ pub const RIPPLE_SPACING_FT: [u16; 9] = [25, 50, 75, 100, 150, 200, 300, 400, 50
 const SPACING_LABELS: [&str; 9] =
     ["25FT", "50FT", "75FT", "100FT", "150FT", "200FT", "300FT", "400FT", "500FT"];
 
+/// The CBU-105's burst altitudes (ft above the ground).
+pub const BURST_FT: [u16; 6] = [500, 1000, 1500, 2000, 2500, 3000];
+const BURST_LABELS: [&str; 6] = ["500FT", "1000FT", "1500FT", "2000FT", "2500FT", "3000FT"];
+
 /// Seconds "lock cursor target" is held before the zoomed window shows.
 const MARK_HOLD: f32 = 0.3;
 
@@ -493,6 +500,11 @@ impl AvionicsState {
     /// The ripple's spacing (ft).
     pub fn ripple_ft(&self) -> u16 {
         RIPPLE_SPACING_FT[self.ripple_spacing.min(RIPPLE_SPACING_FT.len() - 1)]
+    }
+
+    /// The CBU-105's burst altitude (ft above the ground).
+    pub fn burst_ft(&self) -> u16 {
+        BURST_FT[self.burst.min(BURST_FT.len() - 1)]
     }
 }
 
@@ -633,6 +645,9 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::Ripple(d) => {
             av.ripple = (av.ripple as i32 + d as i32).clamp(1, RIPPLE_MAX as i32) as u8;
         }
+        MfdCmd::Burst(d) => {
+            av.burst = (av.burst as i32 + d as i32).clamp(0, BURST_FT.len() as i32 - 1) as usize;
+        }
         MfdCmd::RippleSpacing(d) => {
             av.ripple_spacing = (av.ripple_spacing as i32 + d as i32)
                 .clamp(0, RIPPLE_SPACING_FT.len() as i32 - 1)
@@ -753,6 +768,13 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Sms, 3) if !av.sms_ord => {
             (crate::mfd::bomb_mode_label(s.ccrp), Action(A::BombMode), false)
         }
+        // The CBU-105 is released one at a time, opening at the burst altitude on the right.
+        (Format::Sms, 10..=12) if !av.sms_ord && s.sfw => return None,
+        (Format::Sms, 15) if !av.sms_ord && s.sfw => ("BA+", Cmd(MfdCmd::Burst(1)), false),
+        (Format::Sms, 16) if !av.sms_ord && s.sfw => {
+            (BURST_LABELS[av.burst.min(BURST_LABELS.len() - 1)], Readout, false)
+        }
+        (Format::Sms, 17) if !av.sms_ord && s.sfw => ("BA-", Cmd(MfdCmd::Burst(-1)), false),
         // The release program down the sides: ripple count on the left, spacing on the right.
         (Format::Sms, 10) if !av.sms_ord => ("RP+", Cmd(MfdCmd::Ripple(1)), false),
         (Format::Sms, 11) if !av.sms_ord => {
@@ -2279,6 +2301,35 @@ mod tests {
             [camera_zoom(10), camera_zoom(64), camera_zoom(100), camera_zoom(5000)],
             [0, 2, 3, 6]
         );
+    }
+
+    /// With a CBU-105 selected the SMS page sets its burst altitude on the right instead of the
+    /// ripple; the classic avionics leave it to the simulation's default.
+    #[test]
+    fn sms_sets_the_cbu105_burst_altitude() {
+        let mut s = MfdState { modern: true, ..default() };
+        let raster = &mut MapRaster::default();
+        s.av.sms_ord = false;
+        s.av.select(MfdSide::Right, Format::Sms);
+        let label = |s: &MfdState, slot| osb(MfdSide::Right, slot, s).map(|o| o.0);
+        assert_eq!(label(&s, 15), Some("SPC+"));
+        s.sfw = true;
+        assert_eq!(
+            [label(&s, 15), label(&s, 16), label(&s, 17)],
+            [Some("BA+"), Some("1500FT"), Some("BA-")]
+        );
+        assert_eq!(label(&s, 10), None, "no ripple");
+        assert_eq!(s.burst_ft(), 1500);
+        apply(&mut s, raster, MfdCmd::Burst(1));
+        apply(&mut s, raster, MfdCmd::Burst(1));
+        apply(&mut s, raster, MfdCmd::Burst(1));
+        assert_eq!((s.burst_ft(), label(&s, 16)), (3000, Some("3000FT")));
+        for _ in 0..9 {
+            apply(&mut s, raster, MfdCmd::Burst(-1));
+        }
+        assert_eq!(s.burst_ft(), 500);
+        s.modern = false;
+        assert_eq!(s.burst_ft(), 0);
     }
 
     #[test]

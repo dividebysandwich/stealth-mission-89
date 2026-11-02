@@ -161,6 +161,16 @@ pub struct Projectile {
     /// Frames it still drops clear of the aircraft before its motor lights.
     #[serde(default, skip_serializing_if = "no_drop")]
     pub drop: u8,
+    /// A CBU-105: the point it flies to (world units, x east, y south), fixed at release.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aim: Option<(i32, i32)>,
+    /// A CBU-105: the height above the ground it opens at (ft).
+    #[serde(default, skip_serializing_if = "no_burst")]
+    pub burst_ft: u16,
+}
+
+fn no_burst(b: &u16) -> bool {
+    *b == 0
 }
 
 fn no_drop(d: &u8) -> bool {
@@ -523,6 +533,9 @@ pub struct PlayerState {
     /// Ground distance between a ripple's bombs (ft).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub ripple_ft: u16,
+    /// The CBU-105's burst altitude (ft above the ground; 0: [`SFW_DEFAULT_BURST_FT`]).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub burst_ft: u16,
     /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub nozzle: u8,
@@ -560,6 +573,11 @@ pub const TURRET_DEPRESSION: i32 = 9102;
 pub const TURRET_ELEVATION: i32 = 3641;
 /// The Hellfire's missile table entry.
 pub const HELLFIRE_SPEC: i32 = 47;
+/// The CBU-105 sensor fuzed weapon's missile table entry (its dispenser) and weapon type.
+pub const CBU105_SPEC: i32 = 49;
+pub const CBU105_WEAPON: i32 = 23;
+/// The CBU-105's burst altitude unless the SMS page sets another (ft above the ground).
+pub const SFW_DEFAULT_BURST_FT: u16 = 1500;
 /// The AIM-9's and the air-launched Stinger's missile table entries.
 pub const AIM9_SPEC: i32 = 23;
 pub const STINGER_SPEC: i32 = 48;
@@ -951,6 +969,26 @@ pub enum SimEvent {
         hit: bool,
         kill: bool,
         miss: (i16, i16),
+    },
+    /// A CBU-105's dispenser opened (fine units like [`BombFall`]: x east, y south, ft up).
+    SfwDispense {
+        x: i32,
+        y: i32,
+        alt: i32,
+    },
+    /// A skeet fired its penetrator from `from` down at `to` (fine units like [`BombFall`]);
+    /// `hit`: it struck the vehicle, `kill`: and destroyed it.
+    SkeetFire {
+        from: (i32, i32, i32),
+        to: (i32, i32, i32),
+        hit: bool,
+        kill: bool,
+    },
+    /// A skeet that found nothing destroyed itself in the air (fine units).
+    SkeetBurst {
+        x: i32,
+        y: i32,
+        alt: i32,
     },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {

@@ -146,6 +146,9 @@ pub struct MfdState {
     pub air: bool,
     /// The HUD is in A-G, mirrored from the HUD (the SMS page's master mode).
     pub ground: bool,
+    /// The selected store is a CBU-105, mirrored from the stores (the SMS page sets its burst
+    /// altitude).
+    pub sfw: bool,
     /// The WAY page is in edit mode (F8), mirrored from the waypoints for the editing buttons.
     pub way_editing: bool,
 }
@@ -169,6 +172,7 @@ impl Default for MfdState {
             ccrp: false,
             air: false,
             ground: false,
+            sfw: false,
             way_editing: false,
         }
     }
@@ -208,6 +212,12 @@ impl MfdState {
         }
     }
 
+    /// The SMS page's burst altitude for the simulation (ft above the ground); 0 (the
+    /// simulation's default) with the classic avionics.
+    pub fn burst_ft(&self) -> u16 {
+        if self.modern { self.av.burst_ft() } else { 0 }
+    }
+
     /// The tracking camera page is on this MFD.
     pub fn camera_on(&self, side: MfdSide) -> bool {
         if self.modern {
@@ -245,6 +255,8 @@ pub enum MfdCmd {
     Ripple(i8),
     /// SMS page: the ripple's spacing up / down.
     RippleSpacing(i8),
+    /// SMS page: the CBU-105's burst altitude up / down.
+    Burst(i8),
     HarmFilter,
     /// Tracking camera zoom step in / out, the next step round (auto, 1X..6X).
     CamZoom(i8),
@@ -451,7 +463,9 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         // The keypad slew is no action: the mode it works in.
         MfdCmd::WaypointNudge(..) => Action::ChangeWaypoint,
         MfdCmd::Sms(true) => Action::MissionOrders,
-        MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) => Action::Ordnance,
+        MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) | MfdCmd::Burst(_) => {
+            Action::Ordnance
+        }
     }
 }
 
@@ -711,8 +725,13 @@ fn mfd_keys(
     settings: Res<crate::settings::Settings>,
     cam: Res<TrackCam>,
     hud: Res<crate::hud::HudState>,
+    stores: Res<crate::hud::Stores>,
 ) {
     let auto_zoom = cam.zoom.saturating_sub(1);
+    let sfw = !stores.gun_selected && stores.bays.get(stores.selected).is_some_and(|b| b.sfw);
+    if state.sfw != sfw {
+        state.sfw = sfw;
+    }
     if state.ccrp != hud.ccrp {
         state.ccrp = hud.ccrp;
     }

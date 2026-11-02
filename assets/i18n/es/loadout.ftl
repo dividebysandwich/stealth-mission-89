@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pilón de armas izquierdo
 hardpoint-oh58-right-pylon = Pilón de armas derecho
 weapon-role-22 = Vaina de ametralladora: se dispara como el cañón, a lo largo del morro
 employment-22 = Alcance: hasta 1,5 km, 500 cartuchos por vaina
+weapon-role-23 = Arma de espoleta sensora: cuarenta skeets disparan hacia abajo contra los vehículos
+employment-23 =
+    Guiada al punto marcado con el pod de designación al lanzarla
+    Lanzamiento: por encima de la altitud de apertura de la página SMS (500-3.000 ft)

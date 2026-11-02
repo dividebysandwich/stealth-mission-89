@@ -27,6 +27,7 @@ sim-no-target = Intet mål
 sim-no-target-designated = Intet mål udpeget
 sim-bay-closed = Bomberum lukket
 sim-insufficient-altitude = For lav højde
+sim-below-burst-altitude = Under åbningshøjden ({ $feet } ft)
 sim-fuel-transfer = Brændstofoverførsel
 sim-stores-exhausted = Bevæbning opbrugt
 sim-hit-gunfire = Ramt af skud

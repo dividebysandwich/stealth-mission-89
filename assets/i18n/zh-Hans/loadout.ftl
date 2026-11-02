@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = 左侧武器挂架
 hardpoint-oh58-right-pylon = 右侧武器挂架
 weapon-role-22 = 机枪吊舱：像机炮一样沿机头方向射击
 employment-22 = 射程：最远 1.5 km，每个吊舱 500 发
+weapon-role-23 = 传感器引信武器：四十枚“飞碟”向下方车辆射击
+employment-23 =
+    制导至投放时用瞄准吊舱标定的点
+    投放：高于 SMS 页面设定的开舱高度 (500-3,000 ft)

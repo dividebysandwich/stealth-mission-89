@@ -620,10 +620,17 @@ impl Sim {
         let before = [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine];
         let (mut p, mut v) = (before, [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine]);
         let dt = 1.0 / self.fs as f64;
+        let sfw = m.spec == CBU105_SPEC && s >= ENEMY_SLOTS;
         if m.spec == 28 && s >= ENEMY_SLOTS {
             self.steer_lgb(&p, &mut v, dt);
+        } else if sfw {
+            self.steer_sfw(&m, &p, &mut v, dt);
         }
         ballistics::step(&mut p, &mut v, k, dt);
+        // The CBU-105 opens at its burst altitude.
+        let opens = sfw
+            && p[2] - self.hill_alt((p[0] / 32.0) as i32, (p[1] / 32.0) as i32) as f64
+                <= crate::sfw::burst_of(&m) as f64;
         // The ground (the rolling hills) where the bomb is now.
         let ground = self.hill_alt((p[0] / 32.0) as i32, (p[1] / 32.0) as i32) as f64;
         let landed = p[2] <= ground;
@@ -651,7 +658,9 @@ impl Sim {
         pm.heading = s16((v[0].atan2(-v[1]) * bam) as i32);
         pm.pitch = s16((v[2].atan2(v[0].hypot(v[1])) * bam) as i32);
         pm.ttl -= 1;
-        if landed {
+        if opens && !landed {
+            self.sfw_dispense(s, p, v);
+        } else if landed {
             self.ground_impact(s);
         }
     }
@@ -660,7 +669,8 @@ impl Sim {
     /// guidance the laser-guided bombs too, like free-fall ones (steered by [`Self::steer_lgb`]).
     pub(crate) fn fall_drag(&self, spec: i32) -> Option<f64> {
         ballistics::drag(spec, self.opts.fix_classic_bugs).or_else(|| {
-            (spec == 28 && self.opts.realistic_guidance)
+            // The CBU-105 is new: it falls like this with either guidance.
+            (spec == 28 && self.opts.realistic_guidance || spec == CBU105_SPEC)
                 .then(|| ballistics::drag(30, self.opts.fix_classic_bugs))
                 .flatten()
         })
@@ -693,6 +703,36 @@ impl Sim {
         let dv = [want[0] - v[0], want[1] - v[1]];
         let n = dv[0].hypot(dv[1]);
         let most = LGB_PULL * g * dt;
+        let k = if n > most { most / n } else { 1.0 };
+        v[0] += dv[0] * k;
+        v[1] += dv[1] * k;
+    }
+
+    /// A falling CBU-105 `m` at `p` (ft: east, south, up) steering its velocity `v` for `dt` s
+    /// toward the point marked at its release, on its own: for opening at its burst altitude
+    /// short of the point by as far as the submunitions drift on, so they settle over it.
+    pub(crate) fn steer_sfw(&self, m: &Projectile, p: &[f64; 3], v: &mut [f64; 3], dt: f64) {
+        let Some((ax, ay)) = m.aim else { return };
+        let (ax, ay) = (ax as f64, ay as f64);
+        let open = self.hill_alt((ax / 32.0) as i32, (ay / 32.0) as i32) as f64
+            + crate::sfw::burst_of(m) as f64;
+        let h = p[2] - open;
+        if h <= 0.0 {
+            return;
+        }
+        // Seconds to the burst altitude.
+        let g = ballistics::GRAVITY;
+        let t_go = (v[2] + (v[2] * v[2] + 2.0 * g * h).sqrt()) / g;
+        if t_go < 0.1 {
+            return;
+        }
+        // The submunitions go on at the dispenser's speed for their drift time.
+        let vz = -(v[2] * v[2] + 2.0 * g * h).sqrt();
+        let t = t_go + crate::sfw::drift_secs(crate::sfw::burst_of(m) as f64, vz, dt);
+        let want = [(ax - p[0]) / t, (ay - p[1]) / t];
+        let dv = [want[0] - v[0], want[1] - v[1]];
+        let n = dv[0].hypot(dv[1]);
+        let most = crate::sfw::SFW_PULL_G * g * dt;
         let k = if n > most { most / n } else { 1.0 };
         v[0] += dv[0] * k;
         v[1] += dv[1] * k;
@@ -731,7 +771,7 @@ impl Sim {
             if !delivered {
                 self.msg(text!("sim-bad-drop"));
             }
-        } else if matches!(m.spec, 28..=30) {
+        } else if matches!(m.spec, 28..=30 | CBU105_SPEC) {
             self.sound(5, 2);
             let mut text = text!("sim-misses", weapon = long.to_string());
             let o = self.find_object_at(ex, ey);

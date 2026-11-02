@@ -159,3 +159,7 @@ weapon-role-21 = Air-to-air, infrared homing, very short range
 employment-21 = Range: 1-6 km, farther head-on
 weapon-role-22 = Machine gun pod: fired as the gun, along the nose
 employment-22 = Range: up to 1.5 km, 500 rounds a pod
+weapon-role-23 = Sensor fuzed weapon: forty skeets fire down at the vehicles under its pattern
+employment-23 =
+    Guided to the point marked with the targeting pod at release
+    Release: above the burst altitude set on the SMS page (500-3,000 ft)

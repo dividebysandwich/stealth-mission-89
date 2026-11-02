@@ -26,6 +26,7 @@ sim-no-target = 표적 없음
 sim-no-target-designated = 지정된 표적 없음
 sim-bay-closed = 무장창 닫힘
 sim-insufficient-altitude = 고도 부족
+sim-below-burst-altitude = 산개 고도 미만 ({ $feet } ft)
 sim-fuel-transfer = 연료 이송
 sim-stores-exhausted = 무장 소진
 sim-hit-gunfire = 기총 사격 피격

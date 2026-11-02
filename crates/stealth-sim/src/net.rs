@@ -231,6 +231,9 @@ pub struct WorldFast {
     #[serde(default)]
     pub moving: Vec<(u16, Fine)>,
     pub ai_missiles: Vec<AiMissile>,
+    /// The CBU-105s' submunitions and skeets on their way down.
+    #[serde(default, skip_serializing_if = "crate::sfw::Sfw::is_empty")]
+    pub sfw: crate::sfw::Sfw,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
     #[serde(default)]
@@ -342,6 +345,7 @@ impl Sim {
                 .filter_map(|i| Some((i as u16, self.units[i].fine?)))
                 .collect(),
             ai_missiles: self.ai_missiles().to_vec(),
+            sfw: self.sfw.for_clients(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
         }
@@ -624,6 +628,7 @@ impl Sim {
                 u.y = 0x8000 - (f.n as f64 / crate::aaa::M_PER_MAP).round() as i32;
             }
         }
+        self.sfw = w.sfw.clone();
         if let Some(c) = self.campaign.as_mut() {
             c.missiles = w.ai_missiles.clone();
         }

@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pilon senjata kiri
 hardpoint-oh58-right-pylon = Pilon senjata kanan
 weapon-role-22 = Pod senapan mesin: ditembakkan seperti meriam, searah hidung
 employment-22 = Jangkauan: hingga 1,5 km, 500 peluru per pod
+weapon-role-23 = Senjata pemicu sensor: empat puluh skeet menembak ke bawah ke kendaraan
+employment-23 =
+    Dipandu ke titik yang ditandai pod penargetan saat dilepas
+    Pelepasan: di atas ketinggian ledak di halaman SMS (500-3.000 ft)

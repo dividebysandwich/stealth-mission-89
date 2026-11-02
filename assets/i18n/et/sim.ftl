@@ -27,6 +27,7 @@ sim-no-target = Sihtmärki pole
 sim-no-target-designated = Sihtmärki pole määratud
 sim-bay-closed = Relvaluuk suletud
 sim-insufficient-altitude = Kõrgus ebapiisav
+sim-below-burst-altitude = Avanemiskõrgusest madalamal ({ $feet } ft)
 sim-fuel-transfer = Kütuse ülekanne
 sim-stores-exhausted = Relvastus otsas
 sim-hit-gunfire = Tabas kahurituli

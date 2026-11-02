@@ -136,6 +136,8 @@ pub struct Combat {
     /// Vehicles' rounds fired at the ground in the steps of this frame (`SimEvent::GroundShot`:
     /// from, to, gun, hit, kill, miss).
     pub ground_shots: Vec<GroundShotFx>,
+    /// The CBU-105s' events this frame (drawn by `sfw`).
+    pub sfw_fx: Vec<SimEvent>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -423,6 +425,7 @@ fn start_combat(
         explosions: Vec::new(),
         round_impacts: Vec::new(),
         ground_shots: Vec::new(),
+        sfw_fx: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -594,6 +597,7 @@ fn player_state(
         ccrp: hud.ccrp,
         ripple: mfd.ripple().0,
         ripple_ft: mfd.ripple().1,
+        burst_ft: mfd.burst_ft(),
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
@@ -724,6 +728,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.explosions.clear();
     combat.round_impacts.clear();
     combat.ground_shots.clear();
+    combat.sfw_fx.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -1361,6 +1366,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 } else {
                     0.0
                 },
+                sfw: wt.spec as i32 == stealth_sim::CBU105_SPEC,
             }
         })
         .collect();
@@ -1791,6 +1797,9 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             )
         {
             new_cues.bomb = Some(cue);
+        }
+        if hud.mode == HudMode::Gnd {
+            new_cues.sfw = sim.sfw_solution();
         }
         new_cues.ranging_bar = t.ranging_bar;
         new_cues.recon = t.photo.map(|p| {
@@ -2353,6 +2362,23 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         // Armour firing: drawn by `ground_fire` (the flash, the tracer, the strike).
         SimEvent::GroundShot { from, to, gun, hit, kill, miss } => {
             combat.ground_shots.push(GroundShotFx { from, to, gun, hit, kill, miss });
+        }
+        // The CBU-105's dispenser opening and its skeets: drawn by `sfw`; a skeet's kill burns.
+        SimEvent::SfwDispense { x, y, .. } | SimEvent::SkeetBurst { x, y, .. } => {
+            let fine = 32 * stealth_sim::ROUND_FINE;
+            let p = combat.sim.player();
+            if (x / fine - p.mx).abs() + (y / fine - p.my).abs() < 100 {
+                fx.sounds
+                    .write(crate::sound::PlaySound { id: crate::sound::AIRBURST, priority: 1 });
+            }
+            combat.sfw_fx.push(e);
+        }
+        SimEvent::SkeetFire { to, kill, .. } => {
+            if kill {
+                let fine = 32 * stealth_sim::ROUND_FINE;
+                combat.kills.push(Kill { x: to.0 / fine, y: to.1 / fine, vehicle: true });
+            }
+            combat.sfw_fx.push(e);
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {

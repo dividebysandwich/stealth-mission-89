@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = 左兵装パイロン
 hardpoint-oh58-right-pylon = 右兵装パイロン
 weapon-role-22 = 機関銃ポッド：機関砲と同様に機首方向へ発射します
 employment-22 = 射程：最大 1.5 km、ポッドあたり 500 発
+weapon-role-23 = センサー信管兵器：40 個のスキートが下方の車両を撃ちます
+employment-23 =
+    投下時に照準ポッドで指示した地点へ誘導
+    投下：SMS ページで設定した散布高度以上 (500-3,000 ft)

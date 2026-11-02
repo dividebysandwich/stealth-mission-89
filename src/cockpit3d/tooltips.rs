@@ -320,6 +320,8 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::Ripple(..=0) => "tip-cmd-ripple-down",
         MfdCmd::RippleSpacing(1..) => "tip-cmd-ripple-spacing-up",
         MfdCmd::RippleSpacing(..=0) => "tip-cmd-ripple-spacing-down",
+        MfdCmd::Burst(1..) => "tip-cmd-burst-up",
+        MfdCmd::Burst(..=0) => "tip-cmd-burst-down",
         MfdCmd::HarmFilter => "tip-cmd-harm-filter",
         MfdCmd::CamZoom(1..) => "tip-cmd-cam-zoom-in",
         MfdCmd::CamZoom(..=0) => "tip-cmd-cam-zoom-out",

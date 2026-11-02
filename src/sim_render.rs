@@ -31,6 +31,7 @@ impl Plugin for SimRenderPlugin {
             .init_resource::<AaaVisuals>()
             .init_resource::<DrawnUnits>()
             .init_resource::<crate::ground_fire::GroundRounds>()
+            .init_resource::<crate::sfw::SfwVisuals>()
             .init_resource::<RemoteVisuals>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
@@ -41,6 +42,7 @@ impl Plugin for SimRenderPlugin {
                     crate::ground_fire::ground_fire
                         .after(sync_aaa)
                         .run_if(resource_exists::<Combat>),
+                    crate::sfw::sync_sfw.run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
                     own_muzzle_flash.run_if(resource_exists::<Combat>),
                     own_shadow,
@@ -69,7 +71,7 @@ pub struct SimRenderSystems;
 pub struct SimObject;
 
 /// Palette colours of the effects.
-const FLARE: u8 = 15;
+pub(crate) const FLARE: u8 = 15;
 const CHAFF: u8 = 7;
 const DECOY: u8 = 13;
 pub const TRACER: u8 = 17;
@@ -255,9 +257,11 @@ fn cleanup(
     mut aaa: ResMut<AaaVisuals>,
     mut remote: ResMut<RemoteVisuals>,
     mut rounds: ResMut<crate::ground_fire::GroundRounds>,
+    mut sfw: ResMut<crate::sfw::SfwVisuals>,
 ) {
     *aaa = AaaVisuals::default();
     *rounds = Default::default();
+    *sfw = Default::default();
     *remote = RemoteVisuals::default();
     for e in &q {
         commands.entity(e).try_despawn();
@@ -738,7 +742,7 @@ fn sync_aaa(
 }
 
 /// A camera-facing dot of constant screen size (a parent carrying the position).
-fn spawn_dot(
+pub(crate) fn spawn_dot(
     commands: &mut Commands,
     assets: &ModelAssets,
     material: Handle<PaletteMaterial>,
@@ -880,7 +884,7 @@ pub(crate) fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMate
 /// The parachute canopy over the pilot (origin at their feet, metres): a round canopy of 24
 /// gores in two colours, open underneath, and the suspension lines down to the risers above
 /// the pilot's head.
-fn spawn_canopy(commands: &mut Commands, assets: &ModelAssets) -> Entity {
+pub(crate) fn spawn_canopy(commands: &mut Commands, assets: &ModelAssets) -> Entity {
     const GORES: usize = 24;
     const RISERS: f32 = 2.3;
     const SKIRT: (f32, f32) = (3.4, 8.6);

@@ -27,6 +27,7 @@ sim-no-target = Nincs célpont
 sim-no-target-designated = Nincs kijelölt célpont
 sim-bay-closed = A rekesz zárva
 sim-insufficient-altitude = Nincs elég magasság
+sim-below-burst-altitude = A nyitási magasság alatt ({ $feet } ft)
 sim-fuel-transfer = Üzemanyag-átfejtés
 sim-stores-exhausted = A fegyverzet elfogyott
 sim-hit-gunfire = Géppuskatűz találta el

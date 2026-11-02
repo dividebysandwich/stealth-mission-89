@@ -346,6 +346,34 @@ mod tests {
     }
 
     #[test]
+    fn cbu105_submunitions_and_skeets_reach_the_others() {
+        use stealth_sim::sfw::{Blu108, Phase, Sfw, Skeet};
+        let sfw = Sfw {
+            blus: vec![Blu108 {
+                id: 3,
+                p: [100.0, 200.0, 900.5],
+                v: [1.0, -2.0, -50.0],
+                phase: Phase::Chute,
+                t: 1.5,
+                spin: 0.7,
+                skeets: 4,
+                owner: 1,
+                salvo: 2,
+            }],
+            skeets: vec![Skeet { id: 9, p: [5.0, 6.0, 300.0], t: 0.4, ..Default::default() }],
+            salvos: Vec::new(),
+            next_id: 9,
+        };
+        let w = WorldFast { sfw: sfw.clone(), ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().sfw, sfw);
+        // None in the air: nothing sent.
+        assert_eq!(
+            encode(&WorldFast::default()),
+            encode(&WorldFast { sfw: Sfw::default(), ..Default::default() })
+        );
+    }
+
+    #[test]
     fn other_pilots_keep_their_missile_slots_smoke_turret_and_stores() {
         use stealth_sim::Projectile;
         use stealth_sim::net::RemotePilot;

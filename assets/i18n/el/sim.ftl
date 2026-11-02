@@ -27,6 +27,7 @@ sim-no-target = Κανένας στόχος
 sim-no-target-designated = Δεν έχει υποδειχθεί στόχος
 sim-bay-closed = Το καμπαρτίνο είναι κλειστό
 sim-insufficient-altitude = Ανεπαρκές ύψος
+sim-below-burst-altitude = Κάτω από το ύψος διασποράς ({ $feet } ft)
 sim-fuel-transfer = Μεταφορά καυσίμου
 sim-stores-exhausted = Τα φορτία εξαντλήθηκαν
 sim-hit-gunfire = Πλήγμα από πυρά

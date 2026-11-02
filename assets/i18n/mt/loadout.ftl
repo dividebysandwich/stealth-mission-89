@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pylon tal-armi tax-xellug
 hardpoint-oh58-right-pylon = Pylon tal-armi tal-lemin
 weapon-role-22 = Kontenitur tal-magna gun: jispara bħall-kannun, tul il-mnieħer
 employment-22 = Firxa: sa 1.5 km, 500 rawnd għal kull kontenitur
+weapon-role-23 = Arma b'sensur tal-isplużjoni: erbgħin skeet jisparaw 'l isfel fuq il-vetturi
+employment-23 =
+    Iggwidata lejn il-punt immarkat bil-pod tal-immirar meta tinħeles
+    Ħelsien: 'il fuq mill-altitudni tal-ftuħ fuq il-paġna SMS (500-3,000 ft)

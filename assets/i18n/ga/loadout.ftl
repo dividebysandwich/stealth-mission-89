@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Piolón arm ar chlé
 hardpoint-oh58-right-pylon = Piolón arm ar dheis
 weapon-role-22 = Coimeádán gunna meaisín: lámhachtar é mar an gunna, feadh an tsrón
 employment-22 = Raon: suas le 1.5 km, 500 babhta in aghaidh an choimeádáin
+weapon-role-23 = Arm le brathadóir braiteora: lámhachann daichead skeet anuas ar na feithiclí
+employment-23 =
+    Treoraithe go dtí an pointe a marcáladh leis an bpod spriocdhírithe ag scaoileadh
+    Scaoileadh: os cionn na hairde pléasctha ar an leathanach SMS (500-3,000 ft)

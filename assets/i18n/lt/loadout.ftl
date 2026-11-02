@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Kairysis ginkluotės pilonas
 hardpoint-oh58-right-pylon = Dešinysis ginkluotės pilonas
 weapon-role-22 = Kulkosvaidžio konteineris: šaudo kaip patranka, išilgai nosies
 employment-22 = Nuotolis: iki 1,5 km, 500 šovinių konteineryje
+weapon-role-23 = Jutikliniu sprogdikliu valdomas ginklas: keturiasdešimt skeet šauna į apačioje esančias mašinas
+employment-23 =
+    Nukreipiamas į tašką, pažymėtą taikymo konteineriu numetimo metu
+    Numetimas: virš SMS puslapyje nustatyto atsidarymo aukščio (500-3 000 ft)

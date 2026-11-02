@@ -26,6 +26,7 @@ sim-no-target = Sem alvo
 sim-no-target-designated = Nenhum alvo designado
 sim-bay-closed = Compartimento fechado
 sim-insufficient-altitude = Altitude insuficiente
+sim-below-burst-altitude = Abaixo da altitude de abertura ({ $feet } ft)
 sim-fuel-transfer = Transferência de combustível
 sim-stores-exhausted = Cargas esgotadas
 sim-hit-gunfire = Atingido por tiros

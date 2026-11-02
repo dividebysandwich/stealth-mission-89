@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Pylône d'armement gauche
 hardpoint-oh58-right-pylon = Pylône d'armement droit
 weapon-role-22 = Nacelle de mitrailleuse : tire comme le canon, dans l'axe du nez
 employment-22 = Portée : jusqu'à 1,5 km, 500 cartouches par nacelle
+weapon-role-23 = Arme à fusée sensorielle : quarante skeets tirent vers le bas sur les véhicules
+employment-23 =
+    Guidée vers le point marqué avec le pod de désignation au largage
+    Largage : au-dessus de l'altitude d'ouverture réglée sur la page SMS (500-3 000 ft)

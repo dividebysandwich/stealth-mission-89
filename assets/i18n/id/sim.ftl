@@ -26,6 +26,7 @@ sim-no-target = Tidak ada target
 sim-no-target-designated = Tidak ada target ditetapkan
 sim-bay-closed = Ruang senjata tertutup
 sim-insufficient-altitude = Ketinggian tidak cukup
+sim-below-burst-altitude = Di bawah ketinggian ledak ({ $feet } ft)
 sim-fuel-transfer = Transfer BBM
 sim-stores-exhausted = Persenjataan habis
 sim-hit-gunfire = Terkena tembakan kanon

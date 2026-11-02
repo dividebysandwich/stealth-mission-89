@@ -30,6 +30,7 @@ sim-no-target = No target
 sim-no-target-designated = No target designated
 sim-bay-closed = Bay closed
 sim-insufficient-altitude = Insufficient Altitude
+sim-below-burst-altitude = Below burst altitude ({ $feet } ft)
 sim-fuel-transfer = Fuel transfer
 sim-stores-exhausted = Stores exhausted
 sim-hit-gunfire = Hit by gunfire

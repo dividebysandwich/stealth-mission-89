@@ -27,6 +27,7 @@ sim-no-target = Ei kohdetta
 sim-no-target-designated = Kohdetta ei ole osoitettu
 sim-bay-closed = Ruuma kiinni
 sim-insufficient-altitude = Riittämätön korkeus
+sim-below-burst-altitude = Avautumiskorkeuden alapuolella ({ $feet } ft)
 sim-fuel-transfer = Polttoaineen siirto
 sim-stores-exhausted = Aseistus loppu
 sim-hit-gunfire = Tykkitulen osuma

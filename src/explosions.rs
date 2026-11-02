@@ -154,6 +154,9 @@ pub enum Blast {
     /// A vehicle's gun firing this way (Bevy world, unit): the flash, its smoke, and a tank's
     /// blast raising the dust around it.
     Muzzle(Calibre, Vec3),
+    /// A small burst in the air: a flash and a few puffs `size` m across of the given darkness
+    /// (0 black .. 1 light grey): a dispenser's skin cut away, a skeet destroying itself.
+    Pop { size: f32, shade: f32 },
 }
 
 /// Explosion kind of an anti-aircraft shell burst (`Combat::explosions`; not a sim kind).
@@ -853,6 +856,27 @@ fn spawn_blast(
         Blast::Flak => (0.0, 0, 0, 0, 0, 0.0),
         Blast::Muzzle(calibre, dir) => {
             muzzle(commands, p, pos, calibre, dir);
+            return;
+        }
+        Blast::Pop { size, shade } => {
+            p.puff(pos, Vec3::ZERO, 0.08, (size * 0.4, size), PuffLook::Flash, 0.0, 0.0, 0.9);
+            for _ in 0..4 {
+                let d = p.dir(0.0);
+                let o = (d * p.range(0.0, size * 0.3)).as_dvec3();
+                let life = p.range(2.0, 4.0);
+                let v = d * p.range(0.3, 1.5);
+                let s = shade + p.range(0.0, 0.1);
+                p.puff(
+                    pos + o,
+                    v,
+                    life,
+                    (size * 0.5, size * 1.6),
+                    PuffLook::Trail(s),
+                    0.4,
+                    0.2,
+                    0.8,
+                );
+            }
             return;
         }
         Blast::ArmourHit(calibre) => {

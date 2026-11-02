@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Linker Waffenträger
 hardpoint-oh58-right-pylon = Rechter Waffenträger
 weapon-role-22 = MG-Behälter: wird wie die Bordkanone geschossen, entlang der Nase
 employment-22 = Reichweite: bis 1,5 km, 500 Schuss pro Behälter
+weapon-role-23 = Sensorgezündete Waffe: vierzig Skeets feuern auf die Fahrzeuge unter ihrem Muster
+employment-23 =
+    Gelenkt zu dem beim Auslösen mit dem Zielbehälter markierten Punkt
+    Auslösen: über der auf der SMS-Seite eingestellten Öffnungshöhe (500-3.000 ft)

@@ -159,3 +159,7 @@ hardpoint-oh58-left-pylon = Vasen asepylon
 hardpoint-oh58-right-pylon = Oikea asepylon
 weapon-role-22 = Konekiväärikotelo: ammutaan kuin tykki, nenän suuntaan
 employment-22 = Kantama: enintään 1,5 km, 500 panosta koteloa kohden
+weapon-role-23 = Anturilaukaistu ase: neljäkymmentä skeetiä ampuu alla olevia ajoneuvoja
+employment-23 =
+    Ohjautuu pisteeseen, joka merkittiin maalinosoituspodilla irrotettaessa
+    Irrotus: SMS-sivun avautumiskorkeuden yläpuolella (500-3 000 ft)
