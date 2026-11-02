@@ -1,7 +1,8 @@
 //! The sides' means of war: materiel from the places they hold, spent on the AI's operations
 //! and repairs; the AI's aircraft on the ground, which the launches take and the landings give
 //! back; pilots down in enemy territory waiting for a rescue. Only the AI runs short: the
-//! players always have aircraft and a base to fly from.
+//! players always have aircraft and a base to fly from (under the airframe rule a player's
+//! lost aircraft comes out of the AI's, `end_sortie`).
 
 use crate::CampaignEvent;
 use crate::state::*;

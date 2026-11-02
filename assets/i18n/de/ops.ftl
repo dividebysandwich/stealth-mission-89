@@ -115,6 +115,8 @@ ops-how =
     Die KI bezahlt alles, was sie tut: Reparaturen, jeden Jägereinsatz, Angriffe und ihre eigenen Luftlandungen. Fehlt ihr Material, bleiben ihre Schäden unrepariert und ihre Flugzeuge am Boden.
     Die KI fliegt nur die Flugzeuge, die sie hat; abgeschossen sind sie weg, gelandet fliegen sie wieder. Jede Stunde kauft jede Seite neue, solange ihr Material reicht.
     Ihnen fehlt nie etwas: Ihre Flugzeuge, Ihre Basen (bombardiert oder nicht) und die Hubschrauber Ihrer eigenen Luftlandebefehle sind immer da.
+ops-how-repairs = Jede Seite repariert nur wenige Stellungen gleichzeitig (mehr mit mehr intakten Städten), frontnahe zuerst, und eine kurz nach der Reparatur erneut zerstörte Stellung braucht jedes Mal länger.
+ops-how-airframes = Verlorene Flugzeuge zählen: jedes Flugzeug, das ein Pilot verliert, ist ein Jäger oder Hubschrauber weniger für die eigene KI.
 ops-section-prices = Preise
 ops-price-airfield = Reparatur Flugplatz
 ops-price-sam = Reparatur SAM-Stellung

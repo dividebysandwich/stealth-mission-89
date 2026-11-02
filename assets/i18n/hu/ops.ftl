@@ -115,6 +115,8 @@ ops-how =
     Az MI mindenért fizet, amit tesz: javításokért, minden vadászbevetésért, légitámadásokért és saját deszantjaiért. Ha kevés a hadianyaga, a sérülései javítatlanok maradnak, és a gépei otthon maradnak.
     Az MI csak azokkal a gépekkel repül, amelyekkel rendelkezik; a lelőttek elvesznek, a leszálltak újra repülnek. Óránként mindkét oldal újakat vásárol, amíg a hadianyaga tart.
     Neked sosem fogy el: a gépeid, a bázisaid (bombázva vagy sem) és a saját deszantparancsaid helikopterei mindig rendelkezésre állnak.
+ops-how-repairs = Mindkét oldal egyszerre csak néhány állást javít (több ép várossal többet), a fronthoz legközelebbieket először, és a javítás után hamar újra lerombolt állás javítása minden alkalommal tovább tart.
+ops-how-airframes = Az elvesztett gépek számítanak: minden gép, amit egy pilóta elveszít, eggyel kevesebb vadász vagy helikopter a saját MI-nek.
 ops-section-prices = Árak
 ops-price-airfield = Repülőtér javítása
 ops-price-sam = SAM-állás javítása

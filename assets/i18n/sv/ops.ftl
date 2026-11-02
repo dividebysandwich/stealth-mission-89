@@ -115,6 +115,8 @@ ops-how =
     AI:n betalar för allt den gör: reparationer, varje jaktflygning, anfall och egna insättningar. Har den ont om materiel förblir skadorna oreparerade och flygplanen stannar hemma.
     AI:n flyger bara de flygplan den har; nedskjutna är de borta, landade flyger de igen. Varje timme köper varje sida nya så länge materielen räcker.
     Du får aldrig ont om något: dina flygplan, dina baser (bombade eller inte) och helikoptrarna i dina egna insättningsordrar finns alltid.
+ops-how-repairs = Varje sida reparerar bara några få ställningar åt gången (fler med fler intakta städer), närmast fronten först, och en ställning som förstörs igen strax efter reparationen tar längre tid varje gång.
+ops-how-airframes = Förlorade flygplan räknas: varje flygplan en pilot förlorar är ett jaktplan eller en helikopter mindre för den egna AI:n.
 ops-section-prices = Priser
 ops-price-airfield = Reparation av flygfält
 ops-price-sam = Reparation av SAM-ställning

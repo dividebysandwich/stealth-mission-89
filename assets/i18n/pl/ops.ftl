@@ -115,6 +115,8 @@ ops-how =
     SI płaci za wszystko, co robi: naprawy, każdy lot myśliwców, naloty i własne desanty. Gdy brakuje jej zasobów, jej uszkodzenia nie są naprawiane, a jej samoloty zostają w bazie.
     SI lata tylko samolotami, które ma; zestrzelone przepadają, te, które wylądowały, latają ponownie. Co godzinę każda strona kupuje nowe, dopóki starcza jej zasobów.
     Gracz nigdy nie odczuwa braków: jego samoloty, bazy (zbombardowane czy nie) i śmigłowce jego własnych rozkazów desantu są zawsze dostępne.
+ops-how-repairs = Każda strona naprawia naraz tylko kilka stanowisk (więcej przy większej liczbie całych miast), najpierw najbliższe frontu, a stanowisko zniszczone ponownie wkrótce po naprawie za każdym razem wymaga więcej czasu.
+ops-how-airframes = Utracone maszyny się liczą: każda maszyna stracona przez pilota to jeden myśliwiec lub śmigłowiec mniej dla sojuszniczej SI.
 ops-section-prices = Ceny
 ops-price-airfield = Naprawa lotniska
 ops-price-sam = Naprawa stanowiska SAM

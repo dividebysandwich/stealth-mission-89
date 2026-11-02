@@ -115,6 +115,8 @@ ops-how =
     AI plaća sve što radi: popravke, svaki borbeni let lovaca, napade i vlastite desante. Bez materijala njegova oštećenja ostaju nepopravljena, a zrakoplovi ostaju kod kuće.
     AI leti samo zrakoplovima koje ima; oboreni su izgubljeni, sletjeli opet lete. Svakog sata svaka strana kupuje nove dok joj materijala ima.
     Vama nikad ne ponestaje: vaši zrakoplovi, vaše baze (bombardirane ili ne) i helikopteri vaših naredbi za desant uvijek su tu.
+ops-how-repairs = Svaka strana istodobno popravlja samo nekoliko položaja (više s više netaknutih gradova), najprije one najbliže bojišnici, a položaj ponovno uništen ubrzo nakon popravka svaki put traje dulje.
+ops-how-airframes = Izgubljeni zrakoplovi se broje: svaki zrakoplov koji pilot izgubi jedan je lovac ili helikopter manje za vlastitu UI.
 ops-section-prices = Cijene
 ops-price-airfield = Popravak aerodroma
 ops-price-sam = Popravak SAM položaja

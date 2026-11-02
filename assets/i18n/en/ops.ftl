@@ -119,6 +119,8 @@ ops-how =
     The AI pays for everything it does: repairs, every fighter sortie, raids and its own insertions. Short of materiel, its damage stays unrepaired and its aircraft stay home.
     The AI flies only the aircraft it has; shot down they are gone, landed they fly again. Every hour each side buys new ones while its materiel lasts.
     You never run short: your aircraft, your bases (bombed or not) and the helicopters of your own insertion orders are always there.
+ops-how-repairs = Each side repairs only a few sites at once (more with more intact cities), nearest the front first, and a site destroyed again soon after its repair takes longer each time.
+ops-how-airframes = Lost aircraft count: every aircraft a pilot loses is one fighter or helicopter fewer for the friendly AI.
 ops-section-prices = Prices
 ops-price-airfield = Airfield repair
 ops-price-sam = SAM site repair

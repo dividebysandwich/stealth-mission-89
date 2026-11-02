@@ -115,6 +115,8 @@ ops-how =
     DI už viską moka: remontą, kiekvieną naikintuvų skrydį, reidus ir savo desantavimus. Trūkstant išteklių, jo pažeidimai lieka neatitaisyti, o orlaiviai lieka namie.
     DI skraido tik tais orlaiviais, kuriuos turi; numušti jie prarasti, nusileidę gali skristi vėl. Kas valandą kiekviena pusė perka naujus, kol užtenka išteklių.
     Jums išteklių niekada netrūksta: jūsų orlaiviai, bazės (subombarduotos ar ne) ir jūsų paskirtų desantavimų sraigtasparniai visada yra.
+ops-how-repairs = Kiekviena pusė vienu metu remontuoja tik kelias pozicijas (daugiau, kai daugiau sveikų miestų), pirmiausia arčiausiai fronto, o netrukus po remonto vėl sunaikinta pozicija kaskart užtrunka ilgiau.
+ops-how-airframes = Prarasti orlaiviai skaičiuojami: kiekvienas piloto prarastas orlaivis yra vienu naikintuvu ar sraigtasparniu mažiau savųjų DI.
 ops-section-prices = Kainos
 ops-price-airfield = Aerodromo remontas
 ops-price-sam = SAM pozicijos remontas

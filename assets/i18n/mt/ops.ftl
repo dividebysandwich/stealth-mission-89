@@ -115,6 +115,8 @@ ops-how =
     L-AI thallas għal kull ma tagħmel: tiswijiet, kull titjira ta' fighter, rejds u l-inserzjonijiet tagħha. Jekk jonqosha l-materiel, il-ħsara tagħha tibqa' mhix imsewwija u l-inġenji tal-ajru tagħha jibqgħu d-dar.
     L-AI ittir biss l-inġenji tal-ajru li għandha; jekk jitwaqqgħu jintilfu, jekk jinżlu jerġgħu jtiru. Kull siegħa kull naħa tixtri oħrajn ġodda sakemm idum il-materiel tagħha.
     Int qatt ma tispiċċa mill-materiel: l-inġenji tal-ajru tiegħek, il-bażijiet tiegħek (bombardati jew le) u l-ħelikopters tal-ordnijiet ta' inserzjoni tiegħek huma dejjem hemm.
+ops-how-repairs = Kull naħa ssewwi biss ftit pożizzjonijiet f'daqqa (aktar b'aktar bliet sħaħ), l-eqreb tal-front l-ewwel, u pożizzjoni meqruda mill-ġdid ftit wara t-tiswija tieħu aktar żmien kull darba.
+ops-how-airframes = L-ajruplani mitlufa jgħoddu: kull ajruplan li jitlef pilota huwa ġellied jew ħelikopter wieħed inqas għall-IA alleata.
 ops-section-prices = Prezzijiet
 ops-price-airfield = Tiswija ta' ajrudrom
 ops-price-sam = Tiswija ta' sit SAM

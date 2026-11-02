@@ -115,6 +115,8 @@ ops-how =
     Umetna inteligenca plača vse, kar naredi: popravila, vsak bojni let lovcev, napade in lastna izkrcanja. Če ji zmanjka materiala, njena škoda ostane nepopravljena in njena letala ostanejo doma.
     Umetna inteligenca leti samo z letali, ki jih ima; sestreljena so izgubljena, pristala spet letijo. Vsako uro vsaka stran kupi nova, dokler material zadošča.
     Vam nikoli ne zmanjka: vaša letala, vaše baze (bombardirane ali ne) in helikopterji vaših izkrcanj so vedno na voljo.
+ops-how-repairs = Vsaka stran hkrati popravlja le nekaj položajev (več z več nepoškodovanimi mesti), najprej tiste najbližje fronti, in položaj, ki je kmalu po popravilu znova uničen, vsakič traja dlje.
+ops-how-airframes = Izgubljena letala štejejo: vsako letalo, ki ga pilot izgubi, je en lovec ali helikopter manj za lastno UI.
 ops-section-prices = Cene
 ops-price-airfield = Popravilo letališča
 ops-price-sam = Popravilo položaja SAM

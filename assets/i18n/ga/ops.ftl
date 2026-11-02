@@ -87,9 +87,9 @@ ops-materiel-red = DEARG { $materiel } (+{ $income }/u)
 ops-crew-tempo = LUAS AN NÁMHAID ×{ $pace }
 ops-due = T-{ $mins } nóim
 ops-due-now = ANOIS
-ops-front-blue = AN TULLÍNE: GORM AG BUA
-ops-front-red = AN TULLÍNE: DEARG AG BUA
-ops-front-even = AN TULLÍNE: SEASMHACH
+ops-front-blue = LÍNE TOSAIGH: GORM AG BUA
+ops-front-red = LÍNE TOSAIGH: DEARG AG BUA
+ops-front-even = LÍNE TOSAIGH: SEASMHACH
 ops-operation = Oibríocht { $place }: { $done }/{ $total } ullmhaithe
 ops-friendly = CAIRDIÚIL
 ops-enemy = NAMHAD
@@ -115,6 +115,8 @@ ops-how =
     Íocann an AI as gach rud a dhéanann sé: deisiúcháin, gach eitilt trodaire, ruathair agus a insealbhuithe féin. Gan trealamh, fanann a dhamáiste gan deisiú agus fanann a aerárthaigh sa bhaile.
     Ní eitlíonn an AI ach na haerárthaigh atá aige; má lámhachtar anuas iad, tá siad caillte, má thuirlingíonn siad, eitlíonn siad arís. Gach uair ceannaíonn gach taobh cinn nua fad a mhaireann a threalamh.
     Ní bhíonn tú gearr riamh: bíonn d'aerárthaigh, do bhunáiteanna (buamáilte nó nach ea) agus héileacaptair d'orduithe insealbhaithe féin ann i gcónaí.
+ops-how-repairs = Ní dheisíonn gach taobh ach cúpla láithreán ag an am céanna (níos mó le níos mó cathracha slána), na cinn is gaire don líne tosaigh ar dtús, agus tógann láithreán a scriostar arís go luath tar éis a dheisithe níos faide gach uair.
+ops-how-airframes = Comhairtear aerárthaí caillte: is scairdeitleán nó héileacaptar amháin níos lú don IS chairdiúil gach aerárthach a chailleann píolóta.
 ops-section-prices = Praghsanna
 ops-price-airfield = Deisiú aerfoirt
 ops-price-sam = Deisiú suímh SAM

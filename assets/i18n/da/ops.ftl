@@ -115,6 +115,8 @@ ops-how =
     AI betaler for alt, hvad den gør: reparationer, hver jagerflyvning, angreb og sine egne indsættelser. Mangler den materiel, forbliver dens skader urepareret, og dens fly bliver hjemme.
     AI flyver kun med de fly, den har; nedskudte er væk, landede kan flyve igen. Hver time køber hver side nye, så længe materiellet rækker.
     Du løber aldrig tør: dine fly, dine baser (bombede eller ej) og helikopterne fra dine egne indsættelsesordrer er der altid.
+ops-how-repairs = Hver side reparerer kun få stillinger ad gangen (flere med flere intakte byer), nærmest fronten først, og en stilling ødelagt igen kort efter reparationen tager længere tid hver gang.
+ops-how-airframes = Tabte fly tæller: hvert fly en pilot mister, er én jager eller helikopter mindre for den egne AI.
 ops-section-prices = Priser
 ops-price-airfield = Reparation af flyveplads
 ops-price-sam = Reparation af SAM-stilling

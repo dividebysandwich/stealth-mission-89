@@ -115,6 +115,8 @@ ops-how =
     De AI betaalt voor alles wat ze doet: reparaties, elke jagervlucht, aanvallen en haar eigen inzetten. Bij gebrek aan materieel blijft haar schade onhersteld en blijven haar toestellen thuis.
     De AI vliegt alleen met de toestellen die ze heeft; neergehaald zijn ze weg, geland vliegen ze weer. Elk uur koopt elke partij nieuwe zolang haar materieel strekt.
     Jij komt nooit tekort: je toestellen, je bases (gebombardeerd of niet) en de helikopters van je eigen inzetbevelen zijn er altijd.
+ops-how-repairs = Elke kant herstelt maar een paar stellingen tegelijk (meer met meer intacte steden), die bij het front eerst, en een stelling die kort na herstel opnieuw wordt vernietigd duurt elke keer langer.
+ops-how-airframes = Verloren toestellen tellen: elk toestel dat een piloot verliest is één jager of helikopter minder voor de eigen AI.
 ops-section-prices = Prijzen
 ops-price-airfield = Vliegveld repareren
 ops-price-sam = SAM-site repareren

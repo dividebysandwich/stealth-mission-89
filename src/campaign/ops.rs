@@ -1150,6 +1150,13 @@ fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
             ui.label(egui::RichText::new(*line).color(BRIGHT));
             ui.add_space(2.0);
         }
+        ui.label(egui::RichText::new(t!("ops-how-repairs")).color(BRIGHT));
+        ui.add_space(2.0);
+        // The rule that makes the players' losses count.
+        if c.rules.airframe_losses {
+            ui.label(egui::RichText::new(t!("ops-how-airframes")).color(AMBER));
+            ui.add_space(2.0);
+        }
         ui.add_space(8.0);
         section(ui, t!("ops-section-prices"));
         egui::Grid::new("prices").num_columns(4).spacing(egui::vec2(28.0, 4.0)).show(ui, |ui| {

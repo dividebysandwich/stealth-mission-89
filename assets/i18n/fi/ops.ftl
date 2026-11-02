@@ -115,6 +115,8 @@ ops-how =
     Tekoäly maksaa kaikesta, mitä se tekee: korjauksista, jokaisesta hävittäjälennosta, iskuista ja omista maihinnousuistaan. Jos materiaali loppuu, sen vauriot jäävät korjaamatta ja sen koneet pysyvät kotona.
     Tekoäly lentää vain koneilla, jotka sillä on; alasammutut ovat poissa, laskeutuneet lentävät taas. Joka tunti kumpikin osapuoli ostaa uusia, kunhan materiaalia riittää.
     Sinulta ei lopu mikään: koneesi, tukikohtasi (pommitettuina tai ei) ja omien maihinnousutilaustesi helikopterit ovat aina saatavilla.
+ops-how-repairs = Kumpikin puoli korjaa vain muutaman kohteen kerrallaan (enemmän, kun ehjiä kaupunkeja on enemmän), rintamaa lähimmät ensin, ja pian korjauksen jälkeen uudelleen tuhottu kohde vie joka kerta kauemmin.
+ops-how-airframes = Menetetyt koneet lasketaan: jokainen lentäjän menettämä kone on yksi hävittäjä tai helikopteri vähemmän omalle tekoälylle.
 ops-section-prices = Hinnat
 ops-price-airfield = Lentokentän korjaus
 ops-price-sam = SAM-aseman korjaus

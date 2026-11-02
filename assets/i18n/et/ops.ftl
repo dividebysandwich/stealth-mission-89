@@ -115,6 +115,8 @@ ops-how =
     AI maksab kõige eest, mida ta teeb: remont, iga hävitajalend, rünnakud ja oma dessandid. Materjali nappusel jääb tema kahju parandamata ja tema õhusõidukid jäävad koju.
     AI lendab ainult nende õhusõidukitega, mis tal on; alla tulistatud on kadunud, maandunud lendavad uuesti. Iga tund ostab kumbki pool uusi, kuni materjali jätkub.
     Sul ei saa kunagi puudu: sinu õhusõidukid, sinu baasid (pommitatud või mitte) ja sinu enda dessanditellimuste helikopterid on alati olemas.
+ops-how-repairs = Kumbki pool parandab korraga vaid mõnda positsiooni (rohkem, kui terveid linnu on rohkem), rindele lähimad enne, ja varsti pärast parandust uuesti hävitatud positsioon võtab iga kord kauem.
+ops-how-airframes = Kaotatud lennukid loevad: iga lenduri kaotatud lennuk on üks hävitaja või helikopter vähem omale tehisintellektile.
 ops-section-prices = Hinnad
 ops-price-airfield = Lennuvälja remont
 ops-price-sam = SAM-positsiooni remont

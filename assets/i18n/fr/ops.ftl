@@ -115,6 +115,8 @@ ops-how =
     L'IA paie tout ce qu'elle fait : réparations, chaque sortie de chasse, raids et ses propres insertions. À court de matériel, ses dégâts ne sont pas réparés et ses avions restent au sol.
     L'IA ne vole qu'avec les appareils qu'elle a ; abattus, ils sont perdus, posés, ils revolent. Chaque heure, chaque camp en achète de nouveaux tant que son matériel le permet.
     Vous ne manquez jamais de rien : vos appareils, vos bases (bombardées ou non) et les hélicoptères de vos propres ordres d'insertion sont toujours là.
+ops-how-repairs = Chaque camp ne répare que quelques sites à la fois (davantage avec plus de villes intactes), les plus proches du front d'abord, et un site détruit de nouveau peu après sa réparation demande chaque fois plus de temps.
+ops-how-airframes = Les appareils perdus comptent : chaque appareil qu'un pilote perd est un chasseur ou un hélicoptère de moins pour l'IA alliée.
 ops-section-prices = Prix
 ops-price-airfield = Réparation d'aérodrome
 ops-price-sam = Réparation de site SAM

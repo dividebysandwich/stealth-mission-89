@@ -115,6 +115,8 @@ ops-how =
     La IA paga todo lo que hace: reparaciones, cada salida de caza, incursiones y sus propias inserciones. Sin material, sus daños quedan sin reparar y sus aviones se quedan en tierra.
     La IA solo vuela los aviones que tiene; derribados, se pierden; aterrizados, vuelven a volar. Cada hora, cada bando compra otros nuevos mientras le dure el material.
     A usted nunca le falta nada: sus aviones, sus bases (bombardeadas o no) y los helicópteros de sus propias órdenes de inserción siempre están ahí.
+ops-how-repairs = Cada bando repara solo unos pocos sitios a la vez (más con más ciudades intactas), primero los más cercanos al frente, y un sitio destruido de nuevo poco después de repararse tarda más cada vez.
+ops-how-airframes = Las aeronaves perdidas cuentan: cada aeronave que pierde un piloto es un caza o helicóptero menos para la IA aliada.
 ops-section-prices = Precios
 ops-price-airfield = Reparación de aeródromo
 ops-price-sam = Reparación de emplazamiento SAM
