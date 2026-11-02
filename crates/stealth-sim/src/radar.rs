@@ -246,6 +246,17 @@ impl Sim {
         };
     }
 
+    /// The enemy missile slot launcher `i` fires into: its own (`i & 7`), or with more pilots
+    /// in the world a free one when its own carries a missile at another pilot (the eight
+    /// slots are shared: one player's missiles do not keep the others safe).
+    pub(crate) fn enemy_slot(&self, i: usize) -> usize {
+        let k = i & 7;
+        if self.proj[k].ttl == 0 || self.proj_pilot[k] == self.pl.id || self.present().len() < 2 {
+            return k;
+        }
+        (0..ENEMY_SLOTS).find(|&s| self.proj[s].ttl == 0).unwrap_or(k)
+    }
+
     /// Raise the theater alarm: note where the player (or decoy) is and put the sites on alert.
     pub(crate) fn alarm(&mut self) {
         self.alarm_timer = self.alarm_init();
@@ -259,6 +270,9 @@ impl Sim {
         }
         self.ref_alt = self.pl.p.view_z;
         self.ref_heading = self.pl.p.heading;
+        if self.present().len() > 1 {
+            self.pl.seen = Some((self.ref_x, self.ref_y, self.ref_alt));
+        }
         self.alarm_window = 0xFF;
         let lo = (self.roe + self.diff - 1) << 4;
         for o in self.objects.iter_mut().take(self.woc) {
@@ -430,7 +444,7 @@ impl Sim {
                     self.emit(SimEvent::Rwr(detected_tone(doppler)));
                     self.log_event(7, i as i32);
                 } else {
-                    let k = i & 7;
+                    let k = self.enemy_slot(i);
                     if self.proj[k].ttl == 0
                         && self.missile(self.site_missile(o.unit_type)).lock_range as i32 > range
                         && self.may_launch(self.site_missile(o.unit_type), (o.x, o.y, 0))
@@ -548,7 +562,7 @@ impl Sim {
                     self.log_event(6, u.spec);
                 }
                 if 2 * self.diff >= self.pl.threat_count_last {
-                    let k = i & 7;
+                    let k = self.enemy_slot(i);
                     let w = u.missile;
                     if w > 0
                         && (w as usize) < self.missile_types.len()

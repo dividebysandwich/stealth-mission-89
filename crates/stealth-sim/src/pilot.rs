@@ -73,6 +73,10 @@ pub struct Pilot {
     #[serde(default)]
     pub(crate) last_input: PlayerState,
     pub(crate) lockheed: bool,
+    /// Where the defences last reported him during the alarm (map units, altitude): with
+    /// more pilots in the world the fighters go for each where he was seen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) seen: Option<(i32, i32, i32)>,
     pub(crate) p: PlayerView,
     /// Player flags (`pflags`).
     pub(crate) pflags: i32,
@@ -426,6 +430,12 @@ impl Sim {
             self.pl.last_input = ps.clone();
         }
         self.activate(back);
+    }
+
+    /// Where the defences last reported pilot `k` during the alarm (with other pilots in the
+    /// world; map units).
+    pub fn pilot_seen(&self, k: u8) -> Option<(i32, i32)> {
+        self.pilot_ref(k as usize).seen.map(|(x, y, _)| (x, y))
     }
 
     /// Which pilot an enemy missile in slot `s` (0..7) goes for.

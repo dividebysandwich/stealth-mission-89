@@ -109,6 +109,16 @@ fn a_site_goes_for_the_pilot_it_sees() {
 }
 
 #[test]
+fn the_alarm_marks_the_pilot_who_was_seen() {
+    let (sim, inputs, _) = site_engages_pilot_one();
+    assert_eq!(sim.pilot_seen(0), None);
+    let (x, y) = sim.pilot_seen(1).expect("pilot 1 seen");
+    let (wx, wy) = Sim::map_to_world(x, y);
+    let air = &inputs[1].1;
+    assert!((wx - air.x).abs() < 4000 && (wy - air.y).abs() < 4000, "{x} {y}");
+}
+
+#[test]
 fn private_events_reach_their_pilot_only() {
     let (mut sim, mut inputs, _) = site_engages_pilot_one();
     let mut warned = [false; 2];

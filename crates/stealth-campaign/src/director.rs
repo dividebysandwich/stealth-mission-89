@@ -714,14 +714,14 @@ impl CampaignState {
             return;
         }
         let from = bases[self.rng.below(bases.len() as i32) as usize].0;
-        // Vectored by the AWACS at the player nearest it, else towards an insertion or a raid
-        // in the air, else a friendly place near the front.
+        // Vectored by the AWACS at the players nearest it in turn (each patrol up goes for the
+        // next, so several flights each meet some), else towards an insertion or a raid in the
+        // air, else a friendly place near the front.
         let vectored = awacs.and_then(|(ax, ay)| {
-            view.players
-                .iter()
-                .filter(|p| p.airborne)
-                .min_by_key(|p| dist(p.x - ax, p.y - ay))
-                .map(|p| (p.x, p.y))
+            let mut up: Vec<(i32, i32)> =
+                view.players.iter().filter(|p| p.airborne).map(|p| (p.x, p.y)).collect();
+            up.sort_by_key(|&(x, y)| (dist(x - ax, y - ay), x, y));
+            up.get(red % up.len().max(1)).copied()
         });
         let goal = vectored.or_else(|| {
             self.insertions

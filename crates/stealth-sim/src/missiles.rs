@@ -542,6 +542,9 @@ impl Sim {
                 self.ref_x = o.x;
                 self.ref_y = o.y;
                 self.ref_alt = 3000;
+                if self.present().len() > 1 {
+                    self.pl.seen = Some((o.x, o.y, 3000));
+                }
                 self.msg(text!("sim-target-hit-by", target = target, weapon = mt.name.clone()));
             }
         }

@@ -77,7 +77,15 @@ impl Sim {
         let u = self.flights[i];
         let cur = self.flight_pilot[i];
         let k = if u.flags & fflags::CONTACT == 0 && self.alarm_timer != 0 {
-            self.nearest_pilot(self.alarm_pilot, true, u.x, u.y)
+            // The nearest of the pilots the defences reported (each where he was seen), else
+            // the one the alarm is about.
+            let seen = self
+                .present()
+                .into_iter()
+                .filter_map(|k| self.pilot_ref(k).seen.map(|(x, y, _)| (k, x, y)))
+                .min_by_key(|&(k, x, y)| (approx(s16(x - u.x), s16(y - u.y)), k))
+                .map(|(k, _, _)| k as u8);
+            seen.unwrap_or_else(|| self.nearest_pilot(self.alarm_pilot, true, u.x, u.y))
         } else {
             self.nearest_pilot(cur, u.flags & fflags::CONTACT != 0, u.x, u.y)
         };
@@ -136,6 +144,11 @@ impl Sim {
                 tx = self.pl.cms[0].x;
                 ty = self.pl.cms[0].y;
                 tz = clamp_q(pz, 1000, 30000);
+            } else if let Some((x, y, z)) = self.pl.seen.filter(|_| self.present().len() > 1) {
+                // More pilots in the world: the one it goes for, where he was seen.
+                tx = x;
+                ty = y;
+                tz = z;
             } else {
                 tx = self.ref_x;
                 ty = self.ref_y;
@@ -477,10 +490,19 @@ impl Sim {
         if (self.alarm_timer > self.alarm_recent() || u.flags & fflags::SCRAMBLE != 0)
             && (o.flags & 0x181) == 1
             && o.alert == u.spec
-            && range > approx(self.ref_x - o.x, self.ref_y - o.y) >> 6
+            && (range > approx(self.ref_x - o.x, self.ref_y - o.y) >> 6
+                || self.seen_near(o.x, o.y, range))
         {
             self.spawn(i, b);
         }
+    }
+
+    /// A pilot the defences reported (more pilots in the world: each where he was seen) is
+    /// within `range` km of (x, y): a base there scrambles for him too.
+    fn seen_near(&self, x: i32, y: i32, range: i32) -> bool {
+        self.present().into_iter().any(|k| {
+            self.pilot_ref(k).seen.is_some_and(|(sx, sy, _)| range > approx(sx - x, sy - y) >> 6)
+        })
     }
 
     /// Put flight unit `i` on the runway (or carrier deck) of base object `b`.

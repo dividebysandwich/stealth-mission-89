@@ -2659,3 +2659,40 @@ fn repair_crews_work_on_a_few_sites_at_a_time_and_slower_each_time() {
     assert_eq!(s.hits, 2);
     assert_eq!(s.repair_time(), tuning::REPAIR_SITE * tuning::REPAIR_SLOWDOWN);
 }
+
+#[test]
+fn the_awacs_sends_patrols_at_each_player_in_turn() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(tuning::AWACS_EVERY + 1.0, &WorldView::default(), &[]);
+    assert!(c.awacs.is_some());
+    let at = |id, x, y| PlayerPos {
+        id: PlayerId(id),
+        x,
+        y,
+        airborne: true,
+        landed: false,
+        hover_over: None,
+    };
+    let players = vec![at(0, 0x4000, 0x4000), at(1, 0x5000, 0x3000)];
+    c.patrols.clear();
+    let mut goals = Vec::new();
+    for _ in 0..30 {
+        // Fighters to spare (none ever land here).
+        c.red.fighters = 30;
+        c.red.materiel = tuning::MATERIEL_MAX;
+        // No raids (their escorts patrol too); the patrols stay up.
+        c.raids.clear();
+        c.raid_at = c.clock;
+        let flights =
+            c.patrols.iter().map(|p| FlightView { x: 0, y: 0, side: p.1, tag: p.0 }).collect();
+        let view = WorldView { players: players.clone(), flights, ..Default::default() };
+        for e in c.tick(60.0, &view, &[]) {
+            if let CampaignEvent::LaunchFighters { side: Side::Red, x, y, .. } = e {
+                goals.push((x, y));
+            }
+        }
+    }
+    for p in &players {
+        assert!(goals.contains(&(p.x, p.y)), "no patrol at {:?}: {goals:?}", (p.x, p.y));
+    }
+}

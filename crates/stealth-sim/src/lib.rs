@@ -396,6 +396,7 @@ impl Sim {
                 missiles: Default::default(),
                 last_input: PlayerState::default(),
                 lockheed,
+                seen: None,
                 p: PlayerView::default(),
                 pflags: if m.invulnerable { pflags::TRAINING } else { 0 },
                 emv: 0,
@@ -909,6 +910,13 @@ impl Sim {
         }
         if self.alarm_timer > 0 {
             self.alarm_timer -= 1;
+            // The alarm over, nobody is where he was seen any more.
+            if self.alarm_timer == 0 {
+                for &k in &present {
+                    self.activate(k);
+                    self.pl.seen = None;
+                }
+            }
         }
         // Draw-list pass and HUD overlay.
         for &k in &present {
