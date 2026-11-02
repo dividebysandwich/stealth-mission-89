@@ -765,10 +765,8 @@ fn mfd_keys(
             Action::MapOrientation => MfdCmd::ToggleOrient,
             Action::Ordnance => MfdCmd::RightPage(RightMfd::Wpn),
             Action::MissionOrders => MfdCmd::RightPage(RightMfd::Ord),
-            Action::SelectWaypoint
-            | Action::ChangeWaypoint
-            | Action::LastWaypoint
-            | Action::NextWaypoint => MfdCmd::RightPage(RightMfd::Way),
+            // Cycling the waypoints (WP- / WP+) leaves the pages as they are.
+            Action::SelectWaypoint | Action::ChangeWaypoint => MfdCmd::RightPage(RightMfd::Way),
             Action::Flir => MfdCmd::Flir,
             Action::CamAhead | Action::NearestTarget => MfdCmd::Cam(CamDir::Ahead),
             Action::SelectTarget if state.modern => MfdCmd::TgpSlave,
