@@ -487,7 +487,9 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
     let id = match role {
         CanvasRole::Left => "tip-display-left",
         CanvasRole::Right if style == PanelStyle::Modern => "tip-display-centre",
-        CanvasRole::Right if style == PanelStyle::Tornado => "tip-display-centre-mfd",
+        CanvasRole::Right if matches!(style, PanelStyle::Tornado | PanelStyle::F22) => {
+            "tip-display-centre-mfd"
+        }
         CanvasRole::Right => "tip-display-right",
         CanvasRole::Third => "tip-display-third",
         CanvasRole::Adi => "tip-display-adi",
@@ -989,6 +991,7 @@ mod tests {
             PanelStyle::Av8b,
             PanelStyle::Oh58,
             PanelStyle::Ch47,
+            PanelStyle::F22,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
