@@ -503,10 +503,14 @@ pub fn career_ui(
                             && let Some(p) = w.pilots.iter_mut().find(|p| p.key() == key)
                         {
                             match p.rename(&name) {
-                                Ok(()) if w.selected.as_deref() == Some(&key) => {
-                                    w.selected = Some(p.key());
+                                Ok(()) => {
+                                    // The mission screen's next sortie follows the new file.
+                                    for k in [&mut w.selected, &mut state.career] {
+                                        if k.as_deref() == Some(&key) {
+                                            *k = Some(p.key());
+                                        }
+                                    }
                                 }
-                                Ok(()) => {}
                                 Err(e) => warn!("renaming pilot {}: {e:#}", p.name),
                             }
                             w.pilots = Pilot::load_all();
@@ -689,6 +693,11 @@ pub fn career_ui(
             w.pilots = Pilot::load_all();
             if w.selected.as_deref() == Some(&key) {
                 w.selected = None;
+            }
+            // The mission screen leaves the deleted pilot's tour.
+            if state.career.as_deref() == Some(&key) {
+                state.career = None;
+                state.regenerate();
             }
         }
         if answer.is_some() {
