@@ -462,8 +462,11 @@ pub fn career_ui(
                     };
                     let text = format!("{}{status}", p.title());
                     // The buttons are flush right whatever the name's length (the first added is
-                    // the rightmost), the name takes the rest.
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // the rightmost), the name takes the rest. The row is given one line's height,
+                    // or the right-to-left layout would take all the column's height.
+                    let row = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
+                    let layout = egui::Layout::right_to_left(egui::Align::Center);
+                    ui.allocate_ui_with_layout(row, layout, |ui| {
                         if icon_button(ui, icon::DELETE)
                             .on_hover_text(t!("career-delete.facts"))
                             .clicked()
