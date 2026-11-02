@@ -50,6 +50,7 @@ LIGHTS = {
     30: [(BEACON, "top", -32), (BEACON, "bottom", 0), (DOUBLE, "wingtips")],  # C-5
     32: [(SINGLE, "wingtips")],  # A-10
     47: [(SINGLE, "fin")],  # AV-8B: strobe on the fin tip
+    75: [(SINGLE, "fin")],  # F-22A: strobes on both fin tips
 }
 
 

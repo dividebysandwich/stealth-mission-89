@@ -1085,6 +1085,303 @@ def harrier_gear():
     return g
 
 
+# The F-22A Raptor from its three-view (18.92 m long, 13.56 m span, 5.08 m high): points as
+# (x, s m aft of the nose, z), heights above the intakes' top lips and the wings' roots (z 0,
+# 2.05 m above the ground).
+# Chined like the F-117: a sharp chine from the nose along the caret intakes' top lips into the
+# wings' leading edges, the diamond wings and stabilators, the canted fins, the 2D nozzles.
+F22_NOSE = 9.46
+F22_GREY = Ramp(230, 236)
+F22_BAY = Ramp(224, 230)
+F22_BOMB = Ramp(0xA8, 0xAE)
+F22_GROUND = -2.05
+# Fuselage rings, right half from the spine round to the keel: (s, top, upper flank x z, chine
+# x z, lower flank x z, bottom corner x z). Over the intakes' mouths (s 4.86 to 6.26) the chine
+# follows their top lips out, the lower flank is their inner walls' foot; from s 6.7 the chine is
+# the intake trunks' outer top edge, the lower flank their outer bottom edge: the flanks slope in
+# about 40 degrees to the keel.
+F22_BODY = [
+    (0.00, -0.36, 0.00, -0.36, 0.00, -0.36, 0.00, -0.36, 0.00, -0.36),
+    (0.25, -0.19, 0.08, -0.22, 0.13, -0.32, 0.10, -0.42, 0.05, -0.50),
+    (0.60, -0.08, 0.19, -0.14, 0.31, -0.28, 0.24, -0.45, 0.11, -0.62),
+    (1.13, 0.05, 0.29, -0.03, 0.49, -0.24, 0.38, -0.49, 0.17, -0.74),
+    (2.10, 0.30, 0.39, 0.16, 0.71, -0.18, 0.54, -0.52, 0.25, -0.85),
+    (2.55, 0.42, 0.45, 0.30, 0.76, -0.15, 0.58, -0.53, 0.27, -0.90),
+    (3.60, 0.48, 0.56, 0.42, 0.84, -0.09, 0.64, -0.53, 0.30, -0.97),
+    (4.70, 0.50, 0.60, 0.46, 0.94, -0.02, 0.70, -0.51, 0.31, -1.02),
+    (4.86, 0.52, 0.60, 0.47, 0.95, -0.02, 0.70, -0.51, 0.31, -1.03),
+    (5.30, 0.58, 0.62, 0.49, 1.58, -0.07, 0.62, -0.55, 0.32, -1.05),
+    (5.70, 0.63, 0.62, 0.50, 1.90, -0.09, 0.41, -0.87, 0.50, -1.02),
+    (6.26, 0.71, 0.62, 0.54, 1.95, -0.04, 0.40, -0.90, 1.12, -1.08),
+    (6.70, 0.77, 0.62, 0.56, 2.00, 0.00, 1.22, -0.98, 1.12, -1.10),
+    (7.60, 0.66, 0.70, 0.52, 2.10, 0.00, 1.20, -0.98, 1.12, -1.10),
+    (9.00, 0.58, 0.80, 0.48, 2.10, 0.00, 1.20, -0.98, 1.12, -1.10),
+    (10.40, 0.57, 0.80, 0.48, 2.10, 0.00, 1.20, -0.98, 1.12, -1.10),
+    (11.30, 0.57, 0.80, 0.48, 2.20, 0.00, 1.25, -0.95, 1.12, -1.10),
+    (12.40, 0.57, 0.80, 0.47, 2.10, 0.00, 1.25, -0.80, 1.05, -1.02),
+    (13.50, 0.55, 0.80, 0.46, 1.90, 0.00, 1.20, -0.60, 0.95, -0.90),
+    (15.00, 0.42, 0.80, 0.36, 1.50, 0.00, 1.10, -0.35, 0.80, -0.70),
+    (16.20, 0.25, 0.70, 0.20, 1.35, 0.00, 1.10, -0.25, 0.75, -0.55),
+    (16.90, 0.12, 0.60, 0.10, 1.20, 0.00, 1.15, -0.25, 0.80, -0.45),
+]
+# The main weapon bay on the keel between the intake trunks (its doors hinged at its sides),
+# the side bays low on the trunks' flanks (doors hinged at their top edges): x, s, depth.
+F22_BAY_X = 0.90
+# The nose's rim (a sharp chine) runs back to here, ahead of the intakes' lips.
+F22_RIM_S = 5.0
+# The intakes' mouths cut into the rings: the ceiling's inner corner, and the bottom lip's edge
+# (s: (ceiling x z, lip x z)), the duct inside them. The lips' corners as the three-view's: top
+# inner, top outer, bottom outer, bottom inner (x, s, z).
+F22_MOUTH_RINGS = {5.30: ((0.92, -0.06), None), 5.70: ((0.92, -0.06), (0.53, -0.91)),
+                   6.26: ((0.92, -0.06), (1.15, -0.97))}
+F22_LIP = [(0.90, 4.86, -0.02), (1.88, 5.56, -0.10), (1.15, 6.26, -0.95), (0.38, 5.56, -0.88)]
+F22_BAY_S = (7.60, 11.30)
+F22_BAY_DEPTH = 0.78
+F22_SIDE_S = (7.40, 10.30)
+F22_SIDE_Z = (-0.20, -0.85)
+# The trunks' outer flank from the chine down to the keel's edge: (x, z) top and bottom.
+F22_FLANK = ((2.10, 0.00), (1.20, -0.98))
+# The canopy's one-piece glass: (s, sill z, half width at the sill, top), its sill rising aft, on
+# a skin band from the fuselage (z `F22_CANOPY_BASE`); the fairing behind it (s, sill z, half
+# width, top). The glass tapers up from the sill as the three-view's front view (`F22_GLASS`:
+# (height up the glass, half width) as fractions).
+F22_CANOPY = [(2.60, 0.42, 0.03, 0.45), (2.80, 0.44, 0.22, 0.60), (3.00, 0.46, 0.34, 0.70), (3.30, 0.50, 0.44, 0.85),
+              (3.60, 0.54, 0.47, 0.96), (4.00, 0.59, 0.49, 1.15), (4.40, 0.64, 0.50, 1.22), (4.80, 0.72, 0.49, 1.17),
+              (5.20, 0.80, 0.44, 1.08), (5.45, 0.92, 0.12, 1.01)]
+F22_CANOPY_BASE = 0.40
+F22_GLASS = [(0.0, 1.0), (0.22, 0.90), (0.39, 0.80), (0.56, 0.67), (0.73, 0.55), (0.83, 0.47), (0.92, 0.31), (1.0, 0.0)]
+F22_FAIRING = [(5.20, 0.45, 0.46, 1.06), (5.60, 0.48, 0.44, 0.97), (6.00, 0.52, 0.43, 0.92), (6.70, 0.56, 0.45, 0.82),
+               (7.60, 0.52, 0.50, 0.66), (8.60, 0.48, 0.55, 0.58)]
+
+
+def f22_glass(s, sill, hw, top):
+    """A ring of the canopy's glass: up one side from the sill over the top and down the other."""
+    right = [(hw * w, sill + (top - sill) * t) for t, w in F22_GLASS]
+    left = [(-x, z) for x, z in reversed(right[:-1])]
+    return [f22_p(x, s, z) for x, z in right + left]
+
+
+def f22_p(x, s, z):
+    return Vector((x, F22_NOSE - s, z))
+
+
+def f22_ring(s, top, xu, zu, xc, zc, xl, zl, xb, zb):
+    keel = F22_BAY_X if F22_BAY_S[0] - 1e-6 <= s <= F22_BAY_S[1] + 1e-6 else xb * 0.5
+    if s < F22_RIM_S:
+        # The nose's rim, a sharp edge: the upper nose leaves the chine shallow (30 degrees) before
+        # rounding up to the top, the lower nose falls away from it steeply in one flat facet.
+        up = (xc - 0.35 * (xc - xu) - 0.1 * xu, zc + math.tan(math.radians(30)) * (0.35 * (xc - xu) + 0.1 * xu))
+    else:
+        up = ((xu + xc) / 2, (zu + zc) / 2)
+    under = (xc + 0.3 * (xl - xc), zc + 0.3 * (zl - zc))
+    foot = ((xl + xb) / 2, (zl + zb) / 2)
+    if s in F22_MOUTH_RINGS:
+        ceiling, lip = F22_MOUTH_RINGS[s]
+        under, foot = ceiling, lip or foot
+    right = [(0.0, top), (xu, zu), up, (xc, zc), under, (xl, zl), foot, (xb, zb), (keel, zb), (0.0, zb)]
+    left = [(-x, z) for x, z in reversed(right[1:-1])]
+    return [f22_p(x, s, z) for x, z in right + left]
+
+
+def f22_panel(sections, paint, vertical=False):
+    """A wing from streamwise sections (x, s of the leading edge, s of the trailing edge, z,
+    thickness), its ridge at 40% of the chord; `vertical`: x and z swapped (the fins)."""
+    rings = []
+    for x, le, te, z, t in sections:
+        mid = le + 0.4 * (te - le)
+        d = Vector((t / 2, 0, 0)) if vertical else Vector((0, 0, t / 2))
+        rings.append([f22_p(x, le, z), f22_p(x, mid, z) + d, f22_p(x, te, z), f22_p(x, mid, z) - d])
+    return tube(rings, paint)
+
+
+def f22_flank(s, z, out=0.0):
+    """A point on the intake trunk's outer flank (the plane from the chine down to the lower
+    flank edge), `out` m off it."""
+    (xc, zc), (xl, zl) = F22_FLANK
+    x = xl + (z - zl) * (xc - xl) / (zc - zl)
+    n = Vector((zc - zl, 0, -(xc - xl))).normalized()
+    return f22_p(x, s, z) + n * out
+
+
+def f22():
+    rings = [f22_ring(*s) for s in F22_BODY]
+    body = tube(rings, F22_GREY, cap1=False)
+    # The keel open under the main bay (its doors and inside are in `f22_bay`).
+    (s0, s1), x0 = F22_BAY_S, F22_BAY_X
+    def in_bay(pts):
+        c = sum(pts, Vector()) / len(pts)
+        return abs(c.x) < x0 and F22_NOSE - s1 < c.y < F22_NOSE - s0 and c.z < -1.05
+    body.faces = [f for f in body.faces if not in_bay(f[0])]
+    g = Geo().add(body)
+    g.face(rings[-1], DARK, f22_p(0, 15.0, -0.1))
+    g.add(tube([f22_glass(*r) for r in F22_CANOPY], CANOPY))
+    base = F22_CANOPY_BASE
+    g.add(tube([[f22_p(hw + 0.06, s, base), f22_p(hw, s, sill), f22_p(-hw, s, sill), f22_p(-hw - 0.06, s, base)]
+                for s, sill, hw, _ in F22_CANOPY], F22_GREY))
+    g.add(tube([f16_arch(F22_NOSE - s, *r) for s, *r in F22_FAIRING], F22_GREY))
+    # The caret intakes, cut into the rings: parallelograms leaning in 32 degrees seen from ahead,
+    # their lips raked back from the top inner corner; the outer walls run from the lips' outer
+    # edges into the flanks, the mouths dark just inside the lips.
+    flank = F22_BODY[[r[0] for r in F22_BODY].index(6.70)]
+    for sx in (-1, 1):
+        _, to, bo, _ = F22_LIP
+        g.face([f22_p(sx * x, s, z) for x, s, z in (to, (flank[4], 6.70, flank[5]), (flank[6], 6.70, flank[7]), bo)],
+               F22_GREY, f22_p(0, 6.4, -0.4))
+        mouth = [f22_p(sx * x, s, z) for x, s, z in
+                 ((0.92, 5.00, -0.05), (1.70, 5.58, -0.08), (1.10, 6.12, -0.86), (0.42, 5.58, -0.82))]
+        out = mklib.normal(mouth)
+        if out.y < 0:
+            out = -out
+        g.face([p + out * 0.02 for p in mouth], BLACK, f22_p(sx * 1.0, 8.0, -0.4))
+    # Wings (3.25 degrees anhedral, the tips clipped), stabilators, fins canted out 28 degrees.
+    g.add(mirror(f22_panel([(1.20, 7.56, 15.90, 0.00, 0.28), (5.95, 11.68, 14.40, -0.26, 0.08),
+                            (6.78, 12.40, 13.66, -0.31, 0.04)], F22_GREY)))
+    g.add(mirror(f22_panel([(1.30, 12.64, 17.37, -0.20, 0.18), (2.85, 14.64, 18.67, -0.20, 0.12),
+                            (4.57, 16.86, 18.18, -0.20, 0.03)], F22_GREY)))
+    g.add(wing(tuple(f22_p(1.45, 13.22, 0.15)), 4.2, tuple(f22_p(2.87, 14.59, 2.96)), 1.24, F22_GREY, t=0.05,
+               vertical=True))
+    # The 2D nozzles: flaps closing to sawtooth edges, the hot throat, the stinger between them.
+    for sx in (-1, 1):
+        x0n, x1n = 0.14, 1.10
+        teeth = [(x0n + (x1n - x0n) * k / 6, 17.70 if k % 2 == 0 else 17.45) for k in range(7)]
+        for za, zb, sign in ((0.10, -0.04, 1), (-0.43, -0.30, -1)):
+            pts = [f22_p(sx * x0n, 16.90, za)] + [f22_p(sx * x, s, zb) for x, s in teeth] + [f22_p(sx * x1n, 16.90, za)]
+            g.face2(pts, DARK)
+        for x in (x0n, x1n):
+            g.face2([f22_p(sx * x, 16.90, 0.10), f22_p(sx * x, 17.70, -0.04), f22_p(sx * x, 17.70, -0.30),
+                     f22_p(sx * x, 16.90, -0.43)], DARK)
+        g.face([f22_p(sx * 0.20, 17.05, 0.02), f22_p(sx * 1.04, 17.05, 0.02), f22_p(sx * 1.04, 17.05, -0.36),
+                f22_p(sx * 0.20, 17.05, -0.36)], FLAME, f22_p(sx * 0.6, 16.0, -0.17))
+    g.add(hexa([tuple(f22_p(x, s, z)) for x, s, z in
+                ((-0.13, 16.9, -0.30), (0.13, 16.9, -0.30), (0.05, 17.9, -0.15), (-0.05, 17.9, -0.15),
+                 (-0.13, 16.9, 0.06), (0.13, 16.9, 0.06), (0.05, 17.9, -0.07), (-0.05, 17.9, -0.07))], DARK))
+    fl = Geo()
+    for sx in (-1, 1):
+        fl.add(frustum(tuple(f22_p(sx * 0.62, 17.3, -0.17)), tuple(f22_p(sx * 0.62, 20.6, -0.17)), 0.40, 0.06, FLAME,
+                       n=6, r0b=0.16, r1b=0.04))
+    groups = [([(8, state)], f22_bay(state)) for state in range(3)]
+    tip = lambda sx: (sx * 6.78, F22_NOSE - 13.0, -0.31)
+    return Craft(g, tip(-1), tip(1), flames=fl, gear=f22_gear(), groups=groups)
+
+
+def f22_door(hinge0, hinge1, width, angle, out, down=Vector((0, 0, -1))):
+    """A bay door hinged along `hinge0`-`hinge1`, `width` m wide, closed towards `out` and
+    swung `angle` degrees open towards `down`."""
+    a = math.radians(angle)
+    d = (out * math.cos(a) + down * math.sin(a)) * width
+    g = Geo()
+    g.face2([hinge0, hinge1, hinge1 + d, hinge0 + d], F22_GREY)
+    return g
+
+
+def f22_bay(state):
+    """The bays at state 0 shut, 1 half open, 2 open with the bays' inside and their loads:
+    two GBU-32s and two AIM-120s in the main bay, an AIM-9 out on its trapeze from each side bay."""
+    g = Geo()
+    (s0, s1), x0, zb = F22_BAY_S, F22_BAY_X, -1.10
+    angle = (0, 45, 90)[state]
+    for sx in (-1, 1):
+        # Main bay door: hinged at the bay's side, closing over its half of the keel.
+        h0, h1 = f22_p(sx * x0, s0, zb - 0.004), f22_p(sx * x0, s1, zb - 0.004)
+        door = f22_door(h0, h1, x0, angle, Vector((-sx, 0, 0)))
+        if state == 0:
+            door = Geo()
+            door.face([h0, h1, f22_p(0, s1, zb - 0.004), f22_p(0, s0, zb - 0.004)], F22_GREY, f22_p(sx * 0.4, 9, 0))
+            for a, b in ((h0, h1), (f22_p(0, s0, zb - 0.01), f22_p(0, s1, zb - 0.01))):
+                door.line(a - Vector((0, 0, 0.006)), b - Vector((0, 0, 0.006)), DARK.lo)
+        g.add(door)
+        # Side bay: the door hinged along its top edge, swinging up and out (built on the right).
+        (t0, t1), (zt, zl) = F22_SIDE_S, F22_SIDE_Z
+        top0, top1 = f22_flank(t0, zt, 0.01), f22_flank(t1, zt, 0.01)
+        low0, low1 = f22_flank(t0, zl, 0.01), f22_flank(t1, zl, 0.01)
+        side = Geo()
+        if state == 0:
+            for a, b in ((top0, top1), (top1, low1), (low1, low0), (low0, top0)):
+                side.line(a, b, DARK.lo)
+        else:
+            (xc, zc), (xl, zl) = F22_FLANK
+            out = Vector((zc - zl, 0, -(xc - xl))).normalized()
+            along = (low0 - top0).normalized()
+            a = math.radians(angle)
+            d = (along * math.cos(a) + out * math.sin(a)) * (top0 - low0).length
+            side.face2([top0, top1, top1 + d, top0 + d], F22_GREY)
+            side.face([top0, top1, low1, low0], BLACK, f22_p(0, 9, 0))
+            if state == 2:
+                c = (top0 + low0) / 2 + out * 0.35
+                side.add(f22_missile(c.x, F22_NOSE - c.y, c.z, 2.87, 0.064, GREY_L, fin=0.16))
+        g.add(side if sx > 0 else side.mirrored())
+        if state == 2:
+            g.add(f22_bay_inside(sx))
+    return g
+
+
+def f22_missile(x, s, z, length, r, paint, fin):
+    """A missile pointing forward with its nose at station `s`, cruciform fins at the tail."""
+    g = Geo()
+    y = F22_NOSE - s
+    g.add(frustum((x, y + 0.25, z), (x, y, z), 0.01, r, paint, n=6, caps=False))
+    g.add(frustum((x, y, z), (x, y - length + 0.25, z), r, r, paint, n=6))
+    for a in (45, 135, 225, 315):
+        d = Vector((math.cos(math.radians(a)), 0, math.sin(math.radians(a))))
+        c = Vector((x, y - length + 0.25, z))
+        g.face2([c + d * r, c + Vector((0, 0.35, 0)) + d * r, c + d * (r + fin)], paint)
+    return g
+
+
+def f22_bay_inside(sx):
+    """The main bay's half on side `sx`: its walls and roof, a GBU-32 and an AIM-120."""
+    g = Geo()
+    (s0, s1), x0, zb = F22_BAY_S, F22_BAY_X, -1.10
+    zt = zb + F22_BAY_DEPTH
+    lo = [f22_p(0, s0, zb), f22_p(sx * x0, s0, zb), f22_p(sx * x0, s1, zb), f22_p(0, s1, zb)]
+    hi = [p + Vector((0, 0, F22_BAY_DEPTH)) for p in lo]
+    inside = f22_p(sx * x0 / 2, (s0 + s1) / 2, zb + F22_BAY_DEPTH / 2)
+    for i in range(3):  # front, side, rear walls (open on the centreline)
+        f = [lo[i], lo[i + 1], hi[i + 1], hi[i]]
+        g.face(f, F22_BAY, sum(f, Vector()) / 4 * 2 - inside)
+    g.face(hi, F22_BAY, inside + Vector((0, 0, -2)))
+    # GBU-32: a 1,000 lb JDAM hung from the roof's middle, an AIM-120 on its launcher outboard.
+    x, z, y0, y1 = sx * 0.30, zt - 0.28, F22_NOSE - s0 - 0.35, F22_NOSE - s0 - 3.35
+    body = [(y0, 0.05), (y0 - 0.4, 0.16), (y0 - 0.9, 0.18), (y1 + 0.8, 0.18), (y1 + 0.3, 0.13), (y1, 0.13)]
+    for (ya, ra), (yb, rb) in zip(body, body[1:]):
+        g.add(frustum((x, ya, z), (x, yb, z), ra, rb, F22_BOMB, n=6, caps=False))
+    for a in (45, 135, 225, 315):
+        d = Vector((math.cos(math.radians(a)), 0, math.sin(math.radians(a))))
+        g.face2([Vector((x, y1 + 0.5, z)) + d * 0.13, Vector((x, y1, z)) + d * 0.13, Vector((x, y1 + 0.05, z)) + d * 0.3],
+                GREY_L)
+    g.add(block(min(sx * 0.66, sx * 0.78), max(sx * 0.66, sx * 0.78), F22_NOSE - s0 - 0.8, F22_NOSE - s0 - 3.0,
+                zt - 0.12, zt, F22_BAY))
+    g.add(f22_missile(sx * 0.72, s0 + 0.15, zt - 0.22, 3.66, 0.09, GREY_L, fin=0.17))
+    return g
+
+
+def f22_gear():
+    """The gear down: the nose leg aft of the intakes' lips, the main legs from the fuselage
+    sides behind the main bay, their doors."""
+    g = Geo()
+    r = 0.33
+    axle = f22_p(0, 5.65, F22_GROUND + r)
+    g.add(mklib.wheel(tuple(axle), r, 0.18, BLACK, n=8))
+    g.add(frustum(tuple(f22_p(0, 5.30, -1.02)), tuple(axle + Vector((0, 0.05, 0.1))), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum(tuple(f22_p(0, 4.70, -0.98)), tuple(f22_p(0, 5.40, -1.35)), 0.035, 0.035, GREY_L, n=4))
+    for sx in (-1, 1):
+        g.face2([f22_p(sx * 0.22, 4.3, -1.0), f22_p(sx * 0.22, 5.5, -1.04), f22_p(sx * 0.24, 5.5, -1.45),
+                 f22_p(sx * 0.24, 4.3, -1.41)], F22_GREY)
+    r = 0.47
+    for sx in (-1, 1):
+        axle = f22_p(sx * 1.55, 11.75, F22_GROUND + r)
+        g.add(mklib.wheel(tuple(axle), r, 0.30, BLACK, n=8))
+        g.add(frustum(tuple(f22_p(sx * 1.15, 11.6, -1.05)), tuple(axle + Vector((-sx * 0.16, 0, 0.12))), 0.09, 0.08,
+                      GREY_L, n=5))
+        g.add(frustum(tuple(f22_p(sx * 1.08, 12.4, -1.0)), tuple(axle + Vector((-sx * 0.16, 0, 0.3))), 0.045, 0.045,
+                      GREY_L, n=4))
+        g.face2([f22_p(sx * 1.36, 11.0, -0.75), f22_p(sx * 1.36, 12.6, -0.75), f22_p(sx * 1.44, 12.6, -1.40),
+                 f22_p(sx * 1.44, 11.0, -1.40)], F22_GREY)
+        g.face2([f22_p(sx * 1.05, 11.4, -1.06), f22_p(sx * 1.05, 12.4, -1.0), f22_p(sx * 1.0, 12.4, -1.5),
+                 f22_p(sx * 1.0, 11.4, -1.56)], F22_GREY)
+    return g
+
+
 # ---------------------------------------------------------------------------------------------
 # Transports, bombers, helicopter
 
@@ -1312,6 +1609,7 @@ BUILDERS = {
     32: a10,
     45: tornado,
     47: harrier,
+    75: f22,
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.
@@ -1399,7 +1697,7 @@ def build_craft(index, craft):
         for col in lod.users_collection:
             col.objects.link(group)
         group.parent = lod
-        mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", centred(geo, shift)))
+        heli.mesh_with_lines(group, f"{group.name}_body", centred(geo, shift))
     if index in HUNG:
         HUNG[index] = ([(i, "" if parent is None else sub_names[parent[1]],
                          tuple((Vector(at) + (shift if parent is None else Vector())) * K), roll)
