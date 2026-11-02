@@ -155,6 +155,7 @@ ops-points-bonus = { $points }ポイント（パッケージボーナス +{ $bon
 ops-campaign-points = { $rank } - キャンペーンポイント { $points }
 ops-campaign-record = キャンペーン：出撃{ $sorties }回、目標達成{ $won }回
 ops-section-meanwhile = その間に
+ops-section-effects = 戦争への君の影響
 ops-victory = 勝利
     .text = 敵は飛行場を1つも保持していません。戦域は我が方のものです。
 ops-defeat = 敗北

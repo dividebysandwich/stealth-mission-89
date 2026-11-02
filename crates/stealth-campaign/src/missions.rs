@@ -157,6 +157,7 @@ impl CampaignState {
             bonus: s.progress.bonus,
             place: self.objective_place(&s.offer.objective),
             achieved_at: s.progress.achieved_at,
+            effects: s.progress.effects.clone(),
         };
         let verdict = match result {
             SortieResult::Success => "cl-verdict-success",
@@ -402,10 +403,12 @@ impl CampaignState {
                     .map(|d| (d.x, d.y, RESCUE_RADIUS)),
                 _ => None,
             };
+            p.here = false;
             if let (Some((x, y, r)), Some(me)) = (station, me)
                 && dist(me.x - x, me.y - y) < r
             {
                 p.on_station += dt;
+                p.here = true;
             }
             if let Some(me) = me
                 && self
@@ -414,6 +417,7 @@ impl CampaignState {
                     .any(|&(x, y)| dist(me.x - x, me.y - y) < PRESENCE_RADIUS)
             {
                 p.near_secs += dt;
+                p.here = true;
             }
             self.players[k].sortie.as_mut().expect("checked").progress = p;
         }

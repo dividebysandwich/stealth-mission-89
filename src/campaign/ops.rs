@@ -1593,6 +1593,14 @@ fn debrief(ui: &mut egui::Ui, c: &ActiveCampaign) {
         .filter(|h| h.player == c.me && h.result == SortieResult::Success)
         .count();
     ui.label(egui::RichText::new(t!("ops-campaign-record", sorties = done, won = won)).color(DIM));
+    // What the sortie changed in the war.
+    if !r.effects.is_empty() {
+        ui.add_space(8.0);
+        section(ui, t!("ops-section-effects"));
+        for e in &r.effects {
+            ui.label(egui::RichText::new(e.tr()).color(GREEN));
+        }
+    }
     ui.add_space(8.0);
     section(ui, t!("ops-section-meanwhile"));
     egui::ScrollArea::vertical().id_salt("news").max_height(300.0).show(ui, |ui| {

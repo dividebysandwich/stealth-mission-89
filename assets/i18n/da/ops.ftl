@@ -155,6 +155,7 @@ ops-points-bonus = { $points } point (package-bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampagnepoint
 ops-campaign-record = Kampagne: { $sorties } flyvninger, { $won } mål nået
 ops-section-meanwhile = Imens
+ops-section-effects = Din indflydelse på krigen
 ops-victory = SEJR
     .text = Fjenden har ikke flere flyvepladser: operationsområdet er vores.
 ops-defeat = NEDERLAG

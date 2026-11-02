@@ -155,6 +155,7 @@ ops-points-bonus = { $points } poin (bonus paket +{ $bonus })
 ops-campaign-points = { $rank } - { $points } poin kampanye
 ops-campaign-record = Kampanye: { $sorties } sorti, { $won } sasaran tercapai
 ops-section-meanwhile = Sementara itu
+ops-section-effects = Pengaruhmu pada perang
 ops-victory = KEMENANGAN
     .text = Musuh tidak lagi menguasai pangkalan udara: teater operasi ini milik kita.
 ops-defeat = KEKALAHAN

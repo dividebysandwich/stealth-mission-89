@@ -165,6 +165,7 @@ ops-points-bonus = { $points } points (package bonus +{ $bonus })
 ops-campaign-points = { $rank } - { $points } campaign points
 ops-campaign-record = Campaign: { $sorties } sorties, { $won } objectives achieved
 ops-section-meanwhile = Meanwhile
+ops-section-effects = Your effect on the war
 ops-victory = VICTORY
     .text = The enemy holds no airfield any more: the theater is ours.
 ops-defeat = DEFEAT

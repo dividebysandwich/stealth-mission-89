@@ -155,6 +155,7 @@ ops-points-bonus = { $points } pont (kötelékbónusz +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampánypont
 ops-campaign-record = Kampány: { $sorties } bevetés, { $won } teljesített cél
 ops-section-meanwhile = Közben
+ops-section-effects = Hatásod a háborúra
 ops-victory = GYŐZELEM
     .text = Az ellenségnek nincs több repülőtere: a hadszíntér a miénk.
 ops-defeat = VERESÉG

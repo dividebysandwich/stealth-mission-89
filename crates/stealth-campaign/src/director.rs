@@ -14,9 +14,10 @@ impl CampaignState {
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
         match *r {
-            Report::ObjectDestroyed { object, .. } => {
+            Report::ObjectDestroyed { object, by } => {
                 let now = self.clock;
                 self.raid_hit(object, ev);
+                self.site_struck(object, by);
                 // A city's stores and factories go with it.
                 if let Some(s) = self.site(object).filter(|s| s.alive() && s.kind == SiteKind::City)
                     && let Some(side) = self.owner(s.object).filter(|&o| o != Side::Neutral)
@@ -430,6 +431,15 @@ impl CampaignState {
                         let s = self.site(b)?;
                         (dist(s.x - x, s.y - y) < SCRAMBLE_RANGE).then_some((b, x, y))
                     });
+                    // A player escorting it keeps the enemy's fighters on the ground.
+                    if near.is_some()
+                        && let Some(p) = self.escort_with(ins.id)
+                    {
+                        let place = self.places[ins.place as usize].name.clone();
+                        self.insertions[k].scrambled = true;
+                        self.effect(p, text!("cl-fx-escort", place = place));
+                        continue;
+                    }
                     if let Some((from, x, y)) = near
                         && self.forces(Side::Red).fighters > 0
                         && self.pay(Side::Red, SORTIE_COST, Spend::Operations)
@@ -923,6 +933,7 @@ impl CampaignState {
         let now = self.clock;
         let insert_every = self.paced(ENEMY_INSERT_EVERY[skill]);
         if now - self.enemy_insert_at >= insert_every {
+            self.credit_cap_cover();
             // One of the weakest places, those it failed at lately weighed stronger.
             let mut weak: Vec<(PlaceId, i32)> = self
                 .front(Side::Red)
@@ -932,6 +943,7 @@ impl CampaignState {
                     self.insertion_base(Side::Red, p.x, p.y).is_some()
                 })
                 .filter(|&p| !self.active_insertion(p))
+                .filter(|&p| !self.capped(p))
                 .map(|p| (p, self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p)))
                 .collect();
             weak.sort_by_key(|w| w.1);
@@ -949,6 +961,7 @@ impl CampaignState {
         }
         let raid_every = self.paced(RAID_EVERY[skill]);
         if now - self.raid_at >= raid_every {
+            self.credit_cap_cover();
             let ready = self.forces(Side::Red).fighters as usize >= RAID_AIRCRAFT + RAID_ESCORTS
                 && self.forces(Side::Red).materiel >= RAID_COST;
             match self.raid_target().filter(|_| ready) {
@@ -1004,7 +1017,7 @@ impl CampaignState {
             .filter(|(_, p)| p.owner == Side::Blue)
             .filter_map(|(k, p)| {
                 let a = p.airfield.filter(|&a| self.site(a).is_some_and(Site::alive))?;
-                if self.raids.iter().any(|r| r.open() && r.bombs(a)) {
+                if self.raids.iter().any(|r| r.open() && r.bombs(a)) || self.capped(k as PlaceId) {
                     return None;
                 }
                 let from = self.nearest_base(Side::Red, p.x, p.y)?;

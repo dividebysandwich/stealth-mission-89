@@ -185,6 +185,7 @@ ops-points-bonus = { $points ->
 ops-campaign-points = { $rank } - очков кампании: { $points }
 ops-campaign-record = Кампания: вылетов { $sorties }, выполнено задач { $won }
 ops-section-meanwhile = Тем временем
+ops-section-effects = Твоё влияние на войну
 ops-victory = ПОБЕДА
     .text = У противника не осталось ни одного аэродрома: ТВД наш.
 ops-defeat = ПОРАЖЕНИЕ

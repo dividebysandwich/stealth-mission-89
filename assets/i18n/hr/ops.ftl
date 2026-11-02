@@ -155,6 +155,7 @@ ops-points-bonus = Bodova: { $points } (bonus paketa +{ $bonus })
 ops-campaign-points = { $rank } - bodova kampanje: { $points }
 ops-campaign-record = Kampanja: borbenih letova { $sorties }, postignutih ciljeva { $won }
 ops-section-meanwhile = U međuvremenu
+ops-section-effects = Tvoj utjecaj na rat
 ops-victory = POBJEDA
     .text = Neprijatelj više ne drži nijedan aerodrom: ratište je naše.
 ops-defeat = PORAZ

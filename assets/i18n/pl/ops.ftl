@@ -155,6 +155,7 @@ ops-points-bonus = { $points } pkt (premia za pakiet +{ $bonus })
 ops-campaign-points = { $rank } - { $points } pkt kampanii
 ops-campaign-record = Kampania: loty bojowe: { $sorties }, osiągnięte cele: { $won }
 ops-section-meanwhile = W międzyczasie
+ops-section-effects = Twój wpływ na wojnę
 ops-victory = ZWYCIĘSTWO
     .text = Wróg nie ma już żadnego lotniska: teatr działań jest nasz.
 ops-defeat = PORAŻKA

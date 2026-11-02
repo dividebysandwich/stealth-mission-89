@@ -155,6 +155,7 @@ ops-points-bonus = { $points } punkti (paketibonus +{ $bonus })
 ops-campaign-points = { $rank } - kampaania punktid: { $points }
 ops-campaign-record = Kampaania: lende { $sorties }, saavutatud eesmärke { $won }
 ops-section-meanwhile = Vahepeal
+ops-section-effects = Sinu mõju sõjale
 ops-victory = VÕIT
     .text = Vaenlasel pole enam ühtegi lennuvälja: operatsiooniala on meie.
 ops-defeat = LÜÜASAAMINE

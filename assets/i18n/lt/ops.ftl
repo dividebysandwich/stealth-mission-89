@@ -155,6 +155,7 @@ ops-points-bonus = Taškai: { $points } (grupės priedas +{ $bonus })
 ops-campaign-points = { $rank } - kampanijos taškai: { $points }
 ops-campaign-record = Kampanija: skrydžių { $sorties }, įvykdytų užduočių { $won }
 ops-section-meanwhile = Tuo metu
+ops-section-effects = Tavo poveikis karui
 ops-victory = PERGALĖ
     .text = Priešas nebeturi nė vieno aerodromo: operacijų teatras mūsų.
 ops-defeat = PRALAIMĖJIMAS

@@ -155,6 +155,7 @@ ops-points-bonus = { $points } točk (bonus paketa +{ $bonus })
 ops-campaign-points = { $rank } - { $points } točk kampanje
 ops-campaign-record = Kampanja: { $sorties } bojnih letov, { $won } doseženih ciljev
 ops-section-meanwhile = Medtem
+ops-section-effects = Tvoj vpliv na vojno
 ops-victory = ZMAGA
     .text = Sovražnik nima več nobenega letališča: bojišče je naše.
 ops-defeat = PORAZ

@@ -155,6 +155,7 @@ ops-points-bonus = { $points } puncte (bonus de package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } puncte de campanie
 ops-campaign-record = Campanie: { $sorties } zboruri, { $won } obiective îndeplinite
 ops-section-meanwhile = Între timp
+ops-section-effects = Efectul tău asupra războiului
 ops-victory = VICTORIE
     .text = Inamicul nu mai deține niciun aerodrom: teatrul de operații este al nostru.
 ops-defeat = ÎNFRÂNGERE

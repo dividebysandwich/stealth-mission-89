@@ -155,6 +155,7 @@ ops-points-bonus = { $points } pointe (bónas pacáiste +{ $bonus })
 ops-campaign-points = { $rank } - { $points } pointe feachtais
 ops-campaign-record = Feachtas: { $sorties } eitilt, { $won } cuspóir bainte amach
 ops-section-meanwhile = Idir an dá linn
+ops-section-effects = Do thionchar ar an gcogadh
 ops-victory = BUAIDH
     .text = Níl aerfort ar bith ag an namhad a thuilleadh: is linne an amharclann oibríochta.
 ops-defeat = TREALLÚS

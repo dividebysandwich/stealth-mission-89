@@ -25,6 +25,7 @@ mod convoy;
 mod crew;
 mod deploy;
 mod director;
+mod effects;
 mod events;
 pub mod ground;
 mod missions;

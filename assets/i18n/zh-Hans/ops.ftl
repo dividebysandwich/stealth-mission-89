@@ -155,6 +155,7 @@ ops-points-bonus = { $points } 分（package 奖励 +{ $bonus }）
 ops-campaign-points = { $rank } - 战役得分 { $points }
 ops-campaign-record = 战役：{ $sorties } 次出击，达成 { $won } 个目标
 ops-section-meanwhile = 与此同时
+ops-section-effects = 你对战争的影响
 ops-victory = 胜利
     .text = 敌军已不再拥有任何机场：战区归我方所有。
 ops-defeat = 失败

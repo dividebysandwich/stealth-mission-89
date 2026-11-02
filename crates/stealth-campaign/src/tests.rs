@@ -2735,3 +2735,118 @@ fn enemy_patrols_guard_the_place_the_players_strike() {
     });
     assert!(goal.is_some_and(|g| g != (px, py)), "{goal:?}");
 }
+
+/// Player `p` airborne at (x, y).
+fn up_at(p: PlayerId, x: i32, y: i32) -> PlayerPos {
+    PlayerPos { id: p, x, y, airborne: true, landed: false, hover_over: None }
+}
+
+#[test]
+fn a_struck_airfield_holds_back_the_enemys_raids_and_the_debrief_says_so() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, obj) = take(&mut c, P0, MissionKind::Strike);
+    let Objective::Strike { airfield, .. } = obj else { unreachable!() };
+    c.raid_at = f64::MIN / 2.0;
+    c.tick(
+        1.0,
+        &WorldView::default(),
+        &[Report::ObjectDestroyed { object: airfield, by: Some(P0) }],
+    );
+    // No raid for the delay, whatever its interval says.
+    let every = tuning::RAID_EVERY[1];
+    assert!(c.raid_at >= c.clock + tuning::STRUCK_AIRFIELD_DELAY - every - 2.0);
+    let record = finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap());
+    assert!(
+        record.effects.iter().any(|e| e.contains("airfield out of action")),
+        "{:?}",
+        record.effects
+    );
+}
+
+#[test]
+fn a_struck_city_holds_back_the_enemys_convoys_and_insertions() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    take(&mut c, P0, MissionKind::Strike);
+    let object = c
+        .sites
+        .iter()
+        .find(|s| s.kind == SiteKind::City && c.owner(s.object) == Some(Side::Red))
+        .unwrap()
+        .object;
+    c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object, by: Some(P0) }]);
+    let now = c.clock;
+    let insert = tuning::ENEMY_INSERT_EVERY[1];
+    let convoy = tuning::ENEMY_CONVOY_EVERY[1];
+    assert!(c.enemy_insert_at >= now + tuning::STRUCK_CITY_DELAY - insert - 1.0);
+    assert!(c.convoy_at[1] >= now + tuning::STRUCK_CITY_DELAY - convoy - 1.0);
+    let s = c.sortie(P0).unwrap();
+    assert!(s.progress.effects.iter().any(|e| e.contains("in ruins")), "{:?}", s.progress.effects);
+}
+
+#[test]
+fn a_player_on_cap_keeps_enemy_raids_off_the_places_under_it() {
+    let mut c = campaign("central_europe", 3);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let (_, _) = take(&mut c, P0, MissionKind::Cap);
+    // Over a friendly airfield: the enemy raids it no more.
+    let (x, y) = c
+        .places
+        .iter()
+        .find(|p| p.owner == Side::Blue && p.airfield.is_some())
+        .map(|p| (p.x, p.y))
+        .unwrap();
+    c.slot_mut(P0).sortie.as_mut().unwrap().offer.objective = Objective::Cap { x, y };
+    let view = WorldView { players: vec![up_at(P0, x, y)], ..Default::default() };
+    c.tick(1.0, &view, &[]);
+    let place = c.places.iter().position(|p| (p.x, p.y) == (x, y)).unwrap() as PlaceId;
+    assert!(c.capped(place));
+    let mut raided = 0;
+    for _ in 0..8 {
+        c.raid_at = f64::MIN / 2.0;
+        c.tick(1.0, &view, &[]);
+        raided += c.raids.iter().filter(|r| r.side == Side::Red && r.place == place).count();
+    }
+    assert_eq!(raided, 0);
+    let s = c.sortie(P0).unwrap();
+    assert!(
+        s.progress.effects.iter().any(|e| e.contains("Your CAP kept")),
+        "{:?}",
+        s.progress.effects
+    );
+}
+
+#[test]
+fn an_escort_keeps_the_enemys_fighters_off_the_helicopters() {
+    let scrambled = |escorted: bool| {
+        let mut c = campaign("central_europe", 3);
+        let place = c.front(Side::Blue)[0];
+        c.apply(P0, Command::OrderInsertion { place }).unwrap();
+        c.tick(1.0, &WorldView::default(), &[]);
+        let escort = c.board.iter().find(|o| o.kind == MissionKind::Escort).unwrap().clone();
+        c.apply(P0, Command::TakeMission { offer: escort.id, base: None, aircraft: Aircraft::F16 })
+            .unwrap();
+        let Objective::Escort { insertion } = escort.objective else { unreachable!() };
+        c.tick(tuning::INSERTION_LEAD, &WorldView::default(), &[]);
+        let ins = c.insertion(insertion).unwrap().clone();
+        assert_eq!(ins.state, InsertionState::Enroute);
+        // The helicopters over an enemy airfield, the escort with them (or not).
+        let t = c.site(ins.target).unwrap();
+        let b = c.nearest_base(Side::Red, t.x, t.y).unwrap();
+        let (x, y) = (c.site(b).unwrap().x, c.site(b).unwrap().y);
+        let flights =
+            ins.helicopters.iter().map(|&tag| FlightView { x, y, side: Side::Blue, tag }).collect();
+        let players = if escorted { vec![up_at(P0, x, y)] } else { Vec::new() };
+        let view = WorldView { players, flights, ..Default::default() };
+        c.tick(1.0, &view, &[]);
+        let ev = c.tick(1.0, &view, &[]);
+        let fx = c.sortie(P0).unwrap().progress.effects.clone();
+        (c.insertion(insertion).unwrap().scrambled, ev, fx)
+    };
+    let (alone, _, fx) = scrambled(false);
+    assert!(alone && fx.is_empty());
+    let (_, ev, fx) = scrambled(true);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::LaunchFighters { side: Side::Red, .. })));
+    assert!(fx.iter().any(|e| e.contains("Your escort kept")), "{fx:?}");
+}

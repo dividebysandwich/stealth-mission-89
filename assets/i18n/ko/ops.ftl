@@ -155,6 +155,7 @@ ops-points-bonus = { $points }점 (패키지 보너스 +{ $bonus })
 ops-campaign-points = { $rank } - 캠페인 점수 { $points }점
 ops-campaign-record = 캠페인: 출격 { $sorties }회, 목표 달성 { $won }회
 ops-section-meanwhile = 그동안
+ops-section-effects = 전쟁에 대한 너의 영향
 ops-victory = 승리
     .text = 적에게 남은 비행장이 없습니다. 전역은 우리 것입니다.
 ops-defeat = 패배

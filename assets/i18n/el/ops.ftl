@@ -155,6 +155,7 @@ ops-points-bonus = { $points } πόντοι (μπόνους package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } πόντοι εκστρατείας
 ops-campaign-record = Εκστρατεία: { $sorties } εξορμήσεις, { $won } στόχοι επιτεύχθηκαν
 ops-section-meanwhile = Στο μεταξύ
+ops-section-effects = Η επίδρασή σου στον πόλεμο
 ops-victory = ΝΙΚΗ
     .text = Ο εχθρός δεν κατέχει πια κανένα αεροδρόμιο: το θέατρο επιχειρήσεων είναι δικό μας.
 ops-defeat = ΗΤΤΑ

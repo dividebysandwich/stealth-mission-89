@@ -523,6 +523,12 @@ pub struct Progress {
     /// intercepts, defences, rescues: only who was there earns them).
     #[serde(default)]
     pub near_secs: f64,
+    /// Airborne over the CAP point or near what the objective is about this moment.
+    #[serde(default)]
+    pub here: bool,
+    /// What the sortie changed in the war (the debrief).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<Text>,
     /// Flown in the helicopter: the player's own insertion (its id), seconds landed where it
     /// counts (unloading the troops, the downed pilot boarding), the downed pilot aboard and
     /// brought home.
@@ -614,6 +620,9 @@ pub struct SortieRecord {
     pub place: Option<PlaceId>,
     #[serde(default)]
     pub achieved_at: Option<f64>,
+    /// What it changed in the war.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<Text>,
 }
 
 /// What a route point is: a navigation point a player placed (or the mission's midpoint), or

@@ -140,6 +140,13 @@ pub const SUPPRESS_SHARE: f32 = 0.5;
 pub const CAP_SECONDS: f64 = 600.0;
 pub const CAP_KILLS: u32 = 2;
 pub const CAP_RADIUS: i32 = 0x500;
+/// A player on CAP keeps the enemy's new raids and insertions off places this close to his
+/// CAP point (30 km).
+pub const CAP_COVER: i32 = 0x780;
+/// An enemy airfield struck holds back the enemy's next raid this long at least; a city its
+/// next convoy and insertion (stores and transport gone).
+pub const STRUCK_AIRFIELD_DELAY: f64 = 15.0 * 60.0;
+pub const STRUCK_CITY_DELAY: f64 = 10.0 * 60.0;
 /// Escorts, intercepts, airfield defences and rescues need the pilot there: this long airborne
 /// within this radius (20 km) of the helicopters, raiders or pilot while it goes on (an air
 /// kill counts too).

@@ -155,6 +155,7 @@ ops-points-bonus = Bodů: { $points } (bonus za package +{ $bonus })
 ops-campaign-points = { $rank } - bodů kampaně: { $points }
 ops-campaign-record = Kampaň: bojových letů { $sorties }, splněných cílů { $won }
 ops-section-meanwhile = Mezitím
+ops-section-effects = Tvůj vliv na válku
 ops-victory = VÍTĚZSTVÍ
     .text = Nepřítel už nedrží žádné letiště: operační prostor je náš.
 ops-defeat = PORÁŽKA

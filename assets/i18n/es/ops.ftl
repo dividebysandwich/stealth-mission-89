@@ -155,6 +155,7 @@ ops-points-bonus = { $points } puntos (bonificación de paquete +{ $bonus })
 ops-campaign-points = { $rank } - { $points } puntos de campaña
 ops-campaign-record = Campaña: { $sorties } salidas, { $won } objetivos cumplidos
 ops-section-meanwhile = Mientras tanto
+ops-section-effects = Tu efecto en la guerra
 ops-victory = VICTORIA
     .text = El enemigo ya no controla ningún aeródromo: el teatro es nuestro.
 ops-defeat = DERROTA

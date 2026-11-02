@@ -155,6 +155,7 @@ ops-points-bonus = { $points } pistettä (pakettibonus +{ $bonus })
 ops-campaign-points = { $rank } - kampanjapisteet { $points }
 ops-campaign-record = Kampanja: lentoja { $sorties }, tavoitteita saavutettu { $won }
 ops-section-meanwhile = Sillä välin
+ops-section-effects = Vaikutuksesi sotaan
 ops-victory = VOITTO
     .text = Vihollisella ei ole enää yhtään lentokenttää: operaatioalue on meidän.
 ops-defeat = TAPPIO

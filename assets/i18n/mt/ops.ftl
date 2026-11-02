@@ -155,6 +155,7 @@ ops-points-bonus = { $points } punti (bonus tal-package +{ $bonus })
 ops-campaign-points = { $rank } - { $points } punti tal-kampanja
 ops-campaign-record = Kampanja: { $sorties } titjiriet, { $won } għanijiet milħuqa
 ops-section-meanwhile = Sadanittant
+ops-section-effects = L-effett tiegħek fuq il-gwerra
 ops-victory = REBĦA
     .text = L-għadu m'għadu jżomm l-ebda ajrudrom: it-teatru huwa tagħna.
 ops-defeat = TELFA

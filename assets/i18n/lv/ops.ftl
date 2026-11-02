@@ -155,6 +155,7 @@ ops-points-bonus = { $points } punkti (paketes bonuss +{ $bonus })
 ops-campaign-points = { $rank } - { $points } kampaņas punkti
 ops-campaign-record = Kampaņa: { $sorties } lidojumi, { $won } uzdevumi izpildīti
 ops-section-meanwhile = Pa to laiku
+ops-section-effects = Tava ietekme uz karu
 ops-victory = UZVARA
     .text = Ienaidniekam vairs nav neviena lidlauka: operāciju teātris ir mūsu.
 ops-defeat = SAKĀVE
