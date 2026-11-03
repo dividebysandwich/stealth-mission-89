@@ -271,3 +271,14 @@ effect-pixelize = Pixelare
         Toată vederea 3D (teren, avioane, clădiri, cabină) în pixeli pătrați mari, ca pe un PC cu MS-DOS; meniurile și sfaturile rămân clare (nu în VR)
         Cursorul stabilește dimensiunea unui bloc, în pixeli de ecran (2: fin, 5: grosier)
         Antialiasing-ul este dezactivat cât timp este activă
+        Cele trei comutatoare de sub ea lasă clare HUD-ul, cabina sau MFD-urile, instrumentele și planșeta
+effect-sharp-hud = Fără HUD
+    .facts =
+        Pixelare: HUD-ul (și afișajul căștii) este desenat clar peste imaginea pixelată, ca simbolurile sale subțiri să rămână lizibile
+effect-sharp-cockpit = Fără cabină (butoane, comutatoare...)
+    .facts =
+        Pixelare: panoul, cadrul, scaunul, butoanele, comutatoarele, manșa și maneta de gaze ale cabinei sunt desenate clar
+effect-sharp-gauges = Fără MFD-uri, instrumente și planșetă
+    .facts =
+        Pixelare: MFD-urile, orizontul artificial, instrumentele, becurile, afișajele, etichetele și planșeta sunt desenate clar
+options-needs-pixelize = Necesită Pixelare

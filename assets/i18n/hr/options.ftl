@@ -271,3 +271,14 @@ effect-pixelize = Pikselizacija
         Cijeli 3D prikaz (teren, zrakoplovi, zgrade, kabina) u velikim četvrtastim pikselima kao na računalu s MS-DOS-om; izbornici i savjeti ostaju oštri (ne u VR-u)
         Klizač postavlja veličinu bloka u pikselima zaslona (2: fino, 5: grubo)
         Anti-aliasing je isključen dok je uključena
+        Tri prekidača ispod nje ostavljaju HUD, kokpit ili MFD-ove, instrumente i Kneeboard oštrima
+effect-sharp-hud = Bez HUD-a
+    .facts =
+        Pikselizacija: HUD (i zaslon na kacigi) crta se oštro preko pikseliziranog prikaza kako bi njegovi tanki simboli ostali čitljivi
+effect-sharp-cockpit = Bez kokpita (tipke, prekidači...)
+    .facts =
+        Pikselizacija: ploča, okvir, sjedalo, tipke, prekidači, palica i ručica gasa kokpita crtaju se oštro
+effect-sharp-gauges = Bez MFD-ova, instrumenata i Kneeboarda
+    .facts =
+        Pikselizacija: MFD-ovi, umjetni horizont, instrumenti, žaruljice, očitanja, oznake i Kneeboard crtaju se oštro
+options-needs-pixelize = Zahtijeva pikselizaciju

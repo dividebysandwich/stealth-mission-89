@@ -71,3 +71,6 @@ fm-volume-atc = ATC-STEM
 fm-volume-music = MUZIEK
 fm-tracking-mouse = MUISBLIK BIJ TRACKING
 fm-effect-pixelize = PIXELEREN
+fm-effect-sharp-hud = ZONDER HUD
+fm-effect-sharp-cockpit = ZONDER COCKPIT
+fm-effect-sharp-gauges = ZONDER MFD'S, INSTRUMENTEN EN KNEEBOARD

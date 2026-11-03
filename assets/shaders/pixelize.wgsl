@@ -1,6 +1,12 @@
 // Pixelize (pixelize.rs): the picture in square blocks of whole screen pixels, each block
 // showing the pixel at its centre, like the 320x200 picture of an MS-DOS game blown up with
 // nearest neighbour filtering.
+//
+// The parts of the cockpit view the player excludes (the HUD, the cockpit, the MFDs and
+// gauges) stay sharp: their surfaces draw an alpha below 1 into the picture (cockpit.wgsl
+// `sharp`, hud_glass.rs; every other surface leaves it at 1), and this pass leaves such pixels
+// as they are. A block's pixels take the colour of its centre, or, with the centre kept, of the
+// pixel nearest to it that is not.
 
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 
@@ -11,6 +17,8 @@ struct Pixelize {
 };
 
 const SCANLINE: f32 = 0.6;
+// A pixel with an alpha below this is left as it is.
+const KEPT: f32 = 0.95;
 
 @group(0) @binding(0) var screen_texture: texture_2d<f32>;
 @group(0) @binding(1) var screen_sampler: sampler;
@@ -19,13 +27,34 @@ const SCANLINE: f32 = 0.6;
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let size = vec2<f32>(textureDimensions(screen_texture));
+    let last = size - 1.0;
     let block = max(settings.params.x, 1.0);
-    let centre = (floor(in.position.xy / block) + 0.5) * block;
-    let texel = vec2<i32>(clamp(floor(centre), vec2<f32>(0.0), size - 1.0));
-    var c = textureLoad(screen_texture, texel, 0);
+    var c = textureLoad(screen_texture, vec2<i32>(clamp(floor(in.position.xy), vec2<f32>(0.0), last)), 0);
+    if (c.a >= KEPT) {
+        let origin = floor(in.position.xy / block) * block;
+        let centre = origin + 0.5 * block;
+        c = textureLoad(screen_texture, vec2<i32>(clamp(floor(centre), vec2<f32>(0.0), last)), 0);
+        if (c.a < KEPT) {
+            // The centre is a kept pixel: this block's pixel nearest to it that is not.
+            var nearest = 1.0e9;
+            let n = i32(block);
+            for (var j = 0; j < n; j++) {
+                for (var i = 0; i < n; i++) {
+                    let p = origin + vec2<f32>(f32(i), f32(j)) + 0.5;
+                    let t = textureLoad(screen_texture, vec2<i32>(clamp(floor(p), vec2<f32>(0.0), last)), 0);
+                    let d = distance(p, centre);
+                    if (t.a >= KEPT && d < nearest) {
+                        nearest = d;
+                        c = t;
+                    }
+                }
+            }
+        }
+    }
     if (settings.params.y > 0.0) {
         let period = max(floor(size.y / 300.0), 2.0);
         c = vec4<f32>(c.rgb * select(1.0, SCANLINE, fract(in.position.y / period) >= 0.5), c.a);
     }
-    return c;
+    // Opaque again: nothing after this pass reads the alpha.
+    return vec4<f32>(c.rgb, 1.0);
 }

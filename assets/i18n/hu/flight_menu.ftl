@@ -71,3 +71,6 @@ fm-volume-atc = ATC HANG
 fm-volume-music = ZENE
 fm-tracking-mouse = EGÉRREL NÉZELŐDÉS KÖVETÉSKOR
 fm-effect-pixelize = PIXELESÍTÉS
+fm-effect-sharp-hud = HUD NÉLKÜL
+fm-effect-sharp-cockpit = PILÓTAFÜLKE NÉLKÜL
+fm-effect-sharp-gauges = MFD-K, MŰSZEREK ÉS KNEEBOARD NÉLKÜL

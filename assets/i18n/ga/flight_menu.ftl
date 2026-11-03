@@ -71,3 +71,6 @@ fm-volume-atc = GUTH ATC
 fm-volume-music = CEOL
 fm-tracking-mouse = BREATHNÚ LEIS AN LUCHÓG I RIANÚ
 fm-effect-pixelize = PIXEALÚ
+fm-effect-sharp-hud = GAN HUD
+fm-effect-sharp-cockpit = GAN CÁBÁN AN PHÍOLÓTA
+fm-effect-sharp-gauges = GAN MFDANNA, IONSTRAIMÍ NÁ KNEEBOARD

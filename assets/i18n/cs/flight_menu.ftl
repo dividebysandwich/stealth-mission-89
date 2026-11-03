@@ -71,3 +71,6 @@ fm-volume-atc = HLAS ATC
 fm-volume-music = HUDBA
 fm-tracking-mouse = POHLED MYŠÍ PŘI TRACKINGU
 fm-effect-pixelize = PIXELIZACE
+fm-effect-sharp-hud = BEZ HUD
+fm-effect-sharp-cockpit = BEZ KOKPITU
+fm-effect-sharp-gauges = BEZ MFD, PŘÍSTROJŮ A KNEEBOARDU

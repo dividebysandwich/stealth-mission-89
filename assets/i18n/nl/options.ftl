@@ -271,3 +271,14 @@ effect-pixelize = Pixeleren
         De hele 3D-weergave (terrein, vliegtuigen, gebouwen, cockpit) in grote vierkante pixels, zoals op een MS-DOS-pc; de menu's en tooltips blijven scherp (niet in VR)
         De schuifregelaar stelt de grootte van een blok in, in schermpixels (2: fijn, 5: grof)
         Anti-aliasing is uit zolang het aan staat
+        De drie schakelaars eronder laten de HUD, de cockpit of de MFD's, instrumenten en het Kneeboard scherp
+effect-sharp-hud = Zonder HUD
+    .facts =
+        Pixeleren: De HUD (en het helmdisplay) wordt scherp getekend boven het gepixelde beeld, zodat de dunne symbolen leesbaar blijven
+effect-sharp-cockpit = Zonder cockpit (knoppen, schakelaars...)
+    .facts =
+        Pixeleren: Paneel, frame, stoel, knoppen, schakelaars, stuurknuppel en gashendel van de cockpit worden scherp getekend
+effect-sharp-gauges = Zonder MFD's, instrumenten en Kneeboard
+    .facts =
+        Pixeleren: De MFD's, de kunstmatige horizon, de instrumenten, de lampjes, de uitlezingen, de labels en het Kneeboard worden scherp getekend
+options-needs-pixelize = Vereist Pixeleren

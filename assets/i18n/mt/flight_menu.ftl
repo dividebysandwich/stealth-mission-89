@@ -71,3 +71,6 @@ fm-volume-atc = ŻEWĠ TAL-ATC
 fm-volume-music = MUŻIKA
 fm-tracking-mouse = ĦARSA BIL-FEJRA FIT-TRACKING
 fm-effect-pixelize = PIXELIZZAZZJONI
+fm-effect-sharp-hud = MINGĦAJR HUD
+fm-effect-sharp-cockpit = MINGĦAJR IL-KOKPIT
+fm-effect-sharp-gauges = MINGĦAJR MFDS, STRUMENTI U KNEEBOARD

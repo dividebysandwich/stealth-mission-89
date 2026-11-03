@@ -271,3 +271,14 @@ effect-pixelize = Pixelizzazzjoni
         Il-veduta 3D kollha (art, ajruplani, bini, kokpit) f'pixels kwadri kbar bħal fuq PC b'MS-DOS; il-menus u t-tooltips jibqgħu ċari (mhux fil-VR)
         Il-glidder jistabbilixxi d-daqs ta' blokka, f'pixels tal-iskrin (2: fin, 5: oħxon)
         L-anti-aliasing huwa maqful sakemm tkun mixgħula
+        It-tliet swiċċijiet taħtu jħallu l-HUD, il-kokpit jew l-MFDs, l-istrumenti u l-Kneeboard ċari
+effect-sharp-hud = Mingħajr HUD
+    .facts =
+        Pixelizzazzjoni: L-HUD (u d-display tal-elmu) jinġibed ċar fuq il-veduta pixelizzata, biex is-simboli rqaq tiegħu jibqgħu leġġibbli
+effect-sharp-cockpit = Mingħajr il-kokpit (buttuni, swiċċijiet...)
+    .facts =
+        Pixelizzazzjoni: Il-panew, il-qafas, is-sit, il-buttuni, is-swiċċijiet, il-ġojstik u l-lieva tat-throttle tal-kokpit jinġibdu ċari
+effect-sharp-gauges = Mingħajr MFDs, strumenti u Kneeboard
+    .facts =
+        Pixelizzazzjoni: L-MFDs, il-ballun tal-attitudni, l-istrumenti, il-bozoz, il-qari, t-tikketti u l-Kneeboard jinġibdu ċari
+options-needs-pixelize = Teħtieġ Pixelizzazzjoni

@@ -71,3 +71,6 @@ fm-volume-atc = GLAS ATC
 fm-volume-music = GLASBA
 fm-tracking-mouse = POGLED Z MIŠKO PRI SLEDENJU
 fm-effect-pixelize = PIKSELIZACIJA
+fm-effect-sharp-hud = BREZ HUD
+fm-effect-sharp-cockpit = BREZ KOKPITA
+fm-effect-sharp-gauges = BREZ MFD-JEV, INSTRUMENTOV IN KNEEBOARDA

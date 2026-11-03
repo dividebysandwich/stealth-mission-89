@@ -271,3 +271,14 @@ effect-pixelize = Pikselizacija
         Visas 3D vaizdas (reljefas, lėktuvai, pastatai, kabina) dideliais kvadratiniais pikseliais kaip MS-DOS kompiuteryje; meniu ir patarimai lieka ryškūs (ne VR)
         Šliaužiklis nustato bloko dydį ekrano pikseliais (2: smulkus, 5: stambus)
         Kraštų glotninimas išjungtas, kol ji įjungta
+        Trys jungikliai po ja palieka HUD, kabiną arba MFD, prietaisus ir Kneeboard ryškius
+effect-sharp-hud = Be HUD
+    .facts =
+        Pikselizacija: HUD (ir šalmo ekranas) piešiamas ryškiai virš pikselizuoto vaizdo, kad plonieji simboliai išliktų įskaitomi
+effect-sharp-cockpit = Be kabinos (mygtukai, jungikliai...)
+    .facts =
+        Pikselizacija: kabinos skydas, rėmas, sėdynė, mygtukai, jungikliai, vairalazdė ir greičio svirtis piešiami ryškiai
+effect-sharp-gauges = Be MFD, prietaisų ir Kneeboard
+    .facts =
+        Pikselizacija: MFD, dirbtinis horizontas, prietaisai, lemputės, rodmenys, užrašai ir Kneeboard piešiami ryškiai
+options-needs-pixelize = Reikia pikselizacijos

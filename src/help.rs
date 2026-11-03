@@ -75,7 +75,8 @@ Cockpit and graphics
   --effects <list>             atmosphere effects: names on, -name off, all, none
                                (shake, flashes, barrage, cockpit-night, nvg, snow, mist,
                                cloud-shadows, sunbeams, vapour, night-sky; retro, off by
-                               default: vga, scanlines, pixelize)
+                               default: vga, scanlines, pixelize, sharp-hud, sharp-cockpit,
+                               sharp-gauges)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
   --window-size <WxH>          window size

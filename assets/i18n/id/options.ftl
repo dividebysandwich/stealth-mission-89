@@ -271,3 +271,14 @@ effect-pixelize = Piksel-isasi
         Seluruh tampilan 3D (medan, pesawat, bangunan, kokpit) dalam piksel persegi besar, seperti pada PC MS-DOS; menu dan tooltip tetap tajam (tidak di VR)
         Penggeser mengatur ukuran sebuah blok, dalam piksel layar (2: halus, 5: kasar)
         Anti-aliasing mati selama aktif
+        Tiga sakelar di bawahnya membiarkan HUD, kokpit, atau MFD, instrumen, dan papan lutut tetap tajam
+effect-sharp-hud = Kecualikan HUD
+    .facts =
+        Piksel-isasi: HUD (dan layar helm) digambar tajam di atas tampilan yang dipikselkan, agar simbol-simbolnya yang tipis tetap terbaca
+effect-sharp-cockpit = Kecualikan kokpit (tombol, sakelar...)
+    .facts =
+        Piksel-isasi: Panel, rangka, kursi, tombol, sakelar, tongkat kemudi, dan tuas gas kokpit digambar tajam
+effect-sharp-gauges = Kecualikan MFD, instrumen, dan papan lutut
+    .facts =
+        Piksel-isasi: MFD, bola sikap, instrumen, lampu, pembacaan, label, dan papan lutut digambar tajam
+options-needs-pixelize = Perlu Piksel-isasi

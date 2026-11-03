@@ -71,3 +71,6 @@ fm-volume-atc = SUARA ATC
 fm-volume-music = MUSIK
 fm-tracking-mouse = MELIHAT DENGAN MOUSE SAAT TRACKING
 fm-effect-pixelize = PIKSELISASI
+fm-effect-sharp-hud = KECUALIKAN HUD
+fm-effect-sharp-cockpit = KECUALIKAN KOKPIT
+fm-effect-sharp-gauges = KECUALIKAN MFD, INSTRUMEN, DAN PAPAN LUTUT

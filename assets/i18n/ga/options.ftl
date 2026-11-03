@@ -271,3 +271,14 @@ effect-pixelize = Pixealú
         An radharc 3D ar fad (tír-raon, aerárthaigh, foirgnimh, cábán) i bpixil mhóra chearnacha mar ar ríomhaire MS-DOS; fanann na roghchláir agus na leideanna géar (ní i VR)
         Socraíonn an sleamhnán méid bloic, i bpixil scáileáin (2: mín, 5: garbh)
         Tá an frith-ailiasú as fad atá sé air
+        Fágann na trí lasc faoi bhun é an HUD, an cábán nó na MFDanna, na hionstraimí agus an Kneeboard géar
+effect-sharp-hud = Gan HUD
+    .facts =
+        Pixealú: Tarraingítear an HUD (agus scáileán an chlogaid) géar thar an radharc pixealaithe, ionas go bhfanann a shiombailí tanaí inléite
+effect-sharp-cockpit = Gan cábán an phíolóta (cnaipí, lasca...)
+    .facts =
+        Pixealú: Tarraingítear painéal, fráma, suíochán, cnaipí, lasca, maide stiúrtha agus luamhán sháiteach cábáin an phíolóta go géar
+effect-sharp-gauges = Gan MFDanna, ionstraimí ná Kneeboard
+    .facts =
+        Pixealú: Tarraingítear na MFDanna, an liathróid dhearcaidh, na hionstraimí, na lampaí, na léamha, na lipéid agus an Kneeboard go géar
+options-needs-pixelize = Teastaíonn Pixealú

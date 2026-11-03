@@ -184,6 +184,9 @@ impl Page {
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),
                     PixelSize,
+                    Effect(E::SharpHud),
+                    Effect(E::SharpCockpit),
+                    Effect(E::SharpGauges),
                     Back,
                 ]
             }
@@ -331,12 +334,17 @@ enum Item {
 }
 
 impl Item {
-    fn label(self) -> &'static str {
+    fn label(self) -> std::borrow::Cow<'static, str> {
+        // The pixelize look's sub-options start with its name (PIXELIZE: PIXEL SIZE).
+        let pixelize = |name: &str| format!("{}: {name}", tf!("fm-effect-pixelize")).into();
         if let Item::Effect(e) = self {
-            return e.menu_label();
+            return if e.pixel_part() { pixelize(e.menu_label()) } else { e.menu_label().into() };
         }
         if let Item::Open(p) = self {
-            return p.title();
+            return p.title().into();
+        }
+        if self == Item::PixelSize {
+            return pixelize(tf!("fm-pixel-size"));
         }
         tf!(match self {
             Item::Resume => "fm-resume",
@@ -377,6 +385,7 @@ impl Item {
             Item::Bindings => "fm-bindings",
             Item::Open(_) | Item::Effect(_) => unreachable!(),
         })
+        .into()
     }
 
     fn value(self, s: &Settings) -> String {
@@ -421,8 +430,8 @@ impl Item {
     }
 
     /// The cockpit size and the automatic scenery detail only matter in the headset, the label
-    /// size only with the player labels on, the pixel size only with the pixelize look on, the
-    /// cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
+    /// size only with the player labels on, the pixel size and the parts it leaves sharp only
+    /// with the pixelize look on, the cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
     /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
     /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
     /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved.
@@ -438,6 +447,7 @@ impl Item {
             Item::HeadTracking => !s.vr && !cfg!(target_arch = "wasm32"),
             Item::TrackingMouse => s.head_tracking && !s.vr && !cfg!(target_arch = "wasm32"),
             Item::Msaa => !crate::WEBGL2 && !crate::palette::pixelized(s),
+            Item::Effect(e) if e.pixel_part() => crate::palette::pixelized(s),
             Item::Effect(crate::effects::Effect::Scanlines | crate::effects::Effect::Pixelize) => {
                 !s.vr
             }
@@ -1583,11 +1593,12 @@ fn draw(
         }
         let size = row_text_size(h);
         let pen = size * 0.14;
-        let label = match item {
-            Item::EndMission if let Some(b) = board => tf!(b.exit_id()),
-            Item::EndMission if campaign.is_some() => tf!("fm-end-sortie"),
+        let label: std::borrow::Cow<str> = match item {
+            Item::EndMission if let Some(b) = board => tf!(b.exit_id()).into(),
+            Item::EndMission if campaign.is_some() => tf!("fm-end-sortie").into(),
             _ => item.label(),
         };
+        let label = &*label;
         let mut right = x1 - VALUE_INSET;
         if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings) {
             let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));

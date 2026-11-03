@@ -70,3 +70,6 @@ fm-volume-atc = ГОЛОС ATC
 fm-volume-music = МУЗИКА
 fm-tracking-mouse = ОГЛЯД МИШЕЮ ПРИ ТРЕКІНГУ
 fm-effect-pixelize = ПІКСЕЛІЗАЦІЯ
+fm-effect-sharp-hud = БЕЗ HUD
+fm-effect-sharp-cockpit = БЕЗ КАБІНИ
+fm-effect-sharp-gauges = БЕЗ MFD, ПРИЛАДІВ І ПЛАНШЕТА НА КОЛІНО
