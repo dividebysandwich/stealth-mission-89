@@ -550,7 +550,8 @@ pub struct PlayerState {
     /// Realistic avionics: the stores are used in their HUD mode only (air-to-air missiles
     /// in AIR, the other weapons in GND, the cannon in either; the camera and the tanks in
     /// every mode). Space steps through those of the mode, a mode change picks one of its own
-    /// and the trigger does nothing with a store of another mode.
+    /// and the trigger does nothing with a store of another mode. The HUD locks no target by
+    /// itself either: only on request ('B', the nearest-target key, the displays, the pod).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub mode_weapons: bool,
     /// The air-to-ground radar transmits: an emitter shows the aircraft to the enemy radars.

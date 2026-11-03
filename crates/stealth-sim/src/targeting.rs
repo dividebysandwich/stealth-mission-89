@@ -80,11 +80,19 @@ impl Sim {
 
     pub(crate) fn update_targeting(&mut self, ps: &PlayerState) {
         self.hold_spi();
-        self.select_ground();
+        // Realistic avionics lock nothing by themselves: only a 'B' press picks a target (the
+        // nearest-target key, the displays and the pod's designations lock on their own).
+        // A pick still waiting (the lock's 0x80 bit, -1 aside) goes on as asked.
+        let asked = !ps.mode_weapons || self.pl.select_req;
+        let auto = |lock: i32| asked || (lock != -1 && lock & 0x80 != 0);
+        if auto(self.pl.gnd_lock) {
+            self.select_ground();
+        }
         // The helmet-slaved seeker picks its own target.
-        if self.seeker_sight(ps).is_none() {
+        if auto(self.pl.air_lock) && self.seeker_sight(ps).is_none() {
             self.select_air();
         }
+        self.pl.select_req = false;
         self.nearest_target();
         self.designate();
         self.lock_oval(ps);

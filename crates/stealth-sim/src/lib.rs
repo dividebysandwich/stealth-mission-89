@@ -490,6 +490,7 @@ impl Sim {
                 gnd_cooldown: 0,
                 nearest_req: 0,
                 target_hold: false,
+                select_req: false,
                 cam_dir: 0,
                 last_missile_slot: -1,
                 maverick_view: false,

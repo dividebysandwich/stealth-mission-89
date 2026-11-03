@@ -188,6 +188,10 @@ pub struct Pilot {
     pub(crate) nearest_req: u8,
     /// Locks cleared on request (`Commands::clear_target`): no automatic acquisition.
     pub(crate) target_hold: bool,
+    /// A 'B' press (`Commands::next_target`) this frame: with realistic avionics the only
+    /// thing that makes the HUD pick a target by itself.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) select_req: bool,
     /// Camera view direction relative to the nose.
     pub(crate) cam_dir: i32,
     pub(crate) last_missile_slot: i32,
