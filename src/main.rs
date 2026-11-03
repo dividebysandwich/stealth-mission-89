@@ -3,6 +3,7 @@
 /// shadow cascade.
 pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu")));
 
+mod aa_radar;
 mod afterburner_flame;
 mod aircraft;
 mod aircraft_preview;
@@ -297,6 +298,7 @@ fn main() {
             mfd::MfdPlugin,
             avionics::AvionicsPlugin,
             ground_radar::GroundRadarPlugin,
+            aa_radar::AaRadarPlugin,
             panel::PanelPlugin,
         ))
         .add_plugins((

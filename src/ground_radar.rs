@@ -14,8 +14,8 @@
 //!   sees return brightly and are listed (`GroundRadar::returns`) where they were painted: a
 //!   moving vehicle's return jumps from one pass to the next.
 //!
-//! The radar transmits while its format is up and not in standby (`AvionicsState::
-//! radar_emitting`); the simulation hears it (`PlayerState::radar`).
+//! The radar maps while its format is up and not in standby (`AvionicsState::
+//! gm_on`); the simulation hears it (`PlayerState::radar`).
 
 use std::collections::VecDeque;
 
@@ -497,11 +497,11 @@ fn ramp() -> [[u8; 4]; 256] {
 }
 
 /// The angle from `b` to `a` (radians), in -pi..pi.
-fn angle_diff(a: f32, b: f32) -> f32 {
+pub(crate) fn angle_diff(a: f32, b: f32) -> f32 {
     (a - b + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI
 }
 
-fn hash(a: u32, b: u32, c: u32) -> u32 {
+pub(crate) fn hash(a: u32, b: u32, c: u32) -> u32 {
     let mut h =
         a.wrapping_mul(0x85EB_CA6B) ^ b.wrapping_mul(0xC2B2_AE35) ^ c.wrapping_mul(0x27D4_EB2F);
     h ^= h >> 15;
@@ -512,15 +512,15 @@ fn hash(a: u32, b: u32, c: u32) -> u32 {
 }
 
 /// A hash as a number in (0, 1].
-fn unit(h: u32) -> f32 {
+pub(crate) fn unit(h: u32) -> f32 {
     ((h >> 8) as f32 + 1.0) / (1 << 24) as f32
 }
 
 /// The theater's ground for the radar: the hills, the mountains and the scenery's cover.
-struct TheaterGround<'a> {
-    hills: &'a stealth_sim::hills::Hills,
-    relief: &'a stealth_sim::relief::Relief,
-    scenery: Option<&'a crate::scenery::Scenery>,
+pub(crate) struct TheaterGround<'a> {
+    pub hills: &'a stealth_sim::hills::Hills,
+    pub relief: &'a stealth_sim::relief::Relief,
+    pub scenery: Option<&'a crate::scenery::Scenery>,
 }
 
 /// Metres per map unit, and the theater's side (metres).
@@ -642,8 +642,7 @@ fn sweep(
     scenery: Option<Res<crate::scenery::Scenery>>,
 ) {
     let flying = aircraft.single().ok().filter(|(a, _)| !a.on_ground && a.ended.is_none());
-    let (Some((a, pos)), Some(combat), true) =
-        (flying, combat, state.modern && state.av.radar_emitting())
+    let (Some((a, pos)), Some(combat), true) = (flying, combat, state.modern && state.av.gm_on())
     else {
         if radar.on {
             radar.on = false;

@@ -71,6 +71,8 @@ pub enum Format {
     Hsi,
     /// The air-to-ground radar's ground map (`crate::ground_radar`), on the aircraft with one.
     Gm,
+    /// The same radar's air-to-air search and track (`crate::aa_radar`) on a B-scope.
+    Fcr,
     /// The engines, fuel and stores at a glance (after the F-22A's).
     Eng,
 }
@@ -81,19 +83,19 @@ pub const FORMATS: [Format; 5] = [Format::Hsd, Format::Harm, Format::Tgp, Format
 pub const THIRD_FORMATS: [Format; 5] =
     [Format::Hsi, Format::Hsd, Format::Harm, Format::Map, Format::Sms];
 
-/// The left MFD's first row with an air-to-ground radar: its ground map instead of the HARM
-/// display (the right MFD keeps that); the pilot can move either anywhere with the format
-/// menu.
+/// The left MFD's first row with a radar: its air-to-air and ground map formats instead of the
+/// HARM display and the stores (the right MFD keeps those); the pilot can move any of them
+/// anywhere with the format menu.
 pub const RADAR_FORMATS: [Format; 5] =
-    [Format::Hsd, Format::Gm, Format::Tgp, Format::Map, Format::Sms];
+    [Format::Hsd, Format::Fcr, Format::Gm, Format::Tgp, Format::Map];
 
 /// The fourth MFD's (the F-22A's, between the knees): the engines first.
 pub const FOURTH_FORMATS: [Format; 5] =
     [Format::Eng, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
 
-/// Every format, in the order the format menu lists them down its sides (the ground map only
-/// with the radar).
-pub const ALL_FORMATS: [Format; 8] = [
+/// Every format, in the order the format menu lists them down its sides (the radar's only with
+/// the radar).
+pub const ALL_FORMATS: [Format; 9] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -101,6 +103,7 @@ pub const ALL_FORMATS: [Format; 8] = [
     Format::Sms,
     Format::Hsi,
     Format::Gm,
+    Format::Fcr,
     Format::Eng,
 ];
 
@@ -125,19 +128,27 @@ impl Format {
             Format::Sms => "SMS",
             Format::Hsi => "HSI",
             Format::Gm => "GM",
+            Format::Fcr => "FCR",
             Format::Eng => "ENG",
         }
     }
 
+    /// The radar's formats, on the aircraft with one only.
+    pub fn radar(self) -> bool {
+        matches!(self, Format::Gm | Format::Fcr)
+    }
+
     /// Formats with a cursor (or a pod) the slew controls move.
     pub fn soi_capable(self) -> bool {
-        matches!(self, Format::Hsd | Format::Harm | Format::Tgp | Format::Gm)
+        matches!(self, Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr)
     }
 
     /// The key that brings the format up (script `press=` lookups).
     pub fn action(self) -> Action {
         match self {
-            Format::Hsd | Format::Harm | Format::Map | Format::Gm | Format::Eng => Action::Maps,
+            Format::Hsd | Format::Harm | Format::Map | Format::Gm | Format::Fcr | Format::Eng => {
+                Action::Maps
+            }
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -159,6 +170,23 @@ const HSD_RANGE_LABELS: [&str; 6] = ["10", "20", "40", "80", "160", "320"];
 /// Ground map ranges (km from the aircraft to the scope's outer arc).
 pub const GM_RANGES: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
 const GM_RANGE_LABELS: [&str; 5] = ["5", "10", "20", "40", "80"];
+/// The A-A radar's ranges (nautical miles to the top of the B-scope).
+pub const FCR_RANGES_NM: [f32; 5] = [10.0, 20.0, 40.0, 80.0, 160.0];
+const FCR_RANGE_LABELS: [&str; 5] = ["10", "20", "40", "80", "160"];
+/// The A-A radar's scan widths (A6, A3, A1: degrees either side of the nose) and bars (rows of
+/// the scan, stacked `aa_radar::BAR_SPACING` apart).
+pub const FCR_AZ_DEG: [f32; 3] = [60.0, 30.0, 10.0];
+const FCR_AZ_LABELS: [&str; 3] = ["A6", "A3", "A1"];
+pub const FCR_BARS: [u8; 3] = [4, 2, 1];
+const FCR_BAR_LABELS: [&str; 3] = ["4B", "2B", "1B"];
+/// The A-A radar's antenna elevation over the horizon: steps of `FCR_EL_STEP` degrees, at most
+/// `FCR_EL_MAX` steps up or down.
+pub const FCR_EL_STEP: f32 = 2.0;
+const FCR_EL_MAX: i8 = 10;
+const FCR_EL_LABELS: [&str; 21] = [
+    "-20", "-18", "-16", "-14", "-12", "-10", "-8", "-6", "-4", "-2", "0", "+2", "+4", "+6", "+8",
+    "+10", "+12", "+14", "+16", "+18", "+20",
+];
 
 #[derive(Debug, Clone)]
 pub struct AvionicsState {
@@ -193,12 +221,19 @@ pub struct AvionicsState {
     /// The aircraft has an air-to-ground radar (the ground map format).
     pub radar: bool,
     pub gm_range: usize,
-    /// The radar in standby: not transmitting.
-    pub gm_standby: bool,
+    /// The radar in standby: not transmitting (either format).
+    pub radar_standby: bool,
     /// The ground map's cursor (display pixels) and the view it was last placed in (it stays
     /// on its ground point).
     pub gm_cursor: Vec2,
     gm_view: Option<HsdView>,
+    /// The A-A radar's range, scan width and bars (indices into `FCR_RANGES_NM`, `FCR_AZ_DEG`,
+    /// `FCR_BARS`), antenna elevation (`FCR_EL_STEP` steps) and cursor (display pixels).
+    pub fcr_range: usize,
+    pub fcr_az: usize,
+    pub fcr_bars: usize,
+    pub fcr_el: i8,
+    pub fcr_cursor: Vec2,
     /// Free-fall and retarded bombs per release (1..=`RIPPLE_MAX`).
     pub ripple: u8,
     /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
@@ -512,9 +547,14 @@ impl Default for AvionicsState {
             sms_ord: true,
             radar: false,
             gm_range: 2,
-            gm_standby: false,
+            radar_standby: false,
             gm_cursor: centre - Vec2::Y * 20.0,
             gm_view: None,
+            fcr_range: 2,
+            fcr_az: 0,
+            fcr_bars: 0,
+            fcr_el: 0,
+            fcr_cursor: centre,
             ripple: 1,
             ripple_spacing: 3,
             burst: 2,
@@ -562,9 +602,33 @@ impl AvionicsState {
         GM_RANGES[self.gm_range.min(GM_RANGES.len() - 1)]
     }
 
-    /// The air-to-ground radar transmits: its ground map is up and not in standby.
+    /// The radar transmits: one of its formats is up and it is not in standby.
     pub fn radar_emitting(&self) -> bool {
-        self.radar && !self.gm_standby && self.shown(Format::Gm).is_some()
+        self.gm_on() || self.fcr_on()
+    }
+
+    /// The radar maps the ground: its ground map is up, not in standby.
+    pub fn gm_on(&self) -> bool {
+        self.radar && !self.radar_standby && self.shown(Format::Gm).is_some()
+    }
+
+    /// The radar searches the air: its A-A format is up, not in standby.
+    pub fn fcr_on(&self) -> bool {
+        self.radar && !self.radar_standby && self.shown(Format::Fcr).is_some()
+    }
+
+    /// The A-A radar's range (metres).
+    pub fn fcr_range_m(&self) -> f32 {
+        FCR_RANGES_NM[self.fcr_range.min(FCR_RANGES_NM.len() - 1)] * 1852.0
+    }
+
+    /// The A-A radar's scan: its half width, bars and antenna elevation (radians).
+    pub fn fcr_scan(&self) -> crate::aa_radar::Scan {
+        crate::aa_radar::Scan {
+            az_half: FCR_AZ_DEG[self.fcr_az.min(FCR_AZ_DEG.len() - 1)].to_radians(),
+            bars: FCR_BARS[self.fcr_bars.min(FCR_BARS.len() - 1)],
+            elevation: (self.fcr_el as f32 * FCR_EL_STEP).to_radians(),
+        }
     }
 
     /// The formats on an MFD's bottom bezel buttons.
@@ -574,18 +638,18 @@ impl AvionicsState {
 
     /// The formats the format menu offers: all of them, the ground map with the radar only.
     pub fn available(&self) -> impl Iterator<Item = Format> + '_ {
-        ALL_FORMATS.into_iter().filter(|&f| f != Format::Gm || self.radar)
+        ALL_FORMATS.into_iter().filter(|&f| !f.radar() || self.radar)
     }
 
-    /// F3: the left MFD's next map format (HSD, MAP, HARM, GM) along its bottom row, one no
-    /// other MFD shows (with the default rows HSD -> HARM / GM -> MAP -> HSD); None without
-    /// another.
+    /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
+    /// no other MFD shows (with the default rows HSD -> HARM -> MAP -> HSD, or with a radar
+    /// HSD -> FCR -> GM -> MAP -> HSD); None without another.
     pub fn next_left_format(&self) -> Option<Format> {
         let row = self.formats(MfdSide::Left);
         let now = self.format(MfdSide::Left);
         let at = row.iter().position(|&f| f == now).unwrap_or(row.len() - 1);
         (1..=row.len()).map(|k| row[(at + k) % row.len()]).find(|&f| {
-            matches!(f, Format::Hsd | Format::Map | Format::Harm | Format::Gm)
+            matches!(f, Format::Hsd | Format::Map | Format::Harm | Format::Gm | Format::Fcr)
                 && f != now
                 && self.shown(f).is_none_or(|s| s == MfdSide::Left)
         })
@@ -600,20 +664,25 @@ impl AvionicsState {
     /// this aircraft has.
     pub fn keep_rows(&mut self, old: &AvionicsState) {
         for (row, old) in self.rows.iter_mut().zip(old.rows) {
-            *row = old.filter(|r| r.iter().all(|&f| f != Format::Gm || self.radar));
+            *row = old.filter(|r| r.iter().all(|&f| !f.radar() || self.radar));
         }
     }
 
     /// The aircraft changed in flight (a campaign's sortie, an AI aircraft taken over): the
-    /// ground map comes with its radar, an MFD showing it without one takes its row's format.
+    /// radar's formats come with the radar, an MFD showing one without it takes the HARM
+    /// display (they replaced it), else its row's first format no MFD shows.
     pub fn set_radar(&mut self, radar: bool) {
         let old = self.clone();
         self.radar = radar;
         self.keep_rows(&old);
         for &side in self.sides() {
-            if !radar && self.format(side) == Format::Gm {
-                let at = old.formats(side).iter().position(|&f| f == Format::Gm).unwrap_or(1);
-                self.formats[index(side)] = self.formats(side)[at];
+            if !radar && self.format(side).radar() {
+                let g = std::iter::once(Format::Harm)
+                    .chain(self.formats(side))
+                    .chain(self.available())
+                    .find(|&g| self.shown(g).is_none())
+                    .unwrap_or(Format::Map);
+                self.formats[index(side)] = g;
             }
         }
         self.fix_soi();
@@ -773,7 +842,14 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             av.gm_range =
                 (av.gm_range as i32 + d as i32).clamp(0, GM_RANGES.len() as i32 - 1) as usize
         }
-        MfdCmd::GmStandby => av.gm_standby = !av.gm_standby,
+        MfdCmd::RadarStandby => av.radar_standby = !av.radar_standby,
+        MfdCmd::FcrRange(d) => {
+            av.fcr_range =
+                (av.fcr_range as i32 + d as i32).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize
+        }
+        MfdCmd::FcrAz => av.fcr_az = (av.fcr_az + 1) % FCR_AZ_DEG.len(),
+        MfdCmd::FcrBars => av.fcr_bars = (av.fcr_bars + 1) % FCR_BARS.len(),
+        MfdCmd::FcrElevation(d) => av.fcr_el = (av.fcr_el + d).clamp(-FCR_EL_MAX, FCR_EL_MAX),
         MfdCmd::MapZoom(d) => {
             state.map_zoom = (state.map_zoom + d as i32).clamp(2, state.max_map_zoom());
             raster.invalidate();
@@ -784,6 +860,9 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             if av.soi_format() == Some(Format::Gm) {
                 av.gm_range =
                     (av.gm_range as i32 - d).clamp(0, GM_RANGES.len() as i32 - 1) as usize;
+            } else if av.soi_format() == Some(Format::Fcr) {
+                av.fcr_range =
+                    (av.fcr_range as i32 - d).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize;
             } else if av.soi_format() == Some(Format::Hsd) || av.shown(Format::Map).is_none() {
                 av.hsd_range =
                     (av.hsd_range as i32 - d).clamp(0, HSD_RANGES.len() as i32 - 1) as usize;
@@ -910,13 +989,31 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
             Cmd(MfdCmd::HarmFilter),
             false,
         ),
-        (Format::Gm, 0) => {
-            (if av.gm_standby { "STBY" } else { "GM" }, Cmd(MfdCmd::GmStandby), av.gm_standby)
-        }
+        (Format::Gm, 0) => (
+            if av.radar_standby { "STBY" } else { "GM" },
+            Cmd(MfdCmd::RadarStandby),
+            av.radar_standby,
+        ),
         (Format::Gm, 1) => ("RNG-", Cmd(MfdCmd::GmRange(-1)), false),
         (Format::Gm, 2) => (GM_RANGE_LABELS[av.gm_range], Readout, false),
         (Format::Gm, 3) => ("RNG+", Cmd(MfdCmd::GmRange(1)), false),
-        (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm, 4) => soi,
+        // The A-A radar's like the F-16's: the mode on top, the range, the scan's width and
+        // bars down the left, the antenna's elevation on the right.
+        (Format::Fcr, 0) => (
+            if av.radar_standby { "STBY" } else { "CRM" },
+            Cmd(MfdCmd::RadarStandby),
+            av.radar_standby,
+        ),
+        (Format::Fcr, 1) => ("RWS", Readout, false),
+        (Format::Fcr, 10) => ("RNG+", Cmd(MfdCmd::FcrRange(1)), false),
+        (Format::Fcr, 11) => (FCR_RANGE_LABELS[av.fcr_range], Readout, false),
+        (Format::Fcr, 12) => ("RNG-", Cmd(MfdCmd::FcrRange(-1)), false),
+        (Format::Fcr, 13) => (FCR_AZ_LABELS[av.fcr_az], Cmd(MfdCmd::FcrAz), false),
+        (Format::Fcr, 14) => (FCR_BAR_LABELS[av.fcr_bars], Cmd(MfdCmd::FcrBars), false),
+        (Format::Fcr, 15) => ("EL+", Cmd(MfdCmd::FcrElevation(1)), false),
+        (Format::Fcr, 16) => (FCR_EL_LABELS[(av.fcr_el + FCR_EL_MAX) as usize], Readout, false),
+        (Format::Fcr, 17) => ("EL-", Cmd(MfdCmd::FcrElevation(-1)), false),
+        (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
         (Format::Tgp, 0) => ("FLIR", Cmd(MfdCmd::Flir), s.flir),
         (Format::Tgp, 1) => (
             crate::mfd::cam_zoom_label(s.cam_zoom),
@@ -1001,6 +1098,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Hsd => draw_hsd(p, c, ac, soi),
         Format::Harm => draw_harm(p, c, soi),
         Format::Gm => draw_gm(p, c, ac, soi),
+        Format::Fcr => draw_fcr(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
@@ -1611,7 +1709,7 @@ fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, so
         let side = Vec2::new(-d.y, d.x);
         c.triangle([q + d * 2.0, q + d * 8.0 + side * 4.0, q + d * 8.0 - side * 4.0], GREEN);
     } else {
-        let label = if av.gm_standby { "STBY" } else { "NO RAD" };
+        let label = if av.radar_standby { "STBY" } else { "NO RAD" };
         stroke_text_at(c, o.x, o.y - r * 0.5, label, 10.0, 1.4, GREEN, Align::Centre);
     }
     // The steerpoints (the current one ringed).
@@ -1659,6 +1757,142 @@ fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, so
     c.triangle([o + Vec2::new(0.0, -5.0), o + Vec2::new(-4.0, 3.0), o + Vec2::new(4.0, 3.0)], CYAN);
     if soi {
         draw_cursor(c, av.gm_cursor);
+    }
+}
+
+/// The A-A radar's B-scope: its top left and bottom right corners on the display (azimuth
+/// across, `aa_radar::GIMBAL` either side of the nose; range up from the bottom), clear of the
+/// side labels and the lock's readouts on top.
+pub fn fcr_scope() -> (Vec2, Vec2) {
+    let (w, h) = (HIRES.0 as f32, HIRES.1 as f32);
+    (Vec2::new(36.0, BAND as f32 + 16.0), Vec2::new(w - 36.0, h - BAND as f32 - 9.0))
+}
+
+/// A point on the B-scope: azimuth off the nose (radians) and range as a fraction of the
+/// display's.
+fn fcr_point(az: f32, k: f32) -> Vec2 {
+    let (lo, hi) = fcr_scope();
+    let x = lo.x + (az / crate::aa_radar::GIMBAL + 1.0) / 2.0 * (hi.x - lo.x);
+    Vec2::new(x, hi.y - k * (hi.y - lo.y))
+}
+
+/// Feet per metre.
+const FT: f32 = 3.28084;
+/// Knots per metre per second.
+const KT: f32 = 1.943_84;
+
+/// The A-A radar (after the F-16's FCR in RWS): the B-scope's azimuth and range ticks, the
+/// scan's width, the artificial horizon, the antenna's azimuth and elevation carets, the search
+/// bricks (old ones dimmer, friendly ones green), the locked aircraft with its heading and
+/// altitude and its aspect, heading, closure and speed on top, and the cursor with the altitudes
+/// the scan covers at its range as the SOI.
+fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, soi: bool) {
+    use crate::aa_radar::GIMBAL;
+    c.clear(BLACK);
+    let av = &p.state.av;
+    let (lo, hi) = fcr_scope();
+    let range = av.fcr_range_m();
+    // Range ticks down the sides and at 30 degrees, azimuth ticks along the bottom.
+    for k in [0.25, 0.5, 0.75] {
+        let y = fcr_point(0.0, k).y;
+        c.stroke(Vec2::new(lo.x, y), Vec2::new(lo.x + 4.0, y), 1.0, GREY);
+        c.stroke(Vec2::new(hi.x - 4.0, y), Vec2::new(hi.x, y), 1.0, GREY);
+        for deg in [-30.0f32, 30.0] {
+            let q = fcr_point(deg.to_radians(), k);
+            c.stroke(q - Vec2::X * 2.0, q + Vec2::X * 2.0, 1.0, DARK);
+        }
+    }
+    for deg in [-60.0f32, -30.0, 0.0, 30.0, 60.0] {
+        let x = fcr_point(deg.to_radians(), 0.0).x;
+        c.stroke(Vec2::new(x, hi.y), Vec2::new(x, hi.y - 5.0), 1.0, GREY);
+    }
+    // The scan's edges inside the gimbals.
+    let scan = av.fcr_scan();
+    if scan.az_half < GIMBAL - 1e-3 {
+        for az in [-scan.az_half, scan.az_half] {
+            let x = fcr_point(az, 0.0).x;
+            c.dashed(Vec2::new(x, lo.y), Vec2::new(x, hi.y), 3.0, 4.0, 1.0, DARK);
+        }
+    }
+    let Some((a, pos)) = ac else { return };
+    // The artificial horizon: banked with the aircraft, down as the nose comes up.
+    let (_, pitch, roll) = a.euler();
+    let mid = (lo + hi) / 2.0;
+    let o = mid + Vec2::Y * (pitch / GIMBAL).clamp(-1.0, 1.0) * (hi.y - lo.y) / 2.0;
+    let d = Vec2::new(roll.cos(), -roll.sin());
+    let span = (hi.x - lo.x) * 0.42;
+    for s in [-1.0, 1.0] {
+        c.stroke(o + d * s * 12.0, o + d * s * span, 1.0, GREY);
+    }
+    let radar = p.aa_radar.as_deref().filter(|r| r.on);
+    let Some(radar) = radar else {
+        let label = if av.radar_standby { "STBY" } else { "NO RAD" };
+        stroke_text_at(c, mid.x, mid.y - 20.0, label, 10.0, 1.4, GREEN, Align::Centre);
+        if soi {
+            draw_cursor(c, av.fcr_cursor);
+        }
+        return;
+    };
+    // The antenna: its azimuth under the scope, its elevation left of it.
+    let x = fcr_point(radar.beam, 0.0).x;
+    c.stroke(Vec2::new(x, hi.y + 2.0), Vec2::new(x, hi.y + 7.0), 1.5, WHITE);
+    let y = mid.y - (radar.elevation / GIMBAL).clamp(-1.0, 1.0) * (hi.y - lo.y) / 2.0;
+    c.stroke(Vec2::new(lo.x - 5.0, y), Vec2::new(lo.x - 1.0, y), 1.5, WHITE);
+    // The search's bricks.
+    for b in &radar.bricks {
+        let k = b.range / range;
+        if k > 1.0 || b.az.abs() > GIMBAL {
+            continue;
+        }
+        let q = fcr_point(b.az, k);
+        let colour = if b.age > radar.frame {
+            GREY
+        } else if b.friendly {
+            GREEN
+        } else {
+            WHITE
+        };
+        c.fill_rect(q.x as i32 - 3, q.y as i32 - 1, 6, 3, colour);
+    }
+    // The locked aircraft: a filled square with its heading, its altitude (thousands of feet)
+    // under it, the aspect (tens of degrees off its tail, and our side of its nose), its
+    // heading, closure and ground speed (knots) over the scope.
+    if let Some(t) = radar.track {
+        let k = t.range / range;
+        if k <= 1.0 {
+            let q = fcr_point(t.az, k);
+            c.fill_rect(q.x as i32 - 3, q.y as i32 - 3, 7, 7, WHITE);
+            let d = Vec2::new(t.rel_heading.sin(), -t.rel_heading.cos());
+            c.stroke(q + d * 5.0, q + d * 14.0, 1.3, WHITE);
+            let alt = format!("{}", (t.alt * FT / 1000.0).round() as i32);
+            stroke_text_at(c, q.x, q.y + 11.0, &alt, 7.0, 1.0, WHITE, Align::Centre);
+        }
+        let y = BAND as f32 + 8.0;
+        let aspect = (t.aspect.to_degrees() / 10.0).round() as i32;
+        let side = if aspect == 0 || aspect == 18 {
+            ""
+        } else if t.right {
+            "R"
+        } else {
+            "L"
+        };
+        let heading = (t.heading.to_degrees().rem_euclid(360.0).round() as i32 + 359) % 360 + 1;
+        let left = format!("{aspect}{side} {heading:03}");
+        stroke_text_at(c, lo.x + 10.0, y, &left, 7.0, 1.0, WHITE, Align::Left);
+        let closure = (t.closure * KT).round() as i32;
+        let right = format!("{closure:+} {}", (t.speed * KT).round() as i32);
+        stroke_text_at(c, hi.x - 10.0, y, &right, 7.0, 1.0, WHITE, Align::Right);
+    }
+    if soi {
+        let cursor = av.fcr_cursor;
+        draw_cursor(c, cursor);
+        // The altitudes the scan covers at the cursor's range (thousands of feet).
+        let r = ((hi.y - cursor.y) / (hi.y - lo.y)).clamp(0.0, 1.0) * range;
+        let (low, high) = scan.coverage();
+        let alt = |el: f32| ((pos.0.y as f32 + r * el.tan()) * FT / 1000.0).round() as i32;
+        let at = cursor + Vec2::new(6.0, 0.0);
+        stroke_text_at(c, at.x, at.y - 5.0, &alt(high).to_string(), 6.0, 1.0, WHITE, Align::Left);
+        stroke_text_at(c, at.x, at.y + 5.0, &alt(low).to_string(), 6.0, 1.0, WHITE, Align::Left);
     }
 }
 
@@ -2281,6 +2515,7 @@ fn slew_and_lock(
         Res<Emitters>,
         Option<Res<crate::ground_radar::GroundRadar>>,
     ),
+    aa: Option<Res<crate::aa_radar::AaRadar>>,
     mut hud: ResMut<HudState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     mut locks: MessageWriter<LockRequest>,
@@ -2298,13 +2533,16 @@ fn slew_and_lock(
     follow_view(&mut state.av, view, lo, hi);
     let mut gm = gm_view(&state.av, ac);
     follow_gm(&mut state.av, gm, lo, hi);
-    let f = state.av.soi_format().filter(|f| matches!(f, Format::Hsd | Format::Harm | Format::Gm));
+    let f = state
+        .av
+        .soi_format()
+        .filter(|f| matches!(f, Format::Hsd | Format::Harm | Format::Gm | Format::Fcr));
     let av = &mut state.av;
     // Holding the lock shows the zoomed window and slews finely; letting go locks again, now
-    // picking only what is right under the cursor in the window. Not on the ground map, which
-    // locks at once.
+    // picking only what is right under the cursor in the window. Not on the radar's formats,
+    // which lock at once.
     let zoomed = av.zoom_window();
-    av.mark_held = if controls.mark && f.is_some_and(|f| f != Format::Gm) {
+    av.mark_held = if controls.mark && f.is_some_and(|f| !f.radar()) {
         av.mark_held + time.delta_secs()
     } else {
         0.0
@@ -2332,6 +2570,47 @@ fn slew_and_lock(
             (av.gm_range, av.gm_cursor, av.gm_view) = (range, cursor, placed);
             gm = gm_view(av, ac);
         }
+    }
+    // The A-A radar's cursor stays on the B-scope; pushed past its top the range goes a step
+    // out, past its bottom a step in, the cursor keeping its range.
+    if f == Format::Fcr {
+        let (lo, hi) = fcr_scope();
+        let mut q = av.fcr_cursor + delta;
+        let step = if delta.y < 0.0 && q.y < lo.y {
+            1
+        } else if delta.y > 0.0 && q.y > hi.y {
+            -1
+        } else {
+            0
+        };
+        let next = (av.fcr_range as i32 + step).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize;
+        if next != av.fcr_range {
+            let k = (hi.y - q.y.clamp(lo.y, hi.y)) / (hi.y - lo.y)
+                * (FCR_RANGES_NM[av.fcr_range] / FCR_RANGES_NM[next]);
+            q.y = hi.y - k.min(1.0) * (hi.y - lo.y);
+            av.fcr_range = next;
+        }
+        av.fcr_cursor = q.clamp(lo, hi);
+        if !lock {
+            return;
+        }
+        let range = av.fcr_range_m();
+        let Some(aa) = aa.as_deref().filter(|r| r.on) else { return };
+        let track = aa.track.map(|t| (t.az, t.range, t.target));
+        let bricks = aa.bricks.iter().map(|b| (b.az, b.range, b.target));
+        let near = nearest(
+            bricks
+                .chain(track)
+                .filter(|&(_, r, _)| r <= range)
+                .map(|(az, r, target)| (fcr_point(az, r / range), target)),
+            av.fcr_cursor,
+            PICK_RADIUS,
+        );
+        if let Some(target) = near {
+            hud.mode = HudMode::Air;
+            locks.write(LockRequest(target));
+        }
+        return;
     }
     let cursor = match f {
         Format::Hsd => &mut av.hsd_cursor,
@@ -2806,17 +3085,19 @@ mod tests {
         ));
     }
 
-    /// The radar aircraft's left MFD has the ground map instead of HARM, the right one keeps
-    /// HARM; the ground map can be the SOI and zooms with the zoom keys.
+    /// The radar aircraft's left MFD has the A-A radar and the ground map instead of HARM, the
+    /// right one keeps HARM; the ground map can be the SOI and zooms with the zoom keys.
     #[test]
     fn gm_format_rows_and_soi() {
         let mut s = MfdState { modern: true, ..default() };
         let mut raster = MapRaster::default();
         assert!(!s.av.formats(MfdSide::Left).contains(&Format::Gm));
         s.av.radar = true;
-        assert_eq!(s.av.formats(MfdSide::Left)[1], Format::Gm);
+        assert_eq!(s.av.formats(MfdSide::Left)[1], Format::Fcr);
+        assert_eq!(s.av.formats(MfdSide::Left)[2], Format::Gm);
         assert_eq!(s.av.formats(MfdSide::Right)[1], Format::Harm);
-        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| o.0), Some("GM"));
+        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| o.0), Some("FCR"));
+        assert_eq!(osb(MfdSide::Left, 7, &s).map(|o| o.0), Some("GM"));
         assert_eq!(osb(MfdSide::Right, 6, &s).map(|o| o.0), Some("HARM"));
         assert!(!s.av.radar_emitting());
         apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Left, Format::Gm));
@@ -2828,9 +3109,49 @@ mod tests {
         assert_eq!(s.av.gm_range, r + 1);
         apply(&mut s, &mut raster, MfdCmd::GmRange(-1));
         assert_eq!(s.av.gm_range, r);
-        apply(&mut s, &mut raster, MfdCmd::GmStandby);
+        apply(&mut s, &mut raster, MfdCmd::RadarStandby);
         assert!(!s.av.radar_emitting());
         assert_eq!(osb(MfdSide::Left, 0, &s).map(|o| o.0), Some("STBY"));
+    }
+
+    /// The A-A radar: its own range, scan and antenna buttons, the SOI with the zoom keys on
+    /// its range, sharing the ground map's standby; it transmits while it is up.
+    #[test]
+    fn fcr_format_buttons() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.radar = true;
+        apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Left, Format::Fcr));
+        assert!(s.av.fcr_on() && !s.av.gm_on() && s.av.radar_emitting());
+        let label = |s: &MfdState, slot| osb(MfdSide::Left, slot, s).map(|o| o.0);
+        assert_eq!(label(&s, 0), Some("CRM"));
+        assert_eq!(label(&s, 11), Some("40"));
+        assert_eq!(
+            (label(&s, 13), label(&s, 14), label(&s, 16)),
+            (Some("A6"), Some("4B"), Some("0"))
+        );
+        apply(&mut s, &mut raster, MfdCmd::FcrRange(1));
+        apply(&mut s, &mut raster, MfdCmd::FcrAz);
+        apply(&mut s, &mut raster, MfdCmd::FcrBars);
+        apply(&mut s, &mut raster, MfdCmd::FcrElevation(1));
+        assert_eq!(
+            (label(&s, 11), label(&s, 13), label(&s, 14), label(&s, 16)),
+            (Some("80"), Some("A3"), Some("2B"), Some("+2"))
+        );
+        let scan = s.av.fcr_scan();
+        assert!((scan.az_half - 30f32.to_radians()).abs() < 1e-6 && scan.bars == 2);
+        assert!((scan.elevation - 2f32.to_radians()).abs() < 1e-6);
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Left));
+        assert_eq!(s.av.soi_format(), Some(Format::Fcr));
+        apply(&mut s, &mut raster, MfdCmd::ZoomIn);
+        assert_eq!(label(&s, 11), Some("40"));
+        apply(&mut s, &mut raster, MfdCmd::RadarStandby);
+        assert!(!s.av.radar_emitting());
+        assert_eq!(label(&s, 0), Some("STBY"));
+        // Without the radar it is not offered.
+        s.av.set_radar(false);
+        assert!(s.av.available().all(|f| !f.radar()));
+        assert!(s.av.sides().iter().all(|&side| !s.av.format(side).radar()));
     }
 
     /// F3 goes round the map formats on the left MFD's own bottom row: the ground map only while
@@ -2846,8 +3167,8 @@ mod tests {
             f
         };
         assert_eq!(
-            [cycle(&mut s), cycle(&mut s), cycle(&mut s)],
-            [Format::Gm, Format::Map, Format::Hsd]
+            [cycle(&mut s), cycle(&mut s), cycle(&mut s), cycle(&mut s)],
+            [Format::Fcr, Format::Gm, Format::Map, Format::Hsd]
         );
         // GM moved to the right MFD's row (onto its HARM button), HARM onto the left's.
         s.av.rows[0] = Some(FORMATS);

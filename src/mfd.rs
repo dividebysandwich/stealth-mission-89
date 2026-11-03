@@ -259,8 +259,15 @@ pub enum MfdCmd {
     HsdCentre,
     /// The ground map's range a step out (+) or in (-).
     GmRange(i8),
-    /// The air-to-ground radar to standby and back.
-    GmStandby,
+    /// The radar to standby and back.
+    RadarStandby,
+    /// The A-A radar's range a step out (+) or in (-).
+    FcrRange(i8),
+    /// The A-A radar's scan width (A6, A3, A1) and bars (4, 2, 1), each the next one round.
+    FcrAz,
+    FcrBars,
+    /// The A-A radar's antenna a step up (+) or down (-).
+    FcrElevation(i8),
     MapZoom(i8),
     MapWay,
     /// SMS page: the ORD (true) or WPN page.
@@ -455,14 +462,15 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Format(_, f) | MfdCmd::Assign(_, f) => f.action(),
         MfdCmd::Row(..) => Action::Maps,
         MfdCmd::Soi(_) | MfdCmd::SwapSoi => Action::SwapSoi,
-        MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::MapZoom(d) => {
-            if d > 0 {
-                Action::MapZoomIn
-            } else {
-                Action::MapZoomOut
-            }
+        MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::FcrRange(d) | MfdCmd::MapZoom(d) => {
+            if d > 0 { Action::MapZoomIn } else { Action::MapZoomOut }
         }
-        MfdCmd::HsdCentre | MfdCmd::HarmFilter | MfdCmd::GmStandby => Action::Maps,
+        MfdCmd::HsdCentre
+        | MfdCmd::HarmFilter
+        | MfdCmd::RadarStandby
+        | MfdCmd::FcrAz
+        | MfdCmd::FcrBars
+        | MfdCmd::FcrElevation(_) => Action::Maps,
         MfdCmd::CamZoom(d) => {
             if d > 0 {
                 Action::CameraZoomIn
@@ -841,8 +849,8 @@ fn soi_zoom(state: &MfdState, a: Action) -> Option<MfdCmd> {
     };
     match state.av.soi_format().filter(|_| state.modern)? {
         Format::Tgp => Some(MfdCmd::CamZoom(d)),
-        Format::Hsd | Format::Gm if d > 0 => Some(MfdCmd::ZoomIn),
-        Format::Hsd | Format::Gm => Some(MfdCmd::ZoomOut),
+        Format::Hsd | Format::Gm | Format::Fcr if d > 0 => Some(MfdCmd::ZoomIn),
+        Format::Hsd | Format::Gm | Format::Fcr => Some(MfdCmd::ZoomOut),
         _ => None,
     }
 }
@@ -1477,6 +1485,7 @@ pub struct MfdParams<'w, 's> {
     pub emitters: Res<'w, crate::rwr::Emitters>,
     pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
     pub radar: Option<Res<'w, crate::ground_radar::GroundRadar>>,
+    pub aa_radar: Option<Res<'w, crate::aa_radar::AaRadar>>,
     pub cm: Res<'w, crate::panel::Countermeasures>,
 }
 

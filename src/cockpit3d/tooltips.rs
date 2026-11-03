@@ -305,6 +305,7 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Sms => "tip-cmd-sms",
             Format::Hsi => "tip-cmd-hsi",
             Format::Gm => "tip-cmd-gm",
+            Format::Fcr => "tip-cmd-fcr",
             Format::Eng => "tip-cmd-eng",
         },
         MfdCmd::Soi(_) => "tip-cmd-soi",
@@ -314,7 +315,13 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::HsdCentre => "tip-cmd-hsd-centre",
         MfdCmd::GmRange(1..) => "tip-cmd-gm-range-up",
         MfdCmd::GmRange(..=0) => "tip-cmd-gm-range-down",
-        MfdCmd::GmStandby => "tip-cmd-gm-standby",
+        MfdCmd::RadarStandby => "tip-cmd-gm-standby",
+        MfdCmd::FcrRange(1..) => "tip-cmd-fcr-range-up",
+        MfdCmd::FcrRange(..=0) => "tip-cmd-fcr-range-down",
+        MfdCmd::FcrAz => "tip-cmd-fcr-azimuth",
+        MfdCmd::FcrBars => "tip-cmd-fcr-bars",
+        MfdCmd::FcrElevation(1..) => "tip-cmd-fcr-elevation-up",
+        MfdCmd::FcrElevation(..=0) => "tip-cmd-fcr-elevation-down",
         MfdCmd::MapWay => "tip-cmd-map-way",
         MfdCmd::WaypointNudge(0, 1) => "tip-cmd-waypoint-up",
         MfdCmd::WaypointNudge(0, ..=-1) => "tip-cmd-waypoint-down",
@@ -404,6 +411,14 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
                 // RNG+ buttons.
                 OsbFn::Readout if mfd.av.format(side) == crate::avionics::Format::Gm => {
                     t!("tip-gm-range").to_string()
+                }
+                OsbFn::Readout if mfd.av.format(side) == crate::avionics::Format::Fcr => {
+                    t!(match slot {
+                        1 => "tip-fcr-mode",
+                        16 => "tip-fcr-elevation",
+                        _ => "tip-fcr-range",
+                    })
+                    .to_string()
                 }
                 OsbFn::Readout => t!("tip-hsd-range").to_string(),
             };
