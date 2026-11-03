@@ -705,7 +705,7 @@ static F22: AircraftSpec = AircraftSpec {
     eye: f22_point(0.0, 4.35, 0.92),
     cockpit_view: Some(CockpitView {
         canopy_colours: &[144, 145],
-        cut: (Vec3::new(-0.45, -1.15, -0.85), Vec3::new(0.45, 0.40, 0.80)),
+        cut: (Vec3::new(-0.45, -1.15, -1.25), Vec3::new(0.45, 0.40, 0.80)),
         two_sided: false,
         parts: false,
     }),
