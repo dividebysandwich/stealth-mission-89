@@ -134,7 +134,7 @@ Testing and screenshots
   --debrief-map                open the debrief's flight map at mid-flight
   --export-maps <dir>          write every theater's map picture and exit
   --open-mission, --open-planner, --open-loadout, --open-career, --open-campaign,
-  --open-multiplayer, --open-keyboard, --open-saves
+  --open-multiplayer, --open-host, --open-keyboard, --open-saves
                                start with that screen or window open
   --open-options <tab>         start with OPTIONS open: game, graphics, sound, controls
   --open-voices                start with the VOICES dialog open

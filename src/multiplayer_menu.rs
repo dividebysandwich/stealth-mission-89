@@ -15,7 +15,7 @@ use bevy_egui::{EguiContexts, egui};
 use std::sync::{Arc, Mutex};
 use stealth_campaign::{CampaignSetup, PlayerId};
 use stealth_host::{Host, save};
-use stealth_i18n::t;
+use stealth_i18n::{t, t_lines};
 use stealth_master_proto::ServerEntry;
 use stealth_net::client::{Client, ClientEvent};
 use stealth_net::server::Server;
@@ -23,7 +23,8 @@ use stealth_net::server::Server;
 use crate::campaign::{ActiveCampaign, Role};
 use crate::layout::{Flow, Span, Split, fitted, screen_window};
 use crate::menu::{
-    AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, icon, icon_text, section,
+    AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, dropdown, icon, icon_text,
+    section,
 };
 use crate::mission::MissionData;
 use crate::net::{NetLink, Notice};
@@ -169,6 +170,11 @@ fn test_args(
         && let Some(i) = THEATERS.iter().position(|t| t.0.eq_ignore_ascii_case(&code))
     {
         state.theater = i;
+    }
+    // `--open-host`: the host page, not hosted (screenshots).
+    if args.iter().any(|a| a == "--open-host") {
+        w.show();
+        w.page = Page::Host;
     }
     if args.iter().any(|a| a == "--host") {
         state.friendly_fire |= args.iter().any(|a| a == "--friendly-fire");
@@ -351,6 +357,37 @@ fn multiplayer_window(
                     );
                 });
             });
+            if w.page == Page::Host {
+                flow.card(ui, Span::Fill(SERVER_LEAST), |ui| {
+                    area(ui, false, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(t!("mp-server-name"));
+                            let hint = server_title(&state);
+                            text_entry(
+                                ui,
+                                "mp_server",
+                                &mut state.server_name,
+                                32,
+                                Charset::Name,
+                                settings.vr,
+                                &hint,
+                            );
+                        });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(t!("mp-udp-port"));
+                            ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
+                            ui.add_space(20.0);
+                            ui.label(t!("ops-section-players"));
+                            ui.add(egui::Slider::new(
+                                &mut state.max_players,
+                                2..=stealth_net::protocol::MAX_PLAYERS as u8,
+                            ));
+                        });
+                        ui.label(egui::RichText::new(t!("mp-address-note")).small().color(DIM));
+                        ui.checkbox(&mut state.list_public, t!("mp-list-public"));
+                    });
+                });
+            }
             if w.page == Page::Join {
                 flow.card(ui, Span::Fill(JOIN_LEAST), |ui| {
                     area(ui, false, |ui| {
@@ -407,38 +444,38 @@ fn multiplayer_window(
                     }
                 }
                 Page::Host => {
-                    ui.horizontal(|ui| {
-                        ui.label(t!("mp-server-name"));
-                        let hint = server_title(&state);
-                        text_entry(
-                            ui,
-                            "mp_server",
-                            &mut state.server_name,
-                            32,
-                            Charset::Name,
-                            settings.vr,
-                            &hint,
-                        );
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label(t!("mp-udp-port"));
-                        ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
-                        ui.add_space(20.0);
-                        ui.label(t!("ops-section-players"));
-                        ui.add(egui::Slider::new(
-                            &mut state.max_players,
-                            2..=stealth_net::protocol::MAX_PLAYERS as u8,
-                        ));
-                    });
-                    ui.label(egui::RichText::new(t!("mp-address-note")).small().color(DIM));
-                    ui.checkbox(&mut state.list_public, t!("mp-list-public"));
                     let mut flow = Flow::new(ui);
                     flow.card(ui, Span::Fixed(210.0), |ui| {
                         crate::menu::theater_options(ui, &mut state.theater);
                     });
-                    flow.card(ui, Span::Fixed(200.0), |ui| {
+                    flow.card(ui, Span::Fixed(220.0), |ui| {
                         crate::menu::opponent_options(ui, &mut state.opponents);
                         crate::menu::situation_options(ui, &mut state.roe);
+                        section(ui, t!("section-weather"));
+                        dropdown(
+                            ui,
+                            "mp_weather",
+                            &mut w.clear_sky,
+                            [
+                                (
+                                    false,
+                                    t!("cm-weather-dynamic"),
+                                    t_lines!("cm-weather-dynamic.facts"),
+                                ),
+                                (true, t!("cm-weather-clear"), t_lines!("cm-weather-clear.facts")),
+                            ],
+                        );
+                        section(ui, t!("cm-section-day-night"));
+                        dropdown(
+                            ui,
+                            "mp_sky_ratio",
+                            &mut w.sky_ratio,
+                            [
+                                (1.0, t!("cm-day-real"), t_lines!("cm-day-real.facts")),
+                                (24.0, t!("cm-day-1h"), t_lines!("cm-day-1h.facts")),
+                                (48.0, t!("cm-day-30min"), t_lines!("cm-day-30min.facts")),
+                            ],
+                        );
                     });
                     flow.card(ui, Span::Fixed(230.0), |ui| {
                         section(ui, t!("mp-rules"));
@@ -451,30 +488,7 @@ fn multiplayer_window(
                     });
                     flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
                         section(ui, t!("cm-section-new"));
-                        let (_, theater) = THEATERS[state.theater.min(THEATERS.len() - 1)];
-                        ui.label(theater);
-                        ui.horizontal(|ui| {
-                            ui.label(t!("mp-day-night"));
-                            for (ratio, label) in [
-                                (1.0, t!("cm-day-real")),
-                                (24.0, t!("cm-day-1h")),
-                                (48.0, t!("cm-day-30min")),
-                            ] {
-                                if ui.selectable_label(w.sky_ratio == ratio, label).clicked() {
-                                    w.sky_ratio = ratio;
-                                }
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(t!("mp-weather"));
-                            for (clear, label) in
-                                [(false, t!("cm-weather-dynamic")), (true, t!("cm-weather-clear"))]
-                            {
-                                if ui.selectable_label(w.clear_sky == clear, label).clicked() {
-                                    w.clear_sky = clear;
-                                }
-                            }
-                        });
+                        ui.label(crate::i18n::theater_name(state.theater.min(THEATERS.len() - 1)));
                         let clicked =
                             ui.add(big_button(t!("mp-host-new")).icon(icon::HOST)).clicked();
                         no_name |= clicked && !named;
@@ -521,7 +535,8 @@ fn multiplayer_window(
                                     .iter()
                                     .find(|t| t.0 == code)
                                     .map_or(code.as_str(), |t| t.1);
-                                ui.horizontal(|ui| {
+                                // Wrapped: the buttons go under the label in a narrow column.
+                                ui.horizontal_wrapped(|ui| {
                                     ui.label(format!("{theater:<22} {hours:>5.1} h"));
                                     let clicked = ui
                                         .button(icon_text(ui, icon::HOST, t!("mp-host")))
@@ -664,6 +679,8 @@ const NEW_LEAST: f32 = 280.0;
 /// The width of the name's frame, and the least width of the one to join by address.
 const NAME_WIDTH: f32 = 372.0;
 const JOIN_LEAST: f32 = 540.0;
+/// The least width of the server's settings beside the name.
+const SERVER_LEAST: f32 = 420.0;
 
 /// An error in a popup at the top right of the screen.
 fn error_popup(ctx: &egui::Context, text: &str) {
