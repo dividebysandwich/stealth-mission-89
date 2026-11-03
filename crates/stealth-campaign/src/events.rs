@@ -281,6 +281,20 @@ impl CampaignState {
         if p.owner != Side::Red {
             return Err(text!("ce-support-enemy"));
         }
+        // With the AI flying the board a SEAD offer's own flight goes at once.
+        if o.kind == MissionKind::Sead && self.ai_missions_on() {
+            if self.ai_scheduled(o) {
+                return Err(text!("ce-sead-under-way", place = p.name.as_str()));
+            }
+            if (self.blue.fighters as usize) < AI_FLIGHT_AIRCRAFT {
+                return Err(text!("ce-no-strike-aircraft"));
+            }
+            if self.blue.materiel < AI_MISSION_COST {
+                return Err(text!("ce-no-materiel"));
+            }
+            self.ai_rush.push(offer);
+            return Ok(Vec::new());
+        }
         if self.raids.iter().any(|r| r.side == Side::Blue && r.open() && r.place == place) {
             return Err(text!("ce-sead-under-way", place = p.name.as_str()));
         }

@@ -3354,3 +3354,31 @@ fn the_ais_offers_take_off_in_turn() {
         }
     }
 }
+
+#[test]
+fn a_sead_offer_the_ai_does_not_fly_yet_goes_at_once_on_request() {
+    let mut c = ai_campaign();
+    let sead: Vec<u32> =
+        c.board.iter().filter(|o| o.kind == MissionKind::Sead).map(|o| o.id).collect();
+    let id = sead[0];
+    // One the AI flies on its turn: nothing to ask for.
+    let queued = c.board.iter().find(|o| sead.contains(&o.id) && c.ai_scheduled(o)).cloned();
+    let queued = queued.expect("a SEAD offer in the queue");
+    assert!(c.apply(P0, Command::RequestSupport { offer: queued.id }).is_err());
+    // Last in the queue, after the flights the AI may have out.
+    c.board.iter_mut().find(|o| o.id == id).unwrap().posted = c.clock + 1e6;
+    let o = c.board.iter().find(|o| o.id == id).unwrap().clone();
+    assert!(
+        c.board.iter().filter(|o| ai_missions::ai_flown(o.kind)).count() > tuning::AI_MISSIONS_MAX
+    );
+    assert!(!c.ai_scheduled(&o), "not in the queue");
+    let materiel = c.blue.materiel;
+    c.apply(P0, Command::RequestSupport { offer: id }).expect("at once");
+    assert!(c.ai_scheduled(&o));
+    assert!(c.apply(P0, Command::RequestSupport { offer: id }).is_err(), "twice");
+    assert!(c.raids.iter().all(|r| r.side != Side::Blue), "no raid of its own");
+    c.tick(1.0, &WorldView::default(), &[]);
+    let m = c.ai_mission_for(id).expect("the AI flies it");
+    assert!(m.open());
+    assert_eq!(c.blue.materiel, materiel - tuning::AI_MISSION_COST);
+}

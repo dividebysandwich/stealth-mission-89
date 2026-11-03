@@ -1021,6 +1021,10 @@ pub struct CampaignState {
     /// after it.
     #[serde(default)]
     pub runway_at: [f64; 2],
+    /// Friendly offers a player asked the AI to fly at once (out of the queue, on its next
+    /// tick).
+    #[serde(skip)]
+    pub ai_rush: Vec<u32>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1534,6 +1538,7 @@ impl CampaignState {
             ai_missions: Vec::new(),
             red_board: Vec::new(),
             runway_at: [0.0; 2],
+            ai_rush: Vec::new(),
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));
