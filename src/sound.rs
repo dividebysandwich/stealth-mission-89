@@ -202,9 +202,9 @@ impl RwrTones {
         stealth_i18n::t!(self.id())
     }
 
-    /// Its name in the in-flight menu (the flight font's language).
+    /// Its name in the in-flight menu (the stroke font).
     pub fn flight_name(self) -> &'static str {
-        stealth_i18n::tf!(self.id())
+        stealth_i18n::ts!(self.id())
     }
 
     pub fn facts(self) -> &'static [&'static str] {

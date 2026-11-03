@@ -183,7 +183,7 @@ impl VrInput {
     ];
 
     /// The input's name (the key guide draws it with the stroke font: in
-    /// [`stealth_i18n::flight_language`]).
+    /// [`stealth_i18n::ts`]) .
     pub fn name(self, hand: VrHand) -> &'static str {
         let id = match (self, hand) {
             (VrInput::Trigger, _) => "vr-trigger",
@@ -197,7 +197,7 @@ impl VrInput {
             (VrInput::ThumbLeft, _) => "vr-stick-left",
             (VrInput::ThumbRight, _) => "vr-stick-right",
         };
-        stealth_i18n::tf!(id)
+        stealth_i18n::ts!(id)
     }
 }
 

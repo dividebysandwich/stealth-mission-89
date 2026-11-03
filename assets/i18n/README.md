@@ -35,8 +35,11 @@ description is translated.
 - The HUD and displays: a 3x5 pixel font, ASCII capitals only: messages there are shown in
   capitals without accents (`stealth_i18n::ascii_upper`).
 - The in-flight menu, the kneeboard, the key guide: a stroke font with the accents of the
-  Latin languages. A language in another script (Russian, Chinese) shows these in English
-  (`stealth_i18n::flight_language`, the `tf!` macro).
+  Latin languages; the other scripts (Greek, Cyrillic, Han, kana, hangul) are drawn from the
+  outlines of Hack and the CJK subsets (`src/font.rs`). These texts are in the player's
+  language in every script (the `ts!` macro). The HUD's messages are the only ones that
+  stay in English where the script is not Latin (`stealth_i18n::flight_language`, the `tf!`
+  macro).
 
 ## Fluent in short
 

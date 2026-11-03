@@ -746,24 +746,23 @@ pub(crate) fn big_button(text: &str) -> BigButton {
 static ICON_FAMILY: std::sync::LazyLock<egui::FontFamily> =
     std::sync::LazyLock::new(|| egui::FontFamily::Name("lucide".into()));
 
+pub(crate) fn icon_family() -> egui::FontFamily {
+    ICON_FAMILY.clone()
+}
+
 /// Whether `ctx` has the icon font yet (`add_icon_font`): painting with it before would panic.
 fn has_icon_font(ctx: &egui::Context) -> bool {
     ctx.fonts(|f| f.definitions().families.contains_key(&*ICON_FAMILY))
 }
 
 /// Gives `ctx` the in-flight menu's icon font, from its next pass on (`BigButton::icon`,
-/// `icon_text`).
+/// `icon_text`), with the fonts of the language (`crate::i18n::egui_fonts`: a font added
+/// alone would be lost when the fonts of the language replace it).
 pub(crate) fn add_icon_font(ctx: &egui::Context) {
-    use egui::epaint::text::{FontInsert, FontPriority, InsertFontFamily};
-    if has_icon_font(ctx) {
+    if crate::flight_menu::ICON_FONT.is_none() || has_icon_font(ctx) {
         return;
     }
-    let Some(bytes) = *crate::flight_menu::ICON_FONT else { return };
-    ctx.add_font(FontInsert::new(
-        "lucide",
-        egui::FontData::from_static(bytes),
-        vec![InsertFontFamily { family: ICON_FAMILY.clone(), priority: FontPriority::Highest }],
-    ));
+    ctx.set_fonts(crate::i18n::egui_fonts(stealth_i18n::language()));
 }
 
 /// A small button's text after its icon (as `BigButton::icon`), in the text's size and colour;

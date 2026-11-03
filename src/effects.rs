@@ -3,7 +3,7 @@
 //! (`Effect::name`) turn effects on, `-name` off, `all` / `none` all of them.
 
 use serde::{Deserialize, Serialize};
-use stealth_i18n::{t, t_lines, tf};
+use stealth_i18n::{t, t_lines, ts};
 
 /// Which atmosphere effects are on.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -179,7 +179,7 @@ impl Effect {
 
     /// Its name in the in-flight menu.
     pub fn menu_label(self) -> &'static str {
-        tf!(&format!("fm-effect-{}", self.name()))
+        ts!(&format!("fm-effect-{}", self.name()))
     }
 
     /// What it does (the options window's notes under it).

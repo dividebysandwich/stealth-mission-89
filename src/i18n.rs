@@ -1,9 +1,13 @@
 //! The game's names in the player's language (the messages are in `assets/i18n`, the
 //! translation system in `crates/stealth-i18n`).
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use bevy::prelude::{Entity, Local, Query, Update};
+use bevy_egui::egui;
+#[cfg(target_arch = "wasm32")]
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
 use stealth_i18n::{Language, language, t, tr, tr_lines};
 use stealth_mission::{MissionKind, Sky};
 
@@ -115,8 +119,10 @@ pub fn cjk_font(l: Language) -> Option<&'static [u8]> {
 
 /// egui's fonts for language `l`: Hack, then the CJK fonts, `l`'s first (the same Han
 /// characters are drawn differently in Chinese, Japanese and Korean). The others stay behind it
-/// for the OPTIONS list, which names every language in itself.
-fn egui_fonts(l: Language) -> egui::FontDefinitions {
+/// for the OPTIONS list, which names every language in itself. The icon font (`lucide`, the
+/// menus' buttons) has its own family, with the text fonts behind it: a family of one font
+/// without the replacement characters makes egui warn.
+pub(crate) fn egui_fonts(l: Language) -> egui::FontDefinitions {
     let mut defs = egui::FontDefinitions::default();
     let mut order = CJK;
     order.sort_by_key(|&c| c != l);
@@ -130,21 +136,33 @@ fn egui_fonts(l: Language) -> egui::FontDefinitions {
             }
         }
     }
+    if let Some(bytes) = *crate::flight_menu::ICON_FONT {
+        defs.font_data.insert("lucide".into(), Arc::new(egui::FontData::from_static(bytes)));
+        let mut icons = vec!["lucide".to_string()];
+        icons.extend(
+            defs.families.get(&egui::FontFamily::Proportional).cloned().unwrap_or_default(),
+        );
+        defs.families.insert(crate::menu::icon_family(), icons);
+    }
     defs
 }
 
-/// Gives egui the fonts of the language when it changes.
+/// Gives every egui context the fonts of the language: when it changes, and to the contexts
+/// that come up later (each one starts with egui's default fonts: the in-flight bindings dialog
+/// has a context of its own, made when it opens).
 fn apply_egui_fonts(
-    mut contexts: EguiContexts,
-    mut applied: bevy::prelude::Local<Option<Language>>,
+    mut contexts: Query<(Entity, &mut bevy_egui::EguiContext)>,
+    mut applied: Local<HashMap<Entity, Language>>,
 ) {
     let l = language();
-    if *applied == Some(l) {
-        return;
+    applied.retain(|e, _| contexts.contains(*e));
+    for (entity, mut context) in &mut contexts {
+        if applied.get(&entity) == Some(&l) {
+            continue;
+        }
+        context.get_mut().set_fonts(egui_fonts(l));
+        applied.insert(entity, l);
     }
-    let Ok(ctx) = contexts.ctx_mut() else { return };
-    ctx.set_fonts(egui_fonts(l));
-    *applied = Some(l);
 }
 
 /// Sets up the fonts: `UiFont` and egui's.
@@ -152,7 +170,7 @@ pub struct I18nPlugin;
 
 impl bevy::prelude::Plugin for I18nPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<UiFont>().add_systems(EguiPrimaryContextPass, apply_egui_fonts);
+        app.init_resource::<UiFont>().add_systems(Update, apply_egui_fonts);
         #[cfg(target_arch = "wasm32")]
         if let Some(offer) = language_offer() {
             use bevy::prelude::*;
@@ -362,6 +380,37 @@ mod tests {
                     current.code()
                 );
             }
+        }
+    }
+
+    /// egui draws the CJK characters with the fonts it is given, and the icon family has the
+    /// replacement characters (without them egui warns at every layout).
+    #[test]
+    fn egui_fonts_draw_every_language() {
+        for l in Language::ALL {
+            let defs = egui_fonts(l);
+            if let Some(icons) = defs.families.get(&crate::menu::icon_family()) {
+                assert!(icons.len() > 1, "{}: the icons have no fallback", l.code());
+            }
+            let ctx = egui::Context::default();
+            ctx.run_ui(Default::default(), |_| {}).textures_delta.clear();
+            ctx.set_fonts(defs);
+            let mut out = ctx.run_ui(Default::default(), |ui| {
+                let width = |text: &str| {
+                    ui.ctx().fonts_mut(|f| {
+                        f.layout_no_wrap(
+                            text.into(),
+                            egui::FontId::monospace(15.0),
+                            egui::Color32::WHITE,
+                        )
+                        .size()
+                        .x
+                    })
+                };
+                // Three Han characters are three ems wide, not three Hack replacement boxes.
+                assert!(width("日本語") > 40.0, "{}", l.code());
+            });
+            out.textures_delta.clear();
         }
     }
 }
