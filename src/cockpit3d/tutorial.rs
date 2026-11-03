@@ -136,6 +136,9 @@ enum Target {
     /// The WP+ or WP- button: the panel's, else the MFD page's (the classic WAY page, the modern
     /// HSI format), else the button that shows that page.
     Waypoint(Action),
+    /// The camera's zoom button (its page's, the TGP's), else the camera's display: the classic
+    /// panel has none, its keys zoom.
+    CamZoom,
     Display(CanvasRole),
     Stick,
     /// The throttle (a helicopter's collective).
@@ -868,6 +871,17 @@ static OBJECTIVE_STEPS: &[Step] = {
         Step {
             only: all,
             phase: OBJECTIVE,
+            title: "Camera zoom",
+            detail: "The camera may already be zoomed in: its zoom button steps through AUTO \
+                     (set by the range), then 1X up to 20X; its keys zoom in and out a step at a \
+                     time",
+            keys: &[CameraZoomIn, CameraZoomOut],
+            target: |_| T::CamZoom,
+            done: |c| c.passed || c.zoomed || c.dwell >= LOOK_SECONDS || c.leg.over,
+        },
+        Step {
+            only: all,
+            phase: OBJECTIVE,
             title: "Approach the {target}",
             detail: "Keep on towards {name}, the camera on it: about 30 km out, getting ready \
                      for the run",
@@ -1406,11 +1420,11 @@ fn fill(text: &str, w: &Words) -> String {
         .replace("{weapon}", &w.weapon)
 }
 
-/// The MFDs' zoom: the classic TAC page's and map's, the modern HSD's range.
-type Zoom = (i32, i32, usize);
+/// The MFDs' zoom: the classic TAC page's and map's, the modern HSD's range; the camera's.
+type Zoom = (i32, i32, usize, Option<u8>);
 
 fn zoom(mfd: &MfdState) -> Zoom {
-    (mfd.tac_zoom, mfd.map_zoom, mfd.av.hsd_range)
+    (mfd.tac_zoom, mfd.map_zoom, mfd.av.hsd_range, mfd.cam_zoom)
 }
 
 /// Where the lesson is.
@@ -1918,6 +1932,16 @@ impl Parts<'_, '_> {
                 self.displays.iter().find(|(_, r)| **r == role).map(|(e, _)| e)
             }
             Target::Zoom => self.entity(Target::Cmd(zoom_cmds(mfd)[0]), mfd),
+            Target::CamZoom => self.entity(Target::Cmd(MfdCmd::CamZoomCycle), mfd).or_else(|| {
+                let side = if mfd.modern { mfd.av.shown(Format::Tgp)? } else { MfdSide::Right };
+                let role = match side {
+                    MfdSide::Left => CanvasRole::Left,
+                    MfdSide::Right => CanvasRole::Right,
+                    MfdSide::Third => CanvasRole::Third,
+                    MfdSide::Fourth => CanvasRole::Fourth,
+                };
+                self.entity(Target::Display(role), mfd)
+            }),
             Target::Waypoint(a) => by_action(a).or_else(|| {
                 let page = if !mfd.modern {
                     Target::Action(Action::SelectWaypoint)
@@ -2694,6 +2718,21 @@ mod tests {
                     let on_page = effects.iter().any(|e| e.action(&paged) == Some(a));
                     assert!(has(a) || on_page, "{model}: {a:?}");
                 }
+                // The camera's zoom: its page's button (the classic camera page, the TGP), else
+                // the panel's key cap.
+                let mut cam = MfdState { modern, right: RightMfd::Camera, ..default() };
+                cam.av.formats[1] = Format::Tgp;
+                let cycle = OsbFn::Cmd(MfdCmd::CamZoomCycle);
+                let zoom_button = effects.iter().any(|&e| {
+                    matches!(e, Effect::Osb(side, slot)
+                        if osb(side, slot, &cam).is_some_and(|o| o.1 == cycle))
+                });
+                // The classic panel has none: the arrow points at the camera's display, its keys
+                // zoom.
+                assert!(
+                    zoom_button || has(CameraZoomIn) || model == "classic",
+                    "{model}: camera zoom"
+                );
                 for mode in [0, 1, 2] {
                     let cap = |m| effects.contains(&Effect::HudMode(m));
                     assert!(cap(mode) || mode == 0 && cap(1), "{model}: HUD mode {mode}");
