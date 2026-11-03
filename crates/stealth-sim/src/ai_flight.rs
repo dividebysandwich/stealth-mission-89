@@ -69,11 +69,16 @@ const EYE_FAR: f64 = 8000.0;
 const EYE_MAX: f64 = 20_000.0;
 /// Seconds without a threat after which the pilot stops watching for it.
 const FORGET_S: i32 = 3;
-/// Chance (%) an AI aircraft's flare or chaff `r` map units from a missile fools it: a third of
-/// the player's chance, better the harder the opponents.
-fn ai_cm_pct(r: i32, diff: i32) -> i32 {
-    crate::missiles::cm_fool_pct(r, 3 - diff.clamp(0, 3)) / 3
+/// Chance (%) an AI aircraft's flare or chaff `r` map units from missile `spec` fools it: a third
+/// of the player's chance, better the harder the opponents; the AIM-9M's seeker (IRCCM) rejects
+/// flares `IRCCM` times as often.
+fn ai_cm_pct(r: i32, diff: i32, spec: i32) -> i32 {
+    let pct = crate::missiles::cm_fool_pct(r, 3 - diff.clamp(0, 3)) / 3;
+    if matches!(spec, 23 | 32) { pct / IRCCM } else { pct }
 }
+
+/// How much less often a flare fools the player's AIM-9M than another missile.
+const IRCCM: i32 = 2;
 
 /// `Projectile::cm_fooled` bit: a player missile a flare or chaff fooled; it flies on unguided.
 pub(crate) const DECOYED: u8 = 0x80;
@@ -715,7 +720,7 @@ impl Sim {
             // Map units, as the pilots' missiles roll.
             let r = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() / 32.0;
             if r <= crate::missiles::CM_FAR as f64
-                && self.rng.random(100) < ai_cm_pct(r as i32, diff)
+                && self.rng.random(100) < ai_cm_pct(r as i32, diff, m.spec)
             {
                 m.decoyed = true;
             }
@@ -736,7 +741,7 @@ impl Sim {
             let bit = 1u8 << k;
             if self.proj[s].cm_rolled & bit == 0 {
                 self.proj[s].cm_rolled |= bit;
-                if self.rng.random(100) < ai_cm_pct(self.acq_range, self.diff) {
+                if self.rng.random(100) < ai_cm_pct(self.acq_range, self.diff, spec) {
                     self.proj[s].cm_fooled |= bit | DECOYED;
                     return true;
                 }

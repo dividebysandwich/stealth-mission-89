@@ -3235,11 +3235,11 @@ fn ai_dives_and_flares_against_a_close_shot() {
     assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
 }
 
-/// An AMRAAM fired head-on from 28 km: the MiG cranks off the missile's line to one side,
+/// An AMRAAM fired head-on from 34 km: the MiG cranks off the missile's line to one side,
 /// then the other, and the missile that has to follow kills less often.
 #[test]
 fn ai_cranks_a_long_shot() {
-    let r = evasion_shot(1, 64 * 28, false, true, false, 1);
+    let r = evasion_shot(1, 64 * 34, false, true, false, 1);
     let (at, first) =
         r.off.iter().take(12).copied().enumerate().max_by_key(|(_, o)| o.abs()).unwrap();
     assert!((0x1C00..0x3000).contains(&first.abs()), "crank {first:#x}: {:?}", r.off);
@@ -3249,8 +3249,8 @@ fn ai_cranks_a_long_shot() {
         "never turned back: {:?}",
         r.off
     );
-    let evading = evasion_kills(1, 64 * 28, false, true, true);
-    let flying_on = evasion_kills(1, 64 * 28, false, false, false);
+    let evading = evasion_kills(1, 64 * 34, false, true, true);
+    let flying_on = evasion_kills(1, 64 * 34, false, false, false);
     assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
     // From behind it weaves away from it.
     let evading = evasion_kills(1, 64 * 14, true, true, true);
