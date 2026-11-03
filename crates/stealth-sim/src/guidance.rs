@@ -138,6 +138,9 @@ const LOFT_GAIN: f64 = 1.5;
 const LOFT_MAX: f64 = 0.6;
 const LOFT_FROM: f64 = 0.3;
 const PUSHOVER: f64 = 0.4;
+/// Cosine of the angle (45°) below the loft path at which the missile pushes over at the latest,
+/// so the target stays inside the seeker's field of view.
+const LOFT_LOOK_COS: f64 = 0.71;
 /// Drag: deceleration per (speed² x air density) (1/wu), and per lateral acceleration.
 const DRAG: f64 = 1.0e-5;
 const INDUCED: f64 = 0.12;
@@ -476,12 +479,14 @@ pub(crate) fn flight_step(
             let elev = r[2].atan2(range);
             // Push over toward the target once turning down to it would take a good part
             // of the time left (the missile turns slowly when fast or up high), or when the
-            // target has climbed above the loft path. Both at the speed it is boosting to.
+            // target has climbed above the loft path, or before it drops out of the seeker's
+            // view. At the speed it is boosting to.
             let fast = speed.max(vmax);
             let a_fast = prof.g * GRAVITY * (sigma * (fast / FULL_LIFT_SPEED).powi(2)).min(1.0);
             let turn = (vh[2].clamp(-1.0, 1.0).asin() - elev).max(0.0) * fast / a_fast;
             let to_go = len(r) / fast;
-            if range < 1.0 || elev > loft || turn > PUSHOVER * to_go {
+            let look = dot(r, vh) / len(r).max(1.0);
+            if range < 1.0 || elev > loft || turn > PUSHOVER * to_go || look < LOFT_LOOK_COS {
                 f.loft = 0;
             } else {
                 let want = [r[0] / range * loft.cos(), r[1] / range * loft.cos(), loft.sin()];
@@ -664,6 +669,22 @@ mod tests {
         assert!(near && far, "{near} {far}");
         assert!(near_apex < 10500.0, "near shot flies at the target: {near_apex}");
         assert!(far_apex > 12000.0, "far shot climbs first: {far_apex}");
+    }
+
+    #[test]
+    fn a_long_lofted_aim120_keeps_its_target_in_view() {
+        // Fired level from 10000 at a fighter 40 km ahead at 10000 flying straight at it: the
+        // loft pushes over before the target drops out of the seeker's view.
+        let mut sim = new_sim();
+        missile(&mut sim, 8, 22, [0.0, 0.0, 10000.0], [0.0, -900.0, 0.0]);
+        let tgt = [0.0, -40_000.0 / (crate::aaa::M_PER_MAP / 32.0), 10000.0];
+        let mut m = sim.proj[8];
+        sim.loft_launch(&mut m, tgt);
+        sim.proj[8] = m;
+        let hit = fly(&mut sim, 8, tgt, [0.0, 900.0, 0.0], 60.0, |m, t| {
+            assert!(!m.flight.unwrap().lost, "lost at {t}");
+        });
+        assert!(hit.is_some(), "missed");
     }
 
     #[test]
