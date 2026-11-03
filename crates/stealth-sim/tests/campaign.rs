@@ -992,10 +992,11 @@ fn ai_cas_flies_several_passes_at_its_objectives_units() {
             }
         }
         for m in sim.ai_missiles() {
-            let key = (m.target, m.ground.unwrap_or(usize::MAX));
-            if m.ground.is_some() && !seen.contains(&key) {
-                seen.push(key);
-                aimed.push(m.ground.unwrap());
+            if let Some(g) = m.ground
+                && !seen.contains(&(m.target, g))
+            {
+                seen.push((m.target, g));
+                aimed.push(g);
                 fired += 1;
             }
         }
