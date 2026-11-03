@@ -779,10 +779,10 @@ fn mfd_keys(
     }
     for ActionEvent(a) in actions.read() {
         let cmd = match a {
-            Action::Maps if state.modern => MfdCmd::Format(
-                MfdSide::Left,
-                crate::avionics::next_left_format(state.av.formats[0], state.av.radar),
-            ),
+            Action::Maps if state.modern => match state.av.next_left_format() {
+                Some(f) => MfdCmd::Format(MfdSide::Left, f),
+                None => continue,
+            },
             Action::SwapSoi => MfdCmd::SwapSoi,
             // Every zoom key pair (Z / X, the camera's and the map's) zooms the sensor of
             // interest: the targeting pod, or the HSD's range.

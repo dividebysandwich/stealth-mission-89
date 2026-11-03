@@ -81,8 +81,9 @@ pub const FORMATS: [Format; 5] = [Format::Hsd, Format::Harm, Format::Tgp, Format
 pub const THIRD_FORMATS: [Format; 5] =
     [Format::Hsi, Format::Hsd, Format::Harm, Format::Map, Format::Sms];
 
-/// The left MFD's with an air-to-ground radar: its ground map instead of the HARM display (the
-/// right MFD keeps that).
+/// The left MFD's first row with an air-to-ground radar: its ground map instead of the HARM
+/// display (the right MFD keeps that); the pilot can move either anywhere with the format
+/// menu.
 pub const RADAR_FORMATS: [Format; 5] =
     [Format::Hsd, Format::Gm, Format::Tgp, Format::Map, Format::Sms];
 
@@ -141,16 +142,6 @@ impl Format {
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
         }
-    }
-}
-
-/// F3 on the left MFD: HSD -> MAP -> HARM (the ground map with the radar) -> HSD.
-pub fn next_left_format(f: Format, radar: bool) -> Format {
-    match f {
-        Format::Hsd => Format::Map,
-        Format::Map if radar => Format::Gm,
-        Format::Map => Format::Harm,
-        _ => Format::Hsd,
     }
 }
 
@@ -584,6 +575,20 @@ impl AvionicsState {
     /// The formats the format menu offers: all of them, the ground map with the radar only.
     pub fn available(&self) -> impl Iterator<Item = Format> + '_ {
         ALL_FORMATS.into_iter().filter(|&f| f != Format::Gm || self.radar)
+    }
+
+    /// F3: the left MFD's next map format (HSD, MAP, HARM, GM) along its bottom row, one no
+    /// other MFD shows (with the default rows HSD -> HARM / GM -> MAP -> HSD); None without
+    /// another.
+    pub fn next_left_format(&self) -> Option<Format> {
+        let row = self.formats(MfdSide::Left);
+        let now = self.format(MfdSide::Left);
+        let at = row.iter().position(|&f| f == now).unwrap_or(row.len() - 1);
+        (1..=row.len()).map(|k| row[(at + k) % row.len()]).find(|&f| {
+            matches!(f, Format::Hsd | Format::Map | Format::Harm | Format::Gm)
+                && f != now
+                && self.shown(f).is_none_or(|s| s == MfdSide::Left)
+        })
     }
 
     /// The bottom button (0..5) an MFD's format menu was opened from, if it is open.
@@ -2796,8 +2801,34 @@ mod tests {
         apply(&mut s, &mut raster, MfdCmd::GmStandby);
         assert!(!s.av.radar_emitting());
         assert_eq!(osb(MfdSide::Left, 0, &s).map(|o| o.0), Some("STBY"));
-        assert_eq!(next_left_format(Format::Map, true), Format::Gm);
-        assert_eq!(next_left_format(Format::Map, false), Format::Harm);
+    }
+
+    /// F3 goes round the map formats on the left MFD's own bottom row: the ground map only while
+    /// it is on that row.
+    #[test]
+    fn f3_follows_the_left_row() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.radar = true;
+        let mut cycle = |s: &mut MfdState| {
+            let f = s.av.next_left_format().unwrap();
+            apply(s, &mut raster, MfdCmd::Format(MfdSide::Left, f));
+            f
+        };
+        assert_eq!(
+            [cycle(&mut s), cycle(&mut s), cycle(&mut s)],
+            [Format::Gm, Format::Map, Format::Hsd]
+        );
+        // GM moved to the right MFD's row (onto its HARM button), HARM onto the left's.
+        s.av.rows[0] = Some(FORMATS);
+        s.av.rows[1] = Some([Format::Hsd, Format::Gm, Format::Tgp, Format::Map, Format::Sms]);
+        assert_eq!(
+            [cycle(&mut s), cycle(&mut s), cycle(&mut s)],
+            [Format::Harm, Format::Map, Format::Hsd]
+        );
+        // A map format up on the other MFD is skipped.
+        s.av.select(MfdSide::Right, Format::Map);
+        assert_eq!([cycle(&mut s), cycle(&mut s)], [Format::Harm, Format::Hsd]);
     }
 
     /// A lock on the ground map takes the return under the cursor where it was painted (a site
