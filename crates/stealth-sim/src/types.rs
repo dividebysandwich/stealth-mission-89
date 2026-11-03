@@ -169,6 +169,12 @@ pub struct Projectile {
     /// A CBU-105: the height above the ground it opens at (ft).
     #[serde(default, skip_serializing_if = "no_burst")]
     pub burst_ft: u16,
+    /// Enemy missiles: the player's flare / chaff slots (bit k = `cms[k]`) it has rolled
+    /// against, and those that fooled it.
+    #[serde(default, skip_serializing_if = "no_drop")]
+    pub cm_rolled: u8,
+    #[serde(default, skip_serializing_if = "no_drop")]
+    pub cm_fooled: u8,
 }
 
 fn no_burst(b: &u16) -> bool {

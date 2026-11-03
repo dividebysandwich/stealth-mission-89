@@ -9,6 +9,20 @@ use stealth_i18n::{Text, text};
 const LGB_PULL: f64 = 1.5;
 /// Speed (viewZ units/s) a classic missile sinks at while it drops clear.
 const CLASSIC_DROP_SPEED: i32 = 20;
+/// Flare / chaff seduction: a missile rolls once per cartridge it sees, at `CM_FAR_PCT` %
+/// from `CM_FAR` map units (32 ft) out, rising to `CM_NEAR_PCT` % at `CM_NEAR` and closer
+/// (less `CM_DIFF_PCT` % per difficulty level).
+const CM_FAR: i32 = 0x240;
+const CM_NEAR: i32 = 0x60;
+const CM_FAR_PCT: i32 = 15;
+const CM_NEAR_PCT: i32 = 80;
+const CM_DIFF_PCT: i32 = 5;
+
+/// Chance (%) a flare or chaff cartridge `r` map units from the missile fools it.
+pub(crate) fn cm_fool_pct(r: i32, diff: i32) -> i32 {
+    let t = (CM_FAR - r.clamp(CM_NEAR, CM_FAR)) * 100 / (CM_FAR - CM_NEAR);
+    (CM_FAR_PCT + (CM_NEAR_PCT - CM_FAR_PCT) * t / 100 - CM_DIFF_PCT * diff).max(5)
+}
 
 impl Sim {
     /// Seeker acquisition of a target at (tx, ty, talt) for class `cls`. Sets `acq_aim` always and `acq_range` on
@@ -237,7 +251,17 @@ impl Sim {
                             || (cls == 3
                                 && (hi8s(s16(aim - self.pl.p.heading)).abs() - 0x40).abs()
                                     < 0x40 - 12 * self.diff)));
-                if attract && self.acquire(s, c.x, c.y, self.pl.p.view_z, cls) {
+                if !attract || !self.acquire(s, c.x, c.y, self.pl.p.view_z, cls) {
+                    continue;
+                }
+                let bit = 1u8 << k;
+                if self.proj[s].cm_rolled & bit == 0 {
+                    self.proj[s].cm_rolled |= bit;
+                    if self.rng.random(100) < cm_fool_pct(self.acq_range, self.diff) {
+                        self.proj[s].cm_fooled |= bit;
+                    }
+                }
+                if self.proj[s].cm_fooled & bit != 0 {
                     aim = 1;
                     locked = false;
                 }

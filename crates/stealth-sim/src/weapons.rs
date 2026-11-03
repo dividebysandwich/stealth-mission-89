@@ -726,6 +726,8 @@ impl Sim {
             drop: 0,
             aim: None,
             burst_ft: 0,
+            cm_rolled: 0,
+            cm_fooled: 0,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;
@@ -848,6 +850,11 @@ impl Sim {
             };
             self.pl.cms[k] =
                 Countermeasure { x: self.pl.p.mx, y: self.pl.p.my, kind: kind as i32, ttl };
+            // A fresh cartridge: every missile rolls against it anew.
+            for m in &mut self.proj {
+                m.cm_rolled &= !(1 << k);
+                m.cm_fooled &= !(1 << k);
+            }
             self.msg(text!("sim-released", weapon = name.to_string()));
         }
         self.sound(15, 2);
