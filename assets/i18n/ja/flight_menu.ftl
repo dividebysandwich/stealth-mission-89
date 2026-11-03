@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = アビオニクス
 fm-auto-trim = オートトリム
 fm-tooltips = ツールチップ
+fm-tutorial = インタラクティブチュートリアル
 fm-player-labels = プレイヤー名
 fm-label-size = 名前の大きさ
 fm-cockpit-size = コックピットのサイズ

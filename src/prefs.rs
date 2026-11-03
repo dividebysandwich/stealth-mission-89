@@ -89,6 +89,7 @@ pub struct Prefs {
     /// None: on (the default before it could be chosen).
     pub list_public: Option<bool>,
     pub tooltips: bool,
+    pub tutorial: bool,
     pub player_labels: bool,
     pub player_label_size: f32,
     pub atc: bool,
@@ -177,6 +178,7 @@ impl Default for Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: true,
+            tutorial: false,
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             atc: true,
@@ -282,6 +284,7 @@ impl Prefs {
             max_players: menu.max_players,
             list_public: Some(menu.list_public),
             tooltips: s.tooltips,
+            tutorial: s.tutorial,
             player_labels: s.player_labels,
             player_label_size: s.player_label_size,
             atc: s.atc,
@@ -362,6 +365,7 @@ impl Prefs {
         s.classic_avionics |= self.classic_avionics;
         s.classic_flight |= self.classic_flight;
         s.tooltips = self.tooltips;
+        s.tutorial |= self.tutorial;
         s.player_labels = self.player_labels;
         s.atc = self.atc;
         s.voice = self.voice;
@@ -425,6 +429,7 @@ impl Prefs {
         self.classic_flight = s.classic_flight;
         self.auto_trim = s.auto_trim;
         self.tooltips = s.tooltips;
+        self.tutorial = s.tutorial;
         self.player_labels = s.player_labels;
         self.player_label_size = s.player_label_size;
         self.atc = s.atc;

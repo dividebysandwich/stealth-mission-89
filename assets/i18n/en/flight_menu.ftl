@@ -29,6 +29,7 @@ fm-hud = HUD
 fm-avionics = AVIONICS
 fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
+fm-tutorial = INTERACTIVE TUTORIAL
 fm-atc = AIR TRAFFIC CONTROL
 fm-player-labels = PLAYER LABELS
 fm-label-size = LABEL SIZE

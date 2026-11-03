@@ -25,6 +25,7 @@ fm-hud = HUD
 fm-avionics = 航电
 fm-auto-trim = 自动配平
 fm-tooltips = 提示
+fm-tutorial = 交互式教程
 fm-player-labels = 玩家名称
 fm-label-size = 名称大小
 fm-cockpit-size = 座舱大小

@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTOMATIKUS TRIM
 fm-tooltips = TOOLTIPEK
+fm-tutorial = INTERAKTÍV OKTATÓ
 fm-player-labels = JÁTÉKOSNEVEK
 fm-label-size = NÉVMÉRET
 fm-cockpit-size = PILÓTAFÜLKE MÉRETE

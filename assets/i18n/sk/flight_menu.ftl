@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTOMATICKÝ TRIM
 fm-tooltips = TOOLTIPY
+fm-tutorial = INTERAKTÍVNY NÁVOD
 fm-player-labels = MENÁ HRÁČOV
 fm-label-size = VEĽKOSŤ MIEN
 fm-cockpit-size = VEĽKOSŤ KOKPITU

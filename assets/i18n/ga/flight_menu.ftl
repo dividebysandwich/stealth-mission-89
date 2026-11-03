@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AVIONICS
 fm-auto-trim = UATH-TRIM
 fm-tooltips = LEIDEANNA UIRLISE
+fm-tutorial = TIONSCADAL TEAGASC IDIRGHNÍOMHACH
 fm-player-labels = AINMNEACHA IMREOIRÍ
 fm-label-size = MÉID AINMNEACHA
 fm-cockpit-size = MÉID AN CHOCKPIT

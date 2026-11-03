@@ -109,6 +109,7 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 | `--classic-guidance` | DOS era missile guidance instead of the default realistic guidance (proportional navigation, motors that burn out: the missiles glide on, smoke only while burning; lofted SAM and AIM-120 shots, a Hellfire flying straight for 1 s so it can be lobbed) |
 | `--classic-terrain` | The classic flat ground of the original game instead of the default rolling hills and highlands (also the Terrain switch under Realism) |
 | `--realistic-damage` | realistic weapon damage: missile hits can destroy the aircraft, start fires that burn out or blow it up, and bend control surfaces (out of trim, oscillating) |
+| `--tutorial` | interactive tutorial (single missions only): step by step from the takeoff to the landing, each objective in turn with the weapon to use against it, an arrow points at the cockpit part to use next, which blinks blue, and a box says what to do and which keys do it |
 | `--no-crashes` | crash protection: automatic pull-up near the ground with the gear up, ground contact and collisions are not fatal |
 | `--tacview-real-time [--tacview-address <ip[:port]>] [--tacview-password <text>]` | Tacview real-time telemetry: the flight is shown in Tacview (*Record > Real-Time Telemetry*) while it is flown; hosted on 127.0.0.1:42674 by default, `0.0.0.0` lets another computer join |
 | `--lockheed` | realistic weapons: the real aircraft's 2 bays, no air-to-air missiles, no carrier operations |
