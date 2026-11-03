@@ -127,7 +127,7 @@ pub fn alerts(
     add(w.jammer, Caution, "JAMMERS FAIL");
     add(w.missile_warning, Caution, "MWS FAIL");
     add(w.bay_doors, Caution, "BAY DOORS JAMMED");
-    add(w.tracked, Caution, RADAR_TRACK);
+    add(w.radar_track, Caution, RADAR_TRACK);
     add(w.emv_warning, Caution, DETECTED);
     add(a.is_some_and(|a| a.bay_open) && !w.bay_doors, Advisory, "BAY DOORS OPEN");
     add(a.is_some_and(|a| a.gear_down && !a.on_ground), Advisory, "GEAR DOWN");
@@ -612,7 +612,7 @@ mod tests {
 
     #[test]
     fn alerts_worst_first() {
-        let w = Warnings { fire: true, tracked: true, ..default() };
+        let w = Warnings { fire: true, radar_track: true, ..default() };
         let mut a = hovering();
         a.fuel = 1000.0;
         a.gear_down = false;
@@ -630,7 +630,7 @@ mod tests {
         // Advisories, a radar track and a detection leave it dark; a launch lights it until
         // acknowledged.
         assert!(!master_caution(&alerts(&Warnings::default(), Some(&a), &cm, 1500.0), &[]));
-        let seen = Warnings { tracked: true, emv_warning: true, ..default() };
+        let seen = Warnings { radar_track: true, emv_warning: true, ..default() };
         assert!(!master_caution(&alerts(&seen, Some(&a), &cm, 1500.0), &[]));
         let w = Warnings { radar_missile: true, ..default() };
         let list = alerts(&w, Some(&a), &cm, 1500.0);

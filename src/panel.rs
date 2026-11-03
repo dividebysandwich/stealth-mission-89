@@ -70,6 +70,8 @@ pub struct Warnings {
     pub ir_missile: bool,
     pub tracked: bool,
     pub lock: bool,
+    /// Tracked by radar, steady (the TRAK lamp flashes).
+    pub radar_track: bool,
     /// MW (missile warning) and damage lights ENG, FC, JAM, FIRE, FUEL, BD, AV.
     pub missile_warning: bool,
     pub engine: bool,

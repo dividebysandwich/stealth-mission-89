@@ -1465,6 +1465,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         ir_missile: l.ir,
         tracked: l.trak,
         lock: l.lock,
+        radar_track: sim.identification().2 != 0,
         missile_warning: bits & dmg::MW != 0,
         engine: bits & dmg::ENG != 0,
         fire_control: bits & dmg::FC != 0,
