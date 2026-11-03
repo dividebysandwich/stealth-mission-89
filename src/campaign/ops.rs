@@ -61,6 +61,8 @@ pub struct OpsUi {
     /// center), and `--campaign-designate` was done.
     pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
+    /// The new site whose FAST-TRACK was clicked, awaiting confirmation.
+    pub(super) fast_track: Option<u32>,
     /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
     pub test_taken: bool,
     pub test_manned: bool,
@@ -544,6 +546,7 @@ pub fn ops_ui(
             });
         });
     });
+    super::designate::confirm(ctx, c);
     if c.ui.confirm_exit {
         let window = egui::Window::new("Leave the campaign")
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)

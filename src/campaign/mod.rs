@@ -172,6 +172,10 @@ pub enum Action {
         y: i32,
         kind: stealth_campaign::DefenceKind,
     },
+    /// Build new site `id` at once for materiel.
+    FastTrackSite {
+        id: u32,
+    },
     /// The crate of load `leg` of new site `id` hooked under the helicopter (see `sling.rs`).
     HookCrate {
         id: u32,
@@ -1098,6 +1102,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
             Action::DesignateSite { x, y, kind } => host.designate_site(sim, me, x, y, kind),
+            Action::FastTrackSite { id } => host.fast_track_site(sim, me, id),
             Action::HookCrate { id, leg } => host.hook_crate(sim, me, id, leg),
             Action::DropCrate { id, leg, east, north, heading } => {
                 host.drop_crate(sim, me, id, leg, east, north, heading)
@@ -1160,6 +1165,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
             Action::DesignateSite { x, y, kind } => ToServer::DesignateSite { x, y, kind },
+            Action::FastTrackSite { id } => ToServer::FastTrackSite { id },
             Action::HookCrate { id, leg } => ToServer::HookCrate { id, leg },
             Action::DropCrate { id, leg, east, north, heading } => {
                 ToServer::DropCrate { id, leg, east, north, heading }

@@ -255,6 +255,7 @@ impl Server {
             (ToServer::DesignateSite { x, y, kind }, Some(p)) => {
                 host.designate_site(sim, p, x, y, kind)
             }
+            (ToServer::FastTrackSite { id }, Some(p)) => host.fast_track_site(sim, p, id),
             (ToServer::HookCrate { id, leg }, Some(p)) => host.hook_crate(sim, p, id, leg),
             (ToServer::DropCrate { id, leg, east, north, heading }, Some(p)) => {
                 host.drop_crate(sim, p, id, leg, east, north, heading)

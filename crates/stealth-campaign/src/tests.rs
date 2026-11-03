@@ -2311,6 +2311,42 @@ fn the_last_crate_builds_the_site_and_its_crates_go() {
 }
 
 #[test]
+fn a_fast_tracked_site_is_built_for_materiel_and_its_helicopters_fly_home() {
+    let (mut c, id, _) = patriot_sortie();
+    // One load in by the player, one on its way by AI helicopter.
+    c.apply(P0, Command::HookCrate { id, leg: 0 }).unwrap();
+    c.apply(P0, Command::DropCrate { id, leg: 0, east: 0.0, north: 0.0, heading: 0.0 }).unwrap();
+    let ev = c.tick(tuning::DEPLOY_AI_WAIT + 1.0, &WorldView::default(), &[]);
+    let Some(&CampaignEvent::CargoLaunched { tag, .. }) =
+        ev.iter().find(|e| matches!(e, CampaignEvent::CargoLaunched { .. }))
+    else {
+        panic!("no cargo helicopter: {ev:?}")
+    };
+    let cost = fast_track_cost(c.deployment(id).unwrap());
+    assert_eq!(cost, 2.0 * tuning::DEPLOY_FAST_TRACK_COST);
+    // Not enough materiel: nothing happens.
+    c.blue.materiel = cost - 1.0;
+    assert!(c.apply(P0, Command::FastTrackSite { id }).is_err());
+    assert!(!c.deployment(id).unwrap().built);
+    c.blue.materiel = cost + 5.0;
+    let ev = c.apply(P0, Command::FastTrackSite { id }).unwrap();
+    assert_eq!(c.blue.materiel, 5.0);
+    assert!(ev.contains(&CampaignEvent::Recall { tag }));
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::SiteBuilt { kind: DefenceKind::Patriot, .. }))
+    );
+    let d = c.deployment(id).unwrap();
+    assert!(d.built && d.ai.is_empty() && d.crates.is_empty());
+    // Its loads leave the board.
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    let load =
+        |o: &MissionOffer| matches!(o.objective, Objective::Logistics { site, .. } if site == id);
+    assert!(!c.board.iter().any(load));
+    // Built already: not again.
+    assert!(c.apply(P0, Command::FastTrackSite { id }).is_err());
+}
+
+#[test]
 fn a_save_from_before_the_crates_places_them() {
     let (mut c, id, _) = patriot_sortie();
     let ev = c.tick(tuning::DEPLOY_AI_WAIT + 1.0, &WorldView::default(), &[]);

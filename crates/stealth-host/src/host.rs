@@ -312,6 +312,17 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// A player fast-tracks new site `id` with materiel: it is built at once.
+    pub fn fast_track_site(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let events = self.state.apply(player, Command::FastTrackSite { id })?;
+        Ok(self.apply(sim, events))
+    }
+
     /// A player hooked the crate of load `leg` of new site `id` under his helicopter (his
     /// client saw the hover; near its base, it counts).
     pub fn hook_crate(
