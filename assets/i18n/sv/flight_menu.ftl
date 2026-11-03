@@ -71,3 +71,6 @@ fm-volume-atc = ATC-RÖST
 fm-volume-music = MUSIK
 fm-tracking-mouse = MUSBLICK VID TRACKING
 fm-effect-pixelize = PIXELERING
+fm-effect-sharp-hud = UTAN HUD
+fm-effect-sharp-cockpit = UTAN COCKPIT
+fm-effect-sharp-gauges = UTAN MFD:ER, INSTRUMENT OCH KNEEBOARD

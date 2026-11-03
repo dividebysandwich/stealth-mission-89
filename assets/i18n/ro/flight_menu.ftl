@@ -71,3 +71,6 @@ fm-volume-atc = VOCE ATC
 fm-volume-music = MUZICĂ
 fm-tracking-mouse = PRIVIRE CU MOUSE-UL LA TRACKING
 fm-effect-pixelize = PIXELARE
+fm-effect-sharp-hud = FĂRĂ HUD
+fm-effect-sharp-cockpit = FĂRĂ CABINĂ
+fm-effect-sharp-gauges = FĂRĂ MFD-URI, INSTRUMENTE ȘI PLANȘETĂ

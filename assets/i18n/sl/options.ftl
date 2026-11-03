@@ -271,3 +271,14 @@ effect-pixelize = Pikselizacija
         Ves 3D-pogled (teren, letala, stavbe, kabina) v velikih kvadratnih pikslih kot na računalniku z MS-DOS; meniji in namigi ostanejo ostri (ne v VR)
         Drsnik nastavi velikost bloka v slikovnih pikah zaslona (2: fino, 5: grobo)
         Glajenje robov je izklopljeno, dokler je vklopljena
+        Tri stikala pod njo pustijo HUD, kokpit ali MFD-je, instrumente in Kneeboard ostre
+effect-sharp-hud = Brez HUD
+    .facts =
+        Pikselizacija: HUD (in zaslon na čeladi) se riše ostro čez pikselizirani pogled, da njegovi tanki simboli ostanejo berljivi
+effect-sharp-cockpit = Brez kokpita (gumbi, stikala...)
+    .facts =
+        Pikselizacija: plošča, okvir, sedež, gumbi, stikala, ročica in ročica za plin kokpita se rišejo ostro
+effect-sharp-gauges = Brez MFD-jev, instrumentov in Kneeboarda
+    .facts =
+        Pikselizacija: MFD-ji, umetni horizont, instrumenti, lučke, odčitki, oznake in Kneeboard se rišejo ostro
+options-needs-pixelize = Zahteva pikselizacijo

@@ -71,3 +71,6 @@ fm-volume-atc = ATC音声
 fm-volume-music = 音楽
 fm-tracking-mouse = トラッキング中のマウス視点
 fm-effect-pixelize = ピクセル化
+fm-effect-sharp-hud = HUDを除外
+fm-effect-sharp-cockpit = コックピットを除外
+fm-effect-sharp-gauges = MFD、計器、ニーボードを除外

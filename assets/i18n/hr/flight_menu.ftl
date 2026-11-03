@@ -71,3 +71,6 @@ fm-volume-atc = GLAS ATC
 fm-volume-music = GLAZBA
 fm-tracking-mouse = POGLED MIŠEM PRI PRAĆENJU
 fm-effect-pixelize = PIKSELIZACIJA
+fm-effect-sharp-hud = BEZ HUD-A
+fm-effect-sharp-cockpit = BEZ KOKPITA
+fm-effect-sharp-gauges = BEZ MFD-OVA, INSTRUMENATA I KNEEBOARDA

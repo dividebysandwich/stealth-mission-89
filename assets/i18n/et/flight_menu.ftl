@@ -71,3 +71,6 @@ fm-volume-atc = ATC HÄÄL
 fm-volume-music = MUUSIKA
 fm-tracking-mouse = HIIREGA VAATAMINE JÄLGIMISEL
 fm-effect-pixelize = PIKSELDAMINE
+fm-effect-sharp-hud = ILMA HUD-ITA
+fm-effect-sharp-cockpit = ILMA KOKPITITA
+fm-effect-sharp-gauges = ILMA MFD-DE, MÕÕTERIISTADE JA KNEEBOARDITA

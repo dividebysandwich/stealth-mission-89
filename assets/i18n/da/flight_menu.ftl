@@ -71,3 +71,6 @@ fm-volume-atc = ATC-STEMME
 fm-volume-music = MUSIK
 fm-tracking-mouse = MUSEBLIK VED TRACKING
 fm-effect-pixelize = PIXELERING
+fm-effect-sharp-hud = UDEN HUD
+fm-effect-sharp-cockpit = UDEN COCKPIT
+fm-effect-sharp-gauges = UDEN MFD'ER, INSTRUMENTER OG KNEEBOARD

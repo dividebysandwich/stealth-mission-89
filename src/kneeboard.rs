@@ -21,7 +21,8 @@ use stealth_sim::oflags;
 
 use crate::camera::EyeCamera;
 use crate::canvas::{Canvas, CanvasTexture, Picture};
-use crate::cockpit3d::{CockpitRoot, Hands};
+use crate::cockpit3d::{CockpitMaterial, CockpitRoot, Hands, cockpit_material_bright, in_part};
+use crate::effects::ViewPart;
 use crate::flight::Player;
 use crate::font::{Align, stroke_text_at, stroke_width};
 use crate::hotas::InputConfig;
@@ -220,7 +221,7 @@ fn spawn(
     settings: Res<Settings>,
     mut kb: ResMut<Kneeboard>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<CockpitMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let Ok(root) = roots.single() else { return };
@@ -229,12 +230,16 @@ fn spawn(
         None => {
             let tex = CanvasTexture::mipmapped(Canvas::new(W, H), &mut images, false);
             let image = tex.image.clone();
-            let material = materials.add(StandardMaterial {
-                base_color_texture: Some(image.clone()),
-                unlit: true,
-                fog_enabled: false,
-                ..default()
-            });
+            // A cockpit material, so that pixelize can leave the board sharp with the gauges.
+            let material = materials.add(in_part(
+                cockpit_material_bright(StandardMaterial {
+                    base_color_texture: Some(image.clone()),
+                    unlit: true,
+                    fog_enabled: false,
+                    ..default()
+                }),
+                ViewPart::Gauges,
+            ));
             // Only if the cockpit still stands when the commands apply (it can be rebuilt
             // the frame this runs), or the board would be left without one.
             let board = (

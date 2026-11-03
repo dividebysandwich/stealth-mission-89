@@ -271,3 +271,14 @@ effect-pixelize = Pixelizace
         Celý 3D pohled (terén, letadla, budovy, kabina) ve velkých čtvercových pixelech jako na PC s MS-DOS; nabídky a popisky zůstávají ostré (ne ve VR)
         Posuvník nastavuje velikost bloku v pixelech obrazovky (2: jemný, 5: hrubý)
         Vyhlazování hran je vypnuto, dokud je zapnutá
+        Tři přepínače pod ní nechají HUD, kokpit nebo MFD, přístroje a Kneeboard ostré
+effect-sharp-hud = Bez HUD
+    .facts =
+        Pixelizace: HUD (i přilbový displej) se kreslí ostře přes pixelizovaný obraz, aby jeho tenké symboly zůstaly čitelné
+effect-sharp-cockpit = Bez kokpitu (tlačítka, přepínače...)
+    .facts =
+        Pixelizace: panel, rám, sedadlo, tlačítka, přepínače, řídicí páka a plynová páka kokpitu se kreslí ostře
+effect-sharp-gauges = Bez MFD, přístrojů a kneeboardu
+    .facts =
+        Pixelizace: MFD, umělý horizont, přístroje, kontrolky, údaje, popisky a Kneeboard se kreslí ostře
+options-needs-pixelize = Vyžaduje Pixelizaci

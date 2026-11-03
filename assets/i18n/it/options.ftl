@@ -271,3 +271,14 @@ effect-pixelize = Pixelizzazione
         Tutta la vista 3D (terreno, velivoli, edifici, cabina) in grandi pixel quadrati, come su un PC MS-DOS; i menu e i tooltip restano nitidi (non in VR)
         Il cursore imposta la dimensione di un blocco, in pixel dello schermo (2: fine, 5: grossolano)
         L'anti-aliasing è disattivato finché è attiva
+        I tre interruttori sotto lasciano nitidi l'HUD, il cockpit o gli MFD, gli strumenti e il Kneeboard
+effect-sharp-hud = Senza HUD
+    .facts =
+        Pixelizzazione: l'HUD (e il visore del casco) è disegnato nitido sopra la vista pixelizzata, così i suoi simboli sottili restano leggibili
+effect-sharp-cockpit = Senza cockpit (pulsanti, interruttori...)
+    .facts =
+        Pixelizzazione: pannello, telaio, sedile, pulsanti, interruttori, cloche e manetta dell'abitacolo sono disegnati nitidi
+effect-sharp-gauges = Senza MFD, strumenti e Kneeboard
+    .facts =
+        Pixelizzazione: gli MFD, la sfera d'assetto, gli strumenti, le spie, le letture, le etichette e il Kneeboard sono disegnati nitidi
+options-needs-pixelize = Richiede la Pixelizzazione

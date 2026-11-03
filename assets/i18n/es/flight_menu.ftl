@@ -71,3 +71,6 @@ fm-volume-atc = VOZ ATC
 fm-volume-music = MÚSICA
 fm-tracking-mouse = MIRADA CON RATÓN AL SEGUIR
 fm-effect-pixelize = PIXELADO
+fm-effect-sharp-hud = SIN HUD
+fm-effect-sharp-cockpit = SIN CABINA
+fm-effect-sharp-gauges = SIN MFD, INSTRUMENTOS Y TABLILLA DE RODILLA

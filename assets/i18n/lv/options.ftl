@@ -271,3 +271,14 @@ effect-pixelize = Pikselizācija
         Viss 3D skats (reljefs, lidmašīnas, ēkas, kabīne) lielos kvadrātveida pikseļos kā MS-DOS datorā; izvēlnes un padomi paliek asi (ne VR)
         Slīdnis nosaka bloka izmēru ekrāna pikseļos (2: smalks, 5: rupjš)
         Malu izlīdzināšana ir izslēgta, kamēr tā ir ieslēgta
+        Trīs slēdži zem tās atstāj HUD, kabīni vai MFD, instrumentus un Kneeboard skaidrus
+effect-sharp-hud = Bez HUD
+    .facts =
+        Pikselizācija: HUD (un ķiveres displejs) tiek zīmēts skaidri virs pikselizētā skata, lai tā smalkie simboli paliktu salasāmi
+effect-sharp-cockpit = Bez kabīnes (pogas, slēdži...)
+    .facts =
+        Pikselizācija: kabīnes panelis, rāmis, sēdeklis, pogas, slēdži, vadības rokturis un gāzes svira tiek zīmēti skaidri
+effect-sharp-gauges = Bez MFD, instrumentiem un Kneeboard
+    .facts =
+        Pikselizācija: MFD, mākslīgais horizonts, instrumenti, lampiņas, rādījumi, uzraksti un Kneeboard tiek zīmēti skaidri
+options-needs-pixelize = Nepieciešama pikselizācija

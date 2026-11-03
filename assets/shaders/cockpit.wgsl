@@ -44,6 +44,9 @@
 
 // Retro output (shading.rs `CockpitShading::retro`; palette.wgsl `retro`).
 @group(#{MATERIAL_BIND_GROUP}) @binding(102) var<uniform> retro_mode: vec4<f32>;
+// Pixelize (shading.rs `CockpitShading::sharp`): x = 1 leaves the surface out of the pixelized
+// picture, by drawing it with an alpha of 0 (pixelize.wgsl keeps those pixels as they are).
+@group(#{MATERIAL_BIND_GROUP}) @binding(103) var<uniform> sharp: vec4<f32>;
 const SCANLINE: f32 = 0.6;
 
 fn retro(rgb: vec3<f32>, frag: vec2<f32>) -> vec3<f32> {
@@ -204,6 +207,6 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     out.color = vec4<f32>(out.color.rgb + flood_light(pbr_input.material.base_color.rgb), out.color.a);
     out.color = vec4<f32>(nvg(out.color.rgb, in.position), out.color.a);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
-    out.color = vec4<f32>(retro(out.color.rgb, in.position.xy), out.color.a);
+    out.color = vec4<f32>(retro(out.color.rgb, in.position.xy), out.color.a * (1.0 - sharp.x));
     return out;
 }

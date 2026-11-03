@@ -271,3 +271,14 @@ effect-pixelize = Pikselöinti
         Koko 3D-näkymä (maasto, koneet, rakennukset, ohjaamo) isoina neliöpikseleinä kuin MS-DOS-koneella; valikot ja työkaluvihjeet pysyvät teräväpiirtoisina (ei VR:ssä)
         Liukusäädin asettaa lohkon koon näytön pikseleinä (2: hieno, 5: karkea)
         Reunojen pehmennys on pois päältä, kun se on päällä
+        Sen alla olevat kolme kytkintä jättävät HUD:in, ohjaamon tai MFD-näytöt, mittarit ja Kneeboardin teräviksi
+effect-sharp-hud = Ilman HUD:ia
+    .facts =
+        Pikselöinti: HUD (ja kypärän näyttö) piirretään teräväksi pikselöidyn kuvan päälle, jotta sen ohuet symbolit pysyvät luettavina
+effect-sharp-cockpit = Ilman ohjaamoa (painikkeet, kytkimet...)
+    .facts =
+        Pikselöinti: ohjaamon paneeli, runko, istuin, painikkeet, kytkimet, ohjaussauva ja kaasuvipu piirretään teräviksi
+effect-sharp-gauges = Ilman MFD-näyttöjä, mittareita ja Kneeboardia
+    .facts =
+        Pikselöinti: MFD-näytöt, tekohorisontti, mittarit, merkkivalot, lukemat, tekstit ja Kneeboard piirretään teräviksi
+options-needs-pixelize = Vaatii pikselöinnin

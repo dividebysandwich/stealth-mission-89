@@ -71,3 +71,6 @@ fm-volume-atc = ATC BALSS
 fm-volume-music = MŪZIKA
 fm-tracking-mouse = SKATĪŠANĀS AR PELI SEKOŠANAS LAIKĀ
 fm-effect-pixelize = PIKSELIZĀCIJA
+fm-effect-sharp-hud = BEZ HUD
+fm-effect-sharp-cockpit = BEZ KABĪNES
+fm-effect-sharp-gauges = BEZ MFD, INSTRUMENTIEM UN KNEEBOARD

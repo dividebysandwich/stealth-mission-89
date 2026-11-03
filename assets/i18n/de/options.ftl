@@ -271,3 +271,14 @@ effect-pixelize = Pixelierung
         Die ganze 3D-Ansicht (Gelände, Flugzeuge, Gebäude, Cockpit) in großen quadratischen Pixeln, wie auf einem MS-DOS-PC; die Menüs und Tooltips bleiben scharf (nicht in VR)
         Der Regler stellt die Größe eines Blocks in Bildschirmpixeln ein (2: fein, 5: grob)
         Die Kantenglättung ist aus, solange sie an ist
+        Die drei Schalter darunter lassen das HUD, das Cockpit oder die MFDs, Instrumente und das Kniebrett scharf
+effect-sharp-hud = Ohne HUD
+    .facts =
+        Pixelierung: Das HUD (und das Helmdisplay) wird scharf über der pixelierten Ansicht gezeichnet, damit seine dünnen Symbole lesbar bleiben
+effect-sharp-cockpit = Ohne Cockpit (Knöpfe, Schalter ...)
+    .facts =
+        Pixelierung: Panel, Rahmen, Sitz, Knöpfe, Schalter, Steuerknüppel und Schubhebel des Cockpits werden scharf gezeichnet
+effect-sharp-gauges = Ohne MFDs, Instrumente und Kniebrett
+    .facts =
+        Pixelierung: Die MFDs, der künstliche Horizont, die Instrumente, die Lampen, die Anzeigen, die Beschriftungen und das Kniebrett werden scharf gezeichnet
+options-needs-pixelize = Benötigt Pixelierung

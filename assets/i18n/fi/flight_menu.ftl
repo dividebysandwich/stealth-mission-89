@@ -71,3 +71,6 @@ fm-volume-atc = ATC-ÄÄNI
 fm-volume-music = MUSIIKKI
 fm-tracking-mouse = HIIRELLÄ KATSELU SEURANNASSA
 fm-effect-pixelize = PIKSELÖINTI
+fm-effect-sharp-hud = ILMAN HUD:IA
+fm-effect-sharp-cockpit = ILMAN OHJAAMOA
+fm-effect-sharp-gauges = ILMAN MFD-NÄYTTÖJÄ, MITTAREITA JA KNEEBOARDIA

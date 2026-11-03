@@ -70,3 +70,6 @@ fm-volume-atc = ATC 语音
 fm-volume-music = 音乐
 fm-tracking-mouse = 追踪时鼠标视角
 fm-effect-pixelize = 像素化
+fm-effect-sharp-hud = 排除 HUD
+fm-effect-sharp-cockpit = 排除座舱
+fm-effect-sharp-gauges = 排除 MFD、仪表和膝板

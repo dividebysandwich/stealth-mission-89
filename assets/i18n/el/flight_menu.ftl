@@ -71,3 +71,6 @@ fm-volume-atc = ΦΩΝΗ ATC
 fm-volume-music = ΜΟΥΣΙΚΗ
 fm-tracking-mouse = ΠΑΝΟΡΑΜΑ ΜΕ ΠΟΝΤΙΚΙ ΣΤΟ TRACKING
 fm-effect-pixelize = ΠΙΞΕΛΟΠΟΙΗΣΗ
+fm-effect-sharp-hud = ΧΩΡΙΣ HUD
+fm-effect-sharp-cockpit = ΧΩΡΙΣ ΠΙΛΟΤΗΡΙΟ
+fm-effect-sharp-gauges = ΧΩΡΊΣ MFD, ΌΡΓΑΝΑ ΚΑΙ KNEEBOARD

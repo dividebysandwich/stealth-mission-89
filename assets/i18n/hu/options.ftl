@@ -271,3 +271,14 @@ effect-pixelize = Pixelesítés
         A teljes 3D nézet (terep, repülőgépek, épületek, pilótafülke) nagy négyzet alakú pixelekkel, mint egy MS-DOS-os PC-n; a menük és a súgók éles marad (VR-ban nem)
         A csúszka a blokk méretét állítja képernyőpixelben (2: finom, 5: durva)
         Az élsimítás ki van kapcsolva, amíg be van kapcsolva
+        Az alatta lévő három kapcsoló élesen hagyja a HUD-ot, a pilótafülkét vagy az MFD-ket, a műszereket és a Kneeboardot
+effect-sharp-hud = HUD nélkül
+    .facts =
+        Pixelesítés: A HUD (és a sisakkijelző) élesen jelenik meg a pixelesített kép felett, így vékony jelei olvashatók maradnak
+effect-sharp-cockpit = Pilótafülke nélkül (gombok, kapcsolók...)
+    .facts =
+        Pixelesítés: A pilótafülke panelje, kerete, ülése, gombjai, kapcsolói, botkormánya és gázkarja élesen jelenik meg
+effect-sharp-gauges = MFD-k, műszerek és Kneeboard nélkül
+    .facts =
+        Pixelesítés: Az MFD-k, a műhorizont, a műszerek, a lámpák, a kijelzések, a feliratok és a Kneeboard élesen jelennek meg
+options-needs-pixelize = Pixelesítést igényel

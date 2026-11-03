@@ -271,3 +271,14 @@ effect-pixelize = Pixelado
         Toda la vista 3D (terreno, aviones, edificios, cabina) en píxeles cuadrados grandes, como en un PC con MS-DOS; los menús y los tooltips siguen nítidos (no en VR)
         El control deslizante fija el tamaño de un bloque, en píxeles de pantalla (2: fino, 5: grueso)
         El antialiasing está desactivado mientras esté activo
+        Los tres interruptores de debajo dejan nítidos el HUD, la cabina o los MFD, los instrumentos y la tablilla de rodilla
+effect-sharp-hud = Sin HUD
+    .facts =
+        Pixelado: el HUD (y la pantalla del casco) se dibuja nítido sobre la vista pixelada, para que sus símbolos finos sigan siendo legibles
+effect-sharp-cockpit = Sin cabina (botones, interruptores...)
+    .facts =
+        Pixelado: el panel, el marco, el asiento, los botones, los interruptores, la palanca de mando y la de gases de la cabina se dibujan nítidos
+effect-sharp-gauges = Sin MFD, instrumentos y tablilla de rodilla
+    .facts =
+        Pixelado: los MFD, la bola de actitud, los instrumentos, las luces, las lecturas, las etiquetas y la tablilla de rodilla se dibujan nítidos
+options-needs-pixelize = Requiere Pixelado

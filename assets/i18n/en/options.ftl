@@ -234,6 +234,17 @@ effect-pixelize = Pixelize
         The whole 3D view (terrain, aircraft, buildings, the cockpit) in big square pixels, as on an MS-DOS PC; the menus and tooltips stay sharp (not in VR)
         The slider sets the size of a block, in screen pixels (2: fine, 5: coarse)
         Anti-aliasing is off while it is on
+        The three switches under it leave the HUD, the cockpit or the MFDs, gauges and kneeboard sharp
+effect-sharp-hud = Exclude HUD
+    .facts =
+        Pixelize: the HUD (and the helmet display) is drawn sharp over the pixelized view, so its thin symbols stay readable
+effect-sharp-cockpit = Exclude cockpit (buttons, toggles...)
+    .facts =
+        Pixelize: the cockpit's panel, frame, seat, buttons, toggles, stick and throttle are drawn sharp
+effect-sharp-gauges = Exclude MFDs, gauges, kneeboard
+    .facts =
+        Pixelize: the MFDs, the attitude ball, the gauges, the lamps, the readouts, the labels and the kneeboard are drawn sharp
+options-needs-pixelize = Needs Pixelize
 
 ## LANGUAGE NAMES
 

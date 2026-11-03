@@ -271,3 +271,14 @@ effect-pixelize = Pikseldamine
         Kogu 3D-vaade (maastik, lennukid, hooned, kabiin) suurte ruudukujuliste pikslitena nagu MS-DOS-arvutis; menüüd ja kohtspikrid jäävad teravaks (mitte VR-is)
         Liugur määrab ploki suuruse ekraanipikslites (2: peen, 5: jäme)
         Ääntesilumine on väljas, kuni see on sees
+        Selle all olevad kolm lülitit jätavad HUD-i, kokpiti või MFD-d, mõõteriistad ja Kneeboardi teravaks
+effect-sharp-hud = Ilma HUD-ita
+    .facts =
+        Pikseldamine: HUD (ja kiivrikuvar) joonistatakse teravana pikseldatud pildi peale, et selle peenikesed sümbolid püsiksid loetavad
+effect-sharp-cockpit = Ilma kokpitita (nupud, lülitid...)
+    .facts =
+        Pikseldamine: kokpiti paneel, raam, iste, nupud, lülitid, juhtkang ja gaasihoob joonistatakse teravana
+effect-sharp-gauges = Ilma MFD-de, mõõteriistade ja Kneeboardita
+    .facts =
+        Pikseldamine: MFD-d, tehishorisont, mõõteriistad, märgutuled, näidud, sildid ja Kneeboard joonistatakse teravana
+options-needs-pixelize = Vajab pikseldamist

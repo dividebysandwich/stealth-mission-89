@@ -71,3 +71,6 @@ fm-volume-atc = ATC BALSAS
 fm-volume-music = MUZIKA
 fm-tracking-mouse = ŽVALGYMASIS PELE SEKANT
 fm-effect-pixelize = PIKSELIZACIJA
+fm-effect-sharp-hud = BE HUD
+fm-effect-sharp-cockpit = BE KABINOS
+fm-effect-sharp-gauges = BE MFD, PRIETAISŲ IR KNEEBOARD

@@ -271,3 +271,14 @@ effect-pixelize = Pixelering
         Hele 3D-visningen (terræn, fly, bygninger, cockpit) i store firkantede pixel, som på en MS-DOS-pc; menuerne og tooltips forbliver skarpe (ikke i VR)
         Skyderen angiver et bloks størrelse, i skærmpixel (2: fin, 5: grov)
         Kantudjævning er slået fra, så længe den er til
+        De tre kontakter under den lader HUD'et, cockpittet eller MFD'erne, instrumenterne og Kneeboard være skarpe
+effect-sharp-hud = Uden HUD
+    .facts =
+        Pixelering: HUD'et (og hjelmdisplayet) tegnes skarpt oven på det pixelerede billede, så de tynde symboler forbliver læselige
+effect-sharp-cockpit = Uden cockpit (knapper, kontakter...)
+    .facts =
+        Pixelering: cockpittets panel, ramme, sæde, knapper, kontakter, styrepind og gashåndtag tegnes skarpt
+effect-sharp-gauges = Uden MFD'er, instrumenter og kneeboard
+    .facts =
+        Pixelering: MFD'erne, den kunstige horisont, instrumenterne, lamperne, udlæsningerne, mærkaterne og Kneeboard tegnes skarpt
+options-needs-pixelize = Kræver Pixelering

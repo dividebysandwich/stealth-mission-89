@@ -271,3 +271,14 @@ effect-pixelize = Pikselizacja
         Cały widok 3D (teren, samoloty, budynki, kokpit) w dużych kwadratowych pikselach, jak na komputerze z MS-DOS; menu i podpowiedzi pozostają ostre (nie w VR)
         Suwak ustawia rozmiar bloku w pikselach ekranu (2: drobny, 5: gruby)
         Antyaliasing jest wyłączony, dopóki jest włączona
+        Trzy przełączniki pod nią zostawiają ostre HUD, kokpit lub MFD, przyrządy i Kneeboard
+effect-sharp-hud = Bez HUD
+    .facts =
+        Pikselizacja: HUD (i wyświetlacz w hełmie) jest rysowany ostro nad spikselizowanym obrazem, aby jego cienkie symbole pozostały czytelne
+effect-sharp-cockpit = Bez kokpitu (przyciski, przełączniki...)
+    .facts =
+        Pikselizacja: panel, rama, fotel, przyciski, przełączniki, drążek sterowy i przepustnica kokpitu są rysowane ostro
+effect-sharp-gauges = Bez MFD, przyrządów i Kneeboardu
+    .facts =
+        Pikselizacja: MFD, sztuczny horyzont, przyrządy, lampki, wskazania, podpisy i Kneeboard są rysowane ostro
+options-needs-pixelize = Wymaga pikselizacji

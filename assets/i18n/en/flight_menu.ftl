@@ -71,3 +71,6 @@ fm-effect-vga = VGA COLOURS
 fm-effect-scanlines = SCANLINES
 fm-effect-sunbeams = SUNBEAMS
 fm-effect-pixelize = PIXELIZE
+fm-effect-sharp-hud = EXCLUDE HUD
+fm-effect-sharp-cockpit = EXCLUDE COCKPIT
+fm-effect-sharp-gauges = EXCLUDE MFDS+GAUGES+KNEEBOARD
