@@ -22,7 +22,7 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
   <a href="https://www.reddit.com/r/StealthMission89/">
     <img alt="Discuss on Reddit" src="https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" />
   </a>
-  
+
   <a href="https://discord.gg/zjjGeKKpC">
     <img alt="Join us on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" />
   </a>
