@@ -209,9 +209,11 @@ pub enum Action {
     },
     /// Man a friendly air defence console, leave it, or fight it.
     Station(StationCmd),
-    /// Take over aircraft `tag` of a friendly AI flight in the air.
+    /// Take over aircraft `tag` of a friendly AI flight in the air, with the stores its
+    /// mission's briefing gives.
     TakeControl {
         tag: u32,
+        loadout: Option<crate::loadout::PlannedLoadout>,
     },
     /// In the air: leave the aircraft to the AI.
     LeaveAircraft,
@@ -795,7 +797,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             .find_map(|m| m.takeable());
         if let Some(tag) = tag.filter(|&t| s.combat.sim.takeable(t)) {
             c.ui.test_controlled = true;
-            c.actions.push(Action::TakeControl { tag });
+            c.actions.push(Action::TakeControl { tag, loadout: control_loadout(c, tag) });
         }
     }
     if c.phase == Phase::Sortie
@@ -1061,6 +1063,14 @@ pub fn briefed_loadout(
     Some(crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft)))
 }
 
+/// The stores the briefing gives the mission of the AI aircraft `tag` (as on its pylons).
+pub fn control_loadout(c: &ActiveCampaign, tag: u32) -> Option<crate::loadout::PlannedLoadout> {
+    let m = c.state().ai_missions.iter().find(|m| m.open() && m.tags.contains(&tag))?;
+    let stealth_campaign::AiAirframe::Blue(aircraft) = m.airframe else { return None };
+    let m = sortie_mission(&c.mission, c.state(), &preview(&m.offer, m.from, aircraft));
+    Some(crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft)))
+}
+
 /// A sortie not taken yet (for its briefing).
 pub fn preview(o: &stealth_campaign::MissionOffer, base: u16, aircraft: Airframe) -> Sortie {
     Sortie {
@@ -1118,7 +1128,14 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),
             Action::Station(cmd) => host.station(sim, me, cmd),
-            Action::TakeControl { tag } => host.take_control(sim, me, tag),
+            Action::TakeControl { tag, loadout } => {
+                let stores = loadout.map(|l| {
+                    let stores = Stores { stations: l.stations(), select: 0 };
+                    c.take_loadout = Some(l);
+                    stores
+                });
+                host.take_control(sim, me, tag, stores)
+            }
             Action::LeaveAircraft => host.leave_aircraft(sim, me),
         };
         match result {
@@ -1186,7 +1203,14 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             Action::SelectMission { offer, base } => ToServer::Select { offer, base },
             Action::EditPlan { offer, base, route } => ToServer::Plan { offer, base, route },
             Action::Station(cmd) => ToServer::Station(cmd),
-            Action::TakeControl { tag } => ToServer::TakeControl { tag },
+            Action::TakeControl { tag, loadout } => {
+                let stores = loadout.map(|l| {
+                    let stores = Stores { stations: l.stations(), select: 0 };
+                    c.take_loadout = Some(l);
+                    stores
+                });
+                ToServer::TakeControl { tag, stores }
+            }
             Action::LeaveAircraft => ToServer::LeaveAircraft,
         };
         client.send(&msg);

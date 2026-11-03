@@ -849,7 +849,8 @@ fn take_control(ui: &mut egui::Ui, c: &mut ActiveCampaign, tag: u32, label: &str
     let button = big_button(label).icon(icon::JOIN);
     if ui.add_enabled(why.is_none(), button).clicked() {
         c.ui.error = None;
-        c.actions.push(Action::TakeControl { tag });
+        let loadout = super::control_loadout(c, tag);
+        c.actions.push(Action::TakeControl { tag, loadout });
     }
     let note = why.unwrap_or_else(|| t!("ops-take-control.facts").to_string());
     ui.label(egui::RichText::new(note).small().color(DIM));
