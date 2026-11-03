@@ -579,9 +579,7 @@ pub(super) fn update_displays(
                 tex.backdrop =
                     crate::avionics::gm_backdrop(&d.mfd, side, tex.backdrop.take(), pw, ph, scale);
             }
-            CanvasRole::Adi => {
-                d.panel.draw_adi(&mut tex.canvas, settings.cockpit().0 != PanelStyle::Classic)
-            }
+            CanvasRole::Adi => d.panel.draw_adi(&mut tex.canvas, settings.cockpit().0),
             CanvasRole::Rwr => d.panel.draw_rwr(&mut tex.canvas),
             CanvasRole::Hsi => d.panel.draw_hsi(&mut tex.canvas),
             CanvasRole::Tfr => crate::tfr::draw(&mut tex.canvas, &fonts, &d.panel.radar),

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use crate::canvas::Canvas;
 use crate::cockpit::sprites::led_digit;
-use crate::cockpit3d::layout::{Arrow, Dial};
+use crate::cockpit3d::layout::{Arrow, Dial, PanelStyle};
 use crate::flight::{Aircraft, Player};
 use crate::font::{Fonts, upper};
 use crate::hud::{HudMode, HudState};
@@ -596,6 +596,112 @@ pub fn adi_ball(c: &mut Canvas, pitch: f32, roll: f32) {
     c.stroke(centre - Vec2::X * w * 0.5, centre + Vec2::X * w * 0.5, w * 3.0, 17);
 }
 
+/// Pitch ladder degrees per half height of `adi_square`.
+const SQUARE_DEG: f32 = 30.0;
+
+/// Square attitude display after the F-22A's standby flight display (a screen, filling the
+/// canvas): sky blue (9) over brown ground (6) split by a white horizon, a pitch ladder every 5
+/// degrees (numbered every 10) in a window round the middle, the bank scale fixed along the top
+/// with a pointer turning with the horizon, and the fixed yellow aircraft symbol.
+pub fn adi_square(c: &mut Canvas, pitch: f32, roll: f32) {
+    use crate::font::{Align, stroke_text_at};
+    let (s, co) = roll.sin_cos();
+    let n = c.w.min(c.h) as f32;
+    let centre = Vec2::new(c.w as f32 / 2.0, c.h as f32 / 2.0);
+    let half = n / 2.0;
+    let k = half / SQUARE_DEG;
+    let along = Vec2::new(co, -s);
+    let down = Vec2::new(s, co);
+    let h = -pitch.clamp(-1.5, 1.5).to_degrees() * k;
+    let pw = c.pw();
+    for (py, row) in c.px.chunks_exact_mut(pw).enumerate() {
+        let dy = py as f32 + 0.5 - centre.y;
+        for (px, t) in row.iter_mut().enumerate() {
+            let dx = px as f32 + 0.5 - centre.x;
+            *t = if dx * down.x + dy * down.y > -h { 6 } else { 9 };
+        }
+    }
+    let w = (n / 110.0).max(1.0);
+    // Lines clipped to a box round the centre (half sizes), or nothing outside it.
+    let clip = |p: Vec2, q: Vec2, bx: f32, by: f32| {
+        let (mut a, mut z) = (0.0f32, 1.0f32);
+        let d = q - p;
+        for (dp, lo, hi) in [
+            (d.x, -bx - (p.x - centre.x), bx - (p.x - centre.x)),
+            (d.y, -by - (p.y - centre.y), by - (p.y - centre.y)),
+        ] {
+            if dp.abs() < 1e-6 {
+                if lo > 0.0 || hi < 0.0 {
+                    return None;
+                }
+                continue;
+            }
+            let (t0, t1) = if dp > 0.0 { (lo / dp, hi / dp) } else { (hi / dp, lo / dp) };
+            a = a.max(t0);
+            z = z.min(t1);
+        }
+        (a < z).then(|| (p + d * a, p + d * z))
+    };
+    let mid = |deg: f32| centre + down * (-h - deg * k);
+    if let Some((a, b)) = clip(mid(0.0) - along * n * 1.5, mid(0.0) + along * n * 1.5, half, half) {
+        c.stroke(a, b, w * 1.6, 15);
+    }
+    // The ladder in a window under the bank scale.
+    let (bx, by) = (half * 0.7, half * 0.62);
+    let mut deg = -85.0;
+    while deg <= 85.0 {
+        let p = mid(deg);
+        let rung = if (deg as i32) % 10 == 0 { half * 0.24 } else { half * 0.1 };
+        if deg != 0.0 {
+            if let Some((a, b)) = clip(p - along * rung, p + along * rung, bx, by) {
+                c.stroke(a, b, w, 15);
+            }
+            if (deg as i32) % 10 == 0 {
+                let label = format!("{}", (deg as i32).abs());
+                for side in [-1.0, 1.0] {
+                    let q = p + along * side * (rung + half * 0.13);
+                    if (q.x - centre.x).abs() < bx && (q.y - centre.y).abs() < by {
+                        stroke_text_at(c, q.x, q.y, &label, half * 0.09, w, 15, Align::Centre);
+                    }
+                }
+            }
+        }
+        deg += 5.0;
+    }
+    // Bank scale along the top: 10, 20, 30 and 45 degrees either side, a triangle at 0; the
+    // pointer under it turns with the horizon.
+    let arc = half * 0.9;
+    let at = |a: f32, rad: f32| centre + Vec2::new(a.sin(), -a.cos()) * rad;
+    for a in [10.0f32, 20.0, 30.0, 45.0] {
+        for sign in [-1.0, 1.0] {
+            let a = (sign * a).to_radians();
+            let long = if a.abs() > 0.4 { 0.09 } else { 0.06 };
+            c.stroke(at(a, arc), at(a, arc + half * long), w * 1.2, 15);
+        }
+    }
+    c.triangle(
+        [
+            at(0.0, arc),
+            at(0.0, arc + half * 0.09) - Vec2::X * half * 0.05,
+            at(0.0, arc + half * 0.09) + Vec2::X * half * 0.05,
+        ],
+        15,
+    );
+    let (tip, base) = (centre - down * arc * 0.99, centre - down * arc * 0.9);
+    c.triangle([tip, base - along * half * 0.05, base + along * half * 0.05], 15);
+    // Aircraft symbol: two wings with drooping tips and a centre dot (yellow), black edged.
+    let (wing, gap) = (half * 0.3, half * 0.1);
+    for (width, colour) in [(w * 3.6, 5), (w * 2.2, 17)] {
+        for sx in [-1.0, 1.0] {
+            let a = centre + Vec2::new(sx * gap, 0.0);
+            let b = centre + Vec2::new(sx * (gap + wing), 0.0);
+            c.stroke(a, b, width, colour);
+            c.stroke(a, a + Vec2::new(0.0, half * 0.07), width, colour);
+        }
+        c.stroke(centre - Vec2::X * w * 0.5, centre + Vec2::X * w * 0.5, width * 1.3, colour);
+    }
+}
+
 /// HSI on a square canvas: the compass card turning with the heading (radians), a lubber line
 /// and aircraft symbol, the bearing pointer to the waypoint (radians, true) and its distance
 /// (km) and number.
@@ -814,17 +920,17 @@ impl PanelParams<'_, '_> {
         (v(self.emv.emv), v(self.emv.egr), v(self.emv.ear))
     }
 
-    /// The attitude ball into its own canvas: the F-16's ADI (`ball`, the modern cockpits) or the
-    /// classic ball (the classic cockpit).
-    pub fn draw_adi(&self, c: &mut Canvas, ball: bool) {
+    /// The attitude indicator into its own canvas: the classic ball (the classic cockpit), the
+    /// F-22A's square standby flight display, or the F-16's ADI (the other modern cockpits).
+    pub fn draw_adi(&self, c: &mut Canvas, style: PanelStyle) {
         let (p, r) = self.aircraft.single().map_or((0.0, 0.0), |a| {
             let (_, p, r) = a.euler();
             (p, r)
         });
-        if ball {
-            adi_ball(c, p, r);
-        } else {
-            adi(c, p, r);
+        match style {
+            PanelStyle::Classic => adi(c, p, r),
+            PanelStyle::F22 => adi_square(c, p, r),
+            _ => adi_ball(c, p, r),
         }
     }
 

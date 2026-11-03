@@ -10,9 +10,9 @@
 # by F117_SCALE about the eye). Kept, with their materials, labels and control properties: the
 # seat with the ejection handle, the gear handle and the five target buttons, the HUD glass, the
 # approach indexer and the flood lamps. Built here, low-poly: the flat main panel with the
-# up-front controller (the integrated control panel between the two up-front displays) raised
-# along its top under the HUD; the large centre MFD with a smaller one either side and the
-# threat display under it in square bezels; the low glare shield with the HUD body and its wide
+# up-front controller (the integrated control panel between the up-front display and the
+# square standby flight display) raised along its top under the HUD; the large centre MFD with a
+# smaller one either side and the engine display under it in square bezels; the low glare shield with the HUD body and its wide
 # combiner; the consoles with their switch panels, the side stick (as the F-16's) on the right
 # one with its arm rest, the two throttles on the left one; the knee wall with the footwell, the
 # walls up to the canopy sills with cheeks from them up to the glare shield's sides.
@@ -208,7 +208,7 @@ def material(name, like):
 
 
 for n, like in (
-    ("ded", "adi"), ("screen_rwr", "adi"), ("screen_third", "screen_right"), ("screen_lmpd", "screen_right"),
+    ("ded", "adi"), ("screen_third", "screen_right"), ("screen_lmpd", "screen_right"),
     ("screen_rmpd", "screen_right"), ("trackcam_left", "trackcam"), ("trackcam_third", "trackcam"),
 ):
     material(n, like)
@@ -613,7 +613,6 @@ plates = [
     ("dark", (178.0, -178.0, 116.0, 76.0)),  # warning and caution lights
     ("black", (-324.0, 118.0, 210.0, 126.0)),  # gear, flaps, brake, standby instruments
     ("black", (118.0, 118.0, 176.0, 116.0)),  # fuel, EMV, countermeasures
-    ("dark", (66.0, 144.0, 46.0, 42.0)),  # threat display keys
     ("black", (118.0, 238.0, 176.0, 28.0)),  # target buttons
 ]
 for mat, r in plates:
@@ -650,12 +649,13 @@ for key in ("left", "right", "third"):
     knob(x + 18.0, kv, 0.005, 0.008, offset=BEZEL)
     knob(x + w / 2, kv, 0.004, 0.008, "dark", offset=BEZEL)
     knob(x + w - 18.0, kv, 0.005, 0.008, offset=BEZEL)
-# The up-front displays and the threat display: plain bezels, the screens recessed.
-for key, side_, top_ in (("lmpd", 5.0, 5.0), ("rmpd", 5.0, 5.0), ("rwr", 10.0, 10.0)):
+# The up-front display, the standby flight display and the engine display: plain bezels, the
+# screens recessed.
+for key, side_ in (("lmpd", 5.0), ("adi", 5.0), ("rmpd", 8.0)):
     x, y, w, h = scr[key]
-    outer = (x - side_, y - top_, w + 2 * side_, h + 2 * top_)
+    outer = (x - side_, y - side_, w + 2 * side_, h + 2 * side_)
     hole = (x - 1.5, y - 1.5, w + 3.0, h + 3.0)
-    base = UFC_RAISE if key != "rwr" else 0.0
+    base = UFC_RAISE if in_ufc(*centre(scr[key])) else 0.0
     frame("dark", outer, hole, base, base + 0.008)
     frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), base - 0.004, base + 0.007)
 screen("screen_left", scr["left"], BEZEL - 0.006, "trackcam_left")
@@ -663,11 +663,7 @@ screen("screen_right", scr["right"], BEZEL - 0.006, "trackcam")
 screen("screen_third", scr["third"], BEZEL - 0.006, "trackcam_third")
 screen("screen_lmpd", scr["lmpd"], 0.004, "black")
 screen("screen_rmpd", scr["rmpd"], 0.004, "black")
-screen("screen_rwr", scr["rwr"], 0.004, "black")
-screen("adi", scr["adi"], PLATE + 0.0015, "black")
-x, y, w, h = scr["adi"]
-frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), 0.0, PLATE + 0.005)
-knob(x + w - 2.0, y + h + 2.0, 0.0045, 0.009, "dark", offset=PLATE)
+screen("adi", scr["adi"], 0.004, "black")
 screen("ded", scr["ded"], PLATE + 0.0005)
 x, y, w, h = scr["ded"]
 frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), UFC_RAISE, UFC_RAISE + PLATE + 0.004)

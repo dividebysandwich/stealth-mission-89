@@ -879,7 +879,6 @@ mod tests {
                 }
                 PanelStyle::F22 => vec![
                     "screen_third",
-                    "screen_rwr",
                     "screen_lmpd",
                     "screen_rmpd",
                     "ded",

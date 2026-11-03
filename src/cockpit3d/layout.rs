@@ -1435,16 +1435,16 @@ impl PanelLayout {
     /// - The up-front controller under the HUD (|x| <= 172, y < -80, raised off the panel): the
     ///   integrated control panel's scratchpad (the `ded`) over three rows of six keys (the HUD
     ///   modes, LOCK, DCLT, NVG; ILS, MENU, VOL, TIME, STPT, ORD; COM1, COM2, IFF, LIST, the
-    ///   autopilot, ENTR), the two up-front displays either side (`lmpd`: the warnings, `rmpd`:
-    ///   the engines).
+    ///   autopilot, ENTR), the up-front display left of it (`lmpd`: the warnings), the square
+    ///   standby flight display (`adi`) right of it.
     /// - Under it the large primary MFD (the right MFD), with the smaller left MFD and the third
     ///   one (the HSI at first) either side, a little lower; the fourth display under the centre
-    ///   one, between the knees, shows the threats (`rwr`) with its PRI and SEP keys right of it.
+    ///   one, between the knees, shows the engines (`rmpd`).
     /// - Over the left MFD: the master caution, stall and threat lights, the master arm and the
     ///   bay doors; over the right one the fire, engine, flight control and caution lights.
     /// - Under the left MFD: the gear lights (the handle modelled under them), FLAPS and BRAKE,
-    ///   the standby attitude indicator between the AOA and vertical velocity tapes, the
-    ///   airspeed indicator and altimeter under it; under the right one the fuel and thrust
+    ///   the standby airspeed indicator and altimeter between the AOA and vertical velocity
+    ///   tapes; under the right one the fuel and thrust
     ///   readouts, the EMV gauge, the countermeasures and the jammers, fuel quantity.
     pub fn f22() -> Self {
         use Effect as E;
@@ -1522,16 +1522,9 @@ impl PanelLayout {
             let r = rect(184.0 + 36.0 * (k % 3) as f32, -172.0 + 17.0 * (k / 3) as f32, 34.0, 14.0);
             put(elem, r, None, false);
         }
-        // The threat display's keys right of it.
-        for (k, (id, action)) in
-            [(RwrPri, Action::RwrPriority), (RwrSep, Action::RwrSeparate)].into_iter().enumerate()
-        {
-            let r = rect(72.0, 150.0 + 18.0 * k as f32, 34.0, 13.0);
-            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
-        }
         // Under the left MFD: the gear lights (the handle under them), FLAPS and BRAKE; the
-        // standby attitude indicator between the AOA and vertical velocity tapes, the airspeed
-        // indicator and the altimeter under it.
+        // standby airspeed indicator and altimeter between the AOA and vertical velocity tapes.
+        // The square standby flight display right of the controller.
         put(Elem::GearLights, rect(-318.0, 124.0, 40.0, 32.0), None, false);
         for (k, (id, action)) in
             [(Flaps, Action::Flaps), (Brake, Action::Brakes)].into_iter().enumerate()
@@ -1543,11 +1536,11 @@ impl PanelLayout {
                 false,
             );
         }
-        let adi = rect(-200.0, 126.0, 60.0, 60.0);
-        put(Elem::Dial(Dial::Aoa), rect(-220.0, 126.0, 14.0, 60.0), None, false);
-        put(Elem::Dial(Dial::Vvi), rect(-134.0, 126.0, 14.0, 60.0), None, false);
-        put(Elem::Dial(Dial::Airspeed), rect(-226.0, 198.0, 40.0, 40.0), None, true);
-        put(Elem::Dial(Dial::Altimeter), rect(-180.0, 198.0, 40.0, 40.0), None, true);
+        let adi = rect(98.0, -163.0, 64.0, 64.0);
+        put(Elem::Dial(Dial::Aoa), rect(-224.0, 126.0, 14.0, 60.0), None, false);
+        put(Elem::Dial(Dial::Vvi), rect(-128.0, 126.0, 14.0, 60.0), None, false);
+        put(Elem::Dial(Dial::Airspeed), rect(-208.0, 137.0, 38.0, 38.0), None, true);
+        put(Elem::Dial(Dial::Altimeter), rect(-168.0, 137.0, 38.0, 38.0), None, true);
         // Under the right MFD: the fuel and thrust readouts, the EMV gauge, the countermeasures
         // (release caps, counts, released lights) with the jammers, fuel quantity.
         put(Elem::Led(LedId::Fuel), rect(124.0, 124.0, 40.0, 13.0), None, false);
@@ -1605,13 +1598,14 @@ impl PanelLayout {
                     osbs: true,
                 },
             ],
-            rwr: Some(rect(-50.0, 142.0, 100.0, 100.0)),
+            rwr: None,
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            // The up-front displays, portrait (the canvas' shape) either side of the controller.
+            // The up-front display left of the controller and the engine display between the
+            // knees, portrait (the canvas' shape).
             lmpd: Some(rect(-162.0, -176.0, 64.0, 90.0)),
-            rmpd: Some(rect(98.0, -176.0, 64.0, 90.0)),
+            rmpd: Some(rect(-36.0, 140.0, 72.0, 101.0)),
         }
     }
 

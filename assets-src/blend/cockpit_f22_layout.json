@@ -457,30 +457,6 @@
       "round": false
     },
     {
-      "control": "Action(RwrPriority)",
-      "key": "Button(RwrPri, None)",
-      "kind": "cap",
-      "rect": [
-        72.0,
-        150.0,
-        34.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Action(RwrSeparate)",
-      "key": "Button(RwrSep, None)",
-      "kind": "cap",
-      "rect": [
-        72.0,
-        168.0,
-        34.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
       "control": null,
       "key": "Item(GearLights)",
       "kind": null,
@@ -521,7 +497,7 @@
       "key": "Item(Dial(Aoa))",
       "kind": null,
       "rect": [
-        -220.0,
+        -224.0,
         126.0,
         14.0,
         60.0
@@ -533,7 +509,7 @@
       "key": "Item(Dial(Vvi))",
       "kind": null,
       "rect": [
-        -134.0,
+        -128.0,
         126.0,
         14.0,
         60.0
@@ -545,10 +521,10 @@
       "key": "Item(Dial(Airspeed))",
       "kind": null,
       "rect": [
-        -226.0,
-        198.0,
-        40.0,
-        40.0
+        -208.0,
+        137.0,
+        38.0,
+        38.0
       ],
       "round": true
     },
@@ -557,10 +533,10 @@
       "key": "Item(Dial(Altimeter))",
       "kind": null,
       "rect": [
-        -180.0,
-        198.0,
-        40.0,
-        40.0
+        -168.0,
+        137.0,
+        38.0,
+        38.0
       ],
       "round": true
     },
@@ -1539,10 +1515,10 @@
   ],
   "screens": {
     "adi": [
-      -200.0,
-      126.0,
-      60.0,
-      60.0
+      98.0,
+      -163.0,
+      64.0,
+      64.0
     ],
     "ded": [
       -50.0,
@@ -1569,16 +1545,10 @@
       143.37661743164062
     ],
     "rmpd": [
-      98.0,
-      -176.0,
-      64.0,
-      90.0
-    ],
-    "rwr": [
-      -50.0,
-      142.0,
-      100.0,
-      100.0
+      -36.0,
+      140.0,
+      72.0,
+      101.0
     ],
     "third": [
       134.0,
