@@ -128,6 +128,12 @@ pub enum Action {
     /// button held: narrows the cockpit view, moves an external view's camera in and out.
     ViewZoomIn,
     ViewZoomOut,
+    /// Turns the head in the cockpit, orbits an external view's camera (held, not a discrete
+    /// action), as the mouse with the right button held (unbound by default).
+    PanLeft,
+    PanRight,
+    PanUp,
+    PanDown,
     /// Map display only (bezel buttons; Z/X also zoom the external views).
     MapZoomIn,
     MapZoomOut,
@@ -204,6 +210,17 @@ impl Action {
         }
     }
 
+    /// The direction (x right, y up) a held view pan action looks; None for the others.
+    pub fn look_direction(self) -> Option<Vec2> {
+        match self {
+            Action::PanLeft => Some(Vec2::new(-1.0, 0.0)),
+            Action::PanRight => Some(Vec2::new(1.0, 0.0)),
+            Action::PanUp => Some(Vec2::new(0.0, 1.0)),
+            Action::PanDown => Some(Vec2::new(0.0, -1.0)),
+            _ => None,
+        }
+    }
+
     /// The (roll, pitch) direction of a held trim switch action; None for the others.
     pub fn trim_direction(self) -> Option<Vec2> {
         match self {
@@ -261,7 +278,15 @@ pub fn key_from_name(name: &str) -> Option<KeyCode> {
 }
 
 /// Actions no key is bound to by default.
-const UNBOUND: &[Action] = &[Action::HudNav, Action::HudAir, Action::HudGnd];
+const UNBOUND: &[Action] = &[
+    Action::HudNav,
+    Action::HudAir,
+    Action::HudGnd,
+    Action::PanLeft,
+    Action::PanRight,
+    Action::PanUp,
+    Action::PanDown,
+];
 
 /// Every action, in the key summary's order (the unbound ones last).
 pub fn all_actions() -> Vec<Action> {
@@ -330,6 +355,9 @@ pub struct FlightControls {
     pub talk: bool,
     /// The view zoom keys held, -1 (out) .. 1 (in).
     pub view_zoom: f32,
+    /// The view pan keys and look axes, -1..1 (x right, y up): how fast the head turns in the
+    /// cockpit, the camera orbits in an external view.
+    pub look: Vec2,
 }
 
 /// Modifier held with a key (Alt wins over Shift).
@@ -561,6 +589,7 @@ fn read_keyboard(
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
         controls.view_zoom = 0.0;
+        controls.look = Vec2::ZERO;
         return;
     }
     // Virtual stick: the keys bound to the stick actions, with the modifier they were bound with
@@ -636,6 +665,16 @@ fn read_keyboard(
             (m.mods == mods && keys.pressed(m.key)).then_some(d)
         })
         .sum();
+    controls.look = config
+        .keys
+        .iter()
+        .filter_map(|m| {
+            let crate::hotas::ButtonTarget::Action(a) = m.target else { return None };
+            let d = a.look_direction()?;
+            (m.mods == mods && keys.pressed(m.key)).then_some(d)
+        })
+        .sum::<Vec2>()
+        .clamp(Vec2::splat(-1.0), Vec2::ONE);
     let mut slew = Vec2::ZERO;
     if mods == Mods::None {
         for &(key, x, y) in SLEW_KEYS {
@@ -657,6 +696,7 @@ fn read_keyboard(
         *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
+        controls.look = Vec2::ZERO;
     }
 }
 
@@ -860,6 +900,34 @@ mod tests {
         app.world_mut().resource_mut::<ButtonInput<KeyCode>>().release(KeyCode::CapsLock);
         app.update();
         assert!(!app.world().resource::<FlightControls>().talk);
+    }
+
+    /// The view pan actions have no key by default; a key bound to one looks that way while
+    /// held, with its modifier only.
+    #[test]
+    fn pan_keys_look() {
+        use crate::hotas::{ButtonTarget, InputConfig};
+        let mut config = InputConfig::default();
+        assert!(config.keys.iter().all(|m| {
+            !matches!(m.target, ButtonTarget::Action(a) if a.look_direction().is_some())
+        }));
+        config.bind_key(ButtonTarget::Action(Action::PanLeft), Mods::Shift, KeyCode::KeyJ);
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<VirtualStick>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<Time<Real>>()
+            .insert_resource(config)
+            .add_message::<ActionEvent>()
+            .add_systems(Update, read_keyboard);
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::KeyJ);
+        app.update();
+        assert_eq!(app.world().resource::<FlightControls>().look, Vec2::ZERO);
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::ShiftLeft);
+        app.update();
+        assert_eq!(app.world().resource::<FlightControls>().look, Vec2::new(-1.0, 0.0));
     }
 
     /// The rudder keys are listed with the other stick keys, not at the end.

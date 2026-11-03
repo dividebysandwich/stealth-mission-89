@@ -129,4 +129,5 @@ kg-hud-gnd = HUD-tila GND (A/G)
 kg-hmd-mode = Kypäränäyttö päällä / auto (sammuu HUD:n edessä) / pois
 kg-hud-colour = HUD:n ja kypäränäytön väri
 kg-view-zoom = Näkymän zoomaus lähemmäs / kauemmas (pidetty), kuten rulla
+kg-pan = Katsele ympärille (pidetty), kuten hiirellä
 kg-ptt = Radio, pidä painettuna puhuaksesi (moninpeli)

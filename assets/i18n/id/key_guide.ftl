@@ -130,4 +130,5 @@ kg-hud-gnd = Mode HUD GND (A/G)
 kg-hmd-mode = Tampilan helm nyala / otomatis (padam di depan HUD) / mati
 kg-hud-colour = Warna HUD dan tampilan helm
 kg-view-zoom = Zoom tampilan perbesar / perkecil (ditahan), seperti roda
+kg-pan = Melihat sekeliling (ditahan), seperti mouse
 kg-ptt = Radio, tahan untuk berbicara (multipemain)

@@ -127,4 +127,5 @@ kg-hud-gnd = HUD-Modus GND (A/G)
 kg-hmd-mode = Helmanzeige ein / auto (aus vor dem HUD) / aus
 kg-hud-colour = Farbe von HUD und Helmanzeige
 kg-view-zoom = Ansichtszoom hinein / hinaus (gehalten), wie das Mausrad
+kg-pan = Umschauen (gehalten), wie mit der Maus
 kg-ptt = Funk, zum Sprechen gedrückt halten (Mehrspieler)

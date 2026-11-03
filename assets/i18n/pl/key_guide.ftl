@@ -127,4 +127,5 @@ kg-hud-gnd = Tryb HUD GND (A/G)
 kg-hmd-mode = Wyświetlacz hełmu włączony / auto (wygaszony przed HUD) / wyłączony
 kg-hud-colour = Kolor HUD i wyświetlacza hełmu
 kg-view-zoom = Przybliżenie / oddalenie widoku (trzymane), jak kółko
+kg-pan = Rozglądanie się (trzymane), jak myszą
 kg-ptt = Radio, przytrzymaj, aby mówić (wiele graczy)

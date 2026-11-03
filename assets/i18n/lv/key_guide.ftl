@@ -127,4 +127,5 @@ kg-hud-gnd = HUD režīms GND (A/G)
 kg-hmd-mode = Ķiveres displejs ieslēgts / auto (izdziest HUD priekšā) / izslēgts
 kg-hud-colour = HUD un ķiveres displeja krāsa
 kg-view-zoom = Skata tālummaiņa tuvināt / tālināt (turot), kā ritenītis
+kg-pan = Skatīties apkārt (turot), kā ar peli
 kg-ptt = Radio, turiet nospiestu, lai runātu (daudzspēlētāju)

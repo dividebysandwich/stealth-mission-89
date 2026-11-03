@@ -129,4 +129,5 @@ kg-hud-gnd = Režim HUD GND (A/G)
 kg-hmd-mode = Displej v prilbe zap. / auto (zhasne pred HUD) / vyp.
 kg-hud-colour = Farba HUD a displeja v prilbe
 kg-view-zoom = Zoom pohľadu priblížiť / oddialiť (držať), ako koliesko
+kg-pan = Rozhliadanie (držať), ako myš
 kg-ptt = Rádio, podržte na vysielanie (multiplayer)

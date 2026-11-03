@@ -129,4 +129,5 @@ kg-hud-gnd = HUDモード GND (A/G)
 kg-hmd-mode = ヘルメット表示 オン / 自動 (HUD越しは消灯) / オフ
 kg-hud-colour = HUDとヘルメット表示の色
 kg-view-zoom = 視界ズーム 拡大 / 縮小 (長押し)、ホイールと同様
+kg-pan = 見回す (長押し)、マウスと同様
 kg-ptt = 無線、押し続けて送話 (マルチプレイ)

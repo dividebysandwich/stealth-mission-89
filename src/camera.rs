@@ -619,9 +619,9 @@ fn place_weapon_camera(
     *cam_tf = Transform::IDENTITY;
 }
 
-/// The free view's camera: moved by the keys, turned by the mouse with the right button held,
-/// zoomed by the wheel and the view zoom keys; placed relative to the aircraft (the rig's
-/// parent) like the weapon view.
+/// The free view's camera: moved by the keys, turned by the mouse with the right button held
+/// and the view pan keys, zoomed by the wheel and the view zoom keys; placed relative to the
+/// aircraft (the rig's parent) like the weapon view.
 #[allow(clippy::too_many_arguments)]
 fn place_free_camera(
     mut state: ResMut<ViewState>,
@@ -656,11 +656,15 @@ fn place_free_camera(
     }
     if !block.0 {
         // Slower when zoomed in, so the view moves as far on the screen per mouse move.
+        // The view pan keys and look axes turn it as the mouse does.
+        let mut delta = Vec2::new(controls.look.x, -controls.look.y)
+            * crate::cockpit3d::LOOK_RATE
+            * time.delta_secs();
         if buttons.pressed(MouseButton::Right) {
-            let k = 0.004 / state.magnify;
-            free.yaw -= motion.delta.x * k;
-            free.pitch = (free.pitch - motion.delta.y * k).clamp(-1.55, 1.55);
+            delta += motion.delta * 0.004;
         }
+        free.yaw -= delta.x / state.magnify;
+        free.pitch = (free.pitch - delta.y / state.magnify).clamp(-1.55, 1.55);
         let notches = crate::key_guide::wheel_notches(&scroll)
             + controls.view_zoom * crate::cockpit3d::ZOOM_KEY_NOTCHES * time.delta_secs();
         if notches != 0.0 {

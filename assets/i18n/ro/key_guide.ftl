@@ -129,4 +129,5 @@ kg-hud-gnd = Mod HUD GND (A/G)
 kg-hmd-mode = Afișaj pe cască activat / auto (stins în fața HUD) / dezactivat
 kg-hud-colour = Culoarea HUD și a afișajului de pe cască
 kg-view-zoom = Zoom vizualizare apropie / depărtează (ținut), ca rotița
+kg-pan = Privire în jur (ținut), ca mouse-ul
 kg-ptt = Radio, țineți apăsat pentru a vorbi (multiplayer)

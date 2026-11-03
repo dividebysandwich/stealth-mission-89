@@ -116,6 +116,7 @@ kg-view-inverse-tactical = Inverse tactical view
 kg-view-free = Free camera: W/S/A/D/Q/E, mouse, wheel
 kg-zoom = Zoom in / out
 kg-view-zoom = View zoom in / out (held), as the wheel
+kg-pan = Look around (held), as the mouse
 kg-wide-angle = Wide angle
 kg-menu = Settings menu, pause
 kg-kneeboard = Kneeboard

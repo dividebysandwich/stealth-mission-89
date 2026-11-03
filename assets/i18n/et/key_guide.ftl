@@ -129,4 +129,5 @@ kg-hud-gnd = HUD-režiim GND (A/G)
 kg-hmd-mode = Kiivrinäidik sees / auto (kustub HUD-i ees) / väljas
 kg-hud-colour = HUD-i ja kiivrinäidiku värv
 kg-view-zoom = Vaate suum lähemale / kaugemale (hoitud), nagu ratas
+kg-pan = Ringi vaatamine (hoitud), nagu hiirega
 kg-ptt = Raadio, hoia all rääkimiseks (mitmikmäng)

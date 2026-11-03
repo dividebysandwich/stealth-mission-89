@@ -128,4 +128,5 @@ kg-hud-gnd = HUD 模式 GND (A/G)
 kg-hmd-mode = 头盔显示 开 / 自动（透过 HUD 看时熄灭）/ 关
 kg-hud-colour = HUD 和头盔显示的颜色
 kg-view-zoom = 视角缩放 拉近 / 拉远（按住），与滚轮相同
+kg-pan = 环顾四周（按住），与鼠标相同
 kg-ptt = 无线电，按住说话（多人）

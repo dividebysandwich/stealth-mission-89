@@ -674,7 +674,11 @@ fn vr_targets() -> Vec<ButtonTarget> {
     crate::key_guide::groups()
         .into_iter()
         .flat_map(|(_, targets)| targets)
-        .filter(|t| !matches!(t, ButtonTarget::Action(a) if a.stick_direction().is_some()))
+        .filter(|t| {
+            // The head looks around in VR.
+            !matches!(t, ButtonTarget::Action(a)
+                if a.stick_direction().is_some() || a.look_direction().is_some())
+        })
         .collect()
 }
 

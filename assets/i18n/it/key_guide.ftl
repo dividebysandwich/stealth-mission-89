@@ -127,4 +127,5 @@ kg-hud-gnd = Modalità HUD GND (A/G)
 kg-hmd-mode = Visore del casco acceso / auto (spento davanti all'HUD) / spento
 kg-hud-colour = Colore dell'HUD e del visore del casco
 kg-view-zoom = Zoom della vista avanti / indietro (tenuto), come la rotella
+kg-pan = Guardarsi intorno (tenuto), come il mouse
 kg-ptt = Radio, tenere premuto per parlare (multigiocatore)

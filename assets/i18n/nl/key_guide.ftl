@@ -127,4 +127,5 @@ kg-hud-gnd = HUD-modus GND (A/G)
 kg-hmd-mode = Helmdisplay aan / auto (uit voor de HUD) / uit
 kg-hud-colour = Kleur van HUD en helmdisplay
 kg-view-zoom = Beeldzoom in / uit (ingedrukt), zoals het wiel
+kg-pan = Rondkijken (ingedrukt), zoals met de muis
 kg-ptt = Radio, ingedrukt houden om te praten (multiplayer)

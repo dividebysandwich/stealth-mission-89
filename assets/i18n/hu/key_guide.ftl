@@ -130,4 +130,5 @@ kg-hud-gnd = HUD mód GND (A/G)
 kg-hmd-mode = Sisakkijelző be / auto (a HUD előtt kialszik) / ki
 kg-hud-colour = A HUD és a sisakkijelző színe
 kg-view-zoom = Nézet nagyítása / kicsinyítése (nyomva tartva), mint a görgő
+kg-pan = Körülnézés (nyomva tartva), mint az egérrel
 kg-ptt = Rádió, tartsd lenyomva a beszédhez (többjátékos)
