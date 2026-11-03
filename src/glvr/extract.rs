@@ -276,11 +276,13 @@ struct Queries {
     egui: QueryState<EguiQuery>,
     readbacks: QueryState<(Entity, &'static crate::recon::ImageReadback)>,
     tips: QueryState<TipQuery>,
+    overlays: QueryState<OverlayQuery>,
     ui_cameras: QueryState<(&'static Camera, &'static RenderTarget), With<Camera2d>>,
     ui_nodes: QueryState<UiNodeQuery>,
 }
 
 type TipQuery = (Common, &'static MeshMaterial3d<crate::cockpit3d::tooltips::TipScreenMaterial>);
+type OverlayQuery = (Common, &'static MeshMaterial3d<crate::cockpit3d::hud_glass::OverlayMaterial>);
 
 /// A bevy_ui node as drawn here: its box, background, outline, text.
 type UiNodeQuery = (
@@ -321,6 +323,7 @@ impl Queries {
             egui: world.query(),
             readbacks: world.query(),
             tips: world.query(),
+            overlays: world.query(),
             ui_cameras: world.query_filtered(),
             ui_nodes: world.query(),
         }
@@ -819,6 +822,13 @@ impl Extractor {
         for (common, material) in q.standard.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
             let lit = Lit { m, night: Vec4::ZERO, flood: Vec4::ZERO, flags: 0 };
+            self.lit_item(cull, list, meshes, images, &common, lit);
+        }
+        // The notices panel next to the HUD (player_notices.rs).
+        let materials = world.resource::<Assets<crate::cockpit3d::hud_glass::OverlayMaterial>>();
+        for (common, material) in q.overlays.iter(world) {
+            let Some(m) = materials.get(&material.0) else { continue };
+            let lit = Lit { m: &m.base, night: Vec4::ZERO, flood: Vec4::ZERO, flags: 0 };
             self.lit_item(cull, list, meshes, images, &common, lit);
         }
         // The cockpit tooltip's screen (VR), drawn over everything.
