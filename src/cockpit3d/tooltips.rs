@@ -296,7 +296,8 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::Cam(CamDir::Rear) => "tip-cmd-cam-rear",
         MfdCmd::Cam(CamDir::Left) => "tip-cmd-cam-left",
         MfdCmd::Ils => "tip-cmd-ils",
-        MfdCmd::Format(_, f) => match f {
+        MfdCmd::Row(..) => "tip-cmd-format-row",
+        MfdCmd::Format(_, f) | MfdCmd::Assign(_, f) => match f {
             Format::Hsd => "tip-cmd-hsd",
             Format::Harm => "tip-cmd-harm",
             Format::Tgp => "tip-cmd-tgp",
@@ -304,6 +305,7 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Sms => "tip-cmd-sms",
             Format::Hsi => "tip-cmd-hsi",
             Format::Gm => "tip-cmd-gm",
+            Format::Eng => "tip-cmd-eng",
         },
         MfdCmd::Soi(_) => "tip-cmd-soi",
         MfdCmd::SwapSoi => "tip-cmd-swap-soi",
@@ -500,6 +502,7 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         }
         CanvasRole::Right => "tip-display-right",
         CanvasRole::Third => "tip-display-third",
+        CanvasRole::Fourth => "tip-display-fourth",
         CanvasRole::Adi => "tip-display-adi",
         CanvasRole::Approach => "tip-display-approach",
         CanvasRole::Rwr => "tip-display-rwr",

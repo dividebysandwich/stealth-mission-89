@@ -141,6 +141,7 @@ fn parse_step(what: &str) -> Option<Step> {
             "l" => crate::mfd::MfdSide::Left,
             "r" => crate::mfd::MfdSide::Right,
             "t" => crate::mfd::MfdSide::Third,
+            "f" => crate::mfd::MfdSide::Fourth,
             _ => return None,
         };
         Step::Osb(side, x[1..].parse().ok()?)

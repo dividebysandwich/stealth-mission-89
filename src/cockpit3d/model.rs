@@ -20,11 +20,12 @@
 //! * `atlas`: a lamp, readout, label or bezel button face drawn live into the instrument atlas.
 //!   The object's `atlas_face` names the face (`layout`), `atlas_uv` the uv rectangle its UVs
 //!   were made for; they are moved to wherever the face is in the atlas.
-//! * `screen_left`, `screen_right`, `screen_third` (the F-117A's and the Tornado's third MFD), `adi`, `approach`,
+//! * `screen_left`, `screen_right`, `screen_third` (the F-117A's and the Tornado's third MFD),
+//!   `screen_fourth` (the F-22A's fourth), `adi`, `approach`,
 //!   `screen_rwr` (RWR scope), `hsi`, `screen_tfr` (the Tornado's terrain following radar),
 //!   `ded` (data entry display): live displays (UVs 0..1 over the screen).
-//! * `trackcam`, `trackcam_left`, `trackcam_third`: the tracking camera picture behind the
-//!   right / left / third screen.
+//! * `trackcam`, `trackcam_left`, `trackcam_third`, `trackcam_fourth`: the tracking camera
+//!   picture behind the right / left / third / fourth screen.
 //! * `screen_scope`, `screen_board`, `screen_eo`, `screen_info`: an air defence console's air
 //!   picture, track list, camera overlay and target data (`cockpit_console.glb`,
 //!   `tools/models/build_console.py`; the camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
@@ -437,12 +438,14 @@ impl<'a> Spawner<'a> {
                 still = false;
                 m
             }
-            "screen_left" | "screen_right" | "screen_third" | "adi" | "approach" | "screen_rwr"
-            | "hsi" | "screen_tfr" | "ded" | "screen_lmpd" | "screen_rmpd" => {
+            "screen_left" | "screen_right" | "screen_third" | "screen_fourth" | "adi"
+            | "approach" | "screen_rwr" | "hsi" | "screen_tfr" | "ded" | "screen_lmpd"
+            | "screen_rmpd" => {
                 let role = match name {
                     "screen_left" => CanvasRole::Left,
                     "screen_right" => CanvasRole::Right,
                     "screen_third" => CanvasRole::Third,
+                    "screen_fourth" => CanvasRole::Fourth,
                     "adi" => CanvasRole::Adi,
                     "screen_rwr" => CanvasRole::Rwr,
                     "hsi" => CanvasRole::Hsi,
@@ -476,11 +479,12 @@ impl<'a> Spawner<'a> {
                 still = false;
                 displays::trackcam_material(self.materials, self.tc_wide.as_ref())
             }
-            "trackcam" | "trackcam_left" | "trackcam_third" => {
+            "trackcam" | "trackcam_left" | "trackcam_third" | "trackcam_fourth" => {
                 let side = match name {
                     "trackcam" => crate::mfd::MfdSide::Right,
                     "trackcam_left" => crate::mfd::MfdSide::Left,
-                    _ => crate::mfd::MfdSide::Third,
+                    "trackcam_third" => crate::mfd::MfdSide::Third,
+                    _ => crate::mfd::MfdSide::Fourth,
                 };
                 ec.insert((TrackCamScreen(side), Visibility::Hidden));
                 still = false;
@@ -771,7 +775,13 @@ mod tests {
             })
             .collect();
         let mut screens = serde_json::json!({"adi": r(&l.adi), "ded": r(&l.ded.unwrap())});
-        for (m, key) in l.mfds.iter().zip(["left", "right", "third"]) {
+        for m in &l.mfds {
+            let key = match m.side {
+                crate::mfd::MfdSide::Left => "left",
+                crate::mfd::MfdSide::Right => "right",
+                crate::mfd::MfdSide::Third => "third",
+                crate::mfd::MfdSide::Fourth => "fourth",
+            };
             screens[key] = r(&m.screen);
         }
         for (rect, key) in
@@ -879,11 +889,12 @@ mod tests {
                 }
                 PanelStyle::F22 => vec![
                     "screen_third",
+                    "screen_fourth",
                     "screen_lmpd",
-                    "screen_rmpd",
                     "ded",
                     "trackcam_left",
                     "trackcam_third",
+                    "trackcam_fourth",
                     "label_NEAR",
                 ],
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],

@@ -1007,6 +1007,20 @@ const AB_FUEL: f32 = 3.0;
 /// The classic model: thrust (percent) the full afterburner adds.
 const CLASSIC_AFTERBURNER: f32 = 22.0;
 
+/// A jet's fuel flow (lb a minute) as `engine` burns it at the aircraft's throttle and
+/// afterburner (with a fuel leak); 0 with the tanks dry.
+pub fn fuel_flow(a: &Aircraft, k: &FlightConstants) -> f32 {
+    if a.fuel <= 0.0 {
+        return 0.0;
+    }
+    let mut burn = (a.afterburner * AB_FUEL * 100.0 * 100.0 / k.fuel_div).floor();
+    if a.set_thrust != 0.0 {
+        burn += (a.set_thrust * a.set_thrust / k.fuel_div).floor() + 2.0 + a.damage.fuel_leak;
+    }
+    // Burnt every 2 s.
+    burn * 30.0
+}
+
 /// Thrust spool and fuel burn (engine damage caps the thrust).
 fn engine(a: &mut Aircraft, controls: &FlightControls, k: &FlightConstants, dt: f32) {
     let ab = k.afterburner();

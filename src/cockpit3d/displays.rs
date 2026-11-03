@@ -47,6 +47,8 @@ pub(super) enum CanvasRole {
     Left,
     Right,
     Third,
+    /// The F-22A's fourth MFD.
+    Fourth,
     Adi,
     Hud,
     Approach,
@@ -313,10 +315,10 @@ pub(super) fn screen(
     images: &mut Assets<Image>,
 ) -> (CanvasTexture, Handle<CockpitMaterial>) {
     let (canvas, transparent) = match role {
-        CanvasRole::Left | CanvasRole::Right | CanvasRole::Third if hires => {
+        CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth if hires => {
             (Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE), false)
         }
-        CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
+        CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth => {
             (Canvas::scaled(CLASSIC.0, CLASSIC.1, crate::mfd::CLASSIC_SCALE), false)
         }
         CanvasRole::Adi | CanvasRole::Rwr | CanvasRole::Hsi | CanvasRole::Tfr => {
@@ -545,6 +547,7 @@ pub(super) fn update_displays(
         CanvasRole::Left,
         CanvasRole::Right,
         CanvasRole::Third,
+        CanvasRole::Fourth,
         CanvasRole::Adi,
         CanvasRole::Hud,
         CanvasRole::Approach,
@@ -562,17 +565,19 @@ pub(super) fn update_displays(
         let tex = tex.as_mut();
         tex.canvas.reset_clip();
         match role {
-            CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
+            CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth => {
                 let side = match role {
                     CanvasRole::Left => MfdSide::Left,
                     CanvasRole::Right => MfdSide::Right,
-                    _ => MfdSide::Third,
+                    CanvasRole::Third => MfdSide::Third,
+                    _ => MfdSide::Fourth,
                 };
                 tex.transparent = d.mfd.camera_see_through(side);
                 match side {
                     MfdSide::Left => d.mfd.draw_left(&mut tex.canvas, &art, &fonts),
                     MfdSide::Right => d.mfd.draw_right(&mut tex.canvas, &art, &fonts),
                     MfdSide::Third => d.mfd.draw_third(&mut tex.canvas, &art, &fonts),
+                    MfdSide::Fourth => d.mfd.draw_fourth(&mut tex.canvas, &art, &fonts),
                 }
                 // The radar's ground map under the page's symbols.
                 let (pw, ph, scale) = (tex.canvas.pw(), tex.canvas.ph(), tex.canvas.scale as f32);

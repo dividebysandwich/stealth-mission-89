@@ -88,6 +88,9 @@ pub enum MfdSide {
     /// The F-117A's and the Tornado's third MFD, right of the centre display (which is the right
     /// MFD): the HSI page (`avionics::Format::Hsi`).
     Third,
+    /// The F-22A's fourth MFD, under the centre display between the knees: the engine page
+    /// (`avionics::Format::Eng`).
+    Fourth,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -218,10 +221,11 @@ impl MfdState {
         if self.modern { self.av.burst_ft() } else { 0 }
     }
 
-    /// The tracking camera page is on this MFD.
+    /// The tracking camera page is on this MFD (not covered by its format menu).
     pub fn camera_on(&self, side: MfdSide) -> bool {
         if self.modern {
             self.av.shown(crate::avionics::Format::Tgp) == Some(side)
+                && self.av.menu(side).is_none()
         } else {
             side == MfdSide::Right && self.right == RightMfd::Camera
         }
@@ -241,6 +245,12 @@ pub enum MfdCmd {
     Ils,
     /// Modern avionics: a format on an MFD (swapping with the other MFD if it shows it).
     Format(MfdSide, crate::avionics::Format),
+    /// Modern avionics: an MFD's bottom bezel button (0..5): its format, or the format menu
+    /// when that format is up already.
+    Row(MfdSide, u8),
+    /// Modern avionics: a format picked in an MFD's format menu, for the bottom button the
+    /// menu was opened from.
+    Assign(MfdSide, crate::avionics::Format),
     /// Modern avionics: this MFD's format becomes the sensor of interest.
     Soi(MfdSide),
     /// Modern avionics: the sensor of interest moves to the other MFD.
@@ -442,7 +452,8 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::ToggleOrient => Action::MapOrientation,
         MfdCmd::Flir => Action::Flir,
         MfdCmd::Ils => Action::Ils,
-        MfdCmd::Format(_, f) => f.action(),
+        MfdCmd::Format(_, f) | MfdCmd::Assign(_, f) => f.action(),
+        MfdCmd::Row(..) => Action::Maps,
         MfdCmd::Soi(_) | MfdCmd::SwapSoi => Action::SwapSoi,
         MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::MapZoom(d) => {
             if d > 0 {
@@ -708,8 +719,10 @@ fn reset_mfd(
     settings: Res<crate::settings::Settings>,
 ) {
     let mut av = crate::avionics::AvionicsState::default();
-    av.set_third(settings.cockpit().0.third_mfd());
     av.radar = settings.aircraft.spec().ground_radar;
+    // The bottom rows the pilot set up stay from flight to flight.
+    av.keep_rows(&state.av);
+    av.set_mfds(settings.cockpit().0.mfd_count());
     *state = MfdState {
         hires: settings.hires_displays(),
         modern: !settings.classic_avionics,
@@ -760,9 +773,9 @@ fn mfd_keys(
         state.map_zoom = state.map_zoom.min(state.max_map_zoom());
         raster.invalidate();
     }
-    let third = settings.cockpit().0.third_mfd();
-    if state.av.third != third {
-        state.av.set_third(third);
+    let mfds = settings.cockpit().0.mfd_count();
+    if state.av.mfds != mfds {
+        state.av.set_mfds(mfds);
     }
     for ActionEvent(a) in actions.read() {
         let cmd = match a {
@@ -1460,6 +1473,7 @@ pub struct MfdParams<'w, 's> {
     pub emitters: Res<'w, crate::rwr::Emitters>,
     pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
     pub radar: Option<Res<'w, crate::ground_radar::GroundRadar>>,
+    pub cm: Res<'w, crate::panel::Countermeasures>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
@@ -1509,6 +1523,17 @@ impl MfdParams<'_, '_> {
             crate::avionics::draw(self, MfdSide::Third, c, art, fonts);
         } else {
             crate::avionics::draw_hsi_page(self, c, fonts);
+        }
+    }
+
+    /// The fourth MFD: the engine page with the classic avionics, any format with the modern
+    /// avionics.
+    pub fn draw_fourth(&self, c: &mut Canvas, art: &CockpitArt, fonts: &Fonts) {
+        c.reset_clip();
+        if self.state.modern {
+            crate::avionics::draw(self, MfdSide::Fourth, c, art, fonts);
+        } else {
+            crate::avionics::draw_eng_page(self, c, fonts);
         }
     }
 

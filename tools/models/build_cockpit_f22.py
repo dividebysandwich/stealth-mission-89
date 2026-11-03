@@ -12,8 +12,8 @@
 # approach indexer and the flood lamps. Built here, low-poly: the flat main panel with the
 # up-front controller (the integrated control panel between the up-front display and the
 # square standby flight display) raised along its top under the HUD; the large centre MFD with a
-# smaller one either side and the engine display under it in square bezels; the low glare shield with the HUD body and its wide
-# combiner; the consoles with their switch panels, the side stick (as the F-16's) on the right
+# smaller one either side and the fourth MFD under it in square bezels; the low glare shield
+# with the HUD body and its wide combiner; the consoles with their switch panels, the side stick (as the F-16's) on the right
 # one with its arm rest, the two throttles on the left one; the knee wall with the footwell, the
 # walls up to the canopy sills with cheeks from them up to the glare shield's sides.
 #
@@ -208,8 +208,9 @@ def material(name, like):
 
 
 for n, like in (
-    ("ded", "adi"), ("screen_third", "screen_right"), ("screen_lmpd", "screen_right"),
-    ("screen_rmpd", "screen_right"), ("trackcam_left", "trackcam"), ("trackcam_third", "trackcam"),
+    ("ded", "adi"), ("screen_third", "screen_right"), ("screen_fourth", "screen_right"),
+    ("screen_lmpd", "screen_right"), ("trackcam_left", "trackcam"), ("trackcam_third", "trackcam"),
+    ("trackcam_fourth", "trackcam"),
 ):
     material(n, like)
 # Guard covers and red buttons (not a shared material: the game takes its colour from the model).
@@ -628,7 +629,7 @@ toggle(x + w / 2, y + h / 2, PLATE + 0.001)
 # black recess; twenty push buttons round it (layout faces) with ridges between them, rocker
 # switches at the corners, brightness knobs along the bottom.
 BEZEL = 0.012
-for key in ("left", "right", "third"):
+for key in ("left", "right", "third", "fourth"):
     x, y, w, h = scr[key]
     outer = (x - 16.0, y - 20.0, w + 32.0, h + 50.0)
     hole = (x - 3.0, y - 3.0, w + 6.0, h + 6.0)
@@ -649,9 +650,8 @@ for key in ("left", "right", "third"):
     knob(x + 18.0, kv, 0.005, 0.008, offset=BEZEL)
     knob(x + w / 2, kv, 0.004, 0.008, "dark", offset=BEZEL)
     knob(x + w - 18.0, kv, 0.005, 0.008, offset=BEZEL)
-# The up-front display, the standby flight display and the engine display: plain bezels, the
-# screens recessed.
-for key, side_ in (("lmpd", 5.0), ("adi", 5.0), ("rmpd", 8.0)):
+# The up-front display and the standby flight display: plain bezels, the screens recessed.
+for key, side_ in (("lmpd", 5.0), ("adi", 5.0)):
     x, y, w, h = scr[key]
     outer = (x - side_, y - side_, w + 2 * side_, h + 2 * side_)
     hole = (x - 1.5, y - 1.5, w + 3.0, h + 3.0)
@@ -661,8 +661,8 @@ for key, side_ in (("lmpd", 5.0), ("adi", 5.0), ("rmpd", 8.0)):
 screen("screen_left", scr["left"], BEZEL - 0.006, "trackcam_left")
 screen("screen_right", scr["right"], BEZEL - 0.006, "trackcam")
 screen("screen_third", scr["third"], BEZEL - 0.006, "trackcam_third")
+screen("screen_fourth", scr["fourth"], BEZEL - 0.006, "trackcam_fourth")
 screen("screen_lmpd", scr["lmpd"], 0.004, "black")
-screen("screen_rmpd", scr["rmpd"], 0.004, "black")
 screen("adi", scr["adi"], 0.004, "black")
 screen("ded", scr["ded"], PLATE + 0.0005)
 x, y, w, h = scr["ded"]

@@ -71,6 +71,8 @@ pub enum Format {
     Hsi,
     /// The air-to-ground radar's ground map (`crate::ground_radar`), on the aircraft with one.
     Gm,
+    /// The engines, fuel and stores at a glance (after the F-22A's).
+    Eng,
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -84,10 +86,29 @@ pub const THIRD_FORMATS: [Format; 5] =
 pub const RADAR_FORMATS: [Format; 5] =
     [Format::Hsd, Format::Gm, Format::Tgp, Format::Map, Format::Sms];
 
-/// The formats on an MFD's bottom bezel buttons (`radar`: the aircraft has a ground map radar).
+/// The fourth MFD's (the F-22A's, between the knees): the engines first.
+pub const FOURTH_FORMATS: [Format; 5] =
+    [Format::Eng, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
+
+/// Every format, in the order the format menu lists them down its sides (the ground map only
+/// with the radar).
+pub const ALL_FORMATS: [Format; 8] = [
+    Format::Hsd,
+    Format::Harm,
+    Format::Tgp,
+    Format::Map,
+    Format::Sms,
+    Format::Hsi,
+    Format::Gm,
+    Format::Eng,
+];
+
+/// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
+/// radar).
 pub fn formats(side: MfdSide, radar: bool) -> [Format; 5] {
     match side {
         MfdSide::Third => THIRD_FORMATS,
+        MfdSide::Fourth => FOURTH_FORMATS,
         MfdSide::Left if radar => RADAR_FORMATS,
         _ => FORMATS,
     }
@@ -103,6 +124,7 @@ impl Format {
             Format::Sms => "SMS",
             Format::Hsi => "HSI",
             Format::Gm => "GM",
+            Format::Eng => "ENG",
         }
     }
 
@@ -114,7 +136,7 @@ impl Format {
     /// The key that brings the format up (script `press=` lookups).
     pub fn action(self) -> Action {
         match self {
-            Format::Hsd | Format::Harm | Format::Map | Format::Gm => Action::Maps,
+            Format::Hsd | Format::Harm | Format::Map | Format::Gm | Format::Eng => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -149,10 +171,15 @@ const GM_RANGE_LABELS: [&str; 5] = ["5", "10", "20", "40", "80"];
 
 #[derive(Debug, Clone)]
 pub struct AvionicsState {
-    /// Format on the left, the right and the third MFD (never the same twice).
-    pub formats: [Format; 3],
-    /// The cockpit has the third MFD (the F-117A's); without it its format is never shown.
-    pub third: bool,
+    /// Format on the left, the right, the third and the fourth MFD (never the same twice).
+    pub formats: [Format; 4],
+    /// The cockpit's MFDs: 2, 3 (the F-117A's third) or 4 (the F-22A's fourth); the formats of
+    /// those it lacks are never shown.
+    pub mfds: usize,
+    /// The formats the pilot put on each MFD's bottom bezel buttons (None: `formats`' own).
+    pub rows: [Option<[Format; 5]>; 4],
+    /// The format menu on an MFD, for the bottom button (0..5) it was opened from.
+    pub menu: [Option<u8>; 4],
     /// The sensor of interest (a format on one of the MFDs).
     pub soi: Option<Format>,
     pub hsd_range: usize,
@@ -478,8 +505,10 @@ impl Default for AvionicsState {
     fn default() -> Self {
         let centre = Vec2::new(HIRES.0 as f32 / 2.0, HIRES.1 as f32 / 2.0);
         Self {
-            formats: [Format::Hsd, Format::Sms, Format::Hsi],
-            third: false,
+            formats: [Format::Hsd, Format::Sms, Format::Hsi, Format::Eng],
+            mfds: 2,
+            rows: [None; 4],
+            menu: [None; 4],
             soi: Some(Format::Hsd),
             hsd_range: 2,
             hsd_centred: false,
@@ -549,7 +578,25 @@ impl AvionicsState {
 
     /// The formats on an MFD's bottom bezel buttons.
     pub fn formats(&self, side: MfdSide) -> [Format; 5] {
-        formats(side, self.radar)
+        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar))
+    }
+
+    /// The formats the format menu offers: all of them, the ground map with the radar only.
+    pub fn available(&self) -> impl Iterator<Item = Format> + '_ {
+        ALL_FORMATS.into_iter().filter(|&f| f != Format::Gm || self.radar)
+    }
+
+    /// The bottom button (0..5) an MFD's format menu was opened from, if it is open.
+    pub fn menu(&self, side: MfdSide) -> Option<u8> {
+        self.menu[index(side)]
+    }
+
+    /// Keeps the bottom rows the pilot set up on another flight (`old`), those whose formats
+    /// this aircraft has.
+    pub fn keep_rows(&mut self, old: &AvionicsState) {
+        for (row, old) in self.rows.iter_mut().zip(old.rows) {
+            *row = old.filter(|r| r.iter().all(|&f| f != Format::Gm || self.radar));
+        }
     }
 }
 
@@ -558,6 +605,7 @@ fn index(side: MfdSide) -> usize {
         MfdSide::Left => 0,
         MfdSide::Right => 1,
         MfdSide::Third => 2,
+        MfdSide::Fourth => 3,
     }
 }
 
@@ -567,12 +615,12 @@ impl AvionicsState {
     }
 
     /// The cockpit's MFDs, left to right on the F-16's panel (the F-117A's third is right of
-    /// its centre display, the right MFD).
+    /// its centre display, the right MFD; the F-22A's fourth under the centre one).
     pub fn sides(&self) -> &'static [MfdSide] {
-        if self.third {
-            &[MfdSide::Left, MfdSide::Right, MfdSide::Third]
-        } else {
-            &[MfdSide::Left, MfdSide::Right]
+        match self.mfds {
+            4 => &[MfdSide::Left, MfdSide::Right, MfdSide::Third, MfdSide::Fourth],
+            3 => &[MfdSide::Left, MfdSide::Right, MfdSide::Third],
+            _ => &[MfdSide::Left, MfdSide::Right],
         }
     }
 
@@ -581,15 +629,22 @@ impl AvionicsState {
         self.sides().iter().copied().find(|&s| self.format(s) == f)
     }
 
-    /// The cockpit has the third MFD or not (its format: the HSI, or one not on another MFD).
-    pub fn set_third(&mut self, third: bool) {
-        self.third = third;
-        let [l, r, _] = self.formats;
-        self.formats[2] = if l != Format::Hsi && r != Format::Hsi {
-            Format::Hsi
-        } else {
-            THIRD_FORMATS.into_iter().find(|&f| f != l && f != r).unwrap_or(Format::Map)
-        };
+    /// The cockpit's MFD count (2..=4). The third and fourth MFDs come up on their bottom row's
+    /// first format (the HSI, the engines), or the first one no MFD left of them shows.
+    pub fn set_mfds(&mut self, mfds: usize) {
+        self.mfds = mfds;
+        for i in 2..4 {
+            let side = [MfdSide::Third, MfdSide::Fourth][i - 2];
+            let shown = self.formats;
+            let f = self
+                .formats(side)
+                .into_iter()
+                .chain(self.available())
+                .find(|f| !shown[..i].contains(f))
+                .unwrap_or(Format::Map);
+            self.formats[i] = f;
+        }
+        self.menu = [None; 4];
         self.fix_soi();
     }
 
@@ -604,9 +659,11 @@ impl AvionicsState {
         f.soi_capable() || f == Format::Map && self.map_way
     }
 
-    /// Puts a format on an MFD; the MFD showing the new one gets this one's format.
+    /// Puts a format on an MFD (closing its format menu); the MFD showing the new one gets this
+    /// one's format.
     pub fn select(&mut self, side: MfdSide, f: Format) {
         let i = index(side);
+        self.menu[i] = None;
         match self.shown(f) {
             Some(o) => self.formats.swap(i, index(o)),
             None => self.formats[i] = f,
@@ -634,6 +691,36 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
     let av = &mut state.av;
     match cmd {
         MfdCmd::Format(side, f) => {
+            av.select(side, f);
+            if f == Format::Map {
+                raster.invalidate();
+            }
+        }
+        // A bottom button: its format; pressed again on the format it shows, the format menu
+        // (pressed on the menu, back to the format).
+        MfdCmd::Row(side, k) => {
+            let f = av.formats(side)[k as usize];
+            match av.menu(side) {
+                Some(m) if m == k => av.menu[index(side)] = None,
+                None if av.format(side) == f => av.menu[index(side)] = Some(k),
+                _ => {
+                    av.select(side, f);
+                    if f == Format::Map {
+                        raster.invalidate();
+                    }
+                }
+            }
+        }
+        // A format picked in the menu: onto the bottom button it was opened from (swapping
+        // places with that format elsewhere on the row), and up on the MFD.
+        MfdCmd::Assign(side, f) => {
+            let Some(k) = av.menu(side) else { return };
+            let mut row = av.formats(side);
+            if let Some(j) = row.iter().position(|&g| g == f) {
+                row[j] = row[k as usize];
+            }
+            row[k as usize] = f;
+            av.rows[index(side)] = Some(row);
             av.select(side, f);
             if f == Format::Map {
                 raster.invalidate();
@@ -774,9 +861,17 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
     use OsbFn::*;
     let av = &s.av;
     let f = av.format(side);
+    let menu = av.menu(side);
     if (5..10).contains(&slot) {
-        let g = av.formats(side)[slot as usize - 5];
-        return Some((g.label(), Cmd(MfdCmd::Format(side, g)), f == g));
+        let k = slot - 5;
+        let g = av.formats(side)[k as usize];
+        let lit = menu.map_or(f == g, |m| m == k);
+        return Some((g.label(), Cmd(MfdCmd::Row(side, k)), lit));
+    }
+    // The format menu: every format down the sides (the one on the button it came from lit).
+    if let Some(k) = menu {
+        let g = av.available().nth(slot.checked_sub(10)? as usize)?;
+        return Some((g.label(), Cmd(MfdCmd::Assign(side, g)), av.formats(side)[k as usize] == g));
     }
     let soi = ("SOI", Cmd(MfdCmd::Soi(side)), av.soi_format() == Some(f));
     Some(match (f, slot) {
@@ -866,6 +961,7 @@ const CYAN: u8 = 11;
 const RED: u8 = 13;
 const WHITE: u8 = 15;
 const YELLOW: u8 = 17;
+const AMBER: u8 = 18;
 
 /// Draws an MFD with the modern avionics.
 pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, fonts: &Fonts) {
@@ -874,7 +970,14 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
     let f = av.format(side);
     let ac = p.aircraft.single().ok();
     let soi = av.soi_format() == Some(f);
+    // The format menu: just the formats along the sides.
+    if av.menu(side).is_some() {
+        c.clear(BLACK);
+        draw_labels(c, side, s);
+        return;
+    }
     match f {
+        Format::Eng => draw_eng_page(p, c, fonts),
         Format::Hsd => draw_hsd(p, c, ac, soi),
         Format::Harm => draw_harm(p, c, soi),
         Format::Gm => draw_gm(p, c, ac, soi),
@@ -959,6 +1062,143 @@ fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
 /// The SMS inventory (F-16 style): the master mode, the selected weapon and its rounds, and
 /// the stations with what each carries, the selected weapon's highlighted; the bombs' ripple
 /// count and spacing by their side buttons.
+/// The engine page (after the F-22A's): both engines' speed (%) on dials, the fuel flow
+/// (lb a minute), the aircraft from above with its gun rounds and the stores on its stations
+/// (side bays either side, the main bay's in the middle), the internal fuel and the chaff and
+/// flares left. A fire shows on the left engine, an engine hit on the right one.
+pub fn draw_eng_page(p: &MfdParams, c: &mut Canvas, _fonts: &Fonts) {
+    c.clear(BLACK);
+    let Ok((a, _)) = p.aircraft.single() else { return };
+    let k = p.constants.as_deref();
+    let (fire, hit) = (a.damage.fuel_leak > 0.0, a.damage.throttle_cap.is_some());
+    // Engine speed (%) and fuel flow (lb a minute): the rotor's engines, or a jet's spool.
+    let (rpm, flow) = match k.and_then(|k| k.heli.as_ref()) {
+        Some(rotor) => {
+            let r = crate::mpd::engine_readings(a, rotor.fuel_burn, hit, fire);
+            (r.ng, r.flow / 60.0)
+        }
+        None => {
+            let n = if a.fuel > 0.0 { 60.0 + a.thrust.clamp(0.0, 100.0) * 0.4 } else { 0.0 };
+            (
+                [n, if hit { n.min(60.0 + a.thrust.min(100.0) * 0.3) } else { n }],
+                k.map_or(0.0, |k| crate::flight::fuel_flow(a, k)),
+            )
+        }
+    };
+    let w = c.w as f32;
+    let mid = w / 2.0;
+    // The dials: an arc from 0 (up) clockwise to 100% (left), the needle, the reading in the
+    // open quarter.
+    for (e, cx) in [(0, mid - 66.0), (1, mid + 66.0)] {
+        let col = match e {
+            0 if fire => RED,
+            1 if hit => AMBER,
+            _ => GREEN,
+        };
+        let o = Vec2::new(cx, 44.0);
+        let r = 19.0;
+        let up = -std::f32::consts::FRAC_PI_2;
+        c.arc(o, r, up, std::f32::consts::PI, 1.6, col);
+        for t in [up, 0.0, -up] {
+            let d = Vec2::from_angle(t);
+            c.stroke(o + d * (r - 4.0), o + d * r, 1.4, col);
+        }
+        let frac = (rpm[e] / 100.0).clamp(0.0, 1.1);
+        let d = Vec2::from_angle(up + frac * 1.5 * std::f32::consts::PI);
+        c.stroke(o, o + d * (r - 2.0), 1.6, col);
+        let text = format!("{:.0} %", rpm[e]);
+        stroke_text_at(c, o.x - 12.0, o.y - 16.0, &text, 9.0, 1.2, WHITE, Align::Right);
+    }
+    stroke_text_at(c, mid, 54.0, "FF", 11.0, 1.5, GREEN, Align::Centre);
+    stroke_text_at(c, mid - 30.0, 72.0, "PPM", 9.0, 1.3, GREEN, Align::Centre);
+    stroke_text_at(c, mid + 30.0, 72.0, &format!("{flow:.0}"), 9.0, 1.3, WHITE, Align::Centre);
+    // The aircraft from above: the wings' leading edges, the fuselage down to the main bay.
+    let v = |x: f32, y: f32| Vec2::new(mid + x, y);
+    let lead = [(-100.0, 92.0), (-36.0, 88.0), (-24.0, 82.0)];
+    let trail = [(-100.0, 94.0), (-42.0, 94.0), (-30.0, 112.0), (-28.0, 118.0)];
+    for sx in [-1.0, 1.0] {
+        let side = |pts: &[(f32, f32)]| pts.iter().map(|&(x, y)| v(sx * x, y)).collect::<Vec<_>>();
+        c.polyline(&side(&lead), 1.2, GREEN);
+        c.polyline(&side(&trail), 1.2, GREEN);
+    }
+    c.stroke(v(-24.0, 82.0), v(24.0, 82.0), 1.2, GREEN);
+    // The gun's rounds in a box under the nose.
+    if let Some(rounds) = p.stores.gun_rounds {
+        c.frame(v(-14.0, 85.0), v(14.0, 97.0), 1.2, GREEN);
+        stroke_text_at(c, mid, 91.0, &rounds.to_string(), 8.0, 1.2, WHITE, Align::Centre);
+    }
+    // The stores: a circled letter a round (the designation's last), the first and the last
+    // station in the side bays (with three or more), the others side by side in the main bay.
+    let stations = &p.stores.stations;
+    let letter = |bay: Option<usize>| {
+        bay.and_then(|b| p.stores.bays.get(b))
+            .and_then(|b| b.short.chars().rev().find(|ch| ch.is_ascii_alphanumeric()))
+            .map(|ch| ch.to_ascii_uppercase().to_string())
+    };
+    let round = |c: &mut Canvas, at: Vec2, l: &str| {
+        c.ring(at, 4.2, 1.0, WHITE);
+        stroke_text_at(c, at.x, at.y, l, 6.0, 1.0, WHITE, Align::Centre);
+    };
+    let sides = stations.len() >= 3;
+    if sides {
+        for (sx, &(bay, rounds)) in [(-1.0, &stations[0]), (1.0, &stations[stations.len() - 1])] {
+            let at = v(sx * 36.0, 102.0);
+            let d = 9.0;
+            c.polyline(
+                &[
+                    at - Vec2::X * d,
+                    at - Vec2::Y * d,
+                    at + Vec2::X * d,
+                    at + Vec2::Y * d,
+                    at - Vec2::X * d,
+                ],
+                1.2,
+                GREEN,
+            );
+            if let Some(l) = letter(bay).filter(|_| rounds > 0) {
+                round(c, at, &l);
+            }
+        }
+    }
+    let main = if sides { &stations[1..stations.len() - 1] } else { &stations[..] };
+    let (x0, x1, top) = (mid - 30.0, mid + 30.0, 118.0);
+    c.frame(Vec2::new(x0, top), Vec2::new(x1, top + 13.0), 1.2, GREEN);
+    let n = main.len().max(1);
+    let cell = (x1 - x0) / n as f32;
+    for (i, &(bay, rounds)) in main.iter().enumerate() {
+        let left = x0 + cell * i as f32;
+        if i > 0 {
+            c.stroke(Vec2::new(left, top), Vec2::new(left, top + 13.0), 1.2, GREEN);
+        }
+        let Some(l) = letter(bay) else { continue };
+        let fit = ((cell - 2.0) / 9.0).floor().max(1.0) as u32;
+        let shown = rounds.min(fit);
+        for k in 0..shown {
+            let x = left + cell / 2.0 + (k as f32 - (shown - 1) as f32 / 2.0) * 9.0;
+            round(c, Vec2::new(x, top + 6.5), &l);
+        }
+    }
+    // The internal fuel (amber under bingo), the chaff and flares.
+    let bingo = k.map_or(0.0, |k| k.bingo);
+    let fuel_col = if a.fuel < bingo { AMBER } else { WHITE };
+    stroke_text_at(c, mid - 26.0, 144.0, "INT FUEL", 9.0, 1.3, GREEN, Align::Centre);
+    stroke_text_at(
+        c,
+        mid + 34.0,
+        144.0,
+        &format!("{:.0}", a.fuel.max(0.0)),
+        9.0,
+        1.3,
+        fuel_col,
+        Align::Left,
+    );
+    for (k, (label, n)) in [("CH", p.cm.chaff), ("FL", p.cm.flares)].into_iter().enumerate() {
+        let y = 128.0 + 16.0 * k as f32;
+        stroke_text_at(c, 8.0, y, label, 8.0, 1.2, GREEN, Align::Left);
+        stroke_text_at(c, 30.0, y, &n.to_string(), 8.0, 1.2, WHITE, Align::Left);
+    }
+}
+
 fn draw_sms(p: &MfdParams, c: &mut Canvas) {
     c.clear(BLACK);
     let s = &p.state;
@@ -2339,26 +2579,115 @@ mod tests {
     fn three_mfds() {
         let mut av = AvionicsState::default();
         assert_eq!(av.shown(Format::Hsi), None);
-        av.set_third(true);
-        assert_eq!(av.formats, [Format::Hsd, Format::Sms, Format::Hsi]);
+        av.set_mfds(3);
+        assert_eq!(av.formats[..3], [Format::Hsd, Format::Sms, Format::Hsi]);
         av.select(MfdSide::Third, Format::Hsd);
-        assert_eq!(av.formats, [Format::Hsi, Format::Sms, Format::Hsd]);
+        assert_eq!(av.formats[..3], [Format::Hsi, Format::Sms, Format::Hsd]);
         assert_eq!(av.soi_format(), Some(Format::Hsd), "the SOI goes with its format");
         av.select(MfdSide::Right, Format::Hsd);
-        assert_eq!(av.formats, [Format::Hsi, Format::Hsd, Format::Sms]);
+        assert_eq!(av.formats[..3], [Format::Hsi, Format::Hsd, Format::Sms]);
         av.select(MfdSide::Left, Format::Tgp);
-        assert_eq!(av.formats, [Format::Tgp, Format::Hsd, Format::Sms]);
+        assert_eq!(av.formats[..3], [Format::Tgp, Format::Hsd, Format::Sms]);
         // Removed and back, it shows the HSI again.
         av.select(MfdSide::Third, Format::Hsi);
-        av.set_third(false);
-        av.set_third(true);
+        av.set_mfds(2);
+        av.set_mfds(3);
         assert_eq!(av.format(MfdSide::Third), Format::Hsi);
         // A third MFD whose HSI went to another MFD takes a format not shown elsewhere.
         av.select(MfdSide::Left, Format::Hsi);
-        av.set_third(false);
-        av.set_third(true);
-        let [l, r, t] = av.formats;
+        av.set_mfds(2);
+        av.set_mfds(3);
+        let [l, r, t, _] = av.formats;
         assert!(t != l && t != r, "{:?}", av.formats);
+    }
+
+    /// The F-22A's fourth MFD starts on the engines, swaps formats with the others, and the SOI
+    /// goes round all four.
+    #[test]
+    fn four_mfds() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.set_mfds(4);
+        assert_eq!(s.av.formats, [Format::Hsd, Format::Sms, Format::Hsi, Format::Eng]);
+        assert_eq!(osb(MfdSide::Fourth, 5, &s).map(|o| o.0), Some("ENG"));
+        s.av.select(MfdSide::Left, Format::Eng);
+        assert_eq!(s.av.formats, [Format::Eng, Format::Sms, Format::Hsi, Format::Hsd]);
+        s.av.select(MfdSide::Third, Format::Tgp);
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+        apply(&mut s, &mut raster, MfdCmd::SwapSoi);
+        assert_eq!(s.av.soi_format(), Some(Format::Tgp));
+        apply(&mut s, &mut raster, MfdCmd::SwapSoi);
+        assert_eq!(s.av.soi_format(), Some(Format::Hsd));
+        // Back to three MFDs: the fourth's format is shown nowhere.
+        s.av.set_mfds(3);
+        assert_eq!(s.av.shown(s.av.format(MfdSide::Fourth)), None);
+    }
+
+    /// A bottom button shows its format; pressed again it opens the format menu down the sides,
+    /// where a pick goes onto that button (swapping with its place on the row) and comes up.
+    #[test]
+    fn format_menu() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        let press = |s: &mut MfdState, raster: &mut MapRaster, side, slot| {
+            let Some((_, OsbFn::Cmd(cmd), _)) = osb(side, slot, s) else { panic!("{slot}") };
+            apply(s, raster, cmd);
+        };
+        // HSD is on the left MFD's first button: pressing it opens the menu.
+        assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
+        press(&mut s, &mut raster, MfdSide::Left, 5);
+        assert_eq!(s.av.menu(MfdSide::Left), Some(0));
+        // The menu lists every format but the ground map (no radar) down the sides, the
+        // button's own lit; the bottom row stays, the button it came from lit.
+        let listed: Vec<_> = (10..20).filter_map(|k| osb(MfdSide::Left, k, &s)).collect();
+        assert_eq!(
+            listed.iter().map(|o| o.0).collect::<Vec<_>>(),
+            ["HSD", "HARM", "TGP", "MAP", "SMS", "HSI", "ENG"]
+        );
+        assert!(listed[0].2 && !listed[1].2);
+        assert_eq!(osb(MfdSide::Left, 5, &s).map(|o| o.2), Some(true));
+        assert_eq!(osb(MfdSide::Left, 0, &s), None, "no format functions on the menu");
+        // Pressed again: back to the format.
+        press(&mut s, &mut raster, MfdSide::Left, 5);
+        assert_eq!(s.av.menu(MfdSide::Left), None);
+        // ENG onto the first button: shown, and on the row.
+        press(&mut s, &mut raster, MfdSide::Left, 5);
+        press(&mut s, &mut raster, MfdSide::Left, 16);
+        assert_eq!(s.av.menu(MfdSide::Left), None);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Eng);
+        assert_eq!(
+            s.av.formats(MfdSide::Left),
+            [Format::Eng, Format::Harm, Format::Tgp, Format::Map, Format::Sms]
+        );
+        // A format already on the row swaps places with the button's.
+        press(&mut s, &mut raster, MfdSide::Left, 5);
+        press(&mut s, &mut raster, MfdSide::Left, 13);
+        assert_eq!(
+            s.av.formats(MfdSide::Left),
+            [Format::Map, Format::Harm, Format::Tgp, Format::Eng, Format::Sms]
+        );
+        assert_eq!(s.av.format(MfdSide::Left), Format::Map);
+        // Another button selects its format without the menu; the right MFD's row is its own.
+        press(&mut s, &mut raster, MfdSide::Left, 8);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Eng);
+        assert_eq!(s.av.menu(MfdSide::Left), None);
+        assert_eq!(s.av.formats(MfdSide::Right), FORMATS);
+        // The rows stay for the next flight (the ground map's only on an aircraft with radar).
+        let mut next = AvionicsState::default();
+        next.keep_rows(&s.av);
+        assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
+    }
+
+    /// The menu covers the targeting pod's picture (the display is not see-through).
+    #[test]
+    fn menu_covers_the_pod() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.select(MfdSide::Right, Format::Tgp);
+        assert!(s.camera_on(MfdSide::Right));
+        apply(&mut s, &mut raster, MfdCmd::Row(MfdSide::Right, 2));
+        assert_eq!(s.av.menu(MfdSide::Right), Some(2));
+        assert!(!s.camera_on(MfdSide::Right));
     }
 
     /// The HSD's cursor slewed past the top zooms out (staying on its ground point, now nearer
@@ -2499,7 +2828,7 @@ mod tests {
     fn soi_round_three_mfds() {
         let mut s = MfdState { modern: true, ..default() };
         let mut raster = MapRaster::default();
-        s.av.set_third(true);
+        s.av.set_mfds(3);
         s.av.select(MfdSide::Right, Format::Harm);
         s.av.select(MfdSide::Third, Format::Tgp);
         assert_eq!(s.av.soi_format(), Some(Format::Hsd));
@@ -2549,7 +2878,7 @@ mod tests {
             for f in formats(side, true).into_iter().chain(formats(side, false)) {
                 for (way, ord) in [(false, false), (true, true)] {
                     let mut s = MfdState { modern: true, ..default() };
-                    s.av.set_third(true);
+                    s.av.set_mfds(3);
                     s.av.select(side, f);
                     s.av.map_way = way;
                     s.av.sms_ord = ord;

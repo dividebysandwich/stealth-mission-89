@@ -234,6 +234,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "Left" => crate::mfd::MfdSide::Left,
                 "Right" => crate::mfd::MfdSide::Right,
                 "Third" => crate::mfd::MfdSide::Third,
+                "Fourth" => crate::mfd::MfdSide::Fourth,
                 _ => return None,
             },
             n.parse().ok()?,

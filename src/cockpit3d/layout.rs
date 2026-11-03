@@ -220,9 +220,14 @@ const OSB_H: f32 = 10.0;
 const OSB_SIDE: f32 = 9.0;
 
 impl PanelStyle {
-    /// The cockpit has a third MFD (`MfdSide::Third`).
-    pub fn third_mfd(self) -> bool {
-        matches!(self, PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::F22)
+    /// The cockpit's MFDs: 3 with a third (`MfdSide::Third`), 4 with a fourth too
+    /// (`MfdSide::Fourth`).
+    pub fn mfd_count(self) -> usize {
+        match self {
+            PanelStyle::F22 => 4,
+            PanelStyle::Modern | PanelStyle::Tornado => 3,
+            _ => 2,
+        }
     }
 }
 
@@ -1439,7 +1444,7 @@ impl PanelLayout {
     ///   standby flight display (`adi`) right of it.
     /// - Under it the large primary MFD (the right MFD), with the smaller left MFD and the third
     ///   one (the HSI at first) either side, a little lower; the fourth display under the centre
-    ///   one, between the knees, shows the engines (`rmpd`).
+    ///   one, between the knees, is the fourth MFD (the engines at first).
     /// - Over the left MFD: the master caution, stall and threat lights, the master arm and the
     ///   bay doors; over the right one the fire, engine, flight control and caution lights.
     /// - Under the left MFD: the gear lights (the handle modelled under them), FLAPS and BRAKE,
@@ -1574,9 +1579,10 @@ impl PanelLayout {
         }
         put(Elem::Dial(Dial::Fuel), rect(246.0, 182.0, 42.0, 42.0), None, true);
 
-        // The HIRES canvas' shape: the centre MFD 184 mm wide, the side ones 150, 20 mm lower.
+        // The HIRES canvas' shape: the centre MFD 184 mm wide, the side ones 150, 20 mm lower,
+        // the fourth 120 between the knees.
         let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
-        let (pw, sw) = (184.0, 150.0);
+        let (pw, sw, fw) = (184.0, 150.0, 120.0);
         Self {
             style: PanelStyle::F22,
             items,
@@ -1597,15 +1603,19 @@ impl PanelLayout {
                     screen: rect(134.0, -30.0, sw, sw * hires),
                     osbs: true,
                 },
+                MfdUnit {
+                    side: MfdSide::Fourth,
+                    screen: rect(-fw / 2.0, 146.0, fw, fw * hires),
+                    osbs: true,
+                },
             ],
             rwr: None,
             hsi: None,
             tfr: None,
             ded: Some(ded),
-            // The up-front display left of the controller and the engine display between the
-            // knees, portrait (the canvas' shape).
+            // The up-front display left of the controller, portrait (the canvas' shape).
             lmpd: Some(rect(-162.0, -176.0, 64.0, 90.0)),
-            rmpd: Some(rect(-36.0, 140.0, 72.0, 101.0)),
+            rmpd: None,
         }
     }
 
