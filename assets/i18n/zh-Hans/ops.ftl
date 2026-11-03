@@ -66,8 +66,8 @@ ops-rule-no-crashes = 无坠毁
 ops-rule-time = 连续时间
 ops-rule-weapons = 真实的 F-117A 武器
 ops-rule-friendly-fire = 友军误伤
-ops-rule-airframe-losses = 损失的飞机计入
-ops-rule-no-ai-missions = 无 AI 任务
+ops-rule-airframe-losses = 损失消耗资源
+ops-rule-no-ai-missions = 无友军 AI 任务
 ops-rule-classic = 经典
 ops-materiel = 物资
 ops-materiel-blue = 蓝方 { $materiel }（+{ $income }/h）
@@ -104,7 +104,7 @@ ops-how =
     AI 只使用它现有的飞机；被击落就没有了，着陆后可再次起飞。只要物资够用，每一方每小时都会购买新飞机。
     你不会缺乏物资：你的飞机、你的基地（无论是否被轰炸）以及你自己下令投送的直升机始终可用。
 ops-how-repairs = 每一方同时只能修复少数阵地（完好城市越多越多），先修最靠近前线的；修复后不久再次被摧毁的阵地，每次修复都更久。
-ops-how-airframes = 损失的飞机计入：飞行员每损失一架飞机，己方 AI 就少一架战斗机或直升机。
+ops-how-airframes = 损失消耗资源：飞行员每损失一架飞机，己方 AI 就少一架战斗机或直升机。
 ops-section-prices = 价格
 ops-price-airfield = 修复机场
 ops-price-sam = 修复 SAM 阵地

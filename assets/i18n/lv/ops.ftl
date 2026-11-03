@@ -66,8 +66,8 @@ ops-rule-no-crashes = bez avārijām
 ops-rule-time = nepārtraukts laiks
 ops-rule-weapons = reālistisks F-117A bruņojums
 ops-rule-friendly-fire = draudzīgā uguns
-ops-rule-airframe-losses = zaudētie lidaparāti tiek skaitīti
-ops-rule-no-ai-missions = bez MI misijām
+ops-rule-airframe-losses = zaudējumi maksā resursus
+ops-rule-no-ai-missions = bez draudzīgām MI misijām
 ops-rule-classic = klasiskie
 ops-materiel = MATERIĀLIE RESURSI
 ops-materiel-blue = ZILIE { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI lido tikai ar tām lidmašīnām, kas tam ir; notriektas tās ir zudušas, nosēdušās lido atkal. Katru stundu katra puse nopērk jaunas, kamēr pietiek resursu.
     Jums nekad netrūkst: jūsu lidmašīnas, jūsu bāzes (bombardētas vai nē) un jūsu pašu desanta pasūtījumu helikopteri vienmēr ir pieejami.
 ops-how-repairs = Katra puse vienlaikus labo tikai dažas pozīcijas (vairāk, ja ir vairāk veselu pilsētu), vispirms frontei tuvākās, un drīz pēc remonta atkal iznīcināta pozīcija katru reizi prasa ilgāk.
-ops-how-airframes = Zaudētie lidaparāti tiek skaitīti: katrs pilota zaudētais lidaparāts ir par vienu iznīcinātāju vai helikopteru mazāk savējo MI.
+ops-how-airframes = Zaudējumi maksā resursus: katrs pilota zaudētais lidaparāts ir par vienu iznīcinātāju vai helikopteru mazāk savējo MI.
 ops-section-prices = Cenas
 ops-price-airfield = Lidlauka remonts
 ops-price-sam = SAM pozīcijas remonts

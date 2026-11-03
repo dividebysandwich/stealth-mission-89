@@ -66,8 +66,8 @@ ops-rule-no-crashes = Absturzschutz
 ops-rule-time = durchgehende Zeit
 ops-rule-weapons = realistische F-117A-Bewaffnung
 ops-rule-friendly-fire = Eigenbeschuss
-ops-rule-airframe-losses = verlorene Flugzeuge zählen
-ops-rule-no-ai-missions = keine KI-Einsätze
+ops-rule-airframe-losses = Verluste kosten Ressourcen
+ops-rule-no-ai-missions = keine eigenen KI-Einsätze
 ops-rule-classic = klassisch
 ops-materiel = MATERIAL
 ops-materiel-blue = BLAU { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     Die KI fliegt nur die Flugzeuge, die sie hat; abgeschossen sind sie weg, gelandet fliegen sie wieder. Jede Stunde kauft jede Seite neue, solange ihr Material reicht.
     Ihnen fehlt nie etwas: Ihre Flugzeuge, Ihre Basen (bombardiert oder nicht) und die Hubschrauber Ihrer eigenen Luftlandebefehle sind immer da.
 ops-how-repairs = Jede Seite repariert nur wenige Stellungen gleichzeitig (mehr mit mehr intakten Städten), frontnahe zuerst, und eine kurz nach der Reparatur erneut zerstörte Stellung braucht jedes Mal länger.
-ops-how-airframes = Verlorene Flugzeuge zählen: jedes Flugzeug, das ein Pilot verliert, ist ein Jäger oder Hubschrauber weniger für die eigene KI.
+ops-how-airframes = Verluste kosten Ressourcen: jedes Flugzeug, das ein Pilot verliert, ist ein Jäger oder Hubschrauber weniger für die eigene KI.
 ops-section-prices = Preise
 ops-price-airfield = Reparatur Flugplatz
 ops-price-sam = Reparatur SAM-Stellung

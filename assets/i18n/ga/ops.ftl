@@ -66,8 +66,8 @@ ops-rule-no-crashes = gan tuairteanna
 ops-rule-time = am leanúnach
 ops-rule-weapons = airm réalaíocha F-117A
 ops-rule-friendly-fire = tine chairdiúil
-ops-rule-airframe-losses = comhairtear aerárthaí caillte
-ops-rule-no-ai-missions = gan misin IS
+ops-rule-airframe-losses = costaíonn caillteanais acmhainní
+ops-rule-no-ai-missions = gan misin IS chairdiúla
 ops-rule-classic = clasaiceach
 ops-materiel = TREALAMH
 ops-materiel-blue = GORM { $materiel } (+{ $income }/u)
@@ -104,7 +104,7 @@ ops-how =
     Ní eitlíonn an AI ach na haerárthaigh atá aige; má lámhachtar anuas iad, tá siad caillte, má thuirlingíonn siad, eitlíonn siad arís. Gach uair ceannaíonn gach taobh cinn nua fad a mhaireann a threalamh.
     Ní bhíonn tú gearr riamh: bíonn d'aerárthaigh, do bhunáiteanna (buamáilte nó nach ea) agus héileacaptair d'orduithe insealbhaithe féin ann i gcónaí.
 ops-how-repairs = Ní dheisíonn gach taobh ach cúpla láithreán ag an am céanna (níos mó le níos mó cathracha slána), na cinn is gaire don líne tosaigh ar dtús, agus tógann láithreán a scriostar arís go luath tar éis a dheisithe níos faide gach uair.
-ops-how-airframes = Comhairtear aerárthaí caillte: is scairdeitleán nó héileacaptar amháin níos lú don IS chairdiúil gach aerárthach a chailleann píolóta.
+ops-how-airframes = Costaíonn caillteanais acmhainní: is scairdeitleán nó héileacaptar amháin níos lú don IS chairdiúil gach aerárthach a chailleann píolóta.
 ops-section-prices = Praghsanna
 ops-price-airfield = Deisiú aerfoirt
 ops-price-sam = Deisiú suímh SAM

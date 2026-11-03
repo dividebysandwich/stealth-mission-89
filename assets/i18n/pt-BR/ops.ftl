@@ -66,8 +66,8 @@ ops-rule-no-crashes = sem acidentes
 ops-rule-time = tempo contínuo
 ops-rule-weapons = armamento realista do F-117A
 ops-rule-friendly-fire = fogo amigo
-ops-rule-airframe-losses = aeronaves perdidas contam
-ops-rule-no-ai-missions = sem missões da IA
+ops-rule-airframe-losses = perdas custam recursos
+ops-rule-no-ai-missions = sem missões da IA aliada
 ops-rule-classic = clássicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     A IA voa apenas as aeronaves que tem; abatidas, estão perdidas; pousadas, voam de novo. A cada hora, cada lado compra novas enquanto o material durar.
     Você nunca fica sem nada: suas aeronaves, suas bases (bombardeadas ou não) e os helicópteros das suas próprias ordens de infiltração estão sempre lá.
 ops-how-repairs = Cada lado repara apenas alguns sítios por vez (mais com mais cidades intactas), primeiro os mais próximos da frente, e um sítio destruído de novo logo após o reparo demora mais a cada vez.
-ops-how-airframes = Aeronaves perdidas contam: cada aeronave que um piloto perde é um caça ou helicóptero a menos para a IA aliada.
+ops-how-airframes = Perdas custam recursos: cada aeronave que um piloto perde é um caça ou helicóptero a menos para a IA aliada.
 ops-section-prices = Preços
 ops-price-airfield = Reparo de aeródromo
 ops-price-sam = Reparo de sítio SAM

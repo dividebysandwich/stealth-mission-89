@@ -66,8 +66,8 @@ ops-rule-no-crashes = ilma allakukkumisteta
 ops-rule-time = pidev aeg
 ops-rule-weapons = realistlikud F-117A relvad
 ops-rule-friendly-fire = oma tuli
-ops-rule-airframe-losses = kaotatud lennukid loevad
-ops-rule-no-ai-missions = AI missioonideta
+ops-rule-airframe-losses = kaotused maksavad ressursse
+ops-rule-no-ai-missions = sõbraliku AI missioonideta
 ops-rule-classic = klassikaline
 ops-materiel = MATERJAL
 ops-materiel-blue = SININE { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI lendab ainult nende õhusõidukitega, mis tal on; alla tulistatud on kadunud, maandunud lendavad uuesti. Iga tund ostab kumbki pool uusi, kuni materjali jätkub.
     Sul ei saa kunagi puudu: sinu õhusõidukid, sinu baasid (pommitatud või mitte) ja sinu enda dessanditellimuste helikopterid on alati olemas.
 ops-how-repairs = Kumbki pool parandab korraga vaid mõnda positsiooni (rohkem, kui terveid linnu on rohkem), rindele lähimad enne, ja varsti pärast parandust uuesti hävitatud positsioon võtab iga kord kauem.
-ops-how-airframes = Kaotatud lennukid loevad: iga lenduri kaotatud lennuk on üks hävitaja või helikopter vähem omale tehisintellektile.
+ops-how-airframes = Kaotused maksavad ressursse: iga lenduri kaotatud lennuk on üks hävitaja või helikopter vähem omale tehisintellektile.
 ops-section-prices = Hinnad
 ops-price-airfield = Lennuvälja remont
 ops-price-sam = SAM-positsiooni remont

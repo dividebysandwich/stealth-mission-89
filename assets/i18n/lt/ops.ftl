@@ -66,8 +66,8 @@ ops-rule-no-crashes = be avarijų
 ops-rule-time = nuolatinis laikas
 ops-rule-weapons = realistiški F-117A ginklai
 ops-rule-friendly-fire = draugiška ugnis
-ops-rule-airframe-losses = prarasti orlaiviai skaičiuojami
-ops-rule-no-ai-missions = be DI misijų
+ops-rule-airframe-losses = nuostoliai kainuoja išteklių
+ops-rule-no-ai-missions = be draugiškų DI misijų
 ops-rule-classic = klasikinės
 ops-materiel = IŠTEKLIAI
 ops-materiel-blue = MĖLYNIEJI { $materiel } (+{ $income }/val.)
@@ -104,7 +104,7 @@ ops-how =
     DI skraido tik tais orlaiviais, kuriuos turi; numušti jie prarasti, nusileidę gali skristi vėl. Kas valandą kiekviena pusė perka naujus, kol užtenka išteklių.
     Jums išteklių niekada netrūksta: jūsų orlaiviai, bazės (subombarduotos ar ne) ir jūsų paskirtų desantavimų sraigtasparniai visada yra.
 ops-how-repairs = Kiekviena pusė vienu metu remontuoja tik kelias pozicijas (daugiau, kai daugiau sveikų miestų), pirmiausia arčiausiai fronto, o netrukus po remonto vėl sunaikinta pozicija kaskart užtrunka ilgiau.
-ops-how-airframes = Prarasti orlaiviai skaičiuojami: kiekvienas piloto prarastas orlaivis yra vienu naikintuvu ar sraigtasparniu mažiau savųjų DI.
+ops-how-airframes = Nuostoliai kainuoja išteklių: kiekvienas piloto prarastas orlaivis yra vienu naikintuvu ar sraigtasparniu mažiau savųjų DI.
 ops-section-prices = Kainos
 ops-price-airfield = Aerodromo remontas
 ops-price-sam = SAM pozicijos remontas

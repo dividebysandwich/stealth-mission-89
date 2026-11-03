@@ -66,8 +66,8 @@ ops-rule-no-crashes = l-ebda waqgħat
 ops-rule-time = ħin kontinwu
 ops-rule-weapons = armi realistiċi tal-F-117A
 ops-rule-friendly-fire = nar alleat
-ops-rule-airframe-losses = l-ajruplani mitlufa jgħoddu
-ops-rule-no-ai-missions = l-ebda missjoni tal-IA
+ops-rule-airframe-losses = it-telf jiswa riżorsi
+ops-rule-no-ai-missions = l-ebda missjoni tal-IA alleata
 ops-rule-classic = klassiku
 ops-materiel = MATERJAL
 ops-materiel-blue = BLU { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     L-AI ittir biss l-inġenji tal-ajru li għandha; jekk jitwaqqgħu jintilfu, jekk jinżlu jerġgħu jtiru. Kull siegħa kull naħa tixtri oħrajn ġodda sakemm idum il-materiel tagħha.
     Int qatt ma tispiċċa mill-materiel: l-inġenji tal-ajru tiegħek, il-bażijiet tiegħek (bombardati jew le) u l-ħelikopters tal-ordnijiet ta' inserzjoni tiegħek huma dejjem hemm.
 ops-how-repairs = Kull naħa ssewwi biss ftit pożizzjonijiet f'daqqa (aktar b'aktar bliet sħaħ), l-eqreb tal-front l-ewwel, u pożizzjoni meqruda mill-ġdid ftit wara t-tiswija tieħu aktar żmien kull darba.
-ops-how-airframes = L-ajruplani mitlufa jgħoddu: kull ajruplan li jitlef pilota huwa ġellied jew ħelikopter wieħed inqas għall-IA alleata.
+ops-how-airframes = It-telf jiswa riżorsi: kull ajruplan li jitlef pilota huwa ġellied jew ħelikopter wieħed inqas għall-IA alleata.
 ops-section-prices = Prezzijiet
 ops-price-airfield = Tiswija ta' ajrudrom
 ops-price-sam = Tiswija ta' sit SAM

@@ -66,8 +66,8 @@ ops-rule-no-crashes = bez rozbić
 ops-rule-time = ciągły czas
 ops-rule-weapons = realistyczne uzbrojenie F-117A
 ops-rule-friendly-fire = ogień do swoich
-ops-rule-airframe-losses = utracone maszyny się liczą
-ops-rule-no-ai-missions = bez misji SI
+ops-rule-airframe-losses = straty kosztują zasoby
+ops-rule-no-ai-missions = bez misji sojuszniczej SI
 ops-rule-classic = klasyczne
 ops-materiel = ZASOBY
 ops-materiel-blue = NIEBIESCY { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     SI lata tylko samolotami, które ma; zestrzelone przepadają, te, które wylądowały, latają ponownie. Co godzinę każda strona kupuje nowe, dopóki starcza jej zasobów.
     Gracz nigdy nie odczuwa braków: jego samoloty, bazy (zbombardowane czy nie) i śmigłowce jego własnych rozkazów desantu są zawsze dostępne.
 ops-how-repairs = Każda strona naprawia naraz tylko kilka stanowisk (więcej przy większej liczbie całych miast), najpierw najbliższe frontu, a stanowisko zniszczone ponownie wkrótce po naprawie za każdym razem wymaga więcej czasu.
-ops-how-airframes = Utracone maszyny się liczą: każda maszyna stracona przez pilota to jeden myśliwiec lub śmigłowiec mniej dla sojuszniczej SI.
+ops-how-airframes = Straty kosztują zasoby: każda maszyna stracona przez pilota to jeden myśliwiec lub śmigłowiec mniej dla sojuszniczej SI.
 ops-section-prices = Ceny
 ops-price-airfield = Naprawa lotniska
 ops-price-sam = Naprawa stanowiska SAM

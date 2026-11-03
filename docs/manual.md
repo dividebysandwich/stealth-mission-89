@@ -2119,7 +2119,7 @@ IN VR and DELETE, and the options for a new one:
 |---|---|
 | **Campaign** | *Theater*. *Situation*: Cold War, Limited War or Conventional War, how many enemy aircraft fly. *Opponents*: Green to Elite, the enemy's skill and how often it attacks. |
 | **Conditions** | *Weather*: *Dynamic* or *Clear sky*. *Start time* (default 08:00). *Day and night*: a day lasts 24 h (real time), 2 h, 1 h (the default) or 30 min. |
-| **Simulation** | *Damage*, *Guidance*, *Air defence* and *Crash protection* (chapter 1.2). *Lost aircraft count*: every aircraft you lose is one fighter or helicopter fewer for your side's AI (off by default). |
+| **Simulation** | *Damage*, *Guidance*, *Air defence* and *Crash protection* (chapter 1.2). *Losses cost resources*: every aircraft you lose is one fighter or helicopter fewer for your side's AI (off by default). *Friendly AI missions*: your side's AI flies the board's missions no player takes (on by default). |
 
 START begins the campaign and saves it at once. A campaign keeps the rules it was started with,
 whoever continues or serves it later. With dynamic weather the sky changes once or twice a campaign day:
@@ -2448,7 +2448,7 @@ Aircraft shot down are gone; every hour each side buys new ones while its materi
 INTERDICT missions strike its income: a city destroyed costs it 30 materiel at once and its 5 an
 hour until rebuilt. An AWACS shot down costs it 60. Your own side's AI pays from its materiel too
 (its armour columns, repairs, scrambles and replacements), but your own sorties, aircraft and insertion
-orders cost nothing. With *Lost aircraft count* on, every aircraft a player loses (crashed, or lost
+orders cost nothing. With *Losses cost resources* on, every aircraft a player loses (crashed, or lost
 with an ejection) takes one fighter or helicopter from your side's AI; you still always have an
 aircraft to fly.
 
@@ -2847,7 +2847,7 @@ when you play alone.
 
 The server decides how the war is fought, for everybody: realistic damage, realistic guidance, no
 crashes, time of day (moonlit nights shorten the enemy's visual range), realistic F-117A
-weapons, friendly fire and whether lost aircraft count, and of course the campaign's own options. The weather is the same for
+weapons, friendly fire, whether losses cost resources, whether the friendly AI flies missions, and of course the campaign's own options. The weather is the same for
 everybody: the same clouds in the same places, and the same lightning strikes. Each player keeps their own cockpit (classic or
 modern), flight model, avionics, HUD, shaders, shadows and lights, and picks their aircraft for each sortie on the briefing's LOADOUT page.
 

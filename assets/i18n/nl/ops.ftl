@@ -66,8 +66,8 @@ ops-rule-no-crashes = geen crashes
 ops-rule-time = doorlopende tijd
 ops-rule-weapons = realistische F-117A-wapens
 ops-rule-friendly-fire = friendly fire
-ops-rule-airframe-losses = verloren toestellen tellen
-ops-rule-no-ai-missions = geen AI-missies
+ops-rule-airframe-losses = verliezen kosten middelen
+ops-rule-no-ai-missions = geen eigen AI-missies
 ops-rule-classic = klassiek
 ops-materiel = MATERIEEL
 ops-materiel-blue = BLAUW { $materiel } (+{ $income }/u)
@@ -104,7 +104,7 @@ ops-how =
     De AI vliegt alleen met de toestellen die ze heeft; neergehaald zijn ze weg, geland vliegen ze weer. Elk uur koopt elke partij nieuwe zolang haar materieel strekt.
     Jij komt nooit tekort: je toestellen, je bases (gebombardeerd of niet) en de helikopters van je eigen inzetbevelen zijn er altijd.
 ops-how-repairs = Elke kant herstelt maar een paar stellingen tegelijk (meer met meer intacte steden), die bij het front eerst, en een stelling die kort na herstel opnieuw wordt vernietigd duurt elke keer langer.
-ops-how-airframes = Verloren toestellen tellen: elk toestel dat een piloot verliest is één jager of helikopter minder voor de eigen AI.
+ops-how-airframes = Verliezen kosten middelen: elk toestel dat een piloot verliest is één jager of helikopter minder voor de eigen AI.
 ops-section-prices = Prijzen
 ops-price-airfield = Vliegveld repareren
 ops-price-sam = SAM-site repareren

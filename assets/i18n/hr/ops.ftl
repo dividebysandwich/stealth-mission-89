@@ -66,8 +66,8 @@ ops-rule-no-crashes = bez padova
 ops-rule-time = neprekinuto vrijeme
 ops-rule-weapons = realistično naoružanje F-117A
 ops-rule-friendly-fire = prijateljska paljba
-ops-rule-airframe-losses = izgubljeni zrakoplovi se broje
-ops-rule-no-ai-missions = bez misija UI
+ops-rule-airframe-losses = gubici koštaju resurse
+ops-rule-no-ai-missions = bez prijateljskih misija UI
 ops-rule-classic = klasično
 ops-materiel = MATERIJAL
 ops-materiel-blue = PLAVI { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI leti samo zrakoplovima koje ima; oboreni su izgubljeni, sletjeli opet lete. Svakog sata svaka strana kupuje nove dok joj materijala ima.
     Vama nikad ne ponestaje: vaši zrakoplovi, vaše baze (bombardirane ili ne) i helikopteri vaših naredbi za desant uvijek su tu.
 ops-how-repairs = Svaka strana istodobno popravlja samo nekoliko položaja (više s više netaknutih gradova), najprije one najbliže bojišnici, a položaj ponovno uništen ubrzo nakon popravka svaki put traje dulje.
-ops-how-airframes = Izgubljeni zrakoplovi se broje: svaki zrakoplov koji pilot izgubi jedan je lovac ili helikopter manje za vlastitu UI.
+ops-how-airframes = Gubici koštaju resurse: svaki zrakoplov koji pilot izgubi jedan je lovac ili helikopter manje za vlastitu UI.
 ops-section-prices = Cijene
 ops-price-airfield = Popravak aerodroma
 ops-price-sam = Popravak SAM položaja

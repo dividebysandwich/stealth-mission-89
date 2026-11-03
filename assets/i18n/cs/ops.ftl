@@ -66,8 +66,8 @@ ops-rule-no-crashes = bez havárií
 ops-rule-time = nepřetržitý čas
 ops-rule-weapons = realistická výzbroj F-117A
 ops-rule-friendly-fire = palba do vlastních
-ops-rule-airframe-losses = ztracené letouny se počítají
-ops-rule-no-ai-missions = bez misí UI
+ops-rule-airframe-losses = ztráty stojí zdroje
+ops-rule-no-ai-missions = bez spojeneckých misí UI
 ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODŘÍ { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI létá jen na letadlech, která má; sestřelená jsou pryč, přistálá zase létají. Každou hodinu každá strana nakupuje nová, dokud vydrží materiál.
     Vám nikdy nic nechybí: vaše letadla, vaše základny (bombardované či ne) a vrtulníky vašich vlastních rozkazů k výsadku jsou vždy k dispozici.
 ops-how-repairs = Každá strana opravuje najednou jen několik stanovišť (víc s více nepoškozenými městy), nejdřív ta nejblíž frontě, a stanoviště zničené znovu brzy po opravě trvá pokaždé déle.
-ops-how-airframes = Ztracené letouny se počítají: každý letoun, který pilot ztratí, je o jednu stíhačku nebo vrtulník méně pro spřátelenou AI.
+ops-how-airframes = Ztráty stojí zdroje: každý letoun, který pilot ztratí, je o jednu stíhačku nebo vrtulník méně pro spřátelenou AI.
 ops-section-prices = Ceny
 ops-price-airfield = Oprava letiště
 ops-price-sam = Oprava stanoviště SAM
