@@ -156,6 +156,9 @@ Testing and screenshots
   --watch-orbit <yaw>,<pitch>,<m>
                                the watching camera's place (radians from behind, above)
   --campaign-watch             watch the first friendly aircraft
+  --campaign-ai-now            the AI flies the boards' missions at once (not 5 minutes after)
+  --campaign-take-control [s]  take over the first friendly AI aircraft up s seconds (60)
+  --campaign-leave [s]         leave the aircraft to the AI s seconds into the sortie (20)
   --campaign-designate gepard|patriot|drones
                                designate a new air defence site near the parked base
   --campaign-drones [front [n]] put (n) drone command centers near the front, man one

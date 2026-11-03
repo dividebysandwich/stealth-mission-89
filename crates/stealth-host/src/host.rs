@@ -377,7 +377,7 @@ impl Host {
         player: PlayerId,
         tag: u32,
     ) -> Result<Vec<HostEvent>, Text> {
-        if sim.flight_of_tag(tag).is_none() {
+        if !sim.takeable(tag) {
             return Err(text!("ce-no-ai-aircraft"));
         }
         let events = self.state.apply(player, Command::TakeControl { tag })?;

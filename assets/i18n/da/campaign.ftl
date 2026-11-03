@@ -206,6 +206,7 @@ ce-off-board = Den mission er ikke længere på tavlen
 ce-already-flying = Flyver allerede en flyvning
 ce-no-ai-aircraft = Intet AI-fly at overtage
 ce-not-flying = Ingen mission i luften
+ce-not-in-the-air = Ikke i luften
 ce-no-divert = Ingen omdirigering til den mission
 ce-target-destroyed = Det mål er allerede ødelagt
 ce-not-friendly-base = Ikke en egen base

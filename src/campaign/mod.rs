@@ -671,6 +671,9 @@ fn place_player(s: &mut Session, st: &PlayerState, base: usize) {
         a.gear_down = !st.gear_up;
         a.velocity = st.velocity as f32;
         a.has_flown = true;
+        // Cruise power (the start state has no throttle).
+        a.thrust = 85.0;
+        a.set_thrust = 85.0;
     }
     pos.0 = p;
 }
@@ -696,6 +699,9 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         }
     }
     divert_call(c, &mut s);
+    // LEAVE AIRCRAFT in the flight menu: in the air on a sortie that is not ending.
+    let flying = s.player.single().is_ok_and(|(a, _)| !a.on_ground && a.ended.is_none());
+    s.menu.can_leave = c.phase == Phase::Sortie && c.end_timer.is_none() && flying;
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
     if c.phase == Phase::Sortie && c.end_timer.is_none() && !s.combat.sim.player_absent() {
@@ -754,6 +760,48 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
                 });
             }
         }
+    }
+    // Test aids: `--campaign-ai-now` makes the boards' offers due for the AI at once (a host's or
+    // a single player's campaign); `--campaign-take-control [secs]` takes over the first
+    // friendly AI aircraft up that long (default 60); `--campaign-leave [secs]` leaves the
+    // aircraft to the AI that long into the sortie (default 20).
+    let arg = |flag: &str, default: f64| {
+        let mut a = std::env::args().skip_while(|a| a != flag);
+        a.next().map(|_| a.next().and_then(|v| v.parse().ok()).unwrap_or(default))
+    };
+    if std::env::args().any(|a| a == "--campaign-ai-now")
+        && let Some(h) = c.host.as_mut()
+    {
+        let (now, wait) = (h.state.clock, stealth_campaign::tuning::AI_MISSION_WAIT);
+        for o in h.state.board.iter_mut().chain(h.state.red_board.iter_mut()) {
+            o.posted = o.posted.min(now - wait);
+        }
+    }
+    if c.phase == Phase::Ops
+        && !c.ui.test_controlled
+        && let Some(after) = arg("--campaign-take-control", 60.0)
+    {
+        let now = c.state().clock;
+        let tag = c
+            .state()
+            .ai_missions
+            .iter()
+            .filter(|m| m.side == stealth_campaign::Side::Blue && now - m.launched >= after)
+            .filter(|m| m.open())
+            .find_map(|m| m.takeable());
+        if let Some(tag) = tag.filter(|&t| s.combat.sim.takeable(t)) {
+            c.ui.test_controlled = true;
+            c.actions.push(Action::TakeControl { tag });
+        }
+    }
+    if c.phase == Phase::Sortie
+        && !c.ui.test_left
+        && s.menu.can_leave
+        && let Some(after) = arg("--campaign-leave", 20.0)
+        && c.state().sortie(c.me).is_some_and(|s| c.state().clock - s.started >= after)
+    {
+        c.ui.test_left = true;
+        c.actions.push(Action::LeaveAircraft);
     }
     // Test aid: `--campaign-drones` puts a drone command center at the friendly place nearest
     // the enemy's air defences and mans it (a host's or a single player's campaign);

@@ -206,6 +206,7 @@ ce-off-board = Tehtävä ei ole enää taululla
 ce-already-flying = Lento on jo käynnissä
 ce-no-ai-aircraft = Ei tekoälyn konetta otettavaksi
 ce-not-flying = Ei lentotehtävää käynnissä
+ce-not-in-the-air = Ei ilmassa
 ce-no-divert = Ei uudelleenohjausta tähän tehtävään
 ce-target-destroyed = Kohde on jo tuhottu
 ce-not-friendly-base = Ei oma tukikohta

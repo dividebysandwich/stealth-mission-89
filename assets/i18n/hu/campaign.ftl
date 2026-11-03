@@ -206,6 +206,7 @@ ce-off-board = Ez a küldetés már nincs a táblán
 ce-already-flying = Már van egy bevetés folyamatban
 ce-no-ai-aircraft = Nincs átvehető MI-gép
 ce-not-flying = Nincs repülés folyamatban
+ce-not-in-the-air = Nincs a levegőben
 ce-no-divert = Erre a feladatra nincs átirányítás
 ce-target-destroyed = Ez a célpont már megsemmisült
 ce-not-friendly-base = Nem baráti bázis

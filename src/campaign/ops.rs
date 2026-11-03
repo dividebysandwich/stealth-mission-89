@@ -66,6 +66,9 @@ pub struct OpsUi {
     pub test_manned: bool,
     pub test_strike: bool,
     pub test_geran: bool,
+    /// `--campaign-take-control` was done, `--campaign-leave`.
+    pub test_controlled: bool,
+    pub test_left: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
@@ -637,6 +640,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
                     c.ui.error = None;
                 }
                 group_label(ui, c, o.id);
+                ai_label(ui, c, &o);
                 // The operation it prepares: how far along.
                 if let Some(op) =
                     place_of(&o.objective).and_then(|p| c.state().operation_on(p, &front))
@@ -714,6 +718,20 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             let text = t!("ops-logistics-ai", unit = d.title(), count = n);
             ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
         }
+        for m in c.state().ai_missions.iter().filter(|m| m.side == Side::Blue && m.open()) {
+            let n = m.flying().count();
+            if n == 0 {
+                continue;
+            }
+            any = true;
+            let text = t!(
+                "ops-ai-flight",
+                title = m.offer.title.tr(),
+                aircraft = m.airframe.name(),
+                count = n
+            );
+            ui.label(egui::RichText::new(text).color(FRIENDLY_BLUE));
+        }
         if let Some(a) = &c.state().awacs {
             any = true;
             let text = t!("ops-awacs", mins = mins(a.until));
@@ -779,6 +797,7 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             ui.label(egui::RichText::new(text).color(DIM));
         }
         group_label(ui, c, o.id);
+        ai_label(ui, c, &o);
         ui.add_space(6.0);
         if let Some(p) = place_of(&o.objective).and_then(|p| c.state().place(p)) {
             let intel = p.intel(c.state().clock);
@@ -863,8 +882,12 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
         ui.label(egui::RichText::new(text).color(DIM));
         support_button(ui, c, &o);
         ui.add_space(10.0);
+        // The AI's flight is up: fly along with it, or take over one of its aircraft.
+        let ai = c.state().ai_mission_for(o.id).filter(|m| m.open()).and_then(|m| m.takeable());
         let (accept, mark) = if o.kind.ai_flown() {
             (t!("ops-fly-uh60"), icon::HELICOPTER)
+        } else if ai.is_some() {
+            (t!("ops-fly-with-ai"), icon::ACCEPT)
         } else {
             (t!("ops-accept"), icon::ACCEPT)
         };
@@ -875,8 +898,76 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             }
             c.ui.briefing = Some(Briefing::new(o.id, chosen, aircraft, loadout, BriefPage::Map));
         }
+        if let Some(tag) = ai {
+            ui.add_space(6.0);
+            take_control(ui, c, tag, t!("ops-take-control"));
+        }
     });
     flow.finish(ui);
+}
+
+/// The AI's flight on an offer, under it on the board: its aircraft in the air, or when it
+/// takes off.
+fn ai_label(ui: &mut egui::Ui, c: &ActiveCampaign, o: &stealth_campaign::MissionOffer) {
+    let st = c.state();
+    let (text, col) = match st.ai_mission_for(o.id).filter(|m| m.open()) {
+        Some(m) => match m.flying().count() {
+            0 => return,
+            n => (t!("ops-ai-flying", aircraft = m.airframe.name(), count = n), FRIENDLY_BLUE),
+        },
+        None => match st.ai_launch_at(o) {
+            Some(at) => {
+                let left = (at - st.clock).max(0.0) as i32;
+                let time = format!("{}:{:02}", left / 60, left % 60);
+                (t!("ops-ai-takes-off", time = time), DIM)
+            }
+            None => return,
+        },
+    };
+    ui.label(egui::RichText::new(text).small().color(col));
+}
+
+/// TAKE CONTROL of an AI aircraft (campaign tag `tag`, the button's `label`): fly it on from
+/// where it is.
+fn take_control(ui: &mut egui::Ui, c: &mut ActiveCampaign, tag: u32, label: &str) {
+    let why = (c.phase != Phase::Ops || c.state().sortie(c.me).is_some())
+        .then(|| t!("ce-finish-sortie").to_string());
+    let button = big_button(label).icon(icon::JOIN);
+    if ui.add_enabled(why.is_none(), button).clicked() {
+        c.ui.error = None;
+        c.actions.push(Action::TakeControl { tag });
+    }
+    let note = why.unwrap_or_else(|| t!("ops-take-control.facts").to_string());
+    ui.label(egui::RichText::new(note).small().color(DIM));
+}
+
+/// The watched aircraft flies a mission for the friendly AI: TAKE CONTROL of it.
+fn take_control_button(
+    ui: &mut egui::Ui,
+    c: &mut ActiveCampaign,
+    sim: &stealth_sim::Sim,
+    unit_view: &mut super::UnitView,
+) {
+    let Some(super::unit_view::UnitRef::Flight { index, .. }) = unit_view.target else { return };
+    let Some(f) = sim.campaign_flight(index).filter(|f| f.blue) else { return };
+    let Some(m) = c.state().ai_mission_of_tag(f.tag).filter(|m| m.open()) else { return };
+    if !m.flying().any(|t| t == f.tag) {
+        return;
+    }
+    let (name, title) = (m.airframe.name(), m.offer.title.tr());
+    // Still taking off (or landing): not yet.
+    if !sim.takeable(f.tag) {
+        return;
+    }
+    ui.add_space(10.0);
+    section(ui, name);
+    ui.label(egui::RichText::new(title).small().color(BRIGHT));
+    let before = c.actions.len();
+    // The column is narrow: CONTROL, as a console's.
+    take_control(ui, c, f.tag, t!("ops-control"));
+    if c.actions.len() > before {
+        unit_view.close();
+    }
 }
 
 /// The players on an offer's plan (coop): planning it, flying it.
@@ -1221,7 +1312,8 @@ fn war_map(
         let test_taken = &mut c.ui.test_taken;
         let st = c.host.as_ref().map(|h| &h.state).or(c.copy.as_ref()).expect("campaign");
         let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
-        let k = map_draw::BIG;
+        // The war map's symbols twice the size of the other maps'.
+        let k = 2.0 * map_draw::BIG;
         let mut tips = MapTips::grown(k);
         // Insertion routes.
         for ins in st.insertions.iter().filter(|_| layers.shows(Layer::Insertions)) {
@@ -1397,6 +1489,7 @@ fn side_column(
     ui.label(egui::RichText::new(t!("ops-watch-hint")).small().color(BRIGHT));
     ui.label(egui::RichText::new(t!("ops-map-hint")).small().color(DIM));
     control_button(ui, c, sim, unit_view);
+    take_control_button(ui, c, sim, unit_view);
     ui.add_space(10.0);
     super::designate::buttons(ui, c);
 }

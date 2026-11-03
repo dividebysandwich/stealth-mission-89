@@ -206,6 +206,7 @@ ce-off-board = Tej misji nie ma już na tablicy
 ce-already-flying = Lot bojowy już trwa
 ce-no-ai-aircraft = Brak maszyny SI do przejęcia
 ce-not-flying = Brak lotu bojowego
+ce-not-in-the-air = Nie w powietrzu
 ce-no-divert = Brak zmiany zadania na tę misję
 ce-target-destroyed = Ten cel jest już zniszczony
 ce-not-friendly-base = To nie jest sojusznicza baza

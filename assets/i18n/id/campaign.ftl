@@ -206,6 +206,7 @@ ce-off-board = Misi itu tidak lagi ada di papan
 ce-already-flying = Sedang menerbangkan sorti
 ce-no-ai-aircraft = Tidak ada pesawat AI untuk diambil alih
 ce-not-flying = Tidak sedang terbang
+ce-not-in-the-air = Tidak sedang di udara
 ce-no-divert = Tidak ada pengalihan ke misi itu
 ce-target-destroyed = Target itu sudah hancur
 ce-not-friendly-base = Bukan pangkalan kawan

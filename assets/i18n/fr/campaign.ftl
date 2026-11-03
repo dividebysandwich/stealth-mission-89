@@ -205,6 +205,7 @@ ce-off-board = Cette mission n'est plus au tableau
 ce-already-flying = Déjà en sortie
 ce-no-ai-aircraft = Aucun appareil IA à reprendre
 ce-not-flying = Aucune sortie en vol
+ce-not-in-the-air = Pas en vol
 ce-no-divert = Pas de déroutement vers cette mission
 ce-target-destroyed = Cet objectif est déjà détruit
 ce-not-friendly-base = Ce n'est pas une base amie

@@ -206,6 +206,7 @@ ce-off-board = Die missie staat niet meer op het bord
 ce-already-flying = Je vliegt al een vlucht
 ce-no-ai-aircraft = Geen AI-toestel om over te nemen
 ce-not-flying = Geen vlucht bezig
+ce-not-in-the-air = Niet in de lucht
 ce-no-divert = Geen omleiding naar die missie
 ce-target-destroyed = Dat doel is al vernietigd
 ce-not-friendly-base = Geen bevriende basis

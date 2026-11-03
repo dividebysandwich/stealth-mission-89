@@ -206,6 +206,7 @@ ce-off-board = Misiunea nu se mai află pe tablă
 ce-already-flying = Un zbor este deja în curs
 ce-no-ai-aircraft = Nicio aeronavă IA de preluat
 ce-not-flying = Nicio misiune în zbor
+ce-not-in-the-air = Nu ești în aer
 ce-no-divert = Nicio redirecționare spre acea misiune
 ce-target-destroyed = Ținta este deja distrusă
 ce-not-friendly-base = Nu este o bază prietenă

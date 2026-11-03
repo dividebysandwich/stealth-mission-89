@@ -206,6 +206,7 @@ ce-off-board = Det uppdraget ligger inte längre på tavlan
 ce-already-flying = Du flyger redan en flygning
 ce-no-ai-aircraft = Inget AI-flygplan att ta över
 ce-not-flying = Inget uppdrag i luften
+ce-not-in-the-air = Inte i luften
 ce-no-divert = Ingen omdirigering till det uppdraget
 ce-target-destroyed = Det målet är redan förstört
 ce-not-friendly-base = Inte en egen bas

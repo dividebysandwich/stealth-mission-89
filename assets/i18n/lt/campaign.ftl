@@ -206,6 +206,7 @@ ce-off-board = Šios misijos lentoje nebėra
 ce-already-flying = Skrydis jau vykdomas
 ce-no-ai-aircraft = Nėra DI orlaivio perimti
 ce-not-flying = Neskrendama jokia užduotis
+ce-not-in-the-air = Ne ore
 ce-no-divert = Nėra nukreipimo į tą užduotį
 ce-target-destroyed = Šis taikinys jau sunaikintas
 ce-not-friendly-base = Tai ne draugiška bazė

@@ -206,6 +206,7 @@ ce-off-board = Dik il-missjoni m'għadhiex fuq il-bord
 ce-already-flying = Diġà qed itir titjira
 ce-no-ai-aircraft = L-ebda ajruplan tal-IA x'tieħu
 ce-not-flying = L-ebda titjira għaddejja
+ce-not-in-the-air = Mhux fl-ajru
 ce-no-divert = L-ebda devjazzjoni għal dik il-missjoni
 ce-target-destroyed = Dik il-mira diġà meqruda
 ce-not-friendly-base = Mhix bażi ħabiba

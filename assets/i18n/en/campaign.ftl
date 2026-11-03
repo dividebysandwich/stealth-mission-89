@@ -207,6 +207,7 @@ ce-off-board = That mission is no longer on the board
 ce-already-flying = Already flying a sortie
 ce-no-ai-aircraft = No AI aircraft to take over
 ce-not-flying = Not flying a sortie
+ce-not-in-the-air = Not in the air
 ce-no-divert = No divert to that mission
 ce-target-destroyed = That target is already destroyed
 ce-not-friendly-base = Not a friendly base

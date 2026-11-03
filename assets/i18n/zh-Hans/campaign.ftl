@@ -205,6 +205,7 @@ ce-off-board = 该任务已不在看板上
 ce-already-flying = 已在执行出击
 ce-no-ai-aircraft = 没有可接管的 AI 飞机
 ce-not-flying = 未在出击
+ce-not-in-the-air = 不在空中
 ce-no-divert = 无法改派到该任务
 ce-target-destroyed = 该目标已被摧毁
 ce-not-friendly-base = 不是友军基地

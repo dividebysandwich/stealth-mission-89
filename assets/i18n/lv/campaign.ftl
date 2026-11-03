@@ -206,6 +206,7 @@ ce-off-board = Šīs misijas vairs nav dēlī
 ce-already-flying = Jau notiek lidojums
 ce-no-ai-aircraft = Nav MI lidaparāta, ko pārņemt
 ce-not-flying = Nav lidojuma
+ce-not-in-the-air = Nav gaisā
 ce-no-divert = Nav pārvirzīšanas uz šo misiju
 ce-target-destroyed = Šis mērķis jau iznīcināts
 ce-not-friendly-base = Nav draudzīga bāze

@@ -206,6 +206,7 @@ ce-off-board = Níl an misean sin ar an gclár a thuilleadh
 ce-already-flying = Ag eitilt cheana
 ce-no-ai-aircraft = Níl aerárthach IS le glacadh
 ce-not-flying = Níl aon sortie ar siúl
+ce-not-in-the-air = Ní san aer
 ce-no-divert = Níl atreorú chuig an misean sin
 ce-target-destroyed = Tá an sprioc sin scriosta cheana
 ce-not-friendly-base = Ní bunáit chairdiúil é

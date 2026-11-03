@@ -128,6 +128,10 @@ pub struct FlightMenu {
     /// opened so, BACK there closes it (`options_only`).
     pub open_options: bool,
     options_only: bool,
+    /// The main page: the campaign sortie's (with LEAVE AIRCRAFT) or the usual one.
+    home: Page,
+    /// LEAVE AIRCRAFT can hand the aircraft to the AI now (the campaign says so every frame).
+    pub can_leave: bool,
 }
 
 /// The menu's pages: the main one, OPTIONS and its pages (as the main menu's OPTIONS window).
@@ -135,6 +139,10 @@ pub struct FlightMenu {
 enum Page {
     #[default]
     Main,
+    /// The main page in a campaign sortie: LEAVE AIRCRAFT, END SORTIE asks first.
+    Sortie,
+    /// END SORTIE?
+    ConfirmEnd,
     Options,
     Game,
     Graphics,
@@ -149,6 +157,16 @@ impl Page {
         use Item::*;
         match self {
             Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission, Back],
+            Page::Sortie => &[
+                Resume,
+                SaveMission,
+                Open(Page::Options),
+                KeyGuide,
+                LeaveAircraft,
+                EndMission,
+                Back,
+            ],
+            Page::ConfirmEnd => &[ConfirmEnd, Resume, Back],
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
@@ -223,22 +241,23 @@ impl Page {
         }
     }
 
-    /// The page BACK and Esc go to (None: they close the menu).
-    fn back(self, options_only: bool) -> Option<Page> {
-        self.parent().filter(|&p| !(options_only && p == Page::Main))
+    /// The page BACK and Esc go to (None: they close the menu); `home` is the main page.
+    fn back(self, options_only: bool, home: Page) -> Option<Page> {
+        self.parent(home).filter(|&p| !(options_only && p == home))
     }
 
-    fn parent(self) -> Option<Page> {
+    fn parent(self, home: Page) -> Option<Page> {
         match self {
-            Page::Main => None,
-            Page::Options => Some(Page::Main),
+            Page::Main | Page::Sortie => None,
+            Page::Options | Page::ConfirmEnd => Some(home),
             _ => Some(Page::Options),
         }
     }
 
     fn title(self) -> &'static str {
         tf!(match self {
-            Page::Main => "fm-menu",
+            Page::Main | Page::Sortie => "fm-menu",
+            Page::ConfirmEnd => "fm-end-sortie-confirm",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
             Page::Graphics => "options-tab-graphics",
@@ -298,7 +317,11 @@ enum Item {
     /// Opens a page.
     Open(Page),
     KeyGuide,
+    /// A campaign sortie: the AI takes the aircraft over and flies the mission on.
+    LeaveAircraft,
     EndMission,
+    /// END SORTIE, asked to be sure.
+    ConfirmEnd,
     Back,
     /// The language of the menus and messages (`options::language_option`).
     Language,
@@ -351,6 +374,8 @@ impl Item {
             Item::SaveMission => "fm-save-mission",
             Item::KeyGuide => "fm-key-guide",
             Item::EndMission => "fm-end-mission",
+            Item::LeaveAircraft => "fm-leave-aircraft",
+            Item::ConfirmEnd => "fm-end-sortie",
             Item::Back => "back",
             Item::Language => "fm-language",
             Item::Shaders => "fm-shaders",
@@ -424,7 +449,9 @@ impl Item {
             | Item::Bindings
             | Item::Resume
             | Item::SaveMission
+            | Item::LeaveAircraft
             | Item::EndMission
+            | Item::ConfirmEnd
             | Item::Back => String::new(),
         }
     }
@@ -434,11 +461,13 @@ impl Item {
     /// with the pixelize look on, the cockpit style only for aircraft with two cockpits, the sun and moon switch only with the
     /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
     /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
-    /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved.
-    fn enabled(self, s: &Settings, ops: bool, can_save: bool) -> bool {
+    /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved,
+    /// LEAVE AIRCRAFT while the AI can take it over (in the air).
+    fn enabled(self, s: &Settings, ops: bool, menu: &FlightMenu) -> bool {
         match self {
             Item::Bindings => !ops,
-            Item::SaveMission => can_save,
+            Item::SaveMission => menu.can_save,
+            Item::LeaveAircraft => menu.can_leave,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
             Item::PixelSize => crate::palette::pixelized(s),
@@ -464,7 +493,9 @@ impl Item {
                 | Item::Open(_)
                 | Item::KeyGuide
                 | Item::Bindings
+                | Item::LeaveAircraft
                 | Item::EndMission
+                | Item::ConfirmEnd
                 | Item::Back
         )
     }
@@ -628,6 +659,9 @@ fn toggle(
         go_to(&mut menu, Page::Options);
         menu.options_only = true;
     }
+    // In a campaign sortie the main page has LEAVE AIRCRAFT.
+    let sortie = campaign.as_deref().is_some_and(|c| c.phase == crate::campaign::Phase::Sortie);
+    menu.home = if sortie { Page::Sortie } else { Page::Main };
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -640,7 +674,7 @@ fn toggle(
     } else if pressed
         && menu.open
         && !menu.exiting
-        && let Some(parent) = menu.page.back(menu.options_only)
+        && let Some(parent) = menu.page.back(menu.options_only, menu.home)
     {
         go_to(&mut menu, parent);
     } else if pressed
@@ -675,7 +709,7 @@ fn set_open(
     menu.guide = false;
     block.0 = open;
     if open {
-        menu.page = Page::Main;
+        menu.page = menu.home;
         menu.options_only = false;
         menu.cursor = 0;
         menu.save_note = None;
@@ -1260,11 +1294,10 @@ fn navigate(
         None => (menu.cursor, None),
     };
     let item = items[index.min(n - 1)];
-    if !item.enabled(&settings, ops, menu.can_save) || !(select || clicked.is_some() || adjust != 0)
-    {
+    if !item.enabled(&settings, ops, &menu) || !(select || clicked.is_some() || adjust != 0) {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
-            match menu.page.back(menu.options_only) {
+            match menu.page.back(menu.options_only, menu.home) {
                 Some(parent) => go_to(&mut menu, parent),
                 None => set_open(&mut menu, false, pause, &settings, &mut time, &mut block, &sinks),
             }
@@ -1340,7 +1373,7 @@ fn navigate(
             *v = ((*v * 10.0).round() + dir).clamp(0.0, 10.0) / 10.0;
         }
         Item::Open(page) => go_to(&mut menu, page),
-        Item::Back => match menu.page.back(menu.options_only) {
+        Item::Back => match menu.page.back(menu.options_only, menu.home) {
             Some(parent) => go_to(&mut menu, parent),
             None => close = true,
         },
@@ -1357,12 +1390,20 @@ fn navigate(
             c.ask_exit();
             close = true;
         }
-        // A campaign sortie ends; the flight goes on with the campaign's board.
-        Item::EndMission if !pause => {
+        // A campaign sortie ends (asked first); the flight goes on with the campaign's board.
+        Item::EndMission if menu.page == Page::Sortie => go_to(&mut menu, Page::ConfirmEnd),
+        Item::EndMission | Item::ConfirmEnd if !pause => {
             actions.write(ActionEvent(Action::Quit));
             close = true;
         }
-        Item::EndMission => {
+        // The AI flies on in his aircraft; he is back on the board.
+        Item::LeaveAircraft => {
+            if let Some(c) = campaign.as_mut() {
+                c.actions.push(crate::campaign::Action::LeaveAircraft);
+            }
+            close = true;
+        }
+        Item::EndMission | Item::ConfirmEnd => {
             // Stays open (paused and silent) showing EXITING... until the flight ends.
             menu.exiting = true;
             save_options(&mut menu, s);
@@ -1548,13 +1589,15 @@ fn draw(
         return;
     }
     let (crumb, title) = match menu.page {
-        Page::Main => ("", main_title),
+        Page::Main | Page::Sortie => ("", main_title),
+        Page::ConfirmEnd => ("", menu.page.title()),
         Page::Options => ("", tf!("options-title")),
         page => (tf!("fm-crumb-options"), page.title()),
     };
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
-        Page::Main if campaign.is_some() => tf!("fm-game-in-progress"),
+        Page::Main | Page::Sortie if campaign.is_some() => tf!("fm-game-in-progress"),
+        Page::ConfirmEnd => tf!("fm-end-sortie-confirm.text"),
         Page::Game => tf!("fm-game-note"),
         _ => "",
     };
@@ -1563,7 +1606,7 @@ fn draw(
     draw_frame(c, crumb, title, note, Some((key, back_lit)));
     // The main page's entries and the pages of OPTIONS have an icon; the ones that open
     // another screen (a page, the key guide, the bindings dialog) also have a chevron.
-    let icons = matches!(menu.page, Page::Main | Page::Options);
+    let icons = matches!(menu.page, Page::Main | Page::Sortie | Page::ConfirmEnd | Page::Options);
     for (i, (item, r)) in items.iter().zip(item_rects(menu.page)).enumerate() {
         if *item == Item::Back {
             continue;
@@ -1572,7 +1615,7 @@ fn draw(
         let (h, mid) = (y1 - y0, (y0 + y1) / 2.0);
         let lit = i == menu.cursor;
         draw_row(c, r, lit);
-        let col = if !item.enabled(&settings, ops, menu.can_save) {
+        let col = if !item.enabled(&settings, ops, &menu) {
             ink::OFF
         } else if lit {
             ink::LIT_TEXT
@@ -1617,7 +1660,7 @@ fn draw(
         if chevron_zones(&v, r).is_some() {
             // The chevron under the pointer is dark on the lit row; the value is drawn in three
             // runs (each returns where the next one starts).
-            let on = lit && item.enabled(&settings, ops, menu.can_save);
+            let on = lit && item.enabled(&settings, ops, &menu);
             let under = |p: Press| on && menu.pointed == Some(p);
             let (left, rest) =
                 (if under(Press::Down) { ink::TAB } else { col }, &v[1..v.len() - 1]);
@@ -1802,7 +1845,8 @@ fn icon(item: Item) -> Option<char> {
         Item::SaveMission => icon::SAVE,
         Item::Open(Page::Options) => icon::OPTIONS,
         Item::KeyGuide => '\u{e05f}', // book-open
-        Item::EndMission => icon::END_SORTIE,
+        Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
+        Item::LeaveAircraft => icon::KEYS,
         Item::Open(Page::Game) => '\u{e1de}',     // plane
         Item::Open(Page::Graphics) => '\u{e11d}', // monitor
         Item::Open(Page::Effects) => '\u{e412}',  // sparkles
@@ -2055,6 +2099,28 @@ mod tests {
         assert_eq!(spot_at(x, true, false), Spot::Field);
         let gap = Vec2::new(keys[0].1[2] + KEY_GAP / 2.0, keys[0].1[1] + 1.0);
         assert_eq!(spot_at(gap, true, true), Spot::Keyboard);
+    }
+
+    /// In a campaign sortie the main page has LEAVE AIRCRAFT (only while the AI can take the
+    /// aircraft), and END SORTIE asks first: that page goes back to the sortie's main page, as
+    /// OPTIONS does.
+    #[test]
+    fn a_campaign_sortie_asks_before_it_ends() {
+        let items = Page::Sortie.items();
+        let leave = items.iter().position(|&i| i == Item::LeaveAircraft).unwrap();
+        assert_eq!(items[leave + 1], Item::EndMission);
+        assert!(!Page::Main.items().contains(&Item::LeaveAircraft));
+        assert_eq!(Page::ConfirmEnd.items()[0], Item::ConfirmEnd);
+        assert_eq!(Page::ConfirmEnd.back(false, Page::Sortie), Some(Page::Sortie));
+        assert_eq!(Page::Options.back(false, Page::Sortie), Some(Page::Sortie));
+        assert_eq!(Page::Options.back(true, Page::Sortie), None);
+        assert_eq!(Page::Sortie.back(false, Page::Sortie), None);
+        assert_eq!(item_rects(Page::Sortie).len(), items.len());
+        let s = Settings::from_args();
+        let mut menu = FlightMenu::default();
+        assert!(!Item::LeaveAircraft.enabled(&s, false, &menu));
+        menu.can_leave = true;
+        assert!(Item::LeaveAircraft.enabled(&s, false, &menu));
     }
 
     /// A stepped value changes only on its chevrons, whatever the half of the row they are in;

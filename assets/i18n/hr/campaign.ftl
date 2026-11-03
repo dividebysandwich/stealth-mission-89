@@ -206,6 +206,7 @@ ce-off-board = Ta misija više nije na ploči
 ce-already-flying = Borbeni let već traje
 ce-no-ai-aircraft = Nema zrakoplova UI za preuzimanje
 ce-not-flying = Nema leta u tijeku
+ce-not-in-the-air = Nije u zraku
 ce-no-divert = Nema preusmjeravanja na tu misiju
 ce-target-destroyed = Taj cilj je već uništen
 ce-not-friendly-base = Nije saveznička baza

@@ -206,6 +206,7 @@ ce-off-board = Essa missão não está mais no quadro
 ce-already-flying = Já em surtida
 ce-no-ai-aircraft = Nenhuma aeronave da IA para assumir
 ce-not-flying = Nenhuma surtida em voo
+ce-not-in-the-air = Não está no ar
 ce-no-divert = Sem desvio para essa missão
 ce-target-destroyed = Esse alvo já foi destruído
 ce-not-friendly-base = Não é uma base amiga

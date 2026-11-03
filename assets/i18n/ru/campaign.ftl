@@ -205,6 +205,7 @@ ce-off-board = Этой миссии больше нет на доске
 ce-already-flying = Вылет уже выполняется
 ce-no-ai-aircraft = Нет машины ИИ для перехвата управления
 ce-not-flying = Нет вылета
+ce-not-in-the-air = Не в воздухе
 ce-no-divert = Нет перенацеливания на это задание
 ce-target-destroyed = Эта цель уже уничтожена
 ce-not-friendly-base = Это не дружественная база

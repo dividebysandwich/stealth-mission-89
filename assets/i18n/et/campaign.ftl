@@ -206,6 +206,7 @@ ce-off-board = Seda missiooni pole enam tahvlil
 ce-already-flying = Lend on juba pooleli
 ce-no-ai-aircraft = Pole AI lennukit, mida üle võtta
 ce-not-flying = Lendu pole käimas
+ce-not-in-the-air = Pole õhus
 ce-no-divert = Sellele missioonile ümbersuunamist pole
 ce-target-destroyed = See sihtmärk on juba hävitatud
 ce-not-friendly-base = See ei ole oma baas

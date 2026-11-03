@@ -206,6 +206,7 @@ ce-off-board = 해당 임무는 더 이상 게시판에 없습니다
 ce-already-flying = 이미 출격 중입니다
 ce-no-ai-aircraft = 인수할 AI 기체 없음
 ce-not-flying = 출격 중이 아님
+ce-not-in-the-air = 비행 중이 아님
 ce-no-divert = 그 임무로 전환할 수 없음
 ce-target-destroyed = 해당 표적은 이미 파괴되었습니다
 ce-not-friendly-base = 아군 기지가 아닙니다

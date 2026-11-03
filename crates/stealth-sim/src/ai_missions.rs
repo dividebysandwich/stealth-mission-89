@@ -188,6 +188,14 @@ impl Sim {
         (u.flags & fflags::DESTROYED == 0 && u.flags & fflags::AIRBORNE != 0).then_some(i)
     }
 
+    /// The AI's aircraft `tag` can be taken over: up and away (not taking off, not landing).
+    pub fn takeable(&self, tag: u32) -> bool {
+        self.flight_of_tag(tag).is_some_and(|i| {
+            let u = self.flights[i];
+            u.flags & (fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT) == 0 && u.speed > 0
+        })
+    }
+
     /// Recon flights over their object take its photo and turn for home.
     pub(crate) fn campaign_recon(&mut self) {
         let Some(c) = self.campaign.as_mut() else { return };
@@ -245,7 +253,7 @@ impl Sim {
         objective: Option<(i32, usize)>,
         airframe: Airframe,
     ) -> Option<PlayerState> {
-        let i = self.flight_of_tag(tag)?;
+        let i = self.flight_of_tag(tag).filter(|_| self.takeable(tag))?;
         let u = self.flights[i];
         let t = self.ac_type(u.spec);
         let full = (((t.range as i32 * self.fs) << 11) / (t.max_speed as i32).max(1)).max(1);

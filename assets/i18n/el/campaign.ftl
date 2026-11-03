@@ -206,6 +206,7 @@ ce-off-board = Αυτή η αποστολή δεν βρίσκεται πια σ�
 ce-already-flying = Πετάτε ήδη μια εξόρμηση
 ce-no-ai-aircraft = Κανένα αεροσκάφος ΤΝ για ανάληψη
 ce-not-flying = Καμία έξοδος σε πτήση
+ce-not-in-the-air = Όχι στον αέρα
 ce-no-divert = Καμία εκτροπή σε αυτή την αποστολή
 ce-target-destroyed = Αυτός ο στόχος έχει ήδη καταστραφεί
 ce-not-friendly-base = Δεν είναι φίλια βάση

@@ -206,6 +206,7 @@ ce-off-board = その任務はもうボードにありません
 ce-already-flying = すでに出撃中です
 ce-no-ai-aircraft = 引き継げるAI機がない
 ce-not-flying = 出撃中ではない
+ce-not-in-the-air = 飛行中ではない
 ce-no-divert = その任務へは変更できない
 ce-target-destroyed = その目標はすでに破壊されています
 ce-not-friendly-base = 友軍の基地ではありません
