@@ -90,6 +90,25 @@ shows the generated mission.
 
 In the browser (WebGPU; coop joins public servers through the master server): `trunk serve --release`, see [docs/web.md](docs/web.md).
 
+### Android
+Phones and tablets (arm64, Android 9 or later, Vulkan), flown with on-screen touch controls
+(`src/touch.rs`, see the manual's *Controls*; `--touch` shows them on the desktop, the left mouse
+button as a finger). The APK is built by the **Android** workflow, run by hand: Actions > Android >
+*Run workflow*, or `gh workflow run android.yml --ref <branch>` (add `-f abis="arm64-v8a x86_64"`
+for the emulator). Install the artifact's APK with `adb install -r stealth-mission-89-*-android.apk`;
+it is signed with the debug key in `packaging/android`, so each build installs over the last and keeps
+the saves. Logs: `adb logcat -s RustStdoutStderr:*`. The coop radio's microphone needs
+`adb shell pm grant io.github.dividebysandwich.stealthmission89 android.permission.RECORD_AUDIO`.
+
+Locally, with the Android SDK (build-tools, a platform) and an NDK:
+```sh
+export ANDROID_HOME=~/Android/Sdk ANDROID_NDK_HOME=~/Android/Sdk/ndk/<version>
+cargo ndk -t arm64-v8a -P 28 build --release -p stealth-android
+tools/android-apk.sh sm89.apk arm64-v8a=target/aarch64-linux-android/release/libstealth_mission_89.so
+```
+(`-t x86_64` and `x86_64=target/x86_64-linux-android/...` for the emulator; strip the library with the
+NDK's `llvm-strip` first for a smaller APK.)
+
 ### Command-line options:
 
 | Option | Effect |

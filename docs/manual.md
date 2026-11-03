@@ -25,7 +25,7 @@ avionics with a targeting pod, an aerodynamic flight model, missiles that use pr
 with the accurate stars and moon of the mission's date. Seven more aircraft stand beside the F-117A, a modern 
 war in Ukraine joins the old theaters, and the dynamic campaign turns the missions into a war that runs on in 
 real time, with armour, helicopters, drones and multiplayer up to 64 players. On top of it all, you can fly 
-on your Linux, Mac or Windows machine, or in a browser, or in VR - both with your PC and also directly on 
+on your Linux, Mac or Windows machine, on an Android phone or tablet, or in a browser, or in VR - both with your PC and also directly on 
 your Steam Frame in standalone mode.
 
 But unlike the old DOS games, you are not constrained to single missions and a randomized career mode. Stealth 
@@ -279,6 +279,23 @@ diagnostics.watch(freeTrack.z)
 ```
 
 Thank you fritzjoel for this tip!
+
+**Touch (Android).** On a phone or tablet the flight is flown with on-screen controls:
+
+| Control | Where | Does |
+|---|---|---|
+| **THR** | Slot along the left edge | Throttle (a helicopter's collective): idle at the bottom, full at the top |
+| Stick | Lower right: put the thumb down anywhere there | Drag right to roll right, down to pull; the further, the harder |
+| **FIRE** / **GUN** | Left, beside the throttle | Fire the selected weapon / the gun, while held |
+| **TGT** / **WPN** | Left | Nearest target ahead / select weapon |
+| **FLR** / **CHF** | Left | Flare / chaff |
+| **MENU**, **VIEW**, **MAP**, **GEAR**, **BRK** | Top right | In-flight menu, cockpit or chase view, maps, gear, wheel brakes |
+
+A finger keeps the control it came down on until it lifts, so you can steer, throttle and fire at
+once. A touch anywhere else works as the mouse: it presses the cockpit's switches and the MFD
+buttons, turns the kneeboard's pages and chooses in the in-flight menu, which hides the touch
+controls while it is open. The back gesture opens and closes the in-flight menu. A keyboard or mouse
+connected to the phone works as on a computer; gamepads and joysticks do not work on Android yet.
 
 The complete list of keys is in Appendix A and in [keys.md](keys.md).
 
