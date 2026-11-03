@@ -502,10 +502,10 @@ fn aircraft_lights(
     }
 }
 
-/// Desktop mouse look, as in flight: hold the right button on the scene and move the mouse to turn
+/// Desktop mouse look, as in flight: hold the right button (`Action::MouseLook`) on the scene and move the mouse to turn
 /// the view round the camera, which stays where it is.
 fn mouse_look(
-    buttons: Res<ButtonInput<MouseButton>>,
+    pointer: Res<crate::input::FlightControls>,
     motion: Res<AccumulatedMouseMotion>,
     egui: Res<EguiWantsInput>,
     mut look: ResMut<MenuLook>,
@@ -516,10 +516,10 @@ fn mouse_look(
     if cams.is_empty() {
         return;
     }
-    if buttons.just_pressed(MouseButton::Right) {
+    if pointer.mouse_look_pressed {
         look.turning = !egui.wants_any_pointer_input();
     }
-    let held = look.turning && buttons.pressed(MouseButton::Right);
+    let held = look.turning && pointer.mouse_look;
     if !held {
         look.turning = false;
     }

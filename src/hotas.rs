@@ -221,6 +221,70 @@ pub struct VrButtonMapping {
     pub target: ButtonTarget,
 }
 
+/// A mouse button, as saved in the mapping.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MouseInput {
+    Left,
+    Right,
+    Middle,
+    Back,
+    Forward,
+    Other(u16),
+}
+
+impl MouseInput {
+    pub fn button(self) -> MouseButton {
+        match self {
+            MouseInput::Left => MouseButton::Left,
+            MouseInput::Right => MouseButton::Right,
+            MouseInput::Middle => MouseButton::Middle,
+            MouseInput::Back => MouseButton::Back,
+            MouseInput::Forward => MouseButton::Forward,
+            MouseInput::Other(n) => MouseButton::Other(n),
+        }
+    }
+
+    /// The button's name in the player's language ("Right mouse button").
+    pub fn label(self) -> String {
+        match self {
+            MouseInput::Left => stealth_i18n::t!("input-mouse-left").to_string(),
+            MouseInput::Right => stealth_i18n::t!("input-mouse-right").to_string(),
+            MouseInput::Middle => stealth_i18n::t!("input-mouse-middle").to_string(),
+            MouseInput::Back => stealth_i18n::t!("input-mouse-back").to_string(),
+            MouseInput::Forward => stealth_i18n::t!("input-mouse-forward").to_string(),
+            MouseInput::Other(n) => stealth_i18n::t!("input-mouse-other", n = n).to_string(),
+        }
+    }
+
+    /// The button's short name for the key guide's stroke font ("MOUSE_R").
+    pub fn short(self) -> String {
+        match self {
+            MouseInput::Left => "MOUSE_L".into(),
+            MouseInput::Right => "MOUSE_R".into(),
+            MouseInput::Middle => "MOUSE_M".into(),
+            MouseInput::Back => "MOUSE_4".into(),
+            MouseInput::Forward => "MOUSE_5".into(),
+            MouseInput::Other(n) => format!("MOUSE_{n}"),
+        }
+    }
+}
+
+/// A mouse button bound to the gun or an action (no modifier).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MouseMapping {
+    pub target: ButtonTarget,
+    pub button: MouseInput,
+}
+
+/// The mouse buttons' default actions: the right one looks around, the left one presses the
+/// cockpit's controls.
+pub fn default_mouse_mappings() -> Vec<MouseMapping> {
+    [(MouseInput::Right, Action::MouseLook), (MouseInput::Left, Action::ClickControl)]
+        .into_iter()
+        .map(|(button, a)| MouseMapping { target: ButtonTarget::Action(a), button })
+        .collect()
+}
+
 /// A keyboard key (with a modifier) bound to the gun or an action.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct KeyMapping {
@@ -346,6 +410,9 @@ pub struct InputConfig {
     pub vr_buttons: Vec<VrButtonMapping>,
     /// Keyboard keys for the gun, the actions and the keyboard stick.
     pub keys: Vec<KeyMapping>,
+    /// Mouse buttons for the gun and the actions (a mapping from before them gets the
+    /// defaults).
+    pub mouse: Vec<MouseMapping>,
     /// Mapping version (`migrate`); files from before the versions read 0.
     #[serde(default)]
     pub version: u32,
@@ -371,6 +438,7 @@ impl Default for InputConfig {
             buttons: Vec::new(),
             vr_buttons: default_vr_buttons(),
             keys: crate::input::default_key_mappings(),
+            mouse: default_mouse_mappings(),
             version: VERSION,
         }
     }
@@ -513,6 +581,17 @@ impl InputConfig {
     pub fn bind_key(&mut self, target: ButtonTarget, mods: Mods, key: KeyCode) {
         self.keys.retain(|m| !(m.mods == mods && m.key == key));
         self.keys.push(KeyMapping { target, mods, key });
+    }
+
+    /// Mouse buttons bound to a target.
+    pub fn mouse_for(&self, target: ButtonTarget) -> impl Iterator<Item = MouseInput> + '_ {
+        self.mouse.iter().filter(move |m| m.target == target).map(|m| m.button)
+    }
+
+    /// Adds a mouse button to a target, taking it away from any other target.
+    pub fn bind_mouse(&mut self, target: ButtonTarget, button: MouseInput) {
+        self.mouse.retain(|m| m.button != button);
+        self.mouse.push(MouseMapping { target, button });
     }
 
     pub fn vr_button(&self, hand: VrHand, input: VrInput) -> Option<ButtonTarget> {
@@ -981,46 +1060,69 @@ pub fn read_hotas(
     }
     for m in &config.buttons {
         let now = hotas.active(&m.device, m.source, false);
-        match m.target {
-            ButtonTarget::Gun => controls.gun |= now,
-            ButtonTarget::Action(a) => {
-                if let Some((r, p, y)) = a.stick_direction() {
-                    if now {
-                        let d = crate::input::KEY_DEFLECTION;
-                        controls.roll = crate::input::stronger(controls.roll, r * d);
-                        controls.pitch = crate::input::stronger(controls.pitch, p * d);
-                        controls.yaw = crate::input::stronger(controls.yaw, y * d);
-                    }
-                    continue;
-                }
-                controls.fire |= now && a == Action::FireWeapon;
-                controls.talk |= now && a == Action::Ptt;
-                if now && a == Action::ViewZoomIn {
-                    controls.view_zoom = 1.0;
-                } else if now && a == Action::ViewZoomOut {
-                    controls.view_zoom = -1.0;
-                }
-                if console {
-                    continue;
-                }
-                if let Some(d) = a.trim_direction() {
-                    if now {
-                        controls.trim += d;
-                    }
-                    continue;
-                }
-                if let Some(d) = a.look_direction() {
-                    if now {
-                        controls.look = (controls.look + d).clamp(Vec2::splat(-1.0), Vec2::ONE);
-                    }
-                    continue;
-                }
-                controls.mark |= now && a == Action::LockCursor;
-                if now && !hotas.active(&m.device, m.source, true) {
-                    actions.write(ActionEvent(a));
-                }
-            }
+        let pressed = now && !hotas.active(&m.device, m.source, true);
+        hold_button(m.target, now, pressed, console, &mut controls, &mut actions);
+    }
+}
+
+/// A device or mouse button bound to `target`: held (`now`), pressed this frame (`pressed`); at
+/// a console (`console`) only the stick, the triggers, the radio, the view zoom and the
+/// pointer's buttons pass.
+pub fn hold_button(
+    target: ButtonTarget,
+    now: bool,
+    pressed: bool,
+    console: bool,
+    controls: &mut FlightControls,
+    actions: &mut MessageWriter<ActionEvent>,
+) {
+    let a = match target {
+        ButtonTarget::Gun => {
+            controls.gun |= now;
+            return;
         }
+        ButtonTarget::Action(a) => a,
+    };
+    if let Some((r, p, y)) = a.stick_direction() {
+        if now {
+            let d = crate::input::KEY_DEFLECTION;
+            controls.roll = crate::input::stronger(controls.roll, r * d);
+            controls.pitch = crate::input::stronger(controls.pitch, p * d);
+            controls.yaw = crate::input::stronger(controls.yaw, y * d);
+        }
+        return;
+    }
+    controls.fire |= now && a == Action::FireWeapon;
+    controls.talk |= now && a == Action::Ptt;
+    if now && a == Action::ViewZoomIn {
+        controls.view_zoom = 1.0;
+    } else if now && a == Action::ViewZoomOut {
+        controls.view_zoom = -1.0;
+    }
+    // The pointer's buttons, held.
+    match a {
+        Action::MouseLook => controls.mouse_look |= now,
+        Action::ClickControl => controls.click |= now,
+        _ => {}
+    }
+    if console || matches!(a, Action::MouseLook | Action::ClickControl) {
+        return;
+    }
+    if let Some(d) = a.trim_direction() {
+        if now {
+            controls.trim += d;
+        }
+        return;
+    }
+    if let Some(d) = a.look_direction() {
+        if now {
+            controls.look = (controls.look + d).clamp(Vec2::splat(-1.0), Vec2::ONE);
+        }
+        return;
+    }
+    controls.mark |= now && a == Action::LockCursor;
+    if pressed {
+        actions.write(ActionEvent(a));
     }
 }
 

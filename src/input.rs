@@ -18,7 +18,7 @@ impl Plugin for InputPlugin {
             .add_plugins(crate::hotas::build)
             .add_systems(
                 PreUpdate,
-                (read_keyboard, read_gamepad, crate::hotas::read_hotas)
+                (read_keyboard, read_gamepad, crate::hotas::read_hotas, read_mouse)
                     .chain()
                     .in_set(InputSystemsSet)
                     .after(bevy::input::InputSystems),
@@ -134,6 +134,12 @@ pub enum Action {
     PanRight,
     PanUp,
     PanDown,
+    /// Looks around while held with the mouse moving, the wheel zooming (held, not a discrete
+    /// action; the right mouse button by default).
+    MouseLook,
+    /// Presses the cockpit control or kneeboard tab under the mouse pointer, drags across a
+    /// console screen while held (the left mouse button by default).
+    ClickControl,
     /// Map display only (bezel buttons; Z/X also zoom the external views).
     MapZoomIn,
     MapZoomOut,
@@ -286,6 +292,8 @@ const UNBOUND: &[Action] = &[
     Action::PanRight,
     Action::PanUp,
     Action::PanDown,
+    Action::MouseLook,
+    Action::ClickControl,
 ];
 
 /// Every action, in the key summary's order (the unbound ones last).
@@ -358,6 +366,14 @@ pub struct FlightControls {
     /// The view pan keys and look axes, -1..1 (x right, y up): how fast the head turns in the
     /// cockpit, the camera orbits in an external view.
     pub look: Vec2,
+    /// Mouse look held (`Action::MouseLook`: the right mouse button by default, or a key or
+    /// button bound to it), and just pressed this frame.
+    pub mouse_look: bool,
+    pub mouse_look_pressed: bool,
+    /// The cockpit click held (`Action::ClickControl`: the left mouse button by default), and
+    /// just pressed this frame.
+    pub click: bool,
+    pub click_pressed: bool,
 }
 
 /// Modifier held with a key (Alt wins over Shift).
@@ -571,6 +587,9 @@ fn read_keyboard(
     // Talking works over the Ops screen and the menus too (a text field being typed in takes
     // the keys).
     controls.talk = key_held(Action::Ptt);
+    // The pointer's buttons pass the menus too (they only look and click in the cockpit).
+    controls.mouse_look = key_held(Action::MouseLook);
+    controls.click = key_held(Action::ClickControl);
     if block.0 && !console.0 {
         // The menu reads the arrow keys.
         controls.roll = 0.0;
@@ -698,6 +717,41 @@ fn read_keyboard(
         controls.slew = Vec2::ZERO;
         controls.look = Vec2::ZERO;
     }
+}
+
+/// The mouse buttons as bound (after the keyboard and the joysticks, adding to them), and the
+/// pointer's buttons' presses this frame from every source.
+fn read_mouse(
+    mouse: Option<Res<ButtonInput<MouseButton>>>,
+    config: Res<crate::hotas::InputConfig>,
+    mut controls: ResMut<FlightControls>,
+    mut actions: MessageWriter<ActionEvent>,
+    (block, console): (Res<InputBlock>, Res<ConsoleStick>),
+    mut was: Local<(bool, bool)>,
+) {
+    if let Some(mouse) = mouse {
+        for m in &config.mouse {
+            let b = m.button.button();
+            let (now, pressed) = (mouse.pressed(b), mouse.just_pressed(b));
+            let pointer = matches!(
+                m.target,
+                crate::hotas::ButtonTarget::Action(Action::MouseLook | Action::ClickControl)
+            );
+            if block.0 && !console.0 && !pointer {
+                // The radio talks over the menus, the menu button closes them.
+                let action = |a| m.target == crate::hotas::ButtonTarget::Action(a);
+                controls.talk |= now && action(Action::Ptt);
+                if pressed && action(Action::Menu) {
+                    actions.write(ActionEvent(Action::Menu));
+                }
+                continue;
+            }
+            crate::hotas::hold_button(m.target, now, pressed, block.0, &mut controls, &mut actions);
+        }
+    }
+    controls.mouse_look_pressed = controls.mouse_look && !was.0;
+    controls.click_pressed = controls.click && !was.1;
+    *was = (controls.mouse_look, controls.click);
 }
 
 /// The larger of two deflections: an analog stick resting a little off centre does not cancel
@@ -928,6 +982,88 @@ mod tests {
         app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::ShiftLeft);
         app.update();
         assert_eq!(app.world().resource::<FlightControls>().look, Vec2::new(-1.0, 0.0));
+    }
+
+    fn mouse_app(config: crate::hotas::InputConfig) -> App {
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ButtonInput<MouseButton>>()
+            .insert_resource(config)
+            .add_message::<ActionEvent>()
+            .add_systems(Update, read_mouse);
+        app
+    }
+
+    /// By default the right mouse button looks around and the left one clicks, pressed only on
+    /// the first frame; rebound, the right button flares instead.
+    #[test]
+    fn mouse_buttons_are_bound() {
+        use crate::hotas::{ButtonTarget, InputConfig, MouseInput};
+        let mut app = mouse_app(InputConfig::default());
+        app.world_mut().resource_mut::<ButtonInput<MouseButton>>().press(MouseButton::Left);
+        app.update();
+        let c = app.world().resource::<FlightControls>();
+        assert!(c.click && c.click_pressed && !c.mouse_look);
+        app.world_mut().resource_mut::<ButtonInput<MouseButton>>().clear();
+        app.update();
+        let c = app.world().resource::<FlightControls>();
+        assert!(c.click && !c.click_pressed);
+
+        let mut config = InputConfig::default();
+        config.bind_mouse(ButtonTarget::Action(Action::Flare), MouseInput::Right);
+        config.bind_mouse(ButtonTarget::Action(Action::MouseLook), MouseInput::Middle);
+        assert_eq!(
+            config.mouse_for(ButtonTarget::Action(Action::MouseLook)).collect::<Vec<_>>(),
+            [MouseInput::Middle]
+        );
+        let mut app = mouse_app(config);
+        app.world_mut().resource_mut::<ButtonInput<MouseButton>>().press(MouseButton::Right);
+        app.update();
+        assert!(!app.world().resource::<FlightControls>().mouse_look);
+        let flares: Vec<_> = app
+            .world_mut()
+            .resource_mut::<Messages<ActionEvent>>()
+            .drain()
+            .map(|ActionEvent(a)| a)
+            .collect();
+        assert_eq!(flares, [Action::Flare]);
+        app.world_mut().resource_mut::<ButtonInput<MouseButton>>().press(MouseButton::Middle);
+        app.update();
+        assert!(app.world().resource::<FlightControls>().mouse_look_pressed);
+    }
+
+    /// A key bound to mouse look holds it like the mouse button, also over the menus.
+    #[test]
+    fn mouse_look_key() {
+        use crate::hotas::{ButtonTarget, InputConfig};
+        let mut config = InputConfig::default();
+        config.bind_key(ButtonTarget::Action(Action::MouseLook), Mods::None, KeyCode::KeyJ);
+        let mut app = App::new();
+        app.init_resource::<FlightControls>()
+            .init_resource::<VirtualStick>()
+            .insert_resource(InputBlock(true))
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<Time<Real>>()
+            .insert_resource(config)
+            .add_message::<ActionEvent>()
+            .add_systems(Update, (read_keyboard, read_mouse).chain());
+        app.world_mut().resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::KeyJ);
+        app.update();
+        let c = app.world().resource::<FlightControls>();
+        assert!(c.mouse_look && c.mouse_look_pressed);
+    }
+
+    /// A mapping saved before the mouse buttons were bindable gets their defaults.
+    #[test]
+    fn old_mapping_gets_mouse_defaults() {
+        let c: crate::hotas::InputConfig = serde_json::from_str(r#"{"version": 16}"#).unwrap();
+        assert_eq!(c.mouse, crate::hotas::default_mouse_mappings());
+        let saved = serde_json::to_string(&c).unwrap();
+        let back: crate::hotas::InputConfig = serde_json::from_str(&saved).unwrap();
+        assert_eq!(back.mouse, c.mouse);
     }
 
     /// The rudder keys are listed with the other stick keys, not at the end.

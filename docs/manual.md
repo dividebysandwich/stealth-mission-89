@@ -225,6 +225,11 @@ change is saved at once.
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an
   axis pushed past halfway works too.
+- **Mouse buttons** sit in the keyboard column. Click **+** and press the mouse button on the
+  *WAITING* button that appears (any key binds as well). The right button's look-around and the
+  left button's cockpit clicks are actions too, *Mouse look* and *Click cockpit control*, so you can
+  move them to other buttons, keys or joystick buttons and give the mouse buttons other actions.
+  *DEFAULT KEYS* restores the mouse buttons as well.
 - A standard **gamepad** works without mapping: left stick to fly, right stick for the rudder,
   triggers for the throttle, face buttons for fire, gun, weapon select and bay doors, Start for the
   menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
@@ -3212,7 +3217,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Slot / chase / side / weapon / tactical / inverse tactical | Shift F1 … Shift F6 |
 | | Free camera (W A S D, Q / E, Shift faster, Ctrl slower) | Shift F7 |
 | | Zoom / unzoom / wide angle | Z / X / C |
-| | Look around (cockpit) / orbit (external views) | Right mouse button |
+| | Look around (cockpit) / orbit (external views) | Right mouse button (bindable as *Mouse look*) |
 | | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*, or to an axis) |
 | | Recentre head tracking (chapter 1.4) | Home |
 | **Time** | Time acceleration / normal | Shift Z / Shift X |

@@ -711,7 +711,7 @@ pub(crate) const ZOOM_KEY_NOTCHES: f32 = 4.0;
 /// (radians a second; in the cockpit slower when zoomed in).
 pub(crate) const LOOK_RATE: f32 = 1.8;
 
-/// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
+/// Desktop mouse look: hold the right button (`Action::MouseLook`) and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
 /// camera around the aircraft (reset when an external view is selected). The wheel with the
 /// button held zooms, as the view zoom keys and axis do. The view pan keys and look axes turn the head
@@ -720,7 +720,6 @@ pub(crate) const LOOK_RATE: f32 = 1.8;
 #[allow(clippy::too_many_arguments)]
 fn mouse_look(
     settings: Res<Settings>,
-    buttons: Res<ButtonInput<MouseButton>>,
     motion: Res<AccumulatedMouseMotion>,
     mut look: ResMut<HeadLook>,
     mut orbit: ResMut<Orbit>,
@@ -765,7 +764,7 @@ fn mouse_look(
     let tracked = settings.head_tracking
         && !settings.tracking_mouse_look
         && tracker.is_some_and(|t| t.source.is_some());
-    let held = buttons.pressed(MouseButton::Right) && !(cockpit && tracked);
+    let held = controls.mouse_look && !(cockpit && tracked);
     if let Ok(mut c) = cursor.single_mut() {
         let (grab, visible) =
             if held { (CursorGrabMode::Locked, false) } else { (CursorGrabMode::None, true) };

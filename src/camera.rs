@@ -627,7 +627,6 @@ fn place_free_camera(
     mut state: ResMut<ViewState>,
     mut free: ResMut<FreeView>,
     keys: Res<ButtonInput<KeyCode>>,
-    buttons: Res<ButtonInput<MouseButton>>,
     motion: Res<bevy::input::mouse::AccumulatedMouseMotion>,
     scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
     controls: Res<crate::input::FlightControls>,
@@ -660,7 +659,7 @@ fn place_free_camera(
         let mut delta = Vec2::new(controls.look.x, -controls.look.y)
             * crate::cockpit3d::LOOK_RATE
             * time.delta_secs();
-        if buttons.pressed(MouseButton::Right) {
+        if controls.mouse_look {
             delta += motion.delta * 0.004;
         }
         free.yaw -= delta.x / state.magnify;
