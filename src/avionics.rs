@@ -603,6 +603,21 @@ impl AvionicsState {
             *row = old.filter(|r| r.iter().all(|&f| f != Format::Gm || self.radar));
         }
     }
+
+    /// The aircraft changed in flight (a campaign's sortie, an AI aircraft taken over): the
+    /// ground map comes with its radar, an MFD showing it without one takes its row's format.
+    pub fn set_radar(&mut self, radar: bool) {
+        let old = self.clone();
+        self.radar = radar;
+        self.keep_rows(&old);
+        for &side in self.sides() {
+            if !radar && self.format(side) == Format::Gm {
+                let at = old.formats(side).iter().position(|&f| f == Format::Gm).unwrap_or(1);
+                self.formats[index(side)] = self.formats(side)[at];
+            }
+        }
+        self.fix_soi();
+    }
 }
 
 fn index(side: MfdSide) -> usize {
@@ -2576,6 +2591,21 @@ mod tests {
         assert_eq!(av.soi_format(), Some(Format::Tgp));
         av.select(MfdSide::Left, Format::Sms);
         assert_eq!(av.soi_format(), None);
+    }
+
+    /// A campaign enters the flight in the parked F-117A and gives the sortie's aircraft later:
+    /// its radar brings the ground map, and the F-117A again takes it away.
+    #[test]
+    fn radar_comes_with_the_aircraft() {
+        let mut av = AvionicsState::default();
+        assert!(av.available().all(|f| f != Format::Gm));
+        av.set_radar(true);
+        assert!(av.formats(MfdSide::Left).contains(&Format::Gm));
+        av.select(MfdSide::Left, Format::Gm);
+        assert_eq!(av.format(MfdSide::Left), Format::Gm);
+        av.set_radar(false);
+        assert_eq!(av.format(MfdSide::Left), Format::Harm);
+        assert!(!av.radar_emitting());
     }
 
     /// With the F-117A's third MFD: it starts on the HSI, swaps with either other MFD, and

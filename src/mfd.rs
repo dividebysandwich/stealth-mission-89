@@ -773,6 +773,10 @@ fn mfd_keys(
         state.map_zoom = state.map_zoom.min(state.max_map_zoom());
         raster.invalidate();
     }
+    let radar = settings.aircraft.spec().ground_radar;
+    if state.av.radar != radar {
+        state.av.set_radar(radar);
+    }
     let mfds = settings.cockpit().0.mfd_count();
     if state.av.mfds != mfds {
         state.av.set_mfds(mfds);
