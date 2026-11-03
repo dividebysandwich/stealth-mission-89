@@ -55,9 +55,9 @@ def canopy(y):
     raise ValueError(y)
 
 
-# The main panel: 20 degrees off upright, its top edge (layout y PANEL_TOP) 0.15 m under the eye
+# The main panel: 20 degrees off upright, its top edge (layout y PANEL_TOP) 0.25 m under the eye
 # 0.80 m ahead. The dashboard (the panel, the glare shield and the HUD) is raised DASH_RAISE m.
-DASH_RAISE = 0.15
+DASH_RAISE = 0.05
 PANEL_TILT = math.radians(20.0)
 PANEL_TOP = -180.0
 RIGHT = Vector((1.0, 0.0, 0.0))
