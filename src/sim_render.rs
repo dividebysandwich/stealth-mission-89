@@ -121,8 +121,6 @@ const AAA_MODELS: i32 = 110;
 /// Their state slots: turret (or crew) azimuth and gun (or launcher) elevation.
 const AAA_TURRET_SLOT: usize = 21;
 const AAA_GUN_SLOT: usize = 22;
-/// A MANPADS team is not drawn further away than this (metres).
-const MANPADS_RANGE: f64 = 3000.0;
 /// Detail level range multiplier of the guns (seen from further than an aircraft's parts).
 const AAA_LOD_RANGE: f32 = 4.0;
 
@@ -551,12 +549,10 @@ fn sync_aaa(
     server: Res<AssetServer>,
     assets: ModelAssets,
     mut materials: ResMut<Assets<PaletteMaterial>>,
-    player: Query<&WorldPos, (With<Player>, Without<SimObject>)>,
     mut q: Query<
         (&mut WorldPos, &mut Transform, Option<&mut ModelState>, &mut Visibility),
         With<SimObject>,
     >,
-    console: Option<Res<crate::station::ConsoleEo>>,
     origin: Option<Res<crate::world::FloatingOrigin>>,
     hulls: Query<(&crate::models::CollisionHull, &GlobalTransform, &InheritedVisibility)>,
     mut dust: ResMut<crate::explosions::VehicleDust>,
@@ -588,9 +584,6 @@ fn sync_aaa(
             return;
         }
     }
-    let eye = player.single().map_or(DVec3::ZERO, |p| p.0);
-    // A drone command center's camera sees the MANPADS teams near its drone.
-    let camera = console.as_deref().filter(|c| !c.idle).map(|c| c.eye);
     // The mountains' surfaces the vehicles drive over (relative to the floating origin).
     let origin = origin.map_or(DVec3::ZERO, |o| o.origin);
     let mountains: Vec<_> = hulls
@@ -670,11 +663,7 @@ fn sync_aaa(
         pos.0 = at;
         drawn.0[i] = (at, heading);
         tf.rotation = on_slope(at, heading);
-        let hidden = u.gone
-            || u.kind == stealth_sim::aaa::GroundKind::Manpads
-                && at.distance(eye) > MANPADS_RANGE
-                && camera.is_none_or(|c| at.distance(c) > MANPADS_RANGE);
-        vis.set_if_neq(if hidden { Visibility::Hidden } else { Visibility::Inherited });
+        vis.set_if_neq(if u.gone { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;
             s.0[AAA_TURRET_SLOT] = bam16(u.aim_az - heading);
