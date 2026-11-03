@@ -1286,7 +1286,7 @@ def f22_door(hinge0, hinge1, width, angle, out, down=Vector((0, 0, -1))):
 
 
 def f22_bay(state):
-    """The bays at state 0 shut, 1 half open, 2 open with the bays' inside and their loads:
+    """The bays at state 0 shut, 1 half open, 2 open, the main bay's inside and loads showing when not shut:
     two GBU-32s and two AIM-120s in the main bay, an AIM-9 out on its trapeze from each side bay."""
     g = Geo()
     (s0, s1), x0, zb = F22_BAY_S, F22_BAY_X, -1.10
@@ -1321,7 +1321,8 @@ def f22_bay(state):
                 c = (top0 + low0) / 2 + out * 0.35
                 side.add(f22_missile(c.x, F22_NOSE - c.y, c.z, 2.87, 0.064, GREY_L, fin=0.16))
         g.add(side if sx > 0 else side.mirrored())
-        if state == 2:
+        # Opening or open: the doors show the bay's inside.
+        if state > 0:
             g.add(f22_bay_inside(sx))
     return g
 
@@ -1350,7 +1351,8 @@ def f22_bay_inside(sx):
     for i in range(3):  # front, side, rear walls (open on the centreline)
         f = [lo[i], lo[i + 1], hi[i + 1], hi[i]]
         g.face(f, F22_BAY, sum(f, Vector()) / 4 * 2 - inside)
-    g.face(hi, F22_BAY, inside + Vector((0, 0, -2)))
+    # The roof faces down into the bay (a face points away from its reference point).
+    g.face(hi, F22_BAY, inside + Vector((0, 0, 2)))
     # GBU-32: a 1,000 lb JDAM hung from the roof's middle, an AIM-120 on its launcher outboard.
     x, z, y0, y1 = sx * 0.30, zt - 0.28, F22_NOSE - s0 - 0.35, F22_NOSE - s0 - 3.35
     body = [(y0, 0.05), (y0 - 0.4, 0.16), (y0 - 0.9, 0.18), (y1 + 0.8, 0.18), (y1 + 0.3, 0.13), (y1, 0.13)]
