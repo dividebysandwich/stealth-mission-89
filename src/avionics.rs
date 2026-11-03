@@ -9,6 +9,9 @@
 //!   buttons pick the format; picking one another MFD shows swaps the two. The top buttons are the format's own, the top right one makes the
 //!   format the sensor of interest (SOI). The buttons' functions are drawn on the display next
 //!   to them, like the real ones.
+//! - Master modes: NAV, A-A and A-G each keep the formats (and the SOI) the pilot left them
+//!   with. The first time NAV has the HSD on the left MFD; with a radar A-A the FCR and A-G
+//!   the ground map, as the SOI.
 //! - SOI: HSD, HARM and the targeting pod can be the sensor of interest: the "sensor/cursor
 //!   slew" controls move its cursor, "lock cursor target" locks what is under it (an aircraft or
 //!   a ground object on the HSD, a radar on the HARM display).
@@ -234,6 +237,11 @@ pub struct AvionicsState {
     pub fcr_bars: usize,
     pub fcr_el: i8,
     pub fcr_cursor: Vec2,
+    /// The master mode (NAV, A-A, A-G) the formats are shown for, and the formats and the SOI
+    /// each one had when the pilot last left it (None: it comes up with its defaults,
+    /// `set_master`).
+    master: Option<HudMode>,
+    modes: [Option<([Format; 4], Option<Format>)>; 3],
     /// Free-fall and retarded bombs per release (1..=`RIPPLE_MAX`).
     pub ripple: u8,
     /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
@@ -555,6 +563,8 @@ impl Default for AvionicsState {
             fcr_bars: 0,
             fcr_el: 0,
             fcr_cursor: centre,
+            master: None,
+            modes: [None; 3],
             ripple: 1,
             ripple_spacing: 3,
             burst: 2,
@@ -670,7 +680,8 @@ impl AvionicsState {
 
     /// The aircraft changed in flight (a campaign's sortie, an AI aircraft taken over): the
     /// radar's formats come with the radar, an MFD showing one without it takes the HARM
-    /// display (they replaced it), else its row's first format no MFD shows.
+    /// display (they replaced it), else its row's first format no MFD shows. The master modes
+    /// come up with their defaults again.
     pub fn set_radar(&mut self, radar: bool) {
         let old = self.clone();
         self.radar = radar;
@@ -685,7 +696,49 @@ impl AvionicsState {
                 self.formats[index(side)] = g;
             }
         }
+        self.modes = [None; 3];
         self.fix_soi();
+    }
+
+    /// The HUD's master mode (NAV, A-A, A-G) changed: the formats and the SOI the pilot left
+    /// it with come back, or the first time its default on the left MFD (NAV the HSD; with a
+    /// radar A-A the FCR and A-G the ground map, as the SOI). True if the formats changed.
+    pub fn set_master(&mut self, mode: HudMode) -> bool {
+        if self.master == Some(mode) {
+            return false;
+        }
+        let before = self.formats;
+        if let Some(old) = self.master {
+            self.modes[master_index(old)] = Some((self.formats, self.soi));
+        }
+        self.master = Some(mode);
+        self.menu = [None; 4];
+        match self.modes[master_index(mode)] {
+            Some((formats, soi)) => (self.formats, self.soi) = (formats, soi),
+            None => {
+                let f = match mode {
+                    HudMode::Nav => Some(Format::Hsd),
+                    HudMode::Air => self.radar.then_some(Format::Fcr),
+                    HudMode::Gnd => self.radar.then_some(Format::Gm),
+                };
+                if let Some(f) = f {
+                    self.select(MfdSide::Left, f);
+                    if mode != HudMode::Nav {
+                        self.soi = Some(f);
+                    }
+                }
+            }
+        }
+        self.fix_soi();
+        self.formats != before
+    }
+}
+
+fn master_index(mode: HudMode) -> usize {
+    match mode {
+        HudMode::Nav => 0,
+        HudMode::Air => 1,
+        HudMode::Gnd => 2,
     }
 }
 
@@ -734,6 +787,7 @@ impl AvionicsState {
             self.formats[i] = f;
         }
         self.menu = [None; 4];
+        self.modes = [None; 3];
         self.fix_soi();
     }
 
@@ -3152,6 +3206,43 @@ mod tests {
         s.av.set_radar(false);
         assert!(s.av.available().all(|f| !f.radar()));
         assert!(s.av.sides().iter().all(|&side| !s.av.format(side).radar()));
+    }
+
+    /// Each master mode comes up with its own formats: NAV the HSD on the left, A-A the A-A
+    /// radar and A-G the ground map (as the SOI), then each as the pilot left it.
+    #[test]
+    fn master_modes_keep_their_formats() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.set_radar(true);
+        assert!(!s.av.set_master(HudMode::Nav));
+        assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
+        assert!(s.av.set_master(HudMode::Air));
+        assert_eq!(s.av.format(MfdSide::Left), Format::Fcr);
+        assert_eq!(s.av.soi_format(), Some(Format::Fcr));
+        assert!(s.av.set_master(HudMode::Gnd));
+        assert_eq!(s.av.format(MfdSide::Left), Format::Gm);
+        assert_eq!(s.av.soi_format(), Some(Format::Gm));
+        // The pilot puts the pod on the right in A-G and the map on the left in NAV.
+        apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Right, Format::Tgp));
+        s.av.set_master(HudMode::Nav);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
+        assert_eq!(s.av.format(MfdSide::Right), Format::Sms);
+        apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Left, Format::Map));
+        s.av.set_master(HudMode::Gnd);
+        assert_eq!(
+            (s.av.format(MfdSide::Left), s.av.format(MfdSide::Right)),
+            (Format::Gm, Format::Tgp)
+        );
+        s.av.set_master(HudMode::Air);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Fcr);
+        s.av.set_master(HudMode::Nav);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Map);
+        // Without a radar A-A and A-G keep the formats up.
+        let mut s = MfdState { modern: true, ..default() };
+        s.av.set_master(HudMode::Nav);
+        s.av.set_master(HudMode::Air);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
     }
 
     /// F3 goes round the map formats on the left MFD's own bottom row: the ground map only while

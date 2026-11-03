@@ -789,6 +789,10 @@ fn mfd_keys(
     if state.av.mfds != mfds {
         state.av.set_mfds(mfds);
     }
+    // Each master mode keeps its own formats.
+    if state.modern && state.av.set_master(hud.mode) {
+        raster.invalidate();
+    }
     for ActionEvent(a) in actions.read() {
         let cmd = match a {
             Action::Maps if state.modern => match state.av.next_left_format() {
