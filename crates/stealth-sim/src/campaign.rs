@@ -47,6 +47,8 @@ const PRESS_CLOSE: i32 = 0x100;
 const RELEASE: i32 = 0x300;
 /// Cosine of how far off its nose an enemy points at what it presses (60°).
 const PRESS_COS: f64 = 0.5;
+/// Seconds a strike or recon aircraft fights at most before it breaks off.
+const DEFEND_MAX: i32 = 120;
 /// A missile is fired at this share of its lock range at most: at a target flying away, and
 /// (more) at one coming on.
 const SHOT_COLD: f64 = 0.45;
@@ -190,6 +192,10 @@ pub struct CampaignFlight {
     /// turns to fight it off, then flies on.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub defending: bool,
+    /// Seconds it has fought off its enemy: after `DEFEND_MAX` it breaks off and flies on, and
+    /// fights again only once that enemy has been `RELEASE` away.
+    #[serde(default)]
+    pub fought: i32,
 }
 
 impl CampaignFlight {
@@ -1127,6 +1133,7 @@ impl Sim {
             supply: None,
             strike_unit: false,
             defending: false,
+            fought: 0,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1217,6 +1224,7 @@ impl Sim {
             supply: None,
             strike_unit: false,
             defending: false,
+            fought: 0,
         });
         i
     }
@@ -1290,6 +1298,7 @@ impl Sim {
             supply: None,
             strike_unit: false,
             defending: false,
+            fought: 0,
         });
         i
     }
@@ -1348,6 +1357,7 @@ impl Sim {
             supply: None,
             strike_unit: false,
             defending: false,
+            fought: 0,
         });
         i
     }
@@ -1753,13 +1763,23 @@ impl Sim {
                     .min_by_key(|&(_, d)| d)
                     .map(|t| t.0)
                     .filter(|_| armed);
-                f.defending = f.target.is_some_and(|j| {
-                    let d = approx(xy[j].0 - u.x, xy[j].1 - u.y);
-                    let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
-                    let pressing =
-                        d < PRESS_CLOSE || d < PRESS && points_at(&self.flights[j], &u) > PRESS_COS;
-                    !landing && (pressing || f.defending && d < RELEASE)
-                });
+                let near = f.target.map(|j| approx(xy[j].0 - u.x, xy[j].1 - u.y));
+                if f.fought >= DEFEND_MAX {
+                    // Broken off: flying on until its enemy is well away.
+                    f.defending = false;
+                    if near.is_none_or(|d| d > RELEASE) {
+                        f.fought = 0;
+                    }
+                } else {
+                    f.defending = f.target.is_some_and(|j| {
+                        let d = approx(xy[j].0 - u.x, xy[j].1 - u.y);
+                        let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
+                        let pressing = d < PRESS_CLOSE
+                            || d < PRESS && points_at(&self.flights[j], &u) > PRESS_COS;
+                        !landing && (pressing || f.defending && d < RELEASE)
+                    });
+                    f.fought = if f.defending { f.fought + 1 } else { 0 };
+                }
             } else {
                 let cap = f.task == FighterTask::Cap;
                 let (ax, ay) = f.anchor;
@@ -2263,6 +2283,12 @@ impl Sim {
     /// The AI's tracers and shells in flight.
     pub fn ai_shells(&self) -> impl Iterator<Item = &Shell> {
         self.campaign.as_ref().into_iter().flat_map(|c| c.shells.iter().map(|s| &s.shell))
+    }
+
+    /// The AI's tracers in the air: the flight unit each is fired at, and the gun (AAA unit)
+    /// of a Gepard's round.
+    pub fn ai_shell_targets(&self) -> impl Iterator<Item = (usize, Option<u16>)> + '_ {
+        self.campaign.as_ref().into_iter().flat_map(|c| c.shells.iter().map(|s| (s.target, s.gun)))
     }
 
     /// Campaign frame without the player: the world goes on.

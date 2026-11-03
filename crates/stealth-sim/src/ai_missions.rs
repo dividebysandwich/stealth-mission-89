@@ -95,6 +95,7 @@ fn flight(
         supply: None,
         strike_unit: false,
         defending: false,
+        fought: 0,
     }
 }
 
@@ -266,7 +267,12 @@ impl Sim {
         let u = self.flights[i];
         let t = self.ac_type(u.spec);
         let full = (((t.range as i32 * self.fs) << 11) / (t.max_speed as i32).max(1)).max(1);
-        let fuel = (10000.0 * (u.timer.max(0) as f64 / full as f64).clamp(0.2, 1.0)) as i32;
+        // The frames of fuel left count down in 16 bits: a long-ranged type's from past 0x7FFF
+        // (negative, from `full` - 0x10000 down), then on through 0 into the negative once
+        // the fuel is out.
+        let out = u.timer < 0 && u.timer > full - 0x1_0000;
+        let left = if out { 0 } else { u.timer & 0xFFFF };
+        let fuel = (10000.0 * (left as f64 / full as f64).clamp(0.2, 1.0)) as i32;
         // The AI flies at viewZ (`math::view_z`), the pilot at the true altitude.
         let alt = true_altitude(u.alt.max(0));
         let knots = u.speed.max(0) as f64 * M_PER_WU / KNOT;

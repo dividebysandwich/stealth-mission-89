@@ -62,8 +62,9 @@ const SPACING: f32 = 30.0;
 const SPACING_GROWTH: f32 = 0.03;
 const HALF_WIDTH: f32 = 30.0;
 const WIDTH_GROWTH: f32 = 0.05;
-/// A low flyer on its way home climbs for the landing this close to its base (map units, 15 km).
-const NOE_HOME: i32 = 0x3C0;
+/// A low flyer on its way home climbs for the landing this close to its base (map units, 30 km:
+/// well before its approach point, 10 km out).
+const NOE_HOME: i32 = 0x780;
 
 impl Sim {
     /// Flight unit `i` flies nap of the earth: an F-117A, F-22A or Tornado of the campaign's
@@ -89,8 +90,17 @@ impl Sim {
     /// The flight path angle (rad) a low flyer's terrain following commands at (wu east, wu
     /// south, altitude units), heading `psi` (rad), speed `v` (wu/s), turning at `turn` (rad/s)
     /// for at most `to_go` (rad) more: the mountains and rolling hills along the track ahead
-    /// (curving with the turn) under [`NOE_CLEARANCE`].
-    pub(crate) fn noe_gamma(&self, pos: [f64; 3], psi: f64, v: f64, turn: f64, to_go: f64) -> f64 {
+    /// (curving with the turn) under `clearance` (altitude units, [`NOE_CLEARANCE`] for the
+    /// low flyers).
+    pub(crate) fn noe_gamma(
+        &self,
+        pos: [f64; 3],
+        psi: f64,
+        v: f64,
+        turn: f64,
+        to_go: f64,
+        clearance: i32,
+    ) -> f64 {
         let Some(t) = self.tiles.as_ref() else { return 0.0 };
         let m = WU_METRES as f32;
         let speed = (v as f32 * m).max(50.0);
@@ -119,7 +129,7 @@ impl Sim {
             p = (p.0 + dir.sin() * w, p.1 - dir.cos() * w);
             d += step;
         }
-        command(&profile, speed, NOE_CLEARANCE as f32 * m) as f64
+        command(&profile, speed, clearance as f32 * m) as f64
     }
 }
 

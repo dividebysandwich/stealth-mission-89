@@ -194,6 +194,7 @@ impl Sim {
             }),
             strike_unit: false,
             defending: false,
+            fought: 0,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i

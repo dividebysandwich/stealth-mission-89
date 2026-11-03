@@ -46,11 +46,33 @@ const DIVE_FLOOR: f64 = 2000.0;
 const NOE_PULL_OUT_ROOM: f64 = 40.0;
 /// Chasing an aircraft: this close (wu, 4 km) it closes in at its target's speed and this much
 /// more per wu of range (1/s) down to gun range (wu, about 450 m), or turns round it at the
-/// best turn when past it; it goes down after a low one to this much room (alt units, 60 m).
+/// best turn when past it; after a low one it dives steeply only this high (alt units, 230 m),
+/// then flies the terrain following's climb angle down to it.
 const CHASE_CLOSE: f64 = 8192.0;
 const CHASE_CLOSURE: f64 = 0.1;
 const CHASE_GUN: f64 = 900.0;
-const CHASE_ROOM: f64 = 120.0;
+const CHASE_FLOOR: f64 = 480.0;
+/// Round and round with it this close (wu, 3 km), more than this off the nose (rad), this long
+/// (s): it runs out of the circle for this long (s) and comes back in.
+const STALEMATE_RANGE: f64 = 6000.0;
+const STALEMATE_OFF: f64 = 0.5;
+const STALEMATE_S: i32 = 30;
+const EXTEND_S: i32 = 20;
+/// The height (alt units, 250 ft) a chase low over the ground keeps by the terrain following.
+const CHASE_CLEARANCE: i32 = 250;
+/// Below this much g to pull it is too slow to turn; it dives (rad) to gather speed above this
+/// height (alt units, 300 m).
+const SLOW_N: f64 = 1.5;
+const SLOW_N_OK: f64 = 1.9;
+/// A heavy aircraft (an AWACS, a transport) turns at this share of its g at most outside a
+/// fight with a missile: gently, without bleeding its speed.
+const HEAVY_G: f64 = 0.45;
+const HEAVY_N_MAX: f64 = 2.5;
+/// Defending against a missile: its steepest dive (rad) and share of its g.
+const HEAVY_DIVE: f64 = -0.1;
+const HEAVY_EVADE_G: f64 = 0.8;
+const SLOW_DIVE: f64 = -0.08;
+const SLOW_DIVE_ABOVE: f64 = 600.0;
 /// Integration steps per sim frame.
 const SUBSTEPS: usize = 2;
 
@@ -190,6 +212,15 @@ pub struct AiFlight {
     pub stocked: bool,
     /// Frames until it may release the next cartridge.
     pub cm_wait: i32,
+    /// Chasing an aircraft: frames it has been close with it well off the nose (round and
+    /// round), and frames left of the run out of that circle.
+    #[serde(default)]
+    pub stalemate: i32,
+    #[serde(default)]
+    pub extend: i32,
+    /// Too slow to turn: wings level, gathering speed (until it can pull `SLOW_N_OK`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub slow: bool,
 }
 
 /// An AI aircraft's flare (kind 1) or chaff (kind 2): map units, altitude, frames left.
@@ -274,6 +305,15 @@ pub(crate) struct Steer {
     pub noe: bool,
     /// Chasing an aircraft (mode 4): its speed (wu/s).
     pub chase: Option<f64>,
+}
+
+/// A point `to` (wu east, wu south of the aircraft) lies inside the circle the aircraft
+/// heading `psi` would fly turning at `radius` (wu) the way it is off the nose (`dpsi`, rad):
+/// turning, it never gets there.
+pub(crate) fn inside_turn(to: (f64, f64), psi: f64, dpsi: f64, radius: f64) -> bool {
+    let side = if dpsi >= 0.0 { 1.0 } else { -1.0 };
+    let centre = (side * radius * psi.cos(), side * radius * psi.sin());
+    (to.0 - centre.0).hypot(to.1 - centre.1) < radius
 }
 
 pub(crate) fn rad(bam: i32) -> f64 {
@@ -518,7 +558,22 @@ impl Sim {
                 cmd.ab = true;
                 cmd.g = 0.9;
                 let r = st.rng as f64 * 32.0;
-                if let Some(v) = st.chase.filter(|_| r < CHASE_CLOSE) {
+                if a.extend > 0 {
+                    // Out of the circle, straight at full power, to come back in for a shot.
+                    a.extend -= 1;
+                    cmd.dpsi = 0.0;
+                    cmd.speed = AB_SPEED * ae.v_max;
+                    cmd.ab = ae.ab;
+                } else if r < STALEMATE_RANGE && cmd.dpsi.abs() > STALEMATE_OFF {
+                    a.stalemate += 1;
+                    if a.stalemate > STALEMATE_S * fs {
+                        a.stalemate = 0;
+                        a.extend = EXTEND_S * fs;
+                    }
+                } else {
+                    a.stalemate = (a.stalemate - 2).max(0);
+                }
+                if let Some(v) = st.chase.filter(|_| r < CHASE_CLOSE && a.extend == 0) {
                     cmd.g = 1.0;
                     if cmd.dpsi.abs() < FRAC_PI_2 {
                         // Closing from behind: no faster than it takes to get in gun range
@@ -537,6 +592,15 @@ impl Sim {
         }
         if st.circle {
             cmd.dpsi = 1.2;
+        } else if matches!(st.mode, 2 | 3) {
+            // A point inside its turn circle, well off the nose: it would circle it for ever.
+            // It flies on straight until it can turn onto it.
+            let n = (ae.n_avail(a.v, sigma) * cmd.g).max(1.05);
+            let radius = a.v * a.v / (G * (n * n - 1.0).sqrt());
+            let to = (s16(st.tx - u.x) as f64 * 32.0, s16(st.ty - u.y) as f64 * 32.0);
+            if inside_turn(to, a.psi, cmd.dpsi, radius) {
+                cmd.dpsi = 0.0;
+            }
         }
         if u.flags & fflags::ESCORT != 0
             && self.escort_leader >= 0
@@ -550,10 +614,19 @@ impl Sim {
         let noe = st.noe.then(|| {
             // The track ahead curves with the turn, as far as the heading still to go.
             let turn = G * a.n * a.mu.sin() / a.v.max(1.0);
-            self.noe_gamma(a.pos, a.psi, a.v, turn, cmd.dpsi)
+            self.noe_gamma(a.pos, a.psi, a.v, turn, cmd.dpsi, crate::terrain_follow::NOE_CLEARANCE)
         });
+        if ae.n_max <= HEAVY_N_MAX {
+            cmd.g = cmd.g.min(HEAVY_G);
+        }
         if let Some(e) = evading {
             cmd = e;
+            if ae.n_max <= HEAVY_N_MAX {
+                // A heavy aircraft turns away from the missile, no steep dive it cannot pull
+                // out of.
+                cmd.gamma = cmd.gamma.max(HEAVY_DIVE);
+                cmd.g = cmd.g.min(HEAVY_EVADE_G);
+            }
         }
         // --- the ground and the ceiling ---
         let ground = self
@@ -565,10 +638,11 @@ impl Sim {
         let mut room = PULL_OUT_ROOM;
         let mut floor = DIVE_FLOOR;
         if st.mode == 4 {
-            // Down after a low flyer: as low as it flies (still with some room).
+            // Down after a low flyer: as low as it flies (its terrain following keeps it
+            // clear, below).
             let low = (st.tz as f64 - ground).max(0.0);
-            room = room.min((low * 0.6).max(CHASE_ROOM));
-            floor = floor.min((low * 2.0).max(4.0 * CHASE_ROOM));
+            room = room.min((low * 0.6).max(NOE_PULL_OUT_ROOM));
+            floor = floor.min((low * 2.0).max(CHASE_FLOOR));
         }
         if let Some(tf) = noe {
             // Nap of the earth: the terrain following's climb angle, and no deeper (a
@@ -582,9 +656,26 @@ impl Sim {
             if h < floor {
                 cmd.gamma = cmd.gamma.max(-0.05 - 0.3 * (h / floor).max(0.0));
             }
+            if st.mode == 4 && h < DIVE_FLOOR {
+                // Low after an aircraft (a defensive dive too): no deeper than the terrain
+                // following lets it, which sees the ground rising ahead.
+                let turn = G * a.n * a.mu.sin() / a.v.max(1.0);
+                let tf = self.noe_gamma(a.pos, a.psi, a.v, turn, cmd.dpsi, CHASE_CLEARANCE);
+                cmd.gamma = cmd.gamma.max(tf);
+            }
         }
         if a.pos[2] > 28_000.0 {
             cmd.gamma = cmd.gamma.min(0.0);
+        }
+        // Too slow to hold its weight up and turn (a heavy aircraft's circle bleeds its speed):
+        // wings level, no climb (the nose down with the height for it), the throttle open.
+        let n_av = ae.n_avail(a.v, sigma);
+        a.slow = n_av < if a.slow { SLOW_N_OK } else { SLOW_N };
+        if a.slow {
+            cmd.dpsi = 0.0;
+            cmd.gamma = cmd.gamma.min(if h > SLOW_DIVE_ABOVE { SLOW_DIVE } else { 0.0 });
+            cmd.speed = cmd.speed.max(ae.v_corner);
+            cmd.ab = ae.ab;
         }
         if a.gamma < 0.0 && h < a.pull_out_height(&ae, sigma) * 1.2 + room {
             cmd.pull_out = true;
@@ -841,6 +932,19 @@ mod tests {
         for _ in 0..(secs * 15.0) as usize {
             a.step(ae, c, 1.0 / 15.0);
         }
+    }
+
+    #[test]
+    fn a_point_inside_the_turn_circle_is_out_of_reach() {
+        // Heading north (psi 0), turning radius 1000: right of it the circle's centre is
+        // 1000 east.
+        assert!(inside_turn((900.0, 0.0), 0.0, 1.0, 1000.0));
+        assert!(!inside_turn((2500.0, 0.0), 0.0, 1.0, 1000.0));
+        assert!(!inside_turn((0.0, -3000.0), 0.0, 0.0, 1000.0));
+        // Heading east (psi pi/2): turning right, the centre is 1000 south.
+        assert!(inside_turn((0.0, 900.0), FRAC_PI_2, 1.0, 1000.0));
+        assert!(inside_turn((0.0, -900.0), FRAC_PI_2, -1.0, 1000.0));
+        assert!(!inside_turn((0.0, -900.0), FRAC_PI_2, 1.0, 1000.0));
     }
 
     #[test]

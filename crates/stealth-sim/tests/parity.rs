@@ -324,13 +324,13 @@ fn single_player_parity() {
 fn ai_flight_parity() {
     const GOLDEN: &[u64] = &[
         0xbe12280dc9125b49,
-        0xf4194eec65008817,
-        0xb39eec4cedafe6e6,
-        0xc2c9677fc4e861c3,
+        0x861ad1157bcd8ab8,
+        0x7714d8110f0dfc9a,
+        0x4adbb50f913fb4d0,
         0x040ab5847958a2a7,
         0xef08fdb70c413e36,
-        0x9d7ea2d00421e9be,
-        0x178ba7551bf5b04c,
+        0x5c95b176f7fd01e8,
+        0xaf8158b288efdded,
         0xd5899fd0c2bc132e,
     ];
     let d = data();

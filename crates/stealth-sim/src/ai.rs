@@ -8,6 +8,15 @@ use stealth_i18n::text;
 const TERRAIN_CLEARANCE: i32 = 614;
 /// The room kept over the rolling hills ahead (altitude units, about 60 m).
 const HILLS_CLEARANCE: i32 = 123;
+/// Flying straight out of a circle round its approach point, it climbs to this much over the
+/// ground ahead (altitude units, about 200 m).
+const EXTEND_ROOM: i32 = 400;
+/// On final a campaign aircraft keeps this much over the ground ahead (altitude units, 75 m)
+/// until this close to the runway (map units, 2 km).
+const FINAL_ROOM: i32 = 150;
+const FINAL_FLAT: i32 = 0x80;
+/// Its climb then (about 8 degrees).
+const FINAL_CLIMB: i32 = 0x600;
 /// A campaign aircraft chasing another leads it by a second for this many world units of
 /// range (about 500 m).
 const PURSUIT_LEAD: f32 = 1000.0;
@@ -123,9 +132,20 @@ impl Sim {
         if u.flags & fflags::RTB != 0 && !pressed {
             let b = self.obj(u.wp);
             if u.flags & fflags::FINAL != 0 {
-                tx = s16(b.x - 2 * s16(u.x - b.x));
+                // A campaign aircraft flies straight for the runway (the classic point beyond
+                // it moves with the aircraft, which a fast jet that turns wide circles for
+                // ever).
+                let campaign = self.campaign_flight(i).is_some();
+                tx = if campaign { b.x } else { s16(b.x - 2 * s16(u.x - b.x)) };
                 ty = b.y;
-                tz = if (abs16(u.x - b.x) + b.flags) & 0x200 != 0 { 140 } else { 12 };
+                let glide = if (abs16(u.x - b.x) + b.flags) & 0x200 != 0 { 140 } else { 12 };
+                // It keeps clear of the hills ahead on the way in, down to the runway's flat
+                // ground.
+                tz = if campaign && approx(s16(u.x - b.x), s16(u.y - b.y)) > FINAL_FLAT {
+                    glide.max(self.ground_ahead(&u) + FINAL_ROOM)
+                } else {
+                    glide
+                };
             } else {
                 tx = b.x;
                 ty = s16(b.y + self.ns * 0x280);
@@ -188,7 +208,8 @@ impl Sim {
                 z = if self.campaign_striking(i) {
                     crate::campaign::STRIKE_ALT
                 } else {
-                    clamp_q(u.alt, 6000, 16000)
+                    // Well over the mountains ahead (a heavy aircraft climbs slowly).
+                    clamp_q(u.alt, 6000, 16000).max(self.ground_ahead(&u) + 2 * TERRAIN_CLEARANCE)
                 };
             } else if u.flags & fflags::ESCORT != 0
                 && self.escort_leader >= 0
@@ -255,6 +276,15 @@ impl Sim {
         let brg = bearing(dx, s16(-dy));
         let rng = approx(dx, dy);
         let mut pitch_cmd = clamp_q(bearing(s16(tz - u.alt) >> 5, rng), -0x2000, 0x1000);
+        // A campaign aircraft on final under the ground ahead (it turned in low over the
+        // hills): it climbs clear first (the glide's pitch is a shallow one so far out).
+        if u.flags & fflags::FINAL != 0
+            && self.campaign_flight(i).is_some()
+            && approx(s16(u.x - tx), s16(u.y - ty)) > FINAL_FLAT
+            && u.alt < self.ground_ahead(&u) + FINAL_ROOM
+        {
+            pitch_cmd = pitch_cmd.max(FINAL_CLIMB);
+        }
         // --- steering ---
         let mut roll_cmd;
         let mut circle = false;
@@ -301,6 +331,22 @@ impl Sim {
                 roll_cmd = 0x3000;
                 circle = true;
             }
+            // On its way in (on final too), the point inside its turn circle and well off the
+            // nose (a fast jet at the approach point at an angle to the runway): it would circle
+            // it for ever, low. It flies on straight, climbing clear of the ground ahead,
+            // until it can turn onto it.
+            if mode == 2 && !self.ai_physics(i, &u) && self.campaign_flight(i).is_some() {
+                use crate::ai_flight::{inside_turn, rad};
+                let rate = (t.agility as f64 * 512.0).max(1.0) * std::f64::consts::PI / 32768.0;
+                let radius = u.speed.max(1) as f64 / rate;
+                let to = (s16(tx - u.x) as f64 * 32.0, s16(ty - u.y) as f64 * 32.0);
+                if inside_turn(to, rad(u.heading), rad(s16(brg - u.heading)), radius) {
+                    roll_cmd = 0;
+                    if u.alt < self.ground_ahead(&u) + EXTEND_ROOM {
+                        pitch_cmd = pitch_cmd.max(0x800);
+                    }
+                }
+            }
         }
         if mode == 1
             && self.obj(self.pl.nearest_base).flags & oflags::FRIENDLY != 0
@@ -328,8 +374,9 @@ impl Sim {
                 let turn = rad(u.bank) / 8.0;
                 let to_go = rad(s16(brg - u.heading));
                 let v = u.speed.max(1) as f64;
-                pitch_cmd =
-                    crate::ai_flight::bam(self.noe_gamma(pos, rad(u.heading), v, turn, to_go));
+                let clearance = crate::terrain_follow::NOE_CLEARANCE;
+                let gamma = self.noe_gamma(pos, rad(u.heading), v, turn, to_go, clearance);
+                pitch_cmd = crate::ai_flight::bam(gamma);
             }
             self.classic_moves(i, &mut u, &t, roll_cmd, pitch_cmd, mode, noe);
         }
