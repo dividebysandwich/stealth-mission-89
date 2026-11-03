@@ -5,9 +5,10 @@
 //!
 //! As a real terrain following radar does, it compares the terrain ahead with a `template`
 //! ("ski toe"): `CLEARANCE` under the flight path, level for the reaction distance and then
-//! curving up as a pull-up of `PULL_G`. Terrain above the template asks for a climb, terrain all
-//! below it lets the aircraft descend; `command` turns the largest difference into a flight
-//! path angle, which the flight models fly (`Aircraft::tf_gamma`).
+//! curving up as a pull-up. Terrain above the template asks for a climb, terrain all below it
+//! lets the aircraft descend; `command` turns the largest difference into a flight path angle,
+//! which the flight models fly (`Aircraft::tf_gamma`). The control law is the simulation's
+//! (`stealth_sim::terrain_follow`), which the AI's low flyers fly by too.
 //!
 //! Every frame while the Tornado flies, the radar scans the track ahead (curving with the turn)
 //! for the highest obstacle at each distance (`TerrainRadar`, also for the cockpit's E-scope,
@@ -21,17 +22,6 @@ use crate::world::{FloatingOrigin, WU, WorldPos};
 
 /// Clearance over the obstacles (metres): 65 ft in altitude units.
 pub const CLEARANCE: f32 = 65.0 * WU as f32;
-/// Extra load factor the pull-up template assumes (the control law may pull more).
-const PULL_G: f32 = 1.5;
-/// Reaction time (s): obstacles count as this much flight time nearer.
-const REACTION: f32 = 1.5;
-/// Time (s) over which the height is brought to the clearance; more than `MARGIN` (metres)
-/// below it twice as fast.
-const CAPTURE: f32 = 3.0;
-const MARGIN: f32 = CLEARANCE * 0.3;
-/// Steepest commanded dive and climb (rad).
-const MAX_DIVE: f32 = 0.3;
-const MAX_CLIMB: f32 = 0.6;
 /// Look-ahead: this much flight time, at least `MIN_AHEAD` metres.
 const AHEAD_SECS: f32 = 20.0;
 const MIN_AHEAD: f32 = 3000.0;
@@ -51,32 +41,15 @@ const G: f32 = 9.81;
 
 /// The template's height `d` metres ahead at `speed` (m/s), relative to a level flight path
 /// through the aircraft (metres): `CLEARANCE` under it for the reaction distance, then rising
-/// as the pull-up.
+/// as the pull-up (`stealth_sim::terrain_follow`, the AI's low flyers' too).
 pub fn template(d: f32, speed: f32) -> f32 {
-    let v = speed.max(50.0);
-    let x = (d - v * REACTION).max(0.0);
-    x * x * G * PULL_G / (2.0 * v * v) - CLEARANCE
+    stealth_sim::terrain_follow::template(d, speed, CLEARANCE)
 }
 
 /// The flight path angle (rad) to fly at `speed` (m/s) over a profile of (distance ahead,
-/// obstacle height relative to the aircraft) in metres: the climb that puts the template over
-/// the highest obstacle above it, or the descent towards the nearest under it. Past the
-/// reaction distance the template's own curve makes up the climb; nearer obstacles are closed
-/// in on over `CAPTURE` seconds (smoothly holding the clearance; far under it faster, which
-/// keeps a sudden obstacle from being cleared late).
+/// obstacle height relative to the aircraft) in metres (`stealth_sim::terrain_follow`).
 pub fn command(profile: &[(f32, f32)], speed: f32) -> f32 {
-    let v = speed.max(50.0);
-    let lag = v * REACTION;
-    profile
-        .iter()
-        .map(|&(d, h)| {
-            let x = (d - lag).max(0.0);
-            let above = h - template(d, v);
-            let urgent = (above - MARGIN).max(0.0) * (1.0 - x / (v * CAPTURE)).max(0.0);
-            ((above + urgent) / x.max(v * CAPTURE)).atan()
-        })
-        .fold(-MAX_DIVE, f32::max)
-        .min(MAX_CLIMB)
+    stealth_sim::terrain_follow::command(profile, speed, CLEARANCE)
 }
 
 /// What the terrain following radar sees, for the E-scope (`crate::tfr`).
@@ -266,7 +239,7 @@ mod tests {
         assert!(command(&flat, v).abs() < 0.01, "{}", command(&flat, v));
         // High above it: the steepest dive.
         let high: Vec<_> = flat.iter().map(|&(d, _)| (d, -1500.0)).collect();
-        assert_eq!(command(&high, v), -MAX_DIVE);
+        assert_eq!(command(&high, v), -stealth_sim::terrain_follow::MAX_DIVE);
         // A 300 m wall 1.5 km ahead: climbing already, a far one not yet.
         let wall = |at: f32| {
             flat.iter().map(move |&(d, h)| (d, if d > at { 300.0 - CLEARANCE } else { h }))

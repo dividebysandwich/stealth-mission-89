@@ -291,16 +291,28 @@ impl Sim {
             roll_cmd = 0x3000;
             circle = true;
         }
+        let noe = self.noe(i, &u);
         if self.ai_physics(i, &u) {
             self.terrain_flag(i, &mut u);
-            let st = Steer { tx, ty, tz, mode, rng, dogfight, roll_cmd, pitch_cmd, circle };
+            let st = Steer { tx, ty, tz, mode, rng, dogfight, roll_cmd, pitch_cmd, circle, noe };
             self.fly_physics(i, &mut u, &t, st);
             u.flags &= !fflags::HIT;
         } else {
             if self.opts.realistic_ai_flight {
                 self.ai_classic(i, &u);
             }
-            self.classic_moves(i, &mut u, &t, roll_cmd, pitch_cmd, mode);
+            if noe {
+                // Nap of the earth: the terrain following's climb angle, the track curving
+                // with the bank (the heading turns by an eighth of it a second).
+                let rad = crate::ai_flight::rad;
+                let pos = [u.wx as f64, u.wy as f64, u.alt as f64];
+                let turn = rad(u.bank) / 8.0;
+                let to_go = rad(s16(brg - u.heading));
+                let v = u.speed.max(1) as f64;
+                pitch_cmd =
+                    crate::ai_flight::bam(self.noe_gamma(pos, rad(u.heading), v, turn, to_go));
+            }
+            self.classic_moves(i, &mut u, &t, roll_cmd, pitch_cmd, mode, noe);
         }
         let ground = self.hill_alt(u.x, u.y);
         if u.alt < ground {
@@ -396,6 +408,7 @@ impl Sim {
         mut roll_cmd: i32,
         mut pitch_cmd: i32,
         mode: i32,
+        noe: bool,
     ) {
         let fs = self.fs;
         let agil = t.agility as i32;
@@ -418,7 +431,7 @@ impl Sim {
             roll_cmd = 0x400;
         }
         self.terrain_flag(i, u);
-        if u.flags & fflags::TERRAIN != 0 {
+        if u.flags & fflags::TERRAIN != 0 && !noe {
             pitch_cmd = 0x3000;
         }
         // --- integration ---
@@ -436,8 +449,10 @@ impl Sim {
             .tiles
             .as_ref()
             .map_or(0, |t| t.relief.height(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)));
+        // The room kept under a dive (a low flyer's terrain following keeps its own).
+        let room = if noe { crate::terrain_follow::NOE_CLEARANCE / 2 } else { 200 };
         if u.pitch < 0
-            && u.alt - ground < 200 - self.trig.sin_mul(u.pitch, 2000)
+            && u.alt - ground < room - self.trig.sin_mul(u.pitch, 2000)
             && u.flags & 0x220 == 0
         {
             dp = 0x400;

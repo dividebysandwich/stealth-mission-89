@@ -1029,3 +1029,71 @@ fn air_defences_find_a_stealthy_ai_aircraft_closer() {
     }
     assert_eq!(fired, [true, false], "SAMs fired at the F-16, the F-22");
 }
+
+/// The AI's F-117A, F-22A and Tornado fly their strikes nap of the earth (both flight models):
+/// at about 100 ft over highland hills (300 m high), never into them, all the way to the target
+/// and most of the way home.
+#[test]
+fn low_flyers_follow_the_terrain_to_the_target_and_home() {
+    use stealth_sim::ai_missions::{F22, TORNADO};
+    for realistic in [true, false] {
+        for spec in [F117, F22, TORNADO] {
+            let d = data();
+            let s = MissionSettings {
+                theater: 3,
+                roe: 2,
+                opponents: 1,
+                kind: MissionKind::Strike,
+                ..Default::default()
+            };
+            let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
+            m.world = d.gdata.theaters[3].world.clone();
+            m.weather = Default::default();
+            let opts =
+                SimOptions { campaign: true, realistic_ai_flight: realistic, ..Default::default() };
+            let mut sim = Sim::with_options(&d.sim, &m, opts);
+            quiet(&mut sim);
+            let from = find(&sim, 0x401, Some("Neuburg"));
+            let to = find(&sim, 0x001, Some("Tabor"));
+            // Highland hills everywhere but round the base.
+            let b = sim.objects()[from];
+            let cell = hills::CELL_M / 15.625;
+            let mask = (0..hills::DIM * hills::DIM)
+                .map(|k| {
+                    let (col, row) = ((k % hills::DIM) as f64, (k / hills::DIM) as f64);
+                    let d = (col * cell - b.x as f64).hypot(row * cell - b.y as f64);
+                    if d < 0x180 as f64 { 0 } else { 255 }
+                })
+                .collect();
+            let hills = hills::Hills::from_bytes(mask).unwrap();
+            sim.set_hills(hills.clone());
+            let relief = sim.relief();
+            let i = sim.spawn_ai_mission(from, spec, AiTask::Strike(to), 61, true);
+            let (mut agl, mut fired) = (Vec::new(), false);
+            for _ in 0..30 * 60 {
+                let ev = run(&mut sim, &idle(), 1);
+                let name = format!("{spec} (realistic {realistic})");
+                assert!(
+                    !ev.iter()
+                        .any(|e| matches!(e, SimEvent::AircraftCrashed { unit } if *unit == i)),
+                    "{name} flew into the ground"
+                );
+                let u = sim.flights()[i];
+                let Some(f) = sim.campaign_flight(i) else { break };
+                fired |= f.strike.is_none();
+                // Away from the base (climbing out, the approach).
+                let out = (u.x - b.x).abs().max((u.y - b.y).abs());
+                if u.flags & (fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT) == 0 && out > 0x500
+                {
+                    agl.push(u.alt - relief.height(u.x, u.y).max(hills.ground_alt(u.x, u.y)));
+                }
+            }
+            agl.sort();
+            let median = agl.get(agl.len() / 2).copied().unwrap_or(0);
+            eprintln!("{spec} realistic {realistic}: lowest {} ft, median {median} ft", agl[0]);
+            assert!(fired, "{spec} (realistic {realistic}) never fired");
+            assert!(agl.len() > 300 && median < 200, "{spec} (realistic {realistic}): {median} ft");
+            assert!(agl[0] > 20, "{spec} (realistic {realistic}): {} ft", agl[0]);
+        }
+    }
+}

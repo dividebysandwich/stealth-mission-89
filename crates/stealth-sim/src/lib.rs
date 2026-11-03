@@ -30,6 +30,7 @@ pub mod score;
 pub mod sfw;
 pub mod station;
 pub mod supply;
+pub mod terrain_follow;
 mod targeting;
 mod tiles;
 pub mod uav;

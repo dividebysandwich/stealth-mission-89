@@ -41,6 +41,9 @@ const K_GAMMA: f64 = 1.2;
 /// under which it no longer dives (about 300 m and 1 km).
 const PULL_OUT_ROOM: f64 = 600.0;
 const DIVE_FLOOR: f64 = 2000.0;
+/// The room kept under a low flyer's dive (alt units, 20 m): its terrain following keeps it
+/// clear, this only catches what it misses.
+const NOE_PULL_OUT_ROOM: f64 = 40.0;
 /// Integration steps per sim frame.
 const SUBSTEPS: usize = 2;
 
@@ -260,6 +263,8 @@ pub(crate) struct Steer {
     pub roll_cmd: i32,
     pub pitch_cmd: i32,
     pub circle: bool,
+    /// Nap of the earth ([`Sim::noe`]): the terrain following sets the climb angle.
+    pub noe: bool,
 }
 
 pub(crate) fn rad(bam: i32) -> f64 {
@@ -517,7 +522,13 @@ impl Sim {
             cmd.speed = l.speed as f64 * (1.0 + (st.rng as f64 / 512.0).min(0.3));
             cmd.ab = ae.ab;
         }
-        if let Some(e) = self.evade_cmd(i, &mut a, &ae) {
+        let evading = self.evade_cmd(i, &mut a, &ae);
+        let noe = st.noe.then(|| {
+            // The track ahead curves with the turn, as far as the heading still to go.
+            let turn = G * a.n * a.mu.sin() / a.v.max(1.0);
+            self.noe_gamma(a.pos, a.psi, a.v, turn, cmd.dpsi)
+        });
+        if let Some(e) = evading {
             cmd = e;
         }
         // --- the ground and the ceiling ---
@@ -527,16 +538,24 @@ impl Sim {
             .map_or(0, |t| t.relief.height(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)))
             as f64;
         let h = a.pos[2] - ground;
-        if u.flags & fflags::TERRAIN != 0 {
-            cmd.gamma = cmd.gamma.max(TERRAIN_CLIMB);
-        }
-        if h < DIVE_FLOOR {
-            cmd.gamma = cmd.gamma.max(-0.05 - 0.3 * (h / DIVE_FLOOR).max(0.0));
+        let mut room = PULL_OUT_ROOM;
+        if let Some(tf) = noe {
+            // Nap of the earth: the terrain following's climb angle, and no deeper (a
+            // defensive dive too).
+            cmd.gamma = if evading.is_some() { cmd.gamma.max(tf) } else { tf };
+            room = NOE_PULL_OUT_ROOM;
+        } else {
+            if u.flags & fflags::TERRAIN != 0 {
+                cmd.gamma = cmd.gamma.max(TERRAIN_CLIMB);
+            }
+            if h < DIVE_FLOOR {
+                cmd.gamma = cmd.gamma.max(-0.05 - 0.3 * (h / DIVE_FLOOR).max(0.0));
+            }
         }
         if a.pos[2] > 28_000.0 {
             cmd.gamma = cmd.gamma.min(0.0);
         }
-        if a.gamma < 0.0 && h < a.pull_out_height(&ae, sigma) * 1.2 + PULL_OUT_ROOM {
+        if a.gamma < 0.0 && h < a.pull_out_height(&ae, sigma) * 1.2 + room {
             cmd.pull_out = true;
         }
         a.step(&ae, &cmd, dt);
