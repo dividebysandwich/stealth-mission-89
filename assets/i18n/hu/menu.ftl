@@ -410,6 +410,12 @@ aircraft-rah66 =
         Lopakodó felderítő helikopter
         Rekeszek: Hellfire vagy Stinger
         Nehezen látható a radaron, lassú vagy lebegő
+menu-ai-flight = MI-repülés
+    .facts =
+        MI-repülőgépek
+        Klasszikus: az MI vadászai mintha sínen futnának, állandó sebességgel repülnek, és nem törődnek a rájuk lőtt rakétákkal
+        Valósághű: a tiédhez hasonló repülési modell (tolóerő, légellenállás, g-határok): az éles fordulók és emelkedések sebességbe kerülnek
+        Valósághű: védekeznek az észlelt rakéták ellen: távoli lövésnél oldalról oldalra kitérnek (crank), közelinél fáklyákkal vagy dipólokkal lebuknak
 menu-terrain = Terep
     .facts =
         Terepdomborzat

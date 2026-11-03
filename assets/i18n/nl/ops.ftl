@@ -215,6 +215,7 @@ ops-ai-load = Een AI-helikopter neemt een lading over in { $time } tenzij een UH
 ops-cargo-in = Lading { $delivered } van { $loads } binnen - het helikopterplatform wacht nog { $time } u
 ops-logistics-ai = LOGISTIEK voor de { $unit }: { $count } x UH-60 onderweg
 ops-rule-classic-terrain = klassiek terrein
+ops-rule-classic-ai-flight = klassiek AI-vliegen
 ops-layers-hint = LAGEN (rechtsboven): wat de kaart toont
 ops-map-tab = KAART
 ops-on-radio = OP DE RADIO

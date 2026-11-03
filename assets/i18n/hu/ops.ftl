@@ -215,6 +215,7 @@ ops-ai-load = Egy MI-helikopter { $time } múlva átveszi a rakományt, ha nem t
 ops-cargo-in = Rakomány { $delivered } / { $loads } megérkezett - a leszállóhely még { $time } órát vár
 ops-logistics-ai = LOGISZTIKA ehhez: { $unit }: { $count } x UH-60 úton
 ops-rule-classic-terrain = klasszikus terep
+ops-rule-classic-ai-flight = klasszikus MI-repülés
 ops-layers-hint = RÉTEGEK (jobbra fent): amit a térkép mutat
 ops-map-tab = TÉRKÉP
 ops-on-radio = A RÁDIÓN

@@ -1,4 +1,5 @@
 use crate::Sim;
+use crate::ai_flight::Steer;
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, s16};
 use crate::types::*;
 use stealth_i18n::text;
@@ -28,6 +29,7 @@ impl Sim {
             *b = Bullet::default();
         }
         let nf = self.flights.len();
+        self.ai_cms_age();
         self.flight_vel.clear();
         self.flight_vel.resize(nf, [0.0; 3]);
         for i in 0..nf {
@@ -103,7 +105,6 @@ impl Sim {
         let nf = self.flights.len();
         let n = self.objects.len() as i32;
         let t = self.ac_type(self.flights[i].spec).clone();
-        let agil = t.agility as i32;
         let (px, py, pz) = (self.pl.p.mx, self.pl.p.my, self.pl.p.view_z);
         let mut u = self.flights[i];
         // --- target selection ---
@@ -238,7 +239,9 @@ impl Sim {
         let mut pitch_cmd = clamp_q(bearing(s16(tz - u.alt) >> 5, rng), -0x2000, 0x1000);
         // --- steering ---
         let mut roll_cmd;
-        if mode == 1 && rng < 0x400 {
+        let mut circle = false;
+        let dogfight = mode == 1 && rng < 0x400;
+        if dogfight {
             self.pl.threat_count += 1;
             if rng < 0x200
                 && self.pl.eject == 0
@@ -278,6 +281,7 @@ impl Sim {
             roll_cmd = clamp_q(s16(brg - u.heading), -0x2000, 0x2000) * 2;
             if mode == 1 && 2 * self.diff < self.pl.threat_count_last {
                 roll_cmd = 0x3000;
+                circle = true;
             }
         }
         if mode == 1
@@ -285,84 +289,18 @@ impl Sim {
             && self.pl.nearest_base_dist < 0x780
         {
             roll_cmd = 0x3000;
+            circle = true;
         }
-        roll_cmd = clamp_q(roll_cmd, -agil << 12, agil << 12);
-        roll_cmd = clamp_q(s16(roll_cmd - u.bank), -agil << 8, agil << 8);
-        if u.flags & fflags::TAKEOFF != 0 {
-            if u.speed < 150 {
-                u.pitch = 0;
-            } else {
-                u.pitch = s16(u.pitch + 0x100);
+        if self.ai_physics(i, &u) {
+            self.terrain_flag(i, &mut u);
+            let st = Steer { tx, ty, tz, mode, rng, dogfight, roll_cmd, pitch_cmd, circle };
+            self.fly_physics(i, &mut u, &t, st);
+            u.flags &= !fflags::HIT;
+        } else {
+            if self.opts.realistic_ai_flight {
+                self.ai_classic(i, &u);
             }
-            roll_cmd = 0;
-            if u.speed < t.max_speed as i32 {
-                u.speed += cdiv(40, fs);
-            } else if u.alt > 300 {
-                u.flags &= !fflags::TAKEOFF;
-            }
-        }
-        if u.flags & 0x30 != 0 {
-            roll_cmd = 0x400;
-        }
-        if ((i as i32 ^ self.frame) & 3) == 0 {
-            // Mountains ahead: climb clear of them (not the airfield traffic, nor a wreck).
-            let traffic = fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT | fflags::DESTROYED;
-            // The rolling hills too, with less room (they are low and gentle).
-            let terrain = self.terrain_ahead(&u);
-            let hills = self.hills_ahead(&u);
-            let low = (terrain > 0 && u.alt < terrain + TERRAIN_CLEARANCE)
-                || (hills > 0 && u.alt < hills + HILLS_CLEARANCE);
-            if u.flags & traffic == 0 && low {
-                u.flags |= fflags::TERRAIN;
-            } else {
-                u.flags &= !fflags::TERRAIN;
-            }
-        }
-        if u.flags & fflags::TERRAIN != 0 {
-            pitch_cmd = 0x3000;
-        }
-        // --- integration ---
-        u.bank = s16(u.bank + cdiv(roll_cmd * 4, fs));
-        u.heading = s16(u.heading + cdiv(u.bank >> 3, fs));
-        let mut dp = s16(pitch_cmd - u.pitch);
-        if u.flags & fflags::DESTROYED != 0 {
-            dp = -0x200;
-            if self.frame & 1 == 0 {
-                let slot = ((self.frame & 0x1E) >> 1) as usize;
-                self.add_smoke(slot, u.x, u.y, u.alt);
-            }
-        }
-        let ground = self
-            .tiles
-            .as_ref()
-            .map_or(0, |t| t.relief.height(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)));
-        if u.pitch < 0
-            && u.alt - ground < 200 - self.trig.sin_mul(u.pitch, 2000)
-            && u.flags & 0x220 == 0
-        {
-            dp = 0x400;
-        }
-        u.pitch = s16(u.pitch + cdiv(clamp_q(dp, -0x400, 0x400) * 4, fs));
-        if abs16(u.pitch) > 0x4000 {
-            u.heading = s16(u.heading + 0x8000);
-            u.bank = s16(u.bank + 0x8000);
-            u.pitch = s16(0x8000 - u.pitch);
-        }
-        u.flags &= !fflags::HIT;
-        let mut mv = (((0x8000 - u.pitch) & 0xFFFF) * u.speed) >> 15;
-        mv -= self.trig.sin_mul(u.bank, mv).abs() >> 1;
-        if mode == 1 && self.diff >= self.pl.threat_count_last {
-            mv += mv >> 1;
-        }
-        mv = cdiv(mv * 4, fs) >> 2;
-        let h = self.trig.cos_mul(u.pitch, mv);
-        u.wx = u.wx.wrapping_add(self.trig.sin_mul(u.heading, h));
-        u.wy = u.wy.wrapping_sub(self.trig.cos_mul(u.heading, h));
-        u.alt += self.trig.sin_mul(u.pitch, mv);
-        u.x = (u.wx >> 5) & 0xFFFF;
-        u.y = (u.wy >> 5) & 0xFFFF;
-        if u.alt > 30000 {
-            u.pitch = 0;
+            self.classic_moves(i, &mut u, &t, roll_cmd, pitch_cmd, mode);
         }
         let ground = self.hill_alt(u.x, u.y);
         if u.alt < ground {
@@ -446,6 +384,102 @@ impl Sim {
             && u.flags & fflags::AIRBORNE != 0
         {
             self.radar_sweep(i);
+        }
+    }
+
+    /// The classic moves of flight unit `i` for the steering commands.
+    fn classic_moves(
+        &mut self,
+        i: usize,
+        u: &mut FlightUnit,
+        t: &crate::AircraftType,
+        mut roll_cmd: i32,
+        mut pitch_cmd: i32,
+        mode: i32,
+    ) {
+        let fs = self.fs;
+        let agil = t.agility as i32;
+        roll_cmd = clamp_q(roll_cmd, -agil << 12, agil << 12);
+        roll_cmd = clamp_q(s16(roll_cmd - u.bank), -agil << 8, agil << 8);
+        if u.flags & fflags::TAKEOFF != 0 {
+            if u.speed < 150 {
+                u.pitch = 0;
+            } else {
+                u.pitch = s16(u.pitch + 0x100);
+            }
+            roll_cmd = 0;
+            if u.speed < t.max_speed as i32 {
+                u.speed += cdiv(40, fs);
+            } else if u.alt > 300 {
+                u.flags &= !fflags::TAKEOFF;
+            }
+        }
+        if u.flags & 0x30 != 0 {
+            roll_cmd = 0x400;
+        }
+        self.terrain_flag(i, u);
+        if u.flags & fflags::TERRAIN != 0 {
+            pitch_cmd = 0x3000;
+        }
+        // --- integration ---
+        u.bank = s16(u.bank + cdiv(roll_cmd * 4, fs));
+        u.heading = s16(u.heading + cdiv(u.bank >> 3, fs));
+        let mut dp = s16(pitch_cmd - u.pitch);
+        if u.flags & fflags::DESTROYED != 0 {
+            dp = -0x200;
+            if self.frame & 1 == 0 {
+                let slot = ((self.frame & 0x1E) >> 1) as usize;
+                self.add_smoke(slot, u.x, u.y, u.alt);
+            }
+        }
+        let ground = self
+            .tiles
+            .as_ref()
+            .map_or(0, |t| t.relief.height(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)));
+        if u.pitch < 0
+            && u.alt - ground < 200 - self.trig.sin_mul(u.pitch, 2000)
+            && u.flags & 0x220 == 0
+        {
+            dp = 0x400;
+        }
+        u.pitch = s16(u.pitch + cdiv(clamp_q(dp, -0x400, 0x400) * 4, fs));
+        if abs16(u.pitch) > 0x4000 {
+            u.heading = s16(u.heading + 0x8000);
+            u.bank = s16(u.bank + 0x8000);
+            u.pitch = s16(0x8000 - u.pitch);
+        }
+        u.flags &= !fflags::HIT;
+        let mut mv = (((0x8000 - u.pitch) & 0xFFFF) * u.speed) >> 15;
+        mv -= self.trig.sin_mul(u.bank, mv).abs() >> 1;
+        if mode == 1 && self.diff >= self.pl.threat_count_last {
+            mv += mv >> 1;
+        }
+        mv = cdiv(mv * 4, fs) >> 2;
+        let h = self.trig.cos_mul(u.pitch, mv);
+        u.wx = u.wx.wrapping_add(self.trig.sin_mul(u.heading, h));
+        u.wy = u.wy.wrapping_sub(self.trig.cos_mul(u.heading, h));
+        u.alt += self.trig.sin_mul(u.pitch, mv);
+        u.x = (u.wx >> 5) & 0xFFFF;
+        u.y = (u.wy >> 5) & 0xFFFF;
+        if u.alt > 30000 {
+            u.pitch = 0;
+        }
+    }
+
+    fn terrain_flag(&mut self, i: usize, u: &mut FlightUnit) {
+        if ((i as i32 ^ self.frame) & 3) == 0 {
+            // Mountains ahead: climb clear of them (not the airfield traffic, nor a wreck).
+            let traffic = fflags::TAKEOFF | fflags::FINAL | fflags::ROLLOUT | fflags::DESTROYED;
+            // The rolling hills too, with less room (they are low and gentle).
+            let terrain = self.terrain_ahead(u);
+            let hills = self.hills_ahead(u);
+            let low = (terrain > 0 && u.alt < terrain + TERRAIN_CLEARANCE)
+                || (hills > 0 && u.alt < hills + HILLS_CLEARANCE);
+            if u.flags & traffic == 0 && low {
+                u.flags |= fflags::TERRAIN;
+            } else {
+                u.flags &= !fflags::TERRAIN;
+            }
         }
     }
 

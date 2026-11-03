@@ -215,6 +215,7 @@ ops-ai-load = Tekoälyhelikopteri ottaa kuorman { $time } kuluttua, jos UH-60-le
 ops-cargo-in = Kuorma { $delivered } / { $loads } perillä - kopterikenttä odottaa vielä { $time } h
 ops-logistics-ai = LOGISTIIKKA kohteelle { $unit }: { $count } x UH-60 matkalla
 ops-rule-classic-terrain = klassinen maasto
+ops-rule-classic-ai-flight = klassinen tekoälyn lento
 ops-layers-hint = TASOT (oikealla ylhäällä): mitä kartta näyttää
 ops-map-tab = KARTTA
 ops-on-radio = RADIOSSA

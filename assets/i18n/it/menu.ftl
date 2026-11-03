@@ -410,6 +410,12 @@ aircraft-rah66 =
         Elicottero da ricognizione stealth
         Stive: Hellfire o Stinger
         Difficile da vedere sul radar, lento o in stazionario
+menu-ai-flight = Volo dell'IA
+    .facts =
+        Aerei dell'IA
+        Classica: i jet dell'IA volano su binari a velocità fissa e ignorano i missili sparati contro di loro
+        Realistica: un modello di volo come il tuo (spinta, resistenza, limiti di g): virate strette e salite costano loro velocità
+        Realistica: si difendono dai missili che notano: crank da un lato all'altro contro i tiri lontani, picchiata con flare o chaff contro quelli vicini
 menu-terrain = Terreno
     .facts =
         Rilievo del terreno

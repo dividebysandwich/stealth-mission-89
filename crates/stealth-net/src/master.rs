@@ -273,6 +273,7 @@ pub fn rules_list(r: &stealth_host::Rules) -> Vec<String> {
         (r.realistic_weapons, "realistic weapons"),
         (r.friendly_fire, "friendly fire"),
         (r.classic_terrain, "classic terrain"),
+        (r.classic_ai_flight, "classic AI flight"),
     ]
     .iter()
     .filter(|x| x.0)

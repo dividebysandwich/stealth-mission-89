@@ -215,6 +215,7 @@ ops-ai-load = UH-60 조종사가 하지 않으면 { $time } 후 AI 헬리콥터�
 ops-cargo-in = 화물 { $delivered } / { $loads } 도착 - 헬기장이 { $time } 시간 더 기다립니다
 ops-logistics-ai = { $unit } 군수: UH-60 { $count }대 이동 중
 ops-rule-classic-terrain = 클래식 지형
+ops-rule-classic-ai-flight = 클래식 AI 비행
 ops-layers-hint = 레이어 (오른쪽 위): 지도가 보여 주는 것
 ops-map-tab = 지도
 ops-on-radio = 무선 중

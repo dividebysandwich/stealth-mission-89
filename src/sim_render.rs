@@ -204,7 +204,9 @@ pub(crate) struct SimVisuals {
     /// Projectile model, spec and missile dot with its current look: the motor's glow
     /// (`TRACER`), black by day (`COASTING`) or white at night (`COASTING_NIGHT`).
     pub(crate) proj: [Option<(Entity, i32, Option<(Entity, u8)>)>; N_PROJ],
-    cms: [Option<Cartridge>; 4],
+    /// Flares, chaff and decoys: the player's by slot (unit `usize::MAX`), the AI aircraft's by
+    /// flight unit and slot.
+    cms: HashMap<(usize, usize), Cartridge>,
     /// Gun rounds: the dot at the round and its tracer line.
     bullets: Vec<(Entity, Entity)>,
     /// The other pilots' rounds (as many as were ever in flight at once).
@@ -1192,20 +1194,28 @@ pub(crate) fn sync_objects(
     }
 
     // --- countermeasure cartridges: flares and chaff fall slowly from the release point
-    // (the simulation keeps them at the player's altitude), the decoy hangs in the air.
+    // (the simulation keeps them at the player's altitude, or the AI aircraft's), the decoy
+    // hangs in the air.
     let view_z = sim.player().view_z as f32;
-    for (k, c) in sim.countermeasures().iter().enumerate() {
-        let key = (c.x, c.y, c.kind);
-        if vis.cms[k].as_ref().is_some_and(|v| c.ttl <= 0 || v.key != key) {
-            if let Some(v) = vis.cms[k].take() {
-                commands.entity(v.entity).try_despawn();
-            }
+    let live: Vec<((usize, usize), (i32, i32, i32), f32)> = sim
+        .countermeasures()
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.ttl > 0)
+        .map(|(k, c)| ((usize::MAX, k), (c.x, c.y, c.kind), view_z))
+        .chain(sim.ai_countermeasures().map(|(i, k, c)| ((i, k), (c.x, c.y, c.kind), c.alt as f32)))
+        .collect();
+    vis.cms.retain(|id, v| {
+        let keep = live.iter().any(|(k, key, _)| k == id && *key == v.key);
+        if !keep {
+            commands.entity(v.entity).try_despawn();
         }
-        if c.ttl <= 0 {
-            continue;
-        }
-        let cart = vis.cms[k].get_or_insert_with(|| {
-            let (colour, offsets): (u8, Vec<Vec3>) = match c.kind {
+        keep
+    });
+    for &(id, key, alt) in &live {
+        let (x, y, kind) = key;
+        if !vis.cms.contains_key(&id) {
+            let (colour, offsets): (u8, Vec<Vec3>) = match kind {
                 1 => (FLARE, vec![Vec3::ZERO]),
                 2 => (
                     CHAFF,
@@ -1231,22 +1241,23 @@ pub(crate) fn sync_objects(
                 h
             });
             let entity = spawn_dot(&mut commands, &assets, material, &offsets);
-            if c.kind == 1 {
+            if kind == 1 {
                 commands.entity(entity).insert(crate::lighting::LightEmitter {
                     color: Vec3::new(2.0, 1.8, 1.4),
                     range: 150.0,
                 });
             }
-            Cartridge { entity, key, alt: view_z }
-        });
-        let fall = match c.kind {
+            vis.cms.insert(id, Cartridge { entity, key, alt });
+        }
+        let Some(cart) = vis.cms.get_mut(&id) else { continue };
+        let fall = match kind {
             1 => 60.0,
             2 => 15.0,
             _ => 0.0,
         };
         cart.alt = (cart.alt - fall * dt).max(0.0);
         if let Ok((mut pos, _, _, mut v)) = q.get_mut(cart.entity) {
-            pos.0 = map_point(c.x as f64 + 0.5, c.y as f64 + 0.5, cart.alt as f64);
+            pos.0 = map_point(x as f64 + 0.5, y as f64 + 0.5, cart.alt as f64);
             *v = Visibility::Inherited;
         }
     }

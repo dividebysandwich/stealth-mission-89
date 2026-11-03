@@ -720,6 +720,9 @@ pub struct CampaignRules {
     pub friendly_fire: bool,
     #[serde(default)]
     pub classic_terrain: bool,
+    /// The AI's jets fly the classic moves (no flight model, no missile defence).
+    #[serde(default)]
+    pub classic_ai_flight: bool,
     /// The players' lost aircraft come out of the friendly side's.
     #[serde(default)]
     pub airframe_losses: bool,

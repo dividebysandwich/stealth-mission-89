@@ -410,6 +410,12 @@ aircraft-rah66 =
         Slaptas žvalgybos sraigtasparnis
         Skyriai: Hellfire arba Stinger
         Sunkiai matomas radare, lėtas arba sklandantis
+menu-ai-flight = DI skrydis
+    .facts =
+        DI orlaiviai
+        Klasikinis: DI reaktyviniai lėktuvai skrenda lyg bėgiais pastoviu greičiu ir nekreipia dėmesio į į juos paleistas raketas
+        Realistiškas: skrydžio modelis kaip tavo (trauka, pasipriešinimas, g ribos): staigūs posūkiai ir kilimas kainuoja jiems greitį
+        Realistiškas: ginasi nuo pastebėtų raketų: krypsta iš šono į šoną prieš tolimus šūvius, nardo su šiluminiais taikiniais ar dipoliais prieš artimus
 menu-terrain = Reljefas
     .facts =
         Vietovės reljefas

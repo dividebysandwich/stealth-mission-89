@@ -198,7 +198,7 @@ pub fn direction(heading: i32, pitch: i32) -> V3 {
 }
 
 /// Air density relative to sea level at `alt` (wu).
-fn density(alt: f64) -> f64 {
+pub(crate) fn density(alt: f64) -> f64 {
     (-alt.max(0.0) / 30_000.0).exp()
 }
 

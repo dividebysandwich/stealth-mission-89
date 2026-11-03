@@ -215,6 +215,7 @@ ops-ai-load = UH-60のパイロットが受け取らなければ、{ $time } 後
 ops-cargo-in = 貨物 { $delivered } / { $loads } 到着 - ヘリパッドはあと { $time } 時間待機
 ops-logistics-ai = { $unit } のロジスティクス：UH-60 { $count } 機が向かっています
 ops-rule-classic-terrain = クラシック地形
+ops-rule-classic-ai-flight = クラシックAI飛行
 ops-layers-hint = レイヤー (右上)：マップの表示内容
 ops-map-tab = マップ
 ops-on-radio = 無線中

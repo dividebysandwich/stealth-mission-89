@@ -22,6 +22,9 @@ pub struct Rules {
     /// The classic flat ground, without the rolling hills.
     #[serde(default)]
     pub classic_terrain: bool,
+    /// The AI's jets fly the classic moves: no flight model, no missile defence.
+    #[serde(default)]
+    pub classic_ai_flight: bool,
     /// A player's aircraft lost comes out of the friendly side's (the AI's) fighters or
     /// helicopters.
     #[serde(default)]
@@ -38,6 +41,7 @@ impl From<CampaignRules> for Rules {
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
             classic_terrain: r.classic_terrain,
+            classic_ai_flight: r.classic_ai_flight,
             airframe_losses: r.airframe_losses,
         }
     }
@@ -53,6 +57,7 @@ impl From<Rules> for CampaignRules {
             realistic_weapons: r.realistic_weapons,
             friendly_fire: r.friendly_fire,
             classic_terrain: r.classic_terrain,
+            classic_ai_flight: r.classic_ai_flight,
             airframe_losses: r.airframe_losses,
         }
     }
@@ -67,6 +72,7 @@ impl Rules {
             realistic_guidance: self.realistic_guidance,
             friendly_fire: self.friendly_fire,
             classic_terrain: self.classic_terrain,
+            realistic_ai_flight: !self.classic_ai_flight,
             air_defence: true,
             campaign: true,
             ..Default::default()

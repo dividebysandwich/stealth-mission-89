@@ -215,6 +215,7 @@ ops-ai-load = 如果没有 UH-60 飞行员接手，{ $time } 后 AI 直升机会
 ops-cargo-in = 货物 { $delivered } / { $loads } 已到 - 停机坪再等 { $time } 小时
 ops-logistics-ai = { $unit } 的后勤：{ $count } 架 UH-60 在途
 ops-rule-classic-terrain = 经典地形
+ops-rule-classic-ai-flight = 经典AI飞行
 ops-layers-hint = 图层（右上）：地图显示的内容
 ops-map-tab = 地图
 ops-on-radio = 无线电中

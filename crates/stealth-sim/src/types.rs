@@ -713,6 +713,11 @@ pub struct SimOptions {
     /// straight for 1 s.
     #[serde(default)]
     pub realistic_guidance: bool,
+    /// Realistic AI flight ([`crate::ai_flight`]): the AI's jets fly a flight model like the
+    /// player's (thrust, drag, g limits, energy) and defend against the missiles they notice,
+    /// cranking off distant shots, diving away from close ones with flares or chaff.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub realistic_ai_flight: bool,
     /// Low-level air defences: ZSU-23-4 and S-60 guns around airfields
     /// and targets, MANPADS in the towns ([`crate::aaa`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -750,6 +755,7 @@ impl Default for SimOptions {
             raptor: false,
             realistic_damage: false,
             realistic_guidance: false,
+            realistic_ai_flight: false,
             air_defence: false,
             campaign: false,
             friendly_fire: false,

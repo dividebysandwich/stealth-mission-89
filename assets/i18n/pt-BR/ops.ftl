@@ -215,6 +215,7 @@ ops-ai-load = Um helicóptero de IA pega uma carga em { $time } se um piloto de 
 ops-cargo-in = Carga { $delivered } de { $loads } entregue - o heliponto espera mais { $time } h
 ops-logistics-ai = LOGÍSTICA para o { $unit }: { $count } x UH-60 a caminho
 ops-rule-classic-terrain = terreno clássico
+ops-rule-classic-ai-flight = voo da IA clássico
 ops-layers-hint = CAMADAS (no alto, à direita): o que o mapa mostra
 ops-map-tab = MAPA
 ops-on-radio = NO RÁDIO

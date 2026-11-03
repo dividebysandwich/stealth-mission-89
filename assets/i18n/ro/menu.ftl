@@ -410,6 +410,12 @@ aircraft-rah66 =
         Elicopter de recunoaștere stealth
         Compartimente: Hellfire sau Stinger
         Greu de văzut pe radar, lent sau în staționare
+menu-ai-flight = Zborul IA
+    .facts =
+        Avioanele IA
+        Clasic: avioanele IA zboară ca pe șine cu viteză fixă și ignoră rachetele trase asupra lor
+        Realist: un model de zbor ca al tău (tracțiune, rezistență, limite g): virajele strânse și urcările le costă viteză
+        Realist: se apără de rachetele pe care le observă: crank dintr-o parte în alta împotriva tirurilor de departe, picaj cu ținte false termice sau chaff împotriva celor apropiate
 menu-terrain = Teren
     .facts =
         Relieful terenului

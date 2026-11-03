@@ -215,6 +215,7 @@ ops-ai-load = Helikopter UI-ja preuzima teret za { $time } ako to ne učini pilo
 ops-cargo-in = Teret { $delivered } od { $loads } isporučen - helidrom čeka još { $time } h
 ops-logistics-ai = LOGISTIKA za { $unit }: { $count } x UH-60 na putu
 ops-rule-classic-terrain = klasični teren
+ops-rule-classic-ai-flight = klasični let UI
 ops-layers-hint = SLOJEVI (gore desno): što karta prikazuje
 ops-map-tab = KARTA
 ops-on-radio = U RADIJU

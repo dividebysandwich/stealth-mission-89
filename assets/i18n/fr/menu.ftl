@@ -410,6 +410,12 @@ aircraft-rah66 =
         Hélicoptère d'éclairage furtif
         Soutes : Hellfire ou Stinger
         Difficile à voir au radar, lent ou en stationnaire
+menu-ai-flight = Vol de l'IA
+    .facts =
+        Avions de l'IA
+        Classique : les jets de l'IA volent sur des rails à vitesse fixe et ignorent les missiles tirés sur eux
+        Réaliste : un modèle de vol comme le vôtre (poussée, traînée, limites en g) : virages serrés et montées leur coûtent de la vitesse
+        Réaliste : ils se défendent contre les missiles qu'ils remarquent : « crank » d'un côté à l'autre contre les tirs lointains, piqué avec leurres ou paillettes contre les tirs proches
 menu-terrain = Terrain
     .facts =
         Relief du terrain

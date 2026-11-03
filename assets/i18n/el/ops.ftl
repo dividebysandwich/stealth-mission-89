@@ -215,6 +215,7 @@ ops-ai-load = Ένα ελικόπτερο ΤΝ παίρνει φορτίο σε 
 ops-cargo-in = Φορτίο { $delivered } από { $loads } παραδόθηκε - το ελικοδρόμιο περιμένει άλλες { $time } ώρες
 ops-logistics-ai = ΥΛΙΚΟΤΕΧΝΙΚΗ για το { $unit }: { $count } x UH-60 καθ' οδόν
 ops-rule-classic-terrain = κλασικό έδαφος
+ops-rule-classic-ai-flight = κλασική πτήση ΤΝ
 ops-layers-hint = ΕΠΙΠΕΔΑ (πάνω δεξιά): τι δείχνει ο χάρτης
 ops-map-tab = ΧΑΡΤΗΣ
 ops-on-radio = ΣΤΟ ΡΑΔΙΟ

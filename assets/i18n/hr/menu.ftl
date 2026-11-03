@@ -410,6 +410,12 @@ aircraft-rah66 =
         Prikriveni izvidnički helikopter
         Odjeljci: Hellfire ili Stinger
         Teško ga je vidjeti na radaru, spor ili u lebdenju
+menu-ai-flight = Let UI
+    .facts =
+        Zrakoplovi UI
+        Klasično: mlažnjaci UI lete kao po tračnicama stalnom brzinom i ne mare za projektile ispaljene na njih
+        Realistično: model leta kao tvoj (potisak, otpor, granice g): oštri zaokreti i penjanje koštaju ih brzine
+        Realistično: brane se od projektila koje primijete: crank s jedne strane na drugu protiv dalekih hitaca, poniranje s bakljama ili pljevom protiv bliskih
 menu-terrain = Teren
     .facts =
         Reljef terena

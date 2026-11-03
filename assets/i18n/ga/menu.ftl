@@ -410,6 +410,12 @@ aircraft-rah66 =
         Héileacaptar taiscéalaíochta lámhach
         Cuasáin: Hellfire nó Stinger
         Deacair a fheiceáil ar radar, mall nó i bhfloscadh
+menu-ai-flight = Eitilt AI
+    .facts =
+        Aerárthaí AI
+        Clasaiceach: eitlíonn scairdeitleáin an AI ar ráillí ag luas seasta agus déanann siad neamhaird de dhiúracáin a scaoiltear leo
+        Réadúil: samhail eitilte cosúil le do cheann féin (sá, tarraingt, teorainneacha g): baineann casadh géar agus dreapadh luas díobh
+        Réadúil: cosnaíonn siad iad féin ar dhiúracáin a thugann siad faoi deara: ag casadh ó thaobh go taobh in aghaidh urchar i bhfad uathu, ag tumadh le bladhmanna nó cáith in aghaidh urchar gar dóibh
 menu-terrain = Tír-raon
     .facts =
         Airde an tír-raoin

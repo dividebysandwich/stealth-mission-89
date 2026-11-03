@@ -215,6 +215,7 @@ ops-ai-load = Vrtuľník s AI prevezme náklad o { $time }, ak to neurobí pilot
 ops-cargo-in = Náklad { $delivered } z { $loads } doručený - heliport čaká ešte { $time } h
 ops-logistics-ai = LOGISTIKA pre { $unit }: { $count } x UH-60 na ceste
 ops-rule-classic-terrain = klasický terén
+ops-rule-classic-ai-flight = klasický let AI
 ops-layers-hint = VRSTVY (vpravo hore): čo mapa zobrazuje
 ops-map-tab = MAPA
 ops-on-radio = V RÁDIU

@@ -410,6 +410,12 @@ aircraft-rah66 =
         Helikopter pengintai siluman
         Ruang: Hellfire atau Stinger
         Sulit terlihat di radar, lambat atau melayang
+menu-ai-flight = Penerbangan AI
+    .facts =
+        Pesawat AI
+        Klasik: jet AI terbang seperti di atas rel dengan kecepatan tetap dan mengabaikan rudal yang ditembakkan ke arahnya
+        Realistis: model terbang seperti milikmu (daya dorong, hambatan, batas g): belokan tajam dan menanjak menguras kecepatannya
+        Realistis: mereka bertahan dari rudal yang mereka lihat: crank ke kiri dan kanan terhadap tembakan jauh, menukik dengan flare atau chaff terhadap yang dekat
 menu-terrain = Medan
     .facts =
         Relief medan

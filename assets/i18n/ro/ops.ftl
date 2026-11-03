@@ -215,6 +215,7 @@ ops-ai-load = Un elicopter AI preia o încărcătură în { $time } dacă nu o f
 ops-cargo-in = Încărcătura { $delivered } din { $loads } livrată - heliportul așteaptă încă { $time } h
 ops-logistics-ai = LOGISTICĂ pentru { $unit }: { $count } x UH-60 pe drum
 ops-rule-classic-terrain = teren clasic
+ops-rule-classic-ai-flight = zbor IA clasic
 ops-layers-hint = STRATURI (sus în dreapta): ce arată harta
 ops-map-tab = HARTĂ
 ops-on-radio = LA RADIO

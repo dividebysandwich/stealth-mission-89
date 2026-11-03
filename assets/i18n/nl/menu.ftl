@@ -411,6 +411,12 @@ aircraft-rah66 =
         Stealth-verkenningshelikopter
         Ruimten: Hellfires of Stingers
         Moeilijk te zien op radar, langzaam of hoverend
+menu-ai-flight = AI-vliegen
+    .facts =
+        AI-vliegtuigen
+        Klassiek: de jets van de AI vliegen als op rails met vaste snelheid en negeren raketten die op hen worden afgevuurd
+        Realistisch: een vliegmodel zoals het jouwe (stuwkracht, weerstand, g-limieten): krappe bochten en klimmen kosten ze snelheid
+        Realistisch: ze verdedigen zich tegen raketten die ze opmerken: cranken van links naar rechts tegen schoten van ver, wegduiken met flares of chaff tegen schoten van dichtbij
 menu-terrain = Terrein
     .facts =
         Terreinhoogte

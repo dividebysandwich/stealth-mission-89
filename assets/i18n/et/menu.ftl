@@ -410,6 +410,12 @@ aircraft-rah66 =
         Varjatud luurehelikopter
         Sektsioonid: Hellfire või Stinger
         Raskesti nähtav radaril, aeglane või hõljumas
+menu-ai-flight = AI lend
+    .facts =
+        AI lennukid
+        Klassikaline: AI reaktiivlennukid lendavad nagu rööbastel püsikiirusel ega hooli neile tulistatud rakettidest
+        Realistlik: sinu omaga sarnane lennumudel (tõukejõud, takistus, g-piirid): järsud pöörded ja tõusud maksavad neile kiirust
+        Realistlik: nad kaitsevad end märgatud rakettide eest: põiklevad küljelt küljele kaugete lasude vastu, sukelduvad soojuspeibutiste või fooliumiga lähedaste eest
 menu-terrain = Maastik
     .facts =
         Maastiku reljeef

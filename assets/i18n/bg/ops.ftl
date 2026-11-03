@@ -215,6 +215,7 @@ ops-ai-load = Хеликоптер с ИИ поема товар след { $tim
 ops-cargo-in = Товар { $delivered } от { $loads } доставен - площадката чака още { $time } ч
 ops-logistics-ai = ЛОГИСТИКА за { $unit }: { $count } x UH-60 на път
 ops-rule-classic-terrain = класически терен
+ops-rule-classic-ai-flight = класически полет на ИИ
 ops-layers-hint = СЛОЕВЕ (горе вдясно): какво показва картата
 ops-map-tab = КАРТА
 ops-on-radio = В РАДИОТО

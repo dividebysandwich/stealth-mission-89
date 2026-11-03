@@ -238,6 +238,9 @@ pub struct WorldFast {
     #[serde(default)]
     pub moving: Vec<(u16, Fine)>,
     pub ai_missiles: Vec<AiMissile>,
+    /// The AI aircraft's flares and chaff in the air: flight unit, slot, cartridge.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ai_cms: Vec<(u16, u8, crate::ai_flight::AiCm)>,
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "crate::sfw::Sfw::is_empty")]
     pub sfw: crate::sfw::Sfw,
@@ -352,6 +355,7 @@ impl Sim {
                 .filter_map(|i| Some((i as u16, self.units[i].fine?)))
                 .collect(),
             ai_missiles: self.ai_missiles().to_vec(),
+            ai_cms: self.ai_countermeasures().map(|(i, k, c)| (i as u16, k as u8, c)).collect(),
             sfw: self.sfw.for_clients(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
@@ -637,6 +641,17 @@ impl Sim {
             }
         }
         self.sfw = w.sfw.clone();
+        for a in &mut self.ai_flight {
+            a.cms = Default::default();
+        }
+        for &(i, k, c) in &w.ai_cms {
+            if self.ai_flight.len() <= i as usize {
+                self.ai_flight.resize(i as usize + 1, Default::default());
+            }
+            if let Some(slot) = self.ai_flight[i as usize].cms.get_mut(k as usize) {
+                *slot = c;
+            }
+        }
         if let Some(c) = self.campaign.as_mut() {
             c.missiles = w.ai_missiles.clone();
         }

@@ -99,6 +99,7 @@ impl Config {
                 realistic_weapons: has("--realistic-weapons"),
                 friendly_fire: has("--friendly-fire"),
                 classic_terrain: has("--classic-terrain"),
+                classic_ai_flight: has("--classic-ai-flight"),
                 airframe_losses: has("--airframe-losses"),
             },
             save,

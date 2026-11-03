@@ -588,6 +588,7 @@ impl Sim {
                         && self.missile(w).lock_range as i32 > range
                         && 2 * (4 - self.diff) < range
                         && self.may_launch(w, (u.x, u.y, u.alt))
+                        && !self.ai_defending(i)
                     {
                         self.launch_aam(k, i);
                     }

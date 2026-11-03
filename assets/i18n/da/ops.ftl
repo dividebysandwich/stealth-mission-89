@@ -215,6 +215,7 @@ ops-ai-load = En AI-helikopter tager en last om { $time }, hvis ingen UH-60-pilo
 ops-cargo-in = Last { $delivered } af { $loads } fremme - helikopterpladsen venter { $time } t mere
 ops-logistics-ai = LOGISTIK til { $unit }: { $count } x UH-60 på vej
 ops-rule-classic-terrain = klassisk terræn
+ops-rule-classic-ai-flight = klassisk AI-flyvning
 ops-layers-hint = LAG (øverst til højre): hvad kortet viser
 ops-map-tab = KORT
 ops-on-radio = I RADIOEN

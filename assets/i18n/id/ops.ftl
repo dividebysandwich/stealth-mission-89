@@ -215,6 +215,7 @@ ops-ai-load = Helikopter AI mengambil muatan dalam { $time } jika pilot UH-60 ti
 ops-cargo-in = Muatan { $delivered } dari { $loads } tiba - helipad menunggu { $time } jam lagi
 ops-logistics-ai = LOGISTIK untuk { $unit }: { $count } x UH-60 dalam perjalanan
 ops-rule-classic-terrain = medan klasik
+ops-rule-classic-ai-flight = penerbangan AI klasik
 ops-layers-hint = LAPISAN (kanan atas): apa yang ditampilkan peta
 ops-map-tab = PETA
 ops-on-radio = DI RADIO

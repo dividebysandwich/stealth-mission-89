@@ -410,6 +410,12 @@ aircraft-rah66 =
         Ħelikopter tal-iskoperta stealth
         Kompartimenti: Hellfire jew Stinger
         Diffiċli biex jidher fuq ir-radar, bil-mod jew jilgħab fl-arja
+menu-ai-flight = Titjira tal-IA
+    .facts =
+        Ajruplani tal-IA
+        Klassika: il-jets tal-IA jtiru qishom fuq il-binarji b'veloċità fissa u ma jagħtux kas tal-missili sparati lejhom
+        Realistika: mudell tat-titjira bħal tiegħek (spinta, reżistenza, limiti ta' g): dawriet stretti u telgħat jiswewhom il-veloċità
+        Realistika: jiddefendu ruħhom mill-missili li jinnutaw: crank minn naħa għal oħra kontra tiri mill-bogħod, jogħdsu b'flares jew chaff kontra dawk qrib
 menu-terrain = Art
     .facts =
         Rilief tal-art

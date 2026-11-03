@@ -328,6 +328,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (settings.realistic_damage, "--realistic-damage"),
         (!settings.realistic_guidance, "--classic-guidance"),
         (!settings.realistic_terrain, "--classic-terrain"),
+        (!settings.realistic_ai_flight, "--classic-ai-flight"),
         (settings.tacview, "--tacview"),
         (settings.tacview_real_time, "--tacview-real-time"),
         (settings.air_defence, "--air-defence"),
@@ -1377,6 +1378,20 @@ pub(crate) fn realism_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             (t!("classic"), t!("switch-real")),
         ),
         t_lines!("menu-guidance.facts"),
+    )
+    .changed()
+    {
+        settings.set_changed();
+    }
+    let s = settings.bypass_change_detection();
+    if facts(
+        two_way_switch(
+            ui,
+            t!("menu-ai-flight"),
+            &mut s.realistic_ai_flight,
+            (t!("classic"), t!("switch-real")),
+        ),
+        t_lines!("menu-ai-flight.facts"),
     )
     .changed()
     {

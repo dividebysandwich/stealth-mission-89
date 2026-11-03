@@ -347,6 +347,7 @@ fn start_combat(
             raptor,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
+            realistic_ai_flight: settings.realistic_ai_flight,
             air_defence: settings.air_defence,
             classic_terrain: !settings.realistic_terrain,
             ..default()

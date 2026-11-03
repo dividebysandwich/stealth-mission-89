@@ -410,6 +410,12 @@ aircraft-rah66 =
         Prikriti izvidniški helikopter
         Predali: Hellfire ali Stinger
         Težko viden na radarju, počasen ali v lebdenju
+menu-ai-flight = Let UI
+    .facts =
+        Letala UI
+        Klasično: reaktivci UI letijo kot po tirih s stalno hitrostjo in ne menijo za izstrelke, izstreljene nanje
+        Realistično: model letenja, kot je tvoj (potisk, upor, meje g): ostri zavoji in vzpenjanje jih stanejo hitrosti
+        Realistično: branijo se pred izstrelki, ki jih opazijo: crank z ene strani na drugo proti oddaljenim strelom, strmoglav umik z bakljami ali plevami proti bližnjim
 menu-terrain = Teren
     .facts =
         Relief terena

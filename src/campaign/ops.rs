@@ -1041,6 +1041,7 @@ fn rules_text(r: &stealth_host::Rules) -> String {
         (r.realistic_weapons, "ops-rule-weapons"),
         (r.friendly_fire, "ops-rule-friendly-fire"),
         (r.classic_terrain, "ops-rule-classic-terrain"),
+        (r.classic_ai_flight, "ops-rule-classic-ai-flight"),
         (r.airframe_losses, "ops-rule-airframe-losses"),
     ]
     .iter()

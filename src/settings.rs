@@ -87,6 +87,9 @@ pub struct Settings {
     /// Realistic missile guidance (`stealth_sim::SimOptions::realistic_guidance`); off with
     /// `--classic-guidance`.
     pub realistic_guidance: bool,
+    /// The AI's jets fly a flight model and defend against missiles
+    /// (`stealth_sim::SimOptions::realistic_ai_flight`); off with `--classic-ai-flight`.
+    pub realistic_ai_flight: bool,
     /// Rolling hills and highlands on the ground; the classic flat ground with
     /// `--classic-terrain` (`stealth_sim::SimOptions::classic_terrain`).
     pub realistic_terrain: bool,
@@ -328,6 +331,7 @@ impl Settings {
             no_crashes: has("--no-crashes"),
             realistic_damage: has("--realistic-damage"),
             realistic_guidance: !has("--classic-guidance"),
+            realistic_ai_flight: !has("--classic-ai-flight"),
             realistic_terrain: !has("--classic-terrain"),
             tacview: has("--tacview"),
             tacview_real_time: has("--tacview-real-time"),

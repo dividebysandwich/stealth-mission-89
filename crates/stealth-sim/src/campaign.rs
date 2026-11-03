@@ -205,6 +205,9 @@ pub struct AiMissile {
     /// speed every turn costs, proportional navigation (in world units: east, south, up).
     #[serde(default)]
     pub flight: Option<Projectile>,
+    /// A flare or chaff of its target's fooled it: it flies on, unguided.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub decoyed: bool,
 }
 
 /// A tracer of a gun firing at an AI aircraft.
@@ -1734,6 +1737,7 @@ impl Sim {
             station: None,
             spoof_checked: false,
             flight,
+            decoyed: false,
         }
     }
 
@@ -1926,7 +1930,7 @@ impl Sim {
             }
             let t = self.flights.get(m.target).copied().unwrap_or_default();
             let alive = t.flags & fflags::DESTROYED == 0 && t.flags & fflags::AIRBORNE != 0;
-            let alive = alive && !Sim::spoofed(&mut rng, m, flight_metres(&t));
+            let alive = alive && !m.decoyed && !Sim::spoofed(&mut rng, m, flight_metres(&t));
             // The Patriot: its own flight, steered while it has its target.
             if let Some(mut pm) = m.flight {
                 let target = alive.then(|| self.unit_target(m.target));

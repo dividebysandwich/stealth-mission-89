@@ -215,6 +215,7 @@ ops-ai-load = Гелікоптер ШІ забере вантаж через { $
 ops-cargo-in = Вантаж { $delivered } з { $loads } доставлено - майданчик чекає ще { $time } год
 ops-logistics-ai = ЛОГІСТИКА для { $unit }: { $count } x UH-60 у дорозі
 ops-rule-classic-terrain = класичний рельєф
+ops-rule-classic-ai-flight = класичний політ ШІ
 ops-layers-hint = ШАРИ (вгорі праворуч): що показує карта
 ops-map-tab = КАРТА
 ops-on-radio = У РАДІО

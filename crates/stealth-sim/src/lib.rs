@@ -10,6 +10,7 @@ pub mod types;
 pub mod units;
 
 mod ai;
+pub mod ai_flight;
 pub mod csar;
 mod damage;
 pub mod dlz;
@@ -131,6 +132,18 @@ pub struct Sim {
     /// moved ([`Sim::flight_velocity`]).
     #[serde(skip)]
     pub(crate) flight_vel: Vec<[f32; 3]>,
+    /// Realistic AI flight ([`ai_flight`]): each flight unit's flight model and pilot.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) ai_flight: Vec<ai_flight::AiFlight>,
+    /// The pilots' air-to-air missiles homing on flight units, as of the last frame.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) unit_threats: Vec<ai_flight::UnitThreat>,
+    /// Tests: the AI's pilots ignore the missiles coming for them.
+    #[serde(skip)]
+    pub(crate) ai_no_evasion: bool,
+    /// Tests: the AI's pilots release no flares or chaff.
+    #[serde(skip)]
+    pub(crate) ai_no_cms: bool,
     #[serde(default)]
     pub(crate) site_pilot: Vec<u8>,
     #[serde(default)]
@@ -380,6 +393,10 @@ impl Sim {
             proj_pilot: [0; ENEMY_SLOTS],
             flight_pilot: Vec::new(),
             flight_vel: Vec::new(),
+            ai_flight: Vec::new(),
+            unit_threats: Vec::new(),
+            ai_no_evasion: false,
+            ai_no_cms: false,
             site_pilot: Vec::new(),
             aaa_pilot: Vec::new(),
             alarm_pilot: 0,
@@ -1480,6 +1497,18 @@ impl Sim {
     }
 
     /// Test / tool hook: switch invulnerability.
+    /// Tests: whether the AI's pilots defend against missiles (realistic AI flight).
+    #[doc(hidden)]
+    pub fn set_ai_evasion(&mut self, on: bool) {
+        self.ai_no_evasion = !on;
+    }
+
+    /// Tests: whether the AI's pilots release flares and chaff (realistic AI flight).
+    #[doc(hidden)]
+    pub fn set_ai_countermeasures(&mut self, on: bool) {
+        self.ai_no_cms = !on;
+    }
+
     pub fn set_training(&mut self, on: bool) {
         if on {
             self.pl.pflags |= pflags::TRAINING;

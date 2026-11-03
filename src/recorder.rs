@@ -78,6 +78,8 @@ pub struct Contacts {
     pub bullets: Vec<Round>,
     /// The player's flares, chaff and decoys (by slot).
     pub cms: Vec<(usize, Countermeasure)>,
+    /// The AI aircraft's flares and chaff: flight unit, slot, cartridge.
+    pub ai_cms: Vec<(usize, usize, stealth_sim::ai_flight::AiCm)>,
     pub player: Telemetry,
 }
 
@@ -489,6 +491,7 @@ impl FlightRecord {
                 .enumerate()
                 .filter(|(_, c)| c.ttl > 0)
                 .collect(),
+            ai_cms: sim.ai_countermeasures().collect(),
             player: Telemetry { agl: sim.player().height as f32, ..self.telemetry },
         }
     }

@@ -84,6 +84,7 @@ ops-rule-weapons = realistic F-117A weapons
 ops-rule-friendly-fire = friendly fire
 ops-rule-airframe-losses = lost aircraft count
 ops-rule-classic-terrain = classic terrain
+ops-rule-classic-ai-flight = classic AI flight
 ops-rule-classic = classic
 ops-materiel = MATERIEL
 ops-materiel-blue = BLUE { $materiel } (+{ $income }/h)

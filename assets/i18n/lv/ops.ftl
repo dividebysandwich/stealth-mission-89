@@ -215,6 +215,7 @@ ops-ai-load = MI helikopters paņems kravu pēc { $time }, ja to nedarīs UH-60 
 ops-cargo-in = Krava { $delivered } no { $loads } piegādāta - helikopteru laukums gaida vēl { $time } h
 ops-logistics-ai = LOĢISTIKA vienībai { $unit }: { $count } x UH-60 ceļā
 ops-rule-classic-terrain = klasisks reljefs
+ops-rule-classic-ai-flight = klasisks MI lidojums
 ops-layers-hint = SLĀŅI (augšā pa labi): ko rāda karte
 ops-map-tab = KARTE
 ops-on-radio = RADIO

@@ -286,6 +286,12 @@ menu-guidance = Guidance
         Classic: missiles flying straight at their target
         Realistic: proportional navigation to the collision point; motors burn out and the missiles glide on, losing speed with every turn (smoke only while the motor burns)
         Realistic: SAMs loft against distant targets; the AIM-120 flies straight for 3 s (pull up to lob it)
+menu-ai-flight = AI flight
+    .facts =
+        AI aircraft
+        Classic: the AI's jets fly on rails at a fixed speed and ignore the missiles fired at them
+        Realistic: a flight model like yours (thrust, drag, g limits): hard turns and climbs cost them speed
+        Realistic: they defend against the missiles they notice: cranking from side to side against distant shots, diving away with flares or chaff from close ones
 menu-terrain = Terrain
     .facts =
         Terrain elevation

@@ -410,6 +410,12 @@ aircraft-rah66 =
         Stealth průzkumný vrtulník
         Pumovnice: Hellfire nebo Stinger
         Těžko viditelný na radaru, pomalý nebo ve visení
+menu-ai-flight = Let AI
+    .facts =
+        Letadla AI
+        Klasické: proudové stroje AI létají jako po kolejích stálou rychlostí a ignorují střely vypálené na ně
+        Reálně: letový model jako tvůj (tah, odpor, limity g): ostré zatáčky a stoupání je stojí rychlost
+        Reálně: brání se střelám, které zpozorují: crank ze strany na stranu proti vzdáleným výstřelům, střemhlavý únik se světlicemi nebo plevami proti blízkým
 menu-terrain = Terén
     .facts =
         Reliéf terénu

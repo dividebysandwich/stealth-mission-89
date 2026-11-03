@@ -410,6 +410,12 @@ aircraft-rah66 =
         Helicóptero de reconhecimento furtivo
         Compartimentos: Hellfire ou Stinger
         Difícil de ver no radar, lento ou pairando
+menu-ai-flight = Voo da IA
+    .facts =
+        Aeronaves da IA
+        Clássico: os jatos da IA voam sobre trilhos em velocidade fixa e ignoram os mísseis disparados contra eles
+        Realista: um modelo de voo como o seu (empuxo, arrasto, limites de g): curvas fechadas e subidas custam velocidade
+        Realista: eles se defendem dos mísseis que percebem: crank de um lado para o outro contra disparos distantes, mergulho com flares ou chaff contra os próximos
 menu-terrain = Terreno
     .facts =
         Relevo do terreno

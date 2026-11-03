@@ -245,6 +245,7 @@ ops-ai-load = Вертолёт ИИ заберёт груз через { $time }
 ops-cargo-in = Груз { $delivered } из { $loads } доставлен - площадка ждёт ещё { $time } ч
 ops-logistics-ai = ЛОГИСТИКА для { $unit }: { $count } x UH-60 в пути
 ops-rule-classic-terrain = классический рельеф
+ops-rule-classic-ai-flight = классический полёт ИИ
 ops-layers-hint = СЛОИ (вверху справа): что показывает карта
 ops-map-tab = КАРТА
 ops-on-radio = В РАДИО

@@ -215,6 +215,7 @@ ops-ai-load = DI sraigtasparnis paims krovinį po { $time }, jei to nepadarys UH
 ops-cargo-in = Krovinys { $delivered } iš { $loads } pristatytas - sraigtasparnių aikštelė dar laukia { $time } val.
 ops-logistics-ai = LOGISTIKA daliniui { $unit }: { $count } x UH-60 pakeliui
 ops-rule-classic-terrain = klasikinis reljefas
+ops-rule-classic-ai-flight = klasikinis DI skrydis
 ops-layers-hint = SLUOKSNIAI (viršuje dešinėje): ką rodo žemėlapis
 ops-map-tab = ŽEMĖLAPIS
 ops-on-radio = RADIJUJE

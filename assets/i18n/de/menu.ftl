@@ -410,6 +410,12 @@ aircraft-rah66 =
         Getarnter Aufklärungshubschrauber
         Schächte: Hellfire oder Stinger
         Im Radar schwer zu sehen, langsam oder schwebend
+menu-ai-flight = KI-Flug
+    .facts =
+        KI-Flugzeuge
+        Klassisch: die Jets der KI fliegen wie auf Schienen mit fester Geschwindigkeit und ignorieren Raketen, die auf sie abgefeuert werden
+        Realistisch: ein Flugmodell wie deines (Schub, Widerstand, g-Grenzen): enge Kurven und Steigflüge kosten sie Fahrt
+        Realistisch: sie verteidigen sich gegen Raketen, die sie bemerken: Cranken von Seite zu Seite gegen weite Schüsse, Abtauchen mit Flares oder Düppeln gegen nahe
 menu-terrain = Gelände
     .facts =
         Geländehöhe

@@ -410,6 +410,12 @@ aircraft-rah66 =
         Stealth prieskumný vrtuľník
         Šachty: Hellfire alebo Stinger
         Ťažko viditeľný na radare, pomalý alebo vo visení
+menu-ai-flight = Let AI
+    .facts =
+        Lietadlá AI
+        Klasické: prúdové lietadlá AI lietajú ako po koľajniciach stálou rýchlosťou a ignorujú rakety vystrelené na ne
+        Realistické: letový model ako tvoj (ťah, odpor, limity g): ostré zákruty a stúpanie ich stoja rýchlosť
+        Realistické: bránia sa raketám, ktoré spozorujú: crank zo strany na stranu proti vzdialeným výstrelom, strmhlavý únik so svetlicami alebo plevami proti blízkym
 menu-terrain = Terén
     .facts =
         Reliéf terénu

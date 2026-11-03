@@ -54,6 +54,7 @@ pub struct Prefs {
     pub realistic_damage: bool,
     pub realistic_guidance: bool,
     pub realistic_terrain: bool,
+    pub realistic_ai_flight: bool,
     pub tacview: bool,
     pub tacview_real_time: bool,
     pub air_defence: bool,
@@ -144,6 +145,7 @@ impl Default for Prefs {
             realistic_damage: false,
             realistic_guidance: true,
             realistic_terrain: true,
+            realistic_ai_flight: true,
             tacview: false,
             tacview_real_time: false,
             air_defence: true,
@@ -249,6 +251,7 @@ impl Prefs {
             realistic_damage: s.realistic_damage,
             realistic_guidance: s.realistic_guidance,
             realistic_terrain: s.realistic_terrain,
+            realistic_ai_flight: s.realistic_ai_flight,
             tacview: s.tacview,
             tacview_real_time: s.tacview_real_time,
             air_defence: s.air_defence,
@@ -335,6 +338,7 @@ impl Prefs {
         s.auto_trim &= self.auto_trim;
         s.realistic_guidance &= self.realistic_guidance;
         s.realistic_terrain &= self.realistic_terrain;
+        s.realistic_ai_flight &= self.realistic_ai_flight;
         s.realistic_damage |= self.realistic_damage;
         s.tacview |= self.tacview;
         s.tacview_real_time |= self.tacview_real_time;

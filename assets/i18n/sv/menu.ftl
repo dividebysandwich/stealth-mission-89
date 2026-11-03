@@ -410,6 +410,12 @@ aircraft-rah66 =
         Stealth-spaningshelikopter
         Fack: Hellfire eller Stinger
         Svår att se på radar, långsam eller svävande
+menu-ai-flight = AI-flygning
+    .facts =
+        AI-flygplan
+        Klassisk: AI:ns jetplan flyger som på räls med fast fart och struntar i robotar som skjuts mot dem
+        Realistiskt: en flygmodell som din (dragkraft, luftmotstånd, g-gränser): snäva svängar och stigningar kostar dem fart
+        Realistiskt: de försvarar sig mot robotar de upptäcker: crankar från sida till sida mot avlägsna skott, dyker undan med facklor eller remsor från nära
 menu-terrain = Terräng
     .facts =
         Terränghöjd

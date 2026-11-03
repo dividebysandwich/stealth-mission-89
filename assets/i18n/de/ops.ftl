@@ -215,6 +215,7 @@ ops-ai-load = Ein KI-Hubschrauber übernimmt eine Ladung in { $time }, wenn kein
 ops-cargo-in = Fracht { $delivered } von { $loads } angekommen - der Hubschrauberlandeplatz wartet noch { $time } h
 ops-logistics-ai = LOGISTIK für die { $unit }: { $count } x UH-60 unterwegs
 ops-rule-classic-terrain = klassisches Gelände
+ops-rule-classic-ai-flight = klassischer KI-Flug
 ops-layers-hint = EBENEN (oben rechts): was die Karte zeigt
 ops-map-tab = KARTE
 ops-on-radio = IM FUNK

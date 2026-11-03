@@ -317,3 +317,37 @@ fn single_player_parity() {
     let hex: Vec<String> = got.iter().map(|h| format!("0x{h:016x}")).collect();
     assert_eq!(got, GOLDEN, "new hashes: [{}]", hex.join(", "));
 }
+
+/// Realistic AI flight ([`SimOptions::realistic_ai_flight`]): the scripted missions of every
+/// theater with the AI's jets flying the flight model and defending against missiles.
+#[test]
+fn ai_flight_parity() {
+    const GOLDEN: &[u64] = &[
+        0x56ac554a5df050e0,
+        0xcc4860bb69288442,
+        0x2ca96881f591f42d,
+        0x61a0e98557217cbb,
+        0xf15de5a3d9a643e5,
+        0x224b4652cebfffdb,
+        0x1bf925aa60cb1b08,
+        0x9f79b59d134dfdfc,
+        0xfe7b1d6c2c171b82,
+    ];
+    let d = data();
+    let mut got = Vec::new();
+    for th in 0..9 {
+        let k = 3u16;
+        let m = mission(d, th, 0x100 + th as u16 * 7 + k, 3);
+        let opts = SimOptions {
+            realistic_guidance: true,
+            realistic_ai_flight: true,
+            ..Default::default()
+        };
+        let mut sim = Sim::with_options(&d.sim, &m, opts);
+        let mut trace = String::new();
+        scripted(&mut sim, &m, th as u32 * 77 + k as u32, 15 * 600, &mut trace);
+        got.push(check(&format!("ai-flight-{th}"), &trace));
+    }
+    let hex: Vec<String> = got.iter().map(|h| format!("0x{h:016x}")).collect();
+    assert_eq!(got, GOLDEN, "new hashes: [{}]", hex.join(", "));
+}

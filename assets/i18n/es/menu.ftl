@@ -410,6 +410,12 @@ aircraft-rah66 =
         Helicóptero de reconocimiento furtivo
         Bodegas: Hellfire o Stinger
         Difícil de ver en el radar, lento o en estacionario
+menu-ai-flight = Vuelo de la IA
+    .facts =
+        Aviones de la IA
+        Clásico: los cazas de la IA vuelan sobre raíles a velocidad fija e ignoran los misiles que les disparan
+        Realista: un modelo de vuelo como el tuyo (empuje, resistencia, límites de g): los virajes cerrados y los ascensos les cuestan velocidad
+        Realista: se defienden de los misiles que detectan: virajes de lado a lado (crank) contra disparos lejanos, picado con bengalas o chaff contra los cercanos
 menu-terrain = Terreno
     .facts =
         Elevación del terreno

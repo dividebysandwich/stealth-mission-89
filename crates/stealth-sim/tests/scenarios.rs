@@ -659,6 +659,18 @@ fn countermeasure_stores_run_out() {
 
 /// Ten simulated minutes of one theater with a scripted flight and random commands.
 fn ten_minute_mission(d: &Data, th: usize, k: u16, opp: u8, opts: SimOptions) -> Sim {
+    ten_minute_mission_seen(d, th, k, opp, opts, &mut |_| {})
+}
+
+/// [`ten_minute_mission`], showing `seen` the events.
+fn ten_minute_mission_seen(
+    d: &Data,
+    th: usize,
+    k: u16,
+    opp: u8,
+    opts: SimOptions,
+    seen: &mut dyn FnMut(&SimEvent),
+) -> Sim {
     let trig = &d.sim.trig;
     let m = mission(d, th, 0x100 + th as u16 * 7 + k, opp);
     let mut sim = Sim::with_options(&d.sim, &m, opts);
@@ -708,6 +720,7 @@ fn ten_minute_mission(d: &Data, th: usize, k: u16, opp: u8, opts: SimOptions) ->
             ..Default::default()
         };
         for e in sim.step(&p, 15) {
+            seen(&e);
             if matches!(e, SimEvent::MissionEnd(_)) {
                 ended = true;
             }
@@ -794,7 +807,8 @@ fn saved_state_goes_on_the_same() {
         air_defence: true,
         ..Default::default()
     };
-    for th in [3, 8] {
+    let ai_flight = SimOptions { realistic_ai_flight: true, ..opts.clone() };
+    for (th, opts) in [(3, &opts), (8, &opts), (3, &ai_flight), (8, &ai_flight)] {
         let m = mission(d, th, 0x2345 + th as u16, 3);
         let mut sim = Sim::with_options(&d.sim, &m, opts.clone());
         let mut p = sim.start_state();
@@ -3114,4 +3128,166 @@ fn skeets_strike_vehicles_under_the_pattern() {
     assert!(killed.iter().filter(|&&k| k < 4).count() >= 3, "most of the column: {killed:?}");
     assert!(!killed.contains(&4), "the vehicle 800 m off is left alone");
     assert!(sim.sfw().is_empty() || sim.sfw().skeets.is_empty());
+}
+
+/// What became of an AI fighter shot at under realistic AI flight.
+#[derive(Debug, Default)]
+struct Evasion {
+    killed: bool,
+    /// Height lost (alt units) within the first 6 s after the shot.
+    dive: i32,
+    /// The fighter's heading off its bearing to the player (BAM), each second.
+    off: Vec<i32>,
+    /// The most flares and chaff it had in the air at once.
+    cartridges: usize,
+}
+
+/// Fires air-to-air store `w` (0 AIM-9, 1 AIM-120) from 5000 ft at a MiG-29 at 6000 ft about
+/// `range` map units north, coming at the player (or, `tail`, flying away north): what the MiG
+/// did, defending itself (`evade`, with flares and chaff: `cms`) or not.
+fn evasion_shot(w: i32, range: i32, tail: bool, evade: bool, cms: bool, seed: u32) -> Evasion {
+    let d = data();
+    let mut m = mission(d, 3, 0x1234, 3);
+    m.weather = Weather::default();
+    let opts = SimOptions {
+        realistic_guidance: true,
+        realistic_ai_flight: true,
+        seed: Some(seed),
+        ..Default::default()
+    };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_ai_evasion(evade);
+    sim.set_ai_countermeasures(cms);
+    sim.set_loadout(&[(w, 2)]);
+    // A little different each time.
+    let k = seed as i32 % 8;
+    let (x, y) = (mx + 8 + range / 12 * k / 8, my - range - range / 24 * k / 8);
+    let wp = 6;
+    {
+        let o = &mut sim.objects_mut()[wp];
+        (o.x, o.y) = (x, if tail { y - 0x3000 } else { y + 0x3000 });
+    }
+    {
+        let u = &mut sim.flights_mut()[1];
+        *u = FlightUnit {
+            x,
+            y,
+            alt: 6000,
+            heading: if tail { 0 } else { 0x8000u16 as i16 as i32 },
+            spec: 2,
+            flags: 0x43,
+            speed: 600,
+            timer: 30000,
+            wp: wp as i32,
+            ..Default::default()
+        };
+        u.wx = u.x << 5;
+        u.wy = u.y << 5;
+    }
+    let mut p = player_at(mx, my, 5000, 0, 300);
+    p.hud_mode = HudMode::Air;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_unit = Some(1);
+    for _ in 0..6 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    let mut r = Evasion::default();
+    let alt0 = sim.flights()[1].alt;
+    for f in 0..15 * 90 {
+        for e in sim.step(&p, 15) {
+            r.killed |= matches!(e, SimEvent::AircraftDestroyed { unit: 1, .. });
+        }
+        p.cmd = Commands::default();
+        let u = sim.flights()[1];
+        if f < 15 * 6 {
+            r.dive = r.dive.max(alt0 - u.alt);
+        }
+        r.cartridges = r.cartridges.max(sim.ai_countermeasures().count());
+        if f % 15 == 0 {
+            let brg = math::bearing(mx - u.x, -(my - u.y));
+            r.off.push(math::s16(u.heading - brg));
+        }
+        if r.killed {
+            break;
+        }
+    }
+    r
+}
+
+/// Kills of eight shots.
+fn evasion_kills(w: i32, range: i32, tail: bool, evade: bool, cms: bool) -> usize {
+    (1..9).filter(|&k| evasion_shot(w, range, tail, evade, cms, k).killed).count()
+}
+
+/// A Sidewinder fired head-on from 4 km: the MiG breaks into a dive with flares, and gets away
+/// more often than one that flies on.
+#[test]
+fn ai_dives_and_flares_against_a_close_shot() {
+    let shots: Vec<_> = (1..9).map(|k| evasion_shot(0, 64 * 4, false, true, true, k)).collect();
+    assert!(shots.iter().any(|r| r.dive > 300), "{shots:?}");
+    assert!(shots.iter().filter(|r| r.cartridges > 0).count() >= 6, "{shots:?}");
+    let evading = shots.iter().filter(|r| r.killed).count();
+    let flying_on = evasion_kills(0, 64 * 4, false, false, false);
+    assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
+}
+
+/// An AMRAAM fired head-on from 28 km: the MiG cranks off the missile's line to one side,
+/// then the other, and the missile that has to follow kills less often.
+#[test]
+fn ai_cranks_a_long_shot() {
+    let r = evasion_shot(1, 64 * 28, false, true, false, 1);
+    let (at, first) =
+        r.off.iter().take(12).copied().enumerate().max_by_key(|(_, o)| o.abs()).unwrap();
+    assert!((0x1C00..0x3000).contains(&first.abs()), "crank {first:#x}: {:?}", r.off);
+    // Then it turns back across to crank the other way.
+    assert!(
+        r.off.iter().skip(at).take(6).any(|&o| (o - first) * first.signum() < -0x1000),
+        "never turned back: {:?}",
+        r.off
+    );
+    let evading = evasion_kills(1, 64 * 28, false, true, true);
+    let flying_on = evasion_kills(1, 64 * 28, false, false, false);
+    assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
+    // From behind it weaves away from it.
+    let evading = evasion_kills(1, 64 * 14, true, true, true);
+    let flying_on = evasion_kills(1, 64 * 14, true, false, false);
+    assert!(evading < flying_on, "tail: {evading} of 8 evading shot down, {flying_on} flying on");
+}
+
+/// Realistic AI flight over ten minutes of every theater: the jets fly (and land) as before,
+/// none flies into the ground.
+#[test]
+fn ai_flight_missions_all_theaters() {
+    let d = data();
+    let mut counts = Vec::new();
+    for physics in [false, true] {
+        let (mut crashed, mut landed, mut takeoffs, mut flying) = (0, 0, 0, 0);
+        for th in 0..9 {
+            for (k, opp) in [(0u16, 0u8), (1, 3)] {
+                let opts = SimOptions {
+                    realistic_guidance: true,
+                    realistic_ai_flight: physics,
+                    ..Default::default()
+                };
+                let sim = ten_minute_mission_seen(d, th, k, opp, opts, &mut |e| match e {
+                    SimEvent::AircraftCrashed { .. } => crashed += 1,
+                    SimEvent::AircraftTakeoff { .. } => takeoffs += 1,
+                    SimEvent::Message(t) if en(t).contains("landing") => landed += 1,
+                    _ => {}
+                });
+                flying += sim.flights().iter().filter(|u| u.flags & 3 == 3).count();
+            }
+        }
+        eprintln!(
+            "physics {physics}: crashed {crashed} landed {landed} takeoffs {takeoffs} flying {flying}"
+        );
+        counts.push((crashed, landed, takeoffs));
+    }
+    let (classic, physics) = (counts[0], counts[1]);
+    assert!(physics.0 <= classic.0 + 2, "{physics:?} vs classic {classic:?}");
+    assert!(physics.1 * 4 >= classic.1 * 3, "{physics:?} vs classic {classic:?}");
 }

@@ -410,6 +410,12 @@ aircraft-rah66 =
         Stealth-rekognosceringshelikopter
         Rum: Hellfire eller Stinger
         Svær at se på radar, langsom eller svævende
+menu-ai-flight = AI-flyvning
+    .facts =
+        AI-fly
+        Klassisk: AI'ens jetfly flyver som på skinner med fast fart og ignorerer missiler affyret mod dem
+        Realistisk: en flymodel som din (træk, modstand, g-grænser): skarpe sving og stigninger koster dem fart
+        Realistisk: de forsvarer sig mod missiler, de opdager: cranker fra side til side mod fjerne skud, dykker væk med flares eller chaff fra nære
 menu-terrain = Terræn
     .facts =
         Terrænhøjde

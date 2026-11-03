@@ -410,6 +410,12 @@ aircraft-rah66 =
         Slepenais izlūkošanas helikopters
         Nodalījumi: Hellfire vai Stinger
         Grūti saskatāms uz radara, lēns vai paraugošanā
+menu-ai-flight = MI lidojums
+    .facts =
+        MI lidmašīnas
+        Klasiski: MI reaktīvās lidmašīnas lido kā pa sliedēm ar nemainīgu ātrumu un nepievērš uzmanību uz tām raidītajām raķetēm
+        Reālistiski: lidojuma modelis kā tavējais (vilce, pretestība, g robežas): asi pagriezieni un kāpumi tām maksā ātrumu
+        Reālistiski: tās aizsargājas pret pamanītajām raķetēm: lokās no vienas puses uz otru pret tāliem šāvieniem, nirst ar siltuma mānekļiem vai dipoliem pret tuviem
 menu-terrain = Reljefs
     .facts =
         Reljefa augstums

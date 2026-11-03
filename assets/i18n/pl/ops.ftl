@@ -215,6 +215,7 @@ ops-ai-load = Śmigłowiec SI weźmie ładunek za { $time }, jeśli nie zrobi te
 ops-cargo-in = Ładunek { $delivered } z { $loads } dostarczony - lądowisko czeka jeszcze { $time } h
 ops-logistics-ai = LOGISTYKA dla { $unit }: { $count } x UH-60 w drodze
 ops-rule-classic-terrain = teren klasyczny
+ops-rule-classic-ai-flight = klasyczny lot SI
 ops-layers-hint = WARSTWY (u góry po prawej): co pokazuje mapa
 ops-map-tab = MAPA
 ops-on-radio = W RADIU

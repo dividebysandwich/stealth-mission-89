@@ -215,6 +215,7 @@ ops-ai-load = AI-helikopter võtab koorma { $time } pärast, kui UH-60 piloot se
 ops-cargo-in = Last { $delivered } / { $loads } kohal - kopteriplats ootab veel { $time } h
 ops-logistics-ai = LOGISTIKA üksusele { $unit }: { $count } x UH-60 teel
 ops-rule-classic-terrain = klassikaline maastik
+ops-rule-classic-ai-flight = klassikaline AI lend
 ops-layers-hint = KIHID (üleval paremal): mida kaart näitab
 ops-map-tab = KAART
 ops-on-radio = RAADIOS

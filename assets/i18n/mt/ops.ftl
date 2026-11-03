@@ -215,6 +215,7 @@ ops-ai-load = Ħelikopter tal-AI jieħu tagħbija fi żmien { $time } jekk pilot
 ops-cargo-in = Tagħbija { $delivered } minn { $loads } wasslet - il-heliport jistenna { $time } siegħa oħra
 ops-logistics-ai = LOĠISTIKA għal { $unit }: { $count } x UH-60 fit-triq
 ops-rule-classic-terrain = art klassika
+ops-rule-classic-ai-flight = titjira klassika tal-IA
 ops-layers-hint = QALIEB (fuq il-lemin): dak li turi l-mappa
 ops-map-tab = MAPPA
 ops-on-radio = FIR-RADJU

@@ -12,7 +12,7 @@ const CLASSIC_DROP_SPEED: i32 = 20;
 /// Flare / chaff seduction: a missile rolls once per cartridge it sees, at `CM_FAR_PCT` %
 /// from `CM_FAR` map units (32 ft) out, rising to `CM_NEAR_PCT` % at `CM_NEAR` and closer
 /// (less `CM_DIFF_PCT` % per difficulty level).
-const CM_FAR: i32 = 0x240;
+pub(crate) const CM_FAR: i32 = 0x240;
 const CM_NEAR: i32 = 0x60;
 const CM_FAR_PCT: i32 = 15;
 const CM_NEAR_PCT: i32 = 80;
@@ -27,7 +27,7 @@ pub(crate) fn cm_fool_pct(r: i32, diff: i32) -> i32 {
 impl Sim {
     /// Seeker acquisition of a target at (tx, ty, talt) for class `cls`. Sets `acq_aim` always and `acq_range` on
     /// success. Optical seekers also need a line of sight through the clouds (`talt` viewZ).
-    fn acquire(&mut self, s: usize, tx: i32, ty: i32, talt: i32, cls: i32) -> bool {
+    pub(crate) fn acquire(&mut self, s: usize, tx: i32, ty: i32, talt: i32, cls: i32) -> bool {
         let m = self.proj[s];
         let (r, aim, off) = seeker_geometry(&m, tx, ty);
         self.acq_aim = aim;
@@ -114,6 +114,7 @@ impl Sim {
     }
 
     pub(crate) fn update_missiles(&mut self, present: &[usize]) {
+        self.unit_threats.clear();
         let mut saved0 = Vec::new();
         for &k in present {
             self.activate(k);
@@ -328,6 +329,17 @@ impl Sim {
                         hit = d;
                         alt0 = u.alt;
                         locked = true;
+                    }
+                }
+                // Realistic AI flight: the aircraft's flares or chaff may fool it (for good),
+                // else its pilot may see it coming.
+                if hit >= 0 && self.opts.realistic_ai_flight {
+                    let fooled = self.proj[s].cm_fooled & crate::ai_flight::DECOYED != 0
+                        || self.unit_homed(s, hit as usize, cls);
+                    if fooled {
+                        hit = -1;
+                        locked = false;
+                        aim = self.proj[s].heading;
                     }
                 }
                 // Fired at another pilot: him while the seeker sees him (or his decoy).

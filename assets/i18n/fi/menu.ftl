@@ -410,6 +410,12 @@ aircraft-rah66 =
         Häivetiedustelukopteri
         Lokerot: Hellfire tai Stinger
         Vaikea nähdä tutkassa, hidas tai leijunnassa
+menu-ai-flight = Tekoälyn lento
+    .facts =
+        Tekoälyn koneet
+        Klassinen: tekoälyn suihkukoneet lentävät kuin kiskoilla vakionopeudella eivätkä välitä niitä kohti ammutuista ohjuksista
+        Realistinen: sinun kaltaisesi lentomalli (työntövoima, vastus, g-rajat): tiukat kaarrot ja nousut maksavat niille nopeutta
+        Realistinen: ne puolustautuvat huomaamiaan ohjuksia vastaan: kaartelevat puolelta toiselle kaukaisia laukauksia vastaan, sukeltavat soihtujen tai silpun kanssa läheisiltä
 menu-terrain = Maasto
     .facts =
         Maaston korkeus

@@ -806,16 +806,22 @@ impl AcmiWriter {
 
     fn countermeasures(&mut self, c: &Contacts, s: &crate::recorder::Sample, w: &mut String) {
         // Where each pilot is: they drop them where they fly.
-        let mut live: Vec<((u8, usize), Countermeasure, f64)> =
-            c.cms.iter().map(|&(k, cm)| ((255, k), cm, s.alt as f64)).collect();
+        let mut live: Vec<((u8, usize), Countermeasure, f64, bool)> =
+            c.cms.iter().map(|&(k, cm)| ((255, k), cm, s.alt as f64, true)).collect();
         for p in &c.pilots {
             live.extend(
                 p.cms
                     .iter()
                     .enumerate()
                     .filter(|(_, cm)| cm.ttl > 0)
-                    .map(|(k, cm)| ((p.id, k), *cm, p.view.alt as f64)),
+                    .map(|(k, cm)| ((p.id, k), *cm, p.view.alt as f64, true)),
             );
+        }
+        // The AI aircraft's, at their own altitude.
+        for &(i, k, cm) in &c.ai_cms {
+            let blue = c.aircraft.iter().any(|a| a.index == i && a.friendly);
+            let m = Countermeasure { x: cm.x, y: cm.y, kind: cm.kind, ttl: cm.ttl };
+            live.push(((254, i * 2 + k), m, cm.alt as f64, blue));
         }
         let keys: HashSet<_> = live.iter().map(|(k, ..)| *k).collect();
         let mut gone: Vec<u32> =
@@ -825,7 +831,7 @@ impl AcmiWriter {
         for id in gone {
             let _ = writeln!(w, "-{id:x}");
         }
-        for (k, cm, alt) in live {
+        for (k, cm, alt, blue) in live {
             match self.cms.get_mut(&k) {
                 // The same one burning on (a new one starts with more time).
                 Some((_, ttl)) if cm.ttl <= *ttl => *ttl = cm.ttl,
@@ -840,9 +846,11 @@ impl AcmiWriter {
                         2 => "Misc+Decoy+Chaff",
                         _ => "Misc+Decoy",
                     };
+                    let (coalition, colour) =
+                        if blue { ("Allies", "Blue") } else { ("Enemies", "Red") };
                     let _ = writeln!(
                         w,
-                        "{id:x},T={},Type={ty},Coalition=Allies,Color=Blue",
+                        "{id:x},T={},Type={ty},Coalition={coalition},Color={colour}",
                         self.geo.map_t(cm.x as f64, cm.y as f64, alt),
                     );
                 }

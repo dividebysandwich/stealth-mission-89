@@ -215,6 +215,7 @@ ops-ai-load = Glacann héileacaptar AI lasta i gceann { $time } mura ndéanann p
 ops-cargo-in = Lasta { $delivered } as { $loads } seachadta - fanann an héileafort { $time } uair eile
 ops-logistics-ai = LÓISTÍOCHT do { $unit }: { $count } x UH-60 ar an mbealach
 ops-rule-classic-terrain = tír-raon clasaiceach
+ops-rule-classic-ai-flight = eitilt AI chlasaiceach
 ops-layers-hint = CISTÍ (barr ar dheis): an méid a thaispeánann an léarscáil
 ops-map-tab = MAPA
 ops-on-radio = AR AN RAIDIÓ

@@ -410,6 +410,12 @@ aircraft-rah66 =
         Śmigłowiec rozpoznawczy typu stealth
         Komory: Hellfire lub Stinger
         Trudno go zobaczyć na radarze, wolny lub w zawisie
+menu-ai-flight = Lot SI
+    .facts =
+        Samoloty SI
+        Klasyczne: odrzutowce SI lecą jak po szynach ze stałą prędkością i ignorują wystrzelone w nie pociski
+        Realizm: model lotu taki jak twój (ciąg, opór, limity g): ciasne zakręty i wznoszenie kosztują je prędkość
+        Realizm: bronią się przed pociskami, które zauważą: crank z boku na bok przy dalekich strzałach, nurkowanie z flarami lub dipolami przy bliskich
 menu-terrain = Teren
     .facts =
         Rzeźba terenu

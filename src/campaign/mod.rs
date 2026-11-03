@@ -434,6 +434,7 @@ pub fn rules_of(s: &crate::settings::Settings, realistic_weapons: bool) -> Rules
         realistic_weapons,
         friendly_fire: false,
         classic_terrain: !s.realistic_terrain,
+        classic_ai_flight: !s.realistic_ai_flight,
         airframe_losses: false,
     }
 }
