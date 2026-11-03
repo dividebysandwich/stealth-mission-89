@@ -10,6 +10,7 @@ axis-nozzle = Düüsid (Harrier)
 axis-tgp-zoom = TGP suum
 axis-look-x = Vaata vasakule / paremale
 axis-look-y = Vaata üles / alla
+axis-view-zoom = Vaate suum lähemale / kaugemale
 input-button = Nupp { $n }
 input-axis = Telg { $n }
 vr-trigger = Päästik

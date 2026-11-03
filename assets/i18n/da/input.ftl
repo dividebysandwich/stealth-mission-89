@@ -10,6 +10,7 @@ axis-nozzle = Dyser (Harrier)
 axis-tgp-zoom = TGP-zoom
 axis-look-x = Se til venstre / højre
 axis-look-y = Se op / ned
+axis-view-zoom = Visningszoom ind / ud
 input-button = Knap { $n }
 input-axis = Akse { $n }
 vr-trigger = Aftrækker

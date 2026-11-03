@@ -10,6 +10,7 @@ axis-nozzle = Suuttimet (Harrier)
 axis-tgp-zoom = TGP:n zoomaus
 axis-look-x = Katso vasemmalle / oikealle
 axis-look-y = Katso ylös / alas
+axis-view-zoom = Näkymän zoomaus lähemmäs / kauemmas
 input-button = Painike { $n }
 input-axis = Akseli { $n }
 vr-trigger = Liipaisin

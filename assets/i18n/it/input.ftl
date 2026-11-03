@@ -10,6 +10,7 @@ axis-nozzle = Ugelli (Harrier)
 axis-tgp-zoom = Zoom TGP
 axis-look-x = Guardare sinistra / destra
 axis-look-y = Guardare su / giù
+axis-view-zoom = Zoom della vista avanti / indietro
 input-button = Pulsante { $n }
 input-axis = Asse { $n }
 vr-trigger = Grilletto

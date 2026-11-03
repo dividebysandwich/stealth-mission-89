@@ -10,6 +10,7 @@ axis-nozzle = 노즐(해리어)
 axis-tgp-zoom = TGP 줌
 axis-look-x = 좌 / 우 보기
 axis-look-y = 위 / 아래 보기
+axis-view-zoom = 시점 확대 / 축소
 input-button = 버튼 { $n }
 input-axis = 축 { $n }
 vr-trigger = 트리거

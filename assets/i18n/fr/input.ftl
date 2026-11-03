@@ -10,6 +10,7 @@ axis-nozzle = Tuyères (Harrier)
 axis-tgp-zoom = Zoom TGP
 axis-look-x = Regarder gauche / droite
 axis-look-y = Regarder haut / bas
+axis-view-zoom = Zoom de la vue avant / arrière
 input-button = Bouton { $n }
 input-axis = Axe { $n }
 vr-trigger = Gâchette

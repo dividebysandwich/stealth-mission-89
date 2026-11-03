@@ -10,6 +10,7 @@ axis-nozzle = Šobe (Harrier)
 axis-tgp-zoom = Povečava TGP
 axis-look-x = Pogled levo / desno
 axis-look-y = Pogled gor / dol
+axis-view-zoom = Povečava pogleda približaj / oddalji
 input-button = Gumb { $n }
 input-axis = Os { $n }
 vr-trigger = Sprožilec

@@ -10,6 +10,7 @@ axis-nozzle = Дюзи (Harrier)
 axis-tgp-zoom = Увеличение на TGP
 axis-look-x = Поглед наляво / надясно
 axis-look-y = Поглед нагоре / надолу
+axis-view-zoom = Мащаб на изгледа приближаване / отдалечаване
 input-button = Бутон { $n }
 input-axis = Ос { $n }
 vr-trigger = Спусък

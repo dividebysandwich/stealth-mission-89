@@ -218,7 +218,9 @@ change is saved at once.
 - **Search** (under the title) keeps only the actions whose name holds what you type. It also
   narrows the VR controller lists below to the actions it matches (see *VR controllers*).
 - **Axes**: roll, pitch, rudder, throttle, the sensor/cursor slew pair, the Harrier's nozzles and the
-  TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera). Click
+  TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera), the
+  look pair and the view zoom (a hat, mini-stick or sprung rocker: how far it is pushed is how
+  fast the view turns or zooms, as the view pan and view zoom keys). Click
   **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. The F-117
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an
@@ -3211,7 +3213,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Free camera (W A S D, Q / E, Shift faster, Ctrl slower) | Shift F7 |
 | | Zoom / unzoom / wide angle | Z / X / C |
 | | Look around (cockpit) / orbit (external views) | Right mouse button |
-| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*) |
+| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*, or to an axis) |
 | | Recentre head tracking (chapter 1.4) | Home |
 | **Time** | Time acceleration / normal | Shift Z / Shift X |
 | **Game** | Settings menu (pauses) / detail / sound level | Esc, Pause, Alt P, gamepad Start / Alt D / Alt V |

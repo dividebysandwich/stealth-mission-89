@@ -10,6 +10,7 @@ axis-nozzle = Sprauslas (Harrier)
 axis-tgp-zoom = TGP tālummaiņa
 axis-look-x = Skatīties pa kreisi / pa labi
 axis-look-y = Skatīties augšup / lejup
+axis-view-zoom = Skata tālummaiņa tuvināt / tālināt
 input-button = Poga { $n }
 input-axis = Ass { $n }
 vr-trigger = Mēlīte

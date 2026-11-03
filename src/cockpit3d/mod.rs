@@ -714,7 +714,7 @@ pub(crate) const LOOK_RATE: f32 = 1.8;
 /// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
 /// camera around the aircraft (reset when an external view is selected). The wheel with the
-/// button held zooms, as the view zoom keys do. The view pan keys and look axes turn the head
+/// button held zooms, as the view zoom keys and axis do. The view pan keys and look axes turn the head
 /// or orbit the camera as the mouse does. With mouse look while tracking off, the button
 /// does nothing in the cockpit while a head tracker sends.
 #[allow(clippy::too_many_arguments)]

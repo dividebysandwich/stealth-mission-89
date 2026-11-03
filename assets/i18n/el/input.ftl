@@ -10,6 +10,7 @@ axis-nozzle = Ακροφύσια (Harrier)
 axis-tgp-zoom = Ζουμ TGP
 axis-look-x = Ματιά αριστερά / δεξιά
 axis-look-y = Ματιά πάνω / κάτω
+axis-view-zoom = Ζουμ προβολής πλησιάζει / απομακρύνει
 input-button = Κουμπί { $n }
 input-axis = Άξονας { $n }
 vr-trigger = Σκανδάλη

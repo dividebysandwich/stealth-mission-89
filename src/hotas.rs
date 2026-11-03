@@ -55,6 +55,9 @@ pub enum AxisControl {
     /// camera orbits in an external view; right and up.
     LookX,
     LookY,
+    /// Zooming the view (as the view zoom keys): how fast the cockpit view narrows or an
+    /// external view's camera moves in; in.
+    ViewZoom,
 }
 
 impl AxisControl {
@@ -63,7 +66,7 @@ impl AxisControl {
         matches!(self, AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom)
     }
 
-    pub const ALL: [AxisControl; 10] = [
+    pub const ALL: [AxisControl; 11] = [
         AxisControl::Roll,
         AxisControl::Pitch,
         AxisControl::Yaw,
@@ -74,6 +77,7 @@ impl AxisControl {
         AxisControl::TgpZoom,
         AxisControl::LookX,
         AxisControl::LookY,
+        AxisControl::ViewZoom,
     ];
 
     /// The axis's name in the player's language.
@@ -89,6 +93,7 @@ impl AxisControl {
             AxisControl::TgpZoom => "axis-tgp-zoom",
             AxisControl::LookX => "axis-look-x",
             AxisControl::LookY => "axis-look-y",
+            AxisControl::ViewZoom => "axis-view-zoom",
         })
     }
 }
@@ -478,13 +483,16 @@ impl InputConfig {
     /// Binds an axis, taking it away from any other control.
     pub fn bind_axis(&mut self, control: AxisControl, device: String, code: u32) {
         self.axes.retain(|m| m.control != control && !(m.device == device && m.code == code));
-        // A stick or hat pushed forward reads negative: up looks up.
-        let invert = matches!(control, AxisControl::Throttle | AxisControl::LookY);
+        // A stick or hat pushed forward reads negative: up looks up, zooms in.
+        let invert =
+            matches!(control, AxisControl::Throttle | AxisControl::LookY | AxisControl::ViewZoom);
         let deadzone = match control {
             AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom => 0.0,
-            AxisControl::SlewX | AxisControl::SlewY | AxisControl::LookX | AxisControl::LookY => {
-                0.1
-            }
+            AxisControl::SlewX
+            | AxisControl::SlewY
+            | AxisControl::LookX
+            | AxisControl::LookY
+            | AxisControl::ViewZoom => 0.1,
             _ => 0.05,
         };
         self.axes.push(AxisMapping { control, device, code, invert, deadzone });
@@ -943,6 +951,9 @@ pub fn read_hotas(
             AxisControl::SlewY => controls.slew.y = crate::input::stronger(controls.slew.y, v),
             AxisControl::LookX => controls.look.x = crate::input::stronger(controls.look.x, v),
             AxisControl::LookY => controls.look.y = crate::input::stronger(controls.look.y, v),
+            AxisControl::ViewZoom => {
+                controls.view_zoom = crate::input::stronger(controls.view_zoom, v)
+            }
             AxisControl::Throttle
                 if hotas.throttle_applied.is_none_or(|t| (t - v).abs() > 0.01) =>
             {

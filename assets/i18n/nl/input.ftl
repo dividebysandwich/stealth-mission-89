@@ -10,6 +10,7 @@ axis-nozzle = Straalpijpen (Harrier)
 axis-tgp-zoom = TGP-zoom
 axis-look-x = Links / rechts kijken
 axis-look-y = Omhoog / omlaag kijken
+axis-view-zoom = Beeldzoom in / uit
 input-button = Knop { $n }
 input-axis = As { $n }
 vr-trigger = Trigger

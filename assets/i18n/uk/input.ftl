@@ -10,6 +10,7 @@ axis-nozzle = Сопла (Harrier)
 axis-tgp-zoom = Зум TGP
 axis-look-x = Дивитися ліворуч / праворуч
 axis-look-y = Дивитися вгору / вниз
+axis-view-zoom = Наближення / віддалення виду
 input-button = Кнопка { $n }
 input-axis = Вісь { $n }
 vr-trigger = Тригер

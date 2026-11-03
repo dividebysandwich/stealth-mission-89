@@ -353,7 +353,7 @@ pub struct FlightControls {
     pub mark: bool,
     /// The radio's push-to-talk held (coop, `voice`).
     pub talk: bool,
-    /// The view zoom keys held, -1 (out) .. 1 (in).
+    /// The view zoom keys held and the view zoom axis, -1 (out) .. 1 (in).
     pub view_zoom: f32,
     /// The view pan keys and look axes, -1..1 (x right, y up): how fast the head turns in the
     /// cockpit, the camera orbits in an external view.

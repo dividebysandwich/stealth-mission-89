@@ -10,6 +10,7 @@ axis-nozzle = 喷口（鹞式）
 axis-tgp-zoom = TGP变焦
 axis-look-x = 左右观察
 axis-look-y = 上下观察
+axis-view-zoom = 视角缩放 拉近 / 拉远
 input-button = 按钮 { $n }
 input-axis = 轴 { $n }
 vr-trigger = 扳机
