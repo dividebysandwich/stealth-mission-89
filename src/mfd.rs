@@ -247,6 +247,10 @@ pub enum MfdCmd {
     SwapSoi,
     HsdRange(i8),
     HsdCentre,
+    /// The ground map's range a step out (+) or in (-).
+    GmRange(i8),
+    /// The air-to-ground radar to standby and back.
+    GmStandby,
     MapZoom(i8),
     MapWay,
     /// SMS page: the ORD (true) or WPN page.
@@ -440,14 +444,14 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Ils => Action::Ils,
         MfdCmd::Format(_, f) => f.action(),
         MfdCmd::Soi(_) | MfdCmd::SwapSoi => Action::SwapSoi,
-        MfdCmd::HsdRange(d) | MfdCmd::MapZoom(d) => {
+        MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::MapZoom(d) => {
             if d > 0 {
                 Action::MapZoomIn
             } else {
                 Action::MapZoomOut
             }
         }
-        MfdCmd::HsdCentre | MfdCmd::HarmFilter => Action::Maps,
+        MfdCmd::HsdCentre | MfdCmd::HarmFilter | MfdCmd::GmStandby => Action::Maps,
         MfdCmd::CamZoom(d) => {
             if d > 0 {
                 Action::CameraZoomIn
@@ -705,6 +709,7 @@ fn reset_mfd(
 ) {
     let mut av = crate::avionics::AvionicsState::default();
     av.set_third(settings.cockpit().0.third_mfd());
+    av.radar = settings.aircraft.spec().ground_radar;
     *state = MfdState {
         hires: settings.hires_displays(),
         modern: !settings.classic_avionics,
@@ -763,7 +768,7 @@ fn mfd_keys(
         let cmd = match a {
             Action::Maps if state.modern => MfdCmd::Format(
                 MfdSide::Left,
-                crate::avionics::next_left_format(state.av.formats[0]),
+                crate::avionics::next_left_format(state.av.formats[0], state.av.radar),
             ),
             Action::SwapSoi => MfdCmd::SwapSoi,
             // Every zoom key pair (Z / X, the camera's and the map's) zooms the sensor of
@@ -819,8 +824,8 @@ fn soi_zoom(state: &MfdState, a: Action) -> Option<MfdCmd> {
     };
     match state.av.soi_format().filter(|_| state.modern)? {
         Format::Tgp => Some(MfdCmd::CamZoom(d)),
-        Format::Hsd if d > 0 => Some(MfdCmd::ZoomIn),
-        Format::Hsd => Some(MfdCmd::ZoomOut),
+        Format::Hsd | Format::Gm if d > 0 => Some(MfdCmd::ZoomIn),
+        Format::Hsd | Format::Gm => Some(MfdCmd::ZoomOut),
         _ => None,
     }
 }
@@ -1454,6 +1459,7 @@ pub struct MfdParams<'w, 's> {
     pub palette: Option<Res<'w, Palette>>,
     pub emitters: Res<'w, crate::rwr::Emitters>,
     pub constants: Option<Res<'w, crate::flight::FlightConstants>>,
+    pub radar: Option<Res<'w, crate::ground_radar::GroundRadar>>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.

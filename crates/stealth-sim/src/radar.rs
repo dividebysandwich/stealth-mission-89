@@ -6,6 +6,9 @@ use stealth_i18n::text;
 
 /// What the gear down (legs and open wells) adds to the EMV of every aircraft.
 pub const GEAR_DOWN_EMV: i32 = 12;
+/// What a transmitting air-to-ground radar adds to the EMV: an active emitter is louder than
+/// open bays.
+pub const RADAR_EMV: i32 = 28;
 
 /// Pure EMV function.
 /// `flags` = player flags, `view_z` = compressed height above the ground, `velocity` = knots*27.
@@ -29,6 +32,9 @@ pub fn emv(view_z: i32, velocity: i32, roll: i32, flags: i32, diff: i32, lockhee
     }
     if flags & pflags::ECM != 0 {
         e += 16;
+    }
+    if flags & pflags::RADAR != 0 {
+        e += RADAR_EMV;
     }
     e
 }
@@ -242,7 +248,7 @@ impl Sim {
         self.pl.emv = if self.pl.comanche {
             // The RAH-66's height, speed and bank show a third as much hovering, fully at
             // 180 kt; its open doors, its gear and the jammer as much as anybody's.
-            let loud = pflags::BAY_OPEN | pflags::ECM;
+            let loud = pflags::BAY_OPEN | pflags::ECM | pflags::RADAR;
             let quiet = (self.pl.pflags & !loud) | pflags::GEAR_UP;
             let base = emv(agl, p.velocity, p.roll, quiet, self.diff, false);
             let scale = 15 + comanche_signature(p.velocity);
@@ -848,6 +854,8 @@ mod tests {
         assert_eq!(emv(0, 0, 0, 4, 3, true), 9 + 24 + GEAR_DOWN_EMV);
         assert_eq!(emv(0, 0, 0, 0, 3, true), 9 + 20);
         assert_eq!(emv(0, 0, 0, 1, 3, true), 9);
+        // A transmitting radar.
+        assert_eq!(emv(0, 0, 0, 1 | pflags::RADAR, 0, false), RADAR_EMV);
         // Altitude term: 1000 ft Regular -> 12.
         assert_eq!(emv(1000, 0, 0, 1, 1, false), 12);
     }

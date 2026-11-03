@@ -69,6 +69,8 @@ pub enum Format {
     Sms,
     /// Horizontal situation indicator: compass rose, course and bearing to the steerpoint.
     Hsi,
+    /// The air-to-ground radar's ground map (`crate::ground_radar`), on the aircraft with one.
+    Gm,
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -77,9 +79,18 @@ pub const FORMATS: [Format; 5] = [Format::Hsd, Format::Harm, Format::Tgp, Format
 pub const THIRD_FORMATS: [Format; 5] =
     [Format::Hsi, Format::Hsd, Format::Harm, Format::Map, Format::Sms];
 
-/// The formats on an MFD's bottom bezel buttons.
-pub fn formats(side: MfdSide) -> [Format; 5] {
-    if side == MfdSide::Third { THIRD_FORMATS } else { FORMATS }
+/// The left MFD's with an air-to-ground radar: its ground map instead of the HARM display (the
+/// right MFD keeps that).
+pub const RADAR_FORMATS: [Format; 5] =
+    [Format::Hsd, Format::Gm, Format::Tgp, Format::Map, Format::Sms];
+
+/// The formats on an MFD's bottom bezel buttons (`radar`: the aircraft has a ground map radar).
+pub fn formats(side: MfdSide, radar: bool) -> [Format; 5] {
+    match side {
+        MfdSide::Third => THIRD_FORMATS,
+        MfdSide::Left if radar => RADAR_FORMATS,
+        _ => FORMATS,
+    }
 }
 
 impl Format {
@@ -91,18 +102,19 @@ impl Format {
             Format::Map => "MAP",
             Format::Sms => "SMS",
             Format::Hsi => "HSI",
+            Format::Gm => "GM",
         }
     }
 
     /// Formats with a cursor (or a pod) the slew controls move.
     pub fn soi_capable(self) -> bool {
-        matches!(self, Format::Hsd | Format::Harm | Format::Tgp)
+        matches!(self, Format::Hsd | Format::Harm | Format::Tgp | Format::Gm)
     }
 
     /// The key that brings the format up (script `press=` lookups).
     pub fn action(self) -> Action {
         match self {
-            Format::Hsd | Format::Harm | Format::Map => Action::Maps,
+            Format::Hsd | Format::Harm | Format::Map | Format::Gm => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -110,10 +122,11 @@ impl Format {
     }
 }
 
-/// F3 on the left MFD: HSD -> MAP -> HARM -> HSD.
-pub fn next_left_format(f: Format) -> Format {
+/// F3 on the left MFD: HSD -> MAP -> HARM (the ground map with the radar) -> HSD.
+pub fn next_left_format(f: Format, radar: bool) -> Format {
     match f {
         Format::Hsd => Format::Map,
+        Format::Map if radar => Format::Gm,
         Format::Map => Format::Harm,
         _ => Format::Hsd,
     }
@@ -130,6 +143,9 @@ pub enum HarmFilter {
 /// HSD ranges (km from the aircraft to the outer ring).
 pub const HSD_RANGES: [f32; 6] = [10.0, 20.0, 40.0, 80.0, 160.0, 320.0];
 const HSD_RANGE_LABELS: [&str; 6] = ["10", "20", "40", "80", "160", "320"];
+/// Ground map ranges (km from the aircraft to the scope's outer arc).
+pub const GM_RANGES: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
+const GM_RANGE_LABELS: [&str; 5] = ["5", "10", "20", "40", "80"];
 
 #[derive(Debug, Clone)]
 pub struct AvionicsState {
@@ -156,6 +172,15 @@ pub struct AvionicsState {
     pub map_way: bool,
     /// SMS shows the mission orders (else the weapons).
     pub sms_ord: bool,
+    /// The aircraft has an air-to-ground radar (the ground map format).
+    pub radar: bool,
+    pub gm_range: usize,
+    /// The radar in standby: not transmitting.
+    pub gm_standby: bool,
+    /// The ground map's cursor (display pixels) and the view it was last placed in (it stays
+    /// on its ground point).
+    pub gm_cursor: Vec2,
+    gm_view: Option<HsdView>,
     /// Free-fall and retarded bombs per release (1..=`RIPPLE_MAX`).
     pub ripple: u8,
     /// The ripple's spacing (index into `RIPPLE_SPACING_FT`).
@@ -465,6 +490,11 @@ impl Default for AvionicsState {
             harm_filter: HarmFilter::All,
             map_way: false,
             sms_ord: true,
+            radar: false,
+            gm_range: 2,
+            gm_standby: false,
+            gm_cursor: centre - Vec2::Y * 20.0,
+            gm_view: None,
             ripple: 1,
             ripple_spacing: 3,
             burst: 2,
@@ -505,6 +535,21 @@ impl AvionicsState {
     /// The CBU-105's burst altitude (ft above the ground).
     pub fn burst_ft(&self) -> u16 {
         BURST_FT[self.burst.min(BURST_FT.len() - 1)]
+    }
+
+    /// The ground map's range (km).
+    pub fn gm_range_km(&self) -> f32 {
+        GM_RANGES[self.gm_range.min(GM_RANGES.len() - 1)]
+    }
+
+    /// The air-to-ground radar transmits: its ground map is up and not in standby.
+    pub fn radar_emitting(&self) -> bool {
+        self.radar && !self.gm_standby && self.shown(Format::Gm).is_some()
+    }
+
+    /// The formats on an MFD's bottom bezel buttons.
+    pub fn formats(&self, side: MfdSide) -> [Format; 5] {
+        formats(side, self.radar)
     }
 }
 
@@ -617,6 +662,11 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
                 (av.hsd_range as i32 + d as i32).clamp(0, HSD_RANGES.len() as i32 - 1) as usize
         }
         MfdCmd::HsdCentre => av.hsd_centred = !av.hsd_centred,
+        MfdCmd::GmRange(d) => {
+            av.gm_range =
+                (av.gm_range as i32 + d as i32).clamp(0, GM_RANGES.len() as i32 - 1) as usize
+        }
+        MfdCmd::GmStandby => av.gm_standby = !av.gm_standby,
         MfdCmd::MapZoom(d) => {
             state.map_zoom = (state.map_zoom + d as i32).clamp(2, state.max_map_zoom());
             raster.invalidate();
@@ -624,7 +674,10 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         // Z/X: the HSD's range when it is the SOI, else the map's zoom.
         MfdCmd::ZoomIn | MfdCmd::ZoomOut => {
             let d = if cmd == MfdCmd::ZoomIn { 1 } else { -1 };
-            if av.soi_format() == Some(Format::Hsd) || av.shown(Format::Map).is_none() {
+            if av.soi_format() == Some(Format::Gm) {
+                av.gm_range =
+                    (av.gm_range as i32 - d).clamp(0, GM_RANGES.len() as i32 - 1) as usize;
+            } else if av.soi_format() == Some(Format::Hsd) || av.shown(Format::Map).is_none() {
                 av.hsd_range =
                     (av.hsd_range as i32 - d).clamp(0, HSD_RANGES.len() as i32 - 1) as usize;
             } else {
@@ -722,7 +775,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
     let av = &s.av;
     let f = av.format(side);
     if (5..10).contains(&slot) {
-        let g = formats(side)[slot as usize - 5];
+        let g = av.formats(side)[slot as usize - 5];
         return Some((g.label(), Cmd(MfdCmd::Format(side, g)), f == g));
     }
     let soi = ("SOI", Cmd(MfdCmd::Soi(side)), av.soi_format() == Some(f));
@@ -742,7 +795,13 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
             Cmd(MfdCmd::HarmFilter),
             false,
         ),
-        (Format::Hsd | Format::Harm | Format::Tgp, 4) => soi,
+        (Format::Gm, 0) => {
+            (if av.gm_standby { "STBY" } else { "GM" }, Cmd(MfdCmd::GmStandby), av.gm_standby)
+        }
+        (Format::Gm, 1) => ("RNG-", Cmd(MfdCmd::GmRange(-1)), false),
+        (Format::Gm, 2) => (GM_RANGE_LABELS[av.gm_range], Readout, false),
+        (Format::Gm, 3) => ("RNG+", Cmd(MfdCmd::GmRange(1)), false),
+        (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm, 4) => soi,
         (Format::Tgp, 0) => ("FLIR", Cmd(MfdCmd::Flir), s.flir),
         (Format::Tgp, 1) => (
             crate::mfd::cam_zoom_label(s.cam_zoom),
@@ -818,6 +877,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
     match f {
         Format::Hsd => draw_hsd(p, c, ac, soi),
         Format::Harm => draw_harm(p, c, soi),
+        Format::Gm => draw_gm(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
@@ -1176,6 +1236,16 @@ impl HsdView {
         self.origin + Vec2::new((right * self.scale) as f32, (-ahead * self.scale) as f32)
     }
 
+    /// The ground map's scope: heading up, the aircraft at the apex low in the display, the
+    /// outer arc `SCAN_HALF` either side of the nose fitting the display's width.
+    pub fn wedge(own: DVec2, heading: f64, range_km: f32, size: Vec2) -> Self {
+        let o = Vec2::new(size.x / 2.0, size.y - BAND as f32 - 8.0);
+        let side = (size.x / 2.0 - 6.0) / crate::ground_radar::SCAN_HALF.sin();
+        let radius = side.min(o.y - BAND as f32 - 10.0);
+        let scale = radius as f64 / (range_km as f64 * 1000.0 / WU);
+        Self { own, heading, origin: o, scale, radius }
+    }
+
     /// This view magnified `zoom` times around display point `cursor`, which lands on `at`.
     pub fn zoomed(self, cursor: Vec2, at: Vec2, zoom: f32) -> Self {
         Self {
@@ -1214,6 +1284,14 @@ pub fn hsd_view(av: &AvionicsState, ac: Option<(&Aircraft, &WorldPos)>) -> Optio
     ))
 }
 
+/// The ground map's view for the aircraft (None without one).
+pub fn gm_view(av: &AvionicsState, ac: Option<(&Aircraft, &WorldPos)>) -> Option<HsdView> {
+    let (a, pos) = ac?;
+    let (e, n, _) = bevy_to_wu(pos.0);
+    let size = Vec2::new(HIRES.0 as f32, HIRES.1 as f32);
+    Some(HsdView::wedge(DVec2::new(e, n), a.euler().0 as f64, av.gm_range_km(), size))
+}
+
 /// The HARM display's scope: centre and radius.
 fn harm_scope() -> (Vec2, f32) {
     let (w, h) = (HIRES.0 as f32, HIRES.1 as f32);
@@ -1233,6 +1311,129 @@ fn draw_hsd(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
             });
         }
     }
+}
+
+/// The ground map: the radar's picture (the canvas left at index 0 over it, `backdrop`) in the
+/// scope, its range arcs and azimuth marks, the beam's position, the steerpoints, where the pod
+/// looks and the locked target, the cursor as the SOI.
+fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, soi: bool) {
+    let av = &p.state.av;
+    let (Some(view), Some(radar)) = (gm_view(av, ac), p.radar.as_deref()) else {
+        c.clear(BLACK);
+        return;
+    };
+    c.clear(0);
+    let o = view.origin;
+    let r = view.radius;
+    let half = crate::ground_radar::SCAN_HALF;
+    let at = |az: f32, k: f32| o + Vec2::new(az.sin(), -az.cos()) * r * k;
+    // The arcs are drawn from the display's +x axis, clockwise (y down).
+    let (a0, a1) = (-std::f32::consts::FRAC_PI_2 - half, -std::f32::consts::FRAC_PI_2 + half);
+    c.arc(o, r, a0, a1, 1.0, GREY);
+    for k in [0.25, 0.5, 0.75] {
+        let steps = 16;
+        for i in (0..steps).step_by(2) {
+            let t = |i: i32| a0 + (a1 - a0) * i as f32 / steps as f32;
+            c.arc(o, r * k, t(i), t(i + 1), 1.0, DARK);
+        }
+    }
+    for az in [-half, half] {
+        c.stroke(o, at(az, 1.0), 1.0, GREY);
+    }
+    for deg in [-30.0f32, 0.0, 30.0] {
+        let az = deg.to_radians();
+        c.stroke(at(az, 1.0), at(az, 1.0) + Vec2::new(az.sin(), -az.cos()) * 5.0, 1.0, GREY);
+    }
+    // The beam: a caret over the outer arc.
+    if radar.on {
+        let q = at(radar.beam, 1.0);
+        let d = Vec2::new(radar.beam.sin(), -radar.beam.cos());
+        let side = Vec2::new(-d.y, d.x);
+        c.triangle([q + d * 2.0, q + d * 8.0 + side * 4.0, q + d * 8.0 - side * 4.0], GREEN);
+    } else {
+        let label = if av.gm_standby { "STBY" } else { "NO RAD" };
+        stroke_text_at(c, o.x, o.y - r * 0.5, label, 10.0, 1.4, GREEN, Align::Centre);
+    }
+    // The steerpoints (the current one ringed).
+    let in_scope = |q: Vec2| {
+        let d = q - o;
+        d.length() <= r && d.y < 0.0 && d.x.abs() <= -d.y * half.tan()
+    };
+    for (i, w) in p.waypoints.points.iter().enumerate() {
+        let q = view.to_screen(w.east, w.north);
+        if !in_scope(q) {
+            continue;
+        }
+        c.frame(q - Vec2::splat(2.5), q + Vec2::splat(2.5), 1.0, WHITE);
+        if i == p.waypoints.current {
+            c.ring(q, 6.0, 1.2, WHITE);
+        }
+    }
+    // The locked ground target, boxed.
+    for k in p.contacts.list.iter().filter(|k| k.target.is_some() && k.target == p.contacts.locked)
+    {
+        let q = view.to_screen(k.east, k.north);
+        if in_scope(q) {
+            c.frame(q - Vec2::splat(7.0), q + Vec2::splat(7.0), 1.3, WHITE);
+        }
+    }
+    // Where the pod looks: a diamond.
+    if let Some(g) = av.tgp.los_ground.filter(|_| av.shown(Format::Tgp).is_some()) {
+        let (e, n, _) = bevy_to_wu(g);
+        let q = view.to_screen(e, n);
+        if in_scope(q) {
+            c.polyline(
+                &[
+                    q + Vec2::new(0.0, -5.0),
+                    q + Vec2::new(5.0, 0.0),
+                    q + Vec2::new(0.0, 5.0),
+                    q + Vec2::new(-5.0, 0.0),
+                    q + Vec2::new(0.0, -5.0),
+                ],
+                1.3,
+                CYAN,
+            );
+        }
+    }
+    // Own aircraft at the apex.
+    c.triangle([o + Vec2::new(0.0, -5.0), o + Vec2::new(-4.0, 3.0), o + Vec2::new(4.0, 3.0)], CYAN);
+    if soi {
+        draw_cursor(c, av.gm_cursor);
+    }
+}
+
+/// The ground map's picture for an MFD showing it (None for the others): `prev` refilled when
+/// it is the right size and not shared, `pw` by `ph` texels of `scale` display pixels.
+pub fn gm_backdrop(
+    p: &MfdParams,
+    side: MfdSide,
+    prev: Option<std::sync::Arc<crate::canvas::Picture>>,
+    pw: usize,
+    ph: usize,
+    scale: f32,
+) -> Option<std::sync::Arc<crate::canvas::Picture>> {
+    let av = &p.state.av;
+    if !p.state.modern || av.format(side) != Format::Gm {
+        return None;
+    }
+    let view = gm_view(av, p.aircraft.single().ok())?;
+    let radar = p.radar.as_deref()?;
+    let mut pic = prev.filter(|pic| pic.w == pw && pic.h == ph).unwrap_or_else(|| {
+        std::sync::Arc::new(crate::canvas::Picture { w: pw, h: ph, rgba: vec![0; pw * ph * 4] })
+    });
+    let pic_mut = match std::sync::Arc::get_mut(&mut pic) {
+        Some(m) => m,
+        None => {
+            pic = std::sync::Arc::new(crate::canvas::Picture {
+                w: pw,
+                h: ph,
+                rgba: vec![0; pw * ph * 4],
+            });
+            std::sync::Arc::get_mut(&mut pic).unwrap()
+        }
+    };
+    radar.draw(&view, scale, pic_mut);
+    Some(pic)
 }
 
 /// Everything on the HSD but the cursor, through `view`.
@@ -1807,18 +2008,23 @@ const HSD_EDGE_RESET: f32 = 30.0;
 const PICK_RADIUS: f32 = 14.0;
 
 /// Moves the SOI's cursor with the slew controls; "lock cursor target" locks the nearest
-/// symbol under it, switching the HUD to the matching mode.
+/// symbol under it (on the ground map: the nearest radar return, else the ground point),
+/// switching the HUD to the matching mode.
 #[allow(clippy::too_many_arguments)]
 fn slew_and_lock(
     time: Res<Time>,
     controls: Res<FlightControls>,
     mut actions: MessageReader<ActionEvent>,
     mut state: ResMut<MfdState>,
-    contacts: Res<Contacts>,
-    emitters: Res<Emitters>,
+    (contacts, emitters, radar): (
+        Res<Contacts>,
+        Res<Emitters>,
+        Option<Res<crate::ground_radar::GroundRadar>>,
+    ),
     mut hud: ResMut<HudState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     mut locks: MessageWriter<LockRequest>,
+    (mut designate, mut track): (MessageWriter<PodDesignate>, MessageWriter<PodTrack>),
 ) {
     let lock = actions.read().any(|a| a.0 == Action::LockCursor);
     if !state.modern {
@@ -1830,24 +2036,46 @@ fn slew_and_lock(
     let ac = aircraft.single().ok();
     let mut view = hsd_view(&state.av, ac);
     follow_view(&mut state.av, view, lo, hi);
-    let f = state.av.soi_format().filter(|f| matches!(f, Format::Hsd | Format::Harm));
+    let mut gm = gm_view(&state.av, ac);
+    follow_gm(&mut state.av, gm, lo, hi);
+    let f = state.av.soi_format().filter(|f| matches!(f, Format::Hsd | Format::Harm | Format::Gm));
     let av = &mut state.av;
     // Holding the lock shows the zoomed window and slews finely; letting go locks again, now
-    // picking only what is right under the cursor in the window.
+    // picking only what is right under the cursor in the window. Not on the ground map, which
+    // locks at once.
     let zoomed = av.zoom_window();
-    av.mark_held =
-        if controls.mark && f.is_some() { av.mark_held + time.delta_secs() } else { 0.0 };
+    av.mark_held = if controls.mark && f.is_some_and(|f| f != Format::Gm) {
+        av.mark_held + time.delta_secs()
+    } else {
+        0.0
+    };
     let release = zoomed && av.mark_held == 0.0;
     let Some(f) = f else { return };
     let fine = if zoomed { ZOOM } else { 1.0 };
     let delta =
         Vec2::new(controls.slew.x, -controls.slew.y) * SLEW_SPEED / fine * time.delta_secs();
-    // The HSD's cursor pushed past the top edge zooms out, past the bottom zooms in.
+    // The HSD's and the ground map's cursors pushed past the top edge zoom out, past the bottom
+    // zoom in.
     if f == Format::Hsd && !zoomed && hsd_edge_zoom(av, delta.y, lo, hi, |av| hsd_view(av, ac)) {
         view = hsd_view(av, ac);
     }
+    if f == Format::Gm {
+        let mut range = av.gm_range;
+        let (mut cursor, mut placed) = (av.gm_cursor, av.gm_view);
+        let size = GM_RANGES.len();
+        let view_at = |range: usize| {
+            let mut a = av.clone();
+            a.gm_range = range;
+            gm_view(&a, ac)
+        };
+        if edge_zoom(&mut range, size, &mut cursor, &mut placed, delta.y, lo, hi, view_at) {
+            (av.gm_range, av.gm_cursor, av.gm_view) = (range, cursor, placed);
+            gm = gm_view(av, ac);
+        }
+    }
     let cursor = match f {
         Format::Hsd => &mut av.hsd_cursor,
+        Format::Gm => &mut av.gm_cursor,
         _ => &mut av.harm_cursor,
     };
     if delta != Vec2::ZERO {
@@ -1857,6 +2085,26 @@ fn slew_and_lock(
         return;
     }
     let cursor = *cursor;
+    if f == Format::Gm {
+        let Some(gm) = gm.filter(|_| lock) else { return };
+        let returns = radar.as_deref().map_or(&[][..], |r| &r.returns[..]);
+        let pick = gm_pick(returns, &gm, cursor);
+        av.tgp.mode = TgpMode::Slaved;
+        av.tgp.track = None;
+        hud.mode = HudMode::Gnd;
+        match pick {
+            GmPick::Object(i) => {
+                locks.write(LockRequest(ContactRef::Object(i)));
+            }
+            GmPick::Vehicle(k) => {
+                track.write(PodTrack(k));
+            }
+            GmPick::Point(x, y) => {
+                designate.write(PodDesignate(x, y));
+            }
+        }
+        return;
+    }
     let radius = if release { PICK_RADIUS / ZOOM } else { PICK_RADIUS };
     let picked = match f {
         Format::Hsd => view.and_then(|view| pick_contact(&contacts, &view, cursor, radius)),
@@ -1885,8 +2133,7 @@ fn slew_and_lock(
 }
 
 /// The HSD's range a step out when the cursor is slewed up past the top edge (`lo`..`hi` the
-/// cursor's room), a step in past the bottom edge; the cursor stays on its ground point, after
-/// zooming in at least `HSD_EDGE_RESET` above the bottom edge. True if the range changed.
+/// cursor's room), a step in past the bottom edge (`edge_zoom`). True if the range changed.
 fn hsd_edge_zoom(
     av: &mut AvionicsState,
     dy: f32,
@@ -1894,7 +2141,36 @@ fn hsd_edge_zoom(
     hi: Vec2,
     view_of: impl Fn(&AvionicsState) -> Option<HsdView>,
 ) -> bool {
-    let y = av.hsd_cursor.y + dy;
+    let (mut range, mut cursor, mut placed) = (av.hsd_range, av.hsd_cursor, av.cursor_view);
+    let view_at = |range: usize| {
+        let mut a = av.clone();
+        a.hsd_range = range;
+        view_of(&a)
+    };
+    let size = HSD_RANGES.len();
+    if !edge_zoom(&mut range, size, &mut cursor, &mut placed, dy, lo, hi, view_at) {
+        return false;
+    }
+    (av.hsd_range, av.hsd_cursor, av.cursor_view) = (range, cursor, placed);
+    true
+}
+
+/// A display's range (index `range` of `count`, through `view_at`) a step out when its cursor
+/// is slewed up past the top edge (`lo`..`hi` the cursor's room), a step in past the bottom
+/// edge; the cursor stays on its ground point, after zooming in at least `HSD_EDGE_RESET` above
+/// the bottom edge, and `placed` becomes the new view. True if the range changed.
+#[allow(clippy::too_many_arguments)]
+fn edge_zoom(
+    range: &mut usize,
+    count: usize,
+    cursor: &mut Vec2,
+    placed: &mut Option<HsdView>,
+    dy: f32,
+    lo: Vec2,
+    hi: Vec2,
+    view_at: impl Fn(usize) -> Option<HsdView>,
+) -> bool {
+    let y = cursor.y + dy;
     let step = if dy < 0.0 && y < lo.y {
         1
     } else if dy > 0.0 && y > hi.y {
@@ -1902,18 +2178,66 @@ fn hsd_edge_zoom(
     } else {
         return false;
     };
-    let range = (av.hsd_range as i32 + step).clamp(0, HSD_RANGES.len() as i32 - 1) as usize;
-    let Some(prev) = view_of(av).filter(|_| range != av.hsd_range) else { return false };
-    av.hsd_range = range;
-    let Some(view) = view_of(av) else { return true };
-    let g = prev.to_world(av.hsd_cursor);
+    let next = (*range as i32 + step).clamp(0, count as i32 - 1) as usize;
+    let Some(prev) = view_at(*range).filter(|_| next != *range) else { return false };
+    *range = next;
+    let Some(view) = view_at(next) else { return true };
+    let g = prev.to_world(*cursor);
     let mut p = view.to_screen(g.x, g.y);
     if step < 0 {
         p.y = p.y.min(hi.y - HSD_EDGE_RESET);
     }
-    av.hsd_cursor = p.clamp(lo, hi);
-    av.cursor_view = Some(view);
+    *cursor = p.clamp(lo, hi);
+    *placed = Some(view);
     true
+}
+
+/// Keeps the ground map's cursor on its ground point as the view changes.
+fn follow_gm(av: &mut AvionicsState, view: Option<HsdView>, lo: Vec2, hi: Vec2) {
+    if let (Some(prev), Some(view)) = (av.gm_view, view)
+        && prev != view
+    {
+        let g = prev.to_world(av.gm_cursor);
+        av.gm_cursor = view.to_screen(g.x, g.y).clamp(lo, hi);
+    }
+    av.gm_view = view;
+}
+
+/// What a lock on the ground map designates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GmPick {
+    /// A world object, locked.
+    Object(usize),
+    /// A vehicle or a gun (`Sim::units` index): the simulation's point follows it.
+    Vehicle(usize),
+    /// A map point (x east, y south): a tile object there, else the ground.
+    Point(i32, i32),
+}
+
+/// The ground map's designation at `cursor`: the nearest radar return within `PICK_RADIUS`
+/// where it was painted (objects and vehicles before buildings as near), else the ground
+/// point under the cursor.
+fn gm_pick(returns: &[crate::ground_radar::Return], view: &HsdView, cursor: Vec2) -> GmPick {
+    use crate::ground_radar::RadarTarget;
+    let near = returns
+        .iter()
+        .map(|r| {
+            let d = view.to_screen(r.east / WU, r.north / WU).distance(cursor);
+            // A tile object counts a few pixels further than a site or vehicle on it.
+            let d = if matches!(r.target, RadarTarget::Tile(..)) { d + 3.0 } else { d };
+            (d, r.target)
+        })
+        .filter(|(d, _)| *d <= PICK_RADIUS)
+        .min_by(|a, b| a.0.total_cmp(&b.0));
+    match near.map(|n| n.1) {
+        Some(RadarTarget::Object(i)) => GmPick::Object(i),
+        Some(RadarTarget::Unit(k)) => GmPick::Vehicle(k),
+        Some(RadarTarget::Tile(x, y)) => GmPick::Point(x, y),
+        None => {
+            let g = view.to_world(cursor);
+            GmPick::Point((g.x / 32.0).round() as i32, (0x8000 as f64 - g.y / 32.0).round() as i32)
+        }
+    }
 }
 
 /// Keeps the cursors on what they point at as the view changes: the HSD cursor on its ground
@@ -2067,6 +2391,109 @@ mod tests {
         assert!(!hsd_edge_zoom(&mut av, -1.0, lo, hi, view_of), "farthest range");
     }
 
+    /// The ground map's cursor zooms at the edges as the HSD's does, staying on its ground
+    /// point.
+    #[test]
+    fn gm_cursor_edges_zoom() {
+        let size = Vec2::new(HIRES.0 as f32, HIRES.1 as f32);
+        let (lo, hi) =
+            (Vec2::new(4.0, BAND as f32 + 4.0), size - Vec2::new(4.0, BAND as f32 + 4.0));
+        let view_at = |range: usize| Some(HsdView::wedge(DVec2::ZERO, 0.0, GM_RANGES[range], size));
+        let (mut range, mut placed) = (2, None);
+        let mut cursor = Vec2::new(120.0, lo.y);
+        let ground = view_at(range).unwrap().to_world(cursor);
+        assert!(edge_zoom(
+            &mut range,
+            GM_RANGES.len(),
+            &mut cursor,
+            &mut placed,
+            -1.0,
+            lo,
+            hi,
+            view_at
+        ));
+        assert_eq!(range, 3);
+        let now = view_at(range).unwrap().to_world(cursor);
+        assert!(now.distance(ground) < 2.0, "{now} {ground}");
+        cursor.y = hi.y;
+        assert!(edge_zoom(
+            &mut range,
+            GM_RANGES.len(),
+            &mut cursor,
+            &mut placed,
+            1.0,
+            lo,
+            hi,
+            view_at
+        ));
+        assert_eq!(range, 2);
+        assert!(cursor.y <= hi.y - HSD_EDGE_RESET);
+        range = 0;
+        cursor.y = hi.y;
+        assert!(!edge_zoom(
+            &mut range,
+            GM_RANGES.len(),
+            &mut cursor,
+            &mut placed,
+            1.0,
+            lo,
+            hi,
+            view_at
+        ));
+    }
+
+    /// The radar aircraft's left MFD has the ground map instead of HARM, the right one keeps
+    /// HARM; the ground map can be the SOI and zooms with the zoom keys.
+    #[test]
+    fn gm_format_rows_and_soi() {
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        assert!(!s.av.formats(MfdSide::Left).contains(&Format::Gm));
+        s.av.radar = true;
+        assert_eq!(s.av.formats(MfdSide::Left)[1], Format::Gm);
+        assert_eq!(s.av.formats(MfdSide::Right)[1], Format::Harm);
+        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| o.0), Some("GM"));
+        assert_eq!(osb(MfdSide::Right, 6, &s).map(|o| o.0), Some("HARM"));
+        assert!(!s.av.radar_emitting());
+        apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Left, Format::Gm));
+        assert!(s.av.radar_emitting());
+        apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Left));
+        assert_eq!(s.av.soi_format(), Some(Format::Gm));
+        let r = s.av.gm_range;
+        apply(&mut s, &mut raster, MfdCmd::ZoomOut);
+        assert_eq!(s.av.gm_range, r + 1);
+        apply(&mut s, &mut raster, MfdCmd::GmRange(-1));
+        assert_eq!(s.av.gm_range, r);
+        apply(&mut s, &mut raster, MfdCmd::GmStandby);
+        assert!(!s.av.radar_emitting());
+        assert_eq!(osb(MfdSide::Left, 0, &s).map(|o| o.0), Some("STBY"));
+        assert_eq!(next_left_format(Format::Map, true), Format::Gm);
+        assert_eq!(next_left_format(Format::Map, false), Format::Harm);
+    }
+
+    /// A lock on the ground map takes the return under the cursor where it was painted (a site
+    /// or a vehicle before a building as near), else the ground there.
+    #[test]
+    fn gm_lock_picks_returns() {
+        use crate::ground_radar::{RadarTarget, Return};
+        let size = Vec2::new(HIRES.0 as f32, HIRES.1 as f32);
+        let view = HsdView::wedge(DVec2::ZERO, 0.0, 20.0, size);
+        let px = |e: f64, n: f64| view.to_screen(e / WU, n / WU);
+        let returns = [
+            Return::at(0.0, 10_000.0, RadarTarget::Tile(5, 6)),
+            Return::at(30.0, 10_000.0, RadarTarget::Unit(4)),
+            Return::at(3000.0, 8000.0, RadarTarget::Object(9)),
+        ];
+        assert_eq!(gm_pick(&returns, &view, px(0.0, 10_000.0)), GmPick::Vehicle(4));
+        assert_eq!(gm_pick(&returns, &view, px(3000.0, 8000.0) + Vec2::X * 3.0), GmPick::Object(9));
+        let GmPick::Point(x, y) = gm_pick(&returns, &view, px(-5000.0, 5000.0)) else {
+            panic!("a ground point")
+        };
+        let ((e, n), (we, wn)) =
+            ((x as f64 * 32.0 * WU, (0x8000 - y) as f64 * 32.0 * WU), (-5000.0, 5000.0));
+        assert!((e - we).abs() < 40.0 && (n - wn).abs() < 40.0, "{e} {n}");
+    }
+
     /// The sensor of interest goes round the three MFDs' capable formats.
     #[test]
     fn soi_round_three_mfds() {
@@ -2119,7 +2546,7 @@ mod tests {
     #[test]
     fn every_button_on_every_format() {
         for side in [MfdSide::Left, MfdSide::Third] {
-            for f in formats(side) {
+            for f in formats(side, true).into_iter().chain(formats(side, false)) {
                 for (way, ord) in [(false, false), (true, true)] {
                     let mut s = MfdState { modern: true, ..default() };
                     s.av.set_third(true);

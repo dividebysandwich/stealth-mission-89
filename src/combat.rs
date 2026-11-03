@@ -609,6 +609,7 @@ fn player_state(
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
         // Realistic avionics: each weapon in its own HUD mode.
         mode_weapons: mfd.modern,
+        radar: mfd.modern && mfd.av.radar_emitting(),
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }

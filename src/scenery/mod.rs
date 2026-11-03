@@ -129,6 +129,18 @@ pub enum Surface {
     Land,
 }
 
+/// The ground as a ground mapping radar sees it (`Scenery::radar_cover`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Cover {
+    Open,
+    Water,
+    /// Runways, roads and other smooth surfaces.
+    Concrete,
+    Forest,
+    /// Buildings and raised structures.
+    Built,
+}
+
 /// The theater's scenery layout (no style and an empty network for the desert theaters).
 #[derive(Resource, Clone)]
 pub struct Scenery {
@@ -163,6 +175,18 @@ impl Scenery {
         } else {
             Surface::Concrete
         }
+    }
+
+    /// What a ground mapping radar sees over a resolution cell `r` metres across at `p` (metres
+    /// east, north): buildings (generated or the theater's) anywhere in it, else the ground.
+    pub fn radar_cover(&self, p: DVec2, r: f64) -> Cover {
+        let half = r * 0.5;
+        let d = DVec2::splat(half + 20.0);
+        let building = self.net.building_index.around(p - d, p + d).any(|i| {
+            let b = &self.net.buildings[i as usize];
+            b.p.distance(p) < half + b.radius()
+        });
+        if building { Cover::Built } else { self.ground.radar_cover(p, half) }
     }
 
     /// The towns and cities (not the villages): centre (metres east, north), radius and whether

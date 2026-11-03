@@ -819,6 +819,9 @@ pub struct CanvasTexture {
     pub mask: Option<Vec<bool>>,
     /// Pictures laid over the canvas at these texels (photos on the kneeboard).
     pub pictures: Vec<(UVec2, Arc<Picture>)>,
+    /// A picture the canvas' size shown under it, where it is index 0 (the radar's ground map
+    /// under its symbols). A canvas with one uploads in full every time it is drawn.
+    pub backdrop: Option<Arc<Picture>>,
     /// Colours of its own (8-bit sRGB RGBA words, in memory order) instead of the live palette:
     /// the in-flight menu keeps its greens at every time of day.
     pub colours: Option<Arc<[u32; 256]>>,
@@ -871,6 +874,7 @@ impl CanvasTexture {
             transparent,
             mask: None,
             pictures: Vec::new(),
+            backdrop: None,
             colours: None,
             dirty: true,
             mips,
@@ -1004,6 +1008,7 @@ fn upload_canvases(
                 if !all
                     && ct.mask.is_none()
                     && ct.pictures.is_empty()
+                    && ct.backdrop.is_none()
                     && *t == ct.transparent
                     && *pics == placed
                     && px.len() == ct.canvas.px.len() =>
@@ -1013,6 +1018,7 @@ fn upload_canvases(
             Some((px, t, pics))
                 if !all
                     && ct.mask.is_none()
+                    && ct.backdrop.is_none()
                     && *t == ct.transparent
                     && *pics == placed
                     && *px == ct.canvas.px =>
@@ -1103,6 +1109,16 @@ fn first_level(
             let l = if t { see_lut } else { lut };
             for (o, &c) in texels {
                 *o = l[c as usize].to_le_bytes();
+            }
+        }
+    }
+    if let Some(b) = ct.backdrop.as_ref().filter(|b| b.w == pw && !ct.transparent) {
+        let under = &b.rgba[first * 4..];
+        for (i, (o, &c)) in out.as_chunks_mut::<4>().0.iter_mut().zip(px).enumerate() {
+            if c == TRANSPARENT
+                && let Some(t) = under.get(i * 4..i * 4 + 4)
+            {
+                o.copy_from_slice(t);
             }
         }
     }

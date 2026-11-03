@@ -39,7 +39,7 @@ pub use data::{
     WeaponType,
 };
 pub use pilot::{Pilot, PilotEvent};
-pub use radar::emv;
+pub use radar::{RADAR_EMV, emv};
 pub use rng::Rng;
 pub use targeting::{HELMET_SEEKER, SEEKER_GIMBAL};
 pub use types::*;
@@ -807,6 +807,9 @@ impl Sim {
         if ps.brakes {
             f |= pflags::BRAKES;
         }
+        if ps.radar && !ps.on_ground {
+            f |= pflags::RADAR;
+        }
         self.pl.pflags = f;
         self.pl.prev_on_ground = self.pl.on_ground;
         self.pl.on_ground = ps.on_ground;
@@ -1046,6 +1049,11 @@ impl Sim {
     /// The theater's rolling hills (flat without).
     pub fn hills(&self) -> crate::hills::Hills {
         self.tiles.as_ref().map(|t| t.hills.clone()).unwrap_or_default()
+    }
+
+    /// The theater's mountains (flat without).
+    pub fn relief(&self) -> crate::relief::Relief {
+        self.tiles.as_ref().map(|t| t.relief.clone()).unwrap_or_default()
     }
 
     /// A loaded state takes the relief and hills (not saved) of a sim made for the same

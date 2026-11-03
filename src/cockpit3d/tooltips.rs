@@ -303,12 +303,16 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Map => "tip-cmd-map",
             Format::Sms => "tip-cmd-sms",
             Format::Hsi => "tip-cmd-hsi",
+            Format::Gm => "tip-cmd-gm",
         },
         MfdCmd::Soi(_) => "tip-cmd-soi",
         MfdCmd::SwapSoi => "tip-cmd-swap-soi",
         MfdCmd::HsdRange(1..) => "tip-cmd-hsd-range-up",
         MfdCmd::HsdRange(..=0) => "tip-cmd-hsd-range-down",
         MfdCmd::HsdCentre => "tip-cmd-hsd-centre",
+        MfdCmd::GmRange(1..) => "tip-cmd-gm-range-up",
+        MfdCmd::GmRange(..=0) => "tip-cmd-gm-range-down",
+        MfdCmd::GmStandby => "tip-cmd-gm-standby",
         MfdCmd::MapWay => "tip-cmd-map-way",
         MfdCmd::WaypointNudge(0, 1) => "tip-cmd-waypoint-up",
         MfdCmd::WaypointNudge(0, ..=-1) => "tip-cmd-waypoint-down",
@@ -394,7 +398,11 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
                     let (title, detail) = action_text(a);
                     if detail.is_empty() { title } else { format!("{title}: {detail}") }
                 }
-                // The only readout: the HSD's range between its RNG- and RNG+ buttons.
+                // The readouts: the HSD's and the ground map's range between their RNG- and
+                // RNG+ buttons.
+                OsbFn::Readout if mfd.av.format(side) == crate::avionics::Format::Gm => {
+                    t!("tip-gm-range").to_string()
+                }
                 OsbFn::Readout => t!("tip-hsd-range").to_string(),
             };
             (osb_title(label, f, style), detail)

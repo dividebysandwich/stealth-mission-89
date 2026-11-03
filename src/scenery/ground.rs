@@ -330,6 +330,20 @@ impl Ground {
             && self.boxes_clear(p, r, true)
     }
 
+    /// What a ground mapping radar sees at a point: water, concrete, woods or open land, and
+    /// raised tile geometry (hangars, bridges, the theater's buildings) within `r` metres.
+    pub fn radar_cover(&self, p: DVec2, r: f64) -> super::Cover {
+        if !self.boxes_clear(p, r, true) {
+            return super::Cover::Built;
+        }
+        match self.top(p) {
+            Some(Surface::Water) => super::Cover::Water,
+            Some(Surface::Solid) => super::Cover::Concrete,
+            Some(Surface::Forest) => super::Cover::Forest,
+            _ => super::Cover::Open,
+        }
+    }
+
     /// Land at the point (not water or concrete), whatever stands on it.
     pub fn is_land(&self, p: DVec2) -> bool {
         !matches!(self.top(p), Some(Surface::Water | Surface::Solid))

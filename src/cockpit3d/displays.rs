@@ -562,17 +562,22 @@ pub(super) fn update_displays(
         let tex = tex.as_mut();
         tex.canvas.reset_clip();
         match role {
-            CanvasRole::Left => {
-                tex.transparent = d.mfd.camera_see_through(MfdSide::Left);
-                d.mfd.draw_left(&mut tex.canvas, &art, &fonts);
-            }
-            CanvasRole::Right => {
-                tex.transparent = d.mfd.camera_see_through(MfdSide::Right);
-                d.mfd.draw_right(&mut tex.canvas, &art, &fonts);
-            }
-            CanvasRole::Third => {
-                tex.transparent = d.mfd.camera_see_through(MfdSide::Third);
-                d.mfd.draw_third(&mut tex.canvas, &art, &fonts);
+            CanvasRole::Left | CanvasRole::Right | CanvasRole::Third => {
+                let side = match role {
+                    CanvasRole::Left => MfdSide::Left,
+                    CanvasRole::Right => MfdSide::Right,
+                    _ => MfdSide::Third,
+                };
+                tex.transparent = d.mfd.camera_see_through(side);
+                match side {
+                    MfdSide::Left => d.mfd.draw_left(&mut tex.canvas, &art, &fonts),
+                    MfdSide::Right => d.mfd.draw_right(&mut tex.canvas, &art, &fonts),
+                    MfdSide::Third => d.mfd.draw_third(&mut tex.canvas, &art, &fonts),
+                }
+                // The radar's ground map under the page's symbols.
+                let (pw, ph, scale) = (tex.canvas.pw(), tex.canvas.ph(), tex.canvas.scale as f32);
+                tex.backdrop =
+                    crate::avionics::gm_backdrop(&d.mfd, side, tex.backdrop.take(), pw, ph, scale);
             }
             CanvasRole::Adi => {
                 d.panel.draw_adi(&mut tex.canvas, settings.cockpit().0 != PanelStyle::Classic)

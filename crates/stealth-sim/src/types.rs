@@ -45,6 +45,8 @@ pub mod pflags {
     pub const BRAKES: i32 = 0x0008;
     pub const ECM: i32 = 0x0010;
     pub const IRJ: i32 = 0x0020;
+    /// The ground-mapping radar transmits (set from `PlayerState::radar` every frame).
+    pub const RADAR: i32 = 0x0040;
     pub const DESIGNATE: i32 = 0x0100;
     pub const CAMERA_VIEW: i32 = 0x0200;
     pub const TRAINING: i32 = 0x1000;
@@ -545,6 +547,9 @@ pub struct PlayerState {
     /// and the trigger does nothing with a store of another mode.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub mode_weapons: bool,
+    /// The air-to-ground radar transmits: an emitter shows the aircraft to the enemy radars.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub radar: bool,
     pub cmd: Commands,
 }
 

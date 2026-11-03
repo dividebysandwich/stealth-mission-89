@@ -41,6 +41,7 @@ mod gif_recorder;
 mod glvr;
 mod goggles;
 mod ground_fire;
+mod ground_radar;
 mod headtrack;
 mod help;
 mod hmd;
@@ -295,6 +296,7 @@ fn main() {
             hmd::HmdPlugin,
             mfd::MfdPlugin,
             avionics::AvionicsPlugin,
+            ground_radar::GroundRadarPlugin,
             panel::PanelPlugin,
         ))
         .add_plugins((

@@ -264,6 +264,24 @@ fn external_stores_always_open() {
     assert_eq!(open_emv, closed.emv() + 24);
 }
 
+/// A transmitting air-to-ground radar shows in the EMV while airborne, and stops with it.
+#[test]
+fn radar_raises_the_emv() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (mx, my) = sandbox(&mut sim, &m);
+    let mut p = player_at(mx, my, 3000, 0, 300);
+    sim.step(&p, 15);
+    let quiet = sim.emv();
+    p.radar = true;
+    sim.step(&p, 15);
+    assert_eq!(sim.emv(), quiet + stealth_sim::RADAR_EMV);
+    p.radar = false;
+    sim.step(&p, 15);
+    assert_eq!(sim.emv(), quiet);
+}
+
 /// The EMV's altitude term counts the height above the ground: 500 ft over 2500 ft hills
 /// shows as much as 500 ft over the plain.
 #[test]

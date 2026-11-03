@@ -92,6 +92,8 @@ pub struct AircraftSpec {
     /// Vectored thrust (`flight::modern::Vtol`): the model's nozzles are parts turning down
     /// about their pivots with state slot `NOZZLE_SLOT`, the HUD shows their angle.
     pub vtol: bool,
+    /// An air-to-ground radar: the ground map format (`crate::ground_radar`).
+    pub ground_radar: bool,
     flight: fn() -> FlightConstants,
 }
 
@@ -277,6 +279,7 @@ static F117: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::default,
 };
 
@@ -312,6 +315,7 @@ static F16: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.45,
     swing_wing: false,
     vtol: false,
+    ground_radar: true,
     flight: FlightConstants::f16,
 };
 
@@ -356,6 +360,7 @@ static UH60: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::uh60,
 };
 
@@ -399,6 +404,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::ah1z,
 };
 
@@ -443,6 +449,7 @@ static RAH66: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: true,
     flight: FlightConstants::rah66,
 };
 
@@ -487,6 +494,7 @@ static OH58: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::oh58,
 };
 
@@ -532,6 +540,7 @@ static CH47: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::ch47,
 };
 
@@ -580,6 +589,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.38,
     swing_wing: true,
     vtol: false,
+    ground_radar: true,
     flight: FlightConstants::tornado,
 };
 
@@ -625,6 +635,7 @@ static A10: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: false,
+    ground_radar: false,
     flight: FlightConstants::a10,
 };
 
@@ -673,6 +684,7 @@ static AV8B: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.0,
     swing_wing: false,
     vtol: true,
+    ground_radar: true,
     flight: FlightConstants::av8b,
 };
 
@@ -718,6 +730,7 @@ static F22: AircraftSpec = AircraftSpec {
     nozzle_radius: 0.35,
     swing_wing: false,
     vtol: false,
+    ground_radar: true,
     flight: FlightConstants::f22,
 };
 
