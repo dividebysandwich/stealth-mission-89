@@ -3257,3 +3257,19 @@ fn a_player_leaves_his_own_aircraft_to_the_ai() {
     let m = c.ai_mission_for(offer).unwrap();
     assert!(m.alive.iter().all(|a| !a));
 }
+
+#[test]
+fn a_loaded_save_has_no_ai_flight_in_the_air() {
+    let mut c = ai_campaign();
+    for _ in 0..6 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.ai_missions.iter().any(AiMission::open));
+    let (fighters, helicopters) = (c.blue.fighters, c.blue.helicopters);
+    c.after_load();
+    assert!(!c.ai_missions.iter().any(AiMission::open));
+    assert!(c.blue.fighters + c.blue.helicopters > fighters + helicopters, "back on the ground");
+    // Their offers go up again after the wait.
+    let o = c.board.iter().find(|o| c.ai_mission_for(o.id).is_some()).unwrap().clone();
+    assert_eq!(c.ai_launch_at(&o), Some(c.clock + tuning::AI_MISSION_WAIT));
+}

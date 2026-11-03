@@ -560,6 +560,27 @@ impl CampaignState {
         )
     }
 
+    /// After loading a save: the AI flights that were in the air are back on the ground (their
+    /// offers go up again `AI_MISSION_WAIT` from now).
+    pub(crate) fn ground_ai_missions(&mut self) {
+        let now = self.clock;
+        let mut back = Vec::new();
+        for m in self.ai_missions.iter_mut().filter(|m| m.open()) {
+            for k in 0..m.tags.len() {
+                if m.alive[k] && m.pooled[k] {
+                    back.push((m.side, m.airframe.helicopter()));
+                }
+                m.alive[k] = false;
+                m.controlled[k] = None;
+            }
+            m.state = AiMissionState::Done;
+            m.ended = Some(now);
+        }
+        for (side, heli) in back {
+            self.aircraft_back(side, !heli as u32, heli as u32);
+        }
+    }
+
     /// A player takes over aircraft `tag` of a friendly AI flight in the air: a sortie on its
     /// mission in its aircraft (the host puts him where it is).
     pub(crate) fn take_control(
@@ -673,8 +694,9 @@ impl CampaignState {
             }
         };
         let m = &self.ai_missions[k];
-        // Done with it (or nothing left to go for): the AI flies it home.
-        let home = s.progress.achieved || m.achieved;
+        // Done with it, or a mission the AI does not fly (insertions, rescues, cargo): the AI
+        // flies it home.
+        let home = s.progress.achieved || m.achieved || !ai_flown(s.offer.kind);
         Ok(vec![CampaignEvent::ControlLeft {
             player,
             tag,

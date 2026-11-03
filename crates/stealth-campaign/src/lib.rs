@@ -550,6 +550,7 @@ impl CampaignState {
         for p in &mut self.plans {
             p.crew.clear();
         }
+        self.ground_ai_missions();
         let players: Vec<PlayerId> =
             self.players.iter().filter(|p| p.sortie.is_some()).map(|p| p.id).collect();
         players.into_iter().flat_map(|p| self.end_sortie(p, SortieEnd::Aborted)).collect()
