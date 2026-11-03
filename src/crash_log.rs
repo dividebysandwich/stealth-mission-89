@@ -231,7 +231,10 @@ mod signals {
         for part in [b"fatal: ".as_slice(), name, b" in thread "] {
             n += copy(&mut buf[n..], part);
         }
+        // (The libc crate has no pthread_getname_np for Android.)
+        #[cfg(not(target_os = "android"))]
         let mut thread = [0 as libc::c_char; 32];
+        #[cfg(not(target_os = "android"))]
         // SAFETY: the buffer is valid for its length; pthread_getname_np only reads the kernel's comm.
         if unsafe {
             libc::pthread_getname_np(libc::pthread_self(), thread.as_mut_ptr(), thread.len())
