@@ -404,15 +404,30 @@ impl GroundRadar {
     /// the scope's wedge (`SCAN_HALF` either side of up from `view.origin`, out to
     /// `view.radius`); black outside it.
     pub fn draw(&self, view: &HsdView, scale: f32, pic: &mut Picture) {
-        pic.rgba.fill(0);
-        for px in pic.rgba.chunks_exact_mut(4) {
-            px[3] = 255;
+        self.draw_in(view, scale, pic, (0, 0, pic.w, pic.h));
+    }
+
+    /// [`Self::draw`] into the texels `x0..x1`, `y0..y1` of `pic` (`rect`) only: the zoomed
+    /// window's picture over the ground map's.
+    pub fn draw_in(
+        &self,
+        view: &HsdView,
+        scale: f32,
+        pic: &mut Picture,
+        rect: (usize, usize, usize, usize),
+    ) {
+        let (w, h) = (pic.w, pic.h);
+        let (rx0, ry0) = (rect.0.min(w), rect.1.min(h));
+        let (rx1, ry1) = (rect.2.clamp(rx0, w), rect.3.clamp(ry0, h));
+        for y in ry0..ry1 {
+            for px in pic.rgba[(y * w + rx0) * 4..(y * w + rx1) * 4].chunks_exact_mut(4) {
+                px.copy_from_slice(&[0, 0, 0, 255]);
+            }
         }
         if !self.on {
             return;
         }
         let ramp = &*RAMP;
-        let (w, h) = (pic.w, pic.h);
         let (r2, tan) = ((view.radius * scale).powi(2), SCAN_HALF.tan());
         let o = view.origin * scale;
         // The picture is looked up once a display pixel (a cell is about one at every range),
@@ -420,19 +435,20 @@ impl GroundRadar {
         let k = (scale.round() as usize).max(1);
         let cols = w.div_ceil(k);
         let mut row = vec![[0u8, 0, 0, 255]; cols];
-        // A texel row's span inside the wedge.
+        // A texel row's span inside the wedge (and the rectangle).
         let span = |y: usize| {
             let up = o.y - (y as f32 + 0.5);
             let half = if up > 0.0 { (up * tan).min((r2 - up * up).max(0.0).sqrt()) } else { 0.0 };
             let x0 = ((o.x - half).floor().max(0.0)) as usize;
-            (x0, ((o.x + half).ceil().min(w as f32)) as usize)
+            let x1 = ((o.x + half).ceil().min(w as f32)) as usize;
+            (x0.max(rx0), x1.min(rx1))
         };
-        for y in 0..h {
+        for y in ry0..ry1 {
             let up = o.y - (y as f32 + 0.5);
             let (x0, x1) = span(y);
-            if y % k == 0 {
+            if y % k == 0 || y == ry0 {
                 // The display pixels' row, as wide as its widest texel row.
-                let (b0, b1) = (y..(y + k).min(h))
+                let (b0, b1) = (y..((y / k + 1) * k).min(ry1))
                     .map(span)
                     .filter(|(a, b)| a < b)
                     .fold((usize::MAX, 0), |(a, b), (c, d)| (a.min(c), b.max(d)));
@@ -792,5 +808,30 @@ mod tests {
             radar.scan(1.0 / 60.0, DVec2::ZERO, 1000.0, 0.0, RANGE, &ground, &at(5200.0));
         }
         assert_eq!(radar.returns[0].north, 5200.0);
+    }
+
+    /// The zoomed window's picture changes its rectangle only.
+    #[test]
+    fn draw_in_paints_its_rectangle_only() {
+        let mut radar = GroundRadar::default();
+        let ground = TestGround { ridge: Some((6000.0, 400.0)), water: None };
+        pass(&mut radar, &ground, &[]);
+        radar.on = true;
+        let size = Vec2::new(160.0, 120.0);
+        let view = HsdView::wedge(DVec2::ZERO, 0.0, (RANGE / 1000.0) as f32, size);
+        let mut pic = Picture { w: 320, h: 240, rgba: vec![0; 320 * 240 * 4] };
+        radar.draw(&view, 2.0, &mut pic);
+        let before = pic.rgba.clone();
+        let rect = (100, 60, 220, 140);
+        let zoomed = view.zoomed(Vec2::new(80.0, 70.0), Vec2::new(80.0, 50.0), 4.0);
+        radar.draw_in(&zoomed, 2.0, &mut pic, rect);
+        let inside = |i: usize| {
+            let (x, y) = ((i / 4) % 320, (i / 4) / 320);
+            (rect.0..rect.2).contains(&x) && (rect.1..rect.3).contains(&y)
+        };
+        let changed: Vec<usize> =
+            (0..pic.rgba.len()).filter(|&i| pic.rgba[i] != before[i]).collect();
+        assert!(!changed.is_empty());
+        assert!(changed.iter().all(|&i| inside(i)));
     }
 }

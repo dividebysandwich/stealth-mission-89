@@ -42,6 +42,7 @@ pub struct AvionicsPlugin;
 impl Plugin for AvionicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<LockRequest>()
+            .add_message::<Unlock>()
             .add_message::<PodDesignate>()
             .add_message::<PodTrack>()
             .add_systems(
@@ -216,6 +217,8 @@ pub struct AvionicsState {
     /// Seconds "lock cursor target" has been held on the HSD or HARM display; past `MARK_HOLD`
     /// a zoomed window around the cursor shows (`zoom_window`).
     pub mark_held: f32,
+    /// "Lock cursor target" pressed on a radar format: it locks when let go (`slew_and_lock`).
+    radar_lock: bool,
     pub harm_filter: HarmFilter,
     /// MAP shows the waypoint table.
     pub map_way: bool,
@@ -550,6 +553,7 @@ impl Default for AvionicsState {
             harm_cursor: centre,
             cursor_view: None,
             mark_held: 0.0,
+            radar_lock: false,
             harm_filter: HarmFilter::All,
             map_way: false,
             sms_ord: true,
@@ -1718,7 +1722,7 @@ fn draw_hsd(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
     if soi {
         draw_cursor(c, av.hsd_cursor);
         if av.zoom_window() {
-            draw_zoom_window(c, av.hsd_cursor, |c, at| {
+            draw_zoom_window(c, av.hsd_cursor, BLACK, |c, at| {
                 hsd_picture(p, c, view.zoomed(av.hsd_cursor, at, ZOOM))
             });
         }
@@ -1727,7 +1731,8 @@ fn draw_hsd(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
 
 /// The ground map: the radar's picture (the canvas left at index 0 over it, `backdrop`) in the
 /// scope, its range arcs and azimuth marks, the beam's position, the steerpoints, where the pod
-/// looks and the locked target, the cursor as the SOI.
+/// looks and the locked target, the cursor as the SOI (and the zoomed window while the lock is
+/// held).
 fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, soi: bool) {
     let av = &p.state.av;
     let (Some(view), Some(radar)) = (gm_view(av, ac), p.radar.as_deref()) else {
@@ -1766,6 +1771,22 @@ fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, so
         let label = if av.radar_standby { "STBY" } else { "NO RAD" };
         stroke_text_at(c, o.x, o.y - r * 0.5, label, 10.0, 1.4, GREEN, Align::Centre);
     }
+    gm_symbols(p, c, view);
+    if soi {
+        draw_cursor(c, av.gm_cursor);
+        // The radar's picture in the window is `gm_backdrop`'s.
+        if av.zoom_window() {
+            let cursor = av.gm_cursor;
+            draw_zoom_window(c, cursor, 0, |c, at| gm_symbols(p, c, view.zoomed(cursor, at, ZOOM)));
+        }
+    }
+}
+
+/// The ground map's steerpoints, locked target, pod and own aircraft through `view`.
+fn gm_symbols(p: &MfdParams, c: &mut Canvas, view: HsdView) {
+    let av = &p.state.av;
+    let (o, r) = (view.origin, view.radius);
+    let half = crate::ground_radar::SCAN_HALF;
     // The steerpoints (the current one ringed).
     let in_scope = |q: Vec2| {
         let d = q - o;
@@ -1781,10 +1802,9 @@ fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, so
             c.ring(q, 6.0, 1.2, WHITE);
         }
     }
-    // The locked ground target, boxed.
-    for k in p.contacts.list.iter().filter(|k| k.target.is_some() && k.target == p.contacts.locked)
-    {
-        let q = view.to_screen(k.east, k.north);
+    // The locked ground target (an object, a point, a vehicle), boxed.
+    if let Some((e, n)) = p.contacts.ground_lock {
+        let q = view.to_screen(e, n);
         if in_scope(q) {
             c.frame(q - Vec2::splat(7.0), q + Vec2::splat(7.0), 1.3, WHITE);
         }
@@ -1809,9 +1829,6 @@ fn draw_gm(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, so
     }
     // Own aircraft at the apex.
     c.triangle([o + Vec2::new(0.0, -5.0), o + Vec2::new(-4.0, 3.0), o + Vec2::new(4.0, 3.0)], CYAN);
-    if soi {
-        draw_cursor(c, av.gm_cursor);
-    }
 }
 
 /// The A-A radar's B-scope: its top left and bottom right corners on the display (azimuth
@@ -1839,7 +1856,7 @@ const KT: f32 = 1.943_84;
 /// scan's width, the artificial horizon, the antenna's azimuth and elevation carets, the search
 /// bricks (old ones dimmer, friendly ones green), the locked aircraft with its heading and
 /// altitude and its aspect, heading, closure and speed on top, and the cursor with the altitudes
-/// the scan covers at its range as the SOI.
+/// the scan covers at its range as the SOI (and the zoomed window while the lock is held).
 fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, soi: bool) {
     use crate::aa_radar::GIMBAL;
     c.clear(BLACK);
@@ -1892,35 +1909,10 @@ fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
     c.stroke(Vec2::new(x, hi.y + 2.0), Vec2::new(x, hi.y + 7.0), 1.5, WHITE);
     let y = mid.y - (radar.elevation / GIMBAL).clamp(-1.0, 1.0) * (hi.y - lo.y) / 2.0;
     c.stroke(Vec2::new(lo.x - 5.0, y), Vec2::new(lo.x - 1.0, y), 1.5, WHITE);
-    // The search's bricks.
-    for b in &radar.bricks {
-        let k = b.range / range;
-        if k > 1.0 || b.az.abs() > GIMBAL {
-            continue;
-        }
-        let q = fcr_point(b.az, k);
-        let colour = if b.age > radar.frame {
-            GREY
-        } else if b.friendly {
-            GREEN
-        } else {
-            WHITE
-        };
-        c.fill_rect(q.x as i32 - 3, q.y as i32 - 1, 6, 3, colour);
-    }
-    // The locked aircraft: a filled square with its heading, its altitude (thousands of feet)
-    // under it, the aspect (tens of degrees off its tail, and our side of its nose), its
+    fcr_contacts(c, radar, range, fcr_point);
+    // The locked aircraft's aspect (tens of degrees off its tail, and our side of its nose),
     // heading, closure and ground speed (knots) over the scope.
     if let Some(t) = radar.track {
-        let k = t.range / range;
-        if k <= 1.0 {
-            let q = fcr_point(t.az, k);
-            c.fill_rect(q.x as i32 - 3, q.y as i32 - 3, 7, 7, WHITE);
-            let d = Vec2::new(t.rel_heading.sin(), -t.rel_heading.cos());
-            c.stroke(q + d * 5.0, q + d * 14.0, 1.3, WHITE);
-            let alt = format!("{}", (t.alt * FT / 1000.0).round() as i32);
-            stroke_text_at(c, q.x, q.y + 11.0, &alt, 7.0, 1.0, WHITE, Align::Centre);
-        }
         let y = BAND as f32 + 8.0;
         let aspect = (t.aspect.to_degrees() / 10.0).round() as i32;
         let side = if aspect == 0 || aspect == 18 {
@@ -1940,6 +1932,14 @@ fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
     if soi {
         let cursor = av.fcr_cursor;
         draw_cursor(c, cursor);
+        if av.zoom_window() {
+            draw_zoom_window(c, cursor, BLACK, |c, at| {
+                let (lo, hi) = fcr_scope();
+                let edge = |p: Vec2| at + (p - cursor) * ZOOM;
+                c.frame(edge(lo), edge(hi), 1.0, GREY);
+                fcr_contacts(c, radar, range, |az, k| edge(fcr_point(az, k)));
+            });
+        }
         // The altitudes the scan covers at the cursor's range (thousands of feet).
         let r = ((hi.y - cursor.y) / (hi.y - lo.y)).clamp(0.0, 1.0) * range;
         let (low, high) = scan.coverage();
@@ -1947,6 +1947,41 @@ fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
         let at = cursor + Vec2::new(6.0, 0.0);
         stroke_text_at(c, at.x, at.y - 5.0, &alt(high).to_string(), 6.0, 1.0, WHITE, Align::Left);
         stroke_text_at(c, at.x, at.y + 5.0, &alt(low).to_string(), 6.0, 1.0, WHITE, Align::Left);
+    }
+}
+
+/// The A-A radar's search bricks (old ones dimmer, friendly ones green) and the locked
+/// aircraft (a filled square with its heading and its altitude in thousands of feet under it),
+/// placed by `at` (azimuth, range as a fraction of the display's).
+fn fcr_contacts(
+    c: &mut Canvas,
+    radar: &crate::aa_radar::AaRadar,
+    range: f32,
+    at: impl Fn(f32, f32) -> Vec2,
+) {
+    use crate::aa_radar::GIMBAL;
+    for b in &radar.bricks {
+        let k = b.range / range;
+        if k > 1.0 || b.az.abs() > GIMBAL {
+            continue;
+        }
+        let q = at(b.az, k);
+        let colour = if b.age > radar.frame {
+            GREY
+        } else if b.friendly {
+            GREEN
+        } else {
+            WHITE
+        };
+        c.fill_rect(q.x as i32 - 3, q.y as i32 - 1, 6, 3, colour);
+    }
+    if let Some(t) = radar.track.filter(|t| t.range <= range) {
+        let q = at(t.az, t.range / range);
+        c.fill_rect(q.x as i32 - 3, q.y as i32 - 3, 7, 7, WHITE);
+        let d = Vec2::new(t.rel_heading.sin(), -t.rel_heading.cos());
+        c.stroke(q + d * 5.0, q + d * 14.0, 1.3, WHITE);
+        let alt = format!("{}", (t.alt * FT / 1000.0).round() as i32);
+        stroke_text_at(c, q.x, q.y + 11.0, &alt, 7.0, 1.0, WHITE, Align::Centre);
     }
 }
 
@@ -1981,6 +2016,14 @@ pub fn gm_backdrop(
         }
     };
     radar.draw(&view, scale, pic_mut);
+    // The zoomed window's picture, inside its frame.
+    if av.soi_format() == Some(Format::Gm) && av.zoom_window() {
+        let cursor = av.gm_cursor;
+        let (a, b) = zoom_window_rect(Vec2::new(HIRES.0 as f32, HIRES.1 as f32), cursor);
+        let texel = |v: f32| (v * scale).round().max(0.0) as usize;
+        let rect = (texel(a.x + 1.0), texel(a.y + 1.0), texel(b.x - 1.0), texel(b.y - 1.0));
+        radar.draw_in(&view.zoomed(cursor, (a + b) / 2.0, ZOOM), scale, pic_mut, rect);
+    }
     Some(pic)
 }
 
@@ -2184,7 +2227,7 @@ fn draw_harm(p: &MfdParams, c: &mut Canvas, soi: bool) {
         draw_cursor(c, av.harm_cursor);
         if av.zoom_window() {
             let cursor = av.harm_cursor;
-            draw_zoom_window(c, cursor, |c, at| {
+            draw_zoom_window(c, cursor, BLACK, |c, at| {
                 harm_picture(p, c, at + (centre - cursor) * ZOOM, r * ZOOM)
             });
         }
@@ -2223,18 +2266,24 @@ fn harm_picture(p: &MfdParams, c: &mut Canvas, centre: Vec2, r: f32) {
 const ZOOM: f32 = 4.0;
 const ZOOM_WINDOW: Vec2 = Vec2::new(104.0, 80.0);
 
-/// The zoomed window shown while "lock cursor target" is held: in the corner away from the
-/// cursor, `draw` paints the page magnified around the cursor, which sits in the middle.
-fn draw_zoom_window(c: &mut Canvas, cursor: Vec2, draw: impl FnOnce(&mut Canvas, Vec2)) {
-    let size = Vec2::new(c.w as f32, c.h as f32);
+/// The zoomed window's corners on a display of `size` pixels: in the corner away from the
+/// cursor.
+fn zoom_window_rect(size: Vec2, cursor: Vec2) -> (Vec2, Vec2) {
     let x = if cursor.x > size.x / 2.0 { 3.0 } else { size.x - 3.0 - ZOOM_WINDOW.x };
     let y = if cursor.y > size.y / 2.0 {
         BAND as f32 + 3.0
     } else {
         size.y - BAND as f32 - 3.0 - ZOOM_WINDOW.y
     };
-    let (a, b) = (Vec2::new(x, y), Vec2::new(x, y) + ZOOM_WINDOW);
-    c.fill_rect(a.x as i32, a.y as i32, ZOOM_WINDOW.x as i32, ZOOM_WINDOW.y as i32, BLACK);
+    (Vec2::new(x, y), Vec2::new(x, y) + ZOOM_WINDOW)
+}
+
+/// The zoomed window shown while "lock cursor target" is held: in the corner away from the
+/// cursor, filled with `fill` (the ground map's lets its backdrop through), `draw` paints the
+/// page magnified around the cursor, which sits in the middle.
+fn draw_zoom_window(c: &mut Canvas, cursor: Vec2, fill: u8, draw: impl FnOnce(&mut Canvas, Vec2)) {
+    let (a, b) = zoom_window_rect(Vec2::new(c.w as f32, c.h as f32), cursor);
+    c.fill_rect(a.x as i32, a.y as i32, ZOOM_WINDOW.x as i32, ZOOM_WINDOW.y as i32, fill);
     c.set_clip(a.x as i32 + 1, a.y as i32 + 1, b.x as i32 - 2, b.y as i32 - 2);
     let at = (a + b) / 2.0;
     draw(c, at);
@@ -2268,6 +2317,11 @@ fn emitter_source(r: ContactRef) -> Option<stealth_sim::EmitterSource> {
 /// A lock on a simulation object picked on a display (`combat` passes it to the simulation).
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LockRequest(pub ContactRef);
+
+/// A display lock pressed on what is locked already lets go of it (`combat` clears the
+/// simulation's locks).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Unlock;
 
 /// The targeting pod locks what is at this map point (`combat` passes it to the simulation).
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
@@ -2557,7 +2611,8 @@ const PICK_RADIUS: f32 = 14.0;
 
 /// Moves the SOI's cursor with the slew controls; "lock cursor target" locks the nearest
 /// symbol under it (on the ground map: the nearest radar return, else the ground point),
-/// switching the HUD to the matching mode.
+/// switching the HUD to the matching mode. The radar formats lock when the button is let go,
+/// and let go of a lock pressed again on it.
 #[allow(clippy::too_many_arguments)]
 fn slew_and_lock(
     time: Res<Time>,
@@ -2573,7 +2628,11 @@ fn slew_and_lock(
     mut hud: ResMut<HudState>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     mut locks: MessageWriter<LockRequest>,
-    (mut designate, mut track): (MessageWriter<PodDesignate>, MessageWriter<PodTrack>),
+    (mut designate, mut track, mut unlock): (
+        MessageWriter<PodDesignate>,
+        MessageWriter<PodTrack>,
+        MessageWriter<Unlock>,
+    ),
 ) {
     let lock = actions.read().any(|a| a.0 == Action::LockCursor);
     if !state.modern {
@@ -2593,16 +2652,26 @@ fn slew_and_lock(
         .filter(|f| matches!(f, Format::Hsd | Format::Harm | Format::Gm | Format::Fcr));
     let av = &mut state.av;
     // Holding the lock shows the zoomed window and slews finely; letting go locks again, now
-    // picking only what is right under the cursor in the window. Not on the radar's formats,
-    // which lock at once.
+    // picking only what is right under the cursor in the window.
     let zoomed = av.zoom_window();
-    av.mark_held = if controls.mark && f.is_some_and(|f| !f.radar()) {
-        av.mark_held + time.delta_secs()
-    } else {
-        0.0
-    };
+    av.mark_held =
+        if controls.mark && f.is_some() { av.mark_held + time.delta_secs() } else { 0.0 };
     let release = zoomed && av.mark_held == 0.0;
-    let Some(f) = f else { return };
+    let Some(f) = f else {
+        av.radar_lock = false;
+        return;
+    };
+    let radius = if release { PICK_RADIUS / ZOOM } else { PICK_RADIUS };
+    // The radar formats lock once the button is let go (at once for a press without a hold,
+    // a script's), only then knowing whether the window was up.
+    let lock = if f.radar() {
+        av.radar_lock |= lock;
+        let go = (av.radar_lock || release) && !controls.mark;
+        av.radar_lock &= !go;
+        go
+    } else {
+        lock
+    };
     let fine = if zoomed { ZOOM } else { 1.0 };
     let delta =
         Vec2::new(controls.slew.x, -controls.slew.y) * SLEW_SPEED / fine * time.delta_secs();
@@ -2658,9 +2727,11 @@ fn slew_and_lock(
                 .filter(|&(_, r, _)| r <= range)
                 .map(|(az, r, target)| (fcr_point(az, r / range), target)),
             av.fcr_cursor,
-            PICK_RADIUS,
+            radius,
         );
-        if let Some(target) = near {
+        if near.is_some() && near == contacts.locked {
+            unlock.write(Unlock);
+        } else if let Some(target) = near {
             hud.mode = HudMode::Air;
             locks.write(LockRequest(target));
         }
@@ -2681,7 +2752,13 @@ fn slew_and_lock(
     if f == Format::Gm {
         let Some(gm) = gm.filter(|_| lock) else { return };
         let returns = radar.as_deref().map_or(&[][..], |r| &r.returns[..]);
-        let pick = gm_pick(returns, &gm, cursor);
+        let (pick, d) = gm_pick(returns, &gm, cursor, radius);
+        // The locked ground point under the cursor, no return nearer: let go of it.
+        let held = contacts.ground_lock.map(|(e, n)| gm.to_screen(e, n).distance(cursor));
+        if held.is_some_and(|h| h <= radius && d.is_none_or(|d| h <= d + 2.0)) {
+            unlock.write(Unlock);
+            return;
+        }
         av.tgp.mode = TgpMode::Slaved;
         av.tgp.track = None;
         hud.mode = HudMode::Gnd;
@@ -2698,7 +2775,6 @@ fn slew_and_lock(
         }
         return;
     }
-    let radius = if release { PICK_RADIUS / ZOOM } else { PICK_RADIUS };
     let picked = match f {
         Format::Hsd => view.and_then(|view| pick_contact(&contacts, &view, cursor, radius)),
         _ => {
@@ -2807,10 +2883,15 @@ enum GmPick {
     Point(i32, i32),
 }
 
-/// The ground map's designation at `cursor`: the nearest radar return within `PICK_RADIUS`
-/// where it was painted (objects and vehicles before buildings as near), else the ground
-/// point under the cursor.
-fn gm_pick(returns: &[crate::ground_radar::Return], view: &HsdView, cursor: Vec2) -> GmPick {
+/// The ground map's designation at `cursor`: the nearest radar return within `radius` where it
+/// was painted (objects and vehicles before buildings as near; and its distance), else the
+/// ground point under the cursor.
+fn gm_pick(
+    returns: &[crate::ground_radar::Return],
+    view: &HsdView,
+    cursor: Vec2,
+    radius: f32,
+) -> (GmPick, Option<f32>) {
     use crate::ground_radar::RadarTarget;
     let near = returns
         .iter()
@@ -2820,9 +2901,9 @@ fn gm_pick(returns: &[crate::ground_radar::Return], view: &HsdView, cursor: Vec2
             let d = if matches!(r.target, RadarTarget::Tile(..)) { d + 3.0 } else { d };
             (d, r.target)
         })
-        .filter(|(d, _)| *d <= PICK_RADIUS)
+        .filter(|(d, _)| *d <= radius)
         .min_by(|a, b| a.0.total_cmp(&b.0));
-    match near.map(|n| n.1) {
+    let pick = match near.map(|n| n.1) {
         Some(RadarTarget::Object(i)) => GmPick::Object(i),
         Some(RadarTarget::Unit(k)) => GmPick::Vehicle(k),
         Some(RadarTarget::Tile(x, y)) => GmPick::Point(x, y),
@@ -2830,7 +2911,8 @@ fn gm_pick(returns: &[crate::ground_radar::Return], view: &HsdView, cursor: Vec2
             let g = view.to_world(cursor);
             GmPick::Point((g.x / 32.0).round() as i32, (0x8000 as f64 - g.y / 32.0).round() as i32)
         }
-    }
+    };
+    (pick, near.map(|n| n.0))
 }
 
 /// Keeps the cursors on what they point at as the view changes: the HSD cursor on its ground
@@ -3286,9 +3368,11 @@ mod tests {
             Return::at(30.0, 10_000.0, RadarTarget::Unit(4)),
             Return::at(3000.0, 8000.0, RadarTarget::Object(9)),
         ];
-        assert_eq!(gm_pick(&returns, &view, px(0.0, 10_000.0)), GmPick::Vehicle(4));
-        assert_eq!(gm_pick(&returns, &view, px(3000.0, 8000.0) + Vec2::X * 3.0), GmPick::Object(9));
-        let GmPick::Point(x, y) = gm_pick(&returns, &view, px(-5000.0, 5000.0)) else {
+        assert_eq!(gm_pick(&returns, &view, px(0.0, 10_000.0), PICK_RADIUS).0, GmPick::Vehicle(4));
+        let at = px(3000.0, 8000.0) + Vec2::X * 3.0;
+        assert_eq!(gm_pick(&returns, &view, at, PICK_RADIUS).0, GmPick::Object(9));
+        let GmPick::Point(x, y) = gm_pick(&returns, &view, px(-5000.0, 5000.0), PICK_RADIUS).0
+        else {
             panic!("a ground point")
         };
         let ((e, n), (we, wn)) =
