@@ -1043,6 +1043,7 @@ fn rules_text(r: &stealth_host::Rules) -> String {
         (r.classic_terrain, "ops-rule-classic-terrain"),
         (r.classic_ai_flight, "ops-rule-classic-ai-flight"),
         (r.airframe_losses, "ops-rule-airframe-losses"),
+        (r.no_ai_missions, "ops-rule-no-ai-missions"),
     ]
     .iter()
     .filter(|x| x.0)

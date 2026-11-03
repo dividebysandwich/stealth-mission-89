@@ -913,3 +913,119 @@ fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
         assert!(u.flags & fflags::DESTROYED != 0 || u.flags & fflags::RTB != 0, "{u:?}");
     }
 }
+
+use stealth_sim::ai_missions::{AH1Z, AiTask, F16, F117};
+
+#[test]
+fn an_ai_recon_flight_photographs_its_object_and_flies_home() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let to = find(&sim, 0x001, Some("Tabor"));
+    let i = sim.spawn_ai_mission(from, F117, AiTask::Recon(to), 61, true);
+    assert_eq!(sim.flights()[i].spec, F117);
+    let (mut photo, mut landed) = (false, false);
+    for _ in 0..60 * 60 {
+        for e in run(&mut sim, &idle(), 1) {
+            match e {
+                SimEvent::CampaignPhotographed { tag: 61, .. } => photo = true,
+                SimEvent::CampaignFlightLanded { tag: 61, .. } => landed = true,
+                _ => {}
+            }
+        }
+        if landed {
+            break;
+        }
+    }
+    assert!(photo, "no photo");
+    assert!(landed, "it did not get home");
+}
+
+#[test]
+fn ai_gunships_fire_at_the_enemys_guns() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let b = sim.objects()[from];
+    let (x, y) = (b.x + 0x300, b.y);
+    sim.place_defences(x, y, false, false);
+    assert!(!sim.units().is_empty());
+    for tag in [71, 72] {
+        sim.spawn_ai_mission(from, AH1Z, AiTask::Ground(x, y), tag, true);
+    }
+    let mut seen = Vec::new();
+    until_down(&mut sim, 0, 20 * 60, &mut seen);
+    assert!(seen.contains(&27), "no rockets at the guns: {seen:?}");
+}
+
+#[test]
+fn a_pilot_takes_over_an_ai_aircraft_where_it_flies_and_hands_it_back() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let to = sim.objects()[find(&sim, 0x001, Some("Tabor"))];
+    let i = sim.spawn_ai_mission(from, F16, AiTask::Patrol(to.x, to.y), 81, true);
+    run(&mut sim, &idle(), 4 * 60);
+    let u = sim.flights()[i];
+    assert!(u.flags & fflags::AIRBORNE != 0 && u.alt > 1000, "{u:?}");
+    let airframe = Airframe { external_stores: true, ..Default::default() };
+    let st = sim.take_control(0, 81, from, None, airframe).expect("taken over");
+    assert_eq!((st.x, 0x10_0000 - st.y), (u.wx, u.wy));
+    assert_eq!(st.heading, u.heading as u16);
+    assert!(!st.on_ground && st.gear_up);
+    assert!((st.velocity as f64 / 27.0) > 200.0, "{} kt", st.velocity / 27);
+    assert!(sim.flight_of_tag(81).is_none(), "the AI does not fly it any more");
+    assert!(!sim.pilot_absent(0) && sim.pilot_in_the_air(0));
+    // No landing, no loss: the campaign hears nothing.
+    let ev = run(&mut sim, &st, 1);
+    assert!(!ev.iter().any(|e| matches!(
+        e,
+        SimEvent::CampaignFlightLanded { tag: 81, .. }
+            | SimEvent::CampaignFlightDestroyed { tag: 81, .. }
+    )));
+    // Back to the AI where he is.
+    let p = sim.pilot_input(0);
+    assert!(sim.hand_over(0, 82, F16, AiTask::Patrol(to.x, to.y), from, false, true));
+    let k = sim.flight_of_tag(82).expect("the AI flies it");
+    let a = sim.flights()[k];
+    assert_eq!((a.wx, a.wy), (p.x, 0x10_0000 - p.y));
+    assert_eq!(a.heading, p.heading as i32 as i16 as i32);
+    assert!(sim.pilot_absent(0));
+    let ended: Vec<MissionEnd> = sim
+        .take_pilot_events()
+        .into_iter()
+        .filter_map(|e| match e.event {
+            SimEvent::SortieEnded(m) => Some(m),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ended.len(), 1);
+    assert_eq!(ended[0].outcome, OUTCOME_HANDED_OVER);
+    // It flies on.
+    run(&mut sim, &idle(), 30);
+    assert!(sim.flight_of_tag(82).is_some());
+}
+
+#[test]
+fn air_defences_find_a_stealthy_ai_aircraft_closer() {
+    let mut fired = Vec::new();
+    for spec in [F16, stealth_sim::ai_missions::F22] {
+        let (_, mut sim) = campaign();
+        quiet(&mut sim);
+        let from = find(&sim, 0x401, Some("Neuburg"));
+        let b = sim.objects()[from];
+        let (px, py) = (b.x, b.y - 0x1000);
+        // A SAM site the F-16 over the point is in reach of, the F-22 not.
+        let site = &mut sim.objects_mut()[3];
+        site.unit_type = 5;
+        site.x = px + 0xA00;
+        site.y = py;
+        site.flags = 0;
+        let i = sim.spawn_ai_mission(from, spec, AiTask::Patrol(px, py), 91, true);
+        sim.set_fighter_loadout(i, Default::default());
+        let mut seen = Vec::new();
+        until_down(&mut sim, 91, 15 * 60, &mut seen);
+        fired.push(!seen.is_empty());
+    }
+    assert_eq!(fired, [true, false], "SAMs fired at the F-16, the F-22");
+}

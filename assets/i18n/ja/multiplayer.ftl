@@ -85,6 +85,7 @@ mp-time-of-day = 時刻（月明かりの夜）
 mp-realistic-weapons = リアルなF-117A兵装
 mp-friendly-fire = 友軍誤射
 mp-airframe-losses = 失った機体を数える
+mp-ai-missions = AIが任務を飛ぶ
 mp-day-night = 昼と夜：
 mp-weather = 天候：
 mp-host-new = 新規ホスト

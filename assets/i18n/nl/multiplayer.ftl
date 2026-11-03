@@ -85,6 +85,7 @@ mp-time-of-day = Tijd van de dag (nachten met maanlicht)
 mp-realistic-weapons = Realistische F-117A-wapens
 mp-friendly-fire = Friendly fire
 mp-airframe-losses = Verloren toestellen tellen
+mp-ai-missions = AI vliegt de missies
 mp-day-night = Dag en nacht:
 mp-weather = Weer:
 mp-host-new = NIEUW HOSTEN

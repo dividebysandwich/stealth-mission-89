@@ -80,6 +80,7 @@ ops-rule-time = ħin kontinwu
 ops-rule-weapons = armi realistiċi tal-F-117A
 ops-rule-friendly-fire = nar alleat
 ops-rule-airframe-losses = l-ajruplani mitlufa jgħoddu
+ops-rule-no-ai-missions = l-ebda missjoni tal-IA
 ops-rule-classic = klassiku
 ops-materiel = MATERJAL
 ops-materiel-blue = BLU { $materiel } (+{ $income }/h)

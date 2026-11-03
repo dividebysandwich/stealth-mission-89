@@ -88,6 +88,7 @@ mp-time-of-day = Time of day (moonlit nights)
 mp-realistic-weapons = Realistic F-117A weapons
 mp-friendly-fire = Friendly fire
 mp-airframe-losses = Lost aircraft count
+mp-ai-missions = AI flies the missions
 mp-day-night = Day and night:
 mp-weather = Weather:
 mp-host-new = HOST NEW

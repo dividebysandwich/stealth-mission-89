@@ -120,7 +120,7 @@ impl CampaignState {
 
     /// The callsign numbers of a sortie starting on `offer`: the flight of the others flying
     /// it, else the lowest one no sortie in the air has; the lowest position free in it.
-    fn callsign_numbers(&self, offer: u32) -> (u8, u8) {
+    pub(crate) fn callsign_numbers(&self, offer: u32) -> (u8, u8) {
         let flying: Vec<&Sortie> = self.players.iter().filter_map(|p| p.sortie.as_ref()).collect();
         let flight = flying
             .iter()
@@ -147,6 +147,11 @@ impl CampaignState {
             e => e,
         };
         self.leave_plans(player);
+        // An aircraft he took over from an AI flight is down or home (handed over: it flies
+        // on, back with its flight).
+        if end != SortieEnd::HandedOver {
+            self.controlled_ended(player, end);
+        }
         let mut ev = Vec::new();
         // His own insertion goes on with the wingmen (if any are left); a pilot aboard is lost
         // with the helicopter.
@@ -330,7 +335,7 @@ impl CampaignState {
         Ok(vec![self.plans_changed()])
     }
 
-    fn leave_plans(&mut self, player: PlayerId) {
+    pub(crate) fn leave_plans(&mut self, player: PlayerId) {
         for p in &mut self.plans {
             p.crew.retain(|&c| c != player);
             p.flying.retain(|&c| c != player);
@@ -529,7 +534,7 @@ impl CampaignState {
         }
     }
 
-    fn objective_met(&self, o: &Objective, p: &Progress) -> bool {
+    pub(crate) fn objective_met(&self, o: &Objective, p: &Progress) -> bool {
         let share = |total: usize, done: usize| {
             total > 0 && done as f32 >= (total as f32 * SUPPRESS_SHARE).ceil()
         };

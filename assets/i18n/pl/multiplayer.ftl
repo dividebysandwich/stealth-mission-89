@@ -85,6 +85,7 @@ mp-time-of-day = Pora dnia (noce przy księżycu)
 mp-realistic-weapons = Realistyczne uzbrojenie F-117A
 mp-friendly-fire = Ogień do swoich
 mp-airframe-losses = Utracone maszyny się liczą
+mp-ai-missions = SI lata misje
 mp-day-night = Dzień i noc:
 mp-weather = Pogoda:
 mp-host-new = ZAŁOŻYĆ NOWĄ

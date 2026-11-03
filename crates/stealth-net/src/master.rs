@@ -274,6 +274,7 @@ pub fn rules_list(r: &stealth_host::Rules) -> Vec<String> {
         (r.friendly_fire, "friendly fire"),
         (r.classic_terrain, "classic terrain"),
         (r.classic_ai_flight, "classic AI flight"),
+        (r.no_ai_missions, "no AI missions"),
     ]
     .iter()
     .filter(|x| x.0)

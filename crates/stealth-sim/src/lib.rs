@@ -11,6 +11,7 @@ pub mod units;
 
 mod ai;
 pub mod ai_flight;
+pub mod ai_missions;
 pub mod csar;
 mod damage;
 pub mod dlz;

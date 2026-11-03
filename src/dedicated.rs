@@ -39,6 +39,8 @@ stealth-mission-89 --dedicated [switches]
   --classic-terrain      the classic flat ground (default: rolling hills and highlands)
   --airframe-losses      a player's lost aircraft comes out of the friendly side's fighters or
                          helicopters (new campaigns)
+  --no-ai-missions       the AI does not fly the board's missions (new campaigns; default: it
+                         flies each 5 minutes after it is posted)
   --plain                log lines instead of the console screen (UTC timestamps; the screen is shown
                          when the output is a terminal; q or Ctrl-C stops the server)
 ";

@@ -10,8 +10,9 @@
 use serde::{Deserialize, Serialize};
 use stealth_campaign::weather::Forecast;
 use stealth_campaign::{
-    Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceKind, DefenceStock,
-    FighterTask, Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie, SortieRecord,
+    AiAirframe, Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceKind,
+    DefenceStock, FighterTask, Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie,
+    SortieEnd, SortieRecord,
 };
 use stealth_i18n::{Text, text};
 use stealth_mission::{GameData, Mission};
@@ -369,6 +370,50 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
+    /// A player takes over aircraft `tag` of a friendly AI flight in the air.
+    pub fn take_control(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        tag: u32,
+    ) -> Result<Vec<HostEvent>, Text> {
+        if sim.flight_of_tag(tag).is_none() {
+            return Err(text!("ce-no-ai-aircraft"));
+        }
+        let events = self.state.apply(player, Command::TakeControl { tag })?;
+        // Off to fly: his console is unmanned.
+        sim.leave_station(player.0);
+        let out = self.apply(sim, events);
+        // The aircraft was gone after all: no sortie.
+        if !out.iter().any(|e| matches!(e, HostEvent::SortieStarted { .. })) {
+            self.state.apply(player, Command::EndSortie { end: SortieEnd::Aborted }).ok();
+            return Err(text!("ce-no-ai-aircraft"));
+        }
+        Ok(out)
+    }
+
+    /// A player in the air leaves his aircraft to the AI: it flies his mission on, his sortie
+    /// ends.
+    pub fn leave_aircraft(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+    ) -> Result<Vec<HostEvent>, Text> {
+        if self.state.sortie(player).is_none() || !sim.pilot_in_the_air(player.0) {
+            return Err(text!("ce-not-in-the-air"));
+        }
+        let events = self.state.apply(player, Command::LeaveAircraft)?;
+        let mut out = self.apply(sim, events);
+        // His sortie's end (the rest goes on to the players as usual).
+        let (ended, rest): (Vec<PilotEvent>, Vec<PilotEvent>) = self
+            .take_sim_events(sim)
+            .into_iter()
+            .partition(|e| e.pilot == player.0 && matches!(e.event, SimEvent::SortieEnded(_)));
+        self.leftover = rest;
+        out.extend(self.tick(sim, 0.0, &ended));
+        Ok(out)
+    }
+
     /// A player's sortie ends from outside (aborted, or his flight model's crash), with the
     /// simulation's outcome codes.
     pub fn end_sortie(&mut self, sim: &mut Sim, player: PlayerId, outcome: u8) -> Vec<HostEvent> {
@@ -516,6 +561,9 @@ impl Host {
                 SimEvent::CampaignFlightLanded { tag, x, y, .. } => {
                     reports.push(Report::FlightLanded { tag, x, y })
                 }
+                SimEvent::CampaignPhotographed { tag, .. } => {
+                    reports.push(Report::Photographed { tag })
+                }
                 SimEvent::CampaignFlightDelivered { tag, .. } => {
                     reports.push(Report::SupplyDelivered { tag })
                 }
@@ -619,6 +667,25 @@ impl Host {
                     sim.spawn_awacs(*from as usize, *x, *y, *tag, *side == Side::Blue);
                 }
                 CampaignEvent::Recall { tag } => sim.recall_flight(*tag),
+                CampaignEvent::AiMissionLaunched { side, from, airframe, target, tags, .. } => {
+                    let from = *from as usize;
+                    let spec = match *airframe {
+                        AiAirframe::Blue(a) => glue::ai_spec(a),
+                        AiAirframe::Red(job) => {
+                            let to = glue::ai_target_point(&self.state, *target);
+                            sim.red_type(glue::red_type(job), from, to)
+                        }
+                    };
+                    for &tag in tags {
+                        let task = glue::ai_task(*target);
+                        sim.spawn_ai_mission(from, spec, task, tag, *side == Side::Blue);
+                    }
+                }
+                CampaignEvent::ControlLeft { player, tag, aircraft, from, target, home } => {
+                    let spec = glue::ai_spec(*aircraft);
+                    let task = glue::ai_task(*target);
+                    sim.hand_over(player.0, *tag, spec, task, *from as usize, *home, true);
+                }
                 CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
                     let (at, _) = crate::cargo::supply_crate(sim, *from as usize, *tag);
                     let pickup = Some(crate::cargo::world_units(at));
@@ -688,6 +755,32 @@ impl Host {
                 // His aircraft's target is the new mission's.
                 CampaignEvent::SortieRetasked { player, sortie } => {
                     sim.set_pilot_target(player.0, glue::sim_objective(sortie));
+                }
+                // He flies on from where the AI's aircraft was.
+                CampaignEvent::ControlTaken { player, tag, sortie } => {
+                    let airframe = self.rules.airframe(sortie.aircraft);
+                    let objective = glue::sim_objective(sortie);
+                    let base = sortie.base as usize;
+                    let Some(start) = sim.take_control(player.0, *tag, base, objective, airframe)
+                    else {
+                        continue;
+                    };
+                    // Its stores: the mission's (as the game shows them).
+                    let m = glue::sortie_mission(&self.mission, &self.state, sortie);
+                    let stations: Vec<(i32, i32)> = m
+                        .loadout
+                        .bays
+                        .iter()
+                        .take(m.loadout.usable_bays)
+                        .map(|b| (b.weapon as i32, b.count as i32))
+                        .collect();
+                    sim.set_pilot_loadout(player.0, &stations, 0);
+                    out.push(HostEvent::SortieStarted {
+                        player: *player,
+                        sortie: sortie.clone(),
+                        start,
+                    });
+                    continue;
                 }
                 CampaignEvent::SortieStarted { player, sortie } => {
                     let base = sortie.base as usize;

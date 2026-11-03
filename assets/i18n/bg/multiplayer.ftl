@@ -85,6 +85,7 @@ mp-time-of-day = Часът от денонощието (лунни нощи)
 mp-realistic-weapons = Реалистично въоръжение на F-117A
 mp-friendly-fire = Огън по свои
 mp-airframe-losses = Загубените самолети се броят
+mp-ai-missions = ИИ лети мисиите
 mp-day-night = Ден и нощ:
 mp-weather = Време:
 mp-host-new = НОВА ИГРА

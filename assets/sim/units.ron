@@ -80,6 +80,16 @@
         (id: "fp2", name: "FP-2", nato: "FP-2", kmh: 190, radius_km: 100, agility: 2, radar: "none", model: 103, kind: Drone),
         (id: "stork100", name: "Stork-100", nato: "Stork", kmh: 90, radius_km: 50, agility: 2, radar: "none", model: 104, kind: Drone),
         (id: "interceptor", name: "Interceptor", nato: "Interceptor", kmh: 600, radius_km: 25, agility: 5, radar: "none", model: 105, kind: Drone),
+        // The players' aircraft, flown by the AI on the campaign's missions (`stealth`: how far
+        // air defences find it, in percent of the usual).
+        (id: "f117", name: "F-117A", nato: "Nighthawk", mach: 0.92, radius_km: 860, agility: 2, radar: "friendly", model: 24, stealth: 30),
+        (id: "f22", name: "F-22A", nato: "Raptor", mach: 2.25, radius_km: 850, agility: 5, radar: "friendly", model: 75, stealth: 40),
+        (id: "tornado", name: "Tornado", nato: "Tornado", mach: 1.3, radius_km: 870, agility: 3, radar: "friendly", model: 45),
+        (id: "av8b", name: "AV-8B", nato: "Harrier", mach: 0.89, radius_km: 550, agility: 4, radar: "friendly", model: 47),
+        (id: "ah1z", name: "AH-1Z", nato: "Viper", kmh: 296, radius_km: 230, agility: 2, radar: "none", model: 43, kind: Helicopter),
+        (id: "rah66", name: "RAH-66", nato: "Comanche", kmh: 324, radius_km: 280, agility: 3, radar: "none", model: 46, kind: Helicopter, stealth: 50),
+        (id: "oh58", name: "OH-58D", nato: "Kiowa", kmh: 222, radius_km: 210, agility: 2, radar: "none", model: 48, kind: Helicopter),
+        (id: "ch47", name: "CH-47F", nato: "Chinook", kmh: 315, radius_km: 370, agility: 1, radar: "none", model: 49, kind: Helicopter),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,

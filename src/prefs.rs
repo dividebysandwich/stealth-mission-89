@@ -45,6 +45,7 @@ pub struct Prefs {
     pub lockheed: bool,
     pub friendly_fire: bool,
     pub airframe_losses: bool,
+    pub ai_missions: bool,
     pub weather: Option<Sky>,
     pub cloud_cover: Option<u8>,
     pub start_hour: Option<u8>,
@@ -136,6 +137,7 @@ impl Default for Prefs {
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
+            ai_missions: menu.ai_missions,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -242,6 +244,7 @@ impl Prefs {
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
+            ai_missions: menu.ai_missions,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
             start_hour: menu.start_hour,
@@ -319,6 +322,7 @@ impl Prefs {
         menu.lockheed = self.lockheed;
         menu.friendly_fire = self.friendly_fire;
         menu.airframe_losses = self.airframe_losses;
+        menu.ai_missions = self.ai_missions;
         menu.weather = self.weather;
         menu.cloud_cover = self.cloud_cover.map(|c| c.min(100));
         menu.start_hour = self.start_hour.map(|h| h.min(23));

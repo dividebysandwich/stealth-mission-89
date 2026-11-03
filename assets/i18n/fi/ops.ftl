@@ -80,6 +80,7 @@ ops-rule-time = jatkuva aika
 ops-rule-weapons = realistiset F-117A-aseet
 ops-rule-friendly-fire = omien tulitus
 ops-rule-airframe-losses = menetetyt koneet lasketaan
+ops-rule-no-ai-missions = ei tekoälyn tehtäviä
 ops-rule-classic = klassinen
 ops-materiel = MATERIAALI
 ops-materiel-blue = SININEN { $materiel } (+{ $income }/h)

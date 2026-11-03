@@ -80,6 +80,7 @@ ops-rule-time = nepřetržitý čas
 ops-rule-weapons = realistická výzbroj F-117A
 ops-rule-friendly-fire = palba do vlastních
 ops-rule-airframe-losses = ztracené letouny se počítají
+ops-rule-no-ai-missions = bez misí UI
 ops-rule-classic = klasické
 ops-materiel = MATERIÁL
 ops-materiel-blue = MODŘÍ { $materiel } (+{ $income }/h)

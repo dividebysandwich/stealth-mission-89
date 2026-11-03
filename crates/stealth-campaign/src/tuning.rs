@@ -340,3 +340,26 @@ pub const REPAIR_ARMOUR: f64 = 30.0 * 60.0;
 pub const ARMOUR_COST: f64 = 4.0;
 /// A side whose convoy cleared a place without troops tries this long (s) to send helicopters.
 pub const CONVOY_INSERTION_WAIT: f64 = 30.0 * 60.0;
+
+/// AI missions (`ai_missions.rs`): the AI flies a mission of a side's board this long after it
+/// was posted (and again this long after its last flight came back without it done), no more
+/// than this many of a side's at once, each at this cost.
+pub const AI_MISSION_WAIT: f64 = 5.0 * 60.0;
+pub const AI_MISSIONS_MAX: usize = 4;
+pub const AI_MISSION_COST: f64 = 10.0;
+/// Aircraft of a flight: a recon flies alone, every other mission a pair.
+pub const AI_RECON_AIRCRAFT: usize = 1;
+pub const AI_FLIGHT_AIRCRAFT: usize = 2;
+/// The helicopters go for targets this close to their base (40 km).
+pub const AI_HELO_RANGE: i32 = 0xA00;
+/// A heavy air defence (the offer's threat: a SAM site weighs `SAM_THREAT`, a gun 1), and
+/// heavy fighter opposition (enemy aircraft in the air within `AIR_THREAT_RANGE`, 64 km).
+pub const HEAVY_SAM_THREAT: i32 = 2 * SAM_THREAT;
+pub const HEAVY_AIR_THREAT: usize = 2;
+pub const AIR_THREAT_RANGE: i32 = 0x1000;
+/// A flight still out this long is written off (its aircraft fly on without it).
+pub const AI_MISSION_TIMEOUT: f64 = 45.0 * 60.0;
+/// Done missions are forgotten this long after (a new flight may still go after `wait`).
+pub const AI_MISSION_MEMORY: f64 = 30.0 * 60.0;
+/// The enemy's recon of a friendly place is good this long.
+pub const RED_INTEL_SECONDS: f64 = 3600.0;

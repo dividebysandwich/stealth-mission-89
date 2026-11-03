@@ -80,6 +80,7 @@ ops-rule-time = ciągły czas
 ops-rule-weapons = realistyczne uzbrojenie F-117A
 ops-rule-friendly-fire = ogień do swoich
 ops-rule-airframe-losses = utracone maszyny się liczą
+ops-rule-no-ai-missions = bez misji SI
 ops-rule-classic = klasyczne
 ops-materiel = ZASOBY
 ops-materiel-blue = NIEBIESCY { $materiel } (+{ $income }/h)

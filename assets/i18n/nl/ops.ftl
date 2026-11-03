@@ -80,6 +80,7 @@ ops-rule-time = doorlopende tijd
 ops-rule-weapons = realistische F-117A-wapens
 ops-rule-friendly-fire = friendly fire
 ops-rule-airframe-losses = verloren toestellen tellen
+ops-rule-no-ai-missions = geen AI-missies
 ops-rule-classic = klassiek
 ops-materiel = MATERIEEL
 ops-materiel-blue = BLAUW { $materiel } (+{ $income }/u)

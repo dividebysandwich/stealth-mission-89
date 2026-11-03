@@ -85,6 +85,7 @@ mp-time-of-day = Doba dana (mjesečeve noći)
 mp-realistic-weapons = Realistično naoružanje F-117A
 mp-friendly-fire = Prijateljska paljba
 mp-airframe-losses = Izgubljeni zrakoplovi se broje
+mp-ai-missions = UI leti misije
 mp-day-night = Dan i noć:
 mp-weather = Vrijeme:
 mp-host-new = POKRENI NOVU

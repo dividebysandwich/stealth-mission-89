@@ -85,6 +85,7 @@ mp-time-of-day = Napszak (holdfényes éjszakák)
 mp-realistic-weapons = Valósághű F-117A fegyverzet
 mp-friendly-fire = Baráti tűz
 mp-airframe-losses = Az elvesztett gépek számítanak
+mp-ai-missions = Az MI repüli a küldetéseket
 mp-day-night = Nappal és éjszaka:
 mp-weather = Időjárás:
 mp-host-new = ÚJ INDÍTÁSA

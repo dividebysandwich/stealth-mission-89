@@ -85,6 +85,7 @@ mp-time-of-day = Tid på dygnet (månljusa nätter)
 mp-realistic-weapons = Realistiska F-117A-vapen
 mp-friendly-fire = Vådabeskjutning
 mp-airframe-losses = Förlorade flygplan räknas
+mp-ai-missions = AI flyger uppdragen
 mp-day-night = Dag och natt:
 mp-weather = Väder:
 mp-host-new = STARTA NYTT

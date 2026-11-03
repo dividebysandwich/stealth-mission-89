@@ -80,6 +80,7 @@ ops-rule-time = neprekinuto vrijeme
 ops-rule-weapons = realistično naoružanje F-117A
 ops-rule-friendly-fire = prijateljska paljba
 ops-rule-airframe-losses = izgubljeni zrakoplovi se broje
+ops-rule-no-ai-missions = bez misija UI
 ops-rule-classic = klasično
 ops-materiel = MATERIJAL
 ops-materiel-blue = PLAVI { $materiel } (+{ $income }/h)

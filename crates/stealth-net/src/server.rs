@@ -265,6 +265,8 @@ impl Server {
             }
             (ToServer::EndSortie { outcome }, Some(p)) => Ok(host.end_sortie(sim, p, outcome)),
             (ToServer::Retask { offer }, Some(p)) => host.retask(sim, p, offer),
+            (ToServer::TakeControl { tag }, Some(p)) => host.take_control(sim, p, tag),
+            (ToServer::LeaveAircraft, Some(p)) => host.leave_aircraft(sim, p),
             (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
             (ToServer::Hit(hit), Some(p)) => {
                 sim.claim_hit(p.0, hit);

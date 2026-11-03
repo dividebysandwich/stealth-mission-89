@@ -80,6 +80,7 @@ ops-rule-time = безперервний час
 ops-rule-weapons = реалістичне озброєння F-117A
 ops-rule-friendly-fire = дружній вогонь
 ops-rule-airframe-losses = втрачені машини враховуються
+ops-rule-no-ai-missions = без завдань ШІ
 ops-rule-classic = класичні
 ops-materiel = МАТЕРІАЛЬНІ ЗАСОБИ
 ops-materiel-blue = СИНІ { $materiel } (+{ $income }/год)

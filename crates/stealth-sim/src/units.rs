@@ -38,6 +38,12 @@ struct Aircraft {
     model: i16,
     #[serde(default)]
     kind: AircraftKind,
+    #[serde(default = "full")]
+    stealth: u8,
+}
+
+fn full() -> u8 {
+    100
 }
 
 #[derive(Deserialize, Clone, Copy, PartialEq)]
@@ -197,6 +203,7 @@ pub fn tables(text: &str) -> Result<Tables> {
             unknown: 2,
             kills: 0,
             kind: a.kind,
+            stealth: a.stealth,
         });
     }
 
@@ -333,7 +340,7 @@ mod tests {
     fn units_build_the_tables() {
         let t = shipped();
         assert_eq!(t.threats.len(), 27);
-        assert_eq!(t.aircraft.len(), 36);
+        assert_eq!(t.aircraft.len(), 44);
         assert_eq!(t.missiles.len(), 50);
         assert_eq!((t.weapons.len(), t.compat.len()), (24, 24));
         assert!(

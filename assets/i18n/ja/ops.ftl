@@ -80,6 +80,7 @@ ops-rule-time = 連続時間
 ops-rule-weapons = リアルなF-117A兵装
 ops-rule-friendly-fire = 友軍誤射
 ops-rule-airframe-losses = 失った機体を数える
+ops-rule-no-ai-missions = AI任務なし
 ops-rule-classic = クラシック
 ops-materiel = 物資
 ops-materiel-blue = 青軍 { $materiel }（+{ $income }/時）

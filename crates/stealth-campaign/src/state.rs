@@ -176,11 +176,20 @@ pub struct Place {
     pub armour_lost: u8,
     #[serde(default)]
     pub armour_repair_at: Option<f64>,
+    /// The other side's recon of it, valid until then (an enemy reconnaissance flight looked
+    /// at a friendly place: its strikes may follow).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub red_intel_until: Option<f64>,
 }
 
 impl Place {
     pub fn intel(&self, now: f64) -> bool {
         self.intel_until.is_some_and(|t| t > now)
+    }
+
+    /// The enemy's recon of a friendly place is still good.
+    pub fn red_intel(&self, now: f64) -> bool {
+        self.red_intel_until.is_some_and(|t| t > now)
     }
 }
 
@@ -471,6 +480,8 @@ pub enum SortieEnd {
     /// Ejected and picked up by the rescue helicopter, or captured waiting for it.
     Rescued,
     Captured,
+    /// The pilot left the aircraft to the AI in the air (it flies the mission on).
+    HandedOver,
 }
 
 impl SortieEnd {
@@ -483,6 +494,7 @@ impl SortieEnd {
             SortieEnd::Aborted => "sortie-end-aborted",
             SortieEnd::Rescued => "sortie-end-rescued",
             SortieEnd::Captured => "sortie-end-captured",
+            SortieEnd::HandedOver => "sortie-end-handed-over",
         }
     }
 
@@ -495,6 +507,7 @@ impl SortieEnd {
             SortieEnd::Aborted => "Aborted",
             SortieEnd::Rescued => "Ejected - extracted",
             SortieEnd::Captured => "Ejected - captured",
+            SortieEnd::HandedOver => "Handed over to the AI",
         }
     }
 }
@@ -726,6 +739,9 @@ pub struct CampaignRules {
     /// The players' lost aircraft come out of the friendly side's.
     #[serde(default)]
     pub airframe_losses: bool,
+    /// The AI does not fly the board's missions (it does by default).
+    #[serde(default)]
+    pub no_ai_missions: bool,
 }
 
 fn blue() -> Side {
@@ -991,6 +1007,12 @@ pub struct CampaignState {
     pub convoys: Vec<crate::Convoy>,
     #[serde(default)]
     pub convoy_at: [f64; 2],
+    /// The AI flights flying missions of a side's board (`ai_missions`), and the enemy's own
+    /// board (nobody sees it; its AI flies it).
+    #[serde(default)]
+    pub ai_missions: Vec<crate::AiMission>,
+    #[serde(default)]
+    pub red_board: Vec<MissionOffer>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1427,6 +1449,7 @@ impl CampaignState {
                         armour_lost: 0,
                         armour_repair_at: None,
                         guns_repair_at: None,
+                        red_intel_until: None,
                     });
                     places.len() - 1
                 }
@@ -1500,6 +1523,8 @@ impl CampaignState {
             deployments: Vec::new(),
             convoys: Vec::new(),
             convoy_at: [0.0; 2],
+            ai_missions: Vec::new(),
+            red_board: Vec::new(),
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));

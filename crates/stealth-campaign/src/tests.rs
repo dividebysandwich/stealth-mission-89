@@ -3059,3 +3059,201 @@ fn enemy_insertions_go_for_what_a_place_is_worth() {
     let ins = c.insertions.iter().find(|i| i.side == Side::Red).expect("an enemy insertion");
     assert!(c.place_value(ins.place) >= best, "{values:?} -> {}", ins.place);
 }
+
+/// A campaign with the AI flying the boards (the default rules).
+fn ai_campaign() -> CampaignState {
+    let mut c = campaign("central_europe", 3);
+    c.rules = Some(CampaignRules::default());
+    c.tick(1.0, &WorldView::default(), &[]);
+    c
+}
+
+fn ai_launched(ev: &[CampaignEvent]) -> Vec<(Side, Vec<u32>)> {
+    ev.iter()
+        .filter_map(|e| match e {
+            CampaignEvent::AiMissionLaunched { side, tags, .. } => Some((*side, tags.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn the_ai_flies_an_offer_five_minutes_after_it_was_posted() {
+    let mut c = ai_campaign();
+    let recon = c.board.iter().find(|o| o.kind == MissionKind::Recon).expect("recon").clone();
+    let due = c.ai_launch_at(&recon).expect("the AI flies it");
+    assert_eq!(due, recon.posted + tuning::AI_MISSION_WAIT);
+    c.tick(due - c.clock - 1.0, &WorldView::default(), &[]);
+    assert!(c.ai_mission_for(recon.id).is_none());
+    let ev = c.tick(2.0, &WorldView::default(), &[]);
+    let m = c.ai_mission_for(recon.id).expect("launched").clone();
+    assert!(m.open());
+    assert_eq!(m.tags.len(), 1, "a recon flies alone");
+    assert!(ai_launched(&ev).iter().any(|(s, t)| *s == Side::Blue && *t == m.tags));
+    // Every other mission a pair.
+    for m in
+        c.ai_missions.iter().filter(|m| m.side == Side::Blue && m.offer.kind != MissionKind::Recon)
+    {
+        assert_eq!(m.tags.len(), 2, "{:?}", m.offer.kind);
+    }
+    assert!(
+        c.ai_missions.iter().filter(|m| m.side == Side::Blue).count() <= tuning::AI_MISSIONS_MAX
+    );
+}
+
+#[test]
+fn the_ai_leaves_an_offer_a_player_flies_and_flies_one_a_player_only_plans() {
+    let mut c = ai_campaign();
+    let (flown, _) = take(&mut c, P0, MissionKind::Recon);
+    let planned = c.board.iter().find(|o| o.kind == MissionKind::Sead).expect("sead").clone();
+    c.apply(PlayerId(1), Command::Select { offer: Some(planned.id), base: planned.base }).unwrap();
+    for _ in 0..7 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.ai_mission_for(flown).is_none(), "a player flies it");
+    assert!(c.ai_mission_for(planned.id).is_some(), "planning does not keep the AI home");
+}
+
+#[test]
+fn without_the_rule_nobody_flies_the_boards() {
+    let mut c = campaign("central_europe", 3);
+    c.rules = Some(CampaignRules { no_ai_missions: true, ..Default::default() });
+    for _ in 0..8 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.ai_missions.is_empty());
+    assert!(c.red_board.is_empty());
+}
+
+#[test]
+fn the_ai_picks_the_aircraft_for_the_job() {
+    use Aircraft::*;
+    let heavy = tuning::HEAVY_SAM_THREAT;
+    let fighters = tuning::HEAVY_AIR_THREAT;
+    // Heavy air defences: the stealthy ones, the Tornado low against the SAMs.
+    assert_eq!(pick_blue(MissionKind::Strike, heavy, 0, false), F117);
+    assert_eq!(pick_blue(MissionKind::Recon, heavy, 0, false), F117);
+    assert_eq!(pick_blue(MissionKind::Sead, heavy, 0, false), Tornado);
+    assert_eq!(pick_blue(MissionKind::Sead, heavy, fighters, false), F22);
+    // The enemy's fighters up: the fighters.
+    assert_eq!(pick_blue(MissionKind::Strike, 0, fighters, false), F16);
+    assert_eq!(pick_blue(MissionKind::Cas, 0, fighters, false), AV8B);
+    assert_eq!(pick_blue(MissionKind::Cap, 0, fighters, false), F22);
+    assert_eq!(pick_blue(MissionKind::Cap, 0, 0, false), F16);
+    // Close to the base: the helicopters.
+    assert_eq!(pick_blue(MissionKind::Recon, 0, 0, true), OH58);
+    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, true), AH1Z);
+    assert_eq!(pick_blue(MissionKind::Cas, heavy, 0, true), RAH66);
+    // Else the one made for it.
+    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, false), A10);
+    assert_eq!(pick_red(MissionKind::Cas, true), RedJob::Helicopter);
+    assert_eq!(pick_red(MissionKind::Strike, false), RedJob::Strike);
+}
+
+#[test]
+fn the_enemy_flies_its_own_board_and_strikes_what_it_scouted() {
+    let mut c = ai_campaign();
+    let recon =
+        c.red_board.iter().find(|o| o.kind == MissionKind::Recon).expect("red recon").clone();
+    assert!(!c.red_board.iter().any(|o| o.kind == MissionKind::Strike), "nothing scouted yet");
+    let mut ev = Vec::new();
+    for _ in 0..6 {
+        ev.extend(c.tick(60.0, &WorldView::default(), &[]));
+    }
+    assert!(ai_launched(&ev).iter().any(|(s, _)| *s == Side::Red), "the enemy's AI flies");
+    let m = c.ai_mission_for(recon.id).expect("red recon flight").clone();
+    assert_eq!(m.side, Side::Red);
+    assert_eq!(m.airframe, AiAirframe::Red(RedJob::Recon));
+    // Its photo: the place is known, a strike on its airfield goes on its board.
+    let Objective::Recon { place, .. } = recon.objective else { unreachable!() };
+    c.tick(1.0, &WorldView::default(), &[Report::Photographed { tag: m.tags[0] }]);
+    assert!(c.places[place as usize].red_intel(c.clock));
+    c.tick(1.0, &WorldView::default(), &[]);
+    if c.places[place as usize].airfield.is_some() {
+        assert!(
+            c.red_board
+                .iter()
+                .any(|o| matches!(o.objective, Objective::Strike { place: p, .. } if p == place))
+        );
+    }
+}
+
+#[test]
+fn a_friendly_recon_flight_brings_the_intelligence() {
+    let mut c = ai_campaign();
+    let recon = c.board.iter().find(|o| o.kind == MissionKind::Recon).expect("recon").clone();
+    let Objective::Recon { place, .. } = recon.objective else { unreachable!() };
+    for _ in 0..6 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    let tag = c.ai_mission_for(recon.id).expect("launched").tags[0];
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::Photographed { tag }]);
+    assert!(c.places[place as usize].intel(c.clock));
+    assert!(c.ai_mission_for(recon.id).unwrap().achieved);
+    assert!(ev.contains(&CampaignEvent::Recall { tag }), "it flies home");
+    // Back on the ground: the flight is over, the aircraft back with the side.
+    let (fighters, helicopters) = (c.blue.fighters, c.blue.helicopters);
+    c.ai_mission_report(&Report::FlightLanded { tag, x: 0, y: 0 }, &mut Vec::new());
+    let heli = c.ai_mission_for(recon.id).unwrap().airframe.helicopter();
+    assert_eq!(
+        (c.blue.fighters, c.blue.helicopters),
+        (fighters + !heli as u32, helicopters + heli as u32)
+    );
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!c.ai_mission_for(recon.id).unwrap().open());
+}
+
+#[test]
+fn a_player_takes_over_an_ai_aircraft_and_hands_it_back() {
+    let mut c = ai_campaign();
+    for _ in 0..6 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    let m =
+        c.ai_missions.iter().find(|m| m.side == Side::Blue && m.open()).expect("flight").clone();
+    let tag = m.takeable().expect("an aircraft to take");
+    let ev = c.apply(P0, Command::TakeControl { tag }).unwrap();
+    let sortie = c.sortie(P0).expect("flying").clone();
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::ControlTaken { tag: t, .. } if *t == tag))
+    );
+    assert_eq!(sortie.offer.id, m.offer.id);
+    assert_eq!(AiAirframe::Blue(sortie.aircraft), m.airframe);
+    // Nobody else gets it, and the AI is not flying it.
+    assert!(c.apply(PlayerId(1), Command::TakeControl { tag }).is_err());
+    assert!(!c.ai_mission_for(m.offer.id).unwrap().flying().any(|t| t == tag));
+    // Back to the AI: the same aircraft flies on, his sortie ends handed over.
+    let ev = c.apply(P0, Command::LeaveAircraft).unwrap();
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ControlLeft { tag: t, .. } if *t == tag)));
+    let record = finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::HandedOver }).unwrap());
+    assert_eq!(record.end, SortieEnd::HandedOver);
+    assert!(c.sortie(P0).is_none());
+    assert!(c.ai_mission_for(m.offer.id).unwrap().flying().any(|t| t == tag));
+}
+
+#[test]
+fn a_player_leaves_his_own_aircraft_to_the_ai() {
+    let mut c = ai_campaign();
+    let (offer, _) = take(&mut c, P0, MissionKind::Strike);
+    let ev = c.apply(P0, Command::LeaveAircraft).unwrap();
+    let tag = ev
+        .iter()
+        .find_map(|e| match e {
+            CampaignEvent::ControlLeft { tag, aircraft, .. } => {
+                assert_eq!(*aircraft, Aircraft::F16);
+                Some(*tag)
+            }
+            _ => None,
+        })
+        .expect("left");
+    c.apply(P0, Command::EndSortie { end: SortieEnd::HandedOver }).unwrap();
+    let m = c.ai_mission_for(offer).expect("the AI flies it on");
+    assert_eq!(m.tags, vec![tag]);
+    assert_eq!(m.pooled, vec![false], "his own aircraft, not the side's");
+    // A crash in a taken-over aircraft: it is gone from its flight.
+    let tag = m.takeable().unwrap();
+    c.apply(P0, Command::TakeControl { tag }).unwrap();
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap();
+    let m = c.ai_mission_for(offer).unwrap();
+    assert!(m.alive.iter().all(|a| !a));
+}

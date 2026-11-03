@@ -13,7 +13,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 27;
+pub const PROTOCOL: u16 = 28;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -89,6 +89,12 @@ pub enum ToServer {
     Retask {
         offer: u32,
     },
+    /// Take over aircraft `tag` of a friendly AI flight in the air.
+    TakeControl {
+        tag: u32,
+    },
+    /// In the air: leave the aircraft to the AI (it flies the mission on).
+    LeaveAircraft,
     /// Landed at a friendly base: rearm and refuel.
     Rearm {
         stores: Stores,

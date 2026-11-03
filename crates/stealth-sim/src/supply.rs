@@ -192,6 +192,7 @@ impl Sim {
                 hooked: false,
                 set_down: false,
             }),
+            strike_unit: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i

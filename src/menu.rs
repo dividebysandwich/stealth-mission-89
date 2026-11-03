@@ -71,6 +71,8 @@ pub struct MenuState {
     pub friendly_fire: bool,
     /// A campaign's players' lost aircraft come out of the friendly side's.
     pub airframe_losses: bool,
+    /// A campaign's AI flies the board's missions (5 minutes after they are posted).
+    pub ai_missions: bool,
     /// None: rolled from the seed.
     pub weather: Option<Sky>,
     /// Coverage of the main cloud layer; None: rolled.
@@ -162,6 +164,7 @@ impl Default for MenuState {
             lockheed: false,
             friendly_fire: false,
             airframe_losses: false,
+            ai_missions: true,
             weather: None,
             cloud_cover: None,
             seed: rand::random(),

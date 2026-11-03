@@ -11,6 +11,7 @@ use stealth_i18n::{Text, text};
 impl CampaignState {
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         self.sortie_report(r);
+        self.ai_mission_report(r, ev);
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
         match *r {
@@ -160,6 +161,7 @@ impl CampaignState {
         let p = &mut self.places[place as usize];
         p.owner = side;
         p.intel_until = None;
+        p.red_intel_until = None;
         // The new owner's guns and armour, at full strength.
         p.guns_lost = 0;
         p.guns_repair_at = None;
@@ -1011,7 +1013,10 @@ impl CampaignState {
                 self.order_raid(place, 0, from, Some(sam), false, ev);
                 return;
             }
-            match self.raid_target().filter(|_| ready) {
+            // With the AI flying the boards, the enemy's strikes are the ones of its board.
+            let target =
+                if self.ai_missions_on() { self.red_strike_due() } else { self.raid_target() };
+            match target.filter(|_| ready) {
                 Some((place, target, from)) => {
                     self.pay(Side::Red, RAID_COST, Spend::Operations);
                     self.raid_at = now;

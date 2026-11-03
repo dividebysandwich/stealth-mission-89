@@ -806,6 +806,10 @@ impl WorldDamage {
     }
 }
 
+/// [`MissionEnd::outcome`] of a campaign sortie whose pilot left his aircraft to the AI in the
+/// air.
+pub const OUTCOME_HANDED_OVER: u8 = 9;
+
 /// Mission end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionEnd {
@@ -1029,6 +1033,11 @@ pub enum SimEvent {
         unit: usize,
         tag: u32,
         aaa: usize,
+    },
+    /// Campaign: a recon aircraft the campaign launched photographed its object.
+    CampaignPhotographed {
+        unit: usize,
+        tag: u32,
     },
 }
 

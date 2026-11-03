@@ -80,6 +80,7 @@ ops-rule-time = tiempo continuo
 ops-rule-weapons = armamento realista del F-117A
 ops-rule-friendly-fire = fuego amigo
 ops-rule-airframe-losses = aeronaves perdidas cuentan
+ops-rule-no-ai-missions = sin misiones de IA
 ops-rule-classic = clásicas
 ops-materiel = MATERIAL
 ops-materiel-blue = AZUL { $materiel } (+{ $income }/h)

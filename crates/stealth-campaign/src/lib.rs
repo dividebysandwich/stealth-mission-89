@@ -21,6 +21,7 @@
 //! state is plain serialisable data with its own random stream: the same seed, commands and
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
+mod ai_missions;
 mod convoy;
 mod crew;
 mod deploy;
@@ -42,6 +43,9 @@ pub mod weather;
 use serde::{Deserialize, Serialize};
 use stealth_i18n::Text;
 
+pub use ai_missions::{
+    AiAirframe, AiMission, AiMissionState, AiTarget, RedJob, ai_flown, pick_blue, pick_red,
+};
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{footprint, loads};
@@ -158,6 +162,10 @@ pub enum Report {
         aaa: u32,
         side: Side,
     },
+    /// An AI recon flight's aircraft photographed its object.
+    Photographed {
+        tag: u32,
+    },
 }
 
 /// A player's request.
@@ -195,6 +203,10 @@ pub enum Command {
     /// In the air: take an urgent mission from the board instead of the one flown (a divert
     /// the AWACS called).
     Retask { offer: u32 },
+    /// Take over aircraft `tag` of a friendly AI flight in the air.
+    TakeControl { tag: u32 },
+    /// In the air: leave the aircraft to the AI (it flies the mission on).
+    LeaveAircraft,
 }
 
 /// What the authority has to do or show.
@@ -367,6 +379,32 @@ pub enum CampaignEvent {
     /// News for the players (shown on the HUD and in the campaign log), translated where it is
     /// shown.
     Message(Text),
+    /// A flight of the AI (tags) of a side takes off from a base for a mission of its board.
+    AiMissionLaunched {
+        id: u32,
+        side: Side,
+        from: ObjectId,
+        airframe: AiAirframe,
+        target: AiTarget,
+        tags: Vec<u32>,
+    },
+    /// A player took over aircraft `tag` of a friendly AI flight: his sortie starts where it
+    /// is.
+    ControlTaken {
+        player: PlayerId,
+        tag: u32,
+        sortie: Sortie,
+    },
+    /// A player left his aircraft to the AI (it is `tag` from now on, flying for `target` from
+    /// base `from`; `home`: its job is done, it flies home).
+    ControlLeft {
+        player: PlayerId,
+        tag: u32,
+        aircraft: Aircraft,
+        from: ObjectId,
+        target: AiTarget,
+        home: bool,
+    },
 }
 
 fn blue() -> Side {
@@ -383,6 +421,8 @@ impl CampaignState {
             Command::OrderInsertion { place } => self.order_insertion(Some(player), place),
             Command::EndSortie { end } => Ok(self.end_sortie(player, end)),
             Command::Retask { offer } => self.retask(player, offer),
+            Command::TakeControl { tag } => self.take_control(player, tag),
+            Command::LeaveAircraft => self.leave_aircraft(player),
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),
@@ -426,6 +466,7 @@ impl CampaignState {
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
         self.run_deployments(view, &mut ev);
+        self.run_ai_missions(view, &mut ev);
         if self.check_outcome(&mut ev) {
             return ev;
         }
@@ -435,6 +476,9 @@ impl CampaignState {
             self.board_at = self.clock;
             if self.rebuild_board(view) {
                 ev.push(CampaignEvent::BoardChanged);
+            }
+            if self.ai_missions_on() {
+                self.rebuild_red_board(view);
             }
             if self.prune_plans() {
                 ev.push(self.plans_changed());

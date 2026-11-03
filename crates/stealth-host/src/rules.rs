@@ -29,6 +29,9 @@ pub struct Rules {
     /// helicopters.
     #[serde(default)]
     pub airframe_losses: bool,
+    /// The AI does not fly the missions on the board 5 minutes after they are posted.
+    #[serde(default)]
+    pub no_ai_missions: bool,
 }
 
 impl From<CampaignRules> for Rules {
@@ -43,6 +46,7 @@ impl From<CampaignRules> for Rules {
             classic_terrain: r.classic_terrain,
             classic_ai_flight: r.classic_ai_flight,
             airframe_losses: r.airframe_losses,
+            no_ai_missions: r.no_ai_missions,
         }
     }
 }
@@ -59,6 +63,7 @@ impl From<Rules> for CampaignRules {
             classic_terrain: r.classic_terrain,
             classic_ai_flight: r.classic_ai_flight,
             airframe_losses: r.airframe_losses,
+            no_ai_missions: r.no_ai_missions,
         }
     }
 }

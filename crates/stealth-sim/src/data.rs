@@ -45,6 +45,17 @@ pub struct AircraftType {
     /// How the AI flies it (absent from the classic data: all fixed-wing).
     #[serde(default, skip_serializing_if = "AircraftKind::is_plane")]
     pub kind: AircraftKind,
+    /// How far air defences find it, in percent of the usual (the stealthy aircraft's less).
+    #[serde(default = "full", skip_serializing_if = "is_full")]
+    pub stealth: u8,
+}
+
+fn full() -> u8 {
+    100
+}
+
+fn is_full(v: &u8) -> bool {
+    *v == 100
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

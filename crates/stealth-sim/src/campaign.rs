@@ -112,6 +112,9 @@ pub enum Role {
     Supply,
     /// A drone command center's drone (`uav.rs` flies it).
     Uav,
+    /// Reconnaissance: flies low to its goal, photographs the object there (`strike` until
+    /// then) and flies home.
+    Recon,
 }
 
 /// An aircraft the campaign launched.
@@ -162,6 +165,10 @@ pub struct CampaignFlight {
     /// A resupply helicopter's run.
     #[serde(default)]
     pub supply: Option<crate::supply::SupplyRun>,
+    /// CAS: `strike` is the other side's ground unit (`Sim::units`) nearest its goal, picked
+    /// when it is in reach.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub strike_unit: bool,
 }
 
 /// A missile of the AI against an AI aircraft (metres, x east, y north, z up).
@@ -1089,6 +1096,7 @@ impl Sim {
             kamikaze: false,
             strike_aaa: false,
             supply: None,
+            strike_unit: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1128,7 +1136,7 @@ impl Sim {
 
     /// One of the aircraft `types` that can fly from base `from` to `goal` (map units) and back
     /// on its fuel, at random; the one with the longest range when none can.
-    fn pick_reaching(&mut self, types: &[i32], from: usize, goal: (i32, i32)) -> i32 {
+    pub(crate) fn pick_reaching(&mut self, types: &[i32], from: usize, goal: (i32, i32)) -> i32 {
         let base = self.objects.get(from).map_or(goal, |o| (o.x, o.y));
         let km = approx(goal.0 - base.0, goal.1 - base.1) as f64 * M_PER_MAP / 1000.0;
         let range = |t: i32| self.ac_type(t).range;
@@ -1177,6 +1185,7 @@ impl Sim {
             kamikaze: false,
             strike_aaa: false,
             supply: None,
+            strike_unit: false,
         });
         i
     }
@@ -1243,6 +1252,7 @@ impl Sim {
             kamikaze,
             strike_aaa: false,
             supply: None,
+            strike_unit: false,
         });
         i
     }
@@ -1299,6 +1309,7 @@ impl Sim {
             kamikaze: false,
             strike_aaa: false,
             supply: None,
+            strike_unit: false,
         });
         i
     }
@@ -1332,7 +1343,7 @@ impl Sim {
             .campaign_flight(i)
             .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
         let (gx, gy) = f.goal;
-        if f.role == Role::Strike {
+        if matches!(f.role, Role::Strike | Role::Recon) {
             return Some((gx, gy));
         }
         if approx(u.x - gx, u.y - gy) > 0x200 {
@@ -1345,7 +1356,8 @@ impl Sim {
 
     /// A campaign strike aircraft on its way to the target (it comes in low).
     pub(crate) fn campaign_striking(&self, i: usize) -> bool {
-        self.campaign_flight(i).is_some_and(|f| f.role == Role::Strike && f.strike.is_some())
+        self.campaign_flight(i)
+            .is_some_and(|f| matches!(f.role, Role::Strike | Role::Recon) && f.strike.is_some())
     }
 
     /// The aircraft a campaign fighter chases (map x, y and altitude), None for others.
@@ -1379,6 +1391,7 @@ impl Sim {
         self.campaign = Some(c);
         self.campaign_bookkeeping();
         self.campaign_bombs();
+        self.campaign_recon();
         let fs = self.fs.max(1);
         if self.frame % fs == 0 {
             self.campaign_acquire();
@@ -1452,13 +1465,18 @@ impl Sim {
                 u.flags &= !fflags::AIRBORNE;
                 continue;
             }
-            // Attack drones dive all the way in (`drone_impact`).
+            // Attack drones dive all the way in (`drone_impact`); recon only looks.
+            if f.role == Role::Recon {
+                continue;
+            }
             let Some(target) = f.strike.filter(|_| !f.kamikaze) else { continue };
             if u.flags & fflags::DESTROYED != 0 || u.flags & fflags::AIRBORNE == 0 {
                 continue;
             }
             let (spec, release) = if f.strike_aaa {
                 harm
+            } else if f.strike_unit {
+                (ROCKETS, ROCKET_RELEASE)
             } else {
                 weapons.get(target as usize).copied().unwrap_or((ROCKETS, ROCKET_RELEASE))
             };
@@ -1466,11 +1484,20 @@ impl Sim {
                 f.strike = None;
                 u.flags |= fflags::RTB;
                 u.wp = f.home;
-                shots.push((i, spec, target as usize, f.strike_aaa, f.blue));
+                shots.push((i, spec, target as usize, f.strike_aaa || f.strike_unit, f.blue));
             }
         }
         for (i, spec, target, aaa, blue) in shots {
             let u = self.flights[i];
+            // CAS: the ground unit nearest its point now (nothing left there: home unarmed).
+            let cas = self.campaign_flight(i).filter(|f| f.strike_unit).map(|f| f.goal);
+            let target = match cas {
+                Some((x, y)) => match self.cas_target(x, y, blue) {
+                    Some(k) => k,
+                    None => continue,
+                },
+                None => target,
+            };
             let mut m = self.ai_missile(spec, flight_metres(&u), direction(u.heading, 0), i, blue);
             m.ground = Some(target);
             m.ground_aaa = aaa;
@@ -1492,9 +1519,10 @@ impl Sim {
             .map(|i| {
                 if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
                     Some(HELO_SAM_REACH)
-                } else if self
-                    .campaign_flight(i)
-                    .is_some_and(|f| f.role == Role::Strike && !f.kamikaze)
+                } else if self.flights[i].spec == crate::ai_missions::TORNADO
+                    || self.campaign_flight(i).is_some_and(|f| {
+                        matches!(f.role, Role::Strike | Role::Recon) && !f.kamikaze
+                    })
                 {
                     Some(STRIKE_SAM_REACH)
                 } else {
@@ -1508,6 +1536,9 @@ impl Sim {
             .map(|i| self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav))
             .collect();
         let drone_reach = (crate::uav::DETECT_RANGE / M_PER_MAP) as i32;
+        // Stealthy aircraft: radars find them this much closer (percent).
+        let stealth: Vec<i32> =
+            self.flights.iter().map(|u| self.ac_type(u.spec).stealth as i32).collect();
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
@@ -1516,6 +1547,7 @@ impl Sim {
                 .filter(|&j| sides[j] == Some(blue) && pos[j][2] > min_alt)
                 .map(|j| (j, approx(xy[j].0 - x, xy[j].1 - y)))
                 .filter(|&(j, d)| {
+                    let reach = if sam { reach * stealth[j] / 100 } else { reach };
                     let reach = if unseen[j] { reach.min(drone_reach) } else { reach };
                     d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l))
                 })
@@ -1659,7 +1691,7 @@ impl Sim {
                 .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
                 .filter(|&j| in_bubble(j))
                 .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
-                .filter(|&(_, d)| d < FIGHTER_SEARCH)
+                .filter(|&(j, d)| d < FIGHTER_SEARCH * stealth[j] / 100)
                 .min_by_key(|&(_, d)| d)
                 .map(|t| t.0);
             if cap {

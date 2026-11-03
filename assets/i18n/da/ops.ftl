@@ -80,6 +80,7 @@ ops-rule-time = kontinuerlig tid
 ops-rule-weapons = realistiske F-117A-våben
 ops-rule-friendly-fire = egenbeskydning
 ops-rule-airframe-losses = tabte fly tæller
+ops-rule-no-ai-missions = ingen AI-missioner
 ops-rule-classic = klassisk
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/t)

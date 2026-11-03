@@ -205,6 +205,12 @@ pub enum Action {
     },
     /// Man a friendly air defence console, leave it, or fight it.
     Station(StationCmd),
+    /// Take over aircraft `tag` of a friendly AI flight in the air.
+    TakeControl {
+        tag: u32,
+    },
+    /// In the air: leave the aircraft to the AI.
+    LeaveAircraft,
 }
 
 /// The last sortie's debrief.
@@ -436,6 +442,7 @@ pub fn rules_of(s: &crate::settings::Settings, realistic_weapons: bool) -> Rules
         classic_terrain: !s.realistic_terrain,
         classic_ai_flight: !s.realistic_ai_flight,
         airframe_losses: false,
+        no_ai_missions: false,
     }
 }
 
@@ -1058,6 +1065,8 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),
             Action::Station(cmd) => host.station(sim, me, cmd),
+            Action::TakeControl { tag } => host.take_control(sim, me, tag),
+            Action::LeaveAircraft => host.leave_aircraft(sim, me),
         };
         match result {
             Ok(ev) => {
@@ -1123,6 +1132,8 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             Action::SelectMission { offer, base } => ToServer::Select { offer, base },
             Action::EditPlan { offer, base, route } => ToServer::Plan { offer, base, route },
             Action::Station(cmd) => ToServer::Station(cmd),
+            Action::TakeControl { tag } => ToServer::TakeControl { tag },
+            Action::LeaveAircraft => ToServer::LeaveAircraft,
         };
         client.send(&msg);
     }

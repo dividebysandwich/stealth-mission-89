@@ -775,6 +775,7 @@ mod tests {
             unknown: 2,
             kills: 0,
             kind: crate::AircraftKind::Plane,
+            stealth: 100,
         }
     }
 

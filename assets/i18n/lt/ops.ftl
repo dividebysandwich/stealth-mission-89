@@ -80,6 +80,7 @@ ops-rule-time = nuolatinis laikas
 ops-rule-weapons = realistiški F-117A ginklai
 ops-rule-friendly-fire = draugiška ugnis
 ops-rule-airframe-losses = prarasti orlaiviai skaičiuojami
+ops-rule-no-ai-missions = be DI misijų
 ops-rule-classic = klasikinės
 ops-materiel = IŠTEKLIAI
 ops-materiel-blue = MĖLYNIEJI { $materiel } (+{ $income }/val.)

@@ -85,6 +85,7 @@ mp-time-of-day = Hora del día (noches de luna)
 mp-realistic-weapons = Armamento realista del F-117A
 mp-friendly-fire = Fuego amigo
 mp-airframe-losses = Las aeronaves perdidas cuentan
+mp-ai-missions = La IA vuela las misiones
 mp-day-night = Día y noche:
 mp-weather = Meteorología:
 mp-host-new = ALOJAR NUEVA

@@ -85,6 +85,7 @@ mp-time-of-day = Paros laikas (mėnesienos naktys)
 mp-realistic-weapons = Realistiški F-117A ginklai
 mp-friendly-fire = Draugiška ugnis
 mp-airframe-losses = Prarasti orlaiviai skaičiuojami
+mp-ai-missions = DI skraido misijas
 mp-day-night = Diena ir naktis:
 mp-weather = Orai:
 mp-host-new = PRIIMTI NAUJĄ

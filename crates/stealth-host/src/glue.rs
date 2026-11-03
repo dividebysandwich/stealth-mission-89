@@ -2,12 +2,13 @@
 //! simulation shows the campaign, and the missions the campaign's sorties become.
 
 use stealth_campaign::{
-    CampaignSetup, CampaignState, ConvoyUnit, FlightView, GroundView, MissionKind, PlayerId,
-    PlayerPos, Report, Side, Sortie, SortieEnd, WorldView,
+    AiTarget, Aircraft, CampaignSetup, CampaignState, ConvoyUnit, FlightView, GroundView,
+    MissionKind, PlayerId, PlayerPos, RedJob, Report, Side, Sortie, SortieEnd, WorldView,
 };
 use stealth_i18n::t;
 use stealth_mission::{GameData, Mission, MissionKind as GenKind, MissionSettings, Seed};
 use stealth_sim::aaa::GroundKind;
+use stealth_sim::ai_missions::{AiTask, RedType};
 use stealth_sim::{Sim, fflags, oflags};
 
 /// Metres per world unit.
@@ -177,8 +178,59 @@ pub fn sortie_end(e: &stealth_sim::MissionEnd) -> (SortieEnd, &'static str) {
         (0, _) => (SortieEnd::Landed, "debrief-sortie-landed"),
         (6, _) => (SortieEnd::Crashed, "debrief-sortie-ejection-failed"),
         (7, _) => (SortieEnd::Aborted, "debrief-sortie-aborted"),
+        (stealth_sim::OUTCOME_HANDED_OVER, _) => {
+            (SortieEnd::HandedOver, "debrief-sortie-handed-over")
+        }
         (5, _) => (SortieEnd::Crashed, "debrief-sortie-bad-landing"),
         _ => (SortieEnd::Crashed, "debrief-sortie-crashed"),
+    }
+}
+
+/// The simulation's AI type of a player's aircraft.
+pub fn ai_spec(aircraft: Aircraft) -> i32 {
+    use stealth_sim::ai_missions as t;
+    match aircraft {
+        Aircraft::F117 => t::F117,
+        Aircraft::F16 => t::F16,
+        Aircraft::UH60 => t::UH60,
+        Aircraft::AH1Z => t::AH1Z,
+        Aircraft::Tornado => t::TORNADO,
+        Aircraft::A10 => t::A10,
+        Aircraft::RAH66 => t::RAH66,
+        Aircraft::AV8B => t::AV8B,
+        Aircraft::OH58 => t::OH58,
+        Aircraft::CH47 => t::CH47,
+        Aircraft::F22 => t::F22,
+    }
+}
+
+/// What an AI flight goes for, as the simulation flies it.
+pub fn ai_task(target: AiTarget) -> AiTask {
+    match target {
+        AiTarget::Object(o) => AiTask::Strike(o as usize),
+        AiTarget::Ground { x, y } => AiTask::Ground(x, y),
+        AiTarget::Recon { object } => AiTask::Recon(object as usize),
+        AiTarget::Patrol { x, y } => AiTask::Patrol(x, y),
+    }
+}
+
+/// Where an AI flight's target is (map units).
+pub fn ai_target_point(state: &CampaignState, target: AiTarget) -> (i32, i32) {
+    match target {
+        AiTarget::Object(o) | AiTarget::Recon { object: o } => {
+            state.site(o).map_or((0, 0), |s| (s.x, s.y))
+        }
+        AiTarget::Ground { x, y } | AiTarget::Patrol { x, y } => (x, y),
+    }
+}
+
+/// The simulation's job of an enemy AI flight.
+pub fn red_type(job: RedJob) -> RedType {
+    match job {
+        RedJob::Strike => RedType::Strike,
+        RedJob::Fighter => RedType::Fighter,
+        RedJob::Recon => RedType::Recon,
+        RedJob::Helicopter => RedType::Helicopter,
     }
 }
 

@@ -80,6 +80,7 @@ ops-rule-time = folyamatos idő
 ops-rule-weapons = valósághű F-117A fegyverzet
 ops-rule-friendly-fire = baráti tűz
 ops-rule-airframe-losses = az elvesztett gépek számítanak
+ops-rule-no-ai-missions = nincsenek MI-küldetések
 ops-rule-classic = klasszikus
 ops-materiel = HADIANYAG
 ops-materiel-blue = KÉK { $materiel } (+{ $income }/ó)

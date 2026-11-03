@@ -343,6 +343,26 @@ impl Sim {
                 };
             }
         }
+        // A campaign mission's helicopters: low to their goal (an attack, a recon), or for the
+        // other side's aircraft and round their point (an escort); home to land.
+        if let Some(f) = self.campaign_flight(i).filter(|f| {
+            matches!(
+                f.role,
+                crate::campaign::Role::Strike
+                    | crate::campaign::Role::Recon
+                    | crate::campaign::Role::Fighter
+            )
+        }) {
+            if u.flags & fflags::RTB != 0 {
+                let b = self.obj(u.wp);
+                return (b.x, b.y, CRUISE_ALT, true);
+            }
+            if let Some((x, y, _)) = self.campaign_pursuit(i) {
+                return (x, y, CRUISE_ALT / 2, false);
+            }
+            let (gx, gy) = self.campaign_goal(i, u).unwrap_or(f.goal);
+            return (gx, gy, CRUISE_ALT / 2, false);
+        }
         // Other helicopters (Hinds of the mission): patrol low between objects, or hunt the
         // player while the alarm is up and he is low.
         if u.flags & fflags::RTB != 0 {

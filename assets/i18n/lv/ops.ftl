@@ -80,6 +80,7 @@ ops-rule-time = nepārtraukts laiks
 ops-rule-weapons = reālistisks F-117A bruņojums
 ops-rule-friendly-fire = draudzīgā uguns
 ops-rule-airframe-losses = zaudētie lidaparāti tiek skaitīti
+ops-rule-no-ai-missions = bez MI misijām
 ops-rule-classic = klasiskie
 ops-materiel = MATERIĀLIE RESURSI
 ops-materiel-blue = ZILIE { $materiel } (+{ $income }/h)
