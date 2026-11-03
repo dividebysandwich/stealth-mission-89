@@ -436,3 +436,92 @@ fn voice_is_relayed_and_rate_limited() {
         matches!(e, ClientEvent::Voice { .. })
     }));
 }
+
+/// Two players go for the same AI aircraft: one takes it over in the air, the other is told
+/// no; he leaves it to the AI again and it flies on.
+#[test]
+fn a_coop_player_takes_over_an_ai_aircraft_and_hands_it_back() {
+    use stealth_campaign::SortieEnd;
+    let mut w = world();
+    let port = w.server.port().unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let mut a = Client::connect(&addr, "Alpha").unwrap();
+    let mut b = Client::connect(&addr, "Bravo").unwrap();
+    let mut now = Instant::now();
+    let mut ids = [None, None];
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Welcome { id, .. } = e {
+            ids[k] = Some(*id);
+        }
+        ids.iter().all(Option::is_some)
+    }));
+    // The board's offers are due for the AI: its flights take off and get up and away.
+    let wait = stealth_campaign::tuning::AI_MISSION_WAIT;
+    let clock = w.host.state.clock;
+    for o in &mut w.host.state.board {
+        o.posted = clock - wait;
+    }
+    let mut tag = None;
+    for _ in 0..15 * 240 {
+        now += Duration::from_millis(66);
+        serve(&mut w, now);
+        for c in [&mut a, &mut b] {
+            c.flush(now);
+            c.poll(now);
+        }
+        let st = &w.host.state;
+        tag = st.ai_missions.iter().filter(|m| m.open()).flat_map(|m| m.flying()).find(|&t| {
+            w.sim.takeable(t) && w.sim.flights()[w.sim.flight_of_tag(t).unwrap()].alt > 300
+        });
+        if tag.is_some() {
+            break;
+        }
+    }
+    let tag = tag.expect("an AI aircraft up and away");
+    let at = w.sim.flights()[w.sim.flight_of_tag(tag).unwrap()];
+    a.send(&ToServer::TakeControl { tag });
+    b.send(&ToServer::TakeControl { tag });
+    let mut started = [None, None];
+    let mut refused = [false, false];
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        match e {
+            ClientEvent::Host(HostEvent::SortieStarted { start, .. }) => {
+                started[k] = Some(start.clone())
+            }
+            ClientEvent::Error(_) => refused[k] = true,
+            _ => {}
+        }
+        started.iter().filter(|s| s.is_some()).count() + refused.iter().filter(|&&r| r).count() == 2
+    }));
+    let k = started.iter().position(Option::is_some).expect("one of them took it");
+    assert!(refused[1 - k] && started[1 - k].is_none(), "the other was told no");
+    let me = ids[k].unwrap();
+    let start = started[k].clone().unwrap();
+    assert!(!start.on_ground);
+    assert_eq!(start.x, at.wx, "where the AI's aircraft was");
+    assert!(w.sim.flight_of_tag(tag).is_none() && !w.sim.pilot_absent(me.0));
+    // He flies it a moment, then leaves it to the AI.
+    let c = if k == 0 { &mut a } else { &mut b };
+    for _ in 0..15 {
+        now += Duration::from_millis(66);
+        serve(&mut w, now);
+        c.send_input(&start);
+        c.flush(now);
+        c.poll(now);
+    }
+    c.send(&ToServer::LeaveAircraft);
+    let mut end = None;
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |j, e| {
+        if let ClientEvent::Host(HostEvent::SortieFinished { debrief, .. }) = e
+            && j == k
+        {
+            end = Some(debrief.record.end);
+        }
+        end.is_some()
+    }));
+    assert_eq!(end, Some(SortieEnd::HandedOver));
+    assert!(w.sim.pilot_absent(me.0));
+    assert!(w.host.state.sortie(me).is_none());
+    let i = w.sim.flight_of_tag(tag).expect("the AI flies it again");
+    assert!(w.sim.campaign_flight(i).is_some_and(|f| f.blue));
+}
