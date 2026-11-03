@@ -192,9 +192,14 @@ pub fn campaign_window(
                         );
                     });
                     ui.label(egui::RichText::new(t!("cm-conditions-note")).small().color(DIM));
-                    crate::menu::simulation_options(ui, &mut settings, Some(t!("cm-rules-note")));
-                    ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
-                    ui.checkbox(&mut state.ai_missions, t!("mp-ai-missions"));
+                });
+                // The rules in a column of their own, so none goes below the window's edge.
+                flow.card(ui, Span::Fixed(220.0), |ui| {
+                    let note = Some(t!("cm-rules-note"));
+                    crate::menu::simulation_options(ui, &mut settings, note, |ui| {
+                        ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
+                        ui.checkbox(&mut state.ai_missions, t!("mp-ai-missions"));
+                    });
                 });
                 flow.card(ui, Span::Fill(INFO_LEAST), |ui| {
                     for line in t_lines!("cm-about") {

@@ -1301,16 +1301,18 @@ pub(crate) fn vehicle_options(
     }
 }
 
-/// The realism switches with crash protection: the settings each game is set up with (the
-/// player's own settings are in OPTIONS, `options.rs`).
+/// The realism switches with crash protection and what `extra` adds: the settings each game is
+/// set up with (the player's own settings are in OPTIONS, `options.rs`).
 pub(crate) fn simulation_options(
     ui: &mut egui::Ui,
     settings: &mut SettingsMut,
     note: Option<&str>,
+    extra: impl FnOnce(&mut egui::Ui),
 ) {
     group(ui, t!("group-simulation"), |ui| {
         realism_options(ui, settings);
         crash_option(ui, settings);
+        extra(ui);
         if let Some(note) = note {
             ui.label(egui::RichText::new(note).small().color(DIM));
         }
@@ -1891,7 +1893,7 @@ pub(crate) fn menu_ui(
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
-                        simulation_options(ui, &mut settings, None);
+                        simulation_options(ui, &mut settings, None, |_| {});
                     });
                     flow.card(ui, Span::Fixed(VEHICLE_WIDTH), |ui| {
                         group(ui, t!("group-vehicle"), |ui| {

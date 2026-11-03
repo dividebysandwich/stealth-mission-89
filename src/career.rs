@@ -412,7 +412,7 @@ pub fn career_ui(
                     crate::menu::weather_options(ui, &mut state.weather, &mut state.cloud_cover);
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
-                crate::menu::simulation_options(ui, settings, None);
+                crate::menu::simulation_options(ui, settings, None, |_| {});
             });
             flow.card(ui, Span::Fixed(crate::menu::VEHICLE_WIDTH), |ui| {
                 group(ui, t!("group-vehicle"), |ui| {
