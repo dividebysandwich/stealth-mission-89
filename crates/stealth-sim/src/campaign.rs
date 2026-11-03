@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use stealth_i18n::text;
 
 use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
-use crate::ai_loadout::{AiLoadout, FighterTask};
+use crate::ai_loadout::{AiLoadout, FighterTask, Seeker};
 use crate::csar::{BLACKHAWK, HIND};
 use crate::math::{approx, s16};
 use crate::rng::Rng;
@@ -37,6 +37,23 @@ const SITE_RELOAD: i32 = 25;
 const FIGHTER_RELOAD: i32 = 12;
 /// A fighter goes for enemy aircraft this close (80 km, its radar).
 const FIGHTER_SEARCH: i32 = 0x1400;
+/// A strike or recon aircraft watches the enemy's aircraft this close (32 km, its warning
+/// receiver and the AWACS's picture) and shoots at them in reach; one this close and pointing
+/// at it (or closer than `PRESS_CLOSE` whatever it does) presses it into a fight, which it
+/// leaves once its enemy is `RELEASE` away (12 km).
+const WATCH: i32 = 0x800;
+const PRESS: i32 = 0x200;
+const PRESS_CLOSE: i32 = 0x100;
+const RELEASE: i32 = 0x300;
+/// Cosine of how far off its nose an enemy points at what it presses (60°).
+const PRESS_COS: f64 = 0.5;
+/// A missile is fired at this share of its lock range at most: at a target flying away, and
+/// (more) at one coming on.
+const SHOT_COLD: f64 = 0.45;
+const SHOT_HOT: f64 = 0.8;
+/// Closer than this (map units, 10 km) it fires whatever is in reach, a missile of its side
+/// on the way at the target or not.
+const CLOSE_FIGHT: i32 = 0x280;
 /// A SAM site engages a helicopter this close at most (8 km): low and slow, it hides in the
 /// terrain and the ground clutter from a far radar.
 const HELO_SAM_REACH: i32 = 0x200;
@@ -169,6 +186,18 @@ pub struct CampaignFlight {
     /// when it is in reach.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub strike_unit: bool,
+    /// A strike or recon aircraft pressed by the enemy aircraft it watches (`target`): it
+    /// turns to fight it off, then flies on.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub defending: bool,
+}
+
+impl CampaignFlight {
+    /// The missile its flight unit's record names (what the classic AI fires at a pilot): a
+    /// fighter's first, none for the others (they never go for the pilots).
+    pub(crate) fn classic_missile(&self) -> i32 {
+        if self.role == Role::Fighter { self.loadout.stores[0].missile } else { 0 }
+    }
 }
 
 /// A missile of the AI against an AI aircraft (metres, x east, y north, z up).
@@ -1097,6 +1126,7 @@ impl Sim {
             strike_aaa: false,
             supply: None,
             strike_unit: false,
+            defending: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1186,6 +1216,7 @@ impl Sim {
             strike_aaa: false,
             supply: None,
             strike_unit: false,
+            defending: false,
         });
         i
     }
@@ -1219,6 +1250,11 @@ impl Sim {
         let i = self.campaign_slot();
         self.flights[i] = FlightUnit { spec, ..Default::default() };
         self.spawn(i, from);
+        let loadout = if kamikaze || self.ac_type(spec).kind != AircraftKind::Plane {
+            AiLoadout::default()
+        } else {
+            AiLoadout::self_defence(spec, blue)
+        };
         if kamikaze {
             // Launched at cruise height and speed, straight at the target (`fly_drone`).
             let t = self.ac_type(spec).max_speed as i32;
@@ -1238,7 +1274,7 @@ impl Sim {
             goal: t,
             target: None,
             cooldown: 0,
-            loadout: AiLoadout::default(),
+            loadout,
             task: FighterTask::Patrol,
             home: from as i32,
             anchor: base,
@@ -1253,6 +1289,7 @@ impl Sim {
             strike_aaa: false,
             supply: None,
             strike_unit: false,
+            defending: false,
         });
         i
     }
@@ -1310,6 +1347,7 @@ impl Sim {
             strike_aaa: false,
             supply: None,
             strike_unit: false,
+            defending: false,
         });
         i
     }
@@ -1362,10 +1400,30 @@ impl Sim {
 
     /// The aircraft a campaign fighter chases (map x, y and altitude), None for others.
     pub(crate) fn campaign_pursuit(&self, i: usize) -> Option<(i32, i32, i32)> {
-        let t = self.campaign_flight(i)?.target?;
+        let u = self.flights.get(self.campaign_pursued(i)?)?;
+        Some((u.x, u.y, u.alt))
+    }
+
+    /// The flight unit a campaign fighter chases (or a pressed strike aircraft fights off),
+    /// in the air.
+    pub(crate) fn campaign_pursued(&self, i: usize) -> Option<usize> {
+        let f = self.campaign_flight(i)?;
+        if f.role != Role::Fighter && !f.defending {
+            return None;
+        }
+        let t = f.target?;
         let u = self.flights.get(t)?;
-        (u.flags & fflags::DESTROYED == 0 && u.flags & fflags::AIRBORNE != 0)
-            .then_some((u.x, u.y, u.alt))
+        (u.flags & fflags::DESTROYED == 0 && u.flags & fflags::AIRBORNE != 0).then_some(t)
+    }
+
+    /// A strike or recon aircraft fights off the enemy that presses it.
+    pub(crate) fn campaign_defending(&self, i: usize) -> bool {
+        self.campaign_flight(i).is_some_and(|f| f.defending)
+    }
+
+    /// Aircraft type `spec` has a gun (the F-117A has none).
+    pub(crate) fn ai_has_gun(&self, spec: i32) -> bool {
+        spec != crate::ai_missions::F117 && self.ac_type(spec).kind == AircraftKind::Plane
     }
 
     /// Side of an airborne aircraft (None for wrecks, parked and traffic).
@@ -1675,50 +1733,94 @@ impl Sim {
             launches.push(m);
         }
         // Campaign fighters go for the other side's aircraft and fire when in reach. A CAP
-        // stays over its airfield and lands when there is nothing left to engage.
+        // stays over its airfield and lands when there is nothing left to engage. Strike and
+        // recon jets watch the enemy's aircraft about them, shoot at those in reach on their
+        // way and turn to fight the one that presses them.
         for i in 0..c.flights.len() {
             let Some(mut f) = c.flights[i] else { continue };
-            if f.role != Role::Fighter || sides[i].is_none() {
+            let striker = matches!(f.role, Role::Strike | Role::Recon) && !f.kamikaze;
+            if !(f.role == Role::Fighter || striker) || sides[i].is_none() {
                 continue;
             }
             let u = self.flights[i];
             f.cooldown = (f.cooldown - fs).max(0);
-            let cap = f.task == FighterTask::Cap;
-            let (ax, ay) = f.anchor;
-            let leashed = cap && approx(u.x - ax, u.y - ay) > CAP_LEASH;
-            let in_bubble = |j: usize| !cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE;
-            f.target = (0..sides.len())
-                .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
-                .filter(|&j| in_bubble(j))
-                .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
-                .filter(|&(j, d)| d < FIGHTER_SEARCH * stealth[j] / 100)
-                .min_by_key(|&(_, d)| d)
-                .map(|t| t.0);
-            if cap {
-                let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
-                if f.target.is_some() {
-                    f.quiet = 0;
-                    // Called back to the fight on its way home.
-                    if !landing {
-                        self.flights[i].flags &= !fflags::RTB;
-                    }
-                } else if u.flags & fflags::RTB == 0 {
-                    f.quiet += 1;
-                    if f.quiet >= CAP_LINGER || leashed && f.quiet >= CAP_LINGER / 2 {
-                        self.flights[i].flags |= fflags::RTB;
-                        self.flights[i].wp = f.home;
+            if striker {
+                let armed = f.loadout.missiles() > 0 || self.ai_has_gun(u.spec);
+                f.target = (0..sides.len())
+                    .filter(|&j| sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
+                    .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
+                    .filter(|&(_, d)| d < WATCH)
+                    .min_by_key(|&(_, d)| d)
+                    .map(|t| t.0)
+                    .filter(|_| armed);
+                f.defending = f.target.is_some_and(|j| {
+                    let d = approx(xy[j].0 - u.x, xy[j].1 - u.y);
+                    let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
+                    let pressing =
+                        d < PRESS_CLOSE || d < PRESS && points_at(&self.flights[j], &u) > PRESS_COS;
+                    !landing && (pressing || f.defending && d < RELEASE)
+                });
+            } else {
+                let cap = f.task == FighterTask::Cap;
+                let (ax, ay) = f.anchor;
+                let leashed = cap && approx(u.x - ax, u.y - ay) > CAP_LEASH;
+                let in_bubble = |j: usize| !cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE;
+                f.target = (0..sides.len())
+                    .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
+                    .filter(|&j| in_bubble(j))
+                    .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
+                    .filter(|&(j, d)| d < FIGHTER_SEARCH * stealth[j] / 100)
+                    .min_by_key(|&(_, d)| d)
+                    .map(|t| t.0);
+                if cap {
+                    let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
+                    if f.target.is_some() {
+                        f.quiet = 0;
+                        // Called back to the fight on its way home.
+                        if !landing {
+                            self.flights[i].flags &= !fflags::RTB;
+                        }
+                    } else if u.flags & fflags::RTB == 0 {
+                        f.quiet += 1;
+                        if f.quiet >= CAP_LINGER || leashed && f.quiet >= CAP_LINGER / 2 {
+                            self.flights[i].flags |= fflags::RTB;
+                            self.flights[i].wp = f.home;
+                        }
                     }
                 }
             }
+            // Shoot, look, shoot: one of the side's missiles at a time at a target (in the
+            // close fight whatever is in reach).
+            let in_flight = |j: usize| {
+                approx(xy[j].0 - u.x, xy[j].1 - u.y) > CLOSE_FIGHT
+                    && c.missiles.iter().chain(&launches).any(|m| {
+                        m.target == j && m.ground.is_none() && m.blue == f.blue && !m.decoyed
+                    })
+            };
             if let Some(j) = f.target
                 && f.cooldown == 0
+                && !in_flight(j)
             {
                 let t = self.flights[j];
                 let range = len(sub(pos[j], pos[i]));
                 let bearing = crate::math::bearing(t.x - u.x, s16(u.y - t.y));
                 let off = bam(crate::math::abs16(s16(bearing - u.heading)));
-                let reach = |m: i32| self.missile(m).lock_range as f64 * 1000.0;
-                if let Some(k) = f.loadout.choose(range, off, reach) {
+                // Farther at a target coming on than at one flying away (its missile has it
+                // to chase), and well inside the lock range (a shot at its end is wasted).
+                let hot = (1.0 + points_at(&t, &u)) / 2.0;
+                let share = SHOT_COLD + (SHOT_HOT - SHOT_COLD) * hot;
+                let reach = |m: i32| self.missile(m).lock_range as f64 * 1000.0 * share;
+                // A strike aircraft on its way keeps its Sidewinders for the fight it is
+                // pressed into (its radar missiles it fires at what comes on).
+                let mut loadout = f.loadout;
+                if striker && !f.defending {
+                    loadout
+                        .stores
+                        .iter_mut()
+                        .filter(|s| s.seeker == Seeker::Ir)
+                        .for_each(|s| s.count = 0);
+                }
+                if let Some(k) = loadout.choose(range, off, reach) {
                     let store = &mut f.loadout.stores[k];
                     store.count -= 1;
                     f.cooldown = FIGHTER_RELOAD * fs;
@@ -1849,7 +1951,8 @@ impl Sim {
         let sigma = 0.006 * (1.6 - 0.2 * self.diff as f64);
         for i in 0..c.flights.len() {
             let Some(mut f) = c.flights[i] else { continue };
-            if f.role != Role::Fighter {
+            let spec = self.flights[i].spec;
+            if f.role != Role::Fighter && !(f.defending && self.ai_has_gun(spec)) {
                 continue;
             }
             if f.burst < 0 {
@@ -2193,6 +2296,12 @@ pub(crate) fn direction(heading: i32, pitch: i32) -> [f64; 3] {
 /// A gun's aiming error: roughly normal, about unit spread.
 pub(crate) fn jitter(rng: &mut Rng) -> f64 {
     (0..3).map(|_| rng.random(1000) as f64 / 1000.0).sum::<f64>() * 1.15 - 1.73
+}
+
+/// The cosine of how far off its nose aircraft `a` has aircraft `b`.
+fn points_at(a: &FlightUnit, b: &FlightUnit) -> f64 {
+    let to = crate::math::bearing(b.x - a.x, s16(a.y - b.y));
+    bam(s16(to - a.heading)).cos()
 }
 
 fn bam(a: i32) -> f64 {

@@ -914,7 +914,7 @@ fn a_pilot_down_behind_the_lines_waits_for_the_rescue_helicopter() {
     }
 }
 
-use stealth_sim::ai_missions::{AH1Z, AiTask, F16, F117};
+use stealth_sim::ai_missions::{A10, AH1Z, AiTask, F16, F117};
 
 #[test]
 fn an_ai_recon_flight_photographs_its_object_and_flies_home() {
@@ -1096,4 +1096,119 @@ fn low_flyers_follow_the_terrain_to_the_target_and_home() {
             assert!(agl[0] > 20, "{spec} (realistic {realistic}): {} ft", agl[0]);
         }
     }
+}
+
+/// A blue strike aircraft of type `strike` 128 km short of Tabor flying east for it, and a red
+/// fighter of type `fighter` (its patrol load) `dx`, `dy` map units off it heading `heading`,
+/// both flying the realistic model.
+fn intercept(strike: i32, fighter: i32, (dx, dy, heading): (i32, i32, i32)) -> (Sim, usize, usize) {
+    use stealth_sim::ai_loadout::{AiLoadout, FighterTask};
+    let d = data();
+    let s = MissionSettings {
+        theater: 3,
+        roe: 2,
+        opponents: 1,
+        kind: MissionKind::Strike,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
+    m.world = d.gdata.theaters[3].world.clone();
+    m.weather = Default::default();
+    let opts = SimOptions { campaign: true, realistic_ai_flight: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let to = find(&sim, 0x001, Some("Tabor"));
+    let enemy = find(&sim, 0x001, Some("Komarno"));
+    let t = sim.objects()[to];
+    let i = sim.spawn_ai_mission(from, strike, AiTask::Strike(to), 61, true);
+    let (sx, sy) = (t.x - 0x2000, t.y);
+    place(&mut sim, i, sx, sy, 1200, 0x4000, 400);
+    let f = sim.spawn_fighter(enemy, sx, sy, 8, false, FighterTask::Patrol);
+    place(&mut sim, f, sx + dx, sy + dy, 4000, heading, 600);
+    sim.flights_mut()[f].spec = fighter;
+    let missile = if matches!(fighter, 0 | 25) { 19 } else { 21 };
+    sim.set_fighter_loadout(f, AiLoadout::for_task(fighter, missile, FighterTask::Patrol));
+    (sim, i, f)
+}
+
+/// Flight unit `i` in the air at map (x, y), `alt`, heading `heading`, `speed`.
+fn place(sim: &mut Sim, i: usize, x: i32, y: i32, alt: i32, heading: i32, speed: i32) {
+    let u = &mut sim.flights_mut()[i];
+    (u.wx, u.wy, u.x, u.y, u.alt) = (x << 5, y << 5, x, y, alt);
+    (u.heading, u.pitch, u.bank, u.speed) = (heading, 0, 0, speed);
+    u.flags = fflags::EXISTS | fflags::AIRBORNE;
+}
+
+/// A Tornado on its way to the target, a MiG-23 coming at it head on: it keeps its Sidewinders
+/// for the fight the MiG presses it into, shoots it down, and flies on to fire at its target.
+#[test]
+fn a_pressed_strike_aircraft_fights_off_its_attacker_and_flies_on() {
+    use stealth_sim::ai_missions::TORNADO;
+    let (mut sim, i, _) = intercept(TORNADO, 0, (0x900, 0, -0x4000));
+    let (mut fought, mut shot_first, mut fighter_lost, mut fired_at_target) =
+        (0, None, false, false);
+    for _ in 0..15 * 60 {
+        let ev = run(&mut sim, &idle(), 1);
+        for e in &ev {
+            match e {
+                SimEvent::CampaignFlightDestroyed { tag: 61, .. } => panic!("the Tornado was lost"),
+                SimEvent::CampaignFlightDestroyed { tag: 8, .. } => fighter_lost = true,
+                _ => {}
+            }
+        }
+        let Some(c) = sim.campaign_flight(i) else { break };
+        if c.defending {
+            fought += 1;
+        }
+        if c.loadout.missiles() < 2 && shot_first.is_none() {
+            shot_first = Some(c.defending);
+        }
+        if c.strike.is_none() {
+            fired_at_target = true;
+            break;
+        }
+    }
+    assert_eq!(shot_first, Some(true), "its Sidewinders went before it was pressed, or never");
+    assert!(fighter_lost, "the MiG-23 got away");
+    assert!(fought > 3 && fought < 60, "fought {fought} s");
+    assert!(fired_at_target, "it never got on to its target");
+}
+
+/// An F-16 strike flight fires its AMRAAMs at a fighter coming on, without turning off its
+/// course for it.
+#[test]
+fn a_strike_aircraft_shoots_at_an_enemy_coming_on() {
+    let (mut sim, i, _) = intercept(F16, 0, (0x900, 0, -0x4000));
+    for _ in 0..90 {
+        run(&mut sim, &idle(), 1);
+        let Some(c) = sim.campaign_flight(i) else { panic!("the F-16 was lost") };
+        if c.loadout.missiles() < 4 {
+            assert!(!c.defending, "it fired only once pressed");
+            assert!(sim.ai_missiles().iter().any(|m| m.spec == stealth_sim::ai_loadout::AIM120));
+            return;
+        }
+    }
+    panic!("the F-16 never fired");
+}
+
+/// A MiG-29 coming at an A-10 from the side engages it, closes in and shoots it down (it does
+/// not fly past it, nor round it): in the merge its AA-11s, its gun.
+#[test]
+fn a_fighter_engages_the_strike_aircraft_it_meets() {
+    let (mut sim, i, f) = intercept(A10, 2, (0, 0x900, 0));
+    let mut close = 0;
+    for s in 0..5 * 60 {
+        let ev = run(&mut sim, &idle(), 1);
+        if ev.iter().any(|e| matches!(e, SimEvent::CampaignFlightDestroyed { tag: 61, .. })) {
+            assert!(close < 60, "{close} s round the A-10 before getting it");
+            return;
+        }
+        let (a, b) = (sim.flights()[i], sim.flights()[f]);
+        if (a.x - b.x).abs().max((a.y - b.y).abs()) < 0xC0 {
+            close += 1;
+        }
+        assert!(sim.campaign_flight(f).is_some(), "the MiG-29 was lost at {s} s");
+    }
+    panic!("the MiG-29 never got the A-10");
 }

@@ -7,8 +7,12 @@ use serde::{Deserialize, Serialize};
 /// Missile table indices of the friendly fighters' air-to-air missiles.
 pub const AIM120: i32 = 22;
 pub const AIM9: i32 = 23;
-/// Missiles of a patrol (its era's radar missile).
-const PATROL_MISSILES: i32 = 4;
+/// The enemy's short range infrared missiles: the AA-8, and the later fighters' AA-11.
+pub const AA8: i32 = 17;
+pub const AA11: i32 = 50;
+/// Missiles of a patrol: its era's radar missile, and infrared ones for the close fight.
+const PATROL_MISSILES: i32 = 2;
+const PATROL_IR: i32 = 2;
 
 /// What an AI fighter takes off for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -67,8 +71,38 @@ impl AiLoadout {
                 stores[1] = store(AIM9, 2, Seeker::Ir);
             }
             (FighterTask::Patrol, _) => {
+                let ir = match spec {
+                    21 | 22 => AIM9,
+                    // MiG-29, Su-27, Su-35.
+                    2 | 4 | 32 => AA11,
+                    _ => AA8,
+                };
                 stores[0] = store(era_missile, PATROL_MISSILES, Seeker::Radar);
+                stores[1] = store(ir, PATROL_IR, Seeker::Ir);
             }
+        }
+        AiLoadout { stores }
+    }
+
+    /// What a strike or recon aircraft of type `spec` carries to defend itself: the friendly
+    /// jets a pair of Sidewinders (the F-16 and F-22 AMRAAMs too), the enemy's AA-8s (the
+    /// Su-34 AA-10s and AA-11s); the F-117A nothing.
+    pub fn self_defence(spec: i32, blue: bool) -> Self {
+        use crate::ai_missions::{A10, AV8B, F16, F22, TORNADO};
+        let store = |missile, count, seeker| Store { missile, count, seeker };
+        let mut stores = [Store::default(); 3];
+        match spec {
+            F16 | F22 => {
+                stores[0] = store(AIM120, 2, Seeker::Radar);
+                stores[1] = store(AIM9, 2, Seeker::Ir);
+            }
+            TORNADO | AV8B | A10 => stores[0] = store(AIM9, 2, Seeker::Ir),
+            31 if !blue => {
+                stores[0] = store(21, 2, Seeker::Radar);
+                stores[1] = store(AA11, 2, Seeker::Ir);
+            }
+            _ if !blue => stores[0] = store(AA8, 2, Seeker::Ir),
+            _ => {}
         }
         AiLoadout { stores }
     }
@@ -118,8 +152,13 @@ mod tests {
         assert_eq!(f16.missiles(), 6);
         assert!(f16.stores.iter().all(|s| s.count == 0 || matches!(s.missile, AIM120 | AIM9)));
         let patrol = AiLoadout::for_task(2, 21, FighterTask::Patrol);
-        assert_eq!(patrol.stores[0], Store { missile: 21, count: 4, seeker: Seeker::Radar });
+        assert_eq!(patrol.stores[0], Store { missile: 21, count: 2, seeker: Seeker::Radar });
+        assert_eq!(patrol.stores[1], Store { missile: AA11, count: 2, seeker: Seeker::Ir });
+        let mig21 = AiLoadout::for_task(25, 19, FighterTask::Patrol);
+        assert_eq!(mig21.stores[1].missile, AA8);
         assert_eq!(patrol.missiles(), 4);
+        assert_eq!(AiLoadout::self_defence(crate::ai_missions::F117, true).missiles(), 0);
+        assert_eq!(AiLoadout::self_defence(crate::ai_missions::TORNADO, true).missiles(), 2);
     }
 
     #[test]

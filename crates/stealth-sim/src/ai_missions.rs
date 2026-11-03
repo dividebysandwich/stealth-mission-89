@@ -94,6 +94,7 @@ fn flight(
         kamikaze: false,
         supply: None,
         strike_unit: false,
+        defending: false,
     }
 }
 
@@ -124,8 +125,7 @@ impl Sim {
     ) -> usize {
         let i = self.campaign_slot();
         let mut f = self.mission_flight(spec, task, tag, blue, from);
-        self.flights[i] =
-            FlightUnit { spec, missile: f.loadout.stores[0].missile, ..Default::default() };
+        self.flights[i] = FlightUnit { spec, missile: f.classic_missile(), ..Default::default() };
         self.spawn(i, from);
         if f.role == Role::Strike && f.strike_unit {
             f.strike = Some(0);
@@ -146,17 +146,26 @@ impl Sim {
         let at = |o: usize| self.objects.get(o).map_or((0, 0), |o| (o.x, o.y));
         let base = at(from);
         let home = from as i32;
+        // A jet on a ground mission carries missiles to defend itself.
+        let own = if self.ac_type(spec).kind == AircraftKind::Plane {
+            AiLoadout::self_defence(spec, blue)
+        } else {
+            AiLoadout::default()
+        };
         match task {
             AiTask::Strike(o) => CampaignFlight {
                 strike: Some(o as i32),
+                loadout: own,
                 ..flight(tag, Role::Strike, blue, at(o), home, base)
             },
             AiTask::Ground(x, y) => CampaignFlight {
                 strike_unit: true,
+                loadout: own,
                 ..flight(tag, Role::Strike, blue, (x, y), home, base)
             },
             AiTask::Recon(o) => CampaignFlight {
                 strike: Some(o as i32),
+                loadout: own,
                 ..flight(tag, Role::Recon, blue, at(o), home, base)
             },
             AiTask::Patrol(x, y) => {
@@ -336,7 +345,7 @@ impl Sim {
             ..Default::default()
         };
         let mut f = self.mission_flight(spec, task, tag, blue, from);
-        u.missile = f.loadout.stores[0].missile;
+        u.missile = f.classic_missile();
         if home {
             f.strike = None;
             f.strike_unit = false;

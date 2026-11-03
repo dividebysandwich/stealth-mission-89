@@ -8,6 +8,9 @@ use stealth_i18n::text;
 const TERRAIN_CLEARANCE: i32 = 614;
 /// The room kept over the rolling hills ahead (altitude units, about 60 m).
 const HILLS_CLEARANCE: i32 = 123;
+/// A campaign aircraft chasing another leads it by a second for this many world units of
+/// range (about 500 m).
+const PURSUIT_LEAD: f32 = 1000.0;
 /// Base traffic: its oval circuit around the base (map units: half its width east-west, half
 /// its length along the runway; 4 x 6 km), the height it flies it at (altitude units, 730 m),
 /// how long it flies it (seconds, about two laps) and rests on the ground before the next
@@ -109,7 +112,15 @@ impl Sim {
         let mut u = self.flights[i];
         // --- target selection ---
         let (tx, ty, tz, mode);
-        if u.flags & fflags::RTB != 0 {
+        let mut chase = None;
+        // A campaign fighter's quarry nearer than the pilot the defences reported: it stays on it.
+        let quarry_nearer = self.campaign_pursuit(i).is_some_and(|(x, y, _)| {
+            let (sx, sy) = self.pl.seen.map_or((self.ref_x, self.ref_y), |(x, y, _)| (x, y));
+            approx(s16(x - u.x), s16(y - u.y)) < approx(s16(sx - u.x), s16(sy - u.y))
+        });
+        // A strike aircraft pressed on its way home fights first.
+        let pressed = self.campaign_defending(i) && u.flags & fflags::FINAL == 0;
+        if u.flags & fflags::RTB != 0 && !pressed {
             let b = self.obj(u.wp);
             if u.flags & fflags::FINAL != 0 {
                 tx = s16(b.x - 2 * s16(u.x - b.x));
@@ -139,6 +150,7 @@ impl Sim {
             && !self
                 .campaign_flight(i)
                 .is_some_and(|f| f.blue || f.role != crate::campaign::Role::Fighter)
+            && !quarry_nearer
         {
             mode = 1;
             if self.decoy_active() {
@@ -155,12 +167,18 @@ impl Sim {
                 ty = self.ref_y;
                 tz = self.ref_alt;
             }
-        } else if let Some((ex, ey, ez)) = self.campaign_pursuit(i) {
-            // Campaign: going for an aircraft of the other side.
+        } else if let Some(j) = self.campaign_pursued(i) {
+            // Campaign: going for an aircraft of the other side, for where it will be (lead
+            // pursuit: more the farther it is, up to a few seconds' flight).
             mode = 4;
-            tx = ex;
-            ty = ey;
-            tz = ez;
+            let e = self.flights[j];
+            let v = self.flight_vel.get(j).copied().unwrap_or_default();
+            let d = approx(s16(e.x - u.x), s16(e.y - u.y)) as f32;
+            let lead = (d * 32.0 / PURSUIT_LEAD).clamp(0.3, 3.0);
+            tx = e.x + (v[0] * lead / 32.0) as i32;
+            ty = e.y + (v[1] * lead / 32.0) as i32;
+            tz = e.alt;
+            chase = Some(v[0].hypot(v[1]) as f64);
         } else {
             mode = 3;
             let (mut x, mut y, mut z);
@@ -294,7 +312,8 @@ impl Sim {
         let noe = self.noe(i, &u);
         if self.ai_physics(i, &u) {
             self.terrain_flag(i, &mut u);
-            let st = Steer { tx, ty, tz, mode, rng, dogfight, roll_cmd, pitch_cmd, circle, noe };
+            let st =
+                Steer { tx, ty, tz, mode, rng, dogfight, roll_cmd, pitch_cmd, circle, noe, chase };
             self.fly_physics(i, &mut u, &t, st);
             u.flags &= !fflags::HIT;
         } else {
@@ -400,6 +419,7 @@ impl Sim {
     }
 
     /// The classic moves of flight unit `i` for the steering commands.
+    #[allow(clippy::too_many_arguments)]
     fn classic_moves(
         &mut self,
         i: usize,

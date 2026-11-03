@@ -44,6 +44,13 @@ const DIVE_FLOOR: f64 = 2000.0;
 /// The room kept under a low flyer's dive (alt units, 20 m): its terrain following keeps it
 /// clear, this only catches what it misses.
 const NOE_PULL_OUT_ROOM: f64 = 40.0;
+/// Chasing an aircraft: this close (wu, 4 km) it closes in at its target's speed and this much
+/// more per wu of range (1/s) down to gun range (wu, about 450 m), or turns round it at the
+/// best turn when past it; it goes down after a low one to this much room (alt units, 60 m).
+const CHASE_CLOSE: f64 = 8192.0;
+const CHASE_CLOSURE: f64 = 0.1;
+const CHASE_GUN: f64 = 900.0;
+const CHASE_ROOM: f64 = 120.0;
 /// Integration steps per sim frame.
 const SUBSTEPS: usize = 2;
 
@@ -73,14 +80,14 @@ const EYE_MAX: f64 = 20_000.0;
 /// Seconds without a threat after which the pilot stops watching for it.
 const FORGET_S: i32 = 3;
 /// Chance (%) an AI aircraft's flare or chaff `r` map units from missile `spec` fools it: a third
-/// of the player's chance, better the harder the opponents; the AIM-9M's seeker (IRCCM) rejects
-/// flares `IRCCM` times as often.
+/// of the player's chance, better the harder the opponents; the AIM-9M's and the AA-11's
+/// seekers (IRCCM) reject flares `IRCCM` times as often.
 fn ai_cm_pct(r: i32, diff: i32, spec: i32) -> i32 {
     let pct = crate::missiles::cm_fool_pct(r, 3 - diff.clamp(0, 3)) / 3;
-    if matches!(spec, 23 | 32) { pct / IRCCM } else { pct }
+    if matches!(spec, 23 | 32 | crate::ai_loadout::AA11) { pct / IRCCM } else { pct }
 }
 
-/// How much less often a flare fools the player's AIM-9M than another missile.
+/// How much less often a flare fools the AIM-9M (and the AA-11) than another missile.
 const IRCCM: i32 = 2;
 
 /// `Projectile::cm_fooled` bit: a player missile a flare or chaff fooled; it flies on unguided.
@@ -265,6 +272,8 @@ pub(crate) struct Steer {
     pub circle: bool,
     /// Nap of the earth ([`Sim::noe`]): the terrain following sets the climb angle.
     pub noe: bool,
+    /// Chasing an aircraft (mode 4): its speed (wu/s).
+    pub chase: Option<f64>,
 }
 
 pub(crate) fn rad(bam: i32) -> f64 {
@@ -508,6 +517,21 @@ impl Sim {
                 cmd.speed = 1.2 * ae.v_max;
                 cmd.ab = true;
                 cmd.g = 0.9;
+                let r = st.rng as f64 * 32.0;
+                if let Some(v) = st.chase.filter(|_| r < CHASE_CLOSE) {
+                    cmd.g = 1.0;
+                    if cmd.dpsi.abs() < FRAC_PI_2 {
+                        // Closing from behind: no faster than it takes to get in gun range
+                        // (not past it).
+                        let closure = (r - CHASE_GUN) * CHASE_CLOSURE;
+                        cmd.speed = (v + closure).clamp(0.5 * ae.v_max, AB_SPEED * ae.v_max);
+                        cmd.ab = ae.ab && cmd.speed > 0.95 * ae.v_max;
+                    } else {
+                        // It is behind the wing line: round at the best turn.
+                        cmd.speed = 1.3 * ae.v_corner;
+                        cmd.ab = ae.ab;
+                    }
+                }
             }
             _ => {}
         }
@@ -539,6 +563,13 @@ impl Sim {
             as f64;
         let h = a.pos[2] - ground;
         let mut room = PULL_OUT_ROOM;
+        let mut floor = DIVE_FLOOR;
+        if st.mode == 4 {
+            // Down after a low flyer: as low as it flies (still with some room).
+            let low = (st.tz as f64 - ground).max(0.0);
+            room = room.min((low * 0.6).max(CHASE_ROOM));
+            floor = floor.min((low * 2.0).max(4.0 * CHASE_ROOM));
+        }
         if let Some(tf) = noe {
             // Nap of the earth: the terrain following's climb angle, and no deeper (a
             // defensive dive too).
@@ -548,8 +579,8 @@ impl Sim {
             if u.flags & fflags::TERRAIN != 0 {
                 cmd.gamma = cmd.gamma.max(TERRAIN_CLIMB);
             }
-            if h < DIVE_FLOOR {
-                cmd.gamma = cmd.gamma.max(-0.05 - 0.3 * (h / DIVE_FLOOR).max(0.0));
+            if h < floor {
+                cmd.gamma = cmd.gamma.max(-0.05 - 0.3 * (h / floor).max(0.0));
             }
         }
         if a.pos[2] > 28_000.0 {

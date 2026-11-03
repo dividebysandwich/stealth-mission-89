@@ -148,6 +148,8 @@
         // The CBU-105's dispenser: a guided bomb flying to the point marked at release, which
         // opens at its burst altitude (sfw.rs).
         (id: "cbu105", name: "CBU-105", family: Special, lock: 10, speed: 0, turn: 2, seeker: GuidedBomb, model: 12),
+        // The R-73 of the enemy's later fighters (the AI's).
+        (id: "aa11", name: "AA-11", family: Air, range_km: 30, mach: 2.5, g: 60, seeker: Ir, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
