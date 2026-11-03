@@ -13,8 +13,10 @@ use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
 use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, app6};
 use crate::menu::{BRIGHT, GREEN};
 
-/// Radar cover: friendly places (ground radars), friendly aircraft, the player (map units).
+/// Radar cover: friendly places (ground radars) and SAM sites, Patriot batteries, Gepards,
+/// friendly aircraft, the player (map units).
 const GROUND_RADAR: i32 = 0x1400;
+const GEPARD_RADAR: i32 = 0x400;
 const AIR_RADAR: i32 = 0xA00;
 const PLAYER_RADAR: i32 = 0x1400;
 /// Guns this close to a reconned place are known (6 km).
@@ -98,26 +100,71 @@ fn near(ax: i32, ay: i32, bx: i32, by: i32, r: i32) -> bool {
     stealth_campaign::dist(ax - bx, ay - by) < r
 }
 
-/// What the friendly side knows now.
-pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
-    let mut pic = Picture::default();
+/// The friendly side's radars other than the player's: where they are and how far they see
+/// (map units). A campaign's friendly places, Patriot batteries and Gepards, the friendly SAM
+/// sites, and the friendly aircraft in the air.
+pub fn friendly_eyes(state: Option<&CampaignState>, sim: &Sim) -> Vec<(i32, i32, i32)> {
     let mut eyes: Vec<(i32, i32, i32)> = state
-        .places
-        .iter()
+        .into_iter()
+        .flat_map(|s| s.places.iter())
         .filter(|p| p.owner == Side::Blue)
         .map(|p| (p.x, p.y, GROUND_RADAR))
         .collect();
+    for (k, u) in sim.units().iter().enumerate() {
+        let reach = match u.kind {
+            GroundKind::PatriotRadar => GROUND_RADAR,
+            GroundKind::Gepard => GEPARD_RADAR,
+            _ => continue,
+        };
+        if !u.destroyed && sim.aaa_blue(k) {
+            eyes.push((u.x, u.y, reach));
+        }
+    }
+    for (i, o) in sim.objects().iter().enumerate().take(sim.ground_unit_count()).skip(3) {
+        if o.unit_type > 0
+            && o.flags & oflags::FRIENDLY != 0
+            && o.flags & oflags::DESTROYED == 0
+            && (o.x, o.y) != (0, 0)
+            && !sim.object_is_ship(i)
+        {
+            eyes.push((o.x, o.y, GROUND_RADAR));
+        }
+    }
+    for (i, u) in sim.flights().iter().enumerate() {
+        if airborne(u) && sim.friendly_unit(i, u.spec) {
+            eyes.push((u.x, u.y, AIR_RADAR));
+        }
+    }
+    eyes
+}
+
+/// A flight unit in the air (not destroyed, moving).
+fn airborne(u: &stealth_sim::FlightUnit) -> bool {
+    u.flags & (fflags::EXISTS | fflags::AIRBORNE) == fflags::EXISTS | fflags::AIRBORNE
+        && u.flags & fflags::DESTROYED == 0
+        && u.speed != 0
+}
+
+/// Some radar in `eyes` sees the point (map units).
+pub fn seen_by(eyes: &[(i32, i32, i32)], x: i32, y: i32) -> bool {
+    eyes.iter().any(|&(ex, ey, r)| near(x, y, ex, ey, r))
+}
+
+/// What the friendly side knows now.
+pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
+    let mut pic = Picture::default();
+    let mut eyes = friendly_eyes(Some(state), sim);
+    // The player's radar too, unless in standby.
     if !sim.player_absent() {
         let p = sim.player();
         pic.player = Some((p.mx, p.my));
-        eyes.push((p.mx, p.my, PLAYER_RADAR));
+        if !sim.player_radar_off() {
+            eyes.push((p.mx, p.my, PLAYER_RADAR));
+        }
     }
     let mut enemies = Vec::new();
     for (i, u) in sim.flights().iter().enumerate() {
-        if u.flags & (fflags::EXISTS | fflags::AIRBORNE) != fflags::EXISTS | fflags::AIRBORNE
-            || u.flags & fflags::DESTROYED != 0
-            || u.speed == 0
-        {
+        if !airborne(u) {
             continue;
         }
         let blue = sim.friendly_unit(i, u.spec);
@@ -131,16 +178,12 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             name: sim.aircraft_name(u.spec),
         };
         if blue {
-            eyes.push((u.x, u.y, AIR_RADAR));
             pic.friendly.push(a);
         } else {
             enemies.push(a);
         }
     }
-    pic.fighters = enemies
-        .into_iter()
-        .filter(|a| eyes.iter().any(|&(x, y, r)| near(a.x, a.y, x, y, r)))
-        .collect();
+    pic.fighters = enemies.into_iter().filter(|a| seen_by(&eyes, a.x, a.y)).collect();
     // SAM sites: reconned, or once detected by a friendly aircraft (`CampaignState` spotted).
     let objects = sim.objects();
     for s in state.sites.iter().filter(|s| s.kind == SiteKind::Sam && s.alive()) {

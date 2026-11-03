@@ -638,6 +638,13 @@ pub struct Contacts {
     pub radar_arc: Option<MapArc>,
 }
 
+impl Contacts {
+    /// The contacts the displays show (`Contact::seen`).
+    pub fn shown(&self) -> impl Iterator<Item = &Contact> {
+        self.list.iter().filter(|k| k.seen)
+    }
+}
+
 /// A radar's coverage on the MAP display: radius `range * (EMV + score) / 100`, a full circle
 /// while the site is searching, +-45 degrees towards the player once alerted.
 #[derive(Debug, Clone, Copy)]
@@ -679,6 +686,9 @@ pub struct Contact {
     pub target: Option<ContactRef>,
     /// Ground radar or armed ship: its threat ring.
     pub threat: Option<Threat>,
+    /// On the displays: an aircraft the player's radar, or with it in standby another
+    /// friendly radar, sees (everything else always).
+    pub seen: bool,
 }
 
 /// A radar's threat ring on the HSD.
@@ -1586,7 +1596,7 @@ impl MfdParams<'_, '_> {
         c.copy_rect(&self.raster.canvas, 0, 0, 77, 60, 0, 0);
         let (centre, zoom) = (self.raster.centre, self.raster.zoom);
         let blink = crate::hud::blink(&self.time);
-        for k in &self.contacts.list {
+        for k in self.contacts.shown() {
             let p = map_to_screen(centre, zoom, k.east / 32.0, 0x8000 as f64 - k.north / 32.0);
             let (x, y) = (p.x as i32, p.y as i32);
             match k.kind {
@@ -1748,7 +1758,7 @@ impl MfdParams<'_, '_> {
             }
         }
         // Other aircraft by relative heading and altitude band; missiles as short lines.
-        for ct in &self.contacts.list {
+        for ct in self.contacts.shown() {
             let mx = (ct.east / 32.0) as i32;
             let my = 0x8000 - (ct.north / 32.0) as i32;
             let (x, y, vis) = proj(mx, my);
@@ -2097,7 +2107,7 @@ impl MfdParams<'_, '_> {
             }
         }
         let blink = crate::hud::blink(&self.time);
-        for k in &self.contacts.list {
+        for k in self.contacts.shown() {
             let p = to(k.east, k.north);
             let (x, y) = (p.x as i32, p.y as i32);
             match k.kind {

@@ -616,9 +616,16 @@ impl AvionicsState {
         GM_RANGES[self.gm_range.min(GM_RANGES.len() - 1)]
     }
 
-    /// The radar transmits: one of its formats is up and it is not in standby.
+    /// The radar transmits: it searches the air for the HSD whenever it is not in standby
+    /// (mapping the ground too while the GM is up).
     pub fn radar_emitting(&self) -> bool {
-        self.gm_on() || self.fcr_on()
+        self.radar && !self.radar_standby
+    }
+
+    /// The aircraft's radar is in standby: its displays show only the aircraft the friendly
+    /// side's other radars see.
+    pub fn radar_off(&self) -> bool {
+        self.radar && self.radar_standby
     }
 
     /// The radar maps the ground: its ground map is up, not in standby.
@@ -2071,7 +2078,7 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
     }
     // Threat rings, ground targets, aircraft, missiles.
     let px_per_km = (view.scale * 1000.0 / WU) as f32;
-    for k in &p.contacts.list {
+    for k in p.contacts.shown() {
         let q = view.to_screen(k.east, k.north);
         match k.kind {
             ContactKind::GroundRadar => {
@@ -2958,8 +2965,7 @@ pub fn pick_contact(
     let pick = |friendly: bool| {
         nearest(
             contacts
-                .list
-                .iter()
+                .shown()
                 .filter(|k| k.friendly == friendly)
                 .filter_map(|k| Some((view.to_screen(k.east, k.north), k.target?))),
             cursor,
@@ -3235,9 +3241,10 @@ mod tests {
         assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| o.0), Some("FCR"));
         assert_eq!(osb(MfdSide::Left, 7, &s).map(|o| o.0), Some("GM"));
         assert_eq!(osb(MfdSide::Right, 6, &s).map(|o| o.0), Some("HARM"));
-        assert!(!s.av.radar_emitting());
+        // It searches the air for the HSD with neither of its formats up.
+        assert!(s.av.radar_emitting() && !s.av.gm_on());
         apply(&mut s, &mut raster, MfdCmd::Format(MfdSide::Left, Format::Gm));
-        assert!(s.av.radar_emitting());
+        assert!(s.av.radar_emitting() && s.av.gm_on());
         apply(&mut s, &mut raster, MfdCmd::Soi(MfdSide::Left));
         assert_eq!(s.av.soi_format(), Some(Format::Gm));
         let r = s.av.gm_range;
@@ -3246,7 +3253,7 @@ mod tests {
         apply(&mut s, &mut raster, MfdCmd::GmRange(-1));
         assert_eq!(s.av.gm_range, r);
         apply(&mut s, &mut raster, MfdCmd::RadarStandby);
-        assert!(!s.av.radar_emitting());
+        assert!(!s.av.radar_emitting() && !s.av.gm_on() && !s.av.fcr_on() && s.av.radar_off());
         assert_eq!(osb(MfdSide::Left, 0, &s).map(|o| o.0), Some("STBY"));
     }
 
@@ -3762,6 +3769,7 @@ mod tests {
             friendly: false,
             target,
             threat: None,
+            seen: true,
         };
         let contacts = Contacts {
             list: vec![
@@ -3788,6 +3796,7 @@ mod tests {
             friendly,
             target: Some(ContactRef::Unit(unit)),
             threat: None,
+            seen: true,
         };
         let contacts =
             Contacts { list: vec![at(1000.0, true, 1), at(1100.0, false, 2)], ..default() };
@@ -3795,6 +3804,10 @@ mod tests {
         assert_eq!(pick_contact(&contacts, &v, p, PICK_RADIUS), Some(ContactRef::Unit(2)));
         // A friendly alone is lockable.
         let contacts = Contacts { list: vec![at(1000.0, true, 1)], ..default() };
+        assert_eq!(pick_contact(&contacts, &v, p, PICK_RADIUS), Some(ContactRef::Unit(1)));
+        // An enemy no radar sees (the own one in standby) is not on the display to lock.
+        let hidden = Contact { seen: false, ..at(1100.0, false, 2) };
+        let contacts = Contacts { list: vec![at(1000.0, true, 1), hidden], ..default() };
         assert_eq!(pick_contact(&contacts, &v, p, PICK_RADIUS), Some(ContactRef::Unit(1)));
     }
 }
