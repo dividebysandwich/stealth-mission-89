@@ -42,6 +42,7 @@ planner-briefed = ブリーフィングのルート { $km } km、燃料 { $fuel 
 planner-coverage = レーダー覆域：
     .note = レーダー覆域は、480ktの水平飛行、ベイ閉鎖を前提としています。
 planner-detected = ルートのうち { $km } km が探知される
+planner-vprofile = 垂直プロファイル：ルート沿いの地形とレーダー探知
 planner-pulse = パルスレーダー（P）の探知距離
 planner-doppler = ドップラーレーダー（D）の探知距離
 planner-missile = ミサイルの射程

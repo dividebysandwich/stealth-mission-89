@@ -42,6 +42,7 @@ planner-briefed = Pot iz brifinga { $km } km, gorivo { $fuel } lbs
 planner-coverage = Radarska pokritost za
     .note = Radarska pokritost predpostavlja ravni let pri 480 kt z zaprtimi vrati bombnika.
 planner-detected = { $km } km poti odkritih
+planner-vprofile = NAVPIČNI PROFIL: teren in radarsko zaznavanje vzdolž poti
 planner-pulse = Doseg zaznave pulznega radarja (P)
 planner-doppler = Doseg zaznave dopplerskega radarja (D)
 planner-missile = Doseg izstrelkov

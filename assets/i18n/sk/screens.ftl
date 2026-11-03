@@ -42,6 +42,7 @@ planner-briefed = Trasa z brífingu { $km } km, palivo { $fuel } lbs
 planner-coverage = Radarové pokrytie pre
     .note = Radarové pokrytie počíta s horizontálnym letom rýchlosťou 480 kt a zatvorenými dverami šachty.
 planner-detected = Zistených { $km } km trasy
+planner-vprofile = VERTIKÁLNY PROFIL: terén a radarová detekcia pozdĺž trasy
 planner-pulse = Dosah zistenia pulzného radaru (P)
 planner-doppler = Dosah zistenia dopplerovského radaru (D)
 planner-missile = Dosah rakiet

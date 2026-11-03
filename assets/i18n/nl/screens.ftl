@@ -41,6 +41,7 @@ planner-briefed = Gebriefde route { $km } km, brandstof { $fuel } lbs
 planner-coverage = Radardekking voor
     .note = De radardekking gaat uit van horizontale vlucht op 480 kt met gesloten ruimdeuren.
 planner-detected = { $km } km van de route gedetecteerd
+planner-vprofile = VERTICAAL PROFIEL: terrein en radardetectie langs de route
 planner-pulse = Detectiebereik pulsradar (P)
 planner-doppler = Detectiebereik dopplerradar (D)
 planner-missile = Raketbereik

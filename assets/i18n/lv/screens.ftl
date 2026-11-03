@@ -42,6 +42,7 @@ planner-briefed = Brīfinga maršruts { $km } km, degviela { $fuel } lbs
 planner-coverage = Radaru pārklājums:
     .note = Radaru pārklājums pieņem 480 kt horizontālu lidojumu, nodalījuma durvis aizvērtas.
 planner-detected = Atklāti { $km } km no maršruta
+planner-vprofile = VERTIKĀLAIS PROFILS: reljefs un radara atklāšana maršrutā
 planner-pulse = Impulsu radara (P) atklāšanas rādiuss
 planner-doppler = Doplera radara (D) atklāšanas rādiuss
 planner-missile = Raķetes darbības rādiuss

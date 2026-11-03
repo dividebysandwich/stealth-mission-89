@@ -2067,7 +2067,7 @@ pub(crate) fn menu_ui(
         &keys,
         settings.vr,
     );
-    crate::planner::planner_ui(ctx, &mut planner, &mut state);
+    crate::planner::planner_ui(ctx, &mut planner, &mut state, settings.aircraft);
     crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, settings.aircraft);
     let loaded = crate::savegame::saves_ui(ctx, &mut saves);
     if before

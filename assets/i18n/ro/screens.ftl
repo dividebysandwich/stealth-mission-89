@@ -42,6 +42,7 @@ planner-briefed = Rută din briefing { $km } km, combustibil { $fuel } lbs
 planner-coverage = Acoperire radar pentru
     .note = Acoperirea radar presupune zbor orizontal la 480 kt, soute închise.
 planner-detected = { $km } km din rută detectați
+planner-vprofile = PROFIL VERTICAL: teren și detecție radar de-a lungul rutei
 planner-pulse = Rază de detecție radar cu impulsuri (P)
 planner-doppler = Rază de detecție radar Doppler (D)
 planner-missile = Raza rachetei

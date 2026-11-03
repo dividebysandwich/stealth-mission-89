@@ -42,6 +42,7 @@ planner-briefed = Διαδρομή briefing { $km } km, καύσιμο { $fuel }
 planner-coverage = Κάλυψη radar για
     .note = Η κάλυψη radar προϋποθέτει οριζόντια πτήση στα 480 kt με κλειστές τις θύρες του καμπαρτίνου.
 planner-detected = { $km } km της διαδρομής εντοπίστηκαν
+planner-vprofile = ΚΑΤΑΚΟΡΥΦΗ ΤΟΜΗ: έδαφος και εντοπισμός radar κατά μήκος της διαδρομής
 planner-pulse = Εμβέλεια ανίχνευσης radar παλμών (P)
 planner-doppler = Εμβέλεια ανίχνευσης radar Doppler (D)
 planner-missile = Εμβέλεια πυραύλων

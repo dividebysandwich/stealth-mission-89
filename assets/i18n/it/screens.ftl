@@ -41,6 +41,7 @@ planner-briefed = Rotta del briefing { $km } km, carburante { $fuel } lbs
 planner-coverage = Copertura radar per
     .note = La copertura radar presuppone un volo livellato a 480 kt, portelloni della stiva chiusi.
 planner-detected = { $km } km della rotta rilevati
+planner-vprofile = PROFILO VERTICALE: terreno e rilevamento radar lungo la rotta
 planner-pulse = Portata di rilevamento radar a impulsi (P)
 planner-doppler = Portata di rilevamento radar Doppler (D)
 planner-missile = Portata dei missili

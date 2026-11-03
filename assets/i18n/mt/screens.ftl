@@ -42,6 +42,7 @@ planner-briefed = Rotta brifjata { $km } km, fuel { $fuel } lbs
 planner-coverage = Kopertura tar-radar għal
     .note = Il-kopertura tar-radar tassumi titjira ċatta f'480kt, bay doors magħluqa.
 planner-detected = { $km } km tar-rotta skoperti
+planner-vprofile = PROFIL VERTIKALI: art u detezzjoni tar-radar tul ir-rotta
 planner-pulse = Firxa ta' skoperta tar-radar pulse (P)
 planner-doppler = Firxa ta' skoperta tar-radar doppler (D)
 planner-missile = Firxa tal-missili

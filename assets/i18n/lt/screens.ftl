@@ -42,6 +42,7 @@ planner-briefed = Maršrutas pagal brifingą { $km } km, kuras { $fuel } lb
 planner-coverage = Radarų aprėptis:
     .note = Radarų aprėptis skaičiuojama pagal 480 kt horizontalų skrydį, skyrius uždarytas.
 planner-detected = Maršruto aptikta: { $km } km
+planner-vprofile = VERTIKALUS PROFILIS: reljefas ir radaro aptikimas maršrute
 planner-pulse = Impulsinio radaro (P) aptikimo nuotolis
 planner-doppler = Doplerio radaro (D) aptikimo nuotolis
 planner-missile = Raketos nuotolis

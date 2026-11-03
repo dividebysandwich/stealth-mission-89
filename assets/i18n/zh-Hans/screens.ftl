@@ -41,6 +41,7 @@ planner-briefed = 简报航线 { $km } km，燃油 { $fuel } lbs
 planner-coverage = 雷达覆盖范围：
     .note = 雷达覆盖范围按 480kt 平飞、弹舱门关闭计算。
 planner-detected = 航线上有 { $km } km 被探测到
+planner-vprofile = 垂直剖面：航线沿途的地形与雷达探测
 planner-pulse = 脉冲雷达（P）探测距离
 planner-doppler = 多普勒雷达（D）探测距离
 planner-missile = 导弹射程

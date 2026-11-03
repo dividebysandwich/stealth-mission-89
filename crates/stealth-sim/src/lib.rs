@@ -39,7 +39,10 @@ pub use data::{
     WeaponType,
 };
 pub use pilot::{Pilot, PilotEvent};
-pub use radar::{RADAR_EMV, emv};
+pub use radar::{
+    DetectCtx, F22_RCS, F117_RCS, LOW_LEVEL_FT, MAST, RADAR_EMV, TORNADO_LOW_LEVEL_FT,
+    comanche_signature, detect, emv,
+};
 pub use rng::Rng;
 pub use targeting::{HELMET_SEEKER, SEEKER_GIMBAL};
 pub use types::*;

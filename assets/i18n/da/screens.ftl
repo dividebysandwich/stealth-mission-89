@@ -42,6 +42,7 @@ planner-briefed = Briefet rute { $km } km, brændstof { $fuel } lbs
 planner-coverage = Radardækning for
     .note = Radardækningen forudsætter 480 kt vandret flyvning og lukkede bomberumsdøre.
 planner-detected = { $km } km af ruten opdaget
+planner-vprofile = LODRET PROFIL: terræn og radaropdagelse langs ruten
 planner-pulse = Pulsradarens (P) detektionsrækkevidde
 planner-doppler = Dopplerradarens (D) detektionsrækkevidde
 planner-missile = Missilrækkevidde

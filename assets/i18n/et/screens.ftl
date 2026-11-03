@@ -42,6 +42,7 @@ planner-briefed = Briifitud marsruut { $km } km, kütus { $fuel } lbs
 planner-coverage = Radarikate:
     .note = Radarikate eeldab 480 kt horisontaallendu, relvaluugid suletud.
 planner-detected = Marsruudist avastati { $km } km
+planner-vprofile = VERTIKAALNE PROFIIL: maastik ja radarituvastus marsruudil
 planner-pulse = Impulssradari (P) avastamiskaugus
 planner-doppler = Doppleri radari (D) avastamiskaugus
 planner-missile = Raketi lennukaugus

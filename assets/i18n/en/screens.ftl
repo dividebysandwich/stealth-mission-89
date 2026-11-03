@@ -42,6 +42,7 @@ planner-briefed = Briefed route { $km } km, fuel { $fuel } lbs
 planner-coverage = Radar coverage for
     .note = Radar coverage assumes 480kt level flight, bay doors closed.
 planner-detected = { $km } km of the route detected
+planner-vprofile = VERTICAL PROFILE: terrain and radar detection along the route
 planner-pulse = Pulse radar (P) detection range
 planner-doppler = Doppler radar (D) detection range
 planner-missile = Missile range

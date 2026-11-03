@@ -41,6 +41,7 @@ planner-briefed = Route du briefing { $km } km, carburant { $fuel } lb
 planner-coverage = Couverture radar pour
     .note = La couverture radar suppose un vol en palier à 480 kt, soutes fermées.
 planner-detected = { $km } km de la route détectés
+planner-vprofile = PROFIL VERTICAL : relief et détection radar le long de la route
 planner-pulse = Portée de détection radar à impulsions (P)
 planner-doppler = Portée de détection radar Doppler (D)
 planner-missile = Portée des missiles

@@ -17,7 +17,10 @@ use bevy_egui::{EguiContexts, egui};
 use stealth_mission::Mission;
 use stealth_mission::world::flags as F;
 use stealth_sim::SimData;
+use stealth_sim::hills::Hills;
+use stealth_sim::relief::Relief;
 
+use crate::aircraft::AircraftKind;
 use crate::canvas::Canvas;
 use crate::layout::screen_window;
 use crate::map_draw::{
@@ -109,6 +112,12 @@ pub struct Planner {
     /// The view was fitted to this route's mission.
     fitted: Option<(String, u8, u32)>,
     profile: Profile,
+    /// The theater's mountains and hills (theater id), for the vertical profile.
+    terrain: Option<(String, Relief, Hills)>,
+    /// The vertical profile of the route, and what it was worked out for.
+    vertical: Option<(u64, VerticalProfile)>,
+    /// The aircraft the route is flown in, and whether in a campaign: its radar signature.
+    aircraft: (AircraftKind, bool),
 }
 
 impl Planner {
@@ -121,6 +130,12 @@ impl Planner {
     pub fn refit(&mut self) {
         self.fitted = None;
         self.drag = None;
+    }
+
+    /// The route is flown in `kind` (`campaign`: a campaign sortie): the radar coverage and
+    /// the vertical profile are worked out for its radar signature.
+    pub fn fly(&mut self, kind: AircraftKind, campaign: bool) {
+        self.aircraft = (kind, campaign);
     }
 
     /// A route point is being dragged.
@@ -522,28 +537,98 @@ struct Ring {
     active: bool,
     /// Doppler radar (solid detection circle; pulse radars dotted).
     doppler: bool,
+    /// Its radar type, and the type's (lethality, tier, flags) for [`stealth_sim::detect`].
+    typ: i32,
+    threat: (i32, i32, i32),
+}
+
+/// The radar signature of the aircraft flown, as the simulation works it out (its `Pilot::rcs`,
+/// `low_level_ft` and `compute_emv`), cruising level with the gear up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct Signature {
+    /// Radar return in 32nds of the usual one.
+    rcs: i32,
+    /// The RAH-66: the return and the EMV fall with its speed.
+    comanche: bool,
+    /// Ground radars lose it in the clutter below this height (ft).
+    low_level_ft: i32,
+    /// Stores on pylons: seen as an open bay.
+    bay_open: bool,
+    lockheed: bool,
+    diff: i32,
+}
+
+impl Signature {
+    fn of(m: &Mission, (kind, campaign): (AircraftKind, bool)) -> Self {
+        let spec = kind.spec();
+        let lockheed = m.settings.plane == stealth_mission::Plane::Lockheed;
+        let bay_open = !spec.bomb_bay;
+        let rcs = if kind == AircraftKind::F22 {
+            if campaign {
+                stealth_sim::F22_RCS
+            } else {
+                32 * stealth_sim::F22_RCS / stealth_sim::F117_RCS
+            }
+        } else if !campaign || lockheed || bay_open || spec.helicopter {
+            32
+        } else {
+            stealth_sim::F117_RCS
+        };
+        Self {
+            rcs,
+            comanche: kind == AircraftKind::RAH66,
+            low_level_ft: if kind == AircraftKind::Tornado {
+                stealth_sim::TORNADO_LOW_LEVEL_FT
+            } else {
+                stealth_sim::LOW_LEVEL_FT
+            },
+            bay_open,
+            lockheed,
+            diff: m.settings.opponents as i32,
+        }
+    }
+
+    /// The EMV cruising `feet` above the ground.
+    fn emv(&self, feet: u16) -> f32 {
+        use stealth_sim::types::pflags;
+        let agl = stealth_sim::math::view_z(feet);
+        let velocity = (CRUISE_KTS * 27.0) as i32;
+        let flags = pflags::GEAR_UP | if self.bay_open { pflags::BAY_OPEN } else { 0 };
+        (if self.comanche {
+            let base = stealth_sim::emv(agl, velocity, 0, pflags::GEAR_UP, self.diff, false);
+            let scale = 15 + stealth_sim::comanche_signature(velocity);
+            base * scale / 47 + stealth_sim::emv(0, 0, 0, flags, self.diff, false)
+        } else {
+            stealth_sim::emv(agl, velocity, 0, flags, self.diff, self.lockheed)
+        }) as f32
+    }
+
+    /// What it leaves of a radar's score.
+    fn return_factor(&self) -> f32 {
+        let comanche = if self.comanche {
+            stealth_sim::comanche_signature((CRUISE_KTS * 27.0) as i32) as f32 / 32.0
+        } else {
+            1.0
+        };
+        self.rcs as f32 / 32.0 * comanche
+    }
 }
 
 /// The game's radar detection ([`stealth_sim::radar`]): a site detects the player when its
 /// score plus his EMV passes 100; the score falls linearly with range from
-/// `terrain * (2 * opponents + tier + 1)` (an average aspect) to 0 at the radar's lethality.
+/// `terrain * (2 * opponents + tier + 1)` (an average aspect, less for a smaller radar return)
+/// to 0 at the radar's lethality.
 fn threat_rings(
     m: &Mission,
     sim: &SimData,
     profile: Profile,
+    sig: &Signature,
     known: &dyn Fn(usize) -> bool,
 ) -> Vec<Ring> {
     let w = &m.world;
     let diff = m.settings.opponents as i32;
     let lockheed = m.settings.plane == stealth_mission::Plane::Lockheed;
-    let emv = stealth_sim::emv(
-        stealth_sim::math::view_z(profile.feet()),
-        (CRUISE_KTS * 27.0) as i32,
-        0,
-        0,
-        diff,
-        lockheed,
-    ) as f32;
+    let emv = sig.emv(profile.feet());
     (3..(w.ground_unit_count as usize).min(w.objects.len()))
         .filter_map(|i| {
             let o = w.objects[i];
@@ -555,8 +640,9 @@ fn threat_rings(
             let (x, y) = (o.x as u16 as i32, o.y as u16 as i32);
             let terrain = (w.grid[((y >> 11).clamp(0, 15) * 16 + (x >> 11).clamp(0, 15)) as usize]
                 & 0xC) as f32;
-            let peak =
-                terrain * (2 * diff + t.tier as i32 + 1) as f32 / if lockheed { 2.0 } else { 1.0 };
+            let peak = terrain * (2 * diff + t.tier as i32 + 1) as f32
+                / if lockheed { 2.0 } else { 1.0 }
+                * sig.return_factor();
             let detect = if peak > 0.0 {
                 (t.lethality as f32 * (1.0 - (100.0 - emv) / peak)).max(0.0)
             } else {
@@ -586,6 +672,8 @@ fn threat_rings(
                 },
                 active: o.flags & (F::OFF_THE_AIR | F::UNDER_REPAIR) == 0,
                 doppler: t.flags & 1 != 0,
+                typ: o.unit_type as i32,
+                threat: (t.lethality as i32, t.tier as i32, t.flags as i32),
             })
         })
         .collect()
@@ -633,7 +721,12 @@ fn point_label(route: &[RoutePoint], i: usize) -> String {
 }
 
 /// The planner window (over the menu).
-pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuState) {
+pub fn planner_ui(
+    ctx: &egui::Context,
+    planner: &mut Planner,
+    state: &mut MenuState,
+    aircraft: AircraftKind,
+) {
     if !planner.open {
         return;
     }
@@ -645,6 +738,7 @@ pub fn planner_ui(ctx: &egui::Context, planner: &mut Planner, state: &mut MenuSt
     if !route.fits(&m) {
         *route = PlannedRoute::of(&m);
     }
+    planner.fly(aircraft, false);
     let mut open = true;
     let window = screen_window(ctx, "Mission planner", PLANNER_SIZE);
     let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
@@ -695,7 +789,7 @@ pub fn route_panel(
     let rings = planner
         .sim
         .as_ref()
-        .map(|s| threat_rings(m, s, planner.profile, known))
+        .map(|s| threat_rings(m, s, planner.profile, &Signature::of(m, planner.aircraft), known))
         .unwrap_or_default();
     let off = [&[Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
     let mut layers = MapLayers::of(ui.ctx(), "route", &off);
@@ -712,18 +806,27 @@ pub fn route_panel(
             let side = (size.x * 0.45).clamp(260.0, 350.0);
             let map_size =
                 egui::vec2(ui.available_width() - side - gap, ui.available_height() - 8.0);
-            map_view(
-                ui,
-                planner,
-                m,
-                route,
-                &rings,
-                &mut layers,
-                overlay.as_ref(),
-                &weather,
-                map_size,
-                editable,
-            );
+            // The map, and the route's vertical profile under it (drawn after the map: a point
+            // dragged, added or removed this frame shows in it at once).
+            let profile_h = (map_size.y * 0.24).clamp(150.0, 240.0);
+            let profile_gap = 8.0;
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                map_view(
+                    ui,
+                    planner,
+                    m,
+                    route,
+                    &rings,
+                    &mut layers,
+                    overlay.as_ref(),
+                    &weather,
+                    egui::vec2(map_size.x, map_size.y - profile_h - profile_gap),
+                    editable,
+                );
+                ui.add_space(profile_gap);
+                vertical_view(ui, planner, m, route, &rings, egui::vec2(map_size.x, profile_h));
+            });
             ui.add_space(gap - ui.spacing().item_spacing.x);
             ui.vertical(|ui| {
                 ui.set_width(side);
@@ -1257,5 +1360,364 @@ impl Legend {
             }
             Legend::Drone => drone_cross(painter, c),
         }
+    }
+}
+
+/// Columns (along the route) and rows (heights) of the vertical profile's detection grid.
+const PROFILE_COLS: usize = 192;
+const PROFILE_ROWS: usize = 56;
+/// The vertical profile's ceiling (altitude units, feet), unless the mountains reach higher.
+const PROFILE_TOP: f32 = 30000.0;
+/// The vertical profile's background: black at the top, dark blue at the bottom.
+const PROFILE_SKY: egui::Color32 = egui::Color32::BLACK;
+const PROFILE_DEEP: egui::Color32 = egui::Color32::from_rgb(6, 16, 64);
+const PROFILE_EARTH: egui::Color32 = egui::Color32::from_rgb(40, 32, 24);
+const PROFILE_RIDGE: egui::Color32 = egui::Color32::from_rgb(150, 122, 82);
+
+/// The route's vertical profile: the ground under it and how well the known radars see each
+/// height over it, by the game's own detection ([`stealth_sim::detect`]: range, aspect, the
+/// cone over a site, the ground clutter, the mountains and hills in between).
+struct VerticalProfile {
+    /// Distance of each route point from the base (map units); the last, the route's length.
+    marks: Vec<f32>,
+    /// The height of the top row (altitude units).
+    top: f32,
+    /// The ground under each column (altitude units).
+    ground: Vec<f32>,
+    /// Row by row from the bottom: the best radar score plus the EMV there (over 100: detected);
+    /// NaN under the ground.
+    heat: Vec<f32>,
+    /// The highest of them.
+    max: f32,
+}
+
+/// Height (altitude units) of a point `f` of the way up the profile: on a square-root scale,
+/// flying low gets the room.
+fn profile_alt(f: f32, top: f32) -> f32 {
+    top * f.clamp(0.0, 1.0).powi(2)
+}
+
+/// How far up the profile a height is (0 the bottom, 1 the top).
+fn profile_frac(alt: f32, top: f32) -> f32 {
+    (alt.max(0.0) / top).sqrt().min(1.0)
+}
+
+impl VerticalProfile {
+    fn new(
+        m: &Mission,
+        sig: &Signature,
+        pts: &[RoutePoint],
+        rings: &[Ring],
+        relief: &Relief,
+        hills: &Hills,
+    ) -> Self {
+        let p: Vec<egui::Vec2> = pts.iter().map(|p| egui::vec2(p.x as f32, p.y as f32)).collect();
+        let mut marks = vec![0.0f32];
+        for w in p.windows(2) {
+            marks.push(marks[marks.len() - 1] + (w[1] - w[0]).length());
+        }
+        let length = marks[marks.len() - 1].max(1.0);
+        let ground_at = |x: i32, y: i32| relief.ground(x, y).max(hills.ground_alt(x, y));
+        // Each column's map point and the heading of its leg.
+        let cols: Vec<(i32, i32, i32)> = (0..PROFILE_COLS)
+            .map(|c| {
+                let d = length * c as f32 / (PROFILE_COLS - 1) as f32;
+                let leg = (1..marks.len()).find(|&i| d <= marks[i]).unwrap_or(marks.len() - 1);
+                let (a, b) = (p[leg.saturating_sub(1)], p[leg]);
+                let span = marks[leg] - marks[leg.saturating_sub(1)];
+                let at =
+                    if span > 0.0 { a + (b - a) * ((d - (marks[leg] - span)) / span) } else { b };
+                let dir = b - a;
+                let k = 4096.0 / dir.x.abs().max(dir.y.abs()).max(1.0);
+                // (Map y runs south; a bearing's y north.)
+                let heading = stealth_sim::math::bearing((dir.x * k) as i32, (-dir.y * k) as i32);
+                (at.x as i32, at.y as i32, heading)
+            })
+            .collect();
+        let ground: Vec<f32> = cols.iter().map(|&(x, y, _)| ground_at(x, y) as f32).collect();
+        let top = PROFILE_TOP.max(ground.iter().fold(0.0f32, |a, &g| a.max(g)) * 1.5);
+        let row_alt = |r: usize| profile_alt(r as f32 / (PROFILE_ROWS - 1) as f32, top);
+        let rows: Vec<usize> = (0..PROFILE_ROWS).collect();
+        let mut heat = vec![f32::NAN; PROFILE_COLS * PROFILE_ROWS];
+        for (c, &(x, y, heading)) in cols.iter().enumerate() {
+            let g = ground[c];
+            let mut best = [0.0f32; PROFILE_ROWS];
+            for ring in rings.iter().filter(|r| r.active) {
+                let (sx, sy) = (ring.x as i32, ring.y as i32);
+                if stealth_sim::math::approx(x - sx, y - sy) >> 6 >= ring.threat.0 {
+                    continue;
+                }
+                // The mountains and hills hide the low rows from the site's antenna: a line of
+                // sight open to a height is open to every height above it.
+                let site = (sx, sy, ground_at(sx, sy) + stealth_sim::MAST);
+                let sees = |r: usize| {
+                    let to = (x, y, row_alt(r) as i32);
+                    relief.sight_open(site, to) && hills.sight_open(site, to)
+                };
+                let first = rows.partition_point(|&r| !sees(r));
+                for (r, b) in best.iter_mut().enumerate().skip(first) {
+                    let alt = row_alt(r);
+                    if alt < g {
+                        continue;
+                    }
+                    let ctx = stealth_sim::DetectCtx {
+                        px: x,
+                        py: y,
+                        alt: alt as i32,
+                        view_z: stealth_sim::math::view_z(alt.min(65535.0) as u16),
+                        height: (alt - g) as i32,
+                        heading,
+                        velocity: (CRUISE_KTS * 27.0) as i32,
+                        diff: sig.diff,
+                        lockheed: sig.lockheed,
+                        comanche: sig.comanche,
+                        rcs: sig.rcs,
+                        low_level_ft: sig.low_level_ft,
+                        grid: &m.world.grid,
+                        relief: None,
+                        hills: None,
+                    };
+                    let s = stealth_sim::detect(sx, sy, 0, ring.typ, Some(ring.threat), &ctx).0;
+                    *b = b.max(s as f32);
+                }
+            }
+            for (r, b) in best.iter().enumerate() {
+                let alt = row_alt(r);
+                if alt >= g {
+                    let agl = (alt - g).min(65535.0) as u16;
+                    heat[r * PROFILE_COLS + c] = b + sig.emv(agl);
+                }
+            }
+        }
+        let max = heat.iter().copied().filter(|h| !h.is_nan()).fold(0.0, f32::max);
+        Self { marks, top, ground, heat, max }
+    }
+}
+
+/// The colour of a radar score plus EMV on the profile, over its whole range up to the
+/// profile's highest (`max`): green well under detection, yellow at it (100), red at the
+/// highest. Semi-transparent: the background shows through.
+fn heat_colour(s: f32, max: f32) -> egui::Color32 {
+    if s.is_nan() {
+        return egui::Color32::TRANSPARENT;
+    }
+    let lerp = |a: [f32; 3], b: [f32; 3], t: f32, alpha: f32| {
+        let c = |i: usize| (a[i] + (b[i] - a[i]) * t) as u8;
+        egui::Color32::from_rgba_unmultiplied(c(0), c(1), c(2), alpha as u8)
+    };
+    let (green, yellow, red) = ([40.0, 190.0, 110.0], [255.0, 215.0, 40.0], [255.0, 40.0, 30.0]);
+    if s < 100.0 {
+        let t = (s / 100.0).clamp(0.0, 1.0);
+        lerp(green, yellow, t, 20.0 + 60.0 * t)
+    } else {
+        let t = ((s - 100.0) / (max - 100.0).max(1.0)).min(1.0);
+        lerp(yellow, red, t, 80.0 + 50.0 * t)
+    }
+}
+
+/// The route's vertical profile under the map: the ground along it, the radar detection over
+/// it, the route points and the profile's flying height.
+fn vertical_view(
+    ui: &mut egui::Ui,
+    planner: &mut Planner,
+    m: &Mission,
+    route: &PlannedRoute,
+    rings: &[Ring],
+    size: egui::Vec2,
+) {
+    let (resp, painter) = ui.allocate_painter(size, egui::Sense::hover());
+    let rect = resp.rect;
+    let painter = painter.with_clip_rect(rect);
+    let mut sky = egui::Mesh::default();
+    for (p, c) in [
+        (rect.left_top(), PROFILE_SKY),
+        (rect.right_top(), PROFILE_SKY),
+        (rect.right_bottom(), PROFILE_DEEP),
+        (rect.left_bottom(), PROFILE_DEEP),
+    ] {
+        sky.colored_vertex(p, c);
+    }
+    sky.add_triangle(0, 1, 2);
+    sky.add_triangle(0, 2, 3);
+    painter.add(sky);
+
+    // Worked out again when the route or the radars change.
+    let id = m.theater_code.to_ascii_lowercase();
+    if planner.terrain.as_ref().is_none_or(|(t, ..)| *t != id) {
+        let (relief, hills) =
+            (stealth_host::theater::relief(&id), stealth_host::theater::hills(&id));
+        planner.terrain = Some((id.clone(), relief, hills));
+    }
+    let pts = with_base(m, &route.points);
+    let sig = Signature::of(m, planner.aircraft);
+    let key = {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::hash::DefaultHasher::new();
+        id.hash(&mut h);
+        sig.hash(&mut h);
+        pts.iter().for_each(|p| (p.x, p.y).hash(&mut h));
+        for r in rings.iter().filter(|r| r.active) {
+            (r.x as i32, r.y as i32, r.typ, r.threat).hash(&mut h);
+        }
+        h.finish()
+    };
+    if planner.vertical.as_ref().is_none_or(|(k, _)| *k != key)
+        && let Some((_, relief, hills)) = planner.terrain.as_ref()
+    {
+        planner.vertical = Some((key, VerticalProfile::new(m, &sig, &pts, rings, relief, hills)));
+    }
+    let Some((_, v)) = planner.vertical.as_ref() else { return };
+
+    let plot = egui::Rect::from_min_max(
+        rect.min + egui::vec2(52.0, 36.0),
+        rect.max - egui::vec2(28.0, 18.0),
+    );
+    let length = v.marks[v.marks.len() - 1].max(1.0);
+    let col_x = |c: usize| plot.left() + plot.width() * c as f32 / (PROFILE_COLS - 1) as f32;
+    let alt_y = |alt: f32| plot.bottom() - plot.height() * profile_frac(alt, v.top);
+    let dist_x = |d: f32| plot.left() + plot.width() * d / length;
+    let font = egui::FontId::proportional(11.0);
+    let grid_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(45));
+    let minor_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(22));
+
+    // Detection: each grid point's colour, blended between them.
+    let mut heat = egui::Mesh::default();
+    for r in 0..PROFILE_ROWS {
+        let y = plot.bottom() - plot.height() * r as f32 / (PROFILE_ROWS - 1) as f32;
+        for c in 0..PROFILE_COLS {
+            heat.colored_vertex(
+                egui::pos2(col_x(c), y),
+                heat_colour(v.heat[r * PROFILE_COLS + c], v.max),
+            );
+        }
+    }
+    for r in 0..PROFILE_ROWS as u32 - 1 {
+        for c in 0..PROFILE_COLS as u32 - 1 {
+            let i = r * PROFILE_COLS as u32 + c;
+            let up = i + PROFILE_COLS as u32;
+            heat.add_triangle(i, i + 1, up + 1);
+            heat.add_triangle(i, up + 1, up);
+        }
+    }
+    painter.add(heat);
+
+    // A faint grid over the detection: the labelled heights and distances, and fainter lines
+    // between them.
+    for ft in [1000.0, 3000.0, 4000.0, 6000.0, 7000.0, 8000.0, 9000.0, 15000.0, 25000.0] {
+        if ft <= v.top {
+            painter.hline(plot.x_range(), alt_y(ft), minor_line);
+        }
+    }
+    // Heights.
+    for ft in [500.0, 2000.0, 5000.0, 10000.0, 20000.0, 30000.0, 40000.0, 60000.0] {
+        if ft > v.top {
+            break;
+        }
+        let y = alt_y(ft);
+        painter.hline(plot.x_range(), y, grid_line);
+        let label =
+            if ft < 1000.0 { format!("{ft:.0} ft") } else { format!("{}k ft", ft / 1000.0) };
+        painter.text(
+            egui::pos2(plot.left() - 6.0, y),
+            egui::Align2::RIGHT_CENTER,
+            label,
+            font.clone(),
+            DIM,
+        );
+    }
+    // Distances.
+    let km = length as f64 / PER_KM;
+    let step = [10.0, 20.0, 50.0, 100.0, 200.0, 500.0]
+        .into_iter()
+        .find(|s| km / s <= 10.0)
+        .unwrap_or(1000.0);
+    let mut d = 0.0;
+    while d <= km {
+        let x = dist_x((d * PER_KM) as f32);
+        painter.vline(x, plot.y_range(), grid_line);
+        let half = dist_x(((d + step / 2.0) * PER_KM) as f32);
+        if half < plot.right() {
+            painter.vline(half, plot.y_range(), minor_line);
+        }
+        painter.text(
+            egui::pos2(x, plot.bottom() + 3.0),
+            egui::Align2::CENTER_TOP,
+            format!("{d:.0} km"),
+            font.clone(),
+            DIM,
+        );
+        d += step;
+    }
+
+    // The ground, over the detection (whose rows straddle it).
+    let ridge: Vec<egui::Pos2> =
+        v.ground.iter().enumerate().map(|(c, &g)| egui::pos2(col_x(c), alt_y(g))).collect();
+    let mut earth = egui::Mesh::default();
+    for &p in &ridge {
+        earth.colored_vertex(p, PROFILE_EARTH);
+        earth.colored_vertex(egui::pos2(p.x, plot.bottom()), PROFILE_EARTH);
+    }
+    for c in 0..PROFILE_COLS as u32 - 1 {
+        let i = c * 2;
+        earth.add_triangle(i, i + 1, i + 3);
+        earth.add_triangle(i, i + 3, i + 2);
+    }
+    painter.add(earth);
+    painter.add(egui::Shape::line(ridge, egui::Stroke::new(1.5, PROFILE_RIDGE)));
+
+    // The flying height of the coverage's profile over the ground.
+    let feet = planner.profile.feet() as f32;
+    let flown: Vec<egui::Pos2> =
+        v.ground.iter().enumerate().map(|(c, &g)| egui::pos2(col_x(c), alt_y(g + feet))).collect();
+    painter.extend(egui::Shape::dashed_line(&flown, egui::Stroke::new(1.5, BRIGHT), 6.0, 4.0));
+
+    // The route points.
+    for (i, &d) in v.marks.iter().enumerate().skip(1) {
+        let x = dist_x(d);
+        let colour = match route.points.get(i - 1).map(|p| p.kind) {
+            Some(RouteKind::Primary) => egui::Color32::from_rgb(255, 255, 80),
+            Some(RouteKind::Secondary) => AMBER,
+            Some(RouteKind::Land) => FRIENDLY_BLUE,
+            _ => GREEN,
+        };
+        painter.extend(egui::Shape::dashed_line(
+            &[egui::pos2(x, plot.top()), egui::pos2(x, plot.bottom())],
+            egui::Stroke::new(1.0, colour.gamma_multiply(0.6)),
+            3.0,
+            3.0,
+        ));
+        if i - 1 < route.points.len() {
+            painter.text(
+                egui::pos2(x, plot.top() - 2.0),
+                egui::Align2::CENTER_BOTTOM,
+                point_label(&route.points, i - 1),
+                egui::FontId::monospace(11.0),
+                colour,
+            );
+        }
+    }
+
+    painter.text(
+        rect.left_top() + egui::vec2(8.0, 4.0),
+        egui::Align2::LEFT_TOP,
+        t!("planner-vprofile"),
+        font.clone(),
+        BRIGHT,
+    );
+
+    // Where the pointer is: the distance and height.
+    if let Some(pos) = resp.hover_pos().filter(|p| plot.contains(*p)) {
+        painter.vline(
+            pos.x,
+            plot.y_range(),
+            egui::Stroke::new(1.0, egui::Color32::from_white_alpha(60)),
+        );
+        let d = (pos.x - plot.left()) / plot.width() * length;
+        let alt = profile_alt((plot.bottom() - pos.y) / plot.height(), v.top);
+        let text = format!("{:.0} km  {:.0} ft", d as f64 / PER_KM, alt);
+        let right = pos.x < plot.right() - 120.0;
+        let anchor = if right { egui::Align2::LEFT_BOTTOM } else { egui::Align2::RIGHT_BOTTOM };
+        let off = if right { egui::vec2(8.0, -6.0) } else { egui::vec2(-8.0, -6.0) };
+        painter.text(pos + off, anchor, text, font, BRIGHT);
     }
 }

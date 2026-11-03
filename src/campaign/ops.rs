@@ -2057,6 +2057,7 @@ fn route_editor(
         place_legend(ui, layers);
         super::picture::legend(ui, layers, None);
     };
+    planner.fly(super::kind_of(b.aircraft), true);
     crate::planner::route_panel(
         ui,
         planner,

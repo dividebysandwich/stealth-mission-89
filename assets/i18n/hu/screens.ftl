@@ -42,6 +42,7 @@ planner-briefed = Eligazított útvonal { $km } km, üzemanyag { $fuel } lbs
 planner-coverage = Radarlefedettség ehhez:
     .note = A radarlefedettség 480 kt-os vízszintes repülést és zárt rekeszajtókat feltételez.
 planner-detected = Az útvonal { $km } km-e észlelhető
+planner-vprofile = FÜGGŐLEGES PROFIL: domborzat és radarészlelés az útvonal mentén
 planner-pulse = Impulzusradar (P) észlelési távolsága
 planner-doppler = Doppler-radar (D) észlelési távolsága
 planner-missile = Rakéta hatótávolsága

@@ -41,6 +41,7 @@ planner-briefed = Rute briefing { $km } km, BBM { $fuel } lbs
 planner-coverage = Cakupan radar untuk
     .note = Cakupan radar mengasumsikan terbang datar 480 kt, pintu ruang senjata tertutup.
 planner-detected = { $km } km rute terdeteksi
+planner-vprofile = PROFIL VERTIKAL: medan dan deteksi radar sepanjang rute
 planner-pulse = Jangkauan deteksi radar pulse (P)
 planner-doppler = Jangkauan deteksi radar Doppler (D)
 planner-missile = Jangkauan rudal

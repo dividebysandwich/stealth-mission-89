@@ -42,6 +42,7 @@ planner-briefed = Zadana ruta { $km } km, gorivo { $fuel } lbs
 planner-coverage = Radarska pokrivenost za
     .note = Radarska pokrivenost pretpostavlja horizontalni let od 480 kt sa zatvorenim vratima spremnika.
 planner-detected = Otkriveno km rute: { $km }
+planner-vprofile = VERTIKALNI PROFIL: teren i radarsko otkrivanje duž rute
 planner-pulse = Domet otkrivanja pulsnog radara (P)
 planner-doppler = Domet otkrivanja Dopplerovog radara (D)
 planner-missile = Domet projektila

@@ -109,7 +109,7 @@ pub struct DetectCtx<'a> {
 }
 
 /// A ground radar's antenna above the ground (altitude units, about 15 m).
-const MAST: i32 = 30;
+pub const MAST: i32 = 30;
 
 /// Pure radar signal.
 /// `threat` = (lethality, tier, flags) of the radar type. Returns (score, bearing, range).

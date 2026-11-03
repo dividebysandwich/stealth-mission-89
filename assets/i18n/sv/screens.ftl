@@ -42,6 +42,7 @@ planner-briefed = Briefad rutt { $km } km, bränsle { $fuel } lbs
 planner-coverage = Radartäckning för
     .note = Radartäckningen förutsätter planflygning i 480 kt med stängda bombutrymmen.
 planner-detected = { $km } km av rutten upptäckt
+planner-vprofile = VERTIKALPROFIL: terräng och radarupptäckt längs rutten
 planner-pulse = Pulsradar (P) detektionsavstånd
 planner-doppler = Dopplerradar (D) detektionsavstånd
 planner-missile = Robotens räckvidd

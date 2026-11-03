@@ -41,6 +41,7 @@ planner-briefed = 브리핑 경로 { $km } km, 연료 { $fuel } lbs
 planner-coverage = 레이더 탐지 범위:
     .note = 레이더 탐지 범위는 480kt 수평 비행, 무장창 닫힘을 가정합니다.
 planner-detected = 경로 중 { $km } km 탐지됨
+planner-vprofile = 수직 단면: 경로를 따라 지형과 레이더 탐지
 planner-pulse = 펄스 레이더 (P) 탐지 거리
 planner-doppler = 도플러 레이더 (D) 탐지 거리
 planner-missile = 미사일 사거리

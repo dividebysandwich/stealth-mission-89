@@ -42,6 +42,7 @@ planner-briefed = Annettu reitti { $km } km, polttoaine { $fuel } lbs
 planner-coverage = Tutkakattavuus korkeudella
     .note = Tutkakattavuus olettaa 480 kt tasalennon ja ruumaluukut kiinni.
 planner-detected = Reitistä havaittu { $km } km
+planner-vprofile = PYSTYPROFIILI: maasto ja tutkahavainto reitin varrella
 planner-pulse = Pulssitutkan (P) havaintokantama
 planner-doppler = Doppler-tutkan (D) havaintokantama
 planner-missile = Ohjuksen kantama

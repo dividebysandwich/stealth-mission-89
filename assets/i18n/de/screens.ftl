@@ -42,6 +42,7 @@ planner-briefed = Route des Briefings { $km } km, Treibstoff { $fuel } lbs
 planner-coverage = Radarabdeckung für
     .note = Die Radarabdeckung gilt für Horizontalflug mit 480 kt bei geschlossenen Waffenschächten.
 planner-detected = { $km } km der Route entdeckt
+planner-vprofile = VERTIKALPROFIL: Gelände und Radarerfassung entlang der Route
 planner-pulse = Ortungsreichweite Pulsradar (P)
 planner-doppler = Ortungsreichweite Dopplerradar (D)
 planner-missile = Raketenreichweite

@@ -42,6 +42,7 @@ planner-briefed = Trasa z odprawy { $km } km, paliwo { $fuel } lbs
 planner-coverage = Pokrycie radarowe dla
     .note = Pokrycie radarowe zakłada lot poziomy z prędkością 480 kt i zamkniętymi komorami uzbrojenia.
 planner-detected = Wykryty odcinek trasy: { $km } km
+planner-vprofile = PROFIL PIONOWY: teren i wykrywanie radarowe wzdłuż trasy
 planner-pulse = Zasięg wykrywania radaru impulsowego (P)
 planner-doppler = Zasięg wykrywania radaru dopplerowskiego (D)
 planner-missile = Zasięg rakiet

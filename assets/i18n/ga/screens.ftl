@@ -42,6 +42,7 @@ planner-briefed = Bealach an bhriefing { $km } km, breosla { $fuel } lbs
 planner-coverage = Clúdach radair do
     .note = Glacann clúdach radair le heitilt chothrom 480kt, doirse na báe dúnta.
 planner-detected = { $km } km den bhealach braite
+planner-vprofile = PRÓIFÍL INGEARACH: tír-raon agus brath radair feadh an bhealaigh
 planner-pulse = Raon braite radair bhíoma (P)
 planner-doppler = Raon braite radair Doppler (D)
 planner-missile = Raon diúracáin
