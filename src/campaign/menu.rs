@@ -147,11 +147,12 @@ pub fn campaign_window(
         ctx,
         |ui| {
             let split = Split::new(ui, "campaign setup");
+            let compact = split.compact();
             split.body(ui, |ui| {
                 let mut flow = Flow::new(ui);
                 flow.card(ui, Span::Fixed(210.0), |ui| {
                     group(ui, t!("cm-group-campaign"), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater);
+                        crate::menu::theater_options(ui, &mut state.theater, compact);
                         crate::menu::situation_options(ui, &mut state.roe);
                         crate::menu::opponent_options(ui, &mut state.opponents);
                     });

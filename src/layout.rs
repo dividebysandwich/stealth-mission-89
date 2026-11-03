@@ -58,6 +58,10 @@ pub(crate) struct Split {
     key: egui::Id,
     /// The footer's height in the last frame (it is laid out after the body).
     footer: f32,
+    /// Where the compact state is kept, the room the window had when it was decided, and it.
+    compact_key: egui::Id,
+    room: egui::Vec2,
+    compact: bool,
 }
 
 impl Split {
@@ -65,7 +69,19 @@ impl Split {
     pub(crate) fn new(ui: &egui::Ui, id: &'static str) -> Self {
         let key = ui.id().with(("footer height", id));
         let footer = ui.data(|d| d.get_temp::<f32>(key)).unwrap_or(FOOTER_GUESS);
-        Self { id, key, footer }
+        let compact_key = ui.id().with(("compact", id));
+        let room = ui.available_size();
+        // A window of another size tries the full lists again.
+        let compact = ui
+            .data(|d| d.get_temp::<(egui::Vec2, bool)>(compact_key))
+            .is_some_and(|(at, compact)| at == room && compact);
+        Self { id, key, footer, compact_key, room, compact }
+    }
+
+    /// Whether the body did not fit with its long lists (the theaters, the aircraft) at this
+    /// window size: the body then shows them as dropdowns.
+    pub(crate) fn compact(&self) -> bool {
+        self.compact
     }
 
     /// The scrolling body, all the height the window has left but for the footer's. What is
@@ -83,13 +99,19 @@ impl Split {
             egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), height));
         let mut body = ui.new_child(egui::UiBuilder::new().max_rect(rect));
         body.set_clip_rect(rect.intersect(ui.clip_rect()));
-        egui::ScrollArea::vertical()
+        let out = egui::ScrollArea::vertical()
             .id_salt(self.id)
             .auto_shrink([false, false])
             .min_scrolled_height(height)
             .max_height(height)
             .show(&mut body, |ui| add(ui, height));
         ui.allocate_rect(rect, egui::Sense::hover());
+        // Too high with the full lists: compact from the next frame on, until the window resizes.
+        let compact = self.compact || out.content_size.y > height + 1.0;
+        if compact != self.compact {
+            ui.ctx().request_repaint();
+        }
+        ui.data_mut(|d| d.insert_temp(self.compact_key, (self.room, compact)));
     }
 
     /// The footer under the body.

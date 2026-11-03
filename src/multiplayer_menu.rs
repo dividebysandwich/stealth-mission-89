@@ -23,8 +23,7 @@ use stealth_net::server::Server;
 use crate::campaign::{ActiveCampaign, Role};
 use crate::layout::{Flow, Span, Split, fitted, screen_window};
 use crate::menu::{
-    AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, dropdown, icon, icon_text,
-    section,
+    AMBER, BRIGHT, DIM, GREEN, MenuState, THEATERS, big_button, dropdown, icon, icon_text, section,
 };
 use crate::mission::MissionData;
 use crate::net::{NetLink, Notice};
@@ -340,6 +339,7 @@ fn multiplayer_window(
     panel.window(window, ctx, |ui| {
         let named = !state.player_name.trim().is_empty();
         let split = Split::new(ui, "multiplayer");
+        let compact = split.compact();
         split.body(ui, |ui| {
             let mut flow = Flow::new(ui);
             flow.card(ui, Span::Fixed(NAME_WIDTH), |ui| {
@@ -446,7 +446,7 @@ fn multiplayer_window(
                 Page::Host => {
                     let mut flow = Flow::new(ui);
                     flow.card(ui, Span::Fixed(210.0), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater);
+                        crate::menu::theater_options(ui, &mut state.theater, compact);
                     });
                     flow.card(ui, Span::Fixed(220.0), |ui| {
                         crate::menu::opponent_options(ui, &mut state.opponents);

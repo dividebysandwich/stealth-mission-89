@@ -393,12 +393,13 @@ pub fn career_ui(
     let window = screen_window(ctx, "Career", CAREER_SIZE);
     crate::menu::Panel::new(t!("career-title")).note(t!("menu-career")).window(window, ctx, |ui| {
         let split = Split::new(ui, "career");
+        let compact = split.compact();
         split.body(ui, |ui| {
             let mut flow = Flow::new(ui);
             flow.card(ui, Span::Fixed(210.0), |ui| {
                 group(ui, t!("career-group-tour"), |ui| {
                     ui.add_enabled_ui(tour.is_none(), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater);
+                        crate::menu::theater_options(ui, &mut state.theater, compact);
                         crate::menu::situation_options(ui, &mut state.roe);
                         crate::menu::opponent_options(ui, &mut state.opponents);
                     });
@@ -418,7 +419,7 @@ pub fn career_ui(
                 group(ui, t!("group-vehicle"), |ui| {
                     crate::aircraft_preview::show(ui, preview);
                     let lockheed = tour.is_none().then_some(&mut state.lockheed);
-                    crate::menu::vehicle_options(ui, settings, lockheed);
+                    crate::menu::vehicle_options(ui, settings, lockheed, compact);
                 });
             });
             flow.card(ui, Span::Fixed(260.0), |ui| {
