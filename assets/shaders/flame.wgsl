@@ -22,6 +22,7 @@ struct Vertex {
     @location(0) position: vec3<f32>,
     // x: 0 (nozzle) .. 1 (tip), y: layer (0 core, 1 sheath, 2 nozzle exit).
     @location(1) uv: vec2<f32>,
+    @location(2) normal: vec3<f32>,
 };
 
 struct VertexOutput {
@@ -35,11 +36,8 @@ struct VertexOutput {
 fn vertex(v: Vertex) -> VertexOutput {
     let world_from_local = mesh_functions::get_world_from_local(v.instance_index);
     let world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(v.position, 1.0)).xyz;
-    // The cones' normals point out from the axis, the disc's along it.
-    var n = vec3<f32>(v.position.xy, 0.0);
-    if (v.uv.y > 1.5 || dot(n, n) < 1e-8) {
-        n = vec3<f32>(0.0, 0.0, 1.0);
-    }
+    // Out from the cones' axis (or the boxes' walls), the disc's along it.
+    let n = v.normal;
     var out: VertexOutput;
     out.clip_position = position_world_to_clip(world);
     out.world = world;
