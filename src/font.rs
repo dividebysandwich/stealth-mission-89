@@ -362,15 +362,16 @@ pub fn stroke_has(ch: char) -> bool {
 /// Advance of the stroke font in grid units (4 wide + 2 apart).
 const STROKE_ADVANCE: f32 = 6.0;
 
-/// `s` with the characters the stroke font lacks replaced by their letters without accents
+/// `s` with the characters neither font draws replaced by their letters without accents
 /// ("œ" -> "oe"); the others are left out when drawn.
 fn stroke_safe(s: &str) -> std::borrow::Cow<'_, str> {
-    if s.chars().all(|c| c.is_ascii() || stroke_has(c) || stroke_has(capital(c))) {
+    let drawn = |c: char| c.is_ascii() || stroke_has(c) || stroke_has(capital(c)) || outlined(c);
+    if s.chars().all(drawn) {
         return s.into();
     }
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
-        if c.is_ascii() || stroke_has(c) || stroke_has(capital(c)) {
+        if drawn(c) {
             out.push(c);
         } else {
             out.push_str(&stealth_i18n::fold_accents(&c.to_string()));
@@ -381,16 +382,19 @@ fn stroke_safe(s: &str) -> std::borrow::Cow<'_, str> {
 
 /// Width in pixels of `s` drawn with [`stroke_text`] at glyph height `h`.
 pub fn stroke_width(s: &str, h: f32) -> f32 {
-    let n = stroke_safe(s).chars().count() as f32;
-    if n == 0.0 { 0.0 } else { (n * STROKE_ADVANCE - 2.0) * h / 6.0 }
+    let safe = stroke_safe(s);
+    if safe.is_empty() {
+        return 0.0;
+    }
+    safe.chars().map(|c| advance(c, h)).sum::<f32>() - 2.0 * h / 6.0
 }
 
-/// `ch` in capitals if the stroke font has its capital, else as it is ("ß", whose capital is
-/// "SS", and the micro sign, whose capital is Greek, stay): as [`stroke_text`] draws it.
+/// `ch` in capitals if a font has its capital, else as it is ("ß", whose capital is "SS", and
+/// the micro sign, whose capital is Greek, stay): as [`stroke_text`] draws it.
 pub fn capital(ch: char) -> char {
     let mut upper = ch.to_uppercase();
     match (upper.next(), upper.next()) {
-        (Some(u), None) if glyph(u).is_some() => u,
+        (Some(u), None) if glyph(u).is_some() || (glyph(ch).is_none() && outlined(u)) => u,
         _ => ch,
     }
 }
@@ -432,10 +436,154 @@ fn stroke_chars(
             if let Some((m, dy)) = mark {
                 stroke_polylines(c, Vec2::new(x, y + dy * u), m, u, w, col);
             }
+        } else if outlined(ch) {
+            draw_outlined(c, Vec2::new(x, y + h), ch, h, w, col);
         }
-        x += STROKE_ADVANCE * u;
+        x += advance(ch, h);
     }
     x
+}
+
+/// The fonts that draw what the stroke font cannot (Greek, Cyrillic, Han characters, kana,
+/// hangul) as outlines: Hack, then the CJK subsets.
+fn outline_faces() -> &'static [(OutlineFont, ttf_parser::Face<'static>)] {
+    static FACES: std::sync::LazyLock<Vec<(OutlineFont, ttf_parser::Face<'static>)>> =
+        std::sync::LazyLock::new(|| {
+            let hack = ttf_parser::Face::parse(epaint_default_fonts::HACK_REGULAR, 0).ok();
+            let cjk = crate::i18n::CJK.into_iter().filter_map(|l| {
+                let face = ttf_parser::Face::parse(crate::i18n::cjk_font(l)?, 0).ok()?;
+                Some((OutlineFont::Cjk(l), face))
+            });
+            hack.map(|f| (OutlineFont::Hack, f)).into_iter().chain(cjk).collect()
+        });
+    &FACES
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OutlineFont {
+    Hack,
+    Cjk(stealth_i18n::Language),
+}
+
+impl OutlineFont {
+    /// The font's em in pixels for capitals `h` high: Hack's capitals are 0.73 em high, the CJK
+    /// characters (about 0.9 em) are drawn as big as the capitals.
+    fn em(self, h: f32) -> f32 {
+        match self {
+            OutlineFont::Hack => h / 0.73,
+            OutlineFont::Cjk(_) => h * 1.1,
+        }
+    }
+}
+
+/// Whether `c` is drawn from a font's outline: a letter or sign of the scripts after the Latin
+/// ones (the accented Latin letters have their strokes, or lose their accents).
+fn outlined(c: char) -> bool {
+    face_of(c).is_some()
+}
+
+/// The font that draws `c` and its glyph: Hack, then the player's language's CJK font (the
+/// same Han characters are drawn differently in Chinese, Japanese and Korean), then the others.
+fn face_of(
+    c: char,
+) -> Option<(OutlineFont, &'static ttf_parser::Face<'static>, ttf_parser::GlyphId)> {
+    let code = c as u32;
+    // Not the Latin letters, nor the general punctuation and symbols (they are folded).
+    if code < 0x370 || (0x1E00..0x2C00).contains(&code) {
+        return None;
+    }
+    let lang = stealth_i18n::language();
+    let faces = outline_faces();
+    let hack = faces.iter().filter(|(f, _)| *f == OutlineFont::Hack);
+    let own = faces.iter().filter(|(f, _)| *f == OutlineFont::Cjk(lang));
+    let rest = faces.iter().filter(|(f, _)| matches!(f, OutlineFont::Cjk(l) if *l != lang));
+    hack.chain(own)
+        .chain(rest)
+        .find_map(|(font, face)| Some((*font, face, face.glyph_index(c).filter(|g| g.0 != 0)?)))
+}
+
+/// The pen's advance after `c` in pixels, for capitals `h` high.
+fn advance(c: char, h: f32) -> f32 {
+    if glyph(c).is_none()
+        && let Some((font, face, id)) = face_of(c)
+    {
+        let k = font.em(h) / face.units_per_em() as f32;
+        // A little room between the characters, as the stroke font has.
+        return face.glyph_hor_advance(id).map_or(h, |a| a as f32 * k) + h / 12.0;
+    }
+    STROKE_ADVANCE * h / 6.0
+}
+
+/// Fills `ch`'s outline with the baseline at `origin`. The outline is also stroked (by a quarter
+/// of the pen's width): the fonts' Regular weight is thinner than the strokes.
+fn draw_outlined(c: &mut Canvas, origin: Vec2, ch: char, h: f32, w: f32, col: u8) {
+    let Some((font, face, id)) = face_of(ch) else { return };
+    let mut outline = Outline::default();
+    if face.outline_glyph(id, &mut outline).is_none() {
+        return;
+    }
+    let k = font.em(h) / face.units_per_em() as f32;
+    // Font units point up.
+    let contours: Vec<Vec<Vec2>> = outline
+        .0
+        .into_iter()
+        .map(|c| c.into_iter().map(|p| origin + p * Vec2::new(k, -k)).collect())
+        .collect();
+    c.fill_contours(&contours, |under, share| if share >= 0.4 { col } else { under });
+    for mut contour in contours {
+        if let Some(&first) = contour.first() {
+            contour.push(first);
+        }
+        c.polyline(&contour, w / 4.0, col);
+    }
+}
+
+/// A glyph's outline as closed polylines (its curves in short segments), in font units.
+#[derive(Default)]
+pub(crate) struct Outline(pub(crate) Vec<Vec<Vec2>>);
+
+impl Outline {
+    /// Segments per curve.
+    const STEPS: usize = 8;
+
+    fn last(&self) -> Vec2 {
+        self.0.last().and_then(|c| c.last()).copied().unwrap_or_default()
+    }
+
+    fn push(&mut self, p: Vec2) {
+        if let Some(c) = self.0.last_mut() {
+            c.push(p);
+        }
+    }
+}
+
+impl ttf_parser::OutlineBuilder for Outline {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.push(vec![Vec2::new(x, y)]);
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.push(Vec2::new(x, y));
+    }
+
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        let (p0, p1, p2) = (self.last(), Vec2::new(x1, y1), Vec2::new(x, y));
+        for i in 1..=Self::STEPS {
+            let t = i as f32 / Self::STEPS as f32;
+            self.push(p0.lerp(p1, t).lerp(p1.lerp(p2, t), t));
+        }
+    }
+
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        let (p0, p1, p2, p3) = (self.last(), Vec2::new(x1, y1), Vec2::new(x2, y2), Vec2::new(x, y));
+        for i in 1..=Self::STEPS {
+            let t = i as f32 / Self::STEPS as f32;
+            let (a, b, c) = (p0.lerp(p1, t), p1.lerp(p2, t), p2.lerp(p3, t));
+            self.push(a.lerp(b, t).lerp(b.lerp(c, t), t));
+        }
+    }
+
+    fn close(&mut self) {}
 }
 
 /// Draws a glyph's polylines (grid units of `u` pixels) from `origin`.
@@ -489,6 +637,7 @@ pub fn stroke_text_at(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use stealth_i18n::Language;
 
     #[test]
     fn flight_font_covers_ascii() {
@@ -546,5 +695,57 @@ mod tests {
         assert_eq!(capital('ß'), 'ß');
         assert_eq!(capital('µ'), 'µ');
         assert_eq!(capital('_'), '_');
+    }
+
+    /// The scripts the stroke font has no strokes for are drawn from the menus' fonts: wide as
+    /// their fonts say, and dark pixels on the canvas.
+    #[test]
+    fn outlines_draw_the_other_scripts() {
+        for (ch, l) in [('Ж', "ru"), ('Ω', "el"), ('日', "ja"), ('語', "zh-Hans"), ('한', "ko")]
+        {
+            assert!(outlined(ch), "{ch:?} ({l}) is not drawn");
+            assert!(stroke_width(&ch.to_string(), 20.0) > 10.0, "{ch:?} has no width");
+            let mut c = Canvas::new(64, 64);
+            c.clear(0);
+            stroke_text(&mut c, 8.0, 8.0, &ch.to_string(), 24.0, 3.0, 1);
+            assert!((0..64).any(|y| (0..64).any(|x| c.get(x, y) == 1)), "{ch:?} is blank");
+        }
+        // The Latin letters with accents keep their strokes or lose their accents.
+        assert!(!outlined('é') && !outlined('œ'));
+        assert_eq!(stroke_width("ab", 12.0), 20.0);
+    }
+
+    /// Everything the translations say can be drawn, the in-flight menu's too (the key guide,
+    /// the kneeboard): no character is left out of what a language's texts use.
+    #[test]
+    fn stroke_text_draws_every_translation() {
+        let mut missing = std::collections::BTreeSet::new();
+        for l in [
+            Language::Ru,
+            Language::Uk,
+            Language::Bg,
+            Language::El,
+            Language::Zh,
+            Language::Ja,
+            Language::Ko,
+        ] {
+            let dir = format!("assets/i18n/{}", l.code());
+            for file in std::fs::read_dir(&dir).unwrap() {
+                let path = file.unwrap().path();
+                if path.extension().is_none_or(|e| e != "ftl") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(path).unwrap();
+                missing.extend(text.chars().filter(|&c| {
+                    !c.is_ascii()
+                        && !c.is_whitespace()
+                        && !c.is_control()
+                        && !(stroke_has(c) || stroke_has(capital(c)) || outlined(c))
+                        && stealth_i18n::fold_accents(&c.to_string()) == c.to_string()
+                }));
+            }
+        }
+        // Whatever is left has no script of its own (arrows, quotes: folded or left out).
+        assert!(missing.iter().all(|c| !c.is_alphabetic()), "{missing:?}");
     }
 }

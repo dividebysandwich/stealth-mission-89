@@ -53,10 +53,10 @@ use crate::cockpit3d::{
     BUTTON_PRIMARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT, BUTTON_STICK_RIGHT, BUTTON_STICK_UP,
     CockpitRoot, Hands,
 };
-use crate::font::{Align, capital, stroke_has, stroke_text_at, stroke_width};
+use crate::font::{Align, Outline, capital, stroke_has, stroke_text_at, stroke_width};
 use crate::input::{Action, ActionEvent, InputBlock};
 use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
-use stealth_i18n::{Language, tf};
+use stealth_i18n::{Language, ts};
 
 pub struct FlightMenuPlugin;
 
@@ -237,7 +237,7 @@ impl Page {
     }
 
     fn title(self) -> &'static str {
-        tf!(match self {
+        ts!(match self {
             Page::Main => "fm-menu",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
@@ -336,7 +336,7 @@ enum Item {
 impl Item {
     fn label(self) -> std::borrow::Cow<'static, str> {
         // The pixelize look's sub-options start with its name (PIXELIZE: PIXEL SIZE).
-        let pixelize = |name: &str| format!("{}: {name}", tf!("fm-effect-pixelize")).into();
+        let pixelize = |name: &str| format!("{}: {name}", ts!("fm-effect-pixelize")).into();
         if let Item::Effect(e) = self {
             return if e.pixel_part() { pixelize(e.menu_label()) } else { e.menu_label().into() };
         }
@@ -344,9 +344,9 @@ impl Item {
             return p.title().into();
         }
         if self == Item::PixelSize {
-            return pixelize(tf!("fm-pixel-size"));
+            return pixelize(ts!("fm-pixel-size"));
         }
-        tf!(match self {
+        ts!(match self {
             Item::Resume => "fm-resume",
             Item::SaveMission => "fm-save-mission",
             Item::KeyGuide => "fm-key-guide",
@@ -389,12 +389,10 @@ impl Item {
     }
 
     fn value(self, s: &Settings) -> String {
-        let style = |classic: bool| tf!(if classic { "classic" } else { "modern" }).to_string();
-        let on = |b: bool| tf!(if b { "on" } else { "off" }).to_string();
+        let style = |classic: bool| ts!(if classic { "classic" } else { "modern" }).to_string();
+        let on = |b: bool| ts!(if b { "on" } else { "off" }).to_string();
         match self {
-            // The stroke font has no Cyrillic or Chinese: they are named in English.
-            Item::Language if s.language.latin() => format!("< {} >", s.language.native_name()),
-            Item::Language => format!("< {} >", s.language.english_name()),
+            Item::Language => format!("< {} >", s.language.native_name()),
             Item::Shaders => style(!s.modern_shading),
             Item::Msaa => on(s.msaa && !crate::palette::pixelized(s)),
             Item::Shadows => on(s.shadows),
@@ -902,10 +900,10 @@ impl VKey {
     fn label(self) -> String {
         match self {
             VKey::Char(c) => c.to_string(),
-            VKey::Space => tf!("fm-key-space").into(),
-            VKey::Delete => tf!("fm-key-delete").into(),
-            VKey::Clear => tf!("fm-key-clear").into(),
-            VKey::Done => tf!("fm-key-done").into(),
+            VKey::Space => ts!("fm-key-space").into(),
+            VKey::Delete => ts!("fm-key-delete").into(),
+            VKey::Clear => ts!("fm-key-clear").into(),
+            VKey::Done => ts!("fm-key-done").into(),
         }
     }
 }
@@ -1487,7 +1485,7 @@ fn draw(
     c.clear(TRANSPARENT);
     // The key on the footer's BACK (in VR an arrow).
     let key = if settings.vr { "<" } else { "ESC" };
-    let main_title = if campaign.is_some() { tf!("fm-menu") } else { tf!("fm-pause") };
+    let main_title = if campaign.is_some() { ts!("fm-menu") } else { ts!("fm-pause") };
     if menu.exiting {
         draw_frame(c, "", main_title, "", None);
         let mid = (TOP + BOTTOM) / 2.0;
@@ -1495,7 +1493,7 @@ fn draw(
             c,
             W as f32 / 2.0,
             mid,
-            tf!("fm-exiting"),
+            ts!("fm-exiting"),
             36.0,
             4.0,
             ink::TEXT,
@@ -1505,12 +1503,12 @@ fn draw(
         return;
     }
     if menu.guide {
-        let hint = tf!(match (settings.vr, menu.keyboard) {
+        let hint = ts!(match (settings.vr, menu.keyboard) {
             (true, false) => "fm-hint-vr",
             (true, true) => "fm-hint-vr-keyboard",
             (false, _) => "fm-hint-desktop",
         });
-        draw_frame(c, "", tf!("fm-key-guide"), hint, Some((key, false)));
+        draw_frame(c, "", ts!("fm-key-guide"), hint, Some((key, false)));
         let area = guide_area(menu.keyboard);
         let caret = crate::key_guide::caret_shown(time.elapsed_secs_f64());
         let focused = menu.focused || menu.keyboard;
@@ -1526,7 +1524,7 @@ fn draw(
                 c,
                 W as f32 / 2.0,
                 mid,
-                tf!("fm-no-match"),
+                ts!("fm-no-match"),
                 18.0,
                 2.4,
                 ink::OFF,
@@ -1549,13 +1547,13 @@ fn draw(
     }
     let (crumb, title) = match menu.page {
         Page::Main => ("", main_title),
-        Page::Options => ("", tf!("options-title")),
-        page => (tf!("fm-crumb-options"), page.title()),
+        Page::Options => ("", ts!("options-title")),
+        page => (ts!("fm-crumb-options"), page.title()),
     };
     // What only the main menu's OPTIONS change (not in the middle of a flight).
     let note = match menu.page {
-        Page::Main if campaign.is_some() => tf!("fm-game-in-progress"),
-        Page::Game => tf!("fm-game-note"),
+        Page::Main if campaign.is_some() => ts!("fm-game-in-progress"),
+        Page::Game => ts!("fm-game-note"),
         _ => "",
     };
     let items = menu.page.items();
@@ -1594,8 +1592,8 @@ fn draw(
         let size = row_text_size(h);
         let pen = size * 0.14;
         let label: std::borrow::Cow<str> = match item {
-            Item::EndMission if let Some(b) = board => tf!(b.exit_id()).into(),
-            Item::EndMission if campaign.is_some() => tf!("fm-end-sortie").into(),
+            Item::EndMission if let Some(b) = board => ts!(b.exit_id()).into(),
+            Item::EndMission if campaign.is_some() => ts!("fm-end-sortie").into(),
             _ => item.label(),
         };
         let label = &*label;
@@ -1753,7 +1751,7 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
         let (k0, k1) = (x0 + 6.0, x0 + 56.0);
         c.frame(Vec2::new(k0, y0 + 4.0), Vec2::new(k1, y1 - 4.0), 1.6, col);
         stroke_text_at(c, (k0 + k1) / 2.0, mid, key, 13.0, 1.8, col, Align::Centre);
-        let back = tf!("back");
+        let back = ts!("back");
         let size = fit(back, 17.0, x1 - k1 - 22.0);
         stroke_text_at(c, k1 + 14.0, mid, back, size, 2.3, col, Align::Left);
     }
@@ -1812,54 +1810,6 @@ fn icon(item: Item) -> Option<char> {
     })
 }
 
-/// A glyph's outline as closed polylines (its curves in short segments), in font units.
-#[derive(Default)]
-struct Outline(Vec<Vec<Vec2>>);
-
-impl Outline {
-    /// Segments per curve.
-    const STEPS: usize = 8;
-
-    fn last(&self) -> Vec2 {
-        self.0.last().and_then(|c| c.last()).copied().unwrap_or_default()
-    }
-
-    fn push(&mut self, p: Vec2) {
-        if let Some(c) = self.0.last_mut() {
-            c.push(p);
-        }
-    }
-}
-
-impl ttf_parser::OutlineBuilder for Outline {
-    fn move_to(&mut self, x: f32, y: f32) {
-        self.0.push(vec![Vec2::new(x, y)]);
-    }
-
-    fn line_to(&mut self, x: f32, y: f32) {
-        self.push(Vec2::new(x, y));
-    }
-
-    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
-        let (p0, p1, p2) = (self.last(), Vec2::new(x1, y1), Vec2::new(x, y));
-        for i in 1..=Self::STEPS {
-            let t = i as f32 / Self::STEPS as f32;
-            self.push(p0.lerp(p1, t).lerp(p1.lerp(p2, t), t));
-        }
-    }
-
-    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
-        let (p0, p1, p2, p3) = (self.last(), Vec2::new(x1, y1), Vec2::new(x2, y2), Vec2::new(x, y));
-        for i in 1..=Self::STEPS {
-            let t = i as f32 / Self::STEPS as f32;
-            let (a, b, c) = (p0.lerp(p1, t), p1.lerp(p2, t), p2.lerp(p3, t));
-            self.push(a.lerp(b, t).lerp(b.lerp(c, t), t));
-        }
-    }
-
-    fn close(&mut self) {}
-}
-
 /// The icon of an entry of the main page or of OPTIONS centred on `o`, the font's em `2 r`
 /// wide (the same stroke for every icon), its edges blended into the colour under it (the
 /// menu's colours are a ramp).
@@ -1911,7 +1861,7 @@ fn draw_search(c: &mut Canvas, text: &str, focused: bool, caret: bool, clear_hov
     // Once clicked or typed into, the hint makes way for the caret.
     if text.is_empty() {
         if !focused {
-            stroke_text_at(c, tx, mid, tf!("fm-type-to-search"), 14.0, 2.0, ink::NOTE, Align::Left);
+            stroke_text_at(c, tx, mid, ts!("fm-type-to-search"), 14.0, 2.0, ink::NOTE, Align::Left);
         } else if caret {
             stroke_text_at(c, tx, mid, "_", 14.0, 2.0, ink::TEXT, Align::Left);
         }
@@ -1985,7 +1935,7 @@ fn vr_end_screen(
         let y = 140.0 + 42.0 * i as f32;
         stroke_text_at(&mut canvas, W as f32 / 2.0, y, l, fit(l, 20.0), 2.6, BRIGHT, Align::Centre);
     }
-    let hint = tf!("fm-pull-trigger");
+    let hint = ts!("fm-pull-trigger");
     stroke_text_at(
         &mut canvas,
         W as f32 / 2.0,

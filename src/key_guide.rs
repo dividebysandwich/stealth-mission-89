@@ -10,7 +10,7 @@ use crate::canvas::Canvas;
 use crate::font::{Align, stroke_has, stroke_text_at, stroke_text_keep_case};
 use crate::hotas::{ButtonTarget, InputConfig, VrHand};
 use crate::input::{Action, Mods};
-use stealth_i18n::{t, tf};
+use stealth_i18n::{t, ts};
 
 /// What a row's keys are: the keys bound to these actions (" / " between them), the gun's, or
 /// a fixed text.
@@ -192,15 +192,15 @@ pub enum Line {
 
 /// A row of fixed keys: its message has the keys, its `.desc` what they do.
 fn row(id: &str) -> Line {
-    Line::Row(tf!(id).to_string(), tf!(&format!("{id}.desc")).to_string(), true)
+    Line::Row(ts!(id).to_string(), ts!(&format!("{id}.desc")).to_string(), true)
 }
 
 /// The guide for the current bindings: the mouse on the desktop, the controllers in VR. Drawn
-/// with the stroke font, so in [`stealth_i18n::flight_language`].
+/// with the stroke font, so in the player's language (`ts!`).
 pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
     let mut out = Vec::new();
     if vr {
-        out.push(Line::Heading(tf!("kg-vr-controllers").into()));
+        out.push(Line::Heading(ts!("kg-vr-controllers").into()));
         out.push(row("kg-vr-grip"));
         out.push(row("kg-vr-fingertip"));
         out.push(row("kg-vr-left-stick"));
@@ -210,14 +210,14 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
                 let side = if hand == VrHand::Left { "L" } else { "R" };
                 let keys = format!("{side}_{}", m.input.name(hand).replace(' ', "_"));
                 let what = match m.target {
-                    ButtonTarget::Gun => tf!("kg-gun-target").to_string(),
+                    ButtonTarget::Gun => ts!("kg-gun-target").to_string(),
                     ButtonTarget::Action(a) => crate::cockpit3d::tooltips::action_text(a).0,
                 };
                 out.push(Line::Row(keys, what, true));
             }
         }
     } else {
-        out.push(Line::Heading(tf!("kg-mouse").into()));
+        out.push(Line::Heading(ts!("kg-mouse").into()));
         out.push(row("kg-mouse-right-drag"));
         out.push(row("kg-mouse-hold-right"));
         out.push(row("kg-mouse-left-click"));
@@ -225,7 +225,7 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
         out.push(row("kg-mouse-wheel"));
     }
     for (title, rows) in SECTIONS {
-        out.push(Line::Heading(tf!(title).into()));
+        out.push(Line::Heading(ts!(title).into()));
         for (keys, what) in *rows {
             let bound: Vec<String> = match keys {
                 Keys::Actions(actions) => {
@@ -237,9 +237,9 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
             let text = if any {
                 bound.iter().map(|k| if k.is_empty() { "-" } else { k }).collect::<Vec<_>>()
             } else {
-                vec![tf!("kg-unbound")]
+                vec![ts!("kg-unbound")]
             };
-            out.push(Line::Row(text.join(" / "), tf!(what).to_string(), any));
+            out.push(Line::Row(text.join(" / "), ts!(what).to_string(), any));
         }
     }
     out

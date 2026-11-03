@@ -262,21 +262,6 @@ impl Language {
         )
     }
 
-    /// The language's name in English, in capitals: what the flight fonts, which cannot draw
-    /// its own name, show instead.
-    pub fn english_name(self) -> &'static str {
-        match self {
-            Language::Ru => "RUSSIAN",
-            Language::Zh => "CHINESE",
-            Language::Ja => "JAPANESE",
-            Language::Ko => "KOREAN",
-            Language::Uk => "UKRAINIAN",
-            Language::Bg => "BULGARIAN",
-            Language::El => "GREEK",
-            _ => "",
-        }
-    }
-
     fn index(self) -> usize {
         self as usize
     }
@@ -517,6 +502,16 @@ macro_rules! tf {
     };
     ($id:expr, $($k:ident = $v:expr),+ $(,)?) => {
         $crate::t_in!($crate::flight_language(), $id, $($k = $v),+)
+    };
+}
+
+/// [`t!`] for the texts drawn with the stroke font (the in-flight menu, the key guide, the
+/// kneeboard): in the player's language, which that font draws in any script (the letters it
+/// has no strokes for come from the outlines of the menus' fonts).
+#[macro_export]
+macro_rules! ts {
+    ($($args:tt)*) => {
+        $crate::t!($($args)*)
     };
 }
 
