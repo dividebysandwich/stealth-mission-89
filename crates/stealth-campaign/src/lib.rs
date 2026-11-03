@@ -507,6 +507,7 @@ impl CampaignState {
                 r.state = RaidState::Pending { launch_at: lead };
                 r.aircraft.clear();
                 r.alive.clear();
+                r.due.clear();
                 r.escorted = false;
                 r.enroute_at = None;
             }

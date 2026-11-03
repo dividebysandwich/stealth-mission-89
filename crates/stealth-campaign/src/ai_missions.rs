@@ -79,6 +79,10 @@ pub struct AiMission {
     pub controlled: Vec<Option<PlayerId>>,
     /// Out of the side's aircraft (else a player's own he left to the AI).
     pub pooled: Vec<bool>,
+    /// When each one takes off (None: in the air): a side's aircraft take off one at a time,
+    /// `AI_STAGGER` apart.
+    #[serde(default)]
+    pub due: Vec<Option<f64>>,
     pub launched: f64,
     pub state: AiMissionState,
     pub ended: Option<f64>,
@@ -95,8 +99,18 @@ impl AiMission {
     /// The tags the AI flies now (in the air, nobody took them over).
     pub fn flying(&self) -> impl Iterator<Item = u32> + '_ {
         (0..self.tags.len())
-            .filter(|&k| self.alive[k] && self.controlled[k].is_none())
+            .filter(|&k| self.alive[k] && self.controlled[k].is_none() && !self.waiting(k))
             .map(|k| self.tags[k])
+    }
+
+    /// Aircraft `k` waits for its turn to take off.
+    fn waiting(&self, k: usize) -> bool {
+        self.due.get(k).copied().flatten().is_some()
+    }
+
+    /// When its next aircraft takes off (None: all are up).
+    pub fn next_takeoff(&self) -> Option<f64> {
+        self.due.iter().flatten().copied().min_by(f64::total_cmp)
     }
 
     /// The aircraft a player may take over (the first the AI flies).
@@ -205,16 +219,105 @@ impl CampaignState {
         self.ai_missions.iter().find(|m| m.tags.contains(&tag))
     }
 
-    /// When the AI takes off for an offer (None: it does not, or its flight is up).
+    /// When the AI takes off for an offer (None: it does not, or not before one of its side's
+    /// flights is back): its place in the side's queue ([`CampaignState::ai_schedule`]), or its
+    /// flight's next aircraft's turn on the runway.
     pub fn ai_launch_at(&self, o: &MissionOffer) -> Option<f64> {
-        if !self.ai_missions_on() || !ai_flown(o.kind) || self.flown_by_player(o.id) {
-            return None;
+        if let Some(m) = self.ai_mission_for(o.id).filter(|m| m.open()) {
+            return m.next_takeoff();
         }
-        match self.ai_mission_for(o.id) {
-            Some(m) if m.open() => None,
-            Some(m) => Some(m.ended.unwrap_or(m.launched).max(o.posted) + AI_MISSION_WAIT),
-            None => Some(o.posted + AI_MISSION_WAIT),
+        let side = if self.red_board.iter().any(|r| r.id == o.id) { Side::Red } else { Side::Blue };
+        self.ai_schedule(side).into_iter().find(|s| s.0 == o.id).map(|s| s.1)
+    }
+
+    /// The side's offers the AI flies next and when, in turn: each `AI_MISSION_WAIT` after it
+    /// was posted (or its last flight came back), on its turn on the runway (`AI_STAGGER` after
+    /// the one before), with no more than `AI_AIRCRAFT_PER_WINDOW` aircraft in
+    /// `AI_LAUNCH_WINDOW`, while fewer than `AI_MISSIONS_MAX` flights are out.
+    pub fn ai_schedule(&self, side: Side) -> Vec<(u32, f64)> {
+        if !self.ai_missions_on() {
+            return Vec::new();
         }
+        let board = if side == Side::Blue { &self.board } else { &self.red_board };
+        let mut queue: Vec<(f64, &MissionOffer)> = board
+            .iter()
+            .filter(|o| ai_flown(o.kind) && !self.flown_by_player(o.id))
+            // The enemy's strikes on airfields go up as raids (`enemy_offensive`).
+            .filter(|o| side == Side::Blue || !matches!(o.objective, Objective::Strike { .. }))
+            .filter_map(|o| {
+                let since = match self.ai_mission_for(o.id) {
+                    Some(m) if m.open() => return None,
+                    Some(m) => m.ended.unwrap_or(m.launched).max(o.posted),
+                    None => o.posted,
+                };
+                Some((since + AI_MISSION_WAIT, o))
+            })
+            .collect();
+        queue.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.posted.total_cmp(&b.1.posted)));
+        let open = self.ai_missions.iter().filter(|m| m.side == side && m.open()).count();
+        let mut window = self.launches_in_window(side);
+        let mut runway = self.runway(side);
+        let mut out = Vec::new();
+        for (wait, o) in queue.into_iter().take(AI_MISSIONS_MAX.saturating_sub(open)) {
+            let n =
+                if o.kind == MissionKind::Recon { AI_RECON_AIRCRAFT } else { AI_FLIGHT_AIRCRAFT };
+            let mut t = wait.max(runway).max(self.clock);
+            let over = (window.len() + n).saturating_sub(AI_AIRCRAFT_PER_WINDOW);
+            if over > 0 {
+                t = t.max(window[over - 1] + AI_LAUNCH_WINDOW);
+            }
+            out.push((o.id, t));
+            runway = t + n as f64 * AI_STAGGER;
+            window.extend(std::iter::repeat_n(t, n));
+            window.sort_by(f64::total_cmp);
+        }
+        out
+    }
+
+    /// When a side's aircraft took off (or will, a raid ordered) in the last
+    /// `AI_LAUNCH_WINDOW`, earliest first.
+    fn launches_in_window(&self, side: Side) -> Vec<f64> {
+        let since = self.clock - AI_LAUNCH_WINDOW;
+        let mut up: Vec<f64> = self
+            .ai_missions
+            .iter()
+            .filter(|m| m.side == side && m.launched > since)
+            .flat_map(|m| m.pooled.iter().filter(|&&p| p).map(|_| m.launched))
+            .chain(self.raids.iter().filter(|r| r.side == side && !r.drones).flat_map(|r| {
+                let at = match r.state {
+                    RaidState::Pending { launch_at } => Some(launch_at),
+                    _ => r.enroute_at,
+                };
+                at.filter(|&t| t > since).into_iter().flat_map(|t| [t; RAID_AIRCRAFT])
+            }))
+            .collect();
+        up.sort_by(f64::total_cmp);
+        up
+    }
+
+    /// When `n` more of a side's aircraft may take off: no more than `AI_AIRCRAFT_PER_WINDOW`
+    /// in `AI_LAUNCH_WINDOW` (its raids' too), the first `AI_STAGGER` after the last one.
+    pub(crate) fn ai_slot(&self, side: Side, n: usize) -> f64 {
+        let up = self.launches_in_window(side);
+        let over = (up.len() + n).saturating_sub(AI_AIRCRAFT_PER_WINDOW);
+        let window = up.get(over.wrapping_sub(1)).map_or(f64::MIN, |t| t + AI_LAUNCH_WINDOW);
+        window.max(self.runway(side))
+    }
+
+    /// When a side's next AI aircraft may take off (an AI flight's, a raid's): the last one's
+    /// turn plus `AI_STAGGER`.
+    pub(crate) fn runway(&self, side: Side) -> f64 {
+        self.runway_at[(side == Side::Red) as usize] + AI_STAGGER
+    }
+
+    /// `n` of a side's aircraft take their turns on the runway from now: when each takes off.
+    pub(crate) fn take_runway(&mut self, side: Side, n: usize) -> Vec<Option<f64>> {
+        let first = self.runway(side).max(self.clock);
+        let due: Vec<Option<f64>> = (0..n).map(|k| Some(first + k as f64 * AI_STAGGER)).collect();
+        if let Some(&Some(last)) = due.last() {
+            self.runway_at[(side == Side::Red) as usize] = last;
+        }
+        due
     }
 
     /// A player is in the air on it.
@@ -255,25 +358,42 @@ impl CampaignState {
         }
         self.ai_missions
             .retain(|m| m.open() || m.ended.is_some_and(|t| now - t < AI_MISSION_MEMORY));
+        // The aircraft whose turn it is take off.
+        for m in self.ai_missions.iter_mut().filter(|m| m.open()) {
+            let up: Vec<u32> = (0..m.tags.len())
+                .filter(|&k| m.due.get(k).copied().flatten().is_some_and(|t| now >= t))
+                .map(|k| m.tags[k])
+                .collect();
+            if up.is_empty() {
+                continue;
+            }
+            for d in m.due.iter_mut().filter(|d| d.is_some_and(|t| now >= t)) {
+                *d = None;
+            }
+            ev.push(CampaignEvent::AiMissionLaunched {
+                id: m.id,
+                side: m.side,
+                from: m.from,
+                airframe: m.airframe,
+                target: m.target,
+                tags: up,
+            });
+        }
         if !self.ai_missions_on() || self.outcome.is_some() {
             return;
         }
+        // The offers whose turn it is (the queue's first; the next ones come later).
         for side in [Side::Blue, Side::Red] {
-            let board = if side == Side::Blue { &self.board } else { &self.red_board };
-            let mut due: Vec<MissionOffer> = board
-                .iter()
-                .filter(|o| self.ai_launch_at(o).is_some_and(|t| now >= t))
-                // The enemy's strikes on airfields go up as raids (`enemy_offensive`).
-                .filter(|o| side == Side::Blue || !matches!(o.objective, Objective::Strike { .. }))
-                .cloned()
-                .collect();
-            due.sort_by(|a, b| a.posted.total_cmp(&b.posted));
-            for o in due {
-                let open = self.ai_missions.iter().filter(|m| m.side == side && m.open()).count();
-                if open >= AI_MISSIONS_MAX {
+            for (id, t) in self.ai_schedule(side) {
+                if now < t {
                     break;
                 }
-                self.launch_ai(side, &o, view, ev);
+                let board = if side == Side::Blue { &self.board } else { &self.red_board };
+                let Some(o) = board.iter().find(|o| o.id == id).cloned() else { continue };
+                if !self.launch_ai(side, &o, view) {
+                    // Not enough aircraft or materiel: the ones after it wait too.
+                    break;
+                }
             }
         }
     }
@@ -317,13 +437,7 @@ impl CampaignState {
 
     /// Flight of the AI for offer `o` of `side`'s board, if the side has the aircraft and the
     /// materiel for it.
-    fn launch_ai(
-        &mut self,
-        side: Side,
-        o: &MissionOffer,
-        view: &WorldView,
-        ev: &mut Vec<CampaignEvent>,
-    ) -> bool {
+    fn launch_ai(&mut self, side: Side, o: &MissionOffer, view: &WorldView) -> bool {
         let from = match side {
             Side::Blue => Some(o.base).filter(|&b| self.player_bases().contains(&b)),
             _ => self.nearest_base(side, o.x, o.y),
@@ -357,6 +471,8 @@ impl CampaignState {
         *pool -= n as u32;
         let id = self.id();
         let tags: Vec<u32> = (0..n).map(|_| self.id()).collect();
+        // Each in its turn on the runway, `AI_STAGGER` apart.
+        let due = self.take_runway(side, n);
         self.ai_missions.push(AiMission {
             id,
             side,
@@ -368,6 +484,7 @@ impl CampaignState {
             alive: vec![true; n],
             controlled: vec![None; n],
             pooled: vec![true; n],
+            due,
             launched: self.clock,
             state: AiMissionState::Enroute,
             ended: None,
@@ -382,7 +499,6 @@ impl CampaignState {
                 count = n as i64
             ));
         }
-        ev.push(CampaignEvent::AiMissionLaunched { id, side, from, airframe, target, tags });
         true
     }
 
@@ -548,6 +664,10 @@ impl CampaignState {
     /// `RAID_LEAD` after it is ordered, when the AI would fly it): place, airfield, base.
     pub(crate) fn red_strike_due(&self) -> Option<(PlaceId, ObjectId, ObjectId)> {
         let now = self.clock;
+        // Its aircraft for the quarter hour (and the runway) when the raid would take off.
+        if self.ai_slot(Side::Red, RAID_AIRCRAFT) > now + RAID_LEAD {
+            return None;
+        }
         self.red_board.iter().filter(|o| now >= o.posted + AI_MISSION_WAIT - RAID_LEAD).find_map(
             |o| {
                 let Objective::Strike { place, airfield } = o.objective else { return None };
@@ -676,6 +796,7 @@ impl CampaignState {
                             alive: Vec::new(),
                             controlled: Vec::new(),
                             pooled: Vec::new(),
+                            due: Vec::new(),
                             launched: self.clock,
                             state: AiMissionState::Enroute,
                             ended: None,
@@ -690,6 +811,7 @@ impl CampaignState {
                 m.alive.push(true);
                 m.controlled.push(None);
                 m.pooled.push(false);
+                m.due.push(None);
                 (k, tag)
             }
         };

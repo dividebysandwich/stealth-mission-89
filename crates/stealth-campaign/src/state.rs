@@ -775,6 +775,10 @@ pub struct Raid {
     /// Campaign tags of the aircraft and which of them still fly to the target.
     pub aircraft: Vec<u32>,
     pub alive: Vec<bool>,
+    /// When each strike aircraft takes off (None: in the air): one at a time, `AI_STAGGER`
+    /// apart.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub due: Vec<Option<f64>>,
     pub state: RaidState,
     /// When it ended (campaign time).
     pub ended: Option<f64>,
@@ -1013,6 +1017,10 @@ pub struct CampaignState {
     pub ai_missions: Vec<crate::AiMission>,
     #[serde(default)]
     pub red_board: Vec<MissionOffer>,
+    /// When each side's last AI aircraft takes off (blue, red): the next one `AI_STAGGER`
+    /// after it.
+    #[serde(default)]
+    pub runway_at: [f64; 2],
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1525,6 +1533,7 @@ impl CampaignState {
             convoy_at: [0.0; 2],
             ai_missions: Vec::new(),
             red_board: Vec::new(),
+            runway_at: [0.0; 2],
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));

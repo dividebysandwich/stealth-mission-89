@@ -1500,6 +1500,7 @@ fn drones_in_the_air_are_no_fighters_after_a_load() {
     let target = c.places[0].members[0];
     c.raids.push(Raid {
         id: 9999,
+        due: Vec::new(),
         side: Side::Red,
         place: 0,
         target,
@@ -3082,23 +3083,39 @@ fn the_ai_flies_an_offer_five_minutes_after_it_was_posted() {
     let mut c = ai_campaign();
     let recon = c.board.iter().find(|o| o.kind == MissionKind::Recon).expect("recon").clone();
     let due = c.ai_launch_at(&recon).expect("the AI flies it");
-    assert_eq!(due, recon.posted + tuning::AI_MISSION_WAIT);
-    c.tick(due - c.clock - 1.0, &WorldView::default(), &[]);
-    assert!(c.ai_mission_for(recon.id).is_none());
-    let ev = c.tick(2.0, &WorldView::default(), &[]);
-    let m = c.ai_mission_for(recon.id).expect("launched").clone();
-    assert!(m.open());
-    assert_eq!(m.tags.len(), 1, "a recon flies alone");
-    assert!(ai_launched(&ev).iter().any(|(s, t)| *s == Side::Blue && *t == m.tags));
-    // Every other mission a pair.
-    for m in
-        c.ai_missions.iter().filter(|m| m.side == Side::Blue && m.offer.kind != MissionKind::Recon)
-    {
-        assert_eq!(m.tags.len(), 2, "{:?}", m.offer.kind);
+    assert!(due >= recon.posted + tuning::AI_MISSION_WAIT);
+    let first = c.board.iter().filter_map(|o| c.ai_launch_at(o)).fold(f64::MAX, f64::min);
+    c.tick(first - c.clock - 1.0, &WorldView::default(), &[]);
+    assert!(!c.ai_missions.iter().any(|m| m.side == Side::Blue), "not before its time");
+    // Then a quarter hour: each side's aircraft take off one at a time, 10 s apart at least,
+    // no more than the quarter hour's.
+    let mut takeoffs: Vec<(Side, f64)> = Vec::new();
+    for _ in 0..15 * 60 {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        for (side, tags) in ai_launched(&ev) {
+            assert_eq!(tags.len(), 1, "one at a time");
+            takeoffs.push((side, c.clock));
+        }
     }
-    assert!(
-        c.ai_missions.iter().filter(|m| m.side == Side::Blue).count() <= tuning::AI_MISSIONS_MAX
-    );
+    for side in [Side::Blue, Side::Red] {
+        let times: Vec<f64> = takeoffs.iter().filter(|t| t.0 == side).map(|t| t.1).collect();
+        assert!(!times.is_empty(), "{side:?} flies");
+        // (Seen at the end of 1 s steps.)
+        assert!(times.windows(2).all(|w| w[1] - w[0] >= tuning::AI_STAGGER - 1.0), "{times:?}");
+        let pooled: usize = c
+            .ai_missions
+            .iter()
+            .filter(|m| m.side == side)
+            .map(|m| m.pooled.iter().filter(|&&p| p).count())
+            .sum();
+        assert!(pooled <= tuning::AI_AIRCRAFT_PER_WINDOW, "{side:?}: {pooled}");
+    }
+    // Not every offer gets a flight; a recon flies alone, every other mission a pair.
+    assert!(c.board.iter().filter(|o| ai_flown(o.kind)).any(|o| c.ai_mission_for(o.id).is_none()));
+    for m in &c.ai_missions {
+        let n = if m.offer.kind == MissionKind::Recon { 1 } else { 2 };
+        assert_eq!(m.tags.len(), n, "{:?}", m.offer.kind);
+    }
 }
 
 #[test]
@@ -3269,7 +3286,35 @@ fn a_loaded_save_has_no_ai_flight_in_the_air() {
     c.after_load();
     assert!(!c.ai_missions.iter().any(AiMission::open));
     assert!(c.blue.fighters + c.blue.helicopters > fighters + helicopters, "back on the ground");
-    // Their offers go up again after the wait.
-    let o = c.board.iter().find(|o| c.ai_mission_for(o.id).is_some()).unwrap().clone();
-    assert_eq!(c.ai_launch_at(&o), Some(c.clock + tuning::AI_MISSION_WAIT));
+    // Their offers go up again after the wait (in their turn).
+    let queue = c.ai_schedule(Side::Blue);
+    assert!(!queue.is_empty());
+    for (id, t) in queue {
+        if c.ai_mission_for(id).is_some() {
+            assert!(t >= c.clock + tuning::AI_MISSION_WAIT, "{t}");
+        }
+    }
+}
+
+#[test]
+fn the_ais_offers_take_off_in_turn() {
+    let c = ai_campaign();
+    for side in [Side::Blue, Side::Red] {
+        let queue = c.ai_schedule(side);
+        assert!(!queue.is_empty(), "{side:?}");
+        assert!(queue.len() <= tuning::AI_MISSIONS_MAX);
+        // Each its own turn, a flight's aircraft one after the other.
+        assert!(queue.windows(2).all(|w| w[1].1 - w[0].1 >= tuning::AI_STAGGER), "{queue:?}");
+        let board = if side == Side::Blue { &c.board } else { &c.red_board };
+        let aircraft: usize = queue
+            .iter()
+            .map(|(id, _)| board.iter().find(|o| o.id == *id).unwrap())
+            .map(|o| if o.kind == MissionKind::Recon { 1 } else { 2 })
+            .sum();
+        // More than the quarter hour's aircraft: the last ones wait for it.
+        if aircraft > tuning::AI_AIRCRAFT_PER_WINDOW {
+            let (first, last) = (queue[0].1, queue.last().unwrap().1);
+            assert!(last >= first + tuning::AI_LAUNCH_WINDOW, "{queue:?}");
+        }
+    }
 }

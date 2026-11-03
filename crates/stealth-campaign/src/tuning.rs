@@ -363,3 +363,8 @@ pub const AI_MISSION_TIMEOUT: f64 = 45.0 * 60.0;
 pub const AI_MISSION_MEMORY: f64 = 30.0 * 60.0;
 /// The enemy's recon of a friendly place is good this long.
 pub const RED_INTEL_SECONDS: f64 = 3600.0;
+/// A side's AI flights (and the enemy's raids) take off with no more than this many aircraft
+/// in `AI_LAUNCH_WINDOW` (15 min), one at a time, `AI_STAGGER` apart.
+pub const AI_LAUNCH_WINDOW: f64 = 15.0 * 60.0;
+pub const AI_AIRCRAFT_PER_WINDOW: usize = 6;
+pub const AI_STAGGER: f64 = 10.0;

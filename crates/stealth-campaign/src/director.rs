@@ -1053,6 +1053,7 @@ impl CampaignState {
         let id = self.id();
         self.raids.push(Raid {
             id,
+            due: Vec::new(),
             side: Side::Red,
             place,
             target,
@@ -1259,10 +1260,15 @@ impl CampaignState {
                 continue;
             }
             let tags: Vec<u32> = (0..n).map(|_| self.id()).collect();
+            // With the AI flying the boards strike aircraft take off one at a time
+            // (`run_raid_takeoffs`); drones together.
+            let staggered = !drones && self.ai_missions_on();
+            let due = if staggered { self.take_runway(side, n) } else { Vec::new() };
             let r = &mut self.raids[k];
             r.from = from;
             r.aircraft = tags.clone();
             r.alive = vec![true; tags.len()];
+            r.due = due;
             r.state = RaidState::Enroute;
             r.enroute_at = Some(now);
             let text = text!("cl-raid-on-way", raid = text!(what), place = name.as_str());
@@ -1272,10 +1278,39 @@ impl CampaignState {
             } else {
                 text!("cl-raid-inbound", raid = text!(what), place = name)
             }));
-            let sam = sam.map(|s| s.aaa);
-            ev.push(CampaignEvent::RaidLaunched { id, side, from, target, tags, drones, sam });
+            if !staggered {
+                let sam = sam.map(|s| s.aaa);
+                ev.push(CampaignEvent::RaidLaunched { id, side, from, target, tags, drones, sam });
+            }
         }
+        self.run_raid_takeoffs(ev);
         self.raids.retain(|r| r.ended.is_none_or(|t| now - t < RAID_KEEP));
+    }
+
+    /// The raids' strike aircraft whose turn it is take off.
+    fn run_raid_takeoffs(&mut self, ev: &mut Vec<CampaignEvent>) {
+        let now = self.clock;
+        for r in self.raids.iter_mut().filter(|r| r.state == RaidState::Enroute) {
+            let up: Vec<u32> = (0..r.aircraft.len())
+                .filter(|&k| r.due.get(k).copied().flatten().is_some_and(|t| now >= t))
+                .map(|k| r.aircraft[k])
+                .collect();
+            if up.is_empty() {
+                continue;
+            }
+            for d in r.due.iter_mut().filter(|d| d.is_some_and(|t| now >= t)) {
+                *d = None;
+            }
+            ev.push(CampaignEvent::RaidLaunched {
+                id: r.id,
+                side: r.side,
+                from: r.from,
+                target: r.target,
+                tags: up,
+                drones: false,
+                sam: r.sam.map(|s| s.aaa),
+            });
+        }
     }
 
     pub(crate) fn end_raid(&mut self, k: usize, state: RaidState) {

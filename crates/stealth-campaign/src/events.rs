@@ -241,6 +241,7 @@ impl CampaignState {
         let id = self.id();
         self.raids.push(Raid {
             id,
+            due: Vec::new(),
             side: Side::Red,
             place,
             target,
@@ -305,6 +306,7 @@ impl CampaignState {
         let id = self.id();
         self.raids.push(Raid {
             id,
+            due: Vec::new(),
             side: Side::Blue,
             place,
             target: sam,

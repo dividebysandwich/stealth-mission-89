@@ -37,33 +37,6 @@ ops-unit-destroyed = { $unit } уничтожен: возврат к опера�
 ops-section-missions = Миссии
 ops-threat = УГРОЗА { $threat }
 ops-no-missions = Миссий нет: на фронте затишье
-ops-section-underway = Высадки и налёты
-ops-enemy-liftoff = ПРОТИВНИК у { $place }: взлёт через { $mins } мин
-ops-liftoff = { $place }: взлёт через { $mins } мин
-ops-enemy-helis = ПРОТИВНИК у { $place }: на подходе { $count ->
-        [one] { $count } вертолёт
-        [few] { $count } вертолёта
-        [many] { $count } вертолётов
-       *[other] { $count } вертолёта
-    }
-ops-helis = { $place }: в пути { $count ->
-        [one] { $count } вертолёт
-        [few] { $count } вертолёта
-        [many] { $count } вертолётов
-       *[other] { $count } вертолёта
-    }
-ops-raid-sead = SEAD ИИ у { $place }
-ops-raid-drones = ДРОНЫ на { $place }
-ops-raid = НАЛЁТ на аэродром { $place }
-ops-raid-sam = SEAD на батарею SAM { $place }
-ops-raid-launch = { $raid }: запуск через { $mins } мин
-ops-raid-on-way = { $raid }: в пути { $count }
-ops-resupply-ai = СНАБЖЕНИЕ ({ $unit }): UH-60 в пути
-ops-ai-flight = Звено ИИ: { $title }: { $count } × { $aircraft }
-ops-awacs = AWACS ПРОТИВНИКА в воздухе ещё { $mins } мин
-ops-down = СБИТ: { $pilot } - спасение в течение { $mins } мин
-ops-aboard = НА БОРТУ: { $pilot } - на пути домой
-ops-none-underway = Ничего не происходит
 ops-ai-helicopter = Через { $time } её выполнит вертолёт ИИ, если за неё не возьмётся пилот UH-60
 ops-defences = Оборона: { $sams ->
         [one] { $sams } позиция SAM
@@ -79,7 +52,7 @@ ops-planned-by-group = Планирует группа
 ops-stores = { $aircraft } - подвеска: { $stores }
 ops-fly-uh60 = ЛЕТЕТЬ НА UH-60
 ops-accept = ПРИНЯТЬ МИССИЮ
-ops-fly-with-ai = ЛЕТЕТЬ СО ЗВЕНОМ ИИ
+ops-fly-with-ai = ВЗЛЁТ
 ops-take-control = ВЗЯТЬ УПРАВЛЕНИЕ
     .facts = Продолжить полёт на машине звена ИИ с того места, где она
 ops-planning = ПЛАНИРУЮТ: { $pilots }
@@ -115,7 +88,7 @@ ops-due-now = СЕЙЧАС
 ops-front-blue = ФРОНТ: СИНИЕ НАСТУПАЮТ
 ops-front-red = ФРОНТ: КРАСНЫЕ НАСТУПАЮТ
 ops-front-even = ФРОНТ: ДЕРЖИТСЯ
-ops-operation = Операция { $place }: { $done }/{ $total } подготовлено
+ops-operation = Захват { $place }:
 ops-friendly = СВОИ
 ops-enemy = ПРОТИВНИК
 ops-section-forces = Силы
@@ -247,10 +220,9 @@ ops-alone = Вы летаете один. Чтобы летать вместе, 
 ops-rules = Правила этой кампании (заданы при её начале): { $rules }
 ops-no-sorties = Вылетов пока нет
 ops-ai-load = Вертолёт ИИ заберёт груз через { $time }, если это не сделает пилот UH-60
-ops-ai-takes-off = Звено ИИ возьмёт его через { $time }, если не полетит пилот
-ops-ai-flying = Звено ИИ в воздухе: { $count } × { $aircraft }
+ops-ai-takes-off = Взлёт через { $time }
+ops-ai-aircraft = ИИ { $aircraft }
 ops-cargo-in = Груз { $delivered } из { $loads } доставлен - площадка ждёт ещё { $time } ч
-ops-logistics-ai = ЛОГИСТИКА для { $unit }: { $count } x UH-60 в пути
 ops-rule-classic-terrain = классический рельеф
 ops-rule-classic-ai-flight = классический полёт ИИ
 ops-layers-hint = СЛОИ (вверху справа): что показывает карта
