@@ -742,6 +742,8 @@ impl Sim {
             strike_unit: false,
             defending: false,
             fought: 0,
+            passes: 0,
+            pass_wait: 0,
         });
         let d = &mut c.defence;
         d.uav_serial += 1;

@@ -679,12 +679,14 @@ impl Host {
                     for &tag in tags {
                         let task = glue::ai_task(*target);
                         sim.spawn_ai_mission(from, spec, task, tag, *side == Side::Blue);
+                        sim.set_cas_units(tag, &glue::cas_units(&self.state, tag));
                     }
                 }
                 CampaignEvent::ControlLeft { player, tag, aircraft, from, target, home } => {
                     let spec = glue::ai_spec(*aircraft);
                     let task = glue::ai_task(*target);
                     sim.hand_over(player.0, *tag, spec, task, *from as usize, *home, true);
+                    sim.set_cas_units(*tag, &glue::cas_units(&self.state, *tag));
                 }
                 CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
                     let (at, _) = crate::cargo::supply_crate(sim, *from as usize, *tag);

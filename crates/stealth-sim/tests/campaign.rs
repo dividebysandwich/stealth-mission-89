@@ -958,6 +958,57 @@ fn ai_gunships_fire_at_the_enemys_guns() {
     assert!(seen.contains(&27), "no rockets at the guns: {seen:?}");
 }
 
+/// A CAS flight of two Tornados fires its rockets at the units of its objective (not at the
+/// enemy unit nearest its point), one unit each, in several passes, flying out and back in
+/// between, and goes home once the objective is gone or its passes are flown.
+#[test]
+fn ai_cas_flies_several_passes_at_its_objectives_units() {
+    use stealth_sim::aaa::GroundKind;
+    use stealth_sim::ai_missions::TORNADO;
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let b = sim.objects()[from];
+    let (x, y) = (b.x + 0x600, b.y);
+    sim.place_defences(x, y, false, false);
+    let n = sim.units().len();
+    assert!(n >= 4, "{n} units");
+    // Tanks (they do not shoot at aircraft); the first right on the point, not the objective's.
+    for (k, u) in sim.units_mut().iter_mut().enumerate() {
+        u.kind = GroundKind::T90;
+        (u.x, u.y) = if k == 0 { (x, y) } else { (x + 0x40, y + 0x10 * k as i32) };
+    }
+    let objective: Vec<u32> = (1..n as u32).collect();
+    for tag in [71, 72] {
+        sim.spawn_ai_mission(from, TORNADO, AiTask::Ground(x, y), tag, true);
+        sim.set_cas_units(tag, &objective);
+    }
+    let (mut aimed, mut fired, mut home) = (Vec::new(), 0, 0);
+    let mut seen: Vec<(usize, usize)> = Vec::new();
+    for _ in 0..30 * 60 {
+        for e in run(&mut sim, &idle(), 1) {
+            if matches!(e, SimEvent::CampaignFlightLanded { tag: 71 | 72, .. }) {
+                home += 1;
+            }
+        }
+        for m in sim.ai_missiles() {
+            let key = (m.target, m.ground.unwrap_or(usize::MAX));
+            if m.ground.is_some() && !seen.contains(&key) {
+                seen.push(key);
+                aimed.push(m.ground.unwrap());
+                fired += 1;
+            }
+        }
+        if home == 2 {
+            break;
+        }
+    }
+    eprintln!("rockets at {aimed:?}");
+    assert_eq!(home, 2, "not both home");
+    assert!(fired > 2, "only {fired} salvos: one pass each");
+    assert!(!aimed.contains(&0), "rockets at the unit outside the objective: {aimed:?}");
+}
+
 #[test]
 fn a_pilot_takes_over_an_ai_aircraft_where_it_flies_and_hands_it_back() {
     let (_, mut sim) = campaign();

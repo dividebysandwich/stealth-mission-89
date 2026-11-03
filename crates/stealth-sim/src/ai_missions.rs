@@ -96,6 +96,8 @@ fn flight(
         strike_unit: false,
         defending: false,
         fought: 0,
+        passes: 0,
+        pass_wait: 0,
     }
 }
 
@@ -161,6 +163,7 @@ impl Sim {
             },
             AiTask::Ground(x, y) => CampaignFlight {
                 strike_unit: true,
+                passes: crate::campaign::CAS_PASSES,
                 loadout: own,
                 ..flight(tag, Role::Strike, blue, (x, y), home, base)
             },
@@ -229,6 +232,43 @@ impl Sim {
         for e in ev {
             self.emit(e);
         }
+    }
+
+    /// A CAS aircraft of flight `tag` in reach of its point: the unit of its objective nearest
+    /// the point that no rocket of its side is on its way to yet (nor `taken` this frame; any
+    /// of them, if all are), else the other side's ground unit nearest it (None: nothing left
+    /// there).
+    pub(crate) fn cas_target_for(
+        &self,
+        tag: u32,
+        x: i32,
+        y: i32,
+        blue: bool,
+        taken: &[usize],
+    ) -> Option<usize> {
+        let c = self.campaign.as_ref()?;
+        let listed = c.cas_units.iter().find(|(t, _)| *t == tag).map(|(_, u)| u.as_slice());
+        let aimed = |k: usize| {
+            taken.contains(&k)
+                || c.missiles.iter().any(|m| m.ground == Some(k) && m.ground_aaa && m.blue == blue)
+        };
+        let alive: Vec<usize> = listed
+            .unwrap_or_default()
+            .iter()
+            .map(|&k| k as usize)
+            .filter(|&k| {
+                self.units.get(k).is_some_and(|u| !u.destroyed)
+                    && c.aaa_blue.get(k).copied().unwrap_or(false) != blue
+            })
+            .collect();
+        let near = |k: &usize| approx(self.units[*k].x - x, self.units[*k].y - y);
+        alive
+            .iter()
+            .copied()
+            .filter(|&k| !aimed(k))
+            .min_by_key(near)
+            .or_else(|| alive.iter().copied().min_by_key(near))
+            .or_else(|| self.cas_target(x, y, blue))
     }
 
     /// A CAS aircraft in reach of its point: the other side's ground unit nearest it (None:

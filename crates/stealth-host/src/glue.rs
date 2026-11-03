@@ -214,6 +214,20 @@ pub fn ai_task(target: AiTarget) -> AiTask {
     }
 }
 
+/// The ground units (air defence unit indices) of the objective of the AI flight one of whose
+/// aircraft has campaign tag `tag`, for its CAS passes (none for other missions).
+pub fn cas_units(state: &CampaignState, tag: u32) -> Vec<u32> {
+    use stealth_campaign::Objective;
+    let Some(m) = state.ai_mission_of_tag(tag) else { return Vec::new() };
+    match &m.offer.objective {
+        Objective::Cas { aaa, .. }
+        | Objective::Battery { aaa, .. }
+        | Objective::Armour { aaa, .. }
+        | Objective::Support { aaa, .. } => aaa.clone(),
+        _ => Vec::new(),
+    }
+}
+
 /// Where an AI flight's target is (map units).
 pub fn ai_target_point(state: &CampaignState, target: AiTarget) -> (i32, i32) {
     match target {

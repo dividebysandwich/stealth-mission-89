@@ -109,6 +109,14 @@ const GERAN: usize = 29;
 const HARM: i32 = 24;
 const ROCKETS: i32 = 27;
 const ROCKET_RELEASE: i32 = 0x140;
+/// CAS: rocket passes a flight's aircraft fly, seconds between two (flying out to the side of
+/// its run in, `CAS_EGRESS` from its point, `CAS_EGRESS_TURN` rad round from where it fired; a
+/// helicopter `CAS_EGRESS_HELI`), map units.
+pub(crate) const CAS_PASSES: u8 = 3;
+const CAS_REATTACK_S: i32 = 25;
+const CAS_EGRESS: i32 = 0x180;
+const CAS_EGRESS_HELI: i32 = 0xA0;
+const CAS_EGRESS_TURN: f64 = 1.05;
 /// The chance (per mille) a strike aircraft's weapon that reaches its target destroys it.
 const GROUND_PK: i32 = 850;
 /// Altitude (world units, ~590 m) a strike aircraft flies in at.
@@ -196,6 +204,12 @@ pub struct CampaignFlight {
     /// fights again only once that enemy has been `RELEASE` away.
     #[serde(default)]
     pub fought: i32,
+    /// CAS: rocket passes left (0: the one pass of an older flight), and frames until it turns
+    /// in for the next (flying out of the fight till then).
+    #[serde(default)]
+    pub passes: u8,
+    #[serde(default)]
+    pub pass_wait: i32,
 }
 
 impl CampaignFlight {
@@ -290,6 +304,10 @@ pub struct CampaignSim {
     /// Convoys, and who sees which ground unit.
     #[serde(default)]
     pub(crate) ground: crate::ground::GroundState,
+    /// The ground units (`Sim::units`) of a CAS flight's objective, by campaign tag: it fires
+    /// at them first.
+    #[serde(default)]
+    pub(crate) cas_units: Vec<(u32, Vec<u16>)>,
 }
 
 /// Metres (east, north, up) of a flight unit.
@@ -346,6 +364,7 @@ impl Sim {
             gun_init: gun,
             defence: Default::default(),
             ground: Default::default(),
+            cas_units: Vec::new(),
         }));
         self.leave_world();
     }
@@ -1134,6 +1153,8 @@ impl Sim {
             strike_unit: false,
             defending: false,
             fought: 0,
+            passes: 0,
+            pass_wait: 0,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1225,6 +1246,8 @@ impl Sim {
             strike_unit: false,
             defending: false,
             fought: 0,
+            passes: 0,
+            pass_wait: 0,
         });
         i
     }
@@ -1299,6 +1322,8 @@ impl Sim {
             strike_unit: false,
             defending: false,
             fought: 0,
+            passes: 0,
+            pass_wait: 0,
         });
         i
     }
@@ -1358,6 +1383,8 @@ impl Sim {
             strike_unit: false,
             defending: false,
             fought: 0,
+            passes: 0,
+            pass_wait: 0,
         });
         i
     }
@@ -1391,6 +1418,16 @@ impl Sim {
             .campaign_flight(i)
             .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
         let (gx, gy) = f.goal;
+        if f.strike_unit && f.pass_wait > 0 && f.strike.is_some() {
+            // Between CAS passes: out to the side of its run in, to turn in again.
+            let heli = self.aircraft_kind(u.spec) == AircraftKind::Helicopter;
+            let out = if heli { CAS_EGRESS_HELI } else { CAS_EGRESS } as f64;
+            let (dx, dy) = ((u.x - gx) as f64, (u.y - gy) as f64);
+            let d = dx.hypot(dy).max(1.0);
+            let (s, c) = CAS_EGRESS_TURN.sin_cos();
+            let (ex, ey) = ((dx * c - dy * s) / d, (dx * s + dy * c) / d);
+            return Some((gx + (ex * out) as i32, gy + (ey * out) as i32));
+        }
         if matches!(f.role, Role::Strike | Role::Recon) {
             return Some((gx, gy));
         }
@@ -1521,7 +1558,7 @@ impl Sim {
         };
         let weapons: Vec<(i32, i32)> = (0..self.objects.len()).map(|t| weapon(self, t)).collect();
         let c = self.campaign.as_mut().expect("campaign");
-        let mut shots = Vec::new();
+        let (mut shots, mut cas) = (Vec::new(), Vec::new());
         for (i, slot) in c.flights.iter_mut().enumerate() {
             let Some(f) = slot.as_mut() else { continue };
             let u = &mut self.flights[i];
@@ -1541,6 +1578,10 @@ impl Sim {
             if u.flags & fflags::DESTROYED != 0 || u.flags & fflags::AIRBORNE == 0 {
                 continue;
             }
+            if f.strike_unit && f.pass_wait > 0 {
+                f.pass_wait -= 1;
+                continue;
+            }
             let (spec, release) = if f.strike_aaa {
                 harm
             } else if f.strike_unit {
@@ -1549,23 +1590,40 @@ impl Sim {
                 weapons.get(target as usize).copied().unwrap_or((ROCKETS, ROCKET_RELEASE))
             };
             if approx(u.x - f.goal.0, u.y - f.goal.1) < release {
+                if f.strike_unit {
+                    cas.push(i);
+                    continue;
+                }
                 f.strike = None;
                 u.flags |= fflags::RTB;
                 u.wp = f.home;
-                shots.push((i, spec, target as usize, f.strike_aaa || f.strike_unit, f.blue));
+                shots.push((i, spec, target as usize, f.strike_aaa, f.blue));
+            }
+        }
+        // CAS: rockets at a unit of its objective (else the other side's nearest its point);
+        // passes left, it flies out and comes round again, else (or nothing left there) home.
+        let fs = self.fs.max(1);
+        let mut taken = Vec::new();
+        for i in cas {
+            let Some(f) = self.campaign_flight(i) else { continue };
+            let target = self.cas_target_for(f.tag, f.goal.0, f.goal.1, f.blue, &taken);
+            taken.extend(target);
+            let c = self.campaign.as_mut().expect("campaign");
+            let Some(f) = c.flights[i].as_mut() else { continue };
+            if target.is_some() && f.passes > 1 {
+                f.passes -= 1;
+                f.pass_wait = CAS_REATTACK_S * fs;
+            } else {
+                f.strike = None;
+                self.flights[i].flags |= fflags::RTB;
+                self.flights[i].wp = f.home;
+            }
+            if let Some(k) = target {
+                shots.push((i, ROCKETS, k, true, f.blue));
             }
         }
         for (i, spec, target, aaa, blue) in shots {
             let u = self.flights[i];
-            // CAS: the ground unit nearest its point now (nothing left there: home unarmed).
-            let cas = self.campaign_flight(i).filter(|f| f.strike_unit).map(|f| f.goal);
-            let target = match cas {
-                Some((x, y)) => match self.cas_target(x, y, blue) {
-                    Some(k) => k,
-                    None => continue,
-                },
-                None => target,
-            };
             let mut m = self.ai_missile(spec, flight_metres(&u), direction(u.heading, 0), i, blue);
             m.ground = Some(target);
             m.ground_aaa = aaa;
@@ -2283,6 +2341,18 @@ impl Sim {
     /// The AI's tracers and shells in flight.
     pub fn ai_shells(&self) -> impl Iterator<Item = &Shell> {
         self.campaign.as_ref().into_iter().flat_map(|c| c.shells.iter().map(|s| &s.shell))
+    }
+
+    /// Campaign: the ground units of CAS flight `tag`'s objective (`Sim::units` indices).
+    pub fn set_cas_units(&mut self, tag: u32, units: &[u32]) {
+        let Some(c) = self.campaign.as_mut() else { return };
+        c.cas_units.retain(|(t, _)| *t != tag);
+        if !units.is_empty() {
+            c.cas_units.push((tag, units.iter().map(|&k| k as u16).collect()));
+        }
+        // The flights that are gone forget theirs.
+        let flying: Vec<u32> = c.flights.iter().flatten().map(|f| f.tag).collect();
+        c.cas_units.retain(|(t, _)| *t == tag || flying.contains(t));
     }
 
     /// The AI's tracers in the air: the flight unit each is fired at, and the gun (AAA unit)
