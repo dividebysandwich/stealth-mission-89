@@ -1110,7 +1110,8 @@ F22_BODY = [
     (3.60, 0.48, 0.56, 0.42, 0.84, -0.09, 0.64, -0.53, 0.30, -0.97),
     (4.70, 0.50, 0.60, 0.46, 0.94, -0.02, 0.70, -0.51, 0.31, -1.02),
     (4.86, 0.52, 0.60, 0.47, 0.95, -0.02, 0.70, -0.51, 0.31, -1.03),
-    (5.30, 0.58, 0.62, 0.49, 1.58, -0.07, 0.62, -0.55, 0.32, -1.05),
+    (5.30, 0.58, 0.62, 0.49, 1.53, -0.07, 0.62, -0.55, 0.32, -1.05),
+    (5.56, 0.61, 0.62, 0.50, 1.88, -0.10, 0.40, -0.84, 0.44, -1.03),
     (5.70, 0.63, 0.62, 0.50, 1.90, -0.09, 0.41, -0.87, 0.50, -1.02),
     (6.26, 0.71, 0.62, 0.54, 1.95, -0.04, 0.40, -0.90, 1.12, -1.08),
     (6.70, 0.77, 0.62, 0.56, 2.00, 0.00, 1.22, -0.98, 1.12, -1.10),
@@ -1132,9 +1133,9 @@ F22_RIM_S = 5.0
 # The intakes' mouths cut into the rings: the ceiling's inner corner, and the bottom lip's edge
 # (s: (ceiling x z, lip x z)), the duct inside them. The lips' corners as the three-view's: top
 # inner, top outer, bottom outer, bottom inner (x, s, z).
-F22_MOUTH_RINGS = {5.30: ((0.92, -0.06), None), 5.70: ((0.92, -0.06), (0.53, -0.91)),
-                   6.26: ((0.92, -0.06), (1.15, -0.97))}
-F22_LIP = [(0.90, 4.86, -0.02), (1.88, 5.56, -0.10), (1.15, 6.26, -0.95), (0.38, 5.56, -0.88)]
+F22_MOUTH_RINGS = {4.86: ((0.95, -0.02), None), 5.30: ((0.92, -0.06), None), 5.56: ((0.92, -0.06), (0.38, -0.88)),
+                   5.70: ((0.92, -0.06), (0.53, -0.89)), 6.26: ((0.92, -0.06), (1.15, -0.95))}
+F22_LIP = [(0.95, 4.86, -0.02), (1.88, 5.56, -0.10), (1.15, 6.26, -0.95), (0.38, 5.56, -0.88)]
 F22_BAY_S = (7.60, 11.30)
 F22_BAY_DEPTH = 0.78
 F22_SIDE_S = (7.40, 10.30)
@@ -1221,18 +1222,28 @@ def f22():
     g.add(tube([f16_arch(F22_NOSE - s, *r) for s, *r in F22_FAIRING], F22_GREY))
     # The caret intakes, cut into the rings: parallelograms leaning in 32 degrees seen from ahead,
     # their lips raked back from the top inner corner; the outer walls run from the lips' outer
-    # edges into the flanks, the mouths dark just inside the lips.
+    # edges into the flanks (dark inside), the mouths dark in the lips (through the rings' points
+    # along them: no cracks), so no back face in the ducts shows through.
     flank = F22_BODY[[r[0] for r in F22_BODY].index(6.70)]
     for sx in (-1, 1):
         _, to, bo, _ = F22_LIP
-        g.face([f22_p(sx * x, s, z) for x, s, z in (to, (flank[4], 6.70, flank[5]), (flank[6], 6.70, flank[7]), bo)],
-               F22_GREY, f22_p(0, 6.4, -0.4))
-        mouth = [f22_p(sx * x, s, z) for x, s, z in
-                 ((0.92, 5.00, -0.05), (1.70, 5.58, -0.08), (1.10, 6.12, -0.86), (0.42, 5.58, -0.82))]
-        out = mklib.normal(mouth)
-        if out.y < 0:
-            out = -out
-        g.face([p + out * 0.02 for p in mouth], BLACK, f22_p(sx * 1.0, 8.0, -0.4))
+        # (Through the chine's points along its top edge: no cracks.)
+        chine = [(r[4], r[0], r[5]) for r in F22_BODY if to[1] < r[0] < 6.70]
+        wall = [f22_p(sx * x, s, z) for x, s, z in
+                (to, *chine, (flank[4], 6.70, flank[5]), (flank[6], 6.70, flank[7]), bo)]
+        g.face(wall, F22_GREY, f22_p(0, 6.4, -0.4))
+        g.face(wall, DARK, f22_p(sx * 3.0, 6.4, -0.4))
+        # The rings' twisted quad under the wall's bottom edge, split along it.
+        lip = F22_MOUTH_RINGS[6.26][1]
+        a, b, c, d = (f22_p(sx * x, s, z) for x, s, z in ((0.40, 6.26, -0.90), (lip[0], 6.26, lip[1]),
+                                                          (flank[6], 6.70, flank[7]), (1.17, 6.70, -1.04)))
+        g.face([b, c, d], F22_GREY, f22_p(0, 6.5, -0.4))
+        g.face([a, b, c], F22_GREY, f22_p(sx * 1.0, 6.5, -1.5))
+        ti, _, _, bi = F22_LIP
+        top = [(r[4], r[0], r[5]) for r in F22_BODY if ti[1] < r[0] < to[1]]
+        lips = [(x, s, z) for s, (_, lip) in F22_MOUTH_RINGS.items() if lip and bi[1] < s < bo[1] for x, z in [lip]]
+        mouth = [f22_p(sx * x, s, z) for x, s, z in (ti, *top, to, bo, *reversed(lips), bi)]
+        g.face(mouth, BLACK, f22_p(sx * 1.0, 8.0, -0.4))
     # Wings (3.25 degrees anhedral, the tips clipped), stabilators, fins canted out 28 degrees.
     g.add(mirror(f22_panel([(1.20, 7.56, 15.90, 0.00, 0.28), (5.95, 11.68, 14.40, -0.26, 0.08),
                             (6.78, 12.40, 13.66, -0.31, 0.04)], F22_GREY)))
