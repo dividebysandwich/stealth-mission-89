@@ -1073,10 +1073,11 @@ Time acceleration is offered for a longer cruise (more than 100 km to go); getti
 on, the lesson asks for normal time, the farther out the faster time runs (60 km out with ACCEL,
 75 km at ACCEL x2, 90 km at ACCEL x3). The lesson never acts for you: every step is yours. The
 cruise follows the route on the map (the DOS era map draws it with the waypoint page up). About
-50 km out, the autopilot off (by hand from there), the threats on the tactical page and the
-target camera ahead. About 30 km out, getting ready for the attack: slower (about 400 knots,
+50 km out, the autopilot still on, the threats on the tactical page and the target camera
+ahead. About 30 km out, getting ready for the attack: slower (about 400 knots,
 for a run on the ground), the HUD's attack mode (with a radar it shows its own display), the
-lock; about 10 km out the run: the bay, the
+lock; about 15 km out, the target locked, the autopilot off (it would turn to the next waypoint
+about 8 km out); about 10 km out the run: the bay, the
 shot, or the landing the objective asks for; then on to the next objective, and at last the way
 home and the landing (the ILS, then the autopilot off). Dangers and threats come first while they last: a
 stall (nose down, power up), a missile locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then

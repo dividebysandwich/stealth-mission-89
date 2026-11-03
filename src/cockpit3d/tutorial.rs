@@ -9,8 +9,9 @@
 //! aircraft down with the missile that locks the farthest, photograph it, drop supplies on it,
 //! or land there.
 //!
-//! Hands off before eyes down: the autopilot flies before any display is looked at, until 50 km
-//! from the target (`HANDS_KM`), by hand from there to get ready for the attack. The displays to discover (the map, the waypoint list,
+//! Hands off before eyes down: the autopilot flies before any display is looked at, and stays
+//! on while getting ready for the target (`READY_KM`), until about 15 km from it, the target
+//! locked (`HANDS_KM`). The displays to discover (the map, the waypoint list,
 //! the orders, the tactical page and its zoom) come on a cruise long enough for them (farther
 //! than `LEARN_KM`), each once in the flight: on the way to the first objective, else to the
 //! next one, else home. Time acceleration is offered only for a longer cruise (farther than
@@ -101,9 +102,12 @@ const ATTACK_KM: f32 = 30.0;
 /// ACCEL, ACCEL x2, ACCEL x3: time 2, 4, 6 times faster): the faster time runs, the farther out,
 /// for the player to see it in time.
 const NORMAL_TIME_KM: [f32; 4] = [ATTACK_KM, 60.0, 75.0, 90.0];
-/// The autopilot off this near a target (km): flown by hand from there, to get ready for the
-/// attack (the autopilot steers there until about 8 km out, then turns to the next waypoint).
-const HANDS_KM: f32 = 50.0;
+/// Getting ready for a target this near it (km), the autopilot still on: the threats around it
+/// and the camera on it.
+const READY_KM: f32 = 50.0;
+/// The autopilot off this near a target (km), once it is locked: flown by hand for the attack
+/// (the autopilot steers there until about 8 km out, then turns to the next waypoint).
+const HANDS_KM: f32 = 15.0;
 const RUN_KM: f32 = 10.0;
 /// The speed for a run on the ground (knots).
 const SLOW_KNOTS: f32 = 420.0;
@@ -403,7 +407,8 @@ struct LegState {
     /// Far enough for the displays to discover (`LEARN_KM`); for faster time (`ACCEL_KM`).
     leisure: bool,
     long_way: bool,
-    /// Near enough to fly by hand (`HANDS_KM`).
+    /// Near enough to get ready for the target (`READY_KM`); to fly by hand (`HANDS_KM`).
+    ready: bool,
     hands: bool,
     /// The current waypoint leads there; is past it (a waypoint back leads there).
     on_route: bool,
@@ -554,9 +559,9 @@ impl Ctx<'_> {
 struct Step {
     only: fn(Flight) -> bool,
     phase: &'static str,
-    /// `{target}` (`{TARGET}`) is the leg's objective, `{name}` what it is (for an objective
-    /// "the next target": the lesson never names the real one), `{weapon}` the store to use,
-    /// `{why}` why that one.
+    /// `{target}` (`{TARGET}`) is the leg's objective, `{name}` what it is ("the next target",
+    /// "the landing base": the lesson never names a real target or place), `{weapon}` the store
+    /// to use, `{why}` why that one.
     title: &'static str,
     detail: &'static str,
     keys: &'static [Action],
@@ -722,8 +727,9 @@ static DISCOVERY: &[Step] = {
             only: all,
             phase: CRUISE,
             title: "The waypoint list",
-            detail: "For each waypoint: its distance, the time to fly there and the time of \
-                     arrival (ETA). The current one leads to {name}: its line says how far it is",
+            detail: "Each line is a leg of the route, in order: its distance (from the aircraft, \
+                     then from the waypoint before), the time to fly it and the time of arrival \
+                     (ETA)",
             keys: &[],
             target: |c| match c.page_display(Page::Waypoints) {
                 T::None => c.page_button(Page::Waypoints),
@@ -826,28 +832,17 @@ static OBJECTIVE_STEPS: &[Step] = {
             target: |_| T::Effect(Effect::TimeToggle),
             done: |c| c.passed || c.accel || !c.leg.long_way || c.leg.over,
         },
-        // 50 km out, by hand: this step comes back first whatever the one shown.
-        Step {
-            only: all,
-            phase: OBJECTIVE,
-            title: "Autopilot off",
-            detail: "About 50 km from {name}: fly by hand from here, to get ready for the \
-                     attack (the autopilot would turn to the next waypoint close to it)",
-            keys: &[Autopilot],
-            target: |_| T::Action(Autopilot),
-            done: |c| c.a.autopilot_alt <= 0.0 || !c.leg.hands || c.leg.over,
-        },
         Step {
             only: all,
             phase: OBJECTIVE,
             title: "Fly to the {target}",
             detail: "Head for {name}: on the map, the line of the waypoints shows the way. \
-                     About 50 km out, the autopilot off",
+                     About 50 km out, getting ready for it",
             keys: &[Maps, SelectWaypoint],
             target: |c| c.route_way(),
-            done: |c| c.leg.hands || c.leg.near || c.leg.over,
+            done: |c| c.leg.ready || c.leg.near || c.leg.over,
         },
-        // 50 km out, the autopilot off: the threats around the target and the camera on it.
+        // 50 km out, the autopilot still on: the threats around the target and the camera on it.
         Step {
             only: all,
             phase: OBJECTIVE,
@@ -874,7 +869,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: all,
             phase: OBJECTIVE,
             title: "Approach the {target}",
-            detail: "Fly by hand towards {name}, the camera on it: about 30 km out, getting ready \
+            detail: "Keep on towards {name}, the camera on it: about 30 km out, getting ready \
                      for the run",
             keys: &[],
             target: |c| match c.page_display(Page::Camera) {
@@ -885,7 +880,8 @@ static OBJECTIVE_STEPS: &[Step] = {
         },
         // 30 km out, getting ready for the attack: slower, the HUD's attack mode (it brings A-G's
         // or A-A's formats back, after the threats on the HSD, NAV's format: with a radar, its
-        // display on the left as the SOI), the lock. 10 km out, the run.
+        // display on the left as the SOI), the lock; about 15 km out, the target locked, the
+        // autopilot off. 10 km out, the run.
         Step {
             only: run_slower,
             phase: OBJECTIVE,
@@ -920,7 +916,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             detail: "Lock {name}: the HUD's box frames it",
             keys: &[DesignateTarget, NearestTarget, SelectTarget],
             target: |_| T::Action(DesignateTarget),
-            done: |c| c.leg.locked || c.leg.over,
+            done: |c| c.leg.locked || c.leg.over || c.leg.hands && c.a.autopilot_alt > 0.0,
         },
         Step {
             only: air,
@@ -929,7 +925,17 @@ static OBJECTIVE_STEPS: &[Step] = {
             detail: "Lock {name}, the nearest aircraft first: the HUD's box frames it",
             keys: &[NearestTarget, SelectTarget],
             target: |_| T::Action(NearestTarget),
-            done: |c| c.leg.locked || c.leg.over,
+            done: |c| c.leg.locked || c.leg.over || c.leg.hands && c.a.autopilot_alt > 0.0,
+        },
+        Step {
+            only: all,
+            phase: OBJECTIVE,
+            title: "Autopilot off",
+            detail: "About 15 km from {name}: fly by hand for the attack, the autopilot \
+                     would turn to the next waypoint about 8 km from it",
+            keys: &[Autopilot],
+            target: |_| T::Action(Autopilot),
+            done: |c| c.a.autopilot_alt <= 0.0 || !c.leg.hands || c.leg.over,
         },
         // 10 km out: the run itself.
         Step {
@@ -1063,7 +1069,7 @@ static OBJECTIVE_STEPS: &[Step] = {
     ]
 };
 
-/// The way home after the last objective (`{name}`: the landing base).
+/// The way home after the last objective.
 static RETURN_ROUTE: &[Step] = {
     use Action::*;
     use Target as T;
@@ -1100,7 +1106,7 @@ static RETURN_ROUTE: &[Step] = {
     ]
 };
 
-/// From the cruise home to the stop after landing (`{name}`: the landing base).
+/// From the cruise home to the stop after landing.
 static RETURN_STEPS: &[Step] = {
     use Action::*;
     use Target as T;
@@ -1412,11 +1418,11 @@ fn zoom(mfd: &MfdState) -> Zoom {
 pub(super) struct Tutorial {
     /// Switched on, in a single mission.
     on: bool,
-    /// The flight's lesson (made once the flight runs), its objectives and its landing base
-    /// (map units, name).
+    /// The flight's lesson (made once the flight runs), its objectives and its landing base (map
+    /// units).
     plan: Vec<Entry>,
     objectives: Vec<Objective>,
-    home: (IVec2, String),
+    home: IVec2,
     /// Index in `plan`; the farthest step reached (the steps to do once before it are done).
     at: usize,
     reached: usize,
@@ -1666,7 +1672,7 @@ pub(super) fn advance(
             let m = &m.0;
             tutorial.objectives = objectives(m);
             let p = m.landing.position;
-            tutorial.home = (IVec2::new(p.x, p.y), m.landing.name.clone());
+            tutorial.home = IVec2::new(p.x, p.y);
         }
         let spec = settings.aircraft.spec();
         let f = Flight { helicopter: spec.helicopter, bomb_bay: spec.bomb_bay, aim: None };
@@ -1713,6 +1719,7 @@ pub(super) fn advance(
                 time_back: busy && within(at, time_back_km),
                 leisure: !over && !within(at, LEARN_KM),
                 long_way: !over && !within(at, ACCEL_KM),
+                ready: within(at, READY_KM),
                 hands: within(at, HANDS_KM),
                 on_route: route.is_none_or(|r| r == o.k),
                 past: route.is_some_and(|r| r > o.k),
@@ -1725,11 +1732,12 @@ pub(super) fn advance(
         }
         Leg::Return => LegState {
             over: false,
-            near: a.on_ground || within(tutorial.home.0, HOME_KM),
+            near: a.on_ground || within(tutorial.home, HOME_KM),
             close: false,
-            time_back: !a.on_ground && within(tutorial.home.0, time_back_km),
-            leisure: !a.on_ground && !within(tutorial.home.0, LEARN_KM),
-            long_way: !a.on_ground && !within(tutorial.home.0, ACCEL_KM),
+            time_back: !a.on_ground && within(tutorial.home, time_back_km),
+            leisure: !a.on_ground && !within(tutorial.home, LEARN_KM),
+            long_way: !a.on_ground && !within(tutorial.home, ACCEL_KM),
+            ready: false,
             hands: false,
             on_route: route.is_none_or(|r| r == 2),
             past: false,
@@ -1757,9 +1765,9 @@ pub(super) fn advance(
             }
         };
         // A display to discover: once, on a cruise long enough (the one being looked at until the
-        // autopilot is to go off, 50 km out); the orders until then whatever the way. Left
+        // approach, 50 km out); the orders until then whatever the way. Left
         // undone, they would hold the approach's steps back.
-        let late = leg.hands || leg.near;
+        let late = leg.ready || leg.near;
         if let Some(k) = e.discovery
             && (tutorial.discovered[k].is_some()
                 || if k >= ORDERS { late } else { !leg.leisure && (at != tutorial.at || late) })
@@ -1838,7 +1846,7 @@ pub(super) fn advance(
             let o = &tutorial.objectives[i];
             (["primary target", "secondary target"][o.k], "the next target", Some(o.aim))
         }
-        _ => ("landing base", tutorial.home.1.as_str(), None),
+        _ => ("landing base", "the landing base", None),
     };
     let words = Words {
         target: objective,
@@ -2291,10 +2299,10 @@ mod tests {
                     "Mission orders page",
                     "Read your orders",
                     "Time acceleration",
-                    "Autopilot off",
                     "Fly to",
                     "Target camera",
                     "Approach",
+                    "Autopilot off",
                     "Close in",
                 ];
                 let order: Vec<usize> = order.iter().map(|t| at(t).unwrap()).collect();
@@ -2312,14 +2320,14 @@ mod tests {
                 let slow = at("Slow down");
                 assert_eq!(slow.is_some(), run_slower(Flight { aim: Some(aim), ..f }));
                 for ready in [slow, at("Air-to-ground mode"), at("Air-to-air mode")] {
-                    assert!(ready.is_none_or(|s| order[12] < s && s < run), "{f:?} {aim:?}");
+                    assert!(ready.is_none_or(|s| order[11] < s && s < order[12]), "{f:?} {aim:?}");
                 }
                 // 50 km out the threats on the HSD, then the camera (before the attack mode
                 // brings its own formats).
-                let threats = (order[10]..steps.len())
+                let threats = (order[9]..steps.len())
                     .find(|&k| steps[k].step.title == "Tactical page")
                     .unwrap();
-                assert!(order[10] < threats && threats < order[11], "{f:?} {aim:?}");
+                assert!(order[9] < threats && threats < order[10], "{f:?} {aim:?}");
                 // Normal time is an alert, before any step.
                 assert!(at("Normal time").is_none(), "{f:?} {aim:?}");
                 assert_eq!(
@@ -2373,6 +2381,30 @@ mod tests {
         // The modern MAP format first (the HSD shows on the left).
         let modern = MfdState { modern: true, ..default() };
         assert!(matches!(target(&modern), Target::Cmd(_)));
+    }
+
+    /// The autopilot asked for on (to the target) and off (for the attack) never at the same
+    /// distance: either way round, the other step would show next, back and forth.
+    #[test]
+    fn the_autopilot_is_never_asked_for_on_and_off() {
+        assert!(HANDS_KM < ATTACK_KM && ATTACK_KM < READY_KM);
+        let (hud, mfd) = (HudState::default(), MfdState::default());
+        let step = |t: &str| OBJECTIVE_ROUTE.iter().chain(OBJECTIVE_STEPS).find(|s| s.title == t);
+        let (on, off) =
+            (step("Autopilot to the {target}").unwrap(), step("Autopilot off").unwrap());
+        // Far, getting ready (50 km), near (30 km), by hand (15 km).
+        for (ready, near, hands) in
+            [(false, false, false), (true, false, false), (true, true, false), (true, true, true)]
+        {
+            let mut a = Aircraft::new_on_runway(0.0);
+            a.on_ground = false;
+            let leg = LegState { ready, near, hands, ..default() };
+            a.autopilot_alt = 0.0;
+            let wants_on = !(on.done)(&Ctx { leg, ..ctx(&a, &hud, &mfd) });
+            a.autopilot_alt = 1000.0;
+            let wants_off = !(off.done)(&Ctx { leg, ..ctx(&a, &hud, &mfd) });
+            assert!(!(wants_on && wants_off), "ready {ready}, near {near}, hands {hands}");
+        }
     }
 
     /// A display counts once in the lesson's length: where it was discovered, else on the next
