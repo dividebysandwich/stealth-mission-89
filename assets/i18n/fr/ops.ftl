@@ -66,8 +66,8 @@ ops-rule-no-crashes = protection anti-crash
 ops-rule-time = temps continu
 ops-rule-weapons = armement réaliste du F-117A
 ops-rule-friendly-fire = tirs fratricides
-ops-rule-airframe-losses = appareils perdus comptés
-ops-rule-no-ai-missions = pas de missions IA
+ops-rule-airframe-losses = les pertes coûtent des ressources
+ops-rule-no-ai-missions = pas de missions de l'IA alliée
 ops-rule-classic = classiques
 ops-materiel = MATÉRIEL
 ops-materiel-blue = BLEU { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     L'IA ne vole qu'avec les appareils qu'elle a ; abattus, ils sont perdus, posés, ils revolent. Chaque heure, chaque camp en achète de nouveaux tant que son matériel le permet.
     Vous ne manquez jamais de rien : vos appareils, vos bases (bombardées ou non) et les hélicoptères de vos propres ordres d'insertion sont toujours là.
 ops-how-repairs = Chaque camp ne répare que quelques sites à la fois (davantage avec plus de villes intactes), les plus proches du front d'abord, et un site détruit de nouveau peu après sa réparation demande chaque fois plus de temps.
-ops-how-airframes = Les appareils perdus comptent : chaque appareil qu'un pilote perd est un chasseur ou un hélicoptère de moins pour l'IA alliée.
+ops-how-airframes = Les pertes coûtent des ressources : chaque appareil qu'un pilote perd est un chasseur ou un hélicoptère de moins pour l'IA alliée.
 ops-section-prices = Prix
 ops-price-airfield = Réparation d'aérodrome
 ops-price-sam = Réparation de site SAM

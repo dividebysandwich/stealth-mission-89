@@ -301,6 +301,8 @@ pub const DEPLOY_LOADS_DRONES: u8 = 1;
 pub const DEPLOY_TIMEOUT: f64 = 24.0 * 3600.0;
 pub const DEPLOY_OPEN_MAX: usize = 3;
 pub const DEPLOY_AI_WAIT: f64 = 30.0 * 60.0;
+/// Materiel a load of cargo not in yet costs when a player fast-tracks a site's construction.
+pub const DEPLOY_FAST_TRACK_COST: f64 = 20.0;
 /// Map units: the unit stands this far north of its helipad; a Gepard's, a Patriot battery's
 /// (its launchers stand around the radar) and a drone command center's ground, kept clear of
 /// the other units.

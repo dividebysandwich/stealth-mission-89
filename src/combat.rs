@@ -494,6 +494,7 @@ fn collect_commands(
     mut locks: MessageReader<crate::avionics::LockRequest>,
     mut pods: MessageReader<crate::avionics::PodDesignate>,
     mut tracks: MessageReader<crate::avionics::PodTrack>,
+    mut unlocks: MessageReader<crate::avionics::Unlock>,
     mut combat: ResMut<Combat>,
     mut accel: ResMut<TimeAccel>,
     settings: Res<crate::settings::Settings>,
@@ -508,6 +509,9 @@ fn collect_commands(
     }
     for crate::avionics::PodTrack(k) in tracks.read() {
         c.designate_unit = u16::try_from(*k).ok();
+    }
+    if unlocks.read().count() > 0 {
+        c.clear_target = true;
     }
     for crate::avionics::LockRequest(target) in locks.read() {
         match *target {
@@ -608,7 +612,7 @@ fn player_state(
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
-        // Realistic avionics: each weapon in its own HUD mode.
+        // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
         cmd: SimCommands { gun, trigger, ..cmd },
@@ -1720,6 +1724,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         let near = |k: &Contact| matches!(k.target, Some(ContactRef::Point(x, y)) if (x - o.x).abs() <= 1 && (y - o.y).abs() <= 1);
         contacts.list.iter().find(|k| near(k)).and_then(|k| k.target).unwrap_or(ContactRef::Object(g))
     }));
+    contacts.ground_lock = locks.ground.and_then(|g| objects.get(g)).map(|o| map_wu(o.x, o.y));
 
     // Tracking camera data and HUD cues.
     let t = sim.targeting();

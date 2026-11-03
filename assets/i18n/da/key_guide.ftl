@@ -129,4 +129,5 @@ kg-hud-gnd = HUD-tilstand GND (A/G)
 kg-hmd-mode = Hjelmdisplay til / auto (slukker foran HUD) / fra
 kg-hud-colour = Farve på HUD og hjelmdisplay
 kg-view-zoom = Visningszoom ind / ud (holdt), som hjulet
+kg-pan = Se dig omkring (holdt), som musen
 kg-ptt = Radio, hold nede for at tale (multiplayer)

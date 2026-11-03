@@ -61,6 +61,8 @@ pub struct OpsUi {
     /// center), and `--campaign-designate` was done.
     pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
+    /// The new site whose FAST-TRACK was clicked, awaiting confirmation.
+    pub(super) fast_track: Option<u32>,
     /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
     pub test_taken: bool,
     pub test_manned: bool,
@@ -544,6 +546,7 @@ pub fn ops_ui(
             });
         });
     });
+    super::designate::confirm(ctx, c);
     if c.ui.confirm_exit {
         let window = egui::Window::new("Leave the campaign")
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -846,7 +849,8 @@ fn take_control(ui: &mut egui::Ui, c: &mut ActiveCampaign, tag: u32, label: &str
     let button = big_button(label).icon(icon::JOIN);
     if ui.add_enabled(why.is_none(), button).clicked() {
         c.ui.error = None;
-        c.actions.push(Action::TakeControl { tag });
+        let loadout = super::control_loadout(c, tag);
+        c.actions.push(Action::TakeControl { tag, loadout });
     }
     let note = why.unwrap_or_else(|| t!("ops-take-control.facts").to_string());
     ui.label(egui::RichText::new(note).small().color(DIM));
@@ -1048,7 +1052,9 @@ fn package_info(ui: &mut egui::Ui, c: &ActiveCampaign, o: &MissionOffer) {
 
 /// Calling in AI SEAD for an offer's place (the friendly side's materiel and fighters).
 fn support_button(ui: &mut egui::Ui, c: &mut ActiveCampaign, o: &MissionOffer) {
-    use stealth_campaign::tuning::{RAID_AIRCRAFT, SUPPORT_COST};
+    use stealth_campaign::tuning::{
+        AI_FLIGHT_AIRCRAFT, AI_MISSION_COST, RAID_AIRCRAFT, SUPPORT_COST,
+    };
     let st = c.state();
     let Some(place) = st.objective_place(&o.objective) else { return };
     let Some(p) = st.place(place).filter(|p| p.owner == Side::Red) else { return };
@@ -1056,14 +1062,20 @@ fn support_button(ui: &mut egui::Ui, c: &mut ActiveCampaign, o: &MissionOffer) {
     if sams == 0 {
         return;
     }
+    // A SEAD offer the AI flies: its own flight, at once (none while one is due or up).
+    let ai = o.kind == MissionKind::Sead && st.ai_missions_on();
+    if ai && st.ai_scheduled(o) {
+        return;
+    }
     let busy = st.raids.iter().any(|r| r.side == Side::Blue && r.open() && r.place == place);
-    if busy {
+    if busy && !ai {
         ui.label(egui::RichText::new(t!("ops-sead-on-way")).small().color(FRIENDLY_BLUE));
         return;
     }
-    let can = st.blue.materiel >= SUPPORT_COST && st.blue.fighters as usize >= RAID_AIRCRAFT;
-    let label =
-        t!("ops-request-sead", cost = SUPPORT_COST.round() as i64, aircraft = RAID_AIRCRAFT);
+    let (cost, aircraft) =
+        if ai { (AI_MISSION_COST, AI_FLIGHT_AIRCRAFT) } else { (SUPPORT_COST, RAID_AIRCRAFT) };
+    let can = st.blue.materiel >= cost && st.blue.fighters as usize >= aircraft;
+    let label = t!("ops-request-sead", cost = cost.round() as i64, aircraft = aircraft);
     let offer = o.id;
     if ui
         .add_enabled(can, egui::Button::new(egui::RichText::new(label).color(FRIENDLY_BLUE)))

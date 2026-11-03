@@ -129,4 +129,5 @@ kg-hud-gnd = HUD režimas GND (A/G)
 kg-hmd-mode = Šalmo ekranas įj. / auto (užgęsta prieš HUD) / išj.
 kg-hud-colour = HUD ir šalmo ekrano spalva
 kg-view-zoom = Vaizdo mastelis artinti / tolinti (laikant), kaip ratukas
+kg-pan = Dairytis (laikant), kaip pele
 kg-ptt = Radijas, laikykite nuspaudę, kad kalbėtumėte (daugelio žaidėjų)

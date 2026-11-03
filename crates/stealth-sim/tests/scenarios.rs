@@ -3291,3 +3291,43 @@ fn ai_flight_missions_all_theaters() {
     assert!(physics.0 <= classic.0 + 2, "{physics:?} vs classic {classic:?}");
     assert!(physics.1 * 4 >= classic.1 * 3, "{physics:?} vs classic {classic:?}");
 }
+
+/// An An-72 3 km ahead in AIR: classic avionics lock it by themselves, realistic ones only on
+/// a 'B' press.
+#[test]
+fn realistic_avionics_lock_only_on_request() {
+    let d = data();
+    for modern in [false, true] {
+        let m = mission(d, 3, 0x1234, 2);
+        let mut sim = Sim::new(&d.sim, &m);
+        let (mx, my) = sandbox(&mut sim, &m);
+        {
+            let u = &mut sim.flights_mut()[1];
+            *u = FlightUnit {
+                x: mx,
+                y: my - 192,
+                alt: 5000,
+                spec: 9,
+                flags: 0x43,
+                speed: 200,
+                timer: 30000,
+                wp: 3,
+                ..Default::default()
+            };
+            u.wx = u.x << 5;
+            u.wy = u.y << 5;
+        }
+        let mut p = player_at(mx, my, 5000, 0, 0);
+        p.hud_mode = HudMode::Air;
+        p.mode_weapons = modern;
+        for _ in 0..3 {
+            sim.step(&p, 15);
+        }
+        assert_eq!(sim.targeting().air, (!modern).then_some(1), "modern {modern}");
+        let mut q = p.clone();
+        q.cmd.next_target = true;
+        sim.step(&q, 15);
+        sim.step(&p, 15);
+        assert_eq!(sim.targeting().air, Some(1), "'B' locks it (modern {modern})");
+    }
+}

@@ -320,6 +320,13 @@ impl CampaignState {
         due
     }
 
+    /// The AI has a flight on a friendly offer, up or with its turn to take off.
+    pub fn ai_scheduled(&self, o: &MissionOffer) -> bool {
+        self.ai_mission_for(o.id).is_some_and(AiMission::open)
+            || self.ai_rush.contains(&o.id)
+            || self.ai_launch_at(o).is_some()
+    }
+
     /// A player is in the air on it.
     fn flown_by_player(&self, offer: u32) -> bool {
         self.players.iter().any(|p| p.sortie.as_ref().is_some_and(|s| s.offer.id == offer))
@@ -381,6 +388,16 @@ impl CampaignState {
         }
         if !self.ai_missions_on() || self.outcome.is_some() {
             return;
+        }
+        // The offers a player asked for at once, out of the queue (no waiting for a turn in
+        // `AI_LAUNCH_WINDOW`).
+        for id in std::mem::take(&mut self.ai_rush) {
+            if self.ai_mission_for(id).is_some_and(AiMission::open) {
+                continue;
+            }
+            if let Some(o) = self.board.iter().find(|o| o.id == id).cloned() {
+                self.launch_ai(Side::Blue, &o, view);
+            }
         }
         // The offers whose turn it is (the queue's first; the next ones come later).
         for side in [Side::Blue, Side::Red] {

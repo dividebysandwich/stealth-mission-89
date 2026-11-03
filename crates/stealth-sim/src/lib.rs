@@ -30,8 +30,8 @@ pub mod score;
 pub mod sfw;
 pub mod station;
 pub mod supply;
-pub mod terrain_follow;
 mod targeting;
+pub mod terrain_follow;
 mod tiles;
 pub mod uav;
 mod weapons;
@@ -490,6 +490,7 @@ impl Sim {
                 gnd_cooldown: 0,
                 nearest_req: 0,
                 target_hold: false,
+                select_req: false,
                 cam_dir: 0,
                 last_missile_slot: -1,
                 maverick_view: false,

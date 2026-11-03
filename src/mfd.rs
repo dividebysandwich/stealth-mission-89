@@ -631,6 +631,9 @@ pub struct Contacts {
     pub list: Vec<Contact>,
     /// The simulation's air lock, else its ground lock.
     pub locked: Option<ContactRef>,
+    /// Where the simulation's ground lock is (wu east, north): an object, a designated point or
+    /// the vehicle the point follows.
+    pub ground_lock: Option<(f64, f64)>,
     /// Radar coverage arc of the sweep being displayed (MAP display).
     pub radar_arc: Option<MapArc>,
 }

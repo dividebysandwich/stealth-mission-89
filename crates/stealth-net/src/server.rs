@@ -255,6 +255,7 @@ impl Server {
             (ToServer::DesignateSite { x, y, kind }, Some(p)) => {
                 host.designate_site(sim, p, x, y, kind)
             }
+            (ToServer::FastTrackSite { id }, Some(p)) => host.fast_track_site(sim, p, id),
             (ToServer::HookCrate { id, leg }, Some(p)) => host.hook_crate(sim, p, id, leg),
             (ToServer::DropCrate { id, leg, east, north, heading }, Some(p)) => {
                 host.drop_crate(sim, p, id, leg, east, north, heading)
@@ -265,7 +266,9 @@ impl Server {
             }
             (ToServer::EndSortie { outcome }, Some(p)) => Ok(host.end_sortie(sim, p, outcome)),
             (ToServer::Retask { offer }, Some(p)) => host.retask(sim, p, offer),
-            (ToServer::TakeControl { tag }, Some(p)) => host.take_control(sim, p, tag),
+            (ToServer::TakeControl { tag, stores }, Some(p)) => {
+                host.take_control(sim, p, tag, stores)
+            }
             (ToServer::LeaveAircraft, Some(p)) => host.leave_aircraft(sim, p),
             (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
             (ToServer::Hit(hit), Some(p)) => {

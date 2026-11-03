@@ -129,4 +129,5 @@ kg-hud-gnd = Način HUD GND (A/G)
 kg-hmd-mode = Čelada z zaslonom vkl. / samodejno (ugasne pred HUD) / izkl.
 kg-hud-colour = Barva HUD in zaslona na čeladi
 kg-view-zoom = Povečava pogleda približaj / oddalji (držanje), kot kolesce
+kg-pan = Razgledovanje (držanje), kot miška
 kg-ptt = Radio, držite za govor (več igralcev)

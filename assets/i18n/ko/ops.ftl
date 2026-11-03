@@ -66,8 +66,8 @@ ops-rule-no-crashes = 추락 없음
 ops-rule-time = 연속 시간
 ops-rule-weapons = 사실적인 F-117A 무장
 ops-rule-friendly-fire = 아군 피해
-ops-rule-airframe-losses = 잃은 기체 반영
-ops-rule-no-ai-missions = AI 임무 없음
+ops-rule-airframe-losses = 손실은 자원 소모
+ops-rule-no-ai-missions = 아군 AI 임무 없음
 ops-rule-classic = 클래식
 ops-materiel = 물자
 ops-materiel-blue = 청군 { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI는 보유한 항공기만 운용합니다. 격추되면 사라지고, 착륙하면 다시 출격합니다. 매시간 물자가 남아 있는 한 각 진영이 새 항공기를 구입합니다.
     플레이어는 물자가 부족해지지 않습니다. 자신의 항공기, 기지(폭격 여부와 무관), 직접 내린 침투 명령의 헬기는 항상 사용할 수 있습니다.
 ops-how-repairs = 각 진영은 한 번에 몇 곳만 수리한다(온전한 도시가 많을수록 더 많이). 전선에 가까운 곳부터 수리하며, 수리 직후 다시 파괴된 곳은 매번 더 오래 걸린다.
-ops-how-airframes = 잃은 기체 반영: 조종사가 잃는 기체마다 아군 AI의 전투기나 헬기가 1대 줄어든다.
+ops-how-airframes = 손실은 자원 소모: 조종사가 잃는 기체마다 아군 AI의 전투기나 헬기가 1대 줄어든다.
 ops-section-prices = 가격
 ops-price-airfield = 비행장 수리
 ops-price-sam = SAM 기지 수리

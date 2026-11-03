@@ -129,4 +129,5 @@ kg-hud-gnd = Mód HUD GND (A/G)
 kg-hmd-mode = Taispeáint clogaid air / uath (múchta os comhair an HUD) / as
 kg-hud-colour = Dath an HUD agus na taispeána clogaid
 kg-view-zoom = Súmáil an radhairc isteach / amach (coinnithe), cosúil leis an roth
+kg-pan = Féach timpeall (coinnithe), cosúil leis an luch
 kg-ptt = Raidió, coinnigh síos le labhairt (il-imreoir)

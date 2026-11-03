@@ -479,8 +479,8 @@ fn a_coop_player_takes_over_an_ai_aircraft_and_hands_it_back() {
     }
     let tag = tag.expect("an AI aircraft up and away");
     let at = w.sim.flights()[w.sim.flight_of_tag(tag).unwrap()];
-    a.send(&ToServer::TakeControl { tag });
-    b.send(&ToServer::TakeControl { tag });
+    a.send(&ToServer::TakeControl { tag, stores: None });
+    b.send(&ToServer::TakeControl { tag, stores: None });
     let mut started = [None, None];
     let mut refused = [false, false];
     assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {

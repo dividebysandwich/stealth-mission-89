@@ -129,4 +129,5 @@ kg-hud-gnd = Način HUD GND (A/G)
 kg-hmd-mode = Zaslon na kacigi uklj. / automatski (gasi se ispred HUD-a) / isklj.
 kg-hud-colour = Boja HUD-a i zaslona na kacigi
 kg-view-zoom = Zumiranje pogleda približi / udalji (držanje), kao kotačić
+kg-pan = Razgledavanje (držanje), kao miš
 kg-ptt = Radio, držite za govor (više igrača)

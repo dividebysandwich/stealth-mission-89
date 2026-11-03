@@ -66,8 +66,8 @@ ops-rule-no-crashes = fără prăbușiri
 ops-rule-time = timp continuu
 ops-rule-weapons = armament realist F-117A
 ops-rule-friendly-fire = foc prietenesc
-ops-rule-airframe-losses = aeronavele pierdute contează
-ops-rule-no-ai-missions = fără misiuni IA
+ops-rule-airframe-losses = pierderile costă resurse
+ops-rule-no-ai-missions = fără misiuni IA aliate
 ops-rule-classic = clasic
 ops-materiel = MATERIALE
 ops-materiel-blue = ALBASTRU { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI zboară doar cu aeronavele pe care le are; cele doborâte sunt pierdute, cele aterizate pot zbura din nou. În fiecare oră fiecare tabără cumpără altele noi cât timp are materiale.
     Dumneavoastră nu duceți niciodată lipsă: aeronavele, bazele (bombardate sau nu) și elicopterele propriilor ordine de debarcare sunt mereu disponibile.
 ops-how-repairs = Fiecare tabără repară doar câteva poziții odată (mai multe cu mai multe orașe intacte), întâi cele mai apropiate de front, iar o poziție distrusă din nou la scurt timp după reparație durează de fiecare dată mai mult.
-ops-how-airframes = Aeronavele pierdute contează: fiecare aeronavă pierdută de un pilot înseamnă un avion de vânătoare sau un elicopter mai puțin pentru IA aliată.
+ops-how-airframes = Pierderile costă resurse: fiecare aeronavă pierdută de un pilot înseamnă un avion de vânătoare sau un elicopter mai puțin pentru IA aliată.
 ops-section-prices = Prețuri
 ops-price-airfield = Reparația aerodromului
 ops-price-sam = Reparația unei poziții SAM

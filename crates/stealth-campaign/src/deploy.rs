@@ -19,6 +19,11 @@ pub fn footprint(kind: DefenceKind) -> i32 {
     }
 }
 
+/// The materiel fast-tracking a site costs: its loads not in yet.
+pub fn fast_track_cost(d: &Deployment) -> f64 {
+    (d.loads as usize).saturating_sub(d.delivered.len()) as f64 * DEPLOY_FAST_TRACK_COST
+}
+
 /// The loads of cargo a site needs.
 pub fn loads(kind: DefenceKind) -> u8 {
     match kind {
@@ -136,6 +141,46 @@ impl CampaignState {
         self.note(text.clone());
         self.board_at = f64::MIN;
         Ok(vec![CampaignEvent::Message(text)])
+    }
+
+    /// A player fast-tracks new site `id`: the friendly side pays for the loads not in yet, the
+    /// site is built at once and its AI cargo helicopters fly home.
+    pub(crate) fn fast_track(
+        &mut self,
+        player: PlayerId,
+        id: u32,
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        if self.outcome.is_some() {
+            return Err(text!("ce-war-over"));
+        }
+        let d = self.deployment(id).filter(|d| !d.built).ok_or_else(|| text!("ce-site-gone"))?;
+        let cost = fast_track_cost(d);
+        if !self.pay(Side::Blue, cost, Spend::Operations) {
+            return Err(text!("ce-no-materiel"));
+        }
+        let who = self.who(player);
+        let d = self.deployments.iter_mut().find(|d| d.id == id).expect("found");
+        d.delivered = (0..d.loads).collect();
+        d.built = true;
+        d.crates.clear();
+        let ((x, y), kind, site) = (d.unit_at(), d.kind, d.label());
+        let mut ev: Vec<CampaignEvent> = std::mem::take(&mut d.ai)
+            .into_iter()
+            .map(|(_, tag)| CampaignEvent::Recall { tag })
+            .collect();
+        // The players flying its cargo have done their part.
+        for s in self.players.iter_mut().filter_map(|p| p.sortie.as_mut()) {
+            if matches!(s.offer.objective, Objective::Logistics { site, .. } if site == id) {
+                s.progress.delivered = true;
+            }
+        }
+        self.board_at = f64::MIN;
+        let text =
+            text!("cl-site-fast-tracked", who = who, site = site, cost = cost.round() as i64);
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+        ev.push(CampaignEvent::SiteBuilt { id, x, y, kind });
+        Ok(ev)
     }
 
     /// Every tick: sites not supplied in time are called off, built ones whose units are all

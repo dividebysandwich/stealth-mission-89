@@ -712,10 +712,15 @@ const MAX_MAGNIFY: f32 = 6.0;
 /// Wheel notches a second the view zoom keys turn while held.
 pub(crate) const ZOOM_KEY_NOTCHES: f32 = 4.0;
 
+/// How fast the view pan keys (a look axis fully over) turn the head or orbit the camera
+/// (radians a second; in the cockpit slower when zoomed in).
+pub(crate) const LOOK_RATE: f32 = 1.8;
+
 /// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
 /// camera around the aircraft (reset when an external view is selected). The wheel with the
-/// button held zooms, as the view zoom keys do. With mouse look while tracking off, the button
+/// button held zooms, as the view zoom keys do. The view pan keys and look axes turn the head
+/// or orbit the camera as the mouse does. With mouse look while tracking off, the button
 /// does nothing in the cockpit while a head tracker sends.
 #[allow(clippy::too_many_arguments)]
 fn mouse_look(
@@ -790,20 +795,25 @@ fn mouse_look(
                 .clamp(-(crate::camera::MAX_UNZOOM + state.zoom) as f32, 4.0 - state.zoom as f32);
         }
     }
-    if !held {
+    // The pan keys and look axes as a mouse move (screen pixels, y down).
+    let mut delta = Vec2::new(controls.look.x, -controls.look.y) * LOOK_RATE * time.delta_secs();
+    if held {
+        delta += motion.delta * if cockpit { 0.004 } else { 0.006 };
+    }
+    if delta == Vec2::ZERO {
         return;
     }
     if cockpit {
         // Slower when zoomed in, so the view moves as far on the screen per mouse move.
-        let k = 0.004 / state.magnify;
-        look.yaw = (look.yaw - motion.delta.x * k).clamp(-2.6, 2.6);
-        look.pitch = (look.pitch - motion.delta.y * k).clamp(-1.2, 1.3);
+        let d = delta / state.magnify;
+        look.yaw = (look.yaw - d.x).clamp(-2.6, 2.6);
+        look.pitch = (look.pitch - d.y).clamp(-1.2, 1.3);
     } else {
         // External views: orbit the camera around the aircraft (under the parachute: look
         // around, slower when zoomed in).
-        let k = if state.first_person() { 0.006 / state.magnify } else { 0.006 };
-        orbit.yaw -= motion.delta.x * k;
-        orbit.pitch = (orbit.pitch + motion.delta.y * k).clamp(-1.5, 1.5);
+        let d = if state.first_person() { delta / state.magnify } else { delta };
+        orbit.yaw -= d.x;
+        orbit.pitch = (orbit.pitch + d.y).clamp(-1.5, 1.5);
     }
 }
 

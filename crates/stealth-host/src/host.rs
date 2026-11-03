@@ -238,7 +238,13 @@ impl Host {
         // Off to fly: his console is unmanned.
         sim.leave_station(player.0);
         let out = self.apply(sim, events);
-        for e in &out {
+        self.load_stores(sim, &out, stores);
+        Ok(out)
+    }
+
+    /// The stores of the sorties started in `out`: `stores`, else the mission's bays.
+    fn load_stores(&self, sim: &mut Sim, out: &[HostEvent], stores: Option<Stores>) {
+        for e in out {
             if let HostEvent::SortieStarted { player, sortie, .. } = e {
                 let st = match &stores {
                     Some(s) => s.clone(),
@@ -259,7 +265,6 @@ impl Host {
                 sim.set_pilot_loadout(player.0, &st.stations, st.select);
             }
         }
-        Ok(out)
     }
 
     /// A player calls in AI SEAD for an offer's place.
@@ -309,6 +314,17 @@ impl Host {
             return Err(Text::raw(why));
         }
         let events = self.state.apply(player, Command::DesignateSite { x, y, kind })?;
+        Ok(self.apply(sim, events))
+    }
+
+    /// A player fast-tracks new site `id` with materiel: it is built at once.
+    pub fn fast_track_site(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        id: u32,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let events = self.state.apply(player, Command::FastTrackSite { id })?;
         Ok(self.apply(sim, events))
     }
 
@@ -370,12 +386,14 @@ impl Host {
         Ok(self.apply(sim, events))
     }
 
-    /// A player takes over aircraft `tag` of a friendly AI flight in the air.
+    /// A player takes over aircraft `tag` of a friendly AI flight in the air, with stores
+    /// (None: the mission's).
     pub fn take_control(
         &mut self,
         sim: &mut Sim,
         player: PlayerId,
         tag: u32,
+        stores: Option<Stores>,
     ) -> Result<Vec<HostEvent>, Text> {
         if !sim.takeable(tag) {
             return Err(text!("ce-no-ai-aircraft"));
@@ -389,6 +407,7 @@ impl Host {
             self.state.apply(player, Command::EndSortie { end: SortieEnd::Aborted }).ok();
             return Err(text!("ce-no-ai-aircraft"));
         }
+        self.load_stores(sim, &out, stores);
         Ok(out)
     }
 
@@ -767,16 +786,6 @@ impl Host {
                     else {
                         continue;
                     };
-                    // Its stores: the mission's (as the game shows them).
-                    let m = glue::sortie_mission(&self.mission, &self.state, sortie);
-                    let stations: Vec<(i32, i32)> = m
-                        .loadout
-                        .bays
-                        .iter()
-                        .take(m.loadout.usable_bays)
-                        .map(|b| (b.weapon as i32, b.count as i32))
-                        .collect();
-                    sim.set_pilot_loadout(player.0, &stations, 0);
                     out.push(HostEvent::SortieStarted {
                         player: *player,
                         sortie: sortie.clone(),

@@ -129,4 +129,5 @@ kg-hud-gnd = HUD 모드 GND (A/G)
 kg-hmd-mode = 헬멧 디스플레이 켜기 / 자동 (HUD 앞에서 꺼짐) / 끄기
 kg-hud-colour = HUD와 헬멧 디스플레이 색상
 kg-view-zoom = 시점 확대 / 축소 (길게 누름), 휠과 같음
+kg-pan = 둘러보기 (길게 누름), 마우스와 같음
 kg-ptt = 무선, 누르고 있으면 송신 (멀티플레이)

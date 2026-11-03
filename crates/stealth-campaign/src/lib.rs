@@ -48,7 +48,7 @@ pub use ai_missions::{
 };
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
-pub use deploy::{footprint, loads};
+pub use deploy::{fast_track_cost, footprint, loads};
 pub use flow::{Due, Operation, WarEvent, divertible};
 pub use record::PilotRecord;
 pub use state::*;
@@ -195,6 +195,8 @@ pub enum Command {
     /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
     /// helipad at (x, y): its cargo goes on the board.
     DesignateSite { x: i32, y: i32, kind: DefenceKind },
+    /// Build new site `id` at once for materiel, without the cargo still to come.
+    FastTrackSite { id: u32 },
     /// Hook the crate of load `leg` of new site `id` under the helicopter (the host checked
     /// where it is with [`CampaignState::hook_refusal`]).
     HookCrate { id: u32, leg: u8 },
@@ -430,6 +432,7 @@ impl CampaignState {
                 self.request_resupply(Some(player), aaa, x, y, kind)
             }
             Command::DesignateSite { x, y, kind } => self.designate(player, x, y, kind),
+            Command::FastTrackSite { id } => self.fast_track(player, id),
             Command::HookCrate { id, leg } => self.hook_crate(player, id, leg),
             Command::DropCrate { id, leg, east, north, heading } => {
                 self.drop_crate(player, id, leg, east, north, heading)

@@ -1209,8 +1209,16 @@ pub(crate) fn footer_rule(ui: &mut egui::Ui) {
 
 type SettingsMut<'a> = ResMut<'a, crate::settings::Settings>;
 
-pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize) {
+/// The theaters as a list of radio buttons, or a dropdown where the window is too small
+/// (`compact`, from `Split::compact`).
+pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize, compact: bool) {
     section(ui, t!("section-theater"));
+    if compact {
+        let options = (0..THEATERS.len())
+            .map(|i| (i, crate::i18n::theater_name(i), crate::i18n::theater_facts(i)));
+        dropdown(ui, "theater", theater, options);
+        return;
+    }
     for i in 0..THEATERS.len() {
         facts(
             ui.radio_value(theater, i, crate::i18n::theater_name(i)),
@@ -1272,15 +1280,23 @@ fn start_time_options(ui: &mut egui::Ui, state: &mut MenuState) {
     }
 }
 
-/// The aircraft, with its weapons switch; `lockheed` shows "Realistic weapons".
+/// The aircraft, with its weapons switch; `lockheed` shows "Realistic weapons". A dropdown
+/// where the window is too small for the list (`compact`).
 pub(crate) fn vehicle_options(
     ui: &mut egui::Ui,
     settings: &mut SettingsMut,
     lockheed: Option<&mut bool>,
+    compact: bool,
 ) {
     let s = settings.bypass_change_detection();
     let mut picked = false;
-    for kind in AIRCRAFT {
+    if compact {
+        let was = s.aircraft;
+        let options = AIRCRAFT.into_iter().map(|k| (k, k.name(), crate::i18n::aircraft_facts(k)));
+        dropdown(ui, "aircraft", &mut s.aircraft, options);
+        picked = s.aircraft != was;
+    }
+    for kind in AIRCRAFT.into_iter().filter(|_| !compact) {
         picked |= facts(
             ui.radio_value(&mut s.aircraft, kind, kind.name()),
             crate::i18n::aircraft_facts(kind),
@@ -1301,16 +1317,18 @@ pub(crate) fn vehicle_options(
     }
 }
 
-/// The realism switches with crash protection: the settings each game is set up with (the
-/// player's own settings are in OPTIONS, `options.rs`).
+/// The realism switches with crash protection and what `extra` adds: the settings each game is
+/// set up with (the player's own settings are in OPTIONS, `options.rs`).
 pub(crate) fn simulation_options(
     ui: &mut egui::Ui,
     settings: &mut SettingsMut,
     note: Option<&str>,
+    extra: impl FnOnce(&mut egui::Ui),
 ) {
     group(ui, t!("group-simulation"), |ui| {
         realism_options(ui, settings);
         crash_option(ui, settings);
+        extra(ui);
         if let Some(note) = note {
             ui.label(egui::RichText::new(note).small().color(DIM));
         }
@@ -1893,13 +1911,14 @@ pub(crate) fn menu_ui(
         }
         panel.window(screen_window(ctx, "Single mission", MISSION_SIZE), ctx, |ui| {
             let split = Split::new(ui, "single mission");
+            let compact = split.compact();
             split.body(ui, |ui| {
                 let mut flow = Flow::new(ui);
                 if !career_mode {
                     // Options: three narrow columns, under each other where the window is narrow.
                     flow.card(ui, Span::Fixed(210.0), |ui| {
                         group(ui, t!("group-mission"), |ui| {
-                            theater_options(ui, &mut state.theater);
+                            theater_options(ui, &mut state.theater, compact);
                             situation_options(ui, &mut state.roe);
                             opponent_options(ui, &mut state.opponents);
                             mission_options(ui, &mut state);
@@ -1912,14 +1931,14 @@ pub(crate) fn menu_ui(
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
-                        simulation_options(ui, &mut settings, None);
+                        simulation_options(ui, &mut settings, None, |_| {});
                         tutorial_option(ui, &mut settings);
                     });
                     flow.card(ui, Span::Fixed(VEHICLE_WIDTH), |ui| {
                         group(ui, t!("group-vehicle"), |ui| {
                             crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
-                            vehicle_options(ui, &mut settings, Some(&mut state.lockheed));
+                            vehicle_options(ui, &mut settings, Some(&mut state.lockheed), compact);
                             // A troop helicopter flies the same seed's targets as insertions;
                             // helicopters fly short missions.
                             let (now, was) = (settings.aircraft.spec(), was.spec());

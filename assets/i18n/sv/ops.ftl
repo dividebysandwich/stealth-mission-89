@@ -66,8 +66,8 @@ ops-rule-no-crashes = inga haverier
 ops-rule-time = kontinuerlig tid
 ops-rule-weapons = realistiska F-117A-vapen
 ops-rule-friendly-fire = vådabeskjutning
-ops-rule-airframe-losses = förlorade flygplan räknas
-ops-rule-no-ai-missions = inga AI-uppdrag
+ops-rule-airframe-losses = förluster kostar resurser
+ops-rule-no-ai-missions = inga egna AI-uppdrag
 ops-rule-classic = klassiskt
 ops-materiel = MATERIEL
 ops-materiel-blue = BLÅ { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     AI:n flyger bara de flygplan den har; nedskjutna är de borta, landade flyger de igen. Varje timme köper varje sida nya så länge materielen räcker.
     Du får aldrig ont om något: dina flygplan, dina baser (bombade eller inte) och helikoptrarna i dina egna insättningsordrar finns alltid.
 ops-how-repairs = Varje sida reparerar bara några få ställningar åt gången (fler med fler intakta städer), närmast fronten först, och en ställning som förstörs igen strax efter reparationen tar längre tid varje gång.
-ops-how-airframes = Förlorade flygplan räknas: varje flygplan en pilot förlorar är ett jaktplan eller en helikopter mindre för den egna AI:n.
+ops-how-airframes = Förluster kostar resurser: varje flygplan en pilot förlorar är ett jaktplan eller en helikopter mindre för den egna AI:n.
 ops-section-prices = Priser
 ops-price-airfield = Reparation av flygfält
 ops-price-sam = Reparation av SAM-ställning

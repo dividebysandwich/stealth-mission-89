@@ -66,8 +66,8 @@ ops-rule-no-crashes = ei syöksyjä
 ops-rule-time = jatkuva aika
 ops-rule-weapons = realistiset F-117A-aseet
 ops-rule-friendly-fire = omien tulitus
-ops-rule-airframe-losses = menetetyt koneet lasketaan
-ops-rule-no-ai-missions = ei tekoälyn tehtäviä
+ops-rule-airframe-losses = menetykset maksavat resursseja
+ops-rule-no-ai-missions = ei omia tekoälytehtäviä
 ops-rule-classic = klassinen
 ops-materiel = MATERIAALI
 ops-materiel-blue = SININEN { $materiel } (+{ $income }/h)
@@ -104,7 +104,7 @@ ops-how =
     Tekoäly lentää vain koneilla, jotka sillä on; alasammutut ovat poissa, laskeutuneet lentävät taas. Joka tunti kumpikin osapuoli ostaa uusia, kunhan materiaalia riittää.
     Sinulta ei lopu mikään: koneesi, tukikohtasi (pommitettuina tai ei) ja omien maihinnousutilaustesi helikopterit ovat aina saatavilla.
 ops-how-repairs = Kumpikin puoli korjaa vain muutaman kohteen kerrallaan (enemmän, kun ehjiä kaupunkeja on enemmän), rintamaa lähimmät ensin, ja pian korjauksen jälkeen uudelleen tuhottu kohde vie joka kerta kauemmin.
-ops-how-airframes = Menetetyt koneet lasketaan: jokainen lentäjän menettämä kone on yksi hävittäjä tai helikopteri vähemmän omalle tekoälylle.
+ops-how-airframes = Menetykset maksavat resursseja: jokainen lentäjän menettämä kone on yksi hävittäjä tai helikopteri vähemmän omalle tekoälylle.
 ops-section-prices = Hinnat
 ops-price-airfield = Lentokentän korjaus
 ops-price-sam = SAM-aseman korjaus

@@ -130,4 +130,5 @@ kg-hud-gnd = Modalità tal-HUD GND (A/G)
 kg-hmd-mode = Display tal-elmu mixgħul / awto (jintefa quddiem l-HUD) / maqful
 kg-hud-colour = Kulur tal-HUD u tad-display tal-elmu
 kg-view-zoom = Zoom tal-veduta ersaq / bogħod (maħsub), bħar-rota
+kg-pan = Ħares madwarek (maħsub), bħall-maws
 kg-ptt = Radju, żomm biex titkellem (multiplayer)

@@ -85,6 +85,7 @@ impl Sim {
             self.pl.gnd_lock |= 0x80;
             self.pl.air_lock |= 0x80;
             self.pl.pilot_lock = None;
+            self.pl.select_req = true;
         }
         if let Some(d) = c.camera_dir {
             self.camera_key(d as i32);

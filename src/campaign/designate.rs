@@ -4,14 +4,14 @@
 
 use bevy::math::DVec2;
 use bevy_egui::egui;
-use stealth_campaign::{CampaignState, DefenceKind, footprint};
+use stealth_campaign::{CampaignState, DefenceKind, fast_track_cost, footprint};
 use stealth_i18n::t;
 use stealth_sim::Sim;
 use stealth_sim::aaa::M_PER_MAP;
 
 use super::{Action, ActiveCampaign};
 use crate::map_draw::{FRIENDLY_BLUE, MISSILE_RED, MapView};
-use crate::menu::{BRIGHT, DIM, GREEN, section};
+use crate::menu::{BRIGHT, DIM, GREEN, Panel, big_button, icon, section};
 use crate::scenery::Scenery;
 
 /// Metres of open ground (no mountain, no theater object) the helipad and the unit need.
@@ -58,6 +58,90 @@ pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
         None => t!("ds-hint"),
     };
     ui.label(egui::RichText::new(hint).small().color(DIM));
+    fast_track_buttons(ui, c);
+}
+
+/// "GEPARD" (the map's and the buttons' name of a site's kind).
+fn kind_label(kind: DefenceKind) -> &'static str {
+    match kind {
+        DefenceKind::Gepard => "GEPARD",
+        DefenceKind::Patriot => "PATRIOT",
+        DefenceKind::Drones => t!("ad-drones"),
+    }
+}
+
+/// The sites waiting for their cargo, each with a FAST-TRACK button: built at once for
+/// materiel (after a confirmation, `confirm`).
+fn fast_track_buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
+    let st = c.state();
+    let waiting: Vec<(u32, String, f64)> = st
+        .deployments
+        .iter()
+        .filter(|d| !d.built)
+        .map(|d| {
+            let what =
+                format!("{} {}/{} - {}", kind_label(d.kind), d.delivered.len(), d.loads, d.name);
+            (d.id, what, fast_track_cost(d))
+        })
+        .collect();
+    if waiting.is_empty() {
+        return;
+    }
+    let materiel = st.blue.materiel;
+    let over = st.outcome.is_some();
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new(t!("ds-waiting")).small().color(DIM));
+    for (id, what, cost) in waiting {
+        ui.label(egui::RichText::new(what).small().color(FRIENDLY_BLUE));
+        let label = t!("ds-fast-track", cost = cost.round() as i64);
+        let button = egui::Button::new(egui::RichText::new(label).color(FRIENDLY_BLUE));
+        if ui
+            .add_enabled(!over && materiel >= cost, button)
+            .on_hover_text(t!("ds-fast-track.facts"))
+            .on_disabled_hover_text(t!("ds-fast-track.disabled"))
+            .clicked()
+        {
+            c.ui.fast_track = Some(id);
+            c.ui.error = None;
+        }
+    }
+}
+
+/// Fast-tracking a site asks first: the materiel it costs.
+pub(super) fn confirm(ctx: &egui::Context, c: &mut ActiveCampaign) {
+    let Some(id) = c.ui.fast_track else { return };
+    let Some(d) = c.state().deployment(id).filter(|d| !d.built) else {
+        c.ui.fast_track = None;
+        return;
+    };
+    let (cost, site) = (fast_track_cost(d).round() as i64, d.label().to_string());
+    let window = egui::Window::new("Fast-track construction")
+        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+        .collapsible(false)
+        .resizable(false)
+        .title_bar(false)
+        .order(egui::Order::Foreground);
+    let text = t!("ds-fast-track-confirm.text", cost = cost, site = site);
+    let mut close = ctx.input(|i| i.key_pressed(egui::Key::Escape));
+    Panel::new(t!("ds-fast-track-confirm")).window(window, ctx, |ui| {
+        ui.label(egui::RichText::new(text).color(DIM));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            let spend = t!("ds-fast-track-spend", cost = cost);
+            let spend = big_button(&spend).icon(icon::CONTINUE);
+            if ui.add(spend).clicked() {
+                c.actions.push(Action::FastTrackSite { id });
+                c.ui.error = None;
+                close = true;
+            }
+            if ui.add(big_button(t!("cancel")).icon(icon::CANCEL)).clicked() {
+                close = true;
+            }
+        });
+    });
+    if close {
+        c.ui.fast_track = None;
+    }
 }
 
 /// The map point (x east, y south) in metres east, north.
@@ -184,11 +268,7 @@ pub(super) fn waiting(painter: &egui::Painter, view: &MapView, st: &CampaignStat
         let left = (d.expires - st.clock).max(0.0) as i32;
         let text = format!(
             "{} {}/{} {}:{:02}",
-            match d.kind {
-                DefenceKind::Gepard => "GEPARD",
-                DefenceKind::Patriot => "PATRIOT",
-                DefenceKind::Drones => t!("ad-drones"),
-            },
+            kind_label(d.kind),
             d.delivered.len(),
             d.loads,
             left / 3600,

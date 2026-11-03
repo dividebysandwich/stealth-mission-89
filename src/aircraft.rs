@@ -714,7 +714,7 @@ static F22: AircraftSpec = AircraftSpec {
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     // As the F-16's: the symbology inside the combiner of about the same angular size (x +-0.16,
-    // z -0.19 .. 0.03 at 0.66 m in front of the eye, tools/models/build_cockpit_f22.py).
+    // z -0.14 .. 0.08 at 0.66 m in front of the eye, tools/models/build_cockpit_f22.py).
     hud_scale: 2080.0,
     vr_hud_scale: 2080.0,
     bomb_bay: true,

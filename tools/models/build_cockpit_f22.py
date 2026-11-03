@@ -19,8 +19,7 @@
 #
 # It fits the exterior's one-piece bubble (`F22_CANOPY` in tools/models/aircraft.py, the eye at
 # s 4.35, z 0.92): the walls follow the glass' sill line (`canopy`) a little inside and under
-# it; the glare shield stays inside the glass and under the line over the nose (15.4 degrees
-# down: 0.62 m under the eye 2.25 m ahead), the HUD body under it, the combiner over it.
+# it; the glare shield stays inside the glass, the HUD body under it, the combiner over it.
 #
 # Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face points
 # along its local -Y (towards the pilot), local Z is up the panel.
@@ -56,14 +55,15 @@ def canopy(y):
     raise ValueError(y)
 
 
-# The main panel: 20 degrees off upright, its top edge (layout y PANEL_TOP) 0.30 m under the eye
-# 0.80 m ahead.
+# The main panel: 20 degrees off upright, its top edge (layout y PANEL_TOP) 0.25 m under the eye
+# 0.80 m ahead. The dashboard (the panel, the glare shield and the HUD) is raised DASH_RAISE m.
+DASH_RAISE = 0.05
 PANEL_TILT = math.radians(20.0)
 PANEL_TOP = -180.0
 RIGHT = Vector((1.0, 0.0, 0.0))
 UP = Vector((0.0, math.sin(PANEL_TILT), math.cos(PANEL_TILT)))
 NORMAL = Vector((0.0, -math.cos(PANEL_TILT), math.sin(PANEL_TILT)))
-TOP_EDGE = Vector((0.0, 0.80, -0.30))
+TOP_EDGE = Vector((0.0, 0.80, -0.30 + DASH_RAISE))
 PANEL_CENTRE = TOP_EDGE + UP * (PANEL_TOP / 1000)
 FLOOR = -1.0
 # The walls: their inner faces WALL_IN inside the glass' sill (at most WALL_X out), their tops
@@ -77,7 +77,7 @@ WALL_Y = [REAR, -0.45, -0.25, 0.0, 0.35, 0.60, 0.75, 0.92, 1.06]
 # Consoles (the throttles on the left one, the stick on the right one): x, y and their top.
 CONSOLE_X0 = 0.21
 CONSOLE_Y = (-0.35, 0.60)
-CONSOLE_TOP = -0.64
+CONSOLE_TOP = -0.74
 # The panel's outline (layout mm): out to WING, its top corners bevelled down BEVEL (45
 # degrees), down to BOTTOM.
 WING = 330.0
@@ -97,12 +97,12 @@ SHIELD_SIDE = [(0.40, 0.79), (0.36, 0.93), (0.26, COAMING_BACK)]
 # the controller up to HUD_BODY_TOP, sloping down to HUD_BODY_BACK_TOP at HUD_BODY_BACK (under
 # the line over the nose).
 HUD_Y = 0.66
-HUD_GLASS = (0.16, -0.19, 0.03)
+HUD_GLASS = (0.16, -0.19 + DASH_RAISE, 0.03 + DASH_RAISE)
 HUD_BAR = 0.012
-HUD_BODY_TOP = -0.19
-HUD_BODY_LOW = -0.235
+HUD_BODY_TOP = -0.19 + DASH_RAISE
+HUD_BODY_LOW = -0.235 + DASH_RAISE
 HUD_BODY_BACK = 0.90
-HUD_BODY_BACK_TOP = -0.26
+HUD_BODY_BACK_TOP = -0.26 + DASH_RAISE
 # Seat: its cushion's top, the eye over the hips.
 SEAT_TOP = -0.80
 # Side stick on the right console, the throttles' idle and full along the left one.
@@ -842,14 +842,14 @@ for a, b in zip(outline, outline[1:]):
     box("frame", "frame", (c.x, HUD_Y, c.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
 # The approach indexer just outside the left post, in a housing on the body.
 ind = next(o for o in old if o.name.startswith("approach"))
-ind.location = Vector((-(post_x + HUD_BAR / 2 + 0.016), HUD_Y, -0.15))
+ind.location = Vector((-(post_x + HUD_BAR / 2 + 0.016), HUD_Y, -0.15 + DASH_RAISE))
 box("dark", "dark", (ind.location.x, HUD_Y + 0.007, ind.location.z), (0.028, 0.010, 0.068))
 box("dark", "dark", (ind.location.x, HUD_Y + 0.007, (ind.location.z - 0.034 + HUD_BODY_LOW) / 2), (0.010, 0.010, ind.location.z - 0.034 - HUD_BODY_LOW))
 # Flood lamps: the ones behind the pilot's head inside the walls, one under the HUD's hood.
 for o in old:
     if o.name.startswith("lamp") and abs(o.location.x) > wall_x(o.location.y) - 0.05:
         o.location.x = math.copysign(wall_x(o.location.y) - 0.05, o.location.x)
-objs["lamp.002"].location = Vector((0.0, 0.62, -0.24))
+objs["lamp.002"].location = Vector((0.0, 0.62, -0.24 + DASH_RAISE))
 
 bpy.data.orphans_purge(do_recursive=True)
 bpy.context.view_layer.update()

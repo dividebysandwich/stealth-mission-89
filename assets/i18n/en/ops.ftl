@@ -70,8 +70,8 @@ ops-rule-no-crashes = no crashes
 ops-rule-time = continuous time
 ops-rule-weapons = realistic F-117A weapons
 ops-rule-friendly-fire = friendly fire
-ops-rule-airframe-losses = lost aircraft count
-ops-rule-no-ai-missions = no AI missions
+ops-rule-airframe-losses = losses cost resources
+ops-rule-no-ai-missions = no friendly AI missions
 ops-rule-classic-terrain = classic terrain
 ops-rule-classic-ai-flight = classic AI flight
 ops-rule-classic = classic
@@ -110,7 +110,7 @@ ops-how =
     The AI flies only the aircraft it has; shot down they are gone, landed they fly again. Every hour each side buys new ones while its materiel lasts.
     You never run short: your aircraft, your bases (bombed or not) and the helicopters of your own insertion orders are always there.
 ops-how-repairs = Each side repairs only a few sites at once (more with more intact cities), nearest the front first, and a site destroyed again soon after its repair takes longer each time.
-ops-how-airframes = Lost aircraft count: every aircraft a pilot loses is one fighter or helicopter fewer for the friendly AI.
+ops-how-airframes = Losses cost resources: every aircraft a pilot loses is one fighter or helicopter fewer for the friendly AI.
 ops-section-prices = Prices
 ops-price-airfield = Airfield repair
 ops-price-sam = SAM site repair
