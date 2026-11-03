@@ -126,7 +126,7 @@ impl Sky {
 /// Name of a moon phase 0..1 ("Full moon"), for the kneeboard (in
 /// [`stealth_i18n::flight_language`]).
 pub fn phase_name(phase: f64) -> &'static str {
-    stealth_i18n::tf!(&format!("moon-{}", ((phase * 8.0 + 0.5) as usize) % 8))
+    stealth_i18n::ts!(&format!("moon-{}", ((phase * 8.0 + 0.5) as usize) % 8))
 }
 
 /// Direction to the sun at the equinox, `hours` local solar time, at latitude `lat` (degrees),

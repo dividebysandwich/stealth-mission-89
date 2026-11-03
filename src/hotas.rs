@@ -183,7 +183,7 @@ impl VrInput {
     ];
 
     /// The input's name (the key guide draws it with the stroke font: in
-    /// [`stealth_i18n::ts`]) .
+    /// [`stealth_i18n::ts`]).
     pub fn name(self, hand: VrHand) -> &'static str {
         let id = match (self, hand) {
             (VrInput::Trigger, _) => "vr-trigger",
