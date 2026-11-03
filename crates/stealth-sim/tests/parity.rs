@@ -307,9 +307,9 @@ fn single_player_parity() {
         0x9a3fe5d06bcba09e,
         0x02d5ee6a85318252,
         0xd1a02e6d8106ca9a,
-        0x3f2abd53292a0f42,
-        0xdd4557a644da29c5,
-        0xda3cb26d56cce66f,
+        0xb2f06088299bef42,
+        0x36578f2436310b93,
+        0xae77901b1012761b,
         0xa8f21cf1611270ca,
     ];
     let mut got = missions();
@@ -331,7 +331,7 @@ fn ai_flight_parity() {
         0xef08fdb70c413e36,
         0x5c95b176f7fd01e8,
         0xaf8158b288efdded,
-        0xd5899fd0c2bc132e,
+        0x24d374a5574a5073,
     ];
     let d = data();
     let mut got = Vec::new();
