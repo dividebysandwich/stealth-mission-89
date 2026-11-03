@@ -105,6 +105,7 @@ mod tacview;
 mod tacview_real_time;
 mod terrain;
 mod text_entry;
+mod touch;
 mod tfr;
 mod trackcam;
 mod trails;
@@ -353,6 +354,9 @@ pub fn run() {
         .add_plugins(tts::TtsPlugin);
     #[cfg(not(target_arch = "wasm32"))]
     app.add_plugins(voice_dialog::VoiceDialogPlugin);
+    if touch::enabled(&settings) {
+        app.add_plugins(touch::TouchPlugin);
+    }
     mission::from_args(&mut app);
     campaign::from_args(&mut app);
     savegame::from_args(&mut app);

@@ -2056,8 +2056,11 @@ pub(crate) fn menu_ui(
                                 }
                                 next.set(AppState::Flight);
                             }
-                            // Already in VR: "Fly" flies in the headset. No VR in the browser.
-                            if !settings.vr && !cfg!(target_arch = "wasm32") {
+                            // Already in VR: "Fly" flies in the headset. No VR in the browser
+                            // or on Android.
+                            if !settings.vr
+                                && !cfg!(any(target_arch = "wasm32", target_os = "android"))
+                            {
                                 let vr_button = ui
                                     .add_enabled(
                                         can_fly && vr.0,

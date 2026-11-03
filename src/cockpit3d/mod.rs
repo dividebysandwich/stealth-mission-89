@@ -830,7 +830,10 @@ fn initial_look(mut look: ResMut<HeadLook>, mut state: ResMut<ViewState>) {
 }
 
 fn release_cursor(mut cursor: Query<&mut CursorOptions>) {
-    if let Ok(mut c) = cursor.single_mut() {
+    // Only when held: setting it again asks winit, which can't on Android and logs that.
+    if let Ok(mut c) = cursor.single_mut()
+        && (c.grab_mode != CursorGrabMode::None || !c.visible)
+    {
         c.grab_mode = CursorGrabMode::None;
         c.visible = true;
     }
