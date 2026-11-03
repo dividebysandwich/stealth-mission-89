@@ -13,6 +13,16 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
   <a href="https://github.com/dividebysandwich/stealth-mission-89/releases">
     <img alt="Play on your PC" src="https://img.shields.io/badge/Play-on%20your%20PC-orange?style=for-the-badge" />
   </a>
+  <br /><br />
+
+  <a href="https://www.youtube.com/@Dividebysandwich">
+    <img alt="Subscribe on YouTube" src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" />
+  </a>
+
+  <a href="https://www.reddit.com/r/StealthMission89/">
+    <img alt="Discuss on Reddit" src="https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" />
+  </a>
+  
   <a href="https://discord.gg/zjjGeKKpC">
     <img alt="Join us on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" />
   </a>
