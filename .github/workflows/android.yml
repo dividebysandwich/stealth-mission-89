@@ -13,9 +13,6 @@ on:
         options:
           - arm64-v8a
           - arm64-v8a x86_64
-  # TEMPORARY: while the workflow is not on main, workflow_dispatch can't start it.
-  push:
-    branches: [android]
 
 env:
   CARGO_TERM_COLOR: always
