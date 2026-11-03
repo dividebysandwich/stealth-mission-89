@@ -789,8 +789,13 @@ pub(crate) fn icon_text(
 /// A tiny button with an icon and no label (a pencil, a trash can); what it does goes in its
 /// tooltip. Blank before the icon font is added.
 pub(crate) fn icon_button(ui: &mut egui::Ui, icon: char) -> egui::Response {
-    let glyph = if has_icon_font(ui.ctx()) { icon.to_string() } else { String::new() };
-    let text = egui::RichText::new(glyph).family(ICON_FAMILY.clone()).size(13.0);
+    // Even a blank text in the unbound icon family would panic.
+    let text = if has_icon_font(ui.ctx()) {
+        egui::RichText::new(icon.to_string()).family(ICON_FAMILY.clone())
+    } else {
+        egui::RichText::new("")
+    };
+    let text = text.size(13.0);
     ui.add(egui::Button::new(text).min_size(egui::vec2(24.0, 20.0)))
 }
 
