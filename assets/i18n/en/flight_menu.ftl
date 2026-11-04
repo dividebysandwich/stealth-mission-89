@@ -32,6 +32,7 @@ fm-tooltips = TOOLTIPS
 fm-atc = AIR TRAFFIC CONTROL
 fm-player-labels = PLAYER LABELS
 fm-label-size = LABEL SIZE
+fm-seat-height = SEAT HEIGHT
 fm-cockpit-size = COCKPIT SIZE
 fm-pixel-size = PIXEL SIZE
 fm-volume-master = MASTER VOLUME

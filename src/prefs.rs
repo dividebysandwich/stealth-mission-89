@@ -9,7 +9,7 @@ use stealth_mission::{MissionKind, Sky};
 use crate::menu::MenuState;
 use crate::settings::{
     DEFAULT_PLAYER_LABEL_SIZE, DEFAULT_VR_COCKPIT_SCALE, MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE,
-    Settings, VR_COCKPIT_SCALE_RANGE,
+    SEAT_HEIGHT_RANGE, Settings, VR_COCKPIT_SCALE_RANGE,
 };
 
 /// `config/<name>` in the player's folder (`stealth_host::store`); None in the browser.
@@ -91,6 +91,7 @@ pub struct Prefs {
     pub tooltips: bool,
     pub player_labels: bool,
     pub player_label_size: f32,
+    pub seat_height: f32,
     pub atc: bool,
     pub voice: bool,
     pub voice_volume: f32,
@@ -179,6 +180,7 @@ impl Default for Prefs {
             tooltips: true,
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
+            seat_height: 0.0,
             atc: true,
             voice: true,
             voice_volume: 1.0,
@@ -284,6 +286,7 @@ impl Prefs {
             tooltips: s.tooltips,
             player_labels: s.player_labels,
             player_label_size: s.player_label_size,
+            seat_height: s.seat_height,
             atc: s.atc,
             voice: s.voice,
             voice_volume: s.voice_volume,
@@ -377,6 +380,10 @@ impl Prefs {
         s.player_label_size = self
             .player_label_size
             .clamp(*PLAYER_LABEL_SIZE_RANGE.start(), *PLAYER_LABEL_SIZE_RANGE.end());
+        if !std::env::args().any(|a| a == "--seat-height") {
+            s.seat_height =
+                self.seat_height.clamp(*SEAT_HEIGHT_RANGE.start(), *SEAT_HEIGHT_RANGE.end());
+        }
         let volume = |v: f32| v.clamp(0.0, 1.0);
         s.master_volume = volume(self.master_volume);
         s.engine_volume = volume(self.engine_volume);
@@ -427,6 +434,7 @@ impl Prefs {
         self.tooltips = s.tooltips;
         self.player_labels = s.player_labels;
         self.player_label_size = s.player_label_size;
+        self.seat_height = s.seat_height;
         self.atc = s.atc;
         self.voice = s.voice;
         self.voice_volume = s.voice_volume;

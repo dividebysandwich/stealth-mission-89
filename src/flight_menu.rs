@@ -55,7 +55,9 @@ use crate::cockpit3d::{
 };
 use crate::font::{Align, Outline, capital, stroke_has, stroke_text_at, stroke_width};
 use crate::input::{Action, ActionEvent, InputBlock};
-use crate::settings::{AppState, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{
+    AppState, PLAYER_LABEL_SIZE_RANGE, SEAT_HEIGHT_RANGE, Settings, VR_COCKPIT_SCALE_RANGE,
+};
 use stealth_i18n::{Language, ts};
 
 pub struct FlightMenuPlugin;
@@ -185,6 +187,7 @@ impl Page {
                 Atc,
                 PlayerLabels,
                 LabelSize,
+                SeatHeight,
                 CockpitSize,
                 Back,
             ],
@@ -340,6 +343,7 @@ enum Item {
     Atc,
     PlayerLabels,
     LabelSize,
+    SeatHeight,
     CockpitSize,
     /// The size of the pixelize look's blocks.
     PixelSize,
@@ -394,6 +398,7 @@ impl Item {
             Item::PlayerLabels => "fm-player-labels",
             Item::LabelSize => "fm-label-size",
             Item::CockpitSize => "fm-cockpit-size",
+            Item::SeatHeight => "fm-seat-height",
             Item::PixelSize => "fm-pixel-size",
             Item::Volume(Vol::Master) => "fm-volume-master",
             Item::Volume(Vol::Engine) => "fm-volume-engine",
@@ -436,6 +441,7 @@ impl Item {
             Item::PixelSize => format!("< {} PX >", s.effects.pixel_block),
             Item::Effect(e) => on(e.get(&s.effects)),
             Item::CockpitSize => format!("< {:.0}% >", s.vr_cockpit_scale * 100.0),
+            Item::SeatHeight => format!("< {:+.0} CM >", s.seat_height * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
             Item::RwrTones => format!("< {} >", s.rwr_tones.flight_name()),
             Item::LowPass => on(s.engine_low_pass),
@@ -1349,6 +1355,11 @@ fn navigate(
         Item::Bindings => {
             menu.bindings = true;
             dialog.open = true;
+        }
+        Item::SeatHeight => {
+            s.seat_height = ((s.seat_height * 100.0).round() + dir)
+                .clamp(SEAT_HEIGHT_RANGE.start() * 100.0, SEAT_HEIGHT_RANGE.end() * 100.0)
+                / 100.0;
         }
         Item::CockpitSize => {
             s.vr_cockpit_scale = (s.vr_cockpit_scale + 0.05 * dir)

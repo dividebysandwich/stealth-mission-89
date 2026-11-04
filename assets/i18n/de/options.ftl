@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Größe der Spielernamen
         50 %: Standard
+options-seat-height = Sitzhöhe
+    .facts =
+        Wie hoch du im Cockpit sitzt, am Bildschirm und in VR
+        0 cm: die normale Augenhöhe des Flugzeugs
 options-section-vr-size = VR-Cockpitgröße
 options-vr-size =
     .facts =

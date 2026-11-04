@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Veľkosť mien hráčov
         50 %: predvolená
+options-seat-height = Výška sedadla
+    .facts =
+        Ako vysoko sedíte v kokpite, na obrazovke aj vo VR
+        0 cm: bežná výška očí v lietadle
 options-section-vr-size = Veľkosť kokpitu vo VR
 options-vr-size =
     .facts =

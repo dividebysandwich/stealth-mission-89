@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Spelarnamnens storlek
         50 %: standard
+options-seat-height = Sitthöjd
+    .facts =
+        Hur högt du sitter i cockpit, på skärmen och i VR
+        0 cm: flygplanets normala ögonhöjd
 options-section-vr-size = Cockpitens storlek i VR
 options-vr-size =
     .facts =

@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPILLERNAVNE
 fm-label-size = NAVNESTØRRELSE
+fm-seat-height = SÆDEHØJDE
 fm-cockpit-size = COCKPITSTØRRELSE
 fm-volume-master = SAMLET LYDSTYRKE
 fm-volume-engine = MOTOR

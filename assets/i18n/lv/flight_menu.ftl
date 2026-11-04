@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPĒLĒTĀJU VĀRDI
 fm-label-size = VĀRDU IZMĒRS
+fm-seat-height = SĒDEKĻA AUGSTUMS
 fm-cockpit-size = KABĪNES IZMĒRS
 fm-volume-master = KOPĒJAIS SKAĻUMS
 fm-volume-engine = DZINĒJS

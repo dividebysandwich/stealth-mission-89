@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Mărimea numelor jucătorilor
         50%: implicit
+options-seat-height = Înălțimea scaunului
+    .facts =
+        Cât de sus stai în carlingă, pe ecran și în VR
+        0 cm: înălțimea normală a ochilor în avion
 options-section-vr-size = Dimensiunea cockpitului în VR
 options-vr-size =
     .facts =

@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = ΟΝΟΜΑΤΑ ΠΑΙΚΤΩΝ
 fm-label-size = ΜΕΓΕΘΟΣ ΟΝΟΜΑΤΩΝ
+fm-seat-height = ΥΨΟΣ ΚΑΘΙΣΜΑΤΟΣ
 fm-cockpit-size = ΜΕΓΕΘΟΣ ΠΙΛΟΤΗΡΙΟΥ
 fm-volume-master = ΓΕΝΙΚΗ ΕΝΤΑΣΗ
 fm-volume-engine = ΚΙΝΗΤΗΡΑΣ

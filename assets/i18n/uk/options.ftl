@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Розмір імен гравців
         50%: типово
+options-seat-height = Висота крісла
+    .facts =
+        Наскільки високо ви сидите в кабіні, на екрані та у VR
+        0 см: звичайна висота очей у літаку
 options-section-vr-size = Розмір кабіни у VR
 options-vr-size =
     .facts =

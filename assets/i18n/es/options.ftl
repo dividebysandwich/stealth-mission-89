@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Tamaño de los nombres de los jugadores
         50 %: por defecto
+options-seat-height = Altura del asiento
+    .facts =
+        A qué altura te sientas en la cabina, en pantalla y en RV
+        0 cm: la altura normal de los ojos en el avión
 options-section-vr-size = Tamaño de la cabina en VR
 options-vr-size =
     .facts =

@@ -27,6 +27,7 @@ fm-auto-trim = АВТОТРИМ
 fm-tooltips = ПІДКАЗКИ
 fm-player-labels = ІМЕНА ГРАВЦІВ
 fm-label-size = РОЗМІР ІМЕН
+fm-seat-height = ВИСОТА КРІСЛА
 fm-cockpit-size = РОЗМІР КАБІНИ
 fm-volume-master = ЗАГАЛЬНА ГУЧНІСТЬ
 fm-volume-engine = ДВИГУН

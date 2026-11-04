@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPELERSNAMEN
 fm-label-size = NAAMGROOTTE
+fm-seat-height = STOELHOOGTE
 fm-cockpit-size = COCKPITGROOTTE
 fm-volume-master = ALGEMEEN VOLUME
 fm-volume-engine = MOTOR

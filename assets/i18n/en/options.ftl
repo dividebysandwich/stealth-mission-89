@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Size of the player labels
         50%: the default
+options-seat-height = Seat height
+    .facts =
+        How high you sit in the cockpit, on the desktop and in VR
+        0 cm: the aircraft's normal eye height
 options-section-vr-size = VR cockpit size
 options-vr-size =
     .facts =

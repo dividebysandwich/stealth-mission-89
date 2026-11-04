@@ -28,6 +28,7 @@ fm-auto-trim = AUTOTRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPELARNAMN
 fm-label-size = NAMNSTORLEK
+fm-seat-height = SITTHÖJD
 fm-cockpit-size = COCKPITSTORLEK
 fm-volume-master = HUVUDVOLYM
 fm-volume-engine = MOTOR

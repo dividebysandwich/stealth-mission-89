@@ -28,6 +28,7 @@ fm-auto-trim = AUTOMATICKÝ TRIM
 fm-tooltips = TOOLTIPY
 fm-player-labels = MENÁ HRÁČOV
 fm-label-size = VEĽKOSŤ MIEN
+fm-seat-height = VÝŠKA SEDADLA
 fm-cockpit-size = VEĽKOSŤ KOKPITU
 fm-volume-master = CELKOVÁ HLASITOSŤ
 fm-volume-engine = MOTOR

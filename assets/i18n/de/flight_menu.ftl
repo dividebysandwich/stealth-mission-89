@@ -27,6 +27,7 @@ fm-auto-trim = AUTO-TRIMMUNG
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPIELERNAMEN
 fm-label-size = NAMENSGRÖSSE
+fm-seat-height = SITZHÖHE
 fm-cockpit-size = COCKPITGRÖSSE
 fm-volume-master = GESAMTLAUTSTÄRKE
 fm-volume-engine = TRIEBWERK

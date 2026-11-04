@@ -28,6 +28,7 @@ fm-auto-trim = TRIM AUTO
 fm-tooltips = TOOLTIP-URI
 fm-player-labels = NUMELE JUCĂTORILOR
 fm-label-size = MĂRIMEA NUMELOR
+fm-seat-height = ÎNĂLȚIMEA SCAUNULUI
 fm-cockpit-size = DIMENSIUNEA COCKPITULUI
 fm-volume-master = VOLUM GENERAL
 fm-volume-engine = MOTOR

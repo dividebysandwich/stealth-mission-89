@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         プレイヤー名の大きさ
         50%：既定
+options-seat-height = 座席の高さ
+    .facts =
+        コックピットでの座る高さ（画面とVR）
+        0 cm：機体の通常の目の高さ
 options-section-vr-size = VRコックピットのサイズ
 options-vr-size =
     .facts =

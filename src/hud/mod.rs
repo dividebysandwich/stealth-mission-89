@@ -707,11 +707,9 @@ impl HudParams<'_, '_> {
         Some(HudFrame {
             ils,
             scale: self.settings.hud_scale(),
-            field_bottom: self
-                .anchors
-                .as_ref()
-                .and_then(|a| a.hud_glass_bottom)
-                .and_then(|p| modern::glass_row(p, self.settings.hud_scale())),
+            field_bottom: self.anchors.as_ref().and_then(|a| a.hud_glass_bottom).and_then(|p| {
+                modern::glass_row(p - self.settings.seat_offset(), self.settings.hud_scale())
+            }),
             state: self.state.clone(),
             knots: a.knots() as i32,
             alt: a.altitude.clamp(0.0, 65535.0) as i32,

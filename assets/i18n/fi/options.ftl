@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Pelaajien nimien koko
         50 %: oletus
+options-seat-height = Istuimen korkeus
+    .facts =
+        Kuinka korkealla istut ohjaamossa, näytöllä ja VR:ssä
+        0 cm: koneen tavallinen silmien korkeus
 options-section-vr-size = VR-ohjaamon koko
 options-vr-size =
     .facts =

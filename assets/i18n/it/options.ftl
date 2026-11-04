@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Dimensione dei nomi dei giocatori
         50%: predefinita
+options-seat-height = Altezza del sedile
+    .facts =
+        Quanto in alto siedi nell'abitacolo, sullo schermo e in VR
+        0 cm: l'altezza degli occhi normale del velivolo
 options-section-vr-size = Dimensione del cockpit in VR
 options-vr-size =
     .facts =

@@ -28,6 +28,7 @@ fm-auto-trim = TRIM OTOMATIS
 fm-tooltips = TOOLTIP
 fm-player-labels = NAMA PEMAIN
 fm-label-size = UKURAN NAMA
+fm-seat-height = TINGGI KURSI
 fm-cockpit-size = UKURAN KOKPIT
 fm-volume-master = VOLUME UTAMA
 fm-volume-engine = MESIN

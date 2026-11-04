@@ -28,6 +28,7 @@ fm-auto-trim = AUTOMATIKUS TRIM
 fm-tooltips = TOOLTIPEK
 fm-player-labels = JÁTÉKOSNEVEK
 fm-label-size = NÉVMÉRET
+fm-seat-height = ÜLÉSMAGASSÁG
 fm-cockpit-size = PILÓTAFÜLKE MÉRETE
 fm-volume-master = FŐ HANGERŐ
 fm-volume-engine = HAJTÓMŰ

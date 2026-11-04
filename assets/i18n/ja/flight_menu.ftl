@@ -28,6 +28,7 @@ fm-auto-trim = オートトリム
 fm-tooltips = ツールチップ
 fm-player-labels = プレイヤー名
 fm-label-size = 名前の大きさ
+fm-seat-height = 座席の高さ
 fm-cockpit-size = コックピットのサイズ
 fm-volume-master = マスター音量
 fm-volume-engine = エンジン

@@ -28,6 +28,7 @@ fm-auto-trim = TRIM AUTO
 fm-tooltips = TOOLTIPS
 fm-player-labels = NOMBRES DE JUGADORES
 fm-label-size = TAMAÑO DE NOMBRES
+fm-seat-height = ALTURA DEL ASIENTO
 fm-cockpit-size = TAMAÑO DE LA CABINA
 fm-volume-master = VOLUMEN GENERAL
 fm-volume-engine = MOTOR

@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Daqs tal-ismijiet tal-plejers
         50%: id-default
+options-seat-height = Għoli tas-sedil
+    .facts =
+        Kemm toqgħod għoli fil-cockpit, fuq l-iskrin u fil-VR
+        0 cm: l-għoli normali tal-għajnejn tal-ajruplan
 options-section-vr-size = Daqs tal-kokpit f'VR
 options-vr-size =
     .facts =

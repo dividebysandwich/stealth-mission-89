@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPY
 fm-player-labels = JMÉNA HRÁČŮ
 fm-label-size = VELIKOST JMEN
+fm-seat-height = VÝŠKA SEDADLA
 fm-cockpit-size = VELIKOST KOKPITU
 fm-volume-master = CELKOVÁ HLASITOST
 fm-volume-engine = MOTOR

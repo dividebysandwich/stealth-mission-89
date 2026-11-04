@@ -28,6 +28,7 @@ fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPS
 fm-player-labels = MÄNGIJATE NIMED
 fm-label-size = NIMEDE SUURUS
+fm-seat-height = ISTME KÕRGUS
 fm-cockpit-size = COCKPITI SUURUS
 fm-volume-master = ÜLDHELITUGEVUS
 fm-volume-engine = MOOTOR

@@ -28,6 +28,7 @@ fm-auto-trim = UATH-TRIM
 fm-tooltips = LEIDEANNA UIRLISE
 fm-player-labels = AINMNEACHA IMREOIRÍ
 fm-label-size = MÉID AINMNEACHA
+fm-seat-height = AIRDE AN TSUÍOCHÁIN
 fm-cockpit-size = MÉID AN CHOCKPIT
 fm-volume-master = PRÍOMH-AIRDE
 fm-volume-engine = INNEALL

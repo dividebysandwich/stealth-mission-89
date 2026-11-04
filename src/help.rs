@@ -79,6 +79,7 @@ Cockpit and graphics
                                sharp-gauges)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)
   --vr-cockpit-scale <percent> cockpit size in VR
+  --seat-height <cm>           eye higher (or lower) in the cockpit
   --window-size <WxH>          window size
   --novsync                    uncapped frame rate
   --ui-zoom <f>                interface scale (default: fit the window)

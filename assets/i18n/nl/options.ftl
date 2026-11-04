@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Grootte van de spelersnamen
         50%: standaard
+options-seat-height = Stoelhoogte
+    .facts =
+        Hoe hoog je in de cockpit zit, op het scherm en in VR
+        0 cm: de normale ooghoogte van het toestel
 options-section-vr-size = Cockpitgrootte in VR
 options-vr-size =
     .facts =
