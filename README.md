@@ -93,9 +93,8 @@ In the browser (WebGPU; coop joins public servers through the master server): `t
 ### Android
 Phones and tablets (arm64, Android 9 or later, Vulkan), flown with on-screen touch controls
 (`src/touch.rs`, see the manual's *Controls*; `--touch` shows them on the desktop, the left mouse
-button as a finger). The APK is built by the **Android** workflow, run by hand: Actions > Android >
-*Run workflow*, or `gh workflow run android.yml --ref <branch>` (add `-f abis="arm64-v8a x86_64"`
-for the emulator). Install the artifact's APK with `adb install -r stealth-mission-89-*-android.apk`;
+button as a finger). The arm64 APK is built by the **Build** workflow with the other targets: the
+`stealth-mission-89-*-android` artifact, and an asset of each release. Install the artifact's APK with `adb install -r stealth-mission-89-*-android.apk`;
 it is signed with the debug key in `packaging/android`, so each build installs over the last and keeps
 the saves. Logs: `adb logcat -s RustStdoutStderr:*`. The coop radio's microphone needs
 `adb shell pm grant io.github.dividebysandwich.stealthmission89 android.permission.RECORD_AUDIO`.

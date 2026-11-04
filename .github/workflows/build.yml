@@ -222,6 +222,45 @@ jobs:
           path: dist/${{ steps.package.outputs.name }}.zip
           if-no-files-found: error
 
+  # The Android app (phones and tablets, flown by touch): an arm64 APK signed with the debug key
+  # in packaging/android, so each one installs over the last (`adb install -r`).
+  android:
+    name: Android (arm64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      # The runner has the SDK (build-tools, platforms) and NDKs; tools/android-apk.sh takes the
+      # newest build-tools and platform.
+      - name: Build
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          cargo ndk -t arm64-v8a -P 28 build --release -p stealth-android
+          mkdir -p dist/arm64-v8a
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" \
+            -o dist/arm64-v8a/libstealth_mission_89.so \
+            target/aarch64-linux-android/release/libstealth_mission_89.so
+      - name: Package
+        id: package
+        run: |
+          name="stealth-mission-89-${GITHUB_REF_NAME//\//-}-android"
+          tools/android-apk.sh "dist/$name.apk" arm64-v8a=dist/arm64-v8a/libstealth_mission_89.so
+          aapt2=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2
+          "$aapt2" dump badging "dist/$name.apk" | head -5
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: dist/${{ steps.package.outputs.name }}.apk
+          if-no-files-found: error
+
   # The server list's master server (runs on a Linux host behind a reverse proxy).
   master:
     name: stealth-master
@@ -244,7 +283,7 @@ jobs:
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, web, master]
+    needs: [build, web, android, master]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

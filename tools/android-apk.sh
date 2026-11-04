@@ -1,5 +1,5 @@
 #!/bin/sh
-# Packs the Android app (.github/workflows/android.yml): the native library of each ABI built by
+# Packs the Android app (the android job of .github/workflows/build.yml): the native library of each ABI built by
 #   cargo ndk -t <abi> -P 28 build --release -p stealth-android
 # with assets/, the manifest and the icon (packaging/android) into a signed APK.
 #
