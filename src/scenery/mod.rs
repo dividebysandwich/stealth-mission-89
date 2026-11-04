@@ -177,6 +177,11 @@ impl Scenery {
         }
     }
 
+    /// The sea or a lake at `p` (metres east, north).
+    pub fn is_water(&self, p: DVec2) -> bool {
+        self.ground.is_water(p)
+    }
+
     /// What a ground mapping radar sees over a resolution cell `r` metres across at `p` (metres
     /// east, north): buildings (generated or the theater's) anywhere in it, else the ground.
     pub fn radar_cover(&self, p: DVec2, r: f64) -> Cover {

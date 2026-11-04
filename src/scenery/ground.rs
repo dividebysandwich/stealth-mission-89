@@ -350,6 +350,11 @@ impl Ground {
     }
 
     /// Not water at the point and at least `r` metres from raised geometry.
+    /// The sea or a lake at `p` (metres east, north).
+    pub fn is_water(&self, p: DVec2) -> bool {
+        self.top(p) == Some(Surface::Water)
+    }
+
     pub fn is_dry_clear(&self, p: DVec2, r: f64) -> bool {
         self.top(p) != Some(Surface::Water) && self.boxes_clear(p, r, true)
     }
