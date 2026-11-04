@@ -593,6 +593,7 @@ fn spawn_cockpit(
     spawner.tc_wide = tc_wide.map(|w| crate::trackcam::TrackCamImage(w.0.clone()));
     spawner.spawn(&mut commands, &assets, file, root);
     *anchors = spawner.anchors;
+    anchors.hud_glass_bottom = anchors.hud_glass_bottom.map(|p| p / scale);
 
     for i in 0..2 {
         let palm = commands

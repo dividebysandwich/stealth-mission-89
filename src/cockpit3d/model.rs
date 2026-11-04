@@ -369,6 +369,9 @@ impl<'a> Spawner<'a> {
                     .as_ref()
                     .and_then(|m| names.get(&m.id()))
                     .map_or("", String::as_str);
+                if name == "hud_glass" {
+                    self.glass_bottom(&prim.mesh, at);
+                }
                 let still = self.primitive(commands, target, name, prim, &extras, assets);
                 if let Some((mesh, material)) = still.filter(|_| !moves) {
                     let entity = target;
@@ -523,6 +526,26 @@ impl<'a> Spawner<'a> {
         };
         commands.entity(e).insert((Mesh3d(mesh.clone()), MeshMaterial3d(material.clone())));
         still.then_some((mesh, material))
+    }
+
+    /// Notes the middle of the HUD glass's lower edge (`CockpitAnchors::hud_glass_bottom`, in
+    /// model units until `spawn_cockpit` scales it): its lowest vertices.
+    fn glass_bottom(&mut self, mesh: &Handle<Mesh>, at: Transform) {
+        let Some(m) = self.meshes.get(mesh) else { return };
+        let Some(VertexAttributeValues::Float32x3(ps)) = m.attribute(Mesh::ATTRIBUTE_POSITION)
+        else {
+            return;
+        };
+        let ps: Vec<Vec3> = ps.iter().map(|&p| at.transform_point(Vec3::from(p))).collect();
+        let low = ps.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+        let tol = 0.01 * ps.iter().map(|p| (p.y - low).abs()).fold(0.0, f32::max).max(1e-3);
+        let edge: Vec<Vec3> = ps.into_iter().filter(|p| p.y <= low + tol).collect();
+        if !edge.is_empty() {
+            let (lo, hi) = edge
+                .iter()
+                .fold((Vec3::INFINITY, Vec3::NEG_INFINITY), |(a, b), &p| (a.min(p), b.max(p)));
+            self.anchors.hud_glass_bottom = Some((lo + hi) / 2.0);
+        }
     }
 
     /// The tracking camera picture 3 mm behind the left screen, from the screen's mesh.

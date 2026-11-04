@@ -543,6 +543,9 @@ fn advance_waypoints(
 pub struct HudFrame {
     /// Modern HUD: canvas pixels per unit of the tangent plane (`modern`).
     pub scale: f32,
+    /// Modern HUD: the canvas row its field reaches down to, the combiner glass's lower edge
+    /// (`modern::field`); None: the F-117A's.
+    pub field_bottom: Option<f32>,
     pub state: HudState,
     /// Airspeed, knots.
     pub knots: i32,
@@ -650,6 +653,7 @@ pub struct HudParams<'w, 's> {
     pub mfd: Option<Res<'w, crate::mfd::MfdState>>,
     pub papi: Option<Res<'w, crate::scenery::PapiSites>>,
     pub theater: Option<Res<'w, crate::world::Theater>>,
+    pub anchors: Option<Res<'w, crate::cockpit3d::levers::CockpitAnchors>>,
 }
 
 /// (temperature ratio, speed of sound in ft/s) at an altitude in feet (standard atmosphere).
@@ -703,6 +707,11 @@ impl HudParams<'_, '_> {
         Some(HudFrame {
             ils,
             scale: self.settings.hud_scale(),
+            field_bottom: self
+                .anchors
+                .as_ref()
+                .and_then(|a| a.hud_glass_bottom)
+                .and_then(|p| modern::glass_row(p, self.settings.hud_scale())),
             state: self.state.clone(),
             knots: a.knots() as i32,
             alt: a.altitude.clamp(0.0, 65535.0) as i32,
