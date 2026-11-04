@@ -689,6 +689,8 @@ pub struct Contact {
     /// On the displays: an aircraft the player's radar, or with it in standby another
     /// friendly radar, sees (everything else always).
     pub seen: bool,
+    /// The player's own weapon in flight (blue on the HSD).
+    pub own: bool,
 }
 
 /// A radar's threat ring on the HSD.

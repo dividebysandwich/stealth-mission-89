@@ -1534,6 +1534,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             target: Some(ContactRef::Unit(i)),
             threat: None,
             seen,
+            own: false,
         });
     }
     // The other players: friendly aircraft, and their weapons in flight.
@@ -1551,6 +1552,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 target: Some(ContactRef::Pilot(p.id)),
                 threat: None,
                 seen: true,
+                own: false,
             });
         }
         for (_, m) in &p.missiles {
@@ -1565,21 +1567,25 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 target: None,
                 threat: None,
                 seen: true,
+                own: false,
             });
         }
     }
-    for (_, m, _, _) in sim.active_projectiles() {
+    // The simulation's projectiles: the enemy's, and the player's own from slot 8 on.
+    for (s, m, _, _) in sim.active_projectiles() {
         let (east, north) = map_wu(m.x, m.y);
+        let own = s >= 8;
         contacts.list.push(Contact {
             kind: ContactKind::Missile,
             east,
             north,
             alt: m.alt as f32,
             heading: m.heading as u16,
-            friendly: false,
+            friendly: own,
             target: None,
             threat: None,
             seen: true,
+            own,
         });
     }
     let objects = sim.objects();
@@ -1617,6 +1623,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 target: Some(ContactRef::Object(i)),
                 threat,
                 seen: true,
+                own: false,
             });
         }
     }
@@ -1647,6 +1654,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             target,
             threat,
             seen: true,
+            own: false,
         });
         ship_at.push((ob.x, ob.y));
     }
@@ -1676,6 +1684,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             target,
             threat: None,
             seen: true,
+            own: false,
         });
     }
     let heading_bam = to_bam(a.euler().0);
@@ -1732,6 +1741,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 target: Some(ContactRef::Object(i)),
                 threat: None,
                 seen: true,
+                own: false,
             });
         }
     }

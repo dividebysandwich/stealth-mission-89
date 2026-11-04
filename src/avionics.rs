@@ -1138,6 +1138,7 @@ const BLACK: u8 = 5;
 const DARK: u8 = 8;
 const GREY: u8 = 7;
 const NAVY: u8 = 2;
+const BLUE: u8 = 9;
 const GREEN: u8 = 10;
 const CYAN: u8 = 11;
 const RED: u8 = 13;
@@ -2161,7 +2162,14 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
             }
             ContactKind::Missile => {
                 let d = view.dir(k.heading as f64 / 65536.0 * std::f64::consts::TAU);
-                c.stroke(q - d * 3.0, q + d * 3.0, 1.5, if k.friendly { GREEN } else { RED });
+                let col = if k.own {
+                    BLUE
+                } else if k.friendly {
+                    GREEN
+                } else {
+                    RED
+                };
+                c.stroke(q - d * 3.0, q + d * 3.0, 1.5, col);
             }
         }
         if k.target.is_some() && k.target == p.contacts.locked {
@@ -3819,6 +3827,7 @@ mod tests {
             target,
             threat: None,
             seen: true,
+            own: false,
         };
         let contacts = Contacts {
             list: vec![
@@ -3846,6 +3855,7 @@ mod tests {
             target: Some(ContactRef::Unit(unit)),
             threat: None,
             seen: true,
+            own: false,
         };
         let contacts =
             Contacts { list: vec![at(1000.0, true, 1), at(1100.0, false, 2)], ..default() };
