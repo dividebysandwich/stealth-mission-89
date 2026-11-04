@@ -261,19 +261,21 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     if let Some(t) = f.throttle {
         text(c, 270.0, 366.0, &super::throttle_text(t), Align::Left);
     }
-    // A turret gun with what it is slaved to.
+    // A turret gun with what it is slaved to. NAV shows no weapons.
     let gun = |rounds: u32| match f.gun_slave {
         Some(s) => format!("GUN {rounds} {s}"),
         None => format!("GUN {rounds}"),
     };
-    if f.gun_selected {
-        text(c, 270.0, 418.0, &gun(f.gun_rounds.unwrap_or(0)), Align::Left);
-    } else {
-        if let Some((count, name)) = &f.weapon {
-            text(c, 270.0, 418.0, &format!("{count} {name}"), Align::Left);
-        }
-        if let Some(rounds) = f.gun_rounds {
-            text(c, 270.0, 444.0, &gun(rounds), Align::Left);
+    if st.mode != HudMode::Nav {
+        if f.gun_selected {
+            text(c, 270.0, 418.0, &gun(f.gun_rounds.unwrap_or(0)), Align::Left);
+        } else {
+            if let Some((count, name)) = &f.weapon {
+                text(c, 270.0, 418.0, &format!("{count} {name}"), Align::Left);
+            }
+            if let Some(rounds) = f.gun_rounds {
+                text(c, 270.0, 444.0, &gun(rounds), Align::Left);
+            }
         }
     }
 
@@ -1194,6 +1196,21 @@ mod tests {
         assert!(lowest as f32 <= field(&f).1.y + 4.0, "ILS bars down to {lowest}");
         // The field reaches down to the glass's lower edge, not the F-117A's.
         assert!(field(&f).1.y > FIELD.1.y);
+    }
+
+    /// NAV shows no weapon or gun readouts; AG does.
+    #[test]
+    fn nav_shows_no_weapons() {
+        let ink = |mode| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, &frame(mode));
+            (410..452)
+                .flat_map(|y| (265..420).map(move |x| (x, y)))
+                .filter(|&(x, y)| c.px[y * WIDTH + x] != 0)
+                .count()
+        };
+        assert_eq!(ink(HudMode::Nav), 0);
+        assert!(ink(HudMode::Gnd) > 0);
     }
 
     /// Off the field the steerpoint and the pod's sight wait crossed out at its edge, clear of
