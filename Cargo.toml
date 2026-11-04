@@ -5,7 +5,7 @@ exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"
-version = "0.8.4"
+version = "0.8.5"
 
 [workspace.dependencies]
 stealth-formats = { path = "crates/stealth-formats" }
