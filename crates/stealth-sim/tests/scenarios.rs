@@ -909,6 +909,41 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     assert_eq!(sim.targeting().ground, Some(2));
 }
 
+/// The nearest-target key picks a mission objective in view over nearer hostile targets, and
+/// the nearest once the objective is done.
+#[test]
+fn nearest_target_prefers_the_objective() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    // Ahead (north): hostile objects at 300 and 600 map units, the far one the primary.
+    place_site(&mut sim, 1, 0, cx, cy - 300);
+    place_site(&mut sim, 2, 0, cx, cy - 600);
+    sim.target_slots_mut()[0] = TargetSlot { mission_type: 0, object: 2, base: 0, code: 0 };
+    sim.target_slots_mut()[1] = TargetSlot { mission_type: 0, object: -1, base: 0, code: 0 };
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(2));
+    // Done: the nearest again.
+    sim.target_slots_mut()[0].object = -1;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(1));
+}
+
 fn drone_mission(d: &Data, seed: u16, opponents: u8) -> Mission {
     let theater = stealth_formats::ALL_THEATERS.iter().position(|t| *t == "ukraine").unwrap();
     let s = MissionSettings {
