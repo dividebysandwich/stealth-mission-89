@@ -615,8 +615,13 @@ fn join_keys(groups: impl IntoIterator<Item = Vec<String>>) -> String {
     }
 }
 
-/// The text broken into lines of at most `LINE_CHARS` (at spaces; a longer word on its own).
+/// The text broken into lines of at most `LINE_CHARS` (at spaces; a longer word on its own);
+/// each line of the text (a line break in it) starts a new one.
 pub(super) fn wrap(text: &str) -> String {
+    text.split('\n').map(wrap_line).collect::<Vec<_>>().join("\n")
+}
+
+fn wrap_line(text: &str) -> String {
     let mut out = String::new();
     let mut len = 0;
     for word in text.split(' ').filter(|w| !w.is_empty()) {

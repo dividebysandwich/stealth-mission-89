@@ -567,7 +567,8 @@ struct Step {
     phase: &'static str,
     /// `{target}` (`{TARGET}`) is the leg's objective, `{name}` what it is ("the next target",
     /// "the landing base": the lesson never names a real target or place), `{weapon}` the store
-    /// to use, `{why}` why that one.
+    /// to use, `{why}` why that one, `{how}` how it is used (its range and height, the loadout
+    /// editor's facts, one per line after the text; nothing for the gun).
     title: &'static str,
     detail: &'static str,
     keys: &'static [Action],
@@ -962,7 +963,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             phase: OBJECTIVE,
             title: "Close in",
             detail: "Keep on towards {name}, ready: the run starts about 10 km from it (the bay, \
-                     then the shot)",
+                     then the shot){how}",
             keys: &[],
             target: |c| c.page_display(Page::Camera),
             done: |c| c.leg.close || c.leg.over,
@@ -981,7 +982,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: destroy,
             phase: OBJECTIVE,
             title: "Fire the {weapon}",
-            detail: "In range (the HUD's cue), release it; again until {name} is destroyed",
+            detail: "In range (the HUD's cue), release it; again until {name} is destroyed{how}",
             keys: &[FireWeapon],
             target: |_| T::Stick,
             done: |c| c.leg.over,
@@ -990,7 +991,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: air,
             phase: OBJECTIVE,
             title: "Fire the {weapon}",
-            detail: "In range (the HUD's cue), launch it; again until {name} goes down",
+            detail: "In range (the HUD's cue), launch it; again until {name} goes down{how}",
             keys: &[FireWeapon],
             target: |_| T::Stick,
             done: |c| c.leg.over,
@@ -999,7 +1000,7 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: photo,
             phase: OBJECTIVE,
             title: "Take the photo",
-            detail: "Nose on {name}, close enough (the HUD's cue): the trigger takes a frame",
+            detail: "Nose on {name}, close enough (the HUD's cue): the trigger takes a frame{how}",
             keys: &[FireWeapon],
             target: |_| T::Stick,
             done: |c| c.leg.over,
@@ -1411,6 +1412,15 @@ struct Words<'a> {
     name: &'a str,
     weapon: String,
     why: &'static str,
+    /// How the store is used: a line each, after a line break (empty: nothing to say).
+    how: String,
+}
+
+/// How a store is used, as the loadout editor says it: its range, its height.
+fn how(store: Option<Store>) -> String {
+    let Some(Store::Weapon(w)) = store else { return String::new() };
+    let lines = usize::try_from(w).map(crate::loadout::employment).unwrap_or_default();
+    lines.iter().map(|line| format!("\n{line}")).collect()
 }
 
 /// A step's text with its leg's words.
@@ -1423,6 +1433,7 @@ fn fill(text: &str, w: &Words) -> String {
         .replace("{TARGET}", &w.target.to_uppercase())
         .replace("{name}", w.name)
         .replace("{weapon}", &w.weapon)
+        .replace("{how}", &w.how)
 }
 
 /// The MFDs' zoom: the classic TAC page's and map's, the modern HSD's range; the camera's.
@@ -1884,6 +1895,7 @@ pub(super) fn advance(
         name,
         weapon: store_name(best, data),
         why: aim.map_or("", |aim| why(aim, best)),
+        how: how(best),
     };
     let s = alert.map_or(e.step, |i| &ALERTS[i]);
     tutorial.texts = [fill(s.phase, &words), fill(s.title, &words), fill(s.detail, &words)];
@@ -2540,6 +2552,7 @@ mod tests {
             name: "the next target",
             weapon: "Harpoon (AGM-84A)".into(),
             why: why(Aim::Ground, Some(Store::Weapon(4))),
+            how: how(Some(Store::Weapon(4))),
         };
         assert_eq!(
             fill("Flies the waypoints to {name}; any stick input takes the controls back", &words),
@@ -2645,6 +2658,7 @@ mod tests {
             name: "Missile Boat",
             weapon: "Harpoon (AGM-84A)".into(),
             why: why(Aim::Ground, Some(Store::Weapon(4))),
+            how: how(Some(Store::Weapon(4))),
         };
         assert_eq!(fill(OBJECTIVE, &words), "PRIMARY TARGET");
         assert_eq!(fill("Select the {weapon}", &words), "Select the Harpoon (AGM-84A)");
@@ -2653,6 +2667,13 @@ mod tests {
             "It is the weapon on board that does the most damage against the target"
         );
         assert_eq!(fill("Lock {name}", &words), "Lock Missile Boat");
+        // How it is used: the loadout editor's lines, one each; nothing for the gun.
+        assert_eq!(
+            fill("Release it{how}", &words),
+            "Release it\nRange: 6-41 km\nLaunch: 2,000-5,000 ft"
+        );
+        assert_eq!(how(Some(Store::Gun)), "");
+        assert_eq!(how(None), "");
     }
 
     /// The pages read the same with the classic and the modern avionics (the modern: formats).
