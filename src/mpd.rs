@@ -491,43 +491,16 @@ pub fn draw_scope(
     }
 }
 
-/// The bloom's radius at bearing `a` (radians clockwise from the nose) in its base size. The
-/// airframe's: broad abeam, narrow fore and aft, with small spikes where its edges are aligned.
-/// The gear down and the open bays make it larger through the signature, and both add detail: small spikes beside the nose and the tail for the gear, either side of
-/// the beam for the bays. Banked, the belly and the top swell it abeam (a little more towards
-/// the low side); pitched, fore and aft (a little more where the belly faces), never past the
-/// beam. Nearly symmetrical, and steady while those stay.
+/// The bloom's radius at bearing `a` (radians clockwise from the nose) in its base size: the
+/// simulation's aspect lobes (`stealth_sim::aspect_lobes`), the same the radars see.
 pub fn lobes(a: f32, th: &Threats) -> f32 {
-    let lobe = |dir: f32, width: f32| {
-        let d = ((a - dir + TAU / 2.0).rem_euclid(TAU) - TAU / 2.0) / width;
-        (-d * d).exp()
+    let pose = stealth_sim::Pose {
+        gear_down: th.gear_down,
+        bay_open: th.bay_open,
+        pitch: th.pitch,
+        roll: th.roll,
     };
-    let q = TAU / 4.0;
-    let mut k = 0.65 + 0.55 * a.sin().powi(2);
-    for dir in [0.7, -0.7, 2.45, -2.45] {
-        k += 0.15 * lobe(dir, 0.08);
-    }
-    for dir in [0.0, q, -q, 2.0 * q] {
-        k += 0.08 * lobe(dir, 0.12);
-    }
-    if th.bay_open {
-        for dir in [q - 0.3, q + 0.3, -q - 0.3, -q + 0.3] {
-            k += 0.12 * lobe(dir, 0.1);
-        }
-    }
-    if th.gear_down {
-        for dir in [0.35, -0.35, 2.0 * q - 0.35, 0.35 - 2.0 * q] {
-            k += 0.1 * lobe(dir, 0.12);
-        }
-    }
-    // The top shows to the other side about as much as the belly does.
-    let bank = (th.roll.sin().abs() * 1.6).min(0.9) * 0.4;
-    let (low, high) = if th.roll > 0.0 { (-q, q) } else { (q, -q) };
-    k += bank * (lobe(low, 0.6) + 0.85 * lobe(high, 0.6));
-    let pitch = (th.pitch.sin().abs() * 1.6).min(0.9) * 0.3;
-    let (belly, top) = if th.pitch > 0.0 { (0.0, 2.0 * q) } else { (2.0 * q, 0.0) };
-    k += pitch * (lobe(belly, 0.6) + 0.85 * lobe(top, 0.6));
-    k
+    stealth_sim::aspect_lobes(a, &pose)
 }
 
 /// A ring of radius `r` about `p`, only where it lies inside the scope (`centre`, `scope`).

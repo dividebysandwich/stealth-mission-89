@@ -1861,6 +1861,12 @@ airborne radar's cyan circle and unseen.
 Ground radars sweep all around. Fighter radars only see about 67° either side of the fighter's nose;
 the IL-76's airborne radar sees all around.
 
+**Stealth aspect.** The F-22A and the RAH-66, and the F-117A in a campaign, have faceted airframes whose
+return depends on where a radar sees them from: small spikes where their edges line up with it, more with
+the gear down or the bay doors open, and much more where a bank shows their belly or top to a radar beside
+them, or a climb or dive shows it to one ahead or behind. Turn away from a radar rather than banking
+towards it. Their **RCS** MFD page shows the shape the radars see.
+
 ## 7.5 Staying unseen
 
 - **Keep your EMV low.** Fly low, at moderate speed, with small bank angles. Open the bay doors

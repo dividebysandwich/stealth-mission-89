@@ -60,7 +60,81 @@ pub const F22_RCS: i32 = 12;
 /// terrain-following radar holds it down in the clutter where others fly by hand.
 pub const TORNADO_LOW_LEVEL_FT: i32 = 150;
 
+/// How a stealth airframe sits to the radars: its gear and bays, pitch and roll (radians, nose
+/// up and right wing down positive). Its return then depends on where a radar sees it from
+/// ([`aspect_lobes`]).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Pose {
+    pub gear_down: bool,
+    pub bay_open: bool,
+    pub pitch: f32,
+    pub roll: f32,
+}
+
+/// A stealth airframe's radar return seen from bearing `a` (radians clockwise from the nose),
+/// against its mean: broad abeam, narrow fore and aft, with small spikes where its edges are
+/// aligned. The gear down and the open bays add spikes (beside the nose and the tail; either
+/// side of the beam); banked, the belly shows to the low side and the top to the other, abeam;
+/// pitched, the belly shows ahead (nose up) or behind (nose down) and the top the other way.
+/// The RCS displays draw it; [`detect`] scales the signal by [`aspect_factor`].
+pub fn aspect_lobes(a: f32, pose: &Pose) -> f32 {
+    use std::f32::consts::TAU;
+    let lobe = |dir: f32, width: f32| {
+        let d = ((a - dir + TAU / 2.0).rem_euclid(TAU) - TAU / 2.0) / width;
+        (-d * d).exp()
+    };
+    let q = TAU / 4.0;
+    let mut k = 0.65 + 0.55 * a.sin().powi(2);
+    for dir in [0.7, -0.7, 2.45, -2.45] {
+        k += 0.15 * lobe(dir, 0.08);
+    }
+    for dir in [0.0, q, -q, 2.0 * q] {
+        k += 0.08 * lobe(dir, 0.12);
+    }
+    if pose.bay_open {
+        for dir in [q - 0.3, q + 0.3, -q - 0.3, -q + 0.3] {
+            k += 0.12 * lobe(dir, 0.1);
+        }
+    }
+    if pose.gear_down {
+        for dir in [0.35, -0.35, 2.0 * q - 0.35, 0.35 - 2.0 * q] {
+            k += 0.1 * lobe(dir, 0.12);
+        }
+    }
+    // The top shows to the other side about as much as the belly does.
+    let bank = (pose.roll.sin().abs() * 1.6).min(0.9) * 0.4;
+    let (low, high) = if pose.roll > 0.0 { (q, -q) } else { (-q, q) };
+    k += bank * (lobe(low, 0.6) + 0.85 * lobe(high, 0.6));
+    let pitch = (pose.pitch.sin().abs() * 1.6).min(0.9) * 0.3;
+    let (belly, top) = if pose.pitch > 0.0 { (0.0, 2.0 * q) } else { (2.0 * q, 0.0) };
+    k += pitch * (lobe(belly, 0.6) + 0.85 * lobe(top, 0.6));
+    k
+}
+
+/// The signal's factor for a radar at bearing `a` from the nose (radians clockwise): the
+/// lobes against the clean airframe's flying level (broad abeam, narrow fore and aft: what
+/// the classic rule already gives a pulse radar), so the edge spikes, the gear, the bays and
+/// the belly or top a bank or pitch shows change what the radars see.
+pub fn aspect_factor(a: f32, pose: &Pose) -> f32 {
+    aspect_lobes(a, pose) / (0.65 + 0.55 * a.sin().powi(2))
+}
+
 impl crate::pilot::Pilot {
+    /// The stealth types' pose for [`aspect_factor`]: the F-22A and the RAH-66, and the F-117A
+    /// in a campaign (the classic missions keep its classic return); None for the others.
+    pub(crate) fn pose(&self, campaign: bool) -> Option<Pose> {
+        let f117 = !self.lockheed && !self.external_stores && !self.helicopter && !self.raptor;
+        (self.raptor || self.comanche || (campaign && f117)).then(|| {
+            let rad = |b: i32| s16(b) as f32 * std::f32::consts::PI / 32768.0;
+            Pose {
+                gear_down: self.pflags & pflags::GEAR_UP == 0,
+                bay_open: self.pflags & pflags::BAY_OPEN != 0,
+                pitch: rad(self.p.pitch),
+                roll: rad(self.p.roll),
+            }
+        })
+    }
+
     /// The aircraft's radar return in 32nds of the usual one: in a campaign [`F117_RCS`] for
     /// the F-117A with its bays, [`F22_RCS`] for the F-22A; the F-22A's as much under the
     /// classic return in the other missions.
@@ -100,6 +174,9 @@ pub struct DetectCtx<'a> {
     pub rcs: i32,
     /// Ground radars lose it in the clutter below this height (ft), [`LOW_LEVEL_FT`] for most.
     pub low_level_ft: i32,
+    /// A stealth type: its return depends on where the radar sees it from ([`aspect_factor`]);
+    /// None: the classic rule (pulse radars see the beam best).
+    pub aspect: Option<Pose>,
     /// Theater terrain grid (16 x 16 cells, 256 bytes).
     pub grid: &'a [u8],
     /// The mountains, which hide the player from radars behind them.
@@ -145,6 +222,11 @@ pub fn detect(
     };
     f = s16(f + 0x20) >> 1;
     score = s16(f * (score >> 1)) >> 4;
+    if let Some(pose) = &c.aspect {
+        // Where the radar is seen from the aircraft (`brg` is the radar's to it).
+        let rel = s16(brg + 0x8000 - c.heading) as f32 * std::f32::consts::PI / 32768.0;
+        score = (score as f32 * aspect_factor(rel, pose)).round() as i32;
+    }
     if (s16(salt - c.view_z).abs() >> 10) > rng {
         score = 0;
     }
@@ -203,6 +285,7 @@ impl Sim {
             comanche: self.pl.comanche,
             rcs: self.pl.rcs(self.opts.campaign),
             low_level_ft: self.pl.low_level_ft(),
+            aspect: self.pl.pose(self.opts.campaign),
             grid: &self.grid,
             relief: self.tiles.as_ref().map(|t| &t.relief),
             hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
@@ -929,6 +1012,39 @@ mod tests {
         assert_eq!(at(100, tornado, 500), 72);
     }
 
+    /// A stealth type's return follows its lobes: banking shows the belly to the low side,
+    /// the gear and the bays add spikes, an edge spike stands out, and flying level and clean
+    /// the signal averages out about as before.
+    #[test]
+    fn aspect_shapes_the_return() {
+        use std::f32::consts::FRAC_PI_2;
+        let level = Pose::default();
+        let banked = Pose { roll: 0.6, ..level };
+        assert!(aspect_factor(FRAC_PI_2, &banked) > aspect_factor(-FRAC_PI_2, &banked));
+        assert!(aspect_factor(FRAC_PI_2, &banked) > 1.2 * aspect_factor(FRAC_PI_2, &level));
+        let gear = Pose { gear_down: true, ..level };
+        assert!(aspect_factor(0.35, &gear) > 1.1 * aspect_factor(0.35, &level));
+        assert!(aspect_factor(0.7, &level) > 1.15 * aspect_factor(1.0, &level), "edge spike");
+        let n = 360;
+        let mean = (0..n)
+            .map(|i| aspect_factor(i as f32 * std::f32::consts::TAU / n as f32, &level))
+            .sum::<f32>()
+            / n as f32;
+        assert!((mean - 1.0).abs() < 0.06, "{mean}");
+        // A pulse radar due east of an aircraft heading north: banked right (its belly to the
+        // radar) it sees more than level, and level the same as the classic rule.
+        let grid = vec![0xC; 256];
+        let at = |aspect| {
+            let c = DetectCtx { aspect, ..ctx(&grid, 0, 300 * 27) };
+            detect(0x4000 + 0x300, 0x4000, 0, 1, Some((60, 2, 0)), &c).0
+        };
+        let (classic, flat, belly) = (at(None), at(Some(level)), at(Some(banked)));
+        assert!(
+            classic > 0 && belly > flat && (flat - classic).abs() <= classic / 10,
+            "{classic} {flat} {belly}"
+        );
+    }
+
     fn ctx(grid: &[u8], heading: i32, vel: i32) -> DetectCtx<'_> {
         DetectCtx {
             px: 0x4000,
@@ -943,6 +1059,7 @@ mod tests {
             comanche: false,
             rcs: 32,
             low_level_ft: LOW_LEVEL_FT,
+            aspect: None,
             grid,
             relief: None,
             hills: None,
@@ -1042,6 +1159,7 @@ mod tests {
                 comanche: false,
                 rcs: 32,
                 low_level_ft: LOW_LEVEL_FT,
+                aspect: None,
                 grid: &grid,
                 relief: None,
                 hills: None,

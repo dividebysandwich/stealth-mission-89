@@ -330,6 +330,7 @@ struct Track {
     comanche: bool,
     rcs: i32,
     low_level_ft: i32,
+    aspect: Option<crate::radar::Pose>,
 }
 
 /// What the AAA does to the player in one frame.
@@ -562,6 +563,7 @@ impl Sim {
                     comanche: self.pl.comanche,
                     rcs: self.pl.rcs(self.opts.campaign),
                     low_level_ft: self.pl.low_level_ft(),
+                    aspect: self.pl.pose(self.opts.campaign),
                 }
             })
             .collect();
@@ -612,6 +614,7 @@ impl Sim {
                 comanche: t.comanche,
                 rcs: t.rcs,
                 low_level_ft: t.low_level_ft,
+                aspect: t.aspect,
                 grid: &self.grid,
                 relief: self.tiles.as_ref().map(|t| &t.relief),
                 hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
