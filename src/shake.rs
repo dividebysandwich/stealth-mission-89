@@ -45,8 +45,9 @@ const VR_TRAVEL: f32 = 0.004;
 const GUN: f32 = 0.35;
 const BUFFET: f32 = 0.22;
 const GROUND: f32 = 0.09;
-/// The buffet starts this far above the stall speed (ratio) and is full at it.
-const BUFFET_FROM: f32 = 1.2;
+/// The buffet starts this far above the stall speed at the load pulled (ratio) and is full at
+/// it: about 85% of the angle of attack the limiter allows (the lift goes as the speed squared).
+const BUFFET_FROM: f32 = 1.08;
 /// Knots at which the ground roll's rumble is full.
 const GROUND_KNOTS: f32 = 150.0;
 /// A touchdown's trauma: at least, at most and per ft/s of sink.
@@ -195,6 +196,20 @@ fn shake(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// No buffet a little above the stall speed at the load pulled, full at it.
+    #[test]
+    fn buffet_only_close_to_the_stall() {
+        let mut a = Aircraft::new_on_runway(1000.0);
+        a.on_ground = false;
+        a.stall_speed = 150.0 * 27.0;
+        a.velocity = 1.15 * a.stall_speed;
+        assert_eq!(stall_buffet(&a), 0.0);
+        a.velocity = 1.04 * a.stall_speed;
+        assert!((0.3..0.7).contains(&stall_buffet(&a)), "{}", stall_buffet(&a));
+        a.velocity = a.stall_speed;
+        assert!((stall_buffet(&a) - 1.0).abs() < 1e-4);
+    }
 
     #[test]
     fn blasts_fade_with_distance() {
