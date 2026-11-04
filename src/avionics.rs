@@ -2701,26 +2701,8 @@ fn slew_and_lock(
             gm = gm_view(av, ac);
         }
     }
-    // The A-A radar's cursor stays on the B-scope; pushed past its top the range goes a step
-    // out, past its bottom a step in, the cursor keeping its range.
     if f == Format::Fcr {
-        let (lo, hi) = fcr_scope();
-        let mut q = av.fcr_cursor + delta;
-        let step = if delta.y < 0.0 && q.y < lo.y {
-            1
-        } else if delta.y > 0.0 && q.y > hi.y {
-            -1
-        } else {
-            0
-        };
-        let next = (av.fcr_range as i32 + step).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize;
-        if next != av.fcr_range {
-            let k = (hi.y - q.y.clamp(lo.y, hi.y)) / (hi.y - lo.y)
-                * (FCR_RANGES_NM[av.fcr_range] / FCR_RANGES_NM[next]);
-            q.y = hi.y - k.min(1.0) * (hi.y - lo.y);
-            av.fcr_range = next;
-        }
-        av.fcr_cursor = q.clamp(lo, hi);
+        fcr_slew(av, delta);
         if !lock {
             return;
         }
@@ -2866,6 +2848,45 @@ fn edge_zoom(
     *cursor = p.clamp(lo, hi);
     *placed = Some(view);
     true
+}
+
+/// The A-A radar's cursor stays on the B-scope; pushed past its top the range goes a step
+/// out, past its bottom a step in (the cursor keeping its range, back off the bottom edge so
+/// that each push is one step), past its left side the scan a step narrower, past its right
+/// a step wider (the cursor back off that side).
+fn fcr_slew(av: &mut AvionicsState, delta: Vec2) {
+    let (lo, hi) = fcr_scope();
+    let mut q = av.fcr_cursor + delta;
+    let step = if delta.y < 0.0 && q.y < lo.y {
+        1
+    } else if delta.y > 0.0 && q.y > hi.y {
+        -1
+    } else {
+        0
+    };
+    let next = (av.fcr_range as i32 + step).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize;
+    if next != av.fcr_range {
+        let k = (hi.y - q.y.clamp(lo.y, hi.y)) / (hi.y - lo.y)
+            * (FCR_RANGES_NM[av.fcr_range] / FCR_RANGES_NM[next]);
+        q.y = hi.y - k.min(1.0) * (hi.y - lo.y);
+        if step < 0 {
+            q.y = q.y.min(hi.y - HSD_EDGE_RESET);
+        }
+        av.fcr_range = next;
+    }
+    let narrower = if delta.x < 0.0 && q.x < lo.x {
+        1
+    } else if delta.x > 0.0 && q.x > hi.x {
+        -1
+    } else {
+        0
+    };
+    let az = (av.fcr_az as i32 + narrower).clamp(0, FCR_AZ_DEG.len() as i32 - 1) as usize;
+    if az != av.fcr_az {
+        av.fcr_az = az;
+        q.x = if narrower > 0 { lo.x + HSD_EDGE_RESET } else { hi.x - HSD_EDGE_RESET };
+    }
+    av.fcr_cursor = q.clamp(lo, hi);
 }
 
 /// Keeps the ground map's cursor on its ground point as the view changes.
@@ -3174,6 +3195,34 @@ mod tests {
         av.hsd_range = HSD_RANGES.len() - 1;
         av.hsd_cursor.y = lo.y;
         assert!(!hsd_edge_zoom(&mut av, -1.0, lo, hi, view_of), "farthest range");
+    }
+
+    /// The A-A radar's cursor pushed down past the scope's bottom steps the range in once per
+    /// push (not on down to the shortest while held), and past its sides the scan's width.
+    #[test]
+    fn fcr_cursor_edges_step_range_and_azimuth() {
+        let (lo, hi) = fcr_scope();
+        let mut av = AvionicsState { fcr_range: 3, fcr_az: 1, ..Default::default() };
+        av.fcr_cursor = Vec2::new((lo.x + hi.x) / 2.0, hi.y);
+        fcr_slew(&mut av, Vec2::new(0.0, 2.0));
+        assert_eq!(av.fcr_range, 2);
+        assert!(av.fcr_cursor.y <= hi.y - HSD_EDGE_RESET);
+        // Held a few frames more: still off the edge, no more steps.
+        for _ in 0..5 {
+            fcr_slew(&mut av, Vec2::new(0.0, 2.0));
+        }
+        assert_eq!(av.fcr_range, 2);
+        av.fcr_cursor.x = lo.x;
+        fcr_slew(&mut av, Vec2::new(-2.0, 0.0));
+        assert_eq!(av.fcr_az, 2, "narrower");
+        assert!(av.fcr_cursor.x >= lo.x + HSD_EDGE_RESET - 1.0);
+        av.fcr_cursor.x = hi.x;
+        fcr_slew(&mut av, Vec2::new(2.0, 0.0));
+        assert_eq!(av.fcr_az, 1, "wider");
+        // Up past the top: a step out.
+        av.fcr_cursor.y = lo.y;
+        fcr_slew(&mut av, Vec2::new(0.0, -2.0));
+        assert_eq!(av.fcr_range, 3);
     }
 
     /// The ground map's cursor zooms at the edges as the HSD's does, staying on its ground
