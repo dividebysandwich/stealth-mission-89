@@ -1869,7 +1869,13 @@ impl Sim {
                 m.target == j && m.spec == b.missile() && m.blue == blue && m.station.is_none()
             };
             let salvo = c.missiles.iter().chain(&launches).filter(|m| in_air(m)).count();
-            if u.rounds == 0 || u.cooldown > 0 || salvo >= PATRIOT_SALVO || rng.random(100) >= 50 {
+            // One launcher at a time: the battery empties the one it has begun first.
+            if u.rounds == 0
+                || u.cooldown > 0
+                || salvo >= PATRIOT_SALVO
+                || self.next_launcher(radar) != Some(k)
+                || rng.random(100) >= 50
+            {
                 continue;
             }
             let a = &mut self.units[k];

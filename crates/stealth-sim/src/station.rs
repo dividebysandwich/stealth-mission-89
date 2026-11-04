@@ -295,6 +295,19 @@ impl Sim {
             .collect()
     }
 
+    /// The launcher a battery fires from next: the one already begun (fewest missiles left), so
+    /// it empties one launcher before it starts on the next. None when none is live, loaded and
+    /// done refilling.
+    pub fn next_launcher(&self, radar: usize) -> Option<usize> {
+        self.battery_launchers(radar)
+            .into_iter()
+            .filter(|&k| {
+                let u = &self.units[k];
+                !u.destroyed && u.rounds > 0 && self.refill_left(k) == 0.0
+            })
+            .min_by_key(|&k| (self.units[k].rounds, k))
+    }
+
     /// The battery radar that commands a launcher.
     pub fn launcher_radar(&self, launcher: usize) -> Option<usize> {
         let l = self.units.get(launcher)?;
@@ -519,12 +532,13 @@ impl Sim {
                 k
             }
             Some(_) => return Err(text!("st-not-this-battery-s-launcher")),
-            None => launchers
-                .iter()
-                .copied()
-                .filter(|&k| ready(self, k))
-                .max_by_key(|&k| self.units[k].rounds)
-                .ok_or_else(|| text!("st-no-launcher-ready"))?,
+            None => {
+                let k = self.next_launcher(radar).ok_or_else(|| text!("st-no-launcher-ready"))?;
+                if !ready(self, k) {
+                    return Err(text!("st-launcher-not-ready"));
+                }
+                k
+            }
         };
         let u = self.units[k];
         let from = add(u.metres_on(&hills), [0.0, 0.0, 3.0]);

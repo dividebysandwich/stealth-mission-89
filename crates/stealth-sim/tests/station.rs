@@ -120,9 +120,15 @@ fn a_manned_battery_fires_on_its_lock() {
     assert_eq!(m[0].spec, PATRIOT);
     assert_eq!(m[0].target, f);
     assert_eq!(m[0].guidance, Some(Guidance::Guided));
-    // The same launcher waits; another one fires.
+    // The launcher begun fires again once ready: it empties before the next one starts.
+    let first = sim.next_launcher(radar).expect("launcher");
+    assert_eq!(sim.units()[first].rounds, 3);
+    assert!(sim.station_command(ME, StationCmd::Fire { launcher: None }).is_err());
+    run(&mut sim, 3);
     sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
     assert_eq!(launcher_rounds(&sim, radar), before - 2);
+    assert_eq!(sim.units()[first].rounds, 2);
+    assert_eq!(sim.next_launcher(radar), Some(first));
 }
 
 #[test]
@@ -279,6 +285,29 @@ fn an_unmanned_battery_refills_itself() {
     assert!(sim.refill_left(l) > 0.0);
     sim.tick_refills(REFILL_SECONDS);
     assert_eq!(sim.units()[l].rounds, 4);
+}
+
+/// The AI empties one launcher before it fires from the next.
+#[test]
+fn the_ai_fires_one_launcher_empty_first() {
+    let (mut sim, radar, f) = battery();
+    let at = sim.units()[radar];
+    let launchers = sim.battery_launchers(radar);
+    assert!(launchers.len() > 1);
+    // A launcher begun (not the first): the next shot is its.
+    let begun = launchers[1];
+    sim.units_mut()[begun].rounds = 2;
+    for _ in 0..60 {
+        hold(&mut sim, f, (at.x + 0x200, at.y, 4000));
+        run(&mut sim, 1);
+        if !sim.ai_missiles().is_empty() {
+            break;
+        }
+    }
+    assert!(!sim.ai_missiles().is_empty());
+    let rounds: Vec<i32> = launchers.iter().map(|&k| sim.units()[k].rounds).collect();
+    assert_eq!(sim.units()[begun].rounds, 1, "{rounds:?}");
+    assert!(launchers.iter().filter(|&&k| k != begun).all(|&k| sim.units()[k].rounds == 4));
 }
 
 #[test]
