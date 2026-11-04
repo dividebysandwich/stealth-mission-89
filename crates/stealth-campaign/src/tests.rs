@@ -3540,6 +3540,12 @@ fn a_cargo_aircraft_shot_down_loses_its_load() {
     assert!(c.objective_met(&o.objective, &Progress::default()));
     c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
     assert!(c.board.iter().all(|x| x.objective != o.objective));
+    // The next one waits out the cooldown.
+    assert!(c.cargo_runs.iter().all(|x| x.to != b), "none right after the loss");
+    for _ in 0..(tuning::CARGO_LOST_COOLDOWN / 60.0) as usize {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.cargo_runs.iter().any(|x| x.to == b), "another after the cooldown");
 }
 
 #[test]

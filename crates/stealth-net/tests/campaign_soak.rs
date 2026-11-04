@@ -96,6 +96,20 @@ fn campaign_soak() {
     let mut missions: BTreeMap<u32, stealth_campaign::AiMission> = BTreeMap::new();
     let mut shelled: BTreeMap<usize, usize> = BTreeMap::new();
     let mut cargo: BTreeMap<u32, (stealth_campaign::CargoRun, f64)> = BTreeMap::new();
+    // The enemy's SAM sites by class (object, class), their launches since the last sample,
+    // and the samples.
+    use stealth_campaign::Munition;
+    let sam_class = |sim: &stealth_sim::Sim, i: usize| {
+        let o = sim.objects()[i];
+        let red = o.flags & (stealth_sim::oflags::FRIENDLY | stealth_sim::oflags::NEUTRAL) == 0;
+        (o.unit_type != 0 && red && !sim.object_is_ship(i))
+            .then(|| Munition::sam(sim.site_missile(o.unit_type)))
+    };
+    let classes = [Munition::SamLong, Munition::SamMedium, Munition::SamShort];
+    let mut mags: BTreeMap<u16, i32> = BTreeMap::new();
+    let mut launches = [0usize; 3];
+    let mut sam_log: Vec<String> = Vec::new();
+    let full_mag = stealth_sim::munitions::SITE_MAGAZINE;
     for frame in 0..frames {
         t = frame as f64 * dt;
         // What is after each aircraft (for the report of what shot it down).
@@ -121,6 +135,44 @@ fn campaign_soak() {
         }
         for r in &host.state.cargo_runs {
             cargo.insert(r.tag, (r.clone(), t));
+        }
+        let now: BTreeMap<u16, i32> = sim.site_magazines().into_iter().collect();
+        for i in 0..sim.ground_unit_count() {
+            let Some(m) = sam_class(&sim, i) else { continue };
+            let (a, b) = (
+                mags.get(&(i as u16)).copied().unwrap_or(full_mag),
+                now.get(&(i as u16)).copied().unwrap_or(full_mag),
+            );
+            if b < a {
+                launches[classes.iter().position(|&c| c == m).unwrap()] += (a - b) as usize;
+            }
+        }
+        mags = now;
+        if frame % (FS as u64 * 600) == 0 {
+            let st = &host.state;
+            let prod = st.production_base(Side::Red);
+            let mut line = format!("{:5.0} min:", t / 60.0);
+            for (k, &m) in classes.iter().enumerate() {
+                let sites: Vec<usize> = (0..sim.ground_unit_count())
+                    .filter(|&i| sam_class(&sim, i) == Some(m))
+                    .filter(|&i| sim.objects()[i].flags & stealth_sim::oflags::DESTROYED == 0)
+                    .collect();
+                let dry = sites.iter().filter(|&&i| mags.get(&(i as u16)) == Some(&0)).count();
+                let bases: u32 = st
+                    .stocks
+                    .iter()
+                    .filter(|(b, s)| s.side == Some(Side::Red) && Some(**b) != prod)
+                    .map(|(_, s)| s.count(m))
+                    .sum();
+                let at_prod = prod.and_then(|p| st.stocks.get(&p)).map_or(0, |s| s.count(m));
+                line += &format!(
+                    "  {m:?}: fired {:3}, dry {dry:2}/{:2}, bases {bases:3}, prod {at_prod:3}",
+                    launches[k],
+                    sites.len()
+                );
+            }
+            launches = [0; 3];
+            sam_log.push(line);
         }
         host.refills(&mut sim, dt as f32);
         host.take_sim_events(&mut sim);
@@ -357,6 +409,22 @@ fn campaign_soak() {
         if lost {
             println!("     !! open with nobody left");
         }
+    }
+    println!("\n== Enemy SAM sites by the base that refills them (long / medium / short)");
+    let mut per_base: BTreeMap<String, [usize; 3]> = BTreeMap::new();
+    for i in 0..sim.ground_unit_count() {
+        let Some(m) = sam_class(&sim, i) else { continue };
+        let o = sim.objects()[i];
+        let Some(b) = host.state.nearest_base(Side::Red, o.x, o.y) else { continue };
+        let name = host.state.site(b).map_or(String::new(), |s| s.name.clone());
+        per_base.entry(name).or_default()[classes.iter().position(|&c| c == m).unwrap()] += 1;
+    }
+    for (b, n) in &per_base {
+        println!("{b:14} {:2} / {:2} / {:2}", n[0], n[1], n[2]);
+    }
+    println!("\n== Enemy SAMs (every 10 min: launches since, dry sites, stocks)");
+    for l in &sam_log {
+        println!("{l}");
     }
     println!("\n== Cargo flights");
     for (tag, (r, last)) in &cargo {

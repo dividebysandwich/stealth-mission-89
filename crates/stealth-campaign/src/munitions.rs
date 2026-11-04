@@ -514,7 +514,10 @@ impl CampaignState {
     fn schedule_cargo(&mut self, ev: &mut Vec<CampaignEvent>) {
         for (base, side) in self.stocked_airfields() {
             let Some(from) = self.production_base(side) else { continue };
-            if base == from || self.cargo_runs.iter().any(|r| r.to == base) {
+            // One at a time, and none for a while after one was shot down.
+            let cooling =
+                self.cargo_cooldown.iter().any(|&(b, until)| b == base && until > self.clock);
+            if base == from || cooling || self.cargo_runs.iter().any(|r| r.to == base) {
                 continue;
             }
             if !self.site(base).is_some_and(Site::alive) {
@@ -647,6 +650,9 @@ impl CampaignState {
         }
         if landed.is_none() {
             self.cargo_lost.push(run.tag);
+            let until = self.clock + CARGO_LOST_COOLDOWN;
+            self.cargo_cooldown.retain(|&(b, t)| b != run.to && t > self.clock);
+            self.cargo_cooldown.push((run.to, until));
         }
         let id = if run.side == Side::Blue { "cl-cargo-lost" } else { "cl-enemy-cargo-lost" };
         let t = text!(id, base = name(self, run.to));

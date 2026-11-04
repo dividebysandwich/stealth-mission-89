@@ -379,6 +379,8 @@ pub const CARGO_INTERCEPT_WAIT: f64 = 2.0 * 60.0;
 pub const CARGO_SHARE: f64 = 0.5;
 /// A cargo flight saved in the air takes off again this long (s) after the campaign is loaded.
 pub const CARGO_RELAUNCH: f64 = 60.0;
+/// After a base's cargo aircraft was shot down, the next one goes this long (s) after.
+pub const CARGO_LOST_COOLDOWN: f64 = 30.0 * 60.0;
 /// A cargo aircraft that comes down this close to a base of its side (map units, ~8 km)
 /// delivers there.
 pub const CARGO_LAND_RADIUS: i32 = 0x200;

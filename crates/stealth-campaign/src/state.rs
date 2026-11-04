@@ -1036,6 +1036,9 @@ pub struct CampaignState {
     pub cargo_runs: Vec<crate::CargoRun>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cargo_lost: Vec<u32>,
+    /// Bases whose cargo aircraft was shot down, and until when none flies there again.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cargo_cooldown: Vec<(ObjectId, f64)>,
     /// The enemy SAM sites' magazines not full (object, missiles; the simulation's, kept over
     /// a save).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -1561,6 +1564,7 @@ impl CampaignState {
             production: [None; 2],
             cargo_runs: Vec::new(),
             cargo_lost: Vec::new(),
+            cargo_cooldown: Vec::new(),
             site_magazines: Vec::new(),
             ai_rush: Vec::new(),
             terrain: Terrain::default(),
