@@ -750,6 +750,11 @@ static F22: AircraftSpec = AircraftSpec {
 };
 
 impl AircraftKind {
+    /// The stealth types (F-117A, F-22A, RAH-66) offer the RCS page on their MFDs.
+    pub fn rcs_page(self) -> bool {
+        matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
+    }
+
     pub const ALL: [AircraftKind; 11] = [
         AircraftKind::F117,
         AircraftKind::F16,

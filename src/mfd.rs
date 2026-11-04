@@ -753,6 +753,7 @@ fn reset_mfd(
 ) {
     let mut av = crate::avionics::AvionicsState::default();
     av.radar = settings.aircraft.spec().ground_radar;
+    av.rcs = settings.aircraft.rcs_page();
     // The bottom rows the pilot set up stay from flight to flight.
     av.keep_rows(&state.av);
     av.set_mfds(settings.cockpit().0.mfd_count());
@@ -809,6 +810,10 @@ fn mfd_keys(
     let radar = settings.aircraft.spec().ground_radar;
     if state.av.radar != radar {
         state.av.set_radar(radar);
+    }
+    let rcs = settings.aircraft.rcs_page();
+    if state.av.rcs != rcs {
+        state.av.set_rcs(rcs);
     }
     let mfds = settings.cockpit().0.mfd_count();
     if state.av.mfds != mfds {

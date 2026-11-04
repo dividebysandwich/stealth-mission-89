@@ -240,6 +240,8 @@ pub struct AvionicsState {
     pub sms_ord: bool,
     /// The aircraft has an air-to-ground radar (the ground map format).
     pub radar: bool,
+    /// The aircraft shows its own radar signature (the RCS format: the stealth types).
+    pub rcs: bool,
     pub gm_range: usize,
     /// The radar in standby: not transmitting (either format).
     pub radar_standby: bool,
@@ -574,6 +576,7 @@ impl Default for AvionicsState {
             map_way: false,
             sms_ord: true,
             radar: false,
+            rcs: false,
             gm_range: 2,
             radar_standby: false,
             gm_cursor: centre - Vec2::Y * 20.0,
@@ -674,9 +677,15 @@ impl AvionicsState {
         self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar))
     }
 
-    /// The formats the format menu offers: all of them, the ground map with the radar only.
+    /// The formats the format menu offers: all of them, the radar's with the radar only, the
+    /// RCS page on the stealth types only.
     pub fn available(&self) -> impl Iterator<Item = Format> + '_ {
-        ALL_FORMATS.into_iter().filter(|&f| !f.radar() || self.radar)
+        ALL_FORMATS.into_iter().filter(|&f| self.has(f))
+    }
+
+    /// The aircraft has format `f`.
+    pub fn has(&self, f: Format) -> bool {
+        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs)
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -701,8 +710,9 @@ impl AvionicsState {
     /// Keeps the bottom rows the pilot set up on another flight (`old`), those whose formats
     /// this aircraft has.
     pub fn keep_rows(&mut self, old: &AvionicsState) {
+        let kit = self.clone();
         for (row, old) in self.rows.iter_mut().zip(old.rows) {
-            *row = old.filter(|r| r.iter().all(|&f| !f.radar() || self.radar));
+            *row = old.filter(|r| r.iter().all(|&f| kit.has(f)));
         }
     }
 
@@ -713,9 +723,22 @@ impl AvionicsState {
     pub fn set_radar(&mut self, radar: bool) {
         let old = self.clone();
         self.radar = radar;
-        self.keep_rows(&old);
+        self.refit(&old);
+    }
+
+    /// The aircraft changed to one with (or without) the RCS page: as `set_radar`.
+    pub fn set_rcs(&mut self, rcs: bool) {
+        let old = self.clone();
+        self.rcs = rcs;
+        self.refit(&old);
+    }
+
+    /// After `set_radar` or `set_rcs`: the formats this aircraft lacks leave the rows and the
+    /// MFDs.
+    fn refit(&mut self, old: &AvionicsState) {
+        self.keep_rows(old);
         for &side in self.sides() {
-            if !radar && self.format(side).radar() {
+            if !self.has(self.format(side)) {
                 let g = std::iter::once(Format::Harm)
                     .chain(self.formats(side))
                     .chain(self.available())
@@ -3386,12 +3409,13 @@ mod tests {
         assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
         press(&mut s, &mut raster, MfdSide::Left, 5);
         assert_eq!(s.av.menu(MfdSide::Left), Some(0));
-        // The menu lists every format but the ground map (no radar) down the sides, the
-        // button's own lit; the bottom row stays, the button it came from lit.
+        // The menu lists every format but the radar's (no radar) and the RCS page (not a
+        // stealth type) down the sides, the button's own lit; the bottom row stays, the button
+        // it came from lit.
         let listed: Vec<_> = (10..20).filter_map(|k| osb(MfdSide::Left, k, &s)).collect();
         assert_eq!(
             listed.iter().map(|o| o.0).collect::<Vec<_>>(),
-            ["HSD", "HARM", "TGP", "MAP", "SMS", "HSI", "ENG", "RCS"]
+            ["HSD", "HARM", "TGP", "MAP", "SMS", "HSI", "ENG"]
         );
         assert!(listed[0].2 && !listed[1].2);
         assert_eq!(osb(MfdSide::Left, 5, &s).map(|o| o.2), Some(true));
@@ -3427,13 +3451,17 @@ mod tests {
         assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
     }
 
-    /// The RCS page is in every MFD's format menu (with or without a radar: the menu's ten
-    /// side buttons hold all the formats), and its range steps from AUTO out and back.
+    /// The RCS page is in the stealth types' format menus (with or without a radar: the menu's
+    /// ten side buttons hold all the formats), not the others'; it leaves the MFDs with an
+    /// aircraft without it, and its range steps from AUTO out and back.
     #[test]
     fn rcs_page_in_the_format_menu() {
+        let without = AvionicsState::default();
+        assert!(without.available().all(|f| f != Format::Rcs));
         for radar in [false, true] {
             let mut s = MfdState { modern: true, ..default() };
             s.av.radar = radar;
+            s.av.rcs = true;
             let mut raster = MapRaster::default();
             let k = s.av.formats(MfdSide::Left).iter().position(|&f| f == Format::Hsd).unwrap();
             apply(&mut s, &mut raster, MfdCmd::Row(MfdSide::Left, k as u8));
@@ -3444,6 +3472,9 @@ mod tests {
             apply(&mut s, &mut raster, cmd);
             assert_eq!(s.av.format(MfdSide::Left), Format::Rcs);
             assert_eq!(s.av.formats(MfdSide::Left)[k], Format::Rcs);
+            s.av.set_rcs(false);
+            assert_ne!(s.av.format(MfdSide::Left), Format::Rcs);
+            assert!(!s.av.formats(MfdSide::Left).contains(&Format::Rcs));
         }
         let mut s = MfdState { modern: true, ..default() };
         let mut raster = MapRaster::default();
