@@ -249,6 +249,7 @@ st-destroyed = Förstörd
 st-already-refilling = Fyller redan på
 st-not-empty-yet = Inte tom än
 st-stockpile-empty = Lagret tomt
+st-stockpile-short = Inte tillräckligt med robotar i förrådet
 st-no-launcher-ready = Ingen ramp klar
 st-unit-destroyed = { $unit } är förstörd
 

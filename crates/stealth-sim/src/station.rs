@@ -32,8 +32,8 @@ use crate::uav::{Seen, Uav, UavKind, UavMode, UavWp};
 
 /// Missiles in a Patriot battery's stockpile, beyond those on its launchers.
 pub const PATRIOT_STOCK: i32 = 8;
-/// Missiles in a NASAMS battery's stockpile (two launchers' worth).
-pub const NASAMS_STOCK: i32 = 12;
+/// Missiles in a NASAMS battery's stockpile (three launchers' worth).
+pub const NASAMS_STOCK: i32 = 18;
 /// A Gepard's rounds ready, and in its stockpile.
 pub const GEPARD_ROUNDS: i32 = 640;
 pub const GEPARD_STOCK: i32 = 640;
@@ -337,6 +337,28 @@ impl Sim {
         s.and_then(|s| self.defence()?.stock.get(s).copied()).unwrap_or(0)
     }
 
+    /// Unit `k`'s stockpile less what the refills under way will take from it.
+    pub fn stockpile_free(&self, k: usize) -> i32 {
+        (self.stockpile(k) - self.stock_promised(k)).max(0)
+    }
+
+    /// What the refills under way from unit `k`'s stockpile will take from it.
+    fn stock_promised(&self, k: usize) -> i32 {
+        let Some(s) = self.stock_unit(k) else { return 0 };
+        (0..self.units.len())
+            .filter(|&j| self.refill_left(j) > 0.0 && self.stock_unit(j) == Some(s))
+            .map(|j| (full_load(self.units[j].kind) - self.units[j].rounds).max(0))
+            .sum()
+    }
+
+    /// Unit `k`'s stockpile has the missiles (rounds) to refill it: a full load beyond what the
+    /// refills under way take, or what is left when no other refill is under way.
+    fn stock_for_refill(&self, k: usize) -> bool {
+        let need = full_load(self.units[k].kind) - self.units[k].rounds;
+        let free = self.stockpile_free(k);
+        free >= need || (free > 0 && self.stock_promised(k) == 0)
+    }
+
     /// Real seconds left of unit `k`'s refill (0: none).
     pub fn refill_left(&self, k: usize) -> f32 {
         self.defence().and_then(|d| d.refill.get(k).copied()).unwrap_or(0.0)
@@ -616,6 +638,9 @@ impl Sim {
         if self.stockpile(k) <= 0 {
             return Err(text!("st-stockpile-empty"));
         }
+        if !self.stock_for_refill(k) {
+            return Err(text!("st-stockpile-short"));
+        }
         self.defence_mut().refill[k] = REFILL_SECONDS;
         Ok(())
     }
@@ -682,6 +707,7 @@ impl Sim {
                 && !manned
                 && self.aaa_blue(k)
                 && self.stockpile(k) > 0
+                && self.stock_for_refill(k)
             {
                 self.defence_mut().refill[k] = REFILL_SECONDS;
             }

@@ -249,6 +249,7 @@ st-destroyed = 파괴됨
 st-already-refilling = 이미 보충 중
 st-not-empty-yet = 아직 비지 않음
 st-stockpile-empty = 비축량 없음
+st-stockpile-short = 비축 미사일이 부족합니다
 st-no-launcher-ready = 준비된 발사기 없음
 st-unit-destroyed = { $unit } 파괴됨
 

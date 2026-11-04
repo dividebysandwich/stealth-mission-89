@@ -249,6 +249,7 @@ st-destroyed = Hävitatud
 st-already-refilling = Juba täidetakse
 st-not-empty-yet = Pole veel tühi
 st-stockpile-empty = Varu tühi
+st-stockpile-short = Laos pole piisavalt rakette
 st-no-launcher-ready = Valmis stardiseadet pole
 st-unit-destroyed = Üksus { $unit } on hävitatud
 

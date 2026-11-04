@@ -249,6 +249,7 @@ st-destroyed = Uništeno
 st-already-refilling = Već se dopunjava
 st-not-empty-yet = Još nije prazno
 st-stockpile-empty = Skladište je prazno
+st-stockpile-short = Nema dovoljno projektila u skladištu
 st-no-launcher-ready = Nijedan lanser nije spreman
 st-unit-destroyed = Jedinica uništena: { $unit }
 

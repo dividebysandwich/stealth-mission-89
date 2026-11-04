@@ -249,6 +249,7 @@ st-destroyed = Megsemmisítve
 st-already-refilling = Már töltődik
 st-not-empty-yet = Még nem üres
 st-stockpile-empty = A készlet üres
+st-stockpile-short = Nincs elég rakéta a raktárban
 st-no-launcher-ready = Nincs kész indító
 st-unit-destroyed = Megsemmisült: { $unit }
 

@@ -249,6 +249,7 @@ st-destroyed = Scriosta
 st-already-refilling = Ag athlíonadh cheana
 st-not-empty-yet = Níl sé folamh fós
 st-stockpile-empty = Stoc folamh
+st-stockpile-short = Níl dóthain diúracán sa stoc
 st-no-launcher-ready = Gan seoladán réidh
 st-unit-destroyed = Scriosadh aonad { $unit }
 

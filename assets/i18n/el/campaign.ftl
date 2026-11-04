@@ -249,6 +249,7 @@ st-destroyed = Καταστράφηκε
 st-already-refilling = Αναπληρώνεται ήδη
 st-not-empty-yet = Δεν είναι άδειο ακόμη
 st-stockpile-empty = Η αποθήκη είναι άδεια
+st-stockpile-short = Δεν υπάρχουν αρκετοί πύραυλοι στην αποθήκη
 st-no-launcher-ready = Κανένας εκτοξευτής δεν είναι έτοιμος
 st-unit-destroyed = Η μονάδα { $unit } καταστράφηκε
 

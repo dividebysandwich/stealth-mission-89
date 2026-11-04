@@ -249,6 +249,7 @@ st-destroyed = Distrus
 st-already-refilling = Se realimentează deja
 st-not-empty-yet = Încă nu este gol
 st-stockpile-empty = Stoc epuizat
+st-stockpile-short = Nu sunt destule rachete în depozit
 st-no-launcher-ready = Niciun lansator pregătit
 st-unit-destroyed = { $unit } este distrus
 

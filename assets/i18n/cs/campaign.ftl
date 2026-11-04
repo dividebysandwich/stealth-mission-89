@@ -249,6 +249,7 @@ st-destroyed = Zničeno
 st-already-refilling = Už se doplňuje
 st-not-empty-yet = Ještě není prázdné
 st-stockpile-empty = Sklad je prázdný
+st-stockpile-short = Ve skladu není dost střel
 st-no-launcher-ready = Žádný odpalovač není připraven
 st-unit-destroyed = { $unit } je zničen
 

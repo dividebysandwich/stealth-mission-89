@@ -249,6 +249,7 @@ st-destroyed = Унищожен
 st-already-refilling = Вече се зарежда
 st-not-empty-yet = Още не е празен
 st-stockpile-empty = Складът е празен
+st-stockpile-short = Няма достатъчно ракети в склада
 st-no-launcher-ready = Няма готова установка
 st-unit-destroyed = { $unit } е унищожен
 

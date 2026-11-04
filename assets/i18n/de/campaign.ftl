@@ -249,6 +249,7 @@ st-destroyed = Zerstört
 st-already-refilling = Wird bereits nachgeladen
 st-not-empty-yet = Noch nicht leer
 st-stockpile-empty = Vorrat leer
+st-stockpile-short = Nicht genug Raketen im Lager
 st-no-launcher-ready = Kein Werfer bereit
 st-unit-destroyed = Zerstört: { $unit }
 

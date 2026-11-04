@@ -248,6 +248,7 @@ st-destroyed = 已摧毁
 st-already-refilling = 正在补充
 st-not-empty-yet = 尚未用完
 st-stockpile-empty = 库存已空
+st-stockpile-short = 库存导弹不足
 st-no-launcher-ready = 没有就绪的发射架
 st-unit-destroyed = { $unit } 已被摧毁
 

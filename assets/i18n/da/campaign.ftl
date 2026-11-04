@@ -249,6 +249,7 @@ st-destroyed = Ødelagt
 st-already-refilling = Fyldes allerede på
 st-not-empty-yet = Ikke tom endnu
 st-stockpile-empty = Lageret er tomt
+st-stockpile-short = Ikke nok missiler på lageret
 st-no-launcher-ready = Ingen affyringsrampe klar
 st-unit-destroyed = { $unit } er ødelagt
 

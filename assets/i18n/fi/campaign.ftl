@@ -249,6 +249,7 @@ st-destroyed = Tuhottu
 st-already-refilling = Täydennys on jo käynnissä
 st-not-empty-yet = Ei vielä tyhjä
 st-stockpile-empty = Varasto tyhjä
+st-stockpile-short = Varastossa ei ole tarpeeksi ohjuksia
 st-no-launcher-ready = Ei valmista laukaisinta
 st-unit-destroyed = Yksikkö tuhottu: { $unit }
 

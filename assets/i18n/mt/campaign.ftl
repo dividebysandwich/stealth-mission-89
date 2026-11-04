@@ -249,6 +249,7 @@ st-destroyed = Meqrud
 st-already-refilling = Diġà qed timtela
 st-not-empty-yet = Għadu mhux vojt
 st-stockpile-empty = L-istokk vojt
+st-stockpile-short = M'hemmx biżżejjed missili fil-ħażna
 st-no-launcher-ready = L-ebda launcher lest
 st-unit-destroyed = { $unit } hija meqruda
 

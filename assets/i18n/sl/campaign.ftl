@@ -249,6 +249,7 @@ st-destroyed = Uničeno
 st-already-refilling = Že se polni
 st-not-empty-yet = Še ni prazno
 st-stockpile-empty = Zaloga prazna
+st-stockpile-short = V skladišču ni dovolj izstrelkov
 st-no-launcher-ready = Nobena izstrelitvena naprava ni pripravljena
 st-unit-destroyed = Enota { $unit } je uničena
 

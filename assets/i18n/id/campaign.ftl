@@ -249,6 +249,7 @@ st-destroyed = Hancur
 st-already-refilling = Sedang diisi ulang
 st-not-empty-yet = Belum kosong
 st-stockpile-empty = Persediaan kosong
+st-stockpile-short = Rudal di persediaan tidak cukup
 st-no-launcher-ready = Tidak ada peluncur siap
 st-unit-destroyed = { $unit } hancur
 

@@ -249,6 +249,7 @@ st-destroyed = Sunaikinta
 st-already-refilling = Jau papildoma
 st-not-empty-yet = Dar ne tuščia
 st-stockpile-empty = Atsargų sandėlis tuščias
+st-stockpile-short = Sandėlyje nepakanka raketų
 st-no-launcher-ready = Nėra pasirengusio paleidimo įrenginio
 st-unit-destroyed = Dalinys „{ $unit }“ sunaikintas
 

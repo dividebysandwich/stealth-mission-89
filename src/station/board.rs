@@ -288,7 +288,7 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         if sim.units()[radar].destroyed { ("OFFLINE", RED) } else { ("ONLINE", GREEN) };
     stroke_text_at(cv, 8.0, y, "RADAR", TEXT, PEN, WHITE, Align::Left);
     stroke_text_at(cv, 96.0, y, status, TEXT, PEN, col, Align::Left);
-    let stock = launchers.first().map_or(0, |&l| sim.stockpile(l));
+    let stock = launchers.first().map_or(0, |&l| sim.stockpile_free(l));
     stroke_text_at(cv, 8.0, y + 18.0, "STOCKPILE", TEXT, PEN, WHITE, Align::Left);
     stroke_text_at(
         cv,

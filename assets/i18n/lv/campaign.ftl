@@ -249,6 +249,7 @@ st-destroyed = Iznīcināts
 st-already-refilling = Jau tiek papildināts
 st-not-empty-yet = Vēl nav tukšs
 st-stockpile-empty = Krājums tukšs
+st-stockpile-short = Noliktavā nepietiek raķešu
 st-no-launcher-ready = Nav gatava palaidēja
 st-unit-destroyed = Vienība iznīcināta: { $unit }
 

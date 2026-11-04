@@ -622,6 +622,43 @@ fn a_manned_nasams_fires_aim120s_from_six_canister_launchers() {
     assert!(m[0].flight.is_some(), "the realistic missile flight");
 }
 
+/// Reloads under way keep their missiles: with 8 left, one empty launcher reloads in full, a
+/// second gets no partial load while it does, and the rest goes to it once the first is done.
+#[test]
+fn no_nasams_reload_without_the_missiles_for_it() {
+    let (mut sim, radar, _) = nasams();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    sim.restore_stocks(&[SavedStock {
+        x: at.x,
+        y: at.y,
+        kind: GroundKind::NasamsRadar,
+        stock: 8,
+        stock2: 0,
+        stock3: 0,
+    }]);
+    let l = sim.battery_launchers(radar);
+    for &k in &l {
+        sim.units_mut()[k].rounds = 0;
+    }
+    let refill =
+        |sim: &mut Sim, k: usize| sim.station_command(ME, StationCmd::Refill { unit: k as u16 });
+    refill(&mut sim, l[0]).unwrap();
+    assert_eq!(sim.stockpile_free(radar), 2);
+    let e = refill(&mut sim, l[1]).unwrap_err();
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("Not enough"), "{e}");
+    assert!(refill(&mut sim, l[2]).is_err());
+    sim.tick_refills(REFILL_SECONDS);
+    assert_eq!(sim.units()[l[0]].rounds, 6);
+    assert_eq!(sim.stockpile(radar), 2);
+    // Nothing else under way: the last two.
+    refill(&mut sim, l[1]).unwrap();
+    assert!(refill(&mut sim, l[2]).is_err());
+    sim.tick_refills(REFILL_SECONDS);
+    assert_eq!(sim.units()[l[1]].rounds, 2);
+    assert_eq!(sim.stockpile(radar), 0);
+}
+
 #[test]
 fn no_nasams_shot_beyond_40_km() {
     let (mut sim, radar, f) = nasams();

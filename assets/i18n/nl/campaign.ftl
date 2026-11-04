@@ -249,6 +249,7 @@ st-destroyed = Vernietigd
 st-already-refilling = Wordt al bijgevuld
 st-not-empty-yet = Nog niet leeg
 st-stockpile-empty = Voorraad leeg
+st-stockpile-short = Niet genoeg raketten in de voorraad
 st-no-launcher-ready = Geen lanceerder gereed
 st-unit-destroyed = De { $unit } is vernietigd
 
