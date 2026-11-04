@@ -63,8 +63,8 @@ SEAT_TOP = -0.78
 CYCLIC_PIVOT = Vector((0.0, 0.30, FLOOR + 0.01))
 CYCLIC_RAISE = 0.48
 # Collective: handle (lowered) and pivot left of the seat, swing (degrees).
-COLLECTIVE_HANDLE = Vector((-0.27, 0.12, -0.62))
-COLLECTIVE_PIVOT = Vector((-0.27, -0.25, -0.70))
+COLLECTIVE_HANDLE = Vector((-0.27, 0.12, -0.67))
+COLLECTIVE_PIVOT = Vector((-0.27, -0.25, -0.75))
 COLLECTIVE_SWING = 28.0
 # Where the hand holds the collective's grip, in the grip's frame (mm, negated).
 GRIP_HAND = Vector((0.0, -50.0, 4.0))
