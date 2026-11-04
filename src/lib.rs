@@ -7,6 +7,9 @@ mod aa_radar;
 mod afterburner_flame;
 mod aircraft;
 mod aircraft_preview;
+// Its mapping is tested on every platform; only the Android app reads gamepads with it.
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+mod android_gamepad;
 mod app6;
 mod asset_path;
 mod atc;
@@ -105,8 +108,8 @@ mod tacview;
 mod tacview_real_time;
 mod terrain;
 mod text_entry;
-mod touch;
 mod tfr;
+mod touch;
 mod trackcam;
 mod trails;
 mod tts;
@@ -357,6 +360,8 @@ pub fn run() {
     if touch::enabled(&settings) {
         app.add_plugins(touch::TouchPlugin);
     }
+    #[cfg(target_os = "android")]
+    app.add_plugins(android_gamepad::AndroidGamepadPlugin);
     mission::from_args(&mut app);
     campaign::from_args(&mut app);
     savegame::from_args(&mut app);

@@ -206,6 +206,8 @@ struct TouchState {
     layout: Option<Layout>,
     /// The controls are hidden (the in-flight menu is open).
     hidden: bool,
+    /// A gamepad flies: the controls are hidden until a finger comes down.
+    pad: bool,
 }
 
 /// The desktop's left mouse button, as a finger (`--touch`).
@@ -220,9 +222,17 @@ fn assign(
     mut mouse: ResMut<ButtonInput<MouseButton>>,
     mut window: Query<&mut Window, With<PrimaryWindow>>,
     block: Res<InputBlock>,
+    gamepads: Query<&Gamepad>,
     mut state: ResMut<TouchState>,
 ) {
     let Ok(mut window) = window.single_mut() else { return };
+    if gamepads.iter().any(|g| {
+        g.get_just_pressed().next().is_some()
+            || g.left_stick().length() > 0.5
+            || g.right_stick().length() > 0.5
+    }) {
+        state.pad = true;
+    }
     let layout = Layout::new(Vec2::new(window.width(), window.height()));
     state.layout = Some(layout);
     state.hidden = block.0;
@@ -238,6 +248,9 @@ fn assign(
         && let Some(p) = window.cursor_position()
     {
         down.push((MOUSE_FINGER, p, clicked));
+    }
+    if down.iter().any(|d| d.2) {
+        state.pad = false;
     }
     let old = std::mem::take(&mut state.fingers);
     for (id, p, _) in down {
@@ -455,7 +468,11 @@ fn place(
         let mut lit = None;
         match *part {
             Part::Root => {
-                *visibility = if state.hidden { Visibility::Hidden } else { Visibility::Inherited };
+                *visibility = if state.hidden || state.pad {
+                    Visibility::Hidden
+                } else {
+                    Visibility::Inherited
+                };
                 continue;
             }
             Part::Button(i) => {

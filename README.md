@@ -98,6 +98,8 @@ button as a finger). The arm64 APK is built by the **Build** workflow with the o
 it is signed with the debug key in `packaging/android`, so each build installs over the last and keeps
 the saves. Logs: `adb logcat -s RustStdoutStderr:*`. The coop radio's microphone needs
 `adb shell pm grant io.github.dividebysandwich.stealthmission89 android.permission.RECORD_AUDIO`.
+Gamepads work through a patched winit (`vendor/winit`, its `platform::android::gamepad`, read by
+`src/android_gamepad.rs`): winit 0.30 drops their axes on Android, and gilrs has no Android backend.
 
 Locally, with the Android SDK (build-tools, a platform) and an NDK:
 ```sh
