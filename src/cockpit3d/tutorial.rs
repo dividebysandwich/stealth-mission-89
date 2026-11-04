@@ -1155,7 +1155,9 @@ static RETURN_STEPS: &[Step] = {
             only: all,
             phase: LANDING,
             title: "ILS",
-            detail: "Instrument landing system: the HUD steering bars lead to the runway",
+            detail: "Press ILS: once the runway is ahead, the HUD shows two steering bars, the \
+                     upright one for the centreline, the level one for the 3 degree glide path. \
+                     Until then the steerpoint diamond leads to it",
             keys: &[Ils],
             target: |_| T::Action(Ils),
             done: |c| c.mfd.ils,
@@ -1174,7 +1176,8 @@ static RETURN_STEPS: &[Step] = {
             only: jets,
             phase: LANDING,
             title: "Reduce the throttle",
-            detail: "Slow down for the approach, below 250 knots",
+            detail: "Slow down for the approach, below 250 knots; the final speed is the one that \
+                     shows the green circle (on speed)",
             keys: &[ThrottleDown, ThrottleIdle],
             target: |_| T::Throttle,
             done: |c| c.a.set_thrust <= 60.0,
@@ -1192,7 +1195,8 @@ static RETURN_STEPS: &[Step] = {
             only: jets,
             phase: LANDING,
             title: "Flaps down",
-            detail: "Gives a lower approach speed",
+            detail: "For the landing: more lift and about 20 % lower stall speed, so a lower and \
+                     safer approach speed",
             keys: &[Flaps],
             target: |_| T::Action(Flaps),
             done: |c| c.a.flaps,
@@ -1201,7 +1205,9 @@ static RETURN_STEPS: &[Step] = {
             only: jets,
             phase: LANDING,
             title: "Touch down",
-            detail: "Keep the green circle (on speed) and a gentle descent to the runway",
+            detail: "Fly the flight path marker (the circle with wings) to where the two ILS bars \
+                     cross, keeping the green circle (on speed); over the threshold, throttle \
+                     back and flare gently",
             keys: &[],
             target: |_| T::Display(CanvasRole::Approach),
             done: |c| c.a.on_ground && c.a.has_flown,
@@ -1219,7 +1225,8 @@ static RETURN_STEPS: &[Step] = {
             only: jets,
             phase: LANDING,
             title: "Brakes",
-            detail: "Throttle to idle and brake to a stop",
+            detail: "Down: throttle to idle and hold BRAKE to stop on the runway (in the air it is \
+                     the speed brake: not before the touchdown)",
             keys: &[Brakes, ThrottleIdle],
             target: |_| T::Action(Brakes),
             done: |c| c.a.on_ground && (c.a.brakes || c.knots() < 5.0),
