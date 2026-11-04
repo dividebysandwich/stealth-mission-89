@@ -98,6 +98,12 @@ button as a finger). The arm64 APK is built by the **Build** workflow with the o
 it is signed with the debug key in `packaging/android`, so each build installs over the last and keeps
 the saves. Logs: `adb logcat -s RustStdoutStderr:*`. The coop radio's microphone needs
 `adb shell pm grant io.github.dividebysandwich.stealthmission89 android.permission.RECORD_AUDIO`.
+Gamepads work through a patched winit (`vendor/winit`, its `platform::android::gamepad`, read by
+`src/android_gamepad.rs`): winit 0.30 drops their axes on Android, and gilrs has no Android backend.
+The same patch shows the soft keyboard for egui's text fields through InputMethodManager
+(`src/android_keyboard.rs`), since the NDK's `ANativeActivity_showSoftInput` does nothing on recent
+Android. Its keys arrive as key events, so characters that are not on the key map (accented letters
+committed by the keyboard as text) are not typed.
 
 Locally, with the Android SDK (build-tools, a platform) and an NDK:
 ```sh

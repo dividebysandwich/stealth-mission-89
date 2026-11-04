@@ -1,6 +1,7 @@
 [workspace]
 members = [".", "crates/bevy_fast_clouds", "crates/stealth-android", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-i18n", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
 resolver = "3"
+exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"
@@ -104,6 +105,10 @@ winit = "0.30"
 softbuffer = { version = "0.4", default-features = false, features = ["x11", "x11-dlopen", "wayland", "wayland-dlopen"] }
 ab_glyph = "0.2"
 
+# Gamepads on Android (src/android_gamepad.rs), queued by the patched winit below.
+[target.'cfg(target_os = "android")'.dependencies]
+winit = "0.30"
+
 [target.'cfg(windows)'.dependencies]
 # Closes the console window of a game started from Explorer (src/win_console.rs); reads the
 # FreeTrack head tracking shared memory (src/headtrack.rs); names joysticks (src/hotas.rs).
@@ -116,6 +121,11 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_Console",
     "Win32_System_Memory",
 ] }
+
+# winit 0.30.13 with Android gamepads (its platform::android::gamepad): unpatched, it turns their
+# sticks into touches and drops their axes. Only the Android backend differs from the release.
+[patch.crates-io]
+winit = { path = "vendor/winit" }
 
 [build-dependencies]
 # Links the icon, manifest and version (packaging/windows) into stealth-mission-89.exe.

@@ -295,8 +295,13 @@ Thank you fritzjoel for this tip!
 A finger keeps the control it came down on until it lifts, so you can steer, throttle and fire at
 once. A touch anywhere else works as the mouse: it presses the cockpit's switches and the MFD
 buttons, turns the kneeboard's pages and chooses in the in-flight menu, which hides the touch
-controls while it is open. The back gesture opens and closes the in-flight menu. A keyboard or mouse
-connected to the phone works as on a computer; gamepads and joysticks do not work on Android yet.
+controls while it is open. The back gesture opens and closes the in-flight menu. Tapping a text field (your
+pilot name, a server address, the Ops chat) brings up the phone's keyboard; it goes away when you tap
+elsewhere or press Enter, and tapping the field again brings it back. A keyboard or mouse
+connected to the phone works as on a computer. A gamepad (Bluetooth or USB) flies with its
+standard layout as on a computer and chooses in the menus; the touch controls hide while it is used
+and come back at the next touch. The joystick mapping (OPTIONS > CONTROLS > *Keys and joystick*)
+does not see devices on Android.
 
 The complete list of keys is in Appendix A and in [keys.md](keys.md).
 
