@@ -386,5 +386,16 @@ pub const CARGO_LOST_COOLDOWN: f64 = 30.0 * 60.0;
 pub const CARGO_LAND_RADIUS: i32 = 0x200;
 /// The production base keeps up to this many times a base's full stock.
 pub const PRODUCTION_CAP: f64 = 3.0;
-/// The enemy's SAM sites and guns refill their magazines from the nearest base this often (s).
+/// The enemy's SAM sites and guns refill their magazines this often (s), from the bases with
+/// stock within this reach (map units, ~150 km), nearest first.
 pub const MAGAZINE_REFILL_EVERY: f64 = 60.0;
+pub const MAGAZINE_SUPPLY_RANGE: i32 = 0x2580;
+/// A base keeps this many SAM missiles for each SAM site it supplies (two reloads), and gun
+/// rounds for each gun.
+pub const SAM_STOCK_PER_SITE: f64 = 8.0;
+pub const AAA_STOCK_PER_GUN: f64 = 2400.0;
+/// The production base makes this many an hour for each of the theater's sites (guns).
+pub const SAM_LONG_PER_SITE_HOUR: f64 = 1.5;
+pub const SAM_MEDIUM_PER_SITE_HOUR: f64 = 1.5;
+pub const SAM_SHORT_PER_SITE_HOUR: f64 = 2.0;
+pub const AAA_PER_GUN_HOUR: f64 = 300.0;

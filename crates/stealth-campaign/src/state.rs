@@ -1043,6 +1043,10 @@ pub struct CampaignState {
     /// a save).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub site_magazines: Vec<(ObjectId, i32)>,
+    /// The enemy's long, medium and short range SAM sites and guns each of its bases supplies
+    /// (the nearest; counted by the host): what its stocks of their munitions are sized for.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub site_demand: std::collections::BTreeMap<ObjectId, [u32; 4]>,
     /// Friendly offers a player asked the AI to fly at once (out of the queue, on its next
     /// tick).
     #[serde(skip)]
@@ -1566,6 +1570,7 @@ impl CampaignState {
             cargo_lost: Vec::new(),
             cargo_cooldown: Vec::new(),
             site_magazines: Vec::new(),
+            site_demand: Default::default(),
             ai_rush: Vec::new(),
             terrain: Terrain::default(),
         };

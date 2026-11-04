@@ -1746,6 +1746,18 @@ impl Sim {
             if d > horizon(pos[j][2]) || rng.random(100) > 40 + 15 * self.diff {
                 continue;
             }
+            // Salvo discipline (with magazines): one long range missile at a time at an
+            // aircraft.
+            let long = crate::munitions::long_range_sam;
+            if c.magazines
+                && long(spec)
+                && c.missiles
+                    .iter()
+                    .chain(&launches)
+                    .any(|m| m.target == j && !m.blue && m.ground.is_none() && long(m.spec))
+            {
+                continue;
+            }
             c.site_cool[i] = SITE_RELOAD * fs;
             if c.magazines
                 && let Some(n) = c.site_rounds.get_mut(i)

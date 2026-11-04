@@ -2613,8 +2613,12 @@ left (*(12 at base)*) and greys out what it can't supply. What you bring back un
 stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
 too; when a base is out, they take the next best (AIM-7s for AIM-120s, Mavericks for HARMs) and in
 the end Sidewinders, and strike aircraft drop iron bombs, which means flying right over the target.
-The enemy plays by the same rules, and its SAM sites and guns fire from magazines refilled from
-its nearest airbase: when its bases run dry, its SAM sites go quiet.
+The enemy plays by the same rules. Its SAM sites and guns fire from magazines, refilled from the
+airbases within about 150 km that have missiles or rounds left, nearest first; each airbase keeps
+two reloads for the sites it is nearest to, and its production base makes as many as the
+theater's sites need. Its long range SAM sites (SA-2, SA-5, SA-10, SA-12, SA-21) fire one missile
+at a time at an aircraft: no second site launches while another's missile is on its way. Destroy
+its cargo flights and the airbases near a SAM belt, and those sites go quiet.
 
 Your rearmost airfield is the **production base** (an amber factory on the maps). It makes every
 munition, the complex ones slowly (a few Harpoons or CBU-105s an hour, a dozen GBU-12s, 3000 rounds

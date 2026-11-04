@@ -25,6 +25,12 @@ pub const GUN_MAGAZINE: i32 = 1200;
 pub const ZSU_ROUNDS: i32 = 8;
 pub const S60_ROUNDS: i32 = 4;
 
+/// A long range SAM's missile (SA-2, SA-5, SA-10, SA-12, SA-N-6, SA-21): with magazines, a
+/// site holds its fire at an aircraft another long range missile is already on its way to.
+pub fn long_range_sam(spec: i32) -> bool {
+    matches!(spec, 1 | 2 | 4 | 6 | 10 | 41)
+}
+
 /// What a campaign aircraft brought back when it landed: its missiles left, and its ground
 /// weapons not fired.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -227,6 +233,21 @@ impl Sim {
             .is_none_or(|c| c.site_rounds.get(i).is_none_or(|&n| n > 0))
     }
 
+    /// Salvo discipline (with magazines): a long range site's missile `spec` holds its fire at
+    /// the active pilot while another site's long range missile is on its way to him.
+    pub(crate) fn salvo_held(&self, spec: i32, site: usize) -> bool {
+        self.campaign.as_ref().is_some_and(|c| c.magazines)
+            && long_range_sam(spec)
+            && (0..crate::ENEMY_SLOTS).any(|k| {
+                let p = &self.proj[k];
+                p.ttl > 0
+                    && self.proj_pilot[k] == self.pl.id
+                    && p.launcher >= 0
+                    && p.launcher as usize != site
+                    && long_range_sam(p.spec)
+            })
+    }
+
     /// Enemy SAM site `i` fired a missile.
     pub(crate) fn site_fired(&mut self, i: usize) {
         if let Some(c) = self.campaign.as_mut().filter(|c| c.magazines)
@@ -255,12 +276,16 @@ impl Sim {
 
     /// The enemy SAM sites and guns whose magazines are not full.
     pub fn magazine_needs(&self) -> Vec<MagazineNeed> {
+        self.magazines().into_iter().filter(|m| m.missing > 0).collect()
+    }
+
+    /// Every enemy SAM site and gun with a magazine (`missing` 0 when it is full).
+    pub fn magazines(&self) -> Vec<MagazineNeed> {
         let Some(c) = self.campaign.as_ref().filter(|c| c.magazines) else { return Vec::new() };
         let mut out = Vec::new();
         for (i, &n) in c.site_rounds.iter().enumerate().take(self.ground_units) {
             let o = self.objects[i];
-            if n >= SITE_MAGAZINE
-                || o.unit_type == 0
+            if o.unit_type == 0
                 || o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL | oflags::SHIP)
                     != 0
             {
@@ -272,13 +297,12 @@ impl Sim {
                 x: o.x,
                 y: o.y,
                 missile: self.site_missile(o.unit_type),
-                missing: SITE_MAGAZINE - n,
+                missing: (SITE_MAGAZINE - n).max(0),
             });
         }
         for (k, &n) in c.gun_rounds.iter().enumerate() {
             let Some(u) = self.units.get(k) else { continue };
-            if n >= GUN_MAGAZINE
-                || u.destroyed
+            if u.destroyed
                 || c.aaa_blue.get(k).copied().unwrap_or(false)
                 || !matches!(u.kind, GroundKind::Zsu | GroundKind::S60)
             {
@@ -290,7 +314,7 @@ impl Sim {
                 x: u.x,
                 y: u.y,
                 missile: 0,
-                missing: GUN_MAGAZINE - n,
+                missing: (GUN_MAGAZINE - n).max(0),
             });
         }
         out

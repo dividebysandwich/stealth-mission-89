@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 
-use stealth_campaign::tuning::{CARGO_LAND_RADIUS, MAGAZINE_REFILL_EVERY};
+use stealth_campaign::tuning::{CARGO_LAND_RADIUS, MAGAZINE_REFILL_EVERY, MAGAZINE_SUPPLY_RANGE};
 use stealth_campaign::{Munition, ObjectId, PlayerId, Side, munition_spec as spec};
 use stealth_i18n::{Text, text};
 use stealth_sim::Sim;
@@ -189,13 +189,50 @@ impl Host {
             return;
         }
         self.magazine_timer = 0.0;
+        self.count_site_demand(sim);
+        let bases = self.state.bases(Side::Red);
         for need in sim.magazine_needs() {
-            let Some(base) = self.state.nearest_base(Side::Red, need.x, need.y) else { continue };
             let m = if need.site { Munition::sam(need.missile) } else { Munition::AaaRounds };
-            let n = self.state.draw(base, m, need.missing as u32);
-            if n > 0 {
-                sim.reload_magazine(need.site, need.index, n as i32);
+            // The bases in reach with some, nearest first (the nearest one at least).
+            let mut near: Vec<(i32, ObjectId)> = bases
+                .iter()
+                .filter_map(|&b| {
+                    let s = self.state.site(b)?;
+                    Some((stealth_campaign::dist(s.x - need.x, s.y - need.y), b))
+                })
+                .collect();
+            near.sort_unstable();
+            let mut missing = need.missing as u32;
+            for (k, &(d, b)) in near.iter().enumerate() {
+                if missing == 0 || (k > 0 && d > MAGAZINE_SUPPLY_RANGE) {
+                    break;
+                }
+                let n = self.state.draw(b, m, missing);
+                if n > 0 {
+                    sim.reload_magazine(need.site, need.index, n as i32);
+                    missing -= n;
+                }
             }
+        }
+    }
+
+    /// Counts the enemy's SAM sites (by class) and guns each of its bases supplies (the
+    /// nearest): what their stocks are sized for.
+    pub(crate) fn count_site_demand(&mut self, sim: &Sim) {
+        let mut demand: BTreeMap<ObjectId, [u32; 4]> = BTreeMap::new();
+        for b in self.state.bases(Side::Red) {
+            demand.insert(b, [0; 4]);
+        }
+        for u in sim.magazines() {
+            let m = if u.site { Munition::sam(u.missile) } else { Munition::AaaRounds };
+            let (Some(k), Some(b)) = (m.site_fed(), self.state.nearest_base(Side::Red, u.x, u.y))
+            else {
+                continue;
+            };
+            demand.entry(b).or_default()[k] += 1;
+        }
+        if !demand.is_empty() && demand != self.state.site_demand {
+            self.state.site_demand = demand;
         }
     }
 }

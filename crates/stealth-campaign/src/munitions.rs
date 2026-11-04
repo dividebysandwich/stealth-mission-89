@@ -249,6 +249,33 @@ impl Munition {
         }
     }
 
+    /// What the enemy's SAM sites (by class) and guns fire: their index in a base's
+    /// [`CampaignState::site_demand`] (None for the aircraft's munitions).
+    pub fn site_fed(self) -> Option<usize> {
+        match self {
+            Munition::SamLong => Some(0),
+            Munition::SamMedium => Some(1),
+            Munition::SamShort => Some(2),
+            Munition::AaaRounds => Some(3),
+            _ => None,
+        }
+    }
+
+    /// A base's stock for each site (gun) it supplies, and what the production base makes an
+    /// hour for each site (gun) of the theater.
+    fn per_site(self) -> f64 {
+        if self == Munition::AaaRounds { AAA_STOCK_PER_GUN } else { SAM_STOCK_PER_SITE }
+    }
+
+    fn per_site_hour(self) -> f64 {
+        match self {
+            Munition::SamLong => SAM_LONG_PER_SITE_HOUR,
+            Munition::SamMedium => SAM_MEDIUM_PER_SITE_HOUR,
+            Munition::SamShort => SAM_SHORT_PER_SITE_HOUR,
+            _ => AAA_PER_GUN_HOUR,
+        }
+    }
+
     /// Counted in rounds (shown without the "missiles" of the others).
     pub fn rounds(self) -> bool {
         matches!(self, Munition::GepardRounds | Munition::AaaRounds)
@@ -360,6 +387,50 @@ impl CampaignState {
         self.stocks.get(&base)
     }
 
+    /// A base's full stock of `m`: for the munitions of the enemy's air defence, enough for the
+    /// sites and guns it supplies (none without any), once the host has counted them.
+    pub fn full_stock(&self, base: ObjectId, m: Munition) -> f64 {
+        match m.site_fed() {
+            Some(k) if !self.site_demand.is_empty() => {
+                self.site_demand.get(&base).map_or(0, |d| d[k]) as f64 * m.per_site()
+            }
+            _ => m.full(),
+        }
+    }
+
+    /// The sites (guns) of a class in the whole theater (None: not counted yet).
+    fn theater_sites(&self, k: usize) -> Option<u32> {
+        (!self.site_demand.is_empty()).then(|| self.site_demand.values().map(|d| d[k]).sum())
+    }
+
+    /// What the production base makes of `m` an hour: for the air defence's munitions as much
+    /// as the theater's sites need.
+    pub fn production_rate(&self, m: Munition) -> f64 {
+        match m.site_fed().and_then(|k| self.theater_sites(k)) {
+            Some(n) => n as f64 * m.per_site_hour(),
+            None => m.per_hour(),
+        }
+    }
+
+    /// The most the production base keeps of `m`: `PRODUCTION_CAP` full stocks, or the whole
+    /// theater's stock of the air defence's munitions.
+    pub fn production_cap(&self, m: Munition) -> f64 {
+        match m.site_fed().and_then(|k| self.theater_sites(k)) {
+            Some(n) => (n as f64 * m.per_site()).max(m.per_site()),
+            None => m.full() * PRODUCTION_CAP,
+        }
+    }
+
+    /// The munitions a base of `side` is out of (of those it keeps).
+    pub fn out_of(&self, base: ObjectId, side: Side) -> Vec<Munition> {
+        let Some(s) = self.stocks.get(&base) else { return Vec::new() };
+        Munition::of_side(side)
+            .iter()
+            .copied()
+            .filter(|&m| s.count(m) == 0 && self.full_stock(base, m) >= 1.0)
+            .collect()
+    }
+
     /// How many of `m` base `base` has (u32::MAX: unlimited).
     pub fn available(&self, base: ObjectId, m: Munition) -> u32 {
         self.stock(base).map_or(u32::MAX, |s| s.count(m))
@@ -459,8 +530,13 @@ impl CampaignState {
             match self.stocks.get_mut(&base) {
                 None => {
                     // The war's first tick: every airfield fully stocked.
-                    let s = if start { Stock::full(side) } else { Stock::default() };
-                    self.stocks.insert(base, Stock { side: Some(side), ..s });
+                    let mut s = Stock { side: Some(side), ..Stock::default() };
+                    if start {
+                        for &m in Munition::of_side(side) {
+                            s.counts.insert(m, self.full_stock(base, m));
+                        }
+                    }
+                    self.stocks.insert(base, s);
                 }
                 Some(s) if s.side != Some(side) => {
                     *s = Stock { side: Some(side), ..Stock::default() }
@@ -497,12 +573,15 @@ impl CampaignState {
             if !self.site(b).is_some_and(Site::alive) {
                 continue;
             }
+            let rates: Vec<(Munition, f64, f64)> = Munition::of_side(side)
+                .iter()
+                .map(|&m| (m, self.production_rate(m), self.production_cap(m)))
+                .collect();
             let Some(s) = self.stocks.get_mut(&b) else { continue };
-            for &m in Munition::of_side(side) {
-                let cap = m.full() * PRODUCTION_CAP;
+            for (m, rate, cap) in rates {
                 let c = s.counts.entry(m).or_insert(0.0);
                 if *c < cap {
-                    *c = (*c + m.per_hour() * dt / 3600.0).min(cap);
+                    *c = (*c + rate * dt / 3600.0).min(cap);
                 }
             }
         }
@@ -524,24 +603,25 @@ impl CampaignState {
                 continue;
             }
             let Some(s) = self.stocks.get(&base) else { continue };
-            if s.empty(side).is_empty() {
+            if self.out_of(base, side).is_empty() {
                 continue;
             }
-            let have: Vec<(Munition, u32)> =
-                Munition::of_side(side).iter().map(|&m| (m, s.count(m))).collect();
+            let have: Vec<(Munition, u32, f64)> = Munition::of_side(side)
+                .iter()
+                .map(|&m| (m, s.count(m), self.full_stock(base, m)))
+                .collect();
             let Some(pool) = self.stocks.get_mut(&from) else { continue };
             // Worth the flight: a quarter of a full stock at least of something it is out of
             // (else it waits for the production base to make more).
-            let worth = have.iter().any(|&(m, n)| {
-                n == 0 && pool.count(m) as f64 >= (m.full() * CARGO_SHARE / 2.0).max(1.0)
+            let worth = have.iter().any(|&(m, n, full)| {
+                n == 0 && full >= 1.0 && pool.count(m) as f64 >= (full * CARGO_SHARE / 2.0).max(1.0)
             });
             if !worth {
                 continue;
             }
             let mut load = Vec::new();
-            for (m, n) in have {
-                let want =
-                    ((m.full() * CARGO_SHARE) as u32).min((m.full() as u32).saturating_sub(n));
+            for (m, n, full) in have {
+                let want = ((full * CARGO_SHARE) as u32).min((full as u32).saturating_sub(n));
                 let got = pool.take(m, want);
                 if got > 0 {
                     load.push((m, got));
@@ -700,7 +780,7 @@ impl CampaignState {
     pub fn short_bases(&self, side: Side) -> Vec<ObjectId> {
         self.stocks
             .iter()
-            .filter(|(_, s)| s.side == Some(side) && !s.empty(side).is_empty())
+            .filter(|(b, s)| s.side == Some(side) && !self.out_of(**b, side).is_empty())
             .map(|(&b, _)| b)
             .collect()
     }

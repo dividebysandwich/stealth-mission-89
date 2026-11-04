@@ -204,6 +204,7 @@ impl Host {
         if self.state.munitions_on() {
             sim.enable_magazines();
             sim.restore_site_magazines(&self.state.site_magazines);
+            self.count_site_demand(sim);
         }
         sim.record_shells(true);
         let events = self.state.after_load();

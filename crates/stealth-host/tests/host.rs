@@ -708,6 +708,9 @@ fn a_cargo_aircraft_flies_munitions_from_the_production_base() {
             dist(s.x - ps.x, s.y - ps.y)
         })
         .unwrap();
+    // The enemy's air defence was counted: its stocks are sized for it.
+    let red: u32 = host.state.site_demand.values().map(|d| d[0] + d[1] + d[2]).sum();
+    assert!(red > 0, "{:?}", host.state.site_demand);
     let n = host.state.available(to, Munition::Pac3);
     host.state.draw(to, Munition::Pac3, n);
     let mut tag = None;

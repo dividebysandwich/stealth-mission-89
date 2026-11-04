@@ -3589,3 +3589,25 @@ fn an_empty_base_falls_back_to_the_next_munition() {
     let mut plain = campaign("central_europe", 3);
     assert_eq!(plain.draw(b, Munition::Aim120, 1000), 1000);
 }
+
+#[test]
+fn the_enemy_stocks_sam_missiles_where_its_sites_need_them() {
+    let mut c = campaign("central_europe", 3);
+    c.rules = Some(CampaignRules::default());
+    let reds: Vec<ObjectId> = c.bases(Side::Red);
+    let (a, b) = (reds[0], reds[1]);
+    // `a` supplies two long range sites and a gun, `b` nothing.
+    c.site_demand.insert(a, [2, 0, 0, 1]);
+    c.site_demand.insert(b, [0; 4]);
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.full_stock(a, Munition::SamLong), 2.0 * tuning::SAM_STOCK_PER_SITE);
+    assert_eq!(c.available(a, Munition::SamLong), 16);
+    assert_eq!(c.available(b, Munition::SamLong), 0);
+    // A base without sites is not out of their missiles; one with them is when they are gone.
+    assert!(c.out_of(b, Side::Red).is_empty());
+    run_out(&mut c, a, Munition::SamLong);
+    assert_eq!(c.out_of(a, Side::Red), vec![Munition::SamLong]);
+    // The production base makes enough for the theater's sites.
+    assert_eq!(c.production_rate(Munition::SamLong), 2.0 * tuning::SAM_LONG_PER_SITE_HOUR);
+    assert_eq!(c.production_rate(Munition::Aa11), Munition::Aa11.per_hour());
+}
