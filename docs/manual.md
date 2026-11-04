@@ -2522,7 +2522,7 @@ air-launched ballistic missile over Kyiv, the first known interception of the ty
 
 | Site | Cargo loads | Armament |
 |---|---|---|
-| **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 2 km. 640 rounds ready, 640 in stock. |
+| **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 8 km. 640 rounds ready, 640 in stock. |
 | **Patriot** | 3 | A radar with launchers of four missiles each, out to 80 km. 8 missiles in stock. |
 | **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (10.4). |
 
@@ -2582,7 +2582,7 @@ guidance mode and the battery's missiles in the air.</li>
 
 ![The Gepard console](images/gepard_console.png)
 
-**Gepard.** It fires bursts of airburst rounds out to 2 km. Without a lock the stick slews the
+**Gepard.** It fires bursts of airburst rounds out to 8 km. Without a lock the stick slews the
 turret by hand and the camera looks along the guns, marking each aircraft in reach with its
 lead. **RLD1** refills the guns from the stock.
 

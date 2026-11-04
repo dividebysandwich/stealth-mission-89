@@ -127,7 +127,7 @@ impl GroundKind {
             GroundKind::Zsu => (970.0, 2500.0, 2000.0),
             GroundKind::S60 => (1000.0, 6000.0, 4500.0),
             GroundKind::Manpads => (0.0, 5000.0, 3500.0),
-            GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+            GroundKind::Gepard => (1175.0, 8000.0, 5000.0),
             _ => (0.0, 0.0, 0.0),
         }
     }

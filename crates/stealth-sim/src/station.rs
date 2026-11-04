@@ -51,14 +51,14 @@ pub const BURST: i32 = 25;
 const BURST_SECONDS: f64 = 1.4;
 /// A Gepard's programmed rounds: muzzle velocity (m/s), farthest burst point (m).
 pub const GEPARD_V0: f64 = 1175.0;
-pub const GEPARD_REACH: f64 = 2000.0;
+pub const GEPARD_REACH: f64 = 8000.0;
 /// A Gepard turret's fastest slew by hand (rad/s): traverse, elevation; its elevation limits.
 pub const GEPARD_TRAVERSE: f32 = 1.0;
 pub const GEPARD_ELEVATE: f32 = 0.8;
 pub const GEPARD_EL: (f32, f32) = (-0.08, 1.48);
 /// Hand-fired rounds self-destruct this far out (m); a round passes close to an aircraft no
 /// more than this far off its line of fire (rad).
-pub const MANUAL_RANGE: f64 = 4000.0;
+pub const MANUAL_RANGE: f64 = 8000.0;
 const MANUAL_CONE: f64 = 0.05;
 /// An airburst round's fragments kill within this (m) with this chance (per mille).
 const AHEAD_RADIUS: f64 = 8.0;
