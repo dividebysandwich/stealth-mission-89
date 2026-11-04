@@ -74,7 +74,7 @@ unsafe impl GraphicsExt for openxr::Vulkan {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format,
-                    usage: TextureUses::COLOR_TARGET | TextureUses::COPY_DST,
+                    usage: TextureUses::COLOR_TARGET | TextureUses::COPY_DST | TextureUses::RESOURCE,
                     memory_flags: wgpu_hal::MemoryFlags::empty(),
                     view_formats: vec![],
                 },
@@ -96,7 +96,9 @@ unsafe impl GraphicsExt for openxr::Vulkan {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::COPY_DST
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
                     view_formats: &[],
                 },
             )

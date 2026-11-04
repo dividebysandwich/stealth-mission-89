@@ -127,7 +127,8 @@ windows-sys = { version = "0.61", features = [
 [patch.crates-io]
 winit = { path = "vendor/winit" }
 # bevy_mod_openxr 0.6.0 whose frame loop skips a frame the runtime refuses (it panicked with
-# ERROR_CALL_ORDER_INVALID, e.g. under SteamVR while another application covered the window).
+# ERROR_CALL_ORDER_INVALID, e.g. under SteamVR while another application covered the window),
+# and whose swapchain images can be sampled (the desktop mirror, src/xr_mirror.rs).
 bevy_mod_openxr = { path = "vendor/bevy_mod_openxr" }
 
 [build-dependencies]
