@@ -47,6 +47,9 @@ impl CampaignState {
             Objective::Awacs { tag } => {
                 self.awacs.as_ref().filter(|a| a.tag == tag).map(|a| Due::At(a.until))
             }
+            Objective::Cargo { tag } => {
+                Some(self.cargo_run(tag)?.launch_at().map_or(Due::Now, Due::At))
+            }
             _ => None,
         }
     }
@@ -119,7 +122,13 @@ impl CampaignState {
 
 /// An urgent mission the AWACS diverts a player in the air to.
 pub fn divertible(o: &Objective) -> bool {
-    matches!(o, Objective::Defend { .. } | Objective::Intercept { .. } | Objective::Rescue { .. })
+    matches!(
+        o,
+        Objective::Defend { .. }
+            | Objective::Intercept { .. }
+            | Objective::Rescue { .. }
+            | Objective::Cargo { .. }
+    )
 }
 
 impl CampaignState {

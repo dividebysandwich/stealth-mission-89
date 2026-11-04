@@ -461,8 +461,10 @@ impl Sim {
                     if self.proj[k].ttl == 0
                         && self.missile(self.site_missile(o.unit_type)).lock_range as i32 > range
                         && self.may_launch(self.site_missile(o.unit_type), (o.x, o.y, 0))
+                        && self.site_ready(i)
                     {
                         self.launch_sam(k, i, brg);
+                        self.site_fired(i);
                     }
                 }
             }

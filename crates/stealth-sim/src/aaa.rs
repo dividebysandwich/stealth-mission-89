@@ -471,9 +471,16 @@ impl Sim {
         let mut fired: Vec<Shell> = Vec::new();
         let mut manpads: Vec<usize> = Vec::new();
         let mut rwr: Vec<(usize, RwrTone)> = Vec::new();
+        // A campaign's enemy guns fire what their magazines hold.
+        let dry: Vec<bool> = (0..units.len()).map(|k| !self.gun_ready(k)).collect();
+        let mut spent = vec![0; units.len()];
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
             if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == GroundKind::Gepard {
+                continue;
+            }
+            if dry[i] && matches!(u.kind, GroundKind::Zsu | GroundKind::S60) {
+                u.burst = 0;
                 continue;
             }
             u.cooldown = (u.cooldown - 1).max(0);
@@ -558,6 +565,7 @@ impl Sim {
                             let a = az + Self::aaa_gauss(&mut rng) * sigma;
                             let e = el + Self::aaa_gauss(&mut rng) * sigma;
                             let muzzle = add(from, [0.0, 0.0, 1.5]);
+                            spent[i] += crate::munitions::ZSU_ROUNDS;
                             fired.push(Shell {
                                 pos: muzzle,
                                 vel: mul(direction(a, e), v0),
@@ -576,6 +584,7 @@ impl Sim {
                         let e = el + Self::aaa_gauss(&mut rng) * sigma;
                         // The fuse is set for the predicted time, a little off.
                         let fuse = t * (1.0 + Self::aaa_gauss(&mut rng) * 0.03);
+                        spent[i] += crate::munitions::S60_ROUNDS;
                         fired.push(Shell {
                             pos: add(from, [0.0, 0.0, 1.5]),
                             vel: mul(direction(a, e), v0),
@@ -596,6 +605,9 @@ impl Sim {
             }
         }
         self.units = units;
+        for (k, n) in spent.into_iter().enumerate().filter(|&(_, n)| n > 0) {
+            self.gun_fired(k, n);
+        }
         for (k, tone) in rwr {
             self.activate(k);
             self.emit(SimEvent::Rwr(tone));

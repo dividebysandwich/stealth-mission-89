@@ -211,6 +211,7 @@ pub fn ai_task(target: AiTarget) -> AiTask {
         AiTarget::Ground { x, y } => AiTask::Ground(x, y),
         AiTarget::Recon { object } => AiTask::Recon(object as usize),
         AiTarget::Patrol { x, y } => AiTask::Patrol(x, y),
+        AiTarget::Hunt { tag, x, y } => AiTask::Hunt(tag, x, y),
     }
 }
 
@@ -234,7 +235,9 @@ pub fn ai_target_point(state: &CampaignState, target: AiTarget) -> (i32, i32) {
         AiTarget::Object(o) | AiTarget::Recon { object: o } => {
             state.site(o).map_or((0, 0), |s| (s.x, s.y))
         }
-        AiTarget::Ground { x, y } | AiTarget::Patrol { x, y } => (x, y),
+        AiTarget::Ground { x, y } | AiTarget::Patrol { x, y } | AiTarget::Hunt { x, y, .. } => {
+            (x, y)
+        }
     }
 }
 

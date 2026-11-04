@@ -289,8 +289,7 @@ impl Server {
                 return Vec::new();
             }
             (ToServer::Rearm { stores }, Some(p)) => {
-                host.rearm(sim, p, &stores);
-                Ok(Vec::new())
+                host.rearm(sim, p, &stores).map(|_| Vec::new())
             }
             (ToServer::Bye, _) => {
                 self.net.close(conn, "Left");

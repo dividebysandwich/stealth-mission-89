@@ -24,6 +24,7 @@
 
 mod air_defence;
 mod designate;
+mod logistics;
 mod menu;
 mod ops;
 pub(crate) mod picture;
@@ -1120,10 +1121,12 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Retask { offer } => host.retask(sim, me, offer),
             Action::Rearm { loadout } => {
-                host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
-                s.msgs.show(tf!("hud-rearmed"));
-                c.landed = None;
-                Ok(Vec::new())
+                let stores = Stores { stations: loadout.stations(), select: 0 };
+                host.rearm(sim, me, &stores).map(|_| {
+                    s.msgs.show(tf!("hud-rearmed"));
+                    c.landed = None;
+                    Vec::new()
+                })
             }
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),

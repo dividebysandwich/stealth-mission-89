@@ -197,6 +197,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -344,6 +346,32 @@ impl Sim {
                 && self.aaa_blue(k)
                 && ((east - c.0) as f64).hypot((south - c.1) as f64) * M_PER_WU <= DROP_RADIUS
         })
+    }
+
+    /// Campaign: missiles or rounds still missing from AAA unit `k`'s stockpile (a Patriot
+    /// radar's battery's, a Gepard's; 0 for anything else).
+    pub fn stock_missing(&self, k: usize) -> i32 {
+        let Some(kind) = self.units.get(k).map(|a| a.kind) else { return 0 };
+        if !matches!(kind, crate::aaa::GroundKind::PatriotRadar | crate::aaa::GroundKind::Gepard) {
+            return 0;
+        }
+        (initial_stock(kind) - self.stockpile(k)).max(0)
+    }
+
+    /// Campaign: a load delivered to AAA unit `k` with only `n` of its missiles or rounds (what
+    /// its base had): its stockpile gets those, its drones are full again.
+    pub fn restock_with(&mut self, k: usize, n: i32) {
+        if self.campaign.is_none() {
+            return;
+        }
+        let Some(kind) = self.units.get(k).map(|a| a.kind) else { return };
+        if !matches!(kind, crate::aaa::GroundKind::PatriotRadar | crate::aaa::GroundKind::Gepard) {
+            self.restock(k);
+            return;
+        }
+        self.defence_sizes();
+        let d = &mut self.campaign.as_mut().expect("campaign").defence;
+        d.stock[k] = (d.stock[k] + n.max(0)).min(initial_stock(kind).max(d.stock[k]));
     }
 
     /// Campaign: a load delivered to AAA unit `k` (a Patriot radar's battery, or a Gepard)

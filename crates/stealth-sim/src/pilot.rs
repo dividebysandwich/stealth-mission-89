@@ -406,6 +406,12 @@ impl Sim {
     }
 
     /// Pilot `id`'s view of the world (position, attitude) while he is in it.
+    /// Pilot `id`'s stores now (weapon index, rounds left).
+    pub fn pilot_bays(&self, id: u8) -> Vec<(i32, i32)> {
+        let p = self.pilot_ref(id as usize);
+        if p.id == id { p.bays.clone() } else { Vec::new() }
+    }
+
     pub fn pilot_view(&self, id: u8) -> Option<PlayerView> {
         let p = self.pilot_ref(id as usize);
         (p.id == id && !p.absent).then_some(p.p)

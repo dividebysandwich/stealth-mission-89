@@ -409,6 +409,11 @@ pub enum Objective {
         site: u32,
         leg: u8,
     },
+    /// Shoot down the other side's cargo aircraft (campaign tag) before it lands: its load of
+    /// munitions is lost.
+    Cargo {
+        tag: u32,
+    },
 }
 
 /// A mission on the board.
@@ -1021,6 +1026,20 @@ pub struct CampaignState {
     /// after it.
     #[serde(default)]
     pub runway_at: [f64; 2],
+    /// Each airfield's munitions, each side's production base (blue, red), the cargo flights
+    /// scheduled or in the air, and the cargo aircraft shot down (tags).
+    #[serde(default)]
+    pub stocks: std::collections::BTreeMap<ObjectId, crate::Stock>,
+    #[serde(default)]
+    pub production: [Option<ObjectId>; 2],
+    #[serde(default)]
+    pub cargo_runs: Vec<crate::CargoRun>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cargo_lost: Vec<u32>,
+    /// The enemy SAM sites' magazines not full (object, missiles; the simulation's, kept over
+    /// a save).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub site_magazines: Vec<(ObjectId, i32)>,
     /// Friendly offers a player asked the AI to fly at once (out of the queue, on its next
     /// tick).
     #[serde(skip)]
@@ -1538,6 +1557,11 @@ impl CampaignState {
             ai_missions: Vec::new(),
             red_board: Vec::new(),
             runway_at: [0.0; 2],
+            stocks: Default::default(),
+            production: [None; 2],
+            cargo_runs: Vec::new(),
+            cargo_lost: Vec::new(),
+            site_magazines: Vec::new(),
             ai_rush: Vec::new(),
             terrain: Terrain::default(),
         };

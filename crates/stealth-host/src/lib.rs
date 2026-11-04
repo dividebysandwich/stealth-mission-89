@@ -6,6 +6,7 @@ pub mod assets;
 pub mod cargo;
 pub mod glue;
 pub mod host;
+pub mod munitions;
 pub mod rules;
 pub mod save;
 pub mod sky;

@@ -33,7 +33,7 @@ pub enum Tab {
     Board,
     Map,
     AirDefence,
-    Forces,
+    Logistics,
     Players,
     Debrief,
     Log,
@@ -61,6 +61,8 @@ pub struct OpsUi {
     /// center), and `--campaign-designate` was done.
     pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
+    /// The airbase (or the forces) picked on the LOGISTICS tab.
+    pub(super) logistics: Option<super::logistics::Pick>,
     /// The new site whose FAST-TRACK was clicked, awaiting confirmation.
     pub(super) fast_track: Option<u32>,
     /// `--campaign-take` was done, `--campaign-man`, `--campaign-geran`.
@@ -222,7 +224,7 @@ pub fn block_input(
     }
 }
 
-/// Test aids: `--campaign-tab board|map|airdefense|forces|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
+/// Test aids: `--campaign-tab board|map|airdefense|logistics|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
 /// takes the n-th mission of the board (0: the first) once the campaign is up.
 pub fn test_tab() -> Option<Tab> {
     let args: Vec<String> = std::env::args().collect();
@@ -230,7 +232,7 @@ pub fn test_tab() -> Option<Tab> {
     Some(match t.as_str() {
         "map" => Tab::Map,
         "airdefense" => Tab::AirDefence,
-        "forces" => Tab::Forces,
+        "logistics" | "forces" => Tab::Logistics,
         "debrief" => Tab::Debrief,
         "log" => Tab::Log,
         "players" => Tab::Players,
@@ -468,7 +470,7 @@ pub fn ops_ui(
                             (Tab::Board, t!("ops-tab-missions")),
                             (Tab::Map, t!("ops-tab-map")),
                             (Tab::AirDefence, t!("ops-tab-air-defence")),
-                            (Tab::Forces, t!("ops-tab-forces")),
+                            (Tab::Logistics, t!("ops-tab-logistics")),
                             (Tab::Players, t!("ops-tab-players")),
                             (Tab::Debrief, t!("ops-tab-debrief")),
                             (Tab::Log, t!("ops-tab-log")),
@@ -519,7 +521,7 @@ pub fn ops_ui(
                         scenery.as_deref(),
                         size,
                     ),
-                    Tab::Forces => forces(ui, c),
+                    Tab::Logistics => super::logistics::tab(ui, c, size),
                     Tab::Players => players(ui, c, &mut voice),
                     Tab::Debrief => debrief(ui, c),
                     Tab::Log => log(ui, c),
@@ -1171,7 +1173,7 @@ fn supply_line(ui: &mut egui::Ui, c: &ActiveCampaign) {
 
 /// The two sides' means of war side by side: materiel, income and where it comes from, the
 /// AI's aircraft, where the materiel went, and what everything costs.
-fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
+pub(super) fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
     use stealth_campaign::tuning::*;
     let st = c.state();
     let sides = [
@@ -1342,7 +1344,11 @@ fn war_map(
                 let r = map_draw::halo(10.0) * k;
                 painter.circle_stroke(c0, r, egui::Stroke::new(1.0, BRIGHT));
             }
-            place_tip(&mut tips, c0, p, st.clock, true);
+            let production = super::logistics::is_production(st, p);
+            if production {
+                super::logistics::production_mark(&painter, c0, k);
+            }
+            place_tip(&mut tips, c0, p, st.clock, true, production);
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
                 painter.text(
                     c0 + egui::vec2(7.0, -7.0) * k,
@@ -1538,6 +1544,7 @@ pub(super) fn place_tip(
     p: &stealth_campaign::Place,
     now: f64,
     filled: bool,
+    production: bool,
 ) {
     let (owner, airfield) = (affiliation(p.owner), p.airfield.is_some());
     let (side, colour) = map_draw::side(owner);
@@ -1546,6 +1553,9 @@ pub(super) fn place_tip(
     tip.symbol(move |p, c| map_draw::place_symbol(p, c, owner, airfield, filled));
     if p.intel(now) {
         tip.line(t!("pic-reconned"));
+    }
+    if production {
+        tip.line(t!("mt-production-base"));
     }
 }
 
@@ -1556,6 +1566,9 @@ fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
 
 /// The places' legend lines, with their layers' checkboxes.
 fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
+    layers.legend(ui, Layer::Airfields, t!("mt-production-base"), |p, c0| {
+        super::logistics::production_mark(p, c0 + egui::vec2(11.0, 7.0), 1.0);
+    });
     if map_draw::app6() {
         use crate::app6::Affiliation::{Friend, Hostile};
         for (layer, text, airfield) in [
@@ -1912,6 +1925,15 @@ fn briefing(
     }
     let sortie = preview(&o, b.base, b.aircraft);
     let m = sortie_mission(&c.mission, c.state(), &sortie);
+    // What the base has of the weapons that run out.
+    let stock: Vec<(u8, u32)> = (0..crate::loadout::WEAPONS.len() as u8)
+        .filter_map(|w| {
+            let m = stealth_campaign::Munition::of_weapon(w as i32)?;
+            let n = c.state().available(b.base, m);
+            (n != u32::MAX).then_some((w, n))
+        })
+        .collect();
+    let stock = |w: u8| stock.iter().find(|s| s.0 == w).map(|s| s.1);
     let mut back = false;
     let mut take_off = false;
     let mut edit = None;
@@ -2010,6 +2032,7 @@ fn briefing(
                                 &mut b.loadout,
                                 &m,
                                 (height - below).max(TAB_LEAST - LOADOUT_BUTTONS),
+                                &stock,
                             );
                             ui.horizontal(|ui| {
                                 if ui
@@ -2140,7 +2163,11 @@ fn route_editor(
                 egui::FontId::monospace(11.0),
                 col,
             );
-            place_tip(tips, c0, p, st.clock, false);
+            let production = super::logistics::is_production(st, p);
+            if production {
+                super::logistics::production_mark(painter, c0, 1.0);
+            }
+            place_tip(tips, c0, p, st.clock, false, production);
         }
         super::picture::draw(painter, view, &pic, layers, tips, 1.0);
     };

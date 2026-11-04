@@ -2171,7 +2171,7 @@ hours) and, in multiplayer, the enemy's tempo (11.5).
 | **MISSIONS** | The mission board (9.4), the selected mission's details, and below the board the insertions and raids under way with their countdowns, the enemy AWACS's time left and the pilots down. |
 | **WAR MAP** | The theater (below). |
 | **AIR DEFENSE** | Your side's Gepard, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
-| **FORCES** | Both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
+| **LOGISTICS** | Your airbases, the production base first, with what each is out of or low on and the cargo flight coming; the selected base's munitions one by one (the production base's output per hour and the next one's progress); the cargo flights under way (9.14). **Forces and materiel** shows both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
 | **PLAYERS** | The pilots in the campaign, what they do, their sorties, points and rank; the leaderboard of everyone who has flown in it; the campaign's rules. |
 | **DEBRIEF** | The last sortie's result, kills, points, medal and rank, its effect on the war (9.8), and what happened meanwhile. |
 | **LOG** | The war's events, newest first: for example *Armour column leaves Kostiantynivka to take Bakhmut* |
@@ -2184,7 +2184,8 @@ armour columns stay where they were and drive on. The campaign is also saved eve
 ![The war map, with armour columns on their way](images/war_map_armour.png)
 
 **The war map** shows the theater: airfields (squares) and cities (circles) in their side's colour, a
-white ring where you have fresh reconnaissance, the insertion routes, friendly aircraft and
+white ring where you have fresh reconnaissance, your production base (an amber factory beside its
+airfield), the insertion routes, friendly aircraft and
 helicopters, the enemy fighters on radar, the known SAM sites, guns and MANPADS, the **armour**, and
 you. A tank is a filled box, an infantry fighting vehicle (IFV) a crossed box, with a tick showing its
 heading while it drives. Your own columns' remaining route is a faint dashed line with an arrowhead. Your
@@ -2601,6 +2602,37 @@ refilling (RLD).</li>
 
 ## 9.14 Logistics
 
+**Munitions**
+
+Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
+guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
+Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, the Patriots' PAC-3s and the
+Gepards' 35 mm rounds. The war starts with every airbase fully stocked. Your loadout comes out of
+the stock of the base you take off from: the briefing's loadout shows how many each base has
+left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
+stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
+too; when a base is out, they take the next best (AIM-7s for AIM-120s, Mavericks for HARMs) and in
+the end Sidewinders, and strike aircraft drop iron bombs, which means flying right over the target.
+The enemy plays by the same rules, and its SAM sites and guns fire from magazines refilled from
+its nearest airbase: when its bases run dry, its SAM sites go quiet.
+
+Your rearmost airfield is the **production base** (an amber factory on the maps). It makes every
+munition, the complex ones slowly (a few Harpoons or CBU-105s an hour, a dozen GBU-12s, 3000 rounds
+of 35 mm), up to three full stocks. When it is captured, the next airfield in the rear takes over;
+while it is bombed, it makes nothing.
+
+**Cargo flights**
+
+When an airbase runs out of a munition, a **cargo flight** is scheduled: 10 minutes later a C-5
+(the enemy flies An-72s) takes off from the production base with up to half a full stock of each
+munition the base lacks, whatever the production base has made, and lands there. The news and the
+LOGISTICS tab show it coming. If it is shot down, its load is lost and the base waits for the next
+one. The enemy's cargo flights appear on your board as **INTERCEPT** missions (`Intercept cargo flight
+- <base>`, 150 points): shoot the An-72 down before it lands. Its route runs from the enemy's rear
+to its base, so the AI's interceptors wait three quarters of the way along it. The enemy hunts your
+C-5s the same way: its interceptors take off 2 minutes after your cargo flight is scheduled.
+A cargo flight in the air when you save takes off again shortly after you continue, with its load.
+
 UH-60 and CH-47 pilots keep the air defence going: they fly the cargo for new sites and the
 resupplies for existing ones. Both are missions on the board (UH-60 or CH-47, 100 points). If no player takes one,
 an AI helicopter flies it.
@@ -2628,7 +2660,8 @@ can also press **REQUEST RESUPPLY** on the SITE page. It becomes a **RESUPPLY** 
 
 1. Take the mission and fly the UH-60 or the CH-47 to the unit.
 2. Hover within 50 m of it, under 100 ft and slower than 15 kt, for 10 seconds.
-3. The load goes down and the site's stock is full again.
+3. The load goes down and the site's stock is filled from the airfield's munitions (PAC-3s, 35 mm
+   rounds). A site whose airfield has none left waits for the airfield's cargo flight.
 
 After 5 minutes without a player, an AI helicopter flies it from the nearest airfield.
 

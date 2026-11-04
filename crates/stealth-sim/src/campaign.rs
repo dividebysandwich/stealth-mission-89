@@ -109,6 +109,11 @@ const GERAN: usize = 29;
 const HARM: i32 = 24;
 const ROCKETS: i32 = 27;
 const ROCKET_RELEASE: i32 = 0x140;
+/// A strike aircraft out of guided weapons drops free-fall bombs, flying over its target
+/// (map units, ~1 km), with less chance of a hit (per mille).
+const BOMBS: i32 = 30;
+const BOMB_RELEASE: i32 = 0x40;
+const BOMB_PK: i32 = 550;
 /// CAS: rocket passes a flight's aircraft fly, seconds between two (flying out to the side of
 /// its run in, `CAS_EGRESS` from its point, `CAS_EGRESS_TURN` rad round from where it fired; a
 /// helicopter `CAS_EGRESS_HELI`), map units.
@@ -137,6 +142,9 @@ pub enum Role {
     /// Helicopter bringing an air defence unit's stockpile up (`supply`): it flies to the
     /// unit, hovers low beside it, then flies back to its helipad and lands.
     Supply,
+    /// Cargo aircraft: flies from its production base to its goal base (`home`) and lands
+    /// there; it fights nobody.
+    Transport,
     /// A drone command center's drone (`uav.rs` flies it).
     Uav,
     /// Reconnaissance: flies low to its goal, photographs the object there (`strike` until
@@ -210,6 +218,13 @@ pub struct CampaignFlight {
     pub passes: u8,
     #[serde(default)]
     pub pass_wait: i32,
+    /// A fighter after the other side's aircraft with this campaign tag (a cargo flight): its
+    /// goal follows it once it is up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hunt: Option<u32>,
+    /// A strike aircraft out of guided weapons: it drops iron bombs, flying over its target.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub iron: bool,
 }
 
 impl CampaignFlight {
@@ -308,6 +323,16 @@ pub struct CampaignSim {
     /// at them first.
     #[serde(default)]
     pub(crate) cas_units: Vec<(u32, Vec<u16>)>,
+    /// What the aircraft that landed brought back (the host takes it).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) landed: Vec<crate::munitions::LandedLoad>,
+    /// The enemy's SAM sites (per object) and guns (per AAA unit) fire from magazines.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) magazines: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) site_rounds: Vec<i32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) gun_rounds: Vec<i32>,
 }
 
 /// Metres (east, north, up) of a flight unit.
@@ -365,6 +390,10 @@ impl Sim {
             defence: Default::default(),
             ground: Default::default(),
             cas_units: Vec::new(),
+            landed: Vec::new(),
+            magazines: false,
+            site_rounds: Vec::new(),
+            gun_rounds: Vec::new(),
         }));
         self.leave_world();
     }
@@ -1155,6 +1184,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1248,6 +1279,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1324,6 +1357,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1385,6 +1420,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1414,9 +1451,9 @@ impl Sim {
     /// Where a campaign fighter patrols (circling its goal) or a strike aircraft flies to,
     /// None for other aircraft.
     pub(crate) fn campaign_goal(&self, i: usize, u: &FlightUnit) -> Option<(i32, i32)> {
-        let f = self
-            .campaign_flight(i)
-            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
+        let f = self.campaign_flight(i).filter(|f| {
+            !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav | Role::Transport)
+        })?;
         let (gx, gy) = f.goal;
         if f.strike_unit && f.pass_wait > 0 && f.strike.is_some() {
             // Between CAS passes: out to the side of its run in, to turn in again.
@@ -1494,6 +1531,8 @@ impl Sim {
         c.aaa_target.resize(self.units.len(), None);
         c.site_cool.resize(self.objects.len(), 0);
         self.campaign = Some(c);
+        self.magazine_sizes();
+        self.campaign_hunts();
         self.campaign_bookkeeping();
         self.campaign_bombs();
         self.campaign_recon();
@@ -1513,6 +1552,7 @@ impl Sim {
     /// Campaign aircraft shot down or landed: report them and free their slot.
     fn campaign_bookkeeping(&mut self) {
         let mut ev = Vec::new();
+        let mut landed = Vec::new();
         let c = self.campaign.as_mut().expect("campaign");
         for (i, slot) in c.flights.iter_mut().enumerate() {
             let Some(f) = slot.as_mut() else { continue };
@@ -1532,10 +1572,14 @@ impl Sim {
             if u.flags & fflags::EXISTS == 0 || u.flags & fflags::AIRBORNE == 0 || stopped {
                 if !f.reported {
                     ev.push(SimEvent::CampaignFlightLanded { unit: i, tag: f.tag, x: u.x, y: u.y });
+                    landed.push((*f, u.x, u.y));
                 }
                 *u = FlightUnit::default();
                 *slot = None;
             }
+        }
+        for (f, x, y) in landed {
+            self.note_landed(&f, x, y);
         }
         for e in ev {
             self.emit(e);
@@ -1582,7 +1626,9 @@ impl Sim {
                 f.pass_wait -= 1;
                 continue;
             }
-            let (spec, release) = if f.strike_aaa {
+            let (spec, release) = if f.iron {
+                (BOMBS, BOMB_RELEASE)
+            } else if f.strike_aaa {
                 harm
             } else if f.strike_unit {
                 (ROCKETS, ROCKET_RELEASE)
@@ -1619,7 +1665,7 @@ impl Sim {
                 self.flights[i].wp = f.home;
             }
             if let Some(k) = target {
-                shots.push((i, ROCKETS, k, true, f.blue));
+                shots.push((i, if f.iron { BOMBS } else { ROCKETS }, k, true, f.blue));
             }
         }
         for (i, spec, target, aaa, blue) in shots {
@@ -1687,6 +1733,7 @@ impl Sim {
             if o.unit_type == 0
                 || o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
                 || c.site_cool[i] > 0
+                || (c.magazines && c.site_rounds.get(i).is_some_and(|&n| n <= 0))
             {
                 continue;
             }
@@ -1700,6 +1747,11 @@ impl Sim {
                 continue;
             }
             c.site_cool[i] = SITE_RELOAD * fs;
+            if c.magazines
+                && let Some(n) = c.site_rounds.get_mut(i)
+            {
+                *n -= 1;
+            }
             let from = [o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP, 5.0];
             launches.push(self.ai_missile(spec, from, [0.0, 0.0, 1.0], j, false));
         }
@@ -1966,9 +2018,11 @@ impl Sim {
             if u.destroyed || u.kind == GroundKind::Manpads || u.kind.unarmed() {
                 continue;
             }
-            // A Gepard fires what it has (its refill comes from the stockpile).
+            // A Gepard fires what it has (its refill comes from the stockpile), an enemy gun
+            // what its magazine holds.
             let gepard = u.kind == GroundKind::Gepard;
-            if gepard && u.rounds <= 0 {
+            let dry = c.magazines && !gepard && c.gun_rounds.get(k).is_some_and(|&n| n <= 0);
+            if (gepard && u.rounds <= 0) || dry {
                 u.burst = 0;
                 continue;
             }
@@ -2001,6 +2055,12 @@ impl Sim {
             let ttl = if flak { time } else { reach * 1.3 / v0 };
             if gepard {
                 u.rounds = (u.rounds - 2).max(0);
+            } else if c.magazines
+                && let Some(n) = c.gun_rounds.get_mut(k)
+            {
+                let per =
+                    if flak { crate::munitions::S60_ROUNDS } else { crate::munitions::ZSU_ROUNDS };
+                *n = (*n - per).max(0);
             }
             if c.shells.len() < MAX_SHELLS {
                 let shell = Shell {
@@ -2128,7 +2188,8 @@ impl Sim {
                 let step = mul(dir, speed * dt);
                 if crate::aaa::closest(sub(m.pos, at), step) < FUSE {
                     pops.push(metres_map(at));
-                    if rng.random(1000) < GROUND_PK {
+                    let pk = if m.spec == BOMBS { BOMB_PK } else { GROUND_PK };
+                    if rng.random(1000) < pk {
                         ground_hits.push((g, m.ground_aaa));
                     }
                     return false;

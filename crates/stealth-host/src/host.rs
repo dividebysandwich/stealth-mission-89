@@ -88,6 +88,10 @@ pub struct Host {
     leftover: Vec<PilotEvent>,
     /// Places with a Patriot battery placed in the simulation.
     patriots: Vec<PlaceId>,
+    /// Seconds since the enemy's magazines were last refilled.
+    pub(crate) magazine_timer: f64,
+    /// The base each player came to a stop at in his sortie (his stores go back there).
+    landed: Vec<(PlayerId, u16)>,
 }
 
 impl Host {
@@ -128,7 +132,14 @@ impl Host {
             forecast,
             leftover: Vec::new(),
             patriots: Vec::new(),
+            magazine_timer: 0.0,
+            landed: Vec::new(),
         }
+    }
+
+    /// The base a player in a sortie came to a stop at.
+    pub(crate) fn landed_at(&self, player: PlayerId) -> Option<u16> {
+        self.landed.iter().find(|l| l.0 == player).map(|l| l.1)
     }
 
     /// The simulation for this campaign (the host's; a client's mirror is built the same way).
@@ -190,6 +201,10 @@ impl Host {
             })
             .collect();
         sim.restore_stocks(&stocks);
+        if self.state.munitions_on() {
+            sim.enable_magazines();
+            sim.restore_site_magazines(&self.state.site_magazines);
+        }
         sim.record_shells(true);
         let events = self.state.after_load();
         self.apply(sim, events)
@@ -234,19 +249,34 @@ impl Host {
         aircraft: Aircraft,
         stores: Option<Stores>,
     ) -> Result<Vec<HostEvent>, Text> {
+        // His base must have the munitions he loads.
+        let from = base.or_else(|| self.state.board.iter().find(|o| o.id == offer).map(|o| o.base));
+        if let (Some(b), Some(s)) = (from, &stores)
+            && self.state.sortie(player).is_none()
+            && let Some(why) = self.stores_refusal(b, &s.stations)
+        {
+            return Err(why);
+        }
         let events = self.state.apply(player, Command::TakeMission { offer, base, aircraft })?;
         // Off to fly: his console is unmanned.
         sim.leave_station(player.0);
         let out = self.apply(sim, events);
-        self.load_stores(sim, &out, stores);
+        self.load_stores(sim, &out, stores, true);
         Ok(out)
     }
 
-    /// The stores of the sorties started in `out`: `stores`, else the mission's bays.
-    fn load_stores(&self, sim: &mut Sim, out: &[HostEvent], stores: Option<Stores>) {
+    /// The stores of the sorties started in `out`: `stores`, else the mission's bays (out of
+    /// the base's stock when `draw`).
+    fn load_stores(
+        &mut self,
+        sim: &mut Sim,
+        out: &[HostEvent],
+        stores: Option<Stores>,
+        draw: bool,
+    ) {
         for e in out {
             if let HostEvent::SortieStarted { player, sortie, .. } = e {
-                let st = match &stores {
+                let mut st = match &stores {
                     Some(s) => s.clone(),
                     None => {
                         let m = glue::sortie_mission(&self.mission, &self.state, sortie);
@@ -262,6 +292,10 @@ impl Host {
                         }
                     }
                 };
+                self.landed.retain(|l| l.0 != *player);
+                if draw {
+                    self.draw_stores(sortie.base, &mut st.stations);
+                }
                 sim.set_pilot_loadout(player.0, &st.stations, st.select);
             }
         }
@@ -407,7 +441,7 @@ impl Host {
             self.state.apply(player, Command::EndSortie { end: SortieEnd::Aborted }).ok();
             return Err(text!("ce-no-ai-aircraft"));
         }
-        self.load_stores(sim, &out, stores);
+        self.load_stores(sim, &out, stores, false);
         Ok(out)
     }
 
@@ -512,6 +546,10 @@ impl Host {
         let mut events = Vec::new();
         for (k, u) in empty {
             let Some(kind) = glue::defence_kind(u.kind) else { continue };
+            // Nothing at its base to bring: it waits for the base's cargo flight.
+            if !self.can_resupply(sim, k) {
+                continue;
+            }
             events.extend(self.state.order_resupply(k as u32, u.x, u.y, kind));
         }
         events
@@ -538,14 +576,21 @@ impl Host {
         if !stocks.is_empty() && stocks != self.state.defence_stock {
             self.state.defence_stock = stocks;
         }
+        let magazines = sim.site_magazines();
+        if magazines != self.state.site_magazines {
+            self.state.site_magazines = magazines;
+        }
     }
 
-    /// A player landed at a friendly base rearms and refuels.
-    pub fn rearm(&mut self, sim: &mut Sim, player: PlayerId, stores: &Stores) {
+    /// A player landed at a friendly base rearms and refuels (Err: the base is out of a
+    /// munition he loads).
+    pub fn rearm(&mut self, sim: &mut Sim, player: PlayerId, stores: &Stores) -> Result<(), Text> {
+        self.rearm_stock(sim, player, &stores.stations)?;
         sim.rearm_pilot(player.0, &stores.stations);
         sim.set_pilot_loadout(player.0, &stores.stations, stores.select);
         let ev = sim.take_pilot_events();
         self.leftover.extend(ev);
+        Ok(())
     }
 
     /// One frame: `dt` campaign seconds and the events of the simulation's steps since the
@@ -599,6 +644,8 @@ impl Host {
                 SimEvent::PilotDown { x, y } => reports.push(Report::PilotDown { player, x, y }),
                 SimEvent::SortieEnded(end) => ended.push((player, end)),
                 SimEvent::LandedAtBase { object } if self.state.sortie(player).is_some() => {
+                    self.landed.retain(|l| l.0 != player);
+                    self.landed.push((player, object as u16));
                     out.push(HostEvent::Landed { player, base: object })
                 }
                 _ => {}
@@ -610,6 +657,8 @@ impl Host {
             self.spot_timer = 0.0;
             reports.extend(glue::spotted(&self.state, sim));
         }
+        self.return_landed(sim);
+        self.refill_magazines(sim, dt);
         let view = glue::world_view(sim);
         let events = self.state.tick(dt, &view, &reports);
         out.extend(self.apply(sim, events));
@@ -617,6 +666,14 @@ impl Host {
         out.extend(self.apply(sim, events));
         for (player, e) in ended {
             let (end, title) = glue::sortie_end(&e);
+            // Landed at a base: what he did not fire goes back into its stock.
+            if end == SortieEnd::Landed
+                && let Some(b) = self.landed_at(player)
+            {
+                let bays = sim.pilot_bays(player.0);
+                self.return_stores(b, &bays);
+            }
+            self.landed.retain(|l| l.0 != player);
             let started = self.state.sortie(player).map_or(self.state.clock, |s| s.started);
             if let Ok(events) = self.state.apply(player, Command::EndSortie { end }) {
                 for ev in events {
@@ -670,17 +727,22 @@ impl Host {
                     }
                 }
                 CampaignEvent::RaidLaunched { from, target, tags, side, drones, sam, .. } => {
+                    let base = *from;
                     let (from, target) = (*from as usize, *target as usize);
                     let blue = *side == Side::Blue;
                     for &tag in tags {
-                        if let Some(aaa) = *sam {
-                            sim.spawn_sead(from, aaa as usize, tag, blue);
+                        let i = if let Some(aaa) = *sam {
+                            sim.spawn_sead(from, aaa as usize, tag, blue)
                         } else if *drones {
-                            sim.spawn_drone(from, target, tag, blue);
+                            sim.spawn_drone(from, target, tag, blue)
                         } else {
-                            sim.spawn_striker(from, target, tag, blue);
-                        }
+                            sim.spawn_striker(from, target, tag, blue)
+                        };
+                        self.arm_from_stock(sim, i, *side, base);
                     }
+                }
+                CampaignEvent::CargoPlaneLaunched { from, to, side, tag, .. } => {
+                    sim.spawn_transport(*from as usize, *to as usize, *tag, *side == Side::Blue);
                 }
                 CampaignEvent::LaunchAwacs { tag, side, from, x, y } => {
                     sim.spawn_awacs(*from as usize, *x, *y, *tag, *side == Side::Blue);
@@ -697,8 +759,9 @@ impl Host {
                     };
                     for &tag in tags {
                         let task = glue::ai_task(*target);
-                        sim.spawn_ai_mission(from, spec, task, tag, *side == Side::Blue);
+                        let i = sim.spawn_ai_mission(from, spec, task, tag, *side == Side::Blue);
                         sim.set_cas_units(tag, &glue::cas_units(&self.state, tag));
+                        self.arm_from_stock(sim, i, *side, from as u16);
                     }
                 }
                 CampaignEvent::ControlLeft { player, tag, aircraft, from, target, home } => {
@@ -712,7 +775,7 @@ impl Host {
                     let pickup = Some(crate::cargo::world_units(at));
                     sim.spawn_supply(*from as usize, *aaa as usize, pickup, *tag);
                 }
-                CampaignEvent::Restocked { aaa } => sim.restock(*aaa as usize),
+                CampaignEvent::Restocked { aaa } => self.restock_from_base(sim, *aaa as usize),
                 CampaignEvent::CargoLaunched { id, from, x, y, tag } => {
                     let (pickup, drop) =
                         crate::cargo::cargo_run(sim, &self.state, *id, *tag, *x, *y);
@@ -771,7 +834,9 @@ impl Host {
                         FighterTask::Patrol => stealth_sim::ai_loadout::FighterTask::Patrol,
                         FighterTask::Cap => stealth_sim::ai_loadout::FighterTask::Cap,
                     };
-                    sim.spawn_fighter(*from as usize, *x, *y, *tag, *side == Side::Blue, task);
+                    let i =
+                        sim.spawn_fighter(*from as usize, *x, *y, *tag, *side == Side::Blue, task);
+                    self.arm_from_stock(sim, i, *side, *from);
                 }
                 // His aircraft's target is the new mission's.
                 CampaignEvent::SortieRetasked { player, sortie } => {

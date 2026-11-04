@@ -95,6 +95,7 @@ fn campaign_soak() {
     let mut news: Vec<String> = Vec::new();
     let mut missions: BTreeMap<u32, stealth_campaign::AiMission> = BTreeMap::new();
     let mut shelled: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut cargo: BTreeMap<u32, (stealth_campaign::CargoRun, f64)> = BTreeMap::new();
     for frame in 0..frames {
         t = frame as f64 * dt;
         // What is after each aircraft (for the report of what shot it down).
@@ -117,6 +118,9 @@ fn campaign_soak() {
         }
         for m in &host.state.ai_missions {
             missions.insert(m.id, m.clone());
+        }
+        for r in &host.state.cargo_runs {
+            cargo.insert(r.tag, (r.clone(), t));
         }
         host.refills(&mut sim, dt as f32);
         host.take_sim_events(&mut sim);
@@ -353,6 +357,36 @@ fn campaign_soak() {
         if lost {
             println!("     !! open with nobody left");
         }
+    }
+    println!("\n== Cargo flights");
+    for (tag, (r, last)) in &cargo {
+        let fate = if host.state.cargo_lost.contains(tag) {
+            "shot down"
+        } else if host.state.cargo_run(*tag).is_some() {
+            "open"
+        } else {
+            "landed"
+        };
+        let name = |b: u16| host.state.site(b).map_or(String::new(), |s| s.name.clone());
+        println!(
+            "tag {tag:5} {:?} {} -> {}: posted {:.0}s, last seen {last:.0}s, {fate}, load {:?}",
+            r.side,
+            name(r.from),
+            name(r.to),
+            r.posted,
+            r.load
+        );
+    }
+    println!("\n== Stocks");
+    for (b, s) in &host.state.stocks {
+        let name = host.state.site(*b).map_or(String::new(), |s| s.name.clone());
+        let side = s.side.unwrap_or(Side::Neutral);
+        let prod = if host.state.production_base(side) == Some(*b) { " (production)" } else { "" };
+        let items: Vec<String> = stealth_campaign::Munition::of_side(side)
+            .iter()
+            .map(|&m| format!("{:?} {}", m, s.count(m)))
+            .collect();
+        println!("{side:?} {name}{prod}: {}", items.join(", "));
     }
     println!("\n== News");
     for n in &news {

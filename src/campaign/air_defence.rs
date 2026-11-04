@@ -204,7 +204,11 @@ fn map(
         }
         .gamma_multiply(0.5);
         painter.circle_filled(at(p.x, p.y), 2.5 * k, col);
-        super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true);
+        let production = super::logistics::is_production(st, p);
+        if production {
+            super::logistics::production_mark(&painter, at(p.x, p.y), k);
+        }
+        super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true, production);
     }
     // The reach: filled, the selected site's brighter; then the symbols over all of them.
     for s in sites.iter().filter(|s| !s.destroyed) {

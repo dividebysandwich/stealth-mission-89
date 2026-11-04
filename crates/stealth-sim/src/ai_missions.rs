@@ -41,6 +41,9 @@ pub enum AiTask {
     Recon(usize),
     /// Patrol over a point and fight the other side's aircraft.
     Patrol(i32, i32),
+    /// Wait over a point for the other side's aircraft with a campaign tag (a cargo flight),
+    /// then go after it.
+    Hunt(u32, i32, i32),
 }
 
 /// What the enemy flies a mission in (its era's type of it).
@@ -98,6 +101,8 @@ fn flight(
         fought: 0,
         passes: 0,
         pass_wait: 0,
+        hunt: None,
+        iron: false,
     }
 }
 
@@ -171,6 +176,10 @@ impl Sim {
                 strike: Some(o as i32),
                 loadout: own,
                 ..flight(tag, Role::Recon, blue, at(o), home, base)
+            },
+            AiTask::Hunt(quarry, x, y) => CampaignFlight {
+                hunt: Some(quarry),
+                ..self.mission_flight(spec, AiTask::Patrol(x, y), tag, blue, from)
             },
             AiTask::Patrol(x, y) => {
                 let store = |missile, count, seeker| Store { missile, count, seeker };

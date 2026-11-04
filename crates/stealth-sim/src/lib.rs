@@ -21,6 +21,7 @@ pub mod guidance;
 pub use stealth_mission::hills;
 pub mod lights;
 mod missiles;
+pub mod munitions;
 pub mod net;
 mod objectives;
 mod pilot;

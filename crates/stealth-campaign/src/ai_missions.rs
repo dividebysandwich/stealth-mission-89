@@ -54,6 +54,9 @@ pub enum AiTarget {
     Recon { object: ObjectId },
     /// Patrol over (x, y) and fight the other side's aircraft.
     Patrol { x: i32, y: i32 },
+    /// Wait over (x, y) for the other side's aircraft `tag` (a cargo flight), then go after it
+    /// wherever it is.
+    Hunt { tag: u32, x: i32, y: i32 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -250,14 +253,29 @@ impl CampaignState {
                     Some(m) => m.ended.unwrap_or(m.launched).max(o.posted),
                     None => o.posted,
                 };
-                Some((since + AI_MISSION_WAIT, o))
+                // The interceptors of a cargo flight go up soon after it was scheduled.
+                let wait = if matches!(o.objective, Objective::Cargo { .. }) {
+                    CARGO_INTERCEPT_WAIT
+                } else {
+                    AI_MISSION_WAIT
+                };
+                Some((since + wait, o))
             })
             .collect();
         queue.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.posted.total_cmp(&b.1.posted)));
-        let open = self.ai_missions.iter().filter(|m| m.side == side && m.open()).count();
+        // The interceptors of a cargo flight go ahead of the queue (they do not count
+        // against it).
+        let (hunts, queue): (Vec<_>, Vec<_>) =
+            queue.into_iter().partition(|(_, o)| matches!(o.objective, Objective::Cargo { .. }));
+        let mut out: Vec<(u32, f64)> =
+            hunts.into_iter().map(|(t, o)| (o.id, t.max(self.clock))).collect();
+        let open = self
+            .ai_missions
+            .iter()
+            .filter(|m| m.side == side && m.open() && !matches!(m.target, AiTarget::Hunt { .. }))
+            .count();
         let mut window = self.launches_in_window(side);
         let mut runway = self.runway(side);
-        let mut out = Vec::new();
         for (wait, o) in queue.into_iter().take(AI_MISSIONS_MAX.saturating_sub(open)) {
             let n =
                 if o.kind == MissionKind::Recon { AI_RECON_AIRCRAFT } else { AI_FLIGHT_AIRCRAFT };
@@ -271,6 +289,7 @@ impl CampaignState {
             window.extend(std::iter::repeat_n(t, n));
             window.sort_by(f64::total_cmp);
         }
+        out.sort_by(|a, b| a.1.total_cmp(&b.1));
         out
     }
 
@@ -356,6 +375,29 @@ impl CampaignState {
                 if side == Side::Blue {
                     self.note(text!("cl-ai-mission-done", title = title));
                 }
+            }
+            // Its cargo flight landed: nothing left to hunt, it comes home.
+            if let AiTarget::Hunt { tag, .. } = self.ai_missions[k].target
+                && !self.ai_missions[k].achieved
+                && self.cargo_run(tag).is_none()
+                && !self.cargo_lost.contains(&tag)
+            {
+                let m = &mut self.ai_missions[k];
+                let home: Vec<u32> = m.flying().collect();
+                ev.extend(home.into_iter().map(|tag| CampaignEvent::Recall { tag }));
+                // The ones still waiting for their turn stay on the ground.
+                let (side, heli) = (m.side, m.airframe.helicopter());
+                let mut back = 0;
+                for j in 0..m.tags.len() {
+                    if m.due.get(j).copied().flatten().is_some() {
+                        m.due[j] = None;
+                        m.alive[j] = false;
+                        back += m.pooled[j] as u32;
+                    }
+                }
+                self.aircraft_back(side, if heli { 0 } else { back }, if heli { back } else { 0 });
+                self.end_ai_mission(k);
+                continue;
             }
             let m = &self.ai_missions[k];
             let gone = m.alive.iter().all(|a| !a) && m.controlled.iter().all(Option::is_none);
@@ -465,7 +507,8 @@ impl CampaignState {
         if side == Side::Red && d > RAID_RANGE {
             return false;
         }
-        let close = d <= AI_HELO_RANGE;
+        // A cargo aircraft is the jets' to catch.
+        let close = d <= AI_HELO_RANGE && !matches!(o.objective, Objective::Cargo { .. });
         let airframe = match side {
             Side::Blue => AiAirframe::Blue(pick_blue(
                 o.kind,
@@ -539,6 +582,10 @@ impl CampaignState {
             | Objective::Intercept { .. }
             | Objective::Escort { .. }
             | Objective::Awacs { .. } => AiTarget::Patrol { x: o.x, y: o.y },
+            Objective::Cargo { tag } => {
+                self.cargo_run(*tag)?;
+                AiTarget::Hunt { tag: *tag, x: o.x, y: o.y }
+            }
             _ => return None,
         })
     }
@@ -652,6 +699,9 @@ impl CampaignState {
                     threat,
                 );
             }
+        }
+        for (title, objective, x, y) in self.cargo_offers(Side::Red) {
+            add(self, MissionKind::Intercept, title, objective, x, y, 0);
         }
         for v in self.convoys.clone().into_iter().filter(|v| v.active() && v.side == Side::Blue) {
             let aaa: Vec<u32> = (0..view.units.len() as u32)

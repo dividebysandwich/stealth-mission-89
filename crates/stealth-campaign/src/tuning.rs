@@ -370,3 +370,19 @@ pub const RED_INTEL_SECONDS: f64 = 3600.0;
 pub const AI_LAUNCH_WINDOW: f64 = 15.0 * 60.0;
 pub const AI_AIRCRAFT_PER_WINDOW: usize = 6;
 pub const AI_STAGGER: f64 = 10.0;
+
+/// Munitions (`munitions.rs`): a cargo flight takes off this long (s) after a base ran out of
+/// a munition, the other side's interceptors this long after it was scheduled; it brings up to
+/// this share of a base's full stock of each munition the production base has.
+pub const CARGO_WAIT: f64 = 10.0 * 60.0;
+pub const CARGO_INTERCEPT_WAIT: f64 = 2.0 * 60.0;
+pub const CARGO_SHARE: f64 = 0.5;
+/// A cargo flight saved in the air takes off again this long (s) after the campaign is loaded.
+pub const CARGO_RELAUNCH: f64 = 60.0;
+/// A cargo aircraft that comes down this close to a base of its side (map units, ~8 km)
+/// delivers there.
+pub const CARGO_LAND_RADIUS: i32 = 0x200;
+/// The production base keeps up to this many times a base's full stock.
+pub const PRODUCTION_CAP: f64 = 3.0;
+/// The enemy's SAM sites and guns refill their magazines from the nearest base this often (s).
+pub const MAGAZINE_REFILL_EVERY: f64 = 60.0;

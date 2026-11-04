@@ -14,6 +14,7 @@ impl CampaignState {
         self.ai_mission_report(r, ev);
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
+        self.cargo_plane_report(r, ev);
         match *r {
             Report::ObjectDestroyed { object, by } => {
                 let now = self.clock;
@@ -1563,6 +1564,10 @@ impl CampaignState {
                 0,
             );
         }
+        // The enemy's cargo flights, scheduled or in the air.
+        for (title, objective, x, y) in self.cargo_offers(side) {
+            add(self, MissionKind::Intercept, title, objective, x, y, 0);
+        }
         // Pilots down behind the lines.
         for d in self.downed.clone() {
             if d.state != DownedState::Waiting {
@@ -1931,5 +1936,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Logistics { site, leg } => (15, (site as i64) << 8 | leg as i64),
         Objective::Armour { convoy, .. } => (16, convoy as i64),
         Objective::Support { convoy, .. } => (17, convoy as i64),
+        Objective::Cargo { tag } => (18, tag as i64),
     }
 }

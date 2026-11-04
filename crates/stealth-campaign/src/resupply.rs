@@ -84,7 +84,7 @@ impl CampaignState {
 
     /// The friendly airfield a resupply for (x, y) is flown from: the nearest intact one, else
     /// the nearest base.
-    pub(crate) fn supply_base(&self, x: i32, y: i32) -> Option<ObjectId> {
+    pub fn supply_base(&self, x: i32, y: i32) -> Option<ObjectId> {
         let near = |b: &ObjectId| self.site(*b).map_or(i32::MAX, |s| dist(s.x - x, s.y - y));
         let bases = self.bases(Side::Blue);
         bases

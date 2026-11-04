@@ -658,3 +658,81 @@ fn convoys_drive_fight_and_take_places() {
     assert!(shots > 0);
     assert!(ended.len() >= 2, "{launched:?} {ended:?}");
 }
+
+/// A host on Central Europe, begun.
+fn central_europe() -> (Host, stealth_sim::Sim) {
+    let s = setup("central_europe");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "central_europe").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    (host, sim)
+}
+
+#[test]
+fn a_sortie_takes_its_stores_out_of_its_base() {
+    use stealth_campaign::Munition;
+    let (mut host, mut sim) = central_europe();
+    let o = host.state.board.iter().find(|o| !o.kind.ai_flown()).unwrap().clone();
+    let base = o.base;
+    let before = host.state.available(base, Munition::Aim120);
+    let stores = stealth_host::Stores { stations: vec![(1, 4), (0, 2), (-1, 0)], select: 0 };
+    host.take_mission(&mut sim, PlayerId(0), o.id, None, Aircraft::F16, Some(stores.clone()))
+        .unwrap();
+    assert_eq!(host.state.available(base, Munition::Aim120), before - 4);
+    // A base out of them refuses them.
+    let wing = host.join(&mut sim, "Wingman", |_| true).unwrap();
+    let n = host.state.available(base, Munition::Aim120);
+    host.state.draw(base, Munition::Aim120, n);
+    let err = host.take_mission(&mut sim, wing, o.id, None, Aircraft::F16, Some(stores));
+    assert!(err.unwrap_err().tr_in(stealth_i18n::Language::En).contains("out of stock"));
+}
+
+#[test]
+fn a_cargo_aircraft_flies_munitions_from_the_production_base() {
+    use stealth_campaign::{Munition, Side, dist};
+    let (mut host, mut sim) = central_europe();
+    let st = &host.state;
+    let p = st.production_base(Side::Blue).unwrap();
+    let ps = st.site(p).unwrap().clone();
+    // The friendly base nearest the production base.
+    let to = st
+        .stocks
+        .iter()
+        .filter(|(b, s)| **b != p && s.side == Some(Side::Blue))
+        .map(|(b, _)| *b)
+        .min_by_key(|b| {
+            let s = st.site(*b).unwrap();
+            dist(s.x - ps.x, s.y - ps.y)
+        })
+        .unwrap();
+    let n = host.state.available(to, Munition::Pac3);
+    host.state.draw(to, Munition::Pac3, n);
+    let mut tag = None;
+    let mut landed = false;
+    for _ in 0..90 * 60 * 15 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut all = host.take_sim_events(&mut sim);
+        all.extend(ev);
+        for e in &all {
+            if let stealth_sim::SimEvent::CampaignFlightLanded { tag: t, .. } = e.event
+                && Some(t) == tag
+            {
+                landed = true;
+            }
+        }
+        host.tick(&mut sim, 1.0 / 15.0, &all);
+        if tag.is_none() {
+            tag = host.state.cargo_runs.iter().find(|r| r.to == to).map(|r| r.tag);
+        }
+        if landed {
+            break;
+        }
+    }
+    let tag = tag.expect("a cargo flight was scheduled");
+    assert!(landed, "it landed");
+    assert!(!host.state.cargo_lost.contains(&tag));
+    assert_eq!(host.state.available(to, Munition::Pac3), 12, "half a full stock delivered");
+}
