@@ -10,6 +10,8 @@ mod aircraft_preview;
 // Its mapping is tested on every platform; only the Android app reads gamepads with it.
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
 mod android_gamepad;
+#[cfg(target_os = "android")]
+mod android_keyboard;
 mod app6;
 mod asset_path;
 mod atc;
@@ -361,7 +363,10 @@ pub fn run() {
         app.add_plugins(touch::TouchPlugin);
     }
     #[cfg(target_os = "android")]
-    app.add_plugins(android_gamepad::AndroidGamepadPlugin);
+    app.add_plugins((
+        android_gamepad::AndroidGamepadPlugin,
+        android_keyboard::AndroidKeyboardPlugin,
+    ));
     mission::from_args(&mut app);
     campaign::from_args(&mut app);
     savegame::from_args(&mut app);

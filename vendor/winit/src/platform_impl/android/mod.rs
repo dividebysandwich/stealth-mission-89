@@ -32,6 +32,54 @@ pub(crate) use crate::cursor::{
 };
 pub(crate) use crate::icon::NoIcon as PlatformIcon;
 
+/// Shows or hides the soft keyboard for the activity's window (InputMethodManager's
+/// `showSoftInput` on its decor view, `hideSoftInputFromWindow` with its token).
+fn soft_input(app: &AndroidApp, show: bool) -> jni::errors::Result<()> {
+    use jni::objects::JObject;
+    // SAFETY: the VM and the activity live as long as the app.
+    let vm = unsafe { jni::JavaVM::from_raw(app.vm_as_ptr() as _) }?;
+    let activity = unsafe { JObject::from_raw(app.activity_as_ptr() as _) };
+    let mut env = vm.attach_current_thread()?;
+    let result = env.with_local_frame(16, |env| {
+        let service = env
+            .get_static_field("android/content/Context", "INPUT_METHOD_SERVICE", "Ljava/lang/String;")?
+            .l()?;
+        let imm = env
+            .call_method(
+                &activity,
+                "getSystemService",
+                "(Ljava/lang/String;)Ljava/lang/Object;",
+                &[(&service).into()],
+            )?
+            .l()?;
+        let window = env.call_method(&activity, "getWindow", "()Landroid/view/Window;", &[])?.l()?;
+        let view = env.call_method(&window, "getDecorView", "()Landroid/view/View;", &[])?.l()?;
+        if show {
+            env.call_method(
+                &imm,
+                "showSoftInput",
+                "(Landroid/view/View;I)Z",
+                &[(&view).into(), 0.into()],
+            )?;
+        } else {
+            let token =
+                env.call_method(&view, "getWindowToken", "()Landroid/os/IBinder;", &[])?.l()?;
+            env.call_method(
+                &imm,
+                "hideSoftInputFromWindow",
+                "(Landroid/os/IBinder;I)Z",
+                &[(&token).into(), 0.into()],
+            )?;
+        }
+        Ok(())
+    });
+    if result.is_err() && env.exception_check().unwrap_or(false) {
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+    }
+    result
+}
+
 static HAS_FOCUS: AtomicBool = AtomicBool::new(true);
 
 /// Returns the minimum `Option<Duration>`, taking into account that `None`
@@ -943,10 +991,16 @@ impl Window {
     pub fn set_ime_cursor_area(&self, _position: Position, _size: Size) {}
 
     pub fn set_ime_allowed(&self, allowed: bool) {
-        if allowed {
-            self.app.show_soft_input(true);
-        } else {
-            self.app.hide_soft_input(true);
+        // Patched for Stealth Mission 89: ANativeActivity_showSoftInput does nothing on recent
+        // Android, so the keyboard is shown through InputMethodManager, as an app's own view
+        // would; the NDK call is the fallback.
+        if let Err(e) = soft_input(&self.app, allowed) {
+            warn!("soft keyboard through InputMethodManager: {e}");
+            if allowed {
+                self.app.show_soft_input(true);
+            } else {
+                self.app.hide_soft_input(true);
+            }
         }
     }
 
