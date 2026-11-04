@@ -376,7 +376,7 @@ fn tab_at(p: Vec2) -> Option<usize> {
 fn interact(
     mut kb: ResMut<Kneeboard>,
     settings: Res<Settings>,
-    mouse: Res<ButtonInput<MouseButton>>,
+    pointer: Res<crate::input::FlightControls>,
     wheel: Res<AccumulatedMouseScroll>,
     time: Res<Time<Real>>,
     mut hands: ResMut<Hands>,
@@ -425,10 +425,10 @@ fn interact(
                 pointed = (t > 0.0).then(|| to_canvas(o + d * t)).flatten();
             }
         }
-        if pointed.is_some() && mouse.just_pressed(MouseButton::Left) {
+        if pointed.is_some() && pointer.click_pressed {
             pick = pointed.and_then(tab_at);
         }
-        if on_keys && pointed.is_some() && !mouse.pressed(MouseButton::Right) {
+        if on_keys && pointed.is_some() && !pointer.mouse_look {
             scroll -= key_guide::wheel_notches(&wheel) * key_guide::WHEEL_STEP;
         }
         // A fingertip turns to a page when it reaches its tab (fingertips are in the cockpit

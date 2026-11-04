@@ -78,8 +78,10 @@ pub const PIXEL_BLOCKS: std::ops::RangeInclusive<u32> = 2..=5;
 /// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows and vapour start off.
 /// Compiled into the world shader mist and cloud shadows cost its GPU (Adreno 750) about 1.4
 /// and 2.4 ms a frame in VR, even with no mist or clouds about; a helicopter's downwash dust
-/// near the ground about 1.7 ms; enough to drop the frame rate from 72 to 36 fps.
-pub const HEAVY_EFFECTS_OFF: bool = cfg!(all(target_arch = "aarch64", target_os = "linux"));
+/// near the ground about 1.7 ms; enough to drop the frame rate from 72 to 36 fps. Also the
+/// Android app's: phone GPUs are weaker still.
+pub const HEAVY_EFFECTS_OFF: bool =
+    cfg!(any(all(target_arch = "aarch64", target_os = "linux"), target_os = "android"));
 
 impl Default for Effects {
     fn default() -> Self {

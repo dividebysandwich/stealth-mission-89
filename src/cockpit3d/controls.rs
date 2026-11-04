@@ -347,7 +347,7 @@ pub(super) fn interact(
     mut was_touching: Local<[Option<Entity>; 2]>,
     mut fire: Fire,
     mut presses: MessageReader<PressControl>,
-    buttons: Res<ButtonInput<MouseButton>>,
+    pointer: Res<crate::input::FlightControls>,
     mut picker: Picker,
     menu: Res<crate::flight_menu::FlightMenu>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
@@ -388,10 +388,10 @@ pub(super) fn interact(
     let cockpit_view =
         matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
 
-    // Mouse click: the control under the cursor, unless something in front hides it.
+    // Mouse click (`Action::ClickControl`): the control under the cursor, unless something in front hides it.
     if !settings.vr
         && cockpit_view
-        && buttons.just_pressed(MouseButton::Left)
+        && pointer.click_pressed
         && let Some(ray) = picker.cursor_ray()
     {
         let picked = {
@@ -448,7 +448,7 @@ pub(super) fn interact(
         && let Ok(screen) = screens.get(e)
     {
         let (held, ray) = match hand {
-            None => (buttons.pressed(MouseButton::Left), picker.cursor_ray()),
+            None => (pointer.click, picker.cursor_ray()),
             Some(h) => {
                 let hand = &hands.hands[h];
                 (hand.active && hand.trigger > 0.5, picker.eye_through(hand.finger).map(|r| r.0))

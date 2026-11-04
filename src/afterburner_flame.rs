@@ -87,6 +87,7 @@ impl Material for FlameMaterial {
         let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_UV_0.at_shader_location(1),
+            Mesh::ATTRIBUTE_NORMAL.at_shader_location(2),
         ])?;
         descriptor.vertex.buffers = vec![vertex_layout];
         // Seen from inside and out: both walls add up like a glowing volume.
@@ -108,57 +109,84 @@ impl Material for FlameMaterial {
     }
 }
 
-/// A plume (a child of the player's aircraft), behind the nozzle of this index.
+/// A plume (a child of the player's aircraft), behind the nozzle of this index; a box (a
+/// rectangular nozzle's) or a cone.
 #[derive(Component)]
-struct Flame(usize);
+struct Flame(usize, bool);
 
 /// The first plume's point light (a child of the plume, shown with it).
 #[derive(Component)]
 struct FlameLight;
 
 /// The plume's mesh in the aircraft frame from the nozzle exit, along +z (aft): uv x along
-/// 0..1, y the layer (0 core, 1 sheath, 2 nozzle exit).
-fn flame_mesh() -> Mesh {
+/// 0..1, y the layer (0 core, 1 sheath, 2 nozzle exit). Round cones, or with `rect` boxes of a
+/// square section (its half side the cones' radius), scaled to the nozzle's rectangle.
+fn flame_mesh(rect: bool) -> Mesh {
     let mut pos: Vec<[f32; 3]> = Vec::new();
+    let mut normal: Vec<[f32; 3]> = Vec::new();
     let mut uv: Vec<[f32; 2]> = Vec::new();
     let mut idx: Vec<u32> = Vec::new();
+    // A ring's points (unit radius or half side) and their normals: around the circle, or each
+    // side of the square from corner to corner (flat walls).
+    let ring: Vec<(Vec2, Vec2)> = if rect {
+        let per = SIDES / 4;
+        [Vec2::X, Vec2::Y, Vec2::NEG_X, Vec2::NEG_Y]
+            .into_iter()
+            .flat_map(|n| {
+                let along = n.perp();
+                (0..=per).map(move |k| (n + along * (k as f32 / per as f32 * 2.0 - 1.0), n))
+            })
+            .collect()
+    } else {
+        (0..=SIDES)
+            .map(|j| {
+                let p = Vec2::from_angle(j as f32 / SIDES as f32 * std::f32::consts::TAU);
+                (p, p)
+            })
+            .collect()
+    };
+    // Consecutive points of `ring` joined into walls (a square's sides are not joined round
+    // their corners).
+    let joined = |j: usize| !rect || (j + 1) % (SIDES / 4 + 1) != 0;
     let core = |t: f32| CORE.1 * (1.0 - t).powf(0.8);
     let sheath = |t: f32| SHEATH.1 * (1.0 + 0.25 * t) * (1.0 - t * t * t).max(0.0).sqrt();
     for (layer, length, radius) in
         [(0.0, CORE.0, &core as &dyn Fn(f32) -> f32), (1.0, SHEATH.0, &sheath)]
     {
         let v0 = pos.len() as u32;
+        let n = ring.len() as u32;
         for i in 0..=RINGS {
             let t = i as f32 / RINGS as f32;
             let r = radius(t);
-            for j in 0..SIDES {
-                let a = j as f32 / SIDES as f32 * std::f32::consts::TAU;
-                pos.push([r * a.cos(), r * a.sin(), t * length]);
+            for &(p, nm) in &ring {
+                pos.push([r * p.x, r * p.y, t * length]);
+                normal.push([nm.x, nm.y, 0.0]);
                 uv.push([t, layer]);
             }
         }
         for i in 0..RINGS as u32 {
-            for j in 0..SIDES as u32 {
-                let (a, b) = (v0 + i * SIDES as u32, v0 + (i + 1) * SIDES as u32);
-                let k = (j + 1) % SIDES as u32;
-                idx.extend([a + j, b + j, b + k, a + j, b + k, a + k]);
+            for j in (0..n - 1).filter(|&j| joined(j as usize)) {
+                let (a, b) = (v0 + i * n, v0 + (i + 1) * n);
+                idx.extend([a + j, b + j, b + j + 1, a + j, b + j + 1, a + j + 1]);
             }
         }
     }
     // The nozzle exit: a fan.
     let c = pos.len() as u32;
     pos.push([0.0, 0.0, 0.0]);
+    normal.push([0.0, 0.0, 1.0]);
     uv.push([0.0, 2.0]);
-    for j in 0..SIDES {
-        let a = j as f32 / SIDES as f32 * std::f32::consts::TAU;
-        pos.push([EXIT * a.cos(), EXIT * a.sin(), 0.0]);
+    for &(p, _) in &ring {
+        pos.push([EXIT * p.x, EXIT * p.y, 0.0]);
+        normal.push([0.0, 0.0, 1.0]);
         uv.push([0.0, 2.0]);
     }
-    for j in 0..SIDES as u32 {
-        idx.extend([c, c + 1 + j, c + 1 + (j + 1) % SIDES as u32]);
+    for j in 0..ring.len() as u32 - 1 {
+        idx.extend([c, c + 1 + j, c + 2 + j]);
     }
     Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default())
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normal)
         .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uv)
         .with_inserted_indices(Indices::U32(idx))
 }
@@ -168,28 +196,30 @@ fn flame_mesh() -> Mesh {
 fn attach(
     mut commands: Commands,
     player: Query<Entity, With<Player>>,
-    flames: Query<Entity, With<Flame>>,
+    flames: Query<(Entity, &Flame)>,
     k: Option<Res<FlightConstants>>,
     settings: Res<crate::settings::Settings>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<FlameMaterial>>,
 ) {
-    let nozzles = settings.aircraft.spec().nozzles;
+    let spec = settings.aircraft.spec();
+    let nozzles = spec.nozzles;
+    let rect = spec.nozzle_rect.is_some();
     let wanted = if k.is_some_and(|k| k.afterburner()) { nozzles.len() } else { 0 };
     // Another aircraft (a campaign sortie): its own plumes.
-    if flames.iter().len() != wanted {
-        for e in &flames {
+    if flames.iter().len() != wanted || flames.iter().any(|(_, f)| f.1 != rect) {
+        for (e, _) in &flames {
             commands.entity(e).despawn();
         }
     } else {
         return;
     }
     let Ok(player) = player.single() else { return };
-    let mesh = meshes.add(flame_mesh());
+    let mesh = meshes.add(flame_mesh(rect));
     let material = materials.add(FlameMaterial { params: Vec4::ZERO });
     for (i, &at) in nozzles.iter().enumerate().take(wanted) {
         let mut flame = commands.spawn((
-            Flame(i),
+            Flame(i, rect),
             Mesh3d(mesh.clone()),
             MeshMaterial3d(material.clone()),
             Transform::from_translation(at),
@@ -225,7 +255,8 @@ fn update(
     let ab = a.afterburner.clamp(0.0, 1.0);
     let on = ab > 0.0 && a.ended.is_none() && !hide.is_some_and(|h| h.0);
     let spec = settings.aircraft.spec();
-    let width = spec.nozzle_radius / EXIT;
+    // Across: the nozzle's radius, or its rectangle's half width and height.
+    let section = spec.nozzle_rect.unwrap_or(Vec2::splat(spec.nozzle_radius)) / EXIT;
     // The plumes share their material.
     let mut set = false;
     for (flame, mut tf, mut vis, material) in &mut flames {
@@ -236,7 +267,7 @@ fn update(
         let high = (a.altitude / 40000.0).clamp(0.0, 1.0);
         let length = (MIN_LENGTH + (1.0 - MIN_LENGTH) * ab) * (1.0 + ALTITUDE_LENGTH * high);
         tf.translation = at;
-        tf.scale = Vec3::new(width, width, length);
+        tf.scale = section.extend(length);
         if !set && let Some(mut m) = materials.get_mut(&material.0) {
             set = true;
             let diamonds = (1.0 - a.altitude / DIAMONDS_ALT).clamp(0.0, 1.0);

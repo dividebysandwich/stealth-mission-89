@@ -716,16 +716,15 @@ pub(crate) const ZOOM_KEY_NOTCHES: f32 = 4.0;
 /// (radians a second; in the cockpit slower when zoomed in).
 pub(crate) const LOOK_RATE: f32 = 1.8;
 
-/// Desktop mouse look: hold the right button and move the mouse. The look-view keys turn the
+/// Desktop mouse look: hold the right button (`Action::MouseLook`) and move the mouse. The look-view keys turn the
 /// head to that side (and reset the free look). In the external views the mouse orbits the
 /// camera around the aircraft (reset when an external view is selected). The wheel with the
-/// button held zooms, as the view zoom keys do. The view pan keys and look axes turn the head
+/// button held zooms, as the view zoom keys and axis do. The view pan keys and look axes turn the head
 /// or orbit the camera as the mouse does. With mouse look while tracking off, the button
 /// does nothing in the cockpit while a head tracker sends.
 #[allow(clippy::too_many_arguments)]
 fn mouse_look(
     settings: Res<Settings>,
-    buttons: Res<ButtonInput<MouseButton>>,
     motion: Res<AccumulatedMouseMotion>,
     mut look: ResMut<HeadLook>,
     mut orbit: ResMut<Orbit>,
@@ -770,7 +769,7 @@ fn mouse_look(
     let tracked = settings.head_tracking
         && !settings.tracking_mouse_look
         && tracker.is_some_and(|t| t.source.is_some());
-    let held = buttons.pressed(MouseButton::Right) && !(cockpit && tracked);
+    let held = controls.mouse_look && !(cockpit && tracked);
     if let Ok(mut c) = cursor.single_mut() {
         let (grab, visible) =
             if held { (CursorGrabMode::Locked, false) } else { (CursorGrabMode::None, true) };
@@ -836,7 +835,10 @@ fn initial_look(mut look: ResMut<HeadLook>, mut state: ResMut<ViewState>) {
 }
 
 fn release_cursor(mut cursor: Query<&mut CursorOptions>) {
-    if let Ok(mut c) = cursor.single_mut() {
+    // Only when held: setting it again asks winit, which can't on Android and logs that.
+    if let Ok(mut c) = cursor.single_mut()
+        && (c.grab_mode != CursorGrabMode::None || !c.visible)
+    {
         c.grab_mode = CursorGrabMode::None;
         c.visible = true;
     }

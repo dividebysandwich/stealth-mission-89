@@ -1,6 +1,7 @@
-//! The browser build has no file system: the data files read at run time (`assets::read`) are
-//! compiled in, and the names of all the others (served beside the page) are listed for
-//! `assets::exists` and `assets::list`.
+//! The browser build has no file system, and the Android app's assets are in its APK, where only
+//! Bevy's asset server reads them: the data files read at run time (`assets::read`) are compiled
+//! in, and the names of all the others (served beside the page, in the APK) are listed for
+//! `assets::exists` and `assets::list` (`cfg(embedded_assets)`).
 
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -10,9 +11,13 @@ use std::path::{Path, PathBuf};
 const EMBEDDED: [&str; 6] = ["sim", "mission", "theaters", "palettes", "images", "fonts"];
 
 fn main() {
-    if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() != Ok("wasm32") {
+    println!("cargo::rustc-check-cfg=cfg(embedded_assets)");
+    if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() != Ok("wasm32")
+        && std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("android")
+    {
         return;
     }
+    println!("cargo::rustc-cfg=embedded_assets");
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let root = manifest.join("../../assets").canonicalize().expect("assets directory");
     println!("cargo:rerun-if-changed={}", root.display());

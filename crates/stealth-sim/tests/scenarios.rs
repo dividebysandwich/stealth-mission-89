@@ -783,7 +783,7 @@ fn classic_state_golden() {
         0xef407cf7de87d443,
         0x513f19a564e9d290,
         0x9a90c3b5111da9d7,
-        0x06aa88f5fb8664ea,
+        0xf29f9becc93651fb,
     ];
     let d = data();
     let mut got = Vec::new();

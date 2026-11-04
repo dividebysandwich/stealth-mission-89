@@ -104,6 +104,8 @@ Testing and screenshots
                                (SaveMission: save the flight as the menu's SAVE MISSION)
   --log-flight / --log-sim     print the flight / simulation state
   --readout                    on-screen text readout of the flight state
+  --touch                      the touch flight controls (the Android app's), the left
+                               mouse button as a finger
   --time-scale <x>             run the game time x times faster
   --diag                       frame time and entity count diagnostics in the log
   --write-relief               with --freecam --theater <id>: save the theater's mountains

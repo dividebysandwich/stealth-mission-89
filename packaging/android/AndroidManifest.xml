@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Android app (tools/android-apk.sh): the game as a native library, no Java code. The
+     version is set when the APK is linked. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.dividebysandwich.stealthmission89">
+
+    <!-- Coop, the server list, the spoken ATC voices' download; the coop radio's microphone
+         (granted in the system settings for now: the app does not ask). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Vulkan 1.0.3 (wgpu). -->
+    <uses-feature android:name="android.hardware.vulkan.version" android:version="0x400003" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false" />
+
+    <application
+        android:label="Stealth Mission 89"
+        android:icon="@mipmap/ic_launcher"
+        android:hasCode="false"
+        android:isGame="true"
+        android:appCategory="game"
+        android:extractNativeLibs="false">
+        <activity
+            android:name="android.app.NativeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="sensorLandscape"
+            android:resizeableActivity="false"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection">
+            <meta-data android:name="android.app.lib_name" android:value="stealth_mission_89" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

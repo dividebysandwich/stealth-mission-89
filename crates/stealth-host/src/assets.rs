@@ -1,6 +1,6 @@
 //! Where the game's files are, resolved like Bevy's asset server: `$BEVY_ASSET_ROOT`, else
 //! `$CARGO_MANIFEST_DIR` at run time (set by `cargo run` / `cargo test`), else the executable's
-//! directory. In the browser build the data files are compiled in (`build.rs`).
+//! directory. In the browser build and the Android app the data files are compiled in (`build.rs`).
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -31,25 +31,25 @@ pub fn asset(rel: &str) -> PathBuf {
     root().join("assets").join(rel)
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(embedded_assets)]
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/embedded_assets.rs"));
 }
 
 /// The contents of a file under `assets/`, e.g. `read("sim/units.ron")`.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(embedded_assets))]
 pub fn read(rel: &str) -> Result<Vec<u8>> {
     let path = asset(rel);
     std::fs::read(&path).with_context(|| path.display().to_string())
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(embedded_assets)]
 pub fn read(rel: &str) -> Result<Vec<u8>> {
     embedded::EMBEDDED
         .iter()
         .find(|(name, _)| *name == rel)
         .map(|(_, data)| data.to_vec())
-        .with_context(|| format!("assets/{rel}: not in the browser build"))
+        .with_context(|| format!("assets/{rel}: not compiled in"))
 }
 
 pub fn read_to_string(rel: &str) -> Result<String> {
@@ -57,18 +57,18 @@ pub fn read_to_string(rel: &str) -> Result<String> {
 }
 
 /// Whether there is a file `rel` under `assets/`.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(embedded_assets))]
 pub fn exists(rel: &str) -> bool {
     asset(rel).exists()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(embedded_assets)]
 pub fn exists(rel: &str) -> bool {
     embedded::FILES.contains(&rel)
 }
 
 /// The names of the files in directory `rel` of `assets/` (not those in its subdirectories).
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(embedded_assets))]
 pub fn list(rel: &str) -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(asset(rel)) else { return Vec::new() };
     entries
@@ -78,7 +78,7 @@ pub fn list(rel: &str) -> Vec<String> {
         .collect()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(embedded_assets)]
 pub fn list(rel: &str) -> Vec<String> {
     let prefix = format!("{}/", rel.trim_end_matches('/'));
     embedded::FILES

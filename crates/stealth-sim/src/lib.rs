@@ -156,6 +156,10 @@ pub struct Sim {
     /// The pilot whose weapon is being flown (kills are his).
     #[serde(skip)]
     pub(crate) credit: Option<u8>,
+    /// The local player's radar is switched off (standby): the friendly side's air picture
+    /// leaves out what it would see (set by the client).
+    #[serde(skip)]
+    pub(crate) player_radar_off: bool,
 
     // ---- world ----
     pub(crate) objects: Vec<GroundObject>,
@@ -403,6 +407,7 @@ impl Sim {
             aaa_pilot: Vec::new(),
             alarm_pilot: 0,
             credit: None,
+            player_radar_off: false,
             pl: Pilot {
                 id: 0,
                 absent: false,
@@ -1446,6 +1451,16 @@ impl Sim {
 
     pub fn player(&self) -> PlayerView {
         self.pl.p
+    }
+
+    /// The local player's radar is switched off (`set_player_radar_off`).
+    pub fn player_radar_off(&self) -> bool {
+        self.player_radar_off
+    }
+
+    /// Whether the local player's radar is switched off (the client's avionics).
+    pub fn set_player_radar_off(&mut self, off: bool) {
+        self.player_radar_off = off;
     }
 
     pub fn invulnerable(&self) -> bool {

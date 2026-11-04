@@ -141,6 +141,8 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[Zoom, Unzoom]), "kg-zoom"),
                 (Actions(&[ViewZoomIn, ViewZoomOut]), "kg-view-zoom"),
                 (Actions(&[PanLeft, PanRight, PanUp, PanDown]), "kg-pan"),
+                (Actions(&[MouseLook]), "kg-mouse-look"),
+                (Actions(&[ClickControl]), "kg-click-control"),
                 (Actions(&[WideAngle]), "kg-wide-angle"),
             ],
         ),
@@ -219,9 +221,6 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
         }
     } else {
         out.push(Line::Heading(ts!("kg-mouse").into()));
-        out.push(row("kg-mouse-right-drag"));
-        out.push(row("kg-mouse-hold-right"));
-        out.push(row("kg-mouse-left-click"));
         out.push(row("kg-mouse-point"));
         out.push(row("kg-mouse-wheel"));
     }
@@ -290,13 +289,14 @@ pub fn filter(lines: Vec<Line>, search: &str) -> Vec<Line> {
     out
 }
 
-/// The keys bound to a target, ", " between them ("" if none).
+/// The keys and mouse buttons bound to a target, ", " between them ("" if none).
 fn keys_of(config: &InputConfig, target: ButtonTarget) -> String {
     config
         .keys
         .iter()
         .filter(|m| m.target == target)
         .map(|m| key_text(m.mods, m.key))
+        .chain(config.mouse_for(target).map(|b| b.short()))
         .collect::<Vec<_>>()
         .join(", ")
 }

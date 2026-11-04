@@ -794,7 +794,7 @@ pub(super) fn hover(
     menu: Res<crate::flight_menu::FlightMenu>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     kneeboard: Option<Res<crate::kneeboard::Kneeboard>>,
-    buttons: Res<ButtonInput<MouseButton>>,
+    pointer: Res<crate::input::FlightControls>,
     mut picker: Picker,
     controls: Query<(Entity, &Control, &Transform), Without<super::controls::Unused>>,
     tips: Query<&Tip>,
@@ -816,9 +816,7 @@ pub(super) fn hover(
     let pressing = if settings.vr {
         hands.hands.iter().any(|h| h.trigger > 0.7)
     } else {
-        kneeboard.is_some_and(|k| k.overlay_shown())
-            || buttons.pressed(MouseButton::Right)
-            || buttons.pressed(MouseButton::Left)
+        kneeboard.is_some_and(|k| k.overlay_shown()) || pointer.mouse_look || pointer.click
     };
     let active =
         settings.tooltips && cockpit_view && !menu.open && !hide.is_some_and(|h| h.0) && !pressing;
@@ -830,7 +828,7 @@ pub(super) fn hover(
     } else {
         (picker.cursor_ray().and_then(|ray| picker.pick(ray, &all, |_| true)), None)
     };
-    if buttons.just_pressed(MouseButton::Left) {
+    if pointer.click_pressed {
         // A click puts the tooltip away until the mouse rests again.
         state.since_shown = f32::INFINITY;
     }

@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/bevy_fast_clouds", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-i18n", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
+members = [".", "crates/bevy_fast_clouds", "crates/stealth-android", "crates/stealth-campaign", "crates/stealth-formats", "crates/stealth-host", "crates/stealth-i18n", "crates/stealth-master", "crates/stealth-master-proto", "crates/stealth-mission", "crates/stealth-net", "crates/stealth-sim"]
 resolver = "3"
 
 [workspace.package]
@@ -17,6 +17,11 @@ anyhow = "1"
 name = "stealth-mission-89"
 version.workspace = true
 edition.workspace = true
+
+# The game as a library, for the executable (src/main.rs) and the Android app
+# (crates/stealth-android); named apart from the executable so their outputs don't collide.
+[lib]
+name = "sm89"
 
 [features]
 default = ["dev", "xr"]

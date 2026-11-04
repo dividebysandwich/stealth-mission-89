@@ -1,0 +1,16 @@
+[package]
+name = "stealth-android"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+# The Android app (packaging/android, tools/android-apk.sh): the game as the native library a
+# NativeActivity loads, lib/<abi>/libstealth_mission_89.so in the APK.
+[lib]
+name = "stealth_mission_89"
+crate-type = ["cdylib"]
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Without `dev` (dynamic linking) and `xr` (no headset).
+stealth-mission-89 = { path = "../..", default-features = false }
+bevy = { version = "0.19.1", default-features = false, features = ["android-native-activity"] }

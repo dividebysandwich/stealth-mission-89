@@ -14,10 +14,10 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::hotas::{
-    AxisControl, ButtonTarget, Hotas, InputConfig, Source, VrHand, VrInput, action_name,
-    default_vr_buttons,
+    AxisControl, ButtonTarget, Hotas, InputConfig, MouseInput, Source, VrHand, VrInput,
+    action_name, default_vr_buttons,
 };
-use crate::input::{Mods, default_key_mappings};
+use crate::input::{Action, Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
 use crate::layout::Split;
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, big_button, icon, icon_text};
@@ -204,6 +204,22 @@ fn pressed_key(keys: &ButtonInput<KeyCode>) -> Option<(Mods, KeyCode)> {
         Mods::None
     };
     Some((mods, key))
+}
+
+/// The mouse button pressed this frame, as egui sees it.
+fn pressed_mouse(ui: &egui::Ui) -> Option<MouseInput> {
+    use egui::PointerButton as P;
+    ui.input(|i| {
+        [
+            (P::Primary, MouseInput::Left),
+            (P::Secondary, MouseInput::Right),
+            (P::Middle, MouseInput::Middle),
+            (P::Extra1, MouseInput::Back),
+            (P::Extra2, MouseInput::Forward),
+        ]
+        .into_iter()
+        .find_map(|(p, b)| i.pointer.button_pressed(p).then_some(b))
+    })
 }
 
 /// Draws the dialog when open (called from the menu's egui pass); `vr`: in the headset, where
@@ -428,7 +444,7 @@ pub fn show(
                     ui,
                     |ui| {
                         ui.label("");
-                        ui.label(egui::RichText::new(t!("input-keyboard")).color(GREEN));
+                        ui.label(egui::RichText::new(t!("input-keyboard-mouse")).color(GREEN));
                         ui.label("");
                         ui.label(egui::RichText::new(t!("input-joystick")).color(GREEN));
                         ui.end_row();
@@ -449,10 +465,13 @@ pub fn show(
                             let name = ui.label(key.name());
                             let capturing_key =
                                 dialog.capture.as_ref().is_some_and(|c| c.what == key);
-                            let labels: Vec<String> =
-                                config.keys_for(target).map(|m| m.label()).collect();
+                            let labels: Vec<String> = config
+                                .keys_for(target)
+                                .map(|m| m.label())
+                                .chain(config.mouse_for(target).map(|b| b.label()))
+                                .collect();
                             let text = match (capturing_key, labels.is_empty()) {
-                                (true, _) => t!("input-press-key").to_string(),
+                                (true, _) => t!("input-press-key-or-mouse").to_string(),
                                 (false, true) => "-".to_string(),
                                 (false, false) => labels.join(", "),
                             };
@@ -466,16 +485,30 @@ pub fn show(
                                     "+"
                                 })
                                 .selected(capturing_key);
-                                if ui.add(add).on_hover_text(t!("input-add-key")).clicked()
-                                    && !capturing_key
-                                {
+                                let add = ui.add(add).on_hover_text(t!("input-add-key"));
+                                if add.clicked() && !capturing_key {
                                     start = Some(key);
+                                }
+                                // A mouse button pressed on WAITING binds it (so that the
+                                // clicks elsewhere in the dialog don't).
+                                if capturing_key
+                                    && add.hovered()
+                                    && let Some(button) = pressed_mouse(ui)
+                                {
+                                    config.bind_mouse(target, button);
+                                    dialog.status = Some(format!(
+                                        "{} -> {}",
+                                        key.name().to_uppercase(),
+                                        button.label()
+                                    ));
+                                    dialog.capture = None;
                                 }
                                 if ui
                                     .button(icon_text(ui, icon::CLEAR, t!("fm-key-clear")))
                                     .clicked()
                                 {
                                     config.keys.retain(|m| m.target != target);
+                                    config.mouse.retain(|m| m.target != target);
                                 }
                             });
                             let what = Binding::Button(target);
@@ -527,6 +560,7 @@ pub fn show(
                     .clicked()
                 {
                     config.keys = default_key_mappings();
+                    config.mouse = crate::hotas::default_mouse_mappings();
                 }
                 if ui
                     .add(big_button(t!("input-clear-all")).icon(icon::CLEAR))
@@ -675,9 +709,11 @@ fn vr_targets() -> Vec<ButtonTarget> {
         .into_iter()
         .flat_map(|(_, targets)| targets)
         .filter(|t| {
-            // The head looks around in VR.
+            // The head looks around in VR, the fingertips press the controls.
             !matches!(t, ButtonTarget::Action(a)
-                if a.stick_direction().is_some() || a.look_direction().is_some())
+                if a.stick_direction().is_some()
+                    || a.look_direction().is_some()
+                    || matches!(a, Action::MouseLook | Action::ClickControl))
         })
         .collect()
 }

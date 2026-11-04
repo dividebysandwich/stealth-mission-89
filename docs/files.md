@@ -10,6 +10,7 @@ read-only (Program Files, the AppImage, the macOS bundle, Steam's install folder
 | macOS | `~/Library/Application Support/stealth-mission-89` |
 | Linux, Steam Deck, Steam Frame | `$XDG_DATA_HOME/stealth-mission-89`, by default `~/.local/share/stealth-mission-89` |
 | Browser | The browser's local storage for the site |
+| Android | The app's private storage, `/data/data/io.github.dividebysandwich.stealthmission89/files` (removed with the app) |
 
 Windows without a Documents folder falls back to `%APPDATA%\stealth-mission-89`. macOS keeps
 `Application Support` because macOS asks the player's permission before a game reads Documents;

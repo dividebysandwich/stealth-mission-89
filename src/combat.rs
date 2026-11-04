@@ -1336,6 +1336,9 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
     }
     let dt = out.time.delta_secs();
     zone.ease(dt);
+    // A radar in standby adds nothing to the friendly side's air picture.
+    let radar_off = out.mfd.modern && out.mfd.av.radar_off();
+    combat.sim.set_player_radar_off(radar_off);
     let combat = &*combat;
     let Outputs {
         mut player,
@@ -1502,6 +1505,10 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             arc: a.arc.map(|(s, e)| (s as u8, e as u8)),
             colour: a.colour,
         });
+    // With the radar in standby the displays show the aircraft the other friendly radars see.
+    let eyes = radar_off.then(|| {
+        crate::campaign::picture::friendly_eyes(campaign.as_ref().map(|c| c.state()), sim)
+    });
     for (i, u, _) in sim.active_aircraft() {
         if u.flags & fflags::AIRBORNE == 0 || u.flags & fflags::DESTROYED != 0 {
             continue;
@@ -1513,6 +1520,10 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             ContactKind::Aircraft
         };
         let friendly = sim.friendly_unit(i, u.spec);
+        // Friendly aircraft and the drones are on the datalink.
+        let seen = friendly
+            || kind == ContactKind::Drone
+            || eyes.as_ref().is_none_or(|e| crate::campaign::picture::seen_by(e, u.x, u.y));
         contacts.list.push(Contact {
             kind,
             east,
@@ -1522,6 +1533,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             friendly,
             target: Some(ContactRef::Unit(i)),
             threat: None,
+            seen,
         });
     }
     // The other players: friendly aircraft, and their weapons in flight.
@@ -1538,6 +1550,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 friendly: true,
                 target: Some(ContactRef::Pilot(p.id)),
                 threat: None,
+                seen: true,
             });
         }
         for (_, m) in &p.missiles {
@@ -1551,6 +1564,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 friendly: true,
                 target: None,
                 threat: None,
+                seen: true,
             });
         }
     }
@@ -1565,6 +1579,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             friendly: false,
             target: None,
             threat: None,
+            seen: true,
         });
     }
     let objects = sim.objects();
@@ -1601,6 +1616,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 friendly,
                 target: Some(ContactRef::Object(i)),
                 threat,
+                seen: true,
             });
         }
     }
@@ -1630,6 +1646,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             friendly,
             target,
             threat,
+            seen: true,
         });
         ship_at.push((ob.x, ob.y));
     }
@@ -1658,6 +1675,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             friendly,
             target,
             threat: None,
+            seen: true,
         });
     }
     let heading_bam = to_bam(a.euler().0);
@@ -1713,6 +1731,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
                 friendly: false,
                 target: Some(ContactRef::Object(i)),
                 threat: None,
+                seen: true,
             });
         }
     }

@@ -25,7 +25,7 @@ avionics with a targeting pod, an aerodynamic flight model, missiles that use pr
 with the accurate stars and moon of the mission's date. Seven more aircraft stand beside the F-117A, a modern 
 war in Ukraine joins the old theaters, and the dynamic campaign turns the missions into a war that runs on in 
 real time, with armour, helicopters, drones and multiplayer up to 64 players. On top of it all, you can fly 
-on your Linux, Mac or Windows machine, or in a browser, or in VR - both with your PC and also directly on 
+on your Linux, Mac or Windows machine, on an Android phone or tablet, or in a browser, or in VR - both with your PC and also directly on 
 your Steam Frame in standalone mode.
 
 But unlike the old DOS games, you are not constrained to single missions and a randomized career mode. Stealth 
@@ -219,11 +219,18 @@ change is saved at once.
 - **Search** (under the title) keeps only the actions whose name holds what you type. It also
   narrows the VR controller lists below to the actions it matches (see *VR controllers*).
 - **Axes**: roll, pitch, rudder, throttle, the sensor/cursor slew pair, the Harrier's nozzles and the
-  TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera). Click
+  TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera), the
+  look pair and the view zoom (a hat, mini-stick or sprung rocker: how far it is pushed is how
+  fast the view turns or zooms, as the view pan and view zoom keys). Click
   **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. The F-117
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an
   axis pushed past halfway works too.
+- **Mouse buttons** sit in the keyboard column. Click **+** and press the mouse button on the
+  *WAITING* button that appears (any key binds as well). The right button's look-around and the
+  left button's cockpit clicks are actions too, *Mouse look* and *Click cockpit control*, so you can
+  move them to other buttons, keys or joystick buttons and give the mouse buttons other actions.
+  *DEFAULT KEYS* restores the mouse buttons as well.
 - A standard **gamepad** works without mapping: left stick to fly, right stick for the rudder,
   triggers for the throttle, face buttons for fire, gun, weapon select and bay doors, Start for the
   menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
@@ -273,6 +280,23 @@ diagnostics.watch(freeTrack.z)
 ```
 
 Thank you fritzjoel for this tip!
+
+**Touch (Android).** On a phone or tablet the flight is flown with on-screen controls:
+
+| Control | Where | Does |
+|---|---|---|
+| **THR** | Slot along the left edge | Throttle (a helicopter's collective): idle at the bottom, full at the top |
+| Stick | Lower right: put the thumb down anywhere there | Drag right to roll right, down to pull; the further, the harder |
+| **FIRE** / **GUN** | Left, beside the throttle | Fire the selected weapon / the gun, while held |
+| **TGT** / **WPN** | Left | Nearest target ahead / select weapon |
+| **FLR** / **CHF** | Left | Flare / chaff |
+| **MENU**, **VIEW**, **MAP**, **GEAR**, **BRK** | Top right | In-flight menu, cockpit or chase view, maps, gear, wheel brakes |
+
+A finger keeps the control it came down on until it lifts, so you can steer, throttle and fire at
+once. A touch anywhere else works as the mouse: it presses the cockpit's switches and the MFD
+buttons, turns the kneeboard's pages and chooses in the in-flight menu, which hides the touch
+controls while it is open. The back gesture opens and closes the in-flight menu. A keyboard or mouse
+connected to the phone works as on a computer; gamepads and joysticks do not work on Android yet.
 
 The complete list of keys is in Appendix A and in [keys.md](keys.md).
 
@@ -3246,8 +3270,8 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Slot / chase / side / weapon / tactical / inverse tactical | Shift F1 … Shift F6 |
 | | Free camera (W A S D, Q / E, Shift faster, Ctrl slower) | Shift F7 |
 | | Zoom / unzoom / wide angle | Z / X / C |
-| | Look around (cockpit) / orbit (external views) | Right mouse button |
-| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*) |
+| | Look around (cockpit) / orbit (external views) | Right mouse button (bindable as *Mouse look*) |
+| | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*, or to an axis) |
 | | Recentre head tracking (chapter 1.4) | Home |
 | **Time** | Time acceleration / normal | Shift Z / Shift X |
 | **Game** | Settings menu (pauses) / detail / sound level | Esc, Pause, Alt P, gamepad Start / Alt D / Alt V |
