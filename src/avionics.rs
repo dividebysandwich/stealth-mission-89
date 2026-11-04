@@ -5,7 +5,9 @@
 //!   HARM (the radars painting the aircraft, placed by danger like the RWR), TGP (the tracking
 //!   camera), MAP (the moving map in muted colours, or the waypoint table) and SMS (stores: the
 //!   inventory by station with the bomb release program, ripple count and spacing, and the
-//!   ORD page); on the F-117A's third MFD also HSI (`draw_hsi_page`). The bottom bezel
+//!   ORD page); on the F-117A's third MFD also HSI (`draw_hsi_page`). From the format menu
+//!   also RCS (`draw_rcs`): the multipurpose display's threat picture (`crate::mpd`) full size,
+//!   with the signature's aspect, the configuration that swells it and a longer strip chart. The bottom bezel
 //!   buttons pick the format; picking one another MFD shows swaps the two. The top buttons are the format's own, the top right one makes the
 //!   format the sensor of interest (SOI). The buttons' functions are drawn on the display next
 //!   to them, like the real ones.
@@ -79,6 +81,8 @@ pub enum Format {
     Fcr,
     /// The engines, fuel and stores at a glance (after the F-22A's).
     Eng,
+    /// Our radar signature among the radars painting us (`draw_rcs`).
+    Rcs,
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -99,7 +103,7 @@ pub const FOURTH_FORMATS: [Format; 5] =
 
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
 /// the radar).
-pub const ALL_FORMATS: [Format; 9] = [
+pub const ALL_FORMATS: [Format; 10] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -109,6 +113,7 @@ pub const ALL_FORMATS: [Format; 9] = [
     Format::Gm,
     Format::Fcr,
     Format::Eng,
+    Format::Rcs,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
@@ -134,6 +139,7 @@ impl Format {
             Format::Gm => "GM",
             Format::Fcr => "FCR",
             Format::Eng => "ENG",
+            Format::Rcs => "RCS",
         }
     }
 
@@ -150,9 +156,13 @@ impl Format {
     /// The key that brings the format up (script `press=` lookups).
     pub fn action(self) -> Action {
         match self {
-            Format::Hsd | Format::Harm | Format::Map | Format::Gm | Format::Fcr | Format::Eng => {
-                Action::Maps
-            }
+            Format::Hsd
+            | Format::Harm
+            | Format::Map
+            | Format::Gm
+            | Format::Fcr
+            | Format::Eng
+            | Format::Rcs => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -177,6 +187,10 @@ const GM_RANGE_LABELS: [&str; 5] = ["5", "10", "20", "40", "80"];
 /// The A-A radar's ranges (nautical miles to the top of the B-scope).
 pub const FCR_RANGES_NM: [f32; 5] = [10.0, 20.0, 40.0, 80.0, 160.0];
 const FCR_RANGE_LABELS: [&str; 5] = ["10", "20", "40", "80", "160"];
+/// The RCS page's ranges (km to the scope's rim; 0: the shortest of `mpd::RANGES` that holds
+/// the farthest radar, as the multipurpose display's).
+pub const RCS_RANGES: [f32; 6] = [0.0, 5.0, 10.0, 20.0, 40.0, 80.0];
+const RCS_RANGE_LABELS: [&str; 6] = ["AUTO", "5", "10", "20", "40", "80"];
 /// The A-A radar's scan widths (A6, A3, A1: degrees either side of the nose) and bars (rows of
 /// the scan, stacked `aa_radar::BAR_SPACING` apart).
 pub const FCR_AZ_DEG: [f32; 3] = [60.0, 30.0, 10.0];
@@ -240,6 +254,8 @@ pub struct AvionicsState {
     pub fcr_bars: usize,
     pub fcr_el: i8,
     pub fcr_cursor: Vec2,
+    /// The RCS page's range (index into `RCS_RANGES`).
+    pub rcs_range: usize,
     /// The master mode (NAV, A-A, A-G) the formats are shown for, and the formats and the SOI
     /// each one had when the pilot last left it (None: it comes up with its defaults,
     /// `set_master`).
@@ -567,6 +583,7 @@ impl Default for AvionicsState {
             fcr_bars: 0,
             fcr_el: 0,
             fcr_cursor: centre,
+            rcs_range: 0,
             master: None,
             modes: [None; 3],
             ripple: 1,
@@ -912,6 +929,10 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
             av.fcr_range =
                 (av.fcr_range as i32 + d as i32).clamp(0, FCR_RANGES_NM.len() as i32 - 1) as usize
         }
+        MfdCmd::RcsRange(d) => {
+            av.rcs_range =
+                (av.rcs_range as i32 + d as i32).clamp(0, RCS_RANGES.len() as i32 - 1) as usize
+        }
         MfdCmd::FcrAz => av.fcr_az = (av.fcr_az + 1) % FCR_AZ_DEG.len(),
         MfdCmd::FcrBars => av.fcr_bars = (av.fcr_bars + 1) % FCR_BARS.len(),
         MfdCmd::FcrElevation(d) => av.fcr_el = (av.fcr_el + d).clamp(-FCR_EL_MAX, FCR_EL_MAX),
@@ -1079,6 +1100,9 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Fcr, 16) => (FCR_EL_LABELS[(av.fcr_el + FCR_EL_MAX) as usize], Readout, false),
         (Format::Fcr, 17) => ("EL-", Cmd(MfdCmd::FcrElevation(-1)), false),
         (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
+        (Format::Rcs, 1) => ("RNG-", Cmd(MfdCmd::RcsRange(-1)), false),
+        (Format::Rcs, 2) => (RCS_RANGE_LABELS[av.rcs_range], Readout, false),
+        (Format::Rcs, 3) => ("RNG+", Cmd(MfdCmd::RcsRange(1)), false),
         (Format::Tgp, 0) => ("FLIR", Cmd(MfdCmd::Flir), s.flir),
         (Format::Tgp, 1) => (
             crate::mfd::cam_zoom_label(s.cam_zoom),
@@ -1145,6 +1169,7 @@ const RED: u8 = 13;
 const WHITE: u8 = 15;
 const YELLOW: u8 = 17;
 const AMBER: u8 = 18;
+const DEEP_RED: u8 = 16;
 
 /// Draws an MFD with the modern avionics.
 pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, fonts: &Fonts) {
@@ -1166,6 +1191,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Gm => draw_gm(p, c, ac, soi),
         Format::Fcr => draw_fcr(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
+        Format::Rcs => draw_rcs_page(p, c),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
@@ -2277,6 +2303,244 @@ fn harm_picture(p: &MfdParams, c: &mut Canvas, centre: Vec2, r: f32) {
     );
 }
 
+/// The RCS page: the threat picture of the RAH-66's and F-22A's multipurpose display
+/// (`crate::mpd`), full size.
+fn draw_rcs_page(p: &MfdParams, c: &mut Canvas) {
+    let a = p.aircraft.single().ok().map(|(a, _)| a);
+    let (_, pitch, roll) = a.map_or((0.0, 0.0, 0.0), |a| a.euler());
+    let th = crate::mpd::Threats {
+        emitters: &p.emitters.list,
+        emv: &p.emv,
+        history: &p.threats,
+        bay_open: a.is_some_and(|a| a.bay_open),
+        gear_down: a.is_some_and(|a| a.gear_down),
+        pitch,
+        roll,
+    };
+    draw_rcs(c, &th, p.state.av.rcs_range, crate::hud::blink(&p.time));
+}
+
+/// The RCS page's scope (`crate::mpd::draw_scope`, its range `RCS_RANGES`' `range` entry):
+/// the bloom of our radar return among the radars painting us, with the dotted rings where the
+/// strongest ground and air radar signal would see it. Right of it the bloom's shape magnified
+/// (ASPECT: the parts past the detection ring amber, ticks where the gear, the bays, a bank or
+/// a pitch swell it) over the gear, bays, bank and pitch, the signature (RCS), the strongest
+/// signal (SIG) and the margin between them (MRG, negative when seen); under them the most
+/// dangerous radar, and the last 30 seconds as a strip chart with its time axis.
+pub(crate) fn draw_rcs(c: &mut Canvas, th: &crate::mpd::Threats, range: usize, blink: bool) {
+    use crate::mpd::{ScopeStyle, bloom, bloom_size, dotted_ring, fill_bloom, pct};
+    use std::f32::consts::{FRAC_PI_2, PI, TAU};
+    c.clear(BLACK);
+    let range = match RCS_RANGES[range.min(RCS_RANGES.len() - 1)] {
+        0.0 => crate::mpd::scope_range(th.emitters),
+        km => km,
+    };
+    let text = |c: &mut Canvas, x: f32, y: f32, s: &str, h: f32, col: u8| {
+        stroke_text(c, x, y, s, h, 1.0, col)
+    };
+    let st = ScopeStyle {
+        centre: Vec2::new(80.0, 72.0),
+        r: 50.0,
+        thin: 0.7,
+        pen: 0.8,
+        bold: 1.0,
+        sym: 3.0,
+    };
+    let (centre, r) = (st.centre, st.r);
+    let at = |b: f32, f: f32| centre + Vec2::new(b.sin(), -b.cos()) * r * f;
+    crate::mpd::draw_scope(c, th, &st, range, blink, |c, p, label, col| {
+        stroke_text(c, p.x + 4.0, p.y - 9.0, label, 6.0, 1.0, col);
+    });
+    // The rings' ranges, down to the right.
+    for k in 1..=3 {
+        let km = range * k as f32 / 3.0;
+        let s =
+            if km < 10.0 && km.fract() > 0.05 { format!("{km:.1}") } else { format!("{km:.0}") };
+        let q = at(2.6, k as f32 / 3.0);
+        text(c, q.x + 1.0, q.y, &s, 5.0, GREY);
+    }
+    text(c, centre.x - r - 7.0, centre.y - 2.5, "L", 5.0, GREY);
+    text(c, centre.x + r + 3.0, centre.y - 2.5, "R", 5.0, GREY);
+    // The detection rings: the strongest signal's (drawn with the scope) tagged, the other
+    // kind's dimmer when both paint us.
+    let (emv, signal) = (th.emv.emv, crate::mpd::signal(th.emv));
+    let detected = crate::mpd::detected(th.history);
+    let kinds = [("GND", th.emv.egr), ("AIR", th.emv.ear)];
+    let strongest = if th.emv.egr >= th.emv.ear { 0 } else { 1 };
+    for (i, &(name, s)) in kinds.iter().enumerate() {
+        if s <= 0.0 {
+            continue;
+        }
+        let ring = bloom_size(1.0 - s, r);
+        if i != strongest {
+            dotted_ring(c, centre, ring, st.thin, DARK);
+        }
+        let q = centre + Vec2::new(0.71, -0.71) * ring;
+        let col = if i == strongest { CYAN } else { GREY };
+        text(c, q.x + 2.0, q.y - 6.0, name, 5.0, col);
+    }
+    // Over the scope: the detection, the radars painting us.
+    if detected && blink {
+        text(c, 6.0, 27.0, "DETECTED", 6.0, RED);
+    }
+    text(c, 6.0, 19.0, &format!("{} RDR", th.emitters.len()), 5.0, GREY);
+    // The aspect: the bloom scaled to fit with its detection ring.
+    let (ic, ir) = (Vec2::new(185.0, 50.0), 27.0);
+    text(c, 142.0, 19.0, "ASPECT", 5.0, GREY);
+    c.ring(ic, ir, 0.7, DARK);
+    for k in 0..4 {
+        let d = Vec2::from_angle(k as f32 * FRAC_PI_2);
+        c.stroke(ic + d * (ir - 3.0), ic + d * ir, 0.7, GREY);
+    }
+    c.triangle(
+        [
+            ic - Vec2::Y * (ir + 1.0),
+            ic + Vec2::new(-2.0, -ir - 4.0),
+            ic + Vec2::new(2.0, -ir - 4.0),
+        ],
+        WHITE,
+    );
+    let base = bloom_size(emv, 1.0);
+    let limit = (signal > 0.0).then(|| bloom_size(1.0 - signal, 1.0));
+    let most = (0..96).map(|i| crate::mpd::lobes(i as f32 * TAU / 96.0, th)).fold(0.0, f32::max);
+    let scale = ir * 0.9 / (base * most).max(limit.unwrap_or(0.0)).max(1e-3);
+    let pts = bloom(ic, base * scale, ir, th, 96);
+    fill_bloom(c, ic, &pts, if detected { DEEP_RED } else { NAVY });
+    for p in pts.windows(2) {
+        let out = limit.is_some_and(|l| (p[0] - ic).length() > l * scale);
+        let col = match (out, detected) {
+            (true, true) => RED,
+            (true, false) => AMBER,
+            (false, true) => RED,
+            (false, false) => CYAN,
+        };
+        c.stroke(p[0], p[1], 0.8, col);
+    }
+    if let Some(l) = limit {
+        dotted_ring(c, ic, l * scale, 0.7, AMBER);
+    }
+    // Where the gear, the open bays, a bank and a pitch swell the bloom (`mpd::lobes`).
+    let q = FRAC_PI_2;
+    let banked = th.roll.to_degrees().abs() >= 10.0;
+    let pitched = th.pitch.to_degrees().abs() >= 10.0;
+    let mut ticks = Vec::new();
+    if th.gear_down {
+        ticks.extend([0.35, -0.35, PI - 0.35, 0.35 - PI]);
+    }
+    if th.bay_open {
+        ticks.extend([q - 0.3, q + 0.3, -q - 0.3, -q + 0.3]);
+    }
+    if banked {
+        ticks.extend([q, -q]);
+    }
+    if pitched {
+        ticks.extend([0.0, PI]);
+    }
+    for b in ticks {
+        let d = Vec2::new(b.sin(), -b.cos());
+        c.stroke(ic + d * (ir + 1.5), ic + d * (ir + 5.0), 1.0, AMBER);
+    }
+    // The configuration.
+    let tag = |on: bool| if on { AMBER } else { GREY };
+    let (x0, x1) = (142.0, 186.0);
+    let gear = if th.gear_down { "GEAR DN" } else { "GEAR UP" };
+    text(c, x0, 82.0, gear, 5.5, tag(th.gear_down));
+    let bay = if th.bay_open { "BAY OPN" } else { "BAY CLS" };
+    text(c, x1, 82.0, bay, 5.5, tag(th.bay_open));
+    let bank = th.roll.to_degrees();
+    let side = if bank.round() == 0.0 {
+        ""
+    } else if bank > 0.0 {
+        "R"
+    } else {
+        "L"
+    };
+    text(c, x0, 91.0, &format!("BNK {:02.0}{side}", bank.abs()), 5.5, tag(banked));
+    let pitch = th.pitch.to_degrees();
+    text(c, x1, 91.0, &format!("PIT {:+03.0}", pitch), 5.5, tag(pitched));
+    // The signature, the strongest signal and the margin between them.
+    c.hline(x0 as i32, 227, 99, DARK);
+    let margin = 1.0 - emv - signal;
+    let sig_col = if detected { RED } else { CYAN };
+    let mrg_col = if signal <= 0.0 {
+        GREY
+    } else if margin < 0.0 {
+        RED
+    } else if margin < 0.15 {
+        AMBER
+    } else {
+        GREEN
+    };
+    let mrg = if signal > 0.0 {
+        let m = (margin.clamp(-1.0, 1.0) * 99.0).round() as i32;
+        format!("{m:+}")
+    } else {
+        "--".into()
+    };
+    for (k, (name, value, col)) in [
+        ("RCS", format!("{}", pct(emv)), sig_col),
+        ("SIG", format!("{}", pct(signal)), AMBER),
+        ("MRG", mrg, mrg_col),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let x = x0 + k as f32 * 29.0;
+        text(c, x, 102.0, name, 5.0, col);
+        text(c, x, 110.0, &value, 8.0, col);
+    }
+    let both = format!("GND {:02}  AIR {:02}", pct(th.emv.egr), pct(th.emv.ear));
+    text(c, x0, 124.0, &both, 5.0, GREY);
+    // The most dangerous radar.
+    match th.emitters.first() {
+        Some(e) => {
+            let (state, col) = if e.launch {
+                ("LNCH", if blink { RED } else { WHITE })
+            } else if e.tracking {
+                ("TRK", AMBER)
+            } else if e.heard {
+                ("SRCH", GREEN)
+            } else {
+                ("", GREY)
+            };
+            let kind = if e.air { "AIR" } else { "GND" };
+            let line = format!("THR {} {kind} {:.0}KM {state}", e.label, e.range_km);
+            text(c, 6.0, 124.0, &line, 5.0, col);
+        }
+        None => {
+            text(c, 6.0, 124.0, "NO EMITTERS", 5.0, DARK);
+        }
+    }
+    // The strip chart: a grid every 5 seconds and at half scale under the samples, the
+    // legend left of it, the seconds under it.
+    let k = c.scale as i32;
+    let (cx, cy, cw, ch) = (30, 133, crate::mpd::HISTORY as i32 / k + 2, 20);
+    let span = (cw - 2) as f32;
+    let right = (cx + cw - 1) as f32;
+    let secs = crate::mpd::HISTORY as f32 * crate::mpd::SAMPLE_S;
+    for t in (5..30).step_by(5) {
+        let x = right - t as f32 / secs * span;
+        c.dashed(
+            Vec2::new(x, (cy + 1) as f32),
+            Vec2::new(x, (cy + ch - 1) as f32),
+            1.0,
+            2.0,
+            0.5,
+            DARK,
+        );
+    }
+    let mid = (cy + ch / 2) as f32;
+    c.dashed(Vec2::new((cx + 1) as f32, mid), Vec2::new(right, mid), 1.0, 2.0, 0.5, DARK);
+    crate::mpd::strip_chart(c, th.history, cx, cy, cw, ch);
+    text(c, 6.0, (cy + 2) as f32, "RCS", 5.0, CYAN);
+    text(c, 6.0, (cy + 11) as f32, "DET", 5.0, AMBER);
+    for t in [30, 20, 10, 0] {
+        let x = right - t as f32 / secs * span;
+        let s = if t == 0 { "0".to_string() } else { format!("-{t}") };
+        stroke_text_at(c, x, (cy + ch + 5) as f32, &s, 5.0, 1.0, GREY, Align::Centre);
+    }
+}
+
 /// Magnification of the zoomed window and its size (display pixels).
 const ZOOM: f32 = 4.0;
 const ZOOM_WINDOW: Vec2 = Vec2::new(104.0, 80.0);
@@ -3127,7 +3391,7 @@ mod tests {
         let listed: Vec<_> = (10..20).filter_map(|k| osb(MfdSide::Left, k, &s)).collect();
         assert_eq!(
             listed.iter().map(|o| o.0).collect::<Vec<_>>(),
-            ["HSD", "HARM", "TGP", "MAP", "SMS", "HSI", "ENG"]
+            ["HSD", "HARM", "TGP", "MAP", "SMS", "HSI", "ENG", "RCS"]
         );
         assert!(listed[0].2 && !listed[1].2);
         assert_eq!(osb(MfdSide::Left, 5, &s).map(|o| o.2), Some(true));
@@ -3161,6 +3425,73 @@ mod tests {
         let mut next = AvionicsState::default();
         next.keep_rows(&s.av);
         assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
+    }
+
+    /// The RCS page is in every MFD's format menu (with or without a radar: the menu's ten
+    /// side buttons hold all the formats), and its range steps from AUTO out and back.
+    #[test]
+    fn rcs_page_in_the_format_menu() {
+        for radar in [false, true] {
+            let mut s = MfdState { modern: true, ..default() };
+            s.av.radar = radar;
+            let mut raster = MapRaster::default();
+            let k = s.av.formats(MfdSide::Left).iter().position(|&f| f == Format::Hsd).unwrap();
+            apply(&mut s, &mut raster, MfdCmd::Row(MfdSide::Left, k as u8));
+            let slot = (10..20)
+                .find(|&slot| osb(MfdSide::Left, slot, &s).is_some_and(|o| o.0 == "RCS"))
+                .expect("RCS in the menu");
+            let Some((_, OsbFn::Cmd(cmd), _)) = osb(MfdSide::Left, slot, &s) else { panic!() };
+            apply(&mut s, &mut raster, cmd);
+            assert_eq!(s.av.format(MfdSide::Left), Format::Rcs);
+            assert_eq!(s.av.formats(MfdSide::Left)[k], Format::Rcs);
+        }
+        let mut s = MfdState { modern: true, ..default() };
+        let mut raster = MapRaster::default();
+        s.av.select(MfdSide::Right, Format::Rcs);
+        assert_eq!(osb(MfdSide::Right, 2, &s).unwrap().0, "AUTO");
+        apply(&mut s, &mut raster, MfdCmd::RcsRange(-1));
+        assert_eq!(s.av.rcs_range, 0);
+        for _ in 0..9 {
+            apply(&mut s, &mut raster, MfdCmd::RcsRange(1));
+        }
+        assert_eq!(osb(MfdSide::Right, 2, &s).unwrap().0, "80");
+    }
+
+    /// The RCS page draws with radars painting (one of whose pulses just saw us), at every
+    /// range, and with nothing at all.
+    #[test]
+    fn rcs_page_draws() {
+        let (emitters, emv, history) = crate::mpd::threat_fixture();
+        for range in 0..RCS_RANGES.len() + 1 {
+            let th = crate::mpd::Threats {
+                emitters: &emitters,
+                emv: &emv,
+                history: &history,
+                bay_open: range % 2 == 0,
+                gear_down: range % 3 == 0,
+                pitch: 0.3,
+                roll: -0.6,
+            };
+            let mut c = Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE);
+            draw_rcs(&mut c, &th, range, true);
+            // The bloom red (seen), the detection ring and line amber, the chart's crossings.
+            for col in [DEEP_RED, RED, AMBER, CYAN, WHITE] {
+                assert!(c.px.contains(&col), "colour {col} at range {range}");
+            }
+        }
+        let (emv, history) = (crate::panel::Emv::default(), crate::mpd::ThreatHistory::default());
+        let th = crate::mpd::Threats {
+            emitters: &[],
+            emv: &emv,
+            history: &history,
+            bay_open: false,
+            gear_down: false,
+            pitch: 0.0,
+            roll: 0.0,
+        };
+        let mut c = Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE);
+        draw_rcs(&mut c, &th, 0, false);
+        assert!(c.px.contains(&NAVY) && !c.px.contains(&DEEP_RED));
     }
 
     /// The menu covers the targeting pod's picture (the display is not see-through).

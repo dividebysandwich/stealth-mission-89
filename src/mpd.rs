@@ -13,6 +13,9 @@
 //! at it would see it, red for a moment when a pulse does. Under the scope the last 30 seconds
 //! of both as a strip chart: the signature filled, the detection line over it, red where it
 //! crossed.
+//!
+//! The scope's parts (`draw_scope`, `bloom`, `strip_chart`) also draw the modern MFDs' RCS page
+//! (`avionics::draw_rcs`).
 
 use std::collections::VecDeque;
 use std::f32::consts::TAU;
@@ -186,13 +189,13 @@ pub struct ThreatHistory {
 
 /// Seconds between the chart's samples and how many it keeps (30 seconds, a sample per texel
 /// column of the chart).
-const SAMPLE_S: f32 = 30.0 / HISTORY as f32;
-const HISTORY: usize = 360;
+pub const SAMPLE_S: f32 = 30.0 / HISTORY as f32;
+pub const HISTORY: usize = 360;
 /// Seconds a radar flashes after its pulse hits, and the bloom stays red after one saw us.
 const PULSE_S: f32 = 0.8;
 const DETECT_S: f32 = 1.5;
 /// The scope's ranges (km): the shortest that holds the farthest radar.
-const RANGES: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
+pub const RANGES: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
 
 pub(crate) fn sample_threats(
     time: Res<Time>,
@@ -289,107 +292,18 @@ pub fn draw_left(
 
 /// The scope (centred at the top) and the strip chart under it.
 fn draw_threats(c: &mut Canvas, fonts: &Fonts, th: &Threats, blink: bool) {
-    let w = c.w as f32;
-    let centre = Vec2::new(w / 2.0, 55.0);
-    let r = 48.0;
-    // Where a bearing (radians clockwise from the nose) and a fraction of the radius land.
-    let at = |b: f32, f: f32| centre + Vec2::new(b.sin(), -b.cos()) * r * f;
-    let far = th.emitters.iter().map(|e| e.range_km).fold(0.0, f32::max);
-    let range = RANGES.into_iter().find(|&k| far <= k * 0.95).unwrap_or(RANGES[4]);
-    // Range rings, the bearing ticks every 30 degrees, the nose mark.
-    for k in 1..=3 {
-        c.ring(centre, r * k as f32 / 3.0, 0.4, if k == 3 { GREY } else { DARK });
-    }
-    for k in 0..12 {
-        let b = k as f32 * TAU / 12.0;
-        let inner = if k % 3 == 0 { 0.9 } else { 0.95 };
-        c.stroke(at(b, inner), at(b, 1.0), 0.4, GREY);
-    }
-    c.triangle([at(0.0, 1.02), at(-0.05, 1.1), at(0.05, 1.1)], WHITE);
-    // The bloom: our return, filled dim under the contacts; the dotted ring is the size at
-    // which the strongest signal at us would see it.
-    let (emv, signal) = (th.emv.emv, th.emv.egr.max(th.emv.ear));
-    let size = |v: f32| (2.5 + v.clamp(0.0, 1.0) * 18.0) * r / 40.0;
-    let base = size(emv);
-    let detected = th.history.pulse.is_some_and(|(_, age, detects)| detects && age < DETECT_S);
-    let pts: Vec<Vec2> = (0..=48)
-        .map(|i| {
-            let a = i as f32 * TAU / 48.0;
-            centre + Vec2::new(a.sin(), -a.cos()) * (base * lobes(a, th)).min(r)
-        })
-        .collect();
-    let (fill, line) = if detected { (DEEP_RED, RED) } else { (NAVY, CYAN) };
-    for p in pts.windows(2) {
-        c.triangle([centre, p[0], p[1]], fill);
-    }
-    c.polyline(&pts, 0.5, line);
-    if signal > 0.0 {
-        let limit = size(1.0 - signal);
-        let n = 36;
-        for i in (0..n).step_by(2) {
-            let (a0, a1) = (i as f32 * TAU / n as f32, (i as f32 + 0.6) * TAU / n as f32);
-            c.arc(centre, limit, a0, a1, 0.4, line);
-        }
-    }
-    // The trackers' missile envelopes (inside the scope) and their beams at the helicopter.
-    let place = |e: &EmitterView| (e.range_km / range).min(1.0);
-    for e in th.emitters.iter().filter(|e| e.tracking || e.launch) {
-        let p = at(e.rel_bearing, place(e));
-        let col = if e.launch { RED } else { AMBER };
-        ring_inside(c, p, e.lock_range_km / range * r, centre, r, col);
-        c.dashed(p, centre, 2.0, 2.0, 0.4, col);
-    }
-    // The helicopter.
-    c.stroke(centre + Vec2::new(0.0, -2.5), centre + Vec2::new(0.0, 2.5), 0.6, WHITE);
-    c.stroke(centre + Vec2::new(-2.0, -0.5), centre + Vec2::new(2.0, -0.5), 0.6, WHITE);
-    // The radars: a strobe on the rim at each one's bearing (longer the more dangerous), its
-    // symbol at its range (on the rim when out of range), green when heard lately; the one whose
-    // pulse just hit white, a ring going out from it and its beam to the centre.
-    for e in th.emitters.iter().rev() {
-        let len = 0.04 + 0.12 * (e.priority as f32 / 520.0).clamp(0.0, 1.0);
-        let pulse = th
-            .history
-            .pulse
-            .filter(|&(source, age, _)| source == e.source && age < PULSE_S)
-            .map(|p| p.1 / PULSE_S);
-        let col = if pulse.is_some() {
-            WHITE
-        } else if e.launch {
-            if blink { RED } else { WHITE }
-        } else if e.tracking {
-            AMBER
-        } else if e.heard {
-            GREEN
-        } else {
-            DIM
-        };
-        c.stroke(at(e.rel_bearing, 1.0), at(e.rel_bearing, 1.0 - len), 0.6, col);
-        let p = at(e.rel_bearing, place(e));
-        if let Some(f) = pulse {
-            c.ring(p, 3.5 + 9.0 * f, 0.5, if f < 0.5 { WHITE } else { GREY });
-            c.stroke(p, centre, 0.5, if f < 0.5 { WHITE } else { GREY });
-        }
-        let s = if pulse.is_some() { 3.2 } else { 2.6 };
-        if e.air {
-            c.polyline(
-                &[p + Vec2::new(-s, s * 0.6), p + Vec2::new(0.0, -s), p + Vec2::new(s, s * 0.6)],
-                0.5,
-                col,
-            );
-        } else {
-            let d = [Vec2::new(0.0, -s), Vec2::new(s, 0.0), Vec2::new(0.0, s), Vec2::new(-s, 0.0)];
-            c.polyline(&[p + d[0], p + d[1], p + d[2], p + d[3], p + d[0]], 0.5, col);
-        }
-        if e.tracking || e.launch || e.heard || pulse.is_some() {
-            fonts.text(c, p.x as i32 + 3, p.y as i32 - 6, e.label.as_bytes(), col);
-        }
-    }
+    let st = ScopeStyle::MPD;
+    let range = scope_range(th.emitters);
+    draw_scope(c, th, &st, range, blink, |c, p, label, col| {
+        fonts.text(c, p.x as i32 + 3, p.y as i32 - 6, label.as_bytes(), col);
+    });
     // The corners: the range, the radars heard, our signature and the strongest signal.
+    let (emv, signal) = (th.emv.emv, signal(th.emv));
+    let detected = detected(th.history);
     let (wi, top, bottom) = (c.w as i32, 3, 92);
     fonts.text(c, 4, top, format!("{range:.0}KM").as_bytes(), GREY);
     let n = format!("{} RDR", th.emitters.len());
     fonts.text(c, wi - 4 - fonts.width(n.as_bytes()), top, n.as_bytes(), GREY);
-    let pct = |v: f32| (v.clamp(0.0, 1.0) * 99.0).round() as i32;
     fonts.text(c, 4, bottom, b"RCS", CYAN);
     let v = format!("{:>2}", pct(emv));
     let x = fonts.text(c, 4, bottom + 7, v.as_bytes(), if detected { RED } else { CYAN });
@@ -403,13 +317,187 @@ fn draw_threats(c: &mut Canvas, fonts: &Fonts, th: &Threats, blink: bool) {
     strip_chart(c, th.history, 4, 107, wi - 8, 18);
 }
 
+/// A signature or signal (0..1) as the displays' percentage (0..99).
+pub fn pct(v: f32) -> i32 {
+    (v.clamp(0.0, 1.0) * 99.0).round() as i32
+}
+
+/// The strongest radar signal at the aircraft (ground or air).
+pub fn signal(emv: &Emv) -> f32 {
+    emv.egr.max(emv.ear)
+}
+
+/// A radar's pulse saw the aircraft lately (the bloom shows red).
+pub fn detected(h: &ThreatHistory) -> bool {
+    h.pulse.is_some_and(|(_, age, detects)| detects && age < DETECT_S)
+}
+
+/// The scope's range (km): the shortest of `RANGES` that holds the farthest radar.
+pub fn scope_range(emitters: &[EmitterView]) -> f32 {
+    let far = emitters.iter().map(|e| e.range_km).fold(0.0, f32::max);
+    RANGES.into_iter().find(|&k| far <= k * 0.95).unwrap_or(RANGES[RANGES.len() - 1])
+}
+
+/// The bloom's base radius on a scope of radius `r` for a signature `v` (0..1); the detection
+/// ring of a signal `s` is the size of the signature `1 - s`.
+pub fn bloom_size(v: f32, r: f32) -> f32 {
+    (2.5 + v.clamp(0.0, 1.0) * 18.0) * r / 40.0
+}
+
+/// The bloom's outline about `centre`, `n` steps round from the nose: `base` (`bloom_size`)
+/// times `lobes`, no farther out than `max`.
+pub fn bloom(centre: Vec2, base: f32, max: f32, th: &Threats, n: usize) -> Vec<Vec2> {
+    (0..=n)
+        .map(|i| {
+            let a = i as f32 * TAU / n as f32;
+            centre + Vec2::new(a.sin(), -a.cos()) * (base * lobes(a, th)).min(max)
+        })
+        .collect()
+}
+
+/// Fills a bloom outline (`bloom`) from its centre.
+pub fn fill_bloom(c: &mut Canvas, centre: Vec2, pts: &[Vec2], col: u8) {
+    for p in pts.windows(2) {
+        c.triangle([centre, p[0], p[1]], col);
+    }
+}
+
+/// A dotted ring (18 dots).
+pub fn dotted_ring(c: &mut Canvas, centre: Vec2, r: f32, w: f32, col: u8) {
+    let n = 36;
+    for i in (0..n).step_by(2) {
+        let (a0, a1) = (i as f32 * TAU / n as f32, (i as f32 + 0.6) * TAU / n as f32);
+        c.arc(centre, r, a0, a1, w, col);
+    }
+}
+
+/// How far a radar's flash after its pulse has gone (0..1; None: not flashing).
+pub fn pulse_of(h: &ThreatHistory, source: EmitterSource) -> Option<f32> {
+    h.pulse.filter(|&(s, age, _)| s == source && age < PULSE_S).map(|p| p.1 / PULSE_S)
+}
+
+/// Where and how big `draw_scope` draws (drawing units): the scope's centre and radius, its
+/// thin pen (rings, ticks, beams), the outline pen (bloom, symbols), the bold one (strobes, the
+/// aircraft) and the radars' symbol size.
+#[derive(Debug, Clone, Copy)]
+pub struct ScopeStyle {
+    pub centre: Vec2,
+    pub r: f32,
+    pub thin: f32,
+    pub pen: f32,
+    pub bold: f32,
+    pub sym: f32,
+}
+
+impl ScopeStyle {
+    /// The multipurpose display's (RAH-66, F-22A).
+    pub const MPD: ScopeStyle = ScopeStyle {
+        centre: Vec2::new(MPD_CANVAS.0 as f32 / 2.0, 55.0),
+        r: 48.0,
+        thin: 0.4,
+        pen: 0.5,
+        bold: 0.6,
+        sym: 2.6,
+    };
+}
+
+/// The threat scope, heading up, `range` km to the rim: range rings, bearing ticks and the nose
+/// mark; the bloom with the dotted ring where the strongest signal would see it (red for a while
+/// after a pulse did); the trackers' missile envelopes and beams, the aircraft, and the radars
+/// (strobes on the rim, symbols at their range, `label` writing a symbol's text next to it).
+pub fn draw_scope(
+    c: &mut Canvas,
+    th: &Threats,
+    st: &ScopeStyle,
+    range: f32,
+    blink: bool,
+    mut label: impl FnMut(&mut Canvas, Vec2, &str, u8),
+) {
+    let (centre, r) = (st.centre, st.r);
+    let k = st.sym / 2.6;
+    // Where a bearing (radians clockwise from the nose) and a fraction of the radius land.
+    let at = |b: f32, f: f32| centre + Vec2::new(b.sin(), -b.cos()) * r * f;
+    // Range rings, the bearing ticks every 30 degrees, the nose mark.
+    for k in 1..=3 {
+        c.ring(centre, r * k as f32 / 3.0, st.thin, if k == 3 { GREY } else { DARK });
+    }
+    for k in 0..12 {
+        let b = k as f32 * TAU / 12.0;
+        let inner = if k % 3 == 0 { 0.9 } else { 0.95 };
+        c.stroke(at(b, inner), at(b, 1.0), st.thin, GREY);
+    }
+    c.triangle([at(0.0, 1.02), at(-0.05, 1.1), at(0.05, 1.1)], WHITE);
+    // The bloom: our return, filled dim under the contacts; the dotted ring is the size at
+    // which the strongest signal at us would see it.
+    let (emv, signal) = (th.emv.emv, signal(th.emv));
+    let detected = detected(th.history);
+    let pts = bloom(centre, bloom_size(emv, r), r, th, 48);
+    let (fill, line) = if detected { (DEEP_RED, RED) } else { (NAVY, CYAN) };
+    fill_bloom(c, centre, &pts, fill);
+    c.polyline(&pts, st.pen, line);
+    if signal > 0.0 {
+        dotted_ring(c, centre, bloom_size(1.0 - signal, r), st.thin, line);
+    }
+    // The trackers' missile envelopes (inside the scope) and their beams at the aircraft.
+    let place = |e: &EmitterView| (e.range_km / range).min(1.0);
+    for e in th.emitters.iter().filter(|e| e.tracking || e.launch) {
+        let p = at(e.rel_bearing, place(e));
+        let col = if e.launch { RED } else { AMBER };
+        ring_inside(c, p, e.lock_range_km / range * r, centre, r, st.thin, col);
+        c.dashed(p, centre, 2.0 * k, 2.0 * k, st.thin, col);
+    }
+    // The aircraft.
+    let (a, b) = (Vec2::new(0.0, -2.5) * k, Vec2::new(0.0, 2.5) * k);
+    c.stroke(centre + a, centre + b, st.bold, WHITE);
+    let (a, b) = (Vec2::new(-2.0, -0.5) * k, Vec2::new(2.0, -0.5) * k);
+    c.stroke(centre + a, centre + b, st.bold, WHITE);
+    // The radars: a strobe on the rim at each one's bearing (longer the more dangerous), its
+    // symbol at its range (on the rim when out of range), green when heard lately; the one whose
+    // pulse just hit white, a ring going out from it and its beam to the centre.
+    for e in th.emitters.iter().rev() {
+        let len = 0.04 + 0.12 * (e.priority as f32 / 520.0).clamp(0.0, 1.0);
+        let pulse = pulse_of(th.history, e.source);
+        let col = if pulse.is_some() {
+            WHITE
+        } else if e.launch {
+            if blink { RED } else { WHITE }
+        } else if e.tracking {
+            AMBER
+        } else if e.heard {
+            GREEN
+        } else {
+            DIM
+        };
+        c.stroke(at(e.rel_bearing, 1.0), at(e.rel_bearing, 1.0 - len), st.bold, col);
+        let p = at(e.rel_bearing, place(e));
+        if let Some(f) = pulse {
+            c.ring(p, (3.5 + 9.0 * f) * k, st.pen, if f < 0.5 { WHITE } else { GREY });
+            c.stroke(p, centre, st.pen, if f < 0.5 { WHITE } else { GREY });
+        }
+        let s = if pulse.is_some() { 3.2 * k } else { st.sym };
+        if e.air {
+            c.polyline(
+                &[p + Vec2::new(-s, s * 0.6), p + Vec2::new(0.0, -s), p + Vec2::new(s, s * 0.6)],
+                st.pen,
+                col,
+            );
+        } else {
+            let d = [Vec2::new(0.0, -s), Vec2::new(s, 0.0), Vec2::new(0.0, s), Vec2::new(-s, 0.0)];
+            c.polyline(&[p + d[0], p + d[1], p + d[2], p + d[3], p + d[0]], st.pen, col);
+        }
+        if e.tracking || e.launch || e.heard || pulse.is_some() {
+            label(c, p, &e.label, col);
+        }
+    }
+}
+
 /// The bloom's radius at bearing `a` (radians clockwise from the nose) in its base size. The
 /// airframe's: broad abeam, narrow fore and aft, with small spikes where its edges are aligned.
 /// The gear down and the open bays make it larger through the signature, and both add detail: small spikes beside the nose and the tail for the gear, either side of
 /// the beam for the bays. Banked, the belly and the top swell it abeam (a little more towards
 /// the low side); pitched, fore and aft (a little more where the belly faces), never past the
 /// beam. Nearly symmetrical, and steady while those stay.
-fn lobes(a: f32, th: &Threats) -> f32 {
+pub fn lobes(a: f32, th: &Threats) -> f32 {
     let lobe = |dir: f32, width: f32| {
         let d = ((a - dir + TAU / 2.0).rem_euclid(TAU) - TAU / 2.0) / width;
         (-d * d).exp()
@@ -443,13 +531,13 @@ fn lobes(a: f32, th: &Threats) -> f32 {
 }
 
 /// A ring of radius `r` about `p`, only where it lies inside the scope (`centre`, `scope`).
-fn ring_inside(c: &mut Canvas, p: Vec2, r: f32, centre: Vec2, scope: f32, col: u8) {
+fn ring_inside(c: &mut Canvas, p: Vec2, r: f32, centre: Vec2, scope: f32, w: f32, col: u8) {
     let n = ((r * 0.8) as usize).clamp(16, 96);
     let pt = |i: usize| p + Vec2::from_angle(i as f32 * TAU / n as f32) * r;
     for i in 0..n {
         let (a, b) = (pt(i), pt(i + 1));
         if i % 2 == 0 && a.distance(centre) < scope && b.distance(centre) < scope {
-            c.stroke(a, b, 0.4, col);
+            c.stroke(a, b, w, col);
         }
     }
 }
@@ -457,7 +545,7 @@ fn ring_inside(c: &mut Canvas, p: Vec2, r: f32, centre: Vec2, scope: f32, col: u
 /// The last 30 seconds right aligned in the box (x, y, w, h), drawn in texels (one sample per
 /// texel column): the signature filled from the bottom, the detection line (where the signal
 /// would see it) over it; columns past the line red.
-fn strip_chart(c: &mut Canvas, h: &ThreatHistory, x: i32, y: i32, w: i32, ht: i32) {
+pub fn strip_chart(c: &mut Canvas, h: &ThreatHistory, x: i32, y: i32, w: i32, ht: i32) {
     c.rect(x, y, w, ht, DARK);
     let k = c.scale as i32;
     let pw = c.pw();
@@ -582,6 +670,40 @@ fn bar_h(c: &mut Canvas, x: i32, y: i32, w: i32, h: i32, frac: f32, col: u8) {
     c.fill_rect(x, y, f, h, col);
 }
 
+/// Radars round the aircraft: a tracker whose pulse just saw it, one heard, one air radar
+/// launching, one quiet.
+#[cfg(test)]
+pub(crate) fn threat_fixture() -> (Vec<EmitterView>, Emv, ThreatHistory) {
+    let e = |source, b: f32, km, air, tracking, launch, heard| EmitterView {
+        source,
+        east: 0.0,
+        north: 0.0,
+        rel_bearing: b,
+        range_km: km,
+        lock_range_km: 6.0,
+        label: "6".into(),
+        air,
+        tracking,
+        launch,
+        priority: 300,
+        heard,
+    };
+    let emitters = vec![
+        e(EmitterSource::Site(1), 0.6, 9.0, false, true, false, true),
+        e(EmitterSource::Site(2), -2.0, 15.0, false, false, false, true),
+        e(EmitterSource::Aircraft(3), 3.5, 12.0, true, false, true, true),
+        e(EmitterSource::Gun(4), 1.6, 4.0, false, false, false, false),
+    ];
+    let emv = Emv { emv: 0.35, egr: 0.5, ear: 0.2 };
+    let mut h = ThreatHistory::default();
+    for i in 0..HISTORY {
+        let t = i as f32 / HISTORY as f32;
+        h.samples.push_back((0.2 + 0.3 * t, if i % 90 < 60 { 0.5 + 0.3 * t } else { 0.0 }));
+    }
+    h.pulse = Some((EmitterSource::Site(1), 0.3, true));
+    (emitters, emv, h)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -591,6 +713,25 @@ mod tests {
         a.on_ground = false;
         a.set_rotor(1.0, 0.6);
         a
+    }
+
+    #[test]
+    fn left_display_draws() {
+        let (emitters, emv, history) = threat_fixture();
+        let th = Threats {
+            emitters: &emitters,
+            emv: &emv,
+            history: &history,
+            bay_open: true,
+            gear_down: true,
+            pitch: 0.2,
+            roll: -0.5,
+        };
+        let mut c = Canvas::scaled(MPD_CANVAS.0, MPD_CANVAS.1, MPD_SCALE);
+        let list = [(Level::Caution, DETECTED)];
+        draw_left(&mut c, &Fonts::builtin(), &th, &list, &[], true, &Countermeasures::default());
+        // The bloom shows red (the pulse saw us) and the strip chart has its crossings.
+        assert!(c.px.contains(&DEEP_RED) && c.px.contains(&RED) && c.px.contains(&AMBER));
     }
 
     #[test]

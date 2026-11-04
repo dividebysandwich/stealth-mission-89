@@ -263,6 +263,8 @@ pub enum MfdCmd {
     RadarStandby,
     /// The A-A radar's range a step out (+) or in (-).
     FcrRange(i8),
+    /// The RCS page's range a step out (+) or in (-), from AUTO.
+    RcsRange(i8),
     /// The A-A radar's scan width (A6, A3, A1) and bars (4, 2, 1), each the next one round.
     FcrAz,
     FcrBars,
@@ -462,8 +464,16 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Format(_, f) | MfdCmd::Assign(_, f) => f.action(),
         MfdCmd::Row(..) => Action::Maps,
         MfdCmd::Soi(_) | MfdCmd::SwapSoi => Action::SwapSoi,
-        MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::FcrRange(d) | MfdCmd::MapZoom(d) => {
-            if d > 0 { Action::MapZoomIn } else { Action::MapZoomOut }
+        MfdCmd::HsdRange(d)
+        | MfdCmd::GmRange(d)
+        | MfdCmd::FcrRange(d)
+        | MfdCmd::RcsRange(d)
+        | MfdCmd::MapZoom(d) => {
+            if d > 0 {
+                Action::MapZoomIn
+            } else {
+                Action::MapZoomOut
+            }
         }
         MfdCmd::HsdCentre
         | MfdCmd::HarmFilter
@@ -1506,6 +1516,9 @@ pub struct MfdParams<'w, 's> {
     pub radar: Option<Res<'w, crate::ground_radar::GroundRadar>>,
     pub aa_radar: Option<Res<'w, crate::aa_radar::AaRadar>>,
     pub cm: Res<'w, crate::panel::Countermeasures>,
+    /// Our signature and the radar signals at us, and their history (the RCS page).
+    pub emv: Res<'w, crate::panel::Emv>,
+    pub threats: Res<'w, crate::mpd::ThreatHistory>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
