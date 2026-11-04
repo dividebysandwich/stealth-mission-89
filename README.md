@@ -200,7 +200,8 @@ the desktop. `--script` replays timed actions, `--log-flight` / `--log-sim`
 print the state, `--time-scale` speeds runs up, and `--diag --novsync` shows the frame rate.
 Script steps `yaw=`, `throttle=` and `press=Gear` drive the rudder, an absolute throttle and the
 3D cockpit's controls; `--head-look yaw,pitch` turns the 3D cockpit view (degrees). The step
-`SaveMission` saves the flight (its name is logged), which `--load` flies on.
+`SaveMission` saves the flight (its name is logged), which `--load` flies on; `LoadMission`
+opens the list of saves over the in-flight menu (`Menu` first opens it).
 
 ### Testing on Steam Frame
 `tools/frame.sh` cross-compiles the aarch64 build on an x86-64 Linux PC, copies it to the Frame

@@ -6,6 +6,7 @@ fm-resume = JÄTKA
 fm-save-mission = SALVESTA MISSIOON
 fm-saved = SALVESTATUD
 fm-not-saved = POLE SALVESTATUD
+fm-load-mission = LAADI MISSIOON
 fm-key-guide = KLAHVIJUHEND
 fm-end-mission = LÕPETA MISSIOON
 fm-end-sortie = LÕPETA LEND

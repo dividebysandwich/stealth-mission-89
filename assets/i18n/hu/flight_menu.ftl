@@ -6,6 +6,7 @@ fm-resume = FOLYTATÁS
 fm-save-mission = KÜLDETÉS MENTÉSE
 fm-saved = MENTVE
 fm-not-saved = NINCS MENTVE
+fm-load-mission = KÜLDETÉS BETÖLTÉSE
 fm-key-guide = BILLENTYŰ-ÚTMUTATÓ
 fm-end-mission = KÜLDETÉS BEFEJEZÉSE
 fm-end-sortie = BEVETÉS BEFEJEZÉSE

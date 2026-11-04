@@ -6,6 +6,7 @@ fm-resume = POKRAČOVAŤ
 fm-save-mission = ULOŽIŤ MISIU
 fm-saved = ULOŽENÉ
 fm-not-saved = NEULOŽENÉ
+fm-load-mission = NAČÍTAŤ MISIU
 fm-key-guide = PRÍRUČKA KLÁVESOV
 fm-end-mission = UKONČIŤ MISIU
 fm-end-sortie = UKONČIŤ BOJOVÝ LET

@@ -6,6 +6,7 @@ fm-resume = CONTINUĂ
 fm-save-mission = SALVEAZĂ MISIUNEA
 fm-saved = SALVATĂ
 fm-not-saved = NESALVATĂ
+fm-load-mission = ÎNCARCĂ MISIUNEA
 fm-key-guide = GHIDUL TASTELOR
 fm-end-mission = ÎNCHEIE MISIUNEA
 fm-end-sortie = ÎNCHEIE ZBORUL

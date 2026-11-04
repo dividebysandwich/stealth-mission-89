@@ -6,6 +6,7 @@ fm-resume = 계속하기
 fm-save-mission = 임무 저장
 fm-saved = 저장됨
 fm-not-saved = 저장 안 됨
+fm-load-mission = 임무 불러오기
 fm-key-guide = 키 가이드
 fm-end-mission = 임무 종료
 fm-end-sortie = 출격 종료

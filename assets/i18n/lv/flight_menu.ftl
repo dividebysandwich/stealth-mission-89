@@ -6,6 +6,7 @@ fm-resume = TURPINĀT
 fm-save-mission = SAGLABĀT MISIJU
 fm-saved = SAGLABĀTA
 fm-not-saved = NAV SAGLABĀTA
+fm-load-mission = IELĀDĒT MISIJU
 fm-key-guide = TAUSTIŅU ĪSCEĻVEDIS
 fm-end-mission = BEIGT MISIJU
 fm-end-sortie = BEIGT LIDOJUMU

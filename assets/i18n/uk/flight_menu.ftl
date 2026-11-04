@@ -5,6 +5,7 @@ fm-resume = ПРОДОВЖИТИ
 fm-save-mission = ЗБЕРЕГТИ МІСІЮ
 fm-saved = ЗБЕРЕЖЕНО
 fm-not-saved = НЕ ЗБЕРЕЖЕНО
+fm-load-mission = ЗАВАНТАЖИТИ МІСІЮ
 fm-key-guide = КЛАВІШІ
 fm-end-mission = ЗАВЕРШИТИ МІСІЮ
 fm-end-sortie = ЗАВЕРШИТИ ВИЛЬОТ

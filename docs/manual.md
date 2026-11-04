@@ -188,7 +188,7 @@ mouse on an option for a short description.
 | Button | Function |
 |---|---|
 | NEW MISSION | New objectives with the same options. |
-| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. DELETE removes one save and DELETE ALL every save, each after a confirmation. |
+| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. The pencil left of LOAD renames a save (an empty name gives back the mission's title). DELETE removes one save and DELETE ALL every save, each after a confirmation. |
 | PLAN ROUTE | The mission planner (chapter 8.2). |
 | LOADOUT | The stores on each station or bay, seen from above: click one and pick its load (*Same on both sides* mirrors it). Greyed out weapons are out of stock. BRIEFED restores the briefed stores, CLEAR empties everything. |
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
@@ -1270,6 +1270,7 @@ back a page; on the first page they close the menu.
 |---|---|
 | Resume | Closes the menu (as does Esc again). |
 | Save mission | Single missions only, while still in the aircraft: saves the flight as it is (the world, your aircraft, route, stores and the flight's record); LOAD in the single mission screen flies it on (chapter 1.2). Views, MFD pages and the kneeboard start afresh. |
+| Load mission | Single missions only: the list of saves over the menu (LOAD, the pencil to rename, DELETE); the one loaded replaces the flight under way, paused. |
 | Options | The pages of the main menu's OPTIONS (chapter 1.3) that apply in flight, below. |
 | Key guide | The keys as bound, the mouse or the VR controllers. Type to keep only the keys whose description holds the text (any case); Backspace deletes, the field's X or Esc clears it. In VR, a fingertip on the field and the trigger open a keyboard on the screen: touch a key and pull the trigger to type, DONE closes it. |
 | End mission | Ends the flight and goes to the debrief. |

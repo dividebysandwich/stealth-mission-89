@@ -6,6 +6,7 @@ fm-resume = NADALJUJ
 fm-save-mission = SHRANI MISIJO
 fm-saved = SHRANJENO
 fm-not-saved = NI SHRANJENO
+fm-load-mission = NALOŽI MISIJO
 fm-key-guide = VODNIK PO TIPKAH
 fm-end-mission = KONČAJ MISIJO
 fm-end-sortie = KONČAJ BOJNI LET

@@ -9,6 +9,7 @@ fm-resume = RESUME
 fm-save-mission = SAVE MISSION
 fm-saved = SAVED
 fm-not-saved = NOT SAVED
+fm-load-mission = LOAD MISSION
 fm-key-guide = KEY GUIDE
 fm-end-mission = END MISSION
 fm-end-sortie = END SORTIE

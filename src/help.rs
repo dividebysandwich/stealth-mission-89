@@ -102,7 +102,8 @@ Multiplayer
 
 Testing and screenshots
   --script <steps>             replay timed actions, e.g. \"0:ThrottleMax,7:pitch=0.35,14:Gear\"
-                               (SaveMission: save the flight as the menu's SAVE MISSION)
+                               (SaveMission: save the flight as the menu's SAVE MISSION;
+                               LoadMission: open the list of saves as its LOAD MISSION)
   --log-flight / --log-sim     print the flight / simulation state
   --readout                    on-screen text readout of the flight state
   --touch                      the touch flight controls (the Android app's), the left

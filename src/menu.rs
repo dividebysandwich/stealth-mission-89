@@ -2108,7 +2108,7 @@ pub(crate) fn menu_ui(
     );
     crate::planner::planner_ui(ctx, &mut planner, &mut state, settings.aircraft);
     crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, settings.aircraft);
-    let loaded = crate::savegame::saves_ui(ctx, &mut saves);
+    let loaded = crate::savegame::saves_ui(ctx, &mut saves, settings.vr);
     if before
         != (
             state.theater,

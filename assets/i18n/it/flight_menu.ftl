@@ -6,6 +6,7 @@ fm-resume = RIPRENDERE
 fm-save-mission = SALVARE LA MISSIONE
 fm-saved = SALVATA
 fm-not-saved = NON SALVATA
+fm-load-mission = CARICARE LA MISSIONE
 fm-key-guide = GUIDA AI TASTI
 fm-end-mission = TERMINARE LA MISSIONE
 fm-end-sortie = TERMINARE LA SORTITA

@@ -6,6 +6,7 @@ fm-resume = 再開
 fm-save-mission = ミッションを保存
 fm-saved = 保存しました
 fm-not-saved = 未保存
+fm-load-mission = ミッションをロード
 fm-key-guide = キーガイド
 fm-end-mission = ミッション終了
 fm-end-sortie = 出撃終了

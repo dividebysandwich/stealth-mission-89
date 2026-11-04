@@ -6,6 +6,7 @@ fm-resume = REPRENDRE
 fm-save-mission = ENREGISTRER LA MISSION
 fm-saved = ENREGISTRÉE
 fm-not-saved = NON ENREGISTRÉE
+fm-load-mission = CHARGER LA MISSION
 fm-key-guide = GUIDE DES TOUCHES
 fm-end-mission = TERMINER LA MISSION
 fm-end-sortie = TERMINER LA SORTIE

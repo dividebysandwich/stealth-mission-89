@@ -6,6 +6,7 @@ fm-resume = WZNOWIĆ
 fm-save-mission = ZAPISAĆ MISJĘ
 fm-saved = ZAPISANO
 fm-not-saved = NIE ZAPISANO
+fm-load-mission = WCZYTAĆ MISJĘ
 fm-key-guide = LISTA KLAWISZY
 fm-end-mission = ZAKOŃCZYĆ MISJĘ
 fm-end-sortie = ZAKOŃCZYĆ LOT BOJOWY

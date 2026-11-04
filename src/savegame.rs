@@ -10,6 +10,10 @@
 //! Not kept: the MFD pages, the view, the kneeboard, fires and smoke, the time acceleration, and
 //! the other aircraft and missiles the flight record keeps for Tacview before the save. Career
 //! sorties, campaigns and coop games are not saved here.
+//!
+//! The list of saves is also opened over the in-flight menu (LOAD MISSION, single missions only):
+//! loading one there leaves the flight under way and flies the save on in its place. A pencil
+//! beside each save's LOAD renames it (the name is kept in the save's summary).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -25,7 +29,9 @@ use crate::flight::{Aircraft, Player};
 use crate::flight_menu::FlightMenu;
 use crate::hud::{HudState, Waypoints};
 use crate::loadout::PlannedLoadout;
-use crate::menu::{AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, icon, menu_window};
+use crate::menu::{
+    AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, icon, icon_button, menu_window,
+};
 use crate::mission::{ActiveMission, PlannedRoute, clean_text};
 use crate::palette::{Palette, TimeOfDay};
 use crate::recorder::FlightRecord;
@@ -44,9 +50,20 @@ impl Plugin for SaveGamePlugin {
         app.insert_resource(saves)
             .add_systems(
                 OnEnter(AppState::Flight),
-                restore.after(SetupSet::Spawn).after(crate::hud::reset_hud),
+                (
+                    enter_loaded.before(SetupSet::Mission),
+                    restore.after(SetupSet::Spawn).after(crate::hud::reset_hud),
+                ),
             )
-            .add_systems(Update, save.run_if(in_state(AppState::Flight)));
+            .add_systems(Update, (save, open_saves).run_if(in_state(AppState::Flight)))
+            .add_systems(
+                bevy_egui::EguiPrimaryContextPass,
+                flight_saves.run_if(in_state(AppState::Flight)),
+            )
+            // The list opened over the flight menu does not outlast the flight.
+            .add_systems(OnExit(AppState::Flight), |mut saves: ResMut<SavesWindow>| {
+                saves.open = false;
+            });
     }
 }
 
@@ -69,7 +86,20 @@ pub struct Summary {
     pub mission_seconds: i32,
     /// When saved (s since the Unix epoch).
     pub saved_at: u64,
+    /// The name the player gave the save (RENAME); None shows the order as the title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
+
+impl Summary {
+    /// What the list calls the save: its name if it was renamed, else its order.
+    pub fn display_title(&self) -> &str {
+        self.name.as_deref().filter(|n| !n.is_empty()).unwrap_or(&self.title)
+    }
+}
+
+/// The longest name a save is given (characters).
+const NAME_MAX: usize = 48;
 
 /// The realism switches of the single mission screen the flight was flown with.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -147,7 +177,10 @@ fn list() -> Vec<(String, Option<Summary>)> {
                 .and_then(|t| serde_json::from_str::<Head>(&t).ok())
                 .map(|h| h.summary)
                 .filter(|s| s.version == VERSION);
-            Some((modified, name, summary))
+            // By when it was saved, not by when its file was written: a renamed save keeps its
+            // place.
+            let when = summary.as_ref().map_or(modified, |s| s.saved_at as f64);
+            Some((when, name, summary))
         })
         .collect();
     found.sort_by(|a, b| b.0.total_cmp(&a.0));
@@ -161,6 +194,20 @@ fn read(name: &str) -> anyhow::Result<SavedFlight> {
     let save: SavedFlight = serde_json::from_str(&text)?;
     anyhow::ensure!(save.summary.version == VERSION, "a save of another version of the game");
     Ok(save)
+}
+
+/// Gives a save a name (an empty one gives back the order as its title). The save is written
+/// again whole; a save of another version is left as it is.
+fn rename(name: &str, new: &str) -> anyhow::Result<()> {
+    let mut save = read(name)?;
+    let new = new.trim();
+    let new: Option<String> = (!new.is_empty()).then(|| new.chars().take(NAME_MAX).collect());
+    if save.summary.name == new {
+        return Ok(());
+    }
+    save.summary.name = new;
+    let text = serde_json::to_string(&save)?;
+    stealth_host::store::write(&key(name), &text)
 }
 
 /// "2026-10-25 14:03 UTC".
@@ -186,8 +233,22 @@ fn save(
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     link: Option<Res<crate::net::NetLink>>,
     career: Option<Res<crate::career::CareerFlight>>,
+    real: Res<Time<Real>>,
 ) {
+    // SAVED goes away after a moment (real time: the flight is paused under the menu).
+    if menu.save_note.is_some() {
+        menu.save_note_age += real.delta_secs();
+        if menu.save_note_age >= crate::flight_menu::SAVE_NOTE_SECONDS {
+            menu.save_note = None;
+        }
+    }
     let single = campaign.is_none() && link.is_none() && career.is_none();
+    // LOAD MISSION replaces the flight: a single mission's only (a campaign sortie, a coop game
+    // or a career sortie is not left so).
+    let can_load = single && !menu.exiting;
+    if menu.can_load != can_load {
+        menu.can_load = can_load;
+    }
     let (Some(c), Some(m), Ok((a, pos))) = (combat, mission, player.single()) else {
         if menu.can_save {
             menu.can_save = false;
@@ -223,6 +284,7 @@ fn save(
             aircraft: settings.aircraft,
             mission_seconds: c.sim.mission_tick(),
             saved_at: now(),
+            name: None,
         },
         seed: state.seed,
         realism: Realism {
@@ -253,6 +315,7 @@ fn save(
         stealth_host::store::write(&key(&name), &text)?;
         Ok(text.len())
     });
+    menu.save_note_age = 0.0;
     menu.save_note = Some(match written {
         Ok(bytes) => {
             info!("mission saved: {name} ({} kB)", bytes / 1024);
@@ -336,6 +399,70 @@ pub fn fly(
     commands.insert_resource(RestoreFlight(Some(Box::new(save))));
 }
 
+/// LOAD MISSION chosen in the in-flight menu: opens the list of saves over it (the egui pass
+/// below only runs once the menu's overlay camera exists, which this asks for), and notes when
+/// the list was closed.
+fn open_saves(mut menu: ResMut<FlightMenu>, mut saves: ResMut<SavesWindow>) {
+    if menu.open && std::mem::take(&mut menu.load_request) {
+        saves.show();
+        menu.saves = true;
+    } else if menu.saves && !saves.open {
+        menu.saves = false;
+    }
+}
+
+/// The list of saves over the in-flight menu (its egui context is the overlay's,
+/// `flight_menu::dialog_overlay`); one loaded replaces the flight, which is left as the single
+/// mission screen's LOAD would start it (the menu open and the flight paused).
+fn flight_saves(
+    mut contexts: bevy_egui::EguiContexts,
+    mut commands: Commands,
+    mut menu: ResMut<FlightMenu>,
+    mut saves: ResMut<SavesWindow>,
+    settings: Res<Settings>,
+    mut next: ResMut<NextState<AppState>>,
+) -> Result {
+    if !menu.saves {
+        return Ok(());
+    }
+    // The overlay's context comes up a frame after the list opens.
+    let Ok(ctx) = contexts.ctx_mut() else { return Ok(()) };
+    crate::menu::apply_ui_zoom(ctx);
+    crate::menu::add_icon_font(ctx);
+    if ctx.global_style().visuals.window_fill != crate::menu::BG {
+        ctx.all_styles_mut(crate::menu::apply_terminal_style);
+    }
+    if let Some(save) = saves_ui(ctx, &mut saves, settings.vr) {
+        commands.insert_resource(LoadInFlight(Some(Box::new(save))));
+        // The flight is left without the menu closing: its options are kept as it would.
+        crate::flight_menu::save_options(&mut menu, &settings);
+        // The same state again: the flight is torn down and set up from the save.
+        next.set(AppState::Flight);
+        menu.saves = false;
+    }
+    Ok(())
+}
+
+/// A save loaded over the flight, taken up when the flight is set up again.
+#[derive(Resource)]
+struct LoadInFlight(Option<Box<SavedFlight>>);
+
+/// OnEnter(Flight), before the mission is looked for: a save loaded in flight is made the
+/// mission to fly (the flight's teardown removed the mission of the one left, so this can't be
+/// done before the state changes).
+fn enter_loaded(
+    mut commands: Commands,
+    pending: Option<ResMut<LoadInFlight>>,
+    mut state: ResMut<MenuState>,
+    mut settings: ResMut<Settings>,
+    mut setup: ResMut<MissionSetup>,
+    tables: Res<crate::flight::SimTables>,
+) {
+    let Some(save) = pending.and_then(|mut p| p.0.take()) else { return };
+    commands.remove_resource::<LoadInFlight>();
+    fly(&mut commands, *save, &mut state, &mut settings, &mut setup, &tables.start_dir);
+}
+
 /// `--load <save>`: straight into a save's flight (its name: the file name without `.json`).
 pub fn from_args(app: &mut App) {
     let Some(name) = std::env::args().skip_while(|a| a != "--load").nth(1) else { return };
@@ -367,6 +494,8 @@ pub struct SavesWindow {
     confirm_delete: Option<(String, String)>,
     /// DELETE ALL was clicked, awaiting confirmation.
     confirm_delete_all: bool,
+    /// The save being renamed (its name) and the name typed so far.
+    renaming: Option<(String, String)>,
 }
 
 impl SavesWindow {
@@ -376,17 +505,21 @@ impl SavesWindow {
         self.error = None;
         self.confirm_delete = None;
         self.confirm_delete_all = false;
+        self.renaming = None;
     }
 }
 
 /// The list of saves: LOAD returns the save to fly, DELETE and DELETE ALL ask first.
-pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight> {
+pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow, vr: bool) -> Option<SavedFlight> {
     if !w.open {
         return None;
     }
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-    let mut close = escape && w.confirm_delete.is_none() && !w.confirm_delete_all;
+    let asking = w.confirm_delete.is_some() || w.confirm_delete_all;
+    // Escape first cancels what is asked, a rename, then closes the window.
+    let mut close = escape && !asking && w.renaming.take().is_none();
     let mut load = None;
+    let mut renamed = None;
     let width = crate::menu::wide_width(ctx).min(900.0);
     let window = menu_window(ctx, "Saved missions", width);
     crate::menu::Panel::new(t!("saves-title")).note(t!("saves-note")).window(window, ctx, |ui| {
@@ -398,11 +531,42 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
             .max_height(crate::campaign::SAVES_HEIGHT * 1.5)
             .show(ui, |ui| {
                 for (name, summary) in &w.saves {
+                    if let Some((_, typed)) = w.renaming.as_mut().filter(|(n, _)| n == name) {
+                        let hint = summary.as_ref().map_or("", |s| s.title.as_str());
+                        ui.vertical(|ui| {
+                            let field = crate::text_entry::text_entry(
+                                ui,
+                                "rename_save",
+                                typed,
+                                NAME_MAX,
+                                crate::text_entry::Charset::Text,
+                                vr,
+                                hint,
+                            );
+                            let enter =
+                                field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                            ui.horizontal(|ui| {
+                                if icon_button(ui, icon::DONE).on_hover_text(t!("ok")).clicked()
+                                    || enter
+                                {
+                                    renamed = Some(true);
+                                }
+                                if icon_button(ui, icon::CANCEL)
+                                    .on_hover_text(t!("cancel"))
+                                    .clicked()
+                                {
+                                    renamed = Some(false);
+                                }
+                            });
+                        });
+                        ui.separator();
+                        continue;
+                    }
                     ui.horizontal(|ui| {
                         let label = match summary {
                             Some(s) => {
                                 ui.vertical(|ui| {
-                                    ui.label(egui::RichText::new(&s.title).color(BRIGHT));
+                                    ui.label(egui::RichText::new(s.display_title()).color(BRIGHT));
                                     let small = |ui: &mut egui::Ui, text: String| {
                                         ui.label(egui::RichText::new(text).small().color(DIM));
                                     };
@@ -422,7 +586,7 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
                                     );
                                     small(ui, t!("saves-saved-at", date = saved_at(s.saved_at)));
                                 });
-                                format!("{}, {}", s.theater, s.title)
+                                format!("{}, {}", s.theater, s.display_title())
                             }
                             None => {
                                 ui.label(egui::RichText::new(t!("saves-unreadable")).color(AMBER));
@@ -437,10 +601,35 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
                             {
                                 w.confirm_delete = Some((name.clone(), label));
                             }
-                            if summary.is_some()
-                                && ui.add(big_button(t!("menu-load")).icon(icon::LOAD)).clicked()
-                            {
-                                load = Some(name.clone());
+                            if let Some(s) = summary {
+                                let load_button =
+                                    ui.add(big_button(t!("menu-load")).icon(icon::LOAD));
+                                if load_button.clicked() {
+                                    load = Some(name.clone());
+                                }
+                                // Added last, so the leftmost: the pencil, left of LOAD, in a cell
+                                // as tall as LOAD's (so at the same height) with the pencil at its
+                                // top: the pencils line up with the LOADs' top edge, on every row.
+                                // Right-aligned in the cell (the button is wider than it), so the
+                                // gap to LOAD is the usual one, as between LOAD and DELETE.
+                                let cell = egui::vec2(24.0, load_button.rect.height());
+                                let top = egui::Layout::top_down(egui::Align::Max);
+                                let rename = ui
+                                    .allocate_ui_with_layout(cell, top, |ui| {
+                                        icon_button(ui, icon::RENAME)
+                                            .on_hover_text(t!("saves-rename.facts"))
+                                    })
+                                    .inner;
+                                if rename.clicked() {
+                                    let typed = s.name.clone().unwrap_or_default();
+                                    w.renaming = Some((name.clone(), typed));
+                                    ui.memory_mut(|m| {
+                                        m.request_focus(egui::Id::new((
+                                            "text_entry",
+                                            "rename_save",
+                                        )))
+                                    });
+                                }
                             }
                         });
                     });
@@ -472,6 +661,18 @@ pub fn saves_ui(ctx: &egui::Context, w: &mut SavesWindow) -> Option<SavedFlight>
             }
         });
     });
+    match renamed {
+        Some(true) => {
+            if let Some((name, typed)) = w.renaming.take() {
+                if let Err(e) = rename(&name, &typed) {
+                    w.error = Some(t!("saves-not-renamed", error = format!("{e:#}")));
+                }
+                w.saves = list();
+            }
+        }
+        Some(false) => w.renaming = None,
+        None => {}
+    }
     if w.confirm_delete_all {
         let count = w.saves.len();
         let label = t!("saves-count", count = count);
@@ -556,6 +757,7 @@ mod tests {
                 aircraft: AircraftKind::F16,
                 mission_seconds: 754,
                 saved_at: 1_792_937_000,
+                name: None,
             },
             seed: 7,
             realism: Realism {
@@ -598,6 +800,25 @@ mod tests {
         let head: Head = serde_json::from_str(&text).unwrap();
         assert_eq!(head.summary.title, save.summary.title);
         assert_eq!(head.summary.aircraft, AircraftKind::F16);
+    }
+
+    /// A renamed save is titled by its name, read back by the list; one without a name (every
+    /// save made before the rename) keeps its order as the title and its file as it was.
+    #[test]
+    fn a_renamed_save_is_titled_by_its_name() {
+        let mut save = saved();
+        assert_eq!(save.summary.display_title(), save.summary.title);
+        let plain = serde_json::to_string(&save).unwrap();
+        assert!(!serde_json::to_string(&save.summary).unwrap().contains("name"));
+        save.summary.name = Some("My bridge".into());
+        let text = serde_json::to_string(&save).unwrap();
+        let head: Head = serde_json::from_str(&text).unwrap();
+        assert_eq!(head.summary.display_title(), "My bridge");
+        assert_eq!(head.summary.title, save.summary.title);
+        let old: Head = serde_json::from_str(&plain).unwrap();
+        assert_eq!(old.summary.name, None);
+        save.summary.name = Some(String::new());
+        assert_eq!(save.summary.display_title(), save.summary.title);
     }
 
     #[test]

@@ -6,6 +6,7 @@ fm-resume = NASTAVI
 fm-save-mission = SPREMI MISIJU
 fm-saved = SPREMLJENO
 fm-not-saved = NIJE SPREMLJENO
+fm-load-mission = UČITAJ MISIJU
 fm-key-guide = VODIČ KROZ TIPKE
 fm-end-mission = ZAVRŠI MISIJU
 fm-end-sortie = ZAVRŠI BORBENI LET

@@ -6,6 +6,7 @@ fm-resume = FORTSÆT
 fm-save-mission = GEM MISSION
 fm-saved = GEMT
 fm-not-saved = IKKE GEMT
+fm-load-mission = INDLÆS MISSION
 fm-key-guide = TASTEGUIDE
 fm-end-mission = AFSLUT MISSION
 fm-end-sortie = AFSLUT FLYVNING
