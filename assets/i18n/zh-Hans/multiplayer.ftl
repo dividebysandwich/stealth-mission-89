@@ -54,6 +54,7 @@ pic-sam-known = SAM 阵地（已知）
 pic-guns-known = 高炮 / MANPADS（已知）
 pic-armour = 坦克 / 步兵战车（敌方：目视范围内）
 pic-patriot-reach = Patriot 射程
+pic-nasams-reach = NASAMS 射程
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM 导弹射程
 pic-engagement-range = 交战距离

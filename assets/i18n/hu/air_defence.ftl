@@ -25,6 +25,7 @@ ds-click-hint = Kattints a térképen oda, ahová kerül - jobb klikk: mégse
 ds-not-open-ground = Nem nyílt terepen van
 ds-new-gepard = Új Gepard-állás - kattints a kijelöléshez
 ds-new-patriot = Új Patriot-állás - kattints a kijelöléshez
+ds-new-nasams = Új NASAMS-állás - kattints a kijelöléshez
 ds-new-drones = Új drónirányító központ - kattints a kijelöléshez
 ds-waiting = Rakományra vár
 ds-fast-track = GYORSÍTÁS ({ $cost })

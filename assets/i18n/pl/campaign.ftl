@@ -104,6 +104,7 @@ cl-objective = { $title }: cel osiągnięty
 cl-recon = Zdjęcia rozpoznawcze - { $place }: obrona miejsca rozpoznana
 cl-package = Pakiet - { $place }: { $kinds } - +{ $bonus } dla: { $pilots }
 cl-supply-patriot = bateria Patriot ({ $place })
+cl-supply-nasams = bateria NASAMS ({ $place })
 cl-supply-gepard = Gepard ({ $place })
 cl-supply-drones = centrum dowodzenia dronami ({ $place })
 cl-resupply-requested = { $who } prosi o zaopatrzenie dla: { $unit }

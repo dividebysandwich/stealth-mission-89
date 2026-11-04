@@ -104,6 +104,7 @@ cl-objective = { $title }: sasaran tercapai
 cl-recon = Foto pengintaian { $place }: pertahanannya terpetakan
 cl-package = Paket di atas { $place }: { $kinds } - +{ $bonus } untuk { $pilots }
 cl-supply-patriot = Baterai Patriot dekat { $place }
+cl-supply-nasams = Baterai NASAMS dekat { $place }
 cl-supply-gepard = Gepard dekat { $place }
 cl-supply-drones = Pusat komando drone dekat { $place }
 cl-resupply-requested = { $who } meminta pasokan ulang untuk { $unit }

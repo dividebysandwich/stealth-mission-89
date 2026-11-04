@@ -104,6 +104,7 @@ cl-objective = { $title }: uzdevums izpildīts
 cl-recon = Izlūkošanas foto ({ $place }): aizsardzība ir nokartēta
 cl-package = Pakete virs { $place }: { $kinds } - +{ $bonus } pilotiem: { $pilots }
 cl-supply-patriot = Patriot baterija pie: { $place }
+cl-supply-nasams = NASAMS baterija pie: { $place }
 cl-supply-gepard = Gepard pie: { $place }
 cl-supply-drones = Dronu vadības punkts pie: { $place }
 cl-resupply-requested = { $who } pieprasa papildinājumu vienībai: { $unit }

@@ -104,6 +104,7 @@ cl-objective = { $title }: obiectiv îndeplinit
 cl-recon = Fotografii recon ale { $place }: apărarea sa este cartografiată
 cl-package = Package deasupra { $place }: { $kinds } - +{ $bonus } pentru { $pilots }
 cl-supply-patriot = Baterie Patriot lângă { $place }
+cl-supply-nasams = Baterie NASAMS lângă { $place }
 cl-supply-gepard = Gepard lângă { $place }
 cl-supply-drones = Centru de comandă drone lângă { $place }
 cl-resupply-requested = { $who } cere reaprovizionare pentru { $unit }

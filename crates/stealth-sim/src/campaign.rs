@@ -20,7 +20,7 @@
 use serde::{Deserialize, Serialize};
 use stealth_i18n::text;
 
-use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
+use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, SA14, STINGER, SamBattery, Shell, lead};
 use crate::ai_loadout::{AiLoadout, FighterTask, Seeker};
 use crate::csar::{BLACKHAWK, HIND};
 use crate::math::{approx, s16};
@@ -86,6 +86,11 @@ pub const PATRIOT_ROUNDS: i32 = 4;
 /// A launcher fires on the track of a radar this close (1 km); its fixed elevation (rad).
 pub(crate) const PATRIOT_LINK: i32 = 0x40;
 pub const PATRIOT_ELEVATION: f32 = 0.66;
+/// NASAMS: how far it engages (30 km, inside the 40 km its AIM-120s reach from the console),
+/// missiles on a launcher (six canisters) and the launchers' fixed elevation (rad, 30°).
+pub const NASAMS_REACH: i32 = 0x780;
+pub const NASAMS_ROUNDS: i32 = 6;
+pub const NASAMS_ELEVATION: f32 = 0.52;
 /// A missile's fuse (m) and the chance (per mille) it kills what it reaches.
 const FUSE: f64 = 25.0;
 const MISSILE_PK: i32 = 700;
@@ -1010,6 +1015,17 @@ impl Sim {
 
     /// Campaign: a friendly Patriot battery at (x, y): its radar and three launchers around it.
     pub fn place_patriot(&mut self, x: i32, y: i32) {
+        self.place_sam_battery(SamBattery::Patriot, x, y);
+    }
+
+    /// Campaign: a friendly NASAMS battery at (x, y): its Sentinel radar and three launchers
+    /// around it.
+    pub fn place_nasams(&mut self, x: i32, y: i32) {
+        self.place_sam_battery(SamBattery::Nasams, x, y);
+    }
+
+    /// Campaign: a friendly missile battery at (x, y): its radar and three launchers around it.
+    pub fn place_sam_battery(&mut self, b: SamBattery, x: i32, y: i32) {
         let Some(mut c) = self.campaign.take() else { return };
         if self.units.len() + 4 <= MAX_UNITS {
             c.aaa_blue.resize(self.units.len(), false);
@@ -1020,16 +1036,16 @@ impl Sim {
                 x: x.clamp(0x40, 0x7FC0),
                 y: y.clamp(0x40, 0x7FC0),
                 aim_az: facing,
-                aim_el: PATRIOT_ELEVATION,
-                rounds: if kind == GroundKind::PatriotLauncher { PATRIOT_ROUNDS } else { 0 },
+                aim_el: b.elevation(),
+                rounds: if kind == b.launcher() { b.rounds() } else { 0 },
                 ..Default::default()
             };
-            self.units.push(unit(GroundKind::PatriotRadar, x, y));
+            self.units.push(unit(b.radar(), x, y));
             for k in 0..3 {
                 let t = facing as f64 + (k as f64 - 1.0) * 1.2 + std::f64::consts::PI;
                 let r = (10 + rng.random(16)) as f64;
                 let (lx, ly) = (x + (t.sin() * r) as i32, y - (t.cos() * r) as i32);
-                self.units.push(unit(GroundKind::PatriotLauncher, lx, ly));
+                self.units.push(unit(b.launcher(), lx, ly));
             }
             c.aaa_blue.resize(self.units.len(), true);
             c.aaa_target.resize(self.units.len(), None);
@@ -1783,7 +1799,8 @@ impl Sim {
             }
             if u.destroyed
                 || (!blue && u.tracking)
-                || matches!(u.kind, GroundKind::PatriotLauncher | GroundKind::DroneCenter)
+                || u.kind.battery_launcher().is_some()
+                || u.kind == GroundKind::DroneCenter
             {
                 continue;
             }
@@ -1791,8 +1808,8 @@ impl Sim {
             if c.defence.stations.iter().any(|s| s.unit as usize == k) {
                 continue;
             }
-            if u.kind == GroundKind::PatriotRadar {
-                let track = near(u.x, u.y, !blue, PATRIOT_REACH, true, PATRIOT_FLOOR)
+            if let Some(b) = u.kind.battery_radar() {
+                let track = near(u.x, u.y, !blue, b.reach(), true, PATRIOT_FLOOR)
                     .filter(|&(j, d)| d <= horizon(pos[j][2]));
                 c.aaa_target[k] = track.map(|t| t.0);
                 let a = &mut self.units[k];
@@ -1827,16 +1844,14 @@ impl Sim {
                 ));
             }
         }
-        // Patriot launchers fire on their battery radar's track.
+        // Missile battery launchers fire on their battery radar's track.
         for k in 0..self.units.len() {
             let u = self.units[k];
-            if u.kind != GroundKind::PatriotLauncher || u.destroyed {
-                continue;
-            }
+            let Some(b) = u.kind.battery_launcher().filter(|_| !u.destroyed) else { continue };
             let blue = c.aaa_blue[k];
             let track = (0..self.units.len()).find_map(|r| {
                 let radar = self.units[r];
-                (radar.kind == GroundKind::PatriotRadar
+                (radar.kind == b.radar()
                     && !radar.destroyed
                     && c.aaa_blue[r] == blue
                     && approx(radar.x - u.x, radar.y - u.y) < PATRIOT_LINK)
@@ -1851,7 +1866,7 @@ impl Sim {
             let az = d[0].atan2(d[1]);
             self.units[k].aim_az = az as f32;
             let in_air = |m: &AiMissile| {
-                m.target == j && m.spec == PATRIOT && m.blue == blue && m.station.is_none()
+                m.target == j && m.spec == b.missile() && m.blue == blue && m.station.is_none()
             };
             let salvo = c.missiles.iter().chain(&launches).filter(|m| in_air(m)).count();
             if u.rounds == 0 || u.cooldown > 0 || salvo >= PATRIOT_SALVO || rng.random(100) >= 50 {
@@ -1860,9 +1875,9 @@ impl Sim {
             let a = &mut self.units[k];
             a.rounds -= 1;
             a.cooldown = PATRIOT_INTERVAL * fs;
-            let el = PATRIOT_ELEVATION as f64;
+            let el = b.elevation() as f64;
             let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
-            let mut m = self.ai_missile(PATRIOT, from, dir, j, blue);
+            let mut m = self.ai_missile(b.missile(), from, dir, j, blue);
             m.radar = Some(radar as u16);
             launches.push(m);
         }
@@ -1987,7 +2002,7 @@ impl Sim {
         target: usize,
         blue: bool,
     ) -> AiMissile {
-        let flight = (spec == PATRIOT).then(|| {
+        let flight = SamBattery::of_missile(spec).map(|_| {
             let wu =
                 [from[0] / M_PER_WU, 0x10_0000 as f64 - from[1] / M_PER_WU, from[2] / M_PER_WU];
             crate::guidance::launch_ai(spec, wu, [dir[0], -dir[1], dir[2]], self.fs)

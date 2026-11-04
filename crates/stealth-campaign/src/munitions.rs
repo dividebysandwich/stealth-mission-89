@@ -934,11 +934,12 @@ impl CampaignState {
             .filter(|s| s.kind == SiteKind::Sam && s.alive() && self.owner(s.object) == Some(side))
             .filter(|s| dist(s.x - x, s.y - y) <= CARGO_HUNT_SAM_RADIUS)
             .count() as i32;
-        // The friendly side's Patriot batteries (their stockpiles are noted where they stand).
+        // The friendly side's Patriot and NASAMS batteries (their stockpiles are noted where
+        // they stand).
         let patriots = if side == Side::Blue {
             self.defence_stock
                 .iter()
-                .filter(|d| d.kind == DefenceKind::Patriot)
+                .filter(|d| matches!(d.kind, DefenceKind::Patriot | DefenceKind::Nasams))
                 .filter(|d| dist(d.x - x, d.y - y) <= CARGO_HUNT_SAM_RADIUS)
                 .count() as i32
         } else {

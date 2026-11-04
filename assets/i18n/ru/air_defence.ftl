@@ -25,6 +25,7 @@ ds-click-hint = Щёлкните на карте, где её поставить
 ds-not-open-ground = Не на открытой местности
 ds-new-gepard = Новая позиция Gepard - щёлкните, чтобы указать
 ds-new-patriot = Новая позиция Patriot - щёлкните, чтобы указать
+ds-new-nasams = Новая позиция NASAMS - щёлкните, чтобы указать
 ds-new-drones = Новый пункт управления дронами - щёлкните, чтобы указать
 ds-waiting = Ждут груз
 ds-fast-track = УСКОРИТЬ ({ $cost })

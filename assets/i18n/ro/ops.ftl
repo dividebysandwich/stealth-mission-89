@@ -131,6 +131,7 @@ ops-legend-insertion = Rută de inserție
 ops-watch-hint = Clic pe o unitate pentru a o urmări live
 ops-map-hint = Rotiță: zoom, tragere: deplasare
 ops-patriot = Baterie Patriot
+ops-nasams = Baterie NASAMS
 ops-drone-center = Centru de comandă drone
 ops-manned-by = Deservit de { $pilot }
 ops-manned-by-other = Deservit de alt jucător

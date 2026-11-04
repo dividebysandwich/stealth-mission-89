@@ -54,6 +54,7 @@ pic-sam-known = Sit SAM (magħruf)
 pic-guns-known = Kanun / MANPADS (magħruf)
 pic-armour = Tank / IFV (għadu: jidher)
 pic-patriot-reach = Firxa tal-Patriot
+pic-nasams-reach = Firxa tal-NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Firxa tal-missili SAM
 pic-engagement-range = Firxa tal-ingaġġ

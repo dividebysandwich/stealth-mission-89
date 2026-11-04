@@ -2154,6 +2154,21 @@ fn a_drone_command_center_takes_one_load() {
 }
 
 #[test]
+fn a_nasams_site_takes_two_loads() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, DefenceKind::Nasams, &[]);
+    let id = designate(&mut c, at, DefenceKind::Nasams).unwrap();
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offers: Vec<_> = c.board.iter().filter(|o| o.kind == MissionKind::Logistics).collect();
+    assert_eq!(offers.len(), 2);
+    assert!(offers[0].title.starts_with("NASAMS 1/2"), "{}", offers[0].title);
+    assert!(c.deployment(id).unwrap().title().starts_with("NASAMS site near"));
+    let s = DefenceStock { x: 1, y: 2, kind: DefenceKind::Nasams, stock: 9, stock2: 0, stock3: 0 };
+    let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back, s);
+}
+
+#[test]
 fn saves_from_before_the_drones_say_patriot() {
     let old = r#"{"x":1,"y":2,"patriot":true,"stock":5}"#;
     let s: DefenceStock = serde_json::from_str(old).unwrap();

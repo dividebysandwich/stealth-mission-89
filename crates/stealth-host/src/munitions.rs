@@ -157,6 +157,8 @@ impl Host {
     pub(crate) fn defence_munition(sim: &Sim, aaa: usize) -> Option<Munition> {
         match sim.units().get(aaa)?.kind {
             GroundKind::PatriotRadar => Some(Munition::Pac3),
+            // NASAMS fires the fighters' AIM-120s, out of the same stock.
+            GroundKind::NasamsRadar => Some(Munition::Aim120),
             GroundKind::Gepard => Some(Munition::GepardRounds),
             _ => None,
         }

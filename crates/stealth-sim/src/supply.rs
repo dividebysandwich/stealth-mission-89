@@ -352,7 +352,7 @@ impl Sim {
     /// radar's battery's, a Gepard's; 0 for anything else).
     pub fn stock_missing(&self, k: usize) -> i32 {
         let Some(kind) = self.units.get(k).map(|a| a.kind) else { return 0 };
-        if !matches!(kind, crate::aaa::GroundKind::PatriotRadar | crate::aaa::GroundKind::Gepard) {
+        if kind.battery_radar().is_none() && kind != crate::aaa::GroundKind::Gepard {
             return 0;
         }
         (initial_stock(kind) - self.stockpile(k)).max(0)
@@ -365,7 +365,7 @@ impl Sim {
             return;
         }
         let Some(kind) = self.units.get(k).map(|a| a.kind) else { return };
-        if !matches!(kind, crate::aaa::GroundKind::PatriotRadar | crate::aaa::GroundKind::Gepard) {
+        if kind.battery_radar().is_none() && kind != crate::aaa::GroundKind::Gepard {
             self.restock(k);
             return;
         }

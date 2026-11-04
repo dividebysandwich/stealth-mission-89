@@ -104,6 +104,7 @@ cl-objective = { $title }: målet uppnått
 cl-recon = Spaningsbilder av { $place }: dess försvar är kartlagt
 cl-package = Package över { $place }: { $kinds } - +{ $bonus } för { $pilots }
 cl-supply-patriot = Patriot-batteri nära { $place }
+cl-supply-nasams = NASAMS-batteri nära { $place }
 cl-supply-gepard = Gepard nära { $place }
 cl-supply-drones = drönarledningscentral nära { $place }
 cl-resupply-requested = { $who } begär förnödenheter till { $unit }

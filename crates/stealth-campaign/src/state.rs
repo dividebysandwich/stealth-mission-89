@@ -1063,14 +1063,15 @@ pub struct CampaignState {
     pub terrain: Terrain,
 }
 
-/// What a friendly site the players build and man is: a Gepard, a Patriot battery or a drone
-/// command center.
+/// What a friendly site the players build and man is: a Gepard, a Patriot battery, a drone
+/// command center or a NASAMS battery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub enum DefenceKind {
     #[default]
     Gepard,
     Patriot,
     Drones,
+    Nasams,
 }
 
 impl DefenceKind {
@@ -1080,6 +1081,7 @@ impl DefenceKind {
             DefenceKind::Gepard => "Gepard",
             DefenceKind::Patriot => "Patriot battery",
             DefenceKind::Drones => "drone command center",
+            DefenceKind::Nasams => "NASAMS battery",
         }
     }
 
@@ -1089,6 +1091,7 @@ impl DefenceKind {
             DefenceKind::Gepard => "Gepard",
             DefenceKind::Patriot => "Patriot",
             DefenceKind::Drones => "Drones",
+            DefenceKind::Nasams => "NASAMS",
         }
     }
 }
@@ -1101,6 +1104,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Gepard,
             Patriot,
             Drones,
+            Nasams,
         }
         #[derive(Deserialize)]
         #[serde(untagged)]
@@ -1112,6 +1116,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Either::Patriot(true) | Either::Kind(Named::Patriot) => DefenceKind::Patriot,
             Either::Patriot(false) | Either::Kind(Named::Gepard) => DefenceKind::Gepard,
             Either::Kind(Named::Drones) => DefenceKind::Drones,
+            Either::Kind(Named::Nasams) => DefenceKind::Nasams,
         })
     }
 }
@@ -1178,6 +1183,7 @@ impl SupplyRequest {
             DefenceKind::Gepard => "cl-supply-gepard",
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
+            DefenceKind::Nasams => "cl-supply-nasams",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1241,6 +1247,7 @@ impl Deployment {
             DefenceKind::Gepard => "Gepard site",
             DefenceKind::Patriot => "Patriot site",
             DefenceKind::Drones => "Drone command center",
+            DefenceKind::Nasams => "NASAMS site",
         };
         format!("{what} near {}", self.name)
     }
@@ -1251,6 +1258,7 @@ impl Deployment {
             DefenceKind::Gepard => "cl-supply-gepard",
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
+            DefenceKind::Nasams => "cl-supply-nasams",
         };
         text!(id, place = self.name.as_str())
     }

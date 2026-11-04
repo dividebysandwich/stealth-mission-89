@@ -25,6 +25,7 @@ ds-click-hint = Spustelėkite žemėlapyje, kur ji bus - dešinysis spustelėjim
 ds-not-open-ground = Ne atviroje vietovėje
 ds-new-gepard = Nauja Gepard pozicija - spustelėkite, kad nurodytumėte
 ds-new-patriot = Nauja Patriot pozicija - spustelėkite, kad nurodytumėte
+ds-new-nasams = Nauja NASAMS pozicija - spustelėkite, kad nurodytumėte
 ds-new-drones = Naujas dronų valdymo punktas - spustelėkite, kad nurodytumėte
 ds-waiting = Laukia krovinio
 ds-fast-track = PASPARTINTI ({ $cost })

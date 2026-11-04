@@ -1,5 +1,5 @@
 //! New friendly air defence sites: a player designates a spot on the map for a Gepard, a
-//! Patriot battery or a drone command center, a helipad goes there, and logistics missions go on the board for the UH-60
+//! Patriot or NASAMS battery or a drone command center, a helipad goes there, and logistics missions go on the board for the UH-60
 //! pilots (land the cargo from the nearest airfield on the pad). A load nobody takes for
 //! `DEPLOY_AI_WAIT` goes by AI helicopter. All loads in within `DEPLOY_TIMEOUT`, the unit
 //! stands beside the pad; else the helipad is gone.
@@ -16,6 +16,7 @@ pub fn footprint(kind: DefenceKind) -> i32 {
         DefenceKind::Gepard => DEPLOY_FOOTPRINT_GEPARD,
         DefenceKind::Patriot => DEPLOY_FOOTPRINT_PATRIOT,
         DefenceKind::Drones => DEPLOY_FOOTPRINT_DRONES,
+        DefenceKind::Nasams => DEPLOY_FOOTPRINT_NASAMS,
     }
 }
 
@@ -30,6 +31,7 @@ pub fn loads(kind: DefenceKind) -> u8 {
         DefenceKind::Gepard => DEPLOY_LOADS_GEPARD,
         DefenceKind::Patriot => DEPLOY_LOADS_PATRIOT,
         DefenceKind::Drones => DEPLOY_LOADS_DRONES,
+        DefenceKind::Nasams => DEPLOY_LOADS_NASAMS,
     }
 }
 

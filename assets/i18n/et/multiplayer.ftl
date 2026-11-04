@@ -54,6 +54,7 @@ pic-sam-known = SAM-positsioon (teada)
 pic-guns-known = Kahurid / MANPADS (teada)
 pic-armour = Tank / jalaväe lahingumasin (vaenlane: nähtaval)
 pic-patriot-reach = Patrioti ulatus
+pic-nasams-reach = NASAMS-i ulatus
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM-rakettide ulatus
 pic-engagement-range = Tabamisulatus

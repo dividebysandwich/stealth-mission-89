@@ -25,6 +25,7 @@ ds-click-hint = 設置場所をマップでクリック - 右クリック：キ�
 ds-not-open-ground = 開けた土地ではありません
 ds-new-gepard = 新しいゲパルト陣地 - クリックして指定
 ds-new-patriot = 新しいパトリオット陣地 - クリックして指定
+ds-new-nasams = 新しいNASAMS陣地 - クリックして指定
 ds-new-drones = 新しいドローン指揮所 - クリックして指定
 ds-waiting = 資材待ち
 ds-fast-track = 前倒し（{ $cost }）

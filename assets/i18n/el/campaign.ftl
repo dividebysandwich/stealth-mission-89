@@ -104,6 +104,7 @@ cl-objective = { $title }: ο στόχος επιτεύχθηκε
 cl-recon = Φωτογραφίες αναγνώρισης: { $place } - οι άμυνές του χαρτογραφήθηκαν
 cl-package = Package πάνω από { $place }: { $kinds } - +{ $bonus } για { $pilots }
 cl-supply-patriot = Πυροβολαρχία Patriot κοντά σε { $place }
+cl-supply-nasams = Πυροβολαρχία NASAMS κοντά σε { $place }
 cl-supply-gepard = Gepard κοντά σε { $place }
 cl-supply-drones = Κέντρο διοίκησης drones κοντά σε { $place }
 cl-resupply-requested = Ο/Η { $who } ζητά ανεφοδιασμό για: { $unit }

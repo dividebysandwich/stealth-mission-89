@@ -1207,7 +1207,7 @@ fn clear_air_defence(
             let u = &sim.units()[k];
             sim.aaa_blue(k)
                 && !sim.unit_moving(k)
-                && (u.kind.patriot() || stealth_sim::station::mannable(u.kind))
+                && (u.kind.battery().is_some() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
             let u = &sim.units()[k];

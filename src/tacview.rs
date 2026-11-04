@@ -870,7 +870,7 @@ fn ground_type(k: GroundKind) -> &'static str {
         _ if k.carrier() => "Ground+Medium+Armor+Vehicle",
         GroundKind::Manpads => "Ground+Light+Human+Infantry",
         GroundKind::DroneCenter => "Ground+Static+Building",
-        _ if k.patriot() => "Ground+Static+AntiAircraft",
+        _ if k.battery().is_some() => "Ground+Static+AntiAircraft",
         _ => "Ground+Heavy+Armor+AntiAircraft",
     }
 }

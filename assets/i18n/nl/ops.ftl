@@ -131,6 +131,7 @@ ops-legend-insertion = Inzetroute
 ops-watch-hint = Klik op een eenheid om live mee te kijken
 ops-map-hint = Wiel: zoomen, slepen: pannen
 ops-patriot = Patriot-batterij
+ops-nasams = NASAMS-batterij
 ops-drone-center = Dronecommandopost
 ops-manned-by = Bemand door { $pilot }
 ops-manned-by-other = Bemand door een andere speler

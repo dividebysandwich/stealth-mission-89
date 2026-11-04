@@ -25,6 +25,7 @@ ds-click-hint = Klicka på kartan där den ska stå - högerklick: avbryt
 ds-not-open-ground = Inte på öppen mark
 ds-new-gepard = Ny Gepard-gruppering - klicka för att utse
 ds-new-patriot = Ny Patriot-gruppering - klicka för att utse
+ds-new-nasams = Ny NASAMS-gruppering - klicka för att utse
 ds-new-drones = Ny drönarledningscentral - klicka för att utse
 ds-waiting = Väntar på last
 ds-fast-track = SNABBA PÅ ({ $cost })

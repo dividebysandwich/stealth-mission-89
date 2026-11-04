@@ -54,6 +54,7 @@ pic-sam-known = Sito SAM (noto)
 pic-guns-known = Cannoni / MANPADS (noti)
 pic-armour = Carro / VCI (nemico: in vista)
 pic-patriot-reach = Portata dei Patriot
+pic-nasams-reach = Portata dei NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Portata dei missili SAM
 pic-engagement-range = Portata d'ingaggio

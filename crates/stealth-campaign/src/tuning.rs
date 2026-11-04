@@ -292,12 +292,13 @@ pub const DRONE_COST: f64 = 12.0;
 pub const SUPPLY_AI_WAIT: f64 = 5.0 * 60.0;
 pub const SUPPLY_HOVER_SECONDS: f64 = 10.0;
 
-/// New air defence sites the players designate: loads of cargo a Gepard, a Patriot battery and
-/// a drone command center need, how long the helipad waits for them (s), how many sites may wait at once, how long an
+/// New air defence sites the players designate: loads of cargo a Gepard, a Patriot battery, a
+/// drone command center and a NASAMS battery (its Sentinel radar, then the launchers) need, how long the helipad waits for them (s), how many sites may wait at once, how long an
 /// open load waits for a player before an AI helicopter brings it (s).
 pub const DEPLOY_LOADS_GEPARD: u8 = 1;
 pub const DEPLOY_LOADS_PATRIOT: u8 = 3;
 pub const DEPLOY_LOADS_DRONES: u8 = 1;
+pub const DEPLOY_LOADS_NASAMS: u8 = 2;
 pub const DEPLOY_TIMEOUT: f64 = 24.0 * 3600.0;
 pub const DEPLOY_OPEN_MAX: usize = 3;
 pub const DEPLOY_AI_WAIT: f64 = 30.0 * 60.0;
@@ -310,6 +311,7 @@ pub const DEPLOY_UNIT_OFFSET: i32 = 3;
 pub const DEPLOY_FOOTPRINT_GEPARD: i32 = 0x10;
 pub const DEPLOY_FOOTPRINT_PATRIOT: i32 = 0x30;
 pub const DEPLOY_FOOTPRINT_DRONES: i32 = 0x20;
+pub const DEPLOY_FOOTPRINT_NASAMS: i32 = 0x30;
 /// Map units: a site keeps this far from a place (its town or airfield) and from a world object.
 pub const DEPLOY_PLACE_CLEAR: i32 = 0x80;
 pub const DEPLOY_SITE_CLEAR: i32 = 0x40;

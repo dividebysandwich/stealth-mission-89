@@ -61,6 +61,8 @@ pub struct OpsUi {
     /// center), and `--campaign-designate` was done.
     pub(super) designate: Option<stealth_campaign::DefenceKind>,
     pub(super) test_designated: bool,
+    /// `--campaign-designate <kind>+built` fast-tracked it.
+    pub(super) test_fast_tracked: bool,
     /// The airbase (or the forces) picked on the LOGISTICS tab.
     pub(super) logistics: Option<super::logistics::Pick>,
     /// The new site whose FAST-TRACK was clicked, awaiting confirmation.
@@ -242,12 +244,20 @@ pub fn test_tab() -> Option<Tab> {
 }
 
 /// Test aid: `--campaign-man <n>` mans the n-th friendly air defence console once the
-/// campaign is up (Patriot batteries first, then the Gepards); `drone` is `usize::MAX`.
+/// campaign is up (Patriot batteries first, then NASAMS, then the Gepards); `drone` is
+/// [`TEST_MAN_DRONES`], `nasams` [`TEST_MAN_NASAMS`].
 pub fn test_man() -> Option<usize> {
     let args: Vec<String> = std::env::args().collect();
     let a = args.iter().position(|a| a == "--campaign-man").and_then(|i| args.get(i + 1))?;
-    if a == "drone" { Some(usize::MAX) } else { a.parse().ok() }
+    match a.as_str() {
+        "drone" => Some(TEST_MAN_DRONES),
+        "nasams" => Some(TEST_MAN_NASAMS),
+        _ => a.parse().ok(),
+    }
 }
+
+pub const TEST_MAN_DRONES: usize = usize::MAX;
+pub const TEST_MAN_NASAMS: usize = usize::MAX - 1;
 
 /// `--campaign-take <n>`: the n-th mission of the board, or the first of a kind (`logistics`).
 pub enum TestTake {
@@ -1397,6 +1407,20 @@ fn war_map(
             {
                 unit_view.watch(super::unit_view::UnitRef::Aaa(v.index), v.kind.name().into());
             }
+        } else if watch.as_deref() == Some("nasams") {
+            // A friendly NASAMS launcher (a site the players built).
+            let ln = (0..sim.units().len()).find(|&k| {
+                sim.units()[k].kind == stealth_sim::aaa::GroundKind::NasamsLauncher
+                    && !sim.units()[k].destroyed
+                    && sim.aaa_blue(k)
+            });
+            if unit_view.target.is_none()
+                && let Some(k) = ln
+                && !std::mem::replace(test_taken, true)
+            {
+                unit_view.watch(super::unit_view::UnitRef::Aaa(k), "NASAMS".into());
+                unit_view.test_orbit();
+            }
         } else if std::env::args().any(|a| a == "--campaign-watch")
             && unit_view.target.is_none()
             && let Some(a) = pic.friendly.first()
@@ -1645,7 +1669,7 @@ pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) 
     })
 }
 
-/// The watched unit is a friendly Patriot battery or Gepard: CONTROL mans its console.
+/// The watched unit is a friendly Patriot or NASAMS battery or Gepard: CONTROL mans its console.
 fn control_button(
     ui: &mut egui::Ui,
     c: &mut ActiveCampaign,
@@ -1663,6 +1687,7 @@ fn control_button(
         match u.kind {
             GroundKind::Gepard => "Gepard",
             GroundKind::DroneCenter => t!("ops-drone-center"),
+            GroundKind::NasamsRadar => t!("ops-nasams"),
             _ => t!("ops-patriot"),
         },
     );

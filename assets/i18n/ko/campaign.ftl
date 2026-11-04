@@ -104,6 +104,7 @@ cl-objective = { $title }: 목표 달성
 cl-recon = { $place } 정찰 사진: 방어 시설 파악 완료
 cl-package = { $place } 상공 패키지: { $kinds } - { $pilots }에게 +{ $bonus }
 cl-supply-patriot = { $place } 부근 패트리엇 포대
+cl-supply-nasams = { $place } 부근 NASAMS 포대
 cl-supply-gepard = { $place } 부근 게파르트
 cl-supply-drones = { $place } 부근 드론 지휘소
 cl-resupply-requested = { $who }: { $unit } 보급 요청

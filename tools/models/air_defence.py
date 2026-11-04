@@ -1,5 +1,6 @@
 """Builds the remake's ground units in Blender: the low-level air defences (ZSU-23-4 Shilka, S-60 gun,
-MANPADS team, and the friendly Patriot launcher and radar, the Gepard and the drone command center)
+MANPADS team, and the friendly Patriot launcher and radar, the Gepard, the drone command center and
+the NASAMS launcher and Sentinel radar)
 and the armour (T-90A and BMP-2 for the red side, Leopard 2A6 and M2A2 Bradley for the blue), for
 the air defence option and the campaign (crates/stealth-sim/src/aaa.rs):
 
@@ -40,6 +41,8 @@ T90 = 117
 LEOPARD2 = 118
 BRADLEY = 119
 BMP2 = 120
+NASAMS_LN = 121
+NASAMS_RADAR = 122
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1055,6 +1058,103 @@ def bmp2():
     far(lod1, "aaa_120", [(-1.57, 1.57, -3.36, 3.36, 0.1, 1.7), (-1.0, 1.0, -0.9, 1.1, 1.7, 2.3)])
 
 
+# ------------------------------------------------------------------------------- NASAMS launcher
+
+
+def nasams_truck(paint=OLIVE, wheels=RUBBER):
+    """A 6x6 tactical truck (FMTV-ish), its cab to the rear (-y): the canisters fire over the
+    flatbed's tail (+y), as on the Patriot's launcher. Bed at 1.3 m."""
+    g = Geo()
+    g.add(block(-1.2, 1.2, -3.6, 3.4, 0.85, 1.3, OLIVE_DARK if paint is OLIVE else paint))
+    g.add(block(-1.25, 1.25, -1.3, 3.4, 1.05, 1.3, paint))
+    # The cab, its windscreen to the rear, and the engine hood behind it.
+    g.add(block(-1.2, 1.2, -3.0, -1.5, 1.3, 2.75, paint, taper=0.08, taper_y=0.1))
+    g.add(block(-1.0, 1.0, -3.02, -2.95, 2.0, 2.6, GLASS))
+    g.add(block(-1.1, 1.1, -3.9, -3.0, 0.9, 1.75, paint))
+    for sx in (-1, 1):
+        g.add(block(sx * 1.2 - 0.02 * sx, sx * 1.21, -2.6, -1.8, 2.0, 2.55, GLASS))
+        for y in (-3.0, 0.9, 2.3):
+            g.add(wheel((sx * 1.0, y, 0.55), 0.55, 0.45, wheels, n=8))
+        # Outriggers lowered at the bed's rear corners.
+        g.add(block(sx * 1.3 - 0.1, sx * 1.3 + 0.1, 3.0, 3.2, 0.0, 1.1, STEEL))
+        g.add(block(sx * 1.3 - 0.25, sx * 1.3 + 0.25, 2.85, 3.35, 0.0, 0.06, STEEL))
+    # A generator box behind the cab.
+    g.add(block(-1.0, 1.0, -1.3, -0.5, 1.3, 2.1, OLIVE_DARK if paint is OLIVE else paint))
+    return g
+
+
+def nasams_turntable(paint=OLIVE):
+    """The launcher's traverse ring and elevation cradle on the bed."""
+    g = Geo()
+    g.add(frustum((0, 0, 0), (0, 0, 0.25), 0.85, 0.8, paint, n=8))
+    for sx in (-1, 1):
+        g.add(block(sx * 0.95 - 0.08, sx * 0.95 + 0.08, -0.4, 0.3, 0.15, 0.7, OLIVE_DARK))
+    return g
+
+
+def nasams_canisters(paint=OLIVE):
+    """Six AIM-120 canisters, two rows of three, pivot at the rear lower edge, pointing +y."""
+    g = Geo()
+    g.add(block(-0.95, 0.95, 0.0, 4.2, 0.0, 1.25, paint))
+    for x in (-0.6, 0.0, 0.6):
+        for z in (0.33, 0.92):
+            g.face([(x - 0.25, 4.21, z - 0.25), (x + 0.25, 4.21, z - 0.25), (x + 0.25, 4.21, z + 0.25), (x - 0.25, 4.21, z + 0.25)], OLIVE_DARK, (0, 1, 0))
+    for y in (0.6, 2.1, 3.6):
+        g.add(block(-1.0, 1.0, y, y + 0.15, -0.04, 1.29, OLIVE_DARK))
+    return g
+
+
+def nasams_launcher():
+    root, lod0, lod1 = levels(NASAMS_LN, 16000)
+    intact = mesh_obj("aaa_121_lod0_s1v0", nasams_truck(), lod0)
+    table = part("aaa_121_lod0_s1v0_part1", nasams_turntable(), intact, (0, 1.2, 1.3), TURRET_SLOT, 0)
+    part("aaa_121_lod0_s1v0_part2", nasams_canisters(), table, (0, -1.0, 0.55), GUN_SLOT, 1)
+    w = nasams_truck(BURNT, BURNT)
+    w.add(nasams_canisters(BURNT).rotated_x(0.1).rotated_z(0.35).transformed(lambda p: p + mklib.v3((0.3, 0.0, 1.35))))
+    mesh_obj("aaa_121_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_121", [(-1.25, 1.25, -3.9, 3.4, 0.4, 1.3), (-1.2, 1.2, -3.0, -1.5, 1.3, 2.7), (-0.95, 0.95, 0.2, 4.4, 1.6, 2.9)])
+
+
+# ------------------------------------------------------------------------- NASAMS Sentinel radar
+
+
+def sentinel_trailer(paint=OLIVE, wheels=RUBBER):
+    """The AN/MPQ-64's two-wheel trailer with its drawbar forward (+y) and the pedestal."""
+    g = Geo()
+    g.add(block(-1.0, 1.0, -1.8, 1.6, 0.6, 1.4, paint))
+    g.add(block(-0.08, 0.08, 1.6, 3.2, 0.5, 0.65, STEEL))
+    for sx in (-1, 1):
+        g.add(wheel((sx * 1.1, -0.3, 0.5), 0.5, 0.35, wheels, n=8))
+        for y in (-1.6, 1.4):
+            g.add(block(sx * 1.05 - 0.08, sx * 1.05 + 0.08, y - 0.08, y + 0.08, 0.0, 0.7, STEEL))
+    g.add(block(-0.12, 0.12, 3.0, 3.2, 0.0, 0.55, STEEL))
+    g.add(frustum((0, 0, 1.4), (0, 0, 1.9), 0.45, 0.35, OLIVE_DARK, n=8))
+    return g
+
+
+def sentinel_antenna(paint=OLIVE):
+    """The rotating planar array, 2.4 x 1.5 m, tilted back, with the IFF bar along its top."""
+    g = Geo()
+    g.add(frustum((0, 0, 0), (0, 0, 0.3), 0.3, 0.3, STEEL, n=6))
+    face = block(-1.2, 1.2, -0.12, 0.12, 0.0, 1.5, paint)
+    face.add(block(-1.1, 1.1, 0.12, 0.16, 0.1, 1.4, OLIVE_DARK))
+    face.add(block(-1.2, 1.2, -0.08, 0.08, 1.5, 1.66, STEEL))
+    g.add(face.rotated_x(-0.3).transformed(lambda p: p + mklib.v3((0, 0.1, 0.3))))
+    # The electronics boxes behind it.
+    g.add(block(-0.5, 0.5, -0.7, -0.1, 0.25, 0.85, OLIVE_DARK))
+    return g
+
+
+def nasams_radar():
+    root, lod0, lod1 = levels(NASAMS_RADAR, 16000)
+    intact = mesh_obj("aaa_122_lod0_s1v0", sentinel_trailer(), lod0)
+    part("aaa_122_lod0_s1v0_part1", sentinel_antenna(), intact, (0, 0, 1.9), RADAR_SLOT, 0)
+    w = sentinel_trailer(BURNT, BURNT)
+    w.add(sentinel_antenna(BURNT).recolour(BURNT).rotated_x(0.9).rotated_z(0.4).transformed(lambda p: p + mklib.v3((0.6, -0.4, 0.4))))
+    mesh_obj("aaa_122_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_122", [(-1.0, 1.0, -1.8, 1.6, 0.4, 1.4), (-1.2, 1.2, -0.4, 0.4, 1.9, 3.6)])
+
+
 # -------------------------------------------------------------------------------------- common
 
 
@@ -1101,6 +1201,8 @@ def main():
     leopard2()
     bradley()
     bmp2()
+    nasams_launcher()
+    nasams_radar()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

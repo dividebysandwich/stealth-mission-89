@@ -25,6 +25,7 @@ ds-click-hint = Napsauta karttaa siihen, mihin se tulee - oikea napsautus: peruu
 ds-not-open-ground = Ei avoimessa maastossa
 ds-new-gepard = Uusi Gepard-asema - osoita napsauttamalla
 ds-new-patriot = Uusi Patriot-asema - osoita napsauttamalla
+ds-new-nasams = Uusi NASAMS-asema - osoita napsauttamalla
 ds-new-drones = Uusi lennokkien johtokeskus - osoita napsauttamalla
 ds-waiting = Odottaa rahtia
 ds-fast-track = KIIREHDI ({ $cost })

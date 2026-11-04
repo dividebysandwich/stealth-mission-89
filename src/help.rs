@@ -154,18 +154,21 @@ Testing and screenshots
   --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
   --fp2-strike [m]             an attack drone at the enemy column's Shilka once it drove m
                                (with --convoy-now)
-  --campaign-watch armour|fp2|zsu
-                               watch a tank on the move, the attack drone, the column's Shilka
+  --campaign-watch armour|fp2|zsu|nasams
+                               watch a tank on the move, the attack drone, the column's Shilka,
+                               a friendly NASAMS launcher
   --watch-orbit <yaw>,<pitch>,<m>
                                the watching camera's place (radians from behind, above)
   --campaign-watch             watch the first friendly aircraft
   --campaign-ai-now            the AI flies the boards' missions at once (not 5 minutes after)
   --campaign-take-control [s]  take over the first friendly AI aircraft up s seconds (60)
   --campaign-leave [s]         leave the aircraft to the AI s seconds into the sortie (20)
-  --campaign-designate gepard|patriot|drones
-                               designate a new air defence site near the parked base
+  --campaign-designate gepard|patriot|nasams|drones[+built]
+                               designate a new air defence site near the parked base (and
+                               fast-track it)
   --campaign-drones [front [n]] put (n) drone command centers near the front, man one
-  --campaign-man <n>|drone     man the n-th friendly console, or a free drone center
+  --campaign-man <n>|drone|nasams
+                               man the n-th friendly console, or a free drone center (NASAMS)
   --campaign-geran <n> [km]    an enemy Geran-2 raid km (2) ahead of the first interceptor up
   --drone-launch stork|fp2     at it, launch a drone at the nearest enemy air defence
   --drone-manual               flown by hand

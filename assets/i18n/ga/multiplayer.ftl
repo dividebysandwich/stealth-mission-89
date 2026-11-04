@@ -54,6 +54,7 @@ pic-sam-known = Suíomh SAM (ar eolas)
 pic-guns-known = Gunnaí / MANPADS (ar eolas)
 pic-armour = Umar / feithicil troda coisithe (namhaid: le feiceáil)
 pic-patriot-reach = Raon Patriot
+pic-nasams-reach = Raon NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Raon diúracán SAM
 pic-engagement-range = Raon comhraic

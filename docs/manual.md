@@ -2171,7 +2171,7 @@ hours) and, in multiplayer, the enemy's tempo (11.5).
 |---|---|
 | **MISSIONS** | The mission board (9.4), the selected mission's details, and below the board the insertions and raids under way with their countdowns, the enemy AWACS's time left and the pilots down. |
 | **WAR MAP** | The theater (below). |
-| **AIR DEFENSE** | Your side's Gepard, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
+| **AIR DEFENSE** | Your side's Gepard, NASAMS, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
 | **LOGISTICS** | Your airbases, the production base first, with what each is out of or low on and the cargo flight coming; the selected base's munitions one by one (the production base's output per hour and the next one's progress); the cargo flights under way (9.14). **Forces and materiel** shows both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
 | **PLAYERS** | The pilots in the campaign, what they do, their sorties, points and rank; the leaderboard of everyone who has flown in it; the campaign's rules. |
 | **DEBRIEF** | The last sortie's result, kills, points, medal and rank, its effect on the war (9.8), and what happened meanwhile. |
@@ -2509,8 +2509,8 @@ columns drive on from where they were.
 
 ## 9.13 Air defence operations
 
-Your side can build its own air defence: **Gepard** anti-aircraft guns, **Patriot** batteries
-and **drone command centers** (10.4). A player designates the spot, UH-60 pilots fly in the
+Your side can build its own air defence: **Gepard** anti-aircraft guns, **NASAMS** and
+**Patriot** batteries and **drone command centers** (10.4). A player designates the spot, UH-60 pilots fly in the
 cargo (9.14), and anyone can man the finished site.
 
 The **Flakpanzer Gepard** was built in West Germany in the 1970s on the Leopard 1 tank's hull: two 35 mm
@@ -2519,17 +2519,21 @@ Bundeswehr in 2010, it was sent to Ukraine from 2022, and became famous there as
 weapons against Shahed drones: cheap rounds against cheap drones. The **MIM-104 Patriot** has defended
 American and allied airspace since the 1980s; its phased-array radar tracks dozens of targets and guides
 missiles that reach out to beyond 100 km. In May 2023 a Ukrainian Patriot battery shot down a Kinzhal
-air-launched ballistic missile over Kyiv, the first known interception of the type.
+air-launched ballistic missile over Kyiv, the first known interception of the type. **NASAMS**
+(National Advanced Surface-to-Air Missile System), built by Kongsberg and Raytheon, fires the
+fighters' AIM-120 AMRAAM from ground launchers of six canisters, cued by the AN/MPQ-64 Sentinel
+radar. It has guarded Washington, D.C. since 2005 and has defended Ukraine since 2022.
 
 | Site | Cargo loads | Armament |
 |---|---|---|
 | **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 8 km. 640 rounds ready, 640 in stock. |
+| **NASAMS** | 2 | A Sentinel radar with three launchers of six AIM-120s each, out to 40 km. 12 missiles in stock. |
 | **Patriot** | 3 | A radar with launchers of four missiles each, out to 120 km. 8 missiles in stock. |
 | **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (10.4). |
 
 **Designating a site**
 
-1. On the Ops screen's WAR MAP or AIR DEFENSE tab, press **GEPARD**, **PATRIOT** or **DRONES**
+1. On the Ops screen's WAR MAP or AIR DEFENSE tab, press **GEPARD**, **NASAMS**, **PATRIOT** or **DRONES**
    under *New site*.
 2. Move the pointer over the map. A green circle shows where the site may go; a red one names
    the reason it can't (not friendly territory, water, too close to a town, airfield, site or
@@ -2544,13 +2548,14 @@ once. Once the last load is in, the unit stands beside the pad.
 
 The AIR DEFENSE tab lists your side's sites: who mans each one (*auto* when nobody does), the
 aircraft on its radar, what is ready and its stock. **ENTER** takes you to its console,
-**LEAVE** back to the Ops screen. Unmanned Patriots and Gepards fight on their own. The Gepard of
+**LEAVE** back to the Ops screen. Unmanned NASAMS, Patriots and Gepards fight on their own (a
+NASAMS out to 30 km, a Patriot out to 35 km: further out is left to you and the fighters). The Gepard of
 your own armour column is listed too and can be manned on the move; while you man a Gepard it fires only
 where you aim it.
 
 ![The Patriot console](images/patriot_console.png)
 
-The Patriot and Gepard consoles share one layout:
+The Patriot, NASAMS and Gepard consoles share one layout:
 
 * **Camera** (top): the tracking camera on the radar's or the Gepard's mast, following the
   lock. **FLIR** switches colour / thermal, **ZOOM+** / **ZOOM-** zoom.
@@ -2565,6 +2570,9 @@ The Patriot and Gepard consoles share one layout:
 decoy, one target at a time); **SEMI** missiles home on the radar's illumination (several targets
 at once, easier to decoy). **L1**-**L3** pick the launcher to fire from; **RLD1**-**RLD3**
 reload an empty one from the stock (4 minutes).
+
+**NASAMS.** The same console as the Patriot's, with AIM-120s that go out to 40 km against a
+target coming in (less against one that holds off or turns); each launcher holds six.
 
 <table>
 <tr>
@@ -2608,7 +2616,7 @@ refilling (RLD).</li>
 Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
 guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
 Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, the Patriots' PAC-3s and the
-Gepards' 35 mm rounds. The war starts with every airbase fully stocked. Your loadout comes out of
+Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
 the stock of the base you take off from: the briefing's loadout shows how many each base has
 left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
 stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it

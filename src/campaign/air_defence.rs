@@ -1,5 +1,5 @@
-//! The Ops screen's AIR DEFENSE tab: the friendly Patriot batteries, Gepards and drone command
-//! centers on the war map with their reach, and beside it a list of them: their ammunition (a
+//! The Ops screen's AIR DEFENSE tab: the friendly Patriot and NASAMS batteries, Gepards and drone
+//! command centers on the war map with their reach, and beside it a list of them: their ammunition (a
 //! command center's drones), the enemy aircraft their radars see, who sits at the console, and a
 //! button to man it.
 
@@ -8,8 +8,8 @@ use stealth_campaign::Side;
 use stealth_i18n::t;
 use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{
-    FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, GEPARD_STOCK, INTERCEPTOR_STOCK, PATRIOT_STOCK,
-    STORK_STOCK, StationCmd, mannable,
+    FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd,
+    initial_stock, mannable,
 };
 use stealth_sim::{Sim, fflags};
 
@@ -25,8 +25,7 @@ const KEY_W: f32 = 52.0;
 const BAR_W: f32 = 120.0;
 const NUM_W: f32 = 80.0;
 const STOCK_W: f32 = 32.0;
-/// Patriot and Gepard reach on the map (map units).
-const PATRIOT_REACH: f32 = stealth_sim::campaign::PATRIOT_REACH as f32;
+/// The Gepard's reach on the map (map units).
 const GEPARD_MAP_REACH: f32 = (GEPARD_REACH / M_PER_MAP) as f32;
 
 /// A friendly air defence site a player can man.
@@ -71,7 +70,11 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
             };
             let alive: Vec<usize> =
                 units.iter().copied().filter(|&l| !sim.units()[l].destroyed).collect();
-            let per = if gepard { GEPARD_ROUNDS } else { stealth_sim::campaign::PATRIOT_ROUNDS };
+            let per = match u.kind.battery() {
+                Some(b) => b.rounds(),
+                None if gepard => GEPARD_ROUNDS,
+                None => 0,
+            };
             let at = u.metres();
             let mut enemies: Vec<(String, f32)> = sim
                 .flights()
@@ -118,8 +121,8 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
             }
         })
         .collect();
-    // The drone command centers first, then the Patriot batteries, then the Gepards, each west
-    // to east.
+    // The drone command centers first, then the Patriot batteries, the NASAMS batteries, the
+    // Gepards, each west to east.
     out.sort_by_key(|s| (order(s.kind), s.x));
     out
 }
@@ -127,19 +130,21 @@ fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
 fn order(kind: GroundKind) -> u8 {
     match kind {
         GroundKind::DroneCenter => 0,
-        GroundKind::Gepard => 2,
+        GroundKind::NasamsRadar => 2,
+        GroundKind::Gepard => 3,
         _ => 1,
     }
 }
 
-/// The site's short name: P1, P2 .. for the batteries, G1 .. for the Gepards, D1 .. for the
-/// drone command centers.
+/// The site's short name: P1, P2 .. for the Patriot batteries, N1 .. for the NASAMS batteries,
+/// G1 .. for the Gepards, D1 .. for the drone command centers.
 fn tag(sites: &[Site], i: usize) -> String {
     let s = &sites[i];
     let n = sites[..=i].iter().filter(|o| o.kind == s.kind).count();
     let letter = match s.kind {
         GroundKind::Gepard => "G",
         GroundKind::DroneCenter => "D",
+        GroundKind::NasamsRadar => "N",
         _ => "P",
     };
     format!("{letter}{n}")
@@ -216,7 +221,7 @@ fn map(
             GroundKind::Gepard => GEPARD_MAP_REACH,
             // A drone command center's: as far as its surveillance drones see from over it.
             GroundKind::DroneCenter => (stealth_sim::uav::STORK_SENSOR / M_PER_MAP) as f32,
-            _ => PATRIOT_REACH,
+            k => k.battery().map_or(0.0, |b| b.reach() as f32),
         };
         let r = (reach / view.scale).max(4.0);
         let chosen = c.ui.defence == Some(s.unit);
@@ -371,7 +376,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         let kind = match s.kind {
             GroundKind::Gepard => "GEPARD",
             GroundKind::DroneCenter => t!("ad-drones"),
-            _ => "PATRIOT",
+            k => k.battery().map_or("PATRIOT", |b| b.label()),
         };
         ui.label(egui::RichText::new(format!("{tag} {kind}")).strong().color(FRIENDLY_BLUE));
         ui.label(egui::RichText::new(t!("ad-near", place = s.near.as_str())).color(DIM));
@@ -461,7 +466,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
                 }
             });
         } else {
-            let full = if s.kind == GroundKind::Gepard { GEPARD_STOCK } else { PATRIOT_STOCK };
+            let full = initial_stock(s.kind);
             bar(ui, s.stock, full, BAR_W, stock_col(s.stock));
             value(ui, egui::RichText::new(s.stock.to_string()).color(stock_col(s.stock)), STOCK_W);
         }

@@ -131,6 +131,7 @@ ops-legend-insertion = 投入ルート
 ops-watch-hint = 部隊をクリックするとライブで観戦できます
 ops-map-hint = ホイール：ズーム、ドラッグ：移動
 ops-patriot = パトリオット部隊
+ops-nasams = NASAMS部隊
 ops-drone-center = ドローン指揮所
 ops-manned-by = 配置：{ $pilot }
 ops-manned-by-other = 別のプレイヤーが配置中

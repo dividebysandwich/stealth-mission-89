@@ -25,6 +25,7 @@ ds-click-hint = Klik på kortet, hvor den skal stå - højreklik: annullér
 ds-not-open-ground = Ikke på åbent terræn
 ds-new-gepard = Ny Gepard-stilling - klik for at udpege
 ds-new-patriot = Ny Patriot-stilling - klik for at udpege
+ds-new-nasams = Ny NASAMS-stilling - klik for at udpege
 ds-new-drones = Ny droneføringscentral - klik for at udpege
 ds-waiting = Venter på last
 ds-fast-track = FREMSKYND ({ $cost })

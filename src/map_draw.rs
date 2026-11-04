@@ -567,6 +567,8 @@ pub enum Layer {
     EnemyFighters,
     Patriots,
     PatriotReach,
+    Nasams,
+    NasamsReach,
     Gepards,
     Sams,
     Guns,

@@ -104,6 +104,7 @@ cl-objective = { $title }: tavoite saavutettu
 cl-recon = Tiedustelukuvat, kohde { $place }: puolustus kartoitettu
 cl-package = Paketti, kohde { $place }: { $kinds } - +{ $bonus }, lentäjät: { $pilots }
 cl-supply-patriot = Patriot-patteri, lähellä: { $place }
+cl-supply-nasams = NASAMS-patteri, lähellä: { $place }
 cl-supply-gepard = Gepard, lähellä: { $place }
 cl-supply-drones = Lennokkien johtokeskus, lähellä: { $place }
 cl-resupply-requested = { $who } pyytää täydennystä: { $unit }

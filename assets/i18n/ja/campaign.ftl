@@ -104,6 +104,7 @@ cl-objective = { $title }：目標達成
 cl-recon = { $place } の偵察写真：防御施設を把握
 cl-package = { $place } 上空のパッケージ：{ $kinds } - { $pilots } に+{ $bonus }
 cl-supply-patriot = { $place } 付近のパトリオット部隊
+cl-supply-nasams = { $place } 付近のNASAMS部隊
 cl-supply-gepard = { $place } 付近のゲパルト
 cl-supply-drones = { $place } 付近のドローン指揮所
 cl-resupply-requested = { $who } が { $unit } の補給を要請

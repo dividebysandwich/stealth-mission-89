@@ -25,6 +25,7 @@ ds-click-hint = Haga clic en el mapa donde va - clic derecho: cancelar
 ds-not-open-ground = No está en terreno despejado
 ds-new-gepard = Nuevo emplazamiento Gepard - clic para designarlo
 ds-new-patriot = Nuevo emplazamiento Patriot - clic para designarlo
+ds-new-nasams = Nuevo emplazamiento NASAMS - clic para designarlo
 ds-new-drones = Nuevo centro de mando de drones - clic para designarlo
 ds-waiting = Esperando carga
 ds-fast-track = ACELERAR ({ $cost })

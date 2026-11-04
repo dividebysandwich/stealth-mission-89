@@ -8,10 +8,10 @@
 //!   ready, refilling.
 //! * The panel: the identity and, in its four squares, bearing and time of flight; then the
 //!   track number, range, altitude and speed with their units.
-//! * At the bottom the gun's reach (a Patriot's: the PAC-3's) and whether the track is in it.
+//! * At the bottom the gun's reach (a battery's: its missiles') and whether the track is in it.
 
 use bevy::prelude::*;
-use stealth_sim::station::{GEPARD_REACH, GEPARD_V0, PATRIOT_MAX_RANGE};
+use stealth_sim::station::GEPARD_V0;
 
 use super::scope::{BLACK, YELLOW};
 use super::{ConsoleUi, Manning};
@@ -138,7 +138,7 @@ pub(super) fn draw(
     }
 
     // The bottom row: in reach or not, and the reach.
-    let reach = if m.gepard() { GEPARD_REACH } else { PATRIOT_MAX_RANGE } as f32;
+    let reach = m.reach() as f32;
     let status = match (lock, slant) {
         (None, _) => "NO LOCK",
         (Some(_), None) => "NO TRACK DATA",

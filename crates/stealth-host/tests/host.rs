@@ -587,6 +587,74 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     }));
 }
 
+/// A player designates a NASAMS site and fast-tracks it: its Sentinel radar and three
+/// launchers of six AIM-120s stand by the helipad, mannable, with their stockpile; a loaded
+/// save has them again, stockpile and all.
+#[test]
+fn a_fast_tracked_nasams_site_stands_and_survives_a_save() {
+    use stealth_campaign::{DefenceKind, Side};
+    use stealth_sim::aaa::GroundKind;
+    use stealth_sim::station::{NASAMS_STOCK, StationCmd};
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    let me = PlayerId(0);
+    let aaa = stealth_host::glue::world_view(&sim).units;
+    let base = host
+        .state
+        .places
+        .iter()
+        .find(|p| p.owner == Side::Blue && p.airfield.is_some())
+        .map(|p| (p.x, p.y))
+        .unwrap();
+    let (x, y) = (1..60)
+        .flat_map(|r| (0..16).map(move |k| (r, k)))
+        .map(|(r, k)| {
+            let t = k as f64 / 16.0 * std::f64::consts::TAU;
+            (
+                base.0 + (t.cos() * r as f64 * 32.0) as i32,
+                base.1 + (t.sin() * r as f64 * 32.0) as i32,
+            )
+        })
+        .find(|&(x, y)| host.state.deploy_refusal(x, y, DefenceKind::Nasams, &aaa).is_none())
+        .expect("a free spot");
+    host.designate_site(&mut sim, me, x, y, DefenceKind::Nasams).unwrap();
+    let d = host.state.deployments[0].clone();
+    assert_eq!((d.kind, d.loads), (DefenceKind::Nasams, 2));
+    host.state.blue.materiel = 1e6;
+    host.fast_track_site(&mut sim, me, d.id).unwrap();
+    host.tick(&mut sim, 0.1, &[]);
+    let spot = host.state.deployments[0].unit_at();
+    let radar = (0..sim.units().len())
+        .find(|&k| sim.units()[k].kind == GroundKind::NasamsRadar && sim.aaa_blue(k))
+        .expect("the Sentinel radar");
+    assert_eq!((sim.units()[radar].x, sim.units()[radar].y), spot);
+    let launchers = sim.battery_launchers(radar);
+    assert_eq!(launchers.len(), 3);
+    assert!(launchers.iter().all(|&l| sim.units()[l].rounds == 6 && sim.aaa_blue(l)));
+    sim.station_command(me.0, StationCmd::Man { unit: radar as u16 }).unwrap();
+    assert_eq!(sim.stockpile(radar), NASAMS_STOCK);
+    sim.station_command(me.0, StationCmd::Leave).unwrap();
+    // A loaded save.
+    let json = serde_json::to_string(&host.state).unwrap();
+    let state = serde_json::from_str(&json).unwrap();
+    let mut again = host.new_sim(&sim_data);
+    let mut host2 = Host::resume(state, &data, Rules::default()).unwrap();
+    host2.begin(&mut again);
+    let k = (0..again.units().len())
+        .find(|&k| {
+            let u = again.units()[k];
+            u.kind == GroundKind::NasamsRadar && again.aaa_blue(k) && (u.x, u.y) == spot
+        })
+        .expect("the radar after the load");
+    assert_eq!(again.battery_launchers(k).len(), 3);
+}
+
 /// Both sides send an armour column at once; they drive, fight and end, one at a time each.
 #[test]
 fn convoys_drive_fight_and_take_places() {

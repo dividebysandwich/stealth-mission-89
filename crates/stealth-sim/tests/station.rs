@@ -3,11 +3,11 @@
 use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
-use stealth_sim::aaa::{GroundKind, PATRIOT};
+use stealth_sim::aaa::{GroundKind, NASAMS, PATRIOT};
 use stealth_sim::ai_loadout::FighterTask;
 use stealth_sim::station::{
-    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, PATRIOT_STOCK, REFILL_SECONDS,
-    SavedStock, StationCmd,
+    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, NASAMS_STOCK, PATRIOT_STOCK,
+    REFILL_SECONDS, SavedStock, StationCmd,
 };
 use stealth_sim::*;
 
@@ -558,4 +558,52 @@ fn a_pac3_reaches_78_km() {
         }
     }
     panic!("the missile fell short");
+}
+
+/// A friendly NASAMS battery by Neuburg and an unarmed enemy fighter (tag 8) 20 km east of it
+/// at 2 km: the Sentinel radar, the fighter's flight unit.
+fn nasams() -> (Sim, usize, usize) {
+    let mut sim = campaign();
+    let home = find(&sim, 0x401, "Neuburg");
+    let enemy = find(&sim, 0x001, "Komarno");
+    let t = sim.objects()[home];
+    let f = sim.spawn_fighter(enemy, t.x, t.y, 8, false, FighterTask::Patrol);
+    sim.set_fighter_loadout(f, Default::default());
+    sim.place_nasams(t.x + 0x100, t.y);
+    let radar = kind_index(&sim, GroundKind::NasamsRadar);
+    let at = sim.units()[radar];
+    hold(&mut sim, f, (at.x + 0x500, at.y, 4000));
+    (sim, radar, f)
+}
+
+#[test]
+fn a_manned_nasams_fires_aim120s_from_six_canister_launchers() {
+    let (mut sim, radar, f) = nasams();
+    assert_eq!(sim.battery_launchers(radar).len(), 3);
+    assert!(sim.battery_launchers(radar).iter().all(|&l| sim.units()[l].rounds == 6));
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    run(&mut sim, 1);
+    assert_eq!(sim.stockpile(radar), NASAMS_STOCK);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+    assert_eq!(launcher_rounds(&sim, radar), 17);
+    let m: Vec<_> = sim.ai_missiles().iter().filter(|m| m.station.is_some()).collect();
+    assert_eq!(m.len(), 1);
+    assert_eq!(m[0].spec, NASAMS);
+    assert!(m[0].flight.is_some(), "the realistic missile flight");
+}
+
+#[test]
+fn no_nasams_shot_beyond_40_km() {
+    let (mut sim, radar, f) = nasams();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    // 45 km east: in a Patriot's reach, not a NASAMS's.
+    let p = (at.x + 2880, at.y, 12000);
+    hold(&mut sim, f, p);
+    run(&mut sim, 1);
+    hold(&mut sim, f, p);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
 }

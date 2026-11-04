@@ -104,6 +104,7 @@ cl-objective = { $title }: cilj postignut
 cl-recon = Izviđačke fotografije ({ $place }): obrana je ucrtana
 cl-package = Paket ({ $place }): { $kinds } - +{ $bonus } za { $pilots }
 cl-supply-patriot = Patriot baterija ({ $place })
+cl-supply-nasams = NASAMS baterija ({ $place })
 cl-supply-gepard = Gepard ({ $place })
 cl-supply-drones = Zapovjedno mjesto dronova ({ $place })
 cl-resupply-requested = { $who } traži opskrbu: { $unit }

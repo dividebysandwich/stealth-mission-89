@@ -539,7 +539,9 @@ impl Host {
                 !u.destroyed
                     && sim.aaa_blue(*k)
                     && match u.kind {
-                        GroundKind::PatriotRadar | GroundKind::Gepard => empty(&d.stock),
+                        GroundKind::PatriotRadar | GroundKind::NasamsRadar | GroundKind::Gepard => {
+                            empty(&d.stock)
+                        }
                         GroundKind::DroneCenter => {
                             empty(&d.stock) || empty(&d.stock2) || empty(&d.stock3)
                         }

@@ -25,6 +25,7 @@ ds-click-hint = Щракнете на картата къде да бъде - д
 ds-not-open-ground = Не е на открит терен
 ds-new-gepard = Нова позиция Gepard - щракнете, за да я посочите
 ds-new-patriot = Нова позиция Patriot - щракнете, за да я посочите
+ds-new-nasams = Нова позиция NASAMS - щракнете, за да я посочите
 ds-new-drones = Нов команден пункт за дронове - щракнете, за да го посочите
 ds-waiting = Чака товар
 ds-fast-track = УСКОРИ ({ $cost })

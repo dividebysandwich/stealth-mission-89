@@ -17,41 +17,46 @@ use crate::scenery::Scenery;
 /// Metres of open ground (no mountain, no theater object) the helipad and the unit need.
 const GROUND_ROOM: f64 = 60.0;
 
-/// The GEPARD / PATRIOT / DRONES new site buttons (the one active again: cancel).
+/// The kinds of new site, in the buttons' order.
+const KINDS: [DefenceKind; 4] =
+    [DefenceKind::Gepard, DefenceKind::Nasams, DefenceKind::Patriot, DefenceKind::Drones];
+
+/// The GEPARD / NASAMS / PATRIOT / DRONES new site buttons (the one active again: cancel).
 pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
     section(ui, t!("ds-new-site"));
-    let kinds = [
-        (DefenceKind::Gepard, "GEPARD"),
-        (DefenceKind::Patriot, "PATRIOT"),
-        (DefenceKind::Drones, t!("ad-drones")),
-    ];
-    // Framed buttons sharing the column's width, the one being designated lit; one under the
-    // other where the column is too narrow for their labels side by side.
+    // Framed buttons sharing the column's width, the one being designated lit: all in a row,
+    // two rows of two where the column is too narrow for that, one under the other where even
+    // two side by side do not fit their labels.
     let gap = ui.spacing().item_spacing.x;
-    let third = (ui.available_width() - gap * 2.0) / 3.0;
     let font = egui::TextStyle::Button.resolve(ui.style());
     let pad = ui.spacing().button_padding.x * 2.0 + 4.0;
-    let widest = kinds
+    let widest = KINDS
         .iter()
-        .map(|(_, label)| {
-            ui.painter().layout_no_wrap(label.to_string(), font.clone(), BRIGHT).size().x + pad
+        .map(|&kind| {
+            let label = kind_label(kind).to_string();
+            ui.painter().layout_no_wrap(label, font.clone(), BRIGHT).size().x + pad
         })
         .fold(0.0, f32::max);
-    let mut add = |ui: &mut egui::Ui, w: f32| {
-        for (kind, label) in kinds {
-            let on = c.ui.designate == Some(kind);
-            let button = egui::Button::new(label).min_size(egui::vec2(w, 30.0)).selected(on);
-            if ui.add(button).clicked() {
-                c.ui.designate = if on { None } else { Some(kind) };
-                c.ui.error = None;
+    // What shows of the column (the war map's side column reaches under the window's edge
+    // in a small window).
+    let full = ui.available_width().min(ui.clip_rect().right() - ui.cursor().left() - 2.0);
+    let per_row = [KINDS.len(), 2, 1]
+        .into_iter()
+        .find(|&n| widest <= (full - gap * (n - 1) as f32) / n as f32)
+        .unwrap_or(1);
+    let w = (full - gap * (per_row - 1) as f32) / per_row as f32;
+    for row in KINDS.chunks(per_row) {
+        ui.horizontal(|ui| {
+            for &kind in row {
+                let on = c.ui.designate == Some(kind);
+                let button =
+                    egui::Button::new(kind_label(kind)).min_size(egui::vec2(w, 30.0)).selected(on);
+                if ui.add(button).clicked() {
+                    c.ui.designate = if on { None } else { Some(kind) };
+                    c.ui.error = None;
+                }
             }
-        }
-    };
-    if widest <= third {
-        ui.horizontal(|ui| add(ui, third));
-    } else {
-        let w = ui.available_width();
-        ui.vertical(|ui| add(ui, w));
+        });
     }
     let hint = match c.ui.designate {
         Some(_) => t!("ds-click-hint"),
@@ -67,6 +72,7 @@ fn kind_label(kind: DefenceKind) -> &'static str {
         DefenceKind::Gepard => "GEPARD",
         DefenceKind::Patriot => "PATRIOT",
         DefenceKind::Drones => t!("ad-drones"),
+        DefenceKind::Nasams => "NASAMS",
     }
 }
 
@@ -203,6 +209,7 @@ pub(super) fn pointer(
             DefenceKind::Gepard => "ds-new-gepard",
             DefenceKind::Patriot => "ds-new-patriot",
             DefenceKind::Drones => "ds-new-drones",
+            DefenceKind::Nasams => "ds-new-nasams",
         })
         .to_string()
     });
@@ -222,18 +229,31 @@ pub(super) fn pointer(
     resp.clicked()
 }
 
-/// Test aid: `--campaign-designate gepard|patriot|drones` designates a site once, at the first spot
-/// round the parked base where one may go.
+/// Test aid: `--campaign-designate gepard|patriot|nasams|drones` designates a site once, at the
+/// first spot round the parked base where one may go (with a `+built` suffix, `nasams+built`,
+/// it is fast-tracked as soon as it waits).
 pub(super) fn test_aid(c: &mut ActiveCampaign, sim: &Sim, scenery: Option<&Scenery>) {
     let Some(arg) = std::env::args().skip_while(|a| a != "--campaign-designate").nth(1) else {
         return;
     };
+    let (arg, built) = match arg.strip_suffix("+built") {
+        Some(a) => (a.to_string(), true),
+        None => (arg, false),
+    };
+    if built && !c.ui.test_fast_tracked {
+        let id = c.state().deployments.iter().find(|d| !d.built).map(|d| d.id);
+        if let Some(id) = id {
+            c.ui.test_fast_tracked = true;
+            c.actions.push(Action::FastTrackSite { id });
+        }
+    }
     if std::mem::replace(&mut c.ui.test_designated, true) {
         return;
     }
     let kind = match arg.as_str() {
         "patriot" => DefenceKind::Patriot,
         "drones" => DefenceKind::Drones,
+        "nasams" => DefenceKind::Nasams,
         _ => DefenceKind::Gepard,
     };
     let st = c.state();

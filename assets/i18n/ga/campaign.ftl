@@ -104,6 +104,7 @@ cl-objective = { $title }: cuspóir bainte amach
 cl-recon = Grianghraif thaiscéalaíochta de { $place }: mapáilte a chosaintí
 cl-package = Pacáiste thar { $place }: { $kinds } - +{ $bonus } do { $pilots }
 cl-supply-patriot = Cadhnra Patriot gar do { $place }
+cl-supply-nasams = Cadhnra NASAMS gar do { $place }
 cl-supply-gepard = Gepard gar do { $place }
 cl-supply-drones = Ionad ceannais dróin gar do { $place }
 cl-resupply-requested = Iarrann { $who } athsholáthar don aonad { $unit }

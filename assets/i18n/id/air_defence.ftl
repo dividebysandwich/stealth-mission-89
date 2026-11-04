@@ -25,6 +25,7 @@ ds-click-hint = Klik peta di tempat tujuannya - klik kanan: batal
 ds-not-open-ground = Tidak di tanah terbuka
 ds-new-gepard = Posisi Gepard baru - klik untuk menentukan
 ds-new-patriot = Posisi Patriot baru - klik untuk menentukan
+ds-new-nasams = Posisi NASAMS baru - klik untuk menentukan
 ds-new-drones = Pusat komando drone baru - klik untuk menentukan
 ds-waiting = Menunggu kargo
 ds-fast-track = PERCEPAT ({ $cost })

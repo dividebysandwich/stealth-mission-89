@@ -55,6 +55,7 @@ pic-sam-known = Θέση SAM (γνωστή)
 pic-guns-known = Πυροβόλα / MANPADS (γνωστά)
 pic-armour = Άρμα / ΤΟΜΑ (εχθρικό: σε οπτική επαφή)
 pic-patriot-reach = Εμβέλεια Patriot
+pic-nasams-reach = Εμβέλεια NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Εμβέλεια πυραύλων SAM
 pic-engagement-range = Εμβέλεια εμπλοκής

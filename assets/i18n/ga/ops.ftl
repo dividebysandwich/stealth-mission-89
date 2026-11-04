@@ -131,6 +131,7 @@ ops-legend-insertion = Bealach an tsáite
 ops-watch-hint = Cliceáil aonad chun féachaint air beo
 ops-map-hint = Roth: zúmáil, tarraing: pan
 ops-patriot = Cadhnra Patriot
+ops-nasams = Cadhnra NASAMS
 ops-drone-center = Ionad ceannais dróin
 ops-manned-by = Foireann: { $pilot }
 ops-manned-by-other = Foireann: imreoir eile

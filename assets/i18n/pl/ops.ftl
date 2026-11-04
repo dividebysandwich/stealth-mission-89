@@ -131,6 +131,7 @@ ops-legend-insertion = Trasa desantu
 ops-watch-hint = Kliknij jednostkę, aby obserwować ją na żywo
 ops-map-hint = Kółko: zoom, przeciąganie: przewijanie
 ops-patriot = Bateria Patriot
+ops-nasams = Bateria NASAMS
 ops-drone-center = Centrum dowodzenia dronami
 ops-manned-by = Obsługuje: { $pilot }
 ops-manned-by-other = Obsługuje inny gracz

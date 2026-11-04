@@ -131,6 +131,7 @@ ops-legend-insertion = Desanta maršruts
 ops-watch-hint = Klikšķiniet uz vienības, lai to vērotu tiešraidē
 ops-map-hint = Ritenītis: tālummaiņa, vilkšana: pārbīde
 ops-patriot = Patriot baterija
+ops-nasams = NASAMS baterija
 ops-drone-center = Dronu vadības punkts
 ops-manned-by = Apkalpo: { $pilot }
 ops-manned-by-other = Apkalpo cits spēlētājs

@@ -131,6 +131,7 @@ ops-legend-insertion = Маршрут на десанта
 ops-watch-hint = Щракнете върху част, за да я наблюдавате на живо
 ops-map-hint = Колелце: мащаб, влачене: преместване
 ops-patriot = Батарея Patriot
+ops-nasams = Батарея NASAMS
 ops-drone-center = Команден пункт за дронове
 ops-manned-by = Обслужва се от { $pilot }
 ops-manned-by-other = Обслужва се от друг играч

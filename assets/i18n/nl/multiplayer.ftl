@@ -54,6 +54,7 @@ pic-sam-known = SAM-site (bekend)
 pic-guns-known = Kanonnen / MANPADS (bekend)
 pic-armour = Tank / pantserinfanterievoertuig (vijand: in zicht)
 pic-patriot-reach = Bereik Patriot
+pic-nasams-reach = Bereik NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Bereik SAM-raketten
 pic-engagement-range = Bestrijdingsbereik

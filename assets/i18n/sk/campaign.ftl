@@ -104,6 +104,7 @@ cl-objective = { $title }: cieľ splnený
 cl-recon = Prieskumné snímky, { $place }: obrana je zmapovaná
 cl-package = Package nad { $place }: { $kinds } - +{ $bonus } pre { $pilots }
 cl-supply-patriot = Batéria Patriot pri { $place }
+cl-supply-nasams = Batéria NASAMS pri { $place }
 cl-supply-gepard = Gepard pri { $place }
 cl-supply-drones = Veliteľské stanovište dronov pri { $place }
 cl-resupply-requested = { $who } žiada zásobovanie pre { $unit }

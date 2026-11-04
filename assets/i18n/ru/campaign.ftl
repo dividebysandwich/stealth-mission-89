@@ -103,6 +103,7 @@ cl-objective = { $title }: задача выполнена
 cl-recon = Разведснимки { $place }: оборона нанесена на карту
 cl-package = Пакет над { $place }: { $kinds } - +{ $bonus } для { $pilots }
 cl-supply-patriot = батарея Patriot у { $place }
+cl-supply-nasams = батарея NASAMS у { $place }
 cl-supply-gepard = Gepard у { $place }
 cl-supply-drones = пункт управления дронами у { $place }
 cl-resupply-requested = { $who } запрашивает пополнение для: { $unit }

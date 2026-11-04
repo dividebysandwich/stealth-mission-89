@@ -131,6 +131,7 @@ ops-legend-insertion = Trasa výsadku
 ops-watch-hint = Kliknutím na jednotku ju sledujte naživo
 ops-map-hint = Koliesko: priblíženie, ťahanie: posun
 ops-patriot = Batéria Patriot
+ops-nasams = Batéria NASAMS
 ops-drone-center = Veliteľské stanovište dronov
 ops-manned-by = Obsluhuje: { $pilot }
 ops-manned-by-other = Obsluhuje iný hráč

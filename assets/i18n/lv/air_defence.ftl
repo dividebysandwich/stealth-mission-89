@@ -25,6 +25,7 @@ ds-click-hint = Noklikšķiniet kartē, kur tā būs - labais klikšķis: atcelt
 ds-not-open-ground = Nav atklātā apvidū
 ds-new-gepard = Jauna Gepard pozīcija - noklikšķiniet, lai norādītu
 ds-new-patriot = Jauna Patriot pozīcija - noklikšķiniet, lai norādītu
+ds-new-nasams = Jauna NASAMS pozīcija - noklikšķiniet, lai norādītu
 ds-new-drones = Jauns dronu vadības punkts - noklikšķiniet, lai norādītu
 ds-waiting = Gaida kravu
 ds-fast-track = PAĀTRINĀT ({ $cost })

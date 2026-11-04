@@ -25,6 +25,7 @@ ds-click-hint = Kliknite na zemljevid, kam gre - desni klik: prekliči
 ds-not-open-ground = Ni na odprtem terenu
 ds-new-gepard = Novo mesto Gepard - kliknite za določitev
 ds-new-patriot = Novo mesto Patriot - kliknite za določitev
+ds-new-nasams = Novo mesto NASAMS - kliknite za določitev
 ds-new-drones = Novo poveljniško mesto dronov - kliknite za določitev
 ds-waiting = Čaka na tovor
 ds-fast-track = POSPEŠI ({ $cost })

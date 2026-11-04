@@ -54,6 +54,7 @@ pic-sam-known = SAM-Stellung (bekannt)
 pic-guns-known = Flak / MANPADS (bekannt)
 pic-armour = Panzer / SPz (feindlich: in Sicht)
 pic-patriot-reach = Patriot-Reichweite
+pic-nasams-reach = NASAMS-Reichweite
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Reichweite der SAM-Raketen
 pic-engagement-range = Bekämpfungsreichweite

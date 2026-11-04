@@ -25,6 +25,7 @@ ds-click-hint = 在地图上点击放置位置 - 右键：取消
 ds-not-open-ground = 不在开阔地面上
 ds-new-gepard = 新 Gepard 阵地 - 点击指定
 ds-new-patriot = 新 Patriot 阵地 - 点击指定
+ds-new-nasams = 新 NASAMS 阵地 - 点击指定
 ds-new-drones = 新无人机指挥所 - 点击指定
 ds-waiting = 等待货物
 ds-fast-track = 加速建设（{ $cost }）

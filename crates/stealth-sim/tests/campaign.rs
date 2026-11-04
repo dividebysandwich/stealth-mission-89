@@ -379,7 +379,7 @@ fn a_long_campaign_stays_bounded() {
     assert!(sim.event_log().len() < 500);
 }
 
-use stealth_sim::aaa::{GroundKind, GroundUnit, PATRIOT, STINGER};
+use stealth_sim::aaa::{GroundKind, GroundUnit, NASAMS, PATRIOT, STINGER};
 use stealth_sim::ai_loadout::{AIM9, AIM120, FighterTask};
 use stealth_sim::campaign::{CAP_BUBBLE, CAP_LEASH};
 
@@ -435,6 +435,23 @@ fn a_patriot_battery_shoots_down_raiders() {
     let mut seen = Vec::new();
     assert!(until_down(&mut sim, 8, 40 * 60, &mut seen), "the Patriots never got it");
     assert!(seen.contains(&PATRIOT));
+}
+
+#[test]
+fn a_nasams_battery_shoots_down_raiders() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let (home, _) = raid(&mut sim);
+    let o = sim.objects()[home];
+    sim.place_nasams(o.x + 0x100, o.y);
+    let kinds: Vec<GroundKind> = sim.units().iter().map(|u| u.kind).collect();
+    assert_eq!(kinds.iter().filter(|&&k| k == GroundKind::NasamsLauncher).count(), 3);
+    assert_eq!(kinds.iter().filter(|&&k| k == GroundKind::NasamsRadar).count(), 1);
+    assert!((0..kinds.len()).all(|k| sim.aaa_blue(k)));
+    let mut seen = Vec::new();
+    assert!(until_down(&mut sim, 8, 40 * 60, &mut seen), "the NASAMS never got it");
+    assert!(seen.contains(&NASAMS));
+    assert!(!seen.contains(&PATRIOT));
 }
 
 #[test]

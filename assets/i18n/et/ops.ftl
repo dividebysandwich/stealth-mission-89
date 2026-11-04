@@ -131,6 +131,7 @@ ops-legend-insertion = Dessandi marsruut
 ops-watch-hint = Klõpsa üksusel, et seda otse vaadata
 ops-map-hint = Ratas: suum, lohistamine: nihutamine
 ops-patriot = Patriot patarei
+ops-nasams = NASAMS patarei
 ops-drone-center = Droonide juhtimispunkt
 ops-manned-by = Teenindab: { $pilot }
 ops-manned-by-other = Teenindab teine mängija

@@ -25,6 +25,7 @@ ds-click-hint = Klik op de kaart waar hij komt - rechtsklik: annuleren
 ds-not-open-ground = Niet op open terrein
 ds-new-gepard = Nieuwe Gepard-stelling - klik om aan te wijzen
 ds-new-patriot = Nieuwe Patriot-stelling - klik om aan te wijzen
+ds-new-nasams = Nieuwe NASAMS-stelling - klik om aan te wijzen
 ds-new-drones = Nieuwe dronecommandopost - klik om aan te wijzen
 ds-waiting = Wacht op vracht
 ds-fast-track = VERSNELLEN ({ $cost })
