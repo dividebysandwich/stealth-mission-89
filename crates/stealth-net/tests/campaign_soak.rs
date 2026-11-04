@@ -475,9 +475,10 @@ fn campaign_soak() {
             .map(|tag| tracks.get(tag).and_then(|t| t.end.clone()).unwrap_or("-".into()))
             .collect();
         println!(
-            "#{:3} {:?} {:?} {:?} {:?} {:?} launched {:.0} ended {:?} achieved {} : {}",
+            "#{:3} {:?} from {} {:?} {:?} {:?} {:?} launched {:.0} ended {:?} achieved {} : {}",
             m.id,
             m.side,
+            host.state.site(m.from).map_or(String::new(), |s| s.name.clone()),
             m.offer.kind,
             m.airframe,
             m.target,
@@ -552,6 +553,9 @@ fn campaign_soak() {
             r.posted,
             r.load
         );
+        if let Some(end) = tracks.get(tag).and_then(|t| t.end.clone()) {
+            println!("     {end}");
+        }
     }
     println!("\n== Stocks");
     for (b, s) in &host.state.stocks {
