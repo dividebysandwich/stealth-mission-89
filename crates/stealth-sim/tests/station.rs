@@ -503,10 +503,10 @@ fn no_shot_beyond_the_pac3_reach() {
     let (mut sim, radar, f) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
     let at = sim.units()[radar];
-    // 90 km east.
-    hold(&mut sim, f, (at.x + 5760, at.y, 16000));
+    // 130 km east.
+    hold(&mut sim, f, (at.x + 8320, at.y, 16000));
     run(&mut sim, 1);
-    hold(&mut sim, f, (at.x + 5760, at.y, 16000));
+    hold(&mut sim, f, (at.x + 8320, at.y, 16000));
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
     assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
@@ -533,4 +533,29 @@ fn captures_reuse_the_wrecks_and_a_friendly_field_keeps_its_gepard() {
         }
     }
     assert!(sim.units().len() <= len + 12, "{} units from {len}", sim.units().len());
+}
+
+/// A PAC-3 reaches an aircraft that holds still 78 km out (the old one fell short).
+#[test]
+fn a_pac3_reaches_78_km() {
+    let (mut sim, radar, f) = battery();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    let p = (at.x + 4992, at.y, 16000);
+    hold(&mut sim, f, p);
+    run(&mut sim, 1);
+    hold(&mut sim, f, p);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+    for _ in 0..300 {
+        hold(&mut sim, f, p);
+        run(&mut sim, 1);
+        if sim.flights()[f].flags & fflags::DESTROYED != 0 {
+            return;
+        }
+        if !sim.ai_missiles().iter().any(|m| m.station.is_some()) {
+            break;
+        }
+    }
+    panic!("the missile fell short");
 }

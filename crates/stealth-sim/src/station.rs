@@ -43,7 +43,7 @@ pub const INTERCEPTOR_STOCK: i32 = 6;
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
 /// that makes it turn, `guidance`).
-pub const PATRIOT_MAX_RANGE: f64 = 80_000.0;
+pub const PATRIOT_MAX_RANGE: f64 = 120_000.0;
 /// Seconds between a manned launcher's missiles (the AI waits longer, `PATRIOT_INTERVAL`).
 pub const LAUNCH_INTERVAL: i32 = 2;
 /// A Gepard burst: rounds, and seconds it takes (two guns, 550 rounds a minute each).

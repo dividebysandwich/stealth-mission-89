@@ -2524,7 +2524,7 @@ air-launched ballistic missile over Kyiv, the first known interception of the ty
 | Site | Cargo loads | Armament |
 |---|---|---|
 | **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 8 km. 640 rounds ready, 640 in stock. |
-| **Patriot** | 3 | A radar with launchers of four missiles each, out to 80 km. 8 missiles in stock. |
+| **Patriot** | 3 | A radar with launchers of four missiles each, out to 120 km. 8 missiles in stock. |
 | **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (10.4). |
 
 **Designating a site**
@@ -2561,7 +2561,7 @@ The Patriot and Gepard consoles share one layout:
 * **Engaging**: select a track, **LOCK** it (**DROP** lets go), then **FIRE**.
 * **Signal monitor / target data** (top right): see below.
 
-**Patriot.** Missiles go out to 80 km. **GUIDED** missiles are steered by the radar (hard to
+**Patriot.** Missiles go out to 120 km. **GUIDED** missiles are steered by the radar (hard to
 decoy, one target at a time); **SEMI** missiles home on the radar's illumination (several targets
 at once, easier to decoy). **L1**-**L3** pick the launcher to fire from; **RLD1**-**RLD3**
 reload an empty one from the stock (4 minutes).

@@ -91,7 +91,7 @@ pub fn profile(spec: i32) -> Option<Profile> {
         43 => rocket(2.0, 2.0, 30.0),    // SA-22: a booster, then the dart glides
         44 => vertical(5.0, 2.0, 30.0),  // SA-15
         // MIM-104F PAC-3: a single pulse motor off the M903's inclined rails, then it glides,
-        // agile (hit-to-kill) but slender: 80 km at most against a target that holds its course.
+        // agile (hit-to-kill) but slender: 120 km at most against a target that holds its course.
         45 => Profile { drag: PAC3_DRAG, stall: PAC3_STALL, ..rocket(PAC3_BURN, PAC3_BOOST, 40.0) },
         _ => return None,
     })
@@ -112,13 +112,13 @@ fn straight_secs(spec: i32, range: Option<f64>) -> f64 {
 const STRAIGHT: f64 = 0.4;
 const LOB_RANGE: f64 = 10_000.0;
 
-/// PAC-3: motor burn and seconds to full speed, drag as a multiple of [`DRAG`] (its 80 km
-/// reach).
+/// PAC-3: motor burn and seconds to full speed, drag as a multiple of [`DRAG`] (its 120 km
+/// reach, the MSE's).
 const PAC3_BURN: f64 = 7.0;
 const PAC3_BOOST: f64 = 6.0;
 /// Below about Mach 1.6 (wu/s) it can no longer catch a jet: spent.
 const PAC3_STALL: f64 = 1100.0;
-const PAC3_DRAG: f64 = 1.65;
+const PAC3_DRAG: f64 = 1.38;
 /// AIM-9: drag as a multiple of [`DRAG`]. A small, finned airframe: burnt out it slows fast,
 /// some 18 km head-on from medium altitude, well under half that chasing a target's tail.
 const AIM9_DRAG: f64 = 12.0;
@@ -885,24 +885,24 @@ mod pac3 {
     }
 
     #[test]
-    fn reaches_80_km_against_a_target_holding_course() {
-        let far = intercept(100.0, 0.0);
-        assert!(far.is_some_and(|d| (78.0..82.0).contains(&d)), "{far:?}");
-        assert_eq!(intercept(105.0, 0.0), None);
-        assert!(intercept(60.0, 0.0).is_some());
+    fn reaches_120_km_against_a_target_holding_course() {
+        let far = intercept(150.0, 0.0);
+        assert!(far.is_some_and(|d| (116.0..122.0).contains(&d)), "{far:?}");
+        assert_eq!(intercept(156.0, 0.0), None);
+        assert!(intercept(100.0, 0.0).is_some());
     }
 
     #[test]
     fn manoeuvring_costs_reach() {
         // Turning onto a target that holds still (from its climb off the rails) takes more
         // turning than meeting one that comes in.
-        assert!(shot(70.0, 12000.0, 0.0, 0.0).is_some());
-        assert_eq!(shot(78.0, 12000.0, 0.0, 0.0), None);
+        assert!(shot(85.0, 12000.0, 0.0, 0.0).is_some());
+        assert_eq!(shot(95.0, 12000.0, 0.0, 0.0), None);
         // A weaving target makes it turn all the way: the harder, the shorter its reach.
-        assert!(intercept(90.0, 0.0).is_some());
-        assert_eq!(intercept(95.0, 4.0), None);
-        assert!(intercept(60.0, 4.0).is_some());
-        assert_eq!(intercept(60.0, 7.0), None);
-        assert!(intercept(50.0, 7.0).is_some());
+        assert!(intercept(140.0, 0.0).is_some());
+        assert_eq!(intercept(90.0, 4.0), None);
+        assert!(intercept(80.0, 4.0).is_some());
+        assert_eq!(intercept(70.0, 7.0), None);
+        assert!(intercept(65.0, 7.0).is_some());
     }
 }
