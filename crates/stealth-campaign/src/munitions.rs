@@ -441,7 +441,11 @@ impl CampaignState {
         if self.stock(base).is_none() {
             return n;
         }
-        self.stocks.get_mut(&base).map_or(n, |s| s.take(m, n))
+        let got = self.stocks.get_mut(&base).map_or(n, |s| s.take(m, n));
+        let log = self.munition_log.entry(m).or_default();
+        log[0] += got as u64;
+        log[2] += (n - got) as u64;
+        got
     }
 
     /// Takes `n` of `m`, the rest from its fallbacks in turn: what was taken of each (what is
@@ -468,6 +472,14 @@ impl CampaignState {
 
     /// Munitions back into a base's stock (unused ones of a landed aircraft).
     pub fn put_back(&mut self, base: ObjectId, m: Munition, n: u32) {
+        if self.stock(base).is_some() {
+            self.munition_log.entry(m).or_default()[1] += n as u64;
+        }
+        self.put_in(base, m, n);
+    }
+
+    /// Munitions into a base's stock (of its side's).
+    fn put_in(&mut self, base: ObjectId, m: Munition, n: u32) {
         if self.stock(base).is_none() || n == 0 {
             return;
         }
@@ -669,7 +681,7 @@ impl CampaignState {
             if self.owner(r.to) != Some(r.side) {
                 self.cargo_runs.remove(k);
                 for (m, n) in r.load {
-                    self.put_back(r.from, m, n);
+                    self.put_in(r.from, m, n);
                 }
                 self.board_at = f64::MIN;
                 continue;
@@ -719,7 +731,7 @@ impl CampaignState {
         let at = landed.and_then(|(x, y)| self.airfield_near(run.side, x, y, CARGO_LAND_RADIUS));
         if let Some(base) = at {
             for &(m, n) in &run.load {
-                self.put_back(base, m, n);
+                self.put_in(base, m, n);
             }
             if run.side == Side::Blue {
                 let t = text!("cl-cargo-delivered", base = name(self, base));

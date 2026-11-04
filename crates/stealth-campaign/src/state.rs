@@ -1051,6 +1051,10 @@ pub struct CampaignState {
     /// tick).
     #[serde(skip)]
     pub ai_rush: Vec<u32>,
+    /// Since the host started (not saved, for balance tests): of each munition, how many were
+    /// drawn from the bases, put back unused, and asked for when the base had none.
+    #[serde(skip)]
+    pub munition_log: std::collections::BTreeMap<crate::Munition, [u64; 3]>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1572,6 +1576,7 @@ impl CampaignState {
             site_magazines: Vec::new(),
             site_demand: Default::default(),
             ai_rush: Vec::new(),
+            munition_log: Default::default(),
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));

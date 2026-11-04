@@ -110,6 +110,17 @@ fn campaign_soak() {
     let mut launches = [0usize; 3];
     let mut sam_log: Vec<String> = Vec::new();
     let full_mag = stealth_sim::munitions::SITE_MAGAZINE;
+    // The friendly side's munitions, sampled every 10 min: per munition the lowest total at
+    // the bases, samples with a base out of it and the most bases out at once; the air
+    // defence's empty units; an hourly timeline.
+    let blue_items = Munition::of_side(Side::Blue);
+    let mut blue_low = vec![u32::MAX; blue_items.len()];
+    let mut blue_out_samples = vec![0usize; blue_items.len()];
+    let mut blue_out_max = vec![0usize; blue_items.len()];
+    let mut blue_log: Vec<String> = Vec::new();
+    let mut ad_log: Vec<String> = Vec::new();
+    let mut ad_dry = [0usize; 2];
+    let mut samples = 0usize;
     for frame in 0..frames {
         t = frame as f64 * dt;
         // What is after each aircraft (for the report of what shot it down).
@@ -173,6 +184,77 @@ fn campaign_soak() {
             }
             launches = [0; 3];
             sam_log.push(line);
+            // The friendly side.
+            samples += 1;
+            let prod = st.production_base(Side::Blue);
+            let mut hourly = format!("{:5.0} min:", t / 60.0);
+            for (k, &m) in blue_items.iter().enumerate() {
+                let bases: Vec<u32> = st
+                    .stocks
+                    .iter()
+                    .filter(|(b, s)| s.side == Some(Side::Blue) && Some(**b) != prod)
+                    .map(|(_, s)| s.count(m))
+                    .collect();
+                let total: u32 = bases.iter().sum();
+                let out = bases.iter().filter(|&&n| n == 0).count();
+                blue_low[k] = blue_low[k].min(total);
+                blue_out_samples[k] += (out > 0) as usize;
+                blue_out_max[k] = blue_out_max[k].max(out);
+                if matches!(
+                    m,
+                    Munition::Aim120
+                        | Munition::Harm
+                        | Munition::Agm65
+                        | Munition::Pac3
+                        | Munition::GepardRounds
+                ) {
+                    let p = prod.and_then(|p| st.stocks.get(&p)).map_or(0, |s| s.count(m));
+                    hourly += &format!("  {m:?} {total:4}/{p:4} out {out}");
+                }
+            }
+            if frame % (FS as u64 * 3600) == 0 {
+                blue_log.push(hourly);
+            }
+            // Patriot batteries and Gepards with nothing left to fire.
+            use stealth_sim::aaa::GroundKind;
+            let units = sim.units();
+            let mut dry = [0usize; 2];
+            let mut all = [0usize; 2];
+            for k in 0..units.len() {
+                let u = units[k];
+                if u.destroyed || !sim.aaa_blue(k) {
+                    continue;
+                }
+                let empty = match u.kind {
+                    GroundKind::PatriotRadar => {
+                        all[0] += 1;
+                        let ready: i32 =
+                            sim.battery_launchers(k).iter().map(|&l| units[l].rounds).sum();
+                        ready == 0 && sim.stockpile(k) == 0
+                    }
+                    GroundKind::Gepard => {
+                        all[1] += 1;
+                        u.rounds == 0 && sim.stockpile(k) == 0
+                    }
+                    _ => continue,
+                };
+                if empty {
+                    dry[(u.kind == GroundKind::Gepard) as usize] += 1;
+                }
+            }
+            ad_dry[0] += dry[0];
+            ad_dry[1] += dry[1];
+            if dry != [0, 0] {
+                ad_log.push(format!(
+                    "{:5.0} min: Patriots empty {}/{}, Gepards empty {}/{}, resupplies open {}",
+                    t / 60.0,
+                    dry[0],
+                    all[0],
+                    dry[1],
+                    all[1],
+                    st.supply_requests.len()
+                ));
+            }
         }
         host.refills(&mut sim, dt as f32);
         host.take_sim_events(&mut sim);
@@ -424,6 +506,32 @@ fn campaign_soak() {
     }
     println!("\n== Enemy SAMs (every 10 min: launches since, dry sites, stocks)");
     for l in &sam_log {
+        println!("{l}");
+    }
+    println!("\n== Friendly munitions (hourly: at the bases / at the production base, bases out)");
+    for l in &blue_log {
+        println!("{l}");
+    }
+    println!(
+        "\n== Friendly munitions over the run (drawn, put back, asked for with none there; lowest \
+         total at the bases; share of samples with a base out; most bases out)"
+    );
+    for (k, &m) in blue_items.iter().enumerate() {
+        let [d, r, s] = host.state.munition_log.get(&m).copied().unwrap_or_default();
+        println!(
+            "{:14} drawn {d:6} back {r:6} short {s:6}  lowest {:6}  out {:3.0}%  max out {}  ({:.1}/h made)",
+            format!("{m:?}"),
+            blue_low[k],
+            100.0 * blue_out_samples[k] as f64 / samples.max(1) as f64,
+            blue_out_max[k],
+            host.state.production_rate(m)
+        );
+    }
+    println!(
+        "\n== Friendly air defence with nothing to fire (unit-samples: Patriots {}, Gepards {})",
+        ad_dry[0], ad_dry[1]
+    );
+    for l in &ad_log {
         println!("{l}");
     }
     println!("\n== Cargo flights");
