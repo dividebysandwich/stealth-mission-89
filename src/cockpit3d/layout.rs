@@ -645,8 +645,8 @@ impl PanelLayout {
     /// right and y down, life size; `tools/models/build_cockpit_uh60.py`):
     /// - The main panel, its origin in front of the pilot (in the right seat): two large MFDs
     ///   side by side (no third), the warning lights over them; under the left one the gear
-    ///   lights with FLAPS, BRAKE and AUTO and the BAY cap, under the right one fuel quantity,
-    ///   the engine readouts and the EMV gauge. Between the seats (x about -520, the cabin's
+    ///   lights with FLAPS, BRAKE and AUTO (no BAY cap: no weapons bay), under the right one
+    ///   fuel quantity, the engine readouts and the EMV gauge. Between the seats (x about -520, the cabin's
     ///   centre line) the standby attitude indicator over the airspeed indicator and the
     ///   altimeter, the clock and the AOA and vertical velocity tapes; the engine gauges between
     ///   them and the left MFD.
@@ -654,6 +654,15 @@ impl PanelLayout {
     ///   the console): the up-front display with its two rows of caps as the CDU, the caution
     ///   lights and the countermeasures behind it.
     pub fn uh60() -> Self {
+        let u = Self::uh60_panel();
+        let items =
+            u.items.into_iter().filter(|p| !matches!(p.elem, Elem::Lamp(LampId::Bay, _))).collect();
+        Self { items, ..u }
+    }
+
+    /// The UH-60A's panel with the BAY cap under the left MFD, for the types built on it (the
+    /// AH-1Z keeps it).
+    fn uh60_panel() -> Self {
         let m = Self::modern();
         // A face's new place: alone, or moved with its group of the F-117A's panel.
         let place = |p: &Placed| {
@@ -733,7 +742,7 @@ impl PanelLayout {
     /// EMV bar graph. The CDU, the cautions and the countermeasures on the centre
     /// console between the seats, as the UH-60A's.
     pub fn ch47() -> Self {
-        let u = Self::uh60();
+        let u = Self::uh60_panel();
         // The standby and engine instruments closer to the pilot's MFDs, clear of the centre
         // display.
         const DX: f32 = 45.0;
@@ -810,7 +819,7 @@ impl PanelLayout {
     /// countermeasures stay on the console (here the pedestal between the knees). No gear
     /// lights (skids); the AUTO cap under BAY.
     pub fn ah1z() -> Self {
-        let u = Self::uh60();
+        let u = Self::uh60_panel();
         let items = u
             .items
             .iter()

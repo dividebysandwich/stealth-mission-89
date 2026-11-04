@@ -10,8 +10,8 @@
 # F117_SCALE about the eye). Kept, with their materials, labels and control properties: the seat
 # with the ejection handle, the stick (a centre cyclic on a shaft from the floor), the throttle
 # (the collective, its handle on an arm from a pivot behind it left of the seat, swinging up:
-# the `throttle_full` and `throttle_pivot` anchors), the gear handle, the five target buttons,
-# the HUD glass, the approach indexer and the flood lamps. Built here, low-poly: the instrument
+# the `throttle_full` and `throttle_pivot` anchors), the five target buttons, the HUD glass, the
+# approach indexer and the flood lamps. Built here, low-poly: the instrument
 # panel across the cabin under a deep glareshield, the pilot's two MFDs in raised bezels, the
 # round instruments in their bezels and cases; the centre console between the seats with the
 # CDU (the data entry display and its caps), the caution and countermeasure panels and the
@@ -114,7 +114,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
+    "hud_glass", "approach", "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -407,7 +407,7 @@ plates = [
     ("dark", (-425.0, -55.0, 112.0, 112.0)),  # engine gauges
     ("dark", (-183.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
     ("dark", (107.0, -130.0, 76.0, 37.0)),  # and over the right one
-    ("dark", (-248.0, 95.0, 113.0, 102.0)),  # gear lights, FLAPS, BRAKE, AUTO, BAY
+    ("dark", (-248.0, 95.0, 113.0, 102.0)),  # gear lights, FLAPS, BRAKE, AUTO
     ("dark", (62.0, 100.0, 164.0, 78.0)),  # fuel, engine readouts, EMV
     ("black", (1920.0, -142.0, 160.0, 104.0)),  # CDU
     ("dark", (1940.0, 25.0, 120.0, 128.0)),  # cautions and countermeasures
@@ -464,11 +464,6 @@ for i, n in enumerate(["button_NEAR", "button_NEXT", "button_NONE", "button_WPN"
     o.rotation_mode = "QUATERNION"
     o.rotation_quaternion = rotation(u)
 panel_box("dark", "dark", (CONSOLE_U - 70.0, 160.0, 140.0, 100.0), 0.004)
-# The gear handle left of the gear lights.
-g = objs["control_Action_Gear_.001"]
-g.location = point(-280.0, 120.0, 0.002)
-g.rotation_mode = "QUATERNION"
-g.rotation_quaternion = rotation(-280.0)
 
 # --- floor, pedals
 box("dark", "dark", ((PANEL_U[0] / 1000 + 0.62) / 2, 0.15, FLOOR - 0.01), (0.62 - PANEL_U[0] / 1000, 1.7, 0.02))
