@@ -85,7 +85,8 @@ const BLINK_RATE: f32 = 1.5;
 const LAST_STEP_SECONDS: f32 = 15.0;
 /// Seconds a display to look at (the map, the waypoint list, the orders) stays asked for.
 const LOOK_SECONDS: f32 = 15.0;
-/// Seconds a threat's box stays up after it is over (no flicker as the lamps blink).
+/// Seconds a threat's box stays up after it is over (no flicker as the lamps blink); not for
+/// normal time, which is no lamp.
 const ALERT_HOLD: f32 = 3.0;
 /// Seconds a warning (a lasting state: fire, low fuel) is shown each time it begins.
 const WARNING_SECONDS: f32 = 12.0;
@@ -1852,7 +1853,13 @@ pub(super) fn advance(
     let now = time.elapsed_secs();
     match pick_alert(&ctx, &mut tutorial.alert_since, now) {
         Some(i) => tutorial.alert = Some((i, now)),
-        None if tutorial.alert.is_some_and(|(_, t)| now - t > ALERT_HOLD) => tutorial.alert = None,
+        None if tutorial.alert.is_some_and(|(i, t)| {
+            // Normal time is no lamp: its box goes as soon as the time is back to normal.
+            ALERTS[i].phase == OBJECTIVE || now - t > ALERT_HOLD
+        }) =>
+        {
+            tutorial.alert = None
+        }
         None => {}
     }
     let alert = tutorial.alert.map(|(i, _)| i);
@@ -2367,10 +2374,7 @@ mod tests {
                 ];
                 for (mode, wanted) in modes {
                     assert_eq!(mode.is_some(), wanted, "{f:?} {aim:?}");
-                    assert!(
-                        mode.is_none_or(|s| threats < s && s < order[10]),
-                        "{f:?} {aim:?}"
-                    );
+                    assert!(mode.is_none_or(|s| threats < s && s < order[10]), "{f:?} {aim:?}");
                 }
                 // Normal time is an alert, before any step.
                 assert!(at("Normal time").is_none(), "{f:?} {aim:?}");
