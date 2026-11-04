@@ -242,6 +242,8 @@ pub struct AvionicsState {
     pub radar: bool,
     /// The aircraft shows its own radar signature (the RCS format: the stealth types).
     pub rcs: bool,
+    /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
+    pub aircraft: crate::aircraft::AircraftKind,
     pub gm_range: usize,
     /// The radar in standby: not transmitting (either format).
     pub radar_standby: bool,
@@ -577,6 +579,7 @@ impl Default for AvionicsState {
             sms_ord: true,
             radar: false,
             rcs: false,
+            aircraft: Default::default(),
             gm_range: 2,
             radar_standby: false,
             gm_cursor: centre - Vec2::Y * 20.0,
@@ -1303,6 +1306,12 @@ pub fn draw_eng_page(p: &MfdParams, c: &mut Canvas, _fonts: &Fonts) {
     c.clear(BLACK);
     let Ok((a, _)) = p.aircraft.single() else { return };
     let k = p.constants.as_deref();
+    // The other types have their own instruments.
+    let kind = p.state.av.aircraft;
+    if kind != crate::aircraft::AircraftKind::F22 {
+        crate::eng_page::draw(c, kind, &crate::eng_page::Eng::of(kind, a, k));
+        return;
+    }
     let (fire, hit) = (a.damage.fuel_leak > 0.0, a.damage.throttle_cap.is_some());
     // Engine speed (%) and fuel flow (lb a minute): the rotor's engines, or a jet's spool.
     let (rpm, flow) = match k.and_then(|k| k.heli.as_ref()) {

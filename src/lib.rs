@@ -34,6 +34,7 @@ mod debrief;
 mod dedicated;
 mod dots;
 mod effects;
+mod eng_page;
 mod explosions;
 mod fires;
 mod flashes;

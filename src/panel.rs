@@ -1071,12 +1071,21 @@ impl PanelParams<'_, '_> {
         crate::mpd::draw_left(c, fonts, &threats, &list, &self.wca.0, blink, &self.cm);
     }
 
-    /// The RAH-66's right multipurpose display, the CH-47's centre one: the engine page.
+    /// The RAH-66's right multipurpose display, the CH-47's centre one: the engine page (the
+    /// CH-47's its own thin bar graphs, `eng_page`).
     pub fn draw_engines(&self, c: &mut Canvas, fonts: &Fonts) {
         let Ok(a) = self.aircraft.single() else {
             c.clear(5);
             return;
         };
+        let kind = self.settings.aircraft;
+        if kind == crate::aircraft::AircraftKind::CH47 {
+            let k = kind.spec().flight();
+            let mut e = crate::eng_page::Eng::of(kind, a, Some(&k));
+            e.bingo = self.bingo();
+            crate::eng_page::draw_ch47_centre(c, &e);
+            return;
+        }
         let burn = self.settings.aircraft.spec().flight().heli.map_or(0.3, |r| r.fuel_burn);
         let mut r = crate::mpd::engine_readings(a, burn, self.warnings.engine, self.warnings.fire);
         r.bingo = self.bingo();
