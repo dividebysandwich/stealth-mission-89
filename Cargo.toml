@@ -126,6 +126,9 @@ windows-sys = { version = "0.61", features = [
 # sticks into touches and drops their axes. Only the Android backend differs from the release.
 [patch.crates-io]
 winit = { path = "vendor/winit" }
+# bevy_mod_openxr 0.6.0 whose frame loop skips a frame the runtime refuses (it panicked with
+# ERROR_CALL_ORDER_INVALID, e.g. under SteamVR while another application covered the window).
+bevy_mod_openxr = { path = "vendor/bevy_mod_openxr" }
 
 [build-dependencies]
 # Links the icon, manifest and version (packaging/windows) into stealth-mission-89.exe.
