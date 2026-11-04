@@ -77,6 +77,7 @@ impl Plugin for Cockpit3dPlugin {
         .add_message::<PressControl>()
         .add_message::<ConsoleButton>()
         .add_message::<ScreenClick>()
+        .add_message::<controls::TipClick>()
         .add_message::<ScreenDrag>()
         .add_systems(Startup, (setup_materials, initial_look, model::load_models))
         .add_systems(OnEnter(AppState::Flight), (tooltips::spawn_box, tutorial::spawn_overlay))

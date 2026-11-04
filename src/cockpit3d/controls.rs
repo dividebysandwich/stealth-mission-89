@@ -46,6 +46,12 @@ pub struct ScreenClick {
     pub uv: Vec2,
 }
 
+/// A part with a tooltip (a display, say) was clicked (mouse) or tapped (VR fingertip and
+/// trigger): its entity. The
+/// lesson reads it, a display it points at being clicked is looked at.
+#[derive(Message, Debug, Clone, Copy)]
+pub(super) struct TipClick(pub Entity);
+
 /// A press on a console screen held and moved: where it started (`Start`, with the click), where
 /// the pointer is while it is held (`Move`, each frame it moved), where it let go (`End`).
 #[derive(Message, Debug, Clone, Copy)]
@@ -352,7 +358,7 @@ pub(super) fn interact(
     menu: Res<crate::flight_menu::FlightMenu>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     screens: Query<&super::displays::ConsoleCanvas>,
-    mut clicks: MessageWriter<ScreenClick>,
+    (mut clicks, mut tip_clicks): (MessageWriter<ScreenClick>, MessageWriter<TipClick>),
     (mut drags, mut dragging): (MessageWriter<ScreenDrag>, Local<Dragging>),
 ) {
     let dt = time.delta_secs();
@@ -405,6 +411,11 @@ pub(super) fn interact(
             c.click = CLICK_SECONDS;
             fire.fire(c.effect);
         }
+        if let Some(Pointed::Tip(e)) = picked
+            && !menu.open
+        {
+            tip_clicks.write(TipClick(e));
+        }
         // A console screen: where on it.
         if let Some(Pointed::Tip(e)) = picked
             && !menu.open
@@ -417,9 +428,9 @@ pub(super) fn interact(
         }
     }
 
-    // VR: a fingertip on a console screen and the trigger taps it there (seen from the eye, so
-    // where the finger shows on the picture).
-    if cockpit_view && !menu.open && !screens.is_empty() {
+    // VR: a fingertip on a display and the trigger taps it there (seen from the eye, so where
+    // the finger shows on the picture); a console screen also gets where on it.
+    if cockpit_view && !menu.open {
         for (h, hand) in hands.hands.iter_mut().enumerate() {
             if !hand.active || hand.touching || !hand.trigger_pulled() {
                 continue;
@@ -430,14 +441,16 @@ pub(super) fn interact(
                 picker.pick_within(ray, reach + SCREEN_TAP, &all, |_| false)
             };
             if let Some(Pointed::Tip(e)) = picked
-                && let Ok(screen) = screens.get(e)
                 && let Some((t, uv)) = picker.uv_at(e, ray)
                 && t > reach - SCREEN_TAP
             {
-                hand.haptic = hand.haptic.max(0.4);
-                clicks.write(ScreenClick { screen: screen.0, uv });
-                drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
-                dragging.0 = Some((e, Some(h), uv));
+                tip_clicks.write(TipClick(e));
+                if let Ok(screen) = screens.get(e) {
+                    hand.haptic = hand.haptic.max(0.4);
+                    clicks.write(ScreenClick { screen: screen.0, uv });
+                    drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
+                    dragging.0 = Some((e, Some(h), uv));
+                }
             }
         }
     }

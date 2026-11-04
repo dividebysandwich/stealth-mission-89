@@ -433,6 +433,8 @@ struct Ctx<'a> {
     /// changed while on it.
     passed: bool,
     zoomed: bool,
+    /// The display the step points at was clicked: looked at, the next step comes.
+    clicked: bool,
     /// The step's leg.
     leg: LegState,
     /// The selected store (None: nothing on board).
@@ -715,7 +717,7 @@ static DISCOVERY: &[Step] = {
                      the landing base. The autopilot flies them one after the other",
             keys: &[],
             target: |c| c.route_display(),
-            done: |c| c.dwell >= LOOK_SECONDS || !c.route_on_map(),
+            done: |c| c.dwell >= LOOK_SECONDS || c.clicked || !c.route_on_map(),
         },
         Step {
             only: all,
@@ -731,14 +733,14 @@ static DISCOVERY: &[Step] = {
             phase: CRUISE,
             title: "The waypoint list",
             detail: "Each line is a leg of the route, in order: its distance (from the aircraft, \
-                     then from the waypoint before), the time to fly it and the time of arrival \
-                     (ETA)",
+                     then from the waypoint before), the time to fly it and the estimated time \
+                     of arrival (ETA)",
             keys: &[],
             target: |c| match c.page_display(Page::Waypoints) {
                 T::None => c.page_button(Page::Waypoints),
                 t => t,
             },
-            done: |c| c.dwell >= LOOK_SECONDS,
+            done: |c| c.dwell >= LOOK_SECONDS || c.clicked,
         },
         Step {
             only: all,
@@ -749,7 +751,7 @@ static DISCOVERY: &[Step] = {
                      them one after the other",
             keys: &[],
             target: |c| c.route_display(),
-            done: |c| c.dwell >= LOOK_SECONDS || c.route_on_map(),
+            done: |c| c.dwell >= LOOK_SECONDS || c.clicked || c.route_on_map(),
         },
         Step {
             only: all,
@@ -785,14 +787,14 @@ static DISCOVERY: &[Step] = {
             only: objective,
             phase: CRUISE,
             title: "Read your orders",
-            detail: "Read the primary target first, then the secondary, then the base to land at: \
+            detail: "Familiarize yourself with each of the objectives: \
                      each kind of target has the weapons that fit it",
             keys: &[],
             target: |c| match c.page_display(Page::Orders) {
                 T::None => c.page_button(Page::Orders),
                 t => t,
             },
-            done: |c| c.dwell >= LOOK_SECONDS,
+            done: |c| c.dwell >= LOOK_SECONDS || c.clicked,
         },
     ]
 };
@@ -829,8 +831,9 @@ static OBJECTIVE_STEPS: &[Step] = {
             only: all,
             phase: OBJECTIVE,
             title: "Time acceleration",
-            detail: "A long cruise to {name}: each press runs time faster (ACCEL, ACCEL x2, ACCEL \
-                     x3), it stops by itself on a threat. Before the target, normal time again",
+            detail: "Press TIME to speed up the cruise to {name}: each press runs time faster \
+                     (ACCEL, ACCEL x2, ACCEL x3), and it stops by itself on a threat. Before the \
+                     target, turn it off",
             keys: &[TimeAccel],
             target: |_| T::Effect(Effect::TimeToggle),
             done: |c| c.passed || c.accel || !c.leg.long_way || c.leg.over,
@@ -854,6 +857,26 @@ static OBJECTIVE_STEPS: &[Step] = {
             keys: &[Maps],
             target: |c| c.page_button(Page::Tactical),
             done: |c| c.passed || c.page(Page::Tactical).is_some() || c.leg.over,
+        },
+        // The attack mode before the camera, the mode brings its own formats back (the camera's
+        // page is then chosen in it, and stays).
+        Step {
+            only: air,
+            phase: OBJECTIVE,
+            title: "Air-to-air mode",
+            detail: "AIR mode: the HUD shows the aircraft and the missile cues",
+            keys: &[HudMode],
+            target: |_| T::Effect(Effect::HudMode(1)),
+            done: |c| c.hud.mode == Hud::Air || c.leg.over,
+        },
+        Step {
+            only: ground,
+            phase: OBJECTIVE,
+            title: "Air-to-ground mode",
+            detail: "GND mode: the HUD shows the ground targets and the weapon cues",
+            keys: &[HudMode],
+            target: |_| T::Effect(Effect::HudMode(2)),
+            done: |c| c.hud.mode == Hud::Gnd || c.leg.over,
         },
         Step {
             only: all,
@@ -892,10 +915,9 @@ static OBJECTIVE_STEPS: &[Step] = {
             },
             done: |c| c.leg.near || c.leg.over,
         },
-        // 30 km out, getting ready for the attack: slower, the HUD's attack mode (it brings A-G's
-        // or A-A's formats back, after the threats on the HSD, NAV's format: with a radar, its
-        // display on the left as the SOI), the lock; about 15 km out, the target locked, the
-        // autopilot off. 10 km out, the run.
+        // 30 km out, getting ready for the attack: slower, the lock (the attack mode came before
+        // the camera); about 15 km out, the target locked, the autopilot off. 10 km out, the
+        // run.
         Step {
             only: run_slower,
             phase: OBJECTIVE,
@@ -904,24 +926,6 @@ static OBJECTIVE_STEPS: &[Step] = {
             keys: &[ThrottleDown],
             target: |_| T::Throttle,
             done: |c| c.knots() <= SLOW_KNOTS || c.leg.close || c.leg.over,
-        },
-        Step {
-            only: ground,
-            phase: OBJECTIVE,
-            title: "Air-to-ground mode",
-            detail: "GND mode: the HUD shows the ground targets and the weapon cues",
-            keys: &[HudMode],
-            target: |_| T::Effect(Effect::HudMode(2)),
-            done: |c| c.hud.mode == Hud::Gnd || c.leg.over,
-        },
-        Step {
-            only: air,
-            phase: OBJECTIVE,
-            title: "Air-to-air mode",
-            detail: "AIR mode: the HUD shows the aircraft and the missile cues",
-            keys: &[HudMode],
-            target: |_| T::Effect(Effect::HudMode(1)),
-            done: |c| c.hud.mode == Hud::Air || c.leg.over,
         },
         Step {
             only: ground,
@@ -1129,8 +1133,8 @@ static RETURN_STEPS: &[Step] = {
             only: all,
             phase: RETURN,
             title: "Time acceleration",
-            detail: "A long way home: each press runs time faster, it stops by itself on a \
-                     threat. Before the landing, normal time again",
+            detail: "Press TIME to speed up the way home: each press runs time faster, and it \
+                     stops by itself on a threat. Before the landing, turn it off",
             keys: &[TimeAccel],
             target: |_| T::Effect(Effect::TimeToggle),
             done: |c| c.passed || c.accel || !c.leg.long_way,
@@ -1671,8 +1675,12 @@ pub(super) fn advance(
         Option<Res<crate::career::CareerFlight>>,
         Option<Res<crate::campaign::ActiveCampaign>>,
     ),
+    mut tip_clicks: MessageReader<super::controls::TipClick>,
 ) {
     let tutorial = &mut *tutorial;
+    // The display the step points at was clicked (not while a threat's box is up: its part is
+    // the threat's).
+    let clicked = tip_clicks.read().any(|c| tutorial.part == Some(c.0)) && tutorial.alert.is_none();
     tutorial.on =
         settings.tutorial && crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let (true, Ok((a, pos)), Some(combat)) = (tutorial.on, aircraft.single(), combat) else {
@@ -1796,6 +1804,7 @@ pub(super) fn advance(
             dwell: if at == tutorial.at { tutorial.dwell } else { 0.0 },
             passed: at < tutorial.reached,
             zoomed: at == tutorial.at && zoom != tutorial.zoom,
+            clicked: at == tutorial.at && clicked,
             leg,
             selected,
             lights,
@@ -1830,6 +1839,7 @@ pub(super) fn advance(
         dwell: 0.0,
         passed: false,
         zoomed: false,
+        clicked: false,
         leg,
         selected,
         lights,
@@ -2233,6 +2243,7 @@ mod tests {
             dwell: 0.0,
             passed: false,
             zoomed: false,
+            clicked: false,
             leg: LegState::default(),
             selected: None,
             lights: default(),
@@ -2311,7 +2322,7 @@ mod tests {
                 // The story: the flight plan (the map before its list, no going back to the
                 // map; what is around), the orders, the store they call for, faster time, the
                 // cruise on the map's route; 50 km out the autopilot off, the threats and the
-                // camera, the approach; 30 km out getting ready (slower, the HUD's attack mode,
+                // camera (the attack mode first), the approach; 30 km out getting ready (slower,
                 // the lock); then the run.
                 let order = [
                     "Map page",
@@ -2343,15 +2354,24 @@ mod tests {
                 }
                 let slow = at("Slow down");
                 assert_eq!(slow.is_some(), run_slower(Flight { aim: Some(aim), ..f }));
-                for ready in [slow, at("Air-to-ground mode"), at("Air-to-air mode")] {
-                    assert!(ready.is_none_or(|s| order[11] < s && s < order[12]), "{f:?} {aim:?}");
-                }
-                // 50 km out the threats on the HSD, then the camera (before the attack mode
-                // brings its own formats).
+                assert!(slow.is_none_or(|s| order[11] < s && s < order[12]), "{f:?} {aim:?}");
+                // 50 km out the threats on the HSD, then the attack mode (a target on the
+                // ground's, an aircraft's), then the camera.
                 let threats = (order[9]..steps.len())
                     .find(|&k| steps[k].step.title == "Tactical page")
                     .unwrap();
                 assert!(order[9] < threats && threats < order[10], "{f:?} {aim:?}");
+                let modes = [
+                    (at("Air-to-ground mode"), ground(Flight { aim: Some(aim), ..f })),
+                    (at("Air-to-air mode"), air(Flight { aim: Some(aim), ..f })),
+                ];
+                for (mode, wanted) in modes {
+                    assert_eq!(mode.is_some(), wanted, "{f:?} {aim:?}");
+                    assert!(
+                        mode.is_none_or(|s| threats < s && s < order[10]),
+                        "{f:?} {aim:?}"
+                    );
+                }
                 // Normal time is an alert, before any step.
                 assert!(at("Normal time").is_none(), "{f:?} {aim:?}");
                 assert_eq!(
