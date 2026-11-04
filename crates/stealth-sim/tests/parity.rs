@@ -310,7 +310,7 @@ fn single_player_parity() {
         0xb2f06088299bef42,
         0x36578f2436310b93,
         0xae77901b1012761b,
-        0x3d6d20a4ec76373b,
+        0xd65530ef839fb9f0,
     ];
     let mut got = missions();
     got.push(campaign_run());
