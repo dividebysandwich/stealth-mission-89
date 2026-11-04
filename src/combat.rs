@@ -1706,6 +1706,8 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             }
             let mut v = crate::rwr::view(e, &name, heading_bam);
             v.heard = heard.contains_key(&e.source);
+            v.receiving =
+                heard.get(&e.source).is_some_and(|&t| now - t < crate::rwr::RECEIVING_SECONDS);
             v
         })
         .collect();

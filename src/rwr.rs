@@ -34,12 +34,16 @@ pub struct EmitterView {
     pub priority: i32,
     /// Its signal reached the player with some strength lately (shown on the HARM display).
     pub heard: bool,
+    /// Its signal reaches the player now (heard within `RECEIVING_SECONDS`: the RCS page).
+    pub receiving: bool,
 }
 
 /// The HARM display shows a radar whose signal at the player has been at least this strong
 /// (the radar sweep's score) in the last `HEARD_SECONDS` of mission time.
 pub const HEARD_SIGNAL: i32 = 5;
 pub const HEARD_SECONDS: i32 = 60;
+/// A radar heard this recently is still being received (its sweeps come round in seconds).
+pub const RECEIVING_SECONDS: i32 = 4;
 
 /// The emitters, most dangerous first.
 #[derive(Resource, Default, Debug)]
@@ -137,6 +141,7 @@ pub fn view(e: &Emitter, name: &str, heading_bam: f32) -> EmitterView {
         launch: e.launch,
         priority: e.priority,
         heard: false,
+        receiving: false,
     }
 }
 

@@ -2351,8 +2351,8 @@ fn draw_rcs_page(p: &MfdParams, c: &mut Canvas) {
 /// signal (SIG) and the margin between them (MRG, negative when seen); under them the most
 /// dangerous radar, and the last 30 seconds as a strip chart with its time axis.
 pub(crate) fn draw_rcs(c: &mut Canvas, th: &crate::mpd::Threats, range: usize, blink: bool) {
-    use crate::mpd::{ScopeStyle, bloom, bloom_size, dotted_ring, fill_bloom, pct};
-    use std::f32::consts::{FRAC_PI_2, PI, TAU};
+    use crate::mpd::{ScopeStyle, bloom, bloom_size, dotted_ring, fill_bloom, pct, pulse_of};
+    use std::f32::consts::TAU;
     c.clear(BLACK);
     let range = match RCS_RANGES[range.min(RCS_RANGES.len() - 1)] {
         0.0 => crate::mpd::scope_range(th.emitters),
@@ -2368,53 +2368,39 @@ pub(crate) fn draw_rcs(c: &mut Canvas, th: &crate::mpd::Threats, range: usize, b
         pen: 0.8,
         bold: 1.0,
         sym: 3.0,
+        received_only: true,
     };
     let (centre, r) = (st.centre, st.r);
     let at = |b: f32, f: f32| centre + Vec2::new(b.sin(), -b.cos()) * r * f;
     crate::mpd::draw_scope(c, th, &st, range, blink, |c, p, label, col| {
         stroke_text(c, p.x + 4.0, p.y - 9.0, label, 6.0, 1.0, col);
     });
-    // The rings' ranges, down to the right.
-    for k in 1..=3 {
-        let km = range * k as f32 / 3.0;
-        let s =
-            if km < 10.0 && km.fract() > 0.05 { format!("{km:.1}") } else { format!("{km:.0}") };
-        let q = at(2.6, k as f32 / 3.0);
-        text(c, q.x + 1.0, q.y, &s, 5.0, GREY);
-    }
-    text(c, centre.x - r - 7.0, centre.y - 2.5, "L", 5.0, GREY);
-    text(c, centre.x + r + 3.0, centre.y - 2.5, "R", 5.0, GREY);
-    // The detection rings: the strongest signal's (drawn with the scope) tagged, the other
-    // kind's dimmer when both paint us.
+    // The scope's range at its rim.
+    let s = if range < 10.0 && range.fract() > 0.05 {
+        format!("{range:.1}")
+    } else {
+        format!("{range:.0}")
+    };
+    let q = at(2.6, 1.0);
+    text(c, q.x + 1.0, q.y, &format!("{s}KM"), 5.0, GREY);
     let (emv, signal) = (th.emv.emv, crate::mpd::signal(th.emv));
     let detected = crate::mpd::detected(th.history);
-    let kinds = [("GND", th.emv.egr), ("AIR", th.emv.ear)];
-    let strongest = if th.emv.egr >= th.emv.ear { 0 } else { 1 };
-    for (i, &(name, s)) in kinds.iter().enumerate() {
-        if s <= 0.0 {
-            continue;
-        }
-        let ring = bloom_size(1.0 - s, r);
-        if i != strongest {
-            dotted_ring(c, centre, ring, st.thin, DARK);
-        }
-        let q = centre + Vec2::new(0.71, -0.71) * ring;
-        let col = if i == strongest { CYAN } else { GREY };
-        text(c, q.x + 2.0, q.y - 6.0, name, 5.0, col);
-    }
-    // Over the scope: the detection, the radars painting us.
+    // The radars whose signal reaches us (the scope shows only those).
+    let received: Vec<_> = th
+        .emitters
+        .iter()
+        .filter(|e| {
+            e.receiving || e.tracking || e.launch || pulse_of(th.history, e.source).is_some()
+        })
+        .collect();
     if detected && blink {
         text(c, 6.0, 27.0, "DETECTED", 6.0, RED);
     }
-    text(c, 6.0, 19.0, &format!("{} RDR", th.emitters.len()), 5.0, GREY);
+    text(c, 6.0, 19.0, &format!("{} RCVD", received.len()), 5.0, GREY);
     // The aspect: the bloom scaled to fit with its detection ring.
     let (ic, ir) = (Vec2::new(185.0, 50.0), 27.0);
     text(c, 142.0, 19.0, "ASPECT", 5.0, GREY);
     c.ring(ic, ir, 0.7, DARK);
-    for k in 0..4 {
-        let d = Vec2::from_angle(k as f32 * FRAC_PI_2);
-        c.stroke(ic + d * (ir - 3.0), ic + d * ir, 0.7, GREY);
-    }
     c.triangle(
         [
             ic - Vec2::Y * (ir + 1.0),
@@ -2442,28 +2428,21 @@ pub(crate) fn draw_rcs(c: &mut Canvas, th: &crate::mpd::Threats, range: usize, b
     if let Some(l) = limit {
         dotted_ring(c, ic, l * scale, 0.7, AMBER);
     }
-    // Where the gear, the open bays, a bank and a pitch swell the bloom (`mpd::lobes`).
-    let q = FRAC_PI_2;
-    let banked = th.roll.to_degrees().abs() >= 10.0;
-    let pitched = th.pitch.to_degrees().abs() >= 10.0;
-    let mut ticks = Vec::new();
-    if th.gear_down {
-        ticks.extend([0.35, -0.35, PI - 0.35, 0.35 - PI]);
-    }
-    if th.bay_open {
-        ticks.extend([q - 0.3, q + 0.3, -q - 0.3, -q + 0.3]);
-    }
-    if banked {
-        ticks.extend([q, -q]);
-    }
-    if pitched {
-        ticks.extend([0.0, PI]);
-    }
-    for b in ticks {
-        let d = Vec2::new(b.sin(), -b.cos());
-        c.stroke(ic + d * (ir + 1.5), ic + d * (ir + 5.0), 1.0, AMBER);
+    // Where the radars reaching us look at it from: a tick at each one's bearing, red where
+    // the bloom there reaches past the detection ring (that radar sees the most of it).
+    for e in &received {
+        let d = Vec2::new(e.rel_bearing.sin(), -e.rel_bearing.cos());
+        let reach = base * crate::mpd::lobes(e.rel_bearing, th);
+        let col = match limit {
+            Some(l) if reach > l => RED,
+            _ if e.tracking || e.launch => AMBER,
+            _ => WHITE,
+        };
+        c.stroke(ic + d * (ir + 1.5), ic + d * (ir + 6.0), 1.2, col);
     }
     // The configuration.
+    let banked = th.roll.to_degrees().abs() >= 10.0;
+    let pitched = th.pitch.to_degrees().abs() >= 10.0;
     let tag = |on: bool| if on { AMBER } else { GREY };
     let (x0, x1) = (142.0, 186.0);
     let gear = if th.gear_down { "GEAR DN" } else { "GEAR UP" };
@@ -2514,8 +2493,8 @@ pub(crate) fn draw_rcs(c: &mut Canvas, th: &crate::mpd::Threats, range: usize, b
     }
     let both = format!("GND {:02}  AIR {:02}", pct(th.emv.egr), pct(th.emv.ear));
     text(c, x0, 124.0, &both, 5.0, GREY);
-    // The most dangerous radar.
-    match th.emitters.first() {
+    // The most dangerous radar reaching us.
+    match received.first() {
         Some(e) => {
             let (state, col) = if e.launch {
                 ("LNCH", if blink { RED } else { WHITE })

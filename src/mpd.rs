@@ -378,7 +378,8 @@ pub fn pulse_of(h: &ThreatHistory, source: EmitterSource) -> Option<f32> {
 
 /// Where and how big `draw_scope` draws (drawing units): the scope's centre and radius, its
 /// thin pen (rings, ticks, beams), the outline pen (bloom, symbols), the bold one (strobes, the
-/// aircraft) and the radars' symbol size.
+/// aircraft) and the radars' symbol size; `received_only`: only the radars whose signal reaches
+/// us now, a searching one as its strobe and beam (the RCS page), not every radar heard lately.
 #[derive(Debug, Clone, Copy)]
 pub struct ScopeStyle {
     pub centre: Vec2,
@@ -387,6 +388,7 @@ pub struct ScopeStyle {
     pub pen: f32,
     pub bold: f32,
     pub sym: f32,
+    pub received_only: bool,
 }
 
 impl ScopeStyle {
@@ -398,6 +400,7 @@ impl ScopeStyle {
         pen: 0.5,
         bold: 0.6,
         sym: 2.6,
+        received_only: false,
     };
 }
 
@@ -457,6 +460,10 @@ pub fn draw_scope(
     for e in th.emitters.iter().rev() {
         let len = 0.04 + 0.12 * (e.priority as f32 / 520.0).clamp(0.0, 1.0);
         let pulse = pulse_of(th.history, e.source);
+        let fights = e.tracking || e.launch;
+        if st.received_only && !(fights || e.receiving || pulse.is_some()) {
+            continue;
+        }
         let col = if pulse.is_some() {
             WHITE
         } else if e.launch {
@@ -473,6 +480,11 @@ pub fn draw_scope(
         if let Some(f) = pulse {
             c.ring(p, (3.5 + 9.0 * f) * k, st.pen, if f < 0.5 { WHITE } else { GREY });
             c.stroke(p, centre, st.pen, if f < 0.5 { WHITE } else { GREY });
+        }
+        // Received only: a searching radar is its strobe and a faint beam at us.
+        if st.received_only && !fights && pulse.is_none() {
+            c.dashed(p, centre, 1.0 * k, 3.0 * k, st.thin, DARK);
+            continue;
         }
         let s = if pulse.is_some() { 3.2 * k } else { st.sym };
         if e.air {
@@ -660,6 +672,7 @@ pub(crate) fn threat_fixture() -> (Vec<EmitterView>, Emv, ThreatHistory) {
         launch,
         priority: 300,
         heard,
+        receiving: heard,
     };
     let emitters = vec![
         e(EmitterSource::Site(1), 0.6, 9.0, false, true, false, true),
