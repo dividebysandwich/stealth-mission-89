@@ -39,3 +39,6 @@ lg-no-cargo = Ingen lastflyvninger undervejs.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Last: { $items }
 lg-forces = Styrker og materiel
+cl-production-lost = Ingen flybase tilbage til at fremstille ammunition: erobr { $base } som ny produktionsbase. Hangarskibene løber aldrig tør.
+mt-production-target = Bliver produktionsbase, når den er erobret
+lg-no-production = Ingen flybase i vores hænder: erobr { $base } for at gøre den til produktionsbase. Hangarskibene løber aldrig tør.

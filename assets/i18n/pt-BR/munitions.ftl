@@ -39,3 +39,6 @@ lg-no-cargo = Nenhum voo de carga em andamento.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Carga: { $items }
 lg-forces = Forças e material
+cl-production-lost = Não resta nenhuma base aérea para fabricar munições: capture { $base } para ter uma nova base de produção. Os porta-aviões nunca ficam sem estoque.
+mt-production-target = Torna-se a base de produção quando capturada
+lg-no-production = Nenhuma base aérea sob nosso controle: capture { $base } para torná-la a base de produção. Os porta-aviões nunca ficam sem estoque.

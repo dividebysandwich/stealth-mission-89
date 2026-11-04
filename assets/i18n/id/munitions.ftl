@@ -39,3 +39,6 @@ lg-no-cargo = Tidak ada penerbangan kargo dalam perjalanan.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Muatan: { $items }
 lg-forces = Pasukan dan materiel
+cl-production-lost = Tidak ada lagi pangkalan udara yang membuat amunisi: rebut { $base } sebagai pangkalan produksi baru. Kapal induk tidak pernah kehabisan.
+mt-production-target = Menjadi pangkalan produksi setelah direbut
+lg-no-production = Tidak ada pangkalan udara yang kita kuasai: rebut { $base } untuk menjadikannya pangkalan produksi. Kapal induk tidak pernah kehabisan amunisi.

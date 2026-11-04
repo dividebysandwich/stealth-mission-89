@@ -39,3 +39,6 @@ lg-no-cargo = 移動中の輸送飛行はない。
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = 積荷：{ $items }
 lg-forces = 戦力と物資
+cl-production-lost = 弾薬を作る航空基地がなくなった：{ $base }を占領すれば新たな生産基地になる。空母の弾薬は尽きることがない。
+mt-production-target = 占領すると生産基地になる
+lg-no-production = 保有する航空基地がない：{ $base }を占領すれば生産基地になる。空母の弾薬は尽きることがない。

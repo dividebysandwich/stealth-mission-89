@@ -1032,6 +1032,10 @@ pub struct CampaignState {
     pub stocks: std::collections::BTreeMap<ObjectId, crate::Stock>,
     #[serde(default)]
     pub production: [Option<ObjectId>; 2],
+    /// A side with only carriers left: the other side's airfield to take for its production
+    /// base (blue, red).
+    #[serde(default)]
+    pub production_target: [Option<ObjectId>; 2],
     #[serde(default)]
     pub cargo_runs: Vec<crate::CargoRun>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -1570,6 +1574,7 @@ impl CampaignState {
             runway_at: [0.0; 2],
             stocks: Default::default(),
             production: [None; 2],
+            production_target: [None; 2],
             cargo_runs: Vec::new(),
             cargo_lost: Vec::new(),
             cargo_cooldown: Vec::new(),

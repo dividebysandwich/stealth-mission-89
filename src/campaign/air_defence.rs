@@ -204,9 +204,9 @@ fn map(
         }
         .gamma_multiply(0.5);
         painter.circle_filled(at(p.x, p.y), 2.5 * k, col);
-        let production = super::logistics::is_production(st, p);
-        if production {
-            super::logistics::production_mark(&painter, at(p.x, p.y), k);
+        let production = super::logistics::production_of(st, p);
+        if let Some(kind) = production {
+            super::logistics::production_mark(&painter, at(p.x, p.y), k, kind);
         }
         super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true, production);
     }

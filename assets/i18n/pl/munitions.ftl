@@ -39,3 +39,6 @@ lg-no-cargo = Brak lotów z ładunkiem w drodze.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Ładunek: { $items }
 lg-forces = Siły i zasoby
+cl-production-lost = Nie została żadna baza lotnicza produkująca amunicję: zdobądź { $base }, by mieć nową bazę produkcyjną. Lotniskowcom nigdy jej nie brakuje.
+mt-production-target = Po zdobyciu staje się bazą produkcyjną
+lg-no-production = Brak baz lotniczych w naszych rękach: zdobądź { $base }, by uczynić ją bazą produkcyjną. Lotniskowcom nigdy nie brakuje amunicji.

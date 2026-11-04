@@ -74,6 +74,14 @@ pub fn tab(ui: &mut egui::Ui, c: &mut ActiveCampaign, size: egui::Vec2) {
         return;
     }
     let list = bases(c);
+    let st = c.state();
+    if st.production_base(Side::Blue).is_none()
+        && let Some(t) = st.production_target(Side::Blue).and_then(|t| st.site(t))
+    {
+        let text = t!("lg-no-production", base = t.name.as_str());
+        ui.label(egui::RichText::new(text).color(AMBER));
+        ui.add_space(4.0);
+    }
     let valid = match c.ui.logistics {
         Some(Pick::Base(b)) => list.iter().any(|l| l.0 == b),
         Some(Pick::Forces) => true,
@@ -279,11 +287,30 @@ fn bar(ui: &mut egui::Ui, frac: f32, w: f32, col: egui::Color32) {
     );
 }
 
+/// A place's part in the friendly side's production: its production base, or the enemy
+/// airfield to take for it (with only carriers left).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Production {
+    Base,
+    Target,
+}
+
+impl Production {
+    /// The map tooltip's line.
+    pub(super) fn tip(self) -> &'static str {
+        match self {
+            Production::Base => t!("mt-production-base"),
+            Production::Target => t!("mt-production-target"),
+        }
+    }
+}
+
 /// The friendly production base's mark beside its airfield symbol at `c` (`k`: the map's
-/// symbol scale): a factory, its sawtooth roof.
-pub(super) fn production_mark(p: &egui::Painter, c: egui::Pos2, k: f32) {
+/// symbol scale): a factory, its sawtooth roof (faint: the airfield to take for it).
+pub(super) fn production_mark(p: &egui::Painter, c: egui::Pos2, k: f32, kind: Production) {
     let o = c + egui::vec2(-11.0, -7.0) * k;
-    let s = egui::Stroke::new(1.5, AMBER);
+    let col = if kind == Production::Base { AMBER } else { AMBER.gamma_multiply(0.55) };
+    let s = egui::Stroke::new(1.5, col);
     let pt = |x: f32, y: f32| o + egui::vec2(x, y) * k;
     p.add(egui::Shape::line(
         vec![
@@ -301,10 +328,17 @@ pub(super) fn production_mark(p: &egui::Painter, c: egui::Pos2, k: f32) {
     ));
 }
 
-/// The place's airfield is the friendly production base.
-pub(super) fn is_production(
+/// The place's airfield is the friendly production base, or the one to take for it.
+pub(super) fn production_of(
     st: &stealth_campaign::CampaignState,
     p: &stealth_campaign::Place,
-) -> bool {
-    p.owner == Side::Blue && p.airfield.is_some() && p.airfield == st.production_base(Side::Blue)
+) -> Option<Production> {
+    let a = p.airfield?;
+    if p.owner == Side::Blue && Some(a) == st.production_base(Side::Blue) {
+        Some(Production::Base)
+    } else if Some(a) == st.production_target(Side::Blue) {
+        Some(Production::Target)
+    } else {
+        None
+    }
 }

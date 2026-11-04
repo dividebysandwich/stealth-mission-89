@@ -116,9 +116,12 @@ impl Host {
         let mut iron = false;
         if f.role == Role::Strike && !f.kamikaze {
             let n = if f.strike_unit { f.passes.max(1) as u32 } else { 1 };
-            let m = Munition::of_spec(if harm(sim, &f) { 24 } else { 27 }, side);
-            if let Some(m) = m {
-                iron = self.state.draw_with_fallback(base, m, n).is_empty();
+            let m = ground_munition(sim, i, &f, side);
+            let got = self.state.draw_with_fallback(base, m, n);
+            iron = got.is_empty();
+            self.ground_loads.retain(|g| g.0 != f.tag);
+            if let Some(&(m, _)) = got.first() {
+                self.ground_loads.push((f.tag, m));
             }
         }
         sim.arm_flight(i, loadout, iron);
@@ -137,9 +140,12 @@ impl Host {
                     self.state.put_back(base, m, s.count as u32);
                 }
             }
+            // Its ground weapons not fired, as drawn.
+            let drawn = self.ground_loads.iter().position(|g| g.0 == l.tag);
+            let drawn = drawn.map(|k| self.ground_loads.swap_remove(k).1);
             if l.unfired > 0
                 && !l.iron
-                && let Some(m) = Munition::of_spec(if l.harm { 24 } else { 27 }, side)
+                && let Some(m) = drawn
             {
                 self.state.put_back(base, m, l.unfired as u32);
             }
@@ -190,6 +196,8 @@ impl Host {
         }
         self.magazine_timer = 0.0;
         self.count_site_demand(sim);
+        // Strike aircraft shot down took their weapons with them.
+        self.ground_loads.retain(|g| sim.campaign_unit(g.0).is_some());
         let bases = self.state.bases(Side::Red);
         for need in sim.magazine_needs() {
             let m = if need.site { Munition::sam(need.missile) } else { Munition::AaaRounds };
@@ -234,6 +242,36 @@ impl Host {
         if !demand.is_empty() && demand != self.state.site_demand {
             self.state.site_demand = demand;
         }
+    }
+}
+
+/// What AI strike aircraft `i` (`f`) of a side goes in with: an anti-radiation missile at a
+/// radar; a helicopter its Hellfires; at a ship Harpoons; the A-10's CAS its CBU-105s, the
+/// others' Mavericks; at anything else GBU-12s (the enemy: its AS-11s, else AS-10s).
+fn ground_munition(
+    sim: &Sim,
+    i: usize,
+    f: &stealth_sim::campaign::CampaignFlight,
+    side: Side,
+) -> Munition {
+    use stealth_sim::ai_missions::{A10, AH1Z, OH58, RAH66};
+    if harm(sim, f) {
+        return if side == Side::Blue { Munition::Harm } else { Munition::As11 };
+    }
+    if side != Side::Blue {
+        return Munition::As10;
+    }
+    let spec = sim.flights().get(i).map_or(0, |u| u.spec);
+    let ship = !f.strike_unit
+        && f.strike
+            .and_then(|t| sim.objects().get(t as usize))
+            .is_some_and(|o| o.flags & oflags::SHIP != 0);
+    match spec {
+        AH1Z | RAH66 | OH58 => Munition::Hellfire,
+        _ if ship => Munition::Harpoon,
+        A10 if f.strike_unit => Munition::Cbu105,
+        _ if f.strike_unit => Munition::Agm65,
+        _ => Munition::Gbu12,
     }
 }
 

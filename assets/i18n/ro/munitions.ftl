@@ -39,3 +39,6 @@ lg-no-cargo = Niciun zbor de marfă pe drum.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Încărcătură: { $items }
 lg-forces = Forțe și materiale
+cl-production-lost = Nu a mai rămas nicio bază aeriană care să fabrice muniție: capturați { $base } pentru o nouă bază de producție. Portavioanele nu rămân niciodată fără.
+mt-production-target = Devine baza de producție odată capturată
+lg-no-production = Nicio bază aeriană în mâinile noastre: capturați { $base } ca să devină baza de producție. Portavioanele nu rămân niciodată fără muniție.

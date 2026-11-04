@@ -39,3 +39,6 @@ lg-no-cargo = Ni tovornih letov na poti.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Tovor: { $items }
 lg-forces = Sile in material
+cl-production-lost = Ni več letalske baze, ki bi izdelovala strelivo: zavzemite { $base } za novo proizvodno bazo. Letalonosilkam ga nikoli ne zmanjka.
+mt-production-target = Ko bo zavzeta, postane proizvodna baza
+lg-no-production = V naših rokah ni nobene letalske baze: zavzemite { $base }, da postane proizvodna baza. Letalonosilkam streliva nikoli ne zmanjka.

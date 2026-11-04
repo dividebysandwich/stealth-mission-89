@@ -39,3 +39,6 @@ lg-no-cargo = Níl aon eitilt lasta ar an mbealach.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Lasta: { $items }
 lg-forces = Forcaí agus trealamh
+cl-production-lost = Níl aon aerbhunáit fágtha chun muinisin a dhéanamh: gabh { $base } mar bhunáit táirgthe nua. Ní ritheann na hiompróirí aerárthach amach riamh.
+mt-production-target = Beidh sí ina bunáit táirgthe nuair a ghabhtar í
+lg-no-production = Níl aon aerbhunáit againn: gabh { $base } chun í a dhéanamh ina bunáit táirgthe. Ní ritheann na hiompróirí aerárthach amach riamh.

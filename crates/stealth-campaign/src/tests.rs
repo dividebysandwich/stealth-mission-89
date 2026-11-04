@@ -3611,3 +3611,73 @@ fn the_enemy_stocks_sam_missiles_where_its_sites_need_them() {
     assert_eq!(c.production_rate(Munition::SamLong), 2.0 * tuning::SAM_LONG_PER_SITE_HOUR);
     assert_eq!(c.production_rate(Munition::Aa11), Munition::Aa11.per_hour());
 }
+
+/// `cargo test -p stealth-campaign theater_survey -- --ignored --nocapture`: each theater's
+/// bases and production bases at the start.
+#[test]
+#[ignore]
+fn theater_survey() {
+    for code in [
+        "central_europe",
+        "cuba",
+        "desert_storm",
+        "korea",
+        "libya",
+        "middle_east",
+        "north_cape",
+        "persian_gulf",
+        "ukraine",
+        "vietnam",
+    ] {
+        let mut c = campaign(code, 0);
+        c.rules = Some(CampaignRules::default());
+        c.tick(1.0, &WorldView::default(), &[]);
+        for side in [Side::Blue, Side::Red] {
+            let kinds = |k: SiteKind| {
+                c.sites
+                    .iter()
+                    .filter(|s| s.kind == k && !s.removed && c.owner(s.object) == Some(side))
+                    .map(|s| s.name.clone())
+                    .collect::<Vec<_>>()
+            };
+            let sams = c
+                .sites
+                .iter()
+                .filter(|s| s.kind == SiteKind::Sam && c.owner(s.object) == Some(side))
+                .count();
+            let p = c.production_base(side).and_then(|b| c.site(b)).map(|s| s.name.clone());
+            println!(
+                "{code:15} {side:?}: airfields {:?} carriers {:?} sams {sams} production {p:?}",
+                kinds(SiteKind::Airfield),
+                kinds(SiteKind::Carrier)
+            );
+        }
+    }
+}
+
+#[test]
+fn a_side_left_with_carriers_takes_its_next_production_base() {
+    let mut c = campaign("korea", 0);
+    c.rules = Some(CampaignRules::default());
+    c.tick(1.0, &WorldView::default(), &[]);
+    let chunchon = c.production_base(Side::Blue).expect("Chunchon");
+    // The enemy takes the only friendly airfield: the carriers fly on, never short of anything.
+    let place = c.site(chunchon).unwrap().place.unwrap();
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Red, &mut ev);
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.production_base(Side::Blue), None);
+    let target = c.production_target(Side::Blue).expect("an airfield to take");
+    assert_eq!(c.owner(target), Some(Side::Red));
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("capture"))));
+    let carrier = c.bases(Side::Blue)[0];
+    assert_eq!(c.site(carrier).unwrap().kind, SiteKind::Carrier);
+    assert_eq!(c.available(carrier, Munition::Aim120), u32::MAX);
+    // Taken, it is the production base, with a full stock.
+    let place = c.site(target).unwrap().place.unwrap();
+    c.capture_place(place, Side::Blue, &mut Vec::new());
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.production_base(Side::Blue), Some(target));
+    assert_eq!(c.production_target(Side::Blue), None);
+    assert!(c.available(target, Munition::Aim120) >= 32);
+}

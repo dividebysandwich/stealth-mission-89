@@ -145,7 +145,16 @@ fn campaign_soak() {
             missions.insert(m.id, m.clone());
         }
         for r in &host.state.cargo_runs {
-            cargo.insert(r.tag, (r.clone(), t));
+            // Keep the escorts it had once they are gone.
+            let mut r = r.clone();
+            if let Some((old, _)) = cargo.get(&r.tag) {
+                for &e in &old.escorts {
+                    if !r.escorts.contains(&e) {
+                        r.escorts.push(e);
+                    }
+                }
+            }
+            cargo.insert(r.tag, (r, t));
         }
         let now: BTreeMap<u16, i32> = sim.site_magazines().into_iter().collect();
         for i in 0..sim.ground_unit_count() {
@@ -555,6 +564,10 @@ fn campaign_soak() {
         );
         if let Some(end) = tracks.get(tag).and_then(|t| t.end.clone()) {
             println!("     {end}");
+        }
+        for e in &r.escorts {
+            let fate = tracks.get(e).and_then(|t| t.end.clone()).unwrap_or("-".into());
+            println!("     escort {e}: {fate}");
         }
     }
     println!("\n== Stocks");

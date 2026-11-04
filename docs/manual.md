@@ -2611,8 +2611,11 @@ Gepards' 35 mm rounds. The war starts with every airbase fully stocked. Your loa
 the stock of the base you take off from: the briefing's loadout shows how many each base has
 left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
 stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
-too; when a base is out, they take the next best (AIM-7s for AIM-120s, Mavericks for HARMs) and in
-the end Sidewinders, and strike aircraft drop iron bombs, which means flying right over the target.
+too, each the weapon for its job: HARMs at radars, Hellfires from the helicopters, Harpoons at
+ships, CBU-105s for the A-10's close support, Mavericks for the others', GBU-12s at everything
+else. When a base is out, they take the next best (AIM-7s for AIM-120s, Mavericks for HARMs,
+Penguins for Harpoons) and in the end Sidewinders, and strike aircraft drop iron bombs, which
+means flying right over the target.
 The enemy plays by the same rules. Its SAM sites and guns fire from magazines, refilled from the
 airbases within about 150 km that have missiles or rounds left, nearest first; each airbase keeps
 two reloads for the sites it is nearest to, and its production base makes as many as the
@@ -2620,20 +2623,26 @@ theater's sites need. Its long range SAM sites (SA-2, SA-5, SA-10, SA-12, SA-21)
 at a time at an aircraft: no second site launches while another's missile is on its way. Destroy
 its cargo flights and the airbases near a SAM belt, and those sites go quiet.
 
-Your rearmost airfield is the **production base** (an amber factory on the maps). It makes every
+Your **production base** (an amber factory on the maps) is the airfield in the rear whose cargo
+flights to your other airfields stay clear of enemy territory. It makes every
 munition, the complex ones slowly (a few Harpoons or CBU-105s an hour, a dozen GBU-12s, 3000 rounds
 of 35 mm), up to three full stocks. When it is captured, the next airfield in the rear takes over;
-while it is bombed, it makes nothing.
+while it is bombed, it makes nothing. Left with only carriers, which never run out, the enemy
+airfield nearest them is marked as your next production base (a faint factory): capture it and it
+becomes one, with a full stock.
 
 **Cargo flights**
 
 When an airbase runs out of a munition, a **cargo flight** is scheduled: 10 minutes later a C-5
 (the enemy flies An-72s) takes off from the production base with up to half a full stock of each
-munition the base lacks, whatever the production base has made, and lands there. The news and the
-LOGISTICS tab show it coming. If it is shot down, its load is lost and the base waits for the next
+munition the base lacks, whatever the production base has made, and lands there, flying its approach low. A cargo flight to an airbase near the front gets an
+escort of two fighters from that base, which meet it and fly with it until it lands. The news and
+the LOGISTICS tab show it coming. If it is shot down, its load is lost and the base waits for the next
 one. The enemy's cargo flights appear on your board as **INTERCEPT** missions (`Intercept cargo flight
 - <base>`, 150 points): shoot the An-72 down before it lands. Its route runs from the enemy's rear
-to its base, so the AI's interceptors wait three quarters of the way along it. The enemy hunts your
+to its base, so the AI's interceptors wait three quarters of the way along it; under heavy air defences
+(SAM sites, Patriot batteries) the AI leaves it to the players. If one is shot down, the next
+cargo flight to that base waits half an hour. The enemy hunts your
 C-5s the same way: its interceptors take off 2 minutes after your cargo flight is scheduled.
 A cargo flight in the air when you save takes off again shortly after you continue, with its load.
 

@@ -39,3 +39,6 @@ lg-no-cargo = Nema teretnih letova na putu.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Teret: { $items }
 lg-forces = Snage i materijal
+cl-production-lost = Nije ostala nijedna zrakoplovna baza koja proizvodi streljivo: zauzmite { $base } kao novu proizvodnu bazu. Nosačima zrakoplova nikad ne ponestaje.
+mt-production-target = Nakon zauzimanja postaje proizvodna baza
+lg-no-production = Ne držimo nijednu zrakoplovnu bazu: zauzmite { $base } da postane proizvodna baza. Nosačima zrakoplova streljivo nikad ne ponestaje.

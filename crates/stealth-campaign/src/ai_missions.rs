@@ -247,6 +247,10 @@ impl CampaignState {
             .filter(|o| ai_flown(o.kind) && !self.flown_by_player(o.id))
             // The enemy's strikes on airfields go up as raids (`enemy_offensive`).
             .filter(|o| side == Side::Blue || !matches!(o.objective, Objective::Strike { .. }))
+            // No hunting a cargo aircraft under heavy air defences (the players may).
+            .filter(|o| {
+                !matches!(o.objective, Objective::Cargo { .. }) || o.threat < HEAVY_SAM_THREAT
+            })
             .filter_map(|o| {
                 let since = match self.ai_mission_for(o.id) {
                     Some(m) if m.open() => return None,
@@ -700,8 +704,8 @@ impl CampaignState {
                 );
             }
         }
-        for (title, objective, x, y) in self.cargo_offers(Side::Red) {
-            add(self, MissionKind::Intercept, title, objective, x, y, 0);
+        for (title, objective, x, y, threat) in self.cargo_offers(Side::Red) {
+            add(self, MissionKind::Intercept, title, objective, x, y, threat);
         }
         for v in self.convoys.clone().into_iter().filter(|v| v.active() && v.side == Side::Blue) {
             let aaa: Vec<u32> = (0..view.units.len() as u32)

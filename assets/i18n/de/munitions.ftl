@@ -39,3 +39,6 @@ lg-no-cargo = Keine Frachtflüge unterwegs.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Ladung: { $items }
 lg-forces = Kräfte und Material
+cl-production-lost = Kein Flugplatz mehr, der Munition herstellt: Erobern Sie { $base } als neuen Produktionsstützpunkt. Den Flugzeugträgern geht sie nie aus.
+mt-production-target = Wird nach der Eroberung zum Produktionsstützpunkt
+lg-no-production = Kein Flugplatz in eigener Hand: Erobern Sie { $base }, um es zum Produktionsstützpunkt zu machen. Den Flugzeugträgern geht die Munition nie aus.

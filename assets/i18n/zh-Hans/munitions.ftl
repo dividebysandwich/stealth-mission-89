@@ -39,3 +39,6 @@ lg-no-cargo = 没有在途的运输飞行。
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = 载荷：{ $items }
 lg-forces = 兵力与物资
+cl-production-lost = 已没有能制造弹药的空军基地：占领 { $base } 即可成为新的生产基地。航空母舰的弹药永远不会用完。
+mt-production-target = 占领后成为生产基地
+lg-no-production = 没有已占领的空军基地：占领 { $base } 即可成为生产基地。航空母舰的弹药永远不会用完。

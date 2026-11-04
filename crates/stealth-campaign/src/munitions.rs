@@ -185,6 +185,8 @@ impl Munition {
             Munition::Aim120 => Some(Munition::Aim7),
             Munition::Harm => Some(Munition::Agm65),
             Munition::As11 => Some(Munition::As10),
+            Munition::Harpoon => Some(Munition::Penguin),
+            Munition::Penguin | Munition::Cbu105 => Some(Munition::Agm65),
             _ => None,
         }
     }
@@ -351,6 +353,9 @@ pub struct CargoRun {
     pub state: CargoState,
     /// When it was scheduled.
     pub posted: f64,
+    /// Its escort's fighters (campaign tags) in the air.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub escorts: Vec<u32>,
 }
 
 impl CargoRun {
@@ -361,6 +366,16 @@ impl CargoRun {
             CargoState::Airborne => None,
         }
     }
+}
+
+/// How close the line from `a` to `b` passes to `p` (map units).
+fn segment_dist(a: (i32, i32), b: (i32, i32), p: (i32, i32)) -> i32 {
+    let (ax, ay, bx, by) = (a.0 as f64, a.1 as f64, b.0 as f64, b.1 as f64);
+    let (dx, dy) = (bx - ax, by - ay);
+    let len2 = (dx * dx + dy * dy).max(1.0);
+    let t = (((p.0 as f64 - ax) * dx + (p.1 as f64 - ay) * dy) / len2).clamp(0.0, 1.0);
+    let (cx, cy) = (ax + t * dx, ay + t * dy);
+    (p.0 as f64 - cx).hypot(p.1 as f64 - cy) as i32
 }
 
 /// Index of a side in the per-side arrays (blue, red).
@@ -516,19 +531,63 @@ impl CampaignState {
             .collect()
     }
 
-    /// A side's rearmost intact airfield: the furthest from the other side's places.
+    /// The other side's airfield nearest a side's carriers (where it would fly from with no
+    /// airfield of its own).
+    fn nearest_enemy_airfield(&self, side: Side) -> Option<ObjectId> {
+        let carriers: Vec<(i32, i32)> = self
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Carrier && s.alive())
+            .filter(|s| self.owner(s.object) == Some(side))
+            .map(|s| (s.x, s.y))
+            .collect();
+        self.sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Airfield && !s.removed)
+            .filter(|s| self.owner(s.object) == Some(side.enemy()))
+            .filter_map(|s| {
+                let d = carriers.iter().map(|&(x, y)| dist(s.x - x, s.y - y)).min()?;
+                Some((d, s.object))
+            })
+            .min()
+            .map(|(_, o)| o)
+    }
+
+    /// The airfield a side with only carriers left is to take for its production base.
+    pub fn production_target(&self, side: Side) -> Option<ObjectId> {
+        self.production_target.get(ix(side)).copied().flatten()
+    }
+
+    /// A side's production base: of its intact airfields the one whose cargo flights to the
+    /// others cross the fewest of the other side's places (none over the enemy's land if it
+    /// can be helped), the furthest from them of those.
     fn rearmost(&self, side: Side) -> Option<ObjectId> {
         let enemy: Vec<(i32, i32)> =
             self.places.iter().filter(|p| p.owner == side.enemy()).map(|p| (p.x, p.y)).collect();
-        self.bases(side)
+        let fields: Vec<(ObjectId, i32, i32)> = self
+            .bases(side)
             .into_iter()
             .filter_map(|b| self.site(b).filter(|s| s.kind == SiteKind::Airfield))
-            .map(|s| {
-                let d = enemy.iter().map(|&(x, y)| dist(s.x - x, s.y - y)).min();
-                (s.object, d.unwrap_or(i32::MAX))
+            .map(|s| (s.object, s.x, s.y))
+            .collect();
+        // Flights from `a` to the others passing over an enemy place.
+        let crossings = |a: (i32, i32)| {
+            fields
+                .iter()
+                .filter(|&&(_, x, y)| {
+                    (x, y) != a
+                        && enemy.iter().any(|&p| segment_dist(a, (x, y), p) <= CARGO_ROUTE_CLEAR)
+                })
+                .count()
+        };
+        fields
+            .iter()
+            .map(|&(o, x, y)| {
+                let d = enemy.iter().map(|&(ex, ey)| dist(x - ex, y - ey)).min();
+                (o, crossings((x, y)), d.unwrap_or(i32::MAX))
             })
-            .max_by_key(|&(o, d)| (d, std::cmp::Reverse(o)))
-            .map(|(o, _)| o)
+            .max_by_key(|&(o, n, d)| (std::cmp::Reverse(n), d, std::cmp::Reverse(o)))
+            .map(|(o, _, _)| o)
     }
 
     /// Every tick: stocks for the airfields (full at the start, empty for a new owner), the
@@ -560,13 +619,42 @@ impl CampaignState {
             let p = self.production_base(side);
             let held = p.is_some_and(|b| self.owner(b) == Some(side));
             if !held {
-                let now = self.rearmost(side);
+                // A side with only carriers left: the enemy airfield nearest them is to be its
+                // production base once taken (it comes with a full stock).
+                let target = self.production_target[ix(side)];
+                let now = match target.filter(|&t| self.owner(t) == Some(side)) {
+                    Some(t) => {
+                        if let Some(s) = self.stocks.get(&t).cloned()
+                            && Munition::of_side(side).iter().all(|&m| s.count(m) == 0)
+                        {
+                            let full: Vec<(Munition, f64)> = Munition::of_side(side)
+                                .iter()
+                                .map(|&m| (m, self.full_stock(t, m)))
+                                .collect();
+                            let s = self.stocks.get_mut(&t).expect("stock");
+                            s.counts.extend(full);
+                        }
+                        Some(t)
+                    }
+                    None => self.rearmost(side),
+                };
+                self.production_target[ix(side)] =
+                    if now.is_none() { self.nearest_enemy_airfield(side) } else { None };
                 self.production[ix(side)] = now;
+                let name =
+                    |c: &Self, b: ObjectId| c.site(b).map_or(String::new(), |s| s.name.clone());
+                let news = match (now, self.production_target(side)) {
+                    (Some(b), _) if p.is_some() || target.is_some() => {
+                        Some(text!("cl-production-moved", base = name(self, b)))
+                    }
+                    (None, Some(t)) if p.is_some() => {
+                        Some(text!("cl-production-lost", base = name(self, t)))
+                    }
+                    _ => None,
+                };
                 if side == Side::Blue
-                    && let Some(b) = now.filter(|_| p.is_some())
+                    && let Some(t) = news
                 {
-                    let name = self.site(b).map_or(String::new(), |s| s.name.clone());
-                    let t = text!("cl-production-moved", base = name);
                     self.note(t.clone());
                     ev.push(CampaignEvent::Message(t));
                 }
@@ -654,6 +742,7 @@ impl CampaignState {
                 load,
                 state: CargoState::Scheduled { launch_at: now + CARGO_WAIT },
                 posted: now,
+                escorts: Vec::new(),
             });
             // The interceptors' offer goes up with it.
             self.board_at = f64::MIN;
@@ -708,6 +797,7 @@ impl CampaignState {
                 to: r.to,
                 tag: r.tag,
             });
+            self.escort_cargo(k, ev);
         }
     }
 
@@ -726,6 +816,10 @@ impl CampaignState {
         };
         let run = self.cargo_runs.remove(k);
         self.board_at = f64::MIN;
+        // Its escort is done.
+        for &tag in run.escorts.iter().filter(|t| self.patrols.iter().any(|p| p.0 == **t)) {
+            ev.push(CampaignEvent::Recall { tag });
+        }
         let name =
             |c: &CampaignState, b: ObjectId| c.site(b).map_or(String::new(), |s| s.name.clone());
         let at = landed.and_then(|(x, y)| self.airfield_near(run.side, x, y, CARGO_LAND_RADIUS));
@@ -758,6 +852,47 @@ impl CampaignState {
         let at = self.clock + CARGO_RELAUNCH;
         for r in self.cargo_runs.iter_mut().filter(|r| r.state == CargoState::Airborne) {
             r.state = CargoState::Scheduled { launch_at: at };
+            r.escorts.clear();
+        }
+    }
+
+    /// Cargo flight `k` (just up) to a base near the front gets an escort: a pair of fighters
+    /// from that base meets it and flies with it until it lands (if the side has them).
+    fn escort_cargo(&mut self, k: usize, ev: &mut Vec<CampaignEvent>) {
+        let r = self.cargo_runs[k].clone();
+        let Some(to) = self.site(r.to).map(|s| (s.x, s.y)) else { return };
+        let front = self
+            .places
+            .iter()
+            .filter(|p| p.owner == r.side.enemy())
+            .any(|p| dist(p.x - to.0, p.y - to.1) <= CARGO_ESCORT_RANGE);
+        // Its base's fighters take off (a bombed one has none to send).
+        let up = self.bases(r.side).contains(&r.to);
+        let n = CARGO_ESCORTS as u32;
+        if !front
+            || !up
+            || self.forces(r.side).fighters < n
+            || self.forces(r.side).materiel < n as f64 * SORTIE_COST
+        {
+            return;
+        }
+        self.pay(r.side, n as f64 * SORTIE_COST, Spend::Operations);
+        self.take_fighters(r.side, n);
+        let (x, y) = self.cargo_point(&r);
+        let now = self.clock;
+        for _ in 0..n {
+            let tag = self.id();
+            self.patrols.push((tag, r.side, now));
+            self.cargo_runs[k].escorts.push(tag);
+            ev.push(CampaignEvent::LaunchFighters {
+                tag,
+                side: r.side,
+                from: r.to,
+                x,
+                y,
+                task: crate::FighterTask::Patrol,
+                escort: Some(r.tag),
+            });
         }
     }
 
@@ -776,16 +911,40 @@ impl CampaignState {
 
     /// The intercept offers of `side`'s board: the other side's cargo flights (scheduled or
     /// in the air).
-    pub(crate) fn cargo_offers(&self, side: Side) -> Vec<(Text, Objective, i32, i32)> {
+    /// Each with its threat: the cargo flight's side's live SAM sites around where the
+    /// interceptors wait (the AI does not go where it is heavy).
+    pub(crate) fn cargo_offers(&self, side: Side) -> Vec<(Text, Objective, i32, i32, i32)> {
         self.cargo_runs
             .iter()
             .filter(|r| r.side == side.enemy())
             .map(|r| {
                 let (x, y) = self.cargo_point(r);
                 let base = self.site(r.to).map_or(String::new(), |s| s.name.clone());
-                (text!("cb-intercept-cargo", base = base), Objective::Cargo { tag: r.tag }, x, y)
+                let title = text!("cb-intercept-cargo", base = base);
+                (title, Objective::Cargo { tag: r.tag }, x, y, self.sam_threat(r.side, x, y))
             })
             .collect()
+    }
+
+    /// The threat of a side's live SAM sites within `CARGO_HUNT_SAM_RADIUS` of a point.
+    pub(crate) fn sam_threat(&self, side: Side, x: i32, y: i32) -> i32 {
+        let n = self
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Sam && s.alive() && self.owner(s.object) == Some(side))
+            .filter(|s| dist(s.x - x, s.y - y) <= CARGO_HUNT_SAM_RADIUS)
+            .count() as i32;
+        // The friendly side's Patriot batteries (their stockpiles are noted where they stand).
+        let patriots = if side == Side::Blue {
+            self.defence_stock
+                .iter()
+                .filter(|d| d.kind == DefenceKind::Patriot)
+                .filter(|d| dist(d.x - x, d.y - y) <= CARGO_HUNT_SAM_RADIUS)
+                .count() as i32
+        } else {
+            0
+        };
+        (n + patriots) * SAM_THREAT
     }
 
     /// The bases of a side whose stock is out of something.

@@ -39,3 +39,6 @@ lg-no-cargo = L-ebda titjira tal-merkanzija fi triqitha.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Tagħbija: { $items }
 lg-forces = Forzi u materiel
+cl-production-lost = Ma fadalx bażi tal-ajru li tagħmel il-munizzjon: aqbad { $base } bħala l-bażi l-ġdida tal-produzzjoni. Il-vetturi tal-ajruplani qatt ma jispiċċawlhom.
+mt-production-target = Issir il-bażi tal-produzzjoni ladarba tinqabad
+lg-no-production = L-ebda bażi tal-ajru f'idejna: aqbad { $base } biex issir il-bażi tal-produzzjoni. Il-vetturi tal-ajruplani qatt ma jispiċċawlhom.

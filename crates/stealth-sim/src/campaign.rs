@@ -1693,7 +1693,9 @@ impl Sim {
                     Some(HELO_SAM_REACH)
                 } else if self.flights[i].spec == crate::ai_missions::TORNADO
                     || self.campaign_flight(i).is_some_and(|f| {
-                        matches!(f.role, Role::Strike | Role::Recon) && !f.kamikaze
+                        // A cargo aircraft flies its approach low, as the strike aircraft.
+                        matches!(f.role, Role::Strike | Role::Recon | Role::Transport)
+                            && !f.kamikaze
                     })
                 {
                     Some(STRIKE_SAM_REACH)

@@ -381,6 +381,16 @@ pub const CARGO_SHARE: f64 = 0.5;
 pub const CARGO_RELAUNCH: f64 = 60.0;
 /// After a base's cargo aircraft was shot down, the next one goes this long (s) after.
 pub const CARGO_LOST_COOLDOWN: f64 = 30.0 * 60.0;
+/// The other side's SAM sites this close to where interceptors would wait for a cargo flight
+/// (map units, ~64 km) make its threat: the AI does not fly a heavy one.
+pub const CARGO_HUNT_SAM_RADIUS: i32 = 0x1000;
+/// A cargo flight to a base this close to a place of the other side (map units, ~150 km) gets
+/// an escort of this many fighters from that base.
+pub const CARGO_ESCORT_RANGE: i32 = FRONT_RANGE;
+pub const CARGO_ESCORTS: usize = 2;
+/// A cargo route passing this close to a place of the other side (map units, ~40 km) crosses
+/// its land: the production base is picked to avoid that.
+pub const CARGO_ROUTE_CLEAR: i32 = 0xA00;
 /// A cargo aircraft that comes down this close to a base of its side (map units, ~8 km)
 /// delivers there.
 pub const CARGO_LAND_RADIUS: i32 = 0x200;

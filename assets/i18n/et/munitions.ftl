@@ -39,3 +39,6 @@ lg-no-cargo = Ühtegi lastilendu pole teel.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Last: { $items }
 lg-forces = Jõud ja materjal
+cl-production-lost = Laskemoona tootvat lennubaasi pole enam: vallutage { $base } uueks tootmisbaasiks. Lennukikandjatel ei saa varud kunagi otsa.
+mt-production-target = Muutub pärast vallutamist tootmisbaasiks
+lg-no-production = Ühtegi lennubaasi pole meie käes: vallutage { $base }, et sellest saaks tootmisbaas. Lennukikandjatel ei saa varud kunagi otsa.

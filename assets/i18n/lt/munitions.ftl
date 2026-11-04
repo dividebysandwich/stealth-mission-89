@@ -39,3 +39,6 @@ lg-no-cargo = Pakeliui nėra krovinių skrydžių.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Krovinys: { $items }
 lg-forces = Pajėgos ir ištekliai
+cl-production-lost = Neliko aviacijos bazės, gaminančios šaudmenis: užimkite { $base } kaip naują gamybos bazę. Lėktuvnešiams jų niekada nepritrūksta.
+mt-production-target = Užėmus tampa gamybos baze
+lg-no-production = Neturime nė vienos aviacijos bazės: užimkite { $base }, kad ji taptų gamybos baze. Lėktuvnešiams šaudmenų niekada nepritrūksta.

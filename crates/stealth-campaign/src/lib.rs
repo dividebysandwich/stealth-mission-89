@@ -331,6 +331,9 @@ pub enum CampaignEvent {
         y: i32,
         #[serde(default)]
         task: FighterTask,
+        /// It escorts the cargo aircraft with this campaign tag (flies with it).
+        #[serde(default)]
+        escort: Option<u32>,
     },
     /// A resupply helicopter (tag) takes off from a base's helipad for an air defence unit
     /// (AAA index).

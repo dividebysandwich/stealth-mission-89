@@ -39,3 +39,6 @@ lg-no-cargo = Geen vrachtvluchten onderweg.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Lading: { $items }
 lg-forces = Strijdkrachten en materieel
+cl-production-lost = Geen vliegbasis meer die munitie maakt: neem { $base } in als nieuwe productiebasis. De vliegdekschepen raken nooit door hun voorraad heen.
+mt-production-target = Wordt de productiebasis zodra hij is ingenomen
+lg-no-production = Geen vliegbasis in handen: neem { $base } in om er de productiebasis van te maken. De vliegdekschepen raken nooit door hun voorraad heen.

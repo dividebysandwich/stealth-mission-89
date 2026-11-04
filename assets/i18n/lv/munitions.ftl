@@ -39,3 +39,6 @@ lg-no-cargo = Ceļā nav neviena kravas lidojuma.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Krava: { $items }
 lg-forces = Spēki un materiālie resursi
+cl-production-lost = Nav palikusi neviena aviobāze, kas ražo munīciju: ieņemiet { $base } kā jauno ražošanas bāzi. Bāzeskuģiem tā nekad nebeidzas.
+mt-production-target = Pēc ieņemšanas kļūst par ražošanas bāzi
+lg-no-production = Mūsu rokās nav nevienas aviobāzes: ieņemiet { $base }, lai tā kļūtu par ražošanas bāzi. Bāzeskuģiem munīcija nekad nebeidzas.

@@ -39,3 +39,6 @@ lg-no-cargo = Ei rahtilentoja matkalla.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Kuorma: { $items }
 lg-forces = Voimat ja materiaali
+cl-production-lost = Yhtään ammuksia valmistavaa lentotukikohtaa ei ole jäljellä: valtaa { $base } uudeksi tuotantotukikohdaksi. Lentotukialuksilta ammukset eivät lopu koskaan.
+mt-production-target = Muuttuu tuotantotukikohdaksi, kun se on vallattu
+lg-no-production = Yhtään lentotukikohtaa ei ole hallussa: valtaa { $base }, niin siitä tulee tuotantotukikohta. Lentotukialuksilta ammukset eivät lopu koskaan.

@@ -39,3 +39,6 @@ lg-no-cargo = Žiadne nákladné lety na ceste.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Náklad: { $items }
 lg-forces = Sily a materiál
+cl-production-lost = Nezostala žiadna letecká základňa, ktorá by vyrábala muníciu: obsaďte { $base } ako novú výrobnú základňu. Lietadlovým lodiam nikdy nedôjde.
+mt-production-target = Po obsadení sa stane výrobnou základňou
+lg-no-production = Nedržíme žiadnu leteckú základňu: obsaďte { $base } a stane sa výrobnou základňou. Lietadlovým lodiam munícia nikdy nedôjde.

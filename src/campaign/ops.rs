@@ -1344,9 +1344,9 @@ fn war_map(
                 let r = map_draw::halo(10.0) * k;
                 painter.circle_stroke(c0, r, egui::Stroke::new(1.0, BRIGHT));
             }
-            let production = super::logistics::is_production(st, p);
-            if production {
-                super::logistics::production_mark(&painter, c0, k);
+            let production = super::logistics::production_of(st, p);
+            if let Some(kind) = production {
+                super::logistics::production_mark(&painter, c0, k, kind);
             }
             place_tip(&mut tips, c0, p, st.clock, true, production);
             if 1.0 / view.scale > 0.012 || p.owner != Side::Neutral {
@@ -1544,7 +1544,7 @@ pub(super) fn place_tip(
     p: &stealth_campaign::Place,
     now: f64,
     filled: bool,
-    production: bool,
+    production: Option<super::logistics::Production>,
 ) {
     let (owner, airfield) = (affiliation(p.owner), p.airfield.is_some());
     let (side, colour) = map_draw::side(owner);
@@ -1554,8 +1554,8 @@ pub(super) fn place_tip(
     if p.intel(now) {
         tip.line(t!("pic-reconned"));
     }
-    if production {
-        tip.line(t!("mt-production-base"));
+    if let Some(kind) = production {
+        tip.line(kind.tip());
     }
 }
 
@@ -1567,7 +1567,8 @@ fn shows_place(layers: &MapLayers, p: &stealth_campaign::Place) -> bool {
 /// The places' legend lines, with their layers' checkboxes.
 fn place_legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
     layers.legend(ui, Layer::Airfields, t!("mt-production-base"), |p, c0| {
-        super::logistics::production_mark(p, c0 + egui::vec2(11.0, 7.0), 1.0);
+        let base = super::logistics::Production::Base;
+        super::logistics::production_mark(p, c0 + egui::vec2(11.0, 7.0), 1.0, base);
     });
     if map_draw::app6() {
         use crate::app6::Affiliation::{Friend, Hostile};
@@ -2163,9 +2164,9 @@ fn route_editor(
                 egui::FontId::monospace(11.0),
                 col,
             );
-            let production = super::logistics::is_production(st, p);
-            if production {
-                super::logistics::production_mark(painter, c0, 1.0);
+            let production = super::logistics::production_of(st, p);
+            if let Some(kind) = production {
+                super::logistics::production_mark(painter, c0, 1.0, kind);
             }
             place_tip(tips, c0, p, st.clock, false, production);
         }

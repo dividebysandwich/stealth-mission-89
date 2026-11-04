@@ -92,6 +92,8 @@ pub struct Host {
     pub(crate) magazine_timer: f64,
     /// The base each player came to a stop at in his sortie (his stores go back there).
     landed: Vec<(PlayerId, u16)>,
+    /// The ground munition each AI strike aircraft (campaign tag) took off with.
+    pub(crate) ground_loads: Vec<(u32, stealth_campaign::Munition)>,
 }
 
 impl Host {
@@ -134,6 +136,7 @@ impl Host {
             patriots: Vec::new(),
             magazine_timer: 0.0,
             landed: Vec::new(),
+            ground_loads: Vec::new(),
         }
     }
 
@@ -830,7 +833,7 @@ impl Host {
                         sim.set_intel(o as usize, false);
                     }
                 }
-                CampaignEvent::LaunchFighters { tag, side, from, x, y, task } => {
+                CampaignEvent::LaunchFighters { tag, side, from, x, y, task, escort } => {
                     let task = match task {
                         FighterTask::Patrol => stealth_sim::ai_loadout::FighterTask::Patrol,
                         FighterTask::Cap => stealth_sim::ai_loadout::FighterTask::Cap,
@@ -838,6 +841,9 @@ impl Host {
                     let i =
                         sim.spawn_fighter(*from as usize, *x, *y, *tag, *side == Side::Blue, task);
                     self.arm_from_stock(sim, i, *side, *from);
+                    if let Some(cargo) = *escort {
+                        sim.set_hunt(*tag, cargo);
+                    }
                 }
                 // His aircraft's target is the new mission's.
                 CampaignEvent::SortieRetasked { player, sortie } => {

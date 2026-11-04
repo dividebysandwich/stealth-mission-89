@@ -39,3 +39,6 @@ lg-no-cargo = Inga lastflygningar på väg.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Last: { $items }
 lg-forces = Styrkor och materiel
+cl-production-lost = Ingen flygbas kvar som tillverkar ammunition: inta { $base } som ny produktionsbas. Hangarfartygen får aldrig slut.
+mt-production-target = Blir produktionsbas när den är intagen
+lg-no-production = Ingen flygbas i våra händer: inta { $base } för att göra den till produktionsbas. Hangarfartygen får aldrig slut.

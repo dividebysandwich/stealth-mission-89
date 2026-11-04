@@ -39,3 +39,6 @@ lg-no-cargo = No cargo flights under way.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Load: { $items }
 lg-forces = Forces and materiel
+cl-production-lost = No airbase left to make munitions: capture { $base } for a new production base. The carriers never run out.
+mt-production-target = Becomes the production base once captured
+lg-no-production = No airbase held: capture { $base } to make it the production base. The carriers never run out.

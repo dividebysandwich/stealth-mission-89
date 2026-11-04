@@ -39,3 +39,6 @@ lg-no-cargo = Nincs úton teherszállító repülés.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = Rakomány: { $items }
 lg-forces = Erők és hadianyag
+cl-production-lost = Nem maradt lőszert gyártó légibázis: foglald el ezt: { $base }, és az lesz az új gyártóbázis. A repülőgép-hordozókon sosem fogy el.
+mt-production-target = Elfoglalás után ez lesz a gyártóbázis
+lg-no-production = Nincs a kezünkben légibázis: foglald el ezt: { $base }, és az lesz a gyártóbázis. A repülőgép-hordozókon a lőszer sosem fogy el.

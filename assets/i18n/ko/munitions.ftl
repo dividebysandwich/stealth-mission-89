@@ -39,3 +39,6 @@ lg-no-cargo = 이동 중인 화물 비행이 없습니다.
 lg-cargo-route = { $from } → { $to }
 lg-cargo-load = 적재: { $items }
 lg-forces = 전력과 물자
+cl-production-lost = 탄약을 만들 비행기지가 남아 있지 않습니다: { $base }을(를) 점령하면 새 생산 기지가 됩니다. 항공모함의 탄약은 절대 떨어지지 않습니다.
+mt-production-target = 점령하면 생산 기지가 됩니다
+lg-no-production = 보유한 비행기지가 없습니다: { $base }을(를) 점령하면 생산 기지가 됩니다. 항공모함의 탄약은 절대 떨어지지 않습니다.
