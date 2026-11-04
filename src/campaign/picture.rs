@@ -358,7 +358,7 @@ pub fn draw(
             Some(SamBattery::Nasams) => (Layer::Nasams, Some(Layer::NasamsReach)),
             None => (Layer::Gepards, None),
         };
-        let reach = battery.map_or(0.0, |b| b.reach() as f32);
+        let reach = battery.map_or(0.0, |b| b.map_range());
         if reach_layer.is_some_and(|l| layers.shows(l)) {
             painter.extend(reach_circle(c, reach / view.scale));
         }

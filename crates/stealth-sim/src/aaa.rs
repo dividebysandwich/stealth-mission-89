@@ -141,6 +141,11 @@ impl SamBattery {
         }
     }
 
+    /// The missile's reach in map units (the maps' range rings).
+    pub fn map_range(self) -> f32 {
+        (self.max_range() / M_PER_MAP) as f32
+    }
+
     /// Missiles in its stockpile, beyond those on its launchers.
     pub fn stock(self) -> i32 {
         match self {

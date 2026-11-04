@@ -293,7 +293,7 @@ pub(super) fn draw(
         // The battery's missile reach, the Gepard's.
         if !m.gepard() {
             let reach = m.reach() as f32 * k;
-            if reach < r {
+            if reach <= r + 0.5 {
                 cv.ring(centre, reach, 0.6, GREY);
             }
         }

@@ -221,7 +221,7 @@ fn map(
             GroundKind::Gepard => GEPARD_MAP_REACH,
             // A drone command center's: as far as its surveillance drones see from over it.
             GroundKind::DroneCenter => (stealth_sim::uav::STORK_SENSOR / M_PER_MAP) as f32,
-            k => k.battery().map_or(0.0, |b| b.reach() as f32),
+            k => k.battery().map_or(0.0, |b| b.map_range()),
         };
         let r = (reach / view.scale).max(4.0);
         let chosen = c.ui.defence == Some(s.unit);
