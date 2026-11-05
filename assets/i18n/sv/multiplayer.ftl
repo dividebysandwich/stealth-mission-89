@@ -64,6 +64,7 @@ pic-site = Ställning: { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = KONTAKT FÖRLORAD
 uv-hint = Dra: kretsa  Hjul: zoom
+uv-infrared = Infraröd (termisk) vy
 
 ## Flerspelare
 

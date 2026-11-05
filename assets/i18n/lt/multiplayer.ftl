@@ -64,6 +64,7 @@ pic-site = Vietovė: { $place }
 uv-live = { $unit } - GYVAI
 uv-contact-lost = RYŠYS PRARASTAS
 uv-hint = Vilkimas: sukti  Ratukas: didinti
+uv-infrared = Infraraudonųjų spindulių (terminis) vaizdas
 
 ## Daugiažaidė
 

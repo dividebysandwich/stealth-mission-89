@@ -64,6 +64,7 @@ pic-site = Poziția { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT PIERDUT
 uv-hint = Tragere: orbitare  Rotiță: zoom
+uv-infrared = Vedere în infraroșu (termică)
 
 ## Multiplayer
 

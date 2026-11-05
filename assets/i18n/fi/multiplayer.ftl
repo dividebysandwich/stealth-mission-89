@@ -64,6 +64,7 @@ pic-site = Paikka: { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = YHTEYS KATKESI
 uv-hint = Vedä: kierrä  Pyörä: zoom
+uv-infrared = Infrapunanäkymä (lämpö)
 
 ## Moninpeli
 

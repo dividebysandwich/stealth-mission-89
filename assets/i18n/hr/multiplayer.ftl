@@ -64,6 +64,7 @@ pic-site = Položaj: { $place }
 uv-live = { $unit } - UŽIVO
 uv-contact-lost = KONTAKT IZGUBLJEN
 uv-hint = Povlačenje: okretanje  Kotačić: zumiranje
+uv-infrared = Infracrveni (termalni) prikaz
 
 ## Više igrača
 

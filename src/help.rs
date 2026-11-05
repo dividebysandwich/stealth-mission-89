@@ -161,6 +161,7 @@ Testing and screenshots
                                a friendly NASAMS launcher
   --watch-orbit <yaw>,<pitch>,<m>
                                the watching camera's place (radians from behind, above)
+  --watch-ir                   the watching window starts in infrared
   --campaign-watch             watch the first friendly aircraft
   --campaign-ai-now            the AI flies the boards' missions at once (not 5 minutes after)
   --campaign-take-control [s]  take over the first friendly AI aircraft up s seconds (60)

@@ -66,6 +66,7 @@ pic-site = { $place } site
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT LOST
 uv-hint = Drag: orbit  Wheel: zoom
+uv-infrared = Infrared (thermal) view
 
 ## Multiplayer
 

@@ -2200,7 +2200,7 @@ own armour always shows; enemy armour only while one of your ground units or dro
 checkboxes in the legend beside the map switch each kind of symbol on and off (clouds, snow and storm
 cells, SAM and engagement ranges among them), and the *Symbols* switch chooses between the game's
 classic symbols and NATO's **APP-6** military map symbols. Pointing at a symbol shows its tooltip
-(chapter 8.2). Click a unit to watch it live; the wheel zooms, dragging pans. The selected mission's target is circled.
+(chapter 8.2). Click a unit to watch it live; the wheel zooms, dragging pans. In the live window, the **IR** button in the title bar switches the picture to infrared (thermal), to see the unit on a night too dark to make it out. The selected mission's target is circled.
 
 ## 9.3 Places and the front
 

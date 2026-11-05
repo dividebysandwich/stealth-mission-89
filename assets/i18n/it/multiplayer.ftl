@@ -64,6 +64,7 @@ pic-site = Sito di { $place }
 uv-live = { $unit } - IN DIRETTA
 uv-contact-lost = CONTATTO PERSO
 uv-hint = Trascinare: orbita  Rotellina: zoom
+uv-infrared = Visione a infrarossi (termica)
 
 ## Multigiocatore
 

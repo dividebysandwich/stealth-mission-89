@@ -64,6 +64,7 @@ pic-site = Site de { $place }
 uv-live = { $unit } - EN DIRECT
 uv-contact-lost = CONTACT PERDU
 uv-hint = Glisser : tourner  Molette : zoom
+uv-infrared = Vision infrarouge (thermique)
 
 ## Multijoueur
 

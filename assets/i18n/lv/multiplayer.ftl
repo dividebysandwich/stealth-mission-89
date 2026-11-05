@@ -64,6 +64,7 @@ pic-site = Pozīcija: { $place }
 uv-live = { $unit } - TIEŠRAIDE
 uv-contact-lost = KONTAKTS ZAUDĒTS
 uv-hint = Vilkšana: griezt  Ritenītis: tālummaiņa
+uv-infrared = Infrasarkanais (termiskais) skats
 
 ## Daudzspēlētāju režīms
 

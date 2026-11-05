@@ -64,6 +64,7 @@ pic-site = Stellung { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = KONTAKT VERLOREN
 uv-hint = Ziehen: umkreisen  Mausrad: Zoom
+uv-infrared = Infrarotansicht (Wärmebild)
 
 ## Mehrspieler
 

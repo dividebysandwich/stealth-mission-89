@@ -64,6 +64,7 @@ pic-site = Položaj: { $place }
 uv-live = { $unit } - V ŽIVO
 uv-contact-lost = STIK IZGUBLJEN
 uv-hint = Vleci: kroži  Kolesce: povečava
+uv-infrared = Infrardeči (termalni) pogled
 
 ## Več igralcev
 

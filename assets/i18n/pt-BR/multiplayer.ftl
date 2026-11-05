@@ -64,6 +64,7 @@ pic-site = Sítio de { $place }
 uv-live = { $unit } - AO VIVO
 uv-contact-lost = CONTATO PERDIDO
 uv-hint = Arrastar: orbitar  Roda: zoom
+uv-infrared = Visão infravermelha (térmica)
 
 ## Multijogador
 

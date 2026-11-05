@@ -102,6 +102,12 @@ impl Plugin for CampaignPlugin {
                 .run_if(in_state(AppState::Flight)),
         )
         .add_systems(
+            Update,
+            unit_view::infrared_background
+                .after(unit_view::follow)
+                .run_if(in_state(AppState::Flight)),
+        )
+        .add_systems(
             EguiPrimaryContextPass,
             unit_view::window
                 .after(ops::ops_ui)

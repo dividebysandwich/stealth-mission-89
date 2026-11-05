@@ -64,6 +64,7 @@ pic-site = Sit ta' { $place }
 uv-live = { $unit } - DIRETT
 uv-contact-lost = KONTATT MIFQUD
 uv-hint = Kaxkar: dur  Rota: zoom
+uv-infrared = Veduta infraħamra (termika)
 
 ## Multiplayer
 

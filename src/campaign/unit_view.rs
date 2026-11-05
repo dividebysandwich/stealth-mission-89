@@ -20,8 +20,8 @@ use crate::menu::{AMBER, BRIGHT, DIM};
 use crate::world::{StreamSites, WorldPos, wu_to_bevy};
 
 /// Picture size (pixels).
-const W: u32 = 960;
-const H: u32 = 540;
+pub const W: u32 = 960;
+pub const H: u32 = 540;
 /// Seconds a lost unit (shot down, landed) stays in view before the view closes.
 const LOST_SECONDS: f32 = 8.0;
 
@@ -39,6 +39,10 @@ pub enum UnitRef {
 /// The offscreen camera following the unit.
 #[derive(Component)]
 pub struct UnitCamera;
+
+/// The sky and ground sphere of the unit camera (flat in infrared).
+#[derive(Component)]
+pub struct UnitBackground;
 
 /// The headset's panel showing the picture, and its close box.
 #[derive(Component)]
@@ -63,6 +67,9 @@ pub struct UnitView {
     placed: bool,
     /// Altitude (m) and speed (kt) of an aircraft, for the caption.
     pub info: Option<(f32, f32)>,
+    /// The picture in infrared (thermal), for a night too dark to see by; kept from one unit
+    /// to the next.
+    pub infrared: bool,
 }
 
 impl Default for UnitView {
@@ -81,11 +88,17 @@ impl Default for UnitView {
             grab: None,
             placed: false,
             info: None,
+            infrared: std::env::args().any(|a| a == "--watch-ir"),
         }
     }
 }
 
 impl UnitView {
+    /// Whether a unit is watched in infrared now.
+    pub fn infrared_on(&self) -> bool {
+        self.infrared && self.target.is_some()
+    }
+
     /// Watch a unit (the camera starts behind it).
     pub fn watch(&mut self, unit: UnitRef, title: String) {
         let aircraft = matches!(unit, UnitRef::Flight { .. });
@@ -255,13 +268,14 @@ pub fn follow(
                 DespawnOnExit(crate::settings::AppState::Flight),
             ))
             .id();
-        crate::camera::spawn_background(
+        let sphere = crate::camera::spawn_background(
             &mut commands,
             cam,
             &mut meshes,
             &palette,
             UNIT_BACKGROUND_LAYER,
         );
+        commands.entity(sphere).insert(UnitBackground);
         view.camera = Some(cam);
     }
     // The headset's panel.
@@ -273,6 +287,25 @@ pub fn follow(
             && let Some(p) = view.panel
         {
             commands.entity(r).add_child(p);
+        }
+    }
+}
+
+/// Infrared: the camera's sky and ground become flat (sky 0x88, ground 0x7C), like the
+/// tracking camera's.
+pub fn infrared_background(
+    view: Res<UnitView>,
+    palette: Option<Res<crate::palette::Palette>>,
+    mut q: Query<
+        &mut MeshMaterial3d<crate::palette_material::PaletteMaterial>,
+        With<UnitBackground>,
+    >,
+) {
+    let Some(palette) = palette else { return };
+    let want = if view.infrared_on() { &palette.background_flir } else { &palette.background };
+    for mut m in &mut q {
+        if m.0 != *want {
+            m.0 = want.clone();
         }
     }
 }
@@ -435,7 +468,7 @@ pub fn window(
     let mut open = true;
     let title = stealth_i18n::t!("uv-live", unit = view.title.to_uppercase());
     let view = &mut *view;
-    egui::Window::new(title)
+    let shown = egui::Window::new(title)
         .id(egui::Id::new("unit_view"))
         // Above the Ops screen: clicking that one must not bury the view behind it.
         .order(egui::Order::Foreground)
@@ -477,8 +510,59 @@ pub fn window(
                 });
             });
         });
+    if let Some(win) = shown {
+        infrared_button(ctx, win.response.rect, &mut view.infrared);
+    }
     if !open {
         view.close();
     }
     Ok(())
+}
+
+/// The infrared switch in the window's title bar, left of the close cross (egui has no
+/// buttons of its own to add there: an area over the bar, placed from the bar's layout, the
+/// close button being the rightmost square of the heading's height inside the frame's margins).
+fn infrared_button(ctx: &egui::Context, window: egui::Rect, on: &mut bool) {
+    let style = ctx.global_style();
+    let frame = egui::Frame::window(&style);
+    let inner = frame.inner_margin;
+    let edge = frame.inner_margin(0.0).total_margin();
+    let heading = ctx.fonts_mut(|f| f.row_height(&egui::TextStyle::Heading.resolve(&style)));
+    let height = style.spacing.icon_width + 4.0;
+    let size = egui::vec2(height * 1.9, height);
+    let right =
+        window.max.x - edge.right - inner.right as f32 - heading - style.spacing.item_spacing.x;
+    let centre_y = window.min.y + edge.top + inner.top as f32 + heading / 2.0;
+    let pos = egui::pos2(right - size.x, centre_y - size.y / 2.0);
+    egui::Area::new(egui::Id::new("unit_view_infrared"))
+        .order(egui::Order::Tooltip)
+        .fixed_pos(pos)
+        .show(ctx, |ui| {
+            let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
+            let (fill, colour) = if *on {
+                (AMBER, egui::Color32::BLACK)
+            } else if resp.hovered() {
+                (ui.visuals().widgets.hovered.weak_bg_fill, BRIGHT)
+            } else {
+                (ui.visuals().widgets.inactive.weak_bg_fill, DIM)
+            };
+            let radius = 3.0;
+            ui.painter().rect_filled(rect, radius, fill);
+            ui.painter().rect_stroke(
+                rect,
+                radius,
+                egui::Stroke::new(1.0, if *on { AMBER } else { DIM }),
+                egui::StrokeKind::Inside,
+            );
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                "IR",
+                egui::TextStyle::Button.resolve(ui.style()),
+                colour,
+            );
+            if resp.on_hover_text(stealth_i18n::t!("uv-infrared")).clicked() {
+                *on = !*on;
+            }
+        });
 }
