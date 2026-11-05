@@ -297,3 +297,13 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  # The release is made with GITHUB_TOKEN, which does not trigger other workflows (so no
+  # `on: release`): winget.yml is called from here instead.
+  winget:
+    name: winget
+    needs: release
+    uses: ./.github/workflows/winget.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
