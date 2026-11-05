@@ -132,7 +132,6 @@ ops-watch-hint = Κάντε κλικ σε μια μονάδα για ζωντα�
 ops-map-hint = Ροδάκι: ζουμ, σύρσιμο: μετατόπιση
 ops-patriot = Πυροβολαρχία Patriot
 ops-nasams = Πυροβολαρχία NASAMS
-ops-drone-center = Κέντρο διοίκησης drones
 ops-manned-by = Επανδρώνεται από: { $pilot }
 ops-manned-by-other = Την επανδρώνει άλλος παίκτης
 ops-control = ΕΛΕΓΧΟΣ

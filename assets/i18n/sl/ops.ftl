@@ -132,7 +132,6 @@ ops-watch-hint = Kliknite enoto za ogled v živo
 ops-map-hint = Kolesce: povečava, vlečenje: pomik
 ops-patriot = Baterija Patriot
 ops-nasams = Baterija NASAMS
-ops-drone-center = Poveljniško mesto dronov
 ops-manned-by = Upravlja: { $pilot }
 ops-manned-by-other = Upravlja drug igralec
 ops-control = NADZOR

@@ -132,7 +132,6 @@ ops-watch-hint = Cliccare su un'unità per seguirla in diretta
 ops-map-hint = Rotellina: zoom, trascinare: spostare
 ops-patriot = Batteria Patriot
 ops-nasams = Batteria NASAMS
-ops-drone-center = Centro di comando droni
 ops-manned-by = Servita da { $pilot }
 ops-manned-by-other = Servita da un altro giocatore
 ops-control = PRENDERE IL CONTROLLO

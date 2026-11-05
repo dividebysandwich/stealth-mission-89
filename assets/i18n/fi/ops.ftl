@@ -132,7 +132,6 @@ ops-watch-hint = Napsauta yksikköä seurataksesi sitä livenä
 ops-map-hint = Pyörä: zoom, vedä: panoroi
 ops-patriot = Patriot-patteri
 ops-nasams = NASAMS-patteri
-ops-drone-center = Lennokkien johtokeskus
 ops-manned-by = Miehittäjä: { $pilot }
 ops-manned-by-other = Toinen pelaaja miehittää
 ops-control = OHJAA

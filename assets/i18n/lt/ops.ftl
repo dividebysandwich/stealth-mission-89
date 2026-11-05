@@ -132,7 +132,6 @@ ops-watch-hint = Spustelėkite dalinį, kad stebėtumėte jį gyvai
 ops-map-hint = Ratukas: didinti, vilkimas: slinkti
 ops-patriot = Patriot baterija
 ops-nasams = NASAMS baterija
-ops-drone-center = Dronų valdymo punktas
 ops-manned-by = Valdo: { $pilot }
 ops-manned-by-other = Valdo kitas žaidėjas
 ops-control = VALDYTI

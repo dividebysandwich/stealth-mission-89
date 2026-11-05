@@ -12,7 +12,6 @@ use stealth_campaign::{
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
 use stealth_net::protocol::PlayerStatus;
-use stealth_sim::aaa::GroundKind;
 use stealth_sim::station::StationCmd;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
@@ -22,7 +21,7 @@ use crate::map_draw::{
 };
 use crate::menu::{
     AMBER, BG, BRIGHT, DIM, GREEN, Panel, apply_terminal_style, big_button, footer_rule, icon,
-    icon_text, section,
+    section,
 };
 use crate::settings::AppState;
 use stealth_i18n::{Text, t};
@@ -429,6 +428,9 @@ pub fn ops_ui(
     }
     super::designate::test_aid(c, &combat.sim, scenery.as_deref());
     let mut leave = false;
+    // The big buttons the tab asks the footer for, and the one pressed.
+    let mut deck: Vec<Deed> = Vec::new();
+    let mut pressed: Option<usize> = None;
     let window = screen_window(ctx, "Ops", OPS_SIZE);
     let server = match (&c.server, c.role) {
         (Some(server), _) => Some(t!("ops-on-server", server = server.to_uppercase())),
@@ -456,18 +458,15 @@ pub fn ops_ui(
                     );
                     ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
                 });
+                // The war simulation's state, under the clock.
                 ui.horizontal(|ui| {
-                    if ui.add(exit_button(ui, c.role)).clicked() {
-                        c.ui.confirm_exit = true;
-                    }
-                    if ui
-                        .add(
-                            egui::Button::new(icon_text(ui, icon::OPTIONS, t!("menu-options")))
-                                .min_size(egui::vec2(100.0, 30.0)),
-                        )
-                        .clicked()
-                    {
-                        menu.open_options = true;
+                    if c.state().outcome.is_some() {
+                        ui.label(egui::RichText::new(t!("ops-war-over")).color(DIM));
+                    } else {
+                        // The rows fill from the right here: the label, then the spinner to
+                        // its left.
+                        ui.label(egui::RichText::new(t!("ops-running")).color(DIM));
+                        ui.add(egui::Spinner::new().color(GREEN));
                     }
                 });
             });
@@ -498,6 +497,8 @@ pub fn ops_ui(
                 if let Some((short, _)) = &wx {
                     ui.label(egui::RichText::new(short).color(DIM));
                 }
+                // The supplies and the front under them.
+                ui.horizontal_wrapped(|ui| supply_line(ui, c));
             });
         });
         ui.separator();
@@ -512,7 +513,7 @@ pub fn ops_ui(
                     return;
                 }
                 match c.ui.tab {
-                    Tab::Board => board(ui, c, size.x),
+                    Tab::Board => board(ui, c, size.x, &mut deck),
                     Tab::Map => war_map(
                         ui,
                         c,
@@ -540,24 +541,33 @@ pub fn ops_ui(
             });
         });
         split.footer(ui, |ui| {
-            ui.separator();
-            ui.horizontal(|ui| {
-                if let Some(e) = &c.ui.error {
-                    ui.colored_label(AMBER, e.tr());
-                } else {
-                    supply_line(ui, c);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if c.state().outcome.is_some() {
-                        ui.label(egui::RichText::new(t!("ops-war-over")).color(DIM));
-                    } else {
-                        ui.add(egui::Spinner::new().color(GREEN));
-                        ui.label(egui::RichText::new(t!("ops-running")).color(DIM));
-                    }
+            footer_rule(ui);
+            if let Some(e) = &c.ui.error {
+                ui.colored_label(AMBER, e.tr());
+            }
+            ui.add_space(6.0);
+            if c.ui.tab == Tab::Map && c.state().outcome.is_none() {
+                deck = map_deeds(c, &combat.sim, &unit_view);
+            }
+            // All in one row where it fits: the way out and OPTIONS to the left, what the tab
+            // offers to the right (its main button last). Else two rows.
+            let one_row = ui.available_width() >= (2 + deck.len()) as f32 * DEED_WIDTH;
+            if one_row {
+                ui.horizontal(|ui| {
+                    way_out(ui, c, &mut menu);
+                    pressed = deed_row(ui, &deck);
                 });
-            });
+            } else {
+                if !deck.is_empty() {
+                    ui.horizontal(|ui| pressed = deed_row(ui, &deck));
+                }
+                ui.horizontal(|ui| way_out(ui, c, &mut menu));
+            }
         });
     });
+    if let Some(i) = pressed {
+        do_deed(c, &mut unit_view, deck.swap_remove(i).todo);
+    }
     super::designate::confirm(ctx, c);
     if c.ui.confirm_exit {
         let window = egui::Window::new("Leave the campaign")
@@ -596,7 +606,7 @@ pub fn ops_ui(
 }
 
 /// The mission board: the offers, the selected one's details, the insertions under way.
-fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
+fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32, deck: &mut Vec<Deed>) {
     let from = |c: &ActiveCampaign, o: &MissionOffer| {
         c.state().site(o.base).map(|b| (b.x, b.y)).unwrap_or((o.x, o.y))
     };
@@ -757,16 +767,15 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             ui.label(if intel { format!("{line}  -  {}", t!("ops-recon-intel")) } else { line });
         }
         package_info(ui, c, &o);
-        if o.kind.ai_flown() {
-            ui.add_space(10.0);
-            if ui.add(big_button(t!("ops-order-insertion")).icon(icon::HELICOPTER)).clicked()
-                && let Objective::Insertion { place } = o.objective
-            {
-                c.ui.error = None;
-                c.actions.push(Action::OrderInsertion { place });
-            }
-            ui.label(egui::RichText::new(t!("ops-order-insertion.facts")).small().color(DIM));
-            ui.add_space(6.0);
+        if o.kind.ai_flown()
+            && let Objective::Insertion { place } = o.objective
+        {
+            deck.push(Deed::new(
+                Todo::OrderInsertion { place },
+                t!("ops-order-insertion"),
+                icon::HELICOPTER,
+                t!("ops-order-insertion.facts"),
+            ));
         }
         // The aircraft that flies it: the one last flown if it is made for it, else the best
         // one for it.
@@ -828,9 +837,18 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
             t!("ops-stores", aircraft = kind_of(aircraft).name(), stores = loadout.summary());
         ui.label(egui::RichText::new(text).color(DIM));
         support_button(ui, c, &o);
-        ui.add_space(10.0);
         // The AI's flight is up: fly along with it, or take over one of its aircraft.
         let ai = c.state().ai_mission_for(o.id).filter(|m| m.open()).and_then(|m| m.takeable());
+        if let Some(tag) = ai {
+            let mut deed = Deed::new(
+                Todo::TakeControl { tag, watched: false },
+                t!("ops-take-control"),
+                icon::JOIN,
+                t!("ops-take-control.facts"),
+            );
+            deed.why = take_over_refusal(c);
+            deck.push(deed);
+        }
         let (accept, mark) = if o.kind.ai_flown() {
             (t!("ops-fly-uh60"), icon::HELICOPTER)
         } else if ai.is_some() {
@@ -838,62 +856,179 @@ fn board(ui: &mut egui::Ui, c: &mut ActiveCampaign, width: f32) {
         } else {
             (t!("ops-accept"), icon::ACCEPT)
         };
-        if ui.add(big_button(accept).icon(mark).primary()).clicked() {
-            c.ui.error = None;
-            if c.role != Role::Local {
-                c.actions.push(Action::SelectMission { offer: Some(o.id), base: chosen });
-            }
-            c.ui.briefing = Some(Briefing::new(o.id, chosen, aircraft, loadout, BriefPage::Map));
-        }
-        if let Some(tag) = ai {
-            ui.add_space(6.0);
-            take_control(ui, c, tag, t!("ops-take-control"));
-        }
+        let todo = Todo::Accept { offer: o.id, base: chosen, aircraft, loadout };
+        deck.push(Deed::new(todo, accept, mark, "").primary());
     });
     flow.finish(ui);
 }
 
-/// TAKE CONTROL of an AI aircraft (campaign tag `tag`, the button's `label`): fly it on from
-/// where it is.
-fn take_control(ui: &mut egui::Ui, c: &mut ActiveCampaign, tag: u32, label: &str) {
-    let why = (c.phase != Phase::Ops || c.state().sortie(c.me).is_some())
-        .then(|| t!("ce-finish-sortie").to_string());
-    let button = big_button(label).icon(icon::JOIN);
-    if ui.add_enabled(why.is_none(), button).clicked() {
-        c.ui.error = None;
-        let loadout = super::control_loadout(c, tag);
-        c.actions.push(Action::TakeControl { tag, loadout });
-    }
-    let note = why.unwrap_or_else(|| t!("ops-take-control.facts").to_string());
-    ui.label(egui::RichText::new(note).small().color(DIM));
+/// Width a big button of the footer takes, spacing included, to tell whether they fit a row.
+const DEED_WIDTH: f32 = 200.0;
+
+/// What a footer button does when pressed.
+enum Todo {
+    OrderInsertion {
+        place: stealth_campaign::PlaceId,
+    },
+    Accept {
+        offer: u32,
+        base: u16,
+        aircraft: Airframe,
+        loadout: crate::loadout::PlannedLoadout,
+    },
+    /// TAKE CONTROL of an AI aircraft (campaign tag `tag`); `watched`: from the war map's view
+    /// of it, which closes.
+    TakeControl {
+        tag: u32,
+        watched: bool,
+    },
+    /// Man an air defence unit's console.
+    Man {
+        unit: u16,
+    },
 }
 
-/// The watched aircraft flies a mission for the friendly AI: TAKE CONTROL of it.
-fn take_control_button(
-    ui: &mut egui::Ui,
-    c: &mut ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    unit_view: &mut super::UnitView,
-) {
-    let Some(super::unit_view::UnitRef::Flight { index, .. }) = unit_view.target else { return };
-    let Some(f) = sim.campaign_flight(index).filter(|f| f.blue) else { return };
-    let Some(m) = c.state().ai_mission_of_tag(f.tag).filter(|m| m.open()) else { return };
-    if !m.flying().any(|t| t == f.tag) {
-        return;
+/// A big button a tab asks of the footer, where the other windows have theirs.
+struct Deed {
+    todo: Todo,
+    label: String,
+    icon: char,
+    primary: bool,
+    /// What it does, on hover.
+    facts: String,
+    /// Why it can't be pressed now (None: it can).
+    why: Option<String>,
+}
+
+impl Deed {
+    fn new(todo: Todo, label: impl AsRef<str>, icon: char, facts: impl AsRef<str>) -> Self {
+        Self {
+            todo,
+            label: label.as_ref().to_string(),
+            icon,
+            primary: false,
+            facts: facts.as_ref().to_string(),
+            why: None,
+        }
     }
-    let (name, title) = (m.airframe.name(), m.offer.title.tr());
-    // Still taking off (or landing): not yet.
-    if !sim.takeable(f.tag) {
-        return;
+
+    fn primary(mut self) -> Self {
+        self.primary = true;
+        self
     }
-    ui.add_space(10.0);
-    section(ui, name);
-    ui.label(egui::RichText::new(title).small().color(BRIGHT));
-    let before = c.actions.len();
-    // The column is narrow: CONTROL, as a console's.
-    take_control(ui, c, f.tag, t!("ops-control"));
-    if c.actions.len() > before {
-        unit_view.close();
+}
+
+/// The footer's left side: SAVE & EXIT (DISCONNECT from a server) and OPTIONS.
+fn way_out(ui: &mut egui::Ui, c: &mut ActiveCampaign, menu: &mut crate::flight_menu::FlightMenu) {
+    if ui.add(big_button(exit_label(c.role)).icon(exit_icon(c.role)).fill(EXIT_RED)).clicked() {
+        c.ui.confirm_exit = true;
+    }
+    if ui
+        .add(big_button(t!("menu-options")).icon(icon::OPTIONS))
+        .on_hover_text(t!("menu-options.short"))
+        .clicked()
+    {
+        menu.open_options = true;
+    }
+}
+
+/// The footer's right side, from the right: the deeds in reverse, so the last (the main one) is
+/// the rightmost. The index of the one pressed.
+fn deed_row(ui: &mut egui::Ui, deck: &[Deed]) -> Option<usize> {
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        let mut pressed = None;
+        for (i, d) in deck.iter().enumerate().rev() {
+            let mut button = big_button(&d.label).icon(d.icon);
+            if d.primary {
+                button = button.primary();
+            }
+            let mut resp = ui.add_enabled(d.why.is_none(), button);
+            if !d.facts.is_empty() {
+                resp = resp.on_hover_text(&d.facts);
+            }
+            if let Some(why) = &d.why {
+                resp = resp.on_disabled_hover_text(why);
+            }
+            if resp.clicked() {
+                pressed = Some(i);
+            }
+        }
+        pressed
+    })
+    .inner
+}
+
+/// What a footer button does.
+fn do_deed(c: &mut ActiveCampaign, unit_view: &mut super::UnitView, todo: Todo) {
+    c.ui.error = None;
+    match todo {
+        Todo::OrderInsertion { place } => c.actions.push(Action::OrderInsertion { place }),
+        Todo::Accept { offer, base, aircraft, loadout } => {
+            if c.role != Role::Local {
+                c.actions.push(Action::SelectMission { offer: Some(offer), base });
+            }
+            c.ui.briefing = Some(Briefing::new(offer, base, aircraft, loadout, BriefPage::Map));
+        }
+        Todo::TakeControl { tag, watched } => {
+            let loadout = super::control_loadout(c, tag);
+            c.actions.push(Action::TakeControl { tag, loadout });
+            if watched {
+                unit_view.close();
+            }
+        }
+        Todo::Man { unit } => {
+            c.actions.push(Action::Station(StationCmd::Man { unit }));
+            unit_view.close();
+        }
+    }
+}
+
+/// Why this player can't TAKE CONTROL of an AI aircraft now (None: they can).
+fn take_over_refusal(c: &ActiveCampaign) -> Option<String> {
+    (c.phase != Phase::Ops || c.state().sortie(c.me).is_some())
+        .then(|| t!("ce-finish-sortie").to_string())
+}
+
+/// The war map's deeds: CONTROL of the watched aircraft, or air defence unit.
+fn map_deeds(c: &ActiveCampaign, sim: &stealth_sim::Sim, unit_view: &super::UnitView) -> Vec<Deed> {
+    match unit_view.target {
+        // A friendly Patriot or NASAMS battery or Gepard: its console.
+        Some(super::unit_view::UnitRef::Aaa(k)) => {
+            let Some(u) = sim.units().get(k) else { return Vec::new() };
+            if !sim.aaa_blue(k) || !stealth_sim::station::mannable(u.kind) {
+                return Vec::new();
+            }
+            let mut deed = Deed::new(
+                Todo::Man { unit: k as u16 },
+                t!("ops-control"),
+                icon::CONTROL,
+                t!("ops-control.facts"),
+            );
+            deed.why = man_refusal(c, sim, k);
+            vec![deed]
+        }
+        // An aircraft flying a mission for the friendly AI: fly it on.
+        Some(super::unit_view::UnitRef::Flight { index, .. }) => {
+            let Some(f) = sim.campaign_flight(index).filter(|f| f.blue) else {
+                return Vec::new();
+            };
+            let Some(m) = c.state().ai_mission_of_tag(f.tag).filter(|m| m.open()) else {
+                return Vec::new();
+            };
+            // Still taking off (or landing): not yet.
+            if !m.flying().any(|t| t == f.tag) || !sim.takeable(f.tag) {
+                return Vec::new();
+            }
+            let mut deed = Deed::new(
+                Todo::TakeControl { tag: f.tag, watched: true },
+                t!("ops-control"),
+                icon::JOIN,
+                t!("ops-take-control.facts"),
+            );
+            deed.why = take_over_refusal(c);
+            vec![deed]
+        }
+        _ => Vec::new(),
     }
 }
 
@@ -1286,6 +1421,14 @@ pub(super) fn forces(ui: &mut egui::Ui, c: &ActiveCampaign) {
     });
 }
 
+/// The colour of the selection's outline now: black to white and back, once a second.
+fn blink(ctx: &egui::Context) -> egui::Color32 {
+    ctx.request_repaint();
+    let t = ctx.input(|i| i.time) as f32;
+    let white = 0.5 - 0.5 * (t * std::f32::consts::TAU).cos();
+    egui::Color32::from_gray((white * 255.0).round() as u8)
+}
+
 /// The war map: who holds which place, the insertions, the aircraft in the air.
 #[allow(clippy::too_many_arguments)]
 fn war_map(
@@ -1371,7 +1514,9 @@ fn war_map(
         }
         // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
         let pic = super::picture::picture(st, &sim);
-        super::picture::draw(&painter, &view, &pic, &layers, &mut tips, k);
+        // The watched unit's outline blinks from black to white.
+        let watched = unit_view.target.map(|unit| (unit, blink(ui.ctx())));
+        super::picture::draw(&painter, &view, &pic, &layers, &mut tips, k, watched);
         // Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
         // armour` the first tank of a column on the move.
         let watch = std::env::args().skip_while(|a| a != "--campaign-watch").nth(1);
@@ -1468,11 +1613,8 @@ fn war_map(
         });
         // What is under the pointer (not the LAYERS panel): its tooltip; a click on a unit
         // watches it live.
-        let drawer_rect = if drawer {
-            side_drawer(ui, rect, size.y, c, sim, unit_view)
-        } else {
-            egui::Rect::NOTHING
-        };
+        let drawer_rect =
+            if drawer { side_drawer(ui, rect, size.y, c) } else { egui::Rect::NOTHING };
         if !designating
             && let Some(pos) =
                 resp.hover_pos().filter(|&p| !panel.contains(p) && !drawer_rect.contains(p))
@@ -1494,28 +1636,22 @@ fn war_map(
                 egui::ScrollArea::vertical()
                     .id_salt("war_side")
                     .max_height(size.y)
-                    .show(ui, |ui| side_column(ui, c, sim, unit_view));
+                    .show(ui, |ui| side_column(ui, c));
             });
         }
     });
     layers.keep(ui.ctx(), "war");
 }
 
-/// What the war map's side column holds: the symbols, how to use the map, the designations.
-fn side_column(
-    ui: &mut egui::Ui,
-    c: &mut ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    unit_view: &mut super::UnitView,
-) {
+/// What the war map's side column holds: the symbols, how to use the map, the designations
+/// (CONTROL of the watched unit is in the footer).
+fn side_column(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
     section(ui, t!("debrief-section-map"));
     map_draw::symbology_switch(ui);
     ui.label(egui::RichText::new(t!("ops-layers-hint")).small().color(DIM));
     ui.add_space(8.0);
     ui.label(egui::RichText::new(t!("ops-watch-hint")).small().color(BRIGHT));
     ui.label(egui::RichText::new(t!("ops-map-hint")).small().color(DIM));
-    control_button(ui, c, sim, unit_view);
-    take_control_button(ui, c, sim, unit_view);
     ui.add_space(10.0);
     super::designate::buttons(ui, c);
 }
@@ -1527,8 +1663,6 @@ fn side_drawer(
     map: egui::Rect,
     height: f32,
     c: &mut ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    unit_view: &mut super::UnitView,
 ) -> egui::Rect {
     const WIDTH: f32 = 230.0;
     let area = egui::Rect::from_min_size(
@@ -1554,7 +1688,7 @@ fn side_drawer(
                 egui::ScrollArea::vertical()
                     .id_salt("war_drawer")
                     .max_height(height - 60.0)
-                    .show(ui, |ui| side_column(ui, c, sim, unit_view));
+                    .show(ui, |ui| side_column(ui, c));
             });
     }
     ui.min_rect()
@@ -1667,38 +1801,6 @@ pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) 
         Some(name) => t!("ops-manned-by", pilot = name),
         None => t!("ops-manned-by-other").to_string(),
     })
-}
-
-/// The watched unit is a friendly Patriot or NASAMS battery or Gepard: CONTROL mans its console.
-fn control_button(
-    ui: &mut egui::Ui,
-    c: &mut ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    unit_view: &mut super::UnitView,
-) {
-    let Some(super::unit_view::UnitRef::Aaa(k)) = unit_view.target else { return };
-    let Some(u) = sim.units().get(k) else { return };
-    if !sim.aaa_blue(k) || !stealth_sim::station::mannable(u.kind) {
-        return;
-    }
-    ui.add_space(10.0);
-    section(
-        ui,
-        match u.kind {
-            GroundKind::Gepard => "Gepard",
-            GroundKind::DroneCenter => t!("ops-drone-center"),
-            GroundKind::NasamsRadar => t!("ops-nasams"),
-            _ => t!("ops-patriot"),
-        },
-    );
-    let why = man_refusal(c, sim, k);
-    if ui.add_enabled(why.is_none(), big_button(t!("ops-control")).icon(icon::CONTROL)).clicked() {
-        c.ui.error = None;
-        c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
-        unit_view.close();
-    }
-    let note = why.unwrap_or_else(|| t!("ops-control.facts").to_string());
-    ui.label(egui::RichText::new(note).small().color(DIM));
 }
 
 fn debrief(ui: &mut egui::Ui, c: &ActiveCampaign) {
@@ -2195,7 +2297,7 @@ fn route_editor(
             }
             place_tip(tips, c0, p, st.clock, false, production);
         }
-        super::picture::draw(painter, view, &pic, layers, tips, 1.0);
+        super::picture::draw(painter, view, &pic, layers, tips, 1.0, None);
     };
     let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
         place_legend(ui, layers);
@@ -2235,14 +2337,6 @@ pub(crate) const EXIT_RED: egui::Color32 = egui::Color32::from_rgb(150, 24, 20);
 /// SAVE & EXIT's icon, or DISCONNECT's.
 pub(super) fn exit_icon(role: Role) -> char {
     if role == Role::Client { icon::DISCONNECT } else { icon::SAVE }
-}
-
-fn exit_button(ui: &egui::Ui, role: Role) -> egui::Button<'static> {
-    let text = egui::RichText::new(exit_label(role)).strong().color(egui::Color32::WHITE);
-    egui::Button::new(icon_text(ui, exit_icon(role), text))
-        .fill(EXIT_RED)
-        .stroke(egui::Stroke::new(1.0, MISSILE_RED))
-        .min_size(egui::vec2(150.0, 30.0))
 }
 
 /// The players in the campaign: who flies what, who waits on the board.

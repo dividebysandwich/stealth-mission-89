@@ -132,7 +132,6 @@ ops-watch-hint = 点击一个单位可实时观看
 ops-map-hint = 滚轮：缩放，拖动：平移
 ops-patriot = Patriot 连
 ops-nasams = NASAMS 连
-ops-drone-center = 无人机指挥所
 ops-manned-by = 操作者：{ $pilot }
 ops-manned-by-other = 由其他玩家操作
 ops-control = 控制

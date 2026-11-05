@@ -144,7 +144,6 @@ ops-unmute = UNMUTE
 ops-map-hint = Wheel: zoom, drag: pan
 ops-patriot = Patriot battery
 ops-nasams = NASAMS battery
-ops-drone-center = Drone command center
 ops-manned-by = Manned by { $pilot }
 ops-manned-by-other = Manned by another player
 ops-control = CONTROL
