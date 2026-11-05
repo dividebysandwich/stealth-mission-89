@@ -297,6 +297,25 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
     cmd.spawn().map(|_| ())
 }
 
+/// Starts the game again in VR in the multiplayer menu, which does what `args` say there (join
+/// a server: `--connect`, host a campaign: `--host`). The menu's choices are saved first: the new
+/// game starts with them.
+pub fn relaunch_multiplayer_in_vr(
+    args: &[String],
+    state: &MenuState,
+    settings: &crate::settings::Settings,
+) -> std::io::Result<()> {
+    crate::prefs::Prefs::save_if_changed(state, settings, &mut None);
+    let exe = match std::env::var_os("APPIMAGE") {
+        Some(appimage) => appimage.into(),
+        None => std::env::current_exe()?,
+    };
+    let mut cmd = std::process::Command::new(exe);
+    cmd.arg(vr_flag()).args(args).args(["--name", &state.player_name]);
+    settings_args(&mut cmd, settings);
+    cmd.spawn().map(|_| ())
+}
+
 /// Starts the game again in VR, straight into a saved campaign.
 pub fn relaunch_campaign_in_vr(
     name: &str,
