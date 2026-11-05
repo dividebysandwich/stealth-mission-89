@@ -23,7 +23,7 @@ impl Plugin for MenuPlugin {
         app.add_plugins(EguiPlugin::default())
             .insert_resource(EguiGlobalSettings { auto_create_primary_context: false, ..default() })
             .init_resource::<MenuState>()
-            .init_resource::<crate::input_dialog::InputDialog>()
+            .insert_resource(crate::input_dialog::InputDialog::from_args())
             .insert_resource(crate::options::OptionsWindow::from_args())
             // `--open-loadout`: start in the loadout editor (screenshots).
             .insert_resource(crate::loadout::LoadoutWindow::opened(

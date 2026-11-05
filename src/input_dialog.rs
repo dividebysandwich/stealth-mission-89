@@ -38,6 +38,11 @@ pub struct InputDialog {
 }
 
 impl InputDialog {
+    /// `--open-input`: start with the dialog open (screenshots).
+    pub fn from_args() -> Self {
+        Self { open: std::env::args().any(|a| a == "--open-input"), ..default() }
+    }
+
     /// Closes the dialog, dropping a capture, the status and the search.
     pub fn close(&mut self) {
         self.open = false;
@@ -178,6 +183,20 @@ fn binding_label(device: &str, source: &str) -> String {
     format!("{name}{ids}: {source}")
 }
 
+/// A binding in the dialog's rows: the device's name cut short (without its USB ids), the whole
+/// `binding_label` on hover, so that a long name doesn't push the row's buttons off the window.
+fn binding_cell(ui: &mut egui::Ui, device: &str, source: &str) -> egui::Response {
+    /// Characters of the device's name shown.
+    const NAME: usize = 16;
+    let name = device.rfind(" [").map_or(device, |i| &device[..i]);
+    let short = if name.chars().count() > NAME {
+        format!("{}…", name.chars().take(NAME - 1).collect::<String>().trim_end())
+    } else {
+        name.to_string()
+    };
+    ui.label(format!("{short}: {source}")).on_hover_text(binding_label(device, source))
+}
+
 /// Modifier keys, which only count together with another key.
 const MODIFIERS: [KeyCode; 8] = [
     KeyCode::ShiftLeft,
@@ -312,7 +331,8 @@ pub fn show(
             (screen.height() - 120.0).max(300.0),
         ));
     crate::menu::Panel::new(t!("input-title")).note(t!("input-note")).window(window, ctx, |ui| {
-        let split = Split::new(ui, "input_mapping");
+        // Rows wider than the window (long key lists) scroll sideways rather than clip.
+        let split = Split::new(ui, "input_mapping").wide();
         search_field(ui, &mut dialog.search, dialog.capture.is_some(), vr);
         ui.separator();
 
@@ -375,6 +395,11 @@ pub fn show(
                 egui::Grid::new("axes").num_columns(6).spacing([14.0, 6.0]).striped(true).show(
                     ui,
                     |ui| {
+                        ui.label("");
+                        ui.label(egui::RichText::new(t!("input-joystick")).color(GREEN));
+                        ui.label("");
+                        ui.label(egui::RichText::new(t!("input-dead-zone")).color(GREEN));
+                        ui.end_row();
                         for &control in &axes {
                             let what = Binding::Axis(control);
                             ui.label(control.name());
@@ -382,19 +407,23 @@ pub fn show(
                             let mapping = config.axes.iter_mut().find(|m| m.control == control);
                             match mapping {
                                 Some(m) => {
-                                    ui.label(binding_label(
+                                    binding_cell(
+                                        ui,
                                         &m.device,
                                         &t!("input-axis", n = m.code & 0xffff),
-                                    ));
+                                    );
                                     ui.checkbox(&mut m.invert, t!("input-invert"));
                                     if control.lever() {
                                         ui.label("");
                                     } else {
-                                        ui.add(
-                                            egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
-                                                .text(t!("input-dead-zone"))
-                                                .fixed_decimals(2),
-                                        );
+                                        ui.scope(|ui| {
+                                            ui.spacing_mut().slider_width = 70.0;
+                                            ui.add(
+                                                egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
+                                                    .fixed_decimals(2),
+                                            )
+                                            .on_hover_text(t!("input-dead-zone"));
+                                        });
                                     }
                                     let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
                                     let fill = match (control, v) {
@@ -406,9 +435,7 @@ pub fn show(
                                         format!("{v:+.2}")
                                     });
                                     ui.add(
-                                        egui::ProgressBar::new(fill)
-                                            .desired_width(120.0)
-                                            .text(text),
+                                        egui::ProgressBar::new(fill).desired_width(90.0).text(text),
                                     );
                                 }
                                 None => {
@@ -514,7 +541,7 @@ pub fn show(
                             let what = Binding::Button(target);
                             let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
                             match config.button(target) {
-                                Some(m) => ui.label(binding_label(&m.device, &m.source.label())),
+                                Some(m) => binding_cell(ui, &m.device, &m.source.label()),
                                 None => ui.label(
                                     egui::RichText::new(if capturing {
                                         t!("input-press-button")

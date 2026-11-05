@@ -140,6 +140,7 @@ Testing and screenshots
   --open-multiplayer, --open-host, --open-keyboard, --open-saves
                                start with that screen or window open
   --open-options <tab>         start with OPTIONS open: game, graphics, sound, controls
+  --open-input                 start with the input mapping dialog open
   --open-voices                start with the VOICES dialog open
   --atc-voice, --pilot-voice <voice[:speaker]>
                                the spoken ATC's voices (test runs, which skip the prefs)
