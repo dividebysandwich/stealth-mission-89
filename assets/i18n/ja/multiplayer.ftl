@@ -64,6 +64,7 @@ pic-site = { $place } 陣地
 uv-live = { $unit } - ライブ
 uv-contact-lost = 接触喪失
 uv-hint = ドラッグ：旋回  ホイール：ズーム
+uv-infrared = 赤外線（熱画像）表示
 
 ## マルチプレイヤー
 

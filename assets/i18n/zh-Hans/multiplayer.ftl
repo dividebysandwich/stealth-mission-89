@@ -64,6 +64,7 @@ pic-site = { $place } 阵地
 uv-live = { $unit } - 实时
 uv-contact-lost = 失去联系
 uv-hint = 拖动：环绕  滚轮：缩放
+uv-infrared = 红外（热成像）视图
 
 ## 多人游戏
 

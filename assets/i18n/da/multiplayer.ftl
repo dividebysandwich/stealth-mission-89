@@ -64,6 +64,7 @@ pic-site = Stedet { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = KONTAKT TABT
 uv-hint = Træk: kredsløb  Hjul: zoom
+uv-infrared = Infrarød (termisk) visning
 
 ## Multiplayer
 

@@ -64,6 +64,7 @@ pic-site = { $place } 기지
 uv-live = { $unit } - 실시간
 uv-contact-lost = 접촉 상실
 uv-hint = 끌기: 회전  휠: 확대/축소
+uv-infrared = 적외선(열화상) 보기
 
 ## 멀티플레이어
 

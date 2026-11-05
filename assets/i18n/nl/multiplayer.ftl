@@ -64,6 +64,7 @@ pic-site = Site { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT VERLOREN
 uv-hint = Slepen: draaien  Wiel: zoomen
+uv-infrared = Infraroodbeeld (thermisch)
 
 ## Multiplayer
 

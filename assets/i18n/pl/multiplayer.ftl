@@ -64,6 +64,7 @@ pic-site = Stanowisko { $place }
 uv-live = { $unit } - NA ŻYWO
 uv-contact-lost = UTRACONO KONTAKT
 uv-hint = Przeciąganie: obrót  Kółko: zoom
+uv-infrared = Widok w podczerwieni (termowizja)
 
 ## Gra wieloosobowa
 

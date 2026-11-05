@@ -64,6 +64,7 @@ pic-site = Suíomh: { $place }
 uv-live = { $unit } - BEO
 uv-contact-lost = CAILLEADH AN TEAGMHÁIL
 uv-hint = Tarraing: fithisigh  Roth: zúmáil
+uv-infrared = Radharc infridhearg (teirmeach)
 
 ## Iltoiseoir
 

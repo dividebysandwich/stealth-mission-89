@@ -64,6 +64,7 @@ pic-site = Stanovište: { $place }
 uv-live = { $unit } - ŽIVÉ
 uv-contact-lost = KONTAKT STRATENÝ
 uv-hint = Ťahanie: otáčanie  Koliesko: priblíženie
+uv-infrared = Infračervený (termický) pohľad
 
 ## Multiplayer
 

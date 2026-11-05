@@ -64,6 +64,7 @@ pic-site = Positsioon: { $place }
 uv-live = { $unit } - OTSE
 uv-contact-lost = KONTAKT KAOTATUD
 uv-hint = Lohista: tiirle  Ratas: suum
+uv-infrared = Infrapunavaade (termiline)
 
 ## Mitmikmäng
 

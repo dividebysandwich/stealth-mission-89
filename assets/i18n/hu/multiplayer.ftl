@@ -64,6 +64,7 @@ pic-site = Állás: { $place }
 uv-live = { $unit } - ÉLŐ
 uv-contact-lost = ELVESZETT A KAPCSOLAT
 uv-hint = Húzás: keringés  Kerék: nagyítás
+uv-infrared = Infravörös (hő) nézet
 
 ## Többjátékos
 

@@ -63,6 +63,7 @@ pic-site = Situs { $place }
 uv-live = { $unit } - LANGSUNG
 uv-contact-lost = KONTAK HILANG
 uv-hint = Seret: putar  Roda: zoom
+uv-infrared = Tampilan inframerah (termal)
 
 ## Multiplayer
 

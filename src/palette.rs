@@ -490,7 +490,7 @@ fn apply_msaa(
 pub(crate) const SKY_RING: [f32; 16] =
     [0., 2., 3., 4., 6., 8., 11., 15., 20., 27., 36., 48., 64., 87., 119., 164.];
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn update_globals(
     palette: Res<Palette>,
     viewpoint: Res<Viewpoint>,
@@ -500,10 +500,11 @@ fn update_globals(
     origin: Res<crate::world::FloatingOrigin>,
     hud: Option<Res<crate::hud::HudState>>,
     mfd: Option<Res<crate::mfd::MfdState>>,
-    (trackcam, wide, console): (
+    (trackcam, wide, console, unit_view): (
         Option<Res<crate::trackcam::TrackCamImage>>,
         Option<Res<crate::trackcam::TrackCamWide>>,
         Option<Res<crate::station::ConsoleEo>>,
+        Option<Res<crate::campaign::UnitView>>,
     ),
     images: Res<Assets<Image>>,
     time: Res<Time>,
@@ -560,6 +561,13 @@ fn update_globals(
     };
     if let Some(img) = shown.and_then(|h| images.get(&h)) {
         (g.dots.z, g.dots.w) = (img.width() as f32, img.height() as f32);
+    }
+    // The campaign's unit view in infrared: its picture (its own size) is drawn as the FLIR
+    // one (the Ops screen and a console's camera are never up together).
+    if unit_view.is_some_and(|v| v.infrared_on()) {
+        g.params.z = 1.0;
+        (g.dots.z, g.dots.w) =
+            (crate::campaign::unit_view::W as f32, crate::campaign::unit_view::H as f32);
     }
     for (i, (p, c)) in lighting.lights.iter().enumerate() {
         g.local_lights[2 * i] = *p;
