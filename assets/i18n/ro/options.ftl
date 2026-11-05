@@ -33,6 +33,10 @@ options-auto-trim = Trim automat
         Cu stick-ul eliberat, trimul menține atitudinea în care ați lăsat aeronava
         Elicoptere: botul nu se mai ridică odată cu viteza; avioane: compensează suprafețele de comandă avariate
         Trim manual: Alt + tastele săgeți, Alt + Home îl centrează
+options-keep-time-accel = Păstrează accelerarea timpului
+    .facts =
+        Accelerarea nu se mai oprește când ești detectat, lansezi o armă sau ești doborât
+        Doar butonul TIME și Shift + Z / Shift + X o schimbă
 options-tooltips = Tooltip-uri din cockpit
     .facts = Ce este o comandă sau un afișaj din cockpit, sub mouse sau sub vârful degetului în VR
 options-player-labels = Numele jucătorilor

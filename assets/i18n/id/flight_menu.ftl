@@ -25,6 +25,7 @@ fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
 fm-auto-trim = TRIM OTOMATIS
+fm-keep-time-accel = PERTAHANKAN AKSELERASI
 fm-tooltips = TOOLTIP
 fm-player-labels = NAMA PEMAIN
 fm-label-size = UKURAN NAMA

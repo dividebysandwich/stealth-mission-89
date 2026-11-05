@@ -33,6 +33,10 @@ options-auto-trim = Samodejni trim
         Pri spuščeni palici trim obdrži lego, v kateri ste jo pustili
         Helikopterji: nos se s hitrostjo ne dviguje več; letala: uravnovesi poškodovane krmilne ploskve
         Ročni trim: Alt + smerne tipke, Alt + Home ga centrira
+options-keep-time-accel = Ohrani pospeševanje časa
+    .facts =
+        Pospeševanje se ne prekine več, ko vas odkrijejo, izstrelite orožje ali vas sestrelijo
+        Spremenita ga le gumb TIME in Shift + Z / Shift + X
 options-tooltips = Tooltipi kabine
     .facts = Kaj je krmilni element ali zaslon v kabini, pod miško ali konico prsta v VR
 options-player-labels = Imena igralcev

@@ -646,6 +646,7 @@ struct StepParams<'w, 's> {
     view: Res<'w, ViewState>,
     msgs: ResMut<'w, HudMessages>,
     accel: ResMut<'w, TimeAccel>,
+    settings: Res<'w, crate::settings::Settings>,
     tiles: ResMut<'w, TileOverrides>,
     collision: Res<'w, PlayerCollision>,
     flash: ResMut<'w, crate::hud::DamageFlash>,
@@ -758,6 +759,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         view,
         mut msgs,
         mut accel,
+        settings,
         mut tiles,
         collision,
         mut flash,
@@ -792,6 +794,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let mut fx = Fx {
         msgs: &mut msgs,
         accel: &mut accel,
+        keep_accel: settings.keep_time_accel,
         tiles: &mut tiles,
         flash: &mut flash,
         sounds: &mut sounds,
@@ -2361,6 +2364,8 @@ mod tests {
 struct Fx<'a, 'w> {
     msgs: &'a mut HudMessages,
     accel: &'a mut TimeAccel,
+    /// `Settings::keep_time_accel`: the simulation's cancel requests are ignored.
+    keep_accel: bool,
     tiles: &'a mut TileOverrides,
     flash: &'a mut crate::hud::DamageFlash,
     sounds: &'a mut MessageWriter<'w, crate::sound::PlaySound>,
@@ -2397,7 +2402,11 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
     combat.record.event(&combat.sim, &e);
     match e {
         SimEvent::Message(s) => fx.msgs.show(s.tr_flight()),
-        SimEvent::CancelTimeAccel => fx.accel.level = 0,
+        SimEvent::CancelTimeAccel => {
+            if !fx.keep_accel {
+                fx.accel.level = 0;
+            }
+        }
         SimEvent::DamageFlash => fx.flash.0 = 1,
         SimEvent::Sound { id, priority } => {
             fx.sounds.write(crate::sound::PlaySound { id, priority });

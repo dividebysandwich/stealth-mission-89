@@ -33,6 +33,10 @@ options-auto-trim = Auto trim
         With the stick released, the trim holds the attitude where you left it
         Helicopters: no more nose rising with speed; jets: trims out damaged control surfaces
         Manual trim: Alt + arrow keys, Alt + Home centres it
+options-keep-time-accel = Keep time acceleration
+    .facts =
+        The acceleration is no longer cut when you are detected, release a weapon or are shot down
+        Only the TIME button and Shift + Z / Shift + X change it
 options-tooltips = Cockpit tooltips
     .facts = What a cockpit control or display is, under the mouse or a VR fingertip
 options-player-labels = Player labels

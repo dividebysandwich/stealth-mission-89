@@ -25,6 +25,7 @@ fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTO TRIM
+fm-keep-time-accel = ZADRŽI UBRZANJE
 fm-tooltips = TOOLTIPI
 fm-player-labels = IMENA IGRAČA
 fm-label-size = VELIČINA IMENA

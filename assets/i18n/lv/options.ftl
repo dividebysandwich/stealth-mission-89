@@ -33,6 +33,10 @@ options-auto-trim = Automātiskais trim
         Ar atlaistu stick trim notur stāvokli, kādā to atstājāt
         Helikopteri: deguns vairs necelas līdz ar ātrumu; reaktīvās lidmašīnas: kompensē bojātas vadības virsmas
         Manuālais trim: Alt + bulttaustiņi, Alt + Home to centrē
+options-keep-time-accel = Saglabāt laika paātrinājumu
+    .facts =
+        Paātrinājums vairs neizslēdzas, kad jūs pamana, izšaujat ieroci vai notriec
+        To maina tikai poga TIME un Shift + Z / Shift + X
 options-tooltips = Kabīnes tooltips
     .facts = Kas ir kabīnes vadības elements vai displejs, zem peles vai VR pirksta gala
 options-player-labels = Spēlētāju vārdi

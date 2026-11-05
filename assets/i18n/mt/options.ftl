@@ -33,6 +33,10 @@ options-auto-trim = Trim awtomatiku
         Bl-istick maħlul, it-trim iżomm l-assett fejn halltu
         Ħelikopters: l-għonq ma jibqax jogħla mal-veloċità; ajruplani: it-trim jikkumpensa s-superfiċi tal-kontroll bil-ħsara
         Trim manwali: Alt + vleġeġ, Alt + Home iċċentrah
+options-keep-time-accel = Żomm l-aċċelerazzjoni tal-ħin
+    .facts =
+        L-aċċelerazzjoni ma titwaqqafx aktar meta tkun skoperta, tefa' arma jew tinżel
+        Biss il-buttuna TIME u Shift + Z / Shift + X ibiddluha
 options-tooltips = Tooltips tal-kokpit
     .facts = X'inhi kontroll jew display tal-kokpit, taħt il-maws jew ras is-swaba' f'VR
 options-player-labels = Ismijiet tal-plejers

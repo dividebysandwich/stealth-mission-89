@@ -33,6 +33,10 @@ options-auto-trim = Uath-trim
         Nuair a scaoiltear an stick, coinníonn an trim an dearcadh mar a d'fhág tú é
         Héileacaptair: an tsrón gan ardú le luas a thuilleadh; scairdeitleáin: cuireann dromchlaí rialaithe damáistithe i dtrim
         Trim láimhe: Alt + eochracha saighde, lárú le Alt + Home
+options-keep-time-accel = Coinnigh luasghéarú ama
+    .facts =
+        Ní stopann an luasghéarú a thuilleadh nuair a bhraitear thú, nuair a scaoileann tú arm nó nuair a scaoiltear anuas thú
+        Ní athraíonn ach an cnaipe TIME agus Shift + Z / Shift + X é
 options-tooltips = Leideanna uirlise an chockpit
     .facts = Cad is rialú nó scáileán cockpit ann, faoin luch nó faoi bharr méire i VR
 options-player-labels = Ainmneacha imreoirí

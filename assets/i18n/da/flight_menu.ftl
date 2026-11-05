@@ -25,6 +25,7 @@ fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
 fm-auto-trim = AUTO TRIM
+fm-keep-time-accel = BEHOLD ACCELERATION
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPILLERNAVNE
 fm-label-size = NAVNESTØRRELSE

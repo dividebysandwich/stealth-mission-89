@@ -28,6 +28,7 @@ fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONICS
 fm-auto-trim = AUTO TRIM
+fm-keep-time-accel = KEEP ACCELERATION
 fm-tooltips = TOOLTIPS
 fm-atc = AIR TRAFFIC CONTROL
 fm-player-labels = PLAYER LABELS

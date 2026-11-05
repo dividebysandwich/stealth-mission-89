@@ -25,6 +25,7 @@ fm-cockpit = PILÓTAFÜLKE
 fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTOMATIKUS TRIM
+fm-keep-time-accel = GYORSÍTÁS MEGTARTÁSA
 fm-tooltips = TOOLTIPEK
 fm-player-labels = JÁTÉKOSNEVEK
 fm-label-size = NÉVMÉRET

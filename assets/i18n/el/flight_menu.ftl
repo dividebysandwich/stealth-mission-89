@@ -25,6 +25,7 @@ fm-cockpit = ΠΙΛΟΤΗΡΙΟ
 fm-hud = HUD
 fm-avionics = ΗΛΕΚΤΡΟΝΙΚΑ ΠΤΗΣΗΣ
 fm-auto-trim = AUTO TRIM
+fm-keep-time-accel = ΔΙΑΤΗΡΗΣΗ ΕΠΙΤΑΧΥΝΣΗΣ
 fm-tooltips = TOOLTIPS
 fm-player-labels = ΟΝΟΜΑΤΑ ΠΑΙΚΤΩΝ
 fm-label-size = ΜΕΓΕΘΟΣ ΟΝΟΜΑΤΩΝ

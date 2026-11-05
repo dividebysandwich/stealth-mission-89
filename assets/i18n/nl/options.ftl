@@ -33,6 +33,10 @@ options-auto-trim = Automatische trim
         Met losgelaten stick houdt de trim de stand aan waarin je hem hebt achtergelaten
         Helikopters: de neus komt niet meer omhoog met de snelheid; jets: trimt beschadigde stuurvlakken uit
         Handmatige trim: Alt + pijltjestoetsen, Alt + Home centreert hem
+options-keep-time-accel = Tijdversnelling behouden
+    .facts =
+        De versnelling stopt niet meer als je wordt ontdekt, een wapen afvuurt of wordt neergeschoten
+        Alleen de TIME-knop en Shift + Z / Shift + X wijzigen haar
 options-tooltips = Cockpit-tooltips
     .facts = Wat een bedieningselement of display in de cockpit is, onder de muis of een vingertop in VR
 options-player-labels = Spelersnamen

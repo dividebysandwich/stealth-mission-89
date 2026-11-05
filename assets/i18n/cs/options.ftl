@@ -33,6 +33,10 @@ options-auto-trim = Automatický trim
         Při uvolněné páce trim drží polohu, ve které jste ji nechali
         Vrtulníky: příď už nestoupá s rychlostí; stíhačky: vyvažuje poškozená kormidla
         Ruční trim: Alt + šipky, Alt + Home jej vystředí
+options-keep-time-accel = Zachovat zrychlení času
+    .facts =
+        Zrychlení se již nevypne, když vás odhalí, vypustíte zbraň nebo vás sestřelí
+        Změní ho jen tlačítko TIME a Shift + Z / Shift + X
 options-tooltips = Tooltipy kokpitu
     .facts = Co je ovladač nebo displej kokpitu, pod myší nebo špičkou prstu ve VR
 options-player-labels = Jména hráčů
