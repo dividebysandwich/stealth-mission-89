@@ -6,46 +6,147 @@
   <title>Download Stealth Mission 89</title>
   <!-- window.SM89_VERSION, written from Cargo.toml's version when the page is built (Trunk.toml). -->
   <script src="version.js"></script>
+  <link rel="preload" as="image" href="menu-scene.jpg">
   <style>
+    /* The game's terminal menu (src/menu.rs, apply_terminal_style and Panel): green phosphor
+       panels with cut corners and a glowing edge over the menu scene. */
+    /* The menu's icons (src/menu.rs, mod icon), from the game's assets beside this page. */
+    @font-face { font-family: lucide; src: url(assets/fonts/lucide.ttf); font-display: block; }
     :root {
-      --bg: #000; --panel: #061206; --line: #1d4a1d; --text: #8f8; --bright: #cfc;
-      --dim: #4a8a4a; --amber: #fc4; --amber-bg: #1a1300;
+      --bg: #05120d; --field: #091d15; --hover: #10452f; --frame: #135438; --green: #6cfbae;
+      --dim: #1b8852; --bright: #b7ffd8; --amber: #ffb000; --edge: #3de78c;
+      --lit-top: #1f9c5b; --lit-bottom: #176f46; --cut: 16px;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--bg); color: var(--text);
-                 font: 16px/1.5 ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; }
-    main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
-    h1 { color: var(--bright); font-size: 28px; letter-spacing: 2px; margin: 0; }
-    h2 { color: var(--bright); font-size: 18px; letter-spacing: 1px; margin: 32px 0 12px; }
-    p { margin: 8px 0; }
+    html { background: #000; }
+    body { margin: 0; color: var(--green);
+                 font: 15px/1.5 Hack, "DejaVu Sans Mono", ui-monospace, Menlo, Consolas, monospace; }
+    /* The menu scene, still while the page scrolls over it. */
+    body::before { content: ""; position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.65)),
+                  url(menu-scene.jpg) center / cover no-repeat, #000; }
+    ::selection { background: var(--lit-bottom); color: var(--bright); }
     a { color: var(--bright); }
-    .sub { color: var(--dim); margin-bottom: 24px; }
-    .steam { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-    .steam .card { border-color: var(--amber); background: var(--amber-bg); }
-    .steam h3 { color: var(--amber); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
-    .card { border: 1px solid var(--line); background: var(--panel); padding: 16px; }
-    .card.mine { border-color: var(--bright); box-shadow: 0 0 0 1px var(--bright) inset; }
-    .card h3 { margin: 0 0 4px; color: var(--bright); font-size: 17px; }
-    .card .what { color: var(--dim); font-size: 14px; margin-bottom: 12px; }
-    .card .tag { color: var(--bg); background: var(--bright); font-size: 12px; padding: 0 6px;
-                 margin-left: 6px; vertical-align: middle; }
-    .btn { display: block; text-decoration: none; color: var(--bg); background: var(--text);
-           padding: 8px 12px; margin-top: 8px; font-weight: bold; overflow-wrap: anywhere; }
-    .btn:hover, .btn:focus-visible { background: var(--bright); }
-    .btn.alt { background: none; color: var(--text); border: 1px solid var(--line); font-weight: normal; }
-    .btn.alt:hover, .btn.alt:focus-visible { border-color: var(--bright); color: var(--bright); }
-    .steam .btn { background: var(--amber); }
+    b, code { color: var(--bright); }
+    p { margin: 8px 0; }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 40px 16px 48px; }
+    /* The panel: its edge is the outer clipped box, its fill the inner one; the glow follows
+       the cut outline as a drop shadow of both. */
+    .glow { filter: drop-shadow(0 0 4px rgba(61, 231, 140, 0.45)); }
+    .panel, .panel > .inner {
+      clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut),
+                         100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%,
+                         var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+    }
+    .panel { background: var(--edge); padding: 2px; }
+    .panel > .inner { --cut: 15px; background: rgba(5, 18, 13, 0.93); padding: 0 16px 16px; }
+
+    /* Header: the title in a slanted tab after two slanted marks, the version at the right
+       before two more, a rule under them stepping up at the right. */
+    .head { position: relative; display: flex; align-items: center; margin: 0 -16px;
+            padding-right: 16px; min-height: 56px; }
+    .head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 11.5px;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--dim), var(--dim)) left bottom / calc(100% - 196px) 1.5px no-repeat,
+        linear-gradient(var(--dim), var(--dim)) right top / 186px 1.5px no-repeat,
+        linear-gradient(to bottom right, transparent calc(50% - 1px), var(--dim) calc(50% - 1px),
+                        var(--dim) calc(50% + 0.5px), transparent calc(50% + 0.5px))
+          calc(100% - 185px) 0 / 11.5px 11.5px no-repeat; }
+    .tab { display: flex; align-items: center; align-self: stretch; gap: 8px;
+           background: var(--field); padding: 6px 0 8px 16px; }
+    .tab::after { content: ""; align-self: stretch; width: 18px; margin: -6px 0 -8px 24px;
+      background: linear-gradient(to bottom right, var(--field) calc(50% - 1px),
+                  var(--dim) calc(50% - 1px), var(--dim) calc(50% + 0.75px),
+                  transparent calc(50% + 0.75px)); }
+    .head .tab { margin-right: auto; }
+    .marks { display: inline-flex; gap: 5px; height: 20px; flex: none; }
+    .marks i { width: 9px; background: var(--green); transform: skewX(-27deg); }
+    .marks.back i { width: 9px; transform: skewX(24deg); }
+    h1 { color: var(--bright); font-size: 26px; font-weight: normal; letter-spacing: 1px;
+         margin: 0 0 0 6px; white-space: nowrap; }
+
+    .sub { color: var(--dim); text-align: center; margin: 16px 0 4px; }
+    .sub #version { color: var(--bright); }
+
+    /* Sections: an amber title in brackets, as the menu's sections. */
+    h2 { color: var(--amber); font-size: 14px; font-weight: normal; text-transform: uppercase;
+         letter-spacing: 0.5px; margin: 28px 0 10px; }
+    h2::before { content: "[ "; } h2::after { content: " ]"; }
+
+    .grid, .steam { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 12px; }
+    .steam { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    /* Cards: the menu's framed groups, a bright upper-case title. */
+    .card { position: relative; border: 1px solid var(--frame); background: rgba(9, 29, 21, 0.6);
+            padding: 10px 12px 12px; display: flex; flex-direction: column;
+            transition: border-color 0.15s, box-shadow 0.15s; }
+    .card:hover { border-color: var(--dim); }
+    .card h3 { margin: 0 0 4px; color: var(--bright); font-size: 16px; font-weight: normal;
+               text-transform: uppercase; letter-spacing: 0.5px; }
+    .card .what { color: var(--green); font-size: 14px; margin-bottom: 10px; flex: 1; opacity: 0.85; }
+    .steam .card { border-color: rgba(255, 176, 0, 0.45); }
+    .steam .card:hover { border-color: var(--amber); }
+    .steam .card h3 { color: var(--amber); }
+    .card.mine { border-color: var(--edge);
+                 box-shadow: 0 0 0 1px var(--edge) inset, 0 0 14px rgba(61, 231, 140, 0.35); }
+    .card .tag { color: var(--bg); background: var(--amber); font-size: 12px; padding: 1px 6px;
+                 margin-left: 8px; vertical-align: middle; letter-spacing: 1px;
+                 white-space: nowrap; display: inline-block; }
+
+    /* Buttons: the main menu's (BigButton, left-aligned): a field with a frame, its icon then
+       its label, lit (gradient, glowing edge) under the pointer; the lit one is FLY's. */
+    .btn { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 6px 12px 6px 20px;
+           margin-top: 8px; text-decoration: none; overflow-wrap: anywhere; font-size: 18px;
+           line-height: 1.25; color: var(--green); background: var(--field);
+           border: 1px solid var(--frame); }
+    .btn::before { content: "\e0b2"; font: 20px/1 lucide; flex: none; }
+    .btn.lit, .btn:hover, .btn:focus-visible { outline: none; color: var(--bright);
+           background: linear-gradient(var(--lit-top), var(--lit-bottom));
+           border: 1.5px solid var(--edge); padding-left: 19.5px;
+           box-shadow: 0 0 0 4px rgba(61, 231, 140, 0.25); }
+    .btn:hover, .btn:focus-visible { box-shadow: 0 0 0 4px rgba(61, 231, 140, 0.45); }
+    .btn:active { background: linear-gradient(var(--lit-bottom), var(--lit-top)); }
+    .btn.alt { font-size: 15px; min-height: 38px; }
+    .btn.alt::before { font-size: 17px; }
+    .btn.back { display: inline-flex; margin: 0; font-size: 15px; min-height: 38px; }
+    .btn.back::before { content: "\e048"; font-size: 17px; }
+
     small, .note { color: var(--dim); font-size: 14px; }
-    code { color: var(--bright); }
+    p.note { margin-top: 10px; }
+    /* The stepped rule above the panel's footer, as footer_rule. */
+    .rule { height: 14px; margin-top: 28px;
+      background:
+        linear-gradient(var(--dim), var(--dim)) left bottom 2px / calc(100% - 190px) 1.5px no-repeat,
+        linear-gradient(var(--dim), var(--dim)) right bottom 12px / 180px 1.5px no-repeat,
+        linear-gradient(to bottom right, transparent calc(50% - 1px), var(--dim) calc(50% - 1px),
+                        var(--dim) calc(50% + 0.5px), transparent calc(50% + 0.5px))
+          calc(100% - 179.5px) 0.5px / 11.5px 11.5px no-repeat; }
+    footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+             gap: 12px; margin-top: 12px; }
+    footer .note { margin: 0; }
+
+    @media (max-width: 560px) {
+      main { padding: 16px 8px 32px; }
+      .panel > .inner { padding: 0 12px 12px; }
+      h1 { font-size: 19px; }
+      .head .marks.back { display: none; }
+      .head::after, .rule { background: linear-gradient(var(--dim), var(--dim)) left bottom / 100% 1.5px no-repeat; }
+      .rule { height: 2px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
 <main>
-  <h1>STEALTH MISSION 89</h1>
+<div class="glow"><div class="panel"><div class="inner">
+  <header class="head">
+    <div class="tab"><span class="marks"><i></i><i></i></span><h1>STEALTH MISSION 89</h1></div>
+    <span class="marks back"><i></i><i></i></span>
+  </header>
   <p class="sub"><span data-i18n="sub">Download version</span> <span id="version">?</span>
-    <span data-i18n="for">for your computer.</span>
-    <a href="index.html" data-i18n="back">Back to the browser version</a></p>
+    <span data-i18n="for">for your computer.</span></p>
 
   <h2 data-i18n="steam">Steam Deck and Steam Frame</h2>
   <div class="steam">
@@ -111,8 +212,13 @@
     </div>
   </div>
 
-  <p class="note" style="margin-top: 24px"><span data-i18n="other">Other versions and the release notes:</span>
-    <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases" data-i18n="github">the release on GitHub</a>.</p>
+  <div class="rule"></div>
+  <footer>
+    <p class="note"><span data-i18n="other">Other versions and the release notes:</span>
+      <a id="release" href="https://github.com/dividebysandwich/stealth-mission-89/releases" data-i18n="github">the release on GitHub</a>.</p>
+    <a class="btn back" href="index.html" data-i18n="back">Back to the browser version</a>
+  </footer>
+</div></div></div>
 </main>
 <script>
   // The page in the browser's language, English for the others (data-i18n elements).
@@ -593,6 +699,7 @@
     const card = document.querySelector(`.card[data-os="${os}"][data-arch="${arch}"]`);
     if (!card) return;
     card.classList.add("mine");
+    card.querySelector(".btn").classList.add("lit");
     const mine = T ? T.mine : "THIS COMPUTER";
     card.querySelector("h3").insertAdjacentHTML("beforeend", `<span class="tag">${mine}</span>`);
   })();
