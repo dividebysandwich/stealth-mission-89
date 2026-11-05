@@ -6,6 +6,7 @@ fm-resume = ATHSHEACHAIN
 fm-save-mission = SÁBHÁIL AN MISEAN
 fm-saved = SÁBHÁILTE
 fm-not-saved = GAN SÁBHÁIL
+fm-load-mission = LÓD AN MISEAN
 fm-key-guide = TREOIR EOCHRACHA
 fm-end-mission = CRÍOCHNAIGH AN MISEAN
 fm-end-sortie = CRÍOCHNAIGH AN EITILT

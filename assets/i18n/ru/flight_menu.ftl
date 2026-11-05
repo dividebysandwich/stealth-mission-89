@@ -6,6 +6,7 @@ fm-resume = ПРОДОЛЖИТЬ
 fm-save-mission = СОХРАНИТЬ МИССИЮ
 fm-saved = СОХРАНЕНО
 fm-not-saved = НЕ СОХРАНЕНО
+fm-load-mission = ЗАГРУЗИТЬ МИССИЮ
 fm-key-guide = СПРАВКА ПО КЛАВИШАМ
 fm-end-mission = ЗАВЕРШИТЬ МИССИЮ
 fm-end-sortie = ЗАВЕРШИТЬ ВЫЛЕТ

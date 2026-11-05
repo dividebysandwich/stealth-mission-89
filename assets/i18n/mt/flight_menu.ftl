@@ -6,6 +6,7 @@ fm-resume = KOMPLI
 fm-save-mission = AĦŻEN IL-MISSJONI
 fm-saved = MAĦŻUNA
 fm-not-saved = MHIEX MAĦŻUNA
+fm-load-mission = ILLOADJA L-MISSJONI
 fm-key-guide = GWIDA TAT-TASTI
 fm-end-mission = ITTERMINA L-MISSJONI
 fm-end-sortie = ITTERMINA T-TITJIRA

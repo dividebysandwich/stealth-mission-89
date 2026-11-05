@@ -6,6 +6,7 @@ fm-resume = ПРОДЪЛЖАВАНЕ
 fm-save-mission = ЗАПАЗВАНЕ НА МИСИЯТА
 fm-saved = ЗАПАЗЕНА
 fm-not-saved = НЕ Е ЗАПАЗЕНА
+fm-load-mission = ЗАРЕЖДАНЕ НА МИСИЯ
 fm-key-guide = ПЪТЕВОДИТЕЛ ЗА КЛАВИШИТЕ
 fm-end-mission = КРАЙ НА МИСИЯТА
 fm-end-sortie = КРАЙ НА ПОЛЕТА

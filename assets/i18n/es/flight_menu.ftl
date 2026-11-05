@@ -6,6 +6,7 @@ fm-resume = REANUDAR
 fm-save-mission = GUARDAR MISIÓN
 fm-saved = GUARDADA
 fm-not-saved = NO GUARDADA
+fm-load-mission = CARGAR MISIÓN
 fm-key-guide = GUÍA DE TECLAS
 fm-end-mission = TERMINAR MISIÓN
 fm-end-sortie = TERMINAR SALIDA

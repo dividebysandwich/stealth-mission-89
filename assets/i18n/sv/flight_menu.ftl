@@ -6,6 +6,7 @@ fm-resume = ÅTERUPPTA
 fm-save-mission = SPARA UPPDRAG
 fm-saved = SPARAT
 fm-not-saved = INTE SPARAT
+fm-load-mission = LADDA UPPDRAG
 fm-key-guide = TANGENTGUIDE
 fm-end-mission = AVSLUTA UPPDRAGET
 fm-end-sortie = AVSLUTA FLYGNINGEN

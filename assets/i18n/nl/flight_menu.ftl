@@ -6,6 +6,7 @@ fm-resume = HERVATTEN
 fm-save-mission = MISSIE OPSLAAN
 fm-saved = OPGESLAGEN
 fm-not-saved = NIET OPGESLAGEN
+fm-load-mission = MISSIE LADEN
 fm-key-guide = TOETSENGIDS
 fm-end-mission = MISSIE BEËINDIGEN
 fm-end-sortie = VLUCHT BEËINDIGEN

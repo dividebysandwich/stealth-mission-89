@@ -6,6 +6,7 @@ fm-resume = ΕΠΑΝΑΛΗΨΗ
 fm-save-mission = ΑΠΟΘΗΚΕΥΣΗ ΑΠΟΣΤΟΛΗΣ
 fm-saved = ΑΠΟΘΗΚΕΥΤΗΚΕ
 fm-not-saved = ΔΕΝ ΑΠΟΘΗΚΕΥΤΗΚΕ
+fm-load-mission = ΦΟΡΤΩΣΗ ΑΠΟΣΤΟΛΗΣ
 fm-key-guide = ΟΔΗΓΟΣ ΠΛΗΚΤΡΩΝ
 fm-end-mission = ΤΕΛΟΣ ΑΠΟΣΤΟΛΗΣ
 fm-end-sortie = ΤΕΛΟΣ ΕΞΟΡΜΗΣΗΣ

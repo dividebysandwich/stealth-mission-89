@@ -6,6 +6,7 @@ fm-resume = JATKA
 fm-save-mission = TALLENNA TEHTÄVÄ
 fm-saved = TALLENNETTU
 fm-not-saved = EI TALLENNETTU
+fm-load-mission = LATAA TEHTÄVÄ
 fm-key-guide = NÄPPÄINOPAS
 fm-end-mission = LOPETA TEHTÄVÄ
 fm-end-sortie = LOPETA LENTO

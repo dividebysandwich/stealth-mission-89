@@ -5,6 +5,7 @@ fm-resume = 继续
 fm-save-mission = 保存任务
 fm-saved = 已保存
 fm-not-saved = 未保存
+fm-load-mission = 载入任务
 fm-key-guide = 按键指南
 fm-end-mission = 结束任务
 fm-end-sortie = 结束出击

@@ -9,7 +9,7 @@
 //! `msl<2:ViewChase` / `air<2:HudMode` = an enemy missile / an airborne aircraft within 2 km. The step `Screenshot` takes the
 //! `--screenshot` picture at that moment. `yaw=0.5` sets the rudder, `throttle=0.8` holds an
 //! absolute throttle (`collective=0.6`: a helicopter's collective), `trigger=1` / `trigger=0` holds / releases the fire button (`gun=1` / `gun=0` the gun trigger), `mark=1` / `mark=0` the lock cursor
-//! target button, `talk=1` / `talk=0` the coop radio's push-to-talk, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION),
+//! target button, `talk=1` / `talk=0` the coop radio's push-to-talk, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION), `LoadMission` opens the list of saves over the menu (as its LOAD MISSION; `Menu` first opens the menu),
 //! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
 //! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
@@ -208,6 +208,7 @@ fn apply(
             }
         }
         Step::Action(name) if name == "SaveMission" => menu.save_request = true,
+        Step::Action(name) if name == "LoadMission" => menu.load_request = true,
         Step::Roll(r) => axes.roll = *r,
         Step::Pitch(p) => axes.pitch = *p,
         Step::Yaw(y) => axes.yaw = *y,

@@ -6,6 +6,7 @@ fm-resume = LANJUTKAN
 fm-save-mission = SIMPAN MISI
 fm-saved = TERSIMPAN
 fm-not-saved = BELUM TERSIMPAN
+fm-load-mission = MUAT MISI
 fm-key-guide = PANDUAN TOMBOL
 fm-end-mission = AKHIRI MISI
 fm-end-sortie = AKHIRI SORTIE

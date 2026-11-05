@@ -6,6 +6,7 @@ fm-resume = TĘSTI
 fm-save-mission = IŠSAUGOTI MISIJĄ
 fm-saved = IŠSAUGOTA
 fm-not-saved = NEIŠSAUGOTA
+fm-load-mission = ĮKELTI MISIJĄ
 fm-key-guide = KLAVIŠŲ VADOVAS
 fm-end-mission = BAIGTI MISIJĄ
 fm-end-sortie = BAIGTI SKRYDĮ

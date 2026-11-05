@@ -5,6 +5,7 @@ fm-resume = FORTSETZEN
 fm-save-mission = MISSION SPEICHERN
 fm-saved = GESPEICHERT
 fm-not-saved = NICHT GESPEICHERT
+fm-load-mission = MISSION LADEN
 fm-key-guide = TASTENÜBERSICHT
 fm-end-mission = MISSION BEENDEN
 fm-end-sortie = EINSATZ BEENDEN

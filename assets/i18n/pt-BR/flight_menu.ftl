@@ -6,6 +6,7 @@ fm-resume = RETOMAR
 fm-save-mission = SALVAR MISSÃO
 fm-saved = SALVA
 fm-not-saved = NÃO SALVA
+fm-load-mission = CARREGAR MISSÃO
 fm-key-guide = GUIA DE TECLAS
 fm-end-mission = ENCERRAR MISSÃO
 fm-end-sortie = ENCERRAR SURTIDA
