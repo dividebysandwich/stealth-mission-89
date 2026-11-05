@@ -29,6 +29,7 @@ fm-tooltips = ПОДСКАЗКИ
 fm-tutorial = ИНТЕРАКТИВНО ОБУЧЕНИЕ
 fm-player-labels = ИМЕНА НА ИГРАЧИТЕ
 fm-label-size = РАЗМЕР НА ИМЕНАТА
+fm-seat-height = ВИСОЧИНА НА СЕДАЛКАТА
 fm-cockpit-size = РАЗМЕР НА КАБИНАТА
 fm-volume-master = ОБЩА СИЛА НА ЗВУКА
 fm-volume-engine = ДВИГАТЕЛ

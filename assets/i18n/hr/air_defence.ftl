@@ -25,6 +25,7 @@ ds-click-hint = Kliknite na kartu gdje ide - desni klik: odustani
 ds-not-open-ground = Nije na otvorenom terenu
 ds-new-gepard = Novi položaj Gepard - kliknite za određivanje
 ds-new-patriot = Novi položaj Patriot - kliknite za određivanje
+ds-new-nasams = Novi položaj NASAMS - kliknite za određivanje
 ds-new-drones = Novo zapovjedno mjesto dronova - kliknite za određivanje
 ds-waiting = Čeka teret
 ds-fast-track = UBRZAJ ({ $cost })

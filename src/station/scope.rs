@@ -266,7 +266,7 @@ pub(super) fn draw(
     }
     let w = SCOPE_CANVAS.0 as f32;
     stroke_text_at(cv, 6.0, 8.0, &format!("{:.0} KM", ui.range_km), 7.0, 1.0, GREEN, Align::Left);
-    let title = if m.gepard() { "GEPARD" } else { "PATRIOT" };
+    let title = m.title();
     stroke_text_at(cv, w - 6.0, 8.0, title, 7.0, 1.0, GREEN, Align::Right);
     if sim.station_of(c.me.0).is_some_and(|s| s.radar_off) {
         let h = SCOPE_CANVAS.1 as f32;
@@ -292,8 +292,8 @@ pub(super) fn draw(
         }
         // The battery's missile reach, the Gepard's.
         if !m.gepard() {
-            let reach = stealth_sim::station::PATRIOT_MAX_RANGE as f32 * k;
-            if reach < r {
+            let reach = m.reach() as f32 * k;
+            if reach <= r + 0.5 {
                 cv.ring(centre, reach, 0.6, GREY);
             }
         }

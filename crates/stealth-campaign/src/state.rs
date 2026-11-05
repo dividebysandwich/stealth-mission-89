@@ -409,6 +409,11 @@ pub enum Objective {
         site: u32,
         leg: u8,
     },
+    /// Shoot down the other side's cargo aircraft (campaign tag) before it lands: its load of
+    /// munitions is lost.
+    Cargo {
+        tag: u32,
+    },
 }
 
 /// A mission on the board.
@@ -1021,22 +1026,52 @@ pub struct CampaignState {
     /// after it.
     #[serde(default)]
     pub runway_at: [f64; 2],
+    /// Each airfield's munitions, each side's production base (blue, red), the cargo flights
+    /// scheduled or in the air, and the cargo aircraft shot down (tags).
+    #[serde(default)]
+    pub stocks: std::collections::BTreeMap<ObjectId, crate::Stock>,
+    #[serde(default)]
+    pub production: [Option<ObjectId>; 2],
+    /// A side with only carriers left: the other side's airfield to take for its production
+    /// base (blue, red).
+    #[serde(default)]
+    pub production_target: [Option<ObjectId>; 2],
+    #[serde(default)]
+    pub cargo_runs: Vec<crate::CargoRun>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cargo_lost: Vec<u32>,
+    /// Bases whose cargo aircraft was shot down, and until when none flies there again.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cargo_cooldown: Vec<(ObjectId, f64)>,
+    /// The enemy SAM sites' magazines not full (object, missiles; the simulation's, kept over
+    /// a save).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub site_magazines: Vec<(ObjectId, i32)>,
+    /// The enemy's long, medium and short range SAM sites and guns each of its bases supplies
+    /// (the nearest; counted by the host): what its stocks of their munitions are sized for.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub site_demand: std::collections::BTreeMap<ObjectId, [u32; 4]>,
     /// Friendly offers a player asked the AI to fly at once (out of the queue, on its next
     /// tick).
     #[serde(skip)]
     pub ai_rush: Vec<u32>,
+    /// Since the host started (not saved, for balance tests): of each munition, how many were
+    /// drawn from the bases, put back unused, and asked for when the base had none.
+    #[serde(skip)]
+    pub munition_log: std::collections::BTreeMap<crate::Munition, [u64; 3]>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
 
-/// What a friendly site the players build and man is: a Gepard, a Patriot battery or a drone
-/// command center.
+/// What a friendly site the players build and man is: a Gepard, a Patriot battery, a drone
+/// command center or a NASAMS battery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub enum DefenceKind {
     #[default]
     Gepard,
     Patriot,
     Drones,
+    Nasams,
 }
 
 impl DefenceKind {
@@ -1046,6 +1081,7 @@ impl DefenceKind {
             DefenceKind::Gepard => "Gepard",
             DefenceKind::Patriot => "Patriot battery",
             DefenceKind::Drones => "drone command center",
+            DefenceKind::Nasams => "NASAMS battery",
         }
     }
 
@@ -1055,6 +1091,7 @@ impl DefenceKind {
             DefenceKind::Gepard => "Gepard",
             DefenceKind::Patriot => "Patriot",
             DefenceKind::Drones => "Drones",
+            DefenceKind::Nasams => "NASAMS",
         }
     }
 }
@@ -1067,6 +1104,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Gepard,
             Patriot,
             Drones,
+            Nasams,
         }
         #[derive(Deserialize)]
         #[serde(untagged)]
@@ -1078,6 +1116,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Either::Patriot(true) | Either::Kind(Named::Patriot) => DefenceKind::Patriot,
             Either::Patriot(false) | Either::Kind(Named::Gepard) => DefenceKind::Gepard,
             Either::Kind(Named::Drones) => DefenceKind::Drones,
+            Either::Kind(Named::Nasams) => DefenceKind::Nasams,
         })
     }
 }
@@ -1144,6 +1183,7 @@ impl SupplyRequest {
             DefenceKind::Gepard => "cl-supply-gepard",
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
+            DefenceKind::Nasams => "cl-supply-nasams",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1207,6 +1247,7 @@ impl Deployment {
             DefenceKind::Gepard => "Gepard site",
             DefenceKind::Patriot => "Patriot site",
             DefenceKind::Drones => "Drone command center",
+            DefenceKind::Nasams => "NASAMS site",
         };
         format!("{what} near {}", self.name)
     }
@@ -1217,6 +1258,7 @@ impl Deployment {
             DefenceKind::Gepard => "cl-supply-gepard",
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
+            DefenceKind::Nasams => "cl-supply-nasams",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1538,7 +1580,16 @@ impl CampaignState {
             ai_missions: Vec::new(),
             red_board: Vec::new(),
             runway_at: [0.0; 2],
+            stocks: Default::default(),
+            production: [None; 2],
+            production_target: [None; 2],
+            cargo_runs: Vec::new(),
+            cargo_lost: Vec::new(),
+            cargo_cooldown: Vec::new(),
+            site_magazines: Vec::new(),
+            site_demand: Default::default(),
             ai_rush: Vec::new(),
+            munition_log: Default::default(),
             terrain: Terrain::default(),
         };
         c.note(text!("cl-campaign-started"));

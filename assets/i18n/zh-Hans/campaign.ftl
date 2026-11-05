@@ -103,6 +103,7 @@ cl-objective = { $title }：目标已达成
 cl-recon = { $place } 的侦察照片：其防御已被标明
 cl-package = { $place } 上空的 package：{ $kinds } - { $pilots } 获得 +{ $bonus }
 cl-supply-patriot = { $place } 附近的 Patriot 连
+cl-supply-nasams = { $place } 附近的 NASAMS 连
 cl-supply-gepard = { $place } 附近的 Gepard
 cl-supply-drones = { $place } 附近的无人机指挥所
 cl-resupply-requested = { $who } 请求为 { $unit } 补给
@@ -247,6 +248,7 @@ st-destroyed = 已摧毁
 st-already-refilling = 正在补充
 st-not-empty-yet = 尚未用完
 st-stockpile-empty = 库存已空
+st-stockpile-short = 库存导弹不足
 st-no-launcher-ready = 没有就绪的发射架
 st-unit-destroyed = { $unit } 已被摧毁
 

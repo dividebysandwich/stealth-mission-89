@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPS
 fm-tutorial = INTERAKTIV HANDLEDNING
 fm-player-labels = SPELARNAMN
 fm-label-size = NAMNSTORLEK
+fm-seat-height = SITTHÖJD
 fm-cockpit-size = COCKPITSTORLEK
 fm-volume-master = HUVUDVOLYM
 fm-volume-engine = MOTOR

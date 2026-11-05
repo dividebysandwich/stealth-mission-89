@@ -28,6 +28,7 @@ fm-tooltips = 提示
 fm-tutorial = 交互式教程
 fm-player-labels = 玩家名称
 fm-label-size = 名称大小
+fm-seat-height = 座椅高度
 fm-cockpit-size = 座舱大小
 fm-volume-master = 总音量
 fm-volume-engine = 发动机

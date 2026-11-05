@@ -257,7 +257,8 @@ impl Sim {
 
     /// Nearest enemy ahead (`Commands::nearest_target`), once the HUD mode
     /// matches the selected weapon: same window, range and sight rules as the 'B' selection,
-    /// but only hostile targets (no friendly or neutral objects, no friendly aircraft).
+    /// but only hostile targets (no friendly or neutral objects, no friendly aircraft). A
+    /// mission objective still to do in that window goes before nearer targets.
     fn nearest_target(&mut self) {
         if self.pl.nearest_req == 0 {
             return;
@@ -274,20 +275,24 @@ impl Sim {
         self.pl.nearest_req = 0;
         self.pl.targeting.target_killed = false;
         let mut best = -1;
+        let mut best_obj = false;
         if air {
             let mut best_r = 0x12C0;
             for (j, u) in self.flights.iter().enumerate() {
                 let (r, b) = self.range_bearing(u.x, u.y);
+                let obj = self.air_objective(j);
                 if u.flags & fflags::AIRBORNE != 0
                     && u.flags & fflags::DESTROYED == 0
                     && u.speed != 0
                     && !self.friendly_unit(j, u.spec)
-                    && r < best_r
+                    && r < 0x12C0
+                    && (obj, -r) > (best_obj, -best_r)
                     && self.cam_off(b) < 0x2000
                     && self.player_sees(u.x, u.y, u.alt)
                 {
                     best_r = r;
                     best = j as i32;
+                    best_obj = obj;
                 }
             }
             if best != -1 {
@@ -295,14 +300,17 @@ impl Sim {
             }
         } else {
             let base_r = 100 << (6 - self.night as i32);
-            let mut best_r = self.spot_range(base_r);
+            let reach = self.spot_range(base_r);
+            let mut best_r = reach;
             for i in 0..self.objects.len() {
                 let o = self.objects[i];
                 let (r, b) = self.range_bearing(o.x, o.y);
+                let obj = self.ground_objective(i);
                 if o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
                     || (r >= base_r && !self.has_intel(i))
                     || (i == 0 && (o.x == 0 || o.y == 0 || o.shape == 0))
-                    || r >= best_r
+                    || r >= reach
+                    || (obj, -r) <= (best_obj, -best_r)
                     || self.cam_off(b) >= 0x2000
                     || !self.player_sees(o.x, o.y, 0)
                 {
@@ -310,6 +318,7 @@ impl Sim {
                 }
                 best = i as i32;
                 best_r = r;
+                best_obj = obj;
             }
             if best != -1 {
                 self.pl.gnd_lock = best;
@@ -320,6 +329,23 @@ impl Sim {
         if !locked {
             self.msg(text!("sim-no-target-ahead"));
         }
+    }
+
+    /// Object `i` is a ground objective of the mission still to do.
+    fn ground_objective(&self, i: usize) -> bool {
+        (0..2).any(|k| {
+            let t = self.pl.targets[k];
+            t.object == i as i32
+                && !(5..=8).contains(&t.mission_type)
+                && self.pl.pflags & (pflags::PRIMARY_DONE >> k) == 0
+        })
+    }
+
+    /// Flight unit `j` is the aircraft the mission's primary objective is to shoot down.
+    fn air_objective(&self, j: usize) -> bool {
+        j == 0
+            && (5..=8).contains(&self.pl.targets[0].mission_type)
+            && self.pl.pflags & pflags::PRIMARY_DONE == 0
     }
 
     /// 'N' designation.

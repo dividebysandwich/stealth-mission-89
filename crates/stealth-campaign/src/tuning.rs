@@ -292,12 +292,13 @@ pub const DRONE_COST: f64 = 12.0;
 pub const SUPPLY_AI_WAIT: f64 = 5.0 * 60.0;
 pub const SUPPLY_HOVER_SECONDS: f64 = 10.0;
 
-/// New air defence sites the players designate: loads of cargo a Gepard, a Patriot battery and
-/// a drone command center need, how long the helipad waits for them (s), how many sites may wait at once, how long an
+/// New air defence sites the players designate: loads of cargo a Gepard, a Patriot battery, a
+/// drone command center and a NASAMS battery (its Sentinel radar, then the launchers) need, how long the helipad waits for them (s), how many sites may wait at once, how long an
 /// open load waits for a player before an AI helicopter brings it (s).
 pub const DEPLOY_LOADS_GEPARD: u8 = 1;
 pub const DEPLOY_LOADS_PATRIOT: u8 = 3;
 pub const DEPLOY_LOADS_DRONES: u8 = 1;
+pub const DEPLOY_LOADS_NASAMS: u8 = 2;
 pub const DEPLOY_TIMEOUT: f64 = 24.0 * 3600.0;
 pub const DEPLOY_OPEN_MAX: usize = 3;
 pub const DEPLOY_AI_WAIT: f64 = 30.0 * 60.0;
@@ -310,6 +311,7 @@ pub const DEPLOY_UNIT_OFFSET: i32 = 3;
 pub const DEPLOY_FOOTPRINT_GEPARD: i32 = 0x10;
 pub const DEPLOY_FOOTPRINT_PATRIOT: i32 = 0x30;
 pub const DEPLOY_FOOTPRINT_DRONES: i32 = 0x20;
+pub const DEPLOY_FOOTPRINT_NASAMS: i32 = 0x30;
 /// Map units: a site keeps this far from a place (its town or airfield) and from a world object.
 pub const DEPLOY_PLACE_CLEAR: i32 = 0x80;
 pub const DEPLOY_SITE_CLEAR: i32 = 0x40;
@@ -370,3 +372,42 @@ pub const RED_INTEL_SECONDS: f64 = 3600.0;
 pub const AI_LAUNCH_WINDOW: f64 = 15.0 * 60.0;
 pub const AI_AIRCRAFT_PER_WINDOW: usize = 6;
 pub const AI_STAGGER: f64 = 10.0;
+
+/// Munitions (`munitions.rs`): a cargo flight takes off this long (s) after a base ran out of
+/// a munition, the other side's interceptors this long after it was scheduled; it brings up to
+/// this share of a base's full stock of each munition the production base has.
+pub const CARGO_WAIT: f64 = 10.0 * 60.0;
+pub const CARGO_INTERCEPT_WAIT: f64 = 2.0 * 60.0;
+pub const CARGO_SHARE: f64 = 0.5;
+/// A cargo flight saved in the air takes off again this long (s) after the campaign is loaded.
+pub const CARGO_RELAUNCH: f64 = 60.0;
+/// After a base's cargo aircraft was shot down, the next one goes this long (s) after.
+pub const CARGO_LOST_COOLDOWN: f64 = 30.0 * 60.0;
+/// The other side's SAM sites this close to where interceptors would wait for a cargo flight
+/// (map units, ~64 km) make its threat: the AI does not fly a heavy one.
+pub const CARGO_HUNT_SAM_RADIUS: i32 = 0x1000;
+/// A cargo flight to a base this close to a place of the other side (map units, ~150 km) gets
+/// an escort of this many fighters from that base.
+pub const CARGO_ESCORT_RANGE: i32 = FRONT_RANGE;
+pub const CARGO_ESCORTS: usize = 2;
+/// A cargo route passing this close to a place of the other side (map units, ~40 km) crosses
+/// its land: the production base is picked to avoid that.
+pub const CARGO_ROUTE_CLEAR: i32 = 0xA00;
+/// A cargo aircraft that comes down this close to a base of its side (map units, ~8 km)
+/// delivers there.
+pub const CARGO_LAND_RADIUS: i32 = 0x200;
+/// The production base keeps up to this many times a base's full stock.
+pub const PRODUCTION_CAP: f64 = 3.0;
+/// The enemy's SAM sites and guns refill their magazines this often (s), from the bases with
+/// stock within this reach (map units, ~150 km), nearest first.
+pub const MAGAZINE_REFILL_EVERY: f64 = 60.0;
+pub const MAGAZINE_SUPPLY_RANGE: i32 = 0x2580;
+/// A base keeps this many SAM missiles for each SAM site it supplies (two reloads), and gun
+/// rounds for each gun.
+pub const SAM_STOCK_PER_SITE: f64 = 8.0;
+pub const AAA_STOCK_PER_GUN: f64 = 2400.0;
+/// The production base makes this many an hour for each of the theater's sites (guns).
+pub const SAM_LONG_PER_SITE_HOUR: f64 = 1.5;
+pub const SAM_MEDIUM_PER_SITE_HOUR: f64 = 1.5;
+pub const SAM_SHORT_PER_SITE_HOUR: f64 = 2.0;
+pub const AAA_PER_GUN_HOUR: f64 = 300.0;

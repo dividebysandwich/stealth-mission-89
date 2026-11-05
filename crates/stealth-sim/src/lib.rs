@@ -21,6 +21,7 @@ pub mod guidance;
 pub use stealth_mission::hills;
 pub mod lights;
 mod missiles;
+pub mod munitions;
 pub mod net;
 mod objectives;
 mod pilot;
@@ -43,8 +44,8 @@ pub use data::{
 };
 pub use pilot::{Pilot, PilotEvent};
 pub use radar::{
-    DetectCtx, F22_RCS, F117_RCS, LOW_LEVEL_FT, MAST, RADAR_EMV, TORNADO_LOW_LEVEL_FT,
-    comanche_signature, detect, emv,
+    DetectCtx, F22_RCS, F117_RCS, LOW_LEVEL_FT, MAST, Pose, RADAR_EMV, TORNADO_LOW_LEVEL_FT,
+    aspect_factor, aspect_lobes, comanche_signature, detect, emv,
 };
 pub use rng::Rng;
 pub use targeting::{HELMET_SEEKER, SEEKER_GIMBAL};

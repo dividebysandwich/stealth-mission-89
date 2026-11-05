@@ -25,6 +25,7 @@ ds-click-hint = Klõpsa kaardil, kuhu see läheb - paremklõps: tühista
 ds-not-open-ground = Pole lagedal maastikul
 ds-new-gepard = Uus Gepard'i positsioon - klõpsa määramiseks
 ds-new-patriot = Uus Patrioti positsioon - klõpsa määramiseks
+ds-new-nasams = Uus NASAMS-i positsioon - klõpsa määramiseks
 ds-new-drones = Uus droonide juhtimispunkt - klõpsa määramiseks
 ds-waiting = Ootab lasti
 ds-fast-track = KIIRENDA ({ $cost })

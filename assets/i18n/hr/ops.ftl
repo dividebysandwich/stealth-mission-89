@@ -131,6 +131,7 @@ ops-legend-insertion = Ruta ubacivanja
 ops-watch-hint = Kliknite jedinicu da je pratite uživo
 ops-map-hint = Kotačić: zumiranje, povlačenje: pomicanje
 ops-patriot = Patriot baterija
+ops-nasams = NASAMS baterija
 ops-drone-center = Zapovjedno mjesto dronova
 ops-manned-by = Posada: { $pilot }
 ops-manned-by-other = Posada: drugi igrač

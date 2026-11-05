@@ -131,6 +131,7 @@ ops-legend-insertion = 투입 경로
 ops-watch-hint = 부대를 클릭하면 실시간으로 관전합니다
 ops-map-hint = 휠: 확대/축소, 끌기: 이동
 ops-patriot = 패트리엇 포대
+ops-nasams = NASAMS 포대
 ops-drone-center = 드론 지휘소
 ops-manned-by = 담당: { $pilot }
 ops-manned-by-other = 다른 플레이어가 담당 중

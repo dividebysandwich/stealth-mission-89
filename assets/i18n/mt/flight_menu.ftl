@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPS
 fm-tutorial = TUTORJAL INTERATTIV
 fm-player-labels = ISMIJIET TAL-PLEJERS
 fm-label-size = DAQS TAL-ISMIJIET
+fm-seat-height = GĦOLI TAS-SEDIL
 fm-cockpit-size = DAQS TAL-KOKPIT
 fm-volume-master = VOLUM ĠENERALI
 fm-volume-engine = MUTUR

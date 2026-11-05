@@ -26,6 +26,7 @@ ds-not-open-ground = Not on open ground
 ds-too-steep = Too steep a hillside
 ds-new-gepard = New Gepard site - click to designate
 ds-new-patriot = New Patriot site - click to designate
+ds-new-nasams = New NASAMS site - click to designate
 ds-new-drones = New drone command center - click to designate
 ds-waiting = Waiting for cargo
 ds-fast-track = FAST-TRACK ({ $cost })

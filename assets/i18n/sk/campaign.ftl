@@ -104,6 +104,7 @@ cl-objective = { $title }: cieľ splnený
 cl-recon = Prieskumné snímky, { $place }: obrana je zmapovaná
 cl-package = Package nad { $place }: { $kinds } - +{ $bonus } pre { $pilots }
 cl-supply-patriot = Batéria Patriot pri { $place }
+cl-supply-nasams = Batéria NASAMS pri { $place }
 cl-supply-gepard = Gepard pri { $place }
 cl-supply-drones = Veliteľské stanovište dronov pri { $place }
 cl-resupply-requested = { $who } žiada zásobovanie pre { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Zničené
 st-already-refilling = Už sa dopĺňa
 st-not-empty-yet = Ešte nie je prázdne
 st-stockpile-empty = Sklad je prázdny
+st-stockpile-short = V sklade nie je dosť striel
 st-no-launcher-ready = Žiadny vypúšťač nie je pripravený
 st-unit-destroyed = { $unit } je zničený
 

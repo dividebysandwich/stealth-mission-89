@@ -104,6 +104,7 @@ cl-objective = { $title }: užduotis įvykdyta
 cl-recon = Žvalgybos nuotraukos, vietovė: { $place }. Jos gynyba išžvalgyta
 cl-package = Grupė virš vietovės { $place }: { $kinds } - +{ $bonus }, pilotai: { $pilots }
 cl-supply-patriot = Patriot baterija, vietovė: { $place }
+cl-supply-nasams = NASAMS baterija, vietovė: { $place }
 cl-supply-gepard = Gepard, vietovė: { $place }
 cl-supply-drones = Dronų valdymo punktas, vietovė: { $place }
 cl-resupply-requested = { $who } prašo papildyti atsargas: { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Sunaikinta
 st-already-refilling = Jau papildoma
 st-not-empty-yet = Dar ne tuščia
 st-stockpile-empty = Atsargų sandėlis tuščias
+st-stockpile-short = Sandėlyje nepakanka raketų
 st-no-launcher-ready = Nėra pasirengusio paleidimo įrenginio
 st-unit-destroyed = Dalinys „{ $unit }“ sunaikintas
 

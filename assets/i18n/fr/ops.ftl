@@ -131,6 +131,7 @@ ops-legend-insertion = Route d'insertion
 ops-watch-hint = Cliquez sur une unité pour la suivre en direct
 ops-map-hint = Molette : zoom, glisser : déplacer
 ops-patriot = Batterie Patriot
+ops-nasams = Batterie NASAMS
 ops-drone-center = Centre de commandement de drones
 ops-manned-by = Servie par { $pilot }
 ops-manned-by-other = Servie par un autre joueur

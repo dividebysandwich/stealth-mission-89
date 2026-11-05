@@ -1429,9 +1429,10 @@ keypad 8 / 2 / 4 / 6, the left VR thumbstick or two bound joystick axes. **Lock 
 (keypad Enter, left thumbstick click or a bound button) locks what is under the cursor: an
 aircraft, a ground object, a ship or a radar. Held on the HSD or HARM display it opens a 4×
 magnified window; letting go locks. The zoom keys zoom the SOI: Z / X, `]` / `[` and Alt Z /
-Alt X all change the HSD range or the TGP's zoom, whichever is the SOI. Slewing the HSD's cursor
-past the top edge steps the range out, past the bottom edge steps it in. The cursor stays on its target
-as you turn.
+Alt X all change the HSD range or the TGP's zoom, whichever is the SOI. Slewing the HSD's, the
+ground map's or the A-A radar's cursor past the top edge steps the range out, past the bottom edge
+steps it in, one step each push. On the A-A radar's scope, past the left edge narrows the scan a
+step and past the right edge widens it. The cursor stays on its target as you turn.
 
 **Targeting pod.** The TGP format and how to work the pod (SLV, AREA, PNT, SP, CZ, zoom and
 locking with it) are in chapter 5.2. The HSD shows where the pod looks: a green diamond on its
@@ -1896,6 +1897,12 @@ airborne radar's cyan circle and unseen.
 Ground radars sweep all around. Fighter radars only see about 67° either side of the fighter's nose;
 the IL-76's airborne radar sees all around.
 
+**Stealth aspect.** The F-22A and the RAH-66, and the F-117A in a campaign, have faceted airframes whose
+return depends on where a radar sees them from: small spikes where their edges line up with it, more with
+the gear down or the bay doors open, and much more where a bank shows their belly or top to a radar beside
+them, or a climb or dive shows it to one ahead or behind. Turn away from a radar rather than banking
+towards it. Their **RCS** MFD page shows the shape the radars see.
+
 ## 7.5 Staying unseen
 
 - **Keep your EMV low.** Fly low, at moderate speed, with small bank angles. Open the bay doors
@@ -2206,8 +2213,8 @@ hours) and, in multiplayer, the enemy's tempo (11.5).
 |---|---|
 | **MISSIONS** | The mission board (9.4), the selected mission's details, and below the board the insertions and raids under way with their countdowns, the enemy AWACS's time left and the pilots down. |
 | **WAR MAP** | The theater (below). |
-| **AIR DEFENSE** | Your side's Gepard, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
-| **FORCES** | Both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
+| **AIR DEFENSE** | Your side's Gepard, NASAMS, Patriot and drone sites, who mans them, and the buttons to designate new ones (9.13). |
+| **LOGISTICS** | Your airbases, the production base first, with what each is out of or low on and the cargo flight coming; the selected base's munitions one by one (the production base's output per hour and the next one's progress); the cargo flights under way (9.14). **Forces and materiel** shows both sides side by side: places held, materiel and income per hour and where it comes from, fighters and helicopters on the ground and in the air, where the materiel went, and the prices (9.10). |
 | **PLAYERS** | The pilots in the campaign, what they do, their sorties, points and rank; the leaderboard of everyone who has flown in it; the campaign's rules. |
 | **DEBRIEF** | The last sortie's result, kills, points, medal and rank, its effect on the war (9.8), and what happened meanwhile. |
 | **LOG** | The war's events, newest first: for example *Armour column leaves Kostiantynivka to take Bakhmut* |
@@ -2220,7 +2227,8 @@ armour columns stay where they were and drive on. The campaign is also saved eve
 ![The war map, with armour columns on their way](images/war_map_armour.png)
 
 **The war map** shows the theater: airfields (squares) and cities (circles) in their side's colour, a
-white ring where you have fresh reconnaissance, the insertion routes, friendly aircraft and
+white ring where you have fresh reconnaissance, your production base (an amber factory beside its
+airfield), the insertion routes, friendly aircraft and
 helicopters, the enemy fighters on radar, the known SAM sites, guns and MANPADS, the **armour**, and
 you. A tank is a filled box, an infantry fighting vehicle (IFV) a crossed box, with a tick showing its
 heading while it drives. Your own columns' remaining route is a faint dashed line with an arrowhead. Your
@@ -2543,8 +2551,8 @@ columns drive on from where they were.
 
 ## 9.13 Air defence operations
 
-Your side can build its own air defence: **Gepard** anti-aircraft guns, **Patriot** batteries
-and **drone command centers** (10.4). A player designates the spot, UH-60 pilots fly in the
+Your side can build its own air defence: **Gepard** anti-aircraft guns, **NASAMS** and
+**Patriot** batteries and **drone command centers** (10.4). A player designates the spot, UH-60 pilots fly in the
 cargo (9.14), and anyone can man the finished site.
 
 The **Flakpanzer Gepard** was built in West Germany in the 1970s on the Leopard 1 tank's hull: two 35 mm
@@ -2553,17 +2561,21 @@ Bundeswehr in 2010, it was sent to Ukraine from 2022, and became famous there as
 weapons against Shahed drones: cheap rounds against cheap drones. The **MIM-104 Patriot** has defended
 American and allied airspace since the 1980s; its phased-array radar tracks dozens of targets and guides
 missiles that reach out to beyond 100 km. In May 2023 a Ukrainian Patriot battery shot down a Kinzhal
-air-launched ballistic missile over Kyiv, the first known interception of the type.
+air-launched ballistic missile over Kyiv, the first known interception of the type. **NASAMS**
+(National Advanced Surface-to-Air Missile System), built by Kongsberg and Raytheon, fires the
+fighters' AIM-120 AMRAAM from ground launchers of six canisters, cued by the AN/MPQ-64 Sentinel
+radar. It has guarded Washington, D.C. since 2005 and has defended Ukraine since 2022.
 
 | Site | Cargo loads | Armament |
 |---|---|---|
-| **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 2 km. 640 rounds ready, 640 in stock. |
-| **Patriot** | 3 | A radar with launchers of four missiles each, out to 80 km. 8 missiles in stock. |
+| **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 8 km. 640 rounds ready, 640 in stock. |
+| **NASAMS** | 2 | A Sentinel radar with three launchers of six AIM-120s each, out to 40 km. 12 missiles in stock. |
+| **Patriot** | 3 | A radar with launchers of four missiles each, out to 120 km. 8 missiles in stock. |
 | **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (10.4). |
 
 **Designating a site**
 
-1. On the Ops screen's WAR MAP or AIR DEFENSE tab, press **GEPARD**, **PATRIOT** or **DRONES**
+1. On the Ops screen's WAR MAP or AIR DEFENSE tab, press **GEPARD**, **NASAMS**, **PATRIOT** or **DRONES**
    under *New site*.
 2. Move the pointer over the map. A green circle shows where the site may go; a red one names
    the reason it can't (not friendly territory, water, too close to a town, airfield, site or
@@ -2578,13 +2590,14 @@ once. Once the last load is in, the unit stands beside the pad.
 
 The AIR DEFENSE tab lists your side's sites: who mans each one (*auto* when nobody does), the
 aircraft on its radar, what is ready and its stock. **ENTER** takes you to its console,
-**LEAVE** back to the Ops screen. Unmanned Patriots and Gepards fight on their own. The Gepard of
+**LEAVE** back to the Ops screen. Unmanned NASAMS, Patriots and Gepards fight on their own (a
+NASAMS out to 30 km, a Patriot out to 35 km: further out is left to you and the fighters). The Gepard of
 your own armour column is listed too and can be manned on the move; while you man a Gepard it fires only
 where you aim it.
 
 ![The Patriot console](images/patriot_console.png)
 
-The Patriot and Gepard consoles share one layout:
+The Patriot, NASAMS and Gepard consoles share one layout:
 
 * **Camera** (top): the tracking camera on the radar's or the Gepard's mast, following the
   lock. **FLIR** switches colour / thermal, **ZOOM+** / **ZOOM-** zoom.
@@ -2595,10 +2608,13 @@ The Patriot and Gepard consoles share one layout:
 * **Engaging**: select a track, **LOCK** it (**DROP** lets go), then **FIRE**.
 * **Signal monitor / target data** (top right): see below.
 
-**Patriot.** Missiles go out to 80 km. **GUIDED** missiles are steered by the radar (hard to
+**Patriot.** Missiles go out to 120 km. **GUIDED** missiles are steered by the radar (hard to
 decoy, one target at a time); **SEMI** missiles home on the radar's illumination (several targets
 at once, easier to decoy). **L1**-**L3** pick the launcher to fire from; **RLD1**-**RLD3**
 reload an empty one from the stock (4 minutes).
+
+**NASAMS.** The same console as the Patriot's, with AIM-120s that go out to 40 km against a
+target coming in (less against one that holds off or turns); each launcher holds six.
 
 <table>
 <tr>
@@ -2617,7 +2633,7 @@ guidance mode and the battery's missiles in the air.</li>
 
 ![The Gepard console](images/gepard_console.png)
 
-**Gepard.** It fires bursts of airburst rounds out to 2 km. Without a lock the stick slews the
+**Gepard.** It fires bursts of airburst rounds out to 8 km. Without a lock the stick slews the
 turret by hand and the camera looks along the guns, marking each aircraft in reach with its
 lead. **RLD1** refills the guns from the stock.
 
@@ -2636,6 +2652,50 @@ refilling (RLD).</li>
 </table>
 
 ## 9.14 Logistics
+
+**Munitions**
+
+Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
+guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
+Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, the Patriots' PAC-3s and the
+Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
+the stock of the base you take off from: the briefing's loadout shows how many each base has
+left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
+stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
+too, each the weapon for its job: HARMs at radars, Hellfires from the helicopters, Harpoons at
+ships, CBU-105s for the A-10's close support, Mavericks for the others', GBU-12s at everything
+else. When a base is out, they take the next best (AIM-7s for AIM-120s, Mavericks for HARMs,
+Penguins for Harpoons) and in the end Sidewinders, and strike aircraft drop iron bombs, which
+means flying right over the target.
+The enemy plays by the same rules. Its SAM sites and guns fire from magazines, refilled from the
+airbases within about 150 km that have missiles or rounds left, nearest first; each airbase keeps
+two reloads for the sites it is nearest to, and its production base makes as many as the
+theater's sites need. Its long range SAM sites (SA-2, SA-5, SA-10, SA-12, SA-21) fire one missile
+at a time at an aircraft: no second site launches while another's missile is on its way. Destroy
+its cargo flights and the airbases near a SAM belt, and those sites go quiet.
+
+Your **production base** (an amber factory on the maps) is the airfield in the rear whose cargo
+flights to your other airfields stay clear of enemy territory. It makes every
+munition, the complex ones slowly (a few Harpoons or CBU-105s an hour, a dozen GBU-12s, 3000 rounds
+of 35 mm), up to three full stocks. When it is captured, the next airfield in the rear takes over;
+while it is bombed, it makes nothing. Left with only carriers, which never run out, the enemy
+airfield nearest them is marked as your next production base (a faint factory): capture it and it
+becomes one, with a full stock.
+
+**Cargo flights**
+
+When an airbase runs out of a munition, a **cargo flight** is scheduled: 10 minutes later a C-5
+(the enemy flies An-72s) takes off from the production base with up to half a full stock of each
+munition the base lacks, whatever the production base has made, and lands there, flying its approach low. A cargo flight to an airbase near the front gets an
+escort of two fighters from that base, which meet it and fly with it until it lands. The news and
+the LOGISTICS tab show it coming. If it is shot down, its load is lost and the base waits for the next
+one. The enemy's cargo flights appear on your board as **INTERCEPT** missions (`Intercept cargo flight
+- <base>`, 150 points): shoot the An-72 down before it lands. Its route runs from the enemy's rear
+to its base, so the AI's interceptors wait three quarters of the way along it; under heavy air defences
+(SAM sites, Patriot batteries) the AI leaves it to the players. If one is shot down, the next
+cargo flight to that base waits half an hour. The enemy hunts your
+C-5s the same way: its interceptors take off 2 minutes after your cargo flight is scheduled.
+A cargo flight in the air when you save takes off again shortly after you continue, with its load.
 
 UH-60 and CH-47 pilots keep the air defence going: they fly the cargo for new sites and the
 resupplies for existing ones. Both are missions on the board (UH-60 or CH-47, 100 points). If no player takes one,
@@ -2664,7 +2724,8 @@ can also press **REQUEST RESUPPLY** on the SITE page. It becomes a **RESUPPLY** 
 
 1. Take the mission and fly the UH-60 or the CH-47 to the unit.
 2. Hover within 50 m of it, under 100 ft and slower than 15 kt, for 10 seconds.
-3. The load goes down and the site's stock is full again.
+3. The load goes down and the site's stock is filled from the airfield's munitions (PAC-3s, 35 mm
+   rounds). A site whose airfield has none left waits for the airfield's cargo flight.
 
 After 5 minutes without a player, an AI helicopter flies it from the nearest airfield.
 

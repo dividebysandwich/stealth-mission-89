@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         A játékosnevek mérete
         50%: alapértelmezett
+options-seat-height = Ülésmagasság
+    .facts =
+        Milyen magasan ülsz a pilótafülkében, a képernyőn és VR-ben
+        0 cm: a gép szokásos szemmagassága
 options-section-vr-size = VR pilótafülke mérete
 options-vr-size =
     .facts =

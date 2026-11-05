@@ -103,6 +103,7 @@ cl-objective = { $title } : objectif atteint
 cl-recon = Photos de reconnaissance de { $place } : ses défenses sont connues
 cl-package = Package sur { $place } : { $kinds } - +{ $bonus } pour { $pilots }
 cl-supply-patriot = batterie Patriot près de { $place }
+cl-supply-nasams = batterie NASAMS près de { $place }
 cl-supply-gepard = Gepard près de { $place }
 cl-supply-drones = centre de commandement de drones près de { $place }
 cl-resupply-requested = { $who } demande un ravitaillement pour : { $unit }
@@ -247,6 +248,7 @@ st-destroyed = Détruit
 st-already-refilling = Rechargement déjà en cours
 st-not-empty-yet = Pas encore vide
 st-stockpile-empty = Stock vide
+st-stockpile-short = Pas assez de missiles en stock
 st-no-launcher-ready = Aucun lanceur prêt
 st-unit-destroyed = Le { $unit } est détruit
 

@@ -131,6 +131,7 @@ ops-legend-insertion = Rute penyusupan
 ops-watch-hint = Klik unit untuk menontonnya secara langsung
 ops-map-hint = Roda: zoom, seret: geser
 ops-patriot = Baterai Patriot
+ops-nasams = Baterai NASAMS
 ops-drone-center = Pusat komando drone
 ops-manned-by = Dioperasikan oleh { $pilot }
 ops-manned-by-other = Dioperasikan oleh pemain lain

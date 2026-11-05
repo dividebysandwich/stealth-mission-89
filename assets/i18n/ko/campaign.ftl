@@ -104,6 +104,7 @@ cl-objective = { $title }: 목표 달성
 cl-recon = { $place } 정찰 사진: 방어 시설 파악 완료
 cl-package = { $place } 상공 패키지: { $kinds } - { $pilots }에게 +{ $bonus }
 cl-supply-patriot = { $place } 부근 패트리엇 포대
+cl-supply-nasams = { $place } 부근 NASAMS 포대
 cl-supply-gepard = { $place } 부근 게파르트
 cl-supply-drones = { $place } 부근 드론 지휘소
 cl-resupply-requested = { $who }: { $unit } 보급 요청
@@ -248,6 +249,7 @@ st-destroyed = 파괴됨
 st-already-refilling = 이미 보충 중
 st-not-empty-yet = 아직 비지 않음
 st-stockpile-empty = 비축량 없음
+st-stockpile-short = 비축 미사일이 부족합니다
 st-no-launcher-ready = 준비된 발사기 없음
 st-unit-destroyed = { $unit } 파괴됨
 

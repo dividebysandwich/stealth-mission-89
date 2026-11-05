@@ -131,6 +131,7 @@ ops-legend-insertion = Insättningsrutt
 ops-watch-hint = Klicka på en enhet för att följa den live
 ops-map-hint = Hjul: zoom, dra: panorera
 ops-patriot = Patriot-batteri
+ops-nasams = NASAMS-batteri
 ops-drone-center = Drönarledningscentral
 ops-manned-by = Bemannad av { $pilot }
 ops-manned-by-other = Bemannad av en annan spelare

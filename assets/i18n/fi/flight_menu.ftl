@@ -29,6 +29,7 @@ fm-tooltips = TYÖKALUVIHJEET
 fm-tutorial = INTERAKTIIVINEN OPASTUS
 fm-player-labels = PELAAJIEN NIMET
 fm-label-size = NIMIEN KOKO
+fm-seat-height = ISTUIMEN KORKEUS
 fm-cockpit-size = OHJAAMON KOKO
 fm-volume-master = PÄÄVOIMAKKUUS
 fm-volume-engine = MOOTTORI

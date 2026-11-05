@@ -1,11 +1,12 @@
-//! Campaign: friendly air defence manned by a player. A Patriot battery is fought from its
-//! radar's console (the radar's track, the launchers around it), a Gepard from its turret.
+//! Campaign: friendly air defence manned by a player. A missile battery (Patriot, NASAMS) is
+//! fought from its radar's console (the radar's track, the launchers around it), a Gepard from
+//! its turret.
 //!
 //! * The player locks a track; missiles fly at it **guided** (the radar steers them, hard to
 //!   decoy, one target at a time: a guided missile whose station locks something else or
 //!   switches to semi-active becomes semi-active) or **semi-active** (they home on the radar's
 //!   illumination of the target they were fired at, several targets at once, easier to decoy).
-//! * Launchers hold four missiles; an empty one is refilled from the battery's stockpile, which
+//! * Launchers hold four missiles (a NASAMS launcher six); an empty one is refilled from the battery's stockpile, which
 //!   takes [`REFILL_SECONDS`] of *real* time ([`Sim::tick_refills`], called by the host with
 //!   wall clock seconds). Unmanned, the AI starts the refills itself.
 //! * A Gepard fires bursts of [`BURST`] programmed airburst rounds, out to [`GEPARD_REACH`].
@@ -21,10 +22,9 @@ use serde::{Deserialize, Serialize};
 use stealth_i18n::{Text, text};
 
 use crate::Sim;
-use crate::aaa::{GroundKind, PATRIOT, Shell, lead};
+use crate::aaa::{GroundKind, Shell, lead};
 use crate::campaign::{
-    AiShell, M_PER_WU, MAX_SHELLS, PATRIOT_ELEVATION, PATRIOT_LINK, PATRIOT_ROUNDS, add,
-    flight_metres, jitter, len, mul, sub,
+    AiShell, M_PER_WU, MAX_SHELLS, PATRIOT_LINK, add, flight_metres, jitter, len, mul, sub,
 };
 use crate::math::approx;
 use crate::types::*;
@@ -32,6 +32,8 @@ use crate::uav::{Seen, Uav, UavKind, UavMode, UavWp};
 
 /// Missiles in a Patriot battery's stockpile, beyond those on its launchers.
 pub const PATRIOT_STOCK: i32 = 8;
+/// Missiles in a NASAMS battery's stockpile (three launchers' worth).
+pub const NASAMS_STOCK: i32 = 18;
 /// A Gepard's rounds ready, and in its stockpile.
 pub const GEPARD_ROUNDS: i32 = 640;
 pub const GEPARD_STOCK: i32 = 640;
@@ -43,7 +45,9 @@ pub const INTERCEPTOR_STOCK: i32 = 6;
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
 /// that makes it turn, `guidance`).
-pub const PATRIOT_MAX_RANGE: f64 = 80_000.0;
+pub const PATRIOT_MAX_RANGE: f64 = 120_000.0;
+/// The ground launched AIM-120's reach (m), the AMRAAM-ER's.
+pub const NASAMS_MAX_RANGE: f64 = 40_000.0;
 /// Seconds between a manned launcher's missiles (the AI waits longer, `PATRIOT_INTERVAL`).
 pub const LAUNCH_INTERVAL: i32 = 2;
 /// A Gepard burst: rounds, and seconds it takes (two guns, 550 rounds a minute each).
@@ -51,14 +55,14 @@ pub const BURST: i32 = 25;
 const BURST_SECONDS: f64 = 1.4;
 /// A Gepard's programmed rounds: muzzle velocity (m/s), farthest burst point (m).
 pub const GEPARD_V0: f64 = 1175.0;
-pub const GEPARD_REACH: f64 = 2000.0;
+pub const GEPARD_REACH: f64 = 8000.0;
 /// A Gepard turret's fastest slew by hand (rad/s): traverse, elevation; its elevation limits.
 pub const GEPARD_TRAVERSE: f32 = 1.0;
 pub const GEPARD_ELEVATE: f32 = 0.8;
 pub const GEPARD_EL: (f32, f32) = (-0.08, 1.48);
 /// Hand-fired rounds self-destruct this far out (m); a round passes close to an aircraft no
 /// more than this far off its line of fire (rad).
-pub const MANUAL_RANGE: f64 = 4000.0;
+pub const MANUAL_RANGE: f64 = 8000.0;
 const MANUAL_CONE: f64 = 0.05;
 /// An airburst round's fragments kill within this (m) with this chance (per mille).
 const AHEAD_RADIUS: f64 = 8.0;
@@ -89,7 +93,7 @@ pub enum Guidance {
 /// What a player at a console does.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum StationCmd {
-    /// Man a friendly Patriot radar, Gepard or drone command center (AAA unit).
+    /// Man a friendly Patriot or NASAMS radar, Gepard or drone command center (AAA unit).
     Man {
         unit: u16,
     },
@@ -219,8 +223,10 @@ fn unsaved() -> i32 {
 
 /// The stockpile a unit starts with (and a resupply brings it back to).
 pub fn initial_stock(kind: GroundKind) -> i32 {
+    if let Some(b) = kind.battery_radar() {
+        return b.stock();
+    }
     match kind {
-        GroundKind::PatriotRadar => PATRIOT_STOCK,
         GroundKind::Gepard => GEPARD_STOCK,
         GroundKind::DroneCenter => STORK_STOCK,
         _ => 0,
@@ -239,8 +245,10 @@ pub fn initial_stock3(kind: GroundKind) -> i32 {
 
 /// A unit's load when full.
 fn full_load(kind: GroundKind) -> i32 {
+    if let Some(b) = kind.battery_launcher() {
+        return b.rounds();
+    }
     match kind {
-        GroundKind::PatriotLauncher => PATRIOT_ROUNDS,
         GroundKind::Gepard => GEPARD_ROUNDS,
         _ => 0,
     }
@@ -248,7 +256,7 @@ fn full_load(kind: GroundKind) -> i32 {
 
 /// A unit a player can man.
 pub fn mannable(kind: GroundKind) -> bool {
-    matches!(kind, GroundKind::PatriotRadar | GroundKind::Gepard | GroundKind::DroneCenter)
+    kind.battery_radar().is_some() || matches!(kind, GroundKind::Gepard | GroundKind::DroneCenter)
 }
 
 impl Sim {
@@ -272,27 +280,42 @@ impl Sim {
         d.stations.iter().find(|s| s.unit as usize == unit).map(|s| s.pilot)
     }
 
-    /// The live launchers a Patriot radar commands.
+    /// The live launchers a missile battery's radar commands.
     pub fn battery_launchers(&self, radar: usize) -> Vec<usize> {
         let Some(r) = self.units.get(radar) else { return Vec::new() };
+        let Some(b) = r.kind.battery_radar() else { return Vec::new() };
         let blue = self.aaa_blue(radar);
         (0..self.units.len())
             .filter(|&k| {
                 let u = &self.units[k];
-                u.kind == GroundKind::PatriotLauncher
+                u.kind == b.launcher()
                     && self.aaa_blue(k) == blue
                     && approx(u.x - r.x, u.y - r.y) < PATRIOT_LINK
             })
             .collect()
     }
 
-    /// The Patriot radar that commands a launcher.
+    /// The launcher a battery fires from next: the one already begun (fewest missiles left), so
+    /// it empties one launcher before it starts on the next. None when none is live, loaded and
+    /// done refilling.
+    pub fn next_launcher(&self, radar: usize) -> Option<usize> {
+        self.battery_launchers(radar)
+            .into_iter()
+            .filter(|&k| {
+                let u = &self.units[k];
+                !u.destroyed && u.rounds > 0 && self.refill_left(k) == 0.0
+            })
+            .min_by_key(|&k| (self.units[k].rounds, k))
+    }
+
+    /// The battery radar that commands a launcher.
     pub fn launcher_radar(&self, launcher: usize) -> Option<usize> {
         let l = self.units.get(launcher)?;
+        let b = l.kind.battery_launcher()?;
         let blue = self.aaa_blue(launcher);
         (0..self.units.len()).find(|&r| {
             let u = &self.units[r];
-            u.kind == GroundKind::PatriotRadar
+            u.kind == b.radar()
                 && !u.destroyed
                 && self.aaa_blue(r) == blue
                 && approx(u.x - l.x, u.y - l.y) < PATRIOT_LINK
@@ -301,9 +324,10 @@ impl Sim {
 
     /// Where a unit's stock is kept: a launcher's at its radar, anything else its own.
     fn stock_unit(&self, k: usize) -> Option<usize> {
-        match self.units.get(k)?.kind {
-            GroundKind::PatriotLauncher => self.launcher_radar(k),
-            _ => Some(k),
+        if self.units.get(k)?.kind.battery_launcher().is_some() {
+            self.launcher_radar(k)
+        } else {
+            Some(k)
         }
     }
 
@@ -311,6 +335,28 @@ impl Sim {
     pub fn stockpile(&self, k: usize) -> i32 {
         let s = self.stock_unit(k);
         s.and_then(|s| self.defence()?.stock.get(s).copied()).unwrap_or(0)
+    }
+
+    /// Unit `k`'s stockpile less what the refills under way will take from it.
+    pub fn stockpile_free(&self, k: usize) -> i32 {
+        (self.stockpile(k) - self.stock_promised(k)).max(0)
+    }
+
+    /// What the refills under way from unit `k`'s stockpile will take from it.
+    fn stock_promised(&self, k: usize) -> i32 {
+        let Some(s) = self.stock_unit(k) else { return 0 };
+        (0..self.units.len())
+            .filter(|&j| self.refill_left(j) > 0.0 && self.stock_unit(j) == Some(s))
+            .map(|j| (full_load(self.units[j].kind) - self.units[j].rounds).max(0))
+            .sum()
+    }
+
+    /// Unit `k`'s stockpile has the missiles (rounds) to refill it: a full load beyond what the
+    /// refills under way take, or what is left when no other refill is under way.
+    fn stock_for_refill(&self, k: usize) -> bool {
+        let need = full_load(self.units[k].kind) - self.units[k].rounds;
+        let free = self.stockpile_free(k);
+        free >= need || (free > 0 && self.stock_promised(k) == 0)
     }
 
     /// Real seconds left of unit `k`'s refill (0: none).
@@ -459,7 +505,7 @@ impl Sim {
         Some((flight_metres(t), [v[0], -v[1], v[2]]))
     }
 
-    /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a Patriot
+    /// Flight unit `j` in the air within reach of station unit `unit`'s weapon: a battery
     /// radar's missiles, a Gepard's rounds (at the lead).
     pub fn in_reach(&self, unit: usize, j: usize) -> bool {
         let hills = self.hills();
@@ -470,7 +516,8 @@ impl Sim {
             let (_, _, time) = lead(u.metres_on(&hills), pos, vel, GEPARD_V0);
             time * GEPARD_V0 <= GEPARD_REACH
         } else {
-            len(sub(pos, u.metres_on(&hills))) <= PATRIOT_MAX_RANGE
+            let reach = u.kind.battery().map_or(0.0, |b| b.max_range());
+            len(sub(pos, u.metres_on(&hills))) <= reach
         }
     }
 
@@ -487,9 +534,9 @@ impl Sim {
     fn station_fire(&mut self, st: Station, launcher: Option<usize>) -> Result<(), Text> {
         let hills = self.hills();
         let radar = st.unit as usize;
-        if self.units[radar].kind != GroundKind::PatriotRadar {
+        let Some(b) = self.units[radar].kind.battery_radar() else {
             return Err(text!("st-no-missiles-here"));
-        }
+        };
         let (j, pos, _) = self.hostile_lock(&st)?;
         if !self.in_reach(radar, j) {
             return Err(text!("st-out-of-range"));
@@ -507,20 +554,21 @@ impl Sim {
                 k
             }
             Some(_) => return Err(text!("st-not-this-battery-s-launcher")),
-            None => launchers
-                .iter()
-                .copied()
-                .filter(|&k| ready(self, k))
-                .max_by_key(|&k| self.units[k].rounds)
-                .ok_or_else(|| text!("st-no-launcher-ready"))?,
+            None => {
+                let k = self.next_launcher(radar).ok_or_else(|| text!("st-no-launcher-ready"))?;
+                if !ready(self, k) {
+                    return Err(text!("st-launcher-not-ready"));
+                }
+                k
+            }
         };
         let u = self.units[k];
         let from = add(u.metres_on(&hills), [0.0, 0.0, 3.0]);
         let d = sub(pos, from);
         let az = d[0].atan2(d[1]);
-        let el = PATRIOT_ELEVATION as f64;
+        let el = b.elevation() as f64;
         let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
-        let mut m = self.ai_missile(PATRIOT, from, dir, j, true);
+        let mut m = self.ai_missile(b.missile(), from, dir, j, true);
         m.guidance = Some(st.mode);
         m.station = Some(st.unit);
         m.radar = Some(st.unit);
@@ -590,6 +638,9 @@ impl Sim {
         if self.stockpile(k) <= 0 {
             return Err(text!("st-stockpile-empty"));
         }
+        if !self.stock_for_refill(k) {
+            return Err(text!("st-stockpile-short"));
+        }
         self.defence_mut().refill[k] = REFILL_SECONDS;
         Ok(())
     }
@@ -656,6 +707,7 @@ impl Sim {
                 && !manned
                 && self.aaa_blue(k)
                 && self.stockpile(k) > 0
+                && self.stock_for_refill(k)
             {
                 self.defence_mut().refill[k] = REFILL_SECONDS;
             }
@@ -708,7 +760,7 @@ impl Sim {
                 if a.kind == GroundKind::Gepard {
                     a.aim_el = el as f32;
                 }
-                if a.kind == GroundKind::PatriotRadar {
+                if a.kind.battery_radar().is_some() {
                     for l in self.battery_launchers(k) {
                         let d = sub(pos, self.units[l].metres_on(&hills));
                         self.units[l].aim_az = d[0].atan2(d[1]) as f32;

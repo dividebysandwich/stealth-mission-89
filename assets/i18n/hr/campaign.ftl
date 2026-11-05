@@ -104,6 +104,7 @@ cl-objective = { $title }: cilj postignut
 cl-recon = Izviđačke fotografije ({ $place }): obrana je ucrtana
 cl-package = Paket ({ $place }): { $kinds } - +{ $bonus } za { $pilots }
 cl-supply-patriot = Patriot baterija ({ $place })
+cl-supply-nasams = NASAMS baterija ({ $place })
 cl-supply-gepard = Gepard ({ $place })
 cl-supply-drones = Zapovjedno mjesto dronova ({ $place })
 cl-resupply-requested = { $who } traži opskrbu: { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Uništeno
 st-already-refilling = Već se dopunjava
 st-not-empty-yet = Još nije prazno
 st-stockpile-empty = Skladište je prazno
+st-stockpile-short = Nema dovoljno projektila u skladištu
 st-no-launcher-ready = Nijedan lanser nije spreman
 st-unit-destroyed = Jedinica uništena: { $unit }
 

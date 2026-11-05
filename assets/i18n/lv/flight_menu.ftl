@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPS
 fm-tutorial = INTERAKTĪVĀ APMĀCĪBA
 fm-player-labels = SPĒLĒTĀJU VĀRDI
 fm-label-size = VĀRDU IZMĒRS
+fm-seat-height = SĒDEKĻA AUGSTUMS
 fm-cockpit-size = KABĪNES IZMĒRS
 fm-volume-master = KOPĒJAIS SKAĻUMS
 fm-volume-engine = DZINĒJS

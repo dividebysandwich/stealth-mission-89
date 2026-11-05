@@ -59,7 +59,7 @@ pub(super) fn draw(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
-    if m.kind != StationKind::Patriot {
+    if !matches!(m.kind, StationKind::Battery(_)) {
         return;
     }
     *since += time.delta_secs();

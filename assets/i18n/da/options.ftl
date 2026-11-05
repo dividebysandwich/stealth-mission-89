@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Spillernavnenes størrelse
         50 %: standard
+options-seat-height = Sædehøjde
+    .facts =
+        Hvor højt du sidder i cockpittet, på skærmen og i VR
+        0 cm: flyets normale øjenhøjde
 options-section-vr-size = Cockpitstørrelse i VR
 options-vr-size =
     .facts =

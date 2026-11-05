@@ -54,6 +54,7 @@ pic-sam-known = SAM-stilling (kendt)
 pic-guns-known = Kanoner / MANPADS (kendt)
 pic-armour = Kampvogn / pansret mandskabsvogn (fjende: inden for syne)
 pic-patriot-reach = Patriots rækkevidde
+pic-nasams-reach = NASAMS' rækkevidde
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM-missilernes rækkevidde
 pic-engagement-range = Bekæmpelsesrækkevidde

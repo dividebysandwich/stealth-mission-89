@@ -54,6 +54,7 @@ pic-sam-known = SAM-állás (ismert)
 pic-guns-known = Ágyúk / MANPADS (ismert)
 pic-armour = Harckocsi / gyalogsági harcjármű (ellenség: látótávolságban)
 pic-patriot-reach = Patriot hatótávolság
+pic-nasams-reach = NASAMS hatótávolság
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM rakéták hatótávolsága
 pic-engagement-range = Bevetési távolság

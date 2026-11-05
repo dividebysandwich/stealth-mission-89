@@ -31,6 +31,7 @@ mod events;
 mod flow;
 pub mod ground;
 mod missions;
+mod munitions;
 mod record;
 mod resupply;
 pub mod rng;
@@ -50,6 +51,7 @@ pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{fast_track_cost, footprint, loads};
 pub use flow::{Due, Operation, WarEvent, divertible};
+pub use munitions::{CargoRun, CargoState, Munition, Stock, spec as munition_spec};
 pub use record::PilotRecord;
 pub use state::*;
 
@@ -329,6 +331,9 @@ pub enum CampaignEvent {
         y: i32,
         #[serde(default)]
         task: FighterTask,
+        /// It escorts the cargo aircraft with this campaign tag (flies with it).
+        #[serde(default)]
+        escort: Option<u32>,
     },
     /// A resupply helicopter (tag) takes off from a base's helipad for an air defence unit
     /// (AAA index).
@@ -396,6 +401,15 @@ pub enum CampaignEvent {
         player: PlayerId,
         tag: u32,
         sortie: Sortie,
+    },
+    /// A cargo aircraft (tag) of a side takes off from its production base `from` with
+    /// munitions for base `to` (run `id`), and lands there.
+    CargoPlaneLaunched {
+        id: u32,
+        side: Side,
+        from: ObjectId,
+        to: ObjectId,
+        tag: u32,
     },
     /// A player left his aircraft to the AI (it is `tag` from now on, flying for `target` from
     /// base `from`; `home`: its job is done, it flies home).
@@ -469,6 +483,7 @@ impl CampaignState {
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
         self.run_deployments(view, &mut ev);
+        self.run_munitions(dt.max(0.0), &mut ev);
         self.run_ai_missions(view, &mut ev);
         if self.check_outcome(&mut ev) {
             return ev;
@@ -555,6 +570,7 @@ impl CampaignState {
             p.crew.clear();
         }
         self.ground_ai_missions();
+        self.ground_cargo();
         let players: Vec<PlayerId> =
             self.players.iter().filter(|p| p.sortie.is_some()).map(|p| p.id).collect();
         players.into_iter().flat_map(|p| self.end_sortie(p, SortieEnd::Aborted)).collect()

@@ -383,7 +383,7 @@ fn interior_follows_eye(
     mut q: Query<&mut Transform, With<OwnModelInterior>>,
 ) {
     let spec = settings.aircraft.spec();
-    let at = Vec3::Y * spec.model_lift + settings.cockpit_eye() - spec.eye;
+    let at = Vec3::Y * spec.model_lift + settings.cockpit_origin() - spec.eye;
     for mut tf in &mut q {
         if tf.translation != at {
             tf.translation = at;

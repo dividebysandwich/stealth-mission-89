@@ -56,6 +56,7 @@ pic-sam-known = SAM site (known)
 pic-guns-known = Guns / MANPADS (known)
 pic-armour = Tank / IFV (enemy: in sight)
 pic-patriot-reach = Patriot reach
+pic-nasams-reach = NASAMS reach
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM missile range
 pic-engagement-range = Engagement range

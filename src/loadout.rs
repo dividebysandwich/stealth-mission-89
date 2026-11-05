@@ -1212,7 +1212,7 @@ pub fn loadout_ui(
         crate::menu::Panel::new(t!("menu-loadout")).note(aircraft.name().to_ascii_uppercase());
     panel.window(window, ctx, |ui| {
         let split = Split::new(ui, "loadout");
-        split.body_sized(ui, |ui, room| editor(ui, w, lo, &m, room));
+        split.body_sized(ui, |ui, room| editor(ui, w, lo, &m, room, &|_| None));
         split.footer(ui, |ui| {
             crate::menu::footer_rule(ui);
             ui.add_space(6.0);
@@ -1244,13 +1244,15 @@ pub fn loadout_ui(
 }
 
 /// The editor: the aircraft's hardpoints and the stores of the selected one (the menu's
-/// loadout window, the campaign's briefing). `height`: the space it may take.
+/// loadout window, the campaign's briefing). `height`: the space it may take; `stock`: how
+/// many of a weapon type the base has (None: it never runs out).
 pub fn editor(
     ui: &mut egui::Ui,
     w: &mut LoadoutWindow,
     lo: &mut PlannedLoadout,
     m: &Mission,
     height: f32,
+    stock: &dyn Fn(u8) -> Option<u32>,
 ) {
     let lay = lo.layout();
     w.selected = w.selected.min(lay.hardpoints.len().saturating_sub(1));
@@ -1276,18 +1278,32 @@ pub fn editor(
                 ui.label(egui::RichText::new(t!("loadout-fantasy")).small().color(AMBER));
             }
             let mut pick = lo.stores[w.selected];
+            // Rounds of each weapon the other stations take.
+            let stations = lo.stations();
+            let elsewhere = |wpn: u8| -> u32 {
+                let other = stations.iter().enumerate().filter(|(i, _)| *i != w.selected);
+                other.filter(|(_, s)| s.0 == wpn as i32).map(|(_, s)| s.1.max(0) as u32).sum()
+            };
             // The column's full width: the scroll bar on its right edge, clear of the names.
             let list = egui::ScrollArea::vertical().max_height((size.y - 200.0).max(80.0));
             list.auto_shrink([false, true]).show(ui, |ui| {
                 ui.radio_value(&mut pick, None, t!("loadout-empty"));
                 for &wpn in hp.loads {
                     let (name, role) = WEAPONS[wpn as usize];
-                    let stock = !out_of_stock(m, wpn);
+                    let left = stock(wpn);
+                    let base_has = left.is_none_or(|n| n >= hp.rounds(wpn) as u32 + elsewhere(wpn));
+                    let in_stock = !out_of_stock(m, wpn) && (base_has || pick == Some(wpn));
                     let r = ui.add_enabled(
-                        stock,
+                        in_stock,
                         egui::RadioButton::new(
                             pick == Some(wpn),
-                            if stock {
+                            if let Some(n) = left.filter(|_| in_stock) {
+                                format!(
+                                    "{}x {name} {}",
+                                    hp.rounds(wpn),
+                                    t!("loadout-at-base", count = n)
+                                )
+                            } else if in_stock {
                                 format!("{}x {name}", hp.rounds(wpn))
                             } else {
                                 // Said in the name too: VR has no hover text.
@@ -1299,7 +1315,9 @@ pub fn editor(
                             },
                         ),
                     );
-                    let r = r.on_disabled_hover_text(t!("loadout-out-of-stock"));
+                    let why =
+                        if base_has { t!("loadout-out-of-stock") } else { t!("loadout-base-out") };
+                    let r = r.on_disabled_hover_text(why);
                     let mut lines = vec![t!(role)];
                     lines.extend(employment(wpn as usize));
                     if facts(r, &lines).clicked() {
@@ -1525,7 +1543,7 @@ mod tests {
             let mut w = LoadoutWindow::opened(true);
             let ctx = egui::Context::default();
             let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
-                editor(ui, &mut w, &mut lo, &m, 600.0);
+                editor(ui, &mut w, &mut lo, &m, 600.0, &|_| None);
             });
             out.textures_delta.clear();
         }

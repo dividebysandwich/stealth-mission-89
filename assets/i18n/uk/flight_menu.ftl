@@ -28,6 +28,7 @@ fm-tooltips = ПІДКАЗКИ
 fm-tutorial = ІНТЕРАКТИВНЕ НАВЧАННЯ
 fm-player-labels = ІМЕНА ГРАВЦІВ
 fm-label-size = РОЗМІР ІМЕН
+fm-seat-height = ВИСОТА КРІСЛА
 fm-cockpit-size = РОЗМІР КАБІНИ
 fm-volume-master = ЗАГАЛЬНА ГУЧНІСТЬ
 fm-volume-engine = ДВИГУН

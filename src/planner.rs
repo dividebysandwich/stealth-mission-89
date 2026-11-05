@@ -1473,6 +1473,7 @@ impl VerticalProfile {
                         comanche: sig.comanche,
                         rcs: sig.rcs,
                         low_level_ft: sig.low_level_ft,
+                        aspect: None,
                         grid: &m.world.grid,
                         relief: None,
                         hills: None,

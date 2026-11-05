@@ -54,6 +54,7 @@ pic-sam-known = SAM-ställning (känd)
 pic-guns-known = Luftvärnskanoner / MANPADS (kända)
 pic-armour = Stridsvagn / stridsfordon (fiende: inom synhåll)
 pic-patriot-reach = Patriots räckvidd
+pic-nasams-reach = NASAMS räckvidd
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM-robotarnas räckvidd
 pic-engagement-range = Bekämpningsräckvidd

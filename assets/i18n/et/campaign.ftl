@@ -104,6 +104,7 @@ cl-objective = { $title }: eesmärk saavutatud
 cl-recon = Luurefotod ({ $place }): kaitsed on kaardistatud
 cl-package = Pakett ({ $place }): { $kinds } - +{ $bonus } ({ $pilots })
 cl-supply-patriot = Patriot patarei, { $place } lähedal
+cl-supply-nasams = NASAMS patarei, { $place } lähedal
 cl-supply-gepard = Gepard, { $place } lähedal
 cl-supply-drones = Droonide juhtimispunkt, { $place } lähedal
 cl-resupply-requested = { $who } tellis täienduse: { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Hävitatud
 st-already-refilling = Juba täidetakse
 st-not-empty-yet = Pole veel tühi
 st-stockpile-empty = Varu tühi
+st-stockpile-short = Laos pole piisavalt rakette
 st-no-launcher-ready = Valmis stardiseadet pole
 st-unit-destroyed = Üksus { $unit } on hävitatud
 

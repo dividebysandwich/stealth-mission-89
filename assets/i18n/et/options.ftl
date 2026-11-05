@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Mängijate nimede suurus
         50%: vaikimisi
+options-seat-height = Istme kõrgus
+    .facts =
+        Kui kõrgel sa kokpitis istud, ekraanil ja VR-is
+        0 cm: lennuki tavaline silmade kõrgus
 options-section-vr-size = VR-cockpiti suurus
 options-vr-size =
     .facts =

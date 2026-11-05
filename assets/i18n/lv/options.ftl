@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Spēlētāju vārdu izmērs
         50 %: noklusējums
+options-seat-height = Sēdekļa augstums
+    .facts =
+        Cik augstu jūs sēžat kabīnē, ekrānā un VR
+        0 cm: lidaparāta parastais acu augstums
 options-section-vr-size = VR kabīnes izmērs
 options-vr-size =
     .facts =

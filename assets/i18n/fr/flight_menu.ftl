@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPS
 fm-tutorial = TUTORIEL INTERACTIF
 fm-player-labels = NOMS DES JOUEURS
 fm-label-size = TAILLE DES NOMS
+fm-seat-height = HAUTEUR DU SIÈGE
 fm-cockpit-size = TAILLE DU COCKPIT
 fm-volume-master = VOLUME GÉNÉRAL
 fm-volume-engine = MOTEUR

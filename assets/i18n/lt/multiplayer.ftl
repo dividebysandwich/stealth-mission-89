@@ -54,6 +54,7 @@ pic-sam-known = SAM pozicija (žinoma)
 pic-guns-known = Pabūklai / MANPADS (žinomi)
 pic-armour = Tankas / PKM (priešas: matomas)
 pic-patriot-reach = Patriot veikimo nuotolis
+pic-nasams-reach = NASAMS veikimo nuotolis
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM raketų nuotolis
 pic-engagement-range = Poveikio nuotolis

@@ -31,9 +31,11 @@ const G: f64 = 9.81;
 const GUN_DISH: (i32, i32, i32) = (12, 1, 1);
 /// SA-14 (missile table index).
 pub const SA14: i32 = 0x21;
-/// The friendly side's missiles: Stinger (MANPADS) and Patriot (MIM-104F PAC-3).
+/// The friendly side's missiles: Stinger (MANPADS), Patriot (MIM-104F PAC-3) and NASAMS
+/// (the ground launched AIM-120).
 pub const STINGER: i32 = 46;
 pub const PATRIOT: i32 = 45;
+pub const NASAMS: i32 = 51;
 /// Launcher of a MANPADS missile (fire and forget: no launcher radar to keep its lock).
 pub const MANPADS_LAUNCHER: i32 = 1;
 
@@ -63,6 +65,102 @@ pub enum GroundKind {
     Bradley,
     /// BMP-2 infantry fighting vehicle: 30 mm gun, Konkurs missiles and a rifle squad.
     Bmp2,
+    /// NASAMS launcher: six AIM-120 canisters, fires on its battery radar's track.
+    NasamsLauncher,
+    /// NASAMS AN/MPQ-64 Sentinel radar: tracks for the launchers around it.
+    NasamsRadar,
+}
+
+/// A friendly missile battery: a radar that tracks and the launchers around it that fire on
+/// its track (a Patriot's long range PAC-3s, a NASAMS's medium range AIM-120s).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SamBattery {
+    Patriot,
+    Nasams,
+}
+
+impl SamBattery {
+    pub const ALL: [SamBattery; 2] = [SamBattery::Patriot, SamBattery::Nasams];
+
+    pub fn radar(self) -> GroundKind {
+        match self {
+            SamBattery::Patriot => GroundKind::PatriotRadar,
+            SamBattery::Nasams => GroundKind::NasamsRadar,
+        }
+    }
+
+    pub fn launcher(self) -> GroundKind {
+        match self {
+            SamBattery::Patriot => GroundKind::PatriotLauncher,
+            SamBattery::Nasams => GroundKind::NasamsLauncher,
+        }
+    }
+
+    /// The missile its launchers fire (missile table index).
+    pub fn missile(self) -> i32 {
+        match self {
+            SamBattery::Patriot => PATRIOT,
+            SamBattery::Nasams => NASAMS,
+        }
+    }
+
+    /// The battery firing missile `spec`.
+    pub fn of_missile(spec: i32) -> Option<SamBattery> {
+        SamBattery::ALL.into_iter().find(|b| b.missile() == spec)
+    }
+
+    /// Missiles on a launcher when full.
+    pub fn rounds(self) -> i32 {
+        match self {
+            SamBattery::Patriot => crate::campaign::PATRIOT_ROUNDS,
+            SamBattery::Nasams => crate::campaign::NASAMS_ROUNDS,
+        }
+    }
+
+    /// The launchers' fixed elevation (rad).
+    pub fn elevation(self) -> f32 {
+        match self {
+            SamBattery::Patriot => crate::campaign::PATRIOT_ELEVATION,
+            SamBattery::Nasams => crate::campaign::NASAMS_ELEVATION,
+        }
+    }
+
+    /// How far its AI engages (map units).
+    pub fn reach(self) -> i32 {
+        match self {
+            SamBattery::Patriot => crate::campaign::PATRIOT_REACH,
+            SamBattery::Nasams => crate::campaign::NASAMS_REACH,
+        }
+    }
+
+    /// The missile's reach (m): no shots from the console at a track further out.
+    pub fn max_range(self) -> f64 {
+        match self {
+            SamBattery::Patriot => crate::station::PATRIOT_MAX_RANGE,
+            SamBattery::Nasams => crate::station::NASAMS_MAX_RANGE,
+        }
+    }
+
+    /// The missile's reach in map units (the maps' range rings).
+    pub fn map_range(self) -> f32 {
+        (self.max_range() / M_PER_MAP) as f32
+    }
+
+    /// Missiles in its stockpile, beyond those on its launchers.
+    pub fn stock(self) -> i32 {
+        match self {
+            SamBattery::Patriot => crate::station::PATRIOT_STOCK,
+            SamBattery::Nasams => crate::station::NASAMS_STOCK,
+        }
+    }
+
+    /// "PATRIOT" (the console's and the maps' name; an acronym, not translated).
+    pub fn label(self) -> &'static str {
+        match self {
+            SamBattery::Patriot => "PATRIOT",
+            SamBattery::Nasams => "NASAMS",
+        }
+    }
 }
 
 impl GroundKind {
@@ -79,6 +177,8 @@ impl GroundKind {
             GroundKind::Leopard2 => "Leopard 2",
             GroundKind::Bradley => "M2 Bradley",
             GroundKind::Bmp2 => "BMP-2",
+            GroundKind::NasamsLauncher => "NASAMS",
+            GroundKind::NasamsRadar => "NASAMS radar",
         }
     }
 
@@ -90,15 +190,25 @@ impl GroundKind {
         }
     }
 
-    /// Patriot launcher or radar (no gun, no MANPADS).
-    pub fn patriot(self) -> bool {
-        matches!(self, GroundKind::PatriotLauncher | GroundKind::PatriotRadar)
+    /// The missile battery a launcher or radar belongs to.
+    pub fn battery(self) -> Option<SamBattery> {
+        SamBattery::ALL.into_iter().find(|b| b.radar() == self || b.launcher() == self)
     }
 
-    /// No gun and no MANPADS of its own to fire at aircraft: a Patriot launcher or radar, a
-    /// drone command center, a tank or an infantry fighting vehicle.
+    /// A missile battery's radar (it tracks for the launchers around it).
+    pub fn battery_radar(self) -> Option<SamBattery> {
+        SamBattery::ALL.into_iter().find(|b| b.radar() == self)
+    }
+
+    /// A missile battery's launcher.
+    pub fn battery_launcher(self) -> Option<SamBattery> {
+        SamBattery::ALL.into_iter().find(|b| b.launcher() == self)
+    }
+
+    /// No gun and no MANPADS of its own to fire at aircraft: a missile battery's launcher or
+    /// radar, a drone command center, a tank or an infantry fighting vehicle.
     pub fn unarmed(self) -> bool {
-        self.patriot() || self == GroundKind::DroneCenter || self.armour()
+        self.battery().is_some() || self == GroundKind::DroneCenter || self.armour()
     }
 
     /// A main battle tank.
@@ -127,7 +237,7 @@ impl GroundKind {
             GroundKind::Zsu => (970.0, 2500.0, 2000.0),
             GroundKind::S60 => (1000.0, 6000.0, 4500.0),
             GroundKind::Manpads => (0.0, 5000.0, 3500.0),
-            GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+            GroundKind::Gepard => (1175.0, 8000.0, 5000.0),
             _ => (0.0, 0.0, 0.0),
         }
     }
@@ -155,7 +265,7 @@ pub struct GroundUnit {
     /// Frames left of the burst being fired, and until the next one may start.
     pub burst: i32,
     pub cooldown: i32,
-    /// Patriot launcher: missiles ready.
+    /// A missile battery's launcher: missiles ready.
     #[serde(default)]
     pub rounds: i32,
     /// A vehicle's own position and the way its hull points (`x`, `y` are this rounded).
@@ -225,6 +335,7 @@ struct Track {
     comanche: bool,
     rcs: i32,
     low_level_ft: i32,
+    aspect: Option<crate::radar::Pose>,
 }
 
 /// What the AAA does to the player in one frame.
@@ -457,6 +568,7 @@ impl Sim {
                     comanche: self.pl.comanche,
                     rcs: self.pl.rcs(self.opts.campaign),
                     low_level_ft: self.pl.low_level_ft(),
+                    aspect: self.pl.pose(self.opts.campaign),
                 }
             })
             .collect();
@@ -471,9 +583,16 @@ impl Sim {
         let mut fired: Vec<Shell> = Vec::new();
         let mut manpads: Vec<usize> = Vec::new();
         let mut rwr: Vec<(usize, RwrTone)> = Vec::new();
+        // A campaign's enemy guns fire what their magazines hold.
+        let dry: Vec<bool> = (0..units.len()).map(|k| !self.gun_ready(k)).collect();
+        let mut spent = vec![0; units.len()];
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
             if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == GroundKind::Gepard {
+                continue;
+            }
+            if dry[i] && matches!(u.kind, GroundKind::Zsu | GroundKind::S60) {
+                u.burst = 0;
                 continue;
             }
             u.cooldown = (u.cooldown - 1).max(0);
@@ -500,6 +619,7 @@ impl Sim {
                 comanche: t.comanche,
                 rcs: t.rcs,
                 low_level_ft: t.low_level_ft,
+                aspect: t.aspect,
                 grid: &self.grid,
                 relief: self.tiles.as_ref().map(|t| &t.relief),
                 hills: self.tiles.as_ref().map(|t| &t.hills).filter(|h| !h.is_flat()),
@@ -558,6 +678,7 @@ impl Sim {
                             let a = az + Self::aaa_gauss(&mut rng) * sigma;
                             let e = el + Self::aaa_gauss(&mut rng) * sigma;
                             let muzzle = add(from, [0.0, 0.0, 1.5]);
+                            spent[i] += crate::munitions::ZSU_ROUNDS;
                             fired.push(Shell {
                                 pos: muzzle,
                                 vel: mul(direction(a, e), v0),
@@ -576,6 +697,7 @@ impl Sim {
                         let e = el + Self::aaa_gauss(&mut rng) * sigma;
                         // The fuse is set for the predicted time, a little off.
                         let fuse = t * (1.0 + Self::aaa_gauss(&mut rng) * 0.03);
+                        spent[i] += crate::munitions::S60_ROUNDS;
                         fired.push(Shell {
                             pos: add(from, [0.0, 0.0, 1.5]),
                             vel: mul(direction(a, e), v0),
@@ -587,6 +709,8 @@ impl Sim {
                 }
                 GroundKind::PatriotLauncher
                 | GroundKind::PatriotRadar
+                | GroundKind::NasamsLauncher
+                | GroundKind::NasamsRadar
                 | GroundKind::Gepard
                 | GroundKind::DroneCenter
                 | GroundKind::T90
@@ -596,6 +720,9 @@ impl Sim {
             }
         }
         self.units = units;
+        for (k, n) in spent.into_iter().enumerate().filter(|&(_, n)| n > 0) {
+            self.gun_fired(k, n);
+        }
         for (k, tone) in rwr {
             self.activate(k);
             self.emit(SimEvent::Rwr(tone));

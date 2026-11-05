@@ -131,6 +131,7 @@ ops-legend-insertion = Luftlanderoute
 ops-watch-hint = Eine Einheit anklicken, um sie live zu beobachten
 ops-map-hint = Mausrad: Zoom, Ziehen: verschieben
 ops-patriot = Patriot-Batterie
+ops-nasams = NASAMS-Batterie
 ops-drone-center = Drohnenleitstand
 ops-manned-by = Bemannt von { $pilot }
 ops-manned-by-other = Von einem anderen Spieler bemannt

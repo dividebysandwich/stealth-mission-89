@@ -211,6 +211,7 @@ pub fn ai_task(target: AiTarget) -> AiTask {
         AiTarget::Ground { x, y } => AiTask::Ground(x, y),
         AiTarget::Recon { object } => AiTask::Recon(object as usize),
         AiTarget::Patrol { x, y } => AiTask::Patrol(x, y),
+        AiTarget::Hunt { tag, x, y } => AiTask::Hunt(tag, x, y),
     }
 }
 
@@ -234,7 +235,9 @@ pub fn ai_target_point(state: &CampaignState, target: AiTarget) -> (i32, i32) {
         AiTarget::Object(o) | AiTarget::Recon { object: o } => {
             state.site(o).map_or((0, 0), |s| (s.x, s.y))
         }
-        AiTarget::Ground { x, y } | AiTarget::Patrol { x, y } => (x, y),
+        AiTarget::Ground { x, y } | AiTarget::Patrol { x, y } | AiTarget::Hunt { x, y, .. } => {
+            (x, y)
+        }
     }
 }
 
@@ -526,7 +529,7 @@ pub fn default_base(state: &CampaignState) -> Option<usize> {
     state.nearest_player_base(x, y).map(|b| b as usize)
 }
 
-/// The kind of player site a mannable unit is (a Patriot battery: its radar).
+/// The kind of player site a mannable unit is (a Patriot or NASAMS battery: its radar).
 pub fn defence_kind(kind: stealth_sim::aaa::GroundKind) -> Option<stealth_campaign::DefenceKind> {
     use stealth_campaign::DefenceKind;
     use stealth_sim::aaa::GroundKind;
@@ -534,6 +537,7 @@ pub fn defence_kind(kind: stealth_sim::aaa::GroundKind) -> Option<stealth_campai
         GroundKind::Gepard => Some(DefenceKind::Gepard),
         GroundKind::PatriotRadar => Some(DefenceKind::Patriot),
         GroundKind::DroneCenter => Some(DefenceKind::Drones),
+        GroundKind::NasamsRadar => Some(DefenceKind::Nasams),
         _ => None,
     }
 }
@@ -546,6 +550,7 @@ pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::Gr
         DefenceKind::Gepard => GroundKind::Gepard,
         DefenceKind::Patriot => GroundKind::PatriotRadar,
         DefenceKind::Drones => GroundKind::DroneCenter,
+        DefenceKind::Nasams => GroundKind::NasamsRadar,
     }
 }
 
@@ -556,5 +561,6 @@ pub fn place_site(sim: &mut Sim, kind: stealth_campaign::DefenceKind, x: i32, y:
         DefenceKind::Gepard => sim.place_gepard(x, y),
         DefenceKind::Patriot => sim.place_patriot(x, y),
         DefenceKind::Drones => sim.place_drone_center(x, y),
+        DefenceKind::Nasams => sim.place_nasams(x, y),
     }
 }

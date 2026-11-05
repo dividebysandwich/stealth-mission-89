@@ -54,6 +54,7 @@ pic-sam-known = Stanoviště SAM (známé)
 pic-guns-known = Kanóny / MANPADS (známé)
 pic-armour = Tank / BVP (nepřítel: na dohled)
 pic-patriot-reach = Dosah Patriot
+pic-nasams-reach = Dosah NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Dosah střel SAM
 pic-engagement-range = Dosah palby

@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x1a090c938207fa6e,
-        0x0aeba58a481c4596,
-        0x26c572d3f8a0278f,
-        0xec597202d587f028,
-        0x23cc50c4d734882e,
-        0xd1a0cc7f262448aa,
-        0xb52857d371f9816b,
-        0x5d6b090c24b7fc66,
-        0xd467657023ec9a86,
-        0x0cc7fa812be025df,
-        0x784dc1cf2f2c5c80,
-        0xc2ddb33f604b4621,
-        0xde2bea907a7be398,
-        0x0a3f38a72925b658,
-        0xef407cf7de87d443,
-        0x513f19a564e9d290,
-        0x9a90c3b5111da9d7,
-        0xf29f9becc93651fb,
+        0x9c023228b72688bb,
+        0xdc61170c7c2b3835,
+        0x46c6b6e23ad1ba9c,
+        0xcf572f1578286fd5,
+        0xb20c2d50d390afa1,
+        0x82f2a125302dcce9,
+        0x5144efd02a6e2cf6,
+        0xbe4182bb1adb621b,
+        0x00360c7fb385e4b5,
+        0x38276bd04dc9864a,
+        0xd0f8a427c0a9c50b,
+        0x812d1e9c0479adaa,
+        0x02a94c7648c9ffe9,
+        0xf6a8297a50cd216d,
+        0x68d434493ac54c46,
+        0xcbb9c6b0770dbf11,
+        0xbc5502794c4d0420,
+        0x42e018a36396d48e,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -907,6 +907,41 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     p.hud_mode = HudMode::Gnd;
     sim.step(&p, 15);
     assert_eq!(sim.targeting().ground, Some(2));
+}
+
+/// The nearest-target key picks a mission objective in view over nearer hostile targets, and
+/// the nearest once the objective is done.
+#[test]
+fn nearest_target_prefers_the_objective() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    // Ahead (north): hostile objects at 300 and 600 map units, the far one the primary.
+    place_site(&mut sim, 1, 0, cx, cy - 300);
+    place_site(&mut sim, 2, 0, cx, cy - 600);
+    sim.target_slots_mut()[0] = TargetSlot { mission_type: 0, object: 2, base: 0, code: 0 };
+    sim.target_slots_mut()[1] = TargetSlot { mission_type: 0, object: -1, base: 0, code: 0 };
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(2));
+    // Done: the nearest again.
+    sim.target_slots_mut()[0].object = -1;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(1));
 }
 
 fn drone_mission(d: &Data, seed: u16, opponents: u8) -> Mission {

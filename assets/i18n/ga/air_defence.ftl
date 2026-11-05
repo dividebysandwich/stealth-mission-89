@@ -25,6 +25,7 @@ ds-click-hint = Cliceáil ar an léarscáil san áit a rachaidh sé - deaschlice
 ds-not-open-ground = Ní ar thalamh oscailte
 ds-new-gepard = Suíomh Gepard nua - cliceáil chun é a ainmniú
 ds-new-patriot = Suíomh Patriot nua - cliceáil chun é a ainmniú
+ds-new-nasams = Suíomh NASAMS nua - cliceáil chun é a ainmniú
 ds-new-drones = Ionad ceannais dróin nua - cliceáil chun é a ainmniú
 ds-waiting = Ag fanacht ar lasta
 ds-fast-track = BROSTAIGH ({ $cost })

@@ -104,6 +104,7 @@ cl-objective = { $title }: a cél teljesítve
 cl-recon = Felderítő fotók: { $place }; a védelme feltérképezve
 cl-package = Kötelék: { $place } felett: { $kinds } - +{ $bonus } neki: { $pilots }
 cl-supply-patriot = Patriot üteg: { $place } közelében
+cl-supply-nasams = NASAMS üteg: { $place } közelében
 cl-supply-gepard = Gepard: { $place } közelében
 cl-supply-drones = Drónirányító központ: { $place } közelében
 cl-resupply-requested = { $who } utánpótlást kér ennek: { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Megsemmisítve
 st-already-refilling = Már töltődik
 st-not-empty-yet = Még nem üres
 st-stockpile-empty = A készlet üres
+st-stockpile-short = Nincs elég rakéta a raktárban
 st-no-launcher-ready = Nincs kész indító
 st-unit-destroyed = Megsemmisült: { $unit }
 

@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         플레이어 이름의 크기
         50%: 기본값
+options-seat-height = 좌석 높이
+    .facts =
+        조종석에 앉는 높이 (화면과 VR)
+        0 cm: 기체의 기본 눈높이
 options-section-vr-size = VR 조종석 크기
 options-vr-size =
     .facts =

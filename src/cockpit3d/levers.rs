@@ -68,6 +68,9 @@ pub struct CockpitAnchors {
     pub nozzle_down: Option<Vec3>,
     pub nozzle_pivot: Option<Vec3>,
     pub eject: Vec3,
+    /// The middle of the HUD combiner glass's lower edge (cockpit frame, metres from the eye):
+    /// the modern HUD's field reaches down to it (`HudFrame::field_bottom`).
+    pub hud_glass_bottom: Option<Vec3>,
 }
 
 impl Default for CockpitAnchors {
@@ -82,6 +85,7 @@ impl Default for CockpitAnchors {
             nozzle_down: None,
             nozzle_pivot: None,
             eject: Vec3::new(0.0, -0.74, -0.20),
+            hud_glass_bottom: None,
         }
     }
 }

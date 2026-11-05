@@ -95,6 +95,32 @@ fn campaign_soak() {
     let mut news: Vec<String> = Vec::new();
     let mut missions: BTreeMap<u32, stealth_campaign::AiMission> = BTreeMap::new();
     let mut shelled: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut cargo: BTreeMap<u32, (stealth_campaign::CargoRun, f64)> = BTreeMap::new();
+    // The enemy's SAM sites by class (object, class), their launches since the last sample,
+    // and the samples.
+    use stealth_campaign::Munition;
+    let sam_class = |sim: &stealth_sim::Sim, i: usize| {
+        let o = sim.objects()[i];
+        let red = o.flags & (stealth_sim::oflags::FRIENDLY | stealth_sim::oflags::NEUTRAL) == 0;
+        (o.unit_type != 0 && red && !sim.object_is_ship(i))
+            .then(|| Munition::sam(sim.site_missile(o.unit_type)))
+    };
+    let classes = [Munition::SamLong, Munition::SamMedium, Munition::SamShort];
+    let mut mags: BTreeMap<u16, i32> = BTreeMap::new();
+    let mut launches = [0usize; 3];
+    let mut sam_log: Vec<String> = Vec::new();
+    let full_mag = stealth_sim::munitions::SITE_MAGAZINE;
+    // The friendly side's munitions, sampled every 10 min: per munition the lowest total at
+    // the bases, samples with a base out of it and the most bases out at once; the air
+    // defence's empty units; an hourly timeline.
+    let blue_items = Munition::of_side(Side::Blue);
+    let mut blue_low = vec![u32::MAX; blue_items.len()];
+    let mut blue_out_samples = vec![0usize; blue_items.len()];
+    let mut blue_out_max = vec![0usize; blue_items.len()];
+    let mut blue_log: Vec<String> = Vec::new();
+    let mut ad_log: Vec<String> = Vec::new();
+    let mut ad_dry = [0usize; 2];
+    let mut samples = 0usize;
     for frame in 0..frames {
         t = frame as f64 * dt;
         // What is after each aircraft (for the report of what shot it down).
@@ -117,6 +143,127 @@ fn campaign_soak() {
         }
         for m in &host.state.ai_missions {
             missions.insert(m.id, m.clone());
+        }
+        for r in &host.state.cargo_runs {
+            // Keep the escorts it had once they are gone.
+            let mut r = r.clone();
+            if let Some((old, _)) = cargo.get(&r.tag) {
+                for &e in &old.escorts {
+                    if !r.escorts.contains(&e) {
+                        r.escorts.push(e);
+                    }
+                }
+            }
+            cargo.insert(r.tag, (r, t));
+        }
+        let now: BTreeMap<u16, i32> = sim.site_magazines().into_iter().collect();
+        for i in 0..sim.ground_unit_count() {
+            let Some(m) = sam_class(&sim, i) else { continue };
+            let (a, b) = (
+                mags.get(&(i as u16)).copied().unwrap_or(full_mag),
+                now.get(&(i as u16)).copied().unwrap_or(full_mag),
+            );
+            if b < a {
+                launches[classes.iter().position(|&c| c == m).unwrap()] += (a - b) as usize;
+            }
+        }
+        mags = now;
+        if frame % (FS as u64 * 600) == 0 {
+            let st = &host.state;
+            let prod = st.production_base(Side::Red);
+            let mut line = format!("{:5.0} min:", t / 60.0);
+            for (k, &m) in classes.iter().enumerate() {
+                let sites: Vec<usize> = (0..sim.ground_unit_count())
+                    .filter(|&i| sam_class(&sim, i) == Some(m))
+                    .filter(|&i| sim.objects()[i].flags & stealth_sim::oflags::DESTROYED == 0)
+                    .collect();
+                let dry = sites.iter().filter(|&&i| mags.get(&(i as u16)) == Some(&0)).count();
+                let bases: u32 = st
+                    .stocks
+                    .iter()
+                    .filter(|(b, s)| s.side == Some(Side::Red) && Some(**b) != prod)
+                    .map(|(_, s)| s.count(m))
+                    .sum();
+                let at_prod = prod.and_then(|p| st.stocks.get(&p)).map_or(0, |s| s.count(m));
+                line += &format!(
+                    "  {m:?}: fired {:3}, dry {dry:2}/{:2}, bases {bases:3}, prod {at_prod:3}",
+                    launches[k],
+                    sites.len()
+                );
+            }
+            launches = [0; 3];
+            sam_log.push(line);
+            // The friendly side.
+            samples += 1;
+            let prod = st.production_base(Side::Blue);
+            let mut hourly = format!("{:5.0} min:", t / 60.0);
+            for (k, &m) in blue_items.iter().enumerate() {
+                let bases: Vec<u32> = st
+                    .stocks
+                    .iter()
+                    .filter(|(b, s)| s.side == Some(Side::Blue) && Some(**b) != prod)
+                    .map(|(_, s)| s.count(m))
+                    .collect();
+                let total: u32 = bases.iter().sum();
+                let out = bases.iter().filter(|&&n| n == 0).count();
+                blue_low[k] = blue_low[k].min(total);
+                blue_out_samples[k] += (out > 0) as usize;
+                blue_out_max[k] = blue_out_max[k].max(out);
+                if matches!(
+                    m,
+                    Munition::Aim120
+                        | Munition::Harm
+                        | Munition::Agm65
+                        | Munition::Pac3
+                        | Munition::GepardRounds
+                ) {
+                    let p = prod.and_then(|p| st.stocks.get(&p)).map_or(0, |s| s.count(m));
+                    hourly += &format!("  {m:?} {total:4}/{p:4} out {out}");
+                }
+            }
+            if frame % (FS as u64 * 3600) == 0 {
+                blue_log.push(hourly);
+            }
+            // Patriot batteries and Gepards with nothing left to fire.
+            use stealth_sim::aaa::GroundKind;
+            let units = sim.units();
+            let mut dry = [0usize; 2];
+            let mut all = [0usize; 2];
+            for k in 0..units.len() {
+                let u = units[k];
+                if u.destroyed || !sim.aaa_blue(k) {
+                    continue;
+                }
+                let empty = match u.kind {
+                    GroundKind::PatriotRadar => {
+                        all[0] += 1;
+                        let ready: i32 =
+                            sim.battery_launchers(k).iter().map(|&l| units[l].rounds).sum();
+                        ready == 0 && sim.stockpile(k) == 0
+                    }
+                    GroundKind::Gepard => {
+                        all[1] += 1;
+                        u.rounds == 0 && sim.stockpile(k) == 0
+                    }
+                    _ => continue,
+                };
+                if empty {
+                    dry[(u.kind == GroundKind::Gepard) as usize] += 1;
+                }
+            }
+            ad_dry[0] += dry[0];
+            ad_dry[1] += dry[1];
+            if dry != [0, 0] {
+                ad_log.push(format!(
+                    "{:5.0} min: Patriots empty {}/{}, Gepards empty {}/{}, resupplies open {}",
+                    t / 60.0,
+                    dry[0],
+                    all[0],
+                    dry[1],
+                    all[1],
+                    st.supply_requests.len()
+                ));
+            }
         }
         host.refills(&mut sim, dt as f32);
         host.take_sim_events(&mut sim);
@@ -337,9 +484,10 @@ fn campaign_soak() {
             .map(|tag| tracks.get(tag).and_then(|t| t.end.clone()).unwrap_or("-".into()))
             .collect();
         println!(
-            "#{:3} {:?} {:?} {:?} {:?} {:?} launched {:.0} ended {:?} achieved {} : {}",
+            "#{:3} {:?} from {} {:?} {:?} {:?} {:?} launched {:.0} ended {:?} achieved {} : {}",
             m.id,
             m.side,
+            host.state.site(m.from).map_or(String::new(), |s| s.name.clone()),
             m.offer.kind,
             m.airframe,
             m.target,
@@ -353,6 +501,85 @@ fn campaign_soak() {
         if lost {
             println!("     !! open with nobody left");
         }
+    }
+    println!("\n== Enemy SAM sites by the base that refills them (long / medium / short)");
+    let mut per_base: BTreeMap<String, [usize; 3]> = BTreeMap::new();
+    for i in 0..sim.ground_unit_count() {
+        let Some(m) = sam_class(&sim, i) else { continue };
+        let o = sim.objects()[i];
+        let Some(b) = host.state.nearest_base(Side::Red, o.x, o.y) else { continue };
+        let name = host.state.site(b).map_or(String::new(), |s| s.name.clone());
+        per_base.entry(name).or_default()[classes.iter().position(|&c| c == m).unwrap()] += 1;
+    }
+    for (b, n) in &per_base {
+        println!("{b:14} {:2} / {:2} / {:2}", n[0], n[1], n[2]);
+    }
+    println!("\n== Enemy SAMs (every 10 min: launches since, dry sites, stocks)");
+    for l in &sam_log {
+        println!("{l}");
+    }
+    println!("\n== Friendly munitions (hourly: at the bases / at the production base, bases out)");
+    for l in &blue_log {
+        println!("{l}");
+    }
+    println!(
+        "\n== Friendly munitions over the run (drawn, put back, asked for with none there; lowest \
+         total at the bases; share of samples with a base out; most bases out)"
+    );
+    for (k, &m) in blue_items.iter().enumerate() {
+        let [d, r, s] = host.state.munition_log.get(&m).copied().unwrap_or_default();
+        println!(
+            "{:14} drawn {d:6} back {r:6} short {s:6}  lowest {:6}  out {:3.0}%  max out {}  ({:.1}/h made)",
+            format!("{m:?}"),
+            blue_low[k],
+            100.0 * blue_out_samples[k] as f64 / samples.max(1) as f64,
+            blue_out_max[k],
+            host.state.production_rate(m)
+        );
+    }
+    println!(
+        "\n== Friendly air defence with nothing to fire (unit-samples: Patriots {}, Gepards {})",
+        ad_dry[0], ad_dry[1]
+    );
+    for l in &ad_log {
+        println!("{l}");
+    }
+    println!("\n== Cargo flights");
+    for (tag, (r, last)) in &cargo {
+        let fate = if host.state.cargo_lost.contains(tag) {
+            "shot down"
+        } else if host.state.cargo_run(*tag).is_some() {
+            "open"
+        } else {
+            "landed"
+        };
+        let name = |b: u16| host.state.site(b).map_or(String::new(), |s| s.name.clone());
+        println!(
+            "tag {tag:5} {:?} {} -> {}: posted {:.0}s, last seen {last:.0}s, {fate}, load {:?}",
+            r.side,
+            name(r.from),
+            name(r.to),
+            r.posted,
+            r.load
+        );
+        if let Some(end) = tracks.get(tag).and_then(|t| t.end.clone()) {
+            println!("     {end}");
+        }
+        for e in &r.escorts {
+            let fate = tracks.get(e).and_then(|t| t.end.clone()).unwrap_or("-".into());
+            println!("     escort {e}: {fate}");
+        }
+    }
+    println!("\n== Stocks");
+    for (b, s) in &host.state.stocks {
+        let name = host.state.site(*b).map_or(String::new(), |s| s.name.clone());
+        let side = s.side.unwrap_or(Side::Neutral);
+        let prod = if host.state.production_base(side) == Some(*b) { " (production)" } else { "" };
+        let items: Vec<String> = stealth_campaign::Munition::of_side(side)
+            .iter()
+            .map(|&m| format!("{:?} {}", m, s.count(m)))
+            .collect();
+        println!("{side:?} {name}{prod}: {}", items.join(", "));
     }
     println!("\n== News");
     for n in &news {

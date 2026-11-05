@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Velikost jmen hráčů
         50 %: výchozí
+options-seat-height = Výška sedadla
+    .facts =
+        Jak vysoko sedíte v kokpitu, na počítači i ve VR
+        0 cm: běžná výška očí v letounu
 options-section-vr-size = Velikost kokpitu ve VR
 options-vr-size =
     .facts =

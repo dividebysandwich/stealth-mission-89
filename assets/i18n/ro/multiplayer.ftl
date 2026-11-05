@@ -54,6 +54,7 @@ pic-sam-known = Poziție SAM (cunoscută)
 pic-guns-known = Tunuri / MANPADS (cunoscute)
 pic-armour = Tanc / MLI (inamic: la vedere)
 pic-patriot-reach = Raza Patriot
+pic-nasams-reach = Raza NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Raza rachetelor SAM
 pic-engagement-range = Raza de angajare

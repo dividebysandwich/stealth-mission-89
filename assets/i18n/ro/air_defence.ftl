@@ -25,6 +25,7 @@ ds-click-hint = Faceți clic pe hartă unde va fi - clic dreapta: anulare
 ds-not-open-ground = Nu este pe teren deschis
 ds-new-gepard = Amplasament Gepard nou - clic pentru a-l desemna
 ds-new-patriot = Amplasament Patriot nou - clic pentru a-l desemna
+ds-new-nasams = Amplasament NASAMS nou - clic pentru a-l desemna
 ds-new-drones = Centru de comandă drone nou - clic pentru a-l desemna
 ds-waiting = Așteaptă marfă
 ds-fast-track = GRĂBEȘTE ({ $cost })

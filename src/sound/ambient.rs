@@ -9,6 +9,8 @@
 //!   1000 ft and as the eye moves from 50 kt to 100 kt.
 //! - Crickets around noon in the desert theaters, outside the aircraft only.
 //! - Wind out of the aircraft above 300 ft, the high-altitude wind on top above 4000 ft.
+//! - No crickets and no summer over the sea or a lake: they fade over `SHORE_FADE` as the eye
+//!   crosses the shore.
 //!
 //! A sound whose time, weather or place comes or goes fades over `FADE` (real seconds); moving
 //! the view in or out of the aircraft fades the outside-only sounds over `VIEW_FADE`. Altitude
@@ -32,6 +34,8 @@ use crate::world::FloatingOrigin;
 const FADE: f32 = 60.0;
 /// Fade of the outside-only sounds when the view moves in or out of the aircraft.
 const VIEW_FADE: f32 = 0.3;
+/// Fade of the land's sounds (crickets, summer) as the eye crosses a shore (real seconds).
+const SHORE_FADE: f32 = 4.0;
 
 /// The sounds: file and volume (they are recorded at different levels).
 const BEDS: [(&str, f32); 7] = [
@@ -84,6 +88,8 @@ pub(super) struct Ambience {
     /// The eye last frame (world position and view), and its speed (knots, smoothed).
     eye: Option<(DVec3, View)>,
     knots: f32,
+    /// Land under the eye: 1 over land, 0 over water, fading between.
+    land: f32,
 }
 
 /// An ambient loop (index into `BEDS`), playing or paused while it is not heard.
@@ -101,6 +107,7 @@ pub(super) fn reset(mut ambience: ResMut<Ambience>) {
     ambience.fresh = true;
     ambience.eye = None;
     ambience.knots = 0.0;
+    ambience.land = 1.0;
 }
 
 /// What the ambient sounds follow.
@@ -110,6 +117,8 @@ struct Around<'a> {
     /// Height of the eye above the ground (ft), and its speed (knots).
     agl: f32,
     knots: f32,
+    /// Land under the eye: 1 over land, 0 over the sea or a lake (fading across a shore).
+    land: f32,
     /// The view is out of the aircraft.
     outside: bool,
     theater: &'a str,
@@ -131,16 +140,16 @@ fn due(a: &Around) -> [(bool, bool, f32); 7] {
     let below = |(lo, hi): (f32, f32)| 1.0 - smoothstep(lo, hi, a.agl);
     let above = |(lo, hi): (f32, f32)| smoothstep(lo, hi, a.agl);
     let mut d = [(false, true, 1.0); 7];
-    d[NIGHT_CRICKETS] = (within(NIGHT) && !a.stormy, true, below(CRICKETS_BAND));
+    d[NIGHT_CRICKETS] = (within(NIGHT) && !a.stormy, true, below(CRICKETS_BAND) * a.land);
     d[CRICKETS] =
-        (within(NOON) && !a.stormy && DESERT_THEATERS.contains(&a.theater), a.outside, 1.0);
+        (within(NOON) && !a.stormy && DESERT_THEATERS.contains(&a.theater), a.outside, a.land);
     d[RAIN_LIGHT] = (a.raining, true, 1.0);
     d[RAIN] = (a.raining && a.storm, true, 1.0);
     let slow = 1.0 - smoothstep(SUMMER_SPEED.0, SUMMER_SPEED.1, a.knots);
     d[SUMMER] = (
         within(DAY) && a.sunny && SUMMER_THEATERS.contains(&a.theater),
         true,
-        below(SUMMER_BAND) * slow,
+        below(SUMMER_BAND) * slow * a.land,
     );
     d[WIND] = (true, a.outside, above(WIND_BAND));
     d[WIND_HIGH] = (true, a.outside, above(WIND_HIGH_BAND));
@@ -192,6 +201,7 @@ pub(super) fn ambience(
     eye: Query<&GlobalTransform, With<EyeCamera>>,
     settings: Res<crate::settings::Settings>,
     mut loops: Query<(&AmbientLoop, Option<&mut AudioSink>)>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
     mut muffler: Muffler,
 ) {
     let a = player.single().ok();
@@ -201,11 +211,22 @@ pub(super) fn ambience(
         .zip(view.as_deref())
         .map(|(tf, v)| (origin.origin + tf.translation().as_dvec3(), v.view));
     let knots = eye_speed(&mut ambience, at, virt.delta_secs());
+    let dt = real.delta_secs();
+    let water = scenery
+        .as_deref()
+        .zip(at)
+        .is_some_and(|(s, (p, _))| s.is_water(bevy::math::DVec2::new(p.x, -p.z)));
+    ambience.land = if ambience.fresh {
+        (!water) as u8 as f32
+    } else {
+        approach(ambience.land, !water, dt, SHORE_FADE)
+    };
     let seconds = clock.start_seconds + clock.elapsed.unwrap_or(a.map_or(0.0, |a| a.time));
     let around = Around {
         hours: (seconds / 3600.0).rem_euclid(24.0),
         agl: weather.eye_ft - a.map_or(0.0, |a| a.ground_altitude),
         knots,
+        land: ambience.land,
         outside: !muffle::inside(view.as_deref()),
         theater: theater.as_ref().map_or("", |t| t.id.as_str()),
         // Under the clouds, not in them.
@@ -216,7 +237,6 @@ pub(super) fn ambience(
             && weather.shade < 0.5
             && !weather.raining(),
     };
-    let dt = real.delta_secs();
     let fresh = std::mem::take(&mut ambience.fresh);
     let gain = if level.0 == 3 { Channel::Effects.gain(&settings) } else { 0.0 };
     let mut volumes = [0.0; 7];
@@ -280,6 +300,7 @@ mod tests {
             hours: 12.0,
             agl: 0.0,
             knots: 0.0,
+            land: 1.0,
             outside: true,
             theater: "central_europe",
             raining: false,
@@ -324,6 +345,18 @@ mod tests {
         assert_eq!(at(6000.0, true)[WIND_HIGH].2, 1.0);
         let w = at(4000.0, true)[WIND_HIGH].2;
         assert!(w > 0.3 && w < 0.7, "{w}");
+    }
+
+    /// Over water no crickets and no summer; the wind and the rain stay.
+    #[test]
+    fn nothing_of_the_land_over_water() {
+        let sea = |hours, theater| due(&Around { hours, theater, land: 0.0, ..around() });
+        assert_eq!(sea(23.0, "ukraine")[NIGHT_CRICKETS].2, 0.0);
+        assert_eq!(sea(12.0, "ukraine")[SUMMER].2, 0.0);
+        assert_eq!(sea(12.0, "libya")[CRICKETS].2, 0.0);
+        let windy = due(&Around { agl: 1000.0, land: 0.0, raining: true, ..around() });
+        assert_eq!(windy[WIND].2, 1.0);
+        assert!(windy[RAIN_LIGHT].0 && windy[RAIN_LIGHT].2 == 1.0);
     }
 
     /// The summer fades out as the eye speeds up from 50 to 100 kt.

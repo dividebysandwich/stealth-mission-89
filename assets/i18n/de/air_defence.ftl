@@ -25,6 +25,7 @@ ds-click-hint = Auf der Karte anklicken, wo er hinkommt - Rechtsklick: abbrechen
 ds-not-open-ground = Nicht auf freiem Gelände
 ds-new-gepard = Neuer Gepard-Standort - zum Bestimmen klicken
 ds-new-patriot = Neuer Patriot-Standort - zum Bestimmen klicken
+ds-new-nasams = Neuer NASAMS-Standort - zum Bestimmen klicken
 ds-new-drones = Neuer Drohnenleitstand - zum Bestimmen klicken
 ds-waiting = Warten auf Fracht
 ds-fast-track = BESCHLEUNIGEN ({ $cost })

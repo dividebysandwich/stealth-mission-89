@@ -29,6 +29,7 @@ fm-tooltips = PAAIŠKINIMAI
 fm-tutorial = INTERAKTYVUS MOKOMASIS
 fm-player-labels = ŽAIDĖJŲ VARDAI
 fm-label-size = VARDŲ DYDIS
+fm-seat-height = SĖDYNĖS AUKŠTIS
 fm-cockpit-size = KABINOS DYDIS
 fm-volume-master = BENDRAS GARSAS
 fm-volume-engine = VARIKLIS

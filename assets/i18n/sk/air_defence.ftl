@@ -25,6 +25,7 @@ ds-click-hint = Kliknite na mapu, kam má ísť - pravé tlačidlo: zrušiť
 ds-not-open-ground = Nie je na otvorenom teréne
 ds-new-gepard = Nové stanovište Gepard - kliknite na určenie
 ds-new-patriot = Nové stanovište Patriot - kliknite na určenie
+ds-new-nasams = Nové stanovište NASAMS - kliknite na určenie
 ds-new-drones = Nové veliteľské stanovište dronov - kliknite na určenie
 ds-waiting = Čaká na náklad
 ds-fast-track = URÝCHLIŤ ({ $cost })

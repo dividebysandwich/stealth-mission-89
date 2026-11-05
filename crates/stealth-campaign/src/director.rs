@@ -14,6 +14,7 @@ impl CampaignState {
         self.ai_mission_report(r, ev);
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
+        self.cargo_plane_report(r, ev);
         match *r {
             Report::ObjectDestroyed { object, by } => {
                 let now = self.clock;
@@ -458,7 +459,15 @@ impl CampaignState {
                         self.patrols.push((tag, Side::Red, self.clock));
                         let task = FighterTask::Patrol;
                         let side = Side::Red;
-                        ev.push(CampaignEvent::LaunchFighters { tag, side, from, x, y, task });
+                        ev.push(CampaignEvent::LaunchFighters {
+                            tag,
+                            side,
+                            from,
+                            x,
+                            y,
+                            task,
+                            escort: None,
+                        });
                         ev.push(CampaignEvent::Message(text!("cl-fighters-scrambled")));
                     }
                 }
@@ -784,7 +793,15 @@ impl CampaignState {
         let tag = self.id();
         self.patrols.push((tag, Side::Red, now));
         let task = FighterTask::Patrol;
-        ev.push(CampaignEvent::LaunchFighters { tag, side: Side::Red, from, x, y, task });
+        ev.push(CampaignEvent::LaunchFighters {
+            tag,
+            side: Side::Red,
+            from,
+            x,
+            y,
+            task,
+            escort: None,
+        });
     }
 
     /// A friendly airfield with enemy aircraft close scrambles a CAP of one or two fighters
@@ -842,6 +859,7 @@ impl CampaignState {
                     x,
                     y,
                     task,
+                    escort: None,
                 });
             }
             self.caps.push(CapFlight { base, tags, launched: now });
@@ -1235,7 +1253,15 @@ impl CampaignState {
                     let tag = self.id();
                     self.patrols.push((tag, side, now));
                     let task = FighterTask::Patrol;
-                    ev.push(CampaignEvent::LaunchFighters { tag, side, from, x, y, task });
+                    ev.push(CampaignEvent::LaunchFighters {
+                        tag,
+                        side,
+                        from,
+                        x,
+                        y,
+                        task,
+                        escort: None,
+                    });
                 }
             }
             if now < launch_at {
@@ -1562,6 +1588,10 @@ impl CampaignState {
                 a.y,
                 0,
             );
+        }
+        // The enemy's cargo flights, scheduled or in the air.
+        for (title, objective, x, y, threat) in self.cargo_offers(side) {
+            add(self, MissionKind::Intercept, title, objective, x, y, threat);
         }
         // Pilots down behind the lines.
         for d in self.downed.clone() {
@@ -1931,5 +1961,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Logistics { site, leg } => (15, (site as i64) << 8 | leg as i64),
         Objective::Armour { convoy, .. } => (16, convoy as i64),
         Objective::Support { convoy, .. } => (17, convoy as i64),
+        Objective::Cargo { tag } => (18, tag as i64),
     }
 }

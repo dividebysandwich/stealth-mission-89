@@ -20,7 +20,7 @@
 use serde::{Deserialize, Serialize};
 use stealth_i18n::text;
 
-use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, PATRIOT, SA14, STINGER, Shell, lead};
+use crate::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP, SA14, STINGER, SamBattery, Shell, lead};
 use crate::ai_loadout::{AiLoadout, FighterTask, Seeker};
 use crate::csar::{BLACKHAWK, HIND};
 use crate::math::{approx, s16};
@@ -86,6 +86,11 @@ pub const PATRIOT_ROUNDS: i32 = 4;
 /// A launcher fires on the track of a radar this close (1 km); its fixed elevation (rad).
 pub(crate) const PATRIOT_LINK: i32 = 0x40;
 pub const PATRIOT_ELEVATION: f32 = 0.66;
+/// NASAMS: how far it engages (30 km, inside the 40 km its AIM-120s reach from the console),
+/// missiles on a launcher (six canisters) and the launchers' fixed elevation (rad, 30°).
+pub const NASAMS_REACH: i32 = 0x780;
+pub const NASAMS_ROUNDS: i32 = 6;
+pub const NASAMS_ELEVATION: f32 = 0.52;
 /// A missile's fuse (m) and the chance (per mille) it kills what it reaches.
 const FUSE: f64 = 25.0;
 const MISSILE_PK: i32 = 700;
@@ -109,6 +114,11 @@ const GERAN: usize = 29;
 const HARM: i32 = 24;
 const ROCKETS: i32 = 27;
 const ROCKET_RELEASE: i32 = 0x140;
+/// A strike aircraft out of guided weapons drops free-fall bombs, flying over its target
+/// (map units, ~1 km), with less chance of a hit (per mille).
+const BOMBS: i32 = 30;
+const BOMB_RELEASE: i32 = 0x40;
+const BOMB_PK: i32 = 550;
 /// CAS: rocket passes a flight's aircraft fly, seconds between two (flying out to the side of
 /// its run in, `CAS_EGRESS` from its point, `CAS_EGRESS_TURN` rad round from where it fired; a
 /// helicopter `CAS_EGRESS_HELI`), map units.
@@ -137,6 +147,9 @@ pub enum Role {
     /// Helicopter bringing an air defence unit's stockpile up (`supply`): it flies to the
     /// unit, hovers low beside it, then flies back to its helipad and lands.
     Supply,
+    /// Cargo aircraft: flies from its production base to its goal base (`home`) and lands
+    /// there; it fights nobody.
+    Transport,
     /// A drone command center's drone (`uav.rs` flies it).
     Uav,
     /// Reconnaissance: flies low to its goal, photographs the object there (`strike` until
@@ -210,6 +223,13 @@ pub struct CampaignFlight {
     pub passes: u8,
     #[serde(default)]
     pub pass_wait: i32,
+    /// A fighter after the other side's aircraft with this campaign tag (a cargo flight): its
+    /// goal follows it once it is up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hunt: Option<u32>,
+    /// A strike aircraft out of guided weapons: it drops iron bombs, flying over its target.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub iron: bool,
 }
 
 impl CampaignFlight {
@@ -308,6 +328,16 @@ pub struct CampaignSim {
     /// at them first.
     #[serde(default)]
     pub(crate) cas_units: Vec<(u32, Vec<u16>)>,
+    /// What the aircraft that landed brought back (the host takes it).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) landed: Vec<crate::munitions::LandedLoad>,
+    /// The enemy's SAM sites (per object) and guns (per AAA unit) fire from magazines.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) magazines: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) site_rounds: Vec<i32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) gun_rounds: Vec<i32>,
 }
 
 /// Metres (east, north, up) of a flight unit.
@@ -365,6 +395,10 @@ impl Sim {
             defence: Default::default(),
             ground: Default::default(),
             cas_units: Vec::new(),
+            landed: Vec::new(),
+            magazines: false,
+            site_rounds: Vec::new(),
+            gun_rounds: Vec::new(),
         }));
         self.leave_world();
     }
@@ -981,6 +1015,17 @@ impl Sim {
 
     /// Campaign: a friendly Patriot battery at (x, y): its radar and three launchers around it.
     pub fn place_patriot(&mut self, x: i32, y: i32) {
+        self.place_sam_battery(SamBattery::Patriot, x, y);
+    }
+
+    /// Campaign: a friendly NASAMS battery at (x, y): its Sentinel radar and three launchers
+    /// around it.
+    pub fn place_nasams(&mut self, x: i32, y: i32) {
+        self.place_sam_battery(SamBattery::Nasams, x, y);
+    }
+
+    /// Campaign: a friendly missile battery at (x, y): its radar and three launchers around it.
+    pub fn place_sam_battery(&mut self, b: SamBattery, x: i32, y: i32) {
         let Some(mut c) = self.campaign.take() else { return };
         if self.units.len() + 4 <= MAX_UNITS {
             c.aaa_blue.resize(self.units.len(), false);
@@ -991,16 +1036,16 @@ impl Sim {
                 x: x.clamp(0x40, 0x7FC0),
                 y: y.clamp(0x40, 0x7FC0),
                 aim_az: facing,
-                aim_el: PATRIOT_ELEVATION,
-                rounds: if kind == GroundKind::PatriotLauncher { PATRIOT_ROUNDS } else { 0 },
+                aim_el: b.elevation(),
+                rounds: if kind == b.launcher() { b.rounds() } else { 0 },
                 ..Default::default()
             };
-            self.units.push(unit(GroundKind::PatriotRadar, x, y));
+            self.units.push(unit(b.radar(), x, y));
             for k in 0..3 {
                 let t = facing as f64 + (k as f64 - 1.0) * 1.2 + std::f64::consts::PI;
                 let r = (10 + rng.random(16)) as f64;
                 let (lx, ly) = (x + (t.sin() * r) as i32, y - (t.cos() * r) as i32);
-                self.units.push(unit(GroundKind::PatriotLauncher, lx, ly));
+                self.units.push(unit(b.launcher(), lx, ly));
             }
             c.aaa_blue.resize(self.units.len(), true);
             c.aaa_target.resize(self.units.len(), None);
@@ -1155,6 +1200,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1248,6 +1295,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1324,6 +1373,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1385,6 +1436,8 @@ impl Sim {
             fought: 0,
             passes: 0,
             pass_wait: 0,
+            hunt: None,
+            iron: false,
         });
         i
     }
@@ -1414,9 +1467,9 @@ impl Sim {
     /// Where a campaign fighter patrols (circling its goal) or a strike aircraft flies to,
     /// None for other aircraft.
     pub(crate) fn campaign_goal(&self, i: usize, u: &FlightUnit) -> Option<(i32, i32)> {
-        let f = self
-            .campaign_flight(i)
-            .filter(|f| !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav))?;
+        let f = self.campaign_flight(i).filter(|f| {
+            !matches!(f.role, Role::Insertion | Role::Supply | Role::Uav | Role::Transport)
+        })?;
         let (gx, gy) = f.goal;
         if f.strike_unit && f.pass_wait > 0 && f.strike.is_some() {
             // Between CAS passes: out to the side of its run in, to turn in again.
@@ -1494,6 +1547,8 @@ impl Sim {
         c.aaa_target.resize(self.units.len(), None);
         c.site_cool.resize(self.objects.len(), 0);
         self.campaign = Some(c);
+        self.magazine_sizes();
+        self.campaign_hunts();
         self.campaign_bookkeeping();
         self.campaign_bombs();
         self.campaign_recon();
@@ -1513,6 +1568,7 @@ impl Sim {
     /// Campaign aircraft shot down or landed: report them and free their slot.
     fn campaign_bookkeeping(&mut self) {
         let mut ev = Vec::new();
+        let mut landed = Vec::new();
         let c = self.campaign.as_mut().expect("campaign");
         for (i, slot) in c.flights.iter_mut().enumerate() {
             let Some(f) = slot.as_mut() else { continue };
@@ -1532,10 +1588,14 @@ impl Sim {
             if u.flags & fflags::EXISTS == 0 || u.flags & fflags::AIRBORNE == 0 || stopped {
                 if !f.reported {
                     ev.push(SimEvent::CampaignFlightLanded { unit: i, tag: f.tag, x: u.x, y: u.y });
+                    landed.push((*f, u.x, u.y));
                 }
                 *u = FlightUnit::default();
                 *slot = None;
             }
+        }
+        for (f, x, y) in landed {
+            self.note_landed(&f, x, y);
         }
         for e in ev {
             self.emit(e);
@@ -1582,7 +1642,9 @@ impl Sim {
                 f.pass_wait -= 1;
                 continue;
             }
-            let (spec, release) = if f.strike_aaa {
+            let (spec, release) = if f.iron {
+                (BOMBS, BOMB_RELEASE)
+            } else if f.strike_aaa {
                 harm
             } else if f.strike_unit {
                 (ROCKETS, ROCKET_RELEASE)
@@ -1619,7 +1681,7 @@ impl Sim {
                 self.flights[i].wp = f.home;
             }
             if let Some(k) = target {
-                shots.push((i, ROCKETS, k, true, f.blue));
+                shots.push((i, if f.iron { BOMBS } else { ROCKETS }, k, true, f.blue));
             }
         }
         for (i, spec, target, aaa, blue) in shots {
@@ -1647,7 +1709,9 @@ impl Sim {
                     Some(HELO_SAM_REACH)
                 } else if self.flights[i].spec == crate::ai_missions::TORNADO
                     || self.campaign_flight(i).is_some_and(|f| {
-                        matches!(f.role, Role::Strike | Role::Recon) && !f.kamikaze
+                        // A cargo aircraft flies its approach low, as the strike aircraft.
+                        matches!(f.role, Role::Strike | Role::Recon | Role::Transport)
+                            && !f.kamikaze
                     })
                 {
                     Some(STRIKE_SAM_REACH)
@@ -1687,6 +1751,7 @@ impl Sim {
             if o.unit_type == 0
                 || o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
                 || c.site_cool[i] > 0
+                || (c.magazines && c.site_rounds.get(i).is_some_and(|&n| n <= 0))
             {
                 continue;
             }
@@ -1699,7 +1764,24 @@ impl Sim {
             if d > horizon(pos[j][2]) || rng.random(100) > 40 + 15 * self.diff {
                 continue;
             }
+            // Salvo discipline (with magazines): one long range missile at a time at an
+            // aircraft.
+            let long = crate::munitions::long_range_sam;
+            if c.magazines
+                && long(spec)
+                && c.missiles
+                    .iter()
+                    .chain(&launches)
+                    .any(|m| m.target == j && !m.blue && m.ground.is_none() && long(m.spec))
+            {
+                continue;
+            }
             c.site_cool[i] = SITE_RELOAD * fs;
+            if c.magazines
+                && let Some(n) = c.site_rounds.get_mut(i)
+            {
+                *n -= 1;
+            }
             let from = [o.x as f64 * M_PER_MAP, (0x8000 - o.y) as f64 * M_PER_MAP, 5.0];
             launches.push(self.ai_missile(spec, from, [0.0, 0.0, 1.0], j, false));
         }
@@ -1717,7 +1799,8 @@ impl Sim {
             }
             if u.destroyed
                 || (!blue && u.tracking)
-                || matches!(u.kind, GroundKind::PatriotLauncher | GroundKind::DroneCenter)
+                || u.kind.battery_launcher().is_some()
+                || u.kind == GroundKind::DroneCenter
             {
                 continue;
             }
@@ -1725,8 +1808,8 @@ impl Sim {
             if c.defence.stations.iter().any(|s| s.unit as usize == k) {
                 continue;
             }
-            if u.kind == GroundKind::PatriotRadar {
-                let track = near(u.x, u.y, !blue, PATRIOT_REACH, true, PATRIOT_FLOOR)
+            if let Some(b) = u.kind.battery_radar() {
+                let track = near(u.x, u.y, !blue, b.reach(), true, PATRIOT_FLOOR)
                     .filter(|&(j, d)| d <= horizon(pos[j][2]));
                 c.aaa_target[k] = track.map(|t| t.0);
                 let a = &mut self.units[k];
@@ -1761,16 +1844,14 @@ impl Sim {
                 ));
             }
         }
-        // Patriot launchers fire on their battery radar's track.
+        // Missile battery launchers fire on their battery radar's track.
         for k in 0..self.units.len() {
             let u = self.units[k];
-            if u.kind != GroundKind::PatriotLauncher || u.destroyed {
-                continue;
-            }
+            let Some(b) = u.kind.battery_launcher().filter(|_| !u.destroyed) else { continue };
             let blue = c.aaa_blue[k];
             let track = (0..self.units.len()).find_map(|r| {
                 let radar = self.units[r];
-                (radar.kind == GroundKind::PatriotRadar
+                (radar.kind == b.radar()
                     && !radar.destroyed
                     && c.aaa_blue[r] == blue
                     && approx(radar.x - u.x, radar.y - u.y) < PATRIOT_LINK)
@@ -1785,18 +1866,24 @@ impl Sim {
             let az = d[0].atan2(d[1]);
             self.units[k].aim_az = az as f32;
             let in_air = |m: &AiMissile| {
-                m.target == j && m.spec == PATRIOT && m.blue == blue && m.station.is_none()
+                m.target == j && m.spec == b.missile() && m.blue == blue && m.station.is_none()
             };
             let salvo = c.missiles.iter().chain(&launches).filter(|m| in_air(m)).count();
-            if u.rounds == 0 || u.cooldown > 0 || salvo >= PATRIOT_SALVO || rng.random(100) >= 50 {
+            // One launcher at a time: the battery empties the one it has begun first.
+            if u.rounds == 0
+                || u.cooldown > 0
+                || salvo >= PATRIOT_SALVO
+                || self.next_launcher(radar) != Some(k)
+                || rng.random(100) >= 50
+            {
                 continue;
             }
             let a = &mut self.units[k];
             a.rounds -= 1;
             a.cooldown = PATRIOT_INTERVAL * fs;
-            let el = PATRIOT_ELEVATION as f64;
+            let el = b.elevation() as f64;
             let dir = [az.sin() * el.cos(), az.cos() * el.cos(), el.sin()];
-            let mut m = self.ai_missile(PATRIOT, from, dir, j, blue);
+            let mut m = self.ai_missile(b.missile(), from, dir, j, blue);
             m.radar = Some(radar as u16);
             launches.push(m);
         }
@@ -1921,7 +2008,7 @@ impl Sim {
         target: usize,
         blue: bool,
     ) -> AiMissile {
-        let flight = (spec == PATRIOT).then(|| {
+        let flight = SamBattery::of_missile(spec).map(|_| {
             let wu =
                 [from[0] / M_PER_WU, 0x10_0000 as f64 - from[1] / M_PER_WU, from[2] / M_PER_WU];
             crate::guidance::launch_ai(spec, wu, [dir[0], -dir[1], dir[2]], self.fs)
@@ -1966,9 +2053,11 @@ impl Sim {
             if u.destroyed || u.kind == GroundKind::Manpads || u.kind.unarmed() {
                 continue;
             }
-            // A Gepard fires what it has (its refill comes from the stockpile).
+            // A Gepard fires what it has (its refill comes from the stockpile), an enemy gun
+            // what its magazine holds.
             let gepard = u.kind == GroundKind::Gepard;
-            if gepard && u.rounds <= 0 {
+            let dry = c.magazines && !gepard && c.gun_rounds.get(k).is_some_and(|&n| n <= 0);
+            if (gepard && u.rounds <= 0) || dry {
                 u.burst = 0;
                 continue;
             }
@@ -2001,6 +2090,12 @@ impl Sim {
             let ttl = if flak { time } else { reach * 1.3 / v0 };
             if gepard {
                 u.rounds = (u.rounds - 2).max(0);
+            } else if c.magazines
+                && let Some(n) = c.gun_rounds.get_mut(k)
+            {
+                let per =
+                    if flak { crate::munitions::S60_ROUNDS } else { crate::munitions::ZSU_ROUNDS };
+                *n = (*n - per).max(0);
             }
             if c.shells.len() < MAX_SHELLS {
                 let shell = Shell {
@@ -2128,7 +2223,8 @@ impl Sim {
                 let step = mul(dir, speed * dt);
                 if crate::aaa::closest(sub(m.pos, at), step) < FUSE {
                     pops.push(metres_map(at));
-                    if rng.random(1000) < GROUND_PK {
+                    let pk = if m.spec == BOMBS { BOMB_PK } else { GROUND_PK };
+                    if rng.random(1000) < pk {
                         ground_hits.push((g, m.ground_aaa));
                     }
                     return false;

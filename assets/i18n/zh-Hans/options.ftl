@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         玩家名称的大小
         50%：默认
+options-seat-height = 座椅高度
+    .facts =
+        你在座舱里坐的高度（屏幕和 VR）
+        0 cm：飞机的正常眼位高度
 options-section-vr-size = VR 座舱大小
 options-vr-size =
     .facts =

@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Žaidėjų vardų dydis
         50 %: numatytasis
+options-seat-height = Sėdynės aukštis
+    .facts =
+        Kaip aukštai sėdite kabinoje, ekrane ir VR
+        0 cm: įprastas orlaivio akių aukštis
 options-section-vr-size = VR kabinos dydis
 options-vr-size =
     .facts =

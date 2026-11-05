@@ -104,6 +104,7 @@ cl-objective = { $title }: målet uppnått
 cl-recon = Spaningsbilder av { $place }: dess försvar är kartlagt
 cl-package = Package över { $place }: { $kinds } - +{ $bonus } för { $pilots }
 cl-supply-patriot = Patriot-batteri nära { $place }
+cl-supply-nasams = NASAMS-batteri nära { $place }
 cl-supply-gepard = Gepard nära { $place }
 cl-supply-drones = drönarledningscentral nära { $place }
 cl-resupply-requested = { $who } begär förnödenheter till { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Förstörd
 st-already-refilling = Fyller redan på
 st-not-empty-yet = Inte tom än
 st-stockpile-empty = Lagret tomt
+st-stockpile-short = Inte tillräckligt med robotar i förrådet
 st-no-launcher-ready = Ingen ramp klar
 st-unit-destroyed = { $unit } är förstörd
 

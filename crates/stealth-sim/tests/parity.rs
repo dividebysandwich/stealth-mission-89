@@ -284,10 +284,10 @@ fn campaign_run() -> u64 {
 fn single_player_parity() {
     const GOLDEN: &[u64] = &[
         0x8a7e667d342b5bcd,
-        0x5340159409217907,
+        0x24b7d173a0cdffde,
         0x228e19083febc5c1,
         0x19d5d6d02a8cb4d2,
-        0xfeace502b29d7c15,
+        0xdf108f9f9c91332e,
         0x5033628ac20b3c43,
         0xc81dcc67b23352f3,
         0x25841feecff915d6,
@@ -310,7 +310,7 @@ fn single_player_parity() {
         0xb2f06088299bef42,
         0x36578f2436310b93,
         0xae77901b1012761b,
-        0xa8f21cf1611270ca,
+        0xd65530ef839fb9f0,
     ];
     let mut got = missions();
     got.push(campaign_run());
@@ -325,8 +325,8 @@ fn ai_flight_parity() {
     const GOLDEN: &[u64] = &[
         0xbe12280dc9125b49,
         0x861ad1157bcd8ab8,
-        0x7714d8110f0dfc9a,
-        0x4adbb50f913fb4d0,
+        0xc9e53fe5e3f140df,
+        0x41aa2bdfa701452c,
         0x040ab5847958a2a7,
         0xef08fdb70c413e36,
         0x5c95b176f7fd01e8,

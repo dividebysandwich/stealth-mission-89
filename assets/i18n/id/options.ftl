@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Ukuran nama pemain
         50%: bawaan
+options-seat-height = Tinggi kursi
+    .facts =
+        Seberapa tinggi Anda duduk di kokpit, di layar dan di VR
+        0 cm: tinggi mata normal pesawat
 options-section-vr-size = Ukuran kokpit VR
 options-vr-size =
     .facts =

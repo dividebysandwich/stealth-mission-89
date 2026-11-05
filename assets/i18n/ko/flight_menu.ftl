@@ -29,6 +29,7 @@ fm-tooltips = 툴팁
 fm-tutorial = 대화형 튜토리얼
 fm-player-labels = 플레이어 이름
 fm-label-size = 이름 크기
+fm-seat-height = 좌석 높이
 fm-cockpit-size = 조종석 크기
 fm-volume-master = 마스터 볼륨
 fm-volume-engine = 엔진

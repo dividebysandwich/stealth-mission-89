@@ -225,12 +225,12 @@ fn choice(
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
     if let Some(m) = manning {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
-        let eye = settings.cockpit_eye() - Vec3::Y * drop;
+        let eye = settings.cockpit_origin() - Vec3::Y * drop;
         let model = if m.drones() { DRONE_CONSOLE_MODEL } else { CONSOLE_MODEL };
         return (layout::PanelStyle::Modern, model, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
-    (style, stem, settings.cockpit_eye(), settings.aircraft.spec().cockpit_model_scale())
+    (style, stem, settings.cockpit_origin(), settings.aircraft.spec().cockpit_model_scale())
 }
 
 /// Keeps the cockpit at the eye point (in VR it follows the cockpit size).
@@ -599,6 +599,7 @@ fn spawn_cockpit(
     spawner.tc_wide = tc_wide.map(|w| crate::trackcam::TrackCamImage(w.0.clone()));
     spawner.spawn(&mut commands, &assets, file, root);
     *anchors = spawner.anchors;
+    anchors.hud_glass_bottom = anchors.hud_glass_bottom.map(|p| p / scale);
 
     for i in 0..2 {
         let palm = commands

@@ -29,6 +29,7 @@ ds-click-hint = Kliknij mapę, gdzie ma stanąć - prawy przycisk: anuluj
 ds-not-open-ground = Nie na otwartym terenie
 ds-new-gepard = Nowe stanowisko Gepard - kliknij, by wskazać
 ds-new-patriot = Nowe stanowisko Patriot - kliknij, by wskazać
+ds-new-nasams = Nowe stanowisko NASAMS - kliknij, by wskazać
 ds-new-drones = Nowe centrum dowodzenia dronami - kliknij, by wskazać
 ds-waiting = Czeka na ładunek
 ds-fast-track = PRZYSPIESZ ({ $cost })

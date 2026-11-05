@@ -577,6 +577,7 @@ impl CampaignState {
             }
             Objective::Interdict { object, .. } => !self.site(*object).is_some_and(Site::alive),
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
+            Objective::Cargo { tag } => self.cargo_lost.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
             Objective::Resupply { .. } | Objective::Logistics { .. } => p.delivered,
             Objective::Rescue { downed } => {
@@ -623,6 +624,12 @@ impl CampaignState {
                 .filter(|d| d.state == DownedState::Waiting)
                 .map(|d| vec![(d.x, d.y)])
                 .unwrap_or_default(),
+            Objective::Cargo { tag } => {
+                let Some(r) = self.cargo_run(tag) else { return Vec::new() };
+                let mut v = flying(&[tag]);
+                v.push(self.cargo_point(r));
+                v
+            }
             _ => Vec::new(),
         }
     }

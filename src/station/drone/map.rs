@@ -355,7 +355,7 @@ pub(super) fn draw(
             if k == m.unit {
                 stroke_text_at(cv, p.x, p.y + 11.0, "DCC", 5.0, 0.8, BLUE, Align::Centre);
             }
-        } else if u.kind != GroundKind::PatriotLauncher {
+        } else if u.kind.battery_launcher().is_none() {
             cv.ring(p, 2.5, 1.0, BLUE);
         }
     }

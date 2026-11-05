@@ -34,6 +34,7 @@ mod debrief;
 mod dedicated;
 mod dots;
 mod effects;
+mod eng_page;
 mod explosions;
 mod fires;
 mod flashes;
@@ -127,6 +128,8 @@ mod win_console;
 mod world;
 #[cfg(feature = "xr")]
 mod xr;
+#[cfg(feature = "xr")]
+mod xr_mirror;
 
 use bevy::prelude::*;
 
@@ -250,7 +253,11 @@ pub fn run() {
     if let Some(fovea) = gl_vr {
         add_gl_vr(&mut app, plugins, fovea);
     } else if settings.vr {
-        app.add_plugins(xr::plugins(plugins)).add_plugins((xr::XrPlugin, vr_menu::VrMenuPlugin));
+        app.add_plugins(xr::plugins(plugins)).add_plugins((
+            xr::XrPlugin,
+            xr_mirror::XrMirrorPlugin,
+            vr_menu::VrMenuPlugin,
+        ));
     } else {
         app.add_plugins(plugins);
     }

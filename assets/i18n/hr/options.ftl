@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Veličina imena igrača
         50 %: zadano
+options-seat-height = Visina sjedala
+    .facts =
+        Koliko visoko sjedite u kokpitu, na zaslonu i u VR-u
+        0 cm: uobičajena visina očiju u zrakoplovu
 options-section-vr-size = Veličina kokpita u VR-u
 options-vr-size =
     .facts =

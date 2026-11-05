@@ -729,8 +729,10 @@ impl Sim {
                 u.wx = wx;
                 u.wy = wy;
                 u.heading = s16(heading);
-            } else if !carrier && !self.parking.is_empty() {
-                // No apron spot left at this base: not parked on its runway instead.
+            } else if !carrier && (!self.parking.is_empty() || self.campaign.is_some()) {
+                // No apron spot left at this base, or none known yet (the scenery is still
+                // being laid out, or a dedicated server has none): not parked on its runway
+                // instead. Only a classic mission parks on the base object.
                 u.flags = 0;
                 continue;
             } else if carrier {

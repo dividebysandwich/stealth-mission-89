@@ -2154,6 +2154,21 @@ fn a_drone_command_center_takes_one_load() {
 }
 
 #[test]
+fn a_nasams_site_takes_two_loads() {
+    let mut c = campaign("central_europe", 3);
+    let at = deploy_spot(&c, DefenceKind::Nasams, &[]);
+    let id = designate(&mut c, at, DefenceKind::Nasams).unwrap();
+    c.tick(1.0, &WorldView::default(), &[]);
+    let offers: Vec<_> = c.board.iter().filter(|o| o.kind == MissionKind::Logistics).collect();
+    assert_eq!(offers.len(), 2);
+    assert!(offers[0].title.starts_with("NASAMS 1/2"), "{}", offers[0].title);
+    assert!(c.deployment(id).unwrap().title().starts_with("NASAMS site near"));
+    let s = DefenceStock { x: 1, y: 2, kind: DefenceKind::Nasams, stock: 9, stock2: 0, stock3: 0 };
+    let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back, s);
+}
+
+#[test]
 fn saves_from_before_the_drones_say_patriot() {
     let old = r#"{"x":1,"y":2,"patriot":true,"stock":5}"#;
     let s: DefenceStock = serde_json::from_str(old).unwrap();
@@ -3381,4 +3396,303 @@ fn a_sead_offer_the_ai_does_not_fly_yet_goes_at_once_on_request() {
     let m = c.ai_mission_for(id).expect("the AI flies it");
     assert!(m.open());
     assert_eq!(c.blue.materiel, materiel - tuning::AI_MISSION_COST);
+}
+
+/// A base of `side` other than its production base.
+fn other_base(c: &CampaignState, side: Side) -> ObjectId {
+    let p = c.production_base(side).expect("production base");
+    c.stocks
+        .iter()
+        .find(|(b, s)| **b != p && s.side == Some(side) && c.site(**b).is_some_and(Site::alive))
+        .map(|(b, _)| *b)
+        .expect("another base")
+}
+
+/// Empties a base's stock of `m`.
+fn run_out(c: &mut CampaignState, base: ObjectId, m: Munition) {
+    let n = c.available(base, m);
+    c.draw(base, m, n);
+    assert_eq!(c.available(base, m), 0);
+}
+
+#[test]
+fn the_war_starts_with_every_airfield_stocked_and_a_production_base_in_the_rear() {
+    let c = ai_campaign();
+    for side in [Side::Blue, Side::Red] {
+        let p = c.production_base(side).expect("a production base");
+        assert_eq!(c.owner(p), Some(side));
+        assert_eq!(c.site(p).unwrap().kind, SiteKind::Airfield);
+        // The furthest of the side's airfields from the other side's places.
+        let rear = |b: ObjectId| {
+            let s = c.site(b).unwrap();
+            c.places
+                .iter()
+                .filter(|q| q.owner == side.enemy())
+                .map(|q| dist(q.x - s.x, q.y - s.y))
+                .min()
+                .unwrap()
+        };
+        for (&b, s) in c.stocks.iter().filter(|(_, s)| s.side == Some(side)) {
+            assert!(rear(b) <= rear(p), "{b} is further back than {p}");
+            for &m in Munition::of_side(side) {
+                // The production base has already made a little.
+                let full = m.full() as u32;
+                assert!(s.count(m) == full || b == p && s.count(m) >= full, "{m:?} at {b}");
+            }
+        }
+    }
+    // The Sidewinders and iron bombs never run out.
+    let b = other_base(&c, Side::Blue);
+    assert_eq!(c.available(b, Munition::of_weapon(1).unwrap()), 32);
+    assert!(Munition::of_weapon(0).is_none() && Munition::of_weapon(9).is_none());
+    assert!(
+        Munition::of_spec(17, Side::Red).is_none() && Munition::of_spec(23, Side::Blue).is_none()
+    );
+}
+
+#[test]
+fn the_production_base_makes_simple_munitions_faster_than_complex_ones() {
+    let mut c = ai_campaign();
+    let p = c.production_base(Side::Blue).unwrap();
+    run_out(&mut c, p, Munition::Hellfire);
+    run_out(&mut c, p, Munition::Harpoon);
+    for _ in 0..60 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    let (hellfire, harpoon) =
+        (c.available(p, Munition::Hellfire), c.available(p, Munition::Harpoon));
+    assert!(hellfire >= 18 && (2..=4).contains(&harpoon), "{hellfire} {harpoon}");
+    // Up to three full stocks.
+    for _ in 0..24 * 6 {
+        c.tick(600.0, &WorldView::default(), &[]);
+    }
+    assert_eq!(c.available(p, Munition::Hellfire), 3 * 32);
+}
+
+#[test]
+fn a_base_out_of_a_munition_gets_one_cargo_flight_and_the_enemy_goes_for_it() {
+    let mut c = ai_campaign();
+    let b = other_base(&c, Side::Blue);
+    let p = c.production_base(Side::Blue).unwrap();
+    run_out(&mut c, b, Munition::Aim120);
+    let before = c.available(p, Munition::Aim120);
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("Cargo flight")))
+    );
+    assert_eq!(c.cargo_runs.len(), 1);
+    let r = c.cargo_runs[0].clone();
+    assert_eq!((r.from, r.to, r.side), (p, b, Side::Blue));
+    assert_eq!(r.launch_at(), Some(r.posted + tuning::CARGO_WAIT));
+    // Half a full stock of what it lacks, out of the production base's now.
+    assert!(r.load.contains(&(Munition::Aim120, 16)), "{:?}", r.load);
+    assert_eq!(c.available(p, Munition::Aim120), before - 16);
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.cargo_runs.len(), 1, "one at a time");
+    // The enemy's interceptors take off two minutes after it was scheduled.
+    let o = c
+        .red_board
+        .iter()
+        .find(|o| o.objective == Objective::Cargo { tag: r.tag })
+        .expect("an intercept on the enemy's board")
+        .clone();
+    assert_eq!(o.kind, MissionKind::Intercept);
+    assert_eq!(c.ai_launch_at(&o), Some(r.posted + tuning::CARGO_INTERCEPT_WAIT));
+    let mut launched = None;
+    let mut hunters = None;
+    for _ in 0..700 {
+        for e in c.tick(1.0, &WorldView::default(), &[]) {
+            match e {
+                CampaignEvent::CargoPlaneLaunched { tag, from, to, .. } => {
+                    assert_eq!((tag, from, to), (r.tag, p, b));
+                    launched = Some(c.clock);
+                }
+                CampaignEvent::AiMissionLaunched {
+                    side: Side::Red,
+                    target: AiTarget::Hunt { tag, x, y },
+                    ..
+                } => {
+                    assert_eq!((tag, x, y), (r.tag, o.x, o.y));
+                    hunters.get_or_insert(c.clock);
+                }
+                _ => {}
+            }
+        }
+    }
+    let (launched, hunters) = (launched.expect("it took off"), hunters.expect("hunters"));
+    assert!((launched - (r.posted + tuning::CARGO_WAIT)).abs() <= 1.0);
+    assert!(hunters - r.posted >= tuning::CARGO_INTERCEPT_WAIT && hunters - r.posted < 200.0);
+    assert_eq!(c.cargo_runs[0].state, CargoState::Airborne);
+    // It lands: the load is the base's.
+    let s = c.site(b).unwrap().clone();
+    let land = Report::FlightLanded { tag: r.tag, x: s.x, y: s.y };
+    let ev = c.tick(1.0, &WorldView::default(), &[land]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("delivered"))));
+    assert_eq!(c.available(b, Munition::Aim120), 16);
+    assert!(c.cargo_runs.iter().all(|x| x.tag != r.tag));
+    // The hunters are called home.
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })));
+}
+
+#[test]
+fn a_cargo_aircraft_shot_down_loses_its_load() {
+    let mut c = ai_campaign();
+    // The enemy's: the friendly board has the intercept.
+    let b = other_base(&c, Side::Red);
+    run_out(&mut c, b, Munition::SamLong);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let r = c.cargo_runs.iter().find(|r| r.side == Side::Red).expect("a cargo flight").clone();
+    let o = c.board.iter().find(|o| o.objective == Objective::Cargo { tag: r.tag }).cloned();
+    let o = o.expect("an intercept on the board");
+    assert!(o.title.contains("cargo"), "{}", o.title.en());
+    c.tick(tuning::CARGO_WAIT, &WorldView::default(), &[]);
+    let s = c.site(b).unwrap();
+    let down =
+        Report::FlightDestroyed { tag: r.tag, side: Side::Red, x: s.x, y: s.y, by: Some(P0) };
+    let ev = c.tick(1.0, &WorldView::default(), &[down]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(_))));
+    assert_eq!(c.available(b, Munition::SamLong), 0);
+    assert!(c.objective_met(&o.objective, &Progress::default()));
+    c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
+    assert!(c.board.iter().all(|x| x.objective != o.objective));
+    // The next one waits out the cooldown.
+    assert!(c.cargo_runs.iter().all(|x| x.to != b), "none right after the loss");
+    for _ in 0..(tuning::CARGO_LOST_COOLDOWN / 60.0) as usize {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.cargo_runs.iter().any(|x| x.to == b), "another after the cooldown");
+}
+
+#[test]
+fn a_cargo_flight_saved_in_the_air_takes_off_again_with_its_load() {
+    let mut c = ai_campaign();
+    let b = other_base(&c, Side::Blue);
+    run_out(&mut c, b, Munition::Harm);
+    c.tick(1.0, &WorldView::default(), &[]);
+    c.tick(tuning::CARGO_WAIT, &WorldView::default(), &[]);
+    let r = c.cargo_runs[0].clone();
+    assert_eq!(r.state, CargoState::Airborne);
+    let json = serde_json::to_string(&c).unwrap();
+    let mut back: CampaignState = serde_json::from_str(&json).unwrap();
+    back.after_load();
+    let again = &back.cargo_runs[0];
+    assert_eq!(again.load, r.load);
+    assert_eq!(again.launch_at(), Some(back.clock + tuning::CARGO_RELAUNCH));
+    let ev = back.tick(tuning::CARGO_RELAUNCH, &WorldView::default(), &[]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::CargoPlaneLaunched { .. })));
+    // A save from before the munitions loads, and stocks up.
+    let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    for k in ["stocks", "production", "cargo_runs", "cargo_lost", "site_magazines"] {
+        v.as_object_mut().unwrap().remove(k);
+    }
+    let mut old: CampaignState = serde_json::from_value(v).unwrap();
+    old.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(old.available(b, Munition::Harm), Munition::Harm.full() as u32);
+}
+
+#[test]
+fn an_empty_base_falls_back_to_the_next_munition() {
+    let mut c = ai_campaign();
+    let b = other_base(&c, Side::Blue);
+    run_out(&mut c, b, Munition::Aim120);
+    assert_eq!(c.draw_with_fallback(b, Munition::Aim120, 4), vec![(Munition::Aim7, 4)]);
+    run_out(&mut c, b, Munition::Aim7);
+    assert!(c.draw_with_fallback(b, Munition::Aim120, 4).is_empty(), "AIM-9s then");
+    run_out(&mut c, b, Munition::Harm);
+    assert_eq!(c.draw_with_fallback(b, Munition::Harm, 1), vec![(Munition::Agm65, 1)]);
+    // Without the munitions (an older test state) nothing runs out.
+    let mut plain = campaign("central_europe", 3);
+    assert_eq!(plain.draw(b, Munition::Aim120, 1000), 1000);
+}
+
+#[test]
+fn the_enemy_stocks_sam_missiles_where_its_sites_need_them() {
+    let mut c = campaign("central_europe", 3);
+    c.rules = Some(CampaignRules::default());
+    let reds: Vec<ObjectId> = c.bases(Side::Red);
+    let (a, b) = (reds[0], reds[1]);
+    // `a` supplies two long range sites and a gun, `b` nothing.
+    c.site_demand.insert(a, [2, 0, 0, 1]);
+    c.site_demand.insert(b, [0; 4]);
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.full_stock(a, Munition::SamLong), 2.0 * tuning::SAM_STOCK_PER_SITE);
+    assert_eq!(c.available(a, Munition::SamLong), 16);
+    assert_eq!(c.available(b, Munition::SamLong), 0);
+    // A base without sites is not out of their missiles; one with them is when they are gone.
+    assert!(c.out_of(b, Side::Red).is_empty());
+    run_out(&mut c, a, Munition::SamLong);
+    assert_eq!(c.out_of(a, Side::Red), vec![Munition::SamLong]);
+    // The production base makes enough for the theater's sites.
+    assert_eq!(c.production_rate(Munition::SamLong), 2.0 * tuning::SAM_LONG_PER_SITE_HOUR);
+    assert_eq!(c.production_rate(Munition::Aa11), Munition::Aa11.per_hour());
+}
+
+/// `cargo test -p stealth-campaign theater_survey -- --ignored --nocapture`: each theater's
+/// bases and production bases at the start.
+#[test]
+#[ignore]
+fn theater_survey() {
+    for code in [
+        "central_europe",
+        "cuba",
+        "desert_storm",
+        "korea",
+        "libya",
+        "middle_east",
+        "north_cape",
+        "persian_gulf",
+        "ukraine",
+        "vietnam",
+    ] {
+        let mut c = campaign(code, 0);
+        c.rules = Some(CampaignRules::default());
+        c.tick(1.0, &WorldView::default(), &[]);
+        for side in [Side::Blue, Side::Red] {
+            let kinds = |k: SiteKind| {
+                c.sites
+                    .iter()
+                    .filter(|s| s.kind == k && !s.removed && c.owner(s.object) == Some(side))
+                    .map(|s| s.name.clone())
+                    .collect::<Vec<_>>()
+            };
+            let sams = c
+                .sites
+                .iter()
+                .filter(|s| s.kind == SiteKind::Sam && c.owner(s.object) == Some(side))
+                .count();
+            let p = c.production_base(side).and_then(|b| c.site(b)).map(|s| s.name.clone());
+            println!(
+                "{code:15} {side:?}: airfields {:?} carriers {:?} sams {sams} production {p:?}",
+                kinds(SiteKind::Airfield),
+                kinds(SiteKind::Carrier)
+            );
+        }
+    }
+}
+
+#[test]
+fn a_side_left_with_carriers_takes_its_next_production_base() {
+    let mut c = campaign("korea", 0);
+    c.rules = Some(CampaignRules::default());
+    c.tick(1.0, &WorldView::default(), &[]);
+    let chunchon = c.production_base(Side::Blue).expect("Chunchon");
+    // The enemy takes the only friendly airfield: the carriers fly on, never short of anything.
+    let place = c.site(chunchon).unwrap().place.unwrap();
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Red, &mut ev);
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.production_base(Side::Blue), None);
+    let target = c.production_target(Side::Blue).expect("an airfield to take");
+    assert_eq!(c.owner(target), Some(Side::Red));
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("capture"))));
+    let carrier = c.bases(Side::Blue)[0];
+    assert_eq!(c.site(carrier).unwrap().kind, SiteKind::Carrier);
+    assert_eq!(c.available(carrier, Munition::Aim120), u32::MAX);
+    // Taken, it is the production base, with a full stock.
+    let place = c.site(target).unwrap().place.unwrap();
+    c.capture_place(place, Side::Blue, &mut Vec::new());
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.production_base(Side::Blue), Some(target));
+    assert_eq!(c.production_target(Side::Blue), None);
+    assert!(c.available(target, Munition::Aim120) >= 32);
 }

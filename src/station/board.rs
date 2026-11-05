@@ -259,14 +259,17 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         if u.destroyed {
             continue;
         }
-        // The missiles ready: four boxes.
-        for k in 0..stealth_sim::campaign::PATRIOT_ROUNDS {
-            let x = 96.0 + k as f32 * 12.0;
-            let a = Vec2::new(x, mid - 4.0);
+        // The missiles ready: a box each (four on a Patriot launcher, six on a NASAMS one,
+        // closer together).
+        let full = u.kind.battery().map_or(4, |b| b.rounds());
+        let (step, size) = if full > 4 { (9.0, 6) } else { (12.0, 8) };
+        for k in 0..full {
+            let x = 96.0 + k as f32 * step;
+            let a = Vec2::new(x, mid - size as f32 / 2.0);
             if k < u.rounds {
-                cv.fill_rect(a.x as i32, a.y as i32, 8, 8, CYAN);
+                cv.fill_rect(a.x as i32, a.y as i32, size, size, CYAN);
             } else {
-                cv.frame(a, a + Vec2::splat(8.0), 0.8, GREY);
+                cv.frame(a, a + Vec2::splat(size as f32), 0.8, GREY);
             }
         }
         let left = sim.refill_left(l);
@@ -285,7 +288,7 @@ fn battery(cv: &mut Canvas, sim: &Sim, ui: &ConsoleUi, radar: usize) {
         if sim.units()[radar].destroyed { ("OFFLINE", RED) } else { ("ONLINE", GREEN) };
     stroke_text_at(cv, 8.0, y, "RADAR", TEXT, PEN, WHITE, Align::Left);
     stroke_text_at(cv, 96.0, y, status, TEXT, PEN, col, Align::Left);
-    let stock = launchers.first().map_or(0, |&l| sim.stockpile(l));
+    let stock = launchers.first().map_or(0, |&l| sim.stockpile_free(l));
     stroke_text_at(cv, 8.0, y + 18.0, "STOCKPILE", TEXT, PEN, WHITE, Align::Left);
     stroke_text_at(
         cv,

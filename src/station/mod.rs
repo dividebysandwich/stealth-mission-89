@@ -1,4 +1,4 @@
-//! At the console of a friendly Patriot battery or Gepard (campaign, `Phase::Station`): the
+//! At the console of a friendly Patriot or NASAMS battery or Gepard (campaign, `Phase::Station`): the
 //! player sits in the dark shelter of the battery's engagement control station
 //! (`cockpit_console.glb`, a cockpit like the aircraft's: buttons, screens, VR fingertips).
 //!
@@ -30,7 +30,7 @@ mod sound;
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use stealth_sim::aaa::GroundKind;
+use stealth_sim::aaa::{GroundKind, SamBattery};
 use stealth_sim::station::{Guidance, StationCmd};
 
 use crate::camera::{View, ViewState};
@@ -87,12 +87,30 @@ pub struct Manning {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StationKind {
-    Patriot,
+    /// A missile battery's radar: a Patriot's, a NASAMS's.
+    Battery(SamBattery),
     Gepard,
     Drones,
 }
 
 impl Manning {
+    /// The console's title: PATRIOT, NASAMS, GEPARD.
+    pub fn title(&self) -> &'static str {
+        match self.kind {
+            StationKind::Battery(b) => b.label(),
+            StationKind::Gepard => "GEPARD",
+            StationKind::Drones => "DCC",
+        }
+    }
+
+    /// The reach (m) of its weapon: the battery's missiles, the Gepard's rounds.
+    pub fn reach(&self) -> f64 {
+        match self.kind {
+            StationKind::Battery(b) => b.max_range(),
+            _ => stealth_sim::station::GEPARD_REACH,
+        }
+    }
+
     pub fn gepard(&self) -> bool {
         self.kind == StationKind::Gepard
     }
@@ -180,7 +198,9 @@ fn sync_manning(
             let kind = match combat.sim.units().get(unit).map(|u| u.kind) {
                 Some(GroundKind::Gepard) => StationKind::Gepard,
                 Some(GroundKind::DroneCenter) => StationKind::Drones,
-                _ => StationKind::Patriot,
+                kind => StationKind::Battery(
+                    kind.and_then(GroundKind::battery_radar).unwrap_or(SamBattery::Patriot),
+                ),
             };
             Some(Manning { unit, kind })
         }

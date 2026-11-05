@@ -54,6 +54,7 @@ pic-sam-known = SAM pozīcija (zināma)
 pic-guns-known = Lielgabali / MANPADS (zināmi)
 pic-armour = Tanks / KKM (ienaidnieks: redzamībā)
 pic-patriot-reach = Patriot darbības rādiuss
+pic-nasams-reach = NASAMS darbības rādiuss
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM raķešu rādiuss
 pic-engagement-range = Iedarbības rādiuss

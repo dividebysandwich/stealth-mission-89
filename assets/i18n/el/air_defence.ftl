@@ -25,6 +25,7 @@ ds-click-hint = Κάντε κλικ στον χάρτη όπου πηγαίνε�
 ds-not-open-ground = Όχι σε ανοιχτό έδαφος
 ds-new-gepard = Νέα θέση Gepard - κλικ για ορισμό
 ds-new-patriot = Νέα θέση Patriot - κλικ για ορισμό
+ds-new-nasams = Νέα θέση NASAMS - κλικ για ορισμό
 ds-new-drones = Νέο κέντρο διοίκησης drones - κλικ για ορισμό
 ds-waiting = Αναμονή φορτίου
 ds-fast-track = ΕΠΙΣΠΕΥΣΗ ({ $cost })

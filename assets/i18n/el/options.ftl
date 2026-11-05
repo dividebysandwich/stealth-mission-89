@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Μέγεθος των ονομάτων παικτών
         50%: προεπιλογή
+options-seat-height = Ύψος καθίσματος
+    .facts =
+        Πόσο ψηλά κάθεστε στο πιλοτήριο, στην οθόνη και στο VR
+        0 cm: το κανονικό ύψος ματιών του αεροσκάφους
 options-section-vr-size = Μέγεθος πιλοτηρίου σε VR
 options-vr-size =
     .facts =

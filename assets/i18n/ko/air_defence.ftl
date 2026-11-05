@@ -25,6 +25,7 @@ ds-click-hint = 설치할 곳을 지도에서 클릭 - 오른쪽 클릭: 취소
 ds-not-open-ground = 개활지가 아닙니다
 ds-new-gepard = 새 게파르트 진지 - 클릭하여 지정
 ds-new-patriot = 새 패트리엇 진지 - 클릭하여 지정
+ds-new-nasams = 새 NASAMS 진지 - 클릭하여 지정
 ds-new-drones = 새 드론 지휘소 - 클릭하여 지정
 ds-waiting = 화물 대기 중
 ds-fast-track = 조기 건설 ({ $cost })

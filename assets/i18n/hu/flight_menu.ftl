@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPEK
 fm-tutorial = INTERAKTÍV OKTATÓ
 fm-player-labels = JÁTÉKOSNEVEK
 fm-label-size = NÉVMÉRET
+fm-seat-height = ÜLÉSMAGASSÁG
 fm-cockpit-size = PILÓTAFÜLKE MÉRETE
 fm-volume-master = FŐ HANGERŐ
 fm-volume-engine = HAJTÓMŰ

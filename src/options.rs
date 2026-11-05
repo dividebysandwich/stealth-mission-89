@@ -22,7 +22,9 @@ use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
     AMBER, DIM, GREEN, Panel, big_button, facts, footer_rule, icon, section, slide_switch,
 };
-use crate::settings::{MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, Settings, VR_COCKPIT_SCALE_RANGE};
+use crate::settings::{
+    MIC_GAIN_RANGE, PLAYER_LABEL_SIZE_RANGE, SEAT_HEIGHT_RANGE, Settings, VR_COCKPIT_SCALE_RANGE,
+};
 
 #[derive(Resource, Default)]
 pub struct OptionsWindow {
@@ -235,6 +237,17 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
             toggled = true;
         }
     });
+    let mut cm = s.seat_height * 100.0;
+    let range = SEAT_HEIGHT_RANGE.start() * 100.0..=SEAT_HEIGHT_RANGE.end() * 100.0;
+    let slider = egui::Slider::new(&mut cm, range)
+        .step_by(1.0)
+        .fixed_decimals(0)
+        .suffix(" cm")
+        .text(t!("options-seat-height"));
+    if facts(ui.add(slider), t_lines!("options-seat-height.facts")).changed() {
+        s.seat_height = cm / 100.0;
+        toggled = true;
+    }
     if toggled {
         settings.set_changed();
     }

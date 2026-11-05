@@ -123,6 +123,9 @@ pub struct Settings {
     pub player_labels: bool,
     /// Their size (1: 100%).
     pub player_label_size: f32,
+    /// `--seat-height <cm>`: how much higher (m; negative: lower) the eye sits in the cockpit than the aircraft's
+    /// (`cockpit_eye`), on the desktop and in VR.
+    pub seat_height: f32,
     /// Air traffic control's radio calls (`atc.rs`; on by default).
     pub atc: bool,
     /// The coop radio (`voice`): push-to-talk on, the voices' volume (0..1), the microphone's
@@ -176,6 +179,8 @@ pub const VR_COCKPIT_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.7..=1.5;
 /// Default and range of the player labels' size.
 pub const DEFAULT_PLAYER_LABEL_SIZE: f32 = 0.5;
 pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
+/// The seat height's range (m, `Settings::seat_height`).
+pub const SEAT_HEIGHT_RANGE: std::ops::RangeInclusive<f32> = -0.15..=0.15;
 /// The coop radio microphone's gain, lowest and highest.
 pub const MIC_GAIN_RANGE: (f32, f32) = (0.25, 4.0);
 
@@ -272,6 +277,12 @@ impl Settings {
     /// The eye point and cockpit in the aircraft frame: the design eye point, in VR raised to
     /// the aircraft's `vr_eye_height` above the ground as seen through the rig scale.
     pub fn cockpit_eye(&self) -> Vec3 {
+        self.cockpit_origin() + self.seat_offset()
+    }
+
+    /// Where the cockpit is built round (aircraft frame): the eye before the seat height
+    /// (`seat_offset`) moves it.
+    pub fn cockpit_origin(&self) -> Vec3 {
         let spec = self.aircraft.spec();
         let mut eye = spec.eye;
         if self.vr
@@ -280,6 +291,11 @@ impl Settings {
             eye.y = eye.y.max(h / self.vr_rig_scale(false));
         }
         eye
+    }
+
+    /// The eye's move up from the cockpit origin for the seat height (aircraft frame).
+    pub fn seat_offset(&self) -> Vec3 {
+        Vec3::Y * self.seat_height
     }
 
     /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
@@ -358,6 +374,11 @@ impl Settings {
             tutorial: has("--tutorial"),
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
+            seat_height: get(&a, "--seat-height")
+                .and_then(|s| s.parse::<f32>().ok())
+                .map_or(0.0, |cm| {
+                    (cm / 100.0).clamp(*SEAT_HEIGHT_RANGE.start(), *SEAT_HEIGHT_RANGE.end())
+                }),
             atc: true,
             voice: true,
             voice_volume: 1.0,

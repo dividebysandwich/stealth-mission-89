@@ -103,6 +103,7 @@ cl-objective = { $title }: задача выполнена
 cl-recon = Разведснимки { $place }: оборона нанесена на карту
 cl-package = Пакет над { $place }: { $kinds } - +{ $bonus } для { $pilots }
 cl-supply-patriot = батарея Patriot у { $place }
+cl-supply-nasams = батарея NASAMS у { $place }
 cl-supply-gepard = Gepard у { $place }
 cl-supply-drones = пункт управления дронами у { $place }
 cl-resupply-requested = { $who } запрашивает пополнение для: { $unit }
@@ -247,6 +248,7 @@ st-destroyed = Уничтожено
 st-already-refilling = Пополнение уже идёт
 st-not-empty-yet = Ещё не пусто
 st-stockpile-empty = Запас пуст
+st-stockpile-short = Недостаточно ракет на складе
 st-no-launcher-ready = Нет готовых пусковых
 st-unit-destroyed = Уничтожено: { $unit }
 

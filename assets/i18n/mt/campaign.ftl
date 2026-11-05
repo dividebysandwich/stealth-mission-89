@@ -104,6 +104,7 @@ cl-objective = { $title }: għan milħuq
 cl-recon = Ritratti recon ta' { $place }: id-difiżi tiegħu huma mmappjati
 cl-package = Package fuq { $place }: { $kinds } - +{ $bonus } għal { $pilots }
 cl-supply-patriot = Batterija Patriot ħdejn { $place }
+cl-supply-nasams = Batterija NASAMS ħdejn { $place }
 cl-supply-gepard = Gepard ħdejn { $place }
 cl-supply-drones = Ċentru tal-kmand tad-drones ħdejn { $place }
 cl-resupply-requested = { $who } jitlob rifornimenti għal { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Meqrud
 st-already-refilling = Diġà qed timtela
 st-not-empty-yet = Għadu mhux vojt
 st-stockpile-empty = L-istokk vojt
+st-stockpile-short = M'hemmx biżżejjed missili fil-ħażna
 st-no-launcher-ready = L-ebda launcher lest
 st-unit-destroyed = { $unit } hija meqruda
 

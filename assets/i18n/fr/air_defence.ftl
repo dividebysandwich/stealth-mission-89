@@ -25,6 +25,7 @@ ds-click-hint = Cliquez sur la carte à l'endroit voulu - clic droit : annuler
 ds-not-open-ground = Pas sur un terrain dégagé
 ds-new-gepard = Nouveau site Gepard - cliquez pour le désigner
 ds-new-patriot = Nouveau site Patriot - cliquez pour le désigner
+ds-new-nasams = Nouveau site NASAMS - cliquez pour le désigner
 ds-new-drones = Nouveau centre de commandement de drones - cliquez pour le désigner
 ds-waiting = En attente de fret
 ds-fast-track = ACCÉLÉRER ({ $cost })

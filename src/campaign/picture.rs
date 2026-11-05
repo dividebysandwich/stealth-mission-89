@@ -1,12 +1,12 @@
 //! The air picture the friendly side has, for the war map and the briefing map: its own
-//! aircraft and air defences (the Patriot batteries and Gepards a player can man), the enemy
+//! aircraft and air defences (the Patriot and NASAMS batteries and Gepards a player can man), the enemy
 //! fighters its radars see, and the enemy air defences it knows of (from recon, or because they
 //! gave themselves away by painting the player or firing).
 
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
 use stealth_i18n::t;
-use stealth_sim::aaa::GroundKind;
+use stealth_sim::aaa::{GroundKind, SamBattery};
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
 use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
@@ -54,7 +54,8 @@ pub struct Gun {
     pub kind: GroundKind,
 }
 
-/// A friendly air defence unit: a Patriot battery (its radar), a Gepard, a Stinger team.
+/// A friendly air defence unit: a Patriot or NASAMS battery (its radar), a Gepard, a Stinger
+/// team.
 pub struct Defence {
     /// AAA unit index.
     pub index: usize,
@@ -77,9 +78,6 @@ pub struct Vehicle {
     /// Its heading while its convoy drives (radians, clockwise from north).
     pub heading: Option<f32>,
 }
-
-/// Patriot reach on the map (map units).
-const PATRIOT_REACH: f32 = stealth_sim::campaign::PATRIOT_REACH as f32;
 
 #[derive(Default)]
 pub struct Picture {
@@ -112,7 +110,7 @@ pub fn friendly_eyes(state: Option<&CampaignState>, sim: &Sim) -> Vec<(i32, i32,
         .collect();
     for (k, u) in sim.units().iter().enumerate() {
         let reach = match u.kind {
-            GroundKind::PatriotRadar => GROUND_RADAR,
+            GroundKind::PatriotRadar | GroundKind::NasamsRadar => GROUND_RADAR,
             GroundKind::Gepard => GEPARD_RADAR,
             _ => continue,
         };
@@ -238,6 +236,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             if matches!(
                 u.kind,
                 GroundKind::PatriotRadar
+                    | GroundKind::NasamsRadar
                     | GroundKind::Gepard
                     | GroundKind::Manpads
                     | GroundKind::DroneCenter
@@ -353,19 +352,25 @@ pub fn draw(
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
     for d in &pic.defences {
         let c = at(d.x, d.y);
-        let patriot = d.kind == GroundKind::PatriotRadar;
-        if patriot && layers.shows(Layer::PatriotReach) {
-            painter.extend(reach_circle(c, PATRIOT_REACH / view.scale));
+        let battery = d.kind.battery_radar();
+        let (layer, reach_layer) = match battery {
+            Some(SamBattery::Patriot) => (Layer::Patriots, Some(Layer::PatriotReach)),
+            Some(SamBattery::Nasams) => (Layer::Nasams, Some(Layer::NasamsReach)),
+            None => (Layer::Gepards, None),
+        };
+        let reach = battery.map_or(0.0, |b| b.map_range());
+        if reach_layer.is_some_and(|l| layers.shows(l)) {
+            painter.extend(reach_circle(c, reach / view.scale));
         }
-        if !layers.shows(if patriot { Layer::Patriots } else { Layer::Gepards }) {
+        if !layers.shows(layer) {
             continue;
         }
         let kind = d.kind;
         scaled(c, &|p, c| defence(p, c, kind, 0.8));
         let tip = tips.add(c, defence_name(kind), "", FRIENDLY_BLUE);
         tip.symbol(move |p, c| defence(p, c, kind, 0.8));
-        if patriot {
-            tip.line(t!("mt-missile-range", km = format!("{:.0}", PATRIOT_REACH / 64.0)));
+        if battery.is_some() {
+            tip.line(t!("mt-missile-range", km = format!("{:.0}", reach / 64.0)));
         }
         if d.manned.is_some() {
             painter.circle_stroke(c, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
@@ -489,18 +494,22 @@ pub(super) fn aircraft_tip(tips: &mut MapTips, p: egui::Pos2, a: &Aircraft, blue
 pub(super) fn defence_name(kind: GroundKind) -> &'static str {
     match kind {
         GroundKind::PatriotRadar => t!("ops-patriot"),
+        GroundKind::NasamsRadar => t!("ops-nasams"),
         k => k.name_on(true),
     }
 }
 
-/// A friendly air defence unit: a Patriot battery a square with its launcher rails, a Gepard
-/// a square with its two barrels, a Stinger team a ring. APP-6: a friendly air defence missile
+/// A friendly air defence unit: a Patriot battery a square with its launcher rails, a NASAMS
+/// battery a smaller one with three, a Gepard a square with its two barrels, a Stinger team a
+/// ring. APP-6: a friendly air defence missile
 /// battery, a tracked air defence gun, a missile team; `k` its size.
 pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
     if app6() {
         let sym = |icon| Symbol::new(Affiliation::Friend, Dimension::Ground, icon);
         let sym = match kind {
-            GroundKind::PatriotRadar => sym(Icon::AirDefenceMissile).echelon(Echelon::Battery),
+            GroundKind::PatriotRadar | GroundKind::NasamsRadar => {
+                sym(Icon::AirDefenceMissile).echelon(Echelon::Battery)
+            }
             GroundKind::Gepard => sym(Icon::AirDefenceGun).tracked(),
             GroundKind::DroneCenter => {
                 Symbol::new(Affiliation::Friend, Dimension::Installation, Icon::Uav)
@@ -518,6 +527,13 @@ pub(super) fn defence(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, 
             painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
             for dx in [-2.0, 2.0] {
                 painter.line_segment([p + egui::vec2(dx, 3.0), p + egui::vec2(dx, -3.0)], stroke);
+            }
+        }
+        GroundKind::NasamsRadar => {
+            let r = egui::Rect::from_center_size(p, egui::vec2(9.0, 7.0));
+            painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+            for dx in [-2.5, 0.0, 2.5] {
+                painter.line_segment([p + egui::vec2(dx, 2.0), p + egui::vec2(dx, -2.0)], stroke);
             }
         }
         GroundKind::Gepard => {
@@ -577,6 +593,12 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
     });
     layers.legend(ui, Layer::PatriotReach, t!("pic-patriot-reach"), |p, c0| {
         p.extend(reach_circle(c0, 6.0));
+    });
+    layers.legend(ui, Layer::Nasams, t!("ops-nasams"), |p, c0| {
+        defence(p, c0, GroundKind::NasamsRadar, 0.8)
+    });
+    layers.legend(ui, Layer::NasamsReach, t!("pic-nasams-reach"), |p, c0| {
+        p.extend(reach_circle(c0, 4.0));
     });
     layers.legend(ui, Layer::Gepards, t!("pic-gepard-stinger"), |p, c0| {
         if app6() {

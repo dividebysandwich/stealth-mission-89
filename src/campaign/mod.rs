@@ -24,6 +24,7 @@
 
 mod air_defence;
 mod designate;
+mod logistics;
 mod menu;
 mod ops;
 pub(crate) mod picture;
@@ -128,7 +129,7 @@ pub enum Phase {
     Ops,
     /// Flying a sortie.
     Sortie,
-    /// At the console of a friendly Patriot battery or Gepard (AAA unit; absent from the
+    /// At the console of a friendly Patriot or NASAMS battery or Gepard (AAA unit; absent from the
     /// simulation as on the Ops screen).
     Station { unit: usize },
 }
@@ -165,7 +166,7 @@ pub enum Action {
     RequestSupport {
         offer: u32,
     },
-    /// Designate a new site (a Patriot battery, a Gepard, a drone command center) with its
+    /// Designate a new site (a Patriot or NASAMS battery, a Gepard, a drone command center) with its
     /// helipad at (x, y), map units.
     DesignateSite {
         x: i32,
@@ -978,8 +979,9 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             }
         }
     }
-    // Test aid: man the n-th friendly air defence console (Patriot batteries first), or with
-    // `--campaign-man drone` the first drone command center nobody mans.
+    // Test aid: man the n-th friendly air defence console (Patriot batteries first, then the
+    // NASAMS batteries), or with `--campaign-man drone` (`nasams`) the first drone command
+    // center (NASAMS battery) nobody mans.
     // (A client waits for the server's units.)
     if c.phase == Phase::Ops
         && c.state().clock > 2.0
@@ -987,17 +989,24 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         && let Some(n) = ops::test_man()
     {
         let sim = &s.combat.sim;
-        let drones = n == usize::MAX;
+        use stealth_sim::aaa::GroundKind;
+        let only = match n {
+            ops::TEST_MAN_DRONES => Some(GroundKind::DroneCenter),
+            ops::TEST_MAN_NASAMS => Some(GroundKind::NasamsRadar),
+            _ => None,
+        };
         let mut units: Vec<usize> = (0..sim.units().len())
             .filter(|&k| sim.aaa_blue(k) && stealth_sim::station::mannable(sim.units()[k].kind))
             .filter(|&k| {
-                !drones
-                    || sim.units()[k].kind == stealth_sim::aaa::GroundKind::DroneCenter
-                        && sim.manned_by(k).is_none()
+                only.is_none_or(|kind| sim.units()[k].kind == kind && sim.manned_by(k).is_none())
             })
             .collect();
-        units.sort_by_key(|&k| sim.units()[k].kind != stealth_sim::aaa::GroundKind::PatriotRadar);
-        let n = if drones { 0 } else { n };
+        units.sort_by_key(|&k| match sim.units()[k].kind {
+            GroundKind::PatriotRadar => 0,
+            GroundKind::NasamsRadar => 1,
+            _ => 2,
+        });
+        let n = if only.is_some() { 0 } else { n };
         if let Some(&k) = units.get(n.min(units.len().saturating_sub(1))) {
             c.ui.test_manned = true;
             c.actions.push(Action::Station(StationCmd::Man { unit: k as u16 }));
@@ -1120,10 +1129,12 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Retask { offer } => host.retask(sim, me, offer),
             Action::Rearm { loadout } => {
-                host.rearm(sim, me, &Stores { stations: loadout.stations(), select: 0 });
-                s.msgs.show(tf!("hud-rearmed"));
-                c.landed = None;
-                Ok(Vec::new())
+                let stores = Stores { stations: loadout.stations(), select: 0 };
+                host.rearm(sim, me, &stores).map(|_| {
+                    s.msgs.show(tf!("hud-rearmed"));
+                    c.landed = None;
+                    Vec::new()
+                })
             }
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),

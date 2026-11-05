@@ -53,6 +53,7 @@ pic-sam-known = Situs SAM (diketahui)
 pic-guns-known = Kanon / MANPADS (diketahui)
 pic-armour = Tank / IFV (musuh: terlihat)
 pic-patriot-reach = Jangkauan Patriot
+pic-nasams-reach = Jangkauan NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Jangkauan rudal SAM
 pic-engagement-range = Jangkauan tembak

@@ -25,6 +25,7 @@ ds-click-hint = Ikklikkja fuq il-mappa fejn imur - klikk tal-lemin: ikkanċella
 ds-not-open-ground = Mhux fuq art miftuħa
 ds-new-gepard = Sit Gepard ġdid - ikklikkja biex tagħżlu
 ds-new-patriot = Sit Patriot ġdid - ikklikkja biex tagħżlu
+ds-new-nasams = Sit NASAMS ġdid - ikklikkja biex tagħżlu
 ds-new-drones = Ċentru tal-kmand tad-drones ġdid - ikklikkja biex tagħżlu
 ds-waiting = Jistenna merkanzija
 ds-fast-track = ĦAFFEF ({ $cost })

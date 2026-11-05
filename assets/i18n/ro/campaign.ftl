@@ -104,6 +104,7 @@ cl-objective = { $title }: obiectiv îndeplinit
 cl-recon = Fotografii recon ale { $place }: apărarea sa este cartografiată
 cl-package = Package deasupra { $place }: { $kinds } - +{ $bonus } pentru { $pilots }
 cl-supply-patriot = Baterie Patriot lângă { $place }
+cl-supply-nasams = Baterie NASAMS lângă { $place }
 cl-supply-gepard = Gepard lângă { $place }
 cl-supply-drones = Centru de comandă drone lângă { $place }
 cl-resupply-requested = { $who } cere reaprovizionare pentru { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Distrus
 st-already-refilling = Se realimentează deja
 st-not-empty-yet = Încă nu este gol
 st-stockpile-empty = Stoc epuizat
+st-stockpile-short = Nu sunt destule rachete în depozit
 st-no-launcher-ready = Niciun lansator pregătit
 st-unit-destroyed = { $unit } este distrus
 

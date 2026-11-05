@@ -91,8 +91,11 @@ pub fn profile(spec: i32) -> Option<Profile> {
         43 => rocket(2.0, 2.0, 30.0),    // SA-22: a booster, then the dart glides
         44 => vertical(5.0, 2.0, 30.0),  // SA-15
         // MIM-104F PAC-3: a single pulse motor off the M903's inclined rails, then it glides,
-        // agile (hit-to-kill) but slender: 80 km at most against a target that holds its course.
+        // agile (hit-to-kill) but slender: 120 km at most against a target that holds its course.
         45 => Profile { drag: PAC3_DRAG, stall: PAC3_STALL, ..rocket(PAC3_BURN, PAC3_BOOST, 40.0) },
+        // NASAMS: the AIM-120 off a ground launcher (30 degrees up): it climbs on its motor,
+        // then glides, some 40 km against a target that holds its course.
+        51 => Profile { drag: NASAMS_DRAG, stall: NASAMS_STALL, ..rocket(NASAMS_BURN, 3.0, 35.0) },
         _ => return None,
     })
 }
@@ -112,13 +115,18 @@ fn straight_secs(spec: i32, range: Option<f64>) -> f64 {
 const STRAIGHT: f64 = 0.4;
 const LOB_RANGE: f64 = 10_000.0;
 
-/// PAC-3: motor burn and seconds to full speed, drag as a multiple of [`DRAG`] (its 80 km
-/// reach).
+/// PAC-3: motor burn and seconds to full speed, drag as a multiple of [`DRAG`] (its 120 km
+/// reach, the MSE's).
 const PAC3_BURN: f64 = 7.0;
 const PAC3_BOOST: f64 = 6.0;
 /// Below about Mach 1.6 (wu/s) it can no longer catch a jet: spent.
 const PAC3_STALL: f64 = 1100.0;
-const PAC3_DRAG: f64 = 1.65;
+const PAC3_DRAG: f64 = 1.38;
+/// NASAMS AIM-120: motor burn (s), drag as a multiple of [`DRAG`] and the speed (wu/s, about
+/// Mach 1.2) below which it is spent (its 40 km reach, the AMRAAM-ER's).
+const NASAMS_BURN: f64 = 8.0;
+const NASAMS_DRAG: f64 = 3.6;
+const NASAMS_STALL: f64 = 800.0;
 /// AIM-9: drag as a multiple of [`DRAG`]. A small, finned airframe: burnt out it slows fast,
 /// some 18 km head-on from medium altitude, well under half that chasing a target's tail.
 const AIM9_DRAG: f64 = 12.0;
@@ -850,13 +858,25 @@ mod pac3 {
     /// at `kt` toward the battery (negative: away), weaving at `weave_g` (0: holding its
     /// course). Seconds to the hit, or None (spent, stalled, on the ground).
     fn shot(range_km: f64, alt_m: f64, kt: f64, weave_g: f64) -> Option<f64> {
+        battery_shot(crate::aaa::SamBattery::Patriot, range_km, alt_m, kt, weave_g)
+    }
+
+    /// A missile of battery `b` off its launcher at a target (as [`shot`]).
+    pub(super) fn battery_shot(
+        b: crate::aaa::SamBattery,
+        range_km: f64,
+        alt_m: f64,
+        kt: f64,
+        weave_g: f64,
+    ) -> Option<f64> {
         let sim = super::tests::new_sim();
-        let vmax = sim.guided_vmax(45);
+        let spec = b.missile();
+        let vmax = sim.guided_vmax(spec);
         let mut tgt = [0.0, -range_km * 1000.0 / M, alt_m / M];
         let speed = kt * 0.514 / M;
-        let el = 0.66f64;
+        let el = b.elevation() as f64;
         let dir = [0.0, -el.cos(), el.sin()];
-        let mut pm = launch_ai(45, [0.0, 0.0, 5.0], dir, FS);
+        let mut pm = launch_ai(spec, [0.0, 0.0, 5.0], dir, FS);
         let dt = 1.0 / FS as f64;
         for i in 0..150 * FS {
             let t = i as f64 * dt;
@@ -885,24 +905,63 @@ mod pac3 {
     }
 
     #[test]
-    fn reaches_80_km_against_a_target_holding_course() {
-        let far = intercept(100.0, 0.0);
-        assert!(far.is_some_and(|d| (78.0..82.0).contains(&d)), "{far:?}");
-        assert_eq!(intercept(105.0, 0.0), None);
-        assert!(intercept(60.0, 0.0).is_some());
+    fn reaches_120_km_against_a_target_holding_course() {
+        let far = intercept(150.0, 0.0);
+        assert!(far.is_some_and(|d| (116.0..122.0).contains(&d)), "{far:?}");
+        assert_eq!(intercept(156.0, 0.0), None);
+        assert!(intercept(100.0, 0.0).is_some());
     }
 
     #[test]
     fn manoeuvring_costs_reach() {
         // Turning onto a target that holds still (from its climb off the rails) takes more
         // turning than meeting one that comes in.
-        assert!(shot(70.0, 12000.0, 0.0, 0.0).is_some());
-        assert_eq!(shot(78.0, 12000.0, 0.0, 0.0), None);
+        assert!(shot(85.0, 12000.0, 0.0, 0.0).is_some());
+        assert_eq!(shot(95.0, 12000.0, 0.0, 0.0), None);
         // A weaving target makes it turn all the way: the harder, the shorter its reach.
-        assert!(intercept(90.0, 0.0).is_some());
-        assert_eq!(intercept(95.0, 4.0), None);
-        assert!(intercept(60.0, 4.0).is_some());
-        assert_eq!(intercept(60.0, 7.0), None);
-        assert!(intercept(50.0, 7.0).is_some());
+        assert!(intercept(140.0, 0.0).is_some());
+        assert_eq!(intercept(90.0, 4.0), None);
+        assert!(intercept(80.0, 4.0).is_some());
+        assert_eq!(intercept(70.0, 7.0), None);
+        assert!(intercept(65.0, 7.0).is_some());
+    }
+}
+
+#[cfg(test)]
+mod nasams {
+    use super::pac3::battery_shot;
+    use crate::aaa::SamBattery as Battery;
+
+    /// Where the hit is (km from the battery) against a target flying in from `km` at 450 kt
+    /// at `alt_m`, weaving at `weave_g`.
+    fn intercept(km: f64, alt_m: f64, weave_g: f64) -> Option<f64> {
+        battery_shot(Battery::Nasams, km, alt_m, 450.0, weave_g)
+            .map(|t| km - 450.0 * 0.514 * t / 1000.0)
+    }
+
+    #[test]
+    fn reaches_40_km_against_a_target_coming_in() {
+        let far = intercept(50.0, 6000.0, 0.0);
+        assert!(far.is_some_and(|d| (39.0..42.0).contains(&d)), "{far:?}");
+        assert_eq!(intercept(55.0, 6000.0, 0.0), None);
+        // Low down and high up alike (thicker air, but no climb).
+        assert!(intercept(45.0, 300.0, 0.0).is_some());
+        assert!(intercept(45.0, 12000.0, 0.0).is_some());
+    }
+
+    #[test]
+    fn manoeuvring_costs_reach() {
+        // A target that holds still is reached less far than one that comes in.
+        assert!(battery_shot(Battery::Nasams, 40.0, 6000.0, 0.0, 0.0).is_some());
+        assert_eq!(battery_shot(Battery::Nasams, 45.0, 6000.0, 0.0, 0.0), None);
+        // A weaving one too.
+        assert!(intercept(40.0, 6000.0, 4.0).is_some());
+        assert_eq!(intercept(45.0, 6000.0, 4.0), None);
+    }
+
+    #[test]
+    fn falls_well_short_of_the_pac3() {
+        assert!(super::pac3::battery_shot(Battery::Patriot, 60.0, 6000.0, 0.0, 0.0).is_some());
+        assert_eq!(battery_shot(Battery::Nasams, 60.0, 6000.0, 0.0, 0.0), None);
     }
 }

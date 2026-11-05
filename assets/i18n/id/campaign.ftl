@@ -104,6 +104,7 @@ cl-objective = { $title }: sasaran tercapai
 cl-recon = Foto pengintaian { $place }: pertahanannya terpetakan
 cl-package = Paket di atas { $place }: { $kinds } - +{ $bonus } untuk { $pilots }
 cl-supply-patriot = Baterai Patriot dekat { $place }
+cl-supply-nasams = Baterai NASAMS dekat { $place }
 cl-supply-gepard = Gepard dekat { $place }
 cl-supply-drones = Pusat komando drone dekat { $place }
 cl-resupply-requested = { $who } meminta pasokan ulang untuk { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Hancur
 st-already-refilling = Sedang diisi ulang
 st-not-empty-yet = Belum kosong
 st-stockpile-empty = Persediaan kosong
+st-stockpile-short = Rudal di persediaan tidak cukup
 st-no-launcher-ready = Tidak ada peluncur siap
 st-unit-destroyed = { $unit } hancur
 

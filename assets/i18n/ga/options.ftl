@@ -41,6 +41,10 @@ options-label-size =
     .facts =
         Méid ainmneacha na n-imreoirí
         50%: an réamhshocrú
+options-seat-height = Airde an tsuíocháin
+    .facts =
+        Cé chomh hard is a shuíonn tú sa chockpit, ar an scáileán agus i VR
+        0 cm: gnáth-airde súl an aerárthaigh
 options-section-vr-size = Méid an chockpit i VR
 options-vr-size =
     .facts =

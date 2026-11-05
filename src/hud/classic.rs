@@ -41,12 +41,16 @@ fn bcos(a: i32) -> f32 {
     bsin(a + 0x4000)
 }
 
+/// The HUD area's lowest row: the back page's HUD stopped at row 90, the combiner glass shows
+/// the flight path marker and the ILS bars lower down on an approach.
+const HUD_BOTTOM: i32 = 160;
+
 /// Draws the whole HUD for the cockpit view.
 pub fn draw(c: &mut Canvas, art: &CockpitArt, fonts: &Fonts, f: &HudFrame) {
     let (col, col2) = HUD_COLOURS;
     let atlas = &art.sprites;
-    // HUD text and lines are clipped to the HUD area of the back page (y 0..90).
-    c.set_clip(0, 0, 319, 90);
+    // HUD text and lines are clipped to the HUD area (y 0..HUD_BOTTOM).
+    c.set_clip(0, 0, 319, HUD_BOTTOM);
     overlay(c, atlas, fonts, f, col, col2);
     instruments(c, atlas, fonts, f, col, col2);
     c.reset_clip();
@@ -72,7 +76,7 @@ fn overlay(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col: u8,
     // Flight path marker (NAV/GND): centred at (CX, y), y = CY + fpm>>6.
     if st.mode != HudMode::Air {
         let y = CY + (f.fpm >> 6);
-        if y > 10 && y < 93 {
+        if y > 10 && y < HUD_BOTTOM + 3 {
             let (s, (ox, oy)) = (sprites::FPM, sprites::FPM_CENTRE);
             c.blit(atlas, s.x, s.y, s.w, s.h, CX - ox, y - oy, Some(0), Some(col));
         }
@@ -381,7 +385,7 @@ fn speed_tape(c: &mut Canvas, fonts: &Fonts, knots: i32, col: u8) {
         tick0.get_or_insert(y + 2);
         di += 1;
     }
-    c.set_clip(0, 0, 319, 90);
+    c.set_clip(0, 0, 319, HUD_BOTTOM);
     tape_ticks(c, 71, tick0.unwrap_or(CY), floor, col, false);
 }
 
@@ -433,7 +437,7 @@ fn alt_tape(c: &mut Canvas, fonts: &Fonts, alt: i32, col: u8) {
     for (y, s) in &labels {
         fonts.text(c, 255, *y, s, col);
     }
-    c.set_clip(0, 0, 319, 90);
+    c.set_clip(0, 0, 319, HUD_BOTTOM);
     tape_ticks(c, 248, tick0, floor, col, true);
 }
 
@@ -449,7 +453,7 @@ fn heading_scale(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, heading: u16, co
     for k in 0..4 {
         fonts.text(c, x0 + 45 * k as i32, 6, LABELS[(sector + k) & 7], col);
     }
-    c.set_clip(0, 0, 319, 90);
+    c.set_clip(0, 0, 319, HUD_BOTTOM);
     let mut phase = off % 10;
     if heading & 0x2000 != 0 {
         phase += 5;
@@ -549,5 +553,5 @@ fn pitch_ladder(c: &mut Canvas, fonts: &Fonts, pitch: i16, roll: i16, col: u8) {
         y -= 52;
         dl += 1;
     }
-    c.set_clip(0, 0, 319, 90);
+    c.set_clip(0, 0, 319, HUD_BOTTOM);
 }

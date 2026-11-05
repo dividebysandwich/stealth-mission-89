@@ -29,6 +29,7 @@ fm-tooltips = TOOLTIPY
 fm-tutorial = INTERAKTÍVNY NÁVOD
 fm-player-labels = MENÁ HRÁČOV
 fm-label-size = VEĽKOSŤ MIEN
+fm-seat-height = VÝŠKA SEDADLA
 fm-cockpit-size = VEĽKOSŤ KOKPITU
 fm-volume-master = CELKOVÁ HLASITOSŤ
 fm-volume-engine = MOTOR

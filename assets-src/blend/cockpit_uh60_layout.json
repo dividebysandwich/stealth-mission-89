@@ -397,18 +397,6 @@
       "round": true
     },
     {
-      "control": "Action(BayDoors)",
-      "key": "Button(Bay, None)",
-      "kind": "cap",
-      "rect": [
-        -180.0,
-        110.0,
-        38.0,
-        14.0
-      ],
-      "round": false
-    },
-    {
       "control": null,
       "key": "Item(Dial(Fuel))",
       "kind": null,

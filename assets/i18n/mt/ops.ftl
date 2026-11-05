@@ -131,6 +131,7 @@ ops-legend-insertion = Rotta tal-inserzjoni
 ops-watch-hint = Ikklikkja unità biex tarha live
 ops-map-hint = Rota: zoom, kaxkar: għaddi
 ops-patriot = Batterija Patriot
+ops-nasams = Batterija NASAMS
 ops-drone-center = Ċentru tal-kmand tad-drones
 ops-manned-by = Mmexxija minn { $pilot }
 ops-manned-by-other = Mmexxija minn plejer ieħor

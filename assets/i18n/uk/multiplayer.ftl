@@ -54,6 +54,7 @@ pic-sam-known = Позиція SAM (відома)
 pic-guns-known = Зенітні гармати / MANPADS (відомі)
 pic-armour = Танк / БМП (ворог: у полі зору)
 pic-patriot-reach = Досяжність Patriot
+pic-nasams-reach = Досяжність NASAMS
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = Дальність ракет ЗРК
 pic-engagement-range = Дальність ураження

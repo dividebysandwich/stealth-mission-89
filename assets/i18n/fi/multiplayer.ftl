@@ -54,6 +54,7 @@ pic-sam-known = SAM-asema (tunnettu)
 pic-guns-known = Tykit / MANPADS (tunnettu)
 pic-armour = Panssarivaunu / rynnäkköpanssarivaunu (vihollinen: näkyvissä)
 pic-patriot-reach = Patriot-kantama
+pic-nasams-reach = NASAMS-kantama
 pic-gepard-stinger = Gepard / Stinger
 pic-missile-range = SAM-ohjusten kantama
 pic-engagement-range = Tulituskantama

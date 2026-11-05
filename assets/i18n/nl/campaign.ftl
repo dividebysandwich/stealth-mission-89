@@ -104,6 +104,7 @@ cl-objective = { $title }: doel bereikt
 cl-recon = Recon-foto's van { $place }: de verdediging is in kaart gebracht
 cl-package = Package boven { $place }: { $kinds } - +{ $bonus } voor { $pilots }
 cl-supply-patriot = Patriot-batterij bij { $place }
+cl-supply-nasams = NASAMS-batterij bij { $place }
 cl-supply-gepard = Gepard bij { $place }
 cl-supply-drones = Dronecommandopost bij { $place }
 cl-resupply-requested = { $who } vraagt bevoorrading aan voor de { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Vernietigd
 st-already-refilling = Wordt al bijgevuld
 st-not-empty-yet = Nog niet leeg
 st-stockpile-empty = Voorraad leeg
+st-stockpile-short = Niet genoeg raketten in de voorraad
 st-no-launcher-ready = Geen lanceerder gereed
 st-unit-destroyed = De { $unit } is vernietigd
 

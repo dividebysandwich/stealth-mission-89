@@ -15,9 +15,10 @@ use crate::font::{Align, stroke_text, stroke_text_at, stroke_width};
 
 use super::{HudFrame, HudMode};
 
-/// Canvas size.
+/// Canvas size (tall enough for the field to reach a big combiner's lower edge at the jets'
+/// scales, `field`).
 pub const WIDTH: usize = 1280;
-pub const HEIGHT: usize = 512;
+pub const HEIGHT: usize = 800;
 /// Boresight (canvas pixels) and pixels per unit of the tangent plane.
 pub const CX: f32 = 640.0;
 pub const CY: f32 = 280.0;
@@ -31,9 +32,26 @@ const PEN: f32 = 2.4;
 const THIN: f32 = 1.8;
 const TEXT: f32 = 15.0;
 const SMALL: f32 = 12.0;
-/// Area symbols are kept inside (the combiner is roughly x 182..1098, y 14..483; its lower edge
-/// is seen over the glare shield, so the field reaches a little past it).
+/// Area symbols are kept inside (the F-117A's combiner is roughly x 182..1098, y 14..483; its
+/// lower edge is seen over the glare shield, so the field reaches a little past it). Its lower
+/// edge is the combiner glass's (`HudFrame::field_bottom`, `field`).
 const FIELD: (Vec2, Vec2) = (Vec2::new(250.0, 75.0), Vec2::new(1030.0, 490.0));
+/// The field's lowest bottom row (over the readouts' top row) and its gap to the canvas edge.
+const FIELD_LOWEST: f32 = 400.0;
+const FIELD_MARGIN: f32 = 12.0;
+
+/// The field of this frame: down to the combiner glass's lower edge.
+pub fn field(f: &HudFrame) -> (Vec2, Vec2) {
+    let bottom = f.field_bottom.unwrap_or(FIELD.1.y);
+    (FIELD.0, Vec2::new(FIELD.1.x, bottom.clamp(FIELD_LOWEST, HEIGHT as f32 - FIELD_MARGIN)))
+}
+
+/// The canvas row (at `scale`) a point seen from the eye shows on (cockpit frame, metres from
+/// the eye), a little below it (the glass's lower edge is seen over the glare shield); None
+/// when it is not ahead.
+pub fn glass_row(p: Vec3, scale: f32) -> Option<f32> {
+    (p.z < -1e-3).then(|| CY - scale * p.y / -p.z + 8.0)
+}
 
 /// Pixel of a direction in the aircraft frame (x right, y up, -z forward) at `scale` pixels
 /// per unit; None behind.
@@ -42,8 +60,8 @@ pub fn project(d: Vec3, scale: f32) -> Option<Vec2> {
     (z > 1e-3).then(|| Vec2::new(CX + scale * d.x / z, CY - scale * d.y / z))
 }
 
-fn inside(p: Vec2) -> bool {
-    p.cmpge(FIELD.0).all() && p.cmple(FIELD.1).all()
+fn inside(field: (Vec2, Vec2), p: Vec2) -> bool {
+    p.cmpge(field.0).all() && p.cmple(field.1).all()
 }
 
 fn text(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
@@ -88,9 +106,9 @@ fn diamond(c: &mut Canvas, p: Vec2, r: f32) {
 /// Where a cue in direction `d` (aircraft frame) is drawn: where it is seen, else (`true`) at
 /// the edge of the area inside the tapes, clear of the speed and altitude boxes and above the
 /// readouts, in its direction.
-fn kept_in_field(d: Vec3, scale: f32, r: f32) -> Option<(Vec2, bool)> {
-    let p = project(d, scale);
-    if let Some(p) = p.filter(|&p| inside(p)) {
+fn kept_in_field(d: Vec3, f: &HudFrame, r: f32) -> Option<(Vec2, bool)> {
+    let p = project(d, f.scale);
+    if let Some(p) = p.filter(|&p| inside(field(f), p)) {
         return Some((p, false));
     }
     let centre = Vec2::new(CX, CY);
@@ -113,9 +131,9 @@ fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
 
 /// The steerpoint diamond (direction in the aircraft frame); off the field it waits at the
 /// field's edge in the steerpoint's direction, crossed out.
-fn steerpoint_cue(c: &mut Canvas, d: Vec3, scale: f32) {
+fn steerpoint_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
     const R: f32 = 9.0;
-    let Some((q, off)) = kept_in_field(d, scale, R) else { return };
+    let Some((q, off)) = kept_in_field(d, f, R) else { return };
     diamond(c, q, R);
     if off {
         cross_out(c, q, R);
@@ -124,9 +142,9 @@ fn steerpoint_cue(c: &mut Canvas, d: Vec3, scale: f32) {
 
 /// Where the targeting pod looks: a small circle with a dot; off the field at its edge,
 /// crossed out.
-fn pod_cue(c: &mut Canvas, d: Vec3, scale: f32) {
+fn pod_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
     const R: f32 = 8.0;
-    let Some((q, off)) = kept_in_field(d, scale, R) else { return };
+    let Some((q, off)) = kept_in_field(d, f, R) else { return };
     c.ring(q, R, THIN, INK);
     if off {
         cross_out(c, q, R);
@@ -178,12 +196,20 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     let jet_borne = f.vtol.is_some_and(|v| v.nozzle > HOVER_NOZZLE);
     let hover = (f.heli.is_some() || jet_borne) && f.knots < HOVER_KNOTS;
     let fpm_raw = if hover { Some(Vec2::new(CX, CY)) } else { project(inv * f.path_dir, f.scale) };
-    let fpm = fpm_raw.map_or(Vec2::new(CX, FIELD.1.y), |p| p.clamp(FIELD.0, FIELD.1));
-    let caged = fpm_raw.is_none_or(|p| !inside(p));
+    let fld = field(f);
+    let fpm = fpm_raw.map_or(Vec2::new(CX, fld.1.y), |p| p.clamp(fld.0, fld.1));
+    let caged = fpm_raw.is_none_or(|p| !inside(fld, p));
 
     if st.declutter < 2 || st.mode == HudMode::Nav {
         pitch_ladder(c, f, fpm, h, down);
     }
+    // On an ILS approach the marker and the bars it steers by rise together as far as they
+    // must to stay inside the field: the bars still show the way to the glide path from it.
+    let fpm = if f.ils.is_some() && !hover {
+        Vec2::new(fpm.x, fpm.y.min(fld.1.y - ILS_REACH))
+    } else {
+        fpm
+    };
     if !hover {
         flight_path_marker(c, fpm, h, down, caged);
     }
@@ -215,7 +241,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     if let Some(v) = &f.vtol {
         nozzle(c, v);
         if hover {
-            drift_vector(c, v.drift);
+            drift_vector(c, v.drift, fld);
         }
     }
 
@@ -235,19 +261,21 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     if let Some(t) = f.throttle {
         text(c, 270.0, 366.0, &super::throttle_text(t), Align::Left);
     }
-    // A turret gun with what it is slaved to.
+    // A turret gun with what it is slaved to. NAV shows no weapons.
     let gun = |rounds: u32| match f.gun_slave {
         Some(s) => format!("GUN {rounds} {s}"),
         None => format!("GUN {rounds}"),
     };
-    if f.gun_selected {
-        text(c, 270.0, 418.0, &gun(f.gun_rounds.unwrap_or(0)), Align::Left);
-    } else {
-        if let Some((count, name)) = &f.weapon {
-            text(c, 270.0, 418.0, &format!("{count} {name}"), Align::Left);
-        }
-        if let Some(rounds) = f.gun_rounds {
-            text(c, 270.0, 444.0, &gun(rounds), Align::Left);
+    if st.mode != HudMode::Nav {
+        if f.gun_selected {
+            text(c, 270.0, 418.0, &gun(f.gun_rounds.unwrap_or(0)), Align::Left);
+        } else {
+            if let Some((count, name)) = &f.weapon {
+                text(c, 270.0, 418.0, &format!("{count} {name}"), Align::Left);
+            }
+            if let Some(rounds) = f.gun_rounds {
+                text(c, 270.0, 444.0, &gun(rounds), Align::Left);
+            }
         }
     }
 
@@ -269,11 +297,11 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     }
     // The steerpoint in every mode, so the route is never lost.
     if let Some(d) = f.steerpoint_dir {
-        steerpoint_cue(c, inv * d, f.scale);
+        steerpoint_cue(c, inv * d, f);
     }
     // Targeting pod line of sight: a small circle, in every mode.
     if let Some(d) = f.tgp_dir {
-        pod_cue(c, inv * d, f.scale);
+        pod_cue(c, inv * d, f);
     }
 
     match st.mode {
@@ -332,14 +360,14 @@ fn helicopter(c: &mut Canvas, f: &HudFrame, h: &super::HeliHud) {
         text(c, 300.0, 152.0, "LOW ROTOR", Align::Left);
     }
     if f.knots < HOVER_KNOTS {
-        drift_vector(c, h.drift);
+        drift_vector(c, h.drift, field(f));
     }
 }
 
 /// The drift over the ground (knots, x right, y ahead) from a circle below the boresight.
-fn drift_vector(c: &mut Canvas, drift: Vec2) {
+fn drift_vector(c: &mut Canvas, drift: Vec2, field: (Vec2, Vec2)) {
     c.ring(DRIFT_CENTRE, 6.0, PEN, INK);
-    let end = (DRIFT_CENTRE + Vec2::new(drift.x, -drift.y) * DRIFT_SCALE).clamp(FIELD.0, FIELD.1);
+    let end = (DRIFT_CENTRE + Vec2::new(drift.x, -drift.y) * DRIFT_SCALE).clamp(field.0, field.1);
     if end.distance(DRIFT_CENTRE) > 8.0 {
         c.stroke(DRIFT_CENTRE, end, PEN, INK);
         c.ring(end, 4.0, THIN, INK);
@@ -388,12 +416,8 @@ fn pitch_ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
         })
         .unwrap_or(Vec3::NEG_Z);
     let gamma = f.path_dir.y.clamp(-1.0, 1.0).asin().to_degrees();
-    c.set_clip(
-        FIELD.0.x as i32 - 20,
-        FIELD.0.y as i32 - 10,
-        FIELD.1.x as i32 + 20,
-        FIELD.1.y as i32 + 10,
-    );
+    let fld = field(f);
+    c.set_clip(fld.0.x as i32 - 20, fld.0.y as i32 - 10, fld.1.x as i32 + 20, fld.1.y as i32 + 10);
     for k in -18..=18 {
         let deg = k as f32 * 5.0;
         if (deg - gamma).abs() > 22.0 || deg.abs() > 89.0 {
@@ -603,10 +627,11 @@ fn aoa_bracket(c: &mut Canvas, fpm: Vec2, aoa: f32) {
 /// AA: target designator box with the missile diamond when locked, SHOOT cue in range,
 /// allowable steering error circle, launch zone scale and the gun pipper.
 fn air_to_air(c: &mut Canvas, f: &HudFrame) {
+    let fld = field(f);
     let cues = &f.cues;
     let target = cues.target_dir.and_then(|d| project(d, f.scale));
     if let Some(p) = target {
-        let q = p.clamp(FIELD.0, FIELD.1);
+        let q = p.clamp(fld.0, fld.1);
         let s = 20.0;
         c.frame(q - Vec2::splat(s), q + Vec2::splat(s), PEN, INK);
         if q != p {
@@ -653,6 +678,8 @@ const ILS_FULL_SCALE: (f32, f32) = (2.5, 0.7);
 const ILS_DEFLECTION: f32 = 60.0;
 const ILS_BAR: f32 = 50.0;
 const ILS_TICK: (f32, f32) = (30.0, 7.0);
+/// How far the ILS bars and the AOA bracket reach below the flight path marker (pixels).
+const ILS_REACH: f32 = ILS_DEFLECTION + ILS_TICK.1 + 4.0;
 
 /// ILS steering, as the F-16's: the localizer deviation bar (upright) and the glideslope
 /// deviation bar (level), each with two short ladder ticks, referenced to the flight path
@@ -674,9 +701,10 @@ fn ils_bars(c: &mut Canvas, fpm: Vec2, h: Vec2, down: Vec2, loc: f32, gs: f32) {
 /// with a locked target's range as an arc unwinding from 12 o'clock (a full circle is
 /// 12,000 ft), the range in km under it and SHOOT within the gun's range.
 fn gun_sight(c: &mut Canvas, f: &HudFrame) {
+    let fld = field(f);
     let Some(g) = f.cues.gun else { return };
     let Some(p) = project(g.dir, f.scale) else { return };
-    let q = p.clamp(FIELD.0, FIELD.1);
+    let q = p.clamp(fld.0, fld.1);
     let r = 28.0;
     c.ring(q, r, PEN, INK);
     c.ring(q, 1.5, PEN * 1.4, INK);
@@ -797,10 +825,10 @@ fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
 const SOLUTION_PX_PER_S: f32 = 10.0;
 
 /// The part of the line through `p` along `d` inside the field.
-fn field_line(p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
+fn field_line(field: (Vec2, Vec2), p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
     let (mut t0, mut t1) = (-1e4f32, 1e4f32);
     for a in 0..2 {
-        let (lo, hi, o, v) = (FIELD.0[a], FIELD.1[a], p[a], d[a]);
+        let (lo, hi, o, v) = (field.0[a], field.1[a], p[a], d[a]);
         if v.abs() < 1e-6 {
             if o < lo || o > hi {
                 return None;
@@ -821,9 +849,10 @@ fn field_line(p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
 /// cue reaches the marker with the button held); for the guided release (flight-path guide)
 /// the steering line with the release cue.
 fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
+    let fld = field(f);
     let cues = &f.cues;
     if let Some(p) = cues.target_dir.and_then(|d| project(d, f.scale)) {
-        let q = p.clamp(FIELD.0, FIELD.1);
+        let q = p.clamp(fld.0, fld.1);
         let s = 16.0;
         c.frame(q - Vec2::splat(s), q + Vec2::splat(s), PEN, INK);
         c.ring(q, 1.5, PEN, INK);
@@ -859,12 +888,12 @@ fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
         // the impact point; while that is below the field the pipper stays on the line at the
         // field's edge and the time delay cue crosses the line there.
         let r = 10.0;
-        let p = project(dir, f.scale).unwrap_or(Vec2::new(CX, FIELD.1.y));
+        let p = project(dir, f.scale).unwrap_or(Vec2::new(CX, fld.1.y));
         let along = (p - fpm).normalize_or(Vec2::Y);
-        let q = if inside(p) {
+        let q = if inside(fld, p) {
             p
         } else {
-            field_line(fpm, along).map_or(p.clamp(FIELD.0, FIELD.1), |(_, e)| e - along * r)
+            field_line(fld, fpm, along).map_or(p.clamp(fld.0, fld.1), |(_, e)| e - along * r)
         };
         if (q - fpm).dot(along) > r + 9.0 {
             c.stroke(fpm + along * 9.0, q - along * r, PEN, INK);
@@ -880,8 +909,8 @@ fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
     if let Some(b) = bomb.filter(|b| b.ccrp)
         && let Some(p) = cues.target_dir.and_then(|d| project(d, f.scale))
     {
-        let q = p.clamp(FIELD.0, FIELD.1);
-        if let Some((a, e)) = field_line(q, down) {
+        let q = p.clamp(fld.0, fld.1);
+        if let Some((a, e)) = field_line(fld, q, down) {
             c.stroke(a, e, PEN, INK);
         }
         if let Some(secs) = b.release_secs {
@@ -889,7 +918,7 @@ fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
             let base = q + down * (fpm - q).dot(down);
             // It waits at the top of the line until the release comes within reach.
             let mut cue = base - down * secs.max(0.0) * SOLUTION_PX_PER_S;
-            if let Some((a, e)) = field_line(q, down) {
+            if let Some((a, e)) = field_line(fld, q, down) {
                 let top = if a.y < e.y { a } else { e };
                 if (cue - top).dot(down) < 0.0 {
                     cue = top + down * 6.0;
@@ -902,12 +931,12 @@ fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
     if let Some(p) = cues.diamond_dir.and_then(|d| project(d, f.scale)) {
         // Azimuth steering line through the release point, release cue sliding down to the
         // flight path marker.
-        let x = p.x.clamp(FIELD.0.x, FIELD.1.x);
-        c.stroke(Vec2::new(x, FIELD.0.y + 40.0), Vec2::new(x, FIELD.1.y - 40.0), THIN, INK);
+        let x = p.x.clamp(fld.0.x, fld.1.x);
+        c.stroke(Vec2::new(x, fld.0.y + 40.0), Vec2::new(x, fld.1.y - 40.0), THIN, INK);
         if let Some((bar, flash)) = cues.ranging_bar
             && (!flash || f.blink)
         {
-            let y = (fpm.y - bar as f32 * 4.0).max(FIELD.0.y);
+            let y = (fpm.y - bar as f32 * 4.0).max(fld.0.y);
             c.stroke(Vec2::new(fpm.x - 22.0, y), Vec2::new(fpm.x + 22.0, y), PEN * 1.3, INK);
         }
     }
@@ -1148,6 +1177,42 @@ mod tests {
         assert!(lowest as f32 > 475.0 && lowest as f32 <= FIELD.1.y, "pipper down to {lowest}");
     }
 
+    /// On an ILS approach at the approach angle of attack the marker and the bars (the glide
+    /// path far below) stay inside a short combiner's field.
+    #[test]
+    fn ils_bars_stay_in_a_short_field() {
+        let mut f = frame(HudMode::Nav);
+        f.scale = 2080.0;
+        f.field_bottom = Some(560.0);
+        f.ils = Some((-2.5, 0.7));
+        let a = APPROACH_AOA.to_radians();
+        f.path_dir = Vec3::new(0.0, -a.sin(), -a.cos());
+        let mut c = Canvas::new(WIDTH, HEIGHT);
+        draw(&mut c, &f);
+        let lowest = (0..HEIGHT)
+            .rev()
+            .find(|&y| (CX as usize - 80..CX as usize + 80).any(|x| c.px[y * WIDTH + x] != 0))
+            .unwrap();
+        assert!(lowest as f32 <= field(&f).1.y + 4.0, "ILS bars down to {lowest}");
+        // The field reaches down to the glass's lower edge, not the F-117A's.
+        assert!(field(&f).1.y > FIELD.1.y);
+    }
+
+    /// NAV shows no weapon or gun readouts; AG does.
+    #[test]
+    fn nav_shows_no_weapons() {
+        let ink = |mode| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, &frame(mode));
+            (410..452)
+                .flat_map(|y| (265..420).map(move |x| (x, y)))
+                .filter(|&(x, y)| c.px[y * WIDTH + x] != 0)
+                .count()
+        };
+        assert_eq!(ink(HudMode::Nav), 0);
+        assert!(ink(HudMode::Gnd) > 0);
+    }
+
     /// Off the field the steerpoint and the pod's sight wait crossed out at its edge, clear of
     /// the speed and altitude boxes.
     #[test]
@@ -1155,10 +1220,10 @@ mod tests {
         let mut f = frame(HudMode::Air);
         f.steerpoint_dir = Some(Vec3::new(0.86, 0.0, -0.5));
         f.tgp_dir = Some(Vec3::new(-0.3, -0.2, 0.9));
-        let (q, off) = kept_in_field(f.steerpoint_dir.unwrap(), f.scale, 9.0).unwrap();
+        let (q, off) = kept_in_field(f.steerpoint_dir.unwrap(), &f, 9.0).unwrap();
         assert!(off && q.x + 9.0 < 850.0 && (q.y - CY).abs() < 1.0, "{q}");
-        let (p, off) = kept_in_field(f.tgp_dir.unwrap(), f.scale, 8.0).unwrap();
-        assert!(off && inside(p), "{p}");
+        let (p, off) = kept_in_field(f.tgp_dir.unwrap(), &f, 8.0).unwrap();
+        assert!(off && inside(field(&f), p), "{p}");
         let mut c = Canvas::new(WIDTH, HEIGHT);
         draw(&mut c, &f);
         for q in [q, p] {

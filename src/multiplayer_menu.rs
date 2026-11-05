@@ -472,6 +472,7 @@ fn multiplayer_window(
                             &mut w.sky_ratio,
                             [
                                 (1.0, t!("cm-day-real"), t_lines!("cm-day-real.facts")),
+                                (12.0, t!("cm-day-2h"), t_lines!("cm-day-2h.facts")),
                                 (24.0, t!("cm-day-1h"), t_lines!("cm-day-1h.facts")),
                                 (48.0, t!("cm-day-30min"), t_lines!("cm-day-30min.facts")),
                             ],

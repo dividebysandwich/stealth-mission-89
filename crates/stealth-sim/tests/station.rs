@@ -3,11 +3,11 @@
 use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
-use stealth_sim::aaa::{GroundKind, PATRIOT};
+use stealth_sim::aaa::{GroundKind, NASAMS, PATRIOT};
 use stealth_sim::ai_loadout::FighterTask;
 use stealth_sim::station::{
-    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, PATRIOT_STOCK, REFILL_SECONDS,
-    SavedStock, StationCmd,
+    BURST, GEPARD_ROUNDS, GEPARD_TRAVERSE, GEPARD_V0, Guidance, NASAMS_STOCK, PATRIOT_STOCK,
+    REFILL_SECONDS, SavedStock, StationCmd,
 };
 use stealth_sim::*;
 
@@ -120,9 +120,15 @@ fn a_manned_battery_fires_on_its_lock() {
     assert_eq!(m[0].spec, PATRIOT);
     assert_eq!(m[0].target, f);
     assert_eq!(m[0].guidance, Some(Guidance::Guided));
-    // The same launcher waits; another one fires.
+    // The launcher begun fires again once ready: it empties before the next one starts.
+    let first = sim.next_launcher(radar).expect("launcher");
+    assert_eq!(sim.units()[first].rounds, 3);
+    assert!(sim.station_command(ME, StationCmd::Fire { launcher: None }).is_err());
+    run(&mut sim, 3);
     sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
     assert_eq!(launcher_rounds(&sim, radar), before - 2);
+    assert_eq!(sim.units()[first].rounds, 2);
+    assert_eq!(sim.next_launcher(radar), Some(first));
 }
 
 #[test]
@@ -279,6 +285,29 @@ fn an_unmanned_battery_refills_itself() {
     assert!(sim.refill_left(l) > 0.0);
     sim.tick_refills(REFILL_SECONDS);
     assert_eq!(sim.units()[l].rounds, 4);
+}
+
+/// The AI empties one launcher before it fires from the next.
+#[test]
+fn the_ai_fires_one_launcher_empty_first() {
+    let (mut sim, radar, f) = battery();
+    let at = sim.units()[radar];
+    let launchers = sim.battery_launchers(radar);
+    assert!(launchers.len() > 1);
+    // A launcher begun (not the first): the next shot is its.
+    let begun = launchers[1];
+    sim.units_mut()[begun].rounds = 2;
+    for _ in 0..60 {
+        hold(&mut sim, f, (at.x + 0x200, at.y, 4000));
+        run(&mut sim, 1);
+        if !sim.ai_missiles().is_empty() {
+            break;
+        }
+    }
+    assert!(!sim.ai_missiles().is_empty());
+    let rounds: Vec<i32> = launchers.iter().map(|&k| sim.units()[k].rounds).collect();
+    assert_eq!(sim.units()[begun].rounds, 1, "{rounds:?}");
+    assert!(launchers.iter().filter(|&&k| k != begun).all(|&k| sim.units()[k].rounds == 4));
 }
 
 #[test]
@@ -503,10 +532,10 @@ fn no_shot_beyond_the_pac3_reach() {
     let (mut sim, radar, f) = battery();
     sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
     let at = sim.units()[radar];
-    // 90 km east.
-    hold(&mut sim, f, (at.x + 5760, at.y, 16000));
+    // 130 km east.
+    hold(&mut sim, f, (at.x + 8320, at.y, 16000));
     run(&mut sim, 1);
-    hold(&mut sim, f, (at.x + 5760, at.y, 16000));
+    hold(&mut sim, f, (at.x + 8320, at.y, 16000));
     sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
     assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
@@ -533,4 +562,114 @@ fn captures_reuse_the_wrecks_and_a_friendly_field_keeps_its_gepard() {
         }
     }
     assert!(sim.units().len() <= len + 12, "{} units from {len}", sim.units().len());
+}
+
+/// A PAC-3 reaches an aircraft that holds still 78 km out (the old one fell short).
+#[test]
+fn a_pac3_reaches_78_km() {
+    let (mut sim, radar, f) = battery();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    let p = (at.x + 4992, at.y, 16000);
+    hold(&mut sim, f, p);
+    run(&mut sim, 1);
+    hold(&mut sim, f, p);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+    for _ in 0..300 {
+        hold(&mut sim, f, p);
+        run(&mut sim, 1);
+        if sim.flights()[f].flags & fflags::DESTROYED != 0 {
+            return;
+        }
+        if !sim.ai_missiles().iter().any(|m| m.station.is_some()) {
+            break;
+        }
+    }
+    panic!("the missile fell short");
+}
+
+/// A friendly NASAMS battery by Neuburg and an unarmed enemy fighter (tag 8) 20 km east of it
+/// at 2 km: the Sentinel radar, the fighter's flight unit.
+fn nasams() -> (Sim, usize, usize) {
+    let mut sim = campaign();
+    let home = find(&sim, 0x401, "Neuburg");
+    let enemy = find(&sim, 0x001, "Komarno");
+    let t = sim.objects()[home];
+    let f = sim.spawn_fighter(enemy, t.x, t.y, 8, false, FighterTask::Patrol);
+    sim.set_fighter_loadout(f, Default::default());
+    sim.place_nasams(t.x + 0x100, t.y);
+    let radar = kind_index(&sim, GroundKind::NasamsRadar);
+    let at = sim.units()[radar];
+    hold(&mut sim, f, (at.x + 0x500, at.y, 4000));
+    (sim, radar, f)
+}
+
+#[test]
+fn a_manned_nasams_fires_aim120s_from_six_canister_launchers() {
+    let (mut sim, radar, f) = nasams();
+    assert_eq!(sim.battery_launchers(radar).len(), 3);
+    assert!(sim.battery_launchers(radar).iter().all(|&l| sim.units()[l].rounds == 6));
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    run(&mut sim, 1);
+    assert_eq!(sim.stockpile(radar), NASAMS_STOCK);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap();
+    assert_eq!(launcher_rounds(&sim, radar), 17);
+    let m: Vec<_> = sim.ai_missiles().iter().filter(|m| m.station.is_some()).collect();
+    assert_eq!(m.len(), 1);
+    assert_eq!(m[0].spec, NASAMS);
+    assert!(m[0].flight.is_some(), "the realistic missile flight");
+}
+
+/// Reloads under way keep their missiles: with 8 left, one empty launcher reloads in full, a
+/// second gets no partial load while it does, and the rest goes to it once the first is done.
+#[test]
+fn no_nasams_reload_without_the_missiles_for_it() {
+    let (mut sim, radar, _) = nasams();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    sim.restore_stocks(&[SavedStock {
+        x: at.x,
+        y: at.y,
+        kind: GroundKind::NasamsRadar,
+        stock: 8,
+        stock2: 0,
+        stock3: 0,
+    }]);
+    let l = sim.battery_launchers(radar);
+    for &k in &l {
+        sim.units_mut()[k].rounds = 0;
+    }
+    let refill =
+        |sim: &mut Sim, k: usize| sim.station_command(ME, StationCmd::Refill { unit: k as u16 });
+    refill(&mut sim, l[0]).unwrap();
+    assert_eq!(sim.stockpile_free(radar), 2);
+    let e = refill(&mut sim, l[1]).unwrap_err();
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("Not enough"), "{e}");
+    assert!(refill(&mut sim, l[2]).is_err());
+    sim.tick_refills(REFILL_SECONDS);
+    assert_eq!(sim.units()[l[0]].rounds, 6);
+    assert_eq!(sim.stockpile(radar), 2);
+    // Nothing else under way: the last two.
+    refill(&mut sim, l[1]).unwrap();
+    assert!(refill(&mut sim, l[2]).is_err());
+    sim.tick_refills(REFILL_SECONDS);
+    assert_eq!(sim.units()[l[1]].rounds, 2);
+    assert_eq!(sim.stockpile(radar), 0);
+}
+
+#[test]
+fn no_nasams_shot_beyond_40_km() {
+    let (mut sim, radar, f) = nasams();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    let at = sim.units()[radar];
+    // 45 km east: in a Patriot's reach, not a NASAMS's.
+    let p = (at.x + 2880, at.y, 12000);
+    hold(&mut sim, f, p);
+    run(&mut sim, 1);
+    hold(&mut sim, f, p);
+    sim.station_command(ME, StationCmd::Lock(Some(f as u16))).unwrap();
+    let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
+    assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
 }

@@ -561,7 +561,7 @@ fn unit_rcs(u: &stealth_sim::aaa::GroundUnit) -> (f32, f32) {
         14.0
     } else if u.kind.armour() {
         11.0
-    } else if u.kind.patriot() {
+    } else if u.kind.battery().is_some() {
         18.0
     } else {
         8.0

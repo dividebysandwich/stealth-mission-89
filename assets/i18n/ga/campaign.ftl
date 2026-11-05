@@ -104,6 +104,7 @@ cl-objective = { $title }: cuspóir bainte amach
 cl-recon = Grianghraif thaiscéalaíochta de { $place }: mapáilte a chosaintí
 cl-package = Pacáiste thar { $place }: { $kinds } - +{ $bonus } do { $pilots }
 cl-supply-patriot = Cadhnra Patriot gar do { $place }
+cl-supply-nasams = Cadhnra NASAMS gar do { $place }
 cl-supply-gepard = Gepard gar do { $place }
 cl-supply-drones = Ionad ceannais dróin gar do { $place }
 cl-resupply-requested = Iarrann { $who } athsholáthar don aonad { $unit }
@@ -248,6 +249,7 @@ st-destroyed = Scriosta
 st-already-refilling = Ag athlíonadh cheana
 st-not-empty-yet = Níl sé folamh fós
 st-stockpile-empty = Stoc folamh
+st-stockpile-short = Níl dóthain diúracán sa stoc
 st-no-launcher-ready = Gan seoladán réidh
 st-unit-destroyed = Scriosadh aonad { $unit }
 

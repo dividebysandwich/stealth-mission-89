@@ -263,6 +263,8 @@ pub enum MfdCmd {
     RadarStandby,
     /// The A-A radar's range a step out (+) or in (-).
     FcrRange(i8),
+    /// The RCS page's range a step out (+) or in (-), from AUTO.
+    RcsRange(i8),
     /// The A-A radar's scan width (A6, A3, A1) and bars (4, 2, 1), each the next one round.
     FcrAz,
     FcrBars,
@@ -462,8 +464,16 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Format(_, f) | MfdCmd::Assign(_, f) => f.action(),
         MfdCmd::Row(..) => Action::Maps,
         MfdCmd::Soi(_) | MfdCmd::SwapSoi => Action::SwapSoi,
-        MfdCmd::HsdRange(d) | MfdCmd::GmRange(d) | MfdCmd::FcrRange(d) | MfdCmd::MapZoom(d) => {
-            if d > 0 { Action::MapZoomIn } else { Action::MapZoomOut }
+        MfdCmd::HsdRange(d)
+        | MfdCmd::GmRange(d)
+        | MfdCmd::FcrRange(d)
+        | MfdCmd::RcsRange(d)
+        | MfdCmd::MapZoom(d) => {
+            if d > 0 {
+                Action::MapZoomIn
+            } else {
+                Action::MapZoomOut
+            }
         }
         MfdCmd::HsdCentre
         | MfdCmd::HarmFilter
@@ -689,6 +699,8 @@ pub struct Contact {
     /// On the displays: an aircraft the player's radar, or with it in standby another
     /// friendly radar, sees (everything else always).
     pub seen: bool,
+    /// The player's own weapon in flight (blue on the HSD).
+    pub own: bool,
 }
 
 /// A radar's threat ring on the HSD.
@@ -741,6 +753,8 @@ fn reset_mfd(
 ) {
     let mut av = crate::avionics::AvionicsState::default();
     av.radar = settings.aircraft.spec().ground_radar;
+    av.rcs = settings.aircraft.rcs_page();
+    av.aircraft = settings.aircraft;
     // The bottom rows the pilot set up stay from flight to flight.
     av.keep_rows(&state.av);
     av.set_mfds(settings.cockpit().0.mfd_count());
@@ -797,6 +811,13 @@ fn mfd_keys(
     let radar = settings.aircraft.spec().ground_radar;
     if state.av.radar != radar {
         state.av.set_radar(radar);
+    }
+    let rcs = settings.aircraft.rcs_page();
+    if state.av.rcs != rcs {
+        state.av.set_rcs(rcs);
+    }
+    if state.av.aircraft != settings.aircraft {
+        state.av.aircraft = settings.aircraft;
     }
     let mfds = settings.cockpit().0.mfd_count();
     if state.av.mfds != mfds {
@@ -1504,6 +1525,9 @@ pub struct MfdParams<'w, 's> {
     pub radar: Option<Res<'w, crate::ground_radar::GroundRadar>>,
     pub aa_radar: Option<Res<'w, crate::aa_radar::AaRadar>>,
     pub cm: Res<'w, crate::panel::Countermeasures>,
+    /// Our signature and the radar signals at us, and their history (the RCS page).
+    pub emv: Res<'w, crate::panel::Emv>,
+    pub threats: Res<'w, crate::mpd::ThreatHistory>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.
