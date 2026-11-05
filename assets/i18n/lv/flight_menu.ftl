@@ -25,6 +25,7 @@ fm-cockpit = KABĪNE
 fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTO TRIM
+fm-keep-time-accel = SAGLABĀT PAĀTRINĀJUMU
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPĒLĒTĀJU VĀRDI
 fm-label-size = VĀRDU IZMĒRS

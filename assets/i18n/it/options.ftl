@@ -33,6 +33,10 @@ options-auto-trim = Trim automatico
         Con la cloche rilasciata, il trim mantiene l'assetto in cui è stato lasciato
         Elicotteri: il muso non si alza più con la velocità; jet: compensa le superfici di comando danneggiate
         Trim manuale: Alt + frecce, Alt + Home lo centra
+options-keep-time-accel = Mantieni l'accelerazione del tempo
+    .facts =
+        L'accelerazione non si interrompe più quando vieni individuato, sganci un'arma o vieni abbattuto
+        Solo il pulsante TIME e Shift + Z / Shift + X la cambiano
 options-tooltips = Tooltip del cockpit
     .facts = Che cos'è un comando o un display del cockpit, sotto il mouse o un dito in VR
 options-player-labels = Nomi dei giocatori

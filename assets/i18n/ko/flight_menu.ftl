@@ -25,6 +25,7 @@ fm-cockpit = 조종석
 fm-hud = HUD
 fm-avionics = 항전
 fm-auto-trim = 자동 트림
+fm-keep-time-accel = 가속 유지
 fm-tooltips = 툴팁
 fm-player-labels = 플레이어 이름
 fm-label-size = 이름 크기

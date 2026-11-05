@@ -33,6 +33,10 @@ options-auto-trim = 自动配平
         松开驾驶杆后，配平会保持您松杆时的姿态
         直升机：机头不再随速度抬升；喷气机：消除受损操纵面造成的偏差
         手动配平：Alt + 方向键，Alt + Home 回中
+options-keep-time-accel = 保持时间加速
+    .facts =
+        被发现、发射武器或被击落时，加速不再中断
+        只有 TIME 按钮和 Shift + Z / Shift + X 能改变它
 options-tooltips = 座舱提示
     .facts = 鼠标或 VR 指尖所指的座舱控件或显示器是什么
 options-player-labels = 玩家名称

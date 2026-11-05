@@ -24,6 +24,7 @@ fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
 fm-auto-trim = AUTO-TRIMMUNG
+fm-keep-time-accel = ZEITRAFFER BEHALTEN
 fm-tooltips = TOOLTIPS
 fm-player-labels = SPIELERNAMEN
 fm-label-size = NAMENSGRÖSSE

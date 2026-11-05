@@ -25,6 +25,7 @@ fm-cockpit = CABINA
 fm-hud = HUD
 fm-avionics = AVIÓNICA
 fm-auto-trim = TRIM AUTO
+fm-keep-time-accel = MANTENER ACELERACIÓN
 fm-tooltips = TOOLTIPS
 fm-player-labels = NOMBRES DE JUGADORES
 fm-label-size = TAMAÑO DE NOMBRES

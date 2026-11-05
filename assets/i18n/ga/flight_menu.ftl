@@ -25,6 +25,7 @@ fm-cockpit = CÁBÁN
 fm-hud = HUD
 fm-avionics = AVIONICS
 fm-auto-trim = UATH-TRIM
+fm-keep-time-accel = COINNIGH LUASGHÉARÚ
 fm-tooltips = LEIDEANNA UIRLISE
 fm-player-labels = AINMNEACHA IMREOIRÍ
 fm-label-size = MÉID AINMNEACHA

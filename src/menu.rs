@@ -346,6 +346,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (settings.classic_avionics, "--classic-avionics"),
         (settings.classic_flight, "--classic-flight"),
         (settings.no_crashes, "--no-crashes"),
+        (settings.keep_time_accel, "--keep-time-accel"),
         (!settings.auto_trim, "--no-auto-trim"),
         (settings.realistic_damage, "--realistic-damage"),
         (!settings.realistic_guidance, "--classic-guidance"),

@@ -213,6 +213,11 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     )
     .changed();
     toggled |= facts(
+        ui.checkbox(&mut s.keep_time_accel, t!("options-keep-time-accel")),
+        t_lines!("options-keep-time-accel.facts"),
+    )
+    .changed();
+    toggled |= facts(
         ui.checkbox(&mut s.tooltips, t!("options-tooltips")),
         t_lines!("options-tooltips.facts"),
     )

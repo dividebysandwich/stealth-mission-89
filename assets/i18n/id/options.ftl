@@ -33,6 +33,10 @@ options-auto-trim = Trim otomatis
         Saat stick dilepas, trim mempertahankan sikap pesawat seperti yang Anda tinggalkan
         Helikopter: hidung tidak lagi naik seiring kecepatan; jet: menyeimbangkan permukaan kendali yang rusak
         Trim manual: Alt + tombol panah, Alt + Home memusatkannya
+options-keep-time-accel = Pertahankan akselerasi waktu
+    .facts =
+        Akselerasi tidak lagi terputus saat Anda terdeteksi, melepas senjata, atau ditembak jatuh
+        Hanya tombol TIME dan Shift + Z / Shift + X yang mengubahnya
 options-tooltips = Tooltip kokpit
     .facts = Apa itu kontrol atau layar kokpit, di bawah mouse atau ujung jari VR
 options-player-labels = Nama pemain

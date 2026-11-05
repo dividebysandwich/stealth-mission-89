@@ -25,6 +25,7 @@ fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTOMATICKÝ TRIM
+fm-keep-time-accel = ZACHOVAŤ ZRÝCHLENIE
 fm-tooltips = TOOLTIPY
 fm-player-labels = MENÁ HRÁČOV
 fm-label-size = VEĽKOSŤ MIEN

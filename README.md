@@ -134,6 +134,7 @@ NDK's `llvm-strip` first for a smaller APK.)
 | `--classic-terrain` | The classic flat ground of the original game instead of the default rolling hills and highlands (also the Terrain switch under Realism) |
 | `--realistic-damage` | realistic weapon damage: missile hits can destroy the aircraft, start fires that burn out or blow it up, and bend control surfaces (out of trim, oscillating) |
 | `--no-crashes` | crash protection: automatic pull-up near the ground with the gear up, ground contact and collisions are not fatal |
+| `--keep-time-accel` | the time acceleration is no longer cut by a detection, a weapon release or being shot down: only the TIME button and Shift-Z / Shift-X change it; also the *Keep time acceleration* option |
 | `--tacview-real-time [--tacview-address <ip[:port]>] [--tacview-password <text>]` | Tacview real-time telemetry: the flight is shown in Tacview (*Record > Real-Time Telemetry*) while it is flown; hosted on 127.0.0.1:42674 by default, `0.0.0.0` lets another computer join |
 | `--lockheed` | realistic weapons: the real aircraft's 2 bays, no air-to-air missiles, no carrier operations |
 | `--head-tracking` | head/eye tracking: infrared, eye, webcam or phone trackers move the cockpit view through a tracking program such as OpenTrack (FreeTrack output on Windows, or UDP to 127.0.0.1 port 4242); Home recentres |

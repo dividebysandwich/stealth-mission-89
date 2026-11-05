@@ -53,6 +53,7 @@ Aircraft and rules
   --classic-guidance           DOS era missile guidance instead of the realistic
   --realistic-damage           realistic weapon damage
   --no-crashes                 crash protection: collisions and ground contact are not fatal
+  --keep-time-accel            no automatic stop of the time acceleration (detection, weapon release)
   --no-auto-trim               no auto trim (the trim keys still trim)
   --continuous-time            moving sun and moon; moonlight sets the enemy's visual range
   --sun-moon                   without --continuous-time: sun by day, moon and stars by night

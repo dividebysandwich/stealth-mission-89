@@ -33,6 +33,10 @@ options-auto-trim = Trim automatique
         Manche relâché, le trim tient l'assiette où vous l'avez laissée
         Hélicoptères : le nez ne se lève plus avec la vitesse ; jets : compense les gouvernes endommagées
         Trim manuel : Alt + flèches, Alt + Origine le recentre
+options-keep-time-accel = Garder l'accélération
+    .facts =
+        L'accélération ne se coupe plus quand vous êtes détecté, larguez une arme ou êtes abattu
+        Seuls le bouton TIME et Maj + Z / Maj + X la modifient
 options-tooltips = Tooltips du cockpit
     .facts = Ce qu'est une commande ou un écran du cockpit, sous la souris ou un doigt en VR
 options-player-labels = Noms des joueurs

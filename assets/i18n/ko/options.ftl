@@ -33,6 +33,10 @@ options-auto-trim = 자동 트림
         스틱을 놓으면 트림이 놓은 자세를 유지합니다
         헬리콥터: 속도에 따라 기수가 올라가지 않음. 제트기: 손상된 조종면을 트림으로 보정
         수동 트림: Alt + 방향키, Alt + Home으로 중앙 복귀
+options-keep-time-accel = 시간 가속 유지
+    .facts =
+        탐지되거나 무장을 발사하거나 격추되어도 가속이 해제되지 않습니다
+        TIME 버튼과 Shift + Z / Shift + X로만 바꿀 수 있습니다
 options-tooltips = 조종석 툴팁
     .facts = 마우스 아래 또는 VR 손끝에 있는 조종석 조작부나 디스플레이가 무엇인지 표시합니다
 options-player-labels = 플레이어 이름

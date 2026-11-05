@@ -25,6 +25,7 @@ fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVJONIKA
 fm-auto-trim = TRIM AWTOMATIKU
+fm-keep-time-accel = ŻOMM L-AĊĊELERAZZJONI
 fm-tooltips = TOOLTIPS
 fm-player-labels = ISMIJIET TAL-PLEJERS
 fm-label-size = DAQS TAL-ISMIJIET

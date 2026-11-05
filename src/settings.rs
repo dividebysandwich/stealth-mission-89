@@ -81,6 +81,10 @@ pub struct Settings {
     pub auto_trim: bool,
     /// `--no-crashes`: crash protection (auto pull-up, no ground crashes, collisions bounce).
     pub no_crashes: bool,
+    /// `--keep-time-accel`: the time acceleration no longer stops when a radar detects the
+    /// aircraft, a weapon is released or the aircraft is shot down; only the TIME button and
+    /// Shift-Z / Shift-X change it.
+    pub keep_time_accel: bool,
     /// `--realistic-damage`: realistic weapon damage instead of the classic
     /// (`stealth_sim::SimOptions::realistic_damage`).
     pub realistic_damage: bool,
@@ -345,6 +349,7 @@ impl Settings {
             classic_flight: has("--classic-flight") || (has("--script") && !has("--modern-flight")),
             auto_trim: !has("--no-auto-trim"),
             no_crashes: has("--no-crashes"),
+            keep_time_accel: has("--keep-time-accel"),
             realistic_damage: has("--realistic-damage"),
             realistic_guidance: !has("--classic-guidance"),
             realistic_ai_flight: !has("--classic-ai-flight"),

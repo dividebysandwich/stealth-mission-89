@@ -33,6 +33,10 @@ options-auto-trim = オートトリム
         スティックを離すと、トリムが手放した姿勢を保持します
         ヘリコプター：速度による機首上げがなくなります。ジェット機：損傷した操縦舵面をトリムで補正します
         手動トリム：Alt + 矢印キー、Alt + Home でセンターに戻します
+options-keep-time-accel = 時間加速を維持
+    .facts =
+        発見されても、兵装を発射しても、撃墜されても加速が解除されません
+        加速を変えるのは TIME ボタンと Shift + Z / Shift + X のみ
 options-tooltips = コックピットのツールチップ
     .facts = マウスまたは VR の指先の下にある、コックピットの操作部や表示の説明
 options-player-labels = プレイヤー名

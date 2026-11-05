@@ -183,6 +183,7 @@ impl Page {
                 Hud,
                 Avionics,
                 AutoTrim,
+                KeepTimeAccel,
                 Tooltips,
                 Atc,
                 PlayerLabels,
@@ -339,6 +340,7 @@ enum Item {
     Hud,
     Avionics,
     AutoTrim,
+    KeepTimeAccel,
     Tooltips,
     Atc,
     PlayerLabels,
@@ -393,6 +395,7 @@ impl Item {
             Item::Hud => "fm-hud",
             Item::Avionics => "fm-avionics",
             Item::AutoTrim => "fm-auto-trim",
+            Item::KeepTimeAccel => "fm-keep-time-accel",
             Item::Tooltips => "fm-tooltips",
             Item::Atc => "fm-atc",
             Item::PlayerLabels => "fm-player-labels",
@@ -434,6 +437,7 @@ impl Item {
             Item::Hud => style(s.classic_hud),
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
+            Item::KeepTimeAccel => on(s.keep_time_accel),
             Item::Tooltips => on(s.tooltips),
             Item::Atc => on(s.atc),
             Item::PlayerLabels => on(s.player_labels),
@@ -1336,6 +1340,7 @@ fn navigate(
         Item::Hud => s.classic_hud = !s.classic_hud,
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
+        Item::KeepTimeAccel => s.keep_time_accel = !s.keep_time_accel,
         Item::Language => {
             let all = Language::ALL;
             let i = all.iter().position(|&l| l == s.language).unwrap_or(0) as isize;

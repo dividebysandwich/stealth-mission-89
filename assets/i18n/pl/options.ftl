@@ -33,6 +33,10 @@ options-auto-trim = Automatyczny trym
         Po puszczeniu drążka trym utrzymuje położenie, w jakim samolot został zostawiony
         Śmigłowce: nos nie unosi się już z prędkością; odrzutowce: kompensuje uszkodzone powierzchnie sterowe
         Trym ręczny: Alt + strzałki, Alt + Home go centruje
+options-keep-time-accel = Zachowaj przyspieszenie czasu
+    .facts =
+        Przyspieszenie nie wyłącza się już po wykryciu, odpaleniu broni lub zestrzeleniu
+        Zmieniają je tylko przycisk TIME oraz Shift + Z / Shift + X
 options-tooltips = Tooltipy kokpitu
     .facts = Czym jest element sterowania lub wyświetlacz kokpitu, pod myszą lub pod palcem w VR
 options-player-labels = Nazwy graczy

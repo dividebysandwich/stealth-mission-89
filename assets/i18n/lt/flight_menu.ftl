@@ -25,6 +25,7 @@ fm-cockpit = KABINA
 fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTOM. TRIM
+fm-keep-time-accel = IŠLAIKYTI SPARTINIMĄ
 fm-tooltips = PAAIŠKINIMAI
 fm-player-labels = ŽAIDĖJŲ VARDAI
 fm-label-size = VARDŲ DYDIS

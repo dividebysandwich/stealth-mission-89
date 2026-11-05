@@ -25,6 +25,7 @@ fm-cockpit = OHJAAMO
 fm-hud = HUD
 fm-avionics = AVIONIIKKA
 fm-auto-trim = AUTOTRIMMI
+fm-keep-time-accel = PIDÄ KIIHDYTYS
 fm-tooltips = TYÖKALUVIHJEET
 fm-player-labels = PELAAJIEN NIMET
 fm-label-size = NIMIEN KOKO

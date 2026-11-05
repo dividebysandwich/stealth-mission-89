@@ -33,6 +33,10 @@ options-auto-trim = Automatisk trim
         När styrspaken släpps håller trimmen attityden där du lämnade den
         Helikoptrar: nosen stiger inte längre med farten; jetplan: trimmar bort skadade roder
         Manuell trim: Alt + piltangenter, Alt + Home centrerar den
+options-keep-time-accel = Behåll tidsacceleration
+    .facts =
+        Accelerationen avbryts inte längre när du upptäcks, avfyrar ett vapen eller skjuts ner
+        Bara TIME-knappen och Shift + Z / Shift + X ändrar den
 options-tooltips = Tooltips i cockpit
     .facts = Vad ett reglage eller en skärm i cockpit är, under musen eller en fingertopp i VR
 options-player-labels = Spelarnamn

@@ -25,6 +25,7 @@ fm-cockpit = コックピット
 fm-hud = HUD
 fm-avionics = アビオニクス
 fm-auto-trim = オートトリム
+fm-keep-time-accel = 加速を維持
 fm-tooltips = ツールチップ
 fm-player-labels = プレイヤー名
 fm-label-size = 名前の大きさ

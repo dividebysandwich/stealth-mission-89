@@ -203,7 +203,7 @@ pages for what can change in flight.
 
 | Tab | Settings |
 |---|---|
-| **Game** | *Cockpit*, *HUD*, *Avionics*, *Flight model*: Classic (DOS era) or Modern. This manual describes the modern ones; the modern flight model is aerodynamic with fly-by-wire (released, the stick holds the attitude), and the helicopters and the AV-8B always fly it. *Auto trim*. *Cockpit tooltips*. *Player labels* and their size (multiplayer). *VR cockpit size*. *Tacview* export and real-time telemetry (chapter 8.3). *GIF recording*: size and frame rate; **F12** starts and stops a recording, saved in your Pictures folder. |
+| **Game** | *Cockpit*, *HUD*, *Avionics*, *Flight model*: Classic (DOS era) or Modern. This manual describes the modern ones; the modern flight model is aerodynamic with fly-by-wire (released, the stick holds the attitude), and the helicopters and the AV-8B always fly it. *Auto trim*. *Keep time acceleration* (the acceleration is no longer cut by a detection, a weapon release or being shot down). *Cockpit tooltips*. *Player labels* and their size (multiplayer). *VR cockpit size*. *Tacview* export and real-time telemetry (chapter 8.3). *GIF recording*: size and frame rate; **F12** starts and stops a recording, saved in your Pictures folder. |
 | **Graphics** | *Shaders*, *Shadows*, *Point lights* (cockpit lamps, flares, explosions and runway lights light the scene), *Time of day* (the sun, moon and the real stars of the mission's date and place move with the clock), *Anti-aliasing*, *Automatic scenery detail* in VR. **Effects**: camera shake, combat flashes, night barrage, cockpit night lighting, night vision goggles, snow, ground mist, cloud shadows, sunbeams, vapour and downwash, night sky. **Retro**: VGA colours, scanlines and *Pixelize* (the whole 3D view in big square pixels like an MS-DOS game; the menus and tooltips stay sharp, the anti-aliasing is off while it is on; a slider sets the size of the blocks, 2 to 5 screen pixels; the switches *Exclude HUD*, *Exclude cockpit* and *Exclude MFDs, gauges, kneeboard* leave those parts of the cockpit view sharp, so the thin HUD symbols, the displays and the kneeboard stay readable), for the full 1991 look. |
 | **Sound** | *Master*, *Engine*, *Effects*, *Warnings* and *RWR* volumes; *Radar warning tones*: all, detections only, launches only, or off. *Engine low-pass* muffles the engines inside the cockpit. |
 | **Controls** | *Keys and joystick* (1.4). *Head/Eye tracking*. |
@@ -1183,7 +1183,7 @@ The panel is laid out like the real F-117A's:
 |---|---|---|
 | MENU | Esc | Open or close the in-flight menu (chapter 4.7). |
 | VOL | Alt V | Sound level. |
-| TIME | Shift Z / Shift X | Time acceleration on/off. Each press of Shift Z, like each click on the cockpit TIME button, goes faster (ACCEL, ACCEL x2, ACCEL x3, up to three times the plain acceleration), then back to normal time; Shift X returns to normal time at once. Acceleration ends automatically when a radar detects the aircraft or a weapon is released. |
+| TIME | Shift Z / Shift X | Time acceleration on/off. Each press of Shift Z, like each click on the cockpit TIME button, goes faster (ACCEL, ACCEL x2, ACCEL x3, up to three times the plain acceleration), then back to normal time; Shift X returns to normal time at once. Acceleration ends automatically when a radar detects the aircraft or a weapon is released, unless *Keep time acceleration* is checked in the options. |
 | STPT | F7 | Waypoints. |
 | ORD | F10 | Mission orders. |
 | COM, IFF | - | Not used. |
@@ -1276,7 +1276,7 @@ back a page; on the first page they close the menu.
 
 | Page | Entries |
 |---|---|
-| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Tooltips*, *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
+| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Keep time acceleration*, *Tooltips*, *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
 | Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings*, *RWR*, *Radio* and *ATC voice* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |

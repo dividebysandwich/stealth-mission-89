@@ -33,6 +33,10 @@ options-auto-trim = Auto-Trimmung
         Bei losgelassenem Stick hält die Trimmung die Lage, in der Sie sie gelassen haben
         Hubschrauber: die Nase steigt nicht mehr mit der Fahrt; Jets: trimmt beschädigte Ruder aus
         Manuelle Trimmung: Alt + Pfeiltasten, Alt + Pos1 zentriert sie
+options-keep-time-accel = Zeitraffer beibehalten
+    .facts =
+        Der Zeitraffer endet nicht mehr, wenn man entdeckt wird, eine Waffe abwirft oder abgeschossen wird
+        Nur die TIME-Taste und Shift + Z / Shift + X ändern ihn
 options-tooltips = Cockpit-Tooltips
     .facts = Was ein Bedienelement oder Display des Cockpits ist, unter der Maus oder einer VR-Fingerspitze
 options-player-labels = Spielernamen
