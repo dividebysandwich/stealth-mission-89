@@ -570,7 +570,7 @@ impl Sim {
     }
 
     /// The air lock in the HUD (map x, y and viewZ): the locked flight unit or other pilot.
-    fn air_lock_point(&self) -> Option<(i32, i32, i32)> {
+    pub(crate) fn air_lock_point(&self) -> Option<(i32, i32, i32)> {
         if self.pl.hud_mode != HudMode::Air || self.pl.external_view {
             return None;
         }

@@ -1319,6 +1319,12 @@ impl Sim {
         self.pl.helmet_seeker
     }
 
+    /// Whether the helmet seeker looks at a lock made on purpose (the HSD cursor, the nearest
+    /// target) rather than along the helmet sight.
+    pub fn helmet_seeker_held(&self) -> bool {
+        self.pl.helmet_seeker.is_some() && self.pl.target_hold && self.air_lock_point().is_some()
+    }
+
     /// The right MFD should show the Maverick seeker of this slot.
     pub fn maverick_view_slot(&self) -> Option<usize> {
         let s = self.pl.last_missile_slot;

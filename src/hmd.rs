@@ -250,6 +250,17 @@ fn ray_hits_triangle(o: Vec3, d: Vec3, [a, b, c]: [Vec3; 3]) -> bool {
     u >= 0.0 && v >= 0.0 && u + v <= 1.0 && e2.dot(q) / det > 0.0
 }
 
+/// `d` turned towards `axis` until it is at most `limit` (rad) off it: the sim's seeker gimbals
+/// (stealth_sim's `targeting::gimbal`).
+fn gimbal(d: Vec3, axis: Vec3, limit: f32) -> Vec3 {
+    let cos = d.dot(axis);
+    if cos >= limit.cos() {
+        return d;
+    }
+    let across = (d - axis * cos).try_normalize().unwrap_or_else(|| axis.any_orthonormal_vector());
+    axis * limit.cos() + across * limit.sin()
+}
+
 /// Pixel of a direction in the head frame (x right, y up, -z forward); None behind.
 fn project(d: Vec3) -> Option<Vec2> {
     let z = -d.z;
@@ -341,10 +352,22 @@ fn draw(
             .turret_gun
             .filter(|_| full && matches!(stores.gun_slave, Some("HMS") | None))
             .map(|g| g.dir),
-        // East, north, up to the world frame (x east, y up, -z north).
-        seeker: combat
-            .and_then(|c| c.sim.helmet_seeker())
-            .map(|[e, n, u]| Vec3::new(e as f32, u as f32, -n as f32)),
+        seeker: combat.and_then(|c| {
+            // East, north, up to the world frame (x east, y up, -z north).
+            let [e, n, u] = c.sim.helmet_seeker()?;
+            let stepped = Vec3::new(e as f32, u as f32, -n as f32);
+            // The sim moves the seeker 15 times a second: aimed here every frame as the sim
+            // aims it (at the held lock, else along the smoothed helmet sight, as far as the
+            // gimbals turn from the nose) it follows the head as smoothly as the reticle.
+            let aim = if c.sim.helmet_seeker_held() {
+                cues.helmet_lock.map(|(d, _)| a.orientation * d)
+            } else {
+                mfd.av.helmet
+            };
+            Some(aim.map_or(stepped, |d| {
+                gimbal(d, a.orientation * Vec3::NEG_Z, stealth_sim::SEEKER_GIMBAL as f32)
+            }))
+        }),
         pod: mfd
             .av
             .tgp
@@ -545,6 +568,22 @@ fn diamond(c: &mut Canvas, p: Vec2, r: f32, w: f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Within the gimbals the seeker looks along the sight; beyond them it stops at their limit
+    /// on the sight's side of the nose.
+    #[test]
+    fn seeker_gimbals() {
+        let limit = stealth_sim::SEEKER_GIMBAL as f32;
+        let nose = Vec3::NEG_Z;
+        let near = Quat::from_rotation_y(0.3) * nose;
+        assert!(gimbal(near, nose, limit).distance(near) < 1e-6);
+        let far = Quat::from_rotation_y(1.2) * nose;
+        let held = gimbal(far, nose, limit);
+        assert!((held.angle_between(nose) - limit).abs() < 1e-4);
+        assert!(held.x < 0.0, "turned left as the sight: {held}");
+        let back = gimbal(-nose, nose, limit);
+        assert!((back.angle_between(nose) - limit).abs() < 1e-4);
+    }
 
     fn frame(head: Quat) -> Frame {
         Frame {
