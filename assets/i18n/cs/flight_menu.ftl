@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AVIONIKA
 fm-auto-trim = AUTO TRIM
 fm-tooltips = TOOLTIPY
+fm-tutorial = INTERAKTIVNÍ TUTORIÁL
 fm-player-labels = JMÉNA HRÁČŮ
 fm-label-size = VELIKOST JMEN
 fm-seat-height = VÝŠKA SEDADLA

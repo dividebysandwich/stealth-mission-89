@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AVJONIKA
 fm-auto-trim = TRIM AWTOMATIKU
 fm-tooltips = TOOLTIPS
+fm-tutorial = TUTORJAL INTERATTIV
 fm-player-labels = ISMIJIET TAL-PLEJERS
 fm-label-size = DAQS TAL-ISMIJIET
 fm-seat-height = GĦOLI TAS-SEDIL

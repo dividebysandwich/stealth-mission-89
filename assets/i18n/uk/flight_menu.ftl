@@ -25,6 +25,7 @@ fm-hud = HUD
 fm-avionics = АВІОНІКА
 fm-auto-trim = АВТОТРИМ
 fm-tooltips = ПІДКАЗКИ
+fm-tutorial = ІНТЕРАКТИВНЕ НАВЧАННЯ
 fm-player-labels = ІМЕНА ГРАВЦІВ
 fm-label-size = РОЗМІР ІМЕН
 fm-seat-height = ВИСОТА КРІСЛА

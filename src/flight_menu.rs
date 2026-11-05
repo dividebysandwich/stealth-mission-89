@@ -10,7 +10,8 @@
 //! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION (set apart). SAVE MISSION
 //! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
 //! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
-//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
+//! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the interactive tutorial,
+//! the VR cockpit
 //! size), GRAPHICS (shaders, MSAA, shadows, point lights, time of day), SOUND (volumes, the radio
 //! and ATC voice ones too, the engine low-pass) and CONTROLS (head tracking, the key and joystick bindings, the key guide). The
 //! bindings are the main menu's dialog (`input_dialog.rs`) over the view (in VR on the menu panel
@@ -184,6 +185,7 @@ impl Page {
                 Avionics,
                 AutoTrim,
                 Tooltips,
+                Tutorial,
                 Atc,
                 PlayerLabels,
                 LabelSize,
@@ -340,6 +342,7 @@ enum Item {
     Avionics,
     AutoTrim,
     Tooltips,
+    Tutorial,
     Atc,
     PlayerLabels,
     LabelSize,
@@ -394,6 +397,7 @@ impl Item {
             Item::Avionics => "fm-avionics",
             Item::AutoTrim => "fm-auto-trim",
             Item::Tooltips => "fm-tooltips",
+            Item::Tutorial => "fm-tutorial",
             Item::Atc => "fm-atc",
             Item::PlayerLabels => "fm-player-labels",
             Item::LabelSize => "fm-label-size",
@@ -435,6 +439,7 @@ impl Item {
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
             Item::Tooltips => on(s.tooltips),
+            Item::Tutorial => on(s.tutorial),
             Item::Atc => on(s.atc),
             Item::PlayerLabels => on(s.player_labels),
             Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
@@ -466,12 +471,14 @@ impl Item {
     /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
     /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
     /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved,
-    /// LEAVE AIRCRAFT while the AI can take it over (in the air).
-    fn enabled(self, s: &Settings, ops: bool, menu: &FlightMenu) -> bool {
+    /// LEAVE AIRCRAFT while the AI can take it over (in the air), the interactive tutorial while
+    /// the flight is a single mission (`single`, `mission::single_mission`).
+    fn enabled(self, s: &Settings, ops: bool, menu: &FlightMenu, single: bool) -> bool {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => menu.can_save,
             Item::LeaveAircraft => menu.can_leave,
+            Item::Tutorial => single,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
             Item::PixelSize => crate::palette::pixelized(s),
@@ -1112,13 +1119,17 @@ fn navigate(
     mut block: ResMut<InputBlock>,
     mut actions: MessageWriter<ActionEvent>,
     sinks: Query<&AudioSink>,
-    mut campaign: Option<ResMut<crate::campaign::ActiveCampaign>>,
+    (mut campaign, career): (
+        Option<ResMut<crate::campaign::ActiveCampaign>>,
+        Option<Res<crate::career::CareerFlight>>,
+    ),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
 ) {
     if !menu.open || menu.exiting || menu.bindings {
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     let pause = campaign.is_none();
     if !mouse.pressed(MouseButton::Left) {
         menu.mouse_armed = true;
@@ -1298,7 +1309,8 @@ fn navigate(
         None => (menu.cursor, None),
     };
     let item = items[index.min(n - 1)];
-    if !item.enabled(&settings, ops, &menu) || !(select || clicked.is_some() || adjust != 0) {
+    if !item.enabled(&settings, ops, &menu, single) || !(select || clicked.is_some() || adjust != 0)
+    {
         // B / the gamepad's East button: back a page, or close the menu.
         if back {
             match menu.page.back(menu.options_only, menu.home) {
@@ -1345,6 +1357,7 @@ fn navigate(
             stealth_i18n::set_language(s.language);
         }
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::Tutorial => s.tutorial = !s.tutorial,
         Item::Atc => s.atc = !s.atc,
         Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),
@@ -1521,6 +1534,7 @@ fn draw(
     settings: Res<Settings>,
     mut q: Query<(&mut CanvasTexture, &mut Visibility), With<MenuScreen>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    career: Option<Res<crate::career::CareerFlight>>,
     config: Res<crate::hotas::InputConfig>,
     time: Res<Time<Real>>,
 ) {
@@ -1531,6 +1545,7 @@ fn draw(
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
+    let single = crate::mission::single_mission(career.as_deref(), campaign.as_deref());
     // Over the campaign's board END MISSION is its way out (SAVE & EXIT or DISCONNECT).
     let board = campaign.as_deref().filter(|c| c.on_board());
     let c = &mut tex.canvas;
@@ -1624,7 +1639,7 @@ fn draw(
         let (h, mid) = (y1 - y0, (y0 + y1) / 2.0);
         let lit = i == menu.cursor;
         draw_row(c, r, lit);
-        let col = if !item.enabled(&settings, ops, &menu) {
+        let col = if !item.enabled(&settings, ops, &menu, single) {
             ink::OFF
         } else if lit {
             ink::LIT_TEXT
@@ -1669,7 +1684,7 @@ fn draw(
         if chevron_zones(&v, r).is_some() {
             // The chevron under the pointer is dark on the lit row; the value is drawn in three
             // runs (each returns where the next one starts).
-            let on = lit && item.enabled(&settings, ops, &menu);
+            let on = lit && item.enabled(&settings, ops, &menu, single);
             let under = |p: Press| on && menu.pointed == Some(p);
             let (left, rest) =
                 (if under(Press::Down) { ink::TAB } else { col }, &v[1..v.len() - 1]);
@@ -2079,9 +2094,9 @@ mod tests {
         assert_eq!(item_rects(Page::Sortie).len(), items.len());
         let s = Settings::from_args();
         let mut menu = FlightMenu::default();
-        assert!(!Item::LeaveAircraft.enabled(&s, false, &menu));
+        assert!(!Item::LeaveAircraft.enabled(&s, false, &menu, true));
         menu.can_leave = true;
-        assert!(Item::LeaveAircraft.enabled(&s, false, &menu));
+        assert!(Item::LeaveAircraft.enabled(&s, false, &menu, true));
     }
 
     /// A stepped value changes only on its chevrons, whatever the half of the row they are in;

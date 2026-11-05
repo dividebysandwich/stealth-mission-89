@@ -82,8 +82,9 @@ const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
 const LOW_RETARDED: &str = "employment-low-retarded";
 
-/// How weapon `w` is used, in the player's language.
-fn employment(w: usize) -> &'static [&'static str] {
+/// How weapon `w` is used, in the player's language (the loadout editor's facts; the lesson
+/// tells them again before the shot).
+pub(crate) fn employment(w: usize) -> &'static [&'static str] {
     match EMPLOYMENT.get(w) {
         Some(&id) if !id.is_empty() => t_lines!(id),
         _ => &[],

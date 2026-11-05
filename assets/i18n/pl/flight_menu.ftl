@@ -26,6 +26,7 @@ fm-hud = HUD
 fm-avionics = AWIONIKA
 fm-auto-trim = AUTOM. TRYM
 fm-tooltips = TOOLTIPY
+fm-tutorial = INTERAKTYWNY PORADNIK
 fm-player-labels = NAZWY GRACZY
 fm-label-size = ROZMIAR NAZW
 fm-seat-height = WYSOKOŚĆ FOTELA
