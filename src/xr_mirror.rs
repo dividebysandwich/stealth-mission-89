@@ -75,6 +75,9 @@ fn spawn_mirror(mut commands: Commands, mut window: Query<&mut Window, With<Prim
             ..default()
         },
         RenderLayers::none(),
+        // It only blits the eye: no MSAA (a multisampled one failed validation with the
+        // campaign's VR panel on the window too).
+        Msaa::Off,
         XrMirror,
         DespawnOnExit(AppState::Flight),
     ));

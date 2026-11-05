@@ -163,6 +163,9 @@ pub fn spawn(
         .spawn((
             Camera2d,
             Camera { clear_color: ClearColorConfig::Custom(Color::BLACK), ..default() },
+            // Only the image: no MSAA, as the VR flight's mirror on the same window
+            // (xr_mirror.rs; differing sample counts there fail validation).
+            Msaa::Off,
             tag.clone(),
         ))
         .id();
