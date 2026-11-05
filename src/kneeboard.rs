@@ -375,13 +375,13 @@ fn tab_at(p: Vec2) -> Option<usize> {
 #[allow(clippy::too_many_arguments)]
 fn interact(
     mut kb: ResMut<Kneeboard>,
-    settings: Res<Settings>,
     pointer: Res<crate::input::FlightControls>,
     wheel: Res<AccumulatedMouseScroll>,
     time: Res<Time<Real>>,
     mut hands: ResMut<Hands>,
     windows: Query<&Window>,
     cams: Query<(&Camera, &GlobalTransform), With<EyeCamera>>,
+    mirror: Res<crate::camera::MirrorRay>,
     mut boards: Query<(&GlobalTransform, &Transform, &mut Visibility), With<Board>>,
     mut overlays: Query<
         (&RelativeCursorPosition, &mut Visibility),
@@ -412,11 +412,9 @@ fn interact(
     let mut scroll = 0.0;
     if !hidden && !menu.open {
         let inv = gtf.affine().inverse();
-        if !settings.vr
-            && !kb.overlay
-            && let (Ok(window), Ok((camera, cam_tf))) = (windows.single(), cams.single())
-            && let Some(cursor) = window.cursor_position()
-            && let Ok(ray) = camera.viewport_to_world(cam_tf, cursor)
+        if !kb.overlay
+            && let Some(ray) =
+                crate::camera::cursor_ray(windows.single().ok(), cams.single().ok(), &mirror)
         {
             let o = inv.transform_point3(ray.origin);
             let d = inv.transform_vector3(*ray.direction);

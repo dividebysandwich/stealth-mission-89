@@ -1,13 +1,20 @@
 //! The menu and the debrief in the headset (`--vr`): the egui menu is drawn into an image shown on
 //! a panel floating in front of the player (and on the desktop window as a mirror); a
-//! controller's aim is the mouse: the trigger clicks, the thumbstick scrolls.
+//! controller's aim is the mouse: the trigger clicks, the thumbstick scrolls. The desktop mouse
+//! and keyboard work too: the mouse on the mirrored menu (in a flight on the panel seen in the
+//! mirrored left eye), the keyboard always.
 
 use bevy::camera::RenderTarget;
 use bevy::camera::visibility::RenderLayers;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
-use bevy_egui::{EguiInput, EguiPreUpdateSet, PrimaryEguiContext, egui};
+use bevy::window::PrimaryWindow;
+use bevy_egui::input::{
+    EguiContextPointerPosition, EguiInputEvent, FocusedNonWindowEguiContext,
+    HoveredNonWindowEguiContext,
+};
+use bevy_egui::{EguiInput, EguiInputSet, EguiPreUpdateSet, PrimaryEguiContext, egui};
 
 use crate::cockpit3d::{BUTTON_MENU, Hands};
 use crate::settings::{AppState, Settings};
@@ -22,6 +29,13 @@ impl Plugin for VrMenuPlugin {
         };
         let vr = |s: Res<Settings>| s.vr;
         app.add_systems(Update, (place_panel, pointer).chain().run_if(in_menu).run_if(vr))
+            .add_systems(
+                PreUpdate,
+                desktop_input
+                    .in_set(EguiInputSet::InitReading)
+                    .after(EguiPreUpdateSet::InitContexts)
+                    .run_if(vr),
+            )
             .add_systems(
                 PreUpdate,
                 feed_egui
@@ -49,6 +63,10 @@ pub(crate) const DISTANCE: f32 = 1.3;
 pub struct VrMenuPanel {
     placed: bool,
 }
+
+/// The egui context drawing the panel's image.
+#[derive(Component)]
+struct PanelContext;
 
 /// The laser from the pointing controller to the panel.
 #[derive(Component)]
@@ -101,6 +119,7 @@ pub fn spawn(
         RenderTarget::Image(image.clone().into()),
         RenderLayers::none(),
         PrimaryEguiContext,
+        PanelContext,
         tag.clone(),
     ));
     // The panel in the headset.
@@ -154,6 +173,73 @@ pub fn spawn(
         tag,
     ));
     commands.init_resource::<PointerState>();
+}
+
+/// The desktop mouse and keyboard on the panel's egui context (bevy_egui sends a window's input
+/// only to a context drawing into an image that is hovered or focused): it has the keyboard
+/// while it is up, the mouse where the cursor is on the menu's picture on the window (stretched
+/// over it in the menus; in a flight the panel as the mirrored left eye shows it).
+#[allow(clippy::too_many_arguments)]
+fn desktop_input(
+    mut commands: Commands,
+    mut contexts: Query<(Entity, &mut EguiContextPointerPosition), With<PanelContext>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    panels: Query<&GlobalTransform, With<VrMenuPanel>>,
+    mirror: Res<crate::camera::MirrorRay>,
+    state: Option<Res<State<AppState>>>,
+    (hovered, focused): (
+        Option<Res<HoveredNonWindowEguiContext>>,
+        Option<Res<FocusedNonWindowEguiContext>>,
+    ),
+    mut events: MessageWriter<EguiInputEvent>,
+) {
+    let Ok((context, mut at)) = contexts.single_mut() else {
+        if hovered.is_some() {
+            commands.remove_resource::<HoveredNonWindowEguiContext>();
+        }
+        if focused.is_some() {
+            commands.remove_resource::<FocusedNonWindowEguiContext>();
+        }
+        return;
+    };
+    if focused.is_none_or(|f| f.0 != context) {
+        commands.insert_resource(FocusedNonWindowEguiContext(context));
+    }
+    let flight = state.is_some_and(|s| *s.get() == AppState::Flight);
+    let pos = if flight {
+        // The panel's plane: its local XY, facing +Z.
+        mirror.0.zip(panels.single().ok()).and_then(|(ray, panel)| {
+            let inv = panel.affine().inverse();
+            let (o, d) = (inv.transform_point3(ray.origin), inv.transform_vector3(*ray.direction));
+            let t = (d.z.abs() > 1e-6).then(|| -o.z / d.z).filter(|t| *t > 0.0)?;
+            let p = o + d * t;
+            (p.x.abs() <= PANEL.x / 2.0 && p.y.abs() <= PANEL.y / 2.0).then(|| {
+                egui::pos2((p.x / PANEL.x + 0.5) * W as f32, (0.5 - p.y / PANEL.y) * H as f32)
+            })
+        })
+    } else {
+        windows.single().ok().and_then(|w| {
+            let c = w.cursor_position()? / w.size();
+            Some(egui::pos2(c.x * W as f32, c.y * H as f32))
+        })
+    };
+    match pos {
+        Some(pos) => {
+            if at.position != pos || hovered.is_none() {
+                events.write(EguiInputEvent { context, event: egui::Event::PointerMoved(pos) });
+            }
+            at.position = pos;
+            if hovered.is_none_or(|h| h.0 != context) {
+                commands.insert_resource(HoveredNonWindowEguiContext(context));
+            }
+        }
+        None => {
+            if hovered.is_some() {
+                events.write(EguiInputEvent { context, event: egui::Event::PointerGone });
+                commands.remove_resource::<HoveredNonWindowEguiContext>();
+            }
+        }
+    }
 }
 
 /// Puts the panel in front of the head once it is tracked (again on the left menu button or

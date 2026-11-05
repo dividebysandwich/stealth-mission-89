@@ -1104,7 +1104,7 @@ fn navigate(
     mouse: Res<ButtonInput<MouseButton>>,
     gamepads: Query<&Gamepad>,
     mut hands: ResMut<Hands>,
-    windows: Query<&Window>,
+    (windows, mirror): (Query<&Window>, Res<crate::camera::MirrorRay>),
     cams: Query<(&Camera, &GlobalTransform), With<EyeCamera>>,
     screen: Query<(&GlobalTransform, &Transform), With<MenuScreen>>,
     overlay: Query<&RelativeCursorPosition, With<MenuScreen>>,
@@ -1244,10 +1244,8 @@ fn navigate(
     }
     if let Ok((screen_gtf, screen_tf)) = screen.single() {
         let inv = screen_gtf.affine().inverse();
-        if !settings.vr
-            && let (Ok(window), Ok((camera, cam_tf))) = (windows.single(), cams.single())
-            && let Some(cursor) = window.cursor_position()
-            && let Ok(ray) = camera.viewport_to_world(cam_tf, cursor)
+        if let Some(ray) =
+            crate::camera::cursor_ray(windows.single().ok(), cams.single().ok(), &mirror)
         {
             let o = inv.transform_point3(ray.origin);
             let d = inv.transform_vector3(*ray.direction);

@@ -24,6 +24,7 @@ impl Plugin for CameraPlugin {
             .init_resource::<RigOffset>()
             .init_resource::<XrRoot>()
             .init_resource::<HeadPoses>()
+            .init_resource::<MirrorRay>()
             .init_resource::<WeaponCam>()
             .init_resource::<FreeView>()
             // The weapon view after the combat step, on the weapon's pose drawn this frame.
@@ -211,6 +212,25 @@ pub struct XrRoot(pub Option<Entity>);
 
 #[derive(Component)]
 pub struct EyeCamera;
+
+/// VR: the ray (world) through the mouse cursor on the desktop window's mirror of the left eye,
+/// set after the transforms each frame of a flight (`xr_mirror`); none on the desktop or with the
+/// cursor beside the eye's picture.
+#[derive(Resource, Default)]
+pub struct MirrorRay(pub Option<Ray3d>);
+
+/// The ray (world) through the mouse cursor: through the eye camera's view on the desktop, the
+/// mirrored left eye's in VR (where the eye camera is the tracking root, no camera).
+pub fn cursor_ray(
+    window: Option<&Window>,
+    eye: Option<(&Camera, &GlobalTransform)>,
+    mirror: &MirrorRay,
+) -> Option<Ray3d> {
+    match eye {
+        Some((camera, tf)) => camera.viewport_to_world(tf, window?.cursor_position()?).ok(),
+        None => mirror.0,
+    }
+}
 
 /// The headset (between the eyes) under the tracking root, where it has no eye cameras of its
 /// own to follow it (`--gl-vr`): what the helmet display hangs on.
