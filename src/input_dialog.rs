@@ -14,7 +14,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::hotas::{
-    AxisControl, ButtonTarget, Hotas, InputConfig, MouseInput, Source, VrHand, VrInput,
+    AxisControl, ButtonTarget, Hotas, InputConfig, MouseInput, Source, VrGrab, VrHand, VrInput,
     action_name, default_vr_buttons,
 };
 use crate::input::{Action, Mods, default_key_mappings};
@@ -777,9 +777,11 @@ fn vr_buttons(
         );
         if ui.button(icon_text(ui, icon::RESET, t!("input-defaults"))).clicked() {
             config.vr_buttons = default_vr_buttons();
+            config.vr_grab = Default::default();
         }
     });
     ui.label(egui::RichText::new(t!("input-vr-trigger-note")).color(DIM).small());
+    ui.label(egui::RichText::new(t!("input-vr-grab-note")).color(DIM).small());
     egui::Grid::new("vr_buttons").num_columns(3).spacing([14.0, 4.0]).striped(true).show(
         ui,
         |ui| {
@@ -787,12 +789,36 @@ fn vr_buttons(
             ui.label(egui::RichText::new(t!("input-left-hand")).color(GREEN));
             ui.label(egui::RichText::new(t!("input-right-hand")).color(GREEN));
             ui.end_row();
+            // How each hand grabs: the input, and whether a press takes and the next lets go.
+            ui.label(t!("input-vr-grab"));
+            for hand in [VrHand::Left, VrHand::Right] {
+                let grab = &mut config.vr_grab[hand as usize];
+                egui::ComboBox::from_id_salt(("vr-grab", hand))
+                    .width(190.0)
+                    .selected_text(grab.input.name(hand))
+                    .show_ui(ui, |ui| {
+                        for input in VrGrab::INPUTS {
+                            ui.selectable_value(&mut grab.input, input, input.name(hand));
+                        }
+                    });
+            }
+            ui.end_row();
+            ui.label(t!("input-vr-grab-toggle"));
+            for hand in [VrHand::Left, VrHand::Right] {
+                ui.checkbox(&mut config.vr_grab[hand as usize].toggle, "");
+            }
+            ui.end_row();
             for &input in inputs {
                 let name = vr_input_name(input);
                 let narrow = !matching.is_empty() && !holds(&name, query);
                 let listed = if narrow { matching } else { targets };
                 ui.label(name);
                 for hand in [VrHand::Left, VrHand::Right] {
+                    // The grab input does nothing else (its mapping is kept for later).
+                    if config.vr_grabs(hand, input) {
+                        ui.label(egui::RichText::new(t!("input-vr-grab-bound")).color(DIM));
+                        continue;
+                    }
                     let current = config.vr_button(hand, input);
                     let mut picked = current;
                     egui::ComboBox::from_id_salt(("vr", hand, input))

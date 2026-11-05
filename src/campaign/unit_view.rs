@@ -409,8 +409,9 @@ pub fn vr_panel(
     if let Some((i, in_aim)) = view.grab {
         let h = &mut hands.hands[i];
         match h.aim_raw {
-            Some(aim) if h.squeeze >= 0.4 => {
+            Some(aim) if h.grab => {
                 *tf = aim * in_aim;
+                h.holding = true;
                 return;
             }
             _ => {
@@ -440,9 +441,10 @@ pub fn vr_panel(
             view.target = None;
             return;
         }
-        if (on_picture || on_bar) && h.squeeze > 0.6 {
+        if (on_picture || on_bar) && h.grab {
             view.grab =
                 Some((i, Transform::from_matrix(aim.to_matrix().inverse() * tf.to_matrix())));
+            h.holding = true;
             h.haptic = h.haptic.max(0.4);
             return;
         }

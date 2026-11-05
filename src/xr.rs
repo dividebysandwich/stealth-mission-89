@@ -115,6 +115,7 @@ impl Plugin for XrPlugin {
             )
             .add_systems(OnEnter(AppState::Flight), |mut r: ResMut<Recenter>| r.request(0))
             .add_oxr_event_handler(runtime_recentred)
+            .add_oxr_event_handler(log_interaction_profiles)
             .add_systems(
                 OnExit(AppState::Flight),
                 detach_root.before(crate::combat::FlightTeardown),
@@ -224,6 +225,27 @@ fn runtime_recentred(event: OxrEventIn, mut pending: ResMut<Recenter>) {
     if let openxr::Event::ReferenceSpaceChangePending(_) = *event {
         info!("OpenXR: reference space changed, recentring");
         pending.request(RUNTIME_RECENTRE_DELAY);
+    }
+}
+
+/// The controller profile the runtime picked for each hand, in the log (which bindings apply:
+/// a controller missing from `suggest_bindings` gets the runtime's remapping of one of them).
+fn log_interaction_profiles(
+    event: OxrEventIn,
+    instance: Res<OxrInstance>,
+    session: Option<Res<OxrSession>>,
+    actions: Option<Res<XrActions>>,
+) {
+    let openxr::Event::InteractionProfileChanged(_) = *event else { return };
+    let (Some(session), Some(actions)) = (session, actions) else { return };
+    for (name, path) in ["left", "right"].into_iter().zip(actions.hands) {
+        let profile = session
+            .current_interaction_profile(path)
+            .and_then(|p| {
+                if p == openxr::Path::NULL { Ok("none".into()) } else { instance.path_to_string(p) }
+            })
+            .unwrap_or_else(|e| e.to_string());
+        info!("OpenXR: {name} hand interaction profile {profile}");
     }
 }
 
@@ -386,6 +408,7 @@ fn read_hands(
     view: Res<ViewState>,
     manning: Option<Res<crate::station::Manning>>,
     spaces: Query<(&HandSpace, &Transform, &OxrSpaceLocationFlags)>,
+    config: Res<crate::hotas::InputConfig>,
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
@@ -398,6 +421,7 @@ fn read_hands(
         let b = |a: &openxr::Action<bool>| a.state(&session, path).is_ok_and(|s| s.current_state);
         hand.prev_buttons = hand.buttons;
         hand.prev_trigger = hand.trigger;
+        hand.prev_squeeze = hand.squeeze;
         hand.squeeze = f(&actions.squeeze);
         hand.trigger = f(&actions.trigger);
         hand.buttons = (b(&actions.primary) as u8 * BUTTON_PRIMARY)
@@ -442,6 +466,7 @@ fn read_hands(
             });
         }
     }
+    crate::cockpit3d::update_grabs(&mut hands, &config);
 }
 
 fn haptics(actions: Res<XrActions>, session: Res<OxrSession>, mut hands: ResMut<Hands>) {

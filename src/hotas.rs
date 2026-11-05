@@ -181,10 +181,14 @@ pub enum VrInput {
     ThumbDown,
     ThumbLeft,
     ThumbRight,
+    /// The grip (squeeze), pressed most of the way; free to bind once grabbing is on another
+    /// input (`VrGrab`).
+    Grip,
 }
 
 impl VrInput {
-    pub const ALL: [VrInput; 8] = [
+    pub const ALL: [VrInput; 9] = [
+        VrInput::Grip,
         VrInput::Trigger,
         VrInput::Primary,
         VrInput::Secondary,
@@ -209,6 +213,7 @@ impl VrInput {
             (VrInput::ThumbDown, _) => "vr-stick-down",
             (VrInput::ThumbLeft, _) => "vr-stick-left",
             (VrInput::ThumbRight, _) => "vr-stick-right",
+            (VrInput::Grip, _) => "vr-grip",
         };
         stealth_i18n::ts!(id)
     }
@@ -219,6 +224,30 @@ pub struct VrButtonMapping {
     pub hand: VrHand,
     pub input: VrInput,
     pub target: ButtonTarget,
+}
+
+/// How a VR hand grabs the stick, the throttle, the ejection handle and the kneeboard: holding
+/// an input (the grip by default), or with `toggle` pressing it once to take and again to let
+/// go. Some runtimes and controllers (SteamVR streaming a Quest) may not report the grip, so it
+/// can be another button. The input does nothing else meanwhile.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde(default)]
+pub struct VrGrab {
+    pub input: VrInput,
+    pub toggle: bool,
+}
+
+impl Default for VrGrab {
+    fn default() -> Self {
+        Self { input: VrInput::Grip, toggle: false }
+    }
+}
+
+impl VrGrab {
+    /// The inputs that can grab (the trigger fires and presses the cockpit's controls, the
+    /// thumbstick's directions slew and target).
+    pub const INPUTS: [VrInput; 4] =
+        [VrInput::Grip, VrInput::Primary, VrInput::Secondary, VrInput::ThumbClick];
 }
 
 /// A mouse button, as saved in the mapping.
@@ -408,6 +437,8 @@ pub struct InputConfig {
     pub axes: Vec<AxisMapping>,
     pub buttons: Vec<ButtonMapping>,
     pub vr_buttons: Vec<VrButtonMapping>,
+    /// How the left and right hand grab (a mapping from before it grabs with the grips).
+    pub vr_grab: [VrGrab; 2],
     /// Keyboard keys for the gun, the actions and the keyboard stick.
     pub keys: Vec<KeyMapping>,
     /// Mouse buttons for the gun and the actions (a mapping from before them gets the
@@ -437,6 +468,7 @@ impl Default for InputConfig {
             axes: Vec::new(),
             buttons: Vec::new(),
             vr_buttons: default_vr_buttons(),
+            vr_grab: [VrGrab::default(); 2],
             keys: crate::input::default_key_mappings(),
             mouse: default_mouse_mappings(),
             version: VERSION,
@@ -596,6 +628,16 @@ impl InputConfig {
 
     pub fn vr_button(&self, hand: VrHand, input: VrInput) -> Option<ButtonTarget> {
         self.vr_buttons.iter().find(|m| m.hand == hand && m.input == input).map(|m| m.target)
+    }
+
+    /// How a hand grabs.
+    pub fn vr_grab(&self, hand: VrHand) -> VrGrab {
+        self.vr_grab[hand as usize]
+    }
+
+    /// Whether a VR controller input grabs (and so does not do what it is mapped to).
+    pub fn vr_grabs(&self, hand: VrHand, input: VrInput) -> bool {
+        self.vr_grab(hand).input == input
     }
 
     /// Sets (or with None clears) what a VR controller input does.
@@ -1206,6 +1248,23 @@ mod tests {
         // Brought up to the version 4 defaults, then on to the current ones.
         assert_eq!(c.vr_buttons, default_vr_buttons());
         assert!(!c.migrate());
+    }
+
+    /// A mapping from before the grab setting grabs with the grips; the setting is saved.
+    #[test]
+    fn vr_grab_defaults_and_round_trip() {
+        let mut v = serde_json::to_value(InputConfig::default()).unwrap();
+        v.as_object_mut().unwrap().remove("vr_grab");
+        let c: InputConfig = serde_json::from_value(v).unwrap();
+        assert_eq!(c.vr_grab, [VrGrab::default(); 2]);
+        assert!(c.vr_grabs(VrHand::Left, VrInput::Grip));
+
+        let mut c = InputConfig::default();
+        c.vr_grab[1] = VrGrab { input: VrInput::Secondary, toggle: true };
+        let back: InputConfig = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+        assert_eq!(back, c);
+        assert!(back.vr_grabs(VrHand::Right, VrInput::Secondary));
+        assert!(!back.vr_grabs(VrHand::Right, VrInput::Grip));
     }
 
     /// The old default VR buttons become the new ones; a customised set stays as it is.

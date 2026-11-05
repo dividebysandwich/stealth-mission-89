@@ -1,6 +1,6 @@
 //! Stick (right console, or a centre stick between the knees) and throttle (left console).
 //!
-//! VR: squeeze the grip near the stick to take it. Tilting the controller (relative to how it
+//! VR: squeeze the grip (or the grab input, `hotas::VrGrab`) near the stick to take it. Tilting the controller (relative to how it
 //! was held when grabbed) deflects pitch (tilt back = nose up) and roll; twisting it about the
 //! stick's axis is the rudder. Letting go re-centres the stick. A centre stick between the knees
 //! (the UH-60A's cyclic, the Tornado's) is moved by the hand instead: its grip follows the hand
@@ -330,10 +330,10 @@ fn stick_tilt(pivot: Vec3, grip_height: f32) -> f32 {
     STICK_TILT
 }
 
-/// `Hand::buttons` bit of a controller input (the trigger is analog).
-fn vr_bit(input: VrInput) -> u8 {
+/// `Hand::buttons` bit of a controller input (the trigger and the grip are analog).
+pub(super) fn vr_bit(input: VrInput) -> u8 {
     match input {
-        VrInput::Trigger => 0,
+        VrInput::Trigger | VrInput::Grip => 0,
         VrInput::Primary => BUTTON_PRIMARY,
         VrInput::Secondary => BUTTON_SECONDARY,
         VrInput::ThumbClick => BUTTON_THUMB,
@@ -376,8 +376,12 @@ pub(super) fn grab_levers(
             for m in config.vr_buttons.iter().filter(|m| m.hand == side) {
                 if hand.active
                     && m.target == ButtonTarget::Action(Action::Menu)
-                    && m.input != VrInput::Trigger
-                    && hand.just_pressed(vr_bit(m.input))
+                    && !config.vr_grabs(side, m.input)
+                    && match m.input {
+                        VrInput::Trigger => false,
+                        VrInput::Grip => hand.grip_button().1,
+                        input => hand.just_pressed(vr_bit(input)),
+                    }
                 {
                     actions.write(ActionEvent(Action::Menu));
                 }
@@ -394,13 +398,13 @@ pub(super) fn grab_levers(
 
     // --- stick (right hand)
     let grip_centre = anchors.stick_pivot + Vec3::Y * anchors.grip_height;
-    if !right.active || right.squeeze < 0.4 {
+    if !right.active || !right.grab {
         if grabs.stick.take().is_some() {
             right.haptic = right.haptic.max(0.2);
         }
     } else if grabs.stick.is_none()
         && !right.carrying
-        && right.squeeze > 0.6
+        && right.grab
         && right.grip.translation.distance(grip_centre) < GRAB_REACH
     {
         grabs.stick = Some(StickGrab {
@@ -442,7 +446,7 @@ pub(super) fn grab_levers(
     let to_nozzle = anchors
         .nozzle_handle(set_nozzle)
         .map_or(f32::INFINITY, |h| left.grip.translation.distance(h));
-    if !left.active || left.squeeze < 0.4 {
+    if !left.active || !left.grab {
         if grabs.throttle.take().is_some() {
             left.haptic = left.haptic.max(0.2);
         }
@@ -453,7 +457,7 @@ pub(super) fn grab_levers(
     } else if grabs.throttle.is_none()
         && grabs.nozzle.is_none()
         && !left.carrying
-        && left.squeeze > 0.6
+        && left.grab
         && to_throttle.min(to_nozzle) < GRAB_REACH
     {
         if to_nozzle < to_throttle {
@@ -563,7 +567,9 @@ pub(super) fn grab_levers(
         if !hand.active {
             continue;
         }
-        for m in config.vr_buttons.iter().filter(|m| m.hand == side) {
+        for m in
+            config.vr_buttons.iter().filter(|m| m.hand == side && !config.vr_grabs(side, m.input))
+        {
             // The brakes also on the trigger of a free hand that touches no control.
             let brakes = m.target == ButtonTarget::Action(Action::Brakes)
                 && (!hand.touching || grabs.brakes);
@@ -578,6 +584,7 @@ pub(super) fn grab_levers(
                     continue;
                 }
                 VrInput::Trigger => (hand.trigger > 0.7, hand.trigger_pulled()),
+                VrInput::Grip => hand.grip_button(),
                 input => (hand.held(vr_bit(input)), hand.just_pressed(vr_bit(input))),
             };
             match m.target {
@@ -631,7 +638,7 @@ pub(super) fn grab_levers(
             || (i == 0 && (grabs.throttle.is_some() || grabs.nozzle.is_some()));
         match grabs.eject {
             Some((who, y0)) if who == i => {
-                if !h.active || h.squeeze < 0.4 {
+                if !h.active || !h.grab {
                     grabs.eject = None;
                 } else if h.grip.translation.y - y0 > 0.06 {
                     actions.write(ActionEvent(Action::Eject));
@@ -642,7 +649,7 @@ pub(super) fn grab_levers(
             None if h.active
                 && !is_grabbing_other
                 && !h.carrying
-                && h.squeeze > 0.6
+                && h.grab
                 && h.grip.translation.distance(handle) < 0.07 =>
             {
                 grabs.eject = Some((i, h.grip.translation.y));
@@ -655,6 +662,8 @@ pub(super) fn grab_levers(
         || grabs.nozzle.is_some()
         || grabs.eject.is_some_and(|(who, _)| who == 0);
     right.lever = grabs.stick.is_some() || grabs.eject.is_some_and(|(who, _)| who == 1);
+    left.holding |= left.lever;
+    right.holding |= right.lever;
 }
 
 /// Stick, throttle and nozzle lever follow the controls (whatever the input source).

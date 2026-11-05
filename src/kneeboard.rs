@@ -328,7 +328,7 @@ fn carry(
     );
     if let Some((i, _)) = kb.held {
         let h = &mut hands.hands[i];
-        if hidden || !h.active || h.squeeze < 0.4 {
+        if hidden || !h.active || !h.grab {
             kb.held = None;
             kb.placed = Some(*t);
             h.haptic = h.haptic.max(0.2);
@@ -338,7 +338,7 @@ fn carry(
         if let Some((i, h)) = hands.hands.iter_mut().enumerate().find(|(_, h)| {
             h.active
                 && !h.lever
-                && h.squeeze > 0.6
+                && h.grab
                 && within_reach(local_from_cockpit.transform_point3(h.grip.translation))
         }) {
             let in_grip = h.grip.to_matrix().inverse() * rest.to_matrix();
@@ -348,6 +348,7 @@ fn carry(
     }
     for (i, h) in hands.hands.iter_mut().enumerate() {
         h.carrying = kb.held.is_some_and(|(k, _)| k == i);
+        h.holding |= h.carrying;
     }
     let tf = match kb.held {
         Some((i, in_grip)) => hands.hands[i].grip * in_grip,

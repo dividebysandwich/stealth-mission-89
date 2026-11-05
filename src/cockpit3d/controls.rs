@@ -470,7 +470,7 @@ pub(super) fn interact(
             }
             let face = c.height + FINGER;
             let gap = local.z - face;
-            if hand.squeeze < 0.4
+            if !hand.grab
                 && gap < TOUCH_GAP
                 && gap > -c.travel - TOUCH_GAP
                 && touching[h].is_none_or(|(g, _)| gap.abs() < g)
