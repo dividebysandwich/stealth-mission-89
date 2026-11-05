@@ -205,6 +205,61 @@ pub fn scaled(
     });
 }
 
+/// Draws a symbol with `draw` as the selected one if `ink` is given, the colour its border has
+/// now (the maps make it blink from black to white). APP-6: its outline and icon take that
+/// colour. Classic: it gets a border of that colour, which it has only while selected.
+pub fn marked(painter: &egui::Painter, ink: Option<egui::Color32>, draw: impl Fn()) {
+    match ink {
+        Some(ink) if app6() => app6::with_ink(ink, draw),
+        Some(ink) => bordered(painter, ink, draw),
+        None => draw(),
+    }
+}
+
+/// How much thicker than the symbol's strokes its classic border is (both sides together): the
+/// width of an APP-6 symbol's outline on the maps (1.2 times their 0.8 size).
+const BORDER: f32 = 0.96;
+
+/// Draws a classic symbol with a border in `ink`: `draw` a first time, its shapes then swollen
+/// into the border, and again over it.
+fn bordered(painter: &egui::Painter, ink: egui::Color32, draw: impl Fn()) {
+    let layer = painter.layer_id();
+    let start = painter.ctx().graphics_mut(|g| g.entry(layer).next_idx());
+    draw();
+    painter.ctx().graphics_mut(|g| {
+        let list = g.entry(layer);
+        let end = list.next_idx();
+        for i in start.0..end.0 {
+            list.mutate_shape(egui::layers::ShapeIdx(i), |c| swell(&mut c.shape, ink));
+        }
+    });
+    draw();
+}
+
+/// A shape turned into its own border: no fill (the symbol's own, drawn over it, may be
+/// translucent), its stroke in `ink` and thicker.
+fn swell(shape: &mut egui::Shape, ink: egui::Color32) {
+    use egui::{Color32, Shape, Stroke};
+    let stroke = |s: &mut Stroke| *s = Stroke::new(s.width + BORDER, ink);
+    match shape {
+        Shape::Vec(shapes) => shapes.iter_mut().for_each(|s| swell(s, ink)),
+        Shape::Circle(c) => {
+            c.fill = Color32::TRANSPARENT;
+            stroke(&mut c.stroke);
+        }
+        Shape::Rect(r) => {
+            r.fill = Color32::TRANSPARENT;
+            stroke(&mut r.stroke);
+        }
+        Shape::LineSegment { stroke: s, .. } => stroke(s),
+        Shape::Path(p) => {
+            p.fill = Color32::TRANSPARENT;
+            p.stroke = egui::epaint::PathStroke::new(p.stroke.width + BORDER, ink);
+        }
+        _ => {}
+    }
+}
+
 /// A SAM site's symbol and name, `k` times the symbol's size.
 pub fn site(
     painter: &egui::Painter,
@@ -214,7 +269,20 @@ pub fn site(
     alpha: f32,
     k: f32,
 ) {
-    scaled(painter, c, k, |p, c| site_symbol(p, c, alpha));
+    site_marked(painter, view, c, name, alpha, k, None);
+}
+
+/// `site`, its symbol marked as selected in `ink` if given (see `marked`).
+pub fn site_marked(
+    painter: &egui::Painter,
+    view: &MapView,
+    c: egui::Pos2,
+    name: &str,
+    alpha: f32,
+    k: f32,
+    ink: Option<egui::Color32>,
+) {
+    scaled(painter, c, k, |p, c| marked(p, ink, || site_symbol(p, c, alpha)));
     if 1.0 / view.scale > 0.02 {
         let off = if app6() { egui::vec2(9.0, -8.0) } else { egui::vec2(5.0, -5.0) };
         painter.text(

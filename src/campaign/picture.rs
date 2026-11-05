@@ -9,6 +9,7 @@ use stealth_i18n::t;
 use stealth_sim::aaa::{GroundKind, SamBattery};
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
+use super::unit_view::UnitRef;
 use crate::app6::{Affiliation, Dimension, Echelon, Icon, Symbol};
 use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, app6};
 use crate::menu::{BRIGHT, GREEN};
@@ -338,7 +339,8 @@ fn gun(painter: &egui::Painter, p: egui::Pos2, kind: GroundKind, k: f32) {
 
 /// Draws the picture's shown `layers`: friendly air defences (a battery with its missile
 /// reach), known enemy defences (with their missile reach), enemy fighters, friendly aircraft,
-/// the player; and their `tips`. The symbols `k` times their size.
+/// the player; and their `tips`. The symbols `k` times their size. `selected`: the unit being
+/// watched and the colour its outline has now (it blinks).
 pub fn draw(
     painter: &egui::Painter,
     view: &MapView,
@@ -346,7 +348,9 @@ pub fn draw(
     layers: &MapLayers,
     tips: &mut MapTips,
     k: f32,
+    selected: Option<(UnitRef, egui::Color32)>,
 ) {
+    let lit = |r: UnitRef| selected.filter(|s| s.0 == r).map(|s| s.1);
     let scaled =
         |c, draw: &dyn Fn(&egui::Painter, egui::Pos2)| map_draw::scaled(painter, c, k, draw);
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
@@ -366,7 +370,8 @@ pub fn draw(
             continue;
         }
         let kind = d.kind;
-        scaled(c, &|p, c| defence(p, c, kind, 0.8));
+        let ink = lit(UnitRef::Aaa(d.index));
+        scaled(c, &|p, c| map_draw::marked(p, ink, || defence(p, c, kind, 0.8)));
         let tip = tips.add(c, defence_name(kind), "", FRIENDLY_BLUE);
         tip.symbol(move |p, c| defence(p, c, kind, 0.8));
         if battery.is_some() {
@@ -388,7 +393,8 @@ pub fn draw(
         if !layers.shows(Layer::Sams) {
             continue;
         }
-        map_draw::site(painter, view, c, &s.name, 1.0, k);
+        let ink = lit(UnitRef::Site(s.object));
+        map_draw::site_marked(painter, view, c, &s.name, 1.0, k, ink);
         let tip = tips.add(c, t!("mt-enemy-sam"), &s.name, MISSILE_RED);
         tip.symbol(|p, c| map_draw::site_symbol(p, c, 1.0));
         tip.line(t!("mt-missile-range", km = format!("{:.0}", s.reach / 64.0)));
@@ -412,7 +418,8 @@ pub fn draw(
         }
         for v in &pic.armour {
             let p = at(v.x, v.y);
-            scaled(p, &|pa, p| vehicle(pa, p, v, 0.7));
+            let ink = lit(UnitRef::Aaa(v.index));
+            scaled(p, &|pa, p| map_draw::marked(pa, ink, || vehicle(pa, p, v, 0.7)));
             let kind = match (v.blue, v.kind.tank()) {
                 (true, true) => t!("mt-friendly-tank"),
                 (true, false) => t!("mt-friendly-ifv"),
@@ -438,7 +445,8 @@ pub fn draw(
             painter.add(map_draw::engagement_circle(c, reach / view.scale, 0.6));
         }
         if layers.shows(Layer::Guns) {
-            scaled(c, &|p, c| gun(p, c, g.kind, 0.7));
+            let ink = lit(UnitRef::Aaa(g.index));
+            scaled(c, &|p, c| map_draw::marked(p, ink, || gun(p, c, g.kind, 0.7)));
             let kind = if g.kind == GroundKind::Manpads {
                 t!("mt-enemy-manpads")
             } else {
@@ -454,7 +462,8 @@ pub fn draw(
     if layers.shows(Layer::EnemyFighters) {
         for a in &pic.fighters {
             let p = at(a.x, a.y);
-            scaled(p, &|pa, p| aircraft(pa, p, a, MISSILE_RED));
+            let ink = lit(UnitRef::Flight { index: a.unit, spec: a.spec });
+            scaled(p, &|pa, p| map_draw::marked(pa, ink, || aircraft(pa, p, a, MISSILE_RED)));
             aircraft_tip(tips, p, a, false);
         }
     }
@@ -462,7 +471,8 @@ pub fn draw(
         let layer = if a.helicopter { Layer::FriendlyHelicopters } else { Layer::FriendlyAircraft };
         if layers.shows(layer) {
             let p = at(a.x, a.y);
-            scaled(p, &|pa, p| aircraft(pa, p, a, FRIENDLY_BLUE));
+            let ink = lit(UnitRef::Flight { index: a.unit, spec: a.spec });
+            scaled(p, &|pa, p| map_draw::marked(pa, ink, || aircraft(pa, p, a, FRIENDLY_BLUE)));
             aircraft_tip(tips, p, a, true);
         }
     }

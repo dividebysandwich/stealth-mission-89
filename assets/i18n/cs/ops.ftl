@@ -132,7 +132,6 @@ ops-watch-hint = Kliknutím na jednotku ji sledujte živě
 ops-map-hint = Kolečko: zoom, tažení: posun
 ops-patriot = Baterie Patriot
 ops-nasams = Baterie NASAMS
-ops-drone-center = Velitelské stanoviště dronů
 ops-manned-by = Obsluhuje { $pilot }
 ops-manned-by-other = Obsluhuje jiný hráč
 ops-control = OVLÁDAT

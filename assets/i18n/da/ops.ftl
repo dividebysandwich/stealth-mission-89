@@ -132,7 +132,6 @@ ops-watch-hint = Klik på en enhed for at følge den live
 ops-map-hint = Hjul: zoom, træk: panorér
 ops-patriot = Patriot-batteri
 ops-nasams = NASAMS-batteri
-ops-drone-center = Droneføringscentral
 ops-manned-by = Bemandet af { $pilot }
 ops-manned-by-other = Bemandet af en anden spiller
 ops-control = OVERTAG

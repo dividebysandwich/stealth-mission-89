@@ -132,7 +132,6 @@ ops-watch-hint = Kattints egy egységre az élő megfigyeléshez
 ops-map-hint = Kerék: nagyítás, húzás: eltolás
 ops-patriot = Patriot üteg
 ops-nasams = NASAMS üteg
-ops-drone-center = Drónirányító központ
 ops-manned-by = Kezeli: { $pilot }
 ops-manned-by-other = Egy másik játékos kezeli
 ops-control = IRÁNYÍTÁS

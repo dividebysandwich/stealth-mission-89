@@ -142,7 +142,6 @@ ops-watch-hint = Щёлкните по подразделению, чтобы н
 ops-map-hint = Колесо: масштаб, перетаскивание: сдвиг
 ops-patriot = Батарея Patriot
 ops-nasams = Батарея NASAMS
-ops-drone-center = Пункт управления дронами
 ops-manned-by = Управляет: { $pilot }
 ops-manned-by-other = Управляет другой игрок
 ops-control = УПРАВЛЯТЬ
