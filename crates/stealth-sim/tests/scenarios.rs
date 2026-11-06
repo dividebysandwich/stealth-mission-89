@@ -936,9 +936,9 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     assert_eq!(sim.targeting().ground, Some(2));
 }
 
-/// What the nearest-target key locks in each HUD mode with an enemy aircraft and a ground site
-/// ahead at the given distances (map units): (air lock, ground lock). The mode stays as it was.
-fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Option<usize>) {
+/// A sim with an enemy aircraft and a ground site ahead at the given distances (map units), no
+/// mission objective among them, and the player in the given HUD mode with a missile selected.
+fn air_and_ground(mode: HudMode, air_at: i32, ground_at: i32) -> (Sim, PlayerState) {
     let d = data();
     let m = mission(d, 3, 0x1234, 1);
     let mut sim = Sim::new(&d.sim, &m);
@@ -947,7 +947,6 @@ fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Opt
         o.flags |= 0x80;
     }
     place_site(&mut sim, 2, 0, cx, cy - ground_at);
-    // No mission objective among them.
     for slot in sim.target_slots_mut() {
         slot.object = -1;
     }
@@ -972,6 +971,13 @@ fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Opt
     let mut p = player_at(cx, cy, 2000, 0, 300);
     p.camera_mfd = true;
     p.hud_mode = mode;
+    (sim, p)
+}
+
+/// What the nearest-target key locks in each HUD mode with an enemy aircraft and a ground site
+/// ahead: (air lock, ground lock).
+fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Option<usize>) {
+    let (mut sim, mut p) = air_and_ground(mode, air_at, ground_at);
     p.cmd.nearest_target = true;
     sim.step(&p, 15);
     p.cmd = Commands::default();
@@ -1023,6 +1029,25 @@ fn nearest_target_prefers_the_objective() {
     p.cmd = Commands::default();
     sim.step(&p, 15);
     assert_eq!(sim.targeting().ground, Some(1));
+}
+
+/// The next-target key in GND passes an aircraft by with the classic avionics (in AIR it would
+/// pick it, in NAV too); the modern avionics keep picking it.
+#[test]
+fn next_target_in_gnd_ignores_aircraft() {
+    let next = |mode, modern| {
+        let (mut sim, mut p) = air_and_ground(mode, 300, 600);
+        p.mode_weapons = modern;
+        p.cmd.next_target = true;
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        sim.step(&p, 15);
+        sim.targeting().air
+    };
+    assert_eq!(next(HudMode::Gnd, false), None);
+    assert_eq!(next(HudMode::Air, false), Some(1));
+    assert_eq!(next(HudMode::Nav, false), Some(1));
+    assert_eq!(next(HudMode::Gnd, true), Some(1));
 }
 
 fn drone_mission(d: &Data, seed: u16, opponents: u8) -> Mission {

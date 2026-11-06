@@ -1217,7 +1217,7 @@ the left MFD.
 | AUTO | 7 | Autopilot: flies to the current waypoint. |
 | BAY | 8 | Weapon bay doors open/close. Weapons can only be released with open bays. |
 | NEAR | T | Lock the nearest target ahead. With the classic avionics it looks in the HUD mode as it is, and leaves it: AIR picks aircraft, GND ground and sea targets, NAV either (a mission objective first, then the nearer). With the modern avionics AIR or GND mode depends on the selected weapon. |
-| NEXT | B | Select the next target. |
+| NEXT | B | Select the next target. With the classic avionics: aircraft in AIR, ground and sea targets in GND, either in NAV. |
 | NONE | Shift B | Clear the target. No automatic acquisition until the next target or camera key; the targeting pod looks at the current steerpoint. |
 | WPN | Space | Select the next weapon, after the last one the gun. |
 | DTL | Alt D | Detail level. |

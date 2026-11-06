@@ -88,8 +88,14 @@ impl Sim {
         if auto(self.pl.gnd_lock) {
             self.select_ground();
         }
-        // The helmet-slaved seeker picks its own target.
-        if auto(self.pl.air_lock) && self.seeker_sight(ps).is_none() {
+        // With the classic avionics GND is for ground and sea targets: no aircraft is picked
+        // there, and a pick pending for one is dropped.
+        if self.pl.hud_mode == HudMode::Gnd && !ps.mode_weapons {
+            if self.pl.air_lock != -1 && self.pl.air_lock & 0x80 != 0 {
+                self.pl.air_lock = -1;
+            }
+        } else if auto(self.pl.air_lock) && self.seeker_sight(ps).is_none() {
+            // The helmet-slaved seeker picks its own target.
             self.select_air();
         }
         self.pl.select_req = false;
