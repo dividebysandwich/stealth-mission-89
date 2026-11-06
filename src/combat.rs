@@ -35,7 +35,8 @@ use crate::hud::{
 };
 use crate::input::{Action, ActionEvent, FlightControls};
 use crate::mfd::{
-    Contact, ContactKind, ContactRef, Contacts, MfdState, MissionClock, MissionOrders, TrackCam,
+    Contact, ContactKind, ContactRef, Contacts, MfdState, MissionClock, MissionOrders,
+    MissionTarget, TrackCam,
 };
 use crate::mission::{ActiveMission, PlannedRoute, clean_text};
 use crate::net::{NetInbox, NetLink, SimMsg};
@@ -1783,6 +1784,14 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         } else {
             [place, kind]
         };
+        // With the classic avionics the mission's own targets (the ones the TAC shows by their
+        // symbol) say which they are.
+        info.mission_target = sim
+            .target_slots()
+            .iter()
+            .position(|s| g > 2 && s.object == g as i32 && matches!(s.mission_type, 1..=3 | 9))
+            .filter(|_| !mfd.modern)
+            .map(|k| if k == 0 { MissionTarget::Primary } else { MissionTarget::Secondary });
         info.range_km = Some(t.range as f32 * 32.0 * WU as f32 / 1000.0);
         info.bearing = Some(((t.bearing as u16) as u32 * 360 / 65536) as i32);
         info.zoom = camera_zoom(t.range) + 1;

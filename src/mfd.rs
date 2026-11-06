@@ -629,10 +629,37 @@ pub struct TrackCam {
     pub live: bool,
     /// Target name, two centred lines.
     pub name: [String; 2],
+    /// The target is the mission's primary or secondary one: said under its name.
+    pub mission_target: Option<MissionTarget>,
     pub range_km: Option<f32>,
     pub bearing: Option<i32>,
     /// Zoom step + 1, shown as "4X" (0 = hidden).
     pub zoom: u8,
+}
+
+/// Which of the mission's two targets the tracking camera looks at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MissionTarget {
+    Primary,
+    Secondary,
+}
+
+impl MissionTarget {
+    /// What the camera page says of the target.
+    fn label(self) -> &'static str {
+        match self {
+            MissionTarget::Primary => "PRIMARY TARGET",
+            MissionTarget::Secondary => "SECONDARY TARGET",
+        }
+    }
+}
+
+impl TrackCam {
+    /// The centred lines over the picture: the name, then which mission target it is.
+    pub fn lines(&self) -> impl Iterator<Item = &str> {
+        let name = self.name.iter().map(String::as_str).filter(|l| !l.is_empty());
+        name.chain(self.mission_target.map(MissionTarget::label))
+    }
 }
 
 /// Other objects for the map and TAC displays (filled by the combat simulation).
@@ -1868,7 +1895,7 @@ impl MfdParams<'_, '_> {
     fn draw_camera_page(&self, c: &mut Canvas, fonts: &Fonts) {
         self.camera_background(c, 1);
         let text = self.camera_text_colour();
-        for (k, line) in self.cam.name.iter().enumerate() {
+        for (k, line) in self.cam.lines().enumerate() {
             let s = upper(line);
             fonts.text(c, 39 - 2 * s.len() as i32, 2 + 6 * k as i32, &s, text);
         }
@@ -2276,7 +2303,7 @@ impl MfdParams<'_, '_> {
         self.camera_background(c, K);
         let text = self.camera_text_colour();
         let w = c.w as i32;
-        for (k, line) in self.cam.name.iter().enumerate() {
+        for (k, line) in self.cam.lines().enumerate() {
             let s = upper(line);
             fonts.text_scaled(c, (w - 2 * fonts.width(&s)) / 2, 4 + 12 * k as i32, &s, text, 2);
         }
@@ -2555,6 +2582,18 @@ mod tests {
         tac_square(&mut c, 114, 90, 0, 3, 7);
         assert_eq!((c.get(99, 75), c.get(100, 76), c.get(101, 77)), (7, 7, 0));
         assert_eq!((c.get(114, 75), c.get(129, 105), c.get(114, 90)), (7, 7, 0));
+    }
+
+    /// The mission target is said under the name, whatever lines the name has.
+    #[test]
+    fn camera_lines() {
+        let mut cam = TrackCam { name: ["ANDIMESHK".into(), "ARMY HQ".into()], ..default() };
+        assert!(cam.lines().eq(["ANDIMESHK", "ARMY HQ"]));
+        cam.mission_target = Some(MissionTarget::Primary);
+        assert!(cam.lines().eq(["ANDIMESHK", "ARMY HQ", "PRIMARY TARGET"]));
+        cam.name[1].clear();
+        cam.mission_target = Some(MissionTarget::Secondary);
+        assert!(cam.lines().eq(["ANDIMESHK", "SECONDARY TARGET"]));
     }
 
     #[test]

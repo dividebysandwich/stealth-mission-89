@@ -233,6 +233,7 @@ pub(crate) fn update_camera(
                     range_km: Some(v.range_m / 1000.0),
                     bearing: None,
                     zoom: crate::mfd::cam_zoom_for(magnification) + 1,
+                    ..default()
                 };
                 return site(&mut sites, None);
             }
@@ -269,6 +270,7 @@ pub(crate) fn update_camera(
             range_km: range_m.map(|r| r / 1000.0),
             bearing: None,
             zoom: zoom + 1,
+            ..default()
         };
         aim(&mut tf, &mut pos, &mut proj, dir, None, eye, zoom, false);
         return site(&mut sites, mfd.av.tgp.los_ground);
