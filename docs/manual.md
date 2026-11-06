@@ -1216,7 +1216,7 @@ the left MFD.
 | BRAKE | 0 | Wheel brakes on the ground, speed brake in the air. |
 | AUTO | 7 | Autopilot: flies to the current waypoint. |
 | BAY | 8 | Weapon bay doors open/close. Weapons can only be released with open bays. |
-| NEAR | T | Lock the nearest target ahead. AIR or GND mode depends on the selected weapon. |
+| NEAR | T | Lock the nearest target ahead. With the classic avionics it looks in the HUD mode as it is, and leaves it: AIR picks aircraft, GND ground and sea targets, NAV either (a mission objective first, then the nearer). With the modern avionics AIR or GND mode depends on the selected weapon. |
 | NEXT | B | Select the next target. |
 | NONE | Shift B | Clear the target. No automatic acquisition until the next target or camera key; the targeting pod looks at the current steerpoint. |
 | WPN | Space | Select the next weapon, after the last one the gun. |
@@ -1607,7 +1607,9 @@ missiles. The turret turns 110° either side, 50° down and 20° up.
 ## 6.1 Rules for every weapon
 
 - **HUD mode:** air-to-air weapons in AIR, all others in GND. T (nearest target) switches to
-  the selected weapon's mode by itself.
+  the selected weapon's mode by itself with the modern avionics; with the classic ones it looks
+  for its target in the mode as it is (aircraft in AIR, ground and sea in GND, either in NAV)
+  and leaves it unchanged.
 - **Release:** the F-117A's bay doors open (*Bay closed*, except the fuel tank; the RAH-66 opens
   its own; every other aircraft carries its stores outside), bank under 67°, and in the air (*Insufficient Altitude* on
   the ground or the deck). At most four of your weapons fly at a time: a fifth press uses up a

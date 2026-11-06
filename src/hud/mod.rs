@@ -393,6 +393,7 @@ fn hud_keys(
     mut hud: ResMut<HudState>,
     mut wps: ResMut<Waypoints>,
     stores: Res<Stores>,
+    mfd: Res<crate::mfd::MfdState>,
     mut msg: ResMut<HudMessages>,
 ) {
     let n = wps.points.len();
@@ -408,7 +409,9 @@ fn hud_keys(
             Action::HudNav => hud.mode = HudMode::Nav,
             Action::HudAir => hud.mode = HudMode::Air,
             Action::HudGnd => hud.mode = HudMode::Gnd,
-            Action::NearestTarget => {
+            // With the modern avionics the key puts the HUD in the selected weapon's mode; with the
+            // classic ones it looks for its target in the mode as it is (the simulation).
+            Action::NearestTarget if mfd.modern => {
                 // A turret gun is aimed at the ground as much as at aircraft.
                 let air = (stores.gun_selected && stores.gun_slave.is_none())
                     || stores.bays.get(stores.selected).is_some_and(|b| b.air_to_air);

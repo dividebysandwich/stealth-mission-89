@@ -767,23 +767,23 @@ fn state_hash(sim: &Sim) -> u64 {
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
         0x9c023228b72688bb,
-        0xdc61170c7c2b3835,
-        0x46c6b6e23ad1ba9c,
-        0xcf572f1578286fd5,
+        0xa225b16ac202074b,
+        0xed3e3442e2181718,
+        0xdd13ef77cb95690c,
         0xb20c2d50d390afa1,
         0x82f2a125302dcce9,
         0x5144efd02a6e2cf6,
-        0xbe4182bb1adb621b,
+        0x8e9836ef15cfa1a7,
         0x00360c7fb385e4b5,
         0x38276bd04dc9864a,
-        0xd0f8a427c0a9c50b,
+        0x7b2c8e5b1935c61b,
         0x812d1e9c0479adaa,
-        0x02a94c7648c9ffe9,
+        0xd1df17dca4064e38,
         0xf6a8297a50cd216d,
-        0x68d434493ac54c46,
-        0xcbb9c6b0770dbf11,
-        0xbc5502794c4d0420,
-        0x42e018a36396d48e,
+        0x206d329cba58595a,
+        0x020592cd02c6da24,
+        0x650042deb6f86300,
+        0xfe88af6e93292fc6,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -883,6 +883,31 @@ fn supply_drop_fixed_and_classic() {
 }
 
 #[test]
+fn nearest_target_skips_friendlies() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    // Ahead (north): a friendly object at 300, a hostile one at 600 map units.
+    place_site(&mut sim, 1, 0, cx, cy - 300);
+    sim.objects_mut()[1].flags = 0x0400;
+    place_site(&mut sim, 2, 0, cx, cy - 600);
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(2));
+}
+
+#[test]
 fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     let d = data();
     let m = mission(d, 3, 0x1234, 0);
@@ -899,6 +924,8 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     sim.select_bay(0);
     let mut p = player_at(cx, cy, 2000, 0, 300);
     p.camera_mfd = true;
+    // The modern avionics: the key waits for the HUD to switch to the weapon's mode.
+    p.mode_weapons = true;
     p.cmd.nearest_target = true;
     // Still in NAV: the request waits for the HUD to switch.
     sim.step(&p, 15);
@@ -907,6 +934,60 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     p.hud_mode = HudMode::Gnd;
     sim.step(&p, 15);
     assert_eq!(sim.targeting().ground, Some(2));
+}
+
+/// What the nearest-target key locks in each HUD mode with an enemy aircraft and a ground site
+/// ahead at the given distances (map units): (air lock, ground lock). The mode stays as it was.
+fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Option<usize>) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    place_site(&mut sim, 2, 0, cx, cy - ground_at);
+    // No mission objective among them.
+    for slot in sim.target_slots_mut() {
+        slot.object = -1;
+    }
+    {
+        let u = &mut sim.flights_mut()[1];
+        *u = FlightUnit {
+            x: cx,
+            y: cy - air_at,
+            alt: 2000,
+            spec: 9,
+            flags: 0x43,
+            speed: 200,
+            timer: 30000,
+            wp: 3,
+            ..Default::default()
+        };
+        u.wx = u.x << 5;
+        u.wy = u.y << 5;
+    }
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = mode;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    (sim.targeting().air, sim.targeting().ground)
+}
+
+/// NAV takes the nearer of an aircraft and a ground target, AIR only aircraft, GND only ground
+/// and sea targets: whatever the selected weapon is.
+#[test]
+fn nearest_target_follows_the_hud_mode() {
+    assert_eq!(nearest_in(HudMode::Nav, 300, 600), (Some(1), None));
+    assert_eq!(nearest_in(HudMode::Nav, 600, 300), (None, Some(2)));
+    // In AIR and GND the other kind is not asked for: the nearer one of the wrong kind is passed.
+    assert_eq!(nearest_in(HudMode::Air, 600, 300).0, Some(1));
+    assert_eq!(nearest_in(HudMode::Gnd, 300, 600).1, Some(2));
 }
 
 /// The nearest-target key picks a mission objective in view over nearer hostile targets, and
