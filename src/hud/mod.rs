@@ -205,6 +205,11 @@ pub struct Waypoints {
 }
 
 impl Waypoints {
+    /// The landing base's index among the waypoints.
+    pub fn land_index(&self) -> usize {
+        self.anchors.get(3).copied().unwrap_or(3)
+    }
+
     /// The waypoints of a route about to be flown: none passed, the first selected.
     pub fn planned(points: Vec<Waypoint>, anchors: Vec<usize>) -> Self {
         Self {

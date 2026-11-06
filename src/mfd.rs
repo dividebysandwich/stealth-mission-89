@@ -1825,8 +1825,41 @@ impl MfdParams<'_, '_> {
                 ContactKind::Target => icon(c, sprites::TARGET, x, y),
             }
         }
+        // The mission's own targets in light grey squares, as the original TAC shows them.
+        for (east, north) in self.mission_targets() {
+            let (x, y, vis) = proj((east / 32.0) as i32, 0x8000 - (north / 32.0) as i32);
+            if vis {
+                tac_square(c, x, y, 0, k, TAC_SELECTED);
+            }
+        }
         // Own aircraft, blue.
         plane(c, 0.0, 38 * k, 42 * k, 9);
+    }
+
+    /// Where the mission's own targets are (wu east, north): every objective still to do (each
+    /// has a `ContactKind::Target` contact, however many the mission has), and the landing base,
+    /// wherever the lock or the camera is.
+    fn mission_targets(&self) -> Vec<(f64, f64)> {
+        let mut at: Vec<(f64, f64)> = self
+            .contacts
+            .shown()
+            .filter(|k| k.kind == ContactKind::Target)
+            .map(|k| (k.east, k.north))
+            .collect();
+        // The landing base: the airbase within 64 map units of the route's landing point.
+        let wps = &self.waypoints;
+        let route = if wps.initial.is_empty() { &wps.points } else { &wps.initial };
+        if let Some(w) = route.get(wps.land_index()) {
+            let airbases = self.theater.iter().flat_map(|t| &t.world.objects);
+            let near = airbases
+                .filter(|o| o.target_flags & 0x100 != 0)
+                .map(|o| (o.x as f64 * 32.0, (0x8000 as f64 - o.y as f64) * 32.0))
+                .map(|p| (p, (p.0 - w.east).hypot(p.1 - w.north)))
+                .filter(|&(_, d)| d < 64.0 * 32.0)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            at.extend(near.map(|(p, _)| p));
+        }
+        at
     }
 
     /// Tracking camera page. With the camera picture live the background stays
@@ -2381,6 +2414,26 @@ enum TacIcon {
     Radar,
 }
 
+/// The TAC's squares round the mission's targets: light grey (palette colour 7).
+const TAC_SELECTED: u8 = 7;
+
+/// How thick the squares' lines are on a TAC display drawn at `k` pixels per classic one: as the
+/// icons.
+fn square_width(k: i32) -> i32 {
+    if k == 1 { 1 } else { 2 }
+}
+
+/// A square round (x, y) on a TAC display drawn at `k` pixels per classic one: `grow` display
+/// pixels beyond the 5 classic ones of the symbols' margin.
+fn tac_square(c: &mut Canvas, x: i32, y: i32, grow: i32, k: i32, colour: u8) {
+    let (half, t) = (5 * k + grow, square_width(k));
+    let (left, top, side) = (x - half, y - half, 2 * half + 1);
+    c.fill_rect(left, top, side, t, colour);
+    c.fill_rect(left, top + side - t, side, t, colour);
+    c.fill_rect(left, top, t, side, colour);
+    c.fill_rect(left + side - t, top, t, side, colour);
+}
+
 /// Classic TAC icons, 7x7 around the middle pixel: `g` light green, `w` white, `r` red,
 /// `p` light red, `.` clear.
 const AIRFIELD_PIXELS: [&[u8; 7]; 7] =
@@ -2484,6 +2537,24 @@ mod tests {
         assert_eq!(soi_zoom(&s, Action::Flir), None);
         s.modern = false;
         assert_eq!(soi_zoom(&s, Action::MapZoomIn), None);
+    }
+
+    /// The square stands 5 classic pixels from the middle, clear of the symbol.
+    #[test]
+    fn tac_square_edges() {
+        let mut c = Canvas::new(77, 60);
+        tac_square(&mut c, 38, 30, 0, 1, 7);
+        for (x, y) in [(33, 25), (43, 25), (33, 35), (43, 35), (38, 25), (33, 30), (43, 30)] {
+            assert_eq!(c.get(x, y), 7, "({x}, {y})");
+        }
+        for (x, y) in [(38, 30), (34, 26), (32, 25), (44, 36)] {
+            assert_eq!(c.get(x, y), 0, "({x}, {y})");
+        }
+        // Three times larger, twice as thick, the same square scaled.
+        let mut c = Canvas::new(231, 180);
+        tac_square(&mut c, 114, 90, 0, 3, 7);
+        assert_eq!((c.get(99, 75), c.get(100, 76), c.get(101, 77)), (7, 7, 0));
+        assert_eq!((c.get(114, 75), c.get(129, 105), c.get(114, 90)), (7, 7, 0));
     }
 
     #[test]
