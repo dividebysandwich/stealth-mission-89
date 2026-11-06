@@ -631,6 +631,9 @@ pub struct TrackCam {
     pub name: [String; 2],
     /// The target is the mission's primary or secondary one: said under its name.
     pub mission_target: Option<MissionTarget>,
+    /// What the picture is centred on (wu east, north): the target it follows, or the runway
+    /// on an ILS approach. None when it only shows terrain.
+    pub focus: Option<(f64, f64)>,
     pub range_km: Option<f32>,
     pub bearing: Option<i32>,
     /// Zoom step + 1, shown as "4X" (0 = hidden).
@@ -1853,14 +1856,34 @@ impl MfdParams<'_, '_> {
             }
         }
         // The mission's own targets in light grey squares, as the original TAC shows them.
-        for (east, north) in self.mission_targets() {
-            let (x, y, vis) = proj((east / 32.0) as i32, 0x8000 - (north / 32.0) as i32);
+        let at =
+            |(east, north): (f64, f64)| proj((east / 32.0) as i32, 0x8000 - (north / 32.0) as i32);
+        let targets = self.mission_targets();
+        for &spot in &targets {
+            let (x, y, vis) = at(spot);
             if vis {
-                tac_square(c, x, y, 0, k, TAC_SELECTED);
+                tac_square(c, x, y, 0, k, TAC_MISSION_TARGET);
+            }
+        }
+        // What the tracking camera shows, in the green of the TC button; just outside the grey
+        // squares, touching them, when it is one of the mission's targets.
+        if let Some(focus) = self.camera_focus() {
+            let (x, y, vis) = at(focus);
+            if vis {
+                let same = targets.iter().any(|&spot| {
+                    let (sx, sy, _) = at(spot);
+                    (sx - x).abs() <= 2 * k && (sy - y).abs() <= 2 * k
+                });
+                tac_square(c, x, y, if same { square_width(k) } else { 0 }, k, TAC_CAMERA);
             }
         }
         // Own aircraft, blue.
         plane(c, 0.0, 38 * k, 42 * k, 9);
+    }
+
+    /// What the right MFD's tracking camera looks at, while its page is up.
+    fn camera_focus(&self) -> Option<(f64, f64)> {
+        self.cam.focus.filter(|_| self.cam.live && self.state.camera_shown())
     }
 
     /// Where the mission's own targets are (wu east, north): every objective still to do (each
@@ -2442,7 +2465,9 @@ enum TacIcon {
 }
 
 /// The TAC's squares round the mission's targets: light grey (palette colour 7).
-const TAC_SELECTED: u8 = 7;
+const TAC_MISSION_TARGET: u8 = 7;
+/// Those round what the tracking camera shows: the lit TC button's green.
+const TAC_CAMERA: u8 = crate::panel::GREEN.on.0;
 
 /// How thick the squares' lines are on a TAC display drawn at `k` pixels per classic one: as the
 /// icons.
@@ -2594,6 +2619,22 @@ mod tests {
         cam.name[1].clear();
         cam.mission_target = Some(MissionTarget::Secondary);
         assert!(cam.lines().eq(["ANDIMESHK", "SECONDARY TARGET"]));
+    }
+
+    /// Squares nested by their width touch: no pixel row between the grey and the green.
+    #[test]
+    fn nested_squares_touch() {
+        for k in [1, 3] {
+            let (mx, my) = (38 * k, 30 * k);
+            let mut c = Canvas::new(77 * k as usize, 60 * k as usize);
+            tac_square(&mut c, mx, my, 0, k, 7);
+            tac_square(&mut c, mx, my, square_width(k), k, 10);
+            // Down the middle of the top edge: the green rows then the grey ones.
+            let t = square_width(k);
+            let column: Vec<u8> = (my - 5 * k - t..my - 5 * k + t).map(|y| c.get(mx, y)).collect();
+            assert!(column.iter().all(|&p| p == 7 || p == 10), "{column:?}");
+            assert_eq!((column[0], column[column.len() - 1]), (10, 7));
+        }
     }
 
     #[test]
