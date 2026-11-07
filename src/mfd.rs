@@ -629,10 +629,40 @@ pub struct TrackCam {
     pub live: bool,
     /// Target name, two centred lines.
     pub name: [String; 2],
+    /// The target is the mission's primary or secondary one: said under its name.
+    pub mission_target: Option<MissionTarget>,
+    /// What the picture is centred on (wu east, north): the target it follows, or the runway
+    /// on an ILS approach. None when it only shows terrain.
+    pub focus: Option<(f64, f64)>,
     pub range_km: Option<f32>,
     pub bearing: Option<i32>,
     /// Zoom step + 1, shown as "4X" (0 = hidden).
     pub zoom: u8,
+}
+
+/// Which of the mission's two targets the tracking camera looks at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MissionTarget {
+    Primary,
+    Secondary,
+}
+
+impl MissionTarget {
+    /// What the camera page says of the target.
+    fn label(self) -> &'static str {
+        match self {
+            MissionTarget::Primary => "PRIMARY TARGET",
+            MissionTarget::Secondary => "SECONDARY TARGET",
+        }
+    }
+}
+
+impl TrackCam {
+    /// The centred lines over the picture: the name, then which mission target it is.
+    pub fn lines(&self) -> impl Iterator<Item = &str> {
+        let name = self.name.iter().map(String::as_str).filter(|l| !l.is_empty());
+        name.chain(self.mission_target.map(MissionTarget::label))
+    }
 }
 
 /// Other objects for the map and TAC displays (filled by the combat simulation).
@@ -1825,8 +1855,61 @@ impl MfdParams<'_, '_> {
                 ContactKind::Target => icon(c, sprites::TARGET, x, y),
             }
         }
+        // The mission's own targets in light grey squares, as the original TAC shows them.
+        let at =
+            |(east, north): (f64, f64)| proj((east / 32.0) as i32, 0x8000 - (north / 32.0) as i32);
+        let targets = self.mission_targets();
+        for &spot in &targets {
+            let (x, y, vis) = at(spot);
+            if vis {
+                tac_square(c, x, y, 0, k, TAC_MISSION_TARGET);
+            }
+        }
+        // What the tracking camera shows, in the green of the TC button; just outside the grey
+        // squares, touching them, when it is one of the mission's targets.
+        if let Some(focus) = self.camera_focus() {
+            let (x, y, vis) = at(focus);
+            if vis {
+                let same = targets.iter().any(|&spot| {
+                    let (sx, sy, _) = at(spot);
+                    (sx - x).abs() <= 2 * k && (sy - y).abs() <= 2 * k
+                });
+                tac_square(c, x, y, if same { square_width(k) } else { 0 }, k, TAC_CAMERA);
+            }
+        }
         // Own aircraft, blue.
         plane(c, 0.0, 38 * k, 42 * k, 9);
+    }
+
+    /// What the right MFD's tracking camera looks at, while its page is up.
+    fn camera_focus(&self) -> Option<(f64, f64)> {
+        self.cam.focus.filter(|_| self.cam.live && self.state.camera_shown())
+    }
+
+    /// Where the mission's own targets are (wu east, north): every objective still to do (each
+    /// has a `ContactKind::Target` contact, however many the mission has), and the landing base,
+    /// wherever the lock or the camera is.
+    fn mission_targets(&self) -> Vec<(f64, f64)> {
+        let mut at: Vec<(f64, f64)> = self
+            .contacts
+            .shown()
+            .filter(|k| k.kind == ContactKind::Target)
+            .map(|k| (k.east, k.north))
+            .collect();
+        // The landing base: the airbase within 64 map units of the route's landing point.
+        let wps = &self.waypoints;
+        let route = if wps.initial.is_empty() { &wps.points } else { &wps.initial };
+        if let Some(w) = route.get(wps.land_index()) {
+            let airbases = self.theater.iter().flat_map(|t| &t.world.objects);
+            let near = airbases
+                .filter(|o| o.target_flags & 0x100 != 0)
+                .map(|o| (o.x as f64 * 32.0, (0x8000 as f64 - o.y as f64) * 32.0))
+                .map(|p| (p, (p.0 - w.east).hypot(p.1 - w.north)))
+                .filter(|&(_, d)| d < 64.0 * 32.0)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            at.extend(near.map(|(p, _)| p));
+        }
+        at
     }
 
     /// Tracking camera page. With the camera picture live the background stays
@@ -1835,7 +1918,7 @@ impl MfdParams<'_, '_> {
     fn draw_camera_page(&self, c: &mut Canvas, fonts: &Fonts) {
         self.camera_background(c, 1);
         let text = self.camera_text_colour();
-        for (k, line) in self.cam.name.iter().enumerate() {
+        for (k, line) in self.cam.lines().enumerate() {
             let s = upper(line);
             fonts.text(c, 39 - 2 * s.len() as i32, 2 + 6 * k as i32, &s, text);
         }
@@ -2243,7 +2326,7 @@ impl MfdParams<'_, '_> {
         self.camera_background(c, K);
         let text = self.camera_text_colour();
         let w = c.w as i32;
-        for (k, line) in self.cam.name.iter().enumerate() {
+        for (k, line) in self.cam.lines().enumerate() {
             let s = upper(line);
             fonts.text_scaled(c, (w - 2 * fonts.width(&s)) / 2, 4 + 12 * k as i32, &s, text, 2);
         }
@@ -2381,6 +2464,28 @@ enum TacIcon {
     Radar,
 }
 
+/// The TAC's squares round the mission's targets: light grey (palette colour 7).
+const TAC_MISSION_TARGET: u8 = 7;
+/// Those round what the tracking camera shows: the lit TC button's green.
+const TAC_CAMERA: u8 = crate::panel::GREEN.on.0;
+
+/// How thick the squares' lines are on a TAC display drawn at `k` pixels per classic one: as the
+/// icons.
+fn square_width(k: i32) -> i32 {
+    if k == 1 { 1 } else { 2 }
+}
+
+/// A square round (x, y) on a TAC display drawn at `k` pixels per classic one: `grow` display
+/// pixels beyond the 5 classic ones of the symbols' margin.
+fn tac_square(c: &mut Canvas, x: i32, y: i32, grow: i32, k: i32, colour: u8) {
+    let (half, t) = (5 * k + grow, square_width(k));
+    let (left, top, side) = (x - half, y - half, 2 * half + 1);
+    c.fill_rect(left, top, side, t, colour);
+    c.fill_rect(left, top + side - t, side, t, colour);
+    c.fill_rect(left, top, t, side, colour);
+    c.fill_rect(left + side - t, top, t, side, colour);
+}
+
 /// Classic TAC icons, 7x7 around the middle pixel: `g` light green, `w` white, `r` red,
 /// `p` light red, `.` clear.
 const AIRFIELD_PIXELS: [&[u8; 7]; 7] =
@@ -2484,6 +2589,52 @@ mod tests {
         assert_eq!(soi_zoom(&s, Action::Flir), None);
         s.modern = false;
         assert_eq!(soi_zoom(&s, Action::MapZoomIn), None);
+    }
+
+    /// The square stands 5 classic pixels from the middle, clear of the symbol.
+    #[test]
+    fn tac_square_edges() {
+        let mut c = Canvas::new(77, 60);
+        tac_square(&mut c, 38, 30, 0, 1, 7);
+        for (x, y) in [(33, 25), (43, 25), (33, 35), (43, 35), (38, 25), (33, 30), (43, 30)] {
+            assert_eq!(c.get(x, y), 7, "({x}, {y})");
+        }
+        for (x, y) in [(38, 30), (34, 26), (32, 25), (44, 36)] {
+            assert_eq!(c.get(x, y), 0, "({x}, {y})");
+        }
+        // Three times larger, twice as thick, the same square scaled.
+        let mut c = Canvas::new(231, 180);
+        tac_square(&mut c, 114, 90, 0, 3, 7);
+        assert_eq!((c.get(99, 75), c.get(100, 76), c.get(101, 77)), (7, 7, 0));
+        assert_eq!((c.get(114, 75), c.get(129, 105), c.get(114, 90)), (7, 7, 0));
+    }
+
+    /// The mission target is said under the name, whatever lines the name has.
+    #[test]
+    fn camera_lines() {
+        let mut cam = TrackCam { name: ["ANDIMESHK".into(), "ARMY HQ".into()], ..default() };
+        assert!(cam.lines().eq(["ANDIMESHK", "ARMY HQ"]));
+        cam.mission_target = Some(MissionTarget::Primary);
+        assert!(cam.lines().eq(["ANDIMESHK", "ARMY HQ", "PRIMARY TARGET"]));
+        cam.name[1].clear();
+        cam.mission_target = Some(MissionTarget::Secondary);
+        assert!(cam.lines().eq(["ANDIMESHK", "SECONDARY TARGET"]));
+    }
+
+    /// Squares nested by their width touch: no pixel row between the grey and the green.
+    #[test]
+    fn nested_squares_touch() {
+        for k in [1, 3] {
+            let (mx, my) = (38 * k, 30 * k);
+            let mut c = Canvas::new(77 * k as usize, 60 * k as usize);
+            tac_square(&mut c, mx, my, 0, k, 7);
+            tac_square(&mut c, mx, my, square_width(k), k, 10);
+            // Down the middle of the top edge: the green rows then the grey ones.
+            let t = square_width(k);
+            let column: Vec<u8> = (my - 5 * k - t..my - 5 * k + t).map(|y| c.get(mx, y)).collect();
+            assert!(column.iter().all(|&p| p == 7 || p == 10), "{column:?}");
+            assert_eq!((column[0], column[column.len() - 1]), (10, 7));
+        }
     }
 
     #[test]

@@ -15,7 +15,7 @@ use crate::combat::{Combat, CombatSystems, map_wu, remote_motion, unit_position}
 use crate::flight::{Aircraft, Player, bam};
 use crate::mfd::{CamDir, MfdState, TrackCam};
 use crate::settings::{AppState, SetupSet};
-use crate::world::{WorldPos, wu_to_bevy};
+use crate::world::{WorldPos, bevy_to_wu, wu_to_bevy};
 
 pub struct TrackCamPlugin;
 
@@ -201,6 +201,9 @@ pub(crate) fn update_camera(
         camera.is_active = want;
     }
     info.live = want;
+    if info.focus.is_some() {
+        info.focus = None;
+    }
     // The ground looked at is streamed in like around the aircraft, so far-away targets show up.
     let mut look = None;
     let site = |sites: &mut crate::world::StreamSites, p: Option<bevy::math::DVec3>| {
@@ -233,6 +236,8 @@ pub(crate) fn update_camera(
                     range_km: Some(v.range_m / 1000.0),
                     bearing: None,
                     zoom: crate::mfd::cam_zoom_for(magnification) + 1,
+                    focus: Some(wu_point(eye + v.dir.as_dvec3() * v.range_m as f64)),
+                    ..default()
                 };
                 return site(&mut sites, None);
             }
@@ -269,6 +274,7 @@ pub(crate) fn update_camera(
             range_km: range_m.map(|r| r / 1000.0),
             bearing: None,
             zoom: zoom + 1,
+            ..default()
         };
         aim(&mut tf, &mut pos, &mut proj, dir, None, eye, zoom, false);
         return site(&mut sites, mfd.av.tgp.los_ground);
@@ -310,8 +316,16 @@ pub(crate) fn update_camera(
     } else if target.is_none() {
         info.zoom = crate::mfd::CAM_ZOOM_DEFAULT + 1;
     }
+    // Only a target (or the runway on approach) is what the picture shows; bare terrain is not.
+    info.focus = target.map(wu_point);
     aim(&mut tf, &mut pos, &mut proj, dir, None, eye, info.zoom.saturating_sub(1), false);
     site(&mut sites, look);
+}
+
+/// A point in Bevy metres as world units east and north.
+fn wu_point(p: bevy::math::DVec3) -> (f64, f64) {
+    let (east, north, _) = bevy_to_wu(p);
+    (east, north)
 }
 
 /// Points the camera from `eye` along `dir` (rolled to put `up` at the top) with zoom step `z`.
