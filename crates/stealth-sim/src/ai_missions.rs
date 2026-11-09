@@ -370,7 +370,7 @@ impl Sim {
         home: bool,
         blue: bool,
     ) -> bool {
-        if self.campaign.is_none() || !self.pilot_in_the_air(id) {
+        if !self.opts.campaign || !self.pilot_in_the_air(id) {
             return false;
         }
         let p = self.pilot_input(id);

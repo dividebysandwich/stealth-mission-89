@@ -264,7 +264,7 @@ impl FlightConstants {
         }
     }
 
-    /// C-5 Galaxy: the modern model only; 150,000 lb of fuel (bingo 25,000) burnt by four TF39s
+    /// C-5 Galaxy: the modern model only; 150,000 lb of fuel (bingo 25,000) burnt by four F138s
     /// at about 32,000 lb an hour in the cruise, 2.5 g.
     pub fn c5() -> Self {
         Self {
@@ -1448,8 +1448,8 @@ mod tests {
     }
 
     /// C-5 Galaxy (always the modern model): about Mach 0.8 at altitude, its cruise; a 1 g
-    /// stall near 115 kt with the flaps at its starting weight; off the ground within the 2 km of
-    /// the theaters' runways at full throttle with the flaps; 2.5 g.
+    /// stall near 115 kt with the flaps at its starting weight; off the ground well within the
+    /// runway at full throttle with the flaps; 2.5 g.
     #[test]
     fn c5_performance() {
         let k = FlightConstants::c5;
@@ -1475,23 +1475,32 @@ mod tests {
         println!("C-5: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
         assert!((135.0..175.0).contains(&clean), "clean {clean}");
         assert!((100.0..130.0).contains(&flaps), "flaps {flaps}");
-        // The take-off roll: full throttle, the flaps out, rotating at 125 kt to 10 degrees.
-        let kl = FlightConstants { landing: 0, ..k() };
-        let mut liftoff = None;
-        let mut x = 0.0;
-        let mut a0 = Aircraft::new_on_runway(kl.fuel);
-        a0.flaps = true;
-        fly_with(kl, false, a0, 90.0, |a, c| {
-            c.throttle = Some(1.0);
-            x += a.knots() * 1.6878 / 120.0;
-            c.pitch = if a.knots() > 125.0 && a.euler().1 < 0.17 { 0.6 } else { 0.0 };
-            if !a.on_ground && liftoff.is_none() {
-                liftoff = Some((x, a.knots()));
-            }
-        });
-        println!("C-5: lift-off {liftoff:?} (ft, kt)");
-        let (roll, _) = liftoff.expect("the C-5 did not take off");
-        assert!(roll < 6000.0, "take-off roll {roll} ft");
+        // The take-off roll: full throttle, the flaps out, the stick pulled back from `vr` knots.
+        // It must leave the ground well inside the runway: the player starts 57 map units (32 ft
+        // each in the flight model) past the runway box's centre, which ends 64 units the other
+        // side (72 on easy), so about 3,900 ft ahead; running off the end is a crash.
+        let take_off = |vr: f32, pull: f32| {
+            let kl = FlightConstants { landing: 0, ..k() };
+            let mut liftoff = None;
+            let mut x = 0.0;
+            let mut a0 = Aircraft::new_on_runway(kl.fuel);
+            a0.flaps = true;
+            fly_with(kl, false, a0, 90.0, |a, c| {
+                c.throttle = Some(1.0);
+                x += a.knots() * 1.6878 / 120.0;
+                c.pitch = if a.knots() > vr { pull } else { 0.0 };
+                if !a.on_ground && liftoff.is_none() {
+                    liftoff = Some((x, a.knots()));
+                }
+            });
+            println!("C-5: rotating at {vr} kt ({pull}): lift-off {liftoff:?} (ft, kt)");
+            liftoff.expect("the C-5 did not take off").0
+        };
+        let best = take_off(0.0, 1.0);
+        assert!(best < 2800.0, "take-off roll {best} ft");
+        // Pulling only at the 1 g stall speed.
+        let late = take_off(115.0, 1.0);
+        assert!(late < 3400.0, "take-off roll rotating late {late} ft");
         let mut peak: f32 = 0.0;
         fly_with(k(), false, heavy(airborne(10000.0, 330.0, 100.0)), 6.0, |a, c| {
             c.pitch = 1.0;

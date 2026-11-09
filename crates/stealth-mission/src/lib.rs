@@ -396,6 +396,16 @@ pub struct Mission {
     /// Attack drones in the air.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub drones: Option<DroneWave>,
+    /// A routine flight behind the lines: the enemy's fighters stay on the ground.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub quiet: bool,
+    /// Friendly fighters that take off with the player and escort him.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub escorts: u8,
+}
+
+fn is_zero(n: &u8) -> bool {
+    *n == 0
 }
 
 /// Roll the weapon availability flags after `srand`.
@@ -572,6 +582,8 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         orders: ctx.orders(),
         world: g.world.clone(),
         drones: None,
+        quiet: false,
+        escorts: 0,
     };
     if s.kind == MissionKind::DroneDefense {
         drones::defend(&mut m, data, th)?;

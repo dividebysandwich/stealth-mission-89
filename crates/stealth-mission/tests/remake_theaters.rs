@@ -178,3 +178,52 @@ fn cargo_jet_missions_drop_and_deliver() {
     println!("{tested} cargo jet missions");
     assert!(tested >= 20, "only {tested} missions");
 }
+
+/// About half the cargo jet's missions are routine, behind the lines (no escort, the enemy's
+/// fighters grounded), their routes far clearer of the enemy than the front-line drops, which
+/// get two escorts.
+#[test]
+fn cargo_jet_missions_are_quiet_or_escorted() {
+    let data = data();
+    let (mut quiet, mut front) = (Vec::new(), Vec::new());
+    for theater in 0..stealth_formats::ALL_THEATERS.len() {
+        if data.theaters.get(theater).is_none_or(|t| t.world.objects.is_empty()) {
+            continue;
+        }
+        for seed in 0..12u16 {
+            let kind = if seed % 2 == 0 { MissionKind::Strike } else { MissionKind::Air };
+            let s = MissionSettings { theater, kind, land_bases: true, ..Default::default() };
+            let Ok(mut m) = generate(&data, &s, Seed::Srand(seed * 3001 + 7)) else { continue };
+            airlift::for_transport(&mut m, &data);
+            let t = airlift::threats(&m);
+            let p = |b: &stealth_mission::MapPoint| (b.x, b.y);
+            let km = airlift::route_clearance(
+                &t,
+                p(&m.takeoff.position),
+                p(&m.primary.position),
+                p(&m.secondary.position),
+            ) / 64.0;
+            if m.quiet {
+                assert_eq!(m.escorts, 0);
+                quiet.push(km);
+            } else {
+                assert_eq!(m.escorts, airlift::ESCORTS);
+                front.push(km);
+            }
+        }
+    }
+    let median = |v: &mut Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let n = (quiet.len() + front.len()) as f64;
+    let (q, f) = (median(&mut quiet), median(&mut front));
+    println!(
+        "{} quiet (median clearance {q:.0} km, least {:.0}), {} front ({f:.0} km)",
+        quiet.len(),
+        quiet[0],
+        front.len()
+    );
+    assert!((0.3..0.7).contains(&(quiet.len() as f64 / n)), "quiet share");
+    assert!(q > f + 10.0, "quiet routes {q:.0} km, front {f:.0} km");
+}

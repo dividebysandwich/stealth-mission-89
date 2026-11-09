@@ -541,6 +541,18 @@
       "round": false
     },
     {
+      "control": "Action(BayDoors)",
+      "key": "Button(Bay, Some(\"RAMP\"))",
+      "kind": "cap",
+      "rect": [
+        954.0,
+        -38.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": "HudMode(0)",
       "key": "Button(Nav, None)",
       "kind": "cap",

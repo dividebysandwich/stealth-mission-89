@@ -1723,7 +1723,7 @@ impl PanelLayout {
         }
         // Right of the centre MFDs: the standby instruments under the square standby flight
         // display, the AOA and vertical velocity tapes beside it, fuel quantity; the gear
-        // lights (the handle under them), FLAPS and BRAKE in a column.
+        // lights (the handle under them), FLAPS, BRAKE and the cargo RAMP in a column.
         let adi = rect(836.0, -112.0, 64.0, 64.0);
         put(Elem::Dial(Dial::Aoa), rect(906.0, -112.0, 14.0, 60.0), None, false);
         put(Elem::Dial(Dial::Vvi), rect(926.0, -112.0, 14.0, 60.0), None, false);
@@ -1731,11 +1731,16 @@ impl PanelLayout {
         put(Elem::Dial(Dial::Altimeter), rect(872.0, -40.0, 38.0, 38.0), None, true);
         put(Elem::Dial(Dial::Fuel), rect(914.0, -40.0, 38.0, 38.0), None, true);
         put(Elem::GearLights, rect(952.0, -112.0, 40.0, 32.0), None, false);
-        for (k, (id, action)) in
-            [(Flaps, Action::Flaps), (Brake, Action::Brakes)].into_iter().enumerate()
+        for (k, (id, label, action)) in [
+            (Flaps, None, Action::Flaps),
+            (Brake, None, Action::Brakes),
+            (Bay, Some("RAMP"), Action::BayDoors),
+        ]
+        .into_iter()
+        .enumerate()
         {
             put(
-                Elem::Lamp(id, None),
+                Elem::Lamp(id, label),
                 rect(954.0, -74.0 + 18.0 * k as f32, 38.0, 14.0),
                 Some(E::Action(action)),
                 false,

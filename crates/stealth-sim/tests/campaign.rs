@@ -1315,6 +1315,8 @@ fn the_cargo_runs_hunters_follow_the_player_flying_it() {
         ..st.clone()
     };
     run(&mut sim, &air, 2);
+    // An escort keeps station 2 km to one side of him.
     let (gx, gy) = goal(&sim);
-    assert!((gx - mx).abs() <= 4 && (gy - my).abs() <= 4, "goal {:?} vs {:?}", (gx, gy), (mx, my));
+    let side = ((gx - mx).abs() - 0x80).abs();
+    assert!(side <= 4 && (gy - my).abs() <= 4, "goal {:?} vs {:?}", (gx, gy), (mx, my));
 }

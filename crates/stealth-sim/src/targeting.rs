@@ -192,7 +192,7 @@ impl Sim {
     /// Farthest ground target the player can pick: recon intelligence doubles the range for
     /// its objects (campaign).
     fn spot_range(&self, base: i32) -> i32 {
-        if self.campaign.is_some() { base * 2 } else { base }
+        if self.opts.campaign { base * 2 } else { base }
     }
 
     /// Air target selection.

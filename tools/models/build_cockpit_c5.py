@@ -788,7 +788,8 @@ for key in ("lmpd", "adi"):
     frame("dark", outer, hole, 0.0, 0.008)
     frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), -0.004, 0.007)
 screen("screen_lmpd", scr["lmpd"], 0.004, "black")
-screen("adi", scr["adi"], 0.004, "black")
+# The standby flight display stands on the standby instruments' plate (not level with its top).
+screen("adi", scr["adi"], PLATE + 0.002, "black")
 
 # --- plates under the light groups (the copilot's mirrored, dark), faces and buttons
 plates = [
@@ -810,8 +811,12 @@ for f in layout["faces"]:
             frame("black", (x - 2.0, y - 2.0, w + 4.0, h + 4.0), (x, y, w, h), 0.0, PLATE + 0.004)
     elif f["kind"] == "osb":
         control(f["key"], f["rect"], BEZEL, f["control"], "osb")
+    elif surface(f["rect"][0]) == "panel":
+        control(f["key"], f["rect"], PLATE, f["control"], f["kind"])
     else:
-        control(f["key"], f["rect"], PLATE if surface(f["rect"][0]) == "panel" else 0.0, f["control"], f["kind"])
+        # On the pedestal: the CDU keys stand on its housing (6 mm), the rest on their panels.
+        on_cdu = 410.0 <= f["rect"][1] < 470.0
+        control(f["key"], f["rect"], 0.006 if on_cdu else 0.004, f["control"], f["kind"])
 # Setting knobs at the standby instruments' corners.
 for r in (faces["Item(Dial(Airspeed))"], faces["Item(Dial(Altimeter))"]):
     knob(r[0] + r[2] - 3.0, r[1] + r[3] - 3.0, 0.0045, 0.009, "dark", offset=PLATE)

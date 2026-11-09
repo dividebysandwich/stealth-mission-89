@@ -3540,3 +3540,91 @@ fn cargo_jet_drops_and_delivers() {
     assert!(sim.objectives().secondary_done);
     assert_eq!(sim.mission_end().map(|e| e.outcome), Some(0));
 }
+
+/// Cargo jet airlifts (`stealth_mission::airlift`) in every theater, flown straight to the
+/// drop zone at 8000 ft: a routine one behind the lines meets no enemy aircraft and takes no
+/// hits; a front-line one takes two friendly fighters along, which take off after the player
+/// and stay with him, and getting hit on the way is the exception.
+#[test]
+fn cargo_jet_airlifts_are_quiet_or_escorted() {
+    use stealth_sim::fflags;
+    let d = data();
+    let (mut quiet, mut front, mut hit, mut escorted, mut checks) = (0, 0, 0, 0, 0);
+    for theater in 0..10 {
+        for seed in 0..4u16 {
+            let s = MissionSettings {
+                theater,
+                roe: 2,
+                kind: MissionKind::Strike,
+                land_bases: true,
+                ..Default::default()
+            };
+            let Ok(mut m) = stealth_mission::generate(&d.gdata, &s, Seed::Srand(seed * 977 + 5))
+            else {
+                continue;
+            };
+            stealth_mission::airlift::for_transport(&mut m, &d.gdata);
+            let name = format!("{} {seed}", m.theater_name);
+            let opts = SimOptions { galaxy: true, ..Default::default() };
+            let mut sim = Sim::with_options(&d.sim, &m, opts);
+            let (tx, ty) = (m.takeoff.position.x, m.takeoff.position.y);
+            let (zx, zy) = (m.primary.position.x, m.primary.position.y);
+            // On the runway for half a minute, then along the route at 300 kt (10 map units a
+            // second).
+            let mut p = player_at(tx, ty, 0, 0, 0);
+            (p.on_ground, p.gear_up, p.altitude, p.height) = (true, false, 0, 0);
+            for _ in 0..15 * 30 {
+                sim.step(&p, 15);
+            }
+            let leg = (((zx - tx) as f64).powi(2) + ((zy - ty) as f64).powi(2)).sqrt();
+            let secs = (leg / 10.0) as usize;
+            let (mut hostile, mut hits) = (0, 0);
+            for k in 0..secs * 15 {
+                let f = k as f64 / (secs * 15) as f64;
+                let x = tx + ((zx - tx) as f64 * f) as i32;
+                let y = ty + ((zy - ty) as f64 * f) as i32;
+                for e in sim.step(&player_at(x, y, 8000, 0, 300), 15) {
+                    hits += matches!(e, SimEvent::PlayerHit { .. }) as usize;
+                }
+                if k % 15 != 0 {
+                    continue;
+                }
+                let up = |u: &FlightUnit| {
+                    u.flags & fflags::AIRBORNE != 0 && u.flags & fflags::DESTROYED == 0
+                };
+                let near = |u: &FlightUnit, km: i32| {
+                    up(u) && (u.x - x).pow(2) + (u.y - y).pow(2) < (km * 64).pow(2)
+                };
+                let fl = sim.flights();
+                // Not counting the Ukraine drone war's attack drones (type 29), which leave
+                // aircraft alone.
+                hostile += (0..fl.len())
+                    .filter(|&i| near(&fl[i], 30) && !sim.friendly_unit(i, fl[i].spec))
+                    .filter(|&i| fl[i].spec != 29)
+                    .count();
+                if !m.quiet && k > 15 * 120 {
+                    let escort = |i: usize| sim.campaign_flight(i).is_some_and(|f| f.blue);
+                    checks += 1;
+                    escorted += (0..fl.len()).any(|i| escort(i) && near(&fl[i], 16)) as usize;
+                }
+            }
+            println!(
+                "{name}: quiet {} leg {:.0} km, enemy aircraft sighted {hostile}, hits {hits}",
+                m.quiet,
+                leg / 64.0
+            );
+            if m.quiet {
+                assert_eq!(hostile, 0, "{name}: enemy aircraft on a quiet airlift");
+                assert_eq!(hits, 0, "{name}: hit on a quiet airlift");
+                quiet += 1;
+            } else {
+                front += 1;
+                hit += (hits > 0) as usize;
+            }
+        }
+    }
+    println!("{quiet} quiet, {front} front-line ({hit} hit), escorted {escorted}/{checks}");
+    assert!(quiet >= 15 && front >= 15, "quiet {quiet} front {front}");
+    assert!(escorted * 10 >= checks * 9, "escorted {escorted}/{checks}");
+    assert!(hit * 4 <= front, "{hit} of {front} front-line airlifts hit");
+}

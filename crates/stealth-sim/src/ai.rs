@@ -589,7 +589,9 @@ impl Sim {
 
     /// Scramble check for an inactive unit: may launch it from a random alert base.
     fn scramble(&mut self, i: usize) {
-        if (((self.mission_tick >> (self.roe + 4)) ^ i as i32) & 7) != 0
+        if self.quiet
+            || self.scrambles_left == Some(0)
+            || (((self.mission_tick >> (self.roe + 4)) ^ i as i32) & 7) != 0
             || self.is_traffic(i)
             || i >= self.mission_flights
             || i == 0
@@ -610,6 +612,9 @@ impl Sim {
                 || self.seen_near(o.x, o.y, range))
         {
             self.spawn(i, b);
+            if let Some(n) = self.scrambles_left.as_mut() {
+                *n -= 1;
+            }
         }
     }
 
@@ -729,7 +734,7 @@ impl Sim {
                 u.wx = wx;
                 u.wy = wy;
                 u.heading = s16(heading);
-            } else if !carrier && (!self.parking.is_empty() || self.campaign.is_some()) {
+            } else if !carrier && (!self.parking.is_empty() || self.opts.campaign) {
                 // No apron spot left at this base, or none known yet (the scenery is still
                 // being laid out, or a dedicated server has none): not parked on its runway
                 // instead. Only a classic mission parks on the base object.

@@ -548,8 +548,8 @@ impl Aero {
         }),
     };
 
-    /// C-5 Galaxy: four TF39 high bypass turbofans (164,000 lbf static, falling off steeply with
-    /// speed) on 6,200 ft^2 of swept wing. The empty airframe and a typical cargo weigh about
+    /// C-5M Super Galaxy: four F138 high bypass turbofans (205,000 lbf static, falling off steeply
+    /// with speed) on 6,200 ft^2 of swept wing. The empty airframe and a typical cargo weigh about
     /// 480,000 lb; it starts with 150,000 lb of its 332,000 lb of fuel. Big slotted flaps and
     /// slats for a 130-140 kt approach, about Mach 0.77 cruise, its limit Mach 0.85 or so; 2.5 g,
     /// slow to roll and pitch, slow to rotate.
@@ -557,21 +557,23 @@ impl Aero {
         wing_loading: 131.0,
         dry_weight: 480_000.0,
         ref_weight: 812_000.0,
-        thrust_ratio: 0.202,
+        thrust_ratio: 0.252,
         ab_thrust_ratio: 0.0,
         ab_thrust_mach: 0.0,
-        thrust_mach: -0.55,
+        thrust_mach: -0.68,
         cl_alpha: 5.2,
         alpha_stall: 0.25,
         alpha_stall_neg: -0.18,
         alpha_limit: 0.22,
         alpha_limit_neg: -0.12,
-        cl_flaps: 0.95,
+        cl_flaps: 1.3,
         alpha_flaps: 0.02,
         cd0: 0.018,
         cd_k: 0.048,
         cd_sep: 0.5,
-        cl_sep: 1.2,
+        // The slotted flaps and slats keep the flow attached to a high CL (the clean wing never
+        // gets near it within its 2.5 g).
+        cl_sep: 2.0,
         cd_gear: 0.015,
         cd_flaps: 0.06,
         // The spoilers.

@@ -18,6 +18,8 @@ pub const AN72: i32 = 9;
 /// A cargo aircraft this close to its base on the way in (map units, ~4 km) has landed (too
 /// heavy for the AI's tight circuit, as the AWACS).
 const TRANSPORT_HOME: i32 = 0x100;
+/// How far to either side of a player they escort the escorts keep station (map units, 2 km).
+const ESCORT_SIDE: i32 = 0x80;
 /// Missiles ready at an enemy SAM site, and rounds at a gun.
 pub const SITE_MAGAZINE: i32 = 4;
 pub const GUN_MAGAZINE: i32 = 1200;
@@ -147,7 +149,7 @@ impl Sim {
         self.campaign.as_mut().map(|c| std::mem::take(&mut c.landed)).unwrap_or_default()
     }
 
-    /// Hunters follow their quarry once it is up; landing cargo aircraft are down at their
+    /// Hunters follow their quarry once it is up (escorts beside it, `ESCORT_SIDE` map units); landing cargo aircraft are down at their
     /// base.
     pub(crate) fn campaign_hunts(&mut self) {
         let Some(c) = self.campaign.as_ref() else { return };
@@ -169,7 +171,9 @@ impl Sim {
                     goals.push((i, (t.x, t.y)));
                 }
             } else if let Some(&(_, at)) = flown.iter().find(|(t, _)| *t == q) {
-                goals.push((i, at));
+                // Escorts each keep their own side of him (not all on one spot).
+                let side = if f.blue { ESCORT_SIDE * if i % 2 == 0 { 1 } else { -1 } } else { 0 };
+                goals.push((i, (at.0 + side, at.1)));
             }
         }
         let c = self.campaign.as_mut().expect("campaign");

@@ -151,7 +151,7 @@ impl Sim {
         let (x, y, _) = self.pl.chute;
         let cell = ((y >> 11).clamp(0, 15) * 16 + (x >> 11).clamp(0, 15)) as usize;
         // A campaign's front moves: the side of the nearest airfield anyone holds.
-        let enemy = if self.campaign.is_some() {
+        let enemy = if self.opts.campaign {
             self.objects
                 .iter()
                 .skip(3)
