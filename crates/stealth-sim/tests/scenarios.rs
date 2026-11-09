@@ -3472,3 +3472,54 @@ fn realistic_avionics_lock_only_on_request() {
         assert_eq!(sim.targeting().air, Some(1), "'B' locks it (modern {modern})");
     }
 }
+
+/// The cargo jet's mission (`stealth_mission::airlift`): the pallets released over the drop
+/// zone are delivered (the primary), the stop on the delivery airfield's runway unloads the
+/// cargo (the secondary) and ends the flight safely; no cannon.
+#[test]
+fn cargo_jet_drops_and_delivers() {
+    let d = data();
+    let s = MissionSettings {
+        theater: 3,
+        roe: 2,
+        kind: MissionKind::Strike,
+        land_bases: true,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x2345)).unwrap();
+    stealth_mission::airlift::for_transport(&mut m, &d.gdata);
+    let opts = SimOptions { galaxy: true, external_stores: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    assert!(!sim.has_gun());
+    sim.set_training(true);
+    let zone = sim.objects()[m.primary.object_index as usize];
+    sim.set_bay(0, 18, 4);
+    sim.select_bay(0);
+    let mut p = player_at(zone.x, zone.y + 10, 1000, 0, 150);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+    }
+    p.cmd.fire = true;
+    let mut dropped = false;
+    for _ in 0..15 * 30 {
+        for e in sim.step(&p, 15) {
+            dropped |= is_msg(&e, "Equipment Delivered");
+        }
+        p.cmd = Commands::default();
+    }
+    assert!(dropped, "the pallets missed the drop zone");
+    assert!(sim.objectives().primary_done);
+    // Stopped on the delivery airfield's runway.
+    let dest = sim.objects()[m.secondary.object_index as usize];
+    let mut p = player_at(dest.x, dest.y, 0, 0, 0);
+    (p.on_ground, p.gear_up, p.altitude, p.height) = (true, false, 0, 0);
+    let mut delivered = false;
+    for _ in 0..15 * 10 {
+        for e in sim.step(&p, 15) {
+            delivered |= is_msg(&e, "Cargo delivered");
+        }
+    }
+    assert!(delivered, "no delivery at {}", m.secondary.place_name);
+    assert!(sim.objectives().secondary_done);
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(0));
+}
