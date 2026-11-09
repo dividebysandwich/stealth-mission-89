@@ -835,34 +835,45 @@ fn thick_bars(c: &mut Canvas, w: f32, top: f32, bottom: f32, e: &Eng) {
 
 // --- four columns of vertical tapes (C-5)
 
-fn four_columns(c: &mut Canvas, w: f32, top: f32, bottom: f32, e: &Eng) {
-    let x0 = 30.0;
+/// The C-5's: the engines' numbers over four columns; in each the fan speed (N1) and turbine
+/// temperature (EGT) as filled tapes with an amber limit mark, the reading under each tape; the
+/// core speed (N2) and oil pressure as numbers under them, clear of the fuel line.
+fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng) {
+    let x0 = 34.0;
     let step = (w - x0 - 6.0) / 4.0;
     let x = |i: usize| x0 + step * (i as f32 + 0.5);
-    // Fan speed and turbine temperature as tapes, the number over each.
-    let tapes = [("N1", e.fan, 110.0, JET_CORE, top + 10.0, top + 62.0), ("EGT", e.temp, 1000.0, JET_TEMP, top + 84.0, top + 122.0)];
+    for i in 0..4 {
+        text(c, x(i), top + 4.0, &format!("{}", i + 1), 7.0, CYAN, Align::Centre);
+    }
+    let half = 7.0;
+    let tapes = [
+        ("N1", e.fan, 110.0, JET_CORE, top + 12.0, top + 46.0),
+        ("EGT", e.temp, 1000.0, JET_TEMP, top + 60.0, top + 94.0),
+    ];
     for (name, v, max, l, y0, y1) in tapes {
         text(c, 4.0, (y0 + y1) / 2.0, name, 7.0, GREY, Align::Left);
         for i in 0..4 {
             let col = e.col(i, v[i], l);
-            text(c, x(i), y0 - 6.0, &format!("{:.0}", v[i]), 6.5, col, Align::Centre);
-            c.frame(v2(x(i) - 6.0, y0), v2(x(i) + 6.0, y1), 1.0, GREY);
+            let (a, b) = (v2(x(i) - half, y0), v2(x(i) + half, y1));
             let f = (v[i] / max).clamp(0.0, 1.0);
-            c.stroke(v2(x(i), y1 - 1.0), v2(x(i), (y1 - f * (y1 - y0)).min(y1 - 1.0)), 10.0, col);
+            let yv = y1 - f * (y1 - y0);
+            if yv < y1 - 0.5 {
+                let (p, q) = (v2(a.x + 1.5, yv), v2(b.x - 1.5, y1 - 1.5));
+                c.triangle([p, v2(q.x, p.y), q], col);
+                c.triangle([p, q, v2(p.x, q.y)], col);
+            }
+            c.frame(a, b, 1.0, GREY);
             let ya = y1 - l.amber.min(max) / max * (y1 - y0);
-            c.stroke(v2(x(i) - 8.0, ya), v2(x(i) + 8.0, ya), 1.0, AMBER);
+            c.stroke(v2(a.x - 3.0, ya), v2(b.x + 3.0, ya), 1.0, AMBER);
+            text(c, x(i), y1 + 6.0, &format!("{:.0}", v[i]), 6.5, col, Align::Centre);
         }
     }
-    // The core speed and oil pressure as numbers.
     for (k, (name, v, l)) in [("N2", e.core, JET_CORE), ("OIL", e.oil, JET_OIL)].into_iter().enumerate() {
-        let y = top + 134.0 + 10.0 * k as f32;
+        let y = top + 111.0 + 10.0 * k as f32;
         text(c, 4.0, y, name, 7.0, GREY, Align::Left);
         for i in 0..4 {
             text(c, x(i), y, &format!("{:.0}", v[i]), 6.5, e.col(i, v[i], l), Align::Centre);
         }
-    }
-    for i in 0..4 {
-        text(c, x(i), bottom.max(top + 150.0), &format!("{}", i + 1), 6.5, CYAN, Align::Centre);
     }
 }
 

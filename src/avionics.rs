@@ -106,6 +106,8 @@ pub const FOURTH_FORMATS: [Format; 5] =
 /// The cargo jet's rows: the cargo page instead of the HARM display, the centre MFD's first.
 pub const CARGO_FORMATS: [Format; 5] =
     [Format::Hsd, Format::Cgo, Format::Tgp, Format::Map, Format::Sms];
+pub const CARGO_RIGHT_FORMATS: [Format; 5] =
+    [Format::Hsi, Format::Hsd, Format::Cgo, Format::Map, Format::Sms];
 pub const CARGO_THIRD_FORMATS: [Format; 5] =
     [Format::Cgo, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
 pub const CARGO_FOURTH_FORMATS: [Format; 5] =
@@ -133,6 +135,7 @@ pub fn formats(side: MfdSide, radar: bool, cargo: bool) -> [Format; 5] {
     match side {
         MfdSide::Third if cargo => CARGO_THIRD_FORMATS,
         MfdSide::Fourth if cargo => CARGO_FOURTH_FORMATS,
+        MfdSide::Right if cargo => CARGO_RIGHT_FORMATS,
         _ if cargo => CARGO_FORMATS,
         MfdSide::Third => THIRD_FORMATS,
         MfdSide::Fourth => FOURTH_FORMATS,
@@ -762,7 +765,17 @@ impl AvionicsState {
         self.refit(&old);
         if cargo {
             self.rows = [None; 4];
+            self.cargo_start();
         }
+    }
+
+    /// The cargo jet's displays at the start, left to right: the HSD and the HSI before the
+    /// pilot, the engines and the cargo page in the middle (the fourth MFD is left of the
+    /// third there).
+    pub fn cargo_start(&mut self) {
+        self.formats = [Format::Hsd, Format::Hsi, Format::Cgo, Format::Eng];
+        self.menu = [None; 4];
+        self.fix_soi();
     }
 
     /// After `set_radar` or `set_rcs`: the formats this aircraft lacks leave the rows and the
@@ -3469,6 +3482,24 @@ mod tests {
         let mut next = AvionicsState::default();
         next.keep_rows(&s.av);
         assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
+    }
+
+    /// The cargo jet starts on the HSD, the HSI, the engines and the cargo page, left to right
+    /// (its fourth MFD sits left of the third), and keeps them in NAV; only it has the cargo page.
+    #[test]
+    fn cargo_jet_starts_on_its_own_displays() {
+        assert!(AvionicsState::default().available().all(|f| f != Format::Cgo));
+        let mut av = AvionicsState::default();
+        av.set_mfds(4);
+        av.set_cargo(true);
+        let order = [MfdSide::Left, MfdSide::Right, MfdSide::Fourth, MfdSide::Third];
+        let shown = |av: &AvionicsState| order.map(|s| av.format(s));
+        assert_eq!(shown(&av), [Format::Hsd, Format::Hsi, Format::Eng, Format::Cgo]);
+        av.set_master(HudMode::Nav);
+        assert_eq!(shown(&av), [Format::Hsd, Format::Hsi, Format::Eng, Format::Cgo]);
+        assert!(av.available().any(|f| f == Format::Cgo));
+        av.set_cargo(false);
+        assert!(order.iter().all(|&s| av.format(s) != Format::Cgo));
     }
 
     /// The RCS page is in the stealth types' format menus (with or without a radar: the menu's

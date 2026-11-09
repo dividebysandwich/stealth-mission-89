@@ -791,6 +791,9 @@ fn reset_mfd(
         av.keep_rows(&state.av);
     }
     av.set_mfds(settings.cockpit().0.mfd_count());
+    if av.cargo {
+        av.cargo_start();
+    }
     *state = MfdState {
         hires: settings.hires_displays(),
         modern: !settings.classic_avionics,
