@@ -19,7 +19,8 @@
 //! moved by the hand: fore and aft swings the column about its floor pivot (pitch), twisting the
 //! controller about the wheel's axis or moving it sideways turns the wheel (roll). With the
 //! throttles right of it (the left seat, the throttles on the pedestal) the left hand takes the
-//! yoke and the right one the throttles.
+//! yoke and the right one the throttles, or the yoke's right horn (whichever is nearer); with
+//! both hands on the wheel the yoke goes by the average of the two.
 //! The ejection handle is pulled up with either hand. A hand carrying the kneeboard grabs none.
 //! Without VR both animate from the keyboard/gamepad controls.
 
@@ -212,6 +213,10 @@ pub(super) struct NozzleLever;
 #[derive(Default)]
 pub(super) struct Grabs {
     stick: Option<StickGrab>,
+    /// The throttle hand on the yoke's other horn.
+    yoke_other: Option<StickGrab>,
+    /// The yoke's last pitch and roll from the hands on it.
+    yoke_last: (f32, f32),
     throttle: Option<ThrottleGrab>,
     nozzle: Option<NozzleGrab>,
     eject: Option<(usize, f32)>,
@@ -301,8 +306,9 @@ fn throttle_zone(t: f32) -> u8 {
 }
 
 struct StickGrab {
-    /// A yoke's: the pitch input when grabbed.
+    /// A yoke's: the pitch and roll inputs this hand started from when it grabbed.
     pitch0: f32,
+    roll0: f32,
     rot0: Quat,
     /// Hand position from the pivot when grabbed.
     p0: Vec3,
@@ -339,6 +345,19 @@ const WHEEL_TURN: f32 = 1.2;
 const YOKE_ROLL_REACH: f32 = 0.15;
 /// Reach for grabbing the yoke (metres from the wheel's hub): its horns stand out either side.
 const YOKE_REACH: f32 = 0.22;
+
+/// The pitch and roll a hand on the yoke sets: the column swung about its pivot by the hand's
+/// travel fore and aft, the wheel turned by its twist about the wheel's axis and its sideways
+/// travel.
+fn yoke_hand(anchors: &CockpitAnchors, g: &StickGrab, grip: &Transform) -> (f32, f32) {
+    let at = grip.translation - anchors.stick_pivot;
+    let (moved, _) = stick_angles_moved(g.p0, at);
+    let twist = twist_about(grip.rotation * g.rot0.inverse(), Vec3::Z);
+    (
+        g.pitch0 + moved / anchors.yoke_tilt(),
+        g.roll0 - twist / WHEEL_TURN + (at.x - g.p0.x) / YOKE_ROLL_REACH,
+    )
+}
 
 /// Twist of a rotation about an axis (swing-twist decomposition), radians.
 fn twist_about(q: Quat, axis: Vec3) -> f32 {
@@ -456,6 +475,10 @@ pub(super) fn grab_levers(
     let (sh, th) = if swap { (&mut *left, &mut *right) } else { (&mut *right, &mut *left) };
 
     // --- stick or yoke
+    let yoke = anchors.yoke_hub.is_some();
+    let held_before = (grabs.stick.is_some(), grabs.yoke_other.is_some());
+    // A hand taking the yoke the other one holds starts from where it is.
+    let start = |other: bool, now: f32, last: f32| if other { last } else { now };
     let hub = anchors.yoke_hub_at(controls.pitch);
     let grip_centre = hub.unwrap_or(anchors.stick_pivot + Vec3::Y * anchors.grip_height);
     let reach = if hub.is_some() { YOKE_REACH } else { GRAB_REACH };
@@ -468,24 +491,79 @@ pub(super) fn grab_levers(
         && sh.grab
         && sh.grip.translation.distance(grip_centre) < reach
     {
+        let other = grabs.yoke_other.is_some();
         grabs.stick = Some(StickGrab {
-            pitch0: controls.pitch,
+            pitch0: start(other, controls.pitch, grabs.yoke_last.0),
+            roll0: start(other, 0.0, grabs.yoke_last.1),
             rot0: sh.grip.rotation,
             p0: sh.grip.translation - anchors.stick_pivot,
             twisted: false,
         });
         sh.haptic = sh.haptic.max(0.4);
     }
-    if let Some(g) = &grabs.stick
-        && anchors.yoke_hub.is_some()
-    {
-        // The yoke: the hand swings the column about its pivot (fore and aft), its twist about
-        // the wheel's axis and its sideways travel turn the wheel. No rudder.
-        let at = sh.grip.translation - anchors.stick_pivot;
-        let (moved, _) = stick_angles_moved(g.p0, at);
-        controls.pitch = (g.pitch0 + moved / anchors.yoke_tilt()).clamp(-1.0, 1.0);
-        let twist = twist_about(sh.grip.rotation * g.rot0.inverse(), Vec3::Z);
-        controls.roll = (-twist / WHEEL_TURN + (at.x - g.p0.x) / YOKE_ROLL_REACH).clamp(-1.0, 1.0);
+    // The throttle hand on the yoke's other horn (when it is nearer than the throttle handle).
+    let handle = anchors.throttle_handle(set_thrust);
+    let to_throttle = th.grip.translation.distance(handle);
+    let to_nozzle = anchors
+        .nozzle_handle(set_nozzle)
+        .map_or(f32::INFINITY, |h| th.grip.translation.distance(h));
+    if let Some(hub) = hub.filter(|_| yoke) {
+        let side = if swap { 1.0 } else { -1.0 };
+        let to_yoke = th.grip.translation.distance(hub);
+        if !th.active || !th.grab {
+            if grabs.yoke_other.take().is_some() {
+                th.haptic = th.haptic.max(0.2);
+            }
+        } else if grabs.yoke_other.is_none()
+            && grabs.throttle.is_none()
+            && grabs.nozzle.is_none()
+            && !th.carrying
+            && to_yoke < YOKE_REACH
+            && to_yoke < to_throttle.min(to_nozzle)
+            && (th.grip.translation.x - hub.x) * side > 0.0
+        {
+            let other = grabs.stick.is_some();
+            grabs.yoke_other = Some(StickGrab {
+                pitch0: start(other, controls.pitch, grabs.yoke_last.0),
+                roll0: start(other, 0.0, grabs.yoke_last.1),
+                rot0: th.grip.rotation,
+                p0: th.grip.translation - anchors.stick_pivot,
+                twisted: false,
+            });
+            th.haptic = th.haptic.max(0.4);
+        }
+    }
+    if yoke {
+        // One hand let go of the wheel the other still holds: that one goes on from where the
+        // two had it.
+        let held = (grabs.stick.is_some(), grabs.yoke_other.is_some());
+        if held != held_before && held.0 != held.1 {
+            let gr = &mut *grabs;
+            let (g, grip) = match (&mut gr.stick, &mut gr.yoke_other) {
+                (Some(g), _) => (g, &sh.grip),
+                (_, Some(g)) => (g, &th.grip),
+                _ => unreachable!(),
+            };
+            let (p, r) = yoke_hand(&anchors, g, grip);
+            g.pitch0 += gr.yoke_last.0 - p;
+            g.roll0 += gr.yoke_last.1 - r;
+        }
+        // The yoke: by the hand on it, or the average of both. No rudder.
+        let hands: Vec<(f32, f32)> = [
+            grabs.stick.as_ref().map(|g| yoke_hand(&anchors, g, &sh.grip)),
+            grabs.yoke_other.as_ref().map(|g| yoke_hand(&anchors, g, &th.grip)),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        if !hands.is_empty() {
+            let n = hands.len() as f32;
+            let p = hands.iter().map(|h| h.0).sum::<f32>() / n;
+            let r = hands.iter().map(|h| h.1).sum::<f32>() / n;
+            grabs.yoke_last = (p, r);
+            controls.pitch = p.clamp(-1.0, 1.0);
+            controls.roll = r.clamp(-1.0, 1.0);
+        }
     } else if let Some(g) = &mut grabs.stick {
         let delta = sh.grip.rotation * g.rot0.inverse();
         let (tp, tr) = stick_angles(delta);
@@ -513,11 +591,6 @@ pub(super) fn grab_levers(
     }
 
     // --- throttle and nozzle lever (the throttle hand): the nearer handle
-    let handle = anchors.throttle_handle(set_thrust);
-    let to_throttle = th.grip.translation.distance(handle);
-    let to_nozzle = anchors
-        .nozzle_handle(set_nozzle)
-        .map_or(f32::INFINITY, |h| th.grip.translation.distance(h));
     if !th.active || !th.grab {
         if grabs.throttle.take().is_some() {
             th.haptic = th.haptic.max(0.2);
@@ -528,6 +601,7 @@ pub(super) fn grab_levers(
         }
     } else if grabs.throttle.is_none()
         && grabs.nozzle.is_none()
+        && grabs.yoke_other.is_none()
         && !th.carrying
         && th.grab
         && to_throttle.min(to_nozzle) < GRAB_REACH
@@ -609,10 +683,15 @@ pub(super) fn grab_levers(
     let depth = aircraft
         .single()
         .ok()
-        .filter(|a| a.ended.is_none() && grabs.stick.is_some())
+        .filter(|a| a.ended.is_none() && (grabs.stick.is_some() || grabs.yoke_other.is_some()))
         .map_or(0.0, crate::shake::stall_buffet);
     let buffet = stall_rumble(depth, time.delta_secs(), &mut grabs.buffet, rand::random::<f32>);
-    sh.haptic = sh.haptic.max(buffet);
+    if grabs.stick.is_some() {
+        sh.haptic = sh.haptic.max(buffet);
+    }
+    if grabs.yoke_other.is_some() {
+        th.haptic = th.haptic.max(buffet);
+    }
     let shake = aircraft
         .single()
         .ok()
@@ -632,7 +711,9 @@ pub(super) fn grab_levers(
     // --- mapped buttons; a trigger only while its hand holds the throttle / stick (otherwise it
     // presses the cockpit control under the fingertip), but for the brakes
     let mut brakes_held = false;
-    let throttle_held = grabs.throttle.is_some() || grabs.nozzle.is_some();
+    // (The throttle hand on the yoke counts as holding: its trigger fires.)
+    let throttle_held =
+        grabs.throttle.is_some() || grabs.nozzle.is_some() || grabs.yoke_other.is_some();
     let stick_held = grabs.stick.is_some();
     let (left_holds, right_holds) =
         if swap { (stick_held, throttle_held) } else { (throttle_held, stick_held) };
@@ -828,6 +909,92 @@ mod tests {
         // Twisting the controller clockwise (seen from the seat) is roll right.
         let cw = Quat::from_rotation_z(-0.5);
         assert!(-twist_about(cw, Vec3::Z) / WHEEL_TURN > 0.3);
+    }
+
+    /// Both hands on the yoke (the C-5M's left seat: the right hand takes its right horn
+    /// rather than the throttles when it is nearer): the yoke goes by the average of the two
+    /// hands' pitch and roll, by the one left holding it without a jump when the other lets go,
+    /// and the right hand's trigger then fires.
+    #[test]
+    fn two_hands_on_the_yoke() {
+        use crate::input::{ConsoleStick, ConsoleThrottle, InputBlock};
+        let pivot = Vec3::new(0.0, -1.2, -0.45);
+        let hub = Vec3::new(0.0, -0.45, -0.42);
+        let anchors = CockpitAnchors {
+            stick_pivot: pivot,
+            yoke_hub: Some(hub),
+            throttle_idle: Vec3::new(0.62, -0.62, -0.2),
+            throttle_full: Vec3::new(0.62, -0.62, -0.4),
+            ..default()
+        };
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<ActionEvent>()
+            .insert_resource(anchors)
+            .insert_resource(InputConfig::default())
+            .insert_resource(FlightConstants::default())
+            .init_resource::<Hands>()
+            .init_resource::<FlightControls>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ConsoleThrottle>()
+            .add_systems(Update, grab_levers);
+        let horn = |x: f32| Transform::from_translation(hub + Vec3::X * x);
+        let set = |app: &mut App, k: usize, grip: Option<Transform>| {
+            let h = &mut app.world_mut().resource_mut::<Hands>().hands[k];
+            h.active = true;
+            h.grab = grip.is_some();
+            if let Some(g) = grip {
+                h.grip = g;
+            }
+        };
+        let step = |app: &mut App| {
+            app.world_mut().resource_mut::<FlightControls>().pitch = 0.0;
+            app.world_mut().resource_mut::<FlightControls>().roll = 0.0;
+            app.update();
+            let c = app.world().resource::<FlightControls>();
+            (c.pitch, c.roll)
+        };
+        // Both hands take the horns.
+        set(&mut app, 0, Some(horn(-0.15)));
+        set(&mut app, 1, Some(horn(0.15)));
+        step(&mut app);
+        assert!(app.world().resource::<Hands>().hands[1].lever, "the right hand holds the yoke");
+        // The left hand pulls back half the travel, the right one stays: a quarter.
+        set(&mut app, 0, Some(horn(-0.15).with_translation(hub + Vec3::new(-0.15, 0.0, 0.06))));
+        let (p, _) = step(&mut app);
+        assert!((p - 0.25).abs() < 0.05, "pitch {p}");
+        // Both pull back half the travel: a half.
+        set(&mut app, 1, Some(horn(0.15).with_translation(hub + Vec3::new(0.15, 0.0, 0.06))));
+        let (p, _) = step(&mut app);
+        assert!((p - 0.5).abs() < 0.05, "pitch {p}");
+        // Both turn the wheel right (clockwise seen from the seat): the average of the two.
+        let turn = |q: f32, at: Vec3| {
+            Transform::from_translation(at).with_rotation(Quat::from_rotation_z(-q))
+        };
+        set(&mut app, 0, Some(turn(0.6, hub + Vec3::new(-0.15, 0.0, 0.06))));
+        set(&mut app, 1, Some(turn(0.2, hub + Vec3::new(0.15, 0.0, 0.06))));
+        let (p, r) = step(&mut app);
+        let want = (0.6 + 0.2) / 2.0 / WHEEL_TURN;
+        assert!((r - want).abs() < 0.03 && (p - 0.5).abs() < 0.05, "roll {r} want {want}");
+        // The left hand lets go: no jump, then the right one alone moves it.
+        set(&mut app, 0, None);
+        let (p2, r2) = step(&mut app);
+        assert!((p2 - p).abs() < 0.02 && (r2 - r).abs() < 0.02, "{p2} {r2} vs {p} {r}");
+        set(&mut app, 1, Some(turn(0.2, hub + Vec3::new(0.15, 0.0, 0.12))));
+        let (p3, _) = step(&mut app);
+        assert!((p3 - (p + 0.5)).abs() < 0.08, "pitch {p3}");
+        // The right hand's trigger fires while it holds the yoke.
+        let h = &mut app.world_mut().resource_mut::<Hands>().hands[1];
+        h.trigger = 1.0;
+        step(&mut app);
+        assert!(app.world().resource::<FlightControls>().fire);
+        // Near the throttles it takes them instead.
+        set(&mut app, 1, None);
+        step(&mut app);
+        set(&mut app, 1, Some(Transform::from_translation(Vec3::new(0.62, -0.62, -0.2))));
+        step(&mut app);
+        assert!(app.world().resource::<FlightControls>().throttle.is_some());
     }
 
     /// The stall buffet: nothing outside it, knocks with gaps at its edge, and on average harder

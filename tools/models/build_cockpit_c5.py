@@ -1001,12 +1001,15 @@ def seat(x0):
     box("dark", "dark", (x0, 0.02, FLOOR + 0.02), (0.42, 0.56, 0.04))
     box("dark", "dark", (x0, (y_front + y_back) / 2, SEAT_TOP - 0.09), (0.50, y_front - y_back, 0.04))
     box("fabric", "fabric", (x0, (y_front + y_back) / 2 + 0.01, SEAT_TOP - 0.035), (0.48, y_front - y_back - 0.02, 0.07))
-    # The backrest leaning back, the headrest on it behind the head.
-    lean = Euler((math.radians(-12.0), 0.0, 0.0))
-    back = Vector((x0, y_back - 0.04, -0.37))
+    # The backrest leaning back (its top aft) from the cushion's rear edge, the headrest on top
+    # of it behind the head.
+    lean = Euler((math.radians(10.0), 0.0, 0.0))
+    tilt = lean.to_matrix()
+    foot = Vector((x0, y_back + 0.06, SEAT_TOP - 0.02))
+    back = foot + tilt @ Vector((0.0, 0.0, 0.38))
     box("fabric", "fabric", back, (0.48, 0.10, 0.76), lean)
-    box("dark", "dark", back + Vector((0.0, -0.06, 0.0)), (0.46, 0.03, 0.74), lean)
-    box("fabric", "fabric", Vector((x0, -0.25, 0.08)), (0.28, 0.10, 0.18), lean)
+    box("dark", "dark", back + tilt @ Vector((0.0, -0.06, 0.0)), (0.46, 0.03, 0.74), lean)
+    box("fabric", "fabric", foot + tilt @ Vector((0.0, 0.0, 0.85)), (0.28, 0.10, 0.18), lean)
     # The armrests, folded down, on posts from the backrest.
     for s in (-1, 1):
         x = x0 + s * 0.27

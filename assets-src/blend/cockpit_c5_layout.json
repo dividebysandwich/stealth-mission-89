@@ -545,10 +545,22 @@
       "key": "Button(Bay, Some(\"RAMP\"))",
       "kind": "cap",
       "rect": [
-        954.0,
-        -38.0,
-        38.0,
-        14.0
+        287.0,
+        -158.0,
+        56.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(FireWeapon)",
+      "key": "Item(Label(\"DROP\", 47, 38))",
+      "kind": "cap",
+      "rect": [
+        287.0,
+        -134.0,
+        56.0,
+        18.0
       ],
       "round": false
     },

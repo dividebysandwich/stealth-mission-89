@@ -208,8 +208,11 @@ impl Sim {
     /// skipped; classic mode steps through the 2 or 4 bays, the same with a different weapon in
     /// each).
     /// The HUD mode store `w` (weapon type) is used in with realistic avionics: None for the
-    /// camera and the tanks, used in any mode.
+    /// camera, the tanks and the cargo jet's pallets, used in any mode.
     fn store_mode(&self, w: i32) -> Option<HudMode> {
+        if w == crate::SPECIAL_EQUIPMENT {
+            return None;
+        }
         let spec = self.weapon_types.get(usize::try_from(w).ok()?)?.spec as i32;
         if spec <= 0 {
             return None;
@@ -584,7 +587,11 @@ impl Sim {
                 return;
             }
             self.sound(0x20, 1);
-            self.msg(if self.pl.galaxy { text!("sim-ramp-closed") } else { text!("sim-bay-closed") });
+            self.msg(if self.pl.galaxy {
+                text!("sim-ramp-closed")
+            } else {
+                text!("sim-bay-closed")
+            });
             return;
         }
         if self.pl.comanche && self.pl.bay_close > 0 {

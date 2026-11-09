@@ -3496,6 +3496,8 @@ fn cargo_jet_drops_and_delivers() {
     sim.set_bay(0, 18, 4);
     sim.select_bay(0);
     let mut p = player_at(zone.x, zone.y + 10, 1000, 0, 150);
+    // Realistic avionics with the HUD in NAV: the pallets go in any mode.
+    p.mode_weapons = true;
     // With the ramp up nothing goes.
     p.cmd.fire = true;
     let ev = sim.step(&p, 15);
