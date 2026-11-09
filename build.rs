@@ -44,7 +44,7 @@ fn version_resource(out_dir: &Path) {
         ("FileDescription", "Stealth Mission 89"),
         ("FileVersion", &version),
         ("InternalName", "stealth-mission-89"),
-        ("LegalCopyright", "Apache-2.0"),
+        ("LegalCopyright", "GPL-3.0-only; assets CC BY-NC-SA 4.0"),
         ("OriginalFilename", "stealth-mission-89.exe"),
         ("ProductName", "Stealth Mission 89"),
         ("ProductVersion", &version),

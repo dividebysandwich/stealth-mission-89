@@ -216,6 +216,18 @@ On the Frame, SteamVR's per-app GPU time (printed at the end of each run) is the
 measurement.
 
 
+## Licence
+
+The code is licensed under the [GNU GPL v3](LICENSE) (GPL-3.0-only). The assets (models,
+sounds, music, theaters, missions and other game data in `assets/` and `assets-src/`) are
+licensed under [CC BY-NC-SA 4.0](assets/LICENSE-CC-BY-NC-SA-4.0.txt). The shaders count as code,
+and a few third-party files keep their own licences. [assets/LICENSE.md](assets/LICENSE.md) has
+the details.
+
+Contributions are accepted under the same licences: code under GPL-3.0-only, assets under
+CC BY-NC-SA 4.0.
+
+
 ## Contributing, LLM Usage
 
 Both local and hosted LLMs (usually advertised as "Generative AI") were used in 

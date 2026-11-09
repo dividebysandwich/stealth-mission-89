@@ -1,6 +1,7 @@
 [package]
 name = "stealth-master"
 version.workspace = true
+license.workspace = true
 edition.workspace = true
 description = "Stealth Mission 89 master server: the list of coop servers (REST API and web page)"
 
