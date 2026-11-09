@@ -1019,6 +1019,7 @@ mod tests {
             PanelStyle::Oh58,
             PanelStyle::Ch47,
             PanelStyle::F22,
+            PanelStyle::C5,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));

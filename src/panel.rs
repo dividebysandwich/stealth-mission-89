@@ -923,7 +923,7 @@ impl PanelParams<'_, '_> {
     }
 
     /// The attitude indicator into its own canvas: the classic ball (the classic cockpit), the
-    /// F-22A's square standby flight display, or the F-16's ADI (the other modern cockpits).
+    /// F-22A's and the C-5M's square standby flight display, or the F-16's ADI (the other modern cockpits).
     pub fn draw_adi(&self, c: &mut Canvas, style: PanelStyle) {
         let (p, r) = self.aircraft.single().map_or((0.0, 0.0), |a| {
             let (_, p, r) = a.euler();
@@ -931,7 +931,7 @@ impl PanelParams<'_, '_> {
         });
         match style {
             PanelStyle::Classic => adi(c, p, r),
-            PanelStyle::F22 => adi_square(c, p, r),
+            PanelStyle::F22 | PanelStyle::C5 => adi_square(c, p, r),
             _ => adi_ball(c, p, r),
         }
     }
