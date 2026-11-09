@@ -133,6 +133,7 @@ tip-cmd-harm = HARM-i sihtimine
 tip-cmd-gm = Maapinna kaardistusradar (GM)
 tip-cmd-eng = Mootorid ja kütus (ENG)
 tip-cmd-rcs = Radarijälg (RCS)
+tip-cmd-cgo = Last, kaldtee ja heide (CGO)
 tip-cmd-format-row = Formaat; uuesti: formaatide menüü
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Kaart

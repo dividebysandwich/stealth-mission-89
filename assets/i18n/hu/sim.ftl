@@ -26,6 +26,7 @@ sim-drop-supplies = Dobd le az ellátmányt
 sim-no-target = Nincs célpont
 sim-no-target-designated = Nincs kijelölt célpont
 sim-bay-closed = A rekesz zárva
+sim-ramp-closed = Rámpa zárva
 sim-insufficient-altitude = Nincs elég magasság
 sim-below-burst-altitude = A nyitási magasság alatt ({ $feet } ft)
 sim-fuel-transfer = Üzemanyag-átfejtés

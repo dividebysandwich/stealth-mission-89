@@ -805,8 +805,8 @@ static C5: AircraftSpec = AircraftSpec {
     // tools/models/build_cockpit_c5.py).
     hud_scale: 1900.0,
     vr_hud_scale: 1900.0,
-    // The cargo inside, but no bay doors to open: seen as stores outside would be.
-    bomb_bay: false,
+    // The cargo inside, airdrop pallets going over the ramp (its "bay" doors).
+    bomb_bay: true,
     helicopter: false,
     turret: false,
     hmd: Hmd::None,

@@ -25,6 +25,7 @@ sim-drop-supplies = 今すぐ物資を投下
 sim-no-target = 目標なし
 sim-no-target-designated = 目標が指定されていない
 sim-bay-closed = ベイ閉鎖中
+sim-ramp-closed = ランプ閉鎖中
 sim-insufficient-altitude = 高度不足
 sim-below-burst-altitude = 散布高度未満 ({ $feet } ft)
 sim-fuel-transfer = 燃料移送

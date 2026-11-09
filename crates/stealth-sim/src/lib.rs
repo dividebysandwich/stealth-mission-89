@@ -444,6 +444,7 @@ impl Sim {
                 breakup_frames: 0,
                 irj_heat: 0,
                 door_anim: 0,
+                ramp: 0,
                 bay_req: false,
                 bay_pending: false,
                 hardpoints: Vec::new(),
@@ -1282,6 +1283,13 @@ impl Sim {
     /// Door animation 0 (closed) .. 2 (open).
     pub fn bay_door_anim(&self) -> i32 {
         self.pl.door_anim
+    }
+
+    /// The C-5's cargo ramp: 0 shut .. 1 down, and whether it is on its way down (else up or
+    /// still).
+    pub fn ramp(&self) -> (f32, bool) {
+        let down = (crate::weapons::RAMP_SECS * self.fs).max(1);
+        (self.pl.ramp as f32 / down as f32, self.pl.bay_req && self.pl.ramp < down)
     }
 
     pub fn ecm(&self) -> bool {

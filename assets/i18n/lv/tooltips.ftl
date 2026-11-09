@@ -132,6 +132,7 @@ tip-cmd-harm = HARM mērķēšana
 tip-cmd-gm = Zemes kartēšanas radars (GM)
 tip-cmd-eng = Dzinēji un degviela (ENG)
 tip-cmd-rcs = Radara paraksts (RCS)
+tip-cmd-cgo = Krava, rampa un nomešana (CGO)
 tip-cmd-format-row = Formāts; vēlreiz: formātu izvēlne
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Karte

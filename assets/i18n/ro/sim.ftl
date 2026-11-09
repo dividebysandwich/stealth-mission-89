@@ -26,6 +26,7 @@ sim-drop-supplies = Lansați proviziile acum
 sim-no-target = Nicio țintă
 sim-no-target-designated = Nicio țintă desemnată
 sim-bay-closed = Soută închisă
+sim-ramp-closed = Rampă închisă
 sim-insufficient-altitude = Altitudine insuficientă
 sim-below-burst-altitude = Sub altitudinea de deschidere ({ $feet } ft)
 sim-fuel-transfer = Transfer de combustibil

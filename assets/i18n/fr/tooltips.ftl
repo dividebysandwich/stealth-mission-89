@@ -132,6 +132,7 @@ tip-cmd-harm = Ciblage HARM
 tip-cmd-gm = Radar de cartographie du sol (GM)
 tip-cmd-eng = Moteurs et carburant (ENG)
 tip-cmd-rcs = Signature radar (RCS)
+tip-cmd-cgo = Fret, rampe et largage (CGO)
 tip-cmd-format-row = Format ; à nouveau : menu des formats
 tip-cmd-tgp = Nacelle de désignation (TGP)
 tip-cmd-map = Carte

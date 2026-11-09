@@ -132,6 +132,7 @@ tip-cmd-harm = HARM ciljanje
 tip-cmd-gm = Radar za kartiranje tla (GM)
 tip-cmd-eng = Motori i gorivo (ENG)
 tip-cmd-rcs = Radarski potpis (RCS)
+tip-cmd-cgo = Teret, rampa i izbacivanje (CGO)
 tip-cmd-format-row = Format; ponovno: izbornik formata
 tip-cmd-tgp = Ciljnički pod (TGP)
 tip-cmd-map = Karta

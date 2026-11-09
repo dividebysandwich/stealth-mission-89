@@ -278,6 +278,45 @@ pub struct HudCues {
     /// Missile selected with a target locked (AG: air-to-ground, AA: air-to-air): its launch
     /// zone.
     pub launch_zone: Option<LaunchZoneCue>,
+    /// The cargo jet's hold, ramp and airdrop (the C-5's: its HUD's drop cues, the cargo page).
+    pub drop: Option<DropCue>,
+}
+
+/// The C-5's cargo and airdrop: the ramp, what is in the hold, and while a drop zone is still to
+/// supply, where a pallet released now comes down and when to release.
+#[derive(Debug, Clone, Default)]
+pub struct DropCue {
+    /// The ramp: 0 up .. 1 down (the pallets go only with it down), and whether it is going
+    /// down.
+    pub ramp: f32,
+    pub lowering: bool,
+    /// Airdrop pallets in the hold, of the hold's `capacity`.
+    pub pallets: u32,
+    pub capacity: u32,
+    /// Seconds since the last pallet went out over the ramp (its animation on the cargo page).
+    pub since_release: Option<f32>,
+    /// A campaign cargo run's load (one pallet a line) and the base it is for.
+    pub manifest: Vec<String>,
+    pub destination: Option<String>,
+    /// The drop zone (direction from the eye, aircraft frame) and its ground range (km).
+    pub zone_dir: Option<Vec3>,
+    pub zone_km: Option<f32>,
+    /// Where a pallet released now lands (direction from the eye), its time of fall (s).
+    pub impact_dir: Option<Vec3>,
+    pub fall_secs: f32,
+    /// Seconds to the computed air release point (negative past it); None without a zone.
+    pub release_secs: Option<f32>,
+    /// Metres the pallet released now lands off the drop zone's track (positive: right).
+    pub cross_m: Option<f32>,
+    /// A pallet released now lands within the drop zone.
+    pub in_zone: bool,
+}
+
+impl DropCue {
+    /// The jump light: green with the ramp down and a pallet released now landing in the zone.
+    pub fn green(&self) -> bool {
+        self.ramp >= 1.0 && self.in_zone && self.pallets > 0
+    }
 }
 
 /// Dynamic launch zone of the selected missile against the locked target

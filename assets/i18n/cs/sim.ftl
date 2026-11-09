@@ -25,6 +25,7 @@ sim-drop-supplies = Shoďte zásoby teď
 sim-no-target = Žádný cíl
 sim-no-target-designated = Žádný cíl neoznačen
 sim-bay-closed = Šachta zavřena
+sim-ramp-closed = Rampa zavřena
 sim-insufficient-altitude = Nedostatečná výška
 sim-below-burst-altitude = Pod výškou otevření ({ $feet } ft)
 sim-fuel-transfer = Přečerpávání paliva

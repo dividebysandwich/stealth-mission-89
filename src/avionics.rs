@@ -83,6 +83,8 @@ pub enum Format {
     Eng,
     /// Our radar signature among the radars painting us (`draw_rcs`).
     Rcs,
+    /// The cargo jet's hold and ramp, and the airdrop (`crate::cargo_page`).
+    Cgo,
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -101,9 +103,17 @@ pub const RADAR_FORMATS: [Format; 5] =
 pub const FOURTH_FORMATS: [Format; 5] =
     [Format::Eng, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
 
+/// The cargo jet's rows: the cargo page instead of the HARM display, the centre MFD's first.
+pub const CARGO_FORMATS: [Format; 5] =
+    [Format::Hsd, Format::Cgo, Format::Tgp, Format::Map, Format::Sms];
+pub const CARGO_THIRD_FORMATS: [Format; 5] =
+    [Format::Cgo, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
+pub const CARGO_FOURTH_FORMATS: [Format; 5] =
+    [Format::Eng, Format::Cgo, Format::Hsi, Format::Hsd, Format::Map];
+
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
-/// the radar).
-pub const ALL_FORMATS: [Format; 10] = [
+/// the radar, the cargo page only on the cargo jet): an aircraft has ten at most.
+pub const ALL_FORMATS: [Format; 11] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -114,12 +124,16 @@ pub const ALL_FORMATS: [Format; 10] = [
     Format::Fcr,
     Format::Eng,
     Format::Rcs,
+    Format::Cgo,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
-/// radar).
-pub fn formats(side: MfdSide, radar: bool) -> [Format; 5] {
+/// radar; `cargo`: it is the cargo jet).
+pub fn formats(side: MfdSide, radar: bool, cargo: bool) -> [Format; 5] {
     match side {
+        MfdSide::Third if cargo => CARGO_THIRD_FORMATS,
+        MfdSide::Fourth if cargo => CARGO_FOURTH_FORMATS,
+        _ if cargo => CARGO_FORMATS,
         MfdSide::Third => THIRD_FORMATS,
         MfdSide::Fourth => FOURTH_FORMATS,
         MfdSide::Left if radar => RADAR_FORMATS,
@@ -140,6 +154,7 @@ impl Format {
             Format::Fcr => "FCR",
             Format::Eng => "ENG",
             Format::Rcs => "RCS",
+            Format::Cgo => "CGO",
         }
     }
 
@@ -162,7 +177,8 @@ impl Format {
             | Format::Gm
             | Format::Fcr
             | Format::Eng
-            | Format::Rcs => Action::Maps,
+            | Format::Rcs
+            | Format::Cgo => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -242,6 +258,8 @@ pub struct AvionicsState {
     pub radar: bool,
     /// The aircraft shows its own radar signature (the RCS format: the stealth types).
     pub rcs: bool,
+    /// The aircraft is the cargo jet (the CGO format).
+    pub cargo: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
     pub gm_range: usize,
@@ -579,6 +597,7 @@ impl Default for AvionicsState {
             sms_ord: true,
             radar: false,
             rcs: false,
+            cargo: false,
             aircraft: Default::default(),
             gm_range: 2,
             radar_standby: false,
@@ -677,7 +696,7 @@ impl AvionicsState {
 
     /// The formats on an MFD's bottom bezel buttons.
     pub fn formats(&self, side: MfdSide) -> [Format; 5] {
-        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar))
+        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar, self.cargo))
     }
 
     /// The formats the format menu offers: all of them, the radar's with the radar only, the
@@ -688,7 +707,7 @@ impl AvionicsState {
 
     /// The aircraft has format `f`.
     pub fn has(&self, f: Format) -> bool {
-        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs)
+        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs) && (f != Format::Cgo || self.cargo)
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -734,6 +753,16 @@ impl AvionicsState {
         let old = self.clone();
         self.rcs = rcs;
         self.refit(&old);
+    }
+
+    /// The aircraft changed to the cargo jet or from it: as `set_radar`, its rows its own.
+    pub fn set_cargo(&mut self, cargo: bool) {
+        let old = self.clone();
+        self.cargo = cargo;
+        self.refit(&old);
+        if cargo {
+            self.rows = [None; 4];
+        }
     }
 
     /// After `set_radar` or `set_rcs`: the formats this aircraft lacks leave the rows and the
@@ -1126,6 +1155,8 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Fcr, 16) => (FCR_EL_LABELS[(av.fcr_el + FCR_EL_MAX) as usize], Readout, false),
         (Format::Fcr, 17) => ("EL-", Cmd(MfdCmd::FcrElevation(-1)), false),
         (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
+        // The cargo page: the ramp up or down (the bay doors' key).
+        (Format::Cgo, 0) => ("RAMP", OsbFn::Action(crate::input::Action::BayDoors), false),
         (Format::Rcs, 1) => ("RNG-", Cmd(MfdCmd::RcsRange(-1)), false),
         (Format::Rcs, 2) => (RCS_RANGE_LABELS[av.rcs_range], Readout, false),
         (Format::Rcs, 3) => ("RNG+", Cmd(MfdCmd::RcsRange(1)), false),
@@ -1218,6 +1249,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Fcr => draw_fcr(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
         Format::Rcs => draw_rcs_page(p, c),
+        Format::Cgo => crate::cargo_page::draw(c, p.cues.drop.as_ref(), crate::hud::blink(&p.time)),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
@@ -3846,7 +3878,11 @@ mod tests {
     #[test]
     fn every_button_on_every_format() {
         for side in [MfdSide::Left, MfdSide::Third] {
-            for f in formats(side, true).into_iter().chain(formats(side, false)) {
+            for f in formats(side, true, false)
+                .into_iter()
+                .chain(formats(side, false, false))
+                .chain(formats(side, false, true))
+            {
                 for (way, ord) in [(false, false), (true, true)] {
                     let mut s = MfdState { modern: true, ..default() };
                     s.av.set_mfds(3);

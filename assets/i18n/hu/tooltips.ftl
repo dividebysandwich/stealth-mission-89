@@ -133,6 +133,7 @@ tip-cmd-harm = HARM célzás
 tip-cmd-gm = Földfelszín-térképező radar (GM)
 tip-cmd-eng = Hajtóművek és üzemanyag (ENG)
 tip-cmd-rcs = Radarjel (RCS)
+tip-cmd-cgo = Rakomány, rámpa és ledobás (CGO)
 tip-cmd-format-row = Formátum; újra: formátummenü
 tip-cmd-tgp = Célzópod (TGP)
 tip-cmd-map = Térkép

@@ -132,6 +132,7 @@ tip-cmd-harm = Celowanie HARM
 tip-cmd-gm = Radar mapowania terenu (GM)
 tip-cmd-eng = Silniki i paliwo (ENG)
 tip-cmd-rcs = Sygnatura radarowa (RCS)
+tip-cmd-cgo = Ładunek, rampa i zrzut (CGO)
 tip-cmd-format-row = Format; ponownie: menu formatów
 tip-cmd-tgp = Zasobnik celowniczy (TGP)
 tip-cmd-map = Mapa

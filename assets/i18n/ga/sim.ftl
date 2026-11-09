@@ -26,6 +26,7 @@ sim-drop-supplies = Scaoil na soláthairtí anois
 sim-no-target = Gan sprioc
 sim-no-target-designated = Níor ainmníodh sprioc
 sim-bay-closed = Bá dúnta
+sim-ramp-closed = Rampa dúnta
 sim-insufficient-altitude = Airde easnamhach
 sim-below-burst-altitude = Faoi bhun airde pléasctha ({ $feet } ft)
 sim-fuel-transfer = Aistriú breosla

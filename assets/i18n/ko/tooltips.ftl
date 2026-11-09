@@ -132,6 +132,7 @@ tip-cmd-harm = HARM 표적 지정
 tip-cmd-gm = 지상 매핑 레이더 (GM)
 tip-cmd-eng = 엔진 및 연료 (ENG)
 tip-cmd-rcs = 레이더 신호 (RCS)
+tip-cmd-cgo = 화물, 램프와 공중 투하 (CGO)
 tip-cmd-format-row = 포맷, 다시 누르면 포맷 메뉴
 tip-cmd-tgp = 타기팅 포드
 tip-cmd-map = 지도

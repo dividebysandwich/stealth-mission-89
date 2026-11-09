@@ -126,7 +126,11 @@ impl crate::pilot::Pilot {
     /// The stealth types' pose for [`aspect_factor`]: the F-22A and the RAH-66, and the F-117A
     /// in a campaign (the classic missions keep its classic return); None for the others.
     pub(crate) fn pose(&self, campaign: bool) -> Option<Pose> {
-        let f117 = !self.lockheed && !self.external_stores && !self.helicopter && !self.raptor;
+        let f117 = !self.lockheed
+            && !self.external_stores
+            && !self.helicopter
+            && !self.raptor
+            && !self.galaxy;
         (self.raptor || self.comanche || (campaign && f117)).then(|| {
             let rad = |b: i32| s16(b) as f32 * std::f32::consts::PI / 32768.0;
             Pose {

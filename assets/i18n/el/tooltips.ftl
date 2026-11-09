@@ -132,6 +132,7 @@ tip-cmd-harm = Στόχευση HARM
 tip-cmd-gm = Ραντάρ χαρτογράφησης εδάφους (GM)
 tip-cmd-eng = Κινητήρες και καύσιμο (ENG)
 tip-cmd-rcs = Ίχνος ραντάρ (RCS)
+tip-cmd-cgo = Φορτίο, ράμπα και ρίψη (CGO)
 tip-cmd-format-row = Μορφή· ξανά: μενού μορφών
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Χάρτης

@@ -133,6 +133,7 @@ tip-cmd-harm = HARM taikinių parinkimas
 tip-cmd-gm = Žemės kartografavimo radaras (GM)
 tip-cmd-eng = Varikliai ir degalai (ENG)
 tip-cmd-rcs = Radaro pėdsakas (RCS)
+tip-cmd-cgo = Krovinys, rampa ir numetimas (CGO)
 tip-cmd-format-row = Formatas; dar kartą: formatų meniu
 tip-cmd-tgp = Taikinio žymėjimo konteineris (TGP)
 tip-cmd-map = Žemėlapis

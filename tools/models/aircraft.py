@@ -1518,6 +1518,19 @@ C5_FIN_FAIRING = [(-19.2, 4.30, 0.05, 0.05), (-20.57, 4.25, 0.35, 0.39), (-22.07
                   (-23.58, 4.10, 0.70, 0.66), (-25.08, 3.95, 0.72, 0.69), (-26.59, 3.75, 0.70, 0.70),
                   (-28.09, 3.50, 0.60, 0.59), (-29.60, 3.10, 0.35, 0.27), (-30.00, 2.95, 0.05, 0.05)]
 C5_FLAP_SLOT = 29
+# The aft cargo opening: in the side view (y, z) and seen from ahead (x, z); the skin there is
+# the shut ramp and petal doors (state slot 8: 0 shut, 1 moving, 2 down for an airdrop). The
+# ramp hinged at the hold floor's end, its half width and length; the petal doors from the
+# ramp's end aft; the tail lined inside from to.
+C5_HATCH_SIDE = [(-9.6, -6.0), (-9.6, -3.05), (-24.5, 1.35), (-24.5, -6.0)]
+C5_HATCH_FRONT = [(-2.85, -6.0), (2.85, -6.0), (2.85, 3.0), (-2.85, 3.0)]
+C5_HATCH_Y = (-9.6, -24.5)
+C5_RAMP_HINGE = (-9.8, -3.25)
+C5_RAMP_HALF_WIDTH = 2.85
+C5_RAMP_LENGTH = 7.0
+C5_PETALS = (-16.8, -24.0)
+C5_LINER = (-2.0, -32.4)
+C5_HOLD_END = -4.0
 C5_ANHEDRAL = math.tan(math.radians(5.2))
 # The wing's plan (x out from the centreline): leading edge, flap hinge line, trailing edge.
 C5_ROOT_X = 4.18
@@ -1566,10 +1579,15 @@ def c5_ring(y, top, belly, hw):
 
 
 def c5_fuselage():
+    """The fuselage's skin with the windscreen cut into it, and the skin over the aft cargo
+    opening apart (the shut ramp and doors, `_s8v0`); the tail lined inside where the opening
+    shows into it."""
     rings = [[v3(p) for p in c5_ring(*s)] for s in C5_BODY]
     windows = c5_windows()
+    hatch_outline = [[("side", C5_HATCH_SIDE), ("front", C5_HATCH_FRONT)]]
     lo, hi = C5_SCREEN_Z
     g = Geo()
+    hatch = Geo()
     m = len(rings[0])
     for i in range(len(rings) - 1):
         a, b = rings[i], rings[i + 1]
@@ -1585,12 +1603,98 @@ def c5_fuselage():
                     glass, body = cut(t, windows)
                 else:
                     glass, body = [], [t]
+                door = []
+                if C5_HATCH_Y[1] <= max(p.y for p in t) and min(p.y for p in t) <= C5_HATCH_Y[0]:
+                    pieces = []
+                    for piece in body:
+                        d, rest = cut(piece, hatch_outline)
+                        door += d
+                        pieces += rest
+                    body = pieces
                 for piece in glass:
                     if area(piece) > 1e-6:
                         g.face(piece, CANOPY, mid)
                 for piece in body:
                     if area(piece) > 1e-6:
                         g.face(piece, C5_GREY, mid)
+                for piece in door:
+                    if area(piece) > 1e-6:
+                        hatch.face(piece, C5_GREY, mid)
+                # The tail's inside, dark, where the open ramp shows into it.
+                if C5_LINER[1] <= max(p.y for p in t) and min(p.y for p in t) <= C5_LINER[0]:
+                    n = mklib.normal(t)
+                    c = sum(t, Vector()) / 3
+                    g.face(list(reversed(t)) if n.dot(c - mid) > 0 else list(t), DARK)
+    return g, hatch
+
+
+def c5_station(y):
+    """(top, belly, half width) of the fuselage at station y."""
+    for (ya, ta, ba, wa), (yb, tb, bb, wb) in zip(C5_BODY, C5_BODY[1:]):
+        if yb <= y <= ya:
+            u = (ya - y) / (ya - yb)
+            return ta + (tb - ta) * u, ba + (bb - ba) * u, wa + (wb - wa) * u
+    return C5_BODY[-1][1:]
+
+
+def c5_side_z(y, x):
+    """Height of the skin's lower half where it is `x` out from the centre line, at station y."""
+    top, belly, hw = c5_station(y)
+    section = c5_section(y)
+    for (t0, f0), (t1, f1) in zip(section, section[1:]):
+        if f0 * hw <= x <= f1 * hw:
+            return belly + (t0 + (t1 - t0) * (x - f0 * hw) / max((f1 - f0) * hw, 1e-6)) * (top - belly)
+    return belly
+
+
+def c5_ramp(state):
+    """The aft cargo opening's ramp and petal doors, half down (`state` 1) or down for an airdrop
+    (2): the ramp hinged at the hold floor's end, the petal doors swung out at the opening's
+    sides, the hold's floor and walls inside."""
+    g = Geo()
+    hy, hz = C5_RAMP_HINGE
+    w, length, thick = C5_RAMP_HALF_WIDTH, C5_RAMP_LENGTH, 0.22
+    tilt = math.radians(9.0 if state == 1 else -1.5)
+    aft = Vector((0, -math.cos(tilt), math.sin(tilt)))
+    up = Vector((0, math.sin(tilt), math.cos(tilt)))
+    h = Vector((0, hy, hz))
+    e = h + aft * length
+    corners = []
+    for p0 in (h, e):
+        for dz in (0.0, -thick):
+            corners.append(p0 + up * dz)
+    a, b = corners[1], corners[3]
+    top0, top1 = corners[0], corners[2]
+    box = [Vector((-w, a.y, a.z)), Vector((w, a.y, a.z)), Vector((w, b.y, b.z)), Vector((-w, b.y, b.z)),
+           Vector((-w, top0.y, top0.z)), Vector((w, top0.y, top0.z)), Vector((w, top1.y, top1.z)), Vector((-w, top1.y, top1.z))]
+    g.add(hexa(box, C5_GREY))
+    # Its treads, the toes at its end.
+    for k in range(1, 7):
+        p = h + aft * (length * k / 7) + up * 0.01
+        g.line((-w + 0.1, p.y, p.z), (w - 0.1, p.y, p.z), BLACK)
+    for s in (-1, 1):
+        g.face2([(s * (w - 0.4), e.y, e.z), (s * (w - 1.0), e.y, e.z),
+                 (s * (w - 1.0), e.y - 0.7, e.z - 0.15), (s * (w - 0.4), e.y - 0.7, e.z - 0.15)], GREY_D)
+    # The hold's floor and walls, seen through the opening.
+    fz = hz + 0.01
+    g.face([(-w, hy, fz), (w, hy, fz), (w, hy + 14.0, fz), (-w, hy + 14.0, fz)], GREY_D, (0, hy + 7.0, fz - 1.0))
+    # A bulkhead across the hold ahead of the opening: the empty fuselage forward of it.
+    top, belly, hw = c5_station(C5_HOLD_END)
+    ring_pts = c5_ring(C5_HOLD_END, top - 0.05, belly + 0.05, hw - 0.05)
+    g.face(ring_pts, DARK, (0, C5_HOLD_END + 1.0, (top + belly) / 2))
+    # The petal doors: hinged along the opening's sides aft of the ramp, swung out.
+    swing = math.radians(45.0 if state == 1 else 80.0)
+    y0, y1 = C5_PETALS
+    for s in (-1, 1):
+        x = s * (w + 0.05)
+        p0 = Vector((x, y0, c5_side_z(y0, w)))
+        p1 = Vector((x, y1, c5_side_z(y1, w)))
+        span = w * 1.05
+        out = Vector((s * math.sin(math.pi / 2 - swing) * 0.0 + s * (1 - math.cos(swing)) * 0.4, 0, -math.sin(swing)))
+        inward = Vector((-s * math.cos(swing), 0, -math.sin(swing) * 0.15))
+        q0 = p0 + (out * span) + inward * 0.0
+        q1 = p1 + (out * span * 0.8)
+        g.face2([p0, p1, q1, q0], C5_GREY)
     return g
 
 
@@ -1727,7 +1831,7 @@ def c5_gear():
 
 
 def c5():
-    g = c5_fuselage()
+    g, hatch = c5_fuselage()
     p = C5_GREY
     # The fairings over the wing's roots along the fuselage's shoulders, the main gear's
     # sponsons below them, the nose gear's blister under the flight deck.
@@ -1773,7 +1877,9 @@ def c5():
             parts.append((geo, pivot, C5_FLAP_SLOT, 1, rot))
     g.add(c5_seams())
     tip = (34.0, -3.6, c5_wing_z(34.0))
-    return Craft(g, (-tip[0], tip[1], tip[2]), tip, [(0, -37.8, 13.0)], gear=c5_gear(), parts=parts)
+    groups = [(((8, 0),), hatch), (((8, 1),), c5_ramp(1)), (((8, 2),), c5_ramp(2))]
+    return Craft(g, (-tip[0], tip[1], tip[2]), tip, [(0, -37.8, 13.0)], gear=c5_gear(), parts=parts,
+                 groups=groups)
 
 
 def tu95():

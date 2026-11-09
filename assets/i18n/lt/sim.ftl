@@ -26,6 +26,7 @@ sim-drop-supplies = Numeskite atsargas dabar
 sim-no-target = Nėra taikinio
 sim-no-target-designated = Taikinys nenurodytas
 sim-bay-closed = Skyrius uždarytas
+sim-ramp-closed = Rampa uždaryta
 sim-insufficient-altitude = Per mažas aukštis
 sim-below-burst-altitude = Žemiau atsidarymo aukščio ({ $feet } ft)
 sim-fuel-transfer = Kuro perpylimas

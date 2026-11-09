@@ -1319,7 +1319,12 @@ const ESCORT_REACH: i32 = 512;
 type ZoneKey = (Option<HudMode>, Option<usize>, Option<usize>, Option<u8>, Option<usize>, bool);
 
 /// Publishes the simulation state into the cockpit and the flight model (every frame).
-fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Outputs) {
+fn publish(
+    mut combat: ResMut<Combat>,
+    mut zone: Local<ZoneDisplay>,
+    mut drops: Local<DropWatch>,
+    out: Outputs,
+) {
     let o = combat.sim.objectives();
     let waypoint_changed = o.waypoint != combat.sim_waypoint;
     combat.sim_waypoint = o.waypoint;
@@ -1346,6 +1351,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         zone.found(found, fresh);
     }
     let dt = out.time.delta_secs();
+    let wall = out.time.elapsed_secs_f64();
     zone.ease(dt);
     // A radar in standby adds nothing to the friendly side's air picture.
     let radar_off = out.mfd.modern && out.mfd.av.radar_off();
@@ -1978,7 +1984,107 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         }
     }
     *cam = info;
+    if settings.aircraft.airlifter() {
+        let run = campaign.as_ref().and_then(|c| {
+            let st = c.state();
+            let r = st.flown_cargo(c.me)?;
+            let to = st.site(r.to).map(|s| s.name.clone());
+            let lines = r.load.iter().map(|&(m, n)| format!("{n} {}", m.name().tr())).collect();
+            Some((lines, to))
+        });
+        new_cues.drop = Some(drop_cue(&a, pos, eye, sim, &mut drops, wall, run));
+    }
     *cues = new_cues;
+}
+
+/// Watches the C-5's pallets go: how many it had, when the last one went.
+#[derive(Default)]
+struct DropWatch {
+    pallets: u32,
+    released: Option<f64>,
+}
+
+/// The airdrop's drop zone: what a pallet released within this of it (map units) supplies
+/// (`stealth_sim` missiles.rs, the supply drop's rule).
+const DROP_RADIUS_MU: f64 = 256.0;
+
+/// The C-5's cargo and airdrop (`crate::hud::DropCue`): the ramp and the pallets from the
+/// simulation, and on an airdrop the drop zone (the first airdrop objective still open) with
+/// the release solution of a pallet (a supply pod under its chute, `stealth_sim::ballistics`
+/// as the simulation drops it): where one released now lands, the time to the release point
+/// and whether it lands in the zone.
+fn drop_cue(
+    a: &Aircraft,
+    pos: &WorldPos,
+    eye: Vec3,
+    sim: &stealth_sim::Sim,
+    watch: &mut DropWatch,
+    now: f64,
+    run: Option<(Vec<String>, Option<String>)>,
+) -> crate::hud::DropCue {
+    use stealth_sim::ballistics;
+    let (ramp, lowering) = sim.ramp();
+    let pallets: u32 = sim
+        .bays()
+        .0
+        .iter()
+        .filter(|b| b.0 == stealth_sim::SPECIAL_EQUIPMENT)
+        .map(|b| b.1.max(0) as u32)
+        .sum();
+    if pallets < watch.pallets {
+        watch.released = Some(now);
+    }
+    watch.pallets = pallets;
+    let (manifest, destination) = run.unwrap_or_default();
+    let mut cue = crate::hud::DropCue {
+        ramp,
+        lowering,
+        pallets,
+        capacity: stealth_mission::airlift::PALLET_COUNT as u32,
+        since_release: watch.released.map(|t| (now - t) as f32).filter(|&s| s >= 0.0),
+        manifest,
+        destination,
+        ..Default::default()
+    };
+    let o = sim.objectives();
+    let open = |k: usize| if k == 0 { !o.primary_done } else { !o.secondary_done };
+    let Some(zone) = sim
+        .target_slots()
+        .iter()
+        .enumerate()
+        .find(|&(k, t)| t.mission_type == 3 && open(k))
+        .and_then(|(_, t)| sim.objects().get(t.object.max(0) as usize).copied())
+    else {
+        return cue;
+    };
+    let (te, tn) = map_wu(zone.x, zone.y);
+    let (east, north, _) = bevy_to_wu(pos.0);
+    cue.zone_dir = direction_cockpit(a, pos, eye, te, tn, 0.0);
+    cue.zone_km = Some(((te - east).hypot(tn - north) * WU / 1000.0) as f32);
+    let Some(k) = ballistics::drag(38, sim.opts.fix_classic_bugs) else { return cue };
+    let heading = to_bam(a.euler().0) as i32;
+    let v = ballistics::release_velocity(heading, a.velocity as i32, a.climb_rate as i32);
+    let Some((d, fall)) =
+        ballistics::impact(v, k, a.altitude as f64 - ballistics::RELEASE_DROP, 1.0 / FS as f64)
+    else {
+        return cue;
+    };
+    // The offset is east and south.
+    let (ie, inn) = (east + d[0], north - d[1]);
+    cue.impact_dir = direction_cockpit(a, pos, eye, ie, inn, 0.0);
+    cue.fall_secs = fall as f32;
+    let vh = v[0].hypot(v[1]);
+    if vh > 1.0 {
+        // Along the track (east, north) and across it (right).
+        let (te_rel, tn_rel) = (te - ie, tn - inn);
+        let (ux, uy) = (v[0] / vh, -v[1] / vh);
+        let along = te_rel * ux + tn_rel * uy;
+        let across = te_rel * uy - tn_rel * ux;
+        cue.release_secs = Some((along / vh) as f32);
+        cue.cross_m = Some((-across * WU) as f32);
+    }
+    cue.in_zone = (te - ie).hypot(tn - inn) < DROP_RADIUS_MU * 32.0;
+    cue
 }
 
 /// Gun pipper: the direction in which the target (position, velocity; Bevy frame) has to be

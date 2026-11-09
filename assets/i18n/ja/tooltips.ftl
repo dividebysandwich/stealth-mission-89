@@ -133,6 +133,7 @@ tip-cmd-harm = HARM ターゲティング
 tip-cmd-gm = 地上マッピングレーダー（GM）
 tip-cmd-eng = エンジンと燃料（ENG）
 tip-cmd-rcs = レーダー反射（RCS）
+tip-cmd-cgo = 貨物、ランプと空中投下（CGO）
 tip-cmd-format-row = フォーマット、再度押すとフォーマットメニュー
 tip-cmd-tgp = ターゲティングポッド（TGP）
 tip-cmd-map = マップ

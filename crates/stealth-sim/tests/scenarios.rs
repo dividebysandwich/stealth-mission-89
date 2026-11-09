@@ -3488,7 +3488,7 @@ fn cargo_jet_drops_and_delivers() {
     };
     let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x2345)).unwrap();
     stealth_mission::airlift::for_transport(&mut m, &d.gdata);
-    let opts = SimOptions { galaxy: true, external_stores: true, ..Default::default() };
+    let opts = SimOptions { galaxy: true, ..Default::default() };
     let mut sim = Sim::with_options(&d.sim, &m, opts);
     assert!(!sim.has_gun());
     sim.set_training(true);
@@ -3496,9 +3496,26 @@ fn cargo_jet_drops_and_delivers() {
     sim.set_bay(0, 18, 4);
     sim.select_bay(0);
     let mut p = player_at(zone.x, zone.y + 10, 1000, 0, 150);
-    for _ in 0..4 {
+    // With the ramp up nothing goes.
+    p.cmd.fire = true;
+    let ev = sim.step(&p, 15);
+    assert!(ev.iter().any(|e| is_msg(e, "Ramp closed")), "{ev:?}");
+    p.cmd = Commands::default();
+    // The ramp goes down in its own time.
+    p.cmd.toggle_bay = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert!(sim.ramp().1, "on its way down");
+    for _ in 0..15 * 4 {
         sim.step(&p, 15);
     }
+    let (half, _) = sim.ramp();
+    assert!(half > 0.3 && half < 0.7 && !sim.bay_doors_open(), "ramp {half}");
+    for _ in 0..15 * 5 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.ramp(), (1.0, false));
+    assert!(sim.bay_doors_open());
     p.cmd.fire = true;
     let mut dropped = false;
     for _ in 0..15 * 30 {

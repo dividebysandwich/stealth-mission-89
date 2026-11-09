@@ -133,6 +133,7 @@ tip-cmd-harm = HARM-Zielerfassung
 tip-cmd-gm = Bodenkartierungsradar (GM)
 tip-cmd-eng = Triebwerke und Kraftstoff (ENG)
 tip-cmd-rcs = Radarsignatur (RCS)
+tip-cmd-cgo = Fracht, Rampe und Abwurf (CGO)
 tip-cmd-format-row = Format; erneut: Formatmenü
 tip-cmd-tgp = Zielbehälter (TGP)
 tip-cmd-map = Karte

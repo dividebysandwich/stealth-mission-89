@@ -133,6 +133,7 @@ tip-cmd-harm = Прицелване на HARM
 tip-cmd-gm = Радар за картографиране на земята (GM)
 tip-cmd-eng = Двигатели и гориво (ENG)
 tip-cmd-rcs = Радарна сигнатура (RCS)
+tip-cmd-cgo = Товар, рампа и десантиране (CGO)
 tip-cmd-format-row = Формат; отново: меню с формати
 tip-cmd-tgp = Контейнер за прицелване
 tip-cmd-map = Карта

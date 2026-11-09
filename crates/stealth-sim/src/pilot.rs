@@ -104,6 +104,10 @@ pub struct Pilot {
     pub(crate) irj_heat: i32,
     pub(crate) door_anim: i32,
     pub(crate) bay_req: bool,
+    /// The C-5's cargo ramp: frames lowered (0 shut .. `RAMP_SECS` seconds' worth, down for
+    /// an airdrop); it sets `door_anim` (shut, moving, down).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub(crate) ramp: i32,
     /// The RAH-66's doors: a missile fired with them shut waits for them to open.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) bay_pending: bool,

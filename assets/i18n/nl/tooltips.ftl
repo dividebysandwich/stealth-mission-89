@@ -133,6 +133,7 @@ tip-cmd-harm = HARM-doelaanwijzing
 tip-cmd-gm = Grondkarteringsradar (GM)
 tip-cmd-eng = Motoren en brandstof (ENG)
 tip-cmd-rcs = Radarsignatuur (RCS)
+tip-cmd-cgo = Vracht, laadklep en afworp (CGO)
 tip-cmd-format-row = Formaat; nogmaals: formaatmenu
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Kaart

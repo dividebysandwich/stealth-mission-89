@@ -784,9 +784,12 @@ fn reset_mfd(
     let mut av = crate::avionics::AvionicsState::default();
     av.radar = settings.aircraft.spec().ground_radar;
     av.rcs = settings.aircraft.rcs_page();
+    av.cargo = settings.aircraft.airlifter();
     av.aircraft = settings.aircraft;
-    // The bottom rows the pilot set up stay from flight to flight.
-    av.keep_rows(&state.av);
+    // The bottom rows the pilot set up stay from flight to flight (the cargo jet keeps its own).
+    if av.cargo == state.av.cargo {
+        av.keep_rows(&state.av);
+    }
     av.set_mfds(settings.cockpit().0.mfd_count());
     *state = MfdState {
         hires: settings.hires_displays(),
@@ -845,6 +848,10 @@ fn mfd_keys(
     let rcs = settings.aircraft.rcs_page();
     if state.av.rcs != rcs {
         state.av.set_rcs(rcs);
+    }
+    let cargo = settings.aircraft.airlifter();
+    if state.av.cargo != cargo {
+        state.av.set_cargo(cargo);
     }
     if state.av.aircraft != settings.aircraft {
         state.av.aircraft = settings.aircraft;
@@ -1557,6 +1564,8 @@ pub struct MfdParams<'w, 's> {
     pub cm: Res<'w, crate::panel::Countermeasures>,
     /// Our signature and the radar signals at us, and their history (the RCS page).
     pub emv: Res<'w, crate::panel::Emv>,
+    /// The cargo jet's hold, ramp and airdrop (the CGO page).
+    pub cues: Res<'w, crate::hud::HudCues>,
     pub threats: Res<'w, crate::mpd::ThreatHistory>,
 }
 

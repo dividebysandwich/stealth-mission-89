@@ -132,6 +132,7 @@ tip-cmd-harm = Spriocdhíriú HARM
 tip-cmd-gm = Radar mapála talún (GM)
 tip-cmd-eng = Innill agus breosla (ENG)
 tip-cmd-rcs = Síniú radair (RCS)
+tip-cmd-cgo = Lasta, rampa agus aerscaoileadh (CGO)
 tip-cmd-format-row = Formáid; arís: roghchlár formáidí
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Léarscáil

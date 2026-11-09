@@ -133,6 +133,7 @@ tip-cmd-harm = Designación HARM
 tip-cmd-gm = Radar de mapeo del terreno (GM)
 tip-cmd-eng = Motores y combustible (ENG)
 tip-cmd-rcs = Firma de radar (RCS)
+tip-cmd-cgo = Carga, rampa y lanzamiento (CGO)
 tip-cmd-format-row = Formato; otra vez: menú de formatos
 tip-cmd-tgp = Pod de designación (TGP)
 tip-cmd-map = Mapa

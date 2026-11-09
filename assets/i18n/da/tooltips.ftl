@@ -132,6 +132,7 @@ tip-cmd-harm = HARM-målsøgning
 tip-cmd-gm = Jordkortlægningsradar (GM)
 tip-cmd-eng = Motorer og brændstof (ENG)
 tip-cmd-rcs = Radarsignatur (RCS)
+tip-cmd-cgo = Last, rampe og nedkastning (CGO)
 tip-cmd-format-row = Format; igen: formatmenu
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Kort

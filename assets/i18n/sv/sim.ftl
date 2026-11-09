@@ -25,6 +25,7 @@ sim-drop-supplies = Fäll förnödenheter nu
 sim-no-target = Inget mål
 sim-no-target-designated = Inget mål utpekat
 sim-bay-closed = Bombutrymmet stängt
+sim-ramp-closed = Rampen stängd
 sim-insufficient-altitude = För låg höjd
 sim-below-burst-altitude = Under öppningshöjden ({ $feet } ft)
 sim-fuel-transfer = Bränsleöverföring

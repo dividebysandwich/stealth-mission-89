@@ -247,8 +247,10 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
 
     // Lower left: mode, stores, gun.
     let bomb = f.cues.bomb.filter(|_| st.mode == HudMode::Gnd);
+    let drop = f.cues.drop.as_ref().filter(|d| d.zone_dir.is_some() && d.pallets > 0);
     let mode = match st.mode {
         HudMode::Nav if f.ils.is_some() => "ILS",
+        _ if drop.is_some() => "DROP",
         HudMode::Nav => "NAV",
         HudMode::Air => "AA",
         HudMode::Gnd => match bomb {
@@ -279,8 +281,11 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         }
     }
 
-    // Lower right: steerpoint number, distance and time to go; with a bomb the release data.
-    if let Some(b) = bomb {
+    // Lower right: steerpoint number, distance and time to go; with a bomb the release data,
+    // on an airdrop the drop's.
+    if let Some(d) = drop {
+        drop_readouts(c, d);
+    } else if let Some(b) = bomb {
         bomb_readouts(c, &b);
     } else if let Some(s) = f.cues.sfw.filter(|_| st.mode == HudMode::Gnd) {
         sfw_readouts(c, &s);
@@ -308,6 +313,9 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         HudMode::Nav => {}
         HudMode::Air => air_to_air(c, f),
         HudMode::Gnd => air_to_ground(c, f, fpm, down),
+    }
+    if let Some(d) = &f.cues.drop {
+        airdrop(c, f, d, fpm, down);
     }
     gun_sight(c, f);
     if let Some((loc, gs)) = f.ils {
@@ -821,6 +829,92 @@ fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
     text(c, 1010.0, 418.0, state, Align::Right);
 }
 
+/// The airdrop's readouts in the lower right: the drop zone's range, the time to the release
+/// point, the pallets' time of fall, the pallets left.
+fn drop_readouts(c: &mut Canvas, d: &super::DropCue) {
+    text(c, 1010.0, 366.0, &format!("PLT {}", d.pallets), Align::Right);
+    text(c, 1010.0, 392.0, &format!("DZ {:.1}", d.zone_km.unwrap_or(0.0)), Align::Right);
+    let rel = match d.release_secs {
+        Some(s) if s < 0.0 => "REL PAST".to_string(),
+        Some(s) => format!("REL {}", min_sec(s)),
+        None => "REL --:--".to_string(),
+    };
+    text(c, 1010.0, 418.0, &rel, Align::Right);
+    text(c, 1010.0, 444.0, &format!("TOF {:.0}", d.fall_secs), Align::Right);
+}
+
+/// Seconds before the release point the jump light's warnings come up (the ramp still up).
+const DROP_WARN_SECS: f32 = 30.0;
+
+/// The airdrop (the C-5, in every HUD mode): the drop zone's diamond with its range, the
+/// azimuth steering line through it with the release cue sliding down to the flight path marker
+/// (the computed air release point: the pallets go when it reaches the marker), the impact point
+/// of a pallet released now (a ring with a cross), and over the marker the jump light: GREEN
+/// LIGHT with the ramp down and the pallets landing in the zone (DROP flashing at the release
+/// point), else what holds it back (the ramp up or moving). Without a drop zone only the ramp
+/// while it is not up.
+fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Vec2) {
+    let fld = field(f);
+    let light = Vec2::new(CX, fpm.y.min(fld.1.y) - 64.0).max(Vec2::new(CX, fld.0.y + 20.0));
+    let Some(zone) = d.zone_dir.filter(|_| d.pallets > 0) else {
+        if d.ramp > 0.0 {
+            let s = if d.ramp >= 1.0 { "RAMP DOWN" } else { "RAMP MOVING" };
+            small(c, light.x, light.y, s, Align::Centre);
+        }
+        return;
+    };
+    if let Some(p) = project(zone, f.scale) {
+        let q = p.clamp(fld.0, fld.1);
+        let r = 14.0;
+        c.polyline(
+            &[q + Vec2::new(0.0, -r), q + Vec2::new(r, 0.0), q + Vec2::new(0.0, r), q + Vec2::new(-r, 0.0), q + Vec2::new(0.0, -r)],
+            PEN,
+            INK,
+        );
+        small(c, q.x + r + 6.0, q.y - 6.0, "DZ", Align::Left);
+        if let Some(km) = d.zone_km {
+            small(c, q.x, q.y + r + 16.0, &format!("{km:.1}"), Align::Centre);
+        }
+        // The azimuth steering line through the drop zone, the release cue sliding down it.
+        if let Some((a, e)) = field_line(fld, q, down) {
+            c.stroke(a, e, THIN, INK);
+        }
+        if let Some(secs) = d.release_secs {
+            let base = q + down * (fpm - q).dot(down);
+            let mut cue = base - down * secs.max(0.0) * SOLUTION_PX_PER_S;
+            if let Some((a, e)) = field_line(fld, q, down) {
+                let top = if a.y < e.y { a } else { e };
+                if (cue - top).dot(down) < 0.0 {
+                    cue = top + down * 6.0;
+                }
+            }
+            let h = down.perp();
+            c.stroke(cue - h * 24.0, cue + h * 24.0, PEN * 1.3, INK);
+        }
+    }
+    // Where a pallet released now comes down.
+    if let Some(p) = d.impact_dir.and_then(|dir| project(dir, f.scale)).filter(|&p| inside(fld, p)) {
+        c.ring(p, 8.0, PEN, INK);
+        c.stroke(p - Vec2::X * 4.0, p + Vec2::X * 4.0, THIN, INK);
+        c.stroke(p - Vec2::Y * 4.0, p + Vec2::Y * 4.0, THIN, INK);
+    }
+    // The jump light.
+    let soon = d.release_secs.is_some_and(|s| s < DROP_WARN_SECS);
+    let msg = if d.green() {
+        let at = d.release_secs.is_some_and(|s| s.abs() < 1.5);
+        if at && f.blink { Some("DROP") } else if at { None } else { Some("GREEN LIGHT") }
+    } else if d.ramp > 0.0 && d.ramp < 1.0 {
+        Some("RAMP MOVING")
+    } else if d.ramp <= 0.0 && soon {
+        if f.blink { Some("RAMP UP") } else { None }
+    } else {
+        None
+    };
+    if let Some(m) = msg {
+        text(c, light.x, light.y, m, Align::Centre);
+    }
+}
+
 /// Pixels per second to the release the CCRP solution cue sits above the flight path marker.
 const SOLUTION_PX_PER_S: f32 = 10.0;
 
@@ -1160,6 +1254,43 @@ mod tests {
         let p = project(f.orientation.inverse() * f.path_dir, f.scale).unwrap();
         assert!((p.x - CX).abs() < 0.01);
         assert!((p.y - (CY + SCALE * 5f32.to_radians().tan())).abs() < 0.01);
+    }
+
+    /// The C-5's airdrop in NAV: the drop zone's diamond, the steering line and the release
+    /// cue, the impact point, the readouts; the jump light changes with the ramp.
+    #[test]
+    fn draws_the_airdrop() {
+        let pic = |f: &HudFrame| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, f);
+            c.px
+        };
+        let ink = |f: &HudFrame| pic(f).iter().filter(|&&p| p != 0).count();
+        let mut f = frame(HudMode::Nav);
+        f.blink = false;
+        let plain = ink(&f);
+        let mut d = crate::hud::DropCue {
+            pallets: 4,
+            capacity: 4,
+            zone_dir: Some(Vec3::new(0.03, -0.12, -1.0)),
+            zone_km: Some(6.0),
+            impact_dir: Some(Vec3::new(0.0, -0.25, -1.0)),
+            fall_secs: 14.0,
+            release_secs: Some(12.0),
+            cross_m: Some(40.0),
+            ..Default::default()
+        };
+        f.cues.drop = Some(d.clone());
+        let up = pic(&f);
+        assert!(up.iter().filter(|&&p| p != 0).count() > plain + 200, "drop cues");
+        d.ramp = 1.0;
+        d.in_zone = true;
+        assert!(d.green());
+        f.cues.drop = Some(d.clone());
+        assert_ne!(pic(&f), up, "green light");
+        // Without pallets or a zone only the ramp's state.
+        f.cues.drop = Some(crate::hud::DropCue { ramp: 0.0, ..Default::default() });
+        assert_eq!(ink(&f), plain);
     }
 
     /// A CCIP impact point far below the nose: the pipper waits on the fall line low on the

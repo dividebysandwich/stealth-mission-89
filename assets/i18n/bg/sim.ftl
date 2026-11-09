@@ -26,6 +26,7 @@ sim-drop-supplies = Пускайте припасите сега
 sim-no-target = Няма цел
 sim-no-target-designated = Няма определена цел
 sim-bay-closed = Отсекът е затворен
+sim-ramp-closed = Рампата е затворена
 sim-insufficient-altitude = Недостатъчна височина
 sim-below-burst-altitude = Под височината на отваряне ({ $feet } ft)
 sim-fuel-transfer = Прехвърляне на гориво

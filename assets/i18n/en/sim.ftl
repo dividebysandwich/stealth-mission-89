@@ -29,6 +29,7 @@ sim-drop-supplies = Drop supplies now
 sim-no-target = No target
 sim-no-target-designated = No target designated
 sim-bay-closed = Bay closed
+sim-ramp-closed = Ramp closed
 sim-insufficient-altitude = Insufficient Altitude
 sim-below-burst-altitude = Below burst altitude ({ $feet } ft)
 sim-fuel-transfer = Fuel transfer

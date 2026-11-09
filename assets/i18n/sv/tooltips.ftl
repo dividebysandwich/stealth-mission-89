@@ -132,6 +132,7 @@ tip-cmd-harm = HARM-målval
 tip-cmd-gm = Markkarteringsradar (GM)
 tip-cmd-eng = Motorer och bränsle (ENG)
 tip-cmd-rcs = Radarsignatur (RCS)
+tip-cmd-cgo = Last, ramp och fällning (CGO)
 tip-cmd-format-row = Format; igen: formatmeny
 tip-cmd-tgp = Målpod (TGP)
 tip-cmd-map = Karta

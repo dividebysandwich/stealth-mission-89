@@ -133,6 +133,7 @@ tip-cmd-harm = Targeting tal-HARM
 tip-cmd-gm = Radar tal-immappjar tal-art (GM)
 tip-cmd-eng = Magni u fjuwil (ENG)
 tip-cmd-rcs = Firma tar-radar (RCS)
+tip-cmd-cgo = Merkanzija, rampa u waqgħa mill-ajru (CGO)
 tip-cmd-format-row = Format; għal darb'oħra: menu tal-formati
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Mappa

@@ -132,6 +132,7 @@ tip-cmd-harm = Puntamento HARM
 tip-cmd-gm = Radar di mappatura del terreno (GM)
 tip-cmd-eng = Motori e carburante (ENG)
 tip-cmd-rcs = Traccia radar (RCS)
+tip-cmd-cgo = Carico, rampa e aviolancio (CGO)
 tip-cmd-format-row = Formato; di nuovo: menu dei formati
 tip-cmd-tgp = Pod di puntamento (TGP)
 tip-cmd-map = Mappa

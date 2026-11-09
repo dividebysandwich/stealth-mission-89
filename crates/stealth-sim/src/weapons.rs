@@ -7,6 +7,8 @@ use stealth_i18n::text;
 const NEAREST_WAIT: u8 = 8;
 /// Seconds the RAH-66's doors stay open after the last launch they opened for.
 const BAY_AUTO_CLOSE: i32 = 4;
+/// Seconds the C-5's cargo ramp takes to go down (or up).
+pub const RAMP_SECS: i32 = 8;
 /// Seconds a missile dropped off its pylon falls clear before its motor lights (the Maverick,
 /// the Harpoon, the Penguin; the others light theirs on the rail), and one ejected from the
 /// F-117A's bays (all of them, lest they fly through the fuselage).
@@ -365,7 +367,22 @@ impl Sim {
                 self.sound(0x1F, 1);
             }
         }
-        if self.pl.bay_req {
+        if self.pl.galaxy {
+            // The cargo ramp goes down and up slowly; the pallets go only with it down.
+            let down = RAMP_SECS * self.fs;
+            let r = &mut self.pl.ramp;
+            *r = if self.pl.bay_req { (*r + 1).min(down) } else { (*r - 1).max(0) };
+            self.pl.door_anim = match *r {
+                0 => 0,
+                r if r >= down => 2,
+                _ => 1,
+            };
+            if self.pl.ramp >= down {
+                self.pl.pflags |= pflags::BAY_OPEN;
+            } else {
+                self.pl.pflags &= !(pflags::BAY_OPEN | pflags::CAMERA_VIEW);
+            }
+        } else if self.pl.bay_req {
             if self.pl.door_anim == 2 {
                 self.pl.pflags |= pflags::BAY_OPEN;
             } else {
@@ -567,7 +584,7 @@ impl Sim {
                 return;
             }
             self.sound(0x20, 1);
-            self.msg(text!("sim-bay-closed"));
+            self.msg(if self.pl.galaxy { text!("sim-ramp-closed") } else { text!("sim-bay-closed") });
             return;
         }
         if self.pl.comanche && self.pl.bay_close > 0 {

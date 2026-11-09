@@ -149,6 +149,7 @@ tip-cmd-harm = HARM targeting
 tip-cmd-gm = Ground map radar (GM)
 tip-cmd-eng = Engines and fuel (ENG)
 tip-cmd-rcs = Radar signature (RCS)
+tip-cmd-cgo = Cargo, ramp and airdrop (CGO)
 tip-cmd-format-row = Format; press again for the format menu
 tip-cmd-tgp = Targeting pod
 tip-cmd-map = Map

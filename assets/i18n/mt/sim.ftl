@@ -26,6 +26,7 @@ sim-drop-supplies = Xaljar il-provvisti issa
 sim-no-target = L-ebda mira
 sim-no-target-designated = L-ebda mira ddeżinjata
 sim-bay-closed = Bay magħluq
+sim-ramp-closed = Ir-rampa magħluqa
 sim-insufficient-altitude = Altitudni insuffiċjenti
 sim-below-burst-altitude = Taħt l-altitudni tal-ftuħ ({ $feet } ft)
 sim-fuel-transfer = Trasferiment ta' fuel

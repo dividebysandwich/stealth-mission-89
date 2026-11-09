@@ -132,6 +132,7 @@ tip-cmd-harm = Țintire HARM
 tip-cmd-gm = Radar de cartografiere a solului (GM)
 tip-cmd-eng = Motoare și combustibil (ENG)
 tip-cmd-rcs = Amprentă radar (RCS)
+tip-cmd-cgo = Marfă, rampă și parașutare (CGO)
 tip-cmd-format-row = Format; din nou: meniul de formate
 tip-cmd-tgp = Nacelă de desemnare (TGP)
 tip-cmd-map = Hartă

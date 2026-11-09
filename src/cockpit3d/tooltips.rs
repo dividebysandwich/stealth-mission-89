@@ -308,6 +308,7 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Fcr => "tip-cmd-fcr",
             Format::Eng => "tip-cmd-eng",
             Format::Rcs => "tip-cmd-rcs",
+            Format::Cgo => "tip-cmd-cgo",
         },
         MfdCmd::Soi(_) => "tip-cmd-soi",
         MfdCmd::SwapSoi => "tip-cmd-swap-soi",

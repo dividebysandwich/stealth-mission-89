@@ -131,6 +131,7 @@ tip-cmd-harm = HARM 瞄准
 tip-cmd-gm = 地面测绘雷达（GM）
 tip-cmd-eng = 发动机与燃油（ENG）
 tip-cmd-rcs = 雷达信号（RCS）
+tip-cmd-cgo = 货物、坡道与空投（CGO）
 tip-cmd-format-row = 格式；再按一次：格式菜单
 tip-cmd-tgp = 瞄准吊舱（TGP）
 tip-cmd-map = 地图

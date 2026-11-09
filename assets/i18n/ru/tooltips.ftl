@@ -133,6 +133,7 @@ tip-cmd-harm = Целеуказание HARM
 tip-cmd-gm = РЛС картографирования земли (GM)
 tip-cmd-eng = Двигатели и топливо (ENG)
 tip-cmd-rcs = Радиолокационная заметность (RCS)
+tip-cmd-cgo = Груз, рампа и сброс (CGO)
 tip-cmd-format-row = Формат; повторно: меню форматов
 tip-cmd-tgp = Прицельный контейнер (TGP)
 tip-cmd-map = Карта

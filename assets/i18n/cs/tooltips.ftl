@@ -133,6 +133,7 @@ tip-cmd-harm = Zaměřování HARM
 tip-cmd-gm = Radar pro mapování terénu (GM)
 tip-cmd-eng = Motory a palivo (ENG)
 tip-cmd-rcs = Radarová stopa (RCS)
+tip-cmd-cgo = Náklad, rampa a shoz (CGO)
 tip-cmd-format-row = Formát; znovu: nabídka formátů
 tip-cmd-tgp = Zaměřovací kontejner (TGP)
 tip-cmd-map = Mapa

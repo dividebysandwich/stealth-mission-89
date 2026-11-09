@@ -132,6 +132,7 @@ tip-cmd-harm = HARM-maalinosoitus
 tip-cmd-gm = Maastokartoitustutka (GM)
 tip-cmd-eng = Moottorit ja polttoaine (ENG)
 tip-cmd-rcs = Tutkajälki (RCS)
+tip-cmd-cgo = Rahti, ramppi ja pudotus (CGO)
 tip-cmd-format-row = Formaatti; uudelleen: formaattivalikko
 tip-cmd-tgp = Tähtäinpodi (TGP)
 tip-cmd-map = Kartta
