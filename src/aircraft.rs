@@ -796,10 +796,13 @@ static C5: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: false,
     }),
-    cockpits: &[(PanelStyle::Ch47, "cockpit_ch47")],
+    cockpits: &[(PanelStyle::C5, "cockpit_c5")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
+    // As the A-10's: the symbology inside the overhead HUD's combiner of about the same angular
+    // size (x +-0.075, z -0.065 .. 0.045 at 0.32 m in front of the eye,
+    // tools/models/build_cockpit_c5.py).
     hud_scale: 1900.0,
     vr_hud_scale: 1900.0,
     // The cargo inside, but no bay doors to open: seen as stores outside would be.
