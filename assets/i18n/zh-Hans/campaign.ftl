@@ -182,6 +182,7 @@ ck-interdict = 遮断
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 补给
+ck-airlift = 空运
 
 ## 被拒绝的指令
 
@@ -292,6 +293,7 @@ brief-strike = { $place } 的机场。
 brief-interdict = { $place } 市：其物资库和工厂为敌军提供补给。
 brief-anti-ship = 近岸的一艘敌方舰船。
 brief-resupply = { $unit } 需要新的库存。{ $task }
+brief-airlift = { $base } 弹药耗尽: { $count } 发正在 { $from } 等候。
 brief-status = { $status }。{ $task }
 brief-task-recon = 拍摄目标：之后其防御一小时内为已知状态（发现距离加倍，雷达距离缩短）
 brief-task-sead = 摧毁守卫该地的 SAM 阵地和雷达
@@ -312,5 +314,8 @@ brief-task-heli-csar = 在被击落飞行员 200 m 内着陆，等待 30 秒让�
 brief-task-drones = 在攻击无人机俯冲撞击目标前将其击落：只要有一架突防，目标即被摧毁
 ce-logistics-uh60 = 后勤使用 UH-60 或 CH-47 飞行
 brief-task-logistics = 钩起机场跑道旁的货箱（在其上方 50 ft 以下悬停），运到新阵地的停机坪：在距停机坪 90 m 内放下
+brief-task-airlift = 载货起飞,飞到基地并在其跑道上停下卸货
 ce-ch47-only = CH-47 执行补给和后勤飞行
 ce-c5-only = C-5 执行空运任务
+ce-airlift-c5 = 空运任务由 C-5 执行
+ce-airlift-no-handover = 请亲自把货物运到基地

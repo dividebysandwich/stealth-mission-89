@@ -182,6 +182,7 @@ ck-interdict = INTERDIC.
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = REABAST.
+ck-airlift = TRANSP. AÉREO
 
 ## Órdenes rechazadas
 
@@ -292,6 +293,7 @@ brief-strike = El aeródromo de { $place }.
 brief-interdict = La ciudad de { $place }: sus almacenes y fábricas abastecen al enemigo.
 brief-anti-ship = Un buque enemigo frente a la costa.
 brief-resupply = { $unit }: necesita nuevas existencias. { $task }
+brief-airlift = { $base } se ha quedado sin munición: { $count } unidades esperan en { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fotografiar el objetivo: sus defensas quedan entonces localizadas (detectadas al doble de distancia, menor alcance de radar) durante una hora
 brief-task-sead = Destruir los emplazamientos SAM y los radares que defienden el lugar
@@ -312,5 +314,8 @@ brief-task-heli-csar = Aterrizar a menos de 200 m del piloto derribado, esperar 
 brief-task-drones = Derribar los drones de ataque antes de que se lancen en picado sobre el objetivo: uno solo que pase lo destruye
 ce-logistics-uh60 = La logística se vuela en el UH-60 o en el CH-47
 brief-task-logistics = Enganche un contenedor de carga junto a la pista del aeródromo (estacionario sobre él por debajo de 50 ft) y llévelo al helipuerto del nuevo emplazamiento: déjelo a menos de 90 m de la plataforma
+brief-task-airlift = Despegue con la carga, llévela a la base y deténgase en su pista para descargarla
 ce-ch47-only = El CH-47 vuela reabastecimiento y logística
 ce-c5-only = El C-5 vuela misiones de transporte aéreo
+ce-airlift-c5 = El transporte aéreo se vuela en el C-5
+ce-airlift-no-handover = Lleve usted mismo la carga hasta su base

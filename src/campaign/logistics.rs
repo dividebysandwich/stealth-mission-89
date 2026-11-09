@@ -152,6 +152,10 @@ fn base_list(ui: &mut egui::Ui, c: &mut ActiveCampaign, list: &[(ObjectId, Strin
                             t!("lg-cargo-due", time = mmss(launch_at - st.clock))
                         }
                         CargoState::Airborne => t!("lg-cargo-up").to_string(),
+                        CargoState::Player { player } => t!(
+                            "lg-cargo-player",
+                            pilot = st.player_name(player).unwrap_or("").to_string()
+                        ),
                     };
                     ui.label(egui::RichText::new(text).color(AMBER));
                 }
@@ -252,6 +256,10 @@ fn cargo_flights(ui: &mut egui::Ui, c: &ActiveCampaign) {
                     (t!("lg-cargo-due", time = mmss(launch_at - st.clock)), AMBER)
                 }
                 CargoState::Airborne => (t!("lg-cargo-up").to_string(), GREEN),
+                CargoState::Player { player } => (
+                    t!("lg-cargo-player", pilot = st.player_name(player).unwrap_or("").to_string()),
+                    GREEN,
+                ),
             };
             ui.label(egui::RichText::new(text).color(col));
         });

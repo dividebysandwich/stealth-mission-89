@@ -183,6 +183,7 @@ ck-interdict = INTERDIKCIJA
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = OSKRBA
+ck-airlift = ZRAČNI PREVOZ
 
 ## Zavrnjeni ukazi
 
@@ -293,6 +294,7 @@ brief-strike = Letališče: { $place }.
 brief-interdict = Mesto { $place }: njegove zaloge in tovarne hranijo sovražnika.
 brief-anti-ship = Sovražna ladja ob obali.
 brief-resupply = Enota { $unit } potrebuje novo zalogo. { $task }
+brief-airlift = { $base } je brez streliva: { $count } kosov čaka v { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fotografirajte cilj: nato je njegova obramba znana (opazite jo z dvakratne razdalje, krajši doseg radarja) za eno uro
 brief-task-sead = Uničite položaje SAM in radarje, ki branijo kraj
@@ -313,5 +315,8 @@ brief-task-heli-csar = Pristanite znotraj 200 m od sestreljenega pilota in poča
 brief-task-drones = Sestrelite napadalne drone, preden se zaletijo v cilj: en dron, ki se prebije, ga uniči
 ce-logistics-uh60 = Logistika se leti z UH-60 ali CH-47
 brief-task-logistics = Zataknite tovorni zaboj ob vzletno-pristajalni stezi letališča (lebdite nad njim pod 50 ft) in ga odnesite na heliport novega mesta: odložite ga do 90 m od heliporta
+brief-task-airlift = Vzletite s tovorom, odletite do baze in se ustavite na njeni stezi za raztovarjanje
 ce-ch47-only = CH-47 leti oskrbo in logistiko
 ce-c5-only = C-5 leti misije zračnega prevoza
+ce-airlift-c5 = Zračni prevoz se leti s C-5
+ce-airlift-no-handover = Tovor do baze pripeljite sami

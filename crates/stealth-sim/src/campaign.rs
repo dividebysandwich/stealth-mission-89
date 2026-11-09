@@ -580,6 +580,7 @@ impl Sim {
         self.pl.chinook = chinook;
         self.pl.raptor = raptor;
         self.pl.galaxy = galaxy;
+        self.pl.cargo_tag = None;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;

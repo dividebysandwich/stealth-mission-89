@@ -183,6 +183,7 @@ ck-interdict = INTERDIZZJONI
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RIFORNIMENTI
+ck-airlift = TRASPORT
 
 ## Kmandi miċħuda
 
@@ -293,6 +294,7 @@ brief-strike = L-ajrudrom ta' { $place }.
 brief-interdict = Il-belt ta' { $place }: il-ħażniet u l-fabbriki tagħha jitimgħu l-għadu.
 brief-anti-ship = Vapur tal-għadu qrib il-kosta.
 brief-resupply = { $unit } teħtieġ stokk ġdid. { $task }
+brief-airlift = { $base } spiċċat mill-munizzjon: { $count } tiri qed jistennew f'{ $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Ritratta l-mira: id-difiżi tagħha jkunu magħrufa mbagħad (jinqabdu minn żewġ darbiet il-firxa, firxa tar-radar iqsar) għal siegħa
 brief-task-sead = Qered is-siti SAM u r-radars li jiddefendu l-post
@@ -313,5 +315,8 @@ brief-task-heli-csar = Inżel fi 200 m mill-pilota mwaqqa' u stenna 30 s biex ji
 brief-task-drones = Waqqa' d-drones tal-attakk qabel ma jaqbżu fuq il-mira: wieħed li jgħaddi jeqridha
 ce-logistics-uh60 = Il-loġistika tittir bl-UH-60 jew bis-CH-47
 brief-task-logistics = Qabbad kaxxa tal-merkanzija ħdejn il-pista tal-ajrudrom (ibqa' fl-arja fuqha taħt 50 ft) u ħudha lejn il-heliport tas-sit il-ġdid: poġġiha fi żmien 90 m mill-heliport
+brief-task-airlift = Itlaq bil-merkanzija, tirha sal-bażi u ieqaf fuq ir-runway tagħha biex tinħatt
 ce-ch47-only = Is-CH-47 itir ir-rifornimenti u l-loġistika
 ce-c5-only = Is-C-5 itir missjonijiet ta' trasport bl-ajru
+ce-airlift-c5 = It-trasport bl-ajru jsir bis-C-5
+ce-airlift-no-handover = Ġorr il-merkanzija sal-bażi tagħha int stess

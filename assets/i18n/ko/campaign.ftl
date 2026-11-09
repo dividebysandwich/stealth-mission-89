@@ -183,6 +183,7 @@ ck-interdict = 차단
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 보급
+ck-airlift = 공수
 
 ## 거부된 명령
 
@@ -293,6 +294,7 @@ brief-strike = { $place }의 비행장.
 brief-interdict = { $place } 도시: 이곳의 물자와 공장이 적을 지탱합니다.
 brief-anti-ship = 해안 앞바다의 적 함선.
 brief-resupply = { $unit }에 새 비축 물자가 필요합니다. { $task }
+brief-airlift = { $base } 탄약 소진: { $count }발이 { $from }에서 대기 중입니다.
 brief-status = { $status }. { $task }
 brief-task-recon = 표적을 촬영하십시오. 촬영하면 방어 시설이 한 시간 동안 파악됩니다 (두 배 거리에서 식별, 레이더 사거리 단축)
 brief-task-sead = 이 지역을 방어하는 SAM 기지와 레이더를 파괴하십시오
@@ -313,5 +315,8 @@ brief-task-heli-csar = 추락한 조종사 200 m 이내에 착륙해 30초간 �
 brief-task-drones = 공격 드론이 표적에 돌입하기 전에 격추하십시오. 한 대라도 돌파하면 표적이 파괴됩니다
 ce-logistics-uh60 = 군수는 UH-60 또는 CH-47로 비행합니다
 brief-task-logistics = 공항 활주로 옆의 화물 상자를 걸고 (50 ft 아래에서 그 위에 정지 비행) 새 기지의 헬기장으로 옮기십시오: 헬기장에서 90 m 이내에 내려놓으십시오
+brief-task-airlift = 화물을 싣고 이륙해 기지로 날아가 활주로에 정지하여 하역하십시오
 ce-ch47-only = CH-47은 보급과 군수 임무를 비행합니다
 ce-c5-only = C-5는 공수 임무를 수행합니다
+ce-airlift-c5 = 공수는 C-5로 수행합니다
+ce-airlift-no-handover = 화물은 직접 기지까지 운송하십시오

@@ -306,7 +306,8 @@ fn kind_colour(k: MissionKind) -> egui::Color32 {
         MissionKind::Insertion
         | MissionKind::Escort
         | MissionKind::Resupply
-        | MissionKind::Logistics => FRIENDLY_BLUE,
+        | MissionKind::Logistics
+        | MissionKind::Airlift => FRIENDLY_BLUE,
         MissionKind::Cap => GREEN,
         MissionKind::Intercept | MissionKind::Defend | MissionKind::Csar | MissionKind::Awacs => {
             MISSILE_RED
@@ -2133,6 +2134,7 @@ fn briefing(
                                     Airframe::Tornado,
                                     Airframe::A10,
                                     Airframe::AV8B,
+                                    Airframe::C5,
                                     Airframe::UH60,
                                     Airframe::CH47,
                                     Airframe::AH1Z,

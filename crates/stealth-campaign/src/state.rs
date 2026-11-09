@@ -225,6 +225,9 @@ pub enum MissionKind {
     Resupply,
     /// Fly a load of cargo to the helipad of a new air defence site a player designated.
     Logistics,
+    /// Fly a cargo run of munitions from the production base to a base out of them, in the
+    /// cargo jet (instead of the AI's).
+    Airlift,
 }
 
 impl MissionKind {
@@ -245,6 +248,7 @@ impl MissionKind {
             MissionKind::Awacs => "AWACS",
             MissionKind::Resupply => "RESUPPLY",
             MissionKind::Logistics => "LOGISTICS",
+            MissionKind::Airlift => "AIRLIFT",
         }
     }
 
@@ -257,8 +261,8 @@ impl MissionKind {
     /// cargo helicopters, which fly nothing but them and (the troop helicopter) rescues (it
     /// picks the pilot up, the others cover it). The gunship flies the rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
-        if aircraft.airlifter() {
-            return false;
+        if aircraft.airlifter() || self == MissionKind::Airlift {
+            return aircraft.airlifter() && self == MissionKind::Airlift;
         }
         match self {
             MissionKind::Insertion => aircraft.transport(),
@@ -286,6 +290,7 @@ impl MissionKind {
             MissionKind::Escort => &[AH1Z, RAH66, OH58, AV8B, F16, F22, A10],
             MissionKind::Insertion | MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
+            MissionKind::Airlift => &[C5],
         }
     }
 
@@ -300,6 +305,8 @@ impl MissionKind {
     pub fn not_flyable(self, aircraft: Aircraft) -> Text {
         if aircraft.airlifter() {
             text!("ce-c5-only")
+        } else if self == MissionKind::Airlift {
+            text!("ce-airlift-c5")
         } else if aircraft == Aircraft::CH47 {
             text!("ce-ch47-only")
         } else if aircraft.transport() {
@@ -319,7 +326,8 @@ impl MissionKind {
             MissionKind::Recon
             | MissionKind::Cap
             | MissionKind::Resupply
-            | MissionKind::Logistics => 100,
+            | MissionKind::Logistics
+            | MissionKind::Airlift => 100,
             MissionKind::Cas | MissionKind::Escort => 120,
             MissionKind::Sead
             | MissionKind::Strike
@@ -425,6 +433,11 @@ pub enum Objective {
     /// munitions is lost.
     Cargo {
         tag: u32,
+    },
+    /// Fly the side's own cargo run (its id) in the cargo jet: take off from its production
+    /// base, land its load at the base it is for.
+    Airlift {
+        run: u32,
     },
 }
 

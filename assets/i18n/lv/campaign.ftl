@@ -183,6 +183,7 @@ ck-interdict = PĀRTRAUKT
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PAPILDINĀJUMS
+ck-airlift = GAISA TRANSPORTS
 
 ## Atteiktās komandas
 
@@ -293,6 +294,7 @@ brief-strike = Lidlauks: { $place }.
 brief-interdict = Pilsēta: { $place }. Tās noliktavas un rūpnīcas apgādā ienaidnieku.
 brief-anti-ship = Ienaidnieka kuģis pie krasta.
 brief-resupply = Vienībai { $unit } vajadzīgs jauns krājums. { $task }
+brief-airlift = { $base } beigusies munīcija: { $count } vienības gaida { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Nofotografējiet mērķi: pēc tam tā aizsardzība ir zināma (pamanāma no divkāršas distances, īsāks radara rādiuss) vienu stundu
 brief-task-sead = Iznīciniet vietu aizsargājošās SAM pozīcijas un radarus
@@ -313,5 +315,8 @@ brief-task-heli-csar = Nosēdieties 200 m attālumā no notriektā pilota un gai
 brief-task-drones = Notrieciet uzbrukuma dronus, pirms tie ietriecas mērķī: vienam izlauzoties cauri, mērķis tiek iznīcināts
 ce-logistics-uh60 = Loģistiku lido ar UH-60 vai CH-47
 brief-task-logistics = Piekabiniet kravas kasti pie lidlauka skrejceļa (paraugieties virs tās zem 50 ft) un aiznesiet uz jaunās vietas helikopteru laukumu: nolieciet to 90 m attālumā no laukuma
+brief-task-airlift = Paceļieties ar kravu, aizlidojiet uz bāzi un apstājieties uz tās skrejceļa, lai to izkrautu
 ce-ch47-only = CH-47 veic apgādi un loģistiku
 ce-c5-only = C-5 lido gaisa transporta misijās
+ce-airlift-c5 = Gaisa transportu lido ar C-5
+ce-airlift-no-handover = Nogādājiet kravu bāzē paši

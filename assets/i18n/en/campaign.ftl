@@ -183,12 +183,15 @@ ck-interdict = INTERDICT
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RESUPPLY
+ck-airlift = AIRLIFT
 
 ## Refused commands
 
 ce-uh60-only = The UH-60 flies insertions, rescues, resupply and logistics
 ce-ch47-only = The CH-47 flies resupply and logistics
 ce-c5-only = The C-5 flies airlift missions
+ce-airlift-c5 = Airlifts are flown in the C-5
+ce-airlift-no-handover = Fly the cargo run to its base yourself
 ce-resupply-uh60 = Resupply is flown in the UH-60 or the CH-47
 ce-insertion-uh60 = Insertions are flown in the UH-60, or ordered for the helicopter crews
 ce-no-place = No such place
@@ -295,6 +298,7 @@ brief-strike = The airfield of { $place }.
 brief-interdict = The city of { $place }: its stores and factories feed the enemy.
 brief-anti-ship = An enemy ship off the coast.
 brief-resupply = The { $unit } needs a new stockpile. { $task }
+brief-airlift = { $base } is out of munitions: { $count } rounds wait at { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Photograph the target: its defences are then known (spotted from twice the range, shorter radar range) for an hour
 brief-task-sead = Destroy the SAM sites and radars defending the place
@@ -315,3 +319,4 @@ brief-task-heli-csar = Land within 200 m of the downed pilot and wait 30 s for h
 brief-task-drones = Shoot down the attack drones before they dive into the target: one getting through destroys it
 ce-logistics-uh60 = Logistics is flown in the UH-60 or the CH-47
 brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad
+brief-task-airlift = Take off with the cargo, fly it to the base and stop on its runway to unload it

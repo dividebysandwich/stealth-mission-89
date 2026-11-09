@@ -650,6 +650,7 @@ impl Host {
                 SimEvent::PilotDown { x, y } => reports.push(Report::PilotDown { player, x, y }),
                 SimEvent::SortieEnded(end) => ended.push((player, end)),
                 SimEvent::LandedAtBase { object } if self.state.sortie(player).is_some() => {
+                    reports.push(Report::PlayerLanded { player, base: object as u16 });
                     self.landed.retain(|l| l.0 != player);
                     self.landed.push((player, object as u16));
                     out.push(HostEvent::Landed { player, base: object })
@@ -872,6 +873,11 @@ impl Host {
                     let airframe = self.rules.airframe(sortie.aircraft);
                     let mut start =
                         sim.respawn_pilot(player.0, base, glue::sim_objective(sortie), airframe);
+                    // Flying a cargo run: hunted and escorted as its AI aircraft would be.
+                    if let Objective::Airlift { run } = sortie.offer.objective {
+                        let tag = self.state.cargo_runs.iter().find(|r| r.id == run).map(|r| r.tag);
+                        sim.set_cargo_tag(player.0, tag);
+                    }
                     // Coop players taking off from the same base: a staggered formation on
                     // the runway, the first free place.
                     let carrier =

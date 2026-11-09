@@ -183,6 +183,7 @@ ck-interdict = IZOLACE
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ZÁSOBOVÁNÍ
+ck-airlift = PŘEPRAVA
 
 ## Odmítnuté příkazy
 
@@ -293,6 +294,7 @@ brief-strike = Letiště { $place }.
 brief-interdict = Město { $place }: jeho sklady a továrny zásobují nepřítele.
 brief-anti-ship = Nepřátelská loď u pobřeží.
 brief-resupply = { $unit } potřebuje nové zásoby. { $task }
+brief-airlift = { $base } nemá munici: { $count } kusů čeká v { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Vyfotografujte cíl: jeho obrana pak bude hodinu známá (odhalená na dvojnásobnou vzdálenost, kratší dosah radaru)
 brief-task-sead = Zničte stanoviště SAM a radary, které místo brání
@@ -313,5 +315,8 @@ brief-task-heli-csar = Přistaňte do 200 m od sestřeleného pilota a počkejte
 brief-task-drones = Sestřelte útočné drony dřív, než se střemhlav vrhnou na cíl: jediný, který projde, ho zničí
 ce-logistics-uh60 = Logistika se létá na UH-60 nebo CH-47
 brief-task-logistics = Zavěste nákladní bednu vedle dráhy letiště (visíte nad ní pod 50 ft) a odneste ji na heliport nového stanoviště: položte ji do 90 m od heliportu
+brief-task-airlift = Vzlétněte s nákladem, doleťte na základnu a zastavte na její dráze, aby se vyložil
 ce-ch47-only = CH-47 létá zásobování a logistiku
 ce-c5-only = C-5 létá mise letecké přepravy
+ce-airlift-c5 = Leteckou přepravu létá C-5
+ce-airlift-no-handover = Nákladní let do základny dokončete sami

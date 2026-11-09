@@ -183,6 +183,7 @@ ck-interdict = INTERDIKSI
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PASOKAN
+ck-airlift = ANGKUT UDARA
 
 ## Perintah yang ditolak
 
@@ -293,6 +294,7 @@ brief-strike = Pangkalan udara { $place }.
 brief-interdict = Kota { $place }: persediaan dan pabriknya menyuplai musuh.
 brief-anti-ship = Kapal musuh di lepas pantai.
 brief-resupply = { $unit } membutuhkan persediaan baru. { $task }
+brief-airlift = { $base } kehabisan amunisi: { $count } butir menunggu di { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Foto target: pertahanannya lalu diketahui (terlihat dari jarak dua kali lipat, jangkauan radar lebih pendek) selama satu jam
 brief-task-sead = Hancurkan situs SAM dan radar yang mempertahankan tempat ini
@@ -313,5 +315,8 @@ brief-task-heli-csar = Mendarat dalam jarak 200 m dari pilot yang jatuh dan tung
 brief-task-drones = Tembak jatuh drone serang sebelum menukik ke target: satu yang lolos menghancurkannya
 ce-logistics-uh60 = Logistik diterbangkan dengan UH-60 atau CH-47
 brief-task-logistics = Kaitkan peti kargo di samping landasan lapangan terbang (melayang di atasnya di bawah 50 ft) dan terbangkan ke helipad lokasi baru: letakkan dalam jarak 90 m dari helipad
+brief-task-airlift = Lepas landas dengan kargo, terbangkan ke pangkalan dan berhenti di landasannya untuk membongkar
 ce-ch47-only = CH-47 menerbangkan pasokan ulang dan logistik
 ce-c5-only = C-5 menerbangkan misi angkutan udara
+ce-airlift-c5 = Angkutan udara diterbangkan dengan C-5
+ce-airlift-no-handover = Terbangkan sendiri kargo itu ke pangkalannya

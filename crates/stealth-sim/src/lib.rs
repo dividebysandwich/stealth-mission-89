@@ -424,6 +424,7 @@ impl Sim {
                 chinook,
                 raptor,
                 galaxy,
+                cargo_tag: None,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,

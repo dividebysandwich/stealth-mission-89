@@ -119,6 +119,16 @@ impl Sim {
         }
     }
 
+    /// Campaign: pilot `id` flies the cargo run with campaign tag `tag` (None: none): the
+    /// fighters hunting or escorting that tag follow him once he is up.
+    pub fn set_cargo_tag(&mut self, id: u8, tag: Option<u32>) {
+        if id == self.pl.id {
+            self.pl.cargo_tag = tag;
+        } else if let Some(p) = self.parked.get_mut(id as usize) {
+            p.cargo_tag = tag;
+        }
+    }
+
     /// Campaign: the load campaign aircraft `i` takes off with (what its base had), and
     /// whether it bombs with iron bombs (out of guided weapons).
     pub fn arm_flight(&mut self, i: usize, loadout: AiLoadout, iron: bool) {
@@ -142,15 +152,24 @@ impl Sim {
     pub(crate) fn campaign_hunts(&mut self) {
         let Some(c) = self.campaign.as_ref() else { return };
         let mut goals = Vec::new();
+        // A player flying a cargo run: hunted and escorted as the AI's cargo aircraft is.
+        let flown: Vec<(u32, (i32, i32))> = self
+            .present()
+            .into_iter()
+            .map(|k| self.pilot_ref(k))
+            .filter(|p| !p.on_ground)
+            .filter_map(|p| p.cargo_tag.map(|t| (t, (p.p.mx, p.p.my))))
+            .collect();
         for (i, f) in c.flights.iter().enumerate() {
             let Some(f) = f else { continue };
-            if let Some(q) = f.hunt
-                && let Some(j) = c.flights.iter().position(|g| g.is_some_and(|g| g.tag == q))
-            {
+            let Some(q) = f.hunt else { continue };
+            if let Some(j) = c.flights.iter().position(|g| g.is_some_and(|g| g.tag == q)) {
                 let t = self.flights[j];
                 if t.flags & fflags::AIRBORNE != 0 && t.flags & fflags::DESTROYED == 0 {
                     goals.push((i, (t.x, t.y)));
                 }
+            } else if let Some(&(_, at)) = flown.iter().find(|(t, _)| *t == q) {
+                goals.push((i, at));
             }
         }
         let c = self.campaign.as_mut().expect("campaign");

@@ -183,6 +183,7 @@ ck-interdict = 阻止
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 補給
+ck-airlift = 空輸
 
 ## 拒否されたコマンド
 
@@ -293,6 +294,7 @@ brief-strike = { $place } の飛行場。
 brief-interdict = 都市 { $place }：その物資と工場が敵を支えている。
 brief-anti-ship = 沖合の敵艦船。
 brief-resupply = { $unit } は新たな備蓄を必要としている。{ $task }
+brief-airlift = { $base } は弾薬切れ: { $count } 発が { $from } で待機中。
 brief-status = { $status }。{ $task }
 brief-task-recon = 目標を撮影せよ：防御施設が判明し、1時間の間、2倍の距離から発見でき、レーダー探知距離が短縮される
 brief-task-sead = この地を守るSAM陣地とレーダーを破壊せよ
@@ -313,5 +315,8 @@ brief-task-heli-csar = 墜落したパイロットから200m以内に着陸し�
 brief-task-drones = 攻撃ドローンが目標に突入する前に撃墜せよ：1機でも突破すれば目標は破壊される
 ce-logistics-uh60 = ロジスティクスは UH-60 または CH-47 で飛行します
 brief-task-logistics = 飛行場の滑走路脇の貨物コンテナを吊り上げ (50 ft 未満でその上でホバリング)、新しい拠点のヘリパッドへ運びます：パッドから 90 m 以内に降ろしてください
+brief-task-airlift = 貨物を積んで離陸し、基地まで飛んで滑走路で停止し荷を降ろす
 ce-ch47-only = CH-47 は補給とロジスティクスを担当します
 ce-c5-only = C-5 は空輸任務を担当します
+ce-airlift-c5 = 空輸は C-5 で行います
+ce-airlift-no-handover = 貨物は自分で基地まで運んでください

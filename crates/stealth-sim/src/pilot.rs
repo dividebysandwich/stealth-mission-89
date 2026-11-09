@@ -56,6 +56,10 @@ pub struct Pilot {
     /// The aircraft is the C-5 (`SimOptions::galaxy` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) galaxy: bool,
+    /// Campaign: the cargo run he flies (its campaign tag): the other side's interceptors hunt
+    /// him, his escort flies with him (`Sim::set_cargo_tag`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) cargo_tag: Option<u32>,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],

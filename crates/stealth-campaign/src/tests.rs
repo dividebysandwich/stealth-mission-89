@@ -3696,3 +3696,81 @@ fn a_side_left_with_carriers_takes_its_next_production_base() {
     assert_eq!(c.production_target(Side::Blue), None);
     assert!(c.available(target, Munition::Aim120) >= 32);
 }
+
+/// A friendly cargo run waiting at the production base, its airlift offer on the board.
+fn airlift_offer(c: &mut CampaignState, m: Munition) -> (ObjectId, ObjectId, MissionOffer) {
+    let b = other_base(c, Side::Blue);
+    let p = c.production_base(Side::Blue).unwrap();
+    run_out(c, b, m);
+    c.tick(1.0, &WorldView::default(), &[]);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let o = c
+        .board
+        .iter()
+        .find(|o| o.kind == MissionKind::Airlift)
+        .expect("an airlift on the board")
+        .clone();
+    assert_eq!(o.base, p, "flown from the production base");
+    (p, b, o)
+}
+
+#[test]
+fn the_player_flies_a_cargo_run_in_the_cargo_jet() {
+    let mut c = ai_campaign();
+    let (p, b, o) = airlift_offer(&mut c, Munition::Aim120);
+    // The cargo jet flies airlifts only, and only it does.
+    let take = |c: &mut CampaignState, a: Aircraft| {
+        c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: a })
+    };
+    assert!(take(&mut c, Aircraft::F16).is_err());
+    let strike = c.board.iter().find(|x| x.kind == MissionKind::Strike).unwrap().id;
+    assert!(
+        c.apply(P0, Command::TakeMission { offer: strike, base: None, aircraft: Aircraft::C5 })
+            .is_err()
+    );
+    let ev = take(&mut c, Aircraft::C5).expect("take");
+    let s = ev
+        .iter()
+        .find_map(|e| match e {
+            CampaignEvent::SortieStarted { sortie, .. } => Some(sortie.clone()),
+            _ => None,
+        })
+        .expect("started");
+    assert_eq!(s.base, p);
+    let r = c.flown_cargo(P0).expect("his run").clone();
+    assert_eq!(r.to, b);
+    // The AI does not fly it meanwhile.
+    for _ in 0..(tuning::CARGO_WAIT as usize + 60) {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::CargoPlaneLaunched { tag, .. } if *tag == r.tag)));
+    }
+    // A stop elsewhere delivers nothing; at its base it does.
+    c.tick(1.0, &WorldView::default(), &[Report::PlayerLanded { player: P0, base: p }]);
+    assert!(c.flown_cargo(P0).is_some());
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::PlayerLanded { player: P0, base: b }]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { .. })), "{ev:?}");
+    assert_eq!(c.available(b, Munition::Aim120), 16);
+    assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
+    let ev = c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
+    assert_eq!(finished(&ev).result, SortieResult::Success);
+}
+
+#[test]
+fn a_cargo_run_the_player_crashes_with_is_lost_and_one_he_aborts_goes_back_to_the_ai() {
+    let mut c = ai_campaign();
+    let (_, b, o) = airlift_offer(&mut c, Munition::Harm);
+    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    let r = c.flown_cargo(P0).unwrap().clone();
+    // Aborted: the AI's cargo aircraft flies it soon after.
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
+    let back = c.cargo_runs.iter().find(|x| x.id == r.id).expect("still there");
+    assert_eq!(back.launch_at(), Some(c.clock + tuning::CARGO_RELAUNCH));
+    // Taken again, and crashed: the load is lost, the enemy's intercept is met.
+    c.tick(1.0, &WorldView::default(), &[]);
+    let o = c.board.iter().find(|x| x.kind == MissionKind::Airlift).unwrap().clone();
+    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap();
+    assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
+    assert!(c.objective_met(&Objective::Cargo { tag: r.tag }, &Progress::default()));
+    assert_eq!(c.available(b, Munition::Harm), 0);
+}

@@ -27,12 +27,25 @@ impl CampaignState {
         if self.objective_met(&o.objective, &Progress::default()) {
             return Err(text!("ce-target-destroyed"));
         }
-        let base = base.unwrap_or(o.base);
+        // An airlift takes off where its cargo waits.
+        let airlift = match o.objective {
+            Objective::Airlift { run } => Some(run),
+            _ => None,
+        };
+        let base = match airlift.and_then(|r| self.cargo_runs.iter().find(|c| c.id == r)) {
+            Some(r) => r.from,
+            None => base.unwrap_or(o.base),
+        };
         if !self.player_bases().contains(&base) {
             return Err(text!("ce-not-friendly-base"));
         }
         let mut progress = Progress { heli: aircraft.cargo(), ..Progress::default() };
         let mut ev = Vec::new();
+        if let Some(run) = airlift
+            && self.fly_airlift(player, run, &mut ev).is_none()
+        {
+            return Err(text!("ce-off-board"));
+        }
         if let Objective::Insertion { place } = o.objective {
             let (id, e) = self.fly_insertion(player, place, base)?;
             progress.insertion = Some(id);
@@ -163,6 +176,16 @@ impl CampaignState {
             && !s.progress.delivered
         {
             self.lost_aboard(downed, &mut ev);
+        }
+        // His cargo run not delivered: lost with the aircraft, else back to the AI's.
+        if let Objective::Airlift { .. } = s.offer.objective
+            && !s.progress.delivered
+        {
+            let lost = matches!(
+                end,
+                SortieEnd::Crashed | SortieEnd::Ejected | SortieEnd::Captured | SortieEnd::Rescued
+            );
+            self.airlift_ended(player, lost, &mut ev);
         }
         let (insertion, raid, downed) = match s.offer.objective {
             Objective::Escort { insertion } | Objective::Intercept { insertion } => {
@@ -579,7 +602,9 @@ impl CampaignState {
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Cargo { tag } => self.cargo_lost.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
-            Objective::Resupply { .. } | Objective::Logistics { .. } => p.delivered,
+            Objective::Resupply { .. } | Objective::Logistics { .. } | Objective::Airlift { .. } => {
+                p.delivered
+            }
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()

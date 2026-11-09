@@ -183,6 +183,7 @@ ck-interdict = ABRIEGELN
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = NACHSCHUB
+ck-airlift = LUFTTRANSPORT
 
 ## Abgelehnte Befehle
 
@@ -293,6 +294,7 @@ brief-strike = Der Flugplatz { $place }.
 brief-interdict = Die Stadt { $place }: Ihre Depots und Fabriken versorgen den Feind.
 brief-anti-ship = Ein feindliches Schiff vor der Küste.
 brief-resupply = { $unit } braucht einen neuen Vorrat. { $task }
+brief-airlift = { $base } hat keine Munition mehr: { $count } Stück warten in { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Das Ziel fotografieren: Seine Abwehr ist dann eine Stunde lang bekannt (auf doppelte Entfernung erkannt, kürzere Radarreichweite)
 brief-task-sead = Die SAM-Stellungen und Radare zerstören, die den Ort verteidigen
@@ -313,5 +315,8 @@ brief-task-heli-csar = Im Umkreis von 200 m um den abgeschossenen Piloten landen
 brief-task-drones = Die Kampfdrohnen abschießen, bevor sie auf das Ziel stürzen: Eine einzige, die durchkommt, zerstört es
 ce-logistics-uh60 = Logistik wird mit der UH-60 oder der CH-47 geflogen
 brief-task-logistics = Eine Frachtkiste neben der Piste des Flugplatzes anhängen (darüber unter 50 ft schweben) und zum Hubschrauberlandeplatz der neuen Stellung fliegen: innerhalb von 90 m vom Platz absetzen
+brief-task-airlift = Mit der Fracht starten, zur Basis fliegen und auf ihrer Bahn anhalten, damit sie entladen wird
 ce-ch47-only = Die CH-47 fliegt Nachschub und Logistik
 ce-c5-only = Die C-5 fliegt Lufttransporteinsätze
+ce-airlift-c5 = Lufttransport fliegt die C-5
+ce-airlift-no-handover = Den Frachtflug zur Basis selbst zu Ende fliegen

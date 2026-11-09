@@ -183,6 +183,7 @@ ck-interdict = INTERDICȚIE
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = REAPROVIZIONARE
+ck-airlift = TRANSPORT AERIAN
 
 ## Comenzi refuzate
 
@@ -293,6 +294,7 @@ brief-strike = Aerodromul { $place }.
 brief-interdict = Orașul { $place }: depozitele și fabricile sale hrănesc inamicul.
 brief-anti-ship = O navă inamică în larg.
 brief-resupply = { $unit } are nevoie de un stoc nou. { $task }
+brief-airlift = { $base } a rămas fără muniție: { $count } bucăți așteaptă la { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fotografiați ținta: apărarea sa devine apoi cunoscută (reperată de la o rază dublă, rază radar mai mică) timp de o oră
 brief-task-sead = Distrugeți pozițiile SAM și radarele care apără locul
@@ -313,5 +315,8 @@ brief-task-heli-csar = Aterizați la mai puțin de 200 m de pilotul doborât și
 brief-task-drones = Doborâți dronele de atac înainte să se arunce asupra țintei: una care trece o distruge
 ce-logistics-uh60 = Logistica se zboară cu UH-60 sau cu CH-47
 brief-task-logistics = Agățați o ladă de marfă lângă pista aerodromului (staționați deasupra ei sub 50 ft) și duceți-o la heliportul noului amplasament: puneți-o jos la cel mult 90 m de heliport
+brief-task-airlift = Decolați cu marfa, zburați la bază și opriți pe pista ei pentru descărcare
 ce-ch47-only = CH-47 zboară aprovizionare și logistică
 ce-c5-only = C-5 zboară misiuni de transport aerian
+ce-airlift-c5 = Transportul aerian se zboară cu C-5
+ce-airlift-no-handover = Duceți singur marfa până la bază

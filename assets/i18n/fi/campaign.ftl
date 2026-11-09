@@ -183,6 +183,7 @@ ck-interdict = ERISTYS
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = TÄYDENNYS
+ck-airlift = ILMAKULJETUS
 
 ## Hylätyt komennot
 
@@ -293,6 +294,7 @@ brief-strike = Lentokenttä: { $place }.
 brief-interdict = Kaupunki { $place }: sen varastot ja tehtaat ruokkivat vihollista.
 brief-anti-ship = Vihollisen laiva rannikon edustalla.
 brief-resupply = Yksikkö { $unit } tarvitsee uuden varaston. { $task }
+brief-airlift = { $base } on ilman ammuksia: { $count } kappaletta odottaa kohteessa { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Kuvaa kohde: sen puolustus selviää (havaitaan kaksinkertaiselta etäisyydeltä, tutkan kantama lyhenee) tunnin ajaksi
 brief-task-sead = Tuhoa paikkaa puolustavat SAM-asemat ja tutkat
@@ -313,5 +315,8 @@ brief-task-heli-csar = Laskeudu 200 m:n sisään alasammutusta lentäjästä ja 
 brief-task-drones = Ammu alas hyökkäysdroonit ennen kuin ne syöksyvät kohteeseen: yksikin läpi päässyt tuhoaa sen
 ce-logistics-uh60 = Logistiikka lennetään UH-60:llä tai CH-47:llä
 brief-task-logistics = Kiinnitä rahtilaatikko lentokentän kiitotien viereen (leiju sen päällä alle 50 ft) ja vie se uuden paikan kopterikentälle: laske se alas 90 m:n säteellä kentästä
+brief-task-airlift = Nouse rahdin kanssa, lennä tukikohtaan ja pysähdy sen kiitotielle purkamaan
 ce-ch47-only = CH-47 lentää huoltoa ja logistiikkaa
 ce-c5-only = C-5 lentää ilmakuljetustehtäviä
+ce-airlift-c5 = Ilmakuljetukset lennetään C-5:llä
+ce-airlift-no-handover = Lennä rahti itse tukikohtaan

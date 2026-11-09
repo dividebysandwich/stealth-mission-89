@@ -168,6 +168,11 @@ pub enum Report {
     Photographed {
         tag: u32,
     },
+    /// A player stopped on a friendly airbase (his sortie goes on).
+    PlayerLanded {
+        player: PlayerId,
+        base: ObjectId,
+    },
 }
 
 /// A player's request.

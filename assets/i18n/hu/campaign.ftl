@@ -183,6 +183,7 @@ ck-interdict = ELLÁTÁSI VONAL
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = UTÁNPÓTLÁS
+ck-airlift = LÉGISZÁLLÍTÁS
 
 ## Elutasított parancsok
 
@@ -293,6 +294,7 @@ brief-strike = Repülőtér: { $place }.
 brief-interdict = Város: { $place }; raktárai és gyárai az ellenséget táplálják.
 brief-anti-ship = Egy ellenséges hajó a part előtt.
 brief-resupply = Új készlet kell ennek: { $unit }. { $task }
+brief-airlift = { $base } kifogyott a lőszerből: { $count } darab vár itt: { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fényképezd le a célpontot: ezután a védelme ismert (kétszeres távolságról észleled, rövidebb a radar hatótávolsága) egy órán át
 brief-task-sead = Semmisítsd meg a helyet védő SAM-állásokat és radarokat
@@ -313,5 +315,8 @@ brief-task-heli-csar = Szállj le 200 m-en belül a lelőtt pilótától, és v�
 brief-task-drones = Lődd le a támadó drónokat, mielőtt a célpontba csapódnak: ha egy átjut, megsemmisíti
 ce-logistics-uh60 = A logisztikát UH-60-nal vagy CH-47-tel repülik
 brief-task-logistics = Akaszd be a teherládát a repülőtér kifutója mellett (lebegj fölötte 50 ft alatt), és told az új telephely leszállóhelyére: tedd le a leszállóhelytől 90 m-en belül
+brief-task-airlift = Szálljon fel a rakománnyal, vigye a bázisra, és álljon meg a pályáján a kirakodáshoz
 ce-ch47-only = A CH-47 utánpótlást és logisztikát repül
 ce-c5-only = A C-5 légiszállítási küldetéseket repül
+ce-airlift-c5 = A légiszállítást a C-5 repüli
+ce-airlift-no-handover = A rakományt magának kell a bázisra vinnie

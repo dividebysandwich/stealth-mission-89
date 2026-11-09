@@ -183,6 +183,7 @@ ck-interdict = INTERDICT.
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = BEVOORR.
+ck-airlift = LUCHTTRANSPORT
 
 ## Geweigerde commando's
 
@@ -293,6 +294,7 @@ brief-strike = Het vliegveld van { $place }.
 brief-interdict = De stad { $place }: haar voorraden en fabrieken voeden de vijand.
 brief-anti-ship = Een vijandelijk schip voor de kust.
 brief-resupply = De { $unit } heeft een nieuwe voorraad nodig. { $task }
+brief-airlift = { $base } zit zonder munitie: { $count } stuks wachten in { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fotografeer het doel: de verdediging is daarna een uur bekend (op tweemaal de afstand opgemerkt, kleiner radarbereik)
 brief-task-sead = Vernietig de SAM-sites en radars die de plaats verdedigen
@@ -313,5 +315,8 @@ brief-task-heli-csar = Land binnen 200 m van de neergehaalde piloot en wacht 30 
 brief-task-drones = Schiet de aanvalsdrones neer voordat ze op het doel duiken: een enkele die doorkomt, vernietigt het
 ce-logistics-uh60 = Logistiek wordt gevlogen met de UH-60 of de CH-47
 brief-task-logistics = Haak een vrachtkist naast de baan van het vliegveld (hover er onder 50 ft boven) en vlieg hem naar het helikopterplatform van de nieuwe locatie: zet hem binnen 90 m van het platform neer
+brief-task-airlift = Stijg op met de vracht, vlieg naar de basis en stop op de baan om te lossen
 ce-ch47-only = De CH-47 vliegt bevoorrading en logistiek
 ce-c5-only = De C-5 vliegt luchttransportmissies
+ce-airlift-c5 = Luchttransport wordt met de C-5 gevlogen
+ce-airlift-no-handover = Vlieg de vracht zelf naar de basis

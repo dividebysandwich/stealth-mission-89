@@ -183,6 +183,7 @@ ck-interdict = IDIRCHEAPADH
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ATHSHOLÁTHAR
+ck-airlift = AERIOMPAR
 
 ## Orduithe diúltaithe
 
@@ -293,6 +294,7 @@ brief-strike = Aerfort { $place }.
 brief-interdict = Cathair { $place }: cothaíonn a stoic agus a monarchana an namhaid.
 brief-anti-ship = Long namhad amach ón gcósta.
 brief-resupply = Tá stoc nua ag teastáil ón aonad { $unit }. { $task }
+brief-airlift = Tá { $base } as armlón: tá { $count } urchar ag fanacht ag { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Tóg grianghraif den sprioc: beidh a cosaintí ar eolas ansin (feicthe ó dhá oiread an raoin, raon radair níos giorra) ar feadh uair an chloig
 brief-task-sead = Scrios na suíomhanna SAM agus na radair a chosnaíonn an áit
@@ -313,5 +315,8 @@ brief-task-heli-csar = Tuirling laistigh de 200 m den phíolóta anuas agus fan 
 brief-task-drones = Lámhach anuas na drónanna ionsaithe sula n-eitlíonn siad isteach sa sprioc: scriosann ceann amháin a théann tríd é
 ce-logistics-uh60 = Eitlítear an lóistíocht leis an UH-60 nó leis an CH-47
 brief-task-logistics = Crochaigh cónra lasta in aice le rúidbhealach an aerpháirce (fan i bhfloscadh os a chionn faoi 50 ft) agus tabhair go dtí héileafort an tsuímh nua é: leag síos laistigh de 90 m den héileafort é
+brief-task-airlift = Éirigh leis an lasta, eitil go dtí an bonn é agus stad ar a rúidbhealach chun é a dhíluchtú
 ce-ch47-only = Eitlíonn an CH-47 soláthar agus lóistíocht
 ce-c5-only = Eitlíonn an C-5 misin aeriompair
+ce-airlift-c5 = Eitlítear aeriompar sa C-5
+ce-airlift-no-handover = Eitil an lasta go dtí a bhonn tú féin

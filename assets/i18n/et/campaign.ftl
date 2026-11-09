@@ -183,6 +183,7 @@ ck-interdict = TÕKESTAMINE
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = TÄIENDUS
+ck-airlift = ÕHUTRANSPORT
 
 ## Tagasilükatud käsud
 
@@ -293,6 +294,7 @@ brief-strike = Lennuväli: { $place }.
 brief-interdict = Linn: { $place }. Selle laod ja tehased toidavad vaenlast.
 brief-anti-ship = Vaenlase laev ranniku lähedal.
 brief-resupply = Üksus { $unit } vajab uut varu. { $task }
+brief-airlift = { $base } on laskemoonast tühi: { $count } ühikut ootab baasis { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Pildista sihtmärki: seejärel on selle kaitsed teada (märgatakse kahekordselt kaugelt, radari ulatus lüheneb) ühe tunni jooksul
 brief-task-sead = Hävita koha kaitsvad SAM-positsioonid ja radarid
@@ -313,5 +315,8 @@ brief-task-heli-csar = Maandu 200 m raadiuses maha lastud piloodist ja oota 30 s
 brief-task-drones = Tulista alla ründedroonid enne, kui need sihtmärgile sööstavad: üks läbipääsenu hävitab selle
 ce-logistics-uh60 = Logistikat lennatakse UH-60 või CH-47-ga
 brief-task-logistics = Haakige lasti kast lennuvälja maandumisraja kõrval (hõljuge selle kohal alla 50 ft) ja viige uue koha kopteriplatsile: asetage see 90 m raadiusse platsist
+brief-task-airlift = Tõuske lastiga õhku, lennake baasi ja peatuge selle rajal mahalaadimiseks
 ce-ch47-only = CH-47 lendab varustust ja logistikat
 ce-c5-only = C-5 lendab õhutranspordi missioone
+ce-airlift-c5 = Õhutransporti lennatakse C-5-ga
+ce-airlift-no-handover = Lennake kaubalend ise baasi

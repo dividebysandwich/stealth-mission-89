@@ -183,6 +183,7 @@ ck-interdict = AFSKÆRING
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = FORSYNING
+ck-airlift = LUFTTRANSPORT
 
 ## Afviste kommandoer
 
@@ -293,6 +294,7 @@ brief-strike = Flyvepladsen { $place }.
 brief-interdict = Byen { $place }: dens lagre og fabrikker forsyner fjenden.
 brief-anti-ship = Et fjendtligt skib ud for kysten.
 brief-resupply = { $unit } har brug for et nyt lager. { $task }
+brief-airlift = { $base } mangler ammunition: { $count } enheder venter i { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Fotografér målet: forsvaret er derefter kendt (opdaget fra dobbelt afstand, kortere radarrækkevidde) i en time
 brief-task-sead = Ødelæg SAM-stillingerne og radarerne, der forsvarer stedet
@@ -313,5 +315,8 @@ brief-task-heli-csar = Land inden for 200 m fra den nedskudte pilot og vent 30 s
 brief-task-drones = Skyd angrebsdronerne ned, før de styrter ned i målet: én, der slipper igennem, ødelægger det
 ce-logistics-uh60 = Logistik flyves med UH-60 eller CH-47
 brief-task-logistics = Hægt en lastkasse fast ved siden af flyvepladsens bane (svæv over den under 50 ft) og flyv den til den nye lokalitets helikopterplads: sæt den ned inden for 90 m fra pladsen
+brief-task-airlift = Let med lasten, flyv den til basen og stands på dens bane for at losse den
 ce-ch47-only = CH-47 flyver forsyning og logistik
 ce-c5-only = C-5 flyver lufttransportmissioner
+ce-airlift-c5 = Lufttransport flyves i C-5
+ce-airlift-no-handover = Flyv selv fragten til basen

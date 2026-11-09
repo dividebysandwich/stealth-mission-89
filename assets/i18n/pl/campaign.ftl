@@ -183,6 +183,7 @@ ck-interdict = IZOLACJA
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ZAOPATRZ.
+ck-airlift = TRANSPORT
 
 ## Odrzucone polecenia
 
@@ -318,6 +319,7 @@ brief-strike = Lotnisko { $place }.
 brief-interdict = Miasto { $place }: jego magazyny i fabryki zaopatrują wroga.
 brief-anti-ship = Okręt wroga u wybrzeża.
 brief-resupply = { $unit }: potrzebny nowy zapas. { $task }
+brief-airlift = { $base } nie ma amunicji: { $count } szt. czeka w { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Sfotografuj cel: jego obrona będzie wtedy znana przez godzinę (wykrywana z dwukrotnie większej odległości, krótszy zasięg radarów)
 brief-task-sead = Zniszcz stanowiska SAM i radary broniące tego miejsca
@@ -338,5 +340,8 @@ brief-task-heli-csar = Wyląduj w odległości do 200 m od zestrzelonego pilota,
 brief-task-drones = Zestrzel drony szturmowe, zanim zanurkują w cel: jeden, który się przedrze, niszczy go
 ce-logistics-uh60 = Logistykę wozi się UH-60 lub CH-47
 brief-task-logistics = Zaczep skrzynię z ładunkiem obok pasa lotniska (zawis nad nią poniżej 50 ft) i zanieś ją na lądowisko nowego stanowiska: odstaw ją w promieniu 90 m od lądowiska
+brief-task-airlift = Wystartuj z ładunkiem, dolec do bazy i zatrzymaj się na jej pasie do rozładunku
 ce-ch47-only = CH-47 wykonuje loty zaopatrzeniowe i logistyczne
 ce-c5-only = C-5 wykonuje misje transportu lotniczego
+ce-airlift-c5 = Transport lotniczy wykonuje C-5
+ce-airlift-no-handover = Dostarcz ładunek do bazy samodzielnie

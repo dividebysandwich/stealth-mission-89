@@ -835,6 +835,10 @@ impl CampaignState {
         let Some(s) = self.sortie(player).cloned() else {
             return Err(text!("ce-not-flying"));
         };
+        // A cargo run is flown to its base by the one who took it.
+        if matches!(s.offer.objective, Objective::Airlift { .. }) {
+            return Err(text!("ce-airlift-no-handover"));
+        }
         let held = self.ai_missions.iter().position(|m| m.controlled.contains(&Some(player)));
         let (k, tag) = match held {
             Some(k) => {

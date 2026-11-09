@@ -183,6 +183,7 @@ ck-interdict = INTERDIKCIJA
 ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PAPILDYMAS
+ck-airlift = ORO TRANSPORTAS
 
 ## Atmesti įsakymai
 
@@ -293,6 +294,7 @@ brief-strike = Vietovės aerodromas: { $place }.
 brief-interdict = Miestas { $place }: jo sandėliai ir gamyklos aprūpina priešą.
 brief-anti-ship = Priešo laivas prie kranto.
 brief-resupply = Daliniui „{ $unit }“ reikia naujų atsargų. { $task }
+brief-airlift = { $base } neturi šaudmenų: { $count } vnt. laukia { $from }.
 brief-status = { $status }. { $task }
 brief-task-recon = Nufotografuokite taikinį: tada jo gynyba tampa žinoma (aptinkama iš dvigubo nuotolio, trumpesnis radaro nuotolis) vieną valandą
 brief-task-sead = Sunaikinkite vietovę ginančias SAM pozicijas ir radarus
@@ -313,5 +315,8 @@ brief-task-heli-csar = Nusileiskite ne toliau kaip 200 m nuo numušto piloto ir 
 brief-task-drones = Numuškite atakos dronus, kol jie nesidaužė į taikinį: vienas prasiveržęs sunaikina jį
 ce-logistics-uh60 = Logistika skraidoma UH-60 arba CH-47
 brief-task-logistics = Užkabinkite krovinio dėžę šalia aerodromo tako (sklandykite virš jos žemiau 50 ft) ir nugabenkite į naujos vietos sraigtasparnių aikštelę: padėkite ne toliau kaip 90 m nuo aikštelės
+brief-task-airlift = Pakilkite su kroviniu, nuskriskite į bazę ir sustokite jos tūpimo take iškrauti
 ce-ch47-only = CH-47 skraido aprūpinimą ir logistiką
 ce-c5-only = C-5 skraido oro transporto misijas
+ce-airlift-c5 = Oro transportas skraidomas C-5
+ce-airlift-no-handover = Krovinį į bazę nuskraidinkite patys

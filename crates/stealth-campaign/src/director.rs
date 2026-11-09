@@ -16,6 +16,14 @@ impl CampaignState {
         self.cargo_report(r, ev);
         self.cargo_plane_report(r, ev);
         match *r {
+            // A player flying a cargo run at its base: the load is delivered.
+            Report::PlayerLanded { player, base } => {
+                if self.airlift_landed(player, base, ev)
+                    && let Some(s) = self.slot_mut(player).sortie.as_mut()
+                {
+                    s.progress.delivered = true;
+                }
+            }
             Report::ObjectDestroyed { object, by } => {
                 let now = self.clock;
                 self.raid_hit(object, ev);
@@ -1524,7 +1532,14 @@ impl CampaignState {
         let mut offers: Vec<MissionOffer> = Vec::new();
         let now = self.clock;
         let mut add = |c: &mut CampaignState, kind, title: Text, objective, x, y, threat| {
-            let Some(base) = c.nearest_player_base(x, y) else { return };
+            // An airlift is flown from the cargo run's production base.
+            let base = match &objective {
+                Objective::Airlift { run } => {
+                    c.cargo_runs.iter().find(|r| r.id == *run).map(|r| r.from)
+                }
+                _ => c.nearest_player_base(x, y),
+            };
+            let Some(base) = base else { return };
             let key = objective_key(&objective);
             let (id, posted) = match c.board.iter().find(|o| objective_key(&o.objective) == key) {
                 Some(o) => (o.id, o.posted),
@@ -1592,6 +1607,10 @@ impl CampaignState {
         // The enemy's cargo flights, scheduled or in the air.
         for (title, objective, x, y, threat) in self.cargo_offers(side) {
             add(self, MissionKind::Intercept, title, objective, x, y, threat);
+        }
+        // Its own cargo flights waiting at the production base, for the cargo jet.
+        for (title, objective, x, y, threat) in self.airlift_offers(side) {
+            add(self, MissionKind::Airlift, title, objective, x, y, threat);
         }
         // Pilots down behind the lines.
         for d in self.downed.clone() {
@@ -1889,7 +1908,7 @@ impl CampaignState {
                 | MissionKind::Csar
                 | MissionKind::Awacs
                 | MissionKind::Resupply => 0,
-                MissionKind::Escort | MissionKind::Logistics => 1,
+                MissionKind::Escort | MissionKind::Logistics | MissionKind::Airlift => 1,
                 MissionKind::Interdiction => 2,
                 MissionKind::Cap | MissionKind::AntiShip => 3,
                 _ => 4 + front_index(&front, &o.objective),
@@ -1962,5 +1981,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Armour { convoy, .. } => (16, convoy as i64),
         Objective::Support { convoy, .. } => (17, convoy as i64),
         Objective::Cargo { tag } => (18, tag as i64),
+        Objective::Airlift { run } => (19, run as i64),
     }
 }

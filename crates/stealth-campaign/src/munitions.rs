@@ -338,6 +338,8 @@ pub enum CargoState {
     Scheduled { launch_at: f64 },
     /// In the air.
     Airborne,
+    /// Flown by a player in the cargo jet (an airlift sortie): on its way while he is.
+    Player { player: PlayerId },
 }
 
 /// A cargo flight of a side from its production base to a base that ran out of a munition.
@@ -359,11 +361,11 @@ pub struct CargoRun {
 }
 
 impl CargoRun {
-    /// When it takes off (None: in the air).
+    /// When it takes off (None: in the air, or a player's).
     pub fn launch_at(&self) -> Option<f64> {
         match self.state {
             CargoState::Scheduled { launch_at } => Some(launch_at),
-            CargoState::Airborne => None,
+            CargoState::Airborne | CargoState::Player { .. } => None,
         }
     }
 }
@@ -815,42 +817,148 @@ impl CampaignState {
             return;
         };
         let run = self.cargo_runs.remove(k);
-        self.board_at = f64::MIN;
-        // Its escort is done.
-        for &tag in run.escorts.iter().filter(|t| self.patrols.iter().any(|p| p.0 == **t)) {
-            ev.push(CampaignEvent::Recall { tag });
-        }
-        let name =
-            |c: &CampaignState, b: ObjectId| c.site(b).map_or(String::new(), |s| s.name.clone());
         let at = landed.and_then(|(x, y)| self.airfield_near(run.side, x, y, CARGO_LAND_RADIUS));
-        if let Some(base) = at {
-            for &(m, n) in &run.load {
-                self.put_in(base, m, n);
-            }
-            if run.side == Side::Blue {
-                let t = text!("cl-cargo-delivered", base = name(self, base));
-                self.note(t.clone());
-                ev.push(CampaignEvent::Message(t));
-            }
-            return;
+        match at {
+            Some(base) => self.cargo_delivered(&run, base, ev),
+            None => self.cargo_ended(&run, landed.is_none(), ev),
         }
-        if landed.is_none() {
+    }
+
+    /// Cargo flight `run` (taken off the list) landed its load at `base`.
+    fn cargo_delivered(&mut self, run: &CargoRun, base: ObjectId, ev: &mut Vec<CampaignEvent>) {
+        self.board_at = f64::MIN;
+        self.recall_escorts(run, ev);
+        for &(m, n) in &run.load {
+            self.put_in(base, m, n);
+        }
+        if run.side == Side::Blue {
+            let name = self.site(base).map_or(String::new(), |s| s.name.clone());
+            let t = text!("cl-cargo-delivered", base = name);
+            self.note(t.clone());
+            ev.push(CampaignEvent::Message(t));
+        }
+    }
+
+    /// Cargo flight `run` (taken off the list) did not get its load there: shot down (`lost`:
+    /// the load is gone, no other one for its base for a while) or down somewhere else.
+    fn cargo_ended(&mut self, run: &CargoRun, lost: bool, ev: &mut Vec<CampaignEvent>) {
+        self.board_at = f64::MIN;
+        self.recall_escorts(run, ev);
+        if lost {
             self.cargo_lost.push(run.tag);
             let until = self.clock + CARGO_LOST_COOLDOWN;
             self.cargo_cooldown.retain(|&(b, t)| b != run.to && t > self.clock);
             self.cargo_cooldown.push((run.to, until));
         }
         let id = if run.side == Side::Blue { "cl-cargo-lost" } else { "cl-enemy-cargo-lost" };
-        let t = text!(id, base = name(self, run.to));
+        let name = self.site(run.to).map_or(String::new(), |s| s.name.clone());
+        let t = text!(id, base = name);
         self.note(t.clone());
         ev.push(CampaignEvent::Message(t));
+    }
+
+    /// A cargo flight's escort is done.
+    fn recall_escorts(&self, run: &CargoRun, ev: &mut Vec<CampaignEvent>) {
+        for &tag in run.escorts.iter().filter(|t| self.patrols.iter().any(|p| p.0 == **t)) {
+            ev.push(CampaignEvent::Recall { tag });
+        }
+    }
+
+    /// The airlift offers of `side`'s board: its own cargo flights waiting at the production
+    /// base, for a player to fly in the cargo jet. Each with the threat of the other side's SAM
+    /// sites where its interceptors would wait.
+    pub(crate) fn airlift_offers(&self, side: Side) -> Vec<(Text, Objective, i32, i32, i32)> {
+        let name = |b: ObjectId| self.site(b).map_or(String::new(), |s| s.name.clone());
+        self.cargo_runs
+            .iter()
+            .filter(|r| r.side == side && matches!(r.state, CargoState::Scheduled { .. }))
+            .filter_map(|r| {
+                let to = self.site(r.to)?;
+                let (x, y) = self.cargo_point(r);
+                let title = text!("cb-airlift", base = name(r.to), from = name(r.from));
+                let threat = self.sam_threat(side.enemy(), x, y);
+                Some((title, Objective::Airlift { run: r.id }, to.x, to.y, threat))
+            })
+            .collect()
+    }
+
+    /// A player takes cargo run `run` to fly it himself: it waits for him at its production base
+    /// (its escort goes up with him). None: it is not waiting there any more.
+    pub(crate) fn fly_airlift(
+        &mut self,
+        player: PlayerId,
+        run: u32,
+        ev: &mut Vec<CampaignEvent>,
+    ) -> Option<ObjectId> {
+        let k = self.cargo_runs.iter().position(|r| {
+            r.id == run && matches!(r.state, CargoState::Scheduled { .. })
+        })?;
+        self.cargo_runs[k].state = CargoState::Player { player };
+        self.board_at = f64::MIN;
+        self.escort_cargo(k, ev);
+        Some(self.cargo_runs[k].from)
+    }
+
+    /// The cargo run a player flies (his airlift).
+    pub fn flown_cargo(&self, player: PlayerId) -> Option<&CargoRun> {
+        self.cargo_runs.iter().find(|r| r.state == CargoState::Player { player })
+    }
+
+    /// A player flying a cargo run came to a stop on a friendly airbase: at the run's own one
+    /// he delivers the load (his objective is met).
+    pub(crate) fn airlift_landed(
+        &mut self,
+        player: PlayerId,
+        base: ObjectId,
+        ev: &mut Vec<CampaignEvent>,
+    ) -> bool {
+        let Some(k) = self
+            .cargo_runs
+            .iter()
+            .position(|r| r.state == CargoState::Player { player } && r.to == base)
+        else {
+            return false;
+        };
+        let run = self.cargo_runs.remove(k);
+        self.cargo_delivered(&run, base, ev);
+        true
+    }
+
+    /// A player's airlift sortie ended before the load was there: lost with his aircraft
+    /// (`lost`), else the run waits at its production base for the next aircraft.
+    pub(crate) fn airlift_ended(
+        &mut self,
+        player: PlayerId,
+        lost: bool,
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        let Some(k) =
+            self.cargo_runs.iter().position(|r| r.state == CargoState::Player { player })
+        else {
+            return;
+        };
+        if lost {
+            let run = self.cargo_runs.remove(k);
+            self.cargo_ended(&run, true, ev);
+        } else {
+            let run = self.cargo_runs[k].clone();
+            self.recall_escorts(&run, ev);
+            let r = &mut self.cargo_runs[k];
+            r.state = CargoState::Scheduled { launch_at: self.clock + CARGO_RELAUNCH };
+            r.escorts.clear();
+            self.board_at = f64::MIN;
+        }
     }
 
     /// After loading a save: the cargo flights that were in the air take off again soon, with
     /// their loads.
     pub(crate) fn ground_cargo(&mut self) {
         let at = self.clock + CARGO_RELAUNCH;
-        for r in self.cargo_runs.iter_mut().filter(|r| r.state == CargoState::Airborne) {
+        for r in self
+            .cargo_runs
+            .iter_mut()
+            .filter(|r| matches!(r.state, CargoState::Airborne | CargoState::Player { .. }))
+        {
             r.state = CargoState::Scheduled { launch_at: at };
             r.escorts.clear();
         }
