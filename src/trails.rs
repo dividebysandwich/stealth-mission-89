@@ -199,6 +199,10 @@ const VORTEX_G: (f32, f32) = (4.5, 6.5);
 /// wing's at its sweep `sweep` (0 forward .. 1 back).
 fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]> {
     use crate::aircraft::AircraftKind::*;
+    // The C-5's high wing is some 6 m above its wheels.
+    if kind == C5 {
+        return Some([Vec3::new(-34.0, 6.4, 3.6), Vec3::new(34.0, 6.4, 3.6)]);
+    }
     let (x, z) = match kind {
         F117 => (6.6, 3.5),
         F16 => (4.7, 1.5),
@@ -206,12 +210,12 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
         A10 => (8.7, 0.5),
         AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
-        UH60 | AH1Z | RAH66 | OH58 | CH47 => return None,
+        UH60 | AH1Z | RAH66 | OH58 | CH47 | C5 => return None,
     };
     Some([Vec3::new(-x, 0.0, z), Vec3::new(x, 0.0, z)])
 }
 
-/// Contrail emitters: left and right of the exhaust (aircraft frame, metres).
+/// The AI's contrail emitters: left and right of the exhaust (aircraft frame, metres).
 const ENGINES: [Vec3; 2] = [Vec3::new(-3.0, 0.0, 0.0), Vec3::new(3.0, 0.0, 0.0)];
 /// The AI aircraft's exhaust: behind the aircraft centre (aircraft frame, metres).
 const AI_EXHAUST: Vec3 = Vec3::new(0.0, 0.0, 8.0);
@@ -401,8 +405,8 @@ fn update_trails(
         && !a.on_ground
         && sim.player().view_z >= CONTRAIL_VIEW_Z
     {
-        for (k, &o) in ENGINES.iter().enumerate() {
-            let at = pos.0 + (a.orientation * (exhaust + o)).as_dvec3();
+        for (k, o) in crate::aircraft::contrail_emitters(settings.aircraft).into_iter().enumerate() {
+            let at = pos.0 + (a.orientation * o).as_dvec3();
             emitters.push((Source::Player(k), &CONTRAIL, at));
         }
     }

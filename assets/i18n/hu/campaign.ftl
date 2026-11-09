@@ -314,3 +314,4 @@ brief-task-drones = Lődd le a támadó drónokat, mielőtt a célpontba csapód
 ce-logistics-uh60 = A logisztikát UH-60-nal vagy CH-47-tel repülik
 brief-task-logistics = Akaszd be a teherládát a repülőtér kifutója mellett (lebegj fölötte 50 ft alatt), és told az új telephely leszállóhelyére: tedd le a leszállóhelytől 90 m-en belül
 ce-ch47-only = A CH-47 utánpótlást és logisztikát repül
+ce-c5-only = A C-5 légiszállítási küldetéseket repül

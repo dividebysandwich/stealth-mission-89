@@ -433,3 +433,8 @@ aircraft-ch47 =
         Helikopter kargo rotor tandem
         Menggantung muatan pasokan ulang dan logistik
         Tanpa torsi yang perlu ditahan: rotor saling meniadakan
+aircraft-c5 =
+    .facts =
+        Pesawat angkut strategis bermesin empat
+        Mengangkut amunisi antar pangkalan udara
+        Berat: lambat berguling dan mengangkat hidung

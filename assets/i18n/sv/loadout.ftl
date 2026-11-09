@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Vänster sidoutrymme (Sidewinder)
 hardpoint-f22-left-main-bay = Huvudutrymme, vänster halva
 hardpoint-f22-right-main-bay = Huvudutrymme, höger halva
 hardpoint-f22-right-side-bay = Höger sidoutrymme (Sidewinder)
+hardpoint-c5-hold = Lastrum (fällningspallar)
 weapon-role-21 = Luft-luft, infraröd målsökning, mycket kort räckvidd
 employment-21 = Räckvidd: 1-6 km, längre rakt framifrån
 loadout-none-in-stock = (slut i lager)

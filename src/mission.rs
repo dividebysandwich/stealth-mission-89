@@ -106,6 +106,23 @@ pub fn generate(
     stealth_mission::generate(&data.0, settings, Seed::Srand(seed))
 }
 
+/// The generator's options for an aircraft: a helicopter's short missions, the cargo jet's land
+/// bases.
+pub fn settings_for(s: &mut MissionSettings, aircraft: crate::aircraft::AircraftKind) {
+    s.helicopter = aircraft.spec().helicopter;
+    s.land_bases = aircraft.airlifter();
+}
+
+/// A generated mission as an aircraft flies it: a troop helicopter's targets as insertions, the
+/// cargo jet's as an airdrop and a delivery.
+pub fn for_aircraft(m: &mut Mission, data: &GameData, aircraft: crate::aircraft::AircraftKind) {
+    if aircraft.spec().transport() {
+        stealth_mission::insertion::for_helicopter(m);
+    } else if aircraft.airlifter() {
+        stealth_mission::airlift::for_transport(m, data);
+    }
+}
+
 /// Strips text control bytes (the classic colour switches 0x80-0x9F, CR); the translations'
 /// letters stay.
 pub fn clean_text(s: &str) -> String {
@@ -182,10 +199,12 @@ pub fn from_args(app: &mut App) {
     settings.start_hour = get("--start-hour").and_then(|s| s.parse::<u8>().ok()).map(|h| h.min(23));
     // `--moon <0-7>`: the moon's phase in eighths (0 new, 4 full).
     settings.moon = get("--moon").and_then(|s| s.parse::<u8>().ok()).map(|m| m % 8);
-    settings.helicopter = aircraft.is_some_and(|k| k.spec().helicopter);
+    if let Some(k) = aircraft {
+        settings_for(&mut settings, k);
+    }
     let mut m = generate(&data, &settings, seed).expect("mission");
-    if aircraft.is_some_and(|k| k.spec().transport()) {
-        stealth_mission::insertion::for_helicopter(&mut m);
+    if let Some(k) = aircraft {
+        for_aircraft(&mut m, &data.0, k);
     }
     // `--start-base <name>`: take off from another airfield (also an enemy one; for tests).
     if let Some(name) = get("--start-base") {
@@ -253,17 +272,19 @@ pub fn from_args(app: &mut App) {
 }
 
 /// OnEnter(Flight), after `ensure_mission`: a troop helicopter flies the mission's targets as
-/// insertions (a campaign's sorties are set up by the campaign).
+/// insertions, the cargo jet as an airdrop and a delivery (`for_aircraft`; a campaign's sorties
+/// are set up by the campaign).
 pub fn helicopter_mission(
     settings: Res<crate::settings::Settings>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     mission: Option<ResMut<ActiveMission>>,
+    data: Option<Res<MissionData>>,
 ) {
     if let Some(mut m) = mission
+        && let Some(data) = data
         && campaign.is_none()
-        && settings.aircraft.spec().transport()
     {
-        stealth_mission::insertion::for_helicopter(&mut m.0);
+        for_aircraft(&mut m.0, &data.0, settings.aircraft);
     }
 }
 
@@ -311,7 +332,7 @@ pub fn ensure_mission(
             setup.weather,
             setup.cloud_cover,
         );
-        s.helicopter = settings.aircraft.spec().helicopter;
+        settings_for(&mut s, settings.aircraft);
         match generate(&data, &s, seed) {
             Ok(m) => {
                 info!("generated mission {seed} for {}: {}", m.theater_code, m.orders.primary);

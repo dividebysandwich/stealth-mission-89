@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Compartimento lateral esquerdo (Sidewinder)
 hardpoint-f22-left-main-bay = Compartimento principal, metade esquerda
 hardpoint-f22-right-main-bay = Compartimento principal, metade direita
 hardpoint-f22-right-side-bay = Compartimento lateral direito (Sidewinder)
+hardpoint-c5-hold = Compartimento de carga (paletes de lançamento)
 weapon-role-21 = Ar-ar, guiagem infravermelha, alcance muito curto
 employment-21 = Alcance: 1-6 km, maior de frente
 loadout-none-in-stock = (sem estoque)

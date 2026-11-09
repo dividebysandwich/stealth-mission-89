@@ -201,6 +201,7 @@ pub fn ai_spec(aircraft: Aircraft) -> i32 {
         Aircraft::OH58 => t::OH58,
         Aircraft::CH47 => t::CH47,
         Aircraft::F22 => t::F22,
+        Aircraft::C5 => stealth_sim::munitions::C5,
     }
 }
 

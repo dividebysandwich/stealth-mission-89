@@ -314,3 +314,4 @@ brief-task-drones = Skyd angrebsdronerne ned, før de styrter ned i målet: én,
 ce-logistics-uh60 = Logistik flyves med UH-60 eller CH-47
 brief-task-logistics = Hægt en lastkasse fast ved siden af flyvepladsens bane (svæv over den under 50 ft) og flyv den til den nye lokalitets helikopterplads: sæt den ned inden for 90 m fra pladsen
 ce-ch47-only = CH-47 flyver forsyning og logistik
+ce-c5-only = C-5 flyver lufttransportmissioner

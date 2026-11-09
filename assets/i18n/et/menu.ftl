@@ -433,3 +433,8 @@ aircraft-ch47 =
         Tandemrootoritega kaubahelikopter
         Riputab varustus- ja logistikakoormaid
         Pole pöördemomenti tasakaalustada: rootorid tühistavad teineteist
+aircraft-c5 =
+    .facts =
+        Neljamootoriline strateegiline transpordilennuk
+        Veab laskemoona lennubaaside vahel
+        Raske: aeglane kalduma ja nina tõstma

@@ -22,6 +22,7 @@ pub enum AircraftKind {
     OH58,
     CH47,
     F22,
+    C5,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -123,6 +124,18 @@ pub fn nozzle_slot_value(angle: f32) -> i16 {
     -((angle / std::f32::consts::TAU * 65536.0) as i16)
 }
 
+/// The model state slot of the C-5's flaps (tools/models/aircraft.py `C5_FLAP_SLOT`): their
+/// angle down.
+pub const FLAP_SLOT: usize = 29;
+/// The C-5's flaps fully down (rad).
+pub const C5_FLAP_ANGLE: f32 = 0.70;
+
+/// The flaps' state slot value at `angle` (rad down): each flap turns about its hinge by minus
+/// its slot angle about its x axis, which lowers its trailing edge for a negative value.
+pub fn flap_slot_value(angle: f32) -> i16 {
+    -((angle / std::f32::consts::TAU * 65536.0) as i16)
+}
+
 /// A helmet-mounted display's symbology (`hmd.rs`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hmd {
@@ -207,6 +220,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         32 => Some(A10_LIFT - RUNWAY_Y),
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
         75 => Some(F22_LIFT - RUNWAY_Y),
+        30 => Some(C5_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -230,6 +244,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         48 => oh58_point(0.0, 2.3, 0.55) - Vec3::Y * OH58_LIFT,
         49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
         75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
+        30 => c5_point(0.0, 27.0, -3.9) - Vec3::Y * C5_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
         102 => Vec3::new(0.0, 0.92, -3.6),
         _ => Vec3::new(0.0, -1.0, -4.0),
@@ -749,13 +764,86 @@ static F22: AircraftSpec = AircraftSpec {
     flight: FlightConstants::f22,
 };
 
+/// The C-5's wheels are 5.72 m below its model origin (tools/models/aircraft.py `C5_GROUND`).
+const C5_LIFT: f32 = 5.72 + RUNWAY_Y;
+/// A point of the C-5's builder (tools/models/aircraft.py `c5`: metres, x right, y forward from
+/// the middle, z up from the fuselage's axis) in the aircraft frame: the model is centred on its
+/// length, 0.04 m behind the builder's origin.
+const fn c5_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(C5_LIFT, x * K, z * K, -(y + 0.04) * K)
+}
+/// The C-5's four engines' exits (tools/models/aircraft.py `C5_ENGINES`: the core's plug 7.4 m
+/// behind the intake).
+const C5_EXITS: [Vec3; 4] = [
+    c5_point(-18.70, 4.20, -1.38),
+    c5_point(-11.95, 7.85, -0.69),
+    c5_point(11.95, 7.85, -0.69),
+    c5_point(18.70, 4.20, -1.38),
+];
+
+static C5: AircraftSpec = AircraftSpec {
+    model: "aircraft_030",
+    model_lift: C5_LIFT,
+    // The pilot's (left) seat on the flight deck: behind the windscreen's band (z 2.58..3.26,
+    // its centre pane at y 32.2..33.3), its middle at eye height, under the roof (z 3.7).
+    eye: c5_point(-0.62, 31.55, 2.92),
+    cockpit_view: Some(CockpitView {
+        // The windscreen: open from inside; the nose drawn from inside round the flight deck,
+        // its skin the windscreen's frame.
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::Ch47, "cockpit_ch47")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: 1900.0,
+    vr_hud_scale: 1900.0,
+    // The cargo inside, but no bay doors to open: seen as stores outside would be.
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    muzzle: None,
+    sight: None,
+    // Behind the wing between the inner engines.
+    exhaust: c5_point(0.0, 6.0, -0.7),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    nozzle_rect: None,
+    swing_wing: false,
+    vtol: false,
+    ground_radar: false,
+    flight: FlightConstants::c5,
+};
+
+/// Where an aircraft's contrails start (aircraft frame, m): the C-5's four engines, else either
+/// side of its exhaust.
+pub fn contrail_emitters(kind: AircraftKind) -> Vec<Vec3> {
+    match kind {
+        AircraftKind::C5 => C5_EXITS.to_vec(),
+        _ => {
+            let e = kind.spec().exhaust;
+            vec![e - Vec3::X * 3.0, e + Vec3::X * 3.0]
+        }
+    }
+}
+
 impl AircraftKind {
     /// The stealth types (F-117A, F-22A, RAH-66) offer the RCS page on their MFDs.
+    /// The cargo jet: its missions are airdrops and deliveries (`stealth_mission::airlift`).
+    pub fn airlifter(self) -> bool {
+        self == AircraftKind::C5
+    }
+
     pub fn rcs_page(self) -> bool {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 11] = [
+    pub const ALL: [AircraftKind; 12] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
@@ -767,6 +855,7 @@ impl AircraftKind {
         AircraftKind::RAH66,
         AircraftKind::OH58,
         AircraftKind::CH47,
+        AircraftKind::C5,
     ];
 
     /// What another pilot flies.
@@ -789,6 +878,8 @@ impl AircraftKind {
             AircraftKind::AV8B
         } else if p.raptor {
             AircraftKind::F22
+        } else if p.galaxy {
+            AircraftKind::C5
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -809,6 +900,7 @@ impl AircraftKind {
             AircraftKind::OH58 => &OH58,
             AircraftKind::CH47 => &CH47,
             AircraftKind::F22 => &F22,
+            AircraftKind::C5 => &C5,
         }
     }
 
@@ -826,6 +918,7 @@ impl AircraftKind {
             AircraftKind::OH58 => "oh58",
             AircraftKind::CH47 => "ch47",
             AircraftKind::F22 => "f22",
+            AircraftKind::C5 => "c5",
         }
     }
 
@@ -847,6 +940,7 @@ impl AircraftKind {
                     && *k == AircraftKind::OH58)
                 || (matches!(s.as_str(), "chinook" | "ch47f" | "ch47d") && *k == AircraftKind::CH47)
                 || (matches!(s.as_str(), "f22a" | "raptor") && *k == AircraftKind::F22)
+                || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m") && *k == AircraftKind::C5)
         })
     }
 
@@ -863,6 +957,7 @@ impl AircraftKind {
             AircraftKind::OH58 => "OH-58D Kiowa Warrior",
             AircraftKind::CH47 => "CH-47F Chinook",
             AircraftKind::F22 => "F-22A Raptor",
+            AircraftKind::C5 => "C-5 Galaxy",
         }
     }
 }
@@ -1034,6 +1129,49 @@ mod tests {
         assert_eq!(AircraftKind::parse("Chinook"), Some(AircraftKind::CH47));
         assert_eq!(AircraftKind::parse("OH-58D"), Some(AircraftKind::OH58));
         assert_eq!(AircraftKind::parse("Kiowa"), Some(AircraftKind::OH58));
+        assert_eq!(AircraftKind::parse("C-5"), Some(AircraftKind::C5));
+        assert_eq!(AircraftKind::parse("Galaxy"), Some(AircraftKind::C5));
+    }
+
+    /// The C-5's eye: in the left seat behind the windscreen's band, under the flight deck's
+    /// roof (tools/models/aircraft.py `C5_BODY`, `C5_SCREEN_Z`), level with the panes.
+    #[test]
+    fn c5_eye_in_the_cockpit() {
+        let spec = AircraftKind::C5.spec();
+        let s = AIRCRAFT_MODEL_SCALE as f32 * 16.384;
+        let eye = (spec.eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (eye.x, -eye.z - 0.04, eye.y);
+        assert!((30.8..32.2).contains(&y), "eye {y} m ahead of the middle");
+        assert!((2.58..3.26).contains(&z), "eye {z} m high");
+        assert!((-0.9..-0.4).contains(&x), "eye {x} m left");
+        // Under the glazing's highest panes, behind its lowest (model units).
+        let (lo, hi) = primitive_bounds("aircraft_030_lod0", &[144, 145]);
+        let e = (spec.eye - Vec3::Y * spec.model_lift) / AIRCRAFT_MODEL_SCALE as f32;
+        assert!(e.y < hi.y && e.y > lo.y, "eye {e} outside the glazing's heights {lo}..{hi}");
+        assert!(e.z > lo.z, "eye {e} ahead of the windscreen {lo}");
+        assert!(!spec.transport() && !spec.helicopter);
+    }
+
+    /// The C-5's flaps: twelve parts pitching about their hinges on the flap slot; a positive
+    /// flap angle lowers their trailing edges.
+    #[test]
+    fn c5_flaps_are_parts() {
+        let path = crate::asset_path::asset("models/aircraft.glb");
+        let data = std::fs::read(&path).unwrap();
+        let len = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+        let j: serde_json::Value = serde_json::from_slice(&data[20..20 + len]).unwrap();
+        let model = AircraftKind::C5.spec().model;
+        for k in 1..=12 {
+            let name = format!("{model}_lod0_part{k}");
+            let n = j["nodes"].as_array().unwrap().iter().find(|n| n["name"] == name).unwrap();
+            assert_eq!(n["extras"]["state_slot"].as_u64(), Some(FLAP_SLOT as u64), "{name}");
+            assert_eq!(n["extras"]["axis"].as_u64(), Some(1), "{name}");
+        }
+        let v = flap_slot_value(C5_FLAP_ANGLE);
+        let angle = -(v as u16 as f32) / 65536.0 * std::f32::consts::TAU;
+        // A point aft of the hinge (+Z) goes down.
+        let te = Quat::from_rotation_x(angle) * Vec3::Z;
+        assert!(te.y < -0.5, "{te}");
     }
 
     /// The Harrier's four nozzles: parts pitching about x on the nozzle slot, pivoted on the

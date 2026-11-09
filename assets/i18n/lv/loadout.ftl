@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Kreisais sānu nodalījums (Sidewinder)
 hardpoint-f22-left-main-bay = Galvenais nodalījums, kreisā puse
 hardpoint-f22-right-main-bay = Galvenais nodalījums, labā puse
 hardpoint-f22-right-side-bay = Labais sānu nodalījums (Sidewinder)
+hardpoint-c5-hold = Kravas nodalījums (nometamās paletes)
 weapon-role-21 = Gaiss-gaiss, infrasarkanā vadība, ļoti mazs darbības rādiuss
 employment-21 = Darbības rādiuss: 1-6 km, lielāks no priekšas
 loadout-none-in-stock = (nav noliktavā)

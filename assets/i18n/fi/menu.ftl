@@ -433,3 +433,8 @@ aircraft-ch47 =
         Tandemroottorinen rahtihelikopteri
         Kuljettaa huolto- ja logistiikkakuormia ripustettuna
         Ei vääntömomenttia vastustettavana: roottorit kumoavat toisensa
+aircraft-c5 =
+    .facts =
+        Nelimoottorinen strateginen kuljetuskone
+        Lentää ammuksia lentotukikohtien välillä
+        Raskas: kallistuu ja nostaa nokkaa hitaasti

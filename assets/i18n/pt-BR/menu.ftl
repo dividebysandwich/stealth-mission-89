@@ -433,3 +433,8 @@ aircraft-ch47 =
         Helicóptero de carga com rotores em tandem
         Transporta cargas de reabastecimento e logística penduradas
         Sem torque a compensar: os rotores se anulam
+aircraft-c5 =
+    .facts =
+        Avião de transporte estratégico quadrimotor
+        Leva munição entre as bases aéreas
+        Pesado: lento para rolar e rodar

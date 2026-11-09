@@ -1,3 +1,4 @@
+pub mod airlift;
 pub mod drones;
 mod generator;
 pub mod hills;
@@ -121,6 +122,9 @@ pub struct MissionSettings {
     /// Flown in a helicopter: short missions, targets a short flight from a friendly base.
     #[serde(default)]
     pub helicopter: bool,
+    /// Takes off and lands on land bases only, never a carrier (the cargo jet).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub land_bases: bool,
 }
 
 fn clear_sky() -> Option<Sky> {
@@ -142,6 +146,7 @@ impl Default for MissionSettings {
             start_hour: None,
             moon: None,
             helicopter: false,
+            land_bases: false,
         }
     }
 }
@@ -434,6 +439,7 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
     )
     .start_hour(s.start_hour)
     .helicopter(s.helicopter)
+    .land_bases(s.land_bases)
     .run();
     let mut avail = input.weapon_unavailable;
     avail[0] = lockheed as u8;

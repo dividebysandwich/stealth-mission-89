@@ -314,3 +314,4 @@ brief-task-drones = Lámhach anuas na drónanna ionsaithe sula n-eitlíonn siad 
 ce-logistics-uh60 = Eitlítear an lóistíocht leis an UH-60 nó leis an CH-47
 brief-task-logistics = Crochaigh cónra lasta in aice le rúidbhealach an aerpháirce (fan i bhfloscadh os a chionn faoi 50 ft) agus tabhair go dtí héileafort an tsuímh nua é: leag síos laistigh de 90 m den héileafort é
 ce-ch47-only = Eitlíonn an CH-47 soláthar agus lóistíocht
+ce-c5-only = Eitlíonn an C-5 misin aeriompair

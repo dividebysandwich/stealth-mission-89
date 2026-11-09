@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Lijevi bočni odjeljak (Sidewinder)
 hardpoint-f22-left-main-bay = Glavni odjeljak, lijeva polovica
 hardpoint-f22-right-main-bay = Glavni odjeljak, desna polovica
 hardpoint-f22-right-side-bay = Desni bočni odjeljak (Sidewinder)
+hardpoint-c5-hold = Teretni prostor (palete za izbacivanje)
 weapon-role-21 = Zrak-zrak, infracrveno navođenje, vrlo kratak domet
 employment-21 = Domet: 1-6 km, veći sprijeda
 loadout-none-in-stock = (nema na zalihi)

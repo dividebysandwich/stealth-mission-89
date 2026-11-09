@@ -169,6 +169,8 @@ pub(crate) struct Gen<'a> {
     start_hour: Option<u8>,
     /// Helicopter missions ([`Gen::helicopter`]).
     helicopter: bool,
+    /// No carriers ([`Gen::land_bases`]).
+    land_bases: bool,
     /// Their candidates ([`Gen::heli_tile_targets`]).
     heli_tiles: Option<Vec<HeliTile>>,
 }
@@ -243,6 +245,7 @@ impl<'a> Gen<'a> {
             special_start: special_start as i32,
             start_hour: None,
             helicopter: false,
+            land_bases: false,
             heli_tiles: None,
         }
     }
@@ -251,6 +254,12 @@ impl<'a> Gen<'a> {
     /// 450 km and more). Other random numbers are drawn, so the seed gives another mission.
     pub fn helicopter(mut self, on: bool) -> Self {
         self.helicopter = on;
+        self
+    }
+
+    /// Takes off and lands on land bases only (the cargo jet), as the Lockheed realism does.
+    pub fn land_bases(mut self, on: bool) -> Self {
+        self.land_bases = on;
         self
     }
 
@@ -477,7 +486,7 @@ impl<'a> Gen<'a> {
                     && f & (F::AIRFIELD | F::CARRIER) != 0
                     && f & F::NEUTRAL == 0
                     && !self.closed(o)
-                    && !(self.realism != 0 && f & F::CARRIER != 0)
+                    && !((self.realism != 0 || self.land_bases) && f & F::CARRIER != 0)
             })
             .collect()
     }
@@ -788,7 +797,7 @@ impl<'a> Gen<'a> {
                         if self.closed(&o) {
                             continue;
                         }
-                        if self.realism != 0 && f & 0x200 != 0 {
+                        if (self.realism != 0 || self.land_bases) && f & 0x200 != 0 {
                             continue;
                         }
                         let mut d = if slot == 0 {

@@ -314,3 +314,4 @@ brief-task-drones = Abater os drones de ataque antes que mergulhem sobre o alvo:
 ce-logistics-uh60 = A logística é voada no UH-60 ou no CH-47
 brief-task-logistics = Engate um caixote de carga ao lado da pista do aeródromo (pairando sobre ele abaixo de 50 ft) e leve-o ao heliponto do novo local: deixe-o a até 90 m do heliponto
 ce-ch47-only = O CH-47 voa reabastecimento e logística
+ce-c5-only = O C-5 voa missões de transporte aéreo

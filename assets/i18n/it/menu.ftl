@@ -433,3 +433,8 @@ aircraft-ch47 =
         Elicottero da trasporto a rotori in tandem
         Aggancia carichi di rifornimento e logistica
         Nessuna coppia da compensare: i rotori si annullano
+aircraft-c5 =
+    .facts =
+        Quadrimotore da trasporto strategico
+        Trasporta munizioni tra le basi aeree
+        Pesante: lento a rollare e a ruotare

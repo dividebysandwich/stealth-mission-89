@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Kairysis šoninis skyrius (Sidewinder)
 hardpoint-f22-left-main-bay = Pagrindinis skyrius, kairioji pusė
 hardpoint-f22-right-main-bay = Pagrindinis skyrius, dešinioji pusė
 hardpoint-f22-right-side-bay = Dešinysis šoninis skyrius (Sidewinder)
+hardpoint-c5-hold = Krovinių skyrius (numetami padėklai)
 weapon-role-21 = Oras-oras, infraraudonųjų spindulių vedimas, labai trumpas nuotolis
 employment-21 = Nuotolis: 1-6 km, didesnis iš priekio
 loadout-none-in-stock = (nėra sandėlyje)

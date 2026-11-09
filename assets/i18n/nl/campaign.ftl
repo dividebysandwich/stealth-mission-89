@@ -314,3 +314,4 @@ brief-task-drones = Schiet de aanvalsdrones neer voordat ze op het doel duiken: 
 ce-logistics-uh60 = Logistiek wordt gevlogen met de UH-60 of de CH-47
 brief-task-logistics = Haak een vrachtkist naast de baan van het vliegveld (hover er onder 50 ft boven) en vlieg hem naar het helikopterplatform van de nieuwe locatie: zet hem binnen 90 m van het platform neer
 ce-ch47-only = De CH-47 vliegt bevoorrading en logistiek
+ce-c5-only = De C-5 vliegt luchttransportmissies

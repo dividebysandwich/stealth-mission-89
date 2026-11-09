@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Αριστερός πλευρικός θάλαμο
 hardpoint-f22-left-main-bay = Κύριος θάλαμος, αριστερό μισό
 hardpoint-f22-right-main-bay = Κύριος θάλαμος, δεξί μισό
 hardpoint-f22-right-side-bay = Δεξιός πλευρικός θάλαμος (Sidewinder)
+hardpoint-c5-hold = Χώρος φορτίου (παλέτες ρίψης)
 weapon-role-21 = Αέρος-αέρος, υπέρυθρη καθοδήγηση, πολύ μικρό βεληνεκές
 employment-21 = Βεληνεκές: 1-6 km, μεγαλύτερο κατά μέτωπο
 loadout-none-in-stock = (εξαντλημένο)

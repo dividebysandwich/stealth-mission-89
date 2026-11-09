@@ -433,3 +433,8 @@ aircraft-ch47 =
         Tovorni helikopter s tandemskima rotorjema
         Obesi tovore za oskrbo in logistiko
         Brez reakcijskega momenta: rotorja se izničita
+aircraft-c5 =
+    .facts =
+        Štirimotorno strateško transportno letalo
+        Prevaža strelivo med letalskimi bazami
+        Težko: počasi se nagiba in dviguje nos

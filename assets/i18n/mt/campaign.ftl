@@ -314,3 +314,4 @@ brief-task-drones = Waqqa' d-drones tal-attakk qabel ma jaqbżu fuq il-mira: wie
 ce-logistics-uh60 = Il-loġistika tittir bl-UH-60 jew bis-CH-47
 brief-task-logistics = Qabbad kaxxa tal-merkanzija ħdejn il-pista tal-ajrudrom (ibqa' fl-arja fuqha taħt 50 ft) u ħudha lejn il-heliport tas-sit il-ġdid: poġġiha fi żmien 90 m mill-heliport
 ce-ch47-only = Is-CH-47 itir ir-rifornimenti u l-loġistika
+ce-c5-only = Is-C-5 itir missjonijiet ta' trasport bl-ajru

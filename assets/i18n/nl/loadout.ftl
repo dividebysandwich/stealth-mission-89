@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Linker zijschacht (Sidewinder)
 hardpoint-f22-left-main-bay = Hoofdschacht, linkerhelft
 hardpoint-f22-right-main-bay = Hoofdschacht, rechterhelft
 hardpoint-f22-right-side-bay = Rechter zijschacht (Sidewinder)
+hardpoint-c5-hold = Laadruim (afwerppallets)
 weapon-role-21 = Lucht-lucht, infraroodgeleiding, zeer kort bereik
 employment-21 = Bereik: 1-6 km, verder frontaal
 loadout-none-in-stock = (niet op voorraad)

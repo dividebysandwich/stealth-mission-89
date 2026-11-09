@@ -313,3 +313,4 @@ brief-task-drones = Abattre les drones d'attaque avant qu'ils plongent sur l'obj
 ce-logistics-uh60 = La logistique se fait en UH-60 ou en CH-47
 brief-task-logistics = Accrocher une caisse de fret à côté de la piste de l'aérodrome (stationnaire au-dessus, sous 50 ft) et l'amener à l'hélistation du nouveau site : la poser à moins de 90 m de l'aire
 ce-ch47-only = Le CH-47 effectue le ravitaillement et la logistique
+ce-c5-only = Le C-5 effectue des missions de transport aérien

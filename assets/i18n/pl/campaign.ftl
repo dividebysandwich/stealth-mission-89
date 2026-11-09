@@ -339,3 +339,4 @@ brief-task-drones = Zestrzel drony szturmowe, zanim zanurkują w cel: jeden, kt�
 ce-logistics-uh60 = Logistykę wozi się UH-60 lub CH-47
 brief-task-logistics = Zaczep skrzynię z ładunkiem obok pasa lotniska (zawis nad nią poniżej 50 ft) i zanieś ją na lądowisko nowego stanowiska: odstaw ją w promieniu 90 m od lądowiska
 ce-ch47-only = CH-47 wykonuje loty zaopatrzeniowe i logistyczne
+ce-c5-only = C-5 wykonuje misje transportu lotniczego

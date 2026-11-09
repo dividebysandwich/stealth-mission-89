@@ -53,6 +53,9 @@ pub struct Pilot {
     /// The aircraft is the F-22A (`SimOptions::raptor` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) raptor: bool,
+    /// The aircraft is the C-5 (`SimOptions::galaxy` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) galaxy: bool,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -343,6 +346,7 @@ impl Sim {
             kiowa: p0.kiowa,
             chinook: p0.chinook,
             raptor: p0.raptor,
+            galaxy: p0.galaxy,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

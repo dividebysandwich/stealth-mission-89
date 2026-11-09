@@ -65,6 +65,8 @@ pub struct RemotePilot {
     pub chinook: bool,
     /// The F-22A (weapons in bays).
     pub raptor: bool,
+    /// The C-5 Galaxy.
+    pub galaxy: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -85,7 +87,7 @@ pub struct RemotePilot {
 /// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores, more
-/// aircraft types (bit 0 the F-22A).
+/// aircraft types (bit 0 the F-22A, bit 1 the C-5).
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -138,7 +140,7 @@ impl From<RemotePilot> for RemoteWire {
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
-            p.raptor as u8,
+            p.raptor as u8 | (p.galaxy as u8) << 1,
         )
     }
 }
@@ -205,6 +207,7 @@ impl From<RemoteWire> for RemotePilot {
             stores,
             chinook: bit(15),
             raptor: kinds & 1 != 0,
+            galaxy: kinds & 2 != 0,
             gun_aim,
             chute,
             missiles,
@@ -403,6 +406,7 @@ impl Sim {
                     },
                     chinook: p.chinook,
                     raptor: p.raptor,
+                    galaxy: p.galaxy,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

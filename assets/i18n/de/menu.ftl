@@ -433,3 +433,8 @@ aircraft-ch47 =
         Transporthubschrauber mit Tandemrotoren
         Hängt Nachschub- und Logistiklasten an
         Kein Drehmoment auszugleichen: die Rotoren heben sich auf
+aircraft-c5 =
+    .facts =
+        Vierstrahliger strategischer Transporter
+        Fliegt Munition zwischen den Fliegerhorsten
+        Schwer: rollt und rotiert langsam

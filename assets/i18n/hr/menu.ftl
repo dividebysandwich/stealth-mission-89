@@ -433,3 +433,8 @@ aircraft-ch47 =
         Teretni helikopter s tandemskim rotorima
         Vješa terete za opskrbu i logistiku
         Nema reaktivnog momenta: rotori se poništavaju
+aircraft-c5 =
+    .facts =
+        Četveromotorni strateški transportni avion
+        Prevozi streljivo između zračnih baza
+        Težak: sporo se naginje i podiže nos

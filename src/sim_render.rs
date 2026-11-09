@@ -1403,7 +1403,8 @@ fn projectile_model(combat: &Combat, m: &stealth_sim::Projectile) -> i32 {
 
 /// Lights (slots 10/11) for the world and the own aircraft, the antenna angles (15/16) and the
 /// own aircraft's (model 24) gear (5/6), brakes (7), bay doors (8), navigation (12) and
-/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22).
+/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22), the C-5's
+/// flaps (29).
 #[allow(clippy::type_complexity)]
 fn world_model_state(
     time: Res<Time>,
@@ -1423,6 +1424,7 @@ fn world_model_state(
     >,
     player: Query<&Aircraft, With<Player>>,
     flight: Option<Res<crate::flight::FlightConstants>>,
+    settings: Res<crate::settings::Settings>,
 ) {
     // Slot 15 += 1152 and slot 16 += 1024 per sim frame time unit, ~15 per second.
     let dt = time.delta_secs() * crate::combat::FS as f32;
@@ -1494,7 +1496,16 @@ fn world_model_state(
         .as_ref()
         .and_then(|k| k.aero.vtol)
         .map(|_| crate::aircraft::nozzle_slot_value(a.nozzle));
+    // The C-5's flaps, as far down as the flight model has them.
+    let flaps = (settings.aircraft == crate::aircraft::AircraftKind::C5).then(|| {
+        crate::aircraft::flap_slot_value(a.flap_extension() * crate::aircraft::C5_FLAP_ANGLE)
+    });
     for mut s in &mut own {
+        if let Some(f) = flaps
+            && s.0[crate::aircraft::FLAP_SLOT] != f
+        {
+            s.0[crate::aircraft::FLAP_SLOT] = f;
+        }
         if let Some(r) = rotor {
             s.0[17] = r;
         }
@@ -1861,6 +1872,16 @@ pub(crate) fn sync_remote_pilots(
                     let (sr, sl) = crate::aircraft::WING_SLOTS;
                     if (s.0[sr], s.0[sl]) != (r, l) {
                         (s.0[sr], s.0[sl]) = (r, l);
+                    }
+                }
+                // A C-5's flaps: down with his gear (the flaps aren't sent).
+                if p.galaxy {
+                    let down = !p.gear_up || p.on_ground && p.view.knots > 40;
+                    let f = crate::aircraft::flap_slot_value(
+                        if down { crate::aircraft::C5_FLAP_ANGLE } else { 0.0 },
+                    );
+                    if s.0[crate::aircraft::FLAP_SLOT] != f {
+                        s.0[crate::aircraft::FLAP_SLOT] = f;
                     }
                 }
                 // His pylons and what is left on them.

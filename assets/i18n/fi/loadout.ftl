@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Vasen sivuasekuilu (Sidewinder)
 hardpoint-f22-left-main-bay = Pääasekuilu, vasen puolisko
 hardpoint-f22-right-main-bay = Pääasekuilu, oikea puolisko
 hardpoint-f22-right-side-bay = Oikea sivuasekuilu (Sidewinder)
+hardpoint-c5-hold = Ruuma (pudotuslavat)
 weapon-role-21 = Ilma-ilma, infrapunaohjaus, hyvin lyhyt kantama
 employment-21 = Kantama: 1-6 km, suurempi suoraan edestä
 loadout-none-in-stock = (ei varastossa)

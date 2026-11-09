@@ -314,3 +314,4 @@ brief-task-drones = Zostreľte útočné drony, kým sa nezrútia na cieľ: jede
 ce-logistics-uh60 = Logistika sa lieta na UH-60 alebo CH-47
 brief-task-logistics = Zavesťe nákladnú debnu vedľa dráhy letiska (visíte nad ňou pod 50 ft) a odneste ju na heliport nového stanovišťa: položte ju do 90 m od heliportu
 ce-ch47-only = CH-47 lieta zásobovanie a logistiku
+ce-c5-only = C-5 lieta misie leteckej prepravy

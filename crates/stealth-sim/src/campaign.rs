@@ -529,6 +529,7 @@ impl Sim {
             kiowa: self.pl.kiowa,
             chinook: self.pl.chinook,
             raptor: self.pl.raptor,
+            galaxy: self.pl.galaxy,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -554,6 +555,7 @@ impl Sim {
             kiowa,
             chinook,
             raptor,
+            galaxy,
         } = airframe;
         if self.campaign.is_none() {
             return self.start_state();
@@ -577,6 +579,7 @@ impl Sim {
         self.pl.kiowa = kiowa;
         self.pl.chinook = chinook;
         self.pl.raptor = raptor;
+        self.pl.galaxy = galaxy;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;

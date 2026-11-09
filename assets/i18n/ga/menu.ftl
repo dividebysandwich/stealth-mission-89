@@ -433,3 +433,8 @@ aircraft-ch47 =
         Héileacaptar lasta le rótóirí tandem
         Crochann sé lastaí soláthair agus lóistíochta
         Gan sciorradh chun cúiteamh a dhéanamh: cuireann na rótóirí as a chéile
+aircraft-c5 =
+    .facts =
+        Aerárthach iompair straitéiseach ceithre inneall
+        Iompraíonn sé armlón idir na haerbhonnta
+        Trom: mall ag rolladh agus ag rothlú

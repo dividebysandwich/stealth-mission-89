@@ -188,6 +188,7 @@ ck-resupply = RESUPPLY
 
 ce-uh60-only = The UH-60 flies insertions, rescues, resupply and logistics
 ce-ch47-only = The CH-47 flies resupply and logistics
+ce-c5-only = The C-5 flies airlift missions
 ce-resupply-uh60 = Resupply is flown in the UH-60 or the CH-47
 ce-insertion-uh60 = Insertions are flown in the UH-60, or ordered for the helicopter crews
 ce-no-place = No such place

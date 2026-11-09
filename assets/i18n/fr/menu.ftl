@@ -433,3 +433,8 @@ aircraft-ch47 =
         Hélicoptère cargo à rotors en tandem
         Élingue les charges de ravitaillement et de logistique
         Pas de couple à compenser : les rotors s'annulent
+aircraft-c5 =
+    .facts =
+        Quadriréacteur de transport stratégique
+        Achemine les munitions entre les bases aériennes
+        Lourd : lent en roulis et à la rotation

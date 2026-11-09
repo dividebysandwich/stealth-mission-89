@@ -14,6 +14,8 @@
 //!   under them.
 //! - OH-58D: half-moon needle dials with coloured ranges for its one engine.
 //! - RAH-66: thick bar graphs and readout rows (as on its own engine display).
+//! - C-5: four columns of vertical tapes, an engine to a column (fan speed and turbine
+//!   temperature), the core speed and oil pressure under them.
 //!
 //! Green in the normal range, amber over it, red past the limits; a fire shows on the left
 //! engine (red), a hit on the right one (the only one of a single engined type).
@@ -36,23 +38,26 @@ const RED: u8 = 13;
 const WHITE: u8 = 15;
 const AMBER: u8 = 18;
 
-/// What the engine instruments show, per engine (left, right; the left only for a single).
+/// Engines a page shows at most.
+pub const MAX_ENGINES: usize = 4;
+
+/// What the engine instruments show, per engine (left to right; the left only for a single).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Eng {
     pub engines: usize,
     /// Core (high pressure, gas generator) speed (%).
-    pub core: [f32; 2],
+    pub core: [f32; MAX_ENGINES],
     /// Fan (low pressure) speed (%); a helicopter's power turbine.
-    pub fan: [f32; 2],
+    pub fan: [f32; MAX_ENGINES],
     /// Turbine temperature (deg C).
-    pub temp: [f32; 2],
+    pub temp: [f32; MAX_ENGINES],
     /// Oil pressure (psi) and temperature (deg C).
-    pub oil: [f32; 2],
-    pub oil_t: [f32; 2],
+    pub oil: [f32; MAX_ENGINES],
+    pub oil_t: [f32; MAX_ENGINES],
     /// Exhaust nozzle opening (%).
-    pub nozzle: [f32; 2],
+    pub nozzle: [f32; MAX_ENGINES],
     /// Torque (%) and rotor speed (%): helicopters.
-    pub tq: [f32; 2],
+    pub tq: [f32; MAX_ENGINES],
     pub nr: f32,
     /// Fuel flow of all engines (lb/h), fuel (lbs) and bingo.
     pub flow: f32,
@@ -104,6 +109,7 @@ impl AircraftKind {
     pub fn engines(self) -> usize {
         match self {
             AircraftKind::F16 | AircraftKind::AV8B | AircraftKind::OH58 => 1,
+            AircraftKind::C5 => 4,
             _ => 2,
         }
     }
@@ -117,13 +123,14 @@ impl Eng {
         let mut e = match k.and_then(|k| k.heli.as_ref()) {
             Some(rotor) => {
                 let r = crate::mpd::engine_readings(a, rotor.fuel_burn, hit, fire);
+                let twin = |v: [f32; 2]| [v[0], v[1], 0.0, 0.0];
                 Eng {
-                    core: r.ng,
-                    fan: [r.nr; 2],
-                    temp: r.tgt,
-                    oil: r.oil_p,
-                    oil_t: r.oil_t,
-                    tq: r.tq,
+                    core: twin(r.ng),
+                    fan: twin([r.nr; 2]),
+                    temp: twin(r.tgt),
+                    oil: twin(r.oil_p),
+                    oil_t: twin(r.oil_t),
+                    tq: twin(r.tq),
                     nr: r.nr,
                     flow: r.flow,
                     ..Default::default()
@@ -154,7 +161,7 @@ impl Eng {
         let dry = t.min(100.0);
         let ab = (t - 100.0).max(0.0);
         let mut e = Eng { flow: flow * 60.0, ..Default::default() };
-        for i in 0..2 {
+        for i in 0..MAX_ENGINES {
             let (core, fan, temp, oil) = if running {
                 (
                     60.0 + 0.4 * dry + 0.05 * ab,
@@ -226,6 +233,7 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         AircraftKind::AH1Z => horizontal_pointers(c, w, top, e),
         AircraftKind::OH58 => half_dials(c, w, top, e),
         AircraftKind::RAH66 | AircraftKind::F22 => thick_bars(c, w, top, bottom - 12.0, e),
+        AircraftKind::C5 => four_columns(c, w, top, bottom - 12.0, e),
     }
     footer(c, e, 10.0, w - 10.0, bottom);
 }
@@ -255,7 +263,7 @@ struct Group {
     mark: Option<f32>,
 }
 
-fn pair(e: &Eng, v: [f32; 2], l: Lim) -> Vec<(&'static str, f32, u8)> {
+fn pair(e: &Eng, v: [f32; MAX_ENGINES], l: Lim) -> Vec<(&'static str, f32, u8)> {
     vec![("1", v[0], e.col(0, v[0], l)), ("2", v[1], e.col(1, v[1], l))]
 }
 
@@ -822,6 +830,39 @@ fn thick_bars(c: &mut Canvas, w: f32, top: f32, bottom: f32, e: &Eng) {
             let f = (v[i] / max).clamp(0.0, 1.0);
             c.stroke(v2(x0 + 38.0, yy), v2(x0 + 38.0 + f * (w - 48.0 - x0), yy), 3.0, col);
         }
+    }
+}
+
+// --- four columns of vertical tapes (C-5)
+
+fn four_columns(c: &mut Canvas, w: f32, top: f32, bottom: f32, e: &Eng) {
+    let x0 = 30.0;
+    let step = (w - x0 - 6.0) / 4.0;
+    let x = |i: usize| x0 + step * (i as f32 + 0.5);
+    // Fan speed and turbine temperature as tapes, the number over each.
+    let tapes = [("N1", e.fan, 110.0, JET_CORE, top + 10.0, top + 62.0), ("EGT", e.temp, 1000.0, JET_TEMP, top + 84.0, top + 122.0)];
+    for (name, v, max, l, y0, y1) in tapes {
+        text(c, 4.0, (y0 + y1) / 2.0, name, 7.0, GREY, Align::Left);
+        for i in 0..4 {
+            let col = e.col(i, v[i], l);
+            text(c, x(i), y0 - 6.0, &format!("{:.0}", v[i]), 6.5, col, Align::Centre);
+            c.frame(v2(x(i) - 6.0, y0), v2(x(i) + 6.0, y1), 1.0, GREY);
+            let f = (v[i] / max).clamp(0.0, 1.0);
+            c.stroke(v2(x(i), y1 - 1.0), v2(x(i), (y1 - f * (y1 - y0)).min(y1 - 1.0)), 10.0, col);
+            let ya = y1 - l.amber.min(max) / max * (y1 - y0);
+            c.stroke(v2(x(i) - 8.0, ya), v2(x(i) + 8.0, ya), 1.0, AMBER);
+        }
+    }
+    // The core speed and oil pressure as numbers.
+    for (k, (name, v, l)) in [("N2", e.core, JET_CORE), ("OIL", e.oil, JET_OIL)].into_iter().enumerate() {
+        let y = top + 134.0 + 10.0 * k as f32;
+        text(c, 4.0, y, name, 7.0, GREY, Align::Left);
+        for i in 0..4 {
+            text(c, x(i), y, &format!("{:.0}", v[i]), 6.5, e.col(i, v[i], l), Align::Centre);
+        }
+    }
+    for i in 0..4 {
+        text(c, x(i), bottom.max(top + 150.0), &format!("{}", i + 1), 6.5, CYAN, Align::Centre);
     }
 }
 

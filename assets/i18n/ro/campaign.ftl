@@ -314,3 +314,4 @@ brief-task-drones = Doborâți dronele de atac înainte să se arunce asupra ți
 ce-logistics-uh60 = Logistica se zboară cu UH-60 sau cu CH-47
 brief-task-logistics = Agățați o ladă de marfă lângă pista aerodromului (staționați deasupra ei sub 50 ft) și duceți-o la heliportul noului amplasament: puneți-o jos la cel mult 90 m de heliport
 ce-ch47-only = CH-47 zboară aprovizionare și logistică
+ce-c5-only = C-5 zboară misiuni de transport aerian

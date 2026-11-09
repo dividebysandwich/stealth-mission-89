@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Levá boční šachta (Sidewinder)
 hardpoint-f22-left-main-bay = Hlavní šachta, levá polovina
 hardpoint-f22-right-main-bay = Hlavní šachta, pravá polovina
 hardpoint-f22-right-side-bay = Pravá boční šachta (Sidewinder)
+hardpoint-c5-hold = Nákladový prostor (palety k shozu)
 weapon-role-21 = Vzduch-vzduch, infračervené navádění, velmi krátký dosah
 employment-21 = Dosah: 1-6 km, větší zepředu
 loadout-none-in-stock = (není na skladě)

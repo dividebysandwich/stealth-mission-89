@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Venstre sideskakt (Sidewinder)
 hardpoint-f22-left-main-bay = Hovedskakt, venstre halvdel
 hardpoint-f22-right-main-bay = Hovedskakt, højre halvdel
 hardpoint-f22-right-side-bay = Højre sideskakt (Sidewinder)
+hardpoint-c5-hold = Lastrum (nedkastningspaller)
 weapon-role-21 = Luft-luft, infrarød målsøgning, meget kort rækkevidde
 employment-21 = Rækkevidde: 1-6 km, længere forfra
 loadout-none-in-stock = (ikke på lager)

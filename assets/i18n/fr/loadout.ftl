@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Soute latérale gauche (Sidewinder)
 hardpoint-f22-left-main-bay = Soute principale, moitié gauche
 hardpoint-f22-right-main-bay = Soute principale, moitié droite
 hardpoint-f22-right-side-bay = Soute latérale droite (Sidewinder)
+hardpoint-c5-hold = Soute (palettes de largage)
 weapon-role-21 = Air-air, guidage infrarouge, très courte portée
 employment-21 = Portée : 1-6 km, plus loin de face
 loadout-none-in-stock = (plus en stock)

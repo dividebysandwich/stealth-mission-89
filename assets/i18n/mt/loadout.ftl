@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Bay tal-ġenb tax-xellug (Sidewinder)
 hardpoint-f22-left-main-bay = Bay ewlieni, nofs tax-xellug
 hardpoint-f22-right-main-bay = Bay ewlieni, nofs tal-lemin
 hardpoint-f22-right-side-bay = Bay tal-ġenb tal-lemin (Sidewinder)
+hardpoint-c5-hold = Stiva tal-merkanzija (pallets għall-waqgħa mill-ajru)
 weapon-role-21 = Arja-arja, gwida infraħamra, firxa qasira ħafna
 employment-21 = Firxa: 1-6 km, akbar minn quddiem
 loadout-none-in-stock = (m'hemmx stokk)

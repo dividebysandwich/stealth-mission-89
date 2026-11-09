@@ -313,3 +313,4 @@ brief-task-drones = 在攻击无人机俯冲撞击目标前将其击落：只要
 ce-logistics-uh60 = 后勤使用 UH-60 或 CH-47 飞行
 brief-task-logistics = 钩起机场跑道旁的货箱（在其上方 50 ft 以下悬停），运到新阵地的停机坪：在距停机坪 90 m 内放下
 ce-ch47-only = CH-47 执行补给和后勤飞行
+ce-c5-only = C-5 执行空运任务

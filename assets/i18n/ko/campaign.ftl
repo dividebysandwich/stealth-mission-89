@@ -314,3 +314,4 @@ brief-task-drones = 공격 드론이 표적에 돌입하기 전에 격추하십�
 ce-logistics-uh60 = 군수는 UH-60 또는 CH-47로 비행합니다
 brief-task-logistics = 공항 활주로 옆의 화물 상자를 걸고 (50 ft 아래에서 그 위에 정지 비행) 새 기지의 헬기장으로 옮기십시오: 헬기장에서 90 m 이내에 내려놓으십시오
 ce-ch47-only = CH-47은 보급과 군수 임무를 비행합니다
+ce-c5-only = C-5는 공수 임무를 수행합니다

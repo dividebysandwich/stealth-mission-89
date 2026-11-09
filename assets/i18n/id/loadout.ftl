@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Bay samping kiri (Sidewinder)
 hardpoint-f22-left-main-bay = Bay utama, bagian kiri
 hardpoint-f22-right-main-bay = Bay utama, bagian kanan
 hardpoint-f22-right-side-bay = Bay samping kanan (Sidewinder)
+hardpoint-c5-hold = Ruang kargo (palet jatuhan udara)
 weapon-role-21 = Udara-ke-udara, pengarah inframerah, jangkauan sangat pendek
 employment-21 = Jangkauan: 1-6 km, lebih jauh dari depan
 loadout-none-in-stock = (stok habis)

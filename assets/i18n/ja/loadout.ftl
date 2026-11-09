@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = 左サイドベイ（サイドワインダー）
 hardpoint-f22-left-main-bay = メインベイ左半分
 hardpoint-f22-right-main-bay = メインベイ右半分
 hardpoint-f22-right-side-bay = 右サイドベイ（サイドワインダー）
+hardpoint-c5-hold = 貨物室 (空中投下パレット)
 weapon-role-21 = 空対空、赤外線誘導、非常に短射程
 employment-21 = 射程：1-6 km、正面からはさらに遠く
 loadout-none-in-stock = (在庫なし)

@@ -45,6 +45,7 @@ pub enum Aircraft {
     OH58,
     CH47,
     F22,
+    C5,
 }
 
 impl Aircraft {
@@ -61,6 +62,7 @@ impl Aircraft {
             Aircraft::OH58 => "OH-58D",
             Aircraft::CH47 => "CH-47",
             Aircraft::F22 => "F-22A",
+            Aircraft::C5 => "C-5",
         }
     }
 
@@ -79,6 +81,11 @@ impl Aircraft {
     /// The helicopters that sling cargo: fly resupply and logistics (the CH-47 nothing else).
     pub fn cargo(self) -> bool {
         matches!(self, Aircraft::UH60 | Aircraft::CH47)
+    }
+
+    /// The cargo jet: flies the munitions between the airbases and nothing else.
+    pub fn airlifter(self) -> bool {
+        self == Aircraft::C5
     }
 }
 
@@ -250,6 +257,9 @@ impl MissionKind {
     /// cargo helicopters, which fly nothing but them and (the troop helicopter) rescues (it
     /// picks the pilot up, the others cover it). The gunship flies the rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
+        if aircraft.airlifter() {
+            return false;
+        }
         match self {
             MissionKind::Insertion => aircraft.transport(),
             MissionKind::Resupply | MissionKind::Logistics => aircraft.cargo(),
@@ -288,7 +298,9 @@ impl MissionKind {
 
     /// Why an aircraft may not fly it.
     pub fn not_flyable(self, aircraft: Aircraft) -> Text {
-        if aircraft == Aircraft::CH47 {
+        if aircraft.airlifter() {
+            text!("ce-c5-only")
+        } else if aircraft == Aircraft::CH47 {
             text!("ce-ch47-only")
         } else if aircraft.transport() {
             text!("ce-uh60-only")

@@ -433,3 +433,8 @@ aircraft-ch47 =
         Lasthelikopter med tandemrotorer
         Hænger forsynings- og logistiklaster op
         Intet moment at holde imod: rotorerne ophæver hinanden
+aircraft-c5 =
+    .facts =
+        Firemotoret strategisk transportfly
+        Flyver ammunition mellem flybaserne
+        Tung: langsom til at krænge og rotere

@@ -433,3 +433,8 @@ aircraft-ch47 =
         Kravas helikopters ar tandēma rotoriem
         Pakar apgādes un loģistikas kravas
         Nav griezes momenta, ko kompensēt: rotori viens otru izslēdz
+aircraft-c5 =
+    .facts =
+        Četrdzinēju stratēģiskā transporta lidmašīna
+        Pārved munīciju starp aviobāzēm
+        Smags: lēni sasveras un ceļ degunu

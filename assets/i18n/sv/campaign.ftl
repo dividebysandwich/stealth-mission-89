@@ -314,3 +314,4 @@ brief-task-drones = Skjut ned attackdrönarna innan de störtdyker mot målet: e
 ce-logistics-uh60 = Logistik flygs med UH-60 eller CH-47
 brief-task-logistics = Haka fast en lastlåda bredvid flygfältets bana (sväva över den under 50 ft) och flyg den till den nya platsens helikopterplatta: sätt ner den inom 90 m från plattan
 ce-ch47-only = CH-47 flyger underhåll och logistik
+ce-c5-only = C-5 flyger lufttransportuppdrag

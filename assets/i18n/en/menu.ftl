@@ -433,3 +433,8 @@ aircraft-ch47 =
         Tandem-rotor cargo helicopter
         Slings resupply and logistics loads
         No torque to hold: the rotors cancel
+aircraft-c5 =
+    .facts =
+        Four-engined strategic airlifter
+        Flies munitions between the airbases
+        Heavy: slow to roll and to rotate

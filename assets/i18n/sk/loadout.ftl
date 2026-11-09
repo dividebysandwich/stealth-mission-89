@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Ľavý bočný zbraňový priestor (Sidewinder)
 hardpoint-f22-left-main-bay = Hlavný zbraňový priestor, ľavá polovica
 hardpoint-f22-right-main-bay = Hlavný zbraňový priestor, pravá polovica
 hardpoint-f22-right-side-bay = Pravý bočný zbraňový priestor (Sidewinder)
+hardpoint-c5-hold = Nákladový priestor (palety na zhoz)
 weapon-role-21 = Vzduch-vzduch, infračervené navádzanie, veľmi krátky dosah
 employment-21 = Dosah: 1-6 km, väčší spredu
 loadout-none-in-stock = (nie je na sklade)

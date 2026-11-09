@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = 왼쪽 측면 베이(사이드와인더)
 hardpoint-f22-left-main-bay = 주 베이, 왼쪽 절반
 hardpoint-f22-right-main-bay = 주 베이, 오른쪽 절반
 hardpoint-f22-right-side-bay = 오른쪽 측면 베이(사이드와인더)
+hardpoint-c5-hold = 화물칸 (공중 투하 팔레트)
 weapon-role-21 = 공대공, 적외선 유도, 매우 짧은 사거리
 employment-21 = 사거리: 1-6 km, 정면에서는 더 멀리
 loadout-none-in-stock = (재고 없음)

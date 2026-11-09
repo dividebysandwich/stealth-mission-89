@@ -213,13 +213,14 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft.
-const AIRCRAFT: [AircraftKind; 11] = [
+const AIRCRAFT: [AircraftKind; 12] = [
     AircraftKind::F117,
     AircraftKind::F16,
     AircraftKind::F22,
     AircraftKind::Tornado,
     AircraftKind::A10,
     AircraftKind::AV8B,
+    AircraftKind::C5,
     AircraftKind::UH60,
     AircraftKind::AH1Z,
     AircraftKind::RAH66,
@@ -1818,14 +1819,12 @@ pub(crate) fn menu_ui(
             );
             mission_settings.start_hour = state.start_hour;
             mission_settings.moon = state.moon;
-            mission_settings.helicopter = settings.aircraft.spec().helicopter;
-            let transport = settings.aircraft.spec().transport();
+            crate::mission::settings_for(&mut mission_settings, settings.aircraft);
+            let aircraft = settings.aircraft;
             state.mission = Some(
                 crate::mission::generate(&data, &mission_settings, state.seed)
                     .map(|mut m| {
-                        if transport {
-                            stealth_mission::insertion::for_helicopter(&mut m);
-                        }
+                        crate::mission::for_aircraft(&mut m, &data.0, aircraft);
                         m
                     })
                     .map_err(|e| format!("{e:#}")),
@@ -1937,11 +1936,14 @@ pub(crate) fn menu_ui(
                             crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
                             vehicle_options(ui, &mut settings, Some(&mut state.lockheed), compact);
-                            // A troop helicopter flies the same seed's targets as insertions;
-                            // helicopters fly short missions.
+                            // A troop helicopter flies the same seed's targets as insertions,
+                            // the cargo jet as an airdrop and a delivery; helicopters fly
+                            // short missions.
+                            let lift = settings.aircraft.airlifter() != was.airlifter();
                             let (now, was) = (settings.aircraft.spec(), was.spec());
                             if now.transport() != was.transport()
                                 || now.helicopter != was.helicopter
+                                || lift
                             {
                                 state.regenerate();
                             }

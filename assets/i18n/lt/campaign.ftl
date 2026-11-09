@@ -314,3 +314,4 @@ brief-task-drones = Numuškite atakos dronus, kol jie nesidaužė į taikinį: v
 ce-logistics-uh60 = Logistika skraidoma UH-60 arba CH-47
 brief-task-logistics = Užkabinkite krovinio dėžę šalia aerodromo tako (sklandykite virš jos žemiau 50 ft) ir nugabenkite į naujos vietos sraigtasparnių aikštelę: padėkite ne toliau kaip 90 m nuo aikštelės
 ce-ch47-only = CH-47 skraido aprūpinimą ir logistiką
+ce-c5-only = C-5 skraido oro transporto misijas

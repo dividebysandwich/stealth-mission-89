@@ -314,3 +314,4 @@ brief-task-drones = Sestrelite napadalne drone, preden se zaletijo v cilj: en dr
 ce-logistics-uh60 = Logistika se leti z UH-60 ali CH-47
 brief-task-logistics = Zataknite tovorni zaboj ob vzletno-pristajalni stezi letališča (lebdite nad njim pod 50 ft) in ga odnesite na heliport novega mesta: odložite ga do 90 m od heliporta
 ce-ch47-only = CH-47 leti oskrbo in logistiko
+ce-c5-only = C-5 leti misije zračnega prevoza

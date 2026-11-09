@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Vasak külgmine relvaruum (Sidewinder)
 hardpoint-f22-left-main-bay = Peamine relvaruum, vasak pool
 hardpoint-f22-right-main-bay = Peamine relvaruum, parem pool
 hardpoint-f22-right-side-bay = Parem külgmine relvaruum (Sidewinder)
+hardpoint-c5-hold = Lastiruum (heiteaalused)
 weapon-role-21 = Õhk-õhk, infrapunajuhtimine, väga lühike ulatus
 employment-21 = Ulatus: 1-6 km, eestpoolt suurem
 loadout-none-in-stock = (laos puudub)

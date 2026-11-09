@@ -433,3 +433,8 @@ aircraft-ch47 =
         Elicopter de marfă cu rotoare tandem
         Atârnă încărcături de aprovizionare și logistică
         Fără cuplu de compensat: rotoarele se anulează
+aircraft-c5 =
+    .facts =
+        Avion de transport strategic cvadrimotor
+        Transportă muniție între bazele aeriene
+        Greu: lent la ruliu și la rotire

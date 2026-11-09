@@ -433,3 +433,8 @@ aircraft-ch47 =
         Ħelikopter tal-merkanzija b'rotors tandem
         Jgħalleq tagħbijiet ta' rifornimenti u loġistika
         L-ebda torque x'tikkumpensa: ir-rotors jikkanċellaw lil xulxin
+aircraft-c5 =
+    .facts =
+        Ajruplan strateġiku tat-trasport b'erba' magni
+        Iġorr il-munizzjon bejn il-bażijiet tal-ajru
+        Tqil: bil-mod biex idur u jgħolli l-imnieħer

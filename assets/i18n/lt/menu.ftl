@@ -433,3 +433,8 @@ aircraft-ch47 =
         Krovininis sraigtasparnis su tandeminiais rotoriais
         Kabina aprūpinimo ir logistikos krovinius
         Nėra sukimo momento, kurį reikėtų kompensuoti: rotoriai vienas kitą panaikina
+aircraft-c5 =
+    .facts =
+        Keturių variklių strateginis transporto lėktuvas
+        Skraidina šaudmenis tarp aviacijos bazių
+        Sunkus: lėtai krypsta ir kelia nosį

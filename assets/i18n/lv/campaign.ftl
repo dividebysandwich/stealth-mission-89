@@ -314,3 +314,4 @@ brief-task-drones = Notrieciet uzbrukuma dronus, pirms tie ietriecas mērķī: v
 ce-logistics-uh60 = Loģistiku lido ar UH-60 vai CH-47
 brief-task-logistics = Piekabiniet kravas kasti pie lidlauka skrejceļa (paraugieties virs tās zem 50 ft) un aiznesiet uz jaunās vietas helikopteru laukumu: nolieciet to 90 m attālumā no laukuma
 ce-ch47-only = CH-47 veic apgādi un loģistiku
+ce-c5-only = C-5 lido gaisa transporta misijās

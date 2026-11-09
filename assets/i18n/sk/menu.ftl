@@ -433,3 +433,8 @@ aircraft-ch47 =
         Nákladný vrtuľník s tandemovými rotormi
         Zavesuje náklady zásobovania a logistiky
         Žiadny reakčný moment: rotory sa rušia
+aircraft-c5 =
+    .facts =
+        Štvormotorové strategické transportné lietadlo
+        Vozí muníciu medzi leteckými základňami
+        Ťažké: pomaly sa nakláňa aj dvíha nos

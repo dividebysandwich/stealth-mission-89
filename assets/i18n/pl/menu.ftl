@@ -433,3 +433,8 @@ aircraft-ch47 =
         Śmigłowiec transportowy z wirnikami tandem
         Podwiesza ładunki zaopatrzeniowe i logistyczne
         Brak momentu do skompensowania: wirniki znoszą się nawzajem
+aircraft-c5 =
+    .facts =
+        Czterosilnikowy strategiczny samolot transportowy
+        Przewozi amunicję między bazami lotniczymi
+        Ciężki: wolno się przechyla i podrywa nos

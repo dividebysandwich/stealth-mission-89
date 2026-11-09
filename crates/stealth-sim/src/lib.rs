@@ -375,6 +375,7 @@ impl Sim {
         let kiowa = opts.kiowa;
         let chinook = opts.chinook;
         let raptor = opts.raptor;
+        let galaxy = opts.galaxy;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -422,6 +423,7 @@ impl Sim {
                 kiowa,
                 chinook,
                 raptor,
+                galaxy,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
@@ -1168,6 +1170,7 @@ impl Sim {
     /// a helicopter without a turret a machine gun pod on a pylon.
     pub fn has_gun(&self) -> bool {
         !self.pl.lockheed
+            && !self.pl.galaxy
             && (!self.pl.helicopter
                 || self.pl.gunship
                 || self.pl.bays.iter().any(|b| self.gun_pod(b.0)))

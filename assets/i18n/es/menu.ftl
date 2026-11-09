@@ -433,3 +433,8 @@ aircraft-ch47 =
         Helicóptero de carga de rotores en tándem
         Eslinga cargas de reabastecimiento y logística
         Sin par que compensar: los rotores se anulan
+aircraft-c5 =
+    .facts =
+        Avión de transporte estratégico cuatrimotor
+        Lleva munición entre las bases aéreas
+        Pesado: lento al alabear y al rotar

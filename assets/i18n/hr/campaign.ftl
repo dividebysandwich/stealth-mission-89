@@ -314,3 +314,4 @@ brief-task-drones = Oborite napadne dronove prije nego se obruše na cilj: jedan
 ce-logistics-uh60 = Logistika se leti na UH-60 ili CH-47
 brief-task-logistics = Zakačite teretni sanduk uz stazu zračne luke (lebdite iznad njega ispod 50 ft) i odnesite ga na helidrom novog mjesta: spustite ga na 90 m od helidroma
 ce-ch47-only = CH-47 leti opskrbu i logistiku
+ce-c5-only = C-5 leti misije zračnog prijevoza

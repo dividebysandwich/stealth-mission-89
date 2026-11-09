@@ -314,3 +314,4 @@ brief-task-drones = Die Kampfdrohnen abschießen, bevor sie auf das Ziel stürze
 ce-logistics-uh60 = Logistik wird mit der UH-60 oder der CH-47 geflogen
 brief-task-logistics = Eine Frachtkiste neben der Piste des Flugplatzes anhängen (darüber unter 50 ft schweben) und zum Hubschrauberlandeplatz der neuen Stellung fliegen: innerhalb von 90 m vom Platz absetzen
 ce-ch47-only = Die CH-47 fliegt Nachschub und Logistik
+ce-c5-only = Die C-5 fliegt Lufttransporteinsätze

@@ -314,3 +314,4 @@ brief-task-drones = Ammu alas hyökkäysdroonit ennen kuin ne syöksyvät kohtee
 ce-logistics-uh60 = Logistiikka lennetään UH-60:llä tai CH-47:llä
 brief-task-logistics = Kiinnitä rahtilaatikko lentokentän kiitotien viereen (leiju sen päällä alle 50 ft) ja vie se uuden paikan kopterikentälle: laske se alas 90 m:n säteellä kentästä
 ce-ch47-only = CH-47 lentää huoltoa ja logistiikkaa
+ce-c5-only = C-5 lentää ilmakuljetustehtäviä

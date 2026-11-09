@@ -644,6 +644,10 @@ pub struct Airframe {
     /// The F-22A (weapons in bays, as the F-117A): its radar return is lower still.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub raptor: bool,
+    /// The C-5 Galaxy (a cargo jet, no weapons, no cannon, no ejection seats): a big radar
+    /// return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub galaxy: bool,
 }
 
 /// Landing option.
@@ -704,6 +708,10 @@ pub struct SimOptions {
     /// return lower than the F-117A's ([`crate::radar::F22_RCS`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub raptor: bool,
+    /// The aircraft is the C-5 Galaxy (a cargo jet): seen as one by the other pilots, no cannon,
+    /// a big radar return ([`crate::radar::GALAXY_RCS`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub galaxy: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -754,6 +762,7 @@ impl Default for SimOptions {
             kiowa: false,
             chinook: false,
             raptor: false,
+            galaxy: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

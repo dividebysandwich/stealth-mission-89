@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Левый боковой отсек (Sidewinder)
 hardpoint-f22-left-main-bay = Главный отсек, левая половина
 hardpoint-f22-right-main-bay = Главный отсек, правая половина
 hardpoint-f22-right-side-bay = Правый боковой отсек (Sidewinder)
+hardpoint-c5-hold = Грузовой отсек (поддоны для сброса)
 weapon-role-21 = Воздух-воздух, ИК-наведение, очень малая дальность
 employment-21 = Дальность: 1-6 км, больше при атаке в лоб
 loadout-none-in-stock = (нет на складе)

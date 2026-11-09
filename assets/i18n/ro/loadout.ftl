@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Compartiment lateral stânga (Sidewinder)
 hardpoint-f22-left-main-bay = Compartiment principal, jumătatea stângă
 hardpoint-f22-right-main-bay = Compartiment principal, jumătatea dreaptă
 hardpoint-f22-right-side-bay = Compartiment lateral dreapta (Sidewinder)
+hardpoint-c5-hold = Cală de marfă (paleți pentru parașutare)
 weapon-role-21 = Aer-aer, ghidare în infraroșu, rază foarte scurtă
 employment-21 = Rază: 1-6 km, mai mare frontal
 loadout-none-in-stock = (fără stoc)

@@ -433,3 +433,8 @@ aircraft-ch47 =
         Lasthelikopter med tandemrotorer
         Hänger upp underhålls- och logistiklaster
         Inget moment att hålla emot: rotorerna tar ut varandra
+aircraft-c5 =
+    .facts =
+        Fyrmotorigt strategiskt transportflygplan
+        Flyger ammunition mellan flygbaserna
+        Tungt: långsamt att rolla och rotera

@@ -433,3 +433,8 @@ aircraft-ch47 =
         Tandemrotoros teherszállító helikopter
         Utánpótlási és logisztikai terheket függeszt
         Nincs ellennyomaték: a rotorok kioltják egymást
+aircraft-c5 =
+    .facts =
+        Négyhajtóműves stratégiai szállító repülőgép
+        Lőszert szállít a légibázisok között
+        Nehéz: lassan dől és emeli az orrát

@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Vano laterale sinistro (Sidewinder)
 hardpoint-f22-left-main-bay = Vano principale, metà sinistra
 hardpoint-f22-right-main-bay = Vano principale, metà destra
 hardpoint-f22-right-side-bay = Vano laterale destro (Sidewinder)
+hardpoint-c5-hold = Stiva (pallet da aviolancio)
 weapon-role-21 = Aria-aria, guida a infrarossi, gittata molto breve
 employment-21 = Gittata: 1-6 km, maggiore in frontale
 loadout-none-in-stock = (esaurito)

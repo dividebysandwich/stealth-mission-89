@@ -314,3 +314,4 @@ brief-task-drones = Tulista alla ründedroonid enne, kui need sihtmärgile söö
 ce-logistics-uh60 = Logistikat lennatakse UH-60 või CH-47-ga
 brief-task-logistics = Haakige lasti kast lennuvälja maandumisraja kõrval (hõljuge selle kohal alla 50 ft) ja viige uue koha kopteriplatsile: asetage see 90 m raadiusse platsist
 ce-ch47-only = CH-47 lendab varustust ja logistikat
+ce-c5-only = C-5 lendab õhutranspordi missioone

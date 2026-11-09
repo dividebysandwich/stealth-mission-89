@@ -314,3 +314,4 @@ brief-task-drones = Tembak jatuh drone serang sebelum menukik ke target: satu ya
 ce-logistics-uh60 = Logistik diterbangkan dengan UH-60 atau CH-47
 brief-task-logistics = Kaitkan peti kargo di samping landasan lapangan terbang (melayang di atasnya di bawah 50 ft) dan terbangkan ke helipad lokasi baru: letakkan dalam jarak 90 m dari helipad
 ce-ch47-only = CH-47 menerbangkan pasokan ulang dan logistik
+ce-c5-only = C-5 menerbangkan misi angkutan udara

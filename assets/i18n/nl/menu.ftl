@@ -434,3 +434,8 @@ aircraft-ch47 =
         Vrachthelikopter met tandemrotors
         Hangt bevoorradings- en logistieke lasten aan
         Geen koppel om op te vangen: de rotors heffen elkaar op
+aircraft-c5 =
+    .facts =
+        Viermotorig strategisch transportvliegtuig
+        Vliegt munitie tussen de vliegbases
+        Zwaar: traag rollen en roteren

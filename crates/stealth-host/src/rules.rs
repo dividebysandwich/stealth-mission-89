@@ -91,6 +91,8 @@ impl Rules {
             Aircraft::F16 => Airframe { external_stores: true, ..Airframe::default() },
             // Weapons in bays as the F-117A's, a cannon, a lower radar return.
             Aircraft::F22 => Airframe { raptor: true, ..Airframe::default() },
+            // No weapons, no cannon; cargo inside, seen by radars as stores outside would be.
+            Aircraft::C5 => Airframe { external_stores: true, galaxy: true, ..Airframe::default() },
             Aircraft::Tornado => {
                 Airframe { external_stores: true, tornado: true, ..Airframe::default() }
             }
