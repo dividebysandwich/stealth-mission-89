@@ -194,7 +194,7 @@ mouse on an option for a short description.
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
 | FLY | Take off. |
 
-Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions.
+Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions. The C-5 takes off from a land base and flies an airlift: an airdrop, then a landing with the cargo (chapter 3.11).
 
 ## 1.3 Options
 
@@ -238,7 +238,8 @@ change is saved at once.
 ![VR controller mapping](images/controls_vr.png)
 
 **VR controllers.** The last section assigns an action to each controller input. The defaults work like
-a HOTAS: grab the stick with the right hand and the throttle with the left. To find an action in
+a HOTAS: grab the stick with the right hand and the throttle with the left (in the C-5, the yoke
+with the left hand and the throttles with the right, chapter 3.11). To find an action in
 the lists, type its name in the search field: every input stays, and their lists hold only the
 matching actions.
 
@@ -407,6 +408,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors. |
 | <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods. |
 | <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
+| <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#311-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -1065,6 +1067,149 @@ the windshield show the sky in a turn.
 ![The CH-47's cockpit](images/cockpit_ch47.png)
 
 **Best for.** LOGISTICS and RESUPPLY, and nothing else.
+
+## 3.11 C-5M GALAXY
+
+<img src="images/units/fly_c5.png" width="480" alt="C-5M GALAXY">
+
+In 1964 the US Air Force asked for a transport that could carry anything the Army owned, tanks
+included, across an ocean in one hop. Boeing, Douglas and Lockheed competed for the CX-HLS
+("Cargo Experimental - Heavy Logistics System"). Lockheed won the airframe, General Electric the
+engines; Boeing's losing design went on to become the 747. The **C-5A Galaxy** first flew on
+30 June 1968, and for years it was the largest aircraft in the world. Its whole nose swings up
+and its tail opens on a ramp, so vehicles drive straight through the hold; its landing gear
+"kneels" to bring the floor down to the height of a truck bed.
+
+In October 1973, during Operation Nickel Grass, C-5s flew tanks, howitzers and helicopters to
+Israel when the Yom Kippur war had all but emptied its arsenal. A year later a C-5A dropped a
+Minuteman ICBM from its open ramp over the Pacific and the missile lit its motor under its
+parachutes, to show that one could be launched from the air. C-5s carried much of the build-up
+for Desert Shield and have flown in every American war and relief operation since. The
+**C-5M Super Galaxy**, rebuilt from 2009, has new General Electric engines, a glass cockpit and
+much better climb on a hot day.
+
+| **C-5M SUPER GALAXY** | |
+|---|---|
+| *Role* | Strategic airlifter, crew of seven |
+| *Manufacturer* | Lockheed, USA |
+| *First flight* | 30 June 1968 (C-5A); 19 June 2006 (C-5M) |
+| *Wingspan / length / height* | 67.89 m / 75.31 m / 19.84 m |
+| *Engines* | 4 × General Electric F138-GE-100 (CF6-80C2), 228 kN (51,250 lbf) each |
+| *Maximum take-off weight* | 381,000 kg (840,000 lb) |
+| *Maximum speed* | about Mach 0.79 |
+| *Payload* | about 127,000 kg (281,000 lb): two M1 tanks, or six helicopters |
+
+**IN THE GAME.** The C-5 is the cargo jet: unarmed, no gun, no stores, only its hold. It flies
+only with the modern flight model.
+
+- **Heavy.** 150,000 lb of fuel (bingo 25,000), slow to roll and slow to rotate. Plan turns
+  and the flare early; the controls answer late and keep going once they do.
+- **Long take-off.** Full throttle and flaps down (key 9): it lifts off at 115 to 130 kt after
+  2,500 to 3,000 ft of runway. Let it run off the end and you are on the grass.
+- **Seen from far away.** Its radar return is two and a half times a fighter's: the long-range
+  SAMs can fire at it from well over 100 km. Stay away from the SAM sites and low over hostile
+  ground (chapter 7.8).
+- Mach 0.79 (about 470 kt) at 30,000 ft. It stalls at about 165 kt clean, 115 kt with the flaps:
+  keep them down for the approach and the drop.
+
+**Cockpit.** The pilot sits in the left seat with the **yoke** in front of the knees, a control
+column from the floor with a wheel on top, and the four **throttles** on the pedestal to the right.
+Ahead of the pilot two MFDs (the HSD and the HSI to start with); between the seats two more (the
+**cargo page** and the 4-engine **ENG page**). Left of the centre MFDs, the small warnings display,
+with the **RAMP** and **DROP** buttons above it; right of them the standby instruments and the
+gear lights, FLAPS and BRAKE. The autopilot and HUD mode keys sit on the glare shield, the CDU
+and the countermeasures on the pedestal behind the throttles. The copilot's displays stay dark.
+
+![The C-5's cockpit](images/cockpit_c5.png)
+
+**The yoke in VR.** The yoke works like the real one, not like a stick. The *left* hand flies it
+and the *right* hand takes the throttles (the reverse of every other aircraft in the game, because
+the throttles are on your right):
+
+- **Take the wheel** by squeezing the grip anywhere near it: its horns stand out on either side.
+- **Pull or push the hand** to swing the column aft and forward: back is nose up. It moves with
+  your hand, about 12 cm either way to full deflection.
+- **Turn the wheel** to bank: twist the controller as if you were turning a steering wheel, or move
+  the hand sideways. Both add up.
+- **Both hands.** Reach the right hand to the wheel's right horn instead of the throttles (it
+  takes whichever is nearer) and fly with both hands: the yoke follows their average, the way you
+  would hold a real one. Let go with either hand and the other one carries on from where the two
+  had it, without a jump.
+- The yoke has **no rudder**: twisting it turns the wheel. Use the rudder pedals, the gamepad's
+  right stick or the keys if you need the rudder.
+- The **stall buffet** shakes whichever hand is on the wheel.
+
+The controllers' buttons keep their usual mapping (chapter 1.4). The right trigger fires (in the
+C-5: drops a pallet) while the right hand holds the throttles or the right horn, and the left
+trigger holds the wheel brakes. The RAMP and DROP buttons, like every other button in the cockpit,
+can also be pressed with a fingertip.
+
+**Cargo drop operations.** In single missions and the career the C-5 flies an **airlift** (chapter
+8.1): it takes off from a land base with four supply pallets in the hold, drops them to friendly
+troops at the drop zone and lands at the friendly airfield nearest them, which ends the mission.
+About two in three airlifts go to troops well behind the lines, on a route away from the enemy's
+SAMs and airfields, and are left alone. The others go to troops near the front, with two fighters
+as escort that stay 2 km off your wing and engage enemy aircraft within 25 km of the drop zone.
+
+The **CGO** (cargo) page shows the hold from the left side, the pallets on its floor and the aft
+ramp at its angle:
+
+![The cargo page: ramp up, green light, ramp lowering, red light; below, a pallet sliding out over the ramp and falling under its chute](images/mfd_cgo.png)
+
+| Shown | Meaning |
+|---|---|
+| **RAMP UP** (green) | The ramp is shut. |
+| **RAMP LOWERING** / **RAMP RAISING** (amber) | The ramp is moving, with how far it has gone. It takes 8 seconds. |
+| **RAMP DOWN** (cyan) | Open for the drop. Pallets only leave with the ramp down. |
+| **PLT 4/4** | Pallets left in the hold, of four. An empty place is dotted. |
+| **DZ 4.0 KM** | Ground range to the drop zone. *NO DROP ZONE* when there is none left to drop to. |
+| **REL 0:30** | Time to the release point: when a pallet released then lands on the zone. *REL PAST* once you are beyond it. |
+| **DFT 80R** | Drift: how far (m) right or left of the zone a pallet released now would land. |
+| **GREEN LIGHT** | The jump light: the ramp is down, and a pallet released now lands in the zone. It blinks. |
+| **RED LIGHT** | Not yet (or no longer): the pallets would land outside the zone. |
+| **TOF** | A pallet's time of fall (s) from your height. |
+
+On a campaign cargo run the page shows where the cargo goes (*FOR* the base) and the load,
+instead of the drop zone.
+
+The **HUD** shows the drop in every mode (its mode reads *DROP*): the drop zone's diamond with
+its range, the steering line through it, the release cue sliding down the line towards the flight
+path marker, and a ring with a cross where a pallet released now would land. Above the marker, the
+jump light: *RAMP UP* blinking from 30 seconds before the release point while the ramp is still
+up, *RAMP MOVING*, then *GREEN LIGHT*, and *DROP* flashing at the release point itself. Lower
+right are the pallets left, the zone's range, the time to release and the time of fall.
+
+![A C-5 over the fields on its way to the drop zone](images/c5_airdrop.png)
+
+To make a drop:
+
+1. Fly towards the drop zone (the first steerpoint after take-off). Bring a cargo page up on one
+   of the MFDs; it starts on the right centre one.
+2. Slow down to a comfortable speed and hold your height steady: about 1,000 to 1,500 ft above the
+   ground and 200 to 250 kt. The lower and slower, the shorter the fall and the less the pallets
+   drift.
+3. A minute or so out, lower the ramp: **RAMP** on the cargo page (its top left button) or on the
+   panel, or the **bay doors** key (**8**, gamepad West). The HUD warns *RAMP UP* if you leave it late.
+4. Steer to put the steering line through the flight path marker. Keep the impact ring moving up
+   the line onto the diamond, and fly the release cue down to the marker.
+5. On **GREEN LIGHT** (or when *DROP* flashes), release: **DROP**, the **fire** key (**Enter**) or
+   the right VR trigger. Each press sends one pallet aft along the floor and out over the ramp's
+   end; its chute opens behind you. *Equipment Delivered* means it landed within 4 km of the drop
+   zone's beacon and the primary objective is done; *Bad Drop* means it missed.
+6. Raise the ramp and fly on to the airfield to land. Stop on its runway to deliver the rest of
+   the cargo (the secondary objective). There is no time limit.
+
+With four pallets you have three more tries after a bad drop. A pallet dropped with the ramp up
+does not leave: *Ramp closed*.
+
+**In a campaign** the C-5 flies **AIRLIFT** missions (chapter 9.4): a cargo flight waiting at
+your production base for an airbase out of munitions (chapter 9.14). Take off with the load, fly
+it to the base and stop on its runway to unload. The enemy hunts you as it would hunt the AI's
+cargo flight, and a base near the front sends its two escort fighters along with you. If you
+abort the sortie, the run goes back to an AI C-5; if you are shot down, the load is lost.
+The C-5 flies nothing else in a campaign, and no other aircraft flies an airlift.
+
+**Best for.** AIRLIFT. Nothing else.
 
 
 ---
@@ -1774,7 +1919,8 @@ or TGP), lock the recon target and put the nose on it (the camera looks about 10
 **Fuel tank.** Releasing it transfers its 1,900 lb into the aircraft's tanks (no bay doors
 needed).
 
-**Special cargo.** Release on *Drop supplies now*, within 4 km of the drop zone.
+**Special cargo.** Release on *Drop supplies now*, within 4 km of the drop zone. The C-5's supply
+pallets go out over its cargo ramp, with the ramp down (chapter 3.11).
 
 
 ---
@@ -2026,6 +2172,9 @@ The mission summary and briefing list the objectives, the bases, the weather, th
 intelligence. Read them, plan the route, check the loadout, and fly. *Save mission* in the in-flight menu
 keeps a flight to continue later from LOAD.
 
+In the **C-5** the mission becomes an **airlift**: drop supplies to friendly troops, then land the
+cargo at the airfield nearest them (chapter 3.11).
+
 ## 8.2 The mission planner
 
 ![Mission planner](images/planner.png)
@@ -2270,6 +2419,7 @@ long as its situation lasts.
 | **AWACS** | 250 | While the enemy AWACS is up. | It is shot down, by anyone. |
 | **LOGISTICS** | 100 | Each cargo load for a new air defence site. | You set its crate down by the site's helipad. UH-60 or CH-47 (9.14). |
 | **RESUPPLY** | 100 | Each air defence site that ran out or asked for a resupply. | You hover at the unit for 10 s. UH-60 or CH-47 (9.14). |
+| **AIRLIFT** | 100 | Each cargo flight waiting at the production base (9.14). | You stop on the receiving base's runway with the load. C-5 only (3.11). |
 
 The game counts a player as involved in activity if they were at least 2 minutes in the air within 20 km
 of the helicopters, attackers or column, their target or the meeting point while it is going on, 
@@ -2663,6 +2813,8 @@ to its base, so the AI's interceptors wait three quarters of the way along it; u
 cargo flight to that base waits half an hour. The enemy hunts your
 C-5s the same way: its interceptors take off 2 minutes after your cargo flight is scheduled.
 A cargo flight in the air when you save takes off again shortly after you continue, with its load.
+While a cargo flight waits to take off, it is on your board as an **AIRLIFT** mission: fly it
+yourself in the C-5 (chapter 3.11).
 
 UH-60 and CH-47 pilots keep the air defence going: they fly the cargo for new sites and the
 resupplies for existing ones. Both are missions on the board (UH-60 or CH-47, 100 points). If no player takes one,
