@@ -537,7 +537,8 @@ pub(super) fn grab_levers(
         // One hand let go of the wheel the other still holds: that one goes on from where the
         // two had it.
         let held = (grabs.stick.is_some(), grabs.yoke_other.is_some());
-        if held != held_before && held.0 != held.1 {
+        // (Only from both to one: a first hand grabbing starts from its own tilt as neutral.)
+        if held_before == (true, true) && held.0 != held.1 {
             let gr = &mut *grabs;
             let (g, grip) = match (&mut gr.stick, &mut gr.yoke_other) {
                 (Some(g), _) => (g, &sh.grip),
