@@ -1,10 +1,10 @@
 # Opens a pull request against microsoft/winget-pkgs for a release, so that
-# `winget install dividebysandwich.StealthMission89` gets the new version.
+# `winget install Playspoon.StealthMission89` gets the new version.
 #
 # Called by the release job of build.yml after it publishes a v* tag, and runnable by hand
 # (Actions > Publish to winget > Run workflow) to republish a tag. It does nothing until the
 # repository variable WINGET_ENABLED is "true", which is set once the package exists in
-# winget-pkgs (packaging/windows/winget.md); the action can only update an existing package.
+# winget-pkgs (microsoft/winget-pkgs#473968 adds it); the action can only update an existing package.
 #
 # Needs the repository secret WINGET_TOKEN: a classic personal access token with the
 # public_repo and workflow scopes, of the owner of the winget-pkgs fork (the repository
@@ -37,7 +37,7 @@ jobs:
       # Pinned to a commit of vedantmgoyal9/winget-releaser (it installs and runs Komac).
       - uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54
         with:
-          identifier: dividebysandwich.StealthMission89
+          identifier: Playspoon.StealthMission89
           # The x64 and arm64 installers; the zip, tar.gz, AppImage and apk are not.
           installers-regex: 'windows-msvc\.msi$'
           release-tag: ${{ inputs.tag }}

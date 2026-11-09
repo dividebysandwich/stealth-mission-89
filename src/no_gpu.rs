@@ -1,8 +1,13 @@
-//! Linux: a Vulkan GPU, checked before Bevy starts. Without a Vulkan driver (a virtual machine,
-//! a desktop without Mesa's Vulkan drivers) wgpu falls back to OpenGL, and Bevy can't present
-//! to a window with that (it makes the OpenGL instance without the window's display, so the
-//! surface offers no present modes): it panics in `create_surfaces` before showing anything.
-//! Instead a plain window, drawn on the CPU, says what is missing, and the game exits.
+//! A GPU, checked before Bevy starts; without one a plain window, drawn on the CPU, says what is
+//! missing, and the game exits.
+//!
+//! - Linux: a Vulkan GPU. Without a Vulkan driver (a virtual machine, a desktop without Mesa's
+//!   Vulkan drivers) wgpu falls back to OpenGL, and Bevy can't present to a window with that (it
+//!   makes the OpenGL instance without the window's display, so the surface offers no present
+//!   modes): it panics in `create_surfaces` before showing anything.
+//! - Windows: a hardware GPU on DirectX 12 or Vulkan. Without one (a virtual machine without 3D
+//!   acceleration, such as winget's validation machine) wgpu picks the Microsoft Basic Render
+//!   Driver, the software renderer, whose device is lost within seconds of the first frames.
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -15,8 +20,10 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
+#[cfg(target_os = "linux")]
 const TITLE: &str = "Stealth Mission 89 needs a Vulkan GPU";
 
+#[cfg(target_os = "linux")]
 const MESSAGE: &str = "\
 No GPU with a Vulkan driver was found.
 
@@ -26,10 +33,24 @@ the game again. A virtual machine needs 3D acceleration.
 
 Press Escape or close this window to quit.";
 
-/// Shows the message and exits when there is no Vulkan adapter. `WGPU_BACKEND` picks the
-/// backend by hand, so it skips the check.
+#[cfg(windows)]
+const TITLE: &str = "Stealth Mission 89 needs a GPU";
+
+#[cfg(windows)]
+const MESSAGE: &str = "\
+No graphics card with a DirectX 12 or Vulkan driver was found,
+only Windows' software renderer, which can't run the game.
+
+Install the driver of your graphics card (AMD, Intel or NVIDIA),
+then start the game again. A virtual machine needs 3D
+acceleration.
+
+Press Escape or close this window to quit.";
+
+/// Shows the message and exits when there is no GPU. `WGPU_BACKEND` picks the backend by hand,
+/// so it skips the check.
 pub fn exit_if_missing() {
-    if std::env::var_os("WGPU_BACKEND").is_some() || has_vulkan() {
+    if std::env::var_os("WGPU_BACKEND").is_some() || has_gpu() {
         return;
     }
     eprintln!("{TITLE}\n\n{MESSAGE}");
@@ -39,12 +60,20 @@ pub fn exit_if_missing() {
     std::process::exit(1);
 }
 
-fn has_vulkan() -> bool {
+/// Any Vulkan adapter on Linux (lavapipe too: it presents, slowly); on Windows a DirectX 12 or
+/// Vulkan adapter that isn't a software renderer.
+fn has_gpu() -> bool {
+    #[cfg(target_os = "linux")]
+    let (backends, software_ok) = (wgpu::Backends::VULKAN, true);
+    #[cfg(windows)]
+    let (backends, software_ok) = (wgpu::Backends::DX12 | wgpu::Backends::VULKAN, false);
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::VULKAN,
+        backends,
         ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
-    !bevy::tasks::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN)).is_empty()
+    bevy::tasks::block_on(instance.enumerate_adapters(backends))
+        .iter()
+        .any(|adapter| software_ok || adapter.get_info().device_type != wgpu::DeviceType::Cpu)
 }
 
 #[derive(Default)]
