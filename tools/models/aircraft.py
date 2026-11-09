@@ -1507,9 +1507,6 @@ def c5_windows():
     return out
 
 
-C5_SHOULDER = [(21.3, 1.5, 3.6, 0.05, 0.05), (19.5, 2.2, 3.2, 0.6, 0.8), (16.5, 2.5, 2.7, 1.1, 1.3),
-               (13.5, 2.7, 2.3, 1.5, 1.6), (3.0, 2.7, 2.3, 1.5, 1.6), (-1.5, 2.6, 2.4, 1.3, 1.4),
-               (-4.9, 2.0, 2.8, 0.05, 0.05)]
 # The fin's root and tip: (leading edge's y, z, trailing edge's y, z), on the side view's lines; the
 # fairing along its root (y, z, half width, half height), its top the side view's.
 C5_FIN_ROOT = (-21.72, 4.35, -30.10, 2.90)
@@ -1833,10 +1830,8 @@ def c5_gear():
 def c5():
     g, hatch = c5_fuselage()
     p = C5_GREY
-    # The fairings over the wing's roots along the fuselage's shoulders, the main gear's
-    # sponsons below them, the nose gear's blister under the flight deck.
+    # The main gear's sponsons, the nose gear's blister under the flight deck.
     for s in (-1, 1):
-        g.add(tube([ring((s * x, y, z), hw, hh, 10) for y, x, z, hw, hh in C5_SHOULDER], p))
         g.add(loft([(14.95, -2.6, 0.1, 0.1), (14.6, -2.6, 0.55, 0.75), (14.0, -2.6, 0.85, 1.15), (13.0, -2.6, 1.1, 1.5),
                     (11.5, -2.6, 1.3, 1.75), (-1.5, -2.6, 1.3, 1.75), (-3.0, -2.6, 1.15, 1.6), (-4.6, -2.6, 0.8, 1.15),
                     (-5.5, -2.6, 0.4, 0.6), (-5.82, -2.6, 0.1, 0.1)], p, n=10, power=2.5, x=s * 3.1))
