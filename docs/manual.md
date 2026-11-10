@@ -1445,8 +1445,8 @@ centre one the **TEDAC** with the TADS (the targeting pod) on it, and its two ha
   if you left the **auto-hover** engaged it keeps hovering over the spot, if you left the
   **autopilot** engaged it flies on to the waypoint; with neither engaged it hovers if you were
   slower than 30 kt and otherwise takes up the autopilot at your speed (at least 80 kt) and
-  altitude. The **PILOT'S
-  SEAT** entry takes you back, the autopilot still engaged: move the cyclic to take over.
+  altitude. The **PILOT'S SEAT** entry takes you back, the autopilot still engaged: move the
+  cyclic to take over.
 - **In the gunner's seat** the stick slews the TADS (as do the slew keys); its picture is on the
   TEDAC, the sensor of interest. The chin gun follows the TADS, not your eyes. The weapon keys and
   the fire buttons work as in the pilot's seat, whatever master mode the pilot left.
