@@ -168,8 +168,9 @@ def section(px):
 
 # --- Windows ------------------------------------------------------------------------------------
 # A window is a list of constraints, all of which a point of the skin must meet: a convex outline
-# in the side view ((y, z), either side) or in the front view ((x, z)). The frames: 0.06 m along
-# the roof's edge, 0.035 m along the sill, the posts between them.
+# in the side view ((y, z), either side) or in the front view ((x, z)). The frames: 0.03 m along
+# the roof's edge, 0.035 m along the sill, the posts between them (thin: seen from the seats a
+# hand's breadth away).
 
 
 def roof_line(px, drop):
@@ -186,14 +187,25 @@ def front_rect(hw, z0=0.0, z1=6.0):
 
 # The gunner's side window: from the windshield's frame along the canopy's top to the post
 # between the seats, down to the sill sloping up from the nose.
-GUNNER_SIDE = ("side", [sill_line(163.5, 1.5), roof_line(163.5, 2.5)] + [roof_line(px, 2.5) for px in (168, 172, 180, 190, 200, 208)]
-               + [roof_line(214.5, 2.5), sill_line(214.5, 1.5)])
+GUNNER_SIDE = ("side", [sill_line(163.5, 1.5), roof_line(163.5, 1.2)] + [roof_line(px, 1.2) for px in (168, 172, 180, 190, 200, 208)]
+               + [roof_line(216.5, 1.2), sill_line(216.5, 1.5)])
 # The pilot's side window: behind the post to the rear frame leaning forward down to the sill.
-PILOT_SIDE = ("side", [sill_line(223.5, 1.5), roof_line(223.5, 2.5), roof_line(240, 2.5), roof_line(259, 2.5), side(249, 148.5)])
-# The roof panes over each seat (the gunner's runs down into the windshield).
-GUNNER_ROOF = [("side", [side(163.6, 90), side(214.5, 90), side(214.5, 200), side(163.6, 200)]), front_rect(0.21)]
-PILOT_ROOF = [("side", [side(223.5, 90), side(258, 90), side(258, 200), side(223.5, 200)]), front_rect(0.30)]
-WINDOWS = [[GUNNER_SIDE], [PILOT_SIDE], GUNNER_ROOF, PILOT_ROOF]
+PILOT_SIDE = ("side", [sill_line(220.5, 1.5), roof_line(220.5, 1.2), roof_line(240, 1.2), roof_line(259, 1.2), side(249, 148.5)])
+# The roof panes over each seat (the gunner's runs down into the windshield), in spans as wide
+# as the roof allows at their narrow end, less the frame.
+ROOF_FRAME = 0.03
+
+
+def roof_panes(cols):
+    out = []
+    for c0, c1 in zip(cols, cols[1:]):
+        hw = min(interp(ROOF, c0), interp(ROOF, c1)) - ROOF_FRAME
+        out.append([("side", [side(c0, 90), side(c1, 90), side(c1, 200), side(c0, 200)]), front_rect(hw)])
+    return out
+
+
+WINDOWS = ([[GUNNER_SIDE], [PILOT_SIDE]] + roof_panes([163.6, 168, 175, 182, 190, 200, 207, 216.5])
+           + roof_panes([220.5, 232, 245, 258]))
 # Windows lie between these drawing columns.
 GLASS_PX = (160, 265)
 
