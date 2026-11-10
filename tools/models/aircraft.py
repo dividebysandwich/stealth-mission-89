@@ -31,6 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 
+import c130 as c130mod  # noqa: E402
 import heli  # noqa: E402
 import mklib  # noqa: E402
 
@@ -1877,6 +1878,13 @@ def c5():
                  groups=groups)
 
 
+def c130():
+    """The AC-130 gunship (c130.py), its four propellers parts on the rotor slot 17."""
+    body, gear, parts = c130mod.build()
+    red, green, white = c130mod.nav_tips()
+    return Craft(body, red, green, white, gear=gear, parts=parts)
+
+
 def tu95():
     L, span = 46.2, 50.1
     r = 1.45
@@ -2035,6 +2043,7 @@ BUILDERS = {
     45: tornado,
     47: harrier,
     75: f22,
+    76: c130,
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.
