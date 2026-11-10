@@ -203,6 +203,10 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
     if kind == C5 {
         return Some([Vec3::new(-34.0, 6.4, 3.6), Vec3::new(34.0, 6.4, 3.6)]);
     }
+    // The AC-130's straight high wing, some 5 m above its wheels.
+    if kind == AC130 {
+        return Some([Vec3::new(-20.3, 5.4, -1.8), Vec3::new(20.3, 5.4, -1.8)]);
+    }
     let (x, z) = match kind {
         F117 => (6.6, 3.5),
         F16 => (4.7, 1.5),
@@ -210,7 +214,7 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
         A10 => (8.7, 0.5),
         AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
-        UH60 | AH1Z | RAH66 | OH58 | CH47 | C5 => return None,
+        UH60 | AH1Z | RAH66 | OH58 | CH47 | C5 | AC130 => return None,
     };
     Some([Vec3::new(-x, 0.0, z), Vec3::new(x, 0.0, z)])
 }
@@ -405,7 +409,8 @@ fn update_trails(
         && !a.on_ground
         && sim.player().view_z >= CONTRAIL_VIEW_Z
     {
-        for (k, o) in crate::aircraft::contrail_emitters(settings.aircraft).into_iter().enumerate() {
+        for (k, o) in crate::aircraft::contrail_emitters(settings.aircraft).into_iter().enumerate()
+        {
             let at = pos.0 + (a.orientation * o).as_dvec3();
             emitters.push((Source::Player(k), &CONTRAIL, at));
         }

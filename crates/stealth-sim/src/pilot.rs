@@ -56,6 +56,12 @@ pub struct Pilot {
     /// The aircraft is the C-5 (`SimOptions::galaxy` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) galaxy: bool,
+    /// The aircraft is the AC-130 (`SimOptions::spectre` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) spectre: bool,
+    /// The AC-130's side guns.
+    #[serde(default, skip_serializing_if = "crate::gunship::SideGuns::is_default")]
+    pub(crate) side_guns: crate::gunship::SideGuns,
     /// Campaign: the cargo run he flies (its campaign tag): the other side's interceptors hunt
     /// him, his escort flies with him (`Sim::set_cargo_tag`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -355,6 +361,7 @@ impl Sim {
             chinook: p0.chinook,
             raptor: p0.raptor,
             galaxy: p0.galaxy,
+            spectre: p0.spectre,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,
@@ -375,6 +382,7 @@ impl Sim {
             p.stores = c.stores_init;
             p.gun_ammo = c.gun_init;
         }
+        p.load_side_guns();
         p
     }
 

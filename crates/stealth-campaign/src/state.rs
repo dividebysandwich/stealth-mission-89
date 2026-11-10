@@ -46,6 +46,8 @@ pub enum Aircraft {
     CH47,
     F22,
     C5,
+    /// The AC-130 gunship: flown by players only, on close air support away from the SAMs.
+    AC130,
 }
 
 impl Aircraft {
@@ -63,6 +65,7 @@ impl Aircraft {
             Aircraft::CH47 => "CH-47",
             Aircraft::F22 => "F-22A",
             Aircraft::C5 => "C-5",
+            Aircraft::AC130 => "AC-130",
         }
     }
 
@@ -86,6 +89,11 @@ impl Aircraft {
     /// The cargo jet: flies the munitions between the airbases and nothing else.
     pub fn airlifter(self) -> bool {
         self == Aircraft::C5
+    }
+
+    /// The side-firing gunship: close air support only, never flown by the AI.
+    pub fn spectre(self) -> bool {
+        self == Aircraft::AC130
     }
 }
 
@@ -264,6 +272,9 @@ impl MissionKind {
         if aircraft.airlifter() || self == MissionKind::Airlift {
             return aircraft.airlifter() && self == MissionKind::Airlift;
         }
+        if aircraft.spectre() {
+            return self == MissionKind::Cas;
+        }
         match self {
             MissionKind::Insertion => aircraft.transport(),
             MissionKind::Resupply | MissionKind::Logistics => aircraft.cargo(),
@@ -305,6 +316,8 @@ impl MissionKind {
     pub fn not_flyable(self, aircraft: Aircraft) -> Text {
         if aircraft.airlifter() {
             text!("ce-c5-only")
+        } else if aircraft.spectre() {
+            text!("ce-ac130-only")
         } else if self == MissionKind::Airlift {
             text!("ce-airlift-c5")
         } else if aircraft == Aircraft::CH47 {

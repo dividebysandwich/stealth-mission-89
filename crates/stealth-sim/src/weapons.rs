@@ -256,6 +256,12 @@ impl Sim {
 
     /// Space: the next weapon (with realistic avionics, the next one of the HUD's mode).
     fn next_weapon(&mut self, ps: &PlayerState) {
+        // The AC-130: its side guns in turn.
+        if self.pl.spectre {
+            let gun = (self.pl.side_guns.gun as usize + 1) % crate::gunship::GUNS;
+            self.select_side_gun(gun);
+            return;
+        }
         // A gunship's cannon is two entries: slaved to the helmet, then to the pod.
         if self.pl.gun_selected
             && self.pl.gunship

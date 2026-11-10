@@ -282,6 +282,24 @@ impl FlightConstants {
         }
     }
 
+    /// AC-130 gunship: the modern model only; 30,000 lb of fuel (bingo 6,000), its four T56
+    /// turboprops burning about 5,000 lb an hour in the orbit, 3 g.
+    pub fn c130() -> Self {
+        Self {
+            thrust_to_knots: 3.0,
+            max_knots: 330.0,
+            stall_knots: 100.0,
+            fuel_div: 8000.0,
+            fuel: 30_000.0,
+            bingo: 6_000.0,
+            max_gees: 48.0,
+            roll_rate: 0.6,
+            aero: modern::Aero::C130,
+            modern_only: true,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel, bingo 400.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, bingo: 400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -1508,6 +1526,63 @@ mod tests {
         });
         println!("C-5: peak load {peak:.1} g");
         assert!((2.0..2.6).contains(&peak), "peak {peak}");
+    }
+
+    /// AC-130: about 300 kt flat out, a 100-115 kt stall clean, airborne well inside the runway,
+    /// 3 g.
+    #[test]
+    fn c130_performance() {
+        let k = FlightConstants::c130;
+        assert!(!k().afterburner() && k().modern_only);
+        let heavy = |mut a: Aircraft| {
+            a.fuel = k().fuel;
+            a
+        };
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(heavy(a)), secs, |_, _| {}).0;
+        let a = run(airborne(20000.0, 250.0, 100.0), 400.0);
+        println!("AC-130: max speed at 20000 ft: {:.0} kt", a.knots());
+        assert!((260.0..340.0).contains(&a.knots()), "at altitude {}", a.knots());
+        let a = run(airborne(1000.0, 250.0, 100.0), 300.0);
+        println!("AC-130: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((270.0..340.0).contains(&a.knots()), "sea level {}", a.knots());
+        let mut slow = heavy(airborne(1000.0, 160.0, 60.0));
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("AC-130: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((105.0..125.0).contains(&clean), "clean {clean}");
+        assert!((80.0..100.0).contains(&flaps), "flaps {flaps}");
+        // The take-off roll, as the C-5's: well inside the 3,900 ft ahead of the start.
+        let take_off = |vr: f32| {
+            let kl = FlightConstants { landing: 0, ..k() };
+            let mut liftoff = None;
+            let mut x = 0.0;
+            let mut a0 = Aircraft::new_on_runway(kl.fuel);
+            a0.flaps = true;
+            fly_with(kl, false, a0, 90.0, |a, c| {
+                c.throttle = Some(1.0);
+                x += a.knots() * 1.6878 / 120.0;
+                c.pitch = if a.knots() > vr { 1.0 } else { 0.0 };
+                if !a.on_ground && liftoff.is_none() {
+                    liftoff = Some((x, a.knots()));
+                }
+            });
+            println!("AC-130: rotating at {vr} kt: lift-off {liftoff:?} (ft, kt)");
+            liftoff.expect("the AC-130 did not take off").0
+        };
+        assert!(take_off(0.0) < 3000.0);
+        assert!(take_off(100.0) < 3400.0);
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, heavy(airborne(8000.0, 250.0, 100.0)), 6.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("AC-130: peak load {peak:.1} g");
+        assert!((2.5..3.2).contains(&peak), "peak {peak}");
+        // The orbit: 30 degrees of bank at 200 kt holds without stalling.
+        let a = run(airborne(8000.0, 200.0, 60.0), 20.0);
+        println!("AC-130: level at 60% throttle: {:.0} kt", a.knots());
     }
 
     /// F-22A: supersonic at altitude without the afterburner, past Mach 2 with it; 9 g.

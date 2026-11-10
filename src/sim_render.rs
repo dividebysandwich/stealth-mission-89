@@ -133,8 +133,8 @@ fn aircraft_model(model: i32) -> i32 {
 fn aircraft_size(model: i32) -> crate::explosions::AircraftSize {
     use crate::explosions::AircraftSize as S;
     match model {
-        // An-72, A-50, E-767 / Tu-95, C-5.
-        6 | 9 | 14 | 30 => S::Large,
+        // An-72, A-50, E-767 / Tu-95, C-5, AC-130.
+        6 | 9 | 14 | 30 | 76 => S::Large,
         HELICOPTER_MODEL | HIND_MODEL => S::Helicopter,
         m if (REMAKE_MODELS..AAA_MODELS).contains(&m) => S::Drone,
         _ => S::Fighter,
@@ -1877,9 +1877,11 @@ pub(crate) fn sync_remote_pilots(
                 // A C-5's flaps: down with his gear (the flaps aren't sent).
                 if p.galaxy {
                     let down = !p.gear_up || p.on_ground && p.view.knots > 40;
-                    let f = crate::aircraft::flap_slot_value(
-                        if down { crate::aircraft::C5_FLAP_ANGLE } else { 0.0 },
-                    );
+                    let f = crate::aircraft::flap_slot_value(if down {
+                        crate::aircraft::C5_FLAP_ANGLE
+                    } else {
+                        0.0
+                    });
                     if s.0[crate::aircraft::FLAP_SLOT] != f {
                         s.0[crate::aircraft::FLAP_SLOT] = f;
                     }

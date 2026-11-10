@@ -17,6 +17,7 @@ mod damage;
 pub mod dlz;
 pub mod drones;
 pub mod ground;
+pub mod gunship;
 pub mod guidance;
 pub use stealth_mission::hills;
 pub mod lights;
@@ -236,6 +237,12 @@ pub struct Sim {
     pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
+    /// The AC-130s' side gun shells in flight ([`gunship`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) side_shells: Vec<gunship::SideShell>,
+    /// Damage the side guns did to each unit (`units` index; 100 destroys it).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) side_gun_wear: Vec<u8>,
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "sfw::Sfw::is_empty")]
     pub(crate) sfw: sfw::Sfw,
@@ -383,6 +390,7 @@ impl Sim {
         let chinook = opts.chinook;
         let raptor = opts.raptor;
         let galaxy = opts.galaxy;
+        let spectre = opts.spectre;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -431,6 +439,8 @@ impl Sim {
                 chinook,
                 raptor,
                 galaxy,
+                spectre,
+                side_guns: Default::default(),
                 cargo_tag: None,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
@@ -576,6 +586,8 @@ impl Sim {
             aaa_shells: Vec::new(),
             shell_impacts: Vec::new(),
             aaa_rng: None,
+            side_shells: Vec::new(),
+            side_gun_wear: Vec::new(),
             sfw: sfw::Sfw::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
@@ -624,6 +636,7 @@ impl Sim {
             sim.pl.door_anim = 2;
             sim.pl.pflags |= pflags::BAY_OPEN;
         }
+        sim.pl.load_side_guns();
         if sim.opts.campaign {
             let st = data.stores_init.map(|v| v as i32);
             sim.init_campaign(st, data.gun_ammo_init as i32);
@@ -962,7 +975,10 @@ impl Sim {
             self.activate(k);
             let ps = self.pl.last_input.clone();
             self.update_own_rounds(&ps);
+            self.update_side_guns(&ps);
         }
+        self.activate(first);
+        self.update_side_shells();
         self.apply_claims(&present);
         self.apply_pilot_hits();
         self.update_enemy_rounds(&present);
@@ -1195,6 +1211,7 @@ impl Sim {
     pub fn has_gun(&self) -> bool {
         !self.pl.lockheed
             && !self.pl.galaxy
+            && !self.pl.spectre
             && (!self.pl.helicopter
                 || self.pl.gunship
                 || self.pl.bays.iter().any(|b| self.gun_pod(b.0)))

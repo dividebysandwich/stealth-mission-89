@@ -648,6 +648,11 @@ pub struct Airframe {
     /// return.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub galaxy: bool,
+    /// The AC-130 gunship (no cannon of its own, no ejection seats): its 40 mm and 105 mm guns
+    /// fire from its left side at where the targeting pod looks ([`crate::gunship`]), a big
+    /// radar return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spectre: bool,
 }
 
 /// Landing option.
@@ -712,6 +717,10 @@ pub struct SimOptions {
     /// a big radar return ([`crate::radar::GALAXY_RCS`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub galaxy: bool,
+    /// The aircraft is the AC-130 gunship: seen as one by the other pilots, its side guns aimed
+    /// with the targeting pod ([`crate::gunship`]), a big radar return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spectre: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -763,6 +772,7 @@ impl Default for SimOptions {
             chinook: false,
             raptor: false,
             galaxy: false,
+            spectre: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,
@@ -916,6 +926,21 @@ pub enum SimEvent {
         y: i32,
         #[serde(default)]
         heavy: bool,
+    },
+    /// Pilot `pilot`'s AC-130 fired its side gun `gun` (0: 40 mm, 1: 105 mm): the shell left
+    /// the muzzle at `from` (decimetres east, north, up) at `vel` (dm/s).
+    SideGunFired {
+        gun: u8,
+        pilot: u8,
+        from: [i32; 3],
+        vel: [i32; 3],
+    },
+    /// A side gun's shell came down at `at` (decimetres east, north, up); `armour`: on a
+    /// vehicle or a gun.
+    SideShellImpact {
+        gun: u8,
+        at: [i32; 3],
+        armour: bool,
     },
     AircraftDestroyed {
         unit: usize,

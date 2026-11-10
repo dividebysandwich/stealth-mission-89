@@ -109,7 +109,7 @@ impl AircraftKind {
     pub fn engines(self) -> usize {
         match self {
             AircraftKind::F16 | AircraftKind::AV8B | AircraftKind::OH58 => 1,
-            AircraftKind::C5 => 4,
+            AircraftKind::C5 | AircraftKind::AC130 => 4,
             _ => 2,
         }
     }
@@ -233,7 +233,7 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         AircraftKind::AH1Z => horizontal_pointers(c, w, top, e),
         AircraftKind::OH58 => half_dials(c, w, top, e),
         AircraftKind::RAH66 | AircraftKind::F22 => thick_bars(c, w, top, bottom - 12.0, e),
-        AircraftKind::C5 => four_columns(c, w, top, bottom - 12.0, e),
+        AircraftKind::C5 | AircraftKind::AC130 => four_columns(c, w, top, bottom - 12.0, e),
     }
     footer(c, e, 10.0, w - 10.0, bottom);
 }
@@ -868,7 +868,9 @@ fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng) {
             text(c, x(i), y1 + 6.0, &format!("{:.0}", v[i]), 6.5, col, Align::Centre);
         }
     }
-    for (k, (name, v, l)) in [("N2", e.core, JET_CORE), ("OIL", e.oil, JET_OIL)].into_iter().enumerate() {
+    for (k, (name, v, l)) in
+        [("N2", e.core, JET_CORE), ("OIL", e.oil, JET_OIL)].into_iter().enumerate()
+    {
         let y = top + 111.0 + 10.0 * k as f32;
         text(c, 4.0, y, name, 7.0, GREY, Align::Left);
         for i in 0..4 {

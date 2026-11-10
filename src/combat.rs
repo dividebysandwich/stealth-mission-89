@@ -319,6 +319,7 @@ fn start_combat(
     let chinook = settings.aircraft == crate::aircraft::AircraftKind::CH47;
     let raptor = settings.aircraft == crate::aircraft::AircraftKind::F22;
     let galaxy = settings.aircraft == crate::aircraft::AircraftKind::C5;
+    let spectre = settings.aircraft.spectre();
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -333,6 +334,7 @@ fn start_combat(
             chinook,
             raptor,
             galaxy,
+            spectre,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -349,6 +351,7 @@ fn start_combat(
             chinook,
             raptor,
             galaxy,
+            spectre,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -505,9 +508,10 @@ fn collect_commands(
     mut msgs: ResMut<HudMessages>,
     manning: Option<Res<crate::station::Manning>>,
 ) {
-    // The helicopters and the C-5 have no ejection seats.
+    // The helicopters, the C-5 and the AC-130 have no ejection seats.
     let no_seat = settings.aircraft.spec().helicopter
-        || settings.aircraft == crate::aircraft::AircraftKind::C5;
+        || settings.aircraft == crate::aircraft::AircraftKind::C5
+        || settings.aircraft.spectre();
     let combat = &mut *combat;
     let c = &mut combat.pending;
     for crate::avionics::PodDesignate(x, y) in pods.read() {
@@ -1141,6 +1145,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "F-22A"
     } else if p.galaxy {
         "C-5"
+    } else if p.spectre {
+        "AC-130"
     } else if p.external_stores {
         "F-16"
     } else {

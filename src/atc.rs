@@ -887,6 +887,7 @@ fn callsign(kind: crate::aircraft::AircraftKind, (flight, position): (u8, u8)) -
         K::CH47 => "Chinook",
         K::F22 => "Raptor",
         K::C5 => "Reach",
+        K::AC130 => "Spectre",
     };
     format!("{name} {flight}-{position}")
 }

@@ -572,6 +572,7 @@ impl Sim {
             chinook: self.pl.chinook,
             raptor: self.pl.raptor,
             galaxy: self.pl.galaxy,
+            spectre: self.pl.spectre,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -598,6 +599,7 @@ impl Sim {
             chinook,
             raptor,
             galaxy,
+            spectre,
         } = airframe;
         if !self.opts.campaign {
             return self.start_state();
@@ -622,6 +624,7 @@ impl Sim {
         self.pl.chinook = chinook;
         self.pl.raptor = raptor;
         self.pl.galaxy = galaxy;
+        self.pl.spectre = spectre;
         self.pl.cargo_tag = None;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
@@ -632,6 +635,7 @@ impl Sim {
         self.pl.irj_heat = 0;
         self.pl.stores = stores;
         self.pl.gun_ammo = gun;
+        self.pl.load_side_guns();
         self.pl.gun_firing = false;
         self.pl.pflags &= pflags::BAY_OPEN;
         if external_stores {
@@ -686,6 +690,7 @@ impl Sim {
             self.pl.stores = c.stores_init;
             self.pl.gun_ammo = c.gun_init;
         }
+        self.pl.load_side_guns();
         self.pl.damage = 0;
         self.pl.hits = 2;
         self.pl.control_fault = ControlFault::default();

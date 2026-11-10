@@ -23,6 +23,7 @@ pub enum AircraftKind {
     CH47,
     F22,
     C5,
+    AC130,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -221,6 +222,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
         75 => Some(F22_LIFT - RUNWAY_Y),
         30 => Some(C5_LIFT - RUNWAY_Y),
+        76 => Some(C130_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
         _ => None,
     }
@@ -245,6 +247,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
         75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
         30 => c5_point(0.0, 27.0, -3.9) - Vec3::Y * C5_LIFT,
+        76 => c130_point(0.0, 11.35, -2.0) - Vec3::Y * C130_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
         102 => Vec3::new(0.0, 0.92, -3.6),
         _ => Vec3::new(0.0, -1.0, -4.0),
@@ -823,11 +826,70 @@ static C5: AircraftSpec = AircraftSpec {
     flight: FlightConstants::c5,
 };
 
-/// Where an aircraft's contrails start (aircraft frame, m): the C-5's four engines, else either
-/// side of its exhaust.
+/// The AC-130's wheels are 2.74 m below its model origin (tools/models/c130.py `GROUND`).
+const C130_LIFT: f32 = 2.74 + RUNWAY_Y;
+/// A point of the AC-130's builder (tools/models/c130.py: metres, x right, y forward (14.8 m
+/// minus the station aft of the nose), z up from the fuselage's centre line) in the aircraft
+/// frame: the model is centred on its length, 0.125 m ahead of the builder's origin.
+const fn c130_point(x: f32, y: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(C130_LIFT, x * K, z * K, -(y - 0.125) * K)
+}
+/// The AC-130's four exhausts on the nacelles' outboard flanks (c130.py `nacelle`).
+const C130_EXITS: [Vec3; 4] = [
+    c130_point(-10.5, 1.85, 1.7),
+    c130_point(-5.75, 1.85, 1.6),
+    c130_point(5.75, 1.85, 1.6),
+    c130_point(10.5, 1.85, 1.7),
+];
+/// The AC-130's side guns' muzzles (c130.py `gun_muzzle`): the 40 mm, the 105 mm. The sim
+/// fires its shells from the same points ([`stealth_sim::gunship::MUZZLE`]).
+pub const C130_MUZZLES: [Vec3; 2] =
+    [c130_point(-3.05, -2.895, -0.91), c130_point(-3.10, -4.945, -0.58)];
+/// The guns' barrels point out of the left side, 20 degrees down (aircraft frame).
+pub const C130_BARREL: Vec3 = Vec3::new(-0.9397, -0.3420, 0.0);
+
+static AC130: AircraftSpec = AircraftSpec {
+    model: "aircraft_076",
+    model_lift: C130_LIFT,
+    // The pilot's (left) seat: behind the windscreen (its panes z 0.66..1.24 at stations
+    // 1.0..1.6), level with the side windows, under the eyebrow windows.
+    eye: c130_point(-0.62, 12.5, 0.95),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::C5, "cockpit_c5")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: 1900.0,
+    vr_hud_scale: 1900.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    muzzle: None,
+    sight: None,
+    // Behind the wing between the inner engines.
+    exhaust: c130_point(0.0, 1.0, 1.0),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    nozzle_rect: None,
+    swing_wing: false,
+    vtol: false,
+    ground_radar: false,
+    flight: FlightConstants::c130,
+};
+
+/// Where an aircraft's contrails start (aircraft frame, m): the C-5's and the AC-130's four
+/// engines, else either side of its exhaust.
 pub fn contrail_emitters(kind: AircraftKind) -> Vec<Vec3> {
     match kind {
         AircraftKind::C5 => C5_EXITS.to_vec(),
+        AircraftKind::AC130 => C130_EXITS.to_vec(),
         _ => {
             let e = kind.spec().exhaust;
             vec![e - Vec3::X * 3.0, e + Vec3::X * 3.0]
@@ -842,11 +904,17 @@ impl AircraftKind {
         self == AircraftKind::C5
     }
 
+    /// The AC-130: its side guns fire at where the targeting pod looks; its missions are
+    /// close air support against columns (`stealth_mission::gunship`).
+    pub fn spectre(self) -> bool {
+        self == AircraftKind::AC130
+    }
+
     pub fn rcs_page(self) -> bool {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 12] = [
+    pub const ALL: [AircraftKind; 13] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
@@ -859,6 +927,7 @@ impl AircraftKind {
         AircraftKind::OH58,
         AircraftKind::CH47,
         AircraftKind::C5,
+        AircraftKind::AC130,
     ];
 
     /// What another pilot flies.
@@ -883,6 +952,8 @@ impl AircraftKind {
             AircraftKind::F22
         } else if p.galaxy {
             AircraftKind::C5
+        } else if p.spectre {
+            AircraftKind::AC130
         } else if p.external_stores {
             AircraftKind::F16
         } else {
@@ -904,6 +975,7 @@ impl AircraftKind {
             AircraftKind::CH47 => &CH47,
             AircraftKind::F22 => &F22,
             AircraftKind::C5 => &C5,
+            AircraftKind::AC130 => &AC130,
         }
     }
 
@@ -922,6 +994,7 @@ impl AircraftKind {
             AircraftKind::CH47 => "ch47",
             AircraftKind::F22 => "f22",
             AircraftKind::C5 => "c5",
+            AircraftKind::AC130 => "ac130",
         }
     }
 
@@ -943,7 +1016,10 @@ impl AircraftKind {
                     && *k == AircraftKind::OH58)
                 || (matches!(s.as_str(), "chinook" | "ch47f" | "ch47d") && *k == AircraftKind::CH47)
                 || (matches!(s.as_str(), "f22a" | "raptor") && *k == AircraftKind::F22)
-                || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m") && *k == AircraftKind::C5)
+                || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m")
+                    && *k == AircraftKind::C5)
+                || (matches!(s.as_str(), "c130" | "gunship" | "spectre" | "ac130h" | "ac130u")
+                    && *k == AircraftKind::AC130)
         })
     }
 
@@ -961,6 +1037,7 @@ impl AircraftKind {
             AircraftKind::CH47 => "CH-47F Chinook",
             AircraftKind::F22 => "F-22A Raptor",
             AircraftKind::C5 => "C-5 Galaxy",
+            AircraftKind::AC130 => "AC-130 Spectre",
         }
     }
 }

@@ -93,6 +93,8 @@ impl Rules {
             Aircraft::F22 => Airframe { raptor: true, ..Airframe::default() },
             // No weapons, no cannon; cargo inside, dropped over the ramp (its "bay").
             Aircraft::C5 => Airframe { galaxy: true, ..Airframe::default() },
+            // No cannon of its own: the side guns, fired at where the pod looks.
+            Aircraft::AC130 => Airframe { spectre: true, ..Airframe::default() },
             Aircraft::Tornado => {
                 Airframe { external_stores: true, tornado: true, ..Airframe::default() }
             }

@@ -67,6 +67,8 @@ pub struct RemotePilot {
     pub raptor: bool,
     /// The C-5 Galaxy.
     pub galaxy: bool,
+    /// The AC-130 gunship.
+    pub spectre: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -140,7 +142,7 @@ impl From<RemotePilot> for RemoteWire {
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
-            p.raptor as u8 | (p.galaxy as u8) << 1,
+            p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2,
         )
     }
 }
@@ -208,6 +210,7 @@ impl From<RemoteWire> for RemotePilot {
             chinook: bit(15),
             raptor: kinds & 1 != 0,
             galaxy: kinds & 2 != 0,
+            spectre: kinds & 4 != 0,
             gun_aim,
             chute,
             missiles,
@@ -407,6 +410,7 @@ impl Sim {
                     chinook: p.chinook,
                     raptor: p.raptor,
                     galaxy: p.galaxy,
+                    spectre: p.spectre,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,
