@@ -7,6 +7,10 @@
 - cannon_loop: the cannon firing, 100 rounds a second (20 in the loop, so it loops seamlessly):
   each round a crack over a thump, the barrels' rattle under them.
 - cannon_tail: the burst's echo and the barrels running down when the trigger is let go.
+- cannon30_loop: the AH-64's M230 chain gun, a stand-in: about 10 rounds a second (2 in the
+  loop): each a heavy bang over a deep boom with the bolt's clack, the chain drive's whirr
+  under them.
+- cannon30_tail: its last round's echo rolling away and the chain drive running down.
 - sfx_07_aircraft_contact: the threat warning receiver's new air contact: three quick buzzy
   beeps, higher than its radar tones.
 - sfx_10_touchdown: the tyres touching down: a thump and a short squeal.
@@ -205,6 +209,44 @@ def cannon_tail():
     return fades(0.9 * last + 0.6 * echo + 0.15 * spin, 0.0, 0.05)
 
 
+def m230_round(n):
+    """One 30 mm round, `n` samples: a hard crack, a deep falling boom and the bolt's metallic
+    clack a moment after."""
+    k = np.arange(n)
+    crack = rng.standard_normal(n) * np.exp(-k / (0.0025 * RATE))
+    crack = np.convolve(crack, [0.5, 0.0, -0.5], "same")
+    t = n / RATE
+    boom = thump(t, 62, 0.035, 0.35)
+    mid = noise(t, 120, 900) * env(t, 0.0005, 0.018)
+    clack = np.sin(2 * np.pi * 2300 * k / RATE) * np.exp(-np.maximum(k - 0.012 * RATE, 0) / (0.003 * RATE))
+    clack *= k > 0.012 * RATE
+    return 0.6 * crack + 1.1 * boom + 0.45 * mid + 0.12 * clack
+
+
+def m230_loop():
+    t, rounds = 0.2, 2
+    n = int(t * RATE)
+    out = np.zeros(n)
+    k = int(0.09 * RATE)
+    for i in range(rounds):
+        idx = (int(round(i * n / rounds)) + np.arange(k)) % n
+        out[idx] += (0.9 + 0.2 * rng.random()) * m230_round(k)
+    # The chain drive's whirr: periodic noise in the loop, low and narrow.
+    f = np.fft.rfftfreq(n, 1.0 / RATE)
+    f[0] = 1e-3
+    spec = (1 / np.sqrt(1 + (180 / f) ** 4) / np.sqrt(1 + (f / 1400) ** 4)) * np.exp(2j * np.pi * rng.random(len(f)))
+    whirr = np.fft.irfft(spec, n)
+    return out + 0.12 * whirr / np.max(np.abs(whirr))
+
+
+def m230_tail():
+    t = 0.9
+    last = at(t, 0.0, m230_round(int(0.09 * RATE)))
+    echo = noise(t, 40, 700) * env(t, 0.01, 0.25)
+    spin = np.sin(2 * np.pi * np.cumsum(np.geomspace(180, 60, int(t * RATE))) / RATE) * env(t, 0.001, 0.12)
+    return fades(1.0 * last + 0.5 * echo + 0.1 * spin, 0.0, 0.08)
+
+
 def echoes(x, delays, gains, hi):
     """`x` with its echoes `delays` s later, `gains` as loud, dulled above `hi` Hz."""
     t = len(x) / RATE
@@ -368,6 +410,7 @@ if __name__ == "__main__":
 
     wanted = sys.argv[1:]
     radio = {"radio_click.flac": (radio_click, -27.0)}
+    m230 = {"cannon30_loop.flac": (m230_loop, -14.0), "cannon30_tail.flac": (m230_tail, -21.0)}
     guns = {
         "tank_gun.flac": (lambda: tank_gun(False), -13.0),
         "tank_gun_far.flac": (lambda: tank_gun(True), -16.0),
@@ -376,7 +419,7 @@ if __name__ == "__main__":
     }
     if wanted:
         for name in wanted:
-            make, level = {**guns, **radio}[name]
+            make, level = {**guns, **radio, **m230}[name]
             write(name, make(), level)
         sys.exit(0)
     loop, tail = cannon_loop(), cannon_tail()
@@ -400,4 +443,6 @@ if __name__ == "__main__":
     for name, (make, level) in radio.items():
         write(name, make(), level)
     for name, (make, level) in guns.items():
+        write(name, make(), level)
+    for name, (make, level) in m230.items():
         write(name, make(), level)

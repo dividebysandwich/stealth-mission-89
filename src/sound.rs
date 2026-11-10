@@ -9,7 +9,8 @@
 //!   requested id with no sample stays silent, so speech can be added later by dropping files in.
 //! - Radar warning tones come from `sounds/rwr/` (ids 100 and up).
 //! - The cannon (sound 6) holds a loop of its burst while it fires and plays the burst's decay
-//!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`).
+//!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`; the AH-64's 30 mm chain gun
+//!   `cannon30_loop.flac`, `cannon30_tail.flac`).
 //! - A fire on board sounds the fire warning siren (`fire_siren.flac`, tools/gen_fire_siren.py)
 //!   without a break until the fire is out (or the pilot has ejected).
 //! - The master caution (its cockpit light or key) silences the alarms sounding: the fire
@@ -440,6 +441,8 @@ struct SoundBank {
     siren: Option<Handle<AudioSource>>,
     /// The cannon's loop and tail.
     cannon: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
+    /// The AH-64's 30 mm chain gun's loop and tail.
+    cannon30: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
     distant: [Option<Handle<AudioSource>>; 5],
     launch: Option<Handle<AudioSource>>,
@@ -650,6 +653,7 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.beacon = optional("beacon.flac");
     bank.siren = optional("fire_siren.flac");
     bank.cannon = optional("cannon_loop.flac").zip(optional("cannon_tail.flac"));
+    bank.cannon30 = optional("cannon30_loop.flac").zip(optional("cannon30_tail.flac"));
     bank.distant = DISTANT_FILES.map(optional);
     bank.launch = optional("launch.flac");
     bank.guns = [
@@ -849,7 +853,12 @@ fn cannon(
     settings: Res<crate::settings::Settings>,
 ) {
     let mix = || Mixed(Channel::Effects, 1.0);
-    let Some((looped, tail)) = bank.as_ref().and_then(|b| b.cannon.clone()) else { return };
+    let thirty = settings.aircraft.apache();
+    let Some((looped, tail)) = bank.as_ref().and_then(|b| {
+        if thirty { b.cannon30.clone().or(b.cannon.clone()) } else { b.cannon.clone() }
+    }) else {
+        return;
+    };
     let ejected = has_ejected(combat.as_deref());
     let firing = combat
         .as_deref()
