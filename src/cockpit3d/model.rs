@@ -908,8 +908,10 @@ mod tests {
                 .iter()
                 .filter_map(|m| m["name"].as_str())
                 .collect();
-            let mut required =
-                vec!["atlas", "screen_left", "screen_right", "adi", "approach", "trackcam"];
+            let mut required = vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"];
+            // The helicopters have no approach indexer.
+            let approach = materials.contains(&"approach");
+            assert_eq!(approach, !style.helicopter(), "{name}: approach indexer");
             // The OH-58D has no HUD (its helmet display only).
             if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg) {
                 required.push("hud_glass");

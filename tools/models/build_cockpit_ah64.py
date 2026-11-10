@@ -12,7 +12,7 @@
 # the F-117A's cockpit: the seat with the ejection handle (no ejection: the handle stays), the
 # stick (a centre cyclic on a shaft from the floor between the knees), the throttle (the UH-60's
 # collective on its arm from a pivot left of the seat), the five target buttons (on the left
-# console), the HUD glass (a helmet display type: kept as the AH-1Z's), the approach indexer and
+# console), the HUD glass (a helmet display type: kept as the AH-1Z's) and
 # the flood lamps. Built here: the panel under a glareshield that is the back of the gunner's
 # blast shield, the two MFDs side by side, the up-front display over the left one and the
 # warning lights over the right one, the standby and engine instruments in columns beside them,
@@ -127,7 +127,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "hud_glass", "approach", "lamp",
+    "hud_glass", "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -698,13 +698,7 @@ for a, b in zip(outline, outline[1:]):
     centre = (a + b) / 2
     rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
     box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
-# The approach indexer just outside the left post, in a housing behind it.
-ind = next(o for o in old if o.name.startswith("approach"))
-ind.location.x = -(post_x + HUD_BAR / 2 + 0.014)
-ind.location.y = hud_y
-box("dark", "dark", (ind.location.x, hud_y + 0.007, ind.location.z), (0.028, 0.010, 0.068))
-box("dark", "dark", (ind.location.x, hud_y + 0.007, (ind.location.z - 0.034 + glare_top) / 2), (0.010, 0.010, ind.location.z - 0.034 - glare_top))
-
+# No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))
 

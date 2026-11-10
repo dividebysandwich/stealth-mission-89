@@ -238,6 +238,21 @@ const OSB_H: f32 = 10.0;
 const OSB_SIDE: f32 = 9.0;
 
 impl PanelStyle {
+    /// A helicopter's cockpit: no approach indexer (no angle of attack to fly the approach by).
+    pub fn helicopter(self) -> bool {
+        matches!(
+            self,
+            PanelStyle::Uh60
+                | PanelStyle::Ah1z
+                | PanelStyle::Rah66
+                | PanelStyle::Oh58
+                | PanelStyle::Oh58Cpg
+                | PanelStyle::Ch47
+                | PanelStyle::Ah64
+                | PanelStyle::Ah64Cpg
+        )
+    }
+
     /// The cockpit's MFDs: 3 with a third (`MfdSide::Third`), 4 with a fourth too
     /// (`MfdSide::Fourth`).
     pub fn mfd_count(self) -> usize {

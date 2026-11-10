@@ -18,7 +18,7 @@
 # the right seat). Kept from the F-117A's cockpit: the seat with the ejection handle (no ejection:
 # the handle stays), the stick (a centre cyclic on a shaft from the floor between the knees), the
 # throttle (the UH-60's collective on its arm from a pivot left of the seat), the five target
-# buttons (on the console), the approach indexer and the flood lamps (no HUD: the helmet display
+# buttons (on the console) and the flood lamps (no HUD: the helmet display
 # only). Built here, low-poly: one wide panel across both seats under a deep, low glareshield
 # (the forward view over the nose stays open), a pair of MFDs in raised bezels in front of each
 # seat either side of the centre column (the data entry display on top, the standby instruments,
@@ -52,7 +52,7 @@ F117_SCALE = 1.4706
 # pilot's eye, to the right of the gunner's), the floor; the side walls 0.70 m either side of
 # the centre line. The other seat is at 2 * CABIN_X.
 CABIN_X = 0.36 if LEFT_SEAT else -0.36
-# The pilot's (right) seat: the approach indexer in front of it.
+# The pilot's (right) seat.
 PILOT_X = 2 * CABIN_X if LEFT_SEAT else 0.0
 FLOOR = -0.90
 # The main panel: its plane leaning back PANEL_TILT, the layout's origin (the cabin's centre
@@ -63,13 +63,11 @@ PANEL_CENTRE = Vector((CABIN_X, 0.70, -0.375))
 PANEL_U = (-620.0, 620.0)
 TOP, BOTTOM = -116.0, 124.0
 # The glareshield over its top: its lip at HOOD_Y, its top RISE over the panel's top edge, down
-# DROP to its front at GLARE_FRONT (under the sight line to the windshield's lower edge). The
-# approach indexer on it at INDEXER_Y.
+# DROP to its front at GLARE_FRONT (under the sight line to the windshield's lower edge).
 HOOD_Y = 0.655
 RISE = 0.03
 DROP = 0.10
 GLARE_FRONT = 0.95
-INDEXER_Y = 0.70
 # The console down the pedestal between the seats (layout x >= 1500, centred on 2000): its face
 # sloping down aft from under the panel, CONSOLE_V (mm) along it from CONSOLE_FRONT to
 # CONSOLE_REAR; CONSOLE_W wide.
@@ -134,7 +132,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "approach", "lamp",
+    "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -704,14 +702,7 @@ full = COLLECTIVE_PIVOT + Matrix.Rotation(math.radians(COLLECTIVE_SWING), 3, "X"
 objs["throttle_full"].location = full
 empty("throttle_pivot", COLLECTIVE_PIVOT, props={"anchor": "throttle_pivot"})
 
-# --- the approach indexer on the glareshield in front of the pilot, left of his line of sight,
-# in a housing behind it (no HUD)
-base = glare_z(INDEXER_Y)
-ind = next(o for o in old if o.name.startswith("approach"))
-ind.location = Vector((PILOT_X - 0.12, INDEXER_Y, base + 0.05))
-box("dark", "dark", (ind.location.x, INDEXER_Y + 0.007, ind.location.z), (0.028, 0.010, 0.068))
-box("dark", "dark", (ind.location.x, INDEXER_Y + 0.007, (ind.location.z - 0.034 + base) / 2), (0.010, 0.010, ind.location.z - 0.034 - base))
-
+# No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))
 
