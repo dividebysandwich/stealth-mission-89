@@ -206,6 +206,7 @@ tip-console-manual = Pilotować wybranego drona ręcznie: drążek i przepustnic
 tip-console-track = Utrzymać kamerę drona na ziemi pod jej celownikiem
 tip-console-slave = Kamera drona wraca na jego waypoint (do przodu i w dół)
 tip-console-view = Kamera drona: jego TGP lub FLIR patrzący do przodu, by nim lecieć
+tip-console-gun = Jako następne celuj tym działem burtowym (spust z niego strzela)
 
 ## Elementy sterowania
 

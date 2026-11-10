@@ -206,6 +206,7 @@ tip-console-manual = Flyg den valda drönaren för hand: spaken och gasreglaget
 tip-console-track = Håll drönarens kamera på marken vid dess hårkors
 tip-console-slave = Drönarens kamera tillbaka till dess waypoint (framåt och nedåt)
 tip-console-view = Drönarens kamera: dess TGP eller FLIR framåt för att flyga den
+tip-console-gun = Rikta denna sidokanon härnäst (avtryckaren avfyrar den)
 
 ## Reglage
 

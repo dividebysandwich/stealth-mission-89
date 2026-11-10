@@ -197,6 +197,10 @@ fn render(f: &mut ratatui::Frame, s: &Status, log: &VecDeque<(String, String)>, 
                     PlayerStatus::Flying { title, aircraft } => {
                         (format!("Flying {} ({})", title, aircraft.name()), Color::LightGreen)
                     }
+                    PlayerStatus::Crew { title, aircraft, pilot } => (
+                        format!("Gunner with {pilot}: {} ({})", title, aircraft.name()),
+                        Color::LightGreen,
+                    ),
                     PlayerStatus::Reconnecting { seconds } => {
                         (format!("Dropped out - aircraft kept {seconds} s"), Color::Yellow)
                     }

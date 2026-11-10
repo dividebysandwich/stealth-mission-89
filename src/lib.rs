@@ -49,6 +49,7 @@ mod gif_recorder;
 mod glvr;
 mod goggles;
 mod ground_fire;
+mod gunner;
 mod ground_radar;
 mod headtrack;
 mod help;
@@ -350,6 +351,7 @@ pub fn run() {
             sling::SlingPlugin,
             weather::WeatherPlugin,
             station::StationPlugin,
+            gunner::GunnerPlugin,
         ))
         .add_plugins((
             fires::FiresPlugin,

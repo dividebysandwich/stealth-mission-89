@@ -206,6 +206,7 @@ tip-console-manual = Vadīt izvēlēto dronu ar roku: vadības svira un droselis
 tip-console-track = Turēt drona kameru uz zemes zem tās tēmekļa
 tip-console-slave = Drona kamera atpakaļ uz tā waypoint (uz priekšu un uz leju)
 tip-console-view = Drona kamera: tā TGP vai FLIR uz priekšu, lai to vadītu
+tip-console-gun = Tālāk tēmēt ar šo sānu lielgabalu (mēlīte ar to šauj)
 
 ## Vadības elementi
 

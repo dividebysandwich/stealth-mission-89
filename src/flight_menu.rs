@@ -144,6 +144,35 @@ pub struct FlightMenu {
     home: Page,
     /// LEAVE AIRCRAFT can hand the aircraft to the AI now (the campaign says so every frame).
     pub can_leave: bool,
+    /// The seat entry: which move it makes now (the campaign, or `gunner` in a single
+    /// mission, says so every frame), and it was chosen (a single mission's: `gunner` makes
+    /// the move).
+    pub seat: SeatChoice,
+    pub seat_request: bool,
+}
+
+/// What the seat entry of the menu does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SeatChoice {
+    /// Nothing (no other seat free).
+    #[default]
+    None,
+    /// The pilot to his aircraft's gunner's console (the AI flies).
+    ToGunner,
+    /// Back to the pilot's seat.
+    ToPilot,
+    /// Up from another's gunner's console, back to operations.
+    LeaveGunner,
+}
+
+impl SeatChoice {
+    fn label_id(self) -> &'static str {
+        match self {
+            SeatChoice::None | SeatChoice::ToGunner => "fm-seat-gunner",
+            SeatChoice::ToPilot => "fm-seat-pilot",
+            SeatChoice::LeaveGunner => "fm-leave-seat",
+        }
+    }
 }
 
 impl FlightMenu {
@@ -161,6 +190,8 @@ enum Page {
     Main,
     /// The main page in a campaign sortie: LEAVE AIRCRAFT, END SORTIE asks first.
     Sortie,
+    /// The main page at another's gunner's console: LEAVE SEAT.
+    Crew,
     /// END SORTIE?
     ConfirmEnd,
     Options,
@@ -176,18 +207,27 @@ impl Page {
     fn items(self) -> &'static [Item] {
         use Item::*;
         match self {
-            Page::Main => {
-                &[Resume, SaveMission, LoadMission, Open(Page::Options), KeyGuide, EndMission, Back]
-            }
+            Page::Main => &[
+                Resume,
+                SaveMission,
+                LoadMission,
+                Open(Page::Options),
+                KeyGuide,
+                SwitchSeat,
+                EndMission,
+                Back,
+            ],
             Page::Sortie => &[
                 Resume,
                 SaveMission,
                 Open(Page::Options),
                 KeyGuide,
+                SwitchSeat,
                 LeaveAircraft,
                 EndMission,
                 Back,
             ],
+            Page::Crew => &[Resume, Open(Page::Options), KeyGuide, SwitchSeat, Back],
             Page::ConfirmEnd => &[ConfirmEnd, Resume, Back],
             Page::Options => &[
                 Open(Page::Game),
@@ -272,7 +312,7 @@ impl Page {
 
     fn parent(self, home: Page) -> Option<Page> {
         match self {
-            Page::Main | Page::Sortie => None,
+            Page::Main | Page::Sortie | Page::Crew => None,
             Page::Options | Page::ConfirmEnd => Some(home),
             _ => Some(Page::Options),
         }
@@ -280,7 +320,7 @@ impl Page {
 
     fn title(self) -> &'static str {
         ts!(match self {
-            Page::Main | Page::Sortie => "fm-menu",
+            Page::Main | Page::Sortie | Page::Crew => "fm-menu",
             Page::ConfirmEnd => "fm-end-sortie-confirm",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
@@ -345,6 +385,9 @@ enum Item {
     KeyGuide,
     /// A campaign sortie: the AI takes the aircraft over and flies the mission on.
     LeaveAircraft,
+    /// Moves to the aircraft's other seat (the gunner's console, the pilot's), or up from
+    /// another's gunner's console (`FlightMenu::seat`).
+    SwitchSeat,
     EndMission,
     /// END SORTIE, asked to be sure.
     ConfirmEnd,
@@ -404,6 +447,7 @@ impl Item {
             Item::KeyGuide => "fm-key-guide",
             Item::EndMission => "fm-end-mission",
             Item::LeaveAircraft => "fm-leave-aircraft",
+            Item::SwitchSeat => "fm-seat-gunner",
             Item::ConfirmEnd => "fm-end-sortie",
             Item::Back => "back",
             Item::Language => "fm-language",
@@ -482,6 +526,7 @@ impl Item {
             | Item::SaveMission
             | Item::LoadMission
             | Item::LeaveAircraft
+            | Item::SwitchSeat
             | Item::EndMission
             | Item::ConfirmEnd
             | Item::Back => String::new(),
@@ -501,6 +546,7 @@ impl Item {
             Item::SaveMission => menu.can_save,
             Item::LoadMission => menu.can_load,
             Item::LeaveAircraft => menu.can_leave,
+            Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
             Item::PixelSize => crate::palette::pixelized(s),
@@ -528,6 +574,7 @@ impl Item {
                 | Item::KeyGuide
                 | Item::Bindings
                 | Item::LeaveAircraft
+                | Item::SwitchSeat
                 | Item::EndMission
                 | Item::ConfirmEnd
                 | Item::Back
@@ -696,8 +743,11 @@ fn toggle(
         menu.options_only = true;
     }
     // In a campaign sortie the main page has LEAVE AIRCRAFT.
-    let sortie = campaign.as_deref().is_some_and(|c| c.phase == crate::campaign::Phase::Sortie);
-    menu.home = if sortie { Page::Sortie } else { Page::Main };
+    menu.home = match campaign.as_deref().map(|c| c.phase) {
+        Some(crate::campaign::Phase::Sortie) => Page::Sortie,
+        Some(crate::campaign::Phase::Crew { .. }) => Page::Crew,
+        _ => Page::Main,
+    };
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -1437,6 +1487,21 @@ fn navigate(
             actions.write(ActionEvent(Action::Quit));
             close = true;
         }
+        // The other seat (in a campaign the server's say), or up from another's console.
+        Item::SwitchSeat => {
+            use stealth_sim::crew::{CrewCmd, Seat};
+            let cmd = match menu.seat {
+                SeatChoice::ToGunner => Some(CrewCmd::Seat(Seat::Gunner)),
+                SeatChoice::ToPilot => Some(CrewCmd::Seat(Seat::Pilot)),
+                SeatChoice::LeaveGunner => Some(CrewCmd::Leave),
+                SeatChoice::None => None,
+            };
+            match campaign.as_mut() {
+                Some(c) => c.actions.extend(cmd.map(crate::campaign::Action::Crew)),
+                None => menu.seat_request = cmd.is_some(),
+            }
+            close = true;
+        }
         // The AI flies on in his aircraft; he is back on the board.
         Item::LeaveAircraft => {
             if let Some(c) = campaign.as_mut() {
@@ -1682,6 +1747,7 @@ fn draw(
         let label: std::borrow::Cow<str> = match item {
             Item::EndMission if let Some(b) = board => ts!(b.exit_id()).into(),
             Item::EndMission if campaign.is_some() => ts!("fm-end-sortie").into(),
+            Item::SwitchSeat => ts!(menu.seat.label_id()).into(),
             _ => item.label(),
         };
         let label = &*label;
@@ -1891,6 +1957,7 @@ fn icon(item: Item) -> Option<char> {
         Item::KeyGuide => '\u{e05f}', // book-open
         Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
         Item::LeaveAircraft => icon::KEYS,
+        Item::SwitchSeat => '\u{e1de}', // plane
         Item::Open(Page::Game) => '\u{e1de}',     // plane
         Item::Open(Page::Graphics) => '\u{e11d}', // monitor
         Item::Open(Page::Effects) => '\u{e412}',  // sparkles
@@ -2105,6 +2172,9 @@ mod tests {
         let items = Page::Sortie.items();
         let leave = items.iter().position(|&i| i == Item::LeaveAircraft).unwrap();
         assert_eq!(items[leave + 1], Item::EndMission);
+        assert_eq!(items[leave - 1], Item::SwitchSeat);
+        assert!(!Page::Crew.items().contains(&Item::EndMission));
+        assert_eq!(item_rects(Page::Crew).len(), Page::Crew.items().len());
         assert!(!Page::Main.items().contains(&Item::LeaveAircraft));
         assert_eq!(Page::ConfirmEnd.items()[0], Item::ConfirmEnd);
         assert_eq!(Page::ConfirmEnd.back(false, Page::Sortie), Some(Page::Sortie));
@@ -2117,6 +2187,9 @@ mod tests {
         assert!(!Item::LeaveAircraft.enabled(&s, false, &menu));
         menu.can_leave = true;
         assert!(Item::LeaveAircraft.enabled(&s, false, &menu));
+        assert!(!Item::SwitchSeat.enabled(&s, false, &menu));
+        menu.seat = SeatChoice::ToGunner;
+        assert!(Item::SwitchSeat.enabled(&s, false, &menu));
     }
 
     /// A stepped value changes only on its chevrons, whatever the half of the row they are in;

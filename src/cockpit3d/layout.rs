@@ -128,6 +128,8 @@ pub enum ConsoleKey {
     Slave,
     /// Drone command center: the camera between the TGP and the forward-looking FLIR.
     View,
+    /// Gunner's console: the gun laid next (1 the 40 mm, 2 the 105 mm).
+    Gun(u8),
 }
 
 /// A face drawn into the instrument atlas.

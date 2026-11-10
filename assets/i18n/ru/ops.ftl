@@ -12,6 +12,7 @@ ops-on-server = СЕРВЕР { $server }
 ops-serving = СЕРВЕР
 ops-tab-missions = МИССИИ
 ops-tab-map = КАРТА ВОЙНЫ
+ops-tab-flights = ПОЛЁТЫ
 ops-tab-air-defence = ПВО
 ops-tab-forces = СИЛЫ
 ops-tab-players = ИГРОКИ
@@ -55,6 +56,9 @@ ops-accept = ПРИНЯТЬ МИССИЮ
 ops-fly-with-ai = ВЗЛЁТ
 ops-take-control = ВЗЯТЬ УПРАВЛЕНИЕ
     .facts = Продолжить полёт на машине звена ИИ с того места, где она
+ops-join-gunner = СТАТЬ СТРЕЛКОМ
+    .facts = Занять пульт стрелка этой машины: наводить прицельный контейнер и стрелять из бортовых пушек, пока летит её лётчик
+    .ai = Занять пульт стрелка этой машины: ИИ кружит вокруг точки, которую вы держите прицельным контейнером
 ops-planning = ПЛАНИРУЮТ: { $pilots }
 ops-flying = В ВОЗДУХЕ: { $pilots }
 ops-package = ПАКЕТ с { $kinds }: выполните здесь задачи двух типов за { $mins } мин, +{ $bonus ->
@@ -157,6 +161,7 @@ ops-waiting-raid = ОЖИДАНИЕ НАЛЁТА
 ops-waiting-insertion = ОЖИДАНИЕ ВЫСАДКИ
 ops-flight-time = Время полёта { $mins } мин
 ops-kills = Победы: в воздухе { $air }, на земле { $ground }
+ops-crew = Экипаж: { $names }
 ops-points = { $points ->
         [one] { $points } очко
         [few] { $points } очка
@@ -214,6 +219,7 @@ ops-status-planning = Планирует: { $title }
 ops-status-board = У доски миссий
 ops-status-flying = В воздухе: { $title } - { $aircraft }
 ops-status-reconnecting = Связь потеряна - самолёт удерживается { $seconds } с
+ops-status-gunner = Стрелок у { $pilot }: { $title } - { $aircraft }
 ops-flown = { $flown } (выполнено { $won })
 ops-section-leaderboard = Таблица лидеров
 ops-alone = Вы летаете один. Чтобы летать вместе, разместите эту кампанию через МУЛЬТИПЛЕЕР в главном меню.
@@ -231,3 +237,15 @@ ops-on-radio = В РАДИО
 ops-mute = ЗАГЛУШИТЬ
     .facts = Слышать (или нет) этого игрока в радио
 ops-unmute = СЛЫШАТЬ
+
+## Flights
+
+ops-section-flights = Свои полёты
+ops-no-flights = Нет своих машин в воздухе или ожидающих взлёта
+ops-flight-pilot = Лётчик:
+ops-flight-gunner = Стрелок:
+ops-seat-ai = ИИ
+ops-seat-free = свободно
+ops-flight-airborne = В воздухе
+ops-flight-on-ground = На земле
+ops-flight-starting = Запуск

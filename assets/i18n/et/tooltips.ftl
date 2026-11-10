@@ -207,6 +207,7 @@ tip-console-manual = Juhi valitud drooni käsitsi: juhtkang ja gaasihoob
 tip-console-track = Hoia drooni kaamerat maapinnal selle sihiku all
 tip-console-slave = Drooni kaamera tagasi selle waypoint'ile (ette ja alla)
 tip-console-view = Drooni kaamera: selle TGP või ettepoole vaatav FLIR selle juhtimiseks
+tip-console-gun = Sihi järgmisena selle külgkahuriga (päästik tulistab sellest)
 
 ## Juhtelemendid
 

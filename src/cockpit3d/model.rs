@@ -87,6 +87,7 @@ pub(super) fn load_models(mut commands: Commands, server: Res<AssetServer>) {
     let mut files = crate::aircraft::cockpit_files();
     files.push(super::CONSOLE_MODEL);
     files.push(super::DRONE_CONSOLE_MODEL);
+    files.push(super::GUNNER_CONSOLE_MODEL);
     commands.insert_resource(CockpitModels(
         files.into_iter().map(|f| (f, server.load(format!("models/{f}.glb")))).collect(),
     ));

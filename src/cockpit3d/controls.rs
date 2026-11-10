@@ -225,6 +225,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "Track" => K::Track,
                 "Slave" => K::Slave,
                 "View" => K::View,
+                "Gun" => K::Gun(n()?),
                 _ => return None,
             })
         }

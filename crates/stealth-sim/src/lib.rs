@@ -12,6 +12,7 @@ pub mod units;
 mod ai;
 pub mod ai_flight;
 pub mod ai_missions;
+pub mod crew;
 pub mod csar;
 mod damage;
 pub mod dlz;
@@ -282,6 +283,9 @@ pub struct Sim {
     pub(crate) mirror: bool,
     #[serde(skip)]
     pub(crate) remote: Vec<net::RemotePilot>,
+    /// A mirror's: the aircraft its player is crew in (`crew::CrewView`).
+    #[serde(skip)]
+    pub(crate) crew_view: Option<crew::CrewView>,
     /// A mirror's: the other pilots' gun rounds, flown here from their trigger (only drawn),
     /// with their age in frames.
     #[serde(skip)]
@@ -548,6 +552,8 @@ impl Sim {
                 client_rounds: false,
                 fired_step: 0,
                 claims: (0, 0),
+                crew_aim: Default::default(),
+                crew_cmd: Commands::default(),
             },
             weather: m.weather,
             ground_units: (w.ground_unit_count as usize).min(objects.len()),
@@ -612,6 +618,7 @@ impl Sim {
             event_credit: Vec::new(),
             mirror: false,
             remote: Vec::new(),
+            crew_view: None,
             remote_rounds: Vec::new(),
             steps: 0,
             flight_history: Default::default(),
@@ -916,6 +923,7 @@ impl Sim {
         for (x, y) in std::mem::take(&mut self.crash_sites) {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -16 });
         }
+        self.tidy_crews();
         let present = self.present();
         if present.is_empty() {
             self.step_absent();
@@ -930,7 +938,8 @@ impl Sim {
         };
         for &k in &present {
             self.activate(k);
-            let ps = input(self, k);
+            let mut ps = input(self, k);
+            self.crew_input(k, &mut ps);
             self.ingest(&ps);
             // Key commands and per-frame systems.
             self.handle_keys(&ps);

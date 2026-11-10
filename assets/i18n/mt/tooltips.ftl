@@ -207,6 +207,7 @@ tip-console-manual = Tajjar id-drone magħżul bl-idejn: l-istick u t-throttle
 tip-console-track = Żomm il-kamera tad-drone fuq l-art taħt il-crosshair tagħha
 tip-console-slave = Il-kamera tad-drone lura fuq il-waypoint tiegħu ('il quddiem u 'l isfel)
 tip-console-view = Il-kamera tad-drone: it-TGP tiegħu, jew il-FLIR 'il quddiem biex ittajru
+tip-console-gun = Immira dan il-kanun tal-ġenb li jmiss (il-grillu jisparah)
 
 ## Kontrolli
 

@@ -123,7 +123,7 @@ pub(super) fn snapshot(
     mut ui: ResMut<ConsoleUi>,
     time: Res<Time<Real>>,
 ) {
-    let (Some(m), Some(combat)) = (manning, combat) else { return };
+    let (Some(m), Some(combat)) = (manning.filter(|m| !m.gunner()), combat) else { return };
     if m.drones() {
         return;
     }
@@ -230,7 +230,7 @@ pub(super) fn draw(
     ui: Res<ConsoleUi>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
+    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else { return };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Scope) else {
         return;
     };

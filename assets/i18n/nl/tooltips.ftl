@@ -207,6 +207,7 @@ tip-console-manual = De gekozen drone met de hand vliegen: de stick en de gashen
 tip-console-track = De camera van de drone op de grond houden, onder het dradenkruis
 tip-console-slave = De camera van de drone terug naar zijn waypoint (vooruit en omlaag)
 tip-console-view = De camera van de drone: zijn TGP, of de FLIR vooruit om hem te vliegen
+tip-console-gun = Richt hierna dit zijkanon (de trekker vuurt het af)
 
 ## Bediening
 

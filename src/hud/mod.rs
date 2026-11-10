@@ -598,7 +598,10 @@ fn advance_waypoints(
             }
         }
     }
-    if let Some(wp) = wps.target() {
+    // Orbiting for the gunner (`gunner`): the orbit's tangent, not the waypoint.
+    if let Some(wp) = wps.target()
+        && a.orbit.is_none()
+    {
         a.waypoint_bearing = waypoint_bearing(pos, wp) as f32;
     }
 }

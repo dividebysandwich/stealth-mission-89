@@ -83,6 +83,7 @@ impl CampaignState {
             progress,
             flight,
             position,
+            crew: Vec::new(),
         };
         let from = self.site(base).map(|s| s.name.clone()).unwrap_or_default();
         self.note(text!("cl-sortie-from", title = o.title.clone(), base = from));
@@ -258,6 +259,7 @@ impl CampaignState {
             place: self.objective_place(&s.offer.objective),
             achieved_at: s.progress.achieved_at,
             effects: s.progress.effects.clone(),
+            crew: s.crew.iter().filter_map(|&p| self.player_name(p)).map(str::to_string).collect(),
         };
         let mut record = record;
         // Under the airframe rule his aircraft lost is one fewer of the friendly side's.

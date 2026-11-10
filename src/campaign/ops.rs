@@ -12,7 +12,10 @@ use stealth_campaign::{
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
 use stealth_net::protocol::PlayerStatus;
+use stealth_sim::crew::{CrewCmd, Seat};
 use stealth_sim::station::StationCmd;
+
+mod flights;
 
 use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
 use crate::layout::{Flow, Span, Split, screen_window};
@@ -31,6 +34,7 @@ pub enum Tab {
     #[default]
     Board,
     Map,
+    Flights,
     AirDefence,
     Logistics,
     Players,
@@ -74,6 +78,10 @@ pub struct OpsUi {
     /// `--campaign-take-control` was done, `--campaign-leave`.
     pub test_controlled: bool,
     pub test_left: bool,
+    /// The flight selected on the FLIGHTS tab.
+    flight: Option<flights::FlightKey>,
+    /// `--campaign-crew` was done.
+    pub test_crewed: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
     /// SAVE & EXIT asks first.
@@ -225,13 +233,14 @@ pub fn block_input(
     }
 }
 
-/// Test aids: `--campaign-tab board|map|airdefense|logistics|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
+/// Test aids: `--campaign-tab board|map|flights|airdefense|logistics|players|debrief|log|chat` opens a tab, `--campaign-take <n>`
 /// takes the n-th mission of the board (0: the first) once the campaign is up.
 pub fn test_tab() -> Option<Tab> {
     let args: Vec<String> = std::env::args().collect();
     let t = args.iter().position(|a| a == "--campaign-tab").and_then(|i| args.get(i + 1))?;
     Some(match t.as_str() {
         "map" => Tab::Map,
+        "flights" => Tab::Flights,
         "airdefense" => Tab::AirDefence,
         "logistics" | "forces" => Tab::Logistics,
         "debrief" => Tab::Debrief,
@@ -479,6 +488,7 @@ pub fn ops_ui(
                         for (tab, label) in [
                             (Tab::Board, t!("ops-tab-missions")),
                             (Tab::Map, t!("ops-tab-map")),
+                            (Tab::Flights, t!("ops-tab-flights")),
                             (Tab::AirDefence, t!("ops-tab-air-defence")),
                             (Tab::Logistics, t!("ops-tab-logistics")),
                             (Tab::Players, t!("ops-tab-players")),
@@ -533,6 +543,7 @@ pub fn ops_ui(
                         scenery.as_deref(),
                         size,
                     ),
+                    Tab::Flights => flights::tab(ui, c, &combat.sim, size.x, &mut deck),
                     Tab::Logistics => super::logistics::tab(ui, c, size),
                     Tab::Players => players(ui, c, &mut voice),
                     Tab::Debrief => debrief(ui, c),
@@ -883,6 +894,14 @@ enum Todo {
         tag: u32,
         watched: bool,
     },
+    /// Sit at the gunner's console of an AI aircraft (`tag`; the AI flies on), or of another
+    /// player's aircraft.
+    GunnerAi {
+        tag: u32,
+    },
+    GunnerWith {
+        owner: u8,
+    },
     /// Man an air defence unit's console.
     Man {
         unit: u16,
@@ -972,10 +991,19 @@ fn do_deed(c: &mut ActiveCampaign, unit_view: &mut super::UnitView, todo: Todo) 
         }
         Todo::TakeControl { tag, watched } => {
             let loadout = super::control_loadout(c, tag);
-            c.actions.push(Action::TakeControl { tag, loadout });
+            c.actions.push(Action::TakeControl { tag, loadout, seat: Seat::Pilot });
             if watched {
                 unit_view.close();
             }
+        }
+        Todo::GunnerAi { tag } => {
+            let loadout = super::control_loadout(c, tag);
+            c.actions.push(Action::TakeControl { tag, loadout, seat: Seat::Gunner });
+            unit_view.close();
+        }
+        Todo::GunnerWith { owner } => {
+            c.actions.push(Action::Crew(CrewCmd::Join { owner }));
+            unit_view.close();
         }
         Todo::Man { unit } => {
             c.actions.push(Action::Station(StationCmd::Man { unit }));
@@ -1834,6 +1862,9 @@ fn debrief(ui: &mut egui::Ui, c: &ActiveCampaign) {
     let mins = ((r.ended - r.started) / 60.0).round();
     ui.label(t!("ops-flight-time", mins = mins as i64));
     ui.label(t!("ops-kills", air = r.air_kills, ground = r.ground_kills));
+    if !r.crew.is_empty() {
+        ui.label(t!("ops-crew", names = r.crew.join(", ")));
+    }
     let points = c.state().history.iter().find(|h| h.id == r.id).map_or(r.points, |h| h.points);
     let bonus = c.state().history.iter().find(|h| h.id == r.id).map_or(r.bonus, |h| h.bonus);
     ui.label(
@@ -2419,6 +2450,18 @@ fn players(ui: &mut egui::Ui, c: &ActiveCampaign, voice: &mut crate::voice::Voic
                             let aircraft = kind_of(*aircraft).name();
                             (
                                 t!("ops-status-flying", title = title.tr(), aircraft = aircraft),
+                                GREEN,
+                            )
+                        }
+                        PlayerStatus::Crew { title, aircraft, pilot } => {
+                            let aircraft = kind_of(*aircraft).name();
+                            (
+                                t!(
+                                    "ops-status-gunner",
+                                    title = title.tr(),
+                                    aircraft = aircraft,
+                                    pilot = pilot.clone()
+                                ),
                                 GREEN,
                             )
                         }

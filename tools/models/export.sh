@@ -1,6 +1,6 @@
 #!/bin/sh
 # Exports the .blend masters to the shipped model files:
-#   tools/models/export.sh [aircraft central_europe cuba ... cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_tornado cockpit_a10 cockpit_rah66 cockpit_av8b cockpit_oh58 cockpit_ch47 cockpit_f22 cockpit_c5 cockpit_c130 cockpit_console cockpit_drone]   (default: all files)
+#   tools/models/export.sh [aircraft central_europe cuba ... cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_tornado cockpit_a10 cockpit_rah66 cockpit_av8b cockpit_oh58 cockpit_ch47 cockpit_f22 cockpit_c5 cockpit_c130 cockpit_console cockpit_drone cockpit_gunner]   (default: all files)
 # The cockpits (cockpit_*) keep normals, UVs and materials (tools/models/export_cockpit.py);
 # cockpit_f16.blend is generated first by tools/models/build_cockpit_f16.py, cockpit_uh60.blend by
 # tools/models/build_cockpit_uh60.py, cockpit_ah1z.blend by tools/models/build_cockpit_ah1z.py,
@@ -11,11 +11,11 @@
 # cockpit_f22.blend by tools/models/build_cockpit_f22.py, cockpit_c5.blend by tools/models/build_cockpit_c5.py,
 # cockpit_c130.blend by tools/models/build_cockpit_c130.py,
 # cockpit_console.blend by tools/models/build_console.py, cockpit_drone.blend by
-# tools/models/build_console_drone.py.
+# tools/models/build_console_drone.py, cockpit_gunner.blend by tools/models/build_console_gunner.py.
 # assets/models/ukraine.glb is assembled from central_europe.glb by tools/theater/build.sh.
 set -e
 cd "$(dirname "$0")/../.."
-for f in ${@:-aircraft central_europe cuba korea desert_storm libya middle_east north_cape persian_gulf vietnam special_targets cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_tornado cockpit_a10 cockpit_rah66 cockpit_av8b cockpit_oh58 cockpit_ch47 cockpit_f22 cockpit_c5 cockpit_c130 cockpit_console cockpit_drone}; do
+for f in ${@:-aircraft central_europe cuba korea desert_storm libya middle_east north_cape persian_gulf vietnam special_targets cockpit_modern cockpit_classic cockpit_f16 cockpit_uh60 cockpit_ah1z cockpit_tornado cockpit_a10 cockpit_rah66 cockpit_av8b cockpit_oh58 cockpit_ch47 cockpit_f22 cockpit_c5 cockpit_c130 cockpit_console cockpit_drone cockpit_gunner}; do
     blend=assets-src/blend/$f.blend
     script=tools/models/export.py
     case $f in cockpit_*) script=tools/models/export_cockpit.py ;; esac

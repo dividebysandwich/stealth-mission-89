@@ -79,7 +79,7 @@ pub(super) fn play(
     mut heard: Local<Heard>,
     mut muffler: Muffler,
 ) {
-    let (Some(m), Some(combat), Some(sounds)) = (manning, combat, sounds) else {
+    let (Some(m), Some(combat), Some(sounds)) = (manning.filter(|m| !m.gunner()), combat, sounds) else {
         for (e, _, _) in &loops {
             commands.entity(e).try_despawn();
         }

@@ -24,7 +24,7 @@ mod board;
 mod drone;
 mod eo;
 mod info;
-mod scope;
+pub(crate) mod scope;
 mod signal;
 mod sound;
 
@@ -53,6 +53,7 @@ impl Plugin for StationPlugin {
             Update,
             (
                 sync_manning,
+                vr_console.after(sync_manning).before(buttons),
                 hand_controller
                     .after(sync_manning)
                     .after(crate::script::ScriptSet)
@@ -91,6 +92,9 @@ pub enum StationKind {
     Battery(SamBattery),
     Gepard,
     Drones,
+    /// An aircraft's gunner's console (`gunner`): `unit` is the pilot whose aircraft it is;
+    /// `remote`: another's (the player's own parked away), else his own, the AI flying it.
+    Gunner { remote: bool },
 }
 
 impl Manning {
@@ -100,6 +104,7 @@ impl Manning {
             StationKind::Battery(b) => b.label(),
             StationKind::Gepard => "GEPARD",
             StationKind::Drones => "DCC",
+            StationKind::Gunner { .. } => "GUNNER",
         }
     }
 
@@ -117,6 +122,21 @@ impl Manning {
 
     pub fn drones(&self) -> bool {
         self.kind == StationKind::Drones
+    }
+
+    pub fn gunner(&self) -> bool {
+        matches!(self.kind, StationKind::Gunner { .. })
+    }
+
+    /// At another's gunner's console: the player's own aircraft is parked away.
+    pub fn remote_gunner(&self) -> bool {
+        self.kind == StationKind::Gunner { remote: true }
+    }
+
+    /// The player's own aircraft waits parked meanwhile (all but his own gunner's console,
+    /// where it flies on).
+    pub fn parks(&self) -> bool {
+        self.kind != StationKind::Gunner { remote: false }
     }
 }
 
@@ -184,6 +204,7 @@ const SHELTER_OFFSET: f64 = 25.0;
 const EYE_HEIGHT: f64 = 2.6;
 
 /// The console comes and goes with the campaign's phase.
+#[allow(clippy::too_many_arguments)]
 fn sync_manning(
     mut commands: Commands,
     c: Option<Res<ActiveCampaign>>,
@@ -192,8 +213,18 @@ fn sync_manning(
     mut ui: ResMut<ConsoleUi>,
     mut player: Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
     mut mfd: ResMut<crate::mfd::MfdState>,
+    (seat, settings): (Res<crate::gunner::OwnSeat>, Res<crate::settings::Settings>),
 ) {
-    let want = match (c.as_deref().map(|c| c.phase), combat.as_deref()) {
+    let phase = c.as_deref().map(|c| c.phase);
+    let own_gunner = seat.0 == stealth_sim::crew::Seat::Gunner
+        && settings.aircraft.spectre()
+        && matches!(phase, None | Some(Phase::Sortie));
+    let me = combat.as_deref().map_or(0, |c| c.sim.active_pilot()) as usize;
+    let want = match (phase, combat.as_deref()) {
+        (Some(Phase::Crew { owner }), _) => {
+            Some(Manning { unit: owner as usize, kind: StationKind::Gunner { remote: true } })
+        }
+        _ if own_gunner => Some(Manning { unit: me, kind: StationKind::Gunner { remote: false } }),
         (Some(Phase::Station { unit }), Some(combat)) => {
             let kind = match combat.sim.units().get(unit).map(|u| u.kind) {
                 Some(GroundKind::Gepard) => StationKind::Gepard,
@@ -211,12 +242,15 @@ fn sync_manning(
     }
     match want {
         Some(m) => {
-            if manning.is_none()
+            // Off to a console: the aircraft parked (not at its own gunner's console, where it
+            // flies on; a sortie begun there has its aircraft where the sortie put it).
+            if m.parks()
+                && manning.as_deref().is_none_or(|was| !was.parks())
                 && let Ok((pos, a)) = player.single()
             {
                 ui.parked = Some((pos.0, a.clone()));
             }
-            let parked = ui.parked.take();
+            let parked = if m.parks() { ui.parked.take() } else { None };
             // Test aid: `--console-tab site` opens the site's page.
             let site = std::env::args().skip_while(|a| a != "--console-tab").nth(1);
             *ui = ConsoleUi {
@@ -229,7 +263,9 @@ fn sync_manning(
             commands.insert_resource(m);
         }
         None => {
+            // Back to the parked aircraft (not into a sortie that put the aircraft somewhere).
             if let Some((p, parked)) = ui.parked.take()
+                && phase != Some(Phase::Sortie)
                 && let Ok((mut pos, mut a)) = player.single_mut()
             {
                 pos.0 = p;
@@ -263,6 +299,10 @@ fn seat_operator(
     mut view: ResMut<ViewState>,
 ) {
     let (Some(m), Some(combat)) = (manning, combat) else { return };
+    if m.gunner() {
+        crate::gunner::seat_gunner(&m, &combat, &mut player, &mut view);
+        return;
+    }
     let Some((at, heading)) = shelter(&combat, m.unit) else { return };
     if let Ok((mut pos, mut a)) = player.single_mut() {
         if pos.0 != at {
@@ -296,7 +336,8 @@ fn hand_controller(
     mut controls: ResMut<crate::input::FlightControls>,
     mut ui: ResMut<ConsoleUi>,
 ) {
-    let Some(m) = manning else { return };
+    // The gunner's console has its own (`gunner`).
+    let Some(m) = manning.filter(|m| !m.gunner()) else { return };
     let trigger = controls.gun || controls.fire;
     controls.gun = false;
     controls.fire = false;
@@ -319,6 +360,63 @@ fn hand_controller(
     ui.trigger = trigger;
 }
 
+/// How often a held stick direction steps the zoom again (s).
+const VR_ZOOM_REPEAT: f32 = 0.35;
+
+/// VR at a console (not the drone command center's, which has its own): the left controller
+/// works the camera and the lock as the console's buttons do. Stick up / down zooms in / out
+/// (again while held), its click toggles the FLIR, X tracks (locks the selected track; the
+/// gunner's pod's point track), Y drops the lock (the gunner's: the other gun), stick left /
+/// right lays the 40 mm / 105 mm at the gunner's console.
+fn vr_console(
+    manning: Option<Res<Manning>>,
+    settings: Res<crate::settings::Settings>,
+    hands: Res<crate::cockpit3d::Hands>,
+    menu: Res<crate::flight_menu::FlightMenu>,
+    time: Res<Time<Real>>,
+    mut wait: Local<f32>,
+    mut out: MessageWriter<ConsoleButton>,
+    gunner: Res<crate::gunner::GunnerState>,
+) {
+    use crate::cockpit3d::{
+        BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT,
+        BUTTON_STICK_RIGHT, BUTTON_STICK_UP, BUTTON_THUMB,
+    };
+    let Some(m) = manning.filter(|m| !m.drones()) else { return };
+    let left = &hands.hands[0];
+    if !settings.vr || !left.active || menu.open || left.scrolling {
+        return;
+    }
+    let mut press = |k: ConsoleKey| {
+        out.write(ConsoleButton(k));
+    };
+    // Zoom: a step on the push, then again every `VR_ZOOM_REPEAT` while held.
+    *wait -= time.delta_secs();
+    for (bit, key) in [(BUTTON_STICK_UP, ConsoleKey::ZoomIn), (BUTTON_STICK_DOWN, ConsoleKey::ZoomOut)] {
+        if left.just_pressed(bit) || (left.held(bit) && *wait <= 0.0) {
+            press(key);
+            *wait = VR_ZOOM_REPEAT;
+        }
+    }
+    if left.just_pressed(BUTTON_THUMB) {
+        press(ConsoleKey::Flir);
+    }
+    if left.just_pressed(BUTTON_PRIMARY) {
+        press(ConsoleKey::Lock);
+    }
+    if left.just_pressed(BUTTON_SECONDARY) {
+        press(if m.gunner() { ConsoleKey::Gun(2 - gunner.gun_laid()) } else { ConsoleKey::Drop });
+    }
+    if m.gunner() {
+        if left.just_pressed(BUTTON_STICK_LEFT) {
+            press(ConsoleKey::Gun(1));
+        }
+        if left.just_pressed(BUTTON_STICK_RIGHT) {
+            press(ConsoleKey::Gun(2));
+        }
+    }
+}
+
 /// The console's buttons and screen clicks.
 #[allow(clippy::too_many_arguments)]
 fn buttons(
@@ -333,7 +431,9 @@ fn buttons(
     mut mfd: ResMut<crate::mfd::MfdState>,
     time: Res<Time<Real>>,
 ) {
-    let (Some(m), Some(c), Some(combat)) = (manning, c.as_deref_mut(), combat) else {
+    let (Some(m), Some(c), Some(combat)) =
+        (manning.filter(|m| !m.gunner()), c.as_deref_mut(), combat)
+    else {
         keys.clear();
         clicks.clear();
         actions.clear();
@@ -395,7 +495,8 @@ fn buttons(
             | ConsoleKey::Manual
             | ConsoleKey::Track
             | ConsoleKey::Slave
-            | ConsoleKey::View => {}
+            | ConsoleKey::View
+            | ConsoleKey::Gun(_) => {}
         }
     }
     for click in clicks.read() {
@@ -485,7 +586,7 @@ fn panel(
     time: Res<Time<Real>>,
     mut panel: ResMut<ConsolePanel>,
 ) {
-    let (Some(m), Some(c), Some(combat)) = (manning, c, combat) else {
+    let (Some(m), Some(c), Some(combat)) = (manning.filter(|m| !m.gunner()), c, combat) else {
         if *panel != ConsolePanel::default() {
             *panel = ConsolePanel::default();
         }

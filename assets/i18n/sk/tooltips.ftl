@@ -206,6 +206,7 @@ tip-console-manual = Riadiť vybraný dron ručne: knipel a plyn
 tip-console-track = Držať kameru dronu na zemi pod jej zameriavačom
 tip-console-slave = Kamera dronu späť na jeho waypoint (dopredu a dole)
 tip-console-view = Kamera dronu: jeho TGP alebo FLIR dopredu na riadenie
+tip-console-gun = Ďalej mieriť týmto bočným kanónom (spúšť z neho strieľa)
 
 ## Ovládanie
 

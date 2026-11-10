@@ -206,6 +206,7 @@ tip-console-manual = Pilotează manual drona selectată: manșa și maneta de ga
 tip-console-track = Ține camera dronei pe sol, sub reticul
 tip-console-slave = Camera dronei înapoi pe waypoint-ul ei (înainte și în jos)
 tip-console-view = Camera dronei: TGP-ul ei sau FLIR-ul înainte pentru a o pilota
+tip-console-gun = Ochește în continuare cu acest tun lateral (trăgaciul trage cu el)
 
 ## Comenzi
 

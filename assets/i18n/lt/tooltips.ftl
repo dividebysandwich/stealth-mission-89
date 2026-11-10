@@ -207,6 +207,7 @@ tip-console-manual = Valdyti pasirinktą droną rankiniu būdu: vairalazdė ir d
 tip-console-track = Laikyti drono kamerą ant žemės po jos taikikliu
 tip-console-slave = Drono kamera grįžta į jo waypoint (pirmyn ir žemyn)
 tip-console-view = Drono kamera: jo TGP arba FLIR į priekį, kad juo skristumėte
+tip-console-gun = Toliau taikyti šiuo šoniniu pabūklu (gaidukas iš jo šauna)
 
 ## Valdikliai
 

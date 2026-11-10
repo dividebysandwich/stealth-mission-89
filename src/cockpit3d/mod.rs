@@ -243,6 +243,8 @@ pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static 
 /// (`tools/models/build_console_drone.py`).
 pub const CONSOLE_MODEL: &str = "cockpit_console";
 pub const DRONE_CONSOLE_MODEL: &str = "cockpit_drone";
+/// The AC-130's gunner's console (`tools/models/build_console_gunner.py`).
+pub const GUNNER_CONSOLE_MODEL: &str = "cockpit_gunner";
 /// How much larger than shown the console's model is built (it looked too large life size).
 pub const CONSOLE_MODEL_SCALE: f32 = 1.0 / 0.95;
 /// How far below the eye the console sits in VR (m): the operator's head higher in the room.
@@ -258,7 +260,13 @@ fn choice(
     if let Some(m) = manning {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
         let eye = settings.cockpit_origin() - Vec3::Y * drop;
-        let model = if m.drones() { DRONE_CONSOLE_MODEL } else { CONSOLE_MODEL };
+        let model = if m.drones() {
+            DRONE_CONSOLE_MODEL
+        } else if m.gunner() {
+            GUNNER_CONSOLE_MODEL
+        } else {
+            CONSOLE_MODEL
+        };
         return (layout::PanelStyle::Modern, model, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
@@ -555,7 +563,7 @@ fn console_stick(
 ) {
     let Some(m) = manning else { return };
     for (stick, mut v, mut tip) in &mut q {
-        v.set_if_neq(if m.gepard() || m.drones() {
+        v.set_if_neq(if m.gepard() || m.drones() || m.gunner() {
             Visibility::Inherited
         } else {
             Visibility::Hidden

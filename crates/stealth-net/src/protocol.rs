@@ -7,13 +7,14 @@ use stealth_campaign::{
 use stealth_host::{HostEvent, Rules, Stores};
 use stealth_sim::claims::GunHit;
 use stealth_sim::net::{PilotSnap, PilotTick, WorldFast, WorldSlow};
+use stealth_sim::crew::{CrewCmd, Seat};
 use stealth_sim::station::StationCmd;
 use stealth_sim::{Commands, PlayerState, SimEvent};
 
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 36;
+pub const PROTOCOL: u16 = 37;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -98,6 +99,9 @@ pub enum ToServer {
     TakeControl {
         tag: u32,
         stores: Option<Stores>,
+        /// The seat he takes (the gunner's: the AI flies on for him).
+        #[serde(default)]
+        seat: Seat,
     },
     /// In the air: leave the aircraft to the AI (it flies the mission on).
     LeaveAircraft,
@@ -113,6 +117,9 @@ pub enum ToServer {
     },
     /// At a friendly air defence console: man it, leave it, fight it.
     Station(StationCmd),
+    /// A seat in an aircraft: sit at another's gunner's console, leave it, move seats, the
+    /// console (its aim goes unreliable, often).
+    Crew(CrewCmd),
     /// A piece of his radio transmission (unreliable).
     Voice(VoicePacket),
     Bye,
@@ -147,6 +154,12 @@ pub enum PlayerStatus {
     Flying {
         title: stealth_i18n::Text,
         aircraft: Aircraft,
+    },
+    /// At the gunner's console of another's aircraft.
+    Crew {
+        title: stealth_i18n::Text,
+        aircraft: Aircraft,
+        pilot: String,
     },
     /// Dropped out: his aircraft waits this many seconds more.
     Reconnecting {
@@ -292,6 +305,23 @@ mod tests {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
         }
+        for cmd in [
+            CrewCmd::Join { owner: 3 },
+            CrewCmd::Leave,
+            CrewCmd::Seat(Seat::Gunner),
+            CrewCmd::Aim(stealth_sim::crew::GunnerAim {
+                pod: Some(stealth_sim::PodAim { heading: 0x4000, pitch: -0x800, ground: Some((5, 6)) }),
+                trigger: true,
+                gun: 1,
+            }),
+            CrewCmd::Designate { at: Some((0x1000, 0x2000)), unit: None },
+            CrewCmd::Designate { at: None, unit: Some(17) },
+        ] {
+            let m = ToServer::Crew(cmd);
+            assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        }
+        let m = ToServer::TakeControl { tag: 9, stores: None, seat: Seat::Gunner };
+        assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
         let defence = DefenceState {
             stock2: vec![0, 3],
             stock3: vec![0, 6],
@@ -311,6 +341,7 @@ mod tests {
             uavs: Vec::new(),
             uav_serial: 3,
             uav_known: vec![stealth_sim::uav::Seen::Aaa(2), stealth_sim::uav::Seen::Object(40)],
+            crews: vec![stealth_sim::crew::Crew { owner: 0, seat: Seat::Pilot, gunner: Some(2) }],
         };
         let slow = WorldSlow {
             aaa_len: 5,

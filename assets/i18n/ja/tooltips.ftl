@@ -207,6 +207,7 @@ tip-console-manual = 選択中のドローンを手動で操縦：スティッ�
 tip-console-track = ドローンのカメラを照準の地上地点に固定
 tip-console-slave = ドローンのカメラをウェイポイントに戻す（前方下向き）
 tip-console-view = ドローンのカメラ：TGP、または操縦用の前方FLIR
+tip-console-gun = 次にこの側面砲を照準する（トリガーで発射）
 
 ## Controls
 

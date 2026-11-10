@@ -242,6 +242,12 @@ pub struct Pilot {
     pub(crate) fired_step: u32,
     #[serde(skip)]
     pub(crate) claims: (u32, u8),
+    /// At another's gunner's console: his console now and his designation still to be done
+    /// (the host's, `crew`).
+    #[serde(skip)]
+    pub(crate) crew_aim: crate::crew::GunnerAim,
+    #[serde(skip)]
+    pub(crate) crew_cmd: Commands,
 }
 
 /// An event of a step and the pilot it happened to (whose turn it was): private events

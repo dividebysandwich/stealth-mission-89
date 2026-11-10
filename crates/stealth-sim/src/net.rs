@@ -298,6 +298,10 @@ pub struct SlowBase {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PilotSnap {
     pub pilot: Pilot,
+    /// The aircraft he is crew in (another's at its gunner's console, or his own with a
+    /// gunner or flown by the AI).
+    #[serde(default)]
+    pub crew: Option<crate::crew::CrewView>,
 }
 
 /// What of a pilot's own state changes every frame: the radar sweep, the distance to the
@@ -554,7 +558,7 @@ impl Sim {
         pilot.aaa_track = None;
         pilot.sweep_anim = 0;
         pilot.nearest_base_dist = 0;
-        PilotSnap { pilot }
+        PilotSnap { pilot, crew: self.crew_view(id) }
     }
 
     /// Pilot `id`'s state that changes every frame.
@@ -773,6 +777,7 @@ impl Sim {
             *o = p.scratch0;
         }
         self.pl = p;
+        self.crew_view = s.crew;
     }
 
     pub fn apply_pilot_tick(&mut self, t: &PilotTick) {

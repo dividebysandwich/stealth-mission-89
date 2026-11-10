@@ -431,7 +431,10 @@ pub(super) fn grab_levers(
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
     console_throttle: Res<crate::input::ConsoleThrottle>,
     anchors: Res<CockpitAnchors>,
-    hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    (hide, manning): (
+        Option<Res<crate::camera::HideOwnAircraft>>,
+        Option<Res<crate::station::Manning>>,
+    ),
     k: Res<FlightConstants>,
     time: Res<Time>,
 ) {
@@ -705,7 +708,15 @@ pub(super) fn grab_levers(
     }
 
     // --- sensor/cursor slew: the left thumbstick
-    if left.active && !block.0 && !left.scrolling && left.thumb.length() > SLEW_DEADZONE {
+    // At a console (but the drone command center's) the left controller works the console's
+    // camera and lock (`station::vr_console`): no slew, none of its mapped buttons but the menu.
+    let at_console = manning.as_deref().is_some_and(|m| !m.drones());
+    if left.active
+        && !block.0
+        && !at_console
+        && !left.scrolling
+        && left.thumb.length() > SLEW_DEADZONE
+    {
         controls.slew = left.thumb.clamp(Vec2::splat(-1.0), Vec2::ONE);
     }
 
@@ -727,6 +738,12 @@ pub(super) fn grab_levers(
         for m in
             config.vr_buttons.iter().filter(|m| m.hand == side && !config.vr_grabs(side, m.input))
         {
+            if at_console
+                && side == VrHand::Left
+                && m.target != ButtonTarget::Action(Action::Menu)
+            {
+                continue;
+            }
             // The brakes also on the trigger of a free hand that touches no control.
             let brakes = m.target == ButtonTarget::Action(Action::Brakes)
                 && (!hand.touching || grabs.brakes);

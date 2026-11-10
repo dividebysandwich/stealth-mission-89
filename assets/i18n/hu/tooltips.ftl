@@ -207,6 +207,7 @@ tip-console-manual = A kiválasztott drón kézi vezetése: botkormány és gáz
 tip-console-track = A drón kamerájának a földön tartása a célkereszt alatt
 tip-console-slave = A drón kamerája vissza a waypointjára (előre és lefelé)
 tip-console-view = A drón kamerája: a TGP-je, vagy az előre néző FLIR a vezetéséhez
+tip-console-gun = Következőként ezt az oldalágyút irányozd (a ravasz ezzel tüzel)
 
 ## Kezelőszervek
 

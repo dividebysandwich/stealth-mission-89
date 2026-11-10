@@ -634,7 +634,7 @@ fn player_state(
 
 /// The targeting pod's line of sight for the sim: its direction in BAM and the ground point
 /// (map units) it rests on.
-fn pod_aim(tgp: &crate::avionics::TgpState) -> Option<stealth_sim::PodAim> {
+pub(crate) fn pod_aim(tgp: &crate::avionics::TgpState) -> Option<stealth_sim::PodAim> {
     Some(sight_aim(tgp.los?, tgp.los_ground))
 }
 

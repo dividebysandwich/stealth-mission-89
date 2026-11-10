@@ -223,6 +223,7 @@ tip-console-manual = Fly the selected drone by hand: the stick and the throttle
 tip-console-track = Hold the drone's camera on the ground at its crosshair
 tip-console-slave = The drone's camera back to its waypoint (ahead and down)
 tip-console-view = The drone's camera: its TGP, or the FLIR looking ahead to fly it by
+tip-console-gun = Lay this side gun next (the trigger fires it)
 
 ## Controls
 

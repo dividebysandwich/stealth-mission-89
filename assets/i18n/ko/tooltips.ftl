@@ -206,6 +206,7 @@ tip-console-manual = 선택한 드론을 수동 조종: 스틱과 스로틀
 tip-console-track = 드론 카메라를 조준선 아래 지면에 고정
 tip-console-slave = 드론 카메라를 웨이포인트로 복귀(전방 아래쪽)
 tip-console-view = 드론 카메라: TGP 또는 조종용 전방 FLIR
+tip-console-gun = 다음에 이 측면포를 조준 (방아쇠로 발사)
 
 ## 조작부
 

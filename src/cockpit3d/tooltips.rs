@@ -374,6 +374,8 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::Track => ("TRACK", "tip-console-track"),
         ConsoleKey::Slave => ("SLAVE", "tip-console-slave"),
         ConsoleKey::View => ("FWD", "tip-console-view"),
+        ConsoleKey::Gun(1) => ("40MM", "tip-console-gun"),
+        ConsoleKey::Gun(_) => ("105MM", "tip-console-gun"),
     };
     (title, t!(id))
 }

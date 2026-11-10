@@ -241,7 +241,12 @@ impl crate::pilot::Pilot {
 impl Sim {
     /// The active pilot's side guns, the shells in flight.
     pub fn side_guns(&self) -> Option<SideGuns> {
-        self.pl.spectre.then_some(self.pl.side_guns)
+        if self.pl.spectre {
+            return Some(self.pl.side_guns);
+        }
+        // At another's gunner's console: his aircraft's (a mirror has them in its crew view).
+        let v = self.crew_view(self.pl.id)?;
+        (v.owner != self.pl.id).then_some(v.side_guns)
     }
 
     pub fn side_shells(&self) -> &[SideShell] {

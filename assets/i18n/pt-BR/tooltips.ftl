@@ -206,6 +206,7 @@ tip-console-manual = Pilotar o drone selecionado à mão: o manche e o acelerado
 tip-console-track = Manter a câmera do drone no solo, na sua mira
 tip-console-slave = A câmera do drone de volta ao seu waypoint (à frente e para baixo)
 tip-console-view = A câmera do drone: seu TGP, ou o FLIR olhando à frente para pilotá-lo
+tip-console-gun = Apontar em seguida este canhão lateral (o gatilho o dispara)
 
 ## Comandos
 

@@ -86,6 +86,11 @@ impl Aircraft {
         matches!(self, Aircraft::UH60 | Aircraft::CH47)
     }
 
+    /// It has a gunner's console another player can sit at (multi-crew).
+    pub fn gunner_seat(self) -> bool {
+        self == Aircraft::AC130
+    }
+
     /// The cargo jet: flies the munitions between the airbases and nothing else.
     pub fn airlifter(self) -> bool {
         self == Aircraft::C5
@@ -632,6 +637,9 @@ pub struct Sortie {
     pub flight: u8,
     #[serde(default)]
     pub position: u8,
+    /// The other players who sat at his aircraft's gunner's console (or flew it before him).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crew: Vec<PlayerId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -681,6 +689,9 @@ pub struct SortieRecord {
     /// What it changed in the war.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<Text>,
+    /// The other players aboard (their names), who share its credit.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crew: Vec<String>,
 }
 
 /// What a route point is: a navigation point a player placed (or the mission's midpoint), or

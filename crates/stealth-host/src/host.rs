@@ -16,6 +16,7 @@ use stealth_campaign::{
 };
 use stealth_i18n::{Text, text};
 use stealth_mission::{GameData, Mission};
+use stealth_sim::crew::{CrewCmd, Seat};
 use stealth_sim::station::{SavedStock, StationCmd};
 use stealth_sim::{PilotEvent, PlayerState, Sim, SimEvent, oflags};
 
@@ -432,10 +433,16 @@ impl Host {
         player: PlayerId,
         tag: u32,
         stores: Option<Stores>,
+        seat: Seat,
     ) -> Result<Vec<HostEvent>, Text> {
         if !sim.takeable(tag) {
             return Err(text!("ce-no-ai-aircraft"));
         }
+        if seat == Seat::Gunner && !self.state.ai_mission_of_tag(tag).is_some_and(|m| m.gunner_seat())
+        {
+            return Err(text!("crew-no-such-seat"));
+        }
+        sim.leave_crew(player.0);
         let events = self.state.apply(player, Command::TakeControl { tag })?;
         // Off to fly: his console is unmanned.
         sim.leave_station(player.0);
@@ -446,7 +453,64 @@ impl Host {
             return Err(text!("ce-no-ai-aircraft"));
         }
         self.load_stores(sim, &out, stores, false);
+        if seat == Seat::Gunner {
+            sim.set_owner_seat(player.0, Seat::Gunner);
+        }
         Ok(out)
+    }
+
+    /// A player's seat command (sitting at another's gunner's console, leaving it, moving
+    /// seats in his own aircraft, the console itself).
+    pub fn crew(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        cmd: CrewCmd,
+    ) -> Result<Vec<HostEvent>, Text> {
+        if let CrewCmd::Join { owner } = cmd {
+            if self.state.sortie(player).is_some() {
+                return Err(text!("ce-finish-sortie"));
+            }
+            // Off to the aircraft: his console is unmanned.
+            sim.leave_station(player.0);
+            sim.crew_command(player.0, cmd)?;
+            return match self.state.apply(player, Command::JoinCrew { owner: PlayerId(owner) }) {
+                Ok(events) => Ok(self.apply(sim, events)),
+                Err(e) => {
+                    sim.leave_crew(player.0);
+                    Err(e)
+                }
+            };
+        }
+        sim.crew_command(player.0, cmd)?;
+        Ok(Vec::new())
+    }
+
+    /// Player `from`'s aircraft goes on with `to` (his gunner) as its pilot, from the gunner's
+    /// console with the AI flying; `from`'s sortie ends as handed over.
+    fn hand_to_gunner(
+        &mut self,
+        sim: &mut Sim,
+        from: PlayerId,
+        to: PlayerId,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let events = self.state.apply(from, Command::HandSortie { to })?;
+        let mut out = self.apply(sim, events);
+        let (ended, rest): (Vec<PilotEvent>, Vec<PilotEvent>) = self
+            .take_sim_events(sim)
+            .into_iter()
+            .partition(|e| e.pilot == from.0 && matches!(e.event, SimEvent::SortieEnded(_)));
+        self.leftover = rest;
+        out.extend(self.tick(sim, 0.0, &ended));
+        Ok(out)
+    }
+
+    /// The other player at player `player`'s gunner's console, while his aircraft is in the
+    /// air (it goes on with him when `player` leaves it).
+    fn gunner_aboard(&self, sim: &Sim, player: PlayerId) -> Option<PlayerId> {
+        let g = sim.gunner_of(player.0)?;
+        (sim.pilot_in_the_air(player.0) && self.state.sortie(PlayerId(g)).is_none())
+            .then_some(PlayerId(g))
     }
 
     /// A player in the air leaves his aircraft to the AI: it flies his mission on, his sortie
@@ -458,6 +522,10 @@ impl Host {
     ) -> Result<Vec<HostEvent>, Text> {
         if self.state.sortie(player).is_none() || !sim.pilot_in_the_air(player.0) {
             return Err(text!("ce-not-in-the-air"));
+        }
+        // His gunner flies on with it.
+        if let Some(g) = self.gunner_aboard(sim, player) {
+            return self.hand_to_gunner(sim, player, g);
         }
         let events = self.state.apply(player, Command::LeaveAircraft)?;
         let mut out = self.apply(sim, events);
@@ -474,6 +542,13 @@ impl Host {
     /// A player's sortie ends from outside (aborted, or his flight model's crash), with the
     /// simulation's outcome codes.
     pub fn end_sortie(&mut self, sim: &mut Sim, player: PlayerId, outcome: u8) -> Vec<HostEvent> {
+        // Aborted in the air with a gunner aboard: the aircraft goes on with him.
+        if outcome == 7
+            && let Some(g) = self.gunner_aboard(sim, player)
+            && let Ok(out) = self.hand_to_gunner(sim, player, g)
+        {
+            return out;
+        }
         sim.end_sortie_pilot(player.0, outcome);
         let events = sim.take_pilot_events();
         self.tick(sim, 0.0, &events)
@@ -866,6 +941,22 @@ impl Host {
                         sortie: sortie.clone(),
                         start,
                     });
+                    continue;
+                }
+                // His gunner flies on from where it is, as everything it was.
+                CampaignEvent::SortieHanded { from, to, sortie } => {
+                    match sim.transfer_pilot(from.0, to.0) {
+                        Some(start) => out.push(HostEvent::SortieStarted {
+                            player: *to,
+                            sortie: sortie.clone(),
+                            start,
+                        }),
+                        None => {
+                            self.state
+                                .apply(*to, Command::EndSortie { end: SortieEnd::Aborted })
+                                .ok();
+                        }
+                    }
                     continue;
                 }
                 CampaignEvent::SortieStarted { player, sortie } => {

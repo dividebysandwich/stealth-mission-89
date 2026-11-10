@@ -206,6 +206,7 @@ tip-console-manual = Flyv den valgte drone med hånden: pinden og gashåndtaget
 tip-console-track = Hold dronens kamera på jorden ved dens trådkors
 tip-console-slave = Dronens kamera tilbage til dens waypoint (fremad og nedad)
 tip-console-view = Dronens kamera: dens TGP eller FLIR fremad for at flyve den
+tip-console-gun = Sigt med denne sidekanon som den næste (aftrækkeren affyrer den)
 
 ## Betjeningselementer
 

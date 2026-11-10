@@ -95,6 +95,11 @@ impl Client {
     }
 
     /// The flight model's report of one frame.
+    /// A message that may be lost (the next one says it again: a gunner's console).
+    pub fn send_unreliable(&mut self, msg: &ToServer) {
+        self.net.send(0, Channel::Unreliable, &encode(msg));
+    }
+
     pub fn send_input(&mut self, state: &PlayerState) {
         if self.id.is_none() {
             return;

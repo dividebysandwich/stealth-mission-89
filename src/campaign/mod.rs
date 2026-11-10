@@ -45,6 +45,7 @@ use stealth_host::{Debrief, Host, HostEvent, Rules, Stores, save};
 use stealth_i18n::tf;
 use stealth_mission::Mission;
 use stealth_net::protocol::{PlayerInfo, PlayerStatus, ToServer};
+use stealth_sim::crew::{CrewCmd, Seat};
 use stealth_sim::station::StationCmd;
 use stealth_sim::{PlayerState, SimEvent, oflags};
 
@@ -138,6 +139,9 @@ pub enum Phase {
     /// At the console of a friendly Patriot or NASAMS battery or Gepard (AAA unit; absent from the
     /// simulation as on the Ops screen).
     Station { unit: usize },
+    /// At the gunner's console of another player's aircraft (absent from the simulation as on
+    /// the Ops screen).
+    Crew { owner: u8 },
 }
 
 /// Who runs the war.
@@ -221,9 +225,14 @@ pub enum Action {
     TakeControl {
         tag: u32,
         loadout: Option<crate::loadout::PlannedLoadout>,
+        /// The seat taken (the gunner's: the AI flies on).
+        seat: Seat,
     },
     /// In the air: leave the aircraft to the AI.
     LeaveAircraft,
+    /// A seat in an aircraft (sitting at another's gunner's console, leaving it, moving
+    /// seats, the console itself).
+    Crew(CrewCmd),
 }
 
 /// The last sortie's debrief.
@@ -544,6 +553,7 @@ pub struct Session<'w, 's> {
     players: ResMut<'w, crate::player_notices::PlayerNotices>,
     atc: Option<ResMut<'w, crate::atc::AtcState>>,
     input: Res<'w, crate::hotas::InputConfig>,
+    own_seat: ResMut<'w, crate::gunner::OwnSeat>,
 }
 
 /// First frame of the session: the simulation is made to match the campaign.
@@ -708,6 +718,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
                 c.actions.push(Action::EndSortie { outcome });
             }
             Phase::Station { .. } => c.actions.push(Action::Station(StationCmd::Leave)),
+            Phase::Crew { .. } => c.actions.push(Action::Crew(CrewCmd::Leave)),
             _ => {}
         }
     }
@@ -715,6 +726,28 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     // LEAVE AIRCRAFT in the flight menu: in the air on a sortie that is not ending.
     let flying = s.player.single().is_ok_and(|(a, _)| !a.on_ground && a.ended.is_none());
     s.menu.can_leave = c.phase == Phase::Sortie && c.end_timer.is_none() && flying;
+    // The seats: the owner moves between his aircraft's, a gunner leaves another's.
+    let sim = &s.combat.sim;
+    s.menu.seat = match c.phase {
+        Phase::Sortie if c.end_timer.is_none() && !sim.player_absent() => {
+            let seat = sim.owner_seat(c.me.0);
+            let spectre = crate::campaign::kind_of(c.state().sortie(c.me).map_or(c.aircraft, |s| s.aircraft))
+                .spectre();
+            match seat {
+                Seat::Gunner => crate::flight_menu::SeatChoice::ToPilot,
+                Seat::Pilot if spectre && sim.gunner_of(c.me.0).is_none() => {
+                    crate::flight_menu::SeatChoice::ToGunner
+                }
+                Seat::Pilot => crate::flight_menu::SeatChoice::None,
+            }
+        }
+        Phase::Crew { .. } => crate::flight_menu::SeatChoice::LeaveGunner,
+        _ => crate::flight_menu::SeatChoice::None,
+    };
+    *s.own_seat = crate::gunner::OwnSeat(match c.phase {
+        Phase::Sortie => sim.owner_seat(c.me.0),
+        _ => Seat::Pilot,
+    });
     // The flight model ended the flight (its ground model differs in detail) and the
     // simulation did not follow: the sortie ends anyway.
     if c.phase == Phase::Sortie && c.end_timer.is_none() && !s.combat.sim.player_absent() {
@@ -804,7 +837,40 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             .find_map(|m| m.takeable());
         if let Some(tag) = tag.filter(|&t| s.combat.sim.takeable(t)) {
             c.ui.test_controlled = true;
-            c.actions.push(Action::TakeControl { tag, loadout: control_loadout(c, tag) });
+            let seat = if std::env::args().any(|a| a == "--campaign-gunner") {
+                Seat::Gunner
+            } else {
+                Seat::Pilot
+            };
+            c.actions.push(Action::TakeControl { tag, loadout: control_loadout(c, tag), seat });
+        }
+    }
+    // Test aid: `--campaign-crew <player>` sits at that player's gunner's console once it is
+    // free, `--campaign-crew ai` at the first friendly AI AC-130's up (the AI flying on).
+    if c.phase == Phase::Ops
+        && !c.ui.test_crewed
+        && c.state().clock > 2.0
+        && let Some(who) = std::env::args().skip_while(|a| a != "--campaign-crew").nth(1)
+    {
+        let sim = &s.combat.sim;
+        if who == "ai" {
+            let tag = c
+                .state()
+                .ai_missions
+                .iter()
+                .filter(|m| m.side == stealth_campaign::Side::Blue && m.open() && m.gunner_seat())
+                .flat_map(|m| m.flying().collect::<Vec<_>>())
+                .find(|&t| sim.takeable(t));
+            if let Some(tag) = tag {
+                c.ui.test_crewed = true;
+                let loadout = control_loadout(c, tag);
+                c.actions.push(Action::TakeControl { tag, loadout, seat: Seat::Gunner });
+            }
+        } else if let Ok(owner) = who.parse::<u8>()
+            && sim.gunner_seat_free(owner)
+        {
+            c.ui.test_crewed = true;
+            c.actions.push(Action::Crew(CrewCmd::Join { owner }));
         }
     }
     if c.phase == Phase::Sortie
@@ -1025,6 +1091,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     handle(c, &mut s, events);
     drain_sim(c, &mut s);
     station_phase(c, &s);
+    crew_phase(c, &s);
     // The debrief comes up a few seconds after the end (the chute is down by then).
     if let Some(t) = c.end_timer.as_mut() {
         *t += dt;
@@ -1066,6 +1133,22 @@ fn station_phase(c: &mut ActiveCampaign, s: &Session) {
     }
 }
 
+/// At another's gunner's console or not, as the simulation (the server's, on a client) has it;
+/// his aircraft gone, the gunner is back on the Ops screen.
+fn crew_phase(c: &mut ActiveCampaign, s: &Session) {
+    let sim = &s.combat.sim;
+    let seat = sim.crew_of(c.me.0).filter(|&(owner, _)| owner != c.me.0).map(|(o, _)| o);
+    match (c.phase, seat) {
+        (Phase::Ops, Some(owner)) => c.phase = Phase::Crew { owner },
+        (Phase::Crew { .. }, None) => {
+            c.phase = Phase::Ops;
+            c.ui.error = Some(stealth_i18n::text!("crew-seat-left"));
+        }
+        (Phase::Crew { owner }, Some(now)) if owner != now => c.phase = Phase::Crew { owner: now },
+        _ => {}
+    }
+}
+
 /// The stores the briefing would give a mission of the board.
 pub fn briefed_loadout(
     c: &ActiveCampaign,
@@ -1097,6 +1180,7 @@ pub fn preview(o: &stealth_campaign::MissionOffer, base: u16, aircraft: Airframe
         progress: default(),
         flight: 0,
         position: 0,
+        crew: Vec::new(),
     }
 }
 
@@ -1145,15 +1229,16 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::SelectMission { offer, base } => host.select(sim, me, offer, base),
             Action::EditPlan { offer, base, route } => host.edit_plan(sim, me, offer, base, route),
             Action::Station(cmd) => host.station(sim, me, cmd),
-            Action::TakeControl { tag, loadout } => {
+            Action::TakeControl { tag, loadout, seat } => {
                 let stores = loadout.map(|l| {
                     let stores = Stores { stations: l.stations(), select: 0 };
                     c.take_loadout = Some(l);
                     stores
                 });
-                host.take_control(sim, me, tag, stores)
+                host.take_control(sim, me, tag, stores, seat)
             }
             Action::LeaveAircraft => host.leave_aircraft(sim, me),
+            Action::Crew(cmd) => host.crew(sim, me, cmd),
         };
         match result {
             Ok(ev) => {
@@ -1220,15 +1305,21 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             Action::SelectMission { offer, base } => ToServer::Select { offer, base },
             Action::EditPlan { offer, base, route } => ToServer::Plan { offer, base, route },
             Action::Station(cmd) => ToServer::Station(cmd),
-            Action::TakeControl { tag, loadout } => {
+            Action::TakeControl { tag, loadout, seat } => {
                 let stores = loadout.map(|l| {
                     let stores = Stores { stations: l.stations(), select: 0 };
                     c.take_loadout = Some(l);
                     stores
                 });
-                ToServer::TakeControl { tag, stores }
+                ToServer::TakeControl { tag, stores, seat }
             }
             Action::LeaveAircraft => ToServer::LeaveAircraft,
+            // The console's aim goes often: one lost is said again by the next.
+            Action::Crew(cmd @ CrewCmd::Aim(_)) => {
+                client.send_unreliable(&ToServer::Crew(cmd));
+                continue;
+            }
+            Action::Crew(cmd) => ToServer::Crew(cmd),
         };
         client.send(&msg);
     }

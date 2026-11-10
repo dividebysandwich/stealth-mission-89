@@ -206,6 +206,7 @@ tip-console-manual = Upravljaj odabranim dronom ručno: palica i ručica snage
 tip-console-track = Drži kameru drona na tlu ispod njezina križa
 tip-console-slave = Kamera drona natrag na njegov waypoint (naprijed i dolje)
 tip-console-view = Kamera drona: njegov TGP ili FLIR prema naprijed za upravljanje
+tip-console-gun = Sljedeći usmjeri ovaj bočni top (okidač puca iz njega)
 
 ## Komande
 

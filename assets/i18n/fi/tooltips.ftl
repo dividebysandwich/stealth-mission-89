@@ -206,6 +206,7 @@ tip-console-manual = Lennä valittua lennokkia käsin: ohjaussauva ja kaasuvipu
 tip-console-track = Pidä lennokin kamera maassa tähtäimensä kohdalla
 tip-console-slave = Lennokin kamera takaisin sen waypointiin (eteen ja alas)
 tip-console-view = Lennokin kamera: sen TGP tai eteenpäin katsova FLIR sen lentämiseen
+tip-console-gun = Suuntaa seuraavaksi tämä sivutykki (liipaisin ampuu sillä)
 
 ## Säätimet
 

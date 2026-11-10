@@ -205,6 +205,7 @@ tip-console-manual = 手动驾驶所选无人机：操纵杆和油门
 tip-console-track = 将无人机摄像机保持在十字线下的地面上
 tip-console-slave = 无人机摄像机回到其航路点（前下方）
 tip-console-view = 无人机摄像机：其 TGP，或用于驾驶的前视 FLIR
+tip-console-gun = 下一个瞄准这门侧射炮（扳机使其开火）
 
 ## 控件
 

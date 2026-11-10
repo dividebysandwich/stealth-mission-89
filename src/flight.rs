@@ -442,6 +442,9 @@ pub struct Aircraft {
     pub pitch_input: f32,
     /// Bearing to the current waypoint (BAM), for the autopilot.
     pub waypoint_bearing: f32,
+    /// The AI flies an orbit round this point (Bevy world) while the pilot is at the gunner's
+    /// console (`gunner`): the autopilot steers its tangent, not the waypoint.
+    pub orbit: Option<bevy::math::DVec3>,
     /// Seconds of simulated time since the start.
     pub time: f32,
     pub damage: FlightDamage,
@@ -525,6 +528,7 @@ impl Aircraft {
             roll_input: 0.0,
             pitch_input: 0.0,
             waypoint_bearing: 0.0,
+            orbit: None,
             time: 0.0,
             damage: FlightDamage::default(),
             stick_trim: Vec2::ZERO,
@@ -794,8 +798,16 @@ fn step_flight(
     manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(&mut Aircraft, &mut WorldPos, &mut Transform), With<Player>>,
 ) {
-    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun).
-    let parked = FlightControls::default();
+    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun);
+    // at another's gunner's console it is not flown at all (`gunner` puts it where the pilot's
+    // aircraft is), at its own the autopilot flies it on at the orbit throttle.
+    if manning.as_deref().is_some_and(|m| m.remote_gunner()) {
+        return;
+    }
+    let mut parked = FlightControls::default();
+    if manning.as_deref().is_some_and(|m| m.gunner()) {
+        parked.throttle = Some(crate::gunner::ORBIT_THROTTLE);
+    }
     let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.
     let total = time.delta_secs().min(1.0);
