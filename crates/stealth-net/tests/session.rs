@@ -612,6 +612,7 @@ fn a_gunner_crews_another_players_gunship_and_takes_it_over() {
         pod: Some(PodAim { heading: 0xC000, pitch: -9102, ground: None }),
         trigger: true,
         gun: 0,
+        station: None,
     };
     for _ in 0..30 {
         now += Duration::from_millis(66);
