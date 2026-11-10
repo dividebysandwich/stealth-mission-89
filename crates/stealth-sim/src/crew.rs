@@ -106,13 +106,23 @@ impl Sim {
 
     /// Pilot `owner`'s aircraft has a gunner's console nobody sits at.
     pub fn gunner_seat_free(&self, owner: u8) -> bool {
-        let p = self.pilot_ref(owner as usize);
-        p.id == owner
-            && !p.absent
-            && p.eject == 0
-            && has_gunner_seat(p.spectre)
-            && self.owner_seat(owner) == Seat::Pilot
-            && self.gunner_of(owner).is_none()
+        // A mirror knows the others' aircraft as everyone sees them.
+        let spectre = if self.mirror && owner != self.pl.id {
+            self.remote.iter().any(|p| p.id == owner && p.spectre && p.chute.is_none())
+        } else {
+            let p = self.pilot_ref(owner as usize);
+            p.id == owner && !p.absent && p.eject == 0 && has_gunner_seat(p.spectre)
+        };
+        spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
+    }
+
+    /// Pilot `id`'s aircraft in the world: whether it is in the air (None: not in the world);
+    /// a mirror's from the others' aircraft as everyone sees them.
+    pub fn pilot_flying(&self, id: u8) -> Option<bool> {
+        if self.mirror && id != self.pl.id {
+            return self.remote.iter().find(|p| p.id == id).map(|p| !p.on_ground);
+        }
+        (!self.pilot_absent(id)).then(|| self.pilot_in_the_air(id))
     }
 
     fn crews_mut(&mut self) -> Option<&mut Vec<Crew>> {

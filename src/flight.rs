@@ -803,6 +803,10 @@ fn step_flight(
     // at another's gunner's console it is not flown at all (`gunner` puts it where the pilot's
     // aircraft is), at its own the autopilot flies it on, the AI holding its speed (`gunner::orbit`).
     if manning.as_deref().is_some_and(|m| m.remote_gunner()) {
+        // Its clock runs on (the scripts, the lamps' blinking go by it).
+        for (mut a, _, _) in &mut q {
+            a.time += time.delta_secs().min(1.0);
+        }
         return;
     }
     let mut parked = FlightControls::default();

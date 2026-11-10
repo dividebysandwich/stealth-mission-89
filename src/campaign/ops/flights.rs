@@ -84,12 +84,10 @@ fn rows(c: &ActiveCampaign, sim: &stealth_sim::Sim) -> Vec<Row> {
                 }
             }
         });
-        let status = if sim.pilot_absent(id) {
-            t!("ops-flight-starting").to_string()
-        } else if sim.pilot_in_the_air(id) {
-            t!("ops-flight-airborne").to_string()
-        } else {
-            t!("ops-flight-on-ground").to_string()
+        let status = match sim.pilot_flying(id) {
+            None => t!("ops-flight-starting").to_string(),
+            Some(true) => t!("ops-flight-airborne").to_string(),
+            Some(false) => t!("ops-flight-on-ground").to_string(),
         };
         let join = id != c.me.0 && gunner == Some(Sitter::Free) && sim.gunner_seat_free(id);
         out.push(Row {
