@@ -2158,23 +2158,10 @@ fn briefing(
                             // Wrapped: a row too wide for the window would widen the page.
                             let row = ui.horizontal_wrapped(|ui| {
                                 ui.label(egui::RichText::new(t!("debrief-aircraft")).color(DIM));
-                                let flyable = [
-                                    Airframe::F117,
-                                    Airframe::F16,
-                                    Airframe::F22,
-                                    Airframe::Tornado,
-                                    Airframe::A10,
-                                    Airframe::AV8B,
-                                    Airframe::C5,
-                                    Airframe::AC130,
-                                    Airframe::UH60,
-                                    Airframe::CH47,
-                                    Airframe::AH1Z,
-                                    Airframe::RAH66,
-                                    Airframe::OH58,
-                                ]
-                                .into_iter()
-                                .filter(|a| c.state().offer_flyable(&o, *a).is_ok());
+                                let flyable = crate::aircraft::AircraftKind::ALL
+                                    .into_iter()
+                                    .map(super::airframe_of)
+                                    .filter(|a| c.state().offer_flyable(&o, *a).is_ok());
                                 for a in flyable {
                                     let label = kind_of(a).name();
                                     if ui.selectable_label(b.aircraft == a, label).clicked()
