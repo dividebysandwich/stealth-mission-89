@@ -1,5 +1,7 @@
 # Stealth Mission 89
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W7J0271P9Q)
+
 <img width="1200" height="766" alt="Stealth Mission 89 screenshots" src="frontpage.gif" />
 
 A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
