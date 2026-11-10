@@ -28,7 +28,7 @@ use crate::menu::{
 use crate::mission::MissionData;
 use crate::net::{NetLink, Notice};
 use crate::settings::{AppState, MissionSetup};
-use crate::text_entry::{Charset, text_entry};
+use crate::text_entry::{Charset, field_id, text_entry, text_field, virtual_keyboard};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum Page {
@@ -380,19 +380,29 @@ fn multiplayer_window(
             if w.page == Page::Host {
                 flow.card(ui, Span::Fill(SERVER_LEAST), |ui| {
                     area(ui, false, |ui| {
-                        ui.horizontal(|ui| {
+                        let field = ui.horizontal(|ui| {
                             ui.label(t!("mp-server-name"));
                             let hint = server_title(&state);
-                            text_entry(
+                            text_field(
                                 ui,
                                 "mp_server",
                                 &mut state.server_name,
                                 32,
                                 Charset::Name,
-                                settings.vr,
                                 &hint,
-                            );
+                            )
                         });
+                        if settings.vr {
+                            virtual_keyboard(
+                                ui,
+                                "mp_server",
+                                field_id("mp_server"),
+                                &mut state.server_name,
+                                32,
+                                Charset::Name,
+                                field.inner.clicked(),
+                            );
+                        }
                         ui.horizontal_wrapped(|ui| {
                             ui.label(t!("mp-udp-port"));
                             ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
@@ -413,14 +423,13 @@ fn multiplayer_window(
                     area(ui, false, |ui| {
                         section(ui, t!("mp-join-address"));
                         // Wrapped: the buttons go under the address in a narrow card.
-                        ui.horizontal_wrapped(|ui| {
-                            text_entry(
+                        let row = ui.horizontal_wrapped(|ui| {
+                            let field = text_field(
                                 ui,
                                 "mp_server",
                                 &mut state.server_addr,
                                 64,
                                 Charset::Address,
-                                settings.vr,
                                 t!("mp-join-address.hint"),
                             );
                             if w.joining.is_some() {
@@ -465,7 +474,20 @@ fn multiplayer_window(
                                     no_name = true;
                                 }
                             }
+                            field.clicked()
                         });
+                        // Under the row: in it the keyboard got what the buttons left.
+                        if settings.vr {
+                            virtual_keyboard(
+                                ui,
+                                "mp_server",
+                                field_id("mp_server"),
+                                &mut state.server_addr,
+                                64,
+                                Charset::Address,
+                                row.inner,
+                            );
+                        }
                         if let Some(s) = &w.status {
                             ui.label(egui::RichText::new(s).small().color(BRIGHT));
                         }

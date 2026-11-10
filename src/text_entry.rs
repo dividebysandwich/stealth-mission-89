@@ -123,7 +123,30 @@ pub fn text_entry(
     vr: bool,
     hint: &str,
 ) -> egui::Response {
-    let tid = egui::Id::new(("text_entry", id));
+    let resp = text_field(ui, id, text, max, charset, hint);
+    if vr {
+        virtual_keyboard(ui, id, field_id(id), text, max, charset, resp.clicked());
+    }
+    resp
+}
+
+/// The egui id of the field `id`.
+pub fn field_id(id: &str) -> egui::Id {
+    egui::Id::new(("text_entry", id))
+}
+
+/// The field alone, for a row with other widgets: its VR keyboard then goes under the row
+/// (`virtual_keyboard` with `field_id(id)`, opened when the field is clicked), since in the
+/// row it would be squeezed into what the row leaves.
+pub fn text_field(
+    ui: &mut egui::Ui,
+    id: &str,
+    text: &mut String,
+    max: usize,
+    charset: Charset,
+    hint: &str,
+) -> egui::Response {
+    let tid = field_id(id);
     let field = egui::TextEdit::singleline(text)
         .id(tid)
         .char_limit(max)
@@ -135,9 +158,6 @@ pub fn text_entry(
     // Typed on a keyboard: only what the field takes.
     if resp.changed() {
         text.retain(|c| charset.allows(c));
-    }
-    if vr {
-        virtual_keyboard(ui, id, tid, text, max, charset, resp.clicked());
     }
     resp
 }
@@ -166,56 +186,61 @@ pub fn virtual_keyboard(
         let mut edit = None;
         egui::Frame::new().fill(BG).stroke(egui::Stroke::new(1.0, DIM)).inner_margin(8.0).show(
             ui,
+            // Stacked rows whatever the caller's layout (a frame takes its parent's: in a
+            // horizontal one the rows went side by side, clipped after the first few keys).
             |ui| {
-                ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
-                for (r, row) in ROWS.iter().enumerate() {
-                    ui.horizontal(|ui| {
-                        ui.add_space(r as f32 * 10.0);
-                        for c in row.chars() {
-                            let c = if kb.shift { c } else { c.to_ascii_lowercase() };
-                            if key_enabled(ui, &c.to_string(), KEY.x, false, charset.allows(c)) {
-                                edit = Some(Edit::Insert(c));
-                                kb.shift = false;
-                            }
-                        }
-                        if r == 3 && charset == Charset::Address {
-                            for c in ADDRESS_ROW.chars() {
-                                if key(ui, &c.to_string(), KEY.x, false) {
+                ui.vertical(|ui| {
+                    ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
+                    for (r, row) in ROWS.iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            ui.add_space(r as f32 * 10.0);
+                            for c in row.chars() {
+                                let c = if kb.shift { c } else { c.to_ascii_lowercase() };
+                                if key_enabled(ui, &c.to_string(), KEY.x, false, charset.allows(c))
+                                {
                                     edit = Some(Edit::Insert(c));
+                                    kb.shift = false;
                                 }
                             }
+                            if r == 3 && charset == Charset::Address {
+                                for c in ADDRESS_ROW.chars() {
+                                    if key(ui, &c.to_string(), KEY.x, false) {
+                                        edit = Some(Edit::Insert(c));
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    ui.horizontal(|ui| {
+                        if key(ui, "SHIFT", KEY.x * 2.0, kb.shift) {
+                            kb.shift = !kb.shift;
+                        }
+                        if key_enabled(ui, "SPACE", KEY.x * 2.5, false, charset.allows(' ')) {
+                            edit = Some(Edit::Insert(' '));
+                        }
+                        if key(ui, "←", KEY.x, false) {
+                            edit = Some(Edit::Left);
+                        }
+                        if key(ui, "→", KEY.x, false) {
+                            edit = Some(Edit::Right);
+                        }
+                        if key(ui, "DEL", KEY.x * 1.5, false) {
+                            edit = Some(Edit::Backspace);
+                        }
+                        if key(ui, "CLEAR", KEY.x * 1.5, false) {
+                            edit = Some(Edit::Clear);
+                        }
+                        let done = egui::Button::new(
+                            egui::RichText::new("DONE").monospace().size(18.0).color(BG),
+                        )
+                        .fill(AMBER)
+                        .min_size(egui::vec2(KEY.x * 2.0, KEY.y));
+                        if ui.add(done).clicked() {
+                            kb.open = false;
+                            ui.memory_mut(|m| m.surrender_focus(tid));
                         }
                     });
-                }
-                ui.horizontal(|ui| {
-                    if key(ui, "SHIFT", KEY.x * 2.0, kb.shift) {
-                        kb.shift = !kb.shift;
-                    }
-                    if key_enabled(ui, "SPACE", KEY.x * 2.5, false, charset.allows(' ')) {
-                        edit = Some(Edit::Insert(' '));
-                    }
-                    if key(ui, "←", KEY.x, false) {
-                        edit = Some(Edit::Left);
-                    }
-                    if key(ui, "→", KEY.x, false) {
-                        edit = Some(Edit::Right);
-                    }
-                    if key(ui, "DEL", KEY.x * 1.5, false) {
-                        edit = Some(Edit::Backspace);
-                    }
-                    if key(ui, "CLEAR", KEY.x * 1.5, false) {
-                        edit = Some(Edit::Clear);
-                    }
-                    let done = egui::Button::new(
-                        egui::RichText::new("DONE").monospace().size(18.0).color(BG),
-                    )
-                    .fill(AMBER)
-                    .min_size(egui::vec2(KEY.x * 2.0, KEY.y));
-                    if ui.add(done).clicked() {
-                        kb.open = false;
-                        ui.memory_mut(|m| m.surrender_focus(tid));
-                    }
-                });
+                })
             },
         );
         // At the field's cursor (the end if it never had one), which stays in the field.
