@@ -411,6 +411,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_f22.png" width="160"> | [**F-22A RAPTOR**](#311-f-22a-raptor) | Stealth fighter: supercruise, weapons in its bays, the radars barely see it. |
 | <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#312-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
 | <img src="images/units/fly_ac130.png" width="160"> | [**AC-130 SPECTRE**](#313-ac-130-spectre) | Side-firing gunship: 40 mm and 105 mm guns aimed with the pod from a left-hand orbit. |
+| | [**AH-64D APACHE**](#314-ah-64d-apache) | Two-seat attack helicopter: a second player can fly as its gunner, laying the chin gun and Hellfires with the TADS. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -1402,6 +1403,66 @@ whose target is at least 25 km from every live enemy SAM site (*Enemy SAM sites 
 the target for the AC-130*). It is never preselected: pick it in the briefing.
 
 **Best for.** Columns and garrisons away from the SAMs: gunship missions, CAS.
+
+## 3.14 AH-64D APACHE
+
+The US Army's Advanced Attack Helicopter competition of the early 1970s asked for a helicopter that
+could fight Soviet armour at night and in bad weather, take hits from 23 mm guns and keep flying.
+Hughes won it with the YAH-64, first flown on 30 September 1975. The **AH-64A Apache** entered
+service in 1986 with a 30 mm chain gun under the nose, sixteen Hellfire missiles and the TADS/PNVS
+in its nose: the Target Acquisition and Designation Sight, a turret of day and night sensors and a
+laser for the gunner, and the Pilot Night Vision Sensor above it, slaved to the pilot's helmet.
+
+The crew sit in tandem: the copilot-gunner (CPG) low in front, the pilot behind and above him.
+Each can fly the helicopter and fire its weapons. Apaches opened the air war over Iraq in January
+1991, destroying two early warning radars with Hellfires minutes before the first bombs fell. The
+**AH-64D**, built from 1997, has a glass cockpit with MFDs in both seats, more power and, on the
+Longbow version, a millimetre-wave radar above the rotor. The game's AH-64D has no mast radar.
+
+| **AH-64D APACHE** | |
+|---|---|
+| *Role* | Attack helicopter, two crew |
+| *Manufacturer* | Hughes, then McDonnell Douglas and Boeing, USA |
+| *First flight* | 30 September 1975 (YAH-64) |
+| *Rotor diameter / length / height* | 14.63 m / 17.73 m / 3.87 m |
+| *Engines* | 2 × General Electric T700-GE-701C, 1,410 kW (1,890 shp) each |
+| *Maximum take-off weight* | 10,430 kg (23,000 lb) |
+| *Maximum speed* | about 160 kt level, 197 kt never-exceed |
+| *Armament* | 30 mm M230 chain gun, 16 Hellfire, Stingers on the wingtips, rockets |
+
+**IN THE GAME.** Heavier and draggier than the Viper, the Apache tops out near 160 kt in level flight.
+It sits on wheels, the nose a little up. It carries the **chin gun** (510 rounds) and four M299
+launchers with **16 Hellfires** on its stub wings, plus two **Stingers** on each wingtip. The pilot's
+**helmet-mounted display** (chapter 5.4) works as in the AH-1Z: the chin gun follows his eyes (**GUN
+HMS**) or the pod (**GUN TGP**), and the Hellfires go where the pod looks.
+
+**Two seats.** The pilot's cockpit is the rear one: two MFDs and the up-front display, the gunner's
+helmet and canopy before and below you. The front cockpit is the **gunner's**: three displays, the
+centre one the **TEDAC** with the TADS (the targeting pod) on it, and its two hand grips below.
+
+- **Changing seats.** In flight, the in-flight menu's **GUNNER'S SEAT** entry takes you forward
+  (`--seat gunner[@seconds]` from the command line). The empty pilot's seat is flown by the AI:
+  if you left the **auto-hover** engaged it keeps hovering over the spot, if you left the
+  **autopilot** engaged it flies on to the waypoint; with neither engaged it hovers if you were
+  slower than 30 kt and otherwise takes up the autopilot at your speed (at least 80 kt) and
+  altitude. The **PILOT'S
+  SEAT** entry takes you back, the autopilot still engaged: move the cyclic to take over.
+- **In the gunner's seat** the stick slews the TADS (as do the slew keys); its picture is on the
+  TEDAC, the sensor of interest. The chin gun follows the TADS, not your eyes. The weapon keys and
+  the fire buttons work as in the pilot's seat, whatever master mode the pilot left.
+
+**A second player as gunner.** In a campaign another player can crew your Apache: on the campaign
+screen's **FLIGHTS** tab, *JOIN AS GUNNER* on your flight puts him in the front seat while you fly. His
+TADS replaces yours: your Hellfires go to his laser spot, and his designations are your aircraft's.
+Both of you fire: his trigger fires the chin gun along his TADS, his weapon key steps through the
+gun and the kinds of missiles left, and his release fires the missile he selected; your own trigger
+still fires the chin gun along your helmet and your release your own selection. If you leave the
+aircraft or lose your connection, it goes on with him in the front seat and the AI flying. A player
+can also take the gunner's seat of an AI flown Apache from the FLIGHTS tab; the AI then flies it for
+him. The sortie's kills count for the crew.
+
+**Best for.** Close air support against armour, guns and MANPADS (it is the AI's first choice for
+CAS near the front), escorting insertions, and flying with a friend.
 
 
 ---
