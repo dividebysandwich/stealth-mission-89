@@ -406,7 +406,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_uh60.png" width="160"> | [**UH-60 BLACK HAWK**](#36-uh-60-black-hawk) | Unarmed transport helicopter: insertions, rescues, sling loads. The only way to take a place by air. |
 | <img src="images/units/fly_ah1z.png" width="160"> | [**AH-1Z VIPER**](#37-ah-1z-viper) | Attack helicopter: turret gun and Hellfires that follow the pilot's eyes. |
 | <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors. |
-| <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods. |
+| <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods; a second player can sit in its left seat as gunner. |
 | <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
 | <img src="images/units/fly_f22.png" width="160"> | [**F-22A RAPTOR**](#311-f-22a-raptor) | Stealth fighter: supercruise, weapons in its bays, the radars barely see it. |
 | <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#312-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
@@ -1002,11 +1002,29 @@ rotor, slaved to the lock or to your eyes like an attack helicopter's (chapter 5
 a hill with only the sight above it, lock, and fire Hellfires over the crest. The full helmet display
 (chapter 5.4) shows where the sight is looking.
 
-**Cockpit.** One wide panel across both seats (the pilot in the right one) under a low glareshield:
-two large MFDs either side of the centre column with the standby instruments and the engine gauges,
-the CDU and the caution and countermeasure panels on the console between the seats.
+**Cockpit.** One wide panel across both seats (the pilot in the right one) under a low glareshield,
+with no HUD (the helmet display shows the symbology): a pair of MFDs in front of each seat either
+side of the centre column with the standby instruments, the engine gauges and the fuel readouts,
+the CDU and the caution and countermeasure panels on the console between the seats. All four MFDs
+work; your own pair are your left and right MFDs, the other seat's pair your third and fourth.
 
 ![The OH-58D's cockpit](images/cockpit_oh58.png)
+
+**Two seats.** The left seat is the **copilot/gunner's**, with its own pair of MFDs.
+
+- **Changing seats.** In flight, the in-flight menu's **GUNNER'S SEAT** entry moves you to the left
+  seat (`--seat gunner[@seconds]` from the command line), the AI flying as in the AH-64 (chapter
+  3.14): it keeps the auto-hover or the autopilot, else hovers below 30 kt or takes up the autopilot.
+  The **PILOT'S SEAT** entry takes you back.
+- **In the gunner's seat** the stick slews the mast-mounted sight (as do the slew keys); its picture
+  is on your right MFD, the sensor of interest.
+
+**A second player as gunner.** In a campaign another player can crew your Kiowa Warrior from the
+**FLIGHTS** tab (*JOIN AS GUNNER*), as in the AH-64. His mast sight replaces yours, so your Hellfires
+go to his laser spot. His weapon key steps through the kinds of missiles left and his release fires
+the one he selected. The gun pods stay yours: they fire along the nose, so his trigger does not fire
+them. If you leave the aircraft or lose your connection, it goes on with him in the left seat and
+the AI flying. The sortie's kills count for the crew.
 
 **Best for.** CAS, ESCORT and INTERCEPT against helicopters close to the front, and finding targets
 from behind cover.
