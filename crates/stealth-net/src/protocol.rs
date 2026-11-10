@@ -313,7 +313,9 @@ mod tests {
                 pod: Some(stealth_sim::PodAim { heading: 0x4000, pitch: -0x800, ground: Some((5, 6)) }),
                 trigger: true,
                 gun: 1,
+                station: Some(2),
             }),
+            CrewCmd::Fire { station: 4 },
             CrewCmd::Designate { at: Some((0x1000, 0x2000)), unit: None },
             CrewCmd::Designate { at: None, unit: Some(17) },
         ] {

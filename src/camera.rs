@@ -789,7 +789,8 @@ fn update_rig(
                     * Quat::from_rotation_z(tracked.roll),
             );
             *cam_tf = if settings.vr {
-                offset.scaled(settings.vr_rig_scale(manning.is_some()))
+                offset
+                    .scaled(settings.vr_rig_scale(manning.as_deref().is_some_and(|m| m.console())))
             } else {
                 offset.0
             };

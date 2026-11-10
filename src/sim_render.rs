@@ -1474,9 +1474,19 @@ fn world_model_state(
     let (left_pylon, right_pylon) = crate::aircraft::PYLON_SLOTS;
     // The AH-64's stores on its stations, its chin gun and TADS as they point.
     let apache = settings.aircraft.apache().then(|| {
-        let stores = crate::aircraft::apache_store_values(
-            combat.as_ref().map_or(&[][..], |c| c.sim.bays().0).iter().copied(),
-        );
+        // In another's: his, as his gunner is told.
+        let crew = combat.as_ref().and_then(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).filter(|v| v.owner != me)
+        });
+        let stores = match crew {
+            Some(v) => crate::aircraft::apache_store_values(
+                v.stores.iter().map(|&(w, n)| (w as i32, n as i32)),
+            ),
+            None => crate::aircraft::apache_store_values(
+                combat.as_ref().map_or(&[][..], |c| c.sim.bays().0).iter().copied(),
+            ),
+        };
         let (az, el) = cues.as_ref().and_then(|c| c.chin_gun).unwrap_or((0.0, 0.0));
         let gun = crate::aircraft::apache_gun_values(az, el);
         let tads = cues.as_ref().and_then(|c| c.tads_azimuth).unwrap_or(0.0);
@@ -1624,7 +1634,7 @@ fn own_shadow(
     let show = a.altitude < 1000.0
         && !assets.palette.lights_on()
         && !(settings.shadows && external)
-        && manning.is_none();
+        && !manning.as_deref().is_some_and(|m| m.console());
     vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
     if show {
         let (e, n, _) = crate::world::bevy_to_wu(pos.0);
@@ -1768,13 +1778,17 @@ pub(crate) fn sync_remote_pilots(
     mut landing_lights: crate::landing_lights::Lights,
     landing: Res<crate::landing_lights::LandingAssets>,
     stores: Query<Option<&crate::stores::StoreLoads>>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
     let lights = assets.palette.lights_on();
     let globals = assets.palette.globals.clone();
     let me = sim.active_pilot();
-    let others: Vec<_> = sim.remote_pilots().into_iter().filter(|p| p.id != me).collect();
+    // In another's AH-64's front cockpit his aircraft is the player's own model (`station`).
+    let ridden = manning.filter(|m| m.remote_gunner() && m.cockpit()).map(|m| m.unit as u8);
+    let others: Vec<_> =
+        sim.remote_pilots().into_iter().filter(|p| p.id != me && Some(p.id) != ridden).collect();
     let file = library.load(&server, "aircraft");
     vis.planes.retain(|id, (e, ..)| {
         let keep = others.iter().any(|p| p.id == *id && p.chute.is_none());

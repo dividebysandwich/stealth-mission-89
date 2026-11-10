@@ -127,6 +127,9 @@ pub struct Settings {
     /// `--seat-height <cm>`: how much higher (m; negative: lower) the eye sits in the cockpit than the aircraft's
     /// (`cockpit_eye`), on the desktop and in VR.
     pub seat_height: f32,
+    /// In the aircraft's gunner's cockpit (the AH-64's front seat), not the pilot's: its
+    /// cockpit and eye (`cockpit`, `cockpit_origin`). Set while he sits there.
+    pub gunner_cockpit: bool,
     /// Air traffic control's radio calls (`atc.rs`; on by default).
     pub atc: bool,
     /// The coop radio (`voice`): push-to-talk on, the voices' volume (0..1), the microphone's
@@ -259,7 +262,15 @@ fn get(args: &[String], f: &str) -> Option<String> {
 impl Settings {
     /// The cockpit flown: the classic cockpit only where the aircraft has one.
     pub fn cockpit(&self) -> (crate::cockpit3d::layout::PanelStyle, &'static str) {
-        self.aircraft.spec().cockpit(self.classic_cockpit)
+        match self.gunner_seat() {
+            Some(g) => (g.style, g.model),
+            None => self.aircraft.spec().cockpit(self.classic_cockpit),
+        }
+    }
+
+    /// The gunner's cockpit he sits in (`gunner_cockpit`, if the aircraft has one).
+    pub fn gunner_seat(&self) -> Option<&'static crate::aircraft::CrewSeat> {
+        self.aircraft.spec().gunner_seat.as_ref().filter(|_| self.gunner_cockpit)
     }
 
     /// The MFDs are the high-resolution ones (every cockpit but the classic one, which has them
@@ -285,7 +296,7 @@ impl Settings {
     /// (`seat_offset`) moves it.
     pub fn cockpit_origin(&self) -> Vec3 {
         let spec = self.aircraft.spec();
-        let mut eye = spec.eye;
+        let mut eye = self.gunner_seat().map_or(spec.eye, |g| g.eye);
         if self.vr
             && let Some(h) = spec.vr_eye_height
         {
@@ -375,6 +386,7 @@ impl Settings {
             tooltips: true,
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
+            gunner_cockpit: false,
             seat_height: get(&a, "--seat-height")
                 .and_then(|s| s.parse::<f32>().ok())
                 .map_or(0.0, |cm| {

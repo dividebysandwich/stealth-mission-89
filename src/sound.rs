@@ -860,10 +860,14 @@ fn cannon(
         return;
     };
     let ejected = has_ejected(combat.as_deref());
-    let firing = combat
-        .as_deref()
-        .is_some_and(|c| c.sim.gun_firing() && c.end.is_none() && !c.sim.player_absent())
-        && !ejected
+    // In another's aircraft (his gunner): his gun, as the gunner is told.
+    let crew_gun = |c: &crate::combat::Combat| {
+        let me = c.sim.active_pilot();
+        c.sim.crew_view(me).is_some_and(|v| v.owner != me && v.gun_firing)
+    };
+    let firing = combat.as_deref().is_some_and(|c| {
+        c.end.is_none() && ((c.sim.gun_firing() && !c.sim.player_absent()) || crew_gun(c))
+    }) && !ejected
         && level.0 > 0;
     if !firing {
         if !playing.is_empty() && !ejected && level.0 > 0 {

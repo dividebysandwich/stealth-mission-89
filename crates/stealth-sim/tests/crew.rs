@@ -147,10 +147,11 @@ fn the_gunner_lays_and_fires_the_side_guns() {
         sim.step_pilots(&[(0, orbit(at, false))], 15);
     }
     assert_eq!(fired(&mut sim, &orbit(at, true), 30), 0, "the pilot's trigger fired");
-    sim.crew_command(1, CrewCmd::Aim(GunnerAim { pod: None, trigger: true, gun: 0 })).unwrap();
+    sim.crew_command(1, CrewCmd::Aim(GunnerAim { pod: None, trigger: true, ..Default::default() }))
+        .unwrap();
     assert_eq!(fired(&mut sim, &orbit(at, false), 30), 0, "fired without a pod");
     // The gunner's pod on the BMP and his trigger: the 40 mm fires, his choice of gun goes.
-    let aim = GunnerAim { pod: Some(pod_on(at, 128)), trigger: true, gun: 0 };
+    let aim = GunnerAim { pod: Some(pod_on(at, 128)), trigger: true, ..Default::default() };
     sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
     let mut pilot = orbit(at, false);
     pilot.pod = None;
@@ -201,4 +202,137 @@ fn the_aircraft_goes_on_with_its_gunner() {
     let SimEvent::SortieEnded(e) = &ended[0].event else { unreachable!() };
     assert_eq!(e.outcome, OUTCOME_HANDED_OVER);
     sim.as_pilot(1, |s| assert_eq!(s.side_guns().unwrap().rounds, rounds, "a fresh load"));
+}
+
+/// A campaign world as [`crewed`] with pilot 0 in an AH-64 instead, Stingers on the wingtips and
+/// Hellfires on the pylons (the left wingtip's Stingers selected), hovering 300 m up 1 km east
+/// of the BMP. Returns the BMP's map point.
+fn apache() -> (Sim, (i32, i32)) {
+    let (mut sim, _) = crewed();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    // The BMP 1.5 km north-east of the base.
+    let b = sim.objects()[base];
+    let at = (b.x + 0x60, b.y - 0x40);
+    let (e, n) = (at.0 as f64 * M_PER_MAP, (0x8000 - at.1) as f64 * M_PER_MAP);
+    let u = &mut sim.units_mut()[0];
+    (u.x, u.y) = at;
+    u.fine = Some(Fine { e: e as f32, n: n as f32, heading: 0.0 });
+    let airframe = Airframe {
+        external_stores: true,
+        helicopter: true,
+        gunship: true,
+        apache: true,
+        ..Default::default()
+    };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.set_pilot_loadout(0, &[(21, 2), (20, 4), (20, 4), (20, 4), (20, 4), (21, 2)], 0);
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    (sim, at)
+}
+
+/// Map units east of the BMP the AH-64 hovers.
+const HOVER_DX: i32 = 64;
+
+/// Pilot 0's AH-64 hovering 300 m up `HOVER_DX` east of `at` facing north, his helmet sight
+/// looking north along the nose, his own gun trigger held or not.
+fn hover(at: (i32, i32), gun: bool) -> PlayerState {
+    let (x, y) = Sim::map_to_world(at.0 + HOVER_DX, at.1);
+    let feet = (300.0 / (M_PER_MAP / 32.0)) as u16;
+    PlayerState {
+        x,
+        y,
+        altitude: feet,
+        height: feet,
+        fuel: 10000,
+        hud_visible: true,
+        hud_mode: HudMode::Gnd,
+        helmet: Some(PodAim { heading: 0, pitch: -0x100, ground: None }),
+        cmd: Commands { gun, ..Default::default() },
+        ..Default::default()
+    }
+}
+
+/// The TADS's line of sight from the hover onto `at`.
+fn tads_on(at: (i32, i32)) -> PodAim {
+    let to_bam = |rad: f64| (rad / std::f64::consts::TAU * 65536.0).round() as i32;
+    let d = HOVER_DX as f64 * M_PER_MAP;
+    PodAim { heading: 0xC000, pitch: to_bam(-(300f64.atan2(d))) as i16, ground: Some(at) }
+}
+
+/// The gun rounds in the air: (east, north) velocity of the newest.
+fn rounds(sim: &Sim) -> Vec<(i32, i32)> {
+    let (b, n) = sim.bullets();
+    b[..n].iter().filter(|b| b.x != 0).map(|b| (b.vx, -b.vy)).collect()
+}
+
+#[test]
+fn the_apache_has_a_gunner_seat() {
+    let (mut sim, _) = apache();
+    assert!(sim.gunner_seat_free(0));
+    sim.crew_command(0, CrewCmd::Seat(Seat::Gunner)).unwrap();
+    assert_eq!(sim.owner_seat(0), Seat::Gunner);
+    sim.crew_command(0, CrewCmd::Seat(Seat::Pilot)).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let v = sim.crew_view(1).expect("the gunner's view");
+    assert_eq!(v.stores[1], (20, 4));
+    assert!(v.gun_ammo > 0);
+}
+
+/// The gunner's trigger fires the chin gun along his TADS (west, at the BMP) while the pilot's
+/// helmet looks north; the pilot's own trigger still fires it along his helmet.
+#[test]
+fn the_apache_gunner_fires_the_chin_gun_along_his_sight() {
+    let (mut sim, at) = apache();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), trigger: true, ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    let ammo = sim.gun_ammo();
+    for _ in 0..5 {
+        sim.step_pilots(&[(0, hover(at, false))], 15);
+    }
+    assert!(sim.gun_ammo() < ammo, "the gunner fired");
+    let r = rounds(&sim);
+    assert!(!r.is_empty() && r.iter().all(|&(e, n)| e < 0 && n.abs() < -e / 4), "west: {r:?}");
+    // He lets go; the pilot fires along his helmet, north.
+    sim.crew_command(1, CrewCmd::Aim(GunnerAim { trigger: false, ..aim })).unwrap();
+    for _ in 0..60 {
+        sim.step_pilots(&[(0, hover(at, false))], 15);
+    }
+    for _ in 0..5 {
+        sim.step_pilots(&[(0, hover(at, true))], 15);
+    }
+    let r = rounds(&sim);
+    assert!(!r.is_empty() && r.iter().all(|&(e, n)| n > 0 && e.abs() < n / 4), "north: {r:?}");
+}
+
+/// The gunner's Hellfire goes from the station he selected (the pilot's Stingers stay
+/// selected) and flies to his TADS's spot.
+#[test]
+fn the_apache_gunner_fires_a_hellfire_at_his_spot() {
+    let (mut sim, at) = apache();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), station: Some(1), ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    sim.crew_command(1, CrewCmd::Fire { station: 1 }).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    let left: i32 = sim.pilot_bays(0).iter().filter(|b| b.0 == 20).map(|b| b.1).sum();
+    assert_eq!(left, 15, "one Hellfire away");
+    assert_eq!(sim.pilot_bays(0)[0], (21, 2), "the Stingers kept");
+    let mut hit = None;
+    for _ in 0..15 * 30 {
+        for e in sim.step_pilots(&[(0, hover(at, false))], 15) {
+            if let SimEvent::Explosion { x, y, .. } = e.event {
+                hit.get_or_insert((x, y));
+            }
+        }
+        if hit.is_some() {
+            break;
+        }
+    }
+    let (x, y) = hit.expect("the Hellfire hit");
+    assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
 }

@@ -645,6 +645,20 @@ pub fn view_z(alt: f32) -> f32 {
 #[derive(Component)]
 pub struct Player;
 
+/// The AI flies a helicopter while its pilot sits in the gunner's seat: on the autopilot or in
+/// the auto-hover he left engaged, else hovering if he was slow enough, else on the autopilot to
+/// the waypoint at his speed and altitude. Whether it flies on its autopilot now.
+pub fn crew_autopilot(a: &mut Aircraft, k: &FlightConstants) -> bool {
+    let Some(r) = &k.heli else { return false };
+    if a.autopilot() || a.on_ground || a.ended.is_some() || a.damage.autopilot_failed {
+        return a.autopilot();
+    }
+    if !heli::engage_hover(a) {
+        heli::engage_autopilot(a, r);
+    }
+    a.autopilot()
+}
+
 fn handle_actions(
     mut actions: MessageReader<ActionEvent>,
     mut q: Query<&mut Aircraft, With<Player>>,
@@ -814,8 +828,10 @@ fn step_flight(
         }
         return;
     }
+    // (A helicopter's collective is left where it is: its autopilot or auto-hover holds it,
+    // `gunner::crew_autopilot`.)
     let mut parked = FlightControls::default();
-    if manning.as_deref().is_some_and(|m| m.gunner()) {
+    if manning.as_deref().is_some_and(|m| m.gunner()) && k.heli.is_none() {
         parked.throttle = Some(gunner.orbit_throttle);
     }
     let controls = if manning.is_some() { &parked } else { &*controls };

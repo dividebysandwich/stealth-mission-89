@@ -120,7 +120,11 @@ fn shake(
         }
     }
     let Ok((a, pos)) = aircraft.single() else { return };
-    if dt <= 0.0 || !settings.effects.shake || manning.is_some() || a.ended.is_some() {
+    if dt <= 0.0
+        || !settings.effects.shake
+        || manning.as_deref().is_some_and(|m| m.console())
+        || a.ended.is_some()
+    {
         return;
     }
     let s = &mut *shake;

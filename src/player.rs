@@ -412,7 +412,8 @@ fn interior_follows_eye(
     mut q: Query<&mut Transform, With<OwnModelInterior>>,
 ) {
     let spec = settings.aircraft.spec();
-    let at = Vec3::Y * spec.model_lift + settings.cockpit_origin() - spec.eye;
+    let seat = settings.gunner_seat().map_or(spec.eye, |g| g.eye);
+    let at = Vec3::Y * spec.model_lift + settings.cockpit_origin() - seat;
     for mut tf in &mut q {
         if tf.translation != at {
             tf.translation = at;
@@ -450,7 +451,7 @@ fn own_model_visibility(
     let external =
         !matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
     // At an air defence console the aircraft waits there unseen.
-    let hidden = hide.is_some_and(|h| h.0) || manning.is_some();
+    let hidden = hide.is_some_and(|h| h.0) || manning.as_deref().is_some_and(|m| m.console());
     let vis = |on: bool| if on && !hidden { Visibility::Inherited } else { Visibility::Hidden };
     for mut v in &mut q {
         v.set_if_neq(vis(external));

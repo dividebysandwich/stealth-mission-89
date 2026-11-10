@@ -547,11 +547,14 @@ pub(super) fn update_displays(
     let backlit = sky.on && palette.is_some_and(|p| p.lights_on());
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
     for (screen, mut v) in &mut tc {
-        v.set_if_neq(if d.mfd.camera_see_through(screen.0) || manning.is_some() {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        });
+        v.set_if_neq(
+            if d.mfd.camera_see_through(screen.0) || manning.as_deref().is_some_and(|m| m.console())
+            {
+                Visibility::Inherited
+            } else {
+                Visibility::Hidden
+            },
+        );
     }
     // VR (72 Hz, the Steam Frame's CPU short of time): the HUD and the ADI, which move with
     // the aircraft's attitude, every frame; the other screens and the instrument atlas every

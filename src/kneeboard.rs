@@ -184,7 +184,7 @@ fn toggle(
     manning: Option<Res<crate::station::Manning>>,
 ) {
     // No kneeboard at a Patriot or Gepard console.
-    if manning.is_some() {
+    if manning.as_deref().is_some_and(|m| m.console()) {
         actions.clear();
         if kb.overlay {
             kb.overlay = false;
@@ -310,7 +310,7 @@ fn carry(
     manning: Option<Res<crate::station::Manning>>,
 ) {
     let Ok(mut t) = boards.single_mut() else { return };
-    let hidden = kb.hidden || manning.is_some();
+    let hidden = kb.hidden || manning.as_deref().is_some_and(|m| m.console());
     // The cockpit is not there (VR, the campaign's Ops screen): the board is let go and stays.
     if hide.is_some_and(|h| h.0) {
         if kb.held.take().is_some() {
@@ -391,7 +391,7 @@ fn interact(
     menu: Res<crate::flight_menu::FlightMenu>,
     manning: Option<Res<crate::station::Manning>>,
 ) {
-    let hidden = kb.hidden || manning.is_some();
+    let hidden = kb.hidden || manning.as_deref().is_some_and(|m| m.console());
     let mut pick: Option<usize> = None;
     // The canvas pixel under the mouse, on the overlay or on the board in the cockpit.
     let mut pointed: Option<Vec2> = None;

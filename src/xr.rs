@@ -412,7 +412,7 @@ fn read_hands(
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
-    let offset = offset.hands(&settings, manning.is_some());
+    let offset = offset.hands(&settings, manning.as_deref().is_some_and(|m| m.console()));
     for (i, hand) in hands.hands.iter_mut().enumerate() {
         let path = actions.hands[i];
         let f = |a: &openxr::Action<f32>| {

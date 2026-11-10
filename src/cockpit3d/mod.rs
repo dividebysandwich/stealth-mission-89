@@ -257,7 +257,7 @@ fn choice(
     settings: &Settings,
     manning: Option<&crate::station::Manning>,
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
-    if let Some(m) = manning {
+    if let Some(m) = manning.filter(|m| m.console()) {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
         let eye = settings.cockpit_origin() - Vec3::Y * drop;
         let model = if m.drones() {
@@ -433,7 +433,8 @@ fn sync_shading(
     let lift = (bursts.cockpit.min(1.0) * 4.0).round() / 4.0;
     let dark = if sky.on && !nvg { q(sky.dark * (1.0 - lift)) } else { 0.0 };
     // An air defence console's shelter has no windows: dark but for its screens and buttons.
-    let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
+    let console = manning.is_some_and(|m| m.console());
+    let dark = if console && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };
     let night = |m: &CockpitMaterial| {
         Vec4::new(
@@ -448,7 +449,7 @@ fn sync_shading(
     };
     // Night lighting: a red flood light (blue-green under the goggles) as the daylight goes,
     // in 1/16 steps; the master caution's pulse while a warning is on.
-    let flood = if settings.effects.cockpit_night && manning.is_none() {
+    let flood = if settings.effects.cockpit_night && !console {
         let k = q16(((FLOOD_DUSK - lighting.daylight) / FLOOD_DUSK).clamp(0.0, 1.0));
         let colour = if nvg { FLOOD_NVG } else { FLOOD_RED };
         let caution = warnings.as_ref().is_some_and(|w| w.caution()) && k > 0.0;
@@ -529,7 +530,7 @@ fn cockpit_lamps(
     // As bright as in the cockpit model's size, which brings them nearer.
     let k = choice(&settings, manning.as_deref()).3;
     // The air defence shelter's dome light: the closed shelter's only light, day or night.
-    let lumens = match (settings.local_lights, manning.is_some()) {
+    let lumens = match (settings.local_lights, manning.is_some_and(|m| m.console())) {
         (false, _) => 0.0,
         (true, true) => CONSOLE_LAMP_LUMENS / (k * k),
         (true, false) => (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k),
@@ -561,7 +562,7 @@ fn console_stick(
     manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
 ) {
-    let Some(m) = manning else { return };
+    let Some(m) = manning.filter(|m| m.console()) else { return };
     for (stick, mut v, mut tip) in &mut q {
         v.set_if_neq(if m.gepard() || m.drones() || m.gunner() {
             Visibility::Inherited

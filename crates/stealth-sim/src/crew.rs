@@ -1,8 +1,9 @@
 //! Campaign: aircraft with more than one seat. The pilot whose sortie it is (the *owner*)
 //! flies it with his flight model, from the pilot's seat or, the AI flying for him, from the
-//! gunner's console. Another player can sit at a free gunner's console ([`CrewCmd::Join`]):
-//! he is out of the world like a player at an air defence console, his pod and trigger go to
-//! the owner's side guns ([`Sim::crew_input`]).
+//! gunner's seat. Another player can sit in a free gunner's seat ([`CrewCmd::Join`]): he is
+//! out of the world like a player at an air defence console, his pod and trigger go to the
+//! owner's aircraft ([`Sim::crew_input`]): the AC-130's side guns; the AH-64's targeting pod
+//! (the TADS), chin gun and missiles, the pilot still firing them too.
 //!
 //! The seats are in the campaign's [`DefenceState`](crate::station::DefenceState) (`crews`),
 //! so every client knows who sits where.
@@ -32,13 +33,16 @@ pub struct Crew {
     pub gunner: Option<u8>,
 }
 
-/// A gunner's console: where the pod looks, the trigger held, the gun selected (0: 40 mm,
-/// 1: 105 mm).
+/// A gunner's seat: where the pod looks, the trigger held, the gun selected (the AC-130's:
+/// 0 40 mm, 1 105 mm); the AH-64's: the station whose missiles are selected (None: the chin
+/// gun, which the trigger fires).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct GunnerAim {
     pub pod: Option<PodAim>,
     pub trigger: bool,
     pub gun: u8,
+    #[serde(default)]
+    pub station: Option<u8>,
 }
 
 /// What a player does about a seat.
@@ -54,6 +58,8 @@ pub enum CrewCmd {
     Aim(GunnerAim),
     /// The gunner designates a ground point or a vehicle with the pod.
     Designate { at: Option<(i32, i32)>, unit: Option<u16> },
+    /// The AH-64's gunner fires a missile from this station.
+    Fire { station: u8 },
 }
 
 /// What a crew member's client is told of the aircraft he is in (with his own state): the
@@ -68,11 +74,19 @@ pub struct CrewView {
     pub spi_unit: Option<u16>,
     /// The pod's line of sight the side guns are laid by.
     pub pod: Option<PodAim>,
+    /// The AH-64's: its gun rounds, its stores by station (weapon type, rounds; -1 none), its
+    /// chin gun firing.
+    #[serde(default)]
+    pub gun_ammo: i16,
+    #[serde(default)]
+    pub stores: [(i8, i8); 6],
+    #[serde(default)]
+    pub gun_firing: bool,
 }
 
-/// The aircraft has a gunner's console.
-pub fn has_gunner_seat(spectre: bool) -> bool {
-    spectre
+/// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit.
+pub fn has_gunner_seat(spectre: bool, apache: bool) -> bool {
+    spectre || apache
 }
 
 impl Sim {
@@ -108,10 +122,12 @@ impl Sim {
     pub fn gunner_seat_free(&self, owner: u8) -> bool {
         // A mirror knows the others' aircraft as everyone sees them.
         let spectre = if self.mirror && owner != self.pl.id {
-            self.remote.iter().any(|p| p.id == owner && p.spectre && p.chute.is_none())
+            self.remote
+                .iter()
+                .any(|p| p.id == owner && has_gunner_seat(p.spectre, p.apache) && p.chute.is_none())
         } else {
             let p = self.pilot_ref(owner as usize);
-            p.id == owner && !p.absent && p.eject == 0 && has_gunner_seat(p.spectre)
+            p.id == owner && !p.absent && p.eject == 0 && has_gunner_seat(p.spectre, p.apache)
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
     }
@@ -169,6 +185,7 @@ impl Sim {
                 if self.pl.id == player {
                     self.pl.crew_aim = GunnerAim::default();
                     self.pl.crew_cmd = Commands::default();
+                    self.pl.crew_fire = None;
                 }
                 self.activate(back);
                 Ok(())
@@ -185,7 +202,8 @@ impl Sim {
                     return Err(text!("ce-not-flying"));
                 }
                 if seat == Seat::Gunner {
-                    if !has_gunner_seat(self.pilot_ref(player as usize).spectre) {
+                    let p = self.pilot_ref(player as usize);
+                    if !has_gunner_seat(p.spectre, p.apache) {
                         return Err(text!("crew-no-such-seat"));
                     }
                     if self.gunner_of(player).is_some() {
@@ -206,6 +224,11 @@ impl Sim {
                     sim.pl.crew_cmd.designate_at = at;
                     sim.pl.crew_cmd.designate_unit = unit;
                 });
+                Ok(())
+            }
+            CrewCmd::Fire { station } => {
+                self.gunner_seat_of(player)?;
+                self.with_pilot(player, |sim| sim.pl.crew_fire = Some(station));
                 Ok(())
             }
         }
@@ -258,9 +281,14 @@ impl Sim {
         crews.retain(|c| !gone.contains(&c.owner) && (c.seat != Seat::Pilot || c.gunner.is_some()));
     }
 
-    /// Pilot `k`'s report this frame with his gunner's console in it: the gunner lays the side
-    /// guns, fires them and designates (the owner's own trigger does not fire them then).
+    /// Pilot `k`'s report this frame with his gunner's seat in it: the gunner lays the pod and
+    /// designates. The AC-130's gunner fires the side guns (the owner's own trigger does not
+    /// then); the AH-64's fires the chin gun along his sight and the missiles of the station he
+    /// selected, the pilot still firing with his own.
     pub(crate) fn crew_input(&mut self, k: usize, ps: &mut PlayerState) {
+        if self.pl.id as usize == k {
+            self.pl.crew_gun = false;
+        }
         let Some(g) = self.gunner_of(k as u8) else { return };
         let g = g as usize;
         if g >= self.parked.len() || g == self.pl.id as usize || self.parked[g].id as usize != g {
@@ -268,10 +296,18 @@ impl Sim {
         }
         let aim = self.parked[g].crew_aim;
         let cmd = std::mem::take(&mut self.parked[g].crew_cmd);
+        let fire = self.parked[g].crew_fire.take();
         ps.pod = aim.pod;
-        ps.cmd.trigger = aim.trigger;
-        ps.cmd.gun = false;
-        ps.cmd.fire = false;
+        if self.pl.id as usize == k && self.pl.apache {
+            self.pl.crew_gun = aim.trigger && aim.station.is_none();
+            if fire.is_some() {
+                self.pl.crew_launch = fire;
+            }
+        } else {
+            ps.cmd.trigger = aim.trigger;
+            ps.cmd.gun = false;
+            ps.cmd.fire = false;
+        }
         if cmd.designate_at.is_some() || cmd.designate_unit.is_some() {
             ps.cmd.designate_at = cmd.designate_at;
             ps.cmd.designate_unit = cmd.designate_unit;
@@ -301,6 +337,14 @@ impl Sim {
             spi: owner.spi,
             spi_unit: owner.spi_unit,
             pod,
+            gun_ammo: owner.gun_ammo.clamp(0, i16::MAX as i32) as i16,
+            stores: std::array::from_fn(|i| {
+                owner
+                    .bays
+                    .get(i)
+                    .map_or((-1, 0), |&(w, n)| (w.clamp(-1, 127) as i8, n.clamp(0, 127) as i8))
+            }),
+            gun_firing: owner.gun_firing,
         })
     }
 

@@ -731,11 +731,12 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     s.menu.seat = match c.phase {
         Phase::Sortie if c.end_timer.is_none() && !sim.player_absent() => {
             let seat = sim.owner_seat(c.me.0);
-            let spectre = crate::campaign::kind_of(c.state().sortie(c.me).map_or(c.aircraft, |s| s.aircraft))
-                .spectre();
+            let crewed =
+                crate::campaign::kind_of(c.state().sortie(c.me).map_or(c.aircraft, |s| s.aircraft))
+                    .crew_seat();
             match seat {
                 Seat::Gunner => crate::flight_menu::SeatChoice::ToPilot,
-                Seat::Pilot if spectre && sim.gunner_of(c.me.0).is_none() => {
+                Seat::Pilot if crewed && sim.gunner_of(c.me.0).is_none() => {
                     crate::flight_menu::SeatChoice::ToGunner
                 }
                 Seat::Pilot => crate::flight_menu::SeatChoice::None,

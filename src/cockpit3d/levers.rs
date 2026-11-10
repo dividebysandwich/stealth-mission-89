@@ -710,7 +710,7 @@ pub(super) fn grab_levers(
     // --- sensor/cursor slew: the left thumbstick
     // At a console (but the drone command center's) the left controller works the console's
     // camera and lock (`station::vr_console`): no slew, none of its mapped buttons but the menu.
-    let at_console = manning.as_deref().is_some_and(|m| !m.drones());
+    let at_console = manning.as_deref().is_some_and(|m| !m.drones() && m.console());
     if left.active
         && !block.0
         && !at_console

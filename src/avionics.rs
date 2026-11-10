@@ -2709,7 +2709,9 @@ fn update_pod(
     // The helmet sight, with a helmet-mounted display: the gunship's slaved pod follows it
     // whether its page is up or not (the page shows what it looks at), the Sidewinder seeker
     // too.
-    let helmet = settings.aircraft.spec().hmd != crate::aircraft::Hmd::None;
+    // (Not in a gunner's cockpit: the AH-64's gunner lays the gun with the TADS.)
+    let helmet =
+        settings.aircraft.spec().hmd != crate::aircraft::Hmd::None && !settings.gunner_cockpit;
     let sight = helmet_sight(&eyes, view.view).filter(|_| helmet);
     let body = sight.map(|d| {
         let d = a.orientation.inverse() * d;

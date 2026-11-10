@@ -540,8 +540,10 @@ fn collect_commands(
     for ActionEvent(a) in actions.read() {
         match a {
             Action::SelectWeapon => c.next_bay = true,
-            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's.
-            Action::FireWeapon if manning.is_some() => {}
+            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's;
+            // in another's gunner's cockpit his (`gunner::send_aim`).
+            Action::FireWeapon
+                if manning.as_deref().is_some_and(|m| m.console() || m.remote_gunner()) => {}
             Action::FireWeapon => c.fire = true,
             Action::Flare => c.flare = true,
             Action::Chaff => c.chaff = true,

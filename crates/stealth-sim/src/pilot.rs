@@ -251,6 +251,18 @@ pub struct Pilot {
     pub(crate) crew_aim: crate::crew::GunnerAim,
     #[serde(skip)]
     pub(crate) crew_cmd: Commands,
+    /// At another's gunner's seat: a missile to fire from this station (the host's, `crew`).
+    #[serde(skip)]
+    pub(crate) crew_fire: Option<u8>,
+    /// The owner of an AH-64: his gunner fires the chin gun along the gunner's sight this
+    /// frame, and from this station a missile still to go; which gun round slots are the
+    /// gunner's (the host tests their hits even when the owner's client reports his own).
+    #[serde(skip)]
+    pub(crate) crew_gun: bool,
+    #[serde(skip)]
+    pub(crate) crew_launch: Option<u8>,
+    #[serde(skip)]
+    pub(crate) crew_rounds: Vec<bool>,
 }
 
 /// An event of a step and the pilot it happened to (whose turn it was): private events

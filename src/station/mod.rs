@@ -92,9 +92,13 @@ pub enum StationKind {
     Battery(SamBattery),
     Gepard,
     Drones,
-    /// An aircraft's gunner's console (`gunner`): `unit` is the pilot whose aircraft it is;
-    /// `remote`: another's (the player's own parked away), else his own, the AI flying it.
-    Gunner { remote: bool },
+    /// An aircraft's gunner's seat (`gunner`): `unit` is the pilot whose aircraft it is;
+    /// `remote`: another's (the player's own parked away), else his own, the AI flying it;
+    /// `cockpit`: a cockpit of its own (the AH-64's front seat), else a console (the AC-130's).
+    Gunner {
+        remote: bool,
+        cockpit: bool,
+    },
 }
 
 impl Manning {
@@ -128,15 +132,25 @@ impl Manning {
         matches!(self.kind, StationKind::Gunner { .. })
     }
 
-    /// At another's gunner's console: the player's own aircraft is parked away.
+    /// At another's gunner's seat: the player's own aircraft is parked away.
     pub fn remote_gunner(&self) -> bool {
-        self.kind == StationKind::Gunner { remote: true }
+        matches!(self.kind, StationKind::Gunner { remote: true, .. })
     }
 
-    /// The player's own aircraft waits parked meanwhile (all but his own gunner's console,
-    /// where it flies on).
+    /// The player's own aircraft waits parked meanwhile (all but his own gunner's seat, where
+    /// it flies on).
     pub fn parks(&self) -> bool {
-        self.kind != StationKind::Gunner { remote: false }
+        !matches!(self.kind, StationKind::Gunner { remote: false, .. })
+    }
+
+    /// In a gunner's cockpit (the AH-64's front seat): the aircraft's cockpit, not a console.
+    pub fn cockpit(&self) -> bool {
+        matches!(self.kind, StationKind::Gunner { cockpit: true, .. })
+    }
+
+    /// At a console: an air defence unit's, the drone center's, the AC-130 gunner's.
+    pub fn console(&self) -> bool {
+        !self.cockpit()
     }
 }
 
@@ -160,6 +174,9 @@ pub struct ConsoleUi {
     /// Where the aircraft waited before and its whole state (the seat moves it and its
     /// altitude), to put it back.
     parked: Option<(DVec3, Aircraft)>,
+    /// The player's own aircraft type, while he sits in another's AH-64 (`settings.aircraft`
+    /// is its then).
+    parked_kind: Option<crate::aircraft::AircraftKind>,
     /// The hand controller's slew (rad/s: traverse, elevation) as last sent, its trigger held.
     pub slew: Vec2,
     trigger: bool,
@@ -181,6 +198,7 @@ impl Default for ConsoleUi {
             since_snapshot: f32::MAX,
             note: None,
             parked: None,
+            parked_kind: None,
             slew: Vec2::ZERO,
             trigger: false,
             test_fired: false,
@@ -213,18 +231,28 @@ fn sync_manning(
     mut ui: ResMut<ConsoleUi>,
     mut player: Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
     mut mfd: ResMut<crate::mfd::MfdState>,
-    (seat, settings): (Res<crate::gunner::OwnSeat>, Res<crate::settings::Settings>),
+    (seat, mut settings): (Res<crate::gunner::OwnSeat>, ResMut<crate::settings::Settings>),
 ) {
     let phase = c.as_deref().map(|c| c.phase);
     let own_gunner = seat.0 == stealth_sim::crew::Seat::Gunner
-        && settings.aircraft.spectre()
+        && settings.aircraft.crew_seat()
         && matches!(phase, None | Some(Phase::Sortie));
     let me = combat.as_deref().map_or(0, |c| c.sim.active_pilot()) as usize;
+    // Another's AH-64: its front cockpit (his aircraft as everyone sees it).
+    let apache_of = |owner: u8| {
+        combat
+            .as_deref()
+            .is_some_and(|c| c.sim.remote_pilots().iter().any(|p| p.id == owner && p.apache))
+    };
     let want = match (phase, combat.as_deref()) {
-        (Some(Phase::Crew { owner }), _) => {
-            Some(Manning { unit: owner as usize, kind: StationKind::Gunner { remote: true } })
-        }
-        _ if own_gunner => Some(Manning { unit: me, kind: StationKind::Gunner { remote: false } }),
+        (Some(Phase::Crew { owner }), _) => Some(Manning {
+            unit: owner as usize,
+            kind: StationKind::Gunner { remote: true, cockpit: apache_of(owner) },
+        }),
+        _ if own_gunner => Some(Manning {
+            unit: me,
+            kind: StationKind::Gunner { remote: false, cockpit: settings.aircraft.apache() },
+        }),
         (Some(Phase::Station { unit }), Some(combat)) => {
             let kind = match combat.sim.units().get(unit).map(|u| u.kind) {
                 Some(GroundKind::Gepard) => StationKind::Gepard,
@@ -237,6 +265,11 @@ fn sync_manning(
         }
         _ => None,
     };
+    // The gunner's cockpit (`Settings::cockpit`): its own cockpit model and eye.
+    let cockpit = want.is_some_and(|m| m.cockpit());
+    if settings.gunner_cockpit != cockpit {
+        settings.gunner_cockpit = cockpit;
+    }
     if want == manning.as_deref().copied() {
         return;
     }
@@ -251,12 +284,24 @@ fn sync_manning(
                 ui.parked = Some((pos.0, a.clone()));
             }
             let parked = if m.parks() { ui.parked.take() } else { None };
+            // In another's AH-64: its cockpit and model are the player's while he sits there,
+            // his own type back after (not when the aircraft becomes his: his sortie's then).
+            let apache = crate::aircraft::AircraftKind::AH64;
+            let kind = if m.remote_gunner() && m.cockpit() {
+                ui.parked_kind.or_else(|| {
+                    (settings.aircraft != apache)
+                        .then(|| std::mem::replace(&mut settings.aircraft, apache))
+                })
+            } else {
+                None
+            };
             // Test aid: `--console-tab site` opens the site's page.
             let site = std::env::args().skip_while(|a| a != "--console-tab").nth(1);
             *ui = ConsoleUi {
                 range_km: if m.gepard() { 10.0 } else { 40.0 },
                 tab: if site.as_deref() == Some("site") { Tab::Site } else { Tab::Tracks },
                 parked,
+                parked_kind: kind,
                 ..Default::default()
             };
             mfd.flir = false;
@@ -270,6 +315,11 @@ fn sync_manning(
             {
                 pos.0 = p;
                 *a = parked;
+            }
+            if let Some(k) = ui.parked_kind.take()
+                && phase != Some(Phase::Sortie)
+            {
+                settings.aircraft = k;
             }
             mfd.flir = false;
             commands.remove_resource::<Manning>();
@@ -382,7 +432,7 @@ fn vr_console(
         BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT,
         BUTTON_STICK_RIGHT, BUTTON_STICK_UP, BUTTON_THUMB,
     };
-    let Some(m) = manning.filter(|m| !m.drones()) else { return };
+    let Some(m) = manning.filter(|m| !m.drones() && m.console()) else { return };
     let left = &hands.hands[0];
     if !settings.vr || !left.active || menu.open || left.scrolling {
         return;

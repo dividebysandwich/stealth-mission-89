@@ -217,7 +217,7 @@ pub(super) fn reset(
     settings: Res<Settings>,
     sounds: Res<MuffledSounds>,
 ) {
-    let hz = cutoff(view.as_deref(), manning.is_some(), &settings);
+    let hz = cutoff(view.as_deref(), manning.as_deref().is_some_and(|m| m.console()), &settings);
     sounds.cutoff.store(hz.to_bits(), Ordering::Relaxed);
 }
 
@@ -229,7 +229,8 @@ pub(super) fn follow_view(
     real: Res<Time<Real>>,
     sounds: Res<MuffledSounds>,
 ) {
-    let target = cutoff(view.as_deref(), manning.is_some(), &settings);
+    let target =
+        cutoff(view.as_deref(), manning.as_deref().is_some_and(|m| m.console()), &settings);
     let hz = f32::from_bits(sounds.cutoff.load(Ordering::Relaxed));
     let k = 1.0 - (-real.delta_secs() / GLIDE).exp();
     let next = (hz.ln() + (target.ln() - hz.ln()) * k).exp();

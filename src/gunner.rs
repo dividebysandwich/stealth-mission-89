@@ -9,6 +9,12 @@
 //!   the pilot's aircraft as everyone sees it, his pod runs here on its motion and goes to the
 //!   server with the trigger (`CrewCmd::Aim`), the server's fire control answers in his
 //!   `CrewView`.
+//!
+//! The AH-64's gunner sits in its front cockpit instead (`Manning::cockpit`, the cockpit and eye
+//! `Settings::gunner_seat`'s): the stick slews the TADS (the targeting pod), the chin gun follows
+//! it and the weapons fire as from the pilot's seat (another's go to the server: the trigger,
+//! the station selected, `CrewCmd::Fire`). The pilot's own seat empty, the AI flies on with the
+//! autopilot or the auto-hover (`crate::flight::crew_autopilot`).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -77,6 +83,8 @@ pub struct GunnerState {
     throttle_trim: f32,
     /// `--seat gunner@<s>` done.
     test_seat: bool,
+    /// Another's AH-64: the station whose missiles he selected (None: the chin gun).
+    station: Option<u8>,
 }
 
 impl GunnerState {
@@ -160,7 +168,7 @@ fn single_mission_seat(
     }
     let flying = player.single().is_ok_and(|a| a.ended.is_none());
     menu.seat = match seat.0 {
-        _ if !settings.aircraft.spectre() || !flying => SeatChoice::None,
+        _ if !settings.aircraft.crew_seat() || !flying => SeatChoice::None,
         Seat::Pilot => SeatChoice::ToGunner,
         Seat::Gunner => SeatChoice::ToPilot,
     };
@@ -178,7 +186,7 @@ fn single_mission_seat(
             _ => Seat::Pilot,
         };
     }
-    if !settings.aircraft.spectre() || !flying {
+    if !settings.aircraft.crew_seat() || !flying {
         seat.0 = Seat::Pilot;
     }
 }
@@ -199,6 +207,7 @@ fn console(
     combat: Option<Res<Combat>>,
 ) {
     let now = manning.as_deref().filter(|m| m.gunner()).map(|m| m.remote_gunner());
+    let cockpit = manning.as_deref().is_some_and(|m| m.cockpit());
     if now != state.at {
         match (state.at, now) {
             // To the console: the pod's page up as the sensor of interest.
@@ -228,8 +237,10 @@ fn console(
         return;
     };
     mfd.modern = true;
+    // On the console's screen, or the AH-64 gunner's TEDAC (his third, centre display).
     if mfd.av.shown(Format::Tgp).is_none() {
-        mfd.av.formats[1] = Format::Tgp;
+        let i = if cockpit && mfd.av.mfds > 2 { 2 } else { 1 };
+        mfd.av.formats[i] = Format::Tgp;
     }
     mfd.av.soi = Some(Format::Tgp);
     // The stick slews the pod, as fine near the centre as the Gepard's turret.
@@ -246,6 +257,17 @@ fn console(
     controls.roll = 0.0;
     controls.pitch = 0.0;
     controls.yaw = 0.0;
+    // A gunner's cockpit: the weapons fire as from the pilot's seat (the chin gun along the
+    // TADS); another's trigger and release go to the server (`send_aim`).
+    if cockpit {
+        keys.clear();
+        if remote {
+            state.trigger = controls.gun || (state.station.is_none() && controls.fire);
+            controls.gun = false;
+            controls.fire = false;
+        }
+        return;
+    }
     // The triggers fire the side guns: the pilot's own trigger at his own console (the
     // simulation's side guns follow it), another's goes to the server.
     let trigger = controls.gun || controls.fire;
@@ -304,9 +326,11 @@ fn zoom(mfd: &mut crate::mfd::MfdState, step: i32) {
 
 /// The AI flies the pilot's aircraft while he is at its gunner's console: the autopilot on a
 /// left-hand orbit round the point the pod holds, high enough for the guns to bear.
+#[allow(clippy::too_many_arguments)]
 fn orbit(
     manning: Option<Res<Manning>>,
     mfd: Res<crate::mfd::MfdState>,
+    k: Res<crate::flight::FlightConstants>,
     mut player: Query<(&mut Aircraft, &WorldPos), With<Player>>,
     theater: Option<Res<crate::world::Theater>>,
     combat: Option<Res<Combat>>,
@@ -314,7 +338,15 @@ fn orbit(
     time: Res<Time>,
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
-    if !manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner()) || a.on_ground {
+    let own = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
+    // A helicopter flies on with its autopilot or hovers.
+    if k.heli.is_some() {
+        if own {
+            crate::flight::crew_autopilot(&mut a, &k);
+        }
+        return;
+    }
+    if !own || a.on_ground {
         if a.orbit.take().is_some() {
             a.autopilot_alt = 0.0;
         }
@@ -388,13 +420,37 @@ fn send_aim(
         actions.clear();
         return;
     };
-    // The weapon key steps the gun laid next.
+    // The weapon key steps the gun laid next; in an AH-64 the chin gun and the kinds of
+    // missiles left (as the pilot's own), the release fires the missile selected.
+    let cockpit = manning.as_deref().is_some_and(|m| m.cockpit());
+    let stores = combat
+        .as_deref()
+        .and_then(|c| c.sim.crew_view(c.sim.active_pilot()))
+        .map_or([(-1, 0); 6], |v| v.stores);
+    let mut cmds = Vec::new();
     for crate::input::ActionEvent(a) in actions.read() {
-        if *a == crate::input::Action::SelectWeapon {
-            state.gun ^= 1;
+        match *a {
+            crate::input::Action::SelectWeapon if cockpit => {
+                state.station = next_station(state.station, &stores);
+            }
+            crate::input::Action::SelectWeapon => state.gun ^= 1,
+            crate::input::Action::FireWeapon if cockpit => {
+                if let Some(station) = state.station {
+                    cmds.push(CrewCmd::Fire { station });
+                }
+            }
+            _ => {}
         }
     }
-    let mut cmds = Vec::new();
+    if let Some(s) = state.station
+        && stores.get(s as usize).is_none_or(|&(w, n)| w < 0 || n <= 0)
+    {
+        // That station empty: another of its kind, else the next kind left.
+        let kind = stores.get(s as usize).map_or(-1, |w| w.0);
+        let same = stores.iter().position(|&(w, n)| w >= 0 && w == kind && n > 0);
+        state.station =
+            same.map(|i| i as u8).or_else(|| next_station(Some(s), &stores)).filter(|_| cockpit);
+    }
     for PodDesignate(x, y) in designate.read() {
         cmds.push(CrewCmd::Designate { at: Some((*x, *y)), unit: None });
     }
@@ -416,6 +472,7 @@ fn send_aim(
         pod: crate::combat::pod_aim(&mfd.av.tgp),
         trigger: state.trigger,
         gun: state.gun,
+        station: if cockpit { state.station } else { None },
     };
     state.since += time.delta_secs();
     if state.sent != Some(aim) || state.since >= AIM_REFRESH {
@@ -426,6 +483,22 @@ fn send_aim(
     c.actions.extend(cmds.into_iter().map(crate::campaign::Action::Crew));
 }
 
+/// The station of the next kind of missile left after `from`'s (None, the chin gun, first and
+/// after the last kind).
+fn next_station(from: Option<u8>, stores: &[(i8, i8); 6]) -> Option<u8> {
+    let kind = |i: usize| stores[i].0;
+    // Each kind left once, at its first station.
+    let kinds: Vec<usize> = (0..stores.len())
+        .filter(|&i| stores[i].0 >= 0 && stores[i].1 > 0)
+        .filter(|&i| (0..i).all(|j| kind(j) != kind(i) || stores[j].1 <= 0))
+        .collect();
+    let at = from.and_then(|s| kinds.iter().position(|&i| kind(i) == kind(s as usize)));
+    match at {
+        None => kinds.first().map(|&i| i as u8),
+        Some(k) => kinds.get(k + 1).map(|&i| i as u8),
+    }
+}
+
 /// The console's buttons lit: the gun laid, the camera's FLIR.
 fn panel(
     manning: Option<Res<Manning>>,
@@ -434,7 +507,7 @@ fn panel(
     mfd: Res<crate::mfd::MfdState>,
     mut panel: ResMut<ConsolePanel>,
 ) {
-    let Some(m) = manning.filter(|m| m.gunner()) else { return };
+    let Some(m) = manning.filter(|m| m.gunner() && m.console()) else { return };
     let gun = if m.remote_gunner() {
         state.gun
     } else {
@@ -462,7 +535,7 @@ fn draw_screen(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
     time: Res<Time<Real>>,
 ) {
-    if !manning.is_some_and(|m| m.gunner()) {
+    if !manning.is_some_and(|m| m.gunner() && m.console()) {
         return;
     }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Eo) else {
@@ -530,7 +603,9 @@ fn draw_info(
     player: Query<&Aircraft, With<Player>>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat)) = (manning.filter(|m| m.gunner()), combat) else { return };
+    let (Some(m), Some(combat)) = (manning.filter(|m| m.gunner() && m.console()), combat) else {
+        return;
+    };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {
         return;
     };
