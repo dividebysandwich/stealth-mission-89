@@ -13,6 +13,10 @@
 //! Every frame while the Tornado flies, the radar scans the track ahead (curving with the turn)
 //! for the highest obstacle at each distance (`TerrainRadar`, also for the cockpit's E-scope,
 //! `crate::tfr`), whether the autopilot follows it or not.
+//!
+//! The same scan looks ahead for the AI flying any aircraft while its pilot sits in the
+//! gunner's seat (`Aircraft::terrain_ahead`): the least altitude the terrain ahead asks for
+//! now, which `crate::gunner` keeps the autopilot's altitude above.
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
@@ -38,6 +42,11 @@ const TREE_REACH: f64 = 30.0;
 /// The radar beam's half width (rad).
 const HALF_BEAM: f32 = 0.0175;
 const G: f32 = 9.81;
+/// The gunner's seat's autopilot: the climb (m/s) counted on to clear what lies ahead (well
+/// under what the autopilots climb at), and the least speed (m/s) the time to climb is reckoned
+/// at (hovering, only what is near counts).
+const CREW_CLIMB: f32 = 3.0;
+const CREW_LEAST_SPEED: f32 = 5.0;
 
 /// The template's height `d` metres ahead at `speed` (m/s), relative to a level flight path
 /// through the aircraft (metres): `CLEARANCE` under it for the reaction distance, then rising
@@ -70,9 +79,10 @@ pub struct TerrainRadar {
 /// Scans the track ahead (`TerrainRadar`), measures the height of what lies below
 /// (`Aircraft::radar_ground`) and, with the autopilot engaged, sets the terrain following
 /// command (both None unless an aircraft with the radar flies).
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(super) fn scan(
     k: Res<FlightConstants>,
+    manning: Option<Res<crate::station::Manning>>,
     origin: Option<Res<FloatingOrigin>>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     mut aircraft: Query<(&mut Aircraft, &WorldPos), With<Player>>,
@@ -92,7 +102,10 @@ pub(super) fn scan(
     let Ok((mut a, pos)) = aircraft.single_mut() else { return };
     a.tf_gamma = None;
     a.radar_ground = None;
-    if !k.terrain_following || a.on_ground || a.ended.is_some() {
+    a.terrain_ahead = None;
+    // The AI flies for the pilot at his own gunner's seat.
+    let crew = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
+    if !(k.terrain_following || crew) || a.on_ground || a.ended.is_some() {
         return;
     }
     let following = a.autopilot();
@@ -100,7 +113,8 @@ pub(super) fn scan(
     let origin = origin.map_or(bevy::math::DVec3::ZERO, |o| o.origin);
     let here = (pos.0 - origin).as_vec3();
     let path = a.path_dir();
-    let speed = (a.velocity / 16.0 * WU as f32).max(50.0);
+    let true_speed = a.velocity / 16.0 * WU as f32;
+    let speed = true_speed.max(50.0);
     let flat = Vec2::new(path.x, path.z).normalize_or(Vec2::NEG_Y);
     // The track curves with the turn, the autopilot's only as far as the waypoint's bearing.
     let (heading, _, roll) = a.euler();
@@ -127,6 +141,9 @@ pub(super) fn scan(
         .collect();
 
     let mut profile = Vec::with_capacity(256);
+    // For the gunner's seat: the highest (ground, top) less the climb on the way to it (m).
+    let slope = CREW_CLIMB / true_speed.max(CREW_LEAST_SPEED);
+    let mut least = (f32::NEG_INFINITY, f32::NEG_INFINITY);
     let (mut d, mut p, mut dir, mut turned) = (0.0f32, start, flat, 0.0f32);
     while d <= ahead {
         let step = SPACING + SPACING_GROWTH * d;
@@ -138,11 +155,14 @@ pub(super) fn scan(
             let w = world(q);
             hills.map_or(0.0, |h| h.ground_m(w.x, -w.z))
         };
+        let mut ground = 0.0f32;
         let mut top = [0.0, -half, half]
             .into_iter()
             .map(|o| {
                 let q = p + across * o;
-                hull_top(&near, q, step * 0.5).max(hill(q))
+                let h = hill(q);
+                ground = ground.max(h);
+                hull_top(&near, q, step * 0.5).max(h)
             })
             .fold(0.0, f32::max);
         if let Some(s) = &scenery {
@@ -155,9 +175,10 @@ pub(super) fn scan(
                 top = top.max(hill(p) + above);
             }
         }
-        if d == 0.0 {
+        if d == 0.0 && k.terrain_following {
             a.radar_ground = Some(top / WU as f32);
         }
+        least = (least.0.max(ground - slope * d), least.1.max(top - slope * d));
         profile.push((d, top - here.y));
         // On along the curving track (a positive angle turns right, north to east).
         let left = to_go - turned;
@@ -166,6 +187,13 @@ pub(super) fn scan(
         dir = Vec2::from_angle(turn).rotate(dir);
         p += dir * step;
         d += step;
+    }
+    if crew {
+        let u = WU as f32;
+        a.terrain_ahead = Some(super::TerrainAhead { ground: least.0 / u, top: least.1 / u });
+    }
+    if !k.terrain_following {
+        return;
     }
     let gamma = command(&profile, speed);
     if following {

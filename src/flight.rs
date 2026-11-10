@@ -432,6 +432,11 @@ pub struct Aircraft {
     /// and objects included (`ground_altitude` is the flat ground's).
     #[serde(skip)]
     pub radar_ground: Option<f32>,
+    /// While the AI flies for the pilot in the gunner's seat: the least altitude (altitude
+    /// units) the ground ahead asks for now, each height less the climb there is time for on
+    /// the way (`terrain_follow::scan`).
+    #[serde(skip)]
+    pub terrain_ahead: Option<TerrainAhead>,
     pub on_ground: bool,
     pub in_landing_corridor: bool,
     /// Has been airborne since the start (landing only counts afterwards).
@@ -524,6 +529,7 @@ impl Aircraft {
             autopilot_alt: 0.0,
             tf_gamma: None,
             radar_ground: None,
+            terrain_ahead: None,
             on_ground: true,
             in_landing_corridor: true,
             has_flown: false,
@@ -666,6 +672,15 @@ pub fn view_z(alt: f32) -> f32 {
     } else {
         12288.0 + (alt - 16384.0) / 4.0
     }
+}
+
+/// The terrain ahead as the gunner's seat's autopilot sees it (`Aircraft::terrain_ahead`), in
+/// altitude units: the bare ground (the rolling hills) and with what stands on it (buildings,
+/// trees, masts).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TerrainAhead {
+    pub ground: f32,
+    pub top: f32,
 }
 
 /// Marks the player's aircraft.

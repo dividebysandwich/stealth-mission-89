@@ -14,9 +14,10 @@
 //! `Settings::gunner_seat`'s): the stick slews the TADS (the targeting pod), the chin gun follows
 //! it and the weapons fire as from the pilot's seat (another's go to the server: the trigger,
 //! the station selected, `CrewCmd::Fire`). The pilot's own seat empty, the AI flies on with the
-//! autopilot or the auto-hover (`crate::flight::crew_autopilot`). The OH-58D's gunner sits in
-//! its left seat the same way, the stick slewing the mast-mounted sight; he fires only the
-//! missiles (the gun pods fire along the nose, the pilot's).
+//! autopilot or the auto-hover (`crate::flight::crew_autopilot`), at the height over the ground
+//! it was at (`hold_height`). The OH-58D's gunner sits in its left seat the same way, the stick
+//! slewing the mast-mounted sight; he fires only the missiles (the gun pods fire along the
+//! nose, the pilot's).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -83,6 +84,9 @@ pub struct GunnerState {
     orbit_speed: f32,
     pub orbit_throttle: f32,
     throttle_trim: f32,
+    /// A helicopter's autopilot in the gunner's seat: the height over the ground it holds
+    /// (altitude units).
+    height: Option<f32>,
     /// `--seat gunner@<s>` done.
     test_seat: bool,
     /// Another's AH-64: the station whose missiles he selected (None: the chin gun).
@@ -112,6 +116,12 @@ const SPEED_INTEGRAL: f32 = 0.004;
 /// The guns look this far down from the horizon at least (rad): the autopilot climbs to see
 /// the point from there (the gimbal's 5 degrees under the wing, in the bank).
 const ORBIT_DEPRESSION: f32 = 0.70;
+/// The orbit clears what stands ahead by this much at least (altitude units, ~500 ft).
+const ORBIT_CLEARANCE: f32 = 300.0;
+/// A helicopter's autopilot in the gunner's seat holds at least this height over the ground,
+/// and clears what stands on it by up to this much (altitude units, ~50 and ~100 ft).
+const HEIGHT_LEAST: f32 = 30.0;
+const OBSTACLE_CLEARANCE: f32 = 60.0;
 
 /// Where the gunner's console's eye is: in the pilot's aircraft as it is drawn (another's,
 /// between the server's frames), the view kept inside; its engines run as his flight model
@@ -354,10 +364,12 @@ fn orbit(
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
     let own = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
-    // A helicopter flies on with its autopilot or hovers.
+    // A helicopter flies on with its autopilot or hovers, at its height over the ground.
     if k.heli.is_some() {
-        if own {
-            crate::flight::crew_autopilot(&mut a, &k);
+        if own && crate::flight::crew_autopilot(&mut a, &k) {
+            hold_height(&mut a, &mut state.height);
+        } else {
+            state.height = None;
         }
         return;
     }
@@ -403,6 +415,11 @@ fn orbit(
     } else {
         a.autopilot_alt = a.autopilot_alt.max(crate::flight::view_z(least_wu));
     }
+    // Over whatever stands ahead on the way round.
+    if let Some(t) = a.terrain_ahead {
+        let clear = crate::flight::view_z(t.top.max(t.ground) + ORBIT_CLEARANCE);
+        a.autopilot_alt = a.autopilot_alt.max(clear);
+    }
     // Tangent to the circle, the point on the left, turning in when outside it.
     let (e0, n0, _) = bevy_to_wu(pos.0);
     let (e1, n1, _) = bevy_to_wu(centre);
@@ -411,6 +428,16 @@ fn orbit(
     let brg = (de as f32).atan2(dn as f32);
     let heading = brg + std::f32::consts::FRAC_PI_2 - ((d - radius) / radius).clamp(-1.0, 1.0);
     a.waypoint_bearing = crate::flight::to_bam(heading).rem_euclid(65536.0);
+}
+
+/// A helicopter's autopilot in the gunner's seat: the altitude it holds kept at the height over
+/// the ground it had when the AI took over (`height`), over the hills ahead in time to climb
+/// (`Aircraft::terrain_ahead`) and clear of the buildings, trees and masts there.
+fn hold_height(a: &mut Aircraft, height: &mut Option<f32>) {
+    let Some(t) = a.terrain_ahead else { return };
+    let h = *height.get_or_insert((a.altitude - a.ground_altitude).max(HEIGHT_LEAST));
+    let alt = (t.ground + h).max(t.top + h.min(OBSTACLE_CLEARANCE));
+    a.autopilot_alt = crate::flight::view_z(alt).max(1.0);
 }
 
 /// Another's console: the pod's aim and the trigger to the server, with the designations.

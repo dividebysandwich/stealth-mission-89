@@ -389,6 +389,14 @@ fn log_flight(q: Query<(&Aircraft, &crate::world::WorldPos), With<Player>>, mut 
             // The terrain following radar: the height of what lies below, the command.
             a.radar_ground.map_or(String::new(), |g| format!(" radar_ground={g:.0}"))
                 + &a.tf_gamma.map_or(String::new(), |g| format!(" tf={:+.1}", g.to_degrees()))
+                // The gunner's seat's autopilot: the ground under it, the terrain ahead, the
+                // altitude held.
+                + &a.terrain_ahead.map_or(String::new(), |t| {
+                    format!(
+                        " hills={:.0} ahead={:.0}/{:.0} ap={:.0}",
+                        a.ground_altitude, t.ground, t.top, a.autopilot_alt
+                    )
+                })
         );
     }
 }
