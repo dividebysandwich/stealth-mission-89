@@ -587,6 +587,8 @@ fn a_gunner_crews_another_players_gunship_and_takes_it_over() {
     ps.heading = 0;
     ps.pitch = 0;
     ps.roll = -5461;
+    // Its engines near full (the gunner hears them).
+    ps.engine = [87, 0, 0];
     let fly = |w: &mut World, a: &mut Client, b: &mut Client, now: &mut Instant, n: usize| {
         for _ in 0..n {
             *now += Duration::from_millis(66);
@@ -605,6 +607,21 @@ fn a_gunner_crews_another_players_gunship_and_takes_it_over() {
     fly(&mut w, &mut a, &mut b, &mut now, 15);
     assert_eq!(w.sim.crew_of(pb.0), Some((pa.0, Seat::Gunner)));
     assert_eq!(w.host.state.sortie(pa).unwrap().crew, vec![pb]);
+    // Out of the world himself, Bravo is sent Alpha's aircraft in every frame and told it is
+    // there (his client draws it between the frames, his eye riding in it), with its engines.
+    let (mut frames, mut engine) = (0, None);
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let (1, ClientEvent::Fast { world, pilot, .. }) = (k, e) {
+            assert!(world.present.contains(&pa.0), "{:?}", world.present);
+            assert!(world.pilots.iter().any(|p| p.id == pa.0));
+            frames += 1;
+            if let Some(c) = pilot.as_ref().and_then(|p| p.crew) {
+                engine = Some(c.engine);
+            }
+        }
+        frames >= 4 && engine.is_some()
+    }));
+    assert_eq!(engine, Some(ps.engine));
     // His pod off the left wing, 50 degrees down, the trigger held: the 40 mm fires.
     let before = w.sim.as_pilot(pa.0, |s| s.side_guns().unwrap().rounds[0]);
     let aim = GunnerAim {

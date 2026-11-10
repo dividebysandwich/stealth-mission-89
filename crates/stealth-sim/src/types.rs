@@ -557,7 +557,16 @@ pub struct PlayerState {
     /// The air-to-ground radar transmits: an emitter shows the aircraft to the enemy radars.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub radar: bool,
+    /// The engines as the flight model runs them, for the crew's sound (percent): a fixed
+    /// wing's thrust and afterburner, a helicopter's rotor speed, torque and translational
+    /// lift.
+    #[serde(default, skip_serializing_if = "is_zero_engine")]
+    pub engine: [u8; 3],
     pub cmd: Commands,
+}
+
+fn is_zero_engine(v: &[u8; 3]) -> bool {
+    *v == [0; 3]
 }
 
 fn is_zero(v: &u16) -> bool {

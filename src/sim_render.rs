@@ -1796,8 +1796,10 @@ pub(crate) fn sync_remote_pilots(
     let lights = assets.palette.lights_on();
     let globals = assets.palette.globals.clone();
     let me = sim.active_pilot();
-    // In another's AH-64's front cockpit his aircraft is the player's own model (`station`).
-    let ridden = manning.filter(|m| m.remote_gunner() && m.cockpit()).map(|m| m.unit as u8);
+    // In another's AH-64's front cockpit his aircraft is the player's own model (`station`); at
+    // another's AC-130's console, in its closed hold, it isn't drawn at all (its skin, guns and
+    // wings round the eye cut into the booth).
+    let ridden = manning.filter(|m| m.remote_gunner()).map(|m| m.unit as u8);
     let others: Vec<_> =
         sim.remote_pilots().into_iter().filter(|p| p.id != me && Some(p.id) != ridden).collect();
     let file = library.load(&server, "aircraft");
@@ -1969,10 +1971,14 @@ pub(crate) fn sync_remote_pilots(
             }
         }
     }
-    // Their weapons in flight, with a dot on the missiles like the own: the motor's glow, then
-    // black by day, white at night.
-    let missiles: Vec<((u8, u8), stealth_sim::Projectile)> =
-        others.iter().flat_map(|p| p.missiles.iter().map(move |&(s, m)| ((p.id, s), m))).collect();
+    // Their weapons in flight (the ridden aircraft's too: a gunner's missiles fly as its), with
+    // a dot on the missiles like the own: the motor's glow, then black by day, white at night.
+    let missiles: Vec<((u8, u8), stealth_sim::Projectile)> = sim
+        .remote_pilots()
+        .into_iter()
+        .filter(|p| p.id != me)
+        .flat_map(|p| p.missiles.iter().map(|&(s, m)| ((p.id, s), m)).collect::<Vec<_>>())
+        .collect();
     vis.missiles.retain(|key, (e, spec, _)| {
         let keep = missiles.iter().any(|(k, m)| k == key && m.spec == *spec);
         if !keep {

@@ -41,7 +41,7 @@ const G: f32 = 32.174;
 /// ft/s per knot (`Aircraft::velocity` is knots * 27 = ft/s * 16).
 const KNOT: f32 = 27.0 / 16.0;
 /// Rotor revolutions per second drawn at 100% rotor speed (the AI helicopters' rate).
-const DRAWN_REVS: f32 = 0.94;
+pub(super) const DRAWN_REVS: f32 = 0.94;
 
 /// Rotor and airframe constants.
 #[derive(Debug, Clone, Copy)]

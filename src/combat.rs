@@ -630,6 +630,7 @@ fn player_state(
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
+        engine: [0; 3],
         // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
@@ -835,6 +836,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 cmd,
             );
             ps.mode_weapons &= !settings.gunner_cockpit;
+            ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
             client.send_input(&ps);
             // His own rounds fly here; what they hit on his screen he reports.
             combat.sim.set_local_player(&ps);
@@ -884,10 +886,13 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                         combat.sim.apply_pilot_snap(mine);
                     }
                     combat.sim.apply_pilot_tick(&tick);
+                    // Those sent this time and those left out (far away) keep their samples.
+                    let mut about = w.present.clone();
                     for p in &w.pilots {
                         combat.remote_track.sample(p.id, step, p.view);
+                        about.push(p.id);
                     }
-                    combat.remote_track.retain(&w.present);
+                    combat.remote_track.retain(&about);
                     let gap = combat.playout.applied(step);
                     for _ in 0..gap.min(MAX_STEPS) {
                         combat.sim.mirror_frame();
@@ -917,6 +922,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
         // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
         ps.mode_weapons &= !settings.gunner_cockpit;
+        ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
         combat.prev_fine = fines(&combat.sim);

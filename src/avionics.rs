@@ -2903,8 +2903,8 @@ pub fn side_gun_angles(orientation: Quat, los: Vec3) -> (f32, f32) {
 
 /// The AC-130's gimbal scope on the TGP page (bottom right): the guns' reach off the left wing
 /// (the box: 20 degrees either way of the wing's line, 5 to 55 degrees down), where the pod
-/// looks within the wider frame round it (forward to the left, as out of the left window; at
-/// the frame's edge when farther off), and under it the gun, its rounds and whether it bears
+/// looks within the wider frame round it (forward on the right, as the pod's picture out of the
+/// left side and the gunner's console show it; at the frame's edge when farther off), and under it the gun, its rounds and whether it bears
 /// (the time of flight when it does).
 fn draw_side_gun_scope(
     p: &MfdParams,
@@ -2919,7 +2919,7 @@ fn draw_side_gun_scope(
     // The frame: 35 degrees either way of the wing's line, 0 to 70 degrees down.
     let (az_span, dep_max) = (35.0, 70.0);
     let at = |off: f32, dep: f32| {
-        Vec2::new(x0 + w / 2.0 - off / az_span * (w / 2.0), y0 + dep / dep_max * h)
+        Vec2::new(x0 + w / 2.0 + off / az_span * (w / 2.0), y0 + dep / dep_max * h)
     };
     c.frame(Vec2::new(x0, y0), Vec2::new(x0 + w, y0 + h), 1.0, col);
     let (az, dep) = stealth_sim::gunship::GIMBAL_EL;
@@ -2935,7 +2935,7 @@ fn draw_side_gun_scope(
     }
     if let (Some(los), Ok((a, _))) = (p.state.av.tgp.los, p.aircraft.single()) {
         let (az, dep) = side_gun_angles(a.orientation, los);
-        let off = az + 90.0;
+        let off = (az + 270.0).rem_euclid(360.0) - 180.0;
         let inside = off.abs() <= az_span && (0.0..=dep_max).contains(&dep);
         let m = at(off.clamp(-az_span, az_span), dep.clamp(0.0, dep_max));
         let shown = inside || crate::hud::blink(&p.time);

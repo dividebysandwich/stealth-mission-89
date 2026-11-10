@@ -1000,6 +1000,21 @@ fn spawn_loop(
     ));
 }
 
+/// The aircraft the player is in is a helicopter: his own, or as a gunner riding in another's,
+/// that one (an AC-130's console keeps his own type in `settings.aircraft`).
+fn heard_helicopter(
+    settings: &crate::settings::Settings,
+    manning: Option<&crate::station::Manning>,
+    combat: Option<&crate::combat::Combat>,
+) -> bool {
+    if let (Some(m), Some(c)) = (manning.filter(|m| m.remote_gunner()), combat)
+        && let Some(p) = c.sim.remote_pilots().into_iter().find(|p| p.id == m.unit as u8)
+    {
+        return p.helicopter;
+    }
+    settings.aircraft.spec().helicopter
+}
+
 /// The flown helicopter's rotor and turbines (instead of the engine drone), while the rotor
 /// turns.
 #[allow(clippy::too_many_arguments)]
@@ -1013,12 +1028,13 @@ fn heli_sounds(
     mut loops: Query<(Entity, &HeliLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
     distance: EngineDistance,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Some(bank) = bank else { return };
     let Ok(a) = player.single() else { return };
     let nr = a.rotor_speed();
     let on = level.0 == 3
-        && settings.aircraft.spec().helicopter
+        && heard_helicopter(&settings, manning.as_deref(), combat.as_deref())
         && nr > 0.05
         && a.ended.is_none()
         && !has_ejected(combat.as_deref());
@@ -1073,11 +1089,12 @@ fn jet_sounds(
     mut loops: Query<(Entity, &JetLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
     distance: EngineDistance,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Some((engine, wind)) = bank.as_ref().and_then(|b| b.jet_loops.clone()) else { return };
     let Ok(a) = player.single() else { return };
     let on = level.0 == 3
-        && !settings.aircraft.spec().helicopter
+        && !heard_helicopter(&settings, manning.as_deref(), combat.as_deref())
         && a.ended.is_none()
         && !has_ejected(combat.as_deref());
     if !on {
@@ -1340,8 +1357,11 @@ fn distant_aircraft(
     )>,
     settings: Res<crate::settings::Settings>,
     mut muffler: Muffler,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let gain = Channel::Engine.gain(&settings);
+    // A gunner riding in another's aircraft hears its engines as his own (`jet_sounds`).
+    let ridden = manning.filter(|m| m.remote_gunner()).map(|m| m.unit as u8);
     let heard = level.0 == 3 && combat.as_ref().is_some_and(|c| c.end.is_none());
     let (Some(bank), Some(combat), Ok(eye_tf)) = (bank.filter(|_| heard), combat, eye.single())
     else {
@@ -1393,7 +1413,10 @@ fn distant_aircraft(
         })
         .collect();
     let me = sim.active_pilot();
-    for p in sim.remote_pilots().iter().filter(|p| p.id != me && p.chute.is_none()) {
+    for p in sim.remote_pilots().iter().filter(|p| p.id != me && Some(p.id) != ridden) {
+        if p.chute.is_some() {
+            continue;
+        }
         let v = combat.remote_track.view_at(p.id, combat.remote_time, p.view);
         if p.on_ground && v.knots == 0 {
             continue;

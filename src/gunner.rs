@@ -113,13 +113,15 @@ const SPEED_INTEGRAL: f32 = 0.004;
 /// the point from there (the gimbal's 5 degrees under the wing, in the bank).
 const ORBIT_DEPRESSION: f32 = 0.70;
 
-/// Where the gunner's console's eye is: in the pilot's aircraft as it is drawn (another's), the
-/// view kept inside.
+/// Where the gunner's console's eye is: in the pilot's aircraft as it is drawn (another's,
+/// between the server's frames), the view kept inside; its engines run as his flight model
+/// reports them, for the sound.
 pub fn seat_gunner(
     m: &Manning,
     combat: &Combat,
     player: &mut Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
     view: &mut ViewState,
+    dt: f32,
 ) {
     if !m.remote_gunner() {
         return;
@@ -127,12 +129,17 @@ pub fn seat_gunner(
     let owner = m.unit as u8;
     let Some(p) = combat.sim.remote_pilots().into_iter().find(|p| p.id == owner) else { return };
     let (at, rot) = crate::sim_render::remote_pose(combat, &p);
+    let v = combat.remote_track.view_at(owner, combat.remote_time, p.view);
+    let engine = combat.sim.crew_view(combat.sim.active_pilot()).map(|c| c.engine);
     if let Ok((mut pos, mut a)) = player.single_mut() {
         pos.0 = at;
         a.orientation = rot;
-        a.altitude = p.view.alt as f32;
+        a.altitude = v.alt as f32;
         a.ground_altitude = 0.0;
-        a.velocity = p.view.velocity as f32;
+        a.velocity = v.velocity as f32;
+        if let Some(e) = engine {
+            a.show_engine(p.helicopter, e, dt);
+        }
         a.on_ground = false;
         a.ended = None;
         // The owner's flight model has the stall: left at the gunner's own last aircraft's, the
@@ -548,7 +555,8 @@ fn panel(
 }
 
 /// The pod's picture's overlay on the big screen: the crosshair, the pod's track and zoom, the
-/// gun laid, its rounds and whether it bears, the gimbal's reach.
+/// gun laid, its rounds and whether it bears, the gimbal's scope and the way to slew the pod
+/// into it.
 #[allow(clippy::too_many_arguments)]
 fn draw_screen(
     manning: Option<Res<Manning>>,
@@ -556,6 +564,7 @@ fn draw_screen(
     cues: Res<crate::hud::HudCues>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
     time: Res<Time<Real>>,
+    player: Query<&Aircraft, With<Player>>,
 ) {
     if !manning.is_some_and(|m| m.gunner() && m.console()) {
         return;
@@ -610,10 +619,114 @@ fn draw_screen(
     if g.range > 0.0 {
         text(cv, w - 10.0, y, &format!("RNG {:.1} KM", g.range / 1000.0), col, Align::Right);
     }
-    // The gimbal: a frame round the crosshair, green while the guns bear.
-    let frame = if g.in_gimbal { GREEN } else { RED };
-    let r = arm * 1.6;
-    cv.frame(o - Vec2::splat(r), o + Vec2::splat(r), 1.0, frame);
+    // The gimbal's scope top right: the guns' reach and where the pod looks; out of it, an
+    // arrow at the crosshair the way to slew the pod to bring it back in.
+    let Some(los) = mfd.av.tgp.los else { return };
+    let Ok(a) = player.single() else { return };
+    let look = gimbal_look(a.orientation, los);
+    // The reach green while the guns bear, red while the pod looks out of it.
+    let bears = match (g.in_gimbal, look.inside) {
+        (true, _) => GREEN,
+        (false, false) => RED,
+        (false, true) => YELLOW,
+    };
+    let (at, size) = (Vec2::new(w - 92.0, 24.0), Vec2::new(82.0, 70.0));
+    draw_gimbal_scope(cv, at, size, &look, bears, col, blink);
+    if let Some(d) = look.slew {
+        let (from, to) = (o + d * arm * 1.25, o + d * arm * 2.3);
+        cv.stroke(from, to, 2.0, RED);
+        let back = -d * 9.0;
+        let side = d.perp() * 6.0;
+        cv.stroke(to, to + back + side, 2.0, RED);
+        cv.stroke(to, to + back - side, 2.0, RED);
+        if blink {
+            text(cv, w / 2.0, o.y + arm * 2.6 + 10.0, "SLEW TO GIMBAL", RED, Align::Centre);
+        }
+    }
+}
+
+/// The pod's line of sight against the side guns' gimbal (`stealth_sim::gunship::GIMBAL_AZ`,
+/// `GIMBAL_EL`): degrees forward of the left wing's line and below the wings' plane, whether
+/// that is within the guns' reach, and if not the way to slew the pod (on its picture: x right,
+/// y down, a unit) to the nearest line of sight that is.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GimbalLook {
+    pub forward: f32,
+    pub depression: f32,
+    pub inside: bool,
+    pub slew: Option<Vec2>,
+}
+
+/// The guns' reach in degrees: either way of the wing's line, and the depression's limits.
+fn gimbal_limits() -> (f32, f32, f32) {
+    let (lo, hi) = stealth_sim::gunship::GIMBAL_EL;
+    let az = stealth_sim::gunship::GIMBAL_AZ;
+    (az.to_degrees() as f32, lo.to_degrees() as f32, hi.to_degrees() as f32)
+}
+
+/// Where the pod (world line of sight `los`) looks against the gimbal of an AC-130 at
+/// `orientation`; the pod's picture is upright (`trackcam::aim`: world up at the top).
+pub fn gimbal_look(orientation: Quat, los: Vec3) -> GimbalLook {
+    let (az, dep) = crate::avionics::side_gun_angles(orientation, los);
+    let forward = (az + 90.0 + 180.0).rem_euclid(360.0) - 180.0;
+    let (lim, lo, hi) = gimbal_limits();
+    let inside = forward.abs() <= lim && (lo..=hi).contains(&dep);
+    let slew = (!inside)
+        .then(|| {
+            // The nearest line of sight in reach, in the world, seen on the picture.
+            let (f, d) = (forward.clamp(-lim, lim).to_radians(), dep.clamp(lo, hi).to_radians());
+            let az = f - std::f32::consts::FRAC_PI_2;
+            let body = Vec3::new(az.sin() * d.cos(), -d.sin(), -az.cos() * d.cos());
+            let to = orientation * body;
+            let right = los.cross(Vec3::Y).try_normalize()?;
+            let up = right.cross(los);
+            Vec2::new(to.dot(right), -to.dot(up)).try_normalize()
+        })
+        .flatten();
+    GimbalLook { forward, depression: dep, inside, slew }
+}
+
+/// The gimbal's scope at `at` (top left), `size` across: a frame for 35 degrees either way of
+/// the left wing's line (forward on the right, as the pod's picture out of the left side) and
+/// 0 to 70 degrees down; the guns' reach in it (`bears` while they bear), the wing's line
+/// dashed, and the pod's line of sight a cross (at the frame's edge, blinking, when farther
+/// off), red out of reach.
+fn draw_gimbal_scope(
+    cv: &mut crate::canvas::Canvas,
+    at: Vec2,
+    size: Vec2,
+    look: &GimbalLook,
+    bears: u8,
+    col: u8,
+    blink: bool,
+) {
+    use crate::station::scope::{GREEN, RED};
+    let (span, dep_max) = (35.0, 70.0);
+    let (lim, lo, hi) = gimbal_limits();
+    let point = |f: f32, d: f32| {
+        at + Vec2::new(size.x / 2.0 + f / span * (size.x / 2.0), d / dep_max * size.y)
+    };
+    cv.frame(at, at + size, 1.0, col);
+    cv.frame(point(-lim, lo), point(lim, hi), 1.6, bears);
+    let mut y = at.y;
+    while y < at.y + size.y {
+        let x = at.x + size.x / 2.0;
+        cv.stroke(Vec2::new(x, y), Vec2::new(x, (y + 3.0).min(at.y + size.y)), 1.0, col);
+        y += 6.0;
+    }
+    let shown = (look.forward.abs() <= span && (0.0..=dep_max).contains(&look.depression)) || blink;
+    if shown {
+        let m = point(look.forward.clamp(-span, span), look.depression.clamp(0.0, dep_max));
+        let c = if look.inside { GREEN } else { RED };
+        for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
+            cv.stroke(m + d * 2.0, m + d * 7.0, 1.6, c);
+        }
+    }
+    let label = |cv: &mut crate::canvas::Canvas, x: f32, s: &str| {
+        stroke_text_at(cv, x, at.y + size.y + 11.0, s, 7.0, 1.0, col, Align::Centre);
+    };
+    label(cv, at.x + 9.0, "AFT");
+    label(cv, at.x + size.x - 9.0, "FWD");
 }
 
 /// The console's small screen: who flies the aircraft, the orbit, the guns.
@@ -662,5 +775,48 @@ fn draw_info(
     if let Some(g) = cues.side_guns {
         line(cv, 5, &format!("40MM   {}", g.rounds[0]), if g.gun == 0 { YELLOW } else { GREEN });
         line(cv, 6, &format!("105MM  {}", g.rounds[1]), if g.gun == 1 { YELLOW } else { GREEN });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A line of sight `forward` degrees ahead of the left wing's line and `down` below the
+    /// wings, from a level aircraft heading north (Bevy: forward -Z, the left wing -X).
+    fn los(forward: f32, down: f32) -> Vec3 {
+        let (az, d) = ((forward - 90.0).to_radians(), down.to_radians());
+        Vec3::new(az.sin() * d.cos(), -d.sin(), -az.cos() * d.cos())
+    }
+
+    #[test]
+    fn gimbal_look_shows_the_way_into_the_guns_reach() {
+        let level = Quat::IDENTITY;
+        let inside = gimbal_look(level, los(5.0, 30.0));
+        assert!(inside.inside && inside.slew.is_none(), "{inside:?}");
+        assert!((inside.forward - 5.0).abs() < 0.1 && (inside.depression - 30.0).abs() < 0.1);
+        // Too far forward: the nose is to the picture's right, so slew left (aft).
+        let ahead = gimbal_look(level, los(40.0, 30.0)).slew.unwrap();
+        assert!(ahead.x < -0.9, "{ahead}");
+        let aft = gimbal_look(level, los(-40.0, 30.0)).slew.unwrap();
+        assert!(aft.x > 0.9, "{aft}");
+        // Too steep: up on the picture (y down); too shallow: down.
+        let steep = gimbal_look(level, los(0.0, 75.0)).slew.unwrap();
+        assert!(steep.y < -0.9, "{steep}");
+        let shallow = gimbal_look(level, los(0.0, 1.0)).slew.unwrap();
+        assert!(shallow.y > 0.9, "{shallow}");
+        // Off the right side: round to the left wing.
+        let right = gimbal_look(level, los(180.0, 30.0));
+        assert!(!right.inside && right.forward.abs() > 170.0, "{right:?}");
+    }
+
+    #[test]
+    fn gimbal_look_is_in_the_body_frame() {
+        // Banked 30 degrees left: a line of sight 30 degrees below the horizon off the left
+        // wing is level with the wings, out of reach (above it).
+        let bank = Quat::from_rotation_z(30f32.to_radians());
+        let look = gimbal_look(bank, los(0.0, 30.0));
+        assert!(look.depression.abs() < 0.5, "{look:?}");
+        assert!(!look.inside && look.slew.unwrap().y > 0.9, "{look:?}");
     }
 }

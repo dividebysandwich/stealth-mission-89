@@ -607,10 +607,16 @@ impl Server {
     }
 
     /// The moving world for pilot `me`: the pilots far from him only in some of the messages
-    /// (each in every `FAR_EVERY`th, in turns).
+    /// (each in every `FAR_EVERY`th, in turns). One out of the world (at a station's console,
+    /// a gunner riding in another's aircraft) is sent them all in every message: his eye may
+    /// be in any of them, and his client draws them between their frames (`present` lists
+    /// them all, or it would drop them as gone).
     fn seen_by(world: &WorldFast, sim: &Sim, me: u8, round: u32) -> WorldFast {
         let Some(at) = sim.pilot_view(me).filter(|_| !sim.pilot_absent(me)) else {
-            return WorldFast { present: Vec::new(), ..world.clone() };
+            return WorldFast {
+                present: world.pilots.iter().map(|p| p.id).collect(),
+                ..world.clone()
+            };
         };
         let near = |p: &RemotePilot| {
             p.id == me

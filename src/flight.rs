@@ -568,6 +568,33 @@ impl Aircraft {
         (self.heli.nr, self.heli.torque) = (nr, torque);
     }
 
+    /// The engines as `PlayerState::engine` sends them (percent): a fixed wing's thrust and
+    /// afterburner, a helicopter's rotor speed, torque and translational lift.
+    pub fn engine_report(&self, helicopter: bool) -> [u8; 3] {
+        let pc = |v: f32| (v * 100.0).round().clamp(0.0, 255.0) as u8;
+        if helicopter {
+            [pc(self.heli.nr), pc(self.heli.torque), pc(self.heli.etl)]
+        } else {
+            [pc(self.thrust / 100.0), pc(self.afterburner), 0]
+        }
+    }
+
+    /// Runs the engines as another's flight model reports them (`engine_report`): a gunner
+    /// riding in his aircraft hears them, sees its rotor turn (`dt` on).
+    pub fn show_engine(&mut self, helicopter: bool, engine: [u8; 3], dt: f32) {
+        let f = |v: u8| v as f32 / 100.0;
+        if helicopter {
+            let st = &mut self.heli;
+            (st.nr, st.torque, st.etl) = (f(engine[0]), f(engine[1]), f(engine[2]));
+            st.angle = (st.angle + st.nr * heli::DRAWN_REVS * std::f32::consts::TAU * dt)
+                .rem_euclid(std::f32::consts::TAU);
+        } else {
+            self.thrust = f(engine[0]) * 100.0;
+            self.set_thrust = self.thrust;
+            self.afterburner = f(engine[1]);
+        }
+    }
+
     /// Translational lift 0..1 (helicopters): the blade slap in the rotor sound.
     pub fn translational_lift(&self) -> f32 {
         self.heli.etl

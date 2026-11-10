@@ -83,6 +83,9 @@ pub struct CrewView {
     pub stores: [(i8, i8); 6],
     #[serde(default)]
     pub gun_firing: bool,
+    /// The owner's engines (`PlayerState::engine`), for the gunner's sound.
+    #[serde(default)]
+    pub engine: [u8; 3],
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -351,6 +354,7 @@ impl Sim {
                     .map_or((-1, 0), |&(w, n)| (w.clamp(-1, 127) as i8, n.clamp(0, 127) as i8))
             }),
             gun_firing: owner.gun_firing,
+            engine: owner.last_input.engine,
         })
     }
 

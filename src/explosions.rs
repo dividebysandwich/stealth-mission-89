@@ -1341,8 +1341,8 @@ fn strike(
 }
 
 /// A gunship shell's high explosive burst at `at` (on the ground, `dirt`: on soft earth): the
-/// flash, the dust and earth thrown up, the clods; the 105 mm's a big blast with a ring rolling
-/// out, a column of dark smoke and its flash lighting the ground.
+/// 40 mm's flash, the dust and earth thrown up, the clods; the 105 mm's is
+/// [`howitzer_burst`].
 #[allow(clippy::too_many_arguments)]
 fn strike_burst(
     commands: &mut Commands,
@@ -1358,45 +1358,139 @@ fn strike_burst(
     } else {
         (PuffLook::Smoke(0.7), PuffLook::Smoke(0.55))
     };
-    let big = calibre == Calibre::Mm105;
-    let k = if big { 3.2 } else { 1.0 };
-    p.puff(at, Vec3::ZERO, 0.1, (1.2 * k, 3.0 * k), PuffLook::Flash, 0.0, 0.0, 0.95);
-    for _ in 0..if big { 5 } else { 2 } {
-        let v = p.dir(0.3) * p.range(4.0, 10.0) * k;
+    if calibre == Calibre::Mm105 {
+        howitzer_burst(commands, p, materials, globals, at, dust, earth, dirt);
+        return;
+    }
+    p.puff(at, Vec3::ZERO, 0.1, (1.2, 3.0), PuffLook::Flash, 0.0, 0.0, 0.95);
+    for _ in 0..2 {
+        let v = p.dir(0.3) * p.range(4.0, 10.0);
         let life = p.range(0.1, 0.2);
-        p.puff(at, v, life, (0.6 * k, 1.6 * k), PuffLook::Fire, 4.0, 0.0, 0.9);
+        p.puff(at, v, life, (0.6, 1.6), PuffLook::Fire, 4.0, 0.0, 0.9);
     }
     // The burst's dirt thrown up and slumping.
-    for _ in 0..if big { 16 } else { 6 } {
-        let v = Vec3::Y * p.range(4.0, 11.0) * k + p.dir(0.0) * p.range(1.0, 3.0) * k;
-        let life = p.range(2.0, 3.5) * if big { 1.4 } else { 1.0 };
-        let s = p.range(0.8, 1.4) * k;
+    for _ in 0..6 {
+        let v = Vec3::Y * p.range(4.0, 11.0) + p.dir(0.0) * p.range(1.0, 3.0);
+        let life = p.range(2.0, 3.5);
+        let s = p.range(0.8, 1.4);
         p.puff(at, v, life, (s, s * 3.5), earth, 1.6, -1.0, 0.8);
     }
-    for _ in 0..if big { 12 } else { 5 } {
+    for _ in 0..5 {
         let a = p.range(0.0, std::f32::consts::TAU);
         let out = Vec3::new(a.cos(), 0.08, a.sin());
-        let life = p.range(2.0, 3.5) * if big { 1.5 } else { 1.0 };
-        let v = out * p.range(5.0, 10.0) * k;
-        p.puff(at, v, life, (1.0 * k, 3.5 * k), dust, 1.4, 0.3, 0.6);
+        let life = p.range(2.0, 3.5);
+        let v = out * p.range(5.0, 10.0);
+        p.puff(at, v, life, (1.0, 3.5), dust, 1.4, 0.3, 0.6);
     }
-    if big {
-        // The smoke column, drifting off.
-        for _ in 0..8 {
-            let v = Vec3::Y * p.range(3.0, 9.0) + p.dir(0.0) * 1.2;
-            let life = p.range(7.0, 12.0);
-            p.puff(at, v, life, (4.0, 14.0), PuffLook::Smoke(0.15), 0.6, 1.0, 0.7);
-        }
-        flash_light(commands, p, at + DVec3::Y * 3.0, 2.5, 0.35);
-    } else {
-        flash_light(commands, p, at + DVec3::Y * 1.5, 0.7, 0.12);
-    }
+    flash_light(commands, p, at + DVec3::Y * 1.5, 0.7, 0.12);
     if dirt {
-        for _ in 0..if big { 20 } else { 5 } {
-            let v = p.dir(0.7) * p.range(4.0, 11.0) * k.sqrt()
-                + Vec3::Y * p.range(4.0, 12.0) * k.sqrt();
+        for _ in 0..5 {
+            let v = p.dir(0.7) * p.range(4.0, 11.0) + Vec3::Y * p.range(4.0, 12.0);
             let life = p.range(1.5, 3.0);
-            let size = p.range(0.15, 0.4) * k.sqrt();
+            let size = p.range(0.15, 0.4);
+            spawn_chunk(
+                commands,
+                p,
+                materials,
+                globals,
+                ChunkKind::Debris,
+                at,
+                v,
+                life,
+                size,
+                false,
+            );
+        }
+    }
+}
+
+/// The 105 mm shell's burst: about 2 kg of high explosive, a blast between a missile's kill and
+/// a bomb's. A flash and a short fireball tens of metres across, earth thrown up in a fountain
+/// some 30 m high, the base surge rolling out along the ground, clods, then a dark column of
+/// smoke that climbs and spreads and a low pall of dust that hangs over the spot for half a
+/// minute (seen from the orbit, kilometres off, through the pod).
+#[allow(clippy::too_many_arguments)]
+fn howitzer_burst(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    at: DVec3,
+    dust: PuffLook,
+    earth: PuffLook,
+    dirt: bool,
+) {
+    let centre = at + DVec3::Y * 2.0;
+    p.puff(centre, Vec3::ZERO, 0.16, (10.0, 24.0), PuffLook::Flash, 0.0, 0.0, 0.95);
+    // The fireball: glowing puffs pushed out from the middle, mostly up and sideways.
+    for _ in 0..10 {
+        let d = p.dir(0.4);
+        let o = d * p.range(0.0, 3.0);
+        let v = d * p.range(8.0, 22.0);
+        let life = p.range(0.35, 0.7);
+        let s = p.range(3.0, 5.5);
+        p.puff(centre + o.as_dvec3(), v, life, (s * 0.5, s * 1.4), PuffLook::Fire, 3.5, 2.0, 0.95);
+    }
+    // Sparks: the casing's fragments.
+    for _ in 0..24 {
+        let v = p.dir(0.3) * p.range(40.0, 90.0);
+        let life = p.range(0.4, 1.0);
+        let size = p.range(0.8, 1.4);
+        spawn_chunk(
+            commands,
+            p,
+            materials,
+            globals,
+            ChunkKind::Spark,
+            centre,
+            v,
+            life,
+            size,
+            false,
+        );
+    }
+    // The fountain: earth thrown high, slumping back.
+    for _ in 0..26 {
+        let v = Vec3::Y * p.range(10.0, 30.0) + p.dir(0.0) * p.range(2.0, 8.0);
+        let life = p.range(3.0, 5.5);
+        let s = p.range(2.0, 3.5);
+        p.puff(at, v, life, (s, s * 3.2), earth, 1.2, -1.2, 0.85);
+    }
+    // The base surge: a ring of dust rolling out along the ground.
+    for _ in 0..18 {
+        let a = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(a.cos(), 0.06, a.sin());
+        let life = p.range(4.0, 7.0);
+        let v = out * p.range(12.0, 26.0);
+        let s = p.range(2.5, 4.0);
+        p.puff(at + DVec3::Y * 1.5, v, life, (s, s * 3.5), dust, 1.3, 0.3, 0.7);
+    }
+    // The smoke column: dark, climbing and spreading, drifting off; born as the fire dies.
+    for i in 0..14 {
+        let v = Vec3::Y * p.range(4.0, 12.0) + p.dir(0.0) * 1.5;
+        let life = p.range(18.0, 32.0);
+        let shade = p.range(0.08, 0.25);
+        let s = p.range(4.0, 7.0);
+        let o = (p.dir(0.0) * p.range(0.0, 4.0)).as_dvec3();
+        p.puff(centre + o, v, life, (s, s * 4.5), PuffLook::Smoke(shade), 0.45, 0.9, 0.85);
+        let last = p.puffs.len() - 1;
+        p.puffs[last].age = -0.1 - 0.04 * i as f32;
+    }
+    // The pall of dust left hanging low over the spot.
+    for _ in 0..6 {
+        let a = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(a.cos(), 0.0, a.sin());
+        let v = out * p.range(1.0, 3.0) + Vec3::Y * p.range(0.3, 1.0);
+        let life = p.range(20.0, 30.0);
+        let s = p.range(6.0, 9.0);
+        p.puff(at + DVec3::Y * 3.0, v, life, (s, s * 3.0), dust, 0.3, 0.1, 0.55);
+    }
+    flash_light(commands, p, at + DVec3::Y * 6.0, 4.0, 0.45);
+    if dirt {
+        for _ in 0..30 {
+            let v = p.dir(0.6) * p.range(8.0, 20.0) + Vec3::Y * p.range(8.0, 22.0);
+            let life = p.range(2.5, 4.5);
+            let size = p.range(0.25, 0.7);
             spawn_chunk(
                 commands,
                 p,

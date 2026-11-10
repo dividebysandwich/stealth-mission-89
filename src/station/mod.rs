@@ -357,10 +357,11 @@ fn seat_operator(
     combat: Option<Res<Combat>>,
     mut player: Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
     mut view: ResMut<ViewState>,
+    time: Res<Time>,
 ) {
     let (Some(m), Some(combat)) = (manning, combat) else { return };
     if m.gunner() {
-        crate::gunner::seat_gunner(&m, &combat, &mut player, &mut view);
+        crate::gunner::seat_gunner(&m, &combat, &mut player, &mut view, time.delta_secs());
         return;
     }
     let Some((at, heading)) = shelter(&combat, m.unit) else { return };
