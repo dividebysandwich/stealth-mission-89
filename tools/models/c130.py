@@ -94,10 +94,10 @@ def skin_x(d, z):
 # either side of the centre post, two corner panes), the eyebrows over them, two side windows and
 # two eyebrows a side, and the lower nose windows by the pilots' feet.
 WINDSCREEN_SIDE = [(0.95, 0.55), (1.55, 0.55), (2.0, 1.6), (1.25, 1.6)]
-SCREEN_PANES = [(0.07, 0.56), (0.62, 0.98)]
+SCREEN_PANES = [(0.035, 0.585), (0.615, 1.0)]
 SCREEN_Z = (0.66, 1.24)
 BROW_Z = (1.33, 1.56)
-BROW_PANES = [(0.10, 0.46), (0.54, 0.92)]
+BROW_PANES = [(0.06, 0.48), (0.52, 0.95)]
 SIDE_WINDOWS = [[(1.55, 0.72), (2.0, 0.72), (2.0, 1.22), (1.75, 1.22)],
                 [(2.06, 0.72), (2.5, 0.72), (2.5, 1.22), (2.06, 1.22)]]
 SIDE_BROWS = [[(1.85, 1.30), (2.15, 1.30), (2.15, 1.52), (1.95, 1.52)],
