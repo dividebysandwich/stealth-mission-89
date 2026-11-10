@@ -14,14 +14,15 @@
 //! `Settings::gunner_seat`'s): the stick slews the TADS (the targeting pod), the chin gun follows
 //! it and the weapons fire as from the pilot's seat (another's go to the server: the trigger,
 //! the station selected, `CrewCmd::Fire`). The pilot's own seat empty, the AI flies on with the
-//! autopilot or the auto-hover (`crate::flight::crew_autopilot`).
+//! autopilot or the auto-hover (`crate::flight::crew_autopilot`). The OH-58D's gunner sits in
+//! its left seat the same way, the stick slewing the mast-mounted sight; he fires only the
+//! missiles (the gun pods fire along the nose, the pilot's).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use stealth_sim::crew::{CrewCmd, GunnerAim, Seat};
 
 use crate::avionics::{Format, LockRequest, PodDesignate, PodTrack, TgpMode};
-use crate::mfd::ContactRef;
 use crate::camera::{View, ViewState};
 use crate::canvas::CanvasTexture;
 use crate::cockpit3d::{ConsoleButton, ConsoleCanvas, ConsoleKey, ConsolePanel, ConsoleScreen};
@@ -29,6 +30,7 @@ use crate::combat::Combat;
 use crate::flight::{Aircraft, FlightSystems, Player};
 use crate::flight_menu::{FlightMenu, SeatChoice};
 use crate::font::{Align, stroke_text_at};
+use crate::mfd::ContactRef;
 use crate::settings::AppState;
 use crate::station::Manning;
 use crate::world::{WU, WorldPos, bevy_to_wu};
@@ -204,7 +206,7 @@ fn console(
     mut out: MessageWriter<crate::input::ActionEvent>,
     mut campaign: Option<ResMut<crate::campaign::ActiveCampaign>>,
     mut menu: ResMut<FlightMenu>,
-    combat: Option<Res<Combat>>,
+    (combat, settings): (Option<Res<Combat>>, Res<crate::settings::Settings>),
 ) {
     let now = manning.as_deref().filter(|m| m.gunner()).map(|m| m.remote_gunner());
     let cockpit = manning.as_deref().is_some_and(|m| m.cockpit());
@@ -237,9 +239,11 @@ fn console(
         return;
     };
     mfd.modern = true;
-    // On the console's screen, or the AH-64 gunner's TEDAC (his third, centre display).
+    // On the console's screen, the AH-64 gunner's TEDAC (his third, centre display), else the
+    // gunner's right MFD.
     if mfd.av.shown(Format::Tgp).is_none() {
-        let i = if cockpit && mfd.av.mfds > 2 { 2 } else { 1 };
+        let tedac = settings.cockpit().0 == crate::cockpit3d::layout::PanelStyle::Ah64Cpg;
+        let i = if cockpit && tedac { 2 } else { 1 };
         mfd.av.formats[i] = Format::Tgp;
     }
     mfd.av.soi = Some(Format::Tgp);
@@ -410,7 +414,7 @@ fn send_aim(
     mut track: MessageReader<PodTrack>,
     mut locks: MessageReader<LockRequest>,
     mut actions: MessageReader<crate::input::ActionEvent>,
-    time: Res<Time>,
+    (time, settings): (Res<Time>, Res<crate::settings::Settings>),
 ) {
     let remote = manning.as_deref().is_some_and(|m| m.remote_gunner());
     let (Some(c), true) = (campaign.as_deref_mut(), remote) else {
@@ -421,17 +425,30 @@ fn send_aim(
         return;
     };
     // The weapon key steps the gun laid next; in an AH-64 the chin gun and the kinds of
-    // missiles left (as the pilot's own), the release fires the missile selected.
+    // missiles left (as the pilot's own), in an OH-58D only the missiles (not the gun pods'
+    // stations); the release fires the missile selected.
     let cockpit = manning.as_deref().is_some_and(|m| m.cockpit());
-    let stores = combat
+    let gun = settings.aircraft.spec().turret;
+    let mut stores = combat
         .as_deref()
         .and_then(|c| c.sim.crew_view(c.sim.active_pilot()))
         .map_or([(-1, 0); 6], |v| v.stores);
+    if let Some(c) = combat.as_deref() {
+        for s in stores.iter_mut().filter(|s| c.sim.gun_pod(s.0 as i32)) {
+            *s = (-1, 0);
+        }
+    }
+    let next = |from: Option<u8>| {
+        next_station(from, &stores).or_else(|| (!gun).then(|| next_station(None, &stores))?)
+    };
+    if cockpit && !gun && state.station.is_none() {
+        state.station = next(None);
+    }
     let mut cmds = Vec::new();
     for crate::input::ActionEvent(a) in actions.read() {
         match *a {
             crate::input::Action::SelectWeapon if cockpit => {
-                state.station = next_station(state.station, &stores);
+                state.station = next(state.station);
             }
             crate::input::Action::SelectWeapon => state.gun ^= 1,
             crate::input::Action::FireWeapon if cockpit => {
@@ -448,8 +465,7 @@ fn send_aim(
         // That station empty: another of its kind, else the next kind left.
         let kind = stores.get(s as usize).map_or(-1, |w| w.0);
         let same = stores.iter().position(|&(w, n)| w >= 0 && w == kind && n > 0);
-        state.station =
-            same.map(|i| i as u8).or_else(|| next_station(Some(s), &stores)).filter(|_| cockpit);
+        state.station = same.map(|i| i as u8).or_else(|| next(Some(s))).filter(|_| cockpit);
     }
     for PodDesignate(x, y) in designate.read() {
         cmds.push(CrewCmd::Designate { at: Some((*x, *y)), unit: None });
@@ -459,7 +475,9 @@ fn send_aim(
     }
     for LockRequest(target) in locks.read() {
         match *target {
-            ContactRef::Point(x, y) => cmds.push(CrewCmd::Designate { at: Some((x, y)), unit: None }),
+            ContactRef::Point(x, y) => {
+                cmds.push(CrewCmd::Designate { at: Some((x, y)), unit: None })
+            }
             ContactRef::Object(i) => {
                 if let Some(o) = combat.as_deref().and_then(|c| c.sim.objects().get(i)) {
                     cmds.push(CrewCmd::Designate { at: Some((o.x, o.y)), unit: None });
@@ -484,7 +502,7 @@ fn send_aim(
 }
 
 /// The station of the next kind of missile left after `from`'s (None, the chin gun, first and
-/// after the last kind).
+/// after the last kind; `stores` without the gun pods).
 fn next_station(from: Option<u8>, stores: &[(i8, i8); 6]) -> Option<u8> {
     let kind = |i: usize| stores[i].0;
     // Each kind left once, at its first station.

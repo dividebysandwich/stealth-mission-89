@@ -3,7 +3,8 @@
 //! gunner's seat. Another player can sit in a free gunner's seat ([`CrewCmd::Join`]): he is
 //! out of the world like a player at an air defence console, his pod and trigger go to the
 //! owner's aircraft ([`Sim::crew_input`]): the AC-130's side guns; the AH-64's targeting pod
-//! (the TADS), chin gun and missiles, the pilot still firing them too.
+//! (the TADS), chin gun and missiles, the pilot still firing them too; the OH-58D's mast sight
+//! and missiles (its fixed gun pods stay the pilot's).
 //!
 //! The seats are in the campaign's [`DefenceState`](crate::station::DefenceState) (`crews`),
 //! so every client knows who sits where.
@@ -84,9 +85,10 @@ pub struct CrewView {
     pub gun_firing: bool,
 }
 
-/// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit.
-pub fn has_gunner_seat(spectre: bool, apache: bool) -> bool {
-    spectre || apache
+/// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
+/// OH-58D's left seat.
+pub fn has_gunner_seat(spectre: bool, apache: bool, kiowa: bool) -> bool {
+    spectre || apache || kiowa
 }
 
 impl Sim {
@@ -122,12 +124,15 @@ impl Sim {
     pub fn gunner_seat_free(&self, owner: u8) -> bool {
         // A mirror knows the others' aircraft as everyone sees them.
         let spectre = if self.mirror && owner != self.pl.id {
-            self.remote
-                .iter()
-                .any(|p| p.id == owner && has_gunner_seat(p.spectre, p.apache) && p.chute.is_none())
+            self.remote.iter().any(|p| {
+                p.id == owner && has_gunner_seat(p.spectre, p.apache, p.kiowa) && p.chute.is_none()
+            })
         } else {
             let p = self.pilot_ref(owner as usize);
-            p.id == owner && !p.absent && p.eject == 0 && has_gunner_seat(p.spectre, p.apache)
+            p.id == owner
+                && !p.absent
+                && p.eject == 0
+                && has_gunner_seat(p.spectre, p.apache, p.kiowa)
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
     }
@@ -203,7 +208,7 @@ impl Sim {
                 }
                 if seat == Seat::Gunner {
                     let p = self.pilot_ref(player as usize);
-                    if !has_gunner_seat(p.spectre, p.apache) {
+                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa) {
                         return Err(text!("crew-no-such-seat"));
                     }
                     if self.gunner_of(player).is_some() {
@@ -284,7 +289,8 @@ impl Sim {
     /// Pilot `k`'s report this frame with his gunner's seat in it: the gunner lays the pod and
     /// designates. The AC-130's gunner fires the side guns (the owner's own trigger does not
     /// then); the AH-64's fires the chin gun along his sight and the missiles of the station he
-    /// selected, the pilot still firing with his own.
+    /// selected, the pilot still firing with his own; the OH-58D's only the missiles (the gun
+    /// pods fire along the nose, the pilot's).
     pub(crate) fn crew_input(&mut self, k: usize, ps: &mut PlayerState) {
         if self.pl.id as usize == k {
             self.pl.crew_gun = false;
@@ -298,8 +304,8 @@ impl Sim {
         let cmd = std::mem::take(&mut self.parked[g].crew_cmd);
         let fire = self.parked[g].crew_fire.take();
         ps.pod = aim.pod;
-        if self.pl.id as usize == k && self.pl.apache {
-            self.pl.crew_gun = aim.trigger && aim.station.is_none();
+        if self.pl.id as usize == k && (self.pl.apache || self.pl.kiowa) {
+            self.pl.crew_gun = self.pl.apache && aim.trigger && aim.station.is_none();
             if fire.is_some() {
                 self.pl.crew_launch = fire;
             }

@@ -1672,6 +1672,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Cas.pick(Aircraft::AH64), Aircraft::AH64);
     assert!(!MissionKind::Insertion.flyable_by(Aircraft::AH64));
     assert!(Aircraft::AH64.gunner_seat());
+    assert!(Aircraft::OH58.gunner_seat());
     assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
     assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
     assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);

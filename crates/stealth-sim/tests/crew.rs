@@ -336,3 +336,82 @@ fn the_apache_gunner_fires_a_hellfire_at_his_spot() {
     let (x, y) = hit.expect("the Hellfire hit");
     assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
 }
+
+/// A campaign world as [`apache`] with pilot 0 in an OH-58D instead, Hellfires on the left
+/// pylon and a gun pod on the right, hovering as the AH-64 does. Returns the BMP's map point.
+fn kiowa() -> (Sim, (i32, i32)) {
+    let (mut sim, at) = apache();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe =
+        Airframe { external_stores: true, helicopter: true, kiowa: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.set_pilot_loadout(0, &[(20, 2), (22, 1)], 0);
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    (sim, at)
+}
+
+#[test]
+fn the_kiowa_has_a_gunner_seat() {
+    let (mut sim, _) = kiowa();
+    assert!(sim.gunner_seat_free(0));
+    sim.crew_command(0, CrewCmd::Seat(Seat::Gunner)).unwrap();
+    assert_eq!(sim.owner_seat(0), Seat::Gunner);
+    sim.crew_command(0, CrewCmd::Seat(Seat::Pilot)).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let v = sim.crew_view(1).expect("the gunner's view");
+    assert_eq!(v.stores[0], (20, 2));
+    assert_eq!(v.stores[1], (22, 1));
+}
+
+/// The OH-58D's gunner's trigger does not fire the gun pods (they fire along the nose, the
+/// pilot's), nor does firing the pod's station; the pilot's own trigger still fires them.
+#[test]
+fn the_kiowa_gunner_leaves_the_gun_pods_to_the_pilot() {
+    let (mut sim, at) = kiowa();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), trigger: true, ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    let ammo = sim.gun_ammo();
+    assert!(ammo > 0);
+    for _ in 0..5 {
+        sim.step_pilots(&[(0, hover(at, false))], 15);
+    }
+    sim.crew_command(1, CrewCmd::Fire { station: 1 }).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    assert_eq!(sim.gun_ammo(), ammo, "the gunner fired no rounds");
+    assert!(rounds(&sim).is_empty());
+    assert_eq!(sim.pilot_bays(0), &[(20, 2), (22, 1)][..]);
+    for _ in 0..5 {
+        sim.step_pilots(&[(0, hover(at, true))], 15);
+    }
+    assert!(sim.gun_ammo() < ammo, "the pilot fired the pods");
+}
+
+/// The OH-58D's gunner's Hellfire flies to his mast sight's spot.
+#[test]
+fn the_kiowa_gunner_fires_a_hellfire_at_his_spot() {
+    let (mut sim, at) = kiowa();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), station: Some(0), ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    sim.crew_command(1, CrewCmd::Fire { station: 0 }).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    assert_eq!(sim.pilot_bays(0)[0], (20, 1), "one Hellfire away");
+    let mut hit = None;
+    for _ in 0..15 * 30 {
+        for e in sim.step_pilots(&[(0, hover(at, false))], 15) {
+            if let SimEvent::Explosion { x, y, .. } = e.event {
+                hit.get_or_insert((x, y));
+            }
+        }
+        if hit.is_some() {
+            break;
+        }
+    }
+    let (x, y) = hit.expect("the Hellfire hit");
+    assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
+}

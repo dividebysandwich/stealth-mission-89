@@ -94,7 +94,7 @@ pub enum StationKind {
     Drones,
     /// An aircraft's gunner's seat (`gunner`): `unit` is the pilot whose aircraft it is;
     /// `remote`: another's (the player's own parked away), else his own, the AI flying it;
-    /// `cockpit`: a cockpit of its own (the AH-64's front seat), else a console (the AC-130's).
+    /// `cockpit`: a cockpit of its own (the AH-64's front seat, the OH-58D's left one), else a console (the AC-130's).
     Gunner {
         remote: bool,
         cockpit: bool,
@@ -143,7 +143,7 @@ impl Manning {
         !matches!(self.kind, StationKind::Gunner { remote: false, .. })
     }
 
-    /// In a gunner's cockpit (the AH-64's front seat): the aircraft's cockpit, not a console.
+    /// In a gunner's cockpit (the AH-64's front seat, the OH-58D's left one): the aircraft's cockpit, not a console.
     pub fn cockpit(&self) -> bool {
         matches!(self.kind, StationKind::Gunner { cockpit: true, .. })
     }
@@ -174,8 +174,8 @@ pub struct ConsoleUi {
     /// Where the aircraft waited before and its whole state (the seat moves it and its
     /// altitude), to put it back.
     parked: Option<(DVec3, Aircraft)>,
-    /// The player's own aircraft type, while he sits in another's AH-64 (`settings.aircraft`
-    /// is its then).
+    /// The player's own aircraft type, while he sits in another's AH-64 or OH-58D
+    /// (`settings.aircraft` is its then).
     parked_kind: Option<crate::aircraft::AircraftKind>,
     /// The hand controller's slew (rad/s: traverse, elevation) as last sent, its trigger held.
     pub slew: Vec2,
@@ -238,20 +238,29 @@ fn sync_manning(
         && settings.aircraft.crew_seat()
         && matches!(phase, None | Some(Phase::Sortie));
     let me = combat.as_deref().map_or(0, |c| c.sim.active_pilot()) as usize;
-    // Another's AH-64: its front cockpit (his aircraft as everyone sees it).
-    let apache_of = |owner: u8| {
-        combat
-            .as_deref()
-            .is_some_and(|c| c.sim.remote_pilots().iter().any(|p| p.id == owner && p.apache))
+    // Another's AH-64 or OH-58D: the type of his aircraft as everyone sees it, if it has a
+    // gunner's cockpit.
+    let cockpit_of = |owner: u8| {
+        combat.as_deref().and_then(|c| {
+            c.sim
+                .remote_pilots()
+                .iter()
+                .find(|p| p.id == owner)
+                .map(crate::aircraft::AircraftKind::of_remote)
+                .filter(|k| k.spec().gunner_seat.is_some())
+        })
     };
     let want = match (phase, combat.as_deref()) {
         (Some(Phase::Crew { owner }), _) => Some(Manning {
             unit: owner as usize,
-            kind: StationKind::Gunner { remote: true, cockpit: apache_of(owner) },
+            kind: StationKind::Gunner { remote: true, cockpit: cockpit_of(owner).is_some() },
         }),
         _ if own_gunner => Some(Manning {
             unit: me,
-            kind: StationKind::Gunner { remote: false, cockpit: settings.aircraft.apache() },
+            kind: StationKind::Gunner {
+                remote: false,
+                cockpit: settings.aircraft.spec().gunner_seat.is_some(),
+            },
         }),
         (Some(Phase::Station { unit }), Some(combat)) => {
             let kind = match combat.sim.units().get(unit).map(|u| u.kind) {
@@ -284,17 +293,15 @@ fn sync_manning(
                 ui.parked = Some((pos.0, a.clone()));
             }
             let parked = if m.parks() { ui.parked.take() } else { None };
-            // In another's AH-64: its cockpit and model are the player's while he sits there,
-            // his own type back after (not when the aircraft becomes his: his sortie's then).
-            let apache = crate::aircraft::AircraftKind::AH64;
-            let kind = if m.remote_gunner() && m.cockpit() {
-                ui.parked_kind.or_else(|| {
-                    (settings.aircraft != apache)
-                        .then(|| std::mem::replace(&mut settings.aircraft, apache))
-                })
-            } else {
-                None
-            };
+            // In another's AH-64 or OH-58D: its cockpit and model are the player's while he
+            // sits there, his own type back after (not when the aircraft becomes his: his
+            // sortie's then).
+            let ridden = cockpit_of(m.unit as u8).filter(|_| m.remote_gunner() && m.cockpit());
+            let kind = ridden.map(|k| {
+                let own = ui.parked_kind.unwrap_or(settings.aircraft);
+                settings.aircraft = k;
+                own
+            });
             // Test aid: `--console-tab site` opens the site's page.
             let site = std::env::args().skip_while(|a| a != "--console-tab").nth(1);
             *ui = ConsoleUi {

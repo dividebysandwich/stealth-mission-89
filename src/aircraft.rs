@@ -100,7 +100,8 @@ pub struct AircraftSpec {
     pub vtol: bool,
     /// An air-to-ground radar: the ground map format (`crate::ground_radar`).
     pub ground_radar: bool,
-    /// A second cockpit for the gunner (multi-crew): the AH-64's front seat.
+    /// A second cockpit for the gunner (multi-crew): the AH-64's front seat, the OH-58D's left
+    /// one.
     pub gunner_seat: Option<CrewSeat>,
     flight: fn() -> FlightConstants,
 }
@@ -568,7 +569,12 @@ static OH58: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
-    gunner_seat: None,
+    // The copilot/gunner's (left) seat, the pilot's mirrored.
+    gunner_seat: Some(CrewSeat {
+        style: PanelStyle::Oh58Cpg,
+        model: "cockpit_oh58_cpg",
+        eye: oh58_point(-0.36, 1.10, 1.45),
+    }),
     flight: FlightConstants::oh58,
 };
 
@@ -1024,10 +1030,15 @@ impl AircraftKind {
         self == AircraftKind::AH64
     }
 
+    /// The OH-58D: a scout helicopter with a gunner's left seat.
+    pub fn kiowa(self) -> bool {
+        self == AircraftKind::OH58
+    }
+
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console, the
-    /// AH-64's front cockpit.
+    /// AH-64's front cockpit, the OH-58D's left seat.
     pub fn crew_seat(self) -> bool {
-        self.spectre() || self.apache()
+        self.spectre() || self.apache() || self.kiowa()
     }
 
     pub fn rcs_page(self) -> bool {
@@ -1307,8 +1318,8 @@ mod tests {
     }
 
     /// The OH-58D's eye: in the right seat behind the windshield's top, over the front door
-    /// (tools/models/kiowa.py STATIONS), under the roof, inside the side; the sight above the
-    /// rotor.
+    /// (tools/models/kiowa.py STATIONS), under the roof, inside the side, the gunner's in the left
+    /// seat; the sight above the rotor.
     #[test]
     fn oh58_eye_in_the_cockpit() {
         let spec = AircraftKind::OH58.spec();
@@ -1318,6 +1329,8 @@ mod tests {
         assert!((0.88..1.44).contains(&y), "eye {y} m from the mast");
         assert!((1.20..1.70).contains(&z), "eye {z} m high");
         assert!((0.2..0.6).contains(&x), "eye {x} m right");
+        let g = (spec.gunner_seat.as_ref().unwrap().eye - Vec3::Y * spec.model_lift) / s;
+        assert_eq!((-g.x, g.y, g.z), (eye.x, eye.y, eye.z), "the gunner's eye mirrored");
         let sight = (spec.sight.unwrap() - Vec3::Y * spec.model_lift) / s;
         assert!((3.3..3.9).contains(&sight.y), "sight {} m high", sight.y);
         assert!(!spec.transport() && spec.slaved_pod());

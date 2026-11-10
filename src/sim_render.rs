@@ -1469,8 +1469,19 @@ fn world_model_state(
         })
     };
     let (left_stores, right_stores) = (door_stores(0), door_stores(1));
-    // The OH-58D's pylons and what is left on them (slots 26 left, 27 right).
-    let pylons = combat.as_ref().map_or([0; 2], |c| c.sim.pylon_looks(c.sim.bays().0));
+    // The OH-58D's pylons and what is left on them (slots 26 left, 27 right); in another's, his
+    // as his gunner is told.
+    let pylons = combat.as_ref().map_or([0; 2], |c| {
+        let me = c.sim.active_pilot();
+        match c.sim.crew_view(me).filter(|v| v.owner != me) {
+            Some(v) => {
+                let bays: Vec<(i32, i32)> =
+                    v.stores.iter().map(|&(w, n)| (w as i32, n as i32)).collect();
+                c.sim.pylon_looks(&bays)
+            }
+            None => c.sim.pylon_looks(c.sim.bays().0),
+        }
+    });
     let (left_pylon, right_pylon) = crate::aircraft::PYLON_SLOTS;
     // The AH-64's stores on its stations, its chin gun and TADS as they point.
     let apache = settings.aircraft.apache().then(|| {
