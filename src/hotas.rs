@@ -667,6 +667,8 @@ pub struct Device {
     /// makes every HOTAS a gamepad there).
     standard: Vec<(u32, GamepadInput)>,
     pub axes: BTreeMap<u32, f32>,
+    /// Analog buttons also exposed as axes; button capture must not bind their release.
+    pub button_axes: BTreeSet<u32>,
     pub buttons: BTreeSet<u32>,
     prev_buttons: BTreeSet<u32>,
     prev_axes: BTreeMap<u32, f32>,
@@ -687,6 +689,22 @@ impl Device {
             .filter_map(|&(g, a)| Some((pad.axis_code(g)?.into_u32(), GamepadInput::Axis(a))));
         let standard = buttons.chain(axes).collect();
         Self { name: pad.name().to_string(), product, usb_id, standard, ..default() }
+    }
+
+    /// gilrs sends values for digital buttons too. Read these directly so analog releases
+    /// and repeated pulls do not depend on its synthesized ButtonPressed/ButtonReleased events.
+    pub(super) fn button_changed(&mut self, code: u32, value: f32, analog: bool) {
+        // Match gilrs' default press/release thresholds, with hysteresis near the press point.
+        if value >= 0.75 {
+            self.buttons.insert(code);
+        } else if value <= 0.65 {
+            self.buttons.remove(&code);
+        }
+        if analog {
+            self.button_axes.insert(code);
+            // AxisMapping expects -1..1, including for throttle and other 0..1 controls.
+            self.axes.insert(code, value * 2.0 - 1.0);
+        }
     }
 
     fn active(&self, source: Source, prev: bool) -> bool {
@@ -878,11 +896,7 @@ pub struct Hotas {
 
 impl Hotas {
     fn new() -> Self {
-        let mut gilrs = match gilrs::GilrsBuilder::new()
-            .with_default_filters(false)
-            .set_update_state(false)
-            .build()
-        {
+        let mut gilrs = match gilrs::GilrsBuilder::new().with_default_filters(false).build() {
             Ok(g) => Some(g),
             Err(e) => {
                 warn!("joystick input unavailable: {e}");
@@ -964,11 +978,11 @@ impl Hotas {
             }
             let Some(d) = self.devices.get_mut(&ev.id) else { continue };
             match ev.event {
-                E::ButtonPressed(_, code) => {
-                    d.buttons.insert(code.into_u32());
-                }
-                E::ButtonReleased(_, code) => {
-                    d.buttons.remove(&code.into_u32());
+                E::ButtonChanged(_, value, code) => {
+                    // Only physical axes have deadzone metadata. Ordinary buttons must not
+                    // become bindable axes merely because gilrs also gives them 0/1 values.
+                    let analog = g.gamepad(ev.id).deadzone(code).is_some();
+                    d.button_changed(code.into_u32(), value, analog);
                 }
                 E::AxisChanged(_, v, code) => {
                     d.axes.insert(code.into_u32(), v);
@@ -1186,6 +1200,71 @@ pub fn action_name(a: Action) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn trigger_releases_and_repeats() {
+        let mut d = Device::default();
+        let code = 0x30002;
+        for _ in 0..2 {
+            d.prev_buttons.clone_from(&d.buttons);
+            d.button_changed(code, 0.3, true);
+            assert!(!d.active(Source::Button(code), false));
+            d.button_changed(code, 0.75, true);
+            assert_eq!(d.just_pressed().collect::<Vec<_>>(), [code]);
+            d.prev_buttons.clone_from(&d.buttons);
+            d.button_changed(code, 0.7, true);
+            assert!(d.active(Source::Button(code), false), "hysteresis holds the press");
+            assert_eq!(d.just_pressed().count(), 0);
+            d.button_changed(code, 0.65, true);
+            assert!(!d.active(Source::Button(code), false), "partial release clears it");
+            d.button_changed(code, 0.0, true);
+            assert!(!d.active(Source::Button(code), false));
+        }
+    }
+
+    #[test]
+    fn trigger_axis_has_the_full_lever_range() {
+        let mut d = Device::default();
+        let m = AxisMapping {
+            control: AxisControl::Throttle,
+            device: String::new(),
+            code: 0x30005,
+            invert: false,
+            deadzone: 0.0,
+        };
+        for pull in [0.0, 0.25, 0.5, 1.0, 0.0] {
+            d.button_changed(m.code, pull, true);
+            assert_eq!(m.output(d.axes[&m.code]), pull);
+        }
+        assert!(d.button_axes.contains(&m.code));
+        // Face buttons and bumpers also send ButtonChanged, but must remain buttons only.
+        d.button_changed(0x10130, 1.0, false);
+        assert!(d.active(Source::Button(0x10130), false));
+        d.button_changed(0x10130, 0.0, false);
+        assert!(!d.active(Source::Button(0x10130), false));
+        assert!(!d.axes.contains_key(&0x10130));
+        assert!(!d.button_axes.contains(&0x10130));
+    }
+
+    #[test]
+    fn trigger_bindings_override_the_standard_layout() {
+        let pad = Device {
+            name: "Xbox".into(),
+            key: "Xbox".into(),
+            standard: vec![
+                (2, GamepadInput::Button(GamepadButton::LeftTrigger2)),
+                (5, GamepadInput::Button(GamepadButton::RightTrigger2)),
+            ],
+            ..default()
+        };
+        let mut c = InputConfig::default();
+        c.bind_axis(AxisControl::Throttle, pad.key.clone(), 2);
+        c.bind_button(ButtonTarget::Gun, pad.key.clone(), Source::Button(5));
+        let bound: Vec<_> =
+            bound_standard([&pad].into_iter(), &c).into_iter().map(|b| b.2).collect();
+        assert!(bound.contains(&GamepadInput::Button(GamepadButton::LeftTrigger2)));
+        assert!(bound.contains(&GamepadInput::Button(GamepadButton::RightTrigger2)));
+    }
 
     /// The TGP zoom axis is a lever over the zoom steps, holding a step near its edges.
     #[test]
