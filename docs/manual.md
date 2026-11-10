@@ -194,7 +194,7 @@ mouse on an option for a short description.
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
 | FLY | Take off. |
 
-Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions. The C-5 takes off from a land base and flies an airlift: an airdrop, then a landing with the cargo (chapter 3.12).
+Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions. The C-5 takes off from a land base and flies an airlift: an airdrop, then a landing with the cargo (chapter 3.12). The AC-130 takes off from a land base against an enemy column (chapter 3.13).
 
 ## 1.3 Options
 
@@ -410,6 +410,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
 | <img src="images/units/fly_f22.png" width="160"> | [**F-22A RAPTOR**](#311-f-22a-raptor) | Stealth fighter: supercruise, weapons in its bays, the radars barely see it. |
 | <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#312-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
+| <img src="images/units/fly_ac130.png" width="160"> | [**AC-130 SPECTRE**](#313-ac-130-spectre) | Side-firing gunship: 40 mm and 105 mm guns aimed with the pod from a left-hand orbit. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -1291,6 +1292,116 @@ abort the sortie, the run goes back to an AI C-5; if you are shot down, the load
 The C-5 flies nothing else in a campaign, and no other aircraft flies an airlift.
 
 **Best for.** AIRLIFT. Nothing else.
+
+## 3.13 AC-130 SPECTRE
+
+<img src="images/units/fly_ac130.png" width="480" alt="AC-130 SPECTRE">
+
+In Vietnam the US Air Force wanted aircraft that could find and destroy the trucks moving down the
+Ho Chi Minh Trail at night. The answer was an old idea: guns that fire sideways out of a transport
+while it circles the target, the pilot aiming by banking the aircraft. After the AC-47 "Spooky"
+proved it, a C-130A was fitted in 1967 with four 7.62 mm miniguns, four 20 mm cannon, a night
+sight and a searchlight. The **AC-130 Spectre** went to war that autumn and destroyed more trucks
+on the trail than any other aircraft. Later versions swapped the small guns for a **40 mm Bofors**
+and, from 1972, a **105 mm howitzer** firing out of the left side behind the wing.
+
+The AC-130H flew in Grenada, Panama, the Gulf War and the Balkans; the AC-130U "Spooky II" of
+1995 added a 25 mm Gatling gun, a pressurised cabin and better sensors. Gunships fly at night, in
+a slow left-hand orbit high over the target (the "pylon turn"): the pilot keeps the target in a
+sight on the left window while the sensor operators and the fire control lay the guns on what the
+sensor turrets look at. They are slow and big, and keep away from the SAMs.
+
+| **AC-130H SPECTRE** | |
+|---|---|
+| *Role* | Ground attack gunship, crew of 14 |
+| *Manufacturer* | Lockheed, USA (conversions of C-130 Hercules) |
+| *First flight* | 23 August 1954 (YC-130); AC-130 in combat from 1967 |
+| *Wingspan / length / height* | 40.41 m / 29.79 m / 11.66 m |
+| *Engines* | 4 × Allison T56-A-15 turboprops, 3,661 kW (4,910 shp) each |
+| *Maximum take-off weight* | 70,300 kg (155,000 lb) |
+| *Maximum speed* | about 300 kt |
+| *Armament* | 40 mm L/60 Bofors, 105 mm M102 howitzer |
+
+**IN THE GAME.** The AC-130 is the gunship: no stores, no cannon in the nose, only its two side
+guns. It flies only with the modern flight model, and only you fly it: the AI never does.
+
+- **Two guns.** The **40 mm** fires a round every half second (256 rounds), the **105 mm** one
+  every four seconds (100 rounds). **Weapon select** (**Space**, or the **40MM** and **105MM**
+  buttons on the glare shield) changes between them; the **fire** key or button fires the selected
+  gun as long as you hold it.
+- **They fire where the targeting pod looks.** The fire control lays the gun on the pod's point
+  on the ground, the shell's drop and the aircraft's own speed allowed for; with the pod on a
+  vehicle (or near one) it leads the vehicle as it drives. The shells are not guided: from 3 or 4 km
+  each round lands a few metres from the aim point, so a vehicle takes a few rounds to hit.
+- **Only off the left wing.** The guns point out of the left side and turn only 20 degrees either
+  way of the wing's line, depressing 5 to 55 degrees below the wings. To bring them to bear, fly a
+  **left-hand orbit** round the target: bank left, about 30 degrees, at 6,000 to 10,000 ft and 2
+  to 4 km from it. The guns do not fire while the target is outside that box (*Guns cannot bear*).
+- **What it takes.** The 40 mm destroys an infantry fighting vehicle, a gun or anything softer
+  in two or three hits, a tank in five to ten. The 105 mm destroys anything but a tank with one
+  hit (its blast reaches 10 m), a tank with two or three direct hits.
+- **Countermeasures.** 250 flares and 250 chaff: it is a big, slow aircraft, and the ZSU-23s
+  that drive with the enemy's columns shoot back if you come down low.
+- **Seen from far away.** Its radar return is large: keep away from the SAM sites.
+- About 300 kt flat out; it stalls at about 120 kt clean, 92 kt with the flaps (key 9). Full
+  throttle and flaps: it lifts off after 2,500 to 2,800 ft of runway.
+
+**Cockpit.** The flight deck of a C-130J: the pilot in the left seat behind the **yoke** (flown as
+the C-5's, chapter 3.12), the four throttles on the pedestal between the seats with the CDU. Before
+the pilot the attitude display and the standby instruments; between the seats the two centre MFDs:
+the **TGP** on the right one, the SOI from the start, and the HSD on the left one. The **40MM** and
+**105MM** buttons sit on the glare shield over them. The windows by your left shoulder look down
+on the target in the orbit.
+
+![The AC-130's cockpit](images/cockpit_ac130.png)
+
+**The TGP page.** Slew the pod onto the target (it snaps onto a vehicle near where it settles) or
+press **CZ** to cue it to the steerpoint. The **gimbal scope** in its lower right shows where the
+guns can reach: the small box is the guns' reach off the left wing (forward to the left, as out of
+your window), the larger frame round it 35 degrees either way and 70 degrees down. The cross is
+where the pod looks; it turns green, and so does the box, when the guns bear. Under the scope are
+the selected gun and its rounds, then **TOF** and the shell's time of flight in seconds when the
+guns bear, or a blinking amber **GIMBAL** when they do not.
+
+![The TGP page: the pod on a town, the gimbal scope at its lower right with the line of sight inside the guns' reach, 249 rounds of 40 mm left, 5.7 s time of flight](images/mfd_tgp_ac130.png)
+
+The **HUD** shows the same low on its left: the gun and its rounds, then *IN RNG* and the slant
+range (nm) when the guns bear, *GIMBAL* when they do not, *NO TGP* without the pod on the ground.
+
+Firing, the guns flash and puff grey smoke from their ports; with **local lights** on (chapter
+1.3) the flash lights up the fuselage round them. Each shell's tracer glows all the way down, and
+where it lands the 40 mm bursts in a sharp flash and a spray of dirt, the 105 mm in a big blast
+and a column of smoke. The bursts are heard when their sound gets to you, seconds later.
+
+![A 105 mm round leaving the gun at night, its flash lighting the fuselage](images/ac130_firing.png)
+
+**Gunship missions.** In single missions and the career the AC-130 flies against an **enemy
+column**: five or six armoured vehicles (T-90s, BMP-2s and a ZSU-23-4) moving up from an enemy
+place toward the front. The column is the primary target (destroy three quarters of it), the place
+it set off from the secondary. It sets off when you come within 35 km, at a walking pace across
+country, so the steerpoint shows where it starts and the pod finds it on its way. The column is
+always out of the immediate reach of the enemy's SAM sites. About half the missions are **quiet**,
+far from every SAM site with the enemy's fighters on the ground; the others are nearer the front,
+SAM sites some way off and enemy fighters up, and two friendly fighters escort you (they stay off
+your wing and engage enemy aircraft within 25 km of the target).
+
+To attack the column:
+
+1. Fly to the column's steerpoint at 6,000 to 10,000 ft, the TGP up.
+2. A few kilometres out, cue the pod (**CZ**) and slew it onto the vehicles; let it snap onto one.
+3. Pass the column on your left and roll into a left turn round it, 2 to 4 km out, about 30
+   degrees of bank. Watch the gimbal scope's cross come into the box.
+4. When it turns green, fire: the 40 mm in bursts on the BMP-2s and the ZSU, the 105 mm on the
+   tanks. Keep the bank steady; widen the circle if the cross drifts below the box, tighten it if
+   it drifts above.
+5. Move the pod to the next vehicle and carry on. When most of the column is burning the primary
+   objective is done; the place it came from is the secondary. Then fly home.
+
+**In a campaign** the AC-130 flies **CAS** missions (chapter 9.4) and nothing else, and only those
+whose target is at least 25 km from every live enemy SAM site (*Enemy SAM sites are too close to
+the target for the AC-130*). It is never preselected: pick it in the briefing.
+
+**Best for.** Columns and garrisons away from the SAMs: gunship missions, CAS.
 
 
 ---
@@ -2344,6 +2455,9 @@ keeps a flight to continue later from LOAD.
 In the **C-5** the mission becomes an **airlift**: drop supplies to friendly troops, then land the
 cargo at the airfield nearest them (chapter 3.12).
 
+In the **AC-130** the mission becomes a **gunship mission**: destroy an enemy column with the side
+guns, then the place it came from (chapter 3.13).
+
 ## 8.2 The mission planner
 
 ![Mission planner](images/planner.png)
@@ -2572,7 +2686,7 @@ long as its situation lasts.
 |---|---|---|---|
 | **RECON** | 100 | Each front place without fresh intelligence. | You photograph its main object. For an hour its defences see you at 0.7 times their range, you see them at twice yours, and the target keys pick its objects from twice as far. |
 | **SEAD** | 150 | Front places with SAM sites or radars. | At least half of the listed sites are destroyed, by anyone (AI SEAD too). |
-| **CAS** | 120 | Front places with guns, MANPADS or armour. | You destroy at least half of the listed units. |
+| **CAS** | 120 | Front places with guns, MANPADS or armour. | You destroy at least half of the listed units. The AC-130 only where no live enemy SAM site is within 25 km (3.13). |
 | **CAS - battery** | 120 | An enemy gun battery pushed forward near your bases (9.8). | You destroy at least half of its guns. |
 | **CAS - armour column** | 120 | Each enemy armour column on the move. Its threat is the number of air defence guns left in it. | At least half of its vehicles are destroyed. |
 | **CAS - support armour** | 120 | Each friendly column on the move whose target still has enemy units within 6 km. | At least half of them are destroyed, or you were there when the place fell to the column. |

@@ -2913,7 +2913,7 @@ fn draw_side_gun_scope(
 ) {
     let (w, h) = (78.0, 66.0);
     let x0 = c.w as f32 - w - 10.0;
-    let y0 = c.h as f32 - BAND as f32 - h - 40.0;
+    let y0 = c.h as f32 - BAND as f32 - h - 58.0;
     // The frame: 35 degrees either way of the wing's line, 0 to 70 degrees down.
     let (az_span, dep_max) = (35.0, 70.0);
     let at = |off: f32, dep: f32| {
