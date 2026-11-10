@@ -791,7 +791,7 @@ fn mouse_look(
                 | Action::ViewInverseTactical
                 | Action::ViewMissile
         ) {
-            *orbit = Orbit::default();
+            *orbit = Orbit::from_args();
             state.wheel_zoom = 0.0;
         }
     }

@@ -243,6 +243,9 @@ pub struct Sim {
     /// Damage the side guns did to each unit (`units` index; 100 destroys it).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) side_gun_wear: Vec<u8>,
+    /// A gunship mission's enemy column, until it sets off ([`gunship::MissionColumn`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) column: Option<gunship::MissionColumn>,
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "sfw::Sfw::is_empty")]
     pub(crate) sfw: sfw::Sfw,
@@ -588,6 +591,7 @@ impl Sim {
             aaa_rng: None,
             side_shells: Vec::new(),
             side_gun_wear: Vec::new(),
+            column: None,
             sfw: sfw::Sfw::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
@@ -655,6 +659,9 @@ impl Sim {
         if m.escorts > 0 {
             let st = data.stores_init.map(|v| v as i32);
             sim.launch_escorts(m.escorts, st, data.gun_ammo_init as i32);
+        }
+        if !sim.opts.campaign {
+            sim.column = gunship::MissionColumn::of(m);
         }
         let st = sim.start_state();
         sim.ingest(&st);
@@ -979,6 +986,7 @@ impl Sim {
         }
         self.activate(first);
         self.update_side_shells();
+        self.update_column(&present);
         self.apply_claims(&present);
         self.apply_pilot_hits();
         self.update_enemy_rounds(&present);

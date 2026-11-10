@@ -8,7 +8,8 @@
 //! target. Each round leaves with a little dispersion, so from an orbit a few kilometres out
 //! it takes a few rounds to hit a vehicle.
 //!
-//! Shells fly in metres (east, north, up) with gravity and no drag; where they come down they
+//! Shells fly in metres (east, north, up: Bevy's world, the altitude's world units at 0.49 m)
+//! with gravity and no drag; where they come down they
 //! wear down the vehicles and guns they hit ([`SIDE_GUN_DAMAGE`]): the 40 mm takes 5 to 10 hits
 //! to destroy a tank and 2 or 3 for anything softer, the 105 mm destroys anything but a tank
 //! with one hit and a tank with 2 or 3.
@@ -70,6 +71,12 @@ pub struct SideGuns {
     /// The trigger was held outside the gimbal (one message per press).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub warned: bool,
+    /// The fire control's solution for the selected gun: the shell's time of flight (tenths
+    /// of a second) and the slant range (m); 0 without one.
+    #[serde(default)]
+    pub tof: i32,
+    #[serde(default)]
+    pub range: i32,
 }
 
 impl SideGuns {
@@ -177,6 +184,43 @@ fn class(kind: GroundKind) -> usize {
     if kind.tank() { 0 } else { 1 }
 }
 
+/// The campaign tag of a gunship mission's enemy column.
+pub const COLUMN_TAG: u32 = 0xC01_0000;
+/// The column sets off when a gunship comes this close to its road's start (m).
+pub const COLUMN_WAKE: f64 = 35_000.0;
+/// Its march speed (m/s): a column picking its way across country.
+pub const COLUMN_SPEED: f32 = 7.0;
+/// The share of its vehicles destroyed that achieves the objective (mission type 11).
+pub const COLUMN_DONE: f64 = 0.75;
+/// Mission type: destroy the column (`stealth_mission::gunship::COLUMN`).
+pub const COLUMN_MISSION: i32 = 11;
+
+/// A gunship mission's enemy column: its vehicles and road (map units) until it sets off, and
+/// whether it has.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct MissionColumn {
+    pub kinds: Vec<GroundKind>,
+    pub route: Vec<(i32, i32)>,
+    pub spawned: bool,
+}
+
+impl MissionColumn {
+    /// The mission's column, if it has one.
+    pub fn of(m: &stealth_mission::Mission) -> Option<Self> {
+        let c = m.column.as_ref()?;
+        let kinds = c
+            .kinds
+            .iter()
+            .map(|&k| match k {
+                stealth_mission::gunship::T90 => GroundKind::T90,
+                stealth_mission::gunship::ZSU => GroundKind::Zsu,
+                _ => GroundKind::Bmp2,
+            })
+            .collect();
+        Some(MissionColumn { kinds, route: c.route.clone(), spawned: false })
+    }
+}
+
 /// The AC-130's dispensers: flares and chaff.
 pub const FLARES: i32 = 250;
 pub const CHAFF: i32 = 250;
@@ -210,11 +254,61 @@ impl Sim {
         }
     }
 
+    /// The mission's column ([`MissionColumn`]): it sets off once a pilot comes near its road;
+    /// once most of it is destroyed, the objective of the pilots who have it.
+    pub(crate) fn update_column(&mut self, present: &[usize]) {
+        let Some(col) = self.column.as_ref() else { return };
+        if !col.spawned {
+            let Some(&(x, y)) = col.route.first() else { return };
+            let (e, n) = (x as f64 * M_PER_MAP, (0x8000 - y) as f64 * M_PER_MAP);
+            let m_per_wu = M_PER_MAP / 32.0;
+            let near = present.iter().any(|&k| {
+                let p = &self.pilot_ref(k).p;
+                (p.wx as f64 * m_per_wu - e).hypot(p.wy as f64 * m_per_wu - n) < COLUMN_WAKE
+            });
+            if !near {
+                return;
+            }
+            let (kinds, route) = (col.kinds.clone(), col.route.clone());
+            if let Some(c) = self.column.as_mut() {
+                c.spawned = true;
+            }
+            if self.campaign.is_none() {
+                let stores = self.pl.stores;
+                let gun = self.pl.gun_ammo;
+                self.campaign = Some(Box::new(self.campaign_state(stores, gun)));
+            }
+            self.set_convoy_speed(COLUMN_SPEED);
+            self.spawn_convoy(COLUMN_TAG, false, &kinds, &route);
+            return;
+        }
+        let Some(c) = self.campaign.as_ref() else { return };
+        let units: Vec<usize> = (0..self.units.len())
+            .filter(|&k| c.ground.convoy_of.get(k) == Some(&COLUMN_TAG))
+            .collect();
+        if units.is_empty() {
+            return;
+        }
+        let down = units.iter().filter(|&&k| self.units[k].destroyed).count();
+        if (down as f64) < COLUMN_DONE * units.len() as f64 {
+            return;
+        }
+        let back = self.pl.id as usize;
+        for &k in present {
+            self.activate(k);
+            if self.pl.targets[0].mission_type == COLUMN_MISSION {
+                self.mark_target_reached(0);
+            }
+        }
+        self.activate(back);
+    }
+
     /// The active pilot's aircraft: position (metres east, north, up) and velocity (m/s).
     fn own_motion(&self) -> ([f64; 3], [f64; 3]) {
         let p = &self.pl.p;
         let m_per_wu = M_PER_MAP / 32.0;
-        let pos = [p.wx as f64 * m_per_wu, p.wy as f64 * m_per_wu, p.alt as f64 * 0.3048];
+        // Altitude is in world units too (the game's "feet"), as the hills' heights are drawn.
+        let pos = [p.wx as f64 * m_per_wu, p.wy as f64 * m_per_wu, p.alt as f64 * m_per_wu];
         let d = crate::guidance::direction(p.heading, p.pitch);
         let v = p.knots as f64 * 0.514_444;
         (pos, [d[0] * v, -d[1] * v, d[2] * v])
@@ -296,6 +390,8 @@ impl Sim {
         let solution = self.side_gun_solution(ps);
         let gun = self.pl.side_guns.gun as usize;
         self.pl.side_guns.out_of_gimbal = !solution.is_some_and(|s| s.in_gimbal);
+        self.pl.side_guns.tof = solution.map_or(0, |s| (s.tof * 10.0).round() as i32);
+        self.pl.side_guns.range = solution.map_or(0, |s| s.range.round() as i32);
         let trigger = (ps.cmd.trigger || ps.cmd.gun || ps.cmd.fire)
             && self.pl.eject == 0
             && !self.pl.on_ground;

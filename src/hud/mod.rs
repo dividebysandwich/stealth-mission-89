@@ -280,6 +280,24 @@ pub struct HudCues {
     pub launch_zone: Option<LaunchZoneCue>,
     /// The cargo jet's hold, ramp and airdrop (the C-5's: its HUD's drop cues, the cargo page).
     pub drop: Option<DropCue>,
+    /// The AC-130's side guns: the selected gun, its rounds, whether it bears (its TGP page's
+    /// gimbal scope and the HUD's gun box).
+    pub side_guns: Option<SideGunCue>,
+}
+
+/// The AC-130's side guns (`stealth_sim::gunship`).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SideGunCue {
+    /// The selected gun: 0 the 40 mm, 1 the 105 mm.
+    pub gun: u8,
+    pub rounds: [i32; 2],
+    /// The fire control has a solution inside the gimbal.
+    pub in_gimbal: bool,
+    /// The solution's time of flight (s) and slant range (m), when the pod looks at the ground.
+    pub tof: Option<f32>,
+    pub range: f32,
+    /// The selected gun has its next round loaded.
+    pub ready: bool,
 }
 
 /// The C-5's cargo and airdrop: the ramp, what is in the hold, and while a drop zone is still to

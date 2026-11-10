@@ -405,9 +405,12 @@ fn update_trails(
         }
     }
     let exhaust = settings.aircraft.spec().exhaust;
+    // The AC-130's turboprops only leave them high up, far above its orbits.
+    let contrails_from =
+        if settings.aircraft.spectre() { 2 * CONTRAIL_VIEW_Z } else { CONTRAIL_VIEW_Z };
     if let Ok((a, pos)) = player.single()
         && !a.on_ground
-        && sim.player().view_z >= CONTRAIL_VIEW_Z
+        && sim.player().view_z >= contrails_from
     {
         for (k, o) in crate::aircraft::contrail_emitters(settings.aircraft).into_iter().enumerate()
         {

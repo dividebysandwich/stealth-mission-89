@@ -317,6 +317,9 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     if let Some(d) = &f.cues.drop {
         airdrop(c, f, d, fpm, down);
     }
+    if let Some(g) = f.cues.side_guns {
+        side_guns(c, f, g);
+    }
     gun_sight(c, f);
     if let Some((loc, gs)) = f.ils {
         ils_bars(c, fpm, h, down, loc, gs);
@@ -853,6 +856,24 @@ const DROP_WARN_SECS: f32 = 30.0;
 /// LIGHT with the ramp down and the pallets landing in the zone (DROP flashing at the release
 /// point), else what holds it back (the ramp up or moving). Without a drop zone only the ramp
 /// while it is not up.
+/// The AC-130's guns, low on the left of the field: the gun and its rounds, then whether it
+/// bears on where the pod looks (its slant range in nautical miles when it does; GIMBAL when the
+/// orbit doesn't bring it to bear, NO TGP without the pod).
+fn side_guns(c: &mut Canvas, f: &HudFrame, g: super::SideGunCue) {
+    let fld = field(f);
+    let (x, y) = (fld.0.x + 20.0, fld.1.y - 70.0);
+    let gun = stealth_sim::gunship::gun_name(g.gun as usize);
+    small(c, x, y, &format!("{gun} {}", g.rounds[g.gun as usize]), Align::Left);
+    let status = if g.in_gimbal {
+        format!("IN RNG {:.1}", g.range / 1852.0)
+    } else if f.tgp_dir.is_some() {
+        "GIMBAL".to_string()
+    } else {
+        "NO TGP".to_string()
+    };
+    small(c, x, y + 24.0, &status, Align::Left);
+}
+
 fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Vec2) {
     let fld = field(f);
     let light = Vec2::new(CX, fpm.y.min(fld.1.y) - 64.0).max(Vec2::new(CX, fld.0.y + 20.0));

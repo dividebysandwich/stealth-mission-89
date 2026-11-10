@@ -778,6 +778,16 @@ impl AvionicsState {
         self.fix_soi();
     }
 
+    /// The AC-130's displays at the start: the targeting pod (its guns' sight) on the left
+    /// centre MFD, the SOI, the HSD on the right.
+    pub fn gunship_start(&mut self) {
+        self.formats[0] = Format::Tgp;
+        self.formats[1] = Format::Hsd;
+        self.menu = [None; 4];
+        self.soi = Some(Format::Tgp);
+        self.fix_soi();
+    }
+
     /// After `set_radar` or `set_rcs`: the formats this aircraft lacks leave the rows and the
     /// MFDs.
     fn refit(&mut self, old: &AvionicsState) {
@@ -1290,6 +1300,9 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
                 let o = Vec2::new(c.w as f32 / 2.0, c.h as f32 / 2.0);
                 for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
                     c.stroke(o + d * 6.0, o + d * 22.0, 1.3, col);
+                }
+                if let Some(g) = p.cues.side_guns {
+                    draw_side_gun_scope(p, c, fonts, g, col);
                 }
             }
         }
@@ -2877,6 +2890,73 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground: &Terrain) -> Option<Sn
         .filter(|&(_, d)| d <= POD_SNAP)
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(r, _)| r)
+}
+
+/// The pod's line of sight seen from the AC-130's body as (azimuth right of the nose,
+/// depression below the wings' plane), degrees.
+pub fn side_gun_angles(orientation: Quat, los: Vec3) -> (f32, f32) {
+    let b = orientation.inverse() * los;
+    (b.x.atan2(-b.z).to_degrees(), (-b.y).clamp(-1.0, 1.0).asin().to_degrees())
+}
+
+/// The AC-130's gimbal scope on the TGP page (bottom right): the guns' reach off the left wing
+/// (the box: 20 degrees either way of the wing's line, 5 to 55 degrees down), where the pod
+/// looks within the wider frame round it (forward to the left, as out of the left window; at
+/// the frame's edge when farther off), and under it the gun, its rounds and whether it bears
+/// (the time of flight when it does).
+fn draw_side_gun_scope(
+    p: &MfdParams,
+    c: &mut Canvas,
+    fonts: &Fonts,
+    g: crate::hud::SideGunCue,
+    col: u8,
+) {
+    let (w, h) = (78.0, 66.0);
+    let x0 = c.w as f32 - w - 10.0;
+    let y0 = c.h as f32 - BAND as f32 - h - 40.0;
+    // The frame: 35 degrees either way of the wing's line, 0 to 70 degrees down.
+    let (az_span, dep_max) = (35.0, 70.0);
+    let at = |off: f32, dep: f32| {
+        Vec2::new(x0 + w / 2.0 - off / az_span * (w / 2.0), y0 + dep / dep_max * h)
+    };
+    c.frame(Vec2::new(x0, y0), Vec2::new(x0 + w, y0 + h), 1.0, col);
+    let (az, dep) = stealth_sim::gunship::GIMBAL_EL;
+    let (lim, lo, hi) =
+        (stealth_sim::gunship::GIMBAL_AZ.to_degrees() as f32, az.to_degrees() as f32, dep.to_degrees() as f32);
+    let bears = if g.in_gimbal { GREEN } else { col };
+    c.frame(at(lim, lo), at(-lim, hi), 1.5, bears);
+    // The wing's line, dashed down the middle.
+    let mut y = y0;
+    while y < y0 + h {
+        c.stroke(Vec2::new(x0 + w / 2.0, y), Vec2::new(x0 + w / 2.0, (y + 3.0).min(y0 + h)), 1.0, col);
+        y += 6.0;
+    }
+    if let (Some(los), Ok((a, _))) = (p.state.av.tgp.los, p.aircraft.single()) {
+        let (az, dep) = side_gun_angles(a.orientation, los);
+        let off = az + 90.0;
+        let inside = off.abs() <= az_span && (0.0..=dep_max).contains(&dep);
+        let m = at(off.clamp(-az_span, az_span), dep.clamp(0.0, dep_max));
+        let shown = inside || crate::hud::blink(&p.time);
+        if shown {
+            let colour = if g.in_gimbal { GREEN } else { col };
+            for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
+                c.stroke(m + d * 2.0, m + d * 6.0, 1.5, colour);
+            }
+        }
+    }
+    let gun = stealth_sim::gunship::gun_name(g.gun as usize);
+    let line1 = format!("{gun} {}", g.rounds[g.gun as usize]);
+    let y = (y0 + h + 4.0) as i32;
+    fonts.text_scaled(c, x0 as i32, y, line1.as_bytes(), col, 2);
+    let line2 = match (g.in_gimbal, g.tof) {
+        (true, Some(t)) => format!("TOF {t:.1}"),
+        (true, None) => "IN GIMBAL".to_string(),
+        (false, _) => "GIMBAL".to_string(),
+    };
+    if g.in_gimbal || crate::hud::blink(&p.time) {
+        let colour = if g.in_gimbal { if g.ready { GREEN } else { col } } else { AMBER };
+        fonts.text_scaled(c, x0 as i32, y + 13, line2.as_bytes(), colour, 2);
+    }
 }
 
 /// Where the gunship's slaved pod looks: at the lock (else the helmet sight).

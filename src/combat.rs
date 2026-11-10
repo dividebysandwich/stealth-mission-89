@@ -140,6 +140,8 @@ pub struct Combat {
     pub ground_shots: Vec<GroundShotFx>,
     /// The CBU-105s' events this frame (drawn by `sfw`).
     pub sfw_fx: Vec<SimEvent>,
+    /// The AC-130s' guns firing and their shells landing this frame (drawn by `side_guns`).
+    pub side_gun_fx: Vec<SimEvent>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -438,6 +440,7 @@ fn start_combat(
         round_impacts: Vec::new(),
         ground_shots: Vec::new(),
         sfw_fx: Vec::new(),
+        side_gun_fx: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -782,6 +785,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.round_impacts.clear();
     combat.ground_shots.clear();
     combat.sfw_fx.clear();
+    combat.side_gun_fx.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -1990,6 +1994,16 @@ fn publish(
         }
     }
     *cam = info;
+    if let Some(g) = sim.side_guns() {
+        new_cues.side_guns = Some(crate::hud::SideGunCue {
+            gun: g.gun,
+            rounds: g.rounds,
+            in_gimbal: !g.out_of_gimbal,
+            tof: (g.tof > 0).then(|| g.tof as f32 / 10.0),
+            range: g.range as f32,
+            ready: g.reload[g.gun as usize] == 0,
+        });
+    }
     if settings.aircraft.airlifter() {
         let run = campaign.as_ref().and_then(|c| {
             let st = c.state();
@@ -2594,6 +2608,9 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                 combat.kills.push(Kill { x: to.0 / fine, y: to.1 / fine, vehicle: true });
             }
             combat.sfw_fx.push(e);
+        }
+        SimEvent::SideGunFired { .. } | SimEvent::SideShellImpact { .. } => {
+            combat.side_gun_fx.push(e);
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {

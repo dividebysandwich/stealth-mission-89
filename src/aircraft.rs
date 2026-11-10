@@ -861,10 +861,11 @@ static AC130: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::C5, "cockpit_c5")],
+    cockpits: &[(PanelStyle::C130, "cockpit_c130")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
+    // The overhead HUD's combiner as the C-5's (tools/models/build_cockpit_c130.py).
     hud_scale: 1900.0,
     vr_hud_scale: 1900.0,
     bomb_bay: false,

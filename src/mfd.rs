@@ -794,6 +794,9 @@ fn reset_mfd(
     if av.cargo {
         av.cargo_start();
     }
+    if settings.aircraft.spectre() {
+        av.gunship_start();
+    }
     *state = MfdState {
         hires: settings.hires_displays(),
         modern: !settings.classic_avionics,

@@ -126,7 +126,7 @@ fn orbit_state(
     let to_bam = |rad: f64| (rad / std::f64::consts::TAU * 65536.0).round() as i32;
     let pod_heading = to_bam(d.atan2(0.0)).rem_euclid(65536) as u16;
     let pod_pitch = to_bam(-(alt_m.atan2(d.abs()))) as i16;
-    let feet = (alt_m / 0.3048) as u16;
+    let feet = (alt_m / (M_PER_MAP / 32.0)) as u16;
     PlayerState {
         x,
         y,

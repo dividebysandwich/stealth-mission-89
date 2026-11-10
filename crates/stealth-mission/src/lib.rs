@@ -1,4 +1,5 @@
 pub mod airlift;
+pub mod gunship;
 pub mod drones;
 mod generator;
 pub mod hills;
@@ -402,6 +403,9 @@ pub struct Mission {
     /// Friendly fighters that take off with the player and escort him.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub escorts: u8,
+    /// A gunship mission's enemy column ([`gunship::for_gunship`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<gunship::Column>,
 }
 
 fn is_zero(n: &u8) -> bool {
@@ -584,6 +588,7 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         drones: None,
         quiet: false,
         escorts: 0,
+        column: None,
     };
     if s.kind == MissionKind::DroneDefense {
         drones::defend(&mut m, data, th)?;

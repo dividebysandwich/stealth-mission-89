@@ -126,6 +126,8 @@ Testing and screenshots
   --head-look <yaw,pitch>      initial cockpit view direction (degrees)
   --start-final <km[,ft[,kt]]> start on final approach (default 3 km, 500 ft, 170 kt)
   --start-target <km[,ft[,kt]]> start in the air south of the primary target, heading at it
+  --start-orbit <km[,ft[,kt]]>  start in the air east of the primary target, banked left round it
+  --orbit <yaw,pitch>           turn the external views by these degrees at the start
                                (default 8 km, 2000 ft, 350 kt)
   --start-chase <k[,m[,kt]]>   start in the air behind drone k (default 300 m, 250 kt)
   --stage-cam <mode[,dist,height]>

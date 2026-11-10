@@ -106,20 +106,22 @@ pub fn generate(
     stealth_mission::generate(&data.0, settings, Seed::Srand(seed))
 }
 
-/// The generator's options for an aircraft: a helicopter's short missions, the cargo jet's land
-/// bases.
+/// The generator's options for an aircraft: a helicopter's short missions, the cargo jet's and
+/// the gunship's land bases.
 pub fn settings_for(s: &mut MissionSettings, aircraft: crate::aircraft::AircraftKind) {
     s.helicopter = aircraft.spec().helicopter;
-    s.land_bases = aircraft.airlifter();
+    s.land_bases = aircraft.airlifter() || aircraft.spectre();
 }
 
 /// A generated mission as an aircraft flies it: a troop helicopter's targets as insertions, the
-/// cargo jet's as an airdrop and a delivery.
+/// cargo jet's as an airdrop and a delivery, the gunship's as an enemy column to destroy.
 pub fn for_aircraft(m: &mut Mission, data: &GameData, aircraft: crate::aircraft::AircraftKind) {
     if aircraft.spec().transport() {
         stealth_mission::insertion::for_helicopter(m);
     } else if aircraft.airlifter() {
         stealth_mission::airlift::for_transport(m, data);
+    } else if aircraft.spectre() {
+        stealth_mission::gunship::for_gunship(m, data);
     }
 }
 

@@ -388,7 +388,7 @@ impl Sim {
     }
 
     /// The campaign's bookkeeping, nothing launched yet.
-    fn campaign_state(&self, stores: [i32; 4], gun: i32) -> CampaignSim {
+    pub(crate) fn campaign_state(&self, stores: [i32; 4], gun: i32) -> CampaignSim {
         let n = self.objects.len();
         let seed = self.rng.hold ^ 0xCA4D_A1A1;
         CampaignSim {

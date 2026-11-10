@@ -233,7 +233,8 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         AircraftKind::AH1Z => horizontal_pointers(c, w, top, e),
         AircraftKind::OH58 => half_dials(c, w, top, e),
         AircraftKind::RAH66 | AircraftKind::F22 => thick_bars(c, w, top, bottom - 12.0, e),
-        AircraftKind::C5 | AircraftKind::AC130 => four_columns(c, w, top, bottom - 12.0, e),
+        AircraftKind::C5 => four_columns(c, w, top, bottom - 12.0, e, JET_LABELS),
+        AircraftKind::AC130 => four_columns(c, w, top, bottom - 12.0, e, TURBOPROP_LABELS),
     }
     footer(c, e, 10.0, w - 10.0, bottom);
 }
@@ -838,7 +839,12 @@ fn thick_bars(c: &mut Canvas, w: f32, top: f32, bottom: f32, e: &Eng) {
 /// The C-5's: the engines' numbers over four columns; in each the fan speed (N1) and turbine
 /// temperature (EGT) as filled tapes with an amber limit mark, the reading under each tape; the
 /// core speed (N2) and oil pressure as numbers under them, clear of the fuel line.
-fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng) {
+/// The four-column page's tape and number labels: the C-5's fans (N1, EGT, N2, oil), the
+/// AC-130's turboprops (torque, turbine inlet temperature, propeller speed, oil).
+const JET_LABELS: [&str; 4] = ["N1", "EGT", "N2", "OIL"];
+const TURBOPROP_LABELS: [&str; 4] = ["TQ", "TIT", "NP", "OIL"];
+
+fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng, labels: [&str; 4]) {
     let x0 = 34.0;
     let step = (w - x0 - 6.0) / 4.0;
     let x = |i: usize| x0 + step * (i as f32 + 0.5);
@@ -847,8 +853,8 @@ fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng) {
     }
     let half = 7.0;
     let tapes = [
-        ("N1", e.fan, 110.0, JET_CORE, top + 12.0, top + 46.0),
-        ("EGT", e.temp, 1000.0, JET_TEMP, top + 60.0, top + 94.0),
+        (labels[0], e.fan, 110.0, JET_CORE, top + 12.0, top + 46.0),
+        (labels[1], e.temp, 1000.0, JET_TEMP, top + 60.0, top + 94.0),
     ];
     for (name, v, max, l, y0, y1) in tapes {
         text(c, 4.0, (y0 + y1) / 2.0, name, 7.0, GREY, Align::Left);
@@ -869,7 +875,7 @@ fn four_columns(c: &mut Canvas, w: f32, top: f32, _bottom: f32, e: &Eng) {
         }
     }
     for (k, (name, v, l)) in
-        [("N2", e.core, JET_CORE), ("OIL", e.oil, JET_OIL)].into_iter().enumerate()
+        [(labels[2], e.core, JET_CORE), (labels[3], e.oil, JET_OIL)].into_iter().enumerate()
     {
         let y = top + 111.0 + 10.0 * k as f32;
         text(c, 4.0, y, name, 7.0, GREY, Align::Left);

@@ -20,7 +20,7 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ViewState>()
             .init_resource::<HeadLook>()
-            .init_resource::<Orbit>()
+            .insert_resource(Orbit::from_args())
             .init_resource::<RigOffset>()
             .init_resource::<XrRoot>()
             .init_resource::<HeadPoses>()
@@ -183,6 +183,18 @@ pub struct HeadLook {
 pub struct Orbit {
     pub yaw: f32,
     pub pitch: f32,
+}
+
+impl Orbit {
+    /// Test aid (`--orbit yaw,pitch` in degrees): the external views start turned so far.
+    pub fn from_args() -> Self {
+        let args: Vec<String> = std::env::args().collect();
+        let Some(v) = args.iter().position(|a| a == "--orbit").and_then(|i| args.get(i + 1)) else {
+            return Self::default();
+        };
+        let mut it = v.split(',').map(|x| x.parse::<f32>().unwrap_or(0.0).to_radians());
+        Self { yaw: it.next().unwrap_or(0.0), pitch: it.next().unwrap_or(0.0) }
+    }
 }
 
 /// Transform of the eye camera / XR tracking root relative to the head anchor in cockpit

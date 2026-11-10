@@ -99,6 +99,7 @@ mod script;
 mod settings;
 mod sfw;
 mod shake;
+mod side_guns;
 mod sim_render;
 mod sky;
 mod sling;
@@ -318,6 +319,7 @@ pub fn run() {
         .add_plugins((
             combat::CombatPlugin,
             sim_render::SimRenderPlugin,
+            side_guns::SideGunsPlugin,
             stores::StoresPlugin,
             trackcam::TrackCamPlugin,
             trails::TrailsPlugin,

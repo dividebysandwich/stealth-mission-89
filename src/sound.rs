@@ -85,6 +85,7 @@ impl Plugin for SoundPlugin {
         app.add_message::<PlaySound>()
             .add_message::<Thunder>()
             .add_message::<GunReport>()
+            .add_message::<ShellBurst>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
             .init_resource::<muffle::MuffledSounds>()
@@ -138,6 +139,14 @@ pub const DIRECT: u8 = 255;
 /// A vehicle's gun fired a round at `at` (Bevy world).
 #[derive(Message, Debug, Clone, Copy)]
 pub struct GunReport {
+    pub at: bevy::math::DVec3,
+    pub calibre: crate::explosions::Calibre,
+}
+
+/// A gunship's shell burst at `at` (Bevy world): the 105 mm's blast (explosion1-3.ogg), the
+/// 40 mm's sharp bang.
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ShellBurst {
     pub at: bevy::math::DVec3,
     pub calibre: crate::explosions::Calibre,
 }
@@ -399,6 +408,12 @@ const LAUNCH_VOLUME: f32 = 1.0;
 const TANK_GUN: (f32, f32, f32) = (12_000.0, 150.0, 1.0);
 const AUTOCANNON: (f32, f32, f32) = (5_000.0, 50.0, 0.6);
 const LIGHT_GUN: (f32, f32, f32) = (3_000.0, 30.0, 0.35);
+/// The AC-130's guns firing (40mm.ogg, 105mm.ogg), heard from the cockpit 15 to 20 m away.
+const SIDE_40: (f32, f32, f32) = (7_000.0, 40.0, 0.8);
+const SIDE_105: (f32, f32, f32) = (10_000.0, 60.0, 1.0);
+/// Their shells bursting on the ground.
+const BURST_40: (f32, f32, f32) = (4_000.0, 40.0, 0.5);
+const BURST_105: (f32, f32, f32) = (9_000.0, 120.0, 1.0);
 const GUN_FAR: f32 = 800.0;
 /// The flown aircraft's engine in the external views: at full volume within this distance (m)
 /// of the eye, then falling off with 1 / distance.
@@ -440,6 +455,10 @@ struct SoundBank {
     afterburner: Option<Handle<AudioSource>>,
     /// The Sidewinder seeker's loops, by `SeekerTone`.
     aim9: [Option<Handle<AudioSource>>; 3],
+    /// The AC-130's guns firing: the 40 mm, the 105 mm.
+    side_guns: [Option<Handle<AudioSource>>; 2],
+    /// The 105 mm's shells bursting (explosion1-3.ogg).
+    booms: Vec<Handle<AudioSource>>,
 }
 
 /// A playing one-shot sound (one instance per id at a time, like the single-voice driver, but
@@ -644,6 +663,11 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
     bank.afterburner = optional("afterburner.flac");
     bank.aim9 = AIM9_FILES.map(optional);
+    bank.side_guns = [optional("40mm.ogg"), optional("105mm.ogg")];
+    bank.booms = ["explosion1.ogg", "explosion2.ogg", "explosion3.ogg"]
+        .into_iter()
+        .filter_map(optional)
+        .collect();
     commands.insert_resource(bank);
 }
 
@@ -1544,6 +1568,7 @@ fn sam_launches(
 fn gun_reports(
     mut commands: Commands,
     mut fired: MessageReader<GunReport>,
+    mut bursts: MessageReader<ShellBurst>,
     bank: Option<Res<SoundBank>>,
     level: Res<SoundLevel>,
     origin: Res<FloatingOrigin>,
@@ -1551,12 +1576,14 @@ fn gun_reports(
     eye: Query<&GlobalTransform, With<EyeCamera>>,
     settings: Res<crate::settings::Settings>,
     mut muffler: Muffler,
-    // Reports on their way: seconds until heard, position (Bevy world), calibre.
-    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre)>>,
+    // Reports on their way: seconds until heard, position (Bevy world), calibre, a shell's
+    // burst (not a gun firing).
+    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre, bool)>>,
 ) {
     use crate::explosions::Calibre;
     let (Some(bank), Ok(eye_tf)) = (bank.filter(|_| level.0 >= 1), eye.single()) else {
         fired.clear();
+        bursts.clear();
         coming.clear();
         return;
     };
@@ -1565,12 +1592,21 @@ fn gun_reports(
         Calibre::Tank => TANK_GUN,
         Calibre::Cannon => AUTOCANNON,
         Calibre::Small => LIGHT_GUN,
+        Calibre::Mm40 => SIDE_40,
+        Calibre::Mm105 => SIDE_105,
     };
+    let burst_reach = |c: Calibre| if c == Calibre::Mm105 { BURST_105 } else { BURST_40 };
     for g in fired.read() {
         let d = (g.at - ear).length() as f32;
         // Only so many rounds on their way at once (a few columns firing bursts).
         if d < reach(g.calibre).0 && coming.len() < 48 {
-            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre));
+            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre, false));
+        }
+    }
+    for b in bursts.read() {
+        let d = (b.at - ear).length() as f32;
+        if d < burst_reach(b.calibre).0 && coming.len() < 64 {
+            coming.push((d / SPEED_OF_SOUND, b.at, b.calibre, true));
         }
     }
     let dt = virt.delta_secs();
@@ -1583,17 +1619,35 @@ fn gun_reports(
             i += 1;
             continue;
         }
-        let (_, p, calibre) = coming.swap_remove(i);
+        let (_, p, calibre, burst) = coming.swap_remove(i);
         let dist = (p - ear).length() as f32;
-        let Some((near, far)) = bank.guns[(calibre != Calibre::Tank) as usize].as_ref() else {
+        let side = matches!(calibre, Calibre::Mm40 | Calibre::Mm105);
+        let gun = (calibre == Calibre::Mm105) as usize;
+        let sound = if burst && calibre == Calibre::Mm105 {
+            // One of the three blasts.
+            (!bank.booms.is_empty()).then(|| &bank.booms[rand::random_range(0..bank.booms.len())])
+        } else if burst {
+            // The 40 mm's burst: the tank gun's far crack, small.
+            bank.guns[0].as_ref().map(|(_, far)| far)
+        } else if side {
+            bank.side_guns[gun].as_ref()
+        } else {
+            bank.guns[(calibre != Calibre::Tank) as usize]
+                .as_ref()
+                .map(|(near, far)| if dist > GUN_FAR { far } else { near })
+        };
+        let Some(muffled) = sound.and_then(|s| muffler.once(s)) else {
             continue;
         };
-        let Some(muffled) = muffler.once(if dist > GUN_FAR { far } else { near }) else {
-            continue;
-        };
+        let reach = if burst { burst_reach } else { reach };
         let (range, ..) = reach(calibre);
-        // The Shilka's 23 mm: the autocannon's report, smaller and quicker.
-        let speed = if calibre == Calibre::Small { 1.3 } else { rand::random_range(0.95..1.05) };
+        // The Shilka's 23 mm: the autocannon's report, smaller and quicker; a 40 mm burst's
+        // crack quicker still.
+        let speed = match (calibre, burst) {
+            (Calibre::Small, _) => 1.3,
+            (Calibre::Mm40, true) => rand::random_range(1.5..1.8),
+            _ => rand::random_range(0.95..1.05),
+        };
         commands.spawn((
             AudioPlayer(muffled),
             PlaybackSettings {
