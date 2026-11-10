@@ -438,3 +438,8 @@ aircraft-c5 =
         Firemotoret strategisk transportfly
         Flyver ammunition mellem flybaserne
         Tung: langsom til at krænge og rotere
+aircraft-ac130 =
+    .facts =
+        Sidefyrende gunship
+        40 mm- og 105 mm-kanoner rettet med poden
+        Kreds til venstre for at få kanonerne på målet

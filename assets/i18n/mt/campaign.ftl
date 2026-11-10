@@ -318,5 +318,7 @@ brief-task-logistics = Qabbad kaxxa tal-merkanzija ħdejn il-pista tal-ajrudrom 
 brief-task-airlift = Itlaq bil-merkanzija, tirha sal-bażi u ieqaf fuq ir-runway tagħha biex tinħatt
 ce-ch47-only = Is-CH-47 itir ir-rifornimenti u l-loġistika
 ce-c5-only = Is-C-5 itir missjonijiet ta' trasport bl-ajru
+ce-ac130-only = L-AC-130 itir biss appoġġ mill-ajru mill-qrib
+ce-ac130-sams = Is-siti SAM tal-għadu huma qrib wisq tal-mira għall-AC-130
 ce-airlift-c5 = It-trasport bl-ajru jsir bis-C-5
 ce-airlift-no-handover = Ġorr il-merkanzija sal-bażi tagħha int stess

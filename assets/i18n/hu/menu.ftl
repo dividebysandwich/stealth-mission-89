@@ -438,3 +438,8 @@ aircraft-c5 =
         Négyhajtóműves stratégiai szállító repülőgép
         Lőszert szállít a légibázisok között
         Nehéz: lassan dől és emeli az orrát
+aircraft-ac130 =
+    .facts =
+        Oldalra tüzelő tűztámogató repülőgép
+        40 mm-es és 105 mm-es ágyúk a konténerrel célozva
+        Körözzön balra, hogy az ágyúk célba érjenek

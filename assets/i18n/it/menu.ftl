@@ -438,3 +438,8 @@ aircraft-c5 =
         Quadrimotore da trasporto strategico
         Trasporta munizioni tra le basi aeree
         Pesante: lento a rollare e a ruotare
+aircraft-ac130 =
+    .facts =
+        Cannoniera a tiro laterale
+        Cannoni da 40 mm e 105 mm puntati col pod
+        Orbitare a sinistra per puntare i cannoni

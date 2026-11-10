@@ -317,5 +317,7 @@ brief-task-logistics = 钩起机场跑道旁的货箱（在其上方 50 ft 以�
 brief-task-airlift = 载货起飞,飞到基地并在其跑道上停下卸货
 ce-ch47-only = CH-47 执行补给和后勤飞行
 ce-c5-only = C-5 执行空运任务
+ce-ac130-only = AC-130 只执行近距离空中支援
+ce-ac130-sams = 敌方防空导弹阵地离目标太近，AC-130 无法出动
 ce-airlift-c5 = 空运任务由 C-5 执行
 ce-airlift-no-handover = 请亲自把货物运到基地

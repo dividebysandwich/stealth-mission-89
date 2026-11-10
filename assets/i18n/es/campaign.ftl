@@ -317,5 +317,7 @@ brief-task-logistics = Enganche un contenedor de carga junto a la pista del aer�
 brief-task-airlift = Despegue con la carga, llévela a la base y deténgase en su pista para descargarla
 ce-ch47-only = El CH-47 vuela reabastecimiento y logística
 ce-c5-only = El C-5 vuela misiones de transporte aéreo
+ce-ac130-only = El AC-130 solo vuela apoyo aéreo cercano
+ce-ac130-sams = Hay sitios SAM enemigos demasiado cerca del objetivo para el AC-130
 ce-airlift-c5 = El transporte aéreo se vuela en el C-5
 ce-airlift-no-handover = Lleve usted mismo la carga hasta su base

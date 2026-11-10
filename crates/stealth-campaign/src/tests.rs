@@ -3742,7 +3742,11 @@ fn the_player_flies_a_cargo_run_in_the_cargo_jet() {
     // The AI does not fly it meanwhile.
     for _ in 0..(tuning::CARGO_WAIT as usize + 60) {
         let ev = c.tick(1.0, &WorldView::default(), &[]);
-        assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::CargoPlaneLaunched { tag, .. } if *tag == r.tag)));
+        assert!(
+            !ev.iter().any(
+                |e| matches!(e, CampaignEvent::CargoPlaneLaunched { tag, .. } if *tag == r.tag)
+            )
+        );
     }
     // A stop elsewhere delivers nothing; at its base it does.
     c.tick(1.0, &WorldView::default(), &[Report::PlayerLanded { player: P0, base: p }]);
@@ -3773,4 +3777,64 @@ fn a_cargo_run_the_player_crashes_with_is_lost_and_one_he_aborts_goes_back_to_th
     assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
     assert!(c.objective_met(&Objective::Cargo { tag: r.tag }, &Progress::default()));
     assert_eq!(c.available(b, Munition::Harm), 0);
+}
+
+/// The AC-130 flies close air support only, never for the AI, and only with its target out of
+/// the immediate reach of the enemy's SAM sites.
+#[test]
+fn the_gunship_flies_close_support_clear_of_the_sams() {
+    use MissionKind::*;
+    let kinds = [
+        Recon,
+        Sead,
+        Cap,
+        Cas,
+        AntiShip,
+        Strike,
+        Escort,
+        Insertion,
+        Intercept,
+        Defend,
+        Interdiction,
+        Csar,
+        Awacs,
+        Resupply,
+        Logistics,
+        Airlift,
+    ];
+    for k in kinds {
+        assert_eq!(k.flyable_by(Aircraft::AC130), k == Cas, "{k:?}");
+        assert!(!k.suited().contains(&Aircraft::AC130), "the AI would fly it on {k:?}");
+    }
+    let c = campaign("central_europe", 3);
+    let sams: Vec<(i32, i32)> = c
+        .sites
+        .iter()
+        .filter(|s| s.kind == SiteKind::Sam && s.alive() && c.owner(s.object) == Some(Side::Red))
+        .map(|s| (s.x, s.y))
+        .collect();
+    assert!(!sams.is_empty());
+    let mut o = MissionOffer {
+        id: 1,
+        kind: Cas,
+        title: stealth_i18n::text!("ce-ac130-only"),
+        objective: Objective::Cas { place: 0, aaa: Vec::new() },
+        x: sams[0].0 + 64,
+        y: sams[0].1,
+        base: 0,
+        threat: 0,
+        posted: 0.0,
+    };
+    assert!(c.offer_flyable(&o, Aircraft::AC130).is_err());
+    assert!(c.offer_flyable(&o, Aircraft::A10).is_ok());
+    // Somewhere well clear of every SAM site.
+    let clear = (0..64 * 64)
+        .map(|i| ((i % 64) * 512 + 256, (i / 64) * 512 + 256))
+        .find(|&(x, y)| {
+            sams.iter()
+                .all(|&(sx, sy)| dist(sx - x, sy - y) > 2 * crate::missions::GUNSHIP_SAM_CLEARANCE)
+        })
+        .expect("a point clear of the SAMs");
+    (o.x, o.y) = clear;
+    assert!(c.offer_flyable(&o, Aircraft::AC130).is_ok());
 }

@@ -2135,6 +2135,7 @@ fn briefing(
                                     Airframe::A10,
                                     Airframe::AV8B,
                                     Airframe::C5,
+                                    Airframe::AC130,
                                     Airframe::UH60,
                                     Airframe::CH47,
                                     Airframe::AH1Z,
@@ -2142,7 +2143,7 @@ fn briefing(
                                     Airframe::OH58,
                                 ]
                                 .into_iter()
-                                .filter(|a| o.kind.flyable_by(*a));
+                                .filter(|a| c.state().offer_flyable(&o, *a).is_ok());
                                 for a in flyable {
                                     let label = kind_of(a).name();
                                     if ui.selectable_label(b.aircraft == a, label).clicked()

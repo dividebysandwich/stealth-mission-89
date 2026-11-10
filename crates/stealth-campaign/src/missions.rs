@@ -7,7 +7,31 @@ use crate::tuning::*;
 use crate::{CampaignEvent, Report, WorldView};
 use stealth_i18n::{Text, text};
 
+/// The AC-130 takes a mission only with its target this far (map units) from every live enemy
+/// SAM site: out of their immediate reach, where it can orbit.
+pub const GUNSHIP_SAM_CLEARANCE: i32 = 25 * 64;
+
 impl CampaignState {
+    /// Whether `aircraft` may fly offer `o` (else why not): its kind of mission, and for the
+    /// AC-130 its target clear of the enemy's SAM sites.
+    pub fn offer_flyable(&self, o: &MissionOffer, aircraft: Aircraft) -> Result<(), Text> {
+        if !o.kind.flyable_by(aircraft) {
+            return Err(o.kind.not_flyable(aircraft));
+        }
+        if aircraft.spectre() {
+            let sam_near = self.sites.iter().any(|s| {
+                s.kind == SiteKind::Sam
+                    && s.alive()
+                    && self.owner(s.object) == Some(Side::Red)
+                    && dist(s.x - o.x, s.y - o.y) < GUNSHIP_SAM_CLEARANCE
+            });
+            if sam_near {
+                return Err(text!("ce-ac130-sams"));
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn take_mission(
         &mut self,
         player: PlayerId,
@@ -18,9 +42,7 @@ impl CampaignState {
         let Some(o) = self.board.iter().find(|o| o.id == offer).cloned() else {
             return Err(text!("ce-off-board"));
         };
-        if !o.kind.flyable_by(aircraft) {
-            return Err(o.kind.not_flyable(aircraft));
-        }
+        self.offer_flyable(&o, aircraft)?;
         if self.sortie(player).is_some() {
             return Err(text!("ce-already-flying"));
         }
@@ -94,9 +116,7 @@ impl CampaignState {
         let Some(s) = self.sortie(player).cloned() else {
             return Err(text!("ce-not-flying"));
         };
-        if !o.kind.flyable_by(s.aircraft) {
-            return Err(o.kind.not_flyable(s.aircraft));
-        }
+        self.offer_flyable(&o, s.aircraft)?;
         if s.progress.achieved || s.offer.id == offer || !divertible(&o.objective) {
             return Err(text!("ce-no-divert"));
         }
@@ -602,9 +622,9 @@ impl CampaignState {
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Cargo { tag } => self.cargo_lost.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
-            Objective::Resupply { .. } | Objective::Logistics { .. } | Objective::Airlift { .. } => {
-                p.delivered
-            }
+            Objective::Resupply { .. }
+            | Objective::Logistics { .. }
+            | Objective::Airlift { .. } => p.delivered,
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()

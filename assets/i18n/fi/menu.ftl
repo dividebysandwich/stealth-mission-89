@@ -438,3 +438,8 @@ aircraft-c5 =
         Nelimoottorinen strateginen kuljetuskone
         Lentää ammuksia lentotukikohtien välillä
         Raskas: kallistuu ja nostaa nokkaa hitaasti
+aircraft-ac130 =
+    .facts =
+        Sivulle ampuva tykkikone
+        40 mm:n ja 105 mm:n tykit suunnataan säiliöllä
+        Kierrä vasemmalle saadaksesi tykit maaliin

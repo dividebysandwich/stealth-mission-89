@@ -318,5 +318,7 @@ brief-task-logistics = Eine Frachtkiste neben der Piste des Flugplatzes anhänge
 brief-task-airlift = Mit der Fracht starten, zur Basis fliegen und auf ihrer Bahn anhalten, damit sie entladen wird
 ce-ch47-only = Die CH-47 fliegt Nachschub und Logistik
 ce-c5-only = Die C-5 fliegt Lufttransporteinsätze
+ce-ac130-only = Die AC-130 fliegt nur Luftnahunterstützung
+ce-ac130-sams = Feindliche SAM-Stellungen liegen zu nah am Ziel für die AC-130
 ce-airlift-c5 = Lufttransport fliegt die C-5
 ce-airlift-no-handover = Den Frachtflug zur Basis selbst zu Ende fliegen

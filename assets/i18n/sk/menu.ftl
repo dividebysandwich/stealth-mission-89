@@ -438,3 +438,8 @@ aircraft-c5 =
         Štvormotorové strategické transportné lietadlo
         Vozí muníciu medzi leteckými základňami
         Ťažké: pomaly sa nakláňa aj dvíha nos
+aircraft-ac130 =
+    .facts =
+        Bočne strieľajúce palebné lietadlo
+        Kanóny 40 mm a 105 mm mierené kontajnerom
+        Krúžte vľavo, aby kanóny dosiahli

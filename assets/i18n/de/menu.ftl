@@ -438,3 +438,8 @@ aircraft-c5 =
         Vierstrahliger strategischer Transporter
         Fliegt Munition zwischen den Fliegerhorsten
         Schwer: rollt und rotiert langsam
+aircraft-ac130 =
+    .facts =
+        Seitlich feuerndes Kanonenflugzeug
+        40-mm- und 105-mm-Geschütze, gerichtet mit dem Zielbehälter
+        Im Linkskreis fliegen, damit die Geschütze tragen

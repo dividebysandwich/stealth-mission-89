@@ -318,5 +318,7 @@ brief-task-logistics = Piekabiniet kravas kasti pie lidlauka skrejceļa (paraugi
 brief-task-airlift = Paceļieties ar kravu, aizlidojiet uz bāzi un apstājieties uz tās skrejceļa, lai to izkrautu
 ce-ch47-only = CH-47 veic apgādi un loģistiku
 ce-c5-only = C-5 lido gaisa transporta misijās
+ce-ac130-only = AC-130 lido tikai tuvo gaisa atbalstu
+ce-ac130-sams = Ienaidnieka SAM pozīcijas ir pārāk tuvu mērķim AC-130
 ce-airlift-c5 = Gaisa transportu lido ar C-5
 ce-airlift-no-handover = Nogādājiet kravu bāzē paši

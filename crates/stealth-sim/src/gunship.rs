@@ -48,6 +48,8 @@ const HIT_RADIUS: [f64; GUNS] = [3.0, 4.0];
 const BLAST_RADIUS_105: f64 = 10.0;
 /// Damage per hit (a unit has 100 points): (tank, anything else) ranges for each gun.
 pub const SIDE_GUN_DAMAGE: [[(u8, u8); 2]; GUNS] = [[(10, 20), (34, 50)], [(34, 50), (100, 100)]];
+/// A vehicle this close to the pod's ground point (m) is what the fire control leads.
+const POD_ON_VEHICLE: f64 = 30.0;
 /// Shells in flight at most.
 const MAX_SIDE_SHELLS: usize = 96;
 
@@ -356,21 +358,35 @@ impl Sim {
                 mul(axes[2], MUZZLE[gun][2]),
             ),
         );
-        // A vehicle in point track: lead it.
+        // A vehicle in point track, or the vehicle the pod rests on: lead it.
+        let hills = self.hills();
+        let ground = self.pod_ground(pos, &aim);
         let tracked = self
             .pl
             .spi_unit
             .map(|k| k as usize)
-            .filter(|&k| self.units.get(k).is_some_and(|u| !u.destroyed && u.fine.is_some()));
+            .filter(|&k| self.units.get(k).is_some_and(|u| !u.destroyed && u.fine.is_some()))
+            .or_else(|| {
+                let g = ground?;
+                (0..self.units.len())
+                    .filter(|&k| !self.units[k].destroyed && self.units[k].fine.is_some())
+                    .map(|k| {
+                        let m = self.units[k].metres_on(&hills);
+                        (k, (m[0] - g[0]).hypot(m[1] - g[1]))
+                    })
+                    .filter(|&(_, d)| d < POD_ON_VEHICLE)
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .map(|(k, _)| k)
+            });
         let (target, target_vel) = match tracked {
             Some(k) => {
                 let u = &self.units[k];
-                let at = u.metres_on(&self.hills());
+                let at = u.metres_on(&hills);
                 let v = if self.unit_moving(k) { self.convoy_speed() } else { 0.0 };
                 let h = u.fine.map_or(0.0, |f| f.heading as f64);
                 (at, [h.sin() * v, h.cos() * v, 0.0])
             }
-            None => (self.pod_ground(pos, &aim)?, [0.0; 3]),
+            None => (ground?, [0.0; 3]),
         };
         let (dir, tof) = lay(muzzle, vel, target, target_vel, SHELL_SPEED[gun]);
         let (az, el) = body_angles(&axes, dir);

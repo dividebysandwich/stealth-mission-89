@@ -317,5 +317,7 @@ brief-task-logistics = Accrocher une caisse de fret à côté de la piste de l'a
 brief-task-airlift = Décollez avec le fret, amenez-le à la base et arrêtez-vous sur sa piste pour le décharger
 ce-ch47-only = Le CH-47 effectue le ravitaillement et la logistique
 ce-c5-only = Le C-5 effectue des missions de transport aérien
+ce-ac130-only = L'AC-130 ne vole qu'en appui aérien rapproché
+ce-ac130-sams = Des sites SAM ennemis sont trop près de l'objectif pour l'AC-130
 ce-airlift-c5 = Le transport aérien se fait en C-5
 ce-airlift-no-handover = Menez vous-même le fret jusqu'à sa base

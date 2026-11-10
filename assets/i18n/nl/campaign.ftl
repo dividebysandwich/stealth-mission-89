@@ -318,5 +318,7 @@ brief-task-logistics = Haak een vrachtkist naast de baan van het vliegveld (hove
 brief-task-airlift = Stijg op met de vracht, vlieg naar de basis en stop op de baan om te lossen
 ce-ch47-only = De CH-47 vliegt bevoorrading en logistiek
 ce-c5-only = De C-5 vliegt luchttransportmissies
+ce-ac130-only = De AC-130 vliegt alleen luchtsteun
+ce-ac130-sams = Vijandelijke SAM-stellingen liggen te dicht bij het doel voor de AC-130
 ce-airlift-c5 = Luchttransport wordt met de C-5 gevlogen
 ce-airlift-no-handover = Vlieg de vracht zelf naar de basis

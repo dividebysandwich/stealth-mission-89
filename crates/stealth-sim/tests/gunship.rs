@@ -228,3 +228,80 @@ fn the_gunship_carries_its_load() {
     let (flares, chaff, _) = sim.stores();
     assert_eq!((flares, chaff), (gunship::FLARES, gunship::CHAFF));
 }
+
+/// A gunship mission end to end: the column sets off as the gunship arrives, the pod on one of
+/// its vehicles after another from an orbit 2 km off and 3 km up, the guns destroy most of it
+/// and the primary objective is done.
+#[test]
+fn the_gunship_destroys_the_column() {
+    let d = data();
+    let s = MissionSettings {
+        theater: 3,
+        roe: 2,
+        opponents: 0,
+        kind: MissionKind::Strike,
+        land_bases: true,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x77)).unwrap();
+    stealth_mission::gunship::for_gunship(&mut m, &d.gdata);
+    let col = m.column.clone().expect("a column");
+    let mut sim = Sim::with_options(&d.sim, &m, SimOptions { spectre: true, ..Default::default() });
+    let m_per_wu = M_PER_MAP / 32.0;
+    let start = col.route[0];
+    let start_m = [start.0 as f64 * M_PER_MAP, (0x8000 - start.1) as f64 * M_PER_MAP];
+    let to_bam = |rad: f64| (rad / std::f64::consts::TAU * 65536.0).round() as i32;
+    let alt_m = 3000.0;
+    let state = |target: [f64; 3], trigger: bool, next: bool| {
+        // 2 km east of the target, flying north banked left: it is off the left wing.
+        let me = [target[0] + 2000.0, target[1]];
+        let d = [target[0] - me[0], target[1] - me[1], target[2] - alt_m];
+        let pod_heading = to_bam(d[0].atan2(d[1])).rem_euclid(65536) as u16;
+        let pod_pitch = to_bam(d[2].atan2(d[0].hypot(d[1]))) as i16;
+        PlayerState {
+            x: (me[0] / m_per_wu) as i32,
+            y: (me[1] / m_per_wu) as i32,
+            altitude: (alt_m / m_per_wu) as u16,
+            height: (alt_m / m_per_wu) as u16,
+            heading: 0,
+            roll: to_bam(-30f64.to_radians()) as i16,
+            velocity: 180 * 27,
+            gear_up: true,
+            fuel: 10000,
+            hud_visible: true,
+            pod: Some(PodAim { heading: pod_heading, pitch: pod_pitch, ground: None }),
+            cmd: Commands { trigger, next_bay: next, ..Default::default() },
+            ..Default::default()
+        }
+    };
+    // Arrive: the column sets off.
+    sim.step(&state([start_m[0], start_m[1], 0.0], false, false), 15);
+    let hills = sim.hills();
+    let column: Vec<usize> =
+        (0..sim.units().len()).filter(|&k| sim.units()[k].fine.is_some()).collect();
+    assert_eq!(column.len(), col.kinds.len(), "the column did not set off");
+    let (mut done, mut fired, mut hits, mut secs) = (false, 0, 0, 0.0);
+    for frame in 0..15 * 600 {
+        let Some(&k) = column.iter().find(|&&k| !sim.units()[k].destroyed) else { break };
+        let at = sim.units()[k].metres_on(&hills);
+        // The tanks with the 105 mm.
+        let want = sim.units()[k].kind.tank() as u8;
+        let next = frame % 15 == 0 && sim.side_guns().unwrap().gun != want;
+        for e in sim.step(&state(at, !next, next), 15) {
+            match e {
+                SimEvent::SideGunFired { .. } => fired += 1,
+                SimEvent::SideShellImpact { armour: true, .. } => hits += 1,
+                SimEvent::ObjectiveDone { primary: true } => done = true,
+                _ => {}
+            }
+        }
+        secs = frame as f64 / 15.0;
+        if done {
+            break;
+        }
+    }
+    let down = column.iter().filter(|&&k| sim.units()[k].destroyed).count();
+    println!("{down} of {} destroyed in {secs:.0} s: {fired} rounds, {hits} hits", column.len());
+    assert!(done, "objective not done: {down} of {} destroyed", column.len());
+    assert!(fired > hits && hits > 0);
+}

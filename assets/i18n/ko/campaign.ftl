@@ -318,5 +318,7 @@ brief-task-logistics = 공항 활주로 옆의 화물 상자를 걸고 (50 ft �
 brief-task-airlift = 화물을 싣고 이륙해 기지로 날아가 활주로에 정지하여 하역하십시오
 ce-ch47-only = CH-47은 보급과 군수 임무를 비행합니다
 ce-c5-only = C-5는 공수 임무를 수행합니다
+ce-ac130-only = AC-130은 근접 항공 지원만 비행
+ce-ac130-sams = 적 SAM 기지가 목표에 너무 가까워 AC-130이 출격할 수 없음
 ce-airlift-c5 = 공수는 C-5로 수행합니다
 ce-airlift-no-handover = 화물은 직접 기지까지 운송하십시오

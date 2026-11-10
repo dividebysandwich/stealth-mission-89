@@ -318,5 +318,7 @@ brief-task-logistics = 飛行場の滑走路脇の貨物コンテナを吊り上
 brief-task-airlift = 貨物を積んで離陸し、基地まで飛んで滑走路で停止し荷を降ろす
 ce-ch47-only = CH-47 は補給とロジスティクスを担当します
 ce-c5-only = C-5 は空輸任務を担当します
+ce-ac130-only = AC-130は近接航空支援のみ
+ce-ac130-sams = 敵SAMサイトが目標に近すぎてAC-130は出撃できない
 ce-airlift-c5 = 空輸は C-5 で行います
 ce-airlift-no-handover = 貨物は自分で基地まで運んでください

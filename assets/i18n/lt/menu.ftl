@@ -438,3 +438,8 @@ aircraft-c5 =
         Keturių variklių strateginis transporto lėktuvas
         Skraidina šaudmenis tarp aviacijos bazių
         Sunkus: lėtai krypsta ir kelia nosį
+aircraft-ac130 =
+    .facts =
+        Į šoną šaudantis ugnies paramos lėktuvas
+        40 mm ir 105 mm pabūklai, taikomi konteineriu
+        Skriskite ratu į kairę, kad pabūklai pasiektų

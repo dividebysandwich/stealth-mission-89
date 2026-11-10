@@ -438,3 +438,8 @@ aircraft-c5 =
         Avión de transporte estratégico cuatrimotor
         Lleva munición entre las bases aéreas
         Pesado: lento al alabear y al rotar
+aircraft-ac130 =
+    .facts =
+        Cañonero de tiro lateral
+        Cañones de 40 mm y 105 mm apuntados con el pod
+        Orbite a la izquierda para que los cañones apunten

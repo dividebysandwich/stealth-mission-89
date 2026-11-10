@@ -438,3 +438,8 @@ aircraft-c5 =
         Czterosilnikowy strategiczny samolot transportowy
         Przewozi amunicję między bazami lotniczymi
         Ciężki: wolno się przechyla i podrywa nos
+aircraft-ac130 =
+    .facts =
+        Samolot ogniowy strzelający w bok
+        Działa 40 mm i 105 mm celowane zasobnikiem
+        Krąż w lewo, by działa sięgnęły celu

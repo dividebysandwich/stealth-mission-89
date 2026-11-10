@@ -318,5 +318,7 @@ brief-task-logistics = Akaszd be a teherládát a repülőtér kifutója mellett
 brief-task-airlift = Szálljon fel a rakománnyal, vigye a bázisra, és álljon meg a pályáján a kirakodáshoz
 ce-ch47-only = A CH-47 utánpótlást és logisztikát repül
 ce-c5-only = A C-5 légiszállítási küldetéseket repül
+ce-ac130-only = Az AC-130 csak közvetlen légi támogatást repül
+ce-ac130-sams = Az ellenséges SAM-állások túl közel vannak a célhoz az AC-130-hoz
 ce-airlift-c5 = A légiszállítást a C-5 repüli
 ce-airlift-no-handover = A rakományt magának kell a bázisra vinnie

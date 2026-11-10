@@ -318,5 +318,7 @@ brief-task-logistics = Haka fast en lastlåda bredvid flygfältets bana (sväva 
 brief-task-airlift = Lyft med lasten, flyg den till basen och stanna på dess bana för att lossa
 ce-ch47-only = CH-47 flyger underhåll och logistik
 ce-c5-only = C-5 flyger lufttransportuppdrag
+ce-ac130-only = AC-130 flyger bara nära flygunderstöd
+ce-ac130-sams = Fientliga luftvärnsrobotar står för nära målet för AC-130
 ce-airlift-c5 = Lufttransport flygs i C-5
 ce-airlift-no-handover = Flyg själv frakten till basen

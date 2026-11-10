@@ -438,3 +438,8 @@ aircraft-c5 =
         Neljamootoriline strateegiline transpordilennuk
         Veab laskemoona lennubaaside vahel
         Raske: aeglane kalduma ja nina tõstma
+aircraft-ac130 =
+    .facts =
+        Küljelt tulistav suurtükilennuk
+        40 mm ja 105 mm kahurid, suunatud konteineriga
+        Tiirle vasakule, et kahurid ulatuksid

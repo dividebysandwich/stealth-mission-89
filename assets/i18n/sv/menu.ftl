@@ -438,3 +438,8 @@ aircraft-c5 =
         Fyrmotorigt strategiskt transportflygplan
         Flyger ammunition mellan flygbaserna
         Tungt: långsamt att rolla och rotera
+aircraft-ac130 =
+    .facts =
+        Sidoskjutande attackflygplan
+        40 mm- och 105 mm-kanoner riktade med kapseln
+        Cirkla vänster för att få kanonerna på målet

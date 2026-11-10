@@ -438,3 +438,8 @@ aircraft-c5 =
         Čtyřmotorový strategický transportní letoun
         Vozí munici mezi leteckými základnami
         Těžký: pomalu se naklání i zvedá příď
+aircraft-ac130 =
+    .facts =
+        Bočně střílející palebný letoun
+        Kanóny 40 mm a 105 mm mířené kontejnerem
+        Kroužete vlevo, aby kanóny dosáhly

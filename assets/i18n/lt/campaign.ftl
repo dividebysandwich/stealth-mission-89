@@ -318,5 +318,7 @@ brief-task-logistics = Užkabinkite krovinio dėžę šalia aerodromo tako (skla
 brief-task-airlift = Pakilkite su kroviniu, nuskriskite į bazę ir sustokite jos tūpimo take iškrauti
 ce-ch47-only = CH-47 skraido aprūpinimą ir logistiką
 ce-c5-only = C-5 skraido oro transporto misijas
+ce-ac130-only = AC-130 skraido tik artimosios oro paramos misijas
+ce-ac130-sams = Priešo SAM pozicijos per arti taikinio AC-130 lėktuvui
 ce-airlift-c5 = Oro transportas skraidomas C-5
 ce-airlift-no-handover = Krovinį į bazę nuskraidinkite patys

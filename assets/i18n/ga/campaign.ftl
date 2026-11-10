@@ -318,5 +318,7 @@ brief-task-logistics = Crochaigh cónra lasta in aice le rúidbhealach an aerph�
 brief-task-airlift = Éirigh leis an lasta, eitil go dtí an bonn é agus stad ar a rúidbhealach chun é a dhíluchtú
 ce-ch47-only = Eitlíonn an CH-47 soláthar agus lóistíocht
 ce-c5-only = Eitlíonn an C-5 misin aeriompair
+ce-ac130-only = Ní eitlíonn an AC-130 ach tacaíocht aeir dhlúth
+ce-ac130-sams = Tá láithreáin SAM an namhad ró-ghar don sprioc don AC-130
 ce-airlift-c5 = Eitlítear aeriompar sa C-5
 ce-airlift-no-handover = Eitil an lasta go dtí a bhonn tú féin

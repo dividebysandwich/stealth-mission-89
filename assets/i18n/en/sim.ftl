@@ -69,3 +69,7 @@ sim-beacon = Radio beacon bearing { $bearing }
 sim-fired = { $weapon } fired
 sim-released = { $weapon } released
 sim-destroyed-gunfire = { $target } destroyed by gunfire
+sim-gun-selected = { $gun } selected
+sim-gun-gimbal = Guns cannot bear: fly a left-hand orbit
+sim-gun-no-pod = Guns need the targeting pod on the ground
+sim-gun-empty = { $gun } out of ammunition

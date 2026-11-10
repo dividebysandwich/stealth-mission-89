@@ -318,5 +318,7 @@ brief-task-logistics = Kiinnitä rahtilaatikko lentokentän kiitotien viereen (l
 brief-task-airlift = Nouse rahdin kanssa, lennä tukikohtaan ja pysähdy sen kiitotielle purkamaan
 ce-ch47-only = CH-47 lentää huoltoa ja logistiikkaa
 ce-c5-only = C-5 lentää ilmakuljetustehtäviä
+ce-ac130-only = AC-130 lentää vain lähitukea
+ce-ac130-sams = Vihollisen ilmatorjuntaohjukset ovat liian lähellä maalia AC-130:lle
 ce-airlift-c5 = Ilmakuljetukset lennetään C-5:llä
 ce-airlift-no-handover = Lennä rahti itse tukikohtaan

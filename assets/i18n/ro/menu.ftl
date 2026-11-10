@@ -438,3 +438,8 @@ aircraft-c5 =
         Avion de transport strategic cvadrimotor
         Transportă muniție între bazele aeriene
         Greu: lent la ruliu și la rotire
+aircraft-ac130 =
+    .facts =
+        Avion de foc cu tragere laterală
+        Tunuri de 40 mm și 105 mm ochite cu containerul
+        Orbitați spre stânga ca tunurile să bată ținta

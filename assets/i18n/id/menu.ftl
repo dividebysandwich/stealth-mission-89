@@ -438,3 +438,8 @@ aircraft-c5 =
         Pesawat angkut strategis bermesin empat
         Mengangkut amunisi antar pangkalan udara
         Berat: lambat berguling dan mengangkat hidung
+aircraft-ac130 =
+    .facts =
+        Pesawat meriam tembak samping
+        Meriam 40 mm dan 105 mm dibidik dengan pod
+        Orbit ke kiri agar meriam menjangkau

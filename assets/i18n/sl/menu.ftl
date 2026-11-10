@@ -438,3 +438,8 @@ aircraft-c5 =
         Štirimotorno strateško transportno letalo
         Prevaža strelivo med letalskimi bazami
         Težko: počasi se nagiba in dviguje nos
+aircraft-ac130 =
+    .facts =
+        Bočno strelsko ognjeno letalo
+        Topova 40 mm in 105 mm, merjena s kontejnerjem
+        Krožite levo, da topovi dosežejo cilj

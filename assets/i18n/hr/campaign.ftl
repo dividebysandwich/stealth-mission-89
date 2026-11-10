@@ -318,5 +318,7 @@ brief-task-logistics = Zakačite teretni sanduk uz stazu zračne luke (lebdite i
 brief-task-airlift = Poletite s teretom, odletite do baze i zaustavite se na njezinoj stazi da se istovari
 ce-ch47-only = CH-47 leti opskrbu i logistiku
 ce-c5-only = C-5 leti misije zračnog prijevoza
+ce-ac130-only = AC-130 leti samo blisku zračnu potporu
+ce-ac130-sams = Neprijateljski SAM položaji preblizu su cilju za AC-130
 ce-airlift-c5 = Zračni prijevoz leti se C-5
 ce-airlift-no-handover = Sami dovezite teret do baze

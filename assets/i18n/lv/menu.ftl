@@ -438,3 +438,8 @@ aircraft-c5 =
         Četrdzinēju stratēģiskā transporta lidmašīna
         Pārved munīciju starp aviobāzēm
         Smags: lēni sasveras un ceļ degunu
+aircraft-ac130 =
+    .facts =
+        Uz sāniem šaujoša uguns atbalsta lidmašīna
+        40 mm un 105 mm lielgabali, tēmēti ar konteineru
+        Riņķojiet pa kreisi, lai lielgabali tēmētu

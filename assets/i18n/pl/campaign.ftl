@@ -343,5 +343,7 @@ brief-task-logistics = Zaczep skrzynię z ładunkiem obok pasa lotniska (zawis n
 brief-task-airlift = Wystartuj z ładunkiem, dolec do bazy i zatrzymaj się na jej pasie do rozładunku
 ce-ch47-only = CH-47 wykonuje loty zaopatrzeniowe i logistyczne
 ce-c5-only = C-5 wykonuje misje transportu lotniczego
+ce-ac130-only = AC-130 lata tylko bliskie wsparcie lotnicze
+ce-ac130-sams = Wrogie stanowiska SAM są za blisko celu dla AC-130
 ce-airlift-c5 = Transport lotniczy wykonuje C-5
 ce-airlift-no-handover = Dostarcz ładunek do bazy samodzielnie

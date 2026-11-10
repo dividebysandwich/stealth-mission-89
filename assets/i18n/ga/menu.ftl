@@ -438,3 +438,8 @@ aircraft-c5 =
         Aerárthach iompair straitéiseach ceithre inneall
         Iompraíonn sé armlón idir na haerbhonnta
         Trom: mall ag rolladh agus ag rothlú
+aircraft-ac130 =
+    .facts =
+        Gunnaí-eitleán a lámhann ar an taobh
+        Gunnaí 40 mm agus 105 mm dírithe leis an bpod
+        Eitil fithis ar chlé chun na gunnaí a dhíriú

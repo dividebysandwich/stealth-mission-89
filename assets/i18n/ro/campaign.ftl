@@ -318,5 +318,7 @@ brief-task-logistics = Agățați o ladă de marfă lângă pista aerodromului (
 brief-task-airlift = Decolați cu marfa, zburați la bază și opriți pe pista ei pentru descărcare
 ce-ch47-only = CH-47 zboară aprovizionare și logistică
 ce-c5-only = C-5 zboară misiuni de transport aerian
+ce-ac130-only = AC-130 zboară doar sprijin aerian apropiat
+ce-ac130-sams = Pozițiile SAM inamice sunt prea aproape de țintă pentru AC-130
 ce-airlift-c5 = Transportul aerian se zboară cu C-5
 ce-airlift-no-handover = Duceți singur marfa până la bază

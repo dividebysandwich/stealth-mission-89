@@ -438,3 +438,8 @@ aircraft-c5 =
         Quadriréacteur de transport stratégique
         Achemine les munitions entre les bases aériennes
         Lourd : lent en roulis et à la rotation
+aircraft-ac130 =
+    .facts =
+        Avion-canonnière à tir latéral
+        Canons de 40 mm et 105 mm pointés par la nacelle
+        Orbitez à gauche pour pointer les canons

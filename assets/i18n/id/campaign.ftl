@@ -318,5 +318,7 @@ brief-task-logistics = Kaitkan peti kargo di samping landasan lapangan terbang (
 brief-task-airlift = Lepas landas dengan kargo, terbangkan ke pangkalan dan berhenti di landasannya untuk membongkar
 ce-ch47-only = CH-47 menerbangkan pasokan ulang dan logistik
 ce-c5-only = C-5 menerbangkan misi angkutan udara
+ce-ac130-only = AC-130 hanya menerbangkan dukungan udara jarak dekat
+ce-ac130-sams = Situs SAM musuh terlalu dekat dengan sasaran untuk AC-130
 ce-airlift-c5 = Angkutan udara diterbangkan dengan C-5
 ce-airlift-no-handover = Terbangkan sendiri kargo itu ke pangkalannya

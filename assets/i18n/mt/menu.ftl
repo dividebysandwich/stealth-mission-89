@@ -438,3 +438,8 @@ aircraft-c5 =
         Ajruplan strateġiku tat-trasport b'erba' magni
         Iġorr il-munizzjon bejn il-bażijiet tal-ajru
         Tqil: bil-mod biex idur u jgħolli l-imnieħer
+aircraft-ac130 =
+    .facts =
+        Ajruplan tal-kanuni li jispara mill-ġenb
+        Kanuni ta' 40 mm u 105 mm immirati bil-pod
+        Dur lejn ix-xellug biex il-kanuni jilħqu

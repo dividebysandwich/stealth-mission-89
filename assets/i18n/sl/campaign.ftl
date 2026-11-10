@@ -318,5 +318,7 @@ brief-task-logistics = Zataknite tovorni zaboj ob vzletno-pristajalni stezi leta
 brief-task-airlift = Vzletite s tovorom, odletite do baze in se ustavite na njeni stezi za raztovarjanje
 ce-ch47-only = CH-47 leti oskrbo in logistiko
 ce-c5-only = C-5 leti misije zračnega prevoza
+ce-ac130-only = AC-130 leti le neposredno zračno podporo
+ce-ac130-sams = Sovražni položaji SAM so za AC-130 preblizu cilja
 ce-airlift-c5 = Zračni prevoz se leti s C-5
 ce-airlift-no-handover = Tovor do baze pripeljite sami

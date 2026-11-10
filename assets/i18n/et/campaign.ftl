@@ -318,5 +318,7 @@ brief-task-logistics = Haakige lasti kast lennuvälja maandumisraja kõrval (hõ
 brief-task-airlift = Tõuske lastiga õhku, lennake baasi ja peatuge selle rajal mahalaadimiseks
 ce-ch47-only = CH-47 lendab varustust ja logistikat
 ce-c5-only = C-5 lendab õhutranspordi missioone
+ce-ac130-only = AC-130 lendab ainult lähitoetust
+ce-ac130-sams = Vaenlase SAM-positsioonid on AC-130 jaoks sihtmärgile liiga lähedal
 ce-airlift-c5 = Õhutransporti lennatakse C-5-ga
 ce-airlift-no-handover = Lennake kaubalend ise baasi

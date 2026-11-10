@@ -318,5 +318,7 @@ brief-task-logistics = Zavěste nákladní bednu vedle dráhy letiště (visíte
 brief-task-airlift = Vzlétněte s nákladem, doleťte na základnu a zastavte na její dráze, aby se vyložil
 ce-ch47-only = CH-47 létá zásobování a logistiku
 ce-c5-only = C-5 létá mise letecké přepravy
+ce-ac130-only = AC-130 létá jen přímou leteckou podporu
+ce-ac130-sams = Nepřátelská stanoviště SAM jsou pro AC-130 příliš blízko cíle
 ce-airlift-c5 = Leteckou přepravu létá C-5
 ce-airlift-no-handover = Nákladní let do základny dokončete sami
