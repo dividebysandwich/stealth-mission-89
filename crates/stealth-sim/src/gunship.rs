@@ -413,7 +413,6 @@ impl Sim {
             && !self.pl.on_ground;
         if !trigger {
             self.pl.side_guns.warned = false;
-            self.pl.gun_firing = false;
             return;
         }
         let Some(s) = solution.filter(|s| s.in_gimbal) else {
@@ -425,7 +424,6 @@ impl Sim {
                     self.msg(text!("sim-gun-no-pod"));
                 }
             }
-            self.pl.gun_firing = false;
             return;
         };
         if self.pl.side_guns.rounds[gun] <= 0 {
@@ -465,7 +463,6 @@ impl Sim {
         });
         self.pl.side_guns.rounds[gun] -= 1;
         self.pl.side_guns.reload[gun] = (INTERVAL[gun] * fs as f64).round() as i32;
-        self.pl.gun_firing = true;
         self.pl.fired_step = self.steps;
         let dm = |v: f64| (v * 10.0).round() as i32;
         self.emit(SimEvent::SideGunFired {

@@ -87,7 +87,7 @@ pub fn for_gunship(m: &mut Mission, data: &GameData) {
         list.iter().map(|&q| dist(p, q)).fold(f64::MAX, f64::min)
     };
     let r = roll(m);
-    let quiet = r % 2 == 0;
+    let quiet = r.is_multiple_of(2);
     let candidates: Vec<usize> =
         (3..n).filter(|&i| ground_target(&w.objects[i]) && !water(pos(&w.objects[i]))).collect();
     if candidates.is_empty() {

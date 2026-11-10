@@ -97,7 +97,7 @@ fn own_muzzle(a: &Aircraft, pos: &WorldPos, gun: usize) -> (DVec3, Vec3) {
     (at, a.orientation * crate::aircraft::C130_BARREL)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn side_gun_fx(
     mut commands: Commands,
     combat: Res<Combat>,

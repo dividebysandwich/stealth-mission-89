@@ -483,6 +483,10 @@ mod tests {
         // The C-5's, its gear down.
         let g = RemotePilot { raptor: false, galaxy: true, door_anim: 0, gear_up: false, ..r };
         let w = WorldFast { pilots: vec![g.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![g]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![g.clone()]);
+        // The AC-130's.
+        let s = RemotePilot { galaxy: false, spectre: true, ..g };
+        let w = WorldFast { pilots: vec![s.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![s]);
     }
 }
