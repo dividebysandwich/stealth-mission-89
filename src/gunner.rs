@@ -70,6 +70,11 @@ pub struct GunnerState {
     trigger: bool,
     /// The gun the console shows laid (its own or another's).
     shown_gun: u8,
+    /// The AI's orbit: the speed it holds (knots), the throttle it sets (`flight::step_flight`
+    /// flies with it) and its speed hold's integral part.
+    orbit_speed: f32,
+    pub orbit_throttle: f32,
+    throttle_trim: f32,
     /// `--seat gunner@<s>` done.
     test_seat: bool,
 }
@@ -88,8 +93,12 @@ const AIM_REFRESH: f32 = 0.25;
 const ORBIT_BANK: f32 = 0.47;
 /// The orbit is at least this wide (m).
 const ORBIT_LEAST: f32 = 800.0;
-/// The throttle at least while the AI orbits (a slow orbit hangs near the stall in its bank).
-pub const ORBIT_THROTTLE: f32 = 0.7;
+/// The AI's speed hold in the orbit: the speed held is the one the pilot left the seat at, at
+/// least this much over the stall; the throttle by the error (per knot) and its integral (per
+/// knot second).
+const ORBIT_STALL_MARGIN: f32 = 1.3;
+const SPEED_GAIN: f32 = 0.03;
+const SPEED_INTEGRAL: f32 = 0.004;
 /// The guns look this far down from the horizon at least (rad): the autopilot climbs to see
 /// the point from there (the gimbal's 5 degrees under the wing, in the bank).
 const ORBIT_DEPRESSION: f32 = 0.70;
@@ -301,6 +310,8 @@ fn orbit(
     mut player: Query<(&mut Aircraft, &WorldPos), With<Player>>,
     theater: Option<Res<crate::world::Theater>>,
     combat: Option<Res<Combat>>,
+    mut state: ResMut<GunnerState>,
+    time: Res<Time>,
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
     if !manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner()) || a.on_ground {
@@ -324,7 +335,18 @@ fn orbit(
     let centre = held.or(a.orbit).unwrap_or_else(|| ground_at(pos.0));
     let first = a.orbit.is_none();
     a.orbit = Some(centre);
-    let v = (a.knots() * 0.514_444).max(40.0);
+    // The speed held: the one he left the seat at (well clear of the stall), the throttle from
+    // where it was.
+    if first {
+        let stall = a.stall_speed / 27.0;
+        state.orbit_speed = a.knots().max(stall * ORBIT_STALL_MARGIN);
+        state.throttle_trim = (a.set_thrust / 100.0).clamp(0.0, 1.0);
+    }
+    let err = state.orbit_speed - a.knots();
+    let dt = time.delta_secs();
+    state.throttle_trim = (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
+    state.orbit_throttle = (state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0);
+    let v = (state.orbit_speed * 0.514_444).max(40.0);
     let radius = (v * v / (9.81 * ORBIT_BANK.tan())).max(ORBIT_LEAST);
     // High enough over the point to see it under the wing.
     let ground_m = ground_at(centre).y.max(centre.y) as f32;

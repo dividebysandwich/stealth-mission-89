@@ -796,17 +796,18 @@ fn step_flight(
     settings: Res<Settings>,
     theater: Option<Res<Theater>>,
     manning: Option<Res<crate::station::Manning>>,
+    gunner: Res<crate::gunner::GunnerState>,
     mut q: Query<(&mut Aircraft, &mut WorldPos, &mut Transform), With<Player>>,
 ) {
     // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun);
     // at another's gunner's console it is not flown at all (`gunner` puts it where the pilot's
-    // aircraft is), at its own the autopilot flies it on at the orbit throttle.
+    // aircraft is), at its own the autopilot flies it on, the AI holding its speed (`gunner::orbit`).
     if manning.as_deref().is_some_and(|m| m.remote_gunner()) {
         return;
     }
     let mut parked = FlightControls::default();
     if manning.as_deref().is_some_and(|m| m.gunner()) {
-        parked.throttle = Some(crate::gunner::ORBIT_THROTTLE);
+        parked.throttle = Some(gunner.orbit_throttle);
     }
     let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.
