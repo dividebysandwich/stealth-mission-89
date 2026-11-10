@@ -135,6 +135,9 @@ pub fn seat_gunner(
         a.velocity = p.view.velocity as f32;
         a.on_ground = false;
         a.ended = None;
+        // The owner's flight model has the stall: left at the gunner's own last aircraft's, the
+        // view shook with its buffet at the owner's (helicopter's) speeds all the time.
+        a.stall_speed = 0.0;
     }
     if !matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear) {
         view.view = View::Cockpit;

@@ -58,7 +58,10 @@ impl Plugin for StationPlugin {
                     .after(sync_manning)
                     .after(crate::script::ScriptSet)
                     .before(FlightSystems),
-                seat_operator.after(FlightSystems),
+                // On the owner's pose as drawn this frame (the remote clock moves in the combat
+                // step), before the camera reads it: unordered, the eye lagged a frame on some
+                // frames and not on others.
+                seat_operator.after(crate::combat::CombatSystems).before(crate::camera::RigSystems),
                 (
                     buttons,
                     panel,
