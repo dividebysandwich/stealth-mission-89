@@ -33,10 +33,12 @@ def y_of(d):
 
 
 # The fuselage: (station, top, belly, half width) from the side view's silhouette and the plan
-# view's outline (the tail cone's width under the tailplane interpolated).
+# view's outline (the tail cone's width under the tailplane interpolated). The radome is the side
+# view's, which draws it 0.4 m longer than the plan view does (to px 747), round in section.
 BODY = [
-    (-0.15, -0.48, -0.52, 0.02), (-0.08, -0.05, -0.98, 0.30), (0.05, 0.08, -1.17, 0.42), (0.25, 0.15, -1.27, 0.52),
-    (0.5, 0.24, -1.35, 0.60), (0.75, 0.33, -1.43, 0.68), (1.0, 0.58, -1.53, 0.80), (1.25, 0.85, -1.61, 0.93),
+    (-0.41, -0.54, -0.57, 0.02), (-0.38, -0.39, -0.72, 0.16), (-0.30, -0.21, -0.89, 0.33), (-0.23, -0.11, -1.00, 0.43),
+    (-0.15, -0.04, -1.05, 0.49), (0.0, 0.06, -1.15, 0.57), (0.15, 0.11, -1.22, 0.62), (0.3, 0.17, -1.28, 0.66),
+    (0.5, 0.24, -1.35, 0.70), (0.75, 0.33, -1.43, 0.75), (1.0, 0.58, -1.53, 0.80), (1.25, 0.85, -1.61, 0.93),
     (1.5, 1.13, -1.68, 1.04), (1.75, 1.36, -1.74, 1.14), (2.0, 1.55, -1.81, 1.24), (2.45, 1.78, -1.90, 1.43),
     (2.95, 1.90, -2.00, 1.62), (3.45, 1.98, -2.05, 1.80), (3.96, 2.03, -2.06, 1.98), (4.5, 2.07, -2.08, 2.08),
     (5.5, 2.08, -2.08, 2.13), (17.07, 2.08, -2.08, 2.13), (17.57, 2.08, -1.80, 2.13), (18.07, 2.08, -1.63, 2.12),
@@ -90,34 +92,46 @@ def skin_x(d, z):
 
 
 # The flight deck's glazing, cut into the skin where both views hold a pane: side outlines in
-# (station, z), front outlines in (x, z), all convex. The windscreen's four panes (two flat ones
-# either side of the centre post, two corner panes), the eyebrows over them, two side windows and
-# two eyebrows a side, and the lower nose windows by the pilots' feet.
-WINDSCREEN_SIDE = [(0.95, 0.55), (1.55, 0.55), (2.0, 1.6), (1.25, 1.6)]
-SCREEN_PANES = [(0.035, 0.585), (0.615, 1.0)]
-SCREEN_Z = (0.66, 1.24)
-BROW_Z = (1.33, 1.56)
-BROW_PANES = [(0.06, 0.48), (0.52, 0.95)]
-SIDE_WINDOWS = [[(1.55, 0.72), (2.0, 0.72), (2.0, 1.22), (1.75, 1.22)],
-                [(2.06, 0.72), (2.5, 0.72), (2.5, 1.22), (2.06, 1.22)]]
-SIDE_BROWS = [[(1.85, 1.30), (2.15, 1.30), (2.15, 1.52), (1.95, 1.52)],
-              [(2.21, 1.30), (2.5, 1.30), (2.5, 1.50), (2.21, 1.50)]]
-LOWER_SIDE = [(0.92, -0.42), (1.3, -0.42), (1.3, 0.08), (0.98, 0.08)]
-LOWER_FRONT = (0.5, 0.98)
+# (station, z), front outlines in (x, z), all convex. As on the C-5, the windscreen is a band of
+# front panes (the centre one and one either side, no centre post), outlined in the front view
+# and clipped by a box in the side view. The panes either side of the centre one wrap round the
+# nose to the corner posts, which lean in towards the top; their sills drop outboard. Each side
+# then has three slanted side windows and three eyebrows over them (outlined in the side view,
+# aft of the corner post), and a chin window under the outer pane.
+WINDSCREEN_SIDE = [(0.9, 0.5), (2.1, 0.5), (2.1, 1.6), (0.9, 1.6)]
+# The right side's panes in the front view; the centre pane spans the middle.
+SCREEN_CENTRE = [(-0.24, 0.81), (0.24, 0.81), (0.22, 1.20), (-0.22, 1.20)]
+SCREEN_OUTER = [(0.29, 0.80), (0.76, 0.74), (0.62, 1.16), (0.27, 1.19)]
+# The corner post's aft edge in the front view (x, z): the side windows lie outboard of it. The
+# eyebrows lie outboard of `BROW_X`.
+POST = [(0.81, 0.74), (0.67, 1.17)]
+BROW_X = 0.45
+SIDE_WINDOWS = [[(1.60, 0.77), (1.86, 0.74), (2.00, 1.07), (1.78, 1.07)],
+                [(1.93, 0.72), (2.20, 0.69), (2.28, 1.06), (2.07, 1.07)],
+                [(2.27, 0.68), (2.58, 0.655), (2.63, 1.05), (2.35, 1.06)]]
+# The eyebrows sit right on the side windows, their posts carrying on the windows' slant.
+SIDE_BROWS = [[(1.93, 1.14), (2.05, 1.13), (2.14, 1.38), (2.03, 1.38)],
+              [(2.12, 1.13), (2.32, 1.13), (2.38, 1.37), (2.21, 1.38)],
+              [(2.39, 1.13), (2.64, 1.12), (2.67, 1.35), (2.45, 1.36)]]
+# The chin window: a rectangle in the front view, under the outer pane's inner half.
+LOWER_SIDE = [(0.9, 0.28), (1.6, 0.28), (1.6, 0.62), (0.9, 0.62)]
+LOWER_FRONT = (0.53, 0.76)
 
 
 def windows():
     out = []
     side = [(y_of(d), z) for d, z in WINDSCREEN_SIDE]
-    lo, hi = SCREEN_Z
-    blo, bhi = BROW_Z
+    out.append([("front", SCREEN_CENTRE), ("side", side)])
+    (xa, za), (xb, zb) = POST
+    slope = (xb - xa) / (zb - za)
+    z0, z1 = 0.4, 1.3
     for s in (1, -1):
-        for a, b in SCREEN_PANES:
-            out.append([("side", side), ("front", [(s * a, lo), (s * b, lo), (s * b, hi), (s * a, hi)])])
-        for a, b in BROW_PANES:
-            out.append([("side", side), ("front", [(s * a, blo), (s * b, blo), (s * b, bhi), (s * a, bhi)])])
-        far = [(s * 0.8, -2.0), (s * 3.0, -2.0), (s * 3.0, 2.5), (s * 0.8, 2.5)]
-        for w in SIDE_WINDOWS + SIDE_BROWS:
+        out.append([("front", [(s * x, z) for x, z in SCREEN_OUTER]), ("side", side)])
+        beyond = [(s * (xa + slope * (z0 - za)), z0), (s * 3.0, z0), (s * 3.0, z1), (s * (xa + slope * (z1 - za)), z1)]
+        for w in SIDE_WINDOWS:
+            out.append([("side", [(y_of(d), z) for d, z in w]), ("front", beyond)])
+        far = [(s * BROW_X, -2.0), (s * 3.0, -2.0), (s * 3.0, 2.5), (s * BROW_X, 2.5)]
+        for w in SIDE_BROWS:
             out.append([("side", [(y_of(d), z) for d, z in w]), ("front", far)])
         a, b = LOWER_FRONT
         out.append([("side", [(y_of(d), z) for d, z in LOWER_SIDE]),
@@ -178,7 +192,7 @@ def seams():
             seam(g, [(d0, z0), (d1, z0), (d1, z1), (d0, z1), (d0, z0)], s)
         # The ramp and the aft cargo door.
         seam(g, [(19.1, -1.2), (24.9, 1.15)], s)
-        for w in SIDE_WINDOWS + SIDE_BROWS + [LOWER_SIDE]:
+        for w in SIDE_WINDOWS + SIDE_BROWS:
             seam(g, w + w[:1], s)
         # Portholes along the cabin.
         for d in (6.5, 9.6, 15.6, 21.4):

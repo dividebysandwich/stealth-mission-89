@@ -830,10 +830,10 @@ static C5: AircraftSpec = AircraftSpec {
 const C130_LIFT: f32 = 2.74 + RUNWAY_Y;
 /// A point of the AC-130's builder (tools/models/c130.py: metres, x right, y forward (14.8 m
 /// minus the station aft of the nose), z up from the fuselage's centre line) in the aircraft
-/// frame: the model is centred on its length, 0.125 m ahead of the builder's origin.
+/// frame: the model is centred on its length, 0.255 m ahead of the builder's origin.
 const fn c130_point(x: f32, y: f32, z: f32) -> Vec3 {
     const K: f32 = 16.384;
-    model_point(C130_LIFT, x * K, z * K, -(y - 0.125) * K)
+    model_point(C130_LIFT, x * K, z * K, -(y - 0.255) * K)
 }
 /// The AC-130's four exhausts on the nacelles' outboard flanks (c130.py `nacelle`).
 const C130_EXITS: [Vec3; 4] = [
