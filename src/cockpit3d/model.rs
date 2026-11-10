@@ -856,6 +856,7 @@ mod tests {
             (PanelStyle::Ch47, "cockpit_ch47", "build_cockpit_ch47"),
             (PanelStyle::F22, "cockpit_f22", "build_cockpit_f22"),
             (PanelStyle::C5, "cockpit_c5", "build_cockpit_c5"),
+            (PanelStyle::C130, "cockpit_c130", "build_cockpit_c130"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -888,6 +889,7 @@ mod tests {
             ("cockpit_ch47", PanelStyle::Ch47),
             ("cockpit_f22", PanelStyle::F22),
             ("cockpit_c5", PanelStyle::C5),
+            ("cockpit_c130", PanelStyle::C130),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -943,14 +945,15 @@ mod tests {
                     "trackcam_fourth",
                     "label_NEAR",
                 ],
+                PanelStyle::C130 => vec!["screen_lmpd", "ded", "trackcam_left", "label_NEAR"],
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
             for m in required {
                 assert!(materials.contains(&m), "{name}: no material {m}");
             }
             let has = |k: &str| extras.iter().filter(|x| x.get(k).is_some()).count();
-            // A stick, or a yoke (the C-5M's) with its wheel.
-            let yoke = style == PanelStyle::C5;
+            // A stick, or a yoke (the C-5M's, the AC-130's) with its wheel.
+            let yoke = matches!(style, PanelStyle::C5 | PanelStyle::C130);
             assert_eq!(has("stick"), !yoke as usize, "{name}: stick");
             assert_eq!(has("yoke"), yoke as usize, "{name}: yoke");
             assert_eq!(has("yoke_wheel"), yoke as usize, "{name}: yoke wheel");
