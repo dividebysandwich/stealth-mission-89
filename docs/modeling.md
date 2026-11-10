@@ -529,7 +529,7 @@ point, cockpit file, flight model).
 
 The flyable jets (F-16 `aircraft_023`, A-10 `032`, Tornado `045`, AV-8B `047`, F-22 `075`) are
 built by `tools/models/aircraft.py`, the F-117A by `f117.py`, the helicopters by their own scripts
-(`uh60.py`, `ah1z.py`, `comanche.py`, `kiowa.py`, `chinook.py`). These scripts work in metres and
+(`uh60.py`, `ah1z.py`, `comanche.py`, `kiowa.py`, `chinook.py`, `apache.py`). These scripts work in metres and
 scale by `K` = 16.384, and they write every structure described below, so they are the
 reference. Hand-built geometry in those models is overwritten the next time the script runs: change
 the builder instead.
@@ -705,6 +705,12 @@ These are [rotating parts](#rotating-parts) driven by the flight model:
   0 none (no pylon at all), 1 two Hellfires, 2 two Stingers, 3 the gun pod, plus 4 for each
   missile fired. Each combination is its own group, for example `_s26v5`: the Hellfire pylon with
   one missile gone (`tools/models/kiowa.py`).
+- **Apache stores and turrets** (the AH-64D, `tools/models/apache.py`): the wing pylons on slots
+  21 (left outer) to 24 (right outer), 0 nothing, 1 an empty M299 launcher, 2..5 the launcher with
+  1..4 Hellfires; the wingtip Stinger launchers on slots 26 (left) and 27 (right), 0 nothing, 1
+  empty, 2..3 with 1..2 Stingers. The chin gun turns in azimuth (`_part3`, slot 30) with the gun
+  in elevation inside it (`_part4`, slot 31); the TADS turns in azimuth (`_part5`, slot 9). Their
+  rest pose is the fuselage's 5 degree nose-up attitude on the ground, so they turn square to it.
 
 In `aircraft.py`, parts are passed as `Craft(parts=[(geometry about its pivot, pivot, slot[,
 axis])])`, and any other conditional geometry as `Craft(groups=[([(slot, value), ...],
