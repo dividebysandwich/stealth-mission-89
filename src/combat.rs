@@ -823,7 +823,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         while combat.accum >= dt {
             combat.accum -= dt;
             let cmd = std::mem::take(&mut combat.pending);
-            let ps = player_state(
+            let mut ps = player_state(
                 &a,
                 pos,
                 controls.gun,
@@ -834,6 +834,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 &view,
                 cmd,
             );
+            ps.mode_weapons &= !settings.gunner_cockpit;
             client.send_input(&ps);
             // His own rounds fly here; what they hit on his screen he reports.
             combat.sim.set_local_player(&ps);
@@ -912,8 +913,10 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         combat.accum -= dt;
         combat.steps += 1;
         let cmd = std::mem::take(&mut combat.pending);
-        let ps =
+        let mut ps =
             player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
+        // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
+        ps.mode_weapons &= !settings.gunner_cockpit;
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
         combat.prev_fine = fines(&combat.sim);
