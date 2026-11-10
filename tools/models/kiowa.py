@@ -307,6 +307,21 @@ def edge_z(e, y):
     return z0 + (z1 - z0) * (y - y0) / (y1 - y0)
 
 
+def clip_band(poly, z0, z1):
+    """The part of a (y, z) polygon between heights z0 and z1."""
+    def clip(pts, keep, cross):
+        out = []
+        for a, b in zip(pts, pts[1:] + pts[:1]):
+            if keep(a):
+                out.append(a)
+            if keep(a) != keep(b):
+                t = (cross - a[1]) / (b[1] - a[1])
+                out.append((a[0] + (b[0] - a[0]) * t, cross))
+        return out
+    pts = clip(poly, lambda p: p[1] >= z0, z0)
+    return clip(pts, lambda p: p[1] <= z1, z1) if pts else []
+
+
 def frame(level):
     """The cabin's sides round the windows: body panels just outside the glazed loft quads, from
     the belly corner to the roof shoulder, cut round the window outlines; strips the width of
@@ -315,6 +330,8 @@ def frame(level):
     y0, y1 = SIDE_Y
     cuts = {y0, y1} | {p[0] for w in WINDOWS for p in w if y1 < p[0] < y0} | {st[0] for st in STATIONS if y1 < st[0] < y0}
     step = 0.12 if level == 0 else 0.25
+    dz = 0.10 if level == 0 else 0.2
+    levels = [0.3 + dz * k for k in range(int(1.8 / dz) + 1)]
     ys = sorted(cuts, reverse=True)
     stops = []
     for a, b in zip(ys, ys[1:]):
@@ -338,16 +355,33 @@ def frame(level):
             zb0, zb1 = min(max(fb(yb), lo(yb)), hi(yb)), min(max(ft(yb), lo(yb)), hi(yb))
             if za1 - za0 < 0.005 and zb1 - zb0 < 0.005:
                 continue
-            m = max(1, math.ceil(max(za1 - za0, zb1 - zb0) / (0.10 if level == 0 else 0.2)))
-            for j in range(m):
-                t0, t1 = j / m, (j + 1) / m
-                pa0, pa1 = za0 + (za1 - za0) * t0, za0 + (za1 - za0) * t1
-                pb0, pb1 = zb0 + (zb1 - zb0) * t0, zb0 + (zb1 - zb0) * t1
+            # Split up and down at the same heights for every strip, so neighbouring strips
+            # share their vertices on the curved skin (no cracks between them).
+            quad = [(ya, za0), (yb, zb0), (yb, zb1), (ya, za1)]
+            lo_z, hi_z = min(za0, zb0), max(za1, zb1)
+            cuts_z = [lo_z] + [z for z in levels if lo_z < z < hi_z] + [hi_z]
+            for z0, z1 in zip(cuts_z, cuts_z[1:]):
+                band = clip_band(quad, z0, z1)
+                if len(band) < 3:
+                    continue
                 for sx in (-1, 1):
-                    pts = [on_skin(sx, ya, pa0), on_skin(sx, yb, pb0), on_skin(sx, yb, pb1), on_skin(sx, ya, pa1)]
+                    pts = [on_skin(sx, y, z) for y, z in band]
                     uniq = [p for i, p in enumerate(pts) if (p - pts[i - 1]).length > 1e-5]
                     if len(uniq) >= 3:
-                        g.face(uniq, BODY, Vector((0, mid, (pa0 + pb1) / 2)))
+                        g.face(uniq, BODY, Vector((0, mid, (z0 + z1) / 2)))
+            # The piece's edges turned in to the skin (its top and bottom, the frame's fore and
+            # aft ends): seen from inside, the panels standing proud of the glazed quads
+            # otherwise leave slits along the skin.
+            edges = [((ya, za0), (yb, zb0)), ((ya, za1), (yb, zb1))]
+            if ya == stops[0]:
+                edges.append(((ya, za0), (ya, za1)))
+            if yb == stops[-1]:
+                edges.append(((yb, zb0), (yb, zb1)))
+            for (ey0, ez0), (ey1, ez1) in edges:
+                if abs(ey1 - ey0) + abs(ez1 - ez0) > 1e-4:
+                    for sx in (-1, 1):
+                        g.face2([on_skin(sx, ey0, ez0), on_skin(sx, ey1, ez1),
+                                 on_skin(sx, ey1, ez1, 0.0), on_skin(sx, ey0, ez0, 0.0)], BODY)
     # The windshield's centre post down the front, from the nose to the roof.
     for k in range(4):
         s0, s1 = STATIONS[2 + k], STATIONS[3 + k]
