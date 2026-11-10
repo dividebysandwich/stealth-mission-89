@@ -320,6 +320,11 @@ impl FlightConstants {
         Self { fuel: 750.0, bingo: 150.0, heli: Some(heli::Rotor::OH58), ..default() }
     }
 
+    /// AH-64D: the helicopter model; 2500 lb of fuel, bingo 400.
+    pub fn ah64() -> Self {
+        Self { fuel: 2500.0, bingo: 400.0, heli: Some(heli::Rotor::AH64), ..default() }
+    }
+
     /// CH-47F: the helicopter model; 6800 lb of fuel, bingo 1200.
     pub fn ch47() -> Self {
         Self { fuel: 6800.0, bingo: 1200.0, heli: Some(heli::Rotor::CH47), ..default() }

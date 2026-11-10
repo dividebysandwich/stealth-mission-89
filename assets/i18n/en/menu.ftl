@@ -221,6 +221,11 @@ aircraft-ah1z =
         Attack helicopter
         Turret gun, Hellfires, AIM-9
         Gun and Hellfires follow the pod
+aircraft-ah64 =
+    .facts =
+        Attack helicopter, two seats
+        Turret gun, Hellfires, Stingers
+        A second player can fly as gunner
 
 ## Sections and groups
 

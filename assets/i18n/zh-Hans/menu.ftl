@@ -221,6 +221,11 @@ aircraft-ah1z =
         攻击直升机
         炮塔机炮、Hellfire、AIM-9
         机炮和 Hellfire 跟随吊舱的指向
+aircraft-ah64 =
+    .facts =
+        双座攻击直升机
+        炮塔机炮、地狱火、毒刺
+        第二名玩家可作为射手搭乘
 
 ## 分区和分组
 

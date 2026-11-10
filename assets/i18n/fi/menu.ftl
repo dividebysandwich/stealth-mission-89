@@ -221,6 +221,11 @@ aircraft-ah1z =
         Taisteluhelikopteri
         Tornitykki, Hellfire-ohjuksia, AIM-9
         Tykki ja Hellfire-ohjukset seuraavat podia
+aircraft-ah64 =
+    .facts =
+        Taisteluhelikopteri, kaksipaikkainen
+        Tornitykki, Hellfire- ja Stinger-ohjuksia
+        Toinen pelaaja voi lentää ampujana
 
 ## Osiot ja ryhmät
 

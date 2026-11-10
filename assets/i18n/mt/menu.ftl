@@ -221,6 +221,11 @@ aircraft-ah1z =
         Ħelikopter tal-attakk
         Kanun fuq turret, Hellfires, AIM-9
         Il-kanun u l-Hellfires isegwu l-pod
+aircraft-ah64 =
+    .facts =
+        Ħelikopter tal-attakk b'żewġ siġġijiet
+        Kanun fuq turret, Hellfires, Stingers
+        Plejer ieħor jista' jtir bħala gunner
 
 ## Sezzjonijiet u gruppi
 

@@ -221,6 +221,11 @@ aircraft-ah1z =
         Atakos sraigtasparnis
         Bokšteliu valdoma patranka, Hellfire, AIM-9
         Patranka ir Hellfire seka nacelę
+aircraft-ah64 =
+    .facts =
+        Dvivietis atakos sraigtasparnis
+        Bokšteliu valdoma patranka, Hellfire, Stinger
+        Antras žaidėjas gali skristi kaip šaulys
 
 ## Skyriai ir grupės
 

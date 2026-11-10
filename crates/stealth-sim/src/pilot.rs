@@ -59,6 +59,9 @@ pub struct Pilot {
     /// The aircraft is the AC-130 (`SimOptions::spectre` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) spectre: bool,
+    /// The aircraft is the AH-64 (`SimOptions::apache` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) apache: bool,
     /// The AC-130's side guns.
     #[serde(default, skip_serializing_if = "crate::gunship::SideGuns::is_default")]
     pub(crate) side_guns: crate::gunship::SideGuns,
@@ -368,6 +371,7 @@ impl Sim {
             raptor: p0.raptor,
             galaxy: p0.galaxy,
             spectre: p0.spectre,
+            apache: p0.apache,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

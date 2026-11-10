@@ -1277,6 +1277,102 @@ const HELLFIRES: [u8; 1] = [HELLFIRE];
 
 static AH1Z_LAYOUT: Layout =
     Layout { outline: AH1Z_OUTLINE, half_span: 2.32, length: 15.16, hardpoints: &AH1Z_STATIONS };
+/// The AH-64's stations 1 (left wingtip) to 6 (right wingtip): the Stinger launchers on the tips,
+/// M299 launchers of four Hellfires on the four wing pylons.
+static AH64_STATIONS: [Hardpoint; 6] = [
+    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.70, 4.7, Some(5), &STINGERS)
+        .carrying(&STINGER_PAIR),
+    pylon("hardpoint-station-2-left-outer-pylon", "2", -2.35, 4.6, Some(4), &HELLFIRES),
+    pylon("hardpoint-station-3-left-inner-pylon", "3", -1.62, 4.6, Some(3), &HELLFIRES),
+    pylon("hardpoint-station-4-right-inner-pylon", "4", 1.62, 4.6, Some(2), &HELLFIRES),
+    pylon("hardpoint-station-5-right-outer-pylon", "5", 2.35, 4.6, Some(1), &HELLFIRES),
+    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.70, 4.7, Some(0), &STINGERS)
+        .carrying(&STINGER_PAIR),
+];
+const STINGERS: [u8; 1] = [STINGER];
+const STINGER_PAIR: [(u8, u8); 1] = [(STINGER, 2)];
+static AH64_LAYOUT: Layout =
+    Layout { outline: AH64_OUTLINE, half_span: 2.66, length: 15.04, hardpoints: &AH64_STATIONS };
+/// aircraft_077 (tools/models/apache.py) seen from above, without its rotors: half span 2.66
+/// m, length 15.04 m.
+const AH64_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.14, 0.12),
+    (0.12, 0.60),
+    (0.34, 0.62),
+    (0.42, 0.96),
+    (0.80, 1.62),
+    (0.82, 2.78),
+    (0.88, 2.80),
+    (0.82, 3.46),
+    (1.06, 3.48),
+    (1.06, 4.14),
+    (0.88, 4.16),
+    (0.82, 4.56),
+    (1.34, 4.58),
+    (1.40, 3.96),
+    (1.50, 4.22),
+    (1.72, 4.22),
+    (1.78, 3.96),
+    (1.88, 4.12),
+    (2.08, 4.12),
+    (2.16, 3.96),
+    (2.24, 4.22),
+    (2.44, 4.22),
+    (2.54, 3.96),
+    (2.60, 4.56),
+    (2.66, 4.58),
+    (2.66, 5.54),
+    (2.60, 5.60),
+    (1.50, 5.56),
+    (1.32, 5.62),
+    (1.26, 7.62),
+    (1.22, 7.68),
+    (0.68, 7.70),
+    (0.42, 9.42),
+    (0.24, 13.52),
+    (1.68, 13.56),
+    (1.68, 14.54),
+    (0.04, 14.58),
+    (0.00, 15.04),
+    (-0.04, 14.58),
+    (-1.68, 14.54),
+    (-1.68, 13.56),
+    (-0.24, 13.52),
+    (-0.42, 9.42),
+    (-0.68, 7.70),
+    (-1.22, 7.68),
+    (-1.26, 7.62),
+    (-1.32, 5.62),
+    (-1.50, 5.56),
+    (-2.60, 5.60),
+    (-2.66, 5.54),
+    (-2.66, 4.58),
+    (-2.60, 4.56),
+    (-2.54, 3.96),
+    (-2.44, 4.22),
+    (-2.24, 4.22),
+    (-2.16, 3.96),
+    (-2.08, 4.12),
+    (-1.88, 4.12),
+    (-1.78, 3.96),
+    (-1.72, 4.22),
+    (-1.50, 4.22),
+    (-1.40, 3.96),
+    (-1.34, 4.58),
+    (-0.82, 4.56),
+    (-0.88, 4.16),
+    (-1.06, 4.14),
+    (-1.06, 3.48),
+    (-0.82, 3.46),
+    (-0.88, 2.80),
+    (-0.82, 2.78),
+    (-0.80, 1.62),
+    (-0.42, 0.96),
+    (-0.34, 0.62),
+    (-0.12, 0.60),
+    (-0.14, 0.12),
+];
 /// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires or six
 /// Stingers on its inside.
 static RAH66_STATIONS: [Hardpoint; 2] =
@@ -1366,6 +1462,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F22 => &F22_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
+        AircraftKind::AH64 => &AH64_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
         AircraftKind::OH58 => &OH58_LAYOUT,
         AircraftKind::CH47 => &CH47_LAYOUT,
@@ -1395,7 +1492,7 @@ pub const LOADOUT_FILE: &str = "loadout.json";
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado, the
     /// A-10 and the AV-8B each on the first free pair of stations that carries it, and Sidewinders on the free
-    /// wingtips or rails; the AH-1Z full, the RAH-66 with Hellfires in both bays, the OH-58D
+    /// wingtips or rails; the AH-1Z and the AH-64 full, the RAH-66 with Hellfires in both bays, the OH-58D
     /// with Hellfires on the left and a gun pod on the right.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
         let realistic = m.settings.plane == Plane::Lockheed;
@@ -1429,7 +1526,7 @@ impl PlannedLoadout {
             }
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z | AircraftKind::RAH66 => {
+            AircraftKind::AH1Z | AircraftKind::AH64 | AircraftKind::RAH66 => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }

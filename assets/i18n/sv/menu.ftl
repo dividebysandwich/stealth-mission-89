@@ -221,6 +221,11 @@ aircraft-ah1z =
         Attackhelikopter
         Kanon i torn, Hellfire, AIM-9
         Kanonen och Hellfire följer pod:en
+aircraft-ah64 =
+    .facts =
+        Tvåsitsig attackhelikopter
+        Kanon i torn, Hellfire, Stinger
+        En andra spelare kan flyga som skytt
 
 ## Sektioner och grupper
 

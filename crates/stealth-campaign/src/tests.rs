@@ -1656,6 +1656,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::OH58,
         Aircraft::CH47,
         Aircraft::F22,
+        Aircraft::AH64,
     ];
     for k in kinds {
         for last in all {
@@ -1668,6 +1669,9 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Interdiction.pick(Aircraft::AH1Z), Aircraft::F117);
     assert_eq!(Strike.pick(Aircraft::F16), Aircraft::F16);
     assert_eq!(Cas.pick(Aircraft::AH1Z), Aircraft::AH1Z);
+    assert_eq!(Cas.pick(Aircraft::AH64), Aircraft::AH64);
+    assert!(!MissionKind::Insertion.flyable_by(Aircraft::AH64));
+    assert!(Aircraft::AH64.gunner_seat());
     assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
     assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
     assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);
@@ -3210,7 +3214,7 @@ fn the_ai_picks_the_aircraft_for_the_job() {
     assert_eq!(pick_blue(MissionKind::Cap, 0, 0, false), F16);
     // Close to the base: the helicopters.
     assert_eq!(pick_blue(MissionKind::Recon, 0, 0, true), OH58);
-    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, true), AH1Z);
+    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, true), AH64);
     assert_eq!(pick_blue(MissionKind::Cas, heavy, 0, true), RAH66);
     // Else the one made for it.
     assert_eq!(pick_blue(MissionKind::Cas, 0, 0, false), A10);

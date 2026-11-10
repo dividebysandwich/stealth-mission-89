@@ -221,6 +221,11 @@ aircraft-ah1z =
         Hélicoptère d'attaque
         Canon en tourelle, Hellfire, AIM-9
         Le canon et les Hellfire suivent la nacelle
+aircraft-ah64 =
+    .facts =
+        Hélicoptère d'attaque biplace
+        Canon en tourelle, Hellfire, Stinger
+        Un second joueur peut voler comme tireur
 
 ## Sections et groupes
 

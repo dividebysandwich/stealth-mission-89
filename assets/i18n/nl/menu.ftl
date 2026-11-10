@@ -221,6 +221,11 @@ aircraft-ah1z =
         Gevechtshelikopter
         Kanon in een koepel, Hellfires, AIM-9
         Kanon en Hellfires volgen de pod
+aircraft-ah64 =
+    .facts =
+        Tweezits gevechtshelikopter
+        Kanon in een koepel, Hellfires, Stingers
+        Een tweede speler kan meevliegen als schutter
 
 ## Secties en groepen
 

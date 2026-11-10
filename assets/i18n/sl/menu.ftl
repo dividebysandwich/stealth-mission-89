@@ -221,6 +221,11 @@ aircraft-ah1z =
         Bojni helikopter
         Topovska kupola, Hellfire, AIM-9
         Top in Hellfire sledita podu
+aircraft-ah64 =
+    .facts =
+        Dvosedežni bojni helikopter
+        Topovska kupola, Hellfire, Stinger
+        Drugi igralec lahko leti kot strelec
 
 ## Razdelki in skupine
 

@@ -340,7 +340,7 @@ mod tests {
     fn units_build_the_tables() {
         let t = shipped();
         assert_eq!(t.threats.len(), 27);
-        assert_eq!(t.aircraft.len(), 44);
+        assert_eq!(t.aircraft.len(), 45);
         assert_eq!(t.missiles.len(), 52);
         assert_eq!((t.weapons.len(), t.compat.len()), (24, 24));
         assert!(

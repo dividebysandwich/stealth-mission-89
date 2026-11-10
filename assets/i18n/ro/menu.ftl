@@ -221,6 +221,11 @@ aircraft-ah1z =
         Elicopter de atac
         Tun în turelă, Hellfire, AIM-9
         Tunul și Hellfire urmăresc nacela
+aircraft-ah64 =
+    .facts =
+        Elicopter de atac biloc
+        Tun în turelă, Hellfire, Stinger
+        Un al doilea jucător poate zbura ca trăgător
 
 ## Secțiuni și grupuri
 

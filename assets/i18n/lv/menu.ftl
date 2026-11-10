@@ -221,6 +221,11 @@ aircraft-ah1z =
         Uzbrukuma helikopters
         Torņa lielgabals, Hellfire, AIM-9
         Lielgabals un Hellfire seko pod
+aircraft-ah64 =
+    .facts =
+        Divvietīgs uzbrukuma helikopters
+        Torņa lielgabals, Hellfire, Stinger
+        Otrs spēlētājs var lidot kā šāvējs
 
 ## Sadaļas un grupas
 

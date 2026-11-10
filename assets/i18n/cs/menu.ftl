@@ -221,6 +221,11 @@ aircraft-ah1z =
         Bitevní vrtulník
         Kanón ve věži, Hellfire, AIM-9
         Kanón a Hellfire sledují kontejner
+aircraft-ah64 =
+    .facts =
+        Bitevní vrtulník, dvoumístný
+        Kanón ve věži, Hellfire, Stinger
+        Druhý hráč může letět jako střelec
 
 ## Sekce a skupiny
 

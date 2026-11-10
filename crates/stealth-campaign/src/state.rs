@@ -48,6 +48,8 @@ pub enum Aircraft {
     C5,
     /// The AC-130 gunship: flown by players only, on close air support away from the SAMs.
     AC130,
+    /// The AH-64 Apache: an attack helicopter with a gunner's seat (multi-crew).
+    AH64,
 }
 
 impl Aircraft {
@@ -66,13 +68,19 @@ impl Aircraft {
             Aircraft::F22 => "F-22A",
             Aircraft::C5 => "C-5",
             Aircraft::AC130 => "AC-130",
+            Aircraft::AH64 => "AH-64D",
         }
     }
 
     pub fn helicopter(self) -> bool {
         matches!(
             self,
-            Aircraft::UH60 | Aircraft::AH1Z | Aircraft::RAH66 | Aircraft::OH58 | Aircraft::CH47
+            Aircraft::UH60
+                | Aircraft::AH1Z
+                | Aircraft::RAH66
+                | Aircraft::OH58
+                | Aircraft::CH47
+                | Aircraft::AH64
         )
     }
 
@@ -86,9 +94,10 @@ impl Aircraft {
         matches!(self, Aircraft::UH60 | Aircraft::CH47)
     }
 
-    /// It has a gunner's console another player can sit at (multi-crew).
+    /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console,
+    /// the AH-64's front cockpit.
     pub fn gunner_seat(self) -> bool {
-        self == Aircraft::AC130
+        matches!(self, Aircraft::AC130 | Aircraft::AH64)
     }
 
     /// The cargo jet: flies the munitions between the airbases and nothing else.
@@ -301,9 +310,9 @@ impl MissionKind {
             MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22],
             MissionKind::Sead => &[F16, Tornado, F117, F22],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22],
-            MissionKind::Intercept => &[F16, F22, AH1Z, RAH66, OH58],
-            MissionKind::Cas => &[A10, AV8B, AH1Z, RAH66, OH58, F16, Tornado, F117],
-            MissionKind::Escort => &[AH1Z, RAH66, OH58, AV8B, F16, F22, A10],
+            MissionKind::Intercept => &[F16, F22, AH1Z, AH64, RAH66, OH58],
+            MissionKind::Cas => &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, Tornado, F117],
+            MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, A10],
             MissionKind::Insertion | MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
             MissionKind::Airlift => &[C5],

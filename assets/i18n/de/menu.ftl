@@ -221,6 +221,11 @@ aircraft-ah1z =
         Kampfhubschrauber
         Turmkanone, Hellfire, AIM-9
         Kanone und Hellfire folgen dem Pod
+aircraft-ah64 =
+    .facts =
+        Kampfhubschrauber, zweisitzig
+        Turmkanone, Hellfire, Stinger
+        Ein zweiter Spieler kann als Schütze mitfliegen
 
 ## Abschnitte und Gruppen
 

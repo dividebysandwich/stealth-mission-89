@@ -221,6 +221,11 @@ aircraft-ah1z =
         Jurišni helikopter
         Top u kupoli, Hellfire, AIM-9
         Top i Hellfire prate pod
+aircraft-ah64 =
+    .facts =
+        Jurišni helikopter, dvosjed
+        Top u kupoli, Hellfire, Stinger
+        Drugi igrač može letjeti kao strijelac
 
 ## Odjeljci i skupine
 

@@ -269,6 +269,10 @@ pub struct HudCues {
     /// gun's pipper (selected or not), or a fixed gun's while selected.
     pub helmet_lock: Option<(Vec3, bool)>,
     pub turret_gun: Option<GunCue>,
+    /// The AH-64's chin gun and TADS as they point (azimuth right and elevation up in the
+    /// aircraft frame, rad), for its model.
+    pub chin_gun: Option<(f32, f32)>,
+    pub tads_azimuth: Option<f32>,
     /// Unguided bomb selected in AG: the CCIP or CCRP solution.
     pub bomb: Option<BombCue>,
     /// CBU-105 selected in AG: its burst altitude and release cues.

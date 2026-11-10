@@ -256,7 +256,7 @@ fn ground_munition(
     f: &stealth_sim::campaign::CampaignFlight,
     side: Side,
 ) -> Munition {
-    use stealth_sim::ai_missions::{A10, AH1Z, OH58, RAH66};
+    use stealth_sim::ai_missions::{A10, AH1Z, AH64, OH58, RAH66};
     if harm(sim, f) {
         return if side == Side::Blue { Munition::Harm } else { Munition::As11 };
     }
@@ -269,7 +269,7 @@ fn ground_munition(
             .and_then(|t| sim.objects().get(t as usize))
             .is_some_and(|o| o.flags & oflags::SHIP != 0);
     match spec {
-        AH1Z | RAH66 | OH58 => Munition::Hellfire,
+        AH1Z | AH64 | RAH66 | OH58 => Munition::Hellfire,
         _ if ship => Munition::Harpoon,
         A10 if f.strike_unit => Munition::Cbu105,
         _ if f.strike_unit => Munition::Agm65,

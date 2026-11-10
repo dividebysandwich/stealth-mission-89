@@ -221,6 +221,11 @@ aircraft-ah1z =
         Śmigłowiec szturmowy
         Działko w wieżyczce, Hellfire, AIM-9
         Działko i Hellfire podążają za zasobnikiem
+aircraft-ah64 =
+    .facts =
+        Dwumiejscowy śmigłowiec szturmowy
+        Działko w wieżyczce, Hellfire, Stinger
+        Drugi gracz może lecieć jako strzelec
 
 ## Sekcje i grupy
 

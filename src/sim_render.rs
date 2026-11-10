@@ -1425,6 +1425,7 @@ fn world_model_state(
     player: Query<&Aircraft, With<Player>>,
     flight: Option<Res<crate::flight::FlightConstants>>,
     settings: Res<crate::settings::Settings>,
+    cues: Option<Res<crate::hud::HudCues>>,
 ) {
     // Slot 15 += 1152 and slot 16 += 1024 per sim frame time unit, ~15 per second.
     let dt = time.delta_secs() * crate::combat::FS as f32;
@@ -1471,6 +1472,16 @@ fn world_model_state(
     // The OH-58D's pylons and what is left on them (slots 26 left, 27 right).
     let pylons = combat.as_ref().map_or([0; 2], |c| c.sim.pylon_looks(c.sim.bays().0));
     let (left_pylon, right_pylon) = crate::aircraft::PYLON_SLOTS;
+    // The AH-64's stores on its stations, its chin gun and TADS as they point.
+    let apache = settings.aircraft.apache().then(|| {
+        let stores = crate::aircraft::apache_store_values(
+            combat.as_ref().map_or(&[][..], |c| c.sim.bays().0).iter().copied(),
+        );
+        let (az, el) = cues.as_ref().and_then(|c| c.chin_gun).unwrap_or((0.0, 0.0));
+        let gun = crate::aircraft::apache_gun_values(az, el);
+        let tads = cues.as_ref().and_then(|c| c.tads_azimuth).unwrap_or(0.0);
+        (stores, gun, crate::aircraft::apache_gun_values(tads, 0.0).0)
+    });
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1520,7 +1531,7 @@ fn world_model_state(
                 (s.0[sr], s.0[sl]) = (r, l);
             }
         }
-        let v = [
+        let mut v = vec![
             (5, (c072 != 0) as i16),
             (6, c072 - 1),
             (7, brakes),
@@ -1537,6 +1548,12 @@ fn world_model_state(
             (left_pylon, pylons[0] as i16),
             (right_pylon, pylons[1] as i16),
         ];
+        if let Some((stores, (gun_az, gun_el), tads)) = apache {
+            v.retain(|&(k, _)| !crate::aircraft::APACHE_STORE_SLOTS.contains(&k));
+            v.extend(crate::aircraft::APACHE_STORE_SLOTS.into_iter().zip(stores));
+            let (az, el) = crate::aircraft::APACHE_GUN_SLOTS;
+            v.extend([(az, gun_az), (el, gun_el), (crate::aircraft::APACHE_TADS_SLOT, tads)]);
+        }
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
                 s.0[k] = x;
@@ -1892,6 +1909,29 @@ pub(crate) fn sync_remote_pilots(
                     let v = (p.pylons[0] as i16, p.pylons[1] as i16);
                     if (s.0[l], s.0[r]) != v {
                         (s.0[l], s.0[r]) = v;
+                    }
+                }
+                // An AH-64's stores, and its chin gun where it fires (else straight ahead).
+                if p.apache {
+                    let stations = p
+                        .stores
+                        .iter()
+                        .map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
+                    let stores = crate::aircraft::apache_store_values(stations);
+                    let bam = |b: i32| (b as i16) as f32 / 65536.0 * std::f32::consts::TAU;
+                    let (az, el) = p.gun_aim.map_or((0.0, 0.0), |(h, e)| {
+                        (bam(h - p.view.heading), bam(e - p.view.pitch))
+                    });
+                    let (gun_az, gun_el) = crate::aircraft::apache_gun_values(az, el);
+                    let (sa, se) = crate::aircraft::APACHE_GUN_SLOTS;
+                    for (k, x) in crate::aircraft::APACHE_STORE_SLOTS
+                        .into_iter()
+                        .zip(stores)
+                        .chain([(sa, gun_az), (se, gun_el)])
+                    {
+                        if s.0[k] != x {
+                            s.0[k] = x;
+                        }
                     }
                 }
                 // His nozzles, as his flight model has them.

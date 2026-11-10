@@ -221,6 +221,11 @@ aircraft-ah1z =
         Támadóhelikopter
         Forgótornyos gépágyú, Hellfire-ok, AIM-9
         Az ágyú és a Hellfire-ok a pod-ot követik
+aircraft-ah64 =
+    .facts =
+        Kétüléses támadóhelikopter
+        Forgótornyos gépágyú, Hellfire-ok, Stingerek
+        Egy második játékos fegyverkezelőként repülhet
 
 ## Szakaszok és csoportok
 

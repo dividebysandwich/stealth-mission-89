@@ -201,6 +201,7 @@ pub fn ai_spec(aircraft: Aircraft) -> i32 {
         Aircraft::OH58 => t::OH58,
         Aircraft::CH47 => t::CH47,
         Aircraft::F22 => t::F22,
+        Aircraft::AH64 => t::AH64,
         // Player-only: the AI flies it (a player who left it) as a transport.
         Aircraft::C5 | Aircraft::AC130 => stealth_sim::munitions::C5,
     }

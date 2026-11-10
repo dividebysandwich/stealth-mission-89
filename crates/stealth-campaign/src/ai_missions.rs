@@ -179,7 +179,7 @@ pub fn pick_blue(kind: MissionKind, sam: i32, air: usize, close: bool) -> Aircra
                 if heavy_sam {
                     RAH66
                 } else {
-                    AH1Z
+                    AH64
                 }
             }
             MissionKind::Sead if heavy_sam => {

@@ -322,6 +322,7 @@ fn start_combat(
     let raptor = settings.aircraft == crate::aircraft::AircraftKind::F22;
     let galaxy = settings.aircraft == crate::aircraft::AircraftKind::C5;
     let spectre = settings.aircraft.spectre();
+    let apache = settings.aircraft.apache();
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -337,6 +338,7 @@ fn start_combat(
             raptor,
             galaxy,
             spectre,
+            apache,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -354,6 +356,7 @@ fn start_combat(
             raptor,
             galaxy,
             spectre,
+            apache,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -1135,6 +1138,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "OH-58D"
     } else if p.chinook {
         "CH-47F"
+    } else if p.apache {
+        "AH-64D"
     } else if p.gunship {
         "AH-1Z"
     } else if p.helicopter {
@@ -1992,6 +1997,15 @@ fn publish(
         if helmet_gun {
             new_cues.turret_gun = Some(cue);
         }
+    }
+    if settings.aircraft.apache() {
+        // The chin gun along the sight it is slaved to (as `Sim::turret_aim`), the TADS along
+        // the pod's line of sight.
+        let body = |d: Vec3| a.orientation.inverse() * d;
+        let sight =
+            if sim.gun_on_pod() { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
+        new_cues.chin_gun = sight.map(|d| crate::avionics::pod_angles(turret_dir(body(d))));
+        new_cues.tads_azimuth = mfd.av.tgp.los.map(|d| crate::avionics::pod_angles(body(d)).0);
     }
     *cam = info;
     if let Some(g) = sim.side_guns() {

@@ -221,6 +221,11 @@ aircraft-ah1z =
         Ründekopter
         Tornikahur, Hellfire'id, AIM-9
         Kahur ja Hellfire'id järgivad pod'i
+aircraft-ah64 =
+    .facts =
+        Ründekopter, kahekohaline
+        Tornikahur, Hellfire'id, Stingerid
+        Teine mängija saab lennata laskurina
 
 ## Jaotised ja rühmad
 

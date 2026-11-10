@@ -398,6 +398,7 @@ impl Sim {
         let raptor = opts.raptor;
         let galaxy = opts.galaxy;
         let spectre = opts.spectre;
+        let apache = opts.apache;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -447,6 +448,7 @@ impl Sim {
                 raptor,
                 galaxy,
                 spectre,
+                apache,
                 side_guns: Default::default(),
                 cargo_tag: None,
                 unload: [0; 2],

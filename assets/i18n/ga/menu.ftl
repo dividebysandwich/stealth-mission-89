@@ -221,6 +221,11 @@ aircraft-ah1z =
         Héileacaptar ionsaithe
         Gunna túrláin, Hellfire, AIM-9
         Leanann an gunna agus na Hellfire an pod
+aircraft-ah64 =
+    .facts =
+        Héileacaptar ionsaithe, dhá shuíochán
+        Gunna túrláin, Hellfire, Stinger
+        Is féidir le dara imreoir eitilt mar ghunnadóir
 
 ## Rannáin agus grúpaí
 

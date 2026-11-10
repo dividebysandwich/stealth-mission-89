@@ -653,6 +653,10 @@ pub struct Airframe {
     /// radar return.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub spectre: bool,
+    /// The AH-64 Apache (an attack helicopter with a turret gun, as `gunship`): only its look
+    /// differs from the AH-1Z's; it has a gunner's seat ([`crate::crew`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub apache: bool,
 }
 
 /// Landing option.
@@ -721,6 +725,9 @@ pub struct SimOptions {
     /// with the targeting pod ([`crate::gunship`]), a big radar return.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub spectre: bool,
+    /// The aircraft is the AH-64 Apache: seen as one by the other pilots, a gunner's seat.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub apache: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -773,6 +780,7 @@ impl Default for SimOptions {
             raptor: false,
             galaxy: false,
             spectre: false,
+            apache: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

@@ -231,6 +231,9 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         AircraftKind::A10 => pointer_scales(c, w, top, bottom - 14.0, e),
         AircraftKind::AV8B => harrier(c, w, top, e),
         AircraftKind::AH1Z => horizontal_pointers(c, w, top, e),
+        AircraftKind::AH64 => {
+            thin_bars(c, (8.0, top, w - 8.0, bottom - 12.0), e, &ah64_groups(e));
+        }
         AircraftKind::OH58 => half_dials(c, w, top, e),
         AircraftKind::RAH66 | AircraftKind::F22 => thick_bars(c, w, top, bottom - 12.0, e),
         AircraftKind::C5 => four_columns(c, w, top, bottom - 12.0, e, JET_LABELS),
@@ -314,6 +317,45 @@ fn uh60_groups(e: &Eng) -> Vec<Group> {
             bars: pair(e, e.oil_t, OIL_T),
             scale: (0.0, 160.0),
             step: 20.0,
+            mark: None,
+        },
+    ]
+}
+
+/// The AH-64D's engine page: the rotor and power turbine speeds (NP), torque, TGT and the gas
+/// producer speed (NG).
+fn ah64_groups(e: &Eng) -> Vec<Group> {
+    vec![
+        Group {
+            name: "NP/NR",
+            bars: vec![
+                ("1", e.fan[0], e.col(0, e.fan[0], NR)),
+                ("R", e.nr, NR.colour(e.nr)),
+                ("2", e.fan[1], e.col(1, e.fan[1], NR)),
+            ],
+            scale: (0.0, 120.0),
+            step: 10.0,
+            mark: Some(101.0),
+        },
+        Group {
+            name: "TQ",
+            bars: pair(e, e.tq, TQ),
+            scale: (0.0, 130.0),
+            step: 10.0,
+            mark: Some(100.0),
+        },
+        Group {
+            name: "TGT",
+            bars: pair(e, e.temp, TGT),
+            scale: (0.0, 1000.0),
+            step: 100.0,
+            mark: Some(867.0),
+        },
+        Group {
+            name: "NG",
+            bars: pair(e, e.core, NG),
+            scale: (0.0, 110.0),
+            step: 10.0,
             mark: None,
         },
     ]

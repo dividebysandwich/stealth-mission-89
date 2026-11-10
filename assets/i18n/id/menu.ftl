@@ -221,6 +221,11 @@ aircraft-ah1z =
         Helikopter serang
         Kanon turret, Hellfire, AIM-9
         Kanon dan Hellfire mengikuti pod
+aircraft-ah64 =
+    .facts =
+        Helikopter serang dua kursi
+        Kanon turret, Hellfire, Stinger
+        Pemain kedua bisa terbang sebagai penembak
 
 ## Bagian dan kelompok
 

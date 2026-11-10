@@ -90,6 +90,7 @@
         (id: "rah66", name: "RAH-66", nato: "Comanche", kmh: 324, radius_km: 280, agility: 3, radar: "none", model: 46, kind: Helicopter, stealth: 50),
         (id: "oh58", name: "OH-58D", nato: "Kiowa", kmh: 222, radius_km: 210, agility: 2, radar: "none", model: 48, kind: Helicopter),
         (id: "ch47", name: "CH-47F", nato: "Chinook", kmh: 315, radius_km: 370, agility: 1, radar: "none", model: 49, kind: Helicopter),
+        (id: "ah64", name: "AH-64D", nato: "Apache", kmh: 293, radius_km: 240, agility: 2, radar: "none", model: 77, kind: Helicopter),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,

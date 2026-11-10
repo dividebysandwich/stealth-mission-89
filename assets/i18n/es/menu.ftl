@@ -221,6 +221,11 @@ aircraft-ah1z =
         Helicóptero de ataque
         Cañón en torreta, Hellfire, AIM-9
         El cañón y los Hellfire siguen al pod
+aircraft-ah64 =
+    .facts =
+        Helicóptero de ataque biplaza
+        Cañón en torreta, Hellfire, Stinger
+        Un segundo jugador puede volar de artillero
 
 ## Secciones y grupos
 
