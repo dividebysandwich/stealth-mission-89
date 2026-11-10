@@ -14,8 +14,8 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::hotas::{
-    AxisControl, ButtonTarget, Hotas, InputConfig, MouseInput, Source, VrGrab, VrHand, VrInput,
-    action_name, default_vr_buttons,
+    AxisControl, ButtonTarget, Device, Hotas, InputConfig, MouseInput, Source, VrGrab, VrHand,
+    VrInput, action_name, default_vr_buttons,
 };
 use crate::input::{Action, Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
@@ -135,9 +135,9 @@ struct Capture {
 }
 
 impl Capture {
-    fn new(what: Binding, hotas: &Hotas) -> Self {
+    fn new<'a>(what: Binding, devices: impl IntoIterator<Item = &'a Device>) -> Self {
         let mut c = Self { what, axes: HashMap::new(), buttons: HashSet::new() };
-        for d in hotas.devices() {
+        for d in devices {
             c.axes.extend(d.axes.iter().map(|(code, v)| ((d.key.clone(), *code), *v)));
             c.buttons.extend(d.buttons.iter().map(|code| (d.key.clone(), *code)));
         }
@@ -145,9 +145,12 @@ impl Capture {
     }
 
     /// The first input that moved since the capture started.
-    fn poll(&mut self, hotas: &Hotas) -> Option<(String, Found)> {
+    fn poll<'a>(
+        &mut self,
+        devices: impl IntoIterator<Item = &'a Device>,
+    ) -> Option<(String, Found)> {
         let mut found = None;
-        for d in hotas.devices() {
+        for d in devices {
             // Buttons held at the start count again once released.
             self.buttons.retain(|(n, c)| *n != d.key || d.buttons.contains(c));
             for &code in &d.buttons {
@@ -158,6 +161,11 @@ impl Capture {
                 }
             }
             for (&code, &v) in &d.axes {
+                // Analog triggers already have a button above. Their resting value is -1:
+                // releasing one must not bind the negative half of its axis as a button.
+                if matches!(self.what, Binding::Button(_)) && d.button_axes.contains(&code) {
+                    continue;
+                }
                 // An axis seen for the first time is its own baseline.
                 let base = *self.axes.entry((d.key.clone(), code)).or_insert(v);
                 if (v - base).abs() > 0.5 {
@@ -173,6 +181,64 @@ impl Capture {
             }
         }
         found
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trigger_can_be_bound_again_after_release() {
+        for code in [0x30002, 0x30005] {
+            let mut d = Device::default();
+            d.key = "Xbox".into();
+            d.button_changed(code, 0.0, true);
+            let what = Binding::Button(ButtonTarget::Gun);
+            let mut capture = Capture::new(what, [&d]);
+            d.button_changed(code, 1.0, true);
+            assert!(matches!(
+                capture.poll([&d]),
+                Some((_, Found::Button(Source::Button(c)))) if c == code
+            ));
+
+            // Start another capture while still holding the trigger from the first binding.
+            let mut capture = Capture::new(what, [&d]);
+            assert!(capture.poll([&d]).is_none());
+            d.button_changed(code, 0.0, true);
+            assert!(capture.poll([&d]).is_none(), "release is not an axis-negative binding");
+            d.button_changed(code, 1.0, true);
+            assert!(matches!(
+                capture.poll([&d]),
+                Some((_, Found::Button(Source::Button(c)))) if c == code
+            ));
+        }
+    }
+
+    #[test]
+    fn axis_capture_accepts_triggers_but_not_digital_buttons() {
+        let mut d = Device::default();
+        d.button_changed(2, 0.0, true);
+        let mut capture = Capture::new(Binding::Axis(AxisControl::Throttle), [&d]);
+        d.button_changed(10, 1.0, false);
+        assert!(capture.poll([&d]).is_none());
+        d.button_changed(2, 0.5, true);
+        assert!(matches!(capture.poll([&d]), Some((_, Found::Axis(2)))));
+    }
+
+    #[test]
+    fn raw_hotas_axes_still_bind_in_both_directions() {
+        for value in [-1.0, 1.0] {
+            let mut d = Device::default();
+            d.axes.insert(42, 0.0);
+            let mut button = Capture::new(Binding::Button(ButtonTarget::Gun), [&d]);
+            let mut axis = Capture::new(Binding::Axis(AxisControl::Roll), [&d]);
+            d.axes.insert(42, value);
+            let expected =
+                if value > 0.0 { Source::AxisPositive(42) } else { Source::AxisNegative(42) };
+            assert!(matches!(button.poll([&d]), Some((_, Found::Button(s))) if s == expected));
+            assert!(matches!(axis.poll([&d]), Some((_, Found::Axis(42)))));
+        }
     }
 }
 
@@ -276,7 +342,7 @@ pub fn show(
                 ));
                 dialog.capture = None;
             }
-        } else if let Some((device, input)) = cap.poll(hotas) {
+        } else if let Some((device, input)) = cap.poll(hotas.devices()) {
             let what = cap.what;
             let label = match (what, input) {
                 (Binding::Axis(control), Found::Axis(code)) => {
@@ -613,7 +679,7 @@ pub fn show(
     if let Some(what) = start {
         dialog.status = None;
         dialog.jump = None;
-        dialog.capture = Some(Capture::new(what, hotas));
+        dialog.capture = Some(Capture::new(what, hotas.devices()));
     }
     if dialog.saved.as_ref() != Some(config) {
         match config.save() {
