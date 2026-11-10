@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py` and `build_cockpit_c130.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py` and `build_cockpit_ah64_cpg.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -50,6 +50,12 @@ pub enum PanelStyle {
     /// The AC-130's flight deck (a C-130J's): side by side, each pilot's outboard attitude
     /// display (the copilot's dark) and the two MFDs between them on one narrow panel; a yoke.
     C130,
+    /// The AH-64D's pilot's (rear) cockpit: two MFDs side by side under the up-front display
+    /// and the warning lights, a centre cyclic.
+    Ah64,
+    /// The AH-64D's copilot/gunner's (front) cockpit: a low panel with the TEDAC's display
+    /// (the third MFD) between the two MFDs, its hand grips under it; a side-stick cyclic.
+    Ah64Cpg,
 }
 
 /// A rectangle in panel pixels.
@@ -233,7 +239,7 @@ impl PanelStyle {
     pub fn mfd_count(self) -> usize {
         match self {
             PanelStyle::F22 | PanelStyle::C5 => 4,
-            PanelStyle::Modern | PanelStyle::Tornado => 3,
+            PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::Ah64Cpg => 3,
             _ => 2,
         }
     }
@@ -256,6 +262,8 @@ impl PanelLayout {
             PanelStyle::F22 => Self::f22(),
             PanelStyle::C5 => Self::c5(),
             PanelStyle::C130 => Self::c130(),
+            PanelStyle::Ah64 => Self::ah64(),
+            PanelStyle::Ah64Cpg => Self::ah64_cpg(),
         }
     }
 
@@ -862,6 +870,101 @@ impl PanelLayout {
             }])
             .collect();
         Self { style: PanelStyle::Ah1z, items, adi: rect(-34.0, 110.0, 68.0, 68.0), ..u }
+    }
+
+    /// The AH-64D pilot's (rear seat) panel: the AH-1Z's (millimetres, life size;
+    /// `tools/models/build_cockpit_ah64.py`) after the AH-64D's: the two MFDs side by side, the
+    /// up-front display (the `ded` with its two rows of caps) over the left one, the warning
+    /// lights in two rows over the right one, the standby instruments left and the engine
+    /// gauges right of the MFDs, the standby attitude indicator between them under them. The
+    /// cautions and the countermeasures on the short pedestal under the panel, ahead of the
+    /// centre cyclic.
+    pub fn ah64() -> Self {
+        let a = Self::ah1z();
+        let items = a
+            .items
+            .iter()
+            .map(|p| {
+                let r = p.rect;
+                let by = |dx: f32, dy: f32| rect(r.x + dx, r.y + dy, r.w, r.h);
+                let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+                let rect = match p.elem {
+                    // The up-front display's caps from the console over the left MFD.
+                    _ if cx >= 1500.0 && cy < -40.0 => by(-2190.0, -60.0),
+                    // The left MFD's warning lights over the right MFD's.
+                    _ if cx > -200.0 && cx < -100.0 && cy < -90.0 => by(290.0, -40.0),
+                    _ => r,
+                };
+                Placed { rect, ..*p }
+            })
+            .collect();
+        let ded = a.ded.map(|r| rect(r.x - 2190.0, r.y - 60.0, r.w, r.h));
+        Self { style: PanelStyle::Ah64, items, ded, ..a }
+    }
+
+    /// The AH-64D copilot/gunner's (front seat) panel (millimetres, life size;
+    /// `tools/models/build_cockpit_ah64_cpg.py`): low, three displays across it, the TEDAC's
+    /// in the middle (the third MFD, `MfdSide::Third`) between the two MFDs, the up-front
+    /// display over the TEDAC, the warning lights over the MFDs; under the left MFD the flight
+    /// control caps, under the right one the fuel, engine readouts and EMV gauge, the small
+    /// standby attitude indicator under the TEDAC. No standby or engine dials. The cautions and
+    /// the countermeasures on the TEDAC's console between its hand grips under the panel.
+    pub fn ah64_cpg() -> Self {
+        let a = Self::ah1z();
+        let items = a
+            .items
+            .iter()
+            .filter(|p| {
+                !matches!(
+                    p.elem,
+                    Elem::Dial(
+                        Dial::Airspeed
+                            | Dial::Altimeter
+                            | Dial::Aoa
+                            | Dial::Vvi
+                            | Dial::Clock
+                            | Dial::Rpm
+                            | Dial::Ftit
+                            | Dial::Oil
+                            | Dial::Nozzle
+                    )
+                )
+            })
+            .map(|p| {
+                let r = p.rect;
+                let by = |dx: f32, dy: f32| rect(r.x + dx, r.y + dy, r.w, r.h);
+                let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+                let rect = match p.elem {
+                    // The up-front display's caps from the console over the TEDAC.
+                    _ if cx >= 1500.0 && cy < -40.0 => by(-2000.0, -38.0),
+                    _ if cx >= 1500.0 => r,
+                    // The warning lights over the MFDs.
+                    _ if cy < -90.0 => by(90f32.copysign(cx), 0.0),
+                    // The caps and readouts under the MFDs.
+                    _ if cy > 90.0 && cx < 0.0 => by(-60.0, 0.0),
+                    _ if cy > 90.0 => by(100.0, 0.0),
+                    _ => r,
+                };
+                Placed { rect, ..*p }
+            })
+            .collect();
+        let ded = a.ded.map(|r| rect(r.x - 2000.0, r.y - 38.0, r.w, r.h));
+        let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
+        let (w, h) = (170.0, 170.0 * hires);
+        let unit =
+            |side: MfdSide, x: f32| MfdUnit { side, screen: rect(x, -h / 2.0, w, h), osbs: true };
+        Self {
+            style: PanelStyle::Ah64Cpg,
+            items,
+            adi: rect(-30.0, 100.0, 60.0, 60.0),
+            mfds: vec![
+                unit(MfdSide::Left, -320.0),
+                unit(MfdSide::Right, 150.0),
+                unit(MfdSide::Third, -w / 2.0),
+            ],
+            ded,
+            ..a
+        }
     }
 
     /// The Tornado IDS's modernised front panel (millimetres, x right and y down, life size;
@@ -2546,7 +2649,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 14] {
+    fn all() -> [PanelLayout; 16] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -2562,6 +2665,8 @@ mod tests {
             PanelLayout::f22(),
             PanelLayout::c5(),
             PanelLayout::c130(),
+            PanelLayout::ah64(),
+            PanelLayout::ah64_cpg(),
         ]
     }
 
@@ -2650,6 +2755,8 @@ mod tests {
             PanelLayout::f22(),
             PanelLayout::c5(),
             PanelLayout::c130(),
+            PanelLayout::ah64(),
+            PanelLayout::ah64_cpg(),
         ] {
             bezel_buttons_of(&l);
         }

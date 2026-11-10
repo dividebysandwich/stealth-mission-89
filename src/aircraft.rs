@@ -595,7 +595,7 @@ static AH64: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Ah1z, "cockpit_ah1z")],
+    cockpits: &[(PanelStyle::Ah64, "cockpit_ah64")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
@@ -619,8 +619,8 @@ static AH64: AircraftSpec = AircraftSpec {
     // The gunner's (front, lower) seat: 0.87 m behind the windshield's base (y 3.67, z 2.41),
     // the head under the roof (z 2.95), the sills (z 2.25).
     gunner_seat: Some(CrewSeat {
-        style: PanelStyle::Ah1z,
-        model: "cockpit_ah1z",
+        style: PanelStyle::Ah64Cpg,
+        model: "cockpit_ah64_cpg",
         eye: ah64_point(0.0, 2.80, 2.63),
     }),
     flight: FlightConstants::ah64,

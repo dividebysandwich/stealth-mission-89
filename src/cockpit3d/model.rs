@@ -7,7 +7,8 @@
 //! `build_cockpit_tornado.py`, the A-10C's by `build_cockpit_a10.py`, the RAH-66's by
 //! `build_cockpit_rah66.py`, the AV-8B's by `build_cockpit_av8b.py`, the OH-58D's by
 //! `build_cockpit_oh58.py`, the CH-47F's by `build_cockpit_ch47.py`, the F-22A's by
-//! `build_cockpit_f22.py`).
+//! `build_cockpit_f22.py`, the AH-64D's by `build_cockpit_ah64.py` (the pilot's, `cockpit_ah64.glb`) and
+//! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`)).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -858,6 +859,8 @@ mod tests {
             (PanelStyle::F22, "cockpit_f22", "build_cockpit_f22"),
             (PanelStyle::C5, "cockpit_c5", "build_cockpit_c5"),
             (PanelStyle::C130, "cockpit_c130", "build_cockpit_c130"),
+            (PanelStyle::Ah64, "cockpit_ah64", "build_cockpit_ah64"),
+            (PanelStyle::Ah64Cpg, "cockpit_ah64_cpg", "build_cockpit_ah64_cpg"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -891,6 +894,8 @@ mod tests {
             ("cockpit_f22", PanelStyle::F22),
             ("cockpit_c5", PanelStyle::C5),
             ("cockpit_c130", PanelStyle::C130),
+            ("cockpit_ah64", PanelStyle::Ah64),
+            ("cockpit_ah64_cpg", PanelStyle::Ah64Cpg),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -927,7 +932,11 @@ mod tests {
                     "trackcam_third",
                     "label_NEAR",
                 ],
-                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Oh58 => {
+                PanelStyle::Uh60
+                | PanelStyle::Ah1z
+                | PanelStyle::Av8b
+                | PanelStyle::Oh58
+                | PanelStyle::Ah64 => {
                     vec!["ded", "trackcam_left", "label_NEAR"]
                 }
                 PanelStyle::Rah66 => {
@@ -947,6 +956,9 @@ mod tests {
                     "label_NEAR",
                 ],
                 PanelStyle::C130 => vec!["screen_lmpd", "ded", "trackcam_left", "label_NEAR"],
+                PanelStyle::Ah64Cpg => {
+                    vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
+                }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
             for m in required {
