@@ -250,12 +250,13 @@ fn console(
         mfd.av.formats[i] = Format::Tgp;
     }
     mfd.av.soi = Some(Format::Tgp);
-    // The stick slews the pod, as fine near the centre as the Gepard's turret.
+    // The stick slews the pod, as fine near the centre as the Gepard's turret: pushed (the up
+    // arrow) the pod looks up, as the slew keys move it, not as the nose goes.
     let curve = |v: f32| {
         let a = ((v.abs() - 0.05) / 0.95).clamp(0.0, 1.0);
         v.signum() * a * a
     };
-    let stick = Vec2::new(curve(controls.roll), curve(controls.pitch));
+    let stick = Vec2::new(curve(controls.roll), curve(-controls.pitch));
     controls.slew = Vec2::new(
         crate::input::stronger(controls.slew.x, stick.x),
         crate::input::stronger(controls.slew.y, stick.y),
