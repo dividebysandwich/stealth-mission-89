@@ -861,6 +861,7 @@ mod tests {
             (PanelStyle::C130, "cockpit_c130", "build_cockpit_c130"),
             (PanelStyle::Ah64, "cockpit_ah64", "build_cockpit_ah64"),
             (PanelStyle::Ah64Cpg, "cockpit_ah64_cpg", "build_cockpit_ah64_cpg"),
+            (PanelStyle::Oh58Cpg, "cockpit_oh58_cpg", "build_cockpit_oh58"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -896,6 +897,7 @@ mod tests {
             ("cockpit_c130", PanelStyle::C130),
             ("cockpit_ah64", PanelStyle::Ah64),
             ("cockpit_ah64_cpg", PanelStyle::Ah64Cpg),
+            ("cockpit_oh58_cpg", PanelStyle::Oh58Cpg),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -906,15 +908,12 @@ mod tests {
                 .iter()
                 .filter_map(|m| m["name"].as_str())
                 .collect();
-            let mut required = vec![
-                "atlas",
-                "screen_left",
-                "screen_right",
-                "adi",
-                "approach",
-                "trackcam",
-                "hud_glass",
-            ];
+            let mut required =
+                vec!["atlas", "screen_left", "screen_right", "adi", "approach", "trackcam"];
+            // The OH-58D has no HUD (its helmet display only).
+            if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg) {
+                required.push("hud_glass");
+            }
             // The generated cockpits' MENU buttons are caps of their up-front controls (atlas
             // faces).
             required.extend(match style {
@@ -932,11 +931,7 @@ mod tests {
                     "trackcam_third",
                     "label_NEAR",
                 ],
-                PanelStyle::Uh60
-                | PanelStyle::Ah1z
-                | PanelStyle::Av8b
-                | PanelStyle::Oh58
-                | PanelStyle::Ah64 => {
+                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Ah64 => {
                     vec!["ded", "trackcam_left", "label_NEAR"]
                 }
                 PanelStyle::Rah66 => {
@@ -945,6 +940,15 @@ mod tests {
                 PanelStyle::Ch47 => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_rmpd", "screen_rwr"]
                 }
+                PanelStyle::Oh58 | PanelStyle::Oh58Cpg => vec![
+                    "screen_third",
+                    "screen_fourth",
+                    "ded",
+                    "trackcam_left",
+                    "trackcam_third",
+                    "trackcam_fourth",
+                    "label_NEAR",
+                ],
                 PanelStyle::F22 | PanelStyle::C5 => vec![
                     "screen_third",
                     "screen_fourth",

@@ -345,8 +345,24 @@ fn cockpit_panel(
         return;
     }
     *up += time.delta_secs();
-    // The glass's lower right corner in the cockpit frame (the eye at the origin).
-    let Ok((g, glass_tf, mesh)) = glass.single() else { return };
+    // The glass's lower right corner in the cockpit frame (the eye at the origin); without a
+    // HUD (the OH-58D's) where it would be.
+    let Ok((g, glass_tf, mesh)) = glass.single() else {
+        *corner = None;
+        place_panel(
+            NO_GLASS_CORNER,
+            &notices,
+            &time,
+            shown,
+            typing,
+            *up,
+            &mut panels,
+            &mut backs,
+            &mut materials,
+            &mut images,
+        );
+        return;
+    };
     if corner.is_none_or(|(e, _)| e != g) {
         let Some(aabb) = meshes.get(&mesh.0).and_then(|m| m.compute_aabb()) else { return };
         let to_root = root_tf.affine().inverse() * glass_tf.affine();
@@ -362,6 +378,46 @@ fn cockpit_panel(
         *corner = Some((g, Vec3::new(max.x, min.y, (min.z + max.z) / 2.0)));
     }
     let Some((_, c)) = *corner else { return };
+    place_panel(
+        c,
+        &notices,
+        &time,
+        shown,
+        typing,
+        *up,
+        &mut panels,
+        &mut backs,
+        &mut materials,
+        &mut images,
+    );
+}
+
+/// The glass's lower right corner in a cockpit without one (cockpit frame): 0.7 m ahead, just
+/// right of and below the line of sight (clear of the OH-58D's door posts).
+const NO_GLASS_CORNER: Vec3 = Vec3::new(0.06, -0.21, -0.70);
+
+/// Draws the panel's lines and places it right of the glass's lower right corner `c`.
+#[allow(clippy::too_many_arguments)]
+fn place_panel(
+    c: Vec3,
+    notices: &PlayerNotices,
+    time: &Time<Real>,
+    shown: &[Notice],
+    typing: bool,
+    up: f32,
+    panels: &mut Query<(
+        &mut Panel,
+        &mut Transform,
+        &mut Visibility,
+        &MeshMaterial3d<OverlayMaterial>,
+    )>,
+    backs: &mut Query<
+        (&mut Transform, &mut Visibility, &MeshMaterial3d<OverlayMaterial>),
+        (With<Back>, Without<Panel>),
+    >,
+    materials: &mut Assets<OverlayMaterial>,
+    images: &mut Assets<Image>,
+) {
     // The field's text with a blinking cursor.
     let field = notices.typing.as_ref().map(|t| {
         let blink = (time.elapsed_secs() * 2.0) as u32 % 2 == 0;
@@ -375,7 +431,7 @@ fn cockpit_panel(
     }
     let want = (lines, field);
     let mut height = PITCH;
-    for (mut panel, _, _, _) in &mut panels {
+    for (mut panel, _, _, _) in panels.iter_mut() {
         if panel.0.as_ref() != Some(&want) {
             let canvas = draw(&want.0, want.1.as_deref());
             if let Some(mut image) = images.get_mut(&panel.1) {
@@ -393,15 +449,15 @@ fn cockpit_panel(
         let at = centre * (1.0 - forward);
         Transform::from_translation(at).with_scale(size.extend(1.0) * PULL * (1.0 - forward))
     };
-    let a = alpha(*up, shown, typing || notices.radio.is_some());
-    for (_, mut tf, mut v, m) in &mut panels {
+    let a = alpha(up, shown, typing || notices.radio.is_some());
+    for (_, mut tf, mut v, m) in panels.iter_mut() {
         *tf = place(0.005);
         v.set_if_neq(Visibility::Inherited);
         if let Some(mut m) = materials.get_mut(&m.0) {
             m.base.base_color = Color::WHITE.with_alpha(a);
         }
     }
-    for (mut tf, mut v, m) in &mut backs {
+    for (mut tf, mut v, m) in backs.iter_mut() {
         *tf = place(0.0);
         v.set_if_neq(Visibility::Inherited);
         if let Some(mut m) = materials.get_mut(&m.0) {

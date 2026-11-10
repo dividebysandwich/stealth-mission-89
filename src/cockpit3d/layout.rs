@@ -35,8 +35,9 @@ pub enum PanelStyle {
     Rah66,
     /// The AV-8B Night Attack's: two MFDs either side of the up-front controller.
     Av8b,
-    /// The OH-58D's: side by side, one wide panel with two large MFDs either side of the
-    /// standby instruments, the CDU down the pedestal.
+    /// The OH-58D's pilot's (right) seat: side by side, one wide panel with a pair of MFDs in
+    /// front of each seat either side of the standby instruments (the pilot's the left and
+    /// right MFDs, the gunner's the third and fourth), the CDU down the pedestal; no HUD.
     Oh58,
     /// The CH-47F's: side by side, one wide panel with two MFDs in front of each pilot (the
     /// copilot's dark) and a large engine display between them.
@@ -56,6 +57,9 @@ pub enum PanelStyle {
     /// The AH-64D's copilot/gunner's (front) cockpit: a low panel with the TEDAC's display
     /// (the third MFD) between the two MFDs, its hand grips under it; a side-stick cyclic.
     Ah64Cpg,
+    /// The OH-58D's copilot/gunner's (left) seat: the pilot's panel, the gunner's pair of MFDs
+    /// his left and right ones, the pilot's his third and fourth.
+    Oh58Cpg,
 }
 
 /// A rectangle in panel pixels.
@@ -238,7 +242,7 @@ impl PanelStyle {
     /// (`MfdSide::Fourth`).
     pub fn mfd_count(self) -> usize {
         match self {
-            PanelStyle::F22 | PanelStyle::C5 => 4,
+            PanelStyle::F22 | PanelStyle::C5 | PanelStyle::Oh58 | PanelStyle::Oh58Cpg => 4,
             PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::Ah64Cpg => 3,
             _ => 2,
         }
@@ -258,6 +262,7 @@ impl PanelLayout {
             PanelStyle::Rah66 => Self::rah66(),
             PanelStyle::Av8b => Self::av8b(),
             PanelStyle::Oh58 => Self::oh58(),
+            PanelStyle::Oh58Cpg => Self::oh58_cpg(),
             PanelStyle::Ch47 => Self::ch47(),
             PanelStyle::F22 => Self::f22(),
             PanelStyle::C5 => Self::c5(),
@@ -2272,20 +2277,20 @@ impl PanelLayout {
     /// The OH-58D's panel (millimetres, x right and y down, life size;
     /// `tools/models/build_cockpit_oh58.py`), the F-117A's faces rearranged after the OH-58D's
     /// one wide panel under a deep glareshield, spanning both seats, its origin on the cabin's
-    /// centre line (the pilot sits in the right seat, about x 360):
-    /// - Two large MFDs (200 mm, as the RAH-66's) left and right of the centre column, the right
-    ///   one in front of the pilot.
-    /// - The centre column (|x| < 178): the data entry display on top with FLAPS, BRAKE, AUTO and
+    /// centre line (the pilot sits in the right seat, about x 360, the gunner in the left):
+    /// - A pair of MFDs (170 mm, as the AH-64 gunner's) in front of each seat: the pilot's left
+    ///   and right MFDs right of the centre column, the gunner's (the third and fourth) mirrored
+    ///   left of it.
+    /// - The centre column (|x| < 172): the data entry display on top with FLAPS, BRAKE, AUTO and
     ///   BAY left of it; under it the standby airspeed indicator, attitude indicator and altimeter,
     ///   the AOA and vertical velocity tapes and the clock; right of them a vertical strip of the
-    ///   warning lights over the engine instruments.
-    /// - Outboard of the right MFD (x > 422): fuel quantity, the fuel and thrust readouts, the EMV
-    ///   gauge.
+    ///   warning lights over the engine instruments; at its foot (y > 70) fuel quantity, the fuel
+    ///   and thrust readouts and the EMV gauge.
     /// - The console down the pedestal between the seats (x >= 1500, centred on x 2000, y growing
     ///   aft down it): the up-front display's two rows of caps over the CDU's keyboard, the
     ///   caution lights, the countermeasures (the target buttons, modelled, behind them).
     ///
-    /// No gear lights (skids).
+    /// No gear lights (skids), no HUD (the helmet display only).
     pub fn oh58() -> Self {
         let m = Self::modern();
         let items = m.items.iter().filter(|p| !matches!(p.elem, Elem::GearLights)).map(|p| {
@@ -2322,17 +2327,17 @@ impl PanelLayout {
                 Elem::Lamp(Brake, _) => at(-126.0, -104.0),
                 Elem::Lamp(Auto, _) => at(-168.0, -86.0),
                 Elem::Lamp(Bay, _) => at(-126.0, -86.0),
-                // Fuel, the engine readouts and the EMV gauge outboard of the right MFD.
-                Elem::Dial(Dial::Fuel) => at(436.0, -84.0),
-                Elem::Lamp(LowFuel, _) => at(484.0, -70.0),
-                Elem::Led(LedId::Fuel) => at(436.0, -34.0),
-                Elem::Label("FUEL", ..) => at(470.0, -34.0),
-                Elem::Led(LedId::Thrust) => at(436.0, -16.0),
-                Elem::Label("THRUST", ..) => at(470.0, -16.0),
-                Elem::Label("EGR\nEAR", ..) => at(436.0, 2.0),
-                Elem::Gauge => at(460.0, 2.0),
-                Elem::Label("EMV", ..) => at(436.0, 20.0),
-                Elem::Lamp(EmvWarn, _) => at(460.0, 20.0),
+                // Fuel, the engine readouts and the EMV gauge at the centre column's foot.
+                Elem::Dial(Dial::Fuel) => at(-160.0, 74.0),
+                Elem::Lamp(LowFuel, _) => at(-114.0, 74.0),
+                Elem::Led(LedId::Thrust) => at(-44.0, 74.0),
+                Elem::Label("THRUST", ..) => at(-12.0, 74.0),
+                Elem::Led(LedId::Fuel) => at(-44.0, 90.0),
+                Elem::Label("FUEL", ..) => at(-12.0, 90.0),
+                Elem::Label("EGR\nEAR", ..) => at(30.0, 74.0),
+                Elem::Gauge => at(54.0, 74.0),
+                Elem::Label("EMV", ..) => at(30.0, 90.0),
+                Elem::Lamp(EmvWarn, _) => at(54.0, 90.0),
                 // The caution lights and countermeasures down the console, behind the CDU.
                 _ if cx >= 1100.0 => by(818.0, 110.0),
                 // The up-front display's caps to the console's top, two rows.
@@ -2368,14 +2373,17 @@ impl PanelLayout {
             round: false,
         };
         let items = items.chain(keyboard).chain([hover, hmd]).collect();
-        let (w, h) = (200.0, 200.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        let (w, h) = (170.0, 170.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        let unit = |side, x: f32| MfdUnit { side, screen: rect(x, -80.0, w, h), osbs: true };
         Self {
             style: PanelStyle::Oh58,
             items,
             adi: rect(-60.0, -40.0, 68.0, 68.0),
             mfds: vec![
-                MfdUnit { side: MfdSide::Left, screen: rect(-400.0, -80.0, w, h), osbs: true },
-                MfdUnit { side: MfdSide::Right, screen: rect(200.0, -80.0, w, h), osbs: true },
+                unit(MfdSide::Left, 194.0),
+                unit(MfdSide::Right, 414.0),
+                unit(MfdSide::Third, -584.0),
+                unit(MfdSide::Fourth, -364.0),
             ],
             rwr: None,
             hsi: None,
@@ -2389,6 +2397,22 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
         }
+    }
+
+    /// The OH-58D's gunner's (left) seat: [`Self::oh58`]'s panel with the pairs of MFDs swapped,
+    /// the gunner's own the left and right ones.
+    pub fn oh58_cpg() -> Self {
+        let mut p = Self::oh58();
+        p.style = PanelStyle::Oh58Cpg;
+        for u in &mut p.mfds {
+            u.side = match u.side {
+                MfdSide::Left => MfdSide::Third,
+                MfdSide::Right => MfdSide::Fourth,
+                MfdSide::Third => MfdSide::Left,
+                MfdSide::Fourth => MfdSide::Right,
+            };
+        }
+        p
     }
 
     /// The F-16C's panel (millimetres, x right and y down, unfolded), after the Block 50's:

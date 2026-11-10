@@ -33,8 +33,17 @@ pub(super) const TEXELS: i32 = 3;
 const MM_TEXELS: i32 = 2;
 /// Largest label text scale (atlas texels per font pixel), so the labels match in size.
 const TEXT_SCALE: i32 = 3;
-/// Instrument atlas size (texels).
+/// Instrument atlas width (texels), and its height but in [`atlas_rows`]' cockpits.
 const ATLAS: usize = 512;
+
+/// The instrument atlas's height (texels): twice the width in the OH-58D's cockpits, whose
+/// four MFDs' bezel buttons don't fit the square one.
+fn atlas_rows(style: PanelStyle) -> usize {
+    match style {
+        PanelStyle::Oh58 | PanelStyle::Oh58Cpg => 2 * ATLAS,
+        _ => ATLAS,
+    }
+}
 
 /// A cockpit material whose `unlit` follows the lighting options (see `sync_materials`).
 #[derive(Component)]
@@ -128,7 +137,7 @@ const ATLAS_MIPS: usize = 3;
 
 /// Packs rectangles into the atlas in rows, tallest first (rows of similar heights waste
 /// little); the slots come back in the order of `sizes`.
-fn pack(sizes: &[(i32, i32)]) -> Vec<[i32; 4]> {
+fn pack(sizes: &[(i32, i32)], rows: usize) -> Vec<[i32; 4]> {
     let mut order: Vec<usize> = (0..sizes.len()).collect();
     order.sort_by_key(|&i| std::cmp::Reverse(sizes[i].1));
     let (mut x, mut y, mut row) = (0, 0, 0);
@@ -140,7 +149,7 @@ fn pack(sizes: &[(i32, i32)]) -> Vec<[i32; 4]> {
             y += row + ATLAS_GAP;
             row = 0;
         }
-        assert!(y + h <= ATLAS as i32, "instrument atlas full");
+        assert!(y + h <= rows as i32, "instrument atlas full");
         out[i] = [x, y, w, h];
         x += w + ATLAS_GAP;
         row = row.max(h);
@@ -238,18 +247,19 @@ pub(super) fn panel_materials(
     // Instrument atlas: every lamp, readout, label and bezel button face.
     let faces = atlas_faces(layout);
     let k = atlas_scale(layout.style);
-    let slots = pack(&faces.iter().map(|(_, r)| texels(r, k)).collect::<Vec<_>>());
+    let rows = atlas_rows(layout.style);
+    let slots = pack(&faces.iter().map(|(_, r)| texels(r, k)).collect::<Vec<_>>(), rows);
     let uv = |s: &[i32; 4]| {
-        let n = ATLAS as f32;
+        let n = Vec2::new(ATLAS as f32, rows as f32);
         (
-            Vec2::new(s[0] as f32 / n, s[1] as f32 / n),
-            Vec2::new((s[0] + s[2]) as f32 / n, (s[1] + s[3]) as f32 / n),
+            Vec2::new(s[0] as f32, s[1] as f32) / n,
+            Vec2::new((s[0] + s[2]) as f32, (s[1] + s[3]) as f32) / n,
         )
     };
     let atlas_tex =
-        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, ATLAS), images, false, ATLAS_MIPS);
+        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, rows), images, false, ATLAS_MIPS);
     let glow_tex =
-        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, ATLAS), images, false, ATLAS_MIPS);
+        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, rows), images, false, ATLAS_MIPS);
     let atlas = materials.add(cockpit_part(
         StandardMaterial {
             base_color_texture: Some(atlas_tex.image.clone()),
@@ -293,7 +303,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::C5
         | PanelStyle::C130
         | PanelStyle::Ah64
-        | PanelStyle::Ah64Cpg => MM_TEXELS,
+        | PanelStyle::Ah64Cpg
+        | PanelStyle::Oh58Cpg => MM_TEXELS,
     }
 }
 
@@ -780,13 +791,17 @@ mod tests {
             PanelStyle::C130,
             PanelStyle::Ah64,
             PanelStyle::Ah64Cpg,
+            PanelStyle::Oh58Cpg,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);
-            let slots =
-                pack(&atlas_faces(&layout).iter().map(|(_, r)| texels(r, k)).collect::<Vec<_>>());
+            let rows = atlas_rows(style);
+            let slots = pack(
+                &atlas_faces(&layout).iter().map(|(_, r)| texels(r, k)).collect::<Vec<_>>(),
+                rows,
+            );
             let used = slots.iter().map(|s| s[1] + s[3]).max().unwrap_or(0);
-            println!("{style:?}: {} faces, atlas rows used {used}/{ATLAS}", slots.len());
+            println!("{style:?}: {} faces, atlas rows used {used}/{rows}", slots.len());
         }
     }
 }
