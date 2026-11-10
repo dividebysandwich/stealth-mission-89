@@ -616,12 +616,12 @@ static AH64: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
-    // The gunner's (front, lower) seat: behind the windshield (its base y 3.67), the head under
-    // the roof (z 2.90), the sills (z 2.21).
+    // The gunner's (front, lower) seat: 0.87 m behind the windshield's base (y 3.67, z 2.41),
+    // the head under the roof (z 2.95), the sills (z 2.25).
     gunner_seat: Some(CrewSeat {
         style: PanelStyle::Ah1z,
         model: "cockpit_ah1z",
-        eye: ah64_point(0.0, 2.90, 2.61),
+        eye: ah64_point(0.0, 2.80, 2.63),
     }),
     flight: FlightConstants::ah64,
 };
