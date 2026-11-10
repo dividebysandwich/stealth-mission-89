@@ -203,11 +203,13 @@ impl Sim {
         }
     }
 
-    /// Flight unit of the campaign aircraft with tag `tag` (in the air, alive).
+    /// Flight unit of the campaign aircraft with tag `tag` (in the air, alive). A client gets
+    /// the campaign slots and the flight units in separate messages, so a new flight's slot
+    /// can arrive before its unit: not up yet.
     pub fn flight_of_tag(&self, tag: u32) -> Option<usize> {
         let c = self.campaign.as_ref()?;
         let i = c.flights.iter().position(|f| f.is_some_and(|f| f.tag == tag))?;
-        let u = self.flights[i];
+        let u = *self.flights.get(i)?;
         (u.flags & fflags::DESTROYED == 0 && u.flags & fflags::AIRBORNE != 0).then_some(i)
     }
 
