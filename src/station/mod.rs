@@ -427,8 +427,13 @@ const VR_ZOOM_REPEAT: f32 = 0.35;
 /// VR at a console (not the drone command center's, which has its own): the left controller
 /// works the camera and the lock as the console's buttons do. Stick up / down zooms in / out
 /// (again while held), its click toggles the FLIR, X tracks (locks the selected track; the
-/// gunner's pod's point track), Y drops the lock (the gunner's: the other gun), stick left /
-/// right lays the 40 mm / 105 mm at the gunner's console.
+/// gunner's pod's point track), Y drops the lock, stick left / right lays the 40 mm / 105 mm at
+/// the gunner's console.
+///
+/// Every gunner's seat (the AC-130's console, the AH-64D's and OH-58D's cockpits): the right
+/// stick up / down zooms the camera in / out (in place of its mapped buttons) and the left Y
+/// (the upper button) toggles the FLIR (in place of the countermeasures).
+#[allow(clippy::too_many_arguments)]
 fn vr_console(
     manning: Option<Res<Manning>>,
     settings: Res<crate::settings::Settings>,
@@ -437,27 +442,59 @@ fn vr_console(
     time: Res<Time<Real>>,
     mut wait: Local<f32>,
     mut out: MessageWriter<ConsoleButton>,
-    gunner: Res<crate::gunner::GunnerState>,
+    mut actions: MessageWriter<crate::input::ActionEvent>,
 ) {
     use crate::cockpit3d::{
         BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT,
         BUTTON_STICK_RIGHT, BUTTON_STICK_UP, BUTTON_THUMB,
     };
-    let Some(m) = manning.filter(|m| !m.drones() && m.console()) else { return };
-    let left = &hands.hands[0];
-    if !settings.vr || !left.active || menu.open || left.scrolling {
+    use crate::input::{Action, ActionEvent};
+    let Some(m) = manning.filter(|m| !m.drones() && (m.console() || m.gunner())) else { return };
+    if !settings.vr || menu.open {
         return;
     }
+    let [left, right] = &hands.hands;
+    let console = m.console();
+    // A key at the console; in a gunner's cockpit the action that works its TEDAC or MFD.
     let mut press = |k: ConsoleKey| {
-        out.write(ConsoleButton(k));
+        let a = match k {
+            _ if console => {
+                out.write(ConsoleButton(k));
+                return;
+            }
+            ConsoleKey::ZoomIn => Action::CameraZoomIn,
+            ConsoleKey::ZoomOut => Action::CameraZoomOut,
+            ConsoleKey::Flir => Action::Flir,
+            _ => return,
+        };
+        actions.write(ActionEvent(a));
     };
-    // Zoom: a step on the push, then again every `VR_ZOOM_REPEAT` while held.
+    // Zoom: a step on the push, then again every `VR_ZOOM_REPEAT` while held; the left stick
+    // at a console, the right one at a gunner's seat.
     *wait -= time.delta_secs();
-    for (bit, key) in [(BUTTON_STICK_UP, ConsoleKey::ZoomIn), (BUTTON_STICK_DOWN, ConsoleKey::ZoomOut)] {
-        if left.just_pressed(bit) || (left.held(bit) && *wait <= 0.0) {
-            press(key);
-            *wait = VR_ZOOM_REPEAT;
+    let zooms: &[&crate::cockpit3d::Hand] = match (console, m.gunner()) {
+        (true, true) => &[left, right],
+        (true, false) => &[left],
+        _ => &[right],
+    };
+    for hand in zooms.iter().filter(|h| h.active && !h.scrolling) {
+        for (bit, key) in
+            [(BUTTON_STICK_UP, ConsoleKey::ZoomIn), (BUTTON_STICK_DOWN, ConsoleKey::ZoomOut)]
+        {
+            if hand.just_pressed(bit) || (hand.held(bit) && *wait <= 0.0) {
+                press(key);
+                *wait = VR_ZOOM_REPEAT;
+            }
         }
+    }
+    if !left.active || left.scrolling {
+        return;
+    }
+    if m.gunner() && left.just_pressed(BUTTON_SECONDARY) {
+        press(ConsoleKey::Flir);
+    }
+    if !console {
+        return;
     }
     if left.just_pressed(BUTTON_THUMB) {
         press(ConsoleKey::Flir);
@@ -465,8 +502,8 @@ fn vr_console(
     if left.just_pressed(BUTTON_PRIMARY) {
         press(ConsoleKey::Lock);
     }
-    if left.just_pressed(BUTTON_SECONDARY) {
-        press(if m.gunner() { ConsoleKey::Gun(2 - gunner.gun_laid()) } else { ConsoleKey::Drop });
+    if !m.gunner() && left.just_pressed(BUTTON_SECONDARY) {
+        press(ConsoleKey::Drop);
     }
     if m.gunner() {
         if left.just_pressed(BUTTON_STICK_LEFT) {

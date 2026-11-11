@@ -77,8 +77,6 @@ pub struct GunnerState {
     gun: u8,
     /// The trigger held at another's console (sent with the aim).
     trigger: bool,
-    /// The gun the console shows laid (its own or another's).
-    shown_gun: u8,
     /// The AI's orbit: the speed it holds (knots), the throttle it sets (`flight::step_flight`
     /// flies with it) and its speed hold's integral part.
     orbit_speed: f32,
@@ -91,13 +89,6 @@ pub struct GunnerState {
     test_seat: bool,
     /// Another's AH-64: the station whose missiles he selected (None: the chin gun).
     station: Option<u8>,
-}
-
-impl GunnerState {
-    /// The gun laid next (0: 40 mm, 1: 105 mm), as the console last showed it.
-    pub fn gun_laid(&self) -> u8 {
-        self.shown_gun
-    }
 }
 
 /// How often the aim goes again unchanged (s): it goes unreliable.
@@ -558,7 +549,7 @@ fn next_station(from: Option<u8>, stores: &[(i8, i8); 6]) -> Option<u8> {
 /// The console's buttons lit: the gun laid, the camera's FLIR.
 fn panel(
     manning: Option<Res<Manning>>,
-    mut state: ResMut<GunnerState>,
+    state: Res<GunnerState>,
     combat: Option<Res<Combat>>,
     mfd: Res<crate::mfd::MfdState>,
     mut panel: ResMut<ConsolePanel>,
@@ -569,7 +560,6 @@ fn panel(
     } else {
         combat.as_deref().and_then(|c| c.sim.side_guns()).map_or(0, |g| g.gun)
     };
-    state.shown_gun = gun;
     use crate::station::scope::{GREEN, YELLOW};
     let mut lit = vec![(ConsoleKey::Gun(gun + 1), YELLOW)];
     if mfd.flir {

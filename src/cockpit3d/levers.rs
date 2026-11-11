@@ -711,6 +711,7 @@ pub(super) fn grab_levers(
     // At a console (but the drone command center's) the left controller works the console's
     // camera and lock (`station::vr_console`): no slew, none of its mapped buttons but the menu.
     let at_console = manning.as_deref().is_some_and(|m| !m.drones() && m.console());
+    let gunner = manning.as_deref().is_some_and(|m| m.gunner());
     if left.active
         && !block.0
         && !at_console
@@ -742,6 +743,21 @@ pub(super) fn grab_levers(
                 && side == VrHand::Left
                 && m.target != ButtonTarget::Action(Action::Menu)
             {
+                continue;
+            }
+            // At a gunner's seat the right stick zooms and the left Y toggles the FLIR
+            // (`station::vr_console`): none of their mapped buttons, nor the left X's.
+            let gunner_input = match side {
+                VrHand::Right => matches!(
+                    m.input,
+                    VrInput::ThumbUp
+                        | VrInput::ThumbDown
+                        | VrInput::ThumbLeft
+                        | VrInput::ThumbRight
+                ),
+                VrHand::Left => matches!(m.input, VrInput::Primary | VrInput::Secondary),
+            };
+            if gunner && gunner_input && m.target != ButtonTarget::Action(Action::Menu) {
                 continue;
             }
             // The brakes also on the trigger of a free hand that touches no control.
